@@ -205,6 +205,17 @@ namespace clover {
                      void *host_ptr, cl_mem buffer);
    };
 
+   class image1d_array : public basic_image<CL_MEM_OBJECT_IMAGE1D_ARRAY> {
+   public:
+      image1d_array(clover::context &ctx,
+                    std::vector<cl_mem_properties> properties,
+                    cl_mem_flags flags,
+                    const cl_image_format *format,
+                    size_t width,
+                    size_t array_size, size_t slice_pitch,
+                    void *host_ptr);
+   };
+
    class image2d : public basic_image<CL_MEM_OBJECT_IMAGE2D> {
    public:
       image2d(clover::context &ctx,

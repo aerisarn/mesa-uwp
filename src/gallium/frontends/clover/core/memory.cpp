@@ -280,6 +280,17 @@ image1d_buffer::image1d_buffer(clover::context &ctx,
                row_pitch, 0, row_pitch, host_ptr, buffer) {
 }
 
+image1d_array::image1d_array(clover::context &ctx,
+                             std::vector<cl_mem_properties> properties,
+                             cl_mem_flags flags,
+                             const cl_image_format *format,
+                             size_t width,
+                             size_t array_size, size_t slice_pitch,
+                             void *host_ptr) :
+   basic_image(ctx, properties, flags, format, width, 1, 1, array_size,
+               0, slice_pitch, slice_pitch * array_size, host_ptr, nullptr) {
+}
+
 image2d::image2d(clover::context &ctx,
                  std::vector<cl_mem_properties> properties,
                  cl_mem_flags flags,

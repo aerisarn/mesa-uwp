@@ -104,8 +104,9 @@ namespace {
    void
    validate_object(command_queue &q, image &img,
                    const vector_t &orig, const vector_t &region) {
+      size_t height = img.type() == CL_MEM_OBJECT_IMAGE1D_ARRAY ? img.array_size() : img.height();
       size_t depth = img.type() == CL_MEM_OBJECT_IMAGE2D_ARRAY ? img.array_size() : img.depth();
-      vector_t size = { img.width(), img.height(), depth };
+      vector_t size = { img.width(), height, depth };
       const auto &dev = q.device();
 
       if (!dev.image_support())
@@ -124,6 +125,13 @@ namespace {
       case CL_MEM_OBJECT_IMAGE1D: {
          const size_t max = dev.max_image_size();
          if (img.width() > max)
+            throw error(CL_INVALID_IMAGE_SIZE);
+         break;
+      }
+      case CL_MEM_OBJECT_IMAGE1D_ARRAY: {
+         const size_t max_size = dev.max_image_size();
+         const size_t max_array = dev.max_image_array_number();
+         if (img.width() > max_size || img.array_size() > max_array)
             throw error(CL_INVALID_IMAGE_SIZE);
          break;
       }
