@@ -228,6 +228,20 @@ clCreateImageWithProperties(cl_context d_ctx,
                          desc->image_width,
                          row_pitch, host_ptr);
 
+   case CL_MEM_OBJECT_IMAGE1D_BUFFER:
+      if (!desc->image_width)
+         throw error(CL_INVALID_IMAGE_SIZE);
+
+      if (all_of([=](const device &dev) {
+               const size_t max = dev.max_image_buffer_size();
+               return (desc->image_width > max);
+            }, ctx.devices()))
+         throw error(CL_INVALID_IMAGE_SIZE);
+
+      return new image1d_buffer(ctx, properties, flags, format,
+                                desc->image_width,
+                                row_pitch, host_ptr, desc->buffer);
+
    case CL_MEM_OBJECT_IMAGE2D:
       if (!desc->image_width || !desc->image_height)
          throw error(CL_INVALID_IMAGE_SIZE);
@@ -287,7 +301,6 @@ clCreateImageWithProperties(cl_context d_ctx,
    }
 
    case CL_MEM_OBJECT_IMAGE1D_ARRAY:
-   case CL_MEM_OBJECT_IMAGE1D_BUFFER:
       // XXX - Not implemented.
       throw error(CL_IMAGE_FORMAT_NOT_SUPPORTED);
 
