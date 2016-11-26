@@ -862,7 +862,7 @@ clEnqueueMapImage(cl_command_queue d_q, cl_mem d_mem, cl_bool blocking,
    if (!row_pitch)
       throw error(CL_INVALID_VALUE);
 
-   if (img.slice_pitch() && !slice_pitch)
+   if ((img.slice_pitch() || img.array_size()) && !slice_pitch)
       throw error(CL_INVALID_VALUE);
 
    auto *map = img.resource_in(q).add_map(q, flags, blocking, origin, region);

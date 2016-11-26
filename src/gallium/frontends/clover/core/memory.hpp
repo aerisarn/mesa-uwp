@@ -138,7 +138,7 @@ namespace clover {
             std::vector<cl_mem_properties> properties,
             cl_mem_flags flags,
             const cl_image_format *format,
-            size_t width, size_t height, size_t depth,
+            size_t width, size_t height, size_t depth, size_t array_size,
             size_t row_pitch, size_t slice_pitch, size_t size,
             void *host_ptr);
 
@@ -150,6 +150,7 @@ namespace clover {
       size_t pixel_size() const;
       size_t row_pitch() const;
       size_t slice_pitch() const;
+      size_t array_size() const;
       virtual clover::resource &
       resource_in(command_queue &q);
       virtual clover::resource &
@@ -167,6 +168,7 @@ namespace clover {
       size_t _depth;
       size_t _row_pitch;
       size_t _slice_pitch;
+      size_t _array_size;
       std::map<device *,
                std::unique_ptr<root_resource>> resources;
       std::mutex resources_mtx;

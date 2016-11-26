@@ -171,12 +171,12 @@ image::image(clover::context &ctx,
              std::vector<cl_mem_properties> properties,
              cl_mem_flags flags,
              const cl_image_format *format,
-             size_t width, size_t height, size_t depth,
+             size_t width, size_t height, size_t depth, size_t array_size,
              size_t row_pitch, size_t slice_pitch, size_t size,
              void *host_ptr) :
    memory_obj(ctx, properties, flags, size, host_ptr),
    _format(*format), _width(width), _height(height), _depth(depth),
-   _row_pitch(row_pitch), _slice_pitch(slice_pitch) {
+   _row_pitch(row_pitch), _slice_pitch(slice_pitch), _array_size(array_size) {
 }
 
 resource &
@@ -249,13 +249,18 @@ image::slice_pitch() const {
    return _slice_pitch;
 }
 
+size_t
+image::array_size() const {
+   return _array_size;
+}
+
 image1d::image1d(clover::context &ctx,
                  std::vector<cl_mem_properties> properties,
                  cl_mem_flags flags,
                  const cl_image_format *format,
                  size_t width, size_t row_pitch,
                  void *host_ptr) :
-   basic_image(ctx, properties, flags, format, width, 1, 1,
+   basic_image(ctx, properties, flags, format, width, 1, 1, 0,
                row_pitch, 0, row_pitch, host_ptr) {
 }
 
@@ -265,7 +270,7 @@ image2d::image2d(clover::context &ctx,
                  const cl_image_format *format, size_t width,
                  size_t height, size_t row_pitch,
                  void *host_ptr) :
-   basic_image(ctx, properties, flags, format, width, height, 1,
+   basic_image(ctx, properties, flags, format, width, height, 1, 0,
                row_pitch, 0, height * row_pitch, host_ptr) {
 }
 
@@ -276,7 +281,7 @@ image3d::image3d(clover::context &ctx,
                  size_t width, size_t height, size_t depth,
                  size_t row_pitch, size_t slice_pitch,
                  void *host_ptr) :
-   basic_image(ctx, properties, flags, format, width, height, depth,
+   basic_image(ctx, properties, flags, format, width, height, depth, 0,
                row_pitch, slice_pitch, depth * slice_pitch,
                host_ptr) {
 }
