@@ -39,6 +39,7 @@
 #include "util/os_file.h"
 
 #include "egl_dri2.h"
+#include "egldevice.h"
 #include "loader.h"
 
 static struct gbm_bo *
@@ -579,10 +580,28 @@ dri2_initialize_drm(_EGLDisplay *disp)
 
    gbm = disp->PlatformDisplay;
    if (gbm == NULL) {
-      char buf[64];
-      int n = snprintf(buf, sizeof(buf), DRM_DEV_NAME, DRM_DIR_NAME, 0);
-      if (n != -1 && n < sizeof(buf))
-         dri2_dpy->fd_render_gpu = loader_open_device(buf);
+      if (disp->Device) {
+         drmDevicePtr drm = _eglDeviceDrm(disp->Device);
+
+         if (!_eglDeviceSupports(disp->Device, _EGL_DEVICE_DRM)) {
+            err = "DRI2: Device isn't of _EGL_DEVICE_DRM type";
+            goto cleanup;
+         }
+
+         if (!(drm->available_nodes & (1 << DRM_NODE_PRIMARY))) {
+            err = "DRI2: Device does not have DRM_NODE_PRIMARY node";
+            goto cleanup;
+         }
+
+         dri2_dpy->fd_render_gpu =
+            loader_open_device(drm->nodes[DRM_NODE_PRIMARY]);
+      } else {
+         char buf[64];
+         int n = snprintf(buf, sizeof(buf), DRM_DEV_NAME, DRM_DIR_NAME, 0);
+         if (n != -1 && n < sizeof(buf))
+            dri2_dpy->fd_render_gpu = loader_open_device(buf);
+      }
+
       gbm = gbm_create_device(dri2_dpy->fd_render_gpu);
       if (gbm == NULL) {
          err = "DRI2: failed to create gbm device";
