@@ -60,6 +60,16 @@ static const uint8_t isl_encode_tiling[] = {
 };
 #endif
 
+#if GFX_VER >= 9 && GFX_VERx10 <= 120
+static const uint8_t isl_tiling_encode_trmode[] = {
+   [ISL_TILING_Y0]         = NONE,
+   [ISL_TILING_SKL_Yf]     = TILEYF,
+   [ISL_TILING_SKL_Ys]     = TILEYS,
+   [ISL_TILING_ICL_Yf]     = TILEYF,
+   [ISL_TILING_ICL_Ys]     = TILEYS,
+};
+#endif
+
 #if GFX_VER >= 7
 static const uint32_t isl_encode_multisample_layout[] = {
    [ISL_MSAA_LAYOUT_NONE]           = MSFMT_MSS,
@@ -440,7 +450,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
                            ISL_ARRAY_PITCH_SPAN_COMPACT;
 #endif
 
-#if GFX_VER >= 8
+#if GFX_VER >= 9 && GFX_VERx10 <= 120
    assert(GFX_VER < 12 || info->surf->tiling != ISL_TILING_W);
 
    /* From the SKL+ PRMs, RENDER_SURFACE_STATE:TileMode,
@@ -448,8 +458,14 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
     *    If Surface Format is ASTC*, this field must be TILEMODE_YMAJOR.
     */
    if (isl_format_get_layout(info->view->format)->txc == ISL_TXC_ASTC)
-      assert(info->surf->tiling == ISL_TILING_Y0);
+      assert(isl_tiling_is_any_y(info->surf->tiling));
 
+   s.TileMode = isl_encode_tiling[info->surf->tiling];
+   if (isl_tiling_is_std_y(info->surf->tiling))
+      s.TiledResourceMode = isl_tiling_encode_trmode[info->surf->tiling];
+#elif GFX_VER >= 8
+   assert(isl_format_get_layout(info->view->format)->txc != ISL_TXC_ASTC);
+   assert(!isl_tiling_is_std_y(info->surf->tiling));
    s.TileMode = isl_encode_tiling[info->surf->tiling];
 #else
    s.TiledSurface = info->surf->tiling != ISL_TILING_LINEAR,
