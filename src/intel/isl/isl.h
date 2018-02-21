@@ -1988,7 +1988,9 @@ isl_has_matching_typed_storage_image_format(const struct intel_device_info *devi
 
 void
 isl_tiling_get_info(enum isl_tiling tiling,
+                    enum isl_surf_dim dim,
                     uint32_t format_bpb,
+                    uint32_t samples,
                     struct isl_tile_info *tile_info);
 
 static inline enum isl_tiling
@@ -2699,7 +2701,9 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
  */
 void
 isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
+                                   enum isl_surf_dim dim,
                                    uint32_t bpb,
+                                   uint32_t samples,
                                    uint32_t row_pitch_B,
                                    uint32_t array_pitch_el_rows,
                                    uint32_t total_x_offset_el,
@@ -2737,7 +2741,9 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
  */
 static inline void
 isl_tiling_get_intratile_offset_sa(enum isl_tiling tiling,
+                                   enum isl_surf_dim dim,
                                    enum isl_format format,
+                                   uint32_t samples,
                                    uint32_t row_pitch_B,
                                    uint32_t array_pitch_el_rows,
                                    uint32_t total_x_offset_sa,
@@ -2763,8 +2769,8 @@ isl_tiling_get_intratile_offset_sa(enum isl_tiling tiling,
    const uint32_t total_y_offset_el = total_y_offset_sa / fmtl->bh;
    const uint32_t total_z_offset_el = total_z_offset_sa / fmtl->bd;
 
-   isl_tiling_get_intratile_offset_el(tiling, fmtl->bpb, row_pitch_B,
-                                      array_pitch_el_rows,
+   isl_tiling_get_intratile_offset_el(tiling, dim, fmtl->bpb, samples,
+                                      row_pitch_B, array_pitch_el_rows,
                                       total_x_offset_el,
                                       total_y_offset_el,
                                       total_z_offset_el,

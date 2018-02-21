@@ -69,8 +69,9 @@ blt_set_alpha_to_one(struct crocus_batch *batch,
          uint32_t tile_x, tile_y;
          uint64_t offset_B;
          ASSERTED uint32_t z_offset_el, array_offset;
-         isl_tiling_get_intratile_offset_el(dst->surf.tiling,
-                                            cpp * 8, dst->surf.row_pitch_B,
+         isl_tiling_get_intratile_offset_el(dst->surf.tiling, dst->surf.dim,
+                                            cpp * 8, dst->surf.samples,
+                                            dst->surf.row_pitch_B,
                                             dst->surf.array_pitch_el_rows,
                                             chunk_x, chunk_y, 0, 0,
                                             &offset_B,
@@ -324,8 +325,9 @@ static bool crocus_emit_blt(struct crocus_batch *batch,
          uint64_t src_offset;
          uint32_t src_tile_x, src_tile_y;
          ASSERTED uint32_t z_offset_el, array_offset;
-         isl_tiling_get_intratile_offset_el(src->surf.tiling,
-                                            src_cpp * 8, src->surf.row_pitch_B,
+         isl_tiling_get_intratile_offset_el(src->surf.tiling, src->surf.dim,
+                                            src_cpp * 8, src->surf.samples,
+                                            src->surf.row_pitch_B,
                                             src->surf.array_pitch_el_rows,
                                             src_x + chunk_x, src_y + chunk_y, 0, 0,
                                             &src_offset,
@@ -336,8 +338,9 @@ static bool crocus_emit_blt(struct crocus_batch *batch,
 
          uint64_t dst_offset;
          uint32_t dst_tile_x, dst_tile_y;
-         isl_tiling_get_intratile_offset_el(dst->surf.tiling,
-                                            dst_cpp * 8, dst->surf.row_pitch_B,
+         isl_tiling_get_intratile_offset_el(dst->surf.tiling, dst->surf.dim,
+                                            dst_cpp * 8, dst->surf.samples,
+                                            dst->surf.row_pitch_B,
                                             dst->surf.array_pitch_el_rows,
                                             dst_x + chunk_x, dst_y + chunk_y, 0, 0,
                                             &dst_offset,

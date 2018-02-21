@@ -169,8 +169,9 @@ get_blit_intratile_offset_el(const struct brw_context *brw,
                              uint32_t *y_offset_el)
 {
    ASSERTED uint32_t z_offset_el, array_offset;
-   isl_tiling_get_intratile_offset_el(mt->surf.tiling,
-                                      mt->cpp * 8, mt->surf.row_pitch_B,
+   isl_tiling_get_intratile_offset_el(mt->surf.tiling, mt->surf.dim,
+                                      mt->cpp * 8, mt->surf.samples,
+                                      mt->surf.row_pitch_B,
                                       mt->surf.array_pitch_el_rows,
                                       total_x_offset_el, total_y_offset_el, 0, 0,
                                       tile_offset_B,
