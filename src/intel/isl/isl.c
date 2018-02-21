@@ -2593,20 +2593,13 @@ isl_surf_get_image_offset_B_tile_sa(const struct isl_surf *surf,
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
 
-   uint32_t total_x_offset_el, total_y_offset_el;
-   isl_surf_get_image_offset_el(surf, level, logical_array_layer,
-                                logical_z_offset_px,
-                                &total_x_offset_el,
-                                &total_y_offset_el);
-
    uint32_t x_offset_el, y_offset_el;
-   isl_tiling_get_intratile_offset_el(surf->tiling, fmtl->bpb,
-                                      surf->row_pitch_B,
-                                      total_x_offset_el,
-                                      total_y_offset_el,
-                                      offset_B,
-                                      &x_offset_el,
-                                      &y_offset_el);
+   isl_surf_get_image_offset_B_tile_el(surf, level,
+                                       logical_array_layer,
+                                       logical_z_offset_px,
+                                       offset_B,
+                                       &x_offset_el,
+                                       &y_offset_el);
 
    if (x_offset_sa) {
       *x_offset_sa = x_offset_el * fmtl->bw;
@@ -2619,6 +2612,32 @@ isl_surf_get_image_offset_B_tile_sa(const struct isl_surf *surf,
    } else {
       assert(y_offset_el == 0);
    }
+}
+
+void
+isl_surf_get_image_offset_B_tile_el(const struct isl_surf *surf,
+                                    uint32_t level,
+                                    uint32_t logical_array_layer,
+                                    uint32_t logical_z_offset_px,
+                                    uint32_t *offset_B,
+                                    uint32_t *x_offset_el,
+                                    uint32_t *y_offset_el)
+{
+   const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
+
+   uint32_t total_x_offset_el, total_y_offset_el;
+   isl_surf_get_image_offset_el(surf, level, logical_array_layer,
+                                logical_z_offset_px,
+                                &total_x_offset_el,
+                                &total_y_offset_el);
+
+   isl_tiling_get_intratile_offset_el(surf->tiling, fmtl->bpb,
+                                      surf->row_pitch_B,
+                                      total_x_offset_el,
+                                      total_y_offset_el,
+                                      offset_B,
+                                      x_offset_el,
+                                      y_offset_el);
 }
 
 void
