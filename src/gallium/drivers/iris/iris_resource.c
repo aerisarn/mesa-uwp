@@ -1654,11 +1654,15 @@ static void
 get_image_offset_el(const struct isl_surf *surf, unsigned level, unsigned z,
                     unsigned *out_x0_el, unsigned *out_y0_el)
 {
+   ASSERTED uint32_t z0_el, a0_el;
    if (surf->dim == ISL_SURF_DIM_3D) {
-      isl_surf_get_image_offset_el(surf, level, 0, z, out_x0_el, out_y0_el);
+      isl_surf_get_image_offset_el(surf, level, 0, z,
+                                   out_x0_el, out_y0_el, &z0_el, &a0_el);
    } else {
-      isl_surf_get_image_offset_el(surf, level, z, 0, out_x0_el, out_y0_el);
+      isl_surf_get_image_offset_el(surf, level, z, 0,
+                                   out_x0_el, out_y0_el, &z0_el, &a0_el);
    }
+   assert(z0_el == 0 && a0_el == 0);
 }
 
 /**

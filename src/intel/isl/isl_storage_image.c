@@ -240,12 +240,16 @@ isl_surf_fill_image_param(const struct isl_device *dev,
                     view->array_len :
                     isl_minify(surf->logical_level0_px.d, view->base_level);
 
+   uint32_t tile_z_el, phys_array_layer;
    isl_surf_get_image_offset_el(surf, view->base_level,
                                 surf->dim == ISL_SURF_DIM_3D ?
                                    0 : view->base_array_layer,
                                 surf->dim == ISL_SURF_DIM_3D ?
                                    view->base_array_layer : 0,
-                                &param->offset[0],  &param->offset[1]);
+                                &param->offset[0],  &param->offset[1],
+                                &tile_z_el, &phys_array_layer);
+   assert(tile_z_el == 0);
+   assert(phys_array_layer == 0);
 
    const int cpp = isl_format_get_layout(surf->format)->bpb / 8;
    param->stride[0] = cpp;

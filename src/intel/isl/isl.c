@@ -2523,7 +2523,9 @@ isl_surf_get_image_offset_sa(const struct isl_surf *surf,
                              uint32_t logical_array_layer,
                              uint32_t logical_z_offset_px,
                              uint32_t *x_offset_sa,
-                             uint32_t *y_offset_sa)
+                             uint32_t *y_offset_sa,
+                             uint32_t *z_offset_sa,
+                             uint32_t *array_offset)
 {
    assert(level < surf->levels);
    assert(logical_array_layer < surf->logical_level0_px.array_len);
@@ -2534,21 +2536,29 @@ isl_surf_get_image_offset_sa(const struct isl_surf *surf,
    case ISL_DIM_LAYOUT_GFX9_1D:
       get_image_offset_sa_gfx9_1d(surf, level, logical_array_layer,
                                   x_offset_sa, y_offset_sa);
+      *z_offset_sa = 0;
+      *array_offset = 0;
       break;
    case ISL_DIM_LAYOUT_GFX4_2D:
       get_image_offset_sa_gfx4_2d(surf, level, logical_array_layer
                                   + logical_z_offset_px,
                                   x_offset_sa, y_offset_sa);
+      *z_offset_sa = 0;
+      *array_offset = 0;
       break;
    case ISL_DIM_LAYOUT_GFX4_3D:
       get_image_offset_sa_gfx4_3d(surf, level, logical_array_layer +
                                   logical_z_offset_px,
                                   x_offset_sa, y_offset_sa);
+      *z_offset_sa = 0;
+      *array_offset = 0;
       break;
    case ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ:
       get_image_offset_sa_gfx6_stencil_hiz(surf, level, logical_array_layer +
                                            logical_z_offset_px,
                                            x_offset_sa, y_offset_sa);
+      *z_offset_sa = 0;
+      *array_offset = 0;
       break;
 
    default:
@@ -2562,7 +2572,9 @@ isl_surf_get_image_offset_el(const struct isl_surf *surf,
                              uint32_t logical_array_layer,
                              uint32_t logical_z_offset_px,
                              uint32_t *x_offset_el,
-                             uint32_t *y_offset_el)
+                             uint32_t *y_offset_el,
+                             uint32_t *z_offset_el,
+                             uint32_t *array_offset)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
 
@@ -2571,15 +2583,18 @@ isl_surf_get_image_offset_el(const struct isl_surf *surf,
    assert(logical_z_offset_px
           < isl_minify(surf->logical_level0_px.depth, level));
 
-   uint32_t x_offset_sa, y_offset_sa;
+   uint32_t x_offset_sa, y_offset_sa, z_offset_sa;
    isl_surf_get_image_offset_sa(surf, level,
                                 logical_array_layer,
                                 logical_z_offset_px,
                                 &x_offset_sa,
-                                &y_offset_sa);
+                                &y_offset_sa,
+                                &z_offset_sa,
+                                array_offset);
 
    *x_offset_el = x_offset_sa / fmtl->bw;
    *y_offset_el = y_offset_sa / fmtl->bh;
+   *z_offset_el = z_offset_sa / fmtl->bd;
 }
 
 void
@@ -2626,18 +2641,29 @@ isl_surf_get_image_offset_B_tile_el(const struct isl_surf *surf,
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
 
    uint32_t total_x_offset_el, total_y_offset_el;
+   uint32_t total_z_offset_el, total_array_offset;
    isl_surf_get_image_offset_el(surf, level, logical_array_layer,
                                 logical_z_offset_px,
                                 &total_x_offset_el,
-                                &total_y_offset_el);
+                                &total_y_offset_el,
+                                &total_z_offset_el,
+                                &total_array_offset);
 
+   uint32_t z_offset_el, array_offset;
    isl_tiling_get_intratile_offset_el(surf->tiling, fmtl->bpb,
                                       surf->row_pitch_B,
+                                      surf->array_pitch_el_rows,
                                       total_x_offset_el,
                                       total_y_offset_el,
+                                      total_z_offset_el,
+                                      total_array_offset,
                                       offset_B,
                                       x_offset_el,
-                                      y_offset_el);
+                                      y_offset_el,
+                                      &z_offset_el,
+                                      &array_offset);
+   assert(z_offset_el == 0);
+   assert(array_offset == 0);
 }
 
 void
@@ -2649,10 +2675,13 @@ isl_surf_get_image_range_B_tile(const struct isl_surf *surf,
                                 uint32_t *end_tile_B)
 {
    uint32_t start_x_offset_el, start_y_offset_el;
+   uint32_t start_z_offset_el, start_array_slice;
    isl_surf_get_image_offset_el(surf, level, logical_array_layer,
                                 logical_z_offset_px,
                                 &start_x_offset_el,
-                                &start_y_offset_el);
+                                &start_y_offset_el,
+                                &start_z_offset_el,
+                                &start_array_slice);
 
    /* Compute the size of the subimage in surface elements */
    const uint32_t subimage_w_sa = isl_minify(surf->phys_level0_sa.w, level);
@@ -2665,22 +2694,36 @@ isl_surf_get_image_range_B_tile(const struct isl_surf *surf,
    uint32_t end_x_offset_el = start_x_offset_el + subimage_w_el - 1;
    uint32_t end_y_offset_el = start_y_offset_el + subimage_h_el - 1;
 
-   UNUSED uint32_t x_offset_el, y_offset_el;
+   /* We only consider one Z or array slice */
+   const uint32_t end_z_offset_el = start_z_offset_el;
+   const uint32_t end_array_slice = start_array_slice;
+
+   UNUSED uint32_t x_offset_el, y_offset_el, z_offset_el, array_slice;
    isl_tiling_get_intratile_offset_el(surf->tiling, fmtl->bpb,
                                       surf->row_pitch_B,
+                                      surf->array_pitch_el_rows,
                                       start_x_offset_el,
                                       start_y_offset_el,
+                                      start_z_offset_el,
+                                      start_array_slice,
                                       start_tile_B,
                                       &x_offset_el,
-                                      &y_offset_el);
+                                      &y_offset_el,
+                                      &z_offset_el,
+                                      &array_slice);
 
    isl_tiling_get_intratile_offset_el(surf->tiling, fmtl->bpb,
                                       surf->row_pitch_B,
+                                      surf->array_pitch_el_rows,
                                       end_x_offset_el,
                                       end_y_offset_el,
+                                      end_z_offset_el,
+                                      end_array_slice,
                                       end_tile_B,
                                       &x_offset_el,
-                                      &y_offset_el);
+                                      &y_offset_el,
+                                      &z_offset_el,
+                                      &array_slice);
 
    /* We want the range we return to be exclusive but the tile containing the
     * last pixel (what we just calculated) is inclusive.  Add one.
@@ -2735,18 +2778,26 @@ void
 isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
                                    uint32_t bpb,
                                    uint32_t row_pitch_B,
+                                   uint32_t array_pitch_el_rows,
                                    uint32_t total_x_offset_el,
                                    uint32_t total_y_offset_el,
+                                   uint32_t total_z_offset_el,
+                                   uint32_t total_array_offset,
                                    uint32_t *base_address_offset,
                                    uint32_t *x_offset_el,
-                                   uint32_t *y_offset_el)
+                                   uint32_t *y_offset_el,
+                                   uint32_t *z_offset_el,
+                                   uint32_t *array_offset)
 {
    if (tiling == ISL_TILING_LINEAR) {
       assert(bpb % 8 == 0);
+      assert(total_z_offset_el == 0 && total_array_offset == 0);
       *base_address_offset = total_y_offset_el * row_pitch_B +
                              total_x_offset_el * (bpb / 8);
       *x_offset_el = 0;
       *y_offset_el = 0;
+      *z_offset_el = 0;
+      *array_offset = 0;
       return;
    }
 
@@ -2770,6 +2821,10 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
    /* Compute the offset into the tile */
    *x_offset_el = total_x_offset_el % tile_info.logical_extent_el.w;
    *y_offset_el = total_y_offset_el % tile_info.logical_extent_el.h;
+   assert(total_z_offset_el == 0);
+   assert(total_array_offset == 0);
+   *z_offset_el = 0;
+   *array_offset = 0;
 
    /* Compute the offset of the tile in units of whole tiles */
    uint32_t x_offset_tl = total_x_offset_el / tile_info.logical_extent_el.w;

@@ -832,11 +832,12 @@ blorp_can_hiz_clear_depth(const struct intel_device_info *devinfo,
        * HIZ), we have to make sure that the x0 and y0 are at least 16x8
        * aligned in the context of the entire surface.
        */
-      uint32_t slice_x0, slice_y0;
+      uint32_t slice_x0, slice_y0, slice_z0, slice_a0;
       isl_surf_get_image_offset_el(surf, level,
                                    surf->dim == ISL_SURF_DIM_3D ? 0 : layer,
                                    surf->dim == ISL_SURF_DIM_3D ? layer: 0,
-                                   &slice_x0, &slice_y0);
+                                   &slice_x0, &slice_y0, &slice_z0, &slice_a0);
+      assert(slice_z0 == 0 && slice_a0 == 0);
       const bool max_x1_y1 =
          x1 == minify(surf->logical_level0_px.width, level) &&
          y1 == minify(surf->logical_level0_px.height, level);

@@ -168,11 +168,17 @@ get_blit_intratile_offset_el(const struct brw_context *brw,
                              uint32_t *x_offset_el,
                              uint32_t *y_offset_el)
 {
+   ASSERTED uint32_t z_offset_el, array_offset;
    isl_tiling_get_intratile_offset_el(mt->surf.tiling,
                                       mt->cpp * 8, mt->surf.row_pitch_B,
-                                      total_x_offset_el, total_y_offset_el,
+                                      mt->surf.array_pitch_el_rows,
+                                      total_x_offset_el, total_y_offset_el, 0, 0,
                                       base_address_offset,
-                                      x_offset_el, y_offset_el);
+                                      x_offset_el, y_offset_el,
+                                      &z_offset_el, &array_offset);
+   assert(z_offset_el == 0);
+   assert(array_offset == 0);
+
    if (mt->surf.tiling == ISL_TILING_LINEAR) {
       /* From the Broadwell PRM docs for XY_SRC_COPY_BLT::SourceBaseAddress:
        *

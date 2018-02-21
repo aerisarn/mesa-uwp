@@ -85,9 +85,9 @@ t_assert_offset_el(const struct isl_surf *surf,
                    uint32_t expected_x_offset_el,
                    uint32_t expected_y_offset_el)
 {
-   uint32_t x, y;
+   uint32_t x, y, z, a;
    isl_surf_get_image_offset_el(surf, level, logical_array_layer,
-                                logical_z_offset_px, &x, &y);
+                                logical_z_offset_px, &x, &y, &z, &a);
 
    t_assert(x == expected_x_offset_el);
    t_assert(y == expected_y_offset_el);

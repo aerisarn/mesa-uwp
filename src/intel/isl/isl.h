@@ -2249,7 +2249,9 @@ isl_surf_get_image_offset_sa(const struct isl_surf *surf,
                              uint32_t logical_array_layer,
                              uint32_t logical_z_offset_px,
                              uint32_t *x_offset_sa,
-                             uint32_t *y_offset_sa);
+                             uint32_t *y_offset_sa,
+                             uint32_t *z_offset_sa,
+                             uint32_t *array_offset);
 
 /**
  * Calculate the offset, in units of surface elements, to a subimage in the
@@ -2265,7 +2267,9 @@ isl_surf_get_image_offset_el(const struct isl_surf *surf,
                              uint32_t logical_array_layer,
                              uint32_t logical_z_offset_px,
                              uint32_t *x_offset_el,
-                             uint32_t *y_offset_el);
+                             uint32_t *y_offset_el,
+                             uint32_t *z_offset_el,
+                             uint32_t *array_offset);
 
 /**
  * Calculate the offset, in bytes and intratile surface samples, to a
@@ -2366,21 +2370,31 @@ void
 isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
                                    uint32_t bpb,
                                    uint32_t row_pitch_B,
+                                   uint32_t array_pitch_el_rows,
                                    uint32_t total_x_offset_el,
                                    uint32_t total_y_offset_el,
+                                   uint32_t total_z_offset_el,
+                                   uint32_t total_array_offset,
                                    uint32_t *base_address_offset,
                                    uint32_t *x_offset_el,
-                                   uint32_t *y_offset_el);
+                                   uint32_t *y_offset_el,
+                                   uint32_t *z_offset_el,
+                                   uint32_t *array_offset);
 
 static inline void
 isl_tiling_get_intratile_offset_sa(enum isl_tiling tiling,
                                    enum isl_format format,
                                    uint32_t row_pitch_B,
+                                   uint32_t array_pitch_el_rows,
                                    uint32_t total_x_offset_sa,
                                    uint32_t total_y_offset_sa,
+                                   uint32_t total_z_offset_sa,
+                                   uint32_t total_array_offset,
                                    uint32_t *base_address_offset,
                                    uint32_t *x_offset_sa,
-                                   uint32_t *y_offset_sa)
+                                   uint32_t *y_offset_sa,
+                                   uint32_t *z_offset_sa,
+                                   uint32_t *array_offset)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(format);
 
@@ -2390,15 +2404,22 @@ isl_tiling_get_intratile_offset_sa(enum isl_tiling tiling,
     */
    assert(total_x_offset_sa % fmtl->bw == 0);
    assert(total_y_offset_sa % fmtl->bh == 0);
-   const uint32_t total_x_offset = total_x_offset_sa / fmtl->bw;
-   const uint32_t total_y_offset = total_y_offset_sa / fmtl->bh;
+   const uint32_t total_x_offset_el = total_x_offset_sa / fmtl->bw;
+   const uint32_t total_y_offset_el = total_y_offset_sa / fmtl->bh;
+   const uint32_t total_z_offset_el = total_z_offset_sa / fmtl->bd;
 
    isl_tiling_get_intratile_offset_el(tiling, fmtl->bpb, row_pitch_B,
-                                      total_x_offset, total_y_offset,
+                                      array_pitch_el_rows,
+                                      total_x_offset_el,
+                                      total_y_offset_el,
+                                      total_z_offset_el,
+                                      total_array_offset,
                                       base_address_offset,
-                                      x_offset_sa, y_offset_sa);
+                                      x_offset_sa, y_offset_sa,
+                                      z_offset_sa, array_offset);
    *x_offset_sa *= fmtl->bw;
    *y_offset_sa *= fmtl->bh;
+   *z_offset_sa *= fmtl->bd;
 }
 
 /**

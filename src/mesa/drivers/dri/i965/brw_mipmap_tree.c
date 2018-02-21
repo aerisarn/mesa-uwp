@@ -1132,7 +1132,7 @@ brw_miptree_get_image_offset(const struct brw_mipmap_tree *mt,
       return;
    }
 
-   uint32_t x_offset_sa, y_offset_sa;
+   uint32_t x_offset_sa, y_offset_sa, z_offset_sa, array_offset;
 
    /* Miptree itself can have an offset only if it represents a single
     * slice in an imported buffer object.
@@ -1150,10 +1150,13 @@ brw_miptree_get_image_offset(const struct brw_mipmap_tree *mt,
    const unsigned z = mt->surf.dim == ISL_SURF_DIM_3D ? slice : 0;
    slice = mt->surf.dim == ISL_SURF_DIM_3D ? 0 : slice;
    isl_surf_get_image_offset_el(&mt->surf, level, slice, z,
-                                &x_offset_sa, &y_offset_sa);
+                                &x_offset_sa, &y_offset_sa,
+                                &z_offset_sa, &array_offset);
 
    *x = x_offset_sa;
    *y = y_offset_sa;
+   assert(z_offset_sa == 0);
+   assert(array_offset == 0);
 }
 
 /**
