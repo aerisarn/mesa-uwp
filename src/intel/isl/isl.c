@@ -1175,7 +1175,7 @@ isl_calc_phys_total_extent_el_gfx4_2d(
       const struct isl_extent4d *phys_level0_sa,
       enum isl_array_pitch_span array_pitch_span,
       uint32_t *array_pitch_el_rows,
-      struct isl_extent2d *total_extent_el)
+      struct isl_extent4d *phys_total_el)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
 
@@ -1188,10 +1188,12 @@ isl_calc_phys_total_extent_el_gfx4_2d(
                                            image_align_sa, phys_level0_sa,
                                            array_pitch_span,
                                            &phys_slice0_sa);
-   *total_extent_el = (struct isl_extent2d) {
+   *phys_total_el = (struct isl_extent4d) {
       .w = isl_align_div_npot(phys_slice0_sa.w, fmtl->bw),
       .h = *array_pitch_el_rows * (phys_level0_sa->array_len - 1) +
            isl_align_div_npot(phys_slice0_sa.h, fmtl->bh),
+      .d = 1,
+      .a = 1,
    };
 }
 
@@ -1206,7 +1208,7 @@ isl_calc_phys_total_extent_el_gfx4_3d(
       const struct isl_extent3d *image_align_sa,
       const struct isl_extent4d *phys_level0_sa,
       uint32_t *array_pitch_el_rows,
-      struct isl_extent2d *phys_total_el)
+      struct isl_extent4d *phys_total_el)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
 
@@ -1253,9 +1255,11 @@ isl_calc_phys_total_extent_el_gfx4_3d(
     */
    *array_pitch_el_rows =
       isl_align_npot(phys_level0_sa->h, image_align_sa->h) / fmtl->bw;
-   *phys_total_el = (struct isl_extent2d) {
+   *phys_total_el = (struct isl_extent4d) {
       .w = isl_assert_div(total_w, fmtl->bw),
       .h = isl_assert_div(total_h, fmtl->bh),
+      .d = 1,
+      .a = 1,
    };
 }
 
@@ -1271,7 +1275,7 @@ isl_calc_phys_total_extent_el_gfx6_stencil_hiz(
       const struct isl_extent3d *image_align_sa,
       const struct isl_extent4d *phys_level0_sa,
       uint32_t *array_pitch_el_rows,
-      struct isl_extent2d *phys_total_el)
+      struct isl_extent4d *phys_total_el)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
 
@@ -1314,9 +1318,11 @@ isl_calc_phys_total_extent_el_gfx6_stencil_hiz(
 
    *array_pitch_el_rows =
       isl_assert_div(isl_align(H0, image_align_sa->h), fmtl->bh);
-   *phys_total_el = (struct isl_extent2d) {
+   *phys_total_el = (struct isl_extent4d) {
       .w = isl_assert_div(MAX(total_top_w, total_bottom_w), fmtl->bw),
       .h = isl_assert_div(total_h, fmtl->bh),
+      .d = 1,
+      .a = 1,
    };
 }
 
@@ -1331,7 +1337,7 @@ isl_calc_phys_total_extent_el_gfx9_1d(
       const struct isl_extent3d *image_align_sa,
       const struct isl_extent4d *phys_level0_sa,
       uint32_t *array_pitch_el_rows,
-      struct isl_extent2d *phys_total_el)
+      struct isl_extent4d *phys_total_el)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
 
@@ -1351,9 +1357,11 @@ isl_calc_phys_total_extent_el_gfx9_1d(
    }
 
    *array_pitch_el_rows = 1;
-   *phys_total_el = (struct isl_extent2d) {
+   *phys_total_el = (struct isl_extent4d) {
       .w = isl_assert_div(slice_w, fmtl->bw),
       .h = phys_level0_sa->array_len,
+      .d = 1,
+      .a = 1,
    };
 }
 
@@ -1371,7 +1379,7 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
                               const struct isl_extent4d *phys_level0_sa,
                               enum isl_array_pitch_span array_pitch_span,
                               uint32_t *array_pitch_el_rows,
-                              struct isl_extent2d *total_extent_el)
+                              struct isl_extent4d *phys_total_el)
 {
    switch (dim_layout) {
    case ISL_DIM_LAYOUT_GFX9_1D:
@@ -1379,14 +1387,14 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
       isl_calc_phys_total_extent_el_gfx9_1d(dev, info,
                                             image_align_sa, phys_level0_sa,
                                             array_pitch_el_rows,
-                                            total_extent_el);
+                                            phys_total_el);
       return;
    case ISL_DIM_LAYOUT_GFX4_2D:
       isl_calc_phys_total_extent_el_gfx4_2d(dev, info, tile_info, msaa_layout,
                                             image_align_sa, phys_level0_sa,
                                             array_pitch_span,
                                             array_pitch_el_rows,
-                                            total_extent_el);
+                                            phys_total_el);
       return;
    case ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ:
       assert(array_pitch_span == ISL_ARRAY_PITCH_SPAN_COMPACT);
@@ -1394,14 +1402,14 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
                                                      image_align_sa,
                                                      phys_level0_sa,
                                                      array_pitch_el_rows,
-                                                     total_extent_el);
+                                                     phys_total_el);
       return;
    case ISL_DIM_LAYOUT_GFX4_3D:
       assert(array_pitch_span == ISL_ARRAY_PITCH_SPAN_COMPACT);
       isl_calc_phys_total_extent_el_gfx4_3d(dev, info,
                                             image_align_sa, phys_level0_sa,
                                             array_pitch_el_rows,
-                                            total_extent_el);
+                                            phys_total_el);
       return;
    }
 
@@ -1480,7 +1488,7 @@ isl_calc_row_pitch_alignment(const struct isl_device *dev,
 static uint32_t
 isl_calc_linear_min_row_pitch(const struct isl_device *dev,
                               const struct isl_surf_init_info *info,
-                              const struct isl_extent2d *phys_total_el,
+                              const struct isl_extent4d *phys_total_el,
                               uint32_t alignment_B)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
@@ -1493,7 +1501,7 @@ static uint32_t
 isl_calc_tiled_min_row_pitch(const struct isl_device *dev,
                              const struct isl_surf_init_info *surf_info,
                              const struct isl_tile_info *tile_info,
-                             const struct isl_extent2d *phys_total_el,
+                             const struct isl_extent4d *phys_total_el,
                              uint32_t alignment_B)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf_info->format);
@@ -1517,7 +1525,7 @@ static uint32_t
 isl_calc_min_row_pitch(const struct isl_device *dev,
                        const struct isl_surf_init_info *surf_info,
                        const struct isl_tile_info *tile_info,
-                       const struct isl_extent2d *phys_total_el,
+                       const struct isl_extent4d *phys_total_el,
                        uint32_t alignment_B)
 {
    if (tile_info->tiling == ISL_TILING_LINEAR) {
@@ -1550,7 +1558,7 @@ isl_calc_row_pitch(const struct isl_device *dev,
                    const struct isl_surf_init_info *surf_info,
                    const struct isl_tile_info *tile_info,
                    enum isl_dim_layout dim_layout,
-                   const struct isl_extent2d *phys_total_el,
+                   const struct isl_extent4d *phys_total_el,
                    uint32_t *out_row_pitch_B)
 {
    uint32_t alignment_B =
@@ -1656,7 +1664,7 @@ isl_surf_init_s(const struct isl_device *dev,
       isl_choose_array_pitch_span(dev, info, dim_layout, &phys_level0_sa);
 
    uint32_t array_pitch_el_rows;
-   struct isl_extent2d phys_total_el;
+   struct isl_extent4d phys_total_el;
    isl_calc_phys_total_extent_el(dev, info, &tile_info,
                                  dim_layout, msaa_layout,
                                  &image_align_sa, &phys_level0_sa,
@@ -1671,6 +1679,9 @@ isl_surf_init_s(const struct isl_device *dev,
    uint32_t base_alignment_B;
    uint64_t size_B;
    if (tiling == ISL_TILING_LINEAR) {
+      /* LINEAR tiling has no concept of intra-tile arrays */
+      assert(phys_total_el.d == 1 && phys_total_el.a == 1);
+
       size_B = (uint64_t) row_pitch_B * phys_total_el.h;
 
       /* From the Broadwell PRM Vol 2d, RENDER_SURFACE_STATE::SurfaceBaseAddress:
@@ -1700,7 +1711,31 @@ isl_surf_init_s(const struct isl_device *dev,
       if (isl_surf_usage_is_display(info->usage))
          base_alignment_B = MAX(base_alignment_B, 64);
    } else {
+      /* Pitches must make sense with the tiling */
+      assert(row_pitch_B % tile_info.phys_extent_B.width == 0);
+
+      uint32_t array_slices, array_pitch_tl_rows;
+      if (phys_total_el.d > 1) {
+         assert(phys_total_el.a == 1);
+         array_pitch_tl_rows = isl_assert_div(array_pitch_el_rows,
+                                              tile_info.logical_extent_el.h);
+         array_slices = isl_align_div(phys_total_el.d,
+                                      tile_info.logical_extent_el.d);
+      } else if (phys_total_el.a > 1) {
+         assert(phys_total_el.d == 1);
+         array_pitch_tl_rows = isl_assert_div(array_pitch_el_rows,
+                                              tile_info.logical_extent_el.h);
+         array_slices = isl_align_div(phys_total_el.a,
+                                      tile_info.logical_extent_el.a);
+         assert(array_pitch_el_rows % tile_info.logical_extent_el.h == 0);
+      } else {
+         assert(phys_total_el.d == 1 && phys_total_el.a == 1);
+         array_pitch_tl_rows = 0;
+         array_slices = 1;
+      }
+
       const uint32_t total_h_tl =
+         (array_slices - 1) * array_pitch_tl_rows +
          isl_align_div(phys_total_el.h, tile_info.logical_extent_el.height);
 
       size_B = (uint64_t) total_h_tl * tile_info.phys_extent_B.height * row_pitch_B;
