@@ -314,7 +314,8 @@ isl_tiling_get_info(enum isl_tiling tiling,
                     struct isl_tile_info *tile_info)
 {
    const uint32_t bs = format_bpb / 8;
-   struct isl_extent2d logical_el, phys_B;
+   struct isl_extent4d logical_el;
+   struct isl_extent2d phys_B;
 
    if (tiling != ISL_TILING_LINEAR && !isl_is_pow2(format_bpb)) {
       /* It is possible to have non-power-of-two formats in a tiled buffer.
@@ -331,25 +332,25 @@ isl_tiling_get_info(enum isl_tiling tiling,
    switch (tiling) {
    case ISL_TILING_LINEAR:
       assert(bs > 0);
-      logical_el = isl_extent2d(1, 1);
+      logical_el = isl_extent4d(1, 1, 1, 1);
       phys_B = isl_extent2d(bs, 1);
       break;
 
    case ISL_TILING_X:
       assert(bs > 0);
-      logical_el = isl_extent2d(512 / bs, 8);
+      logical_el = isl_extent4d(512 / bs, 8, 1, 1);
       phys_B = isl_extent2d(512, 8);
       break;
 
    case ISL_TILING_Y0:
       assert(bs > 0);
-      logical_el = isl_extent2d(128 / bs, 32);
+      logical_el = isl_extent4d(128 / bs, 32, 1, 1);
       phys_B = isl_extent2d(128, 32);
       break;
 
    case ISL_TILING_W:
       assert(bs == 1);
-      logical_el = isl_extent2d(64, 64);
+      logical_el = isl_extent4d(64, 64, 1, 1);
       /* From the Broadwell PRM Vol 2d, RENDER_SURFACE_STATE::SurfacePitch:
        *
        *    "If the surface is a stencil buffer (and thus has Tile Mode set
@@ -372,7 +373,7 @@ isl_tiling_get_info(enum isl_tiling tiling,
       unsigned width = 1 << (6 + (ffs(bs) / 2) + (2 * is_Ys));
       unsigned height = 1 << (6 - (ffs(bs) / 2) + (2 * is_Ys));
 
-      logical_el = isl_extent2d(width / bs, height);
+      logical_el = isl_extent4d(width / bs, height, 1, 1);
       phys_B = isl_extent2d(width, height);
       break;
    }
@@ -383,7 +384,7 @@ isl_tiling_get_info(enum isl_tiling tiling,
        * Y-tiling but actually has two HiZ columns per Y-tiled column.
        */
       assert(bs == 16);
-      logical_el = isl_extent2d(16, 16);
+      logical_el = isl_extent4d(16, 16, 1, 1);
       phys_B = isl_extent2d(128, 32);
       break;
 
@@ -406,7 +407,7 @@ isl_tiling_get_info(enum isl_tiling tiling,
        * is 128x256 elements.
        */
       assert(format_bpb == 1 || format_bpb == 2);
-      logical_el = isl_extent2d(128, 256 / format_bpb);
+      logical_el = isl_extent4d(128, 256 / format_bpb, 1, 1);
       phys_B = isl_extent2d(128, 32);
       break;
 
@@ -429,7 +430,7 @@ isl_tiling_get_info(enum isl_tiling tiling,
        * element represents a 32Bx4 row area.
        */
       assert(format_bpb == 4);
-      logical_el = isl_extent2d(16, 8);
+      logical_el = isl_extent4d(16, 8, 1, 1);
       phys_B = isl_extent2d(64, 1);
       break;
 
@@ -2804,7 +2805,10 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
    struct isl_tile_info tile_info;
    isl_tiling_get_info(tiling, bpb, &tile_info);
 
+   /* Pitches must make sense with the tiling */
    assert(row_pitch_B % tile_info.phys_extent_B.width == 0);
+   if (tile_info.logical_extent_el.d > 1 || tile_info.logical_extent_el.a > 1)
+      assert(array_pitch_el_rows % tile_info.logical_extent_el.h == 0);
 
    /* For non-power-of-two formats, we need the address to be both tile and
     * element-aligned.  The easiest way to achieve this is to work with a tile
@@ -2821,14 +2825,21 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
    /* Compute the offset into the tile */
    *x_offset_el = total_x_offset_el % tile_info.logical_extent_el.w;
    *y_offset_el = total_y_offset_el % tile_info.logical_extent_el.h;
-   assert(total_z_offset_el == 0);
-   assert(total_array_offset == 0);
-   *z_offset_el = 0;
-   *array_offset = 0;
+   *z_offset_el = total_z_offset_el % tile_info.logical_extent_el.d;
+   *array_offset = total_array_offset % tile_info.logical_extent_el.a;
 
    /* Compute the offset of the tile in units of whole tiles */
    uint32_t x_offset_tl = total_x_offset_el / tile_info.logical_extent_el.w;
    uint32_t y_offset_tl = total_y_offset_el / tile_info.logical_extent_el.h;
+   uint32_t z_offset_tl = total_z_offset_el / tile_info.logical_extent_el.d;
+   uint32_t a_offset_tl = total_array_offset / tile_info.logical_extent_el.a;
+
+   /* Compute an array pitch in number of tiles */
+   uint32_t array_pitch_tl_rows =
+      array_pitch_el_rows / tile_info.logical_extent_el.h;
+
+   /* Add the Z and array offset to the Y offset to get a 2D offset */
+   y_offset_tl += (z_offset_tl + a_offset_tl) * array_pitch_tl_rows;
 
    *base_address_offset =
       y_offset_tl * tile_info.phys_extent_B.h * row_pitch_B +

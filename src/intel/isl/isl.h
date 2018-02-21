@@ -1172,7 +1172,7 @@ struct isl_tile_info {
     * The exact value of this field depends heavily on the bits-per-block of
     * the format being used.
     */
-   struct isl_extent2d logical_extent_el;
+   struct isl_extent4d logical_extent_el;
 
    /** The physical size of the tile in bytes and rows of bytes
     *
