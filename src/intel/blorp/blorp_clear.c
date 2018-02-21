@@ -1309,12 +1309,8 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
    }
 
    uint32_t offset_B, x_offset_el, y_offset_el;
-   isl_surf_get_image_offset_el(surf->aux_surf, level, layer, z,
-                                &x_offset_el, &y_offset_el);
-   isl_tiling_get_intratile_offset_el(surf->aux_surf->tiling, aux_fmtl->bpb,
-                                      surf->aux_surf->row_pitch_B,
-                                      x_offset_el, y_offset_el,
-                                      &offset_B, &x_offset_el, &y_offset_el);
+   isl_surf_get_image_offset_B_tile_el(surf->aux_surf, level, layer, z,
+                                       &offset_B, &x_offset_el, &y_offset_el);
    params.dst.addr.offset += offset_B;
 
    const uint32_t width_px =
