@@ -3197,7 +3197,53 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
    /* If we ever enable 3D block formats, we'll need to re-think this */
    assert(fmtl->bd == 1);
 
-   {
+   if (isl_tiling_is_std_y(surf->tiling) || surf->tiling == ISL_TILING_64) {
+      /* Offset to the given miplevel.  Because we're using standard tilings
+       * with no miptail, arrays and 3D textures should just work so long as
+       * we have the right array stride in the end.
+       */
+      isl_surf_get_image_offset_B_tile_el(surf, view->base_level, 0, 0,
+                                          offset_B, x_offset_el, y_offset_el);
+      /* Tile64, Ys and Yf should have no intratile X or Y offset */
+      assert(*x_offset_el == 0 && *y_offset_el == 0);
+
+      /* Save off the array pitch */
+      const uint32_t array_pitch_el_rows = surf->array_pitch_el_rows;
+
+      const uint32_t view_depth_px =
+         isl_minify(surf->logical_level0_px.depth, view->base_level);
+      const uint32_t view_depth_el =
+         isl_align_div_npot(view_depth_px, fmtl->bd);
+
+      bool ok UNUSED;
+      ok = isl_surf_init(dev, ucompr_surf,
+                         .dim = surf->dim,
+                         .format = view->format,
+                         .width = view_width_el,
+                         .height = view_height_el,
+                         .depth = view_depth_el,
+                         .levels = 1,
+                         .array_len = surf->logical_level0_px.array_len,
+                         .samples = surf->samples,
+                         .row_pitch_B = surf->row_pitch_B,
+                         .usage = surf->usage,
+                         .tiling_flags = (1u << surf->tiling));
+      assert(ok);
+
+      /* Use the array pitch from the original surface.  This way 2D arrays
+       * and 3D textures should work properly, just with one LOD.
+       */
+      assert(ucompr_surf->array_pitch_el_rows <= array_pitch_el_rows);
+      ucompr_surf->array_pitch_el_rows = array_pitch_el_rows;
+
+      /* The newly created image represents only the one miplevel so we
+       * need to adjust the view accordingly.  Because we offset it to
+       * miplevel but used a Z and array slice of 0, the array range can be
+       * left alone.
+       */
+      *ucompr_view = *view;
+      ucompr_view->base_level = 0;
+   } else {
       if (view->array_len > 1) {
          /* The Skylake PRM Vol. 2d, "RENDER_SURFACE_STATE::X Offset" says:
           *
