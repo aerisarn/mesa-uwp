@@ -1197,10 +1197,6 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
          assert(dim_layout == ISL_DIM_LAYOUT_GFX4_2D ||
                 dim_layout == ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ);
 
-      if ((tiling == ISL_TILING_SKL_Ys ||
-           tiling == ISL_TILING_ICL_Ys) && info->samples > 1)
-         isl_finishme("%s:%s: multisample TileYs layout", __FILE__, __func__);
-
       switch (msaa_layout) {
       case ISL_MSAA_LAYOUT_NONE:
          assert(info->depth == 1);
@@ -1475,7 +1471,8 @@ isl_calc_phys_total_extent_el_gfx4_2d(
                                            array_pitch_span,
                                            &phys_slice0_sa);
 
-   if (tile_info->tiling == ISL_TILING_64) {
+   if (tile_info->tiling == ISL_TILING_64 ||
+       isl_tiling_is_std_y(tile_info->tiling)) {
       *phys_total_el = (struct isl_extent4d) {
          .w = isl_align_div_npot(phys_slice0_sa.w, fmtl->bw),
          .h = isl_align_div_npot(phys_slice0_sa.h, fmtl->bh),
