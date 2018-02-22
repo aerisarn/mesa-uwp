@@ -731,6 +731,10 @@ iris_resource_configure_main(const struct iris_screen *screen,
       tiling_flags = ISL_TILING_ANY_MASK;
    }
 
+   /* We don't support Yf or Ys tiling yet */
+   tiling_flags &= ~ISL_TILING_STD_Y_MASK;
+   assert(tiling_flags != 0);
+
    isl_surf_usage_flags_t usage = 0;
 
    if (res->mod_info && !isl_drm_modifier_has_aux(modifier))

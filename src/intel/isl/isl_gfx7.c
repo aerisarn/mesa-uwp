@@ -225,13 +225,15 @@ isl_gfx6_filter_tiling(const struct isl_device *dev,
                 ISL_TILING_Y0_BIT;
    }
 
-   /* And... clear the Yf and Ys bits anyway because Anvil doesn't support
-    * them yet.
+   /* TODO: Investigate Yf failures (~5000 VK CTS failures at the time of this
+    *       writing).
     */
-   *flags &= ~ISL_TILING_SKL_Yf_BIT; /* FINISHME[SKL]: Support Yf */
-   *flags &= ~ISL_TILING_SKL_Ys_BIT; /* FINISHME[SKL]: Support Ys */
-   *flags &= ~ISL_TILING_ICL_Yf_BIT; /* FINISHME[ICL]: Support Yf */
-   *flags &= ~ISL_TILING_ICL_Ys_BIT; /* FINISHME[ICL]: Support Ys */
+   if (isl_format_is_compressed(info->format) ||
+       info->samples > 1 ||
+       info->dim == ISL_SURF_DIM_3D) {
+      *flags &= ~ISL_TILING_SKL_Yf_BIT; /* FINISHME[SKL]: Support Yf */
+      *flags &= ~ISL_TILING_ICL_Yf_BIT; /* FINISHME[ICL]: Support Yf */
+   }
 
    if (isl_surf_usage_is_depth(info->usage)) {
       /* Depth requires Y. */
@@ -309,9 +311,6 @@ isl_gfx6_filter_tiling(const struct isl_device *dev,
          *flags &= (ISL_TILING_LINEAR_BIT | ISL_TILING_X_BIT |
                     ISL_TILING_Y0_BIT);
       } else if (ISL_GFX_VER(dev) >= 9) {
-         /* Note we let Yf even though it was cleared above. This is just for
-          * completeness.
-          */
          *flags &= (ISL_TILING_LINEAR_BIT | ISL_TILING_X_BIT |
                     ISL_TILING_Y0_BIT |
                     ISL_TILING_SKL_Yf_BIT | ISL_TILING_ICL_Yf_BIT);

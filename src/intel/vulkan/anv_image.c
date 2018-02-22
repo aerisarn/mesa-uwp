@@ -307,6 +307,9 @@ choose_isl_tiling_flags(const struct intel_device_info *devinfo,
       flags &= legacy_mask;
    }
 
+   /* We don't support Yf or Ys tiling yet */
+   flags &= ~ISL_TILING_STD_Y_MASK;
+
    assert(flags);
 
    return flags;
