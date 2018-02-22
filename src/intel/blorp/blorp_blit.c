@@ -2610,23 +2610,29 @@ blorp_surf_convert_to_uncompressed(const struct isl_device *isl_dev,
       *y /= fmtl->bh;
    }
 
-   /* This is a compressed surface.  We need to convert it to a single
-    * slice (because compressed layouts don't perfectly match uncompressed
-    * ones with the same bpb) and divide x, y, width, and height by the
-    * block size.
+   /* We only want one level and slice */
+   info->view.levels = 1;
+   info->view.array_len = 1;
+
+   if (info->surf.dim == ISL_SURF_DIM_3D) {
+      /* Roll the Z offset into the image view */
+      info->view.base_array_layer += info->z_offset;
+      info->z_offset = 0;
+   }
+
+   uint32_t offset_B;
+   isl_surf_get_uncompressed_surf(isl_dev, &info->surf, &info->view,
+                                  &info->surf, &info->view, &offset_B,
+                                  &info->tile_x_sa, &info->tile_y_sa);
+   info->addr.offset += offset_B;
+
+   /* BLORP doesn't use the actual intratile offsets.  Instead, it needs the
+    * surface to be a bit bigger and we offset the vertices instead.
     */
-   blorp_surf_convert_to_single_slice(isl_dev, info);
-
-   info->surf.logical_level0_px = isl_surf_get_logical_level0_el(&info->surf);
-   info->surf.phys_level0_sa = isl_surf_get_phys_level0_el(&info->surf);
-
-   assert(info->tile_x_sa % fmtl->bw == 0);
-   assert(info->tile_y_sa % fmtl->bh == 0);
-   info->tile_x_sa /= fmtl->bw;
-   info->tile_y_sa /= fmtl->bh;
-
-   /* It's now an uncompressed surface so we need an uncompressed format */
-   info->surf.format = get_copy_format_for_bpb(isl_dev, fmtl->bpb);
+   info->surf.logical_level0_px.w += info->tile_x_sa;
+   info->surf.logical_level0_px.h += info->tile_y_sa;
+   info->surf.phys_level0_sa.w += info->tile_x_sa;
+   info->surf.phys_level0_sa.h += info->tile_y_sa;
 }
 
 void
