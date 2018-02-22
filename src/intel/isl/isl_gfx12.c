@@ -220,7 +220,29 @@ isl_gfx12_choose_image_alignment_el(const struct isl_device *dev,
       return;
    }
 
-   if (isl_surf_usage_is_depth(info->usage)) {
+   if (isl_tiling_is_std_y(tiling)) {
+      /* From RENDER_SURFACE_STATE::SurfaceHorizontalAlignment,
+       *
+       *   This field is ignored for Tile64 surface formats because horizontal
+       *   alignment is always to the start of the next tile in that case.
+       *
+       * From RENDER_SURFACE_STATE::SurfaceQPitch,
+       *
+       *   Because MSAA is only supported for Tile64, QPitch must also be
+       *   programmed to an aligned tile boundary for MSAA surfaces.
+       *
+       * Images in this surface must be tile-aligned.  The table on the Bspec
+       * page, "2D/CUBE Alignment Requirement", shows that the vertical
+       * alignment is also a tile height for non-MSAA as well.
+       */
+      struct isl_tile_info tile_info;
+      isl_tiling_get_info(tiling, info->dim, msaa_layout, fmtl->bpb,
+                          info->samples, &tile_info);
+
+      *image_align_el = isl_extent3d(tile_info.logical_extent_el.w,
+                                     tile_info.logical_extent_el.h,
+                                     1);
+   } else if (isl_surf_usage_is_depth(info->usage)) {
       /* The alignment parameters for depth buffers are summarized in the
        * following table:
        *

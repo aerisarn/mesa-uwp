@@ -507,13 +507,67 @@ isl_tiling_get_info(enum isl_tiling tiling,
    case ISL_TILING_ICL_Ys: {
       bool is_Ys = tiling == ISL_TILING_SKL_Ys ||
                    tiling == ISL_TILING_ICL_Ys;
+      assert(format_bpb >= 8);
 
-      assert(bs > 0);
-      unsigned width = 1 << (6 + (ffs(bs) / 2) + (2 * is_Ys));
-      unsigned height = 1 << (6 - (ffs(bs) / 2) + (2 * is_Ys));
+      switch (dim) {
+      case ISL_SURF_DIM_2D:
+         /* See the BSpec Memory Data Formats » Common Surface Formats »
+          * Surface Layout and Tiling [SKL+] » 2D Surfaces SKL+ » 2D/CUBE
+          * Alignment Requirement [SKL+]
+          *
+          * Or, look in the SKL PRM under Memory Views > Common Surface
+          * Formats > Surface Layout and Tiling > 2D Surfaces > 2D/CUBE
+          * Alignment Requirements.
+          */
+         logical_el = (struct isl_extent4d) {
+            .w = 1 << (6 - ((ffs(format_bpb) - 4) / 2) + (2 * is_Ys)),
+            .h = 1 << (6 - ((ffs(format_bpb) - 3) / 2) + (2 * is_Ys)),
+            .d = 1,
+            .a = 1,
+         };
 
-      logical_el = isl_extent4d(width / bs, height, 1, 1);
-      phys_B = isl_extent2d(width, height);
+         if (samples > 1 && tiling != ISL_TILING_SKL_Yf) {
+            /* SKL PRMs, Volume 5: Memory Views, 2D/CUBE Alignment
+             * Requirement:
+             *
+             *    "For MSFMT_MSS type multi-sampled TileYS surfaces, the
+             *     alignments given above must be divided by the appropriate
+             *     value from the table below."
+             *
+             * The formulas below reproduce those values.
+             */
+            if (msaa_layout == ISL_MSAA_LAYOUT_ARRAY) {
+               logical_el.w >>= (ffs(samples) - 0) / 2;
+               logical_el.h >>= (ffs(samples) - 1) / 2;
+               logical_el.a = samples;
+            }
+         }
+         break;
+
+      case ISL_SURF_DIM_3D:
+         /* See the BSpec Memory Data Formats » Common Surface Formats »
+          * Surface Layout and Tiling [SKL+] » 3D Surfaces SKL+ » 3D Alignment
+          * Requirements [SKL+]
+          *
+          * Or, look in the SKL PRM under Memory Views > Common Surface
+          * Formats > Surface Layout and Tiling > 3D Surfaces > 3D Alignment
+          * Requirements.
+          */
+         logical_el = (struct isl_extent4d) {
+            .w = 1 << (4 - ((ffs(format_bpb) - 2) / 3) + (2 * is_Ys)),
+            .h = 1 << (4 - ((ffs(format_bpb) - 4) / 3) + (1 * is_Ys)),
+            .d = 1 << (4 - ((ffs(format_bpb) - 3) / 3) + (1 * is_Ys)),
+            .a = 1,
+         };
+         break;
+      default:
+         unreachable("Invalid dimension");
+      }
+
+      uint32_t tile_size_B = is_Ys ? (1 << 16) : (1 << 12);
+
+      phys_B.w = logical_el.width * bs;
+      phys_B.h = tile_size_B / phys_B.w;
       break;
    }
    case ISL_TILING_64:
