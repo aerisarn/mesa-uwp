@@ -2646,6 +2646,35 @@ isl_surf_get_image_surf(const struct isl_device *dev,
                         uint32_t *y_offset_sa);
 
 /**
+ * Create an isl_surf that is an uncompressed view of a compressed isl_surf
+ *
+ * The incoming surface must have a compressed format.  The incoming view must
+ * be a valid view for the given surface with the exception that it's format
+ * is an umcompressed format with the same bpb as the surface format.  The
+ * incoming view must have isl_view::levels == 1.
+ *
+ * When the function returns, the resulting combination of uncompressed_surf
+ * and uncompressed_view will be a valid view giving an uncompressed view of
+ * the incoming surface.  Depending on tiling, uncompressed_surf may have a
+ * different isl_surf::dim from surf and uncompressed_view may or may not have
+ * a zero base_array_layer.  For legacy tiling (not Yf or Ys), an intratile
+ * offset is returned in x_offset_sa and y_offset_sa.  For standard Y tilings
+ * (Yf and Ys), x_offset_sa and y_offset_sa will be set to zero.
+ *
+ * It is safe to call this function with surf == uncompressed_surf and
+ * view == uncompressed_view.
+ */
+void
+isl_surf_get_uncompressed_surf(const struct isl_device *dev,
+                               const struct isl_surf *surf,
+                               const struct isl_view *view,
+                               struct isl_surf *uncompressed_surf,
+                               struct isl_view *uncompressed_view,
+                               uint32_t *offset_B,
+                               uint32_t *x_offset_el,
+                               uint32_t *y_offset_el);
+
+/**
  * @brief Calculate the intratile offsets to a surface.
  *
  * In @a base_address_offset return the offset from the base of the surface to

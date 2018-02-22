@@ -2828,6 +2828,75 @@ isl_surf_get_image_surf(const struct isl_device *dev,
 }
 
 void
+isl_surf_get_uncompressed_surf(const struct isl_device *dev,
+                               const struct isl_surf *surf,
+                               const struct isl_view *view,
+                               struct isl_surf *ucompr_surf,
+                               struct isl_view *ucompr_view,
+                               uint32_t *offset_B,
+                               uint32_t *x_offset_el,
+                               uint32_t *y_offset_el)
+{
+   const struct isl_format_layout *fmtl =
+      isl_format_get_layout(surf->format);
+
+   assert(fmtl->bw > 1 || fmtl->bh > 1 || fmtl->bd > 1);
+   assert(isl_format_is_compressed(surf->format));
+   assert(!isl_format_is_compressed(view->format));
+   assert(isl_format_get_layout(view->format)->bpb == fmtl->bpb);
+   assert(view->levels == 1);
+
+   const uint32_t view_width =
+      isl_minify(surf->logical_level0_px.width, view->base_level);
+   const uint32_t view_height =
+      isl_minify(surf->logical_level0_px.height, view->base_level);
+
+   const uint32_t ucompr_width = isl_align_div_npot(view_width, fmtl->bw);
+   const uint32_t ucompr_height = isl_align_div_npot(view_height, fmtl->bh);
+
+   /* Due to hardware restrictions with intratile offsets, we can only
+    * handle a single slice.
+    */
+   assert(view->array_len == 1);
+
+   uint32_t x_offset_sa, y_offset_sa;
+   isl_surf_get_image_surf(dev, surf,
+                           view->base_level,
+                           surf->dim == ISL_SURF_DIM_3D ?
+                              0 : view->base_array_layer,
+                           surf->dim == ISL_SURF_DIM_3D ?
+                              view->base_array_layer : 0,
+                           ucompr_surf,
+                           offset_B, &x_offset_sa, &y_offset_sa);
+
+   ucompr_surf->format = view->format;
+
+   /* We're making an uncompressed view here.  The image dimensions
+    * need to be scaled down by the block size.
+    */
+   assert(ucompr_surf->logical_level0_px.width == view_width);
+   assert(ucompr_surf->logical_level0_px.height == view_height);
+   assert(ucompr_surf->logical_level0_px.depth == 1);
+   assert(ucompr_surf->logical_level0_px.array_len = 1);
+   ucompr_surf->logical_level0_px.width = ucompr_width;
+   ucompr_surf->logical_level0_px.height = ucompr_height;
+
+   assert(ucompr_surf->phys_level0_sa.depth == 1);
+   assert(ucompr_surf->phys_level0_sa.array_len == 1);
+   ucompr_surf->phys_level0_sa = isl_surf_get_phys_level0_el(surf);
+
+   *x_offset_el = isl_assert_div(x_offset_sa, fmtl->bw);
+   *y_offset_el = isl_assert_div(y_offset_sa, fmtl->bh);
+
+   /* The newly created image represents the one subimage we're referencing
+    * with this view so it only has one array slice and miplevel.
+    */
+   *ucompr_view = *view;
+   ucompr_view->base_array_layer = 0;
+   ucompr_view->base_level = 0;
+}
+
+void
 isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
                                    uint32_t bpb,
                                    uint32_t row_pitch_B,
