@@ -1262,18 +1262,7 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
          unreachable("bad isl_dim_layout");
 
       case ISL_DIM_LAYOUT_GFX4_2D:
-         assert(ISL_GFX_VER(dev) >= 9);
-
-         *phys_level0_sa = (struct isl_extent4d) {
-            .w = info->width,
-            .h = info->height,
-            .d = 1,
-            .a = info->depth,
-         };
-         break;
-
       case ISL_DIM_LAYOUT_GFX4_3D:
-         assert(ISL_GFX_VER(dev) < 9);
          *phys_level0_sa = (struct isl_extent4d) {
             .w = info->width,
             .h = info->height,
@@ -1404,8 +1393,6 @@ isl_calc_phys_slice0_extent_sa_gfx4_2d(
       const struct isl_extent4d *phys_level0_sa,
       struct isl_extent2d *phys_slice0_sa)
 {
-   assert(phys_level0_sa->depth == 1);
-
    if (info->levels == 1) {
       /* Do not pad the surface to the image alignment.
        *
@@ -1496,9 +1483,10 @@ isl_calc_phys_total_extent_el_gfx4_2d(
          .a = phys_level0_sa->array_len,
       };
    } else {
+      uint32_t array_len = MAX(phys_level0_sa->d, phys_level0_sa->a);
       *phys_total_el = (struct isl_extent4d) {
          .w = isl_align_div_npot(phys_slice0_sa.w, fmtl->bw),
-         .h = *array_pitch_el_rows * (phys_level0_sa->array_len - 1) +
+         .h = *array_pitch_el_rows * (array_len - 1) +
               isl_align_div_npot(phys_slice0_sa.h, fmtl->bh),
          .d = 1,
          .a = 1,

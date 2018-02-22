@@ -647,8 +647,6 @@ enum isl_dim_layout {
     *
     *    One-dimensional surfaces are identical to 2D surfaces with height of
     *    one.
-    *
-    * @invariant isl_surf::phys_level0_sa::depth == 1
     */
    ISL_DIM_LAYOUT_GFX4_2D,
 
