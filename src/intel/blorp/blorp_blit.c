@@ -2589,22 +2589,16 @@ blorp_surf_convert_to_uncompressed(const struct isl_device *isl_dev,
 
    assert(fmtl->bw > 1 || fmtl->bh > 1);
 
-   /* This is a compressed surface.  We need to convert it to a single
-    * slice (because compressed layouts don't perfectly match uncompressed
-    * ones with the same bpb) and divide x, y, width, and height by the
-    * block size.
-    */
-   blorp_surf_convert_to_single_slice(isl_dev, info);
+   /* This should be the first modification made to the surface */
+   assert(info->tile_x_sa == 0 && info->tile_y_sa == 0);
 
    if (width && height) {
-#ifndef NDEBUG
-      uint32_t right_edge_px = info->tile_x_sa + *x + *width;
-      uint32_t bottom_edge_px = info->tile_y_sa + *y + *height;
-      assert(*width % fmtl->bw == 0 ||
-             right_edge_px == info->surf.logical_level0_px.width);
-      assert(*height % fmtl->bh == 0 ||
-             bottom_edge_px == info->surf.logical_level0_px.height);
-#endif
+      ASSERTED const uint32_t level_width =
+         minify(info->surf.logical_level0_px.width, info->view.base_level);
+      ASSERTED const uint32_t level_height =
+         minify(info->surf.logical_level0_px.height, info->view.base_level);
+      assert(*width % fmtl->bw == 0 || *x + *width == level_width);
+      assert(*height % fmtl->bh == 0 || *y + *height == level_height);
       *width = DIV_ROUND_UP(*width, fmtl->bw);
       *height = DIV_ROUND_UP(*height, fmtl->bh);
    }
@@ -2615,6 +2609,13 @@ blorp_surf_convert_to_uncompressed(const struct isl_device *isl_dev,
       *x /= fmtl->bw;
       *y /= fmtl->bh;
    }
+
+   /* This is a compressed surface.  We need to convert it to a single
+    * slice (because compressed layouts don't perfectly match uncompressed
+    * ones with the same bpb) and divide x, y, width, and height by the
+    * block size.
+    */
+   blorp_surf_convert_to_single_slice(isl_dev, info);
 
    info->surf.logical_level0_px = isl_surf_get_logical_level0_el(&info->surf);
    info->surf.phys_level0_sa = isl_surf_get_phys_level0_el(&info->surf);
