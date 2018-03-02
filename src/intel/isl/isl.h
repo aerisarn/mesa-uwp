@@ -1436,6 +1436,14 @@ struct isl_tile_info {
    struct isl_extent4d logical_extent_el;
 
    /**
+    * The maximum number of miplevels that will fit in the miptail.
+    *
+    * This does not guarantee that the given number of miplevels will fit in
+    * the miptail as that is also dependent on the size of the miplevels.
+    */
+   uint32_t max_miptail_levels;
+
+   /**
     * The physical size of the tile in bytes and rows of bytes
     *
     * This field determines how the tiles of a surface are physically laid

@@ -426,6 +426,193 @@ isl_device_get_sample_counts(struct isl_device *dev)
    }
 }
 
+static uint32_t
+isl_get_miptail_base_row(enum isl_tiling tiling)
+{
+   /* Miptails base levels can depend on the number of samples, but since we
+    * don't support levels > 1 with multisampling, the base miptail level is
+    * really simple :
+    */
+   if (tiling == ISL_TILING_SKL_Yf ||
+       tiling == ISL_TILING_ICL_Yf)
+      return 4;
+   else
+      return 0;
+}
+
+static const uint8_t skl_std_y_2d_miptail_offset_el[][5][2] = {
+/*   128 bpb    64 bpb    32 bpb    16 bpb      8 bpb     */
+   { {32,  0}, {64,  0}, {64,  0}, {128,  0}, {128,  0} },
+   { { 0, 32}, { 0, 32}, { 0, 64}, {  0, 64}, {  0,128} },
+   { {16,  0}, {32,  0}, {32,  0}, { 64,  0}, { 64,  0} },
+   { { 0, 16}, { 0, 16}, { 0, 32}, {  0, 32}, {  0, 64} },
+   { { 8,  0}, {16,  0}, {16,  0}, { 32,  0}, { 32,  0} },
+   { { 4,  8}, { 8,  8}, { 8, 16}, { 16, 16}, { 16, 32} },
+   { { 0, 12}, { 0, 12}, { 0, 24}, {  0, 24}, {  0, 48} },
+   { { 0,  8}, { 0,  8}, { 0, 16}, {  0, 16}, {  0, 32} },
+   { { 4,  4}, { 8,  4}, { 8,  8}, { 16,  8}, { 16, 16} },
+   { { 4,  0}, { 8,  0}, { 8,  0}, { 16,  0}, { 16,  0} },
+   { { 0,  4}, { 0,  4}, { 0,  8}, {  0,  8}, {  0, 16} },
+   { { 3,  0}, { 6,  0}, { 4,  4}, {  8,  4}, {  0, 12} },
+   { { 2,  0}, { 4,  0}, { 4,  0}, {  8,  0}, {  0,  8} },
+   { { 1,  0}, { 2,  0}, { 0,  4}, {  0,  4}, {  0,  4} },
+   { { 0,  0}, { 0,  0}, { 0,  0}, {  0,  0}, {  0,  0} },
+};
+
+static const uint8_t icl_std_y_2d_miptail_offset_el[][5][2] = {
+/*   128 bpb    64 bpb    32 bpb    16 bpb      8 bpb     */
+   { {32,  0}, {64,  0}, {64,  0}, {128,  0}, {128,   0} },
+   { { 0, 32}, { 0, 32}, { 0, 64}, {  0, 64}, {  0, 128} },
+   { {16,  0}, {32,  0}, {32,  0}, { 64,  0}, { 64,   0} },
+   { { 0, 16}, { 0, 16}, { 0, 32}, {  0, 32}, {  0,  64} },
+   { { 8,  0}, {16,  0}, {16,  0}, { 32,  0}, { 32,   0} },
+   { { 4,  8}, { 8,  8}, { 8, 16}, { 16, 16}, { 16,  32} },
+   { { 0, 12}, { 0, 12}, { 0, 24}, {  0, 24}, {  0,  48} },
+   { { 0,  8}, { 0,  8}, { 0, 16}, {  0, 16}, {  0,  32} },
+   { { 4,  4}, { 8,  4}, { 8,  8}, { 16,  8}, { 16,  16} },
+   { { 4,  0}, { 8,  0}, { 8,  0}, { 16,  0}, { 16,   0} },
+   { { 0,  4}, { 0,  4}, { 0,  8}, {  0,  8}, {  0,  16} },
+   { { 0,  0}, { 0,  0}, { 0,  0}, {  0,  0}, {  0,   0} },
+   { { 1,  0}, { 2,  0}, { 0,  4}, {  0,  4}, {  0,   4} },
+   { { 2,  0}, { 4,  0}, { 4,  0}, {  8,  0}, {  0,   8} },
+   { { 3,  0}, { 6,  0}, { 4,  4}, {  8,  4}, {  0,  12} },
+};
+
+static const uint8_t skl_std_y_3d_miptail_offset_el[][5][3] = {
+/*    128 bpb     64 bpb      32 bpb        16 bpb        8 bpb      */
+   { {8, 0, 0}, {16, 0, 0}, {16,  0, 0}, {16,  0,  0}, {32,  0,  0} },
+   { {0, 8, 0}, { 0, 8, 0}, { 0, 16, 0}, { 0, 16,  0}, { 0, 16,  0} },
+   { {0, 0, 8}, { 0, 0, 8}, { 0,  0, 8}, { 0,  0, 16}, { 0,  0, 16} },
+   { {4, 0, 0}, { 8, 0, 0}, { 8,  0, 0}, { 8,  0,  0}, {16,  0,  0} },
+   { {0, 4, 0}, { 0, 4, 0}, { 0,  8, 0}, { 0,  8,  0}, { 0,  8,  0} },
+   { {0, 0, 4}, { 0, 0, 4}, { 0,  0, 4}, { 0,  0,  8}, { 0,  0,  8} },
+   { {3, 0, 0}, { 6, 0, 0}, { 4,  4, 0}, { 0,  4,  4}, { 0,  4,  4} },
+   { {2, 0, 0}, { 4, 0, 0}, { 0,  4, 0}, { 0,  4,  0}, { 0,  4,  0} },
+   { {1, 0, 3}, { 2, 0, 3}, { 4,  0, 3}, { 0,  0,  7}, { 0,  0,  7} },
+   { {1, 0, 2}, { 2, 0, 2}, { 4,  0, 2}, { 0,  0,  6}, { 0,  0,  6} },
+   { {1, 0, 1}, { 2, 0, 1}, { 4,  0, 1}, { 0,  0,  5}, { 0,  0,  5} },
+   { {1, 0, 0}, { 2, 0, 0}, { 4,  0, 0}, { 0,  0,  4}, { 0,  0,  4} },
+   { {0, 0, 3}, { 0, 0, 3}, { 0,  0, 3}, { 0,  0,  3}, { 0,  0,  3} },
+   { {0, 0, 2}, { 0, 0, 2}, { 0,  0, 2}, { 0,  0,  2}, { 0,  0,  2} },
+   { {0, 0, 1}, { 0, 0, 1}, { 0,  0, 1}, { 0,  0,  1}, { 0,  0,  1} },
+   { {0, 0, 0}, { 0, 0, 0}, { 0,  0, 0}, { 0,  0,  0}, { 0,  0,  0} },
+};
+
+static const uint8_t icl_std_y_3d_miptail_offset_el[][5][3] = {
+/*    128 bpb     64 bpb      32 bpb        16 bpb        8 bpb      */
+   { {8, 0, 0}, {16, 0, 0}, {16,  0, 0}, {16,  0,  0}, {32,  0,  0} },
+   { {0, 8, 0}, { 0, 8, 0}, { 0, 16, 0}, { 0, 16,  0}, { 0, 16,  0} },
+   { {0, 0, 8}, { 0, 0, 8}, { 0,  0, 8}, { 0,  0, 16}, { 0,  0, 16} },
+   { {4, 0, 0}, { 8, 0, 0}, { 8,  0, 0}, { 8,  0,  0}, {16,  0,  0} },
+   { {0, 4, 0}, { 0, 4, 0}, { 0,  8, 0}, { 0,  8,  0}, { 0,  8,  0} },
+   { {2, 0, 4}, { 4, 0, 4}, { 4,  0, 4}, { 4,  0,  8}, { 8,  0,  8} },
+   { {0, 2, 4}, { 0, 2, 4}, { 0,  4, 4}, { 0,  4,  8}, { 0,  4,  8} },
+   { {0, 0, 4}, { 0, 0, 4}, { 0,  0, 4}, { 0,  0,  8}, { 0,  0,  8} },
+   { {2, 2, 0}, { 4, 2, 0}, { 4,  4, 0}, { 4,  4,  0}, { 8,  4,  0} },
+   { {2, 0, 0}, { 4, 0, 0}, { 4,  0, 0}, { 4,  0,  0}, { 8,  0,  0} },
+   { {0, 2, 0}, { 0, 2, 0}, { 0,  4, 0}, { 0,  4,  0}, { 0,  4,  0} },
+   { {1, 0, 2}, { 2, 0, 2}, { 2,  0, 2}, { 2,  0,  4}, { 4,  0,  4} },
+   { {0, 0, 2}, { 0, 0, 2}, { 0,  0, 2}, { 0,  0,  4}, { 0,  0,  4} },
+   { {1, 0, 0}, { 2, 0, 0}, { 2,  0, 0}, { 2,  0,  0}, { 4,  0,  0} },
+   { {0, 0, 0}, { 0, 0, 0}, { 0,  0, 0}, { 0,  0,  0}, { 0,  0,  0} },
+};
+
+static const uint8_t acm_tile64_3d_miptail_offset_el[][5][3] = {
+/*    128 bpb     64 bpb      32 bpb        16 bpb        8 bpb      */
+   { {8, 0, 0}, {16, 0, 0}, {16,  0, 0}, {16,  0,  0}, {32,  0,  0}, },
+   { {0, 8, 0}, { 0, 8, 0}, { 0, 16, 0}, { 0, 16,  0}, { 0, 16,  0}, },
+   { {0, 0, 8}, { 0, 0, 8}, { 0,  0, 8}, { 0,  0, 16}, { 0,  0, 16}, },
+   { {4, 0, 0}, { 8, 0, 0}, { 8,  0, 0}, { 8,  0,  0}, {16,  0,  0}, },
+   { {0, 4, 0}, { 0, 4, 0}, { 0,  8, 0}, { 0,  8,  0}, { 0,  8,  0}, },
+   { {2, 0, 4}, { 4, 0, 4}, { 4,  0, 4}, { 0,  4,  8}, { 0,  4,  8}, },
+   { {1, 0, 4}, { 2, 0, 4}, { 0,  4, 4}, { 0,  0, 12}, { 0,  0, 12}, },
+   { {0, 0, 4}, { 0, 0, 4}, { 0,  0, 4}, { 0,  0,  8}, { 0,  0,  8}, },
+   { {3, 0, 0}, { 6, 0, 0}, { 4,  4, 0}, { 0,  4,  4}, { 0,  4,  4}, },
+   { {2, 0, 0}, { 4, 0, 0}, { 4,  0, 0}, { 0,  4,  0}, { 0,  4,  0}, },
+   { {1, 0, 0}, { 2, 0, 0}, { 0,  4, 0}, { 0,  0,  4}, { 0,  0,  4}, },
+   { {0, 0, 0}, { 0, 0, 0}, { 0,  0, 0}, { 0,  0,  0}, { 0,  0,  0}, },
+   { {0, 0, 1}, { 0, 0, 1}, { 0,  0, 1}, { 0,  0,  1}, { 0,  0,  1}, },
+   { {0, 0, 2}, { 0, 0, 2}, { 0,  0, 2}, { 0,  0,  2}, { 0,  0,  2}, },
+   { {0, 0, 3}, { 0, 0, 3}, { 0,  0, 3}, { 0,  0,  3}, { 0,  0,  3}, },
+};
+
+static uint32_t
+tiling_max_mip_tail(enum isl_tiling tiling,
+                    enum isl_surf_dim dim,
+                    uint32_t samples)
+{
+   /* In theory, miptails work for multisampled images, but we don't support
+    * mipmapped multisampling.
+    */
+   if (samples > 1)
+      return 0;
+
+   int num_2d_table_rows;
+   int num_3d_table_rows;
+
+   switch (tiling) {
+   case ISL_TILING_LINEAR:
+   case ISL_TILING_X:
+   case ISL_TILING_Y0:
+   case ISL_TILING_4:
+   case ISL_TILING_W:
+   case ISL_TILING_HIZ:
+   case ISL_TILING_CCS:
+   case ISL_TILING_GFX12_CCS:
+      /* There is no miptail for those tilings */
+      return 0;
+
+   case ISL_TILING_SKL_Yf:
+   case ISL_TILING_SKL_Ys:
+      /* SKL PRMs, Volume 5: Memory Views :
+       *
+       * Given by the last row of the table in the following sections:
+       *
+       *    - Tiling and Mip Tail for 1D Surfaces
+       *    - Tiling and Mip Tail for 2D Surfaces
+       *    - Tiling and Mip Tail for 3D Surfaces
+       */
+      num_2d_table_rows = ARRAY_SIZE(skl_std_y_2d_miptail_offset_el);
+      num_3d_table_rows = ARRAY_SIZE(skl_std_y_3d_miptail_offset_el);
+      break;
+
+   case ISL_TILING_ICL_Yf:
+   case ISL_TILING_ICL_Ys:
+      /* ICL PRMs, Volume 5: Memory Views :
+       *
+       *    - Tiling and Mip Tail for 1D Surfaces :
+       *        "There is no MIP Tail allowed for 1D surfaces because they are
+       *         not allowed to be tiled. They must be declared as linear."
+       *    - Tiling and Mip Tail for 2D Surfaces
+       *    - Tiling and Mip Tail for 3D Surfaces
+       */
+      num_2d_table_rows = ARRAY_SIZE(icl_std_y_2d_miptail_offset_el);
+      num_3d_table_rows = ARRAY_SIZE(icl_std_y_3d_miptail_offset_el);
+      break;
+
+   case ISL_TILING_64:
+      /* ATS-M PRMS, Volume 5: Memory Data Formats :
+       *
+       *    - Tiling and Mip Tail for 1D Surfaces :
+       *       "There is no MIP Tail allowed for 1D surfaces because they are
+       *        not allowed to be tiled. They must be declared as linear."
+       *    - Tiling and Mip Tail for 2D Surfaces
+       *    - Tiling and Mip Tail for 3D Surfaces
+       */
+      num_2d_table_rows = ARRAY_SIZE(icl_std_y_2d_miptail_offset_el);
+      num_3d_table_rows = ARRAY_SIZE(acm_tile64_3d_miptail_offset_el);
+      break;
+
+   default:
+      unreachable("Invalid tiling");
+   }
+
+   assert(dim != ISL_SURF_DIM_1D);
+   const int num_rows = dim == ISL_SURF_DIM_2D ? num_2d_table_rows :
+                                                 num_3d_table_rows;
+   return num_rows - isl_get_miptail_base_row(tiling);
+}
+
 /**
  * Returns an isl_tile_info representation of the given isl_tiling when
  * combined when used in the given configuration.
@@ -694,6 +881,7 @@ isl_tiling_get_info(enum isl_tiling tiling,
       .format_bpb = format_bpb,
       .logical_extent_el = logical_el,
       .phys_extent_B = phys_B,
+      .max_miptail_levels = tiling_max_mip_tail(tiling, dim, samples),
    };
 }
 
