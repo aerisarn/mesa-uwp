@@ -1459,6 +1459,77 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
    }
 }
 
+static void
+isl_get_miptail_level_offset_el(enum isl_tiling tiling,
+                                enum isl_surf_dim dim,
+                                uint32_t format_bpb,
+                                uint32_t level,
+                                uint32_t *x_offset_el,
+                                uint32_t *y_offset_el,
+                                uint32_t *z_offset_el)
+{
+   uint32_t row = isl_get_miptail_base_row(tiling) + level;
+   uint32_t col = 8 - ffs(format_bpb);
+
+   switch (dim) {
+   case ISL_SURF_DIM_2D:
+      switch (tiling) {
+      case ISL_TILING_64:
+      case ISL_TILING_ICL_Yf:
+      case ISL_TILING_ICL_Ys:
+         assert(row < ARRAY_SIZE(icl_std_y_2d_miptail_offset_el));
+         assert(col < ARRAY_SIZE(icl_std_y_2d_miptail_offset_el[0]));
+         *x_offset_el = icl_std_y_2d_miptail_offset_el[row][col][0];
+         *y_offset_el = icl_std_y_2d_miptail_offset_el[row][col][1];
+         break;
+      case ISL_TILING_SKL_Yf:
+      case ISL_TILING_SKL_Ys:
+         assert(row < ARRAY_SIZE(skl_std_y_2d_miptail_offset_el));
+         assert(col < ARRAY_SIZE(skl_std_y_2d_miptail_offset_el[0]));
+         *x_offset_el = skl_std_y_2d_miptail_offset_el[row][col][0];
+         *y_offset_el = skl_std_y_2d_miptail_offset_el[row][col][1];
+         break;
+      default:
+         unreachable("invalid tiling");
+      }
+      *z_offset_el = 0;
+      break;
+
+   case ISL_SURF_DIM_3D:
+      switch (tiling) {
+      case ISL_TILING_64:
+         assert(row < ARRAY_SIZE(acm_tile64_3d_miptail_offset_el));
+         assert(col < ARRAY_SIZE(acm_tile64_3d_miptail_offset_el[0]));
+         *x_offset_el = acm_tile64_3d_miptail_offset_el[row][col][0];
+         *y_offset_el = acm_tile64_3d_miptail_offset_el[row][col][1];
+         *z_offset_el = acm_tile64_3d_miptail_offset_el[row][col][2];
+         break;
+      case ISL_TILING_ICL_Yf:
+      case ISL_TILING_ICL_Ys:
+         assert(row < ARRAY_SIZE(icl_std_y_3d_miptail_offset_el));
+         assert(col < ARRAY_SIZE(icl_std_y_3d_miptail_offset_el[0]));
+         *x_offset_el = icl_std_y_3d_miptail_offset_el[row][col][0];
+         *y_offset_el = icl_std_y_3d_miptail_offset_el[row][col][1];
+         *z_offset_el = icl_std_y_3d_miptail_offset_el[row][col][2];
+         break;
+      case ISL_TILING_SKL_Yf:
+      case ISL_TILING_SKL_Ys:
+         assert(row < ARRAY_SIZE(skl_std_y_3d_miptail_offset_el));
+         assert(col < ARRAY_SIZE(skl_std_y_3d_miptail_offset_el[0]));
+         *x_offset_el = skl_std_y_3d_miptail_offset_el[row][col][0];
+         *y_offset_el = skl_std_y_3d_miptail_offset_el[row][col][1];
+         *z_offset_el = skl_std_y_3d_miptail_offset_el[row][col][2];
+         break;
+      default:
+         unreachable("invalid tiling");
+      }
+      break;
+
+   case ISL_SURF_DIM_1D:
+      unreachable("invalid dimension");
+   }
+}
+
 /**
  * Calculate the pitch between physical array slices, in units of rows of
  * surface elements.
@@ -2925,7 +2996,7 @@ get_image_offset_sa_gfx4_2d(const struct isl_surf *surf,
       *array_offset = 0;
    }
 
-   for (uint32_t l = 0; l < level; ++l) {
+   for (uint32_t l = 0; l < MIN(level, surf->miptail_start_level); ++l) {
       if (l == 1) {
          uint32_t W = isl_minify(W0, l);
          x += isl_align_npot(W, image_align_sa.w);
@@ -2937,6 +3008,22 @@ get_image_offset_sa_gfx4_2d(const struct isl_surf *surf,
 
    *x_offset_sa = x;
    *y_offset_sa = y;
+
+   if (level >= surf->miptail_start_level) {
+      const struct isl_format_layout *fmtl =
+         isl_format_get_layout(surf->format);
+
+      uint32_t tail_offset_x_el, tail_offset_y_el, tail_offset_z_el;
+      isl_get_miptail_level_offset_el(surf->tiling, surf->dim,
+                                      fmtl->bpb,
+                                      level - surf->miptail_start_level,
+                                      &tail_offset_x_el,
+                                      &tail_offset_y_el,
+                                      &tail_offset_z_el);
+      *x_offset_sa += tail_offset_x_el * fmtl->bw;
+      *y_offset_sa += tail_offset_y_el * fmtl->bh;
+      *z_offset_sa += tail_offset_z_el * fmtl->bd;
+   }
 }
 
 /**
@@ -3242,8 +3329,23 @@ isl_surf_get_image_offset_B_tile_el(const struct isl_surf *surf,
                                       y_offset_el,
                                       &z_offset_el,
                                       &array_offset);
-   assert(z_offset_el == 0);
-   assert(array_offset == 0);
+   if (level >= surf->miptail_start_level) {
+      /* We can do a byte offset to the first level of a miptail but we cannot
+       * offset into a miptail.
+       */
+      assert(level == surf->miptail_start_level);
+
+      /* The byte offset will get us to the miptail page.  The other offsets
+       * are to the actual level within the miptail.  It is assumed that the
+       * caller will set up a texture with a miptail and use the hardware to
+       * handle offseting inside the miptail.
+       */
+      *x_offset_el = 0;
+      *y_offset_el = 0;
+   } else {
+      assert(z_offset_el == 0);
+      assert(array_offset == 0);
+   }
 }
 
 void
