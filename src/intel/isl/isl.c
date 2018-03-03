@@ -3496,11 +3496,22 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
    assert(fmtl->bd == 1);
 
    if (isl_tiling_is_std_y(surf->tiling) || surf->tiling == ISL_TILING_64) {
-      /* Offset to the given miplevel.  Because we're using standard tilings
-       * with no miptail, arrays and 3D textures should just work so long as
-       * we have the right array stride in the end.
+      /* If the requested level is not part of the miptail, we just offset to
+       * the requested level. Because we're using standard tilings and aren't
+       * in the miptail, arrays and 3D textures should just work so long as we
+       * have the right array stride in the end.
+       *
+       * If the requested level is in the miptail, we instead offset to the
+       * base of the miptail.  Because offsets into the miptail are fixed by
+       * the tiling and don't depend on the actual size of the image, we can
+       * set the level in the view to offset into the miptail regardless of
+       * the fact minification yields different results for the compressed and
+       * uncompressed surface.
        */
-      isl_surf_get_image_offset_B_tile_el(surf, view->base_level, 0, 0,
+      const uint32_t base_level =
+         MIN(view->base_level, surf->miptail_start_level);
+
+      isl_surf_get_image_offset_B_tile_el(surf, base_level, 0, 0,
                                           offset_B, x_offset_el, y_offset_el);
       /* Tile64, Ys and Yf should have no intratile X or Y offset */
       assert(*x_offset_el == 0 && *y_offset_el == 0);
@@ -3513,16 +3524,40 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
       const uint32_t view_depth_el =
          isl_align_div_npot(view_depth_px, fmtl->bd);
 
+      /* We need to compute the size of the uncompressed surface we will
+       * create. If we're not in the miptail, it is just the view size in
+       * surface elements. If we are in a miptail, we need a size that will
+       * minify to the view size in surface elements. This may not be the same
+       * as the size of base_level, but that's not a problem. Slot offsets are
+       * fixed in HW (see the tables used in isl_get_miptail_level_offset_el).
+       */
+      const uint32_t ucompr_level = view->base_level - base_level;
+
+      /* The > 1 check is here to prevent a change in the surface's overall
+       * dimension (e.g. 2D->3D).
+       *
+       * Also having a base_level dimension = 1 doesn´t mean the HW will
+       * ignore higher mip level. Once the dimension has reached 1, it'll stay
+       * at 1 in the higher mip levels.
+       */
+      struct isl_extent3d ucompr_surf_extent_el = {
+         .w = view_width_el  > 1 ? view_width_el  << ucompr_level : 1,
+         .h = view_height_el > 1 ? view_height_el << ucompr_level : 1,
+         .d = view_depth_el  > 1 ? view_depth_el  << ucompr_level : 1,
+      };
+
       bool ok UNUSED;
       ok = isl_surf_init(dev, ucompr_surf,
                          .dim = surf->dim,
                          .format = view->format,
-                         .width = view_width_el,
-                         .height = view_height_el,
-                         .depth = view_depth_el,
-                         .levels = 1,
+                         .width = ucompr_surf_extent_el.width,
+                         .height = ucompr_surf_extent_el.height,
+                         .depth = ucompr_surf_extent_el.depth,
+                         .levels = ucompr_level + 1,
                          .array_len = surf->logical_level0_px.array_len,
                          .samples = surf->samples,
+                         .min_miptail_start_level =
+                            (int) (view->base_level < surf->miptail_start_level),
                          .row_pitch_B = surf->row_pitch_B,
                          .usage = surf->usage,
                          .tiling_flags = (1u << surf->tiling));
@@ -3540,7 +3575,7 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
        * left alone.
        */
       *ucompr_view = *view;
-      ucompr_view->base_level = 0;
+      ucompr_view->base_level -= base_level;
    } else {
       if (view->array_len > 1) {
          /* The Skylake PRM Vol. 2d, "RENDER_SURFACE_STATE::X Offset" says:
