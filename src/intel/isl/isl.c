@@ -1530,6 +1530,62 @@ isl_get_miptail_level_offset_el(enum isl_tiling tiling,
    }
 }
 
+static uint32_t
+isl_choose_miptail_start_level(const struct isl_device *dev,
+                               const struct isl_surf_init_info *restrict info,
+                               const struct isl_tile_info *tile_info)
+{
+   const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
+
+   if (tile_info->max_miptail_levels == 0)
+      return info->levels;
+
+   assert(tile_info->tiling == ISL_TILING_64 || isl_tiling_is_std_y(tile_info->tiling));
+   assert(info->samples == 1);
+
+   uint32_t max_miptail_levels = tile_info->max_miptail_levels;
+
+   /* Start with the minimum number of levels that will fit in the tile */
+   uint32_t min_miptail_start =
+      info->levels > max_miptail_levels ? info->levels - max_miptail_levels : 0;
+
+   /* Account for the specified minimum */
+   min_miptail_start = MAX(min_miptail_start, info->min_miptail_start_level);
+
+   struct isl_extent3d level0_extent_el = {
+      .w = isl_align_div_npot(info->width, fmtl->bw),
+      .h = isl_align_div_npot(info->height, fmtl->bh),
+      .d = isl_align_div_npot(info->depth, fmtl->bd),
+   };
+
+   /* The first miptail slot takes up the entire right side of the tile. So,
+    * the extent is just the distance from the offset of the first level to
+    * the corner of the tile.
+    */
+   uint32_t level0_x_offset_el, level0_y_offset_el, level0_z_offset_el;
+   isl_get_miptail_level_offset_el(tile_info->tiling, info->dim,
+                                   fmtl->bpb, 0, /* level */
+                                   &level0_x_offset_el,
+                                   &level0_y_offset_el,
+                                   &level0_z_offset_el);
+   struct isl_extent3d miptail_level0_extent_el = {
+      .w = tile_info->logical_extent_el.w - level0_x_offset_el,
+      .h = tile_info->logical_extent_el.h - level0_y_offset_el,
+      .d = tile_info->logical_extent_el.d - level0_z_offset_el,
+   };
+
+   /* Now find the first level that fits the maximum miptail size requirement.
+    */
+   for (uint32_t s = min_miptail_start; s < info->levels; s++) {
+      if (isl_minify(level0_extent_el.w, s) <= miptail_level0_extent_el.w &&
+          isl_minify(level0_extent_el.h, s) <= miptail_level0_extent_el.h &&
+          isl_minify(level0_extent_el.d, s) <= miptail_level0_extent_el.d)
+         return s;
+   }
+
+   return info->levels;
+}
+
 /**
  * Calculate the pitch between physical array slices, in units of rows of
  * surface elements.
@@ -1643,12 +1699,17 @@ static void
 isl_calc_phys_slice0_extent_sa_gfx4_2d(
       const struct isl_device *dev,
       const struct isl_surf_init_info *restrict info,
+      const struct isl_tile_info *tile_info,
       enum isl_msaa_layout msaa_layout,
       const struct isl_extent3d *image_align_sa,
       const struct isl_extent4d *phys_level0_sa,
+      uint32_t miptail_start_level,
       struct isl_extent2d *phys_slice0_sa)
 {
-   if (info->levels == 1) {
+   ASSERTED const struct isl_format_layout *fmtl =
+      isl_format_get_layout(info->format);
+
+   if (info->levels == 1 && miptail_start_level > 0) {
       /* Do not pad the surface to the image alignment.
        *
        * For tiled surfaces, using a reduced alignment here avoids wasting CPU
@@ -1698,6 +1759,18 @@ isl_calc_phys_slice0_extent_sa_gfx4_2d(
       } else {
          slice_right_h += h;
       }
+
+      if (l >= miptail_start_level) {
+         assert(l == miptail_start_level);
+         assert(tile_info->tiling == ISL_TILING_64 ||
+                isl_tiling_is_std_y(tile_info->tiling));
+         assert(w == tile_info->logical_extent_el.w * fmtl->bw);
+         assert(h == tile_info->logical_extent_el.h * fmtl->bh);
+         /* If we've gone into the miptail, we're done.  All higher miplevels
+          * will be tucked into the same tile as this one.
+          */
+         break;
+      }
    }
 
    *phys_slice0_sa = (struct isl_extent2d) {
@@ -1715,14 +1788,16 @@ isl_calc_phys_total_extent_el_gfx4_2d(
       const struct isl_extent3d *image_align_sa,
       const struct isl_extent4d *phys_level0_sa,
       enum isl_array_pitch_span array_pitch_span,
+      uint32_t miptail_start_level,
       uint32_t *array_pitch_el_rows,
       struct isl_extent4d *phys_total_el)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
 
    struct isl_extent2d phys_slice0_sa;
-   isl_calc_phys_slice0_extent_sa_gfx4_2d(dev, info, msaa_layout,
+   isl_calc_phys_slice0_extent_sa_gfx4_2d(dev, info, tile_info, msaa_layout,
                                           image_align_sa, phys_level0_sa,
+                                          miptail_start_level,
                                           &phys_slice0_sa);
    *array_pitch_el_rows =
       isl_calc_array_pitch_el_rows_gfx4_2d(dev, info, tile_info,
@@ -1931,6 +2006,7 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
                               const struct isl_extent3d *image_align_sa,
                               const struct isl_extent4d *phys_level0_sa,
                               enum isl_array_pitch_span array_pitch_span,
+                              uint32_t miptail_start_level,
                               uint32_t *array_pitch_el_rows,
                               struct isl_extent4d *phys_total_el)
 {
@@ -1946,6 +2022,7 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
       isl_calc_phys_total_extent_el_gfx4_2d(dev, info, tile_info, msaa_layout,
                                             image_align_sa, phys_level0_sa,
                                             array_pitch_span,
+                                            miptail_start_level,
                                             array_pitch_el_rows,
                                             phys_total_el);
       return;
@@ -2492,12 +2569,16 @@ isl_surf_init_s(const struct isl_device *dev,
    enum isl_array_pitch_span array_pitch_span =
       isl_choose_array_pitch_span(dev, info, dim_layout, &phys_level0_sa);
 
+   uint32_t miptail_start_level =
+      isl_choose_miptail_start_level(dev, info, &tile_info);
+
    uint32_t array_pitch_el_rows;
    struct isl_extent4d phys_total_el;
    isl_calc_phys_total_extent_el(dev, info, &tile_info,
                                  dim_layout, msaa_layout,
                                  &image_align_sa, &phys_level0_sa,
-                                 array_pitch_span, &array_pitch_el_rows,
+                                 array_pitch_span, miptail_start_level,
+                                 &array_pitch_el_rows,
                                  &phys_total_el);
 
    uint32_t row_pitch_B;
@@ -2532,11 +2613,7 @@ isl_surf_init_s(const struct isl_device *dev,
       .row_pitch_B = row_pitch_B,
       .array_pitch_el_rows = array_pitch_el_rows,
       .array_pitch_span = array_pitch_span,
-
-      /* We don't use miptails yet.  The PRM recommends that you set "Mip Tail
-       * Start LOD" to 15 to prevent the hardware from trying to use them.
-       */
-      .miptail_start_level = 15,
+      .miptail_start_level = miptail_start_level,
 
       .usage = info->usage,
    };
@@ -2716,6 +2793,19 @@ isl_surf_supports_ccs(const struct isl_device *dev,
     */
    if (isl_surf_usage_is_cpb(surf->usage))
       return false;
+
+   /* SKL PRMs, Volume 5: Memory Views, Tiling and Mip Tails for 2D Surfaces:
+    *
+    *    "Lossless compression must not be used on surfaces which have MIP
+    *     Tail which contains MIPs for Slots greater than 11."
+    */
+   if (surf->miptail_start_level < surf->levels) {
+      const uint32_t miptail_levels = surf->levels - surf->miptail_start_level;
+      if (miptail_levels + isl_get_miptail_base_row(surf->tiling) > 11) {
+         assert(surf->tiling == ISL_TILING_64 || isl_tiling_is_std_y(surf->tiling));
+         return false;
+      }
+   }
 
    if (ISL_GFX_VER(dev) >= 12) {
       if (isl_surf_usage_is_stencil(surf->usage)) {
