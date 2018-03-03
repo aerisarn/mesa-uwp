@@ -1497,6 +1497,9 @@ struct isl_surf_init_info {
    /** Lower bound for isl_surf::alignment, in bytes. */
    uint32_t min_alignment_B;
 
+   /** Lower bound for where to start the miptail */
+   uint32_t min_miptail_start_level;
+
    /**
     * Exact value for isl_surf::row_pitch. Ignored if zero.  isl_surf_init()
     * will fail if this is misaligned or out of bounds.
@@ -1596,6 +1599,14 @@ struct isl_surf {
    uint32_t array_pitch_el_rows;
 
    enum isl_array_pitch_span array_pitch_span;
+
+   /**
+    * Level at which the miptail starts.
+    *
+    * This value is inclusive in the sense that the miptail contains this
+    * level.
+    */
+   uint32_t miptail_start_level;
 
    /** Copy of isl_surf_init_info::usage. */
    isl_surf_usage_flags_t usage;

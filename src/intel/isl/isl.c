@@ -2274,6 +2274,11 @@ isl_surf_init_s(const struct isl_device *dev,
       .array_pitch_el_rows = array_pitch_el_rows,
       .array_pitch_span = array_pitch_span,
 
+      /* We don't use miptails yet.  The PRM recommends that you set "Mip Tail
+       * Start LOD" to 15 to prevent the hardware from trying to use them.
+       */
+      .miptail_start_level = 15,
+
       .usage = info->usage,
    };
 

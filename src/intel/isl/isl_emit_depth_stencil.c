@@ -170,7 +170,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
 
 #if GFX_VERx10 >= 125
       db.TiledMode = isl_encode_tiling[info->depth_surf->tiling];
-      db.MipTailStartLOD = 15;
+      db.MipTailStartLOD = info->depth_surf->miptail_start_level;
       db.CompressionMode = isl_aux_usage_has_ccs(info->hiz_usage);
       db.RenderCompressionFormat =
          isl_get_render_compression_format(info->depth_surf->format);
@@ -178,11 +178,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       /* Gen9+ depth is always Y-tiled but it may be Y0, Yf, or Ys. */
       assert(isl_tiling_is_any_y(info->depth_surf->tiling));
       db.TiledResourceMode = isl_encode_tiling[info->depth_surf->tiling];
-
-      /* We don't use miptails yet.  The PRM recommends that you set "Mip Tail
-       * Start LOD" to 15 to prevent the hardware from trying to use them.
-       */
-      db.MipTailStartLOD = 15;
+      db.MipTailStartLOD = info->depth_surf->miptail_start_level;
 #elif GFX_VER >= 7
       /* Gen7+ depth is always Y-tiled.  We don't even have a bit for it */
 #else
@@ -244,7 +240,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
 #endif
 #if GFX_VER >= 12
       sb.TiledMode = isl_encode_tiling[info->stencil_surf->tiling];
-      sb.MipTailStartLOD = 15;
+      sb.MipTailStartLOD = info->stencil_surf->miptail_start_level;
       sb.StencilWriteEnable = true;
       sb.SurfaceType = SURFTYPE_2D;
       sb.Width = info->stencil_surf->logical_level0_px.width - 1;
