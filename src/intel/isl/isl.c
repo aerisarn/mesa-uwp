@@ -2847,13 +2847,14 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
    assert(isl_format_get_layout(view->format)->bpb == fmtl->bpb);
    assert(view->levels == 1);
 
-   const uint32_t view_width =
+   const uint32_t view_width_px =
       isl_minify(surf->logical_level0_px.width, view->base_level);
-   const uint32_t view_height =
+   const uint32_t view_height_px =
       isl_minify(surf->logical_level0_px.height, view->base_level);
 
-   const uint32_t ucompr_width = isl_align_div_npot(view_width, fmtl->bw);
-   const uint32_t ucompr_height = isl_align_div_npot(view_height, fmtl->bh);
+   assert(surf->samples == 1);
+   const uint32_t view_width_el = isl_align_div_npot(view_width_px, fmtl->bw);
+   const uint32_t view_height_el = isl_align_div_npot(view_height_px, fmtl->bh);
 
    /* If we ever enable 3D block formats, we'll need to re-think this */
    assert(fmtl->bd == 1);
@@ -2926,10 +2927,10 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
    /* We're making an uncompressed view here.  The image dimensions
     * need to be scaled down by the block size.
     */
-   assert(ucompr_surf->logical_level0_px.width == view_width);
-   assert(ucompr_surf->logical_level0_px.height == view_height);
-   ucompr_surf->logical_level0_px.width = ucompr_width;
-   ucompr_surf->logical_level0_px.height = ucompr_height;
+   assert(ucompr_surf->logical_level0_px.width == view_width_px);
+   assert(ucompr_surf->logical_level0_px.height == view_height_px);
+   ucompr_surf->logical_level0_px.width = view_width_el;
+   ucompr_surf->logical_level0_px.height = view_height_el;
    ucompr_surf->phys_level0_sa = isl_surf_get_phys_level0_el(surf);
 
    *x_offset_el = isl_assert_div(x_offset_sa, fmtl->bw);
