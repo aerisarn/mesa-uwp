@@ -201,12 +201,23 @@ isl_gfx6_filter_tiling(const struct isl_device *dev,
    if (ISL_GFX_VER(dev) >= 12) {
       *flags &= ISL_TILING_LINEAR_BIT |
                 ISL_TILING_X_BIT |
-                ISL_TILING_ANY_Y_MASK;
+                ISL_TILING_Y0_BIT |
+                ISL_TILING_ICL_Yf_BIT |
+                ISL_TILING_ICL_Ys_BIT;
+   } else if (ISL_GFX_VER(dev) >= 11) {
+      *flags &= ISL_TILING_LINEAR_BIT |
+                ISL_TILING_X_BIT |
+                ISL_TILING_W_BIT |
+                ISL_TILING_Y0_BIT |
+                ISL_TILING_ICL_Yf_BIT |
+                ISL_TILING_ICL_Ys_BIT;
    } else if (ISL_GFX_VER(dev) >= 9) {
       *flags &= ISL_TILING_LINEAR_BIT |
                 ISL_TILING_X_BIT |
                 ISL_TILING_W_BIT |
-                ISL_TILING_ANY_Y_MASK;
+                ISL_TILING_Y0_BIT |
+                ISL_TILING_SKL_Yf_BIT |
+                ISL_TILING_SKL_Ys_BIT;
    } else {
       *flags &= ISL_TILING_LINEAR_BIT |
                 ISL_TILING_X_BIT |
@@ -219,6 +230,8 @@ isl_gfx6_filter_tiling(const struct isl_device *dev,
     */
    *flags &= ~ISL_TILING_SKL_Yf_BIT; /* FINISHME[SKL]: Support Yf */
    *flags &= ~ISL_TILING_SKL_Ys_BIT; /* FINISHME[SKL]: Support Ys */
+   *flags &= ~ISL_TILING_ICL_Yf_BIT; /* FINISHME[ICL]: Support Yf */
+   *flags &= ~ISL_TILING_ICL_Ys_BIT; /* FINISHME[ICL]: Support Ys */
 
    if (isl_surf_usage_is_depth(info->usage)) {
       /* Depth requires Y. */
@@ -250,7 +263,8 @@ isl_gfx6_filter_tiling(const struct isl_device *dev,
           * completeness.
           */
          *flags &= (ISL_TILING_LINEAR_BIT | ISL_TILING_X_BIT |
-                    ISL_TILING_Y0_BIT | ISL_TILING_SKL_Yf_BIT);
+                    ISL_TILING_Y0_BIT |
+                    ISL_TILING_SKL_Yf_BIT | ISL_TILING_ICL_Yf_BIT);
       } else {
          /* Before Skylake, the display engine does not accept Y */
          *flags &= (ISL_TILING_LINEAR_BIT | ISL_TILING_X_BIT);

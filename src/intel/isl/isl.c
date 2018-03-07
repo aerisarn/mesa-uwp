@@ -502,8 +502,11 @@ isl_tiling_get_info(enum isl_tiling tiling,
       break;
 
    case ISL_TILING_SKL_Yf:
-   case ISL_TILING_SKL_Ys: {
-      bool is_Ys = tiling == ISL_TILING_SKL_Ys;
+   case ISL_TILING_SKL_Ys:
+   case ISL_TILING_ICL_Yf:
+   case ISL_TILING_ICL_Ys: {
+      bool is_Ys = tiling == ISL_TILING_SKL_Ys ||
+                   tiling == ISL_TILING_ICL_Ys;
 
       assert(bs > 0);
       unsigned width = 1 << (6 + (ffs(bs) / 2) + (2 * is_Ys));
@@ -748,7 +751,9 @@ isl_surf_choose_tiling(const struct isl_device *dev,
 
    CHOOSE(ISL_TILING_4);
    CHOOSE(ISL_TILING_64);
+   CHOOSE(ISL_TILING_ICL_Ys);
    CHOOSE(ISL_TILING_SKL_Ys);
+   CHOOSE(ISL_TILING_ICL_Yf);
    CHOOSE(ISL_TILING_SKL_Yf);
    CHOOSE(ISL_TILING_Y0);
    CHOOSE(ISL_TILING_X);
@@ -1138,7 +1143,8 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
          assert(dim_layout == ISL_DIM_LAYOUT_GFX4_2D ||
                 dim_layout == ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ);
 
-      if (tiling == ISL_TILING_SKL_Ys && info->samples > 1)
+      if ((tiling == ISL_TILING_SKL_Ys ||
+           tiling == ISL_TILING_ICL_Ys) && info->samples > 1)
          isl_finishme("%s:%s: multisample TileYs layout", __FILE__, __func__);
 
       switch (msaa_layout) {
@@ -1837,7 +1843,7 @@ _isl_notify_failure(const struct isl_surf_init_info *surf_info,
    snprintf(msg + ret, sizeof(msg) - ret,
             " extent=%ux%ux%u dim=%s msaa=%ux levels=%u rpitch=%u fmt=%s "
             "usages=%s%s%s%s%s%s%s%s%s%s%s%s%s%s "
-            "tiling_flags=%s%s%s%s%s%s%s%s%s%s%s",
+            "tiling_flags=%s%s%s%s%s%s%s%s%s%s%s%s%s",
             surf_info->width, surf_info->height,
             surf_info->dim == ISL_SURF_DIM_3D ?
             surf_info->depth : surf_info->array_len,
@@ -1868,6 +1874,8 @@ _isl_notify_failure(const struct isl_surf_init_info *surf_info,
             PRINT_TILING(Y0,             "Y0"),
             PRINT_TILING(SKL_Yf,         "skl-Yf"),
             PRINT_TILING(SKL_Ys,         "skl-Ys"),
+            PRINT_TILING(ICL_Yf,         "icl-Yf"),
+            PRINT_TILING(ICL_Ys,         "icl-Ys"),
             PRINT_TILING(4,              "4"),
             PRINT_TILING(64,             "64"),
             PRINT_TILING(HIZ,            "hiz"),
@@ -3743,6 +3751,8 @@ isl_tiling_to_name(enum isl_tiling tiling)
       [ISL_TILING_Y0]        = "Y0",
       [ISL_TILING_SKL_Yf]    = "SKL-Yf",
       [ISL_TILING_SKL_Ys]    = "SKL-Ys",
+      [ISL_TILING_ICL_Yf]    = "ICL-Yf",
+      [ISL_TILING_ICL_Ys]    = "ICL-Ys",
       [ISL_TILING_4]         = "4",
       [ISL_TILING_64]        = "64",
       [ISL_TILING_HIZ]       = "hiz",

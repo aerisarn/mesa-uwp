@@ -49,9 +49,11 @@ static const uint8_t isl_encode_tiling[] = {
    [ISL_TILING_64]      = TILE64,
 #else
    [ISL_TILING_Y0]      = YMAJOR,
+   [ISL_TILING_ICL_Yf]  = YMAJOR,
+   [ISL_TILING_ICL_Ys]  = YMAJOR,
    [ISL_TILING_SKL_Yf]  = YMAJOR,
    [ISL_TILING_SKL_Ys]  = YMAJOR,
-#endif
+#endif /* GFX_VERx10 < 125 */
 #if GFX_VER <= 11
    [ISL_TILING_W]       = WMAJOR,
 #endif
