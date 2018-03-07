@@ -501,9 +501,9 @@ isl_tiling_get_info(enum isl_tiling tiling,
       phys_B = isl_extent2d(128, 32);
       break;
 
-   case ISL_TILING_Yf:
-   case ISL_TILING_Ys: {
-      bool is_Ys = tiling == ISL_TILING_Ys;
+   case ISL_TILING_SKL_Yf:
+   case ISL_TILING_SKL_Ys: {
+      bool is_Ys = tiling == ISL_TILING_SKL_Ys;
 
       assert(bs > 0);
       unsigned width = 1 << (6 + (ffs(bs) / 2) + (2 * is_Ys));
@@ -748,8 +748,8 @@ isl_surf_choose_tiling(const struct isl_device *dev,
 
    CHOOSE(ISL_TILING_4);
    CHOOSE(ISL_TILING_64);
-   CHOOSE(ISL_TILING_Ys);
-   CHOOSE(ISL_TILING_Yf);
+   CHOOSE(ISL_TILING_SKL_Ys);
+   CHOOSE(ISL_TILING_SKL_Yf);
    CHOOSE(ISL_TILING_Y0);
    CHOOSE(ISL_TILING_X);
    CHOOSE(ISL_TILING_W);
@@ -1138,7 +1138,7 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
          assert(dim_layout == ISL_DIM_LAYOUT_GFX4_2D ||
                 dim_layout == ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ);
 
-      if (tiling == ISL_TILING_Ys && info->samples > 1)
+      if (tiling == ISL_TILING_SKL_Ys && info->samples > 1)
          isl_finishme("%s:%s: multisample TileYs layout", __FILE__, __func__);
 
       switch (msaa_layout) {
@@ -1866,8 +1866,8 @@ _isl_notify_failure(const struct isl_surf_init_info *surf_info,
             PRINT_TILING(W,              "W"),
             PRINT_TILING(X,              "X"),
             PRINT_TILING(Y0,             "Y0"),
-            PRINT_TILING(Yf,             "Yf"),
-            PRINT_TILING(Ys,             "Ys"),
+            PRINT_TILING(SKL_Yf,         "skl-Yf"),
+            PRINT_TILING(SKL_Ys,         "skl-Ys"),
             PRINT_TILING(4,              "4"),
             PRINT_TILING(64,             "64"),
             PRINT_TILING(HIZ,            "hiz"),
@@ -3741,8 +3741,8 @@ isl_tiling_to_name(enum isl_tiling tiling)
       [ISL_TILING_W]         = "W",
       [ISL_TILING_X]         = "X",
       [ISL_TILING_Y0]        = "Y0",
-      [ISL_TILING_Yf]        = "Yf",
-      [ISL_TILING_Ys]        = "Ys",
+      [ISL_TILING_SKL_Yf]    = "SKL-Yf",
+      [ISL_TILING_SKL_Ys]    = "SKL-Ys",
       [ISL_TILING_4]         = "4",
       [ISL_TILING_64]        = "64",
       [ISL_TILING_HIZ]       = "hiz",

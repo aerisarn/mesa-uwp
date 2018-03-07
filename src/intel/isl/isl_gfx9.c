@@ -41,7 +41,7 @@ gfx9_calc_std_image_alignment_sa(const struct isl_device *dev,
    assert(isl_tiling_is_std_y(tiling));
 
    const uint32_t bpb = fmtl->bpb;
-   const uint32_t is_Ys = tiling == ISL_TILING_Ys;
+   const uint32_t is_Ys = tiling == ISL_TILING_SKL_Ys;
 
    switch (info->dim) {
    case ISL_SURF_DIM_1D:

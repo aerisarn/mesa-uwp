@@ -576,8 +576,8 @@ enum isl_tiling {
    ISL_TILING_W, /**< W tiling */
    ISL_TILING_X, /**< X tiling */
    ISL_TILING_Y0, /**< Legacy Y tiling */
-   ISL_TILING_Yf, /**< Standard 4K tiling. The 'f' means "four". */
-   ISL_TILING_Ys, /**< Standard 64K tiling. The 's' means "sixty-four". */
+   ISL_TILING_SKL_Yf, /**< Standard 4K tiling. The 'f' means "four". */
+   ISL_TILING_SKL_Ys, /**< Standard 64K tiling. The 's' means "sixty-four". */
    ISL_TILING_4,  /**< 4K tiling. */
    ISL_TILING_64,  /**< 64K tiling.*/
    ISL_TILING_HIZ, /**< Tiling format for HiZ surfaces */
@@ -594,8 +594,8 @@ typedef uint32_t isl_tiling_flags_t;
 #define ISL_TILING_W_BIT                  (1u << ISL_TILING_W)
 #define ISL_TILING_X_BIT                  (1u << ISL_TILING_X)
 #define ISL_TILING_Y0_BIT                 (1u << ISL_TILING_Y0)
-#define ISL_TILING_Yf_BIT                 (1u << ISL_TILING_Yf)
-#define ISL_TILING_Ys_BIT                 (1u << ISL_TILING_Ys)
+#define ISL_TILING_SKL_Yf_BIT             (1u << ISL_TILING_SKL_Yf)
+#define ISL_TILING_SKL_Ys_BIT             (1u << ISL_TILING_SKL_Ys)
 #define ISL_TILING_4_BIT                  (1u << ISL_TILING_4)
 #define ISL_TILING_64_BIT                 (1u << ISL_TILING_64)
 #define ISL_TILING_HIZ_BIT                (1u << ISL_TILING_HIZ)
@@ -606,12 +606,12 @@ typedef uint32_t isl_tiling_flags_t;
 
 /** Any Y tiling, including legacy Y tiling. */
 #define ISL_TILING_ANY_Y_MASK             (ISL_TILING_Y0_BIT | \
-                                           ISL_TILING_Yf_BIT | \
-                                           ISL_TILING_Ys_BIT)
+                                           ISL_TILING_SKL_Yf_BIT | \
+                                           ISL_TILING_SKL_Ys_BIT)
 
 /** The Skylake BSpec refers to Yf and Ys as "standard tiling formats". */
-#define ISL_TILING_STD_Y_MASK             (ISL_TILING_Yf_BIT | \
-                                           ISL_TILING_Ys_BIT)
+#define ISL_TILING_STD_Y_MASK             (ISL_TILING_SKL_Yf_BIT | \
+                                           ISL_TILING_SKL_Ys_BIT)
 /** @} */
 
 /**
