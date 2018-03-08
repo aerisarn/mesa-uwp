@@ -2036,6 +2036,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_subgroup_id_shift_ir3:
       dst[0] = create_driver_param(ctx, IR3_DP_SUBGROUP_ID_SHIFT);
       break;
+   case nir_intrinsic_load_work_dim:
+      dst[0] = create_driver_param(ctx, IR3_DP_WORK_DIM);
+      break;
    case nir_intrinsic_discard_if:
    case nir_intrinsic_discard:
    case nir_intrinsic_demote:

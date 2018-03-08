@@ -45,6 +45,7 @@ enum ir3_driver_param {
    IR3_DP_NUM_WORK_GROUPS_X = 0,
    IR3_DP_NUM_WORK_GROUPS_Y = 1,
    IR3_DP_NUM_WORK_GROUPS_Z = 2,
+   IR3_DP_WORK_DIM          = 3,
    IR3_DP_BASE_GROUP_X = 4,
    IR3_DP_BASE_GROUP_Y = 5,
    IR3_DP_BASE_GROUP_Z = 6,
