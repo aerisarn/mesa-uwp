@@ -552,6 +552,11 @@ optimizations.extend([
    (('fneu', ('fneg', a), -1.0), ('fneu', 1.0, a)),
    (('feq', -1.0, ('fneg', a)), ('feq', a, 1.0)),
 
+   (('ieq', ('ineg', a), 0),  ('ieq', a, 0)),
+   (('ine', ('ineg', a), 0),  ('ine', a, 0)),
+   (('ieq', ('iabs', a), 0),  ('ieq', a, 0)),
+   (('ine', ('iabs', a), 0),  ('ine', a, 0)),
+
    # b < fsat(NaN) -> b < 0 -> false, and b < Nan -> false.
    (('flt', '#b(is_gt_0_and_lt_1)', ('fsat(is_used_once)', a)), ('flt', b, a)),
 
@@ -1410,9 +1415,7 @@ optimizations.extend([
     ('ineg', ('b2i', ('iand', a, b)))),
    (('ior', ('ineg', ('b2i','a@1')), ('ineg', ('b2i', 'b@1'))),
     ('ineg', ('b2i', ('ior', a, b)))),
-   (('ieq', ('ineg', ('b2i', 'a@1')), 0), ('inot', a)),
    (('ieq', ('ineg', ('b2i', 'a@1')), -1), a),
-   (('ine', ('ineg', ('b2i', 'a@1')), 0), a),
    (('ine', ('ineg', ('b2i', 'a@1')), -1), ('inot', a)),
    (('ige', ('ineg', ('b2i', 'a@1')), 0), ('inot', a)),
    (('ilt', ('ineg', ('b2i', 'a@1')), 0), a),
