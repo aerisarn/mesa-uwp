@@ -958,6 +958,22 @@ nir_instr_insert(nir_cursor cursor, nir_instr *instr)
    impl->valid_metadata &= ~nir_metadata_instr_index;
 }
 
+bool
+nir_instr_move(nir_cursor cursor, nir_instr *instr)
+{
+   /* If the cursor happens to refer to this instruction (either before or
+    * after), don't do anything.
+    */
+   if ((cursor.option == nir_cursor_before_instr ||
+        cursor.option == nir_cursor_after_instr) &&
+       cursor.instr == instr)
+      return false;
+
+   nir_instr_remove(instr);
+   nir_instr_insert(cursor, instr);
+   return true;
+}
+
 static bool
 src_is_valid(const nir_src *src)
 {

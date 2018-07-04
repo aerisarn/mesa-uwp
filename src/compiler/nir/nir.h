@@ -3826,6 +3826,8 @@ nir_after_cf_list(struct exec_list *cf_list)
  */
 void nir_instr_insert(nir_cursor cursor, nir_instr *instr);
 
+bool nir_instr_move(nir_cursor cursor, nir_instr *instr);
+
 static inline void
 nir_instr_insert_before(nir_instr *instr, nir_instr *before)
 {
