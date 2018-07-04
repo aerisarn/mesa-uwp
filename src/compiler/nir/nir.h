@@ -5199,6 +5199,7 @@ bool nir_opt_vectorize(nir_shader *shader, nir_opt_vectorize_cb filter,
                        void *data);
 
 bool nir_opt_conditional_discard(nir_shader *shader);
+bool nir_opt_move_discards_to_top(nir_shader *shader);
 
 typedef bool (*nir_should_vectorize_mem_func)(unsigned align_mul,
                                               unsigned align_offset,

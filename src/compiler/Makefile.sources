@@ -341,6 +341,7 @@ NIR_FILES = \
 	nir/nir_opt_load_store_vectorize.c \
 	nir/nir_opt_memcpy.c \
 	nir/nir_opt_move.c \
+	nir/nir_opt_move_discards_to_top.c \
 	nir/nir_opt_offsets.c \
 	nir/nir_opt_peephole_select.c \
 	nir/nir_opt_rematerialize_compares.c \
