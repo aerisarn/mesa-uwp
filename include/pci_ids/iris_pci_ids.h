@@ -48,5 +48,7 @@ CHIPSET(0x9AC9, tgl_gt2, "TGL GT2", "Intel(R) UHD Graphics")
 CHIPSET(0x9AD9, tgl_gt2, "TGL GT2", "Intel(R) UHD Graphics")
 CHIPSET(0x9AF8, tgl_gt2, "TGL GT2", "Intel(R) UHD Graphics")
 
-/* Disabled for now until kernel support is ready */
-/* CHIPSET(0x4905, dg1, "DG1 GT2", "Intel(R) Graphics") */
+CHIPSET(0x4905, dg1, "DG1", "Intel(R) Graphics")
+CHIPSET(0x4906, dg1, "DG1", "Intel(R) Graphics")
+CHIPSET(0x4907, sg1, "SG1", "Intel(R) Graphics")
+CHIPSET(0x4908, dg1, "DG1", "Intel(R) Graphics")
