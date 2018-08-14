@@ -158,6 +158,21 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
 #endif
 }
 
+static void
+init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
+{
+   UNUSED struct anv_device *device = queue->device;
+
+#if GFX_VER >= 11
+   /* Starting with GFX version 11, SLM is no longer part of the L3$ config
+    * so it never changes throughout the lifetime of the VkDevice.
+    */
+   const struct intel_l3_config *cfg = intel_get_default_l3_config(&device->info);
+   genX(emit_l3_config)(batch, device, cfg);
+   device->l3_config = cfg;
+#endif
+}
+
 static VkResult
 init_render_queue_state(struct anv_queue *queue)
 {
@@ -372,14 +387,36 @@ init_render_queue_state(struct anv_queue *queue)
 #endif
    }
 
-#if GFX_VER >= 11
-   /* Starting with GFX version 11, SLM is no longer part of the L3$ config
-    * so it never changes throughout the lifetime of the VkDevice.
-    */
-   const struct intel_l3_config *cfg = intel_get_default_l3_config(&device->info);
-   genX(emit_l3_config)(&batch, device, cfg);
-   device->l3_config = cfg;
+   init_common_queue_state(queue, &batch);
+
+   anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
+
+   assert(batch.next <= batch.end);
+
+   return anv_queue_submit_simple_batch(queue, &batch);
+}
+
+static VkResult
+init_compute_queue_state(struct anv_queue *queue)
+{
+   struct anv_batch batch;
+
+   uint32_t cmds[64];
+   batch.start = batch.next = cmds;
+   batch.end = (void *) cmds + sizeof(cmds);
+
+   anv_batch_emit(&batch, GENX(PIPELINE_SELECT), ps) {
+#if GFX_VER >= 9
+      ps.MaskBits = 3;
 #endif
+#if GFX_VER >= 11
+      ps.MaskBits |= 0x10;
+      ps.MediaSamplerDOPClockGateEnable = true;
+#endif
+      ps.PipelineSelection = GPGPU;
+   }
+
+   init_common_queue_state(queue, &batch);
 
    anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
 
@@ -405,6 +442,9 @@ genX(init_device_state)(struct anv_device *device)
       switch (queue->family->engine_class) {
       case I915_ENGINE_CLASS_RENDER:
          res = init_render_queue_state(queue);
+         break;
+      case I915_ENGINE_CLASS_COMPUTE:
+         res = init_compute_queue_state(queue);
          break;
       default:
          res = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
