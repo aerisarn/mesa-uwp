@@ -5387,6 +5387,17 @@ iris_update_surface_base_address(struct iris_batch *batch,
       emit_pipeline_select(batch, GPGPU);
 #endif
 
+   if (GFX_VERx10 >= 125) {
+      iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POOL_ALLOC), btpa) {
+         btpa.BindingTablePoolBaseAddress = ro_bo(binder->bo, 0);
+         btpa.BindingTablePoolBufferSize = IRIS_BINDER_SIZE / 4096;
+#if GFX_VERx10 < 125
+         btpa.BindingTablePoolEnable = true;
+#endif
+         btpa.MOCS = mocs;
+      }
+   }
+
    flush_after_state_base_change(batch);
    iris_batch_sync_region_end(batch);
 
