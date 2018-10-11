@@ -1405,6 +1405,10 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
 
    uint32_t align = device->physical->info.mem_alignment;
 
+   /* If it's big enough to store a tiled resource, we need 64K alignment */
+   if (bo->size >= 64 * 1024)
+      align = MAX2(64 * 1024, align);
+
    /* If we're using the AUX map, make sure we follow the required
     * alignment.
     */
