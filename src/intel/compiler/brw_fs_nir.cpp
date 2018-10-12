@@ -6105,6 +6105,11 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          if (brw_texture_offset(instr, i, &offset_bits)) {
             header_bits |= offset_bits;
          } else {
+            /* On gfx12.5+, if the offsets are not both constant and in the
+             * {-8,7} range, nir_lower_tex() will have already lowered the
+             * source offset. So we should never reach this point.
+             */
+            assert(devinfo->verx10 < 125);
             srcs[TEX_LOGICAL_SRC_TG4_OFFSET] =
                retype(src, BRW_REGISTER_TYPE_D);
          }
