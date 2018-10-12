@@ -48,8 +48,20 @@ isl_gfx125_filter_tiling(const struct isl_device *dev,
              ISL_TILING_4_BIT |
              ISL_TILING_64_BIT;
 
-   if (isl_surf_usage_is_depth_or_stencil(info->usage))
+   if (isl_surf_usage_is_depth_or_stencil(info->usage)) {
       *flags &= ISL_TILING_4_BIT | ISL_TILING_64_BIT;
+
+      /* We choose to avoid Tile64 for 3D depth/stencil buffers. The swizzle
+       * for Tile64 is dependent on the image dimension. So, reads and writes
+       * should specify the same dimension to consistently interpret the data.
+       * This is not possible for 3D depth/stencil buffers however. Such
+       * buffers can be sampled from with a 3D view, but rendering is only
+       * possible with a 2D view due to the limitations of
+       * 3DSTATE_(DEPTH|STENCIL)_BUFFER.
+       */
+      if (info->dim == ISL_SURF_DIM_3D)
+         *flags &= ~ISL_TILING_64_BIT;
+   }
 
    if (info->usage & ISL_SURF_USAGE_DISPLAY_BIT)
       *flags &= ~ISL_TILING_64_BIT;

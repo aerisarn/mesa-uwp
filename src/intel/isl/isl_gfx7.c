@@ -238,6 +238,19 @@ isl_gfx6_filter_tiling(const struct isl_device *dev,
       *flags &= ISL_TILING_ANY_Y_MASK;
    }
 
+   if (isl_surf_usage_is_depth_or_stencil(info->usage)) {
+      /* We choose to avoid Yf/Ys for 3D depth/stencil buffers. The swizzles
+       * for the Yf and Ys tilings are dependent on the image dimension. So,
+       * reads and writes should specify the same dimension to consistently
+       * interpret the data. This is not possible for 3D depth/stencil buffers
+       * however. Such buffers can be sampled from with a 3D view, but
+       * rendering is only possible with a 2D view due to the limitations of
+       * 3DSTATE_(DEPTH|STENCIL)_BUFFER.
+       */
+      if (info->dim == ISL_SURF_DIM_3D)
+         *flags &= ~ISL_TILING_STD_Y_MASK;
+   }
+
    if (isl_surf_usage_is_stencil(info->usage)) {
       if (ISL_GFX_VER(dev) >= 12) {
          /* Stencil requires Y. */
