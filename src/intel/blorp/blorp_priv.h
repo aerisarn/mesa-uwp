@@ -155,17 +155,24 @@ struct brw_blorp_wm_inputs
    uint32_t pad[1];
 };
 
-#define BLORP_CREATE_NIR_INPUT(shader, name, type) ({ \
-   nir_variable *input = nir_variable_create((shader), nir_var_shader_in, \
-                                             type, #name); \
-   if ((shader)->info.stage == MESA_SHADER_FRAGMENT) \
-      input->data.interpolation = INTERP_MODE_FLAT; \
-   input->data.location = VARYING_SLOT_VAR0 + \
-      offsetof(struct brw_blorp_wm_inputs, name) / (4 * sizeof(float)); \
-   input->data.location_frac = \
-      (offsetof(struct brw_blorp_wm_inputs, name) / sizeof(float)) % 4; \
-   input; \
-})
+static inline nir_variable *
+blorp_create_nir_input(struct nir_shader *nir,
+                       const char *name,
+                       const struct glsl_type *type,
+                       unsigned int offset)
+{
+   nir_variable *input =
+      nir_variable_create(nir, nir_var_shader_in, type, name);
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      input->data.interpolation = INTERP_MODE_FLAT;
+   input->data.location = VARYING_SLOT_VAR0 + offset / (4 * sizeof(float));
+   input->data.location_frac = (offset / sizeof(float)) % 4;
+   return input;
+}
+
+#define BLORP_CREATE_NIR_INPUT(shader, name, type) \
+   blorp_create_nir_input((shader), #name, (type), \
+                          offsetof(struct brw_blorp_wm_inputs, name))
 
 struct blorp_vs_inputs {
    uint32_t base_layer;
