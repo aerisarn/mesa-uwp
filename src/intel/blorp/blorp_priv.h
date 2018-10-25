@@ -161,12 +161,18 @@ blorp_create_nir_input(struct nir_shader *nir,
                        const struct glsl_type *type,
                        unsigned int offset)
 {
-   nir_variable *input =
-      nir_variable_create(nir, nir_var_shader_in, type, name);
+   nir_variable *input;
+   if (nir->info.stage == MESA_SHADER_COMPUTE) {
+      input = nir_variable_create(nir, nir_var_uniform, type, name);
+      input->data.driver_location = offset;
+      input->data.location = offset;
+   } else {
+      input = nir_variable_create(nir, nir_var_shader_in, type, name);
+      input->data.location = VARYING_SLOT_VAR0 + offset / (4 * sizeof(float));
+      input->data.location_frac = (offset / sizeof(float)) % 4;
+   }
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       input->data.interpolation = INTERP_MODE_FLAT;
-   input->data.location = VARYING_SLOT_VAR0 + offset / (4 * sizeof(float));
-   input->data.location_frac = (offset / sizeof(float)) % 4;
    return input;
 }
 
