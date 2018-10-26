@@ -173,6 +173,11 @@ blorp_fast_clear(struct blorp_batch *batch,
                  uint32_t level, uint32_t start_layer, uint32_t num_layers,
                  uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1);
 
+bool
+blorp_clear_supports_compute(struct blorp_context *blorp,
+                             uint8_t color_write_disable, bool blend_enabled,
+                             enum isl_aux_usage aux_usage);
+
 void
 blorp_clear(struct blorp_batch *batch,
             const struct blorp_surf *surf,
