@@ -78,6 +78,11 @@ enum blorp_batch_flags {
     * color buffer.
     */
    BLORP_BATCH_NO_UPDATE_CLEAR_COLOR = (1 << 2),
+
+   /* This flag indicates that blorp should use a compute program for the
+    * operation.
+    */
+   BLORP_BATCH_USE_COMPUTE = (1 << 3),
 };
 
 struct blorp_batch {
