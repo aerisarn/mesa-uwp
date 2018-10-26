@@ -279,6 +279,56 @@ blorp_compile_vs(struct blorp_context *blorp, void *mem_ctx,
    return brw_compile_vs(compiler, mem_ctx, &params);
 }
 
+const unsigned *
+blorp_compile_cs(struct blorp_context *blorp, void *mem_ctx,
+                 struct nir_shader *nir,
+                 struct brw_cs_prog_key *cs_key,
+                 struct brw_cs_prog_data *cs_prog_data)
+{
+   const struct brw_compiler *compiler = blorp->compiler;
+
+   nir->options =
+      compiler->glsl_compiler_options[MESA_SHADER_COMPUTE].NirOptions;
+
+   memset(cs_prog_data, 0, sizeof(*cs_prog_data));
+
+   /* BLORP always uses the first two binding table entries:
+    * - Surface 0 is the destination image (which always start from 0)
+    * - Surface 1 is the source texture
+    */
+   cs_prog_data->base.binding_table.texture_start = BLORP_TEXTURE_BT_INDEX;
+
+   brw_preprocess_nir(compiler, nir, NULL);
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+
+   NIR_PASS_V(nir, nir_lower_io, nir_var_uniform, type_size_scalar_bytes,
+              (nir_lower_io_options)0);
+
+   STATIC_ASSERT(offsetof(struct brw_blorp_wm_inputs, subgroup_id) + 4 ==
+                 sizeof(struct brw_blorp_wm_inputs));
+   nir->num_uniforms = offsetof(struct brw_blorp_wm_inputs, subgroup_id);
+   unsigned nr_params = nir->num_uniforms / 4;
+   cs_prog_data->base.nr_params = nr_params;
+   cs_prog_data->base.param = rzalloc_array(NULL, uint32_t, nr_params);
+
+   NIR_PASS_V(nir, brw_nir_lower_cs_intrinsics);
+
+   struct brw_compile_cs_params params = {
+      .nir = nir,
+      .key = cs_key,
+      .prog_data = cs_prog_data,
+      .log_data = blorp->driver_ctx,
+      .debug_flag = DEBUG_BLORP,
+   };
+
+   const unsigned *program = brw_compile_cs(compiler, mem_ctx, &params);
+
+   ralloc_free(cs_prog_data->base.param);
+   cs_prog_data->base.param = NULL;
+
+   return program;
+}
+
 struct blorp_sf_key {
    struct brw_blorp_base_key base;
    struct brw_sf_prog_key key;

@@ -232,6 +232,8 @@ struct blorp_params
    struct brw_sf_prog_data *sf_prog_data;
    uint32_t wm_prog_kernel;
    struct brw_wm_prog_data *wm_prog_data;
+   uint32_t cs_prog_kernel;
+   struct brw_cs_prog_data *cs_prog_data;
 
    bool use_pre_baked_binding_table;
    uint32_t pre_baked_binding_table_offset;
@@ -417,6 +419,12 @@ blorp_compile_vs(struct blorp_context *blorp, void *mem_ctx,
 bool
 blorp_ensure_sf_program(struct blorp_batch *batch,
                         struct blorp_params *params);
+
+const unsigned *
+blorp_compile_cs(struct blorp_context *blorp, void *mem_ctx,
+                 struct nir_shader *nir,
+                 struct brw_cs_prog_key *cs_key,
+                 struct brw_cs_prog_data *cs_prog_data);
 
 /** \} */
 
