@@ -1547,12 +1547,12 @@ blorp_emit_null_surface_state(struct blorp_batch *batch,
    blorp_flush_range(batch, state, GENX(RENDER_SURFACE_STATE_length) * 4);
 }
 
-static void
-blorp_emit_surface_states(struct blorp_batch *batch,
-                          const struct blorp_params *params)
+static uint32_t
+blorp_setup_binding_table(struct blorp_batch *batch,
+                           const struct blorp_params *params)
 {
    const struct isl_device *isl_dev = batch->blorp->isl_dev;
-   uint32_t bind_offset = 0, surface_offsets[2];
+   uint32_t surface_offsets[2], bind_offset;
    void *surface_maps[2];
 
    UNUSED bool has_indirect_clear_color = false;
@@ -1608,6 +1608,12 @@ blorp_emit_surface_states(struct blorp_batch *batch,
    }
 #endif
 
+   return bind_offset;
+}
+
+static void
+blorp_emit_btp(struct blorp_batch *batch, uint32_t bind_offset)
+{
 #if GFX_VER >= 7
    blorp_emit(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), bt);
    blorp_emit(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_HS), bt);
@@ -1986,7 +1992,7 @@ blorp_exec(struct blorp_batch *batch, const struct blorp_params *params)
 
    blorp_emit_pipeline(batch, params);
 
-   blorp_emit_surface_states(batch, params);
+   blorp_emit_btp(batch, blorp_setup_binding_table(batch, params));
 
    if (!(batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL))
       blorp_emit_depth_stencil_config(batch, params);
