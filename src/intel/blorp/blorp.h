@@ -178,6 +178,14 @@ blorp_clear_supports_compute(struct blorp_context *blorp,
                              uint8_t color_write_disable, bool blend_enabled,
                              enum isl_aux_usage aux_usage);
 
+bool
+blorp_copy_supports_compute(struct blorp_context *blorp,
+                            enum isl_aux_usage dst_aux_usage);
+
+bool
+blorp_blit_supports_compute(struct blorp_context *blorp,
+                            enum isl_aux_usage dst_aux_usage);
+
 void
 blorp_clear(struct blorp_batch *batch,
             const struct blorp_surf *surf,

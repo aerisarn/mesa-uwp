@@ -390,6 +390,10 @@ struct brw_blorp_blit_prog_key
     */
    float x_scale;
    float y_scale;
+
+   /* If a compute shader is used, this is the local size y dimension.
+    */
+   uint8_t local_y;
 };
 
 /**
