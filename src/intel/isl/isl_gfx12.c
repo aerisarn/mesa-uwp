@@ -25,6 +25,64 @@
 #include "isl_gfx12.h"
 #include "isl_priv.h"
 
+/**
+ * @brief Filter out tiling flags that are incompatible with the surface.
+ *
+ * The resultant outgoing @a flags is a subset of the incoming @a flags. The
+ * outgoing flags may be empty (0x0) if the incoming flags were too
+ * restrictive.
+ *
+ * For example, if the surface will be used for a display
+ * (ISL_SURF_USAGE_DISPLAY_BIT), then this function filters out all tiling
+ * flags except ISL_TILING_4_BIT, ISL_TILING_X_BIT, and ISL_TILING_LINEAR_BIT.
+ */
+void
+isl_gfx125_filter_tiling(const struct isl_device *dev,
+                         const struct isl_surf_init_info *restrict info,
+                         isl_tiling_flags_t *flags)
+{
+   /* Clear flags unsupported on this hardware */
+   assert(ISL_GFX_VERX10(dev) >= 125);
+   *flags &= ISL_TILING_LINEAR_BIT |
+             ISL_TILING_X_BIT |
+             ISL_TILING_4_BIT |
+             ISL_TILING_64_BIT;
+
+   if (isl_surf_usage_is_depth_or_stencil(info->usage))
+      *flags &= ISL_TILING_4_BIT | ISL_TILING_64_BIT;
+
+   if (info->usage & ISL_SURF_USAGE_DISPLAY_BIT)
+      *flags &= ~ISL_TILING_64_BIT;
+
+   /* From RENDER_SURFACE_STATE::TileMode,
+    *
+    *    TILEMODE_XMAJOR is only allowed if Surface Type is SURFTYPE_2D.
+    *
+    * X-tiling is only allowed for 2D surfaces.
+    */
+   if (info->dim != ISL_SURF_DIM_2D)
+      *flags &= ~ISL_TILING_X_BIT;
+
+   /* ISL only implements Tile64 support for 2D surfaces. */
+   if (info->dim != ISL_SURF_DIM_2D)
+      *flags &= ~ISL_TILING_64_BIT;
+
+   /* From RENDER_SURFACE_STATE::NumberofMultisamples,
+    *
+    *    This field must not be programmed to anything other than
+    *    [MULTISAMPLECOUNT_1] unless the Tile Mode field is programmed to
+    *    Tile64.
+    *
+    * Tile64 is required for multisampling.
+    */
+   if (info->samples > 1)
+      *flags &= ISL_TILING_64_BIT;
+
+   /* Tile64 is not defined for format sizes that are 24, 48, and 96 bpb. */
+   if (isl_format_get_layout(info->format)->bpb % 3 == 0)
+      *flags &= ~ISL_TILING_64_BIT;
+}
+
 void
 isl_gfx125_choose_image_alignment_el(const struct isl_device *dev,
                                      const struct isl_surf_init_info *restrict info,

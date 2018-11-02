@@ -592,7 +592,9 @@ isl_surf_choose_tiling(const struct isl_device *dev,
       return true;
    }
 
-   if (ISL_GFX_VER(dev) >= 6) {
+   if (ISL_GFX_VERX10(dev) >= 125) {
+      isl_gfx125_filter_tiling(dev, info, &tiling_flags);
+   } else if (ISL_GFX_VER(dev) >= 6) {
       isl_gfx6_filter_tiling(dev, info, &tiling_flags);
    } else {
       isl_gfx4_filter_tiling(dev, info, &tiling_flags);
@@ -619,6 +621,8 @@ isl_surf_choose_tiling(const struct isl_device *dev,
       CHOOSE(ISL_TILING_LINEAR);
    }
 
+   CHOOSE(ISL_TILING_4);
+   CHOOSE(ISL_TILING_64);
    CHOOSE(ISL_TILING_Ys);
    CHOOSE(ISL_TILING_Yf);
    CHOOSE(ISL_TILING_Y0);
