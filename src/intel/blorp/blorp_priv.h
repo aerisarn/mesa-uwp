@@ -420,6 +420,29 @@ bool
 blorp_ensure_sf_program(struct blorp_batch *batch,
                         struct blorp_params *params);
 
+static inline uint8_t
+blorp_get_cs_local_y(struct blorp_params *params)
+{
+   uint32_t height = params->y1 - params->y0;
+   uint32_t or_ys = params->y0 | params->y1;
+   if (height > 32 || (or_ys & 3) == 0) {
+      return 4;
+   } else if ((or_ys & 1) == 0) {
+      return 2;
+   } else {
+      return 1;
+   }
+}
+
+static inline void
+blorp_set_cs_dims(struct nir_shader *nir, uint8_t local_y)
+{
+   assert(local_y != 0 && (16 % local_y == 0));
+   nir->info.workgroup_size[0] = 16 / local_y;
+   nir->info.workgroup_size[1] = local_y;
+   nir->info.workgroup_size[2] = 1;
+}
+
 const unsigned *
 blorp_compile_cs(struct blorp_context *blorp, void *mem_ctx,
                  struct nir_shader *nir,
