@@ -58,6 +58,13 @@ static const uint32_t isl_encode_ds_surftype[] = {
    [ISL_SURF_DIM_3D] = SURFTYPE_3D,
 };
 
+#if GFX_VERx10 >= 125
+static const uint8_t isl_encode_tiling[] = {
+   [ISL_TILING_4]  = TILE4,
+   [ISL_TILING_64] = TILE64,
+};
+#endif
+
 void
 isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
                                    const struct isl_depth_stencil_hiz_emit_info *restrict info)
@@ -115,7 +122,10 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       db.MOCS = info->mocs;
 #endif
 
-#if GFX_VER <= 6
+#if GFX_VERx10 >= 125
+      db.TiledMode = isl_encode_tiling[info->depth_surf->tiling];
+      db.MipTailStartLOD = 15;
+#elif GFX_VER <= 6
       db.TiledSurface = info->depth_surf->tiling != ISL_TILING_LINEAR;
       db.TileWalk = info->depth_surf->tiling == ISL_TILING_Y0 ? TILEWALK_YMAJOR :
                                                                 TILEWALK_XMAJOR;
@@ -155,6 +165,10 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
    if (info->stencil_surf) {
 #if GFX_VER >= 7 && GFX_VER < 12
       db.StencilWriteEnable = true;
+#endif
+#if GFX_VERx10 >= 125
+      sb.TiledMode = isl_encode_tiling[info->stencil_surf->tiling];
+      sb.MipTailStartLOD = 15;
 #endif
 #if GFX_VER >= 12
       sb.StencilWriteEnable = true;
@@ -213,6 +227,11 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       hiz.SurfaceBaseAddress = info->hiz_address;
       hiz.MOCS = info->mocs;
       hiz.SurfacePitch = info->hiz_surf->row_pitch_B - 1;
+
+#if GFX_VERx10 >= 125
+      hiz.TiledMode = isl_encode_tiling[info->hiz_surf->tiling];
+#endif
+
 #if GFX_VER >= 12
       hiz.HierarchicalDepthBufferWriteThruEnable =
          info->hiz_usage == ISL_AUX_USAGE_HIZ_CCS_WT;

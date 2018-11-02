@@ -1692,10 +1692,9 @@
     <field name="Minimum Array Element" start="168" end="178" type="uint"/>
     <field name="Depth" start="180" end="190" type="uint"/>
     <field name="Mip Tail Start LOD" start="218" end="221" type="uint"/>
-    <field name="Tiled Resource Mode" start="222" end="223" type="uint">
-      <value name="NONE" value="0"/>
-      <value name="TILEYF" value="1"/>
-      <value name="TILEYS" value="2"/>
+    <field name="Tiled Mode" start="222" end="223" type="uint">
+      <value name="TILE64" value="1"/>
+      <value name="TILE4" value="3"/>
     </field>
     <field name="Surface QPitch" start="224" end="238" type="uint"/>
     <field name="LOD" start="240" end="243" type="uint"/>
@@ -1977,10 +1976,9 @@
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
     <field name="Surface Pitch" start="32" end="48" type="uint"/>
     <field name="Hierarchical Depth Buffer Write Thru Enable" start="52" end="52" type="bool"/>
-    <field name="Tiled Resource Mode" start="54" end="55" type="uint">
-      <value name="NONE" value="0"/>
-      <value name="TILEYF" value="1"/>
-      <value name="TILEYS" value="2"/>
+    <field name="Tiled Mode" start="54" end="55" type="uint">
+      <value name="TILE64" value="1"/>
+      <value name="TILE4" value="3"/>
     </field>
     <field name="MOCS" start="57" end="63" type="uint"/>
     <field name="Hierarchical Depth Buffer MOCS" start="57" end="63" type="uint"/>
@@ -2755,9 +2753,8 @@
     <field name="Depth" start="180" end="190" type="uint"/>
     <field name="Mip Tail Start LOD" start="218" end="221" type="uint"/>
     <field name="Tiled Mode" start="222" end="223" type="uint">
-      <value name="NONE" value="0"/>
-      <value name="TILEYF" value="1"/>
-      <value name="TILEYS" value="2"/>
+      <value name="TILE64" value="1"/>
+      <value name="TILE4" value="3"/>
     </field>
     <field name="Surface QPitch" start="224" end="238" type="uint"/>
     <field name="Surf LOD" start="240" end="243" type="uint"/>
