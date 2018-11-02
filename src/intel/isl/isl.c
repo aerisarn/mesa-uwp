@@ -1260,13 +1260,23 @@ isl_calc_phys_total_extent_el_gfx4_2d(
                                            image_align_sa, phys_level0_sa,
                                            array_pitch_span,
                                            &phys_slice0_sa);
-   *phys_total_el = (struct isl_extent4d) {
-      .w = isl_align_div_npot(phys_slice0_sa.w, fmtl->bw),
-      .h = *array_pitch_el_rows * (phys_level0_sa->array_len - 1) +
-           isl_align_div_npot(phys_slice0_sa.h, fmtl->bh),
-      .d = 1,
-      .a = 1,
-   };
+
+   if (tile_info->tiling == ISL_TILING_64) {
+      *phys_total_el = (struct isl_extent4d) {
+         .w = isl_align_div_npot(phys_slice0_sa.w, fmtl->bw),
+         .h = isl_align_div_npot(phys_slice0_sa.h, fmtl->bh),
+         .d = isl_align_div_npot(phys_level0_sa->d, fmtl->bd),
+         .a = phys_level0_sa->array_len,
+      };
+   } else {
+      *phys_total_el = (struct isl_extent4d) {
+         .w = isl_align_div_npot(phys_slice0_sa.w, fmtl->bw),
+         .h = *array_pitch_el_rows * (phys_level0_sa->array_len - 1) +
+              isl_align_div_npot(phys_slice0_sa.h, fmtl->bh),
+         .d = 1,
+         .a = 1,
+      };
+   }
 }
 
 /**
