@@ -577,6 +577,8 @@ enum isl_tiling {
    ISL_TILING_Y0, /**< Legacy Y tiling */
    ISL_TILING_Yf, /**< Standard 4K tiling. The 'f' means "four". */
    ISL_TILING_Ys, /**< Standard 64K tiling. The 's' means "sixty-four". */
+   ISL_TILING_4,  /**< 4K tiling. */
+   ISL_TILING_64,  /**< 64K tiling.*/
    ISL_TILING_HIZ, /**< Tiling format for HiZ surfaces */
    ISL_TILING_CCS, /**< Tiling format for CCS surfaces */
    ISL_TILING_GFX12_CCS, /**< Tiling format for Gfx12 CCS surfaces */
@@ -593,6 +595,8 @@ typedef uint32_t isl_tiling_flags_t;
 #define ISL_TILING_Y0_BIT                 (1u << ISL_TILING_Y0)
 #define ISL_TILING_Yf_BIT                 (1u << ISL_TILING_Yf)
 #define ISL_TILING_Ys_BIT                 (1u << ISL_TILING_Ys)
+#define ISL_TILING_4_BIT                  (1u << ISL_TILING_4)
+#define ISL_TILING_64_BIT                 (1u << ISL_TILING_64)
 #define ISL_TILING_HIZ_BIT                (1u << ISL_TILING_HIZ)
 #define ISL_TILING_CCS_BIT                (1u << ISL_TILING_CCS)
 #define ISL_TILING_GFX12_CCS_BIT          (1u << ISL_TILING_GFX12_CCS)

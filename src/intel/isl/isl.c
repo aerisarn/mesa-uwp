@@ -329,9 +329,10 @@ isl_tiling_get_info(enum isl_tiling tiling,
       /* It is possible to have non-power-of-two formats in a tiled buffer.
        * The easiest way to handle this is to treat the tile as if it is three
        * times as wide.  This way no pixel will ever cross a tile boundary.
-       * This really only works on legacy X and Y tiling formats.
+       * This really only works on a subset of tiling formats.
        */
-      assert(tiling == ISL_TILING_X || tiling == ISL_TILING_Y0);
+      assert(tiling == ISL_TILING_X || tiling == ISL_TILING_Y0 ||
+             tiling == ISL_TILING_4);
       assert(bs % 3 == 0 && isl_is_pow2(format_bpb / 3));
       isl_tiling_get_info(tiling, dim, msaa_layout, format_bpb / 3, samples,
                           tile_info);
@@ -352,6 +353,7 @@ isl_tiling_get_info(enum isl_tiling tiling,
       break;
 
    case ISL_TILING_Y0:
+   case ISL_TILING_4:
       assert(bs > 0);
       logical_el = isl_extent4d(128 / bs, 32, 1, 1);
       phys_B = isl_extent2d(128, 32);
@@ -386,6 +388,64 @@ isl_tiling_get_info(enum isl_tiling tiling,
       phys_B = isl_extent2d(width, height);
       break;
    }
+   case ISL_TILING_64:
+      /* The tables below are taken from the "2D Surfaces" page in the Bspec
+       * which are formulated in terms of the Cv and Cu constants. This is
+       * different from the tables in the "Tile64 Format" page which should be
+       * equivalent but are usually in terms of pixels. Also note that Cv and
+       * Cu are HxW order to match the Bspec table, not WxH order like you
+       * might expect.
+       *
+       * From the Bspec's "Tile64 Format" page:
+       *
+       *    MSAA Depth/Stencil surface use IMS (Interleaved Multi Samples)
+       *    which means:
+       *
+       *    - Use the 1X MSAA (non-MSRT) version of the Tile64 equations and
+       *      let the client unit do the swizzling internally
+       *
+       * Surfaces using the IMS layout will use the mapping for 1x MSAA.
+       */
+#define tile_extent(bs, cv, cu, a) \
+      isl_extent4d((1 << cu) / bs, 1 << cv, 1, a)
+
+      /* Only 2D surfaces are handled. */
+      assert(dim == ISL_SURF_DIM_2D);
+
+      if (samples == 1 || msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED) {
+         switch (format_bpb) {
+         case 128: logical_el = tile_extent(bs, 6, 10, 1); break;
+         case  64: logical_el = tile_extent(bs, 6, 10, 1); break;
+         case  32: logical_el = tile_extent(bs, 7,  9, 1); break;
+         case  16: logical_el = tile_extent(bs, 7,  9, 1); break;
+         case   8: logical_el = tile_extent(bs, 8,  8, 1); break;
+         default: unreachable("Unsupported format size.");
+         }
+      } else if (samples == 2) {
+         switch (format_bpb) {
+         case 128: logical_el = tile_extent(bs, 6,  9, 2); break;
+         case  64: logical_el = tile_extent(bs, 6,  9, 2); break;
+         case  32: logical_el = tile_extent(bs, 7,  8, 2); break;
+         case  16: logical_el = tile_extent(bs, 7,  8, 2); break;
+         case   8: logical_el = tile_extent(bs, 8,  7, 2); break;
+         default: unreachable("Unsupported format size.");
+         }
+      } else {
+         switch (format_bpb) {
+         case 128: logical_el = tile_extent(bs, 5,  9, 4); break;
+         case  64: logical_el = tile_extent(bs, 5,  9, 4); break;
+         case  32: logical_el = tile_extent(bs, 6,  8, 4); break;
+         case  16: logical_el = tile_extent(bs, 6,  8, 4); break;
+         case   8: logical_el = tile_extent(bs, 7,  7, 4); break;
+         default: unreachable("Unsupported format size.");
+         }
+      }
+
+#undef tile_extent
+
+      phys_B.w = logical_el.w * bs;
+      phys_B.h = 64 * 1024 / phys_B.w;
+      break;
 
    case ISL_TILING_HIZ:
       /* HiZ buffers are required to have ISL_FORMAT_HIZ which is an 8x4
