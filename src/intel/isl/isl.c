@@ -828,8 +828,6 @@ isl_choose_image_alignment_el(const struct isl_device *dev,
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
    if (fmtl->txc == ISL_TXC_MCS) {
-      assert(tiling == ISL_TILING_Y0);
-
       /*
        * IvyBrigde PRM Vol 2, Part 1, "11.7 MCS Buffer for Render Target(s)":
        *
@@ -2084,7 +2082,7 @@ isl_surf_get_mcs_surf(const struct isl_device *dev,
                         .array_len = surf->logical_level0_px.array_len,
                         .samples = 1, /* MCS surfaces are really single-sampled */
                         .usage = ISL_SURF_USAGE_MCS_BIT,
-                        .tiling_flags = ISL_TILING_Y0_BIT);
+                        .tiling_flags = ISL_TILING_ANY_MASK);
 }
 
 bool
@@ -2147,7 +2145,6 @@ isl_surf_supports_ccs(const struct isl_device *dev,
             return false;
 
          assert(mcs_surf->usage & ISL_SURF_USAGE_MCS_BIT);
-         assert(isl_tiling_is_any_y(mcs_surf->tiling));
          assert(isl_format_is_mcs(mcs_surf->format));
       } else {
          /* Single-sampled color can't have MCS or HiZ */

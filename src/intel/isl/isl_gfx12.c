@@ -54,6 +54,13 @@ isl_gfx125_filter_tiling(const struct isl_device *dev,
    if (info->usage & ISL_SURF_USAGE_DISPLAY_BIT)
       *flags &= ~ISL_TILING_64_BIT;
 
+   /* From RENDER_SURFACE_STATE::AuxiliarySurfaceMode,
+    *
+    *    MCS tiling format is always Tile4
+    */
+   if (info->usage & ISL_SURF_USAGE_MCS_BIT)
+      *flags &= ISL_TILING_4_BIT;
+
    /* From RENDER_SURFACE_STATE::TileMode,
     *
     *    TILEMODE_XMAJOR is only allowed if Surface Type is SURFTYPE_2D.
