@@ -1525,7 +1525,9 @@ blorp_emit_null_surface_state(struct blorp_batch *batch,
       .SurfaceArray = surface->surf.dim != ISL_SURF_DIM_3D,
 #endif
 
-#if GFX_VER >= 8
+#if GFX_VERx10 >= 125
+      .TileMode = TILE4,
+#elif GFX_VER >= 8
       .TileMode = YMAJOR,
 #else
       .TiledSurface = true,

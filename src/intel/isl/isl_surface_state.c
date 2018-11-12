@@ -69,9 +69,14 @@ static const uint8_t isl_encode_valign[] = {
 static const uint8_t isl_encode_tiling[] = {
    [ISL_TILING_LINEAR]  = LINEAR,
    [ISL_TILING_X]       = XMAJOR,
+#if GFX_VERx10 >= 125
+   [ISL_TILING_4]       = TILE4,
+   [ISL_TILING_64]      = TILE64,
+#else
    [ISL_TILING_Y0]      = YMAJOR,
    [ISL_TILING_Yf]      = YMAJOR,
    [ISL_TILING_Ys]      = YMAJOR,
+#endif
 #if GFX_VER <= 11
    [ISL_TILING_W]       = WMAJOR,
 #endif
@@ -961,7 +966,9 @@ isl_genX(null_fill_state)(void *state,
 #if GFX_VER >= 7
       .SurfaceArray = info->size.depth > 1,
 #endif
-#if GFX_VER >= 8
+#if GFX_VERx10 >= 125
+      .TileMode = TILE4,
+#elif GFX_VER >= 8
       .TileMode = YMAJOR,
 #else
       .TiledSurface = true,
