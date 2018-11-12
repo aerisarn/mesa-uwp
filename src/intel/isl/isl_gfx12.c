@@ -26,6 +26,98 @@
 #include "isl_priv.h"
 
 void
+isl_gfx125_choose_image_alignment_el(const struct isl_device *dev,
+                                     const struct isl_surf_init_info *restrict info,
+                                     enum isl_tiling tiling,
+                                     enum isl_dim_layout dim_layout,
+                                     enum isl_msaa_layout msaa_layout,
+                                     struct isl_extent3d *image_align_el)
+{
+   const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
+
+   if (tiling == ISL_TILING_64) {
+      /* From RENDER_SURFACE_STATE::SurfaceHorizontalAlignment,
+       *
+       *   This field is ignored for Tile64 surface formats because horizontal
+       *   alignment is always to the start of the next tile in that case.
+       *
+       * From RENDER_SURFACE_STATE::SurfaceQPitch,
+       *
+       *   Because MSAA is only supported for Tile64, QPitch must also be
+       *   programmed to an aligned tile boundary for MSAA surfaces.
+       *
+       * Images in this surface must be tile-aligned.  The table on the Bspec
+       * page, "2D/CUBE Alignment Requirement", shows that the vertical
+       * alignment is also a tile height for non-MSAA as well.
+       */
+      struct isl_tile_info tile_info;
+      isl_tiling_get_info(tiling, info->dim, msaa_layout, fmtl->bpb,
+                          info->samples, &tile_info);
+
+      *image_align_el = isl_extent3d(tile_info.logical_extent_el.w,
+                                     tile_info.logical_extent_el.h,
+                                     1);
+   } else if (isl_surf_usage_is_depth(info->usage)) {
+      /* From RENDER_SURFACE_STATE::SurfaceHorizontalAlignment,
+       *
+       *    - 16b Depth Surfaces Must Be HALIGN=16Bytes (8texels)
+       *    - 32b Depth Surfaces Must Be HALIGN=32Bytes (8texels)
+       *
+       * From RENDER_SURFACE_STATE::SurfaceVerticalAlignment,
+       *
+       *    This field is intended to be set to VALIGN_4 if the surface
+       *    was rendered as a depth buffer [...]
+       *
+       * and
+       *
+       *    This field should also be set to VALIGN_8 if the surface was
+       *    rendered as a D16_UNORM depth buffer [...]
+       */
+      *image_align_el =
+         info->format != ISL_FORMAT_R16_UNORM ?
+         isl_extent3d(8, 4, 1) :
+         isl_extent3d(8, 8, 1);
+   } else if (isl_surf_usage_is_stencil(info->usage)) {
+      /* From RENDER_SURFACE_STATE::SurfaceHorizontalAlignment,
+       *
+       *    - Stencil Surfaces (8b) Must be HALIGN=16Bytes (16texels)
+       *
+       * From RENDER_SURFACE_STATE::SurfaceVerticalAlignment,
+       *
+       *    This field is intended to be set to VALIGN_8 only if
+       *    the surface was rendered as a stencil buffer, since stencil buffer
+       *    surfaces support only alignment of 8.
+       */
+      *image_align_el = isl_extent3d(16, 8, 1);
+   } else if (!isl_is_pow2(fmtl->bpb)) {
+      /* From RENDER_SURFACE_STATE::SurfaceHorizontalAlignment,
+       *
+       *    - Linear Surfaces surfaces must use HALIGN=128, including 1D which
+       *      is always Linear. For 24,48 and 96bpp this means 128texels.
+       *    - Tiled 24bpp, 48bpp and 96bpp surfaces must use HALIGN=16
+       */
+      *image_align_el = tiling == ISL_TILING_LINEAR ?
+         isl_extent3d(128, 4, 1) :
+         isl_extent3d(16, 4, 1);
+   } else {
+      /* From RENDER_SURFACE_STATE::SurfaceHorizontalAlignment,
+       *
+       *    - Losslessly Compressed Surfaces Must be HALIGN=128 for all
+       *      supported Bpp
+       *    - 64bpe and 128bpe Surfaces Must Be HALIGN=64Bytes or 128Bytes (4,
+       *      8 texels or 16 texels)
+       *    - Linear Surfaces surfaces must use HALIGN=128, including 1D which
+       *      is always Linear.
+       *
+       * Even though we could choose a horizontal alignment of 64B for certain
+       * 64 and 128-bit formats, we want to be able to enable CCS whenever
+       * possible and CCS requires 128B horizontal alignment.
+       */
+      *image_align_el = isl_extent3d(128 * 8 / fmtl->bpb, 4, 1);
+   }
+}
+
+void
 isl_gfx12_choose_image_alignment_el(const struct isl_device *dev,
                                     const struct isl_surf_init_info *restrict info,
                                     enum isl_tiling tiling,

@@ -840,7 +840,10 @@ isl_choose_image_alignment_el(const struct isl_device *dev,
       return;
    }
 
-   if (ISL_GFX_VER(dev) >= 12) {
+   if (ISL_GFX_VERX10(dev) >= 125) {
+      isl_gfx125_choose_image_alignment_el(dev, info, tiling, dim_layout,
+                                           msaa_layout, image_align_el);
+   } else if (ISL_GFX_VER(dev) >= 12) {
       isl_gfx12_choose_image_alignment_el(dev, info, tiling, dim_layout,
                                           msaa_layout, image_align_el);
    } else if (ISL_GFX_VER(dev) >= 9) {
