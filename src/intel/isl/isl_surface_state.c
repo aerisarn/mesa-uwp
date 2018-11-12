@@ -43,7 +43,12 @@ __gen_combine_address(__attribute__((unused)) void *data,
 static const uint8_t isl_encode_halign(uint8_t halign)
 {
    switch (halign) {
-#if GFX_VER >= 8
+#if GFX_VERx10 >= 125
+   case  16: return HALIGN_16;
+   case  32: return HALIGN_32;
+   case  64: return HALIGN_64;
+   case 128: return HALIGN_128;
+#elif GFX_VER >= 8
    case   4: return HALIGN4;
    case   8: return HALIGN8;
    case  16: return HALIGN16;
@@ -161,7 +166,28 @@ get_surftype(enum isl_surf_dim dim, isl_surf_usage_flags_t usage)
 UNUSED static struct isl_extent3d
 get_image_alignment(const struct isl_surf *surf)
 {
-   if (GFX_VER >= 9) {
+   if (GFX_VERx10 >= 125) {
+      if (surf->tiling == ISL_TILING_64) {
+         /* The hardware ignores the alignment values. Anyway, the surface's
+          * true alignment is likely outside the enum range of HALIGN* and
+          * VALIGN*.
+          */
+         return isl_extent3d(128, 4, 1);
+      } else if (isl_format_get_layout(surf->format)->bpb % 3 == 0) {
+         /* On XeHP, RENDER_SURFACE_STATE.SurfaceHorizontalAlignment is in
+          * units of elements for 24, 48, and 96 bpb formats.
+          */
+         return isl_surf_get_image_alignment_el(surf);
+      } else {
+         /* On XeHP, RENDER_SURFACE_STATE.SurfaceHorizontalAlignment is in
+          * units of bytes for formats that are powers of two.
+          */
+         const uint32_t bs = isl_format_get_layout(surf->format)->bpb / 8;
+         return isl_extent3d(surf->image_alignment_el.w * bs,
+                             surf->image_alignment_el.h,
+                             surf->image_alignment_el.d);
+      }
+   } else if (GFX_VER >= 9) {
       if (isl_tiling_is_std_y(surf->tiling) ||
           surf->dim_layout == ISL_DIM_LAYOUT_GFX9_1D) {
          /* The hardware ignores the alignment values. Anyway, the surface's
@@ -893,7 +919,9 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
 
 #if GFX_VER >= 6
    s.SurfaceVerticalAlignment = isl_encode_valign(4);
-#if GFX_VER >= 7
+#if GFX_VERx10 >= 125
+   s.SurfaceHorizontalAlignment = isl_encode_halign(128);
+#elif GFX_VER >= 7
    s.SurfaceHorizontalAlignment = isl_encode_halign(4);
    s.SurfaceArray = false;
 #endif
