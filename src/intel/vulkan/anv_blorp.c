@@ -133,6 +133,11 @@ static void
 anv_blorp_batch_init(struct anv_cmd_buffer *cmd_buffer,
                      struct blorp_batch *batch, enum blorp_batch_flags flags)
 {
+   if (!(cmd_buffer->pool->queue_family->queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+      assert(cmd_buffer->pool->queue_family->queueFlags & VK_QUEUE_COMPUTE_BIT);
+      flags |= BLORP_BATCH_USE_COMPUTE;
+   }
+
    blorp_batch_init(&cmd_buffer->device->blorp, batch, cmd_buffer, flags);
 }
 
@@ -1093,6 +1098,7 @@ void anv_CmdClearDepthStencilImage(
 
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
+   assert((batch.flags & BLORP_BATCH_USE_COMPUTE) == 0);
 
    struct blorp_surf depth, stencil, stencil_shadow;
    if (image->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
@@ -1404,6 +1410,7 @@ anv_image_msaa_resolve(struct anv_cmd_buffer *cmd_buffer,
 {
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
+   assert((batch.flags & BLORP_BATCH_USE_COMPUTE) == 0);
 
    assert(src_image->vk.image_type == VK_IMAGE_TYPE_2D);
    assert(src_image->vk.samples > 1);
@@ -1625,6 +1632,7 @@ anv_image_clear_depth_stencil(struct anv_cmd_buffer *cmd_buffer,
 
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
+   assert((batch.flags & BLORP_BATCH_USE_COMPUTE) == 0);
 
    struct blorp_surf depth = {};
    if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
@@ -1707,6 +1715,7 @@ anv_image_hiz_op(struct anv_cmd_buffer *cmd_buffer,
 
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
+   assert((batch.flags & BLORP_BATCH_USE_COMPUTE) == 0);
 
    struct blorp_surf surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device,
@@ -1732,6 +1741,7 @@ anv_image_hiz_clear(struct anv_cmd_buffer *cmd_buffer,
 
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
+   assert((batch.flags & BLORP_BATCH_USE_COMPUTE) == 0);
 
    struct blorp_surf depth = {};
    if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
@@ -1829,6 +1839,7 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
    anv_blorp_batch_init(cmd_buffer, &batch,
                         BLORP_BATCH_PREDICATE_ENABLE * predicate +
                         BLORP_BATCH_NO_UPDATE_CLEAR_COLOR * !clear_value);
+   assert((batch.flags & BLORP_BATCH_USE_COMPUTE) == 0);
 
    struct blorp_surf surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device, image, aspect,
@@ -1910,6 +1921,7 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
    anv_blorp_batch_init(cmd_buffer, &batch,
                         BLORP_BATCH_PREDICATE_ENABLE * predicate +
                         BLORP_BATCH_NO_UPDATE_CLEAR_COLOR * !clear_value);
+   assert((batch.flags & BLORP_BATCH_USE_COMPUTE) == 0);
 
    struct blorp_surf surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device, image, aspect,
