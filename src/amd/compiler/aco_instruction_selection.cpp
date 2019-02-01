@@ -8306,6 +8306,20 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       set_wqm(ctx);
       break;
    }
+   case nir_intrinsic_inverse_ballot: {
+      Temp src = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
+      Temp dst = get_ssa_temp(ctx, &instr->def);
+
+      assert(dst.size() == bld.lm.size());
+      if (src.size() > dst.size()) {
+         emit_extract_vector(ctx, src, 0, dst);
+      } else if (src.size() < dst.size()) {
+         bld.pseudo(aco_opcode::p_create_vector, Definition(dst), src, Operand::zero());
+      } else {
+         bld.copy(Definition(dst), src);
+      }
+      break;
+   }
    case nir_intrinsic_shuffle:
    case nir_intrinsic_read_invocation: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);

@@ -3057,6 +3057,15 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          result = LLVMBuildZExt(ctx->ac.builder, result, dest_type, "");
       }
       break;
+   case nir_intrinsic_inverse_ballot: {
+      LLVMValueRef src = get_src(ctx, instr->src[0]);
+      if (instr->src[0].ssa->bit_size > ctx->ac.wave_size) {
+         LLVMTypeRef src_type = LLVMIntTypeInContext(ctx->ac.context, ctx->ac.wave_size);
+         src = LLVMBuildTrunc(ctx->ac.builder, src, src_type, "");
+      }
+      result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.inverse.ballot", ctx->ac.i1, &src, 1, 0);
+      break;
+   }
    case nir_intrinsic_read_invocation:
       result =
          ac_build_readlane(&ctx->ac, get_src(ctx, instr->src[0]), get_src(ctx, instr->src[1]));
