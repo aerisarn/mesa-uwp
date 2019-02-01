@@ -401,6 +401,7 @@ lvp_shader_lower(struct lvp_device *pdevice, struct lvp_pipeline *pipeline, nir_
    subgroup_opts.lower_quad = true;
    subgroup_opts.ballot_components = 1;
    subgroup_opts.ballot_bit_size = 32;
+   subgroup_opts.lower_inverse_ballot = true;
    NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_opts);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)

@@ -683,6 +683,16 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
                                  intrin->def.bit_size);
    }
 
+   case nir_intrinsic_inverse_ballot:
+      if (options->lower_inverse_ballot) {
+         return nir_ballot_bitfield_extract(b, 1, intrin->src[0].ssa,
+                                            nir_load_subgroup_invocation(b));
+      } else if (intrin->src[0].ssa->num_components != options->ballot_components ||
+                 intrin->src[0].ssa->bit_size != options->ballot_bit_size) {
+         return nir_inverse_ballot(b, 1, ballot_type_to_uint(b, intrin->src[0].ssa, options));
+      }
+      break;
+
    case nir_intrinsic_ballot_bitfield_extract:
    case nir_intrinsic_ballot_bit_count_reduce:
    case nir_intrinsic_ballot_find_lsb:

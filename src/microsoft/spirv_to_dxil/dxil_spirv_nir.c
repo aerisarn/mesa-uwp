@@ -971,6 +971,7 @@ dxil_spirv_nir_passes(nir_shader *nir,
       .lower_subgroup_masks = true,
       .lower_to_scalar = true,
       .lower_relative_shuffle = true,
+      .lower_inverse_ballot = true,
    };
    if (nir->info.stage != MESA_SHADER_FRAGMENT &&
        nir->info.stage != MESA_SHADER_COMPUTE)

@@ -1000,6 +1000,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
       .lower_relative_shuffle = true,
       .lower_quad_broadcast_dynamic = true,
       .lower_elect = true,
+      .lower_inverse_ballot = true,
    };
    OPT(nir_lower_subgroups, &subgroups_options);
 

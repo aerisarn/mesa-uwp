@@ -5423,6 +5423,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
          subgroup_options.subgroup_size = 1;
          subgroup_options.lower_vote_trivial = true;
       }
+      subgroup_options.lower_inverse_ballot = true;
       NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
    }
 

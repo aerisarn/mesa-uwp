@@ -5369,6 +5369,7 @@ typedef struct nir_lower_subgroups_options {
    bool lower_read_invocation_to_cond : 1;
    bool lower_rotate_to_shuffle : 1;
    bool lower_ballot_bit_count_to_mbcnt_amd : 1;
+   bool lower_inverse_ballot : 1;
 } nir_lower_subgroups_options;
 
 bool nir_lower_subgroups(nir_shader *shader,

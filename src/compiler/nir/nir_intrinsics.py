@@ -446,9 +446,11 @@ intrinsic("read_invocation_cond_ir3", src_comp=[0, 1], dest_comp=0, flags=[CAN_E
 #
 #    OpGroupNonUniformElect
 #    OpSubgroupFirstInvocationKHR
+#    OpGroupNonUniformInverseBallot
 intrinsic("elect", dest_comp=1, flags=[CAN_ELIMINATE])
 intrinsic("first_invocation", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE])
 intrinsic("last_invocation", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE])
+intrinsic("inverse_ballot", src_comp=[0], dest_comp=1, flags=[CAN_ELIMINATE])
 
 barrier("begin_invocation_interlock")
 barrier("end_invocation_interlock")
