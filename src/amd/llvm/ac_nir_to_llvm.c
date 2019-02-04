@@ -3374,6 +3374,15 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ac_build_vote_any(&ctx->ac, get_src(ctx, instr->src[0]));
       break;
    }
+   case nir_intrinsic_quad_vote_any: {
+      result = ac_build_wqm_vote(&ctx->ac, get_src(ctx, instr->src[0]));
+      break;
+   }
+   case nir_intrinsic_quad_vote_all: {
+      LLVMValueRef src = LLVMBuildNot(ctx->ac.builder, get_src(ctx, instr->src[0]), "");
+      result = LLVMBuildNot(ctx->ac.builder, ac_build_wqm_vote(&ctx->ac, src), "");
+      break;
+   }
    case nir_intrinsic_shuffle:
       if (ctx->ac.gfx_level == GFX8 || ctx->ac.gfx_level == GFX9 ||
           (ctx->ac.gfx_level >= GFX10 && ctx->ac.wave_size == 32)) {
