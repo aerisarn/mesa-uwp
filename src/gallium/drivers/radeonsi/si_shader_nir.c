@@ -256,6 +256,7 @@ const nir_lower_subgroups_options si_nir_subgroups_options = {
    .lower_vote_eq = true,
    .lower_vote_bool_eq = true,
    .lower_inverse_ballot = true,
+   .lower_boolean_reduce = true,
 };
 
 /**

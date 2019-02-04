@@ -657,6 +657,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
                .lower_shuffle_to_swizzle_amd = 1,
                .lower_ballot_bit_count_to_mbcnt_amd = 1,
                .lower_inverse_ballot = !has_inverse_ballot,
+               .lower_boolean_reduce = 1,
             });
 
    NIR_PASS(_, nir, nir_lower_load_const_to_scalar);
