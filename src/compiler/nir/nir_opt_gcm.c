@@ -173,11 +173,12 @@ is_src_scalarizable(nir_src *src)
    }
 }
 
-/* Walks the instruction list and marks immovable instructions as pinned
+/* Walks the instruction list and marks immovable instructions as pinned or
+ * placed.
  *
  * This function also serves to initialize the instr->pass_flags field.
  * After this is completed, all instructions' pass_flags fields will be set
- * to either GCM_INSTR_PINNED or 0.
+ * to either GCM_INSTR_PINNED, GCM_INSTR_PLACED or 0.
  */
 static void
 gcm_pin_instructions(nir_function_impl *impl, struct gcm_state *state)
@@ -237,21 +238,21 @@ gcm_pin_instructions(nir_function_impl *impl, struct gcm_state *state)
          case nir_instr_type_jump:
          case nir_instr_type_ssa_undef:
          case nir_instr_type_phi:
-            instr->pass_flags = GCM_INSTR_PINNED;
+            instr->pass_flags = GCM_INSTR_PLACED;
             break;
 
          default:
             unreachable("Invalid instruction type in GCM");
          }
 
-         if (!(instr->pass_flags & GCM_INSTR_PINNED)) {
-            /* If this is an unpinned instruction, go ahead and pull it out of
+         if (!(instr->pass_flags & GCM_INSTR_PLACED)) {
+            /* If this is an unplaced instruction, go ahead and pull it out of
              * the program and put it on the instrs list.  This has a couple
              * of benifits.  First, it makes the scheduling algorithm more
-             * efficient because we can avoid walking over basic blocks and
-             * pinned instructions.  Second, it keeps us from causing linked
-             * list confusion when we're trying to put everything in its
-             * proper place at the end of the pass.
+             * efficient because we can avoid walking over basic blocks.
+             * Second, it keeps us from causing linked list confusion when
+             * we're trying to put everything in its proper place at the end
+             * of the pass.
              *
              * Note that we don't use nir_instr_remove here because that also
              * cleans up uses and defs and we want to keep that information.
@@ -322,11 +323,12 @@ gcm_schedule_early_instr(nir_instr *instr, struct gcm_state *state)
 
    instr->pass_flags |= GCM_INSTR_SCHEDULED_EARLY;
 
-   /* Pinned instructions always get scheduled in their original block so we
-    * don't need to do anything.  Also, bailing here keeps us from ever
+   /* Pinned/placed instructions always get scheduled in their original block so
+    * we don't need to do anything.  Also, bailing here keeps us from ever
     * following the sources of phi nodes which can be back-edges.
     */
-   if (instr->pass_flags & GCM_INSTR_PINNED) {
+   if (instr->pass_flags & GCM_INSTR_PINNED ||
+       instr->pass_flags & GCM_INSTR_PLACED) {
       state->instr_infos[instr->index].early_block = instr->block;
       return;
    }
@@ -482,26 +484,15 @@ gcm_schedule_late_instr(nir_instr *instr, struct gcm_state *state)
 
    instr->pass_flags |= GCM_INSTR_SCHEDULED_LATE;
 
-   /* Pinned instructions are already scheduled so we don't need to do
+   /* Pinned/placed instructions are already scheduled so we don't need to do
     * anything.  Also, bailing here keeps us from ever following phi nodes
     * which can be back-edges.
     */
-   if (instr->pass_flags & GCM_INSTR_PINNED)
+   if (instr->pass_flags & GCM_INSTR_PLACED ||
+       instr->pass_flags & GCM_INSTR_PINNED)
       return;
 
    nir_foreach_ssa_def(instr, gcm_schedule_late_def, state);
-}
-
-static void
-gcm_place_instr(nir_instr *instr, struct gcm_state *state);
-
-static bool
-gcm_place_instr_def(nir_ssa_def *def, void *state)
-{
-   nir_foreach_use(use_src, def)
-      gcm_place_instr(use_src->parent_instr, state);
-
-   return false;
 }
 
 static bool
@@ -527,14 +518,10 @@ gcm_replace_def_with_undef(nir_ssa_def *def, void *void_state)
  * otherwise leave them alone.  This pass actually places the instructions
  * into their chosen blocks.
  *
- * To do so, we use a standard post-order depth-first search linearization
- * algorithm.  We walk over the uses of the given instruction and ensure
- * that they are placed and then place this instruction.  Because we are
- * working on multiple blocks at a time, we keep track of the last inserted
- * instruction per-block in the state structure's block_info array.  When
- * we insert an instruction in a block we insert it before the last
- * instruction inserted in that block rather than the last instruction
- * inserted globally.
+ * To do so, we simply insert instructions in the reverse order they were
+ * extracted. This will simply place instructions that were scheduled earlier
+ * onto the end of their new block and instructions that were scheduled later to
+ * the start of their new block.
  */
 static void
 gcm_place_instr(nir_instr *instr, struct gcm_state *state)
@@ -550,48 +537,19 @@ gcm_place_instr(nir_instr *instr, struct gcm_state *state)
       return;
    }
 
-   /* Phi nodes are our once source of back-edges.  Since right now we are
-    * only doing scheduling within blocks, we don't need to worry about
-    * them since they are always at the top.  Just skip them completely.
-    */
-   if (instr->type == nir_instr_type_phi) {
-      assert(instr->pass_flags & GCM_INSTR_PINNED);
-      return;
-   }
-
-   nir_foreach_ssa_def(instr, gcm_place_instr_def, state);
-
-   if (instr->pass_flags & GCM_INSTR_PINNED) {
-      /* Pinned instructions have an implicit dependence on the pinned
-       * instructions that come after them in the block.  Since the pinned
-       * instructions will naturally "chain" together, we only need to
-       * explicitly visit one of them.
-       */
-      for (nir_instr *after = nir_instr_next(instr);
-           after;
-           after = nir_instr_next(after)) {
-         if (after->pass_flags & GCM_INSTR_PINNED) {
-            gcm_place_instr(after, state);
-            break;
-         }
-      }
-   }
-
    struct gcm_block_info *block_info = &state->blocks[instr->block->index];
-   if (!(instr->pass_flags & GCM_INSTR_PINNED)) {
-      exec_node_remove(&instr->node);
+   exec_node_remove(&instr->node);
 
-      if (block_info->last_instr) {
-         exec_node_insert_node_before(&block_info->last_instr->node,
-                                      &instr->node);
+   if (block_info->last_instr) {
+      exec_node_insert_node_before(&block_info->last_instr->node,
+                                   &instr->node);
+   } else {
+      /* Schedule it at the end of the block */
+      nir_instr *jump_instr = nir_block_last_instr(instr->block);
+      if (jump_instr && jump_instr->type == nir_instr_type_jump) {
+         exec_node_insert_node_before(&jump_instr->node, &instr->node);
       } else {
-         /* Schedule it at the end of the block */
-         nir_instr *jump_instr = nir_block_last_instr(instr->block);
-         if (jump_instr && jump_instr->type == nir_instr_type_jump) {
-            exec_node_insert_node_before(&jump_instr->node, &instr->node);
-         } else {
-            exec_list_push_tail(&instr->block->instr_list, &instr->node);
-         }
+         exec_list_push_tail(&instr->block->instr_list, &instr->node);
       }
    }
 
@@ -627,6 +585,9 @@ opt_gcm_impl(nir_function_impl *impl, bool value_number)
    if (value_number) {
       struct set *gvn_set = nir_instr_set_create(NULL);
       foreach_list_typed_safe(nir_instr, instr, node, &state.instrs) {
+         if (instr->pass_flags & GCM_INSTR_PINNED)
+            continue;
+
          if (nir_instr_set_add_or_rewrite(gvn_set, instr, NULL))
             state.progress = true;
       }
