@@ -1983,10 +1983,6 @@ isl_surf_get_hiz_surf(const struct isl_device *dev,
    if (!isl_surf_usage_is_depth(surf->usage))
       return false;
 
-   /* HiZ only works with Y-tiled depth buffers */
-   if (!isl_tiling_is_any_y(surf->tiling))
-      return false;
-
    /* On SNB+, compressed depth buffers cannot be interleaved with stencil. */
    switch (surf->format) {
    case ISL_FORMAT_R24_UNORM_X8_TYPELESS:
