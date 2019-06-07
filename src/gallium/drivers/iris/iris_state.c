@@ -4654,7 +4654,7 @@ iris_store_fs_state(const struct intel_device_info *devinfo,
    uint32_t *psx_state = ps_state + GENX(3DSTATE_PS_length);
 
    iris_pack_command(GENX(3DSTATE_PS), ps_state, ps) {
-      ps.VectorMaskEnable = true;
+      ps.VectorMaskEnable = wm_prog_data->uses_vmask;
       ps.BindingTableEntryCount = shader->bt.size_bytes / 4;
       ps.FloatingPointMode = prog_data->use_alt_mode;
       ps.MaximumNumberofThreadsPerPSD =

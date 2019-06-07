@@ -887,6 +887,7 @@ struct brw_wm_prog_data {
    bool uses_src_w;
    bool uses_depth_w_coefficients;
    bool uses_sample_mask;
+   bool uses_vmask;
    bool has_render_target_reads;
    bool has_side_effects;
    bool pulls_bary;
@@ -1967,7 +1968,9 @@ brw_stage_has_packed_dispatch(ASSERTED const struct intel_device_info *devinfo,
        */
       const struct brw_wm_prog_data *wm_prog_data =
          (const struct brw_wm_prog_data *)prog_data;
-      return devinfo->verx10 < 125 && !wm_prog_data->persample_dispatch;
+      return devinfo->verx10 < 125 &&
+             !wm_prog_data->persample_dispatch &&
+             wm_prog_data->uses_vmask;
    }
    case MESA_SHADER_COMPUTE:
       /* Compute shaders will be spawned with either a fully enabled dispatch

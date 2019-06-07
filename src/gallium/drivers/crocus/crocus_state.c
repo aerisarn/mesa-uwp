@@ -6441,7 +6441,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
           * incorrect for subspans where some of the pixels are unlit.  We believe
           * the bit just didn't take effect in previous generations.
           */
-         ps.VectorMaskEnable = GFX_VER >= 8;
+         ps.VectorMaskEnable = GFX_VER >= 8 && wm_prog_data->uses_vmask;
 
          ps._8PixelDispatchEnable = wm_prog_data->dispatch_8;
          ps._16PixelDispatchEnable = wm_prog_data->dispatch_16;
