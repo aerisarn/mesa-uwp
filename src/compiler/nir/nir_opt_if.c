@@ -303,9 +303,7 @@ is_trivial_bcsel(const nir_instr *instr, bool allow_non_phi_src)
       return false;
 
    nir_alu_instr *const bcsel = nir_instr_as_alu(instr);
-   if (bcsel->op != nir_op_bcsel &&
-       bcsel->op != nir_op_b32csel &&
-       bcsel->op != nir_op_fcsel)
+   if (!nir_op_is_selection(bcsel->op))
       return false;
 
    for (unsigned i = 0; i < 3; i++) {

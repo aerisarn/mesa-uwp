@@ -146,6 +146,7 @@ def type_base_type(type_):
 # sources.
 _2src_commutative = "2src_commutative "
 associative = "associative "
+selection = "selection "
 
 # global dictionary of opcodes
 opcodes = {}
@@ -1008,22 +1009,22 @@ triop("iadd3", tint, _2src_commutative + associative, "src0 + src1 + src2")
 # component on vectors). There are two versions, one for floating point
 # bools (0.0 vs 1.0) and one for integer bools (0 vs ~0).
 
-triop("fcsel", tfloat32, "", "(src0 != 0.0f) ? src1 : src2")
+triop("fcsel", tfloat32, selection, "(src0 != 0.0f) ? src1 : src2")
 
 opcode("bcsel", 0, tuint, [0, 0, 0],
-       [tbool1, tuint, tuint], False, "", "src0 ? src1 : src2")
+       [tbool1, tuint, tuint], False, selection, "src0 ? src1 : src2")
 opcode("b8csel", 0, tuint, [0, 0, 0],
-       [tbool8, tuint, tuint], False, "", "src0 ? src1 : src2")
+       [tbool8, tuint, tuint], False, selection, "src0 ? src1 : src2")
 opcode("b16csel", 0, tuint, [0, 0, 0],
-       [tbool16, tuint, tuint], False, "", "src0 ? src1 : src2")
+       [tbool16, tuint, tuint], False, selection, "src0 ? src1 : src2")
 opcode("b32csel", 0, tuint, [0, 0, 0],
-       [tbool32, tuint, tuint], False, "", "src0 ? src1 : src2")
+       [tbool32, tuint, tuint], False, selection, "src0 ? src1 : src2")
 
-triop("i32csel_gt", tint32, "", "(src0 > 0) ? src1 : src2")
-triop("i32csel_ge", tint32, "", "(src0 >= 0) ? src1 : src2")
+triop("i32csel_gt", tint32, selection, "(src0 > 0) ? src1 : src2")
+triop("i32csel_ge", tint32, selection, "(src0 >= 0) ? src1 : src2")
 
-triop("fcsel_gt", tfloat32, "", "(src0 > 0.0f) ? src1 : src2")
-triop("fcsel_ge", tfloat32, "", "(src0 >= 0.0f) ? src1 : src2")
+triop("fcsel_gt", tfloat32, selection, "(src0 > 0.0f) ? src1 : src2")
+triop("fcsel_ge", tfloat32, selection, "(src0 >= 0.0f) ? src1 : src2")
 
 # SM5 bfi assembly
 triop("bfi", tuint32, "", """

@@ -1355,6 +1355,13 @@ typedef enum {
     * Operation is associative
     */
    NIR_OP_IS_ASSOCIATIVE = (1 << 1),
+
+   /**
+    * Operation where src[0] is used to select src[1] on true or src[2] false.
+    * src[0] may be Boolean, or it may be another type used in an implicit
+    * comparison.
+    */
+   NIR_OP_IS_SELECTION = (1 << 2),
 } nir_op_algebraic_property;
 
 /* vec16 is the widest ALU op in NIR, making the max number of input of ALU
@@ -1418,6 +1425,12 @@ typedef struct nir_op_info {
 
 /** Metadata for each nir_op, indexed by opcode */
 extern const nir_op_info nir_op_infos[nir_num_opcodes];
+
+static inline bool
+nir_op_is_selection(nir_op op)
+{
+   return (nir_op_infos[op].algebraic_properties & NIR_OP_IS_SELECTION) != 0;
+}
 
 typedef struct nir_alu_instr {
    /** Base instruction */
