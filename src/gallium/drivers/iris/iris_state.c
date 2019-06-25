@@ -1016,6 +1016,22 @@ iris_init_common_context(struct iris_batch *batch)
       reg.EnabledTexelOffsetPrecisionFixMask = 1;
    }
 #endif
+
+   /* Select 256B-aligned binding table mode on Icelake through Tigerlake,
+    * which gives us larger binding table pointers, at the cost of higher
+    * alignment requirements (bits 18:8 are valid instead of 15:5).  When
+    * using this mode, we have to shift binding table pointers by 3 bits,
+    * as they're still stored in the same bit-location in the field.
+    */
+#if GFX_VER >= 11 && GFX_VERx10 < 125
+   iris_emit_reg(batch, GENX(GT_MODE), reg) {
+      reg.BindingTableAlignment = BTP_18_8;
+      reg.BindingTableAlignmentMask = true;
+   }
+#define IRIS_BT_OFFSET_SHIFT 3
+#else
+#define IRIS_BT_OFFSET_SHIFT 0
+#endif
 }
 
 /**
@@ -6022,7 +6038,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                             << stage)) {
          iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), ptr) {
             ptr._3DCommandSubOpcode = 38 + stage;
-            ptr.PointertoVSBindingTable = binder->bt_offset[stage];
+            ptr.PointertoVSBindingTable =
+               binder->bt_offset[stage] >> IRIS_BT_OFFSET_SHIFT;
          }
       }
    }
@@ -7236,7 +7253,8 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
             KSP(shader) + brw_cs_prog_data_prog_offset(cs_prog_data,
                                                        dispatch.simd_size);
          idd.SamplerStatePointer = shs->sampler_table.offset;
-         idd.BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE];
+         idd.BindingTablePointer =
+            binder->bt_offset[MESA_SHADER_COMPUTE] >> IRIS_BT_OFFSET_SHIFT;
          idd.NumberofThreadsinGPGPUThreadGroup = dispatch.threads;
       }
 
