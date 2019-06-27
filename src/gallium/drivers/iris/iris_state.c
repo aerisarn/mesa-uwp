@@ -73,7 +73,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-#if HAVE_VALGRIND
+#ifdef HAVE_VALGRIND
 #include <valgrind.h>
 #include <memcheck.h>
 #define VG(x) x

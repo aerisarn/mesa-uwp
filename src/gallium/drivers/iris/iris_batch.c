@@ -56,7 +56,7 @@
 #include <errno.h>
 #include <xf86drm.h>
 
-#if HAVE_VALGRIND
+#ifdef HAVE_VALGRIND
 #include <valgrind.h>
 #include <memcheck.h>
 #define VG(x) x
