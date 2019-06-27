@@ -375,7 +375,7 @@ bool fd_dbg(void);
 #define U642VOID(x) ((void *)(unsigned long)(x))
 #define VOID2U64(x) ((uint64_t)(unsigned long)(x))
 
-#if HAVE_VALGRIND
+#ifdef HAVE_VALGRIND
 #include <memcheck.h>
 
 /*
