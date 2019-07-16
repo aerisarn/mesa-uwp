@@ -66,3 +66,7 @@ bifrost_compiler = executable(
   ],
   build_by_default : with_tools.contains('panfrost')
 )
+
+if with_panfrost_vk
+  subdir('vulkan')
+endif
