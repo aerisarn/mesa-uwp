@@ -178,6 +178,11 @@ struct iris_bufmgr {
    /** Array of lists of cached gem objects of power-of-two sizes */
    struct bo_cache_bucket cache_bucket[14 * 4];
    int num_buckets;
+
+   /** Same as cache_bucket, but for local memory gem objects */
+   struct bo_cache_bucket local_cache_bucket[14 * 4];
+   int num_local_buckets;
+
    time_t time;
 
    struct hash_table *name_table;
@@ -240,7 +245,7 @@ find_and_ref_external_bo(struct hash_table *ht, unsigned int key)
  * was queried instead of iterating the size through all the buckets.
  */
 static struct bo_cache_bucket *
-bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size)
+bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size, bool local)
 {
    /* Calculating the pages and rounding up to the page size. */
    const unsigned pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
@@ -270,8 +275,11 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size)
    /* Calculating the index based on the row and column. */
    const unsigned index = (row * 4) + (col - 1);
 
-   return (index < bufmgr->num_buckets) ?
-          &bufmgr->cache_bucket[index] : NULL;
+   int num_buckets = local ? bufmgr->num_local_buckets : bufmgr->num_buckets;
+   struct bo_cache_bucket *buckets = local ?
+      bufmgr->local_cache_bucket : bufmgr->cache_bucket;
+
+   return (index < num_buckets) ? &buckets[index] : NULL;
 }
 
 enum iris_memory_zone
@@ -537,7 +545,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
 {
    struct iris_bo *bo;
    unsigned int page_size = getpagesize();
-   struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size);
+   struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size, false);
 
    /* Round the size up to the bucket size, or if we don't have caching
     * at this size, a multiple of the page size.
@@ -829,6 +837,19 @@ cleanup_bo_cache(struct iris_bufmgr *bufmgr, time_t time)
       }
    }
 
+   for (i = 0; i < bufmgr->num_local_buckets; i++) {
+      struct bo_cache_bucket *bucket = &bufmgr->local_cache_bucket[i];
+
+      list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
+         if (time - bo->free_time <= 1)
+            break;
+
+         list_del(&bo->head);
+
+         bo_free(bo);
+      }
+   }
+
    list_for_each_entry_safe(struct iris_bo, bo, &bufmgr->zombie_list, head) {
       /* Stop once we reach a busy BO - all others past this point were
        * freed more recently so are likely also busy.
@@ -853,7 +874,7 @@ bo_unreference_final(struct iris_bo *bo, time_t time)
 
    bucket = NULL;
    if (bo->reusable)
-      bucket = bucket_for_size(bufmgr, bo->size);
+      bucket = bucket_for_size(bufmgr, bo->size, false);
    /* Put the buffer into our internal cache for reuse if we can. */
    if (bucket && iris_bo_madvise(bo, I915_MADV_DONTNEED)) {
       bo->free_time = time;
@@ -1383,23 +1404,31 @@ iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
 }
 
 static void
-add_bucket(struct iris_bufmgr *bufmgr, int size)
+add_bucket(struct iris_bufmgr *bufmgr, int size, bool local)
 {
-   unsigned int i = bufmgr->num_buckets;
+   unsigned int i = local ?
+      bufmgr->num_local_buckets : bufmgr->num_buckets;
+
+   struct bo_cache_bucket *buckets = local ?
+      bufmgr->local_cache_bucket : bufmgr->cache_bucket;
 
    assert(i < ARRAY_SIZE(bufmgr->cache_bucket));
 
-   list_inithead(&bufmgr->cache_bucket[i].head);
-   bufmgr->cache_bucket[i].size = size;
-   bufmgr->num_buckets++;
+   list_inithead(&buckets[i].head);
+   buckets[i].size = size;
 
-   assert(bucket_for_size(bufmgr, size) == &bufmgr->cache_bucket[i]);
-   assert(bucket_for_size(bufmgr, size - 2048) == &bufmgr->cache_bucket[i]);
-   assert(bucket_for_size(bufmgr, size + 1) != &bufmgr->cache_bucket[i]);
+   if (local)
+      bufmgr->num_local_buckets++;
+   else
+      bufmgr->num_buckets++;
+
+   assert(bucket_for_size(bufmgr, size, local) == &buckets[i]);
+   assert(bucket_for_size(bufmgr, size - 2048, local) == &buckets[i]);
+   assert(bucket_for_size(bufmgr, size + 1, local) != &buckets[i]);
 }
 
 static void
-init_cache_buckets(struct iris_bufmgr *bufmgr)
+init_cache_buckets(struct iris_bufmgr *bufmgr, bool local)
 {
    uint64_t size, cache_max_size = 64 * 1024 * 1024;
 
@@ -1411,17 +1440,17 @@ init_cache_buckets(struct iris_bufmgr *bufmgr)
     * width/height alignment and rounding of sizes to pages will
     * get us useful cache hit rates anyway)
     */
-   add_bucket(bufmgr, PAGE_SIZE);
-   add_bucket(bufmgr, PAGE_SIZE * 2);
-   add_bucket(bufmgr, PAGE_SIZE * 3);
+   add_bucket(bufmgr, PAGE_SIZE, local);
+   add_bucket(bufmgr, PAGE_SIZE * 2, local);
+   add_bucket(bufmgr, PAGE_SIZE * 3, local);
 
    /* Initialize the linked lists for BO reuse cache. */
    for (size = 4 * PAGE_SIZE; size <= cache_max_size; size *= 2) {
-      add_bucket(bufmgr, size);
+      add_bucket(bufmgr, size, local);
 
-      add_bucket(bufmgr, size + size * 1 / 4);
-      add_bucket(bufmgr, size + size * 2 / 4);
-      add_bucket(bufmgr, size + size * 3 / 4);
+      add_bucket(bufmgr, size + size * 1 / 4, local);
+      add_bucket(bufmgr, size + size * 2 / 4, local);
+      add_bucket(bufmgr, size + size * 3 / 4, local);
    }
 }
 
@@ -1710,7 +1739,8 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
                       IRIS_MEMZONE_OTHER_START,
                       (gtt_size - _4GB) - IRIS_MEMZONE_OTHER_START);
 
-   init_cache_buckets(bufmgr);
+   init_cache_buckets(bufmgr, false);
+   init_cache_buckets(bufmgr, true);
 
    bufmgr->name_table =
       _mesa_hash_table_create(NULL, _mesa_hash_uint, _mesa_key_uint_equal);
