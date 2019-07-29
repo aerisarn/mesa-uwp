@@ -238,6 +238,11 @@ struct iris_bo {
 
    /** The mmap coherency mode selected at BO allocation time */
    enum iris_mmap_mode mmap_mode;
+
+   /**
+    * Boolean of whether this was allocated from local memory
+    */
+   bool local;
 };
 
 #define BO_ALLOC_ZEROED     (1<<0)

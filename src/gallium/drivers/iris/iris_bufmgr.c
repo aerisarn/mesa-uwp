@@ -496,26 +496,66 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
 }
 
 static struct iris_bo *
-alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size)
+alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, bool local)
 {
    struct iris_bo *bo = bo_calloc();
    if (!bo)
       return NULL;
 
-   struct drm_i915_gem_create create = { .size = bo_size };
-
-   /* All new BOs we get from the kernel are zeroed, so we don't need to
-    * worry about that here.
+   /* If we have vram size, we have multiple memory regions and should choose
+    * one of them.
     */
-   if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CREATE, &create) != 0) {
-      free(bo);
-      return NULL;
+   if (bufmgr->vram.size > 0) {
+      /* All new BOs we get from the kernel are zeroed, so we don't need to
+       * worry about that here.
+       */
+      struct drm_i915_gem_memory_class_instance regions[2];
+      uint32_t nregions = 0;
+      if (local) {
+         /* For vram allocations, still use system memory as a fallback. */
+         regions[nregions++] = bufmgr->vram.region;
+         regions[nregions++] = bufmgr->sys.region;
+      } else {
+         regions[nregions++] = bufmgr->sys.region;
+      }
+
+      struct drm_i915_gem_create_ext_memory_regions ext_regions = {
+         .base = { .name = I915_GEM_CREATE_EXT_MEMORY_REGIONS },
+         .num_regions = nregions,
+         .regions = (uintptr_t)regions,
+      };
+
+      struct drm_i915_gem_create_ext create = {
+         .size = bo_size,
+         .extensions = (uintptr_t)&ext_regions,
+      };
+
+      /* It should be safe to use GEM_CREATE_EXT without checking, since we are
+       * in the side of the branch where discrete memory is available. So we
+       * can assume GEM_CREATE_EXT is supported already.
+       */
+      if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CREATE_EXT, &create) != 0) {
+         free(bo);
+         return NULL;
+      }
+      bo->gem_handle = create.handle;
+   } else {
+      struct drm_i915_gem_create create = { .size = bo_size };
+
+      /* All new BOs we get from the kernel are zeroed, so we don't need to
+       * worry about that here.
+       */
+      if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CREATE, &create) != 0) {
+         free(bo);
+         return NULL;
+      }
+      bo->gem_handle = create.handle;
    }
 
-   bo->gem_handle = create.handle;
    bo->bufmgr = bufmgr;
    bo->size = bo_size;
    bo->idle = true;
+   bo->local = local;
 
    /* Calling set_domain() will allocate pages for the BO outside of the
     * struct mutex lock in the kernel, which is more efficient than waiting
@@ -545,7 +585,9 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
 {
    struct iris_bo *bo;
    unsigned int page_size = getpagesize();
-   struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size, false);
+   bool local = bufmgr->vram.size > 0 &&
+      !(flags & BO_ALLOC_COHERENT || flags & BO_ALLOC_SMEM);
+   struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size, local);
 
    /* Round the size up to the bucket size, or if we don't have caching
     * at this size, a multiple of the page size.
@@ -573,7 +615,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    mtx_unlock(&bufmgr->lock);
 
    if (!bo) {
-      bo = alloc_fresh_bo(bufmgr, bo_size);
+      bo = alloc_fresh_bo(bufmgr, bo_size, local);
       if (!bo)
          return NULL;
    }
@@ -616,8 +658,9 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
       }
    }
 
-   DBG("bo_create: buf %d (%s) (%s memzone) %llub\n", bo->gem_handle,
-       bo->name, memzone_name(memzone), (unsigned long long) size);
+   DBG("bo_create: buf %d (%s) (%s memzone) (%s) %llub\n", bo->gem_handle,
+       bo->name, memzone_name(memzone), bo->local ? "local" : "system",
+       (unsigned long long) size);
 
    return bo;
 
@@ -874,7 +917,7 @@ bo_unreference_final(struct iris_bo *bo, time_t time)
 
    bucket = NULL;
    if (bo->reusable)
-      bucket = bucket_for_size(bufmgr, bo->size, false);
+      bucket = bucket_for_size(bufmgr, bo->size, bo->local);
    /* Put the buffer into our internal cache for reuse if we can. */
    if (bucket && iris_bo_madvise(bo, I915_MADV_DONTNEED)) {
       bo->free_time = time;
