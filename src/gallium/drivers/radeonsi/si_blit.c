@@ -1337,7 +1337,8 @@ static void si_flush_resource(struct pipe_context *ctx, struct pipe_resource *re
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_texture *tex = (struct si_texture *)res;
 
-   assert(res->target != PIPE_BUFFER);
+   if (res->target == PIPE_BUFFER)
+      return;
 
    if (!tex->is_depth && (tex->cmask_buffer || vi_dcc_enabled(tex, 0))) {
       si_blit_decompress_color(sctx, tex, 0, res->last_level, 0, util_max_layer(res, 0),
