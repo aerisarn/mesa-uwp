@@ -773,7 +773,6 @@ spec/egl 1.4/egl-context-priority: skip
 spec/egl 1.4/egl-copy-buffers: fail
 spec/egl 1.4/egl-flush-external: skip
 spec/egl 1.4/egl-invalid-attr: skip
-spec/egl 1.4/eglcreatepbuffersurface with egl_samples set: skip
 spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglclientwaitsynckhr_native_zero_timeout: skip
 spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglclientwaitsynckhr_nonzero_timeout: skip
 spec/egl_android_native_fence_sync/egl_khr_fence_sync android_native/eglcreatesynckhr_default_attributes: skip
