@@ -106,7 +106,6 @@ spec@arb_color_buffer_float@gl_rgba32f-render-fog,Fail
 spec@arb_color_buffer_float@gl_rgba32f-render-sanity,Fail
 spec@arb_color_buffer_float@gl_rgba32f-render-sanity-fog,Fail
 spec@arb_compute_shader@minmax,Fail
-spec@arb_copy_buffer@targets,Fail
 spec@arb_depth_buffer_float@fbo-generatemipmap-formats,Fail
 spec@arb_depth_buffer_float@fbo-generatemipmap-formats@GL_DEPTH_COMPONENT32F,Fail
 spec@arb_depth_buffer_float@fbo-generatemipmap-formats@GL_DEPTH_COMPONENT32F NPOT,Fail
@@ -327,3 +326,6 @@ spec@nv_read_depth@read_depth_gles3,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
 spec@oes_point_sprite@arb_point_sprite-checkerboard_gles1,Fail
 spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
+
+# Seems a bug in the test; it works if overriding GL version to 2.1
+spec@arb_texture_buffer_range@ranges-2 compat,Fail

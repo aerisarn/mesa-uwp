@@ -282,6 +282,12 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_SUPPORTED_PRIM_MODES_WITH_RESTART:
                 return screen->prim_types;
 
+        case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
+                return true;
+
+        case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
+                return 256;
+
         case PIPE_CAP_IMAGE_STORE_FORMATTED:
                 return false;
 
