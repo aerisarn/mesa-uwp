@@ -998,6 +998,7 @@ static const struct intel_device_info intel_device_info_adl_gt2 = {
    GFX12_GT_FEATURES(2),                        \
    .is_dg1 = true,                              \
    .has_llc = false,                            \
+   .has_local_mem = true,                       \
    .urb.size = 768,                             \
    .simulator_id = 30
 
