@@ -3593,8 +3593,8 @@
     <field name="Stencil Reference Value" start="104" end="111" type="uint"/>
   </instruction>
 
-  <instruction name="3DSTATE_WM_HZ_OP" bias="2" length="5" engine="render">
-    <field name="DWord Length" start="0" end="7" type="uint" default="3"/>
+  <instruction name="3DSTATE_WM_HZ_OP" bias="2" length="6" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="4"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="82"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
