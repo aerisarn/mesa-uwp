@@ -30,10 +30,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <assert.h>
 
 #include "backend.h"
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
+#define VER_MIN(a, b) ((a) < (b) ? (a) : (b))
 
 extern const struct gbm_backend gbm_dri_backend;
 
@@ -51,15 +53,19 @@ find_backend(const char *name, int fd)
 {
    struct gbm_device *dev = NULL;
    unsigned i;
+   uint32_t abi_ver;
 
    for (i = 0; i < ARRAY_SIZE(backends); ++i) {
       if (name && strcmp(backends[i].name, name))
          continue;
 
-      dev = backends[i].backend->create_device(fd);
+      abi_ver = VER_MIN(GBM_BACKEND_ABI_VERSION,
+                        backends[i].backend->v0.backend_version);
+      dev = backends[i].backend->v0.create_device(fd, abi_ver);
 
       if (dev) {
-         dev->backend_desc = &backends[i];
+         assert(abi_ver == dev->v0.backend_version);
+         dev->v0.backend_desc = &backends[i];
          break;
       }
    }
@@ -96,5 +102,5 @@ _gbm_create_device(int fd)
 void
 _gbm_device_destroy(struct gbm_device *gbm)
 {
-   gbm->destroy(gbm);
+   gbm->v0.destroy(gbm);
 }
