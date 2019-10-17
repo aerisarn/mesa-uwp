@@ -764,7 +764,11 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
         /* Use a tiled layout if we can, for better 3D performance. */
         bool should_tile = true;
 
-        /* VBOs/PBOs are untiled (and 1 height). */
+        assert(tmpl->target != PIPE_BUFFER ||
+               (tmpl->format == PIPE_FORMAT_NONE ||
+                util_format_get_blocksize(tmpl->format) == 1));
+
+        /* VBOs/PBOs/Texture Buffer Objects are untiled (and 1 height). */
         if (tmpl->target == PIPE_BUFFER)
                 should_tile = false;
 
