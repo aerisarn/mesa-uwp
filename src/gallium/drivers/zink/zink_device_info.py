@@ -171,6 +171,10 @@ EXTENSIONS = [
         properties=True),
     Extension("VK_KHR_descriptor_update_template",
         alias="template"),
+    Extension("VK_EXT_line_rasterization",
+        alias="line_rast",
+        properties=True,
+        features=True),
 ]
 
 # constructor: Versions(device_version(major, minor, patch), struct_version(major, minor))

@@ -145,6 +145,17 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       rast_state.pNext = &pv_state;
    }
 
+   VkPipelineRasterizationLineStateCreateInfoEXT rast_line_state;
+   if (screen->info.have_EXT_line_rasterization) {
+      rast_line_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT;
+      rast_line_state.pNext = rast_state.pNext;
+      rast_line_state.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
+      rast_line_state.stippledLineEnable = VK_FALSE;
+      rast_line_state.lineStippleFactor = 0;
+      rast_line_state.lineStipplePattern = 0;
+      rast_state.pNext = &rast_line_state;
+   }
+
    VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {0};
    depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
    depth_stencil_state.depthTestEnable = state->depth_stencil_alpha_state->depth_test;
