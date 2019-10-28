@@ -459,6 +459,14 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
                        VK_FRONT_FACE_COUNTER_CLOCKWISE :
                        VK_FRONT_FACE_CLOCKWISE;
 
+   if (rs_state->line_stipple_enable) {
+      state->hw_state.line_stipple_factor = rs_state->line_stipple_factor;
+      state->hw_state.line_stipple_pattern = rs_state->line_stipple_pattern;
+   } else {
+      state->hw_state.line_stipple_factor = 0;
+      state->hw_state.line_stipple_pattern = UINT16_MAX;
+   }
+
    state->offset_point = rs_state->offset_point;
    state->offset_line = rs_state->offset_line;
    state->offset_tri = rs_state->offset_tri;

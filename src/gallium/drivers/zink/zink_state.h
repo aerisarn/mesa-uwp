@@ -53,6 +53,8 @@ struct zink_rasterizer_hw_state {
    unsigned depth_clamp : 1;
    unsigned rasterizer_discard : 1;
    unsigned force_persample_interp : 1;
+   unsigned line_stipple_factor : 8;
+   unsigned line_stipple_pattern : 16;
 };
 
 struct zink_rasterizer_state {

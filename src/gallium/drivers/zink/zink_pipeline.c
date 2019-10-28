@@ -150,9 +150,16 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       rast_line_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT;
       rast_line_state.pNext = rast_state.pNext;
       rast_line_state.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
-      rast_line_state.stippledLineEnable = VK_FALSE;
-      rast_line_state.lineStippleFactor = 0;
-      rast_line_state.lineStipplePattern = 0;
+
+      if (state->rast_state->line_stipple_pattern != UINT16_MAX) {
+         rast_line_state.stippledLineEnable = VK_TRUE;
+         rast_line_state.lineStippleFactor = state->rast_state->line_stipple_factor + 1;
+         rast_line_state.lineStipplePattern = state->rast_state->line_stipple_pattern;
+      } else {
+         rast_line_state.stippledLineEnable = VK_FALSE;
+         rast_line_state.lineStippleFactor = 0;
+         rast_line_state.lineStipplePattern = 0;
+      }
       rast_state.pNext = &rast_line_state;
    }
 
