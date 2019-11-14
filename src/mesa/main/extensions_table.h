@@ -380,6 +380,7 @@ EXT(KHR_texture_compression_astc_sliced_3d  , KHR_texture_compression_astc_slice
 EXT(MESA_bgra                               , dummy_true                             ,  x ,  x ,  x , ES2, 2021)
 EXT(MESA_framebuffer_flip_y                 , MESA_framebuffer_flip_y                ,  43,  43,  x ,  30, 2018)
 EXT(MESA_pack_invert                        , MESA_pack_invert                       , GLL, GLC,  x ,  x , 2002)
+EXT(MESA_sampler_objects                    , dummy_true                             ,  x ,  x ,  x , ES2, 2019)
 EXT(MESA_shader_integer_functions           , MESA_shader_integer_functions          , GLL, GLC,  x ,  30, 2016)
 EXT(MESA_texture_signed_rgba                , EXT_texture_snorm                      , GLL, GLC,  x ,  x , 2009)
 EXT(MESA_tile_raster_order                  , MESA_tile_raster_order                 , GLL, GLC,  x , ES2, 2017)
