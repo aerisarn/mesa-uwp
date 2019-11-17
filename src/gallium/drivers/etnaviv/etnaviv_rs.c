@@ -837,14 +837,6 @@ etna_blit_rs(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
     * For the rest, fall back to util_blitter
     * XXX this goes wrong when source surface is supertiled. */
 
-   if (blit_info->src.resource->nr_samples > 1 &&
-       blit_info->dst.resource->nr_samples <= 1 &&
-       !util_format_is_depth_or_stencil(blit_info->src.resource->format) &&
-       !util_format_is_pure_integer(blit_info->src.resource->format)) {
-      DBG("color resolve unimplemented");
-      return false;
-   }
-
    return etna_try_rs_blit(pctx, blit_info);
 }
 
