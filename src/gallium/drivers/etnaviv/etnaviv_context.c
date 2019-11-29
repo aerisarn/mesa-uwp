@@ -248,6 +248,9 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                 u_decomposed_prim(info->mode) == MESA_PRIM_TRIANGLES))
       return;
 
+   if (!etna_render_condition_check(pctx))
+      return;
+
    int prims = u_decomposed_prims_for_vertices(info->mode, draws[0].count);
    if (unlikely(prims <= 0)) {
       DBG("Invalid draw primitive mode=%i or no primitives to be drawn", info->mode);
@@ -663,4 +666,23 @@ fail:
    pctx->destroy(pctx);
 
    return NULL;
+}
+
+bool
+etna_render_condition_check(struct pipe_context *pctx)
+{
+   struct etna_context *ctx = etna_context(pctx);
+
+   if (!ctx->cond_query)
+      return true;
+
+   union pipe_query_result res = { 0 };
+   bool wait =
+      ctx->cond_mode != PIPE_RENDER_COND_NO_WAIT &&
+      ctx->cond_mode != PIPE_RENDER_COND_BY_REGION_NO_WAIT;
+
+   if (pctx->get_query_result(pctx, ctx->cond_query, wait, &res))
+      return (bool)res.u64 != ctx->cond_cond;
+
+   return true;
 }

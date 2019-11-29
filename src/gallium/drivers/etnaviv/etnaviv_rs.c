@@ -431,6 +431,9 @@ etna_clear_rs(struct pipe_context *pctx, unsigned buffers, const struct pipe_sci
 {
    struct etna_context *ctx = etna_context(pctx);
 
+   if (!etna_render_condition_check(pctx))
+      return;
+
    /* Flush color and depth cache before clearing anything.
     * This is especially important when coming from another surface, as
     * otherwise it may clear part of the old surface instead. */
