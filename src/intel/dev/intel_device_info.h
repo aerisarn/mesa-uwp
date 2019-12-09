@@ -70,6 +70,7 @@ struct intel_device_info
    bool is_rocketlake;
    bool is_dg1;
    bool is_alderlake;
+   bool is_dg2;
 
    bool has_hiz_and_separate_stencil;
    bool must_use_separate_stencil;
