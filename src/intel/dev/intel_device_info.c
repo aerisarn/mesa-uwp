@@ -1028,6 +1028,31 @@ static const struct intel_device_info intel_device_info_sg1 = {
    GFX12_DG1_SG1_FEATURES,
 };
 
+#define XEHP_FEATURES(_gt, _slices, _l3)                        \
+   GFX12_FEATURES(_gt, _slices, _l3),                           \
+   .verx10 = 125,                                               \
+   .has_llc = false,                                            \
+   .has_local_mem = true,                                       \
+   .has_aux_map = false,                                        \
+   .simulator_id = 29,                                          \
+   .cs_prefetch_size = 1024
+
+#define DG2_FEATURES                                            \
+   /* (Sub)slice info comes from the kernel topology info */    \
+   XEHP_FEATURES(0, 1, 0),                                      \
+   .num_subslices = dual_subslices(1),                          \
+   .has_lsc = true
+
+UNUSED static const struct intel_device_info intel_device_info_dg2_g10 = {
+   DG2_FEATURES,
+   .platform = INTEL_PLATFORM_DG2_G10,
+};
+
+UNUSED static const struct intel_device_info intel_device_info_dg2_g11 = {
+   DG2_FEATURES,
+   .platform = INTEL_PLATFORM_DG2_G11,
+};
+
 static void
 reset_masks(struct intel_device_info *devinfo)
 {
