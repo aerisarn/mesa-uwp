@@ -39,27 +39,12 @@ extern const struct gbm_backend gbm_dri_backend;
 
 struct backend_desc {
    const char *name;
-   const struct gbm_backend *builtin;
+   const struct gbm_backend *backend;
 };
 
 static const struct backend_desc backends[] = {
    { "gbm_dri.so", &gbm_dri_backend },
 };
-
-static const void *
-load_backend(const struct backend_desc *backend)
-{
-   const void *init = NULL;
-
-   if (backend == NULL)
-      return NULL;
-
-   if (backend->builtin) {
-      init = backend->builtin;
-   }
-
-   return init;
-}
 
 static const struct backend_desc *
 find_backend(const char *name)
@@ -80,24 +65,22 @@ find_backend(const char *name)
 struct gbm_device *
 _gbm_create_device(int fd)
 {
-   const struct gbm_backend *backend = NULL;
+   const struct backend_desc *backend = NULL;
    struct gbm_device *dev = NULL;
    unsigned i;
    const char *b;
 
    b = getenv("GBM_BACKEND");
    if (b)
-      backend = load_backend(find_backend(b));
+      backend = find_backend(b);
 
    if (backend)
-      dev = backend->create_device(fd);
+      dev = backend->backend->create_device(fd);
 
    for (i = 0; i < ARRAY_SIZE(backends) && dev == NULL; ++i) {
-      backend = load_backend(&backends[i]);
-      if (backend == NULL)
-         continue;
+      backend = &backends[i];
 
-      dev = backend->create_device(fd);
+      dev = backend->backend->create_device(fd);
    }
    
    return dev;
