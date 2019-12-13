@@ -1284,6 +1284,9 @@ panfrost_resource_set_stencil(struct pipe_resource *prsrc,
 static struct pipe_resource *
 panfrost_resource_get_stencil(struct pipe_resource *prsrc)
 {
+        if (!pan_resource(prsrc)->separate_stencil)
+                return NULL;
+
         return &pan_resource(prsrc)->separate_stencil->base;
 }
 
