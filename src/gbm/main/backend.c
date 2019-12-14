@@ -52,11 +52,11 @@ find_backend(const char *name, int fd)
    struct gbm_device *dev = NULL;
    unsigned i;
 
-   for (i = 0; i < ARRAY_SIZE(backends); ++i) {
-      if (strcmp(backends[i].name, name) == 0) {
-         dev = backends[i].backend->create_device(fd);
-         break;
-      }
+   for (i = 0; i < ARRAY_SIZE(backends) && dev == NULL; ++i) {
+      if (name && strcmp(backends[i].name, name))
+         continue;
+
+      dev = backends[i].backend->create_device(fd);
    }
 
    return dev;
@@ -65,20 +65,15 @@ find_backend(const char *name, int fd)
 struct gbm_device *
 _gbm_create_device(int fd)
 {
-   const struct backend_desc *backend = NULL;
    struct gbm_device *dev = NULL;
-   unsigned i;
    const char *b;
 
    b = getenv("GBM_BACKEND");
    if (b)
       dev = find_backend(b, fd);
 
-   for (i = 0; i < ARRAY_SIZE(backends) && dev == NULL; ++i) {
-      backend = &backends[i];
+   if (!dev)
+      dev = find_backend(NULL, fd);
 
-      dev = backend->backend->create_device(fd);
-   }
-   
    return dev;
 }
