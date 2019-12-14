@@ -278,4 +278,20 @@ struct gbm_core {
    struct gbm_core_v0 v0;
 };
 
+/**
+ * The entrypoint an external GBM backend exports.
+ *
+ * Prior to creating any devices using the backend, GBM will look up and call
+ * this function to request the backend's interface and convey the loader's
+ * version and exported interface to the backend.
+ *
+ * DO NOT MODIFY THIS FUNCTION NAME OR PROTOTYPE. It must remain unchanged to
+ * preserve backwards compatibility with existing GBM backends.
+ */
+#define GBM_GET_BACKEND_PROC gbmint_get_backend
+#define _GBM_MKSTRX(s) _GBM_MKSTR(s)
+#define _GBM_MKSTR(s) #s
+#define GBM_GET_BACKEND_PROC_NAME _GBM_MKSTRX(GBM_GET_BACKEND_PROC)
+typedef const struct gbm_backend *(*GBM_GET_BACKEND_PROC_PTR)(const struct gbm_core *gbm_core);
+
 #endif

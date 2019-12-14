@@ -216,6 +216,8 @@ struct gbm_core_abi0 {
    struct gbm_core_v0_abi0 v0;
 };
 
+typedef const struct gbm_backend *(*GBM_GET_BACKEND_PROC_PTR_abi0)(const struct gbm_core *gbm_core);
+
 /*
  * Structure/member ABI-checking helper macros
  */
@@ -310,6 +312,17 @@ struct gbm_core_abi0 {
       }                                                                    \
    } while (0)
 
+#define CHECK_PROC(proc, a_ver, b_ver)                                     \
+   do {                                                                    \
+      proc ## a_ver a;                                                     \
+      proc ## b_ver b = NULL;                                              \
+      a = b;                                                               \
+      (void)a;                                                             \
+   } while (0)
+
+#define CHECK_PROC_CURRENT(proc, a_ver)                                    \
+   CHECK_PROC(proc, a_ver,)
+
 int main(int argc, char **argv)
 {
    /********************************************/
@@ -400,6 +413,9 @@ int main(int argc, char **argv)
 
    /* Size of ABI-versioned substructures verified by above member checks */
    CHECK_SIZE_CURRENT  (gbm_core, _abi0);
+
+
+   CHECK_PROC_CURRENT  (GBM_GET_BACKEND_PROC_PTR, _abi0);
 
    return 0;
 }
