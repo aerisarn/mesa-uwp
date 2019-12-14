@@ -46,20 +46,20 @@ static const struct backend_desc backends[] = {
    { "gbm_dri.so", &gbm_dri_backend },
 };
 
-static const struct backend_desc *
-find_backend(const char *name)
+static struct gbm_device *
+find_backend(const char *name, int fd)
 {
-   const struct backend_desc *backend = NULL;
+   struct gbm_device *dev = NULL;
    unsigned i;
 
    for (i = 0; i < ARRAY_SIZE(backends); ++i) {
       if (strcmp(backends[i].name, name) == 0) {
-         backend = &backends[i];
+         dev = backends[i].backend->create_device(fd);
          break;
       }
    }
 
-   return backend;
+   return dev;
 }
 
 struct gbm_device *
@@ -72,10 +72,7 @@ _gbm_create_device(int fd)
 
    b = getenv("GBM_BACKEND");
    if (b)
-      backend = find_backend(b);
-
-   if (backend)
-      dev = backend->backend->create_device(fd);
+      dev = find_backend(b, fd);
 
    for (i = 0; i < ARRAY_SIZE(backends) && dev == NULL; ++i) {
       backend = &backends[i];
