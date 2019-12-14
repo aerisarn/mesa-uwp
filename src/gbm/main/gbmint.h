@@ -42,6 +42,8 @@
  * \brief Internal implementation details of gbm
  */
 
+struct gbm_backend_desc;
+
 /**
  * The device used for the memory allocation.
  *
@@ -50,6 +52,8 @@
 struct gbm_device {
    /* Hack to make a gbm_device detectable by its first element. */
    struct gbm_device *(*dummy)(int);
+
+   const struct gbm_backend_desc *backend_desc;
 
    int fd;
    const char *name;

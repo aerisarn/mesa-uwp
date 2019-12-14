@@ -37,12 +37,12 @@
 
 extern const struct gbm_backend gbm_dri_backend;
 
-struct backend_desc {
+struct gbm_backend_desc {
    const char *name;
    const struct gbm_backend *backend;
 };
 
-static const struct backend_desc backends[] = {
+static const struct gbm_backend_desc backends[] = {
    { "gbm_dri.so", &gbm_dri_backend },
 };
 
@@ -52,11 +52,16 @@ find_backend(const char *name, int fd)
    struct gbm_device *dev = NULL;
    unsigned i;
 
-   for (i = 0; i < ARRAY_SIZE(backends) && dev == NULL; ++i) {
+   for (i = 0; i < ARRAY_SIZE(backends); ++i) {
       if (name && strcmp(backends[i].name, name))
          continue;
 
       dev = backends[i].backend->create_device(fd);
+
+      if (dev) {
+         dev->backend_desc = &backends[i];
+         break;
+      }
    }
 
    return dev;
@@ -86,4 +91,10 @@ _gbm_create_device(int fd)
       dev = find_backend(NULL, fd);
 
    return dev;
+}
+
+void
+_gbm_device_destroy(struct gbm_device *gbm)
+{
+   gbm->destroy(gbm);
 }
