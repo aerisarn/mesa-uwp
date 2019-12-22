@@ -1089,6 +1089,17 @@ dri2_create_image_with_modifiers(__DRIscreen *dri_screen,
                                    loaderPrivate);
 }
 
+static __DRIimage *
+dri2_create_image_with_modifiers2(__DRIscreen *dri_screen,
+                                 int width, int height, int format,
+                                 const uint64_t *modifiers,
+                                 const unsigned count, unsigned int use,
+                                 void *loaderPrivate)
+{
+   return dri2_create_image_common(dri_screen, width, height, format, use,
+                                   modifiers, count, loaderPrivate);
+}
+
 static bool
 dri2_query_image_common(__DRIimage *image, int attrib, int *value)
 {
@@ -1679,7 +1690,7 @@ dri2_get_capabilities(__DRIscreen *_screen)
 
 /* The extension is modified during runtime if DRI_PRIME is detected */
 static const __DRIimageExtension dri2ImageExtensionTempl = {
-    .base = { __DRI_IMAGE, 18 },
+    .base = { __DRI_IMAGE, 19 },
 
     .createImageFromName          = dri2_create_image_from_name,
     .createImageFromRenderbuffer  = dri2_create_image_from_renderbuffer,
@@ -1704,6 +1715,7 @@ static const __DRIimageExtension dri2ImageExtensionTempl = {
     .queryDmaBufModifiers         = NULL,
     .queryDmaBufFormatModifierAttribs = NULL,
     .createImageFromRenderbuffer2 = dri2_create_image_from_renderbuffer2,
+    .createImageWithModifiers2    = NULL,
 };
 
 static const __DRIrobustnessExtension dri2Robustness = {
@@ -2165,9 +2177,12 @@ dri2_init_screen_extensions(struct dri_screen *screen,
    nExt = &screen->screen_extensions[ARRAY_SIZE(dri_screen_extensions_base)];
 
    screen->image_extension = dri2ImageExtensionTempl;
-   if (pscreen->resource_create_with_modifiers)
+   if (pscreen->resource_create_with_modifiers) {
       screen->image_extension.createImageWithModifiers =
          dri2_create_image_with_modifiers;
+      screen->image_extension.createImageWithModifiers2 =
+         dri2_create_image_with_modifiers2;
+   }
 
    if (pscreen->get_param(pscreen, PIPE_CAP_DMABUF)) {
       uint64_t cap;
