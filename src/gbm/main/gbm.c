@@ -497,6 +497,18 @@ gbm_bo_create_with_modifiers(struct gbm_device *gbm,
                              const uint64_t *modifiers,
                              const unsigned int count)
 {
+   return gbm_bo_create_with_modifiers2(gbm, width, height, format, modifiers,
+                                        count, 0);
+}
+
+GBM_EXPORT struct gbm_bo *
+gbm_bo_create_with_modifiers2(struct gbm_device *gbm,
+                              uint32_t width, uint32_t height,
+                              uint32_t format,
+                              const uint64_t *modifiers,
+                              const unsigned int count,
+                              uint32_t flags)
+{
    if (width == 0 || height == 0) {
       errno = EINVAL;
       return NULL;
@@ -507,7 +519,12 @@ gbm_bo_create_with_modifiers(struct gbm_device *gbm,
       return NULL;
    }
 
-   return gbm->v0.bo_create(gbm, width, height, format, 0, modifiers, count);
+   if (modifiers && (flags & GBM_BO_USE_LINEAR)) {
+      errno = EINVAL;
+      return NULL;
+   }
+
+   return gbm->v0.bo_create(gbm, width, height, format, flags, modifiers, count);
 }
 
 /**
@@ -631,12 +648,29 @@ gbm_surface_create_with_modifiers(struct gbm_device *gbm,
                                   const uint64_t *modifiers,
                                   const unsigned int count)
 {
+   return gbm_surface_create_with_modifiers2(gbm, width, height, format,
+                                             modifiers, count, 0);
+}
+
+GBM_EXPORT struct gbm_surface *
+gbm_surface_create_with_modifiers2(struct gbm_device *gbm,
+                                   uint32_t width, uint32_t height,
+                                   uint32_t format,
+                                   const uint64_t *modifiers,
+                                   const unsigned int count,
+                                   uint32_t flags)
+{
    if ((count && !modifiers) || (modifiers && !count)) {
       errno = EINVAL;
       return NULL;
    }
 
-   return gbm->v0.surface_create(gbm, width, height, format, 0,
+   if (modifiers && (flags & GBM_BO_USE_LINEAR)) {
+      errno = EINVAL;
+      return NULL;
+   }
+
+   return gbm->v0.surface_create(gbm, width, height, format, flags,
                                  modifiers, count);
 }
 

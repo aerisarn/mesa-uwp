@@ -1185,11 +1185,6 @@ gbm_dri_bo_create(struct gbm_device *gbm,
    int dri_format;
    unsigned dri_use = 0;
 
-   /* Callers of this may specify a modifier, or a dri usage, but not both. The
-    * newer modifier interface deprecates the older usage flags.
-    */
-   assert(!(usage && count));
-
    format = gbm_core.v0.format_canonicalize(format);
 
    if (usage & GBM_BO_USE_WRITE || dri->image == NULL)
