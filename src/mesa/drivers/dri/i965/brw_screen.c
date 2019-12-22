@@ -731,11 +731,6 @@ brw_create_image_common(__DRIscreen *dri_screen,
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
    bool ok;
 
-   /* Callers of this may specify a modifier, or a dri usage, but not both. The
-    * newer modifier interface deprecates the older usage flags.
-    */
-   assert(!(use && count));
-
    if (use & __DRI_IMAGE_USE_CURSOR) {
       if (width != 64 || height != 64)
          return NULL;
@@ -913,6 +908,17 @@ brw_create_image_with_modifiers(__DRIscreen *dri_screen,
                                   void *loaderPrivate)
 {
    return brw_create_image_common(dri_screen, width, height, format, 0,
+                                  modifiers, count, loaderPrivate);
+}
+
+static __DRIimage *
+brw_create_image_with_modifiers2(__DRIscreen *dri_screen,
+                                 int width, int height, int format,
+                                 const uint64_t *modifiers,
+                                 const unsigned count, unsigned int use,
+                                 void *loaderPrivate)
+{
+   return brw_create_image_common(dri_screen, width, height, format, use,
                                   modifiers, count, loaderPrivate);
 }
 
@@ -1511,7 +1517,7 @@ brw_from_planar(__DRIimage *parent, int plane, void *loaderPrivate)
 }
 
 static const __DRIimageExtension brwImageExtension = {
-    .base = { __DRI_IMAGE, 16 },
+    .base = { __DRI_IMAGE, 19 },
 
     .createImageFromName                = brw_create_image_from_name,
     .createImageFromRenderbuffer        = brw_create_image_from_renderbuffer,
@@ -1534,6 +1540,7 @@ static const __DRIimageExtension brwImageExtension = {
     .queryDmaBufFormats                 = brw_query_dma_buf_formats,
     .queryDmaBufModifiers               = brw_query_dma_buf_modifiers,
     .queryDmaBufFormatModifierAttribs   = brw_query_format_modifier_attribs,
+    .createImageWithModifiers2          = brw_create_image_with_modifiers2,
 };
 
 static int
