@@ -595,9 +595,9 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    uint64_t bo_size =
       bucket ? bucket->size : MAX2(ALIGN(size, page_size), page_size);
 
+   bool is_coherent = bufmgr->has_llc || (flags & BO_ALLOC_COHERENT);
    enum iris_mmap_mode desired_mmap_mode =
-      (bufmgr->has_llc || (flags & BO_ALLOC_COHERENT)) ? IRIS_MMAP_WB
-                                                       : IRIS_MMAP_WC;
+      !local && is_coherent ? IRIS_MMAP_WB : IRIS_MMAP_WC;
 
    mtx_lock(&bufmgr->lock);
 
