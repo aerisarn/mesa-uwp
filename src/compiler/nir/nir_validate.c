@@ -1747,7 +1747,8 @@ nir_validate_shader(nir_shader *shader, const char *when)
       nir_var_mem_ssbo |
       nir_var_mem_shared |
       nir_var_mem_push_const |
-      nir_var_mem_constant;
+      nir_var_mem_constant |
+      nir_var_mem_image;
 
    if (gl_shader_stage_is_callable(shader->info.stage))
       valid_modes |= nir_var_shader_call_data;
