@@ -4436,7 +4436,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          nir_variable_mode modes = nir_intrinsic_memory_modes(instr);
          ugm_fence = modes & (nir_var_mem_ssbo | nir_var_mem_global);
          slm_fence = modes & nir_var_mem_shared;
-         tgm_fence = modes & nir_var_mem_ssbo;
+         tgm_fence = modes & (nir_var_mem_ssbo | nir_var_mem_image);
          urb_fence = modes & nir_var_shader_out;
          break;
       }
