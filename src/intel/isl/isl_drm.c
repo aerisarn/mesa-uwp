@@ -122,6 +122,11 @@ isl_drm_modifier_info_list[] = {
       .supports_clear_color = true,
    },
    {
+      .modifier = I915_FORMAT_MOD_4_TILED,
+      .name = "I915_FORMAT_MOD_4_TILED",
+      .tiling = ISL_TILING_4,
+   },
+   {
       .modifier = DRM_FORMAT_MOD_INVALID,
    },
 };

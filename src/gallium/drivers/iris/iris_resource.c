@@ -62,6 +62,7 @@ enum modifier_priority {
    MODIFIER_PRIORITY_Y_CCS,
    MODIFIER_PRIORITY_Y_GFX12_RC_CCS,
    MODIFIER_PRIORITY_Y_GFX12_RC_CCS_CC,
+   MODIFIER_PRIORITY_4,
 };
 
 static const uint64_t priority_to_modifier[] = {
@@ -72,6 +73,7 @@ static const uint64_t priority_to_modifier[] = {
    [MODIFIER_PRIORITY_Y_CCS] = I915_FORMAT_MOD_Y_TILED_CCS,
    [MODIFIER_PRIORITY_Y_GFX12_RC_CCS] = I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS,
    [MODIFIER_PRIORITY_Y_GFX12_RC_CCS_CC] = I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC,
+   [MODIFIER_PRIORITY_4] = I915_FORMAT_MOD_4_TILED,
 };
 
 static bool
@@ -98,6 +100,10 @@ modifier_is_supported(const struct intel_device_info *devinfo,
    case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
       if (devinfo->verx10 != 120)
+         return false;
+      break;
+   case I915_FORMAT_MOD_4_TILED:
+      if (devinfo->verx10 < 125)
          return false;
       break;
    case DRM_FORMAT_MOD_INVALID:
@@ -160,6 +166,9 @@ select_best_modifier(struct intel_device_info *devinfo,
          continue;
 
       switch (modifiers[i]) {
+      case I915_FORMAT_MOD_4_TILED:
+         prio = MAX2(prio, MODIFIER_PRIORITY_4);
+         break;
       case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
          prio = MAX2(prio, MODIFIER_PRIORITY_Y_GFX12_RC_CCS_CC);
          break;
@@ -214,6 +223,7 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    uint64_t all_modifiers[] = {
       DRM_FORMAT_MOD_LINEAR,
       I915_FORMAT_MOD_X_TILED,
+      I915_FORMAT_MOD_4_TILED,
       I915_FORMAT_MOD_Y_TILED,
       I915_FORMAT_MOD_Y_TILED_CCS,
       I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS,
