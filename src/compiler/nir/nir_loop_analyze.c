@@ -454,7 +454,10 @@ compute_induction_information(loop_info_state *state)
             nir_alu_instr *alu = nir_instr_as_alu(src_var->def->parent_instr);
 
             /* Check for unsupported alu operations */
-            if (alu->op != nir_op_iadd && alu->op != nir_op_fadd)
+            if (alu->op != nir_op_iadd && alu->op != nir_op_fadd &&
+                alu->op != nir_op_imul && alu->op != nir_op_fmul &&
+                alu->op != nir_op_ishl && alu->op != nir_op_ishr &&
+                alu->op != nir_op_ushr)
                break;
 
             if (nir_op_infos[alu->op].num_inputs == 2) {
@@ -995,9 +998,6 @@ calculate_iterations(nir_ssa_def *basis, nir_ssa_def *limit_basis,
              induction_base_type);
    }
 
-   /* Only variable with these update ops were marked as induction. */
-   assert(alu->op == nir_op_iadd || alu->op == nir_op_fadd);
-
    /* do-while loops can increment the starting value before the condition is
     * checked. e.g.
     *
@@ -1015,8 +1015,6 @@ calculate_iterations(nir_ssa_def *basis, nir_ssa_def *limit_basis,
       trip_offset = 1;
    }
 
-   assert(nir_src_bit_size(alu->src[0].src) ==
-          nir_src_bit_size(alu->src[1].src));
    unsigned bit_size = nir_src_bit_size(alu->src[0].src);
 
    /* get_iteration works under assumption that iterator will be
@@ -1029,8 +1027,25 @@ calculate_iterations(nir_ssa_def *basis, nir_ssa_def *limit_basis,
       return 0;
    }
 
-   int iter_int = get_iteration(alu_op, initial, step, limit, bit_size,
-                                execution_mode);
+   int iter_int;
+   switch (alu->op) {
+   case nir_op_iadd:
+   case nir_op_fadd:
+      assert(nir_src_bit_size(alu->src[0].src) ==
+             nir_src_bit_size(alu->src[1].src));
+
+      iter_int = get_iteration(alu_op, initial, step, limit, bit_size,
+                               execution_mode);
+      break;
+   case nir_op_imul:
+   case nir_op_fmul:
+   case nir_op_ishl:
+   case nir_op_ishr:
+   case nir_op_ushr:
+      return -1;
+   default:
+      unreachable("Invalid induction variable increment operation.");
+   }
 
    /* If iter_int is negative the loop is ill-formed or is the conditional is
     * unsigned with a huge iteration count so don't bother going any further.

@@ -1001,6 +1001,40 @@ INOT_COMPARE(ilt_rev)
       EXPECT_FALSE(loop->info->exact_trip_count_known);                 \
    }
 
+#define KNOWN_COUNT_TEST_INVERT(_init_value, _incr_value, _cond_value, cond, incr, count) \
+   TEST_F(nir_loop_analyze_test, incr ## _ ## cond ## _known_count_invert_ ## count)   \
+   {                                                                    \
+      nir_loop *loop =                                                  \
+         loop_builder_invert(&b, {.init_value = _init_value,            \
+                                  .incr_value = _incr_value,            \
+                                  .cond_value = _cond_value,            \
+                                  .cond_instr = nir_ ## cond,           \
+                                  .incr_instr = nir_ ## incr});         \
+                                                                        \
+      nir_validate_shader(b.shader, "input");                           \
+                                                                        \
+      nir_loop_analyze_impl(b.impl, nir_var_all, false);                \
+                                                                        \
+      ASSERT_NE((void *)0, loop->info);                                 \
+      EXPECT_NE((void *)0, loop->info->limiting_terminator);            \
+      EXPECT_EQ(count, loop->info->max_trip_count);                     \
+      EXPECT_TRUE(loop->info->exact_trip_count_known);                  \
+                                                                        \
+      EXPECT_EQ(2, loop->info->num_induction_vars);                     \
+      ASSERT_NE((void *)0, loop->info->induction_vars);                 \
+                                                                        \
+      const nir_loop_induction_variable *const ivars =                  \
+         loop->info->induction_vars;                                    \
+                                                                        \
+      for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {   \
+         EXPECT_NE((void *)0, ivars[i].def);                            \
+         ASSERT_NE((void *)0, ivars[i].init_src);                       \
+         EXPECT_TRUE(nir_src_is_const(*ivars[i].init_src));             \
+         ASSERT_NE((void *)0, ivars[i].update_src);                     \
+         EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));       \
+      }                                                                 \
+   }
+
 #define UNKNOWN_COUNT_TEST_INVERT(_init_value, _incr_value, _cond_value, cond, incr) \
    TEST_F(nir_loop_analyze_test, incr ## _ ## cond ## _unknown_count_invert)   \
    {                                                                    \
@@ -1191,7 +1225,7 @@ UNKNOWN_COUNT_TEST(0x80000000, 0x00000002, 0x00000001, ult, ushr)
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x80000000, 0x00000002, 0x00000001, ult_rev, ushr)
+KNOWN_COUNT_TEST(0x80000000, 0x00000002, 0x00000001, ult_rev, ushr, 0)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1201,7 +1235,7 @@ UNKNOWN_COUNT_TEST(0x80000000, 0x00000002, 0x00000001, ult_rev, ushr)
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x80000000, 0x80000000, 0x00000001, uge, ushr)
+KNOWN_COUNT_TEST(0x80000000, 0x80000000, 0x00000001, uge, ushr, 0)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1221,7 +1255,7 @@ UNKNOWN_COUNT_TEST(0x80000000, 0x00008000, 0x00000001, uge_rev, ushr)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x80000000, ine, ushr)
+KNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x80000000, ine, ushr, 0)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1241,7 +1275,7 @@ UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, ieq, ushr)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x80000000, ult, ushr)
+KNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x80000000, ult, ushr, 0)
 
 /*    uint i = 0xAAAAAAAA;
  *    while (true) {
@@ -1251,7 +1285,7 @@ UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x80000000, ult, ushr)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0xAAAAAAAA, 0x00000001, 0x08000000, ult_rev, ushr)
+KNOWN_COUNT_TEST_INVERT(0xAAAAAAAA, 0x00000001, 0x08000000, ult_rev, ushr, 0)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1261,7 +1295,7 @@ UNKNOWN_COUNT_TEST_INVERT(0xAAAAAAAA, 0x00000001, 0x08000000, ult_rev, ushr)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, uge, ushr)
+KNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, uge, ushr, 0)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1401,7 +1435,7 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x76543210, 0x00000007, 0xffffffff, ige_
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x7fffffff, 0x00000000, 0x00000001, ine, ishr)
+KNOWN_COUNT_TEST(0x7fffffff, 0x00000000, 0x00000001, ine, ishr, 0)
 
 /*    int i = 0x40000000;
  *    while (true) {
@@ -1461,7 +1495,7 @@ UNKNOWN_COUNT_TEST(0x12345678, 0x00000001, 0x00000004, ige_rev, ishr)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ine, ishr)
+KNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ine, ishr, 0)
 
 /*    int i = 0x7fffffff;
  *    while (true) {
@@ -1721,7 +1755,7 @@ UNKNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000008, 0x01000000, ieq, ishl)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishl)
+KNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishl, 0)
 
 /*    int i = 0x7fff;
  *    while (true) {
