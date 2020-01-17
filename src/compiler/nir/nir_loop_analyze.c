@@ -907,6 +907,43 @@ get_iteration(nir_op cond_op, nir_const_value initial, nir_const_value step,
    return iter_u64 > INT_MAX ? -1 : (int)iter_u64;
 }
 
+static int32_t
+get_iteration_empirical(nir_alu_instr *cond_alu, nir_alu_instr *incr_alu,
+                        nir_ssa_def *basis, nir_const_value initial,
+                        bool invert_cond, unsigned execution_mode,
+                        unsigned max_unroll_iterations)
+{
+   int iter_count = 0;
+   nir_const_value result;
+   nir_const_value iter = initial;
+
+   const nir_ssa_def *originals[2] = { basis, NULL };
+   const nir_const_value *replacements[2] = { &iter, NULL };
+
+   while (iter_count <= max_unroll_iterations) {
+      bool success;
+
+      success = try_eval_const_alu(&result, cond_alu, originals, replacements,
+                                   1, execution_mode);
+      if (!success)
+         return -1;
+
+      const bool cond_succ = invert_cond ? !result.b : result.b;
+      if (cond_succ)
+         return iter_count;
+
+      iter_count++;
+
+      success = try_eval_const_alu(&result, incr_alu, originals, replacements,
+                                   1, execution_mode);
+      assert(success);
+
+      iter = result;
+   }
+
+   return -1;
+}
+
 static bool
 will_break_on_first_iteration(nir_alu_instr *cond_alu, nir_ssa_def *basis,
                               nir_ssa_def *limit_basis,
@@ -980,7 +1017,8 @@ calculate_iterations(nir_ssa_def *basis, nir_ssa_def *limit_basis,
                      nir_const_value initial, nir_const_value step,
                      nir_const_value limit, nir_alu_instr *alu,
                      nir_ssa_scalar cond, nir_op alu_op, bool limit_rhs,
-                     bool invert_cond, unsigned execution_mode)
+                     bool invert_cond, unsigned execution_mode,
+                     unsigned max_unroll_iterations)
 {
    /* nir_op_isub should have been lowered away by this point */
    assert(alu->op != nir_op_isub);
@@ -1027,6 +1065,12 @@ calculate_iterations(nir_ssa_def *basis, nir_ssa_def *limit_basis,
       return 0;
    }
 
+   /* For loops incremented with addition operation, it's easy to
+    * calculate the number of iterations theoretically. Even though it
+    * is possible for other operations as well, it is much more error
+    * prone, and doesn't cover all possible cases. So, we try to
+    * emulate the loop.
+    */
    int iter_int;
    switch (alu->op) {
    case nir_op_iadd:
@@ -1037,12 +1081,20 @@ calculate_iterations(nir_ssa_def *basis, nir_ssa_def *limit_basis,
       iter_int = get_iteration(alu_op, initial, step, limit, bit_size,
                                execution_mode);
       break;
-   case nir_op_imul:
    case nir_op_fmul:
+      /* Detecting non-zero loop counts when the loop increment is floating
+       * point multiplication triggers a preexisting problem in
+       * glsl-fs-loop-unroll-mul-fp64.shader_test. See
+       * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/3445#note_1779438.
+       */
+      return -1;
+   case nir_op_imul:
    case nir_op_ishl:
    case nir_op_ishr:
    case nir_op_ushr:
-      return -1;
+      return get_iteration_empirical(cond_alu, alu, basis, initial,
+                                     invert_cond, execution_mode,
+                                     max_unroll_iterations);
    default:
       unreachable("Invalid induction variable increment operation.");
    }
@@ -1206,7 +1258,8 @@ try_find_trip_count_vars_in_iand(nir_ssa_scalar *cond,
  * loop.
  */
 static void
-find_trip_count(loop_info_state *state, unsigned execution_mode)
+find_trip_count(loop_info_state *state, unsigned execution_mode,
+                unsigned max_unroll_iterations)
 {
    bool trip_count_known = true;
    bool guessed_trip_count = false;
@@ -1329,7 +1382,8 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
                                             cond,
                                             alu_op, limit_rhs,
                                             invert_cond,
-                                            execution_mode);
+                                            execution_mode,
+                                            max_unroll_iterations);
 
       /* Where we not able to calculate the iteration count */
       if (iterations == -1) {
@@ -1488,7 +1542,9 @@ get_loop_info(loop_info_state *state, nir_function_impl *impl)
       return;
 
    /* Run through each of the terminators and try to compute a trip-count */
-   find_trip_count(state, impl->function->shader->info.float_controls_execution_mode);
+   find_trip_count(state,
+                   impl->function->shader->info.float_controls_execution_mode,
+                   impl->function->shader->options->max_unroll_iterations);
 
    nir_foreach_block_in_cf_node(block, &state->loop->cf_node) {
       nir_foreach_instr(instr, block) {

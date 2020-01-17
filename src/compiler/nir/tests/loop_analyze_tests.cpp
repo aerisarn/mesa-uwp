@@ -36,7 +36,10 @@ nir_loop_analyze_test::nir_loop_analyze_test()
 {
    glsl_type_singleton_init_or_ref();
 
-   static const nir_shader_compiler_options options = { };
+   static nir_shader_compiler_options options = { };
+
+   options.max_unroll_iterations = 32;
+
    b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, &options,
                                       "loop analyze");
 }
@@ -917,6 +920,7 @@ COMPARE_REVERSE(ilt)
 COMPARE_REVERSE(ige)
 COMPARE_REVERSE(ult)
 COMPARE_REVERSE(uge)
+COMPARE_REVERSE(ishl)
 
 #define INOT_COMPARE(comp)                                              \
    static nir_ssa_def *                                                 \
@@ -1195,7 +1199,7 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000003, 0x40000000, uge,
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x80000000, 0x80000000, 0x00000001, ine, ushr)
+KNOWN_COUNT_TEST(0x80000000, 0x80000000, 0x00000001, ine, ushr, 1)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1205,7 +1209,7 @@ UNKNOWN_COUNT_TEST(0x80000000, 0x80000000, 0x00000001, ine, ushr)
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x80000000, 0x00000000, 0x00000001, ieq, ushr)
+KNOWN_COUNT_TEST(0x80000000, 0x00000000, 0x00000001, ieq, ushr, 32)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1215,7 +1219,7 @@ UNKNOWN_COUNT_TEST(0x80000000, 0x00000000, 0x00000001, ieq, ushr)
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x80000000, 0x00000002, 0x00000001, ult, ushr)
+KNOWN_COUNT_TEST(0x80000000, 0x00000002, 0x00000001, ult, ushr, 31)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1245,7 +1249,7 @@ KNOWN_COUNT_TEST(0x80000000, 0x80000000, 0x00000001, uge, ushr, 0)
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x80000000, 0x00008000, 0x00000001, uge_rev, ushr)
+KNOWN_COUNT_TEST(0x80000000, 0x00008000, 0x00000001, uge_rev, ushr, 16)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1265,7 +1269,7 @@ KNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x80000000, ine, ushr, 0)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, ieq, ushr)
+KNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, ieq, ushr, 31)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1305,7 +1309,7 @@ KNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, uge, ushr, 0)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000008, uge_rev, ushr)
+KNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000008, uge_rev, ushr, 27)
 
 /*    int i = 0xffffffff;
  *    while (true) {
@@ -1445,7 +1449,7 @@ KNOWN_COUNT_TEST(0x7fffffff, 0x00000000, 0x00000001, ine, ishr, 0)
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x40000000, 0x00000001, 0x00000001, ieq, ishr)
+KNOWN_COUNT_TEST(0x40000000, 0x00000001, 0x00000001, ieq, ishr, 30)
 
 /*    int i = 0x7fffffff;
  *    while (true) {
@@ -1455,7 +1459,7 @@ UNKNOWN_COUNT_TEST(0x40000000, 0x00000001, 0x00000001, ieq, ishr)
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr)
+KNOWN_COUNT_TEST(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr, 31)
 
 /*    int i = 0x80000000;
  *    while (true) {
@@ -1465,7 +1469,7 @@ UNKNOWN_COUNT_TEST(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr)
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x80000000, 0xffff0000, 0x00000001, ilt_rev, ishr)
+KNOWN_COUNT_TEST(0x80000000, 0xffff0000, 0x00000001, ilt_rev, ishr, 16)
 
 /*    int i = 0x80000000;
  *    while (true) {
@@ -1475,7 +1479,7 @@ UNKNOWN_COUNT_TEST(0x80000000, 0xffff0000, 0x00000001, ilt_rev, ishr)
  *       i >>= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x80000000, 0xffffffff, 0x00000001, ige, ishr)
+KNOWN_COUNT_TEST(0x80000000, 0xffffffff, 0x00000001, ige, ishr, 31)
 
 /*    int i = 0x12345678;
  *    while (true) {
@@ -1485,7 +1489,7 @@ UNKNOWN_COUNT_TEST(0x80000000, 0xffffffff, 0x00000001, ige, ishr)
  *       i >>= 4;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x12345678, 0x00000001, 0x00000004, ige_rev, ishr)
+KNOWN_COUNT_TEST(0x12345678, 0x00000001, 0x00000004, ige_rev, ishr, 7)
 
 /*    int i = 0x7fffffff;
  *    while (true) {
@@ -1505,7 +1509,7 @@ KNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ine, ishr, 0)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ieq, ishr)
+KNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ieq, ishr, 30)
 
 /*    int i = 0x7fffffff;
  *    while (true) {
@@ -1515,7 +1519,7 @@ UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ieq, ishr)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr)
+KNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr, 30)
 
 /*    int i = 0x80000000;
  *    while (true) {
@@ -1525,7 +1529,7 @@ UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0xfffffffe, ilt_rev, ishr)
+KNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0xfffffffe, ilt_rev, ishr, 30)
 
 /*    int i = 0xbfffffff;
  *    while (true) {
@@ -1535,7 +1539,7 @@ UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0xfffffffe, ilt_rev, ishr)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0xbfffffff, 0x00000001, 0xfffffffe, ige, ishr)
+KNOWN_COUNT_TEST_INVERT(0xbfffffff, 0x00000001, 0xfffffffe, ige, ishr, 29)
 
 /*    int i = 0x7fffffff;
  *    while (true) {
@@ -1545,7 +1549,7 @@ UNKNOWN_COUNT_TEST_INVERT(0xbfffffff, 0x00000001, 0xfffffffe, ige, ishr)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000002, ige_rev, ishr)
+KNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000002, ige_rev, ishr, 29)
 
 /*    int i = 0;
  *    while (true) {
@@ -1675,7 +1679,7 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x77777777, 0x00000004, 0xffffffff, ige_
  *       i <<= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ine, ishl)
+KNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ine, ishl, 1)
 
 /*    int i = 1;
  *    while (true) {
@@ -1685,7 +1689,17 @@ UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ine, ishl)
  *       i <<= 4;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x00000001, 0x00001000, 0x00000004, ieq, ishl)
+KNOWN_COUNT_TEST(0x00000001, 0x00001000, 0x00000004, ieq, ishl, 3)
+
+/*    uint i = 1;
+ *    while (true) {
+ *       if (i < 1)
+ *          break;
+ *
+ *       i <<= 1;
+ *    }
+ */
+KNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ult, ishl, 32)
 
 /*    int i = 1;
  *    while (true) {
@@ -1695,7 +1709,7 @@ UNKNOWN_COUNT_TEST(0x00000001, 0x00001000, 0x00000004, ieq, ishl)
  *       i <<= 1;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ilt, ishl)
+KNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ilt, ishl, 31)
 
 /*    int i = 0xffff0000;
  *    while (true) {
@@ -1705,7 +1719,7 @@ UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ilt, ishl)
  *       i <<= 2;
  *    }
  */
-UNKNOWN_COUNT_TEST(0xffff0000, 0xffffffff, 0x00000002, ilt_rev, ishl)
+KNOWN_COUNT_TEST(0xffff0000, 0xffffffff, 0x00000002, ilt_rev, ishl, 8)
 
 /*    int i = 0xf;
  *    while (true) {
@@ -1715,7 +1729,7 @@ UNKNOWN_COUNT_TEST(0xffff0000, 0xffffffff, 0x00000002, ilt_rev, ishl)
  *       i <<= 3;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x0000000f, 0x0000ffff, 0x00000003, ige, ishl)
+KNOWN_COUNT_TEST(0x0000000f, 0x0000ffff, 0x00000003, ige, ishl, 5)
 
 /*    int i = 0x0000000f;
  *    while (true) {
@@ -1725,7 +1739,7 @@ UNKNOWN_COUNT_TEST(0x0000000f, 0x0000ffff, 0x00000003, ige, ishl)
  *       i <<= 4;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x0000000f, 0xfffd0000, 0x00000004, ige_rev, ishl)
+KNOWN_COUNT_TEST(0x0000000f, 0xfffd0000, 0x00000004, ige_rev, ishl, 7)
 
 /*    int i = 1;
  *    while (true) {
@@ -1735,7 +1749,7 @@ UNKNOWN_COUNT_TEST(0x0000000f, 0xfffd0000, 0x00000004, ige_rev, ishl)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000001, 0x00000002, ine, ishl)
+KNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000001, 0x00000002, ine, ishl, 1)
 
 /*    int i = 1;
  *    while (true) {
@@ -1745,7 +1759,7 @@ UNKNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000001, 0x00000002, ine, ishl)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000008, 0x01000000, ieq, ishl)
+KNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000008, 0x01000000, ieq, ishl, 2)
 
 /*    int i = 0x7fffffff;
  *    while (true) {
@@ -1765,7 +1779,7 @@ KNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishl, 0)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x00007fff, 0x00000002, 0x1fffffff, ilt_rev, ishl)
+KNOWN_COUNT_TEST_INVERT(0x00007fff, 0x00000002, 0x1fffffff, ilt_rev, ishl, 7)
 
 /*    int i = 0xffff7fff;
  *    while (true) {
@@ -1775,7 +1789,7 @@ UNKNOWN_COUNT_TEST_INVERT(0x00007fff, 0x00000002, 0x1fffffff, ilt_rev, ishl)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0xffff7fff, 0x00000004, 0xfffffffe, ige, ishl)
+KNOWN_COUNT_TEST_INVERT(0xffff7fff, 0x00000004, 0xfffffffe, ige, ishl, 3)
 
 /*    int i = 0x0000f0f0;
  *    while (true) {
@@ -1785,7 +1799,21 @@ UNKNOWN_COUNT_TEST_INVERT(0xffff7fff, 0x00000004, 0xfffffffe, ige, ishl)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x0000f0f0, 0x00000004, 0xfffffffe, ige_rev, ishl)
+KNOWN_COUNT_TEST_INVERT(0x0000f0f0, 0x00000004, 0xfffffffe, ige_rev, ishl, 3)
+
+/* This infinite loop makes no sense, but it's a good test to make sure the
+ * loop analysis code doesn't incorrectly treat left-shift as a commutative
+ * operation.
+ *
+ *    int i = 1;
+ *    while (true) {
+ *       if (i == 0)
+ *          break;
+ *
+ *       i = 1 << i;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0x00000000, 0x00000001, ieq, ishl_rev)
 
 /*    int i = 0;
  *    while (true) {
@@ -1882,7 +1910,7 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x88888888, 0x00000010, 0x00000001, ige,
  *       i = i * 7;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000007, ine, imul)
+KNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000007, ine, imul, 1)
 
 /*    int i = 2;
  *    while (true) {
@@ -1892,7 +1920,7 @@ UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000007, ine, imul)
  *       i = i * 3;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x00000002, 0x00000036, 0x00000003, ieq, imul)
+KNOWN_COUNT_TEST(0x00000002, 0x00000036, 0x00000003, ieq, imul, 3)
 
 /*    int i = 5;
  *    while (true) {
@@ -1902,7 +1930,7 @@ UNKNOWN_COUNT_TEST(0x00000002, 0x00000036, 0x00000003, ieq, imul)
  *       i = i * -3;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x00000005, 0x00000001, 0xfffffffd, ilt, imul)
+KNOWN_COUNT_TEST(0x00000005, 0x00000001, 0xfffffffd, ilt, imul, 1)
 
 /*    int i = 0xf;
  *    while (true) {
@@ -1912,7 +1940,7 @@ UNKNOWN_COUNT_TEST(0x00000005, 0x00000001, 0xfffffffd, ilt, imul)
  *       i = i * 11;
  *    }
  */
-UNKNOWN_COUNT_TEST(0x0000000f, 0x0000ffff, 0x0000000b, ige, imul)
+KNOWN_COUNT_TEST(0x0000000f, 0x0000ffff, 0x0000000b, ige, imul, 4)
 
 /*    int i = 3;
  *    while (true) {
@@ -1922,7 +1950,7 @@ UNKNOWN_COUNT_TEST(0x0000000f, 0x0000ffff, 0x0000000b, ige, imul)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x00000003, 0xfffffffb, 0xfffffff1, ine, imul)
+KNOWN_COUNT_TEST_INVERT(0x00000003, 0xfffffffb, 0xfffffff1, ine, imul, 1)
 
 /*    int i = 3;
  *    while (true) {
@@ -1932,7 +1960,7 @@ UNKNOWN_COUNT_TEST_INVERT(0x00000003, 0xfffffffb, 0xfffffff1, ine, imul)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x00000003, 0xfffffff9, 0x000562b3, ieq, imul)
+KNOWN_COUNT_TEST_INVERT(0x00000003, 0xfffffff9, 0x000562b3, ieq, imul, 5)
 
 /*    int i = 0x7f;
  *    while (true) {
@@ -1942,7 +1970,7 @@ UNKNOWN_COUNT_TEST_INVERT(0x00000003, 0xfffffff9, 0x000562b3, ieq, imul)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0x0000007f, 0x00000003, 0x00000001, ilt, imul)
+KNOWN_COUNT_TEST_INVERT(0x0000007f, 0x00000003, 0x00000001, ilt, imul, 16)
 
 /*    int i = 0xffff7fff;
  *    while (true) {
@@ -1952,4 +1980,4 @@ UNKNOWN_COUNT_TEST_INVERT(0x0000007f, 0x00000003, 0x00000001, ilt, imul)
  *          break;
  *    }
  */
-UNKNOWN_COUNT_TEST_INVERT(0xffff7fff, 0x0000000f, 0x34cce9b0, ige, imul)
+KNOWN_COUNT_TEST_INVERT(0xffff7fff, 0x0000000f, 0x34cce9b0, ige, imul, 4)
