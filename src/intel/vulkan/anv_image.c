@@ -2412,9 +2412,16 @@ anv_image_fill_surface_state(struct anv_device *device,
           * image formats.  Translate it into the closest format the hardware
           * supports.
           */
-         assert(aux_usage == ISL_AUX_USAGE_NONE);
-         view.format = isl_lower_storage_image_format(&device->info,
-                                                      view.format);
+         enum isl_format lower_format =
+            isl_lower_storage_image_format(&device->info, view.format);
+         if (aux_usage != ISL_AUX_USAGE_NONE) {
+            assert(device->info.verx10 >= 125);
+            assert(aux_usage == ISL_AUX_USAGE_CCS_E);
+            assert(isl_formats_are_ccs_e_compatible(&device->info,
+                                                    view.format,
+                                                    lower_format));
+         }
+         view.format = lower_format;
       }
 
       const struct isl_surf *isl_surf = &surface->isl;
@@ -2628,11 +2635,15 @@ anv_CreateImageView(VkDevice _device,
 
       /* NOTE: This one needs to go last since it may stomp isl_view.format */
       if (iview->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+         enum isl_aux_usage general_aux_usage =
+            anv_layout_to_aux_usage(&device->info, image, 1UL << iaspect_bit,
+                                    VK_IMAGE_USAGE_STORAGE_BIT,
+                                    VK_IMAGE_LAYOUT_GENERAL);
          iview->planes[vplane].storage_surface_state.state = alloc_surface_state(device);
          anv_image_fill_surface_state(device, image, 1ULL << iaspect_bit,
                                       &iview->planes[vplane].isl,
                                       ISL_SURF_USAGE_STORAGE_BIT,
-                                      ISL_AUX_USAGE_NONE, NULL,
+                                      general_aux_usage, NULL,
                                       0,
                                       &iview->planes[vplane].storage_surface_state,
                                       NULL);
@@ -2644,7 +2655,7 @@ anv_CreateImageView(VkDevice _device,
             anv_image_fill_surface_state(device, image, 1ULL << iaspect_bit,
                                          &iview->planes[vplane].isl,
                                          ISL_SURF_USAGE_STORAGE_BIT,
-                                         ISL_AUX_USAGE_NONE, NULL,
+                                         general_aux_usage, NULL,
                                          ANV_IMAGE_VIEW_STATE_STORAGE_LOWERED,
                                          &iview->planes[vplane].lowered_storage_surface_state,
                                          &iview->planes[vplane].lowered_storage_image_param);
