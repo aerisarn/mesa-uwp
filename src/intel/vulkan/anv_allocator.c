@@ -1600,15 +1600,50 @@ anv_bo_alloc_flags_to_bo_flags(struct anv_device *device,
    return bo_flags;
 }
 
-static uint32_t
-anv_device_get_bo_align(struct anv_device *device,
-                        enum anv_bo_alloc_flags alloc_flags)
+static void
+anv_bo_finish(struct anv_device *device, struct anv_bo *bo)
 {
-   /* Gfx12 CCS surface addresses need to be 64K aligned. */
-   if (device->info.ver >= 12 && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
-      return 64 * 1024;
+   if (bo->offset != 0 &&
+       (bo->flags & EXEC_OBJECT_PINNED) &&
+       !bo->has_fixed_address)
+      anv_vma_free(device, bo->offset, bo->size + bo->_ccs_size);
 
-   return 4096;
+   if (bo->map && !bo->from_host_ptr)
+      anv_gem_munmap(device, bo->map, bo->size);
+
+   assert(bo->gem_handle != 0);
+   anv_gem_close(device, bo->gem_handle);
+}
+
+static VkResult
+anv_bo_vma_alloc_or_close(struct anv_device *device,
+                          struct anv_bo *bo,
+                          enum anv_bo_alloc_flags alloc_flags,
+                          uint64_t explicit_address)
+{
+   assert(bo->flags & EXEC_OBJECT_PINNED);
+   assert(explicit_address == intel_48b_address(explicit_address));
+
+   uint32_t align = 4096;
+
+   /* Gen12 CCS surface addresses need to be 64K aligned. */
+   if (device->info.ver >= 12 && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
+      align = 64 * 1024;
+
+   if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
+      bo->has_fixed_address = true;
+      bo->offset = explicit_address;
+   } else {
+      bo->offset = anv_vma_alloc(device, bo->size + bo->_ccs_size,
+                                 align, alloc_flags, explicit_address);
+      if (bo->offset == 0) {
+         anv_bo_finish(device, bo);
+         return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                          "failed to allocate virtual address for BO");
+      }
+   }
+
+   return VK_SUCCESS;
 }
 
 VkResult
@@ -1632,8 +1667,6 @@ anv_device_alloc_bo(struct anv_device *device,
 
    /* The kernel is going to give us whole pages anyway */
    size = align_u64(size, 4096);
-
-   const uint32_t align = anv_device_get_bo_align(device, alloc_flags);
 
    uint64_t ccs_size = 0;
    if (device->info.has_aux_map && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS)) {
@@ -1715,19 +1748,12 @@ anv_device_alloc_bo(struct anv_device *device,
       }
    }
 
-   if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
-      new_bo.has_fixed_address = true;
-      new_bo.offset = explicit_address;
-   } else if (new_bo.flags & EXEC_OBJECT_PINNED) {
-      new_bo.offset = anv_vma_alloc(device, new_bo.size + new_bo._ccs_size,
-                                    align, alloc_flags, explicit_address);
-      if (new_bo.offset == 0) {
-         if (new_bo.map)
-            anv_gem_munmap(device, new_bo.map, size);
-         anv_gem_close(device, new_bo.gem_handle);
-         return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                          "failed to allocate virtual address for BO");
-      }
+   if (new_bo.flags & EXEC_OBJECT_PINNED) {
+      VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
+                                                  alloc_flags,
+                                                  explicit_address);
+      if (result != VK_SUCCESS)
+         return result;
    } else {
       assert(!new_bo.has_client_visible_address);
    }
@@ -1823,18 +1849,13 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
             (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       };
 
-      assert(client_address == intel_48b_address(client_address));
       if (new_bo.flags & EXEC_OBJECT_PINNED) {
-         assert(new_bo._ccs_size == 0);
-         new_bo.offset = anv_vma_alloc(device, new_bo.size,
-                                       anv_device_get_bo_align(device,
-                                                               alloc_flags),
-                                       alloc_flags, client_address);
-         if (new_bo.offset == 0) {
-            anv_gem_close(device, new_bo.gem_handle);
+         VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
+                                                     alloc_flags,
+                                                     client_address);
+         if (result != VK_SUCCESS) {
             pthread_mutex_unlock(&cache->mutex);
-            return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                             "failed to allocate virtual address for BO");
+            return result;
          }
       } else {
          assert(!new_bo.has_client_visible_address);
@@ -1956,18 +1977,14 @@ anv_device_import_bo(struct anv_device *device,
             (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       };
 
-      assert(client_address == intel_48b_address(client_address));
       if (new_bo.flags & EXEC_OBJECT_PINNED) {
          assert(new_bo._ccs_size == 0);
-         new_bo.offset = anv_vma_alloc(device, new_bo.size,
-                                       anv_device_get_bo_align(device,
-                                                               alloc_flags),
-                                       alloc_flags, client_address);
-         if (new_bo.offset == 0) {
-            anv_gem_close(device, new_bo.gem_handle);
+         VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
+                                                     alloc_flags,
+                                                     client_address);
+         if (result != VK_SUCCESS) {
             pthread_mutex_unlock(&cache->mutex);
-            return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                             "failed to allocate virtual address for BO");
+            return result;
          }
       } else {
          assert(!new_bo.has_client_visible_address);
@@ -2049,9 +2066,6 @@ anv_device_release_bo(struct anv_device *device,
    }
    assert(bo->refcount == 0);
 
-   if (bo->map && !bo->from_host_ptr)
-      anv_gem_munmap(device, bo->map, bo->size);
-
    if (bo->_ccs_size > 0) {
       assert(device->physical->has_implicit_ccs);
       assert(device->info.has_aux_map);
@@ -2061,21 +2075,18 @@ anv_device_release_bo(struct anv_device *device,
                                 bo->size);
    }
 
-   if ((bo->flags & EXEC_OBJECT_PINNED) && !bo->has_fixed_address)
-      anv_vma_free(device, bo->offset, bo->size + bo->_ccs_size);
-
-   uint32_t gem_handle = bo->gem_handle;
-
    /* Memset the BO just in case.  The refcount being zero should be enough to
     * prevent someone from assuming the data is valid but it's safer to just
-    * stomp to zero just in case.  We explicitly do this *before* we close the
-    * GEM handle to ensure that if anyone allocates something and gets the
-    * same GEM handle, the memset has already happen and won't stomp all over
-    * any data they may write in this BO.
+    * stomp to zero just in case.  We explicitly do this *before* we actually
+    * close the GEM handle to ensure that if anyone allocates something and
+    * gets the same GEM handle, the memset has already happen and won't stomp
+    * all over any data they may write in this BO.
     */
+   struct anv_bo old_bo = *bo;
+
    memset(bo, 0, sizeof(*bo));
 
-   anv_gem_close(device, gem_handle);
+   anv_bo_finish(device, &old_bo);
 
    /* Don't unlock until we've actually closed the BO.  The whole point of
     * the BO cache is to ensure that we correctly handle races with creating
