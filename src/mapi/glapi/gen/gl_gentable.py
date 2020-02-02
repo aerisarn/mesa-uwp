@@ -29,8 +29,6 @@
 # Based on code ogiginally by:
 #    Ian Romanick <idr@us.ibm.com>
 
-from __future__ import print_function
-
 import argparse
 
 import license

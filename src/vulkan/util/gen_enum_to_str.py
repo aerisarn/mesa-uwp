@@ -21,7 +21,6 @@
 
 """Create enum to string functions for vulkan using vk.xml."""
 
-from __future__ import print_function
 import argparse
 import os
 import textwrap

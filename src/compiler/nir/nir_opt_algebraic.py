@@ -24,8 +24,6 @@
 # Authors:
 #    Jason Ekstrand (jason@jlekstrand.net)
 
-from __future__ import print_function
-
 from collections import OrderedDict
 import nir_algebraic
 from nir_opcodes import type_sizes
