@@ -25,18 +25,6 @@
 
 using namespace aco;
 
-Temp fneg(Temp src)
-{
-   return bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0xbf800000u), src);
-}
-
-Temp fabs(Temp src)
-{
-   Builder::Result res = bld.vop2_e64(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x3f800000u), src);
-   res.instr->vop3().abs[1] = true;
-   return res;
-}
-
 BEGIN_TEST(optimize.neg)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v1: %b, s1: %c, s1: %d = p_startpgm

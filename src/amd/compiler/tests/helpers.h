@@ -91,6 +91,9 @@ void writeout(unsigned i, aco::Builder::Result res);
 void writeout(unsigned i, aco::Operand op);
 void writeout(unsigned i, aco::Operand op0, aco::Operand op1);
 
+aco::Temp fneg(aco::Temp src);
+aco::Temp fabs(aco::Temp src);
+
 /* vulkan helpers */
 VkDevice get_vk_device(enum chip_class chip_class);
 VkDevice get_vk_device(enum radeon_family family);

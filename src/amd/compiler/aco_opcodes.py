@@ -183,7 +183,7 @@ class Format(Enum):
          for i in range(min(num_operands, 2)):
             res += 'instr->sel[{0}] = op{0}.op.bytes() == 2 ? sdwa_uword : (op{0}.op.bytes() == 1 ? sdwa_ubyte : sdwa_udword);\n'.format(i)
          res += 'instr->dst_sel = def0.bytes() == 2 ? sdwa_uword : (def0.bytes() == 1 ? sdwa_ubyte : sdwa_udword);\n'
-         res += 'instr->dst_preserve = true;'
+         res += 'if (def0.bytes() < 4) instr->dst_preserve = true;'
       return res
 
 

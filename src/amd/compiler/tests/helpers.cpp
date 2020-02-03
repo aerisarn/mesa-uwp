@@ -258,6 +258,18 @@ void writeout(unsigned i, Operand op0, Operand op1)
    bld.pseudo(aco_opcode::p_unit_test, Operand(i), op0, op1);
 }
 
+Temp fneg(Temp src)
+{
+   return bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0xbf800000u), src);
+}
+
+Temp fabs(Temp src)
+{
+   Builder::Result res = bld.vop2_e64(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x3f800000u), src);
+   res.instr->vop3().abs[1] = true;
+   return res;
+}
+
 VkDevice get_vk_device(enum chip_class chip_class)
 {
    enum radeon_family family;

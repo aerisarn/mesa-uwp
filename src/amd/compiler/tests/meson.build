@@ -30,6 +30,7 @@ aco_tests_files = files(
   'test_optimizer.cpp',
   'test_regalloc.cpp',
   'test_optimizer_postRA.cpp',
+  'test_sdwa.cpp',
   'test_to_hw_instr.cpp',
   'test_tests.cpp',
 )
