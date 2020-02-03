@@ -2161,7 +2161,7 @@
     <field name="Pre Deblocking Output Enable" start="40" end="40" type="bool"/>
     <field name="Post Deblocking Output Enable" start="41" end="41" type="bool"/>
     <field name="Stream-Out Enable" start="42" end="42" type="bool"/>
-    <field name="Decoder Mode select" start="48" end="48" type="uint">
+    <field name="Decoder Mode Select" start="48" end="48" type="uint">
       <value name="LD Mode" value="0"/>
       <value name="IT Mode" value="1"/>
     </field>

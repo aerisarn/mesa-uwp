@@ -5484,7 +5484,7 @@
       <value name="VDEnc Mode" value="1"/>
     </field>
     <field name="Standalone VDEnc Mode Enable" start="46" end="46" type="bool"/>
-    <field name="Decoder Mode select" start="47" end="48" type="uint">
+    <field name="Decoder Mode Select" start="47" end="48" type="uint">
       <value name="VLD Mode" value="0"/>
       <value name="IT Mode" value="1"/>
       <value name="Deblocker Mode" value="2"/>

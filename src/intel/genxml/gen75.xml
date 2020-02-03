@@ -3398,7 +3398,7 @@
     <field name="Stream-Out Enable" start="42" end="42" type="bool"/>
     <field name="Pic Error/Status Report Enable" start="43" end="43" type="bool"/>
     <field name="Deblocker Stream-Out Enable" start="44" end="44" type="bool"/>
-    <field name="Decoder Mode select" start="47" end="48" type="uint">
+    <field name="Decoder Mode Select" start="47" end="48" type="uint">
       <value name="VLD Mode" value="0"/>
       <value name="IT Mode" value="1"/>
       <value name="Deblocker Mode" value="2"/>
