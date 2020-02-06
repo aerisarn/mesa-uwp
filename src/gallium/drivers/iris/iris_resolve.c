@@ -147,7 +147,7 @@ resolve_image_views(struct iris_context *ice,
                                       aux_usage, false);
       }
 
-      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_OTHER_READ);
+      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_DATA_WRITE);
    }
 }
 
