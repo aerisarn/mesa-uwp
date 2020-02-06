@@ -5235,7 +5235,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
    }
 
    iris_use_optional_res(batch, ice->state.last_res.index_buffer, false,
-                         IRIS_DOMAIN_OTHER_READ);
+                         IRIS_DOMAIN_VF_READ);
 
    if (clean & IRIS_DIRTY_VERTEX_BUFFERS) {
       uint64_t bound = ice->state.bound_vertex_buffers;
@@ -5243,7 +5243,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
          const int i = u_bit_scan64(&bound);
          struct pipe_resource *res = genx->vertex_buffers[i].resource;
          iris_use_pinned_bo(batch, iris_resource_bo(res), false,
-                            IRIS_DOMAIN_OTHER_READ);
+                            IRIS_DOMAIN_VF_READ);
       }
    }
 }
@@ -6401,7 +6401,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          while (bound) {
             const int i = u_bit_scan64(&bound);
             iris_use_optional_res(batch, genx->vertex_buffers[i].resource,
-                                  false, IRIS_DOMAIN_OTHER_READ);
+                                  false, IRIS_DOMAIN_VF_READ);
          }
 #else
          /* The VF cache designers cut corners, and made the cache key's
@@ -6423,7 +6423,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             struct iris_resource *res =
                (void *) genx->vertex_buffers[i].resource;
             if (res) {
-               iris_use_pinned_bo(batch, res->bo, false, IRIS_DOMAIN_OTHER_READ);
+               iris_use_pinned_bo(batch, res->bo, false, IRIS_DOMAIN_VF_READ);
 
                high_bits = res->bo->address >> 32ull;
                if (high_bits != ice->state.last_vbo_high_bits[i]) {
@@ -6682,7 +6682,7 @@ iris_upload_render_state(struct iris_context *ice,
       if (memcmp(genx->last_index_buffer, ib_packet, sizeof(ib_packet)) != 0) {
          memcpy(genx->last_index_buffer, ib_packet, sizeof(ib_packet));
          iris_batch_emit(batch, ib_packet, sizeof(ib_packet));
-         iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_OTHER_READ);
+         iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_VF_READ);
       }
 
 #if GFX_VER < 11
