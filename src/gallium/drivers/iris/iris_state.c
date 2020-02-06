@@ -3855,26 +3855,13 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
       if (active) {
          ice->state.dirty |= IRIS_DIRTY_SO_DECL_LIST;
       } else {
-         uint32_t flush = 0;
          for (int i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
             struct iris_stream_output_target *tgt =
                (void *) ice->state.so_target[i];
-            if (tgt) {
-               struct iris_resource *res = (void *) tgt->base.buffer;
 
-               flush |= iris_flush_bits_for_history(ice, res);
-               iris_dirty_for_history(ice, res);
-            }
+            if (tgt)
+               iris_dirty_for_history(ice, (void *)tgt->base.buffer);
          }
-#if GFX_VER >= 12
-         /* SO draws require flushing of const cache to make SO data
-          * observable when VB/IB are cached in L3.
-          */
-         if (flush & PIPE_CONTROL_VF_CACHE_INVALIDATE)
-            flush |= PIPE_CONTROL_CONST_CACHE_INVALIDATE;
-#endif
-         iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
-                                      "make streamout results visible", flush);
       }
    }
 
