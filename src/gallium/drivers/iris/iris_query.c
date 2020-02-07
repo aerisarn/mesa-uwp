@@ -699,13 +699,8 @@ iris_get_query_result_resource(struct pipe_context *ctx,
          batch->screen->vtbl.store_data_imm64(batch, dst_bo, offset, q->result);
       }
 
-      /* Make sure the result lands before they use bind the QBO elsewhere
-       * and use the result.
-       */
-      // XXX: Why?  i965 doesn't do this.
-      iris_emit_pipe_control_flush(batch,
-                                   "query: unknown QBO flushing hack",
-                                   PIPE_CONTROL_CS_STALL);
+      /* Make sure QBO is flushed before its result is used elsewhere. */
+      iris_dirty_for_history(ice, res);
       return;
    }
 
