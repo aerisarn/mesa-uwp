@@ -2702,7 +2702,6 @@ spec/glsl-1.10/execution/fs-dfdx-accuracy: warn
 spec/glsl-1.10/execution/fs-dfdy-accuracy: warn
 spec/glsl-1.10/preprocessor/extension-defined-test: skip
 spec/glsl-1.10/preprocessor/extension-if-1: skip
-spec/glsl-1.30/execution/range_analysis_fsat_of_nan: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1d: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1darray: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1darrayshadow: fail

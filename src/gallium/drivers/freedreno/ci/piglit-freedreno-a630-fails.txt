@@ -309,7 +309,6 @@ spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 2d,Crash
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 2d_projvec4,Crash
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 2dshadow,Crash
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 3d,Crash
-spec@glsl-1.30@execution@range_analysis_fsat_of_nan,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texture() 1d,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darray,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darrayshadow,Crash

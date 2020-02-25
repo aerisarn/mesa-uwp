@@ -334,4 +334,3 @@ spec@glsl-1.30@execution@clipping@fs-clip-distance-interpolated,Crash
 spec@glsl-1.30@execution@fs-large-local-array-vec2,Crash
 spec@glsl-1.30@execution@fs-large-local-array-vec3,Crash
 spec@glsl-1.30@execution@fs-large-local-array-vec4,Crash
-spec@glsl-1.30@execution@range_analysis_fsat_of_nan,Fail
