@@ -350,8 +350,8 @@ optimizations.extend([
     ('iadd', ('ishl', ('iadd', a, c), d), ('ishl', b, d))),
 
    # Comparison simplifications
-   (('~inot', ('flt(is_used_once)', a, b)), ('fge', a, b)),
-   (('~inot', ('fge(is_used_once)', a, b)), ('flt', a, b)),
+   (('inot', ('flt(is_used_once)', 'a(is_a_number)', 'b(is_a_number)')), ('fge', a, b)),
+   (('inot', ('fge(is_used_once)', 'a(is_a_number)', 'b(is_a_number)')), ('flt', a, b)),
    (('inot', ('feq(is_used_once)', a, b)), ('fneu', a, b)),
    (('inot', ('fneu(is_used_once)', a, b)), ('feq', a, b)),
    (('inot', ('ilt(is_used_once)', a, b)), ('ige', a, b)),
