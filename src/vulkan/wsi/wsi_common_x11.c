@@ -1623,11 +1623,10 @@ x11_image_init(VkDevice device_h, struct x11_swapchain *chain,
 
       /* XCB requires an array of file descriptors but we only have one */
       int fds[4] = { -1, -1, -1, -1 };
-      fds[0] = image->base.dma_buf_fd;
-      for (int i = 1; i < image->base.num_planes; i++) {
+      for (int i = 0; i < image->base.num_planes; i++) {
          fds[i] = os_dupfd_cloexec(image->base.dma_buf_fd);
          if (fds[i] == -1) {
-            for (int j = 1; j < i; j++)
+            for (int j = 0; j < i; j++)
                close(fds[j]);
 
             return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -1658,6 +1657,11 @@ x11_image_init(VkDevice device_h, struct x11_swapchain *chain,
       /* Without passing modifiers, we can't have multi-plane RGB images. */
       assert(image->base.num_planes == 1);
 
+      /* XCB will take ownership of the FD we pass it. */
+      int fd = os_dupfd_cloexec(image->base.dma_buf_fd);
+      if (fd == -1)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+
       cookie =
          xcb_dri3_pixmap_from_buffer_checked(chain->conn,
                                              image->pixmap,
@@ -1666,14 +1670,10 @@ x11_image_init(VkDevice device_h, struct x11_swapchain *chain,
                                              pCreateInfo->imageExtent.width,
                                              pCreateInfo->imageExtent.height,
                                              image->base.row_pitches[0],
-                                             chain->depth, bpp,
-                                             image->base.dma_buf_fd);
+                                             chain->depth, bpp, fd);
    }
 
    xcb_discard_reply(chain->conn, cookie.sequence);
-
-   /* XCB has now taken ownership of the FD. */
-   image->base.dma_buf_fd = -1;
 
 out_fence:
    fence_fd = xshmfence_alloc_shm();

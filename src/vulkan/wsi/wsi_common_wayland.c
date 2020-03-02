@@ -1167,8 +1167,6 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
                                         image->base.drm_modifier >> 32,
                                         image->base.drm_modifier & 0xffffffff);
       }
-      close(image->base.dma_buf_fd);
-      image->base.dma_buf_fd = -1;
 
       image->buffer =
          zwp_linux_buffer_params_v1_create_immed(params,
