@@ -183,6 +183,9 @@ wsi_create_image(const struct wsi_swapchain *chain,
                  const struct wsi_image_info *info,
                  struct wsi_image *image);
 void
+wsi_image_init(struct wsi_image *image);
+
+void
 wsi_destroy_image(const struct wsi_swapchain *chain,
                   struct wsi_image *image);
 

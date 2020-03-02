@@ -393,12 +393,8 @@ wsi_create_native_image_mem(const struct wsi_swapchain *chain,
             image->fds[p] = fd;
          } else {
             image->fds[p] = os_dupfd_cloexec(fd);
-            if (image->fds[p] == -1) {
-               for (uint32_t i = 0; i < p; i++)
-                  close(image->fds[i]);
-
+            if (image->fds[p] == -1)
                return VK_ERROR_OUT_OF_HOST_MEMORY;
-            }
          }
       }
    } else {

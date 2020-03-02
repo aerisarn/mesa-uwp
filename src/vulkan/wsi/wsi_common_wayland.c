@@ -1167,6 +1167,7 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
                                         image->base.drm_modifier >> 32,
                                         image->base.drm_modifier & 0xffffffff);
          close(image->base.fds[i]);
+         image->base.fds[i] = -1;
       }
 
       image->buffer =

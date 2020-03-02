@@ -1136,10 +1136,6 @@ fail_handle:
    for (unsigned int i = 0; i < image->base.num_planes; i++) {
       if (image->buffer[i])
          wsi_display_destroy_buffer(wsi, image->buffer[i]);
-      if (image->base.fds[i] != -1) {
-         close(image->base.fds[i]);
-         image->base.fds[i] = -1;
-      }
    }
 
    wsi_destroy_image(&chain->base, &image->base);

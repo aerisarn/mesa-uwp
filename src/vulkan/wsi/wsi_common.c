@@ -512,6 +512,11 @@ wsi_destroy_image(const struct wsi_swapchain *chain,
 {
    const struct wsi_device *wsi = chain->wsi;
 
+   for (int p = 0; p < image->num_planes; p++) {
+      if (image->fds[p] >= 0)
+         close(image->fds[p]);
+   }
+
    if (image->buffer.blit_cmd_buffers) {
       for (uint32_t i = 0; i < wsi->queue_family_count; i++) {
          wsi->FreeCommandBuffers(chain->device, chain->cmd_pools[i],
