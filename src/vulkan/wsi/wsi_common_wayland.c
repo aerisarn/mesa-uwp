@@ -1160,15 +1160,15 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
 
       for (int i = 0; i < image->base.num_planes; i++) {
          zwp_linux_buffer_params_v1_add(params,
-                                        image->base.fds[i],
+                                        image->base.dma_buf_fd,
                                         i,
                                         image->base.offsets[i],
                                         image->base.row_pitches[i],
                                         image->base.drm_modifier >> 32,
                                         image->base.drm_modifier & 0xffffffff);
-         close(image->base.fds[i]);
-         image->base.fds[i] = -1;
       }
+      close(image->base.dma_buf_fd);
+      image->base.dma_buf_fd = -1;
 
       image->buffer =
          zwp_linux_buffer_params_v1_create_immed(params,
