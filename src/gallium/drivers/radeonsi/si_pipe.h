@@ -221,6 +221,9 @@ enum
    DBG_SHADOW_REGS,
    DBG_NO_FAST_DISPLAY_LIST,
 
+   /* Multimedia options: */
+   DBG_NO_EFC,
+
    /* 3D engine options: */
    DBG_NO_GFX,
    DBG_NO_NGG,
