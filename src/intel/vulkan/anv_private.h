@@ -3847,8 +3847,8 @@ anv_get_isl_format(const struct intel_device_info *devinfo, VkFormat vk_format,
 
 bool anv_formats_ccs_e_compatible(const struct intel_device_info *devinfo,
                                   VkImageCreateFlags create_flags,
-                                  VkFormat vk_format,
-                                  VkImageTiling vk_tiling,
+                                  VkFormat vk_format, VkImageTiling vk_tiling,
+                                  VkImageUsageFlags vk_usage,
                                   const VkImageFormatListCreateInfoKHR *fmt_list);
 
 extern VkFormat

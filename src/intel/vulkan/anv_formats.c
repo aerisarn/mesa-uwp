@@ -1084,7 +1084,8 @@ anv_get_image_format_properties(
 
       if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
           !anv_formats_ccs_e_compatible(devinfo, info->flags, info->format,
-                                        info->tiling, format_list_info)) {
+                                        info->tiling, info->usage,
+                                        format_list_info)) {
          goto unsupported;
       }
    }
