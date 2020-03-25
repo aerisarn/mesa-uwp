@@ -379,6 +379,8 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .lower_fsat = true,
       .lower_extract_byte = true,
       .lower_extract_word = true,
+      .lower_insert_byte = true,
+      .lower_insert_word = true,
       .lower_mul_high = true,
       .lower_rotate = true,
       .lower_uadd_carry = true,

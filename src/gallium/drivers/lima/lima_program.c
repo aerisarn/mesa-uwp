@@ -59,6 +59,8 @@ static const nir_shader_compiler_options vs_nir_options = {
    .lower_rotate = true,
    .lower_sincos = true,
    .lower_fceil = true,
+   .lower_insert_byte = true,
+   .lower_insert_word = true,
 };
 
 static const nir_shader_compiler_options fs_nir_options = {
@@ -74,6 +76,8 @@ static const nir_shader_compiler_options fs_nir_options = {
    .lower_rotate = true,
    .lower_fdot = true,
    .lower_fdph = true,
+   .lower_insert_byte = true,
+   .lower_insert_word = true,
    .lower_bitops = true,
    .lower_vector_cmp = true,
 };

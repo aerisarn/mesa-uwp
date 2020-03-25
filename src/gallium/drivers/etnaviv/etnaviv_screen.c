@@ -1067,6 +1067,8 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
       .lower_fmod = true,
       .lower_vector_cmp = true,
       .lower_fdph = true,
+      .lower_insert_byte = true,
+      .lower_insert_word = true,
       .lower_fdiv = true, /* !screen->specs.has_new_transcendentals */
       .lower_fsign = !screen->specs.has_sign_floor_ceil,
       .lower_ffloor = !screen->specs.has_sign_floor_ceil,

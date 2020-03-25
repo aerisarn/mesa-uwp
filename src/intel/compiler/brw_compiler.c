@@ -45,6 +45,8 @@
    .lower_device_index_to_zero = true,                                        \
    .vectorize_io = true,                                                      \
    .use_interpolated_input_intrinsics = true,                                 \
+   .lower_insert_byte = true,                                                 \
+   .lower_insert_word = true,                                                 \
    .vertex_id_zero_based = true,                                              \
    .lower_base_vertex = true,                                                 \
    .use_scoped_barrier = true,                                                \

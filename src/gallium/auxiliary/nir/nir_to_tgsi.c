@@ -2659,6 +2659,8 @@ ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s)
 
    if (!options->lower_extract_byte ||
        !options->lower_extract_word ||
+       !options->lower_insert_byte ||
+       !options->lower_insert_word ||
        !options->lower_fdph ||
        !options->lower_flrp64 ||
        !options->lower_fmod ||
@@ -2671,6 +2673,8 @@ ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s)
 
       new_options->lower_extract_byte = true;
       new_options->lower_extract_word = true;
+      new_options->lower_insert_byte = true;
+      new_options->lower_insert_word = true;
       new_options->lower_fdph = true;
       new_options->lower_flrp64 = true;
       new_options->lower_fmod = true;
@@ -2835,6 +2839,8 @@ static const nir_shader_compiler_options nir_to_tgsi_compiler_options = {
    .fuse_ffma64 = true,
    .lower_extract_byte = true,
    .lower_extract_word = true,
+   .lower_insert_byte = true,
+   .lower_insert_word = true,
    .lower_fdph = true,
    .lower_flrp64 = true,
    .lower_fmod = true,

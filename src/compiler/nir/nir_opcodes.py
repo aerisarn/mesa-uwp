@@ -972,6 +972,10 @@ binop("extract_i8", tint, "", "(int8_t)(src0 >> (src1 * 8))")
 binop("extract_u16", tuint, "", "(uint16_t)(src0 >> (src1 * 16))")
 binop("extract_i16", tint, "", "(int16_t)(src0 >> (src1 * 16))")
 
+# Byte/word insertion
+binop("insert_u8", tuint, "", "(src0 & 0xff) << (src1 * 8)")
+binop("insert_u16", tuint, "", "(src0 & 0xffff) << (src1 * 16)")
+
 
 def triop(name, ty, alg_props, const_expr):
    opcode(name, 0, ty, [0, 0, 0], [ty, ty, ty], False, alg_props, const_expr)

@@ -1004,6 +1004,8 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .lower_unpack_unorm_4x8 = true,
       .lower_extract_byte = true,
       .lower_extract_word = true,
+      .lower_insert_byte = true,
+      .lower_insert_word = true,
       .lower_rotate = true,
       .lower_to_scalar = true,
       .optimize_sample_mask_in = true,

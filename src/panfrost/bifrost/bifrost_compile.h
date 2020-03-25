@@ -56,6 +56,8 @@ static const nir_shader_compiler_options bifrost_nir_options = {
         .lower_bitfield_extract_to_shifts = true,
         .lower_extract_byte = true,
         .lower_extract_word = true,
+        .lower_insert_byte = true,
+        .lower_insert_word = true,
         .lower_rotate = true,
 
         .lower_pack_half_2x16 = true,
