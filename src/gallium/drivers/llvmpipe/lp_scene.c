@@ -100,7 +100,7 @@ lp_scene_create( struct lp_setup_context *setup )
 void
 lp_scene_destroy(struct lp_scene *scene)
 {
-   lp_fence_reference(&scene->fence, NULL);
+   lp_scene_end_rasterization(scene);
    mtx_destroy(&scene->mutex);
    assert(scene->data.head == &scene->data.first);
    slab_free_st(&scene->setup->scene_slab, scene);
