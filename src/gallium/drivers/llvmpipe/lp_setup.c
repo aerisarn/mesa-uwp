@@ -73,6 +73,7 @@ lp_setup_wait_empty_scene(struct lp_setup_context *setup)
       debug_printf("%s: wait for scene %d\n",
                    __FUNCTION__, setup->scenes[0]->fence->id);
       lp_fence_wait(setup->scenes[0]->fence);
+      lp_scene_end_rasterization(setup->scenes[0]);
    }
    return 0;
 }
@@ -86,8 +87,10 @@ lp_setup_get_empty_scene(struct lp_setup_context *setup)
    /* try and find a scene that isn't being used */
    for (i = 0; i < setup->num_active_scenes; i++) {
       if (setup->scenes[i]->fence) {
-         if (lp_fence_signalled(setup->scene->fence))
+         if (lp_fence_signalled(setup->scenes[i]->fence)) {
+            lp_scene_end_rasterization(setup->scenes[i]);
             break;
+         }
       } else
          break;
    }
@@ -210,22 +213,9 @@ lp_setup_rasterize_scene( struct lp_setup_context *setup )
       setup->last_fence->issued = TRUE;
 
    mtx_lock(&screen->rast_mutex);
-
-   /* FIXME: We enqueue the scene then wait on the rasterizer to finish.
-    * This means we never actually run any vertex stuff in parallel to
-    * rasterization (not in the same context at least) which is what the
-    * multiple scenes per setup is about - when we get a new empty scene
-    * any old one is already empty again because we waited here for
-    * raster tasks to be finished. Ideally, we shouldn't need to wait here
-    * and rely on fences elsewhere when waiting is necessary.
-    * Certainly, lp_scene_end_rasterization() would need to be deferred too
-    * and there's probably other bits why this doesn't actually work.
-    */
    lp_rast_queue_scene(screen->rast, scene);
-   lp_rast_finish(screen->rast);
    mtx_unlock(&screen->rast_mutex);
 
-   lp_scene_end_rasterization(setup->scene);
    lp_setup_reset( setup );
 
    LP_DBG(DEBUG_SETUP, "%s done \n", __FUNCTION__);
