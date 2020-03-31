@@ -37,6 +37,7 @@
 #include "lp_context.h"
 #include "lp_state_fs.h"
 
+#include "lp_setup_context.h"
 
 #define RESOURCE_REF_SZ 32
 
@@ -61,13 +62,15 @@ struct shader_ref {
  * \param queue  the queue to put newly rendered/emptied scenes into
  */
 struct lp_scene *
-lp_scene_create( struct pipe_context *pipe )
+lp_scene_create( struct lp_setup_context *setup )
 {
-   struct lp_scene *scene = CALLOC_STRUCT(lp_scene);
+   struct lp_scene *scene = slab_alloc_st(&setup->scene_slab);
    if (!scene)
       return NULL;
 
-   scene->pipe = pipe;
+   memset(scene, 0, sizeof(struct lp_scene));
+   scene->pipe = setup->pipe;
+   scene->setup = setup;
    scene->data.head = &scene->data.first;
 
    (void) mtx_init(&scene->mutex, mtx_plain);
@@ -100,7 +103,7 @@ lp_scene_destroy(struct lp_scene *scene)
    lp_fence_reference(&scene->fence, NULL);
    mtx_destroy(&scene->mutex);
    assert(scene->data.head == &scene->data.first);
-   FREE(scene);
+   slab_free_st(&scene->setup->scene_slab, scene);
 }
 
 

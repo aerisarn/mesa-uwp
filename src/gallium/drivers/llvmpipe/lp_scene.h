@@ -140,6 +140,7 @@ struct lp_scene_surface {
 struct lp_scene {
    struct pipe_context *pipe;
    struct lp_fence *fence;
+   struct lp_setup_context *setup;
 
    /* The queries still active at end of scene */
    struct llvmpipe_query *active_queries[LP_MAX_ACTIVE_BINNED_QUERIES];
@@ -199,7 +200,7 @@ struct lp_scene {
 
 
 
-struct lp_scene *lp_scene_create(struct pipe_context *pipe);
+struct lp_scene *lp_scene_create(struct lp_setup_context *setup);
 
 void lp_scene_destroy(struct lp_scene *scene);
 

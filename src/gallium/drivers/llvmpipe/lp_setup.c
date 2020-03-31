@@ -1544,6 +1544,7 @@ lp_setup_destroy( struct lp_setup_context *setup )
       lp_scene_destroy(scene);
    }
 
+   slab_destroy(&setup->scene_slab);
    lp_fence_reference(&setup->last_fence, NULL);
 
    FREE( setup );
@@ -1584,9 +1585,12 @@ lp_setup_create( struct pipe_context *pipe,
    draw_set_rasterize_stage(draw, setup->vbuf);
    draw_set_render(draw, &setup->base);
 
+   slab_create(&setup->scene_slab,
+               sizeof(struct lp_scene),
+               MAX_SCENES);
    /* create some empty scenes */
    for (i = 0; i < MAX_SCENES; i++) {
-      setup->scenes[i] = lp_scene_create( pipe );
+      setup->scenes[i] = lp_scene_create( setup );
       if (!setup->scenes[i]) {
          goto no_scenes;
       }

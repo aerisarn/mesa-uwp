@@ -43,6 +43,7 @@
 #include "draw/draw_vbuf.h"
 #include "util/u_rect.h"
 #include "util/u_pack_color.h"
+#include "util/slab.h"
 
 #define LP_SETUP_NEW_FS          0x01
 #define LP_SETUP_NEW_CONSTANTS   0x02
@@ -89,6 +90,8 @@ struct lp_setup_context
    struct draw_stage *vbuf;
    unsigned num_threads;
    unsigned scene_idx;
+
+   struct slab_mempool scene_slab;
    struct lp_scene *scenes[MAX_SCENES];  /**< all the scenes */
    struct lp_scene *scene;               /**< current scene being built */
 
