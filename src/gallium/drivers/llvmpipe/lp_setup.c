@@ -1178,7 +1178,7 @@ lp_setup_is_resource_referenced( const struct lp_setup_context *setup,
    }
 
    /* check textures referenced by the scene */
-   for (i = 0; i < ARRAY_SIZE(setup->scenes); i++) {
+   for (i = 0; i < setup->num_active_scenes; i++) {
       if (lp_scene_is_resource_referenced(setup->scenes[i], texture)) {
          return LP_REFERENCED_FOR_READ;
       }
@@ -1559,7 +1559,7 @@ lp_setup_destroy( struct lp_setup_context *setup )
    }
 
    /* free the scenes in the 'empty' queue */
-   for (i = 0; i < ARRAY_SIZE(setup->scenes); i++) {
+   for (i = 0; i < setup->num_active_scenes; i++) {
       struct lp_scene *scene = setup->scenes[i];
 
       if (scene->fence)
@@ -1612,15 +1612,13 @@ lp_setup_create( struct pipe_context *pipe,
 
    slab_create(&setup->scene_slab,
                sizeof(struct lp_scene),
-               MAX_SCENES);
-   /* create some empty scenes */
-   for (i = 0; i < MAX_SCENES; i++) {
-      setup->scenes[i] = lp_scene_create( setup );
-      if (!setup->scenes[i]) {
-         goto no_scenes;
-      }
-      setup->num_active_scenes++;
+               INITIAL_SCENES);
+   /* create just one scene for starting point */
+   setup->scenes[0] = lp_scene_create( setup );
+   if (!setup->scenes[0]) {
+      goto no_scenes;
    }
+   setup->num_active_scenes++;
 
    setup->triangle = first_triangle;
    setup->line     = first_line;
