@@ -92,6 +92,7 @@ struct lp_setup_context
    unsigned scene_idx;
 
    struct slab_mempool scene_slab;
+   int num_active_scenes;
    struct lp_scene *scenes[MAX_SCENES];  /**< all the scenes */
    struct lp_scene *scene;               /**< current scene being built */
 

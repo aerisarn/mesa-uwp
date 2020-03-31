@@ -65,28 +65,52 @@ static boolean set_scene_state( struct lp_setup_context *, enum setup_state,
                              const char *reason);
 static boolean try_update_scene_state( struct lp_setup_context *setup );
 
+static unsigned
+lp_setup_wait_empty_scene(struct lp_setup_context *setup)
+{
+   /* just use the first scene if we run out */
+   if (setup->scenes[0]->fence) {
+      debug_printf("%s: wait for scene %d\n",
+                   __FUNCTION__, setup->scenes[0]->fence->id);
+      lp_fence_wait(setup->scenes[0]->fence);
+   }
+   return 0;
+}
 
 static void
 lp_setup_get_empty_scene(struct lp_setup_context *setup)
 {
    assert(setup->scene == NULL);
+   unsigned i;
 
-   setup->scene_idx++;
-   setup->scene_idx %= ARRAY_SIZE(setup->scenes);
-
-   setup->scene = setup->scenes[setup->scene_idx];
-
-   if (setup->scene->fence) {
-      if (LP_DEBUG & DEBUG_SETUP)
-         debug_printf("%s: wait for scene %d\n",
-                      __FUNCTION__, setup->scene->fence->id);
-
-      lp_fence_wait(setup->scene->fence);
+   /* try and find a scene that isn't being used */
+   for (i = 0; i < setup->num_active_scenes; i++) {
+      if (setup->scenes[i]->fence) {
+         if (lp_fence_signalled(setup->scene->fence))
+            break;
+      } else
+         break;
    }
 
-   lp_scene_begin_binning(setup->scene, &setup->fb);
+   if (setup->num_active_scenes + 1 > MAX_SCENES)
+      i = lp_setup_wait_empty_scene(setup);
+   else if (i == setup->num_active_scenes) {
+      /* allocate a new scene */
+      struct lp_scene *scene = lp_scene_create(setup);
+      if (!scene) {
+         /* block and reuse scenes */
+         i = lp_setup_wait_empty_scene(setup);
+      } else {
+         LP_DBG(DEBUG_SETUP, "allocated scene: %d\n", setup->num_active_scenes);
+         setup->scenes[setup->num_active_scenes] = scene;
+         i = setup->num_active_scenes;
+         setup->num_active_scenes++;
+      }
+   }
 
+   setup->scene = setup->scenes[i];
    setup->scene->permit_linear_rasterizer = setup->permit_linear_rasterizer;
+   lp_scene_begin_binning(setup->scene, &setup->fb);
 }
 
 
@@ -1544,6 +1568,7 @@ lp_setup_destroy( struct lp_setup_context *setup )
       lp_scene_destroy(scene);
    }
 
+   LP_DBG(DEBUG_SETUP, "number of scenes used: %d\n", setup->num_active_scenes);
    slab_destroy(&setup->scene_slab);
    lp_fence_reference(&setup->last_fence, NULL);
 
@@ -1594,6 +1619,7 @@ lp_setup_create( struct pipe_context *pipe,
       if (!setup->scenes[i]) {
          goto no_scenes;
       }
+      setup->num_active_scenes++;
    }
 
    setup->triangle = first_triangle;
