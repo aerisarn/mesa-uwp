@@ -1386,6 +1386,27 @@ optimizations.extend([
    (('uror@32', a, b), ('ior', ('ushr', a, b), ('ishl', a, ('isub', 32, b))), 'options->lower_rotate'),
    (('uror@64', a, b), ('ior', ('ushr', a, b), ('ishl', a, ('isub', 64, b))), 'options->lower_rotate'),
 
+   # bfi(X, a, b) = (b & ~X) | (a & X)
+   # If X = ~0: (b & 0) | (a & 0xffffffff) = a
+   # If X = 0:  (b & 0xffffffff) | (a & 0) = b
+   (('bfi', 0xffffffff, a, b), a),
+   (('bfi', 0x00000000, a, b), b),
+
+   # The result of -int(some_bool) is 0 or 0xffffffff, so the result of the
+   # bfi is either b or c.
+   (('bfi', ('ineg', ('b2i', 'a@1')), b, c), ('bcsel', a, b, c)),
+
+   # bfi(a, a, b) = ((a << find_lsb(a)) & a) | (b & ~a)
+   #              = (a & a) | (b & ~a)    If a is odd, find_lsb(a) == 0
+   #              = a | (b & ~a)
+   #              = a | b
+   (('bfi', '#a(is_odd)', a, b), ('ior', a, b)),
+
+   # bfi(a, b, 0) = ((b << find_lsb(a)) & a) | (0 & ~a)
+   #              = ((b << find_lsb(a)) & a)
+   #              = (b & a)               If a is odd, find_lsb(a) == 0
+   (('bfi', '#a(is_odd)', b, 0), ('iand', a, b)),
+
    # Because 'a' is a positive power of two, the result of the bfi is either 0
    # or 'a' depending on whether or not 'b' is odd.  Use 'b&1' for the zero
    # value to help platforms that can't have two constants in a bcsel.
