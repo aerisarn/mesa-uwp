@@ -239,6 +239,7 @@ drisw_swap_buffers(__DRIdrawable *dPriv)
 {
    struct dri_context *ctx = dri_get_current(dPriv->driScreenPriv);
    struct dri_drawable *drawable = dri_drawable(dPriv);
+   struct dri_screen *screen = dri_screen(drawable->sPriv);
    struct pipe_resource *ptex;
 
    if (!ctx)
@@ -247,13 +248,14 @@ drisw_swap_buffers(__DRIdrawable *dPriv)
    ptex = drawable->textures[ST_ATTACHMENT_BACK_LEFT];
 
    if (ptex) {
+      struct pipe_fence_handle *fence = NULL;
       if (ctx->pp)
          pp_run(ctx->pp, ptex, ptex, drawable->textures[ST_ATTACHMENT_DEPTH_STENCIL]);
 
       if (ctx->hud)
          hud_run(ctx->hud, ctx->st->cso_context, ptex);
 
-      ctx->st->flush(ctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
+      ctx->st->flush(ctx->st, ST_FLUSH_FRONT, &fence, NULL, NULL);
 
       if (drawable->stvis.samples > 1) {
          /* Resolve the back buffer. */
@@ -262,6 +264,9 @@ drisw_swap_buffers(__DRIdrawable *dPriv)
                        drawable->msaa_textures[ST_ATTACHMENT_BACK_LEFT]);
       }
 
+      screen->base.screen->fence_finish(screen->base.screen, ctx->st->pipe,
+                                        fence, PIPE_TIMEOUT_INFINITE);
+      screen->base.screen->fence_reference(screen->base.screen, &fence, NULL);
       drisw_copy_to_front(ctx->st->pipe, dPriv, ptex);
    }
 }
@@ -272,6 +277,7 @@ drisw_copy_sub_buffer(__DRIdrawable *dPriv, int x, int y,
 {
    struct dri_context *ctx = dri_get_current(dPriv->driScreenPriv);
    struct dri_drawable *drawable = dri_drawable(dPriv);
+   struct dri_screen *screen = dri_screen(drawable->sPriv);
    struct pipe_resource *ptex;
    struct pipe_box box;
    if (!ctx)
@@ -280,10 +286,15 @@ drisw_copy_sub_buffer(__DRIdrawable *dPriv, int x, int y,
    ptex = drawable->textures[ST_ATTACHMENT_BACK_LEFT];
 
    if (ptex) {
+      struct pipe_fence_handle *fence = NULL;
       if (ctx->pp && drawable->textures[ST_ATTACHMENT_DEPTH_STENCIL])
          pp_run(ctx->pp, ptex, ptex, drawable->textures[ST_ATTACHMENT_DEPTH_STENCIL]);
 
-      ctx->st->flush(ctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
+      ctx->st->flush(ctx->st, ST_FLUSH_FRONT, &fence, NULL, NULL);
+
+      screen->base.screen->fence_finish(screen->base.screen, ctx->st->pipe,
+                                        fence, PIPE_TIMEOUT_INFINITE);
+      screen->base.screen->fence_reference(screen->base.screen, &fence, NULL);
 
       if (drawable->stvis.samples > 1) {
          /* Resolve the back buffer. */
