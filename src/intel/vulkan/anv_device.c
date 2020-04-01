@@ -326,8 +326,60 @@ get_device_extensions(const struct anv_physical_device *device,
 }
 
 static void
+anv_track_meminfo(struct anv_physical_device *device,
+                  const struct drm_i915_query_memory_regions *mem_regions)
+{
+   for(int i = 0; i < mem_regions->num_regions; i++) {
+      switch(mem_regions->regions[i].region.memory_class) {
+         case I915_MEMORY_CLASS_SYSTEM:
+         device->sys.region = mem_regions->regions[i].region;
+         device->sys.size = mem_regions->regions[i].probed_size;
+         break;
+      case I915_MEMORY_CLASS_DEVICE:
+         device->vram.region = mem_regions->regions[i].region;
+         device->vram.size = mem_regions->regions[i].probed_size;
+         break;
+      default:
+         break;
+      }
+   }
+}
+
+static bool
+anv_get_query_meminfo(struct anv_physical_device *device, int fd)
+{
+   struct drm_i915_query_item item = {
+      .query_id = DRM_I915_QUERY_MEMORY_REGIONS
+   };
+
+   struct drm_i915_query query = {
+      .num_items = 1,
+      .items_ptr = (uintptr_t) &item,
+   };
+
+   if (drmIoctl(fd, DRM_IOCTL_I915_QUERY, &query))
+      return false;
+
+   struct drm_i915_query_memory_regions *mem_regions = calloc(1, item.length);
+   item.data_ptr = (uintptr_t) mem_regions;
+
+   if (drmIoctl(fd, DRM_IOCTL_I915_QUERY, &query) || item.length <= 0) {
+      free(mem_regions);
+      return false;
+   }
+
+   anv_track_meminfo(device, mem_regions);
+
+   free(mem_regions);
+   return true;
+}
+
+static void
 anv_init_meminfo(struct anv_physical_device *device, int fd)
 {
+   if (anv_get_query_meminfo(device, fd))
+      return;
+
    uint64_t heap_size = anv_compute_heap_size(fd, device->gtt_size);
 
    if (heap_size > (2ull << 30) && !device->supports_48bit_addresses) {
