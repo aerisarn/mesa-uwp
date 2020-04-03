@@ -4021,6 +4021,12 @@ VkResult anv_AllocateMemory(
       goto success;
    }
 
+   /* Set ALLOC_LOCAL_MEM flag if heap has device local bit set and requested
+    * memory property flag has DEVICE_LOCAL_BIT set.
+    */
+   if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+      alloc_flags |= ANV_BO_ALLOC_LOCAL_MEM;
+
    /* Regular allocate (not importing memory). */
 
    result = anv_device_alloc_bo(device, "user", pAllocateInfo->allocationSize,

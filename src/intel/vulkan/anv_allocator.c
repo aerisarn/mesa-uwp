@@ -1649,7 +1649,29 @@ anv_device_alloc_bo(struct anv_device *device,
       ccs_size = align_u64(DIV_ROUND_UP(size, INTEL_AUX_MAP_GFX12_CCS_SCALE), 4096);
    }
 
-   uint32_t gem_handle = anv_gem_create(device, size + ccs_size);
+   uint32_t gem_handle;
+
+   /* If we have vram size, we have multiple memory regions and should choose
+    * one of them.
+    */
+   if (device->physical->vram.size > 0) {
+      struct drm_i915_gem_memory_class_instance regions[2];
+      uint32_t nregions = 0;
+
+      if (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM) {
+         /* For vram allocation, still use system memory as a fallback. */
+         regions[nregions++] = device->physical->vram.region;
+         regions[nregions++] = device->physical->sys.region;
+      } else {
+         regions[nregions++] = device->physical->sys.region;
+      }
+
+      gem_handle = anv_gem_create_regions(device, size + ccs_size,
+                                          nregions, regions);
+   } else {
+      gem_handle = anv_gem_create(device, size + ccs_size);
+   }
+
    if (gem_handle == 0)
       return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
