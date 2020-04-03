@@ -359,7 +359,6 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
     * address is required for the vertex cache flush workaround.
     */
    device->supports_48bit_addresses = (device->info.ver >= 8) &&
-                                      device->has_softpin &&
                                       device->gtt_size > (4ULL << 30 /* GiB */);
 
    anv_init_meminfo(device, fd);
@@ -757,7 +756,14 @@ anv_physical_device_try_create(struct anv_instance *instance,
       goto fail_base;
    }
 
-   device->has_softpin = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN);
+   if (device->info.ver >= 8 && !device->info.is_cherryview &&
+       !anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN)) {
+      result = vk_errorfi(device->instance, NULL,
+                          VK_ERROR_INITIALIZATION_FAILED,
+                          "kernel missing softpin");
+      goto fail_alloc;
+   }
+
    device->has_exec_async = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_ASYNC);
    device->has_exec_capture = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_CAPTURE);
    device->has_exec_fence = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_FENCE);
@@ -777,8 +783,9 @@ anv_physical_device_try_create(struct anv_instance *instance,
    if (result != VK_SUCCESS)
       goto fail_base;
 
-   device->use_softpin = device->has_softpin &&
-                         device->supports_48bit_addresses;
+   device->use_softpin = device->info.ver >= 8 &&
+                         !device->info.is_cherryview;
+   assert(device->use_softpin == device->supports_48bit_addresses);
 
    device->has_context_isolation =
       anv_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION);
@@ -804,11 +811,9 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->has_a64_buffer_access = device->info.ver >= 8 &&
                                    device->use_softpin;
 
-   /* We first get bindless image access on Skylake and we can only really do
-    * it if we don't have any relocations so we need softpin.
+   /* We first get bindless image access on Skylake.
     */
-   device->has_bindless_images = device->info.ver >= 9 &&
-                                 device->use_softpin;
+   device->has_bindless_images = device->info.ver >= 9;
 
    /* We've had bindless samplers since Ivy Bridge (forever in Vulkan terms)
     * because it's just a matter of setting the sampler address in the sample

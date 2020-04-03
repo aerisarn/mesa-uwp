@@ -910,7 +910,6 @@ struct anv_physical_device {
      */
     uint32_t                                    n_perf_query_commands;
     int                                         cmd_parser_version;
-    bool                                        has_softpin;
     bool                                        has_exec_async;
     bool                                        has_exec_capture;
     bool                                        has_exec_fence;
