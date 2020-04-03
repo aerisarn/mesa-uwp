@@ -1258,6 +1258,9 @@ optimizations.extend([
    (('ibfe', a, 16, 8), ('extract_i8', a, 2), '!options->lower_extract_byte'),
    (('ibfe', a, 24, 8), ('extract_i8', a, 3), '!options->lower_extract_byte'),
 
+   (('extract_u8', ('extract_i8', a, b), 0), ('extract_u8', a, b)),
+   (('extract_u8', ('extract_u8', a, b), 0), ('extract_u8', a, b)),
+
     # Word extraction
    (('ushr', ('ishl', 'a@32', 16), 16), ('extract_u16', a, 0), '!options->lower_extract_word'),
    (('ushr', 'a@32', 16), ('extract_u16', a, 1), '!options->lower_extract_word'),
@@ -1269,6 +1272,9 @@ optimizations.extend([
    (('ubfe', a, 16, 16), ('extract_u16', a, 1), '!options->lower_extract_word'),
    (('ibfe', a,  0, 16), ('extract_i16', a, 0), '!options->lower_extract_word'),
    (('ibfe', a, 16, 16), ('extract_i16', a, 1), '!options->lower_extract_word'),
+
+   (('extract_u16', ('extract_i16', a, b), 0), ('extract_u16', a, b)),
+   (('extract_u16', ('extract_u16', a, b), 0), ('extract_u16', a, b)),
 
    # Lower pack/unpack
    (('pack_64_2x32_split', a, b), ('ior', ('u2u64', a), ('ishl', ('u2u64', b), 32)), 'options->lower_pack_64_2x32_split'),
