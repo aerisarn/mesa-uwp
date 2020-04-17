@@ -1535,7 +1535,8 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
     * so nothing will ever touch the top page.
     */
    VkResult result = anv_device_alloc_bo(device, "scratch", size,
-                                         ANV_BO_ALLOC_32BIT_ADDRESS,
+                                         ANV_BO_ALLOC_32BIT_ADDRESS |
+                                         ANV_BO_ALLOC_LOCAL_MEM,
                                          0 /* explicit_address */,
                                          &bo);
    if (result != VK_SUCCESS)
