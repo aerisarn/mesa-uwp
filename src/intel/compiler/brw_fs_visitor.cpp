@@ -191,6 +191,13 @@ fs_visitor::emit_interpolation_setup_gfx4()
 
    this->pixel_z = fetch_payload_reg(bld, payload.source_depth_reg);
 
+   /* The SF program automatically handles doing the perspective correction or
+    * not based on wm_prog_data::interp_mode[] so we can use the same pixel
+    * offsets for both perspective and non-perspective.
+    */
+   this->delta_xy[BRW_BARYCENTRIC_NONPERSPECTIVE_PIXEL] =
+      this->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL];
+
    abld = bld.annotate("compute pos.w and 1/pos.w");
    /* Compute wpos.w.  It's always in our setup, since it's needed to
     * interpolate the other attributes.
