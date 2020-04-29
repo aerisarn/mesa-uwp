@@ -43,9 +43,8 @@ PALETTE = [
 
 class RootWidget(urwid.Frame):
 
-    def __init__(self, *args, ui: 'UI' = None, **kwargs):
+    def __init__(self, *args, ui: 'UI', **kwargs):
         super().__init__(*args, **kwargs)
-        assert ui is not None
         self.ui = ui
 
     def keypress(self, size: int, key: str) -> typing.Optional[str]:
