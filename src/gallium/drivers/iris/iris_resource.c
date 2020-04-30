@@ -2567,23 +2567,6 @@ iris_flush_bits_for_history(struct iris_context *ice,
    return flush;
 }
 
-void
-iris_flush_and_dirty_for_history(struct iris_context *ice,
-                                 struct iris_batch *batch,
-                                 struct iris_resource *res,
-                                 uint32_t extra_flags,
-                                 const char *reason)
-{
-   if (res->base.b.target != PIPE_BUFFER)
-      return;
-
-   uint32_t flush = iris_flush_bits_for_history(ice, res) | extra_flags;
-
-   iris_emit_pipe_control_flush(batch, reason, flush);
-
-   iris_dirty_for_history(ice, res);
-}
-
 bool
 iris_resource_set_clear_color(struct iris_context *ice,
                               struct iris_resource *res,
