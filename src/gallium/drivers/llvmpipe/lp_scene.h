@@ -197,7 +197,8 @@ struct lp_scene {
    int curr_x, curr_y;  /**< for iterating over bins */
    mtx_t mutex;
 
-   struct cmd_bin tile[TILES_X][TILES_Y];
+   unsigned num_alloced_tiles;
+   struct cmd_bin *tiles;
    struct data_block_list data;
 };
 
@@ -300,7 +301,8 @@ lp_scene_alloc_aligned(struct lp_scene *scene, unsigned size,
 static inline struct cmd_bin *
 lp_scene_get_bin(struct lp_scene *scene, unsigned x, unsigned y)
 {
-   return &scene->tile[x][y];
+   unsigned idx = scene->tiles_x * y + x;
+   return &scene->tiles[idx];
 }
 
 
