@@ -375,7 +375,7 @@ static void
 flush_ubos(struct iris_batch *batch,
             struct iris_shader_state *shs)
 {
-   uint32_t cbufs = shs->bound_cbufs;
+   uint32_t cbufs = shs->dirty_cbufs & shs->bound_cbufs;
 
    while (cbufs) {
       const int i = u_bit_scan(&cbufs);
@@ -383,6 +383,8 @@ flush_ubos(struct iris_batch *batch,
       struct iris_resource *res = (void *)cbuf->buffer;
       iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_OTHER_READ);
    }
+
+   shs->dirty_cbufs = 0;
 }
 
 static void
