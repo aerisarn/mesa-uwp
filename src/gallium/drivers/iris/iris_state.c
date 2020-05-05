@@ -6400,6 +6400,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          uint64_t bound = dynamic_bound;
          while (bound) {
             const int i = u_bit_scan64(&bound);
+
+            iris_emit_buffer_barrier_for(
+               batch, iris_resource_bo(genx->vertex_buffers[i].resource),
+               IRIS_DOMAIN_VF_READ);
             iris_use_optional_res(batch, genx->vertex_buffers[i].resource,
                                   false, IRIS_DOMAIN_VF_READ);
          }
@@ -6423,6 +6427,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             struct iris_resource *res =
                (void *) genx->vertex_buffers[i].resource;
             if (res) {
+               iris_emit_buffer_barrier_for(batch, res->bo,
+                                            IRIS_DOMAIN_VF_READ);
                iris_use_pinned_bo(batch, res->bo, false, IRIS_DOMAIN_VF_READ);
 
                high_bits = res->bo->address >> 32ull;
@@ -6662,6 +6668,8 @@ iris_upload_render_state(struct iris_context *ice,
          pipe_resource_reference(&ice->state.last_res.index_buffer,
                                  draw->index.resource);
          offset = 0;
+
+         iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_VF_READ);
       }
 
       struct iris_genx_state *genx = ice->state.genx;
