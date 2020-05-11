@@ -187,10 +187,19 @@ iris_indirect_draw_vbo(struct iris_context *ice,
    struct pipe_draw_info info = *dinfo;
    struct pipe_draw_indirect_info indirect = *dindirect;
 
-   if (indirect.indirect_draw_count &&
-       ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
-      /* Upload MI_PREDICATE_RESULT to GPR15.*/
-      batch->screen->vtbl.load_register_reg64(batch, CS_GPR(15), MI_PREDICATE_RESULT);
+   iris_emit_buffer_barrier_for(batch, iris_resource_bo(indirect.buffer),
+                                IRIS_DOMAIN_VF_READ);
+
+   if (indirect.indirect_draw_count) {
+      struct iris_bo *draw_count_bo =
+         iris_resource_bo(indirect.indirect_draw_count);
+      iris_emit_buffer_barrier_for(batch, draw_count_bo,
+                                   IRIS_DOMAIN_OTHER_READ);
+
+      if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
+         /* Upload MI_PREDICATE_RESULT to GPR15.*/
+         batch->screen->vtbl.load_register_reg64(batch, CS_GPR(15), MI_PREDICATE_RESULT);
+      }
    }
 
    const uint64_t orig_dirty = ice->state.dirty;
