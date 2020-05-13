@@ -31,27 +31,85 @@ anv_GetAccelerationStructureBuildSizesKHR(
     const uint32_t*                             pMaxPrimitiveCounts,
     VkAccelerationStructureBuildSizesInfoKHR*   pSizeInfo)
 {
-   unreachable("Unimplemented");
+   assert(pSizeInfo->sType ==
+          VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR);
+
+   uint64_t max_prim_count = 0;
+   for (uint32_t i = 0; i < pBuildInfo->geometryCount; i++)
+      max_prim_count += pMaxPrimitiveCounts[i];
+
+   pSizeInfo->accelerationStructureSize = 0; /* TODO */
+
+   uint64_t cpu_build_scratch_size = 0; /* TODO */
+   uint64_t cpu_update_scratch_size = cpu_build_scratch_size;
+
+   uint64_t gpu_build_scratch_size = 0; /* TODO */
+   uint64_t gpu_update_scratch_size = gpu_build_scratch_size;
+
+   switch (buildType) {
+   case VK_ACCELERATION_STRUCTURE_BUILD_TYPE_HOST_KHR:
+      pSizeInfo->buildScratchSize = cpu_build_scratch_size;
+      pSizeInfo->updateScratchSize = cpu_update_scratch_size;
+      break;
+
+   case VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR:
+      pSizeInfo->buildScratchSize = gpu_build_scratch_size;
+      pSizeInfo->updateScratchSize = gpu_update_scratch_size;
+      break;
+
+   case VK_ACCELERATION_STRUCTURE_BUILD_TYPE_HOST_OR_DEVICE_KHR:
+      pSizeInfo->buildScratchSize = MAX2(cpu_build_scratch_size,
+                                         gpu_build_scratch_size);
+      pSizeInfo->updateScratchSize = MAX2(cpu_update_scratch_size,
+                                          gpu_update_scratch_size);
+      break;
+
+   default:
+      unreachable("Invalid acceleration structure build type");
+   }
 }
 
 VkResult
 anv_CreateAccelerationStructureKHR(
-    VkDevice                                    device,
+    VkDevice                                    _device,
     const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
     VkAccelerationStructureKHR*                 pAccelerationStructure)
 {
-   unreachable("Unimplemented");
-   return vk_error(VK_ERROR_FEATURE_NOT_PRESENT);
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   ANV_FROM_HANDLE(anv_buffer, buffer, pCreateInfo->buffer);
+   struct anv_acceleration_structure *accel;
+
+   accel = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*accel), 8,
+                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (accel == NULL)
+      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   vk_object_base_init(&device->vk, &accel->base,
+                       VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR);
+
+   accel->size = pCreateInfo->size;
+   accel->address = anv_address_add(buffer->address, pCreateInfo->offset);
+
+   *pAccelerationStructure = anv_acceleration_structure_to_handle(accel);
+
+   return VK_SUCCESS;
 }
 
 void
 anv_DestroyAccelerationStructureKHR(
-    VkDevice                                    device,
+    VkDevice                                    _device,
     VkAccelerationStructureKHR                  accelerationStructure,
     const VkAllocationCallbacks*                pAllocator)
 {
-   unreachable("Unimplemented");
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   ANV_FROM_HANDLE(anv_acceleration_structure, accel, accelerationStructure);
+
+   if (!accel)
+      return;
+
+   vk_object_base_finish(&accel->base);
+   vk_free2(&device->vk.alloc, pAllocator, accel);
 }
 
 VkDeviceAddress
@@ -59,8 +117,13 @@ anv_GetAccelerationStructureDeviceAddressKHR(
     VkDevice                                    device,
     const VkAccelerationStructureDeviceAddressInfoKHR* pInfo)
 {
-   unreachable("Unimplemented");
-   return 0;
+   ANV_FROM_HANDLE(anv_acceleration_structure, accel,
+                   pInfo->accelerationStructure);
+
+   assert(!anv_address_is_null(accel->address));
+   assert(accel->address.bo->flags & EXEC_OBJECT_PINNED);
+
+   return anv_address_physical(accel->address);
 }
 
 void
