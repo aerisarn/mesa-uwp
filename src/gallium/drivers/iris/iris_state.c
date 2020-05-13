@@ -5509,9 +5509,11 @@ emit_push_constant_packets(struct iris_context *ice,
 
    iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_VS), pkt) {
       pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
-#if GFX_VER >= 12
+
+#if GFX_VER >= 9
       pkt.MOCS = isl_mocs(isl_dev, 0, false);
 #endif
+
       if (prog_data) {
          /* The Skylake PRM contains the following restriction:
           *
