@@ -81,6 +81,7 @@ foreach g : [['70', ['gfx7_cmd_buffer.c']], ['75', ['gfx7_cmd_buffer.c']],
 endforeach
 
 libanv_files = files(
+  'anv_acceleration_structure.c',
   'anv_allocator.c',
   'anv_android.h',
   'anv_batch_chain.c',
