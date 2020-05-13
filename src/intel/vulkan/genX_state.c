@@ -37,7 +37,7 @@
 
 #include "vk_standard_sample_locations.h"
 
-#if GFX_VERx10 >= 125
+#if GFX_VERx10 >= 125 && ANV_SUPPORT_RT
 #include "grl/genX_grl.h"
 #endif
 
@@ -235,7 +235,7 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
 #endif
 
 #if GFX_VERx10 >= 125
-   if (device->info->has_ray_tracing) {
+   if (ANV_SUPPORT_RT && device->info->has_ray_tracing) {
       anv_batch_emit(batch, GENX(3DSTATE_BTD), btd) {
          /* TODO: This is the timeout after which the bucketed thread
           *       dispatcher will kick off a wave of threads. We go with the
@@ -471,7 +471,7 @@ void
 genX(init_physical_device_state)(ASSERTED struct anv_physical_device *pdevice)
 {
    assert(pdevice->info.verx10 == GFX_VERx10);
-#if GFX_VERx10 >= 125
+#if GFX_VERx10 >= 125 && ANV_SUPPORT_RT
    genX(grl_load_rt_uuid)(pdevice->rt_uuid);
 #endif
 }

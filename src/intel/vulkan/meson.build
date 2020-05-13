@@ -27,7 +27,15 @@ anv_flags = [
 
 anv_cpp_flags = []
 
-subdir('grl')
+if with_intel_vk_rt
+  subdir('grl')
+  optional_libgrl = [libgrl]
+  anv_flags += '-DANV_SUPPORT_RT=1'
+else
+  idep_grl = null_dep
+  optional_libgrl = []
+  anv_flags += '-DANV_SUPPORT_RT=0'
+endif
 
 anv_entrypoints = custom_target(
   'anv_entrypoints',
@@ -80,7 +88,6 @@ endif
 
 libanv_per_hw_ver_libs = []
 anv_per_hw_ver_files = files(
-  'genX_acceleration_structure.c',
   'genX_blorp_exec.c',
   'genX_cmd_buffer.c',
   'genX_gpu_memcpy.c',
@@ -88,6 +95,10 @@ anv_per_hw_ver_files = files(
   'genX_query.c',
   'genX_state.c',
 )
+if with_intel_vk_rt
+  anv_per_hw_ver_files += files('genX_acceleration_structure.c',)
+endif
+
 foreach g : [['90', ['gfx8_cmd_buffer.c']],
              ['110', ['gfx8_cmd_buffer.c']],
              ['120', ['gfx8_cmd_buffer.c']],
@@ -193,7 +204,7 @@ libvulkan_intel = shared_library(
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,
   ],
-  link_whole : [libanv_common, libanv_per_hw_ver_libs, libgrl],
+  link_whole : [libanv_common, libanv_per_hw_ver_libs] + optional_libgrl,
   link_with : [
     libintel_compiler, libintel_dev, libisl, libblorp, libintel_perf,
   ],
@@ -231,9 +242,9 @@ if with_tests
     ],
     link_whole : libanv_common,
     link_with : [
-      libanv_per_hw_ver_libs, libgrl, libintel_compiler, libintel_common, libintel_dev,
+      libanv_per_hw_ver_libs, libintel_compiler, libintel_common, libintel_dev,
       libisl, libblorp, libintel_perf,
-    ],
+    ] + optional_libgrl,
     dependencies : [
       dep_thread, dep_dl, dep_m, anv_deps,
       idep_nir, idep_vulkan_util, idep_vulkan_wsi, idep_vulkan_runtime,

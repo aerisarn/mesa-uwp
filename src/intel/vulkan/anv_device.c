@@ -192,6 +192,8 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_8bit_storage                      = true,
       .KHR_16bit_storage                     = true,
       .KHR_acceleration_structure            = device->info.has_ray_tracing,
+      .KHR_acceleration_structure            = ANV_SUPPORT_RT &&
+                                               device->info.has_ray_tracing,
       .KHR_bind_memory2                      = true,
       .KHR_buffer_device_address             = true,
       .KHR_copy_commands2                    = true,
@@ -231,7 +233,10 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_pipeline_executable_properties    = true,
       .KHR_pipeline_library                  = true,
       .KHR_push_descriptor                   = true,
-      .KHR_ray_query                         = device->info.has_ray_tracing,
+      .KHR_ray_query                         =
+         ANV_SUPPORT_RT && device->info.has_ray_tracing,
+      .KHR_ray_tracing_pipeline              =
+         ANV_SUPPORT_RT && device->info.has_ray_tracing,
       .KHR_relaxed_block_layout              = true,
       .KHR_sampler_mirror_clamp_to_edge      = true,
       .KHR_sampler_ycbcr_conversion          = true,
@@ -1344,12 +1349,13 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
          VkPhysicalDeviceAccelerationStructureFeaturesKHR *features = (void *)ext;
-         features->accelerationStructure = pdevice->info.has_ray_tracing;
+         features->accelerationStructure =
+            ANV_SUPPORT_RT && pdevice->info.has_ray_tracing;
          features->accelerationStructureCaptureReplay = false; /* TODO */
          features->accelerationStructureIndirectBuild = false; /* TODO */
          features->accelerationStructureHostCommands = false;
          features->descriptorBindingAccelerationStructureUpdateAfterBind =
-            pdevice->info.has_ray_tracing;
+            ANV_SUPPORT_RT && pdevice->info.has_ray_tracing;
          break;
       }
 
@@ -1549,7 +1555,17 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
          VkPhysicalDeviceRayQueryFeaturesKHR *features = (void *)ext;
-         features->rayQuery = pdevice->info.has_ray_tracing;
+         features->rayQuery = ANV_SUPPORT_RT && pdevice->info.has_ray_tracing;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: {
+         VkPhysicalDeviceRayTracingPipelineFeaturesKHR *features = (void *)ext;
+         features->rayTracingPipeline = pdevice->info.has_ray_tracing;
+         features->rayTracingPipelineShaderGroupHandleCaptureReplay = false;
+         features->rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false;
+         features->rayTracingPipelineTraceRaysIndirect = true;
+         features->rayTraversalPrimitiveCulling = false;
          break;
       }
 
@@ -2559,6 +2575,22 @@ void anv_GetPhysicalDeviceProperties2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR: {
+         VkPhysicalDeviceRayTracingPipelinePropertiesKHR *props = (void *)ext;
+         /* TODO */
+         props->shaderGroupHandleSize = 32;
+         props->maxRayRecursionDepth = 31;
+         /* MemRay::hitGroupSRStride is 16 bits */
+         props->maxShaderGroupStride = UINT16_MAX;
+         /* MemRay::hitGroupSRBasePtr requires 16B alignment */
+         props->shaderGroupBaseAlignment = 16;
+         props->shaderGroupHandleAlignment = 16;
+         props->shaderGroupHandleCaptureReplaySize = 32;
+         props->maxRayDispatchInvocationCount = 1U << 30; /* required min limit */
+         props->maxRayHitAttributeSize = BRW_RT_SIZEOF_HIT_ATTRIB_DATA;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
          VkPhysicalDeviceRobustness2PropertiesEXT *properties = (void *)ext;
          properties->robustStorageBufferAccessSizeAlignment =
@@ -3461,7 +3493,7 @@ VkResult anv_CreateDevice(
    /* TODO(RT): Do we want some sort of data structure for this? */
    memset(device->rt_scratch_bos, 0, sizeof(device->rt_scratch_bos));
 
-   if (device->info->has_ray_tracing) {
+   if (ANV_SUPPORT_RT && device->info->has_ray_tracing) {
       /* The docs say to always allocate 128KB per DSS */
       const uint32_t btd_fifo_bo_size =
          128 * 1024 * intel_device_info_dual_subslice_id_bound(device->info);
@@ -3523,7 +3555,7 @@ VkResult anv_CreateDevice(
  fail_default_pipeline_cache:
    vk_pipeline_cache_destroy(device->default_pipeline_cache, NULL);
  fail_btd_fifo_bo:
-   if (device->info->has_ray_tracing)
+   if (ANV_SUPPORT_RT && device->info->has_ray_tracing)
       anv_device_release_bo(device, device->btd_fifo_bo);
  fail_trivial_batch_bo_and_scratch_pool:
    anv_scratch_pool_finish(device, &device->scratch_pool);
@@ -3595,7 +3627,7 @@ void anv_DestroyDevice(
    vk_pipeline_cache_destroy(device->internal_cache, NULL);
    vk_pipeline_cache_destroy(device->default_pipeline_cache, NULL);
 
-   if (device->info->has_ray_tracing)
+   if (ANV_SUPPORT_RT && device->info->has_ray_tracing)
       anv_device_release_bo(device, device->btd_fifo_bo);
 
 #ifdef HAVE_VALGRIND
