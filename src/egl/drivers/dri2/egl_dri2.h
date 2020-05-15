@@ -267,15 +267,6 @@ struct dri2_egl_context
    __DRIcontext *dri_context;
 };
 
-#ifdef HAVE_WAYLAND_PLATFORM
-enum wayland_buffer_type {
-   WL_BUFFER_FRONT,
-   WL_BUFFER_BACK,
-   WL_BUFFER_THIRD,
-   WL_BUFFER_COUNT
-};
-#endif
-
 struct dri2_egl_surface
 {
    _EGLSurface base;
