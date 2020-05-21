@@ -1426,7 +1426,7 @@ nv50_set_global_bindings(struct pipe_context *pipe,
    unsigned i;
    const unsigned end = start + nr;
 
-   if (nv50->global_residents.size <= (end * sizeof(struct pipe_resource *))) {
+   if (nv50->global_residents.size < (end * sizeof(struct pipe_resource *))) {
       const unsigned old_size = nv50->global_residents.size;
       if (util_dynarray_resize(&nv50->global_residents, struct pipe_resource *, end)) {
          memset((uint8_t *)nv50->global_residents.data + old_size, 0,
