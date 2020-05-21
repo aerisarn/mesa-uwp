@@ -22,6 +22,7 @@
 
 #include "invocation.hpp"
 
+#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -857,8 +858,12 @@ clover::spirv::is_valid_spirv(const std::string &binary,
    spvtools::SpirvTools spvTool(target_env);
    spvTool.SetMessageConsumer(validator_consumer);
 
+   spvtools::ValidatorOptions validator_options;
+   validator_options.SetUniversalLimit(spv_validator_limit_max_function_args,
+                                       std::numeric_limits<uint32_t>::max());
+
    return spvTool.Validate(reinterpret_cast<const uint32_t *>(binary.data()),
-                           binary.size() / 4u);
+                           binary.size() / 4u, validator_options);
 }
 
 std::string
