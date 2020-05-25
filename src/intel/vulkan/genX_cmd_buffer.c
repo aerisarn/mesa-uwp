@@ -1672,7 +1672,7 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
 #if GFX_VER == 12
       if ((bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT) && device->info->has_aux_map) {
          uint64_t register_addr =
-            current_pipeline == GPGPU ? GENX(CCS_CCS_AUX_INV_num) :
+            current_pipeline == GPGPU ? GENX(COMPCS0_CCS_AUX_INV_num) :
                                         GENX(GFX_CCS_AUX_INV_num);
          anv_batch_emit(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
             lri.RegisterOffset = register_addr;
@@ -1692,6 +1692,8 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
                anv_address_from_u64(register_addr);
          }
       }
+#else
+      assert(!device->info->has_aux_map);
 #endif
 
       bits &= ~ANV_PIPE_INVALIDATE_BITS;
