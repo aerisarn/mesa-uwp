@@ -1568,6 +1568,7 @@ enum brw_message_target {
 #define BRW_AOP_FMAX                  1
 #define BRW_AOP_FMIN                  2
 #define BRW_AOP_FCMPWR                3
+#define BRW_AOP_FADD                  4
 
 #define BRW_MATH_FUNCTION_INV                              1
 #define BRW_MATH_FUNCTION_LOG                              2

@@ -5963,6 +5963,8 @@ brw_atomic_op_to_lsc_fatomic_op(uint32_t aop)
       return LSC_OP_ATOMIC_FMIN;
    case BRW_AOP_FCMPWR:
       return LSC_OP_ATOMIC_FCMPXCHG;
+   case BRW_AOP_FADD:
+      return LSC_OP_ATOMIC_FADD;
    default:
       unreachable("Unsupported float atomic opcode");
    }

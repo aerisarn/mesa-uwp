@@ -1426,6 +1426,7 @@ brw_aop_for_nir_intrinsic(const nir_intrinsic_instr *atomic)
    AOP_CASE(fmin):         return BRW_AOP_FMIN;
    AOP_CASE(fmax):         return BRW_AOP_FMAX;
    AOP_CASE(fcomp_swap):   return BRW_AOP_FCMPWR;
+   AOP_CASE(fadd):         return BRW_AOP_FADD;
 
 #undef AOP_CASE
 

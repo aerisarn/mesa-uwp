@@ -487,10 +487,11 @@ static const char *const aop[16] = {
    [BRW_AOP_PREDEC] = "predec",
 };
 
-static const char *const aop_float[4] = {
+static const char *const aop_float[5] = {
    [BRW_AOP_FMAX]   = "fmax",
    [BRW_AOP_FMIN]   = "fmin",
    [BRW_AOP_FCMPWR] = "fcmpwr",
+   [BRW_AOP_FADD]   = "fadd",
 };
 
 static const char * const pixel_interpolator_msg_types[4] = {
