@@ -303,6 +303,7 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
                        uint32_t modifier_lo)
 {
    struct wsi_wl_display *display = data;
+   struct u_vector *modifiers;
    uint64_t *mod = NULL;
 
    /* If we're not fetching formats, don't fetch modifiers either. */
@@ -315,17 +316,18 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
 
    switch (format) {
    case WL_DRM_FORMAT_ARGB8888:
-      wsi_wl_display_add_wl_format(display, &display->dmabuf.formats, format);
-      mod = u_vector_add(&display->dmabuf.modifiers.argb8888);
+      modifiers = &display->dmabuf.modifiers.argb8888;
       break;
    case WL_DRM_FORMAT_XRGB8888:
-      wsi_wl_display_add_wl_format(display, &display->dmabuf.formats, format);
-      mod = u_vector_add(&display->dmabuf.modifiers.xrgb8888);
+      modifiers = &display->dmabuf.modifiers.xrgb8888;
       break;
    default:
-      break;
+      return; /* Unsupported format */
    }
 
+   wsi_wl_display_add_wl_format(display, &display->dmabuf.formats, format);
+
+   mod = u_vector_add(modifiers);
    if (!mod)
       return;
 
