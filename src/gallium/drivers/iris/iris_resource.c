@@ -2324,13 +2324,39 @@ void
 iris_dirty_for_history(struct iris_context *ice,
                        struct iris_resource *res)
 {
+   const uint64_t stages = res->bind_stages;
+   uint64_t dirty = 0ull;
    uint64_t stage_dirty = 0ull;
 
    if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
-      stage_dirty |= ((uint64_t)res->bind_stages)
-                        << IRIS_SHIFT_FOR_STAGE_DIRTY_CONSTANTS;
+      for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+         if (stages & (1u << stage)) {
+            struct iris_shader_state *shs = &ice->state.shaders[stage];
+            shs->dirty_cbufs |= ~0u;
+         }
+      }
+      dirty |= IRIS_DIRTY_RENDER_MISC_BUFFER_FLUSHES |
+               IRIS_DIRTY_COMPUTE_MISC_BUFFER_FLUSHES;
+      stage_dirty |= (stages << IRIS_SHIFT_FOR_STAGE_DIRTY_CONSTANTS);
    }
 
+   if (res->bind_history & (PIPE_BIND_SAMPLER_VIEW |
+                            PIPE_BIND_SHADER_IMAGE)) {
+      dirty |= IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES |
+               IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES;
+      stage_dirty |= (stages << IRIS_SHIFT_FOR_STAGE_DIRTY_BINDINGS);
+   }
+
+   if (res->bind_history & PIPE_BIND_SHADER_BUFFER) {
+      dirty |= IRIS_DIRTY_RENDER_MISC_BUFFER_FLUSHES |
+               IRIS_DIRTY_COMPUTE_MISC_BUFFER_FLUSHES;
+      stage_dirty |= (stages << IRIS_SHIFT_FOR_STAGE_DIRTY_BINDINGS);
+   }
+
+   if (res->bind_history & PIPE_BIND_VERTEX_BUFFER)
+      dirty |= IRIS_DIRTY_VERTEX_BUFFER_FLUSHES;
+
+   ice->state.dirty |= dirty;
    ice->state.stage_dirty |= stage_dirty;
 }
 

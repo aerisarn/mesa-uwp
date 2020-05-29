@@ -154,6 +154,7 @@ enum {
 #define IRIS_STAGE_DIRTY_CONSTANTS_GS             (1ull << 21)
 #define IRIS_STAGE_DIRTY_CONSTANTS_FS             (1ull << 22)
 #define IRIS_STAGE_DIRTY_CONSTANTS_CS             (1ull << 23)
+#define IRIS_SHIFT_FOR_STAGE_DIRTY_BINDINGS       24
 #define IRIS_STAGE_DIRTY_BINDINGS_VS              (1ull << 24)
 #define IRIS_STAGE_DIRTY_BINDINGS_TCS             (1ull << 25)
 #define IRIS_STAGE_DIRTY_BINDINGS_TES             (1ull << 26)
