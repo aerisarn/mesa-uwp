@@ -3441,6 +3441,10 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
       /* We may see user buffers that are NULL bindings. */
       assert(!(buffer->is_user_buffer && buffer->buffer.user != NULL));
 
+      if (buffer->buffer.resource &&
+          state->resource != buffer->buffer.resource)
+         ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFER_FLUSHES;
+
       if (take_ownership) {
          pipe_resource_reference(&state->resource, NULL);
          state->resource = buffer->buffer.resource;
@@ -6400,10 +6404,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          uint64_t bound = dynamic_bound;
          while (bound) {
             const int i = u_bit_scan64(&bound);
-
-            iris_emit_buffer_barrier_for(
-               batch, iris_resource_bo(genx->vertex_buffers[i].resource),
-               IRIS_DOMAIN_VF_READ);
             iris_use_optional_res(batch, genx->vertex_buffers[i].resource,
                                   false, IRIS_DOMAIN_VF_READ);
          }
@@ -6427,8 +6427,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             struct iris_resource *res =
                (void *) genx->vertex_buffers[i].resource;
             if (res) {
-               iris_emit_buffer_barrier_for(batch, res->bo,
-                                            IRIS_DOMAIN_VF_READ);
                iris_use_pinned_bo(batch, res->bo, false, IRIS_DOMAIN_VF_READ);
 
                high_bits = res->bo->address >> 32ull;
@@ -6608,6 +6606,18 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 }
 
 static void
+flush_vbos(struct iris_context *ice, struct iris_batch *batch)
+{
+   struct iris_genx_state *genx = ice->state.genx;
+   uint64_t bound = ice->state.bound_vertex_buffers;
+   while (bound) {
+      const int i = u_bit_scan64(&bound);
+      struct iris_bo *bo = iris_resource_bo(genx->vertex_buffers[i].resource);
+      iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_VF_READ);
+   }
+}
+
+static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw,
@@ -6616,6 +6626,9 @@ iris_upload_render_state(struct iris_context *ice,
                          const struct pipe_draw_start_count_bias *sc)
 {
    bool use_predicate = ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
+
+   if (ice->state.dirty & IRIS_DIRTY_VERTEX_BUFFER_FLUSHES)
+      flush_vbos(ice, batch);
 
    iris_batch_sync_region_start(batch);
 
@@ -7247,7 +7260,8 @@ iris_rebind_buffer(struct iris_context *ice,
 
          if (*addr != bo->address + state->offset) {
             *addr = bo->address + state->offset;
-            ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;
+            ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS |
+                                IRIS_DIRTY_VERTEX_BUFFER_FLUSHES;
          }
       }
    }

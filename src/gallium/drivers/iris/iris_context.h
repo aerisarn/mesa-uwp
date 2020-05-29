@@ -112,6 +112,7 @@ enum {
 #define IRIS_DIRTY_DEPTH_BOUNDS                   (1ull << 29)
 #define IRIS_DIRTY_RENDER_BUFFER                  (1ull << 30)
 #define IRIS_DIRTY_STENCIL_REF                    (1ull << 31)
+#define IRIS_DIRTY_VERTEX_BUFFER_FLUSHES          (1ull << 32)
 
 #define IRIS_ALL_DIRTY_FOR_COMPUTE (IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES)
 
