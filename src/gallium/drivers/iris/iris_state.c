@@ -3400,6 +3400,8 @@ iris_set_shader_buffers(struct pipe_context *ctx,
       }
    }
 
+   ice->state.dirty |= (IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES |
+                        IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES);
    ice->state.stage_dirty |= IRIS_STAGE_DIRTY_BINDINGS_VS << stage;
 }
 

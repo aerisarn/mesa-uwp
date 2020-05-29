@@ -152,6 +152,20 @@ resolve_image_views(struct iris_context *ice,
 }
 
 
+static void
+flush_ssbos(struct iris_batch *batch,
+            struct iris_shader_state *shs)
+{
+   uint32_t ssbos = shs->bound_ssbos;
+
+   while (ssbos) {
+      const int i = u_bit_scan(&ssbos);
+      struct pipe_shader_buffer *ssbo = &shs->ssbo[i];
+      struct iris_resource *res = (void *)ssbo->buffer;
+      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_DATA_WRITE);
+   }
+}
+
 /**
  * \brief Resolve buffers before drawing.
  *
@@ -176,6 +190,7 @@ iris_predraw_resolve_inputs(struct iris_context *ice,
                             consider_framebuffer);
       resolve_image_views(ice, batch, shs, info, draw_aux_buffer_disabled,
                           consider_framebuffer);
+      flush_ssbos(batch, shs);
    }
 }
 
