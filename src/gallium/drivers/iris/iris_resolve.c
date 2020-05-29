@@ -151,34 +151,6 @@ resolve_image_views(struct iris_context *ice,
    }
 }
 
-static void
-flush_ubos(struct iris_batch *batch,
-            struct iris_shader_state *shs)
-{
-   uint32_t cbufs = shs->bound_cbufs;
-
-   while (cbufs) {
-      const int i = u_bit_scan(&cbufs);
-      struct pipe_shader_buffer *cbuf = &shs->constbuf[i];
-      struct iris_resource *res = (void *)cbuf->buffer;
-      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_OTHER_READ);
-   }
-}
-
-static void
-flush_ssbos(struct iris_batch *batch,
-            struct iris_shader_state *shs)
-{
-   uint32_t ssbos = shs->bound_ssbos;
-
-   while (ssbos) {
-      const int i = u_bit_scan(&ssbos);
-      struct pipe_shader_buffer *ssbo = &shs->ssbo[i];
-      struct iris_resource *res = (void *)ssbo->buffer;
-      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_DATA_WRITE);
-   }
-}
-
 /**
  * \brief Resolve buffers before drawing.
  *
@@ -203,11 +175,7 @@ iris_predraw_resolve_inputs(struct iris_context *ice,
                             consider_framebuffer);
       resolve_image_views(ice, batch, shs, info, draw_aux_buffer_disabled,
                           consider_framebuffer);
-      flush_ssbos(batch, shs);
    }
-
-   if (ice->state.stage_dirty & (IRIS_STAGE_DIRTY_CONSTANTS_VS << stage))
-      flush_ubos(batch, shs);
 }
 
 void
@@ -401,6 +369,48 @@ iris_cache_flush_for_render(struct iris_batch *batch,
                                    PIPE_CONTROL_CS_STALL);
       entry->data = v_aux_usage;
    }
+}
+
+static void
+flush_ubos(struct iris_batch *batch,
+            struct iris_shader_state *shs)
+{
+   uint32_t cbufs = shs->bound_cbufs;
+
+   while (cbufs) {
+      const int i = u_bit_scan(&cbufs);
+      struct pipe_shader_buffer *cbuf = &shs->constbuf[i];
+      struct iris_resource *res = (void *)cbuf->buffer;
+      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_OTHER_READ);
+   }
+}
+
+static void
+flush_ssbos(struct iris_batch *batch,
+            struct iris_shader_state *shs)
+{
+   uint32_t ssbos = shs->bound_ssbos;
+
+   while (ssbos) {
+      const int i = u_bit_scan(&ssbos);
+      struct pipe_shader_buffer *ssbo = &shs->ssbo[i];
+      struct iris_resource *res = (void *)ssbo->buffer;
+      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_DATA_WRITE);
+   }
+}
+
+void
+iris_predraw_flush_buffers(struct iris_context *ice,
+                           struct iris_batch *batch,
+                           gl_shader_stage stage)
+{
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
+
+   if (ice->state.stage_dirty & (IRIS_STAGE_DIRTY_CONSTANTS_VS << stage))
+      flush_ubos(batch, shs);
+
+   if (ice->state.stage_dirty & (IRIS_STAGE_DIRTY_BINDINGS_VS << stage))
+      flush_ssbos(batch, shs);
 }
 
 static void
