@@ -783,7 +783,8 @@ static unsigned
 mir_choose_bundle(
                 midgard_instruction **instructions,
                 uint16_t *liveness,
-                BITSET_WORD *worklist, unsigned count)
+                BITSET_WORD *worklist, unsigned count,
+                unsigned num_ldst)
 {
         /* At the moment, our algorithm is very simple - use the bundle of the
          * best instruction, regardless of what else could be scheduled
@@ -796,6 +797,25 @@ mir_choose_bundle(
         };
 
         midgard_instruction *chosen = mir_choose_instruction(instructions, liveness, worklist, count, &predicate);
+
+        if (chosen && chosen->type == TAG_LOAD_STORE_4 && !(num_ldst % 2)) {
+                /* Try to schedule load/store ops in pairs */
+
+                predicate.exclude = chosen->dest;
+                predicate.tag = TAG_LOAD_STORE_4;
+
+                chosen = mir_choose_instruction(instructions, liveness, worklist, count, &predicate);
+                if (chosen)
+                        return TAG_LOAD_STORE_4;
+
+                predicate.tag = ~0;
+
+                chosen = mir_choose_instruction(instructions, liveness, worklist, count, &predicate);
+                if (chosen)
+                        return chosen->type;
+                else
+                        return TAG_LOAD_STORE_4;
+        }
 
         if (chosen)
                 return chosen->type;
@@ -1016,7 +1036,8 @@ static midgard_bundle
 mir_schedule_ldst(
                 midgard_instruction **instructions,
                 uint16_t *liveness,
-                BITSET_WORD *worklist, unsigned len)
+                BITSET_WORD *worklist, unsigned len,
+                unsigned *num_ldst)
 {
         struct midgard_predicate predicate = {
                 .tag = TAG_LOAD_STORE_4,
@@ -1037,6 +1058,8 @@ mir_schedule_ldst(
                 .instruction_count = pair ? 2 : 1,
                 .instructions = { ins, pair }
         };
+
+        *num_ldst -= out.instruction_count;
 
         /* We have to update the worklist atomically, since the two
          * instructions run concurrently (TODO: verify it's not pipelined) */
@@ -1401,19 +1424,27 @@ schedule_block(compiler_context *ctx, midgard_block *block)
         uint16_t *liveness = calloc(node_count, 2);
         mir_initialize_worklist(worklist, instructions, len);
 
+        /* Count the number of load/store instructions so we know when it's
+         * worth trying to schedule them in pairs. */
+        unsigned num_ldst = 0;
+        for (unsigned i = 0; i < len; ++i) {
+                if (instructions[i]->type == TAG_LOAD_STORE_4)
+                        ++num_ldst;
+        }
+
         struct util_dynarray bundles;
         util_dynarray_init(&bundles, NULL);
 
         block->quadword_count = 0;
 
         for (;;) {
-                unsigned tag = mir_choose_bundle(instructions, liveness, worklist, len);
+                unsigned tag = mir_choose_bundle(instructions, liveness, worklist, len, num_ldst);
                 midgard_bundle bundle;
 
                 if (tag == TAG_TEXTURE_4)
                         bundle = mir_schedule_texture(instructions, liveness, worklist, len, ctx->stage != MESA_SHADER_FRAGMENT);
                 else if (tag == TAG_LOAD_STORE_4)
-                        bundle = mir_schedule_ldst(instructions, liveness, worklist, len);
+                        bundle = mir_schedule_ldst(instructions, liveness, worklist, len, &num_ldst);
                 else if (tag == TAG_ALU_4)
                         bundle = mir_schedule_alu(ctx, instructions, liveness, worklist, len);
                 else
@@ -1422,6 +1453,8 @@ schedule_block(compiler_context *ctx, midgard_block *block)
                 util_dynarray_append(&bundles, midgard_bundle, bundle);
                 block->quadword_count += midgard_tag_props[bundle.tag].size;
         }
+
+        assert(num_ldst == 0);
 
         /* We emitted bundles backwards; copy into the block in reverse-order */
 
