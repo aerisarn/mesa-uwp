@@ -107,6 +107,8 @@ enum iris_domain {
    IRIS_DOMAIN_DEPTH_WRITE,
    /** Any other read-write cache. */
    IRIS_DOMAIN_OTHER_WRITE,
+   /** Vertex cache. */
+   IRIS_DOMAIN_VF_READ,
    /** Any other read-only cache. */
    IRIS_DOMAIN_OTHER_READ,
    /** Number of caching domains. */
@@ -121,7 +123,8 @@ enum iris_domain {
 static inline bool
 iris_domain_is_read_only(enum iris_domain access)
 {
-   return access == IRIS_DOMAIN_OTHER_READ;
+   return access == IRIS_DOMAIN_OTHER_READ ||
+          access == IRIS_DOMAIN_VF_READ;
 }
 
 enum iris_mmap_mode {
