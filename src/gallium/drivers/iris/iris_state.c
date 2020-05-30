@@ -7380,6 +7380,9 @@ batch_mark_sync_for_pipe_control(struct iris_batch *batch, uint32_t flags)
       if ((flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH))
          iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_DEPTH_WRITE);
 
+      if ((flags & PIPE_CONTROL_DATA_CACHE_FLUSH))
+         iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_DATA_WRITE);
+
       if ((flags & PIPE_CONTROL_FLUSH_ENABLE))
          iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_OTHER_WRITE);
 
@@ -7395,6 +7398,9 @@ batch_mark_sync_for_pipe_control(struct iris_batch *batch, uint32_t flags)
 
    if ((flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH))
       iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_DEPTH_WRITE);
+
+   if ((flags & PIPE_CONTROL_DATA_CACHE_FLUSH))
+      iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_DATA_WRITE);
 
    if ((flags & PIPE_CONTROL_FLUSH_ENABLE))
       iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_OTHER_WRITE);

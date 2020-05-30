@@ -105,6 +105,8 @@ enum iris_domain {
    IRIS_DOMAIN_RENDER_WRITE = 0,
    /** (Hi)Z/stencil cache. */
    IRIS_DOMAIN_DEPTH_WRITE,
+   /** Data port (HDC) cache. */
+   IRIS_DOMAIN_DATA_WRITE,
    /** Any other read-write cache. */
    IRIS_DOMAIN_OTHER_WRITE,
    /** Vertex cache. */
