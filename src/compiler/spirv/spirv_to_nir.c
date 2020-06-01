@@ -293,25 +293,13 @@ struct vtn_ssa_value *
 vtn_const_ssa_value(struct vtn_builder *b, nir_constant *constant,
                     const struct glsl_type *type)
 {
-   struct hash_entry *entry = _mesa_hash_table_search(b->const_table, constant);
-
-   if (entry)
-      return entry->data;
-
    struct vtn_ssa_value *val = rzalloc(b, struct vtn_ssa_value);
    val->type = glsl_get_bare_type(type);
 
    if (glsl_type_is_vector_or_scalar(type)) {
-      unsigned num_components = glsl_get_vector_elements(val->type);
-      unsigned bit_size = glsl_get_bit_size(type);
-      nir_load_const_instr *load =
-         nir_load_const_instr_create(b->shader, num_components, bit_size);
-
-      memcpy(load->value, constant->values,
-             sizeof(nir_const_value) * num_components);
-
-      nir_instr_insert_before_cf_list(&b->nb.impl->body, &load->instr);
-      val->def = &load->def;
+      val->def = nir_build_imm(&b->nb, glsl_get_vector_elements(val->type),
+                               glsl_get_bit_size(val->type),
+                               constant->values);
    } else {
       unsigned elems = glsl_get_length(val->type);
       val->elems = ralloc_array(b, struct vtn_ssa_value *, elems);
@@ -6828,8 +6816,6 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
       progress = false;
       vtn_foreach_function(func, &b->functions) {
          if ((options->create_library || func->referenced) && !func->emitted) {
-            b->const_table = _mesa_pointer_hash_table_create(b);
-
             vtn_function_emit(b, func, vtn_handle_body_instruction);
             progress = true;
          }

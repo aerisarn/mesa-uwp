@@ -625,14 +625,6 @@ struct vtn_builder {
    int line, col;
 
    /*
-    * In SPIR-V, constants are global, whereas in NIR, the load_const
-    * instruction we use is per-function. So while we parse each function, we
-    * keep a hash table of constants we've resolved to nir_ssa_value's so
-    * far, and we lazily resolve them when we see them used in a function.
-    */
-   struct hash_table *const_table;
-
-   /*
     * Map from phi instructions (pointer to the start of the instruction)
     * to the variable corresponding to it.
     */
