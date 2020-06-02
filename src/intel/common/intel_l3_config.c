@@ -262,7 +262,7 @@ intel_get_default_l3_weights(const struct intel_device_info *devinfo,
    struct intel_l3_weights w = {{ 0 }};
 
    w.w[INTEL_L3P_SLM] = devinfo->ver < 11 && needs_slm;
-   w.w[INTEL_L3P_URB] = 1.0;
+   w.w[INTEL_L3P_URB] = devinfo->verx10 < 125 ? 1.0 : 0.0;
 
    if (devinfo->ver >= 8) {
       w.w[INTEL_L3P_ALL] = 1.0;
