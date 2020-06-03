@@ -115,6 +115,7 @@ enum {
 #define IRIS_DIRTY_VERTEX_BUFFER_FLUSHES          (1ull << 32)
 #define IRIS_DIRTY_RENDER_MISC_BUFFER_FLUSHES     (1ull << 33)
 #define IRIS_DIRTY_COMPUTE_MISC_BUFFER_FLUSHES    (1ull << 34)
+#define IRIS_DIRTY_VFG                            (1ull << 35)
 
 #define IRIS_ALL_DIRTY_FOR_COMPUTE (IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES | \
                                     IRIS_DIRTY_COMPUTE_MISC_BUFFER_FLUSHES)

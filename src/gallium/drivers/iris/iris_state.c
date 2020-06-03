@@ -6586,12 +6586,42 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_VF) {
       iris_emit_cmd(batch, GENX(3DSTATE_VF), vf) {
+#if GFX_VERx10 >= 125
+         vf.GeometryDistributionEnable = true;
+#endif
          if (draw->primitive_restart) {
             vf.IndexedDrawCutIndexEnable = true;
             vf.CutIndex = draw->restart_index;
          }
       }
    }
+
+#if GFX_VERx10 >= 125
+   if (dirty & IRIS_DIRTY_VFG) {
+      iris_emit_cmd(batch, GENX(3DSTATE_VFG), vfg) {
+         /* If 3DSTATE_TE: TE Enable == 1 then RR_STRICT else RR_FREE*/
+         vfg.DistributionMode =
+            ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL ? RR_STRICT :
+                                                               RR_FREE;
+         vfg.DistributionGranularity = BatchLevelGranularity;
+         vfg.ListCutIndexEnable = draw->primitive_restart;
+         /* 192 vertices for TRILIST_ADJ */
+         vfg.ListNBatchSizeScale = 0;
+         /* Batch size of 384 vertices */
+         vfg.List3BatchSizeScale = 2;
+         /* Batch size of 128 vertices */
+         vfg.List2BatchSizeScale = 1;
+         /* Batch size of 128 vertices */
+         vfg.List1BatchSizeScale = 2;
+         /* Batch size of 256 vertices for STRIP topologies */
+         vfg.StripBatchSizeScale = 3;
+         /* 192 control points for PATCHLIST_3 */
+         vfg.PatchBatchSizeScale = 1;
+         /* 192 control points for PATCHLIST_3 */
+         vfg.PatchBatchSizeMultiplier = 31;
+      }
+   }
+#endif
 
    if (dirty & IRIS_DIRTY_VF_STATISTICS) {
       iris_emit_cmd(batch, GENX(3DSTATE_VF_STATISTICS), vf) {
