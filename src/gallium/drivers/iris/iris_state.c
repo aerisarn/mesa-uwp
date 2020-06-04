@@ -4435,6 +4435,16 @@ iris_store_tes_state(const struct intel_device_info *devinfo,
       te.TEEnable = true;
       te.MaximumTessellationFactorOdd = 63.0;
       te.MaximumTessellationFactorNotOdd = 64.0;
+#if GFX_VERx10 >= 125
+      te.TessellationDistributionMode = TEDMODE_RR_FREE;
+      te.TessellationDistributionLevel = TEDLEVEL_PATCH;
+      /* 64_TRIANGLES */
+      te.SmallPatchThreshold = 3;
+      /* 1K_TRIANGLES */
+      te.TargetBlockSize = 8;
+      /* 1K_TRIANGLES */
+      te.LocalBOPAccumulatorThreshold = 1;
+#endif
    }
 
    iris_pack_command(GENX(3DSTATE_DS), ds_state, ds) {
