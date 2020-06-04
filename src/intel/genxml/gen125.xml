@@ -2845,6 +2845,36 @@
     <field name="Tessellation Distribution Level" start="49" end="50" type="uint">
       <value name="TEDLEVEL_PATCH" value="0"/>
     </field>
+    <field name="Small Patch Threshold" start="56" end="57" type="uint">
+      <value name="SPT_8_TRIANGLES" value="0"/>
+      <value name="SPT_16_TRIANGLES" value="1"/>
+      <value name="SPT_32_TRIANGLES" value="2"/>
+      <value name="SPT_64_TRIANGLES" value="3"/>
+    </field>
+    <field name="Target Block Size" start="58" end="61" type="uint">
+      <value name="64_TRIANGLES" value="0"/>
+      <value name="96_TRIANGLES" value="1"/>
+      <value name="128_TRIANGLES" value="2"/>
+      <value name="192_TRIANGLES" value="3"/>
+      <value name="256_TRIANGLES" value="4"/>
+      <value name="384_TRIANGLES" value="5"/>
+      <value name="512_TRIANGLES" value="6"/>
+      <value name="768_TRIANGLES" value="7"/>
+      <value name="1K_TRIANGLES" value="8"/>
+      <value name="1.5K_TRIANGLES" value="9"/>
+      <value name="2K_TRIANGLES" value="10"/>
+      <value name="3K_TRIANGLES" value="11"/>
+      <value name="4K_TRIANGLES" value="12"/>
+      <value name="6K_TRIANGLES" value="13"/>
+      <value name="8K_TRIANGLES" value="14"/>
+      <value name="12K_TRIANGLES" value="15"/>
+    </field>
+    <field name="Local BOP Accumulator Threshold" start="62" end="63" type="uint">
+      <value name="MULTIPLIER_0" value="0"/>
+      <value name="MULTIPLIER_1" value="1"/>
+      <value name="MULTIPLIER_2" value="2"/>
+      <value name="MULTIPLIER_3" value="3"/>
+    </field>
     <field name="Maximum Tessellation Factor Odd" start="64" end="95" type="float"/>
     <field name="Maximum Tessellation Factor Not Odd" start="96" end="127" type="float"/>
   </instruction>
