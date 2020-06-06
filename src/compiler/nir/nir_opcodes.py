@@ -957,6 +957,9 @@ if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
 
 triop("flrp", tfloat, "", "src0 * (1 - src2) + src1 * src2")
 
+# Ternary addition
+triop("iadd3", tint, _2src_commutative + associative, "src0 + src1 + src2")
+
 # Conditional Select
 #
 # A vector conditional select instruction (like ?:, but operating per-
