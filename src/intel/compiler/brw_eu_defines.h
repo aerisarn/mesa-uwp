@@ -270,6 +270,7 @@ enum opcode {
    BRW_OPCODE_SUBB, /**< Gfx7+ */
    BRW_OPCODE_SAD2,
    BRW_OPCODE_SADA2,
+   BRW_OPCODE_ADD3, /* Gen12+ only */
    BRW_OPCODE_DP4,
    BRW_OPCODE_DPH,
    BRW_OPCODE_DP3,

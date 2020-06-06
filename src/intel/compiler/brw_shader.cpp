@@ -866,6 +866,7 @@ backend_instruction::is_commutative() const
    case BRW_OPCODE_OR:
    case BRW_OPCODE_XOR:
    case BRW_OPCODE_ADD:
+   case BRW_OPCODE_ADD3:
    case BRW_OPCODE_MUL:
    case SHADER_OPCODE_MULH:
       return true;
@@ -983,6 +984,7 @@ backend_instruction::can_do_saturate() const
 {
    switch (opcode) {
    case BRW_OPCODE_ADD:
+   case BRW_OPCODE_ADD3:
    case BRW_OPCODE_ASR:
    case BRW_OPCODE_AVG:
    case BRW_OPCODE_CSEL:
@@ -1028,6 +1030,7 @@ backend_instruction::can_do_cmod() const
 {
    switch (opcode) {
    case BRW_OPCODE_ADD:
+   case BRW_OPCODE_ADD3:
    case BRW_OPCODE_ADDC:
    case BRW_OPCODE_AND:
    case BRW_OPCODE_ASR:

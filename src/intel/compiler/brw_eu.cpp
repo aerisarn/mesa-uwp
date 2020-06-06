@@ -684,6 +684,7 @@ static const struct opcode_desc opcode_descs[] = {
    { BRW_OPCODE_SUBB,     79,  "subb",    2,    1,    GFX_GE(GFX7) },
    { BRW_OPCODE_SAD2,     80,  "sad2",    2,    1,    GFX_ALL },
    { BRW_OPCODE_SADA2,    81,  "sada2",   2,    1,    GFX_ALL },
+   { BRW_OPCODE_ADD3,     82,  "add3",    3,    1,    GFX_GE(GFX125) },
    { BRW_OPCODE_DP4,      84,  "dp4",     2,    1,    GFX_LT(GFX11) },
    { BRW_OPCODE_DPH,      85,  "dph",     2,    1,    GFX_LT(GFX11) },
    { BRW_OPCODE_DP3,      86,  "dp3",     2,    1,    GFX_LT(GFX11) },

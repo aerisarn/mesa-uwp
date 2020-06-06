@@ -1185,6 +1185,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       inst = bld.ADD(result, op[0], op[1]);
       break;
 
+   case nir_op_iadd3:
+      inst = bld.ADD3(result, op[0], op[1], op[2]);
+      break;
+
    case nir_op_iadd_sat:
    case nir_op_uadd_sat:
       inst = bld.ADD(result, op[0], op[1]);

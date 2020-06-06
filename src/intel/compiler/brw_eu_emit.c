@@ -1117,6 +1117,7 @@ ALU1(FBL)
 ALU1(CBIT)
 ALU2(ADDC)
 ALU2(SUBB)
+ALU3(ADD3)
 
 brw_inst *
 brw_MOV(struct brw_codegen *p, struct brw_reg dest, struct brw_reg src0)

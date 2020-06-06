@@ -2090,6 +2090,11 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          brw_LRP(p, dst, src[0], src[1], src[2]);
 	 break;
 
+      case BRW_OPCODE_ADD3:
+         assert(devinfo->verx10 >= 125);
+         brw_ADD3(p, dst, src[0], src[1], src[2]);
+         break;
+
       case BRW_OPCODE_FRC:
 	 brw_FRC(p, dst, src[0]);
 	 break;

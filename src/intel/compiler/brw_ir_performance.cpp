@@ -378,6 +378,7 @@ namespace {
       case BRW_OPCODE_MOV:
       case BRW_OPCODE_CMP:
       case BRW_OPCODE_ADD:
+      case BRW_OPCODE_ADD3:
       case BRW_OPCODE_MUL:
       case SHADER_OPCODE_MOV_RELOC_IMM:
       case VEC4_OPCODE_MOV_FOR_SCRATCH:
