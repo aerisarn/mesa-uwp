@@ -42,6 +42,727 @@ using namespace brw;
 
 static const bool debug = false;
 
+enum PACKED interpreted_type {
+   float_only = 0,
+   integer_only,
+   either_type
+};
+
+struct value {
+   /** Raw bit pattern of the value. */
+   nir_const_value value;
+
+   /** Instruction that uses this instance of the value. */
+   unsigned instr_index;
+
+   /** Size, in bits, of the value. */
+   uint8_t bit_size;
+
+   /**
+    * Which source of instr is this value?
+    *
+    * \note This field is not actually used by \c brw_combine_constants, but
+    * it is generally very useful to callers.
+    */
+   uint8_t src;
+
+   /**
+    * In what ways can instr interpret this value?
+    *
+    * Choices are floating-point only, integer only, or either type.
+    */
+   enum interpreted_type type;
+
+   /**
+    * Only try to make a single source non-constant.
+    *
+    * On some architectures, some instructions require that all sources be
+    * non-constant.  For example, the multiply-accumulate instruction on Intel
+    * GPUs upto Gen11 require that all sources be non-constant.  Other
+    * instructions, like the selection instruction, allow one constant source.
+    *
+    * If a single constant source is allowed, set this flag to true.
+    *
+    * If an instruction allows a single constant and it has only a signle
+    * constant to begin, it should be included.  Various places in
+    * \c combine_constants will assume that there are multiple constants if
+    * \c ::allow_one_constant is set.  This may even be enforced by in-code
+    * assertions.
+    */
+   bool allow_one_constant;
+
+   /**
+    * Restrict values that can reach this value to not include negations.
+    *
+    * This is useful for instructions that cannot have source modifiers.  For
+    * example, on Intel GPUs the integer source of a shift instruction (e.g.,
+    * SHL) can have a source modifier, but the integer source of the bitfield
+    * insertion instruction (i.e., BFI2) cannot.  A pair of these instructions
+    * might have sources that are negations of each other.  Using this flag
+    * will ensure that the BFI2 does not have a negated source, but the SHL
+    * might.
+    */
+   bool no_negations;
+
+   /**
+    * \name UtilCombineConstantsPrivate
+    * Private data used only by brw_combine_constants
+    *
+    * Any data stored in these fields will be overwritten by the call to
+    * \c brw_combine_constants.  No assumptions should be made about the
+    * state of these fields after that function returns.
+    */
+   /**@{*/
+   /** Mask of negations that can be generated from this value. */
+   uint8_t reachable_mask;
+
+   /** Mask of negations that can generate this value. */
+   uint8_t reaching_mask;
+
+   /**
+    * Value with the next source from the same instruction.
+    *
+    * This pointer may be \c NULL.  If it is not \c NULL, it will form a
+    * singly-linked circular list of values.  The list is unorderd.  That is,
+    * as the list is iterated, the \c ::src values will be in arbitrary order.
+    *
+    * \todo Is it even possible for there to be more than two elements in this
+    * list?  This pass does not operate on vecN instructions or intrinsics, so
+    * the theoretical limit should be three.  However, instructions with all
+    * constant sources should have been folded away.
+    */
+   struct value *next_src;
+   /**@}*/
+};
+
+struct combine_constants_value {
+   /** Raw bit pattern of the constant loaded. */
+   nir_const_value value;
+
+   /**
+    * Index of the first user.
+    *
+    * This is the offset into \c combine_constants_result::user_map of the
+    * first user of this value.
+    */
+   unsigned first_user;
+
+   /** Number of users of this value. */
+   unsigned num_users;
+
+   /** Size, in bits, of the value. */
+   uint8_t bit_size;
+};
+
+struct combine_constants_user {
+   /** Index into the array of values passed to brw_combine_constants. */
+   unsigned index;
+
+   /**
+    * Manner in which the value should be interpreted in the instruction.
+    *
+    * This is only useful when ::negate is set.  Unless the corresponding
+    * value::type is \c either_type, this field must have the same value as
+    * value::type.
+    */
+   enum interpreted_type type;
+
+   /** Should this value be negated to generate the original value? */
+   bool negate;
+};
+
+class combine_constants_result {
+public:
+   combine_constants_result(unsigned num_candidates, bool &success)
+      : num_values_to_emit(0), user_map(NULL)
+   {
+      user_map = (struct combine_constants_user *) calloc(num_candidates,
+                                                          sizeof(user_map[0]));
+
+      /* In the worst case, the number of output values will be equal to the
+       * number of input values.  Allocate a buffer that is known to be large
+       * enough now, and it can be reduced later.
+       */
+      values_to_emit =
+         (struct combine_constants_value *) calloc(num_candidates,
+                                                   sizeof(values_to_emit[0]));
+
+      success = (user_map != NULL && values_to_emit != NULL);
+   }
+
+   ~combine_constants_result()
+   {
+      free(values_to_emit);
+      free(user_map);
+   }
+
+   void append_value(const nir_const_value &value, unsigned bit_size)
+   {
+      values_to_emit[num_values_to_emit].value = value;
+      values_to_emit[num_values_to_emit].first_user = 0;
+      values_to_emit[num_values_to_emit].num_users = 0;
+      values_to_emit[num_values_to_emit].bit_size = bit_size;
+      num_values_to_emit++;
+   }
+
+   unsigned num_values_to_emit;
+   struct combine_constants_value *values_to_emit;
+
+   struct combine_constants_user *user_map;
+};
+
+#define VALUE_INDEX                  0
+#define FLOAT_NEG_INDEX              1
+#define INT_NEG_INDEX                2
+#define MAX_NUM_REACHABLE            3
+
+#define VALUE_EXISTS                 (1 << VALUE_INDEX)
+#define FLOAT_NEG_EXISTS             (1 << FLOAT_NEG_INDEX)
+#define INT_NEG_EXISTS               (1 << INT_NEG_INDEX)
+
+static bool
+negation_exists(nir_const_value v, unsigned bit_size,
+                enum interpreted_type base_type)
+{
+   /* either_type does not make sense in this context. */
+   assert(base_type == float_only || base_type == integer_only);
+
+   switch (bit_size) {
+   case 8:
+      if (base_type == float_only)
+         return false;
+      else
+         return v.i8 != 0 && v.i8 != INT8_MIN;
+
+   case 16:
+      if (base_type == float_only)
+         return !util_is_half_nan(v.i16);
+      else
+         return v.i16 != 0 && v.i16 != INT16_MIN;
+
+   case 32:
+      if (base_type == float_only)
+         return !isnan(v.f32);
+      else
+         return v.i32 != 0 && v.i32 != INT32_MIN;
+
+   case 64:
+      if (base_type == float_only)
+         return !isnan(v.f64);
+      else
+         return v.i64 != 0 && v.i64 != INT64_MIN;
+
+   default:
+      unreachable("unsupported bit-size should have already been filtered.");
+   }
+}
+
+static nir_const_value
+negate(nir_const_value v, unsigned bit_size, enum interpreted_type base_type)
+{
+   /* either_type does not make sense in this context. */
+   assert(base_type == float_only || base_type == integer_only);
+
+   nir_const_value ret = { 0, };
+
+   switch (bit_size) {
+   case 8:
+      assert(base_type == integer_only);
+      ret.i8 = -v.i8;
+      break;
+
+   case 16:
+      if (base_type == float_only)
+         ret.u16 = v.u16 ^ INT16_MIN;
+      else
+         ret.i16 = -v.i16;
+      break;
+
+   case 32:
+      if (base_type == float_only)
+         ret.u32 = v.u32 ^ INT32_MIN;
+      else
+         ret.i32 = -v.i32;
+      break;
+
+   case 64:
+      if (base_type == float_only)
+         ret.u64 = v.u64 ^ INT64_MIN;
+      else
+         ret.i64 = -v.i64;
+      break;
+
+   default:
+      unreachable("unsupported bit-size should have already been filtered.");
+   }
+
+   return ret;
+}
+
+static nir_const_value
+absolute(nir_const_value v, unsigned bit_size, enum interpreted_type base_type)
+{
+   /* either_type does not make sense in this context. */
+   assert(base_type == float_only || base_type == integer_only);
+
+   nir_const_value ret = { 0, };
+
+   switch (bit_size) {
+   case 8:
+      assert(base_type == integer_only);
+      ret.i8 = abs(v.i8);
+      break;
+
+   case 16:
+      if (base_type == float_only)
+         ret.u16 = v.u16 & 0x7fff;
+      else
+         ret.i16 = abs(v.i16);
+      break;
+
+   case 32:
+      if (base_type == float_only)
+         ret.f32 = fabs(v.f32);
+      else
+         ret.i32 = abs(v.i32);
+      break;
+
+   case 64:
+      if (base_type == float_only)
+         ret.f64 = fabs(v.f64);
+      else {
+         if (sizeof(v.i64) == sizeof(long int)) {
+            ret.i64 = labs((long int) v.i64);
+         } else {
+            assert(sizeof(v.i64) == sizeof(long long int));
+            ret.i64 = llabs((long long int) v.i64);
+         }
+      }
+      break;
+
+   default:
+      unreachable("unsupported bit-size should have already been filtered.");
+   }
+
+   return ret;
+}
+
+static void
+calculate_masks(nir_const_value v, enum interpreted_type type,
+                unsigned bit_size, uint8_t *reachable_mask,
+                uint8_t *reaching_mask)
+{
+   *reachable_mask = 0;
+   *reaching_mask = 0;
+
+   /* Calculate the extended reachable mask. */
+   if (type == float_only || type == either_type) {
+      if (negation_exists(v, bit_size, float_only))
+         *reachable_mask |= FLOAT_NEG_EXISTS;
+   }
+
+   if (type == integer_only || type == either_type) {
+      if (negation_exists(v, bit_size, integer_only))
+         *reachable_mask |= INT_NEG_EXISTS;
+   }
+
+   /* Calculate the extended reaching mask.  All of the "is this negation
+    * possible" was already determined for the reachable_mask, so reuse that
+    * data.
+    */
+   if (type == float_only || type == either_type) {
+      if (*reachable_mask & FLOAT_NEG_EXISTS)
+         *reaching_mask |= FLOAT_NEG_EXISTS;
+   }
+
+   if (type == integer_only || type == either_type) {
+      if (*reachable_mask & INT_NEG_EXISTS)
+         *reaching_mask |= INT_NEG_EXISTS;
+   }
+}
+
+static void
+calculate_reachable_values(nir_const_value v,
+                           unsigned bit_size,
+                           unsigned reachable_mask,
+                           nir_const_value *reachable_values)
+{
+   memset(reachable_values, 0, MAX_NUM_REACHABLE * sizeof(reachable_values[0]));
+
+   reachable_values[VALUE_INDEX] = v;
+
+   if (reachable_mask & INT_NEG_EXISTS) {
+      const nir_const_value neg = negate(v, bit_size, integer_only);
+
+      reachable_values[INT_NEG_INDEX] = neg;
+   }
+
+   if (reachable_mask & FLOAT_NEG_EXISTS) {
+      const nir_const_value neg = negate(v, bit_size, float_only);
+
+      reachable_values[FLOAT_NEG_INDEX] = neg;
+   }
+}
+
+static bool
+value_equal(nir_const_value a, nir_const_value b, unsigned bit_size)
+{
+   switch (bit_size) {
+   case 8:
+      return a.u8 == b.u8;
+   case 16:
+      return a.u16 == b.u16;
+   case 32:
+      return a.u32 == b.u32;
+   case 64:
+      return a.u64 == b.u64;
+   default:
+      unreachable("unsupported bit-size should have already been filtered.");
+   }
+}
+
+/** Can these values be the same with one level of negation? */
+static bool
+value_can_equal(const nir_const_value *from, uint8_t reachable_mask,
+                nir_const_value to, uint8_t reaching_mask,
+                unsigned bit_size)
+{
+   const uint8_t combined_mask = reachable_mask & reaching_mask;
+
+   return value_equal(from[VALUE_INDEX], to, bit_size) ||
+          ((combined_mask & INT_NEG_EXISTS) &&
+           value_equal(from[INT_NEG_INDEX], to, bit_size)) ||
+          ((combined_mask & FLOAT_NEG_EXISTS) &&
+           value_equal(from[FLOAT_NEG_INDEX], to, bit_size));
+}
+
+static void
+preprocess_candidates(struct value *candidates, unsigned num_candidates)
+{
+   /* Calculate the reaching_mask and reachable_mask for each candidate. */
+   for (unsigned i = 0; i < num_candidates; i++) {
+      calculate_masks(candidates[i].value,
+                      candidates[i].type,
+                      candidates[i].bit_size,
+                      &candidates[i].reachable_mask,
+                      &candidates[i].reaching_mask);
+
+      /* If negations are not allowed, then only the original value is
+       * reaching.
+       */
+      if (candidates[i].no_negations)
+         candidates[i].reaching_mask = 0;
+   }
+
+   for (unsigned i = 0; i < num_candidates; i++)
+      candidates[i].next_src = NULL;
+
+   for (unsigned i = 0; i < num_candidates - 1; i++) {
+      if (candidates[i].next_src != NULL)
+         continue;
+
+      struct value *prev = &candidates[i];
+
+      for (unsigned j = i + 1; j < num_candidates; j++) {
+         if (candidates[i].instr_index == candidates[j].instr_index) {
+            prev->next_src = &candidates[j];
+            prev = prev->next_src;
+         }
+      }
+
+      /* Close the cycle. */
+      if (prev != &candidates[i])
+         prev->next_src = &candidates[i];
+   }
+}
+
+static bool
+reaching_value_exists(const struct value *c,
+                      const struct combine_constants_value *values,
+                      unsigned num_values)
+{
+   nir_const_value reachable_values[MAX_NUM_REACHABLE];
+
+   calculate_reachable_values(c->value, c->bit_size, c->reaching_mask,
+                              reachable_values);
+
+   /* Check to see if the value is already in the result set. */
+   for (unsigned j = 0; j < num_values; j++) {
+      if (c->bit_size == values[j].bit_size &&
+          value_can_equal(reachable_values, c->reaching_mask,
+                          values[j].value, c->reaching_mask,
+                          c->bit_size)) {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+static combine_constants_result *
+combine_constants_greedy(struct value *candidates, unsigned num_candidates)
+{
+   bool success;
+   combine_constants_result *result =
+      new combine_constants_result(num_candidates, success);
+   if (result == NULL || !success) {
+      delete result;
+      return NULL;
+   }
+
+   BITSET_WORD *remain =
+      (BITSET_WORD *) calloc(BITSET_WORDS(num_candidates), sizeof(remain[0]));
+
+   if (remain == NULL) {
+      delete result;
+      return NULL;
+   }
+
+   memset(remain, 0xff, BITSET_WORDS(num_candidates) * sizeof(remain[0]));
+
+   /* Operate in three passes.  The first pass handles all values that must be
+    * emitted and for which a negation cannot exist.
+    */
+   unsigned i;
+   for (i = 0; i < num_candidates; i++) {
+      if (candidates[i].allow_one_constant ||
+          (candidates[i].reaching_mask & (FLOAT_NEG_EXISTS | INT_NEG_EXISTS))) {
+         continue;
+      }
+
+      /* Check to see if the value is already in the result set. */
+      bool found = false;
+      const unsigned num_values = result->num_values_to_emit;
+      for (unsigned j = 0; j < num_values; j++) {
+         if (candidates[i].bit_size == result->values_to_emit[j].bit_size &&
+             value_equal(candidates[i].value,
+                         result->values_to_emit[j].value,
+                         candidates[i].bit_size)) {
+            found = true;
+            break;
+         }
+      }
+
+      if (!found)
+         result->append_value(candidates[i].value, candidates[i].bit_size);
+
+      BITSET_CLEAR(remain, i);
+   }
+
+   /* The second pass handles all values that must be emitted and for which a
+    * negation can exist.
+    */
+   BITSET_FOREACH_SET(i, remain, num_candidates) {
+      if (candidates[i].allow_one_constant)
+         continue;
+
+      assert(candidates[i].reaching_mask & (FLOAT_NEG_EXISTS | INT_NEG_EXISTS));
+
+      if (!reaching_value_exists(&candidates[i], result->values_to_emit,
+                                 result->num_values_to_emit)) {
+         result->append_value(absolute(candidates[i].value,
+                                       candidates[i].bit_size,
+                                       candidates[i].type),
+                              candidates[i].bit_size);
+      }
+
+      BITSET_CLEAR(remain, i);
+   }
+
+   /* The third pass handles all of the values that may not have to be
+    * emitted.  These are the values where allow_one_constant is set.
+    */
+   BITSET_FOREACH_SET(i, remain, num_candidates) {
+      assert(candidates[i].allow_one_constant);
+
+      /* The BITSET_FOREACH_SET macro does not detect changes to the bitset
+       * that occur within the current word.  Since code in this loop may
+       * clear bits from the set, re-test here.
+       */
+      if (!BITSET_TEST(remain, i))
+         continue;
+
+      assert(candidates[i].next_src != NULL);
+
+      const struct value *const other_candidate = candidates[i].next_src;
+      const unsigned j = other_candidate - candidates;
+
+      if (!reaching_value_exists(&candidates[i], result->values_to_emit,
+                                 result->num_values_to_emit)) {
+         /* Before emitting a value, see if a match for the other source of
+          * the instruction exists.
+          */
+         if (!reaching_value_exists(&candidates[j], result->values_to_emit,
+                                    result->num_values_to_emit)) {
+            result->append_value(candidates[i].value, candidates[i].bit_size);
+         }
+      }
+
+      /* Mark both sources as handled. */
+      BITSET_CLEAR(remain, i);
+      BITSET_CLEAR(remain, j);
+   }
+
+   /* As noted above, there will never be more values in the output than in
+    * the input.  If there are fewer values, reduce the size of the
+    * allocation.
+    */
+   if (result->num_values_to_emit < num_candidates) {
+      result->values_to_emit = (struct combine_constants_value *)
+         realloc(result->values_to_emit, sizeof(result->values_to_emit[0]) *
+                 result->num_values_to_emit);
+
+      /* Is it even possible for a reducing realloc to fail? */
+      assert(result->values_to_emit != NULL);
+   }
+
+   /* Create the mapping from "combined" constants to list of candidates
+    * passed in by the caller.
+    */
+   memset(remain, 0xff, BITSET_WORDS(num_candidates) * sizeof(remain[0]));
+
+   unsigned total_users = 0;
+
+   const unsigned num_values = result->num_values_to_emit;
+   for (unsigned value_idx = 0; value_idx < num_values; value_idx++) {
+      result->values_to_emit[value_idx].first_user = total_users;
+
+      uint8_t reachable_mask;
+      uint8_t unused_mask;
+
+      calculate_masks(result->values_to_emit[value_idx].value, either_type,
+                      result->values_to_emit[value_idx].bit_size,
+                      &reachable_mask, &unused_mask);
+
+      nir_const_value reachable_values[MAX_NUM_REACHABLE];
+
+      calculate_reachable_values(result->values_to_emit[value_idx].value,
+                                 result->values_to_emit[value_idx].bit_size,
+                                 reachable_mask, reachable_values);
+
+      for (unsigned i = 0; i < num_candidates; i++) {
+         bool matched = false;
+
+         if (!BITSET_TEST(remain, i))
+            continue;
+
+         if (candidates[i].bit_size != result->values_to_emit[value_idx].bit_size)
+            continue;
+
+         if (value_equal(candidates[i].value, result->values_to_emit[value_idx].value,
+                         result->values_to_emit[value_idx].bit_size)) {
+            result->user_map[total_users].index = i;
+            result->user_map[total_users].type = candidates[i].type;
+            result->user_map[total_users].negate = false;
+            total_users++;
+
+            matched = true;
+            BITSET_CLEAR(remain, i);
+         } else {
+            const uint8_t combined_mask = reachable_mask &
+                                          candidates[i].reaching_mask;
+
+            enum interpreted_type type = either_type;
+
+            if ((combined_mask & INT_NEG_EXISTS) &&
+                value_equal(candidates[i].value,
+                            reachable_values[INT_NEG_INDEX],
+                            candidates[i].bit_size)) {
+               type = integer_only;
+            }
+
+            if (type == either_type &&
+                (combined_mask & FLOAT_NEG_EXISTS) &&
+                value_equal(candidates[i].value,
+                            reachable_values[FLOAT_NEG_INDEX],
+                            candidates[i].bit_size)) {
+               type = float_only;
+            }
+
+            if (type != either_type) {
+               /* Finding a match on this path implies that the user must
+                * allow source negations.
+                */
+               assert(!candidates[i].no_negations);
+
+               result->user_map[total_users].index = i;
+               result->user_map[total_users].type = type;
+               result->user_map[total_users].negate = true;
+               total_users++;
+
+               matched = true;
+               BITSET_CLEAR(remain, i);
+            }
+         }
+
+         /* Mark the other source of instructions that can have a constant
+          * source.  Selection is the prime example of this, and we want to
+          * avoid generating sequences like bcsel(a, fneg(b), ineg(c)).
+          *
+          * This also makes sure that the assertion (below) that *all* values
+          * were processed holds even when some values may be allowed to
+          * remain as constants.
+          *
+          * FINISHME: There may be value in only doing this when type ==
+          * either_type.  If both sources are loaded, a register allocator may
+          * be able to make a better choice about which value to "spill"
+          * (i.e., replace with an immediate) under heavy register pressure.
+          */
+         if (matched && candidates[i].allow_one_constant) {
+            const struct value *const other_src = candidates[i].next_src;
+            const unsigned idx = other_src - candidates;
+
+            assert(idx < num_candidates);
+            BITSET_CLEAR(remain, idx);
+         }
+      }
+
+      assert(total_users > result->values_to_emit[value_idx].first_user);
+      result->values_to_emit[value_idx].num_users =
+         total_users - result->values_to_emit[value_idx].first_user;
+   }
+
+   /* Verify that all of the values were emitted by the loop above.  If any
+    * bits are still set in remain, then some value was not emitted.  The use
+    * of memset to populate remain prevents the use of a more performant loop.
+    */
+#ifndef NDEBUG
+   bool pass = true;
+
+   BITSET_FOREACH_SET(i, remain, num_candidates) {
+      fprintf(stderr, "candidate %d was not processed: { "
+              ".b = %s, "
+              ".f32 = %f, .f64 = %g, "
+              ".i8 = %d, .u8 = 0x%02x, "
+              ".i16 = %d, .u16 = 0x%04x, "
+              ".i32 = %d, .u32 = 0x%08x, "
+              ".i64 = %" PRId64 ", .u64 = 0x%016" PRIx64 " }\n",
+              i,
+              candidates[i].value.b ? "true" : "false",
+              candidates[i].value.f32, candidates[i].value.f64,
+              candidates[i].value.i8,  candidates[i].value.u8,
+              candidates[i].value.i16, candidates[i].value.u16,
+              candidates[i].value.i32, candidates[i].value.u32,
+              candidates[i].value.i64, candidates[i].value.u64);
+      pass = false;
+   }
+
+   assert(pass && "All values should have been processed.");
+#endif
+
+   free(remain);
+
+   return result;
+}
+
+static combine_constants_result *
+brw_combine_constants(struct value *candidates, unsigned num_candidates)
+{
+   preprocess_candidates(candidates, num_candidates);
+
+   return combine_constants_greedy(candidates, num_candidates);
+}
+
 /* Returns whether an instruction could co-issue if its immediate source were
  * replaced with a GRF source.
  */
@@ -66,20 +787,35 @@ could_coissue(const struct intel_device_info *devinfo, const fs_inst *inst)
           inst->src[0].type == BRW_REGISTER_TYPE_F;
 }
 
+/**
+ * Box for storing fs_inst and some other necessary data
+ *
+ * \sa box_instruction
+ */
+struct fs_inst_box {
+   fs_inst *inst;
+   unsigned ip;
+   bblock_t *block;
+   bool must_promote;
+};
+
 /** A box for putting fs_regs in a linked list. */
 struct reg_link {
    DECLARE_RALLOC_CXX_OPERATORS(reg_link)
 
-   reg_link(fs_reg *reg) : reg(reg) {}
+   reg_link(fs_inst *inst, unsigned src, bool negate)
+   : inst(inst), src(src), negate(negate) {}
 
    struct exec_node link;
-   fs_reg *reg;
+   fs_inst *inst;
+   uint8_t src;
+   bool negate;
 };
 
 static struct exec_node *
-link(void *mem_ctx, fs_reg *reg)
+link(void *mem_ctx, fs_inst *inst, unsigned src, bool negate)
 {
-   reg_link *l = new(mem_ctx) reg_link(reg);
+   reg_link *l = new(mem_ctx) reg_link(inst, src, negate);
    return &l->link;
 }
 
@@ -138,31 +874,66 @@ struct imm {
 
 /** The working set of information about immediates. */
 struct table {
-   struct imm *imm;
+   struct value *values;
    int size;
+   int num_values;
+
+   struct imm *imm;
    int len;
+
+   struct fs_inst_box *boxes;
+   unsigned num_boxes;
+   unsigned size_boxes;
 };
 
-static struct imm *
-find_imm(struct table *table, void *data, uint8_t size)
+static struct value *
+new_value(struct table *table, void *mem_ctx)
 {
-   for (int i = 0; i < table->len; i++) {
-      if (table->imm[i].size == size &&
-          !memcmp(table->imm[i].bytes, data, size)) {
-         return &table->imm[i];
-      }
+   if (table->num_values == table->size) {
+      table->size *= 2;
+      table->values = reralloc(mem_ctx, table->values, struct value, table->size);
    }
-   return NULL;
+   return &table->values[table->num_values++];
 }
 
-static struct imm *
-new_imm(struct table *table, void *mem_ctx)
+/**
+ * Store an instruction with some other data in a table.
+ *
+ * \returns the index into the dynamic array of boxes for the instruction.
+ */
+static unsigned
+box_instruction(struct table *table, void *mem_ctx, fs_inst *inst,
+                unsigned ip, bblock_t *block, bool must_promote)
 {
-   if (table->len == table->size) {
-      table->size *= 2;
-      table->imm = reralloc(mem_ctx, table->imm, struct imm, table->size);
+   /* It is common for box_instruction to be called consecutively for each
+    * source of an instruction.  As a result, the most common case for finding
+    * an instruction in the table is when that instruction was the last one
+    * added.  Search the list back to front.
+    */
+   for (unsigned i = table->num_boxes; i > 0; /* empty */) {
+      i--;
+
+      if (table->boxes[i].inst == inst)
+         return i;
    }
-   return &table->imm[table->len++];
+
+   if (table->num_boxes == table->size_boxes) {
+      table->size_boxes *= 2;
+      table->boxes = reralloc(mem_ctx, table->boxes, fs_inst_box,
+                              table->size_boxes);
+   }
+
+   assert(table->num_boxes < table->size_boxes);
+
+   const unsigned idx = table->num_boxes++;
+   fs_inst_box *ib =  &table->boxes[idx];
+
+   ib->inst = inst;
+   ib->block = block;
+   ib->ip = ip;
+   ib->must_promote = must_promote;
+
+   return idx;
 }
 
 /**
@@ -190,67 +961,6 @@ compare(const void *_a, const void *_b)
    return a->first_use_ip - b->first_use_ip;
 }
 
-static bool
-get_constant_value(const struct intel_device_info *devinfo,
-                   const fs_inst *inst, uint32_t src_idx,
-                   void *out, brw_reg_type *out_type)
-{
-   const bool can_do_source_mods = inst->can_do_source_mods(devinfo);
-   const fs_reg *src = &inst->src[src_idx];
-
-   *out_type = src->type;
-
-   switch (*out_type) {
-   case BRW_REGISTER_TYPE_DF: {
-      double val = !can_do_source_mods ? src->df : fabs(src->df);
-      memcpy(out, &val, 8);
-      break;
-   }
-   case BRW_REGISTER_TYPE_F: {
-      float val = !can_do_source_mods ? src->f : fabsf(src->f);
-      memcpy(out, &val, 4);
-      break;
-   }
-   case BRW_REGISTER_TYPE_HF: {
-      uint16_t val = src->d & 0xffffu;
-      if (can_do_source_mods)
-         val = _mesa_float_to_half(fabsf(_mesa_half_to_float(val)));
-      memcpy(out, &val, 2);
-      break;
-   }
-   case BRW_REGISTER_TYPE_Q: {
-      int64_t val = !can_do_source_mods ? src->d64 : llabs(src->d64);
-      memcpy(out, &val, 8);
-      break;
-   }
-   case BRW_REGISTER_TYPE_UQ:
-      memcpy(out, &src->u64, 8);
-      break;
-   case BRW_REGISTER_TYPE_D: {
-      int32_t val = !can_do_source_mods ? src->d : abs(src->d);
-      memcpy(out, &val, 4);
-      break;
-   }
-   case BRW_REGISTER_TYPE_UD:
-      memcpy(out, &src->ud, 4);
-      break;
-   case BRW_REGISTER_TYPE_W: {
-      int16_t val = src->d & 0xffffu;
-      if (can_do_source_mods)
-         val = abs(val);
-      memcpy(out, &val, 2);
-      break;
-   }
-   case BRW_REGISTER_TYPE_UW:
-      memcpy(out, &src->ud, 2);
-      break;
-   default:
-      return false;
-   };
-
-   return true;
-}
-
 static struct brw_reg
 build_imm_reg_for_copy(struct imm *imm)
 {
@@ -273,31 +983,6 @@ get_alignment_for_imm(const struct imm *imm)
       return 4; /* At least MAD seems to require this */
    else
       return imm->size;
-}
-
-static bool
-needs_negate(const fs_reg *reg, const struct imm *imm)
-{
-   switch (reg->type) {
-   case BRW_REGISTER_TYPE_DF:
-      return signbit(reg->df) != signbit(imm->df);
-   case BRW_REGISTER_TYPE_F:
-      return signbit(reg->f) != signbit(imm->f);
-   case BRW_REGISTER_TYPE_Q:
-      return (reg->d64 < 0) != (imm->d64 < 0);
-   case BRW_REGISTER_TYPE_D:
-      return (reg->d < 0) != (imm->d < 0);
-   case BRW_REGISTER_TYPE_HF:
-      return (reg->d & 0x8000u) != (imm->w & 0x8000u);
-   case BRW_REGISTER_TYPE_W:
-      return ((int16_t)reg->d < 0) != (imm->w < 0);
-   case BRW_REGISTER_TYPE_UQ:
-   case BRW_REGISTER_TYPE_UD:
-   case BRW_REGISTER_TYPE_UW:
-      return false;
-   default:
-      unreachable("not implemented");
-   };
 }
 
 static bool
@@ -422,43 +1107,49 @@ static void
 add_candidate_immediate(struct table *table, fs_inst *inst, unsigned ip,
                         unsigned i,
                         bool must_promote,
-                        const brw::idom_tree &idom, bblock_t *block,
-                        const struct intel_device_info *devinfo,
+                        bblock_t *block,
+                        ASSERTED const struct intel_device_info *devinfo,
                         void *const_ctx)
 {
-   char data[8];
-   brw_reg_type type;
-   if (!get_constant_value(devinfo, inst, i, data, &type))
-      return;
+   struct value *v = new_value(table, const_ctx);
 
-   uint8_t size = type_sz(type);
+   unsigned box_idx = box_instruction(table, const_ctx, inst, ip, block,
+                                      must_promote);
 
-   struct imm *imm = find_imm(table, data, size);
+   /* Just for now... */
+   assert(inst->can_do_source_mods(devinfo));
 
-   if (imm) {
-      bblock_t *intersection = idom.intersect(block, imm->block);
-      if (intersection != imm->block)
-         imm->inst = NULL;
-      imm->block = intersection;
-      imm->uses->push_tail(link(const_ctx, &inst->src[i]));
-      imm->uses_by_coissue += int(!must_promote);
-      imm->must_promote = imm->must_promote || must_promote;
-      imm->last_use_ip = ip;
-      if (type == BRW_REGISTER_TYPE_HF)
-         imm->is_half_float = true;
-   } else {
-      imm = new_imm(table, const_ctx);
-      imm->block = block;
-      imm->inst = inst;
-      imm->uses = new(const_ctx) exec_list();
-      imm->uses->push_tail(link(const_ctx, &inst->src[i]));
-      memcpy(imm->bytes, data, size);
-      imm->size = size;
-      imm->is_half_float = type == BRW_REGISTER_TYPE_HF;
-      imm->uses_by_coissue = int(!must_promote);
-      imm->must_promote = must_promote;
-      imm->first_use_ip = ip;
-      imm->last_use_ip = ip;
+   v->value.u64 = inst->src[i].d64;
+   v->bit_size = 8 * type_sz(inst->src[i].type);
+   v->instr_index = box_idx;
+   v->src = i;
+   v->allow_one_constant = false;
+   v->no_negations = false;
+
+   switch (inst->src[i].type) {
+   case BRW_REGISTER_TYPE_DF:
+   case BRW_REGISTER_TYPE_NF:
+   case BRW_REGISTER_TYPE_F:
+   case BRW_REGISTER_TYPE_HF:
+      v->type = float_only;
+      break;
+
+   case BRW_REGISTER_TYPE_UQ:
+   case BRW_REGISTER_TYPE_Q:
+   case BRW_REGISTER_TYPE_UD:
+   case BRW_REGISTER_TYPE_D:
+   case BRW_REGISTER_TYPE_UW:
+   case BRW_REGISTER_TYPE_W:
+      v->type = integer_only;
+      break;
+
+   case BRW_REGISTER_TYPE_VF:
+   case BRW_REGISTER_TYPE_UV:
+   case BRW_REGISTER_TYPE_V:
+   case BRW_REGISTER_TYPE_UB:
+   case BRW_REGISTER_TYPE_B:
+   default:
+      unreachable("not reached");
    }
 }
 
@@ -468,9 +1159,20 @@ fs_visitor::opt_combine_constants()
    void *const_ctx = ralloc_context(NULL);
 
    struct table table;
-   table.size = 8;
-   table.len = 0;
-   table.imm = ralloc_array(const_ctx, struct imm, table.size);
+
+   /* For each of the dynamic arrays in the table, allocate about a page of
+    * memory.  On LP64 systems, this gives 126 value objects 169 fs_inst_box
+    * objects.  Even larger shaders that have been obverved rarely need more
+    * than 20 or 30 values.  Most smaller shaders, which is most shaders, need
+    * at most a couple dozen fs_inst_box.
+    */
+   table.size = (4096 - (5 * sizeof(void *))) / sizeof(struct value);
+   table.num_values = 0;
+   table.values = ralloc_array(const_ctx, struct value, table.size);
+
+   table.size_boxes = (4096 - (5 * sizeof(void *))) / sizeof(struct fs_inst_box);
+   table.num_boxes = 0;
+   table.boxes = ralloc_array(const_ctx, fs_inst_box, table.size_boxes);
 
    const brw::idom_tree &idom = idom_analysis.require();
    unsigned ip = -1;
@@ -487,7 +1189,7 @@ fs_visitor::opt_combine_constants()
          assert(inst->src[0].file != IMM);
 
          if (inst->src[1].file == IMM && devinfo->ver < 8) {
-            add_candidate_immediate(&table, inst, ip, 1, true, idom, block,
+            add_candidate_immediate(&table, inst, ip, 1, true, block,
                                     devinfo, const_ctx);
          }
 
@@ -502,7 +1204,7 @@ fs_visitor::opt_combine_constants()
             if (can_promote_src_as_imm(devinfo, inst, i))
                continue;
 
-            add_candidate_immediate(&table, inst, ip, i, true, idom, block,
+            add_candidate_immediate(&table, inst, ip, i, true, block,
                                     devinfo, const_ctx);
          }
 
@@ -514,7 +1216,7 @@ fs_visitor::opt_combine_constants()
             if (inst->src[i].file != IMM)
                continue;
 
-            add_candidate_immediate(&table, inst, ip, i, true, idom, block,
+            add_candidate_immediate(&table, inst, ip, i, true, block,
                                     devinfo, const_ctx);
          }
 
@@ -522,7 +1224,7 @@ fs_visitor::opt_combine_constants()
 
       case BRW_OPCODE_MOV:
          if (could_coissue(devinfo, inst) && inst->src[0].file == IMM) {
-            add_candidate_immediate(&table, inst, ip, 0, false, idom, block,
+            add_candidate_immediate(&table, inst, ip, 0, false, block,
                                     devinfo, const_ctx);
          }
          break;
@@ -533,7 +1235,7 @@ fs_visitor::opt_combine_constants()
          assert(inst->src[0].file != IMM);
 
          if (could_coissue(devinfo, inst) && inst->src[1].file == IMM) {
-            add_candidate_immediate(&table, inst, ip, 1, false, idom, block,
+            add_candidate_immediate(&table, inst, ip, 1, false, block,
                                     devinfo, const_ctx);
          }
          break;
@@ -543,19 +1245,105 @@ fs_visitor::opt_combine_constants()
       }
    }
 
-   /* Remove constants from the table that don't have enough uses to make them
-    * profitable to store in a register.
-    */
-   for (int i = 0; i < table.len;) {
-      struct imm *imm = &table.imm[i];
-
-      if (!imm->must_promote && imm->uses_by_coissue < 4) {
-         table.imm[i] = table.imm[table.len - 1];
-         table.len--;
-         continue;
-      }
-      i++;
+   if (table.num_values == 0) {
+      ralloc_free(const_ctx);
+      return false;
    }
+
+   combine_constants_result *result =
+      brw_combine_constants(table.values, table.num_values);
+
+   table.imm = ralloc_array(const_ctx, struct imm, result->num_values_to_emit);
+   table.len = 0;
+
+   for (unsigned i = 0; i < result->num_values_to_emit; i++) {
+      struct imm *imm = &table.imm[table.len];
+
+      imm->block = NULL;
+      imm->inst = NULL;
+      imm->d64 = result->values_to_emit[i].value.u64;
+      imm->size = result->values_to_emit[i].bit_size / 8;
+
+      imm->uses_by_coissue = 0;
+      imm->must_promote = false;
+      imm->is_half_float = false;
+
+      imm->first_use_ip = UINT16_MAX;
+      imm->last_use_ip = 0;
+
+      imm->uses = new(const_ctx) exec_list;
+
+      const unsigned first_user = result->values_to_emit[i].first_user;
+      const unsigned last_user = first_user +
+         result->values_to_emit[i].num_users;
+
+      for (unsigned j = first_user; j < last_user; j++) {
+         const unsigned idx = table.values[result->user_map[j].index].instr_index;
+         fs_inst_box *const ib = &table.boxes[idx];
+
+         const unsigned src = table.values[result->user_map[j].index].src;
+
+         imm->uses->push_tail(link(const_ctx, ib->inst, src,
+                                   result->user_map[j].negate));
+
+         if (ib->must_promote)
+            imm->must_promote = true;
+         else
+            imm->uses_by_coissue++;
+
+         if (imm->block == NULL) {
+            /* Block should only be NULL on the first pass.  On the first
+             * pass, inst should also be NULL.
+             */
+            assert(imm->inst == NULL);
+
+            imm->inst = ib->inst;
+            imm->block = ib->block;
+            imm->first_use_ip = ib->ip;
+            imm->last_use_ip = ib->ip;
+         } else {
+            bblock_t *intersection = idom.intersect(ib->block,
+                                                    imm->block);
+
+            if (imm->first_use_ip > ib->ip) {
+               imm->first_use_ip = ib->ip;
+
+               /* If the first-use instruction is to be tracked, block must be
+                * the block that contains it.  The old block was read in the
+                * idom.intersect call above, so it is safe to overwrite it
+                * here.
+                */
+               imm->inst = ib->inst;
+               imm->block = ib->block;
+            }
+
+            if (imm->last_use_ip < ib->ip)
+               imm->last_use_ip = ib->ip;
+
+            /* The common dominator is not the block that contains the
+             * first-use instruction, so don't track that instruction.  The
+             * load instruction will be added in the common dominator block
+             * instead of before the first-use instruction.
+             */
+            if (intersection != imm->block)
+               imm->inst = NULL;
+
+            imm->block = intersection;
+         }
+
+         if (ib->inst->src[src].type == BRW_REGISTER_TYPE_HF)
+            imm->is_half_float = true;
+      }
+
+      /* Remove constants from the table that don't have enough uses to make
+       * them profitable to store in a register.
+       */
+      if (imm->must_promote || imm->uses_by_coissue >= 4)
+         table.len++;
+   }
+
+   delete result;
+
    if (table.len == 0) {
       ralloc_free(const_ctx);
       return false;
@@ -613,7 +1401,7 @@ fs_visitor::opt_combine_constants()
    /* Rewrite the immediate sources to refer to the new GRFs. */
    for (int i = 0; i < table.len; i++) {
       foreach_list_typed(reg_link, link, link, table.imm[i].uses) {
-         fs_reg *reg = link->reg;
+         fs_reg *reg = &link->inst->src[link->src];
 #ifdef DEBUG
          switch (reg->type) {
          case BRW_REGISTER_TYPE_DF:
@@ -634,18 +1422,21 @@ fs_visitor::opt_combine_constants()
             assert(abs(reg->d64) == abs(table.imm[i].d64));
             break;
          case BRW_REGISTER_TYPE_UQ:
+            assert(!link->negate);
             assert(reg->d64 == table.imm[i].d64);
             break;
          case BRW_REGISTER_TYPE_D:
             assert(abs(reg->d) == abs(table.imm[i].d));
             break;
          case BRW_REGISTER_TYPE_UD:
+            assert(!link->negate);
             assert(reg->d == table.imm[i].d);
             break;
          case BRW_REGISTER_TYPE_W:
             assert(abs((int16_t) (reg->d & 0xffff)) == table.imm[i].w);
             break;
          case BRW_REGISTER_TYPE_UW:
+            assert(!link->negate);
             assert((reg->ud & 0xffffu) == (uint16_t) table.imm[i].w);
             break;
          default:
@@ -656,7 +1447,7 @@ fs_visitor::opt_combine_constants()
          reg->file = VGRF;
          reg->offset = table.imm[i].subreg_offset;
          reg->stride = 0;
-         reg->negate = needs_negate(reg, &table.imm[i]);
+         reg->negate = link->negate;
          reg->nr = table.imm[i].nr;
       }
    }
