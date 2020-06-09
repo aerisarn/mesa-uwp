@@ -180,7 +180,7 @@ struct iris_bufmgr {
 
    int fd;
 
-   mtx_t lock;
+   simple_mtx_t lock;
 
    /** Array of lists of cached gem objects of power-of-two sizes */
    struct bo_cache_bucket cache_bucket[14 * 4];
@@ -214,7 +214,7 @@ struct iris_bufmgr {
    struct intel_aux_map_context *aux_map_ctx;
 };
 
-static mtx_t global_bufmgr_list_mutex = _MTX_INITIALIZER_NP;
+static simple_mtx_t global_bufmgr_list_mutex = _SIMPLE_MTX_INITIALIZER_NP;
 static struct list_head global_bufmgr_list = {
    .next = &global_bufmgr_list,
    .prev = &global_bufmgr_list,
@@ -617,7 +617,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    enum iris_mmap_mode mmap_mode =
       !local && is_coherent ? IRIS_MMAP_WB : IRIS_MMAP_WC;
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
 
    /* Get a buffer out of the cache if available.  First, we try to find
     * one with a matching memory zone so we can avoid reallocating VMA.
@@ -631,7 +631,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
                                flags, false);
    }
 
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
 
    if (!bo) {
       bo = alloc_fresh_bo(bufmgr, bo_size, local);
@@ -640,9 +640,9 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    }
 
    if (bo->gtt_offset == 0ull) {
-      mtx_lock(&bufmgr->lock);
+      simple_mtx_lock(&bufmgr->lock);
       bo->gtt_offset = vma_alloc(bufmgr, memzone, bo->size, alignment);
-      mtx_unlock(&bufmgr->lock);
+      simple_mtx_unlock(&bufmgr->lock);
 
       if (bo->gtt_offset == 0ull)
          goto err_free;
@@ -724,9 +724,9 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
    bo->bufmgr = bufmgr;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
    bo->gtt_offset = vma_alloc(bufmgr, memzone, size, 1);
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
 
    if (bo->gtt_offset == 0ull)
       goto err_close;
@@ -765,7 +765,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
     * alternating names for the front/back buffer a linear search
     * provides a sufficiently fast match.
     */
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
    bo = find_and_ref_external_bo(bufmgr->name_table, handle);
    if (bo)
       goto out;
@@ -809,7 +809,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    DBG("bo_create_from_handle: %d (%s)\n", handle, bo->name);
 
 out:
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
    return bo;
 }
 
@@ -962,14 +962,14 @@ iris_bo_unreference(struct iris_bo *bo)
 
       clock_gettime(CLOCK_MONOTONIC, &time);
 
-      mtx_lock(&bufmgr->lock);
+      simple_mtx_lock(&bufmgr->lock);
 
       if (p_atomic_dec_zero(&bo->refcount)) {
          bo_unreference_final(bo, time.tv_sec);
          cleanup_bo_cache(bufmgr, time.tv_sec);
       }
 
-      mtx_unlock(&bufmgr->lock);
+      simple_mtx_unlock(&bufmgr->lock);
    }
 }
 
@@ -1169,7 +1169,7 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
    /* bufmgr will no longer try to free VMA entries in the aux-map */
    bufmgr->aux_map_ctx = NULL;
 
-   mtx_destroy(&bufmgr->lock);
+   simple_mtx_destroy(&bufmgr->lock);
 
    /* Free any cached buffer objects we were going to reuse */
    for (int i = 0; i < bufmgr->num_buckets; i++) {
@@ -1263,12 +1263,12 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
    uint32_t handle;
    struct iris_bo *bo;
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
    int ret = drmPrimeFDToHandle(bufmgr->fd, prime_fd, &handle);
    if (ret) {
       DBG("import_dmabuf: failed to obtain handle from fd: %s\n",
           strerror(errno));
-      mtx_unlock(&bufmgr->lock);
+      simple_mtx_unlock(&bufmgr->lock);
       return NULL;
    }
 
@@ -1320,7 +1320,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
 
 out:
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
    return bo;
 }
 
@@ -1350,9 +1350,9 @@ iris_bo_mark_exported(struct iris_bo *bo)
       return;
    }
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
    iris_bo_mark_exported_locked(bo);
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
 }
 
 int
@@ -1388,13 +1388,13 @@ iris_bo_flink(struct iris_bo *bo, uint32_t *name)
       if (intel_ioctl(bufmgr->fd, DRM_IOCTL_GEM_FLINK, &flink))
          return -errno;
 
-      mtx_lock(&bufmgr->lock);
+      simple_mtx_lock(&bufmgr->lock);
       if (!bo->global_name) {
          iris_bo_mark_exported_locked(bo);
          bo->global_name = flink.name;
          _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
       }
-      mtx_unlock(&bufmgr->lock);
+      simple_mtx_unlock(&bufmgr->lock);
    }
 
    *name = bo->global_name;
@@ -1432,11 +1432,11 @@ iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
       return err;
    }
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
    err = drmPrimeFDToHandle(drm_fd, dmabuf_fd, &export->gem_handle);
    close(dmabuf_fd);
    if (err) {
-      mtx_unlock(&bufmgr->lock);
+      simple_mtx_unlock(&bufmgr->lock);
       free(export);
       return err;
    }
@@ -1457,7 +1457,7 @@ iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
    if (!found)
       list_addtail(&export->link, &bo->exports);
 
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
 
    *out_handle = export->gem_handle;
 
@@ -1756,11 +1756,7 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 
    p_atomic_set(&bufmgr->refcount, 1);
 
-   if (mtx_init(&bufmgr->lock, mtx_plain) != 0) {
-      close(bufmgr->fd);
-      free(bufmgr);
-      return NULL;
-   }
+   simple_mtx_init(&bufmgr->lock, mtx_plain);
 
    list_inithead(&bufmgr->zombie_list);
 
@@ -1832,12 +1828,12 @@ iris_bufmgr_ref(struct iris_bufmgr *bufmgr)
 void
 iris_bufmgr_unref(struct iris_bufmgr *bufmgr)
 {
-   mtx_lock(&global_bufmgr_list_mutex);
+   simple_mtx_lock(&global_bufmgr_list_mutex);
    if (p_atomic_dec_zero(&bufmgr->refcount)) {
       list_del(&bufmgr->link);
       iris_bufmgr_destroy(bufmgr);
    }
-   mtx_unlock(&global_bufmgr_list_mutex);
+   simple_mtx_unlock(&global_bufmgr_list_mutex);
 }
 
 /**
@@ -1855,7 +1851,7 @@ iris_bufmgr_get_for_fd(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 
    struct iris_bufmgr *bufmgr = NULL;
 
-   mtx_lock(&global_bufmgr_list_mutex);
+   simple_mtx_lock(&global_bufmgr_list_mutex);
    list_for_each_entry(struct iris_bufmgr, iter_bufmgr, &global_bufmgr_list, link) {
       struct stat iter_st;
       if (fstat(iter_bufmgr->fd, &iter_st))
@@ -1873,7 +1869,7 @@ iris_bufmgr_get_for_fd(struct intel_device_info *devinfo, int fd, bool bo_reuse)
       list_addtail(&bufmgr->link, &global_bufmgr_list);
 
  unlock:
-   mtx_unlock(&global_bufmgr_list_mutex);
+   simple_mtx_unlock(&global_bufmgr_list_mutex);
 
    return bufmgr;
 }
