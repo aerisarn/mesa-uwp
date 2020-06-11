@@ -140,7 +140,6 @@ reg_create(void *mem_ctx, struct exec_list *list)
    reg->num_components = 0;
    reg->bit_size = 32;
    reg->num_array_elems = 0;
-   reg->name = NULL;
 
    exec_list_push_tail(list, &reg->node);
 
@@ -621,7 +620,7 @@ nir_load_const_instr_create(nir_shader *shader, unsigned num_components,
       rzalloc_size(shader, sizeof(*instr) + num_components * sizeof(*instr->value));
    instr_init(&instr->instr, nir_instr_type_load_const);
 
-   nir_ssa_def_init(&instr->instr, &instr->def, num_components, bit_size, NULL);
+   nir_ssa_def_init(&instr->instr, &instr->def, num_components, bit_size);
 
    return instr;
 }
@@ -769,7 +768,7 @@ nir_ssa_undef_instr_create(nir_shader *shader,
    nir_ssa_undef_instr *instr = ralloc(shader, nir_ssa_undef_instr);
    instr_init(&instr->instr, nir_instr_type_ssa_undef);
 
-   nir_ssa_def_init(&instr->instr, &instr->def, num_components, bit_size, NULL);
+   nir_ssa_def_init(&instr->instr, &instr->def, num_components, bit_size);
 
    return instr;
 }
@@ -1457,9 +1456,8 @@ nir_instr_rewrite_dest(nir_instr *instr, nir_dest *dest, nir_dest new_dest)
 void
 nir_ssa_def_init(nir_instr *instr, nir_ssa_def *def,
                  unsigned num_components,
-                 unsigned bit_size, const char *name)
+                 unsigned bit_size)
 {
-   def->name = ralloc_strdup(instr, name);
    def->parent_instr = instr;
    list_inithead(&def->uses);
    list_inithead(&def->if_uses);
@@ -1486,7 +1484,7 @@ nir_ssa_dest_init(nir_instr *instr, nir_dest *dest,
                  const char *name)
 {
    dest->is_ssa = true;
-   nir_ssa_def_init(instr, &dest->ssa, num_components, bit_size, name);
+   nir_ssa_def_init(instr, &dest->ssa, num_components, bit_size);
 }
 
 void

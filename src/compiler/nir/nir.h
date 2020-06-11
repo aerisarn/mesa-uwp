@@ -728,9 +728,6 @@ typedef struct nir_register {
    /** generic register index. */
    unsigned index;
 
-   /** only for debug purposes, can be NULL */
-   const char *name;
-
    /** set of nir_srcs where this register is used (read from) */
    struct list_head uses;
 
@@ -806,9 +803,6 @@ nir_instr_is_last(const nir_instr *instr)
 }
 
 typedef struct nir_ssa_def {
-   /** for debugging only, can be NULL */
-   const char* name;
-
    /** Instruction which produces this SSA value. */
    nir_instr *parent_instr;
 
@@ -4020,8 +4014,7 @@ void nir_ssa_dest_init(nir_instr *instr, nir_dest *dest,
                        unsigned num_components, unsigned bit_size,
                        const char *name);
 void nir_ssa_def_init(nir_instr *instr, nir_ssa_def *def,
-                      unsigned num_components, unsigned bit_size,
-                      const char *name);
+                      unsigned num_components, unsigned bit_size);
 static inline void
 nir_ssa_dest_init_for_type(nir_instr *instr, nir_dest *dest,
                            const struct glsl_type *type,

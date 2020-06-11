@@ -333,7 +333,7 @@ lower_ssbo_ubo_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
          nir_ssa_dest_init(&copy->instr, &copy->dest,
                            intrin->dest.ssa.num_components,
                            intrin->dest.ssa.bit_size,
-                           intrin->dest.ssa.name);
+                           NULL);
          results[i] = &copy->dest.ssa;
       }
 

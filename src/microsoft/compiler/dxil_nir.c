@@ -774,7 +774,7 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr,
       atomic->src[2] = nir_src_for_ssa(intr->src[2].ssa);
    }
    atomic->num_components = 0;
-   nir_ssa_dest_init(&atomic->instr, &atomic->dest, 1, 32, intr->dest.ssa.name);
+   nir_ssa_dest_init(&atomic->instr, &atomic->dest, 1, 32, NULL);
 
    nir_builder_instr_insert(b, &atomic->instr);
    nir_ssa_def_rewrite_uses(&intr->dest.ssa, &atomic->dest.ssa);

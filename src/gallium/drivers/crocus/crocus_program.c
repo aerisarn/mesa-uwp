@@ -495,7 +495,7 @@ crocus_setup_uniforms(const struct brw_compiler *compiler,
             nir_ssa_dest_init(&load_ubo->instr, &load_ubo->dest,
                               intrin->dest.ssa.num_components,
                               intrin->dest.ssa.bit_size,
-                              intrin->dest.ssa.name);
+                              NULL);
             nir_builder_instr_insert(&b, &load_ubo->instr);
 
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa,

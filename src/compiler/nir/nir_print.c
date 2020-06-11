@@ -82,8 +82,6 @@ static void
 print_register(nir_register *reg, print_state *state)
 {
    FILE *fp = state->fp;
-   if (reg->name != NULL)
-      fprintf(fp, "/* %s */ ", reg->name);
    fprintf(fp, "r%u", reg->index);
 }
 
@@ -107,8 +105,6 @@ static void
 print_ssa_def(nir_ssa_def *def, print_state *state)
 {
    FILE *fp = state->fp;
-   if (def->name != NULL)
-      fprintf(fp, "/* %s */ ", def->name);
    fprintf(fp, "%s %u ssa_%u", sizes[def->num_components], def->bit_size,
            def->index);
 }
@@ -117,8 +113,6 @@ static void
 print_ssa_use(nir_ssa_def *def, print_state *state)
 {
    FILE *fp = state->fp;
-   if (def->name != NULL)
-      fprintf(fp, "/* %s */ ", def->name);
    fprintf(fp, "ssa_%u", def->index);
 }
 

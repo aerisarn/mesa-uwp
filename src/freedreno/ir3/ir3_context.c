@@ -559,7 +559,7 @@ ir3_get_array(struct ir3_context *ctx, nir_register *reg)
 		if (arr->r == reg)
 			return arr;
 	}
-	ir3_context_error(ctx, "bogus reg: %s\n", reg->name);
+	ir3_context_error(ctx, "bogus reg: r%d\n", reg->index);
 	return NULL;
 }
 

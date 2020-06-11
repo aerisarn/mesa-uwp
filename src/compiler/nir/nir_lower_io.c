@@ -1381,7 +1381,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
    assert(intrin->dest.is_ssa);
    load->num_components = num_components;
    nir_ssa_dest_init(&load->instr, &load->dest, num_components,
-                     bit_size, intrin->dest.ssa.name);
+                     bit_size, NULL);
 
    assert(bit_size % 8 == 0);
 
@@ -1680,7 +1680,7 @@ build_explicit_io_atomic(nir_builder *b, nir_intrinsic_instr *intrin,
 
    assert(intrin->dest.ssa.num_components == 1);
    nir_ssa_dest_init(&atomic->instr, &atomic->dest,
-                     1, intrin->dest.ssa.bit_size, intrin->dest.ssa.name);
+                     1, intrin->dest.ssa.bit_size, NULL);
 
    assert(atomic->dest.ssa.bit_size % 8 == 0);
 
