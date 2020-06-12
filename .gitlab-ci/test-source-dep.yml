@@ -530,6 +530,26 @@
       when: on_success
     - when: never
 
+.etnaviv-rules:
+  stage: etnaviv
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+      - src/etnaviv/**/*
+      - src/gallium/drivers/etnaviv/**/*
+      - src/gallium/winsys/etnaviv/**/*
+      - src/gallium/auxiliary/renderonly/**/*
+      - src/gallium/winsys/kmsro/**/*
+      - src/gallium/winsys/etnaviv/**/*
+      when: on_success
+    - when: never
+
 # Rules for unusual architectures that only build a subset of drivers
 .ppc64el-rules:
    rules:

@@ -30,6 +30,7 @@ include:
   - local: '.gitlab-ci/test-source-dep.yml'
   - local: 'src/amd/ci/gitlab-ci.yml'
   - local: 'src/broadcom/ci/gitlab-ci.yml'
+  - local: 'src/etnaviv/ci/gitlab-ci.yml'
   - local: 'src/freedreno/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/i915/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/iris/ci/gitlab-ci.yml'
@@ -53,6 +54,7 @@ stages:
   - arm
   - broadcom
   - freedreno
+  - etnaviv
   - software-renderer
   - layered-backends
   - deploy

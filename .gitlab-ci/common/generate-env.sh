@@ -36,6 +36,7 @@ for var in \
     DEVICE_NAME \
     DRIVER_NAME \
     EGL_PLATFORM \
+    ETNA_MESA_DEBUG \
     FDO_CI_CONCURRENT \
     FDO_UPSTREAM_REPO \
     FD_MESA_DEBUG \
