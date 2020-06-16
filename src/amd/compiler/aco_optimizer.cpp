@@ -3559,6 +3559,13 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       }
    } else if (instr->opcode == aco_opcode::v_and_b32) {
       combine_and_subbrev(ctx, instr);
+   } else if (instr->opcode == aco_opcode::v_fma_f32 || instr->opcode == aco_opcode::v_fma_f16) {
+      /* set existing v_fma_f32 with label_mad so we can create v_fmamk_f32/v_fmaak_f32.
+       * since ctx.uses[mad_info::mul_temp_id] is always 0, we don't have to worry about
+       * select_instruction() using mad_info::add_instr.
+       */
+      ctx.mad_infos.emplace_back(nullptr, 0);
+      ctx.info[instr->definitions[0].tempId()].set_mad(instr.get(), ctx.mad_infos.size() - 1);
    } else {
       aco_opcode min, max, min3, max3, med3;
       bool some_gfx9_only;
