@@ -41,6 +41,7 @@
 
 #define RADV_VERT_ATTRIB_MAX MAX2(VERT_ATTRIB_MAX, VERT_ATTRIB_GENERIC0 + MAX_VERTEX_ATTRIBS)
 
+struct radv_physical_device;
 struct radv_device;
 struct radv_pipeline;
 struct radv_pipeline_cache;
@@ -572,5 +573,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
 
 bool radv_consider_culling(struct radv_device *device, struct nir_shader *nir,
                            uint64_t ps_inputs_read);
+
+void radv_get_nir_options(struct radv_physical_device *device);
 
 #endif

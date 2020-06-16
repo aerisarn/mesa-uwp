@@ -708,6 +708,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
    radv_physical_device_get_supported_extensions(device, &device->vk.supported_extensions);
 
+   radv_get_nir_options(device);
+
 #ifndef _WIN32
    if (drm_device) {
       struct stat primary_stat = {0}, render_stat = {0};
