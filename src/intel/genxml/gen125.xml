@@ -854,6 +854,7 @@
     <field name="Clear Value Address Enable" start="330" end="330" type="bool"/>
     <field name="Caching Expanded Formats" start="331" end="331" type="uint"/>
     <field name="Auxiliary Surface Base Address" start="332" end="383" type="address"/>
+    <field name="Render Compression Format" start="384" end="388" type="uint"/>
     <field name="Clear Value Address" start="390" end="431" type="address"/>
   </struct>
 
@@ -1703,6 +1704,8 @@
     <field name="MOCS" start="160" end="166" type="uint"/>
     <field name="Minimum Array Element" start="168" end="178" type="uint"/>
     <field name="Depth" start="180" end="190" type="uint"/>
+    <field name="Render Compression Format" start="192" end="196" type="uint"/>
+    <field name="Compression Mode" start="197" end="197" type="bool"/>
     <field name="Mip Tail Start LOD" start="218" end="221" type="uint"/>
     <field name="Tiled Mode" start="222" end="223" type="uint">
       <value name="TILE64" value="1"/>
@@ -2763,6 +2766,8 @@
     <field name="MOCS" start="160" end="166" type="uint"/>
     <field name="Minimum Array Element" start="168" end="178" type="uint"/>
     <field name="Depth" start="180" end="190" type="uint"/>
+    <field name="Render Compression Format" start="192" end="196" type="uint"/>
+    <field name="Compression Mode" start="197" end="197" type="bool"/>
     <field name="Mip Tail Start LOD" start="218" end="221" type="uint"/>
     <field name="Tiled Mode" start="222" end="223" type="uint">
       <value name="TILE64" value="1"/>
