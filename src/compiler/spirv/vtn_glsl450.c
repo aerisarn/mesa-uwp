@@ -232,8 +232,8 @@ build_asin(nir_builder *b, nir_ssa_def *x, float p0, float p1, bool piecewise)
                                                                    pS1)),
                                              pS0));
 
-      nir_ssa_def *q = nir_fadd(b, one, nir_fmul_imm(b, x2, qS1));
-      nir_ssa_def *result1 = nir_fadd(b, x, nir_fmul(b, x, nir_fdiv(b, p, q)));
+      nir_ssa_def *q = nir_fadd(b, nir_fmul_imm(b, x2, qS1), one);
+      nir_ssa_def *result1 = nir_fadd(b, nir_fmul(b, x, nir_fdiv(b, p, q)), x);
       return nir_bcsel(b, nir_flt(b, abs_x, half), result1, result0);
    } else {
       return result0;
