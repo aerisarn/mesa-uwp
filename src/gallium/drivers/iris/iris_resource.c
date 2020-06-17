@@ -87,6 +87,8 @@ modifier_is_supported(const struct intel_device_info *devinfo,
    case I915_FORMAT_MOD_Y_TILED:
       if (devinfo->ver <= 8 && (bind & PIPE_BIND_SCANOUT))
          return false;
+      if (devinfo->verx10 >= 125)
+         return false;
       break;
    case I915_FORMAT_MOD_Y_TILED_CCS:
       if (devinfo->ver <= 8 || devinfo->ver >= 12)
@@ -95,7 +97,7 @@ modifier_is_supported(const struct intel_device_info *devinfo,
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
-      if (devinfo->ver != 12)
+      if (devinfo->verx10 != 120)
          return false;
       break;
    case DRM_FORMAT_MOD_INVALID:
