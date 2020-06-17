@@ -1670,7 +1670,16 @@ fs_visitor::assign_curb_setup()
 
    uint64_t used = 0;
 
-   if (stage == MESA_SHADER_COMPUTE && devinfo->verx10 >= 125) {
+   if (stage == MESA_SHADER_COMPUTE &&
+       brw_cs_prog_data(prog_data)->uses_inline_data) {
+      /* With COMPUTE_WALKER, we can push up to one register worth of data via
+       * the inline data parameter in the COMPUTE_WALKER command itself.
+       *
+       * TODO: Support inline data and push at the same time.
+       */
+      assert(devinfo->verx10 >= 125);
+      assert(uniform_push_length <= 1);
+   } else if (stage == MESA_SHADER_COMPUTE && devinfo->verx10 >= 125) {
       fs_builder ubld = bld.exec_all().group(8, 0).at(
          cfg->first_block(), cfg->first_block()->start());
 
