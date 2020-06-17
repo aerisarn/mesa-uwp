@@ -226,9 +226,10 @@ nir_atan(nir_builder *b, nir_ssa_def *y_over_x)
       build_fsum(b, polynomial_terms, ARRAY_SIZE(polynomial_terms));
 
    /* range-reduction fixup */
-   tmp = nir_fadd(b, tmp,
+   tmp = nir_fadd(b,
                   nir_fmul(b, nir_b2f(b, nir_flt(b, one, abs_y_over_x), bit_size),
-                           nir_fadd_imm(b, nir_fmul_imm(b, tmp, -2.0f), M_PI_2)));
+                           nir_fadd_imm(b, nir_fmul_imm(b, tmp, -2.0f), M_PI_2)),
+                  tmp);
 
    /* sign fixup */
    return nir_fmul(b, tmp, nir_fsign(b, y_over_x));
