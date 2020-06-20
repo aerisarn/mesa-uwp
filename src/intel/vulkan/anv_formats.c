@@ -840,6 +840,21 @@ get_buffer_format_features2(const struct intel_device_info *devinfo,
    if (isl_format == ISL_FORMAT_R32_SINT || isl_format == ISL_FORMAT_R32_UINT)
       flags |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT;
 
+   if (devinfo->has_ray_tracing) {
+      switch (vk_format) {
+      case VK_FORMAT_R32G32_SFLOAT:
+      case VK_FORMAT_R32G32B32_SFLOAT:
+      case VK_FORMAT_R16G16_SFLOAT:
+      case VK_FORMAT_R16G16B16A16_SFLOAT:
+      case VK_FORMAT_R16G16_SNORM:
+      case VK_FORMAT_R16G16B16A16_SNORM:
+         flags |= VK_FORMAT_FEATURE_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR;
+         break;
+      default:
+         break;
+      }
+   }
+
    return flags;
 }
 
