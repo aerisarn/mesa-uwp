@@ -778,6 +778,8 @@ util_is_vbo_upload_ratio_too_large(unsigned draw_vertex_count,
       return upload_vertex_count > draw_vertex_count * 16;
 }
 
+bool util_invert_mat4x4(float *out, const float *m);
+
 #ifdef __cplusplus
 }
 #endif
