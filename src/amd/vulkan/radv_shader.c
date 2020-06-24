@@ -117,9 +117,6 @@ radv_optimize_nir(const struct radv_device *device, struct nir_shader *shader,
                   bool optimize_conservatively, bool allow_copies)
 {
    bool progress;
-   unsigned lower_flrp = (shader->options->lower_flrp16 ? 16 : 0) |
-                         (shader->options->lower_flrp32 ? 32 : 0) |
-                         (shader->options->lower_flrp64 ? 64 : 0);
 
    do {
       progress = false;
@@ -161,21 +158,6 @@ radv_optimize_nir(const struct radv_device *device, struct nir_shader *shader,
       NIR_PASS(progress, shader, nir_opt_peephole_select, 8, true, true);
       NIR_PASS(progress, shader, nir_opt_constant_folding);
       NIR_PASS(progress, shader, nir_opt_algebraic);
-
-      if (lower_flrp != 0) {
-         bool lower_flrp_progress = false;
-         NIR_PASS(lower_flrp_progress, shader, nir_lower_flrp, lower_flrp,
-                  false /* always_precise */);
-         if (lower_flrp_progress) {
-            NIR_PASS(progress, shader, nir_opt_constant_folding);
-            progress = true;
-         }
-
-         /* Nothing should rematerialize any flrps, so we only
-          * need to do this lowering once.
-          */
-         lower_flrp = 0;
-      }
 
       NIR_PASS(progress, shader, nir_opt_undef);
       NIR_PASS(progress, shader, nir_opt_shrink_vectors,
@@ -695,6 +677,14 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
     * to remove any copies introduced by nir_opt_find_array_copies().
     */
    nir_lower_var_copies(nir);
+
+   unsigned lower_flrp = (nir->options->lower_flrp16 ? 16 : 0) |
+                         (nir->options->lower_flrp32 ? 32 : 0) |
+                         (nir->options->lower_flrp64 ? 64 : 0);
+   if (lower_flrp != 0) {
+      if (nir_lower_flrp(nir, lower_flrp, false /* always_precise */))
+         NIR_PASS_V(nir, nir_opt_constant_folding);
+   }
 
    const nir_opt_access_options opt_access_options = {
       .is_vulkan = true,
