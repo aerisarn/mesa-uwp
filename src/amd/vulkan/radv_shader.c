@@ -166,8 +166,6 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively, bool 
 
       NIR_PASS(progress, shader, nir_opt_copy_prop_vars);
       NIR_PASS(progress, shader, nir_opt_dead_write_vars);
-      NIR_PASS(progress, shader, nir_remove_dead_variables,
-               nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
 
       NIR_PASS_V(shader, nir_lower_alu_to_scalar, NULL, NULL);
       NIR_PASS_V(shader, nir_lower_phis_to_scalar, true);
@@ -189,12 +187,15 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively, bool 
       NIR_PASS(progress, shader, nir_opt_algebraic);
 
       NIR_PASS(progress, shader, nir_opt_undef);
-      NIR_PASS(progress, shader, nir_opt_shrink_vectors);
+
       if (shader->options->max_unroll_iterations) {
          NIR_PASS(progress, shader, nir_opt_loop_unroll);
       }
    } while (progress && !optimize_conservatively);
 
+   NIR_PASS(progress, shader, nir_opt_shrink_vectors);
+   NIR_PASS(progress, shader, nir_remove_dead_variables,
+            nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
    NIR_PASS(progress, shader, nir_opt_conditional_discard);
    NIR_PASS(progress, shader, nir_opt_move, nir_move_load_ubo);
 }
