@@ -973,6 +973,7 @@
       <value name="MINIMUM" value="2"/>
       <value name="MAXIMUM" value="3"/>
     </field>
+    <field name="Allow Low Quality LOD Calculation" start="120" end="120" type="bool"/>
   </struct>
 
   <struct name="SAMPLER_STATE_8X8_AVS_COEFFICIENTS" length="8">
