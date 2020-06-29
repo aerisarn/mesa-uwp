@@ -231,9 +231,9 @@ Recommended Reading
    -  `Rasterization on
       Larrabee <https://www.drdobbs.com/parallel/rasterization-on-larrabee/217200602>`__
    -  `Rasterization using half-space
-      functions <http://devmaster.net/posts/6133/rasterization-using-half-space-functions>`__
+      functions <http://web.archive.org/web/20110820052005/http://www.devmaster.net/codespotlight/show.php?id=17>`__
    -  `Advanced
-      Rasterization <http://devmaster.net/posts/6145/advanced-rasterization>`__
+      Rasterization <http://web.archive.org/web/20140514220546/http://devmaster.net/posts/6145/advanced-rasterization>`__
    -  `Optimizing Software Occlusion
       Culling <https://fgiesen.wordpress.com/2013/02/17/optimizing-sw-occlusion-culling-index/>`__
 
@@ -244,7 +244,7 @@ Recommended Reading
    -  `Texturing As In
       Unreal <https://www.flipcode.com/archives/Texturing_As_In_Unreal.shtml>`__
    -  `Run-Time MIP-Map
-      Filtering <http://www.gamasutra.com/view/feature/3301/runtime_mipmap_filtering.php>`__
+      Filtering <http://web.archive.org/web/20220709145555/http://www.gamasutra.com/view/feature/3301/runtime_mipmap_filtering.php>`__
    -  `Will "brilinear" filtering
       persist? <https://alt.3dcenter.org/artikel/2003/10-26_a_english.php>`__
    -  `Trilinear

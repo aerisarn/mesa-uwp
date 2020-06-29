@@ -63,4 +63,4 @@ DirectX Graphics Infrastructure documentation on DXGI_FORMAT enum:
 https://msdn.microsoft.com/en-us/library/windows/desktop/bb173059%28v=vs.85%29.aspx
 
 FOURCC codes for YUV formats:
-http://www.fourcc.org/yuv.php
+http://web.archive.org/web/20220523043110/https://www.fourcc.org/yuv/
