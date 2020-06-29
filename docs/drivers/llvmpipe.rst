@@ -249,8 +249,8 @@ Recommended Reading
       persist? <https://alt.3dcenter.org/artikel/2003/10-26_a_english.php>`__
    -  `Trilinear
       filtering <http://ixbtlabs.com/articles2/gffx/nv40-rx800-3.html>`__
-   -  `Texture
-      Swizzling <http://devmaster.net/posts/12785/texture-swizzling>`__
+   -  `Texture tiling and
+      swizzling <https://fgiesen.wordpress.com/2011/01/17/texture-tiling-and-swizzling/>`__
 
 -  SIMD
 
