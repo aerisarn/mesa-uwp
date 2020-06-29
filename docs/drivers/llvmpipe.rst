@@ -230,8 +230,6 @@ Recommended Reading
       Coordinates <https://www.cs.unc.edu/~olano/papers/2dh-tri/>`__
    -  `Rasterization on
       Larrabee <https://www.drdobbs.com/parallel/rasterization-on-larrabee/217200602>`__
-      (`DevMaster
-      copy <http://devmaster.net/posts/2887/rasterization-on-larrabee>`__)
    -  `Rasterization using half-space
       functions <http://devmaster.net/posts/6133/rasterization-using-half-space-functions>`__
    -  `Advanced
