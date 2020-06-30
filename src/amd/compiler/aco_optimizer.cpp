@@ -22,6 +22,7 @@
  *
  */
 
+#include "aco_builder.h"
 #include "aco_ir.h"
 
 #include "util/half_float.h"
@@ -119,11 +120,12 @@ enum Label {
    label_canonicalized = 1ull << 32,
    label_extract = 1ull << 33,
    label_insert = 1ull << 34,
+   label_dpp = 1ull << 35,
 };
 
 static constexpr uint64_t instr_usedef_labels =
    label_vec | label_mul | label_mad | label_add_sub | label_vop3p | label_bitwise |
-   label_uniform_bitwise | label_minmax | label_vopc | label_usedef | label_extract;
+   label_uniform_bitwise | label_minmax | label_vopc | label_usedef | label_extract | label_dpp;
 static constexpr uint64_t instr_mod_labels =
    label_omod2 | label_omod4 | label_omod5 | label_clamp | label_insert;
 
@@ -452,6 +454,14 @@ struct ssa_info {
    }
 
    bool is_insert() { return label & label_insert; }
+
+   void set_dpp(Instruction* mov)
+   {
+      add_label(label_dpp);
+      instr = mov;
+   }
+
+   bool is_dpp() { return label & label_dpp; }
 };
 
 struct opt_ctx {
@@ -1046,6 +1056,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                instr->vop3().abs[i] = true;
             continue;
          }
+
          unsigned bits = get_operand_size(instr, i);
          if (info.is_constant(bits) && alu_can_accept_constant(instr->opcode, i) &&
              (!instr->isSDWA() || ctx.program->chip_class >= GFX9)) {
@@ -1402,6 +1413,13 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             ctx.info[instr->definitions[0].tempId()].set_canonicalized();
       } else {
          assert(instr->operands[0].isFixed());
+      }
+      break;
+   case aco_opcode::v_mov_b32:
+      if (instr->isDPP()) {
+         /* anything else doesn't make sense in SSA */
+         assert(instr->dpp().row_mask == 0xf && instr->dpp().bank_mask == 0xf);
+         ctx.info[instr->definitions[0].tempId()].set_dpp(instr.get());
       }
       break;
    case aco_opcode::p_is_helper:
@@ -3704,6 +3722,37 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
    if (instr->opcode == aco_opcode::v_mad_u32_u16)
       select_mul_u32_u24(ctx, instr);
+
+   /* Combine DPP copies into VALU. This should be done after creating MAD/FMA. */
+   if (instr->isVALU()) {
+      for (unsigned i = 0; i < instr->operands.size(); i++) {
+         if (!instr->operands[i].isTemp())
+            continue;
+         ssa_info info = ctx.info[instr->operands[i].tempId()];
+
+         aco_opcode swapped_op;
+         if (info.is_dpp() && info.instr->pass_flags == instr->pass_flags &&
+             (i == 0 || can_swap_operands(instr, &swapped_op)) && can_use_DPP(instr, true) &&
+             !instr->isDPP()) {
+            convert_to_DPP(instr);
+            DPP_instruction* dpp = static_cast<DPP_instruction*>(instr.get());
+            if (i) {
+               instr->opcode = swapped_op;
+               std::swap(instr->operands[0], instr->operands[1]);
+               std::swap(dpp->neg[0], dpp->neg[1]);
+               std::swap(dpp->abs[0], dpp->abs[1]);
+            }
+            if (--ctx.uses[info.instr->definitions[0].tempId()])
+               ctx.uses[info.instr->operands[0].tempId()]++;
+            instr->operands[0].setTemp(info.instr->operands[0].getTemp());
+            dpp->dpp_ctrl = info.instr->dpp().dpp_ctrl;
+            dpp->bound_ctrl = info.instr->dpp().bound_ctrl;
+            dpp->neg[0] ^= info.instr->dpp().neg[0] && !dpp->abs[0];
+            dpp->abs[0] |= info.instr->dpp().abs[0];
+            break;
+         }
+      }
+   }
 
    if (instr->isSDWA() || instr->isDPP() || (instr->isVOP3() && ctx.program->chip_class < GFX10) ||
        (instr->isVOP3P() && ctx.program->chip_class < GFX10))
