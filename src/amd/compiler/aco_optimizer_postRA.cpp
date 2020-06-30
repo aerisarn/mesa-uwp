@@ -22,6 +22,7 @@
  *
  */
 
+#include "aco_builder.h"
 #include "aco_ir.h"
 
 #include <algorithm>
@@ -339,11 +340,65 @@ try_optimize_scc_nocompare(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 }
 
 void
+try_combine_dpp(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
+{
+   if (!instr->isVALU() || instr->isDPP() || !can_use_DPP(instr, false))
+      return;
+
+   for (unsigned i = 0; i < MIN2(2, instr->operands.size()); i++) {
+      Idx op_instr_idx = last_writer_idx(ctx, instr->operands[i]);
+      if (!op_instr_idx.found())
+         continue;
+
+      Instruction* mov = ctx.get(op_instr_idx);
+      if (mov->opcode != aco_opcode::v_mov_b32 || !mov->isDPP())
+         continue;
+
+      /* If we aren't going to remove the v_mov_b32, we have to ensure that it doesn't overwrite
+       * it's own operand before we use it.
+       */
+      if (mov->definitions[0].physReg() == mov->operands[0].physReg() &&
+          (!mov->definitions[0].tempId() || ctx.uses[mov->definitions[0].tempId()] > 1))
+         continue;
+
+      Idx mov_src_idx = last_writer_idx(ctx, mov->operands[0]);
+      if (is_instr_after(mov_src_idx, op_instr_idx))
+         continue;
+
+      if (i && !can_swap_operands(instr, &instr->opcode))
+         continue;
+
+      /* anything else doesn't make sense in SSA */
+      assert(mov->dpp().row_mask == 0xf && mov->dpp().bank_mask == 0xf);
+
+      if (--ctx.uses[mov->definitions[0].tempId()])
+         ctx.uses[mov->operands[0].tempId()]++;
+
+      convert_to_DPP(instr);
+
+      DPP_instruction* dpp = &instr->dpp();
+      if (i) {
+         std::swap(dpp->operands[0], dpp->operands[1]);
+         std::swap(dpp->neg[0], dpp->neg[1]);
+         std::swap(dpp->abs[0], dpp->abs[1]);
+      }
+      dpp->operands[0] = mov->operands[0];
+      dpp->dpp_ctrl = mov->dpp().dpp_ctrl;
+      dpp->bound_ctrl = true;
+      dpp->neg[0] ^= mov->dpp().neg[0] && !dpp->abs[0];
+      dpp->abs[0] |= mov->dpp().abs[0];
+      return;
+   }
+}
+
+void
 process_instruction(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
    try_apply_branch_vcc(ctx, instr);
 
    try_optimize_scc_nocompare(ctx, instr);
+
+   try_combine_dpp(ctx, instr);
 
    if (instr)
       save_reg_writes(ctx, instr);
