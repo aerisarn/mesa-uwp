@@ -5616,7 +5616,8 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
 }
 
 static unsigned
-get_sampler_msg_payload_type_bit_size(const fs_reg *src)
+get_sampler_msg_payload_type_bit_size(const intel_device_info *devinfo,
+                                      opcode op, const fs_reg *src)
 {
    unsigned src_type_size = 0;
 
@@ -5633,12 +5634,38 @@ get_sampler_msg_payload_type_bit_size(const fs_reg *src)
    assert(src_type_size == 2 || src_type_size == 4);
 
 #ifndef NDEBUG
-   /* Make sure all sources agree. */
-   for (unsigned i = 0; i < TEX_LOGICAL_NUM_SRCS; i++) {
-      assert(src[i].file == BAD_FILE ||
-             brw_reg_type_to_size(src[i].type) == src_type_size);
+   /* Make sure all sources agree. On gfx12 this doesn't hold when sampling
+    * compressed multisampled surfaces. There the payload contains MCS data
+    * which is already in 16-bits unlike the other parameters that need forced
+    * conversion.
+    */
+   if (devinfo->verx10 < 125 ||
+       (op != SHADER_OPCODE_TXF_CMS_W &&
+        op != SHADER_OPCODE_TXF_CMS)) {
+      for (unsigned i = 0; i < TEX_LOGICAL_NUM_SRCS; i++) {
+         assert(src[i].file == BAD_FILE ||
+                brw_reg_type_to_size(src[i].type) == src_type_size);
+      }
    }
 #endif
+
+   if (devinfo->verx10 < 125)
+      return src_type_size * 8;
+
+   /* Force conversion from 32-bit sources to 16-bit payload. From the XeHP Bspec:
+    * 3D and GPGPU Programs - Shared Functions - 3D Sampler - Messages - Message
+    * Format [GFX12:HAS:1209977870] *
+    *
+    *  ld2dms_w       SIMD8H and SIMD16H Only
+    *  ld_mcs         SIMD8H and SIMD16H Only
+    *  ld2dms         REMOVEDBY(GEN:HAS:1406788836)
+    */
+
+   if (op == SHADER_OPCODE_TXF_CMS_W ||
+       op == SHADER_OPCODE_TXF_CMS ||
+       op == SHADER_OPCODE_TXF_UMS ||
+       op == SHADER_OPCODE_TXF_MCS)
+      src_type_size = 2;
 
    return src_type_size * 8;
 }
@@ -5666,7 +5693,7 @@ lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
 
    if (devinfo->ver >= 7) {
       const unsigned msg_payload_type_bit_size =
-         get_sampler_msg_payload_type_bit_size(inst->src);
+         get_sampler_msg_payload_type_bit_size(devinfo, op, inst->src);
 
       /* 16-bit payloads are available only on gfx11+ */
       assert(msg_payload_type_bit_size != 16 || devinfo->ver >= 11);
