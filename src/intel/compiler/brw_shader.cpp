@@ -257,6 +257,8 @@ brw_instruction_name(const struct intel_device_info *devinfo, enum opcode op)
       return "txf_cms_w";
    case SHADER_OPCODE_TXF_CMS_W_LOGICAL:
       return "txf_cms_w_logical";
+   case SHADER_OPCODE_TXF_CMS_W_GFX12_LOGICAL:
+      return "txf_cms_w_gfx12_logical";
    case SHADER_OPCODE_TXF_UMS:
       return "txf_ums";
    case SHADER_OPCODE_TXF_UMS_LOGICAL:
