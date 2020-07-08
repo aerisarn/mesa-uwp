@@ -3334,9 +3334,23 @@ fs_visitor::emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
     * message just in case the framebuffer uses 16x multisampling, it should
     * be equivalent to the normal CMS fetch for lower multisampling modes.
     */
-   const opcode op = !wm_key->multisample_fbo ? SHADER_OPCODE_TXF_LOGICAL :
-                     devinfo->ver >= 9 ? SHADER_OPCODE_TXF_CMS_W_LOGICAL :
-                     SHADER_OPCODE_TXF_CMS_LOGICAL;
+   opcode op;
+   if (wm_key->multisample_fbo) {
+      /* On SKL+ use the wide CMS message just in case the framebuffer uses 16x
+       * multisampling, it should be equivalent to the normal CMS fetch for
+       * lower multisampling modes.
+       *
+       * On Gfx12HP, there is only CMS_W variant available.
+       */
+      if (devinfo->verx10 >= 125)
+         op = SHADER_OPCODE_TXF_CMS_W_GFX12_LOGICAL;
+      else if (devinfo->ver >= 9)
+         op = SHADER_OPCODE_TXF_CMS_W_LOGICAL;
+      else
+         op = SHADER_OPCODE_TXF_CMS_LOGICAL;
+   } else {
+      op = SHADER_OPCODE_TXF_LOGICAL;
+   }
 
    /* Emit the instruction. */
    fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
@@ -6200,7 +6214,14 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       opcode = SHADER_OPCODE_TXF_LOGICAL;
       break;
    case nir_texop_txf_ms:
-      if ((key_tex->msaa_16 & (1 << sampler)))
+      /* On Gfx12HP there is only CMS_W available. From the Bspec: Shared
+       * Functions - 3D Sampler - Messages - Message Format:
+       *
+       *   ld2dms REMOVEDBY(GEN:HAS:1406788836)
+       */
+      if (devinfo->verx10 >= 125)
+         opcode = SHADER_OPCODE_TXF_CMS_W_GFX12_LOGICAL;
+      else if ((key_tex->msaa_16 & (1 << sampler)))
          opcode = SHADER_OPCODE_TXF_CMS_W_LOGICAL;
       else
          opcode = SHADER_OPCODE_TXF_CMS_LOGICAL;
