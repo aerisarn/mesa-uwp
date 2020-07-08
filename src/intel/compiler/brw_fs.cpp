@@ -5424,20 +5424,23 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
          bld.MOV(retype(sources[length++], payload_unsigned_type), sample_index);
       }
 
+      /* Data from the multisample control surface. */
       if (op == SHADER_OPCODE_TXF_CMS || op == SHADER_OPCODE_TXF_CMS_W) {
-         /* Data from the multisample control surface. */
-         bld.MOV(retype(sources[length], payload_unsigned_type), mcs);
-         length++;
+         unsigned num_mcs_components = 1;
 
-         /* On Gfx9+ we'll use ld2dms_w instead which has two registers for
-          * the MCS data.
+         /* From the Gfx12HP BSpec: Render Engine - 3D and GPGPU Programs -
+          * Shared Functions - 3D Sampler - Messages - Message Format:
+          *
+          *    ld2dms_w   si  mcs0 mcs1 mcs2  mcs3  u  v  r
           */
-         if (op == SHADER_OPCODE_TXF_CMS_W) {
-            bld.MOV(retype(sources[length], payload_unsigned_type),
-                    mcs.file == IMM ?
-                    mcs :
-                    offset(mcs, bld, 1));
-            length++;
+         if (devinfo->verx10 >= 125 && op == SHADER_OPCODE_TXF_CMS_W)
+            num_mcs_components = 4;
+         else if (op == SHADER_OPCODE_TXF_CMS_W)
+            num_mcs_components = 2;
+
+         for (unsigned i = 0; i < num_mcs_components; ++i) {
+            bld.MOV(retype(sources[length++], payload_unsigned_type),
+                    mcs.file == IMM ? mcs : offset(mcs, bld, i));
          }
       }
 
