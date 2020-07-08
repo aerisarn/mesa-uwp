@@ -1026,7 +1026,6 @@ fs_visitor::opt_copy_propagation_local(void *copy_prop_ctx, bblock_t *block,
          int offset = 0;
          for (int i = 0; i < inst->sources; i++) {
             int effective_width = i < inst->header_size ? 8 : inst->exec_size;
-            assert(effective_width * type_sz(inst->src[i].type) % REG_SIZE == 0);
             const unsigned size_written = effective_width *
                                           type_sz(inst->src[i].type);
             if (inst->src[i].file == VGRF ||
