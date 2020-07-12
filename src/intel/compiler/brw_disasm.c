@@ -316,6 +316,9 @@ static const char *const gfx6_sfid[16] = {
    [HSW_SFID_DATAPORT_DATA_CACHE_1]    = "dp data 1",
    [HSW_SFID_CRE]                      = "cre",
    [GEN_RT_SFID_RAY_TRACE_ACCELERATOR] = "rt accel",
+   [GFX12_SFID_SLM]                    = "slm",
+   [GFX12_SFID_TGM]                    = "tgm",
+   [GFX12_SFID_UGM]                    = "ugm",
 };
 
 static const char *const gfx7_gateway_subfuncid[8] = {
@@ -620,6 +623,130 @@ static const char *const sampler_target_format[4] = {
    [3] = "D"
 };
 
+static const char *const lsc_operation[] = {
+   [LSC_OP_LOAD]            = "load",
+   [LSC_OP_LOAD_CMASK]      = "load_cmask",
+   [LSC_OP_STORE]           = "store",
+   [LSC_OP_STORE_CMASK]     = "store_cmask",
+   [LSC_OP_FENCE]           = "fence",
+   [LSC_OP_ATOMIC_INC]      = "atomic_inc",
+   [LSC_OP_ATOMIC_DEC]      = "atomic_dec",
+   [LSC_OP_ATOMIC_LOAD]     = "atomic_load",
+   [LSC_OP_ATOMIC_STORE]    = "atomic_store",
+   [LSC_OP_ATOMIC_ADD]      = "atomic_add",
+   [LSC_OP_ATOMIC_SUB]      = "atomic_sub",
+   [LSC_OP_ATOMIC_MIN]      = "atomic_min",
+   [LSC_OP_ATOMIC_MAX]      = "atomic_max",
+   [LSC_OP_ATOMIC_UMIN]     = "atomic_umin",
+   [LSC_OP_ATOMIC_UMAX]     = "atomic_umax",
+   [LSC_OP_ATOMIC_CMPXCHG]  = "atomic_cmpxchg",
+   [LSC_OP_ATOMIC_FADD]     = "atomic_fadd",
+   [LSC_OP_ATOMIC_FSUB]     = "atomic_fsub",
+   [LSC_OP_ATOMIC_FMIN]     = "atomic_fmin",
+   [LSC_OP_ATOMIC_FMAX]     = "atomic_fmax",
+   [LSC_OP_ATOMIC_FCMPXCHG] = "atomic_fcmpxchg",
+   [LSC_OP_ATOMIC_AND]      = "atomic_and",
+   [LSC_OP_ATOMIC_OR]       = "atomic_or",
+   [LSC_OP_ATOMIC_XOR]      = "atomic_xor",
+};
+
+static const char *const lsc_addr_surface_type[] = {
+   [LSC_ADDR_SURFTYPE_FLAT] = "flat",
+   [LSC_ADDR_SURFTYPE_BSS]  = "bss",
+   [LSC_ADDR_SURFTYPE_SS]   = "ss",
+   [LSC_ADDR_SURFTYPE_BTI]  = "bti",
+};
+
+static const char* const lsc_fence_scope[] = {
+   [LSC_FENCE_THREADGROUP]     = "threadgroup",
+   [LSC_FENCE_LOCAL]           = "local",
+   [LSC_FENCE_TILE]            = "tile",
+   [LSC_FENCE_GPU]             = "gpu",
+   [LSC_FENCE_ALL_GPU]         = "all_gpu",
+   [LSC_FENCE_SYSTEM_RELEASE]  = "system_release",
+   [LSC_FENCE_SYSTEM_ACQUIRE]  = "system_acquire",
+};
+
+static const char* const lsc_flush_type[] = {
+   [LSC_FLUSH_TYPE_NONE]       = "none",
+   [LSC_FLUSH_TYPE_EVICT]      = "evict",
+   [LSC_FLUSH_TYPE_INVALIDATE] = "invalidate",
+   [LSC_FLUSH_TYPE_DISCARD]    = "discard",
+   [LSC_FLUSH_TYPE_CLEAN]      = "clean",
+   [LSC_FLUSH_TYPE_L3ONLY]     = "l3only",
+};
+
+static const char* const lsc_addr_size[] = {
+   [LSC_ADDR_SIZE_A16] = "a16",
+   [LSC_ADDR_SIZE_A32] = "a32",
+   [LSC_ADDR_SIZE_A64] = "a64",
+};
+
+static const char* const lsc_backup_fence_routing[] = {
+   [LSC_NORMAL_ROUTING]  = "normal_routing",
+   [LSC_ROUTE_TO_LSC]    = "route_to_lsc",
+};
+
+static const char* const lsc_data_size[] = {
+   [LSC_DATA_SIZE_D8]      = "d8",
+   [LSC_DATA_SIZE_D16]     = "d16",
+   [LSC_DATA_SIZE_D32]     = "d32",
+   [LSC_DATA_SIZE_D64]     = "d64",
+   [LSC_DATA_SIZE_D8U32]   = "d8u32",
+   [LSC_DATA_SIZE_D16U32]  = "d16u32",
+   [LSC_DATA_SIZE_D16BF32] = "d16bf32",
+};
+
+static const char* const lsc_vect_size_str[] = {
+   [LSC_VECT_SIZE_V1] = "V1",
+   [LSC_VECT_SIZE_V2] = "V2",
+   [LSC_VECT_SIZE_V3] = "V3",
+   [LSC_VECT_SIZE_V4] = "V4",
+   [LSC_VECT_SIZE_V8] = "V8",
+   [LSC_VECT_SIZE_V16] = "V16",
+   [LSC_VECT_SIZE_V32] = "V32",
+   [LSC_VECT_SIZE_V64] = "V64",
+};
+
+static const char* const lsc_cmask_str[] = {
+   [LSC_CMASK_X]      = "x",
+   [LSC_CMASK_Y]      = "y",
+   [LSC_CMASK_XY]     = "xy",
+   [LSC_CMASK_Z]      = "z",
+   [LSC_CMASK_XZ]     = "xz",
+   [LSC_CMASK_YZ]     = "yz",
+   [LSC_CMASK_XYZ]    = "xyz",
+   [LSC_CMASK_W]      = "w",
+   [LSC_CMASK_XW]     = "xw",
+   [LSC_CMASK_YW]     = "yw",
+   [LSC_CMASK_XYW]    = "xyw",
+   [LSC_CMASK_ZW]     = "zw",
+   [LSC_CMASK_XZW]    = "xzw",
+   [LSC_CMASK_YZW]    = "yzw",
+   [LSC_CMASK_XYZW]   = "xyzw",
+};
+
+static const char* const lsc_cache_load[] = {
+   [LSC_CACHE_LOAD_L1STATE_L3MOCS]   = "L1STATE_L3MOCS",
+   [LSC_CACHE_LOAD_L1UC_L3UC]        = "L1UC_L3UC",
+   [LSC_CACHE_LOAD_L1UC_L3C]         = "L1UC_L3C",
+   [LSC_CACHE_LOAD_L1C_L3UC]         = "L1C_L3UC",
+   [LSC_CACHE_LOAD_L1C_L3C]          = "L1C_L3C",
+   [LSC_CACHE_LOAD_L1S_L3UC]         = "L1S_L3UC",
+   [LSC_CACHE_LOAD_L1S_L3C]          = "L1S_L3C",
+   [LSC_CACHE_LOAD_L1IAR_L3C]        = "L1IAR_L3C",
+};
+
+static const char* const lsc_cache_store[] = {
+   [LSC_CACHE_STORE_L1STATE_L3MOCS]  = "L1STATE_L3MOCS",
+   [LSC_CACHE_STORE_L1UC_L3UC]       = "L1UC_L3UC",
+   [LSC_CACHE_STORE_L1UC_L3WB]       = "L1UC_L3WB",
+   [LSC_CACHE_STORE_L1WT_L3UC]       = "L1WT_L3UC",
+   [LSC_CACHE_STORE_L1WT_L3WB]       = "L1WT_L3WB",
+   [LSC_CACHE_STORE_L1S_L3UC]        = "L1S_L3UC",
+   [LSC_CACHE_STORE_L1S_L3WB]        = "L1S_L3WB",
+   [LSC_CACHE_STORE_L1WB_L3WB]       = "L1WB_L3WB",
+};
 
 static int column;
 
@@ -2041,6 +2168,79 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
             format(file, " (%s)",
                    gfx7_gateway_subfuncid[brw_inst_gateway_subfuncid(devinfo, inst)]);
             break;
+
+         case GFX12_SFID_SLM:
+         case GFX12_SFID_TGM:
+         case GFX12_SFID_UGM: {
+            assert(devinfo->has_lsc);
+            format(file, " (");
+            const enum lsc_opcode op = lsc_msg_desc_opcode(devinfo, imm_desc);
+            err |= control(file, "operation", lsc_operation,
+                           op, &space);
+            format(file, ",");
+            err |= control(file, "addr_size", lsc_addr_size,
+                           lsc_msg_desc_addr_size(devinfo, imm_desc),
+                           &space);
+
+            if (op == LSC_OP_FENCE) {
+               format(file, ",");
+               err |= control(file, "scope", lsc_fence_scope,
+                              lsc_fence_msg_desc_scope(devinfo, imm_desc),
+                              &space);
+               format(file, ",");
+               err |= control(file, "flush_type", lsc_flush_type,
+                              lsc_fence_msg_desc_flush_type(devinfo, imm_desc),
+                              &space);
+               format(file, ",");
+               err |= control(file, "backup_mode_fence_routing",
+                              lsc_backup_fence_routing,
+                              lsc_fence_msg_desc_backup_routing(devinfo, imm_desc),
+                              &space);
+            } else {
+               format(file, ",");
+               err |= control(file, "data_size", lsc_data_size,
+                              lsc_msg_desc_data_size(devinfo, imm_desc),
+                              &space);
+               format(file, ",");
+               if (lsc_opcode_has_cmask(op)) {
+                  err |= control(file, "component_mask",
+                                 lsc_cmask_str,
+                                 lsc_msg_desc_cmask(devinfo, imm_desc),
+                                 &space);
+               } else {
+                  err |= control(file, "vector_size",
+                                 lsc_vect_size_str,
+                                 lsc_msg_desc_vect_size(devinfo, imm_desc),
+                                 &space);
+                  if (lsc_msg_desc_transpose(devinfo, imm_desc))
+                     format(file, ", transpose");
+               }
+               switch(op) {
+               case LSC_OP_LOAD_CMASK:
+               case LSC_OP_LOAD:
+                  format(file, ",");
+                  err |= control(file, "cache_load",
+                                 lsc_cache_load,
+                                 lsc_msg_desc_cache_ctrl(devinfo, imm_desc),
+                                 &space);
+                  break;
+               default:
+                  format(file, ",");
+                  err |= control(file, "cache_store",
+                                 lsc_cache_store,
+                                 lsc_msg_desc_cache_ctrl(devinfo, imm_desc),
+                                 &space);
+                  break;
+               }
+            }
+            format(file, " dst_len = %u,", lsc_msg_desc_dest_len(devinfo, imm_desc));
+            format(file, " src0_len = %u,", lsc_msg_desc_src0_len(devinfo, imm_desc));
+            format(file, " src1_len = %d", brw_message_ex_desc_ex_mlen(devinfo, imm_ex_desc));
+            err |= control(file, "address_type", lsc_addr_surface_type,
+                           lsc_msg_desc_addr_type(devinfo, imm_desc), &space);
+            format(file, " )");
+            break;
+         }
 
          case GFX7_SFID_DATAPORT_DATA_CACHE:
             if (devinfo->ver >= 7) {
