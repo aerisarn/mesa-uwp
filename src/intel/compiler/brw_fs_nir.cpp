@@ -4270,7 +4270,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_memory_barrier:
    case nir_intrinsic_begin_invocation_interlock:
    case nir_intrinsic_end_invocation_interlock: {
-      bool l3_fence, slm_fence;
+      bool l3_fence, slm_fence, tgm_fence = false;
       const enum opcode opcode =
          instr->intrinsic == nir_intrinsic_begin_invocation_interlock ?
          SHADER_OPCODE_INTERLOCK : SHADER_OPCODE_MEMORY_FENCE;
@@ -4282,6 +4282,10 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                              nir_var_mem_ssbo |
                              nir_var_mem_global);
          slm_fence = modes & nir_var_mem_shared;
+
+         /* NIR currently doesn't have an image mode */
+         if (devinfo->has_lsc)
+            tgm_fence = modes & nir_var_mem_ssbo;
          break;
       }
 
@@ -4312,6 +4316,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          slm_fence = instr->intrinsic == nir_intrinsic_group_memory_barrier ||
                      instr->intrinsic == nir_intrinsic_memory_barrier ||
                      instr->intrinsic == nir_intrinsic_memory_barrier_shared;
+         tgm_fence = instr->intrinsic == nir_intrinsic_memory_barrier_image;
          break;
       }
 
@@ -4354,7 +4359,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          devinfo->ver >= 10; /* HSD ES # 1404612949 */
 
       unsigned fence_regs_count = 0;
-      fs_reg fence_regs[2] = {};
+      fs_reg fence_regs[3] = {};
 
       const fs_builder ubld = bld.group(8, 0);
 
@@ -4364,8 +4369,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                       ubld.vgrf(BRW_REGISTER_TYPE_UD),
                       brw_vec8_grf(0, 0),
                       brw_imm_ud(commit_enable),
-                      brw_imm_ud(/* bti */ 0));
-         fence->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
+                      brw_imm_ud(0 /* BTI; ignored for LSC */));
+
+         fence->sfid = devinfo->has_lsc ?
+                       GFX12_SFID_UGM :
+                       GFX7_SFID_DATAPORT_DATA_CACHE;
 
          fence_regs[fence_regs_count++] = fence->dst;
 
@@ -4380,6 +4388,19 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
             fence_regs[fence_regs_count++] = render_fence->dst;
          }
+
+         /* Translate l3_fence into untyped and typed fence on XeHP */
+         if (devinfo->has_lsc && tgm_fence) {
+            fs_inst *fence =
+               ubld.emit(opcode,
+                         ubld.vgrf(BRW_REGISTER_TYPE_UD),
+                         brw_vec8_grf(0, 0),
+                         brw_imm_ud(commit_enable),
+                         brw_imm_ud(/* ignored */0));
+
+            fence->sfid = GFX12_SFID_TGM;
+            fence_regs[fence_regs_count++] = fence->dst;
+         }
       }
 
       if (slm_fence) {
@@ -4389,13 +4410,16 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                       ubld.vgrf(BRW_REGISTER_TYPE_UD),
                       brw_vec8_grf(0, 0),
                       brw_imm_ud(commit_enable),
-                      brw_imm_ud(GFX7_BTI_SLM));
-         fence->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
+                      brw_imm_ud(GFX7_BTI_SLM /* ignored for LSC */));
+         if (devinfo->has_lsc)
+            fence->sfid = GFX12_SFID_SLM;
+         else
+            fence->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
 
          fence_regs[fence_regs_count++] = fence->dst;
       }
 
-      assert(fence_regs_count <= 2);
+      assert(fence_regs_count <= 3);
 
       if (stall || fence_regs_count == 0) {
          ubld.exec_all().group(1, 0).emit(

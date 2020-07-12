@@ -939,6 +939,9 @@ namespace {
                abort();
 
          case GFX7_SFID_DATAPORT_DATA_CACHE:
+         case GFX12_SFID_SLM:
+         case GFX12_SFID_TGM:
+         case GFX12_SFID_UGM:
          case HSW_SFID_DATAPORT_DATA_CACHE_1:
             if (devinfo->ver >= 7)
                return calculate_desc(info, unit_dp_dc, 2, 0, 0, 30 /* XXX */, 0,

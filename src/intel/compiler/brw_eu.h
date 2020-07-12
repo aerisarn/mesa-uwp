@@ -1155,6 +1155,21 @@ brw_fb_write_desc_coarse_write(const struct intel_device_info *devinfo,
 }
 
 static inline uint32_t
+lsc_fence_msg_desc(UNUSED const struct intel_device_info *devinfo,
+                   enum lsc_fence_scope scope,
+                   enum lsc_flush_type flush_type,
+                   bool route_to_lsc)
+{
+   assert(devinfo->has_lsc);
+   return SET_BITS(LSC_OP_FENCE, 5, 0) |
+          SET_BITS(LSC_ADDR_SIZE_A32, 8, 7) |
+          SET_BITS(scope, 11, 9) |
+          SET_BITS(flush_type, 14, 12) |
+          SET_BITS(route_to_lsc, 18, 18) |
+          SET_BITS(LSC_ADDR_SURFTYPE_FLAT, 30, 29);
+}
+
+static inline uint32_t
 brw_mdc_sm2(unsigned exec_size)
 {
    assert(exec_size == 8 || exec_size == 16);

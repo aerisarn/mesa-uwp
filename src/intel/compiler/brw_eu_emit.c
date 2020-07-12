@@ -3235,6 +3235,30 @@ brw_set_memory_fence_message(struct brw_codegen *p,
    brw_inst_set_binding_table_index(devinfo, insn, bti);
 }
 
+static void
+gfx12_set_memory_fence_message(struct brw_codegen *p,
+                               struct brw_inst *insn,
+                               enum brw_message_target sfid)
+{
+   const unsigned mlen = 1; /* g0 header */
+    /* Completion signaled by write to register. No data returned. */
+   const unsigned rlen = 1;
+
+   brw_inst_set_sfid(p->devinfo, insn, sfid);
+
+   enum lsc_fence_scope scope = LSC_FENCE_THREADGROUP;
+   enum lsc_flush_type flush_type = LSC_FLUSH_TYPE_NONE;
+
+   if (sfid == GFX12_SFID_TGM) {
+      scope = LSC_FENCE_GPU;
+      flush_type = LSC_FLUSH_TYPE_EVICT;
+   }
+
+   brw_set_desc(p, insn, lsc_fence_msg_desc(p->devinfo, scope,
+                                            flush_type, false) |
+                         brw_message_desc(p->devinfo, mlen, rlen, false));
+}
+
 void
 brw_memory_fence(struct brw_codegen *p,
                  struct brw_reg dst,
@@ -3257,7 +3281,12 @@ brw_memory_fence(struct brw_codegen *p,
    brw_inst_set_exec_size(devinfo, insn, BRW_EXECUTE_1);
    brw_set_dest(p, insn, dst);
    brw_set_src0(p, insn, src);
-   brw_set_memory_fence_message(p, insn, sfid, commit_enable, bti);
+
+   /* All DG2 hardware requires LSC for fence messages, even A-step */
+   if (devinfo->has_lsc)
+      gfx12_set_memory_fence_message(p, insn, sfid);
+   else
+      brw_set_memory_fence_message(p, insn, sfid, commit_enable, bti);
 }
 
 void
