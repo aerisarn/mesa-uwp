@@ -486,6 +486,16 @@ BuildUtil::mkSysVal(SVSemantic svName, uint32_t svIndex)
    return sym;
 }
 
+Symbol *
+BuildUtil::mkTSVal(TSSemantic tsName)
+{
+   Symbol *sym = new_Symbol(prog, FILE_THREAD_STATE, 0);
+   sym->reg.type = TYPE_U32;
+   sym->reg.size = typeSizeof(sym->reg.type);
+   sym->reg.data.ts = tsName;
+   return sym;
+}
+
 void
 BuildUtil::DataArray::setup(unsigned array, unsigned arrayIdx,
                             uint32_t base, int len, int vecDim, int eltSize,

@@ -178,6 +178,7 @@ public:
                     DataType ty, uint32_t baseAddress);
 
    Symbol *mkSysVal(SVSemantic svName, uint32_t svIndex);
+   Symbol *mkTSVal(TSSemantic tsName);
 
 private:
    void init(Program *);

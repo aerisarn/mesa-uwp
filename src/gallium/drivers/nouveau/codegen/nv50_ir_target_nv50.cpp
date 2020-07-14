@@ -207,6 +207,7 @@ TargetNV50::getFileSize(DataFile file) const
    case FILE_PREDICATE:     return 0;
    case FILE_FLAGS:         return 4;
    case FILE_ADDRESS:       return 4;
+   case FILE_BARRIER:       return 0;
    case FILE_IMMEDIATE:     return 0;
    case FILE_MEMORY_CONST:  return 65536;
    case FILE_SHADER_INPUT:  return 0x200;
