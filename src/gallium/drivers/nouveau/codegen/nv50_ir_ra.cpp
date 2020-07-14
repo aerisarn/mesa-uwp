@@ -121,7 +121,7 @@ RegisterSet::reset(DataFile f, bool resetMax)
 void
 RegisterSet::init(const Target *targ)
 {
-   for (unsigned int rf = 0; rf <= FILE_ADDRESS; ++rf) {
+   for (unsigned int rf = 0; rf <= LAST_REGISTER_FILE; ++rf) {
       DataFile f = static_cast<DataFile>(rf);
       last[rf] = targ->getFileSize(f) - 1;
       unit[rf] = targ->getFileUnit(f);
@@ -1270,7 +1270,8 @@ GCRA::buildRIG(ArrayList& insns)
    for (int i = 0; i < insns.getSize(); ++i) {
       Instruction *insn = reinterpret_cast<Instruction *>(insns.get(i));
       for (int d = 0; insn->defExists(d); ++d)
-         if (insn->getDef(d)->rep() == insn->getDef(d))
+         if (insn->getDef(d)->reg.file <= LAST_REGISTER_FILE &&
+             insn->getDef(d)->rep() == insn->getDef(d))
             insertOrderedTail(values, getNode(insn->getDef(d)->asLValue()));
    }
    checkList(values);
