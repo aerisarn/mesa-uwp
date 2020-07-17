@@ -102,6 +102,11 @@ meson.build @dbaker @eric
 # Freedreno
 /src/gallium/drivers/freedreno/ @robclark
 
+# SWR
+/src/gallium/drivers/swr/ @jzielins @krzysztof.raszkowski
+/docs/gallium/drivers/openswr.rst @jzielins @krzysztof.raszkowski
+/docs/gallium/drivers/openswr/ @jzielins @krzysztof.raszkowski
+
 # VMware
 /src/gallium/drivers/svga/ @brianp @charmainel
 /src/gallium/winsys/svga/ @thomash @drawat
