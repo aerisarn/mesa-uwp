@@ -102,6 +102,16 @@ meson.build @dbaker @eric
 # Freedreno
 /src/gallium/drivers/freedreno/ @robclark
 
+# Intel
+/include/drm-uapi/i915_drm.h @kwg @llandwerlin @jekstrand @idr
+/include/pci_ids/i*_pci_ids.h @kwg @llandwerlin @jekstrand @idr
+/src/intel/ @kwg @llandwerlin @jekstrand @idr
+/src/gallium/winsys/iris/ @kwg @llandwerlin @jekstrand @idr
+/src/gallium/drivers/iris/ @kwg @llandwerlin @jekstrand @idr
+/src/gallium/drivers/i915/ @anholt
+/src/mesa/drivers/dri/i965/ @kwg @llandwerlin @jekstrand @idr
+/doxygen/i965.doxy @kwg @llandwerlin @jekstrand @idr
+
 # SWR
 /src/gallium/drivers/swr/ @jzielins @krzysztof.raszkowski
 /docs/gallium/drivers/openswr.rst @jzielins @krzysztof.raszkowski
