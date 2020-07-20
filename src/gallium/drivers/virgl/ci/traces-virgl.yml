@@ -193,7 +193,7 @@ traces:
   - path: humus/CelShading.trace
     expectations:
       - device: gl-virgl
-        checksum: da817304110f4fb7fdbcdf3f83fe184d
+        checksum: 7145da554bbfe55f83ed43e7c58d854c
   - path: humus/DynamicBranching3.trace
     expectations:
       - device: gl-virgl

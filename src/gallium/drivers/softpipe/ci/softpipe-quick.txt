@@ -257,7 +257,6 @@ spec/!opengl 1.4/copy-pixels samples=32: skip
 spec/!opengl 1.4/copy-pixels samples=4: skip
 spec/!opengl 1.4/copy-pixels samples=6: skip
 spec/!opengl 1.4/copy-pixels samples=8: skip
-spec/!opengl 1.4/gl-1.4-polygon-offset: fail
 spec/!opengl 1.4/gl-1.4-rgba-mipmap-texture-with-rgb-visual: skip
 spec/!opengl 2.0/vertex-program-two-side back back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back back2/tes-out and fs: skip

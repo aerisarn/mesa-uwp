@@ -140,10 +140,6 @@ spec/!opengl 1.1/draw-pixels samples=6: skip
 spec/!opengl 1.1/draw-pixels samples=8: skip
 spec/!opengl 1.1/linestipple/line strip: fail
 spec/!opengl 1.1/polygon-mode-facing: fail
-spec/!opengl 1.1/polygon-mode-offset/config 0: expected white pixel on bottom edge: fail
-spec/!opengl 1.1/polygon-mode-offset/config 0: expected white pixel on left edge: fail
-spec/!opengl 1.1/polygon-mode-offset/config 0: expected white pixel on right edge: fail
-spec/!opengl 1.1/polygon-mode-offset/config 0: expected white pixel on top edge: fail
 spec/!opengl 1.1/polygon-mode-offset/config 3: expected white pixel on bottom edge: fail
 spec/!opengl 1.1/polygon-mode-offset/config 3: expected white pixel on left edge: fail
 spec/!opengl 1.1/polygon-mode-offset/config 3: expected white pixel on right edge: fail
@@ -205,7 +201,6 @@ spec/!opengl 1.4/copy-pixels samples=32: skip
 spec/!opengl 1.4/copy-pixels samples=4: skip
 spec/!opengl 1.4/copy-pixels samples=6: skip
 spec/!opengl 1.4/copy-pixels samples=8: skip
-spec/!opengl 1.4/gl-1.4-polygon-offset: fail
 spec/!opengl 1.4/gl-1.4-rgba-mipmap-texture-with-rgb-visual: skip
 spec/!opengl 2.0/vertex-program-two-side back back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back back2/tcs-out, tes and fs: skip

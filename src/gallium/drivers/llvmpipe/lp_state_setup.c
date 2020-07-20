@@ -863,7 +863,7 @@ lp_make_setup_variant_key(struct llvmpipe_context *lp,
       key->pgon_offset_units = (float) lp->rasterizer->offset_units;
    } else {
       key->pgon_offset_units =
-         (float) (lp->rasterizer->offset_units * lp->mrd);
+         (float) (lp->rasterizer->offset_units * lp->mrd * 2);
    }
 
    key->pgon_offset_scale = lp->rasterizer->offset_scale;
