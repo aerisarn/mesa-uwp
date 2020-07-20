@@ -1712,6 +1712,15 @@ scale_bits(struct gallivm_state *gallivm,
       int delta_bits = src_bits - dst_bits;
 
       if (delta_bits <= dst_bits) {
+
+         if (dst_bits == 4) {
+            struct lp_type flt_type = lp_type_float_vec(32, src_type.length * 32);
+
+            result = lp_build_unsigned_norm_to_float(gallivm, src_bits, flt_type, src);
+            result = lp_build_clamped_float_to_unsigned_norm(gallivm, flt_type, dst_bits, result);
+            return result;
+         }
+
          /*
           * Approximate the rescaling with a single shift.
           *
