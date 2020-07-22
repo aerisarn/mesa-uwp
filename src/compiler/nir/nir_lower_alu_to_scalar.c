@@ -150,7 +150,6 @@ lower_alu_instr_scalar(nir_builder *b, nir_instr *instr, void *_data)
    assert(alu->dest.dest.is_ssa);
    assert(alu->dest.write_mask != 0);
 
-   b->cursor = nir_before_instr(&alu->instr);
    b->exact = alu->exact;
 
    if (data->cb && !data->cb(instr, data->data))
