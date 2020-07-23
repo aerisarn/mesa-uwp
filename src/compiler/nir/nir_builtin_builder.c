@@ -33,10 +33,10 @@ nir_cross3(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
    unsigned yzx[3] = { 1, 2, 0 };
    unsigned zxy[3] = { 2, 0, 1 };
 
-   return nir_fsub(b, nir_fmul(b, nir_swizzle(b, x, yzx, 3),
-                                  nir_swizzle(b, y, zxy, 3)),
-                      nir_fmul(b, nir_swizzle(b, x, zxy, 3),
-                                  nir_swizzle(b, y, yzx, 3)));
+   return nir_ffma(b, nir_swizzle(b, x, yzx, 3),
+                      nir_swizzle(b, y, zxy, 3),
+                      nir_fneg(b, nir_fmul(b, nir_swizzle(b, x, zxy, 3),
+                                              nir_swizzle(b, y, yzx, 3))));
 }
 
 nir_ssa_def*
@@ -149,7 +149,7 @@ nir_smoothstep(nir_builder *b, nir_ssa_def *edge0, nir_ssa_def *edge1, nir_ssa_d
                               nir_fsub(b, edge1, edge0)));
 
    /* result = t * t * (3 - 2 * t) */
-   return nir_fmul(b, t, nir_fmul(b, t, nir_fsub(b, f3, nir_fmul(b, f2, t))));
+   return nir_fmul(b, t, nir_fmul(b, t, nir_a_minus_bc(b, f3, f2, t)));
 }
 
 nir_ssa_def*
@@ -226,9 +226,9 @@ nir_atan(nir_builder *b, nir_ssa_def *y_over_x)
       build_fsum(b, polynomial_terms, ARRAY_SIZE(polynomial_terms));
 
    /* range-reduction fixup */
-   tmp = nir_fadd(b,
-                  nir_fmul(b, nir_b2f(b, nir_flt(b, one, abs_y_over_x), bit_size),
-                           nir_fadd_imm(b, nir_fmul_imm(b, tmp, -2.0f), M_PI_2)),
+   tmp = nir_ffma(b,
+                  nir_b2f(b, nir_flt(b, one, abs_y_over_x), bit_size),
+                  nir_ffma_imm12(b, tmp, -2.0f, M_PI_2),
                   tmp);
 
    /* sign fixup */
@@ -303,8 +303,7 @@ nir_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x)
     * coordinate system.
     */
    nir_ssa_def *arc =
-      nir_fadd(b, nir_fmul_imm(b, nir_b2f(b, flip, bit_size), M_PI_2),
-                  nir_atan(b, tan));
+      nir_ffma_imm1(b, nir_b2f(b, flip, bit_size), M_PI_2, nir_atan(b, tan));
 
    /* Rather convoluted calculation of the sign of the result.  When x < 0 we
     * cannot use fsign because we need to be able to distinguish between
