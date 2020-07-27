@@ -399,6 +399,13 @@ struct tu_device
 
    struct tu_bo global_bo;
 
+   /* the blob seems to always use 8K factor and 128K param sizes, copy them */
+#define TU_TESS_FACTOR_SIZE (8 * 1024)
+#define TU_TESS_PARAM_SIZE (128 * 1024)
+#define TU_TESS_BO_SIZE (TU_TESS_FACTOR_SIZE + TU_TESS_PARAM_SIZE)
+   /* Lazily allocated, protected by the device mutex. */
+   struct tu_bo tess_bo;
+
    struct ir3_shader_variant *global_shaders[GLOBAL_SH_COUNT];
    uint64_t global_shader_va[GLOBAL_SH_COUNT];
 
@@ -536,7 +543,6 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_PROGRAM_CONFIG,
    TU_DRAW_STATE_PROGRAM,
    TU_DRAW_STATE_PROGRAM_BINNING,
-   TU_DRAW_STATE_TESS,
    TU_DRAW_STATE_VB,
    TU_DRAW_STATE_VI,
    TU_DRAW_STATE_VI_BINNING,
@@ -1025,6 +1031,7 @@ struct tu_cmd_state
 
    bool xfb_used;
    bool has_tess;
+   bool tessfactor_addr_set;
    bool has_subpass_predication;
    bool predication_active;
    bool disable_gmem;
@@ -1253,8 +1260,6 @@ struct tu_pipeline
    {
       uint32_t patch_type;
       uint32_t param_stride;
-      uint32_t hs_bo_regid;
-      uint32_t ds_bo_regid;
       bool upper_left_domain_origin;
    } tess;
 

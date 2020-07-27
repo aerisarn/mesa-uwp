@@ -1560,6 +1560,8 @@ tu6_emit_geom_tess_consts(struct tu_cs *cs,
                           const struct ir3_shader_variant *gs,
                           uint32_t cps_per_patch)
 {
+   struct tu_device *dev = cs->device;
+
    uint32_t num_vertices =
          hs ? cps_per_patch : gs->shader->nir->info.gs.vertices_in;
 
@@ -1575,29 +1577,49 @@ tu6_emit_geom_tess_consts(struct tu_cs *cs,
 
    if (hs) {
       assert(ds->type != MESA_SHADER_NONE);
-      uint32_t hs_params[4] = {
+
+      /* Create the shared tess factor BO the first time tess is used on the device. */
+      mtx_lock(&dev->mutex);
+      if (!dev->tess_bo.size)
+         tu_bo_init_new(dev, &dev->tess_bo, TU_TESS_BO_SIZE, TU_BO_ALLOC_NO_FLAGS);
+      mtx_unlock(&dev->mutex);
+
+      uint64_t tess_factor_iova = dev->tess_bo.iova;
+      uint64_t tess_param_iova = tess_factor_iova + TU_TESS_FACTOR_SIZE;
+
+      uint32_t hs_params[8] = {
          vs->output_size * num_vertices * 4,  /* hs primitive stride */
          vs->output_size * 4,                 /* hs vertex stride */
          hs->output_size,
          cps_per_patch,
+         tess_param_iova,
+         tess_param_iova >> 32,
+         tess_factor_iova,
+         tess_factor_iova >> 32,
       };
 
       uint32_t hs_base = hs->const_state->offsets.primitive_param;
+      uint32_t hs_param_dwords = MIN2((hs->constlen - hs_base) * 4, ARRAY_SIZE(hs_params));
       tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, hs_base, SB6_HS_SHADER, 0,
-                     ARRAY_SIZE(hs_params), hs_params);
+                     hs_param_dwords, hs_params);
       if (gs)
          num_vertices = gs->shader->nir->info.gs.vertices_in;
 
-      uint32_t ds_params[4] = {
+      uint32_t ds_params[8] = {
          ds->output_size * num_vertices * 4,  /* ds primitive stride */
          ds->output_size * 4,                 /* ds vertex stride */
          hs->output_size,                     /* hs vertex stride (dwords) */
-         hs->shader->nir->info.tess.tcs_vertices_out
+         hs->shader->nir->info.tess.tcs_vertices_out,
+         tess_param_iova,
+         tess_param_iova >> 32,
+         tess_factor_iova,
+         tess_factor_iova >> 32,
       };
 
       uint32_t ds_base = ds->const_state->offsets.primitive_param;
+      uint32_t ds_param_dwords = MIN2((ds->constlen - ds_base) * 4, ARRAY_SIZE(ds_params));
       tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, ds_base, SB6_DS_SHADER, 0,
-                     ARRAY_SIZE(ds_params), ds_params);
+                     ds_param_dwords, ds_params);
    }
 
    if (gs) {
@@ -2716,10 +2738,7 @@ tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
    pipeline->tess.upper_left_domain_origin = !domain_info ||
          domain_info->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
    const struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
-   const struct ir3_shader_variant *ds = builder->variants[MESA_SHADER_TESS_EVAL];
    pipeline->tess.param_stride = hs->output_size * 4;
-   pipeline->tess.hs_bo_regid = hs->const_state->offsets.primitive_param + 1;
-   pipeline->tess.ds_bo_regid = ds->const_state->offsets.primitive_param + 1;
 }
 
 static void

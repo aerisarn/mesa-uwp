@@ -64,6 +64,23 @@ tu6_emit_event_write(struct tu_cmd_buffer *cmd,
    }
 }
 
+/* Emits the tessfactor address to the top-level CS if it hasn't been already.
+ * Updating this register requires a WFI if outstanding drawing is using it, but
+ * tu6_init_hardware() will have WFIed before we started and no other draws
+ * could be using the tessfactor address yet since we only emit one per cmdbuf.
+ */
+static void
+tu6_lazy_emit_tessfactor_addr(struct tu_cmd_buffer *cmd)
+{
+   if (cmd->state.tessfactor_addr_set)
+      return;
+
+   assert(cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+   tu_cs_emit_regs(&cmd->cs, A6XX_PC_TESSFACTOR_ADDR(.qword = cmd->device->tess_bo.iova));
+   cmd->state.tessfactor_addr_set = true;
+}
+
 static void
 tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
                  struct tu_cs *cs,
@@ -2215,6 +2232,14 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i, pipeline->dynamic_state[i]);
    }
 
+   if (cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY &&
+       (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)) {
+      /* Set up the tess factor address if this is the first tess pipeline bound
+       * to the primary cmdbuf.
+      */
+      tu6_lazy_emit_tessfactor_addr(cmd);
+   }
+
    if (cmd->state.line_mode != pipeline->line_mode) {
       cmd->state.line_mode = pipeline->line_mode;
 
@@ -2983,8 +3008,13 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
             break;
          }
 
-         if (secondary->state.has_tess)
+         /* Set up the tess factor address if this is the first time a tess
+          * pipeline has been executed on this primary cmdbuf.
+          */
+         if (secondary->state.has_tess) {
+            tu6_lazy_emit_tessfactor_addr(cmd);
             cmd->state.has_tess = true;
+         }
          if (secondary->state.has_subpass_predication)
             cmd->state.has_subpass_predication = true;
          if (secondary->state.disable_gmem)
@@ -3477,103 +3507,17 @@ tu6_emit_consts_geom(struct tu_cmd_buffer *cmd,
    return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
 }
 
-static uint64_t
-get_tess_param_bo_size(const struct tu_pipeline *pipeline,
-                       uint32_t draw_count)
-{
-   /* TODO: For indirect draws, we can't compute the BO size ahead of time.
-    * Still not sure what to do here, so just allocate a reasonably large
-    * BO and hope for the best for now. */
-   if (!draw_count)
-      draw_count = 2048;
-
-   /* the tess param BO is pipeline->tess.param_stride bytes per patch,
-    * which includes both the per-vertex outputs and per-patch outputs
-    * build_primitive_map in ir3 calculates this stride
-    */
-   uint32_t verts_per_patch = pipeline->ia.primtype - DI_PT_PATCHES0;
-   uint32_t num_patches = draw_count / verts_per_patch;
-   return num_patches * pipeline->tess.param_stride;
-}
-
-static uint64_t
-get_tess_factor_bo_size(const struct tu_pipeline *pipeline,
-                        uint32_t draw_count)
-{
-   /* TODO: For indirect draws, we can't compute the BO size ahead of time.
-    * Still not sure what to do here, so just allocate a reasonably large
-    * BO and hope for the best for now. */
-   if (!draw_count)
-      draw_count = 2048;
-
-   /* Each distinct patch gets its own tess factor output. */
-   uint32_t verts_per_patch = pipeline->ia.primtype - DI_PT_PATCHES0;
-   uint32_t num_patches = draw_count / verts_per_patch;
-   uint32_t factor_stride = ir3_tess_factor_stride(pipeline->tess.patch_type);
-   return factor_stride * num_patches;
-}
-
 static VkResult
-tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
-                     uint32_t draw_count,
-                     const struct tu_pipeline *pipeline,
-                     struct tu_draw_state *state,
-                     uint64_t *factor_iova)
+tu6_setup_tess(struct tu_cmd_buffer *cmd,
+               const struct tu_pipeline *pipeline,
+               uint32_t *subdraw_size)
 {
-   struct tu_cs cs;
-   VkResult result = tu_cs_begin_sub_stream(&cmd->sub_cs, 16, &cs);
-   if (result != VK_SUCCESS)
-      return result;
+   /* maximum number of patches that can fit in tess factor/param buffers */
+   *subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
+                        TU_TESS_PARAM_SIZE / pipeline->tess.param_stride);
+   /* convert from # of patches to draw count */
+   *subdraw_size *= (pipeline->ia.primtype - DI_PT_PATCHES0);
 
-   const struct tu_program_descriptor_linkage *hs_link =
-      &pipeline->program.link[MESA_SHADER_TESS_CTRL];
-   bool hs_uses_bo = pipeline->tess.hs_bo_regid < hs_link->constlen;
-
-   const struct tu_program_descriptor_linkage *ds_link =
-      &pipeline->program.link[MESA_SHADER_TESS_EVAL];
-   bool ds_uses_bo = pipeline->tess.ds_bo_regid < ds_link->constlen;
-
-   uint64_t tess_factor_size = get_tess_factor_bo_size(pipeline, draw_count);
-   uint64_t tess_param_size = get_tess_param_bo_size(pipeline, draw_count);
-   uint64_t tess_bo_size =  tess_factor_size + tess_param_size;
-   if ((hs_uses_bo || ds_uses_bo) && tess_bo_size > 0) {
-      struct tu_bo *tess_bo;
-      result = tu_get_scratch_bo(cmd->device, tess_bo_size, &tess_bo);
-      if (result != VK_SUCCESS)
-         return result;
-
-      uint64_t tess_factor_iova = tess_bo->iova;
-      uint64_t tess_param_iova = tess_factor_iova + tess_factor_size;
-
-      if (hs_uses_bo) {
-         tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
-         tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(pipeline->tess.hs_bo_regid) |
-               CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-               CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-               CP_LOAD_STATE6_0_STATE_BLOCK(SB6_HS_SHADER) |
-               CP_LOAD_STATE6_0_NUM_UNIT(1));
-         tu_cs_emit(&cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-         tu_cs_emit(&cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-         tu_cs_emit_qw(&cs, tess_param_iova);
-         tu_cs_emit_qw(&cs, tess_factor_iova);
-      }
-
-      if (ds_uses_bo) {
-         tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
-         tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(pipeline->tess.ds_bo_regid) |
-               CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-               CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-               CP_LOAD_STATE6_0_STATE_BLOCK(SB6_DS_SHADER) |
-               CP_LOAD_STATE6_0_NUM_UNIT(1));
-         tu_cs_emit(&cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-         tu_cs_emit(&cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-         tu_cs_emit_qw(&cs, tess_param_iova);
-         tu_cs_emit_qw(&cs, tess_factor_iova);
-      }
-
-      *factor_iova = tess_factor_iova;
-   }
-   *state = tu_cs_end_draw_state(&cmd->sub_cs, &cs);
    return VK_SUCCESS;
 }
 
@@ -3928,25 +3872,16 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT);
    }
 
-   struct tu_draw_state tess_consts = {};
    if (has_tess) {
-      uint64_t tess_factor_iova = 0;
+      uint32_t subdraw_size;
 
       cmd->state.has_tess = true;
-      result = tu6_emit_tess_consts(cmd, draw_count, pipeline, &tess_consts, &tess_factor_iova);
+      result = tu6_setup_tess(cmd, pipeline, &subdraw_size);
       if (result != VK_SUCCESS)
          return result;
 
-      /* this sequence matches what the blob does before every tess draw
-       * PC_TESSFACTOR_ADDR_LO is a non-context register and needs a wfi
-       * before writing to it
-       */
-      tu_cs_emit_wfi(cs);
-
-      tu_cs_emit_regs(cs, A6XX_PC_TESSFACTOR_ADDR(.qword = tess_factor_iova));
-
       tu_cs_emit_pkt7(cs, CP_SET_SUBDRAW_SIZE, 1);
-      tu_cs_emit(cs, draw_count);
+      tu_cs_emit(cs, subdraw_size);
    }
 
    /* for the first draw in a renderpass, re-emit all the draw states
@@ -3965,7 +3900,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_CONFIG, pipeline->program.config_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM, pipeline->program.state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_BINNING, pipeline->program.binning_state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_TESS, tess_consts);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VI, pipeline->vi.state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VI_BINNING, pipeline->vi.binning_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_RAST, pipeline->rast_state);
@@ -3991,7 +3925,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
        */
       bool emit_binding_stride = false;
       uint32_t draw_state_count =
-         has_tess +
          ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 2 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD) ? 1 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
@@ -4007,10 +3940,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       if (draw_state_count > 0)
          tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_count);
 
-      /* We may need to re-emit tess consts if the current draw call is
-         * sufficiently larger than the last draw call. */
-      if (has_tess)
-         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_TESS, tess_consts);
       if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_SHADER_GEOM_CONST, cmd->state.shader_const[0]);
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const[1]);
