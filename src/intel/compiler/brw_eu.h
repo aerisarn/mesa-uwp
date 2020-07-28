@@ -671,6 +671,13 @@ brw_mdc_cmask(unsigned num_channels)
    return 0xf & (0xf << num_channels);
 }
 
+static inline unsigned
+lsc_cmask(unsigned num_channels)
+{
+   assert(num_channels > 0 && num_channels <= 4);
+   return BITSET_MASK(num_channels);
+}
+
 static inline uint32_t
 brw_dp_untyped_surface_rw_desc(const struct intel_device_info *devinfo,
                                unsigned exec_size, /**< 0 for SIMD4x2 */
@@ -1154,6 +1161,114 @@ brw_fb_write_desc_coarse_write(const struct intel_device_info *devinfo,
    return GET_BITS(desc, 18, 18);
 }
 
+static inline bool
+lsc_opcode_has_cmask(enum lsc_opcode opcode)
+{
+   return opcode == LSC_OP_LOAD_CMASK || opcode == LSC_OP_STORE_CMASK;
+}
+
+static inline uint32_t
+lsc_data_size_bytes(enum lsc_data_size data_size)
+{
+   switch (data_size) {
+   case LSC_DATA_SIZE_D8:
+      return 1;
+   case LSC_DATA_SIZE_D16:
+      return 2;
+   case LSC_DATA_SIZE_D32:
+   case LSC_DATA_SIZE_D8U32:
+   case LSC_DATA_SIZE_D16U32:
+   case LSC_DATA_SIZE_D16BF32:
+      return 4;
+   case LSC_DATA_SIZE_D64:
+      return 8;
+   default:
+      unreachable("Unsupported data payload size.");
+   }
+}
+
+static inline uint32_t
+lsc_addr_size_bytes(enum lsc_addr_size addr_size)
+{
+   switch (addr_size) {
+   case LSC_ADDR_SIZE_A16: return 2;
+   case LSC_ADDR_SIZE_A32: return 4;
+   case LSC_ADDR_SIZE_A64: return 8;
+   default:
+      unreachable("Unsupported address size.");
+   }
+}
+
+static inline uint32_t
+lsc_vector_length(enum lsc_vect_size vect_size)
+{
+   switch (vect_size) {
+   case LSC_VECT_SIZE_V1: return 1;
+   case LSC_VECT_SIZE_V2: return 2;
+   case LSC_VECT_SIZE_V3: return 3;
+   case LSC_VECT_SIZE_V4: return 4;
+   case LSC_VECT_SIZE_V8: return 8;
+   case LSC_VECT_SIZE_V16: return 16;
+   case LSC_VECT_SIZE_V32: return 32;
+   case LSC_VECT_SIZE_V64: return 64;
+   default:
+      unreachable("Unsupported size of vector");
+   }
+}
+
+static inline enum lsc_vect_size
+lsc_vect_size(unsigned vect_size)
+{
+   switch(vect_size) {
+   case 1:  return LSC_VECT_SIZE_V1;
+   case 2:  return LSC_VECT_SIZE_V2;
+   case 3:  return LSC_VECT_SIZE_V3;
+   case 4:  return LSC_VECT_SIZE_V4;
+   case 8:  return LSC_VECT_SIZE_V8;
+   case 16: return LSC_VECT_SIZE_V16;
+   case 32: return LSC_VECT_SIZE_V32;
+   case 64: return LSC_VECT_SIZE_V64;
+   default:
+      unreachable("Unsupported vector size for dataport");
+   }
+}
+
+static inline uint32_t
+lsc_msg_desc(UNUSED const struct intel_device_info *devinfo,
+             enum lsc_opcode opcode, unsigned simd_size,
+             enum lsc_addr_surface_type addr_type,
+             enum lsc_addr_size addr_sz, unsigned num_coordinates,
+             enum lsc_data_size data_sz, unsigned num_channels,
+             bool transpose, unsigned cache_ctrl, bool has_dest)
+{
+   assert(devinfo->has_lsc);
+
+   unsigned dest_length = !has_dest ? 0 :
+      DIV_ROUND_UP(lsc_data_size_bytes(data_sz) * num_channels * simd_size,
+                   REG_SIZE);
+
+   unsigned src0_length =
+      DIV_ROUND_UP(lsc_addr_size_bytes(addr_sz) * num_coordinates * simd_size,
+                   REG_SIZE);
+
+   unsigned msg_desc =
+      SET_BITS(opcode, 5, 0) |
+      SET_BITS(addr_sz, 8, 7) |
+      SET_BITS(data_sz, 11, 9) |
+      SET_BITS(transpose, 15, 15) |
+      SET_BITS(cache_ctrl, 19, 17) |
+      SET_BITS(dest_length, 24, 20) |
+      SET_BITS(src0_length, 28, 25) |
+      SET_BITS(addr_type, 30, 29);
+
+   if (lsc_opcode_has_cmask(opcode))
+      msg_desc |= SET_BITS(lsc_cmask(num_channels), 15, 12);
+   else
+      msg_desc |= SET_BITS(lsc_vect_size(num_channels), 14, 12);
+
+   return msg_desc;
+}
+
 static inline uint32_t
 lsc_fence_msg_desc(UNUSED const struct intel_device_info *devinfo,
                    enum lsc_fence_scope scope,
@@ -1167,6 +1282,46 @@ lsc_fence_msg_desc(UNUSED const struct intel_device_info *devinfo,
           SET_BITS(flush_type, 14, 12) |
           SET_BITS(route_to_lsc, 18, 18) |
           SET_BITS(LSC_ADDR_SURFTYPE_FLAT, 30, 29);
+}
+
+static inline uint32_t
+lsc_bti_ex_desc(const struct intel_device_info *devinfo, unsigned bti)
+{
+   assert(devinfo->has_lsc);
+   return SET_BITS(bti, 31, 24) |
+          SET_BITS(0, 23, 12);  /* base offset */
+}
+
+static inline unsigned
+lsc_bti_ex_desc_index(const struct intel_device_info *devinfo,
+                      uint32_t ex_desc)
+{
+   assert(devinfo->has_lsc);
+   return GET_BITS(ex_desc, 31, 24);
+}
+
+static inline unsigned
+lsc_flat_ex_desc_base_offset(const struct intel_device_info *devinfo,
+                             uint32_t ex_desc)
+{
+   assert(devinfo->has_lsc);
+   return GET_BITS(ex_desc, 31, 12);
+}
+
+static inline uint32_t
+lsc_bss_ex_desc(const struct intel_device_info *devinfo,
+                unsigned surface_state_index)
+{
+   assert(devinfo->has_lsc);
+   return SET_BITS(surface_state_index, 31, 6);
+}
+
+static inline unsigned
+lsc_bss_ex_desc_index(const struct intel_device_info *devinfo,
+                      uint32_t ex_desc)
+{
+   assert(devinfo->has_lsc);
+   return GET_BITS(ex_desc, 31, 6);
 }
 
 static inline uint32_t
