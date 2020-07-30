@@ -420,6 +420,49 @@ can_promote_src_as_imm(const struct intel_device_info *devinfo, fs_inst *inst,
    return can_promote;
 }
 
+static void
+add_candidate_immediate(struct table *table, fs_inst *inst, unsigned ip,
+                        unsigned i,
+                        const brw::idom_tree &idom, bblock_t *block,
+                        const struct intel_device_info *devinfo,
+                        void *const_ctx)
+{
+   char data[8];
+   brw_reg_type type;
+   if (!get_constant_value(devinfo, inst, i, data, &type))
+      return;
+
+   uint8_t size = type_sz(type);
+
+   struct imm *imm = find_imm(table, data, size);
+
+   if (imm) {
+      bblock_t *intersection = idom.intersect(block, imm->block);
+      if (intersection != imm->block)
+         imm->inst = NULL;
+      imm->block = intersection;
+      imm->uses->push_tail(link(const_ctx, &inst->src[i]));
+      imm->uses_by_coissue += could_coissue(devinfo, inst);
+      imm->must_promote = imm->must_promote || must_promote_imm(devinfo, inst);
+      imm->last_use_ip = ip;
+      if (type == BRW_REGISTER_TYPE_HF)
+         imm->is_half_float = true;
+   } else {
+      imm = new_imm(table, const_ctx);
+      imm->block = block;
+      imm->inst = inst;
+      imm->uses = new(const_ctx) exec_list();
+      imm->uses->push_tail(link(const_ctx, &inst->src[i]));
+      memcpy(imm->bytes, data, size);
+      imm->size = size;
+      imm->is_half_float = type == BRW_REGISTER_TYPE_HF;
+      imm->uses_by_coissue = could_coissue(devinfo, inst);
+      imm->must_promote = must_promote_imm(devinfo, inst);
+      imm->first_use_ip = ip;
+      imm->last_use_ip = ip;
+   }
+}
+
 bool
 fs_visitor::opt_combine_constants()
 {
@@ -450,40 +493,8 @@ fs_visitor::opt_combine_constants()
          if (can_promote_src_as_imm(devinfo, inst, i))
             continue;
 
-         char data[8];
-         brw_reg_type type;
-         if (!get_constant_value(devinfo, inst, i, data, &type))
-            continue;
-
-         uint8_t size = type_sz(type);
-
-         struct imm *imm = find_imm(&table, data, size);
-
-         if (imm) {
-            bblock_t *intersection = idom.intersect(block, imm->block);
-            if (intersection != imm->block)
-               imm->inst = NULL;
-            imm->block = intersection;
-            imm->uses->push_tail(link(const_ctx, &inst->src[i]));
-            imm->uses_by_coissue += could_coissue(devinfo, inst);
-            imm->must_promote = imm->must_promote || must_promote_imm(devinfo, inst);
-            imm->last_use_ip = ip;
-            if (type == BRW_REGISTER_TYPE_HF)
-               imm->is_half_float = true;
-         } else {
-            imm = new_imm(&table, const_ctx);
-            imm->block = block;
-            imm->inst = inst;
-            imm->uses = new(const_ctx) exec_list();
-            imm->uses->push_tail(link(const_ctx, &inst->src[i]));
-            memcpy(imm->bytes, data, size);
-            imm->size = size;
-            imm->is_half_float = type == BRW_REGISTER_TYPE_HF;
-            imm->uses_by_coissue = could_coissue(devinfo, inst);
-            imm->must_promote = must_promote_imm(devinfo, inst);
-            imm->first_use_ip = ip;
-            imm->last_use_ip = ip;
-         }
+         add_candidate_immediate(&table, inst, ip, i, idom, block, devinfo,
+                                 const_ctx);
       }
    }
 
