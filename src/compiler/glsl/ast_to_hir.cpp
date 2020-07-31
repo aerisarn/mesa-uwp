@@ -8389,6 +8389,59 @@ ast_interface_block::hir(exec_list *instructions,
          const glsl_type *block_array_type =
             process_array_type(&loc, block_type, this->array_specifier, state);
 
+         /* From Section 4.4.1 (Input Layout Qualifiers) of the GLSL 4.50 spec:
+          *
+          *    "For some blocks declared as arrays, the location can only be applied
+          *    at the block level: When a block is declared as an array where
+          *    additional locations are needed for each member for each block array
+          *    element, it is a compile-time error to specify locations on the block
+          *    members. That is, when locations would be under specified by applying
+          *    them on block members, they are not allowed on block members. For
+          *    arrayed interfaces (those generally having an extra level of
+          *    arrayness due to interface expansion), the outer array is stripped
+          *    before applying this rule"
+          *
+          * From 4.4.1 (Input Layout Qualifiers) and
+          * 4.4.2 (Output Layout Qualifiers) of GLSL ES 3.20
+          *
+          *    "If an input is declared as an array of blocks, excluding
+          *     per-vertex-arrays as required for tessellation, it is an error
+          *     to declare a member of the block with a location qualifier."
+          *
+          *    "If an output is declared as an array of blocks, excluding
+          *     per-vertex-arrays as required for tessellation, it is an error
+          *     to declare a member of the block with a location qualifier."
+          */
+         if (!redeclaring_per_vertex &&
+             (state->has_enhanced_layouts() || state->has_shader_io_blocks())) {
+            bool allow_location;
+            switch (state->stage)
+            {
+            case MESA_SHADER_TESS_CTRL:
+               allow_location = this->array_specifier->is_single_dimension();
+               break;
+            case MESA_SHADER_TESS_EVAL:
+            case MESA_SHADER_GEOMETRY:
+               allow_location = (this->array_specifier->is_single_dimension()
+                                 && var_mode == ir_var_shader_in);
+               break;
+            default:
+               allow_location = false;
+               break;
+            }
+
+            if (!allow_location) {
+               for (unsigned i = 0; i < num_variables; i++) {
+                  if (fields[i].location != -1) {
+                     _mesa_glsl_error(&loc, state,
+                                       "explicit member locations are not allowed in "
+                                       "blocks declared as arrays %s shader",
+                                       _mesa_shader_stage_to_string(state->stage));
+                  }
+               }
+            }
+         }
+
          /* Section 4.3.7 (Interface Blocks) of the GLSL 1.50 spec says:
           *
           *     For uniform blocks declared an array, each individual array

@@ -1345,8 +1345,6 @@ spec@arb_depth_texture@texwrap formats offset@GL_DEPTH_COMPONENT24- swizzled,Fai
 spec@arb_depth_texture@texwrap formats offset@GL_DEPTH_COMPONENT32,Fail
 spec@arb_depth_texture@texwrap formats offset@GL_DEPTH_COMPONENT32- NPOT,Fail
 spec@arb_depth_texture@texwrap formats offset@GL_DEPTH_COMPONENT32- swizzled,Fail
-spec@arb_enhanced_layouts@compiler@block-member-locations@arrayed-block-member-location.frag,Fail
-spec@arb_enhanced_layouts@compiler@block-member-locations@arrayed-block-member-location.vert,Fail
 spec@arb_enhanced_layouts@execution@component-layout@vs-fs-array-dvec3,Crash
 spec@arb_enhanced_layouts@execution@component-layout@vs-gs-fs-double,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled,Fail
