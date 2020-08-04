@@ -803,19 +803,21 @@ struct fs_inst_box {
 struct reg_link {
    DECLARE_RALLOC_CXX_OPERATORS(reg_link)
 
-   reg_link(fs_inst *inst, unsigned src, bool negate)
-   : inst(inst), src(src), negate(negate) {}
+   reg_link(fs_inst *inst, unsigned src, bool negate, enum interpreted_type type)
+   : inst(inst), src(src), negate(negate), type(type) {}
 
    struct exec_node link;
    fs_inst *inst;
    uint8_t src;
    bool negate;
+   enum interpreted_type type;
 };
 
 static struct exec_node *
-link(void *mem_ctx, fs_inst *inst, unsigned src, bool negate)
+link(void *mem_ctx, fs_inst *inst, unsigned src, bool negate,
+     enum interpreted_type type)
 {
-   reg_link *l = new(mem_ctx) reg_link(inst, src, negate);
+   reg_link *l = new(mem_ctx) reg_link(inst, src, negate, type);
    return &l->link;
 }
 
@@ -1107,6 +1109,7 @@ static void
 add_candidate_immediate(struct table *table, fs_inst *inst, unsigned ip,
                         unsigned i,
                         bool must_promote,
+                        bool allow_one_constant,
                         bblock_t *block,
                         ASSERTED const struct intel_device_info *devinfo,
                         void *const_ctx)
@@ -1123,7 +1126,7 @@ add_candidate_immediate(struct table *table, fs_inst *inst, unsigned ip,
    v->bit_size = 8 * type_sz(inst->src[i].type);
    v->instr_index = box_idx;
    v->src = i;
-   v->allow_one_constant = false;
+   v->allow_one_constant = allow_one_constant;
    v->no_negations = false;
 
    switch (inst->src[i].type) {
@@ -1150,6 +1153,18 @@ add_candidate_immediate(struct table *table, fs_inst *inst, unsigned ip,
    case BRW_REGISTER_TYPE_B:
    default:
       unreachable("not reached");
+   }
+
+   /* It is safe to change the type of the operands of a select instruction
+    * that has no conditional modifier, no source modifiers, and no saturate
+    * modifer.
+    */
+   if (inst->opcode == BRW_OPCODE_SEL &&
+       inst->conditional_mod == BRW_CONDITIONAL_NONE &&
+       !inst->src[0].negate && !inst->src[0].abs &&
+       !inst->src[1].negate && !inst->src[1].abs &&
+       !inst->saturate) {
+      v->type = either_type;
    }
 }
 
@@ -1189,7 +1204,7 @@ fs_visitor::opt_combine_constants()
          assert(inst->src[0].file != IMM);
 
          if (inst->src[1].file == IMM && devinfo->ver < 8) {
-            add_candidate_immediate(&table, inst, ip, 1, true, block,
+            add_candidate_immediate(&table, inst, ip, 1, true, false, block,
                                     devinfo, const_ctx);
          }
 
@@ -1204,7 +1219,7 @@ fs_visitor::opt_combine_constants()
             if (can_promote_src_as_imm(devinfo, inst, i))
                continue;
 
-            add_candidate_immediate(&table, inst, ip, i, true, block,
+            add_candidate_immediate(&table, inst, ip, i, true, false, block,
                                     devinfo, const_ctx);
          }
 
@@ -1216,15 +1231,38 @@ fs_visitor::opt_combine_constants()
             if (inst->src[i].file != IMM)
                continue;
 
-            add_candidate_immediate(&table, inst, ip, i, true, block,
+            add_candidate_immediate(&table, inst, ip, i, true, false, block,
                                     devinfo, const_ctx);
          }
 
          break;
 
+      case BRW_OPCODE_SEL:
+         if (inst->src[0].file == IMM) {
+            /* It is possible to have src0 be immediate but src1 not be
+             * immediate for the non-commutative conditional modifiers (e.g.,
+             * G).
+             */
+            if (inst->conditional_mod == BRW_CONDITIONAL_NONE ||
+                /* Only GE and L are commutative. */
+                inst->conditional_mod == BRW_CONDITIONAL_GE ||
+                inst->conditional_mod == BRW_CONDITIONAL_L) {
+               assert(inst->src[1].file == IMM);
+
+               add_candidate_immediate(&table, inst, ip, 0, true, true, block,
+                                       devinfo, const_ctx);
+               add_candidate_immediate(&table, inst, ip, 1, true, true, block,
+                                       devinfo, const_ctx);
+            } else {
+               add_candidate_immediate(&table, inst, ip, 0, true, false, block,
+                                       devinfo, const_ctx);
+            }
+         }
+         break;
+
       case BRW_OPCODE_MOV:
          if (could_coissue(devinfo, inst) && inst->src[0].file == IMM) {
-            add_candidate_immediate(&table, inst, ip, 0, false, block,
+            add_candidate_immediate(&table, inst, ip, 0, false, false, block,
                                     devinfo, const_ctx);
          }
          break;
@@ -1235,7 +1273,7 @@ fs_visitor::opt_combine_constants()
          assert(inst->src[0].file != IMM);
 
          if (could_coissue(devinfo, inst) && inst->src[1].file == IMM) {
-            add_candidate_immediate(&table, inst, ip, 1, false, block,
+            add_candidate_immediate(&table, inst, ip, 1, false, false, block,
                                     devinfo, const_ctx);
          }
          break;
@@ -1284,7 +1322,8 @@ fs_visitor::opt_combine_constants()
          const unsigned src = table.values[result->user_map[j].index].src;
 
          imm->uses->push_tail(link(const_ctx, ib->inst, src,
-                                   result->user_map[j].negate));
+                                   result->user_map[j].negate,
+                                   result->user_map[j].type));
 
          if (ib->must_promote)
             imm->must_promote = true;
@@ -1402,6 +1441,31 @@ fs_visitor::opt_combine_constants()
    for (int i = 0; i < table.len; i++) {
       foreach_list_typed(reg_link, link, link, table.imm[i].uses) {
          fs_reg *reg = &link->inst->src[link->src];
+
+         if (link->inst->opcode == BRW_OPCODE_SEL) {
+            if (link->type == either_type) {
+               /* Do not change the register type. */
+            } else if (link->type == integer_only) {
+               reg->type = brw_int_type(type_sz(reg->type), true);
+            } else {
+               assert(link->type == float_only);
+
+               switch (type_sz(reg->type)) {
+               case 2:
+                  reg->type = BRW_REGISTER_TYPE_HF;
+                  break;
+               case 4:
+                  reg->type = BRW_REGISTER_TYPE_F;
+                  break;
+               case 8:
+                  reg->type = BRW_REGISTER_TYPE_DF;
+                  break;
+               default:
+                  unreachable("Bad type size");
+               }
+            }
+         }
+
 #ifdef DEBUG
          switch (reg->type) {
          case BRW_REGISTER_TYPE_DF:
@@ -1450,6 +1514,53 @@ fs_visitor::opt_combine_constants()
          reg->negate = link->negate;
          reg->nr = table.imm[i].nr;
       }
+   }
+
+   /* Fixup any SEL instructions that have src0 still as an immediate.  Fixup
+    * the types of any SEL instruction that have a negation on one of the
+    * sources.  Adding the negation may have changed the type of that source,
+    * so the other source (and destination) must be changed to match.
+    */
+   for (unsigned i = 0; i < table.num_boxes; i++) {
+      fs_inst *inst = table.boxes[i].inst;
+
+      if (inst->opcode != BRW_OPCODE_SEL)
+         continue;
+
+      /* If both sources have negation, the types had better be the same! */
+      assert(!inst->src[0].negate || !inst->src[1].negate ||
+             inst->src[0].type == inst->src[1].type);
+
+      /* If either source has a negation, force the type of the other source
+       * and the type of the result to be the same.
+       */
+      if (inst->src[0].negate) {
+         inst->src[1].type = inst->src[0].type;
+         inst->dst.type = inst->src[0].type;
+      }
+
+      if (inst->src[1].negate) {
+         inst->src[0].type = inst->src[1].type;
+         inst->dst.type = inst->src[1].type;
+      }
+
+      if (inst->src[0].file != IMM)
+         continue;
+
+      assert(inst->src[1].file != IMM);
+      assert(inst->conditional_mod == BRW_CONDITIONAL_NONE ||
+             inst->conditional_mod == BRW_CONDITIONAL_GE ||
+             inst->conditional_mod == BRW_CONDITIONAL_L);
+
+      fs_reg temp = inst->src[0];
+      inst->src[0] = inst->src[1];
+      inst->src[1] = temp;
+
+      /* If this was predicated, flipping operands means we also need to flip
+       * the predicate.
+       */
+      if (inst->conditional_mod == BRW_CONDITIONAL_NONE)
+         inst->predicate_inverse = !inst->predicate_inverse;
    }
 
    if (debug) {

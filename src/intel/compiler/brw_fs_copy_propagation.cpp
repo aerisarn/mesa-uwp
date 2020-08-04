@@ -1040,21 +1040,26 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
          if (i == 1) {
             inst->src[i] = val;
             progress = true;
-         } else if (i == 0 && inst->src[1].file != IMM &&
-                    (inst->conditional_mod == BRW_CONDITIONAL_NONE ||
-                     /* Only GE and L are commutative. */
-                     inst->conditional_mod == BRW_CONDITIONAL_GE ||
-                     inst->conditional_mod == BRW_CONDITIONAL_L)) {
-            inst->src[0] = inst->src[1];
-            inst->src[1] = val;
+         } else if (i == 0) {
+            if (inst->src[1].file != IMM &&
+                (inst->conditional_mod == BRW_CONDITIONAL_NONE ||
+                 /* Only GE and L are commutative. */
+                 inst->conditional_mod == BRW_CONDITIONAL_GE ||
+                 inst->conditional_mod == BRW_CONDITIONAL_L)) {
+               inst->src[0] = inst->src[1];
+               inst->src[1] = val;
 
-            /* If this was predicated, flipping operands means
-             * we also need to flip the predicate.
-             */
-            if (inst->conditional_mod == BRW_CONDITIONAL_NONE) {
-               inst->predicate_inverse =
-                  !inst->predicate_inverse;
+               /* If this was predicated, flipping operands means
+                * we also need to flip the predicate.
+                */
+               if (inst->conditional_mod == BRW_CONDITIONAL_NONE) {
+                  inst->predicate_inverse =
+                     !inst->predicate_inverse;
+               }
+            } else {
+               inst->src[0] = val;
             }
+
             progress = true;
          }
          break;
