@@ -91,6 +91,10 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       data = ANV_DESCRIPTOR_INLINE_UNIFORM;
       break;
 
+   case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+      data = ANV_DESCRIPTOR_ADDRESS_RANGE;
+      break;
+
    default:
       unreachable("Unsupported descriptor type");
    }
@@ -1548,6 +1552,35 @@ anv_descriptor_set_write_inline_uniform_data(struct anv_device *device,
    memcpy(desc_map + offset, data, size);
 }
 
+void
+anv_descriptor_set_write_acceleration_structure(struct anv_device *device,
+                                                struct anv_descriptor_set *set,
+                                                struct anv_acceleration_structure *accel,
+                                                uint32_t binding,
+                                                uint32_t element)
+{
+   const struct anv_descriptor_set_binding_layout *bind_layout =
+      &set->layout->binding[binding];
+   struct anv_descriptor *desc =
+      &set->descriptors[bind_layout->descriptor_index + element];
+
+   assert(bind_layout->type == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+   *desc = (struct anv_descriptor) {
+      .type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+   };
+
+   struct anv_address_range_descriptor desc_data = { };
+   if (accel != NULL) {
+      desc_data.address = anv_address_physical(accel->address);
+      desc_data.range = accel->size;
+   }
+   assert(anv_descriptor_size(bind_layout) == sizeof(desc_data));
+
+   void *desc_map = set->desc_mem.map + bind_layout->descriptor_offset +
+                    element * sizeof(desc_data);
+   memcpy(desc_map, &desc_data, sizeof(desc_data));
+}
+
 void anv_UpdateDescriptorSets(
     VkDevice                                    _device,
     uint32_t                                    descriptorWriteCount,
@@ -1618,6 +1651,21 @@ void anv_UpdateDescriptorSets(
                                                       inline_write->pData,
                                                       write->dstArrayElement,
                                                       inline_write->dataSize);
+         break;
+      }
+
+      case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: {
+         const VkWriteDescriptorSetAccelerationStructureKHR *accel_write =
+            vk_find_struct_const(write, WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR);
+         assert(accel_write->accelerationStructureCount ==
+                write->descriptorCount);
+         for (uint32_t j = 0; j < write->descriptorCount; j++) {
+            ANV_FROM_HANDLE(anv_acceleration_structure, accel,
+                            accel_write->pAccelerationStructures[j]);
+            anv_descriptor_set_write_acceleration_structure(device, set, accel,
+                                                            write->dstBinding,
+                                                            write->dstArrayElement + j);
+         }
          break;
       }
 

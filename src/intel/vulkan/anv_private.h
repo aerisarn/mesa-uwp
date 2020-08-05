@@ -81,6 +81,7 @@ struct anv_batch;
 struct anv_buffer;
 struct anv_buffer_view;
 struct anv_image_view;
+struct anv_acceleration_structure;
 struct anv_instance;
 
 struct intel_aux_map_context;
@@ -2145,6 +2146,14 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
                                 uint32_t element,
                                 VkDeviceSize offset,
                                 VkDeviceSize range);
+
+void
+anv_descriptor_set_write_acceleration_structure(struct anv_device *device,
+                                                struct anv_descriptor_set *set,
+                                                struct anv_acceleration_structure *accel,
+                                                uint32_t binding,
+                                                uint32_t element);
+
 void
 anv_descriptor_set_write_inline_uniform_data(struct anv_device *device,
                                              struct anv_descriptor_set *set,

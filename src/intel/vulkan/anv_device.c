@@ -1363,7 +1363,7 @@ void anv_GetPhysicalDeviceFeatures2(
          features->accelerationStructureCaptureReplay = false;
          features->accelerationStructureIndirectBuild = false;
          features->accelerationStructureHostCommands = false;
-         features->descriptorBindingAccelerationStructureUpdateAfterBind = false;
+         features->descriptorBindingAccelerationStructureUpdateAfterBind = true;
          break;
       }
 
@@ -2161,10 +2161,10 @@ void anv_GetPhysicalDeviceProperties2(
          props->maxGeometryCount = (1u << 24) - 1;
          props->maxInstanceCount = (1u << 24) - 1;
          props->maxPrimitiveCount = (1u << 29) - 1;
-         props->maxPerStageDescriptorAccelerationStructures = 0;
-         props->maxPerStageDescriptorUpdateAfterBindAccelerationStructures = 0;
-         props->maxDescriptorSetAccelerationStructures = 0;
-         props->maxDescriptorSetUpdateAfterBindAccelerationStructures = 0;
+         props->maxPerStageDescriptorAccelerationStructures = UINT16_MAX;
+         props->maxPerStageDescriptorUpdateAfterBindAccelerationStructures = UINT16_MAX;
+         props->maxDescriptorSetAccelerationStructures = UINT16_MAX;
+         props->maxDescriptorSetUpdateAfterBindAccelerationStructures = UINT16_MAX;
          props->minAccelerationStructureScratchOffsetAlignment = 64;
          break;
       }

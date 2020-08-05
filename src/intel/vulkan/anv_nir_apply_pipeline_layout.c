@@ -754,6 +754,48 @@ try_lower_direct_buffer_intrinsic(nir_builder *b,
 }
 
 static bool
+lower_load_accel_struct_desc(nir_builder *b,
+                             nir_intrinsic_instr *load_desc,
+                             struct apply_pipeline_layout_state *state)
+{
+   assert(load_desc->intrinsic == nir_intrinsic_load_vulkan_descriptor);
+
+   nir_intrinsic_instr *idx_intrin = nir_src_as_intrinsic(load_desc->src[0]);
+
+   /* It doesn't really matter what address format we choose as
+    * everything will constant-fold nicely.  Choose one that uses the
+    * actual descriptor buffer.
+    */
+   const nir_address_format addr_format =
+      nir_address_format_64bit_bounded_global;
+
+   uint32_t set = UINT32_MAX, binding = UINT32_MAX;
+   nir_ssa_def *res_index =
+      build_res_index_for_chain(b, idx_intrin, addr_format,
+                                &set, &binding, state);
+
+   const struct anv_descriptor_set_binding_layout *bind_layout =
+      &state->layout->set[set].layout->binding[binding];
+
+   b->cursor = nir_before_instr(&load_desc->instr);
+
+   nir_ssa_def *desc_addr =
+      build_desc_addr(b, bind_layout, bind_layout->type,
+                      res_index, addr_format, state);
+
+   /* Acceleration structure descriptors are always uint64_t */
+   nir_ssa_def *desc = build_load_descriptor_mem(b, desc_addr, 0, 1, 64, state);
+
+   assert(load_desc->dest.is_ssa);
+   assert(load_desc->dest.ssa.bit_size == 64);
+   assert(load_desc->dest.ssa.num_components == 1);
+   nir_ssa_def_rewrite_uses(&load_desc->dest.ssa, desc);
+   nir_instr_remove(&load_desc->instr);
+
+   return true;
+}
+
+static bool
 lower_direct_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
 {
    struct apply_pipeline_layout_state *state = _state;
@@ -808,6 +850,12 @@ lower_direct_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
       _mesa_set_add(state->lowered_instrs, intrin);
       return true;
    }
+
+   case nir_intrinsic_load_vulkan_descriptor:
+      if (nir_intrinsic_desc_type(intrin) ==
+          VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR)
+         return lower_load_accel_struct_desc(b, intrin, state);
+      return false;
 
    default:
       return false;
