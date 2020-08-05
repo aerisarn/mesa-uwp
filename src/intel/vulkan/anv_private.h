@@ -586,6 +586,18 @@ anv_address_add(struct anv_address addr, uint64_t offset)
    return addr;
 }
 
+static inline void *
+anv_address_map(struct anv_address addr)
+{
+   if (addr.bo == NULL)
+      return NULL;
+
+   if (addr.bo->map == NULL)
+      return NULL;
+
+   return addr.bo->map + addr.offset;
+}
+
 /* Represents a lock-free linked list of "free" things.  This is used by
  * both the block pool and the state pools.  Unfortunately, in order to
  * solve the ABA problem, we can't use a single uint32_t head.
