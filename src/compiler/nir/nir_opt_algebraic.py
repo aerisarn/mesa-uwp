@@ -381,24 +381,22 @@ optimizations.extend([
    (('fneu', ('fneg', a), -1.0), ('fneu', 1.0, a)),
    (('feq', -1.0, ('fneg', a)), ('feq', a, 1.0)),
 
-   # flt(fsat(a), b > 0 && b < 1) is inexact if a is NaN (fsat(NaN) is 0)
-   # because it returns True while flt(a, b) always returns False.
-   (('~flt', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('flt', a, b)),
+   # b < fsat(NaN) -> b < 0 -> false, and b < Nan -> false.
    (('flt', '#b(is_gt_0_and_lt_1)', ('fsat(is_used_once)', a)), ('flt', b, a)),
+
+   # fsat(NaN) >= b -> 0 >= b -> false, and NaN >= b -> false.
    (('fge', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('fge', a, b)),
-   # fge(b > 0 && b < 1, fsat(a)) is inexact if a is NaN (fsat(NaN) is 0)
-   # because it returns True while fge(b, a) always returns False.
-   (('~fge', '#b(is_gt_0_and_lt_1)', ('fsat(is_used_once)', a)), ('fge', b, a)),
+
+   # b == fsat(NaN) -> b == 0 -> false, and b == NaN -> false.
    (('feq', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('feq', a, b)),
+
+   # b != fsat(NaN) -> b != 0 -> true, and b != NaN -> true.
    (('fneu', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('fneu', a, b)),
 
+   # fsat(NaN) >= 1 -> 0 >= 1 -> false, and NaN >= 1 -> false.
    (('fge', ('fsat(is_used_once)', a), 1.0), ('fge', a, 1.0)),
-   # flt(fsat(a), 1.0) is inexact because it returns True if a is NaN
-   # (fsat(NaN) is 0), while flt(a, 1.0) always returns FALSE.
-   (('~flt', ('fsat(is_used_once)', a), 1.0), ('flt', a, 1.0)),
-   # fge(0.0, fsat(a)) is inexact because it returns True if a is NaN
-   # (fsat(NaN) is 0), while fge(0.0, a) always returns FALSE.
-   (('~fge', 0.0, ('fsat(is_used_once)', a)), ('fge', 0.0, a)),
+
+   # 0 < fsat(NaN) -> 0 < 0 -> false, and 0 < NaN -> false.
    (('flt', 0.0, ('fsat(is_used_once)', a)), ('flt', 0.0, a)),
 
    # 0.0 >= b2f(a)
@@ -505,14 +503,15 @@ optimizations.extend([
    (('fge', ('fneg', ('fabs', a)), 0.0), ('feq', a, 0.0)),
 
    # (a >= 0.0) && (a <= 1.0) -> fsat(a) == a
+   #
+   # This should be NaN safe.
+   #
+   # NaN >= 0 && 1 >= NaN -> false && false -> false
+   #
+   # vs.
+   #
+   # NaN == fsat(NaN) -> NaN == 0 -> false
    (('iand', ('fge', a, 0.0), ('fge', 1.0, a)), ('feq', a, ('fsat', a)), '!options->lower_fsat'),
-
-   # (a < 0.0) || (a > 1.0)
-   # !(!(a < 0.0) && !(a > 1.0))
-   # !((a >= 0.0) && (a <= 1.0))
-   # !(a == fsat(a))
-   # a != fsat(a)
-   (('ior', ('flt', a, 0.0), ('flt', 1.0, a)), ('fneu', a, ('fsat', a)), '!options->lower_fsat'),
 
    # Note: fmin(-a, -b) == -fmax(a, b)
    (('fmax',                        ('b2f(is_used_once)', 'a@1'),           ('b2f', 'b@1')),           ('b2f', ('ior', a, b))),
@@ -2249,22 +2248,12 @@ late_optimizations = [
    # new patterns like these.  The patterns that compare with zero are removed
    # because they are unlikely to be created in by anything in
    # late_optimizations.
-
-   # flt(fsat(a), b > 0 && b < 1) is inexact if a is NaN (fsat(NaN) is 0)
-   # because it returns True while flt(a, b) always returns False.
-   (('~flt', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('flt', a, b)),
    (('flt', '#b(is_gt_0_and_lt_1)', ('fsat(is_used_once)', a)), ('flt', b, a)),
    (('fge', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('fge', a, b)),
-   # fge(b > 0 && b < 1, fsat(a)) is inexact if a is NaN (fsat(NaN) is 0)
-   # because it returns True while fge(b, a) always returns False.
-   (('~fge', '#b(is_gt_0_and_lt_1)', ('fsat(is_used_once)', a)), ('fge', b, a)),
    (('feq', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('feq', a, b)),
    (('fneu', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('fneu', a, b)),
 
    (('fge', ('fsat(is_used_once)', a), 1.0), ('fge', a, 1.0)),
-   # flt(fsat(a), 1.0) is inexact because it returns True if a is NaN
-   # (fsat(NaN) is 0), while flt(a, 1.0) always returns FALSE.
-   (('~flt', ('fsat(is_used_once)', a), 1.0), ('flt', a, 1.0)),
 
    (('~fge', ('fmin(is_used_once)', ('fadd(is_used_once)', a, b), ('fadd', c, d)), 0.0), ('iand', ('fge', a, ('fneg', b)), ('fge', c, ('fneg', d)))),
 
