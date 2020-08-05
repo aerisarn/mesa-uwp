@@ -1825,6 +1825,50 @@ write_label(FILE *file, const struct intel_device_info *devinfo,
    }
 }
 
+static void
+lsc_disassemble_ex_desc(const struct intel_device_info *devinfo,
+                        uint32_t imm_desc,
+                        uint32_t imm_ex_desc,
+                        FILE *file)
+{
+   const unsigned addr_type = lsc_msg_desc_addr_type(devinfo, imm_desc);
+   switch (addr_type) {
+   case LSC_ADDR_SURFTYPE_FLAT:
+      format(file, "base_offset %u ",
+             lsc_flat_ex_desc_base_offset(devinfo, imm_ex_desc));
+      break;
+   case LSC_ADDR_SURFTYPE_BSS:
+   case LSC_ADDR_SURFTYPE_SS:
+      format(file, "surface_state_index %u ",
+             lsc_bss_ex_desc_index(devinfo, imm_ex_desc));
+      break;
+   case LSC_ADDR_SURFTYPE_BTI:
+      format(file, "BTI %u ",
+             lsc_bti_ex_desc_index(devinfo, imm_ex_desc));
+      format(file, "base_offset %u ",
+             lsc_bti_ex_desc_base_offset(devinfo, imm_ex_desc));
+      break;
+   default:
+      format(file, "unsupported address surface type %d", addr_type);
+      break;
+   }
+}
+
+static inline bool
+brw_sfid_is_lsc(unsigned sfid)
+{
+   switch (sfid) {
+   case GFX12_SFID_UGM:
+   case GFX12_SFID_SLM:
+   case GFX12_SFID_TGM:
+      return true;
+   default:
+      break;
+   }
+
+   return false;
+}
+
 int
 brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                      const brw_inst *inst, bool is_compacted,
@@ -2370,14 +2414,18 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
          if (space)
             string(file, " ");
       }
-      if (has_imm_desc)
-         format(file, "mlen %u", brw_message_desc_mlen(devinfo, imm_desc));
-      if (has_imm_ex_desc) {
-         format(file, " ex_mlen %u",
-                brw_message_ex_desc_ex_mlen(devinfo, imm_ex_desc));
+      if (brw_sfid_is_lsc(sfid)) {
+            lsc_disassemble_ex_desc(devinfo, imm_desc, imm_ex_desc, file);
+      } else {
+         if (has_imm_desc)
+            format(file, "mlen %u", brw_message_desc_mlen(devinfo, imm_desc));
+         if (has_imm_ex_desc) {
+            format(file, " ex_mlen %u",
+                   brw_message_ex_desc_ex_mlen(devinfo, imm_ex_desc));
+         }
+         if (has_imm_desc)
+            format(file, " rlen %u", brw_message_desc_rlen(devinfo, imm_desc));
       }
-      if (has_imm_desc)
-         format(file, " rlen %u", brw_message_desc_rlen(devinfo, imm_desc));
    }
    pad(file, 64);
    if (opcode != BRW_OPCODE_NOP && opcode != BRW_OPCODE_NENOP) {
