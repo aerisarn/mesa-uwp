@@ -2615,3 +2615,40 @@ VkResult anv_GetPipelineExecutableInternalRepresentationsKHR(
 
    return incomplete_text ? VK_INCOMPLETE : vk_outarray_status(&out);
 }
+
+VkResult
+anv_GetRayTracingShaderGroupHandlesKHR(
+    VkDevice                                    device,
+    VkPipeline                                  pipeline,
+    uint32_t                                    firstGroup,
+    uint32_t                                    groupCount,
+    size_t                                      dataSize,
+    void*                                       pData)
+{
+   unreachable("Unimplemented");
+   return vk_error(VK_ERROR_FEATURE_NOT_PRESENT);
+}
+
+VkResult
+anv_GetRayTracingCaptureReplayShaderGroupHandlesKHR(
+    VkDevice                                    device,
+    VkPipeline                                  pipeline,
+    uint32_t                                    firstGroup,
+    uint32_t                                    groupCount,
+    size_t                                      dataSize,
+    void*                                       pData)
+{
+   unreachable("Unimplemented");
+   return vk_error(VK_ERROR_FEATURE_NOT_PRESENT);
+}
+
+VkDeviceSize
+anv_GetRayTracingShaderGroupStackSizeKHR(
+    VkDevice                                    device,
+    VkPipeline                                  pipeline,
+    uint32_t                                    group,
+    VkShaderGroupShaderKHR                      groupShader)
+{
+   unreachable("Unimplemented");
+   return 0;
+}

@@ -1525,3 +1525,9 @@ void anv_CmdSetFragmentShadingRateKHR(
    cmd_buffer->state.gfx.dynamic.fragment_shading_rate = *pFragmentSize;
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE;
 }
+
+void anv_CmdSetRayTracingPipelineStackSizeKHR(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    pipelineStackSize)
+{
+}
