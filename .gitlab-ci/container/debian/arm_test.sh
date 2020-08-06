@@ -14,7 +14,6 @@ apt-get install -y --no-remove \
         fastboot \
         netcat \
         procps \
-        python-is-python3 \
         python3-distutils \
         python3-minimal \
         python3-serial \

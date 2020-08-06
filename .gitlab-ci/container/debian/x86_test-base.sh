@@ -41,7 +41,6 @@ apt-get install -y --no-remove \
       libxkbcommon0 \
       libxrandr2 \
       libxrender1 \
-      python-is-python3 \
       python3-mako \
       python3-numpy \
       python3-packaging \

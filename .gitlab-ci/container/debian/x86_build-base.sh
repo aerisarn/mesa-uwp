@@ -58,7 +58,6 @@ apt-get install -y --no-remove \
         make \
         meson \
         pkg-config \
-        python-is-python3 \
         python3-mako \
         python3-pil \
         python3-requests \

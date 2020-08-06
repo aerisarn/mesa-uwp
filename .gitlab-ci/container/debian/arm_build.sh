@@ -43,7 +43,6 @@ apt-get -y install \
 	llvm-11-dev \
 	meson \
 	pkg-config \
-	python-is-python3 \
 	python3-mako \
 	python3-pil \
 	python3-pip \
