@@ -2797,6 +2797,115 @@ VkResult genX(CreateComputePipelines)(
    return result;
 }
 
+#if GFX_VERx10 >= 125
+
+static void
+assert_rt_stage_index_valid(const VkRayTracingPipelineCreateInfoKHR* pCreateInfo,
+                            uint32_t stage_idx,
+                            VkShaderStageFlags valid_stages)
+{
+   if (stage_idx == VK_SHADER_UNUSED_KHR)
+      return;
+
+   assert(stage_idx <= pCreateInfo->stageCount);
+   assert(util_bitcount(pCreateInfo->pStages[stage_idx].stage) == 1);
+   assert(pCreateInfo->pStages[stage_idx].stage & valid_stages);
+}
+
+static VkResult
+ray_tracing_pipeline_create(
+    VkDevice                                    _device,
+    struct anv_pipeline_cache *                 cache,
+    const VkRayTracingPipelineCreateInfoKHR*    pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkPipeline*                                 pPipeline)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   VkResult result;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR);
+
+   /* Use the default pipeline cache if none is specified */
+   if (cache == NULL && device->physical->instance->pipeline_cache_enabled)
+      cache = &device->default_pipeline_cache;
+
+   VK_MULTIALLOC(ma);
+   VK_MULTIALLOC_DECL(&ma, struct anv_ray_tracing_pipeline, pipeline, 1);
+   VK_MULTIALLOC_DECL(&ma, struct anv_rt_shader_group, groups, pCreateInfo->groupCount);
+   if (!vk_multialloc_alloc2(&ma, &device->vk.alloc, pAllocator,
+                             VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
+      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   result = anv_pipeline_init(&pipeline->base, device,
+                              ANV_PIPELINE_RAY_TRACING, pCreateInfo->flags,
+                              pAllocator);
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->vk.alloc, pAllocator, pipeline);
+      return result;
+   }
+
+   pipeline->group_count = pCreateInfo->groupCount;
+   pipeline->groups = groups;
+
+   const VkShaderStageFlags ray_tracing_stages =
+      VK_SHADER_STAGE_RAYGEN_BIT_KHR |
+      VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
+      VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
+      VK_SHADER_STAGE_MISS_BIT_KHR |
+      VK_SHADER_STAGE_INTERSECTION_BIT_KHR |
+      VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+
+   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++)
+      assert((pCreateInfo->pStages[i].stage & ~ray_tracing_stages) == 0);
+
+   for (uint32_t i = 0; i < pCreateInfo->groupCount; i++) {
+      const VkRayTracingShaderGroupCreateInfoKHR *ginfo =
+         &pCreateInfo->pGroups[i];
+      assert_rt_stage_index_valid(pCreateInfo, ginfo->generalShader,
+                                  VK_SHADER_STAGE_RAYGEN_BIT_KHR |
+                                  VK_SHADER_STAGE_MISS_BIT_KHR |
+                                  VK_SHADER_STAGE_CALLABLE_BIT_KHR);
+      assert_rt_stage_index_valid(pCreateInfo, ginfo->closestHitShader,
+                                  VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+      assert_rt_stage_index_valid(pCreateInfo, ginfo->anyHitShader,
+                                  VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+      assert_rt_stage_index_valid(pCreateInfo, ginfo->intersectionShader,
+                                  VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
+      switch (ginfo->type) {
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
+         assert(ginfo->generalShader < pCreateInfo->stageCount);
+         assert(ginfo->anyHitShader == VK_SHADER_UNUSED_KHR);
+         assert(ginfo->closestHitShader == VK_SHADER_UNUSED_KHR);
+         assert(ginfo->intersectionShader == VK_SHADER_UNUSED_KHR);
+         break;
+
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR:
+         assert(ginfo->generalShader == VK_SHADER_UNUSED_KHR);
+         assert(ginfo->intersectionShader == VK_SHADER_UNUSED_KHR);
+         break;
+
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR:
+         assert(ginfo->generalShader == VK_SHADER_UNUSED_KHR);
+         break;
+
+      default:
+         unreachable("Invalid ray-tracing shader group type");
+      }
+   }
+
+   result = anv_ray_tracing_pipeline_init(pipeline, device, cache,
+                                          pCreateInfo, pAllocator);
+   if (result != VK_SUCCESS) {
+      anv_pipeline_finish(&pipeline->base, device, pAllocator);
+      vk_free2(&device->vk.alloc, pAllocator, pipeline);
+      return result;
+   }
+
+   *pPipeline = anv_pipeline_to_handle(&pipeline->base);
+
+   return pipeline->base.batch.status;
+}
+
 VkResult
 genX(CreateRayTracingPipelinesKHR)(
     VkDevice                                    _device,
@@ -2807,6 +2916,32 @@ genX(CreateRayTracingPipelinesKHR)(
     const VkAllocationCallbacks*                pAllocator,
     VkPipeline*                                 pPipelines)
 {
-   unreachable("Unimplemented");
-   return VK_INCOMPLETE;
+   ANV_FROM_HANDLE(anv_pipeline_cache, pipeline_cache, pipelineCache);
+
+   VkResult result = VK_SUCCESS;
+
+   unsigned i;
+   for (i = 0; i < createInfoCount; i++) {
+      VkResult res = ray_tracing_pipeline_create(_device, pipeline_cache,
+                                                 &pCreateInfos[i],
+                                                 pAllocator, &pPipelines[i]);
+
+      if (res == VK_SUCCESS)
+         continue;
+
+      /* Bail out on the first error as it is not obvious what error should be
+       * report upon 2 different failures. */
+      result = res;
+      if (result != VK_PIPELINE_COMPILE_REQUIRED_EXT)
+         break;
+
+      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+         break;
+   }
+
+   for (; i < createInfoCount; i++)
+      pPipelines[i] = VK_NULL_HANDLE;
+
+   return result;
 }
+#endif /* GFX_VERx10 >= 125 */

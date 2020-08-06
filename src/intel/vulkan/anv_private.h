@@ -2928,6 +2928,14 @@ struct anv_cmd_compute_state {
    struct anv_address num_workgroups;
 };
 
+struct anv_cmd_ray_tracing_state {
+   struct anv_cmd_pipeline_state base;
+
+   struct anv_ray_tracing_pipeline *pipeline;
+
+   bool pipeline_dirty;
+};
+
 /** State required while building cmd buffer */
 struct anv_cmd_state {
    /* PIPELINE_SELECT.PipelineSelection */
@@ -2937,6 +2945,7 @@ struct anv_cmd_state {
 
    struct anv_cmd_graphics_state                gfx;
    struct anv_cmd_compute_state                 compute;
+   struct anv_cmd_ray_tracing_state             rt;
 
    enum anv_pipe_bits                           pending_pipe_bits;
    VkShaderStageFlags                           descriptors_dirty;
@@ -3441,6 +3450,7 @@ struct anv_pipeline_executable {
 enum anv_pipeline_type {
    ANV_PIPELINE_GRAPHICS,
    ANV_PIPELINE_COMPUTE,
+   ANV_PIPELINE_RAY_TRACING,
 };
 
 struct anv_pipeline {
@@ -3550,6 +3560,28 @@ struct anv_compute_pipeline {
    uint32_t                                     interface_descriptor_data[8];
 };
 
+struct anv_rt_shader_group {
+   VkRayTracingShaderGroupTypeKHR type;
+
+   struct anv_shader_bin *general;
+   struct anv_shader_bin *closest_hit;
+   struct anv_shader_bin *any_hit;
+   struct anv_shader_bin *intersection;
+
+   /* VK_KHR_ray_tracing requires shaderGroupHandleSize == 32 */
+   uint32_t handle[8];
+};
+
+struct anv_ray_tracing_pipeline {
+   struct anv_pipeline                          base;
+
+   /* All shaders in the pipeline */
+   struct util_dynarray                         shaders;
+
+   uint32_t                                     group_count;
+   struct anv_rt_shader_group *                 groups;
+};
+
 #define ANV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)             \
    static inline struct anv_##pipe_type##_pipeline *                 \
    anv_pipeline_to_##pipe_type(struct anv_pipeline *pipeline)      \
@@ -3560,6 +3592,7 @@ struct anv_compute_pipeline {
 
 ANV_DECL_PIPELINE_DOWNCAST(graphics, ANV_PIPELINE_GRAPHICS)
 ANV_DECL_PIPELINE_DOWNCAST(compute, ANV_PIPELINE_COMPUTE)
+ANV_DECL_PIPELINE_DOWNCAST(ray_tracing, ANV_PIPELINE_RAY_TRACING)
 
 static inline bool
 anv_pipeline_has_stage(const struct anv_graphics_pipeline *pipeline,
@@ -3629,6 +3662,13 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         const struct vk_shader_module *module,
                         const char *entrypoint,
                         const VkSpecializationInfo *spec_info);
+
+VkResult
+anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
+                              struct anv_device *device,
+                              struct anv_pipeline_cache *cache,
+                              const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                              const VkAllocationCallbacks *alloc);
 
 struct anv_format_plane {
    enum isl_format isl_format:16;

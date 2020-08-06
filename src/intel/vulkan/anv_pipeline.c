@@ -348,6 +348,18 @@ void anv_DestroyPipeline(
       break;
    }
 
+   case ANV_PIPELINE_RAY_TRACING: {
+      struct anv_ray_tracing_pipeline *rt_pipeline =
+         anv_pipeline_to_ray_tracing(pipeline);
+
+      util_dynarray_foreach(&rt_pipeline->shaders,
+                            struct anv_shader_bin *, shader) {
+         anv_shader_bin_unref(device, *shader);
+      }
+
+      break;
+   }
+
    default:
       unreachable("invalid pipeline type");
    }
@@ -2389,6 +2401,16 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    else
       pipeline->topology = vk_to_intel_primitive_type[ia_info->topology];
 
+   return VK_SUCCESS;
+}
+
+VkResult
+anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
+                              struct anv_device *device,
+                              struct anv_pipeline_cache *cache,
+                              const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                              const VkAllocationCallbacks *alloc)
+{
    return VK_SUCCESS;
 }
 
