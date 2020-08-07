@@ -518,6 +518,11 @@ void anv_CmdBindPipeline(
 
       cmd_buffer->state.rt.pipeline = rt_pipeline;
       cmd_buffer->state.rt.pipeline_dirty = true;
+
+      if (rt_pipeline->stack_size > 0) {
+         anv_CmdSetRayTracingPipelineStackSizeKHR(commandBuffer,
+                                                  rt_pipeline->stack_size);
+      }
       break;
    }
 
@@ -1591,8 +1596,60 @@ void anv_CmdSetFragmentShadingRateKHR(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE;
 }
 
+static inline uint32_t
+ilog2_round_up(uint32_t value)
+{
+   assert(value != 0);
+   return 32 - __builtin_clz(value - 1);
+}
+
 void anv_CmdSetRayTracingPipelineStackSizeKHR(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    pipelineStackSize)
 {
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct anv_cmd_ray_tracing_state *rt = &cmd_buffer->state.rt;
+   struct anv_device *device = cmd_buffer->device;
+
+   if (anv_batch_has_error(&cmd_buffer->batch))
+      return;
+
+   uint32_t stack_ids_per_dss = 2048; /* TODO */
+
+   unsigned stack_size_log2 = ilog2_round_up(pipelineStackSize);
+   if (stack_size_log2 < 10)
+      stack_size_log2 = 10;
+
+   if (rt->scratch.layout.total_size == 1 << stack_size_log2)
+      return;
+
+   brw_rt_compute_scratch_layout(&rt->scratch.layout, &device->info,
+                                 stack_ids_per_dss, 1 << stack_size_log2);
+
+   unsigned bucket = stack_size_log2 - 10;
+   assert(bucket < ARRAY_SIZE(device->rt_scratch_bos));
+
+   struct anv_bo *bo = p_atomic_read(&device->rt_scratch_bos[bucket]);
+   if (bo == NULL) {
+      struct anv_bo *new_bo;
+      VkResult result = anv_device_alloc_bo(device, "RT scratch",
+                                            rt->scratch.layout.total_size,
+                                            0, /* alloc_flags */
+                                            0, /* explicit_address */
+                                            &new_bo);
+      if (result != VK_SUCCESS) {
+         rt->scratch.layout.total_size = 0;
+         anv_batch_set_error(&cmd_buffer->batch, result);
+         return;
+      }
+
+      bo = p_atomic_cmpxchg(&device->rt_scratch_bos[bucket], NULL, new_bo);
+      if (bo != NULL) {
+         anv_device_release_bo(device, bo);
+      } else {
+         bo = new_bo;
+      }
+   }
+
+   rt->scratch.bo = bo;
 }

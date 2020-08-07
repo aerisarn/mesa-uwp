@@ -51,6 +51,7 @@
 #include "dev/intel_device_info.h"
 #include "blorp/blorp.h"
 #include "compiler/brw_compiler.h"
+#include "compiler/brw_rt.h"
 #include "util/bitset.h"
 #include "util/bitscan.h"
 #include "util/macros.h"
@@ -1238,6 +1239,7 @@ struct anv_device {
     struct anv_queue  *                         queues;
 
     struct anv_scratch_pool                     scratch_pool;
+    struct anv_bo                              *rt_scratch_bos[16];
 
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
@@ -2937,6 +2939,11 @@ struct anv_cmd_ray_tracing_state {
    struct anv_ray_tracing_pipeline *pipeline;
 
    bool pipeline_dirty;
+
+   struct {
+      struct anv_bo *bo;
+      struct brw_rt_scratch_layout layout;
+   } scratch;
 };
 
 /** State required while building cmd buffer */
