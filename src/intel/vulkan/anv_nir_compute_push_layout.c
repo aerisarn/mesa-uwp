@@ -76,7 +76,8 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
 
    const bool push_ubo_ranges =
       pdevice->info.verx10 >= 75 &&
-      has_const_ubo && nir->info.stage != MESA_SHADER_COMPUTE;
+      has_const_ubo && nir->info.stage != MESA_SHADER_COMPUTE &&
+      !brw_shader_stage_is_bindless(nir->info.stage);
 
    if (push_ubo_ranges && robust_buffer_access) {
       /* We can't on-the-fly adjust our push ranges because doing so would
