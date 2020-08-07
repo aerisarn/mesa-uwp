@@ -510,6 +510,17 @@ void anv_CmdBindPipeline(
       break;
    }
 
+   case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR: {
+      struct anv_ray_tracing_pipeline *rt_pipeline =
+         anv_pipeline_to_ray_tracing(pipeline);
+      if (cmd_buffer->state.rt.pipeline == rt_pipeline)
+         return;
+
+      cmd_buffer->state.rt.pipeline = rt_pipeline;
+      cmd_buffer->state.rt.pipeline_dirty = true;
+      break;
+   }
+
    default:
       assert(!"invalid bind point");
       break;
@@ -900,6 +911,16 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       pipe_state = &cmd_buffer->state.compute.base;
       break;
 
+   case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR:
+      stages &= VK_SHADER_STAGE_RAYGEN_BIT_KHR |
+                VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
+                VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
+                VK_SHADER_STAGE_MISS_BIT_KHR |
+                VK_SHADER_STAGE_INTERSECTION_BIT_KHR |
+                VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+      pipe_state = &cmd_buffer->state.rt.base;
+      break;
+
    default:
       unreachable("invalid bind point");
    }
@@ -1191,6 +1212,17 @@ void anv_CmdPushConstants(
 
       memcpy(pipe_state->push_constants.client_data + offset, pValues, size);
    }
+   if (stageFlags & (VK_SHADER_STAGE_RAYGEN_BIT_KHR |
+                     VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
+                     VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
+                     VK_SHADER_STAGE_MISS_BIT_KHR |
+                     VK_SHADER_STAGE_INTERSECTION_BIT_KHR |
+                     VK_SHADER_STAGE_CALLABLE_BIT_KHR)) {
+      struct anv_cmd_pipeline_state *pipe_state =
+         &cmd_buffer->state.rt.base;
+
+      memcpy(pipe_state->push_constants.client_data + offset, pValues, size);
+   }
 
    cmd_buffer->state.push_constants_dirty |= stageFlags;
 }
@@ -1292,11 +1324,22 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
                                    uint32_t _set)
 {
    struct anv_cmd_pipeline_state *pipe_state;
-   if (bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
-      pipe_state = &cmd_buffer->state.compute.base;
-   } else {
-      assert(bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+   switch (bind_point) {
+   case VK_PIPELINE_BIND_POINT_GRAPHICS:
       pipe_state = &cmd_buffer->state.gfx.base;
+      break;
+
+   case VK_PIPELINE_BIND_POINT_COMPUTE:
+      pipe_state = &cmd_buffer->state.compute.base;
+      break;
+
+   case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR:
+      pipe_state = &cmd_buffer->state.rt.base;
+      break;
+
+   default:
+      unreachable("invalid bind point");
    }
 
    struct anv_push_descriptor_set **push_set =
