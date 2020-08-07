@@ -176,6 +176,25 @@ anv_reloc_list_grow_deps(struct anv_reloc_list *list,
 #define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
 
 VkResult
+anv_reloc_list_add_bo(struct anv_reloc_list *list,
+                      const VkAllocationCallbacks *alloc,
+                      struct anv_bo *target_bo)
+{
+   assert(!target_bo->is_wrapper);
+   assert(target_bo->flags & EXEC_OBJECT_PINNED);
+
+   uint32_t idx = target_bo->gem_handle;
+   VkResult result = anv_reloc_list_grow_deps(list, alloc,
+                                              (idx / BITSET_WORDBITS) + 1);
+   if (unlikely(result != VK_SUCCESS))
+      return result;
+
+   BITSET_SET(list->deps, idx);
+
+   return VK_SUCCESS;
+}
+
+VkResult
 anv_reloc_list_add(struct anv_reloc_list *list,
                    const VkAllocationCallbacks *alloc,
                    uint32_t offset, struct anv_bo *target_bo, uint32_t delta,
@@ -192,17 +211,8 @@ anv_reloc_list_add(struct anv_reloc_list *list,
    assert(unwrapped_target_bo->gem_handle > 0);
    assert(unwrapped_target_bo->refcount > 0);
 
-   if (unwrapped_target_bo->flags & EXEC_OBJECT_PINNED) {
-      assert(!target_bo->is_wrapper);
-      uint32_t idx = unwrapped_target_bo->gem_handle;
-      VkResult result = anv_reloc_list_grow_deps(list, alloc,
-                                                 (idx / BITSET_WORDBITS) + 1);
-      if (unlikely(result != VK_SUCCESS))
-         return result;
-
-      BITSET_SET(list->deps, unwrapped_target_bo->gem_handle);
-      return VK_SUCCESS;
-   }
+   if (unwrapped_target_bo->flags & EXEC_OBJECT_PINNED)
+      return anv_reloc_list_add_bo(list, alloc, unwrapped_target_bo);
 
    VkResult result = anv_reloc_list_grow(list, alloc, 1);
    if (result != VK_SUCCESS)

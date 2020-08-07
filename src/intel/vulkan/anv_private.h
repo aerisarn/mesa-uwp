@@ -1523,6 +1523,10 @@ VkResult anv_reloc_list_add(struct anv_reloc_list *list,
                             uint32_t offset, struct anv_bo *target_bo,
                             uint32_t delta, uint64_t *address_u64_out);
 
+VkResult anv_reloc_list_add_bo(struct anv_reloc_list *list,
+                               const VkAllocationCallbacks *alloc,
+                               struct anv_bo *target_bo);
+
 struct anv_batch_bo {
    /* Link in the anv_cmd_buffer.owned_batch_bos list */
    struct list_head                             link;
