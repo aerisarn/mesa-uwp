@@ -2983,8 +2983,8 @@ struct anv_cmd_state {
    struct anv_vertex_binding                    vertex_bindings[MAX_VBS];
    bool                                         xfb_enabled;
    struct anv_xfb_binding                       xfb_bindings[MAX_XFB_BUFFERS];
-   struct anv_state                             binding_tables[MESA_SHADER_STAGES];
-   struct anv_state                             samplers[MESA_SHADER_STAGES];
+   struct anv_state                             binding_tables[MESA_VULKAN_SHADER_STAGES];
+   struct anv_state                             samplers[MESA_VULKAN_SHADER_STAGES];
 
    unsigned char                                sampler_sha1s[MESA_SHADER_STAGES][20];
    unsigned char                                surface_sha1s[MESA_SHADER_STAGES][20];
