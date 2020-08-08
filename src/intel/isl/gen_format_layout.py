@@ -279,9 +279,8 @@ def main():
     args = parser.parse_args()
 
     # This generator opens and writes the file itself, and it does so in bytes
-    # mode. This solves both python 2 vs 3 problems and solves the locale
-    # problem: Unicode can be rendered even if the shell calling this script
-    # doesn't.
+    # mode. This solves the locale problem: Unicode can be rendered even
+    # if the shell calling this script doesn't.
     with open(args.out, 'wb') as f:
         formats = [Format(l) for l in reader(args.csv)]
         try:
