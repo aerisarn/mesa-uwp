@@ -166,6 +166,18 @@ i915_destroy(struct pipe_context *pipe)
    FREE(i915);
 }
 
+static void
+i915_set_debug_callback(struct pipe_context *pipe,
+                        const struct pipe_debug_callback *cb)
+{
+   struct i915_context *i915 = i915_context(pipe);
+
+   if (cb)
+      i915->debug = *cb;
+   else
+      memset(&i915->debug, 0, sizeof(i915->debug));
+}
+
 struct pipe_context *
 i915_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 {
@@ -180,6 +192,7 @@ i915_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    i915->base.priv = priv;
    i915->base.stream_uploader = u_upload_create_default(&i915->base);
    i915->base.const_uploader = i915->base.stream_uploader;
+   i915->base.set_debug_callback = i915_set_debug_callback;
 
    i915->base.destroy = i915_destroy;
 

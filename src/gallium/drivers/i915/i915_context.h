@@ -303,6 +303,8 @@ struct i915_context {
 
    /** blitter/hw-clear */
    struct blitter_context *blitter;
+
+   struct pipe_debug_callback debug;
 };
 
 /* A flag for each frontend state object:
