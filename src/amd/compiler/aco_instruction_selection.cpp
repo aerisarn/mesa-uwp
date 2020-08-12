@@ -3157,6 +3157,80 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       }
       break;
    }
+   case nir_op_extract_u8:
+   case nir_op_extract_i8:
+   case nir_op_extract_u16:
+   case nir_op_extract_i16: {
+      bool is_signed = instr->op == nir_op_extract_i16 || instr->op == nir_op_extract_i8;
+      unsigned comp = instr->op == nir_op_extract_u8 || instr->op == nir_op_extract_i8 ? 4 : 2;
+      uint32_t bits = comp == 4 ? 8 : 16;
+      unsigned index = nir_src_as_uint(instr->src[1].src);
+      if (bits >= instr->dest.dest.ssa.bit_size || index * bits >= instr->dest.dest.ssa.bit_size) {
+         assert(index == 0);
+         bld.copy(Definition(dst), get_alu_src(ctx, instr->src[0]));
+      } else if (dst.regClass() == s1 && instr->dest.dest.ssa.bit_size == 16) {
+         Temp vec = get_ssa_temp(ctx, instr->src[0].src.ssa);
+         unsigned swizzle = instr->src[0].swizzle[0];
+         if (vec.size() > 1) {
+            vec = emit_extract_vector(ctx, vec, swizzle / 2, s1);
+            swizzle = swizzle & 1;
+         }
+         index += swizzle * instr->dest.dest.ssa.bit_size / bits;
+         bld.pseudo(aco_opcode::p_extract, Definition(dst), bld.def(s1, scc), Operand(vec),
+                    Operand(index), Operand(bits), Operand((uint32_t)is_signed));
+      } else {
+         Temp src = get_alu_src(ctx, instr->src[0]);
+         Definition def(dst);
+         if (dst.bytes() == 8) {
+            src = emit_extract_vector(ctx, src, index / comp, RegClass(src.type(), 1));
+            index %= comp;
+            def = bld.def(src.type(), 1);
+         }
+         assert(def.bytes() <= 4);
+         if (def.regClass() == s1) {
+            bld.pseudo(aco_opcode::p_extract, def, bld.def(s1, scc), Operand(src),
+                       Operand(index), Operand(bits), Operand((uint32_t)is_signed));
+         } else {
+            src = emit_extract_vector(ctx, src, 0, def.regClass());
+            bld.pseudo(aco_opcode::p_extract, def, Operand(src), Operand(index),
+                       Operand(bits), Operand((uint32_t)is_signed));
+         }
+         if (dst.size() == 2)
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), def.getTemp(), Operand(0u));
+      }
+      break;
+   }
+   case nir_op_insert_u8:
+   case nir_op_insert_u16: {
+      unsigned comp = instr->op == nir_op_insert_u8 ? 4 : 2;
+      uint32_t bits = comp == 4 ? 8 : 16;
+      unsigned index = nir_src_as_uint(instr->src[1].src);
+      if (bits >= instr->dest.dest.ssa.bit_size || index * bits >= instr->dest.dest.ssa.bit_size) {
+         assert(index == 0);
+         bld.copy(Definition(dst), get_alu_src(ctx, instr->src[0]));
+      } else {
+         Temp src = get_alu_src(ctx, instr->src[0]);
+         Definition def(dst);
+         bool swap = false;
+         if (dst.bytes() == 8) {
+            src = emit_extract_vector(ctx, src, 0u, RegClass(src.type(), 1));
+            swap = index >= comp;
+            index %= comp;
+            def = bld.def(src.type(), 1);
+         }
+         if (def.regClass() == s1) {
+            bld.pseudo(aco_opcode::p_insert, def, bld.def(s1, scc), Operand(src), Operand(index), Operand(bits));
+         } else {
+            src = emit_extract_vector(ctx, src, 0, def.regClass());
+            bld.pseudo(aco_opcode::p_insert, def, Operand(src), Operand(index), Operand(bits));
+         }
+         if (dst.size() == 2 && swap)
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), Operand(0u), def.getTemp());
+         else if (dst.size() == 2)
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), def.getTemp(), Operand(0u));
+      }
+      break;
+   }
    case nir_op_bit_count: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (src.regClass() == s1) {
