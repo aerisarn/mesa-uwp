@@ -592,10 +592,8 @@ Temp convert_int(isel_context *ctx, Builder& bld, Temp src, unsigned src_bits, u
    if (tmp == src) {
    } else if (src.regClass() == s1) {
       assert(src_bits < 32);
-      if (sign_extend)
-         bld.sop1(src_bits == 8 ? aco_opcode::s_sext_i32_i8 : aco_opcode::s_sext_i32_i16, Definition(tmp), src);
-      else
-         bld.sop2(aco_opcode::s_and_b32, Definition(tmp), bld.def(s1, scc), Operand(src_bits == 8 ? 0xFFu : 0xFFFFu), src);
+      bld.pseudo(aco_opcode::p_extract, Definition(tmp), bld.def(s1, scc),
+                 src, Operand(0u), Operand(src_bits), Operand((unsigned)sign_extend));
    } else if (ctx->options->chip_class >= GFX8) {
       assert(src_bits < 32);
       assert(src_bits != 8 || src.regClass() == v1b);
@@ -651,21 +649,13 @@ Temp extract_8_16_bit_sgpr_element(isel_context *ctx, Temp dst, nir_alu_src *src
    }
 
    Builder bld(ctx->program, ctx->block);
-   unsigned offset = src_size * swizzle;
    Temp tmp = dst.regClass() == s2 ? bld.tmp(s1) : dst;
 
-   if (mode == sgpr_extract_undef && swizzle == 0) {
+   if (mode == sgpr_extract_undef && swizzle == 0)
       bld.copy(Definition(tmp), vec);
-   } else if (mode == sgpr_extract_undef || (offset == 24 && mode == sgpr_extract_zext)) {
-      bld.sop2(aco_opcode::s_lshr_b32, Definition(tmp), bld.def(s1, scc), vec, Operand(offset));
-   } else if (src_size == 8 && swizzle == 0 && mode == sgpr_extract_sext) {
-      bld.sop1(aco_opcode::s_sext_i32_i8, Definition(tmp), vec);
-   } else if (src_size == 16 && swizzle == 0 && mode == sgpr_extract_sext) {
-      bld.sop1(aco_opcode::s_sext_i32_i16, Definition(tmp), vec);
-   } else {
-      aco_opcode op = mode == sgpr_extract_zext ? aco_opcode::s_bfe_u32 : aco_opcode::s_bfe_i32;
-      bld.sop2(op, Definition(tmp), bld.def(s1, scc), vec, Operand((src_size << 16) | offset));
-   }
+   else
+      bld.pseudo(aco_opcode::p_extract, Definition(tmp), bld.def(s1, scc), Operand(vec),
+                 Operand(swizzle), Operand(src_size), Operand((uint32_t)(mode == sgpr_extract_sext)));
 
    if (dst.regClass() == s2)
       convert_int(ctx, bld, tmp, 32, 64, mode == sgpr_extract_sext, dst);
@@ -2974,7 +2964,8 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       if (dst.type() == RegType::vgpr) {
          bld.pseudo(aco_opcode::p_split_vector, bld.def(dst.regClass()), Definition(dst), get_alu_src(ctx, instr->src[0]));
       } else {
-         bld.sop2(aco_opcode::s_bfe_u32, Definition(dst), bld.def(s1, scc), get_alu_src(ctx, instr->src[0]), Operand(uint32_t(16 << 16 | 16)));
+         bld.pseudo(aco_opcode::p_extract, Definition(dst), bld.def(s1, scc),
+                    get_alu_src(ctx, instr->src[0]), Operand(1u), Operand(16u), Operand(0u));
       }
       break;
    case nir_op_pack_32_2x16_split: {
@@ -4369,8 +4360,9 @@ Temp get_tess_rel_patch_id(isel_context *ctx)
 
    switch (ctx->shader->info.stage) {
    case MESA_SHADER_TESS_CTRL:
-      return bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffu),
-                      get_arg(ctx, ctx->args->ac.tcs_rel_ids));
+      return bld.pseudo(aco_opcode::p_extract, bld.def(v1),
+                        get_arg(ctx, ctx->args->ac.tcs_rel_ids),
+                        Operand(0u), Operand(8u), Operand(0u));
    case MESA_SHADER_TESS_EVAL:
       return get_arg(ctx, ctx->args->ac.tes_rel_patch_id);
    default:
@@ -11264,7 +11256,8 @@ void select_program(Program *program,
             create_workgroup_barrier(bld);
 
          if (ctx.stage == vertex_geometry_gs || ctx.stage == tess_eval_geometry_gs) {
-            ctx.gs_wave_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1, m0), bld.def(s1, scc), get_arg(&ctx, args->ac.merged_wave_info), Operand((8u << 16) | 16u));
+            ctx.gs_wave_id = bld.pseudo(aco_opcode::p_extract, bld.def(s1, m0), bld.def(s1, scc),
+                                        get_arg(&ctx, args->ac.merged_wave_info), Operand(2u), Operand(8u), Operand(0u));
          }
       } else if (ctx.stage == geometry_gs)
          ctx.gs_wave_id = get_arg(&ctx, args->ac.gs_wave_id);
