@@ -320,6 +320,14 @@ opcode("p_bpermute")
 
 opcode("p_constaddr")
 
+# These don't have to be pseudo-ops, but it makes optimization easier to only
+# have to consider two instructions.
+# (src0 >> (index * bits)) & ((1 << bits) - 1) with optional sign extension
+opcode("p_extract") # src1=index, src2=bits, src3=signext
+# (src0 & ((1 << bits) - 1)) << (index * bits)
+opcode("p_insert") # src1=index, src2=bits
+
+
 # SOP2 instructions: 2 scalar inputs, 1 scalar output (+optional scc)
 SOP2 = {
   # GFX6, GFX7, GFX8, GFX9, GFX10, name

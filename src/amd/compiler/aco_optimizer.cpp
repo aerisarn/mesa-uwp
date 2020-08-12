@@ -763,6 +763,8 @@ bool alu_can_accept_constant(aco_opcode opcode, unsigned operand)
    case aco_opcode::v_readlane_b32:
    case aco_opcode::v_readlane_b32_e64:
    case aco_opcode::v_readfirstlane_b32:
+   case aco_opcode::p_extract:
+   case aco_opcode::p_insert:
       return operand != 0;
    default:
       return true;
@@ -1610,6 +1612,16 @@ void label_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       if (instr->operands[0].constantEquals(0x3f800000u))
          ctx.info[instr->definitions[0].tempId()].set_canonicalized();
       break;
+   case aco_opcode::p_extract: {
+      if (instr->operands[0].isTemp())
+         ctx.info[instr->definitions[0].tempId()].set_bitwise(instr.get());
+      break;
+   }
+   case aco_opcode::p_insert: {
+      if (instr->operands[0].isTemp())
+         ctx.info[instr->definitions[0].tempId()].set_bitwise(instr.get());
+      break;
+   }
    default:
       break;
    }
@@ -2207,6 +2219,70 @@ bool combine_three_valu_op(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode
          return true;
       }
    }
+   return false;
+}
+
+/* creates v_lshl_add_u32, v_lshl_or_b32 or v_and_or_b32 */
+bool combine_add_or_then_and_lshl(opt_ctx& ctx, aco_ptr<Instruction>& instr)
+{
+   bool is_or = instr->opcode == aco_opcode::v_or_b32;
+   aco_opcode new_op_lshl = is_or ? aco_opcode::v_lshl_or_b32 : aco_opcode::v_lshl_add_u32;
+
+   if (is_or && combine_three_valu_op(ctx, instr, aco_opcode::s_and_b32, aco_opcode::v_and_or_b32, "120", 1 | 2))
+      return true;
+   if (is_or && combine_three_valu_op(ctx, instr, aco_opcode::v_and_b32, aco_opcode::v_and_or_b32, "120", 1 | 2))
+      return true;
+   if (combine_three_valu_op(ctx, instr, aco_opcode::s_lshl_b32, new_op_lshl, "120", 1 | 2))
+      return true;
+   if (combine_three_valu_op(ctx, instr, aco_opcode::v_lshlrev_b32, new_op_lshl, "210", 1 | 2))
+      return true;
+
+   if (instr->isSDWA())
+      return false;
+
+   /* v_or_b32(p_extract(a, 0, 8/16, 0), b) -> v_and_or_b32(a, 0xff/0xffff, b)
+    * v_or_b32(p_insert(a, 0, 8/16), b) -> v_and_or_b32(a, 0xff/0xffff, b)
+    * v_or_b32(p_insert(a, 24/16, 8/16), b) -> v_lshl_or_b32(a, 24/16, b)
+    * v_add_u32(p_insert(a, 24/16, 8/16), b) -> v_lshl_add_b32(a, 24/16, b)
+    */
+   for (unsigned i = 0; i < 2; i++) {
+      Instruction *extins = follow_operand(ctx, instr->operands[i]);
+      if (!extins)
+         continue;
+
+      aco_opcode op;
+      Operand operands[3];
+
+      if (extins->opcode == aco_opcode::p_insert &&
+          (extins->operands[1].constantValue() + 1) * extins->operands[2].constantValue() == 32) {
+         op = new_op_lshl;
+         operands[1] = Operand(extins->operands[1].constantValue() * extins->operands[2].constantValue());
+      } else if (is_or && (extins->opcode == aco_opcode::p_insert ||
+                           (extins->opcode == aco_opcode::p_extract && extins->operands[3].constantEquals(0))) &&
+                 extins->operands[1].constantEquals(0)) {
+         op = aco_opcode::v_and_or_b32;
+         operands[1] = Operand(extins->operands[2].constantEquals(8) ? 0xffu : 0xffffu);
+      } else {
+        continue;
+      }
+
+      operands[0] = extins->operands[0];
+      operands[2] = instr->operands[!i];
+
+      if (!check_vop3_operands(ctx, 3, operands))
+         continue;
+
+      bool neg[3] = {}, abs[3] = {};
+      uint8_t opsel = 0, omod = 0;
+      bool clamp = false;
+      if (instr->isVOP3())
+         clamp = instr->vop3().clamp;
+
+      ctx.uses[instr->operands[i].tempId()]--;
+      create_vop3_for_op3(ctx, op, instr, operands, neg, abs, opsel, clamp, omod);
+      return true;
+   }
+
    return false;
 }
 
@@ -3198,10 +3274,7 @@ void combine_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    } else if (instr->opcode == aco_opcode::v_or_b32 && ctx.program->chip_class >= GFX9) {
       if (combine_three_valu_op(ctx, instr, aco_opcode::s_or_b32, aco_opcode::v_or3_b32, "012", 1 | 2)) ;
       else if (combine_three_valu_op(ctx, instr, aco_opcode::v_or_b32, aco_opcode::v_or3_b32, "012", 1 | 2)) ;
-      else if (combine_three_valu_op(ctx, instr, aco_opcode::s_and_b32, aco_opcode::v_and_or_b32, "120", 1 | 2)) ;
-      else if (combine_three_valu_op(ctx, instr, aco_opcode::v_and_b32, aco_opcode::v_and_or_b32, "120", 1 | 2)) ;
-      else if (combine_three_valu_op(ctx, instr, aco_opcode::s_lshl_b32, aco_opcode::v_lshl_or_b32, "120", 1 | 2)) ;
-      else combine_three_valu_op(ctx, instr, aco_opcode::v_lshlrev_b32, aco_opcode::v_lshl_or_b32, "210", 1 | 2);
+      else combine_add_or_then_and_lshl(ctx, instr) ;
    } else if (instr->opcode == aco_opcode::v_xor_b32 && ctx.program->chip_class >= GFX10) {
       if (combine_three_valu_op(ctx, instr, aco_opcode::v_xor_b32, aco_opcode::v_xor3_b32, "012", 1 | 2)) ;
       else combine_three_valu_op(ctx, instr, aco_opcode::s_xor_b32, aco_opcode::v_xor3_b32, "012", 1 | 2);
@@ -3215,9 +3288,8 @@ void combine_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
          else if (combine_three_valu_op(ctx, instr, aco_opcode::s_add_i32, aco_opcode::v_add3_u32, "012", 1 | 2)) ;
          else if (combine_three_valu_op(ctx, instr, aco_opcode::s_add_u32, aco_opcode::v_add3_u32, "012", 1 | 2)) ;
          else if (combine_three_valu_op(ctx, instr, aco_opcode::v_add_u32, aco_opcode::v_add3_u32, "012", 1 | 2)) ;
-         else if (combine_three_valu_op(ctx, instr, aco_opcode::s_lshl_b32, aco_opcode::v_lshl_add_u32, "120", 1 | 2)) ;
-         else if (combine_three_valu_op(ctx, instr, aco_opcode::v_lshlrev_b32, aco_opcode::v_lshl_add_u32, "210", 1 | 2)) ;
-         else combine_three_valu_op(ctx, instr, aco_opcode::v_mul_lo_u16, aco_opcode::v_mad_u32_u16, "120", 1 | 2) ;
+         else if (combine_three_valu_op(ctx, instr, aco_opcode::v_mul_lo_u16, aco_opcode::v_mad_u32_u16, "120", 1 | 2)) ;
+         else combine_add_or_then_and_lshl(ctx, instr) ;
       }
    } else if (instr->opcode == aco_opcode::v_add_co_u32 ||
               instr->opcode == aco_opcode::v_add_co_u32_e64) {

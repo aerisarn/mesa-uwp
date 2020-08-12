@@ -1994,6 +1994,103 @@ void lower_to_hw_instr(Program* program)
                         Operand(reg.advance(4), s1), Operand(0u), Operand(scc, s1));
                break;
             }
+            case aco_opcode::p_extract:
+            {
+               assert(instr->operands[1].isConstant());
+               assert(instr->operands[2].isConstant());
+               assert(instr->operands[3].isConstant());
+               if (instr->definitions[0].regClass() == s1)
+                  assert(instr->definitions.size() >= 2 && instr->definitions[1].physReg() == scc);
+               Definition dst = instr->definitions[0];
+               Operand op = instr->operands[0];
+               unsigned bits = instr->operands[2].constantValue();
+               unsigned index = instr->operands[1].constantValue();
+               unsigned offset = index * bits;
+               bool signext = !instr->operands[3].constantEquals(0);
+
+               if (dst.regClass() == s1) {
+                  if (offset == (32 - bits)) {
+                     bld.sop2(signext ? aco_opcode::s_ashr_i32 : aco_opcode::s_lshr_b32,
+                              dst, bld.def(s1, scc), op, Operand(offset));
+                  } else if (offset == 0 && signext && (bits == 8 || bits == 16)) {
+                     bld.sop1(bits == 8 ? aco_opcode::s_sext_i32_i8 : aco_opcode::s_sext_i32_i16, dst, op);
+                  } else {
+                     bld.sop2(signext ? aco_opcode::s_bfe_i32 : aco_opcode::s_bfe_u32,
+                              dst, bld.def(s1, scc), op, Operand((bits << 16) | offset));
+                  }
+               } else if (dst.regClass() == v1 || ctx.program->chip_class <= GFX7) {
+                  assert(op.physReg().byte() == 0 && dst.physReg().byte() == 0);
+                  if (offset == (32 - bits) && op.regClass() != s1) {
+                     bld.vop2(signext ? aco_opcode::v_ashrrev_i32 : aco_opcode::v_lshrrev_b32,
+                              dst, Operand(offset), op);
+                  } else {
+                     bld.vop3(signext ? aco_opcode::v_bfe_i32 : aco_opcode::v_bfe_u32,
+                              dst, op, Operand(offset), Operand(bits));
+                  }
+               } else if (dst.regClass() == v2b) {
+                  aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(
+                     aco_opcode::v_mov_b32, (Format)((uint16_t)Format::VOP1|(uint16_t)Format::SDWA), 1, 1)};
+                  sdwa->operands[0] = Operand(op.physReg().advance(-op.physReg().byte()),
+                                              RegClass::get(op.regClass().type(), 4));
+                  sdwa->definitions[0] = dst;
+                  sdwa->sel[0] = sdwa_ubyte0 + op.physReg().byte() + index;
+                  if (signext)
+                     sdwa->sel[0] |= sdwa_sext;
+                  sdwa->dst_sel = sdwa_uword;
+                  bld.insert(std::move(sdwa));
+               }
+               break;
+            }
+            case aco_opcode::p_insert:
+            {
+               assert(instr->operands[1].isConstant());
+               assert(instr->operands[2].isConstant());
+               if (instr->definitions[0].regClass() == s1)
+                  assert(instr->definitions.size() >= 2 && instr->definitions[1].physReg() == scc);
+               Definition dst = instr->definitions[0];
+               Operand op = instr->operands[0];
+               unsigned bits = instr->operands[2].constantValue();
+               unsigned index = instr->operands[1].constantValue();
+               unsigned offset = index * bits;
+
+               if (dst.regClass() == s1) {
+                  if (offset == (32 - bits)) {
+                     bld.sop2(aco_opcode::s_lshl_b32, dst, bld.def(s1, scc), op, Operand(offset));
+                  } else if (offset == 0) {
+                     bld.sop2(aco_opcode::s_bfe_u32, dst, bld.def(s1, scc), op, Operand(bits << 16));
+                  } else {
+                     bld.sop2(aco_opcode::s_bfe_u32, dst, bld.def(s1, scc), op, Operand(bits << 16));
+                     bld.sop2(aco_opcode::s_lshl_b32, dst, bld.def(s1, scc), Operand(dst.physReg(), s1), Operand(offset));
+                  }
+               } else if (dst.regClass() == v1 || ctx.program->chip_class <= GFX7) {
+                  if (offset == (dst.bytes() * 8u - bits)) {
+                     bld.vop2(aco_opcode::v_lshlrev_b32, dst, Operand(offset), op);
+                  } else if (offset == 0) {
+                     bld.vop3(aco_opcode::v_bfe_u32, dst, op, Operand(0u), Operand(bits));
+                  } else if (program->chip_class >= GFX9 || (op.regClass() != s1 && program->chip_class >= GFX8)) {
+                     aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, (Format)((uint16_t)Format::VOP1|(uint16_t)Format::SDWA), 1, 1)};
+                     sdwa->operands[0] = op;
+                     sdwa->definitions[0] = dst;
+                     sdwa->sel[0] = sdwa_udword;
+                     sdwa->dst_sel = (bits == 8 ? sdwa_ubyte0 : sdwa_uword0) + (offset / bits);
+                     bld.insert(std::move(sdwa));
+                  } else {
+                     bld.vop3(aco_opcode::v_bfe_u32, dst, op, Operand(0u), Operand(bits));
+                     bld.vop2(aco_opcode::v_lshlrev_b32, dst, Operand(offset), Operand(dst.physReg(), v1));
+                  }
+               } else {
+                  assert(dst.regClass() == v2b);
+                  aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(
+                     aco_opcode::v_mov_b32, (Format)((uint16_t)Format::VOP1|(uint16_t)Format::SDWA), 1, 1)};
+                  sdwa->operands[0] = op;
+                  sdwa->definitions[0] = Definition(dst.physReg().advance(-dst.physReg().byte()), v1);
+                  sdwa->sel[0] = sdwa_uword;
+                  sdwa->dst_sel = sdwa_ubyte0 + dst.physReg().byte() + index;
+                  sdwa->dst_preserve = 1;
+                  bld.insert(std::move(sdwa));
+               }
+               break;
+            }
             default:
                break;
             }

@@ -376,6 +376,29 @@ bool validate_ir(Program* program)
                   check(instr->definitions[0].size() == op.size(), "Operand sizes must match Definition size", instr.get());
                }
                check(instr->operands.size() == block.linear_preds.size(), "Number of Operands does not match number of predecessors", instr.get());
+            } else if (instr->opcode == aco_opcode::p_extract || instr->opcode == aco_opcode::p_insert) {
+               check(instr->operands[0].isTemp(),
+                     "Data operand must be temporary", instr.get());
+               check(instr->operands[1].isConstant(), "Index must be constant", instr.get());
+               if (instr->opcode == aco_opcode::p_extract)
+                  check(instr->operands[3].isConstant(), "Sign-extend flag must be constant", instr.get());
+
+               check(instr->definitions[0].getTemp().type() != RegType::sgpr ||
+                     instr->operands[0].getTemp().type() == RegType::sgpr,
+                     "Can't extract/insert VGPR to SGPR", instr.get());
+
+               if (instr->operands[0].getTemp().type() == RegType::vgpr)
+                  check(instr->operands[0].bytes() == instr->definitions[0].bytes(),
+                        "Sizes of operand and definition must match", instr.get());
+
+               if (instr->definitions[0].getTemp().type() == RegType::sgpr)
+                  check(instr->definitions.size() >= 2 && instr->definitions[1].isFixed() && instr->definitions[1].physReg() == scc, "SGPR extract/insert needs a SCC definition", instr.get());
+
+               check(instr->operands[2].constantEquals(8) || instr->operands[2].constantEquals(16), "Size must be 8 or 16", instr.get());
+               check(instr->operands[2].constantValue() < instr->operands[0].getTemp().bytes() * 8u, "Size must be smaller than source", instr.get());
+
+               unsigned comp = instr->operands[0].bytes() * 8u / MAX2(instr->operands[2].constantValue(), 1);
+               check(instr->operands[1].constantValue() < comp, "Index must be in-bounds", instr.get());
             }
             break;
          }
