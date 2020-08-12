@@ -196,7 +196,7 @@ memory_sync_info get_sync_info(const Instruction* instr)
    }
 }
 
-bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr)
+bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr, bool pre_ra)
 {
    if (!instr->isVALU())
       return false;
@@ -217,7 +217,7 @@ bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr)
          return false;
 
       //TODO: return true if we know we will use vcc
-      if (instr->definitions.size() >= 2)
+      if (!pre_ra && instr->definitions.size() >= 2)
          return false;
 
       for (unsigned i = 1; i < instr->operands.size(); i++) {
@@ -251,9 +251,9 @@ bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr)
       return false;
 
    //TODO: return true if we know we will use vcc
-   if (instr->isVOPC())
+   if (!pre_ra && instr->isVOPC())
       return false;
-   if (instr->operands.size() >= 3 && !is_mac)
+   if (!pre_ra && instr->operands.size() >= 3 && !is_mac)
       return false;
 
    return instr->opcode != aco_opcode::v_madmk_f32 &&

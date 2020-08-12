@@ -1623,7 +1623,7 @@ memory_sync_info get_sync_info(const Instruction* instr);
 bool is_dead(const std::vector<uint16_t>& uses, Instruction *instr);
 
 bool can_use_opsel(chip_class chip, aco_opcode op, int idx, bool high);
-bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr);
+bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr, bool pre_ra);
 /* updates "instr" and returns the old instruction (or NULL if no update was needed) */
 aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& instr);
 bool needs_exec_mask(const Instruction* instr);

@@ -427,7 +427,7 @@ unsigned get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>
 
    if (instr->opcode == aco_opcode::v_cvt_f32_ubyte0) {
       return 1;
-   } else if (can_use_SDWA(chip, instr)) {
+   } else if (can_use_SDWA(chip, instr, false)) {
       return rc.bytes() % 2 == 0 ? 2 : 1;
    } else if (rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, idx, 1)) {
       return 2;
@@ -479,7 +479,7 @@ void add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx
          break;
       }
       return;
-   } else if (can_use_SDWA(chip, instr)) {
+   } else if (can_use_SDWA(chip, instr, false)) {
       aco_ptr<Instruction> tmp = convert_to_SDWA(chip, instr);
       return;
    } else if (rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, idx, byte / 2)) {
@@ -550,7 +550,7 @@ std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, con
    bytes_written = bytes_written > 4 ? align(bytes_written, 4) : bytes_written;
    bytes_written = MAX2(bytes_written, instr_info.definition_size[(int)instr->opcode] / 8u);
 
-   if (can_use_SDWA(chip, instr)) {
+   if (can_use_SDWA(chip, instr, false)) {
       return std::make_pair(rc.bytes(), rc.bytes());
    } else if (rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, -1, 1)) {
       return std::make_pair(2u, bytes_written);
@@ -587,7 +587,7 @@ void add_subdword_definition(Program *program, aco_ptr<Instruction>& instr, unsi
 
    if (instr->isPseudo()) {
       return;
-   } else if (can_use_SDWA(chip, instr)) {
+   } else if (can_use_SDWA(chip, instr, false)) {
       unsigned def_size = instr_info.definition_size[(int)instr->opcode];
       if (reg.byte() || chip < GFX10 || def_size > rc.bytes() * 8u)
          convert_to_SDWA(chip, instr);
