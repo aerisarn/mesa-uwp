@@ -61,9 +61,37 @@
 
 static bool
 block_check_for_allowed_instrs(nir_block *block, unsigned *count,
-                               bool alu_ok, bool indirect_load_ok,
+                               unsigned limit, bool indirect_load_ok,
                                bool expensive_alu_ok)
 {
+   bool alu_ok = limit != 0;
+
+   /* Used on non-control-flow HW to flatten all IFs. */
+   if (limit == ~0) {
+      nir_foreach_instr(instr, block) {
+         switch (instr->type) {
+         case nir_instr_type_alu:
+         case nir_instr_type_deref:
+         case nir_instr_type_load_const:
+         case nir_instr_type_phi:
+         case nir_instr_type_ssa_undef:
+         case nir_instr_type_tex:
+            break;
+
+         case nir_instr_type_intrinsic:
+            if (!nir_intrinsic_can_reorder(nir_instr_as_intrinsic(instr)))
+               return false;
+            break;
+
+         case nir_instr_type_call:
+         case nir_instr_type_jump:
+         case nir_instr_type_parallel_copy:
+            return false;
+         }
+      }
+      return true;
+   }
+
    nir_foreach_instr(instr, block) {
       switch (instr->type) {
       case nir_instr_type_intrinsic: {
@@ -379,9 +407,9 @@ nir_opt_peephole_select_block(nir_block *block, nir_shader *shader,
 
    /* ... and those blocks must only contain "allowed" instructions. */
    unsigned count = 0;
-   if (!block_check_for_allowed_instrs(then_block, &count, limit != 0,
+   if (!block_check_for_allowed_instrs(then_block, &count, limit,
                                        indirect_load_ok, expensive_alu_ok) ||
-       !block_check_for_allowed_instrs(else_block, &count, limit != 0,
+       !block_check_for_allowed_instrs(else_block, &count, limit,
                                        indirect_load_ok, expensive_alu_ok))
       return false;
 
