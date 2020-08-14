@@ -498,3 +498,177 @@ BEGIN_TEST(to_hw_instr.self_intersecting_swap)
 
    finish_to_hw_instr_test();
 END_TEST
+
+BEGIN_TEST(to_hw_instr.extract)
+   PhysReg s0_lo{0};
+   PhysReg s1_lo{1};
+   PhysReg v0_lo{256};
+   PhysReg v1_lo{257};
+
+   for (unsigned i = GFX7; i <= GFX9; i++) {
+   for (unsigned is_signed = 0; is_signed <= 1; is_signed++) {
+      if (!setup_cs(NULL, (chip_class)i, CHIP_UNKNOWN, is_signed ? "_signed" : "_unsigned"))
+         continue;
+
+      #define EXT(idx, size) \
+         bld.pseudo(aco_opcode::p_extract, Definition(v0_lo, v1), Operand(v1_lo, v1),\
+                    Operand((uint32_t)idx), Operand((uint32_t)size), Operand(is_signed));
+
+      //; funcs['v_bfe'] = lambda _: 'v_bfe_i32' if variant.endswith('_signed') else 'v_bfe_u32'
+      //; funcs['v_shr'] = lambda _: 'v_ashrrev_i32' if variant.endswith('_signed') else 'v_lshrrev_b32'
+      //; funcs['s_bfe'] = lambda _: 's_bfe_i32' if variant.endswith('_signed') else 's_bfe_u32'
+      //; funcs['s_shr'] = lambda _: 's_ashr_i32' if variant.endswith('_signed') else 's_lshr_b32'
+      //; funcs['sel'] = lambda bits: ('sext(%%_:v[1])[%s]' if variant.endswith('_signed') else '%%_:v[1][%s]') % bits
+
+      //>> p_unit_test 0
+      bld.pseudo(aco_opcode::p_unit_test, Operand(0u));
+      //! v1: %_:v[0] = @v_bfe %_:v[1], 0, 8
+      EXT(0, 8)
+      //! v1: %_:v[0] = @v_bfe %_:v[1], 8, 8
+      EXT(1, 8)
+      //! v1: %_:v[0] = @v_bfe %_:v[1], 16, 8
+      EXT(2, 8)
+      //! v1: %_:v[0] = @v_shr 24, %_:v[1]
+      EXT(3, 8)
+      //! v1: %_:v[0] = @v_bfe %_:v[1], 0, 16
+      EXT(0, 16)
+      //! v1: %_:v[0] = @v_shr 16, %_:v[1]
+      EXT(1, 16)
+
+      #undef EXT
+
+      #define EXT(idx, size) \
+         bld.pseudo(aco_opcode::p_extract, Definition(s0_lo, s1), Definition(scc, s1), \
+                    Operand(s1_lo, s1), Operand((uint32_t)idx), Operand((uint32_t)size), Operand(is_signed));
+
+      //>> p_unit_test 2
+      bld.pseudo(aco_opcode::p_unit_test, Operand(2u));
+      //~gfx._unsigned! s1: %_:s[0],  s1: %_:scc = @s_bfe %_:s[1], 0x80000
+      //~gfx._signed! s1: %_:s[0] = s_sext_i32_i8 %_:s[1]
+      EXT(0, 8)
+      //! s1: %_:s[0],  s1: %_:scc = @s_bfe %_:s[1], 0x80008
+      EXT(1, 8)
+      //! s1: %_:s[0],  s1: %_:scc = @s_bfe %_:s[1], 0x80010
+      EXT(2, 8)
+      //! s1: %_:s[0],  s1: %_:scc = @s_shr %_:s[1], 24
+      EXT(3, 8)
+      //~gfx._unsigned! s1: %_:s[0],  s1: %_:scc = @s_bfe %_:s[1], 0x100000
+      //~gfx._signed! s1: %_:s[0] = s_sext_i32_i16 %_:s[1]
+      EXT(0, 16)
+      //! s1: %_:s[0],  s1: %_:scc = @s_shr %_:s[1], 16
+      EXT(1, 16)
+
+      #undef EXT
+
+      #define EXT(idx, src_b) \
+         bld.pseudo(aco_opcode::p_extract, Definition(v0_lo, v2b), Operand(v1_lo.advance(src_b), v2b),\
+                    Operand((uint32_t)idx), Operand(8u), Operand(is_signed));
+
+      //>> p_unit_test 4
+      bld.pseudo(aco_opcode::p_unit_test, Operand(4u));
+      //~gfx7.*! v2b: %_:v[0][0:16] = @v_bfe %_:v[1][0:16], 0, 8
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(0:7)
+      EXT(0, 0)
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(16:23)
+      if (i != GFX7)
+         EXT(0, 2)
+      //~gfx7.*! v2b: %_:v[0][0:16] = @v_bfe %_:v[1][0:16], 8, 8
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(8:15)
+      EXT(1, 0)
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(24:31)
+      if (i != GFX7)
+         EXT(1, 2)
+
+      #undef EXT
+
+      finish_to_hw_instr_test();
+
+      //! s_endpgm
+   }
+   }
+END_TEST
+
+BEGIN_TEST(to_hw_instr.insert)
+   PhysReg s0_lo{0};
+   PhysReg s1_lo{1};
+   PhysReg v0_lo{256};
+   PhysReg v1_lo{257};
+
+   for (unsigned i = GFX7; i <= GFX9; i++) {
+      if (!setup_cs(NULL, (chip_class)i))
+         continue;
+
+      #define INS(idx, size) \
+         bld.pseudo(aco_opcode::p_insert, Definition(v0_lo, v1), Operand(v1_lo, v1),\
+                    Operand((uint32_t)idx), Operand((uint32_t)size));
+
+      //>> p_unit_test 0
+      bld.pseudo(aco_opcode::p_unit_test, Operand(0u));
+      //! v1: %_:v[0] = v_bfe_u32 %_:v[1], 0, 8
+      INS(0, 8)
+      //~gfx7! v1: %0:v[0] = v_bfe_u32 %0:v[1], 0, 8
+      //~gfx7! v1: %0:v[0] = v_lshlrev_b32 8, %0:v[0]
+      //~gfx[^7]! v1: %0:v[0] = v_mov_b32 %0:v[1] dst_sel:ubyte1
+      INS(1, 8)
+      //~gfx7! v1: %0:v[0] = v_bfe_u32 %0:v[1], 0, 8
+      //~gfx7! v1: %0:v[0] = v_lshlrev_b32 16, %0:v[0]
+      //~gfx[^7]! v1: %0:v[0] = v_mov_b32 %0:v[1] dst_sel:ubyte2
+      INS(2, 8)
+      //! v1: %0:v[0] = v_lshlrev_b32 24, %0:v[1]
+      INS(3, 8)
+      //! v1: %0:v[0] = v_bfe_u32 %0:v[1], 0, 16
+      INS(0, 16)
+      //! v1: %0:v[0] = v_lshlrev_b32 16, %0:v[1]
+      INS(1, 16)
+
+      #undef INS
+
+      #define INS(idx, size) \
+         bld.pseudo(aco_opcode::p_insert, Definition(s0_lo, s1), Definition(scc, s1),\
+                    Operand(s1_lo, s1), Operand((uint32_t)idx), Operand((uint32_t)size));
+
+      //>> p_unit_test 1
+      bld.pseudo(aco_opcode::p_unit_test, Operand(1u));
+      //! s1: %_:s[0],  s1: %_:scc = s_bfe_u32 %_:s[1], 0x80000
+      INS(0, 8)
+      //! s1: %_:s[0],  s1: %_:scc = s_bfe_u32 %_:s[1], 0x80000
+      //! s1: %_:s[0],  s1: %_:scc = s_lshl_b32 %_:s[0], 8
+      INS(1, 8)
+      //! s1: %_:s[0],  s1: %_:scc = s_bfe_u32 %_:s[1], 0x80000
+      //! s1: %_:s[0],  s1: %_:scc = s_lshl_b32 %_:s[0], 16
+      INS(2, 8)
+      //! s1: %_:s[0],  s1: %_:scc = s_lshl_b32 %_:s[1], 24
+      INS(3, 8)
+      //! s1: %_:s[0],  s1: %_:scc = s_bfe_u32 %_:s[1], 0x100000
+      INS(0, 16)
+      //! s1: %_:s[0],  s1: %_:scc = s_lshl_b32 %_:s[1], 16
+      INS(1, 16)
+
+      #undef INS
+
+      #define INS(idx, def_b) \
+         bld.pseudo(aco_opcode::p_insert, Definition(v0_lo.advance(def_b), v2b),\
+                    Operand(v1_lo, v2b), Operand((uint32_t)idx), Operand(8u));
+
+      //>> p_unit_test 2
+      bld.pseudo(aco_opcode::p_unit_test, Operand(2u));
+      //~gfx7! v2b: %_:v[0][0:16] = v_bfe_u32 %_:v[1][0:16], 0, 8
+      //~gfx[^7]! v1: %_:v[0] = v_mov_b32 %_:v[1][0:16] dst_sel:ubyte0 dst_preserve
+      INS(0, 0)
+      //~gfx[^7]! v1: %_:v[0] = v_mov_b32 %_:v[1][0:16] dst_sel:ubyte2 dst_preserve
+      if (i != GFX7)
+         INS(0, 2)
+      //~gfx7! v2b: %_:v[0][0:16] = v_lshlrev_b32 8, %_:v[1][0:16]
+      //~gfx[^7]! v1: %_:v[0] = v_mov_b32 %_:v[1][0:16] dst_sel:ubyte1 dst_preserve
+      INS(1, 0)
+      //~gfx[^7]! v1: %_:v[0] = v_mov_b32 %_:v[1][0:16] dst_sel:ubyte3 dst_preserve
+      if (i != GFX7)
+         INS(1, 2)
+
+      #undef INS
+
+      finish_to_hw_instr_test();
+
+      //! s_endpgm
+   }
+END_TEST
