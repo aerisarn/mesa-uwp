@@ -350,10 +350,16 @@ namespace {
             if (opcode == SpvOpTypePointer)
                pointer_types[id] = get<SpvId>(inst, 3);
 
+            module::size_t alignment;
+            if (storage_class == SpvStorageClassWorkgroup)
+               alignment = opcode == SpvOpTypePointer ? types[pointer_types[id]].target_align : 0;
+            else
+               alignment = pointer_byte_size;
+
             types[id] = { convert_storage_class(storage_class, err),
                           sizeof(cl_mem),
                           static_cast<module::size_t>(pointer_byte_size),
-                          static_cast<module::size_t>(pointer_byte_size),
+                          alignment,
                           module::argument::zero_ext };
             types[id].info.address_qualifier = convert_storage_class_to_cl(storage_class);
             break;

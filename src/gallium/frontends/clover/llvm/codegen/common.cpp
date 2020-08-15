@@ -213,8 +213,11 @@ namespace {
                const auto offset =
                            static_cast<unsigned>(clang::LangAS::opencl_local);
                if (address_space == map[offset]) {
+                  const auto pointee_type = cast<
+                     ::llvm::PointerType>(actual_type)->getElementType();
                   args.emplace_back(module::argument::local, arg_api_size,
-                                    target_size, target_align,
+                                    target_size,
+                                    dl.getABITypeAlignment(pointee_type),
                                     module::argument::zero_ext);
                } else {
                   // XXX: Correctly handle constant address space.  There is no
