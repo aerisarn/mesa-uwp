@@ -561,6 +561,8 @@ get_variable_mode_str(nir_variable_mode mode, bool want_local_global_mode)
    case nir_var_mem_task_payload:
       return "task_payload";
    default:
+      if (mode && (mode & nir_var_mem_generic) == mode)
+         return "generic";
       return "";
    }
 }
