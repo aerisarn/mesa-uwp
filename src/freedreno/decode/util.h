@@ -68,7 +68,7 @@ dump_hex(const void *buf, int sz)
       d |= *(ptr++) << 0;
       d |= *(ptr++) << 8;
       d |= *(ptr++) << 16;
-      d |= *(ptr++) << 24;
+      d |= (uint32_t)*(ptr++) << 24;
 
       printf("%08x", d);
 
@@ -99,7 +99,7 @@ dump_float(const void *buf, int sz)
       d |= *(ptr++) << 0;
       d |= *(ptr++) << 8;
       d |= *(ptr++) << 16;
-      d |= *(ptr++) << 24;
+      d |= (uint32_t)*(ptr++) << 24;
 
       printf("%8f", d2f(d));
 
@@ -171,7 +171,7 @@ dump_hex_ascii(const void *buf, int sz, int level)
       d |= *(ptr++) << 0;
       d |= *(ptr++) << 8;
       d |= *(ptr++) << 16;
-      d |= *(ptr++) << 24;
+      d |= (uint32_t)*(ptr++) << 24;
 
       printf("%08x", d);
 
