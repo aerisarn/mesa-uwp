@@ -43,6 +43,8 @@ nir_opt_cse_impl(nir_function_impl *impl)
 {
    struct set *instr_set = nir_instr_set_create(NULL);
 
+   _mesa_set_resize(instr_set, impl->ssa_alloc);
+
    nir_metadata_require(impl, nir_metadata_dominance);
 
    bool progress = false;
