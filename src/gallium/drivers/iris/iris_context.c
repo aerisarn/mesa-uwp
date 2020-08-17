@@ -217,6 +217,8 @@ iris_destroy_context(struct pipe_context *ctx)
 
    if (ctx->stream_uploader)
       u_upload_destroy(ctx->stream_uploader);
+   if (ctx->const_uploader)
+      u_upload_destroy(ctx->const_uploader);
 
    clear_dirty_dmabuf_set(ice);
 
@@ -286,7 +288,14 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
       free(ctx);
       return NULL;
    }
-   ctx->const_uploader = ctx->stream_uploader;
+   ctx->const_uploader = u_upload_create(ctx, 1024 * 1024,
+                                         PIPE_BIND_CONSTANT_BUFFER,
+                                         PIPE_USAGE_IMMUTABLE, 0);
+   if (!ctx->const_uploader) {
+      u_upload_destroy(ctx->stream_uploader);
+      free(ctx);
+      return NULL;
+   }
 
    if (!create_dirty_dmabuf_set(ice)) {
       ralloc_free(ice);
