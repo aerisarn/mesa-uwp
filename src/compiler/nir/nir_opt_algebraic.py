@@ -846,12 +846,17 @@ optimizations.extend([
 
    # These patterns can result when (a < b || a < c) => (a < min(b, c))
    # transformations occur before constant propagation and loop-unrolling.
-   (('~flt', a, ('fmax', b, a)), ('flt', a, b)),
-   (('~flt', ('fmin', a, b), a), ('flt', b, a)),
+   #
+   # The flt versions are exact.  If isnan(a), the original pattern is
+   # trivially false, and the replacements are false too.  If isnan(b):
+   #
+   #    a < fmax(NaN, a) => a < a => false vs a < NaN => false
+   (('flt', a, ('fmax', b, a)), ('flt', a, b)),
+   (('flt', ('fmin', a, b), a), ('flt', b, a)),
    (('~fge', a, ('fmin', b, a)), True),
    (('~fge', ('fmax', a, b), a), True),
-   (('~flt', a, ('fmin', b, a)), False),
-   (('~flt', ('fmax', a, b), a), False),
+   (('flt', a, ('fmin', b, a)), False),
+   (('flt', ('fmax', a, b), a), False),
    (('~fge', a, ('fmax', b, a)), ('fge', a, b)),
    (('~fge', ('fmin', a, b), a), ('fge', b, a)),
 
