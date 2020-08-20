@@ -1171,7 +1171,17 @@ update_from_topology(struct intel_device_info *devinfo,
       }
    }
 
-   if (devinfo->ver == 12 && devinfo->num_slices == 1) {
+   if (devinfo->verx10 >= 125) {
+      if (devinfo->subslice_total > 16) {
+         assert(devinfo->subslice_total <= 32);
+         devinfo->l3_banks = 32;
+      } else if (devinfo->subslice_total > 8) {
+         devinfo->l3_banks = 16;
+      } else {
+         devinfo->l3_banks = 8;
+      }
+   } else {
+      assert(devinfo->num_slices == 1);
       if (devinfo->subslice_total >= 6) {
          assert(devinfo->subslice_total == 6);
          devinfo->l3_banks = 8;
