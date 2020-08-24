@@ -545,6 +545,9 @@ struct anv_bo {
 
    /** True if this BO has implicit CCS data attached to it */
    bool has_implicit_ccs:1;
+
+   /** True if this BO should be mapped with Write Combine enabled */
+   bool map_wc:1;
 };
 
 static inline struct anv_bo *
@@ -1268,6 +1271,12 @@ enum anv_bo_alloc_flags {
 
    /** For non device local allocations */
    ANV_BO_ALLOC_NO_LOCAL_MEM = (1 << 11),
+
+   /** For local memory, ensure that the writes are combined.
+    *
+    * Should be faster for bo pools, which write but do not read
+    */
+   ANV_BO_ALLOC_WRITE_COMBINE = (1 << 12),
 };
 
 VkResult anv_device_alloc_bo(struct anv_device *device,
