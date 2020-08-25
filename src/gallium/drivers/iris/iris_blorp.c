@@ -177,7 +177,7 @@ blorp_alloc_vertex_buffer(struct blorp_batch *blorp_batch,
    struct iris_bo *bo;
    uint32_t offset;
 
-   void *map = stream_state(batch, ice->ctx.stream_uploader, size, 64,
+   void *map = stream_state(batch, ice->ctx.const_uploader, size, 64,
                             &offset, &bo);
 
    *addr = (struct blorp_address) {
