@@ -6614,7 +6614,7 @@ iris_upload_render_state(struct iris_context *ice,
       if (draw->has_user_indices) {
          unsigned start_offset = draw->index_size * sc->start;
 
-         u_upload_data(ice->ctx.stream_uploader, start_offset,
+         u_upload_data(ice->ctx.const_uploader, start_offset,
                        sc->count * draw->index_size, 4,
                        (char*)draw->index.user + start_offset,
                        &offset, &ice->state.last_res.index_buffer);
