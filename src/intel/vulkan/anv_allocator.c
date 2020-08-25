@@ -1697,6 +1697,9 @@ anv_device_alloc_bo(struct anv_device *device,
                     uint64_t explicit_address,
                     struct anv_bo **bo_out)
 {
+   if (!(alloc_flags & ANV_BO_ALLOC_LOCAL_MEM))
+      anv_perf_warn(device, NULL, "system memory used");
+
    if (!device->physical->has_implicit_ccs)
       assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS));
 
