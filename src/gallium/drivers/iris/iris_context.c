@@ -315,14 +315,14 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    slab_create_child(&ice->transfer_pool_unsync, &screen->transfer_pool);
 
    ice->state.surface_uploader =
-      u_upload_create(ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
+      u_upload_create(ctx, 64 * 1024, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
                       IRIS_RESOURCE_FLAG_SURFACE_MEMZONE);
    ice->state.dynamic_uploader =
-      u_upload_create(ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
+      u_upload_create(ctx, 64 * 1024, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
                       IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE);
 
    ice->query_buffer_uploader =
-      u_upload_create(ctx, 4096, PIPE_BIND_CUSTOM, PIPE_USAGE_STAGING,
+      u_upload_create(ctx, 16 * 1024, PIPE_BIND_CUSTOM, PIPE_USAGE_STAGING,
                       0);
 
    genX_call(devinfo, init_state, ice);
