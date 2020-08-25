@@ -3791,7 +3791,7 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
       }
 
       if (!tgt->offset.res)
-         upload_state(ctx->stream_uploader, &tgt->offset, sizeof(uint32_t), 4);
+         upload_state(ctx->const_uploader, &tgt->offset, sizeof(uint32_t), 4);
 
       struct iris_resource *res = (void *) tgt->base.buffer;
 
