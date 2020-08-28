@@ -71,6 +71,8 @@ iris_lost_context_state(struct iris_batch *batch)
       batch->screen->vtbl.init_render_context(batch);
    } else if (batch->name == IRIS_BATCH_COMPUTE) {
       batch->screen->vtbl.init_compute_context(batch);
+   } else if (batch->name == IRIS_BATCH_BLITTER) {
+      /* No state to set up */
    } else {
       unreachable("unhandled batch reset");
    }

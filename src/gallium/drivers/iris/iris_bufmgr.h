@@ -146,7 +146,7 @@ enum iris_heap {
 
 extern const char *iris_heap_to_string[];
 
-#define IRIS_BATCH_COUNT 2
+#define IRIS_BATCH_COUNT 3
 
 struct iris_bo_screen_deps {
    struct iris_syncobj *write_syncobjs[IRIS_BATCH_COUNT];

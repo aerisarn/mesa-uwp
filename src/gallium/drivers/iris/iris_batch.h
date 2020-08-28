@@ -57,6 +57,7 @@ struct iris_context;
 enum iris_batch_name {
    IRIS_BATCH_RENDER,
    IRIS_BATCH_COMPUTE,
+   IRIS_BATCH_BLITTER,
 };
 
 struct iris_batch {
