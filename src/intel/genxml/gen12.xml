@@ -7061,6 +7061,37 @@
     <field name="MFX Pipeline Command Flush" start="51" end="51" type="bool"/>
   </instruction>
 
+  <instruction name="XY_BLOCK_COPY_BLT" bias="2" length="12" engine="blitter">
+    <field name="DWord Length" start="0" end="7" type="uint" default="10"/>
+    <field name="Color Depth" start="19" end="21" type="uint"/>
+    <field name="Opcode" start="22" end="28" type="uint" default="0x41"/>
+    <field name="Client" start="29" end="31" type="uint" default="2"/>
+    <field name="Destination Pitch" start="32" end="49" type="uint"/>
+    <field name="Destination MOCS" start="53" end="59" type="uint" nonzero="true"/>
+    <field name="Destination Tiling" start="62" end="63" type="int" prefix="XY_TILE">
+      <value name="LINEAR" value="0"/>
+      <value name="Y" value="1"/>
+    </field>
+    <field name="Destination X1" start="64" end="79" type="int"/>
+    <field name="Destination Y1" start="80" end="95" type="int"/>
+    <field name="Destination X2" start="96" end="111" type="int"/>
+    <field name="Destination Y2" start="112" end="127" type="int"/>
+    <field name="Destination Base Address" start="128" end="191" type="address"/>
+    <field name="Destination X Offset" start="192" end="205" type="uint"/>
+    <field name="Destination Y Offset" start="208" end="221" type="uint"/>
+    <field name="Source X1" start="224" end="239" type="int"/>
+    <field name="Source Y1" start="240" end="255" type="int"/>
+    <field name="Source Pitch" start="256" end="273" type="uint"/>
+    <field name="Source MOCS" start="277" end="283" type="uint" nonzero="true"/>
+    <field name="Source Tiling" start="286" end="287" type="uint" prefix="XY_TILE">
+      <value name="LINEAR" value="0"/>
+      <value name="Y" value="1"/>
+    </field>
+    <field name="Source Base Address" start="288" end="351" type="address"/>
+    <field name="Source X Offset" start="352" end="365" type="uint"/>
+    <field name="Source Y Offset" start="368" end="381" type="uint"/>
+  </instruction>
+
   <register name="3D_CHICKEN3" length="1" num="0x2090">
      <field name="AA Line Quality Fix" start="5" end="5" type="bool"/>
      <field name="AA Line Quality Fix Mask" start="21" end="21" type="bool"/>
