@@ -488,7 +488,7 @@ remove_unused_block(struct ir3_block *old_target)
 	}
 }
 
-static void
+static bool
 retarget_jump(struct ir3_instruction *instr, struct ir3_block *new_target)
 {
 	struct ir3_block *old_target = instr->cat0.target;
@@ -508,68 +508,88 @@ retarget_jump(struct ir3_instruction *instr, struct ir3_block *new_target)
 	/* and remove old_target's predecessor: */
 	ir3_block_remove_predecessor(old_target, cur_block);
 
-	if (old_target->predecessors_count == 0)
-		remove_unused_block(old_target);
-
 	instr->cat0.target = new_target;
-}
 
-static bool
-resolve_jump(struct ir3_instruction *instr)
-{
-	struct ir3_block *tblock =
-		resolve_dest_block(instr->cat0.target);
-	struct ir3_instruction *target;
-
-	if (tblock != instr->cat0.target) {
-		retarget_jump(instr, tblock);
+	if (old_target->predecessors_count == 0) {
+		remove_unused_block(old_target);
 		return true;
 	}
 
-	target = list_first_entry(&tblock->instr_list,
-				struct ir3_instruction, node);
-
-	/* TODO maybe a less fragile way to do this.  But we are expecting
-	 * a pattern from sched_block() that looks like:
-	 *
-	 *   br !p0.x, #else-block
-	 *   br p0.x, #if-block
-	 *
-	 * if the first branch target is +2, or if 2nd branch target is +1
-	 * then we can just drop the jump.
-	 */
-	unsigned next_block;
-	if (instr->cat0.inv1 == true)
-		next_block = 2;
-	else
-		next_block = 1;
-
-	if (target->ip == (instr->ip + next_block)) {
-		list_delinit(&instr->node);
-		return true;
-	} else {
-		instr->cat0.immed =
-			(int)target->ip - (int)instr->ip;
-	}
 	return false;
 }
 
-/* resolve jumps, removing jumps/branches to immediately following
- * instruction which we end up with from earlier stages.  Since
- * removing an instruction can invalidate earlier instruction's
- * branch offsets, we need to do this iteratively until no more
- * branches are removed.
- */
 static bool
+opt_jump(struct ir3 *ir)
+{
+	bool progress = false;
+
+	foreach_block (block, &ir->block_list) {
+		foreach_instr (instr, &block->instr_list) {
+			if (!is_flow(instr) || !instr->cat0.target)
+				continue;
+
+			struct ir3_block *tblock =
+				resolve_dest_block(instr->cat0.target);
+			if (tblock != instr->cat0.target) {
+				progress = true;
+
+				/* Exit early if we deleted a block to avoid iterator
+				 * weirdness/assert fails
+				 */
+				if (retarget_jump(instr, tblock))
+					return true;
+			}
+		}
+
+		/* Detect the case where the block ends either with:
+		 * - A single unconditional jump to the next block.
+		 * - Two jump instructions with opposite conditions, and one of the
+		 *   them jumps to the next block.
+		 * We can remove the one that jumps to the next block in either case.
+		 */
+		if (list_is_empty(&block->instr_list))
+			continue;
+
+		struct ir3_instruction *jumps[2] = { NULL, NULL };
+		jumps[0] = list_last_entry(&block->instr_list, struct ir3_instruction, node);
+		if (!list_is_singular(&block->instr_list))
+			jumps[1] = list_last_entry(&jumps[0]->node, struct ir3_instruction, node);
+
+		if (jumps[0]->opc == OPC_JUMP)
+			jumps[1] = NULL;
+		else if (jumps[0]->opc != OPC_B || !jumps[1] || jumps[1]->opc != OPC_B)
+			continue;
+		
+		for (unsigned i = 0; i < 2; i++) {
+			if (!jumps[i])
+				continue;
+
+			struct ir3_block *tblock = jumps[i]->cat0.target;
+			if (&tblock->node == block->node.next) {
+				list_delinit(&jumps[i]->node);
+				progress = true;
+				break;
+			}
+		}
+	}
+
+	return progress;
+}
+
+static void
 resolve_jumps(struct ir3 *ir)
 {
 	foreach_block (block, &ir->block_list)
 		foreach_instr (instr, &block->instr_list)
-			if (is_flow(instr) && instr->cat0.target)
-				if (resolve_jump(instr))
-					return true;
+			if (is_flow(instr) && instr->cat0.target) {
+				struct ir3_instruction *target =
+					list_first_entry(&instr->cat0.target->instr_list,
+							struct ir3_instruction, node);
 
-	return false;
+				instr->cat0.immed =
+					(int)target->ip - (int)instr->ip;
+			}
+
 }
 
 static void mark_jp(struct ir3_block *block)
@@ -612,7 +632,7 @@ mark_xvergence_points(struct ir3 *ir)
 /* Insert the branch/jump instructions for flow control between blocks.
  * Initially this is done naively, without considering if the successor
  * block immediately follows the current block (ie. so no jump required),
- * but that is cleaned up in resolve_jumps().
+ * but that is cleaned up in opt_jump().
  *
  * TODO what ensures that the last write to p0.x in a block is the
  * branch condition?  Have we been getting lucky all this time?
@@ -831,9 +851,11 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 
 	nop_sched(ir, so);
 
-	do {
-		ir3_count_instructions(ir);
-	} while(resolve_jumps(ir));
+	while (opt_jump(ir))
+		;
+
+	ir3_count_instructions(ir);
+	resolve_jumps(ir);
 
 	mark_xvergence_points(ir);
 
