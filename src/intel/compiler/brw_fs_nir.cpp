@@ -2824,25 +2824,24 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       /* Zero the message header */
       bld.exec_all().MOV(m0, brw_imm_ud(0u));
 
-      if (devinfo->ver < 11) {
+      if (devinfo->ver >= 11) {
+         chanbld.AND(m0_2, retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD),
+                     brw_imm_ud(INTEL_MASK(30, 24)));
+
+         /* Set the Barrier Count and the enable bit */
+         chanbld.OR(m0_2, m0_2,
+                    brw_imm_ud(tcs_prog_data->instances << 8 | (1 << 15)));
+      } else {
          /* Copy "Barrier ID" from r0.2, bits 16:13 */
          chanbld.AND(m0_2, retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD),
                      brw_imm_ud(INTEL_MASK(16, 13)));
 
          /* Shift it up to bits 27:24. */
          chanbld.SHL(m0_2, m0_2, brw_imm_ud(11));
-      } else {
-         chanbld.AND(m0_2, retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD),
-                     brw_imm_ud(INTEL_MASK(30, 24)));
-      }
 
-      /* Set the Barrier Count and the enable bit */
-      if (devinfo->ver < 11) {
+         /* Set the Barrier Count and the enable bit */
          chanbld.OR(m0_2, m0_2,
                     brw_imm_ud(tcs_prog_data->instances << 9 | (1 << 15)));
-      } else {
-         chanbld.OR(m0_2, m0_2,
-                    brw_imm_ud(tcs_prog_data->instances << 8 | (1 << 15)));
       }
 
       bld.emit(SHADER_OPCODE_BARRIER, bld.null_reg_ud(), m0);
