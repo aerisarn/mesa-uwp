@@ -681,6 +681,8 @@ enum brw_shader_reloc_id {
 };
 
 enum brw_shader_reloc_type {
+   /** An arbitrary 32-bit value */
+   BRW_SHADER_RELOC_TYPE_U32,
    /** A MOV instruction with an immediate source */
    BRW_SHADER_RELOC_TYPE_MOV_IMM,
 };
