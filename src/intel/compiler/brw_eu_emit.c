@@ -706,6 +706,25 @@ brw_next_insn(struct brw_codegen *p, unsigned opcode)
    return insn;
 }
 
+void
+brw_add_reloc(struct brw_codegen *p, uint32_t id,
+              enum brw_shader_reloc_type type,
+              uint32_t offset, uint32_t delta)
+{
+   if (p->num_relocs + 1 > p->reloc_array_size) {
+      p->reloc_array_size = MAX2(16, p->reloc_array_size * 2);
+      p->relocs = reralloc(p->mem_ctx, p->relocs,
+                           struct brw_shader_reloc, p->reloc_array_size);
+   }
+
+   p->relocs[p->num_relocs++] = (struct brw_shader_reloc) {
+      .id = id,
+      .type = type,
+      .offset = offset,
+      .delta = delta,
+   };
+}
+
 static brw_inst *
 brw_alu1(struct brw_codegen *p, unsigned opcode,
          struct brw_reg dest, struct brw_reg src)
@@ -3690,16 +3709,8 @@ brw_MOV_reloc_imm(struct brw_codegen *p,
    assert(type_sz(src_type) == 4);
    assert(type_sz(dst.type) == 4);
 
-   if (p->num_relocs + 1 > p->reloc_array_size) {
-      p->reloc_array_size = MAX2(16, p->reloc_array_size * 2);
-      p->relocs = reralloc(p->mem_ctx, p->relocs,
-                           struct brw_shader_reloc, p->reloc_array_size);
-   }
-
-   p->relocs[p->num_relocs++] = (struct brw_shader_reloc) {
-      .id = id,
-      .offset = p->next_insn_offset,
-   };
+   brw_add_reloc(p, id, BRW_SHADER_RELOC_TYPE_MOV_IMM,
+                 p->next_insn_offset, 0);
 
    brw_MOV(p, dst, retype(brw_imm_ud(DEFAULT_PATCH_IMM), src_type));
 }

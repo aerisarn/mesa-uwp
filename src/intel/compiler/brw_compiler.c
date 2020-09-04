@@ -284,10 +284,17 @@ brw_write_shader_relocs(const struct intel_device_info *devinfo,
 {
    for (unsigned i = 0; i < prog_data->num_relocs; i++) {
       assert(prog_data->relocs[i].offset % 8 == 0);
-      brw_inst *inst = (brw_inst *)(program + prog_data->relocs[i].offset);
+      void *dst = program + prog_data->relocs[i].offset;
       for (unsigned j = 0; j < num_values; j++) {
          if (prog_data->relocs[i].id == values[j].id) {
-            brw_update_reloc_imm(devinfo, inst, values[j].value);
+            uint32_t value = values[j].value + prog_data->relocs[i].delta;
+            switch (prog_data->relocs[i].type) {
+            case BRW_SHADER_RELOC_TYPE_MOV_IMM:
+               brw_update_reloc_imm(devinfo, dst, value);
+               break;
+            default:
+               unreachable("Invalid relocation type");
+            }
             break;
          }
       }

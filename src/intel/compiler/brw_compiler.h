@@ -680,6 +680,11 @@ enum brw_shader_reloc_id {
    BRW_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
 };
 
+enum brw_shader_reloc_type {
+   /** A MOV instruction with an immediate source */
+   BRW_SHADER_RELOC_TYPE_MOV_IMM,
+};
+
 /** Represents a code relocation
  *
  * Relocatable constants are immediates in the code which we want to be able
@@ -689,12 +694,18 @@ struct brw_shader_reloc {
    /** The 32-bit ID of the relocatable constant */
    uint32_t id;
 
-   /** The offset in the shader to the relocatable instruction
+   /** Type of this relocation */
+   enum brw_shader_reloc_type type;
+
+   /** The offset in the shader to the relocated value
     *
-    * This is the offset to the instruction rather than the immediate value
-    * itself.  This allows us to do some sanity checking while we relocate.
+    * For MOV_IMM relocs, this is an offset to the MOV instruction.  This
+    * allows us to do some sanity checking while we update the value.
     */
    uint32_t offset;
+
+   /** Value to be added to the relocated value before it is written */
+   uint32_t delta;
 };
 
 /** A value to write to a relocation */

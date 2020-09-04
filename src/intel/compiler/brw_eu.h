@@ -200,6 +200,9 @@ void brw_realign(struct brw_codegen *p, unsigned align);
 int brw_append_data(struct brw_codegen *p, void *data,
                     unsigned size, unsigned align);
 brw_inst *brw_next_insn(struct brw_codegen *p, unsigned opcode);
+void brw_add_reloc(struct brw_codegen *p, uint32_t id,
+                   enum brw_shader_reloc_type type,
+                   uint32_t offset, uint32_t delta);
 void brw_set_dest(struct brw_codegen *p, brw_inst *insn, struct brw_reg dest);
 void brw_set_src0(struct brw_codegen *p, brw_inst *insn, struct brw_reg reg);
 
