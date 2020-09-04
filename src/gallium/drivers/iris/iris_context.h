@@ -58,11 +58,6 @@ enum iris_param_domain {
    BRW_PARAM_DOMAIN_IMAGE,
 };
 
-enum iris_shader_reloc {
-   IRIS_SHADER_RELOC_CONST_DATA_ADDR_LOW,
-   IRIS_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
-};
-
 enum {
    DRI_CONF_BO_REUSE_DISABLED,
    DRI_CONF_BO_REUSE_ALL

@@ -3364,11 +3364,6 @@ void anv_semaphore_reset_temporary(struct anv_device *device,
         stage = __builtin_ffs(__tmp) - 1, __tmp;                     \
         __tmp &= ~(1 << (stage)))
 
-enum anv_shader_reloc {
-   ANV_SHADER_RELOC_CONST_DATA_ADDR_LOW,
-   ANV_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
-};
-
 struct anv_pipeline_bind_map {
    unsigned char                                surface_sha1[20];
    unsigned char                                sampler_sha1[20];

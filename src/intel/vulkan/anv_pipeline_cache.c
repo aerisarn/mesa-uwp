@@ -84,11 +84,11 @@ anv_shader_bin_create(struct anv_device *device,
 
    struct brw_shader_reloc_value reloc_values[] = {
       {
-         .id = ANV_SHADER_RELOC_CONST_DATA_ADDR_LOW,
+         .id = BRW_SHADER_RELOC_CONST_DATA_ADDR_LOW,
          .value = shader_data_addr,
       },
       {
-         .id = ANV_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
+         .id = BRW_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
          .value = shader_data_addr >> 32,
       },
    };

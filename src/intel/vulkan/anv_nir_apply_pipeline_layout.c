@@ -1079,8 +1079,8 @@ lower_load_constant(nir_builder *b, nir_intrinsic_instr *intrin,
       offset = nir_umin(b, offset, nir_imm_int(b, max_offset));
 
       nir_ssa_def *const_data_base_addr = nir_pack_64_2x32_split(b,
-         nir_load_reloc_const_intel(b, ANV_SHADER_RELOC_CONST_DATA_ADDR_LOW),
-         nir_load_reloc_const_intel(b, ANV_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
+         nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_LOW),
+         nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
 
       data = nir_load_global_constant(b, nir_iadd(b, const_data_base_addr,
                                                      nir_u2u64(b, offset)),
