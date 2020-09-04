@@ -2805,6 +2805,24 @@ fs_generator::add_const_data(void *data, unsigned size)
    }
 }
 
+void
+fs_generator::add_resume_sbt(unsigned num_resume_shaders, uint64_t *sbt)
+{
+   assert(brw_shader_stage_is_bindless(stage));
+   struct brw_bs_prog_data *bs_prog_data = brw_bs_prog_data(prog_data);
+   if (num_resume_shaders > 0) {
+      bs_prog_data->resume_sbt_offset =
+         brw_append_data(p, sbt, num_resume_shaders * sizeof(uint64_t), 32);
+      for (unsigned i = 0; i < num_resume_shaders; i++) {
+         size_t offset = bs_prog_data->resume_sbt_offset + i * sizeof(*sbt);
+         assert(offset <= UINT32_MAX);
+         brw_add_reloc(p, BRW_SHADER_RELOC_SHADER_START_OFFSET,
+                       BRW_SHADER_RELOC_TYPE_U32,
+                       (uint32_t)offset, (uint32_t)sbt[i]);
+      }
+   }
+}
+
 const unsigned *
 fs_generator::get_assembly()
 {

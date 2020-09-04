@@ -9875,19 +9875,22 @@ brw_cs_get_dispatch_info(const struct intel_device_info *devinfo,
    return info;
 }
 
-const unsigned *
-brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
-               void *mem_ctx,
-               const struct brw_bs_prog_key *key,
-               struct brw_bs_prog_data *prog_data,
-               nir_shader *shader,
-               struct brw_compile_stats *stats,
-               char **error_str)
+static uint8_t
+compile_single_bs(const struct brw_compiler *compiler, void *log_data,
+                  void *mem_ctx,
+                  const struct brw_bs_prog_key *key,
+                  struct brw_bs_prog_data *prog_data,
+                  nir_shader *shader,
+                  fs_generator *g,
+                  struct brw_compile_stats *stats,
+                  int *prog_offset,
+                  char **error_str)
 {
    const bool debug_enabled = INTEL_DEBUG & DEBUG_RT;
 
    prog_data->base.stage = shader->info.stage;
-   prog_data->stack_size = shader->scratch_size;
+   prog_data->max_stack_size = MAX2(prog_data->max_stack_size,
+                                    shader->scratch_size);
 
    const unsigned max_dispatch_width = 16;
    brw_nir_apply_key(shader, compiler, &key->base, max_dispatch_width, true);
@@ -9897,6 +9900,7 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
    fs_visitor *v = NULL, *v8 = NULL, *v16 = NULL;
    bool has_spilled = false;
 
+   uint8_t simd_size = 0;
    if (likely(!(INTEL_DEBUG & DEBUG_NO8))) {
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                           &prog_data->base, shader,
@@ -9906,10 +9910,10 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
          if (error_str)
             *error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
          delete v8;
-         return NULL;
+         return 0;
       } else {
          v = v8;
-         prog_data->simd_size = 8;
+         simd_size = 8;
          if (v8->spilled_any_registers)
             has_spilled = true;
       }
@@ -9932,11 +9936,11 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
                   v16->fail_msg);
             }
             delete v16;
-            return NULL;
+            return 0;
          }
       } else {
          v = v16;
-         prog_data->simd_size = 16;
+         simd_size = 16;
          if (v16->spilled_any_registers)
             has_spilled = true;
       }
@@ -9948,13 +9952,55 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
          *error_str = ralloc_strdup(mem_ctx,
             "Cannot satisfy INTEL_DEBUG flags SIMD restrictions");
       }
-      return NULL;
+      return false;
    }
 
    assert(v);
 
+   int offset = g->generate_code(v->cfg, simd_size, v->shader_stats,
+                                 v->performance_analysis.require(), stats);
+   if (prog_offset)
+      *prog_offset = offset;
+   else
+      assert(offset == 0);
+
+   delete v8;
+   delete v16;
+
+   return simd_size;
+}
+
+uint64_t
+brw_bsr(const struct intel_device_info *devinfo,
+        uint32_t offset, uint8_t simd_size, uint8_t local_arg_offset)
+{
+   assert(offset % 64 == 0);
+   assert(simd_size == 8 || simd_size == 16);
+   assert(local_arg_offset % 8 == 0);
+
+   return offset |
+          SET_BITS(simd_size > 8, 4, 4) |
+          SET_BITS(local_arg_offset / 8, 2, 0);
+}
+
+const unsigned *
+brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
+               void *mem_ctx,
+               const struct brw_bs_prog_key *key,
+               struct brw_bs_prog_data *prog_data,
+               nir_shader *shader,
+               unsigned num_resume_shaders,
+               struct nir_shader **resume_shaders,
+               struct brw_compile_stats *stats,
+               char **error_str)
+{
+   const bool debug_enabled = INTEL_DEBUG & DEBUG_RT;
+
+   prog_data->base.stage = shader->info.stage;
+   prog_data->max_stack_size = 0;
+
    fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
-                  v->runtime_check_aads_emit, shader->info.stage);
+                  false, shader->info.stage);
    if (unlikely(debug_enabled)) {
       char *name = ralloc_asprintf(mem_ctx, "%s %s shader %s",
                                    shader->info.label ?
@@ -9964,13 +10010,48 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
       g.enable_debug(name);
    }
 
-   g.generate_code(v->cfg, prog_data->simd_size, v->shader_stats,
-                   v->performance_analysis.require(), stats);
+   prog_data->simd_size =
+      compile_single_bs(compiler, log_data, mem_ctx, key, prog_data,
+                        shader, &g, stats, NULL, error_str);
+   if (prog_data->simd_size == 0)
+      return NULL;
 
-   delete v8;
-   delete v16;
+   uint64_t *resume_sbt = ralloc_array(mem_ctx, uint64_t, num_resume_shaders);
+   for (unsigned i = 0; i < num_resume_shaders; i++) {
+      if (INTEL_DEBUG & DEBUG_RT) {
+         char *name = ralloc_asprintf(mem_ctx, "%s %s resume(%u) shader %s",
+                                      shader->info.label ?
+                                         shader->info.label : "unnamed",
+                                      gl_shader_stage_name(shader->info.stage),
+                                      i, shader->info.name);
+         g.enable_debug(name);
+      }
+
+      /* TODO: Figure out shader stats etc. for resume shaders */
+      int offset = 0;
+      uint8_t simd_size =
+         compile_single_bs(compiler, log_data, mem_ctx, key, prog_data,
+                           resume_shaders[i], &g, NULL, &offset, error_str);
+      if (simd_size == 0)
+         return NULL;
+
+      assert(offset > 0);
+      resume_sbt[i] = brw_bsr(compiler->devinfo, offset, simd_size, 0);
+   }
+
+   /* We only have one constant data so we want to make sure they're all the
+    * same.
+    */
+   for (unsigned i = 0; i < num_resume_shaders; i++) {
+      assert(resume_shaders[i]->constant_data_size ==
+             shader->constant_data_size);
+      assert(memcmp(resume_shaders[i]->constant_data,
+                    shader->constant_data,
+                    shader->constant_data_size) == 0);
+   }
 
    g.add_const_data(shader->constant_data, shader->constant_data_size);
+   g.add_resume_sbt(num_resume_shaders, resume_sbt);
 
    return g.get_assembly();
 }

@@ -678,6 +678,7 @@ enum brw_param_builtin {
 enum brw_shader_reloc_id {
    BRW_SHADER_RELOC_CONST_DATA_ADDR_LOW,
    BRW_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
+   BRW_SHADER_RELOC_SHADER_START_OFFSET,
 };
 
 enum brw_shader_reloc_type {
@@ -1062,8 +1063,15 @@ brw_cs_prog_data_prog_offset(const struct brw_cs_prog_data *prog_data,
 
 struct brw_bs_prog_data {
    struct brw_stage_prog_data base;
+
+   /** SIMD size of the root shader */
    uint8_t simd_size;
-   uint32_t stack_size;
+
+   /** Maximum stack size of all shaders */
+   uint32_t max_stack_size;
+
+   /** Offset into the shader where the resume SBT is located */
+   uint32_t resume_sbt_offset;
 };
 
 struct brw_ff_gs_prog_data {
@@ -1675,6 +1683,8 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
                const struct brw_bs_prog_key *key,
                struct brw_bs_prog_data *prog_data,
                struct nir_shader *shader,
+               unsigned num_resume_shaders,
+               struct nir_shader **resume_shaders,
                struct brw_compile_stats *stats,
                char **error_str);
 
