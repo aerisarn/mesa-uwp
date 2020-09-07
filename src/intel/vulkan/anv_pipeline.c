@@ -3042,9 +3042,20 @@ anv_ray_tracing_pipeline_create(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR);
 
+   uint32_t group_count = pCreateInfo->groupCount;
+   if (pCreateInfo->pLibraryInfo) {
+      for (uint32_t l = 0; l < pCreateInfo->pLibraryInfo->libraryCount; l++) {
+         ANV_FROM_HANDLE(anv_pipeline, library,
+                         pCreateInfo->pLibraryInfo->pLibraries[l]);
+         struct anv_ray_tracing_pipeline *rt_library =
+            anv_pipeline_to_ray_tracing(library);
+         group_count += rt_library->group_count;
+      }
+   }
+
    VK_MULTIALLOC(ma);
    VK_MULTIALLOC_DECL(&ma, struct anv_ray_tracing_pipeline, pipeline, 1);
-   VK_MULTIALLOC_DECL(&ma, struct anv_rt_shader_group, groups, pCreateInfo->groupCount);
+   VK_MULTIALLOC_DECL(&ma, struct anv_rt_shader_group, groups, group_count);
    if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, pAllocator,
                               VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -3057,7 +3068,7 @@ anv_ray_tracing_pipeline_create(
       return result;
    }
 
-   pipeline->group_count = pCreateInfo->groupCount;
+   pipeline->group_count = group_count;
    pipeline->groups = groups;
 
    ASSERTED const VkShaderStageFlags ray_tracing_stages =
@@ -3112,6 +3123,18 @@ anv_ray_tracing_pipeline_create(
       anv_pipeline_finish(&pipeline->base, device, pAllocator);
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
+   }
+
+   if (pCreateInfo->pLibraryInfo) {
+      uint32_t g = pCreateInfo->groupCount;
+      for (uint32_t l = 0; l < pCreateInfo->pLibraryInfo->libraryCount; l++) {
+         ANV_FROM_HANDLE(anv_pipeline, library,
+                         pCreateInfo->pLibraryInfo->pLibraries[l]);
+         struct anv_ray_tracing_pipeline *rt_library =
+            anv_pipeline_to_ray_tracing(library);
+         for (uint32_t lg = 0; lg < rt_library->group_count; lg++)
+            pipeline->groups[g++] = rt_library->groups[lg];
+      }
    }
 
    anv_genX(device->info, ray_tracing_pipeline_emit)(pipeline);
@@ -3414,6 +3437,7 @@ anv_GetRayTracingShaderGroupHandlesKHR(
    struct anv_ray_tracing_pipeline *rt_pipeline =
       anv_pipeline_to_ray_tracing(pipeline);
 
+   assert(firstGroup + groupCount <= rt_pipeline->group_count);
    for (uint32_t i = 0; i < groupCount; i++) {
       struct anv_rt_shader_group *group = &rt_pipeline->groups[firstGroup + i];
       memcpy(pData, group->handle, sizeof(group->handle));

@@ -228,6 +228,7 @@ get_device_extensions(const struct anv_physical_device *device,
           INTEL_DEBUG(DEBUG_NO_OACONFIG)) &&
          device->use_call_secondary,
       .KHR_pipeline_executable_properties    = true,
+      .KHR_pipeline_library                  = true,
       .KHR_push_descriptor                   = true,
       .KHR_ray_query                         = device->info.has_ray_tracing,
       .KHR_relaxed_block_layout              = true,
