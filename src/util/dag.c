@@ -128,13 +128,12 @@ dag_init_node(struct dag *dag, struct dag_node *node)
 
 struct dag_traverse_bottom_up_state {
    struct set *seen;
+   void (*cb)(struct dag_node *node, void *data);
    void *data;
 };
 
 static void
 dag_traverse_bottom_up_node(struct dag_node *node,
-                            void (*cb)(struct dag_node *node,
-                                       void *data),
                             struct dag_traverse_bottom_up_state *state)
 {
    if (_mesa_set_search(state->seen, node))
@@ -170,7 +169,7 @@ dag_traverse_bottom_up_node(struct dag_node *node,
       }
 
       /* Process the node */
-      cb(node, state->data);
+      state->cb(node, state->data);
       _mesa_set_add(state->seen, node);
 
       /* Find the next unprocessed node in the stack */
@@ -197,10 +196,11 @@ dag_traverse_bottom_up(struct dag *dag, void (*cb)(struct dag_node *node,
    struct dag_traverse_bottom_up_state state = {
       .seen = _mesa_pointer_set_create(NULL),
       .data = data,
+      .cb = cb,
    };
 
    list_for_each_entry(struct dag_node, node, &dag->heads, link) {
-      dag_traverse_bottom_up_node(node, cb, &state);
+      dag_traverse_bottom_up_node(node, &state);
    }
 
    ralloc_free(state.seen);
