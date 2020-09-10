@@ -565,6 +565,9 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
    if (double_buffer) {
       surface_type &= ~EGL_PIXMAP_BIT;
    }
+   else {
+      surface_type &= ~EGL_WINDOW_BIT;
+   }
 
    if (!surface_type)
       return NULL;
