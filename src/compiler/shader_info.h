@@ -254,6 +254,9 @@ typedef struct shader_info {
     */
    bool uses_fddx_fddy:1;
 
+   /** Has divergence analysis ever been run? */
+   bool divergence_analysis_run:1;
+
    /* Bitmask of bit-sizes used with ALU instructions. */
    uint8_t bit_sizes_float;
    uint8_t bit_sizes_int;

@@ -993,6 +993,8 @@ visit_cf_list(struct exec_list *list, struct divergence_state *state)
 void
 nir_divergence_analysis(nir_shader *shader)
 {
+   shader->info.divergence_analysis_run = true;
+
    struct divergence_state state = {
       .stage = shader->info.stage,
       .shader = shader,

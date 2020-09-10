@@ -106,8 +106,13 @@ static void
 print_ssa_def(nir_ssa_def *def, print_state *state)
 {
    FILE *fp = state->fp;
-   fprintf(fp, "%s %u ssa_%u", sizes[def->num_components], def->bit_size,
-           def->index);
+
+   const char *divergence = "";
+   if (state->shader->info.divergence_analysis_run)
+      divergence = def->divergent ? "div " : "con ";
+
+   fprintf(fp, "%s %2u %sssa_%u", sizes[def->num_components], def->bit_size,
+           divergence, def->index);
 }
 
 static void
