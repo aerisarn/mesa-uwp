@@ -638,6 +638,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
    nir_lower_subgroups(nir, &(struct nir_lower_subgroups_options){
                                .subgroup_size = subgroup_size,
                                .ballot_bit_size = ballot_bit_size,
+                               .ballot_components = 1,
                                .lower_to_scalar = 1,
                                .lower_subgroup_masks = 1,
                                .lower_shuffle = 1,

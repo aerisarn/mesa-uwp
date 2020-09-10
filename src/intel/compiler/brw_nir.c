@@ -874,6 +874,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 
    const nir_lower_subgroups_options subgroups_options = {
       .ballot_bit_size = 32,
+      .ballot_components = 1,
       .lower_to_scalar = true,
       .lower_vote_trivial = !is_scalar,
       .lower_shuffle = true,
@@ -1354,6 +1355,7 @@ brw_nir_apply_key(nir_shader *nir,
       .subgroup_size = get_subgroup_size(nir->info.stage, key,
                                          max_subgroup_size),
       .ballot_bit_size = 32,
+      .ballot_components = 1,
       .lower_subgroup_masks = true,
    };
    OPT(nir_lower_subgroups, &subgroups_options);

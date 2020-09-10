@@ -2354,6 +2354,7 @@ void lp_build_opt_nir(struct nir_shader *nir)
       const nir_lower_subgroups_options subgroups_options = {
 	.subgroup_size = lp_native_vector_width / 32,
 	.ballot_bit_size = 32,
+        .ballot_components = 1,
 	.lower_to_scalar = true,
 	.lower_subgroup_masks = true,
       };
