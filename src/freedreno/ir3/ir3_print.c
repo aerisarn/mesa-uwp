@@ -123,6 +123,17 @@ static void print_instr_name(struct log_stream *stream, struct ir3_instruction *
 			mesa_log_stream_printf(stream, ".%s%s", type_name(instr->cat1.src_type),
 					type_name(instr->cat1.dst_type));
 		}
+	} else if (instr->opc == OPC_B) {
+		const char *name[8] = {
+			[BRANCH_PLAIN] = "br",
+			[BRANCH_OR]    = "brao",
+			[BRANCH_AND]   = "braa",
+			[BRANCH_CONST] = "brac",
+			[BRANCH_ANY]   = "bany",
+			[BRANCH_ALL]   = "ball",
+			[BRANCH_X]     = "brax",
+		};
+		mesa_log_stream_printf(stream, "%s", name[instr->cat0.brtype]);
 	} else {
 		mesa_log_stream_printf(stream, "%s", disasm_a3xx_instr_name(instr->opc));
 		if (instr->flags & IR3_INSTR_3D)
@@ -411,8 +422,23 @@ print_block(struct ir3_block *block, int lvl)
 	if (block->successors[1]) {
 		/* leading into if/else: */
 		tab(stream, lvl+1);
-		mesa_log_stream_printf(stream, "/* succs: if "SYN_SSA("ssa_%u")" block%u; else block%u */\n",
-				block->condition->serialno,
+		mesa_log_stream_printf(stream, "/* succs: if ");
+		switch (block->brtype) {
+		case IR3_BRANCH_COND:
+			break;
+		case IR3_BRANCH_ANY:
+			printf("any ");
+			break;
+		case IR3_BRANCH_ALL:
+			printf("all ");
+			break;
+		case IR3_BRANCH_GETONE:
+			printf("getone ");
+			break;
+		}
+		if (block->condition)
+			mesa_log_stream_printf(stream, SYN_SSA("ssa_%u")" ", block->condition->serialno);
+		mesa_log_stream_printf(stream, "block%u; else block%u; */\n",
 				block_id(block->successors[0]),
 				block_id(block->successors[1]));
 	} else if (block->successors[0]) {
