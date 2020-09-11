@@ -178,8 +178,7 @@ lower_vote_eq_to_scalar(nir_builder *b, nir_intrinsic_instr *intrin)
 }
 
 static nir_ssa_def *
-lower_vote_eq_to_ballot(nir_builder *b, nir_intrinsic_instr *intrin,
-                        const nir_lower_subgroups_options *options)
+lower_vote_eq(nir_builder *b, nir_intrinsic_instr *intrin)
 {
    assert(intrin->src[0].is_ssa);
    nir_ssa_def *value = intrin->src[0].ssa;
@@ -203,8 +202,7 @@ lower_vote_eq_to_ballot(nir_builder *b, nir_intrinsic_instr *intrin,
       }
    }
 
-   nir_ssa_def *ballot = nir_ballot(b, 1, options->ballot_bit_size, nir_inot(b, all_eq));
-   return nir_ieq(b, ballot, nir_imm_intN_t(b, 0, options->ballot_bit_size));
+   return nir_vote_all(b, 1, all_eq);
 }
 
 static nir_ssa_def *
@@ -386,8 +384,8 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
       if (options->lower_vote_trivial)
          return nir_imm_true(b);
 
-      if (options->lower_vote_eq_to_ballot)
-         return lower_vote_eq_to_ballot(b, intrin, options);
+      if (options->lower_vote_eq)
+         return lower_vote_eq(b, intrin);
 
       if (options->lower_to_scalar && intrin->num_components > 1)
          return lower_vote_eq_to_scalar(b, intrin);

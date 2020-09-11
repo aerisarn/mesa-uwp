@@ -642,7 +642,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
                                .lower_subgroup_masks = 1,
                                .lower_shuffle = 1,
                                .lower_shuffle_to_32bit = 1,
-                               .lower_vote_eq_to_ballot = 1,
+                               .lower_vote_eq = 1,
                                .lower_quad_broadcast_dynamic = 1,
                                .lower_quad_broadcast_dynamic_to_const = gfx7minus,
                                .lower_shuffle_to_swizzle_amd = 1,
