@@ -80,6 +80,9 @@ tu_spirv_to_nir(struct tu_device *dev,
          .demote_to_helper_invocation = true,
          .vk_memory_model = true,
          .vk_memory_model_device_scope = true,
+         .subgroup_basic = true,
+         .subgroup_ballot = true,
+         .subgroup_vote = true,
       },
    };
 

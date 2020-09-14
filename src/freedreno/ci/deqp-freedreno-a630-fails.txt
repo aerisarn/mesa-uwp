@@ -81,36 +81,6 @@ dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_tw
 # at it didn't help).
 dEQP-VK.spirv_assembly.instruction.spirv1p4.opcopylogical.nested_arrays_different_inner_stride,Fail
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/6752
-dEQP-VK.subgroups.basic.compute.subgroupbarrier,Crash
-dEQP-VK.subgroups.basic.compute.subgroupelect,Crash
-dEQP-VK.subgroups.basic.compute.subgroupmemorybarrier,Crash
-dEQP-VK.subgroups.basic.compute.subgroupmemorybarrierbuffer,Crash
-dEQP-VK.subgroups.basic.compute.subgroupmemorybarrierimage,Crash
-dEQP-VK.subgroups.basic.compute.subgroupmemorybarriershared,Crash
-dEQP-VK.subgroups.builtin_var.compute.numsubgroups,Crash
-dEQP-VK.subgroups.builtin_var.compute.subgroupid,Crash
-dEQP-VK.subgroups.builtin_var.compute.subgroupinvocationid_compute,Crash
-dEQP-VK.subgroups.builtin_var.compute.subgroupsize_compute,Crash
-dEQP-VK.subgroups.vote.compute.subgroupall_uint,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_bool,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_bvec2,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_bvec3,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_bvec4,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_float,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_int,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_ivec2,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_ivec3,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_ivec4,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_uint,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_uvec2,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_uvec3,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_uvec4,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_vec2,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_vec3,Crash
-dEQP-VK.subgroups.vote.compute.subgroupallequal_vec4,Crash
-dEQP-VK.subgroups.vote.compute.subgroupany_uint,Crash
-
 dEQP-VK.texture.filtering.2d.formats.d24_unorm_s8_uint_stencil.nearest,Fail
 dEQP-VK.texture.filtering.2d_array.formats.d24_unorm_s8_uint_stencil.d24_unorm_s8_uint_stencil_nearest,Fail
 dEQP-VK.texture.filtering.cube.formats.d24_unorm_s8_uint_stencil.nearest,Fail

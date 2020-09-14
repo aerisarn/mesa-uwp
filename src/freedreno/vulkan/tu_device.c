@@ -962,10 +962,11 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
          VkPhysicalDeviceSubgroupProperties *properties =
             (VkPhysicalDeviceSubgroupProperties *)ext;
-         properties->subgroupSize = 64;
+         properties->subgroupSize = 128;
          properties->supportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
          properties->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT |
-                                           VK_SUBGROUP_FEATURE_VOTE_BIT;
+                                           VK_SUBGROUP_FEATURE_VOTE_BIT |
+                                           VK_SUBGROUP_FEATURE_BALLOT_BIT;
          properties->quadOperationsInAllStages = false;
          break;
       }
