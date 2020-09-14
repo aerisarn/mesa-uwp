@@ -10141,12 +10141,21 @@ brw_compile_cs(const struct brw_compiler *compiler,
       max_dispatch_width = 32;
    }
 
+   unsigned required_dispatch_width = 0;
    if ((int)key->base.subgroup_size_type >= (int)BRW_SUBGROUP_SIZE_REQUIRE_8) {
       /* These enum values are expressly chosen to be equal to the subgroup
        * size that they require.
        */
-      const unsigned required_dispatch_width =
-         (unsigned)key->base.subgroup_size_type;
+      required_dispatch_width = (unsigned)key->base.subgroup_size_type;
+   }
+
+   if (nir->info.cs.subgroup_size > 0) {
+      assert(required_dispatch_width == 0 ||
+             required_dispatch_width == nir->info.cs.subgroup_size);
+      required_dispatch_width = nir->info.cs.subgroup_size;
+   }
+
+   if (required_dispatch_width > 0) {
       assert(required_dispatch_width == 8 ||
              required_dispatch_width == 16 ||
              required_dispatch_width == 32);
