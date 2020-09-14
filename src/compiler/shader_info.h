@@ -432,6 +432,11 @@ typedef struct shader_info {
          enum gl_derivative_group derivative_group:2;
 
          /**
+          * Explicit subgroup size if set by the shader, otherwise 0.
+          */
+         unsigned subgroup_size;
+
+         /**
           * pointer size is:
           *   AddressingModelLogical:    0    (default)
           *   AddressingModelPhysical32: 32
