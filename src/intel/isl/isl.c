@@ -99,7 +99,11 @@ static void
 isl_device_setup_mocs(struct isl_device *dev)
 {
    if (dev->info->ver >= 12) {
-      if (dev->info->is_dg1) {
+      if (dev->info->is_dg2) {
+         /* L3CC=WB; BSpec: 45101 */
+         dev->mocs.internal = 3 << 1;
+         dev->mocs.external = 3 << 1;
+      } else if (dev->info->is_dg1) {
          /* L3CC=WB */
          dev->mocs.internal = 5 << 1;
          /* Displayables on DG1 are free to cache in L3 since L3 is transient
