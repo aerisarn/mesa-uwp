@@ -45,6 +45,7 @@
 #define FAMILY_RV      0x8E
 #define FAMILY_NV      0x8F
 #define FAMILY_VGH     0x90
+#define FAMILY_YC      0x92
 
 // AMDGPU_FAMILY_IS(familyId, familyName)
 #define FAMILY_IS(f, fn)     (f == FAMILY_##fn)
@@ -58,6 +59,7 @@
 #define FAMILY_IS_AI(f)      FAMILY_IS(f, AI)
 #define FAMILY_IS_RV(f)      FAMILY_IS(f, RV)
 #define FAMILY_IS_NV(f)      FAMILY_IS(f, NV)
+#define FAMILY_IS_YC(f)      FAMILY_IS(f, YC)
 
 #define AMDGPU_UNKNOWN          0xFF
 
@@ -104,6 +106,8 @@
 #define AMDGPU_DIMGREY_CAVEFISH_RANGE   0x3C, 0x46
 
 #define AMDGPU_VANGOGH_RANGE    0x01, 0xFF
+
+#define AMDGPU_YELLOW_CARP_RANGE 0x01, 0xFF
 
 #define AMDGPU_EXPAND_FIX(x) x
 #define AMDGPU_RANGE_HELPER(val, min, max) ((val >= min) && (val < max))
@@ -158,5 +162,7 @@
 #define ASICREV_IS_DIMGREY_CAVEFISH(r) ASICREV_IS(r, DIMGREY_CAVEFISH)
 
 #define ASICREV_IS_VANGOGH(r)          ASICREV_IS(r, VANGOGH)
+
+#define ASICREV_IS_YELLOW_CARP(r)      ASICREV_IS(r, YELLOW_CARP)
 
 #endif // _AMDGPU_ASIC_ADDR_H

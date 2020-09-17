@@ -2456,6 +2456,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    case CHIP_NAVY_FLOUNDER:
    case CHIP_DIMGREY_CAVEFISH:
    case CHIP_VANGOGH:
+   case CHIP_YELLOW_CARP:
       dec->reg.data0 = RDECODE_VCN2_5_GPCOM_VCPU_DATA0;
       dec->reg.data1 = RDECODE_VCN2_5_GPCOM_VCPU_DATA1;
       dec->reg.cmd = RDECODE_VCN2_5_GPCOM_VCPU_CMD;

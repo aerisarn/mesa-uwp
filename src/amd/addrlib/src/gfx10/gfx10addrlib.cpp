@@ -1057,6 +1057,20 @@ ChipFamily Gfx10Lib::HwlConvertChipFamily(
             {
                 ADDR_ASSERT(!"Unknown chip revision");
             }
+
+            break;
+
+        case FAMILY_YC:
+            if (ASICREV_IS_YELLOW_CARP(chipRevision))
+            {
+                m_settings.supportRbPlus   = 1;
+                m_settings.dccUnsup3DSwDis = 0;
+            }
+            else
+            {
+                ADDR_ASSERT(!"Unknown chip revision");
+            }
+
             break;
 
         default:

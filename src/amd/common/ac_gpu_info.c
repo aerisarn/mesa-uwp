@@ -624,6 +624,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    case FAMILY_VGH:
       identify_chip(VANGOGH);
       break;
+   case FAMILY_YC:
+      identify_chip(YELLOW_CARP);
+      break;
    }
 
    if (!info->name) {
@@ -885,7 +888,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     * DCC is enabled (ie. WRITE_COMPRESS_ENABLE should be 0).
     */
    info->has_image_load_dcc_bug = info->family == CHIP_DIMGREY_CAVEFISH ||
-                                  info->family == CHIP_VANGOGH;
+                                  info->family == CHIP_VANGOGH ||
+                                  info->family == CHIP_YELLOW_CARP;
 
    /* DB has a bug when ITERATE_256 is set to 1 that can cause a hang. The
     * workaround is to set DECOMPRESS_ON_Z_PLANES to 2 for 4X MSAA D/S images.
@@ -1011,6 +1015,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          pc_lines = 512;
          break;
       case CHIP_VANGOGH:
+      case CHIP_YELLOW_CARP:
          pc_lines = 256;
          break;
       default:
