@@ -6296,12 +6296,7 @@ void visit_load_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    bool glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT);
    unsigned size = instr->dest.ssa.bit_size / 8;
 
-   uint32_t flags = get_all_buffer_resource_flags(ctx, instr->src[0].ssa, access);
-   /* GLC bypasses VMEM/SMEM caches, so GLC SMEM loads/stores are coherent with GLC VMEM loads/stores
-    * TODO: this optimization is disabled for now because we still need to ensure correct ordering
-    */
-   bool allow_smem = !(flags & (0 && glc ? has_nonglc_vmem_store : has_vmem_store));
-   allow_smem |= ((access & ACCESS_RESTRICT) && (access & ACCESS_NON_WRITEABLE)) || (access & ACCESS_CAN_REORDER);
+   bool allow_smem = access & ACCESS_CAN_REORDER;
 
    load_buffer(ctx, num_components, size, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa),
                nir_intrinsic_align_mul(instr), nir_intrinsic_align_offset(instr), glc, allow_smem,

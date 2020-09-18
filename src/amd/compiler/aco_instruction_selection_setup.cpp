@@ -204,116 +204,6 @@ sanitize_cf_list(nir_function_impl *impl, struct exec_list *cf_list)
    return progress;
 }
 
-void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
-{
-   radv_pipeline_layout *pipeline_layout = ctx->options->layout;
-
-   unsigned resource_flag_count = 1; /* +1 to reserve flags[0] for aliased resources */
-   for (unsigned i = 0; i < pipeline_layout->num_sets; i++) {
-      radv_descriptor_set_layout *layout = pipeline_layout->set[i].layout;
-      ctx->resource_flag_offsets[i] = resource_flag_count;
-      resource_flag_count += layout->binding_count;
-   }
-   ctx->buffer_resource_flags = std::vector<uint8_t>(resource_flag_count);
-
-   nir_foreach_variable_with_modes(var, impl->function->shader, nir_var_mem_ssbo) {
-      if (var->data.access & ACCESS_RESTRICT) {
-         uint32_t offset = ctx->resource_flag_offsets[var->data.descriptor_set];
-         ctx->buffer_resource_flags[offset + var->data.binding] |= buffer_is_restrict;
-      }
-   }
-
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-         if (!nir_intrinsic_has_access(intrin))
-            continue;
-
-         nir_ssa_def *res = NULL;
-         unsigned access = nir_intrinsic_access(intrin);
-         unsigned flags = 0;
-         bool glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
-         switch (intrin->intrinsic) {
-         case nir_intrinsic_load_ssbo: {
-            if (nir_dest_is_divergent(intrin->dest) && (!glc || ctx->program->chip_class >= GFX8))
-               flags |= glc ? has_glc_vmem_load : has_nonglc_vmem_load;
-            res = intrin->src[0].ssa;
-            break;
-         }
-         case nir_intrinsic_ssbo_atomic_add:
-         case nir_intrinsic_ssbo_atomic_imin:
-         case nir_intrinsic_ssbo_atomic_umin:
-         case nir_intrinsic_ssbo_atomic_imax:
-         case nir_intrinsic_ssbo_atomic_umax:
-         case nir_intrinsic_ssbo_atomic_and:
-         case nir_intrinsic_ssbo_atomic_or:
-         case nir_intrinsic_ssbo_atomic_xor:
-         case nir_intrinsic_ssbo_atomic_exchange:
-         case nir_intrinsic_ssbo_atomic_comp_swap:
-            flags |= has_glc_vmem_load | has_glc_vmem_store;
-            res = intrin->src[0].ssa;
-            break;
-         case nir_intrinsic_store_ssbo:
-            flags |= glc ? has_glc_vmem_store : has_nonglc_vmem_store;
-            res = intrin->src[1].ssa;
-            break;
-         case nir_intrinsic_load_global:
-            if (!(access & ACCESS_NON_WRITEABLE))
-               flags |= glc ? has_glc_vmem_load : has_nonglc_vmem_load;
-            break;
-         case nir_intrinsic_store_global:
-            flags |= glc ? has_glc_vmem_store : has_nonglc_vmem_store;
-            break;
-         case nir_intrinsic_global_atomic_add:
-         case nir_intrinsic_global_atomic_imin:
-         case nir_intrinsic_global_atomic_umin:
-         case nir_intrinsic_global_atomic_imax:
-         case nir_intrinsic_global_atomic_umax:
-         case nir_intrinsic_global_atomic_and:
-         case nir_intrinsic_global_atomic_or:
-         case nir_intrinsic_global_atomic_xor:
-         case nir_intrinsic_global_atomic_exchange:
-         case nir_intrinsic_global_atomic_comp_swap:
-            flags |= has_glc_vmem_load | has_glc_vmem_store;
-            break;
-         case nir_intrinsic_image_deref_load:
-         case nir_intrinsic_image_deref_sparse_load:
-            res = intrin->src[0].ssa;
-            flags |= glc ? has_glc_vmem_load : has_nonglc_vmem_load;
-            break;
-         case nir_intrinsic_image_deref_store:
-            res = intrin->src[0].ssa;
-            flags |= (glc || ctx->program->chip_class == GFX6) ? has_glc_vmem_store : has_nonglc_vmem_store;
-            break;
-         case nir_intrinsic_image_deref_atomic_add:
-         case nir_intrinsic_image_deref_atomic_umin:
-         case nir_intrinsic_image_deref_atomic_imin:
-         case nir_intrinsic_image_deref_atomic_umax:
-         case nir_intrinsic_image_deref_atomic_imax:
-         case nir_intrinsic_image_deref_atomic_and:
-         case nir_intrinsic_image_deref_atomic_or:
-         case nir_intrinsic_image_deref_atomic_xor:
-         case nir_intrinsic_image_deref_atomic_exchange:
-         case nir_intrinsic_image_deref_atomic_comp_swap:
-            res = intrin->src[0].ssa;
-            flags |= has_glc_vmem_load | has_glc_vmem_store;
-            break;
-         default:
-            continue;
-         }
-
-         uint8_t *flags_ptr;
-         uint32_t count;
-         get_buffer_resource_flags(ctx, res, access, &flags_ptr, &count);
-
-         for (unsigned i = 0; i < count; i++)
-            flags_ptr[i] |= flags;
-      }
-   }
-}
-
 void apply_nuw_to_ssa(isel_context *ctx, nir_ssa_def *ssa)
 {
    nir_ssa_scalar scalar;
@@ -624,8 +514,6 @@ void init_context(isel_context *ctx, nir_shader *shader)
    nir_divergence_analysis(shader);
    nir_opt_uniform_atomics(shader);
 
-   fill_desc_set_info(ctx, impl);
-
    apply_nuw_to_offsets(ctx, impl);
 
    /* sanitize control flow */
@@ -648,7 +536,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
 
    std::unique_ptr<unsigned[]> nir_to_aco{new unsigned[impl->num_blocks]()};
 
-   /* TODO: make this recursive to improve compile times and merge with fill_desc_set_info() */
+   /* TODO: make this recursive to improve compile times */
    bool done = false;
    while (!done) {
       done = true;
