@@ -1188,7 +1188,7 @@ copy_format(VkFormat vk_format, VkImageAspectFlags aspect_mask, bool copy_buffer
       if (aspect_mask == VK_IMAGE_ASPECT_PLANE_1_BIT)
          return PIPE_FORMAT_R8G8_UNORM;
       else
-         return PIPE_FORMAT_R8_UNORM;
+         return PIPE_FORMAT_Y8_UNORM;
    case PIPE_FORMAT_R8_G8_B8_420_UNORM:
       return PIPE_FORMAT_R8_UNORM;
 
@@ -1502,9 +1502,9 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
       ops = &r3d_ops;
    }
 
-   /* TODO: G8_B8R8_2PLANE_420_UNORM Y plane has different hardware format,
-    * which matters for UBWC. buffer_to_image/etc can fail because of this
-    */
+   /* note: could use "R8_UNORM" when no UBWC */
+   if (src_format == PIPE_FORMAT_Y8_UNORM)
+      ops = &r3d_ops;
 
    VkOffset3D offset = info->imageOffset;
    VkExtent3D extent = info->imageExtent;
@@ -1575,14 +1575,19 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
       copy_format(src_image->vk_format, info->imageSubresource.aspectMask, true);
    enum pipe_format src_format =
       copy_format(src_image->vk_format, info->imageSubresource.aspectMask, false);
+   const struct blit_ops *ops = &r2d_ops;
    bool stencil_read = false;
 
    if (src_image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
        info->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+      ops = &r3d_ops;
       stencil_read = true;
    }
 
-   const struct blit_ops *ops = stencil_read ? &r3d_ops : &r2d_ops;
+   /* note: could use "R8_UNORM" when no UBWC */
+   if (dst_format == PIPE_FORMAT_Y8_UNORM)
+      ops = &r3d_ops;
+
    VkOffset3D offset = info->imageOffset;
    VkExtent3D extent = info->imageExtent;
    uint32_t dst_width = info->bufferRowLength ?: extent.width;
@@ -1706,6 +1711,11 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 
    enum pipe_format dst_format = copy_format(dst_image->vk_format, info->dstSubresource.aspectMask, false);
    enum pipe_format src_format = copy_format(src_image->vk_format, info->srcSubresource.aspectMask, false);
+
+   /* note: could use "R8_UNORM" when no UBWC */
+   if (dst_format == PIPE_FORMAT_Y8_UNORM ||
+       src_format == PIPE_FORMAT_Y8_UNORM)
+      ops = &r3d_ops;
 
    bool use_staging_blit = false;
 

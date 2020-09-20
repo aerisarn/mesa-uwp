@@ -56,8 +56,7 @@ tu6_plane_format(VkFormat format, uint32_t plane)
 {
    switch (format) {
    case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
-      /* note: with UBWC, and Y plane UBWC is different from R8_UNORM */
-      return plane ? PIPE_FORMAT_R8G8_UNORM : PIPE_FORMAT_R8_UNORM;
+      return plane ? PIPE_FORMAT_R8G8_UNORM : PIPE_FORMAT_Y8_UNORM;
    case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
       return PIPE_FORMAT_R8_UNORM;
    case VK_FORMAT_D32_SFLOAT_S8_UINT:
@@ -248,6 +247,19 @@ tu_image_view_init(struct tu_image_view *iview,
       format = tu6_plane_format(vk_format, tu6_plane_index(vk_format, aspect_mask));
    else
       format = tu_vk_format_to_pipe_format(vk_format);
+
+   if (image->vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM &&
+       aspect_mask == VK_IMAGE_ASPECT_PLANE_0_BIT) {
+      if (vk_format == VK_FORMAT_R8_UNORM) {
+         /* The 0'th plane of this format has a different UBWC compression. */
+         format = PIPE_FORMAT_Y8_UNORM;
+      } else {
+         /* If the user wants to reinterpret this plane, then they should've
+          * set MUTABLE_FORMAT_BIT which should disable UBWC and tiling.
+          */
+         assert(!layouts[0]->ubwc);
+      }
+   }
 
    if (aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT &&
        (vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||

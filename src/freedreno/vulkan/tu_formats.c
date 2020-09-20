@@ -254,14 +254,15 @@ tu_physical_device_get_format_properties(
 
    if (vk_format == VK_FORMAT_G8B8G8R8_422_UNORM ||
        vk_format == VK_FORMAT_B8G8R8G8_422_UNORM ||
+       vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
+      /* these formats don't support UBWC or tiling */
+      optimal = 0;
+   }
+
+   if (vk_format == VK_FORMAT_G8B8G8R8_422_UNORM ||
+       vk_format == VK_FORMAT_B8G8R8G8_422_UNORM ||
        vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
        vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
-      /* no tiling for special UBWC formats
-       * TODO: NV12 can be UBWC but has a special UBWC format for accessing the Y plane aspect
-       * for 3plane, tiling/UBWC might be supported, but the blob doesn't use tiling
-       */
-      optimal = 0;
-
       /* Disable buffer texturing of subsampled (422) and planar YUV textures.
        * The subsampling requirement comes from "If format is a block-compressed
        * format, then bufferFeatures must not support any features for the
