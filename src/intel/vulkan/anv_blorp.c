@@ -1195,6 +1195,111 @@ clear_color_attachment(struct anv_cmd_buffer *cmd_buffer,
 }
 
 static void
+anv_fast_clear_depth_stencil(struct anv_cmd_buffer *cmd_buffer,
+                             struct blorp_batch *batch,
+                             const struct anv_image *image,
+                             VkImageAspectFlags aspects,
+                             uint32_t level,
+                             uint32_t base_layer, uint32_t layer_count,
+                             VkRect2D area, uint8_t stencil_value)
+{
+   assert(image->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                               VK_IMAGE_ASPECT_STENCIL_BIT));
+
+   struct blorp_surf depth = {};
+   if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+      const uint32_t plane =
+         anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_DEPTH_BIT);
+      assert(base_layer + layer_count <=
+             anv_image_aux_layers(image, VK_IMAGE_ASPECT_DEPTH_BIT, level));
+      get_blorp_surf_for_anv_image(cmd_buffer->device,
+                                   image, VK_IMAGE_ASPECT_DEPTH_BIT,
+                                   0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
+                                   image->planes[plane].aux_usage, &depth);
+   }
+
+   struct blorp_surf stencil = {};
+   if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      const uint32_t plane =
+         anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_STENCIL_BIT);
+      get_blorp_surf_for_anv_image(cmd_buffer->device,
+                                   image, VK_IMAGE_ASPECT_STENCIL_BIT,
+                                   0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
+                                   image->planes[plane].aux_usage, &stencil);
+   }
+
+   /* From the Sky Lake PRM Volume 7, "Depth Buffer Clear":
+    *
+    *    "The following is required when performing a depth buffer clear with
+    *    using the WM_STATE or 3DSTATE_WM:
+    *
+    *       * If other rendering operations have preceded this clear, a
+    *         PIPE_CONTROL with depth cache flush enabled, Depth Stall bit
+    *         enabled must be issued before the rectangle primitive used for
+    *         the depth buffer clear operation.
+    *       * [...]"
+    *
+    * Even though the PRM only says that this is required if using 3DSTATE_WM
+    * and a 3DPRIMITIVE, the GPU appears to also need this to avoid occasional
+    * hangs when doing a clear with WM_HZ_OP.
+    */
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                             ANV_PIPE_DEPTH_STALL_BIT,
+                             "before clear hiz");
+
+   if ((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
+       depth.aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT) {
+      /* From Bspec 47010 (Depth Buffer Clear):
+       *
+       *    Since the fast clear cycles to CCS are not cached in TileCache,
+       *    any previous depth buffer writes to overlapping pixels must be
+       *    flushed out of TileCache before a succeeding Depth Buffer Clear.
+       *    This restriction only applies to Depth Buffer with write-thru
+       *    enabled, since fast clears to CCS only occur for write-thru mode.
+       *
+       * There may have been a write to this depth buffer. Flush it from the
+       * tile cache just in case.
+       */
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                                ANV_PIPE_TILE_CACHE_FLUSH_BIT,
+                                "before clear hiz_ccs_wt");
+   }
+
+   blorp_hiz_clear_depth_stencil(batch, &depth, &stencil,
+                                 level, base_layer, layer_count,
+                                 area.offset.x, area.offset.y,
+                                 area.offset.x + area.extent.width,
+                                 area.offset.y + area.extent.height,
+                                 aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
+                                 ANV_HZ_FC_VAL,
+                                 aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
+                                 stencil_value);
+
+   /* From the SKL PRM, Depth Buffer Clear:
+    *
+    *    "Depth Buffer Clear Workaround
+    *
+    *    Depth buffer clear pass using any of the methods (WM_STATE,
+    *    3DSTATE_WM or 3DSTATE_WM_HZ_OP) must be followed by a PIPE_CONTROL
+    *    command with DEPTH_STALL bit and Depth FLUSH bits “set” before
+    *    starting to render.  DepthStall and DepthFlush are not needed between
+    *    consecutive depth clear passes nor is it required if the depth-clear
+    *    pass was done with “full_surf_clear” bit set in the
+    *    3DSTATE_WM_HZ_OP."
+    *
+    * Even though the PRM provides a bunch of conditions under which this is
+    * supposedly unnecessary, we choose to perform the flush unconditionally
+    * just to be safe.
+    */
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                             ANV_PIPE_DEPTH_STALL_BIT,
+                             "after clear hiz");
+}
+
+static void
 clear_depth_stencil_attachment(struct anv_cmd_buffer *cmd_buffer,
                                struct blorp_batch *batch,
                                const VkClearAttachment *attachment,
@@ -1570,106 +1675,14 @@ anv_image_hiz_clear(struct anv_cmd_buffer *cmd_buffer,
                     uint32_t base_layer, uint32_t layer_count,
                     VkRect2D area, uint8_t stencil_value)
 {
-   assert(image->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
-                               VK_IMAGE_ASPECT_STENCIL_BIT));
-
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
    assert((batch.flags & BLORP_BATCH_USE_COMPUTE) == 0);
 
-   struct blorp_surf depth = {};
-   if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
-      const uint32_t plane =
-         anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_DEPTH_BIT);
-      assert(base_layer + layer_count <=
-             anv_image_aux_layers(image, VK_IMAGE_ASPECT_DEPTH_BIT, level));
-      get_blorp_surf_for_anv_image(cmd_buffer->device,
-                                   image, VK_IMAGE_ASPECT_DEPTH_BIT,
-                                   0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
-                                   image->planes[plane].aux_usage, &depth);
-   }
-
-   struct blorp_surf stencil = {};
-   if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-      const uint32_t plane =
-         anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_STENCIL_BIT);
-      get_blorp_surf_for_anv_image(cmd_buffer->device,
-                                   image, VK_IMAGE_ASPECT_STENCIL_BIT,
-                                   0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
-                                   image->planes[plane].aux_usage, &stencil);
-   }
-
-   /* From the Sky Lake PRM Volume 7, "Depth Buffer Clear":
-    *
-    *    "The following is required when performing a depth buffer clear with
-    *    using the WM_STATE or 3DSTATE_WM:
-    *
-    *       * If other rendering operations have preceded this clear, a
-    *         PIPE_CONTROL with depth cache flush enabled, Depth Stall bit
-    *         enabled must be issued before the rectangle primitive used for
-    *         the depth buffer clear operation.
-    *       * [...]"
-    *
-    * Even though the PRM only says that this is required if using 3DSTATE_WM
-    * and a 3DPRIMITIVE, the GPU appears to also need this to avoid occasional
-    * hangs when doing a clear with WM_HZ_OP.
-    */
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
-                             ANV_PIPE_DEPTH_STALL_BIT,
-                             "before clear hiz");
-
-   if ((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
-       depth.aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT) {
-      /* From Bspec 47010 (Depth Buffer Clear):
-       *
-       *    Since the fast clear cycles to CCS are not cached in TileCache,
-       *    any previous depth buffer writes to overlapping pixels must be
-       *    flushed out of TileCache before a succeeding Depth Buffer Clear.
-       *    This restriction only applies to Depth Buffer with write-thru
-       *    enabled, since fast clears to CCS only occur for write-thru mode.
-       *
-       * There may have been a write to this depth buffer. Flush it from the
-       * tile cache just in case.
-       */
-      anv_add_pending_pipe_bits(cmd_buffer,
-                                ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
-                                ANV_PIPE_TILE_CACHE_FLUSH_BIT,
-                                "before clear hiz_ccs_wt");
-   }
-
-   blorp_hiz_clear_depth_stencil(&batch, &depth, &stencil,
-                                 level, base_layer, layer_count,
-                                 area.offset.x, area.offset.y,
-                                 area.offset.x + area.extent.width,
-                                 area.offset.y + area.extent.height,
-                                 aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
-                                 ANV_HZ_FC_VAL,
-                                 aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
-                                 stencil_value);
+   anv_fast_clear_depth_stencil(cmd_buffer, &batch, image, aspects, level,
+                                base_layer, layer_count, area, stencil_value);
 
    anv_blorp_batch_finish(&batch);
-
-   /* From the SKL PRM, Depth Buffer Clear:
-    *
-    *    "Depth Buffer Clear Workaround
-    *
-    *    Depth buffer clear pass using any of the methods (WM_STATE,
-    *    3DSTATE_WM or 3DSTATE_WM_HZ_OP) must be followed by a PIPE_CONTROL
-    *    command with DEPTH_STALL bit and Depth FLUSH bits “set” before
-    *    starting to render.  DepthStall and DepthFlush are not needed between
-    *    consecutive depth clear passes nor is it required if the depth-clear
-    *    pass was done with “full_surf_clear” bit set in the
-    *    3DSTATE_WM_HZ_OP."
-    *
-    * Even though the PRM provides a bunch of conditions under which this is
-    * supposedly unnecessary, we choose to perform the flush unconditionally
-    * just to be safe.
-    */
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
-                             ANV_PIPE_DEPTH_STALL_BIT,
-                             "after clear hiz");
 }
 
 void
