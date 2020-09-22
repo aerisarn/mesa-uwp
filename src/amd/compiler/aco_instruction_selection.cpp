@@ -7018,6 +7018,42 @@ visit_store_buffer(isel_context* ctx, nir_intrinsic_instr* intrin)
                     write_mask, !swizzled, sync, slc);
 }
 
+void
+visit_load_smem(isel_context* ctx, nir_intrinsic_instr* instr)
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+   Temp base = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
+   Temp offset = bld.as_uniform(get_ssa_temp(ctx, instr->src[1].ssa));
+
+   aco_opcode opcode = aco_opcode::s_load_dword;
+   unsigned size = 1;
+
+   assert(dst.bytes() <= 64);
+
+   if (dst.bytes() > 32) {
+      opcode = aco_opcode::s_load_dwordx16;
+      size = 16;
+   } else if (dst.bytes() > 16) {
+      opcode = aco_opcode::s_load_dwordx8;
+      size = 8;
+   } else if (dst.bytes() > 8) {
+      opcode = aco_opcode::s_load_dwordx4;
+      size = 4;
+   } else if (dst.bytes() > 4) {
+      opcode = aco_opcode::s_load_dwordx2;
+      size = 2;
+   }
+
+   if (dst.size() != size) {
+      bld.pseudo(aco_opcode::p_extract_vector, Definition(dst),
+                 bld.smem(opcode, bld.def(RegType::sgpr, size), base, offset), Operand::c32(0u));
+   } else {
+      bld.smem(opcode, Definition(dst), base, offset);
+   }
+   emit_split_vector(ctx, dst, instr->dest.ssa.num_components);
+}
+
 sync_scope
 translate_nir_scope(nir_scope scope)
 {
@@ -8113,6 +8149,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_global: visit_load_global(ctx, instr); break;
    case nir_intrinsic_load_buffer_amd: visit_load_buffer(ctx, instr); break;
    case nir_intrinsic_store_buffer_amd: visit_store_buffer(ctx, instr); break;
+   case nir_intrinsic_load_smem_amd: visit_load_smem(ctx, instr); break;
    case nir_intrinsic_store_global: visit_store_global(ctx, instr); break;
    case nir_intrinsic_global_atomic_add:
    case nir_intrinsic_global_atomic_imin:
@@ -9032,6 +9069,17 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_force_vrs_rates_amd: {
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
                get_arg(ctx, ctx->args->ac.force_vrs_rates));
+      break;
+   }
+   case nir_intrinsic_load_scalar_arg_amd:
+   case nir_intrinsic_load_vector_arg_amd: {
+      assert(nir_intrinsic_base(instr) < ctx->args->ac.arg_count);
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      Temp src = ctx->arg_temps[nir_intrinsic_base(instr)];
+      assert(src.id());
+      assert(src.type() == (instr->intrinsic == nir_intrinsic_load_scalar_arg_amd ? RegType::sgpr : RegType::vgpr));
+      bld.copy(Definition(dst), src);
+      emit_split_vector(ctx, dst, dst.size());
       break;
    }
    default:
