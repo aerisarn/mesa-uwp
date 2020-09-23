@@ -49,6 +49,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_GRAPHICS:
    case PIPE_CAP_GL_CLAMP:
    case PIPE_CAP_MAX_RENDER_TARGETS:
+   case PIPE_CAP_DITHERING:
       return 1;
 
    case PIPE_CAP_OCCLUSION_QUERY:
