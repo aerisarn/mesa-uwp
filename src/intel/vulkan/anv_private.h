@@ -86,6 +86,10 @@
 #include "vk_queue.h"
 #include "vk_log.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
 struct wl_display;
@@ -4053,6 +4057,10 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
 #  define genX(x) gfx125_##x
 #  include "anv_genX.h"
 #  undef genX
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* ANV_PRIVATE_H */
