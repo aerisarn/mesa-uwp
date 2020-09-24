@@ -50,6 +50,9 @@ struct radv_shader_args {
    struct radv_userdata_locations user_sgprs_locs;
    unsigned num_user_sgprs;
 
+   bool explicit_scratch_args;
+   bool remap_spi_ps_input;
+   bool load_grid_size_from_user_sgpr;
    bool is_gs_copy_shader;
    bool is_trap_handler_shader;
 };
@@ -60,10 +63,10 @@ radv_shader_args_from_ac(struct ac_shader_args *args)
    return container_of(args, struct radv_shader_args, ac);
 }
 
-struct radv_nir_compiler_options;
+struct radv_pipeline_key;
 struct radv_shader_info;
 
-void radv_declare_shader_args(const struct radv_nir_compiler_options *options,
+void radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_key *key,
                               const struct radv_shader_info *info, gl_shader_stage stage,
                               bool has_previous_stage, gl_shader_stage previous_stage,
                               struct radv_shader_args *args);

@@ -2311,7 +2311,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
    ctx.abi.adjust_frag_coord_z = options->adjust_frag_coord_z;
    ctx.abi.robust_buffer_access = options->robust_buffer_access;
    ctx.abi.disable_aniso_single_level = options->disable_aniso_single_level;
-   ctx.abi.load_grid_size_from_user_sgpr = options->load_grid_size_from_user_sgpr;
+   ctx.abi.load_grid_size_from_user_sgpr = args->load_grid_size_from_user_sgpr;
 
    bool is_ngg = is_pre_gs_stage(shaders[0]->info.stage) && info->is_ngg;
    if (shader_count >= 2 || is_ngg)

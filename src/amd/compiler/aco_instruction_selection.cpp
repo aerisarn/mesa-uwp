@@ -8181,7 +8181,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_scoped_barrier: emit_scoped_barrier(ctx, instr); break;
    case nir_intrinsic_load_num_workgroups: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      if (ctx->options->load_grid_size_from_user_sgpr) {
+      if (ctx->args->load_grid_size_from_user_sgpr) {
          bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.num_work_groups));
       } else {
          Temp addr = get_arg(ctx, ctx->args->ac.num_work_groups);

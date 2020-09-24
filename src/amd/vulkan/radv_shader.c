@@ -1907,9 +1907,10 @@ radv_dump_nir_shaders(struct nir_shader *const *shaders, int shader_count)
 static struct radv_shader *
 shader_compile(struct radv_device *device, struct vk_shader_module *module,
                struct nir_shader *const *shaders, int shader_count, gl_shader_stage stage,
-               struct radv_shader_info *info, struct radv_nir_compiler_options *options,
-               bool gs_copy_shader, bool trap_handler_shader, bool keep_shader_info,
-               bool keep_statistic_info, struct radv_shader_binary **binary_out)
+               struct radv_shader_info *info, const struct radv_shader_args *args,
+               struct radv_nir_compiler_options *options, bool gs_copy_shader,
+               bool trap_handler_shader, bool keep_shader_info, bool keep_statistic_info,
+               struct radv_shader_binary **binary_out)
 {
    enum radeon_family chip_family = device->physical_device->rad_info.family;
    struct radv_shader_binary *binary = NULL;
@@ -1934,38 +1935,26 @@ shader_compile(struct radv_device *device, struct vk_shader_module *module,
       module && !is_meta_shader(module->nir) && options->key.ps.enable_mrt_output_nan_fixup;
    options->adjust_frag_coord_z = options->key.adjust_frag_coord_z;
    options->disable_aniso_single_level = options->key.disable_aniso_single_level;
-   options->load_grid_size_from_user_sgpr = device->load_grid_size_from_user_sgpr;
    options->has_image_load_dcc_bug = device->physical_device->rad_info.has_image_load_dcc_bug;
    options->debug.func = radv_compiler_debug;
    options->debug.private_data = &debug_data;
-
-   struct radv_shader_args args = {0};
-   args.is_gs_copy_shader = gs_copy_shader;
-   args.is_trap_handler_shader = trap_handler_shader;
-
-   radv_declare_shader_args(options, info,
-      gs_copy_shader ? MESA_SHADER_VERTEX : shaders[shader_count - 1]->info.stage,
-      shader_count >= 2,
-      shader_count >= 2 ? shaders[shader_count - 2]->info.stage : MESA_SHADER_VERTEX, &args);
-
-   info->user_sgprs_locs = args.user_sgprs_locs;
 
 #ifdef LLVM_AVAILABLE
    if (radv_use_llvm_for_stage(device, stage) || options->dump_shader || options->record_ir)
       ac_init_llvm_once();
 
    if (radv_use_llvm_for_stage(device, stage)) {
-      llvm_compile_shader(options, info, shader_count, shaders, &binary, &args);
+      llvm_compile_shader(options, info, shader_count, shaders, &binary, args);
 #else
    if (false) {
 #endif
    } else {
-      aco_compile_shader(options, info, shader_count, shaders, &args, &binary);
+      aco_compile_shader(options, info, shader_count, shaders, args, &binary);
    }
 
    binary->info = *info;
 
-   struct radv_shader *shader = radv_shader_create(device, binary, keep_shader_info, false, &args);
+   struct radv_shader *shader = radv_shader_create(device, binary, keep_shader_info, false, args);
    if (!shader) {
       free(binary);
       return NULL;
@@ -2004,10 +1993,9 @@ shader_compile(struct radv_device *device, struct vk_shader_module *module,
 struct radv_shader *
 radv_shader_compile(struct radv_device *device, struct vk_shader_module *module,
                     struct nir_shader *const *shaders, int shader_count,
-                    struct radv_pipeline_layout *layout,
-                    const struct radv_pipeline_key *key,
-                    struct radv_shader_info *info, bool keep_shader_info,
-                    bool keep_statistic_info,
+                    struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key,
+                    struct radv_shader_info *info, const struct radv_shader_args *args,
+                    bool keep_shader_info, bool keep_statistic_info,
                     struct radv_shader_binary **binary_out)
 {
    gl_shader_stage stage = shaders[shader_count - 1]->info.stage;
@@ -2017,30 +2005,26 @@ radv_shader_compile(struct radv_device *device, struct vk_shader_module *module,
    if (key)
       options.key = *key;
 
-   options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
-   options.remap_spi_ps_input = !radv_use_llvm_for_stage(device, stage);
    options.robust_buffer_access = device->robust_buffer_access;
    options.wgp_mode = radv_should_use_wgp_mode(device, stage, info);
 
-   return shader_compile(device, module, shaders, shader_count, stage, info, &options, false, false,
-                         keep_shader_info, keep_statistic_info, binary_out);
+   return shader_compile(device, module, shaders, shader_count, stage, info, args, &options, false,
+                         false, keep_shader_info, keep_statistic_info, binary_out);
 }
 
 struct radv_shader *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *shader,
-                           struct radv_shader_info *info, struct radv_shader_binary **binary_out,
-                           bool keep_shader_info, bool keep_statistic_info, bool multiview,
-                           bool disable_optimizations)
+                           struct radv_shader_info *info, const struct radv_shader_args *args,
+                           struct radv_shader_binary **binary_out, bool keep_shader_info,
+                           bool keep_statistic_info, bool multiview, bool disable_optimizations)
 {
    struct radv_nir_compiler_options options = {0};
    gl_shader_stage stage = MESA_SHADER_VERTEX;
 
-   options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
-   options.remap_spi_ps_input = !radv_use_llvm_for_stage(device, stage);
    options.key.has_multiview_view_index = multiview;
    options.key.optimisations_disabled = disable_optimizations;
 
-   return shader_compile(device, NULL, &shader, 1, stage, info, &options, true, false,
+   return shader_compile(device, NULL, &shader, 1, stage, info, args, &options, true, false,
                          keep_shader_info, keep_statistic_info, binary_out);
 }
 
@@ -2051,6 +2035,7 @@ radv_create_trap_handler_shader(struct radv_device *device)
    struct radv_shader *shader = NULL;
    struct radv_shader_binary *binary = NULL;
    struct radv_shader_info info = {0};
+   struct radv_pipeline_key key = {0};
    struct radv_trap_handler_shader *trap;
 
    trap = malloc(sizeof(struct radv_trap_handler_shader));
@@ -2059,12 +2044,17 @@ radv_create_trap_handler_shader(struct radv_device *device)
 
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_trap_handler");
 
-   options.explicit_scratch_args = true;
    options.wgp_mode = radv_should_use_wgp_mode(device, MESA_SHADER_COMPUTE, &info);
    info.wave_size = 64;
 
-   shader = shader_compile(device, NULL, &b.shader, 1, MESA_SHADER_COMPUTE, &info, &options, false,
-                           true, true, false, &binary);
+   struct radv_shader_args args;
+   args.explicit_scratch_args = true;
+   args.is_trap_handler_shader = true;
+   radv_declare_shader_args(device->physical_device->rad_info.chip_class, &key, &info,
+                            MESA_SHADER_COMPUTE, false, MESA_SHADER_VERTEX, &args);
+
+   shader = shader_compile(device, NULL, &b.shader, 1, MESA_SHADER_COMPUTE, &info, &args, &options,
+                           false, true, true, false, &binary);
 
    trap->alloc = radv_alloc_shader_memory(device, shader->code_size, NULL);
 
@@ -2131,8 +2121,8 @@ upload_vs_prolog(struct radv_device *device, struct radv_prolog_binary *bin, uns
 struct radv_shader_prolog *
 radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_key *key)
 {
+   struct radv_shader_args args = {0};
    struct radv_nir_compiler_options options = {0};
-   options.explicit_scratch_args = true;
    options.family = device->physical_device->rad_info.family;
    options.chip_class = device->physical_device->rad_info.chip_class;
    options.info = &device->physical_device->rad_info;
@@ -2151,9 +2141,11 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    info.vs.as_ls = key->as_ls;
    info.is_ngg = key->is_ngg;
 
-   struct radv_shader_args args = {0};
-   radv_declare_shader_args(&options, &info, key->next_stage, key->next_stage != MESA_SHADER_VERTEX,
-                            MESA_SHADER_VERTEX, &args);
+   struct radv_pipeline_key pipeline_key = {0};
+
+   args.explicit_scratch_args = true;
+   radv_declare_shader_args(options.chip_class, &pipeline_key, &info, key->next_stage,
+                            key->next_stage != MESA_SHADER_VERTEX, MESA_SHADER_VERTEX, &args);
 
    info.user_sgprs_locs = args.user_sgprs_locs;
 

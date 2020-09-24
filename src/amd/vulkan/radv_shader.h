@@ -47,6 +47,7 @@ struct radv_pipeline;
 struct radv_pipeline_cache;
 struct radv_pipeline_key;
 struct radv_vs_input_state;
+struct radv_shader_args;
 
 enum radv_vs_input_alpha_adjust {
    ALPHA_ADJUST_NONE = 0,
@@ -113,7 +114,6 @@ enum radv_compiler_debug_level {
 struct radv_nir_compiler_options {
    struct radv_pipeline_layout *layout;
    struct radv_pipeline_key key;
-   bool explicit_scratch_args;
    bool robust_buffer_access;
    bool adjust_frag_coord_z;
    bool dump_shader;
@@ -125,9 +125,7 @@ struct radv_nir_compiler_options {
    bool has_image_load_dcc_bug;
    bool enable_mrt_output_nan_fixup;
    bool wgp_mode;
-   bool remap_spi_ps_input;
    bool disable_aniso_single_level;
-   bool load_grid_size_from_user_sgpr;
    enum radeon_family family;
    enum chip_class chip_class;
    const struct radeon_info *info;
@@ -539,8 +537,8 @@ struct radv_shader *radv_shader_create(struct radv_device *device,
 struct radv_shader *radv_shader_compile(
    struct radv_device *device, struct vk_shader_module *module, struct nir_shader *const *shaders,
    int shader_count, struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key,
-   struct radv_shader_info *info, bool keep_shader_info, bool keep_statistic_info,
-   struct radv_shader_binary **binary_out);
+   struct radv_shader_info *info, const struct radv_shader_args *args, bool keep_shader_info,
+   bool keep_statistic_info, struct radv_shader_binary **binary_out);
 
 bool radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
                                struct radv_shader *shader, void *dest_ptr);
@@ -551,8 +549,9 @@ void radv_free_shader_memory(struct radv_device *device, union radv_shader_arena
 
 struct radv_shader *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
-                           struct radv_shader_info *info, struct radv_shader_binary **binary_out,
-                           bool multiview, bool keep_shader_info, bool keep_statistic_info,
+                           struct radv_shader_info *info, const struct radv_shader_args *args,
+                           struct radv_shader_binary **binary_out, bool multiview,
+                           bool keep_shader_info, bool keep_statistic_info,
                            bool disable_optimizations);
 
 struct radv_trap_handler_shader *radv_create_trap_handler_shader(struct radv_device *device);
