@@ -1976,6 +1976,7 @@ special_requirements_for_handling_double_precision_data_types(
           (brw_reg_type_is_floating_point(dst_type) ||
            is_double_precision)) {
          ERROR_IF(!is_scalar_region &&
+                  BRW_ADDRESS_REGISTER_INDIRECT_REGISTER != address_mode &&
                   (vstride != width * hstride ||
                    src_stride != dst_stride ||
                    subreg != dst_subreg),
