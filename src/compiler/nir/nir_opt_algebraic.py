@@ -2691,6 +2691,7 @@ late_optimizations += [
   (('i2fmp', a), ('i2f16', a)),
   (('i2imp', a), ('u2u16', a)),
   (('u2fmp', a), ('u2f16', a)),
+  (('fisfinite', a), ('flt', ('fabs', a), float("inf"))),
 ]
 
 distribute_src_mods = [
