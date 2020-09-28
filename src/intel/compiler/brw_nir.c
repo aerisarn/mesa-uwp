@@ -536,6 +536,8 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_split_array_vars, nir_var_function_temp);
       OPT(nir_shrink_vec_array_vars, nir_var_function_temp);
       OPT(nir_opt_deref);
+      if (OPT(nir_opt_memcpy))
+         OPT(nir_split_var_copies);
       OPT(nir_lower_vars_to_ssa);
       if (allow_copies) {
          /* Only run this pass in the first call to brw_nir_optimize.  Later
@@ -595,6 +597,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_opt_intrinsics);
       OPT(nir_opt_idiv_const, 32);
       OPT(nir_opt_algebraic);
+      OPT(nir_lower_constant_convert_alu_types);
       OPT(nir_opt_constant_folding);
 
       if (lower_flrp != 0) {
