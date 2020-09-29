@@ -3083,12 +3083,22 @@ anv_pipeline_finish(struct anv_pipeline *pipeline,
                     struct anv_device *device,
                     const VkAllocationCallbacks *pAllocator);
 
+struct anv_kernel_arg {
+   bool is_ptr;
+   uint16_t size;
+
+   union {
+      uint64_t u64;
+      void *ptr;
+   };
+};
+
 struct anv_kernel {
 #ifndef NDEBUG
    const char *name;
 #endif
    struct anv_shader_bin *bin;
-   const struct gen_l3_config *l3_config;
+   const struct intel_l3_config *l3_config;
 };
 
 struct anv_format_plane {
