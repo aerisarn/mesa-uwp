@@ -1922,6 +1922,8 @@ public:
    unsigned next_uniform_if_depth = 0;
 
    struct {
+      FILE *output = stderr;
+      bool shorten_messages = false;
       void (*func)(void *private_data,
                    enum radv_compiler_debug_level level,
                    const char *message);

@@ -37,16 +37,19 @@ static void aco_log(Program *program, enum radv_compiler_debug_level level,
 {
    char *msg;
 
-   msg = ralloc_strdup(NULL, prefix);
-
-   ralloc_asprintf_append(&msg, "    In file %s:%u\n", file, line);
-   ralloc_asprintf_append(&msg, "    ");
-   ralloc_vasprintf_append(&msg, fmt, args);
+   if (program->debug.shorten_messages) {
+      msg = ralloc_vasprintf(NULL, fmt, args);
+   } else {
+      msg = ralloc_strdup(NULL, prefix);
+      ralloc_asprintf_append(&msg, "    In file %s:%u\n", file, line);
+      ralloc_asprintf_append(&msg, "    ");
+      ralloc_vasprintf_append(&msg, fmt, args);
+   }
 
    if (program->debug.func)
       program->debug.func(program->debug.private_data, level, msg);
 
-   fprintf(stderr, "%s\n", msg);
+   fprintf(program->debug.output, "%s\n", msg);
 
    ralloc_free(msg);
 }

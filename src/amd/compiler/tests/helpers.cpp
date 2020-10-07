@@ -85,6 +85,11 @@ void create_program(enum chip_class chip_class, Stage stage, unsigned wave_size,
    program->debug.func = nullptr;
    program->debug.private_data = nullptr;
 
+   program->debug.output = output;
+   program->debug.shorten_messages = true;
+   program->debug.func = nullptr;
+   program->debug.private_data = nullptr;
+
    Block *block = program->create_and_insert_block();
    block->kind = block_kind_top_level;
 
