@@ -144,6 +144,7 @@ namespace clover {
 
    public:
       cl_image_format format() const;
+      virtual cl_uint dimensions() const = 0;
       size_t width() const;
       size_t height() const;
       size_t depth() const;
@@ -176,16 +177,19 @@ namespace clover {
       std::mutex resources_mtx;
    };
 
-   template<cl_mem_object_type Type>
+   template<cl_mem_object_type Type, cl_uint Dim>
    class basic_image : public image {
    public:
       using image::image;
       virtual cl_mem_object_type type() const {
          return Type;
       }
+      virtual cl_uint dimensions() const {
+         return Dim;
+      }
    };
 
-   class image1d : public basic_image<CL_MEM_OBJECT_IMAGE1D> {
+   class image1d : public basic_image<CL_MEM_OBJECT_IMAGE1D, 1> {
    public:
       image1d(clover::context &ctx,
               std::vector<cl_mem_properties> properties,
@@ -195,7 +199,7 @@ namespace clover {
               void *host_ptr);
    };
 
-   class image1d_buffer : public basic_image<CL_MEM_OBJECT_IMAGE1D_BUFFER> {
+   class image1d_buffer : public basic_image<CL_MEM_OBJECT_IMAGE1D_BUFFER, 1> {
    public:
       image1d_buffer(clover::context &ctx,
                      std::vector<cl_mem_properties> properties,
@@ -205,7 +209,7 @@ namespace clover {
                      void *host_ptr, cl_mem buffer);
    };
 
-   class image1d_array : public basic_image<CL_MEM_OBJECT_IMAGE1D_ARRAY> {
+   class image1d_array : public basic_image<CL_MEM_OBJECT_IMAGE1D_ARRAY, 1> {
    public:
       image1d_array(clover::context &ctx,
                     std::vector<cl_mem_properties> properties,
@@ -216,7 +220,7 @@ namespace clover {
                     void *host_ptr);
    };
 
-   class image2d : public basic_image<CL_MEM_OBJECT_IMAGE2D> {
+   class image2d : public basic_image<CL_MEM_OBJECT_IMAGE2D, 2> {
    public:
       image2d(clover::context &ctx,
               std::vector<cl_mem_properties> properties,
@@ -226,7 +230,7 @@ namespace clover {
               void *host_ptr);
    };
 
-   class image2d_array : public basic_image<CL_MEM_OBJECT_IMAGE2D_ARRAY> {
+   class image2d_array : public basic_image<CL_MEM_OBJECT_IMAGE2D_ARRAY, 2> {
    public:
       image2d_array(clover::context &ctx,
                     std::vector<cl_mem_properties> properties,
@@ -237,7 +241,7 @@ namespace clover {
                     void *host_ptr);
    };
 
-   class image3d : public basic_image<CL_MEM_OBJECT_IMAGE3D>{
+   class image3d : public basic_image<CL_MEM_OBJECT_IMAGE3D, 3>{
    public:
       image3d(clover::context &ctx,
               std::vector<cl_mem_properties> properties,

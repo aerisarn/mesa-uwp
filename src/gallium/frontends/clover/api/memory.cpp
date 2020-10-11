@@ -498,11 +498,11 @@ clGetImageInfo(cl_mem d_mem, cl_image_info param,
       break;
 
    case CL_IMAGE_HEIGHT:
-      buf.as_scalar<size_t>() = img.height();
+      buf.as_scalar<size_t>() = img.dimensions() > 1 ? img.height() : 0;
       break;
 
    case CL_IMAGE_DEPTH:
-      buf.as_scalar<size_t>() = img.depth();
+      buf.as_scalar<size_t>() = img.dimensions() > 2 ? img.depth() : 0;
       break;
 
    case CL_IMAGE_ARRAY_SIZE:
