@@ -67,6 +67,10 @@ kernel::launch(command_queue &q,
    const auto m = program().build(q.device()).binary;
    const auto reduced_grid_size =
       map(divides(), grid_size, block_size);
+
+   if (any_of(is_zero(), grid_size))
+      return;
+
    void *st = exec.bind(&q, grid_offset);
    struct pipe_grid_info info = {};
 
@@ -137,6 +141,9 @@ kernel::name() const {
 std::vector<size_t>
 kernel::optimal_block_size(const command_queue &q,
                            const std::vector<size_t> &grid_size) const {
+   if (any_of(is_zero(), grid_size))
+      return grid_size;
+
    return factor::find_grid_optimal_factor<size_t>(
       q.device().max_threads_per_block(), q.device().max_block_size(),
       grid_size);
