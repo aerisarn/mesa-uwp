@@ -552,7 +552,7 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
    switch (param) {
    case PIPE_VIDEO_CAP_SUPPORTED:
       if (codec < PIPE_VIDEO_FORMAT_MPEG4_AVC &&
-          sscreen->info.family >= CHIP_YELLOW_CARP)
+          sscreen->info.family >= CHIP_BEIGE_GOBY)
          return false;
       switch (codec) {
       case PIPE_VIDEO_FORMAT_MPEG12:

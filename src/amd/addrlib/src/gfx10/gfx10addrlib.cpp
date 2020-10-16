@@ -1045,6 +1045,12 @@ ChipFamily Gfx10Lib::HwlConvertChipFamily(
                 m_settings.supportRbPlus   = 1;
                 m_settings.dccUnsup3DSwDis = 0;
             }
+
+            if (ASICREV_IS_BEIGE_GOBY(chipRevision))
+            {
+                m_settings.supportRbPlus   = 1;
+                m_settings.dccUnsup3DSwDis = 0;
+            }
             break;
 
         case FAMILY_VGH:
