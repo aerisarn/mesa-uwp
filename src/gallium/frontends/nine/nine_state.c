@@ -839,7 +839,7 @@ update_vertex_elements(struct NineDevice9 *device)
     const struct NineVertexShader9 *vs;
     unsigned n, b, i;
     int index;
-    char vdecl_index_map[16]; /* vs->num_inputs <= 16 */
+    int8_t vdecl_index_map[16]; /* vs->num_inputs <= 16 */
     uint16_t used_streams = 0;
     int dummy_vbo_stream = -1;
     BOOL need_dummy_vbo = FALSE;
@@ -3040,7 +3040,7 @@ update_vertex_elements_sw(struct NineDevice9 *device)
     const struct NineVertexShader9 *vs;
     unsigned n, b, i;
     int index;
-    char vdecl_index_map[16]; /* vs->num_inputs <= 16 */
+    int8_t vdecl_index_map[16]; /* vs->num_inputs <= 16 */
     char used_streams[device->caps.MaxStreams];
     int dummy_vbo_stream = -1;
     BOOL need_dummy_vbo = FALSE;
