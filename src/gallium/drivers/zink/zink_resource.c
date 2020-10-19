@@ -439,19 +439,43 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    } else {
       VkImageCreateInfo ici = create_ici(screen, templ, templ->bind);
       VkExternalMemoryImageCreateInfo emici = {0};
+      VkImageDrmFormatModifierExplicitCreateInfoEXT idfmeci = {0};
 
       if (templ->bind & PIPE_BIND_SHARED) {
          emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
          emici.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
          ici.pNext = &emici;
+#ifdef ZINK_USE_DMABUF
+         if (whandle && whandle->modifier != DRM_FORMAT_MOD_INVALID) {
+            idfmeci.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT;
+            idfmeci.pNext = ici.pNext;
+            idfmeci.drmFormatModifier = whandle->modifier;
 
+            /* TODO: store these values from other planes in their
+             * respective zink_resource, and walk the next-pointers to
+             * build up the planar array here instead.
+             */
+            assert(util_format_get_num_planes(templ->format) == 1);
+            idfmeci.drmFormatModifierPlaneCount = 1;
+            VkSubresourceLayout plane_layout = {
+               .offset = whandle->offset,
+               .size = 0,
+               .rowPitch = whandle->stride,
+               .arrayPitch = 0,
+               .depthPitch = 0,
+            };
+            idfmeci.pPlaneLayouts = &plane_layout;
+
+            ici.pNext = &idfmeci;
+            ici.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+         } else
+#endif
          if (ici.tiling == VK_IMAGE_TILING_OPTIMAL) {
             // TODO: remove for wsi
             ici.pNext = NULL;
             scanout = false;
             shared = false;
          }
-
       }
 
       if (optimal_tiling)
@@ -699,7 +723,17 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       if (result != VK_SUCCESS)
          return false;
       whandle->handle = fd;
-      whandle->modifier = DRM_FORMAT_MOD_INVALID;
+      if (screen->info.have_EXT_image_drm_format_modifier) {
+         VkImageDrmFormatModifierPropertiesEXT props = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT,
+         };
+         screen->vk.GetImageDrmFormatModifierPropertiesEXT(screen->dev,
+                                                           res->obj->image,
+                                                           &props);
+         whandle->modifier = props.drmFormatModifier;
+      } else
+         whandle->modifier = DRM_FORMAT_MOD_INVALID;
+
 #else
       return false;
 #endif
@@ -714,7 +748,13 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
                  unsigned usage)
 {
 #ifdef ZINK_USE_DMABUF
-   if (whandle->modifier != DRM_FORMAT_MOD_INVALID)
+   if (whandle->modifier != DRM_FORMAT_MOD_INVALID &&
+       !zink_screen(pscreen)->info.have_EXT_image_drm_format_modifier)
+      return NULL;
+
+   /* ignore any AUX planes, as well as planar formats */
+   if (templ->format == PIPE_FORMAT_NONE ||
+       util_format_get_num_planes(templ->format) != 1)
       return NULL;
 
    return resource_create(pscreen, templ, whandle, usage);
