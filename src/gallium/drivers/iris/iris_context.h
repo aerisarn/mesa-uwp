@@ -655,6 +655,11 @@ struct iris_context {
        * and shader stage.
        */
       struct iris_bo *scratch_bos[1 << 4][MESA_SHADER_STAGES];
+
+      /**
+       * Scratch buffer surface states on Gfx12.5+
+       */
+      struct iris_state_ref scratch_surfs[1 << 4];
    } shaders;
 
    struct intel_perf_context *perf_ctx;
@@ -895,6 +900,8 @@ const struct shader_info *iris_get_shader_info(const struct iris_context *ice,
 struct iris_bo *iris_get_scratch_space(struct iris_context *ice,
                                        unsigned per_thread_scratch,
                                        gl_shader_stage stage);
+const struct iris_state_ref *iris_get_scratch_surf(struct iris_context *ice,
+                                                   unsigned per_thread_scratch);
 uint32_t iris_group_index_to_bti(const struct iris_binding_table *bt,
                                  enum iris_surface_group group,
                                  uint32_t index);

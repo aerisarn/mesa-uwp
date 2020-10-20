@@ -223,6 +223,10 @@ iris_destroy_context(struct pipe_context *ctx)
    clear_dirty_dmabuf_set(ice);
 
    screen->vtbl.destroy_state(ice);
+
+   for (unsigned i = 0; i < ARRAY_SIZE(ice->shaders.scratch_surfs); i++)
+      pipe_resource_reference(&ice->shaders.scratch_surfs[i].res, NULL);
+
    iris_destroy_program_cache(ice);
    iris_destroy_border_color_pool(ice);
    if (screen->measure.config)

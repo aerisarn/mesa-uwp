@@ -4317,9 +4317,22 @@ KSP(const struct iris_compiled_shader *shader)
    pkt.Enable           = true;                                           \
                                                                           \
    if (prog_data->total_scratch) {                                        \
-      pkt.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;     \
+      INIT_THREAD_SCRATCH_SIZE(pkt)                                       \
    }
 
+#if GFX_VERx10 >= 125
+#define INIT_THREAD_SCRATCH_SIZE(pkt)
+#define MERGE_SCRATCH_ADDR(name)                                          \
+{                                                                         \
+   uint32_t pkt2[GENX(name##_length)] = {0};                              \
+   _iris_pack_command(batch, GENX(name), pkt2, p) {                       \
+      p.ScratchSpaceBuffer = scratch_addr >> 4;                           \
+   }                                                                      \
+   iris_emit_merge(batch, pkt, pkt2, GENX(name##_length));                \
+}
+#else
+#define INIT_THREAD_SCRATCH_SIZE(pkt)                                     \
+   pkt.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
 #define MERGE_SCRATCH_ADDR(name)                                          \
 {                                                                         \
    uint32_t pkt2[GENX(name##_length)] = {0};                              \
@@ -4329,6 +4342,7 @@ KSP(const struct iris_compiled_shader *shader)
    }                                                                      \
    iris_emit_merge(batch, pkt, pkt2, GENX(name##_length));                \
 }
+#endif
 
 
 /**
@@ -4515,8 +4529,9 @@ iris_store_fs_state(const struct intel_device_info *devinfo,
       ps.PositionXYOffsetSelect =
          wm_prog_data->uses_pos_offset ? POSOFFSET_SAMPLE : POSOFFSET_NONE;
 
-      if (prog_data->total_scratch)
-         ps.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
+      if (prog_data->total_scratch) {
+         INIT_THREAD_SCRATCH_SIZE(ps);
+      }
    }
 
    iris_pack_command(GENX(3DSTATE_PS_EXTRA), psx_state, psx) {
@@ -5078,7 +5093,18 @@ pin_scratch_space(struct iris_context *ice,
          iris_get_scratch_space(ice, prog_data->total_scratch, stage);
       iris_use_pinned_bo(batch, scratch_bo, true, IRIS_DOMAIN_NONE);
 
+#if GFX_VERx10 >= 125
+      const struct iris_state_ref *ref =
+         iris_get_scratch_surf(ice, prog_data->total_scratch);
+      iris_use_pinned_bo(batch, iris_resource_bo(ref->res),
+                         false, IRIS_DOMAIN_NONE);
+      scratch_addr = ref->offset +
+                     iris_resource_bo(ref->res)->gtt_offset -
+                     IRIS_MEMZONE_BINDLESS_START;
+      assert((scratch_addr & 0x3f) == 0 && scratch_addr < (1 << 26));
+#else
       scratch_addr = scratch_bo->gtt_offset;
+#endif
    }
 
    return scratch_addr;
@@ -5915,8 +5941,12 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                ps.KernelStartPointer2 = KSP(shader) +
                   brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
 
+#if GFX_VERx10 >= 125
+               ps.ScratchSpaceBuffer = scratch_addr >> 4;
+#else
                ps.ScratchSpaceBasePointer =
                   rw_bo(NULL, scratch_addr, IRIS_DOMAIN_NONE);
+#endif
             }
 
             uint32_t psx_state[GENX(3DSTATE_PS_EXTRA_length)] = {0};
@@ -6829,11 +6859,12 @@ iris_upload_compute_walker(struct iris_context *ice,
 
    if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
       iris_emit_cmd(batch, GENX(CFE_STATE), cfe) {
-         /* TODO: Enable gfx12-hp scratch support*/
-         assert(prog_data->total_scratch == 0);
-
          cfe.MaximumNumberofThreads =
             devinfo->max_cs_threads * screen->subslice_total - 1;
+         if (prog_data->total_scratch > 0) {
+            cfe.ScratchSpaceBuffer =
+               iris_get_scratch_surf(ice, prog_data->total_scratch)->offset >> 4;
+         }
       }
    }
 
