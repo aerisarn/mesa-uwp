@@ -756,7 +756,17 @@ fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
                                  brw_imm_ud(spill_offset / 16));
          _mesa_set_add(spill_insts, unspill_inst);
 
-         fs_reg srcs[] = { brw_imm_ud(0), brw_imm_ud(0), header };
+         unsigned bti;
+         fs_reg ex_desc;
+         if (devinfo->verx10 >= 125) {
+            bti = GFX9_BTI_BINDLESS;
+            ex_desc = component(this->scratch_header, 0);
+         } else {
+            bti = GFX8_BTI_STATELESS_NON_COHERENT;
+            ex_desc = brw_imm_ud(0);
+         }
+
+         fs_reg srcs[] = { brw_imm_ud(0), ex_desc, header };
          unspill_inst = bld.emit(SHADER_OPCODE_SEND, dst,
                                  srcs, ARRAY_SIZE(srcs));
          unspill_inst->mlen = 1;
@@ -766,7 +776,7 @@ fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
          unspill_inst->send_is_volatile = true;
          unspill_inst->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
          unspill_inst->desc =
-            brw_dp_desc(devinfo, GFX8_BTI_STATELESS_NON_COHERENT,
+            brw_dp_desc(devinfo, bti,
                         BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ,
                         BRW_DATAPORT_OWORD_BLOCK_DWORDS(reg_size * 8));
       } else if (devinfo->ver >= 7 && spill_offset < (1 << 12) * REG_SIZE) {
@@ -811,7 +821,17 @@ fs_reg_alloc::emit_spill(const fs_builder &bld, fs_reg src,
                                brw_imm_ud(spill_offset / 16));
          _mesa_set_add(spill_insts, spill_inst);
 
-         fs_reg srcs[] = { brw_imm_ud(0), brw_imm_ud(0), header, src };
+         unsigned bti;
+         fs_reg ex_desc;
+         if (devinfo->verx10 >= 125) {
+            bti = GFX9_BTI_BINDLESS;
+            ex_desc = component(this->scratch_header, 0);
+         } else {
+            bti = GFX8_BTI_STATELESS_NON_COHERENT;
+            ex_desc = brw_imm_ud(0);
+         }
+
+         fs_reg srcs[] = { brw_imm_ud(0), ex_desc, header, src };
          spill_inst = bld.emit(SHADER_OPCODE_SEND, bld.null_reg_f(),
                                srcs, ARRAY_SIZE(srcs));
          spill_inst->mlen = 1;
@@ -822,7 +842,7 @@ fs_reg_alloc::emit_spill(const fs_builder &bld, fs_reg src,
          spill_inst->send_is_volatile = false;
          spill_inst->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
          spill_inst->desc =
-            brw_dp_desc(devinfo, GFX8_BTI_STATELESS_NON_COHERENT,
+            brw_dp_desc(devinfo, bti,
                         GFX6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE,
                         BRW_DATAPORT_OWORD_BLOCK_DWORDS(reg_size * 8));
       } else {
@@ -1004,9 +1024,21 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
          this->scratch_header = alloc_scratch_header();
          fs_builder ubld = fs->bld.exec_all().group(8, 0).at(
             fs->cfg->first_block(), fs->cfg->first_block()->start());
-         fs_inst *header_inst = ubld.emit(SHADER_OPCODE_SCRATCH_HEADER,
-                                          this->scratch_header);
-         _mesa_set_add(spill_insts, header_inst);
+
+         fs_inst *inst;
+         if (devinfo->verx10 >= 125) {
+            inst = ubld.MOV(this->scratch_header, brw_imm_ud(0));
+            _mesa_set_add(spill_insts, inst);
+            inst = ubld.group(1, 0).AND(component(this->scratch_header, 0),
+                                        retype(brw_vec1_grf(0, 5),
+                                               BRW_REGISTER_TYPE_UD),
+                                        brw_imm_ud(INTEL_MASK(31, 10)));
+            _mesa_set_add(spill_insts, inst);
+         } else {
+            inst = ubld.emit(SHADER_OPCODE_SCRATCH_HEADER,
+                             this->scratch_header);
+            _mesa_set_add(spill_insts, inst);
+         }
       } else {
          bool mrf_used[BRW_MAX_MRF(devinfo->ver)];
          get_used_mrfs(fs, mrf_used);
