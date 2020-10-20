@@ -826,8 +826,9 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
     *
     *  buffer_size = (surface_size & ~3) - (surface_size & 3)
     */
-   if (info->format == ISL_FORMAT_RAW  ||
-       info->stride_B < isl_format_get_layout(info->format)->bpb / 8) {
+   if ((info->format == ISL_FORMAT_RAW  ||
+        info->stride_B < isl_format_get_layout(info->format)->bpb / 8) &&
+       !info->is_scratch) {
       assert(info->stride_B == 1);
       uint64_t aligned_size = isl_align(buffer_size, 4);
       buffer_size = aligned_size + (aligned_size - buffer_size);
@@ -855,8 +856,27 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
 
    struct GENX(RENDER_SURFACE_STATE) s = { 0, };
 
-   s.SurfaceType = SURFTYPE_BUFFER;
    s.SurfaceFormat = info->format;
+
+   s.SurfaceType = SURFTYPE_BUFFER;
+#if GFX_VERx10 >= 125
+   if (info->is_scratch) {
+      /* From the BSpec:
+       *
+       *    "For surfaces of type SURFTYPE_SCRATCH, valid range of pitch is:
+       *    [63,262143] -> [64B, 256KB].  Also, for SURFTYPE_SCRATCH, the
+       *    pitch must be a multiple of 64bytes."
+       */
+      assert(info->format == ISL_FORMAT_RAW);
+      assert(info->stride_B % 64 == 0);
+      assert(info->stride_B <= 256 * 1024);
+      s.SurfaceType = SURFTYPE_SCRATCH;
+   }
+#else
+   assert(!info->is_scratch);
+#endif
+
+   s.SurfacePitch = info->stride_B - 1;
 
 #if GFX_VER >= 6
    s.SurfaceVerticalAlignment = isl_encode_valign[4];
@@ -894,8 +914,6 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
          s.Depth = 0;
       }
    }
-
-   s.SurfacePitch = info->stride_B - 1;
 
 #if GFX_VER >= 6
    s.NumberofMultisamples = MULTISAMPLECOUNT_1;

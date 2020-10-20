@@ -1689,6 +1689,8 @@ struct isl_buffer_fill_state_info {
    struct isl_swizzle swizzle;
 
    uint32_t stride_B;
+
+   bool is_scratch;
 };
 
 struct isl_depth_stencil_hiz_emit_info {
