@@ -1747,8 +1747,6 @@
       <value name="13-16 Samplers" value="4"/>
     </field>
     <field name="Vector Mask Enable" start="126" end="126" type="bool"/>
-    <field name="Per-Thread Scratch Space" start="128" end="131" type="uint"/>
-    <field name="Scratch Space Base Pointer" start="138" end="191" type="address"/>
     <field name="Scratch Space Buffer" start="138" end="159" type="uint"/>
     <field name="Patch URB Entry Read Offset" start="196" end="201" type="uint"/>
     <field name="Patch URB Entry Read Length" start="203" end="209" type="uint"/>
@@ -1934,8 +1932,6 @@
     </field>
     <field name="Vector Mask Enable" start="126" end="126" type="bool"/>
     <field name="Single Program Flow" start="127" end="127" type="bool"/>
-    <field name="Per-Thread Scratch Space" start="128" end="131" type="uint"/>
-    <field name="Scratch Space Base Pointer" start="138" end="191" type="address"/>
     <field name="Scratch Space Buffer" start="138" end="159" type="uint"/>
     <field name="Dispatch GRF Start Register For URB Data" start="192" end="195" type="uint"/>
     <field name="Vertex URB Entry Read Offset" start="196" end="201" type="uint"/>
@@ -2020,8 +2016,6 @@
     <field name="Statistics Enable" start="93" end="93" type="bool"/>
     <field name="Enable" start="95" end="95" type="bool"/>
     <field name="Kernel Start Pointer" start="102" end="159" type="offset"/>
-    <field name="Per-Thread Scratch Space" start="160" end="163" type="uint"/>
-    <field name="Scratch Space Base Pointer" start="170" end="223" type="address"/>
     <field name="Scratch Space Buffer" start="170" end="191" type="uint"/>
     <field name="Include Primitive ID" start="224" end="224" type="bool"/>
     <field name="Patch Count Threshold" start="225" end="227" type="uint"/>
@@ -2168,8 +2162,6 @@
     </field>
     <field name="Vector Mask Enable" start="126" end="126" type="bool"/>
     <field name="Single Program Flow" start="127" end="127" type="bool"/>
-    <field name="Per Thread Scratch Space" start="128" end="131" type="uint"/>
-    <field name="Scratch Space Base Pointer" start="138" end="191" type="address"/>
     <field name="Scratch Space Buffer" start="138" end="159" type="uint"/>
     <field name="8 Pixel Dispatch Enable" start="192" end="192" type="bool"/>
     <field name="16 Pixel Dispatch Enable" start="193" end="193" type="bool"/>
@@ -3100,8 +3092,6 @@
       <value name="13-16 Samplers" value="4"/>
     </field>
     <field name="Vector Mask Enable" start="126" end="126" type="bool"/>
-    <field name="Per-Thread Scratch Space" start="128" end="131" type="uint"/>
-    <field name="Scratch Space Base Pointer" start="138" end="191" type="address"/>
     <field name="Scratch Space Buffer" start="138" end="159" type="uint"/>
     <field name="Vertex URB Entry Read Offset" start="196" end="201" type="uint"/>
     <field name="Vertex URB Entry Read Length" start="203" end="208" type="uint"/>
