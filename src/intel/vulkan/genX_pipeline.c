@@ -1703,7 +1703,7 @@ get_sampler_count(const struct anv_shader_bin *bin)
    return MIN2(count_by_4, 4);
 }
 
-static struct anv_address
+static UNUSED struct anv_address
 get_scratch_address(struct anv_pipeline *pipeline,
                     gl_shader_stage stage,
                     const struct anv_shader_bin *bin)
@@ -1716,10 +1716,19 @@ get_scratch_address(struct anv_pipeline *pipeline,
    };
 }
 
-static uint32_t
+static UNUSED uint32_t
 get_scratch_space(const struct anv_shader_bin *bin)
 {
    return ffs(bin->prog_data->total_scratch / 2048);
+}
+
+static UNUSED uint32_t
+get_scratch_surf(struct anv_pipeline *pipeline,
+                 const struct anv_shader_bin *bin)
+{
+   return anv_scratch_pool_get_surf(pipeline->device,
+                                    &pipeline->device->scratch_pool,
+                                    bin->prog_data->total_scratch) >> 4;
 }
 
 static void
@@ -1792,9 +1801,13 @@ emit_3dstate_vs(struct anv_graphics_pipeline *pipeline)
          vs_prog_data->base.cull_distance_mask;
 #endif
 
+#if GFX_VERx10 >= 125
+      vs.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, vs_bin);
+#else
       vs.PerThreadScratchSpace   = get_scratch_space(vs_bin);
       vs.ScratchSpaceBasePointer =
          get_scratch_address(&pipeline->base, MESA_SHADER_VERTEX, vs_bin);
+#endif
    }
 }
 
@@ -1849,10 +1862,13 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
          tcs_prog_data->base.base.dispatch_grf_start_reg >> 5;
 #endif
 
-
+#if GFX_VERx10 >= 125
+      hs.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, tcs_bin);
+#else
       hs.PerThreadScratchSpace = get_scratch_space(tcs_bin);
       hs.ScratchSpaceBasePointer =
          get_scratch_address(&pipeline->base, MESA_SHADER_TESS_CTRL, tcs_bin);
+#endif
 
 #if GFX_VER == 12
       /*  Patch Count threshold specifies the maximum number of patches that
@@ -1930,9 +1946,13 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
          tes_prog_data->base.cull_distance_mask;
 #endif
 
+#if GFX_VERx10 >= 125
+      ds.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, tes_bin);
+#else
       ds.PerThreadScratchSpace = get_scratch_space(tes_bin);
       ds.ScratchSpaceBasePointer =
          get_scratch_address(&pipeline->base, MESA_SHADER_TESS_EVAL, tes_bin);
+#endif
    }
 }
 
@@ -1998,9 +2018,13 @@ emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
          gs_prog_data->base.cull_distance_mask;
 #endif
 
+#if GFX_VERx10 >= 125
+      gs.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, gs_bin);
+#else
       gs.PerThreadScratchSpace   = get_scratch_space(gs_bin);
       gs.ScratchSpaceBasePointer =
          get_scratch_address(&pipeline->base, MESA_SHADER_GEOMETRY, gs_bin);
+#endif
    }
 }
 
@@ -2266,9 +2290,13 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
       ps.DispatchGRFStartRegisterForConstantSetupData2 =
          brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 2);
 
+#if GFX_VERx10 >= 125
+      ps.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, fs_bin);
+#else
       ps.PerThreadScratchSpace   = get_scratch_space(fs_bin);
       ps.ScratchSpaceBasePointer =
          get_scratch_address(&pipeline->base, MESA_SHADER_FRAGMENT, fs_bin);
+#endif
    }
 }
 
@@ -2558,8 +2586,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
    anv_batch_emit(&pipeline->base.batch, GENX(CFE_STATE), cfe) {
       cfe.MaximumNumberofThreads =
          devinfo->max_cs_threads * subslices - 1;
-      /* TODO: Enable gfx12-hp scratch support*/
-      assert(get_scratch_space(cs_bin) == 0);
+      cfe.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, cs_bin);
    }
 }
 

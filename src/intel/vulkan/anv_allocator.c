@@ -1420,6 +1420,13 @@ anv_scratch_pool_finish(struct anv_device *device, struct anv_scratch_pool *pool
             anv_device_release_bo(device, pool->bos[i][s]);
       }
    }
+
+   for (unsigned i = 0; i < 16; i++) {
+      if (pool->surf_states[i].map != NULL) {
+         anv_state_pool_free(&device->surface_state_pool,
+                             pool->surf_states[i]);
+      }
+   }
 }
 
 struct anv_bo *
@@ -1433,12 +1440,21 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
    assert(scratch_size_log2 < 16);
 
    assert(stage < ARRAY_SIZE(pool->bos));
+
+   const struct intel_device_info *devinfo = &device->info;
+
+   /* On GFX version 12.5, scratch access changed to a surface-based model.
+    * Instead of each shader type having its own layout based on IDs passed
+    * from the relevant fixed-function unit, all scratch access is based on
+    * thread IDs like it always has been for compute.
+    */
+   if (devinfo->verx10 >= 125)
+      stage = MESA_SHADER_COMPUTE;
+
    struct anv_bo *bo = p_atomic_read(&pool->bos[scratch_size_log2][stage]);
 
    if (bo != NULL)
       return bo;
-
-   const struct intel_device_info *devinfo = &device->info;
 
    unsigned subslices = MAX2(device->physical->subslice_total, 1);
 
@@ -1456,7 +1472,9 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
     * For, Gfx11+, scratch space allocation is based on the number of threads
     * in the base configuration.
     */
-   if (devinfo->ver == 12)
+   if (devinfo->verx10 == 125)
+      subslices = 32;
+   else if (devinfo->ver == 12)
       subslices = (devinfo->is_dg1 || devinfo->gt == 2 ? 6 : 2);
    else if (devinfo->ver == 11)
       subslices = 8;
@@ -1549,6 +1567,50 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
       return current_bo;
    } else {
       return bo;
+   }
+}
+
+uint32_t
+anv_scratch_pool_get_surf(struct anv_device *device,
+                          struct anv_scratch_pool *pool,
+                          unsigned per_thread_scratch)
+{
+   if (per_thread_scratch == 0)
+      return 0;
+
+   unsigned scratch_size_log2 = ffs(per_thread_scratch / 2048);
+   assert(scratch_size_log2 < 16);
+
+   uint32_t surf = p_atomic_read(&pool->surfs[scratch_size_log2]);
+   if (surf > 0)
+      return surf;
+
+   struct anv_bo *bo =
+      anv_scratch_pool_alloc(device, pool, MESA_SHADER_COMPUTE,
+                             per_thread_scratch);
+   struct anv_address addr = { .bo = bo };
+
+   struct anv_state state =
+      anv_state_pool_alloc(&device->surface_state_pool,
+                           device->isl_dev.ss.size, 64);
+
+   isl_buffer_fill_state(&device->isl_dev, state.map,
+                         .address = anv_address_physical(addr),
+                         .size_B = bo->size,
+                         .mocs = anv_mocs(device, bo, 0),
+                         .format = ISL_FORMAT_RAW,
+                         .swizzle = ISL_SWIZZLE_IDENTITY,
+                         .stride_B = per_thread_scratch,
+                         .is_scratch = true);
+
+   uint32_t current = p_atomic_cmpxchg(&pool->surfs[scratch_size_log2],
+                                       0, state.offset);
+   if (current) {
+      anv_state_pool_free(&device->surface_state_pool, state);
+      return current;
+   } else {
+      pool->surf_states[scratch_size_log2] = state;
+      return state.offset;
    }
 }
 

@@ -823,6 +823,8 @@ void anv_bo_pool_free(struct anv_bo_pool *pool, struct anv_bo *bo);
 struct anv_scratch_pool {
    /* Indexed by Per-Thread Scratch Space number (the hardware value) and stage */
    struct anv_bo *bos[16][MESA_SHADER_STAGES];
+   uint32_t surfs[16];
+   struct anv_state surf_states[16];
 };
 
 void anv_scratch_pool_init(struct anv_device *device,
@@ -833,6 +835,9 @@ struct anv_bo *anv_scratch_pool_alloc(struct anv_device *device,
                                       struct anv_scratch_pool *pool,
                                       gl_shader_stage stage,
                                       unsigned per_thread_scratch);
+uint32_t anv_scratch_pool_get_surf(struct anv_device *device,
+                                   struct anv_scratch_pool *pool,
+                                   unsigned per_thread_scratch);
 
 /** Implements a BO cache that ensures a 1-1 mapping of GEM BOs to anv_bos */
 struct anv_bo_cache {
