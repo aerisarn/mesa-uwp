@@ -4900,7 +4900,13 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       const unsigned bit_size = nir_dest_bit_size(instr->dest);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
 
-      if (devinfo->ver >= 8) {
+      if (devinfo->verx10 >= 125) {
+         const fs_builder ubld = bld.exec_all().group(1, 0);
+         fs_reg handle = component(ubld.vgrf(BRW_REGISTER_TYPE_UD), 0);
+         ubld.AND(handle, retype(brw_vec1_grf(0, 5), BRW_REGISTER_TYPE_UD),
+                          brw_imm_ud(~0x3ffu));
+         srcs[SURFACE_LOGICAL_SRC_SURFACE_HANDLE] = handle;
+      } else if (devinfo->ver >= 8) {
          srcs[SURFACE_LOGICAL_SRC_SURFACE] =
             brw_imm_ud(GFX8_BTI_STATELESS_NON_COHERENT);
       } else {
@@ -4919,8 +4925,18 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       assert(nir_dest_num_components(instr->dest) == 1);
       assert(nir_dest_bit_size(instr->dest) <= 32);
       assert(nir_intrinsic_align(instr) > 0);
-      if (nir_dest_bit_size(instr->dest) >= 4 &&
-          nir_intrinsic_align(instr) >= 4) {
+      if (devinfo->verx10 >= 125) {
+         assert(nir_dest_bit_size(instr->dest) == 32 &&
+                nir_intrinsic_align(instr) >= 4);
+
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
+            swizzle_nir_scratch_addr(bld, nir_addr, false);
+         srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(1);
+
+         bld.emit(SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL,
+                  dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
+      } else if (nir_dest_bit_size(instr->dest) >= 4 &&
+                 nir_intrinsic_align(instr) >= 4) {
          /* The offset for a DWORD scattered message is in dwords. */
          srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
             swizzle_nir_scratch_addr(bld, nir_addr, true);
@@ -4946,7 +4962,13 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       const unsigned bit_size = nir_src_bit_size(instr->src[0]);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
 
-      if (devinfo->ver >= 8) {
+      if (devinfo->verx10 >= 125) {
+         const fs_builder ubld = bld.exec_all().group(1, 0);
+         fs_reg handle = component(ubld.vgrf(BRW_REGISTER_TYPE_UD), 0);
+         ubld.AND(handle, retype(brw_vec1_grf(0, 5), BRW_REGISTER_TYPE_UD),
+                          brw_imm_ud(~0x3ffu));
+         srcs[SURFACE_LOGICAL_SRC_SURFACE_HANDLE] = handle;
+      } else if (devinfo->ver >= 8) {
          srcs[SURFACE_LOGICAL_SRC_SURFACE] =
             brw_imm_ud(GFX8_BTI_STATELESS_NON_COHERENT);
       } else {
@@ -4972,8 +4994,19 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       assert(nir_src_bit_size(instr->src[0]) <= 32);
       assert(nir_intrinsic_write_mask(instr) == 1);
       assert(nir_intrinsic_align(instr) > 0);
-      if (nir_src_bit_size(instr->src[0]) == 32 &&
-          nir_intrinsic_align(instr) >= 4) {
+      if (devinfo->verx10 >= 125) {
+         assert(nir_src_bit_size(instr->src[0]) == 32 &&
+                nir_intrinsic_align(instr) >= 4);
+         srcs[SURFACE_LOGICAL_SRC_DATA] = data;
+
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
+            swizzle_nir_scratch_addr(bld, nir_addr, false);
+         srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(1);
+
+         bld.emit(SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL,
+                  dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
+      } else if (nir_src_bit_size(instr->src[0]) == 32 &&
+                 nir_intrinsic_align(instr) >= 4) {
          srcs[SURFACE_LOGICAL_SRC_DATA] = data;
 
          /* The offset for a DWORD scattered message is in dwords. */
