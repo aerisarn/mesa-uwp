@@ -755,6 +755,7 @@
       <value name="SURFTYPE_CUBE" value="3"/>
       <value name="SURFTYPE_BUFFER" value="4"/>
       <value name="SURFTYPE_STRBUF" value="5"/>
+      <value name="SURFTYPE_SCRATCH" value="6"/>
       <value name="SURFTYPE_NULL" value="7"/>
     </field>
     <field name="Surface QPitch" start="32" end="46" type="uint"/>
