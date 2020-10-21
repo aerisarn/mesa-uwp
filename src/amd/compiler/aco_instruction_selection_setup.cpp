@@ -616,7 +616,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_ring_tess_offchip_offset_amd:
                case nir_intrinsic_load_ring_esgs_amd:
                case nir_intrinsic_load_ring_es2gs_offset_amd:
-               case nir_intrinsic_image_deref_samples:
+               case nir_intrinsic_bindless_image_samples:
                case nir_intrinsic_has_input_vertex_amd:
                case nir_intrinsic_has_input_primitive_amd:
                case nir_intrinsic_load_workgroup_num_input_vertices_amd:
@@ -686,19 +686,19 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_global_atomic_comp_swap:
                case nir_intrinsic_global_atomic_fmin:
                case nir_intrinsic_global_atomic_fmax:
-               case nir_intrinsic_image_deref_atomic_add:
-               case nir_intrinsic_image_deref_atomic_umin:
-               case nir_intrinsic_image_deref_atomic_imin:
-               case nir_intrinsic_image_deref_atomic_umax:
-               case nir_intrinsic_image_deref_atomic_imax:
-               case nir_intrinsic_image_deref_atomic_and:
-               case nir_intrinsic_image_deref_atomic_or:
-               case nir_intrinsic_image_deref_atomic_xor:
-               case nir_intrinsic_image_deref_atomic_exchange:
-               case nir_intrinsic_image_deref_atomic_comp_swap:
-               case nir_intrinsic_image_deref_atomic_fmin:
-               case nir_intrinsic_image_deref_atomic_fmax:
-               case nir_intrinsic_image_deref_size:
+               case nir_intrinsic_bindless_image_atomic_add:
+               case nir_intrinsic_bindless_image_atomic_umin:
+               case nir_intrinsic_bindless_image_atomic_imin:
+               case nir_intrinsic_bindless_image_atomic_umax:
+               case nir_intrinsic_bindless_image_atomic_imax:
+               case nir_intrinsic_bindless_image_atomic_and:
+               case nir_intrinsic_bindless_image_atomic_or:
+               case nir_intrinsic_bindless_image_atomic_xor:
+               case nir_intrinsic_bindless_image_atomic_exchange:
+               case nir_intrinsic_bindless_image_atomic_comp_swap:
+               case nir_intrinsic_bindless_image_atomic_fmin:
+               case nir_intrinsic_bindless_image_atomic_fmax:
+               case nir_intrinsic_bindless_image_size:
                case nir_intrinsic_shared_atomic_add:
                case nir_intrinsic_shared_atomic_imin:
                case nir_intrinsic_shared_atomic_umin:

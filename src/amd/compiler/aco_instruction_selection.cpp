@@ -5388,21 +5388,6 @@ visit_load_tess_coord(isel_context* ctx, nir_intrinsic_instr* instr)
    emit_split_vector(ctx, tess_coord, 3);
 }
 
-Temp
-load_desc_ptr(isel_context* ctx, unsigned desc_set)
-{
-   const struct radv_userdata_locations *user_sgprs_locs = &ctx->program->info->user_sgprs_locs;
-
-   if (user_sgprs_locs->shader_data[AC_UD_INDIRECT_DESCRIPTOR_SETS].sgpr_idx != -1) {
-      Builder bld(ctx->program, ctx->block);
-      Temp ptr64 = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->descriptor_sets[0]));
-      Operand off = bld.copy(bld.def(s1), Operand::c32(desc_set << 2));
-      return bld.smem(aco_opcode::s_load_dword, bld.def(s1), ptr64, off); //, false, false, false);
-   }
-
-   return get_arg(ctx, ctx->args->descriptor_sets[desc_set]);
-}
-
 void
 load_buffer(isel_context* ctx, unsigned num_components, unsigned component_size, Temp dst,
             Temp rsrc, Temp offset, unsigned align_mul, unsigned align_offset, bool glc = false,
@@ -5581,16 +5566,6 @@ visit_load_constant(isel_context* ctx, nir_intrinsic_instr* instr)
    load_buffer(ctx, instr->num_components, size, dst, rsrc, offset, size, 0);
 }
 
-enum aco_descriptor_type {
-   ACO_DESC_IMAGE,
-   ACO_DESC_FMASK,
-   ACO_DESC_SAMPLER,
-   ACO_DESC_BUFFER,
-   ACO_DESC_PLANE_0,
-   ACO_DESC_PLANE_1,
-   ACO_DESC_PLANE_2,
-};
-
 static bool
 should_declare_array(isel_context* ctx, enum glsl_sampler_dim sampler_dim, bool is_array)
 {
@@ -5599,189 +5574,6 @@ should_declare_array(isel_context* ctx, enum glsl_sampler_dim sampler_dim, bool 
    ac_image_dim dim = ac_get_sampler_dim(ctx->options->chip_class, sampler_dim, is_array);
    return dim == ac_image_cube || dim == ac_image_1darray || dim == ac_image_2darray ||
           dim == ac_image_2darraymsaa;
-}
-
-Temp
-get_sampler_desc(isel_context* ctx, nir_deref_instr* deref_instr,
-                 enum aco_descriptor_type desc_type, const nir_tex_instr* tex_instr, bool write)
-{
-   /* FIXME: we should lower the deref with some new nir_intrinsic_load_desc
-      std::unordered_map<uint64_t, Temp>::iterator it = ctx->tex_desc.find((uint64_t) desc_type <<
-      32 | deref_instr->dest.ssa.index); if (it != ctx->tex_desc.end()) return it->second;
-   */
-   Temp index = Temp();
-   bool index_set = false;
-   unsigned constant_index = 0;
-   unsigned descriptor_set;
-   unsigned base_index;
-   Builder bld(ctx->program, ctx->block);
-
-   if (!deref_instr) {
-      assert(tex_instr);
-      descriptor_set = 0;
-      base_index = tex_instr->sampler_index;
-   } else {
-      while (deref_instr->deref_type != nir_deref_type_var) {
-         unsigned array_size = glsl_get_aoa_size(deref_instr->type);
-         if (!array_size)
-            array_size = 1;
-
-         assert(deref_instr->deref_type == nir_deref_type_array);
-         nir_const_value* const_value = nir_src_as_const_value(deref_instr->arr.index);
-         if (const_value) {
-            constant_index += array_size * const_value->u32;
-         } else {
-            Temp indirect = get_ssa_temp(ctx, deref_instr->arr.index.ssa);
-            if (indirect.type() == RegType::vgpr)
-               indirect = bld.as_uniform(indirect);
-
-            if (array_size != 1)
-               indirect =
-                  bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand::c32(array_size), indirect);
-
-            if (!index_set) {
-               index = indirect;
-               index_set = true;
-            } else {
-               index =
-                  bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), index, indirect);
-            }
-         }
-
-         deref_instr = nir_src_as_deref(deref_instr->parent);
-      }
-      descriptor_set = deref_instr->var->data.descriptor_set;
-      base_index = deref_instr->var->data.binding;
-   }
-
-   Temp list = load_desc_ptr(ctx, descriptor_set);
-   list = convert_pointer_to_64_bit(ctx, list);
-
-   struct radv_descriptor_set_layout* layout = ctx->options->layout->set[descriptor_set].layout;
-   struct radv_descriptor_set_binding_layout* binding = layout->binding + base_index;
-   unsigned offset = binding->offset;
-   unsigned stride = binding->size;
-   aco_opcode opcode;
-   RegClass type;
-
-   assert(base_index < layout->binding_count);
-
-   switch (desc_type) {
-   case ACO_DESC_IMAGE:
-      type = s8;
-      opcode = aco_opcode::s_load_dwordx8;
-      break;
-   case ACO_DESC_FMASK:
-      type = s8;
-      opcode = aco_opcode::s_load_dwordx8;
-      offset += 32;
-      break;
-   case ACO_DESC_SAMPLER:
-      type = s4;
-      opcode = aco_opcode::s_load_dwordx4;
-      if (binding->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-         offset += radv_combined_image_descriptor_sampler_offset(binding);
-      break;
-   case ACO_DESC_BUFFER:
-      type = s4;
-      opcode = aco_opcode::s_load_dwordx4;
-      break;
-   case ACO_DESC_PLANE_0:
-   case ACO_DESC_PLANE_1:
-      type = s8;
-      opcode = aco_opcode::s_load_dwordx8;
-      offset += 32 * (desc_type - ACO_DESC_PLANE_0);
-      break;
-   case ACO_DESC_PLANE_2:
-      type = s4;
-      opcode = aco_opcode::s_load_dwordx4;
-      offset += 64;
-      break;
-   default: unreachable("invalid desc_type\n");
-   }
-
-   offset += constant_index * stride;
-
-   if (desc_type == ACO_DESC_SAMPLER && binding->immutable_samplers_offset &&
-       (!index_set || binding->immutable_samplers_equal)) {
-      if (binding->immutable_samplers_equal)
-         constant_index = 0;
-
-      const uint32_t* samplers = radv_immutable_samplers(layout, binding);
-      uint32_t dword0_mask = tex_instr->op == nir_texop_tg4 ? C_008F30_TRUNC_COORD : 0xffffffffu;
-      return bld.pseudo(aco_opcode::p_create_vector, bld.def(s4),
-                        Operand::c32(samplers[constant_index * 4 + 0] & dword0_mask),
-                        Operand::c32(samplers[constant_index * 4 + 1]),
-                        Operand::c32(samplers[constant_index * 4 + 2]),
-                        Operand::c32(samplers[constant_index * 4 + 3]));
-   }
-
-   Operand off;
-   if (!index_set) {
-      off = bld.copy(bld.def(s1), Operand::c32(offset));
-   } else {
-      off = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand::c32(stride), index);
-      if (offset)
-         off = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), Operand::c32(offset),
-                        off);
-   }
-
-   Temp res = bld.smem(opcode, bld.def(type), list, off);
-
-   if (desc_type == ACO_DESC_PLANE_2) {
-      Temp components[8];
-      for (unsigned i = 0; i < 8; i++)
-         components[i] = bld.tmp(s1);
-      bld.pseudo(aco_opcode::p_split_vector, Definition(components[0]), Definition(components[1]),
-                 Definition(components[2]), Definition(components[3]), res);
-
-      Temp desc2 = get_sampler_desc(ctx, deref_instr, ACO_DESC_PLANE_1, tex_instr, write);
-      bld.pseudo(aco_opcode::p_split_vector, bld.def(s1), bld.def(s1), bld.def(s1), bld.def(s1),
-                 Definition(components[4]), Definition(components[5]), Definition(components[6]),
-                 Definition(components[7]), desc2);
-
-      res = bld.pseudo(aco_opcode::p_create_vector, bld.def(s8), components[0], components[1],
-                       components[2], components[3], components[4], components[5], components[6],
-                       components[7]);
-   } else if (desc_type == ACO_DESC_IMAGE && ctx->options->has_image_load_dcc_bug && !tex_instr &&
-              !write) {
-      Temp components[8];
-      for (unsigned i = 0; i < 8; i++)
-         components[i] = bld.tmp(s1);
-
-      bld.pseudo(aco_opcode::p_split_vector, Definition(components[0]), Definition(components[1]),
-                 Definition(components[2]), Definition(components[3]), Definition(components[4]),
-                 Definition(components[5]), Definition(components[6]), Definition(components[7]),
-                 res);
-
-      /* WRITE_COMPRESS_ENABLE must be 0 for all image loads to workaround a
-       * hardware bug.
-       */
-      components[6] = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), components[6],
-                               bld.copy(bld.def(s1), Operand::c32(C_00A018_WRITE_COMPRESS_ENABLE)));
-
-      res = bld.pseudo(aco_opcode::p_create_vector, bld.def(s8), components[0], components[1],
-                       components[2], components[3], components[4], components[5], components[6],
-                       components[7]);
-   } else if (desc_type == ACO_DESC_SAMPLER && tex_instr->op == nir_texop_tg4) {
-      Temp components[4];
-      for (unsigned i = 0; i < 4; i++)
-         components[i] = bld.tmp(s1);
-
-      bld.pseudo(aco_opcode::p_split_vector, Definition(components[0]), Definition(components[1]),
-                 Definition(components[2]), Definition(components[3]), res);
-
-      /* We want to always use the linear filtering truncation behaviour for
-       * nir_texop_tg4, even if the sampler uses nearest/point filtering.
-       */
-      components[0] = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), components[0],
-                               Operand::c32(C_008F30_TRUNC_COORD));
-
-      res = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), components[0], components[1],
-                       components[2], components[3]);
-   }
-
-   return res;
 }
 
 static int
@@ -5925,10 +5717,10 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
          coords[i] = emit_extract_vector(ctx, src0, i, v1);
    }
 
-   if (instr->intrinsic == nir_intrinsic_image_deref_load ||
-       instr->intrinsic == nir_intrinsic_image_deref_sparse_load ||
-       instr->intrinsic == nir_intrinsic_image_deref_store) {
-      int lod_index = instr->intrinsic == nir_intrinsic_image_deref_store ? 4 : 3;
+   if (instr->intrinsic == nir_intrinsic_bindless_image_load ||
+       instr->intrinsic == nir_intrinsic_bindless_image_sparse_load ||
+       instr->intrinsic == nir_intrinsic_bindless_image_store) {
+      int lod_index = instr->intrinsic == nir_intrinsic_bindless_image_store ? 4 : 3;
       bool level_zero =
          nir_src_is_const(instr->src[lod_index]) && nir_src_as_uint(instr->src[lod_index]) == 0;
 
@@ -5980,15 +5772,13 @@ void
 visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
-   const nir_variable* var =
-      nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
    const enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
    bool is_array = nir_intrinsic_image_array(instr);
-   bool is_sparse = instr->intrinsic == nir_intrinsic_image_deref_sparse_load;
+   bool is_sparse = instr->intrinsic == nir_intrinsic_bindless_image_sparse_load;
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
    memory_sync_info sync = get_memory_sync_info(instr, storage_image, 0);
-   unsigned access = var->data.access | nir_intrinsic_access(instr);
+   unsigned access = nir_intrinsic_access(instr);
 
    unsigned result_size = instr->dest.ssa.num_components - is_sparse;
    unsigned expand_mask =
@@ -6012,9 +5802,7 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
    else
       tmp = ctx->program->allocateTmp(RegClass(RegType::vgpr, num_components));
 
-   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
-                                    dim == GLSL_SAMPLER_DIM_BUF ? ACO_DESC_BUFFER : ACO_DESC_IMAGE,
-                                    nullptr, false);
+   Temp resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
@@ -6075,8 +5863,7 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
 void
 visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
 {
-   const nir_variable* var =
-      nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
+   Builder bld(ctx->program, ctx->block);
    const enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
    bool is_array = nir_intrinsic_image_array(instr);
    Temp data = get_ssa_temp(ctx, instr->src[3].ssa);
@@ -6087,15 +5874,14 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
    data = as_vgpr(ctx, data);
 
    memory_sync_info sync = get_memory_sync_info(instr, storage_image, 0);
-   unsigned access = var->data.access | nir_intrinsic_access(instr);
+   unsigned access = nir_intrinsic_access(instr);
    bool glc = ctx->options->chip_class == GFX6 ||
                     access & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE)
                  ? 1
                  : 0;
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
-      Temp rsrc = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
-                                   ACO_DESC_BUFFER, nullptr, true);
+      Temp rsrc = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
       aco_opcode opcode;
       switch (data.size()) {
@@ -6123,13 +5909,11 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
 
    assert(data.type() == RegType::vgpr);
    std::vector<Temp> coords = get_image_coords(ctx, instr);
-   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
-                                    ACO_DESC_IMAGE, nullptr, true);
+   Temp resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
 
    bool level_zero = nir_src_is_const(instr->src[4]) && nir_src_as_uint(instr->src[4]) == 0;
    aco_opcode opcode = level_zero ? aco_opcode::image_store : aco_opcode::image_store_mip;
 
-   Builder bld(ctx->program, ctx->block);
    MIMG_instruction* store =
       emit_mimg(bld, opcode, Definition(), resource, Operand(s4), coords, 0, Operand(data));
    store->glc = glc;
@@ -6156,75 +5940,75 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    bool is_64bit = data.bytes() == 8;
    assert((data.bytes() == 4 || data.bytes() == 8) && "only 32/64-bit image atomics implemented.");
 
-   if (instr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap)
+   if (instr->intrinsic == nir_intrinsic_bindless_image_atomic_comp_swap)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(is_64bit ? v4 : v2),
                         get_ssa_temp(ctx, instr->src[4].ssa), data);
 
    aco_opcode buf_op, buf_op64, image_op;
    switch (instr->intrinsic) {
-   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_add:
       buf_op = aco_opcode::buffer_atomic_add;
       buf_op64 = aco_opcode::buffer_atomic_add_x2;
       image_op = aco_opcode::image_atomic_add;
       break;
-   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_bindless_image_atomic_umin:
       buf_op = aco_opcode::buffer_atomic_umin;
       buf_op64 = aco_opcode::buffer_atomic_umin_x2;
       image_op = aco_opcode::image_atomic_umin;
       break;
-   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_imin:
       buf_op = aco_opcode::buffer_atomic_smin;
       buf_op64 = aco_opcode::buffer_atomic_smin_x2;
       image_op = aco_opcode::image_atomic_smin;
       break;
-   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_umax:
       buf_op = aco_opcode::buffer_atomic_umax;
       buf_op64 = aco_opcode::buffer_atomic_umax_x2;
       image_op = aco_opcode::image_atomic_umax;
       break;
-   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_imax:
       buf_op = aco_opcode::buffer_atomic_smax;
       buf_op64 = aco_opcode::buffer_atomic_smax_x2;
       image_op = aco_opcode::image_atomic_smax;
       break;
-   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_and:
       buf_op = aco_opcode::buffer_atomic_and;
       buf_op64 = aco_opcode::buffer_atomic_and_x2;
       image_op = aco_opcode::image_atomic_and;
       break;
-   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_or:
       buf_op = aco_opcode::buffer_atomic_or;
       buf_op64 = aco_opcode::buffer_atomic_or_x2;
       image_op = aco_opcode::image_atomic_or;
       break;
-   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_xor:
       buf_op = aco_opcode::buffer_atomic_xor;
       buf_op64 = aco_opcode::buffer_atomic_xor_x2;
       image_op = aco_opcode::image_atomic_xor;
       break;
-   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_exchange:
       buf_op = aco_opcode::buffer_atomic_swap;
       buf_op64 = aco_opcode::buffer_atomic_swap_x2;
       image_op = aco_opcode::image_atomic_swap;
       break;
-   case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
       buf_op = aco_opcode::buffer_atomic_cmpswap;
       buf_op64 = aco_opcode::buffer_atomic_cmpswap_x2;
       image_op = aco_opcode::image_atomic_cmpswap;
       break;
-   case nir_intrinsic_image_deref_atomic_fmin:
+   case nir_intrinsic_bindless_image_atomic_fmin:
       buf_op = aco_opcode::buffer_atomic_fmin;
       buf_op64 = aco_opcode::buffer_atomic_fmin_x2;
       image_op = aco_opcode::image_atomic_fmin;
       break;
-   case nir_intrinsic_image_deref_atomic_fmax:
+   case nir_intrinsic_bindless_image_atomic_fmax:
       buf_op = aco_opcode::buffer_atomic_fmax;
       buf_op64 = aco_opcode::buffer_atomic_fmax_x2;
       image_op = aco_opcode::image_atomic_fmax;
       break;
    default:
       unreachable("visit_image_atomic should only be called with "
-                  "nir_intrinsic_image_deref_atomic_* instructions.");
+                  "nir_intrinsic_bindless_image_atomic_* instructions.");
    }
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
@@ -6232,8 +6016,7 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
-      Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
-                                       ACO_DESC_BUFFER, nullptr, true);
+      Temp resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
       // assert(ctx->options->chip_class < GFX9 && "GFX9 stride size workaround not yet
       // implemented.");
       aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(
@@ -6256,8 +6039,7 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
 
    std::vector<Temp> coords = get_image_coords(ctx, instr);
-   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
-                                    ACO_DESC_IMAGE, nullptr, true);
+   Temp resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
    Definition def = return_previous ? Definition(dst) : Definition();
    MIMG_instruction* mimg =
       emit_mimg(bld, image_op, def, resource, Operand(s4), coords, 0, Operand(data));
@@ -6314,8 +6096,7 @@ visit_image_size(isel_context* ctx, nir_intrinsic_instr* instr)
    Builder bld(ctx->program, ctx->block);
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
-      Temp desc = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
-                                   ACO_DESC_BUFFER, NULL, false);
+      Temp desc = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
       return get_buffer_size(ctx, desc, get_ssa_temp(ctx, &instr->dest.ssa));
    }
 
@@ -6324,8 +6105,7 @@ visit_image_size(isel_context* ctx, nir_intrinsic_instr* instr)
    std::vector<Temp> lod{bld.copy(bld.def(v1), Operand::zero())};
 
    /* Resource */
-   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
-                                    ACO_DESC_IMAGE, NULL, false);
+   Temp resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
@@ -6377,8 +6157,7 @@ visit_image_samples(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
-                                    ACO_DESC_IMAGE, NULL, false);
+   Temp resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
    get_image_samples(ctx, Definition(dst), resource);
 }
 
@@ -8006,23 +7785,23 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_shared_atomic_fadd:
    case nir_intrinsic_shared_atomic_fmin:
    case nir_intrinsic_shared_atomic_fmax: visit_shared_atomic(ctx, instr); break;
-   case nir_intrinsic_image_deref_load:
-   case nir_intrinsic_image_deref_sparse_load: visit_image_load(ctx, instr); break;
-   case nir_intrinsic_image_deref_store: visit_image_store(ctx, instr); break;
-   case nir_intrinsic_image_deref_atomic_add:
-   case nir_intrinsic_image_deref_atomic_umin:
-   case nir_intrinsic_image_deref_atomic_imin:
-   case nir_intrinsic_image_deref_atomic_umax:
-   case nir_intrinsic_image_deref_atomic_imax:
-   case nir_intrinsic_image_deref_atomic_and:
-   case nir_intrinsic_image_deref_atomic_or:
-   case nir_intrinsic_image_deref_atomic_xor:
-   case nir_intrinsic_image_deref_atomic_exchange:
-   case nir_intrinsic_image_deref_atomic_comp_swap:
-   case nir_intrinsic_image_deref_atomic_fmin:
-   case nir_intrinsic_image_deref_atomic_fmax: visit_image_atomic(ctx, instr); break;
-   case nir_intrinsic_image_deref_size: visit_image_size(ctx, instr); break;
-   case nir_intrinsic_image_deref_samples: visit_image_samples(ctx, instr); break;
+   case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_bindless_image_sparse_load: visit_image_load(ctx, instr); break;
+   case nir_intrinsic_bindless_image_store: visit_image_store(ctx, instr); break;
+   case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_umin:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_atomic_fmin:
+   case nir_intrinsic_bindless_image_atomic_fmax: visit_image_atomic(ctx, instr); break;
+   case nir_intrinsic_bindless_image_size: visit_image_size(ctx, instr); break;
+   case nir_intrinsic_bindless_image_samples: visit_image_samples(ctx, instr); break;
    case nir_intrinsic_load_ssbo: visit_load_ssbo(ctx, instr); break;
    case nir_intrinsic_store_ssbo: visit_store_ssbo(ctx, instr); break;
    case nir_intrinsic_load_global_constant:

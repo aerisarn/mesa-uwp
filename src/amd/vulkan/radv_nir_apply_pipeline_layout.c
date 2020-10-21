@@ -32,6 +32,7 @@ typedef struct {
    enum chip_class chip_class;
    uint32_t address32_hi;
    bool disable_aniso_single_level;
+   bool has_image_load_dcc_bug;
 
    const struct radv_shader_args *args;
    const struct radv_shader_info *info;
@@ -222,7 +223,8 @@ visit_get_ssbo_size(nir_builder *b, apply_layout_state *state, nir_intrinsic_ins
 
 static nir_ssa_def *
 get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *deref,
-                 enum ac_descriptor_type desc_type, bool non_uniform, nir_tex_instr *tex)
+                 enum ac_descriptor_type desc_type, bool non_uniform, nir_tex_instr *tex,
+                 bool write)
 {
    nir_variable *var = nir_deref_instr_get_variable(deref);
    assert(var);
@@ -311,13 +313,25 @@ get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *der
     * use the tail from plane 1 so that we can store only the first 16 bytes
     * of the last plane. */
    if (desc_type == AC_DESC_PLANE_2) {
-      nir_ssa_def *desc2 = get_sampler_desc(b, state, deref, AC_DESC_PLANE_1, non_uniform, tex);
+      nir_ssa_def *desc2 =
+         get_sampler_desc(b, state, deref, AC_DESC_PLANE_1, non_uniform, tex, write);
 
       nir_ssa_def *comp[8];
       for (unsigned i = 0; i < 4; i++)
          comp[i] = nir_channel(b, desc, i);
       for (unsigned i = 4; i < 8; i++)
          comp[i] = nir_channel(b, desc2, i);
+
+      return nir_vec(b, comp, 8);
+   } else if (desc_type == AC_DESC_IMAGE && state->has_image_load_dcc_bug && !tex && !write) {
+      nir_ssa_def *comp[8];
+      for (unsigned i = 0; i < 8; i++)
+         comp[i] = nir_channel(b, desc, i);
+
+      /* WRITE_COMPRESS_ENABLE must be 0 for all image loads to workaround a
+       * hardware bug.
+       */
+      comp[6] = nir_iand_imm(b, comp[6], C_00A018_WRITE_COMPRESS_ENABLE);
 
       return nir_vec(b, comp, 8);
    } else if (desc_type == AC_DESC_SAMPLER && tex->op == nir_texop_tg4) {
@@ -334,6 +348,20 @@ get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *der
    }
 
    return desc;
+}
+
+static void
+update_image_intrinsic(nir_builder *b, apply_layout_state *state, nir_intrinsic_instr *intrin)
+{
+   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+   const enum glsl_sampler_dim dim = glsl_get_sampler_dim(deref->type);
+   bool is_load = intrin->intrinsic == nir_intrinsic_image_deref_load ||
+                  intrin->intrinsic == nir_intrinsic_image_deref_sparse_load;
+
+   nir_ssa_def *desc = get_sampler_desc(
+      b, state, deref, dim == GLSL_SAMPLER_DIM_BUF ? AC_DESC_BUFFER : AC_DESC_IMAGE,
+      nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM, NULL, !is_load);
+   nir_rewrite_image_intrinsic(intrin, desc, true);
 }
 
 static void
@@ -376,6 +404,28 @@ apply_layout_to_intrin(nir_builder *b, apply_layout_state *state, nir_intrinsic_
    case nir_intrinsic_get_ssbo_size:
       visit_get_ssbo_size(b, state, intrin);
       break;
+   case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_image_deref_sparse_load:
+   case nir_intrinsic_image_deref_store:
+   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_fmin:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_fmax:
+   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_image_deref_atomic_fadd:
+   case nir_intrinsic_image_deref_atomic_inc_wrap:
+   case nir_intrinsic_image_deref_atomic_dec_wrap:
+   case nir_intrinsic_image_deref_size:
+   case nir_intrinsic_image_deref_samples:
+      update_image_intrinsic(b, state, intrin);
+      break;
    default:
       break;
    }
@@ -412,22 +462,22 @@ apply_layout_to_tex(nir_builder *b, apply_layout_state *state, nir_tex_instr *te
       assert(tex->op != nir_texop_txf_ms && tex->op != nir_texop_samples_identical);
       assert(tex->sampler_dim != GLSL_SAMPLER_DIM_BUF);
       image = get_sampler_desc(b, state, texture_deref_instr, AC_DESC_PLANE_0 + plane,
-                               tex->texture_non_uniform, tex);
+                               tex->texture_non_uniform, tex, false);
    } else if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
       image = get_sampler_desc(b, state, texture_deref_instr, AC_DESC_BUFFER,
-                               tex->texture_non_uniform, tex);
+                               tex->texture_non_uniform, tex, false);
    } else if (tex->op == nir_texop_fragment_mask_fetch_amd ||
               tex->op == nir_texop_samples_identical) {
       image = get_sampler_desc(b, state, texture_deref_instr, AC_DESC_FMASK,
-                               tex->texture_non_uniform, tex);
+                               tex->texture_non_uniform, tex, false);
    } else {
       image = get_sampler_desc(b, state, texture_deref_instr, AC_DESC_IMAGE,
-                               tex->texture_non_uniform, tex);
+                               tex->texture_non_uniform, tex, false);
    }
 
    if (sampler_deref_instr) {
       sampler = get_sampler_desc(b, state, sampler_deref_instr, AC_DESC_SAMPLER,
-                                 tex->sampler_non_uniform, tex);
+                                 tex->sampler_non_uniform, tex, false);
 
       if (state->disable_aniso_single_level && tex->sampler_dim < GLSL_SAMPLER_DIM_RECT &&
           state->chip_class < GFX8) {
@@ -479,6 +529,7 @@ radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device,
       .chip_class = device->physical_device->rad_info.chip_class,
       .address32_hi = device->physical_device->rad_info.address32_hi,
       .disable_aniso_single_level = device->instance->disable_aniso_single_level,
+      .has_image_load_dcc_bug = device->physical_device->rad_info.has_image_load_dcc_bug,
       .args = args,
       .info = info,
       .pipeline_layout = layout,
