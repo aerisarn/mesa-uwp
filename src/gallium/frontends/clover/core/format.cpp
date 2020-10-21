@@ -126,11 +126,15 @@ namespace clover {
    }
 
    std::set<cl_image_format>
-   supported_formats(const context &ctx, cl_mem_object_type type) {
+   supported_formats(const context &ctx, cl_mem_object_type type, cl_mem_flags flags) {
       std::set<cl_image_format> s;
       pipe_texture_target target = translate_target(type);
-      unsigned bindings = (PIPE_BIND_SAMPLER_VIEW |
-                           PIPE_BIND_COMPUTE_RESOURCE);
+      unsigned bindings = 0;
+
+      if (flags & (CL_MEM_READ_ONLY | CL_MEM_READ_WRITE | CL_MEM_KERNEL_READ_AND_WRITE))
+         bindings |= PIPE_BIND_SAMPLER_VIEW;
+      if (flags & (CL_MEM_WRITE_ONLY | CL_MEM_READ_WRITE | CL_MEM_KERNEL_READ_AND_WRITE))
+         bindings |= PIPE_BIND_SHADER_IMAGE;
 
       for (auto f : formats) {
          if (all_of([=](const device &dev) {

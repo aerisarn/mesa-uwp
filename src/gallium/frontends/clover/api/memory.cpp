@@ -204,7 +204,7 @@ clCreateImageWithProperties(cl_context d_ctx,
 
    const cl_mem_flags flags = validate_flags(desc->buffer, d_flags, false);
 
-   if (!supported_formats(ctx, desc->image_type).count(*format))
+   if (!supported_formats(ctx, desc->image_type, d_flags).count(*format))
       throw error(CL_IMAGE_FORMAT_NOT_SUPPORTED);
 
    std::vector<cl_mem_properties> properties = fill_properties(d_properties);
@@ -368,7 +368,7 @@ clGetSupportedImageFormats(cl_context d_ctx, cl_mem_flags flags,
                            cl_mem_object_type type, cl_uint count,
                            cl_image_format *r_buf, cl_uint *r_count) try {
    auto &ctx = obj(d_ctx);
-   auto formats = supported_formats(ctx, type);
+   auto formats = supported_formats(ctx, type, flags);
 
    if (flags & CL_MEM_KERNEL_READ_AND_WRITE) {
       if (r_count)
