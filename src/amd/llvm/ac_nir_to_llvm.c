@@ -4335,6 +4335,29 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_force_vrs_rates_amd:
       result = ac_get_arg(&ctx->ac, ctx->args->force_vrs_rates);
       break;
+   case nir_intrinsic_load_scalar_arg_amd:
+   case nir_intrinsic_load_vector_arg_amd: {
+      assert(nir_intrinsic_base(instr) < AC_MAX_ARGS);
+      result = ac_to_integer(&ctx->ac, LLVMGetParam(ctx->main_function, nir_intrinsic_base(instr)));
+      break;
+   }
+   case nir_intrinsic_load_smem_amd: {
+      LLVMValueRef base = get_src(ctx, instr->src[0]);
+      LLVMValueRef offset = get_src(ctx, instr->src[1]);
+
+      LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
+      LLVMTypeRef ptr_type = LLVMPointerType(result_type, AC_ADDR_SPACE_CONST);
+      LLVMTypeRef byte_ptr_type = LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_CONST);
+
+      LLVMValueRef addr = LLVMBuildIntToPtr(ctx->ac.builder, base, byte_ptr_type, "");
+      addr = LLVMBuildGEP(ctx->ac.builder, addr, &offset, 1, "");
+      addr = LLVMBuildBitCast(ctx->ac.builder, addr, ptr_type, "");
+
+      LLVMSetMetadata(addr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
+      result = LLVMBuildLoad(ctx->ac.builder, addr, "");
+      LLVMSetMetadata(result, ctx->ac.invariant_load_md_kind, ctx->ac.empty_md);
+      break;
+   }
    default:
       fprintf(stderr, "Unknown intrinsic: ");
       nir_print_instr(&instr->instr, stderr);
