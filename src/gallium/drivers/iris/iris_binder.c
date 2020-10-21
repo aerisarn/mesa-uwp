@@ -78,7 +78,7 @@ binder_realloc(struct iris_context *ice)
        * end of the memory zone...then wrap around to the start again.
        */
       next_address = binder->bo->gtt_offset + IRIS_BINDER_SIZE;
-      if (next_address >= IRIS_MEMZONE_SURFACE_START)
+      if (next_address >= IRIS_MEMZONE_BINDLESS_START)
          next_address = IRIS_MEMZONE_BINDER_START;
 
       iris_bo_unreference(binder->bo);

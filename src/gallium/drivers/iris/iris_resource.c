@@ -982,6 +982,9 @@ iris_resource_create_for_buffer(struct pipe_screen *pscreen,
    } else if (templ->flags & IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE) {
       memzone = IRIS_MEMZONE_DYNAMIC;
       name = "dynamic state";
+   } else if (templ->flags & IRIS_RESOURCE_FLAG_BINDLESS_MEMZONE) {
+      memzone = IRIS_MEMZONE_BINDLESS;
+      name = "bindless surface state";
    }
 
    unsigned flags = iris_resource_alloc_flags(screen, templ);
@@ -1035,7 +1038,8 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    /* These are for u_upload_mgr buffers only */
    assert(!(templ->flags & (IRIS_RESOURCE_FLAG_SHADER_MEMZONE |
                             IRIS_RESOURCE_FLAG_SURFACE_MEMZONE |
-                            IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE)));
+                            IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE |
+                            IRIS_RESOURCE_FLAG_BINDLESS_MEMZONE)));
 
    if (!iris_resource_configure_aux(screen, res, false))
       goto fail;

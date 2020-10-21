@@ -129,11 +129,12 @@ static const char *
 memzone_name(enum iris_memory_zone memzone)
 {
    const char *names[] = {
-      [IRIS_MEMZONE_SHADER]  = "shader",
-      [IRIS_MEMZONE_BINDER]  = "binder",
-      [IRIS_MEMZONE_SURFACE] = "surface",
-      [IRIS_MEMZONE_DYNAMIC] = "dynamic",
-      [IRIS_MEMZONE_OTHER]   = "other",
+      [IRIS_MEMZONE_SHADER]   = "shader",
+      [IRIS_MEMZONE_BINDER]   = "binder",
+      [IRIS_MEMZONE_BINDLESS] = "scratchsurf",
+      [IRIS_MEMZONE_SURFACE]  = "surface",
+      [IRIS_MEMZONE_DYNAMIC]  = "dynamic",
+      [IRIS_MEMZONE_OTHER]    = "other",
       [IRIS_MEMZONE_BORDER_COLOR_POOL] = "bordercolor",
    };
    assert(memzone < ARRAY_SIZE(names));
@@ -285,10 +286,11 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size, bool local)
 enum iris_memory_zone
 iris_memzone_for_address(uint64_t address)
 {
-   STATIC_ASSERT(IRIS_MEMZONE_OTHER_START   > IRIS_MEMZONE_DYNAMIC_START);
-   STATIC_ASSERT(IRIS_MEMZONE_DYNAMIC_START > IRIS_MEMZONE_SURFACE_START);
-   STATIC_ASSERT(IRIS_MEMZONE_SURFACE_START > IRIS_MEMZONE_BINDER_START);
-   STATIC_ASSERT(IRIS_MEMZONE_BINDER_START  > IRIS_MEMZONE_SHADER_START);
+   STATIC_ASSERT(IRIS_MEMZONE_OTHER_START    > IRIS_MEMZONE_DYNAMIC_START);
+   STATIC_ASSERT(IRIS_MEMZONE_DYNAMIC_START  > IRIS_MEMZONE_SURFACE_START);
+   STATIC_ASSERT(IRIS_MEMZONE_SURFACE_START  > IRIS_MEMZONE_BINDLESS_START);
+   STATIC_ASSERT(IRIS_MEMZONE_BINDLESS_START > IRIS_MEMZONE_BINDER_START);
+   STATIC_ASSERT(IRIS_MEMZONE_BINDER_START   > IRIS_MEMZONE_SHADER_START);
    STATIC_ASSERT(IRIS_BORDER_COLOR_POOL_ADDRESS == IRIS_MEMZONE_DYNAMIC_START);
 
    if (address >= IRIS_MEMZONE_OTHER_START)
@@ -302,6 +304,9 @@ iris_memzone_for_address(uint64_t address)
 
    if (address >= IRIS_MEMZONE_SURFACE_START)
       return IRIS_MEMZONE_SURFACE;
+
+   if (address >= IRIS_MEMZONE_BINDLESS_START)
+      return IRIS_MEMZONE_BINDLESS;
 
    if (address >= IRIS_MEMZONE_BINDER_START)
       return IRIS_MEMZONE_BINDER;
@@ -1761,9 +1766,12 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SHADER],
                       PAGE_SIZE, _4GB_minus_1 - PAGE_SIZE);
+   util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_BINDLESS],
+                      IRIS_MEMZONE_BINDLESS_START, IRIS_BINDLESS_SIZE);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SURFACE],
                       IRIS_MEMZONE_SURFACE_START,
-                      _4GB_minus_1 - IRIS_MAX_BINDERS * IRIS_BINDER_SIZE);
+                      _4GB_minus_1 - IRIS_MAX_BINDERS * IRIS_BINDER_SIZE -
+                     IRIS_BINDLESS_SIZE);
    /* TODO: Why does limiting to 2GB help some state items on gfx12?
     *  - CC Viewport Pointer
     *  - Blend State Pointer
