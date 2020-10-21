@@ -4509,10 +4509,15 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
                            struct waterfall_context *wctx, LLVMValueRef *res_ptr,
                            LLVMValueRef *samp_ptr, LLVMValueRef *fmask_ptr)
 {
+   LLVMValueRef texture_dynamic_handle = NULL;
+   LLVMValueRef sampler_dynamic_handle = NULL;
    nir_deref_instr *texture_deref_instr = NULL;
    nir_deref_instr *sampler_deref_instr = NULL;
    int plane = -1;
 
+   *res_ptr = NULL;
+   *samp_ptr = NULL;
+   *fmask_ptr = NULL;
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
       case nir_tex_src_texture_deref:
@@ -4521,12 +4526,67 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       case nir_tex_src_sampler_deref:
          sampler_deref_instr = nir_src_as_deref(instr->src[i].src);
          break;
+      case nir_tex_src_texture_handle:
+      case nir_tex_src_sampler_handle: {
+         LLVMValueRef val = get_src(ctx, instr->src[i].src);
+         if (LLVMGetTypeKind(LLVMTypeOf(val)) == LLVMVectorTypeKind) {
+            if (instr->src[i].src_type == nir_tex_src_texture_handle)
+               *res_ptr = val;
+            else
+               *samp_ptr = val;
+         } else {
+            if (instr->src[i].src_type == nir_tex_src_texture_handle)
+               texture_dynamic_handle = val;
+            else
+               sampler_dynamic_handle = val;
+         }
+         break;
+      }
       case nir_tex_src_plane:
          plane = nir_src_as_int(instr->src[i].src);
          break;
       default:
          break;
       }
+   }
+
+   if (*res_ptr) {
+      /* descriptors given through nir_tex_src_{texture,sampler}_handle */
+      return;
+   }
+
+   enum ac_descriptor_type main_descriptor =
+      instr->sampler_dim == GLSL_SAMPLER_DIM_BUF ? AC_DESC_BUFFER : AC_DESC_IMAGE;
+
+   if (plane >= 0) {
+      assert(instr->op != nir_texop_txf_ms && instr->op != nir_texop_samples_identical);
+      assert(instr->sampler_dim != GLSL_SAMPLER_DIM_BUF);
+
+      main_descriptor = AC_DESC_PLANE_0 + plane;
+   }
+
+   if (instr->op == nir_texop_fragment_mask_fetch_amd || instr->op == nir_texop_samples_identical) {
+      /* The fragment mask is fetched from the compressed
+       * multisampled surface.
+       */
+      main_descriptor = AC_DESC_FMASK;
+   }
+
+   if (texture_dynamic_handle) {
+      /* descriptor handles given through nir_tex_src_{texture,sampler}_handle */
+      if (instr->texture_non_uniform)
+         texture_dynamic_handle = enter_waterfall(ctx, &wctx[0], texture_dynamic_handle, true);
+
+      if (instr->sampler_non_uniform)
+         sampler_dynamic_handle = enter_waterfall(ctx, &wctx[1], sampler_dynamic_handle, true);
+
+      *res_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, texture_dynamic_handle,
+                                             main_descriptor, false, false, true);
+
+      if (samp_ptr)
+         *samp_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, sampler_dynamic_handle,
+                                                 AC_DESC_SAMPLER, false, false, true);
+      return;
    }
 
    LLVMValueRef texture_dynamic_index =
@@ -4541,23 +4601,6 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
 
    if (instr->sampler_non_uniform)
       sampler_dynamic_index = enter_waterfall(ctx, wctx + 1, sampler_dynamic_index, true);
-
-   enum ac_descriptor_type main_descriptor =
-      instr->sampler_dim == GLSL_SAMPLER_DIM_BUF ? AC_DESC_BUFFER : AC_DESC_IMAGE;
-
-   if (plane >= 0) {
-      assert(instr->op != nir_texop_txf_ms && instr->op != nir_texop_samples_identical);
-      assert(instr->sampler_dim != GLSL_SAMPLER_DIM_BUF);
-
-      main_descriptor = AC_DESC_PLANE_0 + plane;
-   }
-
-   if (instr->op == nir_texop_fragment_mask_fetch_amd) {
-      /* The fragment mask is fetched from the compressed
-       * multisampled surface.
-       */
-      main_descriptor = AC_DESC_FMASK;
-   }
 
    *res_ptr = get_sampler_desc(ctx, texture_deref_instr, main_descriptor, &instr->instr,
                                texture_dynamic_index, false, false);
@@ -4815,7 +4858,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       memcpy(txf_args.coords, args.coords, sizeof(txf_args.coords));
 
       txf_args.dmask = 0xf;
-      txf_args.resource = fmask_ptr;
+      txf_args.resource = args.resource;
       txf_args.dim = instr->is_array ? ac_image_2darray : ac_image_2d;
       result = build_tex_intrinsic(ctx, instr, &txf_args);
 
