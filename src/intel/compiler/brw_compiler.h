@@ -128,6 +128,15 @@ struct brw_compiler {
     */
    bool use_bindless_sampler_offset;
 
+   /**
+    * Calling the ra_allocate function after each register spill can take
+    * several minutes. This option speeds up shader compilation by spilling
+    * more registers after the ra_allocate failure. Required for
+    * Cyberpunk 2077, which uses a watchdog thread to terminate the process
+    * in case the render thread hasn't responded within 2 minutes.
+    */
+   int spilling_rate;
+
    struct nir_shader *clc_shader;
 
    struct {
