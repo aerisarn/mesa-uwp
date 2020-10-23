@@ -433,7 +433,7 @@ vtn_get_sampled_image(struct vtn_builder *b, uint32_t value_id)
    return si;
 }
 
-static const char *
+const char *
 vtn_string_literal(struct vtn_builder *b, const uint32_t *words,
                    unsigned word_count, unsigned *words_used)
 {
@@ -681,6 +681,7 @@ vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
          unreachable("Invalid decoration opcode");
       }
       dec->decoration = *(w++);
+      dec->num_operands = w_end - w;
       dec->operands = w;
 
       /* Link into the list */
@@ -4482,6 +4483,8 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          if (!b->options->create_library)
             vtn_warn("Unsupported SPIR-V capability: %s",
                      spirv_capability_to_string(cap));
+         spv_check_supported(linkage, cap);
+         vtn_warn("The SPIR-V Linkage capability is not fully supported");
          break;
 
       case SpvCapabilitySparseResidency:

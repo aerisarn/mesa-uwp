@@ -72,6 +72,7 @@ struct spirv_supported_capabilities {
    bool kernel;
    bool kernel_image;
    bool kernel_image_read_write;
+   bool linkage;
    bool literal_sampler;
    bool mesh_shading_nv;
    bool min_lod;

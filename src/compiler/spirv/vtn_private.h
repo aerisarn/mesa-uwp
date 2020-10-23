@@ -274,6 +274,7 @@ struct vtn_function {
 
    const uint32_t *end;
 
+   SpvLinkageType linkage;
    SpvFunctionControlMask control;
 };
 
@@ -646,6 +647,7 @@ struct vtn_decoration {
     */
    int scope;
 
+   uint32_t num_operands;
    const uint32_t *operands;
    struct vtn_value *group;
 
@@ -742,6 +744,10 @@ struct vtn_builder {
    /* memory model specified by OpMemoryModel */
    unsigned mem_model;
 };
+
+const char *
+vtn_string_literal(struct vtn_builder *b, const uint32_t *words,
+                   unsigned word_count, unsigned *words_used);
 
 nir_ssa_def *
 vtn_pointer_to_ssa(struct vtn_builder *b, struct vtn_pointer *ptr);
