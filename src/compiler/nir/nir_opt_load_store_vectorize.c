@@ -186,6 +186,7 @@ struct entry {
 };
 
 struct vectorize_ctx {
+   nir_shader *shader;
    const nir_load_store_vectorize_options *options;
    struct list_head entries[nir_num_variable_modes];
    struct hash_table *loads[nir_num_variable_modes];
@@ -893,30 +894,47 @@ vectorize_stores(nir_builder *b, struct vectorize_ctx *ctx,
    nir_instr_remove(first->instr);
 }
 
-/* Returns true if it can prove that "a" and "b" point to different bindings. */
+/* Returns true if it can prove that "a" and "b" point to different bindings
+ * and both use ACCESS_RESTRICT. */
 static bool
-bindings_different(nir_ssa_def *a, nir_ssa_def *b)
+bindings_different_restrict(nir_shader *shader, struct entry *a, struct entry *b)
 {
-   if (!a || !b)
+   bool different_bindings = false;
+   nir_variable *a_var = NULL, *b_var = NULL;
+   if (a->key->resource && b->key->resource) {
+      nir_binding a_res = nir_chase_binding(nir_src_for_ssa(a->key->resource));
+      nir_binding b_res = nir_chase_binding(nir_src_for_ssa(b->key->resource));
+      if (!a_res.success || !b_res.success)
+         return false;
+
+      if (a_res.num_indices != b_res.num_indices ||
+          a_res.desc_set != b_res.desc_set ||
+          a_res.binding != b_res.binding)
+            different_bindings = true;
+
+      for (unsigned i = 0; i < a_res.num_indices; i++) {
+         if (nir_src_is_const(a_res.indices[i]) && nir_src_is_const(b_res.indices[i]) &&
+             nir_src_as_uint(a_res.indices[i]) != nir_src_as_uint(b_res.indices[i]))
+               different_bindings = true;
+      }
+
+      if (different_bindings) {
+         a_var = nir_get_binding_variable(shader, a_res);
+         b_var = nir_get_binding_variable(shader, b_res);
+      }
+   } else if (a->key->var && b->key->var) {
+      a_var = a->key->var;
+      b_var = b->key->var;
+      different_bindings = a_var != b_var;
+   } else {
       return false;
-
-   nir_binding a_res = nir_chase_binding(nir_src_for_ssa(a));
-   nir_binding b_res = nir_chase_binding(nir_src_for_ssa(b));
-   if (!a_res.success || !b_res.success)
-      return false;
-
-   if (a_res.num_indices != b_res.num_indices ||
-       a_res.desc_set != b_res.desc_set ||
-       a_res.binding != b_res.binding)
-      return true;
-
-   for (unsigned i = 0; i < a_res.num_indices; i++) {
-      if (nir_src_is_const(a_res.indices[i]) && nir_src_is_const(b_res.indices[i]) &&
-          nir_src_as_uint(a_res.indices[i]) != nir_src_as_uint(b_res.indices[i]))
-         return true;
    }
 
-   return false;
+   unsigned a_access = a->access | (a_var ? a_var->data.access : 0);
+   unsigned b_access = b->access | (b_var ? b_var->data.access : 0);
+
+   return different_bindings &&
+          ((a_access & b_access) & ACCESS_RESTRICT);
 }
 
 static int64_t
@@ -928,7 +946,7 @@ compare_entries(struct entry *a, struct entry *b)
 }
 
 static bool
-may_alias(struct entry *a, struct entry *b)
+may_alias(nir_shader *shader, struct entry *a, struct entry *b)
 {
    assert(mode_to_index(get_variable_mode(a)) ==
           mode_to_index(get_variable_mode(b)));
@@ -938,9 +956,7 @@ may_alias(struct entry *a, struct entry *b)
 
    /* if the resources/variables are definitively different and both have
     * ACCESS_RESTRICT, we can assume they do not alias. */
-   bool res_different = a->key->var != b->key->var ||
-                        bindings_different(a->key->resource, b->key->resource);
-   if (res_different && (a->access & ACCESS_RESTRICT) && (b->access & ACCESS_RESTRICT))
+   if (bindings_different_restrict(shader, a, b))
       return false;
 
    /* we can't compare offsets if the resources/variables might be different */
@@ -979,7 +995,7 @@ check_for_aliasing(struct vectorize_ctx *ctx, struct entry *first, struct entry 
             continue;
          if (next == second)
             return false;
-         if (may_alias(first, next))
+         if (may_alias(ctx->shader, first, next))
             return true;
       }
    } else {
@@ -989,7 +1005,7 @@ check_for_aliasing(struct vectorize_ctx *ctx, struct entry *first, struct entry 
             continue;
          if (prev == first)
             return false;
-         if (prev->is_store && may_alias(second, prev))
+         if (prev->is_store && may_alias(ctx->shader, second, prev))
             return true;
       }
    }
@@ -1381,6 +1397,7 @@ nir_opt_load_store_vectorize(nir_shader *shader, const nir_load_store_vectorize_
    bool progress = false;
 
    struct vectorize_ctx *ctx = rzalloc(NULL, struct vectorize_ctx);
+   ctx->shader = shader;
    ctx->options = options;
 
    nir_shader_index_vars(shader, options->modes);
