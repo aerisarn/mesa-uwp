@@ -168,6 +168,42 @@ try_lower_memcpy(nir_builder *b, nir_intrinsic_instr *cpy)
       return true;
    }
 
+   /* If one of the two types is tightly packed and happens to equal the
+    * memcpy size, then we can get the memcpy by casting to that type and
+    * doing a deref copy.
+    *
+    * However, if we blindly apply this logic, we may end up with extra casts
+    * where we don't want them. The whole point of converting memcpy to
+    * copy_deref is in the hopes that nir_opt_copy_prop_vars or
+    * nir_lower_vars_to_ssa will get rid of the copy and those passes don't
+    * handle casts well. Heuristically, only do this optimization if the
+    * tightly packed type is on a deref with nir_var_function_temp so we stick
+    * the cast on the other mode.
+    */
+   if (dst->modes == nir_var_function_temp &&
+       type_is_tightly_packed(dst->type, &type_size) &&
+       type_size == size) {
+      b->cursor = nir_instr_remove(&cpy->instr);
+      src = nir_build_deref_cast(b, &src->dest.ssa,
+                                 src->modes, dst->type, 0);
+      nir_copy_deref_with_access(b, dst, src,
+                                 nir_intrinsic_dst_access(cpy),
+                                 nir_intrinsic_src_access(cpy));
+      return true;
+   }
+
+   if (src->modes == nir_var_function_temp &&
+       type_is_tightly_packed(src->type, &type_size) &&
+       type_size == size) {
+      b->cursor = nir_instr_remove(&cpy->instr);
+      dst = nir_build_deref_cast(b, &dst->dest.ssa,
+                                 dst->modes, src->type, 0);
+      nir_copy_deref_with_access(b, dst, src,
+                                 nir_intrinsic_dst_access(cpy),
+                                 nir_intrinsic_src_access(cpy));
+      return true;
+   }
+
    return false;
 }
 
