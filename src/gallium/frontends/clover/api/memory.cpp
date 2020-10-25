@@ -439,7 +439,18 @@ clGetMemObjectInfo(cl_mem d_mem, cl_mem_info param,
 
    case CL_MEM_ASSOCIATED_MEMOBJECT: {
       sub_buffer *sub = dynamic_cast<sub_buffer *>(&mem);
-      buf.as_scalar<cl_mem>() = (sub ? desc(sub->parent()) : NULL);
+      if (sub) {
+         buf.as_scalar<cl_mem>() = desc(sub->parent());
+         break;
+      }
+
+      image *img = dynamic_cast<image *>(&mem);
+      if (img) {
+         buf.as_scalar<cl_mem>() = desc(img->buffer());
+         break;
+      }
+
+      buf.as_scalar<cl_mem>() = NULL;
       break;
    }
    case CL_MEM_OFFSET: {
