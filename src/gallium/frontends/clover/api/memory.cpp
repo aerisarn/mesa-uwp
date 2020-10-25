@@ -458,6 +458,10 @@ clGetImageInfo(cl_mem d_mem, cl_image_info param,
       buf.as_scalar<size_t>() = img.array_size();
       break;
 
+   case CL_IMAGE_BUFFER:
+      buf.as_scalar<cl_mem>() = img.buffer();
+      break;
+
    case CL_IMAGE_NUM_MIP_LEVELS:
       buf.as_scalar<cl_uint>() = 0;
       break;
