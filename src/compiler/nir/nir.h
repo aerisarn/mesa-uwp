@@ -3322,6 +3322,9 @@ typedef struct nir_function {
 
    bool is_entrypoint;
    bool is_preamble;
+   /* from SPIR-V function control */
+   bool should_inline;
+   bool dont_inline; /* from SPIR-V */
 } nir_function;
 
 typedef enum {

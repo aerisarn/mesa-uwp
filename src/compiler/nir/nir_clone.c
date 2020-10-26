@@ -665,6 +665,8 @@ nir_function_clone(nir_shader *ns, const nir_function *fxn)
    }
    nfxn->is_entrypoint = fxn->is_entrypoint;
    nfxn->is_preamble = fxn->is_preamble;
+   nfxn->should_inline = fxn->should_inline;
+   nfxn->dont_inline = fxn->dont_inline;
 
    /* At first glance, it looks like we should clone the function_impl here.
     * However, call instructions need to be able to reference at least the

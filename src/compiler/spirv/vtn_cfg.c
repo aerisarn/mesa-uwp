@@ -201,6 +201,9 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
       if (func_type->return_type->base_type != vtn_base_type_void)
          num_params++;
 
+      func->should_inline = b->func->control & SpvFunctionControlInlineMask;
+      func->dont_inline = b->func->control & SpvFunctionControlDontInlineMask;
+
       func->num_params = num_params;
       func->params = ralloc_array(b->shader, nir_parameter, num_params);
 
