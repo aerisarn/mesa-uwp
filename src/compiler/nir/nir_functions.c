@@ -417,3 +417,54 @@ nir_link_shader_functions(nir_shader *shader,
 
    return overall_progress;
 }
+
+static void
+nir_mark_used_functions(struct nir_function *func, struct set *used_funcs);
+
+static bool mark_used_pass_cb(struct nir_builder *b,
+                              nir_instr *instr, void *data)
+{
+   struct set *used_funcs = data;
+   if (instr->type != nir_instr_type_call)
+      return false;
+   nir_call_instr *call = nir_instr_as_call(instr);
+
+   _mesa_set_add(used_funcs, call->callee);
+
+   nir_mark_used_functions(call->callee, used_funcs);
+   return true;
+}
+
+static void
+nir_mark_used_functions(struct nir_function *func, struct set *used_funcs)
+{
+   if (func->impl) {
+      nir_function_instructions_pass(func->impl,
+                                     mark_used_pass_cb,
+                                     nir_metadata_none,
+                                     used_funcs);
+   }
+}
+
+void
+nir_cleanup_functions(nir_shader *nir)
+{
+   if (!nir->options->driver_functions) {
+      nir_remove_non_entrypoints(nir);
+      return;
+   }
+
+   struct set *used_funcs = _mesa_set_create(NULL, _mesa_hash_pointer,
+                                             _mesa_key_pointer_equal);
+   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
+      if (func->is_entrypoint) {
+         _mesa_set_add(used_funcs, func);
+         nir_mark_used_functions(func, used_funcs);
+      }
+   }
+   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
+      if (!_mesa_set_search(used_funcs, func))
+         exec_node_remove(&func->node);
+   }
+   _mesa_set_destroy(used_funcs, NULL);
+}
