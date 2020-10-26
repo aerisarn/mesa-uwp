@@ -6899,6 +6899,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
       nir_function *entry_point = b->entry_point->func->nir_func;
       vtn_assert(entry_point);
 
+      entry_point->dont_inline = false;
       /* post process entry_points with input params */
       if (entry_point->num_params && b->shader->info.stage == MESA_SHADER_KERNEL)
          entry_point = vtn_emit_kernel_entry_point_wrapper(b, entry_point);

@@ -26,6 +26,26 @@
 #include "nir_control_flow.h"
 #include "nir_vla.h"
 
+/*
+ * TODO: write a proper inliner for GPUs.
+ * This heuristic just inlines small functions,
+ * and tail calls get inlined as well.
+ */
+static bool
+nir_function_can_inline(nir_function *function)
+{
+   bool can_inline = true;
+   if (!function->should_inline) {
+      if (function->impl) {
+         if (function->impl->num_blocks > 2)
+            can_inline = false;
+         if (function->impl->ssa_alloc > 45)
+            can_inline = false;
+      }
+   }
+   return can_inline;
+}
+
 static bool
 function_ends_in_jump(nir_function_impl *impl)
 {
@@ -137,6 +157,14 @@ static bool inline_functions_pass(nir_builder *b,
 
    nir_call_instr *call = nir_instr_as_call(instr);
    assert(call->callee->impl);
+
+   if (b->shader->options->driver_functions &&
+       b->shader->info.stage == MESA_SHADER_KERNEL) {
+      bool last_instr = (instr == nir_block_last_instr(instr->block));
+      if (!nir_function_can_inline(call->callee) && !last_instr) {
+         return false;
+      }
+   }
 
    /* Make sure that the function we're calling is already inlined */
    inline_function_impl(call->callee->impl, inlined);
