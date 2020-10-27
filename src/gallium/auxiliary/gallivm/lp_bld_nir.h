@@ -40,6 +40,12 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
                       const struct lp_build_tgsi_params *params,
                       LLVMValueRef (*outputs)[4]);
 
+void lp_build_nir_soa_func(struct gallivm_state *gallivm,
+                           struct nir_shader *shader,
+                           nir_function_impl *impl,
+                           const struct lp_build_tgsi_params *params,
+                           LLVMValueRef (*outputs)[4]);
+
 void lp_build_nir_aos(struct gallivm_state *gallivm,
                       struct nir_shader *shader,
                       struct lp_type type,
@@ -300,7 +306,8 @@ lp_build_nir_prepasses(struct nir_shader *nir);
 
 bool
 lp_build_nir_llvm(struct lp_build_nir_context *bld_base,
-                  struct nir_shader *nir);
+                  struct nir_shader *nir,
+                  nir_function_impl *impl);
 
 void
 lp_build_opt_nir(struct nir_shader *nir);

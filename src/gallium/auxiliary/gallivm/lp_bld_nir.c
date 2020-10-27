@@ -2870,10 +2870,9 @@ lp_build_nir_prepasses(struct nir_shader *nir)
 }
 
 bool lp_build_nir_llvm(struct lp_build_nir_context *bld_base,
-                       struct nir_shader *nir)
+                       struct nir_shader *nir,
+                       nir_function_impl *impl)
 {
-   struct nir_function *func;
-
    nir_foreach_shader_out_variable(variable, nir)
       handle_shader_output_decl(bld_base, nir, variable);
 
@@ -2899,17 +2898,15 @@ bool lp_build_nir_llvm(struct lp_build_nir_context *bld_base,
                                             _mesa_key_pointer_equal);
    bld_base->range_ht = _mesa_pointer_hash_table_create(NULL);
 
-   func = (struct nir_function *)exec_list_get_head(&nir->functions);
-
-   nir_foreach_reg_decl(reg, func->impl) {
+   nir_foreach_reg_decl(reg, impl) {
       LLVMTypeRef type = get_register_type(bld_base, reg);
       LLVMValueRef reg_alloc = lp_build_alloca(bld_base->base.gallivm,
                                                type, "reg");
       _mesa_hash_table_insert(bld_base->regs, reg, reg_alloc);
    }
-   nir_index_ssa_defs(func->impl);
-   bld_base->ssa_defs = calloc(func->impl->ssa_alloc, sizeof(LLVMValueRef));
-   visit_cf_list(bld_base, &func->impl->body);
+   nir_index_ssa_defs(impl);
+   bld_base->ssa_defs = calloc(impl->ssa_alloc, sizeof(LLVMValueRef));
+   visit_cf_list(bld_base, &impl->body);
 
    free(bld_base->ssa_defs);
    ralloc_free(bld_base->vars);

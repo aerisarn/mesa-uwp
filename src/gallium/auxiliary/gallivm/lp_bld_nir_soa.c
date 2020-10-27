@@ -2800,10 +2800,11 @@ emit_clock(struct lp_build_nir_context *bld_base,
    dst[1] = lp_build_broadcast_scalar(uint_bld, hi);
 }
 
-void lp_build_nir_soa(struct gallivm_state *gallivm,
-                      struct nir_shader *shader,
-                      const struct lp_build_tgsi_params *params,
-                      LLVMValueRef (*outputs)[4])
+void lp_build_nir_soa_func(struct gallivm_state *gallivm,
+                           struct nir_shader *shader,
+                           nir_function_impl *impl,
+                           const struct lp_build_tgsi_params *params,
+                           LLVMValueRef (*outputs)[4])
 {
    struct lp_build_nir_soa_context bld;
    const struct lp_type type = params->type;
@@ -2973,8 +2974,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    }
 
    emit_prologue(&bld);
-   lp_build_nir_prepasses(shader);
-   lp_build_nir_llvm(&bld.bld_base, shader);
+   lp_build_nir_llvm(&bld.bld_base, shader, impl);
 
    if (bld.gs_iface) {
       LLVMBuilderRef builder = bld.bld_base.base.gallivm->builder;
@@ -2995,4 +2995,15 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
       }
    }
    lp_exec_mask_fini(&bld.exec_mask);
+}
+
+void lp_build_nir_soa(struct gallivm_state *gallivm,
+                      struct nir_shader *shader,
+                      const struct lp_build_tgsi_params *params,
+                      LLVMValueRef (*outputs)[4])
+{
+   lp_build_nir_prepasses(shader);
+   lp_build_nir_soa_func(gallivm, shader,
+                         nir_shader_get_entrypoint(shader),
+                         params, outputs);
 }
