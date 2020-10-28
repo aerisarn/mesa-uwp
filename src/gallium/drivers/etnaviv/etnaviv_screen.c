@@ -643,22 +643,66 @@ etna_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                                    unsigned int *external_only, int *count)
 {
    struct etna_screen *screen = etna_screen(pscreen);
-   int num_modifiers = etna_get_num_modifiers(screen);
-   int i;
+   int num_base_mods = etna_get_num_modifiers(screen);
+   int mods_multiplier = 1;
+   int i, j;
 
-   if (max > num_modifiers)
-      max = num_modifiers;
+   if (VIV_FEATURE(screen, chipFeatures, FAST_CLEAR)) {
+      /* If TS is supported expose the TS modifiers. GPUs with feature
+       * CACHE128B256BPERLINE have both 128B and 256B color tile TS modes,
+       * older cores support exactly one TS layout.
+       */
+      if (VIV_FEATURE(screen, chipMinorFeatures6, CACHE128B256BPERLINE))
+         if (screen->specs.v4_compression &&
+             translate_ts_format(format) != ETNA_NO_MATCH)
+            mods_multiplier += 4;
+         else
+            mods_multiplier += 2;
+      else
+         mods_multiplier += 1;
+   }
+
+   if (max > num_base_mods * mods_multiplier)
+      max = num_base_mods * mods_multiplier;
 
    if (!max) {
       modifiers = NULL;
-      max = num_modifiers;
+      max = num_base_mods * mods_multiplier;
    }
 
-   for (i = 0, *count = 0; *count < max && i < num_modifiers; i++, (*count)++) {
-      if (modifiers)
-         modifiers[*count] = supported_modifiers[i];
-      if (external_only)
-         external_only[*count] = util_format_is_yuv(format) ? 1 : 0;
+   for (i = 0, *count = 0; *count < max && i < num_base_mods; i++) {
+      for (j = 0; *count < max && j < mods_multiplier; j++, (*count)++) {
+         uint64_t ts_mod;
+
+         if (j == 0) {
+            ts_mod = 0;
+         } else if (VIV_FEATURE(screen, chipMinorFeatures6,
+                                CACHE128B256BPERLINE)) {
+            switch (j) {
+            case 1:
+               ts_mod = VIVANTE_MOD_TS_128_4;
+               break;
+            case 2:
+               ts_mod = VIVANTE_MOD_TS_256_4;
+               break;
+            case 3:
+               ts_mod = VIVANTE_MOD_TS_128_4 | VIVANTE_MOD_COMP_DEC400;
+               break;
+            case 4:
+               ts_mod = VIVANTE_MOD_TS_256_4 | VIVANTE_MOD_COMP_DEC400;
+            }
+         } else {
+            if (screen->specs.bits_per_tile == 2)
+               ts_mod = VIVANTE_MOD_TS_64_2;
+            else
+               ts_mod = VIVANTE_MOD_TS_64_4;
+         }
+
+         if (modifiers)
+            modifiers[*count] = supported_modifiers[i] | ts_mod;
+         if (external_only)
+            external_only[*count] = util_format_is_yuv(format) ? 1 : 0;
+      }
    }
 }
 
@@ -669,12 +713,35 @@ etna_screen_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
                                          bool *external_only)
 {
    struct etna_screen *screen = etna_screen(pscreen);
-   int num_modifiers = etna_get_num_modifiers(screen);
+   int num_base_mods = etna_get_num_modifiers(screen);
+   uint64_t base_mod = modifier & ~VIVANTE_MOD_EXT_MASK;
+   uint64_t ts_mod = modifier & VIVANTE_MOD_TS_MASK;
    int i;
 
-   for (i = 0; i < num_modifiers; i++) {
-      if (modifier != supported_modifiers[i])
+   for (i = 0; i < num_base_mods; i++) {
+      if (base_mod != supported_modifiers[i])
          continue;
+
+      if ((modifier & VIVANTE_MOD_COMP_DEC400) &&
+          (!screen->specs.v4_compression || translate_ts_format(format) == ETNA_NO_MATCH))
+         return false;
+
+      if (ts_mod) {
+         if (!VIV_FEATURE(screen, chipFeatures, FAST_CLEAR))
+            return false;
+
+         if (VIV_FEATURE(screen, chipMinorFeatures6, CACHE128B256BPERLINE)) {
+            if (ts_mod != VIVANTE_MOD_TS_128_4 &&
+                ts_mod != VIVANTE_MOD_TS_256_4)
+               return false;
+         } else {
+            if ((screen->specs.bits_per_tile == 2 &&
+                 ts_mod != VIVANTE_MOD_TS_64_2) ||
+                (screen->specs.bits_per_tile == 4 &&
+                 ts_mod != VIVANTE_MOD_TS_64_4))
+               return false;
+         }
+      }
 
       if (external_only)
          *external_only = util_format_is_yuv(format) ? 1 : 0;
@@ -683,6 +750,19 @@ etna_screen_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
    }
 
    return false;
+}
+
+static unsigned int
+etna_screen_get_dmabuf_modifier_planes(struct pipe_screen *pscreen,
+                                       uint64_t modifier,
+                                       enum pipe_format format)
+{
+   unsigned planes = util_format_get_num_planes(format);
+
+   if (modifier & VIVANTE_MOD_TS_MASK)
+      return planes * 2;
+
+   return planes;
 }
 
 static void
@@ -1141,6 +1221,7 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
    pscreen->is_format_supported = etna_screen_is_format_supported;
    pscreen->query_dmabuf_modifiers = etna_screen_query_dmabuf_modifiers;
    pscreen->is_dmabuf_modifier_supported = etna_screen_is_dmabuf_modifier_supported;
+   pscreen->get_dmabuf_modifier_planes = etna_screen_get_dmabuf_modifier_planes;
 
    if (!etna_shader_screen_init(pscreen))
       goto fail;
