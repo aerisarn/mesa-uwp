@@ -1211,6 +1211,31 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_extract_u8:
+   case nir_op_extract_i8:
+   case nir_op_extract_u16:
+   case nir_op_extract_i16: {
+      bool is_signed = instr->op == nir_op_extract_i16 || instr->op == nir_op_extract_i8;
+      unsigned size = instr->op == nir_op_extract_u8 || instr->op == nir_op_extract_i8 ? 8 : 16;
+      LLVMValueRef offset = LLVMConstInt(LLVMTypeOf(src[0]), nir_src_as_uint(instr->src[1].src) * size, false);
+      result = LLVMBuildLShr(ctx->ac.builder, src[0], offset, "");
+      result = LLVMBuildTrunc(ctx->ac.builder, result, LLVMIntTypeInContext(ctx->ac.context, size), "");
+      if (is_signed)
+         result = LLVMBuildSExt(ctx->ac.builder, result, LLVMTypeOf(src[0]), "");
+      else
+         result = LLVMBuildZExt(ctx->ac.builder, result, LLVMTypeOf(src[0]), "");
+      break;
+   }
+
+   case nir_op_insert_u8:
+   case nir_op_insert_u16: {
+      unsigned size = instr->op == nir_op_insert_u8 ? 8 : 16;
+      LLVMValueRef offset = LLVMConstInt(LLVMTypeOf(src[0]), nir_src_as_uint(instr->src[1].src) * size, false);
+      LLVMValueRef mask = LLVMConstInt(LLVMTypeOf(src[0]), u_bit_consecutive(0, size), false);
+      result = LLVMBuildShl(ctx->ac.builder, LLVMBuildAnd(ctx->ac.builder, src[0], mask, ""), offset, "");
+      break;
+   }
+
    default:
       fprintf(stderr, "Unknown NIR alu instr: ");
       nir_print_instr(&instr->instr, stderr);
