@@ -105,6 +105,7 @@ intel_debug_flag_for_shader_stage(gl_shader_stage stage)
       [MESA_SHADER_GEOMETRY] = DEBUG_GS,
       [MESA_SHADER_FRAGMENT] = DEBUG_WM,
       [MESA_SHADER_COMPUTE] = DEBUG_CS,
+      [MESA_SHADER_KERNEL] = DEBUG_CS,
 
       [MESA_SHADER_TASK]         = DEBUG_TASK,
       [MESA_SHADER_MESH]         = DEBUG_MESH,
