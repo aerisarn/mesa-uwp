@@ -118,7 +118,9 @@ namespace {
          return TGL_PIPE_FLOAT;
       else if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT ||
                inst->opcode == SHADER_OPCODE_BROADCAST ||
-               inst->opcode == SHADER_OPCODE_SHUFFLE)
+               inst->opcode == SHADER_OPCODE_SHUFFLE ||
+               (inst->opcode == SHADER_OPCODE_SEL_EXEC &&
+                type_sz(inst->dst.type) > 4))
          return TGL_PIPE_INT;
       else if (inst->opcode == SHADER_OPCODE_BROADCAST &&
                !devinfo->has_64bit_float && type_sz(t) >= 8)
