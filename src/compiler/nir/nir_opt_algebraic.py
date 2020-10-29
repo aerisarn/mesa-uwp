@@ -1241,8 +1241,21 @@ optimizations.extend([
    (('ieq', ('ineg', ('b2i', 'a@1')), -1), a),
    (('ine', ('ineg', ('b2i', 'a@1')), 0), a),
    (('ine', ('ineg', ('b2i', 'a@1')), -1), ('inot', a)),
+   (('ige', ('ineg', ('b2i', 'a@1')), 0), ('inot', a)),
+   (('ilt', ('ineg', ('b2i', 'a@1')), 0), a),
+   (('ult', 0, ('ineg', ('b2i', 'a@1'))), a),
    (('iand', ('ineg', ('b2i', a)), 1.0), ('b2f', a)),
    (('iand', ('ineg', ('b2i', a)), 1),   ('b2i', a)),
+
+   # With D3D booleans, imax is AND and umax is OR
+   (('imax', ('ineg', ('b2i', 'a@1')), ('ineg', ('b2i', 'b@1'))),
+    ('ineg', ('b2i', ('iand', a, b)))),
+   (('imin', ('ineg', ('b2i', 'a@1')), ('ineg', ('b2i', 'b@1'))),
+    ('ineg', ('b2i', ('ior', a, b)))),
+   (('umax', ('ineg', ('b2i', 'a@1')), ('ineg', ('b2i', 'b@1'))),
+    ('ineg', ('b2i', ('ior', a, b)))),
+   (('umin', ('ineg', ('b2i', 'a@1')), ('ineg', ('b2i', 'b@1'))),
+    ('ineg', ('b2i', ('iand', a, b)))),
 
    # Conversions
    (('i2b16', ('b2i', 'a@16')), a),
