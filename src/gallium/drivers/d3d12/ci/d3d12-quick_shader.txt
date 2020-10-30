@@ -7658,12 +7658,9 @@ spec/ext_shader_image_load_formatted/execution/image_checkerboard: skip
 spec/glsl-1.10/execution/fs-dfdx-accuracy: warn
 spec/glsl-1.10/execution/fs-dfdy-accuracy: warn
 spec/glsl-1.10/execution/fs-discard-deep-branch: warn
-spec/glsl-1.10/execution/fs-nested-return-in-loop-nested_in_if: fail
 spec/glsl-1.10/execution/glsl-fs-uniform-sampler-array: fail
 spec/glsl-1.10/execution/samplers/glsl-fs-sampler-numbering-3: fail
 spec/glsl-1.10/execution/samplers/in-parameter-array: fail
-spec/glsl-1.10/execution/vs-nested-return-sibling-loop: fail
-spec/glsl-1.10/execution/vs-nested-return-sibling-loop2: fail
 spec/glsl-1.10/preprocessor/extension-defined-test: skip
 spec/glsl-1.10/preprocessor/extension-if-1: skip
 spec/glsl-1.30/execution/interpolation/interpolation-mixed: fail
@@ -12986,8 +12983,8 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:     7259
-       fail:       58
+       pass:     7262
+       fail:       55
       crash:       23
        skip:    12879
     timeout:        0
