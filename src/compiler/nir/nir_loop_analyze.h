@@ -63,7 +63,8 @@ contains_other_jump(nir_cf_node *node, nir_instr *expected_jump)
       return false;
    }
    case nir_cf_node_loop:
-      return true;
+      /* the jumps of nested loops are unrelated */
+      return false;
 
    default:
       unreachable("Unhandled cf node type");
