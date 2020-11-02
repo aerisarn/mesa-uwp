@@ -806,6 +806,7 @@ system_value("aa_line_width", 1)
 system_value("scratch_base_ptr", 0, bit_sizes=[32,64], indices=[BASE])
 system_value("constant_base_ptr", 0, bit_sizes=[32,64])
 system_value("shared_base_ptr", 0, bit_sizes=[32,64])
+system_value("global_base_ptr", 0, bit_sizes=[32,64])
 
 # System values for ray tracing.
 system_value("ray_launch_id", 3)
