@@ -2832,9 +2832,16 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
                      "Unless the Kernel capability is being used, the coordinate parameter "
                      "OpImageSampleExplicitLod must be floating point.");
 
-         p->src = nir_src_for_ssa(
-            nir_fadd(&b->nb, nir_i2f32(&b->nb, p->src.ssa),
-                             nir_imm_float(&b->nb, 0.5)));
+         nir_ssa_def *coords[4];
+         nir_ssa_def *f0_5 = nir_imm_float(&b->nb, 0.5);
+         for (unsigned i = 0; i < coord_components; i++) {
+            coords[i] = nir_i2f32(&b->nb, nir_channel(&b->nb, p->src.ssa, i));
+
+            if (!is_array || i != coord_components - 1)
+               coords[i] = nir_fadd(&b->nb, coords[i], f0_5);
+         }
+
+         p->src = nir_src_for_ssa(nir_vec(&b->nb, coords, coord_components));
       }
 
       p->src_type = nir_tex_src_coord;
