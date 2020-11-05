@@ -517,7 +517,7 @@ llvmpipe_get_compute_param(struct pipe_screen *_screen,
    case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE:
       if (ret) {
          uint64_t *max_input = ret;
-         *max_input = 4096;
+         *max_input = 1576;
       }
       return sizeof(uint64_t);
    case PIPE_COMPUTE_CAP_IMAGES_SUPPORTED:
