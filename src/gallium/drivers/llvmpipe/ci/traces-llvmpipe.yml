@@ -37,7 +37,7 @@ traces:
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: f73a68e9814405910c4628a2824f1eae
+        checksum: cfaf4c036d8a5626afb1392d8fccabd0
   - path: gputest/triangle.trace
     expectations:
       - device: gl-vmware-llvmpipe
