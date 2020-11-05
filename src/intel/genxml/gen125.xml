@@ -347,26 +347,40 @@
   </struct>
 
   <struct name="CPS_STATE" length="8">
-    <field name="Min CP Size X" start="0" end="10" type="s3.7"/>
+    <field name="MinCPSizeX" start="0" end="10" type="s3.7"/>
     <field name="Statistics Enable" start="11" end="11" type="bool"/>
     <field name="Coarse Pixel Shading Mode" start="12" end="13" type="uint">
       <value name="CPS_MODE_NONE" value="0"/>
       <value name="CPS_MODE_CONSTANT" value="1"/>
       <value name="CPS_MODE_RADIAL" value="2"/>
     </field>
-    <field name="Scale Axis" start="14" end="14" type="uint" prefix="SCALE_AXIS">
-      <value name="X Axis" value="0"/>
-      <value name="Y Axis" value="1"/>
+    <field name="ScaleAxis" start="14" end="14" type="uint">
+      <value name="X axis" value="0"/>
+      <value name="Y axis" value="1"/>
     </field>
-    <field name="Min CP Size Y" start="16" end="26" type="s3.7"/>
-    <field name="Max CP Size X" start="32" end="42" type="s3.7"/>
-    <field name="Max CP Size Y" start="48" end="58" type="s3.7"/>
-    <field name="Y Focal" start="64" end="79" type="s15.0"/>
-    <field name="X Focal" start="96" end="111" type="s15.0"/>
-    <field name="M y" start="128" end="159" type="float"/>
-    <field name="M x" start="160" end="191" type="float"/>
-    <field name="R min" start="192" end="223" type="float"/>
-    <field name="Aspect" start="224" end="255" type="float"/>
+    <field name="MinCPSizeY" start="15" end="25" type="s3.7"/>
+    <field name="Combiner1 Opcode for CPsize" start="26" end="28" type="uint">
+      <value name="PASSTHROUGH" value="0"/>
+      <value name="OVERRIDE" value="1"/>
+      <value name="HIGH_QUALITY" value="2"/>
+      <value name="LOW_QUALITY" value="3"/>
+      <value name="RELATIVE" value="4"/>
+    </field>
+    <field name="Combiner0 Opcode for CPsize" start="29" end="31" type="uint">
+      <value name="PASSTHROUGH" value="0"/>
+      <value name="OVERRIDE" value="1"/>
+      <value name="HIGH_QUALITY" value="2"/>
+      <value name="LOW_QUALITY" value="3"/>
+      <value name="RELATIVE" value="4"/>
+    </field>
+    <field name="MaxCPSizeX" start="32" end="42" type="s3.7"/>
+    <field name="MaxCPSizeY" start="48" end="58" type="s3.7"/>
+    <field name="Y_Focal" start="64" end="79" type="int"/>
+    <field name="X_Focal" start="96" end="111" type="int"/>
+    <field name="My" start="128" end="159" type="uint"/>
+    <field name="Mx" start="160" end="191" type="uint"/>
+    <field name="Rmin" start="192" end="223" type="uint"/>
+    <field name="Aspect" start="224" end="255" type="uint"/>
   </struct>
 
   <struct name="EXECUTION_UNIT_EXTENDED_MESSAGE_DESCRIPTOR" length="1">
@@ -1705,6 +1719,31 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
     <field name="Constant Body" start="32" end="351" type="3DSTATE_CONSTANT_BODY"/>
+  </instruction>
+
+  <instruction name="3DSTATE_CPSIZE_CONTROL_BUFFER" bias="2" length="8">
+    <field name="DWord Length" start="0" end="7" type="uint" default="6"/>
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="131"/>
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
+    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <field name="Surface Pitch" start="32" end="48" type="uint"/>
+    <field name="CPCB Compression Enable" start="57" end="57" type="bool"/>
+    <field name="Surface Type" start="61" end="63" type="uint"/>
+    <field name="Surface Base Address" start="64" end="127" type="address"/>
+    <field name="Width" start="129" end="142" type="uint"/>
+    <field name="Height" start="145" end="158" type="uint"/>
+    <field name="MOCS" start="160" end="166" type="uint"/>
+    <field name="Minimum Array Element" start="168" end="178" type="uint"/>
+    <field name="Depth" start="180" end="190" type="uint"/>
+    <field name="Mip Tail Start LOD" start="218" end="221" type="uint"/>
+    <field name="Tiled Mode" start="222" end="223" type="uint">
+      <value name="TILE64" value="1"/>
+      <value name="TILE4" value="3"/>
+    </field>
+    <field name="Surface QPitch" start="224" end="238" type="uint"/>
+    <field name="Surf LOD" start="240" end="243" type="uint"/>
+    <field name="Render Target View Extent" start="245" end="255" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_CPS_POINTERS" bias="2" length="2" engine="render">
