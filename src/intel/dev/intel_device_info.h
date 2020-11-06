@@ -147,6 +147,12 @@ struct intel_device_info
    bool has_negative_rhw_bug;
 
    /**
+    * Whether this platform supports fragment shading rate controlled by a
+    * primitive in geometry shaders and by a control buffer.
+    */
+   bool has_coarse_pixel_primitive_and_cb;
+
+   /**
     * Some versions of Gen hardware don't do centroid interpolation correctly
     * on unlit pixels, causing incorrect values for derivatives near triangle
     * edges.  Enabling this flag causes the fragment shader to use

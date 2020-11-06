@@ -1059,7 +1059,8 @@ static const struct intel_device_info intel_device_info_sg1 = {
    XEHP_FEATURES(0, 1, 0),                                      \
    .num_subslices = dual_subslices(1),                          \
    .has_lsc = true,                                             \
-   .apply_hwconfig = true
+   .apply_hwconfig = true,                                      \
+   .has_coarse_pixel_primitive_and_cb = true
 
 UNUSED static const struct intel_device_info intel_device_info_dg2_g10 = {
    DG2_FEATURES,
