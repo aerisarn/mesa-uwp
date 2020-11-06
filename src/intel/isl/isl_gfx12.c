@@ -88,6 +88,15 @@ isl_gfx125_filter_tiling(const struct isl_device *dev,
    /* Tile64 is not defined for format sizes that are 24, 48, and 96 bpb. */
    if (isl_format_get_layout(info->format)->bpb % 3 == 0)
       *flags &= ~ISL_TILING_64_BIT;
+
+   /* BSpec 46962: 3DSTATE_CPSIZE_CONTROL_BUFFER::Tiled Mode : TILE4 & TILE64
+    * are the only 2 valid values.
+    *
+    * TODO: For now we only TILE64 as we need to figure out potential
+    *       additional requirements for TILE4.
+    */
+   if (info->usage & ISL_SURF_USAGE_CPB_BIT)
+      *flags &= ISL_TILING_64_BIT;
 }
 
 void
