@@ -33,6 +33,7 @@
 #include <assert.h>
 #include <math.h>
 #include "util/u_math.h"
+#include "util/u_qsort.h"
 
 #include "main/menums.h" /* BITFIELD64_MASK */
 
@@ -257,6 +258,49 @@ nir_find_variable_with_driver_location(nir_shader *shader,
          return var;
    }
    return NULL;
+}
+
+/* Annoyingly, qsort_r is not in the C standard library and, in particular, we
+ * can't count on it on MSV and Android.  So we stuff the CMP function into
+ * each array element.  It's a bit messy and burns more memory but the list of
+ * variables should hever be all that long.
+ */
+struct var_cmp {
+   nir_variable *var;
+   int (*cmp)(const nir_variable *, const nir_variable *);
+};
+
+static int
+var_sort_cmp(const void *_a, const void *_b, void *_cmp)
+{
+   const struct var_cmp *a = _a;
+   const struct var_cmp *b = _b;
+   assert(a->cmp == b->cmp);
+   return a->cmp(a->var, b->var);
+}
+
+void
+nir_sort_variables(nir_shader *shader,
+                   int (*cmp)(const nir_variable *, const nir_variable *))
+{
+   const unsigned num_vars = exec_list_length(&shader->variables);
+   struct var_cmp *vars = ralloc_array(shader, struct var_cmp, num_vars);
+   unsigned i = 0;
+   nir_foreach_variable_in_shader(var, shader) {
+      vars[i++] = (struct var_cmp) {
+         .var = var,
+         .cmp = cmp,
+      };
+   }
+   assert(i == num_vars);
+
+   util_qsort_r(vars, num_vars, sizeof(*vars), var_sort_cmp, cmp);
+
+   exec_list_make_empty(&shader->variables);
+   for (i = 0; i < num_vars; i++)
+      exec_list_push_tail(&shader->variables, &vars[i].var->node);
+
+   ralloc_free(vars);
 }
 
 nir_function *
