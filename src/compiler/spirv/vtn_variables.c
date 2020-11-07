@@ -1136,7 +1136,8 @@ apply_var_decoration(struct vtn_builder *b,
 {
    switch (dec->decoration) {
    case SpvDecorationRelaxedPrecision:
-      break; /* FIXME: Do nothing with this for now. */
+      var_data->precision = GLSL_PRECISION_MEDIUM;
+      break;
    case SpvDecorationNoPerspective:
       var_data->interpolation = INTERP_MODE_NOPERSPECTIVE;
       break;
