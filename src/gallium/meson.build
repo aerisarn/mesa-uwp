@@ -182,6 +182,10 @@ if with_gallium_opencl
   subdir('frontends/clover')
   subdir('targets/opencl')
 endif
+if with_gallium_rusticl
+  subdir('frontends/rusticl')
+  subdir('targets/rusticl')
+endif
 if with_dri
   subdir('frontends/dri')
   subdir('targets/dri')

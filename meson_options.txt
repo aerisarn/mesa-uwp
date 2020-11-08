@@ -164,6 +164,12 @@ option(
   description : 'build gallium "clover" OpenCL frontend.',
 )
 option(
+  'gallium-rusticl',
+  type : 'boolean',
+  value : false,
+  description : 'build gallium "rusticl" OpenCL frontend.',
+)
+option(
   'gallium-windows-dll-name',
   type : 'string',
   value : 'libgallium_wgl',
