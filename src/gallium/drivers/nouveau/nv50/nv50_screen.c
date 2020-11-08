@@ -569,6 +569,7 @@ nv50_screen_get_compute_param(struct pipe_screen *pscreen,
                               enum pipe_compute_cap param, void *data)
 {
    struct nv50_screen *screen = nv50_screen(pscreen);
+   struct nouveau_device *dev = screen->base.device;
 
 #define RET(x) do {                  \
    if (data)                         \
@@ -586,7 +587,7 @@ nv50_screen_get_compute_param(struct pipe_screen *pscreen,
    case PIPE_COMPUTE_CAP_MAX_THREADS_PER_BLOCK:
       RET((uint64_t []) { 512 });
    case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE: /* g0-15[] */
-      RET((uint64_t []) { 1ULL << 32 });
+      RET((uint64_t []) { nouveau_device_get_global_mem_size(dev) });
    case PIPE_COMPUTE_CAP_MAX_LOCAL_SIZE: /* s[] */
       RET((uint64_t []) { 16 << 10 });
    case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE: /* l[] */

@@ -5,6 +5,7 @@
 #include <inttypes.h>
 
 #include "pipe/p_defines.h"
+#include "util/os_misc.h"
 
 #include "drm-uapi/drm.h"
 #include <nouveau.h>
@@ -95,5 +96,24 @@ nv50_screen_create(struct nouveau_device *);
 
 extern struct nouveau_screen *
 nvc0_screen_create(struct nouveau_device *);
+
+static inline uint64_t
+nouveau_device_get_global_mem_size(struct nouveau_device *dev)
+{
+   uint64_t size = dev->vram_size;
+
+   if (!size) {
+      os_get_available_system_memory(&size);
+      size = MIN2(dev->gart_size, size);
+   }
+
+   /* cap to 32 bit on nv50 and older */
+   if (dev->chipset < 0xc0)
+      size = MIN2(size, 1ull << 32);
+   else
+      size = MIN2(size, 1ull << 40);
+
+   return size;
+}
 
 #endif
