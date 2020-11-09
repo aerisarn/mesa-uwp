@@ -5379,6 +5379,9 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
    anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
                          cmd_buffer->batch.alloc,
                          rt->scratch.bo);
+   anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
+                         cmd_buffer->batch.alloc,
+                         cmd_buffer->device->btd_fifo_bo);
 
    /* Allocate and set up our RT_DISPATCH_GLOBALS */
    struct anv_state rtdg_state =

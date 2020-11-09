@@ -3454,16 +3454,30 @@ VkResult anv_CreateDevice(
    /* TODO(RT): Do we want some sort of data structure for this? */
    memset(device->rt_scratch_bos, 0, sizeof(device->rt_scratch_bos));
 
+   if (device->info->has_ray_tracing) {
+      /* The docs say to always allocate 128KB per DSS */
+      const uint32_t btd_fifo_bo_size =
+         128 * 1024 * intel_device_info_dual_subslice_id_bound(device->info);
+      result = anv_device_alloc_bo(device,
+                                   "rt-btd-fifo",
+                                   btd_fifo_bo_size,
+                                   0 /* alloc_flags */,
+                                   0 /* explicit_address */,
+                                   &device->btd_fifo_bo);
+      if (result != VK_SUCCESS)
+         goto fail_trivial_batch_bo_and_scratch_pool;
+   }
+
    result = anv_genX(device->info, init_device_state)(device);
    if (result != VK_SUCCESS)
-      goto fail_trivial_batch_bo_and_scratch_pool;
+      goto fail_btd_fifo_bo;
 
    struct vk_pipeline_cache_create_info pcc_info = { };
    device->default_pipeline_cache =
       vk_pipeline_cache_create(&device->vk, &pcc_info, NULL);
    if (!device->default_pipeline_cache) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-      goto fail_trivial_batch_bo_and_scratch_pool;
+      goto fail_btd_fifo_bo;
    }
 
    /* Internal shaders need their own pipeline cache because, unlike the rest
@@ -3501,6 +3515,9 @@ VkResult anv_CreateDevice(
    vk_pipeline_cache_destroy(device->internal_cache, NULL);
  fail_default_pipeline_cache:
    vk_pipeline_cache_destroy(device->default_pipeline_cache, NULL);
+ fail_btd_fifo_bo:
+   if (device->info->has_ray_tracing)
+      anv_device_release_bo(device, device->btd_fifo_bo);
  fail_trivial_batch_bo_and_scratch_pool:
    anv_scratch_pool_finish(device, &device->scratch_pool);
  fail_trivial_batch:
@@ -3570,6 +3587,9 @@ void anv_DestroyDevice(
 
    vk_pipeline_cache_destroy(device->internal_cache, NULL);
    vk_pipeline_cache_destroy(device->default_pipeline_cache, NULL);
+
+   if (device->info->has_ray_tracing)
+      anv_device_release_bo(device, device->btd_fifo_bo);
 
 #ifdef HAVE_VALGRIND
    /* We only need to free these to prevent valgrind errors.  The backing
@@ -4754,9 +4774,9 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
     *
     *    - Loader interface v4 differs from v3 in:
     *        - The ICD must implement vk_icdGetPhysicalDeviceProcAddr().
-    * 
+    *
     *    - Loader interface v5 differs from v4 in:
-    *        - The ICD must support Vulkan API version 1.1 and must not return 
+    *        - The ICD must support Vulkan API version 1.1 and must not return
     *          VK_ERROR_INCOMPATIBLE_DRIVER from vkCreateInstance() unless a
     *          Vulkan Loader with interface v4 or smaller is being used and the
     *          application provides an API version that is greater than 1.0.

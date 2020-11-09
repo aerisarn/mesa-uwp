@@ -1140,6 +1140,7 @@ struct anv_device {
 
     struct anv_scratch_pool                     scratch_pool;
     struct anv_bo                              *rt_scratch_bos[16];
+    struct anv_bo                              *btd_fifo_bo;
 
     /** Shadow ray query BO
      *

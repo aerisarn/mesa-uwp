@@ -228,6 +228,29 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
       sba.L1CacheControl = L1CC_WB;
    }
 #endif
+
+#if GFX_VERx10 >= 125
+   if (device->info->has_ray_tracing) {
+      anv_batch_emit(batch, GENX(3DSTATE_BTD), btd) {
+         /* TODO: This is the timeout after which the bucketed thread
+          *       dispatcher will kick off a wave of threads. We go with the
+          *       lowest value for now. It could be tweaked on a per
+          *       application basis (drirc).
+          */
+         btd.DispatchTimeoutCounter = _64clocks;
+         /* BSpec 43851: "This field must be programmed to 6h i.e. memory
+          *               backed buffer must be 128KB."
+          */
+         btd.PerDSSMemoryBackedBufferSize = 6;
+         btd.MemoryBackedBufferBasePointer = (struct anv_address) {
+            /* This batch doesn't have a reloc list so we can't use the BO
+             * here.  We just use the address directly.
+             */
+            .offset = device->btd_fifo_bo->offset,
+         };
+      }
+   }
+#endif
 }
 
 static VkResult
