@@ -763,7 +763,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
    const struct brw_vs_prog_key *vs_key =
       (const struct brw_vs_prog_key *) this->key;
    const GLbitfield64 psiz_mask =
-      VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT | VARYING_BIT_PSIZ;
+      VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT | VARYING_BIT_PSIZ | VARYING_BIT_PRIMITIVE_SHADING_RATE;
    const struct brw_vue_map *vue_map = &vue_prog_data->vue_map;
    bool flush;
    fs_reg sources[8];
@@ -844,7 +844,18 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
          fs_reg zero(VGRF, alloc.allocate(1), BRW_REGISTER_TYPE_UD);
          bld.MOV(zero, brw_imm_ud(0u));
 
-         sources[length++] = zero;
+         if (vue_map->slots_valid & VARYING_BIT_PRIMITIVE_SHADING_RATE &&
+             this->outputs[VARYING_SLOT_PRIMITIVE_SHADING_RATE].file != BAD_FILE) {
+            sources[length++] = this->outputs[VARYING_SLOT_PRIMITIVE_SHADING_RATE];
+         } else if (devinfo->has_coarse_pixel_primitive_and_cb) {
+            uint32_t one_fp16 = 0x3C00;
+            fs_reg one_by_one_fp16(VGRF, alloc.allocate(1), BRW_REGISTER_TYPE_UD);
+            bld.MOV(one_by_one_fp16, brw_imm_ud((one_fp16 << 16) | one_fp16));
+            sources[length++] = one_by_one_fp16;
+         } else {
+            sources[length++] = zero;
+         }
+
          if (vue_map->slots_valid & VARYING_BIT_LAYER)
             sources[length++] = this->outputs[VARYING_SLOT_LAYER];
          else

@@ -1981,7 +1981,7 @@ static inline int
 brw_compute_first_urb_slot_required(uint64_t inputs_read,
                                     const struct brw_vue_map *prev_stage_vue_map)
 {
-   if ((inputs_read & (VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT)) == 0) {
+   if ((inputs_read & (VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT | VARYING_BIT_PRIMITIVE_SHADING_RATE)) == 0) {
       for (int i = 0; i < prev_stage_vue_map->num_slots; i++) {
          int varying = prev_stage_vue_map->slot_to_varying[i];
          if (varying > 0 && (inputs_read & BITFIELD64_BIT(varying)) != 0)
