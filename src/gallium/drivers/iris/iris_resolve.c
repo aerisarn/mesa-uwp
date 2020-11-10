@@ -509,7 +509,11 @@ iris_sample_with_depth_aux(const struct intel_device_info *devinfo,
    case ISL_AUX_USAGE_HIZ_CCS:
       return false;
    case ISL_AUX_USAGE_HIZ_CCS_WT:
-      break;
+      /* Always support sampling with HIZ_CCS_WT.  Although the sampler
+       * doesn't comprehend HiZ, write-through means that the correct data
+       * will be in the CCS, and the sampler can simply rely on that.
+       */
+      return true;
    default:
       return false;
    }
