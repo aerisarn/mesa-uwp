@@ -224,8 +224,18 @@ namespace {
       // Parse the compiler options.  A file name should be present at the end
       // and must have the .cl extension in order for the CompilerInvocation
       // class to recognize it as an OpenCL source file.
+#if LLVM_VERSION_MAJOR >= 12
+      std::vector<const char *> copts;
+      for (auto &opt : opts) {
+         if (opt == "-cl-denorms-are-zero")
+            copts.push_back("-fdenormal-fp-math=positive-zero");
+         else
+            copts.push_back(opt.c_str());
+      }
+#else
       const std::vector<const char *> copts =
          map(std::mem_fn(&std::string::c_str), opts);
+#endif
 
       const target &target = ir_target;
       const cl_version device_clc_version = dev.device_clc_version();
