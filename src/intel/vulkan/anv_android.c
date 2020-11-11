@@ -34,6 +34,7 @@
 #include <sync/sync.h>
 
 #include "anv_private.h"
+#include "vk_common_entrypoints.h"
 #include "vk_util.h"
 
 static int anv_hal_open(const struct hw_module_t* mod, const char* id, struct hw_device_t** dev);
@@ -875,7 +876,7 @@ anv_QueueSignalReleaseImageANDROID(
    if (waitSemaphoreCount == 0)
       goto done;
 
-   result = anv_QueueSubmit(queue, 1,
+   result = vk_common_QueueSubmit(queue, 1,
       &(VkSubmitInfo) {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = 1,

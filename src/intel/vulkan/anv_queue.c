@@ -1206,10 +1206,10 @@ anv_queue_submit_post_and_alloc_new(struct anv_queue *queue,
    return VK_SUCCESS;
 }
 
-VkResult anv_QueueSubmit(
+VkResult anv_QueueSubmit2KHR(
     VkQueue                                     _queue,
     uint32_t                                    submitCount,
-    const VkSubmitInfo*                         pSubmits,
+    const VkSubmitInfo2KHR*                     pSubmits,
     VkFence                                     _fence)
 {
    ANV_FROM_HANDLE(anv_queue, queue, _queue);
@@ -1242,23 +1242,14 @@ VkResult anv_QueueSubmit(
          mem_signal_info && mem_signal_info->memory != VK_NULL_HANDLE ?
          anv_device_memory_from_handle(mem_signal_info->memory)->bo : NULL;
 
-      const VkTimelineSemaphoreSubmitInfoKHR *timeline_info =
-         vk_find_struct_const(pSubmits[i].pNext,
-                              TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR);
       const VkPerformanceQuerySubmitInfoKHR *perf_info =
          vk_find_struct_const(pSubmits[i].pNext,
                               PERFORMANCE_QUERY_SUBMIT_INFO_KHR);
       const int perf_pass = perf_info ? perf_info->counterPassIndex : 0;
-      const uint64_t *wait_values =
-         timeline_info && timeline_info->waitSemaphoreValueCount ?
-         timeline_info->pWaitSemaphoreValues : NULL;
-      const uint64_t *signal_values =
-         timeline_info && timeline_info->signalSemaphoreValueCount ?
-         timeline_info->pSignalSemaphoreValues : NULL;
 
       if (!anv_queue_submit_can_add_submit(submit,
-                                           pSubmits[i].waitSemaphoreCount,
-                                           pSubmits[i].signalSemaphoreCount,
+                                           pSubmits[i].waitSemaphoreInfoCount,
+                                           pSubmits[i].signalSemaphoreInfoCount,
                                            perf_pass)) {
          result = anv_queue_submit_post_and_alloc_new(queue, &submit);
          if (result != VK_SUCCESS)
@@ -1266,19 +1257,19 @@ VkResult anv_QueueSubmit(
       }
 
       /* Wait semaphores */
-      for (uint32_t j = 0; j < pSubmits[i].waitSemaphoreCount; j++) {
+      for (uint32_t j = 0; j < pSubmits[i].waitSemaphoreInfoCount; j++) {
          result = anv_queue_submit_add_in_semaphore(submit,
                                                     device,
-                                                    pSubmits[i].pWaitSemaphores[j],
-                                                    wait_values ? wait_values[j] : 0);
+                                                    pSubmits[i].pWaitSemaphoreInfos[j].semaphore,
+                                                    pSubmits[i].pWaitSemaphoreInfos[j].value);
          if (result != VK_SUCCESS)
             goto out;
       }
 
       /* Command buffers */
-      for (uint32_t j = 0; j < pSubmits[i].commandBufferCount; j++) {
+      for (uint32_t j = 0; j < pSubmits[i].commandBufferInfoCount; j++) {
          ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer,
-                         pSubmits[i].pCommandBuffers[j]);
+                         pSubmits[i].pCommandBufferInfos[j].commandBuffer);
          assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
          assert(!anv_batch_has_error(&cmd_buffer->batch));
          anv_measure_submit(cmd_buffer);
@@ -1298,11 +1289,11 @@ VkResult anv_QueueSubmit(
       }
 
       /* Signal semaphores */
-      for (uint32_t j = 0; j < pSubmits[i].signalSemaphoreCount; j++) {
+      for (uint32_t j = 0; j < pSubmits[i].signalSemaphoreInfoCount; j++) {
          result = anv_queue_submit_add_out_semaphore(submit,
                                                      device,
-                                                     pSubmits[i].pSignalSemaphores[j],
-                                                     signal_values ? signal_values[j] : 0);
+                                                     pSubmits[i].pSignalSemaphoreInfos[j].semaphore,
+                                                     pSubmits[i].pSignalSemaphoreInfos[j].value);
          if (result != VK_SUCCESS)
             goto out;
       }
@@ -1350,7 +1341,7 @@ out:
        * anv_device_set_lost() would have been called already by a callee of
        * anv_queue_submit().
        */
-      result = anv_device_set_lost(device, "vkQueueSubmit() failed");
+      result = anv_device_set_lost(device, "vkQueueSubmit2KHR() failed");
    }
 
    return result;
