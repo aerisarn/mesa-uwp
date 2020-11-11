@@ -6879,7 +6879,8 @@ void genX(CmdEndConditionalRenderingEXT)(
     VK_PIPELINE_STAGE_TRANSFER_BIT | \
     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT | \
     VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | \
-    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)
+    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT | \
+    VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT)
 
 void genX(CmdSetEvent)(
     VkCommandBuffer                             commandBuffer,
