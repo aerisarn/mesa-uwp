@@ -290,6 +290,7 @@ static void si_emit_guardband(struct si_context *ctx)
 
    /* GFX6-GFX7 need to align the offset to an ubertile consisting of all SEs. */
    const unsigned hw_screen_offset_alignment =
+      ctx->chip_class >= GFX11 ? 32 :
       ctx->chip_class >= GFX8 ? 16 : MAX2(ctx->screen->se_tile_repeat, 16);
 
    /* Indexed by quantization modes */
