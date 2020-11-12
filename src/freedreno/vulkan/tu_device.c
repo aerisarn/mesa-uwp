@@ -556,6 +556,19 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .inheritedQueries = true,
    };
 
+   VkPhysicalDeviceVulkan11Features core_1_1 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+   };
+   tu_get_physical_device_features_1_1(pdevice, &core_1_1);
+
+   VkPhysicalDeviceVulkan12Features core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+   };
+   tu_get_physical_device_features_1_2(pdevice, &core_1_2);
+
+#define CORE_FEATURE(major, minor, feature) \
+   features->feature = core_##major##_##minor.feature
+
    vk_foreach_struct(ext, pFeatures->pNext)
    {
       switch (ext->sType) {
@@ -569,68 +582,68 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
          VkPhysicalDeviceVariablePointersFeatures *features = (void *) ext;
-         features->variablePointersStorageBuffer = true;
-         features->variablePointers = true;
+         CORE_FEATURE(1, 1, variablePointersStorageBuffer);
+         CORE_FEATURE(1, 1, variablePointers);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
          VkPhysicalDeviceMultiviewFeatures *features =
             (VkPhysicalDeviceMultiviewFeatures *) ext;
-         features->multiview = true;
-         features->multiviewGeometryShader = false;
-         features->multiviewTessellationShader = false;
+         CORE_FEATURE(1, 1, multiview);
+         CORE_FEATURE(1, 1, multiviewGeometryShader);
+         CORE_FEATURE(1, 1, multiviewTessellationShader);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
          VkPhysicalDeviceShaderDrawParametersFeatures *features =
             (VkPhysicalDeviceShaderDrawParametersFeatures *) ext;
-         features->shaderDrawParameters = true;
+         CORE_FEATURE(1, 1, shaderDrawParameters);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
          VkPhysicalDeviceProtectedMemoryFeatures *features =
             (VkPhysicalDeviceProtectedMemoryFeatures *) ext;
-         features->protectedMemory = false;
+         CORE_FEATURE(1, 1, protectedMemory);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
          VkPhysicalDevice16BitStorageFeatures *features =
             (VkPhysicalDevice16BitStorageFeatures *) ext;
-         features->storageBuffer16BitAccess = pdevice->info->a6xx.storage_16bit;
-         features->uniformAndStorageBuffer16BitAccess = false;
-         features->storagePushConstant16 = false;
-         features->storageInputOutput16 = false;
+         CORE_FEATURE(1, 1, storageBuffer16BitAccess);
+         CORE_FEATURE(1, 1, uniformAndStorageBuffer16BitAccess);
+         CORE_FEATURE(1, 1, storagePushConstant16);
+         CORE_FEATURE(1, 1, storageInputOutput16);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
          VkPhysicalDeviceSamplerYcbcrConversionFeatures *features =
             (VkPhysicalDeviceSamplerYcbcrConversionFeatures *) ext;
-         features->samplerYcbcrConversion = true;
+         CORE_FEATURE(1, 1, samplerYcbcrConversion);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT: {
          VkPhysicalDeviceDescriptorIndexingFeaturesEXT *features =
             (VkPhysicalDeviceDescriptorIndexingFeaturesEXT *) ext;
-         features->shaderInputAttachmentArrayDynamicIndexing = false;
-         features->shaderUniformTexelBufferArrayDynamicIndexing = true;
-         features->shaderStorageTexelBufferArrayDynamicIndexing = true;
-         features->shaderUniformBufferArrayNonUniformIndexing = true;
-         features->shaderSampledImageArrayNonUniformIndexing = true;
-         features->shaderStorageBufferArrayNonUniformIndexing = true;
-         features->shaderStorageImageArrayNonUniformIndexing = true;
-         features->shaderInputAttachmentArrayNonUniformIndexing = false;
-         features->shaderUniformTexelBufferArrayNonUniformIndexing = true;
-         features->shaderStorageTexelBufferArrayNonUniformIndexing = true;
-         features->descriptorBindingUniformBufferUpdateAfterBind = false;
-         features->descriptorBindingSampledImageUpdateAfterBind = true;
-         features->descriptorBindingStorageImageUpdateAfterBind = true;
-         features->descriptorBindingStorageBufferUpdateAfterBind = true;
-         features->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
-         features->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
-         features->descriptorBindingUpdateUnusedWhilePending = true;
-         features->descriptorBindingPartiallyBound = true;
-         features->descriptorBindingVariableDescriptorCount = true;
-         features->runtimeDescriptorArray = true;
+         CORE_FEATURE(1, 2, shaderInputAttachmentArrayDynamicIndexing);
+         CORE_FEATURE(1, 2, shaderUniformTexelBufferArrayDynamicIndexing);
+         CORE_FEATURE(1, 2, shaderStorageTexelBufferArrayDynamicIndexing);
+         CORE_FEATURE(1, 2, shaderUniformBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderSampledImageArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderStorageBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderStorageImageArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderInputAttachmentArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderUniformTexelBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderStorageTexelBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, descriptorBindingUniformBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingSampledImageUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingStorageImageUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingStorageBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingUniformTexelBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingStorageTexelBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingUpdateUnusedWhilePending);
+         CORE_FEATURE(1, 2, descriptorBindingPartiallyBound);
+         CORE_FEATURE(1, 2, descriptorBindingVariableDescriptorCount);
+         CORE_FEATURE(1, 2, runtimeDescriptorArray);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
@@ -663,7 +676,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
          VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *features =
             (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *)ext;
-         features->uniformBufferStandardLayout = true;
+         CORE_FEATURE(1, 2, uniformBufferStandardLayout);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
@@ -693,7 +706,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
          VkPhysicalDeviceHostQueryResetFeaturesEXT *features =
             (VkPhysicalDeviceHostQueryResetFeaturesEXT *)ext;
-         features->hostQueryReset = true;
+         CORE_FEATURE(1, 2, hostQueryReset);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
@@ -754,11 +767,11 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR: {
-         VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *feature =
+         VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *features =
             (VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *)ext;
-         feature->vulkanMemoryModel = true;
-         feature->vulkanMemoryModelDeviceScope = true;
-         feature->vulkanMemoryModelAvailabilityVisibilityChains = true;
+         CORE_FEATURE(1, 2, vulkanMemoryModel);
+         CORE_FEATURE(1, 2, vulkanMemoryModelDeviceScope);
+         CORE_FEATURE(1, 2, vulkanMemoryModelAvailabilityVisibilityChains);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
