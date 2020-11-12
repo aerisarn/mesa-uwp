@@ -896,12 +896,6 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
          progress = true;
          break;
 
-      case SHADER_OPCODE_INT_QUOTIENT:
-      case SHADER_OPCODE_INT_REMAINDER:
-         /* FINISHME: Promote non-float constants and remove this. */
-         if (devinfo->ver < 8)
-            break;
-         FALLTHROUGH;
       case SHADER_OPCODE_POW:
          /* Allow constant propagation into src1 (except on Gen 6 which
           * doesn't support scalar source math), and let constant combining
@@ -909,23 +903,15 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
           */
          if (devinfo->ver == 6)
             break;
-         FALLTHROUGH;
-      case BRW_OPCODE_BFI1:
-      case BRW_OPCODE_ASR:
-      case BRW_OPCODE_SHR:
-      case BRW_OPCODE_SUBB:
+
          if (i == 1) {
             inst->src[i] = val;
             progress = true;
          }
          break;
 
-      case BRW_OPCODE_SHL:
-         /* Only constant propagate into src0 if src1 is also constant. In that
-          * specific case, constant folding will eliminate the instruction.
-          */
-         if ((i == 0 && inst->src[1].file == IMM) ||
-             i == 1) {
+      case BRW_OPCODE_SUBB:
+         if (i == 1) {
             inst->src[i] = val;
             progress = true;
          }
@@ -1075,7 +1061,26 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
          }
          break;
 
+      case SHADER_OPCODE_INT_QUOTIENT:
+      case SHADER_OPCODE_INT_REMAINDER:
+         /* Allow constant propagation into either source (except on Gen 6
+          * which doesn't support scalar source math). Constant combining
+          * promote the src1 constant on Gen < 8, and it will promote the src0
+          * constant on all platforms.
+          */
+         if (devinfo->ver == 6)
+            break;
+
+         FALLTHROUGH;
       case BRW_OPCODE_AND:
+      case BRW_OPCODE_ASR:
+      case BRW_OPCODE_BFE:
+      case BRW_OPCODE_BFI1:
+      case BRW_OPCODE_BFI2:
+      case BRW_OPCODE_ROL:
+      case BRW_OPCODE_ROR:
+      case BRW_OPCODE_SHL:
+      case BRW_OPCODE_SHR:
       case BRW_OPCODE_OR:
       case SHADER_OPCODE_TEX_LOGICAL:
       case SHADER_OPCODE_TXD_LOGICAL:
