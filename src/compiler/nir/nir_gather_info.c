@@ -716,6 +716,10 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_deref_atomic_xor:
    case nir_intrinsic_deref_atomic_exchange:
    case nir_intrinsic_deref_atomic_comp_swap:
+   case nir_intrinsic_deref_atomic_fadd:
+   case nir_intrinsic_deref_atomic_fmin:
+   case nir_intrinsic_deref_atomic_fmax:
+   case nir_intrinsic_deref_atomic_fcomp_swap:
       update_memory_written_for_deref(shader, nir_src_as_deref(instr->src[0]));
       break;
 
