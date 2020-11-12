@@ -594,6 +594,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          CORE_FEATURE(1, 1, multiviewTessellationShader);
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR: {
+         VkPhysicalDeviceImagelessFramebufferFeaturesKHR *features =
+            (VkPhysicalDeviceImagelessFramebufferFeaturesKHR *)ext;
+         CORE_FEATURE(1, 2, imagelessFramebuffer);
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
          VkPhysicalDeviceShaderDrawParametersFeatures *features =
             (VkPhysicalDeviceShaderDrawParametersFeatures *) ext;
@@ -644,6 +650,27 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          CORE_FEATURE(1, 2, descriptorBindingPartiallyBound);
          CORE_FEATURE(1, 2, descriptorBindingVariableDescriptorCount);
          CORE_FEATURE(1, 2, runtimeDescriptorArray);
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
+         VkPhysicalDevice8BitStorageFeaturesKHR *features =
+            (VkPhysicalDevice8BitStorageFeaturesKHR *)ext;
+         CORE_FEATURE(1, 2, storageBuffer8BitAccess);
+         CORE_FEATURE(1, 2, uniformAndStorageBuffer8BitAccess);
+         CORE_FEATURE(1, 2, storagePushConstant8);
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR: {
+         VkPhysicalDeviceBufferDeviceAddressFeaturesKHR *features = (void *)ext;
+         CORE_FEATURE(1, 2, bufferDeviceAddress);
+         CORE_FEATURE(1, 2, bufferDeviceAddressCaptureReplay);
+         CORE_FEATURE(1, 2, bufferDeviceAddressMultiDevice);
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR: {
+         VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR *features =
+            (VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR *)ext;
+         CORE_FEATURE(1, 2, shaderSubgroupExtendedTypes);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
