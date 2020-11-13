@@ -276,11 +276,147 @@ try_mask_partial_io(nir_shader *shader, nir_variable *var,
    return true;
 }
 
-static void
-update_memory_written_for_deref(nir_shader *shader, nir_deref_instr *deref)
+/** Returns true if the given intrinsic writes external memory
+ *
+ * Only returns true for writes to globally visible memory, not scratch and
+ * not shared.
+ */
+bool
+nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr)
 {
-   if (nir_deref_mode_may_be(deref, (nir_var_mem_ssbo | nir_var_mem_global)))
-      shader->info.writes_memory = true;
+   switch (instr->intrinsic) {
+   case nir_intrinsic_atomic_counter_inc:
+   case nir_intrinsic_atomic_counter_inc_deref:
+   case nir_intrinsic_atomic_counter_add:
+   case nir_intrinsic_atomic_counter_add_deref:
+   case nir_intrinsic_atomic_counter_pre_dec:
+   case nir_intrinsic_atomic_counter_pre_dec_deref:
+   case nir_intrinsic_atomic_counter_post_dec:
+   case nir_intrinsic_atomic_counter_post_dec_deref:
+   case nir_intrinsic_atomic_counter_min:
+   case nir_intrinsic_atomic_counter_min_deref:
+   case nir_intrinsic_atomic_counter_max:
+   case nir_intrinsic_atomic_counter_max_deref:
+   case nir_intrinsic_atomic_counter_and:
+   case nir_intrinsic_atomic_counter_and_deref:
+   case nir_intrinsic_atomic_counter_or:
+   case nir_intrinsic_atomic_counter_or_deref:
+   case nir_intrinsic_atomic_counter_xor:
+   case nir_intrinsic_atomic_counter_xor_deref:
+   case nir_intrinsic_atomic_counter_exchange:
+   case nir_intrinsic_atomic_counter_exchange_deref:
+   case nir_intrinsic_atomic_counter_comp_swap:
+   case nir_intrinsic_atomic_counter_comp_swap_deref:
+   case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_atomic_dec_wrap:
+   case nir_intrinsic_bindless_image_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_fadd:
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_inc_wrap:
+   case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_umin:
+   case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_bindless_image_store:
+   case nir_intrinsic_bindless_image_store_raw_intel:
+   case nir_intrinsic_global_atomic_add:
+   case nir_intrinsic_global_atomic_and:
+   case nir_intrinsic_global_atomic_comp_swap:
+   case nir_intrinsic_global_atomic_exchange:
+   case nir_intrinsic_global_atomic_fadd:
+   case nir_intrinsic_global_atomic_fcomp_swap:
+   case nir_intrinsic_global_atomic_fmax:
+   case nir_intrinsic_global_atomic_fmin:
+   case nir_intrinsic_global_atomic_imax:
+   case nir_intrinsic_global_atomic_imin:
+   case nir_intrinsic_global_atomic_or:
+   case nir_intrinsic_global_atomic_umax:
+   case nir_intrinsic_global_atomic_umin:
+   case nir_intrinsic_global_atomic_xor:
+   case nir_intrinsic_image_atomic_add:
+   case nir_intrinsic_image_atomic_and:
+   case nir_intrinsic_image_atomic_comp_swap:
+   case nir_intrinsic_image_atomic_dec_wrap:
+   case nir_intrinsic_image_atomic_exchange:
+   case nir_intrinsic_image_atomic_fadd:
+   case nir_intrinsic_image_atomic_imax:
+   case nir_intrinsic_image_atomic_imin:
+   case nir_intrinsic_image_atomic_inc_wrap:
+   case nir_intrinsic_image_atomic_or:
+   case nir_intrinsic_image_atomic_umax:
+   case nir_intrinsic_image_atomic_umin:
+   case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_image_deref_atomic_dec_wrap:
+   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_image_deref_atomic_fadd:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_inc_wrap:
+   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_deref_store:
+   case nir_intrinsic_image_deref_store_raw_intel:
+   case nir_intrinsic_image_store:
+   case nir_intrinsic_image_store_raw_intel:
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_add_ir3:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_and_ir3:
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+   case nir_intrinsic_ssbo_atomic_comp_swap_ir3:
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic_exchange_ir3:
+   case nir_intrinsic_ssbo_atomic_fadd:
+   case nir_intrinsic_ssbo_atomic_fcomp_swap:
+   case nir_intrinsic_ssbo_atomic_fmax:
+   case nir_intrinsic_ssbo_atomic_fmin:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_imax_ir3:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_imin_ir3:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_or_ir3:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_umax_ir3:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_umin_ir3:
+   case nir_intrinsic_ssbo_atomic_xor:
+   case nir_intrinsic_ssbo_atomic_xor_ir3:
+   case nir_intrinsic_store_global:
+   case nir_intrinsic_store_global_ir3:
+   case nir_intrinsic_store_ssbo:
+   case nir_intrinsic_store_ssbo_ir3:
+      return true;
+
+   case nir_intrinsic_store_deref:
+   case nir_intrinsic_deref_atomic_add:
+   case nir_intrinsic_deref_atomic_imin:
+   case nir_intrinsic_deref_atomic_umin:
+   case nir_intrinsic_deref_atomic_imax:
+   case nir_intrinsic_deref_atomic_umax:
+   case nir_intrinsic_deref_atomic_and:
+   case nir_intrinsic_deref_atomic_or:
+   case nir_intrinsic_deref_atomic_xor:
+   case nir_intrinsic_deref_atomic_exchange:
+   case nir_intrinsic_deref_atomic_comp_swap:
+   case nir_intrinsic_deref_atomic_fadd:
+   case nir_intrinsic_deref_atomic_fmin:
+   case nir_intrinsic_deref_atomic_fmax:
+   case nir_intrinsic_deref_atomic_fcomp_swap:
+      return nir_deref_mode_may_be(nir_src_as_deref(instr->src[0]),
+                                   nir_var_mem_ssbo | nir_var_mem_global);
+
+   default:
+      return false;
+   }
 }
 
 static void
@@ -366,8 +502,8 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
             }
          }
       }
-      if (instr->intrinsic == nir_intrinsic_store_deref)
-         update_memory_written_for_deref(shader, deref);
+      if (nir_intrinsic_writes_external_memory(instr))
+         shader->info.writes_memory = true;
       break;
    }
 
@@ -585,144 +721,6 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
 
       break;
 
-   case nir_intrinsic_atomic_counter_inc:
-   case nir_intrinsic_atomic_counter_inc_deref:
-   case nir_intrinsic_atomic_counter_add:
-   case nir_intrinsic_atomic_counter_add_deref:
-   case nir_intrinsic_atomic_counter_pre_dec:
-   case nir_intrinsic_atomic_counter_pre_dec_deref:
-   case nir_intrinsic_atomic_counter_post_dec:
-   case nir_intrinsic_atomic_counter_post_dec_deref:
-   case nir_intrinsic_atomic_counter_min:
-   case nir_intrinsic_atomic_counter_min_deref:
-   case nir_intrinsic_atomic_counter_max:
-   case nir_intrinsic_atomic_counter_max_deref:
-   case nir_intrinsic_atomic_counter_and:
-   case nir_intrinsic_atomic_counter_and_deref:
-   case nir_intrinsic_atomic_counter_or:
-   case nir_intrinsic_atomic_counter_or_deref:
-   case nir_intrinsic_atomic_counter_xor:
-   case nir_intrinsic_atomic_counter_xor_deref:
-   case nir_intrinsic_atomic_counter_exchange:
-   case nir_intrinsic_atomic_counter_exchange_deref:
-   case nir_intrinsic_atomic_counter_comp_swap:
-   case nir_intrinsic_atomic_counter_comp_swap_deref:
-   case nir_intrinsic_bindless_image_atomic_add:
-   case nir_intrinsic_bindless_image_atomic_and:
-   case nir_intrinsic_bindless_image_atomic_comp_swap:
-   case nir_intrinsic_bindless_image_atomic_dec_wrap:
-   case nir_intrinsic_bindless_image_atomic_exchange:
-   case nir_intrinsic_bindless_image_atomic_fadd:
-   case nir_intrinsic_bindless_image_atomic_imax:
-   case nir_intrinsic_bindless_image_atomic_imin:
-   case nir_intrinsic_bindless_image_atomic_inc_wrap:
-   case nir_intrinsic_bindless_image_atomic_or:
-   case nir_intrinsic_bindless_image_atomic_umax:
-   case nir_intrinsic_bindless_image_atomic_umin:
-   case nir_intrinsic_bindless_image_atomic_xor:
-   case nir_intrinsic_bindless_image_atomic_fmin:
-   case nir_intrinsic_bindless_image_atomic_fmax:
-   case nir_intrinsic_bindless_image_store:
-   case nir_intrinsic_bindless_image_store_raw_intel:
-   case nir_intrinsic_global_atomic_add:
-   case nir_intrinsic_global_atomic_and:
-   case nir_intrinsic_global_atomic_comp_swap:
-   case nir_intrinsic_global_atomic_exchange:
-   case nir_intrinsic_global_atomic_fadd:
-   case nir_intrinsic_global_atomic_fcomp_swap:
-   case nir_intrinsic_global_atomic_fmax:
-   case nir_intrinsic_global_atomic_fmin:
-   case nir_intrinsic_global_atomic_imax:
-   case nir_intrinsic_global_atomic_imin:
-   case nir_intrinsic_global_atomic_or:
-   case nir_intrinsic_global_atomic_umax:
-   case nir_intrinsic_global_atomic_umin:
-   case nir_intrinsic_global_atomic_xor:
-   case nir_intrinsic_image_atomic_add:
-   case nir_intrinsic_image_atomic_and:
-   case nir_intrinsic_image_atomic_comp_swap:
-   case nir_intrinsic_image_atomic_dec_wrap:
-   case nir_intrinsic_image_atomic_exchange:
-   case nir_intrinsic_image_atomic_fadd:
-   case nir_intrinsic_image_atomic_imax:
-   case nir_intrinsic_image_atomic_imin:
-   case nir_intrinsic_image_atomic_inc_wrap:
-   case nir_intrinsic_image_atomic_or:
-   case nir_intrinsic_image_atomic_umax:
-   case nir_intrinsic_image_atomic_umin:
-   case nir_intrinsic_image_atomic_xor:
-   case nir_intrinsic_image_atomic_fmin:
-   case nir_intrinsic_image_atomic_fmax:
-   case nir_intrinsic_image_deref_atomic_add:
-   case nir_intrinsic_image_deref_atomic_and:
-   case nir_intrinsic_image_deref_atomic_comp_swap:
-   case nir_intrinsic_image_deref_atomic_dec_wrap:
-   case nir_intrinsic_image_deref_atomic_exchange:
-   case nir_intrinsic_image_deref_atomic_fadd:
-   case nir_intrinsic_image_deref_atomic_imax:
-   case nir_intrinsic_image_deref_atomic_imin:
-   case nir_intrinsic_image_deref_atomic_inc_wrap:
-   case nir_intrinsic_image_deref_atomic_or:
-   case nir_intrinsic_image_deref_atomic_umax:
-   case nir_intrinsic_image_deref_atomic_umin:
-   case nir_intrinsic_image_deref_atomic_xor:
-   case nir_intrinsic_image_deref_atomic_fmin:
-   case nir_intrinsic_image_deref_atomic_fmax:
-   case nir_intrinsic_image_deref_store:
-   case nir_intrinsic_image_deref_store_raw_intel:
-   case nir_intrinsic_image_store:
-   case nir_intrinsic_image_store_raw_intel:
-   case nir_intrinsic_ssbo_atomic_add:
-   case nir_intrinsic_ssbo_atomic_add_ir3:
-   case nir_intrinsic_ssbo_atomic_and:
-   case nir_intrinsic_ssbo_atomic_and_ir3:
-   case nir_intrinsic_ssbo_atomic_comp_swap:
-   case nir_intrinsic_ssbo_atomic_comp_swap_ir3:
-   case nir_intrinsic_ssbo_atomic_exchange:
-   case nir_intrinsic_ssbo_atomic_exchange_ir3:
-   case nir_intrinsic_ssbo_atomic_fadd:
-   case nir_intrinsic_ssbo_atomic_fcomp_swap:
-   case nir_intrinsic_ssbo_atomic_fmax:
-   case nir_intrinsic_ssbo_atomic_fmin:
-   case nir_intrinsic_ssbo_atomic_imax:
-   case nir_intrinsic_ssbo_atomic_imax_ir3:
-   case nir_intrinsic_ssbo_atomic_imin:
-   case nir_intrinsic_ssbo_atomic_imin_ir3:
-   case nir_intrinsic_ssbo_atomic_or:
-   case nir_intrinsic_ssbo_atomic_or_ir3:
-   case nir_intrinsic_ssbo_atomic_umax:
-   case nir_intrinsic_ssbo_atomic_umax_ir3:
-   case nir_intrinsic_ssbo_atomic_umin:
-   case nir_intrinsic_ssbo_atomic_umin_ir3:
-   case nir_intrinsic_ssbo_atomic_xor:
-   case nir_intrinsic_ssbo_atomic_xor_ir3:
-   case nir_intrinsic_store_global:
-   case nir_intrinsic_store_global_ir3:
-   case nir_intrinsic_store_ssbo:
-   case nir_intrinsic_store_ssbo_ir3:
-      /* Only set this for globally visible memory, not scratch and not
-       * shared.
-       */
-      shader->info.writes_memory = true;
-      break;
-
-   case nir_intrinsic_deref_atomic_add:
-   case nir_intrinsic_deref_atomic_imin:
-   case nir_intrinsic_deref_atomic_umin:
-   case nir_intrinsic_deref_atomic_imax:
-   case nir_intrinsic_deref_atomic_umax:
-   case nir_intrinsic_deref_atomic_and:
-   case nir_intrinsic_deref_atomic_or:
-   case nir_intrinsic_deref_atomic_xor:
-   case nir_intrinsic_deref_atomic_exchange:
-   case nir_intrinsic_deref_atomic_comp_swap:
-   case nir_intrinsic_deref_atomic_fadd:
-   case nir_intrinsic_deref_atomic_fmin:
-   case nir_intrinsic_deref_atomic_fmax:
-   case nir_intrinsic_deref_atomic_fcomp_swap:
-      update_memory_written_for_deref(shader, nir_src_as_deref(instr->src[0]));
-      break;
-
    case nir_intrinsic_control_barrier:
       shader->info.uses_control_barrier = true;
       break;
@@ -746,6 +744,8 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
       break;
 
    default:
+      if (nir_intrinsic_writes_external_memory(instr))
+         shader->info.writes_memory = true;
       break;
    }
 }

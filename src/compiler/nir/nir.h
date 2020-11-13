@@ -1974,6 +1974,8 @@ nir_intrinsic_can_reorder(nir_intrinsic_instr *instr)
    }
 }
 
+bool nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr);
+
 /**
  * \group texture information
  *
