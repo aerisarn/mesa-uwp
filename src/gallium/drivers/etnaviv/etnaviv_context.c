@@ -129,6 +129,9 @@ etna_context_destroy(struct pipe_context *pctx)
       _mesa_set_destroy(ctx->used_resources_write, NULL);
 
    }
+   if (ctx->flush_resources)
+      _mesa_set_destroy(ctx->flush_resources, NULL);
+
    mtx_unlock(&ctx->lock);
 
    if (ctx->dummy_desc_bo)
@@ -490,6 +493,14 @@ etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
    list_for_each_entry(struct etna_acc_query, aq, &ctx->active_acc_queries, node)
       etna_acc_query_suspend(aq, ctx);
 
+   /* flush all resources that need an implicit flush */
+   set_foreach(ctx->flush_resources, entry) {
+      struct pipe_resource *prsc = (struct pipe_resource *)entry->key;
+
+      pctx->flush_resource(pctx, prsc);
+   }
+   _mesa_set_clear(ctx->flush_resources, NULL);
+
    etna_cmd_stream_flush(ctx->stream, ctx->in_fence_fd,
                           (flags & PIPE_FLUSH_FENCE_FD) ? &out_fence_fd : NULL);
 
@@ -594,6 +605,11 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->used_resources_write = _mesa_set_create(NULL, _mesa_hash_pointer,
                                           _mesa_key_pointer_equal);
    if (!ctx->used_resources_write)
+      goto fail;
+
+   ctx->flush_resources = _mesa_set_create(NULL, _mesa_hash_pointer,
+                                           _mesa_key_pointer_equal);
+   if (!ctx->flush_resources)
       goto fail;
 
    mtx_init(&ctx->lock, mtx_recursive);
