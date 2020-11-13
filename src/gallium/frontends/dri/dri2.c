@@ -1326,6 +1326,7 @@ dri2_dup_image(__DRIimage *image, void *loaderPrivate)
    img->dri_format = image->dri_format;
    /* This should be 0 for sub images, but dup is also used for base images. */
    img->dri_components = image->dri_components;
+   img->use = image->use;
    img->loader_private = loaderPrivate;
    img->sPriv = image->sPriv;
 
