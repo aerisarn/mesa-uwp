@@ -1775,9 +1775,22 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 			register(s) like the others.
 		</doc>
 		<value name="UNK_EVENT_WRITE" value="0x4"/>
+		<doc>
+			Tracks GRAS_LRZ_CNTL::GREATER, GRAS_LRZ_CNTL::DIR, and
+			GRAS_UNKNOWN_810A with previous values, and if one of
+			the following is true:
+			- GRAS_LRZ_CNTL::GREATER has changed
+			- GRAS_LRZ_CNTL::DIR has changed, the old value is not
+			  CUR_DIR_GE, and the new value is not CUR_DIR_DISABLED
+			- GRAS_UNKNOWN_810A has changed
+			then it does a LRZ_FLUSH with GRAS_LRZ_CNTL::ENABLE
+			forced to 1.
+			Only exists in a650_sqe.fw.
+		</doc>
+		<value name="TRACK_LRZ" value="0x8"/>
 	</enum>
 	<reg32 offset="0" name="0">
-		<bitfield name="TRACKER" low="0" high="2" type="reg_tracker"/>
+		<bitfield name="TRACKER" low="0" high="3" type="reg_tracker"/>
 	</reg32>
 </domain>
 
