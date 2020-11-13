@@ -1252,6 +1252,9 @@ dri2_resource_get_param(__DRIimage *image, enum pipe_resource_param param,
    if (!pscreen->resource_get_param)
       return false;
 
+   if (image->use & __DRI_IMAGE_USE_BACKBUFFER)
+      handle_usage |= PIPE_HANDLE_USAGE_EXPLICIT_FLUSH;
+
    return pscreen->resource_get_param(pscreen, NULL, image->texture,
                                       image->plane, 0, 0, param, handle_usage,
                                       value);
@@ -1295,9 +1298,6 @@ dri2_query_image_by_resource_param(__DRIimage *image, int attrib, int *value)
    }
 
    handle_usage = PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE;
-
-   if (image->use & __DRI_IMAGE_USE_BACKBUFFER)
-      handle_usage |= PIPE_HANDLE_USAGE_EXPLICIT_FLUSH;
 
    if (!dri2_resource_get_param(image, param, handle_usage, &res_param))
       return false;
