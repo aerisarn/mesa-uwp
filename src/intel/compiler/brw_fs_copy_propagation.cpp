@@ -912,10 +912,20 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
          FALLTHROUGH;
       case BRW_OPCODE_BFI1:
       case BRW_OPCODE_ASR:
-      case BRW_OPCODE_SHL:
       case BRW_OPCODE_SHR:
       case BRW_OPCODE_SUBB:
          if (i == 1) {
+            inst->src[i] = val;
+            progress = true;
+         }
+         break;
+
+      case BRW_OPCODE_SHL:
+         /* Only constant propagate into src0 if src1 is also constant. In that
+          * specific case, constant folding will eliminate the instruction.
+          */
+         if ((i == 0 && inst->src[1].file == IMM) ||
+             i == 1) {
             inst->src[i] = val;
             progress = true;
          }
