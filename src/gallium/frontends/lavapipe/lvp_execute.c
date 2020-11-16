@@ -177,6 +177,19 @@ assert_subresource_layers(const struct pipe_resource *pres, const VkImageSubreso
 #endif
 }
 
+static void finish_fence(struct rendering_state *state)
+{
+   struct pipe_fence_handle *handle = NULL;
+
+   state->pctx->flush(state->pctx, &handle, 0);
+
+   state->pctx->screen->fence_finish(state->pctx->screen,
+                                     NULL,
+                                     handle, PIPE_TIMEOUT_INFINITE);
+   state->pctx->screen->fence_reference(state->pctx->screen,
+                                        &handle, NULL);
+}
+
 static void emit_compute_state(struct rendering_state *state)
 {
    if (state->iv_dirty[PIPE_SHADER_COMPUTE]) {
@@ -2876,6 +2889,7 @@ static void handle_event_reset(struct vk_cmd_queue_entry *cmd,
 static void handle_wait_events(struct vk_cmd_queue_entry *cmd,
                                struct rendering_state *state)
 {
+   finish_fence(state);
    for (unsigned i = 0; i < cmd->u.wait_events.event_count; i++) {
       LVP_FROM_HANDLE(lvp_event, event, cmd->u.wait_events.events[i]);
 
@@ -2886,8 +2900,7 @@ static void handle_wait_events(struct vk_cmd_queue_entry *cmd,
 static void handle_pipeline_barrier(struct vk_cmd_queue_entry *cmd,
                                     struct rendering_state *state)
 {
-   /* why hello nail, I'm a hammer. - TODO */
-   state->pctx->flush(state->pctx, NULL, 0);
+   finish_fence(state);
 }
 
 static void handle_begin_query(struct vk_cmd_queue_entry *cmd,
