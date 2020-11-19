@@ -641,6 +641,12 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
       fprintf(fp, ": ");
       if ((*value & 0x00002000) == 0x00002000)
          fprintf(fp, "blend->base.dither true, ");
+
+      if ((*value & 0x00001000) == 0x00001000)
+         fprintf(fp, "glFrontFace(GL_CCW), ");
+      else
+         fprintf(fp, "glFrontFace(GL_CW), ");
+
       if ((*value & 0x00010000) == 0x00010000)
          fprintf(fp, "ctx->const_buffer[PIPE_SHADER_FRAGMENT].buffer true ");
       fprintf(fp, "*/\n");
