@@ -1700,8 +1700,9 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
       image->size = align64(image->size, image->alignment);
       image->offset = 0;
 
-      result = device->ws->buffer_create(device->ws, image->size, image->alignment, 0,
-                                         RADEON_FLAG_VIRTUAL, RADV_BO_PRIORITY_VIRTUAL, &image->bo);
+      result =
+         device->ws->buffer_create(device->ws, image->size, image->alignment, 0,
+                                   RADEON_FLAG_VIRTUAL, RADV_BO_PRIORITY_VIRTUAL, 0, &image->bo);
       if (result != VK_SUCCESS) {
          radv_destroy_image(device, alloc, image);
          return vk_error(device->instance, result);

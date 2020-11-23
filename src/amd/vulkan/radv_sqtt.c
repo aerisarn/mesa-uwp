@@ -385,7 +385,7 @@ radv_thread_trace_init_bo(struct radv_device *device)
    VkResult result = ws->buffer_create(
       ws, size, 4096, RADEON_DOMAIN_VRAM,
       RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_ZERO_VRAM,
-      RADV_BO_PRIORITY_SCRATCH, &bo);
+      RADV_BO_PRIORITY_SCRATCH, 0, &bo);
    device->thread_trace.bo = bo;
    if (result != VK_SUCCESS)
       return false;

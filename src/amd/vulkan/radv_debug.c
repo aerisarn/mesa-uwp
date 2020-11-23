@@ -70,7 +70,7 @@ radv_init_trace(struct radv_device *device)
    result = ws->buffer_create(
       ws, TRACE_BO_SIZE, 8, RADEON_DOMAIN_VRAM,
       RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_ZERO_VRAM,
-      RADV_BO_PRIORITY_UPLOAD_BUFFER, &device->trace_bo);
+      RADV_BO_PRIORITY_UPLOAD_BUFFER, 0, &device->trace_bo);
    if (result != VK_SUCCESS)
       return false;
 
@@ -839,7 +839,7 @@ radv_trap_handler_init(struct radv_device *device)
    result = ws->buffer_create(ws, TMA_BO_SIZE, 256, RADEON_DOMAIN_VRAM,
                               RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
                                  RADEON_FLAG_ZERO_VRAM | RADEON_FLAG_32BIT,
-                              RADV_BO_PRIORITY_SCRATCH, &device->tma_bo);
+                              RADV_BO_PRIORITY_SCRATCH, 0, &device->tma_bo);
    if (result != VK_SUCCESS)
       return false;
 

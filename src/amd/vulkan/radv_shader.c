@@ -923,7 +923,7 @@ radv_alloc_shader_memory(struct radv_device *device, struct radv_shader_variant 
       RADEON_FLAG_NO_INTERPROCESS_SHARING |
          (device->physical_device->rad_info.cpdma_prefetch_writes_memory ? 0
                                                                          : RADEON_FLAG_READ_ONLY),
-      RADV_BO_PRIORITY_SHADER, &slab->bo);
+      RADV_BO_PRIORITY_SHADER, 0, &slab->bo);
    if (result != VK_SUCCESS) {
       free(slab);
       return NULL;

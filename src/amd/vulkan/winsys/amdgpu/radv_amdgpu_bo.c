@@ -394,7 +394,8 @@ radv_amdgpu_winsys_bo_destroy(struct radeon_winsys *_ws, struct radeon_winsys_bo
 static VkResult
 radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws, uint64_t size, unsigned alignment,
                              enum radeon_bo_domain initial_domain, enum radeon_bo_flag flags,
-                             unsigned priority, struct radeon_winsys_bo **out_bo)
+                             unsigned priority, uint64_t replay_address,
+                             struct radeon_winsys_bo **out_bo)
 {
    struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
    struct radv_amdgpu_winsys_bo *bo;
@@ -420,10 +421,11 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws, uint64_t size, unsigned 
       virt_alignment = MAX2(virt_alignment, ws->info.pte_fragment_size);
 
    r = amdgpu_va_range_alloc(
-      ws->dev, amdgpu_gpu_va_range_general, size, virt_alignment, 0, &va, &va_handle,
+      ws->dev, amdgpu_gpu_va_range_general, size, virt_alignment, replay_address, &va, &va_handle,
       (flags & RADEON_FLAG_32BIT ? AMDGPU_VA_RANGE_32_BIT : 0) | AMDGPU_VA_RANGE_HIGH);
    if (r) {
-      result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+      result =
+         replay_address ? VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS : VK_ERROR_OUT_OF_DEVICE_MEMORY;
       goto error_va_alloc;
    }
 

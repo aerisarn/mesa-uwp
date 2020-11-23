@@ -978,7 +978,7 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
 
    VkResult result = device->ws->buffer_create(device->ws, pool->size, 64, RADEON_DOMAIN_GTT,
                                                RADEON_FLAG_NO_INTERPROCESS_SHARING,
-                                               RADV_BO_PRIORITY_QUERY_POOL, &pool->bo);
+                                               RADV_BO_PRIORITY_QUERY_POOL, 0, &pool->bo);
    if (result != VK_SUCCESS) {
       radv_destroy_query_pool(device, pAllocator, pool);
       return vk_error(device->instance, result);

@@ -31,7 +31,7 @@
 static VkResult
 radv_null_winsys_bo_create(struct radeon_winsys *_ws, uint64_t size, unsigned alignment,
                            enum radeon_bo_domain initial_domain, enum radeon_bo_flag flags,
-                           unsigned priority, struct radeon_winsys_bo **out_bo)
+                           unsigned priority, uint64_t address, struct radeon_winsys_bo **out_bo)
 {
    struct radv_null_winsys_bo *bo;
 
