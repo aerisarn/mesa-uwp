@@ -150,6 +150,12 @@ void aco_compile_shader(unsigned shader_count,
 
       validate(program.get());
 
+      /* Optimization */
+      if (!args->options->disable_optimizations && !(aco::debug_flags & aco::DEBUG_NO_OPT)) {
+         aco::optimize_postRA(program.get());
+         validate(program.get());
+      }
+
       aco::ssa_elimination(program.get());
    }
 

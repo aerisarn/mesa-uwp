@@ -2013,6 +2013,7 @@ void dominator_tree(Program* program);
 void insert_exec_mask(Program *program);
 void value_numbering(Program* program);
 void optimize(Program* program);
+void optimize_postRA(Program* program);
 void setup_reduce_temp(Program* program);
 void lower_to_cssa(Program* program, live& live_vars);
 void register_allocation(Program *program, std::vector<IDSet>& live_out_per_block,

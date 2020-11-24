@@ -80,6 +80,7 @@ void finish_program(aco::Program *program);
 void finish_validator_test();
 void finish_opt_test();
 void finish_ra_test(aco::ra_test_policy);
+void finish_optimizer_postRA_test();
 void finish_to_hw_instr_test();
 void finish_insert_nops_test();
 void finish_assembler_test();
