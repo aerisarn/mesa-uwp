@@ -3543,6 +3543,7 @@ get_deref_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
 {
    switch (opcode) {
    case SpvOpAtomicLoad:         return nir_intrinsic_load_deref;
+   case SpvOpAtomicFlagClear:
    case SpvOpAtomicStore:        return nir_intrinsic_store_deref;
 #define OP(S, N) case SpvOp##S: return nir_intrinsic_deref_##N;
    OP(AtomicExchange,            atomic_exchange)
@@ -3562,6 +3563,7 @@ get_deref_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
    OP(AtomicFAddEXT,             atomic_fadd)
    OP(AtomicFMinEXT,             atomic_fmin)
    OP(AtomicFMaxEXT,             atomic_fmax)
+   OP(AtomicFlagTestAndSet,      atomic_comp_swap)
 #undef OP
    default:
       vtn_fail_with_opcode("Invalid shared atomic", opcode);
@@ -3601,11 +3603,12 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicFAddEXT:
    case SpvOpAtomicFMinEXT:
    case SpvOpAtomicFMaxEXT:
+   case SpvOpAtomicFlagTestAndSet:
       ptr = vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
       scope = vtn_constant_uint(b, w[4]);
       semantics = vtn_constant_uint(b, w[5]);
       break;
-
+   case SpvOpAtomicFlagClear:
    case SpvOpAtomicStore:
       ptr = vtn_value(b, w[1], vtn_value_type_pointer)->pointer;
       scope = vtn_constant_uint(b, w[2]);
@@ -3679,6 +3682,15 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
          atomic->src[1] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[4]));
          break;
 
+      case SpvOpAtomicFlagClear:
+         atomic->num_components = 1;
+         nir_intrinsic_set_write_mask(atomic, 1);
+         atomic->src[1] = nir_src_for_ssa(nir_imm_intN_t(&b->nb, 0, 32));
+         break;
+      case SpvOpAtomicFlagTestAndSet:
+         atomic->src[1] = nir_src_for_ssa(nir_imm_intN_t(&b->nb, 0, 32));
+         atomic->src[2] = nir_src_for_ssa(nir_imm_intN_t(&b->nb, -1, 32));
+         break;
       case SpvOpAtomicExchange:
       case SpvOpAtomicCompareExchange:
       case SpvOpAtomicCompareExchangeWeak:
@@ -3716,18 +3728,27 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
    if (before_semantics)
       vtn_emit_memory_barrier(b, scope, before_semantics);
 
-   if (opcode != SpvOpAtomicStore) {
+   if (opcode != SpvOpAtomicStore && opcode != SpvOpAtomicFlagClear) {
       struct vtn_type *type = vtn_get_type(b, w[1]);
 
-      nir_ssa_dest_init(&atomic->instr, &atomic->dest,
-                        glsl_get_vector_elements(type->type),
-                        glsl_get_bit_size(type->type), NULL);
+      if (opcode == SpvOpAtomicFlagTestAndSet) {
+         /* map atomic flag to a 32-bit atomic integer. */
+         nir_ssa_dest_init(&atomic->instr, &atomic->dest,
+                           1, 32, NULL);
+      } else {
+         nir_ssa_dest_init(&atomic->instr, &atomic->dest,
+                           glsl_get_vector_elements(type->type),
+                           glsl_get_bit_size(type->type), NULL);
 
-      vtn_push_nir_ssa(b, w[2], &atomic->dest.ssa);
+         vtn_push_nir_ssa(b, w[2], &atomic->dest.ssa);
+      }
    }
 
    nir_builder_instr_insert(&b->nb, &atomic->instr);
 
+   if (opcode == SpvOpAtomicFlagTestAndSet) {
+      vtn_push_nir_ssa(b, w[2], nir_i2b1(&b->nb, &atomic->dest.ssa));
+   }
    if (after_semantics)
       vtn_emit_memory_barrier(b, scope, after_semantics);
 }
@@ -5486,7 +5507,8 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicXor:
    case SpvOpAtomicFAddEXT:
    case SpvOpAtomicFMinEXT:
-   case SpvOpAtomicFMaxEXT: {
+   case SpvOpAtomicFMaxEXT:
+   case SpvOpAtomicFlagTestAndSet: {
       struct vtn_value *pointer = vtn_untyped_value(b, w[3]);
       if (pointer->value_type == vtn_value_type_image_pointer) {
          vtn_handle_image(b, opcode, w, count);
@@ -5497,7 +5519,8 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpAtomicStore: {
+   case SpvOpAtomicStore:
+   case SpvOpAtomicFlagClear: {
       struct vtn_value *pointer = vtn_untyped_value(b, w[1]);
       if (pointer->value_type == vtn_value_type_image_pointer) {
          vtn_handle_image(b, opcode, w, count);
