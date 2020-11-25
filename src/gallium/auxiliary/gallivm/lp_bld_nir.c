@@ -448,6 +448,43 @@ merge_16bit(struct lp_build_nir_context *bld_base,
    return LLVMBuildShuffleVector(builder, input, input2, LLVMConstVector(shuffles, len), "");
 }
 
+static LLVMValueRef get_signed_divisor(struct gallivm_state *gallivm,
+                                       struct lp_build_context *int_bld,
+                                       struct lp_build_context *mask_bld,
+                                       int src_bit_size,
+                                       LLVMValueRef src, LLVMValueRef divisor)
+{
+   LLVMBuilderRef builder = gallivm->builder;
+   /* However for signed divides SIGFPE can occur if the numerator is INT_MIN
+      and divisor is -1. */
+   /* set mask if numerator == INT_MIN */
+   long long min_val;
+   switch (src_bit_size) {
+   case 8:
+      min_val = INT8_MIN;
+      break;
+   case 16:
+      min_val = INT16_MIN;
+      break;
+   default:
+   case 32:
+      min_val = INT_MIN;
+      break;
+   case 64:
+      min_val = INT64_MIN;
+      break;
+   }
+   LLVMValueRef div_mask2 = lp_build_cmp(mask_bld, PIPE_FUNC_EQUAL, src,
+                                         lp_build_const_int_vec(gallivm, int_bld->type, min_val));
+   /* set another mask if divisor is - 1 */
+   LLVMValueRef div_mask3 = lp_build_cmp(mask_bld, PIPE_FUNC_EQUAL, divisor,
+                                         lp_build_const_int_vec(gallivm, int_bld->type, -1));
+   div_mask2 = LLVMBuildAnd(builder, div_mask2, div_mask3, "");
+
+   divisor = lp_build_select(mask_bld, div_mask2, int_bld->one, divisor);
+   return divisor;
+}
+
 static LLVMValueRef
 do_int_divide(struct lp_build_nir_context *bld_base,
               bool is_unsigned, unsigned src_bit_size,
@@ -457,16 +494,16 @@ do_int_divide(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *int_bld = get_int_bld(bld_base, is_unsigned, src_bit_size);
    struct lp_build_context *mask_bld = get_int_bld(bld_base, true, src_bit_size);
+
+   /* avoid divide by 0. Converted divisor from 0 to -1 */
    LLVMValueRef div_mask = lp_build_cmp(mask_bld, PIPE_FUNC_EQUAL, src2,
                                         mask_bld->zero);
 
+   LLVMValueRef divisor = LLVMBuildOr(builder, div_mask, src2, "");
    if (!is_unsigned) {
-      /* INT_MIN (0x80000000) / -1 (0xffffffff) causes sigfpe, seen with blender. */
-      div_mask = LLVMBuildAnd(builder, div_mask, lp_build_const_int_vec(gallivm, int_bld->type, 0x7fffffff), "");
+      divisor = get_signed_divisor(gallivm, int_bld, mask_bld,
+                                   src_bit_size, src, divisor);
    }
-   LLVMValueRef divisor = LLVMBuildOr(builder,
-                                      div_mask,
-                                      src2, "");
    LLVMValueRef result = lp_build_div(int_bld, src, divisor);
 
    if (!is_unsigned) {
@@ -486,11 +523,16 @@ do_int_mod(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *int_bld = get_int_bld(bld_base, is_unsigned, src_bit_size);
-   LLVMValueRef div_mask = lp_build_cmp(int_bld, PIPE_FUNC_EQUAL, src2,
-                                        int_bld->zero);
+   struct lp_build_context *mask_bld = get_int_bld(bld_base, true, src_bit_size);
+   LLVMValueRef div_mask = lp_build_cmp(mask_bld, PIPE_FUNC_EQUAL, src2,
+                                        mask_bld->zero);
    LLVMValueRef divisor = LLVMBuildOr(builder,
                                       div_mask,
                                       src2, "");
+   if (!is_unsigned) {
+      divisor = get_signed_divisor(gallivm, int_bld, mask_bld,
+                                   src_bit_size, src, divisor);
+   }
    LLVMValueRef result = lp_build_mod(int_bld, src, divisor);
    return LLVMBuildOr(builder, div_mask, result, "");
 }
