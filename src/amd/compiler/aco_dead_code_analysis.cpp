@@ -82,7 +82,7 @@ bool is_dead(const std::vector<uint16_t>& uses, Instruction *instr)
    if (instr->definitions.empty() || instr->isBranch())
       return false;
    if (std::any_of(instr->definitions.begin(), instr->definitions.end(),
-          [&uses] (const Definition& def) { return uses[def.tempId()];}))
+          [&uses] (const Definition& def) { return !def.isTemp() || uses[def.tempId()];}))
       return false;
    return !(get_sync_info(instr).semantics & (semantic_volatile | semantic_acqrel));
 }
