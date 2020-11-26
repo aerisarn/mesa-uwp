@@ -591,6 +591,10 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       break;
    case nir_op_bit_count:
       result = lp_build_popcount(get_int_bld(bld_base, false, src_bit_size[0]), src[0]);
+      if (src_bit_size[0] < 32)
+         result = LLVMBuildZExt(builder, result, bld_base->int_bld.vec_type, "");
+      else if (src_bit_size[0] > 32)
+         result = LLVMBuildTrunc(builder, result, bld_base->int_bld.vec_type, "");
       break;
    case nir_op_bitfield_select:
       result = lp_build_xor(&bld_base->uint_bld, src[2], lp_build_and(&bld_base->uint_bld, src[0], lp_build_xor(&bld_base->uint_bld, src[1], src[2])));
