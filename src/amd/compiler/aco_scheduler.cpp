@@ -645,7 +645,8 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
       /* break when encountering another MEM instruction, logical_start or barriers */
       if (candidate->opcode == aco_opcode::p_logical_start)
          break;
-      if (candidate->isVMEM())
+      /* only move VMEM instructions below descriptor loads. be more aggressive at higher num_waves to help create more vmem clauses */
+      if (candidate->isVMEM() && (cursor.insert_idx - cursor.source_idx > (ctx.num_waves * 4) || current->operands[0].size() == 4))
          break;
       /* don't move descriptor loads below buffer loads */
       if (candidate->format == Format::SMEM && current->operands[0].size() == 4 && candidate->operands[0].size() == 2)
