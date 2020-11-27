@@ -647,6 +647,9 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
          break;
       if (candidate->isVMEM())
          break;
+      /* don't move descriptor loads below buffer loads */
+      if (candidate->format == Format::SMEM && current->operands[0].size() == 4 && candidate->operands[0].size() == 2)
+         break;
 
       bool can_move_down = true;
 
