@@ -2196,35 +2196,77 @@ lower_to_hw_instr(Program* program)
             }
          } else if (instr->isBranch()) {
             Pseudo_branch_instruction* branch = &instr->branch();
-            uint32_t target = branch->target[0];
+            const uint32_t target = branch->target[0];
+            const bool uniform_branch = !(branch->opcode == aco_opcode::p_cbranch_z &&
+                                          branch->operands[0].physReg() == exec);
 
-            /* check if all blocks from current to target are empty */
-            /* In case there are <= 4 SALU or <= 2 VALU instructions, remove the branch */
+            /* Check if the branch instruction can be removed.
+             * This is beneficial when executing the next block with an empty exec mask
+             * is faster than the branch instruction itself.
+             */
             bool can_remove = block->index < target;
             unsigned num_scalar = 0;
             unsigned num_vector = 0;
-            for (unsigned i = block->index + 1; can_remove && i < branch->target[0]; i++) {
-               /* uniform branches must not be ignored if they
+            bool has_sopp = false;
+
+            /* Check the instructions between branch and target */
+            for (unsigned i = block->index + 1; i < branch->target[0]; i++) {
+               /* Uniform conditional branches must not be ignored if they
                 * are about to jump over actual instructions */
-               if (!program->blocks[i].instructions.empty() &&
-                   (branch->opcode != aco_opcode::p_cbranch_z ||
-                    branch->operands[0].physReg() != exec)) {
+               if (uniform_branch && !program->blocks[i].instructions.empty())
                   can_remove = false;
+
+               if (!can_remove)
                   break;
-               }
 
                for (aco_ptr<Instruction>& inst : program->blocks[i].instructions) {
                   if (inst->isSOPP()) {
-                     can_remove = false;
+                     /* we allow at most one inner branch */
+                     if (has_sopp)
+                        can_remove = false;
+
+                     /* These instructions must conditionally be jumped over */
+                     if (inst->opcode == aco_opcode::s_endpgm ||
+                         inst->opcode == aco_opcode::s_sendmsg ||
+                         inst->opcode == aco_opcode::s_sendmsghalt ||
+                         inst->opcode == aco_opcode::s_trap ||
+                         inst->opcode == aco_opcode::s_barrier)
+                        can_remove = false;
+
+                     has_sopp = true;
                   } else if (inst->isSALU()) {
                      num_scalar++;
-                  } else if (inst->isVALU()) {
+                  } else if (inst->isVALU() || inst->isVINTRP()) {
                      num_vector++;
+                     /* VALU which writes SGPRs are always executed on GFX10+ */
+                     if (ctx.program->chip_class >= GFX10) {
+                        for (Definition& def : inst->definitions) {
+                           if (def.regClass().type() == RegType::sgpr)
+                              num_scalar++;
+                        }
+                     }
+                  } else if (inst->isVMEM() || inst->isFlatLike() || inst->isDS() ||
+                             inst->isEXP()) {
+                     // TODO: GFX6-9 can use vskip
+                     can_remove = false;
+                  } else if (inst->isSMEM()) {
+                     /* SMEM are at least as expensive as branches */
+                     can_remove = false;
+                  } else if (inst->isBarrier()) {
+                     can_remove = false;
                   } else {
                      can_remove = false;
+                     assert(false && "Pseudo instructions should be lowered by this point.");
                   }
 
-                  if (num_scalar + num_vector * 2 > 4)
+                  /* Under these conditions, we shouldn't remove the branch */
+                  unsigned est_cycles;
+                  if (ctx.program->chip_class >= GFX10)
+                     est_cycles = num_scalar * 2 + num_vector;
+                  else
+                     est_cycles = num_scalar * 4 + num_vector * 4;
+
+                  if (est_cycles > 16)
                      can_remove = false;
 
                   if (!can_remove)
@@ -2235,6 +2277,7 @@ lower_to_hw_instr(Program* program)
             if (can_remove)
                continue;
 
+            /* emit branch instruction */
             switch (instr->opcode) {
             case aco_opcode::p_branch:
                assert(block->linear_succs[0] == target);
