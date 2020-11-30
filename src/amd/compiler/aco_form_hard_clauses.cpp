@@ -64,7 +64,6 @@ void form_hard_clauses(Program *program)
       unsigned num_instrs = 0;
       aco_ptr<Instruction> current_instrs[64];
       clause_type current_type = clause_other;
-      unsigned current_resource = 0;
 
       std::vector<aco_ptr<Instruction>> new_instructions;
       new_instructions.reserve(block.instructions.size());
@@ -73,26 +72,21 @@ void form_hard_clauses(Program *program)
       for (unsigned i = 0; i < block.instructions.size(); i++) {
          aco_ptr<Instruction>& instr = block.instructions[i];
 
-         unsigned resource = 0;
          clause_type type = clause_other;
-         if (instr->isVMEM() && !instr->operands.empty()) {
-            resource = instr->operands[0].tempId();
+         if (instr->isVMEM() && !instr->operands.empty())
             type = clause_vmem;
-         } else if (instr->isScratch() || instr->isGlobal()) {
+         else if (instr->isScratch() || instr->isGlobal())
             type = clause_vmem;
-         } else if (instr->isFlat()) {
+         else if (instr->isFlat())
             type = clause_flat;
-         } else if (instr->isSMEM() && !instr->operands.empty()) {
+         else if (instr->isSMEM() && !instr->operands.empty())
             type = clause_smem;
-            if (instr->operands[0].bytes() == 16)
-               resource = instr->operands[0].tempId();
-         }
 
-         if (type != current_type || resource != current_resource || num_instrs == 64) {
+         if (type != current_type || num_instrs == 64 ||
+             (num_instrs && !should_form_clause(current_instrs[0].get(), instr.get()))) {
             emit_clause(bld, num_instrs, current_instrs);
             num_instrs = 0;
             current_type = type;
-            current_resource = resource;
          }
 
          if (type == clause_other) {

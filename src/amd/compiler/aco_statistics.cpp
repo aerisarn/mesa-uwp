@@ -445,8 +445,8 @@ void BlockCycleEstimator::join(const BlockCycleEstimator& pred)
 void collect_preasm_stats(Program *program)
 {
    for (Block& block : program->blocks) {
-      std::set<Temp> vmem_clause_res;
-      std::set<Temp> smem_clause_res;
+      std::set<Instruction *> vmem_clause;
+      std::set<Instruction *> smem_clause;
 
       program->statistics[statistic_instructions] += block.instructions.size();
 
@@ -458,25 +458,23 @@ void collect_preasm_stats(Program *program)
             program->statistics[statistic_instructions] += 2;
 
          if (instr->isVMEM() && !instr->operands.empty()) {
-            vmem_clause_res.insert(instr->operands[0].getTemp());
+            if (std::none_of(vmem_clause.begin(), vmem_clause.end(),
+                             [&](Instruction *other) {return should_form_clause(instr.get(), other);}))
+               program->statistics[statistic_vmem_clauses]++;
+            vmem_clause.insert(instr.get());
          } else {
-            program->statistics[statistic_vmem_clauses] += vmem_clause_res.size();
-            vmem_clause_res.clear();
+            vmem_clause.clear();
          }
 
          if (instr->isSMEM() && !instr->operands.empty()) {
-            if (instr->operands[0].size() == 2)
-               smem_clause_res.insert(Temp(0, s2));
-            else
-               smem_clause_res.insert(instr->operands[0].getTemp());
+            if (std::none_of(smem_clause.begin(), smem_clause.end(),
+                             [&](Instruction *other) {return should_form_clause(instr.get(), other);}))
+               program->statistics[statistic_smem_clauses]++;
+            smem_clause.insert(instr.get());
          } else {
-            program->statistics[statistic_smem_clauses] += smem_clause_res.size();
-            smem_clause_res.clear();
+            smem_clause.clear();
           }
       }
-
-      program->statistics[statistic_vmem_clauses] += vmem_clause_res.size();
-      program->statistics[statistic_smem_clauses] += smem_clause_res.size();
    }
 
    double latency = 0;
