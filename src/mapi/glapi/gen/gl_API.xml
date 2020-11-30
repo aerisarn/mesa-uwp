@@ -1122,8 +1122,7 @@
         <glx sop="102"/>
     </function>
 
-    <function name="CallList" deprecated="3.1"
-              marshal_call_after="_mesa_glthread_CallList(ctx, list);">
+    <function name="CallList" deprecated="3.1" marshal="custom">
         <param name="list" type="GLuint"/>
         <glx rop="1"/>
     </function>

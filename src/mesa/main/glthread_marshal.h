@@ -721,4 +721,10 @@ _mesa_glthread_DeleteLists(struct gl_context *ctx, GLsizei range)
    _mesa_glthread_flush_batch(ctx);
 }
 
+struct marshal_cmd_CallList
+{
+   struct marshal_cmd_base cmd_base;
+   GLuint list;
+};
+
 #endif /* MARSHAL_H */
