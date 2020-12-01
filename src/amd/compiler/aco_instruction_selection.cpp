@@ -4685,7 +4685,9 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
       if (post_shuffle)
          num_channels = MAX2(num_channels, 3);
 
-      Operand off = bld.copy(bld.def(s1), Operand(attrib_binding * 16u));
+      unsigned desc_index = ctx->program->info->vs.use_per_attribute_vb_descs ?
+                            location : attrib_binding;
+      Operand off = bld.copy(bld.def(s1), Operand(desc_index * 16u));
       Temp list = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), vertex_buffers, off);
 
       Temp index;

@@ -447,13 +447,14 @@ static void
 radv_dump_vertex_descriptors(struct radv_pipeline *pipeline, FILE *f)
 {
    void *ptr = (uint64_t *)pipeline->device->trace_id_ptr;
-   uint32_t count = pipeline->num_vertex_bindings;
+   uint32_t count = util_last_bit(pipeline->vb_desc_usage_mask);
    uint32_t *vb_ptr = &((uint32_t *)ptr)[3];
 
    if (!count)
       return;
 
-   fprintf(f, "Num vertex bindings: %d\n", count);
+   fprintf(f, "Num vertex %s: %d\n",
+           pipeline->use_per_attribute_vb_descs ? "attributes" : "bindings", count);
    for (uint32_t i = 0; i < count; i++) {
       uint32_t *desc = &((uint32_t *)vb_ptr)[i * 4];
       uint64_t va = 0;

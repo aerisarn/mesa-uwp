@@ -107,7 +107,7 @@ count_vs_user_sgprs(struct radv_shader_args *args)
 {
    uint8_t count = 1; /* vertex offset */
 
-   if (args->shader_info->vs.has_vertex_buffers)
+   if (args->shader_info->vs.vb_desc_usage_mask)
       count++;
    if (args->shader_info->vs.needs_draw_id)
       count++;
@@ -268,7 +268,7 @@ declare_vs_specific_input_sgprs(struct radv_shader_args *args, gl_shader_stage s
 {
    if (!args->is_gs_copy_shader && (stage == MESA_SHADER_VERTEX ||
                                     (has_previous_stage && previous_stage == MESA_SHADER_VERTEX))) {
-      if (args->shader_info->vs.has_vertex_buffers) {
+      if (args->shader_info->vs.vb_desc_usage_mask) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &args->ac.vertex_buffers);
       }
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.base_vertex);
@@ -393,11 +393,12 @@ set_vs_specific_input_locs(struct radv_shader_args *args, gl_shader_stage stage,
 {
    if (!args->is_gs_copy_shader && (stage == MESA_SHADER_VERTEX ||
                                     (has_previous_stage && previous_stage == MESA_SHADER_VERTEX))) {
-      if (args->shader_info->vs.has_vertex_buffers) {
+      if (args->shader_info->vs.vb_desc_usage_mask) {
          set_loc_shader_ptr(args, AC_UD_VS_VERTEX_BUFFERS, user_sgpr_idx);
       }
 
-      unsigned vs_num = count_vs_user_sgprs(args) - args->shader_info->vs.has_vertex_buffers;
+      unsigned vs_num =
+         count_vs_user_sgprs(args) - (args->shader_info->vs.vb_desc_usage_mask ? 1 : 0);
       set_loc_shader(args, AC_UD_VS_BASE_VERTEX_START_INSTANCE, user_sgpr_idx, vs_num);
    }
 }

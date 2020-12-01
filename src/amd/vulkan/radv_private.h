@@ -1700,7 +1700,12 @@ struct radv_pipeline {
    struct radeon_cmdbuf ctx_cs;
 
    uint32_t binding_stride[MAX_VBS];
-   uint8_t num_vertex_bindings;
+
+   uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
+   uint16_t attrib_ends[MAX_VERTEX_ATTRIBS];
+
+   bool use_per_attribute_vb_descs;
+   uint32_t vb_desc_usage_mask;
 
    uint32_t user_data_0[MESA_SHADER_STAGES];
    union {
@@ -2503,7 +2508,7 @@ unsigned radv_nir_get_max_workgroup_size(enum chip_class chip_class, gl_shader_s
 struct radv_shader_info;
 struct radv_shader_variant_key;
 
-void radv_nir_shader_info_pass(const struct nir_shader *nir,
+void radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
                                const struct radv_pipeline_layout *layout,
                                const struct radv_shader_variant_key *key,
                                struct radv_shader_info *info);

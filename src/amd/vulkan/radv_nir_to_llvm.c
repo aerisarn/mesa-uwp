@@ -756,7 +756,9 @@ handle_vs_input_decl(struct radv_shader_context *ctx, struct nir_variable *varia
          num_channels = MAX2(num_channels, 3);
       }
 
-      t_offset = LLVMConstInt(ctx->ac.i32, attrib_binding, false);
+      unsigned desc_index =
+         ctx->args->shader_info->vs.use_per_attribute_vb_descs ? attrib_index : attrib_binding;
+      t_offset = LLVMConstInt(ctx->ac.i32, desc_index, false);
       t_list = ac_build_load_to_sgpr(&ctx->ac, t_list_ptr, t_offset);
 
       /* Always split typed vertex buffer loads on GFX6 and GFX10+

@@ -2836,22 +2836,24 @@ static void
 radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    if ((pipeline_is_dirty || (cmd_buffer->state.dirty & RADV_CMD_DIRTY_VERTEX_BUFFER)) &&
-       cmd_buffer->state.pipeline->num_vertex_bindings &&
-       radv_get_shader(cmd_buffer->state.pipeline, MESA_SHADER_VERTEX)->info.vs.has_vertex_buffers) {
+       cmd_buffer->state.pipeline->vb_desc_usage_mask) {
+      struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
       unsigned vb_offset;
       void *vb_ptr;
-      uint32_t i = 0;
-      uint32_t count = cmd_buffer->state.pipeline->num_vertex_bindings;
+      uint32_t mask = pipeline->vb_desc_usage_mask;
+      uint32_t count = util_last_bit(mask);
       uint64_t va;
 
       /* allocate some descriptor state for vertex buffers */
       if (!radv_cmd_buffer_upload_alloc(cmd_buffer, count * 16, &vb_offset, &vb_ptr))
          return;
 
-      for (i = 0; i < count; i++) {
+      while (mask) {
+         unsigned i = u_bit_scan(&mask);
          uint32_t *desc = &((uint32_t *)vb_ptr)[i * 4];
          uint32_t offset;
-         struct radv_buffer *buffer = cmd_buffer->vertex_bindings[i].buffer;
+         unsigned binding = pipeline->use_per_attribute_vb_descs ? pipeline->attrib_bindings[i] : i;
+         struct radv_buffer *buffer = cmd_buffer->vertex_bindings[binding].buffer;
          unsigned num_records;
          unsigned stride;
 
@@ -2862,29 +2864,44 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
 
          va = radv_buffer_get_va(buffer->bo);
 
-         offset = cmd_buffer->vertex_bindings[i].offset;
+         offset = cmd_buffer->vertex_bindings[binding].offset;
          va += offset + buffer->offset;
 
-         if (cmd_buffer->vertex_bindings[i].size) {
-            num_records = cmd_buffer->vertex_bindings[i].size;
+         if (cmd_buffer->vertex_bindings[binding].size) {
+            num_records = cmd_buffer->vertex_bindings[binding].size;
          } else {
             num_records = buffer->size - offset;
          }
 
-         if (cmd_buffer->state.pipeline->graphics.uses_dynamic_stride) {
-            stride = cmd_buffer->vertex_bindings[i].stride;
+         if (pipeline->graphics.uses_dynamic_stride) {
+            stride = cmd_buffer->vertex_bindings[binding].stride;
          } else {
-            stride = cmd_buffer->state.pipeline->binding_stride[i];
+            stride = pipeline->binding_stride[binding];
          }
 
-         if (cmd_buffer->device->physical_device->rad_info.chip_class != GFX8 && stride)
-            num_records = DIV_ROUND_UP(num_records, stride);
+         enum chip_class chip = cmd_buffer->device->physical_device->rad_info.chip_class;
+         if (pipeline->use_per_attribute_vb_descs) {
+            uint16_t attrib_end = pipeline->attrib_ends[i];
+
+            if (num_records < attrib_end)
+               num_records = 0; /* not enough space for one vertex */
+            else if (stride == 0)
+               num_records = 1; /* only one vertex */
+            else
+               num_records = (num_records - attrib_end) / stride + 1;
+
+            if ((chip == GFX8 && num_records) || (chip >= GFX10 && !stride))
+               num_records = (num_records - 1) * stride + attrib_end;
+         } else {
+            if (chip != GFX8 && stride)
+               num_records = DIV_ROUND_UP(num_records, stride);
+         }
 
          uint32_t rsrc_word3 =
             S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
             S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
 
-         if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
+         if (chip >= GFX10) {
             /* OOB_SELECT chooses the out-of-bounds check:
              * - 1: index >= NUM_RECORDS (Structured)
              * - 3: offset >= NUM_RECORDS (Raw)
@@ -2907,8 +2924,8 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
       va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
       va += vb_offset;
 
-      radv_emit_userdata_address(cmd_buffer, cmd_buffer->state.pipeline, MESA_SHADER_VERTEX,
-                                 AC_UD_VS_VERTEX_BUFFERS, va);
+      radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_VERTEX, AC_UD_VS_VERTEX_BUFFERS,
+                                 va);
 
       cmd_buffer->state.vb_va = va;
       cmd_buffer->state.vb_size = count * 16;

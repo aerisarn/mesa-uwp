@@ -2843,7 +2843,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
    if (nir[MESA_SHADER_FRAGMENT]) {
       radv_nir_shader_info_init(&infos[MESA_SHADER_FRAGMENT]);
-      radv_nir_shader_info_pass(nir[MESA_SHADER_FRAGMENT], pipeline->layout,
+      radv_nir_shader_info_pass(pipeline->device, nir[MESA_SHADER_FRAGMENT], pipeline->layout,
                                 &keys[MESA_SHADER_FRAGMENT], &infos[MESA_SHADER_FRAGMENT]);
 
       /* TODO: These are no longer used as keys we should refactor this */
@@ -2885,7 +2885,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       radv_nir_shader_info_init(&infos[MESA_SHADER_TESS_CTRL]);
 
       for (int i = 0; i < 2; i++) {
-         radv_nir_shader_info_pass(combined_nir[i], pipeline->layout, &key,
+         radv_nir_shader_info_pass(pipeline->device, combined_nir[i], pipeline->layout, &key,
                                    &infos[MESA_SHADER_TESS_CTRL]);
       }
 
@@ -2902,8 +2902,8 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       radv_nir_shader_info_init(&infos[MESA_SHADER_GEOMETRY]);
 
       for (int i = 0; i < 2; i++) {
-         radv_nir_shader_info_pass(combined_nir[i], pipeline->layout, &keys[pre_stage],
-                                   &infos[MESA_SHADER_GEOMETRY]);
+         radv_nir_shader_info_pass(pipeline->device, combined_nir[i], pipeline->layout,
+                                   &keys[pre_stage], &infos[MESA_SHADER_GEOMETRY]);
       }
 
       filled_stages |= (1 << pre_stage);
@@ -2914,7 +2914,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
    while (active_stages) {
       int i = u_bit_scan(&active_stages);
       radv_nir_shader_info_init(&infos[i]);
-      radv_nir_shader_info_pass(nir[i], pipeline->layout, &keys[i], &infos[i]);
+      radv_nir_shader_info_pass(pipeline->device, nir[i], pipeline->layout, &keys[i], &infos[i]);
    }
 
    for (int i = 0; i < MESA_SHADER_STAGES; i++) {
@@ -3508,7 +3508,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
 
          key.has_multiview_view_index = keys[MESA_SHADER_GEOMETRY].has_multiview_view_index;
 
-         radv_nir_shader_info_pass(nir[MESA_SHADER_GEOMETRY], pipeline->layout, &key, &info);
+         radv_nir_shader_info_pass(device, nir[MESA_SHADER_GEOMETRY], pipeline->layout, &key,
+                                   &info);
          info.wave_size = 64; /* Wave32 not supported. */
          info.ballot_bit_size = 64;
 
@@ -5303,14 +5304,25 @@ static void
 radv_pipeline_init_vertex_input_state(struct radv_pipeline *pipeline,
                                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
+   const struct radv_shader_info *info = &radv_get_shader(pipeline, MESA_SHADER_VERTEX)->info;
    const VkPipelineVertexInputStateCreateInfo *vi_info = pCreateInfo->pVertexInputState;
 
    for (uint32_t i = 0; i < vi_info->vertexBindingDescriptionCount; i++) {
       const VkVertexInputBindingDescription *desc = &vi_info->pVertexBindingDescriptions[i];
 
       pipeline->binding_stride[desc->binding] = desc->stride;
-      pipeline->num_vertex_bindings = MAX2(pipeline->num_vertex_bindings, desc->binding + 1);
    }
+
+   for (uint32_t i = 0; i < vi_info->vertexAttributeDescriptionCount; i++) {
+      const VkVertexInputAttributeDescription *desc = &vi_info->pVertexAttributeDescriptions[i];
+
+      uint32_t end = desc->offset + vk_format_get_blocksize(desc->format);
+      pipeline->attrib_ends[desc->location] = end;
+      pipeline->attrib_bindings[desc->location] = desc->binding;
+   }
+
+   pipeline->use_per_attribute_vb_descs = info->vs.use_per_attribute_vb_descs;
+   pipeline->vb_desc_usage_mask = info->vs.vb_desc_usage_mask;
 }
 
 static struct radv_shader_variant *
