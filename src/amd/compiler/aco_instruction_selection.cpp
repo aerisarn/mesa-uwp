@@ -4687,6 +4687,8 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
       unsigned desc_index = ctx->program->info->vs.use_per_attribute_vb_descs ?
                             location : attrib_binding;
+      desc_index = util_bitcount(ctx->program->info->vs.vb_desc_usage_mask &
+                                 u_bit_consecutive(0, desc_index));
       Operand off = bld.copy(bld.def(s1), Operand(desc_index * 16u));
       Temp list = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), vertex_buffers, off);
 

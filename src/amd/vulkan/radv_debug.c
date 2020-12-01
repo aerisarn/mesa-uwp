@@ -447,7 +447,7 @@ static void
 radv_dump_vertex_descriptors(struct radv_pipeline *pipeline, FILE *f)
 {
    void *ptr = (uint64_t *)pipeline->device->trace_id_ptr;
-   uint32_t count = util_last_bit(pipeline->vb_desc_usage_mask);
+   uint32_t count = util_bitcount(pipeline->vb_desc_usage_mask);
    uint32_t *vb_ptr = &((uint32_t *)ptr)[3];
 
    if (!count)

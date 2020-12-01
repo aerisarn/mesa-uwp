@@ -758,6 +758,8 @@ handle_vs_input_decl(struct radv_shader_context *ctx, struct nir_variable *varia
 
       unsigned desc_index =
          ctx->args->shader_info->vs.use_per_attribute_vb_descs ? attrib_index : attrib_binding;
+      desc_index = util_bitcount(ctx->args->shader_info->vs.vb_desc_usage_mask &
+                                 u_bit_consecutive(0, desc_index));
       t_offset = LLVMConstInt(ctx->ac.i32, desc_index, false);
       t_list = ac_build_load_to_sgpr(&ctx->ac, t_list_ptr, t_offset);
 
