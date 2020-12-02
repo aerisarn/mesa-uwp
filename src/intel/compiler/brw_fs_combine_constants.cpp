@@ -609,17 +609,18 @@ fs_visitor::opt_combine_constants()
       for (int i = 0; i < table.len; i++) {
          struct imm *imm = &table.imm[i];
 
-         printf("0x%016" PRIx64 " - block %3d, reg %3d sub %2d, "
-                "Uses: (%2d, %2d), IP: %4d to %4d, length %4d\n",
-                (uint64_t)(imm->d & BITFIELD64_MASK(imm->size * 8)),
-                imm->block->num,
-                imm->nr,
-                imm->subreg_offset,
-                imm->must_promote,
-                imm->uses_by_coissue,
-                imm->first_use_ip,
-                imm->last_use_ip,
-                imm->last_use_ip - imm->first_use_ip);
+         fprintf(stderr,
+                 "0x%016" PRIx64 " - block %3d, reg %3d sub %2d, "
+                 "Uses: (%2d, %2d), IP: %4d to %4d, length %4d\n",
+                 (uint64_t)(imm->d & BITFIELD64_MASK(imm->size * 8)),
+                 imm->block->num,
+                 imm->nr,
+                 imm->subreg_offset,
+                 imm->must_promote,
+                 imm->uses_by_coissue,
+                 imm->first_use_ip,
+                 imm->last_use_ip,
+                 imm->last_use_ip - imm->first_use_ip);
       }
    }
 
