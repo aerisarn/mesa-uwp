@@ -2314,7 +2314,9 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    bufmgr->handle_table =
       _mesa_hash_table_create(NULL, _mesa_hash_uint, _mesa_key_uint_equal);
 
-   bufmgr->vma_min_align = devinfo->has_local_mem ? 64 * 1024 : PAGE_SIZE;
+   bufmgr->vma_min_align =
+      devinfo->verx10 >= 125 ? 2 * 1024 * 1024 :
+      (devinfo->has_local_mem ? 64 * 1024 : PAGE_SIZE);
 
    if (devinfo->has_aux_map) {
       bufmgr->aux_map_ctx = intel_aux_map_init(bufmgr, &aux_map_allocator,
