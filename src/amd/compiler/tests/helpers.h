@@ -85,6 +85,9 @@ void finish_insert_nops_test();
 void finish_assembler_test();
 
 void writeout(unsigned i, aco::Temp tmp=aco::Temp(0, aco::s1));
+void writeout(unsigned i, aco::Builder::Result res);
+void writeout(unsigned i, aco::Operand op);
+void writeout(unsigned i, aco::Operand op0, aco::Operand op1);
 
 /* vulkan helpers */
 VkDevice get_vk_device(enum chip_class chip_class);

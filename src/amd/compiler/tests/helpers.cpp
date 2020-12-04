@@ -222,6 +222,21 @@ void writeout(unsigned i, Temp tmp)
       bld.pseudo(aco_opcode::p_unit_test, Operand(i));
 }
 
+void writeout(unsigned i, aco::Builder::Result res)
+{
+   bld.pseudo(aco_opcode::p_unit_test, Operand(i), res);
+}
+
+void writeout(unsigned i, Operand op)
+{
+   bld.pseudo(aco_opcode::p_unit_test, Operand(i), op);
+}
+
+void writeout(unsigned i, Operand op0, Operand op1)
+{
+   bld.pseudo(aco_opcode::p_unit_test, Operand(i), op0, op1);
+}
+
 VkDevice get_vk_device(enum chip_class chip_class)
 {
    enum radeon_family family;
