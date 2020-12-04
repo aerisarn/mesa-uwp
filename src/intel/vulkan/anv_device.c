@@ -2650,6 +2650,21 @@ anv_queue_family_properties_template = {
    .minImageTransferGranularity = { 1, 1, 1 },
 };
 
+static VkQueueFamilyProperties
+anv_device_physical_get_queue_properties(const struct anv_physical_device *device,
+                                         uint32_t family_index)
+{
+   const struct anv_queue_family *family = &device->queue.families[family_index];
+   VkQueueFamilyProperties properties = anv_queue_family_properties_template;
+   properties.queueFlags = family->queueFlags;
+   properties.queueCount = family->queueCount;
+   /* TODO: enable protected content on video queue */
+   if (device->has_protected_contexts &&
+       (family->queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) == 0)
+      properties.queueFlags |= VK_QUEUE_PROTECTED_BIT;
+   return properties;
+}
+
 void anv_GetPhysicalDeviceQueueFamilyProperties2(
     VkPhysicalDevice                            physicalDevice,
     uint32_t*                                   pQueueFamilyPropertyCount,
@@ -2662,9 +2677,8 @@ void anv_GetPhysicalDeviceQueueFamilyProperties2(
    for (uint32_t i = 0; i < pdevice->queue.family_count; i++) {
       struct anv_queue_family *queue_family = &pdevice->queue.families[i];
       vk_outarray_append_typed(VkQueueFamilyProperties2, &out, p) {
-         p->queueFamilyProperties = anv_queue_family_properties_template;
-         p->queueFamilyProperties.queueFlags = queue_family->queueFlags;
-         p->queueFamilyProperties.queueCount = queue_family->queueCount;
+         p->queueFamilyProperties =
+            anv_device_physical_get_queue_properties(pdevice, i);
 
          vk_foreach_struct(ext, p->pNext) {
             switch (ext->sType) {
@@ -3078,7 +3092,7 @@ VkResult anv_CreateDevice(
     */
    assert(pCreateInfo->queueCreateInfoCount > 0);
    for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
-      if (pCreateInfo->pQueueCreateInfos[i].flags != 0)
+      if (pCreateInfo->pQueueCreateInfos[i].flags & ~VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT)
          return vk_error(physical_device, VK_ERROR_INITIALIZATION_FAILED);
    }
 
