@@ -476,6 +476,13 @@ public:
          setFixed(PhysReg{128});
       }
    };
+   explicit Operand(Temp r, PhysReg reg) noexcept
+   {
+      assert(r.id()); /* Don't allow fixing an undef to a register */
+      data_.temp = r;
+      isTemp_ = true;
+      setFixed(reg);
+   };
    explicit Operand(uint8_t v) noexcept
    {
       /* 8-bit constants are only used for copies and copies from any 8-bit
