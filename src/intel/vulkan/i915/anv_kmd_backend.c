@@ -78,15 +78,17 @@ i915_gem_create(struct anv_device *device,
          flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
 
    struct drm_i915_gem_create_ext_memory_regions ext_regions = {
-      .base = { .name = I915_GEM_CREATE_EXT_MEMORY_REGIONS },
       .num_regions = num_regions,
       .regions = (uintptr_t)i915_regions,
    };
    struct drm_i915_gem_create_ext gem_create = {
       .size = size,
-      .extensions = (uintptr_t) &ext_regions,
       .flags = flags,
    };
+
+   intel_i915_gem_add_ext(&gem_create.extensions,
+                          I915_GEM_CREATE_EXT_MEMORY_REGIONS,
+                          &ext_regions.base);
 
    struct drm_i915_gem_create_ext_set_pat set_pat_param = { 0 };
    if (device->info->has_set_pat_uapi) {
@@ -95,6 +97,13 @@ i915_gem_create(struct anv_device *device,
       intel_i915_gem_add_ext(&gem_create.extensions,
                              I915_GEM_CREATE_EXT_SET_PAT,
                              &set_pat_param.base);
+   }
+
+   struct drm_i915_gem_create_ext_protected_content protected_param = { 0 };
+   if (alloc_flags & ANV_BO_ALLOC_PROTECTED) {
+      intel_i915_gem_add_ext(&gem_create.extensions,
+                             I915_GEM_CREATE_EXT_PROTECTED_CONTENT,
+                             &protected_param.base);
    }
 
    if (intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_CREATE_EXT, &gem_create))

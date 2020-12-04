@@ -40,6 +40,9 @@ xe_gem_create(struct anv_device *device,
               enum anv_bo_alloc_flags alloc_flags,
               uint64_t *actual_size)
 {
+   /* TODO: protected content */
+   assert((alloc_flags & ANV_BO_ALLOC_PROTECTED) == 0);
+
    uint32_t flags = 0;
    if (alloc_flags & ANV_BO_ALLOC_SCANOUT)
       flags |= XE_GEM_CREATE_FLAG_SCANOUT;

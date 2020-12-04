@@ -4029,6 +4029,9 @@ VkResult anv_AllocateMemory(
    if (mem->vk.alloc_flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT)
       alloc_flags |= ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS;
 
+   if (mem->vk.alloc_flags & VK_MEMORY_PROPERTY_PROTECTED_BIT)
+      alloc_flags |= ANV_BO_ALLOC_PROTECTED;
+
    /* Anything imported or exported is EXTERNAL. Apply implicit sync to be
     * compatible with clients relying on implicit fencing. This matches the
     * behavior in iris i915_batch_submit. An example client is VA-API.
@@ -4541,6 +4544,7 @@ VkResult anv_ResetEvent(
 
 static void
 anv_get_buffer_memory_requirements(struct anv_device *device,
+                                   VkBufferCreateFlags flags,
                                    VkDeviceSize size,
                                    VkBufferUsageFlags usage,
                                    bool is_sparse,
@@ -4553,7 +4557,18 @@ anv_get_buffer_memory_requirements(struct anv_device *device,
     *    only if the memory type `i` in the VkPhysicalDeviceMemoryProperties
     *    structure for the physical device is supported.
     */
-   uint32_t memory_types = (1ull << device->physical->memory.type_count) - 1;
+   uint32_t memory_types = 0;
+   for (uint32_t i = 0; i < device->physical->memory.type_count; i++) {
+      /* Have the protected buffer bit match only the memory types with the
+       * equivalent bit.
+       */
+      if (!!(flags & VK_BUFFER_CREATE_PROTECTED_BIT) !=
+          !!(device->physical->memory.types[i].propertyFlags &
+             VK_MEMORY_PROPERTY_PROTECTED_BIT))
+         continue;
+
+      memory_types |= 1ull << i;
+   }
 
    /* The GPU appears to write back to main memory in cachelines. Writes to a
     * buffers should not clobber with writes to another buffers so make sure
@@ -4622,6 +4637,7 @@ void anv_GetDeviceBufferMemoryRequirementsKHR(
               __LINE__, pInfo->pCreateInfo->flags);
 
    anv_get_buffer_memory_requirements(device,
+                                      pInfo->pCreateInfo->flags,
                                       pInfo->pCreateInfo->size,
                                       pInfo->pCreateInfo->usage,
                                       is_sparse,

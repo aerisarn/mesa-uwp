@@ -206,6 +206,18 @@ anv_i915_physical_device_init_memory_types(struct anv_physical_device *device)
       };
    }
 
+   if (device->has_protected_contexts) {
+      /* Add a memory type for protected buffers, local and not host
+       * visible.
+       */
+      device->memory.types[device->memory.type_count++] =
+         (struct anv_memory_type) {
+            .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                             VK_MEMORY_PROPERTY_PROTECTED_BIT,
+            .heapIndex = 0,
+      };
+   }
+
    return VK_SUCCESS;
 }
 

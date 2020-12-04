@@ -406,6 +406,9 @@ enum anv_bo_alloc_flags {
     * Not for buffers used as the TR-TT page tables.
     */
    ANV_BO_ALLOC_TRTT = (1 << 14),
+
+   /** Protected buffer */
+   ANV_BO_ALLOC_PROTECTED = (1 << 15),
 };
 
 struct anv_bo {
