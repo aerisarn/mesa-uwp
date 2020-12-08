@@ -870,6 +870,9 @@ struct imm {
     */
    bool must_promote;
 
+   /** Is the value used only in a single basic block? */
+   bool used_in_single_block;
+
    uint16_t first_use_ip;
    uint16_t last_use_ip;
 };
@@ -1173,6 +1176,133 @@ add_candidate_immediate(struct table *table, fs_inst *inst, unsigned ip,
    }
 }
 
+struct register_allocation {
+   /** VGRF for storing values. */
+   unsigned nr;
+
+   /**
+    * Mask of currently available slots in this register.
+    *
+    * Each register is 16, 16-bit slots.  Allocations require 1, 2, or 4 slots
+    * for word, double-word, or quad-word values, respectively.
+    */
+   uint16_t avail;
+};
+
+static fs_reg
+allocate_slots(struct register_allocation *regs, unsigned num_regs,
+               unsigned bytes, unsigned align_bytes,
+               brw::simple_allocator &alloc)
+{
+   assert(bytes == 2 || bytes == 4 || bytes == 8);
+   assert(align_bytes == 2 || align_bytes == 4 || align_bytes == 8);
+
+   const unsigned words = bytes / 2;
+   const unsigned align_words = align_bytes / 2;
+   const uint16_t mask = (1U << words) - 1;
+
+   for (unsigned i = 0; i < num_regs; i++) {
+      for (unsigned j = 0; j <= (16 - words); j += align_words) {
+         const uint16_t x = regs[i].avail >> j;
+
+         if ((x & mask) == mask) {
+            if (regs[i].nr == UINT_MAX)
+               regs[i].nr = alloc.allocate(1);
+
+            regs[i].avail &= ~(mask << j);
+
+            fs_reg reg(VGRF, regs[i].nr);
+            reg.offset = j * 2;
+
+            return reg;
+         }
+      }
+   }
+
+   unreachable("No free slots found.");
+}
+
+static void
+deallocate_slots(struct register_allocation *regs, unsigned num_regs,
+                 unsigned reg_nr, unsigned subreg_offset, unsigned bytes)
+{
+   assert(bytes == 2 || bytes == 4 || bytes == 8);
+   assert(subreg_offset % 2 == 0);
+   assert(subreg_offset + bytes <= 32);
+
+   const unsigned words = bytes / 2;
+   const unsigned offset = subreg_offset / 2;
+   const uint16_t mask = ((1U << words) - 1) << offset;
+
+   for (unsigned i = 0; i < num_regs; i++) {
+      if (regs[i].nr == reg_nr) {
+         regs[i].avail |= mask;
+         return;
+      }
+   }
+
+   unreachable("No such register found.");
+}
+
+static void
+parcel_out_registers(struct imm *imm, unsigned len, const bblock_t *cur_block,
+                     struct register_allocation *regs, unsigned num_regs,
+                     brw::simple_allocator &alloc, unsigned ver)
+{
+   /* Each basic block has two distinct set of constants.  There is the set of
+    * constants that only have uses in that block, and there is the set of
+    * constants that have uses after that block.
+    *
+    * Allocation proceeds in three passes.
+    *
+    * 1. Allocate space for the values that are used outside this block.
+    *
+    * 2. Allocate space for the values that are used only in this block.
+    *
+    * 3. Deallocate the space for the values that are used only in this block.
+    */
+
+   for (unsigned pass = 0; pass < 2; pass++) {
+      const bool used_in_single_block = pass != 0;
+
+      for (unsigned i = 0; i < len; i++) {
+         if (imm[i].block == cur_block &&
+             imm[i].used_in_single_block == used_in_single_block) {
+            /* From the BDW and CHV PRM, 3D Media GPGPU, Special Restrictions:
+             *
+             *   "In Align16 mode, the channel selects and channel enables apply
+             *    to a pair of half-floats, because these parameters are defined
+             *    for DWord elements ONLY. This is applicable when both source
+             *    and destination are half-floats."
+             *
+             * This means that Align16 instructions that use promoted HF
+             * immediates and use a <0,1,0>:HF region would read 2 HF slots
+             * instead of replicating the single one we want. To avoid this, we
+             * always populate both HF slots within a DWord with the constant.
+             */
+            const unsigned width = ver == 8 && imm[i].is_half_float ? 2 : 1;
+
+            const fs_reg reg = allocate_slots(regs, num_regs,
+                                              imm[i].size * width,
+                                              get_alignment_for_imm(&imm[i]),
+                                              alloc);
+
+            imm[i].nr = reg.nr;
+            imm[i].subreg_offset = reg.offset;
+         }
+      }
+   }
+
+   for (unsigned i = 0; i < len; i++) {
+      if (imm[i].block == cur_block && imm[i].used_in_single_block) {
+         const unsigned width = ver == 8 && imm[i].is_half_float ? 2 : 1;
+
+         deallocate_slots(regs, num_regs, imm[i].nr, imm[i].subreg_offset,
+                          imm[i].size * width);
+      }
+   }
+}
+
 bool
 fs_visitor::opt_combine_constants()
 {
@@ -1366,9 +1496,13 @@ fs_visitor::opt_combine_constants()
             imm->block = ib->block;
             imm->first_use_ip = ib->ip;
             imm->last_use_ip = ib->ip;
+            imm->used_in_single_block = true;
          } else {
             bblock_t *intersection = idom.intersect(ib->block,
                                                     imm->block);
+
+            if (ib->block != imm->block)
+               imm->used_in_single_block = false;
 
             if (imm->first_use_ip > ib->ip) {
                imm->first_use_ip = ib->ip;
@@ -1416,9 +1550,48 @@ fs_visitor::opt_combine_constants()
    if (cfg->num_blocks != 1)
       qsort(table.imm, table.len, sizeof(struct imm), compare);
 
+   if (devinfo->ver > 7) {
+      struct register_allocation *regs =
+         (struct register_allocation *) calloc(table.len, sizeof(regs[0]));
+
+      for (int i = 0; i < table.len; i++) {
+         regs[i].nr = UINT_MAX;
+         regs[i].avail = 0xffff;
+      }
+
+      foreach_block(block, cfg) {
+         parcel_out_registers(table.imm, table.len, block, regs, table.len,
+                              alloc, devinfo->ver);
+      }
+
+      free(regs);
+   } else {
+      fs_reg reg(VGRF, alloc.allocate(1));
+      reg.stride = 0;
+
+      for (int i = 0; i < table.len; i++) {
+         struct imm *imm = &table.imm[i];
+
+         /* Put the immediate in an offset aligned to its size. Some
+          * instructions seem to have additional alignment requirements, so
+          * account for that too.
+          */
+         reg.offset = ALIGN(reg.offset, get_alignment_for_imm(imm));
+
+         /* Ensure we have enough space in the register to copy the immediate */
+         if (reg.offset + imm->size > REG_SIZE) {
+            reg.nr = alloc.allocate(1);
+            reg.offset = 0;
+         }
+
+         imm->nr = reg.nr;
+         imm->subreg_offset = reg.offset;
+
+         reg.offset += imm->size;
+      }
+   }
+
    /* Insert MOVs to load the constant values into GRFs. */
-   fs_reg reg(VGRF, alloc.allocate(1));
-   reg.stride = 0;
    for (int i = 0; i < table.len; i++) {
       struct imm *imm = &table.imm[i];
       /* Insert it either before the instruction that generated the immediate
@@ -1442,24 +1615,22 @@ fs_visitor::opt_combine_constants()
       const uint32_t width = devinfo->ver == 8 && imm->is_half_float ? 2 : 1;
       const fs_builder ibld = bld.at(imm->block, n).exec_all().group(width, 0);
 
+      fs_reg reg(VGRF, imm->nr);
+      reg.offset = imm->subreg_offset;
+      reg.stride = 0;
+
       /* Put the immediate in an offset aligned to its size. Some instructions
        * seem to have additional alignment requirements, so account for that
        * too.
        */
-      reg.offset = ALIGN(reg.offset, get_alignment_for_imm(imm));
+      assert(reg.offset == ALIGN(reg.offset, get_alignment_for_imm(imm)));
+
+      struct brw_reg imm_reg = build_imm_reg_for_copy(imm);
 
       /* Ensure we have enough space in the register to copy the immediate */
-      struct brw_reg imm_reg = build_imm_reg_for_copy(imm);
-      if (reg.offset + type_sz(imm_reg.type) * width > REG_SIZE) {
-         reg.nr = alloc.allocate(1);
-         reg.offset = 0;
-      }
+      assert(reg.offset + type_sz(imm_reg.type) * width <= REG_SIZE);
 
       ibld.MOV(retype(reg, imm_reg.type), imm_reg);
-      imm->nr = reg.nr;
-      imm->subreg_offset = reg.offset;
-
-      reg.offset += imm->size * width;
    }
    shader_stats.promoted_constants = table.len;
 
