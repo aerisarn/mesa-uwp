@@ -1626,6 +1626,12 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
    if (device->info.ver >= 12 && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
       align = 64 * 1024;
 
+   /* For XeHP, lmem and smem cannot share a single PDE, which means they
+    * can't live in the same 2MiB aligned region.
+    */
+   if (device->info.verx10 >= 125)
+       align = 2 * 1024 * 1024;
+
    if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
       bo->has_fixed_address = true;
       bo->offset = explicit_address;
