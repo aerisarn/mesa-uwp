@@ -699,10 +699,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
 
    ctx->Const.ShaderCompilerOptions[MESA_SHADER_TESS_EVAL].PositionAlwaysPrecise = options->vs_position_always_precise;
 
-   enum pipe_shader_ir preferred_ir = (enum pipe_shader_ir)
-      screen->get_shader_param(screen, PIPE_SHADER_VERTEX,
-                               PIPE_SHADER_CAP_PREFERRED_IR);
-   ctx->Const.UseNIRGLSLLinker = preferred_ir == PIPE_SHADER_IR_NIR;
+   ctx->Const.UseNIRGLSLLinker = true;
 
    /* NIR drivers that support tess shaders and compact arrays need to use
     * GLSLTessLevelsAsInputs / PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS. The NIR
@@ -831,22 +828,11 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_flush_functions(screen, functions);
 
    /* GL_ARB_get_program_binary */
-   enum pipe_shader_ir preferred_ir = (enum pipe_shader_ir)
-      screen->get_shader_param(screen, PIPE_SHADER_VERTEX,
-                               PIPE_SHADER_CAP_PREFERRED_IR);
-   if (preferred_ir == PIPE_SHADER_IR_NIR) {
-      functions->ShaderCacheSerializeDriverBlob =  st_serialise_nir_program;
-      functions->ProgramBinarySerializeDriverBlob =
-         st_serialise_nir_program_binary;
-      functions->ProgramBinaryDeserializeDriverBlob =
-         st_deserialise_nir_program;
-   } else {
-      functions->ShaderCacheSerializeDriverBlob =  st_serialise_tgsi_program;
-      functions->ProgramBinarySerializeDriverBlob =
-         st_serialise_tgsi_program_binary;
-      functions->ProgramBinaryDeserializeDriverBlob =
-         st_deserialise_tgsi_program;
-   }
+   functions->ShaderCacheSerializeDriverBlob =  st_serialise_nir_program;
+   functions->ProgramBinarySerializeDriverBlob =
+      st_serialise_nir_program_binary;
+   functions->ProgramBinaryDeserializeDriverBlob =
+      st_deserialise_nir_program;
 }
 
 

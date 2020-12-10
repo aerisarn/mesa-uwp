@@ -30,7 +30,6 @@
 
 #include "st_nir.h"
 #include "st_shader_cache.h"
-#include "st_glsl_to_tgsi.h"
 #include "st_program.h"
 
 #include "tgsi/tgsi_from_mesa.h"
@@ -42,13 +41,8 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
    struct st_context *sctx = st_context(ctx);
    struct pipe_screen *pscreen = sctx->screen;
 
-   enum pipe_shader_ir preferred_ir = (enum pipe_shader_ir)
-      pscreen->get_shader_param(pscreen, PIPE_SHADER_VERTEX,
-                                PIPE_SHADER_CAP_PREFERRED_IR);
-   bool use_nir = preferred_ir == PIPE_SHADER_IR_NIR;
-
    /* Return early if we are loading the shader from on-disk cache */
-   if (st_load_ir_from_disk_cache(ctx, prog, use_nir)) {
+   if (st_load_ir_from_disk_cache(ctx, prog, true)) {
       return GL_TRUE;
    }
 
@@ -56,7 +50,6 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
 
    /* Skip the GLSL steps when using SPIR-V. */
    if (prog->data->spirv) {
-      assert(use_nir);
       return st_link_nir(ctx, prog);
    }
 
@@ -69,19 +62,6 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       gl_shader_stage stage = shader->Stage;
       const struct gl_shader_compiler_options *options =
             &ctx->Const.ShaderCompilerOptions[stage];
-
-      /* If there are forms of indirect addressing that the driver
-       * cannot handle, perform the lowering pass.
-       */
-      if (!use_nir &&
-          (options->EmitNoIndirectInput || options->EmitNoIndirectOutput ||
-           options->EmitNoIndirectTemp || options->EmitNoIndirectUniform)) {
-         lower_variable_index_to_cond_assign(stage, ir,
-                                             options->EmitNoIndirectInput,
-                                             options->EmitNoIndirectOutput,
-                                             options->EmitNoIndirectTemp,
-                                             options->EmitNoIndirectUniform);
-      }
 
       enum pipe_shader_type ptarget = pipe_shader_type_from_mesa(stage);
       bool have_dround = pscreen->get_shader_param(pscreen, ptarget,
@@ -123,7 +103,6 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
             shader, ctx->Extensions.KHR_blend_equation_advanced_coherent);
 
       lower_instructions(ir,
-                         (use_nir ? 0 : MOD_TO_FLOOR) |
                          FDIV_TO_MUL_RCP |
                          EXP_TO_EXP2 |
                          LOG_TO_LOG2 |
@@ -161,12 +140,9 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       validate_ir_tree(ir);
    }
 
-   build_program_resource_list(&ctx->Const, prog, use_nir);
+   build_program_resource_list(&ctx->Const, prog, true);
 
-   if (use_nir)
-      ret = st_link_nir(ctx, prog);
-   else
-      ret = st_link_tgsi(ctx, prog);
+   ret = st_link_nir(ctx, prog);
 
    return ret;
 }
@@ -176,8 +152,6 @@ extern "C" {
 /**
  * Link a shader.
  * Called via ctx->Driver.LinkShader()
- * This is a shared function that branches off to either GLSL IR -> TGSI or
- * GLSL IR -> NIR
  */
 GLboolean
 st_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
