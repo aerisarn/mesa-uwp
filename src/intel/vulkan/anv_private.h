@@ -1648,6 +1648,8 @@ struct anv_device {
 
     bool                                        robust_buffer_access;
 
+    uint32_t                                    protected_session_id;
+
     /** Shadow ray query BO
      *
      * The ray_query_bo only holds the current ray being traced. When using

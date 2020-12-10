@@ -264,6 +264,8 @@ anv_i915_device_setup_context(struct anv_device *device,
                               const VkDeviceCreateInfo *pCreateInfo,
                               const uint32_t num_queues)
 {
+   device->protected_session_id = I915_PROTECTED_CONTENT_DEFAULT_SESSION;
+
    if (device->physical->has_vm_control)
       return anv_i915_device_setup_vm(device);
 

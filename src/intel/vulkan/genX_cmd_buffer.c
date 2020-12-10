@@ -3332,6 +3332,23 @@ genX(BeginCommandBuffer)(
        anv_cmd_buffer_is_blitter_queue(cmd_buffer))
       return VK_SUCCESS;
 
+#if GFX_VER >= 12
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY &&
+       cmd_buffer->vk.pool->flags & VK_COMMAND_POOL_CREATE_PROTECTED_BIT) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(MI_SET_APPID), appid) {
+         /* Default value for single session. */
+         appid.ProtectedMemoryApplicationID = cmd_buffer->device->protected_session_id;
+         appid.ProtectedMemoryApplicationIDType = DISPLAY_APP;
+      }
+      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
+         pc.CommandStreamerStallEnable = true;
+         pc.DCFlushEnable = true;
+         pc.RenderTargetCacheFlushEnable = true;
+         pc.ProtectedMemoryEnable = true;
+      }
+   }
+#endif
+
    genX(cmd_buffer_emit_state_base_address)(cmd_buffer);
 
    /* We sometimes store vertex data in the dynamic state buffer for blorp
@@ -3539,6 +3556,18 @@ end_command_buffer(struct anv_cmd_buffer *cmd_buffer)
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    emit_isp_disable(cmd_buffer);
+
+#if GFX_VER >= 12
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY &&
+       cmd_buffer->vk.pool->flags & VK_COMMAND_POOL_CREATE_PROTECTED_BIT) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
+         pc.CommandStreamerStallEnable = true;
+         pc.DCFlushEnable = true;
+         pc.RenderTargetCacheFlushEnable = true;
+         pc.ProtectedMemoryDisable = true;
+      }
+   }
+#endif
 
    trace_intel_end_cmd_buffer(&cmd_buffer->trace, cmd_buffer->vk.level);
 
