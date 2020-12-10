@@ -495,7 +495,7 @@ get_features(const struct anv_physical_device *pdevice,
       .multiviewTessellationShader         = true,
       .variablePointersStorageBuffer       = true,
       .variablePointers                    = true,
-      .protectedMemory                     = false,
+      .protectedMemory                     = pdevice->has_protected_contexts,
       .samplerYcbcrConversion              = true,
       .shaderDrawParameters                = true,
 
@@ -1930,7 +1930,10 @@ anv_get_physical_device_properties_1_1(struct anv_physical_device *pdevice,
    p->pointClippingBehavior      = VK_POINT_CLIPPING_BEHAVIOR_USER_CLIP_PLANES_ONLY;
    p->maxMultiviewViewCount      = 16;
    p->maxMultiviewInstanceIndex  = UINT32_MAX / 16;
-   p->protectedNoFault           = false;
+   /* Our protected implementation is a memory encryption mechanism, it
+    * doesn't page fault.
+    */
+   p->protectedNoFault           = true;
    /* This value doesn't matter for us today as our per-stage descriptors are
     * the real limit.
     */
