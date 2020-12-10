@@ -1971,6 +1971,11 @@ isl_surf_supports_ccs(const struct isl_device *dev,
    if (ISL_GFX_VER(dev) <= 6)
       return false;
 
+   /* Wa_22011186057: Disable compression on ADL-P A0 */
+   if (dev->info->is_alderlake && dev->info->gt == 2 &&
+       dev->info->revision == 0)
+      return false;
+
    if (surf->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)
       return false;
 
