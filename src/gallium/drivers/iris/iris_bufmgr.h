@@ -285,6 +285,9 @@ struct iris_bo {
 
          /** Boolean of whether this buffer points into user memory */
          bool userptr;
+
+         /** Boolean of whether this buffer is protected (HW encryption) */
+         bool protected;
       } real;
       struct {
          struct pb_slab_entry entry;
@@ -299,6 +302,7 @@ struct iris_bo {
 #define BO_ALLOC_SCANOUT     (1<<3)
 #define BO_ALLOC_NO_SUBALLOC (1<<4)
 #define BO_ALLOC_LMEM        (1<<5)
+#define BO_ALLOC_PROTECTED   (1<<6)
 
 /**
  * Allocate a buffer object.
