@@ -534,6 +534,13 @@ driCreateContextAttribs(__DRIscreen *screen, int api,
                   ~__DRIVER_CONTEXT_ATTRIB_NO_ERROR;
             }
             break;
+        case __DRI_CTX_ATTRIB_PROTECTED:
+           if (attribs[i * 2 + 1]) {
+              ctx_config.attribute_mask |= __DRIVER_CONTEXT_ATTRIB_PROTECTED;
+           } else {
+              ctx_config.attribute_mask &= ~__DRIVER_CONTEXT_ATTRIB_PROTECTED;
+           }
+           break;
         default:
             /* We can't create a context that satisfies the requirements of an
              * attribute that we don't understand.  Return failure.
