@@ -34,6 +34,7 @@
 
 #include <X11/Xlib-xcb.h>
 
+#include "loader_dri_helper.h"
 #include "loader_dri3_helper.h"
 #include "util/macros.h"
 #include "drm-uapi/drm_fourcc.h"
@@ -1314,6 +1315,8 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
    struct xshmfence *shm_fence;
    int buffer_fds[4], fence_fd;
    int num_planes = 0;
+   uint64_t *modifiers = NULL;
+   uint32_t count = 0;
    int i, mod;
    int ret;
 
@@ -1348,8 +1351,6 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
          xcb_dri3_get_supported_modifiers_cookie_t mod_cookie;
          xcb_dri3_get_supported_modifiers_reply_t *mod_reply;
          xcb_generic_error_t *error = NULL;
-         uint64_t *modifiers = NULL;
-         uint32_t count = 0;
 
          mod_cookie = xcb_dri3_get_supported_modifiers(draw->conn,
                                                        draw->window,
@@ -1395,34 +1396,17 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
          }
 
          free(mod_reply);
-
-         /* don't use createImageWithModifiers() if we have no
-          * modifiers, other things depend on the use flags when
-          * there are no modifiers to know that a buffer can be
-          * shared.
-          */
-         if (modifiers) {
-            buffer->image = draw->ext->image->createImageWithModifiers(draw->dri_screen,
-                                                                       width, height,
-                                                                       format,
-                                                                       modifiers,
-                                                                       count,
-                                                                       buffer);
-         }
-
-         free(modifiers);
       }
 #endif
-      if (!buffer->image)
-         buffer->image = draw->ext->image->createImage(draw->dri_screen,
-                                                       width, height,
-                                                       format,
-                                                       __DRI_IMAGE_USE_SHARE |
-                                                       __DRI_IMAGE_USE_SCANOUT |
-                                                       __DRI_IMAGE_USE_BACKBUFFER |
-                                                       (draw->is_protected_content ?
-                                                         __DRI_IMAGE_USE_PROTECTED : 0),
-                                                       buffer);
+      buffer->image = loader_dri_create_image(draw->dri_screen, draw->ext->image,
+                                              width, height, format,
+                                              __DRI_IMAGE_USE_SHARE |
+                                              __DRI_IMAGE_USE_SCANOUT |
+                                              __DRI_IMAGE_USE_BACKBUFFER |
+                                              (draw->is_protected_content ?
+                                               __DRI_IMAGE_USE_PROTECTED : 0),
+                                              modifiers, count, buffer);
+      free(modifiers);
 
       pixmap_buffer = buffer->image;
 
