@@ -22,6 +22,7 @@ inc_egl = include_directories('.', 'main')
 inc_egl_dri2 = include_directories('drivers/dri2')
 
 c_args_for_egl = [asan_c_args]
+cpp_args_for_egl = []
 link_for_egl = []
 deps_for_egl = []
 incs_for_egl = [inc_include, inc_src, inc_egl]
@@ -125,6 +126,11 @@ if with_dri2
   if with_platform_android
     deps_for_egl += dep_android
     files_egl += files('drivers/dri2/platform_android.c')
+    if dep_android_mapper4.found()
+      files_egl += files('drivers/dri2/platform_android_mapper.cpp')
+      c_args_for_egl += '-DUSE_IMAPPER4_METADATA_API'
+      cpp_args_for_egl += ['-std=c++17', '-DUSE_IMAPPER4_METADATA_API']
+    endif
   endif
 elif with_platform_haiku
   incs_for_egl += inc_haikugl
@@ -167,6 +173,7 @@ libegl = shared_library(
     c_args_for_egl,
     '-D_EGL_NATIVE_PLATFORM=_EGL_PLATFORM_@0@'.format(egl_native_platform.to_upper()),
   ],
+  cpp_args : [cpp_args_for_egl],
   gnu_symbol_visibility : 'hidden',
   include_directories : incs_for_egl,
   link_with : [link_for_egl, libglapi],

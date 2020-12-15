@@ -1,5 +1,6 @@
 /*
  * Copyright © 2021, Google Inc.
+ * Copyright (C) 2021, GlobalLogic Ukraine
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,6 +24,12 @@
 
 #ifndef EGL_ANDROID_INCLUDED
 #define EGL_ANDROID_INCLUDED
+
+#include <errno.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+#include <GL/internal/dri_interface.h>
 
 #include "egl_dri2.h"
 
@@ -112,6 +119,37 @@ ANativeWindow_query(const struct ANativeWindow *window,
    }
    return window->query(window, (int)what, value);
 }
-#endif
+#endif // ANDROID_API_LEVEL < 26
 
+struct buffer_info {
+   uint32_t drm_fourcc;
+   int num_planes;
+   int fds[4];
+   uint64_t modifier;
+   int offsets[4];
+   int pitches[4];
+   enum __DRIYUVColorSpace yuv_color_space;
+   enum __DRISampleRange sample_range;
+   enum __DRIChromaSiting horizontal_siting;
+   enum __DRIChromaSiting vertical_siting;
+};
+
+#ifdef USE_IMAPPER4_METADATA_API
+#ifdef __cplusplus
+extern "C" {
 #endif
+extern int
+mapper_metadata_get_buffer_info(struct ANativeWindowBuffer *buf,
+                                struct buffer_info *out_buf_info);
+#ifdef __cplusplus
+}
+#endif
+#else
+static inline int
+mapper_metadata_get_buffer_info(struct ANativeWindowBuffer *buf,
+                                struct buffer_info *out_buf_info) {
+   return -ENOTSUP;
+}
+#endif /* USE_IMAPPER4_METADATA_API */
+
+#endif /* EGL_ANDROID_INCLUDED */

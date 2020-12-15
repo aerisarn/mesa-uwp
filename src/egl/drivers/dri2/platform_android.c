@@ -187,19 +187,6 @@ get_native_buffer_name(struct ANativeWindowBuffer *buf)
 }
 #endif /* HAVE_DRM_GRALLOC */
 
-struct buffer_info {
-   uint32_t drm_fourcc;
-   int num_planes;
-   int fds[4];
-   uint64_t modifier;
-   int offsets[4];
-   int pitches[4];
-   enum __DRIYUVColorSpace yuv_color_space;
-   enum __DRISampleRange sample_range;
-   enum __DRIChromaSiting horizontal_siting;
-   enum __DRIChromaSiting vertical_siting;
-};
-
 static int
 get_yuv_buffer_info(_EGLDisplay *disp,
                     struct ANativeWindowBuffer *buf,
@@ -404,6 +391,9 @@ droid_create_image_from_native_buffer(_EGLDisplay *disp,
    unsigned error;
 
    do {
+      if (!mapper_metadata_get_buffer_info(buf, &buf_info))
+         break;
+
       if (!cros_get_buffer_info(disp, buf, &buf_info))
          break;
 
