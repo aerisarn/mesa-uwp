@@ -57,9 +57,15 @@ __DRIimage *loader_dri_create_image(__DRIscreen *screen,
       if (!has_valid_modifier)
          return NULL;
 
-      return image->createImageWithModifiers(screen, width, height,
-                                             dri_format, modifiers,
-                                             modifiers_count, loaderPrivate);
+      if (image->base.version >= 19 && image->createImageWithModifiers2)
+         return image->createImageWithModifiers2(screen, width, height,
+                                                 dri_format, modifiers,
+                                                 modifiers_count, dri_usage,
+                                                 loaderPrivate);
+      else
+         return image->createImageWithModifiers(screen, width, height,
+                                                dri_format, modifiers,
+                                                modifiers_count, loaderPrivate);
    }
 
    /* No modifier given or fallback to the legacy createImage allowed */
