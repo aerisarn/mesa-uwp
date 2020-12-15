@@ -47,7 +47,7 @@ endif
 
 libloader = static_library(
   'loader',
-  ['loader.c', 'pci_id_driver_map.c'],
+  ['loader_dri_helper.c', 'loader.c', 'pci_id_driver_map.c'],
   c_args : loader_c_args,
   gnu_symbol_visibility : 'hidden',
   include_directories : [inc_include, inc_src, inc_util],

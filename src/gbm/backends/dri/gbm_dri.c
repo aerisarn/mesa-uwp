@@ -47,6 +47,7 @@
 #include "gbm_driint.h"
 
 #include "gbmint.h"
+#include "loader_dri_helper.h"
 #include "loader.h"
 #include "util/debug.h"
 #include "util/macros.h"
@@ -1151,8 +1152,7 @@ gbm_dri_bo_create(struct gbm_device *gbm,
    struct gbm_dri_device *dri = gbm_dri_device(gbm);
    struct gbm_dri_bo *bo;
    int dri_format;
-   unsigned dri_use = 0, i;
-   bool has_valid_modifier;
+   unsigned dri_use = 0;
 
    /* Callers of this may specify a modifier, or a dri usage, but not both. The
     * newer modifier interface deprecates the older usage flags.
@@ -1191,49 +1191,20 @@ gbm_dri_bo_create(struct gbm_device *gbm,
    /* Gallium drivers requires shared in order to get the handle/stride */
    dri_use |= __DRI_IMAGE_USE_SHARE;
 
-   if (modifiers) {
-      if (!dri->image || dri->image->base.version < 14 ||
-          !dri->image->createImageWithModifiers) {
-         errno = ENOSYS;
-         goto failed;
-      }
-
-      /* It's acceptable to create an image with INVALID modifier in the list,
-       * but it cannot be on the only modifier (since it will certainly fail
-       * later). While we could easily catch this after modifier creation, doing
-       * the check here is a convenient debug check likely pointing at whatever
-       * interface the client is using to build its modifier list.
-       */
-      has_valid_modifier = false;
-      for (i = 0; i < count; i++) {
-         if (modifiers[i] != DRM_FORMAT_MOD_INVALID) {
-            has_valid_modifier = true;
-            break;
-         }
-      }
-      if (!has_valid_modifier) {
-         errno = EINVAL;
-         goto failed;
-      }
-
-      bo->image =
-         dri->image->createImageWithModifiers(dri->screen,
-                                              width, height,
-                                              dri_format,
-                                              modifiers, count,
-                                              bo);
-
-      if (bo->image) {
-         /* The client passed in a list of invalid modifiers */
-         assert(gbm_dri_bo_get_modifier(&bo->base) != DRM_FORMAT_MOD_INVALID);
-      }
-   } else {
-      bo->image = dri->image->createImage(dri->screen, width, height,
-                                          dri_format, dri_use, bo);
+   if (modifiers && (dri->image->base.version < 14 ||
+       !dri->image->createImageWithModifiers)) {
+      errno = ENOSYS;
+      return NULL;
    }
 
+   bo->image = loader_dri_create_image(dri->screen, dri->image, width, height,
+                                       dri_format, dri_use, modifiers, count,
+                                       bo);
    if (bo->image == NULL)
       goto failed;
+
+   if (modifiers)
+      assert(gbm_dri_bo_get_modifier(&bo->base) != DRM_FORMAT_MOD_INVALID);
 
    dri->image->queryImage(bo->image, __DRI_IMAGE_ATTRIB_HANDLE,
                           &bo->base.handle.s32);
