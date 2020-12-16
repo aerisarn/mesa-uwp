@@ -900,6 +900,13 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->supports_48bit_addresses =
       device->gtt_size > (4ULL << 30 /* GiB */);
 
+   /* We currently only have the right bits for instructions in Gen12+. If the
+    * kernel ever starts supporting that feature on previous generations,
+    * we'll need to edit genxml prior to enabling here.
+    */
+   device->has_protected_contexts = device->info.ver >= 12 &&
+      intel_gem_supports_protected_context(fd);
+
    result = anv_physical_device_init_heaps(device, fd);
    if (result != VK_SUCCESS)
       goto fail_base;
