@@ -360,9 +360,6 @@ struct gl_shader_compiler_options
     */
    GLboolean OptimizeForAOS;
 
-   /** Lower UBO and SSBO access to intrinsics. */
-   GLboolean LowerBufferInterfaceBlocks;
-
    /** Clamp UBO and SSBO block indices so they don't go out-of-bounds. */
    GLboolean ClampBlockIndicesToArrayBounds;
 

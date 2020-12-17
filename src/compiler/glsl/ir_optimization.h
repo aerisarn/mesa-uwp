@@ -145,8 +145,6 @@ bool lower_packing_builtins(exec_list *instructions, int op_mask);
 void lower_shared_reference(const struct gl_constants *consts,
                             struct gl_shader_program *prog,
                             struct gl_linked_shader *shader);
-void lower_ubo_reference(struct gl_linked_shader *shader,
-                         bool clamp_block_indices, bool use_std430_as_default);
 void lower_packed_varyings(void *mem_ctx,
                            unsigned locations_used,
                            const uint8_t *components,
