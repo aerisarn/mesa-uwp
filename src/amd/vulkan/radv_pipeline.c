@@ -4042,14 +4042,16 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
    return 0;
 }
 
-static bool
-opt_vectorize_callback(const nir_instr *instr, void *_)
+static uint8_t
+opt_vectorize_callback(const nir_instr *instr, const void *_)
 {
-   assert(instr->type == nir_instr_type_alu);
-   nir_alu_instr *alu = nir_instr_as_alu(instr);
-   unsigned bit_size = alu->dest.dest.ssa.bit_size;
+   if (instr->type != nir_instr_type_alu)
+      return 0;
+
+   const nir_alu_instr *alu = nir_instr_as_alu(instr);
+   const unsigned bit_size = alu->dest.dest.ssa.bit_size;
    if (bit_size != 16)
-      return false;
+      return 1;
 
    switch (alu->op) {
    case nir_op_fadd:
@@ -4069,12 +4071,12 @@ opt_vectorize_callback(const nir_instr *instr, void *_)
    case nir_op_imax:
    case nir_op_umin:
    case nir_op_umax:
-      return true;
+      return 2;
    case nir_op_ishl: /* TODO: in NIR, these have 32bit shift operands */
    case nir_op_ishr: /* while Radeon needs 16bit operands when vectorized */
    case nir_op_ushr:
    default:
-      return false;
+      return 1;
    }
 }
 

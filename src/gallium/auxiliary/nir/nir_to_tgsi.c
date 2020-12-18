@@ -3067,11 +3067,11 @@ type_size(const struct glsl_type *type, bool bindless)
 /* Allow vectorizing of ALU instructions, but avoid vectorizing past what we
  * can handle for 64-bit values in TGSI.
  */
-static bool
-ntt_should_vectorize_instr(const nir_instr *instr, void *data)
+static uint8_t
+ntt_should_vectorize_instr(const nir_instr *instr, const void *data)
 {
    if (instr->type != nir_instr_type_alu)
-      return false;
+      return 0;
 
    nir_alu_instr *alu = nir_instr_as_alu(instr);
 
@@ -3085,7 +3085,7 @@ ntt_should_vectorize_instr(const nir_instr *instr, void *data)
        *
        * https://gitlab.freedesktop.org/virgl/virglrenderer/-/issues/195
        */
-      return false;
+      return 1;
 
    default:
       break;
@@ -3102,10 +3102,10 @@ ntt_should_vectorize_instr(const nir_instr *instr, void *data)
        * 64-bit instrs in the first place, I don't see much reason to care about
        * this.
        */
-      return false;
+      return 1;
    }
 
-   return true;
+   return 4;
 }
 
 static bool

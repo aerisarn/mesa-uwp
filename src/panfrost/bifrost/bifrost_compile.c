@@ -4276,12 +4276,12 @@ bi_lower_bit_size(const nir_instr *instr, UNUSED void *data)
  * (8-bit in Bifrost, 32-bit in NIR TODO - workaround!). Some conversions need
  * to be scalarized due to type size. */
 
-static bool
-bi_vectorize_filter(const nir_instr *instr, void *data)
+static uint8_t
+bi_vectorize_filter(const nir_instr *instr, const void *data)
 {
         /* Defaults work for everything else */
         if (instr->type != nir_instr_type_alu)
-                return true;
+                return 0;
 
         const nir_alu_instr *alu = nir_instr_as_alu(instr);
 
@@ -4293,10 +4293,17 @@ bi_vectorize_filter(const nir_instr *instr, void *data)
         case nir_op_ushr:
         case nir_op_f2i16:
         case nir_op_f2u16:
-                return false;
+                return 1;
         default:
-                return true;
+                break;
         }
+
+        /* Vectorized instructions cannot write more than 32-bit */
+        int dst_bit_size = nir_dest_bit_size(alu->dest.dest);
+        if (dst_bit_size == 16)
+                return 2;
+        else
+                return 1;
 }
 
 static bool

@@ -43,6 +43,18 @@ static bool si_alu_to_scalar_filter(const nir_instr *instr, const void *data)
    return true;
 }
 
+static uint8_t si_vectorize_callback(const nir_instr *instr, const void *data)
+{
+   if (instr->type != nir_instr_type_alu)
+      return 0;
+
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   if (nir_dest_bit_size(alu->dest.dest) == 16)
+      return 2;
+
+   return 1;
+}
+
 void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
 {
    bool progress;
@@ -114,7 +126,7 @@ void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
          NIR_PASS_V(nir, nir_opt_move_discards_to_top);
 
       if (sscreen->options.fp16)
-         NIR_PASS(progress, nir, nir_opt_vectorize, NULL, NULL);
+         NIR_PASS(progress, nir, nir_opt_vectorize, si_vectorize_callback, NULL);
    } while (progress);
 
    NIR_PASS_V(nir, nir_lower_var_copies);

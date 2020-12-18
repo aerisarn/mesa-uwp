@@ -517,7 +517,7 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
       if (nir->options->lower_int64_options)
          NIR_PASS(lowered_64bit_ops, nir, nir_lower_int64);
 
-      if (revectorize)
+      if (revectorize && !nir->options->vectorize_vec2_16bit)
          NIR_PASS_V(nir, nir_opt_vectorize, nullptr, nullptr);
 
       if (revectorize || lowered_64bit_ops)

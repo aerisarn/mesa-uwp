@@ -3228,6 +3228,15 @@ typedef enum {
  */
 typedef bool (*nir_instr_filter_cb)(const nir_instr *, const void *);
 
+/** A vectorization width callback
+ *
+ * Returns the maximum vectorization width per instruction.
+ * 0, if the instruction must not be modified.
+ *
+ * The vectorization width must be a power of 2.
+ */
+typedef uint8_t (*nir_vectorize_cb)(const nir_instr *, const void *);
+
 typedef struct nir_shader_compiler_options {
    bool lower_fdiv;
    bool lower_ffma16;
@@ -3455,7 +3464,11 @@ typedef struct nir_shader_compiler_options {
    nir_instr_filter_cb lower_to_scalar_filter;
 
    /**
-    * Whether nir_opt_vectorize should only create 16-bit 2D vectors.
+    * Disables potentially harmful algebraic transformations for architectures
+    * with SIMD-within-a-register semantics.
+    *
+    * Note, to actually vectorize 16bit instructions, use nir_opt_vectorize()
+    * with a suitable callback function.
     */
    bool vectorize_vec2_16bit;
 
@@ -5485,9 +5498,7 @@ bool nir_lower_undef_to_zero(nir_shader *shader);
 
 bool nir_opt_uniform_atomics(nir_shader *shader);
 
-typedef bool (*nir_opt_vectorize_cb)(const nir_instr *instr, void *data);
-
-bool nir_opt_vectorize(nir_shader *shader, nir_opt_vectorize_cb filter,
+bool nir_opt_vectorize(nir_shader *shader, nir_vectorize_cb filter,
                        void *data);
 
 bool nir_opt_conditional_discard(nir_shader *shader);
