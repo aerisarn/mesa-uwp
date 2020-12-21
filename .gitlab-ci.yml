@@ -463,7 +463,7 @@ fedora/x86_build:
   variables:
     GIT_STRATEGY: fetch
     KERNEL_URL: *kernel-rootfs-url
-    MESA_ROOTFS_TAG: &kernel-rootfs "2021-09-01-piglit"
+    MESA_ROOTFS_TAG: &kernel-rootfs "2021-09-11-etnaviv"
     DISTRIBUTION_TAG: &distribution-tag-arm "${MESA_ROOTFS_TAG}--${MESA_ARTIFACTS_TAG}--${MESA_TEMPLATES_COMMIT}"
   script:
     - .gitlab-ci/container/lava_build.sh
@@ -517,7 +517,7 @@ debian/arm_test:
     FDO_DISTRIBUTION_EXEC: 'env ARTIFACTS_PREFIX=https://${MINIO_HOST}/mesa-lava ARTIFACTS_SUFFIX=${MESA_ROOTFS_TAG}--${MESA_ARM_BUILD_TAG}--${MESA_TEMPLATES_COMMIT} CI_PROJECT_PATH=${CI_PROJECT_PATH} FDO_CI_CONCURRENT=${FDO_CI_CONCURRENT} FDO_UPSTREAM_REPO=${FDO_UPSTREAM_REPO} bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     FDO_DISTRIBUTION_TAG: "${MESA_IMAGE_TAG}--${MESA_ROOTFS_TAG}--${MESA_ARM_BUILD_TAG}--${MESA_TEMPLATES_COMMIT}"
     MESA_ARM_BUILD_TAG: *debian-arm_build
-    MESA_IMAGE_TAG: &debian-arm_test "2021-09-01-piglit"
+    MESA_IMAGE_TAG: &debian-arm_test "2021-09-11-etnaviv"
     MESA_ROOTFS_TAG: *kernel-rootfs
 
 .use-debian/arm_test:

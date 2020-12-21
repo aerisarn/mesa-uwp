@@ -39,7 +39,9 @@ elif [[ "$DEBIAN_ARCH" = "armhf" ]]; then
     GCC_ARCH="arm-linux-gnueabihf"
     KERNEL_ARCH="arm"
     DEFCONFIG="arch/arm/configs/multi_v7_defconfig"
-    DEVICE_TREES="arch/arm/boot/dts/rk3288-veyron-jaq.dtb arch/arm/boot/dts/sun8i-h3-libretech-all-h3-cc.dtb"
+    DEVICE_TREES="arch/arm/boot/dts/rk3288-veyron-jaq.dtb"
+    DEVICE_TREES+=" arch/arm/boot/dts/sun8i-h3-libretech-all-h3-cc.dtb"
+    DEVICE_TREES+=" arch/arm/boot/dts/imx6q-cubox-i.dtb"
     KERNEL_IMAGE_NAME="zImage"
     . .gitlab-ci/container/create-cross-file.sh armhf
 else
