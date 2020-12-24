@@ -1545,6 +1545,60 @@ slow_clear:
 static void render_pass_resolve(struct rendering_state *state)
 {
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+
+   if (subpass->depth_stencil_attachment && subpass->ds_resolve_attachment) {
+      struct lvp_subpass_attachment src_att = *subpass->depth_stencil_attachment;
+      struct lvp_subpass_attachment dst_att = *subpass->ds_resolve_attachment;
+      if (dst_att.attachment != VK_ATTACHMENT_UNUSED) {
+         int num_blits = 1;
+         if (subpass->depth_resolve_mode != subpass->stencil_resolve_mode)
+            num_blits = 2;
+
+         for (unsigned i = 0; i < num_blits; i++) {
+
+            if (i == 0 && subpass->depth_resolve_mode == VK_RESOLVE_MODE_NONE)
+               continue;
+
+            if (i == 1 && subpass->stencil_resolve_mode == VK_RESOLVE_MODE_NONE)
+               continue;
+
+            struct lvp_image_view *src_imgv = get_attachment(state, src_att.attachment);
+            struct lvp_image_view *dst_imgv = get_attachment(state, dst_att.attachment);
+
+            struct pipe_blit_info info;
+            memset(&info, 0, sizeof(info));
+
+            info.src.resource = src_imgv->image->bo;
+            info.dst.resource = dst_imgv->image->bo;
+            info.src.format = src_imgv->pformat;
+            info.dst.format = dst_imgv->pformat;
+            info.filter = PIPE_TEX_FILTER_NEAREST;
+
+            if (num_blits == 1)
+               info.mask = PIPE_MASK_ZS;
+            else if (i == 0)
+               info.mask = PIPE_MASK_Z;
+            else
+               info.mask = PIPE_MASK_S;
+
+            if (i == 0 && subpass->depth_resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
+               info.sample0_only = true;
+            if (i == 1 && subpass->stencil_resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
+               info.sample0_only = true;
+
+            info.src.box.x = state->render_area.offset.x;
+            info.src.box.y = state->render_area.offset.y;
+            info.src.box.width = state->render_area.extent.width;
+            info.src.box.height = state->render_area.extent.height;
+            info.src.box.depth = state->vk_framebuffer->layers;
+
+            info.dst.box = info.src.box;
+
+            state->pctx->blit(state->pctx, &info);
+         }
+      }
+   }
+
    if (!subpass->has_color_resolve)
       return;
    for (uint32_t i = 0; i < subpass->color_count; i++) {

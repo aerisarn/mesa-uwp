@@ -95,6 +95,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_create_renderpass2                = true,
    .KHR_copy_commands2                    = true,
    .KHR_dedicated_allocation              = true,
+   .KHR_depth_stencil_resolve             = true,
    .KHR_descriptor_update_template        = true,
    .KHR_device_group                      = true,
    .KHR_draw_indirect_count               = true,
@@ -1020,6 +1021,15 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
          VkPhysicalDeviceMultiDrawPropertiesEXT *props = (VkPhysicalDeviceMultiDrawPropertiesEXT *)ext;
          props->maxMultiDrawCount = 2048;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
+         VkPhysicalDeviceDepthStencilResolveProperties *properties =
+            (VkPhysicalDeviceDepthStencilResolveProperties *)ext;
+         properties->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT | VK_RESOLVE_MODE_AVERAGE_BIT;
+         properties->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+         properties->independentResolveNone = false;
+         properties->independentResolve = false;
          break;
       }
       default:

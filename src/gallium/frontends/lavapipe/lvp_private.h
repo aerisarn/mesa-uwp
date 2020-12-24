@@ -290,6 +290,8 @@ struct lvp_subpass {
    struct lvp_subpass_attachment *              resolve_attachments;
    struct lvp_subpass_attachment *              depth_stencil_attachment;
    struct lvp_subpass_attachment *              ds_resolve_attachment;
+   VkResolveModeFlagBits                        depth_resolve_mode;
+   VkResolveModeFlagBits                        stencil_resolve_mode;
 
    /** Subpass has at least one color resolve attachment */
    bool                                         has_color_resolve;

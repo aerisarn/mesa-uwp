@@ -448,7 +448,7 @@ Vulkan 1.2 -- all DONE: anv, vn
   VK_KHR_8bit_storage                                   DONE (anv/gen8+, lvp, radv, vn)
   VK_KHR_buffer_device_address                          DONE (anv/gen8+, lvp, radv, vn)
   VK_KHR_create_renderpass2                             DONE (anv, lvp, radv, tu, vn)
-  VK_KHR_depth_stencil_resolve                          DONE (anv, radv, tu, vn)
+  VK_KHR_depth_stencil_resolve                          DONE (anv, lvp, radv, tu, vn)
   VK_KHR_draw_indirect_count                            DONE (anv, lvp, radv, tu, vn)
   VK_KHR_driver_properties                              DONE (anv, lvp, radv, vn)
   VK_KHR_image_format_list                              DONE (anv, lvp, radv, tu, v3dv, vn)
