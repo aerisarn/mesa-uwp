@@ -1502,14 +1502,17 @@ static void util_blitter_clear_custom(struct blitter_context *blitter,
    sr.ref_value[0] = stencil & 0xff;
    pipe->set_stencil_ref(pipe, sr);
 
-   bind_fs_write_all_cbufs(ctx);
-
    union blitter_attrib attrib;
    memcpy(attrib.color, color->ui, sizeof(color->ui));
 
    bool pass_generic = (clear_buffers & PIPE_CLEAR_COLOR) != 0;
    enum blitter_attrib_type type = pass_generic ? UTIL_BLITTER_ATTRIB_COLOR :
                                                   UTIL_BLITTER_ATTRIB_NONE;
+
+   if (pass_generic)
+      bind_fs_write_all_cbufs(ctx);
+   else
+      bind_fs_empty(ctx);
 
    if (num_layers > 1 && ctx->has_layered) {
       blitter_get_vs_func get_vs = get_vs_layered;
