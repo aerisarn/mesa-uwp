@@ -941,8 +941,8 @@ zink_set_constant_buffer(struct pipe_context *pctx,
    if (cb) {
       struct pipe_resource *buffer = cb->buffer;
       unsigned offset = cb->buffer_offset;
+      struct zink_screen *screen = zink_screen(pctx->screen);
       if (cb->user_buffer) {
-         struct zink_screen *screen = zink_screen(pctx->screen);
          u_upload_data(ctx->base.const_uploader, 0, cb->buffer_size,
                        screen->info.props.limits.minUniformBufferOffsetAlignment,
                        cb->user_buffer, &offset, &buffer);
@@ -958,7 +958,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
          zink_resource_buffer_barrier(ctx, NULL, new_res, VK_ACCESS_UNIFORM_READ_BIT,
                                       zink_pipeline_flags_from_stage(zink_shader_stage(shader)));
       }
-      update |= (index && ctx->ubos[shader][index].buffer_offset != offset) ||
+      update |= ((index || screen->lazy_descriptors) && ctx->ubos[shader][index].buffer_offset != offset) ||
                 !!res != !!buffer || (res && res->obj->buffer != new_res->obj->buffer) ||
                 ctx->ubos[shader][index].buffer_size != cb->buffer_size;
 

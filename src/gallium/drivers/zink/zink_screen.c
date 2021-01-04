@@ -1169,7 +1169,22 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
 void
 zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback)
 {
-   {
+   if (screen->info.have_KHR_descriptor_update_template &&
+       !fallback &&
+       !getenv("ZINK_CACHE_DESCRIPTORS")) {
+#define LAZY(FUNC) screen->FUNC = zink_##FUNC##_lazy
+      LAZY(descriptor_program_init);
+      LAZY(descriptor_program_deinit);
+      LAZY(context_invalidate_descriptor_state);
+      LAZY(batch_descriptor_init);
+      LAZY(batch_descriptor_reset);
+      LAZY(batch_descriptor_deinit);
+      LAZY(descriptors_init);
+      LAZY(descriptors_deinit);
+      LAZY(descriptors_update);
+      screen->lazy_descriptors = true;
+#undef LAZY
+   } else {
 #define DEFAULT(FUNC) screen->FUNC = zink_##FUNC
       DEFAULT(descriptor_program_init);
       DEFAULT(descriptor_program_deinit);
@@ -1180,6 +1195,7 @@ zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback)
       DEFAULT(descriptors_init);
       DEFAULT(descriptors_deinit);
       DEFAULT(descriptors_update);
+      screen->lazy_descriptors = false;
 #undef DEFAULT
    }
 }

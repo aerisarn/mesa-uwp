@@ -143,6 +143,7 @@ struct zink_screen {
    void (*batch_descriptor_deinit)(struct zink_screen *screen, struct zink_batch_state *bs);
    bool (*descriptors_init)(struct zink_context *ctx);
    void (*descriptors_deinit)(struct zink_context *ctx);
+   bool lazy_descriptors;
 
    PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;
    PFN_vkCmdBeginConditionalRenderingEXT vk_CmdBeginConditionalRenderingEXT;

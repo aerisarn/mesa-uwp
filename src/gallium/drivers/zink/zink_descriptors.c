@@ -276,7 +276,20 @@ descriptor_layout_create(struct zink_screen *screen, enum zink_descriptor_type t
    VkDescriptorSetLayoutCreateInfo dcslci = {};
    dcslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
    dcslci.pNext = NULL;
-   dcslci.flags = 0;
+   VkDescriptorSetLayoutBindingFlagsCreateInfo fci = {};
+   VkDescriptorBindingFlags flags[num_bindings];
+   if (screen->lazy_descriptors) {
+      /* FIXME */
+      dcslci.pNext = &fci;
+      if (t == 1)
+         dcslci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+      fci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+      fci.bindingCount = num_bindings;
+      fci.pBindingFlags = flags;
+      for (unsigned i = 0; i < num_bindings; i++) {
+         flags[i] = 0;
+      }
+   }
    dcslci.bindingCount = num_bindings;
    dcslci.pBindings = bindings;
    VkDescriptorSetLayoutSupport supp;
