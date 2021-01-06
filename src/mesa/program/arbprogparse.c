@@ -38,7 +38,6 @@ The instructions we emit will use six kinds of source registers:
   PROGRAM_INPUT      - input registers
   PROGRAM_TEMPORARY  - temp registers
   PROGRAM_ADDRESS    - address/indirect register
-  PROGRAM_SAMPLER    - texture sampler
   PROGRAM_CONSTANT   - indexes into program->Parameters, a known constant/literal
   PROGRAM_STATE_VAR  - indexes into program->Parameters, and may actually be:
                        + a state variable, like "state.fog.color", or
