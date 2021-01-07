@@ -181,8 +181,6 @@ files_libgallium = files(
   'tgsi/tgsi_dynamic_indexing.c',
   'tgsi/tgsi_exec.c',
   'tgsi/tgsi_exec.h',
-  'tgsi/tgsi_emulate.c',
-  'tgsi/tgsi_emulate.h',
   'tgsi/tgsi_from_mesa.c',
   'tgsi/tgsi_from_mesa.h',
   'tgsi/tgsi_info.c',
