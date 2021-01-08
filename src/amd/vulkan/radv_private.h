@@ -304,7 +304,11 @@ struct radv_physical_device {
    unsigned heaps;
 
 #ifndef _WIN32
+   int available_nodes;
    drmPciBusInfo bus_info;
+
+   dev_t primary_devid;
+   dev_t render_devid;
 #endif
 };
 

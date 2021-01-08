@@ -533,7 +533,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_memory_budget                                  DONE (anv, radv, tu)
   VK_EXT_memory_priority                                DONE (radv)
   VK_EXT_pci_bus_info                                   DONE (anv, radv)
-  VK_EXT_physical_device_drm                            DONE (anv)
+  VK_EXT_physical_device_drm                            DONE (anv, radv)
   VK_EXT_pipeline_creation_cache_control                DONE (anv, radv)
   VK_EXT_pipeline_creation_feedback                     DONE (anv, radv)
   VK_EXT_post_depth_coverage                            DONE (anv/gfx10+, lvp, radv)
