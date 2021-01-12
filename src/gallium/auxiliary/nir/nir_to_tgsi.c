@@ -384,6 +384,27 @@ ntt_setup_inputs(struct ntt_compile *c)
    }
 }
 
+static enum tgsi_texture_type
+tgsi_target_from_sampler_dim(enum glsl_sampler_dim dim, bool is_array)
+{
+   switch (dim) {
+   case GLSL_SAMPLER_DIM_1D:
+      return is_array ? TGSI_TEXTURE_1D_ARRAY : TGSI_TEXTURE_1D;
+   case GLSL_SAMPLER_DIM_2D:
+      return is_array ? TGSI_TEXTURE_2D_ARRAY : TGSI_TEXTURE_2D;
+   case GLSL_SAMPLER_DIM_3D:
+      return TGSI_TEXTURE_3D;
+   case GLSL_SAMPLER_DIM_CUBE:
+      return is_array ? TGSI_TEXTURE_CUBE_ARRAY : TGSI_TEXTURE_CUBE;
+   case GLSL_SAMPLER_DIM_RECT:
+      return TGSI_TEXTURE_RECT;
+   case GLSL_SAMPLER_DIM_BUF:
+      return TGSI_TEXTURE_BUFFER;
+   default:
+      unreachable("unknown sampler dim");
+   }
+}
+
 static void
 ntt_setup_uniforms(struct ntt_compile *c)
 {
@@ -392,11 +413,15 @@ ntt_setup_uniforms(struct ntt_compile *c)
 
    nir_foreach_uniform_variable(var, c->s) {
       if (glsl_type_is_image(var->type)) {
+         enum tgsi_texture_type tex_type =
+             tgsi_target_from_sampler_dim(glsl_get_sampler_dim(var->type),
+                                          glsl_sampler_type_is_array(var->type));
+
          c->images[var->data.binding] = ureg_DECL_image(c->ureg,
                                                         var->data.binding,
-                                                        TGSI_TEXTURE_2D,
+                                                        tex_type,
                                                         var->data.image.format,
-                                                        !var->data.read_only,
+                                                        !(var->data.access & ACCESS_NON_WRITEABLE),
                                                         false);
       } else {
          unsigned size;
@@ -1379,27 +1404,6 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
                     qualifier,
                     TGSI_TEXTURE_BUFFER,
                     0 /* format: unused */);
-}
-
-static enum tgsi_texture_type
-tgsi_target_from_sampler_dim(enum glsl_sampler_dim dim, bool is_array)
-{
-   switch (dim) {
-   case GLSL_SAMPLER_DIM_1D:
-      return is_array ? TGSI_TEXTURE_1D_ARRAY : TGSI_TEXTURE_1D;
-   case GLSL_SAMPLER_DIM_2D:
-      return is_array ? TGSI_TEXTURE_2D_ARRAY : TGSI_TEXTURE_2D;
-   case GLSL_SAMPLER_DIM_3D:
-      return TGSI_TEXTURE_3D;
-   case GLSL_SAMPLER_DIM_CUBE:
-      return is_array ? TGSI_TEXTURE_CUBE_ARRAY : TGSI_TEXTURE_CUBE;
-   case GLSL_SAMPLER_DIM_RECT:
-      return TGSI_TEXTURE_RECT;
-   case GLSL_SAMPLER_DIM_BUF:
-      return TGSI_TEXTURE_BUFFER;
-   default:
-      unreachable("unknown sampler dim");
-   }
 }
 
 static void
