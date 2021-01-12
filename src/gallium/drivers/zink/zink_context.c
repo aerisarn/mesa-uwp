@@ -1016,6 +1016,7 @@ get_render_pass(struct zink_context *ctx)
    const struct pipe_framebuffer_state *fb = &ctx->fb_state;
    struct zink_render_pass_state state = { 0 };
    uint32_t clears = 0;
+   state.swapchain_init = ctx->new_swapchain;
 
    for (int i = 0; i < fb->nr_cbufs; i++) {
       struct pipe_surface *surf = fb->cbufs[i];
@@ -1025,6 +1026,7 @@ get_render_pass(struct zink_context *ctx)
                                                        VK_SAMPLE_COUNT_1_BIT;
          state.rts[i].clear_color = zink_fb_clear_enabled(ctx, i) && !zink_fb_clear_first_needs_explicit(&ctx->fb_clears[i]);
          clears |= !!state.rts[i].clear_color ? BITFIELD_BIT(i) : 0;
+         state.rts[i].swapchain = surf->texture->bind & PIPE_BIND_SCANOUT;
       } else {
          state.rts[i].format = VK_FORMAT_R8_UINT;
          state.rts[i].samples = MAX2(fb->samples, 1);
@@ -1213,6 +1215,7 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 
    vkCmdBeginRenderPass(batch->state->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
    batch->in_rp = true;
+   ctx->new_swapchain = false;
 
    if (ctx->render_condition.query)
       zink_start_conditional_render(ctx);
@@ -1299,11 +1302,14 @@ rebind_fb_surface(struct zink_context *ctx, struct pipe_surface **surf, struct z
 }
 
 static bool
-rebind_fb_state(struct zink_context *ctx, struct zink_resource *match_res)
+rebind_fb_state(struct zink_context *ctx, struct zink_resource *match_res, bool from_set_fb)
 {
    bool rebind = false;
-   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++)
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       rebind |= rebind_fb_surface(ctx, &ctx->fb_state.cbufs[i], match_res);
+      if (from_set_fb && ctx->fb_state.cbufs[i] && ctx->fb_state.cbufs[i]->texture->bind & PIPE_BIND_SCANOUT)
+         ctx->new_swapchain = true;
+   }
    rebind |= rebind_fb_surface(ctx, &ctx->fb_state.zsbuf, match_res);
    return rebind;
 }
@@ -1326,7 +1332,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    }
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
-   rebind_fb_state(ctx, NULL);
+   rebind_fb_state(ctx, NULL, true);
    /* get_framebuffer adds a ref if the fb is reused or created;
     * always do get_framebuffer first to avoid deleting the same fb
     * we're about to use
@@ -2373,7 +2379,7 @@ zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res)
       zink_rebind_surface(ctx, &ctx->framebuffer->surfaces[i]);
       zink_batch_no_rp(ctx);
    }
-   if (rebind_fb_state(ctx, res))
+   if (rebind_fb_state(ctx, res, false))
       zink_batch_no_rp(ctx);
 }
 

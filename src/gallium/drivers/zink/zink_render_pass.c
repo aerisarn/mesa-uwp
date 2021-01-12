@@ -42,7 +42,10 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       attachments[i].flags = 0;
       attachments[i].format = rt->format;
       attachments[i].samples = rt->samples;
-      attachments[i].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachments[i].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR :
+                                                state->swapchain_init && rt->swapchain ?
+                                                VK_ATTACHMENT_LOAD_OP_DONT_CARE :
+                                                VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

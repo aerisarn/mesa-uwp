@@ -178,6 +178,7 @@ struct zink_context {
    bool last_vertex_stage_dirty;
 
    struct hash_table *render_pass_cache;
+   bool new_swapchain;
 
    struct primconvert_context *primconvert;
 
