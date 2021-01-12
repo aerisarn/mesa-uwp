@@ -881,6 +881,9 @@ zink_set_constant_buffer(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    bool update = false;
 
+   struct zink_resource *res = zink_resource(ctx->ubos[shader][index].buffer);
+   if (res)
+      res->bind_count[shader == PIPE_SHADER_COMPUTE]--;
    if (cb) {
       struct pipe_resource *buffer = cb->buffer;
       unsigned offset = cb->buffer_offset;
@@ -890,11 +893,11 @@ zink_set_constant_buffer(struct pipe_context *pctx,
                        screen->info.props.limits.minUniformBufferOffsetAlignment,
                        cb->user_buffer, &offset, &buffer);
       }
-      struct zink_resource *res = zink_resource(ctx->ubos[shader][index].buffer);
       struct zink_resource *new_res = zink_resource(buffer);
       if (new_res) {
          new_res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_UBO);
          new_res->bind_stages |= 1 << shader;
+         new_res->bind_count[shader == PIPE_SHADER_COMPUTE]++;
       }
       update |= (index && ctx->ubos[shader][index].buffer_offset != offset) ||
                 !!res != !!buffer || (res && res->obj->buffer != new_res->obj->buffer) ||
@@ -941,15 +944,25 @@ zink_set_shader_buffers(struct pipe_context *pctx,
    bool update = false;
 
    unsigned modified_bits = u_bit_consecutive(start_slot, count);
+   unsigned old_writable_mask = ctx->writable_ssbos[p_stage];
    ctx->writable_ssbos[p_stage] &= ~modified_bits;
    ctx->writable_ssbos[p_stage] |= writable_bitmask << start_slot;
 
    for (unsigned i = 0; i < count; i++) {
       struct pipe_shader_buffer *ssbo = &ctx->ssbos[p_stage][start_slot + i];
+      if (ssbo->buffer) {
+         struct zink_resource *res = zink_resource(ssbo->buffer);
+         res->bind_count[p_stage == PIPE_SHADER_COMPUTE]--;
+         if (old_writable_mask & BITFIELD64_BIT(start_slot + i))
+            res->write_bind_count[p_stage == PIPE_SHADER_COMPUTE]--;
+      }
       if (buffers && buffers[i].buffer) {
          struct zink_resource *res = zink_resource(buffers[i].buffer);
          res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SSBO);
          res->bind_stages |= 1 << p_stage;
+         res->bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
+         if (ctx->writable_ssbos[p_stage] & BITFIELD64_BIT(start_slot + i))
+            res->write_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
          pipe_resource_reference(&ssbo->buffer, &res->base.b);
          ssbo->buffer_offset = buffers[i].buffer_offset;
          ssbo->buffer_size = MIN2(buffers[i].buffer_size, res->obj->size - ssbo->buffer_offset);
@@ -998,6 +1011,14 @@ zink_set_shader_images(struct pipe_context *pctx,
    unsigned max_slot = 0;
    for (unsigned i = 0; i < count; i++) {
       struct zink_image_view *image_view = &ctx->image_views[p_stage][start_slot + i];
+      if (image_view->base.resource) {
+         struct zink_resource *res = zink_resource(image_view->base.resource);
+         res->bind_count[p_stage == PIPE_SHADER_COMPUTE]--;
+         if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
+            res->write_bind_count[p_stage == PIPE_SHADER_COMPUTE]--;
+         if (image_view->base.resource->target != PIPE_BUFFER)
+            res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]--;
+      }
       if (images && images[i].resource) {
          util_dynarray_init(&image_view->desc_set_refs.refs, NULL);
          struct zink_resource *res = zink_resource(images[i].resource);
@@ -1007,7 +1028,10 @@ zink_set_shader_images(struct pipe_context *pctx,
          }
          res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_IMAGE);
          res->bind_stages |= 1 << p_stage;
+         res->bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
          util_copy_image_view(&image_view->base, images + i);
+         if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
+            zink_resource(image_view->base.resource)->write_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
          if (images[i].resource->target == PIPE_BUFFER) {
             image_view->buffer_view = get_buffer_view(ctx, res, images[i].format, images[i].u.buf.offset, images[i].u.buf.size);
             assert(image_view->buffer_view);
@@ -1022,6 +1046,7 @@ zink_set_shader_images(struct pipe_context *pctx,
             tmpl.u.tex.last_layer = images[i].u.tex.last_layer;
             image_view->surface = zink_surface(pctx->create_surface(pctx, &res->base.b, &tmpl));
             assert(image_view->surface);
+            res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
          }
          update = true;
       } else if (image_view->base.resource) {
@@ -1052,6 +1077,18 @@ sampler_view_buffer_clear(struct zink_context *ctx, struct zink_sampler_view *sa
 }
 
 static void
+unbind_samplerview(struct zink_context *ctx, enum pipe_shader_type stage, unsigned slot)
+{
+   struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[stage][slot]);
+   if (!sv || !sv->base.texture)
+      return;
+   struct zink_resource *res = zink_resource(sv->base.texture);
+   res->bind_count[stage == PIPE_SHADER_COMPUTE]--;
+   if (!res->obj->is_buffer)
+      res->sampler_binds[stage] &= ~BITFIELD_BIT(slot);
+}
+
+static void
 zink_set_sampler_views(struct pipe_context *pctx,
                        enum pipe_shader_type shader_type,
                        unsigned start_slot,
@@ -1067,6 +1104,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
       struct pipe_sampler_view *pview = views ? views[i] : NULL;
       struct zink_sampler_view *a = zink_sampler_view(ctx->sampler_views[shader_type][start_slot + i]);
       struct zink_sampler_view *b = zink_sampler_view(pview);
+      unbind_samplerview(ctx, shader_type, start_slot + i);
       if (b && b->base.texture) {
          struct zink_resource *res = zink_resource(b->base.texture);
          if (res->base.b.target == PIPE_BUFFER &&
@@ -1088,7 +1126,9 @@ zink_set_sampler_views(struct pipe_context *pctx,
                 zink_rebind_surface(ctx, &psurf);
                 b->image_view = zink_surface(psurf);
              }
+             res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
          }
+         res->bind_count[shader_type == PIPE_SHADER_COMPUTE]++;
          res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
          res->bind_stages |= 1 << shader_type;
       }
@@ -1096,11 +1136,13 @@ zink_set_sampler_views(struct pipe_context *pctx,
       uint32_t hash_a = zink_get_sampler_view_hash(ctx, a, is_buffer);
       uint32_t hash_b = zink_get_sampler_view_hash(ctx, b, is_buffer);
       update |= !!a != !!b || hash_a != hash_b;
+
       pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], pview);
       update_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot + i);
    }
    for (; i < num_views + unbind_num_trailing_slots; ++i) {
       update |= !!ctx->sampler_views[shader_type][start_slot + i];
+      unbind_samplerview(ctx, shader_type, start_slot + i);
       pipe_sampler_view_reference(
          &ctx->sampler_views[shader_type][start_slot + i],
          NULL);
@@ -2638,8 +2680,10 @@ static void
 rebind_image(struct zink_context *ctx, struct zink_resource *res)
 {
     zink_rebind_framebuffer(ctx, res);
+    if (!res->bind_count[0] && !res->bind_count[1])
+       return;
     for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
-       if (res->bind_history & BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)) {
+       if (res->sampler_binds[i]) {
           for (unsigned j = 0; j < ctx->num_sampler_views[i]; j++) {
              struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[i][j]);
              if (sv && sv->base.texture == &res->base.b) {
@@ -2651,6 +2695,8 @@ rebind_image(struct zink_context *ctx, struct zink_resource *res)
              }
           }
        }
+       if (!res->image_bind_count[i == PIPE_SHADER_COMPUTE])
+          continue;
        for (unsigned j = 0; j < ctx->di.num_images[i]; j++) {
           if (zink_resource(ctx->image_views[i][j].base.resource) == res) {
              zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE);

@@ -98,8 +98,12 @@ struct zink_resource {
          VkImageLayout layout;
          VkImageAspectFlags aspect;
          bool optimal_tiling;
+         uint32_t sampler_binds[PIPE_SHADER_TYPES];
+         uint16_t image_bind_count[2]; //gfx, compute
       };
    };
+   uint16_t write_bind_count[2]; //gfx, compute
+   uint16_t bind_count[2]; //gfx, compute
 
    struct sw_displaytarget *dt;
    unsigned dt_stride;
