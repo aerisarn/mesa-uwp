@@ -569,6 +569,7 @@
       <value name="B32" value="7" />
     </field>
     <field name="BTD Mode" start="191" end="191" type="uint" />
+    <field name="Preferred SLM Allocation Size" start="192" end="195" type="uint" />
   </struct>
   <struct name="LUMA_FILTER_COEFFICIENTS_ARRAY" length="4">
     <field name="Table 0X Filter Coefficient[[n],0]" start="0" end="7" type="s1.6" />
