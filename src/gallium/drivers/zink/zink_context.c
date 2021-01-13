@@ -2525,11 +2525,9 @@ zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res)
       zink_batch_no_rp(ctx);
 }
 
-void
-zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
+static void
+rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
 {
-   assert(res->base.b.target == PIPE_BUFFER);
-
    if (res->bind_history & ZINK_RESOURCE_USAGE_STREAMOUT)
       ctx->dirty_so_targets = true;
    /* force counter buffer reset */
@@ -2634,6 +2632,41 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
       return false;
    }
    return true;
+}
+
+static void
+rebind_image(struct zink_context *ctx, struct zink_resource *res)
+{
+    zink_rebind_framebuffer(ctx, res);
+    for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
+       if (res->bind_history & BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)) {
+          for (unsigned j = 0; j < ctx->num_sampler_views[i]; j++) {
+             struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[i][j]);
+             if (sv && sv->base.texture == &res->base.b) {
+                 struct pipe_surface *psurf = &sv->image_view->base;
+                 zink_rebind_surface(ctx, &psurf);
+                 sv->image_view = zink_surface(psurf);
+                 zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
+                 update_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, j);
+             }
+          }
+       }
+       for (unsigned j = 0; j < ctx->di.num_images[i]; j++) {
+          if (zink_resource(ctx->image_views[i][j].base.resource) == res) {
+             zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE);
+             update_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE, j);
+          }
+       }
+    }
+}
+
+void
+zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
+{
+   if (res->base.b.target == PIPE_BUFFER)
+      rebind_buffer(ctx, res);
+   else
+      rebind_image(ctx, res);
 }
 
 static void

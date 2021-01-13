@@ -1232,35 +1232,7 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
       zink_resource_object_reference(screen, &old_obj, NULL);
    }
 
-   if (res->bind_history & BITFIELD64_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)) {
-      for (unsigned shader = 0; shader < PIPE_SHADER_TYPES; shader++) {
-         if (res->bind_stages & (1 << shader)) {
-            for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPE_IMAGE; i++) {
-               if (res->bind_history & BITFIELD64_BIT(i))
-                  zink_context_invalidate_descriptor_state(ctx, shader, i);
-            }
-         }
-      }
-   }
-   if (res->obj->is_buffer)
-      zink_resource_rebind(ctx, res);
-   else {
-      zink_rebind_framebuffer(ctx, res);
-      /* this will be cleaned up in future commits */
-      if (res->bind_history & BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)) {
-         for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
-            for (unsigned j = 0; j < ctx->num_sampler_views[i]; j++) {
-               struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[i][j]);
-               if (sv && sv->base.texture == &res->base.b) {
-                   struct pipe_surface *psurf = &sv->image_view->base;
-                   zink_rebind_surface(ctx, &psurf);
-                   sv->image_view = zink_surface(psurf);
-                   zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
-               }
-            }
-         }
-      }
-   }
+   zink_resource_rebind(ctx, res);
 
    return true;
 }
