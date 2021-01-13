@@ -289,8 +289,9 @@ if with_tests
       env: ['HOME=' + join_paths(meson.current_source_dir(),
                                  'tests', 'drirc_home'),
             'DRIRC_CONFIGDIR=' + join_paths(meson.current_source_dir(),
-                                            'tests', 'drirc_configdir')]
-        )
+                                            'tests', 'drirc_configdir')],
+      protocol : gtest_test_protocol,
+    )
   endif
 
   test(
@@ -367,6 +368,7 @@ if with_tests
         dependencies : [idep_mesautil, idep_gtest],
       ),
       suite : ['util'],
+      protocol : gtest_test_protocol,
     )
   endforeach
 
@@ -403,6 +405,7 @@ if with_tests
       dependencies : [idep_mesautil, idep_gtest],
     ),
     suite : ['util'],
+    protocol : gtest_test_protocol,
   )
 
   test(
@@ -414,6 +417,7 @@ if with_tests
       include_directories : [inc_include, inc_src],
     ),
     suite : ['util'],
+    protocol : gtest_test_protocol,
   )
 
   subdir('tests/cache')

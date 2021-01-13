@@ -183,5 +183,6 @@ if with_tests
       dependencies : [idep_gtest, idep_nir, idep_mesautil],
     ),
     suite : ['intel'],
+    protocol : gtest_test_protocol,
   )
 endif

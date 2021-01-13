@@ -51,6 +51,7 @@ test(
     dependencies : [idep_mesautil, idep_gtest],
   ),
   suite : ['st_mesa'],
+  protocol : gtest_test_protocol,
 )
 
 test(
@@ -65,4 +66,5 @@ test(
     dependencies : [idep_mesautil, idep_gtest],
   ),
   suite : ['st_mesa'],
+  protocol : gtest_test_protocol,
 )

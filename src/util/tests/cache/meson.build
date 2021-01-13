@@ -27,7 +27,7 @@ if with_shader_cache
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src],
-      dependencies : [dep_clock, dep_thread, idep_gtest, idep_mesautil],
+      dependencies : [dep_clock, dep_thread, idep_mesautil],
     ),
     suite : ['util'],
   )

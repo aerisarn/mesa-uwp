@@ -28,4 +28,5 @@ test(
   ),
   suite : ['util'],
   timeout: 60,
+  protocol : gtest_test_protocol,
 )

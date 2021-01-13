@@ -30,6 +30,13 @@ project(
   default_options : ['buildtype=debugoptimized', 'b_ndebug=if-release', 'c_std=c11', 'cpp_std=c++14']
 )
 
+# For meson >= 0.55.0, meson can inject some extra arguments to get richer
+# results from gtest based tests.
+gtest_test_protocol = 'exitcode'
+if meson.version().version_compare('>= 0.55.0')
+  gtest_test_protocol = 'gtest'
+endif
+
 cc = meson.get_compiler('c')
 cpp = meson.get_compiler('cpp')
 
