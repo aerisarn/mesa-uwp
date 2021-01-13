@@ -362,7 +362,7 @@ preprocess_nir(nir_shader *nir,
               nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,
               NULL);
 
-   NIR_PASS_V(nir, nir_propagate_invariant);
+   NIR_PASS_V(nir, nir_propagate_invariant, false);
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               nir_shader_get_entrypoint(nir), true, false);
 

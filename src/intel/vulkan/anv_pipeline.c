@@ -248,7 +248,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
               nir_var_shader_in | nir_var_shader_out | nir_var_system_value,
               NULL);
 
-   NIR_PASS_V(nir, nir_propagate_invariant);
+   NIR_PASS_V(nir, nir_propagate_invariant, false);
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               nir_shader_get_entrypoint(nir), true, false);
 

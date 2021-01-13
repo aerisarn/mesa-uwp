@@ -241,28 +241,6 @@ radv_compiler_debug(void *private_data, enum radv_compiler_debug_level level, co
                    &debug_data->module->base, 0, 0, "radv", message);
 }
 
-static void
-mark_geom_invariant(nir_shader *nir)
-{
-   nir_foreach_shader_out_variable(var, nir)
-   {
-      switch (var->data.location) {
-      case VARYING_SLOT_POS:
-      case VARYING_SLOT_PSIZ:
-      case VARYING_SLOT_CLIP_DIST0:
-      case VARYING_SLOT_CLIP_DIST1:
-      case VARYING_SLOT_CULL_DIST0:
-      case VARYING_SLOT_CULL_DIST1:
-      case VARYING_SLOT_TESS_LEVEL_OUTER:
-      case VARYING_SLOT_TESS_LEVEL_INNER:
-         var->data.invariant = true;
-         break;
-      default:
-         break;
-      }
-   }
-}
-
 static nir_ssa_def *
 convert_pointer_to_64(nir_builder *b, const struct radv_physical_device *pdev, nir_ssa_def *ptr)
 {
@@ -560,12 +538,8 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
       NIR_PASS_V(nir, nir_lower_global_vars_to_local);
       NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
-      if (device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM &&
-          stage != MESA_SHADER_FRAGMENT) {
-         mark_geom_invariant(nir);
-      }
-
-      NIR_PASS_V(nir, nir_propagate_invariant);
+      NIR_PASS_V(nir, nir_propagate_invariant,
+                 device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM);
 
       NIR_PASS_V(nir, nir_lower_system_values);
       NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);

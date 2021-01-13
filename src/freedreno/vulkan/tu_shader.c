@@ -168,7 +168,7 @@ tu_spirv_to_nir(struct tu_device *dev,
               nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,
               NULL);
 
-   NIR_PASS_V(nir, nir_propagate_invariant);
+   NIR_PASS_V(nir, nir_propagate_invariant, false);
 
    NIR_PASS_V(nir, nir_lower_global_vars_to_local);
    NIR_PASS_V(nir, nir_split_var_copies);

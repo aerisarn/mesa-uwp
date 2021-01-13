@@ -4317,7 +4317,7 @@ void nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
                          const uint32_t *uniform_values,
                          const uint16_t *uniform_dw_offsets);
 
-bool nir_propagate_invariant(nir_shader *shader);
+bool nir_propagate_invariant(nir_shader *shader, bool invariant_prim);
 
 void nir_lower_var_copy_instr(nir_intrinsic_instr *copy, nir_shader *shader);
 void nir_lower_deref_copy_instr(struct nir_builder *b,
