@@ -2273,13 +2273,7 @@ nir_visitor::visit(ir_expression *ir)
       }
       break;
    case ir_binop_dot:
-      switch (ir->operands[0]->type->vector_elements) {
-         case 2: result = nir_fdot2(&b, srcs[0], srcs[1]); break;
-         case 3: result = nir_fdot3(&b, srcs[0], srcs[1]); break;
-         case 4: result = nir_fdot4(&b, srcs[0], srcs[1]); break;
-         default:
-            unreachable("not reached");
-      }
+      result = nir_fdot(&b, srcs[0], srcs[1]);
       break;
    case ir_binop_vector_extract: {
       result = nir_channel(&b, srcs[0], 0);

@@ -54,16 +54,7 @@ nir_cross4(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
 nir_ssa_def*
 nir_fast_length(nir_builder *b, nir_ssa_def *vec)
 {
-   switch (vec->num_components) {
-   case 1: return nir_fsqrt(b, nir_fmul(b, vec, vec));
-   case 2: return nir_fsqrt(b, nir_fdot2(b, vec, vec));
-   case 3: return nir_fsqrt(b, nir_fdot3(b, vec, vec));
-   case 4: return nir_fsqrt(b, nir_fdot4(b, vec, vec));
-   case 8: return nir_fsqrt(b, nir_fdot8(b, vec, vec));
-   case 16: return nir_fsqrt(b, nir_fdot16(b, vec, vec));
-   default:
-      unreachable("Invalid number of components");
-   }
+   return nir_fsqrt(b, nir_fdot(b, vec, vec));
 }
 
 nir_ssa_def*
