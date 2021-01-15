@@ -1468,8 +1468,6 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
       util_dynarray_foreach(&zds[h]->barriers, struct zink_descriptor_barrier, barrier) {
          if (need_resource_refs[h])
             zink_batch_reference_resource_rw(batch, barrier->res, zink_resource_access_is_write(barrier->access));
-         zink_resource_barrier(ctx, NULL, barrier->res,
-                               barrier->layout, barrier->access, barrier->stage);
       }
    }
 

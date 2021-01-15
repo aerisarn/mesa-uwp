@@ -94,7 +94,10 @@ struct zink_resource {
    bool scanout_obj_init;
    bool scanout_dirty;
    union {
-      struct util_range valid_buffer_range;
+      struct {
+         struct util_range valid_buffer_range;
+         uint16_t ubo_bind_count[2];
+      };
       struct {
          VkFormat format;
          VkImageLayout layout;

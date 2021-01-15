@@ -354,6 +354,58 @@ draw(struct zink_context *ctx,
    }
 }
 
+static void
+update_barriers(struct zink_context *ctx, bool is_compute)
+{
+   if (!ctx->need_barriers[is_compute]->entries)
+      return;
+   struct set *need_barriers = ctx->need_barriers[is_compute];
+   ctx->barrier_set_idx[is_compute] = !ctx->barrier_set_idx[is_compute];
+   ctx->need_barriers[is_compute] = &ctx->update_barriers[is_compute][ctx->barrier_set_idx[is_compute]];
+   set_foreach(need_barriers, he) {
+      struct zink_resource *res = (void*)he->key;
+      VkPipelineStageFlags pipeline = 0;
+      VkAccessFlags access = 0;
+      if (res->bind_count[is_compute]) {
+         if (res->write_bind_count[is_compute])
+            access |= VK_ACCESS_SHADER_WRITE_BIT;
+         if (res->write_bind_count[is_compute] != res->bind_count[is_compute]) {
+            unsigned bind_count = res->bind_count[is_compute] - res->write_bind_count[is_compute];
+            if (res->obj->is_buffer) {
+               if (res->ubo_bind_count[is_compute]) {
+                  access |= VK_ACCESS_UNIFORM_READ_BIT;
+                  bind_count -= res->ubo_bind_count[is_compute];
+               }
+            }
+            if (bind_count)
+               access |= VK_ACCESS_SHADER_READ_BIT;
+         }
+         if (is_compute)
+            pipeline = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+         else {
+            u_foreach_bit(stage, res->bind_history) {
+               if ((1 << stage) != ZINK_RESOURCE_USAGE_STREAMOUT)
+                  pipeline |= zink_pipeline_flags_from_stage(zink_shader_stage(stage));
+            }
+         }
+         if (res->base.b.target == PIPE_BUFFER)
+            zink_resource_buffer_barrier(ctx, NULL, res, access, pipeline);
+         else {
+            VkImageLayout layout = res->image_bind_count[is_compute] ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            zink_resource_image_barrier(ctx, NULL, res, layout, access, pipeline);
+         }
+         /* always barrier on draw if this resource has either multiple image write binds or
+          * image write binds and image read binds
+          */
+         if (res->write_bind_count[is_compute] && res->bind_count[is_compute] > 1)
+            _mesa_set_add_pre_hashed(ctx->need_barriers[is_compute], he->hash, res);
+      }
+      _mesa_set_remove(need_barriers, he);
+      if (!need_barriers->entries)
+         break;
+   }
+}
+
 void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo,
@@ -375,6 +427,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS];
    bool need_index_buffer_unref = false;
+
+   update_barriers(ctx, false);
 
    if (dinfo->primitive_restart && !restart_supported(dinfo->mode)) {
        util_draw_vbo_without_prim_restart(pctx, dinfo, drawid_offset, dindirect, &draws[0]);
@@ -721,6 +775,8 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_batch *batch = &ctx->batch;
+
+   update_barriers(ctx, true);
 
    struct zink_compute_program *comp_program = get_compute_program(ctx);
    if (!comp_program)
