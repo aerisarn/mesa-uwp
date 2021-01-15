@@ -184,7 +184,8 @@ index("bool", "image_array")
 # Image format for image intrinsics
 index("enum pipe_format", "format")
 
-# Access qualifiers for image and memory access intrinsics
+# Access qualifiers for image and memory access intrinsics. ACCESS_RESTRICT is
+# not set at the intrinsic if the NIR was created from SPIR-V.
 index("enum gl_access_qualifier", "access")
 
 # Alignment for offsets and addresses
