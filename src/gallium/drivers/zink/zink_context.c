@@ -1803,6 +1803,20 @@ zink_resource_image_barrier_init(VkImageMemoryBarrier *imb, struct zink_resource
    return zink_resource_image_needs_barrier(res, new_layout, flags, pipeline);
 }
 
+static inline VkCommandBuffer
+get_cmdbuf(struct zink_context *ctx, struct zink_resource *res)
+{
+   if ((res->access && !res->unordered_barrier) || !ctx->batch.in_rp) {
+      struct zink_batch *batch = zink_batch_no_rp(ctx);
+      assert(!batch->in_rp);
+      res->unordered_barrier = false;
+      return batch->state->cmdbuf;
+   }
+   res->unordered_barrier = true;
+   ctx->batch.state->has_barriers = true;
+   return ctx->batch.state->barrier_cmdbuf;
+}
+
 void
 zink_resource_image_barrier(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *res,
                       VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
@@ -1813,11 +1827,10 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_batch *batch, 
    if (!pipeline)
       pipeline = pipeline_dst_stage(new_layout);
    /* only barrier if we're changing layout or doing something besides read -> read */
-   batch = zink_batch_no_rp(ctx);
-   assert(!batch->in_rp);
+   VkCommandBuffer cmdbuf = get_cmdbuf(ctx, res);
    assert(new_layout);
    vkCmdPipelineBarrier(
-      batch->state->cmdbuf,
+      cmdbuf,
       res->access_stage ? res->access_stage : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
       pipeline,
       0,
@@ -1826,9 +1839,14 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_batch *batch, 
       1, &imb
    );
 
+   if (res->unordered_barrier) {
+      res->access |= imb.dstAccessMask;
+      res->access_stage |= pipeline;
+   } else {
+      res->access = imb.dstAccessMask;
+      res->access_stage = pipeline;
+   }
    res->layout = new_layout;
-   res->access_stage = pipeline;
-   res->access = imb.dstAccessMask;
 }
 
 
@@ -1908,11 +1926,13 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_batch *batch,
       return;
    if (!pipeline)
       pipeline = pipeline_access_stage(flags);
+   if (!zink_resource_buffer_needs_barrier(res, flags, pipeline))
+      return;
+
+   VkCommandBuffer cmdbuf = get_cmdbuf(ctx, res);
    /* only barrier if we're changing layout or doing something besides read -> read */
-   batch = zink_batch_no_rp(ctx);
-   assert(!batch->in_rp);
    vkCmdPipelineBarrier(
-      batch->state->cmdbuf,
+      cmdbuf,
       res->access_stage ? res->access_stage : pipeline_access_stage(res->access),
       pipeline,
       0,
@@ -1920,8 +1940,14 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_batch *batch,
       1, &bmb,
       0, NULL
    );
-   res->access = bmb.dstAccessMask;
-   res->access_stage = pipeline;
+
+   if (res->unordered_barrier) {
+      res->access |= bmb.dstAccessMask;
+      res->access_stage |= pipeline;
+   } else {
+      res->access = bmb.dstAccessMask;
+      res->access_stage = pipeline;
+   }
 }
 
 bool
@@ -2806,6 +2832,7 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    zink_resource_object_reference(zink_screen(pctx->screen), &d->obj, s->obj);
    d->access = s->access;
    d->access_stage = s->access_stage;
+   d->unordered_barrier = s->unordered_barrier;
    zink_resource_rebind(zink_context(pctx), d);
 }
 

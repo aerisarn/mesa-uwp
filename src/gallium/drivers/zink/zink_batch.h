@@ -55,6 +55,8 @@ struct zink_batch_state {
    struct zink_context *ctx;
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
+   VkCommandBuffer barrier_cmdbuf;
+   bool has_barriers;
 
    VkQueue queue; //duplicated from batch for threading
    VkSemaphore sem;

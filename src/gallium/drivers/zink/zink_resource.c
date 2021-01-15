@@ -718,6 +718,7 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
    res->obj = new_obj;
    res->access_stage = 0;
    res->access = 0;
+   res->unordered_barrier = false;
    zink_resource_rebind(ctx, res);
    zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
    zink_resource_object_reference(screen, &old_obj, NULL);

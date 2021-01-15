@@ -86,6 +86,7 @@ struct zink_resource {
 
    VkPipelineStageFlagBits access_stage;
    VkAccessFlags access;
+   bool unordered_barrier;
 
    struct zink_resource_object *obj;
    struct zink_resource_object *scanout_obj; //TODO: remove for wsi
