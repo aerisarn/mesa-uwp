@@ -895,7 +895,7 @@ vectorize_stores(nir_builder *b, struct vectorize_ctx *ctx,
 }
 
 /* Returns true if it can prove that "a" and "b" point to different bindings
- * and both use ACCESS_RESTRICT. */
+ * and either one uses ACCESS_RESTRICT. */
 static bool
 bindings_different_restrict(nir_shader *shader, struct entry *a, struct entry *b)
 {
@@ -934,7 +934,7 @@ bindings_different_restrict(nir_shader *shader, struct entry *a, struct entry *b
    unsigned b_access = b->access | (b_var ? b_var->data.access : 0);
 
    return different_bindings &&
-          ((a_access & b_access) & ACCESS_RESTRICT);
+          ((a_access | b_access) & ACCESS_RESTRICT);
 }
 
 static int64_t
