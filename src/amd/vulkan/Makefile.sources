@@ -43,6 +43,7 @@ RADV_LAYER_SQTT_FILES := \
 	layers/radv_sqtt_layer.c
 
 VULKAN_FILES := \
+	radv_acceleration_structure.c \
 	radv_cmd_buffer.c \
 	radv_cs.h \
 	radv_debug.c \
