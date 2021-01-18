@@ -1140,36 +1140,40 @@ zink_set_sampler_views(struct pipe_context *pctx,
       unbind_samplerview(ctx, shader_type, start_slot + i);
       if (b && b->base.texture) {
          struct zink_resource *res = zink_resource(b->base.texture);
-         if (res->base.b.target == PIPE_BUFFER &&
-             res->bind_history & BITFIELD64_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)) {
-            /* if this resource has been rebound while it wasn't set here,
-             * its backing resource will have changed and thus we need to update
-             * the bufferview
-             */
-            struct zink_buffer_view *buffer_view = get_buffer_view(ctx, res, b->base.format, b->base.u.buf.offset, b->base.u.buf.size);
-            if (buffer_view == b->buffer_view)
-               p_atomic_dec(&buffer_view->reference.count);
-            else {
-               sampler_view_buffer_clear(ctx, b);
-               b->buffer_view = buffer_view;
+         if (res->base.b.target == PIPE_BUFFER) {
+            if (res->bind_history & BITFIELD64_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)) {
+               /* if this resource has been rebound while it wasn't set here,
+                * its backing resource will have changed and thus we need to update
+                * the bufferview
+                */
+               struct zink_buffer_view *buffer_view = get_buffer_view(ctx, res, b->base.format, b->base.u.buf.offset, b->base.u.buf.size);
+               if (buffer_view == b->buffer_view)
+                  p_atomic_dec(&buffer_view->reference.count);
+               else {
+                  sampler_view_buffer_clear(ctx, b);
+                  b->buffer_view = buffer_view;
+                  update = true;
+               }
             }
+            update |= !a || a->buffer_view->buffer_view != b->buffer_view->buffer_view;
          } else if (!res->obj->is_buffer) {
              if (res->obj != b->image_view->obj) {
                 struct pipe_surface *psurf = &b->image_view->base;
+                VkImageView iv = b->image_view->image_view;
                 zink_rebind_surface(ctx, &psurf);
                 b->image_view = zink_surface(psurf);
-             }
+                update |= iv != b->image_view->image_view;
+             } else if (a != b)
+                update = true;
+
              res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
+             update |= !a || a->image_view->image_view != b->image_view->image_view;
          }
          res->bind_count[shader_type == PIPE_SHADER_COMPUTE]++;
          res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
          res->bind_stages |= 1 << shader_type;
-      }
-      bool is_buffer = zink_program_descriptor_is_buffer(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot + i);
-      uint32_t hash_a = zink_get_sampler_view_hash(ctx, a, is_buffer);
-      uint32_t hash_b = zink_get_sampler_view_hash(ctx, b, is_buffer);
-      update |= !!a != !!b || hash_a != hash_b;
-
+      } else if (a)
+         update = true;
       pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], pview);
       update_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot + i);
    }
