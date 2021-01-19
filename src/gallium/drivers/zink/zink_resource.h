@@ -96,6 +96,7 @@ struct zink_resource {
    union {
       struct {
          struct util_range valid_buffer_range;
+         uint16_t vbo_bind_count;
          uint16_t ubo_bind_count[2];
       };
       struct {

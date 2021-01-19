@@ -813,6 +813,18 @@ zink_set_polygon_stipple(struct pipe_context *pctx,
 }
 
 static void
+update_existing_vbo(struct zink_context *ctx, unsigned slot)
+{
+   if (!ctx->vertex_buffers[slot].buffer.resource)
+      return;
+   struct zink_resource *res = zink_resource(ctx->vertex_buffers[slot].buffer.resource);
+   res->vbo_bind_count--;
+   res->bind_count[0]--;
+   if (!res->bind_count[0])
+      _mesa_set_remove_key(ctx->need_barriers[0], res);
+}
+
+static void
 zink_set_vertex_buffers(struct pipe_context *pctx,
                         unsigned start_slot,
                         unsigned num_buffers,
@@ -822,9 +834,29 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
 
-   if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state &&
-       (num_buffers || (!buffers && ctx->gfx_pipeline_state.vertex_buffers_enabled_mask)))
-      ctx->gfx_pipeline_state.vertex_state_dirty = true;
+   if (buffers) {
+      if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state)
+         ctx->gfx_pipeline_state.vertex_state_dirty = true;
+      for (int i = 0; i < num_buffers; ++i) {
+         const struct pipe_vertex_buffer *vb = buffers + i;
+         update_existing_vbo(ctx, start_slot + i);
+         if (vb->buffer.resource) {
+            struct zink_resource *res = zink_resource(vb->buffer.resource);
+            res->vbo_bind_count++;
+            res->bind_count[0]++;
+            zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                                         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+         }
+      }
+   } else if (ctx->gfx_pipeline_state.vertex_buffers_enabled_mask) {
+      if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state)
+         ctx->gfx_pipeline_state.vertex_state_dirty = true;
+      unsigned vertex_buffers_enabled_mask = ctx->gfx_pipeline_state.vertex_buffers_enabled_mask;
+      while (vertex_buffers_enabled_mask) {
+         unsigned slot = u_bit_scan(&vertex_buffers_enabled_mask);
+         update_existing_vbo(ctx, slot);
+      }
+   }
    util_set_vertex_buffers_mask(ctx->vertex_buffers, &ctx->gfx_pipeline_state.vertex_buffers_enabled_mask,
                                 buffers, start_slot, num_buffers,
                                 unbind_num_trailing_slots, take_ownership);
@@ -1887,9 +1919,12 @@ is_shader_pipline_stage(VkPipelineStageFlags pipeline)
 static void
 resource_check_defer_barrier(struct zink_context *ctx, struct zink_resource *res, VkPipelineStageFlags pipeline)
 {
-   if (res->bind_count[0] && !is_shader_pipline_stage(pipeline))
-      /* gfx rebind */
-      _mesa_set_add(ctx->need_barriers[0], res);
+   if (res->bind_count[0]) {
+      if ((res->obj->is_buffer && res->vbo_bind_count && !(pipeline & VK_PIPELINE_STAGE_VERTEX_INPUT_BIT)) ||
+          ((!res->obj->is_buffer || res->vbo_bind_count != res->bind_count[0]) && !is_shader_pipline_stage(pipeline)))
+         /* gfx rebind */
+         _mesa_set_add(ctx->need_barriers[0], res);
+   }
    if (res->bind_count[1] && !(pipeline & VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT))
       /* compute rebind */
       _mesa_set_add(ctx->need_barriers[1], res);

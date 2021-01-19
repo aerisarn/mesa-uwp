@@ -102,21 +102,6 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
 }
 
 static void
-barrier_vertex_buffers(struct zink_context *ctx)
-{
-   const struct zink_vertex_elements_state *elems = ctx->element_state;
-   for (unsigned i = 0; i < elems->hw_state.num_bindings; i++) {
-      struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ctx->element_state->binding_map[i];
-      assert(vb);
-      if (vb->buffer.resource) {
-         struct zink_resource *res = zink_resource(vb->buffer.resource);
-         zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-                                      VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-      }
-   }
-}
-
-static void
 check_buffer_barrier(struct zink_context *ctx, struct pipe_resource *pres, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    struct zink_resource *res = zink_resource(pres);
@@ -376,6 +361,11 @@ update_barriers(struct zink_context *ctx, bool is_compute)
                   access |= VK_ACCESS_UNIFORM_READ_BIT;
                   bind_count -= res->ubo_bind_count[is_compute];
                }
+               if (!is_compute && res->vbo_bind_count) {
+                  access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+                  pipeline |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+                  bind_count -= res->vbo_bind_count;
+               }
             }
             if (bind_count)
                access |= VK_ACCESS_SHADER_READ_BIT;
@@ -512,7 +502,6 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (so_target)
       zink_emit_xfb_vertex_input_barrier(ctx, zink_resource(so_target->base.buffer));
 
-   barrier_vertex_buffers(ctx);
    barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
 
    for (int i = 0; i < ZINK_SHADER_COUNT; i++) {
