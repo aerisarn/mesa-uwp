@@ -209,27 +209,8 @@ etna_submit_rs_state(struct etna_context *ctx,
       /* 2/3 */ EMIT_STATE(RS_SOURCE_STRIDE, cs->RS_SOURCE_STRIDE);
       /* 4/5 */ EMIT_STATE(RS_KICKER_INPLACE, cs->RS_KICKER_INPLACE);
       etna_coalesce_end(stream, &coalesce);
-   } else if (screen->specs.pixel_pipes == 1) {
-      etna_cmd_stream_reserve(stream, 22);
-      etna_coalesce_start(stream, &coalesce);
-      /* 0/1 */ EMIT_STATE(RS_CONFIG, cs->RS_CONFIG);
-      /* 2   */ EMIT_STATE_RELOC(RS_SOURCE_ADDR, &cs->source[0]);
-      /* 3   */ EMIT_STATE(RS_SOURCE_STRIDE, cs->RS_SOURCE_STRIDE);
-      /* 4   */ EMIT_STATE_RELOC(RS_DEST_ADDR, &cs->dest[0]);
-      /* 5   */ EMIT_STATE(RS_DEST_STRIDE, cs->RS_DEST_STRIDE);
-      /* 6/7 */ EMIT_STATE(RS_WINDOW_SIZE, cs->RS_WINDOW_SIZE);
-      /* 8/9 */ EMIT_STATE(RS_DITHER(0), cs->RS_DITHER[0]);
-      /*10   */ EMIT_STATE(RS_DITHER(1), cs->RS_DITHER[1]);
-      /*11 - pad */
-      /*12/13*/ EMIT_STATE(RS_CLEAR_CONTROL, cs->RS_CLEAR_CONTROL);
-      /*14   */ EMIT_STATE(RS_FILL_VALUE(0), cs->RS_FILL_VALUE[0]);
-      /*15   */ EMIT_STATE(RS_FILL_VALUE(1), cs->RS_FILL_VALUE[1]);
-      /*16   */ EMIT_STATE(RS_FILL_VALUE(2), cs->RS_FILL_VALUE[2]);
-      /*17   */ EMIT_STATE(RS_FILL_VALUE(3), cs->RS_FILL_VALUE[3]);
-      /*18/19*/ EMIT_STATE(RS_EXTRA_CONFIG, cs->RS_EXTRA_CONFIG);
-      /*20/21*/ EMIT_STATE(RS_KICKER, 0xbeebbeeb);
-      etna_coalesce_end(stream, &coalesce);
-   } else if (screen->specs.pixel_pipes == 2) {
+   } else if (screen->specs.pixel_pipes > 1 ||
+              VIV_FEATURE(screen, chipMinorFeatures7, RS_NEW_BASEADDR)) {
       etna_cmd_stream_reserve(stream, 34); /* worst case - both pipes multi=1 */
       etna_coalesce_start(stream, &coalesce);
       /* 0/1 */ EMIT_STATE(RS_CONFIG, cs->RS_CONFIG);
@@ -261,7 +242,25 @@ etna_submit_rs_state(struct etna_context *ctx,
       /*32/33*/ EMIT_STATE(RS_KICKER, 0xbeebbeeb);
       etna_coalesce_end(stream, &coalesce);
    } else {
-      abort();
+      etna_cmd_stream_reserve(stream, 22);
+      etna_coalesce_start(stream, &coalesce);
+      /* 0/1 */ EMIT_STATE(RS_CONFIG, cs->RS_CONFIG);
+      /* 2   */ EMIT_STATE_RELOC(RS_SOURCE_ADDR, &cs->source[0]);
+      /* 3   */ EMIT_STATE(RS_SOURCE_STRIDE, cs->RS_SOURCE_STRIDE);
+      /* 4   */ EMIT_STATE_RELOC(RS_DEST_ADDR, &cs->dest[0]);
+      /* 5   */ EMIT_STATE(RS_DEST_STRIDE, cs->RS_DEST_STRIDE);
+      /* 6/7 */ EMIT_STATE(RS_WINDOW_SIZE, cs->RS_WINDOW_SIZE);
+      /* 8/9 */ EMIT_STATE(RS_DITHER(0), cs->RS_DITHER[0]);
+      /*10   */ EMIT_STATE(RS_DITHER(1), cs->RS_DITHER[1]);
+      /*11 - pad */
+      /*12/13*/ EMIT_STATE(RS_CLEAR_CONTROL, cs->RS_CLEAR_CONTROL);
+      /*14   */ EMIT_STATE(RS_FILL_VALUE(0), cs->RS_FILL_VALUE[0]);
+      /*15   */ EMIT_STATE(RS_FILL_VALUE(1), cs->RS_FILL_VALUE[1]);
+      /*16   */ EMIT_STATE(RS_FILL_VALUE(2), cs->RS_FILL_VALUE[2]);
+      /*17   */ EMIT_STATE(RS_FILL_VALUE(3), cs->RS_FILL_VALUE[3]);
+      /*18/19*/ EMIT_STATE(RS_EXTRA_CONFIG, cs->RS_EXTRA_CONFIG);
+      /*20/21*/ EMIT_STATE(RS_KICKER, 0xbeebbeeb);
+      etna_coalesce_end(stream, &coalesce);
    }
 }
 
