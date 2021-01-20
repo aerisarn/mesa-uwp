@@ -1063,6 +1063,30 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
    }
    screen->features[8] = val;
 
+   if (etna_gpu_get_param(screen->gpu, ETNA_GPU_FEATURES_9, &val)) {
+      DBG("could not get ETNA_GPU_FEATURES_9");
+      goto fail;
+   }
+   screen->features[9] = val;
+
+   if (etna_gpu_get_param(screen->gpu, ETNA_GPU_FEATURES_10, &val)) {
+      DBG("could not get ETNA_GPU_FEATURES_10");
+      goto fail;
+   }
+   screen->features[10] = val;
+
+   if (etna_gpu_get_param(screen->gpu, ETNA_GPU_FEATURES_11, &val)) {
+      DBG("could not get ETNA_GPU_FEATURES_11");
+      goto fail;
+   }
+   screen->features[11] = val;
+
+   if (etna_gpu_get_param(screen->gpu, ETNA_GPU_FEATURES_12, &val)) {
+      DBG("could not get ETNA_GPU_FEATURES_12");
+      goto fail;
+   }
+   screen->features[12] = val;
+
    if (!etna_get_specs(screen))
       goto fail;
 
