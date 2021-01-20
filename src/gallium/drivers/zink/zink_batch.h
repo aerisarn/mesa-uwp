@@ -81,6 +81,7 @@ struct zink_batch_state {
 
    bool is_device_lost;
    bool have_timelines;
+   unsigned work_count[2];
 };
 
 struct zink_batch {

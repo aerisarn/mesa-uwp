@@ -627,6 +627,7 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    unsigned draw_id = drawid_offset;
    bool needs_drawid = ctx->drawid_broken;
+   batch->state->work_count[0] += num_draws;
    if (dinfo->index_size > 0) {
       VkIndexType index_type;
       unsigned index_size = dinfo->index_size;
@@ -713,6 +714,8 @@ zink_draw_vbo(struct pipe_context *pctx,
       screen->vk_CmdEndTransformFeedbackEXT(batch->state->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
    batch->has_work = true;
+   if (batch->state->work_count[0] + batch->state->work_count[1] >= 100000)
+      pctx->flush(pctx, NULL, 0);
 }
 
 void
@@ -744,10 +747,13 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
                          offsetof(struct zink_cs_push_constant, work_dim), sizeof(uint32_t),
                          &info->work_dim);
 
+   batch->state->work_count[1]++;
    if (info->indirect) {
       vkCmdDispatchIndirect(batch->state->cmdbuf, zink_resource(info->indirect)->obj->buffer, info->indirect_offset);
       zink_batch_reference_resource_rw(batch, zink_resource(info->indirect), false);
    } else
       vkCmdDispatch(batch->state->cmdbuf, info->grid[0], info->grid[1], info->grid[2]);
    batch->has_work = true;
+   if (batch->state->work_count[0] + batch->state->work_count[1] >= 100000)
+      pctx->flush(pctx, NULL, 0);
 }
