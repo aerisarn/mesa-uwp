@@ -1455,7 +1455,6 @@ radv_shader_variant_compile(struct radv_device *device, struct vk_shader_module 
 
    options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
    options.robust_buffer_access = device->robust_buffer_access;
-   options.robust_buffer_access2 = device->robust_buffer_access2;
    options.disable_optimizations = disable_optimizations;
    options.wgp_mode = radv_should_use_wgp_mode(device, stage, info);
 
