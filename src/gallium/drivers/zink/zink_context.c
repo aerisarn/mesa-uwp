@@ -2053,14 +2053,16 @@ zink_resource_buffer_barrier_init(VkBufferMemoryBarrier *bmb, struct zink_resour
 void
 zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
-   VkBufferMemoryBarrier bmb;
-   if (!zink_resource_buffer_barrier_init(&bmb, res, flags, pipeline))
-      return;
+   VkMemoryBarrier bmb;
    if (!pipeline)
       pipeline = pipeline_access_stage(flags);
    if (!zink_resource_buffer_needs_barrier(res, flags, pipeline))
       return;
 
+   bmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+   bmb.pNext = NULL;
+   bmb.srcAccessMask = res->access;
+   bmb.dstAccessMask = flags;
    VkCommandBuffer cmdbuf = get_cmdbuf(ctx, res);
    /* only barrier if we're changing layout or doing something besides read -> read */
    vkCmdPipelineBarrier(
@@ -2068,8 +2070,8 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_batch *batch,
       res->access_stage ? res->access_stage : pipeline_access_stage(res->access),
       pipeline,
       0,
-      0, NULL,
       1, &bmb,
+      0, NULL,
       0, NULL
    );
 
