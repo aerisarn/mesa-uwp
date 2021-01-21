@@ -2679,6 +2679,9 @@ struct anv_push_constants {
    /** Pad out to a multiple of 32 bytes */
    uint32_t pad[2];
 
+   /* Base addresses for descriptor sets */
+   uint64_t desc_sets[MAX_SETS];
+
    struct {
       /** Base workgroup ID
        *

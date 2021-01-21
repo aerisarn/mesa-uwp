@@ -928,6 +928,25 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
    VkShaderStageFlags dirty_stages = 0;
    if (pipe_state->descriptors[set_index] != set) {
       pipe_state->descriptors[set_index] = set;
+
+      /* Ray-tracing shaders are entirely bindless and so they don't have
+       * access to HW binding tables.  This means that we have to upload the
+       * descriptor set as an 64-bit address in the push constants.
+       */
+      if (bind_point == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR) {
+         struct anv_push_constants *push = &pipe_state->push_constants;
+
+         struct anv_address set_addr = {
+            .bo = set->pool->bo,
+            .offset = set->desc_mem.offset,
+         };
+         push->desc_sets[set_index] = anv_address_physical(set_addr);
+
+         anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
+                               cmd_buffer->batch.alloc,
+                               set->pool->bo);
+      }
+
       dirty_stages |= stages;
    }
 
