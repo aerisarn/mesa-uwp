@@ -43,7 +43,8 @@ static const struct debug_named_value bifrost_debug_options[] = {
         {"shaderdb",  BIFROST_DBG_SHADERDB,	"Print statistics"},
         {"verbose",   BIFROST_DBG_VERBOSE,	"Disassemble verbosely"},
         {"internal",  BIFROST_DBG_INTERNAL,	"Dump even internal shaders"},
-        {"nosched",   BIFROST_DBG_NOSCHED, 	"Force trivial scheduling"},
+        {"nosched",   BIFROST_DBG_NOSCHED, 	"Force trivial bundling"},
+        {"inorder",   BIFROST_DBG_INORDER, 	"Force in-order bundling"},
         DEBUG_NAMED_VALUE_END
 };
 

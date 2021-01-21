@@ -38,6 +38,13 @@ struct bi_worklist {
 
         /* Bitset of instructions in the block ready for scheduling */
         BITSET_WORD *worklist;
+
+        /* The backwards dependency graph. nr_dependencies is the number of
+         * unscheduled instructions that must still be scheduled after (before)
+         * this instruction. dependents are which instructions need to be
+         * scheduled before (after) this instruction. */
+        unsigned *dep_counts;
+        BITSET_WORD **dependents;
 };
 
 /* State of a single tuple and clause under construction */
@@ -146,6 +153,138 @@ bi_supports_dtsel(bi_instr *ins)
                 return true;
         default:
                 return false;
+        }
+}
+
+/* Adds an edge to the dependency graph */
+
+static void
+bi_push_dependency(unsigned parent, unsigned child,
+                BITSET_WORD **dependents, unsigned *dep_counts)
+{
+        if (!BITSET_TEST(dependents[parent], child)) {
+                BITSET_SET(dependents[parent], child);
+                dep_counts[child]++;
+        }
+}
+
+static void
+add_dependency(struct util_dynarray *table, unsigned index, unsigned child,
+                BITSET_WORD **dependents, unsigned *dep_counts)
+{
+        assert(index < 64);
+        util_dynarray_foreach(table + index, unsigned, parent)
+                bi_push_dependency(*parent, child, dependents, dep_counts);
+}
+
+static void
+mark_access(struct util_dynarray *table, unsigned index, unsigned parent)
+{
+        assert(index < 64);
+        util_dynarray_append(&table[index], unsigned, parent);
+}
+
+static bool
+bi_is_sched_barrier(bi_instr *I)
+{
+        switch (I->op) {
+        case BI_OPCODE_BARRIER:
+        case BI_OPCODE_DISCARD_F32:
+                return true;
+        default:
+                return false;
+        }
+}
+
+static void
+bi_create_dependency_graph(struct bi_worklist st, bool inorder)
+{
+        struct util_dynarray last_read[64], last_write[64];
+
+        for (unsigned i = 0; i < 64; ++i) {
+                util_dynarray_init(&last_read[i], NULL);
+                util_dynarray_init(&last_write[i], NULL);
+        }
+
+        /* Initialize dependency graph */
+        for (unsigned i = 0; i < st.count; ++i) {
+                st.dependents[i] =
+                        calloc(BITSET_WORDS(st.count), sizeof(BITSET_WORD));
+
+                st.dep_counts[i] = 0;
+        }
+
+        unsigned prev_msg = ~0;
+
+        /* Populate dependency graph */
+        for (signed i = st.count - 1; i >= 0; --i) {
+                bi_instr *ins = st.instructions[i];
+
+                bi_foreach_src(ins, s) {
+                        if (ins->src[s].type != BI_INDEX_REGISTER) continue;
+                        unsigned count = bi_count_read_registers(ins, s);
+
+                        for (unsigned c = 0; c < count; ++c)
+                                add_dependency(last_write, ins->src[s].value + c, i, st.dependents, st.dep_counts);
+                }
+
+                /* Keep message-passing ops in order. (This pass only cares
+                 * about bundling; reordering of message-passing instructions
+                 * happens during earlier scheduling.) */
+
+                if (bi_message_type_for_instr(ins)) {
+                        if (prev_msg != ~0)
+                                bi_push_dependency(prev_msg, i, st.dependents, st.dep_counts);
+
+                        prev_msg = i;
+                }
+
+                /* Handle schedule barriers, adding All the deps */
+                if (inorder || bi_is_sched_barrier(ins)) {
+                        for (unsigned j = 0; j < st.count; ++j) {
+                                if (i == j) continue;
+
+                                bi_push_dependency(MAX2(i, j), MIN2(i, j),
+                                                st.dependents, st.dep_counts);
+                        }
+                }
+
+                bi_foreach_dest(ins, d) {
+                        if (ins->dest[d].type != BI_INDEX_REGISTER) continue;
+                        unsigned dest = ins->dest[d].value;
+
+                        unsigned count = bi_count_write_registers(ins, d);
+
+                        for (unsigned c = 0; c < count; ++c) {
+                                add_dependency(last_read, dest + c, i, st.dependents, st.dep_counts);
+                                add_dependency(last_write, dest + c, i, st.dependents, st.dep_counts);
+                                mark_access(last_write, dest + c, i);
+                        }
+                }
+
+                bi_foreach_src(ins, s) {
+                        if (ins->src[s].type != BI_INDEX_REGISTER) continue;
+
+                        unsigned count = bi_count_read_registers(ins, s);
+
+                        for (unsigned c = 0; c < count; ++c) 
+                                mark_access(last_read, ins->src[s].value + c, i);
+                }
+        }
+
+        /* If there is a branch, all instructions depend on it, as interblock
+         * execution must be purely in-order */
+
+        bi_instr *last = st.instructions[st.count - 1];
+        if (last->branch_target || last->op == BI_OPCODE_JUMP) {
+                for (signed i = st.count - 2; i >= 0; --i)
+                        bi_push_dependency(st.count - 1, i, st.dependents, st.dep_counts);
+        }
+
+        /* Free the intermediate structures */
+        for (unsigned i = 0; i < 64; ++i) {
+                util_dynarray_fini(&last_read[i]);
+                util_dynarray_fini(&last_write[i]);
         }
 }
 
@@ -275,14 +414,23 @@ bi_flatten_block(bi_block *block, unsigned *len)
  */
 
 static struct bi_worklist
-bi_initialize_worklist(bi_block *block)
+bi_initialize_worklist(bi_block *block, bool inorder)
 {
         struct bi_worklist st = { };
         st.instructions = bi_flatten_block(block, &st.count);
 
-        if (st.count) {
-                st.worklist = calloc(BITSET_WORDS(st.count), sizeof(BITSET_WORD));
-                BITSET_SET(st.worklist, st.count - 1);
+        if (!st.count)
+                return st;
+
+        st.dependents = calloc(st.count, sizeof(st.dependents[0]));
+        st.dep_counts = calloc(st.count, sizeof(st.dep_counts[0]));
+
+        bi_create_dependency_graph(st, inorder);
+        st.worklist = calloc(BITSET_WORDS(st.count), sizeof(BITSET_WORD));
+
+        for (unsigned i = 0; i < st.count; ++i) {
+                if (st.dep_counts[i] == 0)
+                        BITSET_SET(st.worklist, i);
         }
 
         return st;
@@ -291,6 +439,8 @@ bi_initialize_worklist(bi_block *block)
 static void
 bi_free_worklist(struct bi_worklist st)
 {
+        free(st.dep_counts);
+        free(st.dependents);
         free(st.instructions);
         free(st.worklist);
 }
@@ -298,8 +448,24 @@ bi_free_worklist(struct bi_worklist st)
 static void
 bi_update_worklist(struct bi_worklist st, unsigned idx)
 {
-        if (idx >= 1)
-                BITSET_SET(st.worklist, idx - 1);
+        assert(st.dep_counts[idx] == 0);
+
+        if (!st.dependents[idx])
+                return;
+
+        /* Iterate each dependent to remove one dependency (`done`),
+         * adding dependents to the worklist where possible. */
+
+        unsigned i;
+        BITSET_FOREACH_SET(i, st.dependents[idx], st.count) {
+                assert(st.dep_counts[i] != 0);
+                unsigned new_deps = --st.dep_counts[i];
+
+                if (new_deps == 0)
+                        BITSET_SET(st.worklist, i);
+        }
+
+        free(st.dependents[idx]);
 }
 
 /* To work out the back-to-back flag, we need to detect branches and
@@ -1568,7 +1734,8 @@ bi_schedule_block(bi_context *ctx, bi_block *block)
         list_inithead(&block->clauses);
 
         /* Copy list to dynamic array */
-        struct bi_worklist st = bi_initialize_worklist(block);
+        struct bi_worklist st = bi_initialize_worklist(block,
+                        bifrost_debug & BIFROST_DBG_INORDER);
 
         if (!st.count) {
                 bi_free_worklist(st);
