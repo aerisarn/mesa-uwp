@@ -25,6 +25,7 @@
 
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
+#include "genxml/gen_rt_pack.h"
 
 #include "common/intel_l3_config.h"
 #include "common/intel_sample_positions.h"
@@ -2899,6 +2900,41 @@ ray_tracing_pipeline_create(
       anv_pipeline_finish(&pipeline->base, device, pAllocator);
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
+   }
+
+   for (uint32_t i = 0; i < pipeline->group_count; i++) {
+      struct anv_rt_shader_group *group = &pipeline->groups[i];
+
+      switch (group->type) {
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR: {
+         struct GFX_RT_GENERAL_SBT_HANDLE sh = {};
+         sh.General = anv_shader_bin_get_bsr(group->general, 32);
+         GFX_RT_GENERAL_SBT_HANDLE_pack(NULL, group->handle, &sh);
+         break;
+      }
+
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR: {
+         struct GFX_RT_TRIANGLES_SBT_HANDLE sh = {};
+         if (group->closest_hit)
+            sh.ClosestHit = anv_shader_bin_get_bsr(group->closest_hit, 32);
+         if (group->any_hit)
+            sh.AnyHit = anv_shader_bin_get_bsr(group->any_hit, 24);
+         GFX_RT_TRIANGLES_SBT_HANDLE_pack(NULL, group->handle, &sh);
+         break;
+      }
+
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR: {
+         struct GFX_RT_PROCEDURAL_SBT_HANDLE sh = {};
+         if (group->closest_hit)
+            sh.ClosestHit = anv_shader_bin_get_bsr(group->closest_hit, 32);
+         sh.Intersection = anv_shader_bin_get_bsr(group->intersection, 24);
+         GFX_RT_PROCEDURAL_SBT_HANDLE_pack(NULL, group->handle, &sh);
+         break;
+      }
+
+      default:
+         unreachable("Invalid shader group type");
+      }
    }
 
    *pPipeline = anv_pipeline_to_handle(&pipeline->base);

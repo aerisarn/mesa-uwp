@@ -3436,6 +3436,19 @@ anv_shader_bin_unref(struct anv_device *device, struct anv_shader_bin *shader)
       anv_shader_bin_destroy(device, shader);
 }
 
+#define anv_shader_bin_get_bsr(bin, local_arg_offset) ({             \
+   assert((local_arg_offset) % 8 == 0);                              \
+   const struct brw_bs_prog_data *prog_data =                        \
+      brw_bs_prog_data_const(bin->prog_data);                        \
+   assert(prog_data->simd_size == 8 || prog_data->simd_size == 16);  \
+                                                                     \
+   (struct GFX_BINDLESS_SHADER_RECORD) {                             \
+      .OffsetToLocalArguments = (local_arg_offset) / 8,              \
+      .BindlessShaderDispatchMode = prog_data->simd_size / 16,       \
+      .KernelStartPointer = bin->kernel.offset,                      \
+   };                                                                \
+})
+
 struct anv_pipeline_executable {
    gl_shader_stage stage;
 
