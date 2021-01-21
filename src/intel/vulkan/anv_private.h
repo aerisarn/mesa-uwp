@@ -3597,6 +3597,12 @@ struct anv_ray_tracing_pipeline {
 
    uint32_t                                     group_count;
    struct anv_rt_shader_group *                 groups;
+
+   /* If non-zero, this is the default computed stack size as per the stack
+    * size computation in the Vulkan spec.  If zero, that indicates that the
+    * client has requested a dynamic stack size.
+    */
+   uint32_t                                     stack_size;
 };
 
 #define ANV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)             \

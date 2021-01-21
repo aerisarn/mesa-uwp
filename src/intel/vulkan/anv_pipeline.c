@@ -2509,6 +2509,21 @@ compile_trivial_return_shader(struct anv_ray_tracing_pipeline *pipeline)
    return result;
 }
 
+static bool
+is_rt_stack_size_dynamic(const VkRayTracingPipelineCreateInfoKHR *info)
+{
+   if (info->pDynamicState == NULL)
+      return false;
+
+   for (unsigned i = 0; i < info->pDynamicState->dynamicStateCount; i++) {
+      if (info->pDynamicState->pDynamicStates[i] ==
+          VK_DYNAMIC_STATE_RAY_TRACING_PIPELINE_STACK_SIZE_KHR)
+         return true;
+   }
+
+   return false;
+}
+
 static VkResult
 anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
                                  struct anv_pipeline_cache *cache,
@@ -2577,6 +2592,8 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
 
    compile_trivial_return_shader(pipeline);
 
+   uint32_t stack_max[MESA_VULKAN_SHADER_STAGES] = {};
+
    for (uint32_t i = 0; i < info->stageCount; i++) {
       if (!stages[i].entrypoint)
          continue;
@@ -2624,6 +2641,10 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
          ralloc_free(pipeline_ctx);
          return result;
       }
+
+      uint32_t stack_size =
+         brw_bs_prog_data_const(stages[i].bin->prog_data)->max_stack_size;
+      stack_max[stages[i].stage] = MAX2(stack_max[stages[i].stage], stack_size);
 
       ralloc_free(stage_ctx);
 
@@ -2677,6 +2698,11 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
             return result;
          }
 
+         uint32_t stack_size =
+            brw_bs_prog_data_const(group->intersection->prog_data)->max_stack_size;
+         stack_max[MESA_SHADER_INTERSECTION] =
+            MAX2(stack_max[MESA_SHADER_INTERSECTION], stack_size);
+
          ralloc_free(group_ctx);
          break;
       }
@@ -2687,6 +2713,43 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
    }
 
    ralloc_free(pipeline_ctx);
+
+   if (is_rt_stack_size_dynamic(info)) {
+      pipeline->stack_size = 0; /* 0 means dynamic */
+   } else {
+      /* From the Vulkan spec:
+       *
+       *    "If the stack size is not set explicitly, the stack size for a
+       *    pipeline is:
+       *
+       *       rayGenStackMax +
+       *       min(1, maxPipelineRayRecursionDepth) ×
+       *       max(closestHitStackMax, missStackMax,
+       *           intersectionStackMax + anyHitStackMax) +
+       *       max(0, maxPipelineRayRecursionDepth-1) ×
+       *       max(closestHitStackMax, missStackMax) +
+       *       2 × callableStackMax"
+       */
+      pipeline->stack_size =
+         stack_max[MESA_SHADER_RAYGEN] +
+         MIN2(1, info->maxPipelineRayRecursionDepth) *
+         MAX4(stack_max[MESA_SHADER_CLOSEST_HIT],
+              stack_max[MESA_SHADER_MISS],
+              stack_max[MESA_SHADER_INTERSECTION],
+              stack_max[MESA_SHADER_ANY_HIT]) +
+         MAX2(0, (int)info->maxPipelineRayRecursionDepth - 1) *
+         MAX2(stack_max[MESA_SHADER_CLOSEST_HIT],
+              stack_max[MESA_SHADER_MISS]) +
+         2 * stack_max[MESA_SHADER_CALLABLE];
+
+      /* This is an extremely unlikely case but we need to set it to some
+       * non-zero value so that we don't accidentally think it's dynamic.
+       * Our minimum stack size is 2KB anyway so we could set to any small
+       * value we like.
+       */
+      if (pipeline->stack_size == 0)
+         pipeline->stack_size = 1;
+   }
 
    if (false /* cache_hit */) {
       pipeline_feedback.flags |=
@@ -3040,10 +3103,42 @@ anv_GetRayTracingCaptureReplayShaderGroupHandlesKHR(
 VkDeviceSize
 anv_GetRayTracingShaderGroupStackSizeKHR(
     VkDevice                                    device,
-    VkPipeline                                  pipeline,
+    VkPipeline                                  _pipeline,
     uint32_t                                    group,
     VkShaderGroupShaderKHR                      groupShader)
 {
-   unreachable("Unimplemented");
-   return 0;
+   ANV_FROM_HANDLE(anv_pipeline, pipeline, _pipeline);
+   assert(pipeline->type == ANV_PIPELINE_RAY_TRACING);
+
+   struct anv_ray_tracing_pipeline *rt_pipeline =
+      anv_pipeline_to_ray_tracing(pipeline);
+
+   assert(group < rt_pipeline->group_count);
+
+   struct anv_shader_bin *bin;
+   switch (groupShader) {
+   case VK_SHADER_GROUP_SHADER_GENERAL_KHR:
+      bin = rt_pipeline->groups[group].general;
+      break;
+
+   case VK_SHADER_GROUP_SHADER_CLOSEST_HIT_KHR:
+      bin = rt_pipeline->groups[group].closest_hit;
+      break;
+
+   case VK_SHADER_GROUP_SHADER_ANY_HIT_KHR:
+      bin = rt_pipeline->groups[group].any_hit;
+      break;
+
+   case VK_SHADER_GROUP_SHADER_INTERSECTION_KHR:
+      bin = rt_pipeline->groups[group].intersection;
+      break;
+
+   default:
+      unreachable("Invalid VkShaderGroupShader enum");
+   }
+
+   if (bin == NULL)
+      return 0;
+
+   return brw_bs_prog_data_const(bin->prog_data)->max_stack_size;
 }
