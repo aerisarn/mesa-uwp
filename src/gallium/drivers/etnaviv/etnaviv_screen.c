@@ -816,11 +816,12 @@ etna_get_specs(struct etna_screen *screen)
    screen->specs.can_supertile =
       VIV_FEATURE(screen, chipMinorFeatures0, SUPER_TILED);
    screen->specs.bits_per_tile =
-      VIV_FEATURE(screen, chipMinorFeatures0, 2BITPERTILE) ? 2 : 4;
+      !VIV_FEATURE(screen, chipMinorFeatures0, 2BITPERTILE) ||
+      VIV_FEATURE(screen, chipMinorFeatures6, CACHE128B256BPERLINE) ? 4 : 2;
+
    screen->specs.ts_clear_value =
-      VIV_FEATURE(screen, chipMinorFeatures5, BLT_ENGINE)  ? 0xffffffff :
-      VIV_FEATURE(screen, chipMinorFeatures0, 2BITPERTILE) ? 0x55555555 :
-                                                             0x11111111;
+      VIV_FEATURE(screen, chipMinorFeatures10, DEC400) ? 0xffffffff :
+      screen->specs.bits_per_tile == 4 ? 0x11111111 : 0x55555555;
 
    screen->specs.vs_need_z_div =
       screen->model < 0x1000 && screen->model != 0x880;

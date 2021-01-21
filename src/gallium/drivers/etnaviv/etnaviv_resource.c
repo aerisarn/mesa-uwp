@@ -85,7 +85,7 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
 {
    struct etna_screen *screen = etna_screen(pscreen);
    size_t rt_ts_size, ts_layer_stride;
-   size_t ts_bits_per_tile, bytes_per_tile;
+   size_t bytes_per_tile;
    uint8_t ts_mode = TS_MODE_128B; /* only used by halti5 */
    int8_t ts_compress_fmt;
 
@@ -105,15 +105,14 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
       if (ts_compress_fmt >= 0)
          ts_mode = TS_MODE_256B;
 
-      ts_bits_per_tile = 4;
       bytes_per_tile = ts_mode == TS_MODE_256B ? 256 : 128;
    } else {
-      ts_bits_per_tile = screen->specs.bits_per_tile;
       bytes_per_tile = 64;
    }
 
    ts_layer_stride = align(DIV_ROUND_UP(rsc->levels[0].layer_stride,
-                                        bytes_per_tile * 8 / ts_bits_per_tile),
+                                        bytes_per_tile *
+                                        8 / screen->specs.bits_per_tile),
                            0x100 * screen->specs.pixel_pipes);
    rt_ts_size = ts_layer_stride * rsc->base.array_size;
    if (rt_ts_size == 0)
