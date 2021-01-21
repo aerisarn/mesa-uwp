@@ -3576,6 +3576,12 @@ struct anv_ray_tracing_pipeline {
    /* All shaders in the pipeline */
    struct util_dynarray                         shaders;
 
+   /* Trampoline shader */
+   struct anv_state                             trampoline;
+
+   /* Dummy stack return shader */
+   struct anv_shader_bin *                      trivial_return_shader;
+
    uint32_t                                     group_count;
    struct anv_rt_shader_group *                 groups;
 };

@@ -360,6 +360,8 @@ void anv_DestroyPipeline(
          anv_shader_bin_unref(device, *shader);
       }
 
+      anv_state_pool_free(&device->instruction_state_pool,
+                          rt_pipeline->trampoline);
       break;
    }
 
@@ -2482,6 +2484,32 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
 }
 
 static VkResult
+compile_trivial_return_shader(struct anv_ray_tracing_pipeline *pipeline)
+{
+   const struct brw_compiler *compiler =
+      pipeline->base.device->physical->compiler;
+
+   assert(pipeline->trivial_return_shader == NULL);
+
+   void *mem_ctx = ralloc_context(NULL);
+
+   nir_shader *nir = brw_nir_create_trivial_return_shader(compiler, mem_ctx);
+
+   struct anv_pipeline_stage stage = {
+      .stage = nir->info.stage,
+      .nir = nir,
+   };
+
+   VkResult result =
+      compile_upload_rt_shader(pipeline, stage.nir, &stage,
+                               &pipeline->trivial_return_shader, mem_ctx);
+
+   ralloc_free(mem_ctx);
+
+   return result;
+}
+
+static VkResult
 anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
                                  struct anv_pipeline_cache *cache,
                                  const VkRayTracingPipelineCreateInfoKHR *info)
@@ -2546,6 +2574,8 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
             VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
       }
    }
+
+   compile_trivial_return_shader(pipeline);
 
    for (uint32_t i = 0; i < info->stageCount; i++) {
       if (!stages[i].entrypoint)
@@ -2691,8 +2721,41 @@ anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
    /* Zero things out so our clean-up works */
    memset(pipeline->groups, 0,
           pipeline->group_count * sizeof(*pipeline->groups));
+   pipeline->trivial_return_shader = NULL;
 
    util_dynarray_init(&pipeline->shaders, pipeline->base.mem_ctx);
+
+   /* TODO: We should probably create this once per device */
+   {
+      void *tmp_ctx = ralloc_context(NULL);
+      nir_shader *trampoline_nir =
+         brw_nir_create_raygen_trampoline(device->physical->compiler, tmp_ctx);
+
+      struct brw_cs_prog_key key = {
+         /* TODO: Other subgroup sizes? */
+         .base.subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_8,
+      };
+      struct brw_cs_prog_data prog_data = {
+         .base.nr_params = 4,
+         .uses_inline_data = true,
+         .uses_btd_stack_ids = true,
+      };
+      struct brw_compile_cs_params params = {
+         .nir = trampoline_nir,
+         .key = &key,
+         .prog_data = &prog_data,
+         .log_data = pipeline->base.device,
+      };
+
+      const unsigned *tramp_data =
+         brw_compile_cs(device->physical->compiler, tmp_ctx, &params);
+
+      pipeline->trampoline =
+         anv_state_pool_alloc(&device->instruction_state_pool,
+                              prog_data.base.program_size, 64);
+      memcpy(pipeline->trampoline.map, tramp_data, prog_data.base.program_size);
+      ralloc_free(tmp_ctx);
+   }
 
    result = anv_pipeline_compile_ray_tracing(pipeline, cache, pCreateInfo);
    if (result != VK_SUCCESS)
@@ -2703,6 +2766,8 @@ anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
    return VK_SUCCESS;
 
 fail:
+   anv_state_pool_free(&device->instruction_state_pool,
+                       pipeline->trampoline);
    util_dynarray_foreach(&pipeline->shaders,
                          struct anv_shader_bin *, shader) {
       anv_shader_bin_unref(device, *shader);
