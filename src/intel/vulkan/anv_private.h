@@ -3347,7 +3347,7 @@ struct anv_semaphore {
 void anv_semaphore_reset_temporary(struct anv_device *device,
                                    struct anv_semaphore *semaphore);
 
-#define ANV_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)
+#define ANV_STAGE_MASK ((1 << MESA_VULKAN_SHADER_STAGES) - 1)
 
 #define anv_foreach_stage(stage, stage_bits)                         \
    for (gl_shader_stage stage,                                       \

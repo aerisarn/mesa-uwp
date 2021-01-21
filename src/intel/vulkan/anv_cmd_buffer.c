@@ -449,14 +449,17 @@ set_dirty_for_bind_map(struct anv_cmd_buffer *cmd_buffer,
                        gl_shader_stage stage,
                        const struct anv_pipeline_bind_map *map)
 {
+   assert(stage < ARRAY_SIZE(cmd_buffer->state.surface_sha1s));
    if (mem_update(cmd_buffer->state.surface_sha1s[stage],
                   map->surface_sha1, sizeof(map->surface_sha1)))
       cmd_buffer->state.descriptors_dirty |= mesa_to_vk_shader_stage(stage);
 
+   assert(stage < ARRAY_SIZE(cmd_buffer->state.sampler_sha1s));
    if (mem_update(cmd_buffer->state.sampler_sha1s[stage],
                   map->sampler_sha1, sizeof(map->sampler_sha1)))
       cmd_buffer->state.descriptors_dirty |= mesa_to_vk_shader_stage(stage);
 
+   assert(stage < ARRAY_SIZE(cmd_buffer->state.push_sha1s));
    if (mem_update(cmd_buffer->state.push_sha1s[stage],
                   map->push_sha1, sizeof(map->push_sha1)))
       cmd_buffer->state.push_constants_dirty |= mesa_to_vk_shader_stage(stage);

@@ -2946,10 +2946,13 @@ flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
       if ((vk_stage & dirty) == 0)
          continue;
 
+      assert(stage < ARRAY_SIZE(cmd_buffer->state.samplers));
       result = emit_samplers(cmd_buffer, pipe_state, shaders[i],
                              &cmd_buffer->state.samplers[stage]);
       if (result != VK_SUCCESS)
          break;
+
+      assert(stage < ARRAY_SIZE(cmd_buffer->state.binding_tables));
       result = emit_binding_table(cmd_buffer, pipe_state, shaders[i],
                                   &cmd_buffer->state.binding_tables[stage]);
       if (result != VK_SUCCESS)

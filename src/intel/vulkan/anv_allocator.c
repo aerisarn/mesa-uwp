@@ -1414,7 +1414,7 @@ anv_scratch_pool_init(struct anv_device *device, struct anv_scratch_pool *pool)
 void
 anv_scratch_pool_finish(struct anv_device *device, struct anv_scratch_pool *pool)
 {
-   for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
+   for (unsigned s = 0; s < ARRAY_SIZE(pool->bos[0]); s++) {
       for (unsigned i = 0; i < 16; i++) {
          if (pool->bos[i][s] != NULL)
             anv_device_release_bo(device, pool->bos[i][s]);
@@ -1432,6 +1432,7 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
    unsigned scratch_size_log2 = ffs(per_thread_scratch / 2048);
    assert(scratch_size_log2 < 16);
 
+   assert(stage < ARRAY_SIZE(pool->bos));
    struct anv_bo *bo = p_atomic_read(&pool->bos[scratch_size_log2][stage]);
 
    if (bo != NULL)

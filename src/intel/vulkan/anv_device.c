@@ -1980,7 +1980,7 @@ anv_get_physical_device_properties_1_1(struct anv_physical_device *pdevice,
 
    p->subgroupSize = BRW_SUBGROUP_SIZE;
    VkShaderStageFlags scalar_stages = 0;
-   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+   for (unsigned stage = 0; stage < MESA_VULKAN_SHADER_STAGES; stage++) {
       if (pdevice->compiler->scalar_stage[stage])
          scalar_stages |= mesa_to_vk_shader_stage(stage);
    }
