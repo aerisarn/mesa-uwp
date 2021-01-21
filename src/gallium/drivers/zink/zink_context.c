@@ -2001,7 +2001,7 @@ zink_pipeline_flags_from_stage(VkShaderStageFlagBits stage)
    }
 }
 
-static VkPipelineStageFlags
+ALWAYS_INLINE static VkPipelineStageFlags
 pipeline_access_stage(VkAccessFlags flags)
 {
    if (flags & (VK_ACCESS_UNIFORM_READ_BIT |
@@ -2019,9 +2019,11 @@ pipeline_access_stage(VkAccessFlags flags)
    return VK_PIPELINE_STAGE_TRANSFER_BIT;
 }
 
-bool
+ALWAYS_INLINE static bool
 zink_resource_buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
+   if (!res->access || !res->access_stage)
+      return true;
    if (!pipeline)
       pipeline = pipeline_access_stage(flags);
    return (res->access_stage & pipeline) != pipeline || (res->access & flags) != flags ||
@@ -2029,7 +2031,7 @@ zink_resource_buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flag
           zink_resource_access_is_write(flags);
 }
 
-bool
+ALWAYS_INLINE static bool
 zink_resource_buffer_barrier_init(VkBufferMemoryBarrier *bmb, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    if (!pipeline)

@@ -301,12 +301,6 @@ zink_maybe_flush_or_stall(struct zink_context *ctx);
 bool
 zink_resource_access_is_write(VkAccessFlags flags);
 
-bool
-zink_resource_buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline);
-
-bool
-zink_resource_buffer_barrier_init(VkBufferMemoryBarrier *bmb, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline);
-
 void
 zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline);
 
