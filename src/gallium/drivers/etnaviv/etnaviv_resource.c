@@ -348,7 +348,8 @@ etna_resource_create(struct pipe_screen *pscreen,
          layout |= ETNA_LAYOUT_BIT_MULTI;
       if (screen->specs.can_supertile)
          layout |= ETNA_LAYOUT_BIT_SUPER;
-   } else if (VIV_FEATURE(screen, chipMinorFeatures2, SUPERTILED_TEXTURE) &&
+   } else if (screen->specs.can_supertile &&
+              VIV_FEATURE(screen, chipMinorFeatures2, SUPERTILED_TEXTURE) &&
               etna_resource_hw_tileable(screen->specs.use_blt, templat)) {
       layout |= ETNA_LAYOUT_BIT_SUPER;
    }
