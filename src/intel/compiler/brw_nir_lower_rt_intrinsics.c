@@ -337,8 +337,9 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
             break;
 
          case nir_intrinsic_load_btd_resume_sbt_addr_intel:
-            /* The call stack handler is just the first in our resume SBT */
-            sysval = globals.resume_sbt_addr;
+            sysval = nir_pack_64_2x32_split(b,
+               nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_RESUME_SBT_ADDR_LOW),
+               nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_RESUME_SBT_ADDR_HIGH));
             break;
 
          case nir_intrinsic_load_leaf_procedural_intel:

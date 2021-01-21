@@ -330,8 +330,7 @@ rewrite_instr_src_from_phi_builder(nir_src *src, void *_pbv_arr)
 }
 
 static void
-spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
-                                      uint32_t first_resume_sbt_idx)
+spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls)
 {
    /* TODO: If a SSA def is filled more than once, we probably want to just
     *       spill it at the LCM of the fill sites so we avoid unnecessary
@@ -508,8 +507,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
          nir_intrinsic_instr *call = nir_instr_as_intrinsic(instr);
          nir_ssa_def *resume_record_addr =
             nir_iadd_imm(b, nir_load_btd_resume_sbt_addr_intel(b),
-                         (first_resume_sbt_idx + call_idx) *
-                         BRW_BTD_RESUME_SBT_STRIDE);
+                         call_idx * BRW_BTD_RESUME_SBT_STRIDE);
          /* By the time we get here, any remaining shader/function memory
           * pointers have been lowered to SSA values.
           */
@@ -1206,7 +1204,6 @@ replace_resume_with_halt(nir_shader *shader, nir_instr *keep)
  */
 bool
 brw_nir_lower_shader_calls(nir_shader *shader,
-                           uint32_t first_resume_sbt_idx,
                            nir_shader ***resume_shaders_out,
                            uint32_t *num_resume_shaders_out,
                            void *mem_ctx)
@@ -1241,8 +1238,7 @@ brw_nir_lower_shader_calls(nir_shader *shader,
          NIR_PASS(progress, shader, nir_opt_cse);
    }
 
-   NIR_PASS_V(shader, spill_ssa_defs_and_lower_shader_calls,
-              num_calls, first_resume_sbt_idx);
+   NIR_PASS_V(shader, spill_ssa_defs_and_lower_shader_calls, num_calls);
 
    /* Make N copies of our shader */
    nir_shader **resume_shaders = ralloc_array(mem_ctx, nir_shader *, num_calls);
