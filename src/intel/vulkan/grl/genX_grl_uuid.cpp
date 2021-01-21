@@ -21,29 +21,19 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef ANV_GRL_H
-#define ANV_GRL_H
+#include <assert.h>
+#include <string.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "include/GRLGen12.h"
 
-#include "anv_private.h"
-#include "grl/grl_cl_kernel.h"
-#include "genxml/gen_macros.h"
+#include "vulkan/vulkan_core.h"
 
-void
-genX(grl_dispatch)(struct anv_cmd_buffer *cmd_buffer,
-                   enum grl_cl_kernel kernel,
-                   const uint32_t *global_size,
-                   uint32_t arg_count,
-                   const struct anv_kernel_arg *args);
+extern "C" void
+gfx125_grl_load_rt_uuid(uint8_t *out_uuid);
 
-void
-genX(grl_load_rt_uuid)(uint8_t *out_uuid);
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
-
-#endif /* ANV_GRL_H */
+extern "C" void
+gfx125_grl_load_rt_uuid(uint8_t *out_uuid)
+{
+   assert(sizeof(GRL::RTAS::GEN12::BVH_MAGIC) == VK_UUID_SIZE);
+   memcpy(out_uuid, GRL::RTAS::GEN12::BVH_MAGIC, VK_UUID_SIZE);
+}

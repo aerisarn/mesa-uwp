@@ -975,6 +975,7 @@ struct anv_physical_device {
     uint8_t                                     pipeline_cache_uuid[VK_UUID_SIZE];
     uint8_t                                     driver_uuid[VK_UUID_SIZE];
     uint8_t                                     device_uuid[VK_UUID_SIZE];
+    uint8_t                                     rt_uuid[VK_UUID_SIZE];
 
     struct vk_sync_type                         sync_syncobj_type;
     struct vk_sync_timeline_type                sync_timeline_type;
@@ -1076,6 +1077,11 @@ anv_device_upload_nir(struct anv_device *device,
                       const struct nir_shader *nir,
                       unsigned char sha1_key[20]);
 
+enum anv_rt_bvh_build_method {
+   ANV_BVH_BUILD_METHOD_TRIVIAL,
+   ANV_BVH_BUILD_METHOD_NEW_SAH,
+};
+
 struct anv_device {
     struct vk_device                            vk;
 
@@ -1146,6 +1152,7 @@ struct anv_device {
     struct anv_scratch_pool                     scratch_pool;
     struct anv_bo                              *rt_scratch_bos[16];
     struct anv_bo                              *btd_fifo_bo;
+    struct anv_address                          rt_uuid_addr;
 
     /** Shadow ray query BO
      *
@@ -1164,6 +1171,8 @@ struct anv_device {
 
     struct anv_shader_bin                      *rt_trampoline;
     struct anv_shader_bin                      *rt_trivial_return;
+
+    enum anv_rt_bvh_build_method                bvh_build_method;
 
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
@@ -2087,6 +2096,7 @@ anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
       switch ((VkAccessFlags2)BITFIELD64_BIT(b)) {
       case VK_ACCESS_2_SHADER_WRITE_BIT:
       case VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT:
+      case VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR:
          /* We're transitioning a buffer that was previously used as write
           * destination through the data port. To make its content available
           * to future operations, flush the hdc pipeline.

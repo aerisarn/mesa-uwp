@@ -49,6 +49,7 @@ endforeach
 
 grl_genX_files = [
   'genX_grl_dispatch.c',
+  'genX_grl_uuid.cpp',
 ]
 
 grl_lib_args = []
@@ -151,12 +152,16 @@ foreach t : [['125', 'gfx125', 'dg2']]
   grl_genX_libs += static_library(
     'grl_@0@'.format(genX_prefix),
     [grl_cl_kernel_h, grl_compiled_cl_kernels, grl_cl_kernel_c,
-     grl_genX_files, grl_metakernel_c],
+     grl_genX_files, grl_metakernel_c, grl_metakernel_h],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler,
       inc_intel, inc_anv,
     ],
     c_args : [
+      no_override_init_args, c_sse2_args,
+      '-DGFX_VERx10=@0@'.format(verX10),
+    ],
+    cpp_args : [
       no_override_init_args, c_sse2_args,
       '-DGFX_VERx10=@0@'.format(verX10),
     ],
@@ -168,6 +173,13 @@ foreach t : [['125', 'gfx125', 'dg2']]
   )
 endforeach
 
+libgrl_deps = [
+  dep_valgrind,
+  idep_nir_headers,
+  idep_vulkan_util_headers,
+  idep_vulkan_wsi_headers,
+]
+
 libgrl = static_library(
   'grl',
   [grl_cl_kernel_h],
@@ -176,8 +188,12 @@ libgrl = static_library(
     inc_compiler,
   ],
   link_whole : [grl_genX_libs],
-  dependencies : [
-    dep_valgrind, idep_nir_headers, idep_vulkan_util_headers, idep_vulkan_wsi_headers
-  ],
+  dependencies : libgrl_deps,
   install : true,
+)
+idep_grl = declare_dependency(
+  link_with : libgrl,
+  dependencies : libgrl_deps,
+  sources : grl_metakernel_h,
+  include_directories : include_directories('include', 'gpu'),
 )

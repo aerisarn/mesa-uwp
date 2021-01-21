@@ -159,6 +159,12 @@ VkResult genX(CreateQueryPool)(
       /* Query has two values: begin and end. */
       uint64s_per_slot = 1 + 2;
       break;
+#if GFX_VERx10 >= 125
+   case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
+   case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
+      uint64s_per_slot = 1 + 1 /* availability + size */;
+      break;
+#endif
    default:
       assert(!"Invalid query type");
    }
@@ -435,13 +441,18 @@ VkResult genX(GetQueryPoolResults)(
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_query_pool, pool, queryPool);
 
-   assert(pool->type == VK_QUERY_TYPE_OCCLUSION ||
-          pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS ||
-          pool->type == VK_QUERY_TYPE_TIMESTAMP ||
-          pool->type == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT ||
-          pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR ||
-          pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL ||
-          pool->type == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT);
+   assert(
+#if GFX_VERx10 >= 125
+   pool->type == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR ||
+   pool->type == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR ||
+#endif
+   pool->type == VK_QUERY_TYPE_OCCLUSION ||
+   pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS ||
+   pool->type == VK_QUERY_TYPE_TIMESTAMP ||
+   pool->type == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT ||
+   pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR ||
+   pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL ||
+   pool->type == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT);
 
    if (vk_device_is_lost(&device->vk))
       return VK_ERROR_DEVICE_LOST;
@@ -533,6 +544,10 @@ VkResult genX(GetQueryPoolResults)(
          break;
       }
 
+#if GFX_VERx10 >= 125
+      case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
+      case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
+#endif
       case VK_QUERY_TYPE_TIMESTAMP: {
          uint64_t *slot = query_slot(pool, firstQuery + i);
          if (write_results)
@@ -716,6 +731,10 @@ void genX(CmdResetQueryPool)(
 
    switch (pool->type) {
    case VK_QUERY_TYPE_OCCLUSION:
+#if GFX_VERx10 >= 125
+   case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
+   case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
+#endif
       for (uint32_t i = 0; i < queryCount; i++) {
          emit_query_pc_availability(cmd_buffer,
                                     anv_query_address(pool, firstQuery + i),
@@ -1466,6 +1485,10 @@ void genX(CmdCopyQueryPoolResults)(
          break;
 
       case VK_QUERY_TYPE_TIMESTAMP:
+#if GFX_VERx10 >= 125
+      case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
+      case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
+#endif
          result = mi_mem64(anv_address_add(query_addr, 8));
          gpu_write_query_result(&b, dest_addr, flags, idx++, result);
          break;
@@ -1486,3 +1509,51 @@ void genX(CmdCopyQueryPoolResults)(
       dest_addr = anv_address_add(dest_addr, destStride);
    }
 }
+
+#if GFX_VERx10 >= 125
+
+#include "grl/include/GRLRTASCommon.h"
+#include "grl/grl_metakernel_postbuild_info.h"
+
+void
+genX(CmdWriteAccelerationStructuresPropertiesKHR)(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    accelerationStructureCount,
+    const VkAccelerationStructureKHR*           pAccelerationStructures,
+    VkQueryType                                 queryType,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    firstQuery)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+   ANV_FROM_HANDLE(anv_query_pool, pool, queryPool);
+
+   assert(queryType == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR ||
+          queryType == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR);
+
+   struct mi_builder b;
+   mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+
+   for (uint32_t i = 0; i < accelerationStructureCount; i++) {
+      ANV_FROM_HANDLE(anv_acceleration_structure, accel, pAccelerationStructures[i]);
+      struct anv_address query_addr =
+         anv_address_add(anv_query_address(pool, firstQuery + i), 8);
+
+      if (queryType == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR) {
+         genX(grl_postbuild_info_compacted_size)(cmd_buffer,
+                                                 anv_address_physical(accel->address),
+                                                 anv_address_physical(query_addr));
+      } else {
+         assert(queryType == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR);
+         genX(grl_postbuild_info_serialized_size)(cmd_buffer,
+                                                  anv_address_physical(accel->address),
+                                                  anv_address_physical(query_addr));
+      }
+   }
+
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
+   for (uint32_t i = 0; i < accelerationStructureCount; i++)
+      emit_query_mi_availability(&b, anv_query_address(pool, firstQuery + i), true);
+}
+#endif

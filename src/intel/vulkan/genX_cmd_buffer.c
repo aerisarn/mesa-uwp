@@ -5345,7 +5345,7 @@ genX(cmd_buffer_dispatch_kernel)(struct anv_cmd_buffer *cmd_buffer,
       mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
 
       struct anv_address sysvals_addr = {
-         .bo = cmd_buffer->device->general_state_pool.block_pool.bo,
+         .bo = NULL, /* General state buffer is always 0. */
          .offset = indirect_data.offset,
       };
 
