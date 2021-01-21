@@ -1402,7 +1402,9 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       .pdevice = pdevice,
       .layout = layout,
       .add_bounds_checks = robust_buffer_access,
-      .desc_addr_format = nir_address_format_32bit_index_offset,
+      .desc_addr_format = brw_shader_stage_is_bindless(shader->info.stage) ?
+                          nir_address_format_64bit_global_32bit_offset :
+                          nir_address_format_32bit_index_offset,
       .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_buffer_access),
       .ubo_addr_format = anv_nir_ubo_addr_format(pdevice, robust_buffer_access),
       .lowered_instrs = _mesa_pointer_set_create(mem_ctx),
@@ -1504,7 +1506,8 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
 
       if (binding->data & ANV_DESCRIPTOR_SURFACE_STATE) {
          if (map->surface_count + array_size > MAX_BINDING_TABLE_SIZE ||
-             anv_descriptor_requires_bindless(pdevice, binding, false)) {
+             anv_descriptor_requires_bindless(pdevice, binding, false) ||
+             brw_shader_stage_is_bindless(shader->info.stage)) {
             /* If this descriptor doesn't fit in the binding table or if it
              * requires bindless for some reason, flag it as bindless.
              */
@@ -1543,7 +1546,8 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
 
       if (binding->data & ANV_DESCRIPTOR_SAMPLER_STATE) {
          if (map->sampler_count + array_size > MAX_SAMPLER_TABLE_SIZE ||
-             anv_descriptor_requires_bindless(pdevice, binding, true)) {
+             anv_descriptor_requires_bindless(pdevice, binding, true) ||
+             brw_shader_stage_is_bindless(shader->info.stage)) {
             /* If this descriptor doesn't fit in the binding table or if it
              * requires bindless for some reason, flag it as bindless.
              *
@@ -1653,6 +1657,11 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
                                 &state);
 
    ralloc_free(mem_ctx);
+
+   if (brw_shader_stage_is_bindless(shader->info.stage)) {
+      assert(map->surface_count == 0);
+      assert(map->sampler_count == 0);
+   }
 
    /* Now that we're done computing the surface and sampler portions of the
     * bind map, hash them.  This lets us quickly determine if the actual
