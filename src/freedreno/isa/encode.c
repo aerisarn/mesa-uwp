@@ -113,9 +113,6 @@ __instruction_case(struct encode_state *s, struct ir3_instruction *instr)
 		}
 	} else if (instr->opc == OPC_DEMOTE) {
 		return OPC_KILL;
-	} else if ((instr->block->shader->compiler->gen >= 6) &&
-			is_atomic(instr->opc) && (instr->flags & IR3_INSTR_G)) {
-		return instr->opc - OPC_ATOMIC_ADD + OPC_ATOMIC_B_ADD;
 	} else if (s->compiler->gen >= 6) {
 		if (instr->opc == OPC_RESINFO) {
 			return OPC_RESINFO_B;
@@ -243,7 +240,7 @@ extract_cat6_DESC_MODE(struct ir3_instruction *instr)
 static inline struct ir3_register *
 extract_cat6_SRC(struct ir3_instruction *instr, unsigned n)
 {
-	if (instr->flags & IR3_INSTR_G) {
+	if (is_global_a3xx_atomic(instr->opc)) {
 		n++;
 	}
 	assert(n < instr->srcs_count);

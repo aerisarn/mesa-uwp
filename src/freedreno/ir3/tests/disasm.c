@@ -336,13 +336,16 @@ static const struct test {
    /* Atomic: */
 #if 0
    /* TODO our encoding differs in b53 for these two */
-   INSTR_5XX(c4d60002_00008001, "atomic.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
-   INSTR_5XX(c4160205_03000001, "atomic.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
+   INSTR_5XX(c4f60002_00008001, "atomic.s.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
+   INSTR_5XX(c4360205_03000001, "atomic.s.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
 #else
-   INSTR_5XX(c4f60002_00008001, "atomic.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
-   INSTR_5XX(c4360205_03000001, "atomic.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
+   INSTR_5XX(c4f60002_00008001, "atomic.s.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
+   INSTR_5XX(c4360205_03000001, "atomic.s.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
 #endif
    INSTR_6XX(d5c60003_03008001, "(sy)atomic.max.untyped.1d.u32.1.l r0.w, l[r0.z], r0.w"),
+
+   /* dEQP-VK.glsl.atomic_operations.add_unsigned_compute_reference */
+   INSTR_6XX(c4160002_02000001, "atomic.g.add.untyped.1d.u32.1.g r0.z, r0.x, r0.z"),
 
    /* Bindless atomic: */
    INSTR_6XX(c03a0003_01640000, "atomic.b.add.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.add.g.s32.1d.mode0.base0 r0.w,r0.y,0 */

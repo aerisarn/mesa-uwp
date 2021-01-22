@@ -952,10 +952,11 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n, unsigned flags)
          /* disallow immediates in anything but the SSBO slot argument for
           * cat6 instructions:
           */
-         if (is_atomic(instr->opc) && (n != 0))
+         if (is_global_a3xx_atomic(instr->opc) && (n != 0))
             return false;
 
-         if (is_atomic(instr->opc) && !(instr->flags & IR3_INSTR_G))
+         if (is_local_atomic(instr->opc) || is_global_a6xx_atomic(instr->opc) ||
+             is_bindless_atomic(instr->opc))
             return false;
 
          if (instr->opc == OPC_STG && (n == 2))

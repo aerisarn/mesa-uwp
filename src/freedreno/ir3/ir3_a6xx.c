@@ -144,36 +144,36 @@ emit_intrinsic_atomic_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
    switch (intr->intrinsic) {
    case nir_intrinsic_ssbo_atomic_add_ir3:
-      atomic = ir3_ATOMIC_ADD_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_ADD(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_ssbo_atomic_imin_ir3:
-      atomic = ir3_ATOMIC_MIN_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_MIN(b, ibo, 0, src0, 0, src1, 0);
       type = TYPE_S32;
       break;
    case nir_intrinsic_ssbo_atomic_umin_ir3:
-      atomic = ir3_ATOMIC_MIN_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_MIN(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_ssbo_atomic_imax_ir3:
-      atomic = ir3_ATOMIC_MAX_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_MAX(b, ibo, 0, src0, 0, src1, 0);
       type = TYPE_S32;
       break;
    case nir_intrinsic_ssbo_atomic_umax_ir3:
-      atomic = ir3_ATOMIC_MAX_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_MAX(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_ssbo_atomic_and_ir3:
-      atomic = ir3_ATOMIC_AND_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_AND(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_ssbo_atomic_or_ir3:
-      atomic = ir3_ATOMIC_OR_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_OR(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_ssbo_atomic_xor_ir3:
-      atomic = ir3_ATOMIC_XOR_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_XOR(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_ssbo_atomic_exchange_ir3:
-      atomic = ir3_ATOMIC_XCHG_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_XCHG(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_ssbo_atomic_comp_swap_ir3:
-      atomic = ir3_ATOMIC_CMPXCHG_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_CMPXCHG(b, ibo, 0, src0, 0, src1, 0);
       break;
    default:
       unreachable("boo");
@@ -288,39 +288,39 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    switch (intr->intrinsic) {
    case nir_intrinsic_image_atomic_add:
    case nir_intrinsic_bindless_image_atomic_add:
-      atomic = ir3_ATOMIC_ADD_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_ADD(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_image_atomic_imin:
    case nir_intrinsic_image_atomic_umin:
    case nir_intrinsic_bindless_image_atomic_imin:
    case nir_intrinsic_bindless_image_atomic_umin:
-      atomic = ir3_ATOMIC_MIN_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_MIN(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_image_atomic_imax:
    case nir_intrinsic_image_atomic_umax:
    case nir_intrinsic_bindless_image_atomic_imax:
    case nir_intrinsic_bindless_image_atomic_umax:
-      atomic = ir3_ATOMIC_MAX_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_MAX(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_image_atomic_and:
    case nir_intrinsic_bindless_image_atomic_and:
-      atomic = ir3_ATOMIC_AND_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_AND(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_image_atomic_or:
    case nir_intrinsic_bindless_image_atomic_or:
-      atomic = ir3_ATOMIC_OR_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_OR(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_image_atomic_xor:
    case nir_intrinsic_bindless_image_atomic_xor:
-      atomic = ir3_ATOMIC_XOR_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_XOR(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_image_atomic_exchange:
    case nir_intrinsic_bindless_image_atomic_exchange:
-      atomic = ir3_ATOMIC_XCHG_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_XCHG(b, ibo, 0, src0, 0, src1, 0);
       break;
    case nir_intrinsic_image_atomic_comp_swap:
    case nir_intrinsic_bindless_image_atomic_comp_swap:
-      atomic = ir3_ATOMIC_CMPXCHG_G(b, ibo, 0, src0, 0, src1, 0);
+      atomic = ir3_ATOMIC_B_CMPXCHG(b, ibo, 0, src0, 0, src1, 0);
       break;
    default:
       unreachable("boo");
