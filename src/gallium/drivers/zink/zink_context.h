@@ -124,6 +124,12 @@ struct zink_viewport_state {
    uint8_t num_viewports;
 };
 
+
+union zink_descriptor_surface {
+   struct zink_surface *surface;
+   struct zink_buffer_view *bufferview;
+};
+
 struct zink_context {
    struct pipe_context base;
    struct threaded_context *tc;
@@ -189,7 +195,6 @@ struct zink_context {
    struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
 
    void *sampler_states[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
-   VkSampler samplers[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    unsigned num_samplers[PIPE_SHADER_TYPES];
    struct pipe_sampler_view *sampler_views[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    unsigned num_sampler_views[PIPE_SHADER_TYPES];
@@ -222,6 +227,25 @@ struct zink_context {
    struct pipe_resource *dummy_vertex_buffer;
    struct pipe_resource *dummy_xfb_buffer;
    struct pipe_resource *null_buffers[5]; /* used to create zink_framebuffer->null_surface, one buffer per samplecount */
+
+   struct {
+      /* descriptor info */
+      VkDescriptorBufferInfo ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
+      uint32_t push_valid;
+
+      VkDescriptorBufferInfo ssbos[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
+
+      VkDescriptorImageInfo textures[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
+      VkBufferView tbos[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
+
+      VkDescriptorImageInfo images[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
+      VkBufferView texel_images[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
+      unsigned num_images[PIPE_SHADER_TYPES];
+
+      struct zink_resource *descriptor_res[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
+      union zink_descriptor_surface sampler_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
+      union zink_descriptor_surface image_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
+   } di;
 
    uint32_t num_so_targets;
    struct pipe_stream_output_target *so_targets[PIPE_MAX_SO_OUTPUTS];
