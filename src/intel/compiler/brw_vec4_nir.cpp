@@ -1145,6 +1145,14 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       op[i].swizzle = brw_swizzle_for_nir_swizzle(instr->src[i].swizzle);
    }
 
+#ifndef NDEBUG
+   /* On Gen7 and earlier, no functionality is exposed that should allow 8-bit
+    * integer types to ever exist.
+    */
+   for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++)
+      assert(type_sz(op[i].type) > 1);
+#endif
+
    switch (instr->op) {
    case nir_op_mov:
       try_immediate_source(instr, &op[0], true);

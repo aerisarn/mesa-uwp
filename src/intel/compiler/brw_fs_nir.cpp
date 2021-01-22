@@ -965,6 +965,39 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    fs_reg op[NIR_MAX_VEC_COMPONENTS];
    fs_reg result = prepare_alu_destination_and_sources(bld, instr, op, need_dest);
 
+#ifndef NDEBUG
+   /* Everything except raw moves, some type conversions, iabs, and ineg
+    * should have 8-bit sources lowered by nir_lower_bit_size in
+    * brw_preprocess_nir or by brw_nir_lower_conversions in
+    * brw_postprocess_nir.
+    */
+   switch (instr->op) {
+   case nir_op_mov:
+   case nir_op_vec2:
+   case nir_op_vec3:
+   case nir_op_vec4:
+   case nir_op_vec8:
+   case nir_op_vec16:
+   case nir_op_i2f16:
+   case nir_op_i2f32:
+   case nir_op_i2i16:
+   case nir_op_i2i32:
+   case nir_op_u2f16:
+   case nir_op_u2f32:
+   case nir_op_u2u16:
+   case nir_op_u2u32:
+   case nir_op_iabs:
+   case nir_op_ineg:
+      break;
+
+   default:
+      for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
+         assert((devinfo->ver == 8 || devinfo->ver == 9) ||
+                type_sz(op[i].type) > 1);
+      }
+   }
+#endif
+
    switch (instr->op) {
    case nir_op_mov:
    case nir_op_vec2:
