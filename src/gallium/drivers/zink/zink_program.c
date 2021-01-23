@@ -981,7 +981,7 @@ zink_create_vs_state(struct pipe_context *pctx,
    return zink_shader_create(zink_screen(pctx->screen), nir, &shader->stream_output);
 }
 
-static void
+static inline void
 bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
            struct zink_shader *shader)
 {
