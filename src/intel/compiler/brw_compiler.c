@@ -193,9 +193,6 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
       nir_options->lower_int64_options = int64_options;
       nir_options->lower_doubles_options = fp64_options;
 
-      /* Starting with Gfx11, we lower away 8-bit arithmetic */
-      nir_options->support_8bit_alu = devinfo->ver < 11;
-
       nir_options->unify_interfaces = i < MESA_SHADER_FRAGMENT;
 
       nir_options->force_indirect_unrolling |=

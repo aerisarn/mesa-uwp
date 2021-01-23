@@ -993,8 +993,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    default:
       for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-         assert((devinfo->ver == 8 || devinfo->ver == 9) ||
-                type_sz(op[i].type) > 1);
+         assert(type_sz(op[i].type) > 1);
       }
    }
 #endif
@@ -1836,6 +1835,35 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_bitfield_insert:
       unreachable("not reached: should have been lowered");
 
+   /* For all shift operations:
+    *
+    * Gen4 - Gen7: After application of source modifiers, the low 5-bits of
+    * src1 are used an unsigned value for the shift count.
+    *
+    * Gen8: As with earlier platforms, but for Q and UQ types on src0, the low
+    * 6-bit of src1 are used.
+    *
+    * Gen9+: The low bits of src1 matching the size of src0 (e.g., 4-bits for
+    * W or UW src0).
+    *
+    * The implication is that the following instruction will produce a
+    * different result on Gen9+ than on previous platforms:
+    *
+    *    shr(8)    g4<1>UW    g12<8,8,1>UW    0x0010UW
+    *
+    * where Gen9+ will shift by zero, and earlier platforms will shift by 16.
+    *
+    * This does not seem to be the case.  Experimentally, it has been
+    * determined that shifts of 16-bit values on Gen8 behave properly.  Shifts
+    * of 8-bit values on both Gen8 and Gen9 do not.  Gen11+ lowers 8-bit
+    * values, so those platforms were not tested.  No features expose access
+    * to 8- or 16-bit types on Gen7 or earlier, so those platforms were not
+    * tested either.  See
+    * https://gitlab.freedesktop.org/mesa/crucible/-/merge_requests/76.
+    *
+    * This is part of the reason 8-bit values are lowered to 16-bit on all
+    * platforms.
+    */
    case nir_op_ishl:
       bld.SHL(result, op[0], op[1]);
       break;
