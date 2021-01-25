@@ -440,21 +440,23 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
          return true;
       }
 
-      /* NOTE: seems we can only do immed integers, so don't
-       * need to care about float.  But we do need to handle
-       * abs/neg *before* checking that the immediate requires
-       * few enough bits to encode:
-       *
-       * TODO: do we need to do something to avoid accidentally
-       * catching a float immed?
-       */
       if (src_reg->flags & IR3_REG_IMMED) {
          int32_t iim_val = src_reg->iim_val;
 
          debug_assert((opc_cat(instr->opc) == 1) ||
-                      (opc_cat(instr->opc) == 6) || is_meta(instr) ||
-                      ir3_cat2_int(instr->opc) ||
+                      (opc_cat(instr->opc) == 2) ||
+                      (opc_cat(instr->opc) == 6) ||
+                      is_meta(instr) ||
                       (is_mad(instr->opc) && (n == 0)));
+
+         if ((opc_cat(instr->opc) == 2) &&
+               !ir3_cat2_int(instr->opc)) {
+            iim_val = ir3_flut(src_reg);
+            if (iim_val < 0) {
+               /* Fall back to trying to load the immediate as a const: */
+               return lower_immed(ctx, instr, n, src_reg, new_flags);
+            }
+         }
 
          if (new_flags & IR3_REG_SABS)
             iim_val = abs(iim_val);
@@ -476,9 +478,9 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
             instr->srcs[n] = src_reg;
 
             return true;
-         } else if (lower_immed(ctx, instr, n, src_reg, new_flags)) {
-            /* Fell back to loading the immediate as a const */
-            return true;
+         } else {
+            /* Fall back to trying to load the immediate as a const: */
+            return lower_immed(ctx, instr, n, src_reg, new_flags);
          }
       }
    }

@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "util/bitscan.h"
+#include "util/half_float.h"
 #include "util/ralloc.h"
 #include "util/u_math.h"
 
@@ -701,6 +702,51 @@ ir3_fixup_src_type(struct ir3_instruction *instr)
    }
 }
 
+/**
+ * Map a floating point immed to FLUT (float lookup table) value,
+ * returns negative for immediates that cannot be mapped.
+ */
+int
+ir3_flut(struct ir3_register *src_reg)
+{
+   static const struct {
+      uint32_t f32;
+      uint16_t f16;
+   } flut[] = {
+         { .f32 = 0x00000000, .f16 = 0x0000 },    /* 0.0 */
+         { .f32 = 0x3f000000, .f16 = 0x3800 },    /* 0.5 */
+         { .f32 = 0x3f800000, .f16 = 0x3c00 },    /* 1.0 */
+         { .f32 = 0x40000000, .f16 = 0x4000 },    /* 2.0 */
+         { .f32 = 0x402df854, .f16 = 0x4170 },    /* e */
+         { .f32 = 0x40490fdb, .f16 = 0x4248 },    /* pi */
+         { .f32 = 0x3ea2f983, .f16 = 0x3518 },    /* 1/pi */
+         { .f32 = 0x3f317218, .f16 = 0x398c },    /* 1/log2(e) */
+         { .f32 = 0x3fb8aa3b, .f16 = 0x3dc5 },    /* log2(e) */
+         { .f32 = 0x3e9a209b, .f16 = 0x34d1 },    /* 1/log2(10) */
+         { .f32 = 0x40549a78, .f16 = 0x42a5 },    /* log2(10) */
+         { .f32 = 0x40800000, .f16 = 0x4400 },    /* 4.0 */
+   };
+
+   if (src_reg->flags & IR3_REG_HALF) {
+      /* Note that half-float immeds are already lowered to 16b in nir: */
+      uint32_t imm = src_reg->uim_val;
+      for (unsigned i = 0; i < ARRAY_SIZE(flut); i++) {
+         if (flut[i].f16 == imm) {
+            return i;
+         }
+      }
+   } else {
+      uint32_t imm = src_reg->uim_val;
+      for (unsigned i = 0; i < ARRAY_SIZE(flut); i++) {
+         if (flut[i].f32 == imm) {
+            return i;
+         }
+      }
+   }
+
+   return -1;
+}
+
 static unsigned
 cp_flags(unsigned flags)
 {
@@ -782,10 +828,7 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n, unsigned flags)
       break;
    case 2:
       valid_flags = ir3_cat2_absneg(instr->opc) | IR3_REG_CONST |
-                    IR3_REG_RELATIV | IR3_REG_SHARED;
-
-      if (ir3_cat2_int(instr->opc))
-         valid_flags |= IR3_REG_IMMED;
+                    IR3_REG_RELATIV | IR3_REG_IMMED | IR3_REG_SHARED;
 
       if (flags & ~valid_flags)
          return false;
