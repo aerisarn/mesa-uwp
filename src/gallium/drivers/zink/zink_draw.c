@@ -159,6 +159,7 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
       vkCmdBindVertexBuffers(batch->state->cmdbuf, 0,
                              elems->hw_state.num_bindings,
                              buffers, buffer_offsets);
+   ctx->vertex_buffers_dirty = false;
 }
 
 static struct zink_compute_program *
@@ -644,7 +645,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->state->cmdbuf, ctx->blend_constants);
 
-   zink_bind_vertex_buffers(batch, ctx);
+   if (ctx->vertex_buffers_dirty || pipeline_changed)
+      zink_bind_vertex_buffers(batch, ctx);
 
    if (BITSET_TEST(ctx->gfx_stages[PIPE_SHADER_VERTEX]->nir->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX)) {
       unsigned draw_mode_is_indexed = dinfo->index_size > 0;

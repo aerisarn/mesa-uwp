@@ -96,11 +96,15 @@ zink_bind_vertex_elements_state(struct pipe_context *pctx,
    struct zink_gfx_pipeline_state *state = &ctx->gfx_pipeline_state;
    ctx->element_state = cso;
    if (cso) {
-      if (state->element_state != &ctx->element_state->hw_state)
+      if (state->element_state != &ctx->element_state->hw_state) {
          state->vertex_state_dirty = true;
+         ctx->vertex_buffers_dirty = ctx->element_state->hw_state.num_bindings > 0;
+      }
       state->element_state = &ctx->element_state->hw_state;
-   } else
+   } else {
      state->element_state = NULL;
+     ctx->vertex_buffers_dirty = false;
+   }
 }
 
 static void

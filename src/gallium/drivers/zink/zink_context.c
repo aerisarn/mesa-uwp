@@ -857,6 +857,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
          update_existing_vbo(ctx, slot);
       }
    }
+   ctx->vertex_buffers_dirty = num_buffers > 0;
    util_set_vertex_buffers_mask(ctx->vertex_buffers, &ctx->gfx_pipeline_state.vertex_buffers_enabled_mask,
                                 buffers, start_slot, num_buffers,
                                 unbind_num_trailing_slots, take_ownership);
@@ -1706,6 +1707,7 @@ flush_batch(struct zink_context *ctx, bool sync)
          ctx->dirty_so_targets = true;
       ctx->descriptor_refs_dirty[0] = ctx->descriptor_refs_dirty[1] = true;
       ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
+      ctx->vertex_buffers_dirty = true;
    }
 }
 
@@ -2968,6 +2970,7 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
       return;
    if (!did_ref)
       zink_batch_reference_resource_rw(&ctx->batch, res, false);
+   ctx->vertex_buffers_dirty = true;
    zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
                                 VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
 }
