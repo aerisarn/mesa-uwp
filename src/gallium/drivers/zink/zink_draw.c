@@ -101,14 +101,14 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
    ctx->dirty_so_targets = false;
 }
 
-static void
+ALWAYS_INLINE static void
 check_buffer_barrier(struct zink_context *ctx, struct pipe_resource *pres, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    struct zink_resource *res = zink_resource(pres);
    zink_resource_buffer_barrier(ctx, NULL, res, flags, pipeline);
 }
 
-static void
+ALWAYS_INLINE static void
 barrier_draw_buffers(struct zink_context *ctx, const struct pipe_draw_info *dinfo,
                      const struct pipe_draw_indirect_info *dindirect, struct pipe_resource *index_buffer)
 {
