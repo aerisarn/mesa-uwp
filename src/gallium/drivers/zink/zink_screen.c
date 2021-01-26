@@ -1630,6 +1630,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!screen->dev)
       goto fail;
 
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_RADV ||
+       screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE ||
+       screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
+      /* this has bad perf on AMD */
+      screen->info.have_KHR_push_descriptor = false;
    if (!load_device_extensions(screen))
       goto fail;
 
