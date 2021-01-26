@@ -60,7 +60,6 @@ struct zink_descriptor_set {
    bool punted;
    bool recycled;
    struct zink_descriptor_state_key key;
-   struct util_dynarray barriers;
    struct zink_batch_usage batch_uses;
 #ifndef NDEBUG
    /* for extra debug asserts */
@@ -469,13 +468,6 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       zds->batch_uses.usage = 0;
       zds->invalid = true;
       zds->punted = zds->recycled = false;
-      if (num_resources) {
-         util_dynarray_init(&zds->barriers, alloc);
-         if (!util_dynarray_grow(&zds->barriers, struct zink_descriptor_barrier, num_resources)) {
-            debug_printf("ZINK: %p failed to allocate descriptor set barriers :/\n", pg);
-            return NULL;
-         }
-      }
 #ifndef NDEBUG
       zds->num_resources = num_resources;
 #endif
@@ -523,8 +515,7 @@ static struct zink_descriptor_set *
 zink_descriptor_set_get(struct zink_context *ctx,
                                enum zink_descriptor_type type,
                                bool is_compute,
-                               bool *cache_hit,
-                               bool *need_resource_refs)
+                               bool *cache_hit)
 {
    *cache_hit = false;
    struct zink_descriptor_set *zds;
@@ -614,7 +605,7 @@ skip_hash_tables:
          simple_mtx_unlock(&pool->mtx);
          zink_fence_wait(&ctx->base);
          zink_batch_reference_program(batch, pg);
-         return zink_descriptor_set_get(ctx, type, is_compute, cache_hit, need_resource_refs);
+         return zink_descriptor_set_get(ctx, type, is_compute, cache_hit);
       }
    } else {
       if (pg->dd->last_set[type] && !pg->dd->last_set[type]->hash) {
@@ -639,13 +630,9 @@ out:
       }
    }
 quick_out:
-   if (pool->key.layout->num_descriptors && !*cache_hit)
-      util_dynarray_clear(&zds->barriers);
    zds->punted = zds->invalid = false;
-   *need_resource_refs = false;
    if (batch_add_desc_set(batch, zds)) {
       batch->state->descs_used += pool->key.layout->num_descriptors;
-      *need_resource_refs = true;
    }
    pg->dd->last_set[type] = zds;
    simple_mtx_unlock(&pool->mtx);
@@ -974,48 +961,6 @@ desc_set_image_add(struct zink_context *ctx, struct zink_descriptor_set *zds, st
       zink_image_view_desc_set_add(image_view, zds, i);
 }
 
-static bool
-barrier_equals(const void *a, const void *b)
-{
-   const struct zink_descriptor_barrier *t1 = a, *t2 = b;
-   if (t1->res != t2->res)
-      return false;
-   if ((t1->access & t2->access) != t2->access)
-      return false;
-   if (t1->layout != t2->layout)
-      return false;
-   return true;
-}
-
-static uint32_t
-barrier_hash(const void *key)
-{
-   return _mesa_hash_data(key, offsetof(struct zink_descriptor_barrier, stage));
-}
-
-static inline void
-add_barrier(struct zink_resource *res, VkImageLayout layout, VkAccessFlags flags, enum pipe_shader_type stage, struct util_dynarray *barriers, struct set *ht)
-{
-   VkPipelineStageFlags pipeline = zink_pipeline_flags_from_stage(zink_shader_stage(stage));
-   struct zink_descriptor_barrier key = {res, layout, flags, 0}, *t;
-
-   uint32_t hash = barrier_hash(&key);
-   struct set_entry *entry = _mesa_set_search_pre_hashed(ht, hash, &key);
-   if (entry)
-      t = (struct zink_descriptor_barrier*)entry->key;
-   else {
-      util_dynarray_append(barriers, struct zink_descriptor_barrier, key);
-      t = util_dynarray_element(barriers, struct zink_descriptor_barrier,
-                                util_dynarray_num_elements(barriers, struct zink_descriptor_barrier) - 1);
-      t->stage = 0;
-      t->layout = layout;
-      t->res = res;
-      t->access = flags;
-      _mesa_set_add_pre_hashed(ht, hash, t);
-   }
-   t->stage |= pipeline;
-}
-
 static int
 cmp_dynamic_offset_binding(const void *a, const void *b)
 {
@@ -1047,7 +992,7 @@ init_write_descriptor(struct zink_shader *shader, struct zink_descriptor_set *zd
 
 static void
 update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds,
-                       bool is_compute, bool cache_hit, bool need_resource_refs,
+                       bool is_compute, bool cache_hit,
                        uint32_t *dynamic_offsets, unsigned *dynamic_offset_idx)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
@@ -1065,11 +1010,6 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
       uint32_t offset;
    } dynamic_buffers[PIPE_MAX_CONSTANT_BUFFERS];
    unsigned dynamic_offset_count = 0;
-   struct set *ht = NULL;
-   if (!cache_hit) {
-      ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
-      _mesa_set_resize(ht, num_bindings);
-   }
 
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    if (is_compute)
@@ -1106,15 +1046,12 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
          } else
             buffer_infos[num_buffer_info].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
          buffer_infos[num_buffer_info].range = res ? ctx->ubos[stage][index].buffer_size : VK_WHOLE_SIZE;
-         if (res && !cache_hit)
-            add_barrier(res, 0, VK_ACCESS_UNIFORM_READ_BIT, stage, &zds->barriers, ht);
          wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
          ++num_buffer_info;
 
          num_wds = init_write_descriptor(shader, zds, ZINK_DESCRIPTOR_TYPE_UBO, j, &wds[num_wds], num_wds);
       }
    }
-   _mesa_set_destroy(ht, NULL);
    /* Values are taken from pDynamicOffsets in an order such that all entries for set N come before set N+1;
     * within a set, entries are ordered by the binding numbers in the descriptor set layouts
     * - vkCmdBindDescriptorSets spec
@@ -1133,7 +1070,7 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
 
 static void
 update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds,
-                        bool is_compute, bool cache_hit, bool need_resource_refs)
+                        bool is_compute, bool cache_hit)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    ASSERTED struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -1145,11 +1082,6 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
    unsigned num_buffer_info = 0;
    unsigned num_resources = 0;
    struct zink_shader **stages;
-   struct set *ht = NULL;
-   if (!cache_hit) {
-      ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
-      _mesa_set_resize(ht, num_bindings);
-   }
 
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    if (is_compute)
@@ -1157,7 +1089,7 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
    else
       stages = &ctx->gfx_stages[0];
 
-   for (int i = 0; (!cache_hit || need_resource_refs) && i < num_stages; i++) {
+   for (int i = 0; !cache_hit && i < num_stages; i++) {
       struct zink_shader *shader = stages[i];
       if (!shader)
          continue;
@@ -1176,8 +1108,6 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
             unsigned flag = VK_ACCESS_SHADER_READ_BIT;
             if (ctx->writable_ssbos[stage] & (1 << index))
                flag |= VK_ACCESS_SHADER_WRITE_BIT;
-            if (!cache_hit)
-               add_barrier(res, 0, flag, stage, &zds->barriers, ht);
             buffer_infos[num_buffer_info].buffer = res->obj->buffer;
             buffer_infos[num_buffer_info].offset = ctx->ssbos[stage][index].buffer_offset;
             buffer_infos[num_buffer_info].range  = ctx->ssbos[stage][index].buffer_size;
@@ -1193,7 +1123,6 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
          num_wds = init_write_descriptor(shader, zds, ZINK_DESCRIPTOR_TYPE_SSBO, j, &wds[num_wds], num_wds);
       }
    }
-   _mesa_set_destroy(ht, NULL);
    write_descriptors(ctx, num_wds, wds, cache_hit);
 }
 
@@ -1248,7 +1177,7 @@ handle_image_descriptor(struct zink_screen *screen, struct zink_resource *res, e
 
 static void
 update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds,
-                           bool is_compute, bool cache_hit, bool need_resource_refs)
+                           bool is_compute, bool cache_hit)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -1262,11 +1191,6 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
    unsigned num_buffer_info = 0;
    unsigned num_resources = 0;
    struct zink_shader **stages;
-   struct set *ht = NULL;
-   if (!cache_hit) {
-      ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
-      _mesa_set_resize(ht, num_bindings);
-   }
 
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    if (is_compute)
@@ -1274,7 +1198,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
    else
       stages = &ctx->gfx_stages[0];
 
-   for (int i = 0; (!cache_hit || need_resource_refs) && i < num_stages; i++) {
+   for (int i = 0; !cache_hit && i < num_stages; i++) {
       struct zink_shader *shader = stages[i];
       if (!shader)
          continue;
@@ -1304,10 +1228,6 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
                sampler = ctx->sampler_states[stage][index + k];
             }
             assert(num_resources < num_bindings);
-            if (res) {
-               if (!cache_hit)
-                  add_barrier(res, layout, VK_ACCESS_SHADER_READ_BIT, stage, &zds->barriers, ht);
-            }
             assert(num_image_info < num_bindings);
             handle_image_descriptor(screen, res, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, shader->bindings[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][j].type,
                                     &wds[num_wds], layout, &num_image_info, &image_infos[num_image_info],
@@ -1316,25 +1236,18 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
             desc_set_sampler_add(ctx, zds, sampler_view, sampler, num_resources++,
                                  zink_shader_descriptor_is_buffer(shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, j),
                                  cache_hit);
-            struct zink_batch *batch = &ctx->batch;
-            if (sampler_view)
-               zink_batch_reference_sampler_view(batch, sampler_view);
-            if (sampler)
-               /* this only tracks the most recent usage for now */
-               zink_batch_usage_set(&sampler->batch_uses, batch->state->fence.batch_id);
          }
          assert(num_wds < num_descriptors);
 
          num_wds = init_write_descriptor(shader, zds, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, j, &wds[num_wds], num_wds);
       }
    }
-   _mesa_set_destroy(ht, NULL);
    write_descriptors(ctx, num_wds, wds, cache_hit);
 }
 
 static void
 update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds,
-                         bool is_compute, bool cache_hit, bool need_resource_refs)
+                         bool is_compute, bool cache_hit)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -1348,11 +1261,6 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
    unsigned num_buffer_info = 0;
    unsigned num_resources = 0;
    struct zink_shader **stages;
-   struct set *ht = NULL;
-   if (!cache_hit) {
-      ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
-      _mesa_set_resize(ht, num_bindings);
-   }
 
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    if (is_compute)
@@ -1360,7 +1268,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
    else
       stages = &ctx->gfx_stages[0];
 
-   for (int i = 0; (!cache_hit || need_resource_refs) && i < num_stages; i++) {
+   for (int i = 0; !cache_hit && i < num_stages; i++) {
       struct zink_shader *shader = stages[i];
       if (!shader)
          continue;
@@ -1390,15 +1298,6 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
             desc_set_image_add(ctx, zds, image_view, num_resources++,
                                zink_shader_descriptor_is_buffer(shader, ZINK_DESCRIPTOR_TYPE_IMAGE, j),
                                cache_hit);
-            if (res) {
-               VkAccessFlags flags = 0;
-               if (image_view->base.access & PIPE_IMAGE_ACCESS_READ)
-                  flags |= VK_ACCESS_SHADER_READ_BIT;
-               if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
-                  flags |= VK_ACCESS_SHADER_WRITE_BIT;
-               if (!cache_hit)
-                  add_barrier(res, layout, flags, stage, &zds->barriers, ht);
-            }
 
             assert(num_image_info < num_bindings);
             handle_image_descriptor(screen, res, ZINK_DESCRIPTOR_TYPE_IMAGE, shader->bindings[ZINK_DESCRIPTOR_TYPE_IMAGE][j].type,
@@ -1406,16 +1305,12 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
                                     &num_buffer_info, &buffer_views[num_buffer_info],
                                     NULL, imageview, bufferview, !k);
 
-            struct zink_batch *batch = &ctx->batch;
-            if (res)
-               zink_batch_reference_image_view(batch, image_view);
          }
          assert(num_wds < num_descriptors);
 
          num_wds = init_write_descriptor(shader, zds, ZINK_DESCRIPTOR_TYPE_IMAGE, j, &wds[num_wds], num_wds);
       }
    }
-   _mesa_set_destroy(ht, NULL);
    write_descriptors(ctx, num_wds, wds, cache_hit);
 }
 
@@ -1429,11 +1324,10 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
 
    zink_context_update_descriptor_states(ctx, is_compute);
    bool cache_hit[ZINK_DESCRIPTOR_TYPES];
-   bool need_resource_refs[ZINK_DESCRIPTOR_TYPES];
    struct zink_descriptor_set *zds[ZINK_DESCRIPTOR_TYPES];
    for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
       if (pg->dd->pool[h])
-         zds[h] = zink_descriptor_set_get(ctx, h, is_compute, &cache_hit[h], &need_resource_refs[h]);
+         zds[h] = zink_descriptor_set_get(ctx, h, is_compute, &cache_hit[h]);
       else
          zds[h] = NULL;
    }
@@ -1446,30 +1340,16 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
    if (zds[ZINK_DESCRIPTOR_TYPE_UBO])
       update_ubo_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_UBO],
                                            is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_UBO],
-                                           need_resource_refs[ZINK_DESCRIPTOR_TYPE_UBO], dynamic_offsets, &dynamic_offset_idx);
+                                           dynamic_offsets, &dynamic_offset_idx);
    if (zds[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW])
       update_sampler_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW],
-                                               is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW],
-                                               need_resource_refs[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW]);
+                                               is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW]);
    if (zds[ZINK_DESCRIPTOR_TYPE_SSBO])
       update_ssbo_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_SSBO],
-                                               is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_SSBO],
-                                               need_resource_refs[ZINK_DESCRIPTOR_TYPE_SSBO]);
+                                               is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_SSBO]);
    if (zds[ZINK_DESCRIPTOR_TYPE_IMAGE])
       update_image_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_IMAGE],
-                                               is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_IMAGE],
-                                               need_resource_refs[ZINK_DESCRIPTOR_TYPE_IMAGE]);
-
-   for (int h = 0; h < ZINK_DESCRIPTOR_TYPES && zds[h]; h++) {
-      /* skip null descriptor sets since they have no resources */
-      if (!zds[h]->hash)
-         continue;
-      assert(zds[h]->desc_set);
-      util_dynarray_foreach(&zds[h]->barriers, struct zink_descriptor_barrier, barrier) {
-         if (need_resource_refs[h])
-            zink_batch_reference_resource_rw(batch, barrier->res, zink_resource_access_is_write(barrier->access));
-      }
-   }
+                                               is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_IMAGE]);
 
    for (unsigned h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
       if (zds[h]) {

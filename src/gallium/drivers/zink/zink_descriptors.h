@@ -74,13 +74,6 @@ struct zink_descriptor_state_key {
    uint32_t state[ZINK_SHADER_COUNT];
 };
 
-struct zink_descriptor_barrier {
-   struct zink_resource *res;
-   VkImageLayout layout;
-   VkAccessFlags access;
-   VkPipelineStageFlagBits stage;
-};
-
 struct zink_descriptor_layout_key {
    unsigned num_descriptors;
    VkDescriptorSetLayoutBinding *bindings;
