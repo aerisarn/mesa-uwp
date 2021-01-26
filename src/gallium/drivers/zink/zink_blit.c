@@ -313,10 +313,10 @@ zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags)
 
    if (flags & ZINK_BLIT_SAVE_TEXTURES) {
       util_blitter_save_fragment_sampler_states(ctx->blitter,
-                                                ctx->num_samplers[PIPE_SHADER_FRAGMENT],
-                                                ctx->sampler_states[PIPE_SHADER_FRAGMENT]);
+                                                ctx->di.num_samplers[PIPE_SHADER_FRAGMENT],
+                                                (void**)ctx->sampler_states[PIPE_SHADER_FRAGMENT]);
       util_blitter_save_fragment_sampler_views(ctx->blitter,
-                                               ctx->num_sampler_views[PIPE_SHADER_FRAGMENT],
+                                               ctx->di.num_sampler_views[PIPE_SHADER_FRAGMENT],
                                                ctx->sampler_views[PIPE_SHADER_FRAGMENT]);
    }
 }

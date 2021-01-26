@@ -195,9 +195,7 @@ struct zink_context {
    struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
 
    void *sampler_states[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
-   unsigned num_samplers[PIPE_SHADER_TYPES];
    struct pipe_sampler_view *sampler_views[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
-   unsigned num_sampler_views[PIPE_SHADER_TYPES];
 
    struct zink_viewport_state vp_state;
 
@@ -232,15 +230,19 @@ struct zink_context {
       /* descriptor info */
       VkDescriptorBufferInfo ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
       uint32_t push_valid;
+      uint8_t num_ubos[PIPE_SHADER_TYPES];
 
       VkDescriptorBufferInfo ssbos[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
+      uint8_t num_ssbos[PIPE_SHADER_TYPES];
 
       VkDescriptorImageInfo textures[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
       VkBufferView tbos[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
+      uint8_t num_samplers[PIPE_SHADER_TYPES];
+      uint8_t num_sampler_views[PIPE_SHADER_TYPES];
 
       VkDescriptorImageInfo images[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
       VkBufferView texel_images[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
-      unsigned num_images[PIPE_SHADER_TYPES];
+      uint8_t num_images[PIPE_SHADER_TYPES];
 
       struct zink_resource *descriptor_res[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
       union zink_descriptor_surface sampler_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
