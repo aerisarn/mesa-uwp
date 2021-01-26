@@ -251,6 +251,7 @@ struct zink_context {
       union zink_descriptor_surface sampler_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
       union zink_descriptor_surface image_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
    } di;
+   bool descriptor_refs_dirty[2];
    struct set *need_barriers[2]; //gfx, compute
    struct set update_barriers[2][2]; //[gfx, compute][current, next]
    uint8_t barrier_set_idx[2];
@@ -397,4 +398,6 @@ zink_buffer_view_reference(struct zink_screen *screen,
    if (dst) *dst = src;
 }
 
+void
+zink_update_descriptor_refs(struct zink_context *ctx, bool compute);
 #endif
