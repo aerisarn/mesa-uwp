@@ -880,6 +880,7 @@ zink_set_viewport_states(struct pipe_context *pctx,
          ctx->gfx_pipeline_state.dirty = true;
       ctx->gfx_pipeline_state.num_viewports = ctx->vp_state.num_viewports;
    }
+   ctx->vp_state_changed = true;
 }
 
 static void
@@ -1708,6 +1709,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       ctx->descriptor_refs_dirty[0] = ctx->descriptor_refs_dirty[1] = true;
       ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
       ctx->vertex_buffers_dirty = true;
+      ctx->vp_state_changed = true;
    }
 }
 

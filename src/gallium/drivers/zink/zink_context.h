@@ -203,6 +203,7 @@ struct zink_context {
    struct pipe_sampler_view *sampler_views[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
 
    struct zink_viewport_state vp_state;
+   bool vp_state_changed;
 
    float line_width;
    float blend_constants[4];

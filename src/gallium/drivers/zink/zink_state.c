@@ -488,8 +488,10 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
          ctx->gfx_pipeline_state.dirty = true;
       }
 
-      if (clip_halfz != ctx->rast_state->base.clip_halfz)
+      if (clip_halfz != ctx->rast_state->base.clip_halfz) {
          ctx->last_vertex_stage_dirty = true;
+         ctx->vp_state_changed = true;
+      }
 
       if (ctx->gfx_pipeline_state.front_face != ctx->rast_state->front_face) {
          ctx->gfx_pipeline_state.front_face = ctx->rast_state->front_face;
