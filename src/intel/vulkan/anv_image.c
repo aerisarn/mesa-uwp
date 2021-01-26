@@ -2214,8 +2214,12 @@ anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
          clear_supported = false;
          break;
 
-      case ISL_AUX_USAGE_CCS_E:
       case ISL_AUX_USAGE_MCS:
+         if (!anv_can_sample_mcs_with_clear(devinfo, image))
+            clear_supported = false;
+         break;
+
+      case ISL_AUX_USAGE_CCS_E:
       case ISL_AUX_USAGE_STC_CCS:
          break;
 
@@ -2248,12 +2252,19 @@ anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
       }
 
    case ISL_AUX_USAGE_CCS_E:
-   case ISL_AUX_USAGE_MCS:
       if (aux_supported) {
          assert(clear_supported);
          return ISL_AUX_STATE_COMPRESSED_CLEAR;
       } else {
          return ISL_AUX_STATE_PASS_THROUGH;
+      }
+
+   case ISL_AUX_USAGE_MCS:
+      assert(aux_supported);
+      if (clear_supported) {
+         return ISL_AUX_STATE_COMPRESSED_CLEAR;
+      } else {
+         return ISL_AUX_STATE_COMPRESSED_NO_CLEAR;
       }
 
    case ISL_AUX_USAGE_STC_CCS:
