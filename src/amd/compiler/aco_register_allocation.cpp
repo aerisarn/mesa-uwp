@@ -2095,14 +2095,33 @@ void get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
                phi_ressources[it->second][0] = def.getTemp();
                /* try to coalesce phi affinities with parallelcopies */
                Operand op = Operand();
-               if (!def.isFixed() && instr->opcode == aco_opcode::p_parallelcopy)
+               switch (instr->opcode) {
+               case aco_opcode::p_parallelcopy:
                   op = instr->operands[i];
-               else if ((instr->opcode == aco_opcode::v_mad_f32 ||
-                        (instr->opcode == aco_opcode::v_fma_f32 && ctx.program->chip_class >= GFX10) ||
-                        instr->opcode == aco_opcode::v_mad_f16 ||
-                        instr->opcode == aco_opcode::v_mad_legacy_f16 ||
-                        (instr->opcode == aco_opcode::v_fma_f16 && ctx.program->chip_class >= GFX10)) && !instr->usesModifiers())
+                  break;
+
+               case aco_opcode::v_interp_p2_f32:
+               case aco_opcode::v_writelane_b32:
+               case aco_opcode::v_writelane_b32_e64:
                   op = instr->operands[2];
+                  break;
+
+               case aco_opcode::v_fma_f32:
+               case aco_opcode::v_fma_f16:
+               case aco_opcode::v_pk_fma_f16:
+                  if (ctx.program->chip_class < GFX10)
+                     continue;
+               FALLTHROUGH;
+               case aco_opcode::v_mad_f32:
+               case aco_opcode::v_mad_f16:
+                  if (instr->usesModifiers())
+                     continue;
+                  op = instr->operands[2];
+                  break;
+
+               default:
+                  continue;
+               }
 
                if (op.isTemp() && op.isFirstKillBeforeDef() && def.regClass() == op.regClass()) {
                   phi_ressources[it->second].emplace_back(op.getTemp());
