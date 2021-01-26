@@ -897,6 +897,10 @@ binop_convert("pack_64_2x32_split", tuint64, tuint32, "",
 binop_convert("pack_32_2x16_split", tuint32, tuint16, "",
               "src0 | ((uint32_t)src1 << 16)")
 
+opcode("pack_32_4x8_split", 0, tuint32, [0, 0, 0, 0], [tuint8, tuint8, tuint8, tuint8],
+       False, "",
+       "src0 | ((uint32_t)src1 << 8) | ((uint32_t)src2 << 16) | ((uint32_t)src3 << 24)")
+
 # bfm implements the behavior of the first operation of the SM5 "bfi" assembly
 # and that of the "bfi1" i965 instruction. That is, the bits and offset values
 # are from the low five bits of src0 and src1, respectively.

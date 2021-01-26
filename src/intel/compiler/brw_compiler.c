@@ -68,6 +68,7 @@
    .lower_usub_sat64 = true,                                                  \
    .lower_hadd64 = true,                                                      \
    .avoid_ternary_with_two_constants = true,                                  \
+   .has_pack_32_4x8 = true,                                                   \
    .max_unroll_iterations = 32,                                               \
    .force_indirect_unrolling = nir_var_function_temp
 

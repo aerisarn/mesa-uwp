@@ -3666,6 +3666,9 @@ typedef struct nir_shader_compiler_options {
     * iadd(x, ineg(y)). If true, driver should call nir_opt_algebraic_late(). */
    bool has_isub;
 
+   /** Backend supports pack_32_4x8 or pack_32_4x8_split. */
+   bool has_pack_32_4x8;
+
    /** Backend supports txs, if not nir_lower_tex(..) uses txs-free variants
     * for rect texture lowering. */
    bool has_txs;

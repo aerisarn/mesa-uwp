@@ -1313,6 +1313,10 @@ optimizations.extend([
    (('ibfe', a,  0, 16), ('extract_i16', a, 0), '!options->lower_extract_word'),
    (('ibfe', a, 16, 16), ('extract_i16', a, 1), '!options->lower_extract_word'),
 
+   # Packing a u8vec4 to write to an SSBO.
+   (('ior', ('ishl', ('u2u32', 'a@8'), 24), ('ior', ('ishl', ('u2u32', 'b@8'), 16), ('ior', ('ishl', ('u2u32', 'c@8'), 8), ('u2u32', 'd@8')))),
+    ('pack_32_4x8', ('vec4', d, c, b, a)), 'options->has_pack_32_4x8'),
+
    (('extract_u16', ('extract_i16', a, b), 0), ('extract_u16', a, b)),
    (('extract_u16', ('extract_u16', a, b), 0), ('extract_u16', a, b)),
 
