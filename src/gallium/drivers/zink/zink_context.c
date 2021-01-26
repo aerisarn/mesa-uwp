@@ -844,6 +844,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             struct zink_resource *res = zink_resource(vb->buffer.resource);
             res->vbo_bind_count++;
             res->bind_count[0]++;
+            zink_batch_reference_resource_rw(&ctx->batch, res, false);
             zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
                                          VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
          }

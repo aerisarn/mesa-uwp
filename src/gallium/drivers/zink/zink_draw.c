@@ -143,7 +143,6 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
          buffers[i] = res->obj->buffer;
          buffer_offsets[i] = vb->buffer_offset;
          buffer_strides[i] = vb->stride;
-         zink_batch_reference_resource_rw(batch, res, false);
       } else {
          buffers[i] = zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
          buffer_offsets[i] = 0;
