@@ -1705,6 +1705,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       if (zink_screen(ctx->base.screen)->info.have_EXT_transform_feedback && ctx->num_so_targets)
          ctx->dirty_so_targets = true;
       ctx->descriptor_refs_dirty[0] = ctx->descriptor_refs_dirty[1] = true;
+      ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
    }
 }
 

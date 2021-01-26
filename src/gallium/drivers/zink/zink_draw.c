@@ -532,6 +532,15 @@ zink_draw_vbo(struct pipe_context *pctx,
       zink_update_descriptor_refs(ctx, false);
 
    struct zink_batch *batch = zink_batch_rp(ctx);
+
+   VkPipeline prev_pipeline = ctx->gfx_pipeline_state.pipeline;
+   VkPipeline pipeline = zink_get_gfx_pipeline(ctx, gfx_program,
+                                               &ctx->gfx_pipeline_state,
+                                               dinfo->mode);
+   bool pipeline_changed = prev_pipeline != pipeline || ctx->pipeline_changed[0];
+   if (pipeline_changed)
+      vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
    VkViewport viewports[PIPE_MAX_VIEWPORTS];
    for (unsigned i = 0; i < ctx->vp_state.num_viewports; i++) {
       VkViewport viewport = {
@@ -635,12 +644,6 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->state->cmdbuf, ctx->blend_constants);
 
-
-   VkPipeline pipeline = zink_get_gfx_pipeline(ctx, gfx_program,
-                                               &ctx->gfx_pipeline_state,
-                                               dinfo->mode);
-   vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
    zink_bind_vertex_buffers(batch, ctx);
 
    if (BITSET_TEST(ctx->gfx_stages[PIPE_SHADER_VERTEX]->nir->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX)) {
@@ -671,6 +674,8 @@ zink_draw_vbo(struct pipe_context *pctx,
       }
       screen->vk_CmdBeginTransformFeedbackEXT(batch->state->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
+
+   ctx->pipeline_changed[0] = false;
 
    unsigned draw_id = drawid_offset;
    bool needs_drawid = ctx->drawid_broken;
@@ -779,6 +784,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
       return;
 
    zink_program_update_compute_pipeline_state(ctx, comp_program, info->block);
+   VkPipeline prev_pipeline = ctx->compute_pipeline_state.pipeline;
    VkPipeline pipeline = zink_get_compute_pipeline(screen, comp_program,
                                                &ctx->compute_pipeline_state);
 
@@ -788,7 +794,9 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    if (ctx->descriptor_refs_dirty[1])
       zink_update_descriptor_refs(ctx, true);
 
-   vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+   if (prev_pipeline != pipeline || ctx->pipeline_changed[1])
+      vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+   ctx->pipeline_changed[1] = false;
 
    if (BITSET_TEST(comp_program->shader->nir->info.system_values_read, SYSTEM_VALUE_WORK_DIM))
       vkCmdPushConstants(batch->state->cmdbuf, comp_program->base.layout, VK_SHADER_STAGE_COMPUTE_BIT,

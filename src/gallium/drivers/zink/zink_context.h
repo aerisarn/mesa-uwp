@@ -166,6 +166,7 @@ struct zink_context {
    struct zink_depth_stencil_alpha_state *dsa_state;
 
    struct hash_table desc_set_layouts[ZINK_DESCRIPTOR_TYPES];
+   bool pipeline_changed[2]; //gfx, compute
 
    struct zink_shader *gfx_stages[ZINK_SHADER_COUNT];
    struct zink_gfx_pipeline_state gfx_pipeline_state;
