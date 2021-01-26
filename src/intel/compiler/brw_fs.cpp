@@ -5843,6 +5843,125 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 }
 
 static void
+lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
+{
+   const intel_device_info *devinfo = bld.shader->devinfo;
+   assert(devinfo->has_lsc);
+
+   /* Get the logical send arguments. */
+   const fs_reg addr = inst->src[SURFACE_LOGICAL_SRC_ADDRESS];
+   const fs_reg src = inst->src[SURFACE_LOGICAL_SRC_DATA];
+   const fs_reg surface = inst->src[SURFACE_LOGICAL_SRC_SURFACE];
+   const fs_reg surface_handle = inst->src[SURFACE_LOGICAL_SRC_SURFACE_HANDLE];
+   const UNUSED fs_reg &dims = inst->src[SURFACE_LOGICAL_SRC_IMM_DIMS];
+   const fs_reg arg = inst->src[SURFACE_LOGICAL_SRC_IMM_ARG];
+   const fs_reg allow_sample_mask =
+      inst->src[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK];
+   assert(arg.file == IMM);
+   assert(allow_sample_mask.file == IMM);
+
+   /* Calculate the total number of components of the payload. */
+   const unsigned addr_sz = inst->components_read(SURFACE_LOGICAL_SRC_ADDRESS);
+   const unsigned src_sz = inst->components_read(SURFACE_LOGICAL_SRC_DATA);
+
+   const bool has_side_effects = inst->has_side_effects();
+
+   unsigned ex_mlen = 0;
+   fs_reg payload, payload2;
+   payload = bld.move_to_vgrf(addr, addr_sz);
+   if (src.file != BAD_FILE) {
+      payload2 = bld.move_to_vgrf(src, src_sz);
+      ex_mlen = src_sz * (inst->exec_size / 8);
+   }
+
+   /* Predicate the instruction on the sample mask if needed */
+   fs_reg sample_mask = allow_sample_mask.ud ? sample_mask_reg(bld) :
+                                               fs_reg(brw_imm_d(0xffff));
+   if (sample_mask.file != BAD_FILE && sample_mask.file != IMM)
+      emit_predicate_on_sample_mask(bld, inst);
+
+   if (surface.file == IMM && surface.ud == GFX7_BTI_SLM)
+      inst->sfid = GFX12_SFID_SLM;
+   else
+      inst->sfid = GFX12_SFID_UGM;
+
+   /* We must have exactly one of surface and surface_handle */
+   assert((surface.file == BAD_FILE) != (surface_handle.file == BAD_FILE));
+
+   enum lsc_addr_surface_type surf_type;
+   if (surface_handle.file != BAD_FILE)
+      surf_type = LSC_ADDR_SURFTYPE_BSS;
+   else if (surface.file == IMM && surface.ud == GFX7_BTI_SLM)
+      surf_type = LSC_ADDR_SURFTYPE_FLAT;
+   else
+      surf_type = LSC_ADDR_SURFTYPE_BTI;
+
+   switch (inst->opcode) {
+   case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD_CMASK, inst->exec_size,
+                                surf_type, LSC_ADDR_SIZE_A32,
+                                1 /* num_coordinates */,
+                                LSC_DATA_SIZE_D32, arg.ud /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_LOAD_L1STATE_L3MOCS,
+                                true /* has_dest */);
+      break;
+   case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_STORE_CMASK, inst->exec_size,
+                                surf_type, LSC_ADDR_SIZE_A32,
+                                1 /* num_coordinates */,
+                                LSC_DATA_SIZE_D32, arg.ud /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_STORE_L1STATE_L3MOCS,
+                                false /* has_dest */);
+      break;
+   default:
+      unreachable("Unknown surface logical instruction");
+   }
+
+   inst->src[0] = brw_imm_ud(0);
+
+   /* Set up extended descriptors */
+   switch (surf_type) {
+   case LSC_ADDR_SURFTYPE_FLAT:
+      inst->src[1] = brw_imm_ud(0);
+      break;
+   case LSC_ADDR_SURFTYPE_BSS:
+      /* We assume that the driver provided the handle in the top 20 bits so
+       * we can use the surface handle directly as the extended descriptor.
+       */
+      inst->src[1] = retype(surface_handle, BRW_REGISTER_TYPE_UD);
+      break;
+   case LSC_ADDR_SURFTYPE_BTI:
+      if (surface.file == IMM) {
+         inst->src[1] = brw_imm_ud(lsc_bti_ex_desc(devinfo, surface.ud));
+      } else {
+         const fs_builder ubld = bld.exec_all().group(1, 0);
+         fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+         ubld.SHL(tmp, surface, brw_imm_ud(24));
+         inst->src[1] = component(tmp, 0);
+      }
+      break;
+   default:
+      unreachable("Unknown surface type");
+   }
+
+   /* Update the original instruction. */
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+   inst->ex_mlen = ex_mlen;
+   inst->header_size = 0;
+   inst->send_has_side_effects = has_side_effects;
+   inst->send_is_volatile = !has_side_effects;
+
+   /* Finally, the payload */
+   inst->src[2] = payload;
+   inst->src[3] = payload2;
+
+   inst->resize_sources(4);
+}
+
+static void
 lower_surface_block_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
@@ -6411,6 +6530,10 @@ fs_visitor::lower_logical_sends()
 
       case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
       case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
+         if (devinfo->has_lsc) {
+            lower_lsc_surface_logical_send(ibld, inst);
+            break;
+         }
       case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
       case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
       case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
