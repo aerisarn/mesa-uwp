@@ -204,6 +204,7 @@ struct zink_context {
 
    struct zink_viewport_state vp_state;
    bool vp_state_changed;
+   bool scissor_changed;
 
    float line_width;
    float blend_constants[4];

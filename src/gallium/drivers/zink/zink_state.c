@@ -474,6 +474,7 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
    struct zink_screen *screen = zink_screen(pctx->screen);
    bool clip_halfz = ctx->rast_state ? ctx->rast_state->base.clip_halfz : false;
    bool point_quad_rasterization = ctx->rast_state ? ctx->rast_state->base.point_quad_rasterization : false;
+   bool scissor = ctx->rast_state ? ctx->rast_state->base.scissor : false;
    ctx->rast_state = cso;
 
    if (ctx->rast_state) {
@@ -503,6 +504,8 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
       }
       if (ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization)
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);
+      if (ctx->rast_state->base.scissor != scissor)
+         ctx->scissor_changed = true;
    }
 }
 

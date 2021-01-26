@@ -892,6 +892,7 @@ zink_set_scissor_states(struct pipe_context *pctx,
 
    for (unsigned i = 0; i < num_scissors; i++)
       ctx->vp_state.scissor_states[start_slot + i] = states[i];
+   ctx->scissor_changed = true;
 }
 
 static void
@@ -1710,6 +1711,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
       ctx->vertex_buffers_dirty = true;
       ctx->vp_state_changed = true;
+      ctx->scissor_changed = true;
    }
 }
 
@@ -1787,7 +1789,12 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    ctx->rp_changed |= ctx->fb_state.nr_cbufs != state->nr_cbufs;
    ctx->rp_changed |= !!ctx->fb_state.zsbuf != !!state->zsbuf;
 
+   unsigned w = ctx->fb_state.width;
+   unsigned h = ctx->fb_state.height;
+
    util_copy_framebuffer_state(&ctx->fb_state, state);
+   if (ctx->fb_state.width != w || ctx->fb_state.height != h)
+      ctx->scissor_changed = true;
    rebind_fb_state(ctx, NULL, true);
    /* get_framebuffer adds a ref if the fb is reused or created;
     * always do get_framebuffer first to avoid deleting the same fb
