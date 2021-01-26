@@ -73,6 +73,7 @@ static const struct {
    { "sg1", 0x4907 },
    { "rpl", 0xa780 },
    { "dg2", 0x5690 },
+   { "mtl", 0x7d60 },
 };
 
 /**
@@ -1081,6 +1082,28 @@ static const struct intel_device_info intel_device_info_dg2_g11 = {
 static const struct intel_device_info intel_device_info_dg2_g12 = {
    DG2_FEATURES,
    .platform = INTEL_PLATFORM_DG2_G12,
+};
+
+#define MTL_FEATURES                                            \
+   /* (Sub)slice info comes from the kernel topology info */    \
+   XEHP_FEATURES(0, 1, 0),                                      \
+   .num_subslices = dual_subslices(1),                          \
+   .has_local_mem = false,                                      \
+   .apply_hwconfig = true,                                      \
+   .has_64bit_float = true,                                     \
+   .has_integer_dword_mul = false,                              \
+   .has_coarse_pixel_primitive_and_cb = true,                   \
+   .has_mesh_shading = true,                                    \
+   .has_ray_tracing = true
+
+UNUSED static const struct intel_device_info intel_device_info_mtl_m = {
+   MTL_FEATURES,
+   .platform = INTEL_PLATFORM_MTL_M,
+};
+
+UNUSED static const struct intel_device_info intel_device_info_mtl_p = {
+   MTL_FEATURES,
+   .platform = INTEL_PLATFORM_MTL_P,
 };
 
 static void
