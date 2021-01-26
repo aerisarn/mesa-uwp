@@ -1664,9 +1664,11 @@ void
 zink_update_descriptor_refs(struct zink_context *ctx, bool compute)
 {
    struct zink_batch *batch = &ctx->batch;
-   if (compute)
+   if (compute) {
       update_resource_refs_for_stage(ctx, PIPE_SHADER_COMPUTE);
-   else {
+      if (ctx->curr_compute)
+         zink_batch_reference_program(batch, &ctx->curr_compute->base);
+   } else {
       for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++)
          update_resource_refs_for_stage(ctx, i);
       unsigned vertex_buffers_enabled_mask = ctx->gfx_pipeline_state.vertex_buffers_enabled_mask;
@@ -1675,6 +1677,8 @@ zink_update_descriptor_refs(struct zink_context *ctx, bool compute)
          if (ctx->vertex_buffers[i].buffer.resource)
             zink_batch_reference_resource_rw(batch, zink_resource(ctx->vertex_buffers[i].buffer.resource), false);
       }
+      if (ctx->curr_program)
+         zink_batch_reference_program(batch, &ctx->curr_program->base);
    }
    ctx->descriptor_refs_dirty[compute] = false;
 }

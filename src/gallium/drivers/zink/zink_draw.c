@@ -178,8 +178,10 @@ get_compute_program(struct zink_context *ctx)
          if (!entry)
             return NULL;
       }
-      if (entry->data != ctx->curr_compute)
+      if (ctx->curr_compute != entry->data) {
          ctx->compute_pipeline_state.dirty = true;
+         zink_batch_reference_program(&ctx->batch, entry->data);
+      }
       ctx->curr_compute = entry->data;
       ctx->dirty_shader_stages &= bits;
       ctx->inlinable_uniforms_dirty_mask &= bits;
@@ -217,8 +219,10 @@ get_gfx_program(struct zink_context *ctx)
          if (!entry)
             return NULL;
       }
-      if (ctx->curr_program != entry->data)
+      if (ctx->curr_program != entry->data) {
          ctx->gfx_pipeline_state.combined_dirty = true;
+         zink_batch_reference_program(&ctx->batch, entry->data);
+      }
       ctx->curr_program = entry->data;
       ctx->dirty_shader_stages &= ~bits;
       ctx->inlinable_uniforms_dirty_mask &= ~bits;
