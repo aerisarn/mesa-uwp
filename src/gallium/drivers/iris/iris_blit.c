@@ -571,6 +571,13 @@ get_copy_region_aux_settings(struct iris_context *ice,
       break;
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_MCS_CCS:
+      if (!is_render_target &&
+          !iris_can_sample_mcs_with_clear(devinfo, res)) {
+         *out_aux_usage = res->aux.usage;
+         *out_clear_supported = false;
+         break;
+      }
+      FALLTHROUGH;
    case ISL_AUX_USAGE_CCS_E:
    case ISL_AUX_USAGE_GFX12_CCS_E:
       *out_aux_usage = res->aux.usage;
