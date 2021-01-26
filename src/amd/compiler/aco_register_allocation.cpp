@@ -1388,6 +1388,59 @@ bool is_mimg_vaddr_intact(ra_ctx& ctx, RegisterFile& reg_file, Instruction *inst
    return true;
 }
 
+std::pair<PhysReg, bool> get_reg_vector(ra_ctx& ctx,
+                                        RegisterFile& reg_file,
+                                        Temp temp,
+                                        aco_ptr<Instruction>& instr)
+{
+   Instruction* vec = ctx.vectors[temp.id()];
+   unsigned first_operand = vec->format == Format::MIMG ? 3 : 0;
+   unsigned our_offset = 0;
+   for (unsigned i = first_operand; i < vec->operands.size(); i++) {
+      Operand& op = vec->operands[i];
+      if (op.isTemp() && op.tempId() == temp.id())
+         break;
+      else
+         our_offset += op.bytes();
+   }
+
+   if (vec->format != Format::MIMG || is_mimg_vaddr_intact(ctx, reg_file, vec)) {
+      unsigned their_offset = 0;
+      /* check for every operand of the vector
+       * - whether the operand is assigned and
+       * - we can use the register relative to that operand
+       */
+      for (unsigned i = first_operand; i < vec->operands.size(); i++) {
+         Operand& op = vec->operands[i];
+         if (op.isTemp() &&
+             op.tempId() != temp.id() &&
+             op.getTemp().type() == temp.type() &&
+             ctx.assignments[op.tempId()].assigned) {
+            PhysReg reg = ctx.assignments[op.tempId()].reg;
+            reg.reg_b += (our_offset - their_offset);
+            if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
+               return {reg, true};
+         }
+         their_offset += op.bytes();
+      }
+
+      /* We didn't find a register relative to other vector operands.
+       * Try to find new space which fits the whole vector.
+       */
+      RegClass vec_rc = RegClass::get(temp.type(), their_offset);
+      DefInfo info(ctx, ctx.pseudo_dummy, vec_rc, -1);
+      std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
+      PhysReg reg = res.first;
+      if (res.second) {
+         reg.reg_b += our_offset;
+         /* make sure to only use byte offset if the instruction supports it */
+         if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
+            return {reg, true};
+      }
+   }
+   return {{}, false};
+}
+
 PhysReg get_reg(ra_ctx& ctx,
                 RegisterFile& reg_file,
                 Temp temp,
@@ -1417,50 +1470,15 @@ PhysReg get_reg(ra_ctx& ctx,
          return reg;
    }
 
+   std::pair<PhysReg, bool> res;
+
    if (ctx.vectors.find(temp.id()) != ctx.vectors.end()) {
-      Instruction* vec = ctx.vectors[temp.id()];
-      unsigned first_operand = vec->format == Format::MIMG ? 3 : 0;
-      unsigned byte_offset = 0;
-      for (unsigned i = first_operand; i < vec->operands.size(); i++) {
-         Operand& op = vec->operands[i];
-         if (op.isTemp() && op.tempId() == temp.id())
-            break;
-         else
-            byte_offset += op.bytes();
-      }
-
-      if (vec->format != Format::MIMG || is_mimg_vaddr_intact(ctx, reg_file, vec)) {
-         unsigned k = 0;
-         for (unsigned i = first_operand; i < vec->operands.size(); i++) {
-            Operand& op = vec->operands[i];
-            if (op.isTemp() &&
-                op.tempId() != temp.id() &&
-                op.getTemp().type() == temp.type() &&
-                ctx.assignments[op.tempId()].assigned) {
-               PhysReg reg = ctx.assignments[op.tempId()].reg;
-               reg.reg_b += (byte_offset - k);
-               if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
-                  return reg;
-            }
-            k += op.bytes();
-         }
-
-         RegClass vec_rc = RegClass::get(temp.type(), k);
-         DefInfo info(ctx, ctx.pseudo_dummy, vec_rc, -1);
-         std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
-         PhysReg reg = res.first;
-         if (res.second) {
-            reg.reg_b += byte_offset;
-            /* make sure to only use byte offset if the instruction supports it */
-            if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
-               return reg;
-         }
-      }
+      res = get_reg_vector(ctx, reg_file, temp, instr);
+      if (res.second)
+         return res.first;
    }
 
    DefInfo info(ctx, instr, temp.regClass(), operand_index);
-
-   std::pair<PhysReg, bool> res;
 
    if (!ctx.policy.skip_optimistic_path) {
       /* try to find space without live-range splits */
