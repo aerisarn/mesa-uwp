@@ -829,6 +829,33 @@ optimizations.extend([
     (('i2f16', ('i2imp', 'a@32')), ('i2f16', a)),
 ])
 
+# Clean up junk left from 8-bit integer to 16-bit integer lowering.
+optimizations.extend([
+    # The u2u16(u2u8(X)) just masks off the upper 8-bits of X.  This can be
+    # accomplished by mask the upper 8-bit of the immediate operand to the
+    # iand instruction.  Often times, both patterns will end up being applied
+    # to the same original expression tree.
+    (('iand', ('u2u16', ('u2u8', 'a@16')), '#b'),               ('iand', a, ('iand', b, 0xff))),
+    (('u2u16', ('u2u8(is_used_once)', ('iand', 'a@16', '#b'))), ('iand', a, ('iand', b, 0xff))),
+])
+
+for op in ['iand', 'ior', 'ixor']:
+    optimizations.extend([
+        (('u2u8', (op, ('u2u16', ('u2u8', 'a@16')), ('u2u16', ('u2u8', 'b@16')))), ('u2u8', (op, a, b))),
+        (('u2u8', (op, ('u2u16', ('u2u8', 'a@32')), ('u2u16', ('u2u8', 'b@32')))), ('u2u8', (op, a, b))),
+
+        # Undistribute extract from a logic op
+        ((op, ('extract_i8', a, '#b'), ('extract_i8', c, b)), ('extract_i8', (op, a, c), b)),
+        ((op, ('extract_u8', a, '#b'), ('extract_u8', c, b)), ('extract_u8', (op, a, c), b)),
+        ((op, ('extract_i16', a, '#b'), ('extract_i16', c, b)), ('extract_i16', (op, a, c), b)),
+        ((op, ('extract_u16', a, '#b'), ('extract_u16', c, b)), ('extract_u16', (op, a, c), b)),
+
+        # Undistribute shifts from a logic op
+        ((op, ('ushr(is_used_once)', a, '#b'), ('ushr', c, b)), ('ushr', (op, a, c), b)),
+        ((op, ('ishr(is_used_once)', a, '#b'), ('ishr', c, b)), ('ishr', (op, a, c), b)),
+        ((op, ('ishl(is_used_once)', a, '#b'), ('ishl', c, b)), ('ishl', (op, a, c), b)),
+    ])
+
 # Integer sizes
 for s in [8, 16, 32, 64]:
     optimizations.extend([
