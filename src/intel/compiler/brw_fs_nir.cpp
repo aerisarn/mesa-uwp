@@ -1102,13 +1102,9 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_f2i32:
    case nir_op_f2u32:
    case nir_op_i2f16:
-   case nir_op_i2i16:
    case nir_op_u2f16:
-   case nir_op_u2u16:
    case nir_op_f2i16:
    case nir_op_f2u16:
-   case nir_op_i2i8:
-   case nir_op_u2u8:
    case nir_op_f2i8:
    case nir_op_f2u8:
       if (result.type == BRW_REGISTER_TYPE_B ||
@@ -1123,6 +1119,44 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
       inst = bld.MOV(result, op[0]);
       break;
+
+   case nir_op_i2i8:
+   case nir_op_u2u8:
+      assert(type_sz(op[0].type) < 8); /* brw_nir_lower_conversions */
+      FALLTHROUGH;
+   case nir_op_i2i16:
+   case nir_op_u2u16: {
+      /* Emit better code for u2u8(extract_u8(a, b)) and similar patterns.
+       * Emitting the instructions one by one results in two MOV instructions
+       * that won't be propagated.  By handling both instructions here, a
+       * single MOV is emitted.
+       */
+      nir_alu_instr *extract_instr = nir_src_as_alu_instr(instr->src[0].src);
+      if (extract_instr != NULL) {
+         if (extract_instr->op == nir_op_extract_u8 ||
+             extract_instr->op == nir_op_extract_i8) {
+            prepare_alu_destination_and_sources(bld, extract_instr, op, false);
+
+            const unsigned byte = nir_src_as_uint(extract_instr->src[1].src);
+            const brw_reg_type type =
+               brw_int_type(1, extract_instr->op == nir_op_extract_i8);
+
+            op[0] = subscript(op[0], type, byte);
+         } else if (extract_instr->op == nir_op_extract_u16 ||
+                    extract_instr->op == nir_op_extract_i16) {
+            prepare_alu_destination_and_sources(bld, extract_instr, op, false);
+
+            const unsigned word = nir_src_as_uint(extract_instr->src[1].src);
+            const brw_reg_type type =
+               brw_int_type(2, extract_instr->op == nir_op_extract_i16);
+
+            op[0] = subscript(op[0], type, word);
+         }
+      }
+
+      inst = bld.MOV(result, op[0]);
+      break;
+   }
 
    case nir_op_fsat:
       inst = bld.MOV(result, op[0]);
