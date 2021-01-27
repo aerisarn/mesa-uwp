@@ -658,6 +658,18 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       mai.allocationSize = reqs.size = align(reqs.size, screen->info.props.limits.nonCoherentAtomSize);
    }
 
+   VkMemoryDedicatedAllocateInfo ded_alloc_info = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+      .pNext = mai.pNext,
+      .image = obj->image,
+      .buffer = VK_NULL_HANDLE,
+   };
+
+   if (screen->info.have_KHR_dedicated_allocation && need_dedicated) {
+      ded_alloc_info.pNext = mai.pNext;
+      mai.pNext = &ded_alloc_info;
+   }
+
    VkExportMemoryAllocateInfo emai = {0};
    if (templ->bind & PIPE_BIND_SHARED && shared) {
       emai.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
