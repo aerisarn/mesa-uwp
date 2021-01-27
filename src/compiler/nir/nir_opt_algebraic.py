@@ -1253,6 +1253,15 @@ optimizations.extend([
    (('ishr', 'a@64', 56), ('extract_i8', a, 7), '!options->lower_extract_byte'),
    (('iand', 0xff, a), ('extract_u8', a, 0), '!options->lower_extract_byte'),
 
+   # Common pattern in many Vulkan CTS tests that read 8-bit integers from a
+   # storage buffer.
+   (('u2u8', ('extract_u16', a, 1)), ('u2u8', ('extract_u8', a, 2)), '!options->lower_extract_byte'),
+   (('u2u8', ('ushr', a, 8)), ('u2u8', ('extract_u8', a, 1)), '!options->lower_extract_byte'),
+
+   # Common pattern after lowering 8-bit integers to 16-bit.
+   (('i2i16', ('u2u8', ('extract_u8', a, b))), ('i2i16', ('extract_i8', a, b))),
+   (('u2u16', ('u2u8', ('extract_u8', a, b))), ('u2u16', ('extract_u8', a, b))),
+
    (('ubfe', a,  0, 8), ('extract_u8', a, 0), '!options->lower_extract_byte'),
    (('ubfe', a,  8, 8), ('extract_u8', a, 1), '!options->lower_extract_byte'),
    (('ubfe', a, 16, 8), ('extract_u8', a, 2), '!options->lower_extract_byte'),
