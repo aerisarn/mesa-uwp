@@ -2055,7 +2055,7 @@ void get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
             affinity_related.emplace_back(instr->definitions[0].getTemp());
             affinity_related.emplace_back(instr->definitions[0].getTemp());
             for (const Operand& op : instr->operands) {
-               if (op.isTemp() && op.regClass() == instr->definitions[0].regClass()) {
+               if (op.isTemp() && op.isKill() && op.regClass() == instr->definitions[0].regClass()) {
                   affinity_related.emplace_back(op.getTemp());
                   temp_to_phi_ressources[op.tempId()] = phi_ressources.size();
                }
