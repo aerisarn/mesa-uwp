@@ -2881,6 +2881,8 @@ zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res)
 static void
 rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
 {
+   bool did_ref = false;
+
    for (unsigned shader = 0; shader < PIPE_SHADER_TYPES; shader++) {
       if (!(res->bind_stages & (1 << shader)))
          continue;
@@ -2958,9 +2960,16 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
                access |= VK_ACCESS_SHADER_WRITE_BIT;
             zink_resource_buffer_barrier(ctx, NULL, res, access,
                                          zink_pipeline_flags_from_stage(zink_shader_stage(shader)));
+            did_ref = true;
          }
       }
    }
+   if (!res->vbo_bind_count)
+      return;
+   if (!did_ref)
+      zink_batch_reference_resource_rw(&ctx->batch, res, false);
+   zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                                VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
 }
 
 static bool
