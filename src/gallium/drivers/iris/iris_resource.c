@@ -560,10 +560,11 @@ static void
 map_aux_addresses(struct iris_screen *screen, struct iris_resource *res,
                   enum isl_format format, unsigned plane)
 {
-   const struct intel_device_info *devinfo = &screen->devinfo;
-   if (devinfo->ver >= 12 && isl_aux_usage_has_ccs(res->aux.usage)) {
-      void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
-      assert(aux_map_ctx);
+   void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
+   if (!aux_map_ctx)
+      return;
+
+   if (isl_aux_usage_has_ccs(res->aux.usage)) {
       const unsigned aux_offset = res->aux.extra_aux.surf.size_B > 0 ?
          res->aux.extra_aux.offset : res->aux.offset;
       const uint64_t format_bits =
