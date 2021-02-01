@@ -812,6 +812,16 @@ zink_set_polygon_stipple(struct pipe_context *pctx,
 {
 }
 
+static inline void
+update_res_bind_count(struct zink_context *ctx, struct zink_resource *res, bool is_compute, bool decrement)
+{
+   if (decrement) {
+      if (!--res->bind_count[is_compute])
+         _mesa_set_remove_key(ctx->need_barriers[is_compute], res);
+   } else
+      res->bind_count[is_compute]++;
+}
+
 static void
 update_existing_vbo(struct zink_context *ctx, unsigned slot)
 {
@@ -819,9 +829,7 @@ update_existing_vbo(struct zink_context *ctx, unsigned slot)
       return;
    struct zink_resource *res = zink_resource(ctx->vertex_buffers[slot].buffer.resource);
    res->vbo_bind_count--;
-   res->bind_count[0]--;
-   if (!res->bind_count[0])
-      _mesa_set_remove_key(ctx->need_barriers[0], res);
+   update_res_bind_count(ctx, res, false, true);
 }
 
 static void
@@ -854,7 +862,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
          if (vb->buffer.resource) {
             struct zink_resource *res = zink_resource(vb->buffer.resource);
             res->vbo_bind_count++;
-            res->bind_count[0]++;
+            update_res_bind_count(ctx, res, false, false);
             ctx_vb->stride = vb->stride;
             ctx_vb->buffer_offset = vb->buffer_offset;
             zink_batch_reference_resource_rw(&ctx->batch, res, false);
@@ -934,9 +942,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
    struct zink_resource *res = zink_resource(ctx->ubos[shader][index].buffer);
    if (res) {
       res->ubo_bind_count[shader == PIPE_SHADER_COMPUTE]--;
-      res->bind_count[shader == PIPE_SHADER_COMPUTE]--;
-      if (!res->bind_count[shader == PIPE_SHADER_COMPUTE])
-         _mesa_set_remove_key(ctx->need_barriers[shader == PIPE_SHADER_COMPUTE], res);
+      update_res_bind_count(ctx, res, shader == PIPE_SHADER_COMPUTE, true);
    }
    if (cb) {
       struct pipe_resource *buffer = cb->buffer;
@@ -952,7 +958,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
          new_res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_UBO);
          new_res->bind_stages |= 1 << shader;
          new_res->ubo_bind_count[shader == PIPE_SHADER_COMPUTE]++;
-         new_res->bind_count[shader == PIPE_SHADER_COMPUTE]++;
+         update_res_bind_count(ctx, new_res, shader == PIPE_SHADER_COMPUTE, false);
          if (!ctx->descriptor_refs_dirty[shader == PIPE_SHADER_COMPUTE])
             zink_batch_reference_resource_rw(&ctx->batch, new_res, false);
          zink_resource_buffer_barrier(ctx, NULL, new_res, VK_ACCESS_UNIFORM_READ_BIT,
@@ -1017,9 +1023,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
       struct pipe_shader_buffer *ssbo = &ctx->ssbos[p_stage][start_slot + i];
       if (ssbo->buffer) {
          struct zink_resource *res = zink_resource(ssbo->buffer);
-         res->bind_count[p_stage == PIPE_SHADER_COMPUTE]--;
-         if (!res->bind_count[p_stage == PIPE_SHADER_COMPUTE])
-            _mesa_set_remove_key(ctx->need_barriers[p_stage == PIPE_SHADER_COMPUTE], res);
+         update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, true);
          if (old_writable_mask & BITFIELD64_BIT(start_slot + i))
             res->write_bind_count[p_stage == PIPE_SHADER_COMPUTE]--;
       }
@@ -1027,7 +1031,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          struct zink_resource *res = zink_resource(buffers[i].buffer);
          res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SSBO);
          res->bind_stages |= 1 << p_stage;
-         res->bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
+         update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, false);
          VkAccessFlags access = VK_ACCESS_SHADER_READ_BIT;
          if (ctx->writable_ssbos[p_stage] & BITFIELD64_BIT(start_slot + i)) {
             res->write_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
@@ -1126,9 +1130,7 @@ zink_set_shader_images(struct pipe_context *pctx,
       struct zink_image_view *image_view = &ctx->image_views[p_stage][start_slot + i];
       if (image_view->base.resource) {
          struct zink_resource *res = zink_resource(image_view->base.resource);
-         res->bind_count[p_stage == PIPE_SHADER_COMPUTE]--;
-         if (!res->bind_count[p_stage == PIPE_SHADER_COMPUTE])
-            _mesa_set_remove_key(ctx->need_barriers[p_stage == PIPE_SHADER_COMPUTE], res);
+         update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, true);
          if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
             res->write_bind_count[p_stage == PIPE_SHADER_COMPUTE]--;
          if (image_view->base.resource->target != PIPE_BUFFER)
@@ -1143,7 +1145,7 @@ zink_set_shader_images(struct pipe_context *pctx,
          }
          res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_IMAGE);
          res->bind_stages |= 1 << p_stage;
-         res->bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
+         update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, false);
          util_copy_image_view(&image_view->base, images + i);
          VkAccessFlags access = 0;
          if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE) {
@@ -1219,9 +1221,7 @@ unbind_samplerview(struct zink_context *ctx, enum pipe_shader_type stage, unsign
    if (!sv || !sv->base.texture)
       return;
    struct zink_resource *res = zink_resource(sv->base.texture);
-   res->bind_count[stage == PIPE_SHADER_COMPUTE]--;
-   if (!res->bind_count[stage == PIPE_SHADER_COMPUTE])
-      _mesa_set_remove_key(ctx->need_barriers[stage == PIPE_SHADER_COMPUTE], res);
+   update_res_bind_count(ctx, res, stage == PIPE_SHADER_COMPUTE, true);
    if (!res->obj->is_buffer)
       res->sampler_binds[stage] &= ~BITFIELD_BIT(slot);
 }
@@ -1288,7 +1288,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
             zink_batch_reference_resource_rw(&ctx->batch, res, false);
             zink_batch_reference_sampler_view(&ctx->batch, b);
          }
-         res->bind_count[shader_type == PIPE_SHADER_COMPUTE]++;
+         update_res_bind_count(ctx, res, shader_type == PIPE_SHADER_COMPUTE, false);
          res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
          res->bind_stages |= 1 << shader_type;
       } else if (a)
