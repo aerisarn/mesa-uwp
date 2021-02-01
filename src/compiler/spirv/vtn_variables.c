@@ -1831,6 +1831,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    case vtn_variable_mode_ubo:
    case vtn_variable_mode_ssbo:
    case vtn_variable_mode_push_constant:
+   case vtn_variable_mode_accel_struct:
+   case vtn_variable_mode_shader_record:
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
 
@@ -1934,11 +1936,6 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                              var_decoration_cb, var);
       break;
    }
-
-   case vtn_variable_mode_accel_struct:
-   case vtn_variable_mode_shader_record:
-      /* These don't need actual variables. */
-      break;
 
    case vtn_variable_mode_image:
    case vtn_variable_mode_phys_ssbo:
