@@ -257,6 +257,8 @@ struct tu_pipeline_builder
    uint64_t shader_iova[MESA_SHADER_FRAGMENT + 1];
    uint64_t binning_vs_iova;
 
+   uint32_t additional_cs_reserve_size;
+
    struct tu_pvtmem_config pvtmem;
 
    bool rasterizer_discard;
@@ -389,6 +391,32 @@ static const struct xs_config {
       REG_A6XX_SP_CS_PVT_MEM_HW_STACK_OFFSET,
    },
 };
+
+static uint32_t
+tu_xs_get_immediates_packet_size_dwords(const struct ir3_shader_variant *xs)
+{
+   const struct ir3_const_state *const_state = ir3_const_state(xs);
+   uint32_t base = const_state->offsets.immediate;
+   int32_t size = DIV_ROUND_UP(const_state->immediates_count, 4);
+
+   /* truncate size to avoid writing constants that shader
+    * does not use:
+    */
+   size = MIN2(size + base, xs->constlen) - base;
+
+   return MAX2(size, 0) * 4;
+}
+
+/* We allocate fixed-length substreams for shader state, however some
+ * parts of the state may have unbound length. Their additional space
+ * requirements should be calculated here.
+ */
+static uint32_t
+tu_xs_get_additional_cs_size_dwords(const struct ir3_shader_variant *xs)
+{
+   uint32_t size = tu_xs_get_immediates_packet_size_dwords(xs);
+   return size;
+}
 
 void
 tu6_emit_xs_config(struct tu_cs *cs,
@@ -529,24 +557,19 @@ tu6_emit_xs(struct tu_cs *cs,
 
    const struct ir3_const_state *const_state = ir3_const_state(xs);
    uint32_t base = const_state->offsets.immediate;
-   int size = DIV_ROUND_UP(const_state->immediates_count, 4);
+   unsigned immediate_size = tu_xs_get_immediates_packet_size_dwords(xs);
 
-   /* truncate size to avoid writing constants that shader
-    * does not use:
-    */
-   size = MIN2(size + base, xs->constlen) - base;
-
-   if (size > 0) {
-      tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3 + size * 4);
+   if (immediate_size > 0) {
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3 + immediate_size);
       tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                  CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
-                 CP_LOAD_STATE6_0_NUM_UNIT(size));
+                 CP_LOAD_STATE6_0_NUM_UNIT(immediate_size / 4));
       tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
       tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 
-      tu_cs_emit_array(cs, const_state->immediates, size * 4);
+      tu_cs_emit_array(cs, const_state->immediates, immediate_size);
    }
 
    if (const_state->constant_data_ubo != -1) {
@@ -2153,9 +2176,27 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
       pvtmem_bytes = MAX2(pvtmem_bytes, builder->binning_variant->pvtmem_size);
 
       size += calc_pvtmem_size(dev, NULL, pvtmem_bytes) / 4;
+
+      builder->additional_cs_reserve_size = 0;
+      for (unsigned i = 0; i < ARRAY_SIZE(builder->variants); i++) {
+         struct ir3_shader_variant *variant = builder->variants[i];
+         if (variant) {
+            builder->additional_cs_reserve_size +=
+               tu_xs_get_additional_cs_size_dwords(variant);
+
+            if (variant->binning) {
+               builder->additional_cs_reserve_size +=
+                  tu_xs_get_additional_cs_size_dwords(variant->binning);
+            }
+         }
+      }
+
+      size += builder->additional_cs_reserve_size;
    } else {
       size += compute->info.size / 4;
       size += calc_pvtmem_size(dev, NULL, compute->pvtmem_size) / 4;
+
+      size += tu_xs_get_additional_cs_size_dwords(compute);
    }
 
    tu_cs_init(&pipeline->cs, dev, TU_CS_MODE_SUB_STREAM, size);
@@ -2563,11 +2604,11 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    tu6_emit_program_config(&prog_cs, builder);
    pipeline->program.config_state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
-   tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, 512 + builder->additional_cs_reserve_size, &prog_cs);
    tu6_emit_program(&prog_cs, builder, false, pipeline);
    pipeline->program.state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
-   tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, 512 + builder->additional_cs_reserve_size, &prog_cs);
    tu6_emit_program(&prog_cs, builder, true, pipeline);
    pipeline->program.binning_state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
@@ -3273,7 +3314,8 @@ tu_compute_pipeline_create(VkDevice device,
    pipeline->compute.subgroup_size = v->info.double_threadsize ? 128 : 64;
 
    struct tu_cs prog_cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
+   uint32_t additional_reserve_size = tu_xs_get_additional_cs_size_dwords(v);
+   tu_cs_begin_sub_stream(&pipeline->cs, 64 + additional_reserve_size, &prog_cs);
    tu6_emit_cs_config(&prog_cs, shader, v, &pvtmem, shader_iova);
    pipeline->program.state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 

@@ -71,10 +71,6 @@ dEQP-VK.api.info.image_format_properties.2d.optimal.g8_b8r8_2plane_420_unorm,Fai
 # "Mismatch between VkPhysicalDeviceProtectedMemoryProperties at vktApiFeatureInfo.cpp:4208"
 dEQP-VK.api.info.get_physical_device_properties2.properties,Fail
 
-# "deqp-vk: ../src/freedreno/vulkan/tu_cs.h:186: tu_cs_reserve: Assertion `tu_cs_get_space(cs) >= reserved_size' failed."
-# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/8841
-dEQP-VK.spirv_assembly.instruction.compute.opphi.wide,Crash
-
 # Fails when TU_DEBUG=forcebin is set
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_single_buffer_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
