@@ -655,15 +655,10 @@ lower_image_size_instr(nir_builder *b,
 
    nir_ssa_def *comps[4] = { NULL, NULL, NULL, NULL };
 
-   enum glsl_sampler_dim dim = glsl_get_sampler_dim(deref->type);
+   assert(nir_intrinsic_image_dim(intrin) != GLSL_SAMPLER_DIM_CUBE);
    unsigned coord_comps = glsl_get_sampler_coordinate_components(deref->type);
-   for (unsigned c = 0; c < coord_comps; c++) {
-      if (c == 2 && dim == GLSL_SAMPLER_DIM_CUBE) {
-         comps[2] = nir_idiv(b, nir_channel(b, size, 2), nir_imm_int(b, 6));
-      } else {
-         comps[c] = nir_channel(b, size, c);
-      }
-   }
+   for (unsigned c = 0; c < coord_comps; c++)
+      comps[c] = nir_channel(b, size, c);
 
    for (unsigned c = coord_comps; c < intrin->dest.ssa.num_components; ++c)
       comps[c] = nir_imm_int(b, 1);
@@ -680,6 +675,11 @@ brw_nir_lower_storage_image(nir_shader *shader,
                             bool *uses_atomic_load_store)
 {
    bool progress = false;
+
+   const nir_lower_image_options image_options = {
+      .lower_cube_size = true,
+   };
+   progress |= nir_lower_image(shader, &image_options);
 
    nir_foreach_function(function, shader) {
       if (function->impl == NULL)
