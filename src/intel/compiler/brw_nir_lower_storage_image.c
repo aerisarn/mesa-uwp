@@ -675,9 +675,9 @@ lower_image_size_instr(nir_builder *b,
 }
 
 bool
-brw_nir_lower_image_load_store(nir_shader *shader,
-                               const struct intel_device_info *devinfo,
-                               bool *uses_atomic_load_store)
+brw_nir_lower_storage_image(nir_shader *shader,
+                            const struct intel_device_info *devinfo,
+                            bool *uses_atomic_load_store)
 {
    bool progress = false;
 
