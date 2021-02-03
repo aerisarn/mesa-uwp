@@ -62,6 +62,7 @@ struct zink_resource_object {
 
    VkBuffer sbuffer;
    bool storage_init; //layout was set for image
+   bool transfer_dst;
 
    VkDeviceMemory mem;
    uint32_t mem_hash;

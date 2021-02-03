@@ -32,6 +32,7 @@
 #include "vulkan/wsi/wsi_common.h"
 
 #include "util/slab.h"
+#include "util/u_blitter.h"
 #include "util/u_debug.h"
 #include "util/format/u_format.h"
 #include "util/u_transfer_helper.h"
@@ -383,6 +384,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       else
          flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
       obj->is_buffer = true;
+      obj->transfer_dst = true;
    } else {
       VkImageCreateInfo ici = create_ici(screen, templ, templ->bind);
       VkExternalMemoryImageCreateInfo emici = {};
@@ -425,6 +427,9 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          FREE(obj);
          return NULL;
       }
+      if (ici.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+         obj->transfer_dst = true;
+
 
       struct wsi_image_create_info image_wsi_info = {
          VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
@@ -748,8 +753,13 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    if (buf2img)
       box.x = src->obj->offset + trans->offset;
 
-   zink_copy_image_buffer(ctx, NULL, dst, src, trans->base.b.level, buf2img ? x : dst->obj->offset,
-                           box.y, box.z, trans->base.b.level, &box, trans->base.b.usage);
+   if (dst->obj->transfer_dst)
+      zink_copy_image_buffer(ctx, NULL, dst, src, trans->base.b.level, buf2img ? x : dst->obj->offset,
+                              box.y, box.z, trans->base.b.level, &box, trans->base.b.usage);
+   else
+      util_blitter_copy_texture(ctx->blitter, &dst->base.b, trans->base.b.level,
+                                x, box.y, box.z, &src->base.b,
+                                0, &box);
 }
 
 bool
