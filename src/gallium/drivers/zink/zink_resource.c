@@ -291,6 +291,29 @@ get_image_usage(struct zink_screen *screen, VkImageTiling tiling, const struct p
    return usage;
 }
 
+static bool
+check_ici(struct zink_screen *screen, VkImageCreateInfo *ici)
+{
+   VkImageFormatProperties image_props;
+   VkResult ret;
+   if (screen->vk_GetPhysicalDeviceImageFormatProperties2) {
+      VkImageFormatProperties2 props2 = {};
+      props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
+      VkPhysicalDeviceImageFormatInfo2 info = {};
+      info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
+      info.format = ici->format;
+      info.type = ici->imageType;
+      info.tiling = ici->tiling;
+      info.usage = ici->usage;
+      info.flags = ici->flags;
+      ret = screen->vk_GetPhysicalDeviceImageFormatProperties2(screen->pdev, &info, &props2);
+      image_props = props2.imageFormatProperties;
+   } else
+      ret = vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici->format, ici->imageType,
+                                                   ici->tiling, ici->usage, ici->flags, &image_props);
+   return ret == VK_SUCCESS;
+}
+
 static VkImageCreateInfo
 create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsigned bind)
 {
@@ -351,6 +374,15 @@ create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsign
       ici.usage = get_image_usage(screen, ici.tiling, templ, bind);
    }
 
+   bool good = check_ici(screen, &ici);
+   if (!good && ici.tiling == VK_IMAGE_TILING_LINEAR) {
+      ici.tiling = !ici.tiling;
+      ici.usage = get_image_usage(screen, ici.tiling, templ, bind);
+      good = check_ici(screen, &ici);
+   }
+   if (!good)
+      debug_printf("ZINK: failed to validate image creation\n");
+
    ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
    return ici;
@@ -406,27 +438,6 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       if (optimal_tiling)
          *optimal_tiling = ici.tiling != VK_IMAGE_TILING_LINEAR;
 
-      VkImageFormatProperties image_props;
-      VkResult ret;
-      if (screen->vk_GetPhysicalDeviceImageFormatProperties2) {
-         VkImageFormatProperties2 props2 = {};
-         props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
-         VkPhysicalDeviceImageFormatInfo2 info = {};
-         info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
-         info.format = ici.format;
-         info.type = ici.imageType;
-         info.tiling = ici.tiling;
-         info.usage = ici.usage;
-         info.flags = ici.flags;
-         ret = screen->vk_GetPhysicalDeviceImageFormatProperties2(screen->pdev, &info, &props2);
-         image_props = props2.imageFormatProperties;
-      } else
-         ret = vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici.format, ici.imageType,
-                                                      ici.tiling, ici.usage, ici.flags, &image_props);
-      if (ret != VK_SUCCESS) {
-         FREE(obj);
-         return NULL;
-      }
       if (ici.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
          obj->transfer_dst = true;
 
