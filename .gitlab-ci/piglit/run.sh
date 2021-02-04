@@ -3,6 +3,7 @@
 set -ex
 
 INSTALL=$(realpath -s "$PWD"/install)
+MINIO_ARGS="--credentials=/tmp/.minio_credentials"
 
 RESULTS=$(realpath -s "$PWD"/results)
 mkdir -p "$RESULTS"
@@ -173,7 +174,7 @@ replay_minio_upload_images() {
                 -i "$RESULTS"/junit.xml
         fi
 
-        ci-fairy minio cp "$RESULTS/$__PREFIX/$line" \
+        ci-fairy minio cp $MINIO_ARGS "$RESULTS/$__PREFIX/$line" \
             "minio://${MINIO_HOST}${__MINIO_PATH}/${__DESTINATION_FILE_PATH}"
     done
 }
@@ -236,7 +237,7 @@ mkdir -p .gitlab-ci/piglit
 if [ "x$PIGLIT_PROFILES" = "xreplay" ] \
        && [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
 
-    ci-fairy minio login $CI_JOB_JWT
+    ci-fairy minio login $MINIO_ARGS $CI_JOB_JWT
 
     __PREFIX="trace/$PIGLIT_REPLAY_DEVICE_NAME"
     __MINIO_PATH="$PIGLIT_REPLAY_ARTIFACTS_BASE_URL"
