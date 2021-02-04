@@ -9,12 +9,16 @@ export DEBIAN_FRONTEND=noninteractive
 STABLE_EPHEMERAL=" \
       autoconf \
       automake \
+      cargo \
       ccache \
       clang-11 \
       cmake \
       g++ \
       glslang-tools \
+      libasound2-dev \
+      libcap-dev \
       libclang-cpp11-dev \
+      libfdt-dev \
       libgbm-dev \
       libgles2-mesa-dev \
       libllvmspirvlib-dev \
@@ -25,6 +29,7 @@ STABLE_EPHEMERAL=" \
       libwaffle-dev \
       libwayland-dev \
       libx11-xcb-dev \
+      libxext-dev \
       libxkbcommon-dev \
       libxrender-dev \
       llvm-11-dev \
@@ -35,6 +40,7 @@ STABLE_EPHEMERAL=" \
       patch \
       pkg-config \
       python3-distutils \
+      wayland-protocols \
       wget \
       xz-utils \
       "
@@ -42,20 +48,24 @@ STABLE_EPHEMERAL=" \
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
       clinfo \
+      inetutils-syslogd \
+      iptables \
       libclang-common-11-dev \
       libclang-cpp11 \
+      libcap2 \
       libegl1 \
+      libfdt1 \
       libllvmspirvlib11 \
       libxcb-shm0 \
       ocl-icd-libopencl1 \
       python3-lxml \
       python3-renderdoc \
       python3-simplejson \
-      spirv-tools
+      spirv-tools \
+      sysvinit-core
 
 
 . .gitlab-ci/container/container_pre_build.sh
-
 
 ############### Build libdrm
 
@@ -72,6 +82,13 @@ apt-get install -y --no-remove \
 ############### Build piglit
 
 PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON" . .gitlab-ci/container/build-piglit.sh
+
+############### Build Rust deps (Crosvm and deqp-runner)
+
+. .gitlab-ci/container/build-crosvm.sh
+. .gitlab-ci/container/build-deqp-runner.sh
+
+rm -rf /root/.cargo
 
 ############### Build dEQP GL
 
