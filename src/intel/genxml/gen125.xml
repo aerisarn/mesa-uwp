@@ -588,6 +588,16 @@
       <value name="TG size 8" value="0"/>
       <value name="TG size 16" value="1"/>
     </field>
+    <field name="Number Of Barriers" start="188" end="190" type="uint" prefix="BARRIER_SIZE">
+      <value name="NONE" value="0"/>
+      <value name="B1" value="1"/>
+      <value name="B2" value="2"/>
+      <value name="B4" value="3"/>
+      <value name="B8" value="4"/>
+      <value name="B16" value="5"/>
+      <value name="B24" value="6"/>
+      <value name="B32" value="7"/>
+    </field>
     <field name="BTD Mode" start="191" end="191" type="uint"/>
   </struct>
 

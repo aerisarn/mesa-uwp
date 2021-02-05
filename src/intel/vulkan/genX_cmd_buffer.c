@@ -4885,7 +4885,7 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
          .NumberofThreadsinGPGPUThreadGroup = dispatch.threads,
          .SharedLocalMemorySize = encode_slm_size(GFX_VER,
                                                   prog_data->base.total_shared),
-         .BarrierEnable = prog_data->uses_barrier,
+         .NumberOfBarriers = prog_data->uses_barrier,
       };
    }
 }
