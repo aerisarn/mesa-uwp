@@ -208,8 +208,10 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
 
    ANV_CMP_COPY(color_writes, ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE);
 
-   ANV_CMP_COPY(fragment_shading_rate.width, ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE);
-   ANV_CMP_COPY(fragment_shading_rate.height, ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE);
+   ANV_CMP_COPY(fragment_shading_rate.rate.width, ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE);
+   ANV_CMP_COPY(fragment_shading_rate.rate.height, ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE);
+   ANV_CMP_COPY(fragment_shading_rate.ops[0], ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE);
+   ANV_CMP_COPY(fragment_shading_rate.ops[1], ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE);
 
 #undef ANV_CMP_COPY
 
@@ -1339,6 +1341,25 @@ void anv_TrimCommandPool(
 }
 
 /**
+ * Return NULL if the current subpass has no color attachment.
+ */
+const struct anv_image_view *
+anv_cmd_buffer_get_first_color_view(const struct anv_cmd_buffer *cmd_buffer)
+{
+   const struct anv_subpass *subpass = cmd_buffer->state.subpass;
+
+   if (subpass->color_count == 0)
+      return NULL;
+
+   const struct anv_image_view *iview =
+      cmd_buffer->state.attachments[subpass->color_attachments[0].attachment].image_view;
+
+   assert(iview->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT);
+
+   return iview;
+}
+
+/**
  * Return NULL if the current subpass has no depthstencil attachment.
  */
 const struct anv_image_view *
@@ -1354,6 +1375,25 @@ anv_cmd_buffer_get_depth_stencil_view(const struct anv_cmd_buffer *cmd_buffer)
 
    assert(iview->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
                                VK_IMAGE_ASPECT_STENCIL_BIT));
+
+   return iview;
+}
+
+/**
+ * Return NULL if the current subpass has no fragment shading rate attachment.
+ */
+const struct anv_image_view *
+anv_cmd_buffer_get_fsr_view(const struct anv_cmd_buffer *cmd_buffer)
+{
+   const struct anv_subpass *subpass = cmd_buffer->state.subpass;
+
+   if (subpass->fsr_attachment == NULL)
+      return NULL;
+
+   const struct anv_image_view *iview =
+      cmd_buffer->state.attachments[subpass->fsr_attachment->attachment].image_view;
+
+   assert(iview->image->vk.usage & VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR);
 
    return iview;
 }
@@ -1610,8 +1650,15 @@ void anv_CmdSetFragmentShadingRateKHR(
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   cmd_buffer->state.gfx.dynamic.fragment_shading_rate = *pFragmentSize;
-   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE;
+   if (cmd_buffer->state.gfx.dynamic.fragment_shading_rate.rate.width != pFragmentSize->width ||
+       cmd_buffer->state.gfx.dynamic.fragment_shading_rate.rate.height != pFragmentSize->height ||
+       cmd_buffer->state.gfx.dynamic.fragment_shading_rate.ops[0] != combinerOps[0] ||
+       cmd_buffer->state.gfx.dynamic.fragment_shading_rate.ops[1] != combinerOps[1]) {
+      cmd_buffer->state.gfx.dynamic.fragment_shading_rate.rate = *pFragmentSize;
+      memcpy(cmd_buffer->state.gfx.dynamic.fragment_shading_rate.ops, combinerOps,
+             sizeof(cmd_buffer->state.gfx.dynamic.fragment_shading_rate.ops));
+      cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE;
+   }
 }
 
 static inline uint32_t

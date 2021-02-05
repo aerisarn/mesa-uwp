@@ -847,22 +847,16 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_SAMPLE_MASK), sm) {
       sm.SampleMask = sample_mask;
    }
+}
 
-   pipeline->cps_state = ANV_STATE_NULL;
+static void
+emit_3dstate_cps(struct anv_graphics_pipeline *pipeline, uint32_t dynamic_states)
+{
 #if GFX_VER >= 11
    if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) &&
        pipeline->base.device->vk.enabled_extensions.KHR_fragment_shading_rate) {
-#if GFX_VER >= 12
-      struct anv_device *device = pipeline->base.device;
-      const uint32_t num_dwords =
-         GENX(CPS_STATE_length) * 4 * pipeline->dynamic_state.viewport.count;
-      pipeline->cps_state =
-         anv_state_pool_alloc(&device->dynamic_state_pool, num_dwords, 32);
-#endif
-
       genX(emit_shading_rate)(&pipeline->base.batch,
                               pipeline,
-                              pipeline->cps_state,
                               &pipeline->dynamic_state);
    }
 #endif
@@ -2408,6 +2402,12 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
          wm_prog_data->uses_depth_w_coefficients;
       ps.PixelShaderIsPerCoarsePixel = wm_prog_data->per_coarse_pixel_dispatch;
 #endif
+#if GFX_VERx10 >= 125
+      /* TODO: We should only require this when the last geometry shader uses
+       *       a fragment shading rate that is not constant.
+       */
+      ps.EnablePSDependencyOnCPsizeChange = wm_prog_data->per_coarse_pixel_dispatch;
+#endif
    }
 }
 
@@ -2611,6 +2611,8 @@ genX(graphics_pipeline_create)(
 #endif
 
       emit_3dstate_vf_statistics(pipeline);
+
+      emit_3dstate_cps(pipeline, dynamic_states);
 
       emit_3dstate_streamout(pipeline, pCreateInfo->pRasterizationState,
                              dynamic_states);

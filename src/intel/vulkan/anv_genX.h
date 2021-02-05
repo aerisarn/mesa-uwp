@@ -52,6 +52,8 @@ void genX(init_physical_device_state)(struct anv_physical_device *device);
 
 VkResult genX(init_device_state)(struct anv_device *device);
 
+void genX(init_cps_device_state)(struct anv_device *device);
+
 void genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer);
 
 void genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer);
@@ -132,7 +134,6 @@ void genX(emit_sample_pattern)(struct anv_batch *batch, uint32_t samples,
 
 void genX(emit_shading_rate)(struct anv_batch *batch,
                              const struct anv_graphics_pipeline *pipeline,
-                             struct anv_state cps_states,
                              struct anv_dynamic_state *dynamic_state);
 
 void genX(cmd_buffer_so_memcpy)(struct anv_cmd_buffer *cmd_buffer,

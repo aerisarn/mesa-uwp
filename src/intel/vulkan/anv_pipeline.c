@@ -324,8 +324,6 @@ void anv_DestroyPipeline(
 
       if (gfx_pipeline->blend_state.map)
          anv_state_pool_free(&device->dynamic_state_pool, gfx_pipeline->blend_state);
-      if (gfx_pipeline->cps_state.map)
-         anv_state_pool_free(&device->dynamic_state_pool, gfx_pipeline->cps_state);
 
       for (unsigned s = 0; s < ARRAY_SIZE(gfx_pipeline->shaders); s++) {
          if (gfx_pipeline->shaders[s])
@@ -2345,8 +2343,11 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
       vk_find_struct_const(pCreateInfo->pNext,
                            PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR);
    if (fsr_state) {
-      if (states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE)
-         dynamic->fragment_shading_rate = fsr_state->fragmentSize;
+      if (states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) {
+         dynamic->fragment_shading_rate.rate = fsr_state->fragmentSize;
+         memcpy(dynamic->fragment_shading_rate.ops, fsr_state->combinerOps,
+                sizeof(dynamic->fragment_shading_rate.ops));
+      }
    }
 
    pipeline->dynamic_state_mask = states;

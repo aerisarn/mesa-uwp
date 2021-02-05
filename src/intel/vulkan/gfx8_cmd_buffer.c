@@ -420,6 +420,13 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
 
+#if GFX_VER >= 11
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) {
+      genX(emit_shading_rate)(&cmd_buffer->batch, pipeline,
+                              &cmd_buffer->state.gfx.dynamic);
+   }
+#endif /* GFX_VER >= 11 */
+
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY) {
       uint32_t topology;
       if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
@@ -802,23 +809,6 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          bsp.BlendStatePointerValid = true;
       }
    }
-
-#if GFX_VER >= 11
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) {
-      struct anv_state cps_states = ANV_STATE_NULL;
-
-#if GFX_VER >= 12
-      uint32_t count = cmd_buffer->state.gfx.dynamic.viewport.count;
-      cps_states =
-         anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
-                                            GENX(CPS_STATE_length) * 4 * count,
-                                            32);
-#endif /* GFX_VER >= 12 */
-
-      genX(emit_shading_rate)(&cmd_buffer->batch, pipeline, cps_states,
-                              &cmd_buffer->state.gfx.dynamic);
-   }
-#endif /* GFX_VER >= 11 */
 
    cmd_buffer->state.gfx.dirty = 0;
 }

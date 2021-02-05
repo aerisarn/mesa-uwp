@@ -1194,6 +1194,16 @@ struct anv_device {
 
     struct anv_state                            slice_hash;
 
+    /** An array of CPS_STATE structures grouped by MAX_VIEWPORTS elements
+     *
+     * We need to emit CPS_STATE structures for each viewport accessible by a
+     * pipeline. So rather than write many identical CPS_STATE structures
+     * dynamically, we can enumerate all possible combinaisons and then just
+     * emit a 3DSTATE_CPS_POINTERS instruction with the right offset into this
+     * array.
+     */
+    struct anv_state                            cps_states;
+
     uint32_t                                    queue_count;
     struct anv_queue  *                         queues;
 
@@ -2696,7 +2706,10 @@ struct anv_dynamic_state {
       VkSampleLocationEXT                       locations[MAX_SAMPLE_LOCATIONS];
    } sample_locations;
 
-   VkExtent2D                                   fragment_shading_rate;
+   struct {
+      VkExtent2D                                rate;
+      VkFragmentShadingRateCombinerOpKHR        ops[2];
+   } fragment_shading_rate;
 
    VkCullModeFlags                              cull_mode;
    VkFrontFace                                  front_face;
@@ -2951,6 +2964,9 @@ struct anv_subpass {
    VkResolveModeFlagBitsKHR                     depth_resolve_mode;
    VkResolveModeFlagBitsKHR                     stencil_resolve_mode;
 
+   struct anv_subpass_attachment *              fsr_attachment;
+   VkExtent2D                                   fsr_extent;
+
    uint32_t                                     view_mask;
 
    /** Subpass has a depth/stencil self-dependency */
@@ -2994,8 +3010,9 @@ struct anv_render_pass {
 
 /* RTs * 2 (for resolve attachments)
  * depth/sencil * 2
+ * fragment shading rate * 1
  */
-#define MAX_DYN_RENDER_ATTACHMENTS (MAX_RTS * 2 + 2 * 2)
+#define MAX_DYN_RENDER_ATTACHMENTS (MAX_RTS * 2 + 2 * 2 + 1)
 
 /* And this, kids, is what we call a nasty hack. */
 struct anv_dynamic_render_pass {
@@ -3272,7 +3289,13 @@ struct anv_state
 anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer);
 
 const struct anv_image_view *
+anv_cmd_buffer_get_first_color_view(const struct anv_cmd_buffer *cmd_buffer);
+
+const struct anv_image_view *
 anv_cmd_buffer_get_depth_stencil_view(const struct anv_cmd_buffer *cmd_buffer);
+
+const struct anv_image_view *
+anv_cmd_buffer_get_fsr_view(const struct anv_cmd_buffer *cmd_buffer);
 
 VkResult
 anv_cmd_buffer_alloc_blorp_binding_table(struct anv_cmd_buffer *cmd_buffer,
@@ -3498,8 +3521,6 @@ struct anv_graphics_pipeline {
    bool                                         use_primitive_replication;
 
    struct anv_state                             blend_state;
-
-   struct anv_state                             cps_state;
 
    uint32_t                                     vb_used;
    struct anv_pipeline_vertex_binding {

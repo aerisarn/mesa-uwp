@@ -807,6 +807,11 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
       }
    }
 
+   if (devinfo->has_coarse_pixel_primitive_and_cb &&
+       vk_format == VK_FORMAT_R8_UINT &&
+       vk_tiling == VK_IMAGE_TILING_OPTIMAL)
+      flags |= VK_FORMAT_FEATURE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+
    return flags;
 }
 

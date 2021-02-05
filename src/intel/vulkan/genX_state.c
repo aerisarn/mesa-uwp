@@ -358,6 +358,111 @@ genX(init_device_state)(struct anv_device *device)
    return res;
 }
 
+#if GFX_VERx10 >= 125
+#define maybe_for_each_shading_rate_op(name) \
+   for (VkFragmentShadingRateCombinerOpKHR name = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR; \
+        name <= VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_KHR; \
+        name++)
+#elif GFX_VER >= 12
+#define maybe_for_each_shading_rate_op(name)
+#endif
+
+/* Rather than reemitting the CPS_STATE structure everything those changes and
+ * for as many viewports as needed, we can just prepare all possible cases and
+ * just pick the right offset from the prepacked states when needed.
+ */
+void
+genX(init_cps_device_state)(struct anv_device *device)
+{
+#if GFX_VER >= 12
+   void *cps_state_ptr = device->cps_states.map;
+
+   /* Disabled CPS mode */
+   for (uint32_t __v = 0; __v < MAX_VIEWPORTS; __v++) {
+      struct GENX(CPS_STATE) cps_state = {
+         .CoarsePixelShadingMode = CPS_MODE_CONSTANT,
+         .MinCPSizeX = 1,
+         .MinCPSizeY = 1,
+#if GFX_VERx10 >= 125
+         .Combiner0OpcodeforCPsize = PASSTHROUGH,
+         .Combiner1OpcodeforCPsize = PASSTHROUGH,
+#endif /* GFX_VERx10 >= 125 */
+
+      };
+
+      GENX(CPS_STATE_pack)(NULL, cps_state_ptr, &cps_state);
+      cps_state_ptr += GENX(CPS_STATE_length) * 4;
+   }
+
+   maybe_for_each_shading_rate_op(op0) {
+      maybe_for_each_shading_rate_op(op1) {
+         for (uint32_t x = 1; x <= 4; x *= 2) {
+            for (uint32_t y = 1; y <= 4; y *= 2) {
+               struct GENX(CPS_STATE) cps_state = {
+                  .CoarsePixelShadingMode = CPS_MODE_CONSTANT,
+                  .MinCPSizeX = x,
+                  .MinCPSizeY = y,
+               };
+
+#if GFX_VERx10 >= 125
+               static const uint32_t combiner_ops[] = {
+                  [VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR]    = PASSTHROUGH,
+                  [VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR] = OVERRIDE,
+                  [VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MIN_KHR]     = HIGH_QUALITY,
+                  [VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR]     = LOW_QUALITY,
+                  [VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_KHR]     = RELATIVE,
+               };
+
+               cps_state.Combiner0OpcodeforCPsize = combiner_ops[op0];
+               cps_state.Combiner1OpcodeforCPsize = combiner_ops[op1];
+#endif /* GFX_VERx10 >= 125 */
+
+               for (uint32_t __v = 0; __v < MAX_VIEWPORTS; __v++) {
+                  GENX(CPS_STATE_pack)(NULL, cps_state_ptr, &cps_state);
+                  cps_state_ptr += GENX(CPS_STATE_length) * 4;
+               }
+            }
+         }
+      }
+   }
+#endif /* GFX_VER >= 12 */
+}
+
+#if GFX_VER >= 12
+static uint32_t
+get_cps_state_offset(struct anv_device *device, bool cps_enabled,
+                     const struct anv_dynamic_state *d)
+{
+   if (!cps_enabled)
+      return device->cps_states.offset;
+
+   uint32_t offset;
+   static const uint32_t size_index[] = {
+      [1] = 0,
+      [2] = 1,
+      [4] = 2,
+   };
+
+#if GFX_VERx10 >= 125
+   offset =
+      1 + /* skip disabled */
+      d->fragment_shading_rate.ops[0] * 5 * 3 * 3 +
+      d->fragment_shading_rate.ops[1] * 3 * 3 +
+      size_index[d->fragment_shading_rate.rate.width] * 3 +
+      size_index[d->fragment_shading_rate.rate.height];
+#else
+   offset =
+      1 + /* skip disabled */
+      size_index[d->fragment_shading_rate.rate.width] * 3 +
+      size_index[d->fragment_shading_rate.rate.height];
+#endif
+
+   offset *= MAX_VIEWPORTS * GENX(CPS_STATE_length) * 4;
+
+   return device->cps_states.offset + offset;
+}
+#endif /* GFX_VER >= 12 */
+
 void
 genX(emit_l3_config)(struct anv_batch *batch,
                      const struct anv_device *device,
@@ -602,7 +707,6 @@ genX(emit_sample_pattern)(struct anv_batch *batch, uint32_t samples,
 void
 genX(emit_shading_rate)(struct anv_batch *batch,
                         const struct anv_graphics_pipeline *pipeline,
-                        struct anv_state cps_states,
                         struct anv_dynamic_state *dynamic_state)
 {
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
@@ -612,28 +716,34 @@ genX(emit_shading_rate)(struct anv_batch *batch,
    anv_batch_emit(batch, GENX(3DSTATE_CPS), cps) {
       cps.CoarsePixelShadingMode = cps_enable ? CPS_MODE_CONSTANT : CPS_MODE_NONE;
       if (cps_enable) {
-         cps.MinCPSizeX = dynamic_state->fragment_shading_rate.width;
-         cps.MinCPSizeY = dynamic_state->fragment_shading_rate.height;
+         cps.MinCPSizeX = dynamic_state->fragment_shading_rate.rate.width;
+         cps.MinCPSizeY = dynamic_state->fragment_shading_rate.rate.height;
       }
    }
-#elif GFX_VER == 12
-   for (uint32_t i = 0; i < dynamic_state->viewport.count; i++) {
-      uint32_t *cps_state_dwords =
-         cps_states.map + GENX(CPS_STATE_length) * 4 * i;
-      struct GENX(CPS_STATE) cps_state = {
-         .CoarsePixelShadingMode = cps_enable ? CPS_MODE_CONSTANT : CPS_MODE_NONE,
-      };
-
-      if (cps_enable) {
-         cps_state.MinCPSizeX = dynamic_state->fragment_shading_rate.width;
-         cps_state.MinCPSizeY = dynamic_state->fragment_shading_rate.height;
-      }
-
-      GENX(CPS_STATE_pack)(NULL, cps_state_dwords, &cps_state);
+#elif GFX_VER >= 12
+   /* TODO: we can optimize this flush in the following cases:
+    *
+    *    In the case where the last geometry shader emits a value that is not
+    *    constant, we can avoid this stall because we can synchronize the
+    *    pixel shader internally with
+    *    3DSTATE_PS::EnablePSDependencyOnCPsizeChange.
+    *
+    *    If we know that the previous pipeline and the current one are using
+    *    the same fragment shading rate.
+    */
+   anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
+#if GFX_VERx10 >= 125
+      pc.PSSStallSyncEnable = true;
+#else
+      pc.PSDSyncEnable = true;
+#endif
    }
 
    anv_batch_emit(batch, GENX(3DSTATE_CPS_POINTERS), cps) {
-      cps.CoarsePixelShadingStateArrayPointer = cps_states.offset;
+      struct anv_device *device = pipeline->base.device;
+
+      cps.CoarsePixelShadingStateArrayPointer =
+         get_cps_state_offset(device, cps_enable, dynamic_state);
    }
 #endif
 }

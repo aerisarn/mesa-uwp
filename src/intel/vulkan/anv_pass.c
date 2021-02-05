@@ -247,12 +247,16 @@ num_subpass_attachments2(const VkSubpassDescription2KHR *desc)
    const VkSubpassDescriptionDepthStencilResolveKHR *ds_resolve =
       vk_find_struct_const(desc->pNext,
                            SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR);
+   const VkFragmentShadingRateAttachmentInfoKHR *fsr_attachment =
+      vk_find_struct_const(desc->pNext,
+                           FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR);
 
    return desc->inputAttachmentCount +
           desc->colorAttachmentCount +
           (desc->pResolveAttachments ? desc->colorAttachmentCount : 0) +
           (desc->pDepthStencilAttachment != NULL) +
-          (ds_resolve && ds_resolve->pDepthStencilResolveAttachment);
+          (ds_resolve && ds_resolve->pDepthStencilResolveAttachment) +
+          (fsr_attachment != NULL && fsr_attachment->pFragmentShadingRateAttachment);
 }
 
 VkResult anv_CreateRenderPass2(
@@ -391,6 +395,22 @@ VkResult anv_CreateRenderPass2(
          subpass->depth_resolve_mode = ds_resolve->depthResolveMode;
          subpass->stencil_resolve_mode = ds_resolve->stencilResolveMode;
       }
+
+      const VkFragmentShadingRateAttachmentInfoKHR *fsr_attachment =
+         vk_find_struct_const(desc->pNext,
+                              FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR);
+
+      if (fsr_attachment && fsr_attachment->pFragmentShadingRateAttachment) {
+         subpass->fsr_attachment = subpass_attachments++;
+
+         *subpass->fsr_attachment = (struct anv_subpass_attachment) {
+            .usage =          VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
+            .attachment =     fsr_attachment->pFragmentShadingRateAttachment->attachment,
+            .layout =         fsr_attachment->pFragmentShadingRateAttachment->layout,
+         };
+         subpass->fsr_extent = fsr_attachment->shadingRateAttachmentTexelSize;
+      }
+
    }
 
    for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {
@@ -498,8 +518,8 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
                            const VkRenderingInfoKHR *info)
 {
    uint32_t att_count;
-   uint32_t color_count = 0, ds_count = 0;
-   uint32_t ds_idx;
+   uint32_t color_count = 0, ds_count = 0, fsr_count = 0;
+   uint32_t ds_idx, fsr_idx;
    bool has_color_resolve, has_ds_resolve;
 
    struct anv_render_pass *pass = &dyn_render_pass->pass;
@@ -514,6 +534,9 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
    dyn_render_pass->suspending = info->flags & VK_RENDERING_SUSPENDING_BIT_KHR;
    dyn_render_pass->resuming = info->flags & VK_RENDERING_RESUMING_BIT_KHR;
 
+   /* Get the total attachment count by counting color, depth & fragment
+    * shading rate views.
+    */
    color_count = info->colorAttachmentCount;
    if ((info->pDepthAttachment && info->pDepthAttachment->imageView) ||
        (info->pStencilAttachment && info->pStencilAttachment->imageView))
@@ -538,8 +561,15 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
    if (has_ds_resolve)
       ds_count *= 2;
 
-   att_count = color_count + ds_count;
+   const VkRenderingFragmentShadingRateAttachmentInfoKHR *fsr_attachment =
+      vk_find_struct_const(info->pNext,
+                           RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR);
+   if (fsr_attachment && fsr_attachment->imageView != VK_NULL_HANDLE)
+      fsr_count = 1;
+
+   att_count = color_count + ds_count + fsr_count;
    ds_idx = color_count;
+   fsr_idx = color_count + ds_count;
 
    /* Setup pass & subpass */
    *pass = (struct anv_render_pass) {
@@ -605,7 +635,7 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
 
       ANV_FROM_HANDLE(anv_image_view, iview, d_or_s_att->imageView);
 
-      pass->attachments[ds_idx]  = (struct anv_render_pass_attachment) {
+      pass->attachments[ds_idx] = (struct anv_render_pass_attachment) {
          .format                 = iview->vk.format,
          .samples                = iview->vk.image->samples,
          .usage                  = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -634,5 +664,21 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
          subpass->depth_resolve_mode = depth_resolve_mode;
          subpass->stencil_resolve_mode = stencil_resolve_mode;
       }
+   }
+
+   if (fsr_count) {
+      ANV_FROM_HANDLE(anv_image_view, iview, fsr_attachment->imageView);
+
+      pass->attachments[fsr_idx] = (struct anv_render_pass_attachment) {
+         .format  = iview->vk.format,
+         .samples = iview->vk.image->samples,
+         .usage   = VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
+      };
+
+      *subpass->fsr_attachment = (struct anv_subpass_attachment) {
+         .usage      = VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
+         .attachment = fsr_idx,
+      };
+      subpass->fsr_extent = fsr_attachment->shadingRateAttachmentTexelSize;
    }
 }
