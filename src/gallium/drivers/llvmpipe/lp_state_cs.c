@@ -644,6 +644,7 @@ dump_cs_variant_key(const struct lp_compute_shader_variant_key *key)
       debug_printf("  .lod_bias_non_zero = %u\n", sampler->lod_bias_non_zero);
       debug_printf("  .apply_min_lod = %u\n", sampler->apply_min_lod);
       debug_printf("  .apply_max_lod = %u\n", sampler->apply_max_lod);
+      debug_printf("  .aniso = %u\n", sampler->aniso);
    }
    for (i = 0; i < key->nr_sampler_views; ++i) {
       const struct lp_static_texture_state *texture = &key->samplers[i].texture_state;
@@ -1049,6 +1050,7 @@ lp_csctx_set_sampler_state(struct lp_cs_context *csctx,
          jit_sam->min_lod = sampler->min_lod;
          jit_sam->max_lod = sampler->max_lod;
          jit_sam->lod_bias = sampler->lod_bias;
+         jit_sam->max_aniso = sampler->max_anisotropy;
          COPY_4V(jit_sam->border_color, sampler->border_color.f);
       }
    }

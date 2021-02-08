@@ -1057,6 +1057,7 @@ lp_setup_set_fragment_sampler_state(struct lp_setup_context *setup,
          jit_sam->min_lod = sampler->min_lod;
          jit_sam->max_lod = sampler->max_lod;
          jit_sam->lod_bias = sampler->lod_bias;
+         jit_sam->max_aniso = sampler->max_anisotropy;
          COPY_4V(jit_sam->border_color, sampler->border_color.f);
       }
    }

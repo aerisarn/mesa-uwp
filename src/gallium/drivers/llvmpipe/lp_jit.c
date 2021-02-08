@@ -111,7 +111,8 @@ create_jit_sampler_type(struct gallivm_state *gallivm)
    LLVMTypeRef elem_types[LP_JIT_SAMPLER_NUM_FIELDS];
    elem_types[LP_JIT_SAMPLER_MIN_LOD] =
    elem_types[LP_JIT_SAMPLER_MAX_LOD] =
-   elem_types[LP_JIT_SAMPLER_LOD_BIAS] = LLVMFloatTypeInContext(lc);
+   elem_types[LP_JIT_SAMPLER_LOD_BIAS] =
+   elem_types[LP_JIT_SAMPLER_MAX_ANISO] = LLVMFloatTypeInContext(lc);
    elem_types[LP_JIT_SAMPLER_BORDER_COLOR] =
       LLVMArrayType(LLVMFloatTypeInContext(lc), 4);
 
@@ -130,6 +131,9 @@ create_jit_sampler_type(struct gallivm_state *gallivm)
    LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, border_color,
                           gallivm->target, sampler_type,
                           LP_JIT_SAMPLER_BORDER_COLOR);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, max_aniso,
+                          gallivm->target, sampler_type,
+                          LP_JIT_SAMPLER_MAX_ANISO);
    LP_CHECK_STRUCT_SIZE(struct lp_jit_sampler,
                         gallivm->target, sampler_type);
    return sampler_type;
