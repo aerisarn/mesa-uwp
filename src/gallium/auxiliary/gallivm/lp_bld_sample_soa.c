@@ -2831,6 +2831,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
                          const struct lp_derivatives *derivs, /* optional */
                          LLVMValueRef lod, /* optional */
                          LLVMValueRef ms_index, /* optional */
+                         LLVMValueRef aniso_filter_table,
                          LLVMValueRef texel_out[4])
 {
    unsigned target = static_texture_state->target;
@@ -2904,6 +2905,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
    memset(&bld, 0, sizeof bld);
    bld.gallivm = gallivm;
    bld.context_ptr = context_ptr;
+   bld.aniso_filter_table = aniso_filter_table;
    bld.static_sampler_state = &derived_sampler_state;
    bld.static_texture_state = static_texture_state;
    bld.dynamic_state = dynamic_state;
@@ -3286,6 +3288,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
          bld4.no_brilinear = bld.no_brilinear;
          bld4.gallivm = bld.gallivm;
          bld4.context_ptr = bld.context_ptr;
+         bld4.aniso_filter_table = aniso_filter_table;
          bld4.static_texture_state = bld.static_texture_state;
          bld4.static_sampler_state = bld.static_sampler_state;
          bld4.dynamic_state = bld.dynamic_state;
@@ -3486,7 +3489,8 @@ lp_build_sample_gen_func(struct gallivm_state *gallivm,
                          unsigned sampler_index,
                          LLVMValueRef function,
                          unsigned num_args,
-                         unsigned sample_key)
+                         unsigned sample_key,
+                         bool has_aniso_filter_table)
 {
    LLVMBuilderRef old_builder;
    LLVMBasicBlockRef block;
@@ -3496,6 +3500,7 @@ lp_build_sample_gen_func(struct gallivm_state *gallivm,
    LLVMValueRef ms_index = NULL;
    LLVMValueRef context_ptr;
    LLVMValueRef thread_data_ptr = NULL;
+   LLVMValueRef aniso_filter_table = NULL;
    LLVMValueRef texel_out[4];
    struct lp_derivatives derivs;
    struct lp_derivatives *deriv_ptr = NULL;
@@ -3528,6 +3533,8 @@ lp_build_sample_gen_func(struct gallivm_state *gallivm,
 
    /* "unpack" arguments */
    context_ptr = LLVMGetParam(function, num_param++);
+   if (has_aniso_filter_table)
+      aniso_filter_table = LLVMGetParam(function, num_param++);
    if (need_cache) {
       thread_data_ptr = LLVMGetParam(function, num_param++);
    }
@@ -3590,6 +3597,7 @@ lp_build_sample_gen_func(struct gallivm_state *gallivm,
                             deriv_ptr,
                             lod,
                             ms_index,
+                            aniso_filter_table,
                             texel_out);
 
    LLVMBuildAggregateRet(gallivm->builder, texel_out, 4);
@@ -3676,6 +3684,8 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
        */
 
       arg_types[num_param++] = LLVMTypeOf(params->context_ptr);
+      if (params->aniso_filter_table)
+         arg_types[num_param++] = LLVMTypeOf(params->aniso_filter_table);
       if (need_cache) {
          arg_types[num_param++] = LLVMTypeOf(params->thread_data_ptr);
       }
@@ -3737,11 +3747,14 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
                                sampler_index,
                                function,
                                num_param,
-                               sample_key);
+                               sample_key,
+                               params->aniso_filter_table ? true : false);
    }
 
    num_args = 0;
    args[num_args++] = params->context_ptr;
+   if (params->aniso_filter_table)
+      args[num_args++] = params->aniso_filter_table;
    if (need_cache) {
       args[num_args++] = params->thread_data_ptr;
    }
@@ -3860,6 +3873,7 @@ lp_build_sample_soa(const struct lp_static_texture_state *static_texture_state,
                                params->derivs,
                                params->lod,
                                params->ms_index,
+                               params->aniso_filter_table,
                                params->texel);
    }
 }

@@ -60,6 +60,8 @@ struct lp_build_nir_context
    /** Value range analysis hash table used in code generation. */
    struct hash_table *range_ht;
 
+   LLVMValueRef aniso_filter_table;
+
    nir_shader *shader;
 
    void (*load_ubo)(struct lp_build_nir_context *bld_base,

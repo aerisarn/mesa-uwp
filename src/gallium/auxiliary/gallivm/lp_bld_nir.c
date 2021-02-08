@@ -2109,6 +2109,7 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    params.texel = texel;
    params.lod = explicit_lod;
    params.ms_index = ms_index;
+   params.aniso_filter_table = bld_base->aniso_filter_table;
    bld_base->tex(bld_base, &params);
    assign_dest(bld_base, &instr->dest, texel);
 }

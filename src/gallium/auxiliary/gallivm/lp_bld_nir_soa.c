@@ -2399,6 +2399,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
 
    bld.context_ptr = params->context_ptr;
    bld.thread_data_ptr = params->thread_data_ptr;
+   bld.bld_base.aniso_filter_table = params->aniso_filter_table;
    bld.image = params->image;
    bld.shared_ptr = params->shared_ptr;
    bld.coro = params->coro;
