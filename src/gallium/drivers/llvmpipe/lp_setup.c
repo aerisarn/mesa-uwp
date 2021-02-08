@@ -1293,6 +1293,7 @@ try_update_scene_state( struct lp_setup_context *setup )
          memcpy(&stored->jit_context,
                 &setup->fs.current.jit_context,
                 sizeof setup->fs.current.jit_context);
+         stored->jit_context.aniso_filter_table = lp_build_sample_aniso_filter_table();
          stored->variant = setup->fs.current.variant;
 
          if (!lp_scene_add_frag_shader_reference(scene,

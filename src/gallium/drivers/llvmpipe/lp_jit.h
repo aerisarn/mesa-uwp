@@ -168,6 +168,8 @@ struct lp_jit_context
    int num_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
 
    uint32_t sample_mask;
+
+   const float *aniso_filter_table;
 };
 
 
@@ -190,6 +192,7 @@ enum {
    LP_JIT_CTX_SSBOS,
    LP_JIT_CTX_NUM_SSBOS,
    LP_JIT_CTX_SAMPLE_MASK,
+   LP_JIT_CTX_ANISO_FILTER_TABLE,
    LP_JIT_CTX_COUNT
 };
 
@@ -235,6 +238,9 @@ enum {
 
 #define lp_jit_context_sample_mask(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_SAMPLE_MASK, "sample_mask")
+
+#define lp_jit_context_aniso_filter_table(_gallivm, _ptr) \
+   lp_build_struct_get(_gallivm, _ptr, LP_JIT_CTX_ANISO_FILTER_TABLE, "aniso_filter_table")
 
 struct lp_jit_thread_data
 {
@@ -350,6 +356,8 @@ struct lp_jit_cs_context
    void *kernel_args;
 
    uint32_t shared_size;
+
+   const float *aniso_filter_table;
 };
 
 /**
@@ -366,6 +374,7 @@ enum {
    LP_JIT_CS_CTX_NUM_SSBOS,
    LP_JIT_CS_CTX_KERNEL_ARGS,
    LP_JIT_CS_CTX_SHARED_SIZE,
+   LP_JIT_CS_CTX_ANISO_FILTER_TABLE,
    LP_JIT_CS_CTX_COUNT
 };
 
@@ -395,6 +404,9 @@ enum {
 
 #define lp_jit_cs_context_kernel_args(_gallivm, _ptr) \
    lp_build_struct_get(_gallivm, _ptr, LP_JIT_CS_CTX_KERNEL_ARGS, "kernel_args")
+
+#define lp_jit_cs_context_aniso_filter_table(_gallivm, _ptr) \
+   lp_build_struct_get(_gallivm, _ptr, LP_JIT_CS_CTX_ANISO_FILTER_TABLE, "aniso_filter_table")
 
 
 typedef void

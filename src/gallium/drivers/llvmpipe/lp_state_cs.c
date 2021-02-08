@@ -404,6 +404,7 @@ generate_compute(struct llvmpipe_context *lp,
       params.shared_ptr = shared_ptr;
       params.coro = &coro_info;
       params.kernel_args = kernel_args_ptr;
+      params.aniso_filter_table = lp_jit_cs_context_aniso_filter_table(gallivm, context_ptr);
 
       if (shader->base.type == PIPE_SHADER_IR_TGSI)
          lp_build_tgsi_soa(gallivm, shader->base.tokens, &params, NULL);
@@ -1252,8 +1253,9 @@ llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe, void *input)
                               ARRAY_SIZE(llvmpipe->images[PIPE_SHADER_COMPUTE]),
                               llvmpipe->images[PIPE_SHADER_COMPUTE]);
 
+   struct lp_cs_context *csctx = llvmpipe->csctx;
+   csctx->cs.current.jit_context.aniso_filter_table = lp_build_sample_aniso_filter_table();
    if (input) {
-      struct lp_cs_context *csctx = llvmpipe->csctx;
       csctx->input = input;
       csctx->cs.current.jit_context.kernel_args = input;
    }

@@ -959,6 +959,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    params.ssbo_ptr = ssbo_ptr;
    params.ssbo_sizes_ptr = num_ssbo_ptr;
    params.image = image;
+   params.aniso_filter_table = lp_jit_context_aniso_filter_table(gallivm, context_ptr);
 
    /* Build the actual shader */
    if (shader->base.type == PIPE_SHADER_IR_TGSI)
