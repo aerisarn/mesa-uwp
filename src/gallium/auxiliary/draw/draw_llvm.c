@@ -332,6 +332,7 @@ create_jit_context_type(struct gallivm_state *gallivm,
                                  LP_MAX_TGSI_SHADER_BUFFERS);
    elem_types[8] = LLVMArrayType(int_type, /* num_vs_ssbos */
                                  LP_MAX_TGSI_SHADER_BUFFERS);
+   elem_types[9] = LLVMPointerType(float_type, 0); /* aniso table */
    context_type = LLVMStructTypeInContext(gallivm->context, elem_types,
                                           ARRAY_SIZE(elem_types), 0);
 
@@ -356,6 +357,8 @@ create_jit_context_type(struct gallivm_state *gallivm,
                           target, context_type, DRAW_JIT_CTX_SSBOS);
    LP_CHECK_MEMBER_OFFSET(struct draw_jit_context, num_vs_ssbos,
                           target, context_type, DRAW_JIT_CTX_NUM_SSBOS);
+   LP_CHECK_MEMBER_OFFSET(struct draw_jit_context, aniso_filter_table,
+                          target, context_type, DRAW_JIT_CTX_ANISO_FILTER_TABLE);
    LP_CHECK_STRUCT_SIZE(struct draw_jit_context,
                         target, context_type);
 
@@ -403,7 +406,7 @@ create_gs_jit_context_type(struct gallivm_state *gallivm,
                                  LP_MAX_TGSI_SHADER_BUFFERS);
    elem_types[11] = LLVMArrayType(int_type, /* num_ssbos */
                                  LP_MAX_TGSI_SHADER_BUFFERS);
-
+   elem_types[12] = LLVMPointerType(float_type, 0); /* aniso table */
    context_type = LLVMStructTypeInContext(gallivm->context, elem_types,
                                           ARRAY_SIZE(elem_types), 0);
 
@@ -437,6 +440,8 @@ create_gs_jit_context_type(struct gallivm_state *gallivm,
                           target, context_type, DRAW_GS_JIT_CTX_NUM_SSBOS);
    LP_CHECK_MEMBER_OFFSET(struct draw_gs_jit_context, images,
                           target, context_type, DRAW_GS_JIT_CTX_IMAGES);
+   LP_CHECK_MEMBER_OFFSET(struct draw_gs_jit_context, aniso_filter_table,
+                          target, context_type, DRAW_GS_JIT_CTX_ANISO_FILTER_TABLE);
    LP_CHECK_STRUCT_SIZE(struct draw_gs_jit_context,
                         target, context_type);
 
@@ -575,7 +580,7 @@ create_tcs_jit_context_type(struct gallivm_state *gallivm,
                                  LP_MAX_TGSI_SHADER_BUFFERS);
    elem_types[8] = LLVMArrayType(int_type, /* num_ssbos */
                                  LP_MAX_TGSI_SHADER_BUFFERS);
-
+   elem_types[9] = LLVMPointerType(float_type, 0); /* aniso table */
    context_type = LLVMStructTypeInContext(gallivm->context, elem_types,
                                           ARRAY_SIZE(elem_types), 0);
 
@@ -596,6 +601,8 @@ create_tcs_jit_context_type(struct gallivm_state *gallivm,
                           target, context_type, DRAW_TCS_JIT_CTX_NUM_SSBOS);
    LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, images,
                           target, context_type, DRAW_TCS_JIT_CTX_IMAGES);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, aniso_filter_table,
+                          target, context_type, DRAW_TCS_JIT_CTX_ANISO_FILTER_TABLE);
    LP_CHECK_STRUCT_SIZE(struct draw_tcs_jit_context,
                         target, context_type);
 
@@ -675,7 +682,7 @@ create_tes_jit_context_type(struct gallivm_state *gallivm,
                                  LP_MAX_TGSI_SHADER_BUFFERS);
    elem_types[8] = LLVMArrayType(int_type, /* num_ssbos */
                                  LP_MAX_TGSI_SHADER_BUFFERS);
-
+   elem_types[9] = LLVMPointerType(float_type, 0); /* aniso table */
    context_type = LLVMStructTypeInContext(gallivm->context, elem_types,
                                           ARRAY_SIZE(elem_types), 0);
 
@@ -696,6 +703,8 @@ create_tes_jit_context_type(struct gallivm_state *gallivm,
                           target, context_type, DRAW_TCS_JIT_CTX_NUM_SSBOS);
    LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, images,
                           target, context_type, DRAW_TCS_JIT_CTX_IMAGES);
+   LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, aniso_filter_table,
+                          target, context_type, DRAW_TCS_JIT_CTX_ANISO_FILTER_TABLE);
    LP_CHECK_STRUCT_SIZE(struct draw_tes_jit_context,
                         target, context_type);
 
@@ -967,6 +976,7 @@ generate_vs(struct draw_llvm_variant *variant,
    params.ssbo_ptr = ssbos_ptr;
    params.ssbo_sizes_ptr = num_ssbos_ptr;
    params.image = draw_image;
+   params.aniso_filter_table = draw_jit_context_aniso_filter_table(variant->gallivm, context_ptr);
 
    if (llvm->draw->vs.vertex_shader->state.ir.nir &&
        llvm->draw->vs.vertex_shader->state.type == PIPE_SHADER_IR_NIR)
@@ -2869,6 +2879,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    params.ssbo_sizes_ptr = num_ssbos_ptr;
    params.image = image;
    params.gs_vertex_streams = variant->shader->base.num_vertex_streams;
+   params.aniso_filter_table = draw_gs_jit_context_aniso_filter_table(gallivm, context_ptr);
 
    if (llvm->draw->gs.geometry_shader->state.type == PIPE_SHADER_IR_TGSI)
       lp_build_tgsi_soa(variant->gallivm,
@@ -3523,6 +3534,7 @@ draw_tcs_llvm_generate(struct draw_llvm *llvm,
       params.image = image;
       params.coro = &coro_info;
       params.tcs_iface = &tcs_iface.base;
+      params.aniso_filter_table = draw_tcs_jit_context_aniso_filter_table(gallivm, context_ptr);
 
       lp_build_nir_soa(variant->gallivm,
                        llvm->draw->tcs.tess_ctrl_shader->state.ir.nir,
@@ -4045,6 +4057,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
       params.ssbo_sizes_ptr = num_ssbos_ptr;
       params.image = image;
       params.tes_iface = &tes_iface.base;
+      params.aniso_filter_table = draw_tes_jit_context_aniso_filter_table(variant->gallivm, context_ptr);
 
       lp_build_nir_soa(variant->gallivm,
                        llvm->draw->tes.tess_eval_shader->state.ir.nir,

@@ -168,6 +168,8 @@ struct draw_jit_context
 
    const uint32_t *vs_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
    int num_vs_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+
+   const float *aniso_filter_table;
 };
 
 enum {
@@ -180,6 +182,7 @@ enum {
    DRAW_JIT_CTX_IMAGES               = 6,
    DRAW_JIT_CTX_SSBOS                = 7,
    DRAW_JIT_CTX_NUM_SSBOS            = 8,
+   DRAW_JIT_CTX_ANISO_FILTER_TABLE   = 9,
    DRAW_JIT_CTX_NUM_FIELDS
 };
 
@@ -209,6 +212,9 @@ enum {
 
 #define draw_jit_context_num_vs_ssbos(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_JIT_CTX_NUM_SSBOS, "num_vs_ssbos")
+
+#define draw_jit_context_aniso_filter_table(_gallivm, _ptr) \
+   lp_build_struct_get(_gallivm, _ptr, DRAW_JIT_CTX_ANISO_FILTER_TABLE, "aniso_filter_table")
 
 
 #define draw_jit_header_id(_gallivm, _ptr)              \
@@ -270,6 +276,7 @@ struct draw_gs_jit_context
    const uint32_t *ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
    int num_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
 
+   const float *aniso_filter_table;
 };
 
 enum {
@@ -289,7 +296,8 @@ enum {
    DRAW_GS_JIT_CTX_EMITTED_PRIMS = 9,
    DRAW_GS_JIT_CTX_SSBOS = 10,
    DRAW_GS_JIT_CTX_NUM_SSBOS = 11,
-   DRAW_GS_JIT_CTX_NUM_FIELDS = 12
+   DRAW_GS_JIT_CTX_ANISO_FILTER_TABLE = 12,
+   DRAW_GS_JIT_CTX_NUM_FIELDS = 13
 };
 
 #define draw_gs_jit_context_constants(_gallivm, _ptr) \
@@ -328,6 +336,8 @@ enum {
 #define draw_gs_jit_context_num_ssbos(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_GS_JIT_CTX_NUM_SSBOS, "num_ssbos")
 
+#define draw_gs_jit_context_aniso_filter_table(_gallivm, _ptr) \
+   lp_build_struct_get(_gallivm, _ptr, DRAW_GS_JIT_CTX_ANISO_FILTER_TABLE, "aniso_filter_table")
 
 struct draw_tcs_jit_context {
    const float *constants[LP_MAX_TGSI_CONST_BUFFERS];
@@ -343,6 +353,8 @@ struct draw_tcs_jit_context {
 
    const uint32_t *ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
    int num_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+
+   const float *aniso_filter_table;
 };
 
 enum {
@@ -353,7 +365,8 @@ enum {
    DRAW_TCS_JIT_CTX_IMAGES = DRAW_JIT_CTX_IMAGES,
    DRAW_TCS_JIT_CTX_SSBOS = 7,
    DRAW_TCS_JIT_CTX_NUM_SSBOS = 8,
-   DRAW_TCS_JIT_CTX_NUM_FIELDS = 9,
+   DRAW_TCS_JIT_CTX_ANISO_FILTER_TABLE = 9,
+   DRAW_TCS_JIT_CTX_NUM_FIELDS = 10,
 };
 
 #define draw_tcs_jit_context_constants(_gallivm, _ptr) \
@@ -377,6 +390,9 @@ enum {
 #define draw_tcs_jit_context_num_ssbos(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_NUM_SSBOS, "num_ssbos")
 
+#define draw_tcs_jit_context_aniso_filter_table(_gallivm, _ptr) \
+   lp_build_struct_get(_gallivm, _ptr, DRAW_TCS_JIT_CTX_ANISO_FILTER_TABLE, "aniso_filter_table")
+
 struct draw_tes_jit_context {
    const float *constants[LP_MAX_TGSI_CONST_BUFFERS];
    int num_constants[LP_MAX_TGSI_CONST_BUFFERS];
@@ -391,6 +407,8 @@ struct draw_tes_jit_context {
 
    const uint32_t *ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
    int num_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+
+   const float *aniso_filter_table;
 };
 
 enum {
@@ -401,7 +419,8 @@ enum {
    DRAW_TES_JIT_CTX_IMAGES = DRAW_JIT_CTX_IMAGES,
    DRAW_TES_JIT_CTX_SSBOS = 7,
    DRAW_TES_JIT_CTX_NUM_SSBOS = 8,
-   DRAW_TES_JIT_CTX_NUM_FIELDS = 9,
+   DRAW_TES_JIT_CTX_ANISO_FILTER_TABLE = 9,
+   DRAW_TES_JIT_CTX_NUM_FIELDS = 10,
 };
 
 #define draw_tes_jit_context_constants(_gallivm, _ptr) \
@@ -424,6 +443,9 @@ enum {
 
 #define draw_tes_jit_context_num_ssbos(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_NUM_SSBOS, "num_ssbos")
+
+#define draw_tes_jit_context_aniso_filter_table(_gallivm, _ptr) \
+   lp_build_struct_get(_gallivm, _ptr, DRAW_TES_JIT_CTX_ANISO_FILTER_TABLE, "aniso_filter_table")
 
 typedef boolean
 (*draw_jit_vert_func)(struct draw_jit_context *context,
