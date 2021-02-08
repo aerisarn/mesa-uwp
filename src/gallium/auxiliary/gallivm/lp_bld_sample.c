@@ -194,6 +194,8 @@ lp_sampler_static_sampler_state(struct lp_static_sampler_state *state,
    state->min_mip_filter    = sampler->min_mip_filter;
    state->seamless_cube_map = sampler->seamless_cube_map;
    state->reduction_mode    = sampler->reduction_mode;
+   state->aniso = sampler->max_anisotropy > 1.0f;
+
    if (sampler->max_lod > 0.0f) {
       state->max_lod_pos = 1;
    }
@@ -233,6 +235,94 @@ lp_sampler_static_sampler_state(struct lp_static_sampler_state *state,
    state->normalized_coords = sampler->normalized_coords;
 }
 
+/* build aniso pmin value */
+static LLVMValueRef
+lp_build_pmin(struct lp_build_sample_context *bld,
+              unsigned texture_unit,
+              LLVMValueRef s,
+              LLVMValueRef t,
+              LLVMValueRef max_aniso)
+{
+   struct gallivm_state *gallivm = bld->gallivm;
+   LLVMBuilderRef builder = bld->gallivm->builder;
+   struct lp_build_context *coord_bld = &bld->coord_bld;
+   struct lp_build_context *int_size_bld = &bld->int_size_in_bld;
+   struct lp_build_context *float_size_bld = &bld->float_size_in_bld;
+   struct lp_build_context *pmin_bld = &bld->lodf_bld;
+   LLVMTypeRef i32t = LLVMInt32TypeInContext(bld->gallivm->context);
+   LLVMValueRef index0 = LLVMConstInt(i32t, 0, 0);
+   LLVMValueRef index1 = LLVMConstInt(i32t, 1, 0);
+   LLVMValueRef ddx_ddy = lp_build_packed_ddx_ddy_twocoord(coord_bld, s, t);
+   LLVMValueRef int_size, float_size;
+   LLVMValueRef first_level, first_level_vec;
+   unsigned length = coord_bld->type.length;
+   unsigned num_quads = length / 4;
+   boolean pmin_per_quad = pmin_bld->type.length != length;
+   unsigned i;
+
+   first_level = bld->dynamic_state->first_level(bld->dynamic_state, bld->gallivm,
+                                                 bld->context_ptr, texture_unit, NULL);
+   first_level_vec = lp_build_broadcast_scalar(int_size_bld, first_level);
+   int_size = lp_build_minify(int_size_bld, bld->int_size, first_level_vec, TRUE);
+   float_size = lp_build_int_to_float(float_size_bld, int_size);
+   max_aniso = lp_build_broadcast_scalar(coord_bld, max_aniso);
+   max_aniso = lp_build_mul(coord_bld, max_aniso, max_aniso);
+
+   static const unsigned char swizzle01[] = { /* no-op swizzle */
+      0, 1,
+      LP_BLD_SWIZZLE_DONTCARE, LP_BLD_SWIZZLE_DONTCARE
+   };
+   static const unsigned char swizzle23[] = {
+      2, 3,
+      LP_BLD_SWIZZLE_DONTCARE, LP_BLD_SWIZZLE_DONTCARE
+   };
+   LLVMValueRef ddx_ddys, ddx_ddyt, floatdim, shuffles[LP_MAX_VECTOR_LENGTH / 4];
+
+   for (i = 0; i < num_quads; i++) {
+      shuffles[i*4+0] = shuffles[i*4+1] = index0;
+      shuffles[i*4+2] = shuffles[i*4+3] = index1;
+   }
+   floatdim = LLVMBuildShuffleVector(builder, float_size, float_size,
+                                     LLVMConstVector(shuffles, length), "");
+   ddx_ddy = lp_build_mul(coord_bld, ddx_ddy, floatdim);
+
+   ddx_ddy = lp_build_mul(coord_bld, ddx_ddy, ddx_ddy);
+
+   ddx_ddys = lp_build_swizzle_aos(coord_bld, ddx_ddy, swizzle01);
+   ddx_ddyt = lp_build_swizzle_aos(coord_bld, ddx_ddy, swizzle23);
+
+   LLVMValueRef px2_py2 = lp_build_add(coord_bld, ddx_ddys, ddx_ddyt);
+
+   static const unsigned char swizzle0[] = { /* no-op swizzle */
+     0, LP_BLD_SWIZZLE_DONTCARE,
+     LP_BLD_SWIZZLE_DONTCARE, LP_BLD_SWIZZLE_DONTCARE
+   };
+   static const unsigned char swizzle1[] = {
+     1, LP_BLD_SWIZZLE_DONTCARE,
+     LP_BLD_SWIZZLE_DONTCARE, LP_BLD_SWIZZLE_DONTCARE
+   };
+   LLVMValueRef px2 = lp_build_swizzle_aos(coord_bld, px2_py2, swizzle0);
+   LLVMValueRef py2 = lp_build_swizzle_aos(coord_bld, px2_py2, swizzle1);
+
+   LLVMValueRef pmax2 = lp_build_max(coord_bld, px2, py2);
+   LLVMValueRef pmin2 = lp_build_min(coord_bld, px2, py2);
+
+   LLVMValueRef temp = lp_build_mul(coord_bld, pmin2, max_aniso);
+
+   LLVMValueRef comp = lp_build_compare(gallivm, coord_bld->type, PIPE_FUNC_GREATER,
+                                        pmin2, temp);
+
+   LLVMValueRef pmin2_alt = lp_build_div(coord_bld, pmax2, max_aniso);
+
+   pmin2 = lp_build_select(coord_bld, comp, pmin2_alt, pmin2);
+
+   if (pmin_per_quad)
+      pmin2 = lp_build_pack_aos_scalars(bld->gallivm, coord_bld->type,
+                                        pmin_bld->type, pmin2, 0);
+   else
+      pmin2 = lp_build_swizzle_scalar_aos(pmin_bld, pmin2, 0, 4);
+   return pmin2;
+}
 
 /**
  * Generate code to compute coordinate gradient (rho).
@@ -740,6 +830,7 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
                       LLVMValueRef lod_bias, /* optional */
                       LLVMValueRef explicit_lod, /* optional */
                       unsigned mip_filter,
+                      LLVMValueRef max_aniso,
                       LLVMValueRef *out_lod,
                       LLVMValueRef *out_lod_ipart,
                       LLVMValueRef *out_lod_fpart,
@@ -796,13 +887,19 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
          boolean rho_squared = (bld->no_rho_approx &&
                                 (bld->dims > 1)) || cube_rho;
 
-         rho = lp_build_rho(bld, texture_unit, s, t, r, cube_rho, derivs);
+         if (bld->static_sampler_state->aniso &&
+             !explicit_lod) {
+            rho = lp_build_pmin(bld, texture_unit, s, t, max_aniso);
+            rho_squared = true;
+         } else
+            rho = lp_build_rho(bld, texture_unit, s, t, r, cube_rho, derivs);
 
          /*
           * Compute lod = log2(rho)
           */
 
          if (!lod_bias && !is_lodq &&
+             !bld->static_sampler_state->aniso &&
              !bld->static_sampler_state->lod_bias_non_zero &&
              !bld->static_sampler_state->apply_max_lod &&
              !bld->static_sampler_state->apply_min_lod) {
@@ -829,7 +926,8 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
                return;
             }
             if (mip_filter == PIPE_TEX_MIPFILTER_LINEAR &&
-                !bld->no_brilinear && !rho_squared) {
+                !bld->no_brilinear && !rho_squared &&
+                !bld->static_sampler_state->aniso) {
                /*
                 * This can't work if rho is squared. Not sure if it could be
                 * fixed while keeping it worthwile, could also do sqrt here
@@ -908,7 +1006,9 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
    *out_lod_positive = lp_build_cmp(lodf_bld, PIPE_FUNC_GREATER,
                                     lod, lodf_bld->zero);
 
-   if (mip_filter == PIPE_TEX_MIPFILTER_LINEAR) {
+   if (bld->static_sampler_state->aniso) {
+      *out_lod_ipart = lp_build_itrunc(lodf_bld, lod);
+   } else if (mip_filter == PIPE_TEX_MIPFILTER_LINEAR) {
       if (!bld->no_brilinear) {
          lp_build_brilinear_lod(lodf_bld, lod, BRILINEAR_FACTOR,
                                 out_lod_ipart, out_lod_fpart);
