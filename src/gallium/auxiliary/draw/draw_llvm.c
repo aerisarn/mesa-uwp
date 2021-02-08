@@ -219,7 +219,8 @@ create_jit_sampler_type(struct gallivm_state *gallivm, const char *struct_name)
 
    elem_types[DRAW_JIT_SAMPLER_MIN_LOD] =
    elem_types[DRAW_JIT_SAMPLER_MAX_LOD] =
-   elem_types[DRAW_JIT_SAMPLER_LOD_BIAS] = LLVMFloatTypeInContext(gallivm->context);
+   elem_types[DRAW_JIT_SAMPLER_LOD_BIAS] =
+   elem_types[DRAW_JIT_SAMPLER_MAX_ANISO] = LLVMFloatTypeInContext(gallivm->context);
    elem_types[DRAW_JIT_SAMPLER_BORDER_COLOR] =
       LLVMArrayType(LLVMFloatTypeInContext(gallivm->context), 4);
 
@@ -239,6 +240,9 @@ create_jit_sampler_type(struct gallivm_state *gallivm, const char *struct_name)
    LP_CHECK_MEMBER_OFFSET(struct draw_jit_sampler, border_color,
                           target, sampler_type,
                           DRAW_JIT_SAMPLER_BORDER_COLOR);
+   LP_CHECK_MEMBER_OFFSET(struct draw_jit_sampler, max_aniso,
+                          target, sampler_type,
+                          DRAW_JIT_SAMPLER_MAX_ANISO);
 
    LP_CHECK_STRUCT_SIZE(struct draw_jit_sampler, target, sampler_type);
 
@@ -2601,6 +2605,7 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
             jit_sam->min_lod = s->min_lod;
             jit_sam->max_lod = s->max_lod;
             jit_sam->lod_bias = s->lod_bias;
+            jit_sam->max_aniso = s->max_anisotropy;
             COPY_4V(jit_sam->border_color, s->border_color.f);
          }
       }
@@ -2615,6 +2620,7 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
             jit_sam->min_lod = s->min_lod;
             jit_sam->max_lod = s->max_lod;
             jit_sam->lod_bias = s->lod_bias;
+            jit_sam->max_aniso = s->max_anisotropy;
             COPY_4V(jit_sam->border_color, s->border_color.f);
          }
       }
@@ -2629,6 +2635,7 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
             jit_sam->min_lod = s->min_lod;
             jit_sam->max_lod = s->max_lod;
             jit_sam->lod_bias = s->lod_bias;
+            jit_sam->max_aniso = s->max_anisotropy;
             COPY_4V(jit_sam->border_color, s->border_color.f);
          }
       }
@@ -2643,6 +2650,7 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
             jit_sam->min_lod = s->min_lod;
             jit_sam->max_lod = s->max_lod;
             jit_sam->lod_bias = s->lod_bias;
+            jit_sam->max_aniso = s->max_anisotropy;
             COPY_4V(jit_sam->border_color, s->border_color.f);
          }
       }

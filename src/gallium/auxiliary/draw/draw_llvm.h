@@ -86,6 +86,7 @@ struct draw_jit_sampler
    float max_lod;
    float lod_bias;
    float border_color[4];
+   float max_aniso;
 };
 
 
@@ -122,6 +123,7 @@ enum {
    DRAW_JIT_SAMPLER_MAX_LOD,
    DRAW_JIT_SAMPLER_LOD_BIAS,
    DRAW_JIT_SAMPLER_BORDER_COLOR,
+   DRAW_JIT_SAMPLER_MAX_ANISO,
    DRAW_JIT_SAMPLER_NUM_FIELDS  /* number of fields above */
 };
 
