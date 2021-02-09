@@ -1316,6 +1316,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_imul_32x16:
    case nir_op_umul_32x16: {
       const bool ud = instr->op == nir_op_umul_32x16;
+      const enum brw_reg_type word_type =
+         ud ? BRW_REGISTER_TYPE_UW : BRW_REGISTER_TYPE_W;
+      const enum brw_reg_type dword_type =
+         ud ? BRW_REGISTER_TYPE_UD : BRW_REGISTER_TYPE_D;
 
       assert(nir_dest_bit_size(instr->dest.dest) == 32);
 
@@ -1325,18 +1329,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
        */
       assert(devinfo->ver >= 7);
 
-      if (op[1].file == IMM)
-         op[1] = ud ? brw_imm_uw(op[1].ud) : brw_imm_w(op[1].d);
-      else {
-         const enum brw_reg_type word_type =
-            ud ? BRW_REGISTER_TYPE_UW : BRW_REGISTER_TYPE_W;
+      /* Before copy propagation there are no immediate values. */
+      assert(op[0].file != IMM && op[1].file != IMM);
 
-         op[1] = subscript(op[1], word_type, 0);
-      }
-
-      const enum brw_reg_type dword_type =
-         ud ? BRW_REGISTER_TYPE_UD : BRW_REGISTER_TYPE_D;
-
+      op[1] = subscript(op[1], word_type, 0);
       bld.MUL(result, retype(op[0], dword_type), op[1]);
       break;
    }
