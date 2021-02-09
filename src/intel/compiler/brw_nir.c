@@ -1286,7 +1286,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(brw_nir_opt_peephole_ffma);
    }
 
-   if (devinfo->ver >= 7 && is_scalar)
+   if (is_scalar)
       OPT(brw_nir_opt_peephole_imul32x16);
 
    if (OPT(nir_opt_comparison_pre)) {

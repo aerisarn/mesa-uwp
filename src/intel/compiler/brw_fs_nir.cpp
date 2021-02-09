@@ -1323,17 +1323,16 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
       assert(nir_dest_bit_size(instr->dest.dest) == 32);
 
-      /* Before Gfx7, the order of the 32-bit source and the 16-bit source was
-       * swapped.  The extension isn't enabled on those platforms, so don't
-       * pretend to support the differences.
-       */
-      assert(devinfo->ver >= 7);
-
       /* Before copy propagation there are no immediate values. */
       assert(op[0].file != IMM && op[1].file != IMM);
 
       op[1] = subscript(op[1], word_type, 0);
-      bld.MUL(result, retype(op[0], dword_type), op[1]);
+
+      if (devinfo->ver >= 7)
+         bld.MUL(result, retype(op[0], dword_type), op[1]);
+      else
+         bld.MUL(result, op[1], retype(op[0], dword_type));
+
       break;
    }
 
