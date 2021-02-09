@@ -549,7 +549,7 @@ nv30_screen_destroy(struct pipe_screen *pscreen)
    if (!nouveau_drm_screen_unref(&screen->base))
       return;
 
-   nouveau_fence_cleanup(&screen->base);
+   nouveau_fence_cleanup(&screen->base.fence);
 
    nouveau_bo_ref(NULL, &screen->notify);
 
