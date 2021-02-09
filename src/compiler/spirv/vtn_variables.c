@@ -2647,13 +2647,11 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
 
          /* array_length = max(buffer_size - offset, 0) / stride */
          nir_ssa_def *array_length =
-            nir_idiv(&b->nb,
-                     nir_imax(&b->nb,
-                              nir_isub(&b->nb,
-                                       buf_size,
-                                       nir_imm_int(&b->nb, offset)),
-                              nir_imm_int(&b->nb, 0u)),
-                     nir_imm_int(&b->nb, stride));
+            nir_udiv_imm(&b->nb,
+                         nir_usub_sat(&b->nb,
+                                      buf_size,
+                                      nir_imm_int(&b->nb, offset)),
+                         stride);
 
          vtn_push_nir_ssa(b, w[2], array_length);
       }
