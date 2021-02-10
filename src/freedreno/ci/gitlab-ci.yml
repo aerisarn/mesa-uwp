@@ -1,3 +1,6 @@
+variables:
+  PRIVATE_TRACES_COMMITTERS: "/^(robclark|anholt|flto|cwabbott0|Danil|tomeu)$/"
+
 .freedreno-test:
   extends:
     - .baremetal-test
@@ -279,3 +282,18 @@ a630-traces:
     # missing.
     MESA_GLSL_VERSION_OVERRIDE: "460"
     MESA_GL_VERSION_OVERRIDE: "4.6"
+
+a630-traces-restricted:
+  extends:
+    - a630-traces
+  variables:
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/restricted-traces-freedreno.yml"
+    PIGLIT_REPLAY_EXTRA_ARGS:  --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_host=minio-packet.freedesktop.org --minio_bucket=mesa-tracie-private --role-session-name=${CI_PROJECT_PATH}:${CI_JOB_ID} --jwt=${CI_JOB_JWT}
+  rules:
+    - if: '($GITLAB_USER_LOGIN =~ $PRIVATE_TRACES_COMMITTERS)'
+      when: on_success
+    - if: '($GITLAB_USER_LOGIN == "marge-bot") &&
+           $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+      when: on_success
+    - when: never
+  allow_failure: true
