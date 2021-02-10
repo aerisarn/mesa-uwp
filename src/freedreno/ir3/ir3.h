@@ -310,6 +310,12 @@ struct ir3_instruction {
 			unsigned *outidxs;
 		} end;
 		struct {
+			/* used to temporarily hold reference to nir_phi_instr
+			 * until we resolve the phi srcs
+			 */
+			void *nphi;
+		} phi;
+		struct {
 			unsigned samp, tex;
 			unsigned input_offset;
 			unsigned samp_base : 3;

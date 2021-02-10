@@ -99,9 +99,11 @@ static void print_instr_name(struct ir3_instruction *instr, bool flags)
 	if (is_meta(instr)) {
 		switch (instr->opc) {
 		case OPC_META_INPUT:  printf("_meta:in");   break;
-		case OPC_META_SPLIT:        printf("_meta:split");        break;
-		case OPC_META_COLLECT:      printf("_meta:collect");      break;
-		case OPC_META_TEX_PREFETCH: printf("_meta:tex_prefetch"); break;
+		case OPC_META_SPLIT:			printf("_meta:split");        break;
+		case OPC_META_COLLECT:			printf("_meta:collect");      break;
+		case OPC_META_TEX_PREFETCH:		printf("_meta:tex_prefetch"); break;
+		case OPC_META_PARALLEL_COPY:	printf("_meta:parallel_copy"); break;
+		case OPC_META_PHI:				printf("_meta:phi");          break;
 
 		/* shouldn't hit here.. just for debugging: */
 		default: printf("_meta:%d", instr->opc);    break;

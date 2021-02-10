@@ -314,6 +314,14 @@ typedef enum {
 	 */
 	OPC_META_TEX_PREFETCH = _OPC(-1, 4),
 
+	/* Parallel copies have multiple destinations, and copy each destination
+	 * to its corresponding source. This happens "in parallel," meaning that
+	 * it happens as-if every source is read first and then every destination
+	 * is stored. These are produced in RA when register shuffling is
+	 * required, and then lowered away immediately afterwards.
+	 */
+	OPC_META_PARALLEL_COPY = _OPC(-1, 5),
+	OPC_META_PHI = _OPC(-1, 6),
 } opc_t;
 
 #define opc_cat(opc) ((int)((opc) >> NOPC_BITS))
