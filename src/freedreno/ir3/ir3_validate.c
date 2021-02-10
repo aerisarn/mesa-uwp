@@ -72,6 +72,32 @@ validate_src(struct ir3_validate_ctx *ctx, struct ir3_register *reg)
 	validate_assert(ctx, reg_class_flags(src->regs[0]) == reg_class_flags(reg));
 }
 
+/* phi sources are logically read at the end of the predecessor basic block,
+ * and we have to validate them then in order to correctly validate that the
+ * use comes after the definition for loop phis.
+ */
+static void
+validate_phi_src(struct ir3_validate_ctx *ctx, struct ir3_block *block, struct ir3_block *pred)
+{
+	unsigned pred_idx = ir3_block_get_pred_index(block, pred);
+
+	foreach_instr (phi, &block->instr_list) {
+		if (phi->opc != OPC_META_PHI)
+			break;
+
+		ctx->current_instr = phi;
+		validate_assert(ctx, phi->regs_count == block->predecessors_count + 1);
+		validate_src(ctx, phi->regs[1 + pred_idx]);
+	}
+}
+
+static void
+validate_phi(struct ir3_validate_ctx *ctx, struct ir3_instruction *phi)
+{
+	_mesa_set_add(ctx->defs, phi);
+	validate_assert(ctx, writes_gpr(phi));
+}
+
 #define validate_reg_size(ctx, reg, type) \
 	validate_assert(ctx, type_size(type) == (((reg)->flags & IR3_REG_HALF) ? 16 : 32))
 
@@ -215,9 +241,29 @@ ir3_validate(struct ir3 *ir)
 	ctx->defs = _mesa_pointer_set_create(ctx);
 
 	foreach_block (block, &ir->block_list) {
+		/* We require that the first block does not have any predecessors,
+		 * which allows us to assume that phi nodes and meta:input's do not
+		 * appear in the same basic block.
+		 */
+		validate_assert(ctx,
+				block != ir3_start_block(ir) || block->predecessors_count == 0);
+
+		struct ir3_instruction *prev = NULL;
 		foreach_instr (instr, &block->instr_list) {
 			ctx->current_instr = instr;
-			validate_instr(ctx, instr);
+			if (instr->opc == OPC_META_PHI) {
+				/* phis must be the first in the block */
+				validate_assert(ctx, prev == NULL || prev->opc == OPC_META_PHI);
+				validate_phi(ctx, instr);
+			} else {
+				validate_instr(ctx, instr);
+			}
+			prev = instr;
+		}
+
+		for (unsigned i = 0; i < 2; i++) {
+			if (block->successors[i])
+				validate_phi_src(ctx, block->successors[i], block);
 		}
 	}
 

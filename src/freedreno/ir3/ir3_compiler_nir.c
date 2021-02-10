@@ -2749,6 +2749,60 @@ emit_tex_txs(struct ir3_context *ctx, nir_tex_instr *tex)
 	ir3_put_dst(ctx, &tex->dest);
 }
 
+/* phi instructions are left partially constructed.  We don't resolve
+ * their srcs until the end of the shader, since (eg. loops) one of
+ * the phi's srcs might be defined after the phi due to back edges in
+ * the CFG.
+ */
+static void
+emit_phi(struct ir3_context *ctx, nir_phi_instr *nphi)
+{
+	struct ir3_instruction *phi, **dst;
+
+	/* NOTE: phi's should be lowered to scalar at this point */
+	compile_assert(ctx, nphi->dest.ssa.num_components == 1);
+
+	dst = ir3_get_dst(ctx, &nphi->dest, 1);
+
+	phi = ir3_instr_create(ctx->block, OPC_META_PHI,
+			1 + exec_list_length(&nphi->srcs));
+	__ssa_dst(phi);
+	phi->phi.nphi = nphi;
+
+	dst[0] = phi;
+
+	ir3_put_dst(ctx, &nphi->dest);
+}
+
+static struct ir3_block *get_block(struct ir3_context *ctx, const nir_block *nblock);
+
+static void
+resolve_phis(struct ir3_context *ctx, struct ir3_block *block)
+{
+	foreach_instr (phi, &block->instr_list) {
+		if (phi->opc != OPC_META_PHI)
+			break;
+
+		nir_phi_instr *nphi = phi->phi.nphi;
+
+		for (unsigned i = 0; i < block->predecessors_count; i++) {
+			struct ir3_block *pred = block->predecessors[i];
+			nir_foreach_phi_src(nsrc, nphi) {
+				if (get_block(ctx, nsrc->pred) == pred) {
+					if (nsrc->src.ssa->parent_instr->type == nir_instr_type_ssa_undef) {
+						/* Create an ir3 undef */
+						ir3_reg_create(phi, INVALID_REG, phi->regs[0]->flags);
+					} else {
+						struct ir3_instruction *src = ir3_get_src(ctx, &nsrc->src)[0];
+						__ssa_src(phi, src, 0);
+					}
+					break;
+				}
+			}
+		}
+	}
+}
+
 static void
 emit_jump(struct ir3_context *ctx, nir_jump_instr *jump)
 {
@@ -2810,8 +2864,7 @@ emit_instr(struct ir3_context *ctx, nir_instr *instr)
 		emit_jump(ctx, nir_instr_as_jump(instr));
 		break;
 	case nir_instr_type_phi:
-		/* we have converted phi webs to regs in NIR by now */
-		ir3_context_error(ctx, "Unexpected NIR instruction type: %d\n", instr->type);
+		emit_phi(ctx, nir_instr_as_phi(instr));
 		break;
 	case nir_instr_type_call:
 	case nir_instr_type_parallel_copy:
@@ -3092,6 +3145,9 @@ emit_function(struct ir3_context *ctx, nir_function_impl *impl)
 	}
 
 	setup_predecessors(ctx->ir);
+	foreach_block (block, &ctx->ir->block_list) {
+		resolve_phis(ctx, block);
+	}
 }
 
 static void

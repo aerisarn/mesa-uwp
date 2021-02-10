@@ -1014,6 +1014,13 @@ is_output_only(struct ir3_instruction *instr)
 static void
 sched_node_add_deps(struct ir3_instruction *instr)
 {
+	/* There's nothing to do for phi nodes, since they always go first. And
+	 * phi nodes can reference sources later in the same block, so handling
+	 * sources is not only unnecessary but could cause problems.
+	 */
+	if (instr->opc == OPC_META_PHI)
+		return;
+
 	/* Since foreach_ssa_src() already handles false-dep's we can construct
 	 * the DAG easily in a single pass.
 	 */
@@ -1100,17 +1107,19 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 			ctx->remaining_tex++;
 	}
 
-	/* First schedule all meta:input instructions, followed by
-	 * tex-prefetch.  We want all of the instructions that load
-	 * values into registers before the shader starts to go
-	 * before any other instructions.  But in particular we
-	 * want inputs to come before prefetches.  This is because
-	 * a FS's bary_ij input may not actually be live in the
-	 * shader, but it should not be scheduled on top of any
-	 * other input (but can be overwritten by a tex prefetch)
+	/* First schedule all meta:input and meta:phi instructions, followed by
+	 * tex-prefetch.  We want all of the instructions that load values into
+	 * registers before the shader starts to go before any other instructions.
+	 * But in particular we want inputs to come before prefetches.  This is
+	 * because a FS's bary_ij input may not actually be live in the shader,
+	 * but it should not be scheduled on top of any other input (but can be
+	 * overwritten by a tex prefetch)
+	 *
+	 * Note: Because the first block cannot have predecessors, meta:input and
+	 * meta:phi cannot exist in the same block.
 	 */
 	foreach_instr_safe (instr, &ctx->unscheduled_list)
-		if (instr->opc == OPC_META_INPUT)
+		if (instr->opc == OPC_META_INPUT || instr->opc == OPC_META_PHI)
 			schedule(ctx, instr);
 
 	foreach_instr_safe (instr, &ctx->unscheduled_list)
