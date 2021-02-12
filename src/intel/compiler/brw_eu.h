@@ -1269,6 +1269,88 @@ lsc_msg_desc(UNUSED const struct intel_device_info *devinfo,
    return msg_desc;
 }
 
+static inline enum lsc_opcode
+lsc_msg_desc_opcode(UNUSED const struct intel_device_info *devinfo,
+                    uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return (enum lsc_opcode) GET_BITS(desc, 5, 0);
+}
+
+static inline enum lsc_addr_size
+lsc_msg_desc_addr_size(UNUSED const struct intel_device_info *devinfo,
+                       uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return (enum lsc_addr_size) GET_BITS(desc, 8, 7);
+}
+
+static inline enum lsc_data_size
+lsc_msg_desc_data_size(UNUSED const struct intel_device_info *devinfo,
+                       uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return (enum lsc_data_size) GET_BITS(desc, 11, 9);
+}
+
+static inline enum lsc_vect_size
+lsc_msg_desc_vect_size(UNUSED const struct intel_device_info *devinfo,
+                       uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   assert(!lsc_opcode_has_cmask(lsc_msg_desc_opcode(devinfo, desc)));
+   return (enum lsc_vect_size) GET_BITS(desc, 14, 12);
+}
+
+static inline enum lsc_cmask
+lsc_msg_desc_cmask(UNUSED const struct intel_device_info *devinfo,
+                   uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   assert(lsc_opcode_has_cmask(lsc_msg_desc_opcode(devinfo, desc)));
+   return (enum lsc_cmask) GET_BITS(desc, 15, 12);
+}
+
+static inline bool
+lsc_msg_desc_transpose(UNUSED const struct intel_device_info *devinfo,
+                       uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return GET_BITS(desc, 15, 15);
+}
+
+static inline unsigned
+lsc_msg_desc_cache_ctrl(UNUSED const struct intel_device_info *devinfo,
+                        uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return GET_BITS(desc, 19, 17);
+}
+
+static inline unsigned
+lsc_msg_desc_dest_len(const struct intel_device_info *devinfo,
+                      uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return GET_BITS(desc, 24, 20);
+}
+
+static inline unsigned
+lsc_msg_desc_src0_len(const struct intel_device_info *devinfo,
+                      uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return GET_BITS(desc, 28, 25);
+}
+
+static inline enum lsc_addr_surface_type
+lsc_msg_desc_addr_type(UNUSED const struct intel_device_info *devinfo,
+                       uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return (enum lsc_addr_surface_type) GET_BITS(desc, 30, 29);
+}
+
 static inline uint32_t
 lsc_fence_msg_desc(UNUSED const struct intel_device_info *devinfo,
                    enum lsc_fence_scope scope,
@@ -1284,12 +1366,44 @@ lsc_fence_msg_desc(UNUSED const struct intel_device_info *devinfo,
           SET_BITS(LSC_ADDR_SURFTYPE_FLAT, 30, 29);
 }
 
+static inline enum lsc_fence_scope
+lsc_fence_msg_desc_scope(UNUSED const struct intel_device_info *devinfo,
+                         uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return (enum lsc_fence_scope) GET_BITS(desc, 11, 9);
+}
+
+static inline enum lsc_flush_type
+lsc_fence_msg_desc_flush_type(UNUSED const struct intel_device_info *devinfo,
+                              uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return (enum lsc_flush_type) GET_BITS(desc, 14, 12);
+}
+
+static inline enum lsc_backup_fence_routing
+lsc_fence_msg_desc_backup_routing(UNUSED const struct intel_device_info *devinfo,
+                                  uint32_t desc)
+{
+   assert(devinfo->has_lsc);
+   return (enum lsc_backup_fence_routing) GET_BITS(desc, 18, 18);
+}
+
 static inline uint32_t
 lsc_bti_ex_desc(const struct intel_device_info *devinfo, unsigned bti)
 {
    assert(devinfo->has_lsc);
    return SET_BITS(bti, 31, 24) |
           SET_BITS(0, 23, 12);  /* base offset */
+}
+
+static inline unsigned
+lsc_bti_ex_desc_base_offset(const struct intel_device_info *devinfo,
+                            uint32_t ex_desc)
+{
+   assert(devinfo->has_lsc);
+   return GET_BITS(ex_desc, 23, 12);
 }
 
 static inline unsigned
