@@ -479,7 +479,6 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
      return screen->info.have_EXT_conditional_rendering;
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return 130;
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
       return 460;
 
