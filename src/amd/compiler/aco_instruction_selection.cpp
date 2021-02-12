@@ -4609,7 +4609,7 @@ bool check_vertex_fetch_size(isel_context *ctx, const ac_data_format_info *vtx_i
 }
 
 uint8_t get_fetch_data_format(isel_context *ctx, const ac_data_format_info *vtx_info,
-                              unsigned offset, unsigned stride, unsigned *channels,
+                              unsigned offset, unsigned *channels, unsigned max_channels,
                               unsigned binding_align)
 {
    if (!vtx_info->chan_byte_size) {
@@ -4621,15 +4621,12 @@ uint8_t get_fetch_data_format(isel_context *ctx, const ac_data_format_info *vtx_
    if (!check_vertex_fetch_size(ctx, vtx_info, offset, binding_align, *channels)) {
       unsigned new_channels = num_channels + 1;
       /* first, assume more loads is worse and try using a larger data format */
-      while (new_channels <= 4 &&
+      while (new_channels <= max_channels &&
              !check_vertex_fetch_size(ctx, vtx_info, offset, binding_align, new_channels)) {
          new_channels++;
-         /* don't make the attribute potentially out-of-bounds */
-         if (offset + new_channels * vtx_info->chan_byte_size > stride)
-            new_channels = 5;
       }
 
-      if (new_channels == 5) {
+      if (new_channels > max_channels) {
          /* then try decreasing load size (at the cost of more loads) */
          new_channels = *channels;
          while (new_channels > 1 &&
@@ -4781,8 +4778,8 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
                           vtx_info->chan_byte_size == 4;
          unsigned fetch_dfmt = V_008F0C_BUF_DATA_FORMAT_INVALID;
          if (!use_mubuf) {
-            fetch_dfmt = get_fetch_data_format(ctx, vtx_info, fetch_offset, attrib_stride, &fetch_component,
-                                               binding_align);
+            fetch_dfmt = get_fetch_data_format(ctx, vtx_info, fetch_offset, &fetch_component,
+                                               vtx_info->num_channels - channel_start, binding_align);
          } else {
             if (fetch_component == 3 && ctx->options->chip_class == GFX6) {
                /* GFX6 only supports loading vec3 with MTBUF, expand to vec4. */
