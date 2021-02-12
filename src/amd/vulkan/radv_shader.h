@@ -66,6 +66,7 @@ struct radv_vs_variant_key {
    uint32_t vertex_attribute_bindings[MAX_VERTEX_ATTRIBS];
    uint32_t vertex_attribute_offsets[MAX_VERTEX_ATTRIBS];
    uint32_t vertex_attribute_strides[MAX_VERTEX_ATTRIBS];
+   uint8_t vertex_binding_align[MAX_VBS];
 
    /* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
     * so we may need to fix it up. */
