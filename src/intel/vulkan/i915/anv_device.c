@@ -277,6 +277,7 @@ anv_i915_device_setup_context(struct anv_device *device,
       assert(num_queues <= 64);
       enum intel_engine_class engine_classes[64];
       int engine_count = 0;
+      enum intel_gem_create_context_flags flags = 0;
       for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
          const VkDeviceQueueCreateInfo *queueCreateInfo =
             &pCreateInfo->pQueueCreateInfos[i];
@@ -288,8 +289,12 @@ anv_i915_device_setup_context(struct anv_device *device,
 
          for (uint32_t j = 0; j < queueCreateInfo->queueCount; j++)
             engine_classes[engine_count++] = queue_family->engine_class;
+
+         if (pCreateInfo->pQueueCreateInfos[i].flags &
+             VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT)
+            flags |= INTEL_GEM_CREATE_CONTEXT_EXT_PROTECTED_FLAG;
       }
-      if (!intel_gem_create_context_engines(device->fd, 0 /* flags */,
+      if (!intel_gem_create_context_engines(device->fd, flags,
                                             physical_device->engine_info,
                                             engine_count, engine_classes,
                                             device->vm_id,
