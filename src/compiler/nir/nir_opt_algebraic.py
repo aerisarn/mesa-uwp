@@ -676,6 +676,20 @@ optimizations.extend([
    (('imin', ('imin', ('imin', a, b), c), a), ('imin', ('imin', a, b), c)),
 ])
 
+for N in [8, 16, 32, 64]:
+    b2iN = 'b2i{0}'.format(N)
+    optimizations.extend([
+        (('ieq', (b2iN, 'a@1'), (b2iN, 'b@1')), ('ieq', a, b)),
+        (('ine', (b2iN, 'a@1'), (b2iN, 'b@1')), ('ine', a, b)),
+    ])
+
+for N in [16, 32, 64]:
+    b2fN = 'b2f{0}'.format(N)
+    optimizations.extend([
+        (('feq', (b2fN, 'a@1'), (b2fN, 'b@1')), ('ieq', a, b)),
+        (('fneu', (b2fN, 'a@1'), (b2fN, 'b@1')), ('ine', a, b)),
+    ])
+
 # Integer sizes
 for s in [8, 16, 32, 64]:
     optimizations.extend([
