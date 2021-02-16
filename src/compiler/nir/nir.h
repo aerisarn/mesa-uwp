@@ -4626,6 +4626,14 @@ bool nir_lower_explicit_io(nir_shader *shader,
                            nir_variable_mode modes,
                            nir_address_format);
 
+bool
+nir_lower_shader_calls(nir_shader *shader,
+                       nir_address_format address_format,
+                       unsigned stack_alignment,
+                       nir_shader ***resume_shaders_out,
+                       uint32_t *num_resume_shaders_out,
+                       void *mem_ctx);
+
 nir_src *nir_get_io_offset_src(nir_intrinsic_instr *instr);
 nir_src *nir_get_io_vertex_index_src(nir_intrinsic_instr *instr);
 nir_src *nir_get_shader_call_payload_src(nir_intrinsic_instr *call);
