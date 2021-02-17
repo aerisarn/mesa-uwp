@@ -98,6 +98,19 @@ gl_shader_stage_is_callable(gl_shader_stage stage)
           stage == MESA_SHADER_CALLABLE;
 }
 
+static inline bool
+gl_shader_stage_can_set_fragment_shading_rate(gl_shader_stage stage)
+{
+   /* According to EXT_fragment_shading_rate :
+    *
+    *    "This extension adds support for setting the fragment shading rate
+    *     for a primitive in vertex, geometry, and mesh shading stages"
+    */
+   return stage == MESA_SHADER_VERTEX ||
+          stage == MESA_SHADER_GEOMETRY ||
+          stage == MESA_SHADER_MESH;
+}
+
 /**
  * Number of STATE_* values we need to address any GL state.
  * Used to dimension arrays.
