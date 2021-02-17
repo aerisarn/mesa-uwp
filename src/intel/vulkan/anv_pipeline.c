@@ -1772,6 +1772,35 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       prev_stage = &stages[s];
    }
 
+   /* In the case the platform can write the primitive variable shading rate,
+    * figure out the last geometry stage that should write the primitive
+    * shading rate, and ensure it is marked as used there. The backend will
+    * write a default value if the shader doesn't actually write it.
+    *
+    * We iterate backwards in the stage and stop on the first shader that can
+    * set the value.
+    */
+   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   if (devinfo->has_coarse_pixel_primitive_and_cb &&
+       stages[MESA_SHADER_FRAGMENT].entrypoint &&
+       stages[MESA_SHADER_FRAGMENT].key.wm.coarse_pixel) {
+      struct anv_pipeline_stage *last_psr = NULL;
+
+      for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
+         gl_shader_stage s = shader_order[ARRAY_SIZE(shader_order) - i - 1];
+
+         if (!stages[s].entrypoint ||
+             !gl_shader_stage_can_set_fragment_shading_rate(s))
+            continue;
+
+         last_psr = &stages[s];
+         break;
+      }
+
+      assert(last_psr);
+      last_psr->nir->info.outputs_written |= VARYING_BIT_PRIMITIVE_SHADING_RATE;
+   }
+
    prev_stage = NULL;
    for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
       gl_shader_stage s = shader_order[i];
