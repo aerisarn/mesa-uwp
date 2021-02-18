@@ -154,10 +154,10 @@ get_definer(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr,
 		 */
 		foreach_src_n (src, n, instr) {
 			struct ir3_instruction *dd;
-			if (!src->instr)
+			if (!src->def)
 				continue;
 
-			dd = get_definer(ctx, src->instr, &dsz, &doff);
+			dd = get_definer(ctx, src->def->instr, &dsz, &doff);
 
 			if ((!d) || instr_before(dd, d)) {
 				d = dd;
@@ -224,7 +224,7 @@ get_definer(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr,
 		struct ir3_instruction *dd;
 		int dsz, doff;
 
-		dd = get_definer(ctx, d->regs[1]->instr, &dsz, &doff);
+		dd = get_definer(ctx, d->regs[1]->def->instr, &dsz, &doff);
 
 		/* by definition, should come before: */
 		ra_assert(ctx, instr_before(dd, d));
@@ -322,12 +322,12 @@ ra_block_name_instructions(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 		 */
 		if (ctx->scalar_pass) {
 			if (instr->opc == OPC_META_SPLIT) {
-				instr->name = instr->regs[1]->instr->name + instr->split.off;
+				instr->name = instr->regs[1]->def->instr->name + instr->split.off;
 				continue;
 			}
 
 			if (instr->opc == OPC_META_COLLECT) {
-				instr->name = instr->regs[1]->instr->name;
+				instr->name = instr->regs[1]->def->instr->name;
 				continue;
 			}
 		}
@@ -477,7 +477,7 @@ ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 			struct ir3_array *arr = ir3_lookup_array(ctx->ir, src->array.id);
 			src_n = arr->base + src->array.offset;
 		} else {
-			src_n = scalar_name(ctx, src->instr, 0);
+			src_n = scalar_name(ctx, src->def->instr, 0);
 		}
 
 		unsigned reg = ra_get_node_reg(ctx->g, src_n);
@@ -1213,12 +1213,12 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 		}
 
 		foreach_src_n (reg, n, instr) {
-			struct ir3_instruction *src = reg->instr;
+			struct ir3_instruction *src = reg->def ? reg->def->instr : NULL;
 
 			if (src && should_assign(ctx, instr))
 				reg_assign(ctx, src->regs[0], src);
 
-			/* Note: reg->instr could be null for IR3_REG_ARRAY */
+			/* Note: reg->def could be null for IR3_REG_ARRAY */
 			if (((reg->flags & IR3_REG_ARRAY) && ctx->scalar_pass) ||
 				(src && should_assign(ctx, src))) {
 				reg_assign(ctx, instr->regs[n+1], src);
@@ -1466,9 +1466,9 @@ ra_precolor_assigned(struct ir3_ra_ctx *ctx)
 			precolor(ctx, instr);
 
 			foreach_src (src, instr) {
-				if (!src->instr)
+				if (!src->def)
 					continue;
-				precolor(ctx, src->instr);
+				precolor(ctx, src->def->instr);
 			}
 		}
 	}

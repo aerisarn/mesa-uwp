@@ -648,7 +648,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		if (cond->opc == OPC_ABSNEG_S &&
 				cond->flags == 0 &&
 				(cond->regs[1]->flags & (IR3_REG_SNEG | IR3_REG_SABS)) == IR3_REG_SNEG) {
-			cond = cond->regs[1]->instr;
+			cond = cond->regs[1]->def->instr;
 		}
 
 		compile_assert(ctx, bs[1] == bs[2]);
@@ -2791,7 +2791,7 @@ resolve_phis(struct ir3_context *ctx, struct ir3_block *block)
 				if (get_block(ctx, nsrc->pred) == pred) {
 					if (nsrc->src.ssa->parent_instr->type == nir_instr_type_ssa_undef) {
 						/* Create an ir3 undef */
-						ir3_reg_create(phi, INVALID_REG, phi->regs[0]->flags);
+						ir3_reg_create(phi, INVALID_REG, phi->regs[0]->flags & ~IR3_REG_DEST);
 					} else {
 						struct ir3_instruction *src = ir3_get_src(ctx, &nsrc->src)[0];
 						__ssa_src(phi, src, 0);

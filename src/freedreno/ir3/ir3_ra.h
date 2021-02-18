@@ -213,11 +213,11 @@ scalar_name(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr, unsigned n)
 	if (ctx->scalar_pass) {
 		if (instr->opc == OPC_META_SPLIT) {
 			debug_assert(n == 0);     /* split results in a scalar */
-			struct ir3_instruction *src = instr->regs[1]->instr;
+			struct ir3_instruction *src = instr->regs[1]->def->instr;
 			return scalar_name(ctx, src, instr->split.off);
 		} else if (instr->opc == OPC_META_COLLECT) {
 			debug_assert(n < (instr->regs_count + 1));
-			struct ir3_instruction *src = instr->regs[n + 1]->instr;
+			struct ir3_instruction *src = instr->regs[n + 1]->def->instr;
 			return scalar_name(ctx, src, 0);
 		}
 	} else {
@@ -347,8 +347,8 @@ __ra_init_use_itr(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
 				__ra_itr_push(ctx, arr->base + reg->array.offset);
 				debug_assert(reg->array.offset < arr->length);
 			}
-		} else {
-			foreach_name_n (name, i, ctx, reg->instr) {
+		} else if (reg->def) {
+			foreach_name_n (name, i, ctx, reg->def->instr) {
 				/* split takes a src w/ wrmask potentially greater
 				 * than 0x1, but it really only cares about a single
 				 * component.  This shows up in splits coming out of

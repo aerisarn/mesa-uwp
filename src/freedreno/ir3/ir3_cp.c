@@ -339,13 +339,13 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 				reg->array = src_reg->array;
 			}
 			reg->flags = new_flags;
-			reg->instr = ssa(src_reg);
+			reg->def = src_reg->def;
 
 			instr->barrier_class |= src->barrier_class;
 			instr->barrier_conflict |= src->barrier_conflict;
 
 			unuse(src);
-			reg->instr->use_count++;
+			reg->def->instr->use_count++;
 
 			return true;
 		}
@@ -395,7 +395,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			 * address registers:
 			 */
 			if ((src_reg->flags & IR3_REG_RELATIV) &&
-					conflicts(instr->address, reg->instr->address))
+					conflicts(instr->address, reg->def->instr->address))
 				return false;
 
 			/* This seems to be a hw bug, or something where the timings
@@ -430,7 +430,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			instr->regs[n+1] = src_reg;
 
 			if (src_reg->flags & IR3_REG_RELATIV)
-				ir3_instr_set_address(instr, reg->instr->address);
+				ir3_instr_set_address(instr, reg->def->instr->address);
 
 			return true;
 		}

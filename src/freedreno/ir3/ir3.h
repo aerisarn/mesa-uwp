@@ -118,6 +118,7 @@ struct ir3_register {
 		IR3_REG_SSA    = 0x4000,   /* 'instr' is ptr to assigning instr */
 		IR3_REG_ARRAY  = 0x8000,
 
+		IR3_REG_DEST   = 0x10000,
 	} flags;
 
 	/* used for cat5 instructions, but also for internal/IR level
@@ -153,6 +154,12 @@ struct ir3_register {
 		} array;
 	};
 
+
+	/* For IR3_REG_DEST, pointer back to the instruction containing this
+	 * register.
+	 */
+	struct ir3_instruction *instr;
+
 	/* For IR3_REG_SSA, src registers contain ptr back to assigning
 	 * instruction.
 	 *
@@ -160,7 +167,7 @@ struct ir3_register {
 	 * array access (although the net effect is the same, it points
 	 * back to a previous instruction that we depend on).
 	 */
-	struct ir3_instruction *instr;
+	struct ir3_register *def;
 };
 
 /*
@@ -525,7 +532,7 @@ struct ir3_array {
 	 * last read.  But all the writes that happen before that have
 	 * something depending on them
 	 */
-	struct ir3_instruction *last_write;
+	struct ir3_register *last_write;
 
 	/* extra stuff used in RA pass: */
 	unsigned base;      /* base vreg name */
@@ -985,9 +992,8 @@ static inline bool writes_pred(struct ir3_instruction *instr)
 /* TODO better name */
 static inline struct ir3_instruction *ssa(struct ir3_register *reg)
 {
-	if (reg->flags & (IR3_REG_SSA | IR3_REG_ARRAY)) {
-		return reg->instr;
-	}
+	if ((reg->flags & (IR3_REG_SSA | IR3_REG_ARRAY)) && reg->def)
+		return reg->def->instr;
 	return NULL;
 }
 
@@ -1309,7 +1315,7 @@ ir3_try_swap_signedness(opc_t opc, bool *can_swap)
 	if ((__instr)->regs_count) \
 		for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
 			for (unsigned __cnt = (__instr)->regs_count - 1, __n = 0; __n < __cnt; __n++) \
-				if ((__srcreg = (__instr)->regs[__n + 1]))
+				if ((__srcreg = (__instr)->regs[__n + 1]) && !(__srcreg->flags & IR3_REG_DEST))
 
 /* iterator for an instructions's sources (reg): */
 #define foreach_src(__srcreg, __instr) \
@@ -1331,7 +1337,7 @@ __ssa_srcp_n(struct ir3_instruction *instr, unsigned n)
 	if (n >= instr->regs_count)
 		return &instr->deps[n - instr->regs_count];
 	if (ssa(instr->regs[n]))
-		return &instr->regs[n]->instr;
+		return &instr->regs[n]->def->instr;
 	return NULL;
 }
 
@@ -1513,16 +1519,17 @@ static inline struct ir3_register * __ssa_src(struct ir3_instruction *instr,
 	struct ir3_register *reg;
 	if (src->regs[0]->flags & IR3_REG_HALF)
 		flags |= IR3_REG_HALF;
-	reg = ir3_reg_create(instr, 0, IR3_REG_SSA | flags);
-	reg->instr = src;
+	reg = ir3_reg_create(instr, INVALID_REG, IR3_REG_SSA | flags);
+	reg->def = src->regs[0];
 	reg->wrmask = src->regs[0]->wrmask;
 	return reg;
 }
 
 static inline struct ir3_register * __ssa_dst(struct ir3_instruction *instr)
 {
-	struct ir3_register *reg = ir3_reg_create(instr, 0, 0);
-	reg->flags |= IR3_REG_SSA;
+	struct ir3_register *reg = ir3_reg_create(instr, INVALID_REG, 0);
+	reg->flags |= IR3_REG_SSA | IR3_REG_DEST;
+	reg->instr = instr;
 	return reg;
 }
 

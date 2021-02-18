@@ -37,7 +37,7 @@ insert_mov(struct ir3_instruction *collect, int idx)
 	struct ir3_instruction *mov = ir3_MOV(src->block, src,
 		(collect->regs[idx+1]->flags & IR3_REG_HALF) ? TYPE_U16 : TYPE_U32);
 
-	collect->regs[idx+1]->instr = mov;
+	collect->regs[idx+1]->def = mov->regs[0];
 
 	/* if collect and src are in the same block, move the inserted mov
 	 * to just before the collect to avoid a use-before-def.  Otherwise

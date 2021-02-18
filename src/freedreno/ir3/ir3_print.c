@@ -191,14 +191,14 @@ static void print_reg_name(struct ir3_instruction *instr, struct ir3_register *r
 		 * Note for array writes from another block, we aren't really
 		 * sure who wrote it so skip trying to show this
 		 */
-		if (reg->instr && (reg->instr->block == instr->block)) {
+		if (reg->def && (reg->def->instr->block == instr->block)) {
 			printf(SYN_ARRAY(", "));
-			printf(SYN_SSA("ssa_%u"), reg->instr->serialno);
+			printf(SYN_SSA("ssa_%u"), reg->def->instr->serialno);
 		}
 		printf(SYN_ARRAY("]"));
 	} else if (reg->flags & IR3_REG_SSA) {
-		/* For dst regs, reg->instr will be NULL: */
-		printf(SYN_SSA("ssa_%u"), reg->instr ? reg->instr->serialno : instr->serialno);
+		/* For dst regs, reg->def will be NULL: */
+		printf(SYN_SSA("ssa_%u"), (reg->flags & IR3_REG_DEST) ? instr->serialno : reg->def->instr->serialno);
 	} else if (reg->flags & IR3_REG_RELATIV) {
 		if (reg->flags & IR3_REG_CONST)
 			printf(SYN_CONST("c<a0.x + %d>"), reg->array.offset);
@@ -320,13 +320,13 @@ print_instr(struct ir3_instruction *instr, int lvl)
 				printf(" %sp0.%c ("SYN_SSA("ssa_%u")"),",
 						instr->cat0.inv1 ? "!" : "",
 						"xyzw"[instr->cat0.comp1 & 0x3],
-						instr->regs[1]->instr->serialno);
+						instr->regs[1]->def->instr->serialno);
 			}
 			if (brinfo[instr->cat0.brtype].nsrc >= 2) {
 				printf(" %sp0.%c ("SYN_SSA("ssa_%u")"),",
 						instr->cat0.inv2 ? "!" : "",
 						"xyzw"[instr->cat0.comp2 & 0x3],
-						instr->regs[2]->instr->serialno);
+						instr->regs[2]->def->instr->serialno);
 			}
 		}
 		printf(" target=block%u", block_id(instr->cat0.target));

@@ -148,7 +148,7 @@ regs_to_ssa(struct ir3 *ir)
 				src = collect;
 			}
 
-			reg->instr = src;
+			reg->def = src->regs[0];
 			reg->flags |= IR3_REG_SSA;
 		}
 
@@ -168,6 +168,7 @@ regs_to_ssa(struct ir3 *ir)
 				regfile[regn(instr->regs[0]) + i] = split;
 			}
 		} else {
+			instr->regs[0]->instr = instr;
 			regfile[regn(instr->regs[0])] = instr;
 		}
 	}

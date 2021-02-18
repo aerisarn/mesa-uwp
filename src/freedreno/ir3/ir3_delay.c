@@ -182,10 +182,10 @@ delay_calc_srcn(struct ir3_block *block,
 		foreach_src_n (src, n, assigner) {
 			unsigned d;
 
-			if (!src->instr)
+			if (!src->def)
 				continue;
 
-			d = delay_calc_srcn(block, src->instr, consumer, srcn, soft, pred);
+			d = delay_calc_srcn(block, src->def->instr, consumer, srcn, soft, pred);
 
 			/* A (rptN) instruction executes in consecutive cycles so
 			 * it's outputs are written in successive cycles.  And
@@ -200,9 +200,9 @@ delay_calc_srcn(struct ir3_block *block,
 			 * for src registers.  There is exactly one case, bary.f,
 			 * which has a vecN (collect) src that is not (r)'d.
 			 */
-			if ((assigner->opc == OPC_META_SPLIT) && src->instr->repeat) {
+			if ((assigner->opc == OPC_META_SPLIT) && src->def->instr->repeat) {
 				/* (rptN) assigner case: */
-				d -= MIN2(d, src->instr->repeat - assigner->split.off);
+				d -= MIN2(d, src->def->instr->repeat - assigner->split.off);
 			} else if ((assigner->opc == OPC_META_COLLECT) && consumer->repeat &&
 					(consumer->regs[srcn]->flags & IR3_REG_R)) {
 				d -= MIN2(d, n);
@@ -328,8 +328,8 @@ ir3_delay_calc(struct ir3_block *block, struct ir3_instruction *instr,
 
 		if ((src->flags & IR3_REG_RELATIV) && !(src->flags & IR3_REG_CONST)) {
 			d = delay_calc_array(block, src->array.id, instr, i+1, soft, pred, 6);
-		} else if (src->instr) {
-			d = delay_calc_srcn(block, src->instr, instr, i+1, soft, pred);
+		} else if (src->def) {
+			d = delay_calc_srcn(block, src->def->instr, instr, i+1, soft, pred);
 		}
 
 		delay = MAX2(delay, d);

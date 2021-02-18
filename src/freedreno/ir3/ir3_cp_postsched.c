@@ -50,7 +50,7 @@
 static bool
 has_conflicting_write(struct ir3_instruction *src,
 		struct ir3_instruction *use,
-		struct ir3_instruction **def,
+		struct ir3_register **def,
 		unsigned id, int offset)
 {
 	assert(src->block == use->block);
@@ -99,7 +99,7 @@ has_conflicting_write(struct ir3_instruction *src,
 			return true;
 
 		if (last_write)
-			*def = instr;
+			*def = dst;
 
 		last_write = false;
 	}
@@ -152,7 +152,7 @@ instr_cp_postsched(struct ir3_instruction *mov)
 		if (is_meta(use))
 			continue;
 
-		struct ir3_instruction *def = src->instr;
+		struct ir3_register *def = src->def;
 		if (has_conflicting_write(mov, use, &def, src->array.id, offset))
 			continue;
 
@@ -177,7 +177,7 @@ instr_cp_postsched(struct ir3_instruction *mov)
 			/* If we're sinking the array read past any writes, make
 			 * sure to update it to point to the new previous write:
 			 */
-			use->regs[n + 1]->instr = def;
+			use->regs[n + 1]->def = def;
 
 			removed = true;
 		}
