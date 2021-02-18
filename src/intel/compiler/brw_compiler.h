@@ -25,6 +25,7 @@
 #define BRW_COMPILER_H
 
 #include <stdio.h>
+#include "c11/threads.h"
 #include "dev/intel_device_info.h"
 #include "main/config.h"
 #include "util/ralloc.h"
@@ -44,6 +45,11 @@ typedef struct nir_shader nir_shader;
 
 struct brw_compiler {
    const struct intel_device_info *devinfo;
+
+   /* This lock must be taken if the compiler is to be modified in any way,
+    * including adding something to the ralloc child list.
+    */
+   mtx_t mutex;
 
    struct {
       struct ra_regs *regs;
@@ -109,6 +115,8 @@ struct brw_compiler {
     * constant or data cache, UBOs must use VK_FORMAT_RAW.
     */
    bool indirect_ubos_use_sampler;
+
+   struct nir_shader *clc_shader;
 };
 
 #define brw_shader_debug_log(compiler, data, fmt, ... ) do {    \
