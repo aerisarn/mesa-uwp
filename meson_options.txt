@@ -509,3 +509,9 @@ option(
   value : false,
   description : 'Build vulkan drivers with BETA extensions enabled.'
 )
+option(
+  'intel-clc',
+  type : 'feature',
+  value : 'disabled',
+  description : 'Build the intel-clc compiler (required for ray queries).'
+)
