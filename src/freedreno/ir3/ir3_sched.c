@@ -567,7 +567,8 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		if (defer && should_defer(ctx, n->instr))
 			continue;
 
-		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
+		/* Note: mergedregs is only used post-RA, just set it to false */
+		unsigned d = ir3_delay_calc_prera(ctx->block, n->instr);
 
 		if (d > 0)
 			continue;
@@ -620,7 +621,7 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		if (defer && should_defer(ctx, n->instr))
 			continue;
 
-		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
+		unsigned d = ir3_delay_calc_prera(ctx->block, n->instr);
 
 		if (d > 0)
 			continue;
@@ -688,7 +689,7 @@ choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		if (defer && should_defer(ctx, n->instr))
 			continue;
 
-		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
+		unsigned d = ir3_delay_calc_prera(ctx->block, n->instr);
 
 		if (d > 0)
 			continue;
@@ -769,7 +770,7 @@ dump_state(struct ir3_sched_ctx *ctx)
 	foreach_sched_node (n, &ctx->dag->heads) {
 		di(n->instr, "maxdel=%3d le=%d del=%u ",
 				n->max_delay, live_effect(n->instr),
-				ir3_delay_calc(ctx->block, n->instr, false, false));
+				ir3_delay_calc_prera(ctx->block, n->instr));
 
 		util_dynarray_foreach(&n->dag.edges, struct dag_edge, edge) {
 			struct ir3_sched_node *child = (struct ir3_sched_node *)edge->child;
@@ -1132,7 +1133,7 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 
 		instr = choose_instr(ctx, &notes);
 		if (instr) {
-			unsigned delay = ir3_delay_calc(ctx->block, instr, false, false);
+			unsigned delay = ir3_delay_calc_prera(ctx->block, instr);
 			d("delay=%u", delay);
 
 			/* and if we run out of instructions that can be scheduled,

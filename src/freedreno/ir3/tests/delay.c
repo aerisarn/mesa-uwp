@@ -80,9 +80,17 @@ static const struct test {
 		(rpt2)mov.f32f32 r0.x, (r)c0.x
 		add.f r0.x, r0.x, r0.y
 	),
+	TEST(2,
+		(rpt1)mov.f32f32 r0.x, (r)c0.x
+		(rpt1)add.f r0.x, (r)r0.x, c0.x
+	),
 	TEST(1,
-		(rpt2)mov.f32f32 r0.x, (r)c0.x
-		(rpt2)add.f r0.x, (r)r0.x, c0.x
+		(rpt1)mov.f32f32 r0.y, (r)c0.x
+		(rpt1)add.f r0.x, (r)r0.x, c0.x
+	),
+	TEST(3,
+		(rpt1)mov.f32f32 r0.x, (r)c0.x
+		(rpt1)add.f r0.x, (r)r0.y, c0.x
 	),
 };
 
@@ -101,75 +109,29 @@ parse_asm(struct ir3_compiler *c, const char *asmstr)
 	return shader;
 }
 
-static unsigned
-regn(struct ir3_register *reg)
-{
-	unsigned regn = reg->num;
-	if (reg->flags & IR3_REG_HALF)
-		regn += MAX_REG;
-	return regn;
-}
-
 /**
- * Super-cheezy into-ssa pass, doesn't handle flow control or anything
- * hard.  Just enough to figure out the SSA srcs of the last instruction.
+ * ir3_delay_calc_* relies on the src/dst wrmask being correct even for ALU
+ * instructions, so this sets it here.
  *
  * Note that this is not clever enough to know how many src/dst there are
  * for various tex/mem instructions.  But the rules for tex consuming alu
  * are the same as sfu consuming alu.
  */
 static void
-regs_to_ssa(struct ir3 *ir)
+fixup_wrmask(struct ir3 *ir)
 {
-	struct ir3_instruction *regfile[2 * MAX_REG] = {};
 	struct ir3_block *block = ir3_start_block(ir);
 
 	foreach_instr_safe (instr, &block->instr_list) {
+		instr->regs[0]->wrmask = MASK(instr->repeat + 1);
 		foreach_src (reg, instr) {
 			if (reg->flags & (IR3_REG_CONST | IR3_REG_IMMED))
 				continue;
 
-			struct ir3_instruction *src = regfile[regn(reg)];
-
-			if (!src)
-				continue;
-
-			if (reg->flags & IR3_REG_R) {
-				unsigned nsrc = 1 + instr->repeat;
-				unsigned flags = src->regs[0]->flags & IR3_REG_HALF;
-				struct ir3_instruction *collect =
-					ir3_instr_create(block, OPC_META_COLLECT, 1 + nsrc);
-				__ssa_dst(collect)->flags |= flags;
-				for (unsigned i = 0; i < nsrc; i++)
-					__ssa_src(collect, regfile[regn(reg) + i], flags);
-
-				ir3_instr_move_before(collect, instr);
-
-				src = collect;
-			}
-
-			reg->def = src->regs[0];
-			reg->flags |= IR3_REG_SSA;
-		}
-
-		if (instr->repeat) {
-			unsigned ndst = 1 + instr->repeat;
-			unsigned flags = instr->regs[0]->flags & IR3_REG_HALF;
-
-			for (unsigned i = 0; i < ndst; i++) {
-				struct ir3_instruction *split =
-					ir3_instr_create(block, OPC_META_SPLIT, 2);
-				__ssa_dst(split)->flags |= flags;
-				__ssa_src(split, instr, flags);
-				split->split.off = i;
-
-				ir3_instr_move_after(split, instr);
-
-				regfile[regn(instr->regs[0]) + i] = split;
-			}
-		} else {
-			instr->regs[0]->instr = instr;
-			regfile[regn(instr->regs[0])] = instr;
+			if (reg->flags & IR3_REG_R)
+				reg->wrmask = MASK(instr->repeat + 1);
+			else
+				reg->wrmask = 1;
 		}
 	}
 }
@@ -188,9 +150,9 @@ main(int argc, char **argv)
 		struct ir3_shader *shader = parse_asm(c, test->asmstr);
 		struct ir3 *ir = shader->variants->ir;
 
-		regs_to_ssa(ir);
+		fixup_wrmask(ir);
 
-		ir3_debug_print(ir, "AFTER REGS->SSA");
+		ir3_debug_print(ir, "AFTER fixup_wrmask");
 
 		struct ir3_block *block =
 			list_first_entry(&ir->block_list, struct ir3_block, node);
@@ -209,7 +171,7 @@ main(int argc, char **argv)
 		 */
 		list_delinit(&last->node);
 
-		unsigned n = ir3_delay_calc(block, last, false, false);
+		unsigned n = ir3_delay_calc_exact(block, last, true);
 
 		if (n != test->expected_delay) {
 			printf("%d: FAIL: Expected delay %u, but got %u, for:\n%s\n",

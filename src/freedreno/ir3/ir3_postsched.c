@@ -192,7 +192,8 @@ choose_instr(struct ir3_postsched_ctx *ctx)
 
 	/* Next prioritize discards: */
 	foreach_sched_node (n, &ctx->dag->heads) {
-		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
+		unsigned d =
+			ir3_delay_calc_postra(ctx->block, n->instr, false, ctx->v->mergedregs);
 
 		if (d > 0)
 			continue;
@@ -211,7 +212,8 @@ choose_instr(struct ir3_postsched_ctx *ctx)
 
 	/* Next prioritize expensive instructions: */
 	foreach_sched_node (n, &ctx->dag->heads) {
-		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
+		unsigned d =
+			ir3_delay_calc_postra(ctx->block, n->instr, false, ctx->v->mergedregs);
 
 		if (d > 0)
 			continue;
@@ -241,7 +243,8 @@ choose_instr(struct ir3_postsched_ctx *ctx)
 			if (would_sync(ctx, n->instr))
 				continue;
 
-			unsigned d = ir3_delay_calc(ctx->block, n->instr, true, false);
+			unsigned d =
+				ir3_delay_calc_postra(ctx->block, n->instr, true, ctx->v->mergedregs);
 
 			if (d > delay)
 				continue;
@@ -262,7 +265,8 @@ choose_instr(struct ir3_postsched_ctx *ctx)
 	 * while we wait)
 	 */
 	foreach_sched_node (n, &ctx->dag->heads) {
-		unsigned d = ir3_delay_calc(ctx->block, n->instr, true, false);
+		unsigned d =
+			ir3_delay_calc_postra(ctx->block, n->instr, true, ctx->v->mergedregs);
 
 		if (d > 0)
 			continue;
@@ -281,7 +285,8 @@ choose_instr(struct ir3_postsched_ctx *ctx)
 	 * stalls.. but we've already decided there is not a better option.
 	 */
 	foreach_sched_node (n, &ctx->dag->heads) {
-		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
+		unsigned d =
+			ir3_delay_calc_postra(ctx->block, n->instr, false, ctx->v->mergedregs);
 
 		if (d > 0)
 			continue;
@@ -649,7 +654,8 @@ sched_block(struct ir3_postsched_ctx *ctx, struct ir3_block *block)
 	while (!list_is_empty(&ctx->unscheduled_list)) {
 		struct ir3_instruction *instr = choose_instr(ctx);
 
-		unsigned delay = ir3_delay_calc(ctx->block, instr, false, false);
+		unsigned delay =
+			ir3_delay_calc_postra(ctx->block, instr, false, ctx->v->mergedregs);
 		d("delay=%u", delay);
 
 		/* and if we run out of instructions that can be scheduled,
