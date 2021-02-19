@@ -50,10 +50,7 @@
 
 #include "util/macros.h"
 #include "glsl_types.h"
-#include "nir.h"
-#include "nir_types.h"
 
-#include "clc_helpers.h"
 #include "spirv.h"
 
 #include "opencl-c.h.h"
@@ -146,8 +143,6 @@ public:
       assert(op->type == SPV_OPERAND_TYPE_RESULT_ID);
 
       uint32_t funcId = ins->words[op->offset];
-
-      SPIRVKernelInfo *kernel = NULL;
 
       for (auto &kernel : kernels) {
          if (funcId == kernel.funcId && !kernel.args.size()) {
@@ -767,14 +762,13 @@ clc_compile_to_llvm_module(const struct clc_compile_args *args,
                                                   clang_opts.data() + clang_opts.size(),
 #endif
                                                   diag)) {
-      log += "Couldn't create Clang invocation.\n";
-      clc_error(logger, log.c_str());
+      clc_error(logger, "%sCouldn't create Clang invocation.\n", log.c_str());
       return {};
    }
 
    if (diag.hasErrorOccurred()) {
-      log += "Errors occurred during Clang invocation.\n";
-      clc_error(logger, log.c_str());
+      clc_error(logger, "%sErrors occurred during Clang invocation.\n",
+                log.c_str());
       return {};
    }
 
@@ -837,8 +831,8 @@ clc_compile_to_llvm_module(const struct clc_compile_args *args,
    // Compile the code
    clang::EmitLLVMOnlyAction act(llvm_ctx.get());
    if (!c->ExecuteAction(act)) {
-      log += "Error executing LLVM compilation action.\n";
-      clc_error(logger, log.c_str());
+      clc_error(logger, "%sError executing LLVM compilation action.\n",
+                log.c_str());
       return {};
    }
 
@@ -854,8 +848,8 @@ llvm_mod_to_spirv(std::unique_ptr<::llvm::Module> mod,
    std::string log;
    std::ostringstream spv_stream;
    if (!::llvm::writeSpirv(mod.get(), spv_stream, log)) {
-      log += "Translation from LLVM IR to SPIR-V failed.\n";
-      clc_error(logger, log.c_str());
+      clc_error(logger, "%sTranslation from LLVM IR to SPIR-V failed.\n",
+                log.c_str());
       return -1;
    }
 
