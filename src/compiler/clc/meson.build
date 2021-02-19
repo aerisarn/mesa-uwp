@@ -39,13 +39,18 @@ files_libclc = files(
   'clc_helpers.cpp',
 )
 
+_libclc_cpp_args = ['-DCLANG_RESOURCE_DIR="@0@"'.format(clang_resource_dir)]
+if with_microsoft_clc
+  _libclc_cpp_args += ['-DUSE_STATIC_OPENCL_C_H=1']
+endif
+
 _libclc = static_library(
   'libclc',
   files_libclc,
   opencl_c_h,
   opencl_c_base_h,
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_compiler, inc_spirv],
-  cpp_args : ['-DCLANG_RESOURCE_DIR="@0@"'.format(clang_resource_dir)],
+  cpp_args : _libclc_cpp_args,
   dependencies: [idep_nir_headers, dep_clang, dep_llvm, dep_llvmspirvlib,
                  idep_mesautil, idep_nir, dep_spirv_tools]
 )

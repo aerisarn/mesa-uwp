@@ -53,8 +53,10 @@
 
 #include "spirv.h"
 
+#ifdef USE_STATIC_OPENCL_C_H
 #include "opencl-c.h.h"
 #include "opencl-c-base.h.h"
+#endif
 
 #include "clc_helpers.h"
 
@@ -785,6 +787,8 @@ clc_compile_to_llvm_module(const struct clc_compile_args *args,
                    c->getDiagnostics(), c->getInvocation().TargetOpts));
 
    c->getFrontendOpts().ProgramAction = clang::frontend::EmitLLVMOnly;
+
+#ifdef USE_STATIC_OPENCL_C_H
    c->getHeaderSearchOpts().UseBuiltinIncludes = false;
    c->getHeaderSearchOpts().UseStandardSystemIncludes = false;
 
@@ -806,6 +810,18 @@ clc_compile_to_llvm_module(const struct clc_compile_args *args,
       c->getPreprocessorOpts().addRemappedFile(system_header_path.str(),
          ::llvm::MemoryBuffer::getMemBuffer(llvm::StringRef(opencl_c_base_source, ARRAY_SIZE(opencl_c_base_source) - 1)).release());
    }
+#else
+   c->getHeaderSearchOpts().UseBuiltinIncludes = true;
+   c->getHeaderSearchOpts().UseStandardSystemIncludes = true;
+   c->getHeaderSearchOpts().ResourceDir = CLANG_RESOURCE_DIR;
+
+   // Add opencl-c generic search path
+   c->getHeaderSearchOpts().AddPath(CLANG_RESOURCE_DIR,
+                                    clang::frontend::Angled,
+                                    false, false);
+   // Add opencl include
+   c->getPreprocessorOpts().Includes.push_back("opencl-c.h");
+#endif
 
    if (args->num_headers) {
       ::llvm::SmallString<128> tmp_header_path;
