@@ -1,5 +1,5 @@
 EXPORTS
-    clc_libclc_new
+    clc_libclc_new_dxil
     clc_free_libclc
     clc_libclc_serialize
     clc_libclc_free_serialized

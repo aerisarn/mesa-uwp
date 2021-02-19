@@ -19,27 +19,38 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-files_libclc_compiler = files(
-  'clc_compiler.c',
-  'clc_nir.c',
+clang_resource_dir = join_paths(llvm_libdir, 'clang', dep_llvm.version(), 'include')
+
+opencl_c_h = custom_target(
+  'opencl-c.h',
+  input : [files_xxd, join_paths(clang_resource_dir, 'opencl-c.h')],
+  output : 'opencl-c.h.h',
+  command : [prog_python, '@INPUT@', '@OUTPUT@', '-n', 'opencl_c_source'],
+)
+opencl_c_base_h = custom_target(
+  'opencl-c-base.h',
+  input : [files_xxd, join_paths(clang_resource_dir, 'opencl-c-base.h')],
+  output : 'opencl-c-base.h.h',
+  command : [prog_python, '@INPUT@', '@OUTPUT@', '-n', 'opencl_c_base_source'],
 )
 
-libclc_compiler = shared_library(
-  'clon12compiler',
-  [files_libclc_compiler, sha1_h],
-  vs_module_defs : 'clon12compiler.def',
-  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_compiler, inc_gallium, inc_spirv],
-  dependencies: [idep_clc, idep_nir_headers, dep_version, idep_mesautil,
-                 idep_libdxil_compiler, idep_nir]
+files_libclc = files(
+  'clc.c',
+  'clc_helpers.cpp',
 )
 
-if dep_dxheaders.found()
-  clc_compiler_test = executable('clc_compiler_test',
-    ['clc_compiler_test.cpp', 'compute_test.cpp'],
-    link_with : [libclc_compiler],
-    dependencies : [idep_gtest, idep_mesautil, idep_libdxil_compiler, dep_dxheaders,
-                    dep_spirv_tools],
-    include_directories : [inc_include, inc_src, inc_compiler, inc_spirv])
+_libclc = static_library(
+  'libclc',
+  files_libclc,
+  opencl_c_h,
+  opencl_c_base_h,
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_compiler, inc_spirv],
+  cpp_args : ['-DCLANG_RESOURCE_DIR="@0@"'.format(clang_resource_dir)],
+  dependencies: [idep_nir_headers, dep_clang, dep_llvm, dep_llvmspirvlib,
+                 idep_mesautil, idep_nir, dep_spirv_tools]
+)
 
-  test('clc_compiler_test', clc_compiler_test, timeout: 180)
-endif
+idep_clc = declare_dependency(
+  link_with : _libclc,
+  include_directories : include_directories('.'),
+)

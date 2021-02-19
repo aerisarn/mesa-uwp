@@ -622,10 +622,10 @@ ComputeTest::SetUp()
    static struct clc_libclc *compiler_ctx_g = nullptr;
 
    if (!compiler_ctx_g) {
-      clc_libclc_options options = { };
+      clc_libclc_dxil_options options = { };
       options.optimize = (debug_get_option_debug_compute() & COMPUTE_DEBUG_OPTIMIZE_LIBCLC) != 0;
 
-      compiler_ctx_g = clc_libclc_new(&logger, &options);
+      compiler_ctx_g = clc_libclc_new_dxil(&logger, &options);
       if (!compiler_ctx_g)
          throw runtime_error("failed to create CLC compiler context");
 

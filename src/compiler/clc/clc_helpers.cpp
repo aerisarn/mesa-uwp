@@ -59,6 +59,8 @@
 #include "opencl-c.h.h"
 #include "opencl-c-base.h.h"
 
+#include "clc_helpers.h"
+
 constexpr spv_target_env spirv_target = SPV_ENV_UNIVERSAL_1_0;
 
 using ::llvm::Function;

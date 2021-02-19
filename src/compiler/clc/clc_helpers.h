@@ -21,22 +21,22 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef CLC_TO_NIR_H
-#define CLC_TO_NIR_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifndef MESA_CLC_HELPERS_H
+#define MESA_CLC_HELPERS_H
 
 #include "nir_types.h"
 
-#include "clc_compiler.h"
+#include "clc.h"
 #include "util/u_string.h"
 
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 bool
 clc_spirv_get_kernels_info(const struct clc_binary *spvbin,
@@ -101,4 +101,4 @@ clc_free_spirv_binary(struct clc_binary *spvbin);
 }
 #endif
 
-#endif
+#endif /* MESA_CLC_HELPERS_H */
