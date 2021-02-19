@@ -83,6 +83,17 @@ struct ir3_info {
 	uint16_t instrs_per_cat[8];
 };
 
+struct ir3_merge_set {
+	uint16_t preferred_reg;
+	uint16_t size;
+	uint16_t alignment;
+
+	unsigned interval_start;
+
+	unsigned regs_count;
+	struct ir3_register **regs;
+};
+
 struct ir3_register {
 	enum {
 		IR3_REG_CONST  = 0x001,
@@ -119,6 +130,9 @@ struct ir3_register {
 		IR3_REG_ARRAY  = 0x8000,
 
 		IR3_REG_DEST   = 0x10000,
+		IR3_REG_KILL = 0x20000,
+		IR3_REG_FIRST_KILL = 0x40000,
+		IR3_REG_UNUSED = 0x80000,
 	} flags;
 
 	/* used for cat5 instructions, but also for internal/IR level
@@ -142,6 +156,7 @@ struct ir3_register {
 	 * rN.x becomes: (N << 2) | x
 	 */
 	uint16_t num;
+	uint16_t name;
 	union {
 		/* immediate: */
 		int32_t  iim_val;
@@ -169,6 +184,10 @@ struct ir3_register {
 	 * back to a previous instruction that we depend on).
 	 */
 	struct ir3_register *def;
+
+	unsigned merge_set_offset;
+	struct ir3_merge_set *merge_set;
+	unsigned interval_start, interval_end;
 };
 
 /*
@@ -178,12 +197,12 @@ struct ir3_register {
 	unsigned name ## _count, name ## _sz; \
 	type * name;
 
-#define array_insert(ctx, arr, val) do { \
+#define array_insert(ctx, arr, ...) do { \
 		if (arr ## _count == arr ## _sz) { \
 			arr ## _sz = MAX2(2 * arr ## _sz, 16); \
 			arr = reralloc_size(ctx, arr, arr ## _sz * sizeof(arr[0])); \
 		} \
-		arr[arr ##_count++] = val; \
+		arr[arr ##_count++] = __VA_ARGS__; \
 	} while (0)
 
 struct ir3_instruction {
@@ -696,12 +715,12 @@ bool ir3_valid_flags(struct ir3_instruction *instr, unsigned n, unsigned flags);
 		set_foreach ((__instr)->uses, __entry) \
 			if ((__use = (void *)__entry->key))
 
-static inline uint32_t reg_num(struct ir3_register *reg)
+static inline uint32_t reg_num(const struct ir3_register *reg)
 {
 	return reg->num >> 2;
 }
 
-static inline uint32_t reg_comp(struct ir3_register *reg)
+static inline uint32_t reg_comp(const struct ir3_register *reg)
 {
 	return reg->num & 0x3;
 }
@@ -1479,9 +1498,6 @@ bool ir3_cp_postsched(struct ir3 *ir);
 /* Make arrays SSA */
 bool ir3_array_to_ssa(struct ir3 *ir);
 
-/* group neighbors and insert mov's to resolve conflicts: */
-bool ir3_group(struct ir3 *ir);
-
 /* scheduling: */
 bool ir3_sched_add_deps(struct ir3 *ir);
 int ir3_sched(struct ir3 *ir);
@@ -1489,11 +1505,8 @@ int ir3_sched(struct ir3 *ir);
 struct ir3_context;
 bool ir3_postsched(struct ir3 *ir, struct ir3_shader_variant *v);
 
-bool ir3_a6xx_fixup_atomic_dests(struct ir3 *ir, struct ir3_shader_variant *so);
-
 /* register assignment: */
-struct ir3_ra_reg_set * ir3_ra_alloc_reg_set(struct ir3_compiler *compiler, bool mergedregs);
-int ir3_ra(struct ir3_shader_variant *v, struct ir3_instruction **precolor, unsigned nprecolor);
+int ir3_ra(struct ir3_shader_variant *v);
 
 /* legalize: */
 bool ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary);

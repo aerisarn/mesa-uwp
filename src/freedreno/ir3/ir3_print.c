@@ -165,6 +165,8 @@ static void print_instr_name(struct ir3_instruction *instr, bool flags)
 static void print_ssa_def_name(struct ir3_register *reg)
 {
 	printf(SYN_SSA("ssa_%u"), reg->instr->serialno);
+		if (reg->name != 0)
+			printf(":%u", reg->name);
 }
 
 static void print_ssa_name(struct ir3_register *reg, bool dst)
@@ -177,6 +179,9 @@ static void print_ssa_name(struct ir3_register *reg, bool dst)
 	} else {
 		print_ssa_def_name(reg);
 	}
+
+	if (reg->num != INVALID_REG)
+			printf("("SYN_REG("r%u.%c")")", reg_num(reg), "xyzw"[reg_comp(reg)]);
 }
 
 static void print_reg_name(struct ir3_instruction *instr, struct ir3_register *reg)
@@ -188,6 +193,11 @@ static void print_reg_name(struct ir3_instruction *instr, struct ir3_register *r
 		printf("(neg)");
 	else if (reg->flags & (IR3_REG_FABS | IR3_REG_SABS))
 		printf("(abs)");
+
+	if (reg->flags & IR3_REG_FIRST_KILL)
+		printf("(kill)");
+	if (reg->flags & IR3_REG_UNUSED)
+		printf("(unused)");
 
 	if (reg->flags & IR3_REG_R)
 		printf("(r)");

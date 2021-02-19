@@ -111,7 +111,7 @@ ir3_context_init(struct ir3_compiler *compiler,
 	if ((so->type == MESA_SHADER_FRAGMENT) && (compiler->gpu_id >= 600))
 		NIR_PASS_V(ctx->s, ir3_nir_lower_tex_prefetch);
 
-	NIR_PASS_V(ctx->s, nir_convert_from_ssa, true);
+	NIR_PASS(progress, ctx->s, nir_lower_phis_to_scalar, true);
 
 	/* Super crude heuristic to limit # of tex prefetch in small
 	 * shaders.  This completely ignores loops.. but that's really

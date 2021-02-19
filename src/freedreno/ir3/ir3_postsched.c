@@ -728,23 +728,14 @@ cleanup_self_movs(struct ir3 *ir)
 {
 	foreach_block (block, &ir->block_list) {
 		foreach_instr_safe (instr, &block->instr_list) {
-
-			foreach_src (reg, instr) {
-				if (!reg->def)
-					continue;
-
-				if (is_self_mov(reg->def->instr)) {
-					list_delinit(&reg->def->instr->node);
-					reg->def = reg->def->instr->regs[1]->def;
-				}
-			}
-
 			for (unsigned i = 0; i < instr->deps_count; i++) {
 				if (instr->deps[i] && is_self_mov(instr->deps[i])) {
-					list_delinit(&instr->deps[i]->node);
-					instr->deps[i] = instr->deps[i]->regs[1]->def->instr;
+					instr->deps[i] = NULL;
 				}
 			}
+
+			if (is_self_mov(instr))
+				list_delinit(&instr->node);
 		}
 	}
 }

@@ -3811,13 +3811,17 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	/* Vertex shaders in a tessellation or geometry pipeline treat END as a
 	 * NOP and has an epilogue that writes the VS outputs to local storage, to
 	 * be read by the HS.  Then it resets execution mask (chmask) and chains
-	 * to the next shader (chsh).
+	 * to the next shader (chsh). There are also a few output values which we
+	 * must send to the next stage via registers, and in order for both stages
+	 * to agree on the register used we must force these to be in specific
+	 * registers.
 	 */
 	if ((so->type == MESA_SHADER_VERTEX &&
 				(so->key.has_gs || so->key.tessellation)) ||
 			(so->type == MESA_SHADER_TESS_EVAL && so->key.has_gs)) {
 		struct ir3_instruction *outputs[3];
 		unsigned outidxs[3];
+		unsigned regids[3];
 		unsigned outputs_count = 0;
 
 		if (ctx->primitive_id) {
@@ -3828,6 +3832,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 				ir3_create_collect(ctx, &ctx->primitive_id, 1);
 			outputs[outputs_count] = out;
 			outidxs[outputs_count] = n;
+			regids[outputs_count] = regid(0, 1);
 			outputs_count++;
 		}
 
@@ -3838,6 +3843,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 				ir3_create_collect(ctx, &ctx->gs_header, 1);
 			outputs[outputs_count] = out;
 			outidxs[outputs_count] = n;
+			regids[outputs_count] = regid(0, 0);
 			outputs_count++;
 		}
 
@@ -3848,6 +3854,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 				ir3_create_collect(ctx, &ctx->tcs_header, 1);
 			outputs[outputs_count] = out;
 			outidxs[outputs_count] = n;
+			regids[outputs_count] = regid(0, 0);
 			outputs_count++;
 		}
 
@@ -3858,7 +3865,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
 		__ssa_dst(chmask);
 		for (unsigned i = 0; i < outputs_count; i++)
-			__ssa_src(chmask, outputs[i], 0);
+			__ssa_src(chmask, outputs[i], 0)->num = regids[i];
 
 		chmask->end.outidxs = ralloc_array(chmask, unsigned, outputs_count);
 		memcpy(chmask->end.outidxs, outidxs, sizeof(unsigned) * outputs_count);
@@ -3959,6 +3966,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	ir3_debug_print(ir, "AFTER: nir->ir3");
 	ir3_validate(ir);
 
+	IR3_PASS(ir, ir3_array_to_ssa);
+
 	do {
 		progress = false;
 
@@ -3979,11 +3988,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	}
 
 	IR3_PASS(ir, ir3_sched_add_deps);
-
-	/* Group left/right neighbors, inserting mov's where needed to
-	 * solve conflicts:
-	 */
-	IR3_PASS(ir, ir3_group);
 
 	/* At this point, all the dead code should be long gone: */
 	assert(!IR3_PASS(ir, ir3_dce, so));
@@ -4012,20 +4016,12 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 			so->binning_pass;
 
 	if (pre_assign_inputs) {
-		for (unsigned i = 0; i < ctx->ninputs; i++) {
-			struct ir3_instruction *instr = ctx->inputs[i];
+		foreach_input (in, ir) {
+			assert(in->opc == OPC_META_INPUT);
+			unsigned inidx = in->input.inidx;
 
-			if (!instr)
-				continue;
-
-			unsigned n = i / 4;
-			unsigned c = i % 4;
-			unsigned regid = so->nonbinning->inputs[n].regid + c;
-
-			instr->regs[0]->num = regid;
+			in->regs[0]->num = so->nonbinning->inputs[inidx].regid;
 		}
-
-		ret = ir3_ra(so, ctx->inputs, ctx->ninputs);
 	} else if (ctx->tcs_header) {
 		/* We need to have these values in the same registers between VS and TCS
 		 * since the VS chains to TCS and doesn't get the sysvals redelivered.
@@ -4033,8 +4029,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
 		ctx->tcs_header->regs[0]->num = regid(0, 0);
 		ctx->primitive_id->regs[0]->num = regid(0, 1);
-		struct ir3_instruction *precolor[] = { ctx->tcs_header, ctx->primitive_id };
-		ret = ir3_ra(so, precolor, ARRAY_SIZE(precolor));
 	} else if (ctx->gs_header) {
 		/* We need to have these values in the same registers between producer
 		 * (VS or DS) and GS since the producer chains to GS and doesn't get
@@ -4043,28 +4037,21 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
 		ctx->gs_header->regs[0]->num = regid(0, 0);
 		ctx->primitive_id->regs[0]->num = regid(0, 1);
-		struct ir3_instruction *precolor[] = { ctx->gs_header, ctx->primitive_id };
-		ret = ir3_ra(so, precolor, ARRAY_SIZE(precolor));
 	} else if (so->num_sampler_prefetch) {
 		assert(so->type == MESA_SHADER_FRAGMENT);
-		struct ir3_instruction *precolor[2];
 		int idx = 0;
 
 		foreach_input (instr, ir) {
 			if (instr->input.sysval != SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL)
 				continue;
 
-			assert(idx < ARRAY_SIZE(precolor));
-
-			precolor[idx] = instr;
+			assert(idx < 2);
 			instr->regs[0]->num = idx;
-
 			idx++;
 		}
-		ret = ir3_ra(so, precolor, idx);
-	} else {
-		ret = ir3_ra(so, NULL, 0);
 	}
+
+	ret = ir3_ra(so);
 
 	if (ret) {
 		DBG("RA failed!");
@@ -4072,10 +4059,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	}
 
 	IR3_PASS(ir, ir3_postsched, so);
-
-	if (compiler->gpu_id >= 600) {
-		IR3_PASS(ir, ir3_a6xx_fixup_atomic_dests, so);
-	}
 
 	if (so->type == MESA_SHADER_FRAGMENT)
 		pack_inlocs(ctx);

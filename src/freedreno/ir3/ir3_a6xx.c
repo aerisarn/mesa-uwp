@@ -125,9 +125,9 @@ emit_intrinsic_atomic_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	 *    src1.z  - is 'data' for cmpxchg
 	 *
 	 * The combining src and dest kinda doesn't work out so well with how
-	 * scheduling and RA work.  So for now we create a dummy src2.x, and
-	 * then in a later fixup path, insert an extra MOV out of src1.x.
-	 * See ir3_a6xx_fixup_atomic_dests().
+	 * scheduling and RA work. So we create a dummy src2 which is tied to the
+	 * destination in RA (i.e. must be allocated to the same vec2/vec3
+	 * register) and then immediately extract the first component.
 	 *
 	 * Note that nir already multiplies the offset by four
 	 */
@@ -193,7 +193,10 @@ emit_intrinsic_atomic_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	/* even if nothing consume the result, we can't DCE the instruction: */
 	array_insert(b, b->keeps, atomic);
 
-	return atomic;
+	atomic->regs[0]->wrmask = src1->regs[0]->wrmask;
+	struct ir3_instruction *split;
+	ir3_split_dest(b, &split, atomic, 0, 1);
+	return split;
 }
 
 /* src[] = { deref, coord, sample_index }. const_index[] = {} */
@@ -270,9 +273,9 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	 *    src1.z  - is 'value' for cmpxchg
 	 *
 	 * The combining src and dest kinda doesn't work out so well with how
-	 * scheduling and RA work.  So for now we create a dummy src2.x, and
-	 * then in a later fixup path, insert an extra MOV out of src1.x.
-	 * See ir3_a6xx_fixup_atomic_dests().
+	 * scheduling and RA work. So we create a dummy src2 which is tied to the
+	 * destination in RA (i.e. must be allocated to the same vec2/vec3
+	 * register) and then immediately extract the first component.
 	 */
 	dummy = create_immed(b, 0);
 	src0 = ir3_create_collect(ctx, coords, ncoords);
@@ -341,7 +344,10 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	/* even if nothing consume the result, we can't DCE the instruction: */
 	array_insert(b, b->keeps, atomic);
 
-	return atomic;
+	atomic->regs[0]->wrmask = src1->regs[0]->wrmask;
+	struct ir3_instruction *split;
+	ir3_split_dest(b, &split, atomic, 0, 1);
+	return split;
 }
 
 static void
@@ -373,77 +379,3 @@ const struct ir3_context_funcs ir3_a6xx_funcs = {
 		.emit_intrinsic_image_size = emit_intrinsic_image_size,
 };
 
-/*
- * Special pass to run after instruction scheduling to insert an
- * extra mov from src1.x to dst.  This way the other compiler passes
- * can ignore this quirk of the new instruction encoding.
- *
- * This should run after RA.
- */
-
-static struct ir3_instruction *
-get_atomic_dest_mov(struct ir3_instruction *atomic)
-{
-	struct ir3_instruction *mov;
-
-	/* if we've already created the mov-out, then re-use it: */
-	if (atomic->data)
-		return atomic->data;
-
-	/* We are already out of SSA here, so we can't use the nice builders: */
-	mov = ir3_instr_create(atomic->block, OPC_MOV, 2);
-	ir3_reg_create(mov, 0, 0);    /* dst */
-	ir3_reg_create(mov, 0, 0);    /* src */
-
-	mov->cat1.src_type = TYPE_U32;
-	mov->cat1.dst_type = TYPE_U32;
-
-	/* extract back out the 'dummy' which serves as stand-in for dest: */
-	struct ir3_instruction *src = atomic->regs[3]->instr;
-	debug_assert(src->opc == OPC_META_COLLECT);
-
-	*mov->regs[0] = *atomic->regs[0];
-	*mov->regs[1] = *src->regs[1]->instr->regs[0];
-
-	mov->flags |= IR3_INSTR_SY;
-
-	/* it will have already been appended to the end of the block, which
-	 * isn't where we want it, so fix-up the location:
-	 */
-	ir3_instr_move_after(mov, atomic);
-
-	return atomic->data = mov;
-}
-
-bool
-ir3_a6xx_fixup_atomic_dests(struct ir3 *ir, struct ir3_shader_variant *so)
-{
-	bool progress = false;
-
-	if (ir3_shader_nibo(so) == 0 && !so->bindless_ibo)
-		return false;
-
-	foreach_block (block, &ir->block_list) {
-		foreach_instr (instr, &block->instr_list) {
-			instr->data = NULL;
-		}
-	}
-
-	foreach_block (block, &ir->block_list) {
-		foreach_instr_safe (instr, &block->instr_list) {
-			foreach_src (reg, instr) {
-				struct ir3_instruction *src = reg->instr;
-
-				if (!src)
-					continue;
-
-				if (is_atomic(src->opc) && (src->flags & IR3_INSTR_G)) {
-					reg->instr = get_atomic_dest_mov(src);
-					progress = true;
-				}
-			}
-		}
-	}
-
-	return progress;
-}

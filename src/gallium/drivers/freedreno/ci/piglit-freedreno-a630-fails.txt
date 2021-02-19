@@ -475,8 +475,6 @@ spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-float-i
 spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-vec2-index-rd,Crash
 spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-vec3-index-rd,Crash
 spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-vec4-index-rd,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@vs-output-array-vec3-index-wr-before-tcs,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@vs-output-array-vec4-index-wr-before-tcs,Fail
 spec@arb_tessellation_shader@execution@vertex-partial-write,Crash
 spec@arb_tessellation_shader@execution@vs-tes-max-in-out-components,Fail
 spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-quads,Fail
@@ -507,11 +505,8 @@ spec@glsl-1.50@execution@compatibility@vs-gs-texcoord-array-2,Crash
 spec@glsl-1.50@execution@geometry@max-input-components,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
-spec@glsl-1.50@execution@variable-indexing@gs-input-array-float-index-rd,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec2-index-rd,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec3-index-rd,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-output-array-vec3-index-wr,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-output-array-vec4-index-wr,Crash
-spec@glsl-1.50@execution@variable-indexing@vs-output-array-vec3-index-wr-before-gs,Fail
 spec@glsl-1.50@execution@variable-indexing@vs-output-array-vec4-index-wr-before-gs,Fail
-spec@glsl-es-3.10@execution@cs-image-atomic-if-else-2,Fail

@@ -435,11 +435,11 @@ traces:
   - path: minetest/minetest.trace
     expectations:
       - device: freedreno-a306
-        checksum: 9227cc8d4e6445f2323438340f2a5d9b
+        checksum: daedbc987cc1b1f934364ce6b633bc54
       - device: freedreno-a530
-        checksum: d0d655d81fabeb4087bf7c4837301f2a
+        checksum: 0054f0ba67ace5d2defe17b74b5364e9
       - device: freedreno-a630
-        checksum: c7349124612a8760ddd825b903561ec4
+        checksum: b47f8151d4310d87070deea9059d001b
   - path: neverball/neverball.trace
     expectations:
       # Skipped since it's long on a530.

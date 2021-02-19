@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Rob Clark <robclark@freedesktop.org>
+ * Copyright (C) 2021 Valve Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -19,361 +19,282 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- *
- * Authors:
- *    Rob Clark <robclark@freedesktop.org>
  */
 
-#ifndef IR3_RA_H_
-#define IR3_RA_H_
+#ifndef _IR3_RA_H
+#define _IR3_RA_H
 
-#include <setjmp.h>
+#include "ir3.h"
+#include "ir3_compiler.h"
+#include "util/rb_tree.h"
 
-#include "util/bitset.h"
+#ifdef DEBUG
+#define RA_DEBUG (ir3_shader_debug & IR3_DBG_RAMSGS)
+#else
+#define RA_DEBUG 0
+#endif
+#define d(fmt, ...) do { if (RA_DEBUG) { \
+	printf("RA: "fmt"\n", ##__VA_ARGS__); \
+} } while (0)
 
+#define di(instr, fmt, ...) do { if (RA_DEBUG) { \
+	printf("RA: "fmt": ", ##__VA_ARGS__); \
+	ir3_print_instr(instr); \
+} } while (0)
 
-static const unsigned class_sizes[] = {
-	1, 2, 3, 4,
-	4 + 4, /* txd + 1d/2d */
-	4 + 6, /* txd + 3d */
-};
-#define class_count ARRAY_SIZE(class_sizes)
+typedef uint16_t physreg_t;
 
-static const unsigned half_class_sizes[] = {
-	1, 2, 3, 4,
-};
-#define half_class_count  ARRAY_SIZE(half_class_sizes)
+static inline unsigned
+ra_physreg_to_num(physreg_t physreg, unsigned flags)
+{
+	if (!(flags & IR3_REG_HALF))
+		physreg /= 2;
+	if (flags & IR3_REG_SHARED)
+		physreg += 48 * 4;
+	return physreg;
+}
 
-/* seems to just be used for compute shaders?  Seems like vec1 and vec3
- * are sufficient (for now?)
+static inline physreg_t
+ra_num_to_physreg(unsigned num, unsigned flags)
+{
+	if (flags & IR3_REG_SHARED)
+		num -= 48 * 4;
+	if (!(flags & IR3_REG_HALF))
+		num *= 2;
+	return num;
+}
+
+static inline unsigned
+ra_reg_get_num(const struct ir3_register *reg)
+{
+	return (reg->flags & IR3_REG_ARRAY) ? reg->array.base : reg->num;
+}
+
+static inline physreg_t
+ra_reg_get_physreg(const struct ir3_register *reg)
+{
+	return ra_num_to_physreg(ra_reg_get_num(reg), reg->flags);
+}
+
+static inline bool
+def_is_gpr(const struct ir3_register *reg)
+{
+	return reg_num(reg) != REG_A0 && reg_num(reg) != REG_P0;
+}
+
+/* Note: don't count undef as a source.
  */
-static const unsigned shared_class_sizes[] = {
-	1, 3,
-};
-#define shared_class_count ARRAY_SIZE(shared_class_sizes)
-
-#define total_class_count (class_count + half_class_count + shared_class_count)
-
-/* Below a0.x are normal regs.  RA doesn't need to assign a0.x/p0.x. */
-#define NUM_REGS             (4 * 48)  /* r0 to r47 */
-#define NUM_SHARED_REGS      (4 * 8)   /* r48 to r55 */
-#define FIRST_SHARED_REG     (4 * 48)
-/* Number of virtual regs in a given class: */
-
-static inline unsigned CLASS_REGS(unsigned i)
+static inline bool
+ra_reg_is_src(const struct ir3_register *reg)
 {
-	assert(i < class_count);
-
-	return (NUM_REGS - (class_sizes[i] - 1));
+	return (reg->flags & IR3_REG_SSA) && reg->def &&
+		def_is_gpr(reg->def);
 }
 
-static inline unsigned HALF_CLASS_REGS(unsigned i)
+/* Array destinations can act as a source, reading the previous array and then
+ * modifying it. Return true when the register is an array destination that
+ * acts like a source.
+ */
+static inline bool
+ra_reg_is_array_rmw(const struct ir3_register *reg)
 {
-	assert(i < half_class_count);
-
-	return (NUM_REGS - (half_class_sizes[i] - 1));
+	return ((reg->flags & IR3_REG_ARRAY) && (reg->flags & IR3_REG_DEST) && reg->def);
 }
 
-static inline unsigned SHARED_CLASS_REGS(unsigned i)
+static inline bool
+ra_reg_is_dst(const struct ir3_register *reg)
 {
-	assert(i < shared_class_count);
-
-	return (NUM_SHARED_REGS - (shared_class_sizes[i] - 1));
+	return (reg->flags & IR3_REG_SSA) && (reg->flags & IR3_REG_DEST) &&
+		def_is_gpr(reg) &&
+		((reg->flags & IR3_REG_ARRAY) || reg->wrmask);
 }
 
-#define HALF_OFFSET          (class_count)
-#define SHARED_OFFSET        (class_count + half_class_count)
-
-/* register-set, created one time, used for all shaders: */
-struct ir3_ra_reg_set {
-	struct ra_regs *regs;
-	struct ra_class *classes[class_count];
-	struct ra_class *half_classes[half_class_count];
-	struct ra_class *shared_classes[shared_class_count];
-
-	/* pre-fetched tex dst is limited, on current gens to regs
-	 * 0x3f and below.  An additional register class, with one
-	 * vreg, that is setup to conflict with any regs above that
-	 * limit.
-	 */
-	struct ra_class *prefetch_exclude_class;
-	unsigned prefetch_exclude_reg;
-
-	/* The virtual register space flattens out all the classes,
-	 * starting with full, followed by half and then shared, ie:
-	 *
-	 *   scalar full  (starting at zero)
-	 *   vec2 full
-	 *   vec3 full
-	 *   ...
-	 *   vecN full
-	 *   scalar half  (starting at first_half_reg)
-	 *   vec2 half
-	 *   ...
-	 *   vecN half
-	 *   scalar shared  (starting at first_shared_reg)
-	 *   ...
-	 *   vecN shared
-	 *
-	 */
-	unsigned first_half_reg, first_shared_reg;
-
-	/* maps flat virtual register space to base gpr: */
-	uint16_t *ra_reg_to_gpr;
-	/* maps cls,gpr to flat virtual register space: */
-	uint16_t **gpr_to_ra_reg;
-};
-
-/* additional block-data (per-block) */
-struct ir3_ra_block_data {
-	BITSET_WORD *def;        /* variables defined before used in block */
-	BITSET_WORD *use;        /* variables used before defined in block */
-	BITSET_WORD *livein;     /* which defs reach entry point of block */
-	BITSET_WORD *liveout;    /* which defs reach exit point of block */
-};
-
-/* additional instruction-data (per-instruction) */
-struct ir3_ra_instr_data {
-	/* cached instruction 'definer' info: */
-	struct ir3_instruction *defn;
-	int off, sz, cls;
-};
-
-/* register-assign context, per-shader */
-struct ir3_ra_ctx {
-	struct ir3_shader_variant *v;
-	struct ir3 *ir;
-
-	struct ir3_ra_reg_set *set;
-	struct ra_graph *g;
-
-	/* Are we in the scalar assignment pass?  In this pass, all larger-
-	 * than-vec1 vales have already been assigned and pre-colored, so
-	 * we only consider scalar values.
-	 */
-	bool scalar_pass;
-
-	unsigned alloc_count;
-	unsigned r0_xyz_nodes; /* ra node numbers for r0.[xyz] precolors */
-	unsigned hr0_xyz_nodes; /* ra node numbers for hr0.[xyz] precolors */
-	unsigned prefetch_exclude_node;
-	/* one per class, plus one slot for arrays: */
-	unsigned class_alloc_count[total_class_count + 1];
-	unsigned class_base[total_class_count + 1];
-	unsigned instr_cnt;
-	unsigned *def, *use;     /* def/use table */
-	struct ir3_ra_instr_data *instrd;
-
-	/* Mapping vreg name back to instruction, used select reg callback: */
-	struct hash_table *name_to_instr;
-
-	/* Tracking for select_reg callback */
-	unsigned start_search_reg;
-	unsigned max_target;
-
-	/* Temporary buffer for def/use iterators
-	 *
-	 * The worst case should probably be an array w/ relative access (ie.
-	 * all elements are def'd or use'd), and that can't be larger than
-	 * the number of registers.
-	 *
-	 * NOTE we could declare this on the stack if needed, but I don't
-	 * think there is a need for nested iterators.
-	 */
-	unsigned namebuf[NUM_REGS];
-	unsigned namecnt, nameidx;
-
-	/* Error handling: */
-	jmp_buf jmp_env;
-};
-
-#define ra_assert(ctx, expr) do { \
-		if (!(expr)) { \
-			_debug_printf("RA: %s:%u: %s: Assertion `%s' failed.\n", __FILE__, __LINE__, __func__, #expr); \
-			longjmp((ctx)->jmp_env, -1); \
-		} \
-	} while (0)
-#define ra_unreachable(ctx, str) ra_assert(ctx, !str)
-
-static inline int
-ra_name(struct ir3_ra_ctx *ctx, struct ir3_ra_instr_data *id)
+static inline struct ir3_register *
+ra_dst_get_tied_src(const struct ir3_compiler *compiler, struct ir3_register *dst)
 {
-	unsigned name;
-	debug_assert(id->cls >= 0);
-	debug_assert(id->cls < total_class_count);  /* we shouldn't get arrays here.. */
-	name = ctx->class_base[id->cls] + id->defn->name;
-	debug_assert(name < ctx->alloc_count);
-	return name;
-}
-
-/* Get the scalar name of the n'th component of an instruction dst: */
-static inline int
-scalar_name(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr, unsigned n)
-{
-	if (ctx->scalar_pass) {
-		if (instr->opc == OPC_META_SPLIT) {
-			debug_assert(n == 0);     /* split results in a scalar */
-			struct ir3_instruction *src = instr->regs[1]->def->instr;
-			return scalar_name(ctx, src, instr->split.off);
-		} else if (instr->opc == OPC_META_COLLECT) {
-			debug_assert(n < (instr->regs_count + 1));
-			struct ir3_instruction *src = instr->regs[n + 1]->def->instr;
-			return scalar_name(ctx, src, 0);
-		}
-	} else {
-		debug_assert(n == 0);
+	/* With the a6xx new cat6 encoding, the same register is used for the
+	 * value and destination of atomic operations.
+	 */
+	if (compiler->gpu_id >= 600 && is_atomic(dst->instr->opc) &&
+		(dst->instr->flags & IR3_INSTR_G)) {
+		return dst->instr->regs[3];
 	}
 
-	return ra_name(ctx, &ctx->instrd[instr->ip]) + n;
+	return NULL;
 }
 
-#define NO_NAME ~0
-
-/*
- * Iterators to iterate the vreg names of an instructions def's and use's
+/* Iterators for sources and destinations which:
+ * - Don't include fake sources (irrelevant for RA)
+ * - Don't include non-SSA sources (immediates and constants, also irrelevant)
+ * - Consider array destinations as both a source and a destination
  */
 
-static inline unsigned
-__ra_name_cnt(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
+#define ra_foreach_src(__srcreg, __instr) \
+	for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
+		for (unsigned __cnt = (__instr)->regs_count, __i = 0; __i < __cnt; __i++) \
+			if (ra_reg_is_src((__srcreg = (__instr)->regs[__i])))
+
+#define ra_foreach_src_rev(__srcreg, __instr) \
+	for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
+		for (int __cnt = (__instr)->regs_count, __i = __cnt - 1; __i >= 0; __i--) \
+			if (ra_reg_is_src((__srcreg = (__instr)->regs[__i])))
+
+#define ra_foreach_dst(__srcreg, __instr) \
+	for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
+		for (unsigned __cnt = (__instr)->regs_count, __i = 0; __i < __cnt; __i++) \
+			if (ra_reg_is_dst((__srcreg = (__instr)->regs[__i])))
+
+static inline struct ir3_register *
+ra_src_get_tied_dst(const struct ir3_compiler *compiler,
+					struct ir3_instruction *instr,
+				    struct ir3_register *src)
 {
-	if (!instr)
-		return 0;
+	if (compiler->gpu_id >= 600 && is_atomic(instr->opc) &&
+		(instr->flags & IR3_INSTR_G) && src == instr->regs[3]) {
+		return instr->regs[0];
+	}
 
-	/* Filter special cases, ie. writes to a0.x or p0.x, or non-ssa: */
-	if (!writes_gpr(instr) || (instr->regs[0]->flags & IR3_REG_ARRAY))
-		return 0;
-
-	/* in scalar pass, we aren't considering virtual register classes, ie.
-	 * if an instruction writes a vec2, then it defines two different scalar
-	 * register names.
-	 */
-	if (ctx->scalar_pass)
-		return dest_regs(instr);
-
-	return 1;
+	return NULL;
 }
 
-#define foreach_name_n(__name, __n, __ctx, __instr) \
-	for (unsigned __cnt = __ra_name_cnt(__ctx, __instr), __n = 0, __name; \
-	     (__n < __cnt) && ({__name = scalar_name(__ctx, __instr, __n); 1;}); __n++)
 
-#define foreach_name(__name, __ctx, __instr) \
-	foreach_name_n(__name, __n, __ctx, __instr)
+#define RA_HALF_SIZE (4 * 48)
+#define RA_FULL_SIZE (4 * 48 * 2)
+#define RA_SHARED_SIZE (2 * 4 * 8)
+#define RA_MAX_FILE_SIZE RA_FULL_SIZE
 
-static inline unsigned
-__ra_itr_pop(struct ir3_ra_ctx *ctx)
+struct ir3_liveness {
+	unsigned block_count;
+	DECLARE_ARRAY(struct ir3_register *, definitions);
+	DECLARE_ARRAY(BITSET_WORD *, live_out);
+	DECLARE_ARRAY(BITSET_WORD *, live_in);
+};
+
+struct ir3_liveness *ir3_calc_liveness(struct ir3_shader_variant *v);
+
+bool ir3_def_live_after(struct ir3_liveness *live, struct ir3_register *def,
+						struct ir3_instruction *instr);
+
+void ir3_create_parallel_copies(struct ir3 *ir);
+
+void ir3_merge_regs(struct ir3_liveness *live, struct ir3 *ir);
+
+struct ir3_pressure {
+	unsigned full, half, shared;
+};
+
+void ir3_calc_pressure(struct ir3_shader_variant *v,
+					   struct ir3_liveness *live,
+					   struct ir3_pressure *max_pressure);
+
+void ir3_lower_copies(struct ir3_shader_variant *v);
+
+/* Register interval datastructure
+ *
+ * ir3_reg_ctx is used to track which registers are live. The tricky part is
+ * that some registers may overlap each other, when registers with overlapping
+ * live ranges get coalesced. For example, splits will overlap with their
+ * parent vector and sometimes collect sources will also overlap with the
+ * collect'ed vector. ir3_merge_regs guarantees for us that none of the
+ * registers in a merge set that are live at any given point partially
+ * overlap, which means that we can organize them into a forest. While each
+ * register has a per-merge-set offset, ir3_merge_regs also computes a
+ * "global" offset which allows us to throw away the original merge sets and
+ * think of registers as just intervals in a forest of live intervals. When a
+ * register becomes live, we insert it into the forest, and when it dies we
+ * remove it from the forest (and then its children get moved up a level). We
+ * use red-black trees to keep track of each level of the forest, so insertion
+ * and deletion should be fast operations. ir3_reg_ctx handles all the
+ * internal bookkeeping for this, so that it can be shared between RA,
+ * spilling, and register pressure tracking.
+ */
+
+struct ir3_reg_interval {
+	struct rb_node node;
+
+	struct rb_tree children;
+
+	struct ir3_reg_interval *parent;
+
+	struct ir3_register *reg;
+
+	bool inserted;
+};
+
+struct ir3_reg_ctx {
+	/* The tree of top-level intervals in the forest. */
+	struct rb_tree intervals;
+
+	/* Users of ir3_reg_ctx need to keep around additional state that is
+	 * modified when top-level intervals are added or removed. For register
+	 * pressure tracking, this is just the register pressure, but for RA we
+	 * need to keep track of the physreg of each top-level interval. These
+	 * callbacks provide a place to let users deriving from ir3_reg_ctx update
+	 * their state when top-level intervals are inserted/removed.
+	 */
+
+	/* Called when an interval is added and it turns out to be at the top
+	 * level.
+	 */
+	void (*interval_add)(struct ir3_reg_ctx *ctx,
+						 struct ir3_reg_interval *interval);
+
+	/* Called when an interval is deleted from the top level. */
+	void (*interval_delete)(struct ir3_reg_ctx *ctx,
+							struct ir3_reg_interval *interval);
+
+	/* Called when an interval is deleted and its child becomes top-level.
+	 */
+	void (*interval_readd)(struct ir3_reg_ctx *ctx,
+						   struct ir3_reg_interval *parent,
+						   struct ir3_reg_interval *child);
+};
+
+static inline struct ir3_reg_interval *
+ir3_rb_node_to_interval(struct rb_node *node)
 {
-	if (ctx->nameidx < ctx->namecnt)
-		return ctx->namebuf[ctx->nameidx++];
-	return NO_NAME;
+	return rb_node_data(struct ir3_reg_interval, node, node);
+}
+
+static inline const struct ir3_reg_interval *
+ir3_rb_node_to_interval_const(const struct rb_node *node)
+{
+	return rb_node_data(struct ir3_reg_interval, node, node);
+}
+
+static inline struct ir3_reg_interval *
+ir3_reg_interval_next(struct ir3_reg_interval *interval)
+{
+	struct rb_node *next = rb_node_next(&interval->node);
+	return next ? ir3_rb_node_to_interval(next) : NULL;
+}
+
+static inline struct ir3_reg_interval *
+ir3_reg_interval_next_or_null(struct ir3_reg_interval *interval)
+{
+	return interval ? ir3_reg_interval_next(interval) : NULL;
 }
 
 static inline void
-__ra_itr_push(struct ir3_ra_ctx *ctx, unsigned name)
+ir3_reg_interval_init(struct ir3_reg_interval *interval, struct ir3_register *reg)
 {
-	assert(ctx->namecnt < ARRAY_SIZE(ctx->namebuf));
-	ctx->namebuf[ctx->namecnt++] = name;
+	rb_tree_init(&interval->children);
+	interval->reg = reg;
+	interval->parent = NULL;
+	interval->inserted = false;
 }
 
-static inline unsigned
-__ra_init_def_itr(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
-{
-	/* nested use is not supported: */
-	assert(ctx->namecnt == ctx->nameidx);
+void
+ir3_reg_interval_dump(struct ir3_reg_interval *interval);
 
-	ctx->namecnt = ctx->nameidx = 0;
+void ir3_reg_interval_insert(struct ir3_reg_ctx *ctx,
+							 struct ir3_reg_interval *interval);
 
-	if (!writes_gpr(instr))
-		return NO_NAME;
+void ir3_reg_interval_remove(struct ir3_reg_ctx *ctx,
+							 struct ir3_reg_interval *interval);
 
-	struct ir3_ra_instr_data *id = &ctx->instrd[instr->ip];
-	struct ir3_register *dst = instr->regs[0];
+void ir3_reg_interval_remove_all(struct ir3_reg_ctx *ctx,
+								 struct ir3_reg_interval *interval);
 
-	if (dst->flags & IR3_REG_ARRAY) {
-		struct ir3_array *arr = ir3_lookup_array(ctx->ir, dst->array.id);
+#endif
 
-		/* indirect write is treated like a write to all array
-		 * elements, since we don't know which one is actually
-		 * written:
-		 */
-		if (dst->flags & IR3_REG_RELATIV) {
-			for (unsigned i = 0; i < arr->length; i++) {
-				__ra_itr_push(ctx, arr->base + i);
-			}
-		} else {
-			__ra_itr_push(ctx, arr->base + dst->array.offset);
-			debug_assert(dst->array.offset < arr->length);
-		}
-	} else if (id->defn == instr) {
-		foreach_name_n (name, i, ctx, instr) {
-			/* tex instructions actually have a wrmask, and
-			 * don't touch masked out components.  We can't do
-			 * anything useful about that in the first pass,
-			 * but in the scalar pass we can realize these
-			 * registers are available:
-			 */
-			if (ctx->scalar_pass && is_tex_or_prefetch(instr) &&
-					!(instr->regs[0]->wrmask & (1 << i)))
-				continue;
-			__ra_itr_push(ctx, name);
-		}
-	}
-
-	return __ra_itr_pop(ctx);
-}
-
-static inline unsigned
-__ra_init_use_itr(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
-{
-	/* nested use is not supported: */
-	assert(ctx->namecnt == ctx->nameidx);
-
-	ctx->namecnt = ctx->nameidx = 0;
-
-	foreach_src (reg, instr) {
-		if (reg->flags & IR3_REG_ARRAY) {
-			struct ir3_array *arr =
-				ir3_lookup_array(ctx->ir, reg->array.id);
-
-			/* indirect read is treated like a read from all array
-			 * elements, since we don't know which one is actually
-			 * read:
-			 */
-			if (reg->flags & IR3_REG_RELATIV) {
-				for (unsigned i = 0; i < arr->length; i++) {
-					__ra_itr_push(ctx, arr->base + i);
-				}
-			} else {
-				__ra_itr_push(ctx, arr->base + reg->array.offset);
-				debug_assert(reg->array.offset < arr->length);
-			}
-		} else if (reg->def) {
-			foreach_name_n (name, i, ctx, reg->def->instr) {
-				/* split takes a src w/ wrmask potentially greater
-				 * than 0x1, but it really only cares about a single
-				 * component.  This shows up in splits coming out of
-				 * a tex instruction w/ wrmask=.z, for example.
-				 */
-				if (ctx->scalar_pass && (instr->opc == OPC_META_SPLIT) &&
-						!(i == instr->split.off))
-					continue;
-				__ra_itr_push(ctx, name);
-			}
-		}
-	}
-
-	return __ra_itr_pop(ctx);
-}
-
-#define foreach_def(__name, __ctx, __instr) \
-	for (unsigned __name = __ra_init_def_itr(__ctx, __instr); \
-	     __name != NO_NAME; __name = __ra_itr_pop(__ctx))
-
-#define foreach_use(__name, __ctx, __instr) \
-	for (unsigned __name = __ra_init_use_itr(__ctx, __instr); \
-	     __name != NO_NAME; __name = __ra_itr_pop(__ctx))
-
-int ra_size_to_class(unsigned sz, bool half, bool shared);
-int ra_class_to_size(unsigned class, bool *half, bool *shared);
-
-#endif  /* IR3_RA_H_ */
