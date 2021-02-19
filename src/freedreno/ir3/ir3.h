@@ -151,6 +151,7 @@ struct ir3_register {
 		struct {
 			uint16_t id;
 			int16_t offset;
+			uint16_t base;
 		} array;
 	};
 
@@ -1936,7 +1937,7 @@ static inline void regmask_set(regmask_t *regmask, struct ir3_register *reg)
 	bool half = reg->flags & IR3_REG_HALF;
 	if (reg->flags & IR3_REG_RELATIV) {
 		for (unsigned i = 0; i < reg->size; i++)
-			__regmask_set(regmask, half, reg->array.offset + i);
+			__regmask_set(regmask, half, reg->array.base + i);
 	} else {
 		for (unsigned mask = reg->wrmask, n = reg->num; mask; mask >>= 1, n++)
 			if (mask & 1)
@@ -1950,7 +1951,7 @@ static inline bool regmask_get(regmask_t *regmask,
 	bool half = reg->flags & IR3_REG_HALF;
 	if (reg->flags & IR3_REG_RELATIV) {
 		for (unsigned i = 0; i < reg->size; i++)
-			if (__regmask_get(regmask, half, reg->array.offset + i))
+			if (__regmask_get(regmask, half, reg->array.base + i))
 				return true;
 	} else {
 		for (unsigned mask = reg->wrmask, n = reg->num; mask; mask >>= 1, n++)

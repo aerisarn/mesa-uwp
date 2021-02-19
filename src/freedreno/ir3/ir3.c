@@ -85,7 +85,7 @@ collect_reg_info(struct ir3_instruction *instr, struct ir3_register *reg,
 
 	if (reg->flags & IR3_REG_RELATIV) {
 		components = reg->size;
-		max = (reg->array.offset + repeat + components - 1);
+		max = (reg->array.base + components - 1);
 	} else {
 		components = util_last_bit(reg->wrmask);
 		max = (reg->num + repeat + components - 1);

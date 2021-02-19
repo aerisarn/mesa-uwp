@@ -425,9 +425,8 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 
 		if (reg->flags & IR3_REG_RELATIV) {
 			/* mark entire array as read: */
-			struct ir3_array *arr = ir3_lookup_array(state->ctx->ir, reg->array.id);
-			for (unsigned j = 0; j < arr->length; j++) {
-				add_reg_dep(state, node, reg, arr->reg + j, i + 1);
+			for (unsigned j = 0; j < reg->size; j++) {
+				add_reg_dep(state, node, reg, reg->array.base + j, i + 1);
 			}
 		} else {
 			assert(reg->wrmask >= 1);
@@ -451,9 +450,8 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 	struct ir3_register *reg = node->instr->regs[0];
 	if (reg->flags & IR3_REG_RELATIV) {
 		/* mark the entire array as written: */
-		struct ir3_array *arr = ir3_lookup_array(state->ctx->ir, reg->array.id);
-		for (unsigned i = 0; i < arr->length; i++) {
-			add_reg_dep(state, node, reg, arr->reg + i, -1);
+		for (unsigned i = 0; i < reg->size; i++) {
+			add_reg_dep(state, node, reg, reg->array.base + i, -1);
 		}
 	} else {
 		assert(reg->wrmask >= 1);

@@ -1138,6 +1138,7 @@ reg_assign(struct ir3_ra_ctx *ctx, struct ir3_register *reg,
 		unsigned num = ctx->set->ra_reg_to_gpr[r];
 
 		if (reg->flags & IR3_REG_RELATIV) {
+			reg->array.base = arr->reg;
 			reg->array.offset = num;
 		} else {
 			reg->num = num;
