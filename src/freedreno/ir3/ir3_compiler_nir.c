@@ -3081,15 +3081,8 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
    if (tex->is_shadow && tex->op != nir_texop_lod)
       src0[nsrc0++] = compare;
 
-   if (tex->is_array && tex->op != nir_texop_lod) {
-      struct ir3_instruction *idx = coord[coords];
-
-      /* the array coord for cube arrays needs 0.5 added to it */
-      if (ctx->compiler->array_index_add_half && !is_isam(opc))
-         idx = ir3_ADD_F(b, idx, 0, create_immed(b, fui(0.5)), 0);
-
-      src0[nsrc0++] = idx;
-   }
+   if (tex->is_array && tex->op != nir_texop_lod)
+      src0[nsrc0++] = coord[coords];
 
    if (has_proj) {
       src0[nsrc0++] = proj;
