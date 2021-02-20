@@ -1131,7 +1131,6 @@ else
     '-Werror=incompatible-pointer-types',
     '-Werror=int-conversion',
     '-Wimplicit-fallthrough',
-    '-Werror=thread-safety',
     '-Wno-missing-field-initializers',
     '-Wno-format-truncation',
     '-fno-math-errno',
@@ -1142,6 +1141,10 @@ else
   # MinGW chokes on format specifiers and I can't get it all working
   if not (cc.get_id() == 'gcc' and host_machine.system() == 'windows')
     _trial += ['-Werror=format', '-Wformat-security']
+  endif
+  # FreeBSD annotated <pthread.h> but Mesa isn't ready
+  if not (cc.get_id() == 'clang' and host_machine.system() == 'freebsd')
+    _trial += ['-Werror=thread-safety']
   endif
   foreach a : _trial
     if cc.has_argument(a)
