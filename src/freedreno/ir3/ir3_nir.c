@@ -738,8 +738,41 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
    bool more_late_algebraic = true;
    while (more_late_algebraic) {
       more_late_algebraic = OPT(s, nir_opt_algebraic_late);
-      if (!more_late_algebraic)
-         OPT(s, nir_fold_16bit_sampler_conversions, 0, ~0);
+      if (!more_late_algebraic) {
+         /* Lowers texture operations that have only f2f16 or u2u16 called on
+          * them to have a 16-bit destination.  Also, lower 16-bit texture
+          * coordinates that had been upconverted to 32-bits just for the
+          * sampler to just be 16-bit texture sources.
+          */
+         OPT(s, nir_fold_16bit_sampler_conversions,
+            (1 << nir_tex_src_coord) |
+            (1 << nir_tex_src_lod) |
+            (1 << nir_tex_src_bias) |
+            (1 << nir_tex_src_comparator) |
+            (1 << nir_tex_src_min_lod) |
+            (1 << nir_tex_src_ms_index) |
+            (1 << nir_tex_src_ddx) |
+            (1 << nir_tex_src_ddy),
+            ~0);
+
+         /* Now that we stripped off the 16-bit conversions, legalize so that we
+          * don't have a mix of 16- and 32-bit args that will need to be
+          * collected together in the coordinate vector.
+          */
+         nir_tex_src_type_constraints tex_constraints = {
+            [nir_tex_src_lod] = {true, 0, nir_tex_src_coord},
+            [nir_tex_src_bias] = {true, 0, nir_tex_src_coord},
+            [nir_tex_src_offset] = {true, 0, nir_tex_src_coord},
+            [nir_tex_src_comparator] = {true, 0, nir_tex_src_coord},
+
+            [nir_tex_src_min_lod] = {true, 0, nir_tex_src_coord},
+            [nir_tex_src_ms_index] = {true, 0, nir_tex_src_coord},
+            [nir_tex_src_ddx] = {true, 0, nir_tex_src_coord},
+            [nir_tex_src_ddy] = {true, 0, nir_tex_src_coord},
+
+         };
+         NIR_PASS_V(s, nir_legalize_16bit_sampler_srcs, tex_constraints);
+      }
       OPT_V(s, nir_opt_constant_folding);
       OPT_V(s, nir_copy_prop);
       OPT_V(s, nir_opt_dce);
