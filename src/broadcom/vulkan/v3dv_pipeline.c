@@ -279,7 +279,7 @@ nir_optimize(nir_shader *nir,
       OPT(nir_lower_alu_to_scalar, NULL, NULL);
 
       OPT(nir_copy_prop);
-      OPT(nir_lower_phis_to_scalar);
+      OPT(nir_lower_phis_to_scalar, false);
 
       OPT(nir_copy_prop);
       OPT(nir_opt_dce);
@@ -1578,7 +1578,7 @@ st_nir_opts(nir_shader *nir)
 
       if (nir->options->lower_to_scalar) {
          NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
-         NIR_PASS_V(nir, nir_lower_phis_to_scalar);
+         NIR_PASS_V(nir, nir_lower_phis_to_scalar, false);
       }
 
       NIR_PASS_V(nir, nir_lower_alu);

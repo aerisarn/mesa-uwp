@@ -205,7 +205,7 @@ ir3_optimize_loop(struct ir3_compiler *compiler, nir_shader *s)
 		progress |= OPT(s, nir_opt_copy_prop_vars);
 		progress |= OPT(s, nir_opt_dead_write_vars);
 		progress |= OPT(s, nir_lower_alu_to_scalar, NULL, NULL);
-		progress |= OPT(s, nir_lower_phis_to_scalar);
+		progress |= OPT(s, nir_lower_phis_to_scalar, false);
 
 		progress |= OPT(s, nir_copy_prop);
 		progress |= OPT(s, nir_opt_dce);
