@@ -5417,18 +5417,13 @@ genX(cmd_buffer_dispatch_kernel)(struct anv_cmd_buffer *cmd_buffer,
          cw.IndirectParameterEnable     = true;
       }
 
-      struct GENX(INTERFACE_DESCRIPTOR_DATA) idd = {};
-      {
-         idd.KernelStartPointer = kernel->bin->kernel.offset;
-         idd.NumberofThreadsinGPGPUThreadGroup = dispatch.threads;
-         idd.SharedLocalMemorySize =
-            encode_slm_size(GFX_VER, cs_prog_data->base.total_shared);
-
-         if (GFX_VER > 12 || intel_device_info_is_dg2(devinfo))
-            idd.NumberOfBarriers = cs_prog_data->uses_barrier;
-         else
-            idd.BarrierEnable = cs_prog_data->uses_barrier;
-      }
+      struct GENX(INTERFACE_DESCRIPTOR_DATA) idd = {
+         .KernelStartPointer = kernel->bin->kernel.offset,
+         .NumberofThreadsinGPGPUThreadGroup = dispatch.threads,
+         .SharedLocalMemorySize =
+            encode_slm_size(GFX_VER, cs_prog_data->base.total_shared),
+         .NumberOfBarriers = cs_prog_data->uses_barrier,
+      };
       cw.InterfaceDescriptor = idd;
    }
 

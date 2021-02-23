@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
+subdir('grl')
+
 anv_entrypoints = custom_target(
   'anv_entrypoints',
   input : [vk_entrypoints_gen, vk_api_xml],

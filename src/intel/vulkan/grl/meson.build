@@ -1,0 +1,145 @@
+# Copyright © 2021 Intel Corporation
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+fs = import('fs')
+
+grl_lib_files = [
+  'gpu/libs/libraries.grl',
+]
+
+grl_grl_files = [
+  'gpu/build_leaf.grl',
+  'gpu/build_primref.grl',
+#  'gpu/build_refit.grl',
+  'gpu/copy.grl',
+#  'gpu/grl_api_interface_verify.grl',
+  'gpu/misc.grl',
+#  'gpu/morton_builder.grl',
+#  'gpu/msb_radix_bitonic_sort.grl',
+  'gpu/new_sah_builder.grl',
+  'gpu/postbuild_info.grl',
+#  'gpu/presplit.grl',
+#  'gpu/radix_sort.grl',
+#  'gpu/rebraid.grl',
+#  'gpu/traversal_shader.grl',
+]
+
+grl_lib_args = []
+foreach libfile : grl_lib_files
+  grl_lib_args += '--library'
+  grl_lib_args += files(libfile)
+endforeach
+
+grl_cl_kernel_h = custom_target(
+  'grl_cl_kernel.h',
+  input : ['grl_cl_kernel_gen.py', grl_grl_files, grl_lib_files],
+  output : 'grl_cl_kernel.h',
+  command : [
+    prog_python, '@INPUT0@', '--out-h', '@OUTPUT@',
+    grl_lib_args, files(grl_grl_files),
+  ],
+)
+
+r = run_command(prog_python, 'grl_cl_kernel_gen.py',
+                grl_lib_args, '--ls-kernels', grl_grl_files)
+assert(r.returncode() == 0, 'Failed to fetch GRL CL kernels')
+grl_kernels = r.stdout().strip().split()
+
+grl_genX_libs = []
+foreach t : [['125', 'gfx125', 'dg2']]
+  verX10 = t[0]
+  genX_prefix = t[1]
+  platform = t[2]
+
+  grl_compiled_cl_kernels = []
+  foreach k : grl_kernels
+    # get_cl_files dumps out filename:entrypoint:libfile1,libfile2,libfile3
+    cl_file = k.split(':')[0]
+    entrypoint = k.split(':')[1]
+    library_files = k.split(':')[2]
+    kernel_prefix = '_'.join([
+      genX_prefix,
+      fs.replace_suffix(cl_file, '').replace('gpu/', '').replace('/', '_'),
+      entrypoint
+    ])
+    input_args = [ files(cl_file), ]
+    if library_files != ''
+      foreach lib_file : library_files.split(',')
+        input_args += [ lib_file ]
+      endforeach
+    endif
+    outfile = kernel_prefix + '.h'
+    grl_compiled_cl_kernels += custom_target(
+      outfile,
+      input : cl_file,
+      output : outfile,
+      command : [
+        prog_intel_clc, '-p', platform, '--prefix', kernel_prefix,
+        '-e', entrypoint, input_args, '-o', '@OUTPUT@', '--',
+        '-cl-std=cl2.0', '-D__OPENCL_VERSION__=200',
+        '-DMAX_HW_SIMD_WIDTH=16', '-DMAX_WORKGROUP_SIZE=16',
+        '-I' + join_paths(meson.current_source_dir(), 'gpu'),
+        '-I' + join_paths(meson.current_source_dir(), 'include'),
+      ],
+      depends : [prog_intel_clc]
+    )
+  endforeach
+
+  grl_cl_kernel_c = custom_target(
+    'grl_@0@_cl_kernel.c'.format(genX_prefix),
+    input : ['grl_cl_kernel_gen.py', grl_grl_files, grl_lib_files],
+    output : 'grl_@0@_cl_kernel.c'.format(genX_prefix),
+    command : [
+      prog_python, '@INPUT0@', '--out-c', '@OUTPUT@',
+      grl_lib_args, '--prefix', genX_prefix, files(grl_grl_files),
+    ],
+  )
+
+  grl_genX_libs += static_library(
+    'grl_@0@'.format(genX_prefix),
+    [grl_cl_kernel_h, grl_compiled_cl_kernels, grl_cl_kernel_c],
+    include_directories : [
+      inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler,
+      inc_intel,
+    ],
+    c_args : [
+      no_override_init_args, c_sse2_args,
+      '-DGFX_VERx10=@0@'.format(verX10),
+    ],
+    dependencies : [
+      dep_valgrind, idep_nir_headers, idep_vulkan_util_headers, idep_vulkan_wsi_headers
+    ],
+    gnu_symbol_visibility : 'hidden',
+  )
+endforeach
+
+libgrl = static_library(
+  'grl',
+  [grl_cl_kernel_h],
+  include_directories : [
+    inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel,
+    inc_compiler,
+  ],
+  link_whole : [grl_genX_libs],
+  dependencies : [
+    dep_valgrind, idep_nir_headers, idep_vulkan_util_headers, idep_vulkan_wsi_headers
+  ],
+  install : true,
+)
