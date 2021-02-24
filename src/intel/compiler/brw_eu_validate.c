@@ -2025,6 +2025,18 @@ instruction_restrictions(const struct intel_device_info *devinfo,
       }
    }
 
+   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_DP4A) {
+      /* Page 396 (page 412 of the PDF) of the DG1 PRM volume 2a says:
+       *
+       *    Only one of src0 or src1 operand may be an the (sic) accumulator
+       *    register (acc#).
+       */
+      ERROR_IF(src0_is_acc(devinfo, inst) && src1_is_acc(devinfo, inst),
+               "Only one of src0 or src1 operand may be an accumulator "
+               "register (acc#).");
+
+   }
+
    return error_msg;
 }
 

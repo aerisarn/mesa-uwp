@@ -275,6 +275,7 @@ enum opcode {
    BRW_OPCODE_DPH,
    BRW_OPCODE_DP3,
    BRW_OPCODE_DP2,
+   BRW_OPCODE_DP4A, /**< Gfx12+ */
    BRW_OPCODE_LINE,
    BRW_OPCODE_PLN, /**< G45+ */
    BRW_OPCODE_MAD, /**< Gfx6+ */

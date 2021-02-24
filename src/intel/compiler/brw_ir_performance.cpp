@@ -495,6 +495,13 @@ namespace {
             return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                   0, 12, 8 /* XXX */, 18 /* XXX */, 0, 0);
 
+      case BRW_OPCODE_DP4A:
+         if (devinfo->ver >= 12)
+            return calculate_desc(info, unit_fpu, 0, 2, 1, 0, 2,
+                                  0, 10, 6 /* XXX */, 14 /* XXX */, 0, 0);
+         else
+            abort();
+
       case SHADER_OPCODE_RCP:
       case SHADER_OPCODE_RSQ:
       case SHADER_OPCODE_SQRT:

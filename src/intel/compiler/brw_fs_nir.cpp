@@ -1885,6 +1885,39 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       bld.emit(FS_OPCODE_PACK_HALF_2x16_SPLIT, result, op[0], op[1]);
       break;
 
+   case nir_op_sdot_4x8_iadd:
+   case nir_op_sdot_4x8_iadd_sat:
+      inst = bld.DP4A(result,
+                      retype(op[2], BRW_REGISTER_TYPE_D),
+                      retype(op[0], BRW_REGISTER_TYPE_D),
+                      retype(op[1], BRW_REGISTER_TYPE_D));
+
+      if (instr->op == nir_op_sdot_4x8_iadd_sat)
+         inst->saturate = true;
+      break;
+
+   case nir_op_udot_4x8_uadd:
+   case nir_op_udot_4x8_uadd_sat:
+      inst = bld.DP4A(result,
+                      retype(op[2], BRW_REGISTER_TYPE_UD),
+                      retype(op[0], BRW_REGISTER_TYPE_UD),
+                      retype(op[1], BRW_REGISTER_TYPE_UD));
+
+      if (instr->op == nir_op_udot_4x8_uadd_sat)
+         inst->saturate = true;
+      break;
+
+   case nir_op_sudot_4x8_iadd:
+   case nir_op_sudot_4x8_iadd_sat:
+      inst = bld.DP4A(result,
+                      retype(op[2], BRW_REGISTER_TYPE_D),
+                      retype(op[0], BRW_REGISTER_TYPE_D),
+                      retype(op[1], BRW_REGISTER_TYPE_UD));
+
+      if (instr->op == nir_op_sudot_4x8_iadd_sat)
+         inst->saturate = true;
+      break;
+
    case nir_op_ffma:
       if (nir_has_any_rounding_mode_enabled(execution_mode)) {
          brw_rnd_mode rnd =

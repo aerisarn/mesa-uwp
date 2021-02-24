@@ -2072,6 +2072,11 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 	 brw_MACH(p, dst, src[0], src[1]);
 	 break;
 
+      case BRW_OPCODE_DP4A:
+         assert(devinfo->ver >= 12);
+         brw_DP4A(p, dst, src[0], src[1], src[2]);
+         break;
+
       case BRW_OPCODE_LINE:
          brw_LINE(p, dst, src[0], src[1]);
          break;

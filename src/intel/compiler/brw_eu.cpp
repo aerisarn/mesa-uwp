@@ -689,6 +689,7 @@ static const struct opcode_desc opcode_descs[] = {
    { BRW_OPCODE_DPH,      85,  "dph",     2,    1,    GFX_LT(GFX11) },
    { BRW_OPCODE_DP3,      86,  "dp3",     2,    1,    GFX_LT(GFX11) },
    { BRW_OPCODE_DP2,      87,  "dp2",     2,    1,    GFX_LT(GFX11) },
+   { BRW_OPCODE_DP4A,     88,  "dp4a",    3,    1,    GFX_GE(GFX12) },
    { BRW_OPCODE_LINE,     89,  "line",    2,    1,    GFX_LE(GFX10) },
    { BRW_OPCODE_PLN,      90,  "pln",     2,    1,    GFX_GE(GFX45) & GFX_LE(GFX10) },
    { BRW_OPCODE_MAD,      91,  "mad",     3,    1,    GFX_GE(GFX6) },

@@ -621,6 +621,7 @@ namespace brw {
       ALU1(FBH)
       ALU1(FBL)
       ALU1(FRC)
+      ALU3(DP4A)
       ALU2(LINE)
       ALU1(LZD)
       ALU2(MAC)

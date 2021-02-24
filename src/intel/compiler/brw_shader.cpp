@@ -969,6 +969,7 @@ backend_instruction::can_do_source_mods() const
    case BRW_OPCODE_ROL:
    case BRW_OPCODE_ROR:
    case BRW_OPCODE_SUBB:
+   case BRW_OPCODE_DP4A:
    case SHADER_OPCODE_BROADCAST:
    case SHADER_OPCODE_CLUSTER_BROADCAST:
    case SHADER_OPCODE_MOV_INDIRECT:
@@ -992,6 +993,7 @@ backend_instruction::can_do_saturate() const
    case BRW_OPCODE_DP3:
    case BRW_OPCODE_DP4:
    case BRW_OPCODE_DPH:
+   case BRW_OPCODE_DP4A:
    case BRW_OPCODE_F16TO32:
    case BRW_OPCODE_F32TO16:
    case BRW_OPCODE_LINE:
