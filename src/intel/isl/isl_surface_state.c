@@ -705,6 +705,10 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
          }
       }
 
+#if GFX_VERx10 >= 125
+      s.RenderCompressionFormat =
+         isl_get_render_compression_format(info->surf->format);
+#endif
 #if GFX_VER >= 12
       s.MemoryCompressionEnable = info->aux_usage == ISL_AUX_USAGE_MC;
 #endif
