@@ -226,6 +226,21 @@ mi_new_gpr(struct mi_builder *b)
       .reg = _MI_BUILDER_GPR_BASE + gpr * 8,
    };
 }
+
+static inline struct mi_value
+mi_reserve_gpr(struct mi_builder *b, unsigned gpr)
+{
+   assert(gpr < MI_BUILDER_NUM_ALLOC_GPRS);
+   assert(!(b->gprs & (1 << gpr)));
+   assert(b->gpr_refs[gpr] == 0);
+   b->gprs |= (1u << gpr);
+   b->gpr_refs[gpr] = 128; /* Enough that we won't unref it */
+
+   return (struct mi_value) {
+      .type = MI_VALUE_TYPE_REG64,
+      .reg = _MI_BUILDER_GPR_BASE + gpr * 8,
+   };
+}
 #endif /* GFX_VERx10 >= 75 */
 
 /** Take a reference to a mi_value
