@@ -1177,13 +1177,13 @@ optimizations.extend([
    # The results expecting true, must be marked imprecise.  The results
    # expecting false are fine because NaN compared >= or < anything is false.
 
-   (('~fge', 'a(is_not_negative)', 'b(is_not_positive)'), True),
-   (('fge',  'a(is_not_positive)', 'b(is_gt_zero)'),      False),
-   (('fge',  'a(is_lt_zero)',      'b(is_not_negative)'), False),
+   (('fge', 'a(is_a_number_not_negative)', 'b(is_a_number_not_positive)'), True),
+   (('fge', 'a(is_not_positive)',          'b(is_gt_zero)'),               False),
+   (('fge', 'a(is_lt_zero)',               'b(is_not_negative)'),          False),
 
-   (('flt',  'a(is_not_negative)', 'b(is_not_positive)'), False),
-   (('~flt', 'a(is_not_positive)', 'b(is_gt_zero)'),      True),
-   (('~flt', 'a(is_lt_zero)',      'b(is_not_negative)'), True),
+   (('flt', 'a(is_not_negative)',          'b(is_not_positive)'),          False),
+   (('flt', 'a(is_a_number_not_positive)', 'b(is_a_number_gt_zero)'),      True),
+   (('flt', 'a(is_a_number_lt_zero)',      'b(is_a_number_not_negative)'), True),
 
    (('ine', 'a(is_not_zero)', 0), True),
    (('ieq', 'a(is_not_zero)', 0), False),
