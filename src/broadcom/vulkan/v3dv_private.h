@@ -118,6 +118,15 @@ struct v3dv_physical_device {
    int32_t display_fd;
    int32_t master_fd;
 
+   /* We need these because it is not clear how to detect
+    * valid devids in a portable way
+     */
+   bool has_primary;
+   bool has_render;
+
+   dev_t primary_devid;
+   dev_t render_devid;
+
    uint8_t driver_build_sha1[20];
    uint8_t pipeline_cache_uuid[VK_UUID_SIZE];
    uint8_t device_uuid[VK_UUID_SIZE];

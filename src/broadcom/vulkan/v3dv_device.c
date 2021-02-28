@@ -30,6 +30,13 @@
 #include <unistd.h>
 #include <xf86drm.h>
 
+#ifdef MAJOR_IN_MKDEV
+#include <sys/mkdev.h>
+#endif
+#ifdef MAJOR_IN_SYSMACROS
+#include <sys/sysmacros.h>
+#endif
+
 #include "v3dv_private.h"
 
 #include "common/v3d_debug.h"
@@ -133,6 +140,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_variable_pointers               = true,
       .EXT_external_memory_dma_buf         = true,
       .EXT_index_type_uint8                = true,
+      .EXT_physical_device_drm             = true,
       .EXT_private_data                    = true,
    };
 }
@@ -697,17 +705,50 @@ physical_device_init(struct v3dv_physical_device *device,
     * we postpone that until a swapchain is created.
     */
 
+   const char *primary_path;
+#if !using_v3d_simulator
+   if (drm_primary_device)
+      primary_path = drm_primary_device->nodes[DRM_NODE_PRIMARY];
+   else
+      primary_path = NULL;
+#else
+   primary_path = drm_render_device->nodes[DRM_NODE_PRIMARY];
+#endif
+
+   struct stat primary_stat = {0}, render_stat = {0};
+
+   device->has_primary = primary_path;
+   if (device->has_primary) {
+      if (stat(primary_path, &primary_stat) != 0) {
+         result = vk_errorf(instance,
+                            VK_ERROR_INITIALIZATION_FAILED,
+                            "failed to stat DRM primary node %s",
+                            primary_path);
+         goto fail;
+      }
+
+      device->primary_devid = primary_stat.st_rdev;
+   }
+
+   if (fstat(render_fd, &render_stat) != 0) {
+      result = vk_errorf(instance,
+                         VK_ERROR_INITIALIZATION_FAILED,
+                         "failed to stat DRM render node %s",
+                         path);
+      goto fail;
+   }
+   device->has_render = true;
+   device->render_devid = render_stat.st_rdev;
+
    if (instance->vk.enabled_extensions.KHR_display) {
 #if !using_v3d_simulator
       /* Open the primary node on the vc4 display device */
       assert(drm_primary_device);
-      const char *primary_path = drm_primary_device->nodes[DRM_NODE_PRIMARY];
       master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
 #else
       /* There is only one device with primary and render nodes.
        * Open its primary node.
        */
-      const char *primary_path = drm_render_device->nodes[DRM_NODE_PRIMARY];
       master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
 #endif
    }
@@ -1351,6 +1392,21 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          memcpy(id_props->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
          /* The LUID is for Windows. */
          id_props->deviceLUIDValid = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: {
+         VkPhysicalDeviceDrmPropertiesEXT *props =
+            (VkPhysicalDeviceDrmPropertiesEXT *)ext;
+         props->hasPrimary = pdevice->has_primary;
+         if (props->hasPrimary) {
+            props->primaryMajor = (int64_t) major(pdevice->primary_devid);
+            props->primaryMinor = (int64_t) minor(pdevice->primary_devid);
+         }
+         props->hasRender = pdevice->has_render;
+         if (props->hasRender) {
+            props->renderMajor = (int64_t) major(pdevice->render_devid);
+            props->renderMinor = (int64_t) minor(pdevice->render_devid);
+         }
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
