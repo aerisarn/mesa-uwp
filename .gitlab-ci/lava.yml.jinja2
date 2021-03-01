@@ -96,6 +96,8 @@ actions:
           - cd /
 
           - wget -S --progress=dot:giga -O- {{ mesa_url }} | tar -xz
+          - mkdir -p $CI_PROJECT_DIR
+          - ln -sf /install $CI_PROJECT_DIR/install
 
           - export DEQP_NO_SAVE_RESULTS=1
           - export GPU_VERSION={{ gpu_version }}

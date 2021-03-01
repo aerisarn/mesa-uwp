@@ -321,6 +321,21 @@
       when: on_success
     - when: never
 
+.anv-rules:
+  stage: intel
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *vulkan_file_list
+      when: on_success
+    - changes:
+      - src/intel/**/*
+      when: on_success
+    - when: never
+
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
 .windows-build-rules:
