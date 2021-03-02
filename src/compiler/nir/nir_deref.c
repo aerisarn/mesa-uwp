@@ -154,7 +154,8 @@ nir_deref_instr_is_known_out_of_bounds(nir_deref_instr *instr)
 }
 
 bool
-nir_deref_instr_has_complex_use(nir_deref_instr *deref)
+nir_deref_instr_has_complex_use(nir_deref_instr *deref,
+                                nir_deref_instr_has_complex_use_options opts)
 {
    nir_foreach_use(use_src, &deref->dest.ssa) {
       nir_instr *use_instr = use_src->parent_instr;
@@ -184,7 +185,7 @@ nir_deref_instr_has_complex_use(nir_deref_instr *deref)
              use_deref->deref_type != nir_deref_type_array)
             return true;
 
-         if (nir_deref_instr_has_complex_use(use_deref))
+         if (nir_deref_instr_has_complex_use(use_deref, opts))
             return true;
 
          continue;
@@ -211,6 +212,15 @@ nir_deref_instr_has_complex_use(nir_deref_instr *deref)
              * it and write a value there.
              */
             if (use_src == &use_intrin->src[0])
+               continue;
+            return true;
+
+         case nir_intrinsic_memcpy_deref:
+            if (use_src == &use_intrin->src[0] &&
+                (opts & nir_deref_instr_has_complex_use_allow_memcpy_dst))
+               continue;
+            if (use_src == &use_intrin->src[1] &&
+                (opts & nir_deref_instr_has_complex_use_allow_memcpy_src))
                continue;
             return true;
 
