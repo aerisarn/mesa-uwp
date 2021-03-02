@@ -1263,8 +1263,11 @@ radv_check_modifier_support(struct radv_physical_device *dev,
    if (!found)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
+   bool need_dcc_sign_reinterpret = false;
    if (ac_modifier_has_dcc(modifier) &&
-       !radv_are_formats_dcc_compatible(dev, info->pNext, format, info->flags))
+       !radv_are_formats_dcc_compatible(dev, info->pNext, format, info->flags,
+                                        &need_dcc_sign_reinterpret) &&
+       !need_dcc_sign_reinterpret)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    /* We can expand this as needed and implemented but there is not much demand
@@ -1903,21 +1906,16 @@ radv_GetPhysicalDeviceExternalBufferProperties(
 /* DCC channel type categories within which formats can be reinterpreted
  * while keeping the same DCC encoding. The swizzle must also match. */
 enum dcc_channel_type {
-   dcc_channel_float32,
-   dcc_channel_uint32,
-   dcc_channel_sint32,
-   dcc_channel_float16,
-   dcc_channel_uint16,
-   dcc_channel_sint16,
-   dcc_channel_uint_10_10_10_2,
-   dcc_channel_uint8,
-   dcc_channel_sint8,
+   dcc_channel_float,
+   dcc_channel_uint,
+   dcc_channel_sint,
    dcc_channel_incompatible,
 };
 
 /* Return the type of DCC encoding. */
-static enum dcc_channel_type
-radv_get_dcc_channel_type(const struct util_format_description *desc)
+static void
+radv_get_dcc_channel_type(const struct util_format_description *desc, enum dcc_channel_type *type,
+                          unsigned *size)
 {
    int i;
 
@@ -1925,39 +1923,37 @@ radv_get_dcc_channel_type(const struct util_format_description *desc)
    for (i = 0; i < desc->nr_channels; i++)
       if (desc->channel[i].type != UTIL_FORMAT_TYPE_VOID)
          break;
-   if (i == desc->nr_channels)
-      return dcc_channel_incompatible;
+   if (i == desc->nr_channels) {
+      *type = dcc_channel_incompatible;
+      return;
+   }
 
    switch (desc->channel[i].size) {
    case 32:
-      if (desc->channel[i].type == UTIL_FORMAT_TYPE_FLOAT)
-         return dcc_channel_float32;
-      if (desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED)
-         return dcc_channel_uint32;
-      return dcc_channel_sint32;
    case 16:
-      if (desc->channel[i].type == UTIL_FORMAT_TYPE_FLOAT)
-         return dcc_channel_float16;
-      if (desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED)
-         return dcc_channel_uint16;
-      return dcc_channel_sint16;
    case 10:
-      return dcc_channel_uint_10_10_10_2;
    case 8:
-      if (desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED)
-         return dcc_channel_uint8;
-      return dcc_channel_sint8;
+      *size = desc->channel[i].size;
+      if (desc->channel[i].type == UTIL_FORMAT_TYPE_FLOAT)
+         *type = dcc_channel_float;
+      else if (desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED)
+         *type = dcc_channel_uint;
+      else
+         *type = dcc_channel_sint;
+      break;
    default:
-      return dcc_channel_incompatible;
+      *type = dcc_channel_incompatible;
+      break;
    }
 }
 
 /* Return if it's allowed to reinterpret one format as another with DCC enabled. */
 bool
-radv_dcc_formats_compatible(VkFormat format1, VkFormat format2)
+radv_dcc_formats_compatible(VkFormat format1, VkFormat format2, bool *sign_reinterpret)
 {
    const struct util_format_description *desc1, *desc2;
    enum dcc_channel_type type1, type2;
+   unsigned size1, size2;
    int i;
 
    if (format1 == format2)
@@ -1975,8 +1971,15 @@ radv_dcc_formats_compatible(VkFormat format1, VkFormat format2)
           desc1->swizzle[i] != desc2->swizzle[i])
          return false;
 
-   type1 = radv_get_dcc_channel_type(desc1);
-   type2 = radv_get_dcc_channel_type(desc2);
+   radv_get_dcc_channel_type(desc1, &type1, &size1);
+   radv_get_dcc_channel_type(desc2, &type2, &size2);
 
-   return type1 != dcc_channel_incompatible && type2 != dcc_channel_incompatible && type1 == type2;
+   if (type1 == dcc_channel_incompatible || type2 == dcc_channel_incompatible ||
+       (type1 == dcc_channel_float) != (type2 == dcc_channel_float) || size1 != size2)
+      return false;
+
+   if (type1 != type2)
+      *sign_reinterpret = true;
+
+   return true;
 }

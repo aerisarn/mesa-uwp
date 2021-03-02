@@ -434,8 +434,11 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
       bool src_compressed = radv_layout_dcc_compressed(cmd_buffer->device, src_image,
                                                        region->srcSubresource.mipLevel,
                                                        src_image_layout, false, src_queue_mask);
+      bool need_dcc_sign_reinterpret = false;
 
-      if (!src_compressed || radv_dcc_formats_compatible(b_src.format, b_dst.format)) {
+      if (!src_compressed ||
+          (radv_dcc_formats_compatible(b_src.format, b_dst.format, &need_dcc_sign_reinterpret) &&
+           !need_dcc_sign_reinterpret)) {
          b_src.format = b_dst.format;
       } else if (!dst_compressed) {
          b_dst.format = b_src.format;

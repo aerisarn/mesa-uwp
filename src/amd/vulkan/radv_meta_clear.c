@@ -1760,6 +1760,10 @@ vi_get_fast_clear_parameters(struct radv_device *device, const struct radv_image
           desc->swizzle[i] >= PIPE_SWIZZLE_X && desc->swizzle[i] <= PIPE_SWIZZLE_W)
          return;
 
+   /* Only DCC clear code 0000 is allowed for signed<->unsigned formats. */
+   if ((main_value || extra_value) && iview->image->dcc_sign_reinterpret)
+      return;
+
    *can_avoid_fast_clear_elim = true;
 
    if (main_value) {
