@@ -62,6 +62,105 @@ builder_init_new_impl(nir_builder *b, nir_function *func)
    b->cursor = nir_before_cf_list(&impl->body);
 }
 
+static void
+implement_atomic_builtin(nir_function *func, nir_intrinsic_op op,
+                         enum glsl_base_type data_base_type,
+                         nir_variable_mode mode)
+{
+   nir_builder b;
+   builder_init_new_impl(&b, func);
+
+   const struct glsl_type *data_type = glsl_scalar_type(data_base_type);
+
+   unsigned p = 0;
+
+   nir_deref_instr *ret = NULL;
+   if (nir_intrinsic_infos[op].has_dest) {
+      ret = nir_build_deref_cast(&b, nir_load_param(&b, p++),
+                                 nir_var_function_temp, data_type, 0);
+   }
+
+   nir_intrinsic_instr *atomic = nir_intrinsic_instr_create(b.shader, op);
+
+   for (unsigned i = 0; i < nir_intrinsic_infos[op].num_srcs; i++) {
+      nir_ssa_def *src = nir_load_param(&b, p++);
+      if (i == 0) {
+         /* The first source is our deref */
+         assert(nir_intrinsic_infos[op].src_components[i] == -1);
+         src = &nir_build_deref_cast(&b, src, mode, data_type, 0)->dest.ssa;
+      }
+      atomic->src[i] = nir_src_for_ssa(src);
+   }
+
+   if (nir_intrinsic_infos[op].has_dest) {
+      nir_ssa_dest_init_for_type(&atomic->instr, &atomic->dest,
+                                 data_type, NULL);
+   }
+
+   nir_builder_instr_insert(&b, &atomic->instr);
+
+   if (nir_intrinsic_infos[op].has_dest)
+      nir_store_deref(&b, ret, &atomic->dest.ssa, ~0);
+}
+
+static void
+implement_sub_group_ballot_builtin(nir_function *func)
+{
+   nir_builder b;
+   builder_init_new_impl(&b, func);
+
+   nir_deref_instr *ret =
+      nir_build_deref_cast(&b, nir_load_param(&b, 0),
+                           nir_var_function_temp, glsl_uint_type(), 0);
+   nir_ssa_def *cond = nir_load_param(&b, 1);
+
+   nir_intrinsic_instr *ballot =
+      nir_intrinsic_instr_create(b.shader, nir_intrinsic_ballot);
+   ballot->src[0] = nir_src_for_ssa(cond);
+   ballot->num_components = 1;
+   nir_ssa_dest_init(&ballot->instr, &ballot->dest, 1, 32, NULL);
+   nir_builder_instr_insert(&b, &ballot->instr);
+
+   nir_store_deref(&b, ret, &ballot->dest.ssa, ~0);
+}
+
+static bool
+implement_intel_builtins(nir_shader *nir)
+{
+   bool progress = false;
+
+   nir_foreach_function(func, nir) {
+      if (strcmp(func->name, "_Z10atomic_minPU3AS1Vff") == 0) {
+         /* float atom_min(__global float volatile *p, float val) */
+         implement_atomic_builtin(func, nir_intrinsic_deref_atomic_fmin,
+                                  GLSL_TYPE_FLOAT, nir_var_mem_global);
+         progress = true;
+      } else if (strcmp(func->name, "_Z10atomic_maxPU3AS1Vff") == 0) {
+         /* float atom_max(__global float volatile *p, float val) */
+         implement_atomic_builtin(func, nir_intrinsic_deref_atomic_fmax,
+                                  GLSL_TYPE_FLOAT, nir_var_mem_global);
+         progress = true;
+      } else if (strcmp(func->name, "_Z10atomic_minPU3AS3Vff") == 0) {
+         /* float atomic_min(__shared float volatile *, float) */
+         implement_atomic_builtin(func, nir_intrinsic_deref_atomic_fmin,
+                                  GLSL_TYPE_FLOAT, nir_var_mem_shared);
+         progress = true;
+      } else if (strcmp(func->name, "_Z10atomic_maxPU3AS3Vff") == 0) {
+         /* float atomic_max(__shared float volatile *, float) */
+         implement_atomic_builtin(func, nir_intrinsic_deref_atomic_fmax,
+                                  GLSL_TYPE_FLOAT, nir_var_mem_shared);
+         progress = true;
+      } else if (strcmp(func->name, "intel_sub_group_ballot") == 0) {
+         implement_sub_group_ballot_builtin(func);
+         progress = true;
+      }
+   }
+
+   nir_shader_preserve_all_metadata(nir);
+
+   return progress;
+}
+
 static bool
 lower_kernel_intrinsics(nir_shader *nir)
 {
@@ -219,6 +318,7 @@ brw_kernel_from_spirv(struct brw_compiler *compiler,
       nir_print_shader(nir, stderr);
    }
 
+   NIR_PASS_V(nir, implement_intel_builtins);
    NIR_PASS_V(nir, nir_lower_libclc, spirv_options.clc_shader);
 
    /* We have to lower away local constant initializers right before we
