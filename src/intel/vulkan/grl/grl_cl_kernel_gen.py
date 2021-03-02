@@ -47,7 +47,10 @@ enum grl_cl_kernel {
 % for k in kernels:
     GRL_CL_KERNEL_${k.upper()},
 % endfor
+    GRL_CL_KERNEL_MAX,
 };
+
+const char *grl_cl_kernel_name(enum grl_cl_kernel kernel);
 
 const char *genX(grl_get_cl_kernel_sha1)(enum grl_cl_kernel id);
 
@@ -68,6 +71,17 @@ TEMPLATE_C = Template(COPYRIGHT + """
 % for k in kernels:
 #include "${prefix}_${k}.h"
 % endfor
+
+const char *
+grl_cl_kernel_name(enum grl_cl_kernel kernel)
+{
+    switch (kernel) {
+% for k in kernels:
+    case GRL_CL_KERNEL_${k.upper()}: return "${k}";
+% endfor
+    default: return "unknown";
+    }
+}
 
 const char *
 genX(grl_get_cl_kernel_sha1)(enum grl_cl_kernel id)

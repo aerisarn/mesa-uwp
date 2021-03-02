@@ -51,6 +51,12 @@ grl_genX_files = [
   'genX_grl_dispatch.c',
 ]
 
+grl_lib_args = []
+foreach libfile : grl_lib_files
+  grl_lib_args += '--library'
+  grl_lib_args += files(libfile)
+endforeach
+
 grl_cl_kernel_h = custom_target(
   'grl_cl_kernel.h',
   input : ['grl_cl_kernel_gen.py', grl_grl_files, grl_lib_files],
@@ -61,10 +67,36 @@ grl_cl_kernel_h = custom_target(
   ],
 )
 
+has_ply = run_command(
+  prog_python, '-c',
+  '''
+import ply
+  ''')
+if has_ply.returncode() != 0
+  error('Python (3.x) ply module required to build GRL kernels.')
+endif
+
 r = run_command(prog_python, 'grl_cl_kernel_gen.py',
                 grl_lib_args, '--ls-kernels', grl_grl_files)
 assert(r.returncode() == 0, 'Failed to fetch GRL CL kernels')
 grl_kernels = r.stdout().strip().split()
+
+grl_metakernel_c = []
+grl_metakernel_h = []
+foreach grl_file : grl_grl_files
+  base_outfile = 'grl_metakernel_' + fs.replace_suffix(fs.name(grl_file), '')
+  outfiles = custom_target(
+    base_outfile,
+    input : ['grl_metakernel_gen.py', grl_file, grl_lib_files],
+    output : [base_outfile + '.h', base_outfile + '.c'],
+    command : [
+      prog_python, '@INPUT0@', '--out-h', '@OUTPUT0@',
+      '--out-c', '@OUTPUT1@', grl_lib_args, '@INPUT1@',
+    ],
+  )
+  grl_metakernel_h += outfiles[0]
+  grl_metakernel_c += outfiles[1]
+endforeach
 
 grl_genX_libs = []
 foreach t : [['125', 'gfx125', 'dg2']]
@@ -119,7 +151,7 @@ foreach t : [['125', 'gfx125', 'dg2']]
   grl_genX_libs += static_library(
     'grl_@0@'.format(genX_prefix),
     [grl_cl_kernel_h, grl_compiled_cl_kernels, grl_cl_kernel_c,
-     grl_genX_files],
+     grl_genX_files, grl_metakernel_c],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler,
       inc_intel, inc_anv,
