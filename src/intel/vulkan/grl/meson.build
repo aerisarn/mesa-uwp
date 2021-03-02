@@ -47,6 +47,10 @@ foreach libfile : grl_lib_files
   grl_lib_args += files(libfile)
 endforeach
 
+grl_genX_files = [
+  'genX_grl_dispatch.c',
+]
+
 grl_cl_kernel_h = custom_target(
   'grl_cl_kernel.h',
   input : ['grl_cl_kernel_gen.py', grl_grl_files, grl_lib_files],
@@ -114,17 +118,19 @@ foreach t : [['125', 'gfx125', 'dg2']]
 
   grl_genX_libs += static_library(
     'grl_@0@'.format(genX_prefix),
-    [grl_cl_kernel_h, grl_compiled_cl_kernels, grl_cl_kernel_c],
+    [grl_cl_kernel_h, grl_compiled_cl_kernels, grl_cl_kernel_c,
+     grl_genX_files],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler,
-      inc_intel,
+      inc_intel, inc_anv,
     ],
     c_args : [
       no_override_init_args, c_sse2_args,
       '-DGFX_VERx10=@0@'.format(verX10),
     ],
     dependencies : [
-      dep_valgrind, idep_nir_headers, idep_vulkan_util_headers, idep_vulkan_wsi_headers
+      dep_valgrind, idep_nir_headers, idep_vulkan_util_headers, idep_vulkan_wsi_headers,
+      idep_vulkan_runtime_headers,
     ],
     gnu_symbol_visibility : 'hidden',
   )
