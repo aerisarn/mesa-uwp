@@ -1399,7 +1399,7 @@ struct __DRIdri2ExtensionRec {
 /**
  * Queryable on images created by createImageFromNames.
  *
- * RGB and RGBA are may be usable directly as images but its still
+ * RGB and RGBA might be usable directly as images, but it's still
  * recommended to call fromPlanar with plane == 0.
  *
  * Y_U_V, Y_UV,Y_XUXV and Y_UXVX all requires call to fromPlanar to create
