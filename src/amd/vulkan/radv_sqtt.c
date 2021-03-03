@@ -65,8 +65,6 @@ radv_emit_thread_trace_start(struct radv_device *device, struct radeon_cmdbuf *c
    struct radeon_info *rad_info = &device->physical_device->rad_info;
    unsigned max_se = rad_info->max_se;
 
-   assert(device->physical_device->rad_info.chip_class >= GFX8);
-
    for (unsigned se = 0; se < max_se; se++) {
       uint64_t va = radv_buffer_get_va(device->thread_trace.bo);
       uint64_t data_va = ac_thread_trace_get_data_va(rad_info, &device->thread_trace, va, se);
@@ -242,8 +240,6 @@ radv_emit_thread_trace_stop(struct radv_device *device, struct radeon_cmdbuf *cs
                             uint32_t queue_family_index)
 {
    unsigned max_se = device->physical_device->rad_info.max_se;
-
-   assert(device->physical_device->rad_info.chip_class >= GFX8);
 
    /* Stop the thread trace with a different event based on the queue. */
    if (queue_family_index == RADV_QUEUE_COMPUTE &&
