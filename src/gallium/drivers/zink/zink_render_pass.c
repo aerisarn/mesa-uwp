@@ -62,6 +62,8 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
    int num_attachments = state->num_cbufs;
    if (state->have_zsbuf)  {
       struct zink_rt_attrib *rt = state->rts + state->num_cbufs;
+      bool has_clear = rt->clear_color || rt->clear_stencil;
+      VkImageLayout layout = rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
       attachments[num_attachments].flags = 0;
       attachments[num_attachments].format = rt->format;
       attachments[num_attachments].samples = rt->samples;
@@ -69,17 +71,18 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[num_attachments].stencilLoadOp = rt->clear_stencil ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[num_attachments].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-      attachments[num_attachments].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-      attachments[num_attachments].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      attachments[num_attachments].initialLayout = layout;
+      attachments[num_attachments].finalLayout = layout;
 
       dep_pipeline |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-      dep_pipeline |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      if (layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+         dep_access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
       if (attachments[num_attachments].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
           attachments[num_attachments].stencilLoadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
          dep_access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
       zs_ref.attachment = num_attachments++;
-      zs_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      zs_ref.layout = layout;
    }
 
    VkSubpassDependency deps[] = {
@@ -137,4 +140,29 @@ zink_destroy_render_pass(struct zink_screen *screen,
 {
    vkDestroyRenderPass(screen->dev, rp->render_pass, NULL);
    FREE(rp);
+}
+
+VkImageLayout
+zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, unsigned idx,
+                                             VkPipelineStageFlags *pipeline, VkAccessFlags *access)
+{
+   *access = 0;
+   assert(idx < rp->state.num_rts);
+   const struct zink_rt_attrib *rt = &rp->state.rts[idx];
+   if (idx < rp->state.num_cbufs) {
+      *pipeline = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      *access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      if (!rt->clear_color && (!rp->state.swapchain_init || !rt->swapchain))
+         *access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+      return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+   }
+
+   assert(rp->state.have_zsbuf);
+   *pipeline = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+   if (!rp->state.rts[idx].clear_color && !rp->state.rts[idx].clear_stencil)
+      *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+   if (!rp->state.rts[idx].clear_color && !rp->state.rts[idx].clear_stencil && !rp->state.rts[idx].needs_write)
+      return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+   *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+   return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 }

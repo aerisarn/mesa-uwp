@@ -385,7 +385,9 @@ update_barriers(struct zink_context *ctx, bool is_compute)
          if (res->base.b.target == PIPE_BUFFER)
             zink_resource_buffer_barrier(ctx, NULL, res, access, pipeline);
          else {
-            VkImageLayout layout = res->image_bind_count[is_compute] ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            VkImageLayout layout = res->image_bind_count[is_compute] ? VK_IMAGE_LAYOUT_GENERAL :
+                                   res->aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) ?
+                                   VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             zink_resource_image_barrier(ctx, NULL, res, layout, access, pipeline);
          }
          /* always barrier on draw if this resource has either multiple image write binds or

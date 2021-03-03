@@ -379,7 +379,9 @@ get_layout_for_binding(struct zink_resource *res, enum zink_descriptor_type type
    switch (type) {
    case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
       return res->bind_history & BITFIELD64_BIT(ZINK_DESCRIPTOR_TYPE_IMAGE) ?
-             VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+             VK_IMAGE_LAYOUT_GENERAL :
+             res->aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) ?
+                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
    case ZINK_DESCRIPTOR_TYPE_IMAGE:
       return VK_IMAGE_LAYOUT_GENERAL;
    default:
@@ -1149,7 +1151,7 @@ unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsig
           !res->image_bind_count[is_compute]) {
          for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
             if (res->sampler_binds[i]) {
-               zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+               zink_resource_image_barrier(ctx, NULL, res, get_layout_for_binding(res, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW),
                                            VK_ACCESS_SHADER_READ_BIT,
                                            zink_pipeline_flags_from_stage(zink_shader_stage(i)));
                break;
@@ -1438,6 +1440,11 @@ get_render_pass(struct zink_context *ctx)
          clears |= PIPE_CLEAR_DEPTH;
       if (state.rts[fb->nr_cbufs].clear_stencil)
          clears |= PIPE_CLEAR_STENCIL;
+      const uint64_t outputs_written = ctx->gfx_stages[PIPE_SHADER_FRAGMENT] ?
+                                       ctx->gfx_stages[PIPE_SHADER_FRAGMENT]->nir->info.outputs_written : 0;
+      bool needs_write = (ctx->dsa_state && ctx->dsa_state->hw_state.depth_write) ||
+                                            outputs_written & (BITFIELD64_BIT(FRAG_RESULT_DEPTH) | BITFIELD64_BIT(FRAG_RESULT_STENCIL));
+      state.rts[fb->nr_cbufs].needs_write = needs_write || state.rts[fb->nr_cbufs].clear_color || state.rts[fb->nr_cbufs].clear_stencil;
       state.num_rts++;
    }
    state.have_zsbuf = fb->zsbuf != NULL;
@@ -1594,11 +1601,12 @@ begin_render_pass(struct zink_context *ctx)
          zink_batch_reference_resource_rw(batch, zink_resource(surf->base.texture), true);
          zink_batch_reference_surface(batch, surf);
 
-         VkImageLayout layout = i == ctx->framebuffer->state.num_attachments - 1 && fb_state->zsbuf ?
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
-                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
          struct zink_resource *res = zink_resource(surf->base.texture);
-         zink_resource_image_barrier(ctx, NULL, res, layout, 0, 0);
+         VkAccessFlags access;
+         VkPipelineStageFlags pipeline;
+         VkImageLayout layout = zink_render_pass_attachment_get_barrier_info(ctx->gfx_pipeline_state.render_pass,
+                                                                             i, &pipeline, &access);
+         zink_resource_image_barrier(ctx, NULL, res, layout, access, pipeline);
       }
    }
 
