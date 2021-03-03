@@ -1360,11 +1360,10 @@ setup_framebuffer(struct zink_context *ctx)
    ctx->gfx_pipeline_state.render_pass = ctx->framebuffer->rp;
 }
 
-void
-zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
+static unsigned
+begin_render_pass(struct zink_context *ctx)
 {
-   setup_framebuffer(ctx);
-   assert(ctx->gfx_pipeline_state.render_pass);
+   struct zink_batch *batch = &ctx->batch;
    struct pipe_framebuffer_state *fb_state = &ctx->fb_state;
 
    VkRenderPassBeginInfo rpbi = {};
@@ -1419,8 +1418,6 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 
    assert(ctx->gfx_pipeline_state.render_pass && ctx->framebuffer);
 
-   framebuffer_state_buffer_barriers_setup(ctx, fb_state, batch);
-
    zink_batch_reference_framebuffer(batch, ctx->framebuffer);
    for (int i = 0; i < ctx->framebuffer->state.num_attachments; i++) {
       if (ctx->framebuffer->surfaces[i]) {
@@ -1433,6 +1430,16 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
    vkCmdBeginRenderPass(batch->state->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
    batch->in_rp = true;
    ctx->new_swapchain = false;
+   return clear_buffers;
+}
+
+void
+zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
+{
+   setup_framebuffer(ctx);
+   assert(ctx->gfx_pipeline_state.render_pass);
+   framebuffer_state_buffer_barriers_setup(ctx, &ctx->fb_state, batch);
+   unsigned clear_buffers = begin_render_pass(ctx);
 
    if (ctx->render_condition.query)
       zink_start_conditional_render(ctx);
