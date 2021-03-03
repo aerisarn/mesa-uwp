@@ -358,8 +358,6 @@ void
 ir3_split_dest(struct ir3_block *block, struct ir3_instruction **dst,
 		struct ir3_instruction *src, unsigned base, unsigned n)
 {
-	struct ir3_instruction *prev = NULL;
-
 	if ((n == 1) && (src->regs[0]->wrmask == 0x1) &&
 		/* setup_input needs ir3_split_dest to generate a SPLIT instruction */
 		src->opc != OPC_META_INPUT) {
@@ -386,14 +384,6 @@ ir3_split_dest(struct ir3_block *block, struct ir3_instruction **dst,
 		__ssa_dst(split)->flags |= flags;
 		__ssa_src(split, src, flags);
 		split->split.off = i + base;
-
-		if (prev) {
-			split->cp.left = prev;
-			split->cp.left_cnt++;
-			prev->cp.right = split;
-			prev->cp.right_cnt++;
-		}
-		prev = split;
 
 		if (src->regs[0]->wrmask & (1 << (i + base)))
 			dst[j++] = split;

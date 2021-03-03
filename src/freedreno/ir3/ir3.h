@@ -379,33 +379,6 @@ struct ir3_instruction {
 
 	int use_count;      /* currently just updated/used by cp */
 
-	/* Used during CP and RA stages.  For collect and shader inputs/
-	 * outputs where we need a sequence of consecutive registers,
-	 * keep track of each src instructions left (ie 'n-1') and right
-	 * (ie 'n+1') neighbor.  The front-end must insert enough mov's
-	 * to ensure that each instruction has at most one left and at
-	 * most one right neighbor.  During the copy-propagation pass,
-	 * we only remove mov's when we can preserve this constraint.
-	 * And during the RA stage, we use the neighbor information to
-	 * allocate a block of registers in one shot.
-	 *
-	 * TODO: maybe just add something like:
-	 *   struct ir3_instruction_ref {
-	 *       struct ir3_instruction *instr;
-	 *       unsigned cnt;
-	 *   }
-	 *
-	 * Or can we get away without the refcnt stuff?  It seems like
-	 * it should be overkill..  the problem is if, potentially after
-	 * already eliminating some mov's, if you have a single mov that
-	 * needs to be grouped with it's neighbors in two different
-	 * places (ex. shader output and a collect).
-	 */
-	struct {
-		struct ir3_instruction *left, *right;
-		uint16_t left_cnt, right_cnt;
-	} cp;
-
 	/* an instruction can reference at most one address register amongst
 	 * it's src/dst registers.  Beyond that, you need to insert mov's.
 	 *
@@ -457,38 +430,6 @@ struct ir3_instruction {
 	// TODO only computerator/assembler:
 	int line;
 };
-
-static inline struct ir3_instruction *
-ir3_neighbor_first(struct ir3_instruction *instr)
-{
-	int cnt = 0;
-	while (instr->cp.left) {
-		instr = instr->cp.left;
-		if (++cnt > 0xffff) {
-			debug_assert(0);
-			break;
-		}
-	}
-	return instr;
-}
-
-static inline int ir3_neighbor_count(struct ir3_instruction *instr)
-{
-	int num = 1;
-
-	debug_assert(!instr->cp.left);
-
-	while (instr->cp.right) {
-		num++;
-		instr = instr->cp.right;
-		if (num > 0xffff) {
-			debug_assert(0);
-			break;
-		}
-	}
-
-	return num;
-}
 
 struct ir3 {
 	struct ir3_compiler *compiler;

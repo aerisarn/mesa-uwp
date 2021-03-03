@@ -79,21 +79,6 @@ remove_unused_by_block(struct ir3_block *block)
 				 */
 				if (src && is_tex_or_prefetch(src) && (src->regs[0]->wrmask > 1)) {
 					src->regs[0]->wrmask &= ~(1 << instr->split.off);
-
-					/* prune no-longer needed right-neighbors.  We could
-					 * probably do the same for left-neighbors (ie. tex
-					 * fetch that only need .yw components), but that
-					 * makes RA a bit more confusing than it already is
-					 */
-					struct ir3_instruction *n = instr;
-					while (n && n->cp.right)
-						n = n->cp.right;
-					while (n->flags & IR3_INSTR_UNUSED) {
-						n = n->cp.left;
-						if (!n)
-							break;
-						n->cp.right = NULL;
-					}
 				}
 			}
 

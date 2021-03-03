@@ -298,20 +298,6 @@ print_instr(struct ir3_instruction *instr, int lvl)
 		printf("]");
 	}
 
-	if (instr->cp.left) {
-		printf(", left=_");
-		printf("[");
-		print_instr_name(instr->cp.left, false);
-		printf("]");
-	}
-
-	if (instr->cp.right) {
-		printf(", right=_");
-		printf("[");
-		print_instr_name(instr->cp.right, false);
-		printf("]");
-	}
-
 	if (instr->opc == OPC_META_SPLIT) {
 		printf(", off=%d", instr->split.off);
 	} else if (instr->opc == OPC_META_TEX_PREFETCH) {

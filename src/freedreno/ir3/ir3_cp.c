@@ -79,22 +79,6 @@ static bool is_eligible_mov(struct ir3_instruction *instr,
 					IR3_REG_SABS | IR3_REG_SNEG | IR3_REG_BNOT))
 				return false;
 
-		/* If src is coming from fanout/split (ie. one component of a
-		 * texture fetch, etc) and we have constraints on swizzle of
-		 * destination, then skip it.
-		 *
-		 * We could possibly do a bit better, and copy-propagation if
-		 * we can CP all components that are being fanned out.
-		 */
-		if (src_instr->opc == OPC_META_SPLIT) {
-			if (!dst_instr)
-				return false;
-			if (dst_instr->opc == OPC_META_COLLECT)
-				return false;
-			if (dst_instr->cp.left || dst_instr->cp.right)
-				return false;
-		}
-
 		return true;
 	}
 	return false;
