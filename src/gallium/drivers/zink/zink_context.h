@@ -185,6 +185,8 @@ struct zink_context {
 
    struct hash_table *render_pass_cache;
    bool new_swapchain;
+   bool fb_changed;
+   bool rp_changed;
 
    struct primconvert_context *primconvert;
 

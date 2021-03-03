@@ -1355,11 +1355,25 @@ static void
 setup_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   zink_init_framebuffer(screen, ctx->framebuffer, get_render_pass(ctx));
+   struct zink_render_pass *rp = ctx->gfx_pipeline_state.render_pass;
 
-   if (ctx->framebuffer->rp != ctx->gfx_pipeline_state.render_pass)
-      ctx->gfx_pipeline_state.dirty = true;
-   ctx->gfx_pipeline_state.render_pass = ctx->framebuffer->rp;
+   if (rp)
+      ctx->rp_changed |= ctx->rp_clears_enabled != rp->state.clears;
+   if (ctx->rp_changed)
+      rp = get_render_pass(ctx);
+
+   if (rp != ctx->gfx_pipeline_state.render_pass)
+      ctx->gfx_pipeline_state.dirty =
+      ctx->fb_changed = true;
+
+   ctx->rp_changed = false;
+
+   if (!ctx->fb_changed)
+      return;
+
+   zink_init_framebuffer(screen, ctx->framebuffer, rp);
+   ctx->fb_changed = false;
+   ctx->gfx_pipeline_state.render_pass = rp;
 }
 
 static unsigned
@@ -1548,14 +1562,21 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *surf = ctx->fb_state.cbufs[i];
-      if (surf && (i >= state->nr_cbufs || surf != state->cbufs[i]))
+      if (surf && (i >= state->nr_cbufs || surf != state->cbufs[i])) {
          zink_fb_clears_apply(ctx, surf->texture);
+         ctx->rp_changed = true;
+      }
    }
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *surf = ctx->fb_state.zsbuf;
-      if (surf != state->zsbuf)
+      if (surf != state->zsbuf) {
          zink_fb_clears_apply(ctx, ctx->fb_state.zsbuf->texture);
+         ctx->rp_changed = true;
+      }
    }
+   /* renderpass changes if the number or types of attachments change */
+   ctx->rp_changed |= ctx->fb_state.nr_cbufs != state->nr_cbufs;
+   ctx->rp_changed |= !!ctx->fb_state.zsbuf != !!state->zsbuf;
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
    rebind_fb_state(ctx, NULL, true);
@@ -1581,6 +1602,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
          _mesa_hash_table_remove(&screen->framebuffer_cache, he);
       simple_mtx_unlock(&screen->framebuffer_mtx);
    }
+   ctx->fb_changed |= ctx->framebuffer != fb;
    ctx->framebuffer = fb;
 
    uint8_t rast_samples = util_framebuffer_get_num_samples(state);
@@ -2798,6 +2820,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->gfx_pipeline_state.dirty = true;
    ctx->compute_pipeline_state.dirty = true;
+   ctx->fb_changed = ctx->rp_changed = true;
 
    ctx->base.screen = pscreen;
    ctx->base.priv = priv;

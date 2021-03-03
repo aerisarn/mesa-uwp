@@ -45,9 +45,7 @@ struct zink_render_pass_state {
    bool swapchain_init;
    struct zink_rt_attrib rts[PIPE_MAX_COLOR_BUFS + 1];
    unsigned num_rts;
-#ifndef NDEBUG
-   uint32_t clears; //for extra verification
-#endif
+   uint32_t clears; //for extra verification and update flagging
 };
 
 struct zink_render_pass {
