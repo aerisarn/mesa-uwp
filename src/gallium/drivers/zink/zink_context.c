@@ -1505,24 +1505,6 @@ get_framebuffer(struct zink_context *ctx)
 }
 
 static void
-framebuffer_state_buffer_barriers_setup(struct zink_context *ctx,
-                                        const struct pipe_framebuffer_state *state, struct zink_batch *batch)
-{
-   for (int i = 0; i < state->nr_cbufs; i++) {
-      struct pipe_surface *surf = state->cbufs[i];
-      if (!surf)
-         surf = ctx->framebuffer->null_surface;
-      struct zink_resource *res = zink_resource(surf->texture);
-      zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 0);
-   }
-
-   if (state->zsbuf) {
-      struct zink_resource *res = zink_resource(state->zsbuf->texture);
-      zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, 0);
-   }
-}
-
-static void
 setup_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -1611,6 +1593,12 @@ begin_render_pass(struct zink_context *ctx)
          struct zink_surface *surf = zink_surface(ctx->framebuffer->surfaces[i]);
          zink_batch_reference_resource_rw(batch, zink_resource(surf->base.texture), true);
          zink_batch_reference_surface(batch, surf);
+
+         VkImageLayout layout = i == ctx->framebuffer->state.num_attachments - 1 && fb_state->zsbuf ?
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
+                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+         struct zink_resource *res = zink_resource(surf->base.texture);
+         zink_resource_image_barrier(ctx, NULL, res, layout, 0, 0);
       }
    }
 
@@ -1625,7 +1613,6 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 {
    setup_framebuffer(ctx);
    assert(ctx->gfx_pipeline_state.render_pass);
-   framebuffer_state_buffer_barriers_setup(ctx, &ctx->fb_state, batch);
    unsigned clear_buffers = begin_render_pass(ctx);
 
    if (ctx->render_condition.query)
