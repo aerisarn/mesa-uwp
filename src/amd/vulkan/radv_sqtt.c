@@ -391,6 +391,7 @@ radv_thread_trace_init_bo(struct radv_device *device)
 {
    unsigned max_se = device->physical_device->rad_info.max_se;
    struct radeon_winsys *ws = device->ws;
+   VkResult result;
    uint64_t size;
 
    /* The buffer size and address need to be aligned in HW regs. Align the
@@ -404,11 +405,15 @@ radv_thread_trace_init_bo(struct radv_device *device)
    size += device->thread_trace.buffer_size * (uint64_t)max_se;
 
    struct radeon_winsys_bo *bo = NULL;
-   VkResult result = ws->buffer_create(
+   result = ws->buffer_create(
       ws, size, 4096, RADEON_DOMAIN_VRAM,
       RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_ZERO_VRAM,
       RADV_BO_PRIORITY_SCRATCH, 0, &bo);
    device->thread_trace.bo = bo;
+   if (result != VK_SUCCESS)
+      return false;
+
+   result = ws->buffer_make_resident(ws, device->thread_trace.bo, true);
    if (result != VK_SUCCESS)
       return false;
 
@@ -417,6 +422,17 @@ radv_thread_trace_init_bo(struct radv_device *device)
       return false;
 
    return true;
+}
+
+static void
+radv_thread_trace_finish_bo(struct radv_device *device)
+{
+   struct radeon_winsys *ws = device->ws;
+
+   if (unlikely(device->thread_trace.bo)) {
+      ws->buffer_make_resident(ws, device->thread_trace.bo, false);
+      ws->buffer_destroy(ws, device->thread_trace.bo);
+   }
 }
 
 bool
@@ -454,8 +470,7 @@ radv_thread_trace_finish(struct radv_device *device)
    struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
    struct radeon_winsys *ws = device->ws;
 
-   if (unlikely(device->thread_trace.bo))
-      ws->buffer_destroy(ws, device->thread_trace.bo);
+   radv_thread_trace_finish_bo(device);
 
    for (unsigned i = 0; i < 2; i++) {
       if (device->thread_trace.start_cs[i])
@@ -477,10 +492,8 @@ radv_thread_trace_finish(struct radv_device *device)
 static bool
 radv_thread_trace_resize_bo(struct radv_device *device)
 {
-   struct radeon_winsys *ws = device->ws;
-
    /* Destroy the previous thread trace BO. */
-   ws->buffer_destroy(ws, device->thread_trace.bo);
+   radv_thread_trace_finish_bo(device);
 
    /* Double the size of the thread trace buffer per SE. */
    device->thread_trace.buffer_size *= 2;
