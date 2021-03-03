@@ -2202,9 +2202,10 @@ zink_resource_buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flag
       return true;
    if (!pipeline)
       pipeline = pipeline_access_stage(flags);
-   return (res->access_stage & pipeline) != pipeline || (res->access & flags) != flags ||
-          zink_resource_access_is_write(res->access) ||
-          zink_resource_access_is_write(flags);
+   return zink_resource_access_is_write(res->access) ||
+          zink_resource_access_is_write(flags) ||
+          ((res->access_stage & pipeline) != pipeline && !(res->access_stage & (pipeline - 1))) ||
+          (res->access & flags) != flags;
 }
 
 ALWAYS_INLINE static bool
