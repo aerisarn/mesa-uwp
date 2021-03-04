@@ -1242,7 +1242,7 @@ get_render_pass(struct zink_context *ctx)
          state.rts[i].samples = surf->texture->nr_samples > 0 ? surf->texture->nr_samples :
                                                        VK_SAMPLE_COUNT_1_BIT;
          state.rts[i].clear_color = zink_fb_clear_enabled(ctx, i) && !zink_fb_clear_first_needs_explicit(&ctx->fb_clears[i]);
-         clears |= !!state.rts[i].clear_color ? BITFIELD_BIT(i) : 0;
+         clears |= !!state.rts[i].clear_color ? PIPE_CLEAR_COLOR0 << i : 0;
          state.rts[i].swapchain = surf->texture->bind & PIPE_BIND_SCANOUT;
       } else {
          state.rts[i].format = VK_FORMAT_R8_UINT;
@@ -1263,13 +1263,15 @@ get_render_pass(struct zink_context *ctx)
       state.rts[fb->nr_cbufs].clear_stencil = zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS) &&
                                               !zink_fb_clear_first_needs_explicit(fb_clear) &&
                                               (zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_STENCIL);
-      clears |= state.rts[fb->nr_cbufs].clear_color || state.rts[fb->nr_cbufs].clear_stencil ? BITFIELD_BIT(fb->nr_cbufs) : 0;
+      if (state.rts[fb->nr_cbufs].clear_color)
+         clears |= PIPE_CLEAR_DEPTH;
+      if (state.rts[fb->nr_cbufs].clear_stencil)
+         clears |= PIPE_CLEAR_STENCIL;
       state.num_rts++;
    }
    state.have_zsbuf = fb->zsbuf != NULL;
-#ifndef NDEBUG
+   assert(clears == ctx->rp_clears_enabled);
    state.clears = clears;
-#endif
    uint32_t hash = hash_render_pass_state(&state);
    struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ctx->render_pass_cache, hash,
                                                                  &state);
@@ -1392,7 +1394,7 @@ begin_render_pass(struct zink_context *ctx)
       /* we now know there's one clear that can be done here */
       zink_fb_clear_util_unpack_clear_color(clear, fb_state->cbufs[i]->format, (void*)&clears[i].color);
       rpbi.clearValueCount = i + 1;
-      clear_validate |= BITFIELD_BIT(i);
+      clear_validate |= PIPE_CLEAR_COLOR0 << i;
       assert(ctx->framebuffer->rp->state.clears);
    }
    if (fb_state->zsbuf && zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS)) {
@@ -1402,7 +1404,7 @@ begin_render_pass(struct zink_context *ctx)
          clears[fb_state->nr_cbufs].depthStencil.depth = clear->zs.depth;
          clears[fb_state->nr_cbufs].depthStencil.stencil = clear->zs.stencil;
          rpbi.clearValueCount = fb_state->nr_cbufs + 1;
-         clear_validate |= BITFIELD_BIT(fb_state->nr_cbufs);
+         clear_validate |= clear->zs.bits;
          assert(ctx->framebuffer->rp->state.clears);
       }
       if (zink_fb_clear_needs_explicit(fb_clear)) {

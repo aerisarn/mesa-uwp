@@ -191,6 +191,7 @@ struct zink_context {
    struct zink_framebuffer *framebuffer;
    struct zink_framebuffer_clear fb_clears[PIPE_MAX_COLOR_BUFS + 1];
    uint16_t clears_enabled;
+   uint16_t rp_clears_enabled;
 
    struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
 

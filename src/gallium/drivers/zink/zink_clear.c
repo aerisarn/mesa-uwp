@@ -221,6 +221,10 @@ zink_clear(struct pipe_context *pctx,
             clear->color.color = *pcolor;
             clear->color.srgb = psurf->format != psurf->texture->format &&
                                 !util_format_is_srgb(psurf->format) && util_format_is_srgb(psurf->texture->format);
+            if (zink_fb_clear_first_needs_explicit(fb_clear))
+               ctx->rp_clears_enabled &= ~(PIPE_CLEAR_COLOR0 << i);
+            else
+               ctx->rp_clears_enabled |= PIPE_CLEAR_COLOR0 << i;
          }
       }
    }
@@ -238,6 +242,10 @@ zink_clear(struct pipe_context *pctx,
       if (buffers & PIPE_CLEAR_STENCIL)
          clear->zs.stencil = stencil;
       clear->zs.bits |= (buffers & PIPE_CLEAR_DEPTHSTENCIL);
+      if (zink_fb_clear_first_needs_explicit(fb_clear))
+         ctx->rp_clears_enabled &= ~PIPE_CLEAR_DEPTHSTENCIL;
+      else
+         ctx->rp_clears_enabled |= (buffers & PIPE_CLEAR_DEPTHSTENCIL);
    }
 }
 
@@ -540,10 +548,13 @@ void
 zink_fb_clear_reset(struct zink_context *ctx, unsigned i)
 {
    util_dynarray_fini(&ctx->fb_clears[i].clears);
-   if (i == PIPE_MAX_COLOR_BUFS)
+   if (i == PIPE_MAX_COLOR_BUFS) {
       ctx->clears_enabled &= ~PIPE_CLEAR_DEPTHSTENCIL;
-   else
+      ctx->rp_clears_enabled &= ~PIPE_CLEAR_DEPTHSTENCIL;
+   } else {
       ctx->clears_enabled &= ~(PIPE_CLEAR_COLOR0 << i);
+      ctx->rp_clears_enabled &= ~(PIPE_CLEAR_COLOR0 << i);
+   }
 }
 
 void
