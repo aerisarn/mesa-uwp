@@ -3882,6 +3882,15 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		struct ir3_instruction *outputs[ctx->noutputs / 4];
 		unsigned outputs_count = 0;
 
+		struct ir3_block *old_block = ctx->block;
+		/* Insert these collect's in the block before the end-block if
+		 * possible, so that any moves they generate can be shuffled around to
+		 * reduce nop's:
+		 */
+		if (ctx->block->predecessors_count == 1)
+			ctx->block = ctx->block->predecessors[0];
+
+
 		/* Setup IR level outputs, which are "collects" that gather
 		 * the scalar components of outputs.
 		 */
@@ -3942,6 +3951,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 					array_insert(in->block, in->block->keeps, in);
 			}
 		}
+
+		ctx->block = old_block;
 
 		struct ir3_instruction *end = ir3_instr_create(ctx->block, OPC_END,
 				outputs_count + 1);
