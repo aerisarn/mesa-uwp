@@ -13,10 +13,6 @@ KHR-GL33.transform_feedback.query_vertex_separate_test,Fail
 # likely-looking fixes in later versions of the loader.
 dEQP-VK.api.device_init.create_instance_device_intentional_alloc_fail,Fail
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/9409
-dEQP-VK.compute.basic.max_local_size_x,Crash
-dEQP-VK.compute.basic.max_local_size_y,Crash
-
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3019
 # should be fixed by https://gerrit.khronos.org/c/vk-gl-cts/+/7745
 dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.input_output.7,Fail
