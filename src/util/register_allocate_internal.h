@@ -54,6 +54,8 @@ struct ra_regs {
 };
 
 struct ra_class {
+   struct ra_regs *regset;
+
    /**
     * Bitset indicating which registers belong to this class.
     *
@@ -74,6 +76,8 @@ struct ra_class {
     * the worst choice register from C conflict with".
     */
    unsigned int *q;
+
+   int index;
 };
 
 struct ra_node {

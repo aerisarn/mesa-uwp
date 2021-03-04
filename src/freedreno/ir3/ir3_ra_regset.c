@@ -134,7 +134,7 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler, bool mergedregs)
 		set->gpr_to_ra_reg[i] = ralloc_array(set, uint16_t, CLASS_REGS(i));
 
 		for (unsigned j = 0; j < CLASS_REGS(i); j++) {
-			ra_class_add_reg(set->regs, set->classes[i], reg);
+			ra_class_add_reg(set->classes[i], reg);
 
 			set->ra_reg_to_gpr[reg] = j;
 			set->gpr_to_ra_reg[i][j] = reg;
@@ -153,7 +153,7 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler, bool mergedregs)
 				ralloc_array(set, uint16_t, HALF_CLASS_REGS(i));
 
 		for (unsigned j = 0; j < HALF_CLASS_REGS(i); j++) {
-			ra_class_add_reg(set->regs, set->half_classes[i], reg);
+			ra_class_add_reg(set->half_classes[i], reg);
 
 			set->ra_reg_to_gpr[reg] = j;
 			set->gpr_to_ra_reg[base + i][j] = reg;
@@ -172,7 +172,7 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler, bool mergedregs)
 				ralloc_array(set, uint16_t, SHARED_CLASS_REGS(i));
 
 		for (unsigned j = 0; j < SHARED_CLASS_REGS(i); j++) {
-			ra_class_add_reg(set->regs, set->shared_classes[i], reg);
+			ra_class_add_reg(set->shared_classes[i], reg);
 
 			set->ra_reg_to_gpr[reg] = j;
 			set->gpr_to_ra_reg[base + i][j] = reg;
@@ -188,7 +188,7 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler, bool mergedregs)
 	 * knows to allocate prefetch dst regs below the limit:
 	 */
 	set->prefetch_exclude_class = ra_alloc_reg_class(set->regs);
-	ra_class_add_reg(set->regs, set->prefetch_exclude_class, reg);
+	ra_class_add_reg(set->prefetch_exclude_class, reg);
 	set->prefetch_exclude_reg = reg++;
 
 	/*

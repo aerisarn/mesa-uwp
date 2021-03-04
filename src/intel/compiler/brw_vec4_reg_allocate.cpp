@@ -117,7 +117,7 @@ brw_vec4_alloc_reg_set(struct brw_compiler *compiler)
    if (compiler->devinfo->ver >= 6)
       ra_set_allocate_round_robin(compiler->vec4_reg_set.regs);
    ralloc_free(compiler->vec4_reg_set.classes);
-   compiler->vec4_reg_set.classes = ralloc_array(compiler, int, class_count);
+   compiler->vec4_reg_set.classes = ralloc_array(compiler, struct ra_class *, class_count);
 
    /* Now, add the registers to their classes, and add the conflicts
     * between them and the base GRF registers (and also each other).
@@ -131,7 +131,7 @@ brw_vec4_alloc_reg_set(struct brw_compiler *compiler)
       q_values[i] = new unsigned[MAX_VGRF_SIZE];
 
       for (int j = 0; j < class_reg_count; j++) {
-	 ra_class_add_reg(compiler->vec4_reg_set.regs, compiler->vec4_reg_set.classes[i], reg);
+	 ra_class_add_reg(compiler->vec4_reg_set.classes[i], reg);
 
 	 compiler->vec4_reg_set.ra_reg_to_grf[reg] = j;
 

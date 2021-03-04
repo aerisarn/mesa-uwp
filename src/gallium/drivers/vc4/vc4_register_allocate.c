@@ -132,19 +132,17 @@ vc4_alloc_reg_set(struct vc4_context *vc4)
 
         /* r0-r3 */
         for (uint32_t i = ACC_INDEX; i < ACC_INDEX + 4; i++) {
-                ra_class_add_reg(vc4->regs, vc4->reg_class_r0_r3, i);
-                ra_class_add_reg(vc4->regs, vc4->reg_class_a_or_b_or_acc[0], i);
-                ra_class_add_reg(vc4->regs, vc4->reg_class_a_or_b_or_acc[1], i);
+                ra_class_add_reg(vc4->reg_class_r0_r3, i);
+                ra_class_add_reg(vc4->reg_class_a_or_b_or_acc[0], i);
+                ra_class_add_reg(vc4->reg_class_a_or_b_or_acc[1], i);
         }
 
         /* R4 gets a special class because it can't be written as a general
          * purpose register. (it's TMU_NOSWAP as a write address).
          */
         for (int i = 0; i < 2; i++) {
-                ra_class_add_reg(vc4->regs, vc4->reg_class_r4_or_a[i],
-                                 ACC_INDEX + 4);
-                ra_class_add_reg(vc4->regs, vc4->reg_class_any[i],
-                                 ACC_INDEX + 4);
+                ra_class_add_reg(vc4->reg_class_r4_or_a[i], ACC_INDEX + 4);
+                ra_class_add_reg(vc4->reg_class_any[i], ACC_INDEX + 4);
         }
 
         /* A/B */
@@ -155,27 +153,25 @@ vc4_alloc_reg_set(struct vc4_context *vc4)
                 if (vc4_regs[i].addr == 14)
                         continue;
 
-                ra_class_add_reg(vc4->regs, vc4->reg_class_any[0], i);
-                ra_class_add_reg(vc4->regs, vc4->reg_class_a_or_b[0], i);
-                ra_class_add_reg(vc4->regs, vc4->reg_class_a_or_b_or_acc[0], i);
+                ra_class_add_reg(vc4->reg_class_any[0], i);
+                ra_class_add_reg(vc4->reg_class_a_or_b[0], i);
+                ra_class_add_reg(vc4->reg_class_a_or_b_or_acc[0], i);
 
                 if (vc4_regs[i].addr < 16) {
-                        ra_class_add_reg(vc4->regs, vc4->reg_class_any[1], i);
-                        ra_class_add_reg(vc4->regs, vc4->reg_class_a_or_b[1], i);
-                        ra_class_add_reg(vc4->regs, vc4->reg_class_a_or_b_or_acc[1], i);
+                        ra_class_add_reg(vc4->reg_class_any[1], i);
+                        ra_class_add_reg(vc4->reg_class_a_or_b[1], i);
+                        ra_class_add_reg(vc4->reg_class_a_or_b_or_acc[1], i);
                 }
 
 
                 /* A only */
                 if (((i - AB_INDEX) & 1) == 0) {
-                        ra_class_add_reg(vc4->regs, vc4->reg_class_a[0], i);
-                        ra_class_add_reg(vc4->regs, vc4->reg_class_r4_or_a[0], i);
+                        ra_class_add_reg(vc4->reg_class_a[0], i);
+                        ra_class_add_reg(vc4->reg_class_r4_or_a[0], i);
 
                         if (vc4_regs[i].addr < 16) {
-                                ra_class_add_reg(vc4->regs,
-                                                 vc4->reg_class_a[1], i);
-                                ra_class_add_reg(vc4->regs,
-                                                 vc4->reg_class_r4_or_a[1], i);
+                                ra_class_add_reg(vc4->reg_class_a[1], i);
+                                ra_class_add_reg(vc4->reg_class_r4_or_a[1], i);
                         }
                 }
         }

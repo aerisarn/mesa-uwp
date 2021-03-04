@@ -53,27 +53,27 @@ TEST_F(ra_test, thumb)
    int next_vreg = 16;
 
    /* reg32low is any of the low 8 registers. */
-   int reg32low = ra_alloc_reg_class(regs);
+   struct ra_class *reg32low = ra_alloc_reg_class(regs);
    for (int i = 0; i < 8; i++) {
       int vreg = next_vreg++;
-      ra_class_add_reg(regs, reg32low, vreg);
+      ra_class_add_reg(reg32low, vreg);
       ra_add_transitive_reg_conflict(regs, i, vreg);
    }
 
    /* reg64low is pairs of the low 8 registers (with wraparound!) */
-   int reg64low = ra_alloc_reg_class(regs);
+   struct ra_class *reg64low = ra_alloc_reg_class(regs);
    for (int i = 0; i < 8; i++) {
       int vreg = next_vreg++;
-      ra_class_add_reg(regs, reg64low, vreg);
+      ra_class_add_reg(reg64low, vreg);
       ra_add_transitive_reg_conflict(regs, i, vreg);
       ra_add_transitive_reg_conflict(regs, (i + 1) % 8, vreg);
    }
 
    /* reg96 is one of either r[0..2] or r[1..3] */
-   int reg96 = ra_alloc_reg_class(regs);
+   struct ra_class *reg96 = ra_alloc_reg_class(regs);
    for (int i = 0; i < 2; i++) {
       int vreg = next_vreg++;
-      ra_class_add_reg(regs, reg96, vreg);
+      ra_class_add_reg(reg96, vreg);
       for (int j = 0; j < 3; j++)
          ra_add_transitive_reg_conflict(regs, i + j, vreg);
    }
@@ -81,16 +81,16 @@ TEST_F(ra_test, thumb)
    ra_set_finalize(regs, NULL);
 
    /* Table 4.1 */
-   ASSERT_EQ(regs->classes[reg32low]->p, 8);
-   ASSERT_EQ(regs->classes[reg32low]->q[reg32low], 1);
-   ASSERT_EQ(regs->classes[reg32low]->q[reg64low], 2);
-   ASSERT_EQ(regs->classes[reg32low]->q[reg96], 3);
-   ASSERT_EQ(regs->classes[reg64low]->p, 8);
-   ASSERT_EQ(regs->classes[reg64low]->q[reg32low], 2);
-   ASSERT_EQ(regs->classes[reg64low]->q[reg64low], 3);
-   ASSERT_EQ(regs->classes[reg64low]->q[reg96], 4);
-   ASSERT_EQ(regs->classes[reg96]->p, 2);
-   ASSERT_EQ(regs->classes[reg96]->q[reg96], 2);
-   ASSERT_EQ(regs->classes[reg96]->q[reg64low], 2);
-   ASSERT_EQ(regs->classes[reg96]->q[reg96], 2);
+   ASSERT_EQ(reg32low->p, 8);
+   ASSERT_EQ(reg32low->q[reg32low->index], 1);
+   ASSERT_EQ(reg32low->q[reg64low->index], 2);
+   ASSERT_EQ(reg32low->q[reg96->index], 3);
+   ASSERT_EQ(reg64low->p, 8);
+   ASSERT_EQ(reg64low->q[reg32low->index], 2);
+   ASSERT_EQ(reg64low->q[reg64low->index], 3);
+   ASSERT_EQ(reg64low->q[reg96->index], 4);
+   ASSERT_EQ(reg96->p, 2);
+   ASSERT_EQ(reg96->q[reg96->index], 2);
+   ASSERT_EQ(reg96->q[reg64low->index], 2);
+   ASSERT_EQ(reg96->q[reg96->index], 2);
 }

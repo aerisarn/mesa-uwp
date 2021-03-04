@@ -214,7 +214,7 @@ ra_make_reg_conflicts_transitive(struct ra_regs *regs, unsigned int r)
    }
 }
 
-unsigned int
+struct ra_class *
 ra_alloc_reg_class(struct ra_regs *regs)
 {
    struct ra_class *class;
@@ -223,20 +223,33 @@ ra_alloc_reg_class(struct ra_regs *regs)
                             regs->class_count + 1);
 
    class = rzalloc(regs, struct ra_class);
-   regs->classes[regs->class_count] = class;
+   class->regset = regs;
+
+   /* Users may rely on the class index being allocated in order starting from 0. */
+   class->index = regs->class_count++;
+   regs->classes[class->index] = class;
 
    class->regs = rzalloc_array(class, BITSET_WORD, BITSET_WORDS(regs->count));
 
-   /* Users may rely on the class index being allocated in order starting from 0. */
-   return regs->class_count++;
+   return class;
+}
+
+struct ra_class *
+ra_get_class_from_index(struct ra_regs *regs, unsigned int class)
+{
+   return regs->classes[class];
+}
+
+unsigned int
+ra_class_index(struct ra_class *c)
+{
+   return c->index;
 }
 
 void
-ra_class_add_reg(struct ra_regs *regs, unsigned int c, unsigned int r)
+ra_class_add_reg(struct ra_class *class, unsigned int r)
 {
-   struct ra_class *class = regs->classes[c];
-
-   assert(r < regs->count);
+   assert(r < class->regset->count);
 
    BITSET_SET(class->regs, r);
    class->p++;
@@ -475,20 +488,20 @@ void ra_set_select_reg_callback(struct ra_graph *g,
 
 void
 ra_set_node_class(struct ra_graph *g,
-                  unsigned int n, unsigned int class)
+                  unsigned int n, struct ra_class *class)
 {
-   g->nodes[n].class = class;
+   g->nodes[n].class = class->index;
 }
 
-unsigned int
+struct ra_class *
 ra_get_node_class(struct ra_graph *g,
                   unsigned int n)
 {
-   return g->nodes[n].class;
+   return g->regs->classes[g->nodes[n].class];
 }
 
 unsigned int
-ra_add_node(struct ra_graph *g, unsigned int class)
+ra_add_node(struct ra_graph *g, struct ra_class *class)
 {
    unsigned int n = g->count;
    ra_resize_interference_graph(g, g->count + 1);

@@ -154,8 +154,8 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
    struct ra_regs *regs = ra_alloc_reg_set(compiler, ra_reg_count, false);
    if (devinfo->ver >= 6)
       ra_set_allocate_round_robin(regs);
-   int *classes = ralloc_array(compiler, int, class_count);
-   int aligned_bary_class = -1;
+   struct ra_class **classes = ralloc_array(compiler, struct ra_class *, class_count);
+   struct ra_class *aligned_bary_class = NULL;
 
    /* Allocate space for q values.  We allocate class_count + 1 because we
     * want to leave room for the aligned barycentric class if we have it.
@@ -221,7 +221,7 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
 
       if (devinfo->ver <= 5 && dispatch_width >= 16) {
          for (int j = 0; j < class_reg_count; j++) {
-            ra_class_add_reg(regs, classes[i], reg);
+            ra_class_add_reg(classes[i], reg);
 
             ra_reg_to_grf[reg] = j * 2;
 
@@ -235,7 +235,7 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
          }
       } else {
          for (int j = 0; j < class_reg_count; j++) {
-            ra_class_add_reg(regs, classes[i], reg);
+            ra_class_add_reg(classes[i], reg);
 
             ra_reg_to_grf[reg] = j;
 
@@ -266,7 +266,7 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
 
       for (int i = 0; i < aligned_bary_reg_count; i++) {
 	 if ((ra_reg_to_grf[aligned_bary_base_reg + i] & 1) == 0) {
-	    ra_class_add_reg(regs, aligned_bary_class,
+	    ra_class_add_reg(aligned_bary_class,
                              aligned_bary_base_reg + i);
 	 }
       }
@@ -292,7 +292,7 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
 
    compiler->fs_reg_sets[index].regs = regs;
    for (unsigned i = 0; i < ARRAY_SIZE(compiler->fs_reg_sets[index].classes); i++)
-      compiler->fs_reg_sets[index].classes[i] = -1;
+      compiler->fs_reg_sets[index].classes[i] = NULL;
    for (int i = 0; i < class_count; i++)
       compiler->fs_reg_sets[index].classes[class_sizes[i] - 1] = classes[i];
    compiler->fs_reg_sets[index].ra_reg_to_grf = ra_reg_to_grf;
@@ -848,7 +848,7 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
     * of a PLN instruction needs to be an even-numbered register, so we have a
     * special register class aligned_bary_class to handle this case.
     */
-   if (compiler->fs_reg_sets[rsi].aligned_bary_class >= 0) {
+   if (compiler->fs_reg_sets[rsi].aligned_bary_class) {
       foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
          if (inst->opcode == FS_OPCODE_LINTERP && inst->src[0].file == VGRF &&
              fs->alloc.sizes[inst->src[0].nr] ==

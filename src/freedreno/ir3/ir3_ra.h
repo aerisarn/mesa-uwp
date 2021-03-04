@@ -87,16 +87,16 @@ static inline unsigned SHARED_CLASS_REGS(unsigned i)
 /* register-set, created one time, used for all shaders: */
 struct ir3_ra_reg_set {
 	struct ra_regs *regs;
-	unsigned int classes[class_count];
-	unsigned int half_classes[half_class_count];
-	unsigned int shared_classes[shared_class_count];
+	struct ra_class *classes[class_count];
+	struct ra_class *half_classes[half_class_count];
+	struct ra_class *shared_classes[shared_class_count];
 
 	/* pre-fetched tex dst is limited, on current gens to regs
 	 * 0x3f and below.  An additional register class, with one
 	 * vreg, that is setup to conflict with any regs above that
 	 * limit.
 	 */
-	unsigned prefetch_exclude_class;
+	struct ra_class *prefetch_exclude_class;
 	unsigned prefetch_exclude_reg;
 
 	/* The virtual register space flattens out all the classes,

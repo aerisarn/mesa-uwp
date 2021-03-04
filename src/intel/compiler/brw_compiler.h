@@ -50,7 +50,7 @@ struct brw_compiler {
        * Array of the ra classes for the unaligned contiguous register
        * block sizes used.
        */
-      int *classes;
+      struct ra_class **classes;
 
       /**
        * Mapping for register-allocated objects in *regs to the first
@@ -66,7 +66,7 @@ struct brw_compiler {
        * Array of the ra classes for the unaligned contiguous register
        * block sizes used, indexed by register size.
        */
-      int classes[16];
+      struct ra_class *classes[16];
 
       /**
        * Mapping from classes to ra_reg ranges.  Each of the per-size
@@ -88,7 +88,7 @@ struct brw_compiler {
        * ra class for the aligned barycentrics we use for PLN, which doesn't
        * appear in *classes.
        */
-      int aligned_bary_class;
+      struct ra_class *aligned_bary_class;
    } fs_reg_sets[3];
 
    void (*shader_debug_log)(void *, const char *str, ...) PRINTFLIKE(2, 3);

@@ -121,13 +121,14 @@ struct ra_regs *ppir_regalloc_init(void *mem_ctx)
    for (int i = 0; i < PPIR_VEC1_REG_NUM; i++)
       ra_make_reg_conflicts_transitive(ret, i);
 
+   struct ra_class *classes[ppir_ra_reg_class_num];
    for (int i = 0; i < ppir_ra_reg_class_num; i++)
-      ra_alloc_reg_class(ret);
+      classes[i] = ra_alloc_reg_class(ret);
 
    int reg_index = 0;
    for (int i = 0; i < ppir_ra_reg_class_num; i++) {
       while (reg_index < ppir_ra_reg_base[i + 1])
-         ra_class_add_reg(ret, i, reg_index++);
+         ra_class_add_reg(classes[i], reg_index++);
    }
 
    ra_set_finalize(ret, ppir_ra_reg_q_values);
@@ -609,7 +610,7 @@ static bool ppir_regalloc_prog_try(ppir_compiler *comp, bool *spilled)
       int c = ppir_ra_reg_class_vec1 + (reg->num_components - 1);
       if (reg->is_head)
          c += 4;
-      ra_set_node_class(g, n++, c);
+      ra_set_node_class(g, n++, ra_get_class_from_index(comp->ra, c));
    }
 
    ppir_liveness_analysis(comp);

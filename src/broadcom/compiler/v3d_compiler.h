@@ -549,10 +549,10 @@ enum v3d_compilation_result {
 struct v3d_compiler {
         const struct v3d_device_info *devinfo;
         struct ra_regs *regs;
-        unsigned int reg_class_any[3];
-        unsigned int reg_class_r5[3];
-        unsigned int reg_class_phys[3];
-        unsigned int reg_class_phys_or_acc[3];
+        struct ra_class *reg_class_any[3];
+        struct ra_class *reg_class_r5[3];
+        struct ra_class *reg_class_phys[3];
+        struct ra_class *reg_class_phys_or_acc[3];
 };
 
 /**

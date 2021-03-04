@@ -398,7 +398,8 @@ static unsigned int
 ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 {
 	struct ir3_ra_ctx *ctx = data;
-	unsigned int class = ra_get_node_class(ctx->g, n);
+	struct ra_class *classp = ra_get_node_class(ctx->g, n);
+	unsigned int class = ra_class_index(classp);
 	bool half, shared;
 	int sz = ra_class_to_size(class, &half, &shared);
 
@@ -501,10 +502,10 @@ ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 		return ra_select_reg_merged(n, regs, data);
 	}
 
-	if (class == ctx->set->half_classes[0]) {
+	if (classp == ctx->set->half_classes[0]) {
 		int n = r - base;
 		ctx->start_search_reg = (n + 1) % ctx->max_target;
-	} else if (class == ctx->set->classes[0]) {
+	} else if (classp == ctx->set->classes[0]) {
 		int n = (r - base) * 2;
 		ctx->start_search_reg = (n + 1) % ctx->max_target;
 	}
