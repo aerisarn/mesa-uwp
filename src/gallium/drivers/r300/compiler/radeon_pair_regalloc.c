@@ -722,8 +722,7 @@ void rc_init_regalloc_state(struct rc_regalloc_state *s)
 	for (i = 0; i < RC_REG_CLASS_COUNT; i++) {
 		ra_q_values[i] = MALLOC(RC_REG_CLASS_COUNT * sizeof(unsigned));
 		for (j = 0; j < RC_REG_CLASS_COUNT; j++) {
-			ra_q_values[s->class_ids[i]][s->class_ids[j]] =
-							q_values[i][j];
+			ra_q_values[i][j] = q_values[i][j];
 		}
 	}
 

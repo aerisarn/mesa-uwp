@@ -227,6 +227,7 @@ ra_alloc_reg_class(struct ra_regs *regs)
 
    class->regs = rzalloc_array(class, BITSET_WORD, BITSET_WORDS(regs->count));
 
+   /* Users may rely on the class index being allocated in order starting from 0. */
    return regs->class_count++;
 }
 
