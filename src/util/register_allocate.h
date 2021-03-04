@@ -54,6 +54,7 @@ struct ra_regs *ra_alloc_reg_set(void *mem_ctx, unsigned int count,
                                  bool need_conflict_lists);
 void ra_set_allocate_round_robin(struct ra_regs *regs);
 struct ra_class *ra_alloc_reg_class(struct ra_regs *regs);
+struct ra_class *ra_alloc_contig_reg_class(struct ra_regs *regs, int contig_len);
 unsigned int ra_class_index(struct ra_class *c);
 void ra_add_reg_conflict(struct ra_regs *regs,
                          unsigned int r1, unsigned int r2);

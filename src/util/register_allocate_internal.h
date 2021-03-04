@@ -64,6 +64,12 @@ struct ra_class {
    BITSET_WORD *regs;
 
    /**
+    * Number of regs after each bit in *regs that are also conflicted by an
+    * allocation to that reg for this class.
+    */
+   int contig_len;
+
+   /**
     * p(B) in Runeson/Nyström paper.
     *
     * This is "how many regs are in the set."
@@ -163,6 +169,9 @@ struct ra_graph {
       unsigned int stack_optimistic_start;
    } tmp;
 };
+
+bool ra_class_allocations_conflict(struct ra_class *c1, unsigned int r1,
+                                   struct ra_class *c2, unsigned int r2);
 
 #ifdef __cplusplus
 } /* extern "C" */
