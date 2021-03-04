@@ -692,6 +692,16 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 		}
 	}
 
+	if (is_meta(instr)) {
+		/* collect and phi nodes support const/immed sources, which will be
+		 * turned into move instructions, but not anything else.
+		 */
+		if (flags & ~(IR3_REG_IMMED | IR3_REG_CONST))
+			return false;
+
+		return true;
+	}
+
 	switch (opc_cat(instr->opc)) {
 	case 0: /* end, chmask */
 		return flags == 0;

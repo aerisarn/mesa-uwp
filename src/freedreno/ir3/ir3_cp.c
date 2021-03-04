@@ -334,10 +334,8 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			return true;
 		}
 	} else if ((is_same_type_mov(src) || is_const_mov(src)) &&
-			/* cannot collapse const/immed/etc into meta instrs and control
-			 * flow:
-			 */
-			!is_meta(instr) && opc_cat(instr->opc) != 0) {
+			/* cannot collapse const/immed/etc into control flow: */
+			opc_cat(instr->opc) != 0) {
 		/* immed/const/etc cases, which require some special handling: */
 		struct ir3_register *src_reg = src->regs[1];
 		unsigned new_flags = reg->flags;
@@ -396,11 +394,18 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			 * float opcodes.
 			 */
 			if (src->cat1.dst_type == TYPE_F16) {
+				/* TODO: should we have a way to tell phi/collect to use a
+				 * float move so that this is legal?
+				 */
+				if (is_meta(instr))
+					return false;
 				if (instr->opc == OPC_MOV && !type_float(instr->cat1.src_type))
 					return false;
 				if (!is_cat2_float(instr->opc) && !is_cat3_float(instr->opc))
 					return false;
 			} else if (src->cat1.dst_type == TYPE_U16) {
+				if (is_meta(instr))
+					return true;
 				/* Since we set CONSTANT_DEMOTION_ENABLE, a float reference of
 				 * what was a U16 value read from the constbuf would incorrectly
 				 * do 32f->16f conversion, when we want to read a 16f value.
@@ -432,6 +437,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 
 			debug_assert((opc_cat(instr->opc) == 1) ||
 					(opc_cat(instr->opc) == 6) ||
+					is_meta(instr) ||
 					ir3_cat2_int(instr->opc) ||
 					(is_mad(instr->opc) && (n == 0)));
 
@@ -446,7 +452,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 
 			/* other than category 1 (mov) we can only encode up to 10 bits: */
 			if (ir3_valid_flags(instr, n, new_flags) &&
-					((instr->opc == OPC_MOV) ||
+					((instr->opc == OPC_MOV) || is_meta(instr) ||
 					 !((iim_val & ~0x3ff) && (-iim_val & ~0x3ff)))) {
 				new_flags &= ~(IR3_REG_SABS | IR3_REG_SNEG | IR3_REG_BNOT);
 				src_reg = ir3_reg_clone(instr->block->shader, src_reg);
@@ -536,6 +542,32 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 		ir3_instr_set_address(instr, eliminate_output_mov(ctx, instr->address));
 	}
 
+	/* After folding a mov's source we may wind up with a type-converting mov
+	 * of an immediate. This happens e.g. with texture descriptors, since we
+	 * narrow the descriptor (which may be a constant) to a half-reg in ir3.
+	 * By converting the immediate in-place to the destination type, we can
+	 * turn the mov into a same-type mov so that it can be further propagated.
+	 */
+	if (instr->opc == OPC_MOV &&
+			(instr->regs[1]->flags & IR3_REG_IMMED) &&
+			instr->cat1.src_type != instr->cat1.dst_type &&
+			/* Only do uint types for now, until we generate other types of
+			 * mov's during instruction selection.
+			 */
+			full_type(instr->cat1.src_type) == TYPE_U32 &&
+			full_type(instr->cat1.dst_type) == TYPE_U32) {
+		uint32_t uimm = instr->regs[1]->uim_val;
+		if (instr->cat1.dst_type == TYPE_U16)
+			uimm &= 0xffff;
+		instr->regs[1]->uim_val = uimm;
+		if (instr->regs[0]->flags & IR3_REG_HALF)
+			instr->regs[1]->flags |= IR3_REG_HALF;
+		else
+			instr->regs[1]->flags &= ~IR3_REG_HALF;
+		instr->cat1.src_type = instr->cat1.dst_type;
+		ctx->progress = true;
+	}
+
 	/* Re-write the instruction writing predicate register to get rid
 	 * of the double cmps.
 	 */
@@ -577,16 +609,14 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 
 		debug_assert(samp_tex->opc == OPC_META_COLLECT);
 
-		struct ir3_instruction *samp = ssa(samp_tex->regs[1]);
-		struct ir3_instruction *tex  = ssa(samp_tex->regs[2]);
+		struct ir3_register *samp = samp_tex->regs[1];
+		struct ir3_register *tex  = samp_tex->regs[2];
 
-		if ((samp->opc == OPC_MOV) &&
-				(samp->regs[1]->flags & IR3_REG_IMMED) &&
-				(tex->opc == OPC_MOV) &&
-				(tex->regs[1]->flags & IR3_REG_IMMED)) {
+		if ((samp->flags & IR3_REG_IMMED) &&
+			(tex->flags & IR3_REG_IMMED)) {
 			instr->flags &= ~IR3_INSTR_S2EN;
-			instr->cat5.samp = samp->regs[1]->iim_val;
-			instr->cat5.tex  = tex->regs[1]->iim_val;
+			instr->cat5.samp = samp->iim_val;
+			instr->cat5.tex  = tex->iim_val;
 
 			/* shuffle around the regs to remove the first src: */
 			instr->regs_count--;
