@@ -77,6 +77,7 @@ libfreedreno_ir3_files = files(
   'ir3_cf.c',
   'ir3_cp.c',
   'ir3_cp_postsched.c',
+  'ir3_cse.c',
   'ir3_dce.c',
   'ir3_delay.c',
   'ir3_dominance.c',
