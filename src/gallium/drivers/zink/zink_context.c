@@ -983,11 +983,34 @@ zink_set_shader_buffers(struct pipe_context *pctx,
 }
 
 static void
+update_binds_for_samplerviews(struct zink_context *ctx, struct zink_resource *res, bool is_compute)
+{
+    if (is_compute) {
+       u_foreach_bit(slot, res->sampler_binds[PIPE_SHADER_COMPUTE])
+          update_descriptor_state(ctx, PIPE_SHADER_COMPUTE, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, slot);
+       zink_context_invalidate_descriptor_state(ctx, PIPE_SHADER_COMPUTE, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
+    } else {
+       for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+          u_foreach_bit(slot, res->sampler_binds[i])
+             update_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, slot);
+          if (res->sampler_binds[i])
+             zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
+       }
+    }
+}
+
+static void
 unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsigned slot)
 {
    struct zink_image_view *image_view = &ctx->image_views[stage][slot];
+   bool is_compute = stage == PIPE_SHADER_COMPUTE;
    if (!image_view->base.resource)
       return;
+
+   struct zink_resource *res = zink_resource(image_view->base.resource);
+   /* if this was the last image bind, the sampler bind layouts must be updated */
+   if (!res->image_bind_count[is_compute] && res->bind_count[is_compute])
+      update_binds_for_samplerviews(ctx, res, is_compute);
 
    zink_descriptor_set_refs_clear(&image_view->desc_set_refs, image_view);
    if (image_view->base.resource->target == PIPE_BUFFER)
@@ -1047,6 +1070,12 @@ zink_set_shader_images(struct pipe_context *pctx,
             image_view->surface = zink_surface(pctx->create_surface(pctx, &res->base.b, &tmpl));
             assert(image_view->surface);
             res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
+            /* if this is the first image bind and there are sampler binds, the image's sampler layout
+             * must be updated to GENERAL
+             */
+            if (res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE] == 1 &&
+                res->bind_count[p_stage == PIPE_SHADER_COMPUTE] > 1)
+               update_binds_for_samplerviews(ctx, res, p_stage == PIPE_SHADER_COMPUTE);
          }
          update = true;
       } else if (image_view->base.resource) {
