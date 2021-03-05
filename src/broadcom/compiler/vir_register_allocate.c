@@ -501,19 +501,19 @@ vir_init_reg_sets(struct v3d_compiler *compiler)
         int max_thread_index = (compiler->devinfo->ver >= 40 ? 2 : 3);
 
         compiler->regs = ra_alloc_reg_set(compiler, PHYS_INDEX + PHYS_COUNT,
-                                          true);
+                                          false);
         if (!compiler->regs)
                 return false;
 
         for (int threads = 0; threads < max_thread_index; threads++) {
                 compiler->reg_class_any[threads] =
-                        ra_alloc_reg_class(compiler->regs);
+                        ra_alloc_contig_reg_class(compiler->regs, 1);
                 compiler->reg_class_r5[threads] =
-                        ra_alloc_reg_class(compiler->regs);
+                        ra_alloc_contig_reg_class(compiler->regs, 1);
                 compiler->reg_class_phys_or_acc[threads] =
-                        ra_alloc_reg_class(compiler->regs);
+                        ra_alloc_contig_reg_class(compiler->regs, 1);
                 compiler->reg_class_phys[threads] =
-                        ra_alloc_reg_class(compiler->regs);
+                        ra_alloc_contig_reg_class(compiler->regs, 1);
 
                 for (int i = PHYS_INDEX;
                      i < PHYS_INDEX + (PHYS_COUNT >> threads); i++) {
