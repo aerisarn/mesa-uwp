@@ -141,6 +141,10 @@ optimizations = [
    (('usadd_4x8_vc4', a, 0), a),
    (('usadd_4x8_vc4', a, ~0), ~0),
    (('~fadd', ('fmul', a, b), ('fmul', a, c)), ('fmul', a, ('fadd', b, c))),
+   (('~ffma', a, b, ('ffma(is_used_once)', a, c, d)), ('ffma', a, ('fadd', b, c), d)),
+   (('~ffma', a, b, ('fmul(is_used_once)', a, c)), ('fmul', a, ('fadd', b, c))),
+   (('~fadd', ('fmul(is_used_once)', a, b), ('ffma(is_used_once)', a, c, d)), ('ffma', a, ('fadd', b, c), d)),
+   (('~ffma', a, ('fmul(is_used_once)', b, c), ('fmul(is_used_once)', b, d)), ('fmul', b, ('ffma', a, c, d))),
    (('iadd', ('imul', a, b), ('imul', a, c)), ('imul', a, ('iadd', b, c))),
    (('iand', ('ior', a, b), ('ior', a, c)), ('ior', a, ('iand', b, c))),
    (('ior', ('iand', a, b), ('iand', a, c)), ('iand', a, ('ior', b, c))),
@@ -180,6 +184,7 @@ optimizations = [
    (('ffma@32', a, b, 0.0), ('fmul', a, b), '!'+signed_zero_inf_nan_preserve_32),
    (('ffma', 1.0, a, b), ('fadd', a, b)),
    (('ffma', -1.0, a, b), ('fadd', ('fneg', a), b)),
+   (('~ffma', '#a', '#b', c), ('fadd', ('fmul', a, b), c)),
    (('~flrp', a, b, 0.0), a),
    (('~flrp', a, b, 1.0), b),
    (('~flrp', a, a, b), a),
@@ -206,6 +211,13 @@ for s in [16, 32, 64]:
 
        (('~fadd@{}'.format(s),    ('fmul', a, ('fadd', 1.0, ('fneg', ('b2f', 'c@1')))), ('fmul', b, ('b2f',  c))), ('bcsel', c, b, a), 'options->lower_flrp{}'.format(s)),
        (('~fadd@{}'.format(s), a, ('fmul', ('b2f', 'c@1'), ('fadd', b, ('fneg', a)))), ('bcsel', c, b, a), 'options->lower_flrp{}'.format(s)),
+
+       (('~ffma@{}'.format(s), a, ('fadd', 1.0, ('fneg', ('b2f', 'c@1'))), ('fmul', b, ('b2f', 'c@1'))), ('bcsel', c, b, a)),
+       (('~ffma@{}'.format(s), b, ('b2f', 'c@1'), ('ffma', ('fneg', a), ('b2f', 'c@1'), a)), ('bcsel', c, b, a)),
+
+       # These two aren't flrp lowerings, but do appear in some shaders.
+       (('~ffma@{}'.format(s), ('b2f', 'c@1'), ('fadd', b, ('fneg', a)), a), ('bcsel', c, b, a)),
+       (('~ffma@{}'.format(s), ('b2f', 'c@1'), ('ffma', ('fneg', a), b, d), ('fmul', a, b)), ('bcsel', c, d, ('fmul', a, b))),
 
        # 1 - ((1 - a) * (1 - b))
        # 1 - (1 - a - b + a*b)
@@ -1336,23 +1348,29 @@ optimizations.extend([
 
    # Propagate negation up multiplication chains
    (('fmul(is_used_by_non_fsat)', ('fneg', a), b), ('fneg', ('fmul', a, b))),
+   (('ffma', ('fneg', a), ('fneg', b), c), ('ffma', a, b, c)),
    (('imul', ('ineg', a), b), ('ineg', ('imul', a, b))),
 
    # Propagate constants up multiplication chains
    (('~fmul(is_used_once)', ('fmul(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('fmul', ('fmul', a, c), b)),
    (('imul(is_used_once)', ('imul(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('imul', ('imul', a, c), b)),
+   (('~ffma', ('fmul(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c', d), ('ffma', ('fmul', a, c), b, d)),
    # Prefer moving out a multiplication for more MAD/FMA-friendly code
    (('~fadd(is_used_once)', ('fadd(is_used_once)', 'a(is_not_const)', 'b(is_fmul)'), '#c'), ('fadd', ('fadd', a, c), b)),
    (('~fadd(is_used_once)', ('fadd(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('fadd', ('fadd', a, c), b)),
+   (('~fadd(is_used_once)', ('ffma(is_used_once)', 'a(is_not_const)', b, 'c(is_not_const)'), '#d'), ('fadd', ('ffma', a, b, d), c)),
    (('iadd(is_used_once)', ('iadd(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('iadd', ('iadd', a, c), b)),
 
    # Reassociate constants in add/mul chains so they can be folded together.
    # For now, we mostly only handle cases where the constants are separated by
    # a single non-constant.  We could do better eventually.
    (('~fmul', '#a', ('fmul', 'b(is_not_const)', '#c')), ('fmul', ('fmul', a, c), b)),
+   (('~ffma', '#a', ('fmul', 'b(is_not_const)', '#c'), d), ('ffma', ('fmul', a, c), b, d)),
    (('imul', '#a', ('imul', 'b(is_not_const)', '#c')), ('imul', ('imul', a, c), b)),
    (('~fadd', '#a',          ('fadd', 'b(is_not_const)', '#c')),  ('fadd', ('fadd', a,          c),           b)),
    (('~fadd', '#a', ('fneg', ('fadd', 'b(is_not_const)', '#c'))), ('fadd', ('fadd', a, ('fneg', c)), ('fneg', b))),
+   (('~fadd', '#a',          ('ffma', 'b(is_not_const)', 'c(is_not_const)', '#d')),  ('ffma',          b,  c, ('fadd', a,          d))),
+   (('~fadd', '#a', ('fneg', ('ffma', 'b(is_not_const)', 'c(is_not_const)', '#d'))), ('ffma', ('fneg', b), c, ('fadd', a, ('fneg', d)))),
    (('iadd', '#a', ('iadd', 'b(is_not_const)', '#c')), ('iadd', ('iadd', a, c), b)),
    (('iand', '#a', ('iand', 'b(is_not_const)', '#c')), ('iand', ('iand', a, c), b)),
    (('ior',  '#a', ('ior',  'b(is_not_const)', '#c')), ('ior',  ('ior',  a, c), b)),
