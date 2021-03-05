@@ -147,6 +147,9 @@ pan_shader_prepare_bifrost_rsd(const struct panfrost_device *dev,
                         info->fs.reads_sample_mask_in |
                         info->fs.reads_helper_invocation |
                         info->fs.sample_shading;
+
+                rsd->message_preload_1 = info->bifrost.messages[0];
+                rsd->message_preload_2 = info->bifrost.messages[1];
                 break;
 
         case MESA_SHADER_COMPUTE:
