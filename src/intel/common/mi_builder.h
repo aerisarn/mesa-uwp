@@ -253,8 +253,8 @@ mi_reserve_gpr(struct mi_builder *b, unsigned gpr)
  * are responsible for calling mi_value_ref() to get a second reference
  * because the mi_* math function will consume it twice.
  */
-static inline struct mi_value
-mi_value_ref(struct mi_builder *b, struct mi_value val)
+static inline void
+mi_value_add_refs(struct mi_builder *b, struct mi_value val, unsigned num_refs)
 {
 #if GFX_VERx10 >= 75
    if (_mi_value_is_allocated_gpr(val)) {
@@ -262,12 +262,18 @@ mi_value_ref(struct mi_builder *b, struct mi_value val)
       assert(gpr < MI_BUILDER_NUM_ALLOC_GPRS);
       assert(b->gprs & (1u << gpr));
       assert(b->gpr_refs[gpr] < UINT8_MAX);
-      b->gpr_refs[gpr]++;
+      b->gpr_refs[gpr] += num_refs;
    }
 #endif /* GFX_VERx10 >= 75 */
+}
 
+static inline struct mi_value
+mi_value_ref(struct mi_builder *b, struct mi_value val)
+{
+   mi_value_add_refs(b, val, 1);
    return val;
 }
+
 
 /** Drop a reference to a mi_value
  *
