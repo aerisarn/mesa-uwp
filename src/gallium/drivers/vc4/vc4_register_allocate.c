@@ -115,20 +115,20 @@ vc4_alloc_reg_set(struct vc4_context *vc4)
         if (vc4->regs)
                 return;
 
-        vc4->regs = ra_alloc_reg_set(vc4, ARRAY_SIZE(vc4_regs), true);
+        vc4->regs = ra_alloc_reg_set(vc4, ARRAY_SIZE(vc4_regs), false);
 
         /* The physical regfiles split us into two classes, with [0] being the
          * whole space and [1] being the bottom half (for threaded fragment
          * shaders).
          */
         for (int i = 0; i < 2; i++) {
-                vc4->reg_class_any[i] = ra_alloc_reg_class(vc4->regs);
-                vc4->reg_class_a_or_b[i] = ra_alloc_reg_class(vc4->regs);
-                vc4->reg_class_a_or_b_or_acc[i] = ra_alloc_reg_class(vc4->regs);
-                vc4->reg_class_r4_or_a[i] = ra_alloc_reg_class(vc4->regs);
-                vc4->reg_class_a[i] = ra_alloc_reg_class(vc4->regs);
+                vc4->reg_class_any[i] = ra_alloc_contig_reg_class(vc4->regs, 1);
+                vc4->reg_class_a_or_b[i] = ra_alloc_contig_reg_class(vc4->regs, 1);
+                vc4->reg_class_a_or_b_or_acc[i] = ra_alloc_contig_reg_class(vc4->regs, 1);
+                vc4->reg_class_r4_or_a[i] = ra_alloc_contig_reg_class(vc4->regs, 1);
+                vc4->reg_class_a[i] = ra_alloc_contig_reg_class(vc4->regs, 1);
         }
-        vc4->reg_class_r0_r3 = ra_alloc_reg_class(vc4->regs);
+        vc4->reg_class_r0_r3 = ra_alloc_contig_reg_class(vc4->regs, 1);
 
         /* r0-r3 */
         for (uint32_t i = ACC_INDEX; i < ACC_INDEX + 4; i++) {
