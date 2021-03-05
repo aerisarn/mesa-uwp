@@ -77,6 +77,13 @@ struct bi_op_props {
         bool table : 1;
         bool fma : 1;
         bool add : 1;
+
+        /* Supported propagable modifiers */
+        bool clamp : 1;
+        bool not_result : 1;
+        unsigned abs : 3;
+        unsigned neg : 3;
+        bool not : 1;
 };
 
 /* Generated in bi_opcodes.c.py */
