@@ -162,6 +162,23 @@ static void print_instr_name(struct ir3_instruction *instr, bool flags)
 	}
 }
 
+static void print_ssa_def_name(struct ir3_register *reg)
+{
+	printf(SYN_SSA("ssa_%u"), reg->instr->serialno);
+}
+
+static void print_ssa_name(struct ir3_register *reg, bool dst)
+{
+	if (!dst) {
+		if (!reg->def)
+			printf(SYN_SSA("undef"));
+		else
+			print_ssa_def_name(reg->def);
+	} else {
+		print_ssa_def_name(reg);
+	}
+}
+
 static void print_reg_name(struct ir3_instruction *instr, struct ir3_register *reg)
 {
 	if ((reg->flags & (IR3_REG_FABS | IR3_REG_SABS)) &&
@@ -183,22 +200,19 @@ static void print_reg_name(struct ir3_instruction *instr, struct ir3_register *r
 	if (reg->flags & IR3_REG_IMMED) {
 		printf(SYN_IMMED("imm[%f,%d,0x%x]"), reg->fim_val, reg->iim_val, reg->iim_val);
 	} else if (reg->flags & IR3_REG_ARRAY) {
+		if (reg->flags & IR3_REG_SSA) {
+			print_ssa_name(reg, reg->flags & IR3_REG_DEST);
+			printf(":");
+		}
 		printf(SYN_ARRAY("arr[id=%u, offset=%d, size=%u"), reg->array.id,
 				reg->array.offset, reg->size);
-		/* for ARRAY we could have null src, for example first write
-		 * instruction..
-		 *
-		 * Note for array writes from another block, we aren't really
-		 * sure who wrote it so skip trying to show this
-		 */
-		if (reg->def && (reg->def->instr->block == instr->block)) {
+		if (reg->flags & IR3_REG_DEST) {
 			printf(SYN_ARRAY(", "));
-			printf(SYN_SSA("ssa_%u"), reg->def->instr->serialno);
+			print_ssa_name(reg, false);
 		}
 		printf(SYN_ARRAY("]"));
 	} else if (reg->flags & IR3_REG_SSA) {
-		/* For dst regs, reg->def will be NULL: */
-		printf(SYN_SSA("ssa_%u"), (reg->flags & IR3_REG_DEST) ? instr->serialno : reg->def->instr->serialno);
+		print_ssa_name(reg, reg->flags & IR3_REG_DEST);
 	} else if (reg->flags & IR3_REG_RELATIV) {
 		if (reg->flags & IR3_REG_CONST)
 			printf(SYN_CONST("c<a0.x + %d>"), reg->array.offset);
