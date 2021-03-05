@@ -51,12 +51,6 @@ struct brw_compiler {
        * block sizes used.
        */
       struct ra_class **classes;
-
-      /**
-       * Mapping for register-allocated objects in *regs to the first
-       * GRF for that object.
-       */
-      uint8_t *ra_reg_to_grf;
    } vec4_reg_set;
 
    struct {
