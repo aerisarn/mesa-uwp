@@ -550,6 +550,17 @@
     <value name="U16" value="5"/>
   </enum>
 
+  <enum name="Message Type">
+    <value name="Disabled" value="0"/>
+    <value name="LD_VAR" value="1"/>
+    <value name="VAR_TEX" value="2"/>
+  </enum>
+
+  <enum name="Message Preload Register Format">
+    <value name="F32" value="0"/>
+    <value name="F16" value="1"/>
+  </enum>
+
   <enum name="Bifrost Blend Mode">
     <value name="Shader" value="0"/>
     <value name="Opaque" value="1"/>
@@ -918,6 +929,26 @@
     <field name="Depth Pass" size="3" start="25" type="Stencil Op"/>
   </struct>
 
+  <struct name="LD_VAR Preload" size="1" no-direct-packing="true">
+    <field name="Varying Index" size="5" start="4" type="uint"/>
+    <field name="Register Format" size="2" start="9" type="Message Preload Register Format"/>
+    <field name="Num Components" size="2" start="11" type="uint" modifier="minus(1)" default="1"/>
+  </struct>
+
+  <struct name="VAR_TEX Preload" size="1" no-direct-packing="true">
+    <field name="Varying Index" size="3" start="4" type="uint"/>
+    <field name="Sampler Index" size="2" start="7" type="uint"/>
+    <field name="Register Format" size="2" start="9" type="Message Preload Register Format"/>
+    <field name="Skip" size="1" start="14" type="bool"/>
+    <field name="Zero LOD" size="1" start="15" type="bool"/>
+  </struct>
+
+  <struct name="Message Preload" size="1">
+    <field name="Type" size="4" start="0" type="Message Type"/>
+    <field name="LD_VAR" size="16" start="0" type="LD_VAR Preload"/>
+    <field name="VAR_TEX" size="16" start="0" type="VAR_TEX Preload"/>
+  </struct>
+
   <struct name="Renderer State" align="64">
     <field name="Shader" size="128" start="0:0" type="Shader"/>
     <field name="Properties" size="32" start="4:0" type="Renderer Properties"/>
@@ -934,6 +965,9 @@
     <field name="SFBD Blend Shader" size="64" start="14:0" type="address"/>
     <field name="SFBD Blend Equation" size="32" start="14:0" type="Blend Equation"/>
     <field name="SFBD Blend Constant" size="32" start="15:0" type="float"/>
+    <!-- New in v7, only with a single shader (XXX: type Message Preload) -->
+    <field name="Message Preload 1" size="16" start="15:0" type="uint"/>
+    <field name="Message Preload 2" size="16" start="15:16" type="uint"/>
   </struct>
 
   <struct name="Uniform Buffer" align="8">
