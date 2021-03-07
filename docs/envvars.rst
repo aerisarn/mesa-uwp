@@ -365,6 +365,13 @@ Radeon driver environment variables (radeon, r200, and r300g)
 :envvar:`RADEON_NO_TCL`
    if set, disable hardware-accelerated Transform/Clip/Lighting.
 
+DRI environment variables
+-------------------------
+
+:envvar:`DRI_NO_MSAA`
+   disable MSAA for GLX/EGL MSAA visuals
+
+
 EGL environment variables
 -------------------------
 

@@ -378,7 +378,10 @@ dri_fill_st_visual(struct st_visual *stvis,
    }
 
    if (mode->samples > 0) {
-      stvis->samples = mode->samples;
+      if (debug_get_bool_option("DRI_NO_MSAA", false))
+         stvis->samples = 0;
+      else
+         stvis->samples = mode->samples;
    }
 
    switch (mode->depthBits) {
