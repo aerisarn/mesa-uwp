@@ -9,15 +9,20 @@ export DEBIAN_FRONTEND=noninteractive
 STABLE_EPHEMERAL=" \
       autoconf \
       automake \
+      bc \
+      bison \
+      bzip2 \
       cargo \
       ccache \
       clang-11 \
       cmake \
+      flex \
       g++ \
       glslang-tools \
       libasound2-dev \
       libcap-dev \
       libclang-cpp11-dev \
+      libelf-dev \
       libfdt-dev \
       libgbm-dev \
       libgles2-mesa-dev \
@@ -66,6 +71,16 @@ apt-get install -y --no-remove \
 
 
 . .gitlab-ci/container/container_pre_build.sh
+
+############### Build kernel
+
+export DEFCONFIG="arch/x86/configs/x86_64_defconfig"
+export KERNEL_IMAGE_NAME=bzImage
+export KERNEL_ARCH=x86_64
+export DEBIAN_ARCH=amd64
+
+mkdir -p /lava-files/
+. .gitlab-ci/container/build-kernel.sh
 
 ############### Build libdrm
 
