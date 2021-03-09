@@ -1745,6 +1745,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
       ctx.info[instr->operands[2].tempId()].set_vcc_hint();
       break;
+   case aco_opcode::v_addc_co_u32: ctx.info[instr->operands[2].tempId()].set_vcc_hint(); break;
    case aco_opcode::v_cmp_lg_u32:
       if (instr->format == Format::VOPC && /* don't optimize VOP3 / SDWA / DPP */
           instr->operands[0].constantEquals(0) && instr->operands[1].isTemp() &&
@@ -3675,8 +3676,9 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
        instr->opcode != aco_opcode::v_fma_mixlo_f16)
       return combine_vop3p(ctx, instr);
 
-   if (ctx.info[instr->definitions[0].tempId()].is_vcc_hint()) {
-      instr->definitions[0].setHint(vcc);
+   for (Definition& def : instr->definitions) {
+      if (ctx.info[def.tempId()].is_vcc_hint())
+         def.setHint(vcc);
    }
 
    if (instr->isSDWA() || instr->isDPP())
