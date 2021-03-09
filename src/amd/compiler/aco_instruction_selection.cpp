@@ -271,14 +271,19 @@ emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask)
 }
 
 Temp
-as_vgpr(isel_context* ctx, Temp val)
+as_vgpr(Builder& bld, Temp val)
 {
-   if (val.type() == RegType::sgpr) {
-      Builder bld(ctx->program, ctx->block);
+   if (val.type() == RegType::sgpr)
       return bld.copy(bld.def(RegType::vgpr, val.size()), val);
-   }
    assert(val.type() == RegType::vgpr);
    return val;
+}
+
+Temp
+as_vgpr(isel_context* ctx, Temp val)
+{
+   Builder bld(ctx->program, ctx->block);
+   return as_vgpr(bld, val);
 }
 
 // assumes a != 0xffffffff
@@ -4306,12 +4311,15 @@ global_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsign
       mubuf->definitions[0] = Definition(val);
       bld.insert(std::move(mubuf));
    } else {
-      offset = offset.regClass() == s2 ? bld.copy(bld.def(v2), offset) : offset;
-
       aco_ptr<FLAT_instruction> flat{
          create_instruction<FLAT_instruction>(op, global ? Format::GLOBAL : Format::FLAT, 2, 1)};
-      flat->operands[0] = Operand(offset);
-      flat->operands[1] = Operand(s1);
+      if (global && offset.regClass() == s2) {
+         flat->operands[0] = bld.copy(bld.def(v1), Operand::zero());
+         flat->operands[1] = Operand(offset);
+      } else {
+         flat->operands[0] = Operand(as_vgpr(bld, offset));
+         flat->operands[1] = Operand(s1);
+      }
       flat->glc = info.glc;
       flat->dlc = info.glc && bld.program->chip_class >= GFX10;
       flat->sync = info.sync;
@@ -6440,9 +6448,6 @@ visit_store_global(isel_context* ctx, nir_intrinsic_instr* instr)
    bool glc =
       nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
 
-   if (ctx->options->chip_class >= GFX7)
-      addr = as_vgpr(ctx, addr);
-
    unsigned write_count = 0;
    Temp write_datas[32];
    unsigned offsets[32];
@@ -6491,8 +6496,13 @@ visit_store_global(isel_context* ctx, nir_intrinsic_instr* instr)
 
          aco_ptr<FLAT_instruction> flat{
             create_instruction<FLAT_instruction>(op, global ? Format::GLOBAL : Format::FLAT, 3, 0)};
-         flat->operands[0] = Operand(store_addr);
-         flat->operands[1] = Operand(s1);
+         if (global && store_addr.regClass() == s2) {
+            flat->operands[0] = bld.copy(bld.def(v1), Operand::zero());
+            flat->operands[1] = Operand(store_addr);
+         } else {
+            flat->operands[0] = Operand(as_vgpr(ctx, store_addr));
+            flat->operands[1] = Operand(s1);
+         }
          flat->operands[2] = Operand(write_datas[i]);
          flat->glc = glc;
          flat->dlc = false;
@@ -6533,9 +6543,6 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
    Temp addr = get_ssa_temp(ctx, instr->src[0].ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
-
-   if (ctx->options->chip_class >= GFX7)
-      addr = as_vgpr(ctx, addr);
 
    if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, data.size() * 2),
@@ -6604,8 +6611,13 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
       aco_opcode op = instr->dest.ssa.bit_size == 32 ? op32 : op64;
       aco_ptr<FLAT_instruction> flat{create_instruction<FLAT_instruction>(
          op, global ? Format::GLOBAL : Format::FLAT, 3, return_previous ? 1 : 0)};
-      flat->operands[0] = Operand(addr);
-      flat->operands[1] = Operand(s1);
+      if (global && addr.regClass() == s2) {
+         flat->operands[0] = bld.copy(bld.def(v1), Operand::zero());
+         flat->operands[1] = Operand(addr);
+      } else {
+         flat->operands[0] = Operand(as_vgpr(ctx, addr));
+         flat->operands[1] = Operand(s1);
+      }
       flat->operands[2] = Operand(data);
       if (return_previous)
          flat->definitions[0] = Definition(dst);
