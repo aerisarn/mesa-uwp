@@ -10,6 +10,8 @@ STABLE_EPHEMERAL=" \
       ccache \
       cmake \
       g++ \
+      g++-mingw-w64-i686-posix \
+      g++-mingw-w64-x86-64-posix \
       glslang-tools \
       libgbm-dev \
       libgles2-mesa-dev \
@@ -27,10 +29,14 @@ STABLE_EPHEMERAL=" \
       libxrender-dev \
       libzstd-dev \
       meson \
+      mingw-w64-i686-dev \
+      mingw-w64-tools \
+      mingw-w64-x86-64-dev \
       p7zip \
       patch \
       pkg-config \
       python3-distutils \
+      unzip \
       wget \
       xz-utils \
       "
@@ -54,18 +60,12 @@ apt-get install -y --no-remove \
       wine32 \
       wine64
 
+function setup_wine() {
+    export WINEDEBUG="-all"
+    export WINEPREFIX="$1"
 
-############### Set up Wine env variables
-
-export WINEDEBUG="-all"
-export WINEPREFIX="/dxvk-wine64"
-
-############### Install DXVK
-
-DXVK_VERSION="1.8.1"
-
-# We don't want crash dialogs
-cat >crashdialog.reg <<EOF
+    # We don't want crash dialogs
+    cat >crashdialog.reg <<EOF
 Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Wine\WineDbg]
@@ -73,17 +73,23 @@ Windows Registry Editor Version 5.00
 
 EOF
 
-# Set the wine prefix and disable the crash dialog
-wine regedit crashdialog.reg
-rm crashdialog.reg
+    # Set the wine prefix and disable the crash dialog
+    wine regedit crashdialog.reg
+    rm crashdialog.reg
 
-# DXVK's setup often fails with:
-# "${WINEPREFIX}: Not a valid wine prefix."
-# and that is just spit because of checking the existance of the
-# system.reg file, which fails.
-# Just giving it a bit more of time for it to be created solves the
-# problem ...
-while ! test -f  "${WINEPREFIX}/system.reg"; do sleep 1; done
+    # An immediate wine command may fail with: "${WINEPREFIX}: Not a
+    # valid wine prefix."  and that is just spit because of checking
+    # the existance of the system.reg file, which fails.  Just giving
+    # it a bit more of time for it to be created solves the problem
+    # ...
+    while ! test -f  "${WINEPREFIX}/system.reg"; do sleep 1; done
+}
+
+############### Install DXVK
+
+DXVK_VERSION="1.8.1"
+
+setup_wine "/dxvk-wine64"
 
 wget "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VERSION}/dxvk-${DXVK_VERSION}.tar.gz"
 tar xzpf dxvk-"${DXVK_VERSION}".tar.gz
@@ -111,6 +117,13 @@ wine \
     /d "C:\windows\system32;C:\windows;C:\windows\system32\wbem;Z:\apitrace-msvc-win64\bin" \
     /f
 
+############### Install glslang (needed for building VKD3D-Proton)
+
+wget https://github.com/KhronosGroup/glslang/releases/download/SDK-candidate-26-Jul-2020/glslang-master-linux-Release.zip
+unzip glslang-master-linux-Release.zip bin/glslangValidator
+install -m755 bin/glslangValidator /usr/local/bin/
+rm bin/glslangValidator glslang-master-linux-Release.zip
+
 ############### Building ...
 
 . .gitlab-ci/container/container_pre_build.sh
@@ -124,11 +137,18 @@ PIGLIT_BUILD_TARGETS="piglit_replayer" . .gitlab-ci/container/build-piglit.sh
 . .gitlab-ci/container/build-fossilize.sh
 
 ############### Build dEQP VK
+
 . .gitlab-ci/container/build-deqp.sh
 
 ############### Build gfxreconstruct
 
 . .gitlab-ci/container/build-gfxreconstruct.sh
+
+############### Build VKD3D-Proton
+
+setup_wine "/vkd3d-proton-wine64"
+
+. .gitlab-ci/container/build-vkd3d-proton.sh
 
 ############### Build libdrm
 
