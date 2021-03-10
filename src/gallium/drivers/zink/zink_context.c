@@ -2936,10 +2936,68 @@ zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res)
       zink_batch_no_rp(ctx);
 }
 
+static bool
+check_and_rebind_buffer(struct zink_context *ctx, struct zink_resource *res, unsigned shader, enum zink_descriptor_type type, unsigned i)
+{
+   bool is_write = false;
+   bool is_read = true;
+   struct zink_resource *cres = zink_get_resource_for_descriptor(ctx, type, shader, i);
+   if (res != cres)
+      return false;
+
+   switch (type) {
+   case ZINK_DESCRIPTOR_TYPE_SSBO: {
+      struct pipe_shader_buffer *ssbo = &ctx->ssbos[shader][i];
+      is_write = ctx->writable_ssbos[shader] & BITFIELD64_BIT(i);
+      util_range_add(&res->base.b, &res->valid_buffer_range, ssbo->buffer_offset,
+                     ssbo->buffer_offset + ssbo->buffer_size);
+      break;
+   }
+   case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW: {
+      struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[shader][i]);
+      sampler_view_buffer_clear(ctx, sampler_view);
+      sampler_view->buffer_view = get_buffer_view(ctx, res, sampler_view->base.format,
+                                                  sampler_view->base.u.buf.offset, sampler_view->base.u.buf.size);
+      break;
+   }
+   case ZINK_DESCRIPTOR_TYPE_IMAGE: {
+      struct zink_image_view *image_view = &ctx->image_views[shader][i];
+      zink_descriptor_set_refs_clear(&image_view->desc_set_refs, image_view);
+      zink_buffer_view_reference(zink_screen(ctx->base.screen), &image_view->buffer_view, NULL);
+      if (!zink_resource_object_init_storage(ctx, res)) {
+         debug_printf("couldn't create storage image!");
+         return false;
+      }
+      is_write = image_view->base.access & PIPE_IMAGE_ACCESS_WRITE;
+      is_read = image_view->base.access & PIPE_IMAGE_ACCESS_READ;
+      image_view->buffer_view = get_buffer_view(ctx, res, image_view->base.format,
+                                                image_view->base.u.buf.offset, image_view->base.u.buf.size);
+      assert(image_view->buffer_view);
+      util_range_add(&res->base.b, &res->valid_buffer_range, image_view->base.u.buf.offset,
+                     image_view->base.u.buf.offset + image_view->base.u.buf.size);
+      break;
+   }
+   default:
+      break;
+   }
+
+   zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, shader, type, i, 1);
+   update_descriptor_state(ctx, shader, type, i);
+   zink_batch_reference_resource_rw(&ctx->batch, res, is_write);
+   VkAccessFlags access = 0;
+   if (is_read)
+      access |= VK_ACCESS_SHADER_READ_BIT;
+   if (is_write)
+      access |= VK_ACCESS_SHADER_WRITE_BIT;
+   zink_resource_buffer_barrier(ctx, NULL, res, access,
+                                zink_pipeline_flags_from_stage(zink_shader_stage(shader)));
+   return true;
+}
+
 static void
 rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
 {
-   bool did_ref = false;
+   unsigned num_rebinds = 0;
 
    for (unsigned shader = 0; shader < PIPE_SHADER_TYPES; shader++) {
       if (!(res->bind_stages & (1 << shader)))
@@ -2948,83 +3006,54 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
          if (!(res->bind_history & BITFIELD64_BIT(type)))
             continue;
 
-         unsigned num_descriptors = 0;
-         switch (type) {
-         case ZINK_DESCRIPTOR_TYPE_UBO:
-            num_descriptors = ctx->di.num_ubos[shader];
-            break;
-         case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
-            num_descriptors = ctx->di.num_sampler_views[shader];
-            break;
-         case ZINK_DESCRIPTOR_TYPE_SSBO:
-            num_descriptors = ctx->di.num_ssbos[shader];
-            break;
-         case ZINK_DESCRIPTOR_TYPE_IMAGE:
-            num_descriptors = ctx->di.num_images[shader];
-            break;
-         default:
-            unreachable("ack");
-         }
-         for (unsigned i = 0; i < num_descriptors; i++) {
-            bool is_write = false;
-            bool is_read = true;
-            struct zink_resource *cres = zink_get_resource_for_descriptor(ctx, type, shader, i);
-            if (res != cres)
-               continue;
-
-            switch (type) {
-            case ZINK_DESCRIPTOR_TYPE_SSBO: {
-               struct pipe_shader_buffer *ssbo = &ctx->ssbos[shader][i];
-               is_write = ctx->writable_ssbos[shader] & BITFIELD64_BIT(i);
-               util_range_add(&res->base.b, &res->valid_buffer_range, ssbo->buffer_offset,
-                              ssbo->buffer_offset + ssbo->buffer_size);
-               break;
-            }
-            case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW: {
-               struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[shader][i]);
-               sampler_view_buffer_clear(ctx, sampler_view);
-               sampler_view->buffer_view = get_buffer_view(ctx, res, sampler_view->base.format,
-                                                           sampler_view->base.u.buf.offset, sampler_view->base.u.buf.size);
-               break;
-            }
-            case ZINK_DESCRIPTOR_TYPE_IMAGE: {
-               struct zink_image_view *image_view = &ctx->image_views[shader][i];
-               zink_descriptor_set_refs_clear(&image_view->desc_set_refs, image_view);
-               zink_buffer_view_reference(zink_screen(ctx->base.screen), &image_view->buffer_view, NULL);
-               if (!zink_resource_object_init_storage(ctx, res)) {
-                  debug_printf("couldn't create storage image!");
-                  continue;
-               }
-               is_write = image_view->base.access & PIPE_IMAGE_ACCESS_WRITE;
-               is_read = image_view->base.access & PIPE_IMAGE_ACCESS_READ;
-               image_view->buffer_view = get_buffer_view(ctx, res, image_view->base.format,
-                                                         image_view->base.u.buf.offset, image_view->base.u.buf.size);
-               assert(image_view->buffer_view);
-               util_range_add(&res->base.b, &res->valid_buffer_range, image_view->base.u.buf.offset,
-                              image_view->base.u.buf.offset + image_view->base.u.buf.size);
-               break;
-            }
-            default:
-               break;
-            }
-
-            zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, shader, type, i, 1);
-            update_descriptor_state(ctx, shader, type, i);
-            zink_batch_reference_resource_rw(&ctx->batch, res, is_write);
-            VkAccessFlags access = 0;
-            if (is_read)
-               access |= VK_ACCESS_SHADER_READ_BIT;
-            if (is_write)
-               access |= VK_ACCESS_SHADER_WRITE_BIT;
-            zink_resource_buffer_barrier(ctx, NULL, res, access,
-                                         zink_pipeline_flags_from_stage(zink_shader_stage(shader)));
-            did_ref = true;
+         uint32_t usage = zink_program_get_descriptor_usage(ctx, shader, type);
+         u_foreach_bit(i, usage) {
+            if (check_and_rebind_buffer(ctx, res, shader, type, i))
+               num_rebinds++;
          }
       }
    }
+   unsigned total_binds = res->bind_count[0] + res->bind_count[1] - res->vbo_bind_count;
+   /* we've missed some rebinds, so we have to go back for them */
+   if (total_binds != num_rebinds) {
+      for (unsigned shader = 0; shader < PIPE_SHADER_TYPES; shader++) {
+         if (!(res->bind_stages & (1 << shader)))
+            continue;
+         for (enum zink_descriptor_type type = 0; type < ZINK_DESCRIPTOR_TYPES; type++) {
+            if (!(res->bind_history & BITFIELD64_BIT(type)))
+               continue;
+
+            unsigned num_descriptors = 0;
+            switch (type) {
+            case ZINK_DESCRIPTOR_TYPE_UBO:
+               num_descriptors = ctx->di.num_ubos[shader];
+               break;
+            case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
+               num_descriptors = ctx->di.num_sampler_views[shader];
+               break;
+            case ZINK_DESCRIPTOR_TYPE_SSBO:
+               num_descriptors = ctx->di.num_ssbos[shader];
+               break;
+            case ZINK_DESCRIPTOR_TYPE_IMAGE:
+               num_descriptors = ctx->di.num_images[shader];
+               break;
+            default:
+               unreachable("ack");
+            }
+            for (unsigned i = 0; i < num_descriptors; i++) {
+               if (check_and_rebind_buffer(ctx, res, shader, type, i))
+                  num_rebinds++;
+               if (total_binds == num_rebinds)
+                  goto out;
+            }
+         }
+      }
+   }
+out:
+   assert(total_binds == num_rebinds);
    if (!res->vbo_bind_count)
       return;
-   if (!did_ref)
+   if (!num_rebinds)
       zink_batch_reference_resource_rw(&ctx->batch, res, false);
    ctx->vertex_buffers_dirty = true;
    zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
