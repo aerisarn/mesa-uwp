@@ -4541,6 +4541,23 @@ anv_device_entrypoint_is_enabled(int index, uint32_t core_version,
 const struct vk_device_dispatch_table *
 anv_get_device_dispatch_table(const struct intel_device_info *devinfo);
 
+void
+anv_dump_pipe_bits(enum anv_pipe_bits bits);
+
+static inline void
+anv_add_pending_pipe_bits(struct anv_cmd_buffer* cmd_buffer,
+                          enum anv_pipe_bits bits,
+                          const char* reason)
+{
+   cmd_buffer->state.pending_pipe_bits |= bits;
+   if (unlikely(INTEL_DEBUG & DEBUG_PIPE_CONTROL) && bits)
+   {
+      fputs("pc: add ", stderr);
+      anv_dump_pipe_bits(bits);
+      fprintf(stderr, "reason: %s\n", reason);
+   }
+}
+
 static inline uint32_t
 anv_get_subpass_id(const struct anv_cmd_state * const cmd_state)
 {

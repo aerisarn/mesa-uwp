@@ -875,7 +875,9 @@ void anv_CmdUpdateBuffer(
    /* We're about to read data that was written from the CPU.  Flush the
     * texture cache so we don't get anything stale.
     */
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT,
+                             "before UpdateBuffer");
 
    while (dataSize) {
       const uint32_t copy_size = MIN2(dataSize, max_update_size);
@@ -1513,11 +1515,12 @@ anv_image_copy_to_shadow(struct anv_cmd_buffer *cmd_buffer,
    /* We don't know who touched the main surface last so flush a bunch of
     * caches to ensure we get good data.
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
-      ANV_PIPE_DATA_CACHE_FLUSH_BIT |
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
-      ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                             ANV_PIPE_DATA_CACHE_FLUSH_BIT |
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT,
+                             "before copy_to_shadow");
 
    struct blorp_surf surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device,
@@ -1553,8 +1556,9 @@ anv_image_copy_to_shadow(struct anv_cmd_buffer *cmd_buffer,
    }
 
    /* We just wrote to the buffer with the render cache.  Flush it. */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT,
+                             "after copy_to_shadow");
 
    blorp_batch_finish(&batch);
 }
@@ -1632,8 +1636,10 @@ anv_image_clear_depth_stencil(struct anv_cmd_buffer *cmd_buffer,
     * performance.  If it does this, we need to flush it out of the depth
     * cache before rendering to it.
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_DEPTH_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "before clear DS");
 
    blorp_clear_depth_stencil(&batch, &depth, &stencil,
                              level, base_layer, layer_count,
@@ -1649,8 +1655,10 @@ anv_image_clear_depth_stencil(struct anv_cmd_buffer *cmd_buffer,
     * performance.  If it does this, we need to flush it out of the render
     * cache before someone starts trying to do stencil on it.
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "after clear DS");
 
    struct blorp_surf stencil_shadow;
    if ((aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
@@ -1749,8 +1757,10 @@ anv_image_hiz_clear(struct anv_cmd_buffer *cmd_buffer,
     * and a 3DPRIMITIVE, the GPU appears to also need this to avoid occasional
     * hangs when doing a clear with WM_HZ_OP.
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_DEPTH_CACHE_FLUSH_BIT | ANV_PIPE_DEPTH_STALL_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                             ANV_PIPE_DEPTH_STALL_BIT,
+                             "before clear hiz");
 
    blorp_hiz_clear_depth_stencil(&batch, &depth, &stencil,
                                  level, base_layer, layer_count,
@@ -1780,8 +1790,10 @@ anv_image_hiz_clear(struct anv_cmd_buffer *cmd_buffer,
     * supposedly unnecessary, we choose to perform the flush unconditionally
     * just to be safe.
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_DEPTH_CACHE_FLUSH_BIT | ANV_PIPE_DEPTH_STALL_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                             ANV_PIPE_DEPTH_STALL_BIT,
+                             "after clear hiz");
 }
 
 void
@@ -1832,8 +1844,10 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
     * resolve and then use a second PIPE_CONTROL after the resolve to ensure
     * that it is completed before any additional drawing occurs.
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "before fast clear mcs");
 
    switch (mcs_op) {
    case ISL_AUX_OP_FAST_CLEAR:
@@ -1851,8 +1865,10 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
       unreachable("Unsupported MCS operation");
    }
 
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "after fast clear mcs");
 
    blorp_batch_finish(&batch);
 }
@@ -1913,8 +1929,10 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
     * resolve and then use a second PIPE_CONTROL after the resolve to ensure
     * that it is completed before any additional drawing occurs.
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "before fast clear ccs");
 
    switch (ccs_op) {
    case ISL_AUX_OP_FAST_CLEAR:
@@ -1937,8 +1955,10 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
       unreachable("Unsupported CCS operation");
    }
 
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "after fast clear ccs");
 
    blorp_batch_finish(&batch);
 }

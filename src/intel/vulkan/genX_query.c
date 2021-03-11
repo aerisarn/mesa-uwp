@@ -1374,8 +1374,9 @@ void genX(CmdCopyQueryPoolResults)(
     * command streamer.
     */
    if (cmd_buffer->state.pending_pipe_bits & ANV_PIPE_RENDER_TARGET_BUFFER_WRITES) {
-      cmd_buffer->state.pending_pipe_bits |=
-         ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT,
+                                "CopyQueryPoolResults");
    }
 
    if ((flags & VK_QUERY_RESULT_WAIT_BIT) ||
@@ -1393,7 +1394,9 @@ void genX(CmdCopyQueryPoolResults)(
         */
        pool->type == VK_QUERY_TYPE_OCCLUSION ||
        pool->type == VK_QUERY_TYPE_TIMESTAMP) {
-      cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_CS_STALL_BIT,
+                                "CopyQueryPoolResults");
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
    }
 

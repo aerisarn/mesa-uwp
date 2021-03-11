@@ -50,6 +50,32 @@
 static void genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
                                         uint32_t pipeline);
 
+static enum anv_pipe_bits
+convert_pc_to_bits(struct GENX(PIPE_CONTROL) *pc) {
+   enum anv_pipe_bits bits = 0;
+   bits |= (pc->DepthCacheFlushEnable) ?  ANV_PIPE_DEPTH_CACHE_FLUSH_BIT : 0;
+   bits |= (pc->DCFlushEnable) ?  ANV_PIPE_DATA_CACHE_FLUSH_BIT : 0;
+#if GFX_VER >= 12
+   bits |= (pc->TileCacheFlushEnable) ?  ANV_PIPE_TILE_CACHE_FLUSH_BIT : 0;
+#endif
+   bits |= (pc->RenderTargetCacheFlushEnable) ?  ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT : 0;
+   bits |= (pc->StateCacheInvalidationEnable) ?  ANV_PIPE_STATE_CACHE_INVALIDATE_BIT : 0;
+   bits |= (pc->ConstantCacheInvalidationEnable) ?  ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT : 0;
+   bits |= (pc->TextureCacheInvalidationEnable) ?  ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT : 0;
+   bits |= (pc->InstructionCacheInvalidateEnable) ?  ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT : 0;
+   bits |= (pc->StallAtPixelScoreboard) ?  ANV_PIPE_STALL_AT_SCOREBOARD_BIT : 0;
+   bits |= (pc->DepthStallEnable) ?  ANV_PIPE_DEPTH_STALL_BIT : 0;
+   bits |= (pc->CommandStreamerStallEnable) ?  ANV_PIPE_CS_STALL_BIT : 0;
+   return bits;
+}
+
+#define anv_debug_dump_pc(pc) \
+   if (unlikely(INTEL_DEBUG & DEBUG_PIPE_CONTROL)) { \
+      fputs("pc: emit PC=( ", stderr); \
+      anv_dump_pipe_bits(convert_pc_to_bits(&(pc))); \
+      fprintf(stderr, ") reason: %s\n", __FUNCTION__); \
+   }
+
 void
 genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -87,6 +113,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       if (devinfo->revision == 0 /* A0 */)
          pc.HDCPipelineFlushEnable = true;
 #endif
+      anv_debug_dump_pc(pc);
    }
 
 #if GFX_VER == 12
@@ -236,6 +263,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       pc.TextureCacheInvalidationEnable = true;
       pc.ConstantCacheInvalidationEnable = true;
       pc.StateCacheInvalidationEnable = true;
+      anv_debug_dump_pc(pc);
    }
 }
 
@@ -477,7 +505,9 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
     * with not having this stall in some cases if we were really careful but
     * it's better to play it safe.  Full stall the GPU.
     */
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "before update AUX-TT");
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    struct mi_builder b;
@@ -548,7 +578,9 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_AUX_TABLE_INVALIDATE_BIT,
+                             "after update AUX-TT");
 }
 #endif /* GFX_VER == 12 */
 
@@ -1069,7 +1101,9 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
     * In order to work around this issue, we emit a PIPE_CONTROL with the
     * command streamer stall bit set.
     */
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_CS_STALL_BIT,
+                             "after copy_fast_clear_dwords. Avoid potential hang");
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 #endif
 
@@ -1092,8 +1126,9 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
        *
        * In testing, SKL doesn't actually seem to need this, but HSW does.
        */
-      cmd_buffer->state.pending_pipe_bits |=
-         ANV_PIPE_STATE_CACHE_INVALIDATE_BIT;
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_STATE_CACHE_INVALIDATE_BIT,
+                                "after copy_fast_clear_dwords surface state update");
    }
 }
 
@@ -1426,8 +1461,10 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
     * resolve and the second likely ensures that the resolve is complete before
     * we do any more rendering or clearing.
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "after transition RT");
 
    for (uint32_t l = 0; l < level_count; l++) {
       uint32_t level = base_level + l;
@@ -1472,8 +1509,10 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "after transition RT");
 }
 
 static VkResult
@@ -1718,14 +1757,19 @@ genX(BeginCommandBuffer)(
     * VF cache occasionally.  It's easier if we can assume we start with a
     * fresh cache (See also genX(cmd_buffer_set_binding_for_gfx8_vb_flush).)
     */
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_VF_CACHE_INVALIDATE_BIT,
+                             "new cmd buffer");
 
    /* Re-emit the aux table register in every command buffer.  This way we're
     * ensured that we have the table even if this command buffer doesn't
     * initialize any images.
     */
-   if (cmd_buffer->device->info.has_aux_map)
-      cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
+   if (cmd_buffer->device->info.has_aux_map) {
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_AUX_TABLE_INVALIDATE_BIT,
+                                "new cmd buffer with aux-tt");
+   }
 
    /* We send an "Indirect State Pointers Disable" packet at
     * EndCommandBuffer, so all push contant packets are ignored during a
@@ -1842,10 +1886,12 @@ emit_isp_disable(struct anv_cmd_buffer *cmd_buffer)
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
          pc.StallAtPixelScoreboard = true;
          pc.CommandStreamerStallEnable = true;
+         anv_debug_dump_pc(pc);
    }
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
          pc.IndirectStatePointersDisable = true;
          pc.CommandStreamerStallEnable = true;
+         anv_debug_dump_pc(pc);
    }
 }
 
@@ -1954,8 +2000,9 @@ genX(CmdExecuteCommands)(
     * invalidate the whole thing.
     */
    if (GFX_VER >= 8 && GFX_VER <= 9) {
-      primary->state.pending_pipe_bits |=
-         ANV_PIPE_CS_STALL_BIT | ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
+      anv_add_pending_pipe_bits(primary,
+                                ANV_PIPE_CS_STALL_BIT | ANV_PIPE_VF_CACHE_INVALIDATE_BIT,
+                                "Secondary cmd buffer not tracked in VF cache");
    }
 
    /* The secondary may have selected a different pipeline (3D or compute) and
@@ -2008,6 +2055,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
       pc.DCFlushEnable = true;
       pc.PostSyncOperation = NoWrite;
       pc.CommandStreamerStallEnable = true;
+      anv_debug_dump_pc(pc);
    }
 
    /* ...followed by a second pipelined PIPE_CONTROL that initiates
@@ -2030,6 +2078,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
       pc.InstructionCacheInvalidateEnable = true;
       pc.StateCacheInvalidationEnable = true;
       pc.PostSyncOperation = NoWrite;
+      anv_debug_dump_pc(pc);
    }
 
    /* Now send a third stalling flush to make sure that invalidation is
@@ -2039,6 +2088,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
       pc.DCFlushEnable = true;
       pc.PostSyncOperation = NoWrite;
       pc.CommandStreamerStallEnable = true;
+      anv_debug_dump_pc(pc);
    }
 
    genX(emit_l3_config)(&cmd_buffer->batch, cmd_buffer->device, cfg);
@@ -2238,6 +2288,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
              !pipe.DepthStallEnable &&
              !pipe.DCFlushEnable)
             pipe.StallAtPixelScoreboard = true;
+         anv_debug_dump_pc(pipe);
       }
 
       /* If a render target flush was emitted, then we can toggle off the bit
@@ -2326,6 +2377,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
             pipe.PostSyncOperation = WriteImmediateData;
             pipe.Address = cmd_buffer->device->workaround_address;
          }
+         anv_debug_dump_pc(pipe);
       }
 
 #if GFX_VER == 12
@@ -2426,9 +2478,10 @@ void genX(CmdPipelineBarrier)(
       }
    }
 
-   cmd_buffer->state.pending_pipe_bits |=
-      anv_pipe_flush_bits_for_access_flags(cmd_buffer->device, src_flags) |
-      anv_pipe_invalidate_bits_for_access_flags(cmd_buffer->device, dst_flags);
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             anv_pipe_flush_bits_for_access_flags(cmd_buffer->device, src_flags) |
+                             anv_pipe_invalidate_bits_for_access_flags(cmd_buffer->device, dst_flags),
+                             "pipe barrier");
 }
 
 static void
@@ -3617,8 +3670,11 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       }
 
       /* CNL and later require a CS stall after 3DSTATE_SO_BUFFER */
-      if (GFX_VER >= 10)
-         cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+      if (GFX_VER >= 10) {
+         anv_add_pending_pipe_bits(cmd_buffer,
+                                   ANV_PIPE_CS_STALL_BIT,
+                                   "after 3DSTATE_SO_BUFFER call");
+      }
    }
 
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
@@ -3655,6 +3711,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          pc.DepthStallEnable  = true;
          pc.PostSyncOperation = WriteImmediateData;
          pc.Address           = cmd_buffer->device->workaround_address;
+         anv_debug_dump_pc(pc);
       }
    }
 #endif
@@ -4388,7 +4445,9 @@ void genX(CmdBeginTransformFeedbackEXT)(
     *    process or otherwise pending at the point that the MI_LOAD/STORE
     *    commands are processed. This will likely require a pipeline flush."
     */
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_CS_STALL_BIT,
+                             "begin transform feedback");
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    for (uint32_t idx = 0; idx < MAX_XFB_BUFFERS; idx++) {
@@ -4441,7 +4500,9 @@ void genX(CmdEndTransformFeedbackEXT)(
     *    process or otherwise pending at the point that the MI_LOAD/STORE
     *    commands are processed. This will likely require a pipeline flush."
     */
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_CS_STALL_BIT,
+                             "end transform feedback");
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    for (uint32_t cb_idx = 0; cb_idx < counterBufferCount; cb_idx++) {
@@ -4497,7 +4558,9 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
        *    these scoreboard related states, a MEDIA_STATE_FLUSH is
        *    sufficient."
        */
-      cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+      anv_add_pending_pipe_bits(cmd_buffer,
+                              ANV_PIPE_CS_STALL_BIT,
+                              "flush compute state");
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
       anv_batch_emit_batch(&cmd_buffer->batch, &pipeline->base.batch);
@@ -4940,6 +5003,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
        */
       pc.DepthStallEnable = true;
 #endif
+      anv_debug_dump_pc(pc);
    }
 
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
@@ -4951,6 +5015,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
 #if GFX_VER >= 12
       pc.TileCacheFlushEnable = true;
 #endif
+      anv_debug_dump_pc(pc);
    }
 
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPELINE_SELECT), ps) {
@@ -5013,15 +5078,18 @@ genX(cmd_buffer_emit_gfx7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
     */
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
       pipe.DepthStallEnable = true;
+      anv_debug_dump_pc(pipe);
    }
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
       pipe.DepthCacheFlushEnable = true;
 #if GFX_VER >= 12
       pipe.TileCacheFlushEnable = true;
 #endif
+      anv_debug_dump_pc(pipe);
    }
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
       pipe.DepthStallEnable = true;
+      anv_debug_dump_pc(pipe);
    }
 }
 
@@ -5096,8 +5164,10 @@ genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_buffer
    /* If our range is larger than 32 bits, we have to flush */
    assert(bound->end - bound->start <= (1ull << 32));
    if (dirty->end - dirty->start > (1ull << 32)) {
-      cmd_buffer->state.pending_pipe_bits |=
-         ANV_PIPE_CS_STALL_BIT | ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_CS_STALL_BIT |
+                                ANV_PIPE_VF_CACHE_INVALIDATE_BIT,
+                                "vb > 32b range");
    }
 }
 
@@ -5212,8 +5282,10 @@ genX(cmd_buffer_emit_hashing_mode)(struct anv_cmd_buffer *cmd_buffer,
 
    if (cmd_buffer->state.current_hash_scale != scale &&
        (width > min_size[idx][0] || height > min_size[idx][1])) {
-      cmd_buffer->state.pending_pipe_bits |=
-         ANV_PIPE_CS_STALL_BIT | ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_CS_STALL_BIT |
+                                ANV_PIPE_STALL_AT_SCOREBOARD_BIT,
+                                "change pixel hash mode");
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
       anv_batch_write_reg(&cmd_buffer->batch, GENX(GT_MODE), gt) {
@@ -5398,8 +5470,9 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_PIPELINE;
 
    /* Accumulate any subpass flushes that need to happen before the subpass */
-   cmd_buffer->state.pending_pipe_bits |=
-      cmd_buffer->state.pass->subpass_flushes[subpass_id];
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             cmd_buffer->state.pass->subpass_flushes[subpass_id],
+                             "begin subpass deps/attachments");
 
    VkRect2D render_area = cmd_buffer->state.render_area;
    struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
@@ -5741,9 +5814,10 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
     *     is set due to new association of BTI, PS Scoreboard Stall bit must
     *     be set in this packet."
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
-      ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_STALL_AT_SCOREBOARD_BIT,
+                             "change RT");
 #endif
 
 #if GFX_VERx10 == 120
@@ -5754,10 +5828,11 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
     * we want to do a depth flush and stall, so the pipeline is not using these
     * settings while we change the registers.
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
-      ANV_PIPE_DEPTH_STALL_BIT |
-      ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                             ANV_PIPE_DEPTH_STALL_BIT |
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "change DS");
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 #endif
 
@@ -5860,9 +5935,10 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
        * result of writes to the MSAA color attachments show up in the sampler
        * when we blit to the single-sampled resolve target.
        */
-      cmd_buffer->state.pending_pipe_bits |=
-         ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
-         ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
+                                ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT,
+                                "MSAA resolve");
 
       for (uint32_t i = 0; i < subpass->color_count; ++i) {
          uint32_t src_att = subpass->color_attachments[i].attachment;
@@ -5919,9 +5995,10 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
        * result of writes to the MSAA depth attachments show up in the sampler
        * when we blit to the single-sampled resolve target.
        */
-      cmd_buffer->state.pending_pipe_bits |=
-         ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
-         ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
+      anv_add_pending_pipe_bits(cmd_buffer,
+                              ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
+                              ANV_PIPE_DEPTH_CACHE_FLUSH_BIT,
+                              "MSAA resolve");
 
       uint32_t src_att = subpass->depth_stencil_attachment->attachment;
       uint32_t dst_att = subpass->ds_resolve_attachment->attachment;
@@ -6151,8 +6228,9 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
     * genX_CmdNextSubpass just calls end/begin back-to-back, we just end up
     * ORing the bits in twice so it's harmless.
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      cmd_buffer->state.pass->subpass_flushes[subpass_id + 1];
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             cmd_buffer->state.pass->subpass_flushes[subpass_id + 1],
+                             "end subpass deps/attachments");
 }
 
 void genX(CmdBeginRenderPass2)(
@@ -6337,6 +6415,7 @@ void genX(CmdSetEvent)(
          event->state.offset
       };
       pc.ImmediateData           = VK_EVENT_SET;
+      anv_debug_dump_pc(pc);
    }
 }
 
@@ -6364,6 +6443,7 @@ void genX(CmdResetEvent)(
          event->state.offset
       };
       pc.ImmediateData           = VK_EVENT_RESET;
+      anv_debug_dump_pc(pc);
    }
 }
 
@@ -6436,9 +6516,10 @@ VkResult genX(CmdSetPerformanceOverrideINTEL)(
    case VK_PERFORMANCE_OVERRIDE_TYPE_FLUSH_GPU_CACHES_INTEL:
       if (pOverrideInfo->enable) {
          /* FLUSH ALL THE THINGS! As requested by the MDAPI team. */
-         cmd_buffer->state.pending_pipe_bits |=
-            ANV_PIPE_FLUSH_BITS |
-            ANV_PIPE_INVALIDATE_BITS;
+         anv_add_pending_pipe_bits(cmd_buffer,
+                                   ANV_PIPE_FLUSH_BITS |
+                                   ANV_PIPE_INVALIDATE_BITS,
+                                   "perf counter isolation");
          genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
       }
       break;
@@ -6466,5 +6547,6 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
       pc.CommandStreamerStallEnable = true;
       pc.PostSyncOperation       = WriteTimestamp;
       pc.Address = (struct anv_address) {bo, offset};
+      anv_debug_dump_pc(pc);
    }
 }

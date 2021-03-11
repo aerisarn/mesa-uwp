@@ -258,9 +258,10 @@ genX(blorp_exec)(struct blorp_batch *batch,
     *     is set due to new association of BTI, PS Scoreboard Stall bit must
     *     be set in this packet."
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
-      ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_STALL_AT_SCOREBOARD_BIT,
+                             "before blorp BTI change");
 #endif
 
 #if GFX_VERx10 == 120
@@ -285,8 +286,11 @@ genX(blorp_exec)(struct blorp_batch *batch,
     * See genX(cmd_buffer_mi_memcpy) for more details.
     */
    if (params->src.clear_color_addr.buffer ||
-       params->dst.clear_color_addr.buffer)
-      cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+       params->dst.clear_color_addr.buffer) {
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_CS_STALL_BIT,
+                                "before blorp prep fast clear");
+   }
 #endif
 
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
@@ -311,9 +315,10 @@ genX(blorp_exec)(struct blorp_batch *batch,
     *     is set due to new association of BTI, PS Scoreboard Stall bit must
     *     be set in this packet."
     */
-   cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
-      ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_STALL_AT_SCOREBOARD_BIT,
+                             "after blorp BTI change");
 #endif
 
    cmd_buffer->state.gfx.vb_dirty = ~0;
