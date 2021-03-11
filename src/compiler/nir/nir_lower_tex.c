@@ -437,6 +437,24 @@ lower_ayuv_external(nir_builder *b, nir_tex_instr *tex,
 }
 
 static void
+lower_y41x_external(nir_builder *b, nir_tex_instr *tex,
+                    const nir_lower_tex_options *options,
+                    unsigned texture_index)
+{
+  b->cursor = nir_after_instr(&tex->instr);
+
+  nir_ssa_def *y41x = sample_plane(b, tex, 0, options);
+
+  convert_yuv_to_rgb(b, tex,
+                     nir_channel(b, y41x, 1),
+                     nir_channel(b, y41x, 0),
+                     nir_channel(b, y41x, 2),
+                     nir_channel(b, y41x, 3),
+                     options,
+                     texture_index);
+}
+
+static void
 lower_xyuv_external(nir_builder *b, nir_tex_instr *tex,
                     const nir_lower_tex_options *options,
                     unsigned texture_index)
@@ -1206,6 +1224,11 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
 
       if (texture_mask & options->lower_yuv_external) {
          lower_yuv_external(b, tex, options, texture_index);
+         progress = true;
+      }
+
+      if ((1 << tex->texture_index) & options->lower_y41x_external) {
+         lower_y41x_external(b, tex, options, texture_index);
          progress = true;
       }
 
