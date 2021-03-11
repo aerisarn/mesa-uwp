@@ -333,15 +333,6 @@ fd6_build_vs_driver_params(struct fd6_emit *emit)
 }
 
 void
-fd6_emit_ibo_consts(struct fd6_emit *emit, const struct ir3_shader_variant *v,
-                    enum pipe_shader_type stage, struct fd_ringbuffer *ring)
-{
-   struct fd_context *ctx = emit->ctx;
-
-   ir3_emit_image_dims(ctx->screen, v, ring, &ctx->shaderimg[stage]);
-}
-
-void
 fd6_emit_cs_consts(const struct ir3_shader_variant *v,
                    struct fd_ringbuffer *ring, struct fd_context *ctx,
                    const struct pipe_grid_info *info)

@@ -1076,7 +1076,6 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          break;
       case FD6_GROUP_IBO:
          state = build_ibo(emit);
-         fd6_emit_ibo_consts(emit, fs, PIPE_SHADER_FRAGMENT, ring);
          break;
       case FD6_GROUP_CONST:
          state = fd6_build_user_consts(emit);
