@@ -254,28 +254,6 @@ ir3_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 }
 
 static inline void
-ir3_emit_ssbo_sizes(struct fd_screen *screen,
-                    const struct ir3_shader_variant *v,
-                    struct fd_ringbuffer *ring,
-                    struct fd_shaderbuf_stateobj *sb)
-{
-   const struct ir3_const_state *const_state = ir3_const_state(v);
-   uint32_t offset = const_state->offsets.ssbo_sizes;
-   if (v->constlen > offset) {
-      uint32_t sizes[align(const_state->ssbo_size.count, 4)];
-      unsigned mask = const_state->ssbo_size.mask;
-
-      while (mask) {
-         unsigned index = u_bit_scan(&mask);
-         unsigned off = const_state->ssbo_size.off[index];
-         sizes[off] = sb->sb[index].buffer_size;
-      }
-
-      emit_const_user(ring, v, offset * 4, ARRAY_SIZE(sizes), sizes);
-   }
-}
-
-static inline void
 ir3_emit_image_dims(struct fd_screen *screen,
                     const struct ir3_shader_variant *v,
                     struct fd_ringbuffer *ring,
@@ -446,12 +424,6 @@ emit_common_consts(const struct ir3_shader_variant *v,
       ir3_emit_ubos(ctx, v, ring, constbuf);
       if (shader_dirty)
          ir3_emit_immediates(ctx->screen, v, ring);
-   }
-
-   if (dirty & (FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_SSBO)) {
-      struct fd_shaderbuf_stateobj *sb = &ctx->shaderbuf[t];
-      ring_wfi(ctx->batch, ring);
-      ir3_emit_ssbo_sizes(ctx->screen, v, ring, sb);
    }
 
    if (dirty & (FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_IMAGE)) {

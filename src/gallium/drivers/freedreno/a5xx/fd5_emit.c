@@ -442,10 +442,8 @@ emit_ssbos(struct fd_context *ctx, struct fd_ringbuffer *ring,
       struct pipe_shader_buffer *buf = &so->sb[i];
       unsigned sz = buf->buffer_size;
 
-      /* width is in dwords, overflows into height: */
-      sz /= 4;
-
-      OUT_RING(ring, A5XX_SSBO_1_0_WIDTH(sz));
+      /* Unlike a6xx, SSBO size is in bytes. */
+      OUT_RING(ring, A5XX_SSBO_1_0_WIDTH(sz & MASK(16)));
       OUT_RING(ring, A5XX_SSBO_1_1_HEIGHT(sz >> 16));
 
       OUT_PKT7(ring, CP_LOAD_STATE4, 5);

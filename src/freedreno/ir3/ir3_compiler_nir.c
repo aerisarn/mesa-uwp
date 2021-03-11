@@ -855,37 +855,32 @@ static void
 emit_intrinsic_ssbo_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
                          struct ir3_instruction **dst)
 {
-   if (ir3_bindless_resource(intr->src[0])) {
-      struct ir3_block *b = ctx->block;
-      struct ir3_instruction *ibo = ir3_ssbo_to_ibo(ctx, intr->src[0]);
-      struct ir3_instruction *resinfo = ir3_RESINFO(b, ibo, 0);
-      resinfo->cat6.iim_val = 1;
-      resinfo->cat6.d = 1;
-      resinfo->cat6.type = TYPE_U32;
-      resinfo->cat6.typed = false;
-      /* resinfo has no writemask and always writes out 3 components */
-      resinfo->dsts[0]->wrmask = MASK(3);
-      ir3_handle_bindless_cat6(resinfo, intr->src[0]);
+   struct ir3_block *b = ctx->block;
+   struct ir3_instruction *ibo = ir3_ssbo_to_ibo(ctx, intr->src[0]);
+   struct ir3_instruction *resinfo = ir3_RESINFO(b, ibo, 0);
+   resinfo->cat6.iim_val = 1;
+   resinfo->cat6.d = ctx->compiler->gen >= 6 ? 1 : 2;
+   resinfo->cat6.type = TYPE_U32;
+   resinfo->cat6.typed = false;
+   /* resinfo has no writemask and always writes out 3 components */
+   resinfo->dsts[0]->wrmask = MASK(3);
+   ir3_handle_bindless_cat6(resinfo, intr->src[0]);
+
+   if (ctx->compiler->gen >= 6) {
       struct ir3_instruction *resinfo_dst;
       ir3_split_dest(b, &resinfo_dst, resinfo, 0, 1);
       /* Unfortunately resinfo returns the array length, i.e. in dwords,
-       * while NIR expects us to return the size in bytes.
-       *
-       * TODO: fix this in NIR.
-       */
+      * while NIR expects us to return the size in bytes.
+      *
+      * TODO: fix this in NIR.
+      */
       *dst = ir3_SHL_B(b, resinfo_dst, 0, create_immed(b, 2), 0);
-      return;
+   } else {
+      /* On a5xx, resinfo returns the low 16 bits of ssbo size in .x and the high 16 bits in .y */
+      struct ir3_instruction *resinfo_dst[2];
+      ir3_split_dest(b, resinfo_dst, resinfo, 0, 2);
+      *dst = ir3_ADD_U(b, ir3_SHL_B(b, resinfo_dst[1], 0, create_immed(b, 16), 0), 0, resinfo_dst[0], 0);
    }
-
-   /* SSBO size stored as a const starting at ssbo_sizes: */
-   const struct ir3_const_state *const_state = ir3_const_state(ctx->so);
-   unsigned blk_idx = nir_src_as_uint(intr->src[0]);
-   unsigned idx = regid(const_state->offsets.ssbo_sizes, 0) +
-                  const_state->ssbo_size.off[blk_idx];
-
-   debug_assert(const_state->ssbo_size.mask & (1 << blk_idx));
-
-   dst[0] = create_uniform(ctx->block, idx);
 }
 
 /* src[] = { offset }. const_index[] = { base } */

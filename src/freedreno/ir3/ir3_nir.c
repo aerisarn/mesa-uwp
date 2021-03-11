@@ -745,16 +745,6 @@ ir3_nir_scan_driver_consts(nir_shader *shader, struct ir3_const_state *layout)
             unsigned idx;
 
             switch (intr->intrinsic) {
-            case nir_intrinsic_get_ssbo_size:
-               if (ir3_bindless_resource(intr->src[0]))
-                  break;
-               idx = nir_src_as_uint(intr->src[0]);
-               if (layout->ssbo_size.mask & (1 << idx))
-                  break;
-               layout->ssbo_size.mask |= (1 << idx);
-               layout->ssbo_size.off[idx] = layout->ssbo_size.count;
-               layout->ssbo_size.count += 1; /* one const per */
-               break;
             case nir_intrinsic_image_atomic_add:
             case nir_intrinsic_image_atomic_imin:
             case nir_intrinsic_image_atomic_umin:
@@ -848,12 +838,6 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
    if (const_state->num_ubos > 0) {
       const_state->offsets.ubo = constoff;
       constoff += align(const_state->num_ubos * ptrsz, 4) / 4;
-   }
-
-   if (const_state->ssbo_size.count > 0) {
-      unsigned cnt = const_state->ssbo_size.count;
-      const_state->offsets.ssbo_sizes = constoff;
-      constoff += align(cnt, 4) / 4;
    }
 
    if (const_state->image_dims.count > 0) {

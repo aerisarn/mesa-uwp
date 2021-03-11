@@ -169,8 +169,6 @@ struct ir3_const_state {
    struct {
       /* user const start at zero */
       unsigned ubo;
-      /* NOTE that a3xx might need a section for SSBO addresses too */
-      unsigned ssbo_sizes;
       unsigned image_dims;
       unsigned driver_param;
       unsigned tfbo;
@@ -178,16 +176,6 @@ struct ir3_const_state {
       unsigned primitive_map;
       unsigned immediate;
    } offsets;
-
-   struct {
-      uint32_t mask;  /* bitmask of SSBOs that have get_ssbo_size */
-      uint32_t count; /* number of consts allocated */
-      /* one const allocated per SSBO which has get_ssbo_size,
-       * ssbo_sizes.off[ssbo_id] is offset from start of ssbo_sizes
-       * consts:
-       */
-      uint32_t off[IR3_MAX_SHADER_BUFFERS];
-   } ssbo_size;
 
    struct {
       uint32_t mask;  /* bitmask of images that have image_store */

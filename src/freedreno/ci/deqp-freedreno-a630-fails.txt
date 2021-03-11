@@ -25,21 +25,6 @@ KHR-GLES31.core.gpu_shader5.fma_precision_vec2,Fail
 KHR-GLES31.core.gpu_shader5.fma_precision_vec3,Fail
 KHR-GLES31.core.gpu_shader5.fma_precision_vec4,Fail
 
-# "Array 0 length is 60829990 should be 7
-#  Array 1 length is 60829990 should be 5
-#  Array 2 length is 60829990 should be 3
-#  Array 3 length is 60829990 should be 4
-#  Array 4 length is 132120576 should be 23
-#  Array 5 length is 132120576 should be 123
-#  Array 6 length is 66060288 should be 419"
-KHR-GLES31.core.shader_storage_buffer_object.advanced-unsizedArrayLength-fs-std430-vec,Fail
-
-# "Array 0 length is 266338304 should be 7
-#  Array 1 length is 266338304 should be 3
-#  Array 2 length is 266338304 should be 4
-#  Array 3 length is 266338303 should be 4"
-KHR-GLES31.core.shader_storage_buffer_object.advanced-unsizedArrayLength-fs-int,Fail
-
 # "gl_NumWorkGroups: Invalid data at index 2"
 KHR-GLES31.core.compute_shader.built-in-variables,Fail
 

@@ -338,7 +338,6 @@ fd6_emit_ibo_consts(struct fd6_emit *emit, const struct ir3_shader_variant *v,
 {
    struct fd_context *ctx = emit->ctx;
 
-   ir3_emit_ssbo_sizes(ctx->screen, v, ring, &ctx->shaderbuf[stage]);
    ir3_emit_image_dims(ctx->screen, v, ring, &ctx->shaderimg[stage]);
 }
 
