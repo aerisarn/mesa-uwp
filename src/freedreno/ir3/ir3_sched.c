@@ -746,7 +746,16 @@ choose_instr_prio(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	struct ir3_sched_node *chosen = NULL;
 
 	foreach_sched_node (n, &ctx->dag->heads) {
-		if (!is_meta(n->instr))
+		/*
+		 * - phi nodes and inputs must be scheduled first
+		 * - split should be scheduled first, so that the vector value is
+		 *   killed as soon as possible. RA cannot split up the vector and
+		 *   reuse components that have been killed until it's been killed.
+		 * - collect, on the other hand, should be treated as a "normal"
+		 *   instruction, and may add to register pressure if its sources are
+		 *   part of another vector or immediates.
+		 */
+		if (!is_meta(n->instr) || n->instr->opc == OPC_META_COLLECT)
 			continue;
 
 		if (!chosen || (chosen->max_delay < n->max_delay))
