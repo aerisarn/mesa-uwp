@@ -69,20 +69,6 @@
 #include "util/bitscan.h"
 #include "util/u_math.h"
 
-/* Additional definitions not yet in the drm_fourcc.h.
- */
-#ifndef DRM_FORMAT_P010
-#define DRM_FORMAT_P010 	 fourcc_code('P', '0', '1', '0') /* 2x2 subsampled Cb:Cr plane 10 bits per channel */
-#endif
-
-#ifndef DRM_FORMAT_P012
-#define DRM_FORMAT_P012 	 fourcc_code('P', '0', '1', '2') /* 2x2 subsampled Cb:Cr plane 12 bits per channel */
-#endif
-
-#ifndef DRM_FORMAT_P016
-#define DRM_FORMAT_P016 	 fourcc_code('P', '0', '1', '6') /* 2x2 subsampled Cb:Cr plane 16 bits per channel */
-#endif
-
 #define NUM_ATTRIBS 12
 
 static const struct dri2_pbuffer_visual {
