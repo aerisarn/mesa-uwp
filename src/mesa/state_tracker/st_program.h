@@ -58,6 +58,7 @@ struct st_external_sampler_key
    GLuint lower_ayuv;
    GLuint lower_xyuv;
    GLuint lower_yuv;
+   GLuint lower_y41x;
 };
 
 static inline struct st_external_sampler_key
@@ -104,6 +105,11 @@ st_get_external_sampler_key(struct st_context *st, struct gl_program *prog)
          break;
       case PIPE_FORMAT_XYUV:
          key.lower_xyuv |= (1 << unit);
+         break;
+      case PIPE_FORMAT_Y410:
+      case PIPE_FORMAT_Y412:
+      case PIPE_FORMAT_Y416:
+         key.lower_y41x |= (1 << unit);
          break;
       default:
          printf("mesa: st_get_external_sampler_key: unhandled pipe format %u\n",

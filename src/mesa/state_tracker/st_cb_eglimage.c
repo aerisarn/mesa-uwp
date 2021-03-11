@@ -79,6 +79,17 @@ is_format_supported(struct pipe_screen *screen, enum pipe_format format,
                                                  PIPE_TEXTURE_2D, nr_samples,
                                                  nr_storage_samples, usage);
          break;
+      case PIPE_FORMAT_Y410:
+         supported = screen->is_format_supported(screen, PIPE_FORMAT_R10G10B10A2_UNORM,
+                                                 PIPE_TEXTURE_2D, nr_samples,
+                                                 nr_storage_samples, usage);
+         break;
+      case PIPE_FORMAT_Y412:
+      case PIPE_FORMAT_Y416:
+         supported = screen->is_format_supported(screen, PIPE_FORMAT_R16G16B16A16_UNORM,
+                                                 PIPE_TEXTURE_2D, nr_samples,
+                                                 nr_storage_samples, usage);
+         break;
       case PIPE_FORMAT_YUYV:
          supported = screen->is_format_supported(screen, PIPE_FORMAT_RG88_UNORM,
                                                  PIPE_TEXTURE_2D, nr_samples,
@@ -282,6 +293,17 @@ st_bind_egl_image(struct gl_context *ctx,
       case PIPE_FORMAT_P016:
          texFormat = MESA_FORMAT_R_UNORM16;
          texObj->RequiredTextureImageUnits = 2;
+         break;
+      case PIPE_FORMAT_Y410:
+         texFormat = MESA_FORMAT_B10G10R10A2_UNORM;
+         internalFormat = GL_RGBA;
+         texObj->RequiredTextureImageUnits = 1;
+         break;
+      case PIPE_FORMAT_Y412:
+      case PIPE_FORMAT_Y416:
+         texFormat = MESA_FORMAT_RGBA_UNORM16;
+         internalFormat = GL_RGBA;
+         texObj->RequiredTextureImageUnits = 1;
          break;
       case PIPE_FORMAT_IYUV:
          texFormat = MESA_FORMAT_R_UNORM8;
