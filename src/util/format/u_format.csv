@@ -414,6 +414,10 @@ PIPE_FORMAT_P010                  , planar2, 1, 1, 1,     ,     ,     ,     , xy
 PIPE_FORMAT_P012                  , planar2, 1, 1, 1,     ,     ,     ,     , xyzw, yuv
 PIPE_FORMAT_P016                  , planar2, 1, 1, 1,     ,     ,     ,     , xyzw, yuv
 
+PIPE_FORMAT_Y410                  , other,   1, 1, 1, un10, un10, un10, un2 , yzxw, yuv
+PIPE_FORMAT_Y412                  , other,   1, 1, 1, un16, un16, un16, un16, yzxw, yuv
+PIPE_FORMAT_Y416                  , other,   1, 1, 1, un16, un16, un16, un16, yzxw, yuv
+
 # Usually used to implement IA44 and AI44 formats in video decoding
 PIPE_FORMAT_A4R4_UNORM              , plain, 1, 1, 1, un4 , un4 ,     ,     , y00x, rgb, un4, un4 ,     ,     , x00y
 PIPE_FORMAT_R4A4_UNORM              , plain, 1, 1, 1, un4 , un4 ,     ,     , x00y, rgb, un4, un4 ,     ,     , y00x
