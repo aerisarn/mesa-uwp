@@ -867,14 +867,7 @@ emit_intrinsic_ssbo_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
    ir3_handle_bindless_cat6(resinfo, intr->src[0]);
 
    if (ctx->compiler->gen >= 6) {
-      struct ir3_instruction *resinfo_dst;
-      ir3_split_dest(b, &resinfo_dst, resinfo, 0, 1);
-      /* Unfortunately resinfo returns the array length, i.e. in dwords,
-      * while NIR expects us to return the size in bytes.
-      *
-      * TODO: fix this in NIR.
-      */
-      *dst = ir3_SHL_B(b, resinfo_dst, 0, create_immed(b, 2), 0);
+      ir3_split_dest(b, dst, resinfo, 0, 1);
    } else {
       /* On a5xx, resinfo returns the low 16 bits of ssbo size in .x and the high 16 bits in .y */
       struct ir3_instruction *resinfo_dst[2];
