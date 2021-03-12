@@ -601,7 +601,6 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpFUnordEqual:
-   case SpvOpFUnordNotEqual:
    case SpvOpFUnordLessThan:
    case SpvOpFUnordGreaterThan:
    case SpvOpFUnordLessThanEqual:
