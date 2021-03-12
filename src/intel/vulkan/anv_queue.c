@@ -886,145 +886,132 @@ maybe_transfer_temporary_semaphore(struct anv_queue_submit *submit,
 }
 
 static VkResult
-anv_queue_submit_add_in_semaphores(struct anv_queue_submit *submit,
-                                   struct anv_device *device,
-                                   const VkSemaphore *in_semaphores,
-                                   const uint64_t *in_values,
-                                   uint32_t num_in_semaphores)
+anv_queue_submit_add_in_semaphore(struct anv_queue_submit *submit,
+                                  struct anv_device *device,
+                                  const VkSemaphore _semaphore,
+                                  const uint64_t value)
 {
+   ANV_FROM_HANDLE(anv_semaphore, semaphore, _semaphore);
+   struct anv_semaphore_impl *impl;
    VkResult result;
 
-   for (uint32_t i = 0; i < num_in_semaphores; i++) {
-      ANV_FROM_HANDLE(anv_semaphore, semaphore, in_semaphores[i]);
-      struct anv_semaphore_impl *impl;
+   result = maybe_transfer_temporary_semaphore(submit, semaphore, &impl);
+   if (result != VK_SUCCESS)
+      return result;
 
-      result = maybe_transfer_temporary_semaphore(submit, semaphore, &impl);
+   switch (impl->type) {
+   case ANV_SEMAPHORE_TYPE_WSI_BO:
+      /* When using a window-system buffer as a semaphore, always enable
+       * EXEC_OBJECT_WRITE. This gives us a WaR hazard with the display or
+       * compositor's read of the buffer and enforces that we don't start
+       * rendering until they are finished. This is exactly the
+       * synchronization we want with vkAcquireNextImage.
+       */
+      result = anv_queue_submit_add_fence_bo(submit, impl->bo, true /* signal */);
       if (result != VK_SUCCESS)
          return result;
+      break;
 
-      switch (impl->type) {
-      case ANV_SEMAPHORE_TYPE_WSI_BO:
-         /* When using a window-system buffer as a semaphore, always enable
-          * EXEC_OBJECT_WRITE.  This gives us a WaR hazard with the display or
-          * compositor's read of the buffer and enforces that we don't start
-          * rendering until they are finished.  This is exactly the
-          * synchronization we want with vkAcquireNextImage.
-          */
-         result = anv_queue_submit_add_fence_bo(submit, impl->bo, true /* signal */);
-         if (result != VK_SUCCESS)
-            return result;
-         break;
+   case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ:
+      result = anv_queue_submit_add_syncobj(submit, device,
+                                            impl->syncobj,
+                                            I915_EXEC_FENCE_WAIT,
+                                            0);
+      if (result != VK_SUCCESS)
+         return result;
+      break;
 
-      case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ: {
-         result = anv_queue_submit_add_syncobj(submit, device,
-                                               impl->syncobj,
-                                               I915_EXEC_FENCE_WAIT,
-                                               0);
-         if (result != VK_SUCCESS)
-            return result;
+   case ANV_SEMAPHORE_TYPE_TIMELINE:
+      if (value == 0)
          break;
-      }
+      result = anv_queue_submit_add_timeline_wait(submit, device,
+                                                  &impl->timeline,
+                                                  value);
+      if (result != VK_SUCCESS)
+         return result;
+      break;
 
-      case ANV_SEMAPHORE_TYPE_TIMELINE:
-         assert(in_values);
-         if (in_values[i] == 0)
-            break;
-         result = anv_queue_submit_add_timeline_wait(submit, device,
-                                                     &impl->timeline,
-                                                     in_values[i]);
-         if (result != VK_SUCCESS)
-            return result;
+   case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ_TIMELINE:
+      if (value == 0)
          break;
+      result = anv_queue_submit_add_syncobj(submit, device,
+                                            impl->syncobj,
+                                            I915_EXEC_FENCE_WAIT,
+                                            value);
+      if (result != VK_SUCCESS)
+         return result;
+      break;
 
-      case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ_TIMELINE:
-         assert(in_values);
-         if (in_values[i] == 0)
-            break;
-         result = anv_queue_submit_add_syncobj(submit, device,
-                                               impl->syncobj,
-                                               I915_EXEC_FENCE_WAIT,
-                                               in_values[i]);
-         if (result != VK_SUCCESS)
-            return result;
-         break;
-
-      default:
-         break;
-      }
+   default:
+      break;
    }
 
    return VK_SUCCESS;
 }
 
 static VkResult
-anv_queue_submit_add_out_semaphores(struct anv_queue_submit *submit,
-                                    struct anv_device *device,
-                                    const VkSemaphore *out_semaphores,
-                                    const uint64_t *out_values,
-                                    uint32_t num_out_semaphores)
+anv_queue_submit_add_out_semaphore(struct anv_queue_submit *submit,
+                                   struct anv_device *device,
+                                   const VkSemaphore _semaphore,
+                                   const uint64_t value)
 {
+   ANV_FROM_HANDLE(anv_semaphore, semaphore, _semaphore);
    VkResult result;
 
-   for (uint32_t i = 0; i < num_out_semaphores; i++) {
-      ANV_FROM_HANDLE(anv_semaphore, semaphore, out_semaphores[i]);
+   /* Under most circumstances, out fences won't be temporary. However, the
+    * spec does allow it for opaque_fd. From the Vulkan 1.0.53 spec:
+    *
+    *    "If the import is temporary, the implementation must restore the
+    *    semaphore to its prior permanent state after submitting the next
+    *    semaphore wait operation."
+    *
+    * The spec says nothing whatsoever about signal operations on temporarily
+    * imported semaphores so it appears they are allowed. There are also CTS
+    * tests that require this to work.
+    */
+   struct anv_semaphore_impl *impl =
+      semaphore->temporary.type != ANV_SEMAPHORE_TYPE_NONE ?
+      &semaphore->temporary : &semaphore->permanent;
 
-      /* Under most circumstances, out fences won't be temporary.  However,
-       * the spec does allow it for opaque_fd.  From the Vulkan 1.0.53 spec:
-       *
-       *    "If the import is temporary, the implementation must restore the
-       *    semaphore to its prior permanent state after submitting the next
-       *    semaphore wait operation."
-       *
-       * The spec says nothing whatsoever about signal operations on
-       * temporarily imported semaphores so it appears they are allowed.
-       * There are also CTS tests that require this to work.
+   switch (impl->type) {
+   case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ: {
+      /*
+       * Reset the content of the syncobj so it doesn't contain a previously
+       * signaled dma-fence, until one is added by EXECBUFFER by the
+       * submission thread.
        */
-      struct anv_semaphore_impl *impl =
-         semaphore->temporary.type != ANV_SEMAPHORE_TYPE_NONE ?
-         &semaphore->temporary : &semaphore->permanent;
+      anv_gem_syncobj_reset(device, impl->syncobj);
 
-      switch (impl->type) {
-      case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ: {
-         /*
-          * Reset the content of the syncobj so it doesn't contain a
-          * previously signaled dma-fence, until one is added by EXECBUFFER by
-          * the submission thread.
-          */
-         anv_gem_syncobj_reset(device, impl->syncobj);
+      result = anv_queue_submit_add_syncobj(submit, device, impl->syncobj,
+                                            I915_EXEC_FENCE_SIGNAL,
+                                            0);
+      if (result != VK_SUCCESS)
+         return result;
+      break;
+   }
 
-         result = anv_queue_submit_add_syncobj(submit, device, impl->syncobj,
-                                               I915_EXEC_FENCE_SIGNAL,
-                                               0);
-         if (result != VK_SUCCESS)
-            return result;
+   case ANV_SEMAPHORE_TYPE_TIMELINE:
+      if (value == 0)
          break;
-      }
+      result = anv_queue_submit_add_timeline_signal(submit, device,
+                                                    &impl->timeline,
+                                                    value);
+      if (result != VK_SUCCESS)
+         return result;
+      break;
 
-      case ANV_SEMAPHORE_TYPE_TIMELINE:
-         assert(out_values);
-         if (out_values[i] == 0)
-            break;
-         result = anv_queue_submit_add_timeline_signal(submit, device,
-                                                       &impl->timeline,
-                                                       out_values[i]);
-         if (result != VK_SUCCESS)
-            return result;
+   case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ_TIMELINE:
+      if (value == 0)
          break;
+      result = anv_queue_submit_add_syncobj(submit, device, impl->syncobj,
+                                            I915_EXEC_FENCE_SIGNAL,
+                                            value);
+      if (result != VK_SUCCESS)
+         return result;
+      break;
 
-      case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ_TIMELINE:
-         assert(out_values);
-         if (out_values[i] == 0)
-            break;
-         result = anv_queue_submit_add_syncobj(submit, device, impl->syncobj,
-                                               I915_EXEC_FENCE_SIGNAL,
-                                               out_values[i]);
-         if (result != VK_SUCCESS)
-            return result;
-         break;
-
-      default:
-         break;
-      }
+   default:
+      break;
    }
 
    return VK_SUCCESS;
@@ -1279,13 +1266,14 @@ VkResult anv_QueueSubmit(
       }
 
       /* Wait semaphores */
-      result = anv_queue_submit_add_in_semaphores(submit,
-                                                  device,
-                                                  pSubmits[i].pWaitSemaphores,
-                                                  wait_values,
-                                                  pSubmits[i].waitSemaphoreCount);
-      if (result != VK_SUCCESS)
-         goto out;
+      for (uint32_t j = 0; j < pSubmits[i].waitSemaphoreCount; j++) {
+         result = anv_queue_submit_add_in_semaphore(submit,
+                                                    device,
+                                                    pSubmits[i].pWaitSemaphores[j],
+                                                    wait_values ? wait_values[j] : 0);
+         if (result != VK_SUCCESS)
+            goto out;
+      }
 
       /* Command buffers */
       for (uint32_t j = 0; j < pSubmits[i].commandBufferCount; j++) {
@@ -1310,13 +1298,14 @@ VkResult anv_QueueSubmit(
       }
 
       /* Signal semaphores */
-      result = anv_queue_submit_add_out_semaphores(submit,
-                                                   device,
-                                                   pSubmits[i].pSignalSemaphores,
-                                                   signal_values,
-                                                   pSubmits[i].signalSemaphoreCount);
-      if (result != VK_SUCCESS)
-         goto out;
+      for (uint32_t j = 0; j < pSubmits[i].signalSemaphoreCount; j++) {
+         result = anv_queue_submit_add_out_semaphore(submit,
+                                                     device,
+                                                     pSubmits[i].pSignalSemaphores[j],
+                                                     signal_values ? signal_values[j] : 0);
+         if (result != VK_SUCCESS)
+            goto out;
+      }
 
       /* WSI BO */
       if (wsi_signal_bo) {
