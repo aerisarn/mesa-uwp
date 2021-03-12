@@ -378,8 +378,9 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
 }
 
 static void
-handle_no_contraction(struct vtn_builder *b, struct vtn_value *val, int member,
-                      const struct vtn_decoration *dec, void *_void)
+handle_no_contraction(struct vtn_builder *b, UNUSED struct vtn_value *val,
+                      UNUSED int member, const struct vtn_decoration *dec,
+                      UNUSED void *_void)
 {
    vtn_assert(dec->scope == VTN_DEC_DECORATION);
    if (dec->decoration != SpvDecorationNoContraction)
@@ -423,7 +424,8 @@ struct conversion_opts {
 };
 
 static void
-handle_conversion_opts(struct vtn_builder *b, struct vtn_value *val, int member,
+handle_conversion_opts(struct vtn_builder *b, UNUSED struct vtn_value *val,
+                       UNUSED int member,
                        const struct vtn_decoration *dec, void *_opts)
 {
    struct conversion_opts *opts = _opts;
@@ -445,7 +447,8 @@ handle_conversion_opts(struct vtn_builder *b, struct vtn_value *val, int member,
 }
 
 static void
-handle_no_wrap(struct vtn_builder *b, struct vtn_value *val, int member,
+handle_no_wrap(UNUSED struct vtn_builder *b, UNUSED struct vtn_value *val,
+               UNUSED int member,
                const struct vtn_decoration *dec, void *_alu)
 {
    nir_alu_instr *alu = _alu;
