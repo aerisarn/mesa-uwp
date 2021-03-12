@@ -2482,16 +2482,14 @@ anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
           * target. To make its content available to future operations, flush
           * the render target cache.
           */
-         pipe_bits |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
-                      ANV_PIPE_TILE_CACHE_FLUSH_BIT;
+         pipe_bits |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
          /* We're transitioning a buffer that was previously used as depth
           * buffer. To make its content available to future operations, flush
           * the depth cache.
           */
-         pipe_bits |= ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
-                      ANV_PIPE_TILE_CACHE_FLUSH_BIT;
+         pipe_bits |= ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_TRANSFER_WRITE_BIT:
          /* We're transitioning a buffer that was previously used as a
@@ -2507,8 +2505,7 @@ anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
           * to future operations. And for depth related operations we also
           * need to flush the depth cache.
           */
-         pipe_bits |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
-                      ANV_PIPE_TILE_CACHE_FLUSH_BIT;
+         pipe_bits |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
          pipe_bits |= ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_MEMORY_WRITE_BIT:
@@ -2516,6 +2513,14 @@ anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
           * all the caches.
           */
          pipe_bits |= ANV_PIPE_FLUSH_BITS;
+         break;
+      case VK_ACCESS_HOST_WRITE_BIT:
+         /* We're transitioning a buffer for access by CPU. Invalidate
+          * all the caches. Since data and tile caches don't have invalidate,
+          * we are forced to flush those as well.
+          */
+         pipe_bits |= ANV_PIPE_FLUSH_BITS;
+         pipe_bits |= ANV_PIPE_INVALIDATE_BITS;
          break;
       default:
          break; /* Nothing to do */
@@ -2549,6 +2554,10 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
           * UBO from the buffer, so we need to invalidate constant cache.
           */
          pipe_bits |= ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT;
+         pipe_bits |= ANV_PIPE_DATA_CACHE_FLUSH_BIT;
+         /* Tile cache flush needed For CmdDipatchIndirect since command
+          * streamer and vertex fetch aren't L3 coherent.
+          */
          pipe_bits |= ANV_PIPE_TILE_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_INDEX_READ_BIT:
@@ -2595,9 +2604,17 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
          /* Transitioning a buffer for conditional rendering. We'll load the
           * content of this buffer into HW registers using the command
           * streamer, so we need to stall the command streamer to make sure
-          * any in-flight flush operations have completed.
+          * any in-flight flush operations have completed.  Needs
+          * tile cache flush because command stream isn't L3 coherent yet.
           */
          pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+         pipe_bits |= ANV_PIPE_TILE_CACHE_FLUSH_BIT;
+         break;
+      case VK_ACCESS_HOST_READ_BIT:
+         /* We're transitioning a buffer that was written by CPU.  Flush 
+          * all the caches.
+          */
+         pipe_bits |= ANV_PIPE_FLUSH_BITS;
          break;
       default:
          break; /* Nothing to do */
