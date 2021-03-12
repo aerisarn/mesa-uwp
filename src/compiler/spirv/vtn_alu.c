@@ -641,23 +641,20 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
        * from the ALU will probably already be false if the operands are not
        * ordered so we don’t need to handle it specially.
        */
-      bool swap;
-      bool exact;
-      unsigned src_bit_size = glsl_get_bit_size(vtn_src[0]->type);
-      unsigned dst_bit_size = glsl_get_bit_size(dest_type);
-      nir_op op = vtn_nir_alu_op_for_spirv_opcode(b, opcode, &swap, &exact,
-                                                  src_bit_size, dst_bit_size);
-
-      assert(!swap);
-      assert(exact);
-
       const bool save_exact = b->nb.exact;
 
       b->nb.exact = true;
 
+      /* This could also be implemented as (a < b || b < a).  If one or both
+       * of the source are numbers, later optimization passes can easily
+       * eliminate the isnan() checks.  This may trim the sequence down to a
+       * single (a != b) operation.  Otherwise, the optimizer can transform
+       * whatever is left to (a < b || b < a).  Since some applications will
+       * open-code this sequence, these optimizations are needed anyway.
+       */
       dest->def =
          nir_iand(&b->nb,
-                  nir_build_alu(&b->nb, op, src[0], src[1], NULL, NULL),
+                  nir_fneu(&b->nb, src[0], src[1]),
                   nir_iand(&b->nb,
                           nir_feq(&b->nb, src[0], src[0]),
                           nir_feq(&b->nb, src[1], src[1])));
