@@ -215,11 +215,10 @@ traces:
 #    expectations:
 #      - device: gl-virgl
 #        checksum: 9571117bf4eab6fe29b12f6c3d42d865
-# The neverball foreground is actually missing
   - path: neverball/neverball.trace
     expectations:
       - device: gl-virgl
-        checksum: aa91b3f52d233ecded7d5979351b6859
+        checksum: 6936cde5edab2b3fd02115ef36015cde
 # Crash
 #  - path: pathfinder/canvas_moire.trace
 #    expectations:

@@ -135,7 +135,7 @@ struct ureg_program
    } system_value[UREG_MAX_SYSTEM_VALUE];
    unsigned nr_system_values;
 
-   struct {
+   struct ureg_output_decl {
       enum tgsi_semantic semantic_name;
       unsigned semantic_index;
       unsigned streams;
@@ -1819,6 +1819,13 @@ emit_property(struct ureg_program *ureg,
    out[1].prop_data.Data = data;
 }
 
+static int
+output_sort(const void *in_a, const void *in_b)
+{
+   const struct ureg_output_decl *a = in_a, *b = in_b;
+
+   return a->first - b->first;
+}
 
 static void emit_decls( struct ureg_program *ureg )
 {
@@ -1907,6 +1914,11 @@ static void emit_decls( struct ureg_program *ureg )
                          0,
                          TGSI_WRITEMASK_XYZW, 0, FALSE);
    }
+
+   /* While not required by TGSI spec, virglrenderer has a dependency on the
+    * outputs being sorted.
+    */
+   qsort(ureg->output, ureg->nr_outputs, sizeof(ureg->output[0]), output_sort);
 
    if (ureg->supports_any_inout_decl_range) {
       for (i = 0; i < ureg->nr_outputs; i++) {
