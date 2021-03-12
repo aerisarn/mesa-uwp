@@ -414,6 +414,10 @@ PIPE_FORMAT_P010                  , planar2, 1, 1, 1,     ,     ,     ,     , xy
 PIPE_FORMAT_P012                  , planar2, 1, 1, 1,     ,     ,     ,     , xyzw, yuv
 PIPE_FORMAT_P016                  , planar2, 1, 1, 1,     ,     ,     ,     , xyzw, yuv
 
+PIPE_FORMAT_Y210                  , subsampled, 2, 1, 1, x64 ,     ,     ,     , xyz1, yuv
+PIPE_FORMAT_Y212                  , subsampled, 2, 1, 1, x64 ,     ,     ,     , xyz1, yuv
+PIPE_FORMAT_Y216                  , subsampled, 2, 1, 1, x64 ,     ,     ,     , xyz1, yuv
+
 PIPE_FORMAT_Y410                  , other,   1, 1, 1, un10, un10, un10, un2 , yzxw, yuv
 PIPE_FORMAT_Y412                  , other,   1, 1, 1, un16, un16, un16, un16, yzxw, yuv
 PIPE_FORMAT_Y416                  , other,   1, 1, 1, un16, un16, un16, un16, yzxw, yuv
