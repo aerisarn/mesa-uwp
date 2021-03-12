@@ -938,12 +938,9 @@ panfrost_bind_sampler_states(
 
         struct panfrost_context *ctx = pan_context(pctx);
 
-        /* XXX: Should upload, not just copy? */
-        ctx->sampler_count[shader] = num_sampler;
+        ctx->sampler_count[shader] = sampler ? num_sampler : 0;
         if (sampler)
                 memcpy(ctx->samplers[shader], sampler, num_sampler * sizeof (void *));
-        else
-                memset(ctx->samplers[shader], 0, num_sampler * sizeof (void *));
 }
 
 static bool
