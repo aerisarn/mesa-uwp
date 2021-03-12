@@ -238,6 +238,17 @@ update_textures(struct st_context *st,
          sampler_views[extra] =
                pipe->create_sampler_view(pipe, stObj->pt->next, &tmpl);
          break;
+      case PIPE_FORMAT_Y210:
+      case PIPE_FORMAT_Y212:
+      case PIPE_FORMAT_Y216:
+         /* we need one additional R16G16B16A16 view: */
+         tmpl.format = PIPE_FORMAT_R16G16B16A16_UNORM;
+         tmpl.swizzle_b = PIPE_SWIZZLE_Z;
+         tmpl.swizzle_a = PIPE_SWIZZLE_W;
+         extra = u_bit_scan(&free_slots);
+         sampler_views[extra] =
+               pipe->create_sampler_view(pipe, stObj->pt->next, &tmpl);
+         break;
       default:
          break;
       }

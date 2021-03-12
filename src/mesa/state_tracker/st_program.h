@@ -95,6 +95,9 @@ st_get_external_sampler_key(struct st_context *st, struct gl_program *prog)
          key.lower_iyuv |= (1 << unit);
          break;
       case PIPE_FORMAT_YUYV:
+      case PIPE_FORMAT_Y210:
+      case PIPE_FORMAT_Y212:
+      case PIPE_FORMAT_Y216:
          key.lower_yx_xuxv |= (1 << unit);
          break;
       case PIPE_FORMAT_UYVY:
