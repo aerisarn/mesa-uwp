@@ -599,6 +599,10 @@ isl_format_for_pipe_format(enum pipe_format pf)
 
       [PIPE_FORMAT_ETC1_RGB8]               = ISL_FORMAT_ETC1_RGB8,
 
+      /* The formats say YCrCb, but there's no colorspace conversion. */
+      [PIPE_FORMAT_R8G8_R8B8_UNORM]         = ISL_FORMAT_YCRCB_NORMAL,
+      [PIPE_FORMAT_G8R8_B8R8_UNORM]         = ISL_FORMAT_YCRCB_SWAPY,
+
       [PIPE_FORMAT_R8G8B8X8_SRGB]           = ISL_FORMAT_R8G8B8X8_UNORM_SRGB,
       [PIPE_FORMAT_B10G10R10X2_UNORM]       = ISL_FORMAT_B10G10R10X2_UNORM,
       [PIPE_FORMAT_R16G16B16X16_UNORM]      = ISL_FORMAT_R16G16B16X16_UNORM,
