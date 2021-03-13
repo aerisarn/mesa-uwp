@@ -490,6 +490,24 @@ lower_yuv_external(nir_builder *b, nir_tex_instr *tex,
                      texture_index);
 }
 
+static void
+lower_yu_yv_external(nir_builder *b, nir_tex_instr *tex,
+                     const nir_lower_tex_options *options,
+                     unsigned texture_index)
+{
+  b->cursor = nir_after_instr(&tex->instr);
+
+  nir_ssa_def *yuv = sample_plane(b, tex, 0, options);
+
+  convert_yuv_to_rgb(b, tex,
+                     nir_channel(b, yuv, 1),
+                     nir_channel(b, yuv, 2),
+                     nir_channel(b, yuv, 0),
+                     nir_imm_float(b, 1.0f),
+                     options,
+                     texture_index);
+}
+
 /*
  * Converts a nir_texop_txd instruction to nir_texop_txl with the given lod
  * computed from the gradients.
@@ -1224,6 +1242,11 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
 
       if (texture_mask & options->lower_yuv_external) {
          lower_yuv_external(b, tex, options, texture_index);
+         progress = true;
+      }
+
+      if ((1 << tex->texture_index) & options->lower_yu_yv_external) {
+         lower_yu_yv_external(b, tex, options, texture_index);
          progress = true;
       }
 
