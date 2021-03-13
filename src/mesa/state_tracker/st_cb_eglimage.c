@@ -101,20 +101,26 @@ is_format_supported(struct pipe_screen *screen, enum pipe_format format,
                                                  nr_storage_samples, usage);
          break;
       case PIPE_FORMAT_YUYV:
-         supported = screen->is_format_supported(screen, PIPE_FORMAT_RG88_UNORM,
+         supported = screen->is_format_supported(screen, PIPE_FORMAT_R8G8_R8B8_UNORM,
                                                  PIPE_TEXTURE_2D, nr_samples,
-                                                 nr_storage_samples, usage) &&
-                     screen->is_format_supported(screen, PIPE_FORMAT_BGRA8888_UNORM,
-                                                 PIPE_TEXTURE_2D, nr_samples,
-                                                 nr_storage_samples, usage);
+                                                 nr_storage_samples, usage) ||
+                     (screen->is_format_supported(screen, PIPE_FORMAT_RG88_UNORM,
+                                                  PIPE_TEXTURE_2D, nr_samples,
+                                                  nr_storage_samples, usage) &&
+                      screen->is_format_supported(screen, PIPE_FORMAT_BGRA8888_UNORM,
+                                                  PIPE_TEXTURE_2D, nr_samples,
+                                                  nr_storage_samples, usage));
          break;
       case PIPE_FORMAT_UYVY:
-         supported = screen->is_format_supported(screen, PIPE_FORMAT_RG88_UNORM,
+         supported = screen->is_format_supported(screen, PIPE_FORMAT_G8R8_B8R8_UNORM,
                                                  PIPE_TEXTURE_2D, nr_samples,
-                                                 nr_storage_samples, usage) &&
-                     screen->is_format_supported(screen, PIPE_FORMAT_RGBA8888_UNORM,
-                                                 PIPE_TEXTURE_2D, nr_samples,
-                                                 nr_storage_samples, usage);
+                                                 nr_storage_samples, usage) ||
+                     (screen->is_format_supported(screen, PIPE_FORMAT_RG88_UNORM,
+                                                  PIPE_TEXTURE_2D, nr_samples,
+                                                  nr_storage_samples, usage) &&
+                      screen->is_format_supported(screen, PIPE_FORMAT_RGBA8888_UNORM,
+                                                  PIPE_TEXTURE_2D, nr_samples,
+                                                  nr_storage_samples, usage));
          break;
       case PIPE_FORMAT_AYUV:
          supported = screen->is_format_supported(screen, PIPE_FORMAT_RGBA8888_UNORM,
@@ -327,8 +333,16 @@ st_bind_egl_image(struct gl_context *ctx,
          break;
       case PIPE_FORMAT_YUYV:
       case PIPE_FORMAT_UYVY:
-         texFormat = MESA_FORMAT_RG_UNORM8;
-         texObj->RequiredTextureImageUnits = 2;
+         if (stimg->texture->format == PIPE_FORMAT_R8G8_R8B8_UNORM) {
+            texFormat = MESA_FORMAT_RG_RB_UNORM8;
+            texObj->RequiredTextureImageUnits = 1;
+         } else if (stimg->texture->format == PIPE_FORMAT_G8R8_B8R8_UNORM) {
+            texFormat = MESA_FORMAT_GR_BR_UNORM8;
+            texObj->RequiredTextureImageUnits = 1;
+         } else {
+            texFormat = MESA_FORMAT_RG_UNORM8;
+            texObj->RequiredTextureImageUnits = 2;
+         }
          break;
       case PIPE_FORMAT_AYUV:
          texFormat = MESA_FORMAT_R8G8B8A8_UNORM;

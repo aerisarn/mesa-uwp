@@ -525,6 +525,11 @@ get_sampler_view_format(struct st_context *st,
       break;
    case PIPE_FORMAT_YUYV:
    case PIPE_FORMAT_UYVY:
+      if (stObj->pt->format == PIPE_FORMAT_R8G8_R8B8_UNORM ||
+          stObj->pt->format == PIPE_FORMAT_G8R8_B8R8_UNORM) {
+         format = stObj->pt->format;
+         break;
+      }
       format = PIPE_FORMAT_R8G8_UNORM;
       break;
    case PIPE_FORMAT_AYUV:
