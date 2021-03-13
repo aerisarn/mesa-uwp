@@ -427,7 +427,11 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_maintenance3 = true,
       .KHR_multiview = true,
       .KHR_pipeline_executable_properties = true,
+      .KHR_pipeline_library = (device->instance->perftest_flags & RADV_PERFTEST_RT) &&
+                              device->rad_info.chip_class >= GFX10_3 && !device->use_llvm,
       .KHR_push_descriptor = true,
+      .KHR_ray_tracing_pipeline = (device->instance->perftest_flags & RADV_PERFTEST_RT) &&
+                                  device->rad_info.chip_class >= GFX10_3 && !device->use_llvm,
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
       .KHR_sampler_ycbcr_conversion = true,
