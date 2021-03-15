@@ -891,12 +891,6 @@ wsi_common_acquire_next_image2(const struct wsi_device *wsi,
                                                    pImageIndex);
    if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
       return result;
-
-   if (wsi->set_memory_ownership) {
-      VkDeviceMemory mem = swapchain->get_wsi_image(swapchain, *pImageIndex)->memory;
-      wsi->set_memory_ownership(swapchain->device, mem, true);
-   }
-
    struct wsi_image *image =
       swapchain->get_wsi_image(swapchain, *pImageIndex);
 
@@ -915,6 +909,9 @@ wsi_common_acquire_next_image2(const struct wsi_device *wsi,
       if (signal_result != VK_SUCCESS)
          return signal_result;
    }
+
+   if (wsi->set_memory_ownership)
+      wsi->set_memory_ownership(swapchain->device, image->memory, true);
 
    return result;
 }
