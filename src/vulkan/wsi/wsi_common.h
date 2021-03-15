@@ -102,6 +102,8 @@ struct wsi_device {
 
    VkPhysicalDevicePCIBusInfoPropertiesEXT pci_bus_info;
 
+   VkExternalSemaphoreHandleTypeFlags semaphore_export_handle_types;
+
    bool supports_modifiers;
    uint32_t maxImageDimension2D;
    VkPresentModeKHR override_present_mode;
@@ -209,6 +211,7 @@ struct wsi_device {
    WSI_CB(GetPhysicalDeviceFormatProperties);
    WSI_CB(GetPhysicalDeviceFormatProperties2KHR);
    WSI_CB(GetPhysicalDeviceImageFormatProperties2);
+   WSI_CB(GetSemaphoreFdKHR);
    WSI_CB(ResetFences);
    WSI_CB(QueueSubmit);
    WSI_CB(WaitForFences);

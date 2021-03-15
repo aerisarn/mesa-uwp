@@ -26,15 +26,220 @@
 #include "util/macros.h"
 #include "util/os_file.h"
 #include "util/xmlconfig.h"
+#include "vk_device.h"
 #include "vk_format.h"
+#include "vk_physical_device.h"
 #include "vk_util.h"
 #include "drm-uapi/drm_fourcc.h"
 
+#include <errno.h>
+#include <linux/dma-buf.h>
+#include <linux/sync_file.h>
 #include <time.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <xf86drm.h>
+
+struct dma_buf_export_sync_file_wsi {
+   __u32 flags;
+   __s32 fd;
+};
+
+struct dma_buf_import_sync_file_wsi {
+   __u32 flags;
+   __s32 fd;
+};
+
+#define DMA_BUF_IOCTL_EXPORT_SYNC_FILE_WSI   _IOWR(DMA_BUF_BASE, 2, struct dma_buf_export_sync_file_wsi)
+#define DMA_BUF_IOCTL_IMPORT_SYNC_FILE_WSI   _IOW(DMA_BUF_BASE, 3, struct dma_buf_import_sync_file_wsi)
+
+static VkResult
+wsi_dma_buf_export_sync_file(int dma_buf_fd, int *sync_file_fd)
+{
+   /* Don't keep trying an IOCTL that doesn't exist. */
+   static bool no_dma_buf_sync_file = false;
+   if (no_dma_buf_sync_file)
+      return VK_ERROR_FEATURE_NOT_PRESENT;
+
+   struct dma_buf_export_sync_file_wsi export = {
+      .flags = DMA_BUF_SYNC_RW,
+      .fd = -1,
+   };
+   int ret = drmIoctl(dma_buf_fd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE_WSI, &export);
+   if (ret) {
+      if (errno == ENOTTY) {
+         no_dma_buf_sync_file = true;
+         return VK_ERROR_FEATURE_NOT_PRESENT;
+      } else {
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
+   }
+
+   *sync_file_fd = export.fd;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+wsi_dma_buf_import_sync_file(int dma_buf_fd, int sync_file_fd)
+{
+   /* Don't keep trying an IOCTL that doesn't exist. */
+   static bool no_dma_buf_sync_file = false;
+   if (no_dma_buf_sync_file)
+      return VK_ERROR_FEATURE_NOT_PRESENT;
+
+   struct dma_buf_import_sync_file_wsi import = {
+      .flags = DMA_BUF_SYNC_RW,
+      .fd = sync_file_fd,
+   };
+   int ret = drmIoctl(dma_buf_fd, DMA_BUF_IOCTL_IMPORT_SYNC_FILE_WSI, &import);
+   if (ret) {
+      if (errno == ENOTTY) {
+         no_dma_buf_sync_file = true;
+         return VK_ERROR_FEATURE_NOT_PRESENT;
+      } else {
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+prepare_signal_dma_buf_from_semaphore(struct wsi_swapchain *chain,
+                                      const struct wsi_image *image)
+{
+   VkResult result;
+
+   if (!(chain->wsi->semaphore_export_handle_types &
+         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT))
+      return VK_ERROR_FEATURE_NOT_PRESENT;
+
+   int sync_file_fd = -1;
+   result = wsi_dma_buf_export_sync_file(image->dma_buf_fd, &sync_file_fd);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = wsi_dma_buf_import_sync_file(image->dma_buf_fd, sync_file_fd);
+   close(sync_file_fd);
+   if (result != VK_SUCCESS)
+      return result;
+
+   /* If we got here, all our checks pass.  Create the actual semaphore */
+   const VkExportSemaphoreCreateInfo export_info = {
+      .sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO,
+      .handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+   };
+   const VkSemaphoreCreateInfo semaphore_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+      .pNext = &export_info,
+   };
+   result = chain->wsi->CreateSemaphore(chain->device, &semaphore_info,
+                                        &chain->alloc,
+                                        &chain->dma_buf_semaphore);
+   if (result != VK_SUCCESS)
+      return result;
+
+   return VK_SUCCESS;
+}
+
+VkResult
+wsi_prepare_signal_dma_buf_from_semaphore(struct wsi_swapchain *chain,
+                                          const struct wsi_image *image)
+{
+   VkResult result;
+
+   /* We cache result - 1 in the swapchain */
+   if (unlikely(chain->signal_dma_buf_from_semaphore == 0)) {
+      result = prepare_signal_dma_buf_from_semaphore(chain, image);
+      assert(result <= 0);
+      chain->signal_dma_buf_from_semaphore = (int)result - 1;
+   } else {
+      result = (VkResult)(chain->signal_dma_buf_from_semaphore + 1);
+   }
+
+   return result;
+}
+
+VkResult
+wsi_signal_dma_buf_from_semaphore(const struct wsi_swapchain *chain,
+                                  const struct wsi_image *image)
+{
+   VkResult result;
+
+   const VkSemaphoreGetFdInfoKHR get_fd_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
+      .semaphore = chain->dma_buf_semaphore,
+      .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+   };
+   int sync_file_fd = -1;
+   result = chain->wsi->GetSemaphoreFdKHR(chain->device, &get_fd_info,
+                                          &sync_file_fd);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = wsi_dma_buf_import_sync_file(image->dma_buf_fd, sync_file_fd);
+   close(sync_file_fd);
+   return result;
+}
+
+static const struct vk_sync_type *
+get_sync_file_sync_type(struct vk_device *device,
+                        enum vk_sync_features req_features)
+{
+   for (const struct vk_sync_type *const *t =
+        device->physical->supported_sync_types; *t; t++) {
+      if (req_features & ~(*t)->features)
+         continue;
+
+      if ((*t)->import_sync_file != NULL)
+         return *t;
+   }
+
+   return NULL;
+}
+
+VkResult
+wsi_create_sync_for_dma_buf_wait(const struct wsi_swapchain *chain,
+                                 const struct wsi_image *image,
+                                 enum vk_sync_features req_features,
+                                 struct vk_sync **sync_out)
+{
+   VK_FROM_HANDLE(vk_device, device, chain->device);
+   VkResult result;
+
+   const struct vk_sync_type *sync_type =
+      get_sync_file_sync_type(device, req_features);
+   if (sync_type == NULL)
+      return VK_ERROR_FEATURE_NOT_PRESENT;
+
+   int sync_file_fd = -1;
+   result = wsi_dma_buf_export_sync_file(image->dma_buf_fd, &sync_file_fd);
+   if (result != VK_SUCCESS)
+      return result;
+
+   struct vk_sync *sync = NULL;
+   result = vk_sync_create(device, sync_type, VK_SYNC_IS_SHAREABLE, 0, &sync);
+   if (result != VK_SUCCESS)
+      goto fail_close_sync_file;
+
+   result = vk_sync_import_sync_file(device, sync, sync_file_fd);
+   if (result != VK_SUCCESS)
+      goto fail_destroy_sync;
+
+   close(sync_file_fd);
+   *sync_out = sync;
+
+   return VK_SUCCESS;
+
+fail_destroy_sync:
+   vk_sync_destroy(device, sync);
+fail_close_sync_file:
+   close(sync_file_fd);
+
+   return result;
+}
 
 bool
 wsi_common_drm_devices_equal(int fd_a, int fd_b)

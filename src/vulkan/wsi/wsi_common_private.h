@@ -25,6 +25,7 @@
 
 #include "wsi_common.h"
 #include "vulkan/runtime/vk_object.h"
+#include "vulkan/runtime/vk_sync.h"
 
 struct wsi_image;
 struct wsi_swapchain;
@@ -96,6 +97,9 @@ struct wsi_swapchain {
    VkFence* fences;
    VkSemaphore* buffer_blit_semaphores;
    VkPresentModeKHR present_mode;
+
+   int signal_dma_buf_from_semaphore;
+   VkSemaphore dma_buf_semaphore;
 
    struct wsi_image_info image_info;
    uint32_t image_count;
@@ -193,6 +197,17 @@ void
 wsi_destroy_image(const struct wsi_swapchain *chain,
                   struct wsi_image *image);
 
+VkResult
+wsi_prepare_signal_dma_buf_from_semaphore(struct wsi_swapchain *chain,
+                                          const struct wsi_image *image);
+VkResult
+wsi_signal_dma_buf_from_semaphore(const struct wsi_swapchain *chain,
+                                  const struct wsi_image *image);
+VkResult
+wsi_create_sync_for_dma_buf_wait(const struct wsi_swapchain *chain,
+                                 const struct wsi_image *image,
+                                 enum vk_sync_features sync_features,
+                                 struct vk_sync **sync_out);
 
 struct wsi_interface {
    VkResult (*get_support)(VkIcdSurfaceBase *surface,
