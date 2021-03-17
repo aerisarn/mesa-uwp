@@ -99,9 +99,6 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       pc.DCFlushEnable = true;
       pc.RenderTargetCacheFlushEnable = true;
       pc.CommandStreamerStallEnable = true;
-#if GFX_VER >= 12
-      pc.TileCacheFlushEnable = true;
-#endif
 #if GFX_VER == 12
       /* Wa_1606662791:
        *
@@ -4996,8 +4993,6 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
       pc.PostSyncOperation             = NoWrite;
       pc.CommandStreamerStallEnable    = true;
 #if GFX_VER >= 12
-      pc.TileCacheFlushEnable = true;
-
       /* Wa_1409600907: "PIPE_CONTROL with Depth Stall Enable bit must be
        * set with any PIPE_CONTROL with Depth Flush Enable bit set.
        */
@@ -5012,9 +5007,6 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
       pc.StateCacheInvalidationEnable     = true;
       pc.InstructionCacheInvalidateEnable = true;
       pc.PostSyncOperation                = NoWrite;
-#if GFX_VER >= 12
-      pc.TileCacheFlushEnable = true;
-#endif
       anv_debug_dump_pc(pc);
    }
 
