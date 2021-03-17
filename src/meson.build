@@ -27,6 +27,7 @@ inc_amd_common = include_directories('amd/common')
 inc_amd_common_llvm = include_directories('amd/llvm')
 inc_tool = include_directories('tool')
 pps_datasources = []
+pps_includes = []
 
 libglsl_util = static_library(
   'glsl_util',

@@ -13,6 +13,10 @@
 #include <iterator>
 #include <sstream>
 
+#ifdef PPS_FREEDRENO
+#include "freedreno/ds/fd_pps_driver.h"
+#endif // PPS_FREEDRENO
+
 #include "pps.h"
 #include "pps_algorithm.h"
 
@@ -21,6 +25,11 @@ namespace pps
 std::unordered_map<std::string, std::unique_ptr<Driver>> create_supported_drivers()
 {
    std::unordered_map<std::string, std::unique_ptr<Driver>> map;
+
+#ifdef PPS_FREEDRENO
+   map.emplace("msm", std::make_unique<FreedrenoDriver>());
+#endif // PPS_FREEDRENO
+
    return map;
 }
 
