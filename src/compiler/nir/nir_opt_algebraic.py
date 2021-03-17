@@ -1376,6 +1376,9 @@ optimizations.extend([
    (('ior',  '#a', ('ior',  'b(is_not_const)', '#c')), ('ior',  ('ior',  a, c), b)),
    (('ixor', '#a', ('ixor', 'b(is_not_const)', '#c')), ('ixor', ('ixor', a, c), b)),
 
+   # Reassociate add chains for more MAD/FMA-friendly code
+   (('~fadd', ('fadd(is_used_once)', 'a(is_fmul)', 'b(is_fmul)'), 'c(is_not_fmul)'), ('fadd', ('fadd', a, c), b)),
+
    # Drop mul-div by the same value when there's no wrapping.
    (('idiv', ('imul(no_signed_wrap)', a, b), b), a),
 
