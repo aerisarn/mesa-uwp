@@ -21,6 +21,10 @@
 #include "intel/ds/intel_pps_driver.h"
 #endif // PPS_INTEL
 
+#ifdef PPS_PANFROST
+#include "panfrost/ds/pan_pps_driver.h"
+#endif // PPS_PANFROST
+
 #include "pps.h"
 #include "pps_algorithm.h"
 
@@ -37,6 +41,10 @@ std::unordered_map<std::string, std::unique_ptr<Driver>> create_supported_driver
 #ifdef PPS_INTEL
    map.emplace("i915", std::make_unique<IntelDriver>());
 #endif // PPS_INTEL
+
+#ifdef PPS_PANFROST
+   map.emplace("panfrost", std::make_unique<PanfrostDriver>());
+#endif // PPS_PANFROST
 
    return map;
 }

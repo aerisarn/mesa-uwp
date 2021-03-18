@@ -70,3 +70,7 @@ bifrost_compiler = executable(
 if with_panfrost_vk
   subdir('vulkan')
 endif
+
+if with_perfetto and (with_datasources.contains('panfrost') or with_datasources.contains('auto'))
+  subdir('ds')
+endif
