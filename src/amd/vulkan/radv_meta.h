@@ -96,6 +96,8 @@ struct radv_meta_saved_state {
    bool rasterizer_discard_enable;
 
    unsigned logic_op;
+
+   uint32_t color_write_enable;
 };
 
 VkResult radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand);

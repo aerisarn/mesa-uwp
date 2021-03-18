@@ -116,6 +116,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .primitive_restart_enable = 0u,
    .rasterizer_discard_enable = 0u,
    .logic_op = 0u,
+   .color_write_enable = 0xffffffffu,
 };
 
 static void
@@ -332,6 +333,13 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
       if (dest->logic_op != src->logic_op) {
          dest->logic_op = src->logic_op;
          dest_mask |= RADV_DYNAMIC_LOGIC_OP;
+      }
+   }
+
+   if (copy_mask & RADV_DYNAMIC_COLOR_WRITE_ENABLE) {
+      if (dest->color_write_enable != src->color_write_enable) {
+         dest->color_write_enable = src->color_write_enable;
+         dest_mask |= RADV_DYNAMIC_COLOR_WRITE_ENABLE;
       }
    }
 
@@ -1246,9 +1254,7 @@ radv_emit_batch_break_on_new_ps(struct radv_cmd_buffer *cmd_buffer)
           cmd_buffer->state.pipeline->shaders[MESA_SHADER_FRAGMENT]) &&
       (settings.context_states_per_bin > 1 || settings.persistent_states_per_bin > 1);
    bool break_for_new_cb_target_mask =
-      (!cmd_buffer->state.emitted_pipeline ||
-       cmd_buffer->state.emitted_pipeline->graphics.cb_target_mask !=
-          cmd_buffer->state.pipeline->graphics.cb_target_mask) &&
+      (cmd_buffer->state.dirty & RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE) &&
       settings.context_states_per_bin > 1;
 
    if (!break_for_new_ps && !break_for_new_cb_target_mask)
@@ -1311,6 +1317,12 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 
    if (!cmd_buffer->state.emitted_pipeline)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
+
+   if (!cmd_buffer->state.emitted_pipeline ||
+       cmd_buffer->state.emitted_pipeline->graphics.cb_target_mask !=
+       pipeline->graphics.cb_target_mask) {
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
+   }
 
    radeon_emit_array(cmd_buffer->cs, pipeline->cs.buf, pipeline->cs.cdw);
 
@@ -1621,6 +1633,16 @@ radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
    cb_color_control |= S_028808_ROP3(d->logic_op);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028808_CB_COLOR_CONTROL, cb_color_control);
+}
+
+static void
+radv_emit_color_write_enable(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028238_CB_TARGET_MASK,
+                          pipeline->graphics.cb_target_mask & d->color_write_enable);
 }
 
 static void
@@ -2625,6 +2647,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP)
       radv_emit_logic_op(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE)
+      radv_emit_color_write_enable(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -4801,6 +4826,28 @@ radv_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer, VkLogicOp logicOp)
    state->dynamic.logic_op = logic_op;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
+}
+
+void
+radv_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer, uint32_t attachmentCount,
+                               const VkBool32 *pColorWriteEnables)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+   uint32_t color_write_enable = 0;
+
+   assert(attachmentCount < MAX_RTS);
+
+   for (uint32_t i = 0; i < attachmentCount; i++) {
+      color_write_enable |= pColorWriteEnables[i] ? (0xfu << (i * 4)) : 0;
+   }
+
+   if (state->dynamic.color_write_enable == color_write_enable)
+      return;
+
+   state->dynamic.color_write_enable = color_write_enable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
 }
 
 void

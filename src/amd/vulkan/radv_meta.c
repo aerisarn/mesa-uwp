@@ -99,6 +99,8 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
       state->rasterizer_discard_enable = cmd_buffer->state.dynamic.rasterizer_discard_enable;
 
       state->logic_op = cmd_buffer->state.dynamic.logic_op;
+
+      state->color_write_enable = cmd_buffer->state.dynamic.color_write_enable;
    }
 
    if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {
@@ -190,6 +192,8 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
 
       cmd_buffer->state.dynamic.logic_op = state->logic_op;
 
+      cmd_buffer->state.dynamic.color_write_enable = state->color_write_enable;
+
       cmd_buffer->state.dirty |=
          RADV_CMD_DIRTY_DYNAMIC_VIEWPORT | RADV_CMD_DIRTY_DYNAMIC_SCISSOR |
          RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
@@ -199,7 +203,8 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
          RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE | RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP |
          RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE | RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE |
          RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE |
-         RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE | RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
+         RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE | RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP |
+         RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
    }
 
    if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {

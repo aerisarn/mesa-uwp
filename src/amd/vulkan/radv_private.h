@@ -1014,7 +1014,8 @@ enum radv_dynamic_state_bits {
    RADV_DYNAMIC_DEPTH_BIAS_ENABLE = 1ull << 25,
    RADV_DYNAMIC_LOGIC_OP = 1ull << 26,
    RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE = 1ull << 27,
-   RADV_DYNAMIC_ALL = (1ull << 28) - 1,
+   RADV_DYNAMIC_COLOR_WRITE_ENABLE = 1ull << 28,
+   RADV_DYNAMIC_ALL = (1ull << 29) - 1,
 };
 
 enum radv_cmd_dirty_bits {
@@ -1048,12 +1049,13 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE = 1ull << 25,
    RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP = 1ull << 26,
    RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE = 1ull << 27,
-   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 28) - 1,
-   RADV_CMD_DIRTY_PIPELINE = 1ull << 28,
-   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 29,
-   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 30,
-   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 31,
-   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 32,
+   RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE = 1ull << 28,
+   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 29) - 1,
+   RADV_CMD_DIRTY_PIPELINE = 1ull << 29,
+   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 30,
+   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 31,
+   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 32,
+   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 33
 };
 
 enum radv_cmd_flush_bits {
@@ -1231,6 +1233,8 @@ struct radv_dynamic_state {
    bool rasterizer_discard_enable;
 
    unsigned logic_op;
+
+   uint32_t color_write_enable;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;

@@ -1323,6 +1323,8 @@ radv_dynamic_state_mask(VkDynamicState state)
       return RADV_DYNAMIC_LOGIC_OP;
    case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT:
       return RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
+   case VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT:
+      return RADV_DYNAMIC_COLOR_WRITE_ENABLE;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -1398,6 +1400,9 @@ radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateIn
    if (!subpass->has_color_att ||
        !radv_pipeline_is_blend_enabled(pCreateInfo))
       states &= ~RADV_DYNAMIC_BLEND_CONSTANTS;
+
+   if (!subpass->has_color_att)
+      states &= ~RADV_DYNAMIC_COLOR_WRITE_ENABLE;
 
    return states;
 }
@@ -1726,6 +1731,18 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
          dynamic->logic_op = si_translate_blend_logic_op(pCreateInfo->pColorBlendState->logicOp);
       } else {
          dynamic->logic_op = V_028808_ROP3_COPY;
+      }
+   }
+
+   if (states & RADV_DYNAMIC_COLOR_WRITE_ENABLE) {
+      const VkPipelineColorWriteCreateInfoEXT *color_write_info = vk_find_struct_const(
+         pCreateInfo->pColorBlendState->pNext, PIPELINE_COLOR_WRITE_CREATE_INFO_EXT);
+      if (color_write_info) {
+         dynamic->color_write_enable = 0;
+         for (uint32_t i = 0; i < color_write_info->attachmentCount; i++) {
+            dynamic->color_write_enable |=
+               color_write_info->pColorWriteEnables[i] ? (0xfu << (i * 4)) : 0;
+         }
       }
    }
 
@@ -4232,7 +4249,6 @@ radv_pipeline_generate_blend_state(struct radeon_cmdbuf *ctx_cs,
 
    radeon_set_context_reg(ctx_cs, R_028714_SPI_SHADER_COL_FORMAT, blend->spi_shader_col_format);
 
-   radeon_set_context_reg(ctx_cs, R_028238_CB_TARGET_MASK, blend->cb_target_mask);
    radeon_set_context_reg(ctx_cs, R_02823C_CB_SHADER_MASK, blend->cb_shader_mask);
 }
 
