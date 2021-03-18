@@ -97,7 +97,11 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
     * clear depth, reset state base address, and then go render stuff.
     */
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
+#if GFX_VER >= 12
+      pc.HDCPipelineFlushEnable = true;
+#else
       pc.DCFlushEnable = true;
+#endif
       pc.RenderTargetCacheFlushEnable = true;
       pc.CommandStreamerStallEnable = true;
 #if GFX_VER == 12
@@ -2202,9 +2206,13 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
 #if GFX_VER >= 12
          pipe.TileCacheFlushEnable = bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT;
+         pipe.HDCPipelineFlushEnable |= bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
+#else
+         /* Flushing HDC pipeline requires DC Flush on earlier HW. */
+         pipe.DCFlushEnable |= bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
 #endif
          pipe.DepthCacheFlushEnable = bits & ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
-         pipe.DCFlushEnable = bits & ANV_PIPE_DATA_CACHE_FLUSH_BIT;
+         pipe.DCFlushEnable |= bits & ANV_PIPE_DATA_CACHE_FLUSH_BIT;
          pipe.RenderTargetCacheFlushEnable =
             bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
 
@@ -4979,7 +4987,11 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
       pc.RenderTargetCacheFlushEnable  = true;
       pc.DepthCacheFlushEnable         = true;
+#if GFX_VER >= 12
+      pc.HDCPipelineFlushEnable        = true;
+#else
       pc.DCFlushEnable                 = true;
+#endif
       pc.PostSyncOperation             = NoWrite;
       pc.CommandStreamerStallEnable    = true;
 #if GFX_VER >= 12

@@ -2451,6 +2451,7 @@ enum anv_pipe_bits {
 #define ANV_PIPE_FLUSH_BITS ( \
    ANV_PIPE_DEPTH_CACHE_FLUSH_BIT | \
    ANV_PIPE_DATA_CACHE_FLUSH_BIT | \
+   ANV_PIPE_HDC_PIPELINE_FLUSH_BIT | \
    ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | \
    ANV_PIPE_TILE_CACHE_FLUSH_BIT)
 
@@ -2463,7 +2464,7 @@ enum anv_pipe_bits {
    ANV_PIPE_STATE_CACHE_INVALIDATE_BIT | \
    ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT | \
    ANV_PIPE_VF_CACHE_INVALIDATE_BIT | \
-   ANV_PIPE_DATA_CACHE_FLUSH_BIT | \
+   ANV_PIPE_HDC_PIPELINE_FLUSH_BIT | \
    ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT | \
    ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT | \
    ANV_PIPE_AUX_TABLE_INVALIDATE_BIT)
@@ -2479,9 +2480,9 @@ anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
       case VK_ACCESS_SHADER_WRITE_BIT:
          /* We're transitioning a buffer that was previously used as write
           * destination through the data port. To make its content available
-          * to future operations, flush the data cache.
+          * to future operations, flush the hdc pipeline.
           */
-         pipe_bits |= ANV_PIPE_DATA_CACHE_FLUSH_BIT;
+         pipe_bits |= ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
          break;
       case VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT:
          /* We're transitioning a buffer that was previously used as render
@@ -2584,7 +2585,7 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
          if (device->physical->compiler->indirect_ubos_use_sampler)
             pipe_bits |= ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
          else
-            pipe_bits |= ANV_PIPE_DATA_CACHE_FLUSH_BIT;
+            pipe_bits |= ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
          break;
       case VK_ACCESS_SHADER_READ_BIT:
       case VK_ACCESS_INPUT_ATTACHMENT_READ_BIT:
@@ -2610,11 +2611,12 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
          /* Transitioning a buffer for conditional rendering. We'll load the
           * content of this buffer into HW registers using the command
           * streamer, so we need to stall the command streamer to make sure
-          * any in-flight flush operations have completed.  Needs
-          * tile cache flush because command stream isn't L3 coherent yet.
+          * any in-flight flush operations have completed. Needs tile cache 
+          * and data cache flush because command stream isn't L3 coherent yet.
           */
          pipe_bits |= ANV_PIPE_CS_STALL_BIT;
          pipe_bits |= ANV_PIPE_TILE_CACHE_FLUSH_BIT;
+         pipe_bits |= ANV_PIPE_DATA_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_HOST_READ_BIT:
          /* We're transitioning a buffer that was written by CPU.  Flush 
