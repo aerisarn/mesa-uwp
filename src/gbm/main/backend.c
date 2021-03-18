@@ -34,6 +34,7 @@
 #include <limits.h>
 #include <assert.h>
 #include <dlfcn.h>
+#include <xf86drm.h>
 
 #include "loader.h"
 #include "backend.h"
@@ -53,6 +54,7 @@ static const struct gbm_backend_desc builtin_backends[] = {
    { "dri", &gbm_dri_backend },
 };
 
+#define BACKEND_LIB_SUFFIX "_gbm"
 static const char *backend_search_path_vars[] = {
    "GBM_BACKENDS_PATH",
    NULL
@@ -161,7 +163,7 @@ find_backend(const char *name, int fd)
    }
 
    if (name && !dev) {
-      lib = loader_open_driver_lib(name, "_gbm",
+      lib = loader_open_driver_lib(name, BACKEND_LIB_SUFFIX,
                                    backend_search_path_vars,
                                    DEFAULT_BACKENDS_PATH,
                                    true);
@@ -186,12 +188,38 @@ override_backend(int fd)
    return dev;
 }
 
+static struct gbm_device *
+backend_from_driver_name(int fd)
+{
+   struct gbm_device *dev = NULL;
+   drmVersionPtr v = drmGetVersion(fd);
+   void *lib;
+
+   if (!v)
+      return NULL;
+
+   lib = loader_open_driver_lib(v->name, BACKEND_LIB_SUFFIX,
+                                backend_search_path_vars,
+                                DEFAULT_BACKENDS_PATH,
+                                false);
+
+   if (lib)
+      dev = load_backend(lib, fd, v->name);
+
+   drmFreeVersion(v);
+
+   return dev;
+}
+
 struct gbm_device *
 _gbm_create_device(int fd)
 {
    struct gbm_device *dev;
 
    dev = override_backend(fd);
+
+   if (!dev)
+      dev = backend_from_driver_name(fd);
 
    if (!dev)
       dev = find_backend(NULL, fd);
