@@ -121,6 +121,8 @@ anv_dump_pipe_bits(enum anv_pipe_bits bits)
       fputs("+depth_flush ", stderr);
    if (bits & ANV_PIPE_DATA_CACHE_FLUSH_BIT)
       fputs("+dc_flush ", stderr);
+   if (bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT)
+      fputs("+hdc_flush ", stderr);
    if (bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT)
       fputs("+rt_flush ", stderr);
    if (bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT)

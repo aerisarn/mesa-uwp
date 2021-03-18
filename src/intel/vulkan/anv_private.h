@@ -2411,6 +2411,12 @@ enum anv_pipe_bits {
    ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT = (1 << 11),
    ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT    = (1 << 12),
    ANV_PIPE_DEPTH_STALL_BIT                  = (1 << 13),
+
+   /* ANV_PIPE_HDC_PIPELINE_FLUSH_BIT is a precise way to ensure prior data
+    * cache work has completed.  Available on Gfx12+.  For earlier Gfx we
+    * must reinterpret this flush as ANV_PIPE_DATA_CACHE_FLUSH_BIT.
+    */
+   ANV_PIPE_HDC_PIPELINE_FLUSH_BIT           = (1 << 14),
    ANV_PIPE_CS_STALL_BIT                     = (1 << 20),
    ANV_PIPE_END_OF_PIPE_SYNC_BIT             = (1 << 21),
 
