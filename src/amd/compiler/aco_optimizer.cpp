@@ -3372,8 +3372,15 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
          Operand op[3] = {info.instr->operands[0], info.instr->operands[1], instr->operands[1 - i]};
          if (info.instr->isSDWA() || info.instr->isDPP() || !check_vop3_operands(ctx, 3, op) ||
-             ctx.uses[instr->operands[i].tempId()] >= uses)
+             ctx.uses[instr->operands[i].tempId()] > uses)
             continue;
+
+         if (ctx.uses[instr->operands[i].tempId()] == uses) {
+            unsigned cur_idx = mul_instr->definitions[0].tempId();
+            unsigned new_idx = info.instr->definitions[0].tempId();
+            if (cur_idx > new_idx)
+               continue;
+         }
 
          mul_instr = info.instr;
          add_op_idx = 1 - i;
