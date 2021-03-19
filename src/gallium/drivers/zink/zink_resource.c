@@ -335,8 +335,7 @@ create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsign
    ici.samples = templ->nr_samples ? templ->nr_samples : VK_SAMPLE_COUNT_1_BIT;
    ici.tiling = bind & PIPE_BIND_LINEAR ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
 
-   if (templ->target == PIPE_TEXTURE_CUBE ||
-       templ->target == PIPE_TEXTURE_CUBE_ARRAY)
+   if (templ->target == PIPE_TEXTURE_CUBE)
       ici.arrayLayers *= 6;
 
    if (templ->usage == PIPE_USAGE_STAGING &&
