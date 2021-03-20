@@ -2910,7 +2910,6 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
 
       Temp tmp = dst.bytes() == 8 ? bld.tmp(RegClass::get(dst.type(), 4)) : dst;
       if (tmp.regClass() == s1) {
-         // TODO: in a post-RA optimization, we can check if src is in VCC, and directly use VCCNZ
          bool_to_scalar_condition(ctx, src, tmp);
       } else if (tmp.type() == RegType::vgpr) {
          bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(tmp), Operand(0u), Operand(1u), src);
@@ -10168,7 +10167,6 @@ static bool visit_if(isel_context *ctx, nir_if *if_stmt)
        *    merge block.
        **/
 
-      // TODO: in a post-RA optimizer, we could check if the condition is in VCC and omit this instruction
       assert(cond.regClass() == ctx->program->lane_mask);
       cond = bool_to_scalar_condition(ctx, cond);
 

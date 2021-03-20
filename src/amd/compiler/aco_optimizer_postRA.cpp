@@ -107,9 +107,66 @@ int last_writer_idx(pr_opt_ctx &ctx, const Operand &op)
    return instr_idx;
 }
 
+void try_apply_branch_vcc(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
+{
+   /* We are looking for the following pattern:
+    *
+    * vcc = ...                      ; last_vcc_wr
+    * sX, scc = s_and_bXX vcc, exec  ; op0_instr
+    * (...vcc and exec must not be clobbered inbetween...)
+    * s_cbranch_XX scc               ; instr
+    *
+    * If possible, the above is optimized into:
+    *
+    * vcc = ...                      ; last_vcc_wr
+    * s_cbranch_XX vcc               ; instr modified to use vcc
+    */
+
+   /* Don't try to optimize this on GFX6-7 because SMEM may corrupt the vccz bit. */
+   if (ctx.program->chip_class < GFX8)
+      return;
+
+   if (instr->format != Format::PSEUDO_BRANCH ||
+       instr->operands.size() == 0 ||
+       instr->operands[0].physReg() != scc)
+      return;
+
+   int op0_instr_idx = last_writer_idx(ctx, instr->operands[0]);
+   int last_vcc_wr_idx = last_writer_idx(ctx, vcc, ctx.program->lane_mask);
+   int last_exec_wr_idx = last_writer_idx(ctx, exec, ctx.program->lane_mask);
+
+   /* We need to make sure:
+    * - the operand register used by the branch, and VCC were both written in the current block
+    * - VCC was NOT written after the operand register
+    * - EXEC is sane and was NOT written after the operand register
+    */
+   if (op0_instr_idx < 0 || last_vcc_wr_idx < 0 || last_vcc_wr_idx > op0_instr_idx ||
+       last_exec_wr_idx > last_vcc_wr_idx || last_exec_wr_idx < not_written_in_block)
+      return;
+
+   aco_ptr<Instruction> &op0_instr = ctx.current_block->instructions[op0_instr_idx];
+   aco_ptr<Instruction> &last_vcc_wr = ctx.current_block->instructions[last_vcc_wr_idx];
+
+   if ((op0_instr->opcode != aco_opcode::s_and_b64 /* wave64 */ &&
+        op0_instr->opcode != aco_opcode::s_and_b32 /* wave32 */) ||
+       op0_instr->operands[0].physReg() != vcc ||
+       op0_instr->operands[1].physReg() != exec ||
+       !last_vcc_wr->isVOPC())
+      return;
+
+   assert(last_vcc_wr->definitions[0].tempId() == op0_instr->operands[0].tempId());
+
+   /* Reduce the uses of the SCC def */
+   ctx.uses[instr->operands[0].tempId()]--;
+   /* Use VCC instead of SCC in the branch */
+   instr->operands[0] = op0_instr->operands[0];
+}
+
 void process_instruction(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
 {
    ctx.current_instr_idx++;
+
+   try_apply_branch_vcc(ctx, instr);
 
    if (instr)
       save_reg_writes(ctx, instr);
