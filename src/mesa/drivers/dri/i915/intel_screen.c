@@ -495,7 +495,10 @@ intel_query_image(__DRIimage *image, int attrib, int *value)
       return true;
    case __DRI_IMAGE_ATTRIB_FD:
       return !drm_intel_bo_gem_export_to_prime(image->region->bo, value);
-  default:
+   case __DRI_IMAGE_ATTRIB_OFFSET:
+      *value = image->offset;
+      return true;
+   default:
       return false;
    }
 }
