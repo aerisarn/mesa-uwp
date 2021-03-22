@@ -1972,6 +1972,14 @@ else
   dep_lmsensors = null_dep
 endif
 
+with_perfetto = get_option('perfetto')
+with_datasources = get_option('datasources')
+with_any_datasource = with_datasources.length() != 0
+if with_perfetto
+  dep_perfetto = dependency('perfetto', fallback: ['perfetto', 'dep_perfetto'])
+  pre_args += '-DHAVE_PERFETTO'
+endif
+
 # If the compiler supports it, put function and data symbols in their
 # own sections and GC the sections after linking.  This lets drivers
 # drop shared code unused by that specific driver (particularly
@@ -2045,13 +2053,6 @@ endif
 # This quirk needs to be applied to sources with functions defined in assembly
 # as GCC LTO drops them. See: https://bugs.freedesktop.org/show_bug.cgi?id=109391
 gcc_lto_quirk = (cc.get_id() == 'gcc') ? ['-fno-lto'] : []
-
-with_perfetto = get_option('perfetto')
-with_datasources = get_option('datasources')
-with_any_datasource = with_datasources.length() != 0
-if with_perfetto
-  dep_perfetto = dependency('perfetto', fallback: ['perfetto', 'dep_perfetto'])
-endif
 
 subdir('include')
 subdir('bin')

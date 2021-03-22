@@ -202,6 +202,14 @@ if with_platform_haiku
   deps_for_libmesa_util += dep_network
 endif
 
+if with_perfetto
+  files_mesa_util += files(
+    'u_perfetto.cc',
+    'u_perfetto.h',
+  )
+  deps_for_libmesa_util += dep_perfetto
+endif
+
 _libmesa_util = static_library(
   'mesa_util',
   [files_mesa_util, files_debug_stack, format_srgb],
