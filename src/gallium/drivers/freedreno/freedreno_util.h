@@ -44,6 +44,10 @@
 #include "adreno_pm4.xml.h"
 #include "disasm.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum adreno_rb_depth_format fd_pipe2depth(enum pipe_format format);
 enum pc_di_index_size fd_pipe2index(enum pipe_format format);
 enum pipe_format fd_gmem_restore_format(enum pipe_format format);
@@ -458,7 +462,7 @@ fd4_stage2shadersb(gl_shader_stage type)
       return SB4_CS_SHADER;
    default:
       unreachable("bad shader type");
-      return ~0;
+      return (enum a4xx_state_block) ~0;
    }
 }
 
@@ -477,5 +481,9 @@ fd4_size2indextype(unsigned index_size)
    assert(0);
    return INDEX4_SIZE_32_BIT;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FREEDRENO_UTIL_H_ */
