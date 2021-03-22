@@ -107,9 +107,9 @@ collect_reg_info(struct ir3_instruction *instr, struct ir3_register *reg,
 	}
 }
 
-static bool
-should_double_threadsize(struct ir3_shader_variant *v,
-						 unsigned regs_count)
+bool
+ir3_should_double_threadsize(struct ir3_shader_variant *v,
+							 unsigned regs_count)
 {
 	const struct ir3_compiler *compiler = v->shader->compiler;
 
@@ -165,8 +165,8 @@ should_double_threadsize(struct ir3_shader_variant *v,
 /* Get the maximum number of waves that could be used even if this shader
  * didn't use any registers.
  */
-static unsigned
-get_reg_independent_max_waves(struct ir3_shader_variant *v, bool double_threadsize)
+unsigned
+ir3_get_reg_independent_max_waves(struct ir3_shader_variant *v, bool double_threadsize)
 {
 	const struct ir3_compiler *compiler = v->shader->compiler;
 	unsigned max_waves = compiler->max_waves;
@@ -200,9 +200,9 @@ get_reg_independent_max_waves(struct ir3_shader_variant *v, bool double_threadsi
 
 /* Get the maximum number of waves that could be launched limited by reg size.
  */
-static unsigned
-get_reg_dependent_max_waves(const struct ir3_compiler *compiler,
-							unsigned reg_count, bool double_threadsize)
+unsigned
+ir3_get_reg_dependent_max_waves(const struct ir3_compiler *compiler,
+								unsigned reg_count, bool double_threadsize)
 {
 	return reg_count ?
 		(compiler->reg_size_vec4 / (reg_count * (double_threadsize ? 2 : 1)) *
@@ -310,11 +310,11 @@ ir3_collect_info(struct ir3_shader_variant *v)
 	unsigned regs_count =
 		info->max_reg + 1 + (compiler->gpu_id >= 600 ? ((info->max_half_reg + 2) / 2) : 0);
 
-	info->double_threadsize = should_double_threadsize(v, regs_count);
+	info->double_threadsize = ir3_should_double_threadsize(v, regs_count);
 	unsigned reg_independent_max_waves =
-		get_reg_independent_max_waves(v, info->double_threadsize);
+		ir3_get_reg_independent_max_waves(v, info->double_threadsize);
 	unsigned reg_dependent_max_waves =
-		get_reg_dependent_max_waves(compiler, regs_count, info->double_threadsize);
+		ir3_get_reg_dependent_max_waves(compiler, regs_count, info->double_threadsize);
 	info->max_waves = MIN2(reg_independent_max_waves, reg_dependent_max_waves);
 	assert(info->max_waves <= v->shader->compiler->max_waves);
 }

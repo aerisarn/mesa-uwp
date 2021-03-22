@@ -621,6 +621,15 @@ void ir3_destroy(struct ir3 *shader);
 void ir3_collect_info(struct ir3_shader_variant *v);
 void * ir3_alloc(struct ir3 *shader, int sz);
 
+unsigned ir3_get_reg_dependent_max_waves(const struct ir3_compiler *compiler,
+										 unsigned reg_count, bool double_threadsize);
+
+unsigned ir3_get_reg_independent_max_waves(struct ir3_shader_variant *v,
+										   bool double_threadsize);
+
+bool ir3_should_double_threadsize(struct ir3_shader_variant *v,
+								  unsigned regs_count);
+
 struct ir3_block * ir3_block_create(struct ir3 *shader);
 
 struct ir3_instruction * ir3_instr_create(struct ir3_block *block,
