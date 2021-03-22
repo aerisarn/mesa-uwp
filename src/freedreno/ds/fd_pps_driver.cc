@@ -237,6 +237,9 @@ FreedrenoDriver::dump_perfcnt()
 
    auto last_ts = last_dump_ts;
 
+   /* Capture the timestamp from the *start* of the sampling period: */
+   last_capture_ts = last_dump_ts;
+
    collect_countables();
 
    auto elapsed_time_ns = last_dump_ts - last_ts;
@@ -251,8 +254,6 @@ FreedrenoDriver::dump_perfcnt()
    if (!has_suspend_count) {
       configure_counters(false, false);
    }
-
-   last_capture_ts = last_dump_ts;
 
    return true;
 }

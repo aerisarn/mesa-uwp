@@ -671,7 +671,16 @@ fd_gmem_render_tiles(struct fd_batch *batch)
    struct pipe_framebuffer_state *pfb = &batch->framebuffer;
    bool sysmem = false;
 
+   ctx->submit_count++;
+
    if (!batch->nondraw) {
+#if HAVE_PERFETTO
+      /* For non-draw batches, we don't really have a good place to
+       * match up the api event submit-id to the on-gpu rendering,
+       * so skip this for non-draw batches.
+       */
+      fd_perfetto_submit(ctx);
+#endif
       trace_flush_batch(&batch->trace, batch, batch->cleared,
                         batch->gmem_reason, batch->num_draws);
       trace_framebuffer_state(&batch->trace, pfb);
@@ -718,18 +727,29 @@ fd_gmem_render_tiles(struct fd_batch *batch)
       ctx->stats.batch_nondraw++;
    } else if (sysmem) {
       trace_render_sysmem(&batch->trace);
+      trace_start_render_pass(
+         &batch->trace, ctx->submit_count, pipe_surface_format(pfb->cbufs[0]),
+         pipe_surface_format(pfb->zsbuf), pfb->width, pfb->height,
+         pfb->nr_cbufs, pfb->samples, 0, 0, 0);
       if (ctx->query_prepare)
          ctx->query_prepare(batch, 1);
       render_sysmem(batch);
+      trace_end_render_pass(&batch->trace);
       ctx->stats.batch_sysmem++;
    } else {
       struct fd_gmem_stateobj *gmem = lookup_gmem_state(batch, false, false);
       batch->gmem_state = gmem;
       trace_render_gmem(&batch->trace, gmem->nbins_x, gmem->nbins_y,
                         gmem->bin_w, gmem->bin_h);
+      trace_start_render_pass(
+         &batch->trace, ctx->submit_count, pipe_surface_format(pfb->cbufs[0]),
+         pipe_surface_format(pfb->zsbuf), pfb->width, pfb->height,
+         pfb->nr_cbufs, pfb->samples, gmem->nbins_x * gmem->nbins_y,
+         gmem->bin_w, gmem->bin_h);
       if (ctx->query_prepare)
          ctx->query_prepare(batch, gmem->nbins_x * gmem->nbins_y);
       render_tiles(batch, gmem);
+      trace_end_render_pass(&batch->trace);
       batch->gmem_state = NULL;
 
       fd_screen_lock(ctx->screen);
