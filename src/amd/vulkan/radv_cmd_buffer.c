@@ -4338,6 +4338,17 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       cmd_buffer->state.compute_pipeline = pipeline;
       cmd_buffer->push_constant_stages |= VK_SHADER_STAGE_COMPUTE_BIT;
       break;
+   case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR:
+      if (cmd_buffer->state.rt_pipeline == pipeline)
+         return;
+      radv_mark_descriptor_sets_dirty(cmd_buffer, pipelineBindPoint);
+
+      cmd_buffer->state.rt_pipeline = pipeline;
+      cmd_buffer->push_constant_stages |=
+         (VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
+          VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR |
+          VK_SHADER_STAGE_INTERSECTION_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR);
+      break;
    case VK_PIPELINE_BIND_POINT_GRAPHICS:
       if (cmd_buffer->state.pipeline == pipeline)
          return;
@@ -5800,10 +5811,9 @@ struct radv_dispatch_info {
 };
 
 static void
-radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer,
+radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pipeline,
                            const struct radv_dispatch_info *info)
 {
-   struct radv_pipeline *pipeline = cmd_buffer->state.compute_pipeline;
    struct radv_shader_variant *compute_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
    unsigned dispatch_initiator = cmd_buffer->device->dispatch_initiator;
    struct radeon_winsys *ws = cmd_buffer->device->ws;
@@ -5959,7 +5969,7 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
 
       radv_upload_compute_shader_descriptors(cmd_buffer, pipeline, bind_point);
 
-      radv_emit_dispatch_packets(cmd_buffer, info);
+      radv_emit_dispatch_packets(cmd_buffer, pipeline, info);
       /* <-- CUs are busy here --> */
 
       /* Start prefetches after the dispatch has been started. Both
@@ -5982,7 +5992,7 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
       radv_upload_compute_shader_descriptors(cmd_buffer, pipeline, bind_point);
 
       radv_emit_compute_pipeline(cmd_buffer, pipeline);
-      radv_emit_dispatch_packets(cmd_buffer, info);
+      radv_emit_dispatch_packets(cmd_buffer, pipeline, info);
    }
 
    if (pipeline_is_dirty) {

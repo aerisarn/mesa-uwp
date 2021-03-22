@@ -1338,6 +1338,7 @@ struct radv_cmd_state {
    struct radv_pipeline *emitted_pipeline;
    struct radv_pipeline *compute_pipeline;
    struct radv_pipeline *emitted_compute_pipeline;
+   struct radv_pipeline *rt_pipeline; /* emitted = emitted_compute_pipeline */
    struct radv_framebuffer *framebuffer;
    struct radv_render_pass *pass;
    const struct radv_subpass *subpass;
