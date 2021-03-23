@@ -1978,7 +1978,6 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
    }
 
    if (submit->fence_count > 0) {
-      assert(device->physical->has_syncobj);
       if (device->has_thread_submit) {
          execbuf.timeline_fences.fence_count = submit->fence_count;
          execbuf.timeline_fences.handles_ptr = (uintptr_t)submit->fences;

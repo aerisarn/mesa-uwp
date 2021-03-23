@@ -921,7 +921,6 @@ struct anv_physical_device {
     bool                                        has_exec_async;
     bool                                        has_exec_capture;
     bool                                        has_exec_fence;
-    bool                                        has_syncobj;
     bool                                        has_syncobj_wait;
     bool                                        has_syncobj_wait_available;
     bool                                        has_context_priority;
@@ -1035,11 +1034,6 @@ struct anv_queue_submit {
    uint32_t                                  temporary_semaphore_count;
    uint32_t                                  temporary_semaphore_array_length;
    struct anv_semaphore_impl *               temporary_semaphores;
-
-   /* Semaphores to be signaled with a SYNC_FD. */
-   struct anv_semaphore **                   sync_fd_semaphores;
-   uint32_t                                  sync_fd_semaphore_count;
-   uint32_t                                  sync_fd_semaphore_array_length;
 
    /* Allocated only with non shareable timelines. */
    union {
@@ -3340,9 +3334,7 @@ struct anv_event {
 enum anv_semaphore_type {
    ANV_SEMAPHORE_TYPE_NONE = 0,
    ANV_SEMAPHORE_TYPE_DUMMY,
-   ANV_SEMAPHORE_TYPE_BO,
    ANV_SEMAPHORE_TYPE_WSI_BO,
-   ANV_SEMAPHORE_TYPE_SYNC_FILE,
    ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ,
    ANV_SEMAPHORE_TYPE_TIMELINE,
    ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ_TIMELINE,
@@ -3384,12 +3376,6 @@ struct anv_semaphore_impl {
        * ANV_SEMAPHORE_TYPE_WSI_BO, the EXEC_OBJECT_WRITE flag will be set.
        */
       struct anv_bo *bo;
-
-      /* The sync file descriptor when type == ANV_SEMAPHORE_TYPE_SYNC_FILE.
-       * If the semaphore is in the unsignaled state due to either just being
-       * created or because it has been used for a wait, fd will be -1.
-       */
-      int fd;
 
       /* Sync object handle when type == ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ.
        * Unlike GEM BOs, DRM sync objects aren't deduplicated by the kernel on

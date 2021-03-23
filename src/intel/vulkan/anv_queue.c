@@ -80,7 +80,6 @@ static int64_t anv_get_relative_timeout(uint64_t abs_timeout)
    return rel_timeout;
 }
 
-static struct anv_semaphore *anv_semaphore_ref(struct anv_semaphore *semaphore);
 static void anv_semaphore_unref(struct anv_device *device, struct anv_semaphore *semaphore);
 static void anv_semaphore_impl_cleanup(struct anv_device *device,
                                        struct anv_semaphore_impl *impl);
@@ -93,8 +92,6 @@ anv_queue_submit_free(struct anv_device *device,
 
    for (uint32_t i = 0; i < submit->temporary_semaphore_count; i++)
       anv_semaphore_impl_cleanup(device, &submit->temporary_semaphores[i]);
-   for (uint32_t i = 0; i < submit->sync_fd_semaphore_count; i++)
-      anv_semaphore_unref(device, submit->sync_fd_semaphores[i]);
    /* Execbuf does not consume the in_fence.  It's our job to close it. */
    if (submit->in_fence != -1) {
       assert(!device->has_thread_submit);
@@ -293,19 +290,6 @@ anv_queue_submit_timeline_locked(struct anv_queue *queue,
          assert(signal_value > timeline->highest_pending);
          timeline->highest_pending = signal_value;
       }
-
-      /* Update signaled semaphores backed by syncfd. */
-      for (uint32_t i = 0; i < submit->sync_fd_semaphore_count; i++) {
-         struct anv_semaphore *semaphore = submit->sync_fd_semaphores[i];
-         /* Out fences can't have temporary state because that would imply
-          * that we imported a sync file and are trying to signal it.
-          */
-         assert(semaphore->temporary.type == ANV_SEMAPHORE_TYPE_NONE);
-         struct anv_semaphore_impl *impl = &semaphore->permanent;
-
-         assert(impl->type == ANV_SEMAPHORE_TYPE_SYNC_FILE);
-         impl->fd = os_dupfd_cloexec(submit->out_fence);
-      }
    } else {
       /* Unblock any waiter by signaling the points, the application will get
        * a device lost error code.
@@ -423,18 +407,6 @@ anv_queue_task(void *_queue)
             pthread_mutex_lock(&queue->device->mutex);
             result = anv_queue_execbuf_locked(queue, submit);
             pthread_mutex_unlock(&queue->device->mutex);
-         }
-
-         for (uint32_t i = 0; i < submit->sync_fd_semaphore_count; i++) {
-            struct anv_semaphore *semaphore = submit->sync_fd_semaphores[i];
-            /* Out fences can't have temporary state because that would imply
-             * that we imported a sync file and are trying to signal it.
-             */
-            assert(semaphore->temporary.type == ANV_SEMAPHORE_TYPE_NONE);
-            struct anv_semaphore_impl *impl = &semaphore->permanent;
-
-            assert(impl->type == ANV_SEMAPHORE_TYPE_SYNC_FILE);
-            impl->fd = dup(submit->out_fence);
          }
 
          if (result != VK_SUCCESS) {
@@ -660,29 +632,6 @@ anv_queue_submit_add_syncobj(struct anv_queue_submit* submit,
    };
    submit->fence_values[submit->fence_count] = value;
    submit->fence_count++;
-
-   return VK_SUCCESS;
-}
-
-static VkResult
-anv_queue_submit_add_sync_fd_fence(struct anv_queue_submit *submit,
-                                   struct anv_semaphore *semaphore)
-{
-   if (submit->sync_fd_semaphore_count >= submit->sync_fd_semaphore_array_length) {
-      uint32_t new_len = MAX2(submit->sync_fd_semaphore_array_length * 2, 64);
-      struct anv_semaphore **new_semaphores =
-         vk_realloc(submit->alloc, submit->sync_fd_semaphores,
-                    new_len * sizeof(*submit->sync_fd_semaphores), 8,
-                    submit->alloc_scope);
-      if (new_semaphores == NULL)
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-
-      submit->sync_fd_semaphores = new_semaphores;
-   }
-
-   submit->sync_fd_semaphores[submit->sync_fd_semaphore_count++] =
-      anv_semaphore_ref(semaphore);
-   submit->need_out_fence = true;
 
    return VK_SUCCESS;
 }
@@ -938,7 +887,6 @@ anv_queue_submit_add_in_semaphores(struct anv_queue_submit *submit,
                                    const uint64_t *in_values,
                                    uint32_t num_in_semaphores)
 {
-   ASSERTED struct anv_physical_device *pdevice = device->physical;
    VkResult result;
 
    for (uint32_t i = 0; i < num_in_semaphores; i++) {
@@ -950,13 +898,6 @@ anv_queue_submit_add_in_semaphores(struct anv_queue_submit *submit,
          return result;
 
       switch (impl->type) {
-      case ANV_SEMAPHORE_TYPE_BO:
-         assert(!pdevice->has_syncobj);
-         result = anv_queue_submit_add_fence_bo(submit, impl->bo, false /* signal */);
-         if (result != VK_SUCCESS)
-            return result;
-         break;
-
       case ANV_SEMAPHORE_TYPE_WSI_BO:
          /* When using a window-system buffer as a semaphore, always enable
           * EXEC_OBJECT_WRITE.  This gives us a WaR hazard with the display or
@@ -967,24 +908,6 @@ anv_queue_submit_add_in_semaphores(struct anv_queue_submit *submit,
          result = anv_queue_submit_add_fence_bo(submit, impl->bo, true /* signal */);
          if (result != VK_SUCCESS)
             return result;
-         break;
-
-      case ANV_SEMAPHORE_TYPE_SYNC_FILE:
-         assert(!pdevice->has_syncobj);
-         if (submit->in_fence == -1) {
-            submit->in_fence = impl->fd;
-            if (submit->in_fence == -1)
-               return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
-            impl->fd = -1;
-         } else {
-            int merge = anv_gem_sync_file_merge(device, submit->in_fence, impl->fd);
-            if (merge == -1)
-               return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
-            close(impl->fd);
-            close(submit->in_fence);
-            impl->fd = -1;
-            submit->in_fence = merge;
-         }
          break;
 
       case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ: {
@@ -1035,7 +958,6 @@ anv_queue_submit_add_out_semaphores(struct anv_queue_submit *submit,
                                     const uint64_t *out_values,
                                     uint32_t num_out_semaphores)
 {
-   ASSERTED struct anv_physical_device *pdevice = device->physical;
    VkResult result;
 
    for (uint32_t i = 0; i < num_out_semaphores; i++) {
@@ -1057,20 +979,6 @@ anv_queue_submit_add_out_semaphores(struct anv_queue_submit *submit,
          &semaphore->temporary : &semaphore->permanent;
 
       switch (impl->type) {
-      case ANV_SEMAPHORE_TYPE_BO:
-         assert(!pdevice->has_syncobj);
-         result = anv_queue_submit_add_fence_bo(submit, impl->bo, true /* signal */);
-         if (result != VK_SUCCESS)
-            return result;
-         break;
-
-      case ANV_SEMAPHORE_TYPE_SYNC_FILE:
-         assert(!pdevice->has_syncobj);
-         result = anv_queue_submit_add_sync_fd_fence(submit, semaphore);
-         if (result != VK_SUCCESS)
-            return result;
-         break;
-
       case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ: {
          /*
           * Reset the content of the syncobj so it doesn't contain a
@@ -1265,7 +1173,6 @@ anv_queue_submit_can_add_submit(const struct anv_queue_submit *submit,
    /* We can add to an empty anv_queue_submit. */
    if (submit->cmd_buffer_count == 0 &&
        submit->fence_count == 0 &&
-       submit->sync_fd_semaphore_count == 0 &&
        submit->wait_timeline_count == 0 &&
        submit->signal_timeline_count == 0 &&
        submit->fence_bo_count == 0)
@@ -1276,8 +1183,7 @@ anv_queue_submit_can_add_submit(const struct anv_queue_submit *submit,
       return false;
 
    /* If the current submit is signaling anything, we can't add anything. */
-   if (submit->signal_timeline_count ||
-       submit->sync_fd_semaphore_count)
+   if (submit->signal_timeline_count)
       return false;
 
    /* If a submit is waiting on anything, anything that happened before needs
@@ -2171,26 +2077,11 @@ binary_semaphore_create(struct anv_device *device,
                         struct anv_semaphore_impl *impl,
                         bool exportable)
 {
-   if (device->physical->has_syncobj) {
-      impl->type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
-      impl->syncobj = anv_gem_syncobj_create(device, 0);
-      if (!impl->syncobj)
-            return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-      return VK_SUCCESS;
-   } else {
-      impl->type = ANV_SEMAPHORE_TYPE_BO;
-      VkResult result =
-         anv_device_alloc_bo(device, "binary-semaphore", 4096,
-                             ANV_BO_ALLOC_EXTERNAL |
-                             ANV_BO_ALLOC_IMPLICIT_SYNC,
-                             0 /* explicit_address */,
-                             &impl->bo);
-      /* If we're going to use this as a fence, we need to *not* have the
-       * EXEC_OBJECT_ASYNC bit set.
-       */
-      assert(!(impl->bo->flags & EXEC_OBJECT_ASYNC));
-      return result;
-   }
+   impl->type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
+   impl->syncobj = anv_gem_syncobj_create(device, 0);
+   if (!impl->syncobj)
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+   return VK_SUCCESS;
 }
 
 static VkResult
@@ -2268,16 +2159,11 @@ VkResult anv_CreateSemaphore(
    } else if (handleTypes & VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT) {
       assert(handleTypes == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT);
       assert(sem_type == VK_SEMAPHORE_TYPE_BINARY_KHR);
-      if (device->physical->has_syncobj) {
-         semaphore->permanent.type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
-         semaphore->permanent.syncobj = anv_gem_syncobj_create(device, 0);
-         if (!semaphore->permanent.syncobj) {
-            vk_object_free(&device->vk, pAllocator, semaphore);
-            return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-         }
-      } else {
-         semaphore->permanent.type = ANV_SEMAPHORE_TYPE_SYNC_FILE;
-         semaphore->permanent.fd = -1;
+      semaphore->permanent.type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
+      semaphore->permanent.syncobj = anv_gem_syncobj_create(device, 0);
+      if (!semaphore->permanent.syncobj) {
+         vk_object_free(&device->vk, pAllocator, semaphore);
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
    } else {
       assert(!"Unknown handle type");
@@ -2302,14 +2188,8 @@ anv_semaphore_impl_cleanup(struct anv_device *device,
       /* Dummy.  Nothing to do */
       break;
 
-   case ANV_SEMAPHORE_TYPE_BO:
    case ANV_SEMAPHORE_TYPE_WSI_BO:
       anv_device_release_bo(device, impl->bo);
-      break;
-
-   case ANV_SEMAPHORE_TYPE_SYNC_FILE:
-      if (impl->fd >= 0)
-         close(impl->fd);
       break;
 
    case ANV_SEMAPHORE_TYPE_TIMELINE:
@@ -2336,14 +2216,6 @@ anv_semaphore_reset_temporary(struct anv_device *device,
       return;
 
    anv_semaphore_impl_cleanup(device, &semaphore->temporary);
-}
-
-static struct anv_semaphore *
-anv_semaphore_ref(struct anv_semaphore *semaphore)
-{
-   assert(semaphore->refcount);
-   p_atomic_inc(&semaphore->refcount);
-   return semaphore;
 }
 
 static void
@@ -2435,41 +2307,19 @@ VkResult anv_ImportSemaphoreFdKHR(
 
    switch (pImportSemaphoreFdInfo->handleType) {
    case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
-      if (device->physical->has_syncobj) {
-         /* When importing non temporarily, reuse the semaphore's existing
-          * type. The Linux/DRM implementation allows to interchangeably use
-          * binary & timeline semaphores and we have no way to differenciate
-          * them.
-          */
-         if (pImportSemaphoreFdInfo->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT)
-            new_impl.type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
-         else
-            new_impl.type = semaphore->permanent.type;
+      /* When importing non temporarily, reuse the semaphore's existing
+       * type. The Linux/DRM implementation allows to interchangeably use
+       * binary & timeline semaphores and we have no way to differenciate
+       * them.
+       */
+      if (pImportSemaphoreFdInfo->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT)
+         new_impl.type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
+      else
+         new_impl.type = semaphore->permanent.type;
 
-         new_impl.syncobj = anv_gem_syncobj_fd_to_handle(device, fd);
-         if (!new_impl.syncobj)
-            return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
-      } else {
-         new_impl.type = ANV_SEMAPHORE_TYPE_BO;
-
-         VkResult result = anv_device_import_bo(device, fd,
-                                                ANV_BO_ALLOC_EXTERNAL |
-                                                ANV_BO_ALLOC_IMPLICIT_SYNC,
-                                                0 /* client_address */,
-                                                &new_impl.bo);
-         if (result != VK_SUCCESS)
-            return result;
-
-         if (new_impl.bo->size < 4096) {
-            anv_device_release_bo(device, new_impl.bo);
-            return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
-         }
-
-         /* If we're going to use this as a fence, we need to *not* have the
-          * EXEC_OBJECT_ASYNC bit set.
-          */
-         assert(!(new_impl.bo->flags & EXEC_OBJECT_ASYNC));
-      }
+      new_impl.syncobj = anv_gem_syncobj_fd_to_handle(device, fd);
+      if (!new_impl.syncobj)
+         return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
       /* From the Vulkan spec:
        *
@@ -2483,40 +2333,34 @@ VkResult anv_ImportSemaphoreFdKHR(
       close(fd);
       break;
 
-   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
-      if (device->physical->has_syncobj) {
-         uint32_t create_flags = 0;
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT: {
+      uint32_t create_flags = 0;
 
-         if (fd == -1)
-            create_flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
+      if (fd == -1)
+         create_flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
 
-         new_impl = (struct anv_semaphore_impl) {
-            .type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ,
-            .syncobj = anv_gem_syncobj_create(device, create_flags),
-         };
+      new_impl = (struct anv_semaphore_impl) {
+         .type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ,
+         .syncobj = anv_gem_syncobj_create(device, create_flags),
+      };
 
-         if (!new_impl.syncobj)
-            return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      if (!new_impl.syncobj)
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-         if (fd != -1) {
-            if (anv_gem_syncobj_import_sync_file(device, new_impl.syncobj, fd)) {
-               anv_gem_syncobj_destroy(device, new_impl.syncobj);
-               return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
-                                "syncobj sync file import failed: %m");
-            }
-            /* Ownership of the FD is transfered to Anv. Since we don't need it
-             * anymore because the associated fence has been put into a syncobj,
-             * we must close the FD.
-             */
-            close(fd);
+      if (fd != -1) {
+         if (anv_gem_syncobj_import_sync_file(device, new_impl.syncobj, fd)) {
+            anv_gem_syncobj_destroy(device, new_impl.syncobj);
+            return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+                             "syncobj sync file import failed: %m");
          }
-      } else {
-         new_impl = (struct anv_semaphore_impl) {
-            .type = ANV_SEMAPHORE_TYPE_SYNC_FILE,
-            .fd = fd,
-         };
+         /* Ownership of the FD is transfered to Anv. Since we don't need it
+          * anymore because the associated fence has been put into a syncobj,
+          * we must close the FD.
+          */
+         close(fd);
       }
       break;
+   }
 
    default:
       return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
@@ -2540,7 +2384,6 @@ VkResult anv_GetSemaphoreFdKHR(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_semaphore, semaphore, pGetFdInfo->semaphore);
-   VkResult result;
    int fd;
 
    assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR);
@@ -2550,53 +2393,6 @@ VkResult anv_GetSemaphoreFdKHR(
       &semaphore->temporary : &semaphore->permanent;
 
    switch (impl->type) {
-   case ANV_SEMAPHORE_TYPE_BO:
-      result = anv_device_export_bo(device, impl->bo, pFd);
-      if (result != VK_SUCCESS)
-         return result;
-      break;
-
-   case ANV_SEMAPHORE_TYPE_SYNC_FILE: {
-      /* There's a potential race here with vkQueueSubmit if you are trying
-       * to export a semaphore Fd while the queue submit is still happening.
-       * This can happen if we see all dependencies get resolved via timeline
-       * semaphore waits completing before the execbuf completes and we
-       * process the resulting out fence.  To work around this, take a lock
-       * around grabbing the fd.
-       */
-      pthread_mutex_lock(&device->mutex);
-
-      /* From the Vulkan 1.0.53 spec:
-       *
-       *    "...exporting a semaphore payload to a handle with copy
-       *    transference has the same side effects on the source
-       *    semaphore’s payload as executing a semaphore wait operation."
-       *
-       * In other words, it may still be a SYNC_FD semaphore, but it's now
-       * considered to have been waited on and no longer has a sync file
-       * attached.
-       */
-      int fd = impl->fd;
-      impl->fd = -1;
-
-      pthread_mutex_unlock(&device->mutex);
-
-      /* There are two reasons why this could happen:
-       *
-       *  1) The user is trying to export without submitting something that
-       *     signals the semaphore.  If this is the case, it's their bug so
-       *     what we return here doesn't matter.
-       *
-       *  2) The kernel didn't give us a file descriptor.  The most likely
-       *     reason for this is running out of file descriptors.
-       */
-      if (fd < 0)
-         return vk_error(VK_ERROR_TOO_MANY_OBJECTS);
-
-      *pFd = fd;
-      return VK_SUCCESS;
-   }
-
    case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ:
       if (pGetFdInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT) {
          VkResult result = wait_syncobj_materialize(device, impl->syncobj, pFd);
