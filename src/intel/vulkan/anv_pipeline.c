@@ -1079,11 +1079,16 @@ anv_pipeline_compile_gs(const struct brw_compiler *compiler,
                        gs_stage->nir->info.separate_shader, 1);
 
    gs_stage->num_stats = 1;
-   gs_stage->code = brw_compile_gs(compiler, device, mem_ctx,
-                                   &gs_stage->key.gs,
-                                   &gs_stage->prog_data.gs,
-                                   gs_stage->nir,
-                                   gs_stage->stats, NULL);
+
+   struct brw_compile_gs_params params = {
+      .nir = gs_stage->nir,
+      .key = &gs_stage->key.gs,
+      .prog_data = &gs_stage->prog_data.gs,
+      .stats = gs_stage->stats,
+      .log_data = device,
+   };
+
+   gs_stage->code = brw_compile_gs(compiler, mem_ctx, &params);
 }
 
 static void

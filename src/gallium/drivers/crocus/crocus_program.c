@@ -1739,12 +1739,16 @@ crocus_compile_gs(struct crocus_context *ice,
    struct brw_gs_prog_key key_clean = *key;
    crocus_sanitize_tex_key(&key_clean.base.tex);
 
-   char *error_str = NULL;
-   const unsigned *program =
-      brw_compile_gs(compiler, &ice->dbg, mem_ctx, &key_clean, gs_prog_data, nir,
-                     NULL, &error_str);
+   struct brw_compile_gs_params params = {
+      .nir = nir,
+      .key = &key_clean,
+      .prog_data = gs_prog_data,
+      .log_data = &ice->dbg,
+   };
+
+   const unsigned *program = brw_compile_gs(compiler, mem_ctx, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile geometry shader: %s\n", error_str);
+      dbg_printf("Failed to compile geometry shader: %s\n", params.error_str);
       ralloc_free(mem_ctx);
       return false;
    }

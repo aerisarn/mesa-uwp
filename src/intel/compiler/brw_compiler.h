@@ -1624,18 +1624,32 @@ brw_compile_tes(const struct brw_compiler *compiler,
                 struct brw_compile_tes_params *params);
 
 /**
- * Compile a vertex shader.
+ * Parameters for compiling a geometry shader.
  *
- * Returns the final assembly and the program's size.
+ * Some of these will be modified during the shader compilation.
+ */
+struct brw_compile_gs_params {
+   nir_shader *nir;
+
+   const struct brw_gs_prog_key *key;
+   struct brw_gs_prog_data *prog_data;
+
+   struct brw_compile_stats *stats;
+
+   void *log_data;
+
+   char *error_str;
+};
+
+/**
+ * Compile a geometry shader.
+ *
+ * Returns the final assembly and updates the parameters structure.
  */
 const unsigned *
-brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
+brw_compile_gs(const struct brw_compiler *compiler,
                void *mem_ctx,
-               const struct brw_gs_prog_key *key,
-               struct brw_gs_prog_data *prog_data,
-               nir_shader *nir,
-               struct brw_compile_stats *stats,
-               char **error_str);
+               struct brw_compile_gs_params *params);
 
 /**
  * Compile a strips and fans shader.

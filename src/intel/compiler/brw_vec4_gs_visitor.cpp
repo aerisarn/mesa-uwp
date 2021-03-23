@@ -580,14 +580,14 @@ static const GLuint gl_prim_to_hw_prim[GL_TRIANGLE_STRIP_ADJACENCY+1] = {
 } /* namespace brw */
 
 extern "C" const unsigned *
-brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
+brw_compile_gs(const struct brw_compiler *compiler,
                void *mem_ctx,
-               const struct brw_gs_prog_key *key,
-               struct brw_gs_prog_data *prog_data,
-               nir_shader *nir,
-               struct brw_compile_stats *stats,
-               char **error_str)
+               struct brw_compile_gs_params *params)
 {
+   nir_shader *nir = params->nir;
+   const struct brw_gs_prog_key *key = params->key;
+   struct brw_gs_prog_data *prog_data = params->prog_data;
+
    struct brw_gs_compile c;
    memset(&c, 0, sizeof(c));
    c.key = *key;
@@ -816,13 +816,13 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    }
 
    if (is_scalar) {
-      fs_visitor v(compiler, log_data, mem_ctx, &c, prog_data, nir,
+      fs_visitor v(compiler, params->log_data, mem_ctx, &c, prog_data, nir,
                    debug_enabled);
       if (v.run_gs()) {
          prog_data->base.dispatch_mode = DISPATCH_MODE_SIMD8;
          prog_data->base.base.dispatch_grf_start_reg = v.payload.num_regs;
 
-         fs_generator g(compiler, log_data, mem_ctx,
+         fs_generator g(compiler, params->log_data, mem_ctx,
                         &prog_data->base.base, false, MESA_SHADER_GEOMETRY);
          if (unlikely(debug_enabled)) {
             const char *label =
@@ -832,13 +832,12 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
             g.enable_debug(name);
          }
          g.generate_code(v.cfg, 8, v.shader_stats,
-                         v.performance_analysis.require(), stats);
+                         v.performance_analysis.require(), params->stats);
          g.add_const_data(nir->constant_data, nir->constant_data_size);
          return g.get_assembly();
       }
 
-      if (error_str)
-         *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
+      params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);
 
       return NULL;
    }
@@ -852,7 +851,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
           !INTEL_DEBUG(DEBUG_NO_DUAL_OBJECT_GS)) {
          prog_data->base.dispatch_mode = DISPATCH_MODE_4X2_DUAL_OBJECT;
 
-         brw::vec4_gs_visitor v(compiler, log_data, &c, prog_data, nir,
+         brw::vec4_gs_visitor v(compiler, params->log_data, &c, prog_data, nir,
                                 mem_ctx, true /* no_spills */,
                                 debug_enabled);
 
@@ -869,11 +868,11 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
          if (v.run()) {
             /* Success! Backup is not needed */
             ralloc_free(param);
-            return brw_vec4_generate_assembly(compiler, log_data, mem_ctx,
+            return brw_vec4_generate_assembly(compiler, params->log_data, mem_ctx,
                                               nir, &prog_data->base,
                                               v.cfg,
                                               v.performance_analysis.require(),
-                                              stats, debug_enabled);
+                                              params->stats, debug_enabled);
          } else {
             /* These variables could be modified by the execution of the GS
              * visitor if it packed the uniforms in the push constant buffer.
@@ -922,22 +921,21 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    const unsigned *ret = NULL;
 
    if (compiler->devinfo->ver >= 7)
-      gs = new brw::vec4_gs_visitor(compiler, log_data, &c, prog_data,
+      gs = new brw::vec4_gs_visitor(compiler, params->log_data, &c, prog_data,
                                     nir, mem_ctx, false /* no_spills */,
                                     debug_enabled);
    else
-      gs = new brw::gfx6_gs_visitor(compiler, log_data, &c, prog_data,
+      gs = new brw::gfx6_gs_visitor(compiler, params->log_data, &c, prog_data,
                                     nir, mem_ctx, false /* no_spills */,
                                     debug_enabled);
 
    if (!gs->run()) {
-      if (error_str)
-         *error_str = ralloc_strdup(mem_ctx, gs->fail_msg);
+      params->error_str = ralloc_strdup(mem_ctx, gs->fail_msg);
    } else {
-      ret = brw_vec4_generate_assembly(compiler, log_data, mem_ctx, nir,
+      ret = brw_vec4_generate_assembly(compiler, params->log_data, mem_ctx, nir,
                                        &prog_data->base, gs->cfg,
                                        gs->performance_analysis.require(),
-                                       stats, debug_enabled);
+                                       params->stats, debug_enabled);
    }
 
    delete gs;
