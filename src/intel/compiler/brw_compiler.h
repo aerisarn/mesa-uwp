@@ -1595,19 +1595,33 @@ brw_compile_tcs(const struct brw_compiler *compiler,
                 struct brw_compile_tcs_params *params);
 
 /**
+ * Parameters for compiling a tessellation evaluation shader.
+ *
+ * Some of these will be modified during the shader compilation.
+ */
+struct brw_compile_tes_params {
+   nir_shader *nir;
+
+   const struct brw_tes_prog_key *key;
+   struct brw_tes_prog_data *prog_data;
+   const struct brw_vue_map *input_vue_map;
+
+   struct brw_compile_stats *stats;
+
+   void *log_data;
+
+   char *error_str;
+};
+
+/**
  * Compile a tessellation evaluation shader.
  *
- * Returns the final assembly and the program's size.
+ * Returns the final assembly and updates the parameters structure.
  */
 const unsigned *
-brw_compile_tes(const struct brw_compiler *compiler, void *log_data,
+brw_compile_tes(const struct brw_compiler *compiler,
                 void *mem_ctx,
-                const struct brw_tes_prog_key *key,
-                const struct brw_vue_map *input_vue_map,
-                struct brw_tes_prog_data *prog_data,
-                nir_shader *nir,
-                struct brw_compile_stats *stats,
-                char **error_str);
+                struct brw_compile_tes_params *params);
 
 /**
  * Compile a vertex shader.

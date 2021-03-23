@@ -1599,12 +1599,18 @@ crocus_compile_tes(struct crocus_context *ice,
 
    struct brw_tes_prog_key key_clean = *key;
    crocus_sanitize_tex_key(&key_clean.base.tex);
-   char *error_str = NULL;
-   const unsigned *program =
-      brw_compile_tes(compiler, &ice->dbg, mem_ctx, &key_clean, &input_vue_map,
-                      tes_prog_data, nir, NULL, &error_str);
+
+   struct brw_compile_tes_params params = {
+      .nir = nir,
+      .key = &key_clean,
+      .prog_data = tes_prog_data,
+      .input_vue_map = &input_vue_map,
+      .log_data = &ice->dbg,
+   };
+
+   const unsigned *program = brw_compile_tes(compiler, mem_ctx, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile evaluation shader: %s\n", error_str);
+      dbg_printf("Failed to compile evaluation shader: %s\n", params.error_str);
       ralloc_free(mem_ctx);
       return false;
    }

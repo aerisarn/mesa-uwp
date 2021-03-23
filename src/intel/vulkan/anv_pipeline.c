@@ -1044,12 +1044,17 @@ anv_pipeline_compile_tes(const struct brw_compiler *compiler,
       tcs_stage->nir->info.patch_outputs_written;
 
    tes_stage->num_stats = 1;
-   tes_stage->code = brw_compile_tes(compiler, device, mem_ctx,
-                                     &tes_stage->key.tes,
-                                     &tcs_stage->prog_data.tcs.base.vue_map,
-                                     &tes_stage->prog_data.tes,
-                                     tes_stage->nir,
-                                     tes_stage->stats, NULL);
+
+   struct brw_compile_tes_params params = {
+      .nir = tes_stage->nir,
+      .key = &tes_stage->key.tes,
+      .prog_data = &tes_stage->prog_data.tes,
+      .input_vue_map = &tcs_stage->prog_data.tcs.base.vue_map,
+      .stats = tes_stage->stats,
+      .log_data = device,
+   };
+
+   tes_stage->code = brw_compile_tes(compiler, mem_ctx, &params);
 }
 
 static void
