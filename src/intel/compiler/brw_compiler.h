@@ -1567,19 +1567,32 @@ brw_compile_vs(const struct brw_compiler *compiler,
                struct brw_compile_vs_params *params);
 
 /**
+ * Parameters for compiling a tessellation control shader.
+ *
+ * Some of these will be modified during the shader compilation.
+ */
+struct brw_compile_tcs_params {
+   nir_shader *nir;
+
+   const struct brw_tcs_prog_key *key;
+   struct brw_tcs_prog_data *prog_data;
+
+   struct brw_compile_stats *stats;
+
+   void *log_data;
+
+   char *error_str;
+};
+
+/**
  * Compile a tessellation control shader.
  *
- * Returns the final assembly and the program's size.
+ * Returns the final assembly and updates the parameters structure.
  */
 const unsigned *
 brw_compile_tcs(const struct brw_compiler *compiler,
-                void *log_data,
                 void *mem_ctx,
-                const struct brw_tcs_prog_key *key,
-                struct brw_tcs_prog_data *prog_data,
-                nir_shader *nir,
-                struct brw_compile_stats *stats,
-                char **error_str);
+                struct brw_compile_tcs_params *params);
 
 /**
  * Compile a tessellation evaluation shader.

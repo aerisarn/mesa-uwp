@@ -1461,12 +1461,17 @@ crocus_compile_tcs(struct crocus_context *ice,
 
    struct brw_tcs_prog_key key_clean = *key;
    crocus_sanitize_tex_key(&key_clean.base.tex);
-   char *error_str = NULL;
-   const unsigned *program =
-      brw_compile_tcs(compiler, &ice->dbg, mem_ctx, &key_clean, tcs_prog_data, nir,
-                      NULL, &error_str);
+
+   struct brw_compile_tcs_params params = {
+      .nir = nir,
+      .key = &key_clean,
+      .prog_data = tcs_prog_data,
+      .log_data = &ice->dbg,
+   };
+
+   const unsigned *program = brw_compile_tcs(compiler, mem_ctx, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile control shader: %s\n", error_str);
+      dbg_printf("Failed to compile control shader: %s\n", params.error_str);
       ralloc_free(mem_ctx);
       return false;
    }

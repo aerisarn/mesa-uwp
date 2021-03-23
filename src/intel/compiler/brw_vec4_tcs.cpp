@@ -352,16 +352,15 @@ get_patch_count_threshold(int input_control_points)
 
 extern "C" const unsigned *
 brw_compile_tcs(const struct brw_compiler *compiler,
-                void *log_data,
                 void *mem_ctx,
-                const struct brw_tcs_prog_key *key,
-                struct brw_tcs_prog_data *prog_data,
-                nir_shader *nir,
-                struct brw_compile_stats *stats,
-                char **error_str)
+                struct brw_compile_tcs_params *params)
 {
    const struct intel_device_info *devinfo = compiler->devinfo;
+   nir_shader *nir = params->nir;
+   const struct brw_tcs_prog_key *key = params->key;
+   struct brw_tcs_prog_data *prog_data = params->prog_data;
    struct brw_vue_prog_data *vue_prog_data = &prog_data->base;
+
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_TESS_CTRL];
    const bool debug_enabled = INTEL_DEBUG(DEBUG_TCS);
    const unsigned *assembly;
@@ -453,17 +452,16 @@ brw_compile_tcs(const struct brw_compiler *compiler,
    }
 
    if (is_scalar) {
-      fs_visitor v(compiler, log_data, mem_ctx, &key->base,
+      fs_visitor v(compiler, params->log_data, mem_ctx, &key->base,
                    &prog_data->base.base, nir, 8, debug_enabled);
       if (!v.run_tcs()) {
-         if (error_str)
-            *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
+         params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);
          return NULL;
       }
 
       prog_data->base.base.dispatch_grf_start_reg = v.payload.num_regs;
 
-      fs_generator g(compiler, log_data, mem_ctx,
+      fs_generator g(compiler, params->log_data, mem_ctx,
                      &prog_data->base.base, false, MESA_SHADER_TESS_CTRL);
       if (unlikely(debug_enabled)) {
          g.enable_debug(ralloc_asprintf(mem_ctx,
@@ -474,17 +472,16 @@ brw_compile_tcs(const struct brw_compiler *compiler,
       }
 
       g.generate_code(v.cfg, 8, v.shader_stats,
-                      v.performance_analysis.require(), stats);
+                      v.performance_analysis.require(), params->stats);
 
       g.add_const_data(nir->constant_data, nir->constant_data_size);
 
       assembly = g.get_assembly();
    } else {
-      brw::vec4_tcs_visitor v(compiler, log_data, key, prog_data,
+      brw::vec4_tcs_visitor v(compiler, params->log_data, key, prog_data,
                               nir, mem_ctx, debug_enabled);
       if (!v.run()) {
-         if (error_str)
-            *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
+         params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);
          return NULL;
       }
 
@@ -492,10 +489,10 @@ brw_compile_tcs(const struct brw_compiler *compiler,
          v.dump_instructions();
 
 
-      assembly = brw_vec4_generate_assembly(compiler, log_data, mem_ctx, nir,
+      assembly = brw_vec4_generate_assembly(compiler, params->log_data, mem_ctx, nir,
                                             &prog_data->base, v.cfg,
                                             v.performance_analysis.require(),
-                                            stats, debug_enabled);
+                                            params->stats, debug_enabled);
    }
 
    return assembly;

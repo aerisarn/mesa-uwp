@@ -1010,11 +1010,16 @@ anv_pipeline_compile_tcs(const struct brw_compiler *compiler,
       tcs_stage->nir->info.patch_outputs_written;
 
    tcs_stage->num_stats = 1;
-   tcs_stage->code = brw_compile_tcs(compiler, device, mem_ctx,
-                                     &tcs_stage->key.tcs,
-                                     &tcs_stage->prog_data.tcs,
-                                     tcs_stage->nir,
-                                     tcs_stage->stats, NULL);
+
+   struct brw_compile_tcs_params params = {
+      .nir = tcs_stage->nir,
+      .key = &tcs_stage->key.tcs,
+      .prog_data = &tcs_stage->prog_data.tcs,
+      .stats = tcs_stage->stats,
+      .log_data = device,
+   };
+
+   tcs_stage->code = brw_compile_tcs(compiler, mem_ctx, &params);
 }
 
 static void
