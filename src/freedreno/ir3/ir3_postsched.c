@@ -70,12 +70,28 @@ struct ir3_postsched_node {
 	struct ir3_instruction *instr;
 	bool partially_evaluated_path;
 
+	bool has_tex_src, has_sfu_src;
+
 	unsigned delay;
 	unsigned max_delay;
 };
 
 #define foreach_sched_node(__n, __list) \
 	list_for_each_entry(struct ir3_postsched_node, __n, __list, dag.link)
+
+static bool
+has_tex_src(struct ir3_instruction *instr)
+{
+	struct ir3_postsched_node *node = instr->data;
+	return node->has_tex_src;
+}
+
+static bool
+has_sfu_src(struct ir3_instruction *instr)
+{
+	struct ir3_postsched_node *node = instr->data;
+	return node->has_sfu_src;
+}
 
 static void
 schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
@@ -98,7 +114,7 @@ schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 
 	if (is_sfu(instr)) {
 		ctx->sfu_delay = 8;
-	} else if (check_src_cond(instr, is_sfu)) {
+	} else if (has_sfu_src(instr)) {
 		ctx->sfu_delay = 0;
 	} else if (ctx->sfu_delay > 0) {
 		ctx->sfu_delay--;
@@ -106,7 +122,7 @@ schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 
 	if (is_tex_or_prefetch(instr)) {
 		ctx->tex_delay = 10;
-	} else if (check_src_cond(instr, is_tex_or_prefetch)) {
+	} else if (has_tex_src(instr)) {
 		ctx->tex_delay = 0;
 	} else if (ctx->tex_delay > 0) {
 		ctx->tex_delay--;
@@ -140,12 +156,12 @@ static bool
 would_sync(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 {
 	if (ctx->sfu_delay) {
-		if (check_src_cond(instr, is_sfu))
+		if (has_sfu_src(instr))
 			return true;
 	}
 
 	if (ctx->tex_delay) {
-		if (check_src_cond(instr, is_tex_or_prefetch))
+		if (has_tex_src(instr))
 			return true;
 	}
 
@@ -374,6 +390,10 @@ add_single_reg_dep(struct ir3_postsched_deps_state *state,
 	if (src_n >= 0 && dep && state->direction == F) {
 		unsigned d = ir3_delayslots(dep->instr, node->instr, src_n, true);
 		node->delay = MAX2(node->delay, d);
+		if (is_tex_or_prefetch(dep->instr))
+			node->has_tex_src = true;
+		if (is_tex_or_prefetch(dep->instr))
+			node->has_sfu_src = true;
 	}
 
 	add_dep(state, dep, node);
