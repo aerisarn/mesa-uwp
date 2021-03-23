@@ -126,6 +126,11 @@ struct zink_screen {
    PFN_vkWaitSemaphores vk_WaitSemaphores;
 
    PFN_vkGetDescriptorSetLayoutSupport vk_GetDescriptorSetLayoutSupport;
+   PFN_vkCmdPushDescriptorSetKHR vk_CmdPushDescriptorSetKHR;
+   PFN_vkCreateDescriptorUpdateTemplate vk_CreateDescriptorUpdateTemplate;
+   PFN_vkDestroyDescriptorUpdateTemplate vk_DestroyDescriptorUpdateTemplate;
+   PFN_vkUpdateDescriptorSetWithTemplate vk_UpdateDescriptorSetWithTemplate;
+   PFN_vkCmdPushDescriptorSetWithTemplateKHR vk_CmdPushDescriptorSetWithTemplateKHR;
    bool (*descriptor_program_init)(struct zink_context *ctx, struct zink_program *pg);
    void (*descriptor_program_deinit)(struct zink_screen *screen, struct zink_program *pg);
    void (*descriptors_update)(struct zink_context *ctx, bool is_compute);

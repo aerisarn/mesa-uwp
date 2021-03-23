@@ -1248,6 +1248,17 @@ load_device_extensions(struct zink_screen *screen)
    if (screen->info.have_KHR_maintenance3)
       GET_PROC_ADDR_KHR(GetDescriptorSetLayoutSupport);
 
+   if (screen->info.have_KHR_push_descriptor) {
+      GET_PROC_ADDR(CmdPushDescriptorSetKHR);
+      GET_PROC_ADDR(CmdPushDescriptorSetWithTemplateKHR);
+   }
+
+   if (screen->info.have_KHR_descriptor_update_template) {
+      GET_PROC_ADDR_KHR(CreateDescriptorUpdateTemplate);
+      GET_PROC_ADDR_KHR(DestroyDescriptorUpdateTemplate);
+      GET_PROC_ADDR_KHR(UpdateDescriptorSetWithTemplate);
+   }
+
    screen->have_triangle_fans = true;
 #if defined(VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME)
    if (screen->info.have_EXTX_portability_subset) {

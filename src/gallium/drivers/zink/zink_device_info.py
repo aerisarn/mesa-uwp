@@ -161,6 +161,11 @@ EXTENSIONS = [
     Extension("VK_KHR_shader_float16_int8",
               alias="shader_float16_int8",
               features=True),
+    Extension("VK_KHR_push_descriptor",
+        alias="push",
+        properties=True),
+    Extension("VK_KHR_descriptor_update_template",
+        alias="template"),
 ]
 
 # constructor: Versions(device_version(major, minor, patch), struct_version(major, minor))
