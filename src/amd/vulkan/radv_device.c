@@ -2891,7 +2891,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->use_global_bo_list = (device->instance->perftest_flags & RADV_PERFTEST_BO_LIST) ||
                                 device->vk.enabled_extensions.EXT_descriptor_indexing ||
                                 device->vk.enabled_extensions.EXT_buffer_device_address ||
-                                device->vk.enabled_extensions.KHR_buffer_device_address;
+                                device->vk.enabled_extensions.KHR_buffer_device_address ||
+                                device->vk.enabled_extensions.KHR_ray_tracing_pipeline;
 
    device->robust_buffer_access = robust_buffer_access || robust_buffer_access2;
    device->robust_buffer_access2 = robust_buffer_access2;
