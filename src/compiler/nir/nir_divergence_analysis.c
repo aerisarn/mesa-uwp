@@ -319,6 +319,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_masked_swizzle_amd:
    case nir_intrinsic_is_sparse_texels_resident:
    case nir_intrinsic_sparse_residency_code_and:
+   case nir_intrinsic_load_sbt_amd:
    case nir_intrinsic_get_ubo_size:
    case nir_intrinsic_load_ssbo_address: {
       unsigned num_srcs = nir_intrinsic_infos[instr->intrinsic].num_srcs;

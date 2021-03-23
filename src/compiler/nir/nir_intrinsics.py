@@ -1149,6 +1149,10 @@ intrinsic("export_primitive_amd", src_comp=[1], indices=[])
 # Allocates export space for vertices and primitives. src[] = {num_vertices, num_primitives}.
 intrinsic("alloc_vertices_and_primitives_amd", src_comp=[1, 1], indices=[])
 
+# src = [index] BINDING = which table BASE = offset within handle
+intrinsic("load_sbt_amd", src_comp=[-1], dest_comp=0, indices=[BINDING, BASE],
+          flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel
