@@ -5067,6 +5067,29 @@ void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
                nir_intrinsic_align_mul(instr), nir_intrinsic_align_offset(instr));
 }
 
+void
+visit_load_sbt_amd(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+   Temp index = get_ssa_temp(ctx, instr->src[0].ssa);
+   unsigned binding = nir_intrinsic_binding(instr);
+   unsigned base = nir_intrinsic_base(instr);
+
+   index = as_vgpr(ctx, index);
+
+   Builder bld(ctx->program, ctx->block);
+   Temp desc_base = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ac.sbt_descriptors));
+   Operand desc_off = bld.copy(bld.def(s1), Operand(binding * 16u));
+   Temp rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), desc_base, desc_off);
+
+   /* If we want more we need to implement */
+   assert(instr->dest.ssa.bit_size == 32);
+   assert(instr->num_components == 1);
+
+   bld.mubuf(aco_opcode::buffer_load_dword, Definition(dst), rsrc, index, Operand(0u), base, false,
+             false, true);
+}
+
 void visit_load_push_constant(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
@@ -8489,6 +8512,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), bool_to_vector_condition(ctx, shader_query_enabled));
       break;
    }
+   case nir_intrinsic_load_sbt_amd:
+      visit_load_sbt_amd(ctx, instr);
+      break;
    default:
       isel_err(&instr->instr, "Unimplemented intrinsic instr");
       abort();
