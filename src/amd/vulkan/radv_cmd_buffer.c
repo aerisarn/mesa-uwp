@@ -6067,6 +6067,86 @@ radv_unaligned_dispatch(struct radv_cmd_buffer *cmd_buffer, uint32_t x, uint32_t
    radv_compute_dispatch(cmd_buffer, &info);
 }
 
+static void
+radv_rt_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_info *info)
+{
+   radv_dispatch(cmd_buffer, info, cmd_buffer->state.rt_pipeline,
+                 VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
+}
+
+static bool
+radv_rt_bind_tables(struct radv_cmd_buffer *cmd_buffer,
+                    const VkStridedDeviceAddressRegionKHR *tables)
+{
+   struct radv_pipeline *pipeline = cmd_buffer->state.rt_pipeline;
+   uint32_t base_reg;
+   void *ptr;
+   uint32_t *desc_ptr;
+   uint32_t offset;
+
+   if (!radv_cmd_buffer_upload_alloc(cmd_buffer, 64, &offset, &ptr))
+      return false;
+
+   /* For the descriptor format. */
+   assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10);
+
+   desc_ptr = ptr;
+   for (unsigned i = 0; i < 4; ++i, desc_ptr += 4) {
+      uint32_t rsrc_word3 =
+         S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+         S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+         S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_UINT) |
+         S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_STRUCTURED) | S_008F0C_RESOURCE_LEVEL(1);
+
+      desc_ptr[0] = tables[i].deviceAddress;
+      desc_ptr[1] = S_008F04_BASE_ADDRESS_HI(tables[i].deviceAddress >> 32) |
+                    S_008F04_STRIDE(tables[i].stride);
+      desc_ptr[2] = 0xffffffffu;
+      desc_ptr[3] = rsrc_word3;
+   }
+
+   uint64_t va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + offset;
+   struct radv_userdata_info *loc =
+      radv_lookup_user_sgpr(pipeline, MESA_SHADER_COMPUTE, AC_UD_CS_SBT_DESCRIPTORS);
+   if (loc->sgpr_idx == -1)
+      return true;
+
+   base_reg = pipeline->user_data_0[MESA_SHADER_COMPUTE];
+   radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, va,
+                            false);
+   return true;
+}
+
+void
+radv_CmdTraceRaysKHR(VkCommandBuffer commandBuffer,
+                     const VkStridedDeviceAddressRegionKHR *pRaygenShaderBindingTable,
+                     const VkStridedDeviceAddressRegionKHR *pMissShaderBindingTable,
+                     const VkStridedDeviceAddressRegionKHR *pHitShaderBindingTable,
+                     const VkStridedDeviceAddressRegionKHR *pCallableShaderBindingTable,
+                     uint32_t width, uint32_t height, uint32_t depth)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_dispatch_info info = {0};
+
+   info.blocks[0] = width;
+   info.blocks[1] = height;
+   info.blocks[2] = depth;
+   info.unaligned = 1;
+
+   const VkStridedDeviceAddressRegionKHR tables[] = {
+      *pRaygenShaderBindingTable,
+      *pMissShaderBindingTable,
+      *pHitShaderBindingTable,
+      *pCallableShaderBindingTable,
+   };
+
+   if (!radv_rt_bind_tables(cmd_buffer, tables)) {
+      return;
+   }
+
+   radv_rt_dispatch(cmd_buffer, &info);
+}
+
 void
 radv_cmd_buffer_end_render_pass(struct radv_cmd_buffer *cmd_buffer)
 {
