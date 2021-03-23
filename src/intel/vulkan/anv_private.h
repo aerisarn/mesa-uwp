@@ -3394,8 +3394,6 @@ struct anv_semaphore_impl {
 struct anv_semaphore {
    struct vk_object_base base;
 
-   uint32_t refcount;
-
    /* Permanent semaphore state.  Every semaphore has some form of permanent
     * state (type != ANV_SEMAPHORE_TYPE_NONE).  This may be a BO to fence on
     * (for cross-process semaphores0 or it could just be a dummy for use
