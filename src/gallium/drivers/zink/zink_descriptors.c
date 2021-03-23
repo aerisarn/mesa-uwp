@@ -281,7 +281,7 @@ descriptor_layout_create(struct zink_screen *screen, enum zink_descriptor_type t
    if (screen->lazy_descriptors) {
       /* FIXME */
       dcslci.pNext = &fci;
-      if (t == 1)
+      if (t == ZINK_DESCRIPTOR_TYPES)
          dcslci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
       fci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
       fci.bindingCount = num_bindings;
@@ -340,6 +340,21 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
       .bindings = bindings,
    };
 
+   VkDescriptorSetLayoutBinding null_binding;
+   if (!bindings) {
+      null_binding.binding = 0;
+      null_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      null_binding.descriptorCount = 1;
+      null_binding.pImmutableSamplers = NULL;
+      null_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT |
+                                VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+      key.bindings = &null_binding;
+   }
+   if (type == ZINK_DESCRIPTOR_TYPES) {//push layout
+      return descriptor_layout_create(screen, type, key.bindings, MAX2(num_bindings, 1));
+   }
+
    hash = hash_descriptor_layout(&key);
    struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->desc_set_layouts[type], hash, &key);
    if (he) {
@@ -351,7 +366,7 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
 #endif
    }
 
-   VkDescriptorSetLayout dsl = descriptor_layout_create(screen, type, bindings, MAX2(num_bindings, 1));
+   VkDescriptorSetLayout dsl = descriptor_layout_create(screen, type, key.bindings, MAX2(num_bindings, 1));
    if (!dsl)
       return VK_NULL_HANDLE;
 
@@ -364,7 +379,7 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
       vkDestroyDescriptorSetLayout(screen->dev, dsl, NULL);
       return VK_NULL_HANDLE;
    }
-   memcpy(k->bindings, bindings, bindings_size);
+   memcpy(k->bindings, key.bindings, bindings_size);
 #if VK_USE_64_BIT_PTR_DEFINES == 1
    _mesa_hash_table_insert_pre_hashed(&ctx->desc_set_layouts[type], hash, k, dsl);
 #else
@@ -832,15 +847,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       if (!num_bindings[i]) {
          if (!found_descriptors)
             continue;
-         VkDescriptorSetLayoutBinding null_binding;
-         null_binding.binding = 1;
-         null_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-         null_binding.descriptorCount = 1;
-         null_binding.pImmutableSamplers = NULL;
-         null_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT |
-                                   VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                                   VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-         pg->dsl[i] = zink_descriptor_util_layout_get(ctx, i, &null_binding, 0, &layout_key[i]);
+         pg->dsl[i] = zink_descriptor_util_layout_get(ctx, i, NULL, 0, &layout_key[i]);
          if (!pg->dsl[i])
             return false;
          VkDescriptorPoolSize null_size = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ZINK_DEFAULT_MAX_DESCS};

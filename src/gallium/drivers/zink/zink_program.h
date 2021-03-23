@@ -79,7 +79,7 @@ struct zink_program {
    struct zink_program_descriptor_data *dd;
 
    VkPipelineLayout layout;
-   VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES];
+   VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES + 1]; // one for each type + push
    unsigned num_dsl;
 };
 
