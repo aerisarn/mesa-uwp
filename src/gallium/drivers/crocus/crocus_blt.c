@@ -70,6 +70,7 @@ blt_set_alpha_to_one(struct crocus_batch *batch,
          uint64_t offset_B;
          ASSERTED uint32_t z_offset_el, array_offset;
          isl_tiling_get_intratile_offset_el(dst->surf.tiling, dst->surf.dim,
+                                            dst->surf.msaa_layout,
                                             cpp * 8, dst->surf.samples,
                                             dst->surf.row_pitch_B,
                                             dst->surf.array_pitch_el_rows,
@@ -326,6 +327,7 @@ static bool crocus_emit_blt(struct crocus_batch *batch,
          uint32_t src_tile_x, src_tile_y;
          ASSERTED uint32_t z_offset_el, array_offset;
          isl_tiling_get_intratile_offset_el(src->surf.tiling, src->surf.dim,
+                                            src->surf.msaa_layout,
                                             src_cpp * 8, src->surf.samples,
                                             src->surf.row_pitch_B,
                                             src->surf.array_pitch_el_rows,
@@ -339,6 +341,7 @@ static bool crocus_emit_blt(struct crocus_batch *batch,
          uint64_t dst_offset;
          uint32_t dst_tile_x, dst_tile_y;
          isl_tiling_get_intratile_offset_el(dst->surf.tiling, dst->surf.dim,
+                                            dst->surf.msaa_layout,
                                             dst_cpp * 8, dst->surf.samples,
                                             dst->surf.row_pitch_B,
                                             dst->surf.array_pitch_el_rows,

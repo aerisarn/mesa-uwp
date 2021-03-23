@@ -307,6 +307,7 @@ isl_device_get_sample_counts(struct isl_device *dev)
  *
  * @param[in]  tiling      The tiling format to introspect
  * @param[in]  dim         The dimensionality of the surface being tiled
+ * @param[in]  msaa_layout The layout of samples in the surface being tiled
  * @param[in]  format_bpb  The number of bits per surface element (block) for
  *                         the surface being tiled
  * @param[in]  samples     The samples in the surface being tiled
@@ -315,6 +316,7 @@ isl_device_get_sample_counts(struct isl_device *dev)
 void
 isl_tiling_get_info(enum isl_tiling tiling,
                     enum isl_surf_dim dim,
+                    enum isl_msaa_layout msaa_layout,
                     uint32_t format_bpb,
                     uint32_t samples,
                     struct isl_tile_info *tile_info)
@@ -331,7 +333,8 @@ isl_tiling_get_info(enum isl_tiling tiling,
        */
       assert(tiling == ISL_TILING_X || tiling == ISL_TILING_Y0);
       assert(bs % 3 == 0 && isl_is_pow2(format_bpb / 3));
-      isl_tiling_get_info(tiling, dim, format_bpb / 3, samples, tile_info);
+      isl_tiling_get_info(tiling, dim, msaa_layout, format_bpb / 3, samples,
+                          tile_info);
       return;
    }
 
@@ -1645,15 +1648,16 @@ isl_surf_init_s(const struct isl_device *dev,
    if (!isl_surf_choose_tiling(dev, info, &tiling))
       return false;
 
-   struct isl_tile_info tile_info;
-   isl_tiling_get_info(tiling, info->dim, fmtl->bpb, info->samples, &tile_info);
-
    const enum isl_dim_layout dim_layout =
       isl_surf_choose_dim_layout(dev, info->dim, tiling, info->usage);
 
    enum isl_msaa_layout msaa_layout;
    if (!isl_choose_msaa_layout(dev, info, tiling, &msaa_layout))
        return false;
+
+   struct isl_tile_info tile_info;
+   isl_tiling_get_info(tiling, info->dim, msaa_layout, fmtl->bpb,
+                       info->samples, &tile_info);
 
    struct isl_extent3d image_align_el;
    isl_choose_image_alignment_el(dev, info, tiling, dim_layout, msaa_layout,
@@ -1831,7 +1835,7 @@ isl_surf_get_tile_info(const struct isl_surf *surf,
                        struct isl_tile_info *tile_info)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
-   isl_tiling_get_info(surf->tiling, surf->dim, fmtl->bpb,
+   isl_tiling_get_info(surf->tiling, surf->dim, surf->msaa_layout, fmtl->bpb,
                        surf->samples, tile_info);
 }
 
@@ -2708,7 +2712,8 @@ isl_surf_get_image_offset_B_tile_el(const struct isl_surf *surf,
 
    uint32_t z_offset_el, array_offset;
    isl_tiling_get_intratile_offset_el(surf->tiling, surf->dim,
-                                      fmtl->bpb, surf->samples,
+                                      surf->msaa_layout, fmtl->bpb,
+                                      surf->samples,
                                       surf->row_pitch_B,
                                       surf->array_pitch_el_rows,
                                       total_x_offset_el,
@@ -2758,7 +2763,8 @@ isl_surf_get_image_range_B_tile(const struct isl_surf *surf,
 
    UNUSED uint32_t x_offset_el, y_offset_el, z_offset_el, array_slice;
    isl_tiling_get_intratile_offset_el(surf->tiling, surf->dim,
-                                      fmtl->bpb, surf->samples,
+                                      surf->msaa_layout, fmtl->bpb,
+                                      surf->samples,
                                       surf->row_pitch_B,
                                       surf->array_pitch_el_rows,
                                       start_x_offset_el,
@@ -2772,7 +2778,8 @@ isl_surf_get_image_range_B_tile(const struct isl_surf *surf,
                                       &array_slice);
 
    isl_tiling_get_intratile_offset_el(surf->tiling, surf->dim,
-                                      fmtl->bpb, surf->samples,
+                                      surf->msaa_layout, fmtl->bpb,
+                                      surf->samples,
                                       surf->row_pitch_B,
                                       surf->array_pitch_el_rows,
                                       end_x_offset_el,
@@ -2949,6 +2956,7 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
 void
 isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
                                    enum isl_surf_dim dim,
+                                   enum isl_msaa_layout msaa_layout,
                                    uint32_t bpb,
                                    uint32_t samples,
                                    uint32_t row_pitch_B,
@@ -2977,7 +2985,7 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
    }
 
    struct isl_tile_info tile_info;
-   isl_tiling_get_info(tiling, dim, bpb, samples, &tile_info);
+   isl_tiling_get_info(tiling, dim, msaa_layout, bpb, samples, &tile_info);
 
    /* Pitches must make sense with the tiling */
    assert(row_pitch_B % tile_info.phys_extent_B.width == 0);

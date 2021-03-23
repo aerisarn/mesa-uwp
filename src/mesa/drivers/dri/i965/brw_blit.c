@@ -170,6 +170,7 @@ get_blit_intratile_offset_el(const struct brw_context *brw,
 {
    ASSERTED uint32_t z_offset_el, array_offset;
    isl_tiling_get_intratile_offset_el(mt->surf.tiling, mt->surf.dim,
+                                      mt->surf.msaa_layout,
                                       mt->cpp * 8, mt->surf.samples,
                                       mt->surf.row_pitch_B,
                                       mt->surf.array_pitch_el_rows,

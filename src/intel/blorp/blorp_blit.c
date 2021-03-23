@@ -2199,6 +2199,7 @@ shrink_surface_params(const struct isl_device *dev,
    y_offset_sa = (uint32_t)*y0 * px_size_sa.h + info->tile_y_sa;
    uint32_t tile_z_sa, tile_a;
    isl_tiling_get_intratile_offset_sa(info->surf.tiling, info->surf.dim,
+                                      info->surf.msaa_layout,
                                       info->surf.format, info->surf.samples,
                                       info->surf.row_pitch_B,
                                       info->surf.array_pitch_el_rows,
