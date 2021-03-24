@@ -589,7 +589,7 @@ zink_batch_descriptor_init_lazy(struct zink_screen *screen, struct zink_batch_st
    if (!screen->info.have_KHR_push_descriptor) {
       VkDescriptorPoolSize sizes;
       sizes.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-      sizes.descriptorCount  = ZINK_SHADER_COUNT * ZINK_DEFAULT_MAX_DESCS;
+      sizes.descriptorCount = ZINK_SHADER_COUNT * ZINK_DEFAULT_MAX_DESCS;
       bs->dd->push_pool[0] = rzalloc(bs, struct zink_descriptor_pool);
       bs->dd->push_pool[0]->pool = create_pool(screen, 1, &sizes, 0);
       sizes.descriptorCount  = ZINK_DEFAULT_MAX_DESCS;
@@ -606,7 +606,6 @@ zink_descriptors_init_lazy(struct zink_context *ctx)
    if (!ctx->dd)
       return false;
 
-   VkDescriptorSetLayoutBinding bindings[PIPE_SHADER_TYPES];
    for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
       VkDescriptorUpdateTemplateEntry *entry = &ctx->dd->push_entries[i];
       entry->dstBinding = tgsi_processor_to_shader_stage(i);
@@ -614,44 +613,23 @@ zink_descriptors_init_lazy(struct zink_context *ctx)
       entry->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
       entry->offset = offsetof(struct zink_context, di.ubos[i][0]);
       entry->stride = sizeof(VkDescriptorBufferInfo);
-
-      bindings[i].binding = tgsi_processor_to_shader_stage(i);
-      bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-      bindings[i].descriptorCount = 1;
-      bindings[i].stageFlags = zink_shader_stage(i);
-      bindings[i].pImmutableSamplers = NULL;
    }
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   struct zink_descriptor_layout_key *layout_key;
-   enum zink_descriptor_type dsl_type = screen->info.have_KHR_push_descriptor ? ZINK_DESCRIPTOR_TYPES : ZINK_DESCRIPTOR_TYPE_UBO;
-   ctx->dd->push_dsl[0] = zink_descriptor_util_layout_get(ctx, dsl_type, bindings, ZINK_SHADER_COUNT, &layout_key);
-   ctx->dd->push_dsl[1] = zink_descriptor_util_layout_get(ctx, dsl_type, &bindings[PIPE_SHADER_COMPUTE], 1, &layout_key);
+   struct zink_descriptor_layout_key *layout_keys[2];
+   if (!zink_descriptor_util_push_layouts_get(ctx, ctx->dd->push_dsl, layout_keys))
    if (!ctx->dd->push_dsl[0] || !ctx->dd->push_dsl[1])
       return false;
 
-   ctx->dd->dummy_dsl = zink_descriptor_util_layout_get(ctx, 2, bindings, 1, &layout_key);
+   ctx->dd->dummy_dsl = zink_descriptor_util_layout_get(ctx, 0, NULL, 0, &layout_keys[0]);
+   if (!ctx->dd->dummy_dsl)
+      return false;
    VkDescriptorPoolSize null_size = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1};
    ctx->dd->dummy_pool = create_pool(screen, 1, &null_size, 0);
    zink_descriptor_util_alloc_sets(screen, ctx->dd->dummy_dsl,
                                    ctx->dd->dummy_pool, &ctx->dd->dummy_set, 1);
-   VkDescriptorBufferInfo push_info;
-   VkWriteDescriptorSet push_wd;
-   push_wd.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-   push_wd.pNext = NULL;
-   push_wd.dstBinding = 0;
-   push_wd.dstArrayElement = 0;
-   push_wd.descriptorCount = 1;
-   push_wd.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-   push_wd.dstSet = ctx->dd->dummy_set;
-   push_wd.pBufferInfo = &push_info;
-   push_info.buffer = screen->info.rb2_feats.nullDescriptor ?
-                      VK_NULL_HANDLE :
-                      zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
-   push_info.offset = 0;
-   push_info.range = VK_WHOLE_SIZE;
-   vkUpdateDescriptorSets(screen->dev, 1, &push_wd, 0, NULL);
+   zink_descriptor_util_init_null_set(ctx, ctx->dd->dummy_set);
 printf("ZINK: USING EXPERIMENTAL LAZY DESCRIPTORS\n");
-   return !!ctx->dd->dummy_dsl;
+   return true;
 }
 
 void

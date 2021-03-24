@@ -894,19 +894,13 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          const struct glsl_type *type = glsl_without_array(var->type);
          if (var->data.mode == nir_var_mem_ubo) {
             ztype = ZINK_DESCRIPTOR_TYPE_UBO;
-            if (screen->lazy_descriptors) {
-               /* buffer 0 is a push descriptor */
-               var->data.descriptor_set = !!var->data.driver_location;
-               var->data.binding = !var->data.driver_location ? nir->info.stage :
-                                   zink_binding(nir->info.stage,
-                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                                var->data.driver_location);
-            } else {
-               var->data.descriptor_set = ztype;
-               var->data.binding = zink_binding(nir->info.stage,
-                                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                    var->data.driver_location);
-            }
+            /* buffer 0 is a push descriptor */
+            var->data.descriptor_set = !!var->data.driver_location;
+            var->data.binding = !var->data.driver_location ? nir->info.stage :
+                                zink_binding(nir->info.stage,
+                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                             var->data.driver_location);
+            assert(var->data.driver_location || var->data.binding < 10);
             VkDescriptorType vktype = !var->data.driver_location ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             int binding = var->data.binding;
 
@@ -918,9 +912,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             ret->num_bindings[ztype]++;
          } else if (var->data.mode == nir_var_mem_ssbo) {
             ztype = ZINK_DESCRIPTOR_TYPE_SSBO;
-            var->data.descriptor_set = ztype;
-            if (screen->lazy_descriptors)
-               var->data.descriptor_set++;
+            var->data.descriptor_set = ztype + 1;
             var->data.binding = zink_binding(nir->info.stage,
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                              var->data.driver_location);
@@ -938,9 +930,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                   ret->num_texel_buffers++;
                ztype = zink_desc_type_from_vktype(vktype);
                var->data.driver_location = var->data.binding;
-               var->data.descriptor_set = ztype;
-               if (screen->lazy_descriptors)
-                  var->data.descriptor_set++;
+               var->data.descriptor_set = ztype + 1;
                var->data.binding = zink_binding(nir->info.stage, vktype, var->data.driver_location);
                ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.driver_location;
                ret->bindings[ztype][ret->num_bindings[ztype]].binding = var->data.binding;
