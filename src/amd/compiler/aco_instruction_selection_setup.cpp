@@ -61,6 +61,34 @@ unsigned get_interp_input(nir_intrinsic_op intrin, enum glsl_interp_mode interp)
    return 0;
 }
 
+bool is_loop_header_block(nir_block *block)
+{
+   return block->cf_node.parent->type == nir_cf_node_loop &&
+          block == nir_loop_first_block(nir_cf_node_as_loop(block->cf_node.parent));
+}
+
+/* similar to nir_block_is_unreachable(), but does not require dominance information */
+bool
+is_block_reachable(nir_function_impl *impl, nir_block *known_reachable, nir_block *block)
+{
+   if (block == nir_start_block(impl) || block == known_reachable)
+      return true;
+
+   /* skip loop back-edges */
+   if (is_loop_header_block(block)) {
+      nir_loop *loop = nir_cf_node_as_loop(block->cf_node.parent);
+      nir_block *preheader = nir_block_cf_tree_prev(nir_loop_first_block(loop));
+      return is_block_reachable(impl, known_reachable, preheader);
+   }
+
+   set_foreach(block->predecessors, entry) {
+      if (is_block_reachable(impl, known_reachable, (nir_block *)entry->key))
+         return true;
+   }
+
+   return false;
+}
+
 /* If one side of a divergent IF ends in a branch and the other doesn't, we
  * might have to emit the contents of the side without the branch at the merge
  * block instead. This is so that we can use any SGPR live-out of the side
@@ -72,8 +100,10 @@ sanitize_if(nir_function_impl *impl, nir_if *nif)
 
    nir_block *then_block = nir_if_last_then_block(nif);
    nir_block *else_block = nir_if_last_else_block(nif);
-   bool then_jump = nir_block_ends_in_jump(then_block) || nir_block_is_unreachable(then_block);
-   bool else_jump = nir_block_ends_in_jump(else_block) || nir_block_is_unreachable(else_block);
+   bool then_jump = nir_block_ends_in_jump(then_block) ||
+                    !is_block_reachable(impl, nir_if_first_then_block(nif), then_block);
+   bool else_jump = nir_block_ends_in_jump(else_block) ||
+                    !is_block_reachable(impl, nir_if_first_else_block(nif), else_block);
    if (then_jump == else_jump)
       return false;
 
@@ -99,12 +129,6 @@ sanitize_if(nir_function_impl *impl, nir_if *nif)
    nir_cf_extract(&tmp, nir_before_block(first_continue_from_blk),
                         nir_after_block(last_continue_from_blk));
    nir_cf_reinsert(&tmp, nir_after_cf_node(&nif->cf_node));
-
-   /* nir_cf_extract() invalidates dominance metadata, but it should still be
-    * correct because of the specific type of transformation we did. Block
-    * indices are not valid except for block_0's, which is all we care about for
-    * nir_block_is_unreachable(). */
-   impl->valid_metadata = impl->valid_metadata | nir_metadata_dominance | nir_metadata_block_index;
 
    return true;
 }
@@ -566,7 +590,6 @@ void init_context(isel_context *ctx, nir_shader *shader)
    apply_nuw_to_offsets(ctx, impl);
 
    /* sanitize control flow */
-   nir_metadata_require(impl, nir_metadata_dominance);
    sanitize_cf_list(impl, &impl->body);
    nir_metadata_preserve(impl, nir_metadata_none);
 
