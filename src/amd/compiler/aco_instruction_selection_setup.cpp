@@ -303,8 +303,6 @@ void apply_nuw_to_ssa(isel_context *ctx, nir_ssa_def *ssa)
 
 void apply_nuw_to_offsets(isel_context *ctx, nir_function_impl *impl)
 {
-   nir_metadata_require(impl, nir_metadata_dominance);
-
    nir_foreach_block(block, impl) {
       nir_foreach_instr(instr, block) {
          if (instr->type != nir_instr_type_intrinsic)
@@ -594,7 +592,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
    nir_metadata_preserve(impl, nir_metadata_none);
 
    /* we'll need these for isel */
-   nir_metadata_require(impl, nir_metadata_block_index | nir_metadata_dominance);
+   nir_metadata_require(impl, nir_metadata_block_index);
 
    if (!ctx->stage.has(SWStage::GSCopy) && ctx->options->dump_preoptir) {
       fprintf(stderr, "NIR shader before instruction selection:\n");

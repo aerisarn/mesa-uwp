@@ -1402,16 +1402,10 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
    }
 
    if (scalar.def->parent_instr->type == nir_instr_type_phi) {
-      bool cyclic = false;
-      nir_foreach_phi_src(src, nir_instr_as_phi(scalar.def->parent_instr)) {
-         if (nir_block_dominates(scalar.def->parent_instr->block, src->pred)) {
-            cyclic = true;
-            break;
-         }
-      }
+      nir_cf_node *prev = nir_cf_node_prev(&scalar.def->parent_instr->block->cf_node);
 
       uint32_t res = 0;
-      if (cyclic) {
+      if (!prev || prev->type == nir_cf_node_block) {
          _mesa_hash_table_insert(range_ht, key, (void*)(uintptr_t)max);
 
          struct set *visited = _mesa_pointer_set_create(NULL);
