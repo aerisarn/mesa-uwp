@@ -61,6 +61,7 @@ enum fd_param_id {
    FD_PP_PGTABLE,    /* are per-process pagetables used for the pipe/ctx */
    FD_CTX_FAULTS,    /* # of per context faults */
    FD_GLOBAL_FAULTS, /* # of global (all context) faults */
+   FD_SUSPEND_COUNT, /* # of times the GPU has suspended, and potentially lost state */
 };
 
 /**
