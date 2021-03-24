@@ -147,6 +147,13 @@ FreedrenoDriver::init_perfcnt()
    }
    max_freq = val;
 
+   if (fd_pipe_get_param(pipe, FD_SUSPEND_COUNT, &val)) {
+      PERFETTO_ILOG("Could not get SUSPEND_COUNT");
+   } else {
+      suspend_count = val;
+      has_suspend_count = true;
+   }
+
    perfcntrs = fd_perfcntrs(gpu_id, &num_perfcntrs);
    if (num_perfcntrs == 0) {
       PERFETTO_FATAL("No hw counters available");
@@ -207,6 +214,27 @@ FreedrenoDriver::enable_perfcnt(const uint64_t /* sampling_period_ns */)
 bool
 FreedrenoDriver::dump_perfcnt()
 {
+   if (has_suspend_count) {
+      uint64_t val;
+
+      fd_pipe_get_param(pipe, FD_SUSPEND_COUNT, &val);
+
+      if (suspend_count != val) {
+         PERFETTO_ILOG("Device had suspended!");
+
+         suspend_count = val;
+
+         configure_counters(true, true);
+         collect_countables();
+
+         /* We aren't going to have anything sensible by comparing
+          * current values to values from prior to the suspend, so
+          * just skip this sampling period.
+          */
+         return false;
+      }
+   }
+
    auto last_ts = last_dump_ts;
 
    collect_countables();
@@ -215,11 +243,14 @@ FreedrenoDriver::dump_perfcnt()
 
    time = (float)elapsed_time_ns / 1000000000.0;
 
-   // TODO we want to do this periodically to keep the GPU awake
-   // (and to ensure we don't loose counter configuration due to
-   // suspend/resume cycle), but we don't' need to do this every
-   // time.. we probably just want to do this every 30-60ms..
-   configure_counters(false, false);
+   /* On older kernels that dont' support querying the suspend-
+    * count, just send configuration cmdstream regularly to keep
+    * the GPU alive and correctly configured for the countables
+    * we want
+    */
+   if (!has_suspend_count) {
+      configure_counters(false, false);
+   }
 
    last_capture_ts = last_dump_ts;
 

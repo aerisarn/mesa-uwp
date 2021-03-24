@@ -39,6 +39,9 @@ private:
    uint64_t last_dump_ts = 0;
    uint64_t last_capture_ts;
 
+   bool has_suspend_count;
+   uint32_t suspend_count;
+
    struct freedreno_dev_info info;
 
    /**
