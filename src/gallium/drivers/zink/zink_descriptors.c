@@ -378,6 +378,24 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
    return dsl;
 }
 
+bool
+zink_descriptor_util_push_layouts_get(struct zink_context *ctx, VkDescriptorSetLayout *dsls, struct zink_descriptor_layout_key **layout_keys)
+{
+   VkDescriptorSetLayoutBinding bindings[PIPE_SHADER_TYPES];
+   for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
+      bindings[i].binding = tgsi_processor_to_shader_stage(i);
+      bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      bindings[i].descriptorCount = 1;
+      bindings[i].stageFlags = zink_shader_stage(i);
+      bindings[i].pImmutableSamplers = NULL;
+   }
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   enum zink_descriptor_type dsl_type = screen->lazy_descriptors ? ZINK_DESCRIPTOR_TYPES : ZINK_DESCRIPTOR_TYPE_UBO;
+   dsls[0] = zink_descriptor_util_layout_get(ctx, dsl_type, bindings, ZINK_SHADER_COUNT, &layout_keys[0]);
+   dsls[1] = zink_descriptor_util_layout_get(ctx, dsl_type, &bindings[PIPE_SHADER_COMPUTE], 1, &layout_keys[1]);
+   return dsls[0] && dsls[1];
+}
+
 static uint32_t
 hash_descriptor_pool(const void *key)
 {

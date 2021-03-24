@@ -106,6 +106,8 @@ VkDescriptorSetLayout
 zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_type type,
                       VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings,
                       struct zink_descriptor_layout_key **layout_key);
+bool
+zink_descriptor_util_push_layouts_get(struct zink_context *ctx, VkDescriptorSetLayout *dsls, struct zink_descriptor_layout_key **layout_keys);
 struct zink_resource *
 zink_get_resource_for_descriptor(struct zink_context *ctx, enum zink_descriptor_type type, enum pipe_shader_type shader, int idx);
 
