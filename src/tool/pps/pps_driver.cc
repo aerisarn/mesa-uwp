@@ -17,6 +17,10 @@
 #include "freedreno/ds/fd_pps_driver.h"
 #endif // PPS_FREEDRENO
 
+#ifdef PPS_INTEL
+#include "intel/ds/intel_pps_driver.h"
+#endif // PPS_INTEL
+
 #include "pps.h"
 #include "pps_algorithm.h"
 
@@ -29,6 +33,10 @@ std::unordered_map<std::string, std::unique_ptr<Driver>> create_supported_driver
 #ifdef PPS_FREEDRENO
    map.emplace("msm", std::make_unique<FreedrenoDriver>());
 #endif // PPS_FREEDRENO
+
+#ifdef PPS_INTEL
+   map.emplace("i915", std::make_unique<IntelDriver>());
+#endif // PPS_INTEL
 
    return map;
 }
