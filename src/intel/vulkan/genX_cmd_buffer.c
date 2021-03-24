@@ -3537,6 +3537,9 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
                .BufferPitch = stride,
                .BufferStartingAddress = anv_address_add(buffer->address, offset),
                .NullVertexBuffer = offset >= buffer->size,
+#if GFX_VER >= 12
+               .L3BypassDisable = true,
+#endif
 
 #if GFX_VER >= 8
                .BufferSize = size,
@@ -3726,6 +3729,9 @@ emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
          .MOCS = addr.bo ? anv_mocs(cmd_buffer->device, addr.bo,
                                     ISL_SURF_USAGE_VERTEX_BUFFER_BIT) : 0,
          .NullVertexBuffer = size == 0,
+#if GFX_VER >= 12
+         .L3BypassDisable = true,
+#endif
 #if (GFX_VER >= 8)
          .BufferStartingAddress = addr,
          .BufferSize = size

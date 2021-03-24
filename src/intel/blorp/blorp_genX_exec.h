@@ -379,6 +379,10 @@ blorp_fill_vertex_buffer_state(struct GENX(VERTEX_BUFFER_STATE) *vb,
    vb[idx].BufferAccessType = stride > 0 ? VERTEXDATA : INSTANCEDATA;
    vb[idx].MaxIndex = stride > 0 ? size / stride : 0;
 #endif
+
+#if GFX_VER >= 12
+   vb[idx].L3BypassDisable = true;
+#endif
 }
 
 static void

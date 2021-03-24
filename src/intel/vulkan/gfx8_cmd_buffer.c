@@ -803,6 +803,9 @@ void genX(CmdBindIndexBuffer)(
       ib.MOCS                  = anv_mocs(cmd_buffer->device,
                                           buffer->address.bo,
                                           ISL_SURF_USAGE_INDEX_BUFFER_BIT);
+#if GFX_VER >= 12
+      ib.L3BypassDisable       = true;
+#endif
       ib.BufferStartingAddress = anv_address_add(buffer->address, offset);
       ib.BufferSize            = buffer->size - offset;
    }
