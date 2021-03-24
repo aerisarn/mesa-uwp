@@ -2564,10 +2564,18 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
       NIR_PASS_V(resume_shaders[i], brw_nir_lower_rt_intrinsics, devinfo);
    }
 
-   stage->code =
-      brw_compile_bs(compiler, pipeline->base.device, mem_ctx,
-                     &stage->key.bs, &stage->prog_data.bs, nir,
-                     num_resume_shaders, resume_shaders, stage->stats, NULL);
+   struct brw_compile_bs_params params = {
+      .nir = nir,
+      .key = &stage->key.bs,
+      .prog_data = &stage->prog_data.bs,
+      .num_resume_shaders = num_resume_shaders,
+      .resume_shaders = resume_shaders,
+
+      .stats = stage->stats,
+      .log_data = pipeline->base.device,
+   };
+
+   stage->code = brw_compile_bs(compiler, mem_ctx, &params);
    if (stage->code == NULL)
       return vk_error(pipeline, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -3069,10 +3077,15 @@ anv_device_init_rt_shaders(struct anv_device *device)
          .sampler_count = 0,
       };
       struct brw_bs_prog_data return_prog_data = { 0, };
+      struct brw_compile_bs_params params = {
+         .nir = trivial_return_nir,
+         .key = &return_key.key,
+         .prog_data = &return_prog_data,
+
+         .log_data = device,
+      };
       const unsigned *return_data =
-         brw_compile_bs(device->physical->compiler, device, tmp_ctx,
-                        &return_key.key, &return_prog_data, trivial_return_nir,
-                        0, 0, NULL, NULL);
+         brw_compile_bs(device->physical->compiler, tmp_ctx, &params);
 
       device->rt_trivial_return =
          anv_device_upload_kernel(device, &device->default_pipeline_cache,

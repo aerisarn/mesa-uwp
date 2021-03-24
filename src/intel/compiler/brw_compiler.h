@@ -1787,20 +1787,35 @@ brw_compile_cs(const struct brw_compiler *compiler,
                struct brw_compile_cs_params *params);
 
 /**
- * Compile a Ray Tracing shader.
+ * Parameters for compiling a Bindless shader.
  *
- * Returns the final assembly and the program's size.
+ * Some of these will be modified during the shader compilation.
+ */
+struct brw_compile_bs_params {
+   nir_shader *nir;
+
+   const struct brw_bs_prog_key *key;
+   struct brw_bs_prog_data *prog_data;
+
+   unsigned num_resume_shaders;
+   struct nir_shader **resume_shaders;
+
+   struct brw_compile_stats *stats;
+
+   void *log_data;
+
+   char *error_str;
+};
+
+/**
+ * Compile a Bindless shader.
+ *
+ * Returns the final assembly and updates the parameters structure.
  */
 const unsigned *
-brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
+brw_compile_bs(const struct brw_compiler *compiler,
                void *mem_ctx,
-               const struct brw_bs_prog_key *key,
-               struct brw_bs_prog_data *prog_data,
-               struct nir_shader *shader,
-               unsigned num_resume_shaders,
-               struct nir_shader **resume_shaders,
-               struct brw_compile_stats *stats,
-               char **error_str);
+               struct brw_compile_bs_params *params);
 
 /**
  * Compile a fixed function geometry shader.

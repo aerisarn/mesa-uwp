@@ -10163,22 +10163,20 @@ brw_bsr(const struct intel_device_info *devinfo,
 }
 
 const unsigned *
-brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
+brw_compile_bs(const struct brw_compiler *compiler,
                void *mem_ctx,
-               const struct brw_bs_prog_key *key,
-               struct brw_bs_prog_data *prog_data,
-               nir_shader *shader,
-               unsigned num_resume_shaders,
-               struct nir_shader **resume_shaders,
-               struct brw_compile_stats *stats,
-               char **error_str)
+               struct brw_compile_bs_params *params)
 {
+   nir_shader *shader = params->nir;
+   struct brw_bs_prog_data *prog_data = params->prog_data;
+   unsigned num_resume_shaders = params->num_resume_shaders;
+   nir_shader **resume_shaders = params->resume_shaders;
    const bool debug_enabled = INTEL_DEBUG(DEBUG_RT);
 
    prog_data->base.stage = shader->info.stage;
    prog_data->max_stack_size = 0;
 
-   fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
+   fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
                   false, shader->info.stage);
    if (unlikely(debug_enabled)) {
       char *name = ralloc_asprintf(mem_ctx, "%s %s shader %s",
@@ -10190,8 +10188,9 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
    }
 
    prog_data->simd_size =
-      compile_single_bs(compiler, log_data, mem_ctx, key, prog_data,
-                        shader, &g, stats, NULL, error_str);
+      compile_single_bs(compiler, params->log_data, mem_ctx,
+                        params->key, prog_data,
+                        shader, &g, params->stats, NULL, &params->error_str);
    if (prog_data->simd_size == 0)
       return NULL;
 
@@ -10209,8 +10208,9 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
       /* TODO: Figure out shader stats etc. for resume shaders */
       int offset = 0;
       uint8_t simd_size =
-         compile_single_bs(compiler, log_data, mem_ctx, key, prog_data,
-                           resume_shaders[i], &g, NULL, &offset, error_str);
+         compile_single_bs(compiler, params->log_data, mem_ctx, params->key,
+                           prog_data, resume_shaders[i], &g, NULL, &offset,
+                           &params->error_str);
       if (simd_size == 0)
          return NULL;
 
