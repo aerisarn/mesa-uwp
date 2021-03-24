@@ -3396,6 +3396,7 @@ opt_vectorize_callback(const nir_instr *instr, void *_)
    case nir_op_fadd:
    case nir_op_fsub:
    case nir_op_fmul:
+   case nir_op_ffma:
    case nir_op_fneg:
    case nir_op_fsat:
    case nir_op_fmin:

@@ -2092,6 +2092,35 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       }
       break;
    }
+   case nir_op_ffma: {
+      if (dst.regClass() == v2b) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_fma_f16, dst, false, 3);
+      } else if (dst.regClass() == v1 && instr->dest.dest.ssa.bit_size == 16) {
+         assert(instr->dest.dest.ssa.num_components == 2);
+
+         Temp src0 = as_vgpr(ctx, get_alu_src_vop3p(ctx, instr->src[0]));
+         Temp src1 = as_vgpr(ctx, get_alu_src_vop3p(ctx, instr->src[1]));
+         Temp src2 = as_vgpr(ctx, get_alu_src_vop3p(ctx, instr->src[2]));
+
+         /* swizzle to opsel: all swizzles are either 0 (x) or 1 (y) */
+         unsigned opsel_lo = 0, opsel_hi = 0;
+         for (unsigned i = 0; i < 3; i++) {
+            opsel_lo |= (instr->src[i].swizzle[0] & 1) << i;
+            opsel_hi |= (instr->src[i].swizzle[1] & 1) << i;
+         }
+
+         bld.vop3p(aco_opcode::v_pk_fma_f16, Definition(dst), src0, src1, src2, opsel_lo, opsel_hi);
+         emit_split_vector(ctx, dst, 2);
+      } else if (dst.regClass() == v1) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_fma_f32, dst,
+                                ctx->block->fp_mode.must_flush_denorms32, 3);
+      } else if (dst.regClass() == v2) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_fma_f64, dst, false, 3);
+      } else {
+         isel_err(&instr->instr, "Unimplemented NIR instr bit size");
+      }
+      break;
+   }
    case nir_op_fmax: {
       if (dst.regClass() == v2b) {
          // TODO: check fp_mode.must_flush_denorms16_64

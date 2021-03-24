@@ -3112,9 +3112,7 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
    /* check for fneg modifiers */
    if (instr_info.can_use_input_modifiers[(int)instr->opcode]) {
-      /* at this point, we only have 2-operand instructions */
-      assert(instr->operands.size() == 2);
-      for (unsigned i = 0; i < 2; i++) {
+      for (unsigned i = 0; i < instr->operands.size(); i++) {
          Operand& op = instr->operands[i];
          if (!op.isTemp())
             continue;
