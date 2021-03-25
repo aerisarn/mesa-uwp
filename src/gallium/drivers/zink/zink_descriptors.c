@@ -1071,13 +1071,6 @@ desc_set_image_add(struct zink_context *ctx, struct zink_descriptor_set *zds, st
       zink_image_view_desc_set_add(image_view, zds, i);
 }
 
-static int
-cmp_dynamic_offset_binding(const void *a, const void *b)
-{
-   const uint32_t *binding_a = a, *binding_b = b;
-   return *binding_a - *binding_b;
-}
-
 static void
 write_descriptors(struct zink_context *ctx, unsigned num_wds, VkWriteDescriptorSet *wds, bool cache_hit)
 {
@@ -1107,10 +1100,6 @@ update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set
    VkWriteDescriptorSet wds[ZINK_SHADER_COUNT];
    VkDescriptorBufferInfo buffer_infos[ZINK_SHADER_COUNT];
    struct zink_shader **stages;
-   struct {
-      uint32_t binding;
-      uint32_t offset;
-   } dynamic_buffers[ZINK_SHADER_COUNT];
 
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    if (is_compute)
@@ -1121,30 +1110,27 @@ update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set
    for (int i = 0; i < num_stages; i++) {
       struct zink_shader *shader = stages[i];
       enum pipe_shader_type pstage = shader ? pipe_shader_type_from_mesa(shader->nir->info.stage) : i;
-      struct zink_resource *res = zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_UBO, pstage, 0);
       VkDescriptorBufferInfo *info = &ctx->di.ubos[pstage][0];
+      unsigned dynamic_idx = is_compute ? 0 : tgsi_processor_to_shader_stage(pstage);
 
-      dynamic_buffers[i].binding = tgsi_processor_to_shader_stage(pstage);
-      dynamic_buffers[i].offset = info->offset;
-      if (cache_hit)
-         continue;
-      init_write_descriptor(NULL, zds, ZINK_DESCRIPTOR_TYPE_UBO, tgsi_processor_to_shader_stage(pstage), &wds[i], 0);
-      desc_set_res_add(zds, res, i, cache_hit);
-      /* these are dynamic UBO descriptors, so we have to always set 0 as the descriptor offset */
-      buffer_infos[i] = *info;
-      buffer_infos[i].offset = 0;
-      wds[i].pBufferInfo = &buffer_infos[i];
+      /* Values are taken from pDynamicOffsets in an order such that all entries for set N come before set N+1;
+       * within a set, entries are ordered by the binding numbers in the descriptor set layouts
+       * - vkCmdBindDescriptorSets spec
+       *
+       * because of this, we have to populate the dynamic offsets by their shader stage to ensure they
+       * match what the driver expects
+       */
+      dynamic_offsets[dynamic_idx] = info->offset;
+      if (!cache_hit) {
+         struct zink_resource *res = zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_UBO, pstage, 0);
+         init_write_descriptor(NULL, zds, ZINK_DESCRIPTOR_TYPE_UBO, tgsi_processor_to_shader_stage(pstage), &wds[i], 0);
+         desc_set_res_add(zds, res, i, cache_hit);
+         /* these are dynamic UBO descriptors, so we have to always set 0 as the descriptor offset */
+         buffer_infos[i] = *info;
+         buffer_infos[i].offset = 0;
+         wds[i].pBufferInfo = &buffer_infos[i];
+      }
    }
-   /* Values are taken from pDynamicOffsets in an order such that all entries for set N come before set N+1;
-    * within a set, entries are ordered by the binding numbers in the descriptor set layouts
-    * - vkCmdBindDescriptorSets spec
-    *
-    * because of this, we have to sort all the dynamic offsets by their associated binding to ensure they
-    * match what the driver expects
-    */
-   qsort(dynamic_buffers, num_stages, sizeof(uint32_t) * 2, cmp_dynamic_offset_binding);
-   for (int i = 0; i < num_stages; i++)
-      dynamic_offsets[i] = dynamic_buffers[i].offset;
 
    write_descriptors(ctx, num_stages, wds, cache_hit);
    return num_stages;
