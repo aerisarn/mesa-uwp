@@ -2127,6 +2127,7 @@ static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
          cmd->u.draw_indexed.draws[i].start = (state->index_offset / state->index_size) + cmd->u.draw_indexed.draws[i].start;
       cmd->u.draw_indexed.calc_start = false;
    }
+   state->info.index_bias_varies = cmd->u.draw_indexed.vertex_offset_changes;
    state->pctx->draw_vbo(state->pctx, &state->info, 0, NULL, cmd->u.draw_indexed.draws, cmd->u.draw_indexed.draw_count);
 }
 

@@ -498,6 +498,36 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdDraw(
    cmd_buf_queue(cmd_buffer, cmd);
 }
 
+VKAPI_ATTR void VKAPI_CALL lvp_CmdDrawMultiEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    drawCount,
+    const VkMultiDrawInfoEXT                   *pVertexInfo,
+    uint32_t                                    instanceCount,
+    uint32_t                                    firstInstance,
+    uint32_t                                    stride)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   uint32_t cmd_size = drawCount * sizeof(struct pipe_draw_start_count_bias);
+   cmd = cmd_buf_entry_alloc_size(cmd_buffer, cmd_size, LVP_CMD_DRAW);
+   if (!cmd)
+      return;
+
+   cmd->u.draw.instance_count = instanceCount;
+   cmd->u.draw.first_instance = firstInstance;
+   cmd->u.draw.draw_count = drawCount;
+   if (stride == sizeof(struct pipe_draw_start_count_bias))
+      memcpy(cmd->u.draw.draws, pVertexInfo, cmd_size);
+   else {
+      unsigned i = 0;
+      vk_foreach_multi_draw(draw, i, pVertexInfo, drawCount, stride)
+         memcpy(cmd->u.draw.draws, draw, sizeof(struct pipe_draw_start_count_bias));
+   }
+
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
 VKAPI_ATTR void VKAPI_CALL lvp_CmdEndRenderPass2(
    VkCommandBuffer                             commandBuffer,
    const VkSubpassEndInfo*                     pSubpassEndInfo)
@@ -747,6 +777,42 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdDrawIndexed(
    cmd->u.draw_indexed.draws[0].start = firstIndex;
    cmd->u.draw_indexed.draws[0].count = indexCount;
    cmd->u.draw_indexed.draws[0].index_bias = vertexOffset;
+   cmd->u.draw_indexed.calc_start = true;
+
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdDrawMultiIndexedEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    drawCount,
+    const VkMultiDrawIndexedInfoEXT            *pIndexInfo,
+    uint32_t                                    instanceCount,
+    uint32_t                                    firstInstance,
+    uint32_t                                    stride,
+    const int32_t                              *pVertexOffset)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   uint32_t cmd_size = drawCount * sizeof(struct pipe_draw_start_count_bias);
+   cmd = cmd_buf_entry_alloc_size(cmd_buffer, cmd_size, LVP_CMD_DRAW_INDEXED);
+   if (!cmd)
+      return;
+
+   cmd->u.draw_indexed.instance_count = instanceCount;
+   cmd->u.draw_indexed.first_instance = firstInstance;
+   cmd->u.draw_indexed.draw_count = drawCount;
+   cmd->u.draw_indexed.vertex_offset_changes = !pVertexOffset;
+   if (stride == sizeof(struct pipe_draw_start_count_bias))
+      memcpy(cmd->u.draw_indexed.draws, pIndexInfo, cmd_size);
+   else {
+      unsigned i = 0;
+      vk_foreach_multi_draw_indexed(draw, i, pIndexInfo, drawCount, stride)
+         memcpy(cmd->u.draw_indexed.draws, draw, sizeof(struct pipe_draw_start_count_bias));
+   }
+   /* only the first member is read if vertex_offset_changes is true */
+   if (pVertexOffset)
+      cmd->u.draw_indexed.draws[0].index_bias = *pVertexOffset;
    cmd->u.draw_indexed.calc_start = true;
 
    cmd_buf_queue(cmd_buffer, cmd);

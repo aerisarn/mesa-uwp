@@ -755,6 +755,7 @@ struct lvp_cmd_draw_indexed {
    uint32_t first_instance;
    bool calc_start;
    uint32_t draw_count;
+   bool vertex_offset_changes;
    struct pipe_draw_start_count_bias draws[0];
 };
 

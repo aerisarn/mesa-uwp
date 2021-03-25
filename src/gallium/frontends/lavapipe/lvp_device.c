@@ -128,6 +128,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_extended_dynamic_state            = true,
    .EXT_host_query_reset                  = true,
    .EXT_index_type_uint8                  = true,
+   .EXT_multi_draw                        = true,
    .EXT_post_depth_coverage               = true,
    .EXT_private_data                      = true,
    .EXT_sampler_filter_minmax             = true,
@@ -644,6 +645,11 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->transformFeedbackPreservesProvokingVertex = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT: {
+         VkPhysicalDeviceMultiDrawFeaturesEXT *features = (VkPhysicalDeviceMultiDrawFeaturesEXT *)ext;
+         features->multiDraw = true;
+         break;
+      }
       default:
          break;
       }
@@ -966,6 +972,11 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
             (VkPhysicalDeviceProvokingVertexPropertiesEXT*)ext;
          properties->provokingVertexModePerPipeline = true;
          properties->transformFeedbackPreservesTriangleFanProvokingVertex = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
+         VkPhysicalDeviceMultiDrawPropertiesEXT *props = (VkPhysicalDeviceMultiDrawPropertiesEXT *)ext;
+         props->maxMultiDrawCount = 2048;
          break;
       }
       default:
