@@ -1985,9 +1985,9 @@ optimizations.extend([
    (('imul24', a, 0), (0)),
 
    (('fcsel', ('slt', 0, a), b, c), ('fcsel_gt', a, b, c), "options->has_fused_comp_and_csel"),
-   (('fcsel', ('slt', a, 0), b, c), ('fcsel_ge', a, c, b), "options->has_fused_comp_and_csel"),
+   (('fcsel', ('slt', a, 0), b, c), ('fcsel_gt', ('fneg', a), b, c), "options->has_fused_comp_and_csel"),
    (('fcsel', ('sge', a, 0), b, c), ('fcsel_ge', a, b, c), "options->has_fused_comp_and_csel"),
-   (('fcsel', ('sge', 0, a), b, c), ('fcsel_gt', a, c, b), "options->has_fused_comp_and_csel"),
+   (('fcsel', ('sge', 0, a), b, c), ('fcsel_ge', ('fneg', a), b, c), "options->has_fused_comp_and_csel"),
 
    (('bcsel', ('ilt', 0, 'a@32'), 'b@32', 'c@32'), ('i32csel_gt', a, b, c), "options->has_fused_comp_and_csel"),
    (('bcsel', ('ilt', 'a@32', 0), 'b@32', 'c@32'), ('i32csel_ge', a, c, b), "options->has_fused_comp_and_csel"),
@@ -1995,9 +1995,9 @@ optimizations.extend([
    (('bcsel', ('ige', 0, 'a@32'), 'b@32', 'c@32'), ('i32csel_gt', a, c, b), "options->has_fused_comp_and_csel"),
 
    (('bcsel', ('flt', 0, 'a@32'), 'b@32', 'c@32'), ('fcsel_gt', a, b, c), "options->has_fused_comp_and_csel"),
-   (('bcsel', ('flt', 'a@32', 0), 'b@32', 'c@32'), ('fcsel_ge', a, c, b), "options->has_fused_comp_and_csel"),
+   (('bcsel', ('flt', 'a@32', 0), 'b@32', 'c@32'), ('fcsel_gt', ('fneg', a), b, c), "options->has_fused_comp_and_csel"),
    (('bcsel', ('fge', 'a@32', 0), 'b@32', 'c@32'), ('fcsel_ge', a, b, c), "options->has_fused_comp_and_csel"),
-   (('bcsel', ('fge', 0, 'a@32'), 'b@32', 'c@32'), ('fcsel_gt', a, c, b), "options->has_fused_comp_and_csel"),
+   (('bcsel', ('fge', 0, 'a@32'), 'b@32', 'c@32'), ('fcsel_ge', ('fneg', a), b, c), "options->has_fused_comp_and_csel"),
 
 ])
 
