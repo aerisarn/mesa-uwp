@@ -98,9 +98,6 @@ zink_context_destroy(struct pipe_context *pctx)
    if (ctx->tc)
       util_queue_destroy(&ctx->batch.flush_queue);
 
-   for (unsigned i = 0; i < ARRAY_SIZE(ctx->null_buffers); i++)
-      pipe_resource_reference(&ctx->null_buffers[i], NULL);
-
    simple_mtx_destroy(&ctx->batch_mtx);
    zink_clear_batch_state(ctx, ctx->batch.state);
    zink_batch_state_reference(screen, &ctx->batch.state, NULL);
