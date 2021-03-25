@@ -1104,10 +1104,8 @@ static unsigned
 update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds,
                             bool is_compute, bool cache_hit, uint32_t *dynamic_offsets)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkWriteDescriptorSet wds[ZINK_SHADER_COUNT];
    VkDescriptorBufferInfo buffer_infos[ZINK_SHADER_COUNT];
-   unsigned num_buffer_info = 0;
    struct zink_shader **stages;
    struct {
       uint32_t binding;
@@ -1120,32 +1118,22 @@ update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set
    else
       stages = &ctx->gfx_stages[0];
 
-   VkDescriptorBufferInfo null_info;
-   null_info.buffer = screen->info.rb2_feats.nullDescriptor ?
-                      VK_NULL_HANDLE : zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
-   null_info.offset = 0;
-   null_info.range = VK_WHOLE_SIZE;
-
    for (int i = 0; i < num_stages; i++) {
       struct zink_shader *shader = stages[i];
       enum pipe_shader_type pstage = shader ? pipe_shader_type_from_mesa(shader->nir->info.stage) : i;
       struct zink_resource *res = zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_UBO, pstage, 0);
+      VkDescriptorBufferInfo *info = &ctx->di.ubos[pstage][0];
 
       dynamic_buffers[i].binding = tgsi_processor_to_shader_stage(pstage);
-      dynamic_buffers[i].offset = ctx->ubos[pstage][0].buffer_offset;
+      dynamic_buffers[i].offset = info->offset;
       if (cache_hit)
          continue;
       init_write_descriptor(NULL, zds, ZINK_DESCRIPTOR_TYPE_UBO, tgsi_processor_to_shader_stage(pstage), &wds[i], 0);
       desc_set_res_add(zds, res, i, cache_hit);
-      if (shader && res) {
-         buffer_infos[num_buffer_info].buffer = res->obj->buffer;
-         buffer_infos[num_buffer_info].offset = 0;
-         buffer_infos[num_buffer_info].range = ctx->ubos[pstage][0].buffer_size;
-         wds[i].pBufferInfo = &buffer_infos[num_buffer_info++];
-      } else {
-         /* dump in a null buffer */
-         wds[i].pBufferInfo = &null_info;
-      }
+      /* these are dynamic UBO descriptors, so we have to always set 0 as the descriptor offset */
+      buffer_infos[i] = *info;
+      buffer_infos[i].offset = 0;
+      wds[i].pBufferInfo = &buffer_infos[i];
    }
    /* Values are taken from pDynamicOffsets in an order such that all entries for set N come before set N+1;
     * within a set, entries are ordered by the binding numbers in the descriptor set layouts
