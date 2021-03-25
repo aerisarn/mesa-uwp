@@ -16,7 +16,7 @@
 #include <variant>
 
 // Minimum supported sampling period in nanoseconds
-#define MIN_SAMPLING_PERIOD_NS 500000
+#define MIN_SAMPLING_PERIOD_NS 50000
 
 namespace pps
 {
