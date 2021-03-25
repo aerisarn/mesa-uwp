@@ -282,6 +282,32 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    return true;
 }
 
+struct pipe_surface *
+zink_surface_create_null(struct zink_context *ctx, enum pipe_texture_target target, unsigned width, unsigned height, unsigned samples)
+{
+   struct pipe_surface surf_templ = {};
+
+   struct pipe_resource *pres;
+   struct pipe_resource templ = {};
+   templ.width0 = width;
+   templ.height0 = height;
+   templ.depth0 = 1;
+   templ.format = PIPE_FORMAT_R8_UINT;
+   templ.target = target;
+   templ.bind = PIPE_BIND_RENDER_TARGET;
+   templ.nr_samples = samples;
+
+   pres = ctx->base.screen->resource_create(ctx->base.screen, &templ);
+   if (!pres)
+      return NULL;
+
+   surf_templ.format = PIPE_FORMAT_R8_UINT;
+   surf_templ.nr_samples = samples;
+   struct pipe_surface *psurf = ctx->base.create_surface(&ctx->base, pres, &surf_templ);
+   pipe_resource_reference(&pres, NULL);
+   return psurf;
+}
+
 void
 zink_context_surface_init(struct pipe_context *context)
 {
