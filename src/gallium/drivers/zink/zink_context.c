@@ -431,7 +431,8 @@ get_bufferview_for_binding(struct zink_context *ctx, enum pipe_shader_type stage
 static void
 update_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type, unsigned slot)
 {
-   bool have_null_descriptors = zink_screen(ctx->base.screen)->info.rb2_feats.nullDescriptor;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   bool have_null_descriptors = screen->info.rb2_feats.nullDescriptor;
    VkBuffer null_buffer = zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
    struct zink_surface *null_surface = zink_surface(ctx->dummy_surface);
    struct zink_buffer_view *null_bufferview = ctx->dummy_bufferview;
@@ -443,6 +444,7 @@ update_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, 
       if (res) {
          ctx->di.ubos[shader][slot].buffer = res->obj->buffer;
          ctx->di.ubos[shader][slot].range = ctx->ubos[shader][slot].buffer_size;
+         assert(ctx->di.ubos[shader][slot].range <= screen->info.props.limits.maxUniformBufferRange);
       } else {
          ctx->di.ubos[shader][slot].buffer = have_null_descriptors ? VK_NULL_HANDLE : null_buffer;
          ctx->di.ubos[shader][slot].range = VK_WHOLE_SIZE;

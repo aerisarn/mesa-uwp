@@ -1141,7 +1141,6 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
                        bool is_compute, bool cache_hit)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    unsigned num_descriptors = pg->dd->pool[ZINK_DESCRIPTOR_TYPE_UBO]->key.layout->num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
@@ -1168,7 +1167,6 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
          if (!index)
             continue;
          assert(shader->bindings[ZINK_DESCRIPTOR_TYPE_UBO][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-         assert(ctx->ubos[stage][index].buffer_size <= screen->info.props.limits.maxUniformBufferRange);
          struct zink_resource *res = zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_UBO, stage, index);
          assert(!res || info->range > 0);
          assert(!res || info->buffer);
