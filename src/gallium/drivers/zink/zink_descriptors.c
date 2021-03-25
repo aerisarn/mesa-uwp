@@ -1159,9 +1159,7 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
    unsigned num_descriptors = pg->dd->pool[ZINK_DESCRIPTOR_TYPE_UBO]->key.layout->num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
-   VkDescriptorBufferInfo buffer_infos[num_bindings];
    unsigned num_wds = 0;
-   unsigned num_buffer_info = 0;
    unsigned num_resources = 0;
    struct zink_shader **stages;
 
@@ -1179,25 +1177,18 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
 
       for (int j = 0; j < shader->num_bindings[ZINK_DESCRIPTOR_TYPE_UBO]; j++) {
          int index = shader->bindings[ZINK_DESCRIPTOR_TYPE_UBO][j].index;
+         VkDescriptorBufferInfo *info = &ctx->di.ubos[stage][index];
          /* skip push descriptors for general ubo set */
          if (!index)
             continue;
          assert(shader->bindings[ZINK_DESCRIPTOR_TYPE_UBO][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
          assert(ctx->ubos[stage][index].buffer_size <= screen->info.props.limits.maxUniformBufferRange);
-         struct zink_resource *res = zink_resource(ctx->ubos[stage][index].buffer);
-         assert(!res || ctx->ubos[stage][index].buffer_size > 0);
-         assert(!res || ctx->ubos[stage][index].buffer);
+         struct zink_resource *res = zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_UBO, stage, index);
+         assert(!res || info->range > 0);
+         assert(!res || info->buffer);
          assert(num_resources < num_bindings);
          desc_set_res_add(zds, res, num_resources++, cache_hit);
-         assert(num_buffer_info < num_bindings);
-         buffer_infos[num_buffer_info].buffer = res ? res->obj->buffer :
-                                                (screen->info.rb2_feats.nullDescriptor ?
-                                                 VK_NULL_HANDLE :
-                                                 zink_resource(ctx->dummy_vertex_buffer)->obj->buffer);
-         buffer_infos[num_buffer_info].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
-         buffer_infos[num_buffer_info].range = res ? ctx->ubos[stage][index].buffer_size : VK_WHOLE_SIZE;
-         wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
-         ++num_buffer_info;
+         wds[num_wds].pBufferInfo = info;
 
          num_wds = init_write_descriptor(shader, zds, ZINK_DESCRIPTOR_TYPE_UBO, j, &wds[num_wds], num_wds);
       }
