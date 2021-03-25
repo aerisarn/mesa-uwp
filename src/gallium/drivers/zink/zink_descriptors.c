@@ -1202,13 +1202,10 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
                         bool is_compute, bool cache_hit)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
-   ASSERTED struct zink_screen *screen = zink_screen(ctx->base.screen);
    unsigned num_descriptors = pg->dd->pool[ZINK_DESCRIPTOR_TYPE_SSBO]->key.layout->num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
-   VkDescriptorBufferInfo buffer_infos[num_bindings];
    unsigned num_wds = 0;
-   unsigned num_buffer_info = 0;
    unsigned num_resources = 0;
    struct zink_shader **stages;
 
@@ -1226,28 +1223,12 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
 
       for (int j = 0; j < shader->num_bindings[ZINK_DESCRIPTOR_TYPE_SSBO]; j++) {
          int index = shader->bindings[ZINK_DESCRIPTOR_TYPE_SSBO][j].index;
+         VkDescriptorBufferInfo *info = &ctx->di.ssbos[stage][index];
          assert(shader->bindings[ZINK_DESCRIPTOR_TYPE_SSBO][j].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
          assert(num_resources < num_bindings);
-         struct zink_resource *res = zink_resource(ctx->ssbos[stage][index].buffer);
+         struct zink_resource *res = zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_SSBO, stage, index);
          desc_set_res_add(zds, res, num_resources++, cache_hit);
-         if (res) {
-            assert(ctx->ssbos[stage][index].buffer_size > 0);
-            assert(ctx->ssbos[stage][index].buffer_size <= screen->info.props.limits.maxStorageBufferRange);
-            assert(num_buffer_info < num_bindings);
-            unsigned flag = VK_ACCESS_SHADER_READ_BIT;
-            if (ctx->writable_ssbos[stage] & (1 << index))
-               flag |= VK_ACCESS_SHADER_WRITE_BIT;
-            buffer_infos[num_buffer_info].buffer = res->obj->buffer;
-            buffer_infos[num_buffer_info].offset = ctx->ssbos[stage][index].buffer_offset;
-            buffer_infos[num_buffer_info].range  = ctx->ssbos[stage][index].buffer_size;
-         } else {
-            assert(screen->info.rb2_feats.nullDescriptor);
-            buffer_infos[num_buffer_info].buffer = VK_NULL_HANDLE;
-            buffer_infos[num_buffer_info].offset = 0;
-            buffer_infos[num_buffer_info].range  = VK_WHOLE_SIZE;
-         }
-         wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
-         ++num_buffer_info;
+         wds[num_wds].pBufferInfo = info;
 
          num_wds = init_write_descriptor(shader, zds, ZINK_DESCRIPTOR_TYPE_SSBO, j, &wds[num_wds], num_wds);
       }
