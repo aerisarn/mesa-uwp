@@ -231,6 +231,8 @@ struct zink_context {
 
    struct pipe_resource *dummy_vertex_buffer;
    struct pipe_resource *dummy_xfb_buffer;
+   struct pipe_surface *dummy_surface;
+   struct zink_buffer_view *dummy_bufferview;
 
    struct {
       /* descriptor info */

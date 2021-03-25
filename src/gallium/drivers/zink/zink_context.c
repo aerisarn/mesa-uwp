@@ -95,6 +95,9 @@ zink_context_destroy(struct pipe_context *pctx)
    pipe_resource_reference(&ctx->dummy_vertex_buffer, NULL);
    pipe_resource_reference(&ctx->dummy_xfb_buffer, NULL);
 
+   zink_surface_reference(screen, (struct zink_surface**)&ctx->dummy_surface, NULL);
+   zink_buffer_view_reference(screen, &ctx->dummy_bufferview, NULL);
+
    if (ctx->tc)
       util_queue_destroy(&ctx->batch.flush_queue);
 
@@ -3364,12 +3367,18 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    const uint8_t data[] = { 0 };
    ctx->dummy_vertex_buffer = pipe_buffer_create_with_data(&ctx->base,
-      PIPE_BIND_VERTEX_BUFFER, PIPE_USAGE_IMMUTABLE, sizeof(data), data);
+      PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_SHADER_IMAGE, PIPE_USAGE_IMMUTABLE, sizeof(data), data);
    if (!ctx->dummy_vertex_buffer)
       goto fail;
    ctx->dummy_xfb_buffer = pipe_buffer_create_with_data(&ctx->base,
       PIPE_BIND_STREAM_OUTPUT, PIPE_USAGE_DEFAULT, sizeof(data), data);
    if (!ctx->dummy_xfb_buffer)
+      goto fail;
+   ctx->dummy_surface = zink_surface_create_null(ctx, PIPE_TEXTURE_2D, 1, 1, 1);
+   if (!ctx->dummy_surface)
+      goto fail;
+   ctx->dummy_bufferview = get_buffer_view(ctx, zink_resource(ctx->dummy_vertex_buffer), PIPE_FORMAT_R8_UNORM, 0, sizeof(data));
+   if (!ctx->dummy_bufferview)
       goto fail;
 
    if (!zink_descriptor_layouts_init(ctx))
