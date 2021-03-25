@@ -430,6 +430,8 @@ update_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, 
 {
    bool have_null_descriptors = zink_screen(ctx->base.screen)->info.rb2_feats.nullDescriptor;
    VkBuffer null_buffer = zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
+   struct zink_surface *null_surface = zink_surface(ctx->dummy_surface);
+   struct zink_buffer_view *null_bufferview = ctx->dummy_bufferview;
    struct zink_resource *res = zink_get_resource_for_descriptor(ctx, type, shader, slot);
    ctx->di.descriptor_res[type][shader][slot] = res;
    switch (type) {
@@ -472,9 +474,15 @@ update_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, 
             ctx->di.sampler_surfaces[shader][slot].surface = surface;
          }
       } else {
-         ctx->di.textures[shader][slot].imageView = VK_NULL_HANDLE;
-         ctx->di.textures[shader][slot].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-         ctx->di.tbos[shader][slot] = VK_NULL_HANDLE;
+         if (have_null_descriptors) {
+            ctx->di.textures[shader][slot].imageView = VK_NULL_HANDLE;
+            ctx->di.textures[shader][slot].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            ctx->di.tbos[shader][slot] = VK_NULL_HANDLE;
+         } else {
+            ctx->di.textures[shader][slot].imageView = null_surface->image_view;
+            ctx->di.textures[shader][slot].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            ctx->di.tbos[shader][slot] = null_bufferview->buffer_view;
+         }
       }
       break;
    }
@@ -491,8 +499,14 @@ update_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, 
             ctx->di.image_surfaces[shader][slot].surface = surface;
          }
       } else {
-         memset(&ctx->di.images[shader][slot], 0, sizeof(ctx->di.images[shader][slot]));
-         ctx->di.texel_images[shader][slot] = VK_NULL_HANDLE;
+         if (have_null_descriptors) {
+            memset(&ctx->di.images[shader][slot], 0, sizeof(ctx->di.images[shader][slot]));
+            ctx->di.texel_images[shader][slot] = VK_NULL_HANDLE;
+         } else {
+            ctx->di.images[shader][slot].imageView = null_surface->image_view;
+            ctx->di.images[shader][slot].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+            ctx->di.texel_images[shader][slot] = null_bufferview->buffer_view;
+         }
       }
       break;
    }
