@@ -132,7 +132,6 @@ private:
 
    DataType getDType(nir_alu_instr *);
    DataType getDType(nir_intrinsic_instr *);
-   DataType getDType(nir_intrinsic_instr *, bool isSigned);
    DataType getDType(nir_op, uint8_t);
 
    DataFile getFile(nir_intrinsic_op);
@@ -271,29 +270,33 @@ Converter::getDType(nir_alu_instr *insn)
 DataType
 Converter::getDType(nir_intrinsic_instr *insn)
 {
-   bool isSigned;
+   bool isFloat, isSigned;
    switch (insn->intrinsic) {
+   case nir_intrinsic_bindless_image_atomic_fadd:
+   case nir_intrinsic_global_atomic_fadd:
+   case nir_intrinsic_image_atomic_fadd:
+   case nir_intrinsic_shared_atomic_fadd:
+   case nir_intrinsic_ssbo_atomic_fadd:
+      isFloat = true;
+      isSigned = false;
+      break;
    case nir_intrinsic_shared_atomic_imax:
    case nir_intrinsic_shared_atomic_imin:
    case nir_intrinsic_ssbo_atomic_imax:
    case nir_intrinsic_ssbo_atomic_imin:
+      isFloat = false;
       isSigned = true;
       break;
    default:
+      isFloat = false;
       isSigned = false;
       break;
    }
 
-   return getDType(insn, isSigned);
-}
-
-DataType
-Converter::getDType(nir_intrinsic_instr *insn, bool isSigned)
-{
    if (insn->dest.is_ssa)
-      return typeOfSize(insn->dest.ssa.bit_size / 8, false, isSigned);
+      return typeOfSize(insn->dest.ssa.bit_size / 8, isFloat, isSigned);
    else
-      return typeOfSize(insn->dest.reg.reg->bit_size / 8, false, isSigned);
+      return typeOfSize(insn->dest.reg.reg->bit_size / 8, isFloat, isSigned);
 }
 
 DataType
@@ -614,6 +617,12 @@ Converter::getSubOp(nir_intrinsic_op op)
    case nir_intrinsic_image_atomic_add:
    case nir_intrinsic_shared_atomic_add:
    case nir_intrinsic_ssbo_atomic_add:
+      return  NV50_IR_SUBOP_ATOM_ADD;
+   case nir_intrinsic_bindless_image_atomic_fadd:
+   case nir_intrinsic_global_atomic_fadd:
+   case nir_intrinsic_image_atomic_fadd:
+   case nir_intrinsic_shared_atomic_fadd:
+   case nir_intrinsic_ssbo_atomic_fadd:
       return  NV50_IR_SUBOP_ATOM_ADD;
    case nir_intrinsic_bindless_image_atomic_and:
    case nir_intrinsic_global_atomic_and:
@@ -2042,6 +2051,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       break;
    }
    case nir_intrinsic_shared_atomic_add:
+   case nir_intrinsic_shared_atomic_fadd:
    case nir_intrinsic_shared_atomic_and:
    case nir_intrinsic_shared_atomic_comp_swap:
    case nir_intrinsic_shared_atomic_exchange:
@@ -2064,6 +2074,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       break;
    }
    case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_fadd:
    case nir_intrinsic_ssbo_atomic_and:
    case nir_intrinsic_ssbo_atomic_comp_swap:
    case nir_intrinsic_ssbo_atomic_exchange:
@@ -2093,6 +2104,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       break;
    }
    case nir_intrinsic_global_atomic_add:
+   case nir_intrinsic_global_atomic_fadd:
    case nir_intrinsic_global_atomic_and:
    case nir_intrinsic_global_atomic_comp_swap:
    case nir_intrinsic_global_atomic_exchange:
@@ -2119,6 +2131,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       break;
    }
    case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_fadd:
    case nir_intrinsic_bindless_image_atomic_and:
    case nir_intrinsic_bindless_image_atomic_comp_swap:
    case nir_intrinsic_bindless_image_atomic_exchange:
@@ -2135,6 +2148,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_bindless_image_size:
    case nir_intrinsic_bindless_image_store:
    case nir_intrinsic_image_atomic_add:
+   case nir_intrinsic_image_atomic_fadd:
    case nir_intrinsic_image_atomic_and:
    case nir_intrinsic_image_atomic_comp_swap:
    case nir_intrinsic_image_atomic_exchange:
@@ -2172,6 +2186,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       bool bindless = false;
       switch (op) {
       case nir_intrinsic_bindless_image_atomic_add:
+      case nir_intrinsic_bindless_image_atomic_fadd:
       case nir_intrinsic_bindless_image_atomic_and:
       case nir_intrinsic_bindless_image_atomic_comp_swap:
       case nir_intrinsic_bindless_image_atomic_exchange:
@@ -2189,6 +2204,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          mask = 0x1;
          break;
       case nir_intrinsic_image_atomic_add:
+      case nir_intrinsic_image_atomic_fadd:
       case nir_intrinsic_image_atomic_and:
       case nir_intrinsic_image_atomic_comp_swap:
       case nir_intrinsic_image_atomic_exchange:
