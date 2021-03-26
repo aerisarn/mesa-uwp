@@ -1141,30 +1141,30 @@ if host_machine.system() == 'windows'
   endif
 endif
 
-if get_option('sse2') and host_machine.system() == 'windows' and host_machine.cpu_family() == 'x86' and cc.get_id() == 'gcc'
-  # These settings make generated MinGW code match MSVC and follow
-  # GCC advice on https://gcc.gnu.org/wiki/FloatingPointMath#x86note
-  #
-  # NOTE: We need to ensure stack is realigned given that we
-  # produce shared objects, and have no control over the stack
-  # alignment policy of the application. Therefore we need
-  # -mstackrealign or -mincoming-stack-boundary=2.
-  #
-  # XXX: We could have SSE without -mstackrealign if we always used
-  # __attribute__((force_align_arg_pointer)), but that's not
-  # always the case.
-  c_args += ['-msse', '-msse2', '-mfpmath=sse', '-mstackrealign']
-endif
-
 if host_machine.cpu_family().startswith('x86') and cc.get_id() != 'msvc'
   pre_args += '-DUSE_SSE41'
   with_sse41 = true
   sse41_args = ['-msse4.1']
 
-  # GCC on x86 (not x86_64) with -msse* assumes a 16 byte aligned stack, but
-  # that's not guaranteed
   if host_machine.cpu_family() == 'x86'
-    sse41_args += '-mstackrealign'
+    if get_option('sse2')
+      # These settings make generated GCC code match MSVC and follow
+      # GCC advice on https://gcc.gnu.org/wiki/FloatingPointMath#x86note
+      #
+      # NOTE: We need to ensure stack is realigned given that we
+      # produce shared objects, and have no control over the stack
+      # alignment policy of the application. Therefore we need
+      # -mstackrealign or -mincoming-stack-boundary=2.
+      #
+      # XXX: We could have SSE without -mstackrealign if we always used
+      # __attribute__((force_align_arg_pointer)), but that's not
+      # always the case.
+      c_args += ['-msse2', '-mfpmath=sse', '-mstackrealign']
+    else
+      # GCC on x86 (not x86_64) with -msse* assumes a 16 byte aligned stack, but
+      # that's not guaranteed
+      sse41_args += '-mstackrealign'
+    endif
   endif
 else
   with_sse41 = false
