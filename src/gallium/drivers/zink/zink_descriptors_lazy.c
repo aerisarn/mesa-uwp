@@ -480,22 +480,26 @@ zink_batch_descriptor_deinit_lazy(struct zink_screen *screen, struct zink_batch_
 {
    if (!bs->dd)
       return;
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      hash_table_foreach(&bdd_lazy(bs)->pools[i], entry) {
-         struct zink_descriptor_pool *pool = (void*)entry->data;
-         vkDestroyDescriptorPool(screen->dev, pool->pool, NULL);
+   if (screen->info.have_KHR_descriptor_update_template) {
+      for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
+         hash_table_foreach(&bdd_lazy(bs)->pools[i], entry) {
+            struct zink_descriptor_pool *pool = (void*)entry->data;
+            vkDestroyDescriptorPool(screen->dev, pool->pool, NULL);
+         }
       }
+      if (bdd_lazy(bs)->push_pool[0])
+         vkDestroyDescriptorPool(screen->dev, bdd_lazy(bs)->push_pool[0]->pool, NULL);
+      if (bdd_lazy(bs)->push_pool[1])
+         vkDestroyDescriptorPool(screen->dev, bdd_lazy(bs)->push_pool[1]->pool, NULL);
    }
-   if (bdd_lazy(bs)->push_pool[0])
-      vkDestroyDescriptorPool(screen->dev, bdd_lazy(bs)->push_pool[0]->pool, NULL);
-   if (bdd_lazy(bs)->push_pool[1])
-      vkDestroyDescriptorPool(screen->dev, bdd_lazy(bs)->push_pool[1]->pool, NULL);
    ralloc_free(bs->dd);
 }
 
 void
 zink_batch_descriptor_reset_lazy(struct zink_screen *screen, struct zink_batch_state *bs)
 {
+   if (!screen->info.have_KHR_descriptor_update_template)
+      return;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       hash_table_foreach(&bdd_lazy(bs)->pools[i], entry) {
          struct zink_descriptor_pool *pool = (void*)entry->data;
@@ -515,6 +519,8 @@ zink_batch_descriptor_init_lazy(struct zink_screen *screen, struct zink_batch_st
    bs->dd = (void*)rzalloc(bs, struct zink_batch_descriptor_data_lazy);
    if (!bs->dd)
       return false;
+   if (!screen->info.have_KHR_descriptor_update_template)
+      return true;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       if (!_mesa_hash_table_init(&bdd_lazy(bs)->pools[i], bs->dd, _mesa_hash_pointer, _mesa_key_pointer_equal))
          return false;

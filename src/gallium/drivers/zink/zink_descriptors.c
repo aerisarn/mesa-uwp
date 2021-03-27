@@ -1165,10 +1165,7 @@ zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state
    if (!bs->dd)
       return;
    _mesa_set_destroy(bs->dd->desc_sets, NULL);
-   if (screen->info.have_KHR_descriptor_update_template)
-      zink_batch_descriptor_deinit_lazy(screen, bs);
-   else
-      ralloc_free(bs->dd);
+   zink_batch_descriptor_deinit_lazy(screen, bs);
 }
 
 void
@@ -1184,18 +1181,13 @@ zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state 
       zink_descriptor_set_recycle(zds);
       _mesa_set_remove(bs->dd->desc_sets, entry);
    }
-   if (screen->info.have_KHR_descriptor_update_template)
-      zink_batch_descriptor_reset_lazy(screen, bs);
+   zink_batch_descriptor_reset_lazy(screen, bs);
 }
 
 bool
 zink_batch_descriptor_init(struct zink_screen *screen, struct zink_batch_state *bs)
 {
-   if (screen->info.have_KHR_descriptor_update_template)
-      zink_batch_descriptor_init_lazy(screen, bs);
-   else
-      bs->dd = rzalloc(bs, struct zink_batch_descriptor_data);
-   if (!bs->dd)
+   if (!zink_batch_descriptor_init_lazy(screen, bs))
       return false;
    bs->dd->desc_sets = _mesa_pointer_set_create(bs);
    return !!bs->dd->desc_sets;
