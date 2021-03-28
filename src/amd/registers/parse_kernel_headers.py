@@ -48,6 +48,12 @@ gfx_versions = {
         'asic_reg/gc/gc_10_3_0_sh_mask.h',
         'navi10_enum.h', # the file for gfx10.3 doesn't exist
     ],
+    'gfx11': [
+        [0x00001260, 0x0000A000, 0x0001C000, 0x02402C00, 0, 0], # IP_BASE GC_BASE
+        'asic_reg/gc/gc_11_0_0_offset.h',
+        'asic_reg/gc/gc_11_0_0_sh_mask.h',
+        'soc21_enum.h',
+    ],
 }
 
 # match: #define mmSDMA0_DEC_START                              0x0000
@@ -195,6 +201,7 @@ enum_map = {
     "NUMBER_TYPE": ["SurfaceNumber"],
     "OFFCHIP_GRANULARITY": ["VGT_HS_OFFCHIP_PARAM__OFFCHIP_GRANULARITY"],
     "OP_FILTER_SEL": ["CBPerfOpFilterSel"],
+    "OREO_MODE": ["OreoMode"],
     "OUTPRIM_TYPE_1": ["VGT_GS_OUTPRIM_TYPE"],
     "OUTPRIM_TYPE_2": ["VGT_GS_OUTPRIM_TYPE"],
     "OUTPRIM_TYPE_3": ["VGT_GS_OUTPRIM_TYPE"],
@@ -260,6 +267,7 @@ enum_map = {
     "TYPE": ["SQ_RSRC_BUF_TYPE", "SQ_BUF_RSRC_WORD3", "SQ_RSRC_IMG_TYPE", "SQ_IMG_RSRC_WORD3", "VGT_TESS_TYPE", "VGT_TF_PARAM"],
     "UNCERTAINTY_REGION_MODE": ["ScUncertaintyRegionMode"],
     "VRS_HTILE_ENCODING": ["VRSHtileEncoding"],
+    "VRS_RATE": ["VRSrate"],
     "VS_EN": ["VGT_STAGES_VS_EN"],
     "XY_MAG_FILTER": ["SQ_TEX_XY_FILTER"],
     "XY_MIN_FILTER": ["SQ_TEX_XY_FILTER"],
@@ -271,11 +279,11 @@ enum_map = {
     "Z_RD_POLICY": ["ReadPolicy"],
     "Z_WR_POLICY": ["WritePolicy"],
 
-    "VERTEX_RATE_COMBINER_MODE": ["VRSCombinerMode"],
-    "PRIMITIVE_RATE_COMBINER_MODE": ["VRSCombinerMode"],
-    "HTILE_RATE_COMBINER_MODE": ["VRSCombinerMode"],
-    "SAMPLE_ITER_COMBINER_MODE": ["VRSCombinerMode"],
-    "VRS_OVERRIDE_RATE_COMBINER_MODE": ["VRSCombinerMode"],
+    "VERTEX_RATE_COMBINER_MODE": ["VRSCombinerModeSC"],
+    "PRIMITIVE_RATE_COMBINER_MODE": ["VRSCombinerModeSC"],
+    "HTILE_RATE_COMBINER_MODE": ["VRSCombinerModeSC"],
+    "SAMPLE_ITER_COMBINER_MODE": ["VRSCombinerModeSC"],
+    "VRS_OVERRIDE_RATE_COMBINER_MODE": ["VRSCombinerModeSC"],
 }
 
 # Enum definitions that are incomplete or missing in kernel headers
@@ -389,7 +397,7 @@ IMG_DATA_FORMAT_STENCIL = {
  ]
 }
 
-VRSCombinerMode = {
+VRSCombinerModeSC = {
  "entries": [
   {"name": "VRS_COMB_MODE_PASSTHRU", "value": 0},
   {"name": "VRS_COMB_MODE_OVERRIDE", "value": 1},
@@ -555,6 +563,51 @@ missing_enums_gfx81plus = {
   },
 }
 
+missing_enums_gfx103plus = {
+  **missing_enums_gfx81plus,
+  "ColorFormat": ColorFormat,
+  "ThreadTraceRegInclude": ThreadTraceRegInclude,
+  "ThreadTraceTokenExclude": ThreadTraceTokenExclude,
+}
+
+missing_enums_gfx11plus = {
+  **missing_enums_gfx103plus,
+  "ZFormat": {
+   "entries": [
+    {"name": "Z_INVALID", "value": 0},
+    {"name": "Z_16", "value": 1},
+    {"name": "Z_24", "value": 2},
+    {"name": "Z_32_FLOAT", "value": 3}
+   ]
+  },
+  "StencilFormat": {
+   "entries": [
+    {"name": "STENCIL_INVALID", "value": 0},
+    {"name": "STENCIL_8", "value": 1}
+   ]
+  },
+  "SurfaceNumber": {
+   "entries": [
+    {"name": "NUMBER_UNORM", "value": 0},
+    {"name": "NUMBER_SNORM", "value": 1},
+    {"name": "NUMBER_USCALED", "value": 2},
+    {"name": "NUMBER_SSCALED", "value": 3},
+    {"name": "NUMBER_UINT", "value": 4},
+    {"name": "NUMBER_SINT", "value": 5},
+    {"name": "NUMBER_SRGB", "value": 6},
+    {"name": "NUMBER_FLOAT", "value": 7}
+   ]
+  },
+  "SurfaceSwap": {
+   "entries": [
+    {"name": "SWAP_STD", "value": 0},
+    {"name": "SWAP_ALT", "value": 1},
+    {"name": "SWAP_STD_REV", "value": 2},
+    {"name": "SWAP_ALT_REV", "value": 3}
+   ]
+  },
+}
+
 enums_missing = {
   'gfx6': {
     **missing_enums_all,
@@ -582,14 +635,14 @@ enums_missing = {
     "ThreadTraceTokenExclude": ThreadTraceTokenExclude,
   },
   'gfx103': {
-    **missing_enums_gfx81plus,
-    "ColorFormat": ColorFormat,
+    **missing_enums_gfx103plus,
     "SX_DOWNCONVERT_FORMAT": SX_DOWNCONVERT_FORMAT,
     "DB_DFSM_CONTROL__PUNCHOUT_MODE": DB_DFSM_CONTROL__PUNCHOUT_MODE,
-    "ThreadTraceRegInclude": ThreadTraceRegInclude,
-    "ThreadTraceTokenExclude": ThreadTraceTokenExclude,
-    "VRSCombinerMode": VRSCombinerMode,
     "VRSHtileEncoding": VRSHtileEncoding,
+    "VRSCombinerModeSC": VRSCombinerModeSC,
+  },
+  'gfx11': {
+    **missing_enums_gfx11plus,
   },
 }
 
