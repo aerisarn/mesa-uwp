@@ -472,11 +472,13 @@ update_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, 
             struct zink_buffer_view *bv = get_bufferview_for_binding(ctx, shader, type, slot);
             ctx->di.tbos[shader][slot] = bv->buffer_view;
             ctx->di.sampler_surfaces[shader][slot].bufferview = bv;
+            ctx->di.sampler_surfaces[shader][slot].is_buffer = true;
          } else {
             struct zink_surface *surface = get_imageview_for_binding(ctx, shader, type, slot);
             ctx->di.textures[shader][slot].imageLayout = get_layout_for_binding(res, type);
             ctx->di.textures[shader][slot].imageView = surface->image_view;
             ctx->di.sampler_surfaces[shader][slot].surface = surface;
+            ctx->di.sampler_surfaces[shader][slot].is_buffer = false;
          }
       } else {
          if (have_null_descriptors) {
@@ -497,11 +499,13 @@ update_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, 
             struct zink_buffer_view *bv = get_bufferview_for_binding(ctx, shader, type, slot);
             ctx->di.texel_images[shader][slot] = bv->buffer_view;
             ctx->di.image_surfaces[shader][slot].bufferview = bv;
+            ctx->di.image_surfaces[shader][slot].is_buffer = true;
          } else {
             struct zink_surface *surface = get_imageview_for_binding(ctx, shader, type, slot);
             ctx->di.images[shader][slot].imageLayout = get_layout_for_binding(res, type);
             ctx->di.images[shader][slot].imageView = surface->image_view;
             ctx->di.image_surfaces[shader][slot].surface = surface;
+            ctx->di.image_surfaces[shader][slot].is_buffer = false;
          }
       } else {
          if (have_null_descriptors) {
@@ -1721,18 +1725,6 @@ get_access_flags_for_binding(struct zink_context *ctx, enum zink_descriptor_type
    }
    unreachable("ACK");
    return 0;
-}
-
-static inline void
-add_surface_ref(struct zink_context *ctx, struct zink_resource *res, union zink_descriptor_surface *surface)
-{
-   if (!surface)
-      return;
-   if (res->obj->is_buffer) {
-      if (surface->bufferview)
-         zink_batch_reference_bufferview(&ctx->batch, surface->bufferview);
-   } else if (surface->surface)
-         zink_batch_reference_surface(&ctx->batch, surface->surface);
 }
 
 static void
