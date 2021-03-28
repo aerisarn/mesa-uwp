@@ -137,12 +137,14 @@ zink_get_image_view_hash(struct zink_context *ctx, struct zink_image_view *image
                        zink_screen(ctx->base.screen)->null_descriptor_hashes.image_view);
 }
 
+#ifndef NDEBUG
 static uint32_t
-get_descriptor_surface_hash(struct zink_context *ctx, struct zink_descriptor_surface *dsurf, bool is_buffer)
+get_descriptor_surface_hash(struct zink_context *ctx, struct zink_descriptor_surface *dsurf)
 {
-   return is_buffer ? (dsurf->bufferview ? dsurf->bufferview->hash : zink_screen(ctx->base.screen)->null_descriptor_hashes.buffer_view) :
-                      (dsurf->surface ? dsurf->surface->hash : zink_screen(ctx->base.screen)->null_descriptor_hashes.image_view);
+   return dsurf->is_buffer ? (dsurf->bufferview ? dsurf->bufferview->hash : zink_screen(ctx->base.screen)->null_descriptor_hashes.buffer_view) :
+                             (dsurf->surface ? dsurf->surface->hash : zink_screen(ctx->base.screen)->null_descriptor_hashes.image_view);
 }
+#endif
 
 static bool
 desc_state_equal(const void *a, const void *b)
@@ -843,6 +845,16 @@ desc_set_ref_add(struct zink_descriptor_set *zds, struct zink_descriptor_refs *r
 }
 
 static void
+zink_descriptor_surface_desc_set_add(struct zink_descriptor_surface *dsurf, struct zink_descriptor_set *zds, unsigned idx)
+{
+   zds->surfaces[idx].is_buffer = dsurf->is_buffer;
+   if (dsurf->is_buffer)
+      desc_set_ref_add(zds, &dsurf->bufferview->desc_set_refs, (void**)&zds->surfaces[idx].bufferview, dsurf->bufferview);
+   else
+      desc_set_ref_add(zds, &dsurf->surface->desc_set_refs, (void**)&zds->surfaces[idx].surface, dsurf->surface);
+}
+
+static void
 zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_descriptor_set *zds, unsigned idx, bool is_buffer)
 {
    if (is_buffer)
@@ -1019,7 +1031,7 @@ desc_set_image_add(struct zink_context *ctx, struct zink_descriptor_set *zds, st
     * whenever a resource is destroyed
     */
 #ifndef NDEBUG
-   uint32_t cur_hash = get_descriptor_surface_hash(ctx, &zds->surfaces[i], is_buffer);
+   uint32_t cur_hash = get_descriptor_surface_hash(ctx, &zds->surfaces[i]);
    uint32_t new_hash = zink_get_image_view_hash(ctx, image_view, is_buffer);
 #endif
    assert(!cache_hit || cur_hash == new_hash);
