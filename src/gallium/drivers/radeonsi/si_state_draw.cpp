@@ -1216,7 +1216,7 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
 
    if (NGG) {
       if (HAS_TESS) {
-         ge_cntl = S_03096C_PRIM_GRP_SIZE(num_patches) |
+         ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(num_patches) |
                    S_03096C_VERT_GRP_SIZE(0) |
                    S_03096C_BREAK_WAVE_AT_EOI(key.u.tess_uses_prim_id);
       } else {
@@ -1238,7 +1238,8 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
          vertgroup_size = 0;
       }
 
-      ge_cntl = S_03096C_PRIM_GRP_SIZE(primgroup_size) | S_03096C_VERT_GRP_SIZE(vertgroup_size) |
+      ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(primgroup_size) |
+                S_03096C_VERT_GRP_SIZE(vertgroup_size) |
                 S_03096C_BREAK_WAVE_AT_EOI(key.u.uses_tess && key.u.tess_uses_prim_id);
    }
 

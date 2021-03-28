@@ -580,7 +580,7 @@ static void setup_scratch_rsrc_user_sgprs(struct si_context *sctx,
 
    uint32_t scratch_dword0 = scratch_va & 0xffffffff;
    uint32_t scratch_dword1 =
-      S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE(1);
+      S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE_GFX6(1);
 
    /* Disable address clamping */
    uint32_t scratch_dword2 = 0xffffffff;

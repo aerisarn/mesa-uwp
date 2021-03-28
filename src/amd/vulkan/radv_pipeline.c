@@ -376,23 +376,23 @@ si_translate_blend_factor(VkBlendFactor factor)
    case VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
       return V_028780_BLEND_ONE_MINUS_DST_ALPHA;
    case VK_BLEND_FACTOR_CONSTANT_COLOR:
-      return V_028780_BLEND_CONSTANT_COLOR;
+      return V_028780_BLEND_CONSTANT_COLOR_GFX6;
    case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
-      return V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR;
+      return V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX6;
    case VK_BLEND_FACTOR_CONSTANT_ALPHA:
-      return V_028780_BLEND_CONSTANT_ALPHA;
+      return V_028780_BLEND_CONSTANT_ALPHA_GFX6;
    case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA:
-      return V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA;
+      return V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX6;
    case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE:
       return V_028780_BLEND_SRC_ALPHA_SATURATE;
    case VK_BLEND_FACTOR_SRC1_COLOR:
-      return V_028780_BLEND_SRC1_COLOR;
+      return V_028780_BLEND_SRC1_COLOR_GFX6;
    case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
-      return V_028780_BLEND_INV_SRC1_COLOR;
+      return V_028780_BLEND_INV_SRC1_COLOR_GFX6;
    case VK_BLEND_FACTOR_SRC1_ALPHA:
-      return V_028780_BLEND_SRC1_ALPHA;
+      return V_028780_BLEND_SRC1_ALPHA_GFX6;
    case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
-      return V_028780_BLEND_INV_SRC1_ALPHA;
+      return V_028780_BLEND_INV_SRC1_ALPHA_GFX6;
    default:
       return 0;
    }
@@ -5571,7 +5571,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
       S_028B90_CNT(gs_num_invocations) | S_028B90_ENABLE(gs_num_invocations > 1) |
          S_028B90_EN_MAX_VERT_OUT_PER_GS_INSTANCE(ngg_state->max_vert_out_per_gs_instance));
 
-   ge_cntl = S_03096C_PRIM_GRP_SIZE(ngg_state->max_gsprims) |
+   ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(ngg_state->max_gsprims) |
              S_03096C_VERT_GRP_SIZE(ngg_state->enable_vertex_grouping ? ngg_state->hw_max_esverts : 256) | /* 256 = disable vertex grouping */
              S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
 
@@ -5601,8 +5601,8 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
                        C_00B21C_CU_EN, 0, &pipeline->device->physical_device->rad_info,
                        (void*)gfx10_set_sh_reg_idx3);
       ac_set_reg_cu_en(cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-                       S_00B204_CU_EN(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64),
-                       C_00B204_CU_EN, 16, &pipeline->device->physical_device->rad_info,
+                       S_00B204_CU_EN_GFX10(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64),
+                       C_00B204_CU_EN_GFX10, 16, &pipeline->device->physical_device->rad_info,
                        (void*)gfx10_set_sh_reg_idx3);
    } else {
       radeon_set_sh_reg_idx(
@@ -5610,7 +5610,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
          S_00B21C_CU_EN(cu_mask) | S_00B21C_WAVE_LIMIT(0x3F));
       radeon_set_sh_reg_idx(
          pipeline->device->physical_device, cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS, 3,
-         S_00B204_CU_EN(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64));
+         S_00B204_CU_EN_GFX10(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64));
    }
 
    uint32_t oversub_pc_lines = late_alloc_wave64 ? pipeline->device->physical_device->rad_info.pc_lines / 4 : 0;
@@ -5861,8 +5861,8 @@ radv_pipeline_generate_hw_gs(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf 
                        C_00B21C_CU_EN, 0, &pipeline->device->physical_device->rad_info,
                        (void*)gfx10_set_sh_reg_idx3);
       ac_set_reg_cu_en(cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-                       S_00B204_CU_EN(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0),
-                       C_00B204_CU_EN, 16, &pipeline->device->physical_device->rad_info,
+                       S_00B204_CU_EN_GFX10(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0),
+                       C_00B204_CU_EN_GFX10, 16, &pipeline->device->physical_device->rad_info,
                        (void*)gfx10_set_sh_reg_idx3);
    } else if (pipeline->device->physical_device->rad_info.chip_class >= GFX7) {
       radeon_set_sh_reg_idx(
@@ -5872,7 +5872,7 @@ radv_pipeline_generate_hw_gs(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf 
       if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
          radeon_set_sh_reg_idx(
             pipeline->device->physical_device, cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS, 3,
-            S_00B204_CU_EN(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0));
+            S_00B204_CU_EN_GFX10(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0));
       }
    }
 
@@ -6262,7 +6262,7 @@ gfx10_pipeline_generate_ge_cntl(struct radeon_cmdbuf *ctx_cs, struct radv_pipeli
    }
 
    radeon_set_uconfig_reg(ctx_cs, R_03096C_GE_CNTL,
-                          S_03096C_PRIM_GRP_SIZE(primgroup_size) |
+                          S_03096C_PRIM_GRP_SIZE_GFX10(primgroup_size) |
                              S_03096C_VERT_GRP_SIZE(vertgroup_size) |
                              S_03096C_PACKET_TO_ONE_PA(0) /* line stipple */ |
                              S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi));
@@ -6540,7 +6540,7 @@ radv_pipeline_init_extra(struct radv_pipeline *pipeline,
 {
    if (extra->custom_blend_mode == V_028808_CB_ELIMINATE_FAST_CLEAR ||
        extra->custom_blend_mode == V_028808_CB_FMASK_DECOMPRESS ||
-       extra->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS ||
+       extra->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS_GFX8 ||
        extra->custom_blend_mode == V_028808_CB_RESOLVE) {
       /* According to the CB spec states, CB_SHADER_MASK should be set to enable writes to all four
        * channels of MRT0.

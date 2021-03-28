@@ -1533,7 +1533,7 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource
       uint32_t *desc = descs->list + slot * 4;
       desc[0] = va;
       desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride) |
-                S_008F04_SWIZZLE_ENABLE(swizzle);
+                S_008F04_SWIZZLE_ENABLE_GFX6(swizzle);
       desc[2] = num_records;
       desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
                 S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |

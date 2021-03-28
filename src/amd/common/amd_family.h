@@ -147,6 +147,7 @@ enum chip_class
    GFX9,
    GFX10,
    GFX10_3,
+   GFX11,
 
    NUM_GFX_VERSIONS,
 };

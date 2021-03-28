@@ -327,7 +327,7 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
          LLVMValueRef desc3 = LLVMBuildExtractElement(builder, ctx->esgs_ring,
                                                       LLVMConstInt(ctx->ac.i32, 3, 0), "");
          desc1 = LLVMBuildOr(builder, desc1, LLVMConstInt(ctx->ac.i32,
-                                                          S_008F04_SWIZZLE_ENABLE(1), 0), "");
+                                                          S_008F04_SWIZZLE_ENABLE_GFX6(1), 0), "");
          desc3 = LLVMBuildOr(builder, desc3, LLVMConstInt(ctx->ac.i32,
                                                           S_008F0C_ELEMENT_SIZE(1) |
                                                           S_008F0C_INDEX_STRIDE(3) |
@@ -400,7 +400,7 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
       tmp = LLVMBuildExtractElement(builder, ring, ctx->ac.i32_1, "");
       tmp = LLVMBuildOr(
          builder, tmp,
-         LLVMConstInt(ctx->ac.i32, S_008F04_STRIDE(stride) | S_008F04_SWIZZLE_ENABLE(1), 0), "");
+         LLVMConstInt(ctx->ac.i32, S_008F04_STRIDE(stride) | S_008F04_SWIZZLE_ENABLE_GFX6(1), 0), "");
       ring = LLVMBuildInsertElement(builder, ring, tmp, ctx->ac.i32_1, "");
       ring = LLVMBuildInsertElement(builder, ring, LLVMConstInt(ctx->ac.i32, num_records, 0),
                                     LLVMConstInt(ctx->ac.i32, 2, 0), "");

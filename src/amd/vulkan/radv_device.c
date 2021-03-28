@@ -3678,7 +3678,7 @@ fill_geom_tess_rings(struct radv_queue *queue, uint32_t *map, bool add_sample_po
       /* stride 0, num records - size, add tid, swizzle, elsize4,
          index stride 64 */
       desc[0] = esgs_va;
-      desc[1] = S_008F04_BASE_ADDRESS_HI(esgs_va >> 32) | S_008F04_SWIZZLE_ENABLE(true);
+      desc[1] = S_008F04_BASE_ADDRESS_HI(esgs_va >> 32) | S_008F04_SWIZZLE_ENABLE_GFX6(true);
       desc[2] = esgs_ring_size;
       desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
                 S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
@@ -3736,7 +3736,7 @@ fill_geom_tess_rings(struct radv_queue *queue, uint32_t *map, bool add_sample_po
          elsize 4, index stride 16 */
       /* shader will patch stride and desc[2] */
       desc[4] = gsvs_va;
-      desc[5] = S_008F04_BASE_ADDRESS_HI(gsvs_va >> 32) | S_008F04_SWIZZLE_ENABLE(1);
+      desc[5] = S_008F04_BASE_ADDRESS_HI(gsvs_va >> 32) | S_008F04_SWIZZLE_ENABLE_GFX6(1);
       desc[6] = 0;
       desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
                 S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
@@ -3891,7 +3891,7 @@ radv_emit_compute_scratch(struct radv_queue *queue, struct radeon_cmdbuf *cs,
 
    radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0, 2);
    radeon_emit(cs, scratch_va);
-   radeon_emit(cs, S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE(1));
+   radeon_emit(cs, S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE_GFX6(1));
 
    radeon_set_sh_reg(cs, R_00B860_COMPUTE_TMPRING_SIZE,
                      S_00B860_WAVES(waves) | S_00B860_WAVESIZE(round_up_u32(size_per_wave, 1024)));
@@ -4145,7 +4145,7 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
 
       if (scratch_bo) {
          uint64_t scratch_va = radv_buffer_get_va(scratch_bo);
-         uint32_t rsrc1 = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE(1);
+         uint32_t rsrc1 = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE_GFX6(1);
          map[0] = scratch_va;
          map[1] = rsrc1;
       }
@@ -5524,7 +5524,7 @@ radv_init_dcc_control_reg(struct radv_device *device, struct radv_image_view *iv
           S_028C78_MAX_COMPRESSED_BLOCK_SIZE(max_compressed_block_size) |
           S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
           S_028C78_INDEPENDENT_64B_BLOCKS(independent_64b_blocks) |
-          S_028C78_INDEPENDENT_128B_BLOCKS(independent_128b_blocks);
+          S_028C78_INDEPENDENT_128B_BLOCKS_GFX10(independent_128b_blocks);
 }
 
 void
@@ -5543,7 +5543,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    memset(cb, 0, sizeof(*cb));
 
    /* Intensity is implemented as Red, so treat it that way. */
-   cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1(desc->swizzle[3] == PIPE_SWIZZLE_1);
+   cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1_GFX6(desc->swizzle[3] == PIPE_SWIZZLE_1);
 
    va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
 
@@ -5633,7 +5633,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
       unsigned log_samples = util_logbase2(iview->image->info.samples);
 
       cb->cb_color_attrib |=
-         S_028C74_NUM_SAMPLES(log_samples) | S_028C74_NUM_FRAGMENTS(log_samples);
+         S_028C74_NUM_SAMPLES(log_samples) | S_028C74_NUM_FRAGMENTS_GFX6(log_samples);
    }
 
    if (radv_image_has_fmask(iview->image)) {
@@ -5673,7 +5673,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
 		->color_is_int8 = true;
 #endif
    cb->cb_color_info =
-      S_028C70_FORMAT(format) | S_028C70_COMP_SWAP(swap) | S_028C70_BLEND_CLAMP(blend_clamp) |
+      S_028C70_FORMAT_GFX6(format) | S_028C70_COMP_SWAP(swap) | S_028C70_BLEND_CLAMP(blend_clamp) |
       S_028C70_BLEND_BYPASS(blend_bypass) | S_028C70_SIMPLE_FLOAT(1) |
       S_028C70_ROUND_MODE(ntype != V_028C70_NUMBER_UNORM && ntype != V_028C70_NUMBER_SNORM &&
                           ntype != V_028C70_NUMBER_SRGB && format != V_028C70_COLOR_8_24 &&
@@ -6228,7 +6228,7 @@ radv_init_sampler(struct radv_device *device, struct radv_sampler *sampler,
                         S_008F38_XY_MIN_FILTER(radv_tex_filter(pCreateInfo->minFilter, max_aniso)) |
                         S_008F38_MIP_FILTER(radv_tex_mipfilter(pCreateInfo->mipmapMode)) |
                         S_008F38_MIP_POINT_PRECLAMP(0));
-   sampler->state[3] = (S_008F3C_BORDER_COLOR_PTR(border_color_ptr) |
+   sampler->state[3] = (S_008F3C_BORDER_COLOR_PTR_GFX6(border_color_ptr) |
                         S_008F3C_BORDER_COLOR_TYPE(radv_tex_bordercolor(border_color)));
 
    if (device->physical_device->rad_info.chip_class >= GFX10) {

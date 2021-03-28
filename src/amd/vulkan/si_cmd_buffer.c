@@ -408,7 +408,7 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
          meta_read_policy = V_02807C_CACHE_LRU_RD;  /* cache reads */
       } else {
          meta_write_policy = V_02807C_CACHE_STREAM; /* write combine */
-         meta_read_policy = V_02807C_CACHE_NOA;     /* don't cache reads */
+         meta_read_policy = V_02807C_CACHE_NOA_GFX10;     /* don't cache reads */
       }
 
       radeon_set_context_reg(
@@ -416,17 +416,17 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
          S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM) | S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM) |
             S_02807C_HTILE_WR_POLICY(meta_write_policy) |
             S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM) |
-            S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA) | S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA) |
+            S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA_GFX10) | S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA_GFX10) |
             S_02807C_HTILE_RD_POLICY(meta_read_policy));
 
       radeon_set_context_reg(
          cs, R_028410_CB_RMI_GL2_CACHE_CONTROL,
          S_028410_CMASK_WR_POLICY(meta_write_policy) | S_028410_FMASK_WR_POLICY(meta_write_policy) |
-            S_028410_DCC_WR_POLICY(meta_write_policy) |
-            S_028410_COLOR_WR_POLICY(V_028410_CACHE_STREAM) |
+            S_028410_DCC_WR_POLICY_GFX10(meta_write_policy) |
+            S_028410_COLOR_WR_POLICY_GFX10(V_028410_CACHE_STREAM) |
             S_028410_CMASK_RD_POLICY(meta_read_policy) |
             S_028410_FMASK_RD_POLICY(meta_read_policy) | S_028410_DCC_RD_POLICY(meta_read_policy) |
-            S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA));
+            S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_GFX10));
       radeon_set_context_reg(cs, R_028428_CB_COVERAGE_OUT_CONTROL, 0);
 
       radeon_set_sh_reg_seq(cs, R_00B0C8_SPI_SHADER_USER_ACCUM_PS_0, 4);

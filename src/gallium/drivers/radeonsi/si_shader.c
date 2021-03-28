@@ -862,7 +862,7 @@ static bool si_get_external_symbol(void *data, const char *name, uint64_t *value
    }
    if (!strcmp(scratch_rsrc_dword1_symbol, name)) {
       /* Enable scratch coalescing. */
-      *value = S_008F04_BASE_ADDRESS_HI(*scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE(1);
+      *value = S_008F04_BASE_ADDRESS_HI(*scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE_GFX6(1);
       return true;
    }
 

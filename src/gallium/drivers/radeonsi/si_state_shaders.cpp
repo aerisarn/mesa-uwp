@@ -968,7 +968,7 @@ static void si_emit_shader_gs(struct si_context *sctx)
       if (sctx->chip_class >= GFX10) {
          ac_set_reg_cu_en(&sctx->gfx_cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
                           shader->ctx_reg.gs.spi_shader_pgm_rsrc4_gs,
-                          C_00B204_CU_EN, 16, &sctx->screen->info,
+                          C_00B204_CU_EN_GFX10, 16, &sctx->screen->info,
                           (void (*)(void*, unsigned, uint32_t))
                           (sctx->chip_class >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
          sctx->tracked_regs.reg_saved &= ~BITFIELD64_BIT(SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS);
@@ -1098,7 +1098,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
       shader->ctx_reg.gs.spi_shader_pgm_rsrc3_gs = S_00B21C_CU_EN(0xffff) |
                                                    S_00B21C_WAVE_LIMIT(0x3F);
       shader->ctx_reg.gs.spi_shader_pgm_rsrc4_gs =
-         S_00B204_CU_EN(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0);
+         S_00B204_CU_EN_GFX10(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0);
 
       shader->ctx_reg.gs.vgt_gs_onchip_cntl =
          S_028A44_ES_VERTS_PER_SUBGRP(shader->gs_info.es_verts_per_subgroup) |
@@ -1194,7 +1194,7 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
                        (sctx->chip_class >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
       ac_set_reg_cu_en(&sctx->gfx_cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
                        shader->ctx_reg.ngg.spi_shader_pgm_rsrc4_gs,
-                       C_00B204_CU_EN, 16, &sctx->screen->info,
+                       C_00B204_CU_EN_GFX10, 16, &sctx->screen->info,
                        (void (*)(void*, unsigned, uint32_t))
                        (sctx->chip_class >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
       sctx->tracked_regs.reg_saved &= ~BITFIELD64_BIT(SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS) &
@@ -1404,7 +1404,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    shader->ctx_reg.ngg.spi_shader_pgm_rsrc3_gs = S_00B21C_CU_EN(cu_mask) |
                                                  S_00B21C_WAVE_LIMIT(0x3F);
    shader->ctx_reg.ngg.spi_shader_pgm_rsrc4_gs =
-      S_00B204_CU_EN(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64);
+      S_00B204_CU_EN_GFX10(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64);
 
    nparams = MAX2(shader->info.nr_param_exports, 1);
    shader->ctx_reg.ngg.spi_vs_out_config =
@@ -1477,7 +1477,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(oversub_pc_lines > 0) |
                                      S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
 
-   shader->ge_cntl = S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
+   shader->ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(shader->ngg.max_gsprims) |
                      S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts) |
                      S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
 

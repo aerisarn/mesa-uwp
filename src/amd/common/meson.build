@@ -27,10 +27,12 @@ amd_json_files = [
   '../registers/gfx9.json',
   '../registers/gfx10.json',
   '../registers/gfx103.json',
+  '../registers/gfx11.json',
 
   # Manually written:
   '../registers/pkt3.json',
   '../registers/gfx10-rsrc.json',
+  '../registers/gfx11-rsrc.json',
   '../registers/registers-manually-defined.json',
 ]
 

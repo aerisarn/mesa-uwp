@@ -115,6 +115,10 @@ static const struct si_reg *find_register(enum chip_class chip_class, unsigned o
    unsigned table_size;
 
    switch (chip_class) {
+   case GFX11:
+      table = gfx11_reg_table;
+      table_size = ARRAY_SIZE(gfx11_reg_table);
+      break;
    case GFX10_3:
    case GFX10:
       table = gfx10_reg_table;
