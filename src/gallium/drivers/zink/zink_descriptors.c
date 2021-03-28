@@ -67,7 +67,7 @@ struct zink_descriptor_set {
 #endif
    union {
       struct zink_resource_object **res_objs;
-      struct zink_image_view **image_views;
+      struct zink_descriptor_surface *surfaces;
       struct {
          struct zink_sampler_view **sampler_views;
          struct zink_sampler_state **sampler_states;
@@ -101,6 +101,47 @@ static void
 debug_describe_zink_descriptor_pool(char *buf, const struct zink_descriptor_pool *ptr)
 {
    sprintf(buf, "zink_descriptor_pool");
+}
+
+static inline uint32_t
+get_sampler_view_hash(const struct zink_sampler_view *sampler_view)
+{
+   if (!sampler_view)
+      return 0;
+   return sampler_view->base.target == PIPE_BUFFER ?
+          sampler_view->buffer_view->hash : sampler_view->image_view->hash;
+}
+
+static inline uint32_t
+get_image_view_hash(const struct zink_image_view *image_view)
+{
+   if (!image_view || !image_view->base.resource)
+      return 0;
+   return image_view->base.resource->target == PIPE_BUFFER ?
+          image_view->buffer_view->hash : image_view->surface->hash;
+}
+
+uint32_t
+zink_get_sampler_view_hash(struct zink_context *ctx, struct zink_sampler_view *sampler_view, bool is_buffer)
+{
+   return get_sampler_view_hash(sampler_view) ? get_sampler_view_hash(sampler_view) :
+          (is_buffer ? zink_screen(ctx->base.screen)->null_descriptor_hashes.buffer_view :
+                       zink_screen(ctx->base.screen)->null_descriptor_hashes.image_view);
+}
+
+uint32_t
+zink_get_image_view_hash(struct zink_context *ctx, struct zink_image_view *image_view, bool is_buffer)
+{
+   return get_image_view_hash(image_view) ? get_image_view_hash(image_view) :
+          (is_buffer ? zink_screen(ctx->base.screen)->null_descriptor_hashes.buffer_view :
+                       zink_screen(ctx->base.screen)->null_descriptor_hashes.image_view);
+}
+
+static uint32_t
+get_descriptor_surface_hash(struct zink_context *ctx, struct zink_descriptor_surface *dsurf, bool is_buffer)
+{
+   return is_buffer ? (dsurf->bufferview ? dsurf->bufferview->hash : zink_screen(ctx->base.screen)->null_descriptor_hashes.buffer_view) :
+                      (dsurf->surface ? dsurf->surface->hash : zink_screen(ctx->base.screen)->null_descriptor_hashes.image_view);
 }
 
 static bool
@@ -165,9 +206,15 @@ descriptor_set_invalidate(struct zink_descriptor_set *zds)
          zds->res_objs[i] = NULL;
          break;
       case ZINK_DESCRIPTOR_TYPE_IMAGE:
-         if (zds->image_views[i])
-            pop_desc_set_ref(zds, &zds->image_views[i]->desc_set_refs.refs);
-         zds->image_views[i] = NULL;
+         if (zds->surfaces[i].is_buffer) {
+            if (zds->surfaces[i].bufferview)
+               pop_desc_set_ref(zds, &zds->surfaces[i].bufferview->desc_set_refs.refs);
+            zds->surfaces[i].bufferview = NULL;
+         } else {
+            if (zds->surfaces[i].surface)
+               pop_desc_set_ref(zds, &zds->surfaces[i].surface->desc_set_refs.refs);
+            zds->surfaces[i].surface = NULL;
+         }
          break;
       case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
          if (zds->sampler_views[i])
@@ -544,12 +591,22 @@ allocate_desc_set(struct zink_context *ctx, struct zink_program *pg, enum zink_d
    struct zink_descriptor_set *alloc = ralloc_array(pool, struct zink_descriptor_set, bucket_size);
    assert(alloc);
    unsigned num_resources = pool->num_resources;
-   struct zink_resource_object **res_objs = rzalloc_array(pool, struct zink_resource_object*, num_resources * bucket_size);
-   assert(res_objs);
+   struct zink_resource_object **res_objs = NULL;
    void **samplers = NULL;
-   if (type == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW) {
+   struct zink_descriptor_surface *surfaces = NULL;
+   switch (type) {
+   case ZINK_DESCRIPTOR_TYPE_IMAGE:
+      surfaces = rzalloc_array(pool, struct zink_descriptor_surface, num_resources * bucket_size);
+      assert(surfaces);
+      break;
+   case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
       samplers = rzalloc_array(pool, void*, num_resources * bucket_size);
       assert(samplers);
+      FALLTHROUGH;
+   default:
+      res_objs = rzalloc_array(pool, struct zink_resource_object*, num_resources * bucket_size);
+      assert(res_objs);
+      break;
    }
    for (unsigned i = 0; i < bucket_size; i ++) {
       struct zink_descriptor_set *zds = &alloc[i];
@@ -562,11 +619,18 @@ allocate_desc_set(struct zink_context *ctx, struct zink_program *pg, enum zink_d
 #ifndef NDEBUG
       zds->num_resources = num_resources;
 #endif
-      if (type == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW) {
+      switch (type) {
+      case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
          zds->sampler_views = (struct zink_sampler_view**)&res_objs[i * pool->key.layout->num_descriptors];
          zds->sampler_states = (struct zink_sampler_state**)&samplers[i * pool->key.layout->num_descriptors];
-      } else
+         break;
+      case ZINK_DESCRIPTOR_TYPE_IMAGE:
+         zds->surfaces = &surfaces[i * pool->key.layout->num_descriptors];
+         break;
+      default:
          zds->res_objs = (struct zink_resource_object**)&res_objs[i * pool->key.layout->num_descriptors];
+         break;
+      }
       zds->desc_set = desc_set[i];
       if (i > 0)
          util_dynarray_append(&pool->alloc_desc_sets, struct zink_descriptor_set *, zds);
@@ -779,9 +843,12 @@ desc_set_ref_add(struct zink_descriptor_set *zds, struct zink_descriptor_refs *r
 }
 
 static void
-zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_descriptor_set *zds, unsigned idx)
+zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_descriptor_set *zds, unsigned idx, bool is_buffer)
 {
-   desc_set_ref_add(zds, &image_view->desc_set_refs, (void**)&zds->image_views[idx], image_view);
+   if (is_buffer)
+      desc_set_ref_add(zds, &image_view->buffer_view->desc_set_refs, (void**)&zds->surfaces[idx].bufferview, image_view->buffer_view);
+   else
+      desc_set_ref_add(zds, &image_view->surface->desc_set_refs, (void**)&zds->surfaces[idx].surface, image_view->surface);
 }
 
 static void
@@ -952,12 +1019,12 @@ desc_set_image_add(struct zink_context *ctx, struct zink_descriptor_set *zds, st
     * whenever a resource is destroyed
     */
 #ifndef NDEBUG
-   uint32_t cur_hash = zink_get_image_view_hash(ctx, zds->image_views[i], is_buffer);
+   uint32_t cur_hash = get_descriptor_surface_hash(ctx, &zds->surfaces[i], is_buffer);
    uint32_t new_hash = zink_get_image_view_hash(ctx, image_view, is_buffer);
 #endif
    assert(!cache_hit || cur_hash == new_hash);
    if (!cache_hit)
-      zink_image_view_desc_set_add(image_view, zds, i);
+      zink_image_view_desc_set_add(image_view, zds, i, is_buffer);
 }
 
 static unsigned
@@ -1238,40 +1305,6 @@ calc_descriptor_state_hash_ssbo(struct zink_context *ctx, struct zink_shader *zs
       hash = XXH32(&ssbo->buffer_size, sizeof(ssbo->buffer_size), hash);
    }
    return hash;
-}
-
-static inline uint32_t
-get_sampler_view_hash(const struct zink_sampler_view *sampler_view)
-{
-   if (!sampler_view)
-      return 0;
-   return sampler_view->base.target == PIPE_BUFFER ?
-          sampler_view->buffer_view->hash : sampler_view->image_view->hash;
-}
-
-static inline uint32_t
-get_image_view_hash(const struct zink_image_view *image_view)
-{
-   if (!image_view || !image_view->base.resource)
-      return 0;
-   return image_view->base.resource->target == PIPE_BUFFER ?
-          image_view->buffer_view->hash : image_view->surface->hash;
-}
-
-uint32_t
-zink_get_sampler_view_hash(struct zink_context *ctx, struct zink_sampler_view *sampler_view, bool is_buffer)
-{
-   return get_sampler_view_hash(sampler_view) ? get_sampler_view_hash(sampler_view) :
-          (is_buffer ? zink_screen(ctx->base.screen)->null_descriptor_hashes.buffer_view :
-                       zink_screen(ctx->base.screen)->null_descriptor_hashes.image_view);
-}
-
-uint32_t
-zink_get_image_view_hash(struct zink_context *ctx, struct zink_image_view *image_view, bool is_buffer)
-{
-   return get_image_view_hash(image_view) ? get_image_view_hash(image_view) :
-          (is_buffer ? zink_screen(ctx->base.screen)->null_descriptor_hashes.buffer_view :
-                       zink_screen(ctx->base.screen)->null_descriptor_hashes.image_view);
 }
 
 static uint32_t

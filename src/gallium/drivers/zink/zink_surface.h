@@ -39,6 +39,7 @@ struct zink_surface {
    uint32_t hash;
    struct zink_batch_usage batch_uses;
    struct util_dynarray framebuffer_refs;
+   struct zink_descriptor_refs desc_set_refs;
 };
 
 static inline struct zink_surface *

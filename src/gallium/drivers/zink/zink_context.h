@@ -78,6 +78,7 @@ struct zink_buffer_view {
    VkBufferView buffer_view;
    uint32_t hash;
    struct zink_batch_usage batch_uses;
+   struct zink_descriptor_refs desc_set_refs;
 };
 
 struct zink_sampler_view {
@@ -91,7 +92,6 @@ struct zink_sampler_view {
 
 struct zink_image_view {
    struct pipe_image_view base;
-   struct zink_descriptor_refs desc_set_refs;
    union {
       struct zink_surface *surface;
       struct zink_buffer_view *buffer_view;
