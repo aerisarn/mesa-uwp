@@ -72,13 +72,13 @@ bdd_lazy(struct zink_batch_state *bs)
 
 static void
 init_template_entry(struct zink_shader *shader, enum zink_descriptor_type type,
-                    unsigned idx, unsigned offset, VkDescriptorUpdateTemplateEntry *entry, unsigned *entry_idx)
+                    unsigned idx, unsigned offset, VkDescriptorUpdateTemplateEntry *entry, unsigned *entry_idx, bool flatten_dynamic)
 {
     int index = shader->bindings[type][idx].index;
     enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
     entry->dstArrayElement = 0;
     entry->dstBinding = shader->bindings[type][idx].binding;
-    if (shader->bindings[type][idx].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+    if (shader->bindings[type][idx].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC && flatten_dynamic)
        /* filter out DYNAMIC type here */
        entry->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     else
@@ -179,12 +179,12 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
             case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
             case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-               init_template_entry(shader, j, k, 0, &entries[j][entry_idx[j]], &entry_idx[j]);
+               init_template_entry(shader, j, k, 0, &entries[j][entry_idx[j]], &entry_idx[j], screen->lazy_descriptors);
                break;
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
                for (unsigned l = 0; l < shader->bindings[j][k].size; l++)
-                  init_template_entry(shader, j, k, l, &entries[j][entry_idx[j]], &entry_idx[j]);
+                  init_template_entry(shader, j, k, l, &entries[j][entry_idx[j]], &entry_idx[j], screen->lazy_descriptors);
                break;
             default:
                break;
@@ -376,6 +376,13 @@ populate_sets(struct zink_context *ctx, struct zink_program *pg, uint8_t *change
          return false;
    }
    return true;
+}
+
+void
+zink_descriptor_set_update_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, set, pg->dd->templates[type + 1], ctx);
 }
 
 void

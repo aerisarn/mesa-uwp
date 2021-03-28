@@ -137,6 +137,7 @@ zink_vktype_to_size_idx(VkDescriptorType type)
 {
    switch (type) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       return ZDS_INDEX_UBO;
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       return ZDS_INDEX_COMBINED_SAMPLER;
@@ -264,4 +265,6 @@ zink_descriptors_init_lazy(struct zink_context *ctx);
 void
 zink_descriptors_deinit_lazy(struct zink_context *ctx);
 
+void
+zink_descriptor_set_update_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set);
 #endif
