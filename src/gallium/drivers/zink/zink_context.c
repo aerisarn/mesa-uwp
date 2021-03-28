@@ -727,7 +727,6 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       FREE(sampler_view);
       return NULL;
    }
-   util_dynarray_init(&sampler_view->desc_set_refs.refs, NULL);
    return &sampler_view->base;
 }
 
@@ -749,7 +748,6 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
                           struct pipe_sampler_view *pview)
 {
    struct zink_sampler_view *view = zink_sampler_view(pview);
-   zink_descriptor_set_refs_clear(&view->desc_set_refs, view);
    if (pview->texture->target == PIPE_BUFFER)
       zink_buffer_view_reference(zink_screen(pctx->screen), &view->buffer_view, NULL);
    else {
@@ -1259,13 +1257,6 @@ zink_set_shader_images(struct pipe_context *pctx,
 }
 
 static void
-sampler_view_buffer_clear(struct zink_context *ctx, struct zink_sampler_view *sampler_view)
-{
-   zink_descriptor_set_refs_clear(&sampler_view->desc_set_refs, sampler_view);
-   zink_buffer_view_reference(zink_screen(ctx->base.screen), &sampler_view->buffer_view, NULL);
-}
-
-static void
 unbind_samplerview(struct zink_context *ctx, enum pipe_shader_type stage, unsigned slot)
 {
    struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[stage][slot]);
@@ -1305,7 +1296,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
                if (buffer_view == b->buffer_view)
                   p_atomic_dec(&buffer_view->reference.count);
                else {
-                  sampler_view_buffer_clear(ctx, b);
+                  zink_buffer_view_reference(zink_screen(ctx->base.screen), &b->buffer_view, NULL);
                   b->buffer_view = buffer_view;
                   update = true;
                }
@@ -3042,7 +3033,7 @@ check_and_rebind_buffer(struct zink_context *ctx, struct zink_resource *res, uns
    }
    case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW: {
       struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[shader][i]);
-      sampler_view_buffer_clear(ctx, sampler_view);
+      zink_buffer_view_reference(zink_screen(ctx->base.screen), &sampler_view->buffer_view, NULL);
       sampler_view->buffer_view = get_buffer_view(ctx, res, sampler_view->base.format,
                                                   sampler_view->base.u.buf.offset, sampler_view->base.u.buf.size);
       break;

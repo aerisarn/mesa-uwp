@@ -67,9 +67,8 @@ struct zink_descriptor_set {
 #endif
    union {
       struct zink_resource_object **res_objs;
-      struct zink_descriptor_surface *surfaces;
       struct {
-         struct zink_sampler_view **sampler_views;
+         struct zink_descriptor_surface *surfaces;
          struct zink_sampler_state **sampler_states;
       };
    };
@@ -219,9 +218,15 @@ descriptor_set_invalidate(struct zink_descriptor_set *zds)
          }
          break;
       case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
-         if (zds->sampler_views[i])
-            pop_desc_set_ref(zds, &zds->sampler_views[i]->desc_set_refs.refs);
-         zds->sampler_views[i] = NULL;
+         if (zds->surfaces[i].is_buffer) {
+            if (zds->surfaces[i].bufferview)
+               pop_desc_set_ref(zds, &zds->surfaces[i].bufferview->desc_set_refs.refs);
+            zds->surfaces[i].bufferview = NULL;
+         } else {
+            if (zds->surfaces[i].surface)
+               pop_desc_set_ref(zds, &zds->surfaces[i].surface->desc_set_refs.refs);
+            zds->surfaces[i].surface = NULL;
+         }
          if (zds->sampler_states[i])
             pop_desc_set_ref(zds, &zds->sampler_states[i]->desc_set_refs.refs);
          zds->sampler_states[i] = NULL;
@@ -597,14 +602,14 @@ allocate_desc_set(struct zink_context *ctx, struct zink_program *pg, enum zink_d
    void **samplers = NULL;
    struct zink_descriptor_surface *surfaces = NULL;
    switch (type) {
-   case ZINK_DESCRIPTOR_TYPE_IMAGE:
-      surfaces = rzalloc_array(pool, struct zink_descriptor_surface, num_resources * bucket_size);
-      assert(surfaces);
-      break;
    case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
       samplers = rzalloc_array(pool, void*, num_resources * bucket_size);
       assert(samplers);
       FALLTHROUGH;
+   case ZINK_DESCRIPTOR_TYPE_IMAGE:
+      surfaces = rzalloc_array(pool, struct zink_descriptor_surface, num_resources * bucket_size);
+      assert(surfaces);
+      break;
    default:
       res_objs = rzalloc_array(pool, struct zink_resource_object*, num_resources * bucket_size);
       assert(res_objs);
@@ -623,9 +628,8 @@ allocate_desc_set(struct zink_context *ctx, struct zink_program *pg, enum zink_d
 #endif
       switch (type) {
       case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
-         zds->sampler_views = (struct zink_sampler_view**)&res_objs[i * pool->key.layout->num_descriptors];
          zds->sampler_states = (struct zink_sampler_state**)&samplers[i * pool->key.layout->num_descriptors];
-         break;
+         FALLTHROUGH;
       case ZINK_DESCRIPTOR_TYPE_IMAGE:
          zds->surfaces = &surfaces[i * pool->key.layout->num_descriptors];
          break;
@@ -873,12 +877,6 @@ zink_sampler_state_desc_set_add(struct zink_sampler_state *sampler_state, struct
 }
 
 static void
-zink_sampler_view_desc_set_add(struct zink_sampler_view *sampler_view, struct zink_descriptor_set *zds, unsigned idx)
-{
-   desc_set_ref_add(zds, &sampler_view->desc_set_refs, (void**)&zds->sampler_views[idx], sampler_view);
-}
-
-static void
 zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx)
 {
    desc_set_ref_add(zds, res ? &res->obj->desc_set_refs : NULL, (void**)&zds->res_objs[idx], res ? res->obj : NULL);
@@ -1001,7 +999,7 @@ desc_set_res_add(struct zink_descriptor_set *zds, struct zink_resource *res, uns
 }
 
 static void
-desc_set_sampler_add(struct zink_context *ctx, struct zink_descriptor_set *zds, struct zink_sampler_view *sv,
+desc_set_sampler_add(struct zink_context *ctx, struct zink_descriptor_set *zds, struct zink_descriptor_surface *dsurf,
                      struct zink_sampler_state *state, unsigned int i, bool is_buffer, bool cache_hit)
 {
    /* if we got a cache hit, we have to verify that the cached set is still valid;
@@ -1010,13 +1008,13 @@ desc_set_sampler_add(struct zink_context *ctx, struct zink_descriptor_set *zds, 
     * whenever a resource is destroyed
     */
 #ifndef NDEBUG
-   uint32_t cur_hash = zink_get_sampler_view_hash(ctx, zds->sampler_views[i], is_buffer);
-   uint32_t new_hash = zink_get_sampler_view_hash(ctx, sv, is_buffer);
+   uint32_t cur_hash = get_descriptor_surface_hash(ctx, &zds->surfaces[i]);
+   uint32_t new_hash = get_descriptor_surface_hash(ctx, dsurf);
 #endif
    assert(!cache_hit || cur_hash == new_hash);
    assert(!cache_hit || zds->sampler_states[i] == state);
    if (!cache_hit) {
-      zink_sampler_view_desc_set_add(sv, zds, i);
+      zink_descriptor_surface_desc_set_add(dsurf, zds, i);
       zink_sampler_state_desc_set_add(state, zds, i);
    }
 }
@@ -1158,12 +1156,11 @@ update_descriptors_internal(struct zink_context *ctx, struct zink_descriptor_set
                for (unsigned k = 0; k < shader->bindings[h][j].size; k++) {
                   assert(num_resources < num_bindings);
                   if (h == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW) {
-                     struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[stage][index + k]);
                      struct zink_sampler_state *sampler = NULL;
                      if (!is_buffer && image_info->imageView)
                         sampler = ctx->sampler_states[stage][index + k];;
 
-                     desc_set_sampler_add(ctx, zds[h], sampler_view, sampler, num_resources++, is_buffer, cache_hit[h]);
+                     desc_set_sampler_add(ctx, zds[h], &ctx->di.sampler_surfaces[stage][index + k], sampler, num_resources++, is_buffer, cache_hit[h]);
                   } else {
                      struct zink_image_view *image_view = &ctx->image_views[stage][index + k];
                      desc_set_image_add(ctx, zds[h], image_view, num_resources++, is_buffer, cache_hit[h]);

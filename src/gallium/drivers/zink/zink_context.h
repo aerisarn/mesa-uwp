@@ -83,7 +83,6 @@ struct zink_buffer_view {
 
 struct zink_sampler_view {
    struct pipe_sampler_view base;
-   struct zink_descriptor_refs desc_set_refs;
    union {
       struct zink_surface *image_view;
       struct zink_buffer_view *buffer_view;
