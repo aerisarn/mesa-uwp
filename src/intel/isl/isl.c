@@ -2204,7 +2204,12 @@ isl_surf_supports_ccs(const struct isl_device *dev,
        */
 
       /* TODO: Handle the other tiling formats */
-      if (surf->tiling != ISL_TILING_Y0 && surf->tiling != ISL_TILING_4)
+      if (surf->tiling != ISL_TILING_Y0 && surf->tiling != ISL_TILING_4 &&
+          surf->tiling != ISL_TILING_64)
+         return false;
+
+      /* TODO: Handle single-sampled Tile64. */
+      if (surf->samples == 1 && surf->tiling == ISL_TILING_64)
          return false;
    } else {
       /* ISL_GFX_VER(dev) < 12 */
