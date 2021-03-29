@@ -64,6 +64,17 @@ DEBUG_GET_ONCE_FLAGS_OPTION(zink_debug, "ZINK_DEBUG", zink_debug_options, 0)
 uint32_t
 zink_debug;
 
+
+static const struct debug_named_value
+zink_descriptor_options[] = {
+   { "auto", ZINK_DESCRIPTOR_MODE_AUTO, "Automatically detect best mode" },
+   { "lazy", ZINK_DESCRIPTOR_MODE_LAZY, "Don't cache, do least amount of updates" },
+   { "notemplates", ZINK_DESCRIPTOR_MODE_NOTEMPLATES, "Cache, but disable templated updates" },
+   DEBUG_NAMED_VALUE_END
+};
+
+DEBUG_GET_ONCE_FLAGS_OPTION(zink_descriptor_mode, "ZINK_DESCRIPTORS", zink_descriptor_options, ZINK_DESCRIPTOR_MODE_AUTO)
+
 static const char *
 zink_get_vendor(struct pipe_screen *pscreen)
 {
@@ -1193,7 +1204,7 @@ zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback)
 {
    if (screen->info.have_KHR_descriptor_update_template &&
        !fallback &&
-       !getenv("ZINK_CACHE_DESCRIPTORS")) {
+       screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) {
 #define LAZY(FUNC) screen->FUNC = zink_##FUNC##_lazy
       LAZY(descriptor_program_init);
       LAZY(descriptor_program_deinit);
@@ -1204,7 +1215,6 @@ zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback)
       LAZY(descriptors_init);
       LAZY(descriptors_deinit);
       LAZY(descriptors_update);
-      screen->lazy_descriptors = true;
 #undef LAZY
    } else {
 #define DEFAULT(FUNC) screen->FUNC = zink_##FUNC
@@ -1217,7 +1227,6 @@ zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback)
       DEFAULT(descriptors_init);
       DEFAULT(descriptors_deinit);
       DEFAULT(descriptors_update);
-      screen->lazy_descriptors = false;
 #undef DEFAULT
    }
 }
@@ -1576,6 +1585,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->threaded = util_get_cpu_caps()->nr_cpus > 1 && debug_get_bool_option("GALLIUM_THREAD", util_get_cpu_caps()->nr_cpus > 1);
 
    zink_debug = debug_get_option_zink_debug();
+   screen->descriptor_mode = debug_get_option_zink_descriptor_mode();
+   if (util_bitcount(screen->descriptor_mode) > 1) {
+      printf("Specify exactly one descriptor mode.\n");
+      abort();
+   }
 
    screen->instance_info.loader_version = zink_get_loader_version();
    screen->instance = zink_create_instance(&screen->instance_info);

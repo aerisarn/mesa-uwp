@@ -58,6 +58,12 @@ enum zink_descriptor_type;
 #define ZINK_DEBUG_TGSI 0x4
 #define ZINK_DEBUG_VALIDATION 0x8
 
+enum zink_descriptor_mode {
+   ZINK_DESCRIPTOR_MODE_AUTO,
+   ZINK_DESCRIPTOR_MODE_LAZY,
+   ZINK_DESCRIPTOR_MODE_NOTEMPLATES,
+};
+
 struct zink_screen {
    struct pipe_screen base;
    bool threaded;
@@ -129,7 +135,7 @@ struct zink_screen {
    void (*batch_descriptor_deinit)(struct zink_screen *screen, struct zink_batch_state *bs);
    bool (*descriptors_init)(struct zink_context *ctx);
    void (*descriptors_deinit)(struct zink_context *ctx);
-   bool lazy_descriptors;
+   enum zink_descriptor_mode descriptor_mode;
 
 #if defined(MVK_VERSION)
    PFN_vkGetMoltenVKConfigurationMVK vk_GetMoltenVKConfigurationMVK;
