@@ -1280,6 +1280,7 @@ calc_descriptor_state_hash_sampler(struct zink_context *ctx, struct zink_shader 
    for (unsigned k = 0; k < zs->bindings[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][i].size; k++) {
       struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[shader][idx + k]);
       bool is_buffer = zink_shader_descriptor_is_buffer(zs, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, i);
+      ctx->di.sampler_surfaces[shader][idx + k].is_buffer = is_buffer;
       uint32_t val = zink_get_sampler_view_hash(ctx, sampler_view, is_buffer);
       hash = XXH32(&val, sizeof(uint32_t), hash);
       if (is_buffer)
@@ -1297,8 +1298,9 @@ static uint32_t
 calc_descriptor_state_hash_image(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
 {
    for (unsigned k = 0; k < zs->bindings[ZINK_DESCRIPTOR_TYPE_IMAGE][i].size; k++) {
-      uint32_t val = zink_get_image_view_hash(ctx, &ctx->image_views[shader][idx + k],
-                                     zink_shader_descriptor_is_buffer(zs, ZINK_DESCRIPTOR_TYPE_IMAGE, i));
+      bool is_buffer = zink_shader_descriptor_is_buffer(zs, ZINK_DESCRIPTOR_TYPE_IMAGE, i);
+      uint32_t val = zink_get_image_view_hash(ctx, &ctx->image_views[shader][idx + k], is_buffer);
+      ctx->di.image_surfaces[shader][idx + k].is_buffer = is_buffer;
       hash = XXH32(&val, sizeof(uint32_t), hash);
    }
    return hash;
