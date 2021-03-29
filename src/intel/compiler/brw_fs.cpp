@@ -10109,7 +10109,8 @@ brw_compile_cs(const struct brw_compiler *compiler,
    struct brw_cs_prog_data *prog_data = params->prog_data;
    int shader_time_index = params->shader_time ? params->shader_time_index : -1;
 
-   const bool debug_enabled = INTEL_DEBUG & DEBUG_CS;
+   const bool debug_enabled =
+      INTEL_DEBUG & (params->debug_flag ? params->debug_flag : DEBUG_CS);
 
    prog_data->base.stage = MESA_SHADER_COMPUTE;
    prog_data->base.total_shared = nir->info.shared_size;
