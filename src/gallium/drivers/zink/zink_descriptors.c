@@ -1577,7 +1577,7 @@ zink_context_update_descriptor_states(struct zink_context *ctx, struct zink_prog
       ctx->dd->last_push_usage[pg->is_compute] = pg->dd->push_usage;
    }
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      if (!ctx->dd->descriptor_states[pg->is_compute].valid[i])
+      if (pdd_cached(pg)->pool[i] && !ctx->dd->descriptor_states[pg->is_compute].valid[i])
          update_descriptor_state(ctx, i, pg->is_compute);
    }
 }
