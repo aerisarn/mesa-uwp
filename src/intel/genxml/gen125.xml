@@ -835,7 +835,7 @@
       <value name="AUX_CCS_E" value="5"/>
     </field>
     <field name="Y Offset for U or UV Plane" start="192" end="205" type="uint"/>
-    <field name="Auxiliary Surface Pitch" start="195" end="203" type="uint"/>
+    <field name="Auxiliary Surface Pitch" start="195" end="204" type="uint"/>
     <field name="YUV Interpolation Enable" start="207" end="207" type="bool"/>
     <field name="Auxiliary Surface QPitch" start="208" end="222" type="uint"/>
     <field name="X Offset for U or UV Plane" start="208" end="221" type="uint"/>
