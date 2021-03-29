@@ -862,6 +862,7 @@ desc_set_ref_add(struct zink_descriptor_set *zds, struct zink_descriptor_refs *r
 static void
 zink_descriptor_surface_desc_set_add(struct zink_descriptor_surface *dsurf, struct zink_descriptor_set *zds, unsigned idx)
 {
+   assert(idx < zds->num_resources);
    zds->surfaces[idx].is_buffer = dsurf->is_buffer;
    if (dsurf->is_buffer)
       desc_set_ref_add(zds, &dsurf->bufferview->desc_set_refs, (void**)&zds->surfaces[idx].bufferview, dsurf->bufferview);
@@ -872,6 +873,7 @@ zink_descriptor_surface_desc_set_add(struct zink_descriptor_surface *dsurf, stru
 static void
 zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_descriptor_set *zds, unsigned idx, bool is_buffer)
 {
+   assert(idx < zds->num_resources);
    if (is_buffer)
       desc_set_ref_add(zds, &image_view->buffer_view->desc_set_refs, (void**)&zds->surfaces[idx].bufferview, image_view->buffer_view);
    else
@@ -881,6 +883,7 @@ zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_des
 static void
 zink_sampler_state_desc_set_add(struct zink_sampler_state *sampler_state, struct zink_descriptor_set *zds, unsigned idx)
 {
+   assert(idx < zds->num_resources);
    if (sampler_state)
       desc_set_ref_add(zds, &sampler_state->desc_set_refs, (void**)&zds->sampler_states[idx], sampler_state);
    else
@@ -890,6 +893,7 @@ zink_sampler_state_desc_set_add(struct zink_sampler_state *sampler_state, struct
 static void
 zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx)
 {
+   assert(idx < zds->num_resources);
    desc_set_ref_add(zds, res ? &res->obj->desc_set_refs : NULL, (void**)&zds->res_objs[idx], res ? res->obj : NULL);
 }
 
