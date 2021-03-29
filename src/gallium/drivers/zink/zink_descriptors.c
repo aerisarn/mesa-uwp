@@ -715,11 +715,21 @@ zink_descriptor_set_get(struct zink_context *ctx,
    uint32_t hash = push_set ? ctx->dd->push_state[is_compute] :
                               ctx->dd->descriptor_states[is_compute].state[type];
 
+   struct zink_descriptor_set *last_set = push_set ? ctx->dd->last_set[is_compute] : pdd_cached(pg)->last_set[type];
+   /* if the current state hasn't changed since the last time it was used,
+    * it's impossible for this set to not be valid, which means that an
+    * early return here can be done safely and with no locking
+    */
+   if (last_set && ((push_set && !ctx->dd->changed[is_compute][ZINK_DESCRIPTOR_TYPES]) ||
+                    (!push_set && !ctx->dd->changed[is_compute][type]))) {
+      *cache_hit = true;
+      return last_set;
+   }
+
    struct zink_descriptor_state_key key;
    populate_zds_key(ctx, type, is_compute, &key, pg->dd->push_usage);
 
    simple_mtx_lock(&pool->mtx);
-   struct zink_descriptor_set *last_set = push_set ? ctx->dd->last_set[is_compute] : pdd_cached(pg)->last_set[type];
    if (last_set && last_set->hash == hash && desc_state_equal(&last_set->key, &key)) {
       zds = last_set;
       *cache_hit = !zds->invalid;
@@ -1318,14 +1328,17 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
    VkDescriptorSet sets[ZINK_DESCRIPTOR_TYPES + 1];
    struct zink_descriptor_set *zds[ZINK_DESCRIPTOR_TYPES + 1];
    /* push set is indexed in vulkan as 0 but isn't in the general pool array */
+   ctx->dd->changed[is_compute][ZINK_DESCRIPTOR_TYPES] |= ctx->dd->pg[is_compute] != pg;
    if (pg->dd->push_usage)
       zds[ZINK_DESCRIPTOR_TYPES] = zink_descriptor_set_get(ctx, ZINK_DESCRIPTOR_TYPES, is_compute, &cache_hit[ZINK_DESCRIPTOR_TYPES]);
    else {
       zds[ZINK_DESCRIPTOR_TYPES] = NULL;
       cache_hit[ZINK_DESCRIPTOR_TYPES] = false;
    }
+   ctx->dd->changed[is_compute][ZINK_DESCRIPTOR_TYPES] = false;
    sets[0] = zds[ZINK_DESCRIPTOR_TYPES] ? zds[ZINK_DESCRIPTOR_TYPES]->desc_set : ctx->dd->dummy_set;
    for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
+      ctx->dd->changed[is_compute][h] |= ctx->dd->pg[is_compute] != pg;
       if (pg->dsl[h + 1]) {
          /* null set has null pool */
          if (pdd_cached(pg)->pool[h])
@@ -1339,6 +1352,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
       }
       if (!zds[h])
          cache_hit[h] = false;
+      ctx->dd->changed[is_compute][h] = false;
    }
    struct zink_batch *batch = &ctx->batch;
    zink_batch_reference_program(batch, pg);
@@ -1355,6 +1369,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
    vkCmdBindDescriptorSets(batch->state->cmdbuf, is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
                            pg->layout, 0, pg->num_dsl, sets,
                            dynamic_offset_idx, dynamic_offsets);
+   ctx->dd->pg[is_compute] = pg;
 }
 
 void
@@ -1593,6 +1608,7 @@ zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_sha
          ctx->dd->gfx_push_state[shader] = 0;
          ctx->dd->gfx_push_valid[shader] = false;
       }
+      ctx->dd->changed[shader == PIPE_SHADER_COMPUTE][ZINK_DESCRIPTOR_TYPES] = true;
       return;
    }
    if (shader != PIPE_SHADER_COMPUTE) {
@@ -1601,6 +1617,7 @@ zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_sha
    }
    ctx->dd->descriptor_states[shader == PIPE_SHADER_COMPUTE].valid[type] = false;
    ctx->dd->descriptor_states[shader == PIPE_SHADER_COMPUTE].state[type] = 0;
+   ctx->dd->changed[shader == PIPE_SHADER_COMPUTE][type] = true;
 }
 
 bool

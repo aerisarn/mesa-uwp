@@ -118,6 +118,9 @@ struct zink_descriptor_data {
    VkDescriptorPool dummy_pool;
    VkDescriptorSetLayout dummy_dsl;
    VkDescriptorSet dummy_set;
+
+   bool changed[2][ZINK_DESCRIPTOR_TYPES + 1];
+   struct zink_program *pg[2]; //gfx, compute
 };
 
 struct zink_program_descriptor_data {

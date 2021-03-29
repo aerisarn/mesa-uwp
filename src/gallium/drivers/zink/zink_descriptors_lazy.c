@@ -39,7 +39,6 @@ struct zink_descriptor_data_lazy {
    VkDescriptorUpdateTemplateEntry push_entries[PIPE_SHADER_TYPES];
    bool push_state_changed[2]; //gfx, compute
    uint8_t state_changed[2]; //gfx, compute
-   struct zink_program *pg[2]; //gfx, compute
 };
 
 struct zink_descriptor_pool {
@@ -470,7 +469,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    }
    /* set again in case of flushing */
    bdd_lazy(bs)->pg[is_compute] = pg;
-   dd_lazy(ctx)->pg[is_compute] = pg;
+   ctx->dd->pg[is_compute] = pg;
 }
 
 void
