@@ -5354,7 +5354,6 @@ radv_emit_draw_packets_indexed(struct radv_cmd_buffer *cmd_buffer,
 {
    const struct radv_cmd_state *state = &cmd_buffer->state;
    const int index_size = radv_get_vgt_index_size(state->index_type);
-   uint64_t index_va;
 
    uint32_t remaining_indexes = cmd_buffer->state.max_index_count;
    remaining_indexes = MAX2(remaining_indexes, info->first_index) - info->first_index;
@@ -5364,8 +5363,7 @@ radv_emit_draw_packets_indexed(struct radv_cmd_buffer *cmd_buffer,
        cmd_buffer->device->physical_device->rad_info.has_zero_index_buffer_bug)
       return;
 
-   index_va = state->index_va;
-   index_va += first_index * index_size;
+   const uint64_t index_va = state->index_va + first_index * index_size;
 
    if (!state->subpass->view_mask) {
       radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, count);
