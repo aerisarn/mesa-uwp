@@ -867,6 +867,13 @@ if _power8 != 'disabled'
   endif
 endif
 
+if get_option('vmware-mks-stats')
+  if not with_gallium_svga
+    error('vmware-mks-stats requires gallium VMware/svga driver.')
+  endif
+  pre_args += '-DVMX86_STATS=1'
+endif
+
 _opencl = get_option('gallium-opencl')
 if _opencl != 'disabled'
   if not with_gallium
