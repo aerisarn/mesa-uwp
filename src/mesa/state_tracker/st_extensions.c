@@ -1268,6 +1268,7 @@ void st_init_extensions(struct pipe_screen *screen,
 
       /* Integer textures make no sense before GLSL 1.30 */
       extensions->EXT_texture_integer = GL_FALSE;
+      extensions->ARB_texture_rgb10_a2ui = GL_FALSE;
    }
 
    if (options->glsl_zero_init) {
