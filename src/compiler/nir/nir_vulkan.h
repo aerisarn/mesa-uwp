@@ -39,6 +39,16 @@ nir_convert_ycbcr_to_rgb(nir_builder *b,
                          nir_ssa_def *raw_channels,
                          uint32_t *bpcs);
 
+struct vk_ycbcr_conversion;
+
+typedef const struct vk_ycbcr_conversion *
+   (*nir_vk_ycbcr_conversion_lookup_cb)(const void *data, uint32_t set,
+                                        uint32_t binding, uint32_t array_index);
+
+bool nir_vk_lower_ycbcr_tex(nir_shader *nir,
+                            nir_vk_ycbcr_conversion_lookup_cb cb,
+                            const void *cb_data);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
