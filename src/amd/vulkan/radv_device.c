@@ -383,6 +383,8 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
    *ext = (struct vk_device_extension_table){
       .KHR_8bit_storage = true,
       .KHR_16bit_storage = true,
+      .KHR_acceleration_structure = (device->instance->perftest_flags & RADV_PERFTEST_RT) &&
+                                    device->rad_info.chip_class >= GFX10_3,
       .KHR_bind_memory2 = true,
       .KHR_buffer_device_address = true,
       .KHR_copy_commands2 = true,
@@ -1598,6 +1600,16 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->globalPriorityQuery = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
+         VkPhysicalDeviceAccelerationStructureFeaturesKHR *features =
+            (VkPhysicalDeviceAccelerationStructureFeaturesKHR *)ext;
+         features->accelerationStructure = true;
+         features->accelerationStructureCaptureReplay = false;
+         features->accelerationStructureIndirectBuild = false;
+         features->accelerationStructureHostCommands = true;
+         features->descriptorBindingAccelerationStructureUpdateAfterBind = true;
+         break;
+      }
       default:
          break;
       }
@@ -2268,6 +2280,23 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceProvokingVertexPropertiesEXT *)ext;
          props->provokingVertexModePerPipeline = true;
          props->transformFeedbackPreservesTriangleFanProvokingVertex = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR: {
+         VkPhysicalDeviceAccelerationStructurePropertiesKHR *props =
+            (VkPhysicalDeviceAccelerationStructurePropertiesKHR *)ext;
+         props->maxGeometryCount = (1 << 24) - 1;
+         props->maxInstanceCount = (1 << 24) - 1;
+         props->maxPrimitiveCount = (1 << 29) - 1;
+         props->maxPerStageDescriptorAccelerationStructures =
+            pProperties->properties.limits.maxPerStageDescriptorStorageBuffers;
+         props->maxPerStageDescriptorUpdateAfterBindAccelerationStructures =
+            pProperties->properties.limits.maxPerStageDescriptorStorageBuffers;
+         props->maxDescriptorSetAccelerationStructures =
+            pProperties->properties.limits.maxDescriptorSetStorageBuffers;
+         props->maxDescriptorSetUpdateAfterBindAccelerationStructures =
+            pProperties->properties.limits.maxDescriptorSetStorageBuffers;
+         props->minAccelerationStructureScratchOffsetAlignment = 128;
          break;
       }
       default:
