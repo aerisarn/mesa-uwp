@@ -1686,7 +1686,7 @@ VkResult anv_CreateSamplerYcbcrConversion(
 
    if (ext_info && ext_info->externalFormat) {
       assert(pCreateInfo->format == VK_FORMAT_UNDEFINED);
-      conversion->format = (struct anv_format *) (uintptr_t) ext_info->externalFormat;
+      conversion->format = anv_get_format(ext_info->externalFormat);
    } else {
       /* The Vulkan 1.1.95 spec says
        *
