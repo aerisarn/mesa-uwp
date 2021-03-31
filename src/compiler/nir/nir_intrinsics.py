@@ -1227,6 +1227,15 @@ intrinsic("load_sbt_amd", dest_comp=4, bit_sizes=[32], indices=[BINDING],
 # 6. inverse ray direction (componentwise 1.0/ray direction)
 intrinsic("bvh64_intersect_ray_amd", [4, 2, 1, 3, 3, 3], 4, flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# Return of a callable in raytracing pipelines
+intrinsic("rt_return_amd")
+
+# offset into scratch for the input callable data in a raytracing pipeline.
+system_value("rt_arg_scratch_offset_amd", 1)
+
+# Whether to call the anyhit shader for an intersection in an intersection shader.
+system_value("intersection_opaque_amd", 1, bit_sizes=[1])
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel

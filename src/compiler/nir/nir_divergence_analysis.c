@@ -531,6 +531,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_packed_passthrough_primitive_amd:
    case nir_intrinsic_load_initial_edgeflags_amd:
    case nir_intrinsic_gds_atomic_add_amd:
+   case nir_intrinsic_load_rt_arg_scratch_offset_amd:
+   case nir_intrinsic_load_intersection_opaque_amd:
       is_divergent = true;
       break;
 
