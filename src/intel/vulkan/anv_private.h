@@ -3258,19 +3258,9 @@ struct anv_format_plane {
    enum isl_format isl_format:16;
    struct isl_swizzle swizzle;
 
-   /* Whether this plane contains chroma channels */
-   bool has_chroma;
-
-   /* For downscaling of YUV planes */
-   uint8_t denominator_scales[2];
-
-   /* How to map sampled ycbcr planes to a single 4 component element. */
-   struct isl_swizzle ycbcr_swizzle;
-
    /* What aspect is associated to this plane */
    VkImageAspectFlags aspect;
 };
-
 
 struct anv_format {
    struct anv_format_plane planes[3];

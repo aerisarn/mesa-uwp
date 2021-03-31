@@ -51,7 +51,6 @@
    [VK_ENUM_OFFSET(__vk_fmt)] = { \
       .planes = { \
          { .isl_format = __hw_fmt, .swizzle = __swizzle, \
-           .denominator_scales = { 1, 1, }, \
            .aspect = VK_IMAGE_ASPECT_COLOR_BIT, \
          }, \
       }, \
@@ -66,7 +65,6 @@
    [VK_ENUM_OFFSET(__vk_fmt)] = { \
       .planes = { \
          { .isl_format = __hw_fmt, .swizzle = RGBA, \
-           .denominator_scales = { 1, 1, }, \
            .aspect = VK_IMAGE_ASPECT_DEPTH_BIT, \
          }, \
       }, \
@@ -78,7 +76,6 @@
    [VK_ENUM_OFFSET(__vk_fmt)] = { \
       .planes = { \
          { .isl_format = __hw_fmt, .swizzle = RGBA, \
-           .denominator_scales = { 1, 1, }, \
            .aspect = VK_IMAGE_ASPECT_STENCIL_BIT, \
          }, \
       }, \
@@ -90,11 +87,9 @@
    [VK_ENUM_OFFSET(__vk_fmt)] = { \
       .planes = { \
          { .isl_format = __fmt1, .swizzle = RGBA, \
-           .denominator_scales = { 1, 1, }, \
            .aspect = VK_IMAGE_ASPECT_DEPTH_BIT, \
          }, \
          { .isl_format = __fmt2, .swizzle = RGBA, \
-           .denominator_scales = { 1, 1, }, \
            .aspect = VK_IMAGE_ASPECT_STENCIL_BIT, \
          }, \
       }, \
@@ -110,21 +105,9 @@
       .vk_format = VK_FORMAT_UNDEFINED, \
    }
 
-#define y_plane(__plane, __hw_fmt, __swizzle, __ycbcr_swizzle, dhs, dvs) \
+#define ycbcr_plane(__plane, __hw_fmt, __swizzle) \
    { .isl_format = __hw_fmt, \
      .swizzle = __swizzle, \
-     .ycbcr_swizzle = __ycbcr_swizzle, \
-     .denominator_scales = { dhs, dvs, }, \
-     .has_chroma = false, \
-     .aspect = VK_IMAGE_ASPECT_PLANE_0_BIT, /* Y plane is always plane 0 */ \
-   }
-
-#define chroma_plane(__plane, __hw_fmt, __swizzle, __ycbcr_swizzle, dhs, dvs) \
-   { .isl_format = __hw_fmt, \
-     .swizzle = __swizzle, \
-     .ycbcr_swizzle = __ycbcr_swizzle, \
-     .denominator_scales = { dhs, dvs, }, \
-     .has_chroma = true, \
      .aspect = VK_IMAGE_ASPECT_PLANE_ ## __plane ## _BIT, \
    }
 
@@ -341,27 +324,27 @@ static const struct anv_format _4444_formats[] = {
 
 static const struct anv_format ycbcr_formats[] = {
    ycbcr_fmt(VK_FORMAT_G8B8G8R8_422_UNORM, 1,
-             y_plane(0, ISL_FORMAT_YCRCB_SWAPUV, RGBA, _ISL_SWIZZLE(BLUE, GREEN, RED, ZERO), 1, 1)),
+             ycbcr_plane(0, ISL_FORMAT_YCRCB_SWAPUV, RGBA)),
    ycbcr_fmt(VK_FORMAT_B8G8R8G8_422_UNORM, 1,
-             y_plane(0, ISL_FORMAT_YCRCB_SWAPUVY, RGBA, _ISL_SWIZZLE(BLUE, GREEN, RED, ZERO), 1, 1)),
+             ycbcr_plane(0, ISL_FORMAT_YCRCB_SWAPUVY, RGBA)),
    ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM, 3,
-             y_plane(0, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(GREEN, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(1, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(BLUE, ZERO, ZERO, ZERO), 2, 2),
-             chroma_plane(2, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(RED, ZERO, ZERO, ZERO), 2, 2)),
+             ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R8_UNORM, RGBA),
+             ycbcr_plane(2, ISL_FORMAT_R8_UNORM, RGBA)),
    ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, 2,
-             y_plane(0, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(GREEN, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(1, ISL_FORMAT_R8G8_UNORM, RGBA, _ISL_SWIZZLE(BLUE, RED, ZERO, ZERO), 2, 2)),
+             ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R8G8_UNORM, RGBA)),
    ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM, 3,
-             y_plane(0, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(GREEN, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(1, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(BLUE, ZERO, ZERO, ZERO), 2, 1),
-             chroma_plane(2, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(RED, ZERO, ZERO, ZERO), 2, 1)),
+             ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R8_UNORM, RGBA),
+             ycbcr_plane(2, ISL_FORMAT_R8_UNORM, RGBA)),
    ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_422_UNORM, 2,
-             y_plane(0, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(GREEN, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(1, ISL_FORMAT_R8G8_UNORM, RGBA, _ISL_SWIZZLE(BLUE, RED, ZERO, ZERO), 2, 1)),
+             ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R8G8_UNORM, RGBA)),
    ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM, 3,
-             y_plane(0, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(GREEN, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(1, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(BLUE, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(2, ISL_FORMAT_R8_UNORM, RGBA, _ISL_SWIZZLE(RED, ZERO, ZERO, ZERO), 1, 1)),
+             ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R8_UNORM, RGBA),
+             ycbcr_plane(2, ISL_FORMAT_R8_UNORM, RGBA)),
 
    fmt_unsupported(VK_FORMAT_R10X6_UNORM_PACK16),
    fmt_unsupported(VK_FORMAT_R10X6G10X6_UNORM_2PACK16),
@@ -390,23 +373,23 @@ static const struct anv_format ycbcr_formats[] = {
    fmt_unsupported(VK_FORMAT_B16G16R16G16_422_UNORM),
 
    ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM, 3,
-             y_plane(0, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(GREEN, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(1, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(BLUE, ZERO, ZERO, ZERO), 2, 2),
-             chroma_plane(2, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(RED, ZERO, ZERO, ZERO), 2, 2)),
+             ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R16_UNORM, RGBA),
+             ycbcr_plane(2, ISL_FORMAT_R16_UNORM, RGBA)),
    ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_420_UNORM, 2,
-             y_plane(0, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(GREEN, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(1, ISL_FORMAT_R16G16_UNORM, RGBA, _ISL_SWIZZLE(BLUE, RED, ZERO, ZERO), 2, 2)),
+             ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R16G16_UNORM, RGBA)),
    ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM, 3,
-             y_plane(0, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(GREEN, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(1, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(BLUE, ZERO, ZERO, ZERO), 2, 1),
-             chroma_plane(2, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(RED, ZERO, ZERO, ZERO), 2, 1)),
+             ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R16_UNORM, RGBA),
+             ycbcr_plane(2, ISL_FORMAT_R16_UNORM, RGBA)),
    ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_422_UNORM, 2,
-             y_plane(0, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(GREEN, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(1, ISL_FORMAT_R16G16_UNORM, RGBA, _ISL_SWIZZLE(BLUE, RED, ZERO, ZERO), 2, 1)),
+             ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R16G16_UNORM, RGBA)),
    ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM, 3,
-             y_plane(0, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(GREEN, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(1, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(BLUE, ZERO, ZERO, ZERO), 1, 1),
-             chroma_plane(2, ISL_FORMAT_R16_UNORM, RGBA, _ISL_SWIZZLE(RED, ZERO, ZERO, ZERO), 1, 1)),
+             ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R16_UNORM, RGBA),
+             ycbcr_plane(2, ISL_FORMAT_R16_UNORM, RGBA)),
 };
 
 #undef _fmt
@@ -684,10 +667,13 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
       /* We can support cosited chroma locations when handle planes with our
        * own shader snippets.
        */
-      for (unsigned p = 0; p < anv_format->n_planes; p++) {
-         if (anv_format->planes[p].denominator_scales[0] > 1 ||
-             anv_format->planes[p].denominator_scales[1] > 1) {
-            flags |= VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT;
+      const struct vk_format_ycbcr_info *ycbcr_info =
+         vk_format_get_ycbcr_info(vk_format);
+      assert(anv_format->n_planes == ycbcr_info->n_planes);
+      for (unsigned p = 0; p < ycbcr_info->n_planes; p++) {
+         if (ycbcr_info->planes[p].denominator_scales[0] > 1 ||
+             ycbcr_info->planes[p].denominator_scales[1] > 1) {
+            flags |= VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT;
             break;
          }
       }

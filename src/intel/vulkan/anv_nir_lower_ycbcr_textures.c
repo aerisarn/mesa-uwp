@@ -26,6 +26,7 @@
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
 #include "nir/nir_vulkan.h"
+#include "vk_format.h"
 
 struct ycbcr_state {
    nir_builder *builder;
@@ -33,6 +34,7 @@ struct ycbcr_state {
    nir_tex_instr *origin_tex;
    nir_deref_instr *tex_deref;
    const struct vk_ycbcr_conversion *conversion;
+   const struct vk_format_ycbcr_info *format_ycbcr_info;
 };
 
 /* TODO: we should probably replace this with a push constant/uniform. */
@@ -82,7 +84,7 @@ implicit_downsampled_coord(nir_builder *b,
 static nir_ssa_def *
 implicit_downsampled_coords(struct ycbcr_state *state,
                             nir_ssa_def *old_coords,
-                            const struct anv_format_plane *plane_format)
+                            const struct vk_format_ycbcr_plane *format_plane)
 {
    nir_builder *b = state->builder;
    const struct vk_ycbcr_conversion *conversion = state->conversion;
@@ -91,12 +93,12 @@ implicit_downsampled_coords(struct ycbcr_state *state,
    int c;
 
    for (c = 0; c < ARRAY_SIZE(conversion->chroma_offsets); c++) {
-      if (plane_format->denominator_scales[c] > 1 &&
+      if (format_plane->denominator_scales[c] > 1 &&
           conversion->chroma_offsets[c] == VK_CHROMA_LOCATION_COSITED_EVEN) {
          comp[c] = implicit_downsampled_coord(b,
                                               nir_channel(b, old_coords, c),
                                               nir_channel(b, image_size, c),
-                                              plane_format->denominator_scales[c]);
+                                              format_plane->denominator_scales[c]);
       } else {
          comp[c] = nir_channel(b, old_coords, c);
       }
@@ -115,8 +117,8 @@ create_plane_tex_instr_implicit(struct ycbcr_state *state,
 {
    nir_builder *b = state->builder;
    const struct vk_ycbcr_conversion *conversion = state->conversion;
-   const struct anv_format_plane *plane_format =
-      &anv_get_format(conversion->format)->planes[plane];
+   const struct vk_format_ycbcr_plane *format_plane =
+      &state->format_ycbcr_info->planes[plane];
    nir_tex_instr *old_tex = state->origin_tex;
    nir_tex_instr *tex = nir_tex_instr_create(b->shader, old_tex->num_srcs + 1);
 
@@ -125,12 +127,12 @@ create_plane_tex_instr_implicit(struct ycbcr_state *state,
 
       switch (old_tex->src[i].src_type) {
       case nir_tex_src_coord:
-         if (plane_format->has_chroma && conversion->chroma_reconstruction) {
+         if (format_plane->has_chroma && conversion->chroma_reconstruction) {
             assert(old_tex->src[i].src.is_ssa);
             tex->src[i].src =
                nir_src_for_ssa(implicit_downsampled_coords(state,
                                                            old_tex->src[i].src.ssa,
-                                                           plane_format));
+                                                           format_plane));
             break;
          }
          FALLTHROUGH;
@@ -163,35 +165,17 @@ create_plane_tex_instr_implicit(struct ycbcr_state *state,
 }
 
 static unsigned
-channel_to_component(enum isl_channel_select channel)
+swizzle_to_component(VkComponentSwizzle swizzle)
 {
-   switch (channel) {
-   case ISL_CHANNEL_SELECT_RED:
+   switch (swizzle) {
+   case VK_COMPONENT_SWIZZLE_R:
       return 0;
-   case ISL_CHANNEL_SELECT_GREEN:
+   case VK_COMPONENT_SWIZZLE_G:
       return 1;
-   case ISL_CHANNEL_SELECT_BLUE:
+   case VK_COMPONENT_SWIZZLE_B:
       return 2;
-   case ISL_CHANNEL_SELECT_ALPHA:
+   case VK_COMPONENT_SWIZZLE_A:
       return 3;
-   default:
-      unreachable("invalid channel");
-      return 0;
-   }
-}
-
-static enum isl_channel_select
-swizzle_channel(struct isl_swizzle swizzle, unsigned channel)
-{
-   switch (channel) {
-   case 0:
-      return swizzle.r;
-   case 1:
-      return swizzle.g;
-   case 2:
-      return swizzle.b;
-   case 3:
-      return swizzle.a;
    default:
       unreachable("invalid channel");
       return 0;
@@ -245,23 +229,28 @@ anv_nir_lower_ycbcr_textures_instr(nir_builder *builder,
    if (sampler->conversion == NULL)
       return false;
 
+   const struct vk_format_ycbcr_info *format_ycbcr_info =
+      vk_format_get_ycbcr_info(sampler->conversion->format);
+
    struct ycbcr_state state = {
       .builder = builder,
       .origin_tex = tex,
       .tex_deref = deref,
       .conversion = sampler->conversion,
+      .format_ycbcr_info = format_ycbcr_info,
    };
 
    builder->cursor = nir_before_instr(&tex->instr);
 
-   const struct anv_format *format = anv_get_format(state.conversion->format);
-   const struct isl_format_layout *y_isl_layout = NULL;
-   for (uint32_t p = 0; p < format->n_planes; p++) {
-      if (!format->planes[p].has_chroma)
-         y_isl_layout = isl_format_get_layout(format->planes[p].isl_format);
+   VkFormat y_format = VK_FORMAT_UNDEFINED;
+   for (uint32_t p = 0; p < format_ycbcr_info->n_planes; p++) {
+      if (!format_ycbcr_info->planes[p].has_chroma)
+         y_format = format_ycbcr_info->planes[p].format;
    }
-   assert(y_isl_layout != NULL);
-   uint8_t y_bpc = y_isl_layout->channels_array[0].bits;
+   assert(y_format != VK_FORMAT_UNDEFINED);
+   const struct util_format_description *y_format_desc =
+      util_format_description(vk_format_to_pipe_format(y_format));
+   uint8_t y_bpc = y_format_desc->channel[0].size;
 
    /* |ycbcr_comp| holds components in the order : Cr-Y-Cb */
    nir_ssa_def *zero = nir_imm_float(builder, 0.0f);
@@ -277,23 +266,23 @@ anv_nir_lower_ycbcr_textures_instr(nir_builder *builder,
     *
     *    R, G, B should respectively map to Cr, Y, Cb
     */
-   for (uint32_t p = 0; p < format->n_planes; p++) {
-      const struct anv_format_plane *plane_format = &format->planes[p];
+   for (uint32_t p = 0; p < format_ycbcr_info->n_planes; p++) {
+      const struct vk_format_ycbcr_plane *format_plane =
+         &format_ycbcr_info->planes[p];
       nir_ssa_def *plane_sample = create_plane_tex_instr_implicit(&state, p);
 
       for (uint32_t pc = 0; pc < 4; pc++) {
-         enum isl_channel_select ycbcr_swizzle =
-            swizzle_channel(plane_format->ycbcr_swizzle, pc);
-         if (ycbcr_swizzle == ISL_CHANNEL_SELECT_ZERO)
+         VkComponentSwizzle ycbcr_swizzle = format_plane->ycbcr_swizzle[pc];
+         if (ycbcr_swizzle == VK_COMPONENT_SWIZZLE_ZERO)
             continue;
 
-         unsigned ycbcr_component = channel_to_component(ycbcr_swizzle);
+         unsigned ycbcr_component = swizzle_to_component(ycbcr_swizzle);
          ycbcr_comp[ycbcr_component] = nir_channel(builder, plane_sample, pc);
 
          /* Also compute the number of bits for each component. */
-         const struct isl_format_layout *isl_layout =
-            isl_format_get_layout(plane_format->isl_format);
-         ycbcr_bpcs[ycbcr_component] = isl_layout->channels_array[pc].bits;
+         const struct util_format_description *plane_format_desc =
+            util_format_description(vk_format_to_pipe_format(format_plane->format));
+         ycbcr_bpcs[ycbcr_component] = plane_format_desc->channel[pc].size;
       }
    }
 
