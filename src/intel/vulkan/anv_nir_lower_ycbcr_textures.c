@@ -32,7 +32,7 @@ struct ycbcr_state {
    nir_ssa_def *image_size;
    nir_tex_instr *origin_tex;
    nir_deref_instr *tex_deref;
-   struct anv_ycbcr_conversion *conversion;
+   const struct vk_ycbcr_conversion *conversion;
 };
 
 /* TODO: we should probably replace this with a push constant/uniform. */
@@ -85,7 +85,7 @@ implicit_downsampled_coords(struct ycbcr_state *state,
                             const struct anv_format_plane *plane_format)
 {
    nir_builder *b = state->builder;
-   struct anv_ycbcr_conversion *conversion = state->conversion;
+   const struct vk_ycbcr_conversion *conversion = state->conversion;
    nir_ssa_def *image_size = get_texture_size(state, state->tex_deref);
    nir_ssa_def *comp[4] = { NULL, };
    int c;
@@ -114,9 +114,9 @@ create_plane_tex_instr_implicit(struct ycbcr_state *state,
                                 uint32_t plane)
 {
    nir_builder *b = state->builder;
-   struct anv_ycbcr_conversion *conversion = state->conversion;
+   const struct vk_ycbcr_conversion *conversion = state->conversion;
    const struct anv_format_plane *plane_format =
-      &conversion->format->planes[plane];
+      &anv_get_format(conversion->format)->planes[plane];
    nir_tex_instr *old_tex = state->origin_tex;
    nir_tex_instr *tex = nir_tex_instr_create(b->shader, old_tex->num_srcs + 1);
 
@@ -254,7 +254,7 @@ anv_nir_lower_ycbcr_textures_instr(nir_builder *builder,
 
    builder->cursor = nir_before_instr(&tex->instr);
 
-   const struct anv_format *format = state.conversion->format;
+   const struct anv_format *format = anv_get_format(state.conversion->format);
    const struct isl_format_layout *y_isl_layout = NULL;
    for (uint32_t p = 0; p < format->n_planes; p++) {
       if (!format->planes[p].has_chroma)
