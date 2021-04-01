@@ -478,7 +478,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       }
    }
 
-   if (gfx_program->base.has_descriptors)
+   if (zink_program_has_descriptors(&gfx_program->base))
       zink_descriptors_update(ctx, false);
 
    struct zink_batch *batch = zink_batch_rp(ctx);
@@ -730,7 +730,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    VkPipeline pipeline = zink_get_compute_pipeline(screen, comp_program,
                                                &ctx->compute_pipeline_state);
 
-   if (comp_program->base.has_descriptors)
+   if (zink_program_has_descriptors(&comp_program->base))
       zink_descriptors_update(ctx, true);
 
 

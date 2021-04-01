@@ -77,7 +77,6 @@ struct zink_program {
    bool is_compute;
 
    struct zink_program_descriptor_data *dd;
-   bool has_descriptors;
 
    VkPipelineLayout layout;
    VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES];
@@ -217,5 +216,11 @@ VkPipeline
 zink_get_compute_pipeline(struct zink_screen *screen,
                       struct zink_compute_program *comp,
                       struct zink_compute_pipeline_state *state);
+
+static inline bool
+zink_program_has_descriptors(const struct zink_program *pg)
+{
+   return pg->dsl[0] || pg->dsl[1] || pg->dsl[2] || pg->dsl[3];
+}
 
 #endif
