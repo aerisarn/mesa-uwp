@@ -588,8 +588,8 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    batch->has_work = true;
 }
 
-static bool
-ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_batch_usage *u)
+bool
+batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_batch_usage *u)
 {
    bool found = false;
    if (u->usage == batch->state->fence.batch_id)
@@ -603,7 +603,7 @@ ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_ba
 void
 zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_view *buffer_view)
 {
-   if (!ptr_add_usage(batch, batch->state->bufferviews, buffer_view, &buffer_view->batch_uses))
+   if (!batch_ptr_add_usage(batch, batch->state->bufferviews, buffer_view, &buffer_view->batch_uses))
       return;
    pipe_reference(NULL, &buffer_view->reference);
    batch->has_work = true;
@@ -612,7 +612,7 @@ zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_vie
 void
 zink_batch_reference_surface(struct zink_batch *batch, struct zink_surface *surface)
 {
-   if (!ptr_add_usage(batch, batch->state->surfaces, surface, &surface->batch_uses))
+   if (!batch_ptr_add_usage(batch, batch->state->surfaces, surface, &surface->batch_uses))
       return;
    struct pipe_surface *surf = NULL;
    pipe_surface_reference(&surf, &surface->base);
@@ -643,7 +643,7 @@ void
 zink_batch_reference_program(struct zink_batch *batch,
                              struct zink_program *pg)
 {
-   if (!ptr_add_usage(batch, batch->state->programs, pg, &pg->batch_uses))
+   if (!batch_ptr_add_usage(batch, batch->state->programs, pg, &pg->batch_uses))
       return;
    pipe_reference(NULL, &pg->reference);
    batch->has_work = true;
@@ -652,7 +652,7 @@ zink_batch_reference_program(struct zink_batch *batch,
 bool
 zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds)
 {
-   if (!ptr_add_usage(batch, batch->state->desc_sets, zds, &zds->batch_uses))
+   if (!batch_ptr_add_usage(batch, batch->state->desc_sets, zds, &zds->batch_uses))
       return false;
    pipe_reference(NULL, &zds->reference);
    return true;

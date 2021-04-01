@@ -49,6 +49,10 @@ struct zink_batch_usage {
    uint32_t usage;
 };
 
+/* not real api don't use */
+bool
+batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_batch_usage *u);
+
 struct zink_batch_state {
    struct zink_fence fence;
    struct pipe_reference reference;
