@@ -2615,9 +2615,24 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
          if (!(res->bind_history & BITFIELD64_BIT(type)))
             continue;
 
-         uint32_t usage = zink_program_get_descriptor_usage(ctx, shader, type);
-         while (usage) {
-            const int i = u_bit_scan(&usage);
+         unsigned num_descriptors = 0;
+         switch (type) {
+         case ZINK_DESCRIPTOR_TYPE_UBO:
+            num_descriptors = ctx->di.num_ubos[shader];
+            break;
+         case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
+            num_descriptors = ctx->di.num_sampler_views[shader];
+            break;
+         case ZINK_DESCRIPTOR_TYPE_SSBO:
+            num_descriptors = ctx->di.num_ssbos[shader];
+            break;
+         case ZINK_DESCRIPTOR_TYPE_IMAGE:
+            num_descriptors = ctx->di.num_images[shader];
+            break;
+         default:
+            unreachable("ack");
+         }
+         for (unsigned i = 0; i < num_descriptors; i++) {
             struct zink_resource *cres = zink_get_resource_for_descriptor(ctx, type, shader, i);
             if (res != cres)
                continue;
