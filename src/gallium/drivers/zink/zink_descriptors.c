@@ -698,23 +698,23 @@ zink_descriptor_pool_reference(struct zink_screen *screen,
 }
 
 bool
-zink_descriptor_program_init(struct zink_context *ctx,
-                       struct zink_shader *stages[ZINK_SHADER_COUNT],
-                       struct zink_program *pg)
+zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
 {
    VkDescriptorSetLayoutBinding bindings[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 32];
-   int num_bindings[ZINK_DESCRIPTOR_TYPES] = {};
+   unsigned num_bindings[ZINK_DESCRIPTOR_TYPES] = {};
 
-   if (!pg->dd)
-      pg->dd = rzalloc(pg, struct zink_program_descriptor_data);
-   if (!pg->dd)
-      return false;
    VkDescriptorPoolSize sizes[6] = {};
    int type_map[12];
    unsigned num_types = 0;
    memset(type_map, -1, sizeof(type_map));
 
-   for (int i = 0; i < ZINK_SHADER_COUNT; i++) {
+   struct zink_shader **stages;
+   if (pg->is_compute)
+      stages = &((struct zink_compute_program*)pg)->shader;
+   else
+      stages = ((struct zink_gfx_program*)pg)->shaders;
+
+   for (int i = 0; i < (pg->is_compute ? 1 : ZINK_SHADER_COUNT); i++) {
       struct zink_shader *shader = stages[i];
       if (!shader)
          continue;
@@ -742,17 +742,22 @@ zink_descriptor_program_init(struct zink_context *ctx,
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       total_descs += num_bindings[i];
    }
-   pg->has_descriptors = !!total_descs;
-   if (!total_descs)
-      return true;
+   if (!total_descs) {
+      pg->layout = zink_pipeline_layout_create(zink_screen(ctx->base.screen), pg);
+      return !!pg->layout;
+   }
+
+   if (!pg->dd)
+      pg->dd = rzalloc(pg, struct zink_program_descriptor_data);
+   if (!pg->dd)
+      return false;
 
    for (int i = 0; i < num_types; i++)
       sizes[i].descriptorCount *= ZINK_DEFAULT_MAX_DESCS;
 
    bool found_descriptors = false;
+   struct zink_descriptor_layout_key *layout_key[ZINK_DESCRIPTOR_TYPES] = {};
    for (unsigned i = ZINK_DESCRIPTOR_TYPES - 1; i < ZINK_DESCRIPTOR_TYPES; i--) {
-      struct zink_descriptor_pool *pool;
-      struct zink_descriptor_layout_key *layout_key = NULL;
       if (!num_bindings[i]) {
          if (!found_descriptors)
             continue;
@@ -764,14 +769,15 @@ zink_descriptor_program_init(struct zink_context *ctx,
          null_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT |
                                    VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                                    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-         VkDescriptorPoolSize null_size = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ZINK_DEFAULT_MAX_DESCS};
-         pg->dsl[i] = zink_descriptor_util_layout_get(ctx, i, &null_binding, 0, &layout_key);
-         pool = descriptor_pool_get(ctx, i, layout_key, &null_size, 1);
-         if (!pool)
-         pg->dsl[i] = zink_descriptor_util_layout_get(ctx, i, &null_binding, 1, &layout_key);
+         pg->dsl[i] = zink_descriptor_util_layout_get(ctx, i, &null_binding, 0, &layout_key[i]);
          if (!pg->dsl[i])
             return false;
+         VkDescriptorPoolSize null_size = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ZINK_DEFAULT_MAX_DESCS};
+         struct zink_descriptor_pool *pool = descriptor_pool_get(ctx, i, layout_key[i], &null_size, 1);
+         if (!pool)
+            return false;
          zink_descriptor_pool_reference(zink_screen(ctx->base.screen), &pg->dd->pool[i], pool);
+         pg->num_dsl++;
          continue;
       }
       found_descriptors = true;
@@ -816,15 +822,18 @@ zink_descriptor_program_init(struct zink_context *ctx,
          }
          break;
       }
-      pg->dsl[i] = zink_descriptor_util_layout_get(ctx, i, bindings[i], num_bindings[i], &layout_key);
+      pg->dsl[i] = zink_descriptor_util_layout_get(ctx, i, bindings[i], num_bindings[i], &layout_key[i]);
       if (!pg->dsl[i])
          return false;
-      pool = descriptor_pool_get(ctx, i, layout_key, type_sizes, num_type_sizes);
+      struct zink_descriptor_pool *pool = descriptor_pool_get(ctx, i, layout_key[i], type_sizes, num_type_sizes);
       if (!pool)
          return false;
       zink_descriptor_pool_reference(zink_screen(ctx->base.screen), &pg->dd->pool[i], pool);
+      pg->num_dsl++;
    }
-   return true;
+
+   pg->layout = zink_pipeline_layout_create(zink_screen(ctx->base.screen), pg);
+   return !!pg->layout;
 }
 
 void

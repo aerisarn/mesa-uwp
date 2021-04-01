@@ -81,6 +81,7 @@ struct zink_program {
 
    VkPipelineLayout layout;
    VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES];
+   unsigned num_dsl;
 };
 
 struct zink_gfx_program {
@@ -205,6 +206,9 @@ zink_compute_program_reference(struct zink_screen *screen,
    if (dst) *dst = src;
    return ret;
 }
+
+VkPipelineLayout
+zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg);
 
 void
 zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const uint block[3]);

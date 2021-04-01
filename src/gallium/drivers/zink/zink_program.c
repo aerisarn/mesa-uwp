@@ -496,26 +496,17 @@ zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog)
    update_shader_modules(ctx, ctx->gfx_stages, prog, true);
 }
 
-static VkPipelineLayout
-pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg, bool is_compute)
+VkPipelineLayout
+zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg)
 {
    VkPipelineLayoutCreateInfo plci = {};
    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
-   VkDescriptorSetLayout layouts[ZINK_DESCRIPTOR_TYPES];
-   unsigned num_layouts = 0;
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      if (pg->dsl[i]) {
-         layouts[num_layouts] = pg->dsl[i];
-         num_layouts++;
-      }
-   }
-
-   plci.pSetLayouts = layouts;
-   plci.setLayoutCount = num_layouts;
+   plci.pSetLayouts = pg->dsl;
+   plci.setLayoutCount = pg->num_dsl;
 
    VkPushConstantRange pcr[2] = {};
-   if (is_compute) {
+   if (pg->is_compute) {
       if (((struct zink_compute_program*)pg)->shader->nir->info.stage == MESA_SHADER_KERNEL) {
          pcr[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
          pcr[0].offset = 0;
@@ -573,11 +564,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    }
    p_atomic_dec(&prog->base.reference.count);
 
-   if (!zink_descriptor_program_init(ctx, stages, (struct zink_program*)prog))
-      goto fail;
-
-   prog->base.layout = pipeline_layout_create(screen, &prog->base, false);
-   if (!prog->base.layout)
+   if (!zink_descriptor_program_init(ctx, &prog->base))
       goto fail;
 
    return prog;
@@ -671,13 +658,7 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    _mesa_set_add(shader->programs, comp);
    comp->shader = shader;
 
-   struct zink_shader *stages[ZINK_SHADER_COUNT] = {};
-   stages[0] = shader;
-   if (!zink_descriptor_program_init(ctx, stages, (struct zink_program*)comp))
-      goto fail;
-
-   comp->base.layout = pipeline_layout_create(screen, &comp->base, true);
-   if (!comp->base.layout)
+   if (!zink_descriptor_program_init(ctx, &comp->base))
       goto fail;
 
    return comp;
