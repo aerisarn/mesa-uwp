@@ -564,7 +564,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    }
    p_atomic_dec(&prog->base.reference.count);
 
-   if (!zink_descriptor_program_init(ctx, &prog->base))
+   if (!screen->descriptor_program_init(ctx, &prog->base))
       goto fail;
 
    return prog;
@@ -658,7 +658,7 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    _mesa_set_add(shader->programs, comp);
    comp->shader = shader;
 
-   if (!zink_descriptor_program_init(ctx, &comp->base))
+   if (!screen->descriptor_program_init(ctx, &comp->base))
       goto fail;
 
    return comp;
@@ -796,7 +796,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       _mesa_hash_table_destroy(prog->pipelines[i], NULL);
    }
    zink_shader_cache_reference(screen, &prog->shader_cache, NULL);
-   zink_descriptor_program_deinit(screen, &prog->base);
+   screen->descriptor_program_deinit(screen, &prog->base);
 
    ralloc_free(prog);
 }
@@ -821,7 +821,7 @@ zink_destroy_compute_program(struct zink_screen *screen,
    }
    _mesa_hash_table_destroy(comp->pipelines, NULL);
    zink_shader_cache_reference(screen, &comp->shader_cache, NULL);
-   zink_descriptor_program_deinit(screen, &comp->base);
+   screen->descriptor_program_deinit(screen, &comp->base);
 
    ralloc_free(comp);
 }

@@ -26,6 +26,7 @@
 #include "zink_compiler.h"
 #include "zink_context.h"
 #include "zink_device_info.h"
+#include "zink_descriptors.h"
 #include "zink_fence.h"
 #include "zink_format.h"
 #include "zink_framebuffer.h"
@@ -1160,6 +1161,24 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
    return ret;
 }
 
+void
+zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback)
+{
+   {
+#define DEFAULT(FUNC) screen->FUNC = zink_##FUNC
+      DEFAULT(descriptor_program_init);
+      DEFAULT(descriptor_program_deinit);
+      DEFAULT(context_invalidate_descriptor_state);
+      DEFAULT(batch_descriptor_init);
+      DEFAULT(batch_descriptor_reset);
+      DEFAULT(batch_descriptor_deinit);
+      DEFAULT(descriptors_init);
+      DEFAULT(descriptors_deinit);
+      DEFAULT(descriptors_update);
+#undef DEFAULT
+   }
+}
+
 static bool
 load_device_extensions(struct zink_screen *screen)
 {
@@ -1642,6 +1661,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    _mesa_hash_table_init(&screen->framebuffer_cache, screen, hash_framebuffer_state, equals_framebuffer_state);
    _mesa_hash_table_init(&screen->surface_cache, screen, NULL, equals_ivci);
    _mesa_hash_table_init(&screen->bufferview_cache, screen, NULL, equals_bvci);
+
+   zink_screen_init_descriptor_funcs(screen, false);
 
    return screen;
 

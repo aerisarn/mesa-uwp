@@ -37,6 +37,46 @@
 #define XXH_INLINE_ALL
 #include "util/xxhash.h"
 
+
+struct zink_descriptor_pool {
+   struct pipe_reference reference;
+   enum zink_descriptor_type type;
+   struct hash_table *desc_sets;
+   struct hash_table *free_desc_sets;
+   struct util_dynarray alloc_desc_sets;
+   VkDescriptorPool descpool;
+   struct zink_descriptor_pool_key key;
+   unsigned num_resources;
+   unsigned num_sets_allocated;
+   simple_mtx_t mtx;
+};
+
+struct zink_descriptor_set {
+   struct zink_descriptor_pool *pool;
+   struct pipe_reference reference; //incremented for batch usage
+   VkDescriptorSet desc_set;
+   uint32_t hash;
+   bool invalid;
+   bool punted;
+   bool recycled;
+   struct zink_descriptor_state_key key;
+   struct util_dynarray barriers;
+   struct zink_batch_usage batch_uses;
+#ifndef NDEBUG
+   /* for extra debug asserts */
+   unsigned num_resources;
+#endif
+   union {
+      struct zink_resource_object **res_objs;
+      struct zink_image_view **image_views;
+      struct {
+         struct zink_sampler_view **sampler_views;
+         struct zink_sampler_state **sampler_states;
+      };
+   };
+};
+
+
 struct zink_descriptor_data {
    struct zink_descriptor_state gfx_descriptor_states[ZINK_SHADER_COUNT]; // keep incremental hashes here
    struct zink_descriptor_state descriptor_states[2]; // gfx, compute
@@ -47,6 +87,19 @@ struct zink_program_descriptor_data {
    struct zink_descriptor_pool *pool[ZINK_DESCRIPTOR_TYPES];
    struct zink_descriptor_set *last_set[ZINK_DESCRIPTOR_TYPES];
 };
+
+struct zink_batch_descriptor_data {
+   struct set *desc_sets;
+};
+
+static bool
+batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds)
+{
+   if (!batch_ptr_add_usage(batch, batch->state->dd->desc_sets, zds, &zds->batch_uses))
+      return false;
+   pipe_reference(NULL, &zds->reference);
+   return true;
+}
 
 static void
 debug_describe_zink_descriptor_pool(char *buf, const struct zink_descriptor_pool *ptr)
@@ -590,7 +643,7 @@ quick_out:
       util_dynarray_clear(&zds->barriers);
    zds->punted = zds->invalid = false;
    *need_resource_refs = false;
-   if (zink_batch_add_desc_set(batch, zds)) {
+   if (batch_add_desc_set(batch, zds)) {
       batch->state->descs_used += pool->key.layout->num_descriptors;
       *need_resource_refs = true;
    }
@@ -1427,6 +1480,40 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                                  zds[h]->pool->type == ZINK_DESCRIPTOR_TYPE_UBO ? dynamic_offset_idx : 0, dynamic_offsets);
       }
    }
+}
+
+void
+zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state *bs)
+{
+   if (!bs->dd)
+      return;
+   _mesa_set_destroy(bs->dd->desc_sets, NULL);
+   ralloc_free(bs->dd);
+}
+
+void
+zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state *bs)
+{
+   set_foreach(bs->dd->desc_sets, entry) {
+      struct zink_descriptor_set *zds = (void*)entry->key;
+      zink_batch_usage_unset(&zds->batch_uses, bs->fence.batch_id);
+      /* reset descriptor pools when no bs is using this program to avoid
+       * having some inactive program hogging a billion descriptors
+       */
+      pipe_reference(&zds->reference, NULL);
+      zink_descriptor_set_recycle(zds);
+      _mesa_set_remove(bs->dd->desc_sets, entry);
+   }
+}
+
+bool
+zink_batch_descriptor_init(struct zink_screen *screen, struct zink_batch_state *bs)
+{
+   bs->dd = rzalloc(bs, struct zink_batch_descriptor_data);
+   if (!bs->dd)
+      return false;
+   bs->dd->desc_sets = _mesa_pointer_set_create(bs);
+   return !!bs->dd->desc_sets;
 }
 
 struct zink_resource *

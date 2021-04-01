@@ -76,12 +76,13 @@ struct zink_batch_state {
 
    struct set *surfaces;
    struct set *bufferviews;
-   struct set *desc_sets;
 
    struct util_dynarray persistent_resources;
    struct util_dynarray zombie_samplers;
 
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
+
+   struct zink_batch_descriptor_data *dd;
 
    VkDeviceSize resource_size;
 
@@ -172,9 +173,6 @@ zink_batch_state_reference(struct zink_screen *screen,
       zink_batch_state_destroy(screen, old_dst);
    if (dst) *dst = src;
 }
-
-bool
-zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds);
 
 void
 zink_batch_usage_set(struct zink_batch_usage *u, uint32_t batch_id);

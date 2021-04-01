@@ -44,6 +44,13 @@
 extern uint32_t zink_debug;
 struct hash_table;
 
+struct zink_batch_state;
+struct zink_context;
+struct zink_descriptor_layout_key;
+struct zink_program;
+struct zink_shader;
+enum zink_descriptor_type;
+
 #define ZINK_DEBUG_NIR 0x1
 #define ZINK_DEBUG_SPIRV 0x2
 #define ZINK_DEBUG_TGSI 0x4
@@ -117,6 +124,18 @@ struct zink_screen {
    PFN_vkWaitSemaphores vk_WaitSemaphores;
 
    PFN_vkGetDescriptorSetLayoutSupport vk_GetDescriptorSetLayoutSupport;
+   bool (*descriptor_program_init)(struct zink_context *ctx, struct zink_program *pg);
+   void (*descriptor_program_deinit)(struct zink_screen *screen, struct zink_program *pg);
+   void (*descriptors_update)(struct zink_context *ctx, bool is_compute);
+   void (*context_update_descriptor_states)(struct zink_context *ctx, bool is_compute);
+   void (*context_invalidate_descriptor_state)(struct zink_context *ctx, enum pipe_shader_type shader,
+                                               enum zink_descriptor_type type,
+                                               unsigned start, unsigned count);
+   bool (*batch_descriptor_init)(struct zink_screen *screen, struct zink_batch_state *bs);
+   void (*batch_descriptor_reset)(struct zink_screen *screen, struct zink_batch_state *bs);
+   void (*batch_descriptor_deinit)(struct zink_screen *screen, struct zink_batch_state *bs);
+   bool (*descriptors_init)(struct zink_context *ctx);
+   void (*descriptors_deinit)(struct zink_context *ctx);
 
    PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;
    PFN_vkCmdBeginConditionalRenderingEXT vk_CmdBeginConditionalRenderingEXT;
@@ -279,4 +298,6 @@ zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);
 void
 zink_screen_update_pipeline_cache(struct zink_screen *screen);
 
+void
+zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback);
 #endif

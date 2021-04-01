@@ -54,16 +54,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    util_dynarray_clear(&bs->zombie_samplers);
    util_dynarray_clear(&bs->persistent_resources);
 
-   set_foreach(bs->desc_sets, entry) {
-      struct zink_descriptor_set *zds = (void*)entry->key;
-      zink_batch_usage_unset(&zds->batch_uses, bs->fence.batch_id);
-      /* reset descriptor pools when no bs is using this program to avoid
-       * having some inactive program hogging a billion descriptors
-       */
-      pipe_reference(&zds->reference, NULL);
-      zink_descriptor_set_recycle(zds);
-      _mesa_set_remove(bs->desc_sets, entry);
-   }
+   screen->batch_descriptor_reset(screen, bs);
 
    set_foreach_remove(bs->programs, entry) {
       struct zink_program *pg = (struct zink_program*)entry->key;
@@ -146,8 +137,8 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    _mesa_set_destroy(bs->surfaces, NULL);
    _mesa_set_destroy(bs->bufferviews, NULL);
    _mesa_set_destroy(bs->programs, NULL);
-   _mesa_set_destroy(bs->desc_sets, NULL);
    _mesa_set_destroy(bs->active_queries, NULL);
+   screen->batch_descriptor_deinit(screen, bs);
    simple_mtx_destroy(&bs->fence.resource_mtx);
    ralloc_free(bs);
 }
@@ -190,10 +181,12 @@ create_batch_state(struct zink_context *ctx)
    SET_CREATE_OR_FAIL(bs->surfaces);
    SET_CREATE_OR_FAIL(bs->bufferviews);
    SET_CREATE_OR_FAIL(bs->programs);
-   SET_CREATE_OR_FAIL(bs->desc_sets);
    SET_CREATE_OR_FAIL(bs->active_queries);
    util_dynarray_init(&bs->zombie_samplers, NULL);
    util_dynarray_init(&bs->persistent_resources, NULL);
+
+   if (!screen->batch_descriptor_init(screen, bs))
+      goto fail;
 
    VkFenceCreateInfo fci = {};
    fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -647,15 +640,6 @@ zink_batch_reference_program(struct zink_batch *batch,
       return;
    pipe_reference(NULL, &pg->reference);
    batch->has_work = true;
-}
-
-bool
-zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds)
-{
-   if (!batch_ptr_add_usage(batch, batch->state->desc_sets, zds, &zds->batch_uses))
-      return false;
-   pipe_reference(NULL, &zds->reference);
-   return true;
 }
 
 void
