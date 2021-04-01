@@ -578,6 +578,7 @@ zink_descriptor_set_recycle(struct zink_descriptor_set *zds)
    }
 
    if (zds->invalid) {
+      descriptor_set_invalidate(zds);
       util_dynarray_append(&pool->alloc_desc_sets, struct zink_descriptor_set *, zds);
    } else {
       zds->recycled = true;
