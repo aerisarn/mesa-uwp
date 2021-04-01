@@ -263,8 +263,8 @@ equals_descriptor_layout(const void *a, const void *b)
           !memcmp(a_k->bindings, b_k->bindings, a_k->num_descriptors * sizeof(VkDescriptorSetLayoutBinding));
 }
 
-static VkDescriptorSetLayout
-descriptor_layout_get(struct zink_context *ctx, enum zink_descriptor_type type,
+VkDescriptorSetLayout
+zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_type type,
                       VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings,
                       struct zink_descriptor_layout_key **layout_key)
 {
@@ -757,10 +757,10 @@ zink_descriptor_program_init(struct zink_context *ctx,
                                    VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                                    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
          VkDescriptorPoolSize null_size = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ZINK_DEFAULT_MAX_DESCS};
-         pg->dsl[i] = descriptor_layout_get(ctx, i, &null_binding, 0, &layout_key);
+         pg->dsl[i] = zink_descriptor_util_layout_get(ctx, i, &null_binding, 0, &layout_key);
          pool = descriptor_pool_get(ctx, i, layout_key, &null_size, 1);
          if (!pool)
-         pg->dsl[i] = descriptor_layout_get(ctx, i, &null_binding, 1, &layout_key);
+         pg->dsl[i] = zink_descriptor_util_layout_get(ctx, i, &null_binding, 1, &layout_key);
          if (!pg->dsl[i])
             return false;
          zink_descriptor_pool_reference(zink_screen(ctx->base.screen), &pg->dd->pool[i], pool);
@@ -808,7 +808,7 @@ zink_descriptor_program_init(struct zink_context *ctx,
          }
          break;
       }
-      pg->dsl[i] = descriptor_layout_get(ctx, i, bindings[i], num_bindings[i], &layout_key);
+      pg->dsl[i] = zink_descriptor_util_layout_get(ctx, i, bindings[i], num_bindings[i], &layout_key);
       if (!pg->dsl[i])
          return false;
       pool = descriptor_pool_get(ctx, i, layout_key, type_sizes, num_type_sizes);

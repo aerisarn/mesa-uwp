@@ -151,6 +151,10 @@ bool
 zink_descriptor_program_init(struct zink_context *ctx,
                        struct zink_shader *stages[ZINK_SHADER_COUNT],
                        struct zink_program *pg);
+VkDescriptorSetLayout
+zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_type type,
+                      VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings,
+                      struct zink_descriptor_layout_key **layout_key);
 
 void
 zink_descriptor_program_deinit(struct zink_screen *screen, struct zink_program *pg);
