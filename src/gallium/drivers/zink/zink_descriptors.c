@@ -89,9 +89,49 @@ desc_state_hash(const void *key)
 }
 
 static void
+pop_desc_set_ref(struct zink_descriptor_set *zds, struct util_dynarray *refs)
+{
+   size_t size = sizeof(struct zink_descriptor_reference);
+   unsigned num_elements = refs->size / size;
+   for (unsigned i = 0; i < num_elements; i++) {
+      struct zink_descriptor_reference *ref = util_dynarray_element(refs, struct zink_descriptor_reference, i);
+      if (&zds->invalid == ref->invalid) {
+         memcpy(util_dynarray_element(refs, struct zink_descriptor_reference, i),
+                util_dynarray_pop_ptr(refs, struct zink_descriptor_reference), size);
+         break;
+      }
+   }
+}
+
+static void
 descriptor_set_invalidate(struct zink_descriptor_set *zds)
 {
    zds->invalid = true;
+   for (unsigned i = 0; i < zds->pool->key.layout->num_descriptors; i++) {
+      switch (zds->pool->type) {
+      case ZINK_DESCRIPTOR_TYPE_UBO:
+      case ZINK_DESCRIPTOR_TYPE_SSBO:
+         if (zds->res_objs[i])
+            pop_desc_set_ref(zds, &zds->res_objs[i]->desc_set_refs.refs);
+         zds->res_objs[i] = NULL;
+         break;
+      case ZINK_DESCRIPTOR_TYPE_IMAGE:
+         if (zds->image_views[i])
+            pop_desc_set_ref(zds, &zds->image_views[i]->desc_set_refs.refs);
+         zds->image_views[i] = NULL;
+         break;
+      case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
+         if (zds->sampler_views[i])
+            pop_desc_set_ref(zds, &zds->sampler_views[i]->desc_set_refs.refs);
+         zds->sampler_views[i] = NULL;
+         if (zds->sampler_states[i])
+            pop_desc_set_ref(zds, &zds->sampler_states[i]->desc_set_refs.refs);
+         zds->sampler_states[i] = NULL;
+         break;
+      default:
+         break;
+      }
+   }
 }
 
 #ifndef NDEBUG
