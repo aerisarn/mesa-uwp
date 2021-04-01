@@ -218,7 +218,7 @@ fail:
 }
 
 static VkDescriptorSetLayout
-descriptor_layout_create(struct zink_screen *screen, VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings)
+descriptor_layout_create(struct zink_screen *screen, enum zink_descriptor_type t, VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings)
 {
    VkDescriptorSetLayout dsl;
    VkDescriptorSetLayoutCreateInfo dcslci = {};
@@ -286,7 +286,7 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
 #endif
    }
 
-   VkDescriptorSetLayout dsl = descriptor_layout_create(screen, bindings, MAX2(num_bindings, 1));
+   VkDescriptorSetLayout dsl = descriptor_layout_create(screen, type, bindings, MAX2(num_bindings, 1));
    if (!dsl)
       return VK_NULL_HANDLE;
 
