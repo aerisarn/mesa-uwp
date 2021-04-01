@@ -363,10 +363,30 @@ get_invalidated_desc_set(struct zink_descriptor_set *zds)
    return p_atomic_read(&zds->reference.count) == 1;
 }
 
+bool
+zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayout dsl, VkDescriptorPool pool, VkDescriptorSet *sets, unsigned num_sets)
+{
+   VkDescriptorSetAllocateInfo dsai;
+   VkDescriptorSetLayout layouts[num_sets];
+   memset((void *)&dsai, 0, sizeof(dsai));
+   dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+   dsai.pNext = NULL;
+   dsai.descriptorPool = pool;
+   dsai.descriptorSetCount = num_sets;
+   for (unsigned i = 0; i < num_sets; i ++)
+      layouts[i] = dsl;
+   dsai.pSetLayouts = layouts;
+
+   if (vkAllocateDescriptorSets(screen->dev, &dsai, sets) != VK_SUCCESS) {
+      debug_printf("ZINK: %" PRIu64 " failed to allocate descriptor set :/\n", (uint64_t)dsl);
+      return false;
+   }
+   return true;
+}
+
 static struct zink_descriptor_set *
 allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink_descriptor_type type, unsigned descs_used, bool is_compute)
 {
-   VkDescriptorSetAllocateInfo dsai;
    struct zink_descriptor_pool *pool = pg->dd->pool[type];
 #define DESC_BUCKET_FACTOR 10
    unsigned bucket_size = pool->key.layout->num_descriptors ? DESC_BUCKET_FACTOR : 1;
@@ -374,21 +394,9 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       for (unsigned desc_factor = DESC_BUCKET_FACTOR; desc_factor < descs_used; desc_factor *= DESC_BUCKET_FACTOR)
          bucket_size = desc_factor;
    }
-   VkDescriptorSetLayout layouts[bucket_size];
-   memset((void *)&dsai, 0, sizeof(dsai));
-   dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-   dsai.pNext = NULL;
-   dsai.descriptorPool = pool->descpool;
-   dsai.descriptorSetCount = bucket_size;
-   for (unsigned i = 0; i < bucket_size; i ++)
-      layouts[i] = pg->dsl[type];
-   dsai.pSetLayouts = layouts;
-
    VkDescriptorSet desc_set[bucket_size];
-   if (vkAllocateDescriptorSets(screen->dev, &dsai, desc_set) != VK_SUCCESS) {
-      debug_printf("ZINK: %p failed to allocate descriptor set :/\n", pg);
+   if (!zink_descriptor_util_alloc_sets(screen, pg->dsl[type], pool->descpool, desc_set, bucket_size))
       return VK_NULL_HANDLE;
-   }
 
    struct zink_descriptor_set *alloc = ralloc_array(pool, struct zink_descriptor_set, bucket_size);
    assert(alloc);

@@ -148,6 +148,8 @@ void
 zink_descriptor_layouts_deinit(struct zink_context *ctx);
 
 bool
+zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayout dsl, VkDescriptorPool pool, VkDescriptorSet *sets, unsigned num_sets);
+bool
 zink_descriptor_program_init(struct zink_context *ctx,
                        struct zink_shader *stages[ZINK_SHADER_COUNT],
                        struct zink_program *pg);
