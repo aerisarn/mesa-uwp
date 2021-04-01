@@ -255,13 +255,8 @@ image1d::image1d(clover::context &ctx,
                  const cl_image_format *format,
                  size_t width, size_t row_pitch,
                  void *host_ptr) :
-   image(ctx, properties, flags, format, width, 1, 1,
-         row_pitch, 0, row_pitch, host_ptr) {
-}
-
-cl_mem_object_type
-image1d::type() const {
-   return CL_MEM_OBJECT_IMAGE1D;
+   basic_image(ctx, properties, flags, format, width, 1, 1,
+               row_pitch, 0, row_pitch, host_ptr) {
 }
 
 image2d::image2d(clover::context &ctx,
@@ -270,13 +265,8 @@ image2d::image2d(clover::context &ctx,
                  const cl_image_format *format, size_t width,
                  size_t height, size_t row_pitch,
                  void *host_ptr) :
-   image(ctx, properties, flags, format, width, height, 1,
-         row_pitch, 0, height * row_pitch, host_ptr) {
-}
-
-cl_mem_object_type
-image2d::type() const {
-   return CL_MEM_OBJECT_IMAGE2D;
+   basic_image(ctx, properties, flags, format, width, height, 1,
+               row_pitch, 0, height * row_pitch, host_ptr) {
 }
 
 image3d::image3d(clover::context &ctx,
@@ -286,12 +276,7 @@ image3d::image3d(clover::context &ctx,
                  size_t width, size_t height, size_t depth,
                  size_t row_pitch, size_t slice_pitch,
                  void *host_ptr) :
-   image(ctx, properties, flags, format, width, height, depth,
-         row_pitch, slice_pitch, depth * slice_pitch,
-         host_ptr) {
-}
-
-cl_mem_object_type
-image3d::type() const {
-   return CL_MEM_OBJECT_IMAGE3D;
+   basic_image(ctx, properties, flags, format, width, height, depth,
+               row_pitch, slice_pitch, depth * slice_pitch,
+               host_ptr) {
 }
