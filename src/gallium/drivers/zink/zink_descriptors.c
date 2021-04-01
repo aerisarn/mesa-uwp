@@ -1309,6 +1309,9 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
    write_descriptors(ctx, num_wds, wds, cache_hit);
 }
 
+static void
+zink_context_update_descriptor_states(struct zink_context *ctx, bool is_compute);
+
 void
 zink_descriptors_update(struct zink_context *ctx, struct zink_screen *screen, bool is_compute)
 {
@@ -1556,7 +1559,7 @@ update_descriptor_state(struct zink_context *ctx, enum zink_descriptor_type type
    ctx->dd->descriptor_states[is_compute].valid[type] = has_any_usage;
 }
 
-void
+static void
 zink_context_update_descriptor_states(struct zink_context *ctx, bool is_compute)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
