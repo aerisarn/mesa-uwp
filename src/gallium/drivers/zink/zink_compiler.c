@@ -921,6 +921,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             assert(var->data.mode == nir_var_uniform);
             if (glsl_type_is_sampler(type) || glsl_type_is_image(type)) {
                VkDescriptorType vktype = glsl_type_is_image(type) ? zink_image_type(type) : zink_sampler_type(type);
+               if (vktype == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+                  ret->num_texel_buffers++;
                ztype = zink_desc_type_from_vktype(vktype);
                var->data.descriptor_set = ztype;
                var->data.driver_location = var->data.binding;

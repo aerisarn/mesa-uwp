@@ -78,6 +78,7 @@ struct zink_shader {
       unsigned char size;
    } bindings[ZINK_DESCRIPTOR_TYPES][32];
    size_t num_bindings[ZINK_DESCRIPTOR_TYPES];
+   unsigned num_texel_buffers;
    uint32_t ubos_used; // bitfield of which ubo indices are used
    uint32_t ssbos_used; // bitfield of which ssbo indices are used
    struct set *programs;
