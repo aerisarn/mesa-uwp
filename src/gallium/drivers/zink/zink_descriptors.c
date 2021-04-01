@@ -1565,7 +1565,7 @@ zink_context_update_descriptor_states(struct zink_context *ctx, bool is_compute)
 }
 
 void
-zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type)
+zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type, unsigned start, unsigned count)
 {
    if (shader != PIPE_SHADER_COMPUTE) {
       ctx->dd->gfx_descriptor_states[shader].valid[type] = false;

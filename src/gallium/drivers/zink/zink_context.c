@@ -509,16 +509,14 @@ zink_bind_sampler_states(struct pipe_context *pctx,
                          void **samplers)
 {
    struct zink_context *ctx = zink_context(pctx);
-   bool update = false;
    for (unsigned i = 0; i < num_samplers; ++i) {
       VkSampler *sampler = samplers[i];
-      update |= ctx->sampler_states[shader][start_slot + i] != samplers[i];
+      if (ctx->sampler_states[shader][start_slot + i] != samplers[i])
+         zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot, 1);
       ctx->sampler_states[shader][start_slot + i] = sampler;
       ctx->di.textures[shader][start_slot + i].sampler = sampler ? *sampler : VK_NULL_HANDLE;
    }
    ctx->di.num_samplers[shader] = start_slot + num_samplers;
-   if (update)
-      zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
 }
 
 static void
@@ -935,7 +933,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
    update_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_UBO, index);
 
    if (update)
-      zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_UBO);
+      zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_UBO, index, 1);
 }
 
 static void
@@ -988,22 +986,23 @@ zink_set_shader_buffers(struct pipe_context *pctx,
    if (start_slot + count >= ctx->di.num_ssbos[p_stage])
       ctx->di.num_ssbos[p_stage] = max_slot + 1;
    if (update)
-      zink_context_invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_SSBO);
+      zink_context_invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_SSBO, start_slot, count);
 }
 
 static void
 update_binds_for_samplerviews(struct zink_context *ctx, struct zink_resource *res, bool is_compute)
 {
     if (is_compute) {
-       u_foreach_bit(slot, res->sampler_binds[PIPE_SHADER_COMPUTE])
+       u_foreach_bit(slot, res->sampler_binds[PIPE_SHADER_COMPUTE]) {
           update_descriptor_state(ctx, PIPE_SHADER_COMPUTE, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, slot);
-       zink_context_invalidate_descriptor_state(ctx, PIPE_SHADER_COMPUTE, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
+          zink_context_invalidate_descriptor_state(ctx, PIPE_SHADER_COMPUTE, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, slot, 1);
+       }
     } else {
        for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
-          u_foreach_bit(slot, res->sampler_binds[i])
+          u_foreach_bit(slot, res->sampler_binds[i]) {
              update_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, slot);
-          if (res->sampler_binds[i])
-             zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
+             zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, slot, 1);
+          }
        }
     }
 }
@@ -1100,7 +1099,7 @@ zink_set_shader_images(struct pipe_context *pctx,
    }
    ctx->di.num_images[p_stage] = start_slot + count;
    if (update)
-      zink_context_invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_IMAGE);
+      zink_context_invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_IMAGE, start_slot, count);
 }
 
 static void
@@ -1184,7 +1183,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
    }
    ctx->di.num_sampler_views[shader_type] = start_slot + num_views;
    if (update)
-      zink_context_invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
+      zink_context_invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot, num_views);
 }
 
 static void
@@ -2656,7 +2655,7 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
                break;
             }
 
-            zink_context_invalidate_descriptor_state(ctx, shader, type);
+            zink_context_invalidate_descriptor_state(ctx, shader, type, i, 1);
             update_descriptor_state(ctx, shader, type, i);
          }
       }
@@ -2724,7 +2723,7 @@ rebind_image(struct zink_context *ctx, struct zink_resource *res)
                  struct pipe_surface *psurf = &sv->image_view->base;
                  zink_rebind_surface(ctx, &psurf);
                  sv->image_view = zink_surface(psurf);
-                 zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
+                 zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, j, 1);
                  update_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, j);
              }
           }
@@ -2733,7 +2732,7 @@ rebind_image(struct zink_context *ctx, struct zink_resource *res)
           continue;
        for (unsigned j = 0; j < ctx->di.num_images[i]; j++) {
           if (zink_resource(ctx->image_views[i][j].base.resource) == res) {
-             zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE);
+             zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE, j, 1);
              update_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE, j);
           }
        }
