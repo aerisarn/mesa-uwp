@@ -1313,7 +1313,7 @@ static void
 zink_context_update_descriptor_states(struct zink_context *ctx, bool is_compute);
 
 void
-zink_descriptors_update(struct zink_context *ctx, struct zink_screen *screen, bool is_compute)
+zink_descriptors_update(struct zink_context *ctx, bool is_compute)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
 

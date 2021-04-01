@@ -482,7 +482,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
 
    if (gfx_program->base.has_descriptors)
-      zink_descriptors_update(ctx, screen, false);
+      zink_descriptors_update(ctx, false);
 
    struct zink_batch *batch = zink_batch_rp(ctx);
    VkViewport viewports[PIPE_MAX_VIEWPORTS];
@@ -734,7 +734,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
                                                &ctx->compute_pipeline_state);
 
    if (comp_program->base.has_descriptors)
-      zink_descriptors_update(ctx, screen, true);
+      zink_descriptors_update(ctx, true);
 
 
    vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
