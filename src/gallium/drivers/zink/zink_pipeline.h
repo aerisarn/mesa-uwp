@@ -74,6 +74,7 @@ struct zink_gfx_pipeline_state {
 
    uint32_t vertex_buffers_enabled_mask;
    uint32_t vertex_strides[PIPE_MAX_ATTRIBS];
+   bool sample_locations_enabled;
    bool have_EXT_extended_dynamic_state;
 
    VkPipeline pipeline;

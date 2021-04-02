@@ -1922,6 +1922,18 @@ zink_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
    ctx->gfx_pipeline_state.dirty = true;
 }
 
+static void
+zink_set_sample_locations(struct pipe_context *pctx, size_t size, const uint8_t *locations)
+{
+   struct zink_context *ctx = zink_context(pctx);
+
+   ctx->gfx_pipeline_state.sample_locations_enabled = size && locations;
+   ctx->sample_locations_changed = ctx->gfx_pipeline_state.sample_locations_enabled;
+   if (size > sizeof(ctx->sample_locations))
+      size = sizeof(ctx->sample_locations);
+   memcpy(ctx->sample_locations, locations, size);
+}
+
 static VkAccessFlags
 access_src_flags(VkImageLayout layout)
 {
@@ -3296,6 +3308,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_sampler_views = zink_set_sampler_views;
    ctx->base.sampler_view_destroy = zink_sampler_view_destroy;
    ctx->base.get_sample_position = zink_get_sample_position;
+   ctx->base.set_sample_locations = zink_set_sample_locations;
 
    zink_program_init(ctx);
 
