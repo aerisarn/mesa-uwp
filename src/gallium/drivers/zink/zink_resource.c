@@ -353,6 +353,11 @@ create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsign
       unreachable("Unknown target");
    }
 
+   if (screen->info.have_EXT_sample_locations &&
+       bind & PIPE_BIND_DEPTH_STENCIL &&
+       util_format_has_depth(util_format_description(templ->format)))
+      ici.flags |= VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
+
    ici.format = zink_get_format(screen, templ->format);
    ici.extent.width = templ->width0;
    ici.extent.height = templ->height0;
