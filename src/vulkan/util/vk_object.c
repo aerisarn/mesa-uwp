@@ -44,12 +44,16 @@ vk_object_base_init(struct vk_device *device,
    vk_object_base_reinit(base);
    base->type = obj_type;
    base->device = device;
+   base->object_name = NULL;
 }
 
 void
 vk_object_base_finish(struct vk_object_base *base)
 {
    util_sparse_array_finish(&base->private_data);
+
+   if (base->object_name != NULL)
+      vk_free(&base->device->alloc, base->object_name);
 }
 
 void

@@ -56,6 +56,8 @@ files_vulkan_util = files(
   'vk_command_buffer.h',
   'vk_debug_report.c',
   'vk_debug_report.h',
+  'vk_debug_utils.c',
+  'vk_debug_utils.h',
   'vk_deferred_operation.c',
   'vk_deferred_operation.h',
   'vk_descriptors.c',
