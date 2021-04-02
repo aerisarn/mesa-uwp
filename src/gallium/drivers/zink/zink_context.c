@@ -1617,6 +1617,19 @@ begin_render_pass(struct zink_context *ctx)
 }
 
 void
+zink_init_vk_sample_locations(struct zink_context *ctx, VkSampleLocationsInfoEXT *loc)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   unsigned idx = util_logbase2_ceil(MAX2(ctx->gfx_pipeline_state.rast_samples, 1));
+   loc->sType = VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT;
+   loc->pNext = NULL;
+   loc->sampleLocationsPerPixel = 1 << idx;
+   loc->sampleLocationsCount = ctx->gfx_pipeline_state.rast_samples;
+   loc->sampleLocationGridSize = screen->maxSampleLocationGridSize[idx];
+   loc->pSampleLocations = ctx->vk_sample_locations;
+}
+
+void
 zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 {
    setup_framebuffer(ctx);
