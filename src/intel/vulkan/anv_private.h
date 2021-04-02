@@ -71,6 +71,7 @@
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
 #include "vk_util.h"
+#include "vk_command_buffer.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
@@ -3103,7 +3104,7 @@ enum anv_cmd_buffer_exec_mode {
 struct anv_measure_batch;
 
 struct anv_cmd_buffer {
-   struct vk_object_base                        base;
+   struct vk_command_buffer                     vk;
 
    struct anv_device *                          device;
 
@@ -4738,7 +4739,7 @@ void anv_perf_write_pass_results(struct intel_perf_config *perf,
 #define ANV_FROM_HANDLE(__anv_type, __name, __handle) \
    VK_FROM_HANDLE(__anv_type, __name, __handle)
 
-VK_DEFINE_HANDLE_CASTS(anv_cmd_buffer, base, VkCommandBuffer,
+VK_DEFINE_HANDLE_CASTS(anv_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
 VK_DEFINE_HANDLE_CASTS(anv_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
 VK_DEFINE_HANDLE_CASTS(anv_instance, vk.base, VkInstance, VK_OBJECT_TYPE_INSTANCE)
