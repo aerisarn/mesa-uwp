@@ -1517,6 +1517,24 @@ setup_framebuffer(struct zink_context *ctx)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_render_pass *rp = ctx->gfx_pipeline_state.render_pass;
 
+   if (ctx->gfx_pipeline_state.sample_locations_enabled && ctx->sample_locations_changed) {
+      unsigned samples = ctx->gfx_pipeline_state.rast_samples;
+      unsigned idx = util_logbase2_ceil(MAX2(samples, 1));
+      VkExtent2D grid_size = screen->maxSampleLocationGridSize[idx];
+ 
+      for (unsigned pixel = 0; pixel < grid_size.width * grid_size.height; pixel++) {
+         for (unsigned sample = 0; sample < samples; sample++) {
+            unsigned pixel_x = pixel % grid_size.width;
+            unsigned pixel_y = pixel / grid_size.width;
+            unsigned wi = pixel * samples + sample;
+            unsigned ri = (pixel_y * grid_size.width + pixel_x % grid_size.width);
+            ri = ri * samples + sample;
+            ctx->vk_sample_locations[wi].x = (ctx->sample_locations[ri] & 0xf) / 16.0f;
+            ctx->vk_sample_locations[wi].y = (16 - (ctx->sample_locations[ri] >> 4)) / 16.0f;
+         }
+      }
+   }
+
    if (rp)
       ctx->rp_changed |= ctx->rp_clears_enabled != rp->state.clears;
    if (ctx->rp_changed)

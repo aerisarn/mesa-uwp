@@ -649,6 +649,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    else
       vkCmdSetDepthBias(batch->state->cmdbuf, 0.0f, 0.0f, 0.0f);
 
+   ctx->sample_locations_changed = false;
+
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->state->cmdbuf, ctx->blend_constants);
 
