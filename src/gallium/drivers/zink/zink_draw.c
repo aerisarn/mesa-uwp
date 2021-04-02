@@ -376,9 +376,6 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS];
    bool need_index_buffer_unref = false;
 
-   /* check memory usage and flush/stall as needed to avoid oom */
-   zink_maybe_flush_or_stall(ctx);
-
    if (dinfo->primitive_restart && !restart_supported(dinfo->mode)) {
        util_draw_vbo_without_prim_restart(pctx, dinfo, drawid_offset, dindirect, &draws[0]);
        return;
@@ -714,6 +711,8 @@ zink_draw_vbo(struct pipe_context *pctx,
       screen->vk_CmdEndTransformFeedbackEXT(batch->state->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
    batch->has_work = true;
+   /* check memory usage and flush/stall as needed to avoid oom */
+   zink_maybe_flush_or_stall(ctx);
 }
 
 void
@@ -722,9 +721,6 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_batch *batch = &ctx->batch;
-
-   /* check memory usage and flush/stall as needed to avoid oom */
-   zink_maybe_flush_or_stall(ctx);
 
    struct zink_compute_program *comp_program = get_compute_program(ctx);
    if (!comp_program)
@@ -752,4 +748,6 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    } else
       vkCmdDispatch(batch->state->cmdbuf, info->grid[0], info->grid[1], info->grid[2]);
    batch->has_work = true;
+   /* check memory usage and flush/stall as needed to avoid oom */
+   zink_maybe_flush_or_stall(ctx);
 }
