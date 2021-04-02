@@ -1632,6 +1632,17 @@ check_base_requirements(struct zink_screen *screen)
    }
 }
 
+static void
+zink_get_sample_pixel_grid(struct pipe_screen *pscreen, unsigned sample_count,
+                           unsigned *width, unsigned *height)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   unsigned idx = util_logbase2_ceil(MAX2(sample_count, 1));
+   assert(idx < ARRAY_SIZE(screen->maxSampleLocationGridSize));
+   *width = screen->maxSampleLocationGridSize[idx].width;
+   *height = screen->maxSampleLocationGridSize[idx].height;
+}
+
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
@@ -1703,6 +1714,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.get_paramf = zink_get_paramf;
    screen->base.get_shader_param = zink_get_shader_param;
    screen->base.get_compiler_options = zink_get_compiler_options;
+   screen->base.get_sample_pixel_grid = zink_get_sample_pixel_grid;
    screen->base.is_format_supported = zink_is_format_supported;
    screen->base.context_create = zink_context_create;
    screen->base.flush_frontbuffer = zink_flush_frontbuffer;
