@@ -307,6 +307,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_OCCLUSION_QUERY:
       return 1;
 
+   case PIPE_CAP_PROGRAMMABLE_SAMPLE_LOCATIONS:
+      return screen->info.have_EXT_sample_locations && screen->info.have_EXT_extended_dynamic_state;
+
    case PIPE_CAP_QUERY_TIME_ELAPSED:
       return screen->timestamp_valid_bits > 0;
 
