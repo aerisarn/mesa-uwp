@@ -2446,27 +2446,26 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
    for (unsigned i = 0; i < num_resume_shaders; i++)
       NIR_PASS_V(resume_shaders[i], brw_nir_lower_rt_intrinsics, devinfo);
 
-   struct brw_bs_prog_data prog_data = { };
-   struct brw_compile_stats stats = { };
    const unsigned *code =
       brw_compile_bs(compiler, pipeline->base.device, mem_ctx,
-                     &stage->key.bs, &prog_data, nir,
-                     num_resume_shaders, resume_shaders, &stats, NULL);
+                     &stage->key.bs, &stage->prog_data.bs, nir,
+                     num_resume_shaders, resume_shaders, stage->stats, NULL);
    if (code == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* Ray-tracing shaders don't have a "real" bind map */
    struct anv_pipeline_bind_map empty_bind_map = {};
 
-   const unsigned code_size = prog_data.base.program_size;
+   const unsigned code_size = stage->prog_data.base.program_size;
    struct anv_shader_bin *bin =
       anv_device_upload_kernel(pipeline->base.device,
                                NULL, /* TODO: Caching is disabled for now */
                                stage->stage,
                                key, sizeof(key),
                                code, code_size,
-                               &prog_data.base, sizeof(prog_data),
-                               &stats, 1,
+                               &stage->prog_data.base,
+                               sizeof(stage->prog_data.bs),
+                               stage->stats, 1,
                                NULL, &empty_bind_map);
    if (bin == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
