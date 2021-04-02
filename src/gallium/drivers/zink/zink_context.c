@@ -1895,8 +1895,10 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    /* in vulkan, gl_SampleMask needs to be explicitly ignored for sampleCount == 1 */
    if ((ctx->gfx_pipeline_state.rast_samples > 1) != (rast_samples > 1))
       ctx->dirty_shader_stages |= 1 << PIPE_SHADER_FRAGMENT;
-   if (ctx->gfx_pipeline_state.rast_samples != rast_samples)
+   if (ctx->gfx_pipeline_state.rast_samples != rast_samples) {
+      ctx->sample_locations_changed |= ctx->gfx_pipeline_state.sample_locations_enabled;
       ctx->gfx_pipeline_state.dirty = true;
+   }
    ctx->gfx_pipeline_state.rast_samples = rast_samples;
    if (ctx->gfx_pipeline_state.num_attachments != state->nr_cbufs)
       ctx->gfx_pipeline_state.dirty = true;
