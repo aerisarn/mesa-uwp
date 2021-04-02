@@ -267,8 +267,7 @@ blorp_compile_vs(struct blorp_context *blorp, void *mem_ctx,
 }
 
 struct blorp_sf_key {
-   enum blorp_shader_type shader_type; /* Must be BLORP_SHADER_TYPE_GFX4_SF */
-
+   struct brw_blorp_base_key base;
    struct brw_sf_prog_key key;
 };
 
@@ -285,7 +284,7 @@ blorp_ensure_sf_program(struct blorp_batch *batch,
       return true;
 
    struct blorp_sf_key key = {
-      .shader_type = BLORP_SHADER_TYPE_GFX4_SF,
+      .base = BRW_BLORP_BASE_KEY_INIT(BLORP_SHADER_TYPE_GFX4_SF),
    };
 
    /* Everything gets compacted in vertex setup, so we just need a
