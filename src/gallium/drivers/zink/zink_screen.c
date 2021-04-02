@@ -1709,6 +1709,18 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.destroy = zink_destroy_screen;
    screen->base.finalize_nir = zink_shader_finalize;
 
+   if (screen->info.have_EXT_sample_locations) {
+      VkMultisamplePropertiesEXT prop;
+      prop.sType = VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT;
+      prop.pNext = NULL;
+      for (unsigned i = 0; i < ARRAY_SIZE(screen->maxSampleLocationGridSize); i++) {
+         if (screen->info.sample_locations_props.sampleLocationSampleCounts & (1 << i)) {
+            screen->vk_GetPhysicalDeviceMultisamplePropertiesEXT(screen->pdev, 1 << i, &prop);
+            screen->maxSampleLocationGridSize[i] = prop.maxSampleLocationGridSize;
+         }
+      }
+   }
+
    if (!zink_screen_resource_init(&screen->base))
       goto fail;
    zink_screen_fence_init(&screen->base);
