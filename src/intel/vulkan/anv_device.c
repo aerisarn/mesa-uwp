@@ -3354,6 +3354,10 @@ VkResult anv_CreateDevice(
    anv_pipeline_cache_init(&device->default_pipeline_cache, device,
                            true /* cache_enabled */, false /* external_sync */);
 
+   result = anv_device_init_rt_trampoline(device);
+   if (result != VK_SUCCESS)
+      goto fail_rt_trampoline;
+
    anv_device_init_blorp(device);
 
    anv_device_init_border_colors(device);
@@ -3364,6 +3368,8 @@ VkResult anv_CreateDevice(
 
    return VK_SUCCESS;
 
+ fail_rt_trampoline:
+   anv_pipeline_cache_finish(&device->default_pipeline_cache);
  fail_trivial_batch_bo_and_scratch_pool:
    anv_scratch_pool_finish(device, &device->scratch_pool);
    anv_device_release_bo(device, device->trivial_batch_bo);
@@ -3426,6 +3432,8 @@ void anv_DestroyDevice(
       return;
 
    anv_device_finish_blorp(device);
+
+   anv_device_finish_rt_shaders(device);
 
    anv_pipeline_cache_finish(&device->default_pipeline_cache);
 

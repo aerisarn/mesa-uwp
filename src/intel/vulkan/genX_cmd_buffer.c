@@ -5123,10 +5123,11 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       cw.EmitInlineParameter            = true;
 
       const gl_shader_stage s = MESA_SHADER_RAYGEN;
+      struct anv_device *device = cmd_buffer->device;
       struct anv_state *surfaces = &cmd_buffer->state.binding_tables[s];
       struct anv_state *samplers = &cmd_buffer->state.samplers[s];
       cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
-         .KernelStartPointer = pipeline->trampoline.offset,
+         .KernelStartPointer = device->rt_trampoline->kernel.offset,
          .SamplerStatePointer = samplers->offset,
          /* i965: DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4), */
          .SamplerCount = 0,

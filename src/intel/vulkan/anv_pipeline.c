@@ -359,9 +359,6 @@ void anv_DestroyPipeline(
                             struct anv_shader_bin *, shader) {
          anv_shader_bin_unref(device, *shader);
       }
-
-      anv_state_pool_free(&device->instruction_state_pool,
-                          rt_pipeline->trampoline);
       break;
    }
 
@@ -2773,6 +2770,82 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
 }
 
 VkResult
+anv_device_init_rt_trampoline(struct anv_device *device)
+{
+   if (!device->vk.enabled_extensions.KHR_ray_tracing_pipeline)
+      return VK_SUCCESS;
+
+   bool cache_hit;
+
+   struct brw_rt_trampoline {
+      char name[16];
+      struct brw_cs_prog_key key;
+   } trampoline_key = {
+      .name = "rt-trampoline",
+      .key = {
+         /* TODO: Other subgroup sizes? */
+         .base.subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_8,
+      },
+   };
+   device->rt_trampoline =
+      anv_device_search_for_kernel(device, &device->default_pipeline_cache,
+                                   &trampoline_key, sizeof(trampoline_key),
+                                   &cache_hit);
+   if (device->rt_trampoline == NULL) {
+
+      void *tmp_ctx = ralloc_context(NULL);
+      nir_shader *trampoline_nir =
+         brw_nir_create_raygen_trampoline(device->physical->compiler, tmp_ctx);
+
+      struct anv_pipeline_bind_map bind_map = {
+         .surface_count = 0,
+         .sampler_count = 0,
+      };
+      uint32_t dummy_params[4] = { 0, };
+      struct brw_cs_prog_data trampoline_prog_data = {
+         .base.nr_params = 4,
+         .base.param = dummy_params,
+         .uses_inline_data = true,
+         .uses_btd_stack_ids = true,
+      };
+      struct brw_compile_cs_params params = {
+         .nir = trampoline_nir,
+         .key = &trampoline_key.key,
+         .prog_data = &trampoline_prog_data,
+         .log_data = device,
+      };
+      const unsigned *tramp_data =
+         brw_compile_cs(device->physical->compiler, tmp_ctx, &params);
+
+      device->rt_trampoline =
+         anv_device_upload_kernel(device, &device->default_pipeline_cache,
+                                  MESA_SHADER_COMPUTE,
+                                  &trampoline_key, sizeof(trampoline_key),
+                                  tramp_data,
+                                  trampoline_prog_data.base.program_size,
+                                  &trampoline_prog_data.base,
+                                  sizeof(trampoline_prog_data),
+                                  NULL, 0, NULL, &bind_map);
+
+      ralloc_free(tmp_ctx);
+
+      if (device->rt_trampoline == NULL)
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
+
+   return VK_SUCCESS;
+}
+
+void
+anv_device_finish_rt_shaders(struct anv_device *device)
+{
+   if (!device->vk.enabled_extensions.KHR_ray_tracing_pipeline)
+      return;
+
+   anv_shader_bin_unref(device, device->rt_trampoline);
+}
+
+VkResult
 anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
                               struct anv_device *device,
                               struct anv_pipeline_cache *cache,
@@ -2788,38 +2861,6 @@ anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
 
    util_dynarray_init(&pipeline->shaders, pipeline->base.mem_ctx);
 
-   /* TODO: We should probably create this once per device */
-   {
-      void *tmp_ctx = ralloc_context(NULL);
-      nir_shader *trampoline_nir =
-         brw_nir_create_raygen_trampoline(device->physical->compiler, tmp_ctx);
-
-      struct brw_cs_prog_key key = {
-         /* TODO: Other subgroup sizes? */
-         .base.subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_8,
-      };
-      struct brw_cs_prog_data prog_data = {
-         .base.nr_params = 4,
-         .uses_inline_data = true,
-         .uses_btd_stack_ids = true,
-      };
-      struct brw_compile_cs_params params = {
-         .nir = trampoline_nir,
-         .key = &key,
-         .prog_data = &prog_data,
-         .log_data = pipeline->base.device,
-      };
-
-      const unsigned *tramp_data =
-         brw_compile_cs(device->physical->compiler, tmp_ctx, &params);
-
-      pipeline->trampoline =
-         anv_state_pool_alloc(&device->instruction_state_pool,
-                              prog_data.base.program_size, 64);
-      memcpy(pipeline->trampoline.map, tramp_data, prog_data.base.program_size);
-      ralloc_free(tmp_ctx);
-   }
-
    result = anv_pipeline_compile_ray_tracing(pipeline, cache, pCreateInfo);
    if (result != VK_SUCCESS)
       goto fail;
@@ -2829,8 +2870,6 @@ anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
    return VK_SUCCESS;
 
 fail:
-   anv_state_pool_free(&device->instruction_state_pool,
-                       pipeline->trampoline);
    util_dynarray_foreach(&pipeline->shaders,
                          struct anv_shader_bin *, shader) {
       anv_shader_bin_unref(device, *shader);
