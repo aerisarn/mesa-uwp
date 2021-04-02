@@ -1812,6 +1812,7 @@ flush_batch(struct zink_context *ctx, bool sync)
          ctx->dirty_so_targets = true;
       ctx->descriptor_refs_dirty[0] = ctx->descriptor_refs_dirty[1] = true;
       ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
+      ctx->sample_locations_changed |= ctx->gfx_pipeline_state.sample_locations_enabled;
       ctx->vertex_buffers_dirty = true;
       ctx->vp_state_changed = true;
       ctx->scissor_changed = true;

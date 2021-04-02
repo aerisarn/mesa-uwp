@@ -49,6 +49,7 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      /* if layout changes are ever handled here, need VkAttachmentSampleLocationsEXT */
       attachments[i].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       attachments[i].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       color_refs[i].attachment = i;
@@ -71,6 +72,7 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[num_attachments].stencilLoadOp = rt->clear_stencil ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[num_attachments].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+      /* if layout changes are ever handled here, need VkAttachmentSampleLocationsEXT */
       attachments[num_attachments].initialLayout = layout;
       attachments[num_attachments].finalLayout = layout;
 
