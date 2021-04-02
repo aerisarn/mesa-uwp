@@ -666,6 +666,28 @@ clamp_zs_swizzle(enum pipe_swizzle swizzle)
    return swizzle;
 }
 
+static inline bool
+format_is_usable_rgba_variant(const struct util_format_description *desc)
+{
+   unsigned chan;
+
+   if(desc->block.width != 1 ||
+      desc->block.height != 1 ||
+      (desc->block.bits != 32 && desc->block.bits != 64))
+      return false;
+
+   if (desc->nr_channels != 4)
+      return false;
+
+   unsigned size = desc->channel[0].size;
+   for(chan = 0; chan < 4; ++chan) {
+      if(desc->channel[chan].size != size)
+         return false;
+   }
+
+   return true;
+}
+
 static struct pipe_sampler_view *
 zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
                          const struct pipe_sampler_view *state)
@@ -706,7 +728,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
           * these formats
           */
           const struct util_format_description *desc = util_format_description(state->format);
-          if (util_format_is_rgba8_variant(desc)) {
+          if (format_is_usable_rgba_variant(desc)) {
              sampler_view->base.swizzle_r = clamp_void_swizzle(desc, sampler_view->base.swizzle_r);
              sampler_view->base.swizzle_g = clamp_void_swizzle(desc, sampler_view->base.swizzle_g);
              sampler_view->base.swizzle_b = clamp_void_swizzle(desc, sampler_view->base.swizzle_b);
