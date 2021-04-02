@@ -72,6 +72,7 @@
 #include "vk_shader_module.h"
 #include "vk_util.h"
 #include "vk_command_buffer.h"
+#include "vk_queue.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
@@ -1073,7 +1074,7 @@ struct anv_queue_submit {
 };
 
 struct anv_queue {
-   struct vk_object_base                     base;
+   struct vk_queue                           vk;
 
    struct anv_device *                       device;
 
@@ -4745,7 +4746,7 @@ VK_DEFINE_HANDLE_CASTS(anv_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
 VK_DEFINE_HANDLE_CASTS(anv_instance, vk.base, VkInstance, VK_OBJECT_TYPE_INSTANCE)
 VK_DEFINE_HANDLE_CASTS(anv_physical_device, vk.base, VkPhysicalDevice,
                        VK_OBJECT_TYPE_PHYSICAL_DEVICE)
-VK_DEFINE_HANDLE_CASTS(anv_queue, base, VkQueue, VK_OBJECT_TYPE_QUEUE)
+VK_DEFINE_HANDLE_CASTS(anv_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_acceleration_structure, base,
                                VkAccelerationStructureKHR,
