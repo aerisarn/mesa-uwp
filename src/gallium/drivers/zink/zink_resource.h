@@ -69,6 +69,9 @@ struct zink_resource_object {
    struct mem_key mkey;
    VkDeviceSize offset, size;
 
+   VkSampleLocationsInfoEXT zs_evaluate;
+   bool needs_zs_evaluate;
+
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
    struct zink_descriptor_refs desc_set_refs;
 
