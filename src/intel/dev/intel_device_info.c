@@ -1050,6 +1050,9 @@ update_from_topology(struct intel_device_info *devinfo,
    assert(sizeof(devinfo->slice_masks) >= DIV_ROUND_UP(topology->max_slices, 8));
    memcpy(&devinfo->slice_masks, topology->data, DIV_ROUND_UP(topology->max_slices, 8));
    devinfo->num_slices = __builtin_popcount(devinfo->slice_masks);
+   devinfo->max_slices = topology->max_slices;
+   devinfo->max_subslices_per_slice = topology->max_subslices;
+   devinfo->max_eu_per_subslice = topology->max_eus_per_subslice;
 
    uint32_t subslice_mask_len =
       topology->max_slices * topology->subslice_stride;
@@ -1691,7 +1694,7 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
    devinfo->has_tiling_uapi = has_get_tiling(fd);
 
    devinfo->subslice_total = 0;
-   for (uint32_t i = 0; i < devinfo->num_slices; i++)
+   for (uint32_t i = 0; i < devinfo->max_slices; i++)
       devinfo->subslice_total += __builtin_popcount(devinfo->subslice_masks[i]);
 
    /* Gfx7 and older do not support EU/Subslice info */
