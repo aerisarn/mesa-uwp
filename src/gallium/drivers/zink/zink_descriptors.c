@@ -605,7 +605,10 @@ zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_des
 static void
 zink_sampler_state_desc_set_add(struct zink_sampler_state *sampler_state, struct zink_descriptor_set *zds, unsigned idx)
 {
-   desc_set_ref_add(zds, &sampler_state->desc_set_refs, (void**)&zds->sampler_states[idx], sampler_state);
+   if (sampler_state)
+      desc_set_ref_add(zds, &sampler_state->desc_set_refs, (void**)&zds->sampler_states[idx], sampler_state);
+   else
+      zds->sampler_states[idx] = NULL;
 }
 
 static void
