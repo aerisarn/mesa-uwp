@@ -364,15 +364,15 @@ compute_topology_builtins(struct intel_perf_config *perf,
    perf->sys_vars.eu_threads_count = devinfo->num_thread_per_eu;
 
    /* The subslice mask builtin contains bits for all slices. Prior to Gfx11
-    * it had groups of 3bits for each slice, on Gfx11 it's 8bits for each
-    * slice.
+    * it had groups of 3bits for each slice, on Gfx11 and above it's 8bits for
+    * each slice.
     *
     * Ideally equations would be updated to have a slice/subslice query
     * function/operator.
     */
    perf->sys_vars.subslice_mask = 0;
 
-   int bits_per_subslice = devinfo->ver == 11 ? 8 : 3;
+   int bits_per_subslice = devinfo->ver >= 11 ? 8 : 3;
 
    for (int s = 0; s < util_last_bit(devinfo->slice_masks); s++) {
       for (int ss = 0; ss < (devinfo->subslice_slice_stride * 8); ss++) {
