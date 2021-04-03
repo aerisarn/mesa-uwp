@@ -1089,6 +1089,10 @@ update_from_topology(struct intel_device_info *devinfo,
 {
    reset_masks(devinfo);
 
+   assert(topology->max_slices > 0);
+   assert(topology->max_subslices > 0);
+   assert(topology->max_eus_per_subslice > 0);
+
    devinfo->subslice_slice_stride = topology->subslice_stride;
 
    devinfo->eu_subslice_stride = DIV_ROUND_UP(topology->max_eus_per_subslice, 8);
@@ -1184,6 +1188,7 @@ update_from_masks(struct intel_device_info *devinfo, uint32_t slice_mask,
    uint32_t num_eu_per_subslice = DIV_ROUND_UP(n_eus, n_subslices);
    uint32_t eu_mask = (1U << num_eu_per_subslice) - 1;
 
+   topology->max_eus_per_subslice = num_eu_per_subslice;
    topology->eu_offset = topology->subslice_offset +
       DIV_ROUND_UP(topology->max_subslices, 8);
    topology->eu_stride = DIV_ROUND_UP(num_eu_per_subslice, 8);
