@@ -726,6 +726,51 @@ anv_pipeline_hash_compute(struct anv_compute_pipeline *pipeline,
    _mesa_sha1_final(&ctx, sha1_out);
 }
 
+static void
+anv_pipeline_hash_ray_tracing_shader(struct anv_ray_tracing_pipeline *pipeline,
+                                     struct anv_pipeline_layout *layout,
+                                     struct anv_pipeline_stage *stage,
+                                     unsigned char *sha1_out)
+{
+   struct mesa_sha1 ctx;
+   _mesa_sha1_init(&ctx);
+
+   if (layout != NULL)
+      _mesa_sha1_update(&ctx, layout->sha1, sizeof(layout->sha1));
+
+   const bool rba = pipeline->base.device->robust_buffer_access;
+   _mesa_sha1_update(&ctx, &rba, sizeof(rba));
+
+   _mesa_sha1_update(&ctx, stage->shader_sha1, sizeof(stage->shader_sha1));
+   _mesa_sha1_update(&ctx, &stage->key, sizeof(stage->key.bs));
+
+   _mesa_sha1_final(&ctx, sha1_out);
+}
+
+static void
+anv_pipeline_hash_ray_tracing_combined_shader(struct anv_ray_tracing_pipeline *pipeline,
+                                              struct anv_pipeline_layout *layout,
+                                              struct anv_pipeline_stage *intersection,
+                                              struct anv_pipeline_stage *any_hit,
+                                              unsigned char *sha1_out)
+{
+   struct mesa_sha1 ctx;
+   _mesa_sha1_init(&ctx);
+
+   if (layout != NULL)
+      _mesa_sha1_update(&ctx, layout->sha1, sizeof(layout->sha1));
+
+   const bool rba = pipeline->base.device->robust_buffer_access;
+   _mesa_sha1_update(&ctx, &rba, sizeof(rba));
+
+   _mesa_sha1_update(&ctx, intersection->shader_sha1, sizeof(intersection->shader_sha1));
+   _mesa_sha1_update(&ctx, &intersection->key, sizeof(intersection->key.bs));
+   _mesa_sha1_update(&ctx, any_hit->shader_sha1, sizeof(any_hit->shader_sha1));
+   _mesa_sha1_update(&ctx, &any_hit->key, sizeof(any_hit->key.bs));
+
+   _mesa_sha1_final(&ctx, sha1_out);
+}
+
 static nir_shader *
 anv_pipeline_stage_get_nir(struct anv_pipeline *pipeline,
                            struct anv_pipeline_cache *cache,
@@ -2421,6 +2466,7 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
 
 static VkResult
 compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
+                         struct anv_pipeline_cache *cache,
                          nir_shader *nir,
                          struct anv_pipeline_stage *stage,
                          struct anv_shader_bin **shader_out,
@@ -2429,11 +2475,6 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
    const struct brw_compiler *compiler =
       pipeline->base.device->physical->compiler;
    const struct intel_device_info *devinfo = compiler->devinfo;
-
-   /* Use a timestamp as the key to ensure we never get a cache hit */
-   int64_t time_ns = os_time_get_nano() ^ (uintptr_t)nir;
-   uint8_t key[20];
-   _mesa_sha1_compute(&time_ns, sizeof(time_ns), key);
 
    nir_shader **resume_shaders = NULL;
    uint32_t num_resume_shaders = 0;
@@ -2446,11 +2487,11 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
    for (unsigned i = 0; i < num_resume_shaders; i++)
       NIR_PASS_V(resume_shaders[i], brw_nir_lower_rt_intrinsics, devinfo);
 
-   const unsigned *code =
+   stage->code =
       brw_compile_bs(compiler, pipeline->base.device, mem_ctx,
                      &stage->key.bs, &stage->prog_data.bs, nir,
                      num_resume_shaders, resume_shaders, stage->stats, NULL);
-   if (code == NULL)
+   if (stage->code == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* Ray-tracing shaders don't have a "real" bind map */
@@ -2459,10 +2500,10 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
    const unsigned code_size = stage->prog_data.base.program_size;
    struct anv_shader_bin *bin =
       anv_device_upload_kernel(pipeline->base.device,
-                               NULL, /* TODO: Caching is disabled for now */
+                               cache,
                                stage->stage,
-                               key, sizeof(key),
-                               code, code_size,
+                               &stage->cache_key, sizeof(stage->cache_key),
+                               stage->code, code_size,
                                &stage->prog_data.base,
                                sizeof(stage->prog_data.bs),
                                stage->stats, 1,
@@ -2494,25 +2535,62 @@ is_rt_stack_size_dynamic(const VkRayTracingPipelineCreateInfoKHR *info)
    return false;
 }
 
-static VkResult
-anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
-                                 struct anv_pipeline_cache *cache,
-                                 const VkRayTracingPipelineCreateInfoKHR *info)
+static void
+anv_pipeline_compute_ray_tracing_stacks(struct anv_ray_tracing_pipeline *pipeline,
+                                        const VkRayTracingPipelineCreateInfoKHR *info,
+                                        uint32_t *stack_max)
 {
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
-   VkResult result;
+   if (is_rt_stack_size_dynamic(info)) {
+      pipeline->stack_size = 0; /* 0 means dynamic */
+   } else {
+      /* From the Vulkan spec:
+       *
+       *    "If the stack size is not set explicitly, the stack size for a
+       *    pipeline is:
+       *
+       *       rayGenStackMax +
+       *       min(1, maxPipelineRayRecursionDepth) ×
+       *       max(closestHitStackMax, missStackMax,
+       *           intersectionStackMax + anyHitStackMax) +
+       *       max(0, maxPipelineRayRecursionDepth-1) ×
+       *       max(closestHitStackMax, missStackMax) +
+       *       2 × callableStackMax"
+       */
+      pipeline->stack_size =
+         stack_max[MESA_SHADER_RAYGEN] +
+         MIN2(1, info->maxPipelineRayRecursionDepth) *
+         MAX4(stack_max[MESA_SHADER_CLOSEST_HIT],
+              stack_max[MESA_SHADER_MISS],
+              stack_max[MESA_SHADER_INTERSECTION],
+              stack_max[MESA_SHADER_ANY_HIT]) +
+         MAX2(0, (int)info->maxPipelineRayRecursionDepth - 1) *
+         MAX2(stack_max[MESA_SHADER_CLOSEST_HIT],
+              stack_max[MESA_SHADER_MISS]) +
+         2 * stack_max[MESA_SHADER_CALLABLE];
 
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
-      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
-   };
-   int64_t pipeline_start = os_time_get_nano();
+      /* This is an extremely unlikely case but we need to set it to some
+       * non-zero value so that we don't accidentally think it's dynamic.
+       * Our minimum stack size is 2KB anyway so we could set to any small
+       * value we like.
+       */
+      if (pipeline->stack_size == 0)
+         pipeline->stack_size = 1;
+   }
+}
 
+static struct anv_pipeline_stage *
+anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
+                                     const VkRayTracingPipelineCreateInfoKHR *info,
+                                     void *pipeline_ctx)
+{
    ANV_FROM_HANDLE(anv_pipeline_layout, layout, info->layout);
 
-   void *pipeline_ctx = ralloc_context(NULL);
-
+   /* Create enough stage entries for all shader modules plus potential
+    * combinaisons in the groups.
+    */
    struct anv_pipeline_stage *stages =
       rzalloc_array(pipeline_ctx, struct anv_pipeline_stage, info->stageCount);
+
    for (uint32_t i = 0; i < info->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &info->pStages[i];
       if (sinfo->module == VK_NULL_HANDLE)
@@ -2533,15 +2611,140 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
          },
       };
 
+      populate_bs_prog_key(&pipeline->base.device->info, sinfo->flags,
+                           pipeline->base.device->robust_buffer_access,
+                           &stages[i].key.bs);
+
       anv_pipeline_hash_shader(stages[i].module,
                                stages[i].entrypoint,
                                stages[i].stage,
                                stages[i].spec_info,
                                stages[i].shader_sha1);
 
-      populate_bs_prog_key(&pipeline->base.device->info, sinfo->flags,
-                           pipeline->base.device->robust_buffer_access,
-                           &stages[i].key.bs);
+      if (stages[i].stage != MESA_SHADER_INTERSECTION) {
+         anv_pipeline_hash_ray_tracing_shader(pipeline, layout, &stages[i],
+                                              stages[i].cache_key.sha1);
+      }
+
+      stages[i].feedback.duration += os_time_get_nano() - stage_start;
+   }
+
+   for (uint32_t i = 0; i < info->groupCount; i++) {
+      const VkRayTracingShaderGroupCreateInfoKHR *ginfo = &info->pGroups[i];
+
+      if (ginfo->type != VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR)
+         continue;
+
+      int64_t stage_start = os_time_get_nano();
+
+      uint32_t intersection_idx = ginfo->intersectionShader;
+      assert(intersection_idx < info->stageCount);
+
+      uint32_t any_hit_idx = ginfo->anyHitShader;
+      if (any_hit_idx != VK_SHADER_UNUSED_KHR) {
+         assert(any_hit_idx < info->stageCount);
+         anv_pipeline_hash_ray_tracing_combined_shader(pipeline,
+                                                       layout,
+                                                       &stages[intersection_idx],
+                                                       &stages[any_hit_idx],
+                                                       stages[intersection_idx].cache_key.sha1);
+      } else {
+         anv_pipeline_hash_ray_tracing_shader(pipeline, layout,
+                                              &stages[intersection_idx],
+                                              stages[intersection_idx].cache_key.sha1);
+      }
+
+      stages[intersection_idx].feedback.duration += os_time_get_nano() - stage_start;
+   }
+
+   return stages;
+}
+
+static bool
+anv_pipeline_load_cached_shaders(struct anv_ray_tracing_pipeline *pipeline,
+                                 struct anv_pipeline_cache *cache,
+                                 const VkRayTracingPipelineCreateInfoKHR *info,
+                                 struct anv_pipeline_stage *stages,
+                                 uint32_t *stack_max)
+{
+   uint32_t shaders = 0, cache_hits = 0;
+   for (uint32_t i = 0; i < info->stageCount; i++) {
+      if (stages[i].entrypoint == NULL)
+         continue;
+
+      shaders++;
+
+      int64_t stage_start = os_time_get_nano();
+
+      bool cache_hit;
+      stages[i].bin = anv_device_search_for_kernel(pipeline->base.device, cache,
+                                                   &stages[i].cache_key,
+                                                   sizeof(stages[i].cache_key),
+                                                   &cache_hit);
+      if (cache_hit) {
+         cache_hits++;
+         stages[i].feedback.flags |=
+            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+      }
+
+      if (stages[i].bin != NULL) {
+         anv_pipeline_add_executables(&pipeline->base, &stages[i], stages[i].bin);
+         util_dynarray_append(&pipeline->shaders, struct anv_shader_bin *, stages[i].bin);
+
+         uint32_t stack_size =
+            brw_bs_prog_data_const(stages[i].bin->prog_data)->max_stack_size;
+         stack_max[stages[i].stage] =
+            MAX2(stack_max[stages[i].stage], stack_size);
+      }
+
+      stages[i].feedback.duration += os_time_get_nano() - stage_start;
+   }
+
+   return cache_hits == shaders;
+}
+
+static VkResult
+anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
+                                 struct anv_pipeline_cache *cache,
+                                 const VkRayTracingPipelineCreateInfoKHR *info)
+{
+   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   VkResult result;
+
+   VkPipelineCreationFeedbackEXT pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+   };
+   int64_t pipeline_start = os_time_get_nano();
+
+   void *pipeline_ctx = ralloc_context(NULL);
+
+   struct anv_pipeline_stage *stages =
+      anv_pipeline_init_ray_tracing_stages(pipeline, info, pipeline_ctx);
+
+   ANV_FROM_HANDLE(anv_pipeline_layout, layout, info->layout);
+
+   const bool skip_cache_lookup =
+      (pipeline->base.flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR);
+
+   uint32_t stack_max[MESA_VULKAN_SHADER_STAGES] = {};
+
+   if (!skip_cache_lookup &&
+       anv_pipeline_load_cached_shaders(pipeline, cache, info, stages, stack_max)) {
+      pipeline_feedback.flags |=
+         VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+      goto done;
+   }
+
+   if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT) {
+      ralloc_free(pipeline_ctx);
+      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
+   }
+
+   for (uint32_t i = 0; i < info->stageCount; i++) {
+      if (stages[i].entrypoint == NULL)
+         continue;
+
+      int64_t stage_start = os_time_get_nano();
 
       stages[i].nir = anv_pipeline_stage_get_nir(&pipeline->base, cache,
                                                  pipeline_ctx, &stages[i]);
@@ -2553,17 +2756,14 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
       anv_pipeline_lower_nir(&pipeline->base, pipeline_ctx, &stages[i], layout);
 
       stages[i].feedback.duration += os_time_get_nano() - stage_start;
-      stages[i].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT;
-      if (false /* cache_hit */) {
-         stages[i].feedback.flags |=
-            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
-      }
    }
 
-   uint32_t stack_max[MESA_VULKAN_SHADER_STAGES] = {};
-
    for (uint32_t i = 0; i < info->stageCount; i++) {
-      if (!stages[i].entrypoint)
+      if (stages[i].entrypoint == NULL)
+         continue;
+
+      /* Shader found in cache already. */
+      if (stages[i].bin != NULL)
          continue;
 
       /* We handle intersection shaders as part of the group */
@@ -2603,7 +2803,7 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
          unreachable("Invalid ray-tracing shader stage");
       }
 
-      result = compile_upload_rt_shader(pipeline, nir, &stages[i],
+      result = compile_upload_rt_shader(pipeline, cache, nir, &stages[i],
                                         &stages[i].bin, stage_ctx);
       if (result != VK_SUCCESS) {
          ralloc_free(pipeline_ctx);
@@ -2641,29 +2841,34 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
          if (ginfo->closestHitShader < info->stageCount)
             group->closest_hit = stages[ginfo->closestHitShader].bin;
 
-         /* The any-hit and intersection shader have to be combined */
-         void *group_ctx = ralloc_context(pipeline_ctx);
-
          uint32_t intersection_idx = info->pGroups[i].intersectionShader;
          assert(intersection_idx < info->stageCount);
-         nir_shader *intersection =
-            nir_shader_clone(group_ctx, stages[intersection_idx].nir);
 
-         uint32_t any_hit_idx = info->pGroups[i].anyHitShader;
-         const nir_shader *any_hit = NULL;
-         if (any_hit_idx < info->stageCount)
-            any_hit = stages[any_hit_idx].nir;
+         /* Only compile this stage if not already found in the cache. */
+         if (stages[intersection_idx].bin == NULL) {
+            /* The any-hit and intersection shader have to be combined */
+            uint32_t any_hit_idx = info->pGroups[i].anyHitShader;
+            const nir_shader *any_hit = NULL;
+            if (any_hit_idx < info->stageCount)
+               any_hit = stages[any_hit_idx].nir;
 
-         brw_nir_lower_combined_intersection_any_hit(intersection, any_hit,
-                                                     devinfo);
+            void *group_ctx = ralloc_context(pipeline_ctx);
+            nir_shader *intersection =
+               nir_shader_clone(group_ctx, stages[intersection_idx].nir);
 
-         result = compile_upload_rt_shader(pipeline, intersection,
-                                           &stages[intersection_idx],
-                                           &group->intersection,
-                                           group_ctx);
-         if (result != VK_SUCCESS) {
-            ralloc_free(pipeline_ctx);
-            return result;
+            brw_nir_lower_combined_intersection_any_hit(intersection, any_hit,
+                                                        devinfo);
+
+            result = compile_upload_rt_shader(pipeline, cache,
+                                              intersection,
+                                              &stages[intersection_idx],
+                                              &group->intersection,
+                                              group_ctx);
+            ralloc_free(group_ctx);
+            if (result != VK_SUCCESS)
+               return result;
+         } else {
+            group->intersection = stages[intersection_idx].bin;
          }
 
          uint32_t stack_size =
@@ -2671,7 +2876,6 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
          stack_max[MESA_SHADER_INTERSECTION] =
             MAX2(stack_max[MESA_SHADER_INTERSECTION], stack_size);
 
-         ralloc_free(group_ctx);
          break;
       }
 
@@ -2680,49 +2884,11 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
       }
    }
 
+ done:
    ralloc_free(pipeline_ctx);
 
-   if (is_rt_stack_size_dynamic(info)) {
-      pipeline->stack_size = 0; /* 0 means dynamic */
-   } else {
-      /* From the Vulkan spec:
-       *
-       *    "If the stack size is not set explicitly, the stack size for a
-       *    pipeline is:
-       *
-       *       rayGenStackMax +
-       *       min(1, maxPipelineRayRecursionDepth) ×
-       *       max(closestHitStackMax, missStackMax,
-       *           intersectionStackMax + anyHitStackMax) +
-       *       max(0, maxPipelineRayRecursionDepth-1) ×
-       *       max(closestHitStackMax, missStackMax) +
-       *       2 × callableStackMax"
-       */
-      pipeline->stack_size =
-         stack_max[MESA_SHADER_RAYGEN] +
-         MIN2(1, info->maxPipelineRayRecursionDepth) *
-         MAX4(stack_max[MESA_SHADER_CLOSEST_HIT],
-              stack_max[MESA_SHADER_MISS],
-              stack_max[MESA_SHADER_INTERSECTION],
-              stack_max[MESA_SHADER_ANY_HIT]) +
-         MAX2(0, (int)info->maxPipelineRayRecursionDepth - 1) *
-         MAX2(stack_max[MESA_SHADER_CLOSEST_HIT],
-              stack_max[MESA_SHADER_MISS]) +
-         2 * stack_max[MESA_SHADER_CALLABLE];
+   anv_pipeline_compute_ray_tracing_stacks(pipeline, info, stack_max);
 
-      /* This is an extremely unlikely case but we need to set it to some
-       * non-zero value so that we don't accidentally think it's dynamic.
-       * Our minimum stack size is 2KB anyway so we could set to any small
-       * value we like.
-       */
-      if (pipeline->stack_size == 0)
-         pipeline->stack_size = 1;
-   }
-
-   if (false /* cache_hit */) {
-      pipeline_feedback.flags |=
-         VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
-   }
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
 
    const VkPipelineCreationFeedbackCreateInfoEXT *create_feedback =
