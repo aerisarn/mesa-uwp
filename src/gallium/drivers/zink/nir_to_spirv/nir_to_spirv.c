@@ -91,6 +91,15 @@ struct ntv_context {
          local_group_size_var,
          shared_block_var,
          base_vertex_var, base_instance_var, draw_id_var;
+
+   SpvId subgroup_eq_mask_var,
+         subgroup_ge_mask_var,
+         subgroup_gt_mask_var,
+         subgroup_id_var,
+         subgroup_invocation_var,
+         subgroup_le_mask_var,
+         subgroup_lt_mask_var,
+         subgroup_size_var;
 };
 
 static SpvId
@@ -2796,6 +2805,48 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_load_uint_input(ctx, intr, &ctx->local_invocation_index_var, "gl_LocalInvocationIndex", SpvBuiltInLocalInvocationIndex);
       break;
 
+#define LOAD_SHADER_BALLOT(lowercase, camelcase) \
+   case nir_intrinsic_load_##lowercase: \
+      emit_load_uint_input(ctx, intr, &ctx->lowercase##_var, "gl_"#camelcase, SpvBuiltIn##camelcase); \
+      break
+
+   LOAD_SHADER_BALLOT(subgroup_id, SubgroupId);
+   LOAD_SHADER_BALLOT(subgroup_eq_mask, SubgroupEqMask);
+   LOAD_SHADER_BALLOT(subgroup_ge_mask, SubgroupGeMask);
+   LOAD_SHADER_BALLOT(subgroup_invocation, SubgroupLocalInvocationId);
+   LOAD_SHADER_BALLOT(subgroup_le_mask, SubgroupLeMask);
+   LOAD_SHADER_BALLOT(subgroup_lt_mask, SubgroupLtMask);
+   LOAD_SHADER_BALLOT(subgroup_size, SubgroupSize);
+
+   case nir_intrinsic_ballot: {
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySubgroupBallotKHR);
+      spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_shader_ballot");
+      SpvId type = get_dest_uvec_type(ctx, &intr->dest);
+      SpvId result = emit_unop(ctx, SpvOpSubgroupBallotKHR, type, get_src(ctx, &intr->src[0]));
+      store_dest(ctx, &intr->dest, result, nir_type_uint);
+      break;
+   }
+
+   case nir_intrinsic_read_first_invocation: {
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySubgroupBallotKHR);
+      spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_shader_ballot");
+      SpvId type = get_dest_type(ctx, &intr->dest, nir_type_uint);
+      SpvId result = emit_unop(ctx, SpvOpSubgroupFirstInvocationKHR, type, get_src(ctx, &intr->src[0]));
+      store_dest(ctx, &intr->dest, result, nir_type_uint);
+      break;
+   }
+
+   case nir_intrinsic_read_invocation: {
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySubgroupBallotKHR);
+      spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_shader_ballot");
+      SpvId type = get_dest_type(ctx, &intr->dest, nir_type_uint);
+      SpvId result = emit_binop(ctx, SpvOpSubgroupReadInvocationKHR, type,
+                                get_src(ctx, &intr->src[0]),
+                                get_src(ctx, &intr->src[1]));
+      store_dest(ctx, &intr->dest, result, nir_type_uint);
+      break;
+   }
+
    case nir_intrinsic_load_workgroup_size: {
       assert(ctx->local_group_size_var);
       store_dest(ctx, &intr->dest, ctx->local_group_size_var, nir_type_uint);
@@ -3841,6 +3892,10 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
       break;
    default:
       break;
+   }
+   if (BITSET_TEST_RANGE(s->info.system_values_read, SYSTEM_VALUE_SUBGROUP_SIZE, SYSTEM_VALUE_SUBGROUP_LT_MASK)) {
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySubgroupBallotKHR);
+      spirv_builder_emit_extension(&ctx.builder, "SPV_KHR_shader_ballot");
    }
    if (s->info.has_transform_feedback_varyings) {
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityTransformFeedback);
