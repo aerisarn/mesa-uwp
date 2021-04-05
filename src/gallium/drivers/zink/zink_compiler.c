@@ -961,6 +961,17 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, lower_work_dim);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, lower_baseinstance);
+
+   {
+      nir_lower_subgroups_options subgroup_options = {0};
+      subgroup_options.lower_to_scalar = true;
+      subgroup_options.subgroup_size = screen->info.props11.subgroupSize;
+      subgroup_options.ballot_bit_size = 32;
+      subgroup_options.ballot_components = 4;
+      subgroup_options.lower_subgroup_masks = true;
+      NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
+   }
+
    optimize_nir(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(nir, lower_discard_if);
