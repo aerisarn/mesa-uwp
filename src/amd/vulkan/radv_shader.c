@@ -282,10 +282,12 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
          b.cursor = nir_before_instr(&intrin->instr);
 
          nir_ssa_def *def = NULL;
-         if (intrin->intrinsic == nir_intrinsic_load_vulkan_descriptor) {
+         switch (intrin->intrinsic) {
+         case nir_intrinsic_load_vulkan_descriptor:
             def = nir_vec3(&b, nir_channel(&b, intrin->src[0].ssa, 0),
                            nir_channel(&b, intrin->src[0].ssa, 1), nir_imm_int(&b, 0));
-         } else if (intrin->intrinsic == nir_intrinsic_vulkan_resource_index) {
+            break;
+         case nir_intrinsic_vulkan_resource_index: {
             unsigned desc_set = nir_intrinsic_desc_set(intrin);
             unsigned binding = nir_intrinsic_binding(intrin);
             struct radv_descriptor_set_layout *desc_layout = layout->set[desc_set].layout;
@@ -304,20 +306,28 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
                stride = nir_imm_int(&b, desc_layout->binding[binding].size);
             }
             def = nir_vec3(&b, set_ptr, binding_ptr, stride);
-         } else if (intrin->intrinsic == nir_intrinsic_vulkan_resource_reindex) {
+            break;
+         }
+         case nir_intrinsic_vulkan_resource_reindex: {
             nir_ssa_def *set_ptr = nir_channel(&b, intrin->src[0].ssa, 0);
             nir_ssa_def *binding_ptr = nir_channel(&b, intrin->src[0].ssa, 1);
             nir_ssa_def *stride = nir_channel(&b, intrin->src[0].ssa, 2);
             binding_ptr = nir_iadd(&b, binding_ptr, nir_imul(&b, intrin->src[1].ssa, stride));
             def = nir_vec3(&b, set_ptr, binding_ptr, stride);
-         } else if (intrin->intrinsic == nir_intrinsic_is_sparse_texels_resident) {
+            break;
+         }
+         case nir_intrinsic_is_sparse_texels_resident:
             def = nir_ieq_imm(&b, intrin->src[0].ssa, 0);
-         } else if (intrin->intrinsic == nir_intrinsic_sparse_residency_code_and) {
+            break;
+         case nir_intrinsic_sparse_residency_code_and:
             def = nir_ior(&b, intrin->src[0].ssa, intrin->src[1].ssa);
-         } else if (intrin->intrinsic == nir_intrinsic_load_view_index &&
-                    !key->has_multiview_view_index) {
+            break;
+         case nir_intrinsic_load_view_index:
+            if (key->has_multiview_view_index)
+               continue;
             def = nir_imm_zero(&b, 1, 32);
-         } else {
+            break;
+         default:
             continue;
          }
 
