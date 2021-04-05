@@ -868,19 +868,52 @@ static uint32_t
 radv_get_htile_fast_clear_value(const struct radv_device *device, const struct radv_image *image,
                                 VkClearDepthStencilValue value)
 {
-   uint32_t clear_value;
+   uint32_t max_zval = 0x3fff; /* maximum 14-bit value. */
+   uint32_t zmask = 0, smem = 0;
+   uint32_t htile_value;
+   uint32_t zmin, zmax;
+
+   /* Convert the depth value to 14-bit zmin/zmax values. */
+   zmin = ((value.depth * max_zval) + 0.5f);
+   zmax = zmin;
 
    if (radv_image_tile_stencil_disabled(device, image)) {
-      clear_value = value.depth ? 0xfffffff0 : 0;
+      /* Z only (no stencil):
+       *
+       * |31     18|17      4|3     0|
+       * +---------+---------+-------+
+       * |  Max Z  |  Min Z  | ZMask |
+       */
+      htile_value = (((zmax  & 0x3fff) << 18) |
+                     ((zmin  & 0x3fff) <<  4) |
+                     ((zmask &    0xf) <<  0));
    } else {
+
+      /* Z and stencil:
+       *
+       * |31       12|11 10|9    8|7   6|5   4|3     0|
+       * +-----------+-----+------+-----+-----+-------+
+       * |  Z Range  |     | SMem | SR1 | SR0 | ZMask |
+       *
+       * Z, stencil, 4 bit VRS encoding:
+       * |31       12| 11      10 |9    8|7         6 |5   4|3     0|
+       * +-----------+------------+------+------------+-----+-------+
+       * |  Z Range  | VRS Y-rate | SMem | VRS X-rate | SR0 | ZMask |
+       */
+      uint32_t delta = 0;
+      uint32_t zrange = ((zmax << 6) | delta);
+      uint32_t sresults = 0xf; /* SR0/SR1 both as 0x3. */
+
       if (radv_image_has_vrs_htile(device, image))
-         clear_value = value.depth ? 0xfffc0030 : 0x30;
-      else {
-         clear_value = value.depth ? 0xfffc00f0 : 0xf0;
-      }
+         sresults = 0x3;
+
+      htile_value = (((zrange   & 0xfffff) << 12) |
+                     ((smem     & 0x3)     <<  8) |
+                     ((sresults & 0xf)     <<  4) |
+                     ((zmask    & 0xf)     <<  0));
    }
 
-   return clear_value;
+   return htile_value;
 }
 
 static uint32_t
