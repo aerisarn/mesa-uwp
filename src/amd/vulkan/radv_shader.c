@@ -263,9 +263,16 @@ mark_geom_invariant(nir_shader *nir)
    }
 }
 
+static nir_ssa_def *
+convert_pointer_to_64(nir_builder *b, const struct radv_physical_device *pdev, nir_ssa_def *ptr)
+{
+   nir_ssa_def *comp[] = {ptr, nir_imm_int(b, pdev->rad_info.address32_hi)};
+   return nir_pack_64_2x32(b, nir_vec(b, comp, 2));
+}
+
 static bool
 lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
-                 const struct radv_pipeline_layout *layout)
+                 const struct radv_pipeline_layout *layout, const struct radv_physical_device *pdev)
 {
    nir_function_impl *entry = nir_shader_get_entrypoint(nir);
    bool progress = false;
@@ -284,8 +291,18 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
          nir_ssa_def *def = NULL;
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_vulkan_descriptor:
-            def = nir_vec3(&b, nir_channel(&b, intrin->src[0].ssa, 0),
-                           nir_channel(&b, intrin->src[0].ssa, 1), nir_imm_int(&b, 0));
+            if (nir_intrinsic_desc_type(intrin) == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
+               nir_ssa_def *addr =
+                  convert_pointer_to_64(&b, pdev,
+                                        nir_iadd(&b, nir_channels(&b, intrin->src[0].ssa, 1),
+                                                 nir_channels(&b, intrin->src[0].ssa, 2)));
+
+               def = nir_build_load_global(&b, 1, 64, addr, .access = ACCESS_NON_WRITEABLE,
+                                           .align_mul = 8, .align_offset = 0);
+            } else {
+               def = nir_vec3(&b, nir_channel(&b, intrin->src[0].ssa, 0),
+                              nir_channel(&b, intrin->src[0].ssa, 1), nir_imm_int(&b, 0));
+            }
             break;
          case nir_intrinsic_vulkan_resource_index: {
             unsigned desc_set = nir_intrinsic_desc_set(intrin);
@@ -649,7 +666,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo | nir_var_mem_ssbo,
               nir_address_format_vec2_index_32bit_offset);
 
-   NIR_PASS_V(nir, lower_intrinsics, key, layout);
+   NIR_PASS_V(nir, lower_intrinsics, key, layout, device->physical_device);
 
    /* Lower deref operations for compute shared memory. */
    if (nir->info.stage == MESA_SHADER_COMPUTE) {
