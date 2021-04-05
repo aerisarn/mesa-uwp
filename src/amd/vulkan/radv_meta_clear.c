@@ -980,9 +980,10 @@ radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer, const struct radv_
        (clear_value.depth < 0.0 || clear_value.depth > 1.0))
       return false;
 
-   if (((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) && !radv_is_fast_clear_depth_allowed(clear_value)) ||
-       ((aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
-        !radv_is_fast_clear_stencil_allowed(clear_value)))
+   if (radv_image_is_tc_compat_htile(iview->image) &&
+       (((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) && !radv_is_fast_clear_depth_allowed(clear_value)) ||
+        ((aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+         !radv_is_fast_clear_stencil_allowed(clear_value))))
       return false;
 
    return true;
