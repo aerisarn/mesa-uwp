@@ -61,6 +61,7 @@
 #include "vk_instance.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
+#include "vk_command_buffer.h"
 #include "vk_util.h"
 
 #include "ac_binary.h"
@@ -1461,7 +1462,7 @@ enum radv_cmd_buffer_status {
 };
 
 struct radv_cmd_buffer {
-   struct vk_object_base base;
+   struct vk_command_buffer vk;
 
    struct radv_device *device;
 
