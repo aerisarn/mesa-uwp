@@ -468,6 +468,9 @@ zink_component_mapping(enum pipe_swizzle swizzle)
    }
 }
 
+enum pipe_swizzle
+zink_clamp_void_swizzle(const struct util_format_description *desc, enum pipe_swizzle swizzle);
+
 bool
 zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res);
 

@@ -647,8 +647,8 @@ out:
    return buffer_view;
 }
 
-static inline enum pipe_swizzle
-clamp_void_swizzle(const struct util_format_description *desc, enum pipe_swizzle swizzle)
+enum pipe_swizzle
+zink_clamp_void_swizzle(const struct util_format_description *desc, enum pipe_swizzle swizzle)
 {
    switch (swizzle) {
    case PIPE_SWIZZLE_X:
@@ -718,10 +718,10 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
           */
           if (zink_format_is_voidable_rgba_variant(state->format)) {
              const struct util_format_description *desc = util_format_description(state->format);
-             sampler_view->base.swizzle_r = clamp_void_swizzle(desc, sampler_view->base.swizzle_r);
-             sampler_view->base.swizzle_g = clamp_void_swizzle(desc, sampler_view->base.swizzle_g);
-             sampler_view->base.swizzle_b = clamp_void_swizzle(desc, sampler_view->base.swizzle_b);
-             sampler_view->base.swizzle_a = clamp_void_swizzle(desc, sampler_view->base.swizzle_a);
+             sampler_view->base.swizzle_r = zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_r);
+             sampler_view->base.swizzle_g = zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_g);
+             sampler_view->base.swizzle_b = zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_b);
+             sampler_view->base.swizzle_a = zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_a);
           }
           ivci.components.r = zink_component_mapping(sampler_view->base.swizzle_r);
           ivci.components.g = zink_component_mapping(sampler_view->base.swizzle_g);
