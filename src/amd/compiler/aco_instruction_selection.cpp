@@ -5598,6 +5598,39 @@ static MIMG_instruction *emit_mimg(Builder& bld, aco_opcode op,
    return res;
 }
 
+void visit_bvh64_intersect_ray_amd(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+   Temp resource = get_ssa_temp(ctx, instr->src[0].ssa);
+   Temp node = get_ssa_temp(ctx, instr->src[1].ssa);
+   Temp tmax = get_ssa_temp(ctx, instr->src[2].ssa);
+   Temp origin = get_ssa_temp(ctx, instr->src[3].ssa);
+   Temp dir = get_ssa_temp(ctx, instr->src[4].ssa);
+   Temp inv_dir = get_ssa_temp(ctx, instr->src[5].ssa);
+
+   std::vector<Temp> args;
+   args.push_back(emit_extract_vector(ctx, node, 0, v1));
+   args.push_back(emit_extract_vector(ctx, node, 1, v1));
+   args.push_back(as_vgpr(ctx, tmax));
+   args.push_back(emit_extract_vector(ctx, origin, 0, v1));
+   args.push_back(emit_extract_vector(ctx, origin, 1, v1));
+   args.push_back(emit_extract_vector(ctx, origin, 2, v1));
+   args.push_back(emit_extract_vector(ctx, dir, 0, v1));
+   args.push_back(emit_extract_vector(ctx, dir, 1, v1));
+   args.push_back(emit_extract_vector(ctx, dir, 2, v1));
+   args.push_back(emit_extract_vector(ctx, inv_dir, 0, v1));
+   args.push_back(emit_extract_vector(ctx, inv_dir, 1, v1));
+   args.push_back(emit_extract_vector(ctx, inv_dir, 2, v1));
+
+   MIMG_instruction *mimg = emit_mimg(bld, aco_opcode::image_bvh64_intersect_ray,
+                                      Definition(dst), resource, Operand(s4), args);
+   mimg->dim = ac_image_1d;
+   mimg->dmask = 0xf;
+   mimg->unrm = true;
+   mimg->r128 = true;
+}
+
 /* Adjust the sample index according to FMASK.
  *
  * For uncompressed MSAA surfaces, FMASK should return 0x76543210,
@@ -8514,6 +8547,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_load_sbt_amd:
       visit_load_sbt_amd(ctx, instr);
+      break;
+   case nir_intrinsic_bvh64_intersect_ray_amd:
+      visit_bvh64_intersect_ray_amd(ctx, instr);
       break;
    default:
       isel_err(&instr->instr, "Unimplemented intrinsic instr");

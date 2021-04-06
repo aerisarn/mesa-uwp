@@ -1509,6 +1509,7 @@ IMAGE_GATHER4 = {
 for (code, name) in IMAGE_GATHER4:
    opcode(name, code, code, code, Format.MIMG, InstrClass.VMem)
 
+opcode("image_bvh64_intersect_ray", -1, -1, 231, Format.MIMG, InstrClass.VMem)
 
 FLAT = {
    #GFX7, GFX8_9, GFX10

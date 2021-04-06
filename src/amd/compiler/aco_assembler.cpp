@@ -427,7 +427,8 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       MIMG_instruction& mimg = instr->mimg();
       uint32_t encoding = (0b111100 << 26);
       encoding |= mimg.slc ? 1 << 25 : 0;
-      encoding |= opcode << 18;
+      encoding |= (opcode & 0x7f) << 18;
+      encoding |= (opcode >> 7) & 1;
       encoding |= mimg.lwe ? 1 << 17 : 0;
       encoding |= mimg.tfe ? 1 << 16 : 0;
       encoding |= mimg.glc ? 1 << 13 : 0;
