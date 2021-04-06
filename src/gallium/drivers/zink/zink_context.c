@@ -587,22 +587,6 @@ zink_delete_sampler_state(struct pipe_context *pctx,
    FREE(sampler);
 }
 
-static VkComponentSwizzle
-component_mapping(enum pipe_swizzle swizzle)
-{
-   switch (swizzle) {
-   case PIPE_SWIZZLE_X: return VK_COMPONENT_SWIZZLE_R;
-   case PIPE_SWIZZLE_Y: return VK_COMPONENT_SWIZZLE_G;
-   case PIPE_SWIZZLE_Z: return VK_COMPONENT_SWIZZLE_B;
-   case PIPE_SWIZZLE_W: return VK_COMPONENT_SWIZZLE_A;
-   case PIPE_SWIZZLE_0: return VK_COMPONENT_SWIZZLE_ZERO;
-   case PIPE_SWIZZLE_1: return VK_COMPONENT_SWIZZLE_ONE;
-   case PIPE_SWIZZLE_NONE: return VK_COMPONENT_SWIZZLE_IDENTITY; // ???
-   default:
-      unreachable("unexpected swizzle");
-   }
-}
-
 static VkImageAspectFlags
 sampler_aspect_from_format(enum pipe_format fmt)
 {
@@ -724,10 +708,10 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       ivci.subresourceRange.aspectMask = sampler_aspect_from_format(state->format);
       /* samplers for stencil aspects of packed formats need to always use stencil swizzle */
       if (ivci.subresourceRange.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-         ivci.components.r = component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_r));
-         ivci.components.g = component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_g));
-         ivci.components.b = component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_b));
-         ivci.components.a = component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_a));
+         ivci.components.r = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_r));
+         ivci.components.g = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_g));
+         ivci.components.b = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_b));
+         ivci.components.a = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_a));
       } else {
          /* if we have e.g., R8G8B8X8, then we have to ignore alpha since we're just emulating
           * these formats
@@ -739,10 +723,10 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
              sampler_view->base.swizzle_b = clamp_void_swizzle(desc, sampler_view->base.swizzle_b);
              sampler_view->base.swizzle_a = clamp_void_swizzle(desc, sampler_view->base.swizzle_a);
           }
-          ivci.components.r = component_mapping(sampler_view->base.swizzle_r);
-          ivci.components.g = component_mapping(sampler_view->base.swizzle_g);
-          ivci.components.b = component_mapping(sampler_view->base.swizzle_b);
-          ivci.components.a = component_mapping(sampler_view->base.swizzle_a);
+          ivci.components.r = zink_component_mapping(sampler_view->base.swizzle_r);
+          ivci.components.g = zink_component_mapping(sampler_view->base.swizzle_g);
+          ivci.components.b = zink_component_mapping(sampler_view->base.swizzle_b);
+          ivci.components.a = zink_component_mapping(sampler_view->base.swizzle_a);
       }
       assert(ivci.format);
 
