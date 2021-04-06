@@ -1410,6 +1410,10 @@ queue_thread(void *data, void *gdata, int thread_index)
 static VkResult
 lvp_queue_init(struct lvp_device *device, struct lvp_queue *queue)
 {
+   VkResult result = vk_queue_init(&queue->vk, &device->vk);
+   if (result != VK_SUCCESS)
+      return result;
+
    queue->device = device;
 
    simple_mtx_init(&queue->last_lock, mtx_plain);
@@ -1420,7 +1424,6 @@ lvp_queue_init(struct lvp_device *device, struct lvp_queue *queue)
    util_queue_init(&queue->queue, "lavapipe", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, device);
    p_atomic_set(&queue->count, 0);
 
-   vk_object_base_init(&device->vk, &queue->base, VK_OBJECT_TYPE_QUEUE);
    return VK_SUCCESS;
 }
 
@@ -1433,6 +1436,8 @@ lvp_queue_finish(struct lvp_queue *queue)
    cso_destroy_context(queue->cso);
    queue->ctx->destroy(queue->ctx);
    simple_mtx_destroy(&queue->last_lock);
+
+   vk_queue_finish(&queue->vk);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
