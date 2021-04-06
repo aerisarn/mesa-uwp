@@ -2642,6 +2642,25 @@ emit_store_scratch(struct lp_build_nir_context *bld_base,
    }
 }
 
+static void
+emit_clock(struct lp_build_nir_context *bld_base,
+           LLVMValueRef dst[4])
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   struct lp_build_context *uint_bld = get_int_bld(bld_base, true, 32);
+
+   lp_init_clock_hook(gallivm);
+
+   LLVMValueRef result = LLVMBuildCall(builder, gallivm->get_time_hook, NULL, 0, "");
+
+   LLVMValueRef hi = LLVMBuildShl(builder, result, lp_build_const_int64(gallivm, 32), "");
+   hi = LLVMBuildTrunc(builder, hi, uint_bld->elem_type, "");
+   LLVMValueRef lo = LLVMBuildTrunc(builder, result, uint_bld->elem_type, "");
+   dst[0] = lp_build_broadcast_scalar(uint_bld, lo);
+   dst[1] = lp_build_broadcast_scalar(uint_bld, hi);
+}
+
 void lp_build_nir_soa(struct gallivm_state *gallivm,
                       struct nir_shader *shader,
                       const struct lp_build_tgsi_params *params,
@@ -2755,6 +2774,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.load_scratch = emit_load_scratch;
    bld.bld_base.store_scratch = emit_store_scratch;
    bld.bld_base.load_const = emit_load_const;
+   bld.bld_base.clock = emit_clock;
 
    bld.mask = params->mask;
    bld.inputs = params->inputs;

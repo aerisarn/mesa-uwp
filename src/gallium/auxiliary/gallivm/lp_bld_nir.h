@@ -222,6 +222,7 @@ struct lp_build_nir_context
                            LLVMValueRef dst[4]);
    void (*helper_invocation)(struct lp_build_nir_context *bld_base, LLVMValueRef *dst);
 
+   void (*clock)(struct lp_build_nir_context *bld_Base, LLVMValueRef dst[4]);
    void (*interp_at)(struct lp_build_nir_context *bld_base,
                      unsigned num_components,
                      nir_variable *var,
