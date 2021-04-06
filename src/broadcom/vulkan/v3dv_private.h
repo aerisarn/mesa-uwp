@@ -43,6 +43,8 @@
 #include "vk_shader_module.h"
 #include "vk_util.h"
 
+#include "vk_command_buffer.h"
+
 #include <xf86drm.h>
 
 #ifdef HAVE_VALGRIND
@@ -1277,7 +1279,7 @@ struct v3dv_cmd_buffer_private_obj {
 };
 
 struct v3dv_cmd_buffer {
-   struct vk_object_base base;
+   struct vk_command_buffer vk;
 
    struct v3dv_device *device;
 
