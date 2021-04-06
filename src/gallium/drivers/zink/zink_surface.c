@@ -78,7 +78,14 @@ create_ivci(struct zink_screen *screen,
    ivci.format = zink_get_format(screen, templ->format);
    assert(ivci.format != VK_FORMAT_UNDEFINED);
 
-   // TODO: format swizzles
+   /* TODO: it's currently illegal to use non-identity swizzles for framebuffer attachments,
+    * but if that ever changes, this will be useful
+   const struct util_format_description *desc = util_format_description(templ->format);
+   ivci.components.r = zink_component_mapping(zink_clamp_void_swizzle(desc, PIPE_SWIZZLE_X));
+   ivci.components.g = zink_component_mapping(zink_clamp_void_swizzle(desc, PIPE_SWIZZLE_Y));
+   ivci.components.b = zink_component_mapping(zink_clamp_void_swizzle(desc, PIPE_SWIZZLE_Z));
+   ivci.components.a = zink_component_mapping(zink_clamp_void_swizzle(desc, PIPE_SWIZZLE_W));
+   */
    ivci.components.r = VK_COMPONENT_SWIZZLE_R;
    ivci.components.g = VK_COMPONENT_SWIZZLE_G;
    ivci.components.b = VK_COMPONENT_SWIZZLE_B;
