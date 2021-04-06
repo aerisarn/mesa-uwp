@@ -268,6 +268,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_display_control                   = true,
 #endif
       .EXT_extended_dynamic_state            = true,
+      .EXT_extended_dynamic_state2           = true,
       .EXT_external_memory_dma_buf           = true,
       .EXT_external_memory_host              = true,
       .EXT_fragment_shader_interlock         = device->info.ver >= 9,
@@ -1729,6 +1730,15 @@ void anv_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *features =
             (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *)ext;
          features->extendedDynamicState = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT: {
+         VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *features =
+            (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *)ext;
+         features->extendedDynamicState2 = true;
+         features->extendedDynamicState2LogicOp = true;
+         features->extendedDynamicState2PatchControlPoints = false;
          break;
       }
 
