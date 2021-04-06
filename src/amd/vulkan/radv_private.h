@@ -62,6 +62,7 @@
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
 #include "vk_command_buffer.h"
+#include "vk_queue.h"
 #include "vk_util.h"
 
 #include "ac_binary.h"
@@ -690,7 +691,7 @@ struct radv_deferred_queue_submission;
 enum ring_type radv_queue_family_to_ring(int f);
 
 struct radv_queue {
-   struct vk_object_base base;
+   struct vk_queue vk;
    struct radv_device *device;
    struct radeon_winsys_ctx *hw_ctx;
    enum radeon_ctx_priority priority;

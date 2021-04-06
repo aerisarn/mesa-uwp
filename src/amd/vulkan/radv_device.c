@@ -2793,14 +2793,16 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue, uint32_t q
    queue->flags = flags;
    queue->hw_ctx = device->hw_ctx[queue->priority];
 
-   vk_object_base_init(&device->vk, &queue->base, VK_OBJECT_TYPE_QUEUE);
+   VkResult result = vk_queue_init(&queue->vk, &device->vk);
+   if (result != VK_SUCCESS)
+      return result;
 
    list_inithead(&queue->pending_submissions);
    mtx_init(&queue->pending_mutex, mtx_plain);
 
    mtx_init(&queue->thread_mutex, mtx_plain);
    if (u_cnd_monotonic_init(&queue->thread_cond)) {
-      vk_object_base_finish(&queue->base);
+      vk_queue_finish(&queue->vk);
       return vk_error(device->instance, VK_ERROR_INITIALIZATION_FAILED);
    }
    queue->cond_created = true;
@@ -2849,7 +2851,7 @@ radv_queue_finish(struct radv_queue *queue)
    if (queue->compute_scratch_bo)
       queue->device->ws->buffer_destroy(queue->device->ws, queue->compute_scratch_bo);
 
-   vk_object_base_finish(&queue->base);
+   vk_queue_finish(&queue->vk);
 }
 
 static void
