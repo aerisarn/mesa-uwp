@@ -1678,7 +1678,9 @@ v3dv_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
 static VkResult
 queue_init(struct v3dv_device *device, struct v3dv_queue *queue)
 {
-   vk_object_base_init(&device->vk, &queue->base, VK_OBJECT_TYPE_QUEUE);
+   VkResult result = vk_queue_init(&queue->vk, &device->vk);
+   if (result != VK_SUCCESS)
+      return result;
    queue->device = device;
    queue->flags = 0;
    queue->noop_job = NULL;
@@ -1690,7 +1692,7 @@ queue_init(struct v3dv_device *device, struct v3dv_queue *queue)
 static void
 queue_finish(struct v3dv_queue *queue)
 {
-   vk_object_base_finish(&queue->base);
+   vk_queue_finish(&queue->vk);
    assert(list_is_empty(&queue->submit_wait_list));
    if (queue->noop_job)
       v3dv_job_destroy(queue->noop_job);

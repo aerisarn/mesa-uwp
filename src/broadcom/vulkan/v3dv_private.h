@@ -44,6 +44,7 @@
 #include "vk_util.h"
 
 #include "vk_command_buffer.h"
+#include "vk_queue.h"
 
 #include <xf86drm.h>
 
@@ -218,7 +219,7 @@ struct v3dv_queue_submit_wait_info {
 };
 
 struct v3dv_queue {
-   struct vk_object_base base;
+   struct vk_queue vk;
 
    struct v3dv_device *device;
    VkDeviceQueueCreateFlags flags;
