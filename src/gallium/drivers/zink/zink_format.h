@@ -26,9 +26,12 @@
 
 #include "pipe/p_format.h"
 
+#include <stdbool.h>
 #include <vulkan/vulkan.h>
 
 VkFormat
 zink_pipe_format_to_vk_format(enum pipe_format format);
 
+bool
+zink_format_is_voidable_rgba_variant(enum pipe_format format);
 #endif

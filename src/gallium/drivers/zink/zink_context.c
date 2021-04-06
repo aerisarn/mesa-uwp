@@ -26,6 +26,7 @@
 #include "zink_batch.h"
 #include "zink_compiler.h"
 #include "zink_fence.h"
+#include "zink_format.h"
 #include "zink_framebuffer.h"
 #include "zink_helpers.h"
 #include "zink_program.h"
@@ -692,28 +693,6 @@ clamp_zs_swizzle(enum pipe_swizzle swizzle)
    return swizzle;
 }
 
-static inline bool
-format_is_usable_rgba_variant(const struct util_format_description *desc)
-{
-   unsigned chan;
-
-   if(desc->block.width != 1 ||
-      desc->block.height != 1 ||
-      (desc->block.bits != 32 && desc->block.bits != 64))
-      return false;
-
-   if (desc->nr_channels != 4)
-      return false;
-
-   unsigned size = desc->channel[0].size;
-   for(chan = 0; chan < 4; ++chan) {
-      if(desc->channel[chan].size != size)
-         return false;
-   }
-
-   return true;
-}
-
 static struct pipe_sampler_view *
 zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
                          const struct pipe_sampler_view *state)
@@ -753,8 +732,8 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
          /* if we have e.g., R8G8B8X8, then we have to ignore alpha since we're just emulating
           * these formats
           */
-          const struct util_format_description *desc = util_format_description(state->format);
-          if (format_is_usable_rgba_variant(desc)) {
+          if (zink_format_is_voidable_rgba_variant(state->format)) {
+             const struct util_format_description *desc = util_format_description(state->format);
              sampler_view->base.swizzle_r = clamp_void_swizzle(desc, sampler_view->base.swizzle_r);
              sampler_view->base.swizzle_g = clamp_void_swizzle(desc, sampler_view->base.swizzle_g);
              sampler_view->base.swizzle_b = clamp_void_swizzle(desc, sampler_view->base.swizzle_b);
