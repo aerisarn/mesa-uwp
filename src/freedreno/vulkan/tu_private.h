@@ -92,6 +92,7 @@ typedef uint32_t xcb_window_t;
 #include "tu_entrypoints.h"
 
 #include "vk_format.h"
+#include "vk_command_buffer.h"
 
 #define MAX_VBS 32
 #define MAX_VERTEX_ATTRIBS 32
@@ -1052,7 +1053,7 @@ enum tu_cmd_buffer_status
 
 struct tu_cmd_buffer
 {
-   struct vk_object_base base;
+   struct vk_command_buffer vk;
 
    struct tu_device *device;
 
@@ -1764,7 +1765,7 @@ struct tu_u_trace_flush_data
 #define TU_FROM_HANDLE(__tu_type, __name, __handle)                          \
    VK_FROM_HANDLE(__tu_type, __name, __handle)
 
-VK_DEFINE_HANDLE_CASTS(tu_cmd_buffer, base, VkCommandBuffer,
+VK_DEFINE_HANDLE_CASTS(tu_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
 VK_DEFINE_HANDLE_CASTS(tu_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
 VK_DEFINE_HANDLE_CASTS(tu_instance, vk.base, VkInstance,

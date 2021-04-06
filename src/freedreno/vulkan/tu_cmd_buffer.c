@@ -1394,10 +1394,17 @@ tu_create_cmd_buffer(struct tu_device *device,
 {
    struct tu_cmd_buffer *cmd_buffer;
 
-   cmd_buffer = vk_object_zalloc(&device->vk, NULL, sizeof(*cmd_buffer),
-                                 VK_OBJECT_TYPE_COMMAND_BUFFER);
+   cmd_buffer = vk_zalloc2(&device->vk.alloc, NULL, sizeof(*cmd_buffer), 8,
+                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
    if (cmd_buffer == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   VkResult result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk);
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->vk.alloc, NULL, cmd_buffer);
+      return result;
+   }
 
    cmd_buffer->device = device;
    cmd_buffer->pool = pool;
@@ -1441,12 +1448,16 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
 
    u_trace_fini(&cmd_buffer->trace);
 
-   vk_object_free(&cmd_buffer->device->vk, &cmd_buffer->pool->alloc, cmd_buffer);
+   vk_command_buffer_finish(&cmd_buffer->vk);
+   vk_free2(&cmd_buffer->device->vk.alloc, &cmd_buffer->pool->alloc,
+            cmd_buffer);
 }
 
 static VkResult
 tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
 {
+   vk_command_buffer_reset(&cmd_buffer->vk);
+
    cmd_buffer->record_result = VK_SUCCESS;
 
    tu_cs_reset(&cmd_buffer->cs);
@@ -1491,7 +1502,11 @@ tu_AllocateCommandBuffers(VkDevice _device,
 
          result = tu_reset_cmd_buffer(cmd_buffer);
          cmd_buffer->level = pAllocateInfo->level;
-         vk_object_base_reset(&cmd_buffer->base);
+         vk_command_buffer_finish(&cmd_buffer->vk);
+         VkResult init_result =
+            vk_command_buffer_init(&cmd_buffer->vk, &device->vk);
+         if (init_result != VK_SUCCESS)
+            result = init_result;
 
          pCommandBuffers[i] = tu_cmd_buffer_to_handle(cmd_buffer);
       } else {
