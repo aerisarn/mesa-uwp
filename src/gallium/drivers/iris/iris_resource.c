@@ -2118,6 +2118,10 @@ iris_transfer_map(struct pipe_context *ctx,
       }
    }
 
+   /* TODO: Teach iris_map_tiled_memcpy about Tile4... */
+   if (res->surf.tiling == ISL_TILING_4)
+      usage &= ~PIPE_MAP_DIRECTLY;
+
    if (!(usage & PIPE_MAP_DIRECTLY)) {
       /* If we need a synchronous mapping and the resource is busy, or needs
        * resolving, we copy to/from a linear temporary buffer using the GPU.
@@ -2256,8 +2260,11 @@ iris_texture_subdata(struct pipe_context *ctx,
     * Linear staging buffers appear to be better than tiled ones, too, so
     * take that path if we need the GPU to perform color compression, or
     * stall-avoidance blits.
+    *
+    * TODO: Teach isl_memcpy_linear_to_tiled about Tile4...
     */
    if (surf->tiling == ISL_TILING_LINEAR ||
+       surf->tiling == ISL_TILING_4 ||
        isl_aux_usage_has_compression(res->aux.usage) ||
        resource_is_busy(ice, res) ||
        res->bo->mmap_mode == IRIS_MMAP_NONE) {
