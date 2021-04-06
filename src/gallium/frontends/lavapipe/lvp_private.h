@@ -60,6 +60,7 @@ typedef uint32_t xcb_window_t;
 #include "vk_util.h"
 #include "vk_format.h"
 #include "vk_cmd_queue.h"
+#include "vk_command_buffer.h"
 
 #include "wsi_common.h"
 
@@ -589,7 +590,7 @@ enum lvp_cmd_buffer_status {
 };
 
 struct lvp_cmd_buffer {
-   struct vk_object_base base;
+   struct vk_command_buffer vk;
 
    struct lvp_device *                          device;
 
@@ -607,7 +608,7 @@ struct lvp_cmd_buffer {
 #define LVP_FROM_HANDLE(__lvp_type, __name, __handle) \
    struct __lvp_type *__name = __lvp_type ## _from_handle(__handle)
 
-VK_DEFINE_HANDLE_CASTS(lvp_cmd_buffer, base, VkCommandBuffer,
+VK_DEFINE_HANDLE_CASTS(lvp_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
 VK_DEFINE_HANDLE_CASTS(lvp_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
 VK_DEFINE_HANDLE_CASTS(lvp_instance, vk.base, VkInstance, VK_OBJECT_TYPE_INSTANCE)
