@@ -1153,6 +1153,14 @@ intrinsic("alloc_vertices_and_primitives_amd", src_comp=[1, 1], indices=[])
 intrinsic("load_sbt_amd", src_comp=[-1], dest_comp=0, indices=[BINDING, BASE],
           flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# 1. HW descriptor
+# 2. BVH node(64-bit pointer as 2x32 ...)
+# 3. ray extent
+# 4. ray origin
+# 5. ray direction
+# 6. inverse ray direction (componentwise 1.0/ray direction)
+intrinsic("bvh64_intersect_ray_amd", [4, 2, 1, 3, 3, 3], 4, flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel
