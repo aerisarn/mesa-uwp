@@ -3354,7 +3354,7 @@ VkResult anv_CreateDevice(
    anv_pipeline_cache_init(&device->default_pipeline_cache, device,
                            true /* cache_enabled */, false /* external_sync */);
 
-   result = anv_device_init_rt_trampoline(device);
+   result = anv_device_init_rt_shaders(device);
    if (result != VK_SUCCESS)
       goto fail_rt_trampoline;
 

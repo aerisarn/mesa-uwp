@@ -1242,6 +1242,7 @@ struct anv_device {
     struct anv_bo                              *rt_scratch_bos[16];
 
     struct anv_shader_bin                      *rt_trampoline;
+    struct anv_shader_bin                      *rt_trivial_return;
 
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
@@ -3612,9 +3613,6 @@ struct anv_ray_tracing_pipeline {
    /* All shaders in the pipeline */
    struct util_dynarray                         shaders;
 
-   /* Dummy stack return shader */
-   struct anv_shader_bin *                      trivial_return_shader;
-
    uint32_t                                     group_count;
    struct anv_rt_shader_group *                 groups;
 
@@ -3681,7 +3679,7 @@ anv_pipeline_get_last_vue_prog_data(const struct anv_graphics_pipeline *pipeline
 }
 
 VkResult
-anv_device_init_rt_trampoline(struct anv_device *device);
+anv_device_init_rt_shaders(struct anv_device *device);
 
 void
 anv_device_finish_rt_shaders(struct anv_device *device);

@@ -2479,32 +2479,6 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
    return VK_SUCCESS;
 }
 
-static VkResult
-compile_trivial_return_shader(struct anv_ray_tracing_pipeline *pipeline)
-{
-   const struct brw_compiler *compiler =
-      pipeline->base.device->physical->compiler;
-
-   assert(pipeline->trivial_return_shader == NULL);
-
-   void *mem_ctx = ralloc_context(NULL);
-
-   nir_shader *nir = brw_nir_create_trivial_return_shader(compiler, mem_ctx);
-
-   struct anv_pipeline_stage stage = {
-      .stage = nir->info.stage,
-      .nir = nir,
-   };
-
-   VkResult result =
-      compile_upload_rt_shader(pipeline, stage.nir, &stage,
-                               &pipeline->trivial_return_shader, mem_ctx);
-
-   ralloc_free(mem_ctx);
-
-   return result;
-}
-
 static bool
 is_rt_stack_size_dynamic(const VkRayTracingPipelineCreateInfoKHR *info)
 {
@@ -2585,8 +2559,6 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
             VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
       }
    }
-
-   compile_trivial_return_shader(pipeline);
 
    uint32_t stack_max[MESA_VULKAN_SHADER_STAGES] = {};
 
@@ -2769,7 +2741,7 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
 }
 
 VkResult
-anv_device_init_rt_trampoline(struct anv_device *device)
+anv_device_init_rt_shaders(struct anv_device *device)
 {
    if (!device->vk.enabled_extensions.KHR_ray_tracing_pipeline)
       return VK_SUCCESS;
@@ -2832,6 +2804,49 @@ anv_device_init_rt_trampoline(struct anv_device *device)
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
+   struct brw_rt_trivial_return {
+      char name[16];
+      struct brw_bs_prog_key key;
+   } return_key = {
+      .name = "rt-trivial-ret",
+   };
+   device->rt_trivial_return =
+      anv_device_search_for_kernel(device, &device->default_pipeline_cache,
+                                   &return_key, sizeof(return_key),
+                                   &cache_hit);
+   if (device->rt_trivial_return == NULL) {
+      void *tmp_ctx = ralloc_context(NULL);
+      nir_shader *trivial_return_nir =
+         brw_nir_create_trivial_return_shader(device->physical->compiler, tmp_ctx);
+
+      NIR_PASS_V(trivial_return_nir, brw_nir_lower_rt_intrinsics, &device->info);
+
+      struct anv_pipeline_bind_map bind_map = {
+         .surface_count = 0,
+         .sampler_count = 0,
+      };
+      struct brw_bs_prog_data return_prog_data = { 0, };
+      const unsigned *return_data =
+         brw_compile_bs(device->physical->compiler, device, tmp_ctx,
+                        &return_key.key, &return_prog_data, trivial_return_nir,
+                        0, 0, NULL, NULL);
+
+      device->rt_trivial_return =
+         anv_device_upload_kernel(device, &device->default_pipeline_cache,
+                                  MESA_SHADER_CALLABLE,
+                                  &return_key, sizeof(return_key),
+                                  return_data, return_prog_data.base.program_size,
+                                  &return_prog_data.base, sizeof(return_prog_data),
+                                  NULL, 0, NULL, &bind_map);
+
+      ralloc_free(tmp_ctx);
+
+      if (device->rt_trivial_return == NULL) {
+         anv_shader_bin_unref(device, device->rt_trampoline);
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+   }
+
    return VK_SUCCESS;
 }
 
@@ -2856,7 +2871,6 @@ anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
    /* Zero things out so our clean-up works */
    memset(pipeline->groups, 0,
           pipeline->group_count * sizeof(*pipeline->groups));
-   pipeline->trivial_return_shader = NULL;
 
    util_dynarray_init(&pipeline->shaders, pipeline->base.mem_ctx);
 
