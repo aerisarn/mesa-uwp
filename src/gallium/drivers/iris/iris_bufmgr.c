@@ -1446,7 +1446,7 @@ iris_create_hw_context(struct iris_bufmgr *bufmgr)
       .param = I915_CONTEXT_PARAM_RECOVERABLE,
       .value = false,
    };
-   drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p);
+   intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p);
 
    return create.ctx_id;
 }
@@ -1458,7 +1458,7 @@ iris_hw_context_get_priority(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
       .ctx_id = ctx_id,
       .param = I915_CONTEXT_PARAM_PRIORITY,
    };
-   drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &p);
+   intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &p);
    return p.value; /* on error, return 0 i.e. default priority */
 }
 

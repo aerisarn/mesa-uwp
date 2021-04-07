@@ -599,7 +599,7 @@ iris_batch_check_for_reset(struct iris_batch *batch)
    enum pipe_reset_status status = PIPE_NO_RESET;
    struct drm_i915_reset_stats stats = { .ctx_id = batch->hw_ctx_id };
 
-   if (drmIoctl(screen->fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats))
+   if (intel_ioctl(screen->fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats))
       DBG("DRM_IOCTL_I915_GET_RESET_STATS failed: %s\n", strerror(errno));
 
    if (stats.batch_active != 0) {
