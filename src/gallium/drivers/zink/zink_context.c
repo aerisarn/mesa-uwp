@@ -1919,11 +1919,17 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    unsigned h = ctx->fb_state.height;
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
+   unsigned prev_void_alpha_attachments = ctx->gfx_pipeline_state.void_alpha_attachments;
+   ctx->gfx_pipeline_state.void_alpha_attachments = 0;
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *surf = ctx->fb_state.cbufs[i];
-      if (surf)
+      if (surf) {
          zink_resource(surf->texture)->fb_binds++;
+         ctx->gfx_pipeline_state.void_alpha_attachments |= util_format_has_alpha1(surf->format) ? BITFIELD_BIT(i) : 0;
+      }
    }
+   if (ctx->gfx_pipeline_state.void_alpha_attachments != prev_void_alpha_attachments)
+      ctx->gfx_pipeline_state.dirty = true;
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *surf = ctx->fb_state.zsbuf;
       zink_resource(surf->texture)->fb_binds++;
