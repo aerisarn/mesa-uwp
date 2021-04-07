@@ -171,7 +171,7 @@ struct intel_device_info
    /**
     * Number of subslices for each slice (used to be uniform until CNL).
     */
-   unsigned num_subslices[INTEL_DEVICE_MAX_SUBSLICES];
+   unsigned num_subslices[INTEL_DEVICE_MAX_SLICES];
 
    /**
     * Maximum number of subslices per slice present on this device (can be
