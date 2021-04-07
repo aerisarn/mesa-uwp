@@ -1180,10 +1180,7 @@ unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsig
           !res->image_bind_count[is_compute]) {
          for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
             if (res->sampler_binds[i]) {
-               zink_resource_image_barrier(ctx, NULL, res, get_layout_for_binding(res, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW),
-                                           VK_ACCESS_SHADER_READ_BIT,
-                                           zink_pipeline_flags_from_stage(zink_shader_stage(i)));
-               break;
+               _mesa_set_add(ctx->need_barriers[i == PIPE_SHADER_COMPUTE], res);
             }
          }
       }
@@ -1251,11 +1248,7 @@ zink_set_shader_images(struct pipe_context *pctx,
             if (res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE] == 1 &&
                 res->bind_count[p_stage == PIPE_SHADER_COMPUTE] > 1)
                update_binds_for_samplerviews(ctx, res, p_stage == PIPE_SHADER_COMPUTE);
-            if (p_stage == PIPE_SHADER_COMPUTE)
-               zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_GENERAL, access,
-                                           zink_pipeline_flags_from_stage(zink_shader_stage(p_stage)));
-            else
-               _mesa_set_add(ctx->need_barriers[0], res);
+            _mesa_set_add(ctx->need_barriers[p_stage == PIPE_SHADER_COMPUTE], res);
          }
          if (!ctx->descriptor_refs_dirty[p_stage == PIPE_SHADER_COMPUTE]) {
             zink_batch_reference_resource_rw(&ctx->batch, zink_resource(image_view->base.resource),
@@ -1340,12 +1333,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
                 update = true;
 
              res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
-             if (shader_type == PIPE_SHADER_COMPUTE)
-                zink_resource_image_barrier(ctx, NULL, res, get_layout_for_binding(res, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW),
-                                            VK_ACCESS_SHADER_READ_BIT,
-                                            zink_pipeline_flags_from_stage(zink_shader_stage(shader_type)));
-             else
-                _mesa_set_add(ctx->need_barriers[0], res);
+             _mesa_set_add(ctx->need_barriers[shader_type == PIPE_SHADER_COMPUTE], res);
              if (!a)
                 update = true;
          }
@@ -3232,13 +3220,7 @@ rebind_image(struct zink_context *ctx, struct zink_resource *res)
           if (zink_resource(ctx->image_views[i][j].base.resource) == res) {
              zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE, j, 1);
              update_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE, j);
-             VkAccessFlags access = 0;
-             if (ctx->image_views[i][j].base.access & PIPE_IMAGE_ACCESS_WRITE)
-                access |= VK_ACCESS_SHADER_WRITE_BIT;
-             if (ctx->image_views[i][j].base.access & PIPE_IMAGE_ACCESS_READ)
-                access |= VK_ACCESS_SHADER_READ_BIT;
-             zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_GENERAL, access,
-                                         zink_pipeline_flags_from_stage(zink_shader_stage(i)));
+             _mesa_set_add(ctx->need_barriers[i == PIPE_SHADER_COMPUTE], res);
           }
        }
     }
