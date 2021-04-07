@@ -484,6 +484,7 @@ int iris_kernel_context_get_priority(struct iris_bufmgr *bufmgr, uint32_t ctx_id
 
 void iris_hw_context_set_unrecoverable(struct iris_bufmgr *bufmgr,
                                        uint32_t ctx_id);
+void iris_hw_context_set_vm_id(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
 int iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
                                  uint32_t ctx_id, int priority);
 

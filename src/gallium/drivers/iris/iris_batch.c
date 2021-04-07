@@ -300,6 +300,7 @@ iris_create_engines_context(struct iris_context *ice, int priority)
    }
 
    iris_hw_context_set_unrecoverable(screen->bufmgr, engines_ctx);
+   iris_hw_context_set_vm_id(screen->bufmgr, engines_ctx);
 
    free(engines_info);
    return engines_ctx;
