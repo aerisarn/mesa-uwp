@@ -91,7 +91,8 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
     */
    bs->fence.submitted = false;
    bs->has_barriers = false;
-   zink_screen_update_last_finished(screen, bs->fence.batch_id);
+   if (bs->fence.batch_id)
+      zink_screen_update_last_finished(screen, bs->fence.batch_id);
    bs->fence.batch_id = 0;
    bs->draw_count = bs->compute_count = 0;
 }
