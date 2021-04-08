@@ -404,7 +404,8 @@ create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsign
 }
 
 static struct zink_resource_object *
-resource_object_create(struct zink_screen *screen, const struct pipe_resource *templ, struct winsys_handle *whandle, bool *optimal_tiling)
+resource_object_create(struct zink_screen *screen, const struct pipe_resource *templ, struct winsys_handle *whandle, bool *optimal_tiling,
+                       const uint64_t *modifiers, int modifiers_count)
 {
    struct zink_resource_object *obj = CALLOC_STRUCT(zink_resource_object);
    if (!obj)
@@ -630,10 +631,21 @@ static struct pipe_resource *
 resource_create(struct pipe_screen *pscreen,
                 const struct pipe_resource *templ,
                 struct winsys_handle *whandle,
-                unsigned external_usage)
+                unsigned external_usage,
+                const uint64_t *modifiers, int modifiers_count)
 {
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_resource *res = CALLOC_STRUCT(zink_resource);
+
+   if (modifiers_count > 0) {
+      /* for rebinds */
+      res->modifiers_count = modifiers_count;
+      res->modifiers = mem_dup(modifiers, modifiers_count * sizeof(uint64_t));
+      if (!res->modifiers) {
+         FREE(res);
+         return NULL;
+      }
+   }
 
    res->base.b = *templ;
 
@@ -642,8 +654,9 @@ resource_create(struct pipe_screen *pscreen,
    res->base.b.screen = pscreen;
 
    bool optimal_tiling = false;
-   res->obj = resource_object_create(screen, templ, whandle, &optimal_tiling);
+   res->obj = resource_object_create(screen, templ, whandle, &optimal_tiling, modifiers, modifiers_count);
    if (!res->obj) {
+      free(res->modifiers);
       FREE(res);
       return NULL;
    }
@@ -660,7 +673,7 @@ resource_create(struct pipe_screen *pscreen,
          // TODO: remove for wsi
          struct pipe_resource templ2 = res->base.b;
          templ2.bind = (res->base.b.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)) | PIPE_BIND_LINEAR;
-         res->scanout_obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling);
+         res->scanout_obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling, modifiers, modifiers_count);
          assert(!optimal_tiling);
       }
    }
@@ -685,7 +698,7 @@ static struct pipe_resource *
 zink_resource_create(struct pipe_screen *pscreen,
                      const struct pipe_resource *templ)
 {
-   return resource_create(pscreen, templ, NULL, 0);
+   return resource_create(pscreen, templ, NULL, 0, NULL, 0);
 }
 
 static bool
@@ -757,7 +770,13 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
        util_format_get_num_planes(templ->format) != 1)
       return NULL;
 
-   return resource_create(pscreen, templ, whandle, usage);
+   uint64_t modifier = DRM_FORMAT_MOD_INVALID;
+   int modifier_count = 0;
+   if (whandle->modifier != DRM_FORMAT_MOD_INVALID) {
+      modifier = whandle->modifier;
+      modifier_count = 1;
+   }
+   return resource_create(pscreen, templ, whandle, usage, &modifier, modifier_count);
 #else
    return NULL;
 #endif
@@ -786,7 +805,7 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
       return false;
 
    struct zink_resource_object *old_obj = res->obj;
-   struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, NULL);
+   struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, NULL, NULL, 0);
    if (!new_obj) {
       debug_printf("new backing resource alloc failed!");
       return false;
@@ -1287,7 +1306,7 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
       zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
       res->base.b.bind |= PIPE_BIND_SHADER_IMAGE;
       struct zink_resource_object *old_obj = res->obj;
-      struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->optimal_tiling);
+      struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->optimal_tiling, res->modifiers, res->modifiers_count);
       if (!new_obj) {
          debug_printf("new backing resource alloc failed!");
          res->base.b.bind &= ~PIPE_BIND_SHADER_IMAGE;
