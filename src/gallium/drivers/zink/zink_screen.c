@@ -1463,8 +1463,26 @@ populate_format_props(struct zink_screen *screen)
       if (screen->vk.GetPhysicalDeviceFormatProperties2) {
          VkFormatProperties2 props = {0};
          props.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
+
+         VkDrmFormatModifierPropertiesListEXT mod_props;
+         VkDrmFormatModifierPropertiesEXT mods[128];
+         if (screen->info.have_EXT_image_drm_format_modifier) {
+            mod_props.sType = VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT;
+            mod_props.pNext = NULL;
+            mod_props.drmFormatModifierCount = ARRAY_SIZE(mods);
+            mod_props.pDrmFormatModifierProperties = mods;
+            props.pNext = &mod_props;
+         }
          screen->vk.GetPhysicalDeviceFormatProperties2(screen->pdev, format, &props);
          screen->format_props[i] = props.formatProperties;
+         if (screen->info.have_EXT_image_drm_format_modifier && mod_props.drmFormatModifierCount) {
+            screen->modifier_props[i].drmFormatModifierCount = mod_props.drmFormatModifierCount;
+            screen->modifier_props[i].pDrmFormatModifierProperties = ralloc_array(screen, VkDrmFormatModifierPropertiesEXT, mod_props.drmFormatModifierCount);
+            if (mod_props.pDrmFormatModifierProperties) {
+               for (unsigned j = 0; j < mod_props.drmFormatModifierCount; j++)
+                  screen->modifier_props[i].pDrmFormatModifierProperties[j] = mod_props.pDrmFormatModifierProperties[j];
+            }
+         }
       } else
          vkGetPhysicalDeviceFormatProperties(screen->pdev, format, &screen->format_props[i]);
    }

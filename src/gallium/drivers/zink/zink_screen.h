@@ -61,6 +61,11 @@ enum zink_descriptor_mode {
    ZINK_DESCRIPTOR_MODE_NOTEMPLATES,
 };
 
+struct zink_modifier_prop {
+    uint32_t                             drmFormatModifierCount;
+    VkDrmFormatModifierPropertiesEXT*    pDrmFormatModifierProperties;
+};
+
 struct zink_screen {
    struct pipe_screen base;
    bool threaded;
@@ -144,6 +149,7 @@ struct zink_screen {
    } driconf;
 
    VkFormatProperties format_props[PIPE_FORMAT_COUNT];
+   struct zink_modifier_prop modifier_props[PIPE_FORMAT_COUNT];
    struct {
       uint32_t image_view;
       uint32_t buffer_view;
