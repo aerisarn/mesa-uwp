@@ -541,8 +541,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       VkImageCreateInfo ici = {0};
       uint64_t mod = create_ici(screen, &ici, templ, templ->bind, ici_modifier_count, ici_modifiers, &success);
       VkExternalMemoryImageCreateInfo emici = {0};
+#ifdef ZINK_USE_DMABUF
       VkImageDrmFormatModifierExplicitCreateInfoEXT idfmeci = {0};
-
+      VkImageDrmFormatModifierListCreateInfoEXT idfmlci;
+#endif
       if (!success)
          goto fail1;
 
@@ -575,6 +577,12 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             idfmeci.pPlaneLayouts = &plane_layout;
 
             ici.pNext = &idfmeci;
+         } else if (ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+            idfmlci.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT;
+            idfmlci.pNext = ici.pNext;
+            idfmlci.drmFormatModifierCount = 1;
+            idfmlci.pDrmFormatModifiers = &mod;
+            ici.pNext = &idfmlci;
          } else
 #endif
          if (ici.tiling == VK_IMAGE_TILING_OPTIMAL) {
