@@ -838,6 +838,13 @@ zink_resource_create(struct pipe_screen *pscreen,
    return resource_create(pscreen, templ, NULL, 0, NULL, 0);
 }
 
+static struct pipe_resource *
+zink_resource_create_with_modifiers(struct pipe_screen *pscreen, const struct pipe_resource *templ,
+                                    const uint64_t *modifiers, int modifiers_count)
+{
+   return resource_create(pscreen, templ, NULL, 0, modifiers, modifiers_count);
+}
+
 static bool
 zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
                         struct pipe_resource *pres,
@@ -1645,6 +1652,7 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
 {
    struct zink_screen *screen = zink_screen(pscreen);
    pscreen->resource_create = zink_resource_create;
+   pscreen->resource_create_with_modifiers = zink_resource_create_with_modifiers;
    pscreen->resource_destroy = zink_resource_destroy;
    pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl, true, true, false, false);
 
