@@ -741,6 +741,11 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_ring_esgs_amd:
                   case nir_intrinsic_load_ring_es2gs_offset_amd:
                   case nir_intrinsic_image_deref_samples:
+                  case nir_intrinsic_has_input_vertex_amd:
+                  case nir_intrinsic_has_input_primitive_amd:
+                  case nir_intrinsic_load_workgroup_num_input_vertices_amd:
+                  case nir_intrinsic_load_workgroup_num_input_primitives_amd:
+                  case nir_intrinsic_load_shader_query_enabled_amd:
                      type = RegType::sgpr;
                      break;
                   case nir_intrinsic_load_sample_id:
@@ -818,6 +823,9 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_buffer_amd:
                   case nir_intrinsic_load_tess_rel_patch_id_amd:
                   case nir_intrinsic_load_gs_vertex_offset_amd:
+                  case nir_intrinsic_load_initial_edgeflag_amd:
+                  case nir_intrinsic_load_packed_passthrough_primitive_amd:
+                  case nir_intrinsic_gds_atomic_add_amd:
                      type = RegType::vgpr;
                      break;
                   case nir_intrinsic_shuffle:

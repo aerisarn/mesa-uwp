@@ -7585,6 +7585,10 @@ void emit_interp_center(isel_context *ctx, Temp dst, Temp pos1, Temp pos2)
    return;
 }
 
+Temp merged_wave_info_to_mask(isel_context *ctx, unsigned i);
+void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx, Temp vtx_cnt, Temp prm_cnt);
+static void create_vs_exports(isel_context *ctx);
+
 void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
@@ -7951,6 +7955,10 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       if (ctx->stage == compute_cs) {
          bld.sop2(aco_opcode::s_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), bld.def(s1, scc),
                   get_arg(ctx, ctx->args->ac.tg_size), Operand(0x6u | (0x6u << 16)));
+      } else if (ctx->stage.hw == HWStage::NGG) {
+         /* Get the id of the current wave within the threadgroup (workgroup) */
+         bld.sop2(aco_opcode::s_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), bld.def(s1, scc),
+                  get_arg(ctx, ctx->args->ac.merged_wave_info), Operand(24u | (4u << 16)));
       } else {
          bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), Operand(0x0u));
       }
@@ -7964,6 +7972,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       if (ctx->stage == compute_cs)
          bld.sop2(aco_opcode::s_and_b32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), bld.def(s1, scc), Operand(0x3fu),
                   get_arg(ctx, ctx->args->ac.tg_size));
+      else if (ctx->stage.hw == HWStage::NGG)
+         bld.sop2(aco_opcode::s_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), bld.def(s1, scc),
+                  get_arg(ctx, ctx->args->ac.merged_wave_info), Operand(28u | (4u << 16)));
       else
          bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), Operand(0x1u));
       break;
@@ -8484,6 +8495,11 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.tes_patch_id));
          break;
       default:
+         if (ctx->stage.hw == HWStage::NGG && !ctx->stage.has(SWStage::GS)) {
+            /* This is actually the same as gs_prim_id, but we call it differently when there is no SW GS. */
+            bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.vs_prim_id));
+            break;
+         }
          unreachable("Unimplemented shader stage for nir_intrinsic_load_primitive_id");
       }
 
@@ -8552,6 +8568,68 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_gs_vertex_offset_amd: {
       unsigned b = nir_intrinsic_base(instr);
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), get_arg(ctx, ctx->args->ac.gs_vtx_offset[b]));
+      break;
+   }
+   case nir_intrinsic_has_input_vertex_amd:
+   case nir_intrinsic_has_input_primitive_amd: {
+      assert(ctx->stage.hw == HWStage::NGG);
+      unsigned i = instr->intrinsic == nir_intrinsic_has_input_vertex_amd ? 0 : 1;
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), merged_wave_info_to_mask(ctx, i));
+      break;
+   }
+   case nir_intrinsic_load_workgroup_num_input_vertices_amd:
+   case nir_intrinsic_load_workgroup_num_input_primitives_amd: {
+      assert(ctx->stage.hw == HWStage::NGG);
+      unsigned pos = instr->intrinsic == nir_intrinsic_load_workgroup_num_input_vertices_amd ? 12 : 22;
+      bld.sop2(aco_opcode::s_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), bld.def(s1, scc),
+               get_arg(ctx, ctx->args->ac.gs_tg_info), Operand(pos | (9u << 16u)));
+      break;
+   }
+   case nir_intrinsic_load_initial_edgeflag_amd: {
+      assert(ctx->stage.hw == HWStage::NGG);
+      assert(nir_src_is_const(instr->src[0]));
+      unsigned i = nir_src_as_uint(instr->src[0]);
+
+      Temp gs_invocation_id = get_arg(ctx, ctx->args->ac.gs_invocation_id);
+      bld.vop3(aco_opcode::v_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), gs_invocation_id, Operand(8u + i), Operand(1u));
+      break;
+   }
+   case nir_intrinsic_load_packed_passthrough_primitive_amd: {
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), get_arg(ctx, ctx->args->ac.gs_vtx_offset[0]));
+      break;
+   }
+   case nir_intrinsic_export_vertex_amd: {
+      ctx->block->kind |= block_kind_export_end;
+      create_vs_exports(ctx);
+      break;
+   }
+   case nir_intrinsic_export_primitive_amd: {
+      assert(ctx->stage.hw == HWStage::NGG);
+      Temp prim_exp_arg = get_ssa_temp(ctx, instr->src[0].ssa);
+      bld.exp(aco_opcode::exp, prim_exp_arg, Operand(v1), Operand(v1), Operand(v1),
+         1 /* enabled mask */, V_008DFC_SQ_EXP_PRIM /* dest */,
+         false /* compressed */, true/* done */, false /* valid mask */);
+      break;
+   }
+   case nir_intrinsic_alloc_vertices_and_primitives_amd: {
+      assert(ctx->stage.hw == HWStage::NGG);
+      Temp num_vertices = get_ssa_temp(ctx, instr->src[0].ssa);
+      Temp num_primitives = get_ssa_temp(ctx, instr->src[1].ssa);
+      ngg_emit_sendmsg_gs_alloc_req(ctx, num_vertices, num_primitives);
+      break;
+   }
+   case nir_intrinsic_gds_atomic_add_amd: {
+      Temp store_val = get_ssa_temp(ctx, instr->src[0].ssa);
+      Temp gds_addr = get_ssa_temp(ctx, instr->src[1].ssa);
+      Temp m0_val = get_ssa_temp(ctx, instr->src[2].ssa);
+      Operand m = bld.m0((Temp)bld.copy(bld.def(s1, m0), bld.as_uniform(m0_val)));
+      bld.ds(aco_opcode::ds_add_u32, as_vgpr(ctx, gds_addr), as_vgpr(ctx, store_val), m, 0u, 0u, true);
+      break;
+   }
+   case nir_intrinsic_load_shader_query_enabled_amd: {
+      unsigned cmp_bit = 0;
+      Temp shader_query_enabled = bld.sopc(aco_opcode::s_bitcmp1_b32, bld.def(s1, scc), get_arg(ctx, ctx->args->ngg_gs_state), Operand(cmp_bit));
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), bool_to_vector_condition(ctx, shader_query_enabled));
       break;
    }
    default:
