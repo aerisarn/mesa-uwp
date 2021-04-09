@@ -8,18 +8,6 @@
 #  error "Only include from loader.c"
 #endif
 
-static const int i830_chip_ids[] = {
-#define CHIPSET(chip, desc, name) chip,
-#include "pci_ids/i830_pci_ids.h"
-#undef CHIPSET
-};
-
-static const int i915_chip_ids[] = {
-#define CHIPSET(chip, desc, name) chip,
-#include "pci_ids/i915_pci_ids.h"
-#undef CHIPSET
-};
-
 static const int i965_chip_ids[] = {
 #define CHIPSET(chip, family, family_str, name) chip,
 #include "pci_ids/i965_pci_ids.h"
@@ -65,8 +53,6 @@ static const struct {
    int num_chips_ids;
    bool (*predicate)(int fd);
 } driver_map[] = {
-   { 0x8086, "i830", i830_chip_ids, ARRAY_SIZE(i830_chip_ids) },
-   { 0x8086, "i915", i915_chip_ids, ARRAY_SIZE(i915_chip_ids) },
    { 0x8086, "i965", i965_chip_ids, ARRAY_SIZE(i965_chip_ids) },
    { 0x8086, "crocus", crocus_chip_ids, ARRAY_SIZE(crocus_chip_ids) },
    { 0x8086, "iris", NULL, -1, is_kernel_i915 },

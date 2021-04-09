@@ -178,7 +178,7 @@ if dri_drivers.contains('auto')
   if system_has_kms_drm
     # TODO: PPC, Sparc
     if ['x86', 'x86_64'].contains(host_machine.cpu_family())
-      dri_drivers = ['i915', 'i965']
+      dri_drivers = ['i965']
     elif ['arm', 'aarch64', 'mips', 'mips64'].contains(host_machine.cpu_family())
       dri_drivers = []
     else
@@ -194,7 +194,6 @@ if dri_drivers.contains('auto')
   endif
 endif
 
-with_dri_i915 = dri_drivers.contains('i915')
 with_dri_i965 = dri_drivers.contains('i965')
 
 with_dri = dri_drivers.length() != 0
@@ -298,9 +297,6 @@ with_any_intel = with_dri_i965 or with_intel_vk or with_gallium_iris or with_gal
 
 if with_swrast_vk and not with_gallium_softpipe
   error('swrast vulkan requires gallium swrast')
-endif
-if with_dri_i915 and with_gallium_i915
-  error('Only one i915 provider can be built')
 endif
 if with_gallium_tegra and not with_gallium_nouveau
   error('tegra driver requires nouveau driver')
@@ -1591,7 +1587,7 @@ _drm_intel_ver = '2.4.75'
 _drm_ver = '2.4.109'
 
 _libdrm_checks = [
-  ['intel', with_dri_i915 or with_gallium_i915],
+  ['intel', with_gallium_i915],
   ['amdgpu', (with_amd_vk and not with_platform_windows) or with_gallium_radeonsi],
   ['radeon', (with_gallium_radeonsi or with_gallium_r300 or with_gallium_r600)],
   ['nouveau', with_gallium_nouveau],
