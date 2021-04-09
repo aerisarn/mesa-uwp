@@ -377,7 +377,8 @@ update_barriers(struct zink_context *ctx, bool is_compute)
             zink_resource_buffer_barrier(ctx, NULL, res, access, pipeline);
          else {
             VkImageLayout layout = zink_descriptor_util_image_layout_eval(res, is_compute);
-            zink_resource_image_barrier(ctx, NULL, res, layout, access, pipeline);
+            if (layout != res->layout)
+               zink_resource_image_barrier(ctx, NULL, res, layout, access, pipeline);
          }
          /* always barrier on draw if this resource has either multiple image write binds or
           * image write binds and image read binds
