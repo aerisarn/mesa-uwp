@@ -327,6 +327,7 @@ static VkImageUsageFlags
 get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe_resource *templ, unsigned bind, unsigned modifiers_count, const uint64_t *modifiers, uint64_t *mod)
 {
    VkImageTiling tiling = ici->tiling;
+#ifdef ZINK_USE_DMABUF
    *mod = DRM_FORMAT_MOD_INVALID;
    if (modifiers_count) {
       assert(tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
@@ -351,7 +352,9 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
             }
          }
       }
-   } else {
+   } else
+#endif
+   {
       VkFormatProperties props = screen->format_props[templ->format];
       VkFormatFeatureFlags feats = tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
       VkImageUsageFlags usage = get_image_usage_for_feats(screen, feats, templ, bind);
@@ -361,7 +364,9 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
             return usage;
       }
    }
+#ifdef ZINK_USE_DMABUF
    *mod = DRM_FORMAT_MOD_INVALID;
+#endif
    return 0;
 }
 
@@ -805,6 +810,104 @@ zink_resource_create(struct pipe_screen *pscreen,
 }
 
 static bool
+zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
+                        struct pipe_resource *pres,
+                        unsigned plane,
+                        unsigned layer,
+                        unsigned level,
+                        enum pipe_resource_param param,
+                        unsigned handle_usage,
+                        uint64_t *value)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   struct zink_resource *res = zink_resource(pres);
+   //TODO: remove for wsi
+   struct zink_resource_object *obj = res->scanout_obj ? res->scanout_obj : res->obj;
+   VkImageAspectFlags aspect = obj->modifier_aspect ? obj->modifier_aspect : res->aspect;
+   struct winsys_handle whandle;
+   switch (param) {
+   case PIPE_RESOURCE_PARAM_NPLANES:
+      /* not yet implemented */
+      *value = 1;
+      break;
+
+   case PIPE_RESOURCE_PARAM_STRIDE: {
+      VkImageSubresource sub_res = {0};
+      VkSubresourceLayout sub_res_layout = {0};
+
+      sub_res.aspectMask = aspect;
+
+      vkGetImageSubresourceLayout(screen->dev, obj->image, &sub_res, &sub_res_layout);
+
+      *value = sub_res_layout.rowPitch;
+      break;
+   }
+
+   case PIPE_RESOURCE_PARAM_OFFSET: {
+         VkImageSubresource isr = {
+            aspect,
+            level,
+            layer
+         };
+         VkSubresourceLayout srl;
+         vkGetImageSubresourceLayout(screen->dev, obj->image, &isr, &srl);
+         *value = srl.offset;
+         break;
+   }
+
+   case PIPE_RESOURCE_PARAM_MODIFIER: {
+#ifdef ZINK_USE_DMABUF
+      *value = DRM_FORMAT_MOD_INVALID;
+      if (!screen->info.have_EXT_image_drm_format_modifier)
+         return false;
+      VkImageDrmFormatModifierPropertiesEXT prop;
+      prop.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
+      prop.pNext = NULL;
+      if (screen->vk.GetImageDrmFormatModifierPropertiesEXT(screen->dev, obj->image, &prop) == VK_SUCCESS)
+         *value = prop.drmFormatModifier;
+      break;
+#else
+      return false;
+#endif
+   }
+
+   case PIPE_RESOURCE_PARAM_LAYER_STRIDE: {
+         VkImageSubresource isr = {
+            aspect,
+            level,
+            layer
+         };
+         VkSubresourceLayout srl;
+         vkGetImageSubresourceLayout(screen->dev, obj->image, &isr, &srl);
+         if (res->base.b.target == PIPE_TEXTURE_3D)
+            *value = srl.depthPitch;
+         else
+            *value = srl.arrayPitch;
+         break;
+   }
+
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED:
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS:
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD: {
+      memset(&whandle, 0, sizeof(whandle));
+      if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED)
+         whandle.type = WINSYS_HANDLE_TYPE_SHARED;
+      else if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS)
+         whandle.type = WINSYS_HANDLE_TYPE_KMS;
+      else if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD)
+         whandle.type = WINSYS_HANDLE_TYPE_FD;
+
+      if (!pscreen->resource_get_handle(pscreen, pctx, pres, &whandle, handle_usage))
+         return false;
+
+      *value = whandle.handle;
+      break;
+   }
+   }
+   return true;
+}
+
+static bool
 zink_resource_get_handle(struct pipe_screen *pscreen,
                          struct pipe_context *context,
                          struct pipe_resource *tex,
@@ -815,17 +918,6 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
    struct zink_screen *screen = zink_screen(pscreen);
    //TODO: remove for wsi
    struct zink_resource_object *obj = res->scanout_obj ? res->scanout_obj : res->obj;
-
-   if (res->base.b.target != PIPE_BUFFER) {
-      VkImageSubresource sub_res = {0};
-      VkSubresourceLayout sub_res_layout = {0};
-
-      sub_res.aspectMask = obj->modifier_aspect ? obj->modifier_aspect : res->aspect;
-
-      vkGetImageSubresourceLayout(screen->dev, obj->image, &sub_res, &sub_res_layout);
-
-      whandle->stride = sub_res_layout.rowPitch;
-   }
 
    if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
 #ifdef ZINK_USE_DMABUF
@@ -839,17 +931,13 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       if (result != VK_SUCCESS)
          return false;
       whandle->handle = fd;
-      if (screen->info.have_EXT_image_drm_format_modifier) {
-         VkImageDrmFormatModifierPropertiesEXT props = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT,
-         };
-         screen->vk.GetImageDrmFormatModifierPropertiesEXT(screen->dev,
-                                                           res->obj->image,
-                                                           &props);
-         whandle->modifier = props.drmFormatModifier;
-      } else
-         whandle->modifier = DRM_FORMAT_MOD_INVALID;
-
+      uint64_t value;
+      zink_resource_get_param(pscreen, context, tex, 0, 0, 0, PIPE_RESOURCE_PARAM_MODIFIER, 0, &value);
+      whandle->modifier = value;
+      zink_resource_get_param(pscreen, context, tex, 0, 0, 0, PIPE_RESOURCE_PARAM_OFFSET, 0, &value);
+      whandle->offset = value;
+      zink_resource_get_param(pscreen, context, tex, 0, 0, 0, PIPE_RESOURCE_PARAM_STRIDE, 0, &value);
+      whandle->stride = value;
 #else
       return false;
 #endif
@@ -1535,6 +1623,7 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
       pscreen->resource_get_handle = zink_resource_get_handle;
       pscreen->resource_from_handle = zink_resource_from_handle;
    }
+   pscreen->resource_get_param = zink_resource_get_param;
    simple_mtx_init(&screen->mem_cache_mtx, mtx_plain);
    screen->resource_mem_cache = _mesa_hash_table_create(NULL, mem_hash, mem_equals);
    return !!screen->resource_mem_cache;
