@@ -33,11 +33,6 @@ if with_dri_i965
   _dri_drivers += libi965
   _dri_link += 'i965_dri.so'
 endif
-if with_dri_r100
-  subdir('radeon')
-  _dri_drivers += libr100
-  _dri_link += 'radeon_dri.so'
-endif
 if with_dri_r200
   subdir('r200')
   _dri_drivers += libr200
