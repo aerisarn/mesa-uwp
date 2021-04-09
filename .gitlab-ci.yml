@@ -825,7 +825,7 @@ fedora-release:
       -Wno-error=uninitialized
     CPP_ARGS: >
       -Wno-error=array-bounds
-    DRI_DRIVERS: "nouveau,i915,i965"
+    DRI_DRIVERS: "i915,i965"
     DRI_LOADERS: >
       -D glx=dri
       -D gbm=enabled
@@ -1118,7 +1118,7 @@ debian-i386:
     CROSS: i386
     VULKAN_DRIVERS: intel,amd,swrast,virtio-experimental
     GALLIUM_DRIVERS: "iris,nouveau,r300,r600,radeonsi,swrast,virgl,zink,crocus"
-    DRI_DRIVERS: "i915,i965,nouveau"
+    DRI_DRIVERS: "i915,i965"
     EXTRA_OPTION: >
       -D vulkan-layers=device-select,overlay
 

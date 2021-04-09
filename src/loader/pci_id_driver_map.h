@@ -56,7 +56,6 @@ static const int vmwgfx_chip_ids[] = {
 #undef CHIPSET
 };
 
-bool is_nouveau_vieux(int fd);
 bool is_kernel_i915(int fd);
 
 static const struct {
@@ -74,7 +73,6 @@ static const struct {
    { 0x1002, "r300", r300_chip_ids, ARRAY_SIZE(r300_chip_ids) },
    { 0x1002, "r600", r600_chip_ids, ARRAY_SIZE(r600_chip_ids) },
    { 0x1002, "radeonsi", NULL, -1 },
-   { 0x10de, "nouveau_vieux", NULL, -1, is_nouveau_vieux },
    { 0x10de, "nouveau", NULL, -1, },
    { 0x1af4, "virtio_gpu", virtio_gpu_chip_ids, ARRAY_SIZE(virtio_gpu_chip_ids) },
    { 0x15ad, "vmwgfx", vmwgfx_chip_ids, ARRAY_SIZE(vmwgfx_chip_ids) },
