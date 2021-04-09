@@ -178,11 +178,11 @@ if dri_drivers.contains('auto')
   if system_has_kms_drm
     # TODO: PPC, Sparc
     if ['x86', 'x86_64'].contains(host_machine.cpu_family())
-      dri_drivers = ['i915', 'i965', 'r200', 'nouveau']
+      dri_drivers = ['i915', 'i965', 'nouveau']
     elif ['arm', 'aarch64'].contains(host_machine.cpu_family())
       dri_drivers = []
     elif ['mips', 'mips64', 'riscv32', 'riscv64'].contains(host_machine.cpu_family())
-      dri_drivers = ['r200', 'nouveau']
+      dri_drivers = ['nouveau']
     else
       error('Unknown architecture @0@. Please pass -Ddri-drivers to set driver options. Patches gladly accepted to fix this.'.format(
             host_machine.cpu_family()))
@@ -198,7 +198,6 @@ endif
 
 with_dri_i915 = dri_drivers.contains('i915')
 with_dri_i965 = dri_drivers.contains('i965')
-with_dri_r200 = dri_drivers.contains('r200')
 with_dri_nouveau = dri_drivers.contains('nouveau')
 
 with_dri = dri_drivers.length() != 0
@@ -1597,8 +1596,7 @@ _drm_ver = '2.4.109'
 _libdrm_checks = [
   ['intel', with_dri_i915 or with_gallium_i915],
   ['amdgpu', (with_amd_vk and not with_platform_windows) or with_gallium_radeonsi],
-  ['radeon', (with_gallium_radeonsi or with_dri_r200 or
-              with_gallium_r300 or with_gallium_r600)],
+  ['radeon', (with_gallium_radeonsi or with_gallium_r300 or with_gallium_r600)],
   ['nouveau', (with_gallium_nouveau or with_dri_nouveau)],
 ]
 

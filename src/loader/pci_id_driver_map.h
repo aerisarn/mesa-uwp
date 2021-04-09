@@ -32,12 +32,6 @@ static const int crocus_chip_ids[] = {
 #undef CHIPSET
 };
 
-static const int r200_chip_ids[] = {
-#define CHIPSET(chip, name, family) chip,
-#include "pci_ids/r200_pci_ids.h"
-#undef CHIPSET
-};
-
 static const int r300_chip_ids[] = {
 #define CHIPSET(chip, name, family) chip,
 #include "pci_ids/r300_pci_ids.h"
@@ -77,7 +71,6 @@ static const struct {
    { 0x8086, "i965", i965_chip_ids, ARRAY_SIZE(i965_chip_ids) },
    { 0x8086, "crocus", crocus_chip_ids, ARRAY_SIZE(crocus_chip_ids) },
    { 0x8086, "iris", NULL, -1, is_kernel_i915 },
-   { 0x1002, "r200", r200_chip_ids, ARRAY_SIZE(r200_chip_ids) },
    { 0x1002, "r300", r300_chip_ids, ARRAY_SIZE(r300_chip_ids) },
    { 0x1002, "r600", r600_chip_ids, ARRAY_SIZE(r600_chip_ids) },
    { 0x1002, "radeonsi", NULL, -1 },
