@@ -86,6 +86,23 @@ bool
 ac_nir_lower_indirect_derefs(nir_shader *shader,
                              enum chip_class chip_class);
 
+typedef struct
+{
+   bool can_cull;
+   bool passthrough;
+} ac_nir_ngg_config;
+
+ac_nir_ngg_config
+ac_nir_lower_ngg_nogs(nir_shader *shader,
+                      unsigned max_num_es_vertices,
+                      unsigned num_vertices_per_primitive,
+                      unsigned max_workgroup_size,
+                      unsigned wave_size,
+                      bool consider_culling,
+                      bool consider_passthrough,
+                      bool export_prim_id,
+                      bool provoking_vtx_last);
+
 #ifdef __cplusplus
 }
 #endif
