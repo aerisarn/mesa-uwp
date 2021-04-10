@@ -143,6 +143,7 @@ struct ac_shader_args {
    unsigned base_inline_push_consts;
    struct ac_arg view_index;
    struct ac_arg sbt_descriptors;
+   struct ac_arg ray_launch_size;
 };
 
 void ac_add_arg(struct ac_shader_args *info, enum ac_arg_regfile regfile, unsigned registers,

@@ -190,6 +190,8 @@ allocate_user_sgprs(struct radv_shader_args *args, gl_shader_stage stage, bool h
          user_sgpr_count += 1;
       if (args->shader_info->cs.uses_grid_size)
          user_sgpr_count += 3;
+      if (args->shader_info->cs.uses_ray_launch_size)
+         user_sgpr_count += 3;
       break;
    case MESA_SHADER_FRAGMENT:
       user_sgpr_count += args->shader_info->ps.needs_sample_positions;
@@ -497,6 +499,10 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
          ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.num_work_groups);
       }
 
+      if (args->shader_info->cs.uses_ray_launch_size) {
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.ray_launch_size);
+      }
+
       for (int i = 0; i < 3; i++) {
          if (args->shader_info->cs.uses_block_id[i]) {
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.workgroup_ids[i]);
@@ -714,6 +720,9 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
       }
       if (args->shader_info->cs.uses_grid_size) {
          set_loc_shader(args, AC_UD_CS_GRID_SIZE, &user_sgpr_idx, 3);
+      }
+      if (args->shader_info->cs.uses_ray_launch_size) {
+         set_loc_shader(args, AC_UD_CS_RAY_LAUNCH_SIZE, &user_sgpr_idx, 3);
       }
       break;
    case MESA_SHADER_VERTEX:
