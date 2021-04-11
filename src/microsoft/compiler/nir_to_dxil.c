@@ -2186,14 +2186,12 @@ emit_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    nir_variable_mode modes = nir_intrinsic_memory_modes(intr);
    nir_scope mem_scope = nir_intrinsic_memory_scope(intr);
 
-   if (modes & ~(nir_var_mem_ssbo | nir_var_mem_global | nir_var_mem_shared))
-      return false;
-
-   if (mem_scope != NIR_SCOPE_DEVICE && mem_scope != NIR_SCOPE_WORKGROUP)
-      return false;
+   /* Currently vtn uses uniform to indicate image memory, which DXIL considers global */
+   if (modes & nir_var_uniform)
+      modes |= nir_var_mem_global;
 
    if (modes & (nir_var_mem_ssbo | nir_var_mem_global)) {
-      if (mem_scope == NIR_SCOPE_DEVICE)
+      if (mem_scope > NIR_SCOPE_WORKGROUP)
          flags |= DXIL_BARRIER_MODE_UAV_FENCE_GLOBAL;
       else
          flags |= DXIL_BARRIER_MODE_UAV_FENCE_THREAD_GROUP;
