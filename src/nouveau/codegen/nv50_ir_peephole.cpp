@@ -3174,6 +3174,12 @@ MemoryOpt::runOpt(BasicBlock *bb)
       bool isLoad = true;
       next = ldst->next;
 
+      // TODO: Handle combining sub 4-bytes loads/stores.
+      if (ldst->op == OP_STORE && typeSizeof(ldst->dType) < 4) {
+         purgeRecords(ldst, ldst->src(0).getFile());
+         continue;
+      }
+
       if (ldst->op == OP_LOAD || ldst->op == OP_VFETCH) {
          if (ldst->subOp == NV50_IR_SUBOP_LOAD_LOCKED) {
             purgeRecords(ldst, ldst->src(0).getFile());
