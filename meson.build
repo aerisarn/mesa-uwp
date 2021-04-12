@@ -174,27 +174,9 @@ with_shared_glapi = with_shared_glapi and with_any_opengl
 system_has_kms_drm = ['openbsd', 'netbsd', 'freebsd', 'gnu/kfreebsd', 'dragonfly', 'linux', 'sunos'].contains(host_machine.system())
 
 dri_drivers = get_option('dri-drivers')
-if dri_drivers.contains('auto')
-  if system_has_kms_drm
-    # TODO: PPC, Sparc
-    if ['x86', 'x86_64'].contains(host_machine.cpu_family())
-      dri_drivers = ['i965']
-    elif ['arm', 'aarch64', 'mips', 'mips64'].contains(host_machine.cpu_family())
-      dri_drivers = []
-    else
-      error('Unknown architecture @0@. Please pass -Ddri-drivers to set driver options. Patches gladly accepted to fix this.'.format(
-            host_machine.cpu_family()))
-    endif
-  elif ['darwin', 'windows', 'cygwin', 'haiku'].contains(host_machine.system())
-    # only swrast would make sense here, but gallium swrast is a much better default
-    dri_drivers = []
-  else
-    error('Unknown OS @0@. Please pass -Ddri-drivers to set driver options. Patches gladly accepted to fix this.'.format(
-          host_machine.system()))
-  endif
+if dri_drivers.length() != 0
+  error('Mesa\'s main branch no longer has any "classic" drivers, use the "amber" branch instead.')
 endif
-
-with_dri_i965 = dri_drivers.contains('i965')
 
 with_dri = dri_drivers.length() != 0
 
@@ -205,7 +187,7 @@ if gallium_drivers.contains('auto')
     if ['x86', 'x86_64'].contains(host_machine.cpu_family())
       gallium_drivers = [
         'r300', 'r600', 'radeonsi', 'nouveau', 'virgl', 'svga', 'swrast',
-        'iris', 'crocus'
+        'iris', 'crocus', 'i915'
       ]
     elif ['arm', 'aarch64'].contains(host_machine.cpu_family())
       gallium_drivers = [
@@ -293,7 +275,7 @@ with_broadcom_vk = _vulkan_drivers.contains('broadcom')
 with_any_vk = _vulkan_drivers.length() != 0
 
 with_any_broadcom = with_gallium_vc4 or with_gallium_v3d or with_broadcom_vk
-with_any_intel = with_dri_i965 or with_intel_vk or with_gallium_iris or with_gallium_crocus
+with_any_intel = with_intel_vk or with_gallium_iris or with_gallium_crocus
 
 if with_swrast_vk and not with_gallium_softpipe
   error('swrast vulkan requires gallium swrast')
@@ -1493,8 +1475,6 @@ if cc.has_function('dl_iterate_phdr')
   pre_args += '-DHAVE_DL_ITERATE_PHDR'
 elif with_intel_vk
   error('Intel "Anvil" Vulkan driver requires the dl_iterate_phdr function')
-elif with_dri_i965 and with_shader_cache
-  error('Intel i965 GL driver requires dl_iterate_phdr when built with shader caching.')
 endif
 
 # Determine whether or not the rt library is needed for time functions

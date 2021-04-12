@@ -1247,7 +1247,7 @@ intel_get_device_info_from_pci_id(int pci_id,
 #undef CHIPSET
 #define CHIPSET(id, family, fam_str, name) \
       case id: *devinfo = intel_device_info_##family; break;
-#include "pci_ids/i965_pci_ids.h"
+#include "pci_ids/crocus_pci_ids.h"
 #include "pci_ids/iris_pci_ids.h"
 
 #undef CHIPSET
@@ -1269,7 +1269,7 @@ intel_get_device_info_from_pci_id(int pci_id,
                     sizeof(devinfo->name)); \
       strncpy(devinfo->name, _name " (" _fam_str ")", sizeof(devinfo->name)); \
       break;
-#include "pci_ids/i965_pci_ids.h"
+#include "pci_ids/crocus_pci_ids.h"
 #include "pci_ids/iris_pci_ids.h"
    default:
       strncpy(devinfo->name, "Intel Unknown", sizeof(devinfo->name));

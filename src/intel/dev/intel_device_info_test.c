@@ -14,13 +14,8 @@ main(int argc, char *argv[])
    } chipsets[] = {
 #undef CHIPSET
 #define CHIPSET(id, family, family_str, str_name) { .pci_id = id, .name = str_name, },
-#include "pci_ids/crocus_pci_ids.h"
-#include "pci_ids/i965_pci_ids.h"
 #include "pci_ids/iris_pci_ids.h"
-#undef CHIPSET
-#define CHIPSET(id, fam_str, str_name) { .pci_id = id, .name = str_name, },
-#include "pci_ids/i915_pci_ids.h"
-#undef CHIPSET
+#include "pci_ids/crocus_pci_ids.h"
    };
 
    for (uint32_t i = 0; i < ARRAY_SIZE(chipsets); i++) {

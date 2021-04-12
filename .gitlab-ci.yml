@@ -825,7 +825,6 @@ fedora-release:
       -Wno-error=uninitialized
     CPP_ARGS: >
       -Wno-error=array-bounds
-    DRI_DRIVERS: "i965"
     DRI_LOADERS: >
       -D glx=dri
       -D gbm=enabled
@@ -1039,7 +1038,6 @@ debian-clang:
       -Wno-error=unused-variable
     DRI_LOADERS: >
       -D glvnd=true
-    DRI_DRIVERS: "auto"
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus"
     VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental
     CC: clang
@@ -1118,7 +1116,6 @@ debian-i386:
     CROSS: i386
     VULKAN_DRIVERS: intel,amd,swrast,virtio-experimental
     GALLIUM_DRIVERS: "iris,nouveau,r300,r600,radeonsi,swrast,virgl,zink,crocus"
-    DRI_DRIVERS: "i965"
     EXTRA_OPTION: >
       -D vulkan-layers=device-select,overlay
 
@@ -1155,7 +1152,6 @@ debian-mingw32-x86_64:
       -Wno-error=format
       -Wno-error=format-extra-args
     CPP_ARGS: $C_ARGS
-    DRI_DRIVERS: ""
     GALLIUM_DRIVERS: "swrast"
     EXTRA_OPTION: >
       -Dllvm=disabled

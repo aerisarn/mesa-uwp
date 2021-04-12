@@ -22,11 +22,6 @@ subdir('common')
 
 _dri_drivers = []
 _dri_link = []
-if with_dri_i965
-  subdir('i965')
-  _dri_drivers += libi965
-  _dri_link += 'i965_dri.so'
-endif
 
 if _dri_drivers != []
   libmesa_dri_drivers = shared_library(

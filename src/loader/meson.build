@@ -40,15 +40,6 @@ loader_c_args = [
   '-DUSE_DRICONF',
   '-DDEFAULT_DRIVER_DIR="@0@"'.format(dri_search_path),
 ]
-
-if get_option('prefer-iris')
-  loader_c_args += ['-DPREFER_IRIS']
-endif
-
-if get_option('prefer-crocus')
-  loader_c_args += ['-DPREFER_CROCUS']
-endif
-
 libloader = static_library(
   'loader',
   ['loader_dri_helper.c', 'loader.c'],

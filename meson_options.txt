@@ -54,9 +54,7 @@ option(
 option(
   'dri-drivers',
   type : 'array',
-  value : ['auto'],
-  choices : ['auto', 'i965'],
-  description : 'List of dri drivers to build. If this is set to auto all drivers applicable to the target OS/architecture will be built'
+  description : 'DEPRECATED: List of dri drivers to build. If this is set to auto all drivers applicable to the target OS/architecture will be built'
 )
 option(
   'dri-drivers-path',
@@ -454,18 +452,6 @@ option(
   type : 'boolean',
   value : true,
   description : 'Enable direct rendering in GLX and EGL for DRI',
-)
-option(
-  'prefer-iris',
-  type : 'boolean',
-  value : true,
-  description : 'Prefer new Intel iris driver over older i965 driver'
-)
-option(
-  'prefer-crocus',
-  type : 'boolean',
-  value : false,
-  description : 'Prefer new crocus driver over older i965 driver for gen4-7'
 )
 option('egl-lib-suffix',
   type : 'string',
