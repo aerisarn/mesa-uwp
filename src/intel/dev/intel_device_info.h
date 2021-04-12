@@ -392,7 +392,7 @@ intel_device_info_eu_total(const struct intel_device_info *devinfo)
 {
    uint32_t total = 0;
 
-   for (uint32_t i = 0; i < ARRAY_SIZE(devinfo->eu_masks); i++)
+   for (size_t i = 0; i < ARRAY_SIZE(devinfo->eu_masks); i++)
       total += __builtin_popcount(devinfo->eu_masks[i]);
 
    return total;
