@@ -1281,10 +1281,12 @@ iris_create_blend_state(struct pipe_context *ctx,
 
          be.ColorBlendFunction          = rt->rgb_func;
          be.AlphaBlendFunction          = rt->alpha_func;
-         be.SourceBlendFactor           = src_rgb;
-         be.SourceAlphaBlendFactor      = src_alpha;
-         be.DestinationBlendFactor      = dst_rgb;
-         be.DestinationAlphaBlendFactor = dst_alpha;
+
+         /* The casts prevent warnings about implicit enum type conversions. */
+         be.SourceBlendFactor           = (int) src_rgb;
+         be.SourceAlphaBlendFactor      = (int) src_alpha;
+         be.DestinationBlendFactor      = (int) dst_rgb;
+         be.DestinationAlphaBlendFactor = (int) dst_alpha;
 
          be.WriteDisableRed   = !(rt->colormask & PIPE_MASK_R);
          be.WriteDisableGreen = !(rt->colormask & PIPE_MASK_G);
@@ -1305,14 +1307,15 @@ iris_create_blend_state(struct pipe_context *ctx,
       pb.AlphaToCoverageEnable = state->alpha_to_coverage;
       pb.IndependentAlphaBlendEnable = indep_alpha_blend;
 
+      /* The casts prevent warnings about implicit enum type conversions. */
       pb.SourceBlendFactor =
-         fix_blendfactor(state->rt[0].rgb_src_factor, state->alpha_to_one);
+         (int) fix_blendfactor(state->rt[0].rgb_src_factor, state->alpha_to_one);
       pb.SourceAlphaBlendFactor =
-         fix_blendfactor(state->rt[0].alpha_src_factor, state->alpha_to_one);
+         (int) fix_blendfactor(state->rt[0].alpha_src_factor, state->alpha_to_one);
       pb.DestinationBlendFactor =
-         fix_blendfactor(state->rt[0].rgb_dst_factor, state->alpha_to_one);
+         (int) fix_blendfactor(state->rt[0].rgb_dst_factor, state->alpha_to_one);
       pb.DestinationAlphaBlendFactor =
-         fix_blendfactor(state->rt[0].alpha_dst_factor, state->alpha_to_one);
+         (int) fix_blendfactor(state->rt[0].alpha_dst_factor, state->alpha_to_one);
    }
 
    iris_pack_state(GENX(BLEND_STATE), cso->blend_state, bs) {
