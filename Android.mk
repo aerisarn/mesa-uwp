@@ -21,6 +21,12 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+ifneq ($(filter true, $(BOARD_MESA3D_USES_MESON_BUILD)),)
+
+include $(call my-dir)/android/Android.mk
+
+else
+
 # BOARD_GPU_DRIVERS should be defined.  The valid values are
 #
 #   classic drivers: i915 i965
@@ -122,3 +128,5 @@ SUBDIRS := \
 INC_DIRS := $(call all-named-subdir-makefiles,$(SUBDIRS))
 INC_DIRS += $(call all-named-subdir-makefiles,src/gallium)
 include $(INC_DIRS)
+
+endif
