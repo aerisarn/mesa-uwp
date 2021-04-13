@@ -35,6 +35,16 @@
 #include "util/u_debug.h"
 #include "util/u_prim.h"
 
+static VkBlendFactor
+clamp_void_blend_factor(VkBlendFactor f)
+{
+   if (f == VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA)
+      return VK_BLEND_FACTOR_ZERO;
+   if (f == VK_BLEND_FACTOR_DST_ALPHA)
+      return VK_BLEND_FACTOR_ONE;
+   return f;
+}
+
 VkPipeline
 zink_create_gfx_pipeline(struct zink_screen *screen,
                          struct zink_gfx_program *prog,
@@ -80,8 +90,11 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    if (state->void_alpha_attachments) {
       for (unsigned i = 0; i < state->num_attachments; i++) {
          blend_att[i] = state->blend_state->attachments[i];
-         if (state->void_alpha_attachments & BITFIELD_BIT(i))
+         if (state->void_alpha_attachments & BITFIELD_BIT(i)) {
             blend_att[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            blend_att[i].srcColorBlendFactor = clamp_void_blend_factor(blend_att[i].srcColorBlendFactor);
+            blend_att[i].dstColorBlendFactor = clamp_void_blend_factor(blend_att[i].dstColorBlendFactor);
+         }
       }
       blend_state.pAttachments = blend_att;
    } else
