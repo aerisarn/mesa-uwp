@@ -146,9 +146,6 @@ print_stats(struct disasm_ctx *ctx)
            ctx->stats->sy);
 }
 
-/* size of largest OPC field of all the instruction categories: */
-#define NOPC_BITS 6
-
 static const struct opc_info {
    const char *name;
 } opcs[1 << (3 + NOPC_BITS)] = {

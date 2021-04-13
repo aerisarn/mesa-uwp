@@ -103,6 +103,7 @@ static const struct test {
    INSTR_6XX(40104002_0c210001, "add.f hr0.z, r0.y, c<a0.x + 33>"),
    INSTR_6XX(40b80804_10408004, "(nop3) cmps.f.lt r1.x, (abs)r1.x, c16.x"),
    INSTR_6XX(47308a02_00002000, "(rpt2)bary.f (ei)r0.z, (r)0, r0.x"),
+   INSTR_6XX(47348000_00002000, "flat.b (ei)r0.x, 0, r0.x"),
    INSTR_6XX(43480801_00008001, "(nop3) absneg.s hr0.y, (abs)hr0.y"),
    INSTR_6XX(50600004_2c010004, "(sy)mul.f hr1.x, hr1.x, h(0.5)"),
    INSTR_6XX(42280807_27ff0000, "(nop3) add.s hr1.w, hr0.x, h(-1)"),

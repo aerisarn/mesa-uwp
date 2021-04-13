@@ -228,6 +228,7 @@ static int parse_w(const char *str)
 "shr.b"                           return TOKEN(T_OP_SHR_B);
 "ashr.b"                          return TOKEN(T_OP_ASHR_B);
 "bary.f"                          return TOKEN(T_OP_BARY_F);
+"flat.b"                          return TOKEN(T_OP_FLAT_B);
 "mgen.b"                          return TOKEN(T_OP_MGEN_B);
 "getbit.b"                        return TOKEN(T_OP_GETBIT_B);
 "setrm"                           return TOKEN(T_OP_SETRM);

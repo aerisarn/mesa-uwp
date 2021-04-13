@@ -51,7 +51,7 @@ void ir3_assert_handler(const char *expr, const char *file, int line,
       }                                                                        \
    } while (0)
 /* size of largest OPC field of all the instruction categories: */
-#define NOPC_BITS 6
+#define NOPC_BITS 7
 
 #define _OPC(cat, opc) (((cat) << NOPC_BITS) | opc)
 
@@ -178,6 +178,7 @@ typedef enum {
    OPC_CBITS_B         = _OPC(2, 61),
    OPC_SHB             = _OPC(2, 62),
    OPC_MSAD            = _OPC(2, 63),
+   OPC_FLAT_B          = _OPC(2, 64),
 
    /* category 3: */
    OPC_MAD_U16         = _OPC(3, 0),
