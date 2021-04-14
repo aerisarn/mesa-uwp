@@ -2350,13 +2350,6 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
 
         NIR_PASS_V(c->s, nir_convert_from_ssa, true);
 
-        if (VC4_DBG(SHADERDB)) {
-                fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d NIR instructions\n",
-                        qir_get_stage_name(c->stage),
-                        c->program_id, c->variant_id,
-                        count_nir_instrs(c->s));
-        }
-
         if (VC4_DBG(NIR)) {
                 fprintf(stderr, "%s prog %d/%d NIR:\n",
                         qir_get_stage_name(c->stage),
@@ -2415,17 +2408,6 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
 
         qir_reorder_uniforms(c);
         vc4_generate_code(vc4, c);
-
-        if (VC4_DBG(SHADERDB)) {
-                fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d instructions\n",
-                        qir_get_stage_name(c->stage),
-                        c->program_id, c->variant_id,
-                        c->qpu_inst_count);
-                fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d uniforms\n",
-                        qir_get_stage_name(c->stage),
-                        c->program_id, c->variant_id,
-                        c->num_uniforms);
-        }
 
         ralloc_free(c->s);
 
@@ -2744,13 +2726,6 @@ vc4_get_compiled_shader(struct vc4_context *vc4, enum qstage stage,
         }
 
         shader->fs_threaded = c->fs_threaded;
-
-        if (VC4_DBG(SHADERDB) && stage == QSTAGE_FRAG) {
-                fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d FS threads\n",
-                        qir_get_stage_name(c->stage),
-                        c->program_id, c->variant_id,
-                        1 + shader->fs_threaded);
-        }
 
         qir_compile_destroy(c);
 
