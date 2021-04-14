@@ -286,7 +286,7 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats
       usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
    if (feats & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
       usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-   if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && !((bind & (PIPE_BIND_LINEAR | PIPE_BIND_SCANOUT)) == (PIPE_BIND_LINEAR | PIPE_BIND_SCANOUT)))
+   if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && (bind & (PIPE_BIND_LINEAR | PIPE_BIND_SHARED)) != (PIPE_BIND_LINEAR | PIPE_BIND_SHARED))
       usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
    if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
@@ -505,8 +505,9 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    VkMemoryRequirements reqs = {0};
    VkMemoryPropertyFlags flags;
-   bool scanout = templ->bind & PIPE_BIND_SCANOUT;
-   bool shared = templ->bind & PIPE_BIND_SHARED;
+   /* TODO: remove linear for wsi */
+   bool scanout = (templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR)) == (PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR);
+   bool shared = (templ->bind & (PIPE_BIND_SHARED | PIPE_BIND_LINEAR)) == (PIPE_BIND_SHARED | PIPE_BIND_LINEAR);
 
    pipe_reference_init(&obj->reference, 1);
    util_dynarray_init(&obj->desc_set_refs.refs, NULL);
@@ -531,7 +532,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       obj->transfer_dst = true;
    } else {
 #ifdef ZINK_USE_DMABUF
-      bool winsys_modifier = whandle && whandle->modifier != DRM_FORMAT_MOD_INVALID;
+      bool winsys_modifier = shared && whandle && whandle->modifier != DRM_FORMAT_MOD_INVALID;
 #else
       bool winsys_modifier = false;
 #endif
@@ -548,7 +549,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       if (!success)
          goto fail1;
 
-      if (templ->bind & PIPE_BIND_SHARED) {
+      if (shared) {
          emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
          emici.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
          ici.pNext = &emici;
