@@ -771,7 +771,7 @@ resource_create(struct pipe_screen *pscreen,
    res->base.b.screen = pscreen;
 
    bool optimal_tiling = false;
-   res->obj = resource_object_create(screen, templ, whandle, &optimal_tiling, modifiers, modifiers_count);
+   res->obj = resource_object_create(screen, templ, whandle, &optimal_tiling, modifiers, 0);
    if (!res->obj) {
       free(res->modifiers);
       FREE(res);
