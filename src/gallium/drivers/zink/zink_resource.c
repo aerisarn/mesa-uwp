@@ -238,11 +238,48 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
    return bci;
 }
 
-static VkImageUsageFlags
-get_image_usage(struct zink_screen *screen, VkImageTiling tiling, const struct pipe_resource *templ, unsigned bind)
+static bool
+check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
 {
-   VkFormatProperties props = screen->format_props[templ->format];
-   VkFormatFeatureFlags feats = tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
+   VkImageFormatProperties image_props;
+   VkResult ret;
+#ifdef ZINK_USE_DMABUF
+   assert(modifier == DRM_FORMAT_MOD_INVALID ||
+          (screen->vk.GetPhysicalDeviceImageFormatProperties2 && screen->info.have_EXT_image_drm_format_modifier));
+#endif
+   if (screen->vk.GetPhysicalDeviceImageFormatProperties2) {
+      VkImageFormatProperties2 props2 = {0};
+      props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
+      VkPhysicalDeviceImageFormatInfo2 info = {0};
+      info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
+      info.format = ici->format;
+      info.type = ici->imageType;
+      info.tiling = ici->tiling;
+      info.usage = ici->usage;
+      info.flags = ici->flags;
+
+#ifdef ZINK_USE_DMABUF
+      VkPhysicalDeviceImageDrmFormatModifierInfoEXT mod_info;
+      if (modifier != DRM_FORMAT_MOD_INVALID) {
+         mod_info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT;
+         mod_info.pNext = NULL;
+         mod_info.drmFormatModifier = modifier;
+         mod_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+         mod_info.queueFamilyIndexCount = 0;
+         info.pNext = &mod_info;
+      }
+#endif
+      ret = screen->vk.GetPhysicalDeviceImageFormatProperties2(screen->pdev, &info, &props2);
+      image_props = props2.imageFormatProperties;
+   } else
+      ret = vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici->format, ici->imageType,
+                                                   ici->tiling, ici->usage, ici->flags, &image_props);
+   return ret == VK_SUCCESS;
+}
+
+static VkImageUsageFlags
+get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats, const struct pipe_resource *templ, unsigned bind)
+{
    VkImageUsageFlags usage = 0;
    /* sadly, gallium doesn't let us know if it'll ever need this, so we have to assume */
    if (feats & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
@@ -254,8 +291,7 @@ get_image_usage(struct zink_screen *screen, VkImageTiling tiling, const struct p
 
    if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
        (bind & PIPE_BIND_SHADER_IMAGE)) {
-      if ((tiling == VK_IMAGE_TILING_LINEAR && props.linearTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
-          (tiling == VK_IMAGE_TILING_OPTIMAL && props.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
+      if (feats & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)
          usage |= VK_IMAGE_USAGE_STORAGE_BIT;
    }
 
@@ -287,54 +323,74 @@ get_image_usage(struct zink_screen *screen, VkImageTiling tiling, const struct p
    return usage;
 }
 
-static bool
-check_ici(struct zink_screen *screen, VkImageCreateInfo *ici)
+static VkImageUsageFlags
+get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe_resource *templ, unsigned bind, unsigned modifiers_count, const uint64_t *modifiers, uint64_t *mod)
 {
-   VkImageFormatProperties image_props;
-   VkResult ret;
-   if (screen->vk.GetPhysicalDeviceImageFormatProperties2) {
-      VkImageFormatProperties2 props2 = {0};
-      props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
-      VkPhysicalDeviceImageFormatInfo2 info = {0};
-      info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
-      info.format = ici->format;
-      info.type = ici->imageType;
-      info.tiling = ici->tiling;
-      info.usage = ici->usage;
-      info.flags = ici->flags;
-      ret = screen->vk.GetPhysicalDeviceImageFormatProperties2(screen->pdev, &info, &props2);
-      image_props = props2.imageFormatProperties;
-   } else
-      ret = vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici->format, ici->imageType,
-                                                   ici->tiling, ici->usage, ici->flags, &image_props);
-   return ret == VK_SUCCESS;
+   VkImageTiling tiling = ici->tiling;
+   *mod = DRM_FORMAT_MOD_INVALID;
+   if (modifiers_count) {
+      assert(tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
+      for (unsigned i = 0; i < modifiers_count; i++) {
+         if (modifiers[i] == DRM_FORMAT_MOD_LINEAR)
+            continue;
+         VkFormatFeatureFlags feats = 0;
+         struct zink_modifier_prop *prop = &screen->modifier_props[templ->format];
+         for (unsigned j = 0; j < prop->drmFormatModifierCount; j++) {
+            if (prop->pDrmFormatModifierProperties[j].drmFormatModifier == modifiers[i]) {
+               feats = prop->pDrmFormatModifierProperties[j].drmFormatModifierTilingFeatures;
+               *mod = modifiers[i];
+               break;
+            }
+         }
+         if (feats) {
+            VkImageUsageFlags usage = get_image_usage_for_feats(screen, feats, templ, bind);
+            if (usage) {
+               ici->usage = usage;
+               if (check_ici(screen, ici, *mod))
+                  return usage;
+            }
+         }
+      }
+   } else {
+      VkFormatProperties props = screen->format_props[templ->format];
+      VkFormatFeatureFlags feats = tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
+      VkImageUsageFlags usage = get_image_usage_for_feats(screen, feats, templ, bind);
+      if (usage) {
+         ici->usage = usage;
+         if (check_ici(screen, ici, *mod))
+            return usage;
+      }
+   }
+   *mod = DRM_FORMAT_MOD_INVALID;
+   return 0;
 }
 
-static VkImageCreateInfo
-create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsigned bind)
+static uint64_t
+create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe_resource *templ, unsigned bind, unsigned modifiers_count, const uint64_t *modifiers, bool *success)
 {
-   VkImageCreateInfo ici = {0};
-   ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-   ici.flags = bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+   ici->sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+   ici->flags = bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
    switch (templ->target) {
    case PIPE_TEXTURE_1D:
    case PIPE_TEXTURE_1D_ARRAY:
-      ici.imageType = VK_IMAGE_TYPE_1D;
+      ici->imageType = VK_IMAGE_TYPE_1D;
       break;
 
    case PIPE_TEXTURE_CUBE:
    case PIPE_TEXTURE_CUBE_ARRAY:
+      ici->flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+      FALLTHROUGH;
    case PIPE_TEXTURE_2D:
    case PIPE_TEXTURE_2D_ARRAY:
    case PIPE_TEXTURE_RECT:
-      ici.imageType = VK_IMAGE_TYPE_2D;
+      ici->imageType = VK_IMAGE_TYPE_2D;
       break;
 
    case PIPE_TEXTURE_3D:
-      ici.imageType = VK_IMAGE_TYPE_3D;
+      ici->imageType = VK_IMAGE_TYPE_3D;
       if (bind & PIPE_BIND_RENDER_TARGET)
-         ici.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+         ici->flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
       break;
 
    case PIPE_BUFFER:
@@ -347,60 +403,91 @@ create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsign
    if (screen->info.have_EXT_sample_locations &&
        bind & PIPE_BIND_DEPTH_STENCIL &&
        util_format_has_depth(util_format_description(templ->format)))
-      ici.flags |= VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
+      ici->flags |= VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
 
-   ici.format = zink_get_format(screen, templ->format);
-   ici.extent.width = templ->width0;
-   ici.extent.height = templ->height0;
-   ici.extent.depth = templ->depth0;
-   ici.mipLevels = templ->last_level + 1;
-   ici.arrayLayers = MAX2(templ->array_size, 1);
-   ici.samples = templ->nr_samples ? templ->nr_samples : VK_SAMPLE_COUNT_1_BIT;
-   ici.tiling = bind & PIPE_BIND_LINEAR ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
-
-   if (templ->target == PIPE_TEXTURE_CUBE)
-      ici.arrayLayers *= 6;
-
-   if (templ->usage == PIPE_USAGE_STAGING &&
-       templ->format != PIPE_FORMAT_B4G4R4A4_UNORM &&
-       templ->format != PIPE_FORMAT_B4G4R4A4_UINT)
-      ici.tiling = VK_IMAGE_TILING_LINEAR;
-
-   ici.usage = get_image_usage(screen, ici.tiling, templ, bind);
-   if (!ici.usage) {
-      assert(ici.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
-      ici.tiling = !ici.tiling;
-      ici.usage = get_image_usage(screen, ici.tiling, templ, bind);
-   }
-
-   bool good = check_ici(screen, &ici);
-   if (!good && ici.tiling == VK_IMAGE_TILING_LINEAR) {
-      ici.tiling = !ici.tiling;
-      ici.usage = get_image_usage(screen, ici.tiling, templ, bind);
-      good = check_ici(screen, &ici);
-   }
-   if (!good)
-      debug_printf("ZINK: failed to validate image creation\n");
+   ici->format = zink_get_format(screen, templ->format);
+   ici->extent.width = templ->width0;
+   ici->extent.height = templ->height0;
+   ici->extent.depth = templ->depth0;
+   ici->mipLevels = templ->last_level + 1;
+   ici->arrayLayers = MAX2(templ->array_size, 1);
+   ici->samples = templ->nr_samples ? templ->nr_samples : VK_SAMPLE_COUNT_1_BIT;
+   ici->tiling = modifiers_count ? VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT : bind & PIPE_BIND_LINEAR ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+   ici->sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+   ici->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
    if (templ->target == PIPE_TEXTURE_CUBE ||
        templ->target == PIPE_TEXTURE_CUBE_ARRAY ||
        (templ->target == PIPE_TEXTURE_2D_ARRAY &&
-        ici.extent.width == ici.extent.height &&
-        ici.arrayLayers >= 6)) {
+        ici->extent.width == ici->extent.height &&
+        ici->arrayLayers >= 6)) {
       VkImageFormatProperties props;
-      if (vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici.format,
-                                                   ici.imageType, ici.tiling,
-                                                   ici.usage, ici.flags |
+      if (vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici->format,
+                                                   ici->imageType, ici->tiling,
+                                                   ici->usage, ici->flags |
                                                    VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT,
                                                    &props) == VK_SUCCESS) {
-         if (props.sampleCounts & ici.samples)
-            ici.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+         if (props.sampleCounts & ici->samples)
+            ici->flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
       }
    }
 
-   ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-   ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-   return ici;
+   if (templ->target == PIPE_TEXTURE_CUBE)
+      ici->arrayLayers *= 6;
+
+   if (templ->usage == PIPE_USAGE_STAGING &&
+       templ->format != PIPE_FORMAT_B4G4R4A4_UNORM &&
+       templ->format != PIPE_FORMAT_B4G4R4A4_UINT)
+      ici->tiling = VK_IMAGE_TILING_LINEAR;
+
+   bool first = true;
+   bool tried[2] = {0};
+#ifdef ZINK_USE_DMABUF
+   uint64_t mod = DRM_FORMAT_MOD_INVALID;
+#else
+   uint64_t mod = 0;
+#endif
+   while (!ici->usage) {
+      if (!first) {
+         switch (ici->tiling) {
+         case VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT:
+            ici->tiling = VK_IMAGE_TILING_OPTIMAL;
+            modifiers_count = 0;
+            break;
+         case VK_IMAGE_TILING_OPTIMAL:
+            ici->tiling = VK_IMAGE_TILING_LINEAR;
+            break;
+         case VK_IMAGE_TILING_LINEAR:
+            if (bind & PIPE_BIND_LINEAR) {
+               *success = false;
+#ifdef ZINK_USE_DMABUF
+               return DRM_FORMAT_MOD_INVALID;
+#else
+               return 0;
+#endif
+            }
+            ici->tiling = VK_IMAGE_TILING_OPTIMAL;
+            break;
+         default:
+            unreachable("unhandled tiling mode");
+         }
+         if (tried[ici->tiling]) {
+            *success = false;
+#ifdef ZINK_USE_DMABUF
+               return DRM_FORMAT_MOD_INVALID;
+#else
+               return 0;
+#endif
+         }
+      }
+      ici->usage = get_image_usage(screen, ici, templ, bind, modifiers_count, modifiers, &mod);
+      first = false;
+      if (ici->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
+         tried[ici->tiling] = true;
+   }
+
+   *success = true;
+   return mod;
 }
 
 static struct zink_resource_object *
@@ -438,19 +525,34 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       obj->is_buffer = true;
       obj->transfer_dst = true;
    } else {
-      VkImageCreateInfo ici = create_ici(screen, templ, templ->bind);
+#ifdef ZINK_USE_DMABUF
+      bool winsys_modifier = whandle && whandle->modifier != DRM_FORMAT_MOD_INVALID;
+#else
+      bool winsys_modifier = false;
+#endif
+      const uint64_t *ici_modifiers = winsys_modifier ? &whandle->modifier : modifiers;
+      unsigned ici_modifier_count = winsys_modifier ? 1 : modifiers_count;
+      bool success = false;
+      VkImageCreateInfo ici = {0};
+      uint64_t mod = create_ici(screen, &ici, templ, templ->bind, ici_modifier_count, ici_modifiers, &success);
       VkExternalMemoryImageCreateInfo emici = {0};
       VkImageDrmFormatModifierExplicitCreateInfoEXT idfmeci = {0};
+
+      if (!success)
+         goto fail1;
 
       if (templ->bind & PIPE_BIND_SHARED) {
          emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
          emici.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
          ici.pNext = &emici;
+
 #ifdef ZINK_USE_DMABUF
-         if (whandle && whandle->modifier != DRM_FORMAT_MOD_INVALID) {
+         assert(ici.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT || mod != DRM_FORMAT_MOD_INVALID);
+         if (winsys_modifier && ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+            assert(mod == whandle->modifier);
             idfmeci.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT;
             idfmeci.pNext = ici.pNext;
-            idfmeci.drmFormatModifier = whandle->modifier;
+            idfmeci.drmFormatModifier = mod;
 
             /* TODO: store these values from other planes in their
              * respective zink_resource, and walk the next-pointers to
@@ -468,7 +570,6 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             idfmeci.pPlaneLayouts = &plane_layout;
 
             ici.pNext = &idfmeci;
-            ici.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
          } else
 #endif
          if (ici.tiling == VK_IMAGE_TILING_OPTIMAL) {
@@ -480,11 +581,13 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       }
 
       if (optimal_tiling)
-         *optimal_tiling = ici.tiling != VK_IMAGE_TILING_LINEAR;
+         *optimal_tiling = ici.tiling == VK_IMAGE_TILING_OPTIMAL;
 
       if (ici.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
          obj->transfer_dst = true;
 
+      if (ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
+         obj->modifier_aspect = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT;
 
       struct wsi_image_create_info image_wsi_info = {
          VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
@@ -717,7 +820,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       VkImageSubresource sub_res = {0};
       VkSubresourceLayout sub_res_layout = {0};
 
-      sub_res.aspectMask = res->aspect;
+      sub_res.aspectMask = obj->modifier_aspect ? obj->modifier_aspect : res->aspect;
 
       vkGetImageSubresourceLayout(screen->dev, obj->image, &sub_res, &sub_res_layout);
 
@@ -1136,7 +1239,7 @@ zink_transfer_map(struct pipe_context *pctx,
                zink_batch_usage_wait(ctx, res->obj->writes);
          }
          VkImageSubresource isr = {
-            res->aspect,
+            res->obj->modifier_aspect ? res->obj->modifier_aspect : res->aspect,
             level,
             0
          };
