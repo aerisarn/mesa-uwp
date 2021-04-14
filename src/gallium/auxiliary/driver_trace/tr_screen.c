@@ -533,6 +533,31 @@ trace_screen_resource_create(struct pipe_screen *_screen,
 }
 
 static struct pipe_resource *
+trace_screen_resource_create_with_modifiers(struct pipe_screen *_screen, const struct pipe_resource *templat,
+                                            const uint64_t *modifiers, int modifiers_count)
+{
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   struct pipe_screen *screen = tr_scr->screen;
+   struct pipe_resource *result;
+
+   trace_dump_call_begin("pipe_screen", "resource_create_with_modifiers");
+
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(resource_template, templat);
+   trace_dump_arg_array(uint, modifiers, modifiers_count);
+
+   result = screen->resource_create_with_modifiers(screen, templat, modifiers, modifiers_count);
+
+   trace_dump_ret(ptr, result);
+
+   trace_dump_call_end();
+
+   if (result)
+      result->screen = _screen;
+   return result;
+}
+
+static struct pipe_resource *
 trace_screen_resource_from_handle(struct pipe_screen *_screen,
                                  const struct pipe_resource *templ,
                                  struct winsys_handle *handle,
@@ -1002,6 +1027,7 @@ trace_screen_create(struct pipe_screen *screen)
    assert(screen->context_create);
    tr_scr->base.context_create = trace_screen_context_create;
    tr_scr->base.resource_create = trace_screen_resource_create;
+   SCR_INIT(resource_create_with_modifiers);
    tr_scr->base.resource_create_unbacked = trace_screen_resource_create_unbacked;
    tr_scr->base.resource_bind_backing = trace_screen_resource_bind_backing;
    tr_scr->base.resource_from_handle = trace_screen_resource_from_handle;
