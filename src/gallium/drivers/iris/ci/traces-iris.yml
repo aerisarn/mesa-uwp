@@ -2,6 +2,24 @@ traces-db:
   download-url: "https://minio-packet.freedesktop.org/mesa-tracie-public/"
 
 traces:
+#  - path: 0ad/0ad.trace
+#    expectations:
+#      # Renders the loading screen instead of the in-game screen.  Needs to be debugged.
+#      # junit.xml says "warning: unexpected end of file while reading trace /usr/games/pyrogenesis pid"
+#      - device: gl-intel-apl
+#        checksum: becaa29fae8a988b8b5f4694f59383db
+#      - device: gl-intel-glk
+#        checksum: becaa29fae8a988b8b5f4694f59383db
+#      - device: gl-intel-amly
+#        checksum: becaa29fae8a988b8b5f4694f59383db
+  - path: behdad-glyphy/glyphy.trace
+    expectations:
+      - device: gl-intel-apl
+        checksum: e749faf799fe11f95208a01ca6e32fef
+      - device: gl-intel-glk
+        checksum: e749faf799fe11f95208a01ca6e32fef
+      - device: gl-intel-amly
+        checksum: e749faf799fe11f95208a01ca6e32fef
   - path: glmark2/desktop:windows=4:effect=blur:blur-radius=5:passes=1:separable=true.trace
     expectations:
       - device: gl-intel-apl
@@ -442,6 +460,14 @@ traces:
         checksum: 2224e04e0aa162c19a22cbeb5bf16114
       - device: gl-intel-amly
         checksum: 2224e04e0aa162c19a22cbeb5bf16114
+  - path: neverball/neverball.trace
+    expectations:
+      - device: gl-intel-apl
+        checksum: 4ca08b4200d9e8a5e74babcb9e14b726
+      - device: gl-intel-glk
+        checksum: 4ca08b4200d9e8a5e74babcb9e14b726
+      - device: gl-intel-amly
+        checksum: 4ca08b4200d9e8a5e74babcb9e14b726
   - path: supertuxkart/supertuxkart-antediluvian-abyss.rdc
     expectations:
       - device: gl-intel-apl
@@ -466,3 +492,47 @@ traces:
         checksum: 66a7f3ad9511fd2700f5ec59589b0c7d
       - device: gl-intel-amly
         checksum: 66a7f3ad9511fd2700f5ec59589b0c7d
+  - path: valve/counterstrike-v2.trace
+    expectations:
+      - device: gl-intel-apl
+        checksum: 757e0c9a37ecfc5a2efb10505f98ad95
+      - device: gl-intel-glk
+        checksum: 757e0c9a37ecfc5a2efb10505f98ad95
+      - device: gl-intel-amly
+        checksum: 757e0c9a37ecfc5a2efb10505f98ad95
+  # 3 minutes on APL
+  #- path: valve/counterstrike-source-v2.trace
+  #  expectations:
+  #    - device: gl-intel-apl
+  #      checksum: 072e488a7d0289a49d60dc5bcb0b1878
+  #    - device: gl-intel-glk
+  #      checksum: 072e488a7d0289a49d60dc5bcb0b1878
+  #    - device: gl-intel-amly
+  #      checksum: 072e488a7d0289a49d60dc5bcb0b1878
+  # 4 minutes on APL
+  #- path: valve/half-life-2-v2.trace
+  #  expectations:
+  #    - device: gl-intel-apl
+  #      checksum: 64575bc6478dbc2b2dde1552010ac37b
+  #    - device: gl-intel-glk
+  #      checksum: 64575bc6478dbc2b2dde1552010ac37b
+  #    - device: gl-intel-amly
+  #      checksum: 64575bc6478dbc2b2dde1552010ac37b
+  # 3 minutes on APL
+  #- path: valve/portal-2-v2.trace
+  #  expectations:
+  #    - device: gl-intel-apl
+  #      checksum: 9c698dac9ca633e3a54980b80b7b287a
+  #    - device: gl-intel-glk
+  #     checksum: 9c698dac9ca633e3a54980b80b7b287a
+  #    - device: gl-intel-amly
+  #      checksum: 9c698dac9ca633e3a54980b80b7b287a
+  # Seeing connection resets downloading this.
+  # - path: xonotic/xonotic-keybench-high.trace
+  #   expectations:
+  #     - device: gl-intel-apl
+  #       checksum: 95f60026993c36b37957043190d1a21c
+  #     - device: gl-intel-glx
+  #      checksum: 95f60026993c36b37957043190d1a21c
+  #     - device: gl-intel-amly
+  #       checksum: 95f60026993c36b37957043190d1a21c
