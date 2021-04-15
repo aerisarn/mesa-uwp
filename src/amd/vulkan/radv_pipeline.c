@@ -4355,7 +4355,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
          if (device->robust_buffer_access2) {
             vectorize_opts.robust_modes =
-               nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_global | nir_var_mem_push_const;
+               nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_push_const;
          }
 
          if (nir_opt_load_store_vectorize(stages[i].nir, &vectorize_opts)) {
