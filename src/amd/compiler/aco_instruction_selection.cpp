@@ -11122,38 +11122,11 @@ Temp ngg_max_primitive_count(isel_context *ctx)
                    get_arg(ctx, ctx->args->ac.gs_tg_info), Operand(22u | (9u << 16u)));
 }
 
-void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx, Temp vtx_cnt = Temp(), Temp prm_cnt = Temp())
+void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx, Temp vtx_cnt, Temp prm_cnt)
 {
+   assert(vtx_cnt.id() && prm_cnt.id());
+
    Builder bld(ctx->program, ctx->block);
-
-   /* Get the id of the current wave within the threadgroup (workgroup) */
-   Builder::Result wave_id_in_tg = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
-                                            get_arg(ctx, ctx->args->ac.merged_wave_info), Operand(24u | (4u << 16)));
-
-   /* Execute the following code only on the first wave (wave id 0),
-    * use the SCC def to tell if the wave id is zero or not.
-    */
-   Temp waveid_as_cond = wave_id_in_tg.def(1).getTemp();
-   if_context ic;
-   begin_uniform_if_then(ctx, &ic, waveid_as_cond);
-   begin_uniform_if_else(ctx, &ic);
-   bld.reset(ctx->block);
-
-   /* VS/TES: we infer the vertex and primitive count from arguments
-    * GS: the caller needs to supply them
-    */
-   assert(ctx->stage.has(SWStage::GS)
-          ? (vtx_cnt.id() && prm_cnt.id())
-          : (!vtx_cnt.id() && !prm_cnt.id()));
-
-   /* Number of vertices output by VS/TES */
-   if (vtx_cnt.id() == 0)
-      vtx_cnt = ngg_max_vertex_count(ctx);
-
-   /* Number of primitives output by VS/TES */
-   if (prm_cnt.id() == 0)
-      prm_cnt = ngg_max_primitive_count(ctx);
-
    Temp prm_cnt_0;
 
    if (ctx->program->chip_class == GFX10 && ctx->stage.has(SWStage::GS) && ctx->ngg_gs_const_prmcnt[0] <= 0) {
@@ -11194,6 +11167,41 @@ void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx, Temp vtx_cnt = Temp(), Tem
       end_divergent_if(ctx, &ic_prim_0);
       bld.reset(ctx->block);
    }
+}
+
+void ngg_emit_wave0_sendmsg_gs_alloc_req(isel_context *ctx, Temp vtx_cnt = Temp(), Temp prm_cnt = Temp())
+{
+   Builder bld(ctx->program, ctx->block);
+
+   /* Get the id of the current wave within the threadgroup (workgroup) */
+   Builder::Result wave_id_in_tg = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                                            get_arg(ctx, ctx->args->ac.merged_wave_info), Operand(24u | (4u << 16)));
+
+   /* Execute the following code only on the first wave (wave id 0),
+    * use the SCC def to tell if the wave id is zero or not.
+    */
+   Temp waveid_as_cond = wave_id_in_tg.def(1).getTemp();
+   if_context ic;
+   begin_uniform_if_then(ctx, &ic, waveid_as_cond);
+   begin_uniform_if_else(ctx, &ic);
+   bld.reset(ctx->block);
+
+   /* VS/TES: we infer the vertex and primitive count from arguments
+    * GS: the caller needs to supply them
+    */
+   assert(ctx->stage.has(SWStage::GS)
+          ? (vtx_cnt.id() && prm_cnt.id())
+          : (!vtx_cnt.id() && !prm_cnt.id()));
+
+   /* Number of vertices output by VS/TES */
+   if (vtx_cnt.id() == 0)
+      vtx_cnt = ngg_max_vertex_count(ctx);
+
+   /* Number of primitives output by VS/TES */
+   if (prm_cnt.id() == 0)
+      prm_cnt = ngg_max_primitive_count(ctx);
+
+   ngg_emit_sendmsg_gs_alloc_req(ctx, vtx_cnt, prm_cnt);
 
    end_uniform_if(ctx, &ic);
 }
@@ -11340,7 +11348,7 @@ void ngg_nogs_export_prim_id(isel_context *ctx)
 
 void ngg_nogs_prelude(isel_context *ctx)
 {
-   ngg_emit_sendmsg_gs_alloc_req(ctx);
+   ngg_emit_wave0_sendmsg_gs_alloc_req(ctx);
 
    if (ctx->ngg_nogs_early_prim_export)
       ngg_nogs_export_primitives(ctx);
@@ -11709,7 +11717,7 @@ void ngg_gs_prelude(isel_context *ctx)
     * Thus, we won't have to worry about primitive compaction here.
     */
    Temp num_max_vertices = ngg_max_vertex_count(ctx);
-   ngg_emit_sendmsg_gs_alloc_req(ctx, num_max_vertices, num_max_vertices);
+   ngg_emit_wave0_sendmsg_gs_alloc_req(ctx, num_max_vertices, num_max_vertices);
 }
 
 void ngg_gs_finale(isel_context *ctx)
@@ -11762,7 +11770,7 @@ void ngg_gs_finale(isel_context *ctx)
       Temp have_exports = bld.sopc(aco_opcode::s_cmp_lg_u32, bld.def(s1, scc), wg_vtx_cnt, Operand(0u));
       max_vtxcnt = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), max_vtxcnt, Operand(0u), bld.scc(have_exports));
 
-      ngg_emit_sendmsg_gs_alloc_req(ctx, wg_vtx_cnt, max_vtxcnt);
+      ngg_emit_wave0_sendmsg_gs_alloc_req(ctx, wg_vtx_cnt, max_vtxcnt);
       ngg_gs_setup_vertex_compaction(ctx, vertex_live, tid_in_tg, exporter_tid_in_tg);
    }
 
