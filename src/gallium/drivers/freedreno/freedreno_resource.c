@@ -707,7 +707,7 @@ invalidate_resource(struct fd_resource *rsc, unsigned usage) assert_dt
    bool needs_flush = pending(rsc, !!(usage & PIPE_MAP_WRITE));
    unsigned op = translate_usage(usage);
 
-   if (needs_flush || fd_resource_busy(rsc, op)) {
+   if (needs_flush || resource_busy(rsc, op)) {
       rebind_resource(rsc);
       realloc_bo(rsc, fd_bo_size(rsc->bo));
    } else {
@@ -811,7 +811,7 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
       /* If the GPU is writing to the resource, or if it is reading from the
        * resource and we're trying to write to it, flush the renders.
        */
-      bool busy = needs_flush || fd_resource_busy(rsc, op);
+      bool busy = needs_flush || resource_busy(rsc, op);
 
       /* if we need to flush/stall, see if we can make a shadow buffer
        * to avoid this:
