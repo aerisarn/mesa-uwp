@@ -2002,6 +2002,12 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
          pCreateInfo->pRasterizationState->depthBiasEnable;
    }
 
+   if (states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE) {
+      assert(pCreateInfo->pInputAssemblyState);
+      dynamic->primitive_restart_enable =
+         pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
+   }
+
    /* Section 9.2 of the Vulkan 1.0.15 spec says:
     *
     *    pColorBlendState is [...] NULL if the pipeline has rasterization
@@ -2387,7 +2393,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
       pCreateInfo->pInputAssemblyState;
    const VkPipelineTessellationStateCreateInfo *tess_info =
       pCreateInfo->pTessellationState;
-   pipeline->primitive_restart = ia_info->primitiveRestartEnable;
 
    if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
       pipeline->topology = _3DPRIM_PATCHLIST(tess_info->patchControlPoints);

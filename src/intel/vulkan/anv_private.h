@@ -2678,6 +2678,7 @@ struct anv_dynamic_state {
    bool                                         stencil_test_enable;
    bool                                         raster_discard;
    bool                                         depth_bias_enable;
+   bool                                         primitive_restart_enable;
    bool                                         dyn_vbo_stride;
    bool                                         dyn_vbo_size;
 
@@ -3393,7 +3394,6 @@ struct anv_graphics_pipeline {
 
    VkShaderStageFlags                           active_stages;
 
-   bool                                         primitive_restart;
    bool                                         writes_depth;
    bool                                         depth_test_enable;
    bool                                         writes_stencil;

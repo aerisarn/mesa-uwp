@@ -312,20 +312,21 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->state.gfx.gfx7.index_buffer &&
        cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_INDEX_BUFFER)) {
+                                      ANV_CMD_DIRTY_INDEX_BUFFER |
+                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)) {
       struct anv_buffer *buffer = cmd_buffer->state.gfx.gfx7.index_buffer;
       uint32_t offset = cmd_buffer->state.gfx.gfx7.index_offset;
 
 #if GFX_VERx10 == 75
       anv_batch_emit(&cmd_buffer->batch, GFX75_3DSTATE_VF, vf) {
-         vf.IndexedDrawCutIndexEnable  = pipeline->primitive_restart;
+         vf.IndexedDrawCutIndexEnable  = d->primitive_restart_enable;
          vf.CutIndex                   = cmd_buffer->state.restart_index;
       }
 #endif
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
 #if GFX_VERx10 != 75
-         ib.CutIndexEnable        = pipeline->primitive_restart;
+         ib.CutIndexEnable        = d->primitive_restart_enable;
 #endif
          ib.IndexFormat           = cmd_buffer->state.gfx.gfx7.index_type;
          ib.MOCS                  = anv_mocs(cmd_buffer->device,

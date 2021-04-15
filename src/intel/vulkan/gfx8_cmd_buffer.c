@@ -630,9 +630,10 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_INDEX_BUFFER)) {
+                                      ANV_CMD_DIRTY_INDEX_BUFFER |
+                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF), vf) {
-         vf.IndexedDrawCutIndexEnable  = pipeline->primitive_restart;
+         vf.IndexedDrawCutIndexEnable  = d->primitive_restart_enable;
          vf.CutIndex                   = cmd_buffer->state.restart_index;
       }
    }
