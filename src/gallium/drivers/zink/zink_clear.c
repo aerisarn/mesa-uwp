@@ -380,7 +380,6 @@ zink_clear_texture(struct pipe_context *pctx,
    struct pipe_screen *pscreen = pctx->screen;
    struct u_rect region = zink_rect_from_box(box);
    bool needs_rp = !zink_blit_region_fills(region, pres->width0, pres->height0) || ctx->render_condition_active;
-   struct zink_batch *batch = &ctx->batch;
    struct pipe_surface *surf = NULL;
 
    if (res->aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
@@ -389,7 +388,8 @@ zink_clear_texture(struct pipe_context *pctx,
       util_format_unpack_rgba(pres->format, color.ui, data, 1);
 
       if (pscreen->is_format_supported(pscreen, pres->format, pres->target, 0, 0,
-                                      PIPE_BIND_RENDER_TARGET) && !needs_rp && !batch->in_rp) {
+                                      PIPE_BIND_RENDER_TARGET) && !needs_rp) {
+         zink_batch_no_rp(ctx);
          clear_color_no_rp(ctx, res, &color, level, box->z, box->depth);
       } else {
          surf = create_clear_surface(pctx, pres, level, box);
@@ -408,9 +408,10 @@ zink_clear_texture(struct pipe_context *pctx,
       if (res->aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
          util_format_unpack_s_8uint(pres->format, &stencil, data, 1);
 
-      if (!needs_rp && !batch->in_rp)
+      if (!needs_rp) {
+         zink_batch_no_rp(ctx);
          clear_zs_no_rp(ctx, res, res->aspect, depth, stencil, level, box->z, box->depth);
-      else {
+      } else {
          unsigned flags = 0;
          if (res->aspect & VK_IMAGE_ASPECT_DEPTH_BIT)
             flags |= PIPE_CLEAR_DEPTH;
