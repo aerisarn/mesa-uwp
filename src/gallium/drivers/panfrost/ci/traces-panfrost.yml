@@ -2,6 +2,10 @@ traces-db:
   download-url: "https://minio-packet.freedesktop.org/mesa-tracie-public/"
 
 traces:
+  - path: behdad-glyphy/glyphy.trace
+    expectations:
+      - device: gl-panfrost-t860
+        checksum: 22bf5262745fd47c5c5eadb93d7cc420
   - path: glmark2/desktop:windows=4:effect=blur:blur-radius=5:passes=1:separable=true.trace
     expectations:
       - device: gl-panfrost-t860
@@ -225,3 +229,18 @@ traces:
     expectations:
       - device: gl-panfrost-t860
         checksum: f53b5b1430aa21804c6fed01bce560aa
+  - path: neverball/neverball.trace
+    expectations:
+      # Missing the coins and the texture on the "Nev" of the level.
+      - device: gl-panfrost-t860
+        checksum: 33235a5466d402348adbf3196cf3cf6b
+  # Definitely wedges the GPU
+  # - path: valve/counterstrike-v2.trace
+  #   expectations:
+  #     - device: gl-panfrost-t860
+  #       checksum: b4af9243e34f3de0153b6855dc9c66b6
+  # I think wedges the GPU.
+  # - path: valve/counterstrike-source-v2.trace
+  #   expectations:
+  #     - device: gl-panfrost-t860
+  #       checksum: bbe74b2171d62fc6738086740e1aa0d8
