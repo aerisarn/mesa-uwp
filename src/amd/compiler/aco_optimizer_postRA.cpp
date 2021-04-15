@@ -162,11 +162,149 @@ void try_apply_branch_vcc(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
    instr->operands[0] = op0_instr->operands[0];
 }
 
+void try_optimize_scc_nocompare(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
+{
+   /* We are looking for the following pattern:
+    *
+    * s_bfe_u32 s0, s3, 0x40018  ; outputs SGPR and SCC if the SGPR != 0
+    * s_cmp_eq_i32 s0, 0         ; comparison between the SGPR and 0
+    * s_cbranch_scc0 BB3         ; use the result of the comparison, eg. branch or cselect
+    *
+    * If possible, the above is optimized into:
+    *
+    * s_bfe_u32 s0, s3, 0x40018  ; original instruction
+    * s_cbranch_scc1 BB3         ; modified to use SCC directly rather than the SGPR with comparison
+    *
+    */
+
+   if (!instr->isSALU() && !instr->isBranch())
+      return;
+
+   if (instr->isSOPC() &&
+       (instr->opcode == aco_opcode::s_cmp_eq_u32 || instr->opcode == aco_opcode::s_cmp_eq_i32 ||
+        instr->opcode == aco_opcode::s_cmp_lg_u32 || instr->opcode == aco_opcode::s_cmp_lg_i32 ||
+        instr->opcode == aco_opcode::s_cmp_eq_u64 ||
+        instr->opcode == aco_opcode::s_cmp_lg_u64) &&
+       (instr->operands[0].constantEquals(0) || instr->operands[1].constantEquals(0)) &&
+       (instr->operands[0].isTemp() || instr->operands[1].isTemp())) {
+      /* Make sure the constant is always in operand 1 */
+      if (instr->operands[0].isConstant())
+         std::swap(instr->operands[0], instr->operands[1]);
+
+      if (ctx.uses[instr->operands[0].tempId()] > 1)
+         return;
+
+      /* Make sure both SCC and Operand 0 are written by the same instruction. */
+      int wr_idx = last_writer_idx(ctx, instr->operands[0]);
+      int sccwr_idx = last_writer_idx(ctx, scc, s1);
+      if (wr_idx < 0 || wr_idx != sccwr_idx)
+         return;
+
+      aco_ptr<Instruction> &wr_instr = ctx.current_block->instructions[wr_idx];
+      if (!wr_instr->isSALU() || wr_instr->definitions.size() < 2 || wr_instr->definitions[1].physReg() != scc)
+         return;
+
+      /* Look for instructions which set SCC := (D != 0) */
+      switch (wr_instr->opcode) {
+      case aco_opcode::s_bfe_i32:
+      case aco_opcode::s_bfe_i64:
+      case aco_opcode::s_bfe_u32:
+      case aco_opcode::s_bfe_u64:
+      case aco_opcode::s_and_b32:
+      case aco_opcode::s_and_b64:
+      case aco_opcode::s_andn2_b32:
+      case aco_opcode::s_andn2_b64:
+      case aco_opcode::s_or_b32:
+      case aco_opcode::s_or_b64:
+      case aco_opcode::s_orn2_b32:
+      case aco_opcode::s_orn2_b64:
+      case aco_opcode::s_xor_b32:
+      case aco_opcode::s_xor_b64:
+      case aco_opcode::s_not_b32:
+      case aco_opcode::s_not_b64:
+      case aco_opcode::s_nor_b32:
+      case aco_opcode::s_nor_b64:
+      case aco_opcode::s_xnor_b32:
+      case aco_opcode::s_xnor_b64:
+      case aco_opcode::s_nand_b32:
+      case aco_opcode::s_nand_b64:
+      case aco_opcode::s_lshl_b32:
+      case aco_opcode::s_lshl_b64:
+      case aco_opcode::s_lshr_b32:
+      case aco_opcode::s_lshr_b64:
+      case aco_opcode::s_ashr_i32:
+      case aco_opcode::s_ashr_i64:
+      case aco_opcode::s_abs_i32:
+      case aco_opcode::s_absdiff_i32:
+         break;
+      default:
+         return;
+      }
+
+      /* Use the SCC def from wr_instr */
+      ctx.uses[instr->operands[0].tempId()]--;
+      instr->operands[0] = Operand(wr_instr->definitions[1].getTemp(), scc);
+      ctx.uses[instr->operands[0].tempId()]++;
+
+      /* Set the opcode and operand to 32-bit */
+      instr->operands[1] = Operand(0u);
+      instr->opcode = (instr->opcode == aco_opcode::s_cmp_eq_u32 ||
+                       instr->opcode == aco_opcode::s_cmp_eq_i32 ||
+                       instr->opcode == aco_opcode::s_cmp_eq_u64)
+                      ? aco_opcode::s_cmp_eq_u32
+                      : aco_opcode::s_cmp_lg_u32;
+   } else if ((instr->format == Format::PSEUDO_BRANCH &&
+               instr->operands.size() == 1 &&
+               instr->operands[0].physReg() == scc) ||
+              instr->opcode == aco_opcode::s_cselect_b32) {
+
+      /* For cselect, operand 2 is the SCC condition */
+      unsigned scc_op_idx = 0;
+      if (instr->opcode == aco_opcode::s_cselect_b32) {
+         scc_op_idx = 2;
+      }
+
+      int wr_idx = last_writer_idx(ctx, instr->operands[scc_op_idx]);
+      if (wr_idx < 0)
+         return;
+
+      aco_ptr<Instruction> &wr_instr = ctx.current_block->instructions[wr_idx];
+
+      /* Check if we found the pattern above. */
+      if (wr_instr->opcode != aco_opcode::s_cmp_eq_u32 && wr_instr->opcode != aco_opcode::s_cmp_lg_u32)
+         return;
+      if (wr_instr->operands[0].physReg() != scc)
+         return;
+      if (!wr_instr->operands[1].constantEquals(0))
+         return;
+
+      /* The optimization can be unsafe when there are other users. */
+      if (ctx.uses[instr->operands[scc_op_idx].tempId()] > 1)
+         return;
+
+      if (wr_instr->opcode == aco_opcode::s_cmp_eq_u32) {
+         /* Flip the meaning of the instruction to correctly use the SCC. */
+         if (instr->format == Format::PSEUDO_BRANCH)
+            instr->opcode = instr->opcode == aco_opcode::p_cbranch_z ? aco_opcode::p_cbranch_nz : aco_opcode::p_cbranch_z;
+         else if (instr->opcode == aco_opcode::s_cselect_b32)
+            std::swap(instr->operands[0], instr->operands[1]);
+         else
+            unreachable("scc_nocompare optimization is only implemented for p_cbranch and s_cselect");
+      }
+
+      /* Use the SCC def from the original instruction, not the comparison */
+      ctx.uses[instr->operands[scc_op_idx].tempId()]--;
+      instr->operands[scc_op_idx] = wr_instr->operands[0];
+   }
+}
+
 void process_instruction(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
 {
    ctx.current_instr_idx++;
 
    try_apply_branch_vcc(ctx, instr);
+
+   try_optimize_scc_nocompare(ctx, instr);
 
    if (instr)
       save_reg_writes(ctx, instr);
