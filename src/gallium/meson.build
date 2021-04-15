@@ -195,7 +195,7 @@ if with_osmesa
   subdir('frontends/osmesa')
   subdir('targets/osmesa')
 endif
-if with_glx == 'gallium-xlib'
+if with_glx == 'xlib'
   subdir('winsys/sw/xlib')
   subdir('frontends/glx/xlib')
   subdir('targets/libgl-xlib')

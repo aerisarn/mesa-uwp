@@ -562,16 +562,12 @@ endif
 if with_glx != 'disabled'
   if not (with_platform_x11 and with_any_opengl)
     error('Cannot build GLX support without X11 platform support and at least one OpenGL API')
-  elif with_glx == 'gallium-xlib'
-    if not with_gallium
-      error('Gallium-xlib based GLX requires at least one gallium driver')
-    elif not with_gallium_softpipe
-      error('Gallium-xlib based GLX requires softpipe or llvmpipe.')
-    elif with_dri
-      error('gallium-xlib conflicts with any dri driver')
-    endif
   elif with_glx == 'xlib'
-    if with_dri
+    if not with_gallium
+      error('xlib based GLX requires at least one gallium driver')
+    elif not with_gallium_softpipe
+      error('xlib based GLX requires softpipe or llvmpipe.')
+    elif with_dri
       error('xlib conflicts with any dri driver')
     endif
   elif with_glx == 'dri'
@@ -586,7 +582,7 @@ glvnd_vendor_name = get_option('glvnd-vendor-name')
 if with_glvnd
   if with_platform_windows
     error('glvnd cannot be used on Windows')
-  elif with_glx == 'xlib' or with_glx == 'gallium-xlib'
+  elif with_glx == 'xlib'
     error('Cannot build glvnd support for GLX that is not DRI based.')
   elif with_glx == 'disabled' and not with_egl
     error('glvnd requires DRI based GLX and/or EGL')
@@ -2246,8 +2242,6 @@ if with_glx != 'disabled'
     lines += 'GLX:             DRI-based'
   elif with_glx == 'xlib'
     lines += 'GLX:             Xlib-based'
-  elif with_glx == 'gallium-xlib'
-    lines += 'GLX:             Xlib-based (Gallium)'
   else
     lines += 'GLX:             ' + with_glx
   endif

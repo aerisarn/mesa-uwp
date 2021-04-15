@@ -758,9 +758,6 @@ libmesa_gallium = static_library(
 )
 
 subdir('drivers/dri')
-if with_glx == 'xlib'
-  subdir('drivers/x11')
-endif
 if with_tests
   subdir('main/tests')
 endif
