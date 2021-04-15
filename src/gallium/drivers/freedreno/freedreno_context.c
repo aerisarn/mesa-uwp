@@ -698,7 +698,7 @@ fd_context_init_tc(struct pipe_context *pctx, unsigned flags)
       pctx, &ctx->screen->transfer_pool,
       fd_replace_buffer_storage,
       fd_fence_create_unflushed,
-      NULL,
+      fd_resource_busy,
       false,
       &ctx->tc);
 

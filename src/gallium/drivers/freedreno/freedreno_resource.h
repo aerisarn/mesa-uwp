@@ -346,6 +346,9 @@ void fd_replace_buffer_storage(struct pipe_context *ctx,
                                struct pipe_resource *dst,
                                struct pipe_resource *src,
                                uint32_t delete_buffer_id) in_dt;
+bool fd_resource_busy(struct pipe_screen *pscreen, struct pipe_resource *prsc,
+                      unsigned usage);
+
 void fd_resource_uncompress(struct fd_context *ctx,
                             struct fd_resource *rsc) assert_dt;
 void fd_resource_dump(struct fd_resource *rsc, const char *name);

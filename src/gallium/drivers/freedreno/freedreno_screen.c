@@ -163,6 +163,8 @@ fd_screen_destroy(struct pipe_screen *pscreen)
 
    simple_mtx_destroy(&screen->lock);
 
+   util_idalloc_mt_fini(&screen->buffer_ids);
+
    u_transfer_helper_destroy(pscreen->transfer_helper);
 
    if (screen->compiler)
@@ -1082,6 +1084,8 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
    fd_bc_init(&screen->batch_cache);
 
    list_inithead(&screen->context_list);
+
+   util_idalloc_mt_init_tc(&screen->buffer_ids);
 
    (void)simple_mtx_init(&screen->lock, mtx_plain);
 
