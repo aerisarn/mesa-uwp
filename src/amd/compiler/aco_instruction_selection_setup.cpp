@@ -390,15 +390,11 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
       /* TODO: NGG streamout */
       if (ctx->stage.hw == HWStage::NGG)
          assert(!ctx->args->shader_info->so.num_outputs);
-
-      /* TODO: check if the shader writes edge flags (not in Vulkan) */
-      ctx->ngg_nogs_early_prim_export = exec_list_is_singular(&nir_shader_get_entrypoint(nir)->body);
    }
 
-   if (ctx->stage == vertex_ngg && ctx->args->options->key.vs_common_out.export_prim_id) {
-      /* We need to store the primitive IDs in LDS */
-      unsigned lds_size = ctx->program->info->ngg_info.esgs_ring_size;
-      ctx->program->config->lds_size = DIV_ROUND_UP(lds_size, ctx->program->dev.lds_encoding_granule);
+   if (ctx->stage == vertex_ngg) {
+      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
+      assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) < (32 * 1024));
    }
 }
 
@@ -463,8 +459,11 @@ setup_tes_variables(isel_context *ctx, nir_shader *nir)
       /* TODO: NGG streamout */
       if (ctx->stage.hw == HWStage::NGG)
          assert(!ctx->args->shader_info->so.num_outputs);
+   }
 
-      ctx->ngg_nogs_early_prim_export = exec_list_is_singular(&nir_shader_get_entrypoint(nir)->body);
+   if (ctx->stage == tess_eval_ngg) {
+      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
+      assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) < (32 * 1024));
    }
 }
 

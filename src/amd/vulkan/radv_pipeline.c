@@ -3434,6 +3434,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
 
          /* Lower I/O intrinsics to memory instructions. */
          bool io_to_mem = radv_lower_io_to_mem(device, nir[i], &infos[i], pipeline_key);
+         bool lowered_ngg = radv_lower_ngg(device, nir[i], !!nir[MESA_SHADER_GEOMETRY], &infos[i], pipeline_key, &keys[i]);
 
          /* optimize the lowered ALU operations */
          bool more_algebraic = true;
@@ -3446,7 +3447,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
             NIR_PASS(more_algebraic, nir[i], nir_opt_algebraic);
          }
 
-         if (io_to_mem || i == MESA_SHADER_COMPUTE)
+         if (io_to_mem || lowered_ngg || i == MESA_SHADER_COMPUTE)
             NIR_PASS_V(nir[i], nir_opt_offsets);
 
          /* Do late algebraic optimization to turn add(a,

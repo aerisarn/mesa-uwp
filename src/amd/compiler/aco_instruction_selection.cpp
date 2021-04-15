@@ -4396,6 +4396,8 @@ bool load_input_from_temps(isel_context *ctx, nir_intrinsic_instr *instr, Temp d
    return true;
 }
 
+static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos);
+
 void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    if (ctx->stage == vertex_vs ||
@@ -4413,6 +4415,11 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
    } else {
       unreachable("Shader stage not implemented");
    }
+
+   /* For NGG VS and TES shaders the primitive ID is exported manually after the other exports so we have to emit an exp here manually */
+   if (ctx->stage.hw == HWStage::NGG && (ctx->stage.has(SWStage::VS) || ctx->stage.has(SWStage::TES)) &&
+       nir_intrinsic_io_semantics(instr).location == VARYING_SLOT_PRIMITIVE_ID)
+      export_vs_varying(ctx, VARYING_SLOT_PRIMITIVE_ID, false, NULL);
 }
 
 void emit_interp_instr(isel_context *ctx, unsigned idx, unsigned component, Temp src, Temp dst, Temp prim_mask)
@@ -8496,8 +8503,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          break;
       default:
          if (ctx->stage.hw == HWStage::NGG && !ctx->stage.has(SWStage::GS)) {
-            /* This is actually the same as gs_prim_id, but we call it differently when there is no SW GS. */
-            bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.vs_prim_id));
+            /* In case of NGG, the GS threads always have the primitive ID even if there is no SW GS. */
+            bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.gs_prim_id));
             break;
          }
          unreachable("Unimplemented shader stage for nir_intrinsic_load_primitive_id");
@@ -11330,126 +11337,6 @@ void ngg_emit_prim_export(isel_context *ctx, unsigned num_vertices_per_primitive
         false /* compressed */, true/* done */, false /* valid mask */);
 }
 
-void ngg_nogs_export_primitives(isel_context *ctx)
-{
-   /* Emit the things that NGG GS threads need to do, for shaders that don't have SW GS.
-    * These must always come before VS exports.
-    *
-    * It is recommended to do these as early as possible. They can be at the beginning when
-    * there is no SW GS and the shader doesn't write edge flags.
-    */
-
-   if_context ic;
-   Temp is_gs_thread = merged_wave_info_to_mask(ctx, 1);
-   begin_divergent_if_then(ctx, &ic, is_gs_thread);
-
-   Builder bld(ctx->program, ctx->block);
-   constexpr unsigned max_vertices_per_primitive = 3;
-   unsigned num_vertices_per_primitive = max_vertices_per_primitive;
-
-   assert(!ctx->stage.has(SWStage::GS));
-
-   if (ctx->stage == vertex_ngg) {
-      /* TODO: optimize for points & lines */
-   } else if (ctx->stage == tess_eval_ngg) {
-      if (ctx->shader->info.tess.point_mode)
-         num_vertices_per_primitive = 1;
-      else if (ctx->shader->info.tess.primitive_mode == GL_ISOLINES)
-         num_vertices_per_primitive = 2;
-   } else {
-      unreachable("Unsupported NGG non-GS shader stage");
-   }
-
-   Temp vtxindex[max_vertices_per_primitive];
-   if (!ctx->args->options->key.vs_common_out.as_ngg_passthrough) {
-      vtxindex[0] = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu),
-                           get_arg(ctx, ctx->args->ac.gs_vtx_offset[0]));
-      vtxindex[1] = num_vertices_per_primitive < 2 ? Temp(0, v1) :
-                  bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
-                           get_arg(ctx, ctx->args->ac.gs_vtx_offset[0]), Operand(16u), Operand(16u));
-      vtxindex[2] = num_vertices_per_primitive < 3 ? Temp(0, v1) :
-                  bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu),
-                           get_arg(ctx, ctx->args->ac.gs_vtx_offset[2]));
-   }
-
-   /* Export primitive data to the index buffer. */
-   ngg_emit_prim_export(ctx, num_vertices_per_primitive, vtxindex);
-
-   /* Export primitive ID. */
-   if (ctx->stage == vertex_ngg && ctx->args->options->key.vs_common_out.export_prim_id) {
-      /* Copy Primitive IDs from GS threads to the LDS address corresponding to the ES thread of the provoking vertex. */
-      Temp prim_id = get_arg(ctx, ctx->args->ac.gs_prim_id);
-      unsigned provoking_vtx_in_prim = 0;
-
-      /* For provoking vertex last mode, use num_vtx_in_prim - 1. */
-      if (ctx->args->options->key.vs.provoking_vtx_last)
-         provoking_vtx_in_prim = ctx->args->options->key.vs.outprim;
-
-      Temp provoking_vtx_index = vtxindex[provoking_vtx_in_prim];
-      Temp addr = bld.v_mul_imm(bld.def(v1), provoking_vtx_index, 4u);
-
-      store_lds(ctx, 4, prim_id, 0x1u, addr, 0u, 4u);
-   }
-
-   begin_divergent_if_else(ctx, &ic);
-   end_divergent_if(ctx, &ic);
-}
-
-void ngg_nogs_export_prim_id(isel_context *ctx)
-{
-   assert(ctx->args->options->key.vs_common_out.export_prim_id);
-   Temp prim_id;
-
-   if (ctx->stage == vertex_ngg) {
-      /* Wait for GS threads to store primitive ID in LDS. */
-      Builder bld(ctx->program, ctx->block);
-      create_workgroup_barrier(bld);
-
-      /* Calculate LDS address where the GS threads stored the primitive ID. */
-      Temp thread_id_in_tg = thread_id_in_threadgroup(ctx);
-      Temp addr = bld.v_mul24_imm(bld.def(v1), thread_id_in_tg, 4u);
-
-      /* Load primitive ID from LDS. */
-      prim_id = load_lds(ctx, 4, bld.tmp(v1), addr, 0u, 4u);
-   } else if (ctx->stage == tess_eval_ngg) {
-      /* TES: Just use the patch ID as the primitive ID. */
-      prim_id = get_arg(ctx, ctx->args->ac.tes_patch_id);
-   } else {
-      unreachable("unsupported NGG non-GS shader stage.");
-   }
-
-   ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
-   ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] = prim_id;
-
-   export_vs_varying(ctx, VARYING_SLOT_PRIMITIVE_ID, false, nullptr);
-}
-
-void ngg_nogs_prelude(isel_context *ctx)
-{
-   ngg_emit_wave0_sendmsg_gs_alloc_req(ctx);
-
-   if (ctx->ngg_nogs_early_prim_export)
-      ngg_nogs_export_primitives(ctx);
-}
-
-void ngg_nogs_late_export_finale(isel_context *ctx)
-{
-   assert(!ctx->ngg_nogs_early_prim_export);
-
-   /* Export VS/TES primitives. */
-   ngg_nogs_export_primitives(ctx);
-
-   /* Export the primitive ID for VS - needs to read LDS written by GS threads. */
-   if (ctx->args->options->key.vs_common_out.export_prim_id && ctx->stage.has(SWStage::VS)) {
-      if_context ic;
-      Temp is_es_thread = merged_wave_info_to_mask(ctx, 0);
-      begin_divergent_if_then(ctx, &ic, is_es_thread);
-      ngg_nogs_export_prim_id(ctx);
-      begin_divergent_if_else(ctx, &ic);
-      end_divergent_if(ctx, &ic);
-   }
-}
-
 std::pair<Temp, Temp> ngg_gs_workgroup_reduce_and_scan(isel_context *ctx, Temp src_mask)
 {
    /* Workgroup scan for NGG GS.
@@ -11866,7 +11753,6 @@ void select_program(Program *program,
 {
    isel_context ctx = setup_isel_context(program, shader_count, shaders, config, args, false);
    if_context ic_merged_wave_info;
-   bool ngg_no_gs = ctx.stage.hw == HWStage::NGG && !ctx.stage.has(SWStage::GS);
    bool ngg_gs    = ctx.stage.hw == HWStage::NGG &&  ctx.stage.has(SWStage::GS);
 
    for (unsigned i = 0; i < shader_count; i++) {
@@ -11890,9 +11776,7 @@ void select_program(Program *program,
          }
       }
 
-      if (ngg_no_gs)
-         ngg_nogs_prelude(&ctx);
-      else if (!i && ngg_gs)
+      if (!i && ngg_gs)
          ngg_gs_prelude(&ctx);
 
       /* In a merged VS+TCS HS, the VS implementation can be completely empty. */
@@ -11903,7 +11787,7 @@ void select_program(Program *program,
                            (nir->info.stage == MESA_SHADER_TESS_EVAL &&
                             ctx.stage == tess_eval_geometry_gs));
 
-      bool check_merged_wave_info = ctx.tcs_in_out_eq ? i == 0 : ((shader_count >= 2 && !empty_shader) || ngg_no_gs);
+      bool check_merged_wave_info = ctx.tcs_in_out_eq ? i == 0 : (shader_count >= 2 && !empty_shader);
       bool endif_merged_wave_info = ctx.tcs_in_out_eq ? i == 1 : check_merged_wave_info;
 
       if (i && ngg_gs) {
@@ -11943,10 +11827,6 @@ void select_program(Program *program,
 
       if (ctx.stage.hw == HWStage::VS) {
          create_vs_exports(&ctx);
-      } else if (ngg_no_gs) {
-         create_vs_exports(&ctx);
-         if (ctx.args->options->key.vs_common_out.export_prim_id && (ctx.ngg_nogs_early_prim_export || ctx.stage.has(SWStage::TES)))
-            ngg_nogs_export_prim_id(&ctx);
       } else if (nir->info.stage == MESA_SHADER_GEOMETRY && !ngg_gs) {
          Builder bld(ctx.program, ctx.block);
          bld.barrier(aco_opcode::p_barrier,
@@ -11963,9 +11843,7 @@ void select_program(Program *program,
          end_divergent_if(&ctx, &ic_merged_wave_info);
       }
 
-      if (ngg_no_gs && !ctx.ngg_nogs_early_prim_export)
-         ngg_nogs_late_export_finale(&ctx);
-      else if (ngg_gs && nir->info.stage == MESA_SHADER_GEOMETRY)
+      if (ngg_gs && nir->info.stage == MESA_SHADER_GEOMETRY)
          ngg_gs_finale(&ctx);
 
       if (i == 0 && ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq) {
