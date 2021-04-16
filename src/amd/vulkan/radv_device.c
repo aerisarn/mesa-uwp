@@ -853,6 +853,7 @@ static const struct debug_control radv_debug_options[] = {
    {"novrsflatshading", RADV_DEBUG_NO_VRS_FLAT_SHADING},
    {"noatocdithering", RADV_DEBUG_NO_ATOC_DITHERING},
    {"nonggc", RADV_DEBUG_NO_NGGC},
+   {"prologs", RADV_DEBUG_DUMP_PROLOGS},
    {NULL, 0}};
 
 const char *
@@ -2666,6 +2667,30 @@ radv_device_finish_border_color(struct radv_device *device)
    }
 }
 
+static VkResult
+radv_device_init_vs_prologs(struct radv_device *device)
+{
+   u_rwlock_init(&device->vs_prologs_lock);
+   device->vs_prologs = _mesa_hash_table_create(NULL, &radv_hash_vs_prolog, &radv_cmp_vs_prolog);
+   if (!device->vs_prologs)
+      return vk_error(device->physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   return VK_SUCCESS;
+}
+
+static void
+radv_device_finish_vs_prologs(struct radv_device *device)
+{
+   if (device->vs_prologs) {
+      hash_table_foreach(device->vs_prologs, entry)
+      {
+         free((void *)entry->key);
+         radv_prolog_destroy(device, entry->data);
+      }
+      _mesa_hash_table_destroy(device->vs_prologs, NULL);
+   }
+}
+
 VkResult
 radv_device_init_vrs_state(struct radv_device *device)
 {
@@ -2799,6 +2824,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    bool custom_border_colors = false;
    bool attachment_vrs_enabled = false;
    bool image_float32_atomics = false;
+   bool vs_prologs = false;
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
@@ -3090,6 +3116,12 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
          goto fail;
    }
 
+   if (vs_prologs) {
+      result = radv_device_init_vs_prologs(device);
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
+
    for (int family = 0; family < RADV_MAX_QUEUE_FAMILIES; ++family) {
       device->empty_cs[family] = device->ws->cs_create(device->ws, family);
       if (!device->empty_cs[family])
@@ -3156,6 +3188,7 @@ fail:
    if (device->gfx_init)
       device->ws->buffer_destroy(device->ws, device->gfx_init);
 
+   radv_device_finish_vs_prologs(device);
    radv_device_finish_border_color(device);
 
    for (unsigned i = 0; i < RADV_MAX_QUEUE_FAMILIES; i++) {
@@ -3186,6 +3219,7 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    if (device->gfx_init)
       device->ws->buffer_destroy(device->ws, device->gfx_init);
 
+   radv_device_finish_vs_prologs(device);
    radv_device_finish_border_color(device);
    radv_device_finish_vrs_image(device);
 

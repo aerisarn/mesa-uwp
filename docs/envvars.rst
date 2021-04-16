@@ -670,6 +670,8 @@ RADV driver environment variables
       disable VRS for flat shading (only on GFX10.3+)
    ``preoptir``
       dump LLVM IR before any optimizations
+   ``prologs``
+      dump vertex shader prologs
    ``shaders``
       dump shaders
    ``shaderstats``

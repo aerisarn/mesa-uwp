@@ -2742,8 +2742,8 @@ radv_determine_ngg_settings(struct radv_pipeline *pipeline,
                                  : nir[es_stage]->info.tess.primitive_mode == GL_ISOLINES ? 2
                                                                                           : 3;
 
-      infos[es_stage].has_ngg_culling =
-         radv_consider_culling(device, nir[es_stage], ps_inputs_read, num_vertices_per_prim);
+      infos[es_stage].has_ngg_culling = radv_consider_culling(
+         device, nir[es_stage], ps_inputs_read, num_vertices_per_prim, &infos[es_stage]);
 
       nir_function_impl *impl = nir_shader_get_entrypoint(nir[es_stage]);
       infos[es_stage].has_ngg_early_prim_export = exec_list_is_singular(&impl->body);
@@ -5386,7 +5386,10 @@ radv_pipeline_init_vertex_input_state(struct radv_pipeline *pipeline,
    }
 
    pipeline->use_per_attribute_vb_descs = info->vs.use_per_attribute_vb_descs;
-   pipeline->vb_desc_usage_mask = info->vs.vb_desc_usage_mask;
+   if (info->vs.dynamic_inputs)
+      pipeline->vb_desc_usage_mask = BITFIELD_MASK(util_last_bit(info->vs.vb_desc_usage_mask));
+   else
+      pipeline->vb_desc_usage_mask = info->vs.vb_desc_usage_mask;
    pipeline->vb_desc_alloc_size = util_bitcount(pipeline->vb_desc_usage_mask) * 16;
 }
 

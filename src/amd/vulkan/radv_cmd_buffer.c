@@ -37,6 +37,8 @@
 
 #include "ac_debug.h"
 
+#include "util/fast_idiv_by_const.h"
+
 enum {
    RADV_PREFETCH_VBO_DESCRIPTORS = (1 << 0),
    RADV_PREFETCH_VS = (1 << 1),
@@ -2647,8 +2649,300 @@ radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
 
+union vs_prolog_key_header {
+   struct {
+      uint32_t key_size : 8;
+      uint32_t num_attributes : 6;
+      uint32_t as_ls : 1;
+      uint32_t is_ngg : 1;
+      uint32_t wave32 : 1;
+      uint32_t next_stage : 3;
+      uint32_t instance_rate_inputs : 1;
+      uint32_t alpha_adjust_lo : 1;
+      uint32_t alpha_adjust_hi : 1;
+      uint32_t misaligned_mask : 1;
+      uint32_t post_shuffle : 1;
+      uint32_t nontrivial_divisors : 1;
+      /* We need this to ensure the padding is zero. It's useful even if it's unused. */
+      uint32_t padding0 : 6;
+   };
+   uint32_t v;
+};
+
+uint32_t
+radv_hash_vs_prolog(const void *key_)
+{
+   const uint32_t *key = key_;
+   union vs_prolog_key_header header;
+   header.v = key[0];
+   return _mesa_hash_data(key, header.key_size);
+}
+
+bool
+radv_cmp_vs_prolog(const void *a_, const void *b_)
+{
+   const uint32_t *a = a_;
+   const uint32_t *b = b_;
+   if (a[0] != b[0])
+      return false;
+
+   union vs_prolog_key_header header;
+   header.v = a[0];
+   return memcmp(a, b, header.key_size) == 0;
+}
+
+static struct radv_shader_prolog *
+lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant *vs_shader,
+                 uint32_t *nontrivial_divisors)
+{
+   STATIC_ASSERT(sizeof(union vs_prolog_key_header) == 4);
+   assert(vs_shader->info.vs.dynamic_inputs);
+
+   struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
+   struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct radv_device *device = cmd_buffer->device;
+   enum chip_class chip = device->physical_device->rad_info.chip_class;
+
+   unsigned num_attributes = util_last_bit(vs_shader->info.vs.vb_desc_usage_mask);
+   uint32_t attribute_mask = BITFIELD_MASK(num_attributes);
+
+   uint32_t instance_rate_inputs = state->instance_rate_inputs & attribute_mask;
+   *nontrivial_divisors = state->nontrivial_divisors & attribute_mask;
+   uint32_t misaligned_mask = 0;
+   if (chip == GFX6 || chip >= GFX10) {
+      u_foreach_bit(index, state->attribute_mask & attribute_mask)
+      {
+         uint8_t req = state->format_align_req_minus_1[index];
+         struct radv_vertex_binding *vb = &cmd_buffer->vertex_bindings[state->bindings[index]];
+         VkDeviceSize offset = vb->offset + state->offsets[index];
+         if (vb->buffer && ((offset & req) || (vb->stride & req)))
+            misaligned_mask |= 1u << index;
+      }
+   }
+
+   struct radv_vs_prolog_key key;
+   key.state = state;
+   key.num_attributes = num_attributes;
+   key.misaligned_mask = misaligned_mask;
+   /* The instance ID input VGPR is placed differently when as_ls=true. */
+   key.as_ls = vs_shader->info.vs.as_ls && instance_rate_inputs;
+   key.is_ngg = vs_shader->info.is_ngg;
+   key.wave32 = vs_shader->info.wave_size == 32;
+   key.next_stage = MESA_SHADER_VERTEX;
+   if (pipeline->shaders[MESA_SHADER_TESS_CTRL] == vs_shader)
+      key.next_stage = MESA_SHADER_TESS_CTRL;
+   else if (pipeline->shaders[MESA_SHADER_GEOMETRY] == vs_shader)
+      key.next_stage = MESA_SHADER_GEOMETRY;
+
+   uint32_t key_words[16];
+   unsigned key_size = 1;
+
+   union vs_prolog_key_header header;
+   header.v = 0;
+   header.num_attributes = num_attributes;
+   header.as_ls = key.as_ls;
+   header.is_ngg = key.is_ngg;
+   header.wave32 = key.wave32;
+   header.next_stage = key.next_stage;
+
+   if (instance_rate_inputs & ~*nontrivial_divisors) {
+      header.instance_rate_inputs = true;
+      key_words[key_size++] = instance_rate_inputs;
+   }
+   if (*nontrivial_divisors) {
+      header.nontrivial_divisors = true;
+      key_words[key_size++] = *nontrivial_divisors;
+   }
+   if (misaligned_mask) {
+      header.misaligned_mask = true;
+      key_words[key_size++] = misaligned_mask;
+
+      uint8_t *formats = (uint8_t *)&key_words[key_size];
+      unsigned num_formats = 0;
+      u_foreach_bit(index, misaligned_mask) formats[num_formats++] = state->formats[index];
+      while (num_formats & 0x3)
+         formats[num_formats++] = 0;
+      key_size += num_formats / 4u;
+
+      if (state->post_shuffle & attribute_mask) {
+         header.post_shuffle = true;
+         key_words[key_size++] = state->post_shuffle & attribute_mask;
+      }
+   }
+   if (state->alpha_adjust_lo & attribute_mask) {
+      header.alpha_adjust_lo = true;
+      key_words[key_size++] = state->alpha_adjust_lo & attribute_mask;
+   }
+   if (state->alpha_adjust_hi & attribute_mask) {
+      header.alpha_adjust_hi = true;
+      key_words[key_size++] = state->alpha_adjust_hi & attribute_mask;
+   }
+
+   header.key_size = key_size * sizeof(key_words[0]);
+   key_words[0] = header.v;
+
+   uint32_t hash = radv_hash_vs_prolog(key_words);
+
+   if (cmd_buffer->state.emitted_vs_prolog &&
+       cmd_buffer->state.emitted_vs_prolog_key_hash == hash &&
+       radv_cmp_vs_prolog(key_words, cmd_buffer->state.emitted_vs_prolog_key))
+      return cmd_buffer->state.emitted_vs_prolog;
+
+   u_rwlock_rdlock(&device->vs_prologs_lock);
+   struct hash_entry *prolog_entry =
+      _mesa_hash_table_search_pre_hashed(device->vs_prologs, hash, key_words);
+   u_rwlock_rdunlock(&device->vs_prologs_lock);
+
+   if (!prolog_entry) {
+      u_rwlock_wrlock(&device->vs_prologs_lock);
+      prolog_entry = _mesa_hash_table_search_pre_hashed(device->vs_prologs, hash, key_words);
+      if (prolog_entry) {
+         u_rwlock_wrunlock(&device->vs_prologs_lock);
+         return prolog_entry->data;
+      }
+
+      struct radv_shader_prolog *prolog = radv_create_vs_prolog(device, &key);
+      uint32_t *key2 = malloc(key_size * 4);
+      if (!prolog || !key2) {
+         free(key2);
+         u_rwlock_wrunlock(&device->vs_prologs_lock);
+         return NULL;
+      }
+      memcpy(key2, key_words, key_size * 4);
+      _mesa_hash_table_insert_pre_hashed(device->vs_prologs, hash, key2, prolog);
+
+      u_rwlock_wrunlock(&device->vs_prologs_lock);
+      return prolog;
+   }
+
+   return prolog_entry->data;
+}
+
 static void
-radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
+emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant *vs_shader,
+                 struct radv_shader_prolog *prolog, bool pipeline_is_dirty)
+{
+   /* no need to re-emit anything in this case */
+   if (cmd_buffer->state.emitted_vs_prolog == prolog && !pipeline_is_dirty)
+      return;
+
+   enum chip_class chip = cmd_buffer->device->physical_device->rad_info.chip_class;
+   struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   uint64_t prolog_va = radv_buffer_get_va(prolog->bo) + prolog->alloc->offset;
+
+   assert(cmd_buffer->state.emitted_pipeline == cmd_buffer->state.pipeline);
+   assert(vs_shader->info.num_input_sgprs <= prolog->num_preserved_sgprs);
+
+   uint32_t rsrc1 = vs_shader->config.rsrc1;
+   if (chip < GFX10 && G_00B228_SGPRS(prolog->rsrc1) > G_00B228_SGPRS(vs_shader->config.rsrc1))
+      rsrc1 = (rsrc1 & C_00B228_SGPRS) | (prolog->rsrc1 & ~C_00B228_SGPRS);
+
+   /* The main shader must not use less VGPRs than the prolog, otherwise shared vgprs might not
+    * work.
+    */
+   assert(G_00B848_VGPRS(vs_shader->config.rsrc1) >= G_00B848_VGPRS(prolog->rsrc1));
+
+   unsigned pgm_lo_reg = R_00B120_SPI_SHADER_PGM_LO_VS;
+   unsigned rsrc1_reg = R_00B128_SPI_SHADER_PGM_RSRC1_VS;
+   if (vs_shader->info.is_ngg || pipeline->shaders[MESA_SHADER_GEOMETRY] == vs_shader) {
+      pgm_lo_reg = chip >= GFX10 ? R_00B320_SPI_SHADER_PGM_LO_ES : R_00B210_SPI_SHADER_PGM_LO_ES;
+      rsrc1_reg = R_00B228_SPI_SHADER_PGM_RSRC1_GS;
+   } else if (pipeline->shaders[MESA_SHADER_TESS_CTRL] == vs_shader) {
+      pgm_lo_reg = chip >= GFX10 ? R_00B520_SPI_SHADER_PGM_LO_LS : R_00B410_SPI_SHADER_PGM_LO_LS;
+      rsrc1_reg = R_00B428_SPI_SHADER_PGM_RSRC1_HS;
+   } else if (vs_shader->info.vs.as_ls) {
+      pgm_lo_reg = R_00B520_SPI_SHADER_PGM_LO_LS;
+      rsrc1_reg = R_00B528_SPI_SHADER_PGM_RSRC1_LS;
+   } else if (vs_shader->info.vs.as_es) {
+      pgm_lo_reg = R_00B320_SPI_SHADER_PGM_LO_ES;
+      rsrc1_reg = R_00B328_SPI_SHADER_PGM_RSRC1_ES;
+   }
+
+   radeon_set_sh_reg_seq(cmd_buffer->cs, pgm_lo_reg, 2);
+   radeon_emit(cmd_buffer->cs, prolog_va >> 8);
+   radeon_emit(cmd_buffer->cs, S_00B124_MEM_BASE(prolog_va >> 40));
+
+   if (chip < GFX10)
+      radeon_set_sh_reg(cmd_buffer->cs, rsrc1_reg, rsrc1);
+   else
+      assert(rsrc1 == vs_shader->config.rsrc1);
+
+   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, prolog->bo);
+}
+
+static void
+emit_prolog_inputs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant *vs_shader,
+                   uint32_t nontrivial_divisors, bool pipeline_is_dirty)
+{
+   /* no need to re-emit anything in this case */
+   if (!nontrivial_divisors && !pipeline_is_dirty)
+      return;
+
+   struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
+   uint64_t input_va = radv_shader_variant_get_va(vs_shader);
+
+   if (nontrivial_divisors) {
+      unsigned inputs_offset;
+      uint32_t *inputs;
+      unsigned size = 8 + util_bitcount(nontrivial_divisors) * 8;
+      if (!radv_cmd_buffer_upload_alloc(cmd_buffer, size, &inputs_offset, (void **)&inputs))
+         return;
+
+      *(inputs++) = input_va;
+      *(inputs++) = input_va >> 32;
+
+      u_foreach_bit(index, nontrivial_divisors)
+      {
+         uint32_t div = state->divisors[index];
+         if (div == 0) {
+            *(inputs++) = 0;
+            *(inputs++) = 1;
+         } else if (util_is_power_of_two_or_zero(div)) {
+            *(inputs++) = util_logbase2(div) | (1 << 8);
+            *(inputs++) = 0xffffffffu;
+         } else {
+            struct util_fast_udiv_info info = util_compute_fast_udiv_info(div, 32, 32);
+            *(inputs++) = info.pre_shift | (info.increment << 8) | (info.post_shift << 16);
+            *(inputs++) = info.multiplier;
+         }
+      }
+
+      input_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + inputs_offset;
+   }
+
+   struct radv_userdata_info *loc =
+      &vs_shader->info.user_sgprs_locs.shader_data[AC_UD_VS_PROLOG_INPUTS];
+   uint32_t base_reg = cmd_buffer->state.pipeline->user_data_0[MESA_SHADER_VERTEX];
+   assert(loc->sgpr_idx != -1);
+   assert(loc->num_sgprs == 2);
+   radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
+                            input_va, true);
+}
+
+static void
+radv_emit_vertex_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
+{
+   struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct radv_shader_variant *vs_shader = radv_get_shader(pipeline, MESA_SHADER_VERTEX);
+
+   if (!vs_shader->info.vs.has_prolog)
+      return;
+
+   uint32_t nontrivial_divisors;
+   struct radv_shader_prolog *prolog =
+      lookup_vs_prolog(cmd_buffer, vs_shader, &nontrivial_divisors);
+   if (!prolog) {
+      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      return;
+   }
+   emit_prolog_regs(cmd_buffer, vs_shader, prolog, pipeline_is_dirty);
+   emit_prolog_inputs(cmd_buffer, vs_shader, nontrivial_divisors, pipeline_is_dirty);
+
+   cmd_buffer->state.emitted_vs_prolog = prolog;
+}
+
+static void
+radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    uint64_t states =
       cmd_buffer->state.dirty & cmd_buffer->state.emitted_pipeline->graphics.needed_dynamic_state;
@@ -2716,6 +3010,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE)
       radv_emit_color_write_enable(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_VERTEX_STATE)
+      radv_emit_vertex_state(cmd_buffer, pipeline_is_dirty);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -2923,33 +3220,105 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
    cmd_buffer->push_constant_stages |= dirty_stages;
 }
 
+enum radv_dst_sel {
+   DST_SEL_0001 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_0) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_0) |
+                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_0) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_1),
+   DST_SEL_X001 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_0) |
+                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_0) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_1),
+   DST_SEL_XY01 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_0) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_1),
+   DST_SEL_XYZ1 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_1),
+   DST_SEL_XYZW = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W),
+   DST_SEL_ZYXW = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W),
+};
+
+static const uint32_t data_format_dst_sel[] = {
+   [V_008F0C_BUF_DATA_FORMAT_INVALID] = DST_SEL_0001,
+   [V_008F0C_BUF_DATA_FORMAT_8] = DST_SEL_X001,
+   [V_008F0C_BUF_DATA_FORMAT_16] = DST_SEL_X001,
+   [V_008F0C_BUF_DATA_FORMAT_8_8] = DST_SEL_XY01,
+   [V_008F0C_BUF_DATA_FORMAT_32] = DST_SEL_X001,
+   [V_008F0C_BUF_DATA_FORMAT_16_16] = DST_SEL_XY01,
+   [V_008F0C_BUF_DATA_FORMAT_10_11_11] = DST_SEL_XYZ1,
+   [V_008F0C_BUF_DATA_FORMAT_11_11_10] = DST_SEL_XYZ1,
+   [V_008F0C_BUF_DATA_FORMAT_10_10_10_2] = DST_SEL_XYZW,
+   [V_008F0C_BUF_DATA_FORMAT_2_10_10_10] = DST_SEL_XYZW,
+   [V_008F0C_BUF_DATA_FORMAT_8_8_8_8] = DST_SEL_XYZW,
+   [V_008F0C_BUF_DATA_FORMAT_32_32] = DST_SEL_XY01,
+   [V_008F0C_BUF_DATA_FORMAT_16_16_16_16] = DST_SEL_XYZW,
+   [V_008F0C_BUF_DATA_FORMAT_32_32_32] = DST_SEL_XYZ1,
+   [V_008F0C_BUF_DATA_FORMAT_32_32_32_32] = DST_SEL_XYZW,
+};
+
 static void
 radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    if ((pipeline_is_dirty || (cmd_buffer->state.dirty & RADV_CMD_DIRTY_VERTEX_BUFFER)) &&
        cmd_buffer->state.pipeline->vb_desc_usage_mask) {
       struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+      struct radv_shader_variant *vs_shader = radv_get_shader(pipeline, MESA_SHADER_VERTEX);
+      enum chip_class chip = cmd_buffer->device->physical_device->rad_info.chip_class;
       unsigned vb_offset;
       void *vb_ptr;
       unsigned desc_index = 0;
       uint32_t mask = pipeline->vb_desc_usage_mask;
       uint64_t va;
+      struct radv_vs_input_state *vs_state =
+         vs_shader->info.vs.dynamic_inputs ? &cmd_buffer->state.dynamic_vs_input : NULL;
 
       /* allocate some descriptor state for vertex buffers */
       if (!radv_cmd_buffer_upload_alloc(cmd_buffer, pipeline->vb_desc_alloc_size, &vb_offset, &vb_ptr))
          return;
 
+      assert(!vs_state || pipeline->use_per_attribute_vb_descs);
+
       while (mask) {
          unsigned i = u_bit_scan(&mask);
          uint32_t *desc = &((uint32_t *)vb_ptr)[desc_index++ * 4];
-         uint32_t offset;
-         unsigned binding = pipeline->use_per_attribute_vb_descs ? pipeline->attrib_bindings[i] : i;
+         uint32_t offset, rsrc_word3;
+         unsigned binding =
+            vs_state ? cmd_buffer->state.dynamic_vs_input.bindings[i]
+                     : (pipeline->use_per_attribute_vb_descs ? pipeline->attrib_bindings[i] : i);
          struct radv_buffer *buffer = cmd_buffer->vertex_bindings[binding].buffer;
          unsigned num_records;
          unsigned stride;
 
+         if (vs_state) {
+            unsigned format = vs_state->formats[i];
+            unsigned dfmt = format & 0xf;
+            unsigned nfmt = (format >> 4) & 0x7;
+
+            rsrc_word3 =
+               vs_state->post_shuffle & (1u << i) ? DST_SEL_ZYXW : data_format_dst_sel[dfmt];
+
+            if (chip >= GFX10)
+               rsrc_word3 |= S_008F0C_FORMAT(ac_get_tbuffer_format(chip, dfmt, nfmt));
+            else
+               rsrc_word3 |= S_008F0C_NUM_FORMAT(nfmt) | S_008F0C_DATA_FORMAT(dfmt);
+         } else {
+            if (chip >= GFX10)
+               rsrc_word3 = DST_SEL_XYZW | S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_UINT);
+            else
+               rsrc_word3 = DST_SEL_XYZW | S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
+                            S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+         }
+
          if (!buffer) {
-            memset(desc, 0, 4 * 4);
+            if (vs_state) {
+               /* Stride needs to be non-zero on GFX9, or else bounds checking is disabled. We need
+                * to include the format/word3 so that the alpha channel is 1 for formats without an
+                * alpha channel.
+                */
+               desc[0] = 0;
+               desc[1] = S_008F04_STRIDE(16);
+               desc[2] = 0;
+               desc[3] = rsrc_word3;
+            } else {
+               memset(desc, 0, 4 * 4);
+            }
             continue;
          }
 
@@ -2957,6 +3326,8 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
 
          offset = cmd_buffer->vertex_bindings[binding].offset;
          va += offset + buffer->offset;
+         if (vs_state)
+            va += vs_state->offsets[i];
 
          if (cmd_buffer->vertex_bindings[binding].size) {
             num_records = cmd_buffer->vertex_bindings[binding].size;
@@ -2970,9 +3341,9 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
             stride = pipeline->binding_stride[binding];
          }
 
-         enum chip_class chip = cmd_buffer->device->physical_device->rad_info.chip_class;
          if (pipeline->use_per_attribute_vb_descs) {
-            uint32_t attrib_end = pipeline->attrib_ends[i];
+            uint32_t attrib_end = vs_state ? vs_state->offsets[i] + vs_state->format_sizes[i]
+                                           : pipeline->attrib_ends[i];
 
             if (num_records < attrib_end) {
                num_records = 0; /* not enough space for one vertex */
@@ -2997,7 +3368,14 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
                 * num_records and stride are zero. This doesn't seem necessary on GFX8, GFX10 and
                 * GFX10.3 but it doesn't hurt.
                 */
-               memset(desc, 0, 16);
+               if (vs_state) {
+                  desc[0] = 0;
+                  desc[1] = S_008F04_STRIDE(16);
+                  desc[2] = 0;
+                  desc[3] = rsrc_word3;
+               } else {
+                  memset(desc, 0, 16);
+               }
                continue;
             }
          } else {
@@ -3005,22 +3383,13 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
                num_records = DIV_ROUND_UP(num_records, stride);
          }
 
-         uint32_t rsrc_word3 =
-            S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-            S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
-
          if (chip >= GFX10) {
             /* OOB_SELECT chooses the out-of-bounds check:
              * - 1: index >= NUM_RECORDS (Structured)
              * - 3: offset >= NUM_RECORDS (Raw)
              */
             int oob_select = stride ? V_008F0C_OOB_SELECT_STRUCTURED : V_008F0C_OOB_SELECT_RAW;
-
-            rsrc_word3 |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_UINT) |
-                          S_008F0C_OOB_SELECT(oob_select) | S_008F0C_RESOURCE_LEVEL(1);
-         } else {
-            rsrc_word3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
-                          S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+            rsrc_word3 |= S_008F0C_OOB_SELECT(oob_select) | S_008F0C_RESOURCE_LEVEL(1);
          }
 
          desc[0] = va;
@@ -4009,7 +4378,7 @@ radv_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer, uint32_t firstBindi
       return;
    }
 
-   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
+   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_STATE;
 }
 
 static uint32_t
@@ -4397,7 +4766,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       if (!pipeline)
          break;
 
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT;
       cmd_buffer->push_constant_stages |= pipeline->active_stages;
 
       /* the new vertex shader might not have the same user regs */
@@ -5712,7 +6081,7 @@ radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
    /* Index, vertex and streamout buffers don't change context regs, and
     * pipeline is already handled.
     */
-   used_states &= ~(RADV_CMD_DIRTY_INDEX_BUFFER | RADV_CMD_DIRTY_VERTEX_BUFFER |
+   used_states &= ~(RADV_CMD_DIRTY_INDEX_BUFFER | RADV_CMD_DIRTY_VERTEX_STATE |
                     RADV_CMD_DIRTY_STREAMOUT_BUFFER | RADV_CMD_DIRTY_PIPELINE);
 
    if (cmd_buffer->state.dirty & used_states)
@@ -5918,7 +6287,8 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
 }
 
 static void
-radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info)
+radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info,
+                              bool pipeline_is_dirty)
 {
    bool late_scissor_emission;
 
@@ -5955,7 +6325,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
       }
    }
 
-   radv_cmd_buffer_flush_dynamic_state(cmd_buffer);
+   radv_cmd_buffer_flush_dynamic_state(cmd_buffer, pipeline_is_dirty);
 
    radv_emit_draw_registers(cmd_buffer, info);
 
@@ -6004,7 +6374,7 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
        * the CUs are idle is very short. (there are only SET_SH
        * packets between the wait and the draw)
        */
-      radv_emit_all_graphics_states(cmd_buffer, info);
+      radv_emit_all_graphics_states(cmd_buffer, info, pipeline_is_dirty);
       si_emit_cache_flush(cmd_buffer);
       /* <-- CUs are idle here --> */
 
@@ -6024,7 +6394,7 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
 
       radv_upload_graphics_shader_descriptors(cmd_buffer, pipeline_is_dirty);
 
-      radv_emit_all_graphics_states(cmd_buffer, info);
+      radv_emit_all_graphics_states(cmd_buffer, info, pipeline_is_dirty);
    }
 
    radv_describe_draw(cmd_buffer);

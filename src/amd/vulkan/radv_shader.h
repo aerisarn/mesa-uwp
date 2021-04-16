@@ -46,6 +46,7 @@ struct radv_device;
 struct radv_pipeline;
 struct radv_pipeline_cache;
 struct radv_pipeline_key;
+struct radv_vs_input_state;
 
 enum radv_vs_input_alpha_adjust {
    ALPHA_ADJUST_NONE = 0,
@@ -71,6 +72,7 @@ struct radv_pipeline_key {
       enum radv_vs_input_alpha_adjust vertex_alpha_adjust[MAX_VERTEX_ATTRIBS];
       uint32_t vertex_post_shuffle;
       uint32_t provoking_vtx_last : 1;
+      uint32_t dynamic_input_state : 1;
       uint8_t topology;
    } vs;
 
@@ -145,6 +147,7 @@ enum radv_ud_index {
    AC_UD_SHADER_START = 9,
    AC_UD_VS_VERTEX_BUFFERS = AC_UD_SHADER_START,
    AC_UD_VS_BASE_VERTEX_START_INSTANCE,
+   AC_UD_VS_PROLOG_INPUTS,
    AC_UD_VS_MAX_UD,
    AC_UD_PS_MAX_UD,
    AC_UD_CS_GRID_SIZE = AC_UD_SHADER_START,
@@ -259,6 +262,8 @@ struct radv_shader_info {
       bool needs_base_instance;
       bool use_per_attribute_vb_descs;
       uint32_t vb_desc_usage_mask;
+      bool has_prolog;
+      bool dynamic_inputs;
    } vs;
    struct {
       uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
@@ -353,6 +358,37 @@ struct radv_shader_info {
    struct gfx10_ngg_info ngg_info;
 };
 
+struct radv_vs_input_state {
+   uint32_t attribute_mask;
+   uint8_t bindings[MAX_VERTEX_ATTRIBS];
+
+   uint32_t instance_rate_inputs;
+   uint32_t nontrivial_divisors;
+   uint32_t divisors[MAX_VERTEX_ATTRIBS];
+
+   uint32_t offsets[MAX_VERTEX_ATTRIBS];
+
+   uint32_t post_shuffle;
+   /* Having two separate fields instead of a single uint64_t makes it easier to remove attributes
+    * using bitwise arithmetic.
+    */
+   uint32_t alpha_adjust_lo;
+   uint32_t alpha_adjust_hi;
+   uint8_t formats[MAX_VERTEX_ATTRIBS];
+   uint8_t format_align_req_minus_1[MAX_VERTEX_ATTRIBS];
+   uint8_t format_sizes[MAX_VERTEX_ATTRIBS];
+};
+
+struct radv_vs_prolog_key {
+   struct radv_vs_input_state *state;
+   unsigned num_attributes;
+   uint32_t misaligned_mask;
+   bool as_ls;
+   bool is_ngg;
+   bool wave32;
+   gl_shader_stage next_stage;
+};
+
 enum radv_shader_binary_type { RADV_BINARY_TYPE_LEGACY, RADV_BINARY_TYPE_RTLD };
 
 struct radv_shader_binary {
@@ -384,6 +420,14 @@ struct radv_shader_binary_rtld {
    struct radv_shader_binary base;
    unsigned elf_size;
    unsigned llvm_ir_size;
+   uint8_t data[0];
+};
+
+struct radv_prolog_binary {
+   uint8_t num_sgprs;
+   uint8_t num_vgprs;
+   uint8_t num_preserved_sgprs;
+   unsigned code_size;
    uint8_t data[0];
 };
 
@@ -429,6 +473,13 @@ struct radv_shader_variant {
    uint32_t *statistics;
 };
 
+struct radv_shader_prolog {
+   struct radeon_winsys_bo *bo;
+   union radv_shader_arena_block *alloc;
+   uint32_t rsrc1;
+   uint8_t num_preserved_sgprs;
+};
+
 void radv_optimize_nir(const struct radv_device *device, struct nir_shader *shader,
                        bool optimize_conservatively, bool allow_copies);
 void radv_optimize_nir_algebraic(nir_shader *shader, bool opt_offsets);
@@ -469,7 +520,12 @@ radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
 
 struct radv_shader_variant *radv_create_trap_handler_shader(struct radv_device *device);
 
+struct radv_shader_prolog *radv_create_vs_prolog(struct radv_device *device,
+                                                 const struct radv_vs_prolog_key *key);
+
 void radv_shader_variant_destroy(struct radv_device *device, struct radv_shader_variant *variant);
+
+void radv_prolog_destroy(struct radv_device *device, struct radv_shader_prolog *prolog);
 
 uint64_t radv_shader_variant_get_va(const struct radv_shader_variant *variant);
 struct radv_shader_variant *radv_find_shader_variant(struct radv_device *device, uint64_t pc);
@@ -577,7 +633,8 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
                     const struct radv_pipeline_key *pl_key);
 
 bool radv_consider_culling(struct radv_device *device, struct nir_shader *nir,
-                           uint64_t ps_inputs_read, unsigned num_vertices_per_primitive);
+                           uint64_t ps_inputs_read, unsigned num_vertices_per_primitive,
+                           const struct radv_shader_info *info);
 
 void radv_get_nir_options(struct radv_physical_device *device);
 

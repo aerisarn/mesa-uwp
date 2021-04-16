@@ -63,6 +63,7 @@ enum {
    RADV_DEBUG_NO_VRS_FLAT_SHADING = 1ull << 32,
    RADV_DEBUG_NO_ATOC_DITHERING = 1ull << 33,
    RADV_DEBUG_NO_NGGC = 1ull << 34,
+   RADV_DEBUG_DUMP_PROLOGS = 1ull << 35,
 };
 
 enum {

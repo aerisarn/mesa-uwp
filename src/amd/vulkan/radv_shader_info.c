@@ -608,11 +608,22 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
    }
 
    if (nir->info.stage == MESA_SHADER_VERTEX) {
+      if (pipeline_key->vs.dynamic_input_state && nir->info.inputs_read) {
+         info->vs.has_prolog = true;
+         info->vs.dynamic_inputs = true;
+      }
+
       /* Use per-attribute vertex descriptors to prevent faults and
        * for correct bounds checking.
        */
-      info->vs.use_per_attribute_vb_descs = device->robust_buffer_access;
+      info->vs.use_per_attribute_vb_descs = device->robust_buffer_access || info->vs.dynamic_inputs;
    }
+
+   /* We have to ensure consistent input register assignments between the main shader and the
+    * prolog. */
+   info->vs.needs_instance_id |= info->vs.has_prolog;
+   info->vs.needs_base_instance |= info->vs.has_prolog;
+   info->vs.needs_draw_id |= info->vs.has_prolog;
 
    nir_foreach_shader_in_variable (variable, nir)
       gather_info_input_decl(nir, variable, pipeline_key, info);
