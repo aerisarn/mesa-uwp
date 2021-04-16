@@ -360,13 +360,13 @@ zink_create_sampler_state(struct pipe_context *pctx,
 }
 
 ALWAYS_INLINE static VkImageLayout
-get_layout_for_binding(struct zink_resource *res, enum zink_descriptor_type type)
+get_layout_for_binding(struct zink_resource *res, enum zink_descriptor_type type, bool is_compute)
 {
    if (res->obj->is_buffer)
       return 0;
    switch (type) {
    case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
-      return res->bind_history & BITFIELD64_BIT(ZINK_DESCRIPTOR_TYPE_IMAGE) ?
+      return res->image_bind_count[is_compute] ?
              VK_IMAGE_LAYOUT_GENERAL :
              res->aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) ?
                 //Vulkan-Docs#1490
@@ -469,7 +469,7 @@ update_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, 
             ctx->di.sampler_surfaces[shader][slot].is_buffer = true;
          } else {
             struct zink_surface *surface = get_imageview_for_binding(ctx, shader, type, slot);
-            ctx->di.textures[shader][slot].imageLayout = get_layout_for_binding(res, type);
+            ctx->di.textures[shader][slot].imageLayout = get_layout_for_binding(res, type, shader == PIPE_SHADER_COMPUTE);
             ctx->di.textures[shader][slot].imageView = surface->image_view;
             ctx->di.sampler_surfaces[shader][slot].surface = surface;
             ctx->di.sampler_surfaces[shader][slot].is_buffer = false;
@@ -496,7 +496,7 @@ update_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, 
             ctx->di.image_surfaces[shader][slot].is_buffer = true;
          } else {
             struct zink_surface *surface = get_imageview_for_binding(ctx, shader, type, slot);
-            ctx->di.images[shader][slot].imageLayout = get_layout_for_binding(res, type);
+            ctx->di.images[shader][slot].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
             ctx->di.images[shader][slot].imageView = surface->image_view;
             ctx->di.image_surfaces[shader][slot].surface = surface;
             ctx->di.image_surfaces[shader][slot].is_buffer = false;
