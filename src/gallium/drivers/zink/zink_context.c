@@ -1246,7 +1246,9 @@ zink_set_shader_images(struct pipe_context *pctx,
             if (res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE] == 1 &&
                 res->bind_count[p_stage == PIPE_SHADER_COMPUTE] > 1)
                update_binds_for_samplerviews(ctx, res, p_stage == PIPE_SHADER_COMPUTE);
-            _mesa_set_add(ctx->need_barriers[p_stage == PIPE_SHADER_COMPUTE], res);
+            if (res->bind_count[p_stage == PIPE_SHADER_COMPUTE] == 1 ||
+                res->layout != get_layout_for_binding(res, ZINK_DESCRIPTOR_TYPE_IMAGE, p_stage == PIPE_SHADER_COMPUTE))
+               _mesa_set_add(ctx->need_barriers[p_stage == PIPE_SHADER_COMPUTE], res);
          }
          if (!ctx->descriptor_refs_dirty[p_stage == PIPE_SHADER_COMPUTE]) {
             zink_batch_reference_resource_rw(&ctx->batch, zink_resource(image_view->base.resource),
@@ -1331,7 +1333,9 @@ zink_set_sampler_views(struct pipe_context *pctx,
                 update = true;
 
              res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
-             _mesa_set_add(ctx->need_barriers[shader_type == PIPE_SHADER_COMPUTE], res);
+            if (res->bind_count[shader_type == PIPE_SHADER_COMPUTE] == 1 ||
+                res->layout != get_layout_for_binding(res, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, shader_type == PIPE_SHADER_COMPUTE))
+                _mesa_set_add(ctx->need_barriers[shader_type == PIPE_SHADER_COMPUTE], res);
              if (!a)
                 update = true;
          }
