@@ -49,11 +49,11 @@ files_libclc_compiler = files(
 )
 
 libclc_compiler = shared_library(
-  'clglon12compiler',
+  'clon12compiler',
   [files_libclc_compiler, sha1_h],
   opencl_c_h,
   opencl_c_base_h,
-  vs_module_defs : 'clglon12compiler.def',
+  vs_module_defs : 'clon12compiler.def',
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_compiler, inc_gallium, inc_spirv],
   dependencies: [idep_nir_headers, dep_clang, dep_llvm, cc.find_library('version'),
     dep_llvmspirvlib, idep_mesautil, idep_libdxil_compiler, idep_nir, dep_spirv_tools]
