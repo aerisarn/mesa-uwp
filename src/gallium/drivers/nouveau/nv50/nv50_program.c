@@ -402,7 +402,7 @@ nv50_program_translate(struct nv50_program *prog, uint16_t chipset,
 
    prog->code = info_out.bin.code;
    prog->code_size = info_out.bin.codeSize;
-   prog->fixups = info_out.bin.relocData;
+   prog->relocs = info_out.bin.relocData;
    prog->interps = info_out.bin.fixupData;
    prog->max_gpr = MAX2(4, (info_out.bin.maxGPR >> 1) + 1);
    prog->tls_space = info_out.bin.tlsSpace;
@@ -520,8 +520,8 @@ nv50_program_upload_code(struct nv50_context *nv50, struct nv50_program *prog)
    if (ret > 0)
       nv50->state.new_tls_space = true;
 
-   if (prog->fixups)
-      nv50_ir_relocate_code(prog->fixups, prog->code, prog->code_base, 0, 0);
+   if (prog->relocs)
+      nv50_ir_relocate_code(prog->relocs, prog->code, prog->code_base, 0, 0);
    if (prog->interps)
       nv50_ir_apply_fixups(prog->interps, prog->code,
                            prog->fp.force_persample_interp,
@@ -550,7 +550,7 @@ nv50_program_destroy(struct nv50_context *nv50, struct nv50_program *p)
 
    FREE(p->code);
 
-   FREE(p->fixups);
+   FREE(p->relocs);
    FREE(p->interps);
    FREE(p->so);
 
