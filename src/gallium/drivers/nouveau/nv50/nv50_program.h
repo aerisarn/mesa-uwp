@@ -115,7 +115,7 @@ struct nv50_program {
    bool mul_zero_wins;
 
    void *relocs; /* relocation records */
-   void *interps; /* interpolation records */
+   void *fixups; /* interpolation records */
 
    struct nouveau_heap *mem;
 
