@@ -679,11 +679,11 @@ Converter::getSubOp(nir_intrinsic_op op)
    case nir_intrinsic_image_atomic_dec_wrap:
       return NV50_IR_SUBOP_ATOM_DEC;
 
-   case nir_intrinsic_group_memory_barrier:
    case nir_intrinsic_memory_barrier:
    case nir_intrinsic_memory_barrier_buffer:
    case nir_intrinsic_memory_barrier_image:
       return NV50_IR_SUBOP_MEMBAR(M, GL);
+   case nir_intrinsic_group_memory_barrier:
    case nir_intrinsic_memory_barrier_shared:
       return NV50_IR_SUBOP_MEMBAR(M, CTA);
 
