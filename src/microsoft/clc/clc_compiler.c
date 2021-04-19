@@ -661,6 +661,21 @@ void clc_free_parsed_spirv(struct clc_parsed_spirv *data)
    clc_free_kernels_info(data->kernels, data->num_kernels);
 }
 
+bool
+clc_specialize_spirv(const struct clc_binary *in_spirv,
+                     const struct clc_parsed_spirv *parsed_data,
+                     const struct clc_spirv_specialization_consts *consts,
+                     struct clc_binary *out_spirv)
+{
+   if (!clc_spirv_specialize(in_spirv, parsed_data, consts, out_spirv))
+      return false;
+
+   if (debug_get_option_debug_clc() & CLC_DEBUG_DUMP_SPIRV)
+      clc_dump_spirv(out_spirv, stdout);
+
+   return true;
+}
+
 static nir_variable *
 add_kernel_inputs_var(struct clc_dxil_object *dxil, nir_shader *nir,
                       unsigned *cbv_id)

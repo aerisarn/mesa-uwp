@@ -302,6 +302,13 @@ struct clc_spirv_specialization_consts {
    const struct clc_spirv_specialization *specializations;
    unsigned num_specializations;
 };
+
+bool
+clc_specialize_spirv(const struct clc_binary *in_spirv,
+                     const struct clc_parsed_spirv *parsed_data,
+                     const struct clc_spirv_specialization_consts *consts,
+                     struct clc_binary *out_spirv);
+
 bool
 clc_spirv_to_dxil(struct clc_libclc *lib,
                   const struct clc_binary *linked_spirv,

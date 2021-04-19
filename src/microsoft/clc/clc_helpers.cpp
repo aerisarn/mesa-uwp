@@ -46,6 +46,7 @@
 
 #include <spirv-tools/libspirv.hpp>
 #include <spirv-tools/linker.hpp>
+#include <spirv-tools/optimizer.hpp>
 
 #include "util/macros.h"
 #include "glsl_types.h"
@@ -57,6 +58,8 @@
 
 #include "opencl-c.h.h"
 #include "opencl-c-base.h.h"
+
+constexpr spv_target_env spirv_target = SPV_ENV_UNIVERSAL_1_0;
 
 using ::llvm::Function;
 using ::llvm::LLVMContext;
@@ -955,7 +958,7 @@ clc_link_spirv_binaries(const struct clc_linker_args *args,
    }
 
    SPIRVMessageConsumer msgconsumer(logger);
-   spvtools::Context context(SPV_ENV_UNIVERSAL_1_0);
+   spvtools::Context context(spirv_target);
    context.SetMessageConsumer(msgconsumer);
    spvtools::LinkerOptions options;
    options.SetAllowPartialLinkage(args->create_library);
@@ -973,10 +976,71 @@ clc_link_spirv_binaries(const struct clc_linker_args *args,
    return 0;
 }
 
+int
+clc_spirv_specialize(const struct clc_binary *in_spirv,
+                     const struct clc_parsed_spirv *parsed_data,
+                     const struct clc_spirv_specialization_consts *consts,
+                     struct clc_binary *out_spirv)
+{
+   std::unordered_map<uint32_t, std::vector<uint32_t>> spec_const_map;
+   for (unsigned i = 0; i < consts->num_specializations; ++i) {
+      unsigned id = consts->specializations[i].id;
+      auto parsed_spec_const = std::find_if(parsed_data->spec_constants,
+         parsed_data->spec_constants + parsed_data->num_spec_constants,
+         [id](const clc_parsed_spec_constant &c) { return c.id == id; });
+      assert(parsed_spec_const != parsed_data->spec_constants + parsed_data->num_spec_constants);
+
+      std::vector<uint32_t> words;
+      switch (parsed_spec_const->type) {
+      case CLC_SPEC_CONSTANT_BOOL:
+         words.push_back(consts->specializations[i].value.b);
+         break;
+      case CLC_SPEC_CONSTANT_INT32:
+      case CLC_SPEC_CONSTANT_UINT32:
+      case CLC_SPEC_CONSTANT_FLOAT:
+         words.push_back(consts->specializations[i].value.u32);
+         break;
+      case CLC_SPEC_CONSTANT_INT16:
+         words.push_back((uint32_t)(int32_t)consts->specializations[i].value.i16);
+         break;
+      case CLC_SPEC_CONSTANT_INT8:
+         words.push_back((uint32_t)(int32_t)consts->specializations[i].value.i8);
+         break;
+      case CLC_SPEC_CONSTANT_UINT16:
+         words.push_back((uint32_t)consts->specializations[i].value.u16);
+         break;
+      case CLC_SPEC_CONSTANT_UINT8:
+         words.push_back((uint32_t)consts->specializations[i].value.u8);
+         break;
+      case CLC_SPEC_CONSTANT_DOUBLE:
+      case CLC_SPEC_CONSTANT_INT64:
+      case CLC_SPEC_CONSTANT_UINT64:
+         words.resize(2);
+         memcpy(words.data(), &consts->specializations[i].value.u64, 8);
+         break;
+      }
+
+      ASSERTED auto ret = spec_const_map.emplace(id, std::move(words));
+      assert(ret.second);
+   }
+
+   spvtools::Optimizer opt(spirv_target);
+   opt.RegisterPass(spvtools::CreateSetSpecConstantDefaultValuePass(std::move(spec_const_map)));
+
+   std::vector<uint32_t> result;
+   if (!opt.Run(static_cast<const uint32_t*>(in_spirv->data), in_spirv->size / 4, &result))
+      return false;
+
+   out_spirv->size = result.size() * 4;
+   out_spirv->data = malloc(out_spirv->size);
+   memcpy(out_spirv->data, result.data(), out_spirv->size);
+   return true;
+}
+
 void
 clc_dump_spirv(const struct clc_binary *spvbin, FILE *f)
 {
-   spvtools::SpirvTools tools(SPV_ENV_UNIVERSAL_1_0);
+   spvtools::SpirvTools tools(spirv_target);
    const uint32_t *data = static_cast<const uint32_t *>(spvbin->data);
    std::vector<uint32_t> bin(data, data + (spvbin->size / 4));
    std::string out;

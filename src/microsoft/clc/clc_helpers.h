@@ -70,6 +70,12 @@ clc_link_spirv_binaries(const struct clc_linker_args *args,
                         const struct clc_logger *logger,
                         struct clc_binary *out_spirv);
 
+int
+clc_spirv_specialize(const struct clc_binary *in_spirv,
+                     const struct clc_parsed_spirv *parsed_data,
+                     const struct clc_spirv_specialization_consts *consts,
+                     struct clc_binary *out_spirv);
+
 void
 clc_dump_spirv(const struct clc_binary *spvbin, FILE *f);
 
