@@ -167,12 +167,42 @@ protected:
    link(const std::vector<Shader> &sources,
         bool create_library = false);
 
+   Shader
+   assemble(const char *source);
+
    void
    configure(Shader &shader,
              const struct clc_runtime_kernel_conf *conf);
 
    void
    validate(Shader &shader);
+
+   template <typename T>
+   Shader
+   specialize(Shader &shader, uint32_t id, T const& val)
+   {
+      Shader new_shader;
+      new_shader.obj = std::shared_ptr<clc_binary>(new clc_binary{}, [](clc_binary *spirv)
+         {
+            clc_free_spirv(spirv);
+            delete spirv;
+         });
+      if (!shader.metadata)
+         configure(shader, NULL);
+
+      clc_spirv_specialization spec;
+      spec.id = id;
+      memcpy(&spec.value, &val, sizeof(val));
+      clc_spirv_specialization_consts consts;
+      consts.specializations = &spec;
+      consts.num_specializations = 1;
+      if (!clc_specialize_spirv(shader.obj.get(), shader.metadata.get(), &consts, new_shader.obj.get()))
+         throw runtime_error("failed to specialize");
+
+      configure(new_shader, NULL);
+
+      return new_shader;
+   }
 
    enum ShaderArgDirection {
       SHADER_ARG_INPUT = 1,

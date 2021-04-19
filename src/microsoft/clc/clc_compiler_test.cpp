@@ -2232,3 +2232,82 @@ TEST_F(ComputeTest, unused_arg)
    for (int i = 0; i < 4; ++i)
       EXPECT_EQ(dest[i], i + 1);
 }
+
+TEST_F(ComputeTest, spec_constant)
+{
+   const char *spirv_asm = R"(
+               OpCapability Addresses
+               OpCapability Kernel
+               OpCapability Int64
+          %1 = OpExtInstImport "OpenCL.std"
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %2 "main_test" %__spirv_BuiltInGlobalInvocationId
+          %4 = OpString "kernel_arg_type.main_test.uint*,"
+               OpSource OpenCL_C 102000
+               OpName %__spirv_BuiltInGlobalInvocationId "__spirv_BuiltInGlobalInvocationId"
+               OpName %output "output"
+               OpName %entry "entry"
+               OpName %output_addr "output.addr"
+               OpName %id "id"
+               OpName %call "call"
+               OpName %conv "conv"
+               OpName %idxprom "idxprom"
+               OpName %arrayidx "arrayidx"
+               OpName %add "add"
+               OpName %mul "mul"
+               OpName %idxprom1 "idxprom1"
+               OpName %arrayidx2 "arrayidx2"
+               OpDecorate %__spirv_BuiltInGlobalInvocationId BuiltIn GlobalInvocationId
+               OpDecorate %__spirv_BuiltInGlobalInvocationId Constant
+               OpDecorate %id Alignment 4
+               OpDecorate %output_addr Alignment 8
+               OpDecorate %uint_1 SpecId 1
+      %ulong = OpTypeInt 64 0
+       %uint = OpTypeInt 32 0
+     %uint_1 = OpSpecConstant %uint 1
+    %v3ulong = OpTypeVector %ulong 3
+%_ptr_Input_v3ulong = OpTypePointer Input %v3ulong
+       %void = OpTypeVoid
+%_ptr_CrossWorkgroup_uint = OpTypePointer CrossWorkgroup %uint
+         %24 = OpTypeFunction %void %_ptr_CrossWorkgroup_uint
+%_ptr_Function__ptr_CrossWorkgroup_uint = OpTypePointer Function %_ptr_CrossWorkgroup_uint
+%_ptr_Function_uint = OpTypePointer Function %uint
+%__spirv_BuiltInGlobalInvocationId = OpVariable %_ptr_Input_v3ulong Input
+          %2 = OpFunction %void DontInline %24
+     %output = OpFunctionParameter %_ptr_CrossWorkgroup_uint
+      %entry = OpLabel
+%output_addr = OpVariable %_ptr_Function__ptr_CrossWorkgroup_uint Function
+         %id = OpVariable %_ptr_Function_uint Function
+               OpStore %output_addr %output Aligned 8
+         %27 = OpLoad %v3ulong %__spirv_BuiltInGlobalInvocationId Aligned 32
+       %call = OpCompositeExtract %ulong %27 0
+       %conv = OpUConvert %uint %call
+               OpStore %id %conv Aligned 4
+         %28 = OpLoad %_ptr_CrossWorkgroup_uint %output_addr Aligned 8
+         %29 = OpLoad %uint %id Aligned 4
+    %idxprom = OpUConvert %ulong %29
+   %arrayidx = OpInBoundsPtrAccessChain %_ptr_CrossWorkgroup_uint %28 %idxprom
+         %30 = OpLoad %uint %arrayidx Aligned 4
+         %31 = OpLoad %uint %id Aligned 4
+        %add = OpIAdd %uint %31 %uint_1
+        %mul = OpIMul %uint %30 %add
+         %32 = OpLoad %_ptr_CrossWorkgroup_uint %output_addr Aligned 8
+         %33 = OpLoad %uint %id Aligned 4
+   %idxprom1 = OpUConvert %ulong %33
+  %arrayidx2 = OpInBoundsPtrAccessChain %_ptr_CrossWorkgroup_uint %32 %idxprom1
+               OpStore %arrayidx2 %mul Aligned 4
+               OpReturn
+               OpFunctionEnd)";
+   Shader shader = assemble(spirv_asm);
+   Shader spec_shader = specialize(shader, 1, 5);
+
+   auto inout = ShaderArg<uint32_t>({ 0x00000001, 0x10000001, 0x00020002, 0x04010203 },
+      SHADER_ARG_INOUT);
+   const uint32_t expected[] = {
+      0x00000005, 0x60000006, 0x000e000e, 0x20081018
+   };
+   CompileArgs args = { inout.size(), 1, 1 };
+   run_shader(spec_shader, args, inout);
+   for (int i = 0; i < inout.size(); ++i)
+      EXPECT_EQ(inout[i], expected[i]);
+}

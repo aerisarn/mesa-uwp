@@ -63,8 +63,8 @@ if dep_dxheaders.found()
   clc_compiler_test = executable('clc_compiler_test',
     ['clc_compiler_test.cpp', 'compute_test.cpp'],
     link_with : [libclc_compiler],
-    dependencies : [idep_gtest, idep_mesautil, idep_libdxil_compiler, dep_dxheaders],
-    include_directories : [inc_include, inc_src])
+    dependencies : [idep_gtest, idep_mesautil, idep_libdxil_compiler, dep_dxheaders, dep_spirv_tools],
+    include_directories : [inc_include, inc_src, inc_spirv])
 
   test('clc_compiler_test', clc_compiler_test, timeout: 180)
 endif

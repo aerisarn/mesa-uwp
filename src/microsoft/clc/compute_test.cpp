@@ -35,6 +35,8 @@
 #include "compute_test.h"
 #include "dxcapi.h"
 
+#include <spirv-tools/libspirv.hpp>
+
 using std::runtime_error;
 using Microsoft::WRL::ComPtr;
 
@@ -846,6 +848,29 @@ ComputeTest::link(const std::vector<Shader> &sources,
       });
    if (!link_args.create_library)
       configure(shader, NULL);
+
+   return shader;
+}
+
+ComputeTest::Shader
+ComputeTest::assemble(const char *source)
+{
+   spvtools::SpirvTools tools(SPV_ENV_UNIVERSAL_1_0);
+   std::vector<uint32_t> binary;
+   if (!tools.Assemble(source, strlen(source), &binary))
+      throw runtime_error("failed to assemble");
+
+   ComputeTest::Shader shader;
+   shader.obj = std::shared_ptr<clc_binary>(new clc_binary{}, [](clc_binary *spirv)
+      {
+         free(spirv->data);
+         delete spirv;
+      });
+   shader.obj->size = binary.size() * 4;
+   shader.obj->data = malloc(shader.obj->size);
+   memcpy(shader.obj->data, binary.data(), shader.obj->size);
+
+   configure(shader, NULL);
 
    return shader;
 }
