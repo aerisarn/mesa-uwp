@@ -278,12 +278,37 @@ struct clc_runtime_kernel_conf {
    unsigned support_workgroup_id_offsets;
 };
 
+typedef union {
+   bool b;
+   float f32;
+   double f64;
+   int8_t i8;
+   uint8_t u8;
+   int16_t i16;
+   uint16_t u16;
+   int32_t i32;
+   uint32_t u32;
+   int64_t i64;
+   uint64_t u64;
+} clc_spirv_const_value;
+
+struct clc_spirv_specialization {
+   uint32_t id;
+   clc_spirv_const_value value;
+   bool defined_on_module;
+};
+
+struct clc_spirv_specialization_consts {
+   const struct clc_spirv_specialization *specializations;
+   unsigned num_specializations;
+};
 bool
 clc_spirv_to_dxil(struct clc_libclc *lib,
                   const struct clc_binary *linked_spirv,
                   const struct clc_parsed_spirv *parsed_data,
                   const char *entrypoint,
                   const struct clc_runtime_kernel_conf *conf,
+                  const struct clc_spirv_specialization_consts *consts,
                   const struct clc_logger *logger,
                   struct clc_dxil_object *out_dxil);
 

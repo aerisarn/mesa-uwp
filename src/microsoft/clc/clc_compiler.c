@@ -1040,6 +1040,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
                   const struct clc_parsed_spirv *parsed_data,
                   const char *entrypoint,
                   const struct clc_runtime_kernel_conf *conf,
+                  const struct clc_spirv_specialization_consts *consts,
                   const struct clc_logger *logger,
                   struct clc_dxil_object *out_dxil)
 {
@@ -1093,7 +1094,8 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    glsl_type_singleton_init_or_ref();
 
    nir = spirv_to_nir(linked_spirv->data, linked_spirv->size / 4,
-                      NULL, 0,
+                      consts ? (struct nir_spirv_specialization *)consts->specializations : NULL,
+                      consts ? consts->num_specializations : 0,
                       MESA_SHADER_KERNEL, entrypoint,
                       &spirv_options,
                       &nir_options);

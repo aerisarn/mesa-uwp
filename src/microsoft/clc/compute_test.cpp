@@ -869,7 +869,7 @@ ComputeTest::configure(Shader &shader,
          clc_free_dxil_object(dxil);
          delete dxil;
       });
-   if (!clc_spirv_to_dxil(compiler_ctx, shader.obj.get(), shader.metadata.get(), "main_test", conf, &logger, shader.dxil.get()))
+   if (!clc_spirv_to_dxil(compiler_ctx, shader.obj.get(), shader.metadata.get(), "main_test", conf, nullptr, &logger, shader.dxil.get()))
       throw runtime_error("failed to compile kernel!");
 }
 
