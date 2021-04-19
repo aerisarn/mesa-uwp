@@ -575,67 +575,44 @@ struct clc_libclc *
    return ctx;
 }
 
-struct clc_object *
+bool
 clc_compile(const struct clc_compile_args *args,
-            const struct clc_logger *logger)
+            const struct clc_logger *logger,
+            struct clc_object *out_spirv)
 {
-   struct clc_object *obj;
-   int ret;
-
-   obj = calloc(1, sizeof(*obj));
-   if (!obj) {
-      clc_error(logger, "D3D12: failed to allocate a clc_object");
-      return NULL;
-   }
-
-   ret = clc_to_spirv(args, &obj->spvbin, logger);
-   if (ret < 0) {
-      free(obj);
-      return NULL;
-   }
+   if (clc_to_spirv(args, &out_spirv->spvbin, logger) < 0)
+      return false;
 
    if (debug_get_option_debug_clc() & CLC_DEBUG_DUMP_SPIRV)
-      clc_dump_spirv(&obj->spvbin, stdout);
+      clc_dump_spirv(&out_spirv->spvbin, stdout);
 
-   return obj;
+   return true;
 }
 
-struct clc_object *
+bool
 clc_link(const struct clc_linker_args *args,
-         const struct clc_logger *logger)
+         const struct clc_logger *logger,
+         struct clc_object *out_spirv)
 {
-   struct clc_object *out_obj;
-   int ret;
-
-   out_obj = malloc(sizeof(*out_obj));
-   if (!out_obj) {
-      clc_error(logger, "failed to allocate a clc_object");
-      return NULL;
-   }
-
-   ret = clc_link_spirv_binaries(args, &out_obj->spvbin, logger);
-   if (ret < 0) {
-      free(out_obj);
-      return NULL;
-   }
+   if (clc_link_spirv_binaries(args, &out_spirv->spvbin, logger) < 0)
+      return false;
 
    if (debug_get_option_debug_clc() & CLC_DEBUG_DUMP_SPIRV)
-      clc_dump_spirv(&out_obj->spvbin, stdout);
+      clc_dump_spirv(&out_spirv->spvbin, stdout);
 
-   out_obj->kernels = clc_spirv_get_kernels_info(&out_obj->spvbin,
-                                                 &out_obj->num_kernels);
+   out_spirv->kernels = clc_spirv_get_kernels_info(&out_spirv->spvbin,
+                                                   &out_spirv->num_kernels);
 
    if (debug_get_option_debug_clc() & CLC_DEBUG_VERBOSE)
-      clc_print_kernels_info(out_obj);
+      clc_print_kernels_info(out_spirv);
 
-   return out_obj;
+   return true;
 }
 
 void clc_free_object(struct clc_object *obj)
 {
    clc_free_kernels_info(obj->kernels, obj->num_kernels);
    clc_free_spirv_binary(&obj->spvbin);
-   free(obj);
 }
 
 static nir_variable *
@@ -1011,32 +988,26 @@ scale_fdiv(nir_shader *nir)
    return progress;
 }
 
-struct clc_dxil_object *
+bool
 clc_to_dxil(struct clc_libclc *lib,
             const struct clc_object *obj,
             const char *entrypoint,
             const struct clc_runtime_kernel_conf *conf,
-            const struct clc_logger *logger)
+            const struct clc_logger *logger,
+            struct clc_dxil_object *out_dxil)
 {
-   struct clc_dxil_object *dxil;
    struct nir_shader *nir;
-
-   dxil = calloc(1, sizeof(*dxil));
-   if (!dxil) {
-      clc_error(logger, "failed to allocate the dxil object");
-      return NULL;
-   }
 
    for (unsigned i = 0; i < obj->num_kernels; i++) {
       if (!strcmp(obj->kernels[i].name, entrypoint)) {
-         dxil->kernel = &obj->kernels[i];
+         out_dxil->kernel = &obj->kernels[i];
          break;
       }
    }
 
-   if (!dxil->kernel) {
+   if (!out_dxil->kernel) {
       clc_error(logger, "no '%s' kernel found", entrypoint);
-      goto err_free_dxil;
+      return false;
    }
 
    const struct spirv_to_nir_options spirv_options = {
@@ -1088,9 +1059,9 @@ clc_to_dxil(struct clc_libclc *lib,
    NIR_PASS_V(nir, nir_lower_goto_ifs);
    NIR_PASS_V(nir, nir_opt_dead_cf);
 
-   struct clc_dxil_metadata *metadata = &dxil->metadata;
+   struct clc_dxil_metadata *metadata = &out_dxil->metadata;
 
-   metadata->args = calloc(dxil->kernel->num_args,
+   metadata->args = calloc(out_dxil->kernel->num_args,
                            sizeof(*metadata->args));
    if (!metadata->args) {
       clc_error(logger, "failed to allocate arg positions");
@@ -1220,8 +1191,8 @@ clc_to_dxil(struct clc_libclc *lib,
       metadata->args[i].size = size;
       metadata->kernel_inputs_buf_size = MAX2(metadata->kernel_inputs_buf_size,
          var->data.driver_location + size);
-      if ((dxil->kernel->args[i].address_qualifier == CLC_KERNEL_ARG_ADDRESS_GLOBAL ||
-         dxil->kernel->args[i].address_qualifier == CLC_KERNEL_ARG_ADDRESS_CONSTANT) &&
+      if ((out_dxil->kernel->args[i].address_qualifier == CLC_KERNEL_ARG_ADDRESS_GLOBAL ||
+         out_dxil->kernel->args[i].address_qualifier == CLC_KERNEL_ARG_ADDRESS_CONSTANT) &&
          // Ignore images during this pass - global memory buffers need to have contiguous bindings
          !glsl_type_is_image(var->type)) {
          metadata->args[i].globconstptr.buf_id = uav_id++;
@@ -1303,7 +1274,7 @@ clc_to_dxil(struct clc_libclc *lib,
               glsl_get_cl_type_size_align);
 
    NIR_PASS_V(nir, dxil_nir_lower_ubo_to_temp);
-   NIR_PASS_V(nir, clc_lower_constant_to_ssbo, dxil->kernel, &uav_id);
+   NIR_PASS_V(nir, clc_lower_constant_to_ssbo, out_dxil->kernel, &uav_id);
    NIR_PASS_V(nir, clc_lower_global_to_ssbo);
 
    bool has_printf = false;
@@ -1337,9 +1308,9 @@ clc_to_dxil(struct clc_libclc *lib,
    unsigned cbv_id = 0;
 
    nir_variable *inputs_var =
-      add_kernel_inputs_var(dxil, nir, &cbv_id);
+      add_kernel_inputs_var(out_dxil, nir, &cbv_id);
    nir_variable *work_properties_var =
-      add_work_properties_var(dxil, nir, &cbv_id);
+      add_work_properties_var(out_dxil, nir, &cbv_id);
 
    memcpy(metadata->local_size, nir->info.workgroup_size,
           sizeof(metadata->local_size));
@@ -1398,8 +1369,8 @@ clc_to_dxil(struct clc_libclc *lib,
       .num_kernel_globals = num_global_inputs,
    };
 
-   for (unsigned i = 0; i < dxil->kernel->num_args; i++) {
-      if (dxil->kernel->args[i].address_qualifier != CLC_KERNEL_ARG_ADDRESS_LOCAL)
+   for (unsigned i = 0; i < out_dxil->kernel->num_args; i++) {
+      if (out_dxil->kernel->args[i].address_qualifier != CLC_KERNEL_ARG_ADDRESS_LOCAL)
          continue;
 
       /* If we don't have the runtime conf yet, we just create a dummy variable.
@@ -1469,13 +1440,13 @@ clc_to_dxil(struct clc_libclc *lib,
    ralloc_free(nir);
    glsl_type_singleton_decref();
 
-   blob_finish_get_buffer(&tmp, &dxil->binary.data,
-                          &dxil->binary.size);
-   return dxil;
+   blob_finish_get_buffer(&tmp, &out_dxil->binary.data,
+                          &out_dxil->binary.size);
+   return true;
 
 err_free_dxil:
-   clc_free_dxil_object(dxil);
-   return NULL;
+   clc_free_dxil_object(out_dxil);
+   return false;
 }
 
 void clc_free_dxil_object(struct clc_dxil_object *dxil)
@@ -1490,7 +1461,6 @@ void clc_free_dxil_object(struct clc_dxil_object *dxil)
    free(dxil->metadata.printf.infos);
 
    free(dxil->binary.data);
-   free(dxil);
 }
 
 uint64_t clc_compiler_get_version()

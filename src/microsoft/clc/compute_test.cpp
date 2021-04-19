@@ -803,12 +803,16 @@ ComputeTest::compile(const std::vector<const char *> &sources,
    for (unsigned i = 0; i < sources.size(); i++) {
       args.source.value = sources[i];
 
-      auto obj = clc_compile(&args, &logger);
-      if (!obj)
+      clc_object spirv{};
+      if (!clc_compile(&args, &logger, &spirv))
          throw runtime_error("failed to compile object!");
 
       Shader shader;
-      shader.obj = std::shared_ptr<struct clc_object>(obj, clc_free_object);
+      shader.obj = std::shared_ptr<clc_object>(new clc_object(spirv), [](clc_object *spirv)
+         {
+            clc_free_object(spirv);
+            delete spirv;
+         });
       shaders.push_back(shader);
    }
 
@@ -830,13 +834,16 @@ ComputeTest::link(const std::vector<Shader> &sources,
    link_args.in_objs = objs.data();
    link_args.num_in_objs = (unsigned)objs.size();
    link_args.create_library = create_library;
-   struct clc_object *obj = clc_link(&link_args,
-                                     &logger);
-   if (!obj)
+   clc_object spirv{};
+   if (!clc_link(&link_args, &logger, &spirv))
       throw runtime_error("failed to link objects!");
 
    ComputeTest::Shader shader;
-   shader.obj = std::shared_ptr<struct clc_object>(obj, clc_free_object);
+   shader.obj = std::shared_ptr<clc_object>(new clc_object(spirv), [](clc_object *spirv)
+      {
+         clc_free_object(spirv);
+         delete spirv;
+      });
    if (!link_args.create_library)
       configure(shader, NULL);
 
@@ -847,13 +854,14 @@ void
 ComputeTest::configure(Shader &shader,
                        const struct clc_runtime_kernel_conf *conf)
 {
-   struct clc_dxil_object *dxil;
 
-   dxil = clc_to_dxil(compiler_ctx, shader.obj.get(), "main_test", conf, &logger);
-   if (!dxil)
+   shader.dxil = std::shared_ptr<clc_dxil_object>(new clc_dxil_object{}, [](clc_dxil_object *dxil)
+      {
+         clc_free_dxil_object(dxil);
+         delete dxil;
+      });
+   if (!clc_to_dxil(compiler_ctx, shader.obj.get(), "main_test", conf, &logger, shader.dxil.get()))
       throw runtime_error("failed to compile kernel!");
-
-   shader.dxil = std::shared_ptr<struct clc_dxil_object>(dxil, clc_free_dxil_object);
 }
 
 void

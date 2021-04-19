@@ -203,13 +203,15 @@ struct clc_libclc *clc_libclc_deserialize(void *serialized, size_t size);
 
 
 
-struct clc_object *
+bool
 clc_compile(const struct clc_compile_args *args,
-            const struct clc_logger *logger);
+            const struct clc_logger *logger,
+            struct clc_object *out_spirv);
 
-struct clc_object *
+bool
 clc_link(const struct clc_linker_args *args,
-         const struct clc_logger *logger);
+         const struct clc_logger *logger,
+         struct clc_object *out_spirv);
 
 void clc_free_object(struct clc_object *obj);
 
@@ -234,12 +236,13 @@ struct clc_runtime_kernel_conf {
    unsigned support_workgroup_id_offsets;
 };
 
-struct clc_dxil_object *
+bool
 clc_to_dxil(struct clc_libclc *ctx,
             const struct clc_object *obj,
             const char *entrypoint,
             const struct clc_runtime_kernel_conf *conf,
-            const struct clc_logger *logger);
+            const struct clc_logger *logger,
+            struct clc_dxil_object *out_dxil);
 
 void clc_free_dxil_object(struct clc_dxil_object *dxil);
 
