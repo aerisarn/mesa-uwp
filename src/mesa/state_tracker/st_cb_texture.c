@@ -129,6 +129,266 @@ gl_target_to_pipe(GLenum target)
    }
 }
 
+static enum pipe_format
+get_src_format(struct pipe_screen *screen, struct st_texture_object *stObj)
+{
+   struct pipe_resource *src = stObj->pt;
+   enum pipe_format src_format;
+   /* Convert the source format to what is expected by GetTexImage
+    * and see if it's supported.
+    *
+    * This only applies to glGetTexImage:
+    * - Luminance must be returned as (L,0,0,1).
+    * - Luminance alpha must be returned as (L,0,0,A).
+    * - Intensity must be returned as (I,0,0,1)
+    */
+   if (stObj->surface_based)
+      src_format = util_format_linear(stObj->surface_format);
+   else
+      src_format = util_format_linear(src->format);
+   src_format = util_format_luminance_to_red(src_format);
+   src_format = util_format_intensity_to_red(src_format);
+
+   if (!src_format ||
+       !screen->is_format_supported(screen, src_format, src->target,
+                                    src->nr_samples, src->nr_storage_samples,
+                                    PIPE_BIND_SAMPLER_VIEW)) {
+      return PIPE_FORMAT_NONE;
+   }
+   return src_format;
+}
+
+static struct pipe_resource *
+create_dst_texture(struct gl_context *ctx,
+                   enum pipe_format dst_format, enum pipe_texture_target pipe_target,
+                   GLsizei width, GLsizei height, GLint depth,
+                   GLenum gl_target, unsigned bind)
+{
+   struct st_context *st = st_context(ctx);
+   struct pipe_screen *screen = st->screen;
+   struct pipe_resource dst_templ;
+
+   /* create the destination texture of size (width X height X depth) */
+   memset(&dst_templ, 0, sizeof(dst_templ));
+   dst_templ.target = pipe_target;
+   dst_templ.format = dst_format;
+   dst_templ.bind = bind;
+   dst_templ.usage = PIPE_USAGE_STAGING;
+
+   st_gl_texture_dims_to_pipe_dims(gl_target, width, height, depth,
+                                   &dst_templ.width0, &dst_templ.height0,
+                                   &dst_templ.depth0, &dst_templ.array_size);
+
+   return screen->resource_create(screen, &dst_templ);
+}
+
+static boolean
+copy_to_staging_dest(struct gl_context * ctx, struct pipe_resource *dst,
+                 GLint xoffset, GLint yoffset, GLint zoffset,
+                 GLsizei width, GLsizei height, GLint depth,
+                 GLenum format, GLenum type, void * pixels,
+                 struct gl_texture_image *texImage)
+{
+   struct st_context *st = st_context(ctx);
+   struct pipe_context *pipe = st->pipe;
+   struct st_texture_object *stObj = st_texture_object(texImage->TexObject);
+   struct pipe_resource *src = stObj->pt;
+   enum pipe_format dst_format = dst->format;
+   mesa_format mesa_format;
+   GLenum gl_target = texImage->TexObject->Target;
+   unsigned dims;
+   struct pipe_transfer *tex_xfer;
+   ubyte *map = NULL;
+   boolean done = FALSE;
+
+   pixels = _mesa_map_pbo_dest(ctx, &ctx->Pack, pixels);
+
+   map = pipe_texture_map_3d(pipe, dst, 0, PIPE_MAP_READ,
+                              0, 0, 0, width, height, depth, &tex_xfer);
+   if (!map) {
+      goto end;
+   }
+
+   mesa_format = st_pipe_format_to_mesa_format(dst_format);
+   dims = _mesa_get_texture_dimensions(gl_target);
+
+   /* copy/pack data into user buffer */
+   if (_mesa_format_matches_format_and_type(mesa_format, format, type,
+                                            ctx->Pack.SwapBytes, NULL)) {
+      /* memcpy */
+      const uint bytesPerRow = width * util_format_get_blocksize(dst_format);
+      GLuint row, slice;
+
+      for (slice = 0; slice < depth; slice++) {
+         ubyte *slice_map = map;
+
+         for (row = 0; row < height; row++) {
+            void *dest = _mesa_image_address(dims, &ctx->Pack, pixels,
+                                             width, height, format, type,
+                                             slice, row, 0);
+
+            memcpy(dest, slice_map, bytesPerRow);
+
+            slice_map += tex_xfer->stride;
+         }
+
+         map += tex_xfer->layer_stride;
+      }
+   }
+   else {
+      /* format translation via floats */
+      GLuint slice;
+      GLfloat *rgba;
+      uint32_t dstMesaFormat;
+      int dstStride, srcStride;
+
+      assert(util_format_is_compressed(src->format));
+
+      rgba = malloc(width * height * 4 * sizeof(GLfloat));
+      if (!rgba) {
+         goto end;
+      }
+
+      if (ST_DEBUG & DEBUG_FALLBACK)
+         debug_printf("%s: fallback format translation\n", __func__);
+
+      dstMesaFormat = _mesa_format_from_format_and_type(format, type);
+      dstStride = _mesa_image_row_stride(&ctx->Pack, width, format, type);
+      srcStride = 4 * width * sizeof(GLfloat);
+      for (slice = 0; slice < depth; slice++) {
+         void *dest = _mesa_image_address(dims, &ctx->Pack, pixels,
+                                          width, height, format, type,
+                                          slice, 0, 0);
+
+         /* get float[4] rgba row from surface */
+         pipe_get_tile_rgba(tex_xfer, map, 0, 0, width, height, dst_format,
+                            rgba);
+
+         _mesa_format_convert(dest, dstMesaFormat, dstStride,
+                              rgba, RGBA32_FLOAT, srcStride,
+                              width, height, NULL);
+
+         /* Handle byte swapping if required */
+         if (ctx->Pack.SwapBytes) {
+            _mesa_swap_bytes_2d_image(format, type, &ctx->Pack,
+                                      width, height, dest, dest);
+         }
+
+         map += tex_xfer->layer_stride;
+      }
+
+      free(rgba);
+   }
+   done = TRUE;
+
+end:
+   if (map)
+      pipe_texture_unmap(pipe, tex_xfer);
+
+   _mesa_unmap_pbo_dest(ctx, &ctx->Pack);
+   return done;
+}
+
+static enum pipe_format
+get_dst_format(struct gl_context *ctx, enum pipe_texture_target target,
+               enum pipe_format src_format, bool is_compressed,
+               GLenum format, GLenum type, unsigned bind)
+{
+   struct st_context *st = st_context(ctx);
+   struct pipe_screen *screen = st->screen;
+   /* Choose the destination format by finding the best match
+    * for the format+type combo. */
+   enum pipe_format dst_format = st_choose_matching_format(st, bind, format, type,
+                                                           ctx->Pack.SwapBytes);
+
+   if (dst_format == PIPE_FORMAT_NONE) {
+      GLenum dst_glformat;
+
+      /* Fall back to _mesa_GetTexImage_sw except for compressed formats,
+       * where decompression with a blit is always preferred. */
+      if (!is_compressed) {
+         return PIPE_FORMAT_NONE;
+      }
+
+      /* Set the appropriate format for the decompressed texture.
+       * Luminance and sRGB formats shouldn't appear here.*/
+      switch (src_format) {
+      case PIPE_FORMAT_DXT1_RGB:
+      case PIPE_FORMAT_DXT1_RGBA:
+      case PIPE_FORMAT_DXT3_RGBA:
+      case PIPE_FORMAT_DXT5_RGBA:
+      case PIPE_FORMAT_RGTC1_UNORM:
+      case PIPE_FORMAT_RGTC2_UNORM:
+      case PIPE_FORMAT_ETC1_RGB8:
+      case PIPE_FORMAT_ETC2_RGB8:
+      case PIPE_FORMAT_ETC2_RGB8A1:
+      case PIPE_FORMAT_ETC2_RGBA8:
+      case PIPE_FORMAT_ASTC_4x4:
+      case PIPE_FORMAT_ASTC_5x4:
+      case PIPE_FORMAT_ASTC_5x5:
+      case PIPE_FORMAT_ASTC_6x5:
+      case PIPE_FORMAT_ASTC_6x6:
+      case PIPE_FORMAT_ASTC_8x5:
+      case PIPE_FORMAT_ASTC_8x6:
+      case PIPE_FORMAT_ASTC_8x8:
+      case PIPE_FORMAT_ASTC_10x5:
+      case PIPE_FORMAT_ASTC_10x6:
+      case PIPE_FORMAT_ASTC_10x8:
+      case PIPE_FORMAT_ASTC_10x10:
+      case PIPE_FORMAT_ASTC_12x10:
+      case PIPE_FORMAT_ASTC_12x12:
+      case PIPE_FORMAT_BPTC_RGBA_UNORM:
+      case PIPE_FORMAT_FXT1_RGB:
+      case PIPE_FORMAT_FXT1_RGBA:
+         dst_glformat = GL_RGBA8;
+         break;
+      case PIPE_FORMAT_RGTC1_SNORM:
+      case PIPE_FORMAT_RGTC2_SNORM:
+         if (!ctx->Extensions.EXT_texture_snorm)
+            return PIPE_FORMAT_NONE;
+         dst_glformat = GL_RGBA8_SNORM;
+         break;
+      case PIPE_FORMAT_BPTC_RGB_FLOAT:
+      case PIPE_FORMAT_BPTC_RGB_UFLOAT:
+         if (!ctx->Extensions.ARB_texture_float)
+            return PIPE_FORMAT_NONE;
+         dst_glformat = GL_RGBA32F;
+         break;
+      case PIPE_FORMAT_ETC2_R11_UNORM:
+         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16_UNORM,
+                                          target, 0, 0, bind))
+            return PIPE_FORMAT_NONE;
+         dst_glformat = GL_R16;
+         break;
+      case PIPE_FORMAT_ETC2_R11_SNORM:
+         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16_SNORM,
+                                          target, 0, 0, bind))
+            return PIPE_FORMAT_NONE;
+         dst_glformat = GL_R16_SNORM;
+         break;
+      case PIPE_FORMAT_ETC2_RG11_UNORM:
+         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16G16_UNORM,
+                                          target, 0, 0, bind))
+            return PIPE_FORMAT_NONE;
+         dst_glformat = GL_RG16;
+         break;
+      case PIPE_FORMAT_ETC2_RG11_SNORM:
+         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16G16_SNORM,
+                                          target, 0, 0, bind))
+            return PIPE_FORMAT_NONE;
+         dst_glformat = GL_RG16_SNORM;
+         break;
+      default:
+         assert(0);
+         return PIPE_FORMAT_NONE;
+      }
+
+      dst_format = st_choose_format(st, dst_glformat, format, type,
+                                    target, 0, 0, bind,
+                                    false, false);
+   }
+   return dst_format;
+}
 
 /** called via ctx->Driver.NewTextureImage() */
 static struct gl_texture_image *
@@ -2028,22 +2288,16 @@ st_GetTexSubImage(struct gl_context * ctx,
                   struct gl_texture_image *texImage)
 {
    struct st_context *st = st_context(ctx);
-   struct pipe_context *pipe = st->pipe;
    struct pipe_screen *screen = st->screen;
    struct st_texture_image *stImage = st_texture_image(texImage);
    struct st_texture_object *stObj = st_texture_object(texImage->TexObject);
    struct pipe_resource *src = stObj->pt;
    struct pipe_resource *dst = NULL;
-   struct pipe_resource dst_templ;
    enum pipe_format dst_format, src_format;
-   mesa_format mesa_format;
    GLenum gl_target = texImage->TexObject->Target;
    enum pipe_texture_target pipe_target;
-   unsigned dims;
    struct pipe_blit_info blit;
    unsigned bind;
-   struct pipe_transfer *tex_xfer;
-   ubyte *map = NULL;
    boolean done = FALSE;
 
    assert(!_mesa_is_format_etc2(texImage->TexFormat) &&
@@ -2051,6 +2305,12 @@ st_GetTexSubImage(struct gl_context * ctx,
           texImage->TexFormat != MESA_FORMAT_ETC1_RGB8);
 
    st_flush_bitmap_cache(st);
+
+   /* GetTexImage only returns a single face for cubemaps. */
+   if (gl_target == GL_TEXTURE_CUBE_MAP) {
+      gl_target = GL_TEXTURE_2D;
+   }
+   pipe_target = gl_target_to_pipe(gl_target);
 
    if (!st->prefer_blit_based_texture_transfer &&
        !_mesa_is_format_compressed(texImage->TexFormat)) {
@@ -2083,151 +2343,23 @@ st_GetTexSubImage(struct gl_context * ctx,
       goto fallback;
    }
 
-   /* Convert the source format to what is expected by GetTexImage
-    * and see if it's supported.
-    *
-    * This only applies to glGetTexImage:
-    * - Luminance must be returned as (L,0,0,1).
-    * - Luminance alpha must be returned as (L,0,0,A).
-    * - Intensity must be returned as (I,0,0,1)
-    */
-   if (stObj->surface_based)
-      src_format = util_format_linear(stObj->surface_format);
-   else
-      src_format = util_format_linear(src->format);
-   src_format = util_format_luminance_to_red(src_format);
-   src_format = util_format_intensity_to_red(src_format);
-
-   if (!src_format ||
-       !screen->is_format_supported(screen, src_format, src->target,
-                                    src->nr_samples, src->nr_storage_samples,
-                                    PIPE_BIND_SAMPLER_VIEW)) {
+   src_format = get_src_format(screen, stObj);
+   if (src_format == PIPE_FORMAT_NONE)
       goto fallback;
-   }
 
    if (format == GL_DEPTH_COMPONENT || format == GL_DEPTH_STENCIL)
       bind = PIPE_BIND_DEPTH_STENCIL;
    else
       bind = PIPE_BIND_RENDER_TARGET;
 
-   /* GetTexImage only returns a single face for cubemaps. */
-   if (gl_target == GL_TEXTURE_CUBE_MAP) {
-      gl_target = GL_TEXTURE_2D;
-   }
-   pipe_target = gl_target_to_pipe(gl_target);
-
-   /* Choose the destination format by finding the best match
-    * for the format+type combo. */
-   dst_format = st_choose_matching_format(st, bind, format, type,
-                                          ctx->Pack.SwapBytes);
-
-   if (dst_format == PIPE_FORMAT_NONE) {
-      GLenum dst_glformat;
-
-      /* Fall back to _mesa_GetTexImage_sw except for compressed formats,
-       * where decompression with a blit is always preferred. */
-      if (!util_format_is_compressed(src->format)) {
-         goto fallback;
-      }
-
-      /* Set the appropriate format for the decompressed texture.
-       * Luminance and sRGB formats shouldn't appear here.*/
-      switch (src_format) {
-      case PIPE_FORMAT_DXT1_RGB:
-      case PIPE_FORMAT_DXT1_RGBA:
-      case PIPE_FORMAT_DXT3_RGBA:
-      case PIPE_FORMAT_DXT5_RGBA:
-      case PIPE_FORMAT_RGTC1_UNORM:
-      case PIPE_FORMAT_RGTC2_UNORM:
-      case PIPE_FORMAT_ETC1_RGB8:
-      case PIPE_FORMAT_ETC2_RGB8:
-      case PIPE_FORMAT_ETC2_RGB8A1:
-      case PIPE_FORMAT_ETC2_RGBA8:
-      case PIPE_FORMAT_ASTC_4x4:
-      case PIPE_FORMAT_ASTC_5x4:
-      case PIPE_FORMAT_ASTC_5x5:
-      case PIPE_FORMAT_ASTC_6x5:
-      case PIPE_FORMAT_ASTC_6x6:
-      case PIPE_FORMAT_ASTC_8x5:
-      case PIPE_FORMAT_ASTC_8x6:
-      case PIPE_FORMAT_ASTC_8x8:
-      case PIPE_FORMAT_ASTC_10x5:
-      case PIPE_FORMAT_ASTC_10x6:
-      case PIPE_FORMAT_ASTC_10x8:
-      case PIPE_FORMAT_ASTC_10x10:
-      case PIPE_FORMAT_ASTC_12x10:
-      case PIPE_FORMAT_ASTC_12x12:
-      case PIPE_FORMAT_BPTC_RGBA_UNORM:
-      case PIPE_FORMAT_FXT1_RGB:
-      case PIPE_FORMAT_FXT1_RGBA:
-         dst_glformat = GL_RGBA8;
-         break;
-      case PIPE_FORMAT_RGTC1_SNORM:
-      case PIPE_FORMAT_RGTC2_SNORM:
-         if (!ctx->Extensions.EXT_texture_snorm)
-            goto fallback;
-         dst_glformat = GL_RGBA8_SNORM;
-         break;
-      case PIPE_FORMAT_BPTC_RGB_FLOAT:
-      case PIPE_FORMAT_BPTC_RGB_UFLOAT:
-         if (!ctx->Extensions.ARB_texture_float)
-            goto fallback;
-         dst_glformat = GL_RGBA32F;
-         break;
-      case PIPE_FORMAT_ETC2_R11_UNORM:
-         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16_UNORM,
-                                          pipe_target, 0, 0, bind))
-            goto fallback;
-         dst_glformat = GL_R16;
-         break;
-      case PIPE_FORMAT_ETC2_R11_SNORM:
-         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16_SNORM,
-                                          pipe_target, 0, 0, bind))
-            goto fallback;
-         dst_glformat = GL_R16_SNORM;
-         break;
-      case PIPE_FORMAT_ETC2_RG11_UNORM:
-         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16G16_UNORM,
-                                          pipe_target, 0, 0, bind))
-            goto fallback;
-         dst_glformat = GL_RG16;
-         break;
-      case PIPE_FORMAT_ETC2_RG11_SNORM:
-         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16G16_SNORM,
-                                          pipe_target, 0, 0, bind))
-            goto fallback;
-         dst_glformat = GL_RG16_SNORM;
-         break;
-      default:
-         assert(0);
-         goto fallback;
-      }
-
-      dst_format = st_choose_format(st, dst_glformat, format, type,
-                                    pipe_target, 0, 0, bind,
-                                    false, false);
-
-      if (dst_format == PIPE_FORMAT_NONE) {
-         /* unable to get an rgba format!?! */
-         goto fallback;
-      }
-   }
-
-   /* create the destination texture of size (width X height X depth) */
-   memset(&dst_templ, 0, sizeof(dst_templ));
-   dst_templ.target = pipe_target;
-   dst_templ.format = dst_format;
-   dst_templ.bind = bind;
-   dst_templ.usage = PIPE_USAGE_STAGING;
-
-   st_gl_texture_dims_to_pipe_dims(gl_target, width, height, depth,
-                                   &dst_templ.width0, &dst_templ.height0,
-                                   &dst_templ.depth0, &dst_templ.array_size);
-
-   dst = screen->resource_create(screen, &dst_templ);
-   if (!dst) {
+   dst_format = get_dst_format(ctx, pipe_target, src_format, util_format_is_compressed(src->format),
+                               format, type, bind);
+   if (dst_format == PIPE_FORMAT_NONE)
       goto fallback;
-   }
+
+   dst = create_dst_texture(ctx, dst_format, pipe_target, width, height, depth, gl_target, bind);
+   if (!dst)
+      goto fallback;
 
    /* From now on, we need the gallium representation of dimensions. */
    if (gl_target == GL_TEXTURE_1D_ARRAY) {
@@ -2264,91 +2396,8 @@ st_GetTexSubImage(struct gl_context * ctx,
    /* blit/render/decompress */
    st->pipe->blit(st->pipe, &blit);
 
-   pixels = _mesa_map_pbo_dest(ctx, &ctx->Pack, pixels);
-
-   map = pipe_texture_map_3d(pipe, dst, 0, PIPE_MAP_READ,
-                              0, 0, 0, width, height, depth, &tex_xfer);
-   if (!map) {
-      goto end;
-   }
-
-   mesa_format = st_pipe_format_to_mesa_format(dst_format);
-   dims = _mesa_get_texture_dimensions(gl_target);
-
-   /* copy/pack data into user buffer */
-   if (_mesa_format_matches_format_and_type(mesa_format, format, type,
-                                            ctx->Pack.SwapBytes, NULL)) {
-      /* memcpy */
-      const uint bytesPerRow = width * util_format_get_blocksize(dst_format);
-      GLuint row, slice;
-
-      for (slice = 0; slice < depth; slice++) {
-         ubyte *slice_map = map;
-
-         for (row = 0; row < height; row++) {
-            void *dest = _mesa_image_address(dims, &ctx->Pack, pixels,
-                                             width, height, format, type,
-                                             slice, row, 0);
-
-            memcpy(dest, slice_map, bytesPerRow);
-
-            slice_map += tex_xfer->stride;
-         }
-
-         map += tex_xfer->layer_stride;
-      }
-   }
-   else {
-      /* format translation via floats */
-      GLuint slice;
-      GLfloat *rgba;
-      uint32_t dstMesaFormat;
-      int dstStride, srcStride;
-
-      assert(util_format_is_compressed(src->format));
-
-      rgba = malloc(width * height * 4 * sizeof(GLfloat));
-      if (!rgba) {
-         goto end;
-      }
-
-      if (ST_DEBUG & DEBUG_FALLBACK)
-         debug_printf("%s: fallback format translation\n", __func__);
-
-      dstMesaFormat = _mesa_format_from_format_and_type(format, type);
-      dstStride = _mesa_image_row_stride(&ctx->Pack, width, format, type);
-      srcStride = 4 * width * sizeof(GLfloat);
-      for (slice = 0; slice < depth; slice++) {
-         void *dest = _mesa_image_address(dims, &ctx->Pack, pixels,
-                                          width, height, format, type,
-                                          slice, 0, 0);
-
-         /* get float[4] rgba row from surface */
-         pipe_get_tile_rgba(tex_xfer, map, 0, 0, width, height, dst_format,
-                            rgba);
-
-         _mesa_format_convert(dest, dstMesaFormat, dstStride,
-                              rgba, RGBA32_FLOAT, srcStride,
-                              width, height, NULL);
-
-         /* Handle byte swapping if required */
-         if (ctx->Pack.SwapBytes) {
-            _mesa_swap_bytes_2d_image(format, type, &ctx->Pack,
-                                      width, height, dest, dest);
-         }
-
-         map += tex_xfer->layer_stride;
-      }
-
-      free(rgba);
-   }
-   done = TRUE;
-
-end:
-   if (map)
-      pipe_texture_unmap(pipe, tex_xfer);
-
-   _mesa_unmap_pbo_dest(ctx, &ctx->Pack);
+   done = copy_to_staging_dest(ctx, dst, xoffset, yoffset, zoffset, width, height,
+                           depth, format, type, pixels, texImage);
    pipe_resource_reference(&dst, NULL);
 
 fallback:
