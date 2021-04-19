@@ -48,8 +48,8 @@ enum compute_test_debug_flags {
 static const struct debug_named_value compute_debug_options[] = {
    { "experimental_shaders",  COMPUTE_DEBUG_EXPERIMENTAL_SHADERS, "Enable experimental shaders" },
    { "use_hw_d3d",            COMPUTE_DEBUG_USE_HW_D3D,           "Use a hardware D3D device"   },
-   { "optimize_libclc",       COMPUTE_DEBUG_OPTIMIZE_LIBCLC,      "Optimize the clc_context before using it" },
-   { "serialize_libclc",      COMPUTE_DEBUG_SERIALIZE_LIBCLC,     "Serialize and deserialize the clc_context" },
+   { "optimize_libclc",       COMPUTE_DEBUG_OPTIMIZE_LIBCLC,      "Optimize the clc_libclc before using it" },
+   { "serialize_libclc",      COMPUTE_DEBUG_SERIALIZE_LIBCLC,     "Serialize and deserialize the clc_libclc" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -617,31 +617,31 @@ ComputeTest::run_shader_with_raw_args(Shader shader,
 void
 ComputeTest::SetUp()
 {
-   static struct clc_context *compiler_ctx_g = nullptr;
+   static struct clc_libclc *compiler_ctx_g = nullptr;
 
    if (!compiler_ctx_g) {
-      clc_context_options options = { };
+      clc_libclc_options options = { };
       options.optimize = (debug_get_option_debug_compute() & COMPUTE_DEBUG_OPTIMIZE_LIBCLC) != 0;
 
-      compiler_ctx_g = clc_context_new(&logger, &options);
+      compiler_ctx_g = clc_libclc_new(&logger, &options);
       if (!compiler_ctx_g)
          throw runtime_error("failed to create CLC compiler context");
 
       if (debug_get_option_debug_compute() & COMPUTE_DEBUG_SERIALIZE_LIBCLC) {
          void *serialized = nullptr;
          size_t serialized_size = 0;
-         clc_context_serialize(compiler_ctx_g, &serialized, &serialized_size);
+         clc_libclc_serialize(compiler_ctx_g, &serialized, &serialized_size);
          if (!serialized)
             throw runtime_error("failed to serialize CLC compiler context");
 
-         clc_free_context(compiler_ctx_g);
+         clc_free_libclc(compiler_ctx_g);
          compiler_ctx_g = nullptr;
 
-         compiler_ctx_g = clc_context_deserialize(serialized, serialized_size);
+         compiler_ctx_g = clc_libclc_deserialize(serialized, serialized_size);
          if (!compiler_ctx_g)
             throw runtime_error("failed to deserialize CLC compiler context");
 
-         clc_context_free_serialized(serialized);
+         clc_libclc_free_serialized(serialized);
       }
    }
    compiler_ctx = compiler_ctx_g;
@@ -803,7 +803,7 @@ ComputeTest::compile(const std::vector<const char *> &sources,
    for (unsigned i = 0; i < sources.size(); i++) {
       args.source.value = sources[i];
 
-      auto obj = clc_compile(compiler_ctx, &args, &logger);
+      auto obj = clc_compile(&args, &logger);
       if (!obj)
          throw runtime_error("failed to compile object!");
 
@@ -830,8 +830,7 @@ ComputeTest::link(const std::vector<Shader> &sources,
    link_args.in_objs = objs.data();
    link_args.num_in_objs = (unsigned)objs.size();
    link_args.create_library = create_library;
-   struct clc_object *obj = clc_link(compiler_ctx,
-                                     &link_args,
+   struct clc_object *obj = clc_link(&link_args,
                                      &logger);
    if (!obj)
       throw runtime_error("failed to link objects!");

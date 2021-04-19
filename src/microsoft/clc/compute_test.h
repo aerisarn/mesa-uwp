@@ -314,7 +314,7 @@ protected:
    ID3D12GraphicsCommandList *cmdlist;
    ID3D12DescriptorHeap *uav_heap;
 
-   struct clc_context *compiler_ctx;
+   struct clc_libclc *compiler_ctx;
 
    UINT uav_heap_incr;
    int fence_value;

@@ -451,7 +451,7 @@ clc_lower_nonnormalized_samplers(nir_shader *nir,
 
 
 static void
-clc_context_optimize(nir_shader *s)
+clc_libclc_optimize(nir_shader *s)
 {
    bool progress;
    do {
@@ -475,12 +475,16 @@ clc_context_optimize(nir_shader *s)
    } while (progress);
 }
 
-struct clc_context *
-clc_context_new(const struct clc_logger *logger, const struct clc_context_options *options)
+struct clc_libclc {
+   const void *libclc_nir;
+};
+
+struct clc_libclc *
+clc_libclc_new(const struct clc_logger *logger, const struct clc_libclc_options *options)
 {
-   struct clc_context *ctx = rzalloc(NULL, struct clc_context);
+   struct clc_libclc *ctx = rzalloc(NULL, struct clc_libclc);
    if (!ctx) {
-      clc_error(logger, "D3D12: failed to allocate a clc_context");
+      clc_error(logger, "D3D12: failed to allocate a clc_libclc");
       return NULL;
    }
 
@@ -513,7 +517,7 @@ clc_context_new(const struct clc_logger *logger, const struct clc_context_option
    }
 
    if (options && options->optimize)
-      clc_context_optimize(s);
+      clc_libclc_optimize(s);
 
    ralloc_steal(ctx, s);
    ctx->libclc_nir = s;
@@ -522,13 +526,13 @@ clc_context_new(const struct clc_logger *logger, const struct clc_context_option
 }
 
 void
-clc_free_context(struct clc_context *ctx)
+clc_free_libclc(struct clc_libclc *ctx)
 {
    ralloc_free(ctx);
    glsl_type_singleton_decref();
 };
 
-void clc_context_serialize(struct clc_context *context,
+void clc_libclc_serialize(struct clc_libclc *context,
                            void **serialized,
                            size_t *serialized_size)
 {
@@ -539,15 +543,15 @@ void clc_context_serialize(struct clc_context *context,
    blob_finish_get_buffer(&tmp, serialized, serialized_size);
 }
 
-void clc_context_free_serialized(void *serialized)
+void clc_libclc_free_serialized(void *serialized)
 {
    free(serialized);
 }
 
-struct clc_context *
-   clc_context_deserialize(const void *serialized, size_t serialized_size)
+struct clc_libclc *
+   clc_libclc_deserialize(const void *serialized, size_t serialized_size)
 {
-   struct clc_context *ctx = rzalloc(NULL, struct clc_context);
+   struct clc_libclc *ctx = rzalloc(NULL, struct clc_libclc);
    if (!ctx) {
       return NULL;
    }
@@ -572,8 +576,7 @@ struct clc_context *
 }
 
 struct clc_object *
-clc_compile(struct clc_context *ctx,
-            const struct clc_compile_args *args,
+clc_compile(const struct clc_compile_args *args,
             const struct clc_logger *logger)
 {
    struct clc_object *obj;
@@ -598,8 +601,7 @@ clc_compile(struct clc_context *ctx,
 }
 
 struct clc_object *
-clc_link(struct clc_context *ctx,
-         const struct clc_linker_args *args,
+clc_link(const struct clc_linker_args *args,
          const struct clc_logger *logger)
 {
    struct clc_object *out_obj;
@@ -1010,7 +1012,7 @@ scale_fdiv(nir_shader *nir)
 }
 
 struct clc_dxil_object *
-clc_to_dxil(struct clc_context *ctx,
+clc_to_dxil(struct clc_libclc *lib,
             const struct clc_object *obj,
             const char *entrypoint,
             const struct clc_runtime_kernel_conf *conf,
@@ -1039,7 +1041,7 @@ clc_to_dxil(struct clc_context *ctx,
 
    const struct spirv_to_nir_options spirv_options = {
       .environment = NIR_SPIRV_OPENCL,
-      .clc_shader = ctx->libclc_nir,
+      .clc_shader = lib->libclc_nir,
       .constant_addr_format = nir_address_format_32bit_index_offset_pack64,
       .global_addr_format = nir_address_format_32bit_index_offset_pack64,
       .shared_addr_format = nir_address_format_32bit_offset_as_64bit,
@@ -1116,7 +1118,7 @@ clc_to_dxil(struct clc_context *ctx,
    // according to the comment on nir_inline_functions
    NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
    NIR_PASS_V(nir, nir_lower_returns);
-   NIR_PASS_V(nir, nir_lower_libclc, ctx->libclc_nir);
+   NIR_PASS_V(nir, nir_lower_libclc, lib->libclc_nir);
    NIR_PASS_V(nir, nir_inline_functions);
 
    // Pick off the single entrypoint that we want.

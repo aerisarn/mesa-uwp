@@ -187,30 +187,28 @@ struct clc_dxil_object {
    } binary;
 };
 
-struct clc_context {
-   const void *libclc_nir;
-};
+struct clc_libclc;
 
-struct clc_context_options {
+struct clc_libclc_options {
    unsigned optimize;
 };
 
-struct clc_context *clc_context_new(const struct clc_logger *logger, const struct clc_context_options *options);
+struct clc_libclc *clc_libclc_new(const struct clc_logger *logger, const struct clc_libclc_options *options);
 
-void clc_free_context(struct clc_context *ctx);
+void clc_free_libclc(struct clc_libclc *lib);
 
-void clc_context_serialize(struct clc_context *ctx, void **serialized, size_t *size);
-void clc_context_free_serialized(void *serialized);
-struct clc_context *clc_context_deserialize(void *serialized, size_t size);
+void clc_libclc_serialize(struct clc_libclc *lib, void **serialized, size_t *size);
+void clc_libclc_free_serialized(void *serialized);
+struct clc_libclc *clc_libclc_deserialize(void *serialized, size_t size);
+
+
 
 struct clc_object *
-clc_compile(struct clc_context *ctx,
-            const struct clc_compile_args *args,
+clc_compile(const struct clc_compile_args *args,
             const struct clc_logger *logger);
 
 struct clc_object *
-clc_link(struct clc_context *ctx,
-         const struct clc_linker_args *args,
+clc_link(const struct clc_linker_args *args,
          const struct clc_logger *logger);
 
 void clc_free_object(struct clc_object *obj);
@@ -237,7 +235,7 @@ struct clc_runtime_kernel_conf {
 };
 
 struct clc_dxil_object *
-clc_to_dxil(struct clc_context *ctx,
+clc_to_dxil(struct clc_libclc *ctx,
             const struct clc_object *obj,
             const char *entrypoint,
             const struct clc_runtime_kernel_conf *conf,
