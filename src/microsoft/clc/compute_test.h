@@ -52,7 +52,8 @@ align(size_t value, unsigned alignment)
 class ComputeTest : public ::testing::Test {
 protected:
    struct Shader {
-      std::shared_ptr<struct clc_object> obj;
+      std::shared_ptr<struct clc_binary> obj;
+      std::shared_ptr<struct clc_parsed_spirv> metadata;
       std::shared_ptr<struct clc_dxil_object> dxil;
    };
 

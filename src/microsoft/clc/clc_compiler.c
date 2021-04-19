@@ -54,7 +54,7 @@ static const struct debug_named_value clc_debug_options[] = {
 DEBUG_GET_ONCE_FLAGS_OPTION(debug_clc, "CLC_DEBUG", clc_debug_options, 0)
 
 static void
-clc_print_kernels_info(const struct clc_object *obj)
+clc_print_kernels_info(const struct clc_parsed_spirv *obj)
 {
    fprintf(stdout, "Kernels:\n");
    for (unsigned i = 0; i < obj->num_kernels; i++) {
@@ -575,44 +575,60 @@ struct clc_libclc *
    return ctx;
 }
 
-bool
-clc_compile(const struct clc_compile_args *args,
-            const struct clc_logger *logger,
-            struct clc_object *out_spirv)
+void
+clc_free_spirv(struct clc_binary *spirv)
 {
-   if (clc_to_spirv(args, &out_spirv->spvbin, logger) < 0)
+   clc_free_spirv_binary(spirv);
+}
+
+bool
+clc_compile_c_to_spirv(const struct clc_compile_args *args,
+                       const struct clc_logger *logger,
+                       struct clc_binary *out_spirv)
+{
+   if (clc_c_to_spirv(args, logger, out_spirv) < 0)
       return false;
 
    if (debug_get_option_debug_clc() & CLC_DEBUG_DUMP_SPIRV)
-      clc_dump_spirv(&out_spirv->spvbin, stdout);
+      clc_dump_spirv(out_spirv, stdout);
 
    return true;
 }
 
 bool
-clc_link(const struct clc_linker_args *args,
-         const struct clc_logger *logger,
-         struct clc_object *out_spirv)
+clc_link_spirv(const struct clc_linker_args *args,
+               const struct clc_logger *logger,
+               struct clc_binary *out_spirv)
 {
-   if (clc_link_spirv_binaries(args, &out_spirv->spvbin, logger) < 0)
+   if (clc_link_spirv_binaries(args, logger, out_spirv) < 0)
       return false;
 
    if (debug_get_option_debug_clc() & CLC_DEBUG_DUMP_SPIRV)
-      clc_dump_spirv(&out_spirv->spvbin, stdout);
+      clc_dump_spirv(out_spirv, stdout);
 
-   out_spirv->kernels = clc_spirv_get_kernels_info(&out_spirv->spvbin,
-                                                   &out_spirv->num_kernels);
+   return true;
+}
+
+bool
+clc_parse_spirv(const struct clc_binary *in_spirv,
+                const struct clc_logger *logger,
+                struct clc_parsed_spirv *out_data)
+{
+   if (!clc_spirv_get_kernels_info(in_spirv,
+      &out_data->kernels,
+      &out_data->num_kernels,
+      logger))
+      return false;
 
    if (debug_get_option_debug_clc() & CLC_DEBUG_VERBOSE)
-      clc_print_kernels_info(out_spirv);
+      clc_print_kernels_info(out_data);
 
    return true;
 }
 
-void clc_free_object(struct clc_object *obj)
+void clc_free_parsed_spirv(struct clc_parsed_spirv *data)
 {
-   clc_free_kernels_info(obj->kernels, obj->num_kernels);
-   clc_free_spirv_binary(&obj->spvbin);
+   clc_free_kernels_info(data->kernels, data->num_kernels);
 }
 
 static nir_variable *
@@ -989,18 +1005,19 @@ scale_fdiv(nir_shader *nir)
 }
 
 bool
-clc_to_dxil(struct clc_libclc *lib,
-            const struct clc_object *obj,
-            const char *entrypoint,
-            const struct clc_runtime_kernel_conf *conf,
-            const struct clc_logger *logger,
-            struct clc_dxil_object *out_dxil)
+clc_spirv_to_dxil(struct clc_libclc *lib,
+                  const struct clc_binary *linked_spirv,
+                  const struct clc_parsed_spirv *parsed_data,
+                  const char *entrypoint,
+                  const struct clc_runtime_kernel_conf *conf,
+                  const struct clc_logger *logger,
+                  struct clc_dxil_object *out_dxil)
 {
    struct nir_shader *nir;
 
-   for (unsigned i = 0; i < obj->num_kernels; i++) {
-      if (!strcmp(obj->kernels[i].name, entrypoint)) {
-         out_dxil->kernel = &obj->kernels[i];
+   for (unsigned i = 0; i < parsed_data->num_kernels; i++) {
+      if (!strcmp(parsed_data->kernels[i].name, entrypoint)) {
+         out_dxil->kernel = &parsed_data->kernels[i];
          break;
       }
    }
@@ -1045,7 +1062,7 @@ clc_to_dxil(struct clc_libclc *lib,
 
    glsl_type_singleton_init_or_ref();
 
-   nir = spirv_to_nir(obj->spvbin.data, obj->spvbin.size / 4,
+   nir = spirv_to_nir(linked_spirv->data, linked_spirv->size / 4,
                       NULL, 0,
                       MESA_SHADER_KERNEL, entrypoint,
                       &spirv_options,
@@ -1374,7 +1391,7 @@ clc_to_dxil(struct clc_libclc *lib,
          continue;
 
       /* If we don't have the runtime conf yet, we just create a dummy variable.
-       * This will be adjusted when clc_to_dxil() is called with a conf
+       * This will be adjusted when clc_spirv_to_dxil() is called with a conf
        * argument.
        */
       unsigned size = 4;

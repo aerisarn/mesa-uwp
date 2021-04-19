@@ -38,29 +38,31 @@ extern "C" {
 #include <stdio.h>
 #include <stdint.h>
 
-const struct clc_kernel_info *
-clc_spirv_get_kernels_info(const struct spirv_binary *spvbin,
-                           unsigned *num_kernels);
+bool
+clc_spirv_get_kernels_info(const struct clc_binary *spvbin,
+                           const struct clc_kernel_info **kernels,
+                           unsigned *num_kernels,
+                           const struct clc_logger *logger);
 
 void
 clc_free_kernels_info(const struct clc_kernel_info *kernels,
                       unsigned num_kernels);
 
 int
-clc_to_spirv(const struct clc_compile_args *args,
-             struct spirv_binary *spvbin,
-             const struct clc_logger *logger);
+clc_c_to_spirv(const struct clc_compile_args *args,
+               const struct clc_logger *logger,
+               struct clc_binary *out_spirv);
 
 int
 clc_link_spirv_binaries(const struct clc_linker_args *args,
-                        struct spirv_binary *dst_bin,
-                        const struct clc_logger *logger);
+                        const struct clc_logger *logger,
+                        struct clc_binary *out_spirv);
 
 void
-clc_dump_spirv(const struct spirv_binary *spvbin, FILE *f);
+clc_dump_spirv(const struct clc_binary *spvbin, FILE *f);
 
 void
-clc_free_spirv_binary(struct spirv_binary *spvbin);
+clc_free_spirv_binary(struct clc_binary *spvbin);
 
 #define clc_log(logger, level, fmt, ...) do {        \
       if (!logger || !logger->level) break;          \

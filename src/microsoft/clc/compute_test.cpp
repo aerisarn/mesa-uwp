@@ -803,14 +803,14 @@ ComputeTest::compile(const std::vector<const char *> &sources,
    for (unsigned i = 0; i < sources.size(); i++) {
       args.source.value = sources[i];
 
-      clc_object spirv{};
-      if (!clc_compile(&args, &logger, &spirv))
+      clc_binary spirv{};
+      if (!clc_compile_c_to_spirv(&args, &logger, &spirv))
          throw runtime_error("failed to compile object!");
 
       Shader shader;
-      shader.obj = std::shared_ptr<clc_object>(new clc_object(spirv), [](clc_object *spirv)
+      shader.obj = std::shared_ptr<clc_binary>(new clc_binary(spirv), [](clc_binary *spirv)
          {
-            clc_free_object(spirv);
+            clc_free_spirv(spirv);
             delete spirv;
          });
       shaders.push_back(shader);
@@ -826,7 +826,7 @@ ComputeTest::Shader
 ComputeTest::link(const std::vector<Shader> &sources,
                   bool create_library)
 {
-   std::vector<const clc_object*> objs;
+   std::vector<const clc_binary*> objs;
    for (auto& source : sources)
       objs.push_back(&*source.obj);
 
@@ -834,14 +834,14 @@ ComputeTest::link(const std::vector<Shader> &sources,
    link_args.in_objs = objs.data();
    link_args.num_in_objs = (unsigned)objs.size();
    link_args.create_library = create_library;
-   clc_object spirv{};
-   if (!clc_link(&link_args, &logger, &spirv))
+   clc_binary spirv{};
+   if (!clc_link_spirv(&link_args, &logger, &spirv))
       throw runtime_error("failed to link objects!");
 
    ComputeTest::Shader shader;
-   shader.obj = std::shared_ptr<clc_object>(new clc_object(spirv), [](clc_object *spirv)
+   shader.obj = std::shared_ptr<clc_binary>(new clc_binary(spirv), [](clc_binary *spirv)
       {
-         clc_free_object(spirv);
+         clc_free_spirv(spirv);
          delete spirv;
       });
    if (!link_args.create_library)
@@ -854,13 +854,22 @@ void
 ComputeTest::configure(Shader &shader,
                        const struct clc_runtime_kernel_conf *conf)
 {
+   if (!shader.metadata) {
+      shader.metadata = std::shared_ptr<clc_parsed_spirv>(new clc_parsed_spirv{}, [](clc_parsed_spirv *metadata)
+         {
+            clc_free_parsed_spirv(metadata);
+            delete metadata;
+         });
+      if (!clc_parse_spirv(shader.obj.get(), NULL, shader.metadata.get()))
+         throw runtime_error("failed to parse spirv!");
+   }
 
    shader.dxil = std::shared_ptr<clc_dxil_object>(new clc_dxil_object{}, [](clc_dxil_object *dxil)
       {
          clc_free_dxil_object(dxil);
          delete dxil;
       });
-   if (!clc_to_dxil(compiler_ctx, shader.obj.get(), "main_test", conf, &logger, shader.dxil.get()))
+   if (!clc_spirv_to_dxil(compiler_ctx, shader.obj.get(), shader.metadata.get(), "main_test", conf, &logger, shader.dxil.get()))
       throw runtime_error("failed to compile kernel!");
 }
 

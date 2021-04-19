@@ -1688,8 +1688,8 @@ TEST_F(ComputeTest, vec_hint_float4)
       inout[get_global_id(0)] *= inout[get_global_id(1)];\n\
    }";
    Shader shader = compile({ kernel_source });
-   EXPECT_EQ(shader.obj->kernels[0].vec_hint_size, 4);
-   EXPECT_EQ(shader.obj->kernels[0].vec_hint_type, CLC_VEC_HINT_TYPE_FLOAT);
+   EXPECT_EQ(shader.metadata->kernels[0].vec_hint_size, 4);
+   EXPECT_EQ(shader.metadata->kernels[0].vec_hint_type, CLC_VEC_HINT_TYPE_FLOAT);
 }
 
 TEST_F(ComputeTest, vec_hint_uchar2)
@@ -1700,8 +1700,8 @@ TEST_F(ComputeTest, vec_hint_uchar2)
       inout[get_global_id(0)] *= inout[get_global_id(1)];\n\
    }";
    Shader shader = compile({ kernel_source });
-   EXPECT_EQ(shader.obj->kernels[0].vec_hint_size, 2);
-   EXPECT_EQ(shader.obj->kernels[0].vec_hint_type, CLC_VEC_HINT_TYPE_CHAR);
+   EXPECT_EQ(shader.metadata->kernels[0].vec_hint_size, 2);
+   EXPECT_EQ(shader.metadata->kernels[0].vec_hint_type, CLC_VEC_HINT_TYPE_CHAR);
 }
 
 TEST_F(ComputeTest, vec_hint_none)
@@ -1712,7 +1712,7 @@ TEST_F(ComputeTest, vec_hint_none)
       inout[get_global_id(0)] *= inout[get_global_id(1)];\n\
    }";
    Shader shader = compile({ kernel_source });
-   EXPECT_EQ(shader.obj->kernels[0].vec_hint_size, 0);
+   EXPECT_EQ(shader.metadata->kernels[0].vec_hint_size, 0);
 }
 
 TEST_F(ComputeTest, DISABLED_debug_layer_failure)

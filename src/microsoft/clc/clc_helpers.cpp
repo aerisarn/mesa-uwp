@@ -474,7 +474,7 @@ public:
       return true;
    }
 
-   void parseBinary(const struct spirv_binary &spvbin)
+   bool parseBinary(const struct clc_binary &spvbin, const struct clc_logger *logger)
    {
       /* 3 passes should be enough to retrieve all kernel information:
        * 1st pass: all entry point name and number of args
@@ -482,15 +482,23 @@ public:
        * 3rd pass: pointer type names
        */
       for (unsigned pass = 0; pass < 3; pass++) {
-         spvBinaryParse(ctx, reinterpret_cast<void *>(this),
-                        spvbin.data, spvbin.size / 4,
-                        NULL, parseInstruction, NULL);
+         spv_diagnostic diagnostic = NULL;
+         auto result = spvBinaryParse(ctx, reinterpret_cast<void *>(this),
+                                      static_cast<uint32_t*>(spvbin.data), spvbin.size / 4,
+                                      NULL, parseInstruction, &diagnostic);
+
+         if (result != SPV_SUCCESS) {
+            if (diagnostic && logger)
+               logger->error(logger->priv, diagnostic->error);
+            return false;
+         }
 
          if (parsingComplete())
-            return;
+            return true;
       }
 
       assert(0);
+      return false;
    }
 
    std::vector<SPIRVKernelInfo> kernels;
@@ -499,18 +507,22 @@ public:
    spv_context ctx;
 };
 
-const struct clc_kernel_info *
-clc_spirv_get_kernels_info(const struct spirv_binary *spvbin,
-                           unsigned *num_kernels)
+bool
+clc_spirv_get_kernels_info(const struct clc_binary *spvbin,
+                           const struct clc_kernel_info **out_kernels,
+                           unsigned *num_kernels,
+                           const struct clc_logger *logger)
 {
    struct clc_kernel_info *kernels;
 
    SPIRVKernelParser parser;
 
-   parser.parseBinary(*spvbin);
+   if (!parser.parseBinary(*spvbin, logger))
+      return false;
+
    *num_kernels = parser.kernels.size();
    if (!*num_kernels)
-      return NULL;
+      return false;
 
    kernels = reinterpret_cast<struct clc_kernel_info *>(calloc(*num_kernels,
                                                                sizeof(*kernels)));
@@ -539,7 +551,9 @@ clc_spirv_get_kernels_info(const struct spirv_binary *spvbin,
       }
    }
 
-   return kernels;
+   *out_kernels = kernels;
+
+   return true;
 }
 
 void
@@ -563,9 +577,9 @@ clc_free_kernels_info(const struct clc_kernel_info *kernels,
 }
 
 int
-clc_to_spirv(const struct clc_compile_args *args,
-             struct spirv_binary *spvbin,
-             const struct clc_logger *logger)
+clc_c_to_spirv(const struct clc_compile_args *args,
+               const struct clc_logger *logger,
+               struct clc_binary *out_spirv)
 {
    LLVMInitializeAllTargets();
    LLVMInitializeAllTargetInfos();
@@ -694,9 +708,9 @@ clc_to_spirv(const struct clc_compile_args *args,
    }
 
    const std::string spv_out = spv_stream.str();
-   spvbin->size = spv_out.size();
-   spvbin->data = static_cast<uint32_t *>(malloc(spvbin->size));
-   memcpy(spvbin->data, spv_out.data(), spvbin->size);
+   out_spirv->size = spv_out.size();
+   out_spirv->data = malloc(out_spirv->size);
+   memcpy(out_spirv->data, spv_out.data(), out_spirv->size);
 
    return 0;
 }
@@ -762,15 +776,14 @@ private:
 
 int
 clc_link_spirv_binaries(const struct clc_linker_args *args,
-                        struct spirv_binary *dst_bin,
-                        const struct clc_logger *logger)
+                        const struct clc_logger *logger,
+                        struct clc_binary *out_spirv)
 {
    std::vector<std::vector<uint32_t>> binaries;
 
    for (unsigned i = 0; i < args->num_in_objs; i++) {
-      std::vector<uint32_t> bin(args->in_objs[i]->spvbin.data,
-                                args->in_objs[i]->spvbin.data +
-                                   (args->in_objs[i]->spvbin.size / 4));
+      const uint32_t *data = static_cast<const uint32_t *>(args->in_objs[i]->data);
+      std::vector<uint32_t> bin(data, data + (args->in_objs[i]->size / 4));
       binaries.push_back(bin);
    }
 
@@ -786,18 +799,19 @@ clc_link_spirv_binaries(const struct clc_linker_args *args,
       return -1;
    }
 
-   dst_bin->size = linkingResult.size() * 4;
-   dst_bin->data = static_cast<uint32_t *>(malloc(dst_bin->size));
-   memcpy(dst_bin->data, linkingResult.data(), dst_bin->size);
+   out_spirv->size = linkingResult.size() * 4;
+   out_spirv->data = static_cast<uint32_t *>(malloc(out_spirv->size));
+   memcpy(out_spirv->data, linkingResult.data(), out_spirv->size);
 
    return 0;
 }
 
 void
-clc_dump_spirv(const struct spirv_binary *spvbin, FILE *f)
+clc_dump_spirv(const struct clc_binary *spvbin, FILE *f)
 {
    spvtools::SpirvTools tools(SPV_ENV_UNIVERSAL_1_0);
-   std::vector<uint32_t> bin(spvbin->data, spvbin->data + (spvbin->size / 4));
+   const uint32_t *data = static_cast<const uint32_t *>(spvbin->data);
+   std::vector<uint32_t> bin(data, data + (spvbin->size / 4));
    std::string out;
    tools.Disassemble(bin, &out,
                      SPV_BINARY_TO_TEXT_OPTION_INDENT |
@@ -806,7 +820,7 @@ clc_dump_spirv(const struct spirv_binary *spvbin, FILE *f)
 }
 
 void
-clc_free_spirv_binary(struct spirv_binary *spvbin)
+clc_free_spirv_binary(struct clc_binary *spvbin)
 {
    free(spvbin->data);
 }

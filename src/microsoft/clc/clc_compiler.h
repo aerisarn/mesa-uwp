@@ -45,7 +45,7 @@ struct clc_compile_args {
 };
 
 struct clc_linker_args {
-   const struct clc_object * const *in_objs;
+   const struct clc_binary * const *in_objs;
    unsigned num_in_objs;
    unsigned create_library;
 };
@@ -58,8 +58,8 @@ struct clc_logger {
    clc_msg_callback warning;
 };
 
-struct spirv_binary {
-   uint32_t *data;
+struct clc_binary {
+   void *data;
    size_t size;
 };
 
@@ -108,8 +108,7 @@ struct clc_kernel_info {
    enum clc_vec_hint_type vec_hint_type;
 };
 
-struct clc_object {
-   struct spirv_binary spvbin;
+struct clc_parsed_spirv {
    const struct clc_kernel_info *kernels;
    unsigned num_kernels;
 };
@@ -201,19 +200,26 @@ void clc_libclc_serialize(struct clc_libclc *lib, void **serialized, size_t *siz
 void clc_libclc_free_serialized(void *serialized);
 struct clc_libclc *clc_libclc_deserialize(void *serialized, size_t size);
 
-
-
-bool
-clc_compile(const struct clc_compile_args *args,
-            const struct clc_logger *logger,
-            struct clc_object *out_spirv);
+void
+clc_free_spirv(struct clc_binary *spirv);
 
 bool
-clc_link(const struct clc_linker_args *args,
-         const struct clc_logger *logger,
-         struct clc_object *out_spirv);
+clc_compile_c_to_spirv(const struct clc_compile_args *args,
+                       const struct clc_logger *logger,
+                       struct clc_binary *out_spirv);
 
-void clc_free_object(struct clc_object *obj);
+bool
+clc_link_spirv(const struct clc_linker_args *args,
+               const struct clc_logger *logger,
+               struct clc_binary *out_spirv);
+
+bool
+clc_parse_spirv(const struct clc_binary *in_spirv,
+                const struct clc_logger *logger,
+                struct clc_parsed_spirv *out_data);
+
+void
+clc_free_parsed_spirv(struct clc_parsed_spirv *data);
 
 struct clc_runtime_arg_info {
    union {
@@ -237,12 +243,13 @@ struct clc_runtime_kernel_conf {
 };
 
 bool
-clc_to_dxil(struct clc_libclc *ctx,
-            const struct clc_object *obj,
-            const char *entrypoint,
-            const struct clc_runtime_kernel_conf *conf,
-            const struct clc_logger *logger,
-            struct clc_dxil_object *out_dxil);
+clc_spirv_to_dxil(struct clc_libclc *lib,
+                  const struct clc_binary *linked_spirv,
+                  const struct clc_parsed_spirv *parsed_data,
+                  const char *entrypoint,
+                  const struct clc_runtime_kernel_conf *conf,
+                  const struct clc_logger *logger,
+                  struct clc_dxil_object *out_dxil);
 
 void clc_free_dxil_object(struct clc_dxil_object *dxil);
 
