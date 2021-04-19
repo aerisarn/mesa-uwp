@@ -42,6 +42,8 @@ bool
 clc_spirv_get_kernels_info(const struct clc_binary *spvbin,
                            const struct clc_kernel_info **kernels,
                            unsigned *num_kernels,
+                           const struct clc_parsed_spec_constant **spec_constants,
+                           unsigned *num_spec_constants,
                            const struct clc_logger *logger);
 
 void

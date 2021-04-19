@@ -645,6 +645,8 @@ clc_parse_spirv(const struct clc_binary *in_spirv,
    if (!clc_spirv_get_kernels_info(in_spirv,
       &out_data->kernels,
       &out_data->num_kernels,
+      &out_data->spec_constants,
+      &out_data->num_spec_constants,
       logger))
       return false;
 

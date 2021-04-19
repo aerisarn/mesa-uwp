@@ -108,9 +108,32 @@ struct clc_kernel_info {
    enum clc_vec_hint_type vec_hint_type;
 };
 
+enum clc_spec_constant_type {
+   CLC_SPEC_CONSTANT_UNKNOWN,
+   CLC_SPEC_CONSTANT_BOOL,
+   CLC_SPEC_CONSTANT_FLOAT,
+   CLC_SPEC_CONSTANT_DOUBLE,
+   CLC_SPEC_CONSTANT_INT8,
+   CLC_SPEC_CONSTANT_UINT8,
+   CLC_SPEC_CONSTANT_INT16,
+   CLC_SPEC_CONSTANT_UINT16,
+   CLC_SPEC_CONSTANT_INT32,
+   CLC_SPEC_CONSTANT_UINT32,
+   CLC_SPEC_CONSTANT_INT64,
+   CLC_SPEC_CONSTANT_UINT64,
+};
+
+struct clc_parsed_spec_constant {
+   uint32_t id;
+   enum clc_spec_constant_type type;
+};
+
 struct clc_parsed_spirv {
    const struct clc_kernel_info *kernels;
    unsigned num_kernels;
+
+   const struct clc_parsed_spec_constant *spec_constants;
+   unsigned num_spec_constants;
 };
 
 #define CLC_MAX_CONSTS 32
