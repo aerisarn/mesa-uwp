@@ -31,6 +31,8 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Type.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
+#include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Target.h>
 #include <LLVMSPIRVLib/LLVMSPIRVLib.h>
@@ -576,10 +578,9 @@ clc_free_kernels_info(const struct clc_kernel_info *kernels,
    free((void *)kernels);
 }
 
-int
-clc_c_to_spirv(const struct clc_compile_args *args,
-               const struct clc_logger *logger,
-               struct clc_binary *out_spirv)
+static std::pair<std::unique_ptr<::llvm::Module>, std::unique_ptr<LLVMContext>>
+clc_compile_to_llvm_module(const struct clc_compile_args *args,
+                           const struct clc_logger *logger)
 {
    LLVMInitializeAllTargets();
    LLVMInitializeAllTargetInfos();
@@ -626,13 +627,13 @@ clc_c_to_spirv(const struct clc_compile_args *args,
                                                   diag)) {
       log += "Couldn't create Clang invocation.\n";
       clc_error(logger, log.c_str());
-      return -1;
+      return {};
    }
 
    if (diag.hasErrorOccurred()) {
       log += "Errors occurred during Clang invocation.\n";
       clc_error(logger, log.c_str());
-      return -1;
+      return {};
    }
 
    // This is a workaround for a Clang bug which causes the number
@@ -696,10 +697,19 @@ clc_c_to_spirv(const struct clc_compile_args *args,
    if (!c->ExecuteAction(act)) {
       log += "Error executing LLVM compilation action.\n";
       clc_error(logger, log.c_str());
-      return -1;
+      return {};
    }
 
-   auto mod = act.takeModule();
+   return { act.takeModule(), std::move(llvm_ctx) };
+}
+
+static int
+llvm_mod_to_spirv(std::unique_ptr<::llvm::Module> mod,
+                  std::unique_ptr<LLVMContext> context,
+                  const struct clc_logger *logger,
+                  struct clc_binary *out_spirv)
+{
+   std::string log;
    std::ostringstream spv_stream;
    if (!::llvm::writeSpirv(mod.get(), spv_stream, log)) {
       log += "Translation from LLVM IR to SPIR-V failed.\n";
@@ -715,34 +725,54 @@ clc_c_to_spirv(const struct clc_compile_args *args,
    return 0;
 }
 
-static const char *
-spv_result_to_str(spv_result_t res)
+int
+clc_c_to_spir(const struct clc_compile_args *args,
+              const struct clc_logger *logger,
+              struct clc_binary *out_spir)
 {
-   switch (res) {
-   case SPV_SUCCESS: return "success";
-   case SPV_UNSUPPORTED: return "unsupported";
-   case SPV_END_OF_STREAM: return "end of stream";
-   case SPV_WARNING: return "warning";
-   case SPV_FAILED_MATCH: return "failed match";
-   case SPV_REQUESTED_TERMINATION: return "requested termination";
-   case SPV_ERROR_INTERNAL: return "internal error";
-   case SPV_ERROR_OUT_OF_MEMORY: return "out of memory";
-   case SPV_ERROR_INVALID_POINTER: return "invalid pointer";
-   case SPV_ERROR_INVALID_BINARY: return "invalid binary";
-   case SPV_ERROR_INVALID_TEXT: return "invalid text";
-   case SPV_ERROR_INVALID_TABLE: return "invalid table";
-   case SPV_ERROR_INVALID_VALUE: return "invalid value";
-   case SPV_ERROR_INVALID_DIAGNOSTIC: return "invalid diagnostic";
-   case SPV_ERROR_INVALID_LOOKUP: return "invalid lookup";
-   case SPV_ERROR_INVALID_ID: return "invalid id";
-   case SPV_ERROR_INVALID_CFG: return "invalid config";
-   case SPV_ERROR_INVALID_LAYOUT: return "invalid layout";
-   case SPV_ERROR_INVALID_CAPABILITY: return "invalid capability";
-   case SPV_ERROR_INVALID_DATA: return "invalid data";
-   case SPV_ERROR_MISSING_EXTENSION: return "missing extension";
-   case SPV_ERROR_WRONG_VERSION: return "wrong version";
-   default: return "unknown error";
-   }
+   auto pair = clc_compile_to_llvm_module(args, logger);
+   if (!pair.first)
+      return -1;
+
+   ::llvm::SmallVector<char> buffer;
+   ::llvm::BitcodeWriter writer(buffer);
+   writer.writeModule(*pair.first);
+
+   out_spir->size = buffer.size_in_bytes();
+   out_spir->data = malloc(out_spir->size);
+   memcpy(out_spir->data, buffer.data(), out_spir->size);
+
+   return 0;
+}
+
+int
+clc_c_to_spirv(const struct clc_compile_args *args,
+               const struct clc_logger *logger,
+               struct clc_binary *out_spirv)
+{
+   auto pair = clc_compile_to_llvm_module(args, logger);
+   if (!pair.first)
+      return -1;
+   return llvm_mod_to_spirv(std::move(pair.first), std::move(pair.second), logger, out_spirv);
+}
+
+int
+clc_spir_to_spirv(const struct clc_binary *in_spir,
+                  const struct clc_logger *logger,
+                  struct clc_binary *out_spirv)
+{
+   LLVMInitializeAllTargets();
+   LLVMInitializeAllTargetInfos();
+   LLVMInitializeAllTargetMCs();
+   LLVMInitializeAllAsmPrinters();
+
+   std::unique_ptr<LLVMContext> llvm_ctx{ new LLVMContext };
+   ::llvm::StringRef spir_ref(static_cast<const char*>(in_spir->data), in_spir->size);
+   auto mod = ::llvm::parseBitcodeFile(::llvm::MemoryBufferRef(spir_ref, "<spir>"), *llvm_ctx);
+   if (!mod)
+      return -1;
+
+   return llvm_mod_to_spirv(std::move(mod.get()), std::move(llvm_ctx), logger, out_spirv);
 }
 
 class SPIRVMessageConsumer {
@@ -817,6 +847,12 @@ clc_dump_spirv(const struct clc_binary *spvbin, FILE *f)
                      SPV_BINARY_TO_TEXT_OPTION_INDENT |
                      SPV_BINARY_TO_TEXT_OPTION_FRIENDLY_NAMES);
    fwrite(out.c_str(), out.size(), 1, f);
+}
+
+void
+clc_free_spir_binary(struct clc_binary *spir)
+{
+   free(spir->data);
 }
 
 void

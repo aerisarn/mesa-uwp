@@ -49,6 +49,16 @@ clc_free_kernels_info(const struct clc_kernel_info *kernels,
                       unsigned num_kernels);
 
 int
+clc_c_to_spir(const struct clc_compile_args *args,
+              const struct clc_logger *logger,
+              struct clc_binary *out_spir);
+
+int
+clc_spir_to_spirv(const struct clc_binary *in_spir,
+                  const struct clc_logger *logger,
+                  struct clc_binary *out_spirv);
+
+int
 clc_c_to_spirv(const struct clc_compile_args *args,
                const struct clc_logger *logger,
                struct clc_binary *out_spirv);
@@ -60,6 +70,9 @@ clc_link_spirv_binaries(const struct clc_linker_args *args,
 
 void
 clc_dump_spirv(const struct clc_binary *spvbin, FILE *f);
+
+void
+clc_free_spir_binary(struct clc_binary *spir);
 
 void
 clc_free_spirv_binary(struct clc_binary *spvbin);

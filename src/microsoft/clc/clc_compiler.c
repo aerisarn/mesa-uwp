@@ -575,6 +575,34 @@ struct clc_libclc *
    return ctx;
 }
 
+bool
+clc_compile_c_to_spir(const struct clc_compile_args *args,
+                      const struct clc_logger *logger,
+                      struct clc_binary *out_spir)
+{
+   return clc_c_to_spir(args, logger, out_spir) >= 0;
+}
+
+void
+clc_free_spir(struct clc_binary *spir)
+{
+   clc_free_spir_binary(spir);
+}
+
+bool
+clc_compile_spir_to_spirv(const struct clc_binary *in_spir,
+                          const struct clc_logger *logger,
+                          struct clc_binary *out_spirv)
+{
+   if (clc_spir_to_spirv(in_spir, logger, out_spirv) < 0)
+      return false;
+
+   if (debug_get_option_debug_clc() & CLC_DEBUG_DUMP_SPIRV)
+      clc_dump_spirv(out_spirv, stdout);
+
+   return true;
+}
+
 void
 clc_free_spirv(struct clc_binary *spirv)
 {

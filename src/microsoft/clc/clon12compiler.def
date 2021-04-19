@@ -4,6 +4,9 @@ EXPORTS
     clc_libclc_serialize
     clc_libclc_free_serialized
     clc_libclc_deserialize
+    clc_compile_c_to_spir
+    clc_free_spir
+    clc_compile_spir_to_spirv
     clc_free_spirv
     clc_compile_c_to_spirv
     clc_link_spirv
