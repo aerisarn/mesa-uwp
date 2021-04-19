@@ -2497,6 +2497,10 @@ const struct function gles2_functions_possible[] = {
    { "glGetQueryObjectivEXT", 20, -1 },
    { "glGetQueryObjectuivEXT", 20, -1 },
 
+   /* GL_EXT_clear_texture */
+   { "glClearTexImageEXT", 31, -1 },
+   { "glClearTexSubImageEXT", 31, -1 },
+
    /* GL_EXT_clip_control */
    { "glClipControlEXT", 20, -1 },
 

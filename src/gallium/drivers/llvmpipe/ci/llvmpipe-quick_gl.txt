@@ -795,14 +795,6 @@ spec/egl_khr_fence_sync/conformance/eglcreatesynckhr_wrong_display_same_thread: 
 spec/egl_khr_gl_image/egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24: fail
 spec/egl_nok_swap_region/basic: skip
 spec/egl_nok_texture_from_pixmap/basic: skip
-spec/ext_clear_texture/ext_clear_texture-3d: skip
-spec/ext_clear_texture/ext_clear_texture-base-formats: skip
-spec/ext_clear_texture/ext_clear_texture-clear-max-level: skip
-spec/ext_clear_texture/ext_clear_texture-cube: skip
-spec/ext_clear_texture/ext_clear_texture-error: skip
-spec/ext_clear_texture/ext_clear_texture-multisample: skip
-spec/ext_clear_texture/ext_clear_texture-stencil: skip
-spec/ext_clear_texture/ext_clear_texture-texview: skip
 spec/ext_depth_bounds_test/depth_bounds: skip
 spec/ext_direct_state_access/indexed-state-queries 12/getdoublei_vext: skip
 spec/ext_direct_state_access/indexed-state-queries 12/getfloati_vext: skip
