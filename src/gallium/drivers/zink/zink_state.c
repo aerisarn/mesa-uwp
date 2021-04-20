@@ -459,10 +459,47 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
                        VK_FRONT_FACE_COUNTER_CLOCKWISE :
                        VK_FRONT_FACE_CLOCKWISE;
 
+   VkPhysicalDeviceLineRasterizationFeaturesEXT *line_feats =
+            &screen->info.line_rast_feats;
+   state->hw_state.line_mode =
+      VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
+
    if (rs_state->line_stipple_enable) {
       state->hw_state.line_stipple_factor = rs_state->line_stipple_factor;
       state->hw_state.line_stipple_pattern = rs_state->line_stipple_pattern;
+
+      if (screen->info.have_EXT_line_rasterization) {
+         if (rs_state->multisample) {
+            if (line_feats->stippledRectangularLines)
+               state->hw_state.line_mode =
+                  VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+         } else if (rs_state->line_smooth) {
+            if (line_feats->stippledRectangularLines)
+               state->hw_state.line_mode =
+                  VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+         } else if (line_feats->stippledBresenhamLines)
+            state->hw_state.line_mode =
+               VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
+         else {
+            /* no suitable mode that supports line stippling */
+            state->hw_state.line_stipple_factor = 0;
+            state->hw_state.line_stipple_pattern = UINT16_MAX;
+         }
+      }
    } else {
+      if (screen->info.have_EXT_line_rasterization) {
+         if (rs_state->multisample) {
+            if (line_feats->rectangularLines)
+               state->hw_state.line_mode =
+                  VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+         } else if (rs_state->line_smooth) {
+            if (line_feats->rectangularLines)
+               state->hw_state.line_mode =
+                  VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+         } else if (line_feats->bresenhamLines)
+            state->hw_state.line_mode =
+               VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
+      }
       state->hw_state.line_stipple_factor = 0;
       state->hw_state.line_stipple_pattern = UINT16_MAX;
    }

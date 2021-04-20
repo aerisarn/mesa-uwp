@@ -50,6 +50,7 @@ struct zink_rasterizer_hw_state {
    VkPolygonMode polygon_mode;
    VkCullModeFlags cull_mode;
    VkProvokingVertexModeEXT pv_mode;
+   VkLineRasterizationModeEXT line_mode;
    unsigned depth_clamp : 1;
    unsigned rasterizer_discard : 1;
    unsigned force_persample_interp : 1;
