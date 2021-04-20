@@ -421,4 +421,17 @@ if with_tests
     should_fail : meson.get_cross_property('xfail', '').contains('load_store_vectorizer'),
     protocol : gtest_test_protocol,
   )
+
+  test(
+    'nir_opt_dce',
+    executable(
+      'nir_opt_dce_tests',
+      files('tests/dce_tests.cpp'),
+      cpp_args : [cpp_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
+      dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
+    ),
+    suite : ['compiler', 'nir'],
+  )
 endif
