@@ -883,7 +883,7 @@ else
   pre_args += '-DEGL_NO_X11'
   gl_pkgconfig_c_flags += '-DEGL_NO_X11'
 endif
-if with_gbm
+if with_gbm and not with_platform_android
   pre_args += '-DHAVE_DRM_PLATFORM'
 endif
 
@@ -2135,7 +2135,7 @@ endif
 lines += 'GBM:             ' + (with_gbm ? 'yes' : 'no')
 if with_egl or with_any_vk
   _platforms += 'surfaceless'
-  if with_gbm
+  if with_gbm and not with_platform_android
     _platforms += 'drm'
   endif
   lines += 'EGL/Vulkan/VL platforms:   ' + ' '.join(_platforms)
