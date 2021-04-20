@@ -2328,8 +2328,10 @@ nir_get_shader_call_payload_src(nir_intrinsic_instr *call)
 {
    switch (call->intrinsic) {
    case nir_intrinsic_trace_ray:
+   case nir_intrinsic_rt_trace_ray:
       return &call->src[10];
    case nir_intrinsic_execute_callable:
+   case nir_intrinsic_rt_execute_callable:
       return &call->src[1];
    default:
       unreachable("Not a call intrinsic");
