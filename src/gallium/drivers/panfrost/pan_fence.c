@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2022 Amazon.com, Inc. or its affiliates.
  * Copyright (C) 2008 VMware, Inc.
  * Copyright (C) 2014 Broadcom
  * Copyright (C) 2018 Alyssa Rosenzweig
@@ -73,13 +74,63 @@ panfrost_fence_finish(struct pipe_screen *pscreen,
         return fence->signaled;
 }
 
-struct pipe_fence_handle *
-panfrost_fence_create(struct panfrost_context *ctx)
+int
+panfrost_fence_get_fd(struct pipe_screen *screen,
+                      struct pipe_fence_handle *f)
 {
+        struct panfrost_device *dev = pan_device(screen);
+        int fd = -1;
+
+        drmSyncobjExportSyncFile(dev->fd, f->syncobj, &fd);
+        return fd;
+}
+
+struct pipe_fence_handle *
+panfrost_fence_from_fd(struct panfrost_context *ctx, int fd,
+                       enum pipe_fd_type type)
+{
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
+        int ret;
+
         struct pipe_fence_handle *f = calloc(1, sizeof(*f));
         if (!f)
                 return NULL;
 
+        if (type == PIPE_FD_TYPE_NATIVE_SYNC) {
+                ret = drmSyncobjCreate(dev->fd, 0, &f->syncobj);
+                if (ret) {
+                        fprintf(stderr, "create syncobj failed\n");
+                        goto err_free_fence;
+                }
+
+                ret = drmSyncobjImportSyncFile(dev->fd, f->syncobj, fd);
+                if (ret) {
+                        fprintf(stderr, "import syncfile failed\n");
+                        goto err_destroy_syncobj;
+                }
+        } else {
+                assert(type == PIPE_FD_TYPE_SYNCOBJ);
+                ret = drmSyncobjFDToHandle(dev->fd, fd, &f->syncobj);
+                if (ret) {
+                        fprintf(stderr, "import syncobj FD failed\n");
+                        goto err_free_fence;
+                }
+        }
+
+        pipe_reference_init(&f->reference, 1);
+
+        return f;
+
+err_destroy_syncobj:
+        drmSyncobjDestroy(dev->fd, f->syncobj);
+err_free_fence:
+        free(f);
+        return NULL;
+}
+
+struct pipe_fence_handle *
+panfrost_fence_create(struct panfrost_context *ctx)
+{
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         int fd = -1, ret;
 
@@ -91,32 +142,13 @@ panfrost_fence_create(struct panfrost_context *ctx)
         ret = drmSyncobjExportSyncFile(dev->fd, ctx->syncobj, &fd);
         if (ret || fd == -1) {
                 fprintf(stderr, "export failed\n");
-                goto err_free_fence;
+                return NULL;
         }
 
-        ret = drmSyncobjCreate(dev->fd, 0, &f->syncobj);
-        if (ret) {
-                fprintf(stderr, "create syncobj failed\n");
-                goto err_close_fd;
-        }
+        struct pipe_fence_handle *f =
+                panfrost_fence_from_fd(ctx, fd, PIPE_FD_TYPE_NATIVE_SYNC);
 
-        ret = drmSyncobjImportSyncFile(dev->fd, f->syncobj, fd);
-        if (ret) {
-                fprintf(stderr, "create syncobj failed\n");
-                goto err_destroy_syncobj;
-        }
-
-        assert(f->syncobj != ctx->syncobj);
         close(fd);
-        pipe_reference_init(&f->reference, 1);
 
         return f;
-
-err_destroy_syncobj:
-        drmSyncobjDestroy(dev->fd, f->syncobj);
-err_close_fd:
-        close(fd);
-err_free_fence:
-        free(f);
-        return NULL;
 }

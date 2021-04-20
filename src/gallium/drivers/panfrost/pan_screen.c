@@ -349,6 +349,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_IMAGE_STORE_FORMATTED:
                 return 1;
 
+        case PIPE_CAP_NATIVE_FENCE_FD:
+                return 1;
+
         default:
                 return u_pipe_screen_get_param_defaults(screen, param);
         }
@@ -846,6 +849,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->base.get_disk_shader_cache = panfrost_get_disk_shader_cache;
         screen->base.fence_reference = panfrost_fence_reference;
         screen->base.fence_finish = panfrost_fence_finish;
+        screen->base.fence_get_fd = panfrost_fence_get_fd;
         screen->base.set_damage_region = panfrost_resource_set_damage_region;
 
         panfrost_resource_screen_init(&screen->base);

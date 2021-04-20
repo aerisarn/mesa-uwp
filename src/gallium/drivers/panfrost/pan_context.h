@@ -226,6 +226,9 @@ struct panfrost_context {
 
         /* Mask of active render targets */
         uint8_t fb_rt_mask;
+
+        int in_sync_fd;
+        uint32_t in_sync_obj;
 };
 
 /* Corresponds to the CSO */
