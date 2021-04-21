@@ -1009,6 +1009,7 @@ trace_screen_create(struct pipe_screen *screen)
    SCR_INIT(get_driver_uuid);
    SCR_INIT(get_device_uuid);
    SCR_INIT(finalize_nir);
+   tr_scr->base.transfer_helper = screen->transfer_helper;
 
    tr_scr->screen = screen;
 
