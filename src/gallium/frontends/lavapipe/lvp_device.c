@@ -174,6 +174,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_custom_border_color               = true,
    .EXT_provoking_vertex                  = true,
    .EXT_line_rasterization                = true,
+   .EXT_robustness2                       = true,
    .GOOGLE_decorate_string                = true,
    .GOOGLE_hlsl_functionality1            = true,
 };
@@ -934,6 +935,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->robustImageAccess = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
+         VkPhysicalDeviceRobustness2FeaturesEXT *features = (VkPhysicalDeviceRobustness2FeaturesEXT *)ext;
+         features->robustBufferAccess2 = false;
+         features->robustImageAccess2 = false;
+         features->nullDescriptor = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: {
          VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *features = (VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *)ext;
          features->primitiveTopologyListRestart = true;
@@ -1264,6 +1272,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT *props = (VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT *)ext;
          props->graphicsPipelineLibraryFastLinking = VK_TRUE;
          props->graphicsPipelineLibraryIndependentInterpolationDecoration = VK_TRUE;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+         VkPhysicalDeviceRobustness2PropertiesEXT *props =
+            (VkPhysicalDeviceRobustness2PropertiesEXT *)ext;
+         props->robustStorageBufferAccessSizeAlignment = 1;
+         props->robustUniformBufferAccessSizeAlignment = 1;
          break;
       }
       default:
