@@ -77,6 +77,15 @@
  */
 #ifdef _MSC_VER
 #define __THREAD_INITIAL_EXEC __declspec(thread)
+#elif defined(ANDROID)
+/* Android 29 gained ELF TLS support, but it doesn't support initial-exec and
+ * it will throw:
+ *
+ *     dlopen failed: TLS symbol "(null)" in dlopened
+ *     "/vendor/lib64/egl/libEGL_mesa.so" referenced from
+ *     "/vendor/lib64/egl/libEGL_mesa.so" using IE access model.
+ */
+#define __THREAD_INITIAL_EXEC __thread
 #else
 #define __THREAD_INITIAL_EXEC __thread __attribute__((tls_model("initial-exec")))
 #endif
