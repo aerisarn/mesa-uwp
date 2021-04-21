@@ -66,6 +66,7 @@ EXTENSIONS = [
     Extension("VK_KHR_external_memory"),
     Extension("VK_KHR_external_memory_fd"),
     Extension("VK_EXT_external_memory_dma_buf"),
+    Extension("VK_EXT_queue_family_foreign"),
     Extension("VK_EXT_provoking_vertex",
        alias="pv",
        features=True,
