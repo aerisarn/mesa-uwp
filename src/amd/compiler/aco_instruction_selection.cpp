@@ -6709,12 +6709,28 @@ void emit_scoped_barrier(isel_context *ctx, nir_intrinsic_instr *instr) {
    sync_scope mem_scope = translate_nir_scope(nir_intrinsic_memory_scope(instr));
    sync_scope exec_scope = translate_nir_scope(nir_intrinsic_execution_scope(instr));
 
+   /* We use shared storage for the following:
+    * - compute shaders expose it in their API
+    * - when tessellation is used, TCS and VS I/O is lowered to shared memory
+    * - when GS is used on GFX9+, VS->GS and TES->GS I/O is lowered to shared memory
+    * - additionally, when NGG is used on GFX10+, shared memory is used for certain features
+    */
+   bool shared_storage_used =
+      ctx->stage.hw == HWStage::CS ||
+      ctx->stage.hw == HWStage::LS || ctx->stage.hw == HWStage::HS ||
+      (ctx->stage.hw == HWStage::GS && ctx->program->chip_class >= GFX9) ||
+      ctx->stage.hw == HWStage::NGG;
+
+   /* Workgroup barriers can hang merged shaders that can potentially have 0 threads in either half.
+    * They are allowed in CS, TCS, and in any NGG shader.
+    */
+   ASSERTED bool workgroup_scope_allowed =
+      ctx->stage.hw == HWStage::CS || ctx->stage.hw == HWStage::HS || ctx->stage.hw == HWStage::NGG;
+
    unsigned nir_storage = nir_intrinsic_memory_modes(instr);
    if (nir_storage & (nir_var_mem_ssbo | nir_var_mem_global))
       storage |= storage_buffer | storage_image; //TODO: split this when NIR gets nir_var_mem_image
-   if (ctx->shader->info.stage == MESA_SHADER_COMPUTE && (nir_storage & nir_var_mem_shared))
-      storage |= storage_shared;
-   if (ctx->shader->info.stage == MESA_SHADER_TESS_CTRL && (nir_storage & nir_var_shader_out))
+   if (shared_storage_used && (nir_storage & nir_var_mem_shared))
       storage |= storage_shared;
 
    unsigned nir_semantics = nir_intrinsic_memory_semantics(instr);
@@ -6724,11 +6740,7 @@ void emit_scoped_barrier(isel_context *ctx, nir_intrinsic_instr *instr) {
       semantics |= semantic_acquire | semantic_release;
 
    assert(!(nir_semantics & (NIR_MEMORY_MAKE_AVAILABLE | NIR_MEMORY_MAKE_VISIBLE)));
-
-   /* Workgroup barriers can hang merged shaders that can potentially have 0 threads in either half. */
-   assert(exec_scope != scope_workgroup ||
-          ctx->shader->info.stage == MESA_SHADER_COMPUTE ||
-          ctx->shader->info.stage == MESA_SHADER_TESS_CTRL);
+   assert(exec_scope != scope_workgroup || workgroup_scope_allowed);
 
    bld.barrier(aco_opcode::p_barrier,
                memory_sync_info((storage_class)storage, (memory_semantics)semantics, mem_scope),
