@@ -867,6 +867,32 @@ trace_screen_query_memory_info(struct pipe_screen *_screen, struct pipe_memory_i
    trace_dump_call_end();
 }
 
+static void
+trace_screen_query_dmabuf_modifiers(struct pipe_screen *_screen, enum pipe_format format, int max, uint64_t *modifiers, unsigned int *external_only, int *count)
+{
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   struct pipe_screen *screen = tr_scr->screen;
+
+   trace_dump_call_begin("pipe_screen", "query_dmabuf_modifiers");
+
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(format, format);
+   trace_dump_arg(int, max);
+
+   screen->query_dmabuf_modifiers(screen, format, max, modifiers, external_only, count);
+
+   if (max)
+      trace_dump_arg_array(uint, modifiers, *count);
+   else
+      trace_dump_arg_array(uint, modifiers, max);
+   trace_dump_arg_array(uint, external_only, max);
+   trace_dump_ret_begin();
+   trace_dump_uint(*count);
+   trace_dump_ret_end();
+
+   trace_dump_call_end();
+}
+
 bool
 trace_enabled(void)
 {
@@ -940,6 +966,7 @@ trace_screen_create(struct pipe_screen *screen)
    tr_scr->base.map_memory = trace_screen_map_memory;
    tr_scr->base.unmap_memory = trace_screen_unmap_memory;
    SCR_INIT(query_memory_info);
+   SCR_INIT(query_dmabuf_modifiers);
    SCR_INIT(check_resource_capability);
    tr_scr->base.resource_get_handle = trace_screen_resource_get_handle;
    SCR_INIT(resource_get_param);
