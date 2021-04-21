@@ -61,6 +61,17 @@ v3d_fence_reference(struct pipe_screen *pscreen,
         *p = f;
 }
 
+void
+v3d_fence_unreference(struct v3d_fence **fence)
+{
+        assert(fence);
+
+        if (!*fence)
+                return;
+
+        v3d_fence_reference(NULL, (struct pipe_fence_handle **)fence, NULL);
+}
+
 static bool
 v3d_fence_finish(struct pipe_screen *pscreen,
 		 struct pipe_context *ctx,

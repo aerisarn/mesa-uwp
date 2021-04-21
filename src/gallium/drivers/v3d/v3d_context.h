@@ -304,6 +304,19 @@ struct v3d_shaderimg_stateobj {
         uint32_t enabled_mask;
 };
 
+struct v3d_perfmon_state {
+        /* The kernel perfmon id */
+        uint32_t kperfmon_id;
+        /* True if at least one job was submitted with this perfmon. */
+        bool job_submitted;
+        /* Fence to be signaled when the last job submitted with this perfmon
+         * is executed by the GPU.
+         */
+        struct v3d_fence *last_job_fence;
+        uint8_t counters[DRM_V3D_MAX_PERF_COUNTERS];
+        uint64_t values[DRM_V3D_MAX_PERF_COUNTERS];
+};
+
 /**
  * A complete bin/render job.
  *
@@ -576,6 +589,8 @@ struct v3d_context {
         struct pipe_resource *prim_counts;
         uint32_t prim_counts_offset;
         struct pipe_debug_callback debug;
+        struct v3d_perfmon_state *active_perfmon;
+        struct v3d_perfmon_state *last_perfmon;
         /** @} */
 };
 
@@ -729,6 +744,9 @@ bool v3d_generate_mipmap(struct pipe_context *pctx,
                          unsigned int last_level,
                          unsigned int first_layer,
                          unsigned int last_layer);
+
+void
+v3d_fence_unreference(struct v3d_fence **fence);
 
 struct v3d_fence *v3d_fence_create(struct v3d_context *v3d);
 
