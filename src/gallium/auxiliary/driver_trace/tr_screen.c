@@ -850,6 +850,23 @@ trace_screen_destroy(struct pipe_screen *_screen)
    FREE(tr_scr);
 }
 
+static void
+trace_screen_query_memory_info(struct pipe_screen *_screen, struct pipe_memory_info *info)
+{
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   struct pipe_screen *screen = tr_scr->screen;
+
+   trace_dump_call_begin("pipe_screen", "query_memory_info");
+
+   trace_dump_arg(ptr, screen);
+
+   screen->query_memory_info(screen, info);
+
+   trace_dump_ret(memory_info, info);
+
+   trace_dump_call_end();
+}
+
 bool
 trace_enabled(void)
 {
@@ -922,6 +939,7 @@ trace_screen_create(struct pipe_screen *screen)
    tr_scr->base.free_memory = trace_screen_free_memory;
    tr_scr->base.map_memory = trace_screen_map_memory;
    tr_scr->base.unmap_memory = trace_screen_unmap_memory;
+   SCR_INIT(query_memory_info);
    SCR_INIT(check_resource_capability);
    tr_scr->base.resource_get_handle = trace_screen_resource_get_handle;
    SCR_INIT(resource_get_param);
