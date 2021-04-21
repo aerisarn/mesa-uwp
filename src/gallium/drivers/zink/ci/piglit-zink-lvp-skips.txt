@@ -21,3 +21,10 @@ spec@egl_ext_protected_content@conformance
 # has a race where probes periodically return black
 # cf. https://gitlab.freedesktop.org/mesa/mesa/-/jobs/10624521
 glx@glx-multi-context-single-window
+
+# This one takes too long, but passes. There's other tests that don't
+# try all the combinations, so that's probably enough.
+spec@arb_compute_shader@local-id-explosion
+
+# Disabled to prevent a flaky failure, see https://gitlab.freedesktop.org/mesa/mesa/-/issues/5050
+spec@arb_shader_image_load_store@invalid
