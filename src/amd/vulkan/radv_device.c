@@ -5180,8 +5180,20 @@ radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAlloc
 
    vk_object_base_init(&device->vk, &mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY);
 
-   if (wsi_info && wsi_info->implicit_sync)
-      flags |= RADEON_FLAG_IMPLICIT_SYNC;
+   if (wsi_info) {
+      if(wsi_info->implicit_sync)
+         flags |= RADEON_FLAG_IMPLICIT_SYNC;
+
+      /* In case of prime, linear buffer is allocated in default heap which is VRAM.
+       * Due to this when display is connected to iGPU and render on dGPU, ddx
+       * function amdgpu_present_check_flip() fails due to which there is blit
+       * instead of flip. Setting the flag RADEON_FLAG_GTT_WC allows kernel to
+       * allocate GTT memory in supported hardware where GTT can be directly scanout.
+       * Using wsi_info variable check to set the flag RADEON_FLAG_GTT_WC so that
+       * only for memory allocated by driver this flag is set.
+       */
+      flags |= RADEON_FLAG_GTT_WC;
+   }
 
    if (dedicate_info) {
       mem->image = radv_image_from_handle(dedicate_info->image);
