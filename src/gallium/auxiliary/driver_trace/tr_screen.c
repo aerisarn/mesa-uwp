@@ -917,6 +917,26 @@ trace_screen_is_dmabuf_modifier_supported(struct pipe_screen *_screen, uint64_t 
    return ret;
 }
 
+static unsigned int
+trace_screen_get_dmabuf_modifier_planes(struct pipe_screen *_screen, uint64_t modifier, enum pipe_format format)
+{
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   struct pipe_screen *screen = tr_scr->screen;
+
+   trace_dump_call_begin("pipe_screen", "get_dmabuf_modifier_planes");
+
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(uint, modifier);
+   trace_dump_arg(format, format);
+
+   unsigned ret = screen->get_dmabuf_modifier_planes(screen, modifier, format);
+
+   trace_dump_ret(uint, ret);
+
+   trace_dump_call_end();
+   return ret;
+}
+
 bool
 trace_enabled(void)
 {
@@ -992,6 +1012,7 @@ trace_screen_create(struct pipe_screen *screen)
    SCR_INIT(query_memory_info);
    SCR_INIT(query_dmabuf_modifiers);
    SCR_INIT(is_dmabuf_modifier_supported);
+   SCR_INIT(get_dmabuf_modifier_planes);
    SCR_INIT(check_resource_capability);
    tr_scr->base.resource_get_handle = trace_screen_resource_get_handle;
    SCR_INIT(resource_get_param);
