@@ -1679,6 +1679,35 @@ zink_query_memory_info(struct pipe_screen *pscreen, struct pipe_memory_info *inf
    }
 }
 
+static void
+zink_query_dmabuf_modifiers(struct pipe_screen *pscreen, enum pipe_format format, int max, uint64_t *modifiers, unsigned int *external_only, int *count)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   *count = screen->modifier_props[format].drmFormatModifierCount;
+   for (int i = 0; i < MIN2(max, *count); i++)
+      modifiers[i] = screen->modifier_props[format].pDrmFormatModifierProperties[i].drmFormatModifier;
+}
+
+static bool
+zink_is_dmabuf_modifier_supported(struct pipe_screen *pscreen, uint64_t modifier, enum pipe_format format, bool *external_only)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   for (unsigned i = 0; i < screen->modifier_props[format].drmFormatModifierCount; i++)
+      if (screen->modifier_props[format].pDrmFormatModifierProperties[i].drmFormatModifier == modifier)
+         return true;
+   return false;
+}
+
+static unsigned
+zink_get_dmabuf_modifier_planes(struct pipe_screen *pscreen, uint64_t modifier, enum pipe_format format)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   for (unsigned i = 0; i < screen->modifier_props[format].drmFormatModifierCount; i++)
+      if (screen->modifier_props[format].pDrmFormatModifierProperties[i].drmFormatModifier == modifier)
+         return screen->modifier_props[format].pDrmFormatModifierProperties[i].drmFormatModifierPlaneCount;
+   return 0;
+}
+
 static VkDevice
 zink_create_logical_device(struct zink_screen *screen)
 {
@@ -1860,6 +1889,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.get_compiler_options = zink_get_compiler_options;
    screen->base.get_sample_pixel_grid = zink_get_sample_pixel_grid;
    screen->base.is_format_supported = zink_is_format_supported;
+   screen->base.query_dmabuf_modifiers = zink_query_dmabuf_modifiers;
+   screen->base.is_dmabuf_modifier_supported = zink_is_dmabuf_modifier_supported;
+   screen->base.get_dmabuf_modifier_planes = zink_get_dmabuf_modifier_planes;
    screen->base.context_create = zink_context_create;
    screen->base.flush_frontbuffer = zink_flush_frontbuffer;
    screen->base.destroy = zink_destroy_screen;
