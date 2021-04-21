@@ -40,6 +40,7 @@
 #include "util/u_debug.h"
 #include "util/format/u_format.h"
 #include "util/hash_table.h"
+#include "util/os_file.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_screen.h"
@@ -50,6 +51,12 @@
 #include "util/u_cpu_detect.h"
 
 #include "frontend/sw_winsys.h"
+
+#if DETECT_OS_WINDOWS
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #if defined(__APPLE__)
 // Source of MVK_VERSION
@@ -1087,6 +1094,9 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    vkDestroyInstance(screen->instance, NULL);
    util_idalloc_mt_fini(&screen->buffer_ids);
 
+   if (screen->drm_fd != -1)
+      close(screen->drm_fd);
+
    slab_destroy_parent(&screen->transfer_pool);
    ralloc_free(screen);
 }
@@ -1961,8 +1971,10 @@ struct pipe_screen *
 zink_create_screen(struct sw_winsys *winsys)
 {
    struct zink_screen *ret = zink_internal_create_screen(NULL);
-   if (ret)
+   if (ret) {
       ret->winsys = winsys;
+      ret->drm_fd = -1;
+   }
 
    return &ret->base;
 }
@@ -1972,6 +1984,8 @@ zink_drm_create_screen(int fd, const struct pipe_screen_config *config)
 {
    struct zink_screen *ret = zink_internal_create_screen(config);
 
+   if (ret)
+      ret->drm_fd = os_dupfd_cloexec(fd);
    if (ret && !ret->info.have_KHR_external_memory_fd) {
       debug_printf("ZINK: KHR_external_memory_fd required!\n");
       zink_destroy_screen(&ret->base);

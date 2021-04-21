@@ -86,6 +86,7 @@ struct zink_screen {
 
    bool device_lost;
    struct sw_winsys *winsys;
+   int drm_fd;
 
    struct hash_table framebuffer_cache;
    simple_mtx_t framebuffer_mtx;
