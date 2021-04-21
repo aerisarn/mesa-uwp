@@ -800,7 +800,7 @@ meson-android:
     EXTRA_OPTION: >
       -D android-stub=true
       -D llvm=disabled
-      -D platform-sdk-version=26
+      -D platform-sdk-version=29
       -D valgrind=false
     GALLIUM_ST: >
       -D dri3=disabled
