@@ -256,6 +256,20 @@ init_render_queue_state(struct anv_queue *queue)
       cc1.ReplayMode = MidcmdbufferPreemption;
       cc1.ReplayModeMask = true;
    }
+
+#if GFX_VERx10 < 125
+#define AA_LINE_QUALITY_REG GENX(3D_CHICKEN3)
+#else
+#define AA_LINE_QUALITY_REG GENX(CHICKEN_RASTER_1)
+#endif
+
+   /* Enable the new line drawing algorithm that produces higher quality
+    * lines.
+    */
+   anv_batch_write_reg(&batch, AA_LINE_QUALITY_REG, c3) {
+      c3.AALineQualityFix = true;
+      c3.AALineQualityFixMask = true;
+   }
 #endif
 
 #if GFX_VER == 12

@@ -478,8 +478,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                       primitive_topology);
 
          genX(rasterization_mode)(
-            dynamic_raster_mode, pipeline->line_mode, &api_mode,
-            &msaa_raster_enable);
+            dynamic_raster_mode, pipeline->line_mode, d->line_width,
+            &api_mode, &msaa_raster_enable);
 
          aa_enable =
             anv_rasterization_aa_mode(dynamic_raster_mode,

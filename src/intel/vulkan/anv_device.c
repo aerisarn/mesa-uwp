@@ -2011,11 +2011,12 @@ void anv_GetPhysicalDeviceProperties(
       .maxCombinedClipAndCullDistances          = 8,
       .discreteQueuePriorities                  = 2,
       .pointSizeRange                           = { 0.125, 255.875 },
-      .lineWidthRange                           = {
-         0.0,
-         (devinfo->ver >= 9 || devinfo->is_cherryview) ?
-            2047.9921875 : 7.9921875,
-      },
+      /* While SKL and up support much wider lines than we are setting here,
+       * in practice we run into conformance issues if we go past this limit.
+       * Since the Windows driver does the same, it's probably fair to assume
+       * that no one needs more than this.
+       */
+      .lineWidthRange                           = { 0.0, 8.0 },
       .pointSizeGranularity                     = (1.0 / 8.0),
       .lineWidthGranularity                     = (1.0 / 128.0),
       .strictLines                              = false,

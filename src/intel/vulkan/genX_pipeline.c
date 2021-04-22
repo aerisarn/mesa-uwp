@@ -580,6 +580,7 @@ vk_conservative_rasterization_mode(const VkPipelineRasterizationStateCreateInfo 
 void
 genX(rasterization_mode)(VkPolygonMode raster_mode,
                          VkLineRasterizationModeEXT line_mode,
+                         float line_width,
                          uint32_t *api_mode,
                          bool *msaa_rasterization_enable)
 {
@@ -599,7 +600,16 @@ genX(rasterization_mode)(VkPolygonMode raster_mode,
       switch (line_mode) {
       case VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT:
          *api_mode = DX100;
+#if GFX_VER <= 9
+         /* Prior to ICL, the algorithm the HW uses to draw wide lines
+          * doesn't quite match what the CTS expects, at least for rectangular
+          * lines, so we set this to false here, making it draw parallelograms
+          * instead, which work well enough.
+          */
+         *msaa_rasterization_enable = line_width < 1.0078125;
+#else
          *msaa_rasterization_enable = true;
+#endif
          break;
 
       case VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT:
@@ -694,6 +704,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 #if GFX_VER >= 8
    if (!dynamic_primitive_topology)
       genX(rasterization_mode)(raster_mode, pipeline->line_mode,
+                               rs_info->lineWidth,
                                &raster.APIMode,
                                &raster.DXMultisampleRasterizationEnable);
 

@@ -130,6 +130,7 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
 void
 genX(rasterization_mode)(VkPolygonMode raster_mode,
                          VkLineRasterizationModeEXT line_mode,
+                         float line_width,
                          uint32_t *api_mode,
                          bool *msaa_rasterization_enable);
 
