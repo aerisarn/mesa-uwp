@@ -39,7 +39,10 @@ apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
       libxcb-shm0 \
       python3-lxml \
-      python3-simplejson
+      python3-simplejson \
+      xinit \
+      xserver-xorg-video-amdgpu \
+      xserver-xorg-video-ati
 
 # We need multiarch for Wine
 dpkg --add-architecture i386
