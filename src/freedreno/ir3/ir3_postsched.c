@@ -460,22 +460,22 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 		}
 	}
 
-	if (dest_regs(node->instr) == 0)
-		return;
-
 	/* And then after we update the state for what this instruction
 	 * wrote:
 	 */
-	struct ir3_register *reg = node->instr->dsts[0];
-	if (reg->flags & IR3_REG_RELATIV) {
-		/* mark the entire array as written: */
-		for (unsigned i = 0; i < reg->size; i++) {
-			add_reg_dep(state, node, reg, reg->array.base + i, -1);
-		}
-	} else {
-		assert(reg->wrmask >= 1);
-		u_foreach_bit (b, reg->wrmask) {
-			add_reg_dep(state, node, reg, reg->num + b, -1);
+	foreach_dst (reg, node->instr) {
+		if (reg->wrmask == 0)
+			continue;
+		if (reg->flags & IR3_REG_RELATIV) {
+			/* mark the entire array as written: */
+			for (unsigned i = 0; i < reg->size; i++) {
+				add_reg_dep(state, node, reg, reg->array.base + i, -1);
+			}
+		} else {
+			assert(reg->wrmask >= 1);
+			u_foreach_bit (b, reg->wrmask) {
+				add_reg_dep(state, node, reg, reg->num + b, -1);
+			}
 		}
 	}
 }
