@@ -2823,7 +2823,8 @@ zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
 }
 
 static void
-zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resource *dst, struct pipe_resource *src)
+zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resource *dst,
+                                    struct pipe_resource *src, uint32_t delete_buffer_id)
 {
    struct zink_resource *d = zink_resource(dst);
    struct zink_resource *s = zink_resource(src);
@@ -2984,7 +2985,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    struct threaded_context *tc = (struct threaded_context*)threaded_context_create(&ctx->base, &screen->transfer_pool,
                                                      zink_context_replace_buffer_storage,
-                                                     zink_create_tc_fence_for_tc, &ctx->tc);
+                                                     zink_create_tc_fence_for_tc, NULL, false, &ctx->tc);
 
    if (tc && (struct zink_context*)tc != ctx) {
       tc->bytes_mapped_limit = screen->total_mem / 4;

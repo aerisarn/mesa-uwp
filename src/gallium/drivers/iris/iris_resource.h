@@ -329,7 +329,8 @@ iris_resource_get_clear_color(const struct iris_resource *res,
 
 void iris_replace_buffer_storage(struct pipe_context *ctx,
                                  struct pipe_resource *dst,
-                                 struct pipe_resource *src);
+                                 struct pipe_resource *src,
+                                 uint32_t delete_buffer_id);
 
 
 void iris_init_screen_resource_functions(struct pipe_screen *pscreen);

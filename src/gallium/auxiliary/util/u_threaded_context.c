@@ -1494,6 +1494,7 @@ tc_make_image_handle_resident(struct pipe_context *_pipe, uint64_t handle,
 
 struct tc_replace_buffer_storage {
    struct tc_call_base base;
+   uint32_t delete_buffer_id;
    struct pipe_resource *dst;
    struct pipe_resource *src;
    tc_replace_buffer_storage_func func;
@@ -1504,7 +1505,8 @@ tc_call_replace_buffer_storage(struct pipe_context *pipe, void *call, uint64_t *
 {
    struct tc_replace_buffer_storage *p = to_call(call, tc_replace_buffer_storage);
 
-   p->func(pipe, p->dst, p->src);
+   p->func(pipe, p->dst, p->src, p->delete_buffer_id);
+
    tc_drop_resource_reference(p->dst);
    tc_drop_resource_reference(p->src);
    return call_size(tc_replace_buffer_storage);
@@ -1537,6 +1539,10 @@ tc_invalidate_buffer(struct threaded_context *tc,
    tbuf->latest = new_buf;
    util_range_set_empty(&tbuf->valid_buffer_range);
 
+   uint32_t delete_buffer_id = tbuf->buffer_id_unique;
+   tbuf->buffer_id_unique = threaded_resource(new_buf)->buffer_id_unique;
+   threaded_resource(new_buf)->buffer_id_unique = 0;
+
    /* Enqueue storage replacement of the original buffer. */
    struct tc_replace_buffer_storage *p =
       tc_add_call(tc, TC_CALL_replace_buffer_storage,
@@ -1545,6 +1551,7 @@ tc_invalidate_buffer(struct threaded_context *tc,
    p->func = tc->replace_buffer_storage;
    tc_set_resource_reference(&p->dst, &tbuf->b);
    tc_set_resource_reference(&p->src, new_buf);
+   p->delete_buffer_id = delete_buffer_id;
    return true;
 }
 
@@ -3358,6 +3365,21 @@ static const tc_execute execute_func[TC_NUM_CALLS] = {
 #undef CALL
 };
 
+void tc_driver_internal_flush_notify(struct threaded_context *tc)
+{
+   /* Allow drivers to call this function even for internal contexts that
+    * don't have tc. It simplifies drivers.
+    */
+   if (!tc)
+      return;
+
+   /* Signal fences set by tc_batch_execute. */
+   for (unsigned i = 0; i < tc->num_signal_fences_next_flush; i++)
+      util_queue_fence_signal(tc->signal_fences_next_flush[i]);
+
+   tc->num_signal_fences_next_flush = 0;
+}
+
 /**
  * Wrap an existing pipe_context into a threaded_context.
  *
@@ -3367,6 +3389,12 @@ static const tc_execute execute_func[TC_NUM_CALLS] = {
  *                             in pipe_screen.
  * \param replace_buffer  callback for replacing a pipe_resource's storage
  *                        with another pipe_resource's storage.
+ * \param create_fence    optional callback to create a fence for async flush
+ * \param is_resource_busy   optional callback to tell TC if transfer_map()/etc
+ *                           with the given usage would stall
+ * \param driver_calls_flush_notify  whether the driver calls
+ *                                   tc_driver_internal_flush_notify after every
+ *                                   driver flush
  * \param out  if successful, the threaded_context will be returned here in
  *             addition to the return value if "out" != NULL
  */
@@ -3375,6 +3403,8 @@ threaded_context_create(struct pipe_context *pipe,
                         struct slab_parent_pool *parent_transfer_pool,
                         tc_replace_buffer_storage_func replace_buffer,
                         tc_create_fence_func create_fence,
+                        tc_is_resource_busy is_resource_busy,
+                        bool driver_calls_flush_notify,
                         struct threaded_context **out)
 {
    struct threaded_context *tc;
@@ -3401,6 +3431,8 @@ threaded_context_create(struct pipe_context *pipe,
    tc->pipe = pipe;
    tc->replace_buffer_storage = replace_buffer;
    tc->create_fence = create_fence;
+   tc->is_resource_busy = is_resource_busy;
+   tc->driver_calls_flush_notify = driver_calls_flush_notify;
    tc->map_buffer_alignment =
       pipe->screen->get_param(pipe->screen, PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT);
    tc->ubo_alignment =

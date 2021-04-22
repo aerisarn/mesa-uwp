@@ -1454,7 +1454,8 @@ resource_is_busy(struct iris_context *ice,
 void
 iris_replace_buffer_storage(struct pipe_context *ctx,
                             struct pipe_resource *p_dst,
-                            struct pipe_resource *p_src)
+                            struct pipe_resource *p_src,
+                            uint32_t delete_buffer_id)
 {
    struct iris_screen *screen = (void *) ctx->screen;
    struct iris_context *ice = (void *) ctx;

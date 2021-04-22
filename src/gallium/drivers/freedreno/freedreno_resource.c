@@ -248,7 +248,7 @@ do_blit(struct fd_context *ctx, const struct pipe_blit_info *blit,
  */
 void
 fd_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resource *pdst,
-                          struct pipe_resource *psrc)
+                          struct pipe_resource *psrc, uint32_t delete_buffer_id)
 {
    struct fd_context *ctx = fd_context(pctx);
    struct fd_resource *dst = fd_resource(pdst);
