@@ -3475,6 +3475,23 @@ threaded_context_create(struct pipe_context *pipe,
 
    slab_create_child(&tc->pool_transfers, parent_transfer_pool);
 
+   /* If you have different limits in each shader stage, set the maximum. */
+   struct pipe_screen *screen = pipe->screen;;
+   tc->max_vertex_buffers =
+      screen->get_param(screen, PIPE_CAP_MAX_VERTEX_BUFFERS);
+   tc->max_const_buffers =
+      screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
+                               PIPE_SHADER_CAP_MAX_CONST_BUFFERS);
+   tc->max_shader_buffers =
+      screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
+                               PIPE_SHADER_CAP_MAX_SHADER_BUFFERS);
+   tc->max_images =
+      screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
+                               PIPE_SHADER_CAP_MAX_SHADER_IMAGES);
+   tc->max_samplers =
+      screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
+                               PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS);
+
    tc->base.set_context_param = tc_set_context_param; /* always set this */
 
 #define CTX_INIT(_member) \

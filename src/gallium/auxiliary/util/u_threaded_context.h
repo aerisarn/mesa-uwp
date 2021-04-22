@@ -405,6 +405,12 @@ struct threaded_context {
    bool seen_tes;
    bool seen_gs;
 
+   unsigned max_vertex_buffers;
+   unsigned max_const_buffers;
+   unsigned max_shader_buffers;
+   unsigned max_images;
+   unsigned max_samplers;
+
    unsigned last, next;
 
    /* The list fences that the driver should signal after the next flush.
