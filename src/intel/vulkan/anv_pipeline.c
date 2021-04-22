@@ -1996,6 +1996,12 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
          pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
    }
 
+   if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE) {
+      assert(pCreateInfo->pRasterizationState);
+      dynamic->depth_bias_enable =
+         pCreateInfo->pRasterizationState->depthBiasEnable;
+   }
+
    /* Section 9.2 of the Vulkan 1.0.15 spec says:
     *
     *    pColorBlendState is [...] NULL if the pipeline has rasterization

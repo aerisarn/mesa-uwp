@@ -746,9 +746,13 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
          VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
 #endif
 
-   raster.GlobalDepthOffsetEnableSolid = rs_info->depthBiasEnable;
-   raster.GlobalDepthOffsetEnableWireframe = rs_info->depthBiasEnable;
-   raster.GlobalDepthOffsetEnablePoint = rs_info->depthBiasEnable;
+   bool depth_bias_enable =
+      dynamic_states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE ?
+         0 : rs_info->depthBiasEnable;
+
+   raster.GlobalDepthOffsetEnableSolid = depth_bias_enable;
+   raster.GlobalDepthOffsetEnableWireframe = depth_bias_enable;
+   raster.GlobalDepthOffsetEnablePoint = depth_bias_enable;
 
 #if GFX_VER == 7
    /* Gfx7 requires that we provide the depth format in 3DSTATE_SF so that it

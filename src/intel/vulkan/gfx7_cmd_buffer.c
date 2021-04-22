@@ -211,7 +211,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                       ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH |
                                       ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
                                       ANV_CMD_DIRTY_DYNAMIC_CULL_MODE |
-                                      ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE)) {
+                                      ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
+                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE)) {
       uint32_t sf_dw[GENX(3DSTATE_SF_length)];
       struct GENX(3DSTATE_SF) sf = {
          GENX(3DSTATE_SF_header),
@@ -222,6 +223,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          .GlobalDepthOffsetClamp = d->depth_bias.clamp,
          .FrontWinding            = genX(vk_to_intel_front_face)[d->front_face],
          .CullMode                = genX(vk_to_intel_cullmode)[d->cull_mode],
+         .GlobalDepthOffsetEnableSolid = d->depth_bias_enable,
+         .GlobalDepthOffsetEnableWireframe = d->depth_bias_enable,
+         .GlobalDepthOffsetEnablePoint = d->depth_bias_enable,
       };
       GENX(3DSTATE_SF_pack)(NULL, sf_dw, &sf);
 

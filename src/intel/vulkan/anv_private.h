@@ -2677,6 +2677,7 @@ struct anv_dynamic_state {
    bool                                         depth_bounds_test_enable;
    bool                                         stencil_test_enable;
    bool                                         raster_discard;
+   bool                                         depth_bias_enable;
    bool                                         dyn_vbo_stride;
    bool                                         dyn_vbo_size;
 

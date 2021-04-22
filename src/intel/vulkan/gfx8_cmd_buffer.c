@@ -442,7 +442,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
                                       ANV_CMD_DIRTY_DYNAMIC_CULL_MODE |
-                                      ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE)) {
+                                      ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
+                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE)) {
       uint32_t raster_dw[GENX(3DSTATE_RASTER_length)];
       struct GENX(3DSTATE_RASTER) raster = {
          GENX(3DSTATE_RASTER_header),
@@ -451,6 +452,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          .GlobalDepthOffsetClamp = d->depth_bias.clamp,
          .CullMode = genX(vk_to_intel_cullmode)[d->cull_mode],
          .FrontWinding = genX(vk_to_intel_front_face)[d->front_face],
+         .GlobalDepthOffsetEnableSolid = d->depth_bias_enable,
+         .GlobalDepthOffsetEnableWireframe = d->depth_bias_enable,
+         .GlobalDepthOffsetEnablePoint = d->depth_bias_enable,
       };
       GENX(3DSTATE_RASTER_pack)(NULL, raster_dw, &raster);
       anv_batch_emit_merge(&cmd_buffer->batch, raster_dw,
