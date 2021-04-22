@@ -3354,6 +3354,24 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
    radv_fill_shader_keys(device, keys, pipeline_key, nir);
    radv_fill_shader_info(pipeline, pStages, keys, infos, nir);
 
+   if ((nir[MESA_SHADER_VERTEX] && keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg) ||
+       (nir[MESA_SHADER_TESS_EVAL] && keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg)) {
+      struct gfx10_ngg_info *ngg_info;
+
+      if (nir[MESA_SHADER_GEOMETRY])
+         ngg_info = &infos[MESA_SHADER_GEOMETRY].ngg_info;
+      else if (nir[MESA_SHADER_TESS_CTRL])
+         ngg_info = &infos[MESA_SHADER_TESS_EVAL].ngg_info;
+      else
+         ngg_info = &infos[MESA_SHADER_VERTEX].ngg_info;
+
+      gfx10_get_ngg_info(pipeline_key, pipeline, nir, infos, ngg_info);
+   } else if (nir[MESA_SHADER_GEOMETRY]) {
+      struct gfx9_gs_info *gs_info = &infos[MESA_SHADER_GEOMETRY].gs_ring_info;
+
+      gfx9_get_gs_info(pipeline_key, pipeline, nir, infos, gs_info);
+   }
+
    for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
       if (nir[i]) {
          radv_start_feedback(stage_feedbacks[i]);
@@ -3499,7 +3517,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
       gfx9_get_gs_info(pipeline_key, pipeline, nir, infos, gs_info);
    }
 
-   if (modules[MESA_SHADER_GEOMETRY] && !pipeline->gs_copy_shader) {
+   if (modules[MESA_SHADER_GEOMETRY]) {
       struct radv_shader_binary *gs_copy_binary = NULL;
       if (!radv_pipeline_has_ngg(pipeline)) {
          struct radv_shader_info info = {0};
