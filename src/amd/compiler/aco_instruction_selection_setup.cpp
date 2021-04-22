@@ -590,10 +590,10 @@ void init_context(isel_context *ctx, nir_shader *shader)
    /* sanitize control flow */
    nir_metadata_require(impl, nir_metadata_dominance);
    sanitize_cf_list(impl, &impl->body);
-   nir_metadata_preserve(impl, ~nir_metadata_block_index);
+   nir_metadata_preserve(impl, nir_metadata_none);
 
-   /* we'll need this for isel */
-   nir_metadata_require(impl, nir_metadata_block_index);
+   /* we'll need these for isel */
+   nir_metadata_require(impl, nir_metadata_block_index | nir_metadata_dominance);
 
    if (!ctx->stage.has(SWStage::GSCopy) && ctx->options->dump_preoptir) {
       fprintf(stderr, "NIR shader before instruction selection:\n");
