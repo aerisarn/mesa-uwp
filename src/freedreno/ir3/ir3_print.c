@@ -109,13 +109,20 @@ static void print_instr_name(struct log_stream *stream, struct ir3_instruction *
 		/* shouldn't hit here.. just for debugging: */
 		default: mesa_log_stream_printf(stream, "_meta:%d", instr->opc);    break;
 		}
-	} else if (instr->opc == OPC_MOV) {
-		if (instr->cat1.src_type == instr->cat1.dst_type)
-			mesa_log_stream_printf(stream, "mov");
-		else
-			mesa_log_stream_printf(stream, "cov");
-		mesa_log_stream_printf(stream, ".%s%s", type_name(instr->cat1.src_type),
-				type_name(instr->cat1.dst_type));
+	} else if (opc_cat(instr->opc) == 1) {
+		if (instr->opc == OPC_MOV) {
+			if (instr->cat1.src_type == instr->cat1.dst_type)
+				mesa_log_stream_printf(stream, "mov");
+			else
+				mesa_log_stream_printf(stream, "cov");
+		} else {
+			mesa_log_stream_printf(stream, "%s", disasm_a3xx_instr_name(instr->opc));
+		}
+
+		if (instr->opc != OPC_MOVMSK) {
+			mesa_log_stream_printf(stream, ".%s%s", type_name(instr->cat1.src_type),
+					type_name(instr->cat1.dst_type));
+		}
 	} else {
 		mesa_log_stream_printf(stream, "%s", disasm_a3xx_instr_name(instr->opc));
 		if (instr->flags & IR3_INSTR_3D)
@@ -276,7 +283,7 @@ print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
 	if (!is_flow(instr) || instr->opc == OPC_END || instr->opc == OPC_CHMASK) {
 		bool first = true;
 		foreach_dst (reg, instr) {
-			if (dest_regs(instr) == 0)
+			if (reg->wrmask == 0)
 				continue;
 			if (!first)
 				mesa_log_stream_printf(stream, ", ");

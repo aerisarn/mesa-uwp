@@ -188,6 +188,9 @@ static const struct opc_info {
 	/* category 1: */
 	OPC(1, OPC_MOV,          ),
 	OPC(1, OPC_MOVMSK,       movmsk),
+	OPC(1, OPC_SWZ,          swz),
+	OPC(1, OPC_SCT,          sct),
+	OPC(1, OPC_GAT,          gat),
 
 	/* category 2: */
 	OPC(2, OPC_ADD_F,        add.f),
