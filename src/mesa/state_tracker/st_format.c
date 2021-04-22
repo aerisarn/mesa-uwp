@@ -1230,6 +1230,30 @@ st_choose_renderbuffer_format(struct st_context *st,
  * return the format which exactly matches those parameters, so that
  * a memcpy-based transfer can be done.
  *
+ * If no match format exists, return PIPE_FORMAT_NONE.
+ */
+enum pipe_format
+st_choose_matching_format_noverify(struct st_context *st,
+                                   GLenum format, GLenum type, GLboolean swapBytes)
+{
+   if (swapBytes && !_mesa_swap_bytes_in_type_enum(&type))
+      return PIPE_FORMAT_NONE;
+
+   mesa_format mesa_format = _mesa_format_from_format_and_type(format, type);
+   if (_mesa_format_is_mesa_array_format(mesa_format))
+      mesa_format = _mesa_format_from_array_format(mesa_format);
+   if (mesa_format != MESA_FORMAT_NONE)
+      return st_mesa_format_to_pipe_format(st, mesa_format);
+
+   return PIPE_FORMAT_NONE;
+}
+
+
+/**
+ * Given an OpenGL user-requested format and type, and swapBytes state,
+ * return the format which exactly matches those parameters, so that
+ * a memcpy-based transfer can be done.
+ *
  * If no format is supported, return PIPE_FORMAT_NONE.
  */
 enum pipe_format
@@ -1237,19 +1261,10 @@ st_choose_matching_format(struct st_context *st, unsigned bind,
                           GLenum format, GLenum type, GLboolean swapBytes)
 {
    struct pipe_screen *screen = st->screen;
-
-   if (swapBytes && !_mesa_swap_bytes_in_type_enum(&type))
-      return PIPE_FORMAT_NONE;
-
-   mesa_format mesa_format = _mesa_format_from_format_and_type(format, type);
-   if (_mesa_format_is_mesa_array_format(mesa_format))
-      mesa_format = _mesa_format_from_array_format(mesa_format);
-   if (mesa_format != MESA_FORMAT_NONE) {
-      enum pipe_format format = st_mesa_format_to_pipe_format(st, mesa_format);
-      if (format != PIPE_FORMAT_NONE &&
-          screen->is_format_supported(screen, format, PIPE_TEXTURE_2D, 0, 0, bind))
-         return format;
-   }
+   enum pipe_format pformat = st_choose_matching_format_noverify(st, format, type, swapBytes);
+   if (pformat != PIPE_FORMAT_NONE &&
+       screen->is_format_supported(screen, pformat, PIPE_TEXTURE_2D, 0, 0, bind))
+      return pformat;
 
    return PIPE_FORMAT_NONE;
 }
