@@ -139,6 +139,8 @@ zink_context_destroy(struct pipe_context *pctx)
 
    zink_descriptor_layouts_deinit(ctx);
 
+   p_atomic_dec(&screen->base.num_contexts);
+
    ralloc_free(ctx);
 }
 
@@ -3496,6 +3498,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          update_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE, j);
       }
    }
+   p_atomic_inc(&screen->base.num_contexts);
 
    if (!(flags & PIPE_CONTEXT_PREFER_THREADED) || flags & PIPE_CONTEXT_COMPUTE_ONLY) {
       return &ctx->base;
