@@ -355,26 +355,26 @@ get_dst_format(struct gl_context *ctx, enum pipe_texture_target target,
          dst_glformat = GL_RGBA32F;
          break;
       case PIPE_FORMAT_ETC2_R11_UNORM:
-         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16_UNORM,
-                                          target, 0, 0, bind))
+         if (bind && !screen->is_format_supported(screen, PIPE_FORMAT_R16_UNORM,
+                                                  target, 0, 0, bind))
             return PIPE_FORMAT_NONE;
          dst_glformat = GL_R16;
          break;
       case PIPE_FORMAT_ETC2_R11_SNORM:
-         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16_SNORM,
-                                          target, 0, 0, bind))
+         if (bind && !screen->is_format_supported(screen, PIPE_FORMAT_R16_SNORM,
+                                                  target, 0, 0, bind))
             return PIPE_FORMAT_NONE;
          dst_glformat = GL_R16_SNORM;
          break;
       case PIPE_FORMAT_ETC2_RG11_UNORM:
-         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16G16_UNORM,
-                                          target, 0, 0, bind))
+         if (bind && !screen->is_format_supported(screen, PIPE_FORMAT_R16G16_UNORM,
+                                                  target, 0, 0, bind))
             return PIPE_FORMAT_NONE;
          dst_glformat = GL_RG16;
          break;
       case PIPE_FORMAT_ETC2_RG11_SNORM:
-         if (!screen->is_format_supported(screen, PIPE_FORMAT_R16G16_SNORM,
-                                          target, 0, 0, bind))
+         if (bind && !screen->is_format_supported(screen, PIPE_FORMAT_R16G16_SNORM,
+                                                  target, 0, 0, bind))
             return PIPE_FORMAT_NONE;
          dst_glformat = GL_RG16_SNORM;
          break;
