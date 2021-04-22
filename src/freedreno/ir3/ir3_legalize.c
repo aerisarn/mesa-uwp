@@ -206,8 +206,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 				last_rel = n;
 		}
 
-		if (n->dsts_count > 0) {
-			struct ir3_register *reg = n->dsts[0];
+		foreach_dst (reg, n) {
 			if (regmask_get(&state->needs_ss_war, reg)) {
 				n->flags |= IR3_INSTR_SS;
 				last_input_needs_ss = false;
