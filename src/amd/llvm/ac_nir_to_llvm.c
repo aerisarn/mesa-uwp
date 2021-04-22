@@ -2821,7 +2821,8 @@ static void emit_discard(struct ac_nir_context *ctx, const nir_intrinsic_instr *
        instr->intrinsic == nir_intrinsic_terminate_if) {
       cond = LLVMBuildNot(ctx->ac.builder, get_src(ctx, instr->src[0]), "");
    } else {
-      assert(instr->intrinsic == nir_intrinsic_discard);
+      assert(instr->intrinsic == nir_intrinsic_discard ||
+             instr->intrinsic == nir_intrinsic_terminate);
       cond = ctx->ac.i1false;
    }
 
