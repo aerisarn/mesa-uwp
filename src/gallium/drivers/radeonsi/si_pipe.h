@@ -300,8 +300,8 @@ struct si_resource {
    /* Resource properties. */
    uint64_t bo_size;
    uint8_t bo_alignment_log2;
-   enum radeon_bo_domain domains;
-   enum radeon_bo_flag flags;
+   enum radeon_bo_domain domains:8;
+   enum radeon_bo_flag flags:16;
    unsigned bind_history;
    int max_forced_staging_uploads;
 
@@ -332,7 +332,7 @@ struct si_resource {
    bool image_handle_allocated;
 
    /* Whether the resource has been exported via resource_get_handle. */
-   unsigned external_usage; /* PIPE_HANDLE_USAGE_* */
+   uint8_t external_usage; /* PIPE_HANDLE_USAGE_* */
 };
 
 struct si_transfer {
