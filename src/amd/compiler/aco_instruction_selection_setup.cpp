@@ -407,28 +407,7 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
       setup_vs_output_info(ctx, nir, false,
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
 
-      unsigned ngg_gs_scratch_bytes = ctx->args->shader_info->so.num_outputs ? (44u * 4u) : (8u * 4u);
-      unsigned ngg_emit_bytes = ctx->args->shader_info->ngg_info.ngg_emit_size * 4u;
-      unsigned esgs_ring_bytes = ctx->args->shader_info->ngg_info.esgs_ring_size;
-
-      ctx->ngg_gs_primflags_offset = ctx->args->shader_info->gs.gsvs_vertex_size;
-      ctx->ngg_gs_emit_vtx_bytes = ctx->ngg_gs_primflags_offset + 4u;
-      ctx->ngg_gs_emit_addr = esgs_ring_bytes;
-      ctx->ngg_gs_scratch_addr = ctx->ngg_gs_emit_addr + ngg_emit_bytes;
-      ctx->ngg_gs_scratch_addr = ALIGN(ctx->ngg_gs_scratch_addr, 16u);
-
-      unsigned total_lds_bytes = ctx->ngg_gs_scratch_addr + ngg_gs_scratch_bytes;
-      assert(total_lds_bytes >= ctx->ngg_gs_emit_addr);
-      assert(total_lds_bytes >= ctx->ngg_gs_scratch_addr);
-      ctx->program->config->lds_size = DIV_ROUND_UP(total_lds_bytes, ctx->program->dev.lds_encoding_granule);
-
-      /* Make sure we have enough room for emitted GS vertices */
-      if (nir->info.gs.vertices_out)
-         assert((ngg_emit_bytes % (ctx->ngg_gs_emit_vtx_bytes * nir->info.gs.vertices_out)) == 0);
-
-      /* See if the number of vertices and primitives are compile-time known */
-      nir_gs_count_vertices_and_primitives(nir, ctx->ngg_gs_const_vtxcnt, ctx->ngg_gs_const_prmcnt, 4u);
-      ctx->ngg_gs_early_alloc = ctx->ngg_gs_const_vtxcnt[0] == nir->info.gs.vertices_out && ctx->ngg_gs_const_prmcnt[0] != -1;
+      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
    }
 
    if (ctx->stage.has(SWStage::VS))

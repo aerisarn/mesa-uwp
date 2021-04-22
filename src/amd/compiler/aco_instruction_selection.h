@@ -93,15 +93,7 @@ struct isel_context {
    Temp persp_centroid, linear_centroid;
 
    /* GS inputs */
-   bool ngg_gs_early_alloc = false;
-   bool ngg_gs_known_vtxcnt[4] = {false, false, false, false};
    Temp gs_wave_id;
-   unsigned ngg_gs_emit_addr = 0;
-   unsigned ngg_gs_emit_vtx_bytes = 0;
-   unsigned ngg_gs_scratch_addr = 0;
-   unsigned ngg_gs_primflags_offset = 0;
-   int ngg_gs_const_vtxcnt[4];
-   int ngg_gs_const_prmcnt[4];
 
    /* VS output information */
    bool export_clip_dists;

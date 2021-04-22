@@ -862,11 +862,16 @@ bool radv_lower_ngg(struct radv_device *device, struct nir_shader *nir, bool has
       info->is_ngg_passthrough = out_conf.passthrough;
       key->vs_common_out.as_ngg_passthrough = out_conf.passthrough;
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
-      if (!key->vs_common_out.as_ngg)
+      if (!info->is_ngg)
          return false;
 
-      /* TODO: lower NGG GS in NIR */
-      return false;
+      ac_nir_lower_ngg_gs(
+         nir, info->wave_size, max_workgroup_size,
+         info->ngg_info.esgs_ring_size,
+         info->gs.gsvs_vertex_size,
+         info->ngg_info.ngg_emit_size * 4u,
+         key->vs.provoking_vtx_last);
+      return true;
    } else {
       return false;
    }
