@@ -2510,6 +2510,10 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
                                              A6XX_RB_STENCIL_CONTROL_ZFAIL_BF__MASK);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_STENCIL_CNTL);
          break;
+      case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT:
+         pipeline->gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_POLY_OFFSET;
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
+         break;
       default:
          assert(!"unsupported dynamic state");
          break;
