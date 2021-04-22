@@ -1084,7 +1084,7 @@ find_supported_format(struct pipe_screen *screen,
 {
    uint i;
    for (i = 0; formats[i]; i++) {
-      if (screen->is_format_supported(screen, formats[i], target,
+      if (!bindings || screen->is_format_supported(screen, formats[i], target,
                                       sample_count, storage_sample_count,
                                       bindings)) {
          if (!allow_dxt && util_format_is_s3tc(formats[i])) {
@@ -1106,6 +1106,7 @@ find_supported_format(struct pipe_screen *screen,
  * The bindings parameter typically has PIPE_BIND_SAMPLER_VIEW set, plus
  * either PIPE_BINDING_RENDER_TARGET or PIPE_BINDING_DEPTH_STENCIL if
  * we want render-to-texture ability.
+ * If bindings is zero, the driver doesn't need to support the returned format.
  *
  * \param internalFormat  the user value passed to glTexImage2D
  * \param target  one of PIPE_TEXTURE_x
@@ -1144,8 +1145,8 @@ st_choose_format(struct st_context *st, GLenum internalFormat,
                                      swap_bytes);
 
       if (pf != PIPE_FORMAT_NONE &&
-          screen->is_format_supported(screen, pf, target, sample_count,
-                                      storage_sample_count, bindings) &&
+          (!bindings || screen->is_format_supported(screen, pf, target, sample_count,
+                                                    storage_sample_count, bindings)) &&
           _mesa_get_format_base_format(st_pipe_format_to_mesa_format(pf)) ==
           internalFormat) {
          goto success;
@@ -1263,7 +1264,7 @@ st_choose_matching_format(struct st_context *st, unsigned bind,
    struct pipe_screen *screen = st->screen;
    enum pipe_format pformat = st_choose_matching_format_noverify(st, format, type, swapBytes);
    if (pformat != PIPE_FORMAT_NONE &&
-       screen->is_format_supported(screen, pformat, PIPE_TEXTURE_2D, 0, 0, bind))
+       (!bind || screen->is_format_supported(screen, pformat, PIPE_TEXTURE_2D, 0, 0, bind)))
       return pformat;
 
    return PIPE_FORMAT_NONE;
