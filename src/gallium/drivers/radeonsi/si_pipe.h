@@ -299,7 +299,7 @@ struct si_resource {
 
    /* Resource properties. */
    uint64_t bo_size;
-   unsigned bo_alignment;
+   uint8_t bo_alignment_log2;
    enum radeon_bo_domain domains;
    enum radeon_bo_flag flags;
    unsigned bind_history;

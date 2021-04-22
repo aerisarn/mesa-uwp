@@ -48,7 +48,7 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    struct si_texture *tex = (struct si_texture *)res;
 
    res->bo_size = size;
-   res->bo_alignment = alignment;
+   res->bo_alignment_log2 = util_logbase2(alignment);
    res->flags = 0;
    res->texture_handle_allocated = false;
    res->image_handle_allocated = false;
@@ -177,8 +177,8 @@ bool si_alloc_resource(struct si_screen *sscreen, struct si_resource *res)
    struct pb_buffer *old_buf, *new_buf;
 
    /* Allocate a new resource. */
-   new_buf = sscreen->ws->buffer_create(sscreen->ws, res->bo_size, res->bo_alignment, res->domains,
-                                        res->flags);
+   new_buf = sscreen->ws->buffer_create(sscreen->ws, res->bo_size, 1 << res->bo_alignment_log2,
+                                        res->domains, res->flags);
    if (!new_buf) {
       return false;
    }
@@ -299,7 +299,7 @@ void si_replace_buffer_storage(struct pipe_context *ctx, struct pipe_resource *d
    assert(sdst->vram_usage_kb == ssrc->vram_usage_kb);
    assert(sdst->gart_usage_kb == ssrc->gart_usage_kb);
    assert(sdst->bo_size == ssrc->bo_size);
-   assert(sdst->bo_alignment == ssrc->bo_alignment);
+   assert(sdst->bo_alignment_log2 == ssrc->bo_alignment_log2);
    assert(sdst->domains == ssrc->domains);
 
    si_rebind_buffer(sctx, dst);
@@ -676,7 +676,7 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
    res->buf = imported_buf;
    res->gpu_address = sscreen->ws->buffer_get_virtual_address(res->buf);
    res->bo_size = imported_buf->size;
-   res->bo_alignment = 1 << imported_buf->alignment_log2;
+   res->bo_alignment_log2 = imported_buf->alignment_log2;
    res->domains = sscreen->ws->buffer_get_initial_domain(res->buf);
 
    if (res->domains & RADEON_DOMAIN_VRAM)
