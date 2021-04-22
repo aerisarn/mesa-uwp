@@ -656,6 +656,12 @@ v3d_stream_output_target_get_vertex_count(struct pipe_stream_output_target *ptar
     return v3d_stream_output_target(ptarget)->recorded_vertex_count;
 }
 
+int v3d_get_driver_query_group_info(struct pipe_screen *pscreen,
+                                    unsigned index,
+                                    struct pipe_driver_query_group_info *info);
+int v3d_get_driver_query_info(struct pipe_screen *pscreen, unsigned index,
+                              struct pipe_driver_query_info *info);
+
 struct pipe_context *v3d_context_create(struct pipe_screen *pscreen,
                                         void *priv, unsigned flags);
 void v3d_program_init(struct pipe_context *pctx);

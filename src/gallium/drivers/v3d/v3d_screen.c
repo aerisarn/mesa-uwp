@@ -827,6 +827,11 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
         pscreen->is_dmabuf_modifier_supported =
                 v3d_screen_is_dmabuf_modifier_supported;
 
+        if (screen->has_perfmon) {
+                pscreen->get_driver_query_group_info = v3d_get_driver_query_group_info;
+                pscreen->get_driver_query_info = v3d_get_driver_query_info;
+        }
+
         return pscreen;
 
 fail:

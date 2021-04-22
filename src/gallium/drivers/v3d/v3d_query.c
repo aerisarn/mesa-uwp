@@ -23,10 +23,39 @@
 
 #include "v3d_query.h"
 
+int
+v3d_get_driver_query_group_info(struct pipe_screen *pscreen, unsigned index,
+                                struct pipe_driver_query_group_info *info)
+{
+        struct v3d_screen *screen = v3d_screen(pscreen);
+
+        return v3d_get_driver_query_group_info_perfcnt(screen, index, info);
+}
+
+int
+v3d_get_driver_query_info(struct pipe_screen *pscreen, unsigned index,
+                          struct pipe_driver_query_info *info)
+{
+        struct v3d_screen *screen = v3d_screen(pscreen);
+
+        return v3d_get_driver_query_info_perfcnt(screen, index, info);
+}
+
 static struct pipe_query *
 v3d_create_query(struct pipe_context *pctx, unsigned query_type, unsigned index)
 {
-        return v3d_create_query_pipe(v3d_context(pctx), query_type, index);
+        struct v3d_context *v3d = v3d_context(pctx);
+
+        return v3d_create_query_pipe(v3d, query_type, index);
+}
+
+static struct pipe_query *
+v3d_create_batch_query(struct pipe_context *pctx, unsigned num_queries,
+                       unsigned *query_types)
+{
+        return v3d_create_batch_query_perfcnt(v3d_context(pctx),
+                                              num_queries,
+                                              query_types);
 }
 
 static void
@@ -80,6 +109,7 @@ void
 v3d_query_init(struct pipe_context *pctx)
 {
         pctx->create_query = v3d_create_query;
+        pctx->create_batch_query = v3d_create_batch_query;
         pctx->destroy_query = v3d_destroy_query;
         pctx->begin_query = v3d_begin_query;
         pctx->end_query = v3d_end_query;
