@@ -382,7 +382,7 @@ threaded_context_unwrap_sync(struct pipe_context *pipe)
  * simple functions
  */
 
-#define TC_FUNC1(func, qualifier, type, deref, addr) \
+#define TC_FUNC1(func, qualifier, type, deref, addr, ...) \
    struct tc_call_##func { \
       struct tc_call_base base; \
       type state; \
@@ -402,6 +402,7 @@ threaded_context_unwrap_sync(struct pipe_context *pipe)
       struct tc_call_##func *p = (struct tc_call_##func*) \
                      tc_add_call(tc, TC_CALL_##func, tc_call_##func); \
       p->state = deref(param); \
+      __VA_ARGS__; \
    }
 
 TC_FUNC1(set_active_query_state, , bool, , )
@@ -634,25 +635,27 @@ tc_render_condition(struct pipe_context *_pipe,
       return pipe->create_##name##_state(pipe, state); \
    }
 
-#define TC_CSO_BIND(name) TC_FUNC1(bind_##name##_state, , void *, , )
+#define TC_CSO_BIND(name, ...) TC_FUNC1(bind_##name##_state, , void *, , , ##__VA_ARGS__)
 #define TC_CSO_DELETE(name) TC_FUNC1(delete_##name##_state, , void *, , )
 
-#define TC_CSO_WHOLE2(name, sname) \
+#define TC_CSO(name, sname, ...) \
    TC_CSO_CREATE(name, sname) \
-   TC_CSO_BIND(name) \
+   TC_CSO_BIND(name, ##__VA_ARGS__) \
    TC_CSO_DELETE(name)
 
-#define TC_CSO_WHOLE(name) TC_CSO_WHOLE2(name, name)
+#define TC_CSO_WHOLE(name) TC_CSO(name, name)
+#define TC_CSO_SHADER(name) TC_CSO(name, shader)
+#define TC_CSO_SHADER_TRACK(name) TC_CSO(name, shader, tc->seen_##name = true;)
 
 TC_CSO_WHOLE(blend)
 TC_CSO_WHOLE(rasterizer)
 TC_CSO_WHOLE(depth_stencil_alpha)
 TC_CSO_WHOLE(compute)
-TC_CSO_WHOLE2(fs, shader)
-TC_CSO_WHOLE2(vs, shader)
-TC_CSO_WHOLE2(gs, shader)
-TC_CSO_WHOLE2(tcs, shader)
-TC_CSO_WHOLE2(tes, shader)
+TC_CSO_SHADER(fs)
+TC_CSO_SHADER(vs)
+TC_CSO_SHADER_TRACK(gs)
+TC_CSO_SHADER_TRACK(tcs)
+TC_CSO_SHADER_TRACK(tes)
 TC_CSO_CREATE(sampler, sampler)
 TC_CSO_DELETE(sampler)
 TC_CSO_BIND(vertex_elements)

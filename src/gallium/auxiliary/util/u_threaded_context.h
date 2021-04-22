@@ -401,6 +401,10 @@ struct threaded_context {
    thread_id driver_thread;
 #endif
 
+   bool seen_tcs;
+   bool seen_tes;
+   bool seen_gs;
+
    unsigned last, next;
 
    /* The list fences that the driver should signal after the next flush.
