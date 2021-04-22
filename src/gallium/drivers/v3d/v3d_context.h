@@ -750,6 +750,10 @@ v3d_fence_unreference(struct v3d_fence **fence);
 
 struct v3d_fence *v3d_fence_create(struct v3d_context *v3d);
 
+bool v3d_fence_wait(struct v3d_screen *screen,
+                    struct v3d_fence *fence,
+                    uint64_t timeout_ns);
+
 void v3d_update_primitive_counters(struct v3d_context *v3d);
 
 bool v3d_line_smoothing_enabled(struct v3d_context *v3d);
