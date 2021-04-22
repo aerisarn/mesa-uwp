@@ -103,6 +103,15 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
                       bool export_prim_id,
                       bool provoking_vtx_last);
 
+void
+ac_nir_lower_ngg_gs(nir_shader *shader,
+                    unsigned wave_size,
+                    unsigned max_workgroup_size,
+                    unsigned esgs_ring_lds_bytes,
+                    unsigned gs_out_vtx_bytes,
+                    unsigned gs_total_out_vtx_bytes,
+                    bool provoking_vtx_last);
+
 #ifdef __cplusplus
 }
 #endif
