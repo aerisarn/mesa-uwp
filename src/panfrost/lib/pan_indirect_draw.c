@@ -72,6 +72,7 @@ struct jobs_data {
         nir_ssa_def *vertex_job;
         nir_ssa_def *tiler_job;
         nir_ssa_def *base_vertex_offset;
+        nir_ssa_def *first_vertex_sysval;
         nir_ssa_def *offset_start;
         nir_ssa_def *invocation;
 };
@@ -157,6 +158,8 @@ struct indirect_draw_inputs {
         /* index buffer */
         mali_ptr index_buf;
 
+        /* {base,first}_{vertex,instance} sysvals */
+        mali_ptr first_vertex_sysval;
         /* Pointers to various cmdstream structs that need to be patched */
         mali_ptr vertex_job;
         mali_ptr tiler_job;
@@ -314,6 +317,7 @@ extract_inputs(struct indirect_draw_shader_builder *builder)
         if (builder->index_min_max_search)
                 return;
 
+        builder->jobs.first_vertex_sysval = get_input_field(b, first_vertex_sysval);
         builder->jobs.vertex_job = get_input_field(b, vertex_job);
         builder->jobs.tiler_job = get_input_field(b, tiler_job);
         builder->attribs.attrib_bufs = get_input_field(b, attrib_bufs);
@@ -905,6 +909,11 @@ patch(struct indirect_draw_shader_builder *builder)
         update_varyings(builder);
         update_jobs(builder);
         update_vertex_attribs(builder);
+
+        IF (nir_ine(b, builder->jobs.first_vertex_sysval, nir_imm_int64(b, 0))) {
+                store_global(b, builder->jobs.first_vertex_sysval,
+                             builder->jobs.offset_start, 1);
+        } ENDIF
 }
 
 /* Search the min/max index in the range covered by the indirect draw call */
@@ -1245,6 +1254,7 @@ panfrost_emit_indirect_draw(struct pan_pool *pool,
                 .draw_ctx = draw_ctx_ptr.gpu,
                 .draw_buf = draw_info->draw_buf,
                 .index_buf = draw_info->index_buf,
+                .first_vertex_sysval = draw_info->first_vertex_sysval,
                 .vertex_job = draw_info->vertex_job,
                 .tiler_job = draw_info->tiler_job,
                 .attrib_bufs = draw_info->attrib_bufs,
