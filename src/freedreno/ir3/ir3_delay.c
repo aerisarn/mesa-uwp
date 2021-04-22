@@ -216,10 +216,10 @@ post_ra_reg_num(struct ir3_register *reg)
 
 static unsigned
 delay_calc_srcn_postra(struct ir3_instruction *assigner, struct ir3_instruction *consumer,
-					   unsigned n, bool soft, bool mergedregs)
+					   unsigned assigner_n, unsigned consumer_n, bool soft, bool mergedregs)
 {
-	struct ir3_register *src = consumer->srcs[n];
-	struct ir3_register *dst = assigner->dsts[0];
+	struct ir3_register *src = consumer->srcs[consumer_n];
+	struct ir3_register *dst = assigner->dsts[assigner_n];
 	bool mismatched_half =
 		(src->flags & IR3_REG_HALF) != (dst->flags & IR3_REG_HALF);
 
@@ -238,7 +238,7 @@ delay_calc_srcn_postra(struct ir3_instruction *assigner, struct ir3_instruction 
 	if (dst_start >= src_end || src_start >= dst_end)
 		return 0;
 
-	unsigned delay = ir3_delayslots(assigner, consumer, n, soft);
+	unsigned delay = ir3_delayslots(assigner, consumer, consumer_n, soft);
 
 	if (assigner->repeat == 0 && consumer->repeat == 0)
 		return delay;
@@ -266,10 +266,21 @@ delay_calc_srcn_postra(struct ir3_instruction *assigner, struct ir3_instruction 
 
 	/* Now, for that first conflicting half/full register, figure out the
 	 * sub-instruction within assigner/consumer it corresponds to. For (r)
-	 * sources, this should already return the correct answer of 0.
+	 * sources, this should already return the correct answer of 0. However we
+	 * have to special-case the multi-mov instructions, where the
+	 * sub-instructions sometimes come from the src/dst indices instead.
 	 */
-	unsigned first_src_instr = first_num - src->num;
-	unsigned first_dst_instr = first_num - dst->num;
+	unsigned first_src_instr;
+	if (consumer->opc == OPC_SWZ || consumer->opc == OPC_GAT)
+		first_src_instr = consumer_n;
+	else
+		first_src_instr = first_num - src->num;
+
+	unsigned first_dst_instr;
+	if (assigner->opc == OPC_SWZ || assigner->opc == OPC_SCT)
+		first_dst_instr = assigner_n;
+	else
+		first_dst_instr = first_num - dst->num;
 
 	/* The delay we return is relative to the *end* of assigner and the
 	 * *beginning* of consumer, because it's the number of nops (or other
@@ -314,12 +325,16 @@ delay_calc_postra(struct ir3_block *block,
 
 		unsigned new_delay = 0;
 
-		if (dest_regs(assigner) != 0) {
-			foreach_src_n (src, n, consumer) {
+		foreach_dst_n (dst, dst_n, assigner) {
+			if (dst->wrmask == 0)
+				continue;
+			foreach_src_n (src, src_n, consumer) {
 				if (src->flags & (IR3_REG_IMMED | IR3_REG_CONST))
 					continue;
 
-				unsigned src_delay = delay_calc_srcn_postra(assigner, consumer, n, soft, mergedregs);
+				unsigned src_delay =
+					delay_calc_srcn_postra(assigner, consumer, dst_n,
+										   src_n, soft, mergedregs);
 				new_delay = MAX2(new_delay, src_delay);
 			}
 		}
