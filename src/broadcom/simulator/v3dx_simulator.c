@@ -58,9 +58,6 @@
 static void
 v3d_invalidate_l3(struct v3d_hw *v3d)
 {
-        if (!v3d_hw_has_gca(v3d))
-                return;
-
 #if V3D_VERSION < 40
         uint32_t gca_ctrl = V3D_READ(V3D_GCA_CACHE_CTRL);
 

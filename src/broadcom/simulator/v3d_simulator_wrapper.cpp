@@ -56,11 +56,6 @@ bool v3d_hw_alloc_mem(struct v3d_hw *hw, size_t min_size)
         return hw->alloc_mem(min_size) == V3D_HW_ALLOC_SUCCESS;
 }
 
-bool v3d_hw_has_gca(struct v3d_hw *hw)
-{
-        return hw->has_gca();
-}
-
 uint32_t v3d_hw_read_reg(struct v3d_hw *hw, uint32_t reg)
 {
         return hw->read_reg(reg);
