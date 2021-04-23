@@ -77,3 +77,22 @@ BEGIN_TEST(regalloc.32bit_partial_write)
 
    finish_ra_test(ra_test_policy());
 END_TEST
+
+BEGIN_TEST(regalloc.precolor.swap)
+   //>> s2: %op0:s[0-1] = p_startpgm
+   if (!setup_cs("s2", GFX10))
+      return;
+
+   program->dev.sgpr_limit = 4;
+
+   //! s2: %op1:s[2-3] = p_unit_test
+   Temp op1 = bld.pseudo(aco_opcode::p_unit_test, bld.def(s2));
+
+   //! s2: %op1_2:s[0-1], s2: %op0_2:s[2-3] = p_parallelcopy %op1:s[2-3], %op0:s[0-1]
+   //! p_unit_test %op0_2:s[2-3], %op1_2:s[0-1]
+   Operand op(inputs[0]);
+   op.setFixed(PhysReg(2));
+   bld.pseudo(aco_opcode::p_unit_test, op, op1);
+
+   finish_ra_test(ra_test_policy());
+END_TEST

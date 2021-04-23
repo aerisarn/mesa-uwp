@@ -1728,10 +1728,11 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
                          aco_ptr<Instruction>& instr, Operand& operand, unsigned operand_index)
 {
    /* check if the operand is fixed */
+   PhysReg src = ctx.assignments[operand.tempId()].reg;
    PhysReg dst;
    bool blocking_var = false;
    if (operand.isFixed()) {
-      assert(operand.physReg() != ctx.assignments[operand.tempId()].reg);
+      assert(operand.physReg() != src);
 
       /* check if target reg is blocked, and move away the blocking var */
       if (register_file[operand.physReg()]) {
@@ -1740,6 +1741,11 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
          RegClass rc = ctx.assignments[blocking_id].rc;
          Operand pc_op = Operand(Temp{blocking_id, rc});
          pc_op.setFixed(operand.physReg());
+
+         /* make space in the register file for get_reg() and then block the target reg */
+         register_file.clear(src, operand.regClass());
+         register_file.clear(pc_op.physReg(), rc);
+         register_file.block(operand.physReg(), operand.regClass());
 
          /* find free reg */
          PhysReg reg = get_reg(ctx, register_file, pc_op.getTemp(), parallelcopy, ctx.pseudo_dummy);
@@ -1756,7 +1762,7 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
    }
 
    Operand pc_op = operand;
-   pc_op.setFixed(ctx.assignments[operand.tempId()].reg);
+   pc_op.setFixed(src);
    Definition pc_def = Definition(dst, pc_op.regClass());
    parallelcopy.emplace_back(pc_op, pc_def);
    update_renames(ctx, register_file, parallelcopy, instr, true);
