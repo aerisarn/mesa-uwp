@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 struct v3d_hw *v3d_hw_auto_new(void *params);
-uint32_t v3d_hw_get_mem(const struct v3d_hw *hw, size_t *size, void **p);
+uint32_t v3d_hw_get_mem(const struct v3d_hw *hw, uint32_t *size, void **p);
 bool v3d_hw_alloc_mem(struct v3d_hw *hw, size_t min_size);
 bool v3d_hw_has_gca(struct v3d_hw *hw);
 uint32_t v3d_hw_read_reg(struct v3d_hw *hw, uint32_t reg);

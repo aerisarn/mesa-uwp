@@ -79,7 +79,7 @@ static struct v3d_simulator_state {
         /* Base hardware address of the heap. */
         uint32_t mem_base;
         /* Size of the heap. */
-        size_t mem_size;
+        uint32_t mem_size;
 
         struct mem_block *heap;
         struct mem_block *overflow;

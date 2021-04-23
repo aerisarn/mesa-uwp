@@ -46,7 +46,7 @@ struct v3d_hw *v3d_hw_auto_new(void *in_params)
 }
 
 
-uint32_t v3d_hw_get_mem(const struct v3d_hw *hw, size_t *size, void **p)
+uint32_t v3d_hw_get_mem(const struct v3d_hw *hw, uint32_t *size, void **p)
 {
         return hw->get_mem(size, p);
 }
