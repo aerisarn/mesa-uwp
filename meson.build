@@ -92,6 +92,11 @@ if dri_search_path == ''
   dri_search_path = dri_drivers_path
 endif
 
+gbm_backends_path = get_option('gbm-backends-path')
+if gbm_backends_path == ''
+  gbm_backends_path = join_paths(get_option('prefix'), get_option('libdir'), 'gbm')
+endif
+
 with_gles1 = get_option('gles1')
 if with_gles1 == 'true'
   with_gles1 = 'enabled'
@@ -2162,13 +2167,16 @@ if with_egl
   endif
   lines += 'EGL drivers:     ' + ' '.join(egl_drivers)
 endif
-lines += 'GBM:             ' + (with_gbm ? 'yes' : 'no')
 if with_egl or with_any_vk
   _platforms += 'surfaceless'
   if with_gbm and not with_platform_android
     _platforms += 'drm'
   endif
   lines += 'EGL/Vulkan/VL platforms:   ' + ' '.join(_platforms)
+endif
+lines += 'GBM:             ' + (with_gbm ? 'yes' : 'no')
+if with_gbm
+  lines += 'GBM backends path: ' + gbm_backends_path
 endif
 
 lines += ''

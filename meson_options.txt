@@ -271,6 +271,12 @@ option(
   description : 'Build support for gbm platform'
 )
 option(
+  'gbm-backends-path',
+  type : 'string',
+  value : '',
+  description : 'Locations to search for gbm backends, passed as colon separated list. Default: $libdir/gbm.'
+)
+option(
   'glx',
   type : 'combo',
   value : 'auto',
