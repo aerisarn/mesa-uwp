@@ -644,7 +644,8 @@ void adjust_max_used_regs(ra_ctx& ctx, RegClass rc, unsigned reg)
 
 void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
                     std::vector<std::pair<Operand, Definition>>& parallelcopies,
-                    aco_ptr<Instruction>& instr, bool rename_not_killed_ops)
+                    aco_ptr<Instruction>& instr, bool rename_not_killed_ops,
+                    bool fill_killed_ops=false)
 {
    /* clear operands */
    for (std::pair<Operand, Definition>& copy : parallelcopies) {
@@ -700,7 +701,7 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
             op.setTemp(copy.second.getTemp());
             op.setFixed(copy.second.physReg());
 
-            fill = !op.isKillBeforeDef();
+            fill = fill_killed_ops || !op.isKillBeforeDef();
          }
       }
 
@@ -1730,29 +1731,22 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
    /* check if the operand is fixed */
    PhysReg src = ctx.assignments[operand.tempId()].reg;
    PhysReg dst;
-   bool blocking_var = false;
    if (operand.isFixed()) {
       assert(operand.physReg() != src);
 
       /* check if target reg is blocked, and move away the blocking var */
-      if (register_file[operand.physReg()]) {
-         assert(register_file[operand.physReg()] != 0xF0000000);
-         uint32_t blocking_id = register_file[operand.physReg()];
-         RegClass rc = ctx.assignments[blocking_id].rc;
-         Operand pc_op = Operand(Temp{blocking_id, rc});
-         pc_op.setFixed(ctx.assignments[blocking_id].reg);
+      if (register_file.test(operand.physReg(), operand.bytes())) {
+         PhysRegInterval target{operand.physReg(), operand.size()};
 
-         /* make space in the register file for get_reg() and then block the target reg */
-         register_file.clear(src, operand.regClass());
-         register_file.clear(pc_op.physReg(), rc);
-         register_file.block(operand.physReg(), operand.regClass());
+         RegisterFile tmp_file(register_file);
 
-         /* find free reg */
-         PhysReg reg = get_reg(ctx, register_file, pc_op.getTemp(), parallelcopy, ctx.pseudo_dummy);
-         update_renames(ctx, register_file, parallelcopy, ctx.pseudo_dummy, true);
-         Definition pc_def = Definition(reg, pc_op.regClass());
-         parallelcopy.emplace_back(pc_op, pc_def);
-         blocking_var = true;
+         std::set<std::pair<unsigned, unsigned>> blocking_vars = collect_vars(ctx, tmp_file, target);
+
+         tmp_file.clear(src, operand.regClass()); //TODO: try to avoid moving block vars to src
+         tmp_file.block(operand.physReg(), operand.regClass());
+
+         DefInfo info(ctx, instr, operand.regClass(), -1);
+         get_regs_for_copies(ctx, tmp_file, parallelcopy, blocking_vars, info.bounds, instr, PhysRegInterval());
       }
       dst = operand.physReg();
 
@@ -1765,13 +1759,7 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
    pc_op.setFixed(src);
    Definition pc_def = Definition(dst, pc_op.regClass());
    parallelcopy.emplace_back(pc_op, pc_def);
-   update_renames(ctx, register_file, parallelcopy, instr, true);
-
-   if (operand.isKillBeforeDef())
-      register_file.fill(parallelcopy.back().second);
-   /* fill in case the blocking var is a killed operand (update_renames() will not fill it) */
-   if (blocking_var)
-      register_file.fill(parallelcopy[parallelcopy.size() - 2].second);
+   update_renames(ctx, register_file, parallelcopy, instr, true, true);
 }
 
 Temp read_variable(ra_ctx& ctx, Temp val, unsigned block_idx)
