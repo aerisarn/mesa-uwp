@@ -96,3 +96,20 @@ BEGIN_TEST(regalloc.precolor.swap)
 
    finish_ra_test(ra_test_policy());
 END_TEST
+
+BEGIN_TEST(regalloc.precolor.blocking_vector)
+   //>> s2: %tmp0:s[0-1], s1: %tmp1:s[2] = p_startpgm
+   if (!setup_cs("s2 s1", GFX10))
+      return;
+
+   //! s2: %tmp0_2:s[2-3], s1: %tmp1_2:s[1] = p_parallelcopy %tmp0:s[0-1], %tmp1:s[2]
+   //! p_unit_test %tmp1_2:s[1]
+   Operand op(inputs[1]);
+   op.setFixed(PhysReg(1));
+   bld.pseudo(aco_opcode::p_unit_test, op);
+
+   //! p_unit_test %tmp0_2:s[2-3]
+   bld.pseudo(aco_opcode::p_unit_test, inputs[0]);
+
+   finish_ra_test(ra_test_policy());
+END_TEST

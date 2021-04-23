@@ -1740,7 +1740,7 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
          uint32_t blocking_id = register_file[operand.physReg()];
          RegClass rc = ctx.assignments[blocking_id].rc;
          Operand pc_op = Operand(Temp{blocking_id, rc});
-         pc_op.setFixed(operand.physReg());
+         pc_op.setFixed(ctx.assignments[blocking_id].reg);
 
          /* make space in the register file for get_reg() and then block the target reg */
          register_file.clear(src, operand.regClass());
