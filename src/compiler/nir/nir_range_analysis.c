@@ -1339,12 +1339,12 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
       case nir_intrinsic_load_subgroup_id:
       case nir_intrinsic_load_num_subgroups: {
          uint32_t work_group_size = config->max_work_group_invocations;
-         if (!shader->info.cs.local_size_variable) {
+         if (shader->info.stage == MESA_SHADER_COMPUTE && !shader->info.cs.local_size_variable) {
             work_group_size = shader->info.cs.local_size[0] *
                               shader->info.cs.local_size[1] *
                               shader->info.cs.local_size[2];
          }
-         res = (work_group_size + config->min_subgroup_size - 1) / config->min_subgroup_size;
+         res = DIV_ROUND_UP(work_group_size, config->min_subgroup_size);
          if (intrin->intrinsic == nir_intrinsic_load_subgroup_id)
             res--;
          break;
