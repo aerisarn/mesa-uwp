@@ -220,6 +220,24 @@ is_outstanding_sfu(struct ir3_instruction *instr, struct ir3_sched_ctx *ctx)
 	return n->sfu_index >= ctx->first_outstanding_sfu_index;
 }
 
+static unsigned
+cycle_count(struct ir3_instruction *instr)
+{
+	if (instr->opc == OPC_META_COLLECT) {
+		/* Assume that only immed/const sources produce moves */
+		unsigned n = 0;
+		foreach_src(src, instr) {
+			if (src->flags & (IR3_REG_IMMED | IR3_REG_CONST))
+				n++;
+		}
+		return n;
+	} else if (is_meta(instr)) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
 static void
 schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 {
@@ -272,17 +290,17 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 
 	dag_prune_head(ctx->dag, &n->dag);
 
-	if (is_meta(instr) && (instr->opc != OPC_META_TEX_PREFETCH))
-		return;
+	unsigned cycles = cycle_count(instr);
 
 	if (is_sfu(instr)) {
 		ctx->sfu_delay = 8;
 		n->sfu_index = ctx->sfu_index++;
-	} else if (sched_check_src_cond(instr, is_outstanding_sfu, ctx)) {
+	} else if (!is_meta(instr) &&
+			   sched_check_src_cond(instr, is_outstanding_sfu, ctx)) {
 		ctx->sfu_delay = 0;
 		ctx->first_outstanding_sfu_index = ctx->sfu_index;
 	} else if (ctx->sfu_delay > 0) {
-		ctx->sfu_delay--;
+		ctx->sfu_delay -= MIN2(cycles, ctx->sfu_delay);
 	}
 
 	if (is_tex_or_prefetch(instr)) {
@@ -295,11 +313,12 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 		assert(ctx->remaining_tex > 0);
 		ctx->remaining_tex--;
 		n->tex_index = ctx->tex_index++;
-	} else if (sched_check_src_cond(instr, is_outstanding_tex_or_prefetch, ctx)) {
+	} else if (!is_meta(instr) &&
+			   sched_check_src_cond(instr, is_outstanding_tex_or_prefetch, ctx)) {
 		ctx->tex_delay = 0;
 		ctx->first_outstanding_tex_index = ctx->tex_index;
 	} else if (ctx->tex_delay > 0) {
-		ctx->tex_delay--;
+		ctx->tex_delay -= MIN2(cycles, ctx->tex_delay);
 	}
 }
 
