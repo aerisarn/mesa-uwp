@@ -638,20 +638,15 @@ pan_image_layout_init(const struct panfrost_device *dev,
                 /* Compute the would-be stride */
                 unsigned stride = bytes_per_pixel * effective_width;
 
-                /* On Bifrost, pixel lines have to be aligned on 64 bytes otherwise
-                 * we end up with DATA_INVALID faults. That doesn't seem to be
-                 * mandatory on Midgard, but we keep the alignment for performance.
-                 */
-                if (linear)
-                        stride = ALIGN_POT(stride, 64);
-
                 if (explicit_layout) {
                         /* Make sure the explicit stride is valid */
-                        if (explicit_layout->line_stride < stride ||
-                            (explicit_layout->line_stride & 63))
+                        if (explicit_layout->line_stride < stride)
                                 return false;
 
                         stride = explicit_layout->line_stride;
+                } else if (linear) {
+                        /* Keep lines alignment on 64 byte for performance */
+                        stride = ALIGN_POT(stride, 64);
                 }
 
                 slice->line_stride = stride;
