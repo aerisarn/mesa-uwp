@@ -233,10 +233,9 @@ bool validate_ir(Program* program)
                if (!op.isLiteral())
                   continue;
 
-               check(instr->isSOP1() || instr->isSOP2() || instr->isSOPC() ||
-                     instr->isVOP1() || instr->isVOP2() || instr->isVOPC() ||
-                     (instr->isVOP3() && program->chip_class >= GFX10) ||
-                     (instr->isVOP3P() && program->chip_class >= GFX10),
+               check(!instr->isDPP() && !instr->isSDWA() &&
+                     (!instr->isVOP3() || program->chip_class >= GFX10) &&
+                     (!instr->isVOP3P() || program->chip_class >= GFX10),
                      "Literal applied on wrong instruction format", instr.get());
 
                check(literal.isUndefined() || (literal.size() == op.size() && literal.constantValue() == op.constantValue()), "Only 1 Literal allowed", instr.get());
