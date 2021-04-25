@@ -52,6 +52,11 @@ uint32_t v3d_simulator_get_mem_free(void);
 #  define v3dX(x) v3d41_##x
 #  include "v3dx_simulator.h"
 #  undef v3dX
+
+#  define v3dX(x) v3d71_##x
+#  include "v3dx_simulator.h"
+#  undef v3dX
+
 #endif
 
 #endif

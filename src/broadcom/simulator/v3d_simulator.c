@@ -490,10 +490,20 @@ v3d_simulator_submit_cl_ioctl(int fd, struct drm_v3d_submit_cl *submit)
 
         v3d_simulator_perfmon_switch(fd, submit->perfmon_id);
 
-        if (sim_state.ver >= 41)
-                v3d41_simulator_submit_cl_ioctl(sim_state.v3d, submit, file->gmp->ofs);
-        else
-                v3d33_simulator_submit_cl_ioctl(sim_state.v3d, submit, file->gmp->ofs);
+        switch(sim_state.ver) {
+        case 33:
+           v3d33_simulator_submit_cl_ioctl(sim_state.v3d, submit, file->gmp->ofs);
+           break;
+        case 41:
+        case 42:
+           v3d41_simulator_submit_cl_ioctl(sim_state.v3d, submit, file->gmp->ofs);
+           break;
+        case 71:
+           v3d71_simulator_submit_cl_ioctl(sim_state.v3d, submit, file->gmp->ofs);
+           break;
+        default:
+           unreachable("Unsupported V3D version\n");
+        }
 
         util_dynarray_foreach(&sim_state.bin_oom, struct v3d_simulator_bo *,
                               sim_bo) {
@@ -635,10 +645,17 @@ v3d_simulator_gem_close_ioctl(int fd, struct drm_gem_close *args)
 static int
 v3d_simulator_get_param_ioctl(int fd, struct drm_v3d_get_param *args)
 {
-        if (sim_state.ver >= 41)
-                return v3d41_simulator_get_param_ioctl(sim_state.v3d, args);
-        else
+        switch(sim_state.ver) {
+        case 33:
                 return v3d33_simulator_get_param_ioctl(sim_state.v3d, args);
+        case 41:
+        case 42:
+                return v3d41_simulator_get_param_ioctl(sim_state.v3d, args);
+        case 71:
+                return v3d71_simulator_get_param_ioctl(sim_state.v3d, args);
+        default:
+                unreachable("Unsupported V3D version\n");
+        }
 }
 
 static int
@@ -652,10 +669,20 @@ v3d_simulator_submit_tfu_ioctl(int fd, struct drm_v3d_submit_tfu *args)
         v3d_simulator_copy_in_handle(file, args->bo_handles[2]);
         v3d_simulator_copy_in_handle(file, args->bo_handles[3]);
 
-        if (sim_state.ver >= 41)
-                ret = v3d41_simulator_submit_tfu_ioctl(sim_state.v3d, args);
-        else
+        switch(sim_state.ver) {
+        case 33:
                 ret = v3d33_simulator_submit_tfu_ioctl(sim_state.v3d, args);
+                break;
+        case 41:
+        case 42:
+                ret = v3d41_simulator_submit_tfu_ioctl(sim_state.v3d, args);
+                break;
+        case 71:
+                ret = v3d71_simulator_submit_tfu_ioctl(sim_state.v3d, args);
+                break;
+        default:
+                unreachable("Unsupported V3D version\n");
+        }
 
         v3d_simulator_copy_out_handle(file, args->bo_handles[0]);
 
@@ -682,11 +709,19 @@ v3d_simulator_submit_csd_ioctl(int fd, struct drm_v3d_submit_csd *args)
 
         v3d_simulator_perfmon_switch(fd, args->perfmon_id);
 
-        if (sim_state.ver >= 41)
-                ret = v3d41_simulator_submit_csd_ioctl(sim_state.v3d, args,
-                                                       file->gmp->ofs);
-        else
-                ret = -1;
+        switch(sim_state.ver) {
+        case 41:
+        case 42:
+           ret = v3d41_simulator_submit_csd_ioctl(sim_state.v3d, args,
+                                                  file->gmp->ofs);
+           break;
+        case 71:
+           ret = v3d71_simulator_submit_csd_ioctl(sim_state.v3d, args,
+                                                  file->gmp->ofs);
+           break;
+        default:
+           ret = -1;
+        }
 
         for (int i = 0; i < args->bo_handle_count; i++)
                 v3d_simulator_copy_out_handle(file, bo_handles[i]);
@@ -880,10 +915,20 @@ v3d_simulator_init_global()
 
         util_dynarray_init(&sim_state.bin_oom, NULL);
 
-        if (sim_state.ver >= 41)
-                v3d41_simulator_init_regs(sim_state.v3d);
-        else
+        switch(sim_state.ver) {
+        case 33:
                 v3d33_simulator_init_regs(sim_state.v3d);
+                break;
+        case 41:
+        case 42:
+                v3d41_simulator_init_regs(sim_state.v3d);
+                break;
+        case 71:
+                v3d71_simulator_init_regs(sim_state.v3d);
+                break;
+        default:
+                unreachable("Not supported V3D version\n");
+        }
 }
 
 struct v3d_simulator_file *

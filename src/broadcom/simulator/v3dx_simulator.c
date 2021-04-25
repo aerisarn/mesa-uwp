@@ -46,10 +46,14 @@
 
 #define HW_REGISTER_RO(x) (x)
 #define HW_REGISTER_RW(x) (x)
-#if V3D_VERSION >= 41
+#if V3D_VERSION == 71
+#include "libs/core/v3d/registers/7.1.6.0/v3d.h"
+#else
+#if V3D_VERSION == 41 || V3D_VERSION == 42
 #include "libs/core/v3d/registers/4.1.35.0/v3d.h"
 #else
 #include "libs/core/v3d/registers/3.3.0.0/v3d.h"
+#endif
 #endif
 
 #define V3D_WRITE(reg, val) v3d_hw_write_reg(v3d, reg, val)
@@ -310,16 +314,17 @@ v3d_isr_core(struct v3d_hw *v3d,
                 return;
         }
 
+#if V3D_VERSION <= 42
         if (core_status & V3D_CTL_0_INT_STS_INT_GMPV_SET) {
                 fprintf(stderr, "GMP violation at 0x%08x\n",
                         V3D_READ(V3D_GMP_VIO_ADDR));
-                abort();
         } else {
                 fprintf(stderr,
                         "Unexpected ISR with core status 0x%08x\n",
                         core_status);
         }
         abort();
+#endif
 }
 
 static void
@@ -396,6 +401,18 @@ v3d_isr_hub(struct v3d_hw *v3d)
         }
 
         handle_mmu_interruptions(v3d, hub_status);
+
+#if V3D_VERSION == 71
+        if (hub_status & V3D_HUB_CTL_INT_STS_INT_GMPV_SET) {
+                fprintf(stderr, "GMP violation at 0x%08x\n",
+                        V3D_READ(V3D_GMP_VIO_ADDR));
+        } else {
+                fprintf(stderr,
+                        "Unexpected ISR with status 0x%08x\n",
+                        hub_status);
+        }
+        abort();
+#endif
 }
 
 static void
@@ -436,8 +453,11 @@ v3dX(simulator_init_regs)(struct v3d_hw *v3d)
          * for tracing. Perhaps we should evaluate to do the same here and add
          * some debug options.
          */
-        uint32_t core_interrupts = (V3D_CTL_0_INT_STS_INT_GMPV_SET |
-                                    V3D_CTL_0_INT_STS_INT_OUTOMEM_SET);
+        uint32_t core_interrupts = V3D_CTL_0_INT_STS_INT_OUTOMEM_SET;
+#if V3D_VERSION <= 42
+        core_interrupts |= V3D_CTL_0_INT_STS_INT_GMPV_SET;
+#endif
+
         V3D_WRITE(V3D_CTL_0_INT_MSK_SET, ~core_interrupts);
         V3D_WRITE(V3D_CTL_0_INT_MSK_CLR, core_interrupts);
 
@@ -447,6 +467,9 @@ v3dX(simulator_init_regs)(struct v3d_hw *v3d)
             V3D_HUB_CTL_INT_STS_INT_MMU_CAP_SET |  /* CAP exceeded */
             V3D_HUB_CTL_INT_STS_INT_TFUC_SET); /* TFU conversion */
 
+#if V3D_VERSION == 71
+        hub_interrupts |= V3D_HUB_CTL_INT_STS_INT_GMPV_SET;
+#endif
         V3D_WRITE(V3D_HUB_CTL_INT_MSK_SET, ~hub_interrupts);
         V3D_WRITE(V3D_HUB_CTL_INT_MSK_CLR, hub_interrupts);
 
