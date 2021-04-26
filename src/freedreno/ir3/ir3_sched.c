@@ -501,7 +501,7 @@ static int
 live_effect(struct ir3_instruction *instr)
 {
 	struct ir3_sched_node *n = instr->data;
-	int new_live = n->partially_live ? 0 : dest_regs(instr);
+	int new_live = (n->partially_live || !instr->uses || instr->uses->entries == 0) ? 0 : dest_regs(instr);
 	int freed_live = 0;
 
 	/* if we schedule something that causes a vecN to be live,
