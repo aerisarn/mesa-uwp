@@ -1242,10 +1242,17 @@ static void fill_image_buffer_view_stage(struct rendering_state *state,
       return;
    idx += array_idx;
    idx += dyn_info->stage[stage].image_count;
-   state->iv[p_stage][idx].resource = bv->buffer->bo;
-   state->iv[p_stage][idx].format = bv->pformat;
-   state->iv[p_stage][idx].u.buf.offset = bv->offset + bv->buffer->offset;
-   state->iv[p_stage][idx].u.buf.size = bv->range == VK_WHOLE_SIZE ? (bv->buffer->size - bv->offset): bv->range;
+   if (bv) {
+      state->iv[p_stage][idx].resource = bv->buffer->bo;
+      state->iv[p_stage][idx].format = bv->pformat;
+      state->iv[p_stage][idx].u.buf.offset = bv->offset + bv->buffer->offset;
+      state->iv[p_stage][idx].u.buf.size = bv->range == VK_WHOLE_SIZE ? (bv->buffer->size - bv->offset): bv->range;
+   } else {
+      state->iv[p_stage][idx].resource = NULL;
+      state->iv[p_stage][idx].format = PIPE_FORMAT_NONE;
+      state->iv[p_stage][idx].u.buf.offset = 0;
+      state->iv[p_stage][idx].u.buf.size = 0;
+   }
    if (state->num_shader_images[p_stage] <= idx)
       state->num_shader_images[p_stage] = idx + 1;
    state->iv_dirty[p_stage] = true;
