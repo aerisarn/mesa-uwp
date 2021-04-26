@@ -1196,22 +1196,30 @@ static void fill_image_view_stage(struct rendering_state *state,
       return;
    idx += array_idx;
    idx += dyn_info->stage[stage].image_count;
-   state->iv[p_stage][idx].resource = iv->image->bo;
-   if (iv->vk.aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
-      state->iv[p_stage][idx].format = lvp_vk_format_to_pipe_format(iv->vk.format);
-   else if (iv->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT)
-      state->iv[p_stage][idx].format = util_format_stencil_only(lvp_vk_format_to_pipe_format(iv->vk.format));
-   else
-      state->iv[p_stage][idx].format = lvp_vk_format_to_pipe_format(iv->vk.format);
+   if (iv) {
+      state->iv[p_stage][idx].resource = iv->image->bo;
+      if (iv->vk.aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
+         state->iv[p_stage][idx].format = lvp_vk_format_to_pipe_format(iv->vk.format);
+      else if (iv->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT)
+         state->iv[p_stage][idx].format = util_format_stencil_only(lvp_vk_format_to_pipe_format(iv->vk.format));
+      else
+         state->iv[p_stage][idx].format = lvp_vk_format_to_pipe_format(iv->vk.format);
 
-   if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_3D) {
-      state->iv[p_stage][idx].u.tex.first_layer = 0;
-      state->iv[p_stage][idx].u.tex.last_layer = iv->vk.extent.depth - 1;
+      if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_3D) {
+         state->iv[p_stage][idx].u.tex.first_layer = 0;
+         state->iv[p_stage][idx].u.tex.last_layer = iv->vk.extent.depth - 1;
+      } else {
+         state->iv[p_stage][idx].u.tex.first_layer = iv->vk.base_array_layer,
+         state->iv[p_stage][idx].u.tex.last_layer = iv->vk.base_array_layer + iv->vk.layer_count - 1;
+      }
+      state->iv[p_stage][idx].u.tex.level = iv->vk.base_mip_level;
    } else {
-      state->iv[p_stage][idx].u.tex.first_layer = iv->vk.base_array_layer,
-      state->iv[p_stage][idx].u.tex.last_layer = iv->vk.base_array_layer + iv->vk.layer_count - 1;
+      state->iv[p_stage][idx].resource = NULL;
+      state->iv[p_stage][idx].format = PIPE_FORMAT_NONE;
+      state->iv[p_stage][idx].u.tex.first_layer = 0;
+      state->iv[p_stage][idx].u.tex.last_layer = 0;
+      state->iv[p_stage][idx].u.tex.level = 0;
    }
-   state->iv[p_stage][idx].u.tex.level = iv->vk.base_mip_level;
    state->iv[p_stage][idx].access = PIPE_IMAGE_ACCESS_READ_WRITE;
    state->iv[p_stage][idx].shader_access = PIPE_IMAGE_ACCESS_READ_WRITE;
    if (state->num_shader_images[p_stage] <= idx)
