@@ -93,6 +93,7 @@ ac_nir_lower_indirect_derefs(nir_shader *shader,
 
 typedef struct
 {
+   unsigned lds_bytes_if_culling_off;
    bool can_cull;
    bool passthrough;
 } ac_nir_ngg_config;
