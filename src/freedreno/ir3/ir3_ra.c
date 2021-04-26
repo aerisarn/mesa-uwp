@@ -1936,6 +1936,8 @@ ir3_ra(struct ir3_shader_variant *v)
 
 	handle_block(ctx, ir3_start_block(v->ir));
 
+	ir3_ra_validate(v, ctx->full.size, ctx->half.size, live->block_count);
+
 	/* Strip array-ness and SSA-ness at the end, because various helpers still
 	 * need to work even on definitions that have already been assigned. For
 	 * example, we need to preserve array-ness so that array live-ins have the

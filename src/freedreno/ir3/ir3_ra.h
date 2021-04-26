@@ -187,6 +187,9 @@ void ir3_calc_pressure(struct ir3_shader_variant *v,
 					   struct ir3_liveness *live,
 					   struct ir3_pressure *max_pressure);
 
+void ir3_ra_validate(struct ir3_shader_variant *v,
+					 unsigned full_size, unsigned half_size, unsigned block_count);
+
 void ir3_lower_copies(struct ir3_shader_variant *v);
 
 /* Register interval datastructure
