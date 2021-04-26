@@ -816,7 +816,7 @@ static const struct debug_control radv_perftest_options[] = {
    {"cswave32", RADV_PERFTEST_CS_WAVE_32},  {"pswave32", RADV_PERFTEST_PS_WAVE_32},
    {"gewave32", RADV_PERFTEST_GE_WAVE_32},  {"dfsm", RADV_PERFTEST_DFSM},
    {"nosam", RADV_PERFTEST_NO_SAM},         {"sam", RADV_PERFTEST_SAM},
-   {"dccstores", RADV_PERFTEST_DCC_STORES}, {NULL, 0}};
+   {NULL, 0}};
 
 const char *
 radv_get_perftest_option_name(int id)

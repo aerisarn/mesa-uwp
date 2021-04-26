@@ -276,14 +276,7 @@ radv_use_dcc_for_image(struct radv_device *device, const struct radv_image *imag
 bool
 radv_image_use_dcc_image_stores(const struct radv_device *device, const struct radv_image *image)
 {
-   /*
-    * TODO: Enable on more HW. DIMGREY and VANGOGH need a workaround and
-    * we need more perf analysis.
-    * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/6796#note_643853
-    */
-   return device->physical_device->rad_info.chip_class == GFX10 ||
-          (device->physical_device->rad_info.chip_class == GFX10_3 &&
-           (device->instance->perftest_flags & RADV_PERFTEST_DCC_STORES));
+   return device->physical_device->rad_info.chip_class >= GFX10;
 }
 
 /*
