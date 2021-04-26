@@ -556,9 +556,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
-            assert(write->pBufferInfo[j].buffer);
             LVP_FROM_HANDLE(lvp_buffer, buffer, write->pBufferInfo[j].buffer);
-            assert(buffer);
             desc[j] = (struct lvp_descriptor) {
                .type = write->descriptorType,
                .info.offset = write->pBufferInfo[j].offset,
