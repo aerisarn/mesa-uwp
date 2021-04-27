@@ -498,7 +498,7 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
       unsigned semantic_name, semantic_index;
 
       const struct glsl_type *type = variable->type;
-      if (nir_is_per_vertex_io(variable, nir->info.stage)) {
+      if (nir_is_arrayed_io(variable, nir->info.stage)) {
          assert(glsl_type_is_array(type));
          type = glsl_get_array_element(type);
       }
@@ -598,7 +598,7 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
       i = variable->data.driver_location;
 
       const struct glsl_type *type = variable->type;
-      if (nir_is_per_vertex_io(variable, nir->info.stage)) {
+      if (nir_is_arrayed_io(variable, nir->info.stage)) {
          assert(glsl_type_is_array(type));
          type = glsl_get_array_element(type);
       }

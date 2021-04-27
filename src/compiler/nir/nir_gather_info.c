@@ -43,7 +43,7 @@ get_deref_info(nir_shader *shader, nir_variable *var, nir_deref_instr *deref,
    *cross_invocation = false;
    *indirect = false;
 
-   const bool per_vertex = nir_is_per_vertex_io(var, shader->info.stage);
+   const bool per_vertex = nir_is_arrayed_io(var, shader->info.stage);
 
    nir_deref_path path;
    nir_deref_path_init(&path, deref, NULL);
@@ -170,7 +170,7 @@ mark_whole_variable(nir_shader *shader, nir_variable *var,
 {
    const struct glsl_type *type = var->type;
 
-   if (nir_is_per_vertex_io(var, shader->info.stage)) {
+   if (nir_is_arrayed_io(var, shader->info.stage)) {
       assert(glsl_type_is_array(type));
       type = glsl_get_array_element(type);
    }
@@ -181,7 +181,7 @@ mark_whole_variable(nir_shader *shader, nir_variable *var,
        * on Intel), verify that "peeling" the type twice is correct.  This
        * assert ensures we remember it.
        */
-      assert(!nir_is_per_vertex_io(var, shader->info.stage));
+      assert(!nir_is_arrayed_io(var, shader->info.stage));
       assert(glsl_type_is_array(type));
       type = glsl_get_array_element(type);
    }
@@ -239,7 +239,7 @@ try_mask_partial_io(nir_shader *shader, nir_variable *var,
                     nir_deref_instr *deref, bool is_output_read)
 {
    const struct glsl_type *type = var->type;
-   bool per_vertex = nir_is_per_vertex_io(var, shader->info.stage);
+   bool per_vertex = nir_is_arrayed_io(var, shader->info.stage);
 
    if (per_vertex) {
       assert(glsl_type_is_array(type));

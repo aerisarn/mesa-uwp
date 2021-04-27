@@ -1884,7 +1884,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       }
 
       struct vtn_type *per_vertex_type = var->type;
-      if (nir_is_per_vertex_io(var->var, b->shader->info.stage))
+      if (nir_is_arrayed_io(var->var, b->shader->info.stage))
          per_vertex_type = var->type->array_element;
 
       /* Figure out the interface block type. */

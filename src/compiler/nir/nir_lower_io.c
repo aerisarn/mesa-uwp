@@ -139,11 +139,15 @@ nir_assign_var_locations(nir_shader *shader, nir_variable_mode mode,
 }
 
 /**
- * Return true if the given variable is a per-vertex input/output array.
- * (such as geometry shader inputs).
+ * Some inputs and outputs are arrayed, meaning that there is an extra level
+ * of array indexing to handle mismatches between the shader interface and the
+ * dispatch pattern of the shader.  For instance, geometry shaders are
+ * executed per-primitive while their inputs and outputs are specified
+ * per-vertex so all inputs and outputs have to be additionally indexed with
+ * the vertex index within the primitive.
  */
 bool
-nir_is_per_vertex_io(const nir_variable *var, gl_shader_stage stage)
+nir_is_arrayed_io(const nir_variable *var, gl_shader_stage stage)
 {
    if (var->data.patch || !glsl_type_is_array(var->type))
       return false;
@@ -164,7 +168,7 @@ static unsigned get_number_of_slots(struct lower_io_state *state,
 {
    const struct glsl_type *type = var->type;
 
-   if (nir_is_per_vertex_io(var, state->builder.shader->info.stage)) {
+   if (nir_is_arrayed_io(var, state->builder.shader->info.stage)) {
       assert(glsl_type_is_array(type));
       type = glsl_get_array_element(type);
    }
@@ -612,7 +616,7 @@ nir_lower_io_block(nir_block *block,
 
       b->cursor = nir_before_instr(instr);
 
-      const bool per_vertex = nir_is_per_vertex_io(var, b->shader->info.stage);
+      const bool per_vertex = nir_is_arrayed_io(var, b->shader->info.stage);
 
       nir_ssa_def *offset;
       nir_ssa_def *vertex_index = NULL;

@@ -51,7 +51,7 @@ static const struct glsl_type *
 get_per_vertex_type(const nir_shader *shader, const nir_variable *var,
                     unsigned *num_vertices)
 {
-   if (nir_is_per_vertex_io(var, shader->info.stage)) {
+   if (nir_is_arrayed_io(var, shader->info.stage)) {
       assert(glsl_type_is_array(var->type));
       if (num_vertices)
          *num_vertices = glsl_get_length(var->type);
@@ -90,8 +90,8 @@ variables_can_merge(const nir_shader *shader,
    const struct glsl_type *a_type_tail = a->type;
    const struct glsl_type *b_type_tail = b->type;
 
-   if (nir_is_per_vertex_io(a, shader->info.stage) !=
-       nir_is_per_vertex_io(b, shader->info.stage))
+   if (nir_is_arrayed_io(a, shader->info.stage) !=
+       nir_is_arrayed_io(b, shader->info.stage))
       return false;
 
    /* They must have the same array structure */
@@ -353,7 +353,7 @@ build_array_deref_of_new_var_flat(nir_shader *shader,
 {
    nir_deref_instr *deref = nir_build_deref_var(b, new_var);
 
-   if (nir_is_per_vertex_io(new_var, shader->info.stage)) {
+   if (nir_is_arrayed_io(new_var, shader->info.stage)) {
       assert(leader->deref_type == nir_deref_type_array);
       nir_ssa_def *index = leader->arr.index.ssa;
       leader = nir_deref_instr_parent(leader);
