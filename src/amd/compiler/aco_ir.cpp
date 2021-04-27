@@ -148,6 +148,7 @@ init_program(Program* program, Stage stage, const struct radv_shader_info* info,
    if (program->family == CHIP_TAHITI || program->family == CHIP_CARRIZO ||
        program->family == CHIP_HAWAII)
       program->dev.has_fast_fma32 = true;
+   program->dev.has_mac_legacy32 = program->chip_class <= GFX7 || program->chip_class >= GFX10;
 
    program->wgp_mode = wgp_mode;
 

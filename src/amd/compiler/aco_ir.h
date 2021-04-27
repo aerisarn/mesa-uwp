@@ -2047,6 +2047,7 @@ struct DeviceInfo {
    unsigned max_wave64_per_simd;
    unsigned simd_per_cu;
    bool has_fast_fma32 = false;
+   bool has_mac_legacy32 = false;
    bool xnack_enabled = false;
    bool sram_ecc_enabled = false;
 };
