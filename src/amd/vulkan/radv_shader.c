@@ -92,6 +92,11 @@ get_nir_options_for_stage(struct radv_physical_device *device, gl_shader_stage s
       .has_udot_4x8 = device->rad_info.has_accelerated_dot_product,
       .has_dot_2x16 = device->rad_info.has_accelerated_dot_product,
       .use_scoped_barrier = true,
+#ifdef LLVM_AVAILABLE
+      .has_fmulz = !device->use_llvm || LLVM_VERSION_MAJOR >= 12,
+#else
+      .has_fmulz = true,
+#endif
       .max_unroll_iterations = 32,
       .max_unroll_iterations_aggressive = 128,
       .use_interpolated_input_intrinsics = true,
