@@ -71,6 +71,9 @@ class Channel:
         s += str(self.size)
         return s
 
+    def __repr__(self):
+        return "Channel({})".format(self.__str__())
+
     def __eq__(self, other):
         if other is None:
             return False
@@ -135,6 +138,27 @@ class Format:
                 exit(1)
             self.be_channels = be_channels
             self.be_swizzles = be_swizzles
+
+            if self.is_bitmask():
+                # Bitmask formats are "load a word the size of the block and
+                # bitshift channels out of it." However, the channel shifts
+                # defined in u_format_table.c are numbered right-to-left on BE
+                # for some historical reason (see below), which is hard to
+                # change due to llvmpipe, so we also have to flip the channel
+                # order and the channel-to-rgba swizzle values to read
+                # right-to-left from the defined (non-VOID) channels so that the
+                # correct shifts happen.
+                #
+                # This is nonsense, but it's the nonsense that makes
+                # u_format_test pass and you get the right colors in softpipe at
+                # least.
+                chans = self.nr_channels()
+                packed_be_channels = self.le_channels[chans -
+                                                    1::-1] + self.le_channels[chans:4]
+                if packed_be_channels != be_channels:
+                    print("{}: {} != {}".format(
+                        self.name, be_channels, packed_be_channels))
+                    exit(1)
         else:
             self.be_channels = copy.deepcopy(le_channels)
             self.be_swizzles = le_swizzles
