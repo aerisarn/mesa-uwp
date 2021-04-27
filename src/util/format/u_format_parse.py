@@ -129,6 +129,10 @@ class Format:
             le_shift += channel.size
 
         if be_channels:
+            if self.is_array():
+                print(
+                    "{} is an array format and should not include BE swizzles in the CSV".format(self.name))
+                exit(1)
             self.be_channels = be_channels
             self.be_swizzles = be_swizzles
         else:
