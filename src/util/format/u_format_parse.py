@@ -122,7 +122,6 @@ class Format:
         self.le_swizzles = le_swizzles
         self.be_channels = be_channels
         self.be_swizzles = be_swizzles
-        self.name = name
         self.colorspace = colorspace
 
     def __str__(self):
