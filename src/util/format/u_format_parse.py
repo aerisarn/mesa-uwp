@@ -45,7 +45,7 @@ ZS = 'zs'
 
 
 def is_pot(x):
-   return (x & (x - 1)) == 0
+    return (x & (x - 1)) == 0
 
 
 VERY_LARGE = 99999999999999999999999
@@ -53,8 +53,8 @@ VERY_LARGE = 99999999999999999999999
 
 class Channel:
     '''Describe the channel of a color channel.'''
-    
-    def __init__(self, type, norm, pure, size, name = ''):
+
+    def __init__(self, type, norm, pure, size, name=''):
         self.type = type
         self.norm = norm
         self.pure = pure
@@ -93,7 +93,7 @@ class Channel:
         if self.type == SIGNED:
             return (1 << (self.size - 1)) - 1
         assert False
-    
+
     def min(self):
         '''Minimum representable number.'''
         if self.type == FLOAT:
@@ -156,7 +156,7 @@ class Format:
             return None
         ref_channel = self.le_channels[0]
         if ref_channel.type == VOID:
-           ref_channel = self.le_channels[1]
+            ref_channel = self.le_channels[1]
         for channel in self.le_channels:
             if channel.size and (channel.size != ref_channel.size or channel.size % 8):
                 return None
@@ -177,7 +177,7 @@ class Format:
             return False
         ref_channel = self.le_channels[0]
         if ref_channel.type == VOID:
-           ref_channel = self.le_channels[1]
+            ref_channel = self.le_channels[1]
         for channel in self.le_channels[1:]:
             if channel.type != VOID:
                 if channel.type != ref_channel.type:
@@ -244,7 +244,7 @@ class Format:
                  for channel in self.le_channels
                  if channel.type != VOID]
         for x in pures:
-           assert x == pures[0]
+            assert x == pures[0]
         return pures[0]
 
     def channel_type(self):
@@ -252,7 +252,7 @@ class Format:
                  for channel in self.le_channels
                  if channel.type != VOID]
         for x in types:
-           assert x == types[0]
+            assert x == types[0]
         return types[0]
 
     def is_pure_signed(self):
@@ -292,6 +292,7 @@ _swizzle_parse_map = {
     '1': SWIZZLE_1,
     '_': SWIZZLE_NONE,
 }
+
 
 def _parse_channels(fields, layout, colorspace, swizzles):
     if layout == PLAIN:
@@ -340,6 +341,7 @@ def _parse_channels(fields, layout, colorspace, swizzles):
         channels.append(channel)
 
     return channels
+
 
 def parse(filename):
     '''Parse the format description in CSV format in terms of the
@@ -391,4 +393,3 @@ def parse(filename):
         format = Format(name, layout, block_width, block_height, block_depth, le_channels, le_swizzles, be_channels, be_swizzles, colorspace)
         formats.append(format)
     return formats
-
