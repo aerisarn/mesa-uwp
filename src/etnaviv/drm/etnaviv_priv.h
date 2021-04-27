@@ -188,13 +188,15 @@ struct etna_perfmon_signal
 
 #define ALIGN(v,a) (((v) + (a) - 1) & ~((a) - 1))
 
-#define enable_debug 0  /* TODO make dynamic */
+#define ETNA_DRM_MSGS 0x40
+extern int etna_mesa_debug;
 
 #define INFO_MSG(fmt, ...) \
 		do { debug_printf("[I] "fmt " (%s:%d)\n", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 #define DEBUG_MSG(fmt, ...) \
-		do if (enable_debug) { debug_printf("[D] "fmt " (%s:%d)\n", \
+		do if (etna_mesa_debug & ETNA_DRM_MSGS) { \
+		     debug_printf("[D] "fmt " (%s:%d)\n", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 #define WARN_MSG(fmt, ...) \
 		do { debug_printf("[W] "fmt " (%s:%d)\n", \

@@ -38,6 +38,7 @@
 #define ETNA_DBG_COMPILER_MSGS   0x8
 #define ETNA_DBG_LINKER_MSGS     0x10
 #define ETNA_DBG_DUMP_SHADERS    0x20
+#define ETNA_DRM_MSGS            0x40 /* Debug messages from DRM */
 
 /* Bypasses */
 #define ETNA_DBG_NO_TS           0x1000   /* Disable TS */

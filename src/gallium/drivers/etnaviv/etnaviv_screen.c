@@ -54,6 +54,7 @@
 
 static const struct debug_named_value etna_debug_options[] = {
    {"dbg_msgs",       ETNA_DBG_MSGS, "Print debug messages"},
+   {"drm_msgs",       ETNA_DRM_MSGS, "Print drm messages"},
    {"frame_msgs",     ETNA_DBG_FRAME_MSGS, "Print frame messages"},
    {"resource_msgs",  ETNA_DBG_RESOURCE_MSGS, "Print resource messages"},
    {"compiler_msgs",  ETNA_DBG_COMPILER_MSGS, "Print compiler messages"},
