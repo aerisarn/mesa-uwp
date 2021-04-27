@@ -205,6 +205,11 @@ extern int etna_mesa_debug;
 		do { debug_printf("[E] " fmt " (%s:%d)\n", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 
+#define DEBUG_BO(msg, bo)						\
+   DEBUG_MSG("%s %p, va: 0x%.8x, size: 0x%.8x, flags: 0x%.8x, "		\
+	     "refcnt: %d, handle: 0x%.8x, name: 0x%.8x",		\
+	     msg, bo, bo->va, bo->size, bo->flags, bo->refcnt, bo->handle, bo->name);
+
 #define VOID2U64(x) ((uint64_t)(unsigned long)(x))
 
 static inline void get_abs_timeout(struct drm_etnaviv_timespec *tv, uint64_t ns)
