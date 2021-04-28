@@ -3446,6 +3446,9 @@ typedef struct nir_shader_compiler_options {
     */
    bool use_scoped_barrier;
 
+   /** Backend supports fmulz (and ffmaz if lower_ffma32=false) */
+   bool has_fmulz;
+
    /**
     * Is this the Intel vec4 backend?
     *
