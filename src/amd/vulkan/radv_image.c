@@ -1563,6 +1563,36 @@ radv_image_can_fast_clear(const struct radv_device *device, const struct radv_im
    return true;
 }
 
+/**
+ * Determine if the given image can be fast cleared using comp-to-single.
+ */
+bool
+radv_image_use_comp_to_single(const struct radv_device *device, const struct radv_image *image)
+{
+   /* comp-to-single is only available for GFX10+. */
+   if (device->physical_device->rad_info.chip_class < GFX10)
+      return false;
+
+   /* If the image can't be fast cleared, comp-to-single can't be used. */
+   if (!radv_image_can_fast_clear(device, image))
+      return false;
+
+   /* If the image doesn't have DCC, it can't be fast cleared using comp-to-single */
+   if (!radv_image_has_dcc(image))
+      return false;
+
+   /* TODO: DCC fast clears with MSAA aren't fully supported. */
+   if (image->info.samples > 1)
+      return false;
+
+   /* It seems 8bpp and 16bpp require RB+ to work. */
+   unsigned bytes_per_pixel = vk_format_get_blocksize(image->vk_format);
+   if (bytes_per_pixel <= 2 && !device->physical_device->rad_info.rbplus_allowed)
+      return false;
+
+   return false; /* TODO: will be enabled in a next commit. */
+}
+
 static uint64_t
 radv_select_modifier(const struct radv_device *dev, VkFormat format,
                      const struct VkImageDrmFormatModifierListCreateInfoEXT *mod_list)

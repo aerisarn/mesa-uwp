@@ -1581,6 +1581,9 @@ bool radv_image_use_dcc_image_stores(const struct radv_device *device,
                                      const struct radv_image *image);
 bool radv_image_use_dcc_predication(const struct radv_device *device,
                                     const struct radv_image *image);
+bool radv_image_use_comp_to_single(const struct radv_device *device,
+                                   const struct radv_image *image);
+
 void radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                               const VkImageSubresourceRange *range, bool value);
 
