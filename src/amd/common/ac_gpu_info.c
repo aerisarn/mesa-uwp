@@ -882,8 +882,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    info->has_ls_vgpr_init_bug = info->family == CHIP_VEGA10 || info->family == CHIP_RAVEN;
 
-   /* Drawing from 0-sized index buffers causes hangs on Navi10/14. */
-   info->has_zero_index_buffer_bug = info->family == CHIP_NAVI10 || info->family == CHIP_NAVI14;
+   /* Drawing from 0-sized index buffers causes hangs on gfx10. */
+   info->has_zero_index_buffer_bug = info->chip_class == GFX10;
 
    /* Whether chips are affected by the image load/sample/gather hw bug when
     * DCC is enabled (ie. WRITE_COMPRESS_ENABLE should be 0).
