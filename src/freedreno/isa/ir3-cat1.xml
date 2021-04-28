@@ -340,8 +340,10 @@ SOFTWARE.
 		equivalent sequence of mov/cov, but they guarantee that all
 		sources are read before any destination is written, so they
 		behave as-if the moves are executed in parallel.
-		TODO: when were these added?
 	</doc>
+
+	<gen min="500"/> <!-- TODO does a4xx support these? -->
+
 	<field name="SRC0" low="0" high="7" type="#cat1-multi-src">
 		<param name="HALF"/>
 	</field>
