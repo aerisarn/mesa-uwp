@@ -747,9 +747,10 @@ radv_import_ahb_memory(struct radv_device *device, struct radv_device_memory *me
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
    uint64_t alloc_size = 0;
-   mem->bo = device->ws->buffer_from_fd(device->ws, dma_buf, priority, &alloc_size);
-   if (!mem->bo)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   VkResult result =
+      device->ws->buffer_from_fd(device->ws, dma_buf, priority, &mem->bo, &alloc_size);
+   if (result != VK_SUCCESS)
+      return result;
 
    if (mem->image) {
       struct radeon_bo_metadata metadata;

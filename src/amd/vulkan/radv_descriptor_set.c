@@ -801,13 +801,13 @@ radv_CreateDescriptorPool(VkDevice _device, const VkDescriptorPoolCreateInfo *pC
 
    if (bo_size) {
       if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_VALVE)) {
-         pool->bo = device->ws->buffer_create(
+         VkResult result = device->ws->buffer_create(
             device->ws, bo_size, 32, RADEON_DOMAIN_VRAM,
             RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY | RADEON_FLAG_32BIT,
-            RADV_BO_PRIORITY_DESCRIPTOR);
-         if (!pool->bo) {
+            RADV_BO_PRIORITY_DESCRIPTOR, &pool->bo);
+         if (result != VK_SUCCESS) {
             radv_destroy_descriptor_pool(device, pAllocator, pool);
-            return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+            return vk_error(device->instance, result);
          }
          pool->mapped_ptr = (uint8_t *)device->ws->buffer_map(pool->bo);
          if (!pool->mapped_ptr) {

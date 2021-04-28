@@ -918,13 +918,13 @@ radv_alloc_shader_memory(struct radv_device *device, struct radv_shader_variant 
    struct radv_shader_slab *slab = calloc(1, sizeof(struct radv_shader_slab));
 
    slab->size = MAX2(256 * 1024, shader->code_size);
-   slab->bo = device->ws->buffer_create(
+   VkResult result = device->ws->buffer_create(
       device->ws, slab->size, 256, RADEON_DOMAIN_VRAM,
       RADEON_FLAG_NO_INTERPROCESS_SHARING |
          (device->physical_device->rad_info.cpdma_prefetch_writes_memory ? 0
                                                                          : RADEON_FLAG_READ_ONLY),
-      RADV_BO_PRIORITY_SHADER);
-   if (!slab->bo) {
+      RADV_BO_PRIORITY_SHADER, &slab->bo);
+   if (result != VK_SUCCESS) {
       free(slab);
       return NULL;
    }

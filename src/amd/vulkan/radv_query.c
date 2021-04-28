@@ -976,12 +976,12 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
    if (pCreateInfo->queryType == VK_QUERY_TYPE_PIPELINE_STATISTICS)
       pool->size += 4 * pCreateInfo->queryCount;
 
-   pool->bo =
-      device->ws->buffer_create(device->ws, pool->size, 64, RADEON_DOMAIN_GTT,
-                                RADEON_FLAG_NO_INTERPROCESS_SHARING, RADV_BO_PRIORITY_QUERY_POOL);
-   if (!pool->bo) {
+   VkResult result = device->ws->buffer_create(device->ws, pool->size, 64, RADEON_DOMAIN_GTT,
+                                               RADEON_FLAG_NO_INTERPROCESS_SHARING,
+                                               RADV_BO_PRIORITY_QUERY_POOL, &pool->bo);
+   if (result != VK_SUCCESS) {
       radv_destroy_query_pool(device, pAllocator, pool);
-      return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return vk_error(device->instance, result);
    }
 
    pool->ptr = device->ws->buffer_map(pool->bo);

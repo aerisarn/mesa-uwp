@@ -209,12 +209,12 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws, enum ring_type ring_type)
    radv_amdgpu_init_cs(cs, ring_type);
 
    if (cs->ws->use_ib_bos) {
-      cs->ib_buffer =
+      VkResult result =
          ws->buffer_create(ws, ib_size, 0, radv_amdgpu_cs_domain(ws),
                            RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
                               RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC,
-                           RADV_BO_PRIORITY_CS);
-      if (!cs->ib_buffer) {
+                           RADV_BO_PRIORITY_CS, &cs->ib_buffer);
+      if (result != VK_SUCCESS) {
          free(cs);
          return NULL;
       }
@@ -330,13 +330,13 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    cs->old_ib_buffers[cs->num_old_ib_buffers].bo = cs->ib_buffer;
    cs->old_ib_buffers[cs->num_old_ib_buffers++].cdw = cs->base.cdw;
 
-   cs->ib_buffer =
+   VkResult result =
       cs->ws->base.buffer_create(&cs->ws->base, ib_size, 0, radv_amdgpu_cs_domain(&cs->ws->base),
                                  RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
                                     RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC,
-                                 RADV_BO_PRIORITY_CS);
+                                 RADV_BO_PRIORITY_CS, &cs->ib_buffer);
 
-   if (!cs->ib_buffer) {
+   if (result != VK_SUCCESS) {
       cs->base.cdw = 0;
       cs->status = VK_ERROR_OUT_OF_DEVICE_MEMORY;
       cs->ib_buffer = cs->old_ib_buffers[--cs->num_old_ib_buffers].bo;
@@ -1033,10 +1033,10 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
                pad_words++;
             }
 
-            bos[j] = ws->buffer_create(
+            ws->buffer_create(
                ws, 4 * size, 4096, radv_amdgpu_cs_domain(ws),
                RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY,
-               RADV_BO_PRIORITY_CS);
+               RADV_BO_PRIORITY_CS, &bos[j]);
             ptr = ws->buffer_map(bos[j]);
 
             if (needs_preamble) {
@@ -1076,10 +1076,10 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
          }
          assert(cnt);
 
-         bos[0] = ws->buffer_create(
+         ws->buffer_create(
             ws, 4 * size, 4096, radv_amdgpu_cs_domain(ws),
             RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY,
-            RADV_BO_PRIORITY_CS);
+            RADV_BO_PRIORITY_CS, &bos[0]);
          ptr = ws->buffer_map(bos[0]);
 
          if (preamble_cs) {
@@ -1262,11 +1262,10 @@ radv_amdgpu_ctx_create(struct radeon_winsys *_ws, enum radeon_ctx_priority prior
    ctx->ws = ws;
 
    assert(AMDGPU_HW_IP_NUM * MAX_RINGS_PER_TYPE * sizeof(uint64_t) <= 4096);
-   ctx->fence_bo = ws->base.buffer_create(
-      &ws->base, 4096, 8, RADEON_DOMAIN_GTT,
-      RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING, RADV_BO_PRIORITY_CS);
-   if (!ctx->fence_bo) {
-      result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   result = ws->base.buffer_create(&ws->base, 4096, 8, RADEON_DOMAIN_GTT,
+                                   RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING,
+                                   RADV_BO_PRIORITY_CS, &ctx->fence_bo);
+   if (result != VK_SUCCESS) {
       goto fail_alloc;
    }
 

@@ -511,20 +511,21 @@ static bool
 radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer, uint64_t min_needed)
 {
    uint64_t new_size;
-   struct radeon_winsys_bo *bo;
+   struct radeon_winsys_bo *bo = NULL;
    struct radv_cmd_buffer_upload *upload;
    struct radv_device *device = cmd_buffer->device;
 
    new_size = MAX2(min_needed, 16 * 1024);
    new_size = MAX2(new_size, 2 * cmd_buffer->upload.size);
 
-   bo = device->ws->buffer_create(device->ws, new_size, 4096, device->ws->cs_domain(device->ws),
-                                  RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
-                                     RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC,
-                                  RADV_BO_PRIORITY_UPLOAD_BUFFER);
+   VkResult result =
+      device->ws->buffer_create(device->ws, new_size, 4096, device->ws->cs_domain(device->ws),
+                                RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
+                                   RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC,
+                                RADV_BO_PRIORITY_UPLOAD_BUFFER, &bo);
 
-   if (!bo) {
-      cmd_buffer->record_result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   if (result != VK_SUCCESS) {
+      cmd_buffer->record_result = result;
       return false;
    }
 

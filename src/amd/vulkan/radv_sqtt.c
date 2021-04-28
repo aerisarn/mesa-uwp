@@ -381,11 +381,13 @@ radv_thread_trace_init_bo(struct radv_device *device)
    size = align64(sizeof(struct ac_thread_trace_info) * max_se, 1 << SQTT_BUFFER_ALIGN_SHIFT);
    size += device->thread_trace.buffer_size * (uint64_t)max_se;
 
-   device->thread_trace.bo = ws->buffer_create(
+   struct radeon_winsys_bo *bo = NULL;
+   VkResult result = ws->buffer_create(
       ws, size, 4096, RADEON_DOMAIN_VRAM,
       RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_ZERO_VRAM,
-      RADV_BO_PRIORITY_SCRATCH);
-   if (!device->thread_trace.bo)
+      RADV_BO_PRIORITY_SCRATCH, &bo);
+   device->thread_trace.bo = bo;
+   if (result != VK_SUCCESS)
       return false;
 
    device->thread_trace.ptr = ws->buffer_map(device->thread_trace.bo);

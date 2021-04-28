@@ -222,18 +222,18 @@ struct radeon_winsys {
 
    const char *(*get_chip_name)(struct radeon_winsys *ws);
 
-   struct radeon_winsys_bo *(*buffer_create)(struct radeon_winsys *ws, uint64_t size,
-                                             unsigned alignment, enum radeon_bo_domain domain,
-                                             enum radeon_bo_flag flags, unsigned priority);
+   VkResult (*buffer_create)(struct radeon_winsys *ws, uint64_t size, unsigned alignment,
+                             enum radeon_bo_domain domain, enum radeon_bo_flag flags,
+                             unsigned priority, struct radeon_winsys_bo **out_bo);
 
    void (*buffer_destroy)(struct radeon_winsys *ws, struct radeon_winsys_bo *bo);
    void *(*buffer_map)(struct radeon_winsys_bo *bo);
 
-   struct radeon_winsys_bo *(*buffer_from_ptr)(struct radeon_winsys *ws, void *pointer,
-                                               uint64_t size, unsigned priority);
+   VkResult (*buffer_from_ptr)(struct radeon_winsys *ws, void *pointer, uint64_t size,
+                               unsigned priority, struct radeon_winsys_bo **out_bo);
 
-   struct radeon_winsys_bo *(*buffer_from_fd)(struct radeon_winsys *ws, int fd, unsigned priority,
-                                              uint64_t *alloc_size);
+   VkResult (*buffer_from_fd)(struct radeon_winsys *ws, int fd, unsigned priority,
+                              struct radeon_winsys_bo **out_bo, uint64_t *alloc_size);
 
    bool (*buffer_get_fd)(struct radeon_winsys *ws, struct radeon_winsys_bo *bo, int *fd);
 
