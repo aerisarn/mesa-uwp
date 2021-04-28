@@ -207,7 +207,6 @@ nouveau_mm_allocate(struct nouveau_mman *cache,
       list_add(&slab->head, &bucket->full);
    }
 
-   alloc->next = NULL;
    alloc->offset = *offset;
    alloc->priv = (void *)slab;
 
