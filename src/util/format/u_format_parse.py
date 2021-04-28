@@ -159,6 +159,20 @@ class Format:
                     print("{}: {} != {}".format(
                         self.name, be_channels, packed_be_channels))
                     exit(1)
+
+                xyzw = [SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_W]
+                chan_map = {SWIZZLE_X: xyzw[chans - 1] if chans >= 1 else SWIZZLE_X,
+                            SWIZZLE_Y: xyzw[chans - 2] if chans >= 2 else SWIZZLE_X,
+                            SWIZZLE_Z: xyzw[chans - 3] if chans >= 3 else SWIZZLE_X,
+                            SWIZZLE_W: xyzw[chans - 4] if chans >= 4 else SWIZZLE_X,
+                            SWIZZLE_1: SWIZZLE_1,
+                            SWIZZLE_0: SWIZZLE_0,
+                            SWIZZLE_NONE: SWIZZLE_NONE}
+                be_swizzles = [chan_map[s] for s in self.le_swizzles]
+                if be_swizzles != self.be_swizzles:
+                    print("{}: LE {}, computed BE {} != {}".format(
+                        self.name, self.le_swizzles, be_swizzles, self.be_swizzles))
+                    exit(1)
         else:
             self.be_channels = copy.deepcopy(le_channels)
             self.be_swizzles = le_swizzles
