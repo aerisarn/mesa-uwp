@@ -415,7 +415,7 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-05-19-piglit"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-05-25-piglit"
 
 # Debian 11 based x86 test image for VK
 x86_test-vk:
@@ -450,7 +450,7 @@ arm_build:
   variables:
     GIT_STRATEGY: fetch
     KERNEL_URL: "https://gitlab.freedesktop.org/gfx-ci/linux/-/archive/v5.13-rc2-for-mesa-ci-2a4a4fa4407f/v5.13-rc2-for-mesa-ci-2a4a4fa4407f.tar.bz2"
-    MESA_ROOTFS_TAG: &kernel-rootfs "2021-05-21-panfrost-oops"
+    MESA_ROOTFS_TAG: &kernel-rootfs "2021-05-25-piglit"
     DISTRIBUTION_TAG: &distribution-tag-arm "${MESA_ROOTFS_TAG}--${MESA_ARTIFACTS_TAG}--${MESA_TEMPLATES_COMMIT}"
   script:
     - .gitlab-ci/container/lava_build.sh
