@@ -238,7 +238,9 @@ if [ "x$PIGLIT_PROFILES" = "xreplay" ] \
     __MINIO_PATH="$PIGLIT_REPLAY_ARTIFACTS_BASE_URL"
     __MINIO_TRACES_PREFIX="traces"
 
-    quiet replay_minio_upload_images
+    if [ "x$PIGLIT_REPLAY_SUBCOMMAND" != "xprofile" ]; then
+        quiet replay_minio_upload_images
+    fi
 fi
 
 if [ -n "$USE_CASELIST" ]; then
