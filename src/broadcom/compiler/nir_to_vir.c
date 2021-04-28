@@ -68,6 +68,39 @@
 #define V3D_TSY_DEC_SEMAPHORE       14
 #define V3D_TSY_SET_QUORUM_FREE_ALL 15
 
+enum v3d_tmu_op_type
+{
+        V3D_TMU_OP_TYPE_REGULAR,
+        V3D_TMU_OP_TYPE_ATOMIC,
+        V3D_TMU_OP_TYPE_CACHE
+};
+
+static enum v3d_tmu_op_type
+v3d_tmu_get_type_from_op(uint32_t tmu_op, bool is_write)
+{
+        switch(tmu_op) {
+        case V3D_TMU_OP_WRITE_ADD_READ_PREFETCH:
+        case V3D_TMU_OP_WRITE_SUB_READ_CLEAR:
+        case V3D_TMU_OP_WRITE_XCHG_READ_FLUSH:
+        case V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH:
+        case V3D_TMU_OP_WRITE_UMIN_FULL_L1_CLEAR:
+                return is_write ? V3D_TMU_OP_TYPE_ATOMIC : V3D_TMU_OP_TYPE_CACHE;
+        case V3D_TMU_OP_WRITE_UMAX:
+        case V3D_TMU_OP_WRITE_SMIN:
+        case V3D_TMU_OP_WRITE_SMAX:
+                assert(is_write);
+                FALLTHROUGH;
+        case V3D_TMU_OP_WRITE_AND_READ_INC:
+        case V3D_TMU_OP_WRITE_OR_READ_DEC:
+        case V3D_TMU_OP_WRITE_XOR_READ_NOT:
+                return V3D_TMU_OP_TYPE_ATOMIC;
+        case V3D_TMU_OP_REGULAR:
+                return V3D_TMU_OP_TYPE_REGULAR;
+
+        default:
+                unreachable("Unknown tmu_op\n");
+        }
+}
 static void
 ntq_emit_cf_list(struct v3d_compile *c, struct exec_list *list);
 
@@ -567,11 +600,10 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                                         &tmu_writes);
                 }
 
-                /* The spec says that for atomics, the TYPE field is
-                 * ignored, but that doesn't seem to be the case for
-                 * CMPXCHG.  Just use the number of tmud writes we did
-                 * to decide the type (or choose "32bit" for atomic
-                 * reads, which has been fine).
+                /* For atomics we use 32bit except for CMPXCHG, that we need
+                 * to use VEC2. For the rest of the cases we use the number of
+                 * tmud writes we did to decide the type. For cache operations
+                 * the type is ignored.
                  */
                 uint32_t config = 0;
                 if (mode == MODE_EMIT) {
@@ -582,6 +614,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                 assert(tmu_writes > 0);
                                 num_components = tmu_writes - 1;
                         }
+                        bool is_atomic =
+                                v3d_tmu_get_type_from_op(tmu_op, !is_load) ==
+                                V3D_TMU_OP_TYPE_ATOMIC;
 
                         uint32_t perquad =
                                 is_load && !vir_in_nonuniform_control_flow(c)
@@ -589,7 +624,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                 : GENERAL_TMU_LOOKUP_PER_PIXEL;
                         config = 0xffffff00 | tmu_op << 3 | perquad;
 
-                        if (num_components == 1) {
+                        if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH) {
+                                config |= GENERAL_TMU_LOOKUP_TYPE_VEC2;
+                        } else if (is_atomic || num_components == 1) {
                                 config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
                         } else {
                                 config |= GENERAL_TMU_LOOKUP_TYPE_VEC2 +
