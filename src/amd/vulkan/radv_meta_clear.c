@@ -1416,9 +1416,11 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
 }
 
 enum {
+   RADV_DCC_CLEAR_0000 = 0x00000000U,
+   RADV_DCC_CLEAR_0001 = 0x40404040U,
+   RADV_DCC_CLEAR_1110 = 0x80808080U,
+   RADV_DCC_CLEAR_1111 = 0xC0C0C0C0U,
    RADV_DCC_CLEAR_REG = 0x20202020U,
-   RADV_DCC_CLEAR_MAIN_1 = 0x80808080U,
-   RADV_DCC_CLEAR_SECONDARY_1 = 0x40404040U
 };
 
 static void
@@ -1495,13 +1497,18 @@ vi_get_fast_clear_parameters(struct radv_device *device, VkFormat image_format,
          return;
 
    *can_avoid_fast_clear_elim = true;
-   *reset_value = 0;
-   if (main_value)
-      *reset_value |= RADV_DCC_CLEAR_MAIN_1;
 
-   if (extra_value)
-      *reset_value |= RADV_DCC_CLEAR_SECONDARY_1;
-   return;
+   if (main_value) {
+      if (extra_value)
+         *reset_value = RADV_DCC_CLEAR_1111;
+      else
+         *reset_value = RADV_DCC_CLEAR_1110;
+   } else {
+      if (extra_value)
+         *reset_value = RADV_DCC_CLEAR_0001;
+      else
+         *reset_value = RADV_DCC_CLEAR_0000;
+   }
 }
 
 static bool
