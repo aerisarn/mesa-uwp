@@ -781,12 +781,11 @@ int virgl_encoder_draw_vbo(struct virgl_context *ctx,
    return 0;
 }
 
-int virgl_encoder_create_surface(struct virgl_context *ctx,
-                                uint32_t handle,
-                                struct virgl_resource *res,
-                                const struct pipe_surface *templat)
+static int virgl_encoder_create_surface_common(struct virgl_context *ctx,
+                                               uint32_t handle,
+                                               struct virgl_resource *res,
+                                               const struct pipe_surface *templat)
 {
-   virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_CREATE_OBJECT, VIRGL_OBJECT_SURFACE, VIRGL_OBJ_SURFACE_SIZE));
    virgl_encoder_write_dword(ctx->cbuf, handle);
    virgl_encoder_write_res(ctx, res);
    virgl_encoder_write_dword(ctx->cbuf, pipe_to_virgl_format(templat->format));
@@ -794,6 +793,26 @@ int virgl_encoder_create_surface(struct virgl_context *ctx,
    assert(templat->texture->target != PIPE_BUFFER);
    virgl_encoder_write_dword(ctx->cbuf, templat->u.tex.level);
    virgl_encoder_write_dword(ctx->cbuf, templat->u.tex.first_layer | (templat->u.tex.last_layer << 16));
+
+   return 0;
+}
+
+int virgl_encoder_create_surface(struct virgl_context *ctx,
+                                 uint32_t handle,
+                                 struct virgl_resource *res,
+                                 const struct pipe_surface *templat)
+{
+   if (templat->nr_samples > 0) {
+      ASSERTED struct virgl_screen *rs = virgl_screen(ctx->base.screen);
+      assert(rs->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_IMPLICIT_MSAA);
+
+      virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_CREATE_OBJECT, VIRGL_OBJECT_MSAA_SURFACE, VIRGL_OBJ_MSAA_SURFACE_SIZE));
+      virgl_encoder_create_surface_common(ctx, handle, res, templat);
+      virgl_encoder_write_dword(ctx->cbuf, templat->nr_samples);
+   } else {
+      virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_CREATE_OBJECT, VIRGL_OBJECT_SURFACE, VIRGL_OBJ_SURFACE_SIZE));
+      virgl_encoder_create_surface_common(ctx, handle, res, templat);
+   }
 
    return 0;
 }
