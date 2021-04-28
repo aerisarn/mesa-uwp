@@ -1424,8 +1424,8 @@ enum {
 };
 
 static void
-vi_get_fast_clear_parameters(struct radv_device *device, VkFormat image_format,
-                             VkFormat view_format, const VkClearColorValue *clear_value,
+vi_get_fast_clear_parameters(struct radv_device *device, const struct radv_image_view *iview,
+                             const VkClearColorValue *clear_value,
                              uint32_t *reset_value, bool *can_avoid_fast_clear_elim)
 {
    bool values[4] = {0};
@@ -1438,12 +1438,12 @@ vi_get_fast_clear_parameters(struct radv_device *device, VkFormat image_format,
 
    *reset_value = RADV_DCC_CLEAR_REG;
 
-   const struct util_format_description *desc = vk_format_description(view_format);
-   if (view_format == VK_FORMAT_B10G11R11_UFLOAT_PACK32 ||
-       view_format == VK_FORMAT_R5G6B5_UNORM_PACK16 || view_format == VK_FORMAT_B5G6R5_UNORM_PACK16)
+   const struct util_format_description *desc = vk_format_description(iview->vk_format);
+   if (iview->vk_format == VK_FORMAT_B10G11R11_UFLOAT_PACK32 ||
+       iview->vk_format == VK_FORMAT_R5G6B5_UNORM_PACK16 || iview->vk_format == VK_FORMAT_B5G6R5_UNORM_PACK16)
       extra_channel = -1;
    else if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN) {
-      if (vi_alpha_is_on_msb(device, view_format))
+      if (vi_alpha_is_on_msb(device, iview->vk_format))
          extra_channel = desc->nr_channels - 1;
       else
          extra_channel = 0;
@@ -1552,8 +1552,8 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       bool can_avoid_fast_clear_elim;
       uint32_t reset_value;
 
-      vi_get_fast_clear_parameters(cmd_buffer->device, iview->image->vk_format, iview->vk_format,
-                                   &clear_value, &reset_value, &can_avoid_fast_clear_elim);
+      vi_get_fast_clear_parameters(cmd_buffer->device, iview, &clear_value, &reset_value,
+                                   &can_avoid_fast_clear_elim);
 
       if (iview->image->info.levels > 1) {
          if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
@@ -1616,8 +1616,8 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_imag
       uint32_t reset_value;
       bool can_avoid_fast_clear_elim;
 
-      vi_get_fast_clear_parameters(cmd_buffer->device, iview->image->vk_format, iview->vk_format,
-                                   &clear_value, &reset_value, &can_avoid_fast_clear_elim);
+      vi_get_fast_clear_parameters(cmd_buffer->device, iview, &clear_value, &reset_value,
+                                   &can_avoid_fast_clear_elim);
 
       if (radv_image_has_cmask(iview->image)) {
          flush_bits = radv_clear_cmask(cmd_buffer, iview->image, &range, cmask_clear_value);
