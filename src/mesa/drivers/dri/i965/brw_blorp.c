@@ -72,7 +72,7 @@ brw_blorp_init(struct brw_context *brw)
 {
    const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
-   blorp_init(&brw->blorp, brw, &brw->isl_dev);
+   blorp_init(&brw->blorp, brw, &brw->isl_dev, NULL);
 
    brw->blorp.compiler = brw->screen->compiler;
 

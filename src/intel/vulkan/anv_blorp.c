@@ -92,7 +92,12 @@ upload_blorp_shader(struct blorp_batch *batch, uint32_t stage,
 void
 anv_device_init_blorp(struct anv_device *device)
 {
-   blorp_init(&device->blorp, device, &device->isl_dev);
+   const struct intel_device_info *devinfo = &device->info;
+   const struct blorp_config config = {
+      .use_mesh_shading = devinfo->has_mesh_shading,
+   };
+
+   blorp_init(&device->blorp, device, &device->isl_dev, &config);
    device->blorp.compiler = device->physical->compiler;
    device->blorp.lookup_shader = lookup_blorp_shader;
    device->blorp.upload_shader = upload_blorp_shader;

@@ -1388,6 +1388,19 @@ blorp_emit_pipeline(struct blorp_batch *batch,
    /* Disable Primitive Replication. */
    blorp_emit(batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr);
 #endif
+
+   if (batch->blorp->config.use_mesh_shading) {
+#if GFX_VERx10 >= 125
+      blorp_emit(batch, GENX(3DSTATE_URB_ALLOC_MESH), zero);
+      blorp_emit(batch, GENX(3DSTATE_URB_ALLOC_TASK), zero);
+
+      blorp_emit(batch, GENX(3DSTATE_MESH_SHADER), zero);
+      blorp_emit(batch, GENX(3DSTATE_TASK_SHADER), zero);
+
+      blorp_emit(batch, GENX(3DSTATE_MESH_CONTROL), zero);
+      blorp_emit(batch, GENX(3DSTATE_TASK_CONTROL), zero);
+#endif
+   }
 }
 
 /******** This is the end of the pipeline setup code ********/
