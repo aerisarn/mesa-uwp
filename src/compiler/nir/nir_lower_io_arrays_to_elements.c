@@ -35,7 +35,7 @@
 static unsigned
 get_io_offset(nir_builder *b, nir_deref_instr *deref, nir_variable *var,
               unsigned *element_index, unsigned *xfb_offset,
-              nir_ssa_def **vertex_index)
+              nir_ssa_def **array_index)
 {
    nir_deref_path path;
    nir_deref_path_init(&path, deref, NULL);
@@ -43,11 +43,11 @@ get_io_offset(nir_builder *b, nir_deref_instr *deref, nir_variable *var,
    assert(path.path[0]->deref_type == nir_deref_type_var);
    nir_deref_instr **p = &path.path[1];
 
-   /* For per-vertex input arrays (i.e. geometry shader inputs), skip the
-    * outermost array index.  Process the rest normally.
+   /* For arrayed I/O (e.g., per-vertex input arrays in geometry shader
+    * inputs), skip the outermost array index.  Process the rest normally.
     */
    if (nir_is_arrayed_io(var, b->shader->info.stage)) {
-      *vertex_index = nir_ssa_for_src(b, (*p)->arr.index, 1);
+      *array_index = nir_ssa_for_src(b, (*p)->arr.index, 1);
       p++;
    }
 
@@ -130,12 +130,12 @@ lower_array(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var,
    nir_variable **elements =
       get_array_elements(varyings, var, b->shader->info.stage);
 
-   nir_ssa_def *vertex_index = NULL;
+   nir_ssa_def *array_index = NULL;
    unsigned elements_index = 0;
    unsigned xfb_offset = 0;
    unsigned io_offset = get_io_offset(b, nir_src_as_deref(intr->src[0]),
                                       var, &elements_index, &xfb_offset,
-                                      &vertex_index);
+                                      &array_index);
 
    nir_variable *element = elements[elements_index];
    if (!element) {
@@ -165,8 +165,8 @@ lower_array(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var,
    nir_deref_instr *element_deref = nir_build_deref_var(b, element);
 
    if (nir_is_arrayed_io(var, b->shader->info.stage)) {
-      assert(vertex_index);
-      element_deref = nir_build_deref_array(b, element_deref, vertex_index);
+      assert(array_index);
+      element_deref = nir_build_deref_array(b, element_deref, array_index);
    }
 
    nir_intrinsic_instr *element_intr =
