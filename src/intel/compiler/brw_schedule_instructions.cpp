@@ -528,6 +528,15 @@ schedule_node::set_latency_gfx7(bool is_haswell)
          }
          break;
 
+      case GFX12_SFID_UGM:
+      case GFX12_SFID_TGM:
+      case GFX12_SFID_SLM:
+         switch (lsc_msg_desc_opcode(devinfo, inst->desc)) {
+         default:
+            unreachable("unsupported new data port message instruction");
+         }
+         break;
+
       case GEN_RT_SFID_BINDLESS_THREAD_DISPATCH:
       case GEN_RT_SFID_RAY_TRACE_ACCELERATOR:
          /* TODO.
