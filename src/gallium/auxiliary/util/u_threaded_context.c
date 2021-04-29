@@ -67,12 +67,6 @@ static const char *tc_call_names[] = {
 };
 #endif
 
-struct tc_draw_single {
-   struct tc_call_base base;
-   unsigned index_bias;
-   struct pipe_draw_info info;
-};
-
 typedef uint16_t (*tc_execute)(struct pipe_context *pipe, void *call, uint64_t *last);
 
 static const tc_execute execute_func[TC_NUM_CALLS];
@@ -173,53 +167,6 @@ tc_drop_so_target_reference(struct pipe_stream_output_target *dst)
    offsetof(struct pipe_draw_info, min_index)
 
 static void
-simplify_draw_info(struct pipe_draw_info *info)
-{
-   /* Clear these fields to facilitate draw merging.
-    * Drivers shouldn't use them.
-    */
-   info->has_user_indices = false;
-   info->index_bounds_valid = false;
-   info->take_index_buffer_ownership = false;
-   info->index_bias_varies = false;
-
-   /* This shouldn't be set when merging single draws. */
-   info->increment_draw_id = false;
-
-   if (info->mode != PIPE_PRIM_PATCHES)
-      info->vertices_per_patch = 0;
-
-   if (info->index_size) {
-      if (!info->primitive_restart)
-         info->restart_index = 0;
-   } else {
-      assert(!info->primitive_restart);
-      info->primitive_restart = false;
-      info->restart_index = 0;
-      info->index.resource = NULL;
-   }
-}
-
-static bool
-is_next_call_a_mergeable_draw(struct tc_draw_single *first,
-                              struct tc_draw_single *next)
-{
-   if (next->base.call_id != TC_CALL_draw_single)
-      return false;
-
-   simplify_draw_info(&next->info);
-
-   STATIC_ASSERT(offsetof(struct pipe_draw_info, min_index) ==
-                 sizeof(struct pipe_draw_info) - 8);
-   STATIC_ASSERT(offsetof(struct pipe_draw_info, max_index) ==
-                 sizeof(struct pipe_draw_info) - 4);
-   /* All fields must be the same except start and count. */
-   /* u_threaded_context stores start/count in min/max_index for single draws. */
-   return memcmp((uint32_t*)&first->info, (uint32_t*)&next->info,
-                 DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX) == 0;
-}
-
-static void
 tc_batch_execute(void *job, UNUSED int thread_index)
 {
    struct tc_batch *batch = job;
@@ -235,58 +182,6 @@ tc_batch_execute(void *job, UNUSED int thread_index)
       struct tc_call_base *call = (struct tc_call_base *)iter;
 
       tc_assert(call->sentinel == TC_SENTINEL);
-
-      /* Draw call merging. */
-      if (call->call_id == TC_CALL_draw_single) {
-         struct tc_draw_single *first = to_call(call, tc_draw_single);
-         struct tc_draw_single *next =
-            (struct tc_draw_single *)(iter + first->base.num_slots);
-
-         simplify_draw_info(&first->info);
-
-         /* If at least 2 consecutive draw calls can be merged... */
-         if ((uint64_t*)next != last &&
-             next->base.call_id == TC_CALL_draw_single &&
-             is_next_call_a_mergeable_draw(first, next)) {
-            /* The maximum number of merged draws is given by the batch size. */
-            struct pipe_draw_start_count_bias multi[TC_SLOTS_PER_BATCH / call_size(tc_draw_single)];
-            unsigned num_draws = 2;
-            bool index_bias_varies = first->index_bias != next->index_bias;
-
-            /* u_threaded_context stores start/count in min/max_index for single draws. */
-            multi[0].start = first->info.min_index;
-            multi[0].count = first->info.max_index;
-            multi[0].index_bias = first->index_bias;
-            multi[1].start = next->info.min_index;
-            multi[1].count = next->info.max_index;
-            multi[1].index_bias = next->index_bias;
-
-            if (next->info.index_size)
-               tc_drop_resource_reference(next->info.index.resource);
-
-            /* Find how many other draws can be merged. */
-            next = get_next_call(next, tc_draw_single);
-            for (; (uint64_t*)next != last &&
-                 is_next_call_a_mergeable_draw(first, next);
-                 next = get_next_call(next, tc_draw_single), num_draws++) {
-               /* u_threaded_context stores start/count in min/max_index for single draws. */
-               multi[num_draws].start = next->info.min_index;
-               multi[num_draws].count = next->info.max_index;
-               multi[num_draws].index_bias = next->index_bias;
-               index_bias_varies |= first->index_bias != next->index_bias;
-
-               if (next->info.index_size)
-                  tc_drop_resource_reference(next->info.index.resource);
-            }
-
-            first->info.index_bias_varies = index_bias_varies;
-            pipe->draw_vbo(pipe, &first->info, 0, NULL, multi, num_draws);
-            if (first->info.index_size)
-               tc_drop_resource_reference(first->info.index.resource);
-            iter = (uint64_t*)next;
-            continue;
-         }
-      }
 
 #if TC_DEBUG >= 3
       tc_printf("CALL: %s", tc_call_names[call->call_id]);
@@ -2476,6 +2371,12 @@ out_of_memory:
    tc_clear_driver_thread(tc);
 }
 
+struct tc_draw_single {
+   struct tc_call_base base;
+   unsigned index_bias;
+   struct pipe_draw_info info;
+};
+
 struct tc_draw_single_drawid {
    struct tc_draw_single base;
    unsigned drawid_offset;
@@ -2506,26 +2407,121 @@ tc_call_draw_single_drawid(struct pipe_context *pipe, void *call, uint64_t *last
    return call_size(tc_draw_single_drawid);
 }
 
-static uint16_t
-tc_call_draw_single(struct pipe_context *pipe, void *call, uint64_t *last)
+static void
+simplify_draw_info(struct pipe_draw_info *info)
 {
-   struct tc_draw_single *info = to_call(call, tc_draw_single);
+   /* Clear these fields to facilitate draw merging.
+    * Drivers shouldn't use them.
+    */
+   info->has_user_indices = false;
+   info->index_bounds_valid = false;
+   info->take_index_buffer_ownership = false;
+   info->index_bias_varies = false;
+
+   /* This shouldn't be set when merging single draws. */
+   info->increment_draw_id = false;
+
+   if (info->mode != PIPE_PRIM_PATCHES)
+      info->vertices_per_patch = 0;
+
+   if (info->index_size) {
+      if (!info->primitive_restart)
+         info->restart_index = 0;
+   } else {
+      assert(!info->primitive_restart);
+      info->primitive_restart = false;
+      info->restart_index = 0;
+      info->index.resource = NULL;
+   }
+}
+
+static bool
+is_next_call_a_mergeable_draw(struct tc_draw_single *first,
+                              struct tc_draw_single *next)
+{
+   if (next->base.call_id != TC_CALL_draw_single)
+      return false;
+
+   simplify_draw_info(&next->info);
+
+   STATIC_ASSERT(offsetof(struct pipe_draw_info, min_index) ==
+                 sizeof(struct pipe_draw_info) - 8);
+   STATIC_ASSERT(offsetof(struct pipe_draw_info, max_index) ==
+                 sizeof(struct pipe_draw_info) - 4);
+   /* All fields must be the same except start and count. */
+   /* u_threaded_context stores start/count in min/max_index for single draws. */
+   return memcmp((uint32_t*)&first->info, (uint32_t*)&next->info,
+                 DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX) == 0;
+}
+
+static uint16_t
+tc_call_draw_single(struct pipe_context *pipe, void *call, uint64_t *last_ptr)
+{
+   /* Draw call merging. */
+   struct tc_draw_single *first = to_call(call, tc_draw_single);
+   struct tc_draw_single *last = (struct tc_draw_single *)last_ptr;
+   struct tc_draw_single *next = get_next_call(first, tc_draw_single);
+
+   /* If at least 2 consecutive draw calls can be merged... */
+   if (next != last &&
+       next->base.call_id == TC_CALL_draw_single) {
+      simplify_draw_info(&first->info);
+
+      if (is_next_call_a_mergeable_draw(first, next)) {
+         /* The maximum number of merged draws is given by the batch size. */
+         struct pipe_draw_start_count_bias multi[TC_SLOTS_PER_BATCH / call_size(tc_draw_single)];
+         unsigned num_draws = 2;
+         bool index_bias_varies = first->index_bias != next->index_bias;
+
+         /* u_threaded_context stores start/count in min/max_index for single draws. */
+         multi[0].start = first->info.min_index;
+         multi[0].count = first->info.max_index;
+         multi[0].index_bias = first->index_bias;
+         multi[1].start = next->info.min_index;
+         multi[1].count = next->info.max_index;
+         multi[1].index_bias = next->index_bias;
+
+         if (next->info.index_size)
+            tc_drop_resource_reference(next->info.index.resource);
+
+         /* Find how many other draws can be merged. */
+         next = get_next_call(next, tc_draw_single);
+         for (; next != last && is_next_call_a_mergeable_draw(first, next);
+              next = get_next_call(next, tc_draw_single), num_draws++) {
+            /* u_threaded_context stores start/count in min/max_index for single draws. */
+            multi[num_draws].start = next->info.min_index;
+            multi[num_draws].count = next->info.max_index;
+            multi[num_draws].index_bias = next->index_bias;
+            index_bias_varies |= first->index_bias != next->index_bias;
+
+            if (next->info.index_size)
+               tc_drop_resource_reference(next->info.index.resource);
+         }
+
+         first->info.index_bias_varies = index_bias_varies;
+         pipe->draw_vbo(pipe, &first->info, 0, NULL, multi, num_draws);
+         if (first->info.index_size)
+            tc_drop_resource_reference(first->info.index.resource);
+
+         return call_size(tc_draw_single) * num_draws;
+      }
+   }
 
    /* u_threaded_context stores start/count in min/max_index for single draws. */
    /* Drivers using u_threaded_context shouldn't use min/max_index. */
    struct pipe_draw_start_count_bias draw;
 
-   draw.start = info->info.min_index;
-   draw.count = info->info.max_index;
-   draw.index_bias = info->index_bias;
+   draw.start = first->info.min_index;
+   draw.count = first->info.max_index;
+   draw.index_bias = first->index_bias;
 
-   info->info.index_bounds_valid = false;
-   info->info.has_user_indices = false;
-   info->info.take_index_buffer_ownership = false;
+   first->info.index_bounds_valid = false;
+   first->info.has_user_indices = false;
+   first->info.take_index_buffer_ownership = false;
 
-   pipe->draw_vbo(pipe, &info->info, 0, NULL, &draw, 1);
-   if (info->info.index_size)
-      tc_drop_resource_reference(info->info.index.resource);
+   pipe->draw_vbo(pipe, &first->info, 0, NULL, &draw, 1);
+   if (first->info.index_size)
+      tc_drop_resource_reference(first->info.index.resource);
 
    return call_size(tc_draw_single);
 }
