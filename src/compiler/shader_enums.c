@@ -160,6 +160,30 @@ gl_varying_slot_name_for_stage(gl_varying_slot slot, gl_shader_stage stage)
    if (stage != MESA_SHADER_FRAGMENT && slot == VARYING_SLOT_PRIMITIVE_SHADING_RATE)
       return "VARYING_SLOT_PRIMITIVE_SHADING_RATE";
 
+   switch (stage) {
+   case MESA_SHADER_MESH:
+      switch (slot) {
+      case VARYING_SLOT_PRIMITIVE_COUNT: return "VARYING_SLOT_PRIMITIVE_COUNT";
+      case VARYING_SLOT_PRIMITIVE_INDICES: return "VARYING_SLOT_PRIMITIVE_INDICES";
+      default:
+         /* Not an overlapping value. */
+         break;
+      }
+      break;
+
+   case MESA_SHADER_TASK:
+      switch (slot) {
+      case VARYING_SLOT_TASK_COUNT: return "VARYING_SLOT_TASK_COUNT";
+      default:
+         /* Not an overlapping value. */
+         break;
+      }
+      break;
+
+   default:
+      break;
+   }
+
    static const char *names[] = {
       ENUM(VARYING_SLOT_POS),
       ENUM(VARYING_SLOT_COL0),
