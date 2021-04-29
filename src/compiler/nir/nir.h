@@ -495,6 +495,12 @@ typedef struct nir_variable {
       unsigned per_view:1;
 
       /**
+       * Whether the variable is per-primitive.
+       * Can be use by Mesh Shader outputs and corresponding Fragment Shader inputs.
+       */
+      unsigned per_primitive:1;
+
+      /**
        * \brief Layout qualifier for gl_FragDepth. See nir_depth_layout.
        *
        * This is not equal to \c ir_depth_layout_none if and only if this

@@ -255,7 +255,8 @@ emit_load(struct lower_io_state *state,
    case nir_var_shader_in:
       if (nir->info.stage == MESA_SHADER_FRAGMENT &&
           nir->options->use_interpolated_input_intrinsics &&
-          var->data.interpolation != INTERP_MODE_FLAT) {
+          var->data.interpolation != INTERP_MODE_FLAT &&
+          !var->data.per_primitive) {
          if (var->data.interpolation == INTERP_MODE_EXPLICIT) {
             assert(array_index != NULL);
             op = nir_intrinsic_load_input_vertex;

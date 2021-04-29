@@ -154,6 +154,12 @@ typedef struct shader_info {
    /* Which system values are actually read */
    BITSET_DECLARE(system_values_read, SYSTEM_VALUE_MAX);
 
+   /* Which I/O is per-primitive, for read/written information combine with
+    * the fields above.
+    */
+   uint64_t per_primitive_inputs;
+   uint64_t per_primitive_outputs;
+
    /* Which 16-bit inputs and outputs are used corresponding to
     * VARYING_SLOT_VARn_16BIT.
     */
