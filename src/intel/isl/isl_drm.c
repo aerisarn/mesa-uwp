@@ -127,6 +127,27 @@ isl_drm_modifier_info_list[] = {
       .tiling = ISL_TILING_4,
    },
    {
+      .modifier = I915_FORMAT_MOD_4_TILED_DG2_RC_CCS,
+      .name = "I915_FORMAT_MOD_4_TILED_DG2_RC_CCS",
+      .tiling = ISL_TILING_4,
+      .aux_usage = ISL_AUX_USAGE_GFX12_CCS_E,
+      .supports_clear_color = false,
+   },
+   {
+      .modifier = I915_FORMAT_MOD_4_TILED_DG2_MC_CCS,
+      .name = "I915_FORMAT_MOD_4_TILED_DG2_MC_CCS",
+      .tiling = ISL_TILING_4,
+      .aux_usage = ISL_AUX_USAGE_MC,
+      .supports_clear_color = false,
+   },
+   {
+      .modifier = I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC,
+      .name = "I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC",
+      .tiling = ISL_TILING_4,
+      .aux_usage = ISL_AUX_USAGE_GFX12_CCS_E,
+      .supports_clear_color = true,
+   },
+   {
       .modifier = DRM_FORMAT_MOD_INVALID,
    },
 };
