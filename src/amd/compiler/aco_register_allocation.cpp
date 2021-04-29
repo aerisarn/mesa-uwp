@@ -352,6 +352,9 @@ private:
 };
 
 
+std::set<std::pair<unsigned, unsigned>> find_vars(ra_ctx& ctx, RegisterFile& reg_file,
+                                                  const PhysRegInterval reg_interval);
+
 /* helper function for debugging */
 UNUSED void print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
 {
@@ -368,51 +371,74 @@ UNUSED void print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
    /* print usage */
    printf("%cgprs: ", reg_char);
    unsigned free_regs = 0;
-   unsigned prev = 0;
-   bool char_select = false;
-   for (auto reg : regs) {
+   for (auto reg_it = regs.begin(); reg_it != regs.end(); ++reg_it) {
+      auto reg = *reg_it;
       if (reg_file[reg] == 0xFFFFFFFF) {
-         printf("~");
+         printf("☐");
       } else if (reg_file[reg]) {
-         if (reg_file[reg] != prev) {
-            prev = reg_file[reg];
-            char_select = !char_select;
+         const bool show_subdword_alloc = (reg_file[reg] == 0xF0000000);
+         if (show_subdword_alloc) {
+            const char* block_chars[] = {
+               "?", "▘", "▝", "▀",
+               "▖", "▌", "▞", "▛",
+               "▗", "▚", "▐", "▜",
+               "▄", "▙", "▟", "▉"
+            };
+            unsigned index = 0;
+            for (int i = 0; i < 4; ++i) {
+               if (reg_file.subdword_regs[reg][i]) {
+                  index |= 1 << i;
+               }
+            }
+            printf("%s", block_chars[index]);
+         } else {
+            /* Indicate filled register slot */
+            if (std::next(reg_it) == regs.end() ||
+                reg_file[reg] == reg_file[*std::next(reg_it)] ||
+                !reg_file[*std::next(reg_it)]) {
+               printf("█");
+            } else {
+               /* Use a slightly shorter box to leave a small gap between adjacent variables */
+               printf("▉");
+            }
          }
-         printf(char_select ? "#" : "@");
       } else {
          free_regs++;
-         printf(".");
+         printf("·");
       }
    }
    printf("\n");
 
    printf("%u/%u used, %u/%u free\n", regs.size - free_regs, regs.size, free_regs, regs.size);
 
-   /* print assignments */
-   prev = 0;
-   unsigned size = 0;
-   for (auto i : regs) {
-      if (reg_file[i] != prev) {
-         if (prev && size > 1)
-            printf("-%d]\n", i - regs.lo() - 1);
-         else if (prev)
-            printf("]\n");
-         prev = reg_file[i];
-         if (prev && prev != 0xFFFFFFFF) {
-            if (ctx.orig_names.count(reg_file[i]) && ctx.orig_names[reg_file[i]].id() != reg_file[i])
-               printf("%%%u (was %%%d) = %c[%d", reg_file[i], ctx.orig_names[reg_file[i]].id(), reg_char, i - regs.lo());
-            else
-               printf("%%%u = %c[%d", reg_file[i], reg_char, i - regs.lo());
-         }
-         size = 1;
-      } else {
-         size++;
-      }
+   /* print assignments ordered by registers */
+   std::map<PhysReg, std::pair<unsigned, unsigned>> regs_to_vars; /* maps to byte size and temp id */
+   for (const auto& size_id : find_vars(ctx, reg_file, regs)) {
+      auto reg = ctx.assignments[size_id.second].reg;
+      ASSERTED auto inserted = regs_to_vars.emplace(reg, size_id);
+      assert(inserted.second);
    }
-   if (prev && size > 1)
-      printf("-%d]\n", regs.size - 1);
-   else if (prev)
-      printf("]\n");
+
+   for (const auto& reg_and_var : regs_to_vars) {
+      const auto& first_reg = reg_and_var.first;
+      const auto& size_id = reg_and_var.second;
+
+      printf("%%%u ", size_id.second);
+      if (ctx.orig_names.count(size_id.second) && ctx.orig_names[size_id.second].id() != size_id.second) {
+         printf("(was %%%d) ", ctx.orig_names[size_id.second].id());
+      }
+      printf("= %c[%d", reg_char, first_reg.reg() - regs.lo());
+      PhysReg last_reg = first_reg.advance(size_id.first - 1);
+      if (first_reg.reg() != last_reg.reg()) {
+         assert(first_reg.byte() == 0 && last_reg.byte() == 3);
+         printf("-%d", last_reg.reg() - regs.lo());
+      }
+      printf("]");
+      if (first_reg.byte() != 0 || last_reg.byte() != 3) {
+         printf("[%d:%d]", first_reg.byte() * 8, (last_reg.byte() + 1) * 8);
+      }
+      printf("\n");
+   }
 }
 
 
