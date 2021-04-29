@@ -48,7 +48,9 @@ anv_physical_device_init_perf(struct anv_physical_device *device, int fd)
 
    struct intel_perf_config *perf = intel_perf_new(NULL);
 
-   intel_perf_init_metrics(perf, &device->info, fd, false /* pipeline statistics */);
+   intel_perf_init_metrics(perf, &device->info, fd,
+                           false /* pipeline statistics */,
+                           true /* register snapshots */);
 
    if (!perf->n_queries) {
       if (perf->platform_supported) {

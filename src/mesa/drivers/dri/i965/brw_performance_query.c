@@ -507,7 +507,8 @@ brw_init_perf_query_info(struct gl_context *ctx)
    perf_cfg->vtbl.bo_busy = (bo_busy_t)brw_bo_busy;
 
    intel_perf_init_metrics(perf_cfg, devinfo, brw->screen->fd,
-                         true /* pipeline stats */);
+                           true /* pipeline stats */,
+                           true /* register snapshots */);
    intel_perf_init_context(perf_ctx, perf_cfg, brw->mem_ctx, brw, brw->bufmgr,
                          devinfo, brw->hw_ctx, brw->screen->fd);
 

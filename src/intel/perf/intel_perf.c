@@ -401,7 +401,9 @@ compute_topology_builtins(struct intel_perf_config *perf,
 }
 
 static bool
-init_oa_sys_vars(struct intel_perf_config *perf, const struct intel_device_info *devinfo)
+init_oa_sys_vars(struct intel_perf_config *perf,
+                 const struct intel_device_info *devinfo,
+                 bool use_register_snapshots)
 {
    uint64_t min_freq_mhz = 0, max_freq_mhz = 0;
 
@@ -421,7 +423,7 @@ init_oa_sys_vars(struct intel_perf_config *perf, const struct intel_device_info 
    perf->sys_vars.gt_max_freq = max_freq_mhz * 1000000;
    perf->sys_vars.timestamp_frequency = devinfo->timestamp_frequency;
    perf->sys_vars.revision = devinfo->revision;
-   perf->sys_vars.query_mode = true;
+   perf->sys_vars.query_mode = use_register_snapshots;
    compute_topology_builtins(perf, devinfo);
 
    return true;
@@ -708,7 +710,8 @@ build_unique_counter_list(struct intel_perf_config *perf)
 
 static bool
 oa_metrics_available(struct intel_perf_config *perf, int fd,
-      const struct intel_device_info *devinfo)
+                     const struct intel_device_info *devinfo,
+                     bool use_register_snapshots)
 {
    perf_register_oa_queries_t oa_register = get_register_queries_function(devinfo);
    bool i915_perf_oa_available = false;
@@ -745,7 +748,7 @@ oa_metrics_available(struct intel_perf_config *perf, int fd,
    return i915_perf_oa_available &&
           oa_register &&
           get_sysfs_dev_dir(perf, fd) &&
-          init_oa_sys_vars(perf, devinfo);
+          init_oa_sys_vars(perf, devinfo, use_register_snapshots);
 }
 
 static void
@@ -1297,7 +1300,8 @@ add_query_register(struct intel_perf_query_field_layout *layout,
 
 static void
 intel_perf_init_query_fields(struct intel_perf_config *perf_cfg,
-                             const struct intel_device_info *devinfo)
+                             const struct intel_device_info *devinfo,
+                             bool use_register_snapshots)
 {
    struct intel_perf_query_field_layout *layout = &perf_cfg->query_layout;
 
@@ -1311,49 +1315,51 @@ intel_perf_init_query_fields(struct intel_perf_config *perf_cfg,
    add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC,
                       0, 256, 0);
 
-   if (devinfo->ver <= 11) {
-      struct intel_perf_query_field *field =
+   if (use_register_snapshots) {
+      if (devinfo->ver <= 11) {
+         struct intel_perf_query_field *field =
+            add_query_register(layout,
+                               INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
+                               PERF_CNT_1_DW0, 8, 0);
+         field->mask = PERF_CNT_VALUE_MASK;
+
+         field = add_query_register(layout,
+                                    INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
+                                    PERF_CNT_2_DW0, 8, 1);
+         field->mask = PERF_CNT_VALUE_MASK;
+      }
+
+      if (devinfo->ver == 8 && !devinfo->is_cherryview) {
          add_query_register(layout,
-                            INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
-                            PERF_CNT_1_DW0, 8, 0);
-      field->mask = PERF_CNT_VALUE_MASK;
-
-      field = add_query_register(layout,
-                                 INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
-                                 PERF_CNT_2_DW0, 8, 1);
-      field->mask = PERF_CNT_VALUE_MASK;
-   }
-
-   if (devinfo->ver == 8 && !devinfo->is_cherryview) {
-      add_query_register(layout,
                          INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
-                         GFX7_RPSTAT1, 4, 0);
-   }
+                            GFX7_RPSTAT1, 4, 0);
+      }
 
-   if (devinfo->ver >= 9) {
-      add_query_register(layout,
-                         INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
-                         GFX9_RPSTAT0, 4, 0);
-   }
+      if (devinfo->ver >= 9) {
+         add_query_register(layout,
+                            INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
+                            GFX9_RPSTAT0, 4, 0);
+      }
 
-   if (!can_use_mi_rpc_bc_counters(devinfo)) {
-      if (devinfo->ver >= 8 && devinfo->ver <= 11) {
-         for (uint32_t i = 0; i < GFX8_N_OA_PERF_B32; i++) {
-            add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
-                               GFX8_OA_PERF_B32(i), 4, i);
-         }
-         for (uint32_t i = 0; i < GFX8_N_OA_PERF_C32; i++) {
-            add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
-                               GFX8_OA_PERF_C32(i), 4, i);
-         }
-      } else if (devinfo->ver == 12) {
-         for (uint32_t i = 0; i < GFX12_N_OAG_PERF_B32; i++) {
-            add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
-                               GFX12_OAG_PERF_B32(i), 4, i);
-         }
-         for (uint32_t i = 0; i < GFX12_N_OAG_PERF_C32; i++) {
-            add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
-                               GFX12_OAG_PERF_C32(i), 4, i);
+      if (!can_use_mi_rpc_bc_counters(devinfo)) {
+         if (devinfo->ver >= 8 && devinfo->ver <= 11) {
+            for (uint32_t i = 0; i < GFX8_N_OA_PERF_B32; i++) {
+               add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
+                                  GFX8_OA_PERF_B32(i), 4, i);
+            }
+            for (uint32_t i = 0; i < GFX8_N_OA_PERF_C32; i++) {
+               add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
+                                  GFX8_OA_PERF_C32(i), 4, i);
+            }
+         } else if (devinfo->ver == 12) {
+            for (uint32_t i = 0; i < GFX12_N_OAG_PERF_B32; i++) {
+               add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
+                                  GFX12_OAG_PERF_B32(i), 4, i);
+            }
+            for (uint32_t i = 0; i < GFX12_N_OAG_PERF_C32; i++) {
+               add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
+                                  GFX12_OAG_PERF_C32(i), 4, i);
+            }
          }
       }
    }
@@ -1368,16 +1374,18 @@ void
 intel_perf_init_metrics(struct intel_perf_config *perf_cfg,
                         const struct intel_device_info *devinfo,
                         int drm_fd,
-                        bool include_pipeline_statistics)
+                        bool include_pipeline_statistics,
+                        bool use_register_snapshots)
 {
-   intel_perf_init_query_fields(perf_cfg, devinfo);
+   intel_perf_init_query_fields(perf_cfg, devinfo, use_register_snapshots);
 
    if (include_pipeline_statistics) {
       load_pipeline_statistic_metrics(perf_cfg, devinfo);
       intel_perf_register_mdapi_statistic_query(perf_cfg, devinfo);
    }
 
-   bool oa_metrics = oa_metrics_available(perf_cfg, drm_fd, devinfo);
+   bool oa_metrics = oa_metrics_available(perf_cfg, drm_fd, devinfo,
+                                          use_register_snapshots);
    if (oa_metrics)
       load_oa_metrics(perf_cfg, drm_fd, devinfo);
 
