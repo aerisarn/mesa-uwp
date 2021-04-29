@@ -792,6 +792,10 @@ radv_fast_clear_flush_image_inplace(struct radv_cmd_buffer *cmd_buffer, struct r
 
       radv_fmask_decompress(cmd_buffer, image, subresourceRange);
    } else {
+      /* Skip fast clear eliminate for images that support comp-to-single fast clears. */
+      if (radv_image_use_comp_to_single(cmd_buffer->device, image))
+         return;
+
       radv_fast_clear_eliminate(cmd_buffer, image, subresourceRange);
    }
 }
