@@ -641,11 +641,15 @@ void adjust_max_used_regs(ra_ctx& ctx, RegClass rc, unsigned reg)
    }
 }
 
+enum UpdateRenames {
+   rename_not_killed_ops = 0x1,
+   fill_killed_ops = 0x2,
+};
+MESA_DEFINE_CPP_ENUM_BITFIELD_OPERATORS(UpdateRenames);
 
 void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
                     std::vector<std::pair<Operand, Definition>>& parallelcopies,
-                    aco_ptr<Instruction>& instr, bool rename_not_killed_ops,
-                    bool fill_killed_ops=false)
+                    aco_ptr<Instruction>& instr, UpdateRenames flags)
 {
    /* clear operands */
    for (std::pair<Operand, Definition>& copy : parallelcopies) {
@@ -683,7 +687,7 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
          if (!op.isTemp())
             continue;
          if (op.tempId() == copy.first.tempId()) {
-            bool omit_renaming = !rename_not_killed_ops && !op.isKillBeforeDef();
+            bool omit_renaming = !(flags & rename_not_killed_ops) && !op.isKillBeforeDef();
             for (std::pair<Operand, Definition>& pc : parallelcopies) {
                PhysReg def_reg = pc.second.physReg();
                omit_renaming &= def_reg > copy.first.physReg() ?
@@ -701,7 +705,7 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
             op.setTemp(copy.second.getTemp());
             op.setFixed(copy.second.physReg());
 
-            fill = fill_killed_ops || !op.isKillBeforeDef();
+            fill = (flags & fill_killed_ops) || !op.isKillBeforeDef();
          }
       }
 
@@ -1752,14 +1756,16 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
 
    } else {
       dst = get_reg(ctx, register_file, operand.getTemp(), parallelcopy, instr, operand_index);
-      update_renames(ctx, register_file, parallelcopy, instr, instr->opcode != aco_opcode::p_create_vector);
+      update_renames(ctx, register_file, parallelcopy, instr,
+                     instr->opcode != aco_opcode::p_create_vector ? rename_not_killed_ops : (UpdateRenames)0);
    }
 
    Operand pc_op = operand;
    pc_op.setFixed(src);
    Definition pc_def = Definition(dst, pc_op.regClass());
    parallelcopy.emplace_back(pc_op, pc_def);
-   update_renames(ctx, register_file, parallelcopy, instr, true, true);
+   update_renames(ctx, register_file, parallelcopy, instr,
+                  rename_not_killed_ops | fill_killed_ops);
 }
 
 Temp read_variable(ra_ctx& ctx, Temp val, unsigned block_idx)
@@ -2153,7 +2159,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
             }
             if (!definition.isFixed()) {
                definition.setFixed(get_reg(ctx, register_file, definition.getTemp(), parallelcopy, phi));
-               update_renames(ctx, register_file, parallelcopy, phi, true);
+               update_renames(ctx, register_file, parallelcopy, phi, rename_not_killed_ops);
             }
 
             /* process parallelcopy */
@@ -2394,7 +2400,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                                              def_regs);
                assert(success);
 
-               update_renames(ctx, register_file, parallelcopy, instr, false);
+               update_renames(ctx, register_file, parallelcopy, instr, (UpdateRenames)0);
             }
             ctx.defs_done.set(i);
 
@@ -2435,7 +2441,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
             } else if (instr->opcode == aco_opcode::p_create_vector) {
                PhysReg reg = get_reg_create_vector(ctx, register_file, definition->getTemp(),
                                                    parallelcopy, instr);
-               update_renames(ctx, register_file, parallelcopy, instr, false);
+               update_renames(ctx, register_file, parallelcopy, instr, (UpdateRenames)0);
                definition->setFixed(reg);
             }
 
@@ -2451,7 +2457,8 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                } else {
                   definition->setFixed(get_reg(ctx, register_file, tmp, parallelcopy, instr));
                }
-               update_renames(ctx, register_file, parallelcopy, instr, instr->opcode != aco_opcode::p_create_vector);
+               update_renames(ctx, register_file, parallelcopy, instr,
+                              instr->opcode != aco_opcode::p_create_vector ? rename_not_killed_ops : (UpdateRenames)0);
             }
 
             assert(definition->isFixed() && ((definition->getTemp().type() == RegType::vgpr && definition->physReg() >= 256) ||
@@ -2565,7 +2572,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                Temp tmp = program->allocateTmp(can_sgpr ? s1 : v1);
                ctx.assignments.emplace_back();
                PhysReg reg = get_reg(ctx, tmp_file, tmp, parallelcopy, instr);
-               update_renames(ctx, register_file, parallelcopy, instr, true);
+               update_renames(ctx, register_file, parallelcopy, instr, rename_not_killed_ops);
 
                aco_ptr<Instruction> mov;
                if (can_sgpr)
