@@ -458,6 +458,13 @@ typedef struct shader_info {
           */
          uint64_t tcs_cross_invocation_outputs_read;
       } tess;
+
+      /* Applies to MESH. */
+      struct {
+         uint16_t max_vertices_out;
+         uint16_t max_primitives_out;
+         uint16_t primitive_type;  /* GL_POINTS, GL_LINES or GL_TRIANGLES. */
+      } mesh;
    };
 } shader_info;
 
