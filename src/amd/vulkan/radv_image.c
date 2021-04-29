@@ -1590,7 +1590,7 @@ radv_image_use_comp_to_single(const struct radv_device *device, const struct rad
    if (bytes_per_pixel <= 2 && !device->physical_device->rad_info.rbplus_allowed)
       return false;
 
-   return false; /* TODO: will be enabled in a next commit. */
+   return true;
 }
 
 static uint64_t
