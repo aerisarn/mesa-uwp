@@ -373,6 +373,9 @@ struct tc_batch {
 };
 
 struct tc_buffer_list {
+   /* Signalled by the driver after it flushes its internal command buffer. */
+   struct util_queue_fence driver_flushed_fence;
+
    /* Buffer list where bit N means whether ID hash N is in the list. */
    BITSET_DECLARE(buffer_list, TC_BUFFER_ID_MASK + 1);
 };

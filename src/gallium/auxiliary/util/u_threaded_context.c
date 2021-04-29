@@ -190,6 +190,29 @@ tc_batch_execute(void *job, UNUSED int thread_index)
       iter += execute_func[call->call_id](pipe, call, last);
    }
 
+   /* Add the fence to the list of fences for the driver to signal at the next
+    * flush, which we use for tracking which buffers are referenced by
+    * an unflushed command buffer.
+    */
+   struct threaded_context *tc = batch->tc;
+   struct util_queue_fence *fence =
+      &tc->buffer_lists[batch->buffer_list_index].driver_flushed_fence;
+
+   if (tc->driver_calls_flush_notify) {
+      tc->signal_fences_next_flush[tc->num_signal_fences_next_flush++] = fence;
+
+      /* Since our buffer lists are chained as a ring, we need to flush
+       * the context twice as we go around the ring to make the driver signal
+       * the buffer list fences, so that the producer thread can reuse the buffer
+       * list structures for the next batches without waiting.
+       */
+      unsigned half_ring = TC_MAX_BUFFER_LISTS / 2;
+      if (batch->buffer_list_index % half_ring == half_ring - 1)
+         pipe->flush(pipe, NULL, PIPE_FLUSH_ASYNC);
+   } else {
+      util_queue_fence_signal(fence);
+   }
+
    tc_clear_driver_thread(batch->tc);
    tc_batch_check(batch);
    batch->num_total_slots = 0;
@@ -204,6 +227,8 @@ tc_begin_next_buffer_list(struct threaded_context *tc)
 
    /* Clear the buffer list in the new empty batch. */
    struct tc_buffer_list *buf_list = &tc->buffer_lists[tc->next_buf_list];
+   assert(util_queue_fence_is_signalled(&buf_list->driver_flushed_fence));
+   util_queue_fence_reset(&buf_list->driver_flushed_fence); /* set to unsignalled */
    BITSET_ZERO(buf_list->buffer_list);
 
    tc->add_all_gfx_bindings_to_buffer_list = true;
@@ -3668,6 +3693,13 @@ tc_destroy(struct pipe_context *_pipe)
    slab_destroy_child(&tc->pool_transfers);
    assert(tc->batch_slots[tc->next].num_total_slots == 0);
    pipe->destroy(pipe);
+
+   for (unsigned i = 0; i < TC_MAX_BUFFER_LISTS; i++) {
+      if (!util_queue_fence_is_signalled(&tc->buffer_lists[i].driver_flushed_fence))
+         util_queue_fence_signal(&tc->buffer_lists[i].driver_flushed_fence);
+      util_queue_fence_destroy(&tc->buffer_lists[i].driver_flushed_fence);
+   }
+
    FREE(tc);
 }
 
@@ -3779,6 +3811,8 @@ threaded_context_create(struct pipe_context *pipe,
       tc->batch_slots[i].tc = tc;
       util_queue_fence_init(&tc->batch_slots[i].fence);
    }
+   for (unsigned i = 0; i < TC_MAX_BUFFER_LISTS; i++)
+      util_queue_fence_init(&tc->buffer_lists[i].driver_flushed_fence);
 
    list_inithead(&tc->unflushed_queries);
 
@@ -3931,6 +3965,7 @@ threaded_context_create(struct pipe_context *pipe,
    if (out)
       *out = tc;
 
+   tc_begin_next_buffer_list(tc);
    return &tc->base;
 
 fail:
