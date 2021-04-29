@@ -73,7 +73,7 @@ struct tc_draw_single {
    struct pipe_draw_info info;
 };
 
-typedef void (*tc_execute)(struct pipe_context *pipe, void *call);
+typedef uint16_t (*tc_execute)(struct pipe_context *pipe, void *call, uint64_t *last);
 
 static const tc_execute execute_func[TC_NUM_CALLS];
 
@@ -292,8 +292,7 @@ tc_batch_execute(void *job, UNUSED int thread_index)
       tc_printf("CALL: %s", tc_call_names[call->call_id]);
 #endif
 
-      execute_func[call->call_id](pipe, call);
-      iter += call->num_slots;
+      iter += execute_func[call->call_id](pipe, call, last);
    }
 
    tc_clear_driver_thread(batch->tc);
@@ -494,10 +493,11 @@ threaded_context_unwrap_sync(struct pipe_context *pipe)
       type state; \
    }; \
    \
-   static void \
-   tc_call_##func(struct pipe_context *pipe, void *call) \
+   static uint16_t \
+   tc_call_##func(struct pipe_context *pipe, void *call, uint64_t *last) \
    { \
       pipe->func(pipe, addr(to_call(call, tc_call_##func)->state)); \
+      return call_size(tc_call_##func); \
    } \
    \
    static void \
@@ -554,8 +554,8 @@ struct tc_query_call {
    struct pipe_query *query;
 };
 
-static void
-tc_call_destroy_query(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_destroy_query(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct pipe_query *query = to_call(call, tc_query_call)->query;
    struct threaded_query *tq = threaded_query(query);
@@ -564,6 +564,7 @@ tc_call_destroy_query(struct pipe_context *pipe, void *call)
       list_del(&tq->head_unflushed);
 
    pipe->destroy_query(pipe, query);
+   return call_size(tc_query_call);
 }
 
 static void
@@ -574,10 +575,11 @@ tc_destroy_query(struct pipe_context *_pipe, struct pipe_query *query)
    tc_add_call(tc, TC_CALL_destroy_query, tc_query_call)->query = query;
 }
 
-static void
-tc_call_begin_query(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_begin_query(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    pipe->begin_query(pipe, to_call(call, tc_query_call)->query);
+   return call_size(tc_query_call);
 }
 
 static bool
@@ -595,8 +597,8 @@ struct tc_end_query_call {
    struct pipe_query *query;
 };
 
-static void
-tc_call_end_query(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_end_query(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_end_query_call *p = to_call(call, tc_end_query_call);
    struct threaded_query *tq = threaded_query(p->query);
@@ -605,6 +607,7 @@ tc_call_end_query(struct pipe_context *pipe, void *call)
       list_add(&tq->head_unflushed, &p->tc->unflushed_queries);
 
    pipe->end_query(pipe, p->query);
+   return call_size(tc_end_query_call);
 }
 
 static bool
@@ -663,14 +666,15 @@ struct tc_query_result_resource {
    struct pipe_resource *resource;
 };
 
-static void
-tc_call_get_query_result_resource(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_get_query_result_resource(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_query_result_resource *p = to_call(call, tc_query_result_resource);
 
    pipe->get_query_result_resource(pipe, p->query, p->wait, p->result_type,
                                    p->index, p->resource, p->offset);
    tc_drop_resource_reference(p->resource);
+   return call_size(tc_query_result_resource);
 }
 
 static void
@@ -699,11 +703,12 @@ struct tc_render_condition {
    struct pipe_query *query;
 };
 
-static void
-tc_call_render_condition(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_render_condition(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_render_condition *p = to_call(call, tc_render_condition);
    pipe->render_condition(pipe, p->query, p->condition, p->mode);
+   return call_size(tc_render_condition);
 }
 
 static void
@@ -773,11 +778,13 @@ struct tc_sampler_states {
    void *slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_bind_sampler_states(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_bind_sampler_states(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_sampler_states *p = (struct tc_sampler_states *)call;
+
    pipe->bind_sampler_states(pipe, p->shader, p->start, p->count, p->slot);
+   return p->base.num_slots;
 }
 
 static void
@@ -808,8 +815,8 @@ struct tc_framebuffer {
    struct pipe_framebuffer_state state;
 };
 
-static void
-tc_call_set_framebuffer_state(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_framebuffer_state(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct pipe_framebuffer_state *p = &to_call(call, tc_framebuffer)->state;
 
@@ -819,6 +826,7 @@ tc_call_set_framebuffer_state(struct pipe_context *pipe, void *call)
    for (unsigned i = 0; i < nr_cbufs; i++)
       tc_drop_surface_reference(p->cbufs[i]);
    tc_drop_surface_reference(p->zsbuf);
+   return call_size(tc_framebuffer);
 }
 
 static void
@@ -849,11 +857,13 @@ struct tc_tess_state {
    float state[6];
 };
 
-static void
-tc_call_set_tess_state(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_tess_state(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    float *p = to_call(call, tc_tess_state)->state;
+
    pipe->set_tess_state(pipe, p, p + 4);
+   return call_size(tc_tess_state);
 }
 
 static void
@@ -879,17 +889,18 @@ struct tc_constant_buffer {
    struct pipe_constant_buffer cb;
 };
 
-static void
-tc_call_set_constant_buffer(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_constant_buffer(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_constant_buffer *p = (struct tc_constant_buffer *)call;
 
    if (unlikely(p->base.is_null)) {
       pipe->set_constant_buffer(pipe, p->base.shader, p->base.index, false, NULL);
-      return;
+      return call_size(tc_constant_buffer_base);
    }
 
    pipe->set_constant_buffer(pipe, p->base.shader, p->base.index, true, &p->cb);
+   return call_size(tc_constant_buffer);
 }
 
 static void
@@ -949,12 +960,13 @@ struct tc_inlinable_constants {
    uint32_t values[MAX_INLINABLE_UNIFORMS];
 };
 
-static void
-tc_call_set_inlinable_constants(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_inlinable_constants(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_inlinable_constants *p = to_call(call, tc_inlinable_constants);
 
    pipe->set_inlinable_constants(pipe, p->shader, p->num_values, p->values);
+   return call_size(tc_inlinable_constants);
 }
 
 static void
@@ -977,11 +989,13 @@ struct tc_sample_locations {
 };
 
 
-static void
-tc_call_set_sample_locations(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_sample_locations(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_sample_locations *p = (struct tc_sample_locations *)call;
+
    pipe->set_sample_locations(pipe, p->size, p->slot);
+   return p->base.num_slots;
 }
 
 static void
@@ -1002,11 +1016,13 @@ struct tc_scissors {
    struct pipe_scissor_state slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_set_scissor_states(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_scissor_states(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_scissors *p = (struct tc_scissors *)call;
+
    pipe->set_scissor_states(pipe, p->start, p->count, p->slot);
+   return p->base.num_slots;
 }
 
 static void
@@ -1029,11 +1045,13 @@ struct tc_viewports {
    struct pipe_viewport_state slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_set_viewport_states(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_viewport_states(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_viewports *p = (struct tc_viewports *)call;
+
    pipe->set_viewport_states(pipe, p->start, p->count, p->slot);
+   return p->base.num_slots;
 }
 
 static void
@@ -1060,11 +1078,13 @@ struct tc_window_rects {
    struct pipe_scissor_state slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_set_window_rectangles(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_window_rectangles(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_window_rects *p = (struct tc_window_rects *)call;
+
    pipe->set_window_rectangles(pipe, p->include, p->count, p->slot);
+   return p->base.num_slots;
 }
 
 static void
@@ -1087,8 +1107,8 @@ struct tc_sampler_views {
    struct pipe_sampler_view *slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_set_sampler_views(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_sampler_views(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_sampler_views *p = (struct tc_sampler_views *)call;
    unsigned count = p->count;
@@ -1097,6 +1117,8 @@ tc_call_set_sampler_views(struct pipe_context *pipe, void *call)
                            p->unbind_num_trailing_slots, p->slot);
    for (unsigned i = 0; i < count; i++)
       tc_drop_sampler_view_reference(p->slot[i]);
+
+   return p->base.num_slots;
 }
 
 static void
@@ -1138,8 +1160,8 @@ struct tc_shader_images {
    struct pipe_image_view slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_set_shader_images(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_shader_images(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_shader_images *p = (struct tc_shader_images *)call;
    unsigned count = p->count;
@@ -1147,7 +1169,7 @@ tc_call_set_shader_images(struct pipe_context *pipe, void *call)
    if (!p->count) {
       pipe->set_shader_images(pipe, p->shader, p->start, 0,
                               p->unbind_num_trailing_slots, NULL);
-      return;
+      return call_size(tc_shader_images);
    }
 
    pipe->set_shader_images(pipe, p->shader, p->start, p->count,
@@ -1155,6 +1177,8 @@ tc_call_set_shader_images(struct pipe_context *pipe, void *call)
 
    for (unsigned i = 0; i < count; i++)
       tc_drop_resource_reference(p->slot[i].resource);
+
+   return p->base.num_slots;
 }
 
 static void
@@ -1208,15 +1232,15 @@ struct tc_shader_buffers {
    struct pipe_shader_buffer slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_set_shader_buffers(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_shader_buffers(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_shader_buffers *p = (struct tc_shader_buffers *)call;
    unsigned count = p->count;
 
    if (p->unbind) {
       pipe->set_shader_buffers(pipe, p->shader, p->start, p->count, NULL, 0);
-      return;
+      return call_size(tc_shader_buffers);
    }
 
    pipe->set_shader_buffers(pipe, p->shader, p->start, p->count, p->slot,
@@ -1224,6 +1248,8 @@ tc_call_set_shader_buffers(struct pipe_context *pipe, void *call)
 
    for (unsigned i = 0; i < count; i++)
       tc_drop_resource_reference(p->slot[i].buffer);
+
+   return p->base.num_slots;
 }
 
 static void
@@ -1274,8 +1300,8 @@ struct tc_vertex_buffers {
    struct pipe_vertex_buffer slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_set_vertex_buffers(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_vertex_buffers(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_vertex_buffers *p = (struct tc_vertex_buffers *)call;
    unsigned count = p->count;
@@ -1283,7 +1309,7 @@ tc_call_set_vertex_buffers(struct pipe_context *pipe, void *call)
    if (!count) {
       pipe->set_vertex_buffers(pipe, p->start, 0,
                                p->unbind_num_trailing_slots, false, NULL);
-      return;
+      return call_size(tc_vertex_buffers);
    }
 
    for (unsigned i = 0; i < count; i++)
@@ -1291,6 +1317,7 @@ tc_call_set_vertex_buffers(struct pipe_context *pipe, void *call)
 
    pipe->set_vertex_buffers(pipe, p->start, count,
                             p->unbind_num_trailing_slots, true, p->slot);
+   return p->base.num_slots;
 }
 
 static void
@@ -1343,8 +1370,8 @@ struct tc_stream_outputs {
    unsigned offsets[PIPE_MAX_SO_BUFFERS];
 };
 
-static void
-tc_call_set_stream_output_targets(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_stream_output_targets(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_stream_outputs *p = to_call(call, tc_stream_outputs);
    unsigned count = p->count;
@@ -1352,6 +1379,8 @@ tc_call_set_stream_output_targets(struct pipe_context *pipe, void *call)
    pipe->set_stream_output_targets(pipe, count, p->targets, p->offsets);
    for (unsigned i = 0; i < count; i++)
       tc_drop_so_target_reference(p->targets[i]);
+
+   return call_size(tc_stream_outputs);
 }
 
 static void
@@ -1498,13 +1527,14 @@ struct tc_make_texture_handle_resident {
    uint64_t handle;
 };
 
-static void
-tc_call_make_texture_handle_resident(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_make_texture_handle_resident(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_make_texture_handle_resident *p =
       to_call(call, tc_make_texture_handle_resident);
 
    pipe->make_texture_handle_resident(pipe, p->handle, p->resident);
+   return call_size(tc_make_texture_handle_resident);
 }
 
 static void
@@ -1538,13 +1568,14 @@ struct tc_make_image_handle_resident {
    uint64_t handle;
 };
 
-static void
-tc_call_make_image_handle_resident(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_make_image_handle_resident(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_make_image_handle_resident *p =
       to_call(call, tc_make_image_handle_resident);
 
    pipe->make_image_handle_resident(pipe, p->handle, p->access, p->resident);
+   return call_size(tc_make_image_handle_resident);
 }
 
 static void
@@ -1573,14 +1604,15 @@ struct tc_replace_buffer_storage {
    tc_replace_buffer_storage_func func;
 };
 
-static void
-tc_call_replace_buffer_storage(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_replace_buffer_storage(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_replace_buffer_storage *p = to_call(call, tc_replace_buffer_storage);
 
    p->func(pipe, p->dst, p->src);
    tc_drop_resource_reference(p->dst);
    tc_drop_resource_reference(p->src);
+   return call_size(tc_replace_buffer_storage);
 }
 
 static bool
@@ -1809,12 +1841,13 @@ struct tc_transfer_flush_region {
    struct pipe_transfer *transfer;
 };
 
-static void
-tc_call_transfer_flush_region(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_transfer_flush_region(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_transfer_flush_region *p = to_call(call, tc_transfer_flush_region);
 
    pipe->transfer_flush_region(pipe, p->transfer, &p->box);
+   return call_size(tc_transfer_flush_region);
 }
 
 struct tc_resource_copy_region {
@@ -1896,19 +1929,22 @@ struct tc_transfer_unmap {
    };
 };
 
-static void
-tc_call_transfer_unmap(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_transfer_unmap(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_transfer_unmap *p = to_call(call, tc_transfer_unmap);
+
    if (p->was_staging_transfer) {
       struct threaded_resource *tres = threaded_resource(p->resource);
       /* Nothing to do except keeping track of staging uploads */
       assert(tres->pending_staging_uploads > 0);
       p_atomic_dec(&tres->pending_staging_uploads);
       tc_drop_resource_reference(p->resource);
-      return;
+   } else {
+      pipe->transfer_unmap(pipe, p->transfer);
    }
-   pipe->transfer_unmap(pipe, p->transfer);
+
+   return call_size(tc_transfer_unmap);
 }
 
 static void
@@ -1982,14 +2018,15 @@ struct tc_buffer_subdata {
    char slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_buffer_subdata(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_buffer_subdata(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_buffer_subdata *p = (struct tc_buffer_subdata *)call;
 
    pipe->buffer_subdata(pipe, p->resource, p->usage, p->offset, p->size,
                         p->slot);
    tc_drop_resource_reference(p->resource);
+   return p->base.num_slots;
 }
 
 static void
@@ -2053,14 +2090,15 @@ struct tc_texture_subdata {
    char slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_texture_subdata(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_texture_subdata(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_texture_subdata *p = (struct tc_texture_subdata *)call;
 
    pipe->texture_subdata(pipe, p->resource, p->level, p->usage, &p->box,
                          p->slot, p->stride, p->layer_stride);
    tc_drop_resource_reference(p->resource);
+   return p->base.num_slots;
 }
 
 static void
@@ -2154,11 +2192,12 @@ struct tc_string_marker {
    char slot[0]; /* more will be allocated if needed */
 };
 
-static void
-tc_call_emit_string_marker(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_emit_string_marker(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_string_marker *p = (struct tc_string_marker *)call;
    pipe->emit_string_marker(pipe, p->slot, p->len);
+   return p->base.num_slots;
 }
 
 static void
@@ -2237,13 +2276,14 @@ struct tc_fence_call {
    struct pipe_fence_handle *fence;
 };
 
-static void
-tc_call_fence_server_sync(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_fence_server_sync(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct pipe_fence_handle *fence = to_call(call, tc_fence_call)->fence;
 
    pipe->fence_server_sync(pipe, fence);
    pipe->screen->fence_reference(pipe->screen, &fence, NULL);
+   return call_size(tc_fence_call);
 }
 
 static void
@@ -2259,13 +2299,14 @@ tc_fence_server_sync(struct pipe_context *_pipe,
    screen->fence_reference(screen, &call->fence, fence);
 }
 
-static void
-tc_call_fence_server_signal(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_fence_server_signal(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct pipe_fence_handle *fence = to_call(call, tc_fence_call)->fence;
 
    pipe->fence_server_signal(pipe, fence);
    pipe->screen->fence_reference(pipe->screen, &fence, NULL);
+   return call_size(tc_fence_call);
 }
 
 static void
@@ -2303,13 +2344,15 @@ struct tc_context_param {
    unsigned value;
 };
 
-static void
-tc_call_set_context_param(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_set_context_param(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_context_param *p = to_call(call, tc_context_param);
 
    if (pipe->set_context_param)
       pipe->set_context_param(pipe, p->param, p->value);
+
+   return call_size(tc_context_param);
 }
 
 static void
@@ -2370,8 +2413,8 @@ tc_flush_queries(struct threaded_context *tc)
    }
 }
 
-static void
-tc_call_flush(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_flush(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_flush_call *p = to_call(call, tc_flush_call);
    struct pipe_screen *screen = pipe->screen;
@@ -2381,6 +2424,8 @@ tc_call_flush(struct pipe_context *pipe, void *call)
 
    if (!(p->flags & PIPE_FLUSH_DEFERRED))
       tc_flush_queries(p->tc);
+
+   return call_size(tc_flush_call);
 }
 
 static void
@@ -2436,8 +2481,8 @@ struct tc_draw_single_drawid {
    unsigned drawid_offset;
 };
 
-static void
-tc_call_draw_single_drawid(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_draw_single_drawid(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_draw_single_drawid *info_drawid = to_call(call, tc_draw_single_drawid);
    struct tc_draw_single *info = &info_drawid->base;
@@ -2457,10 +2502,12 @@ tc_call_draw_single_drawid(struct pipe_context *pipe, void *call)
    pipe->draw_vbo(pipe, &info->info, info_drawid->drawid_offset, NULL, &draw, 1);
    if (info->info.index_size)
       pipe_resource_reference(&info->info.index.resource, NULL);
+
+   return call_size(tc_draw_single_drawid);
 }
 
-static void
-tc_call_draw_single(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_draw_single(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_draw_single *info = to_call(call, tc_draw_single);
 
@@ -2479,6 +2526,8 @@ tc_call_draw_single(struct pipe_context *pipe, void *call)
    pipe->draw_vbo(pipe, &info->info, 0, NULL, &draw, 1);
    if (info->info.index_size)
       tc_drop_resource_reference(info->info.index.resource);
+
+   return call_size(tc_draw_single);
 }
 
 struct tc_draw_indirect {
@@ -2488,8 +2537,8 @@ struct tc_draw_indirect {
    struct pipe_draw_indirect_info indirect;
 };
 
-static void
-tc_call_draw_indirect(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_draw_indirect(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_draw_indirect *info = to_call(call, tc_draw_indirect);
 
@@ -2503,6 +2552,7 @@ tc_call_draw_indirect(struct pipe_context *pipe, void *call)
    tc_drop_resource_reference(info->indirect.buffer);
    tc_drop_resource_reference(info->indirect.indirect_draw_count);
    tc_drop_so_target_reference(info->indirect.count_from_stream_output);
+   return call_size(tc_draw_indirect);
 }
 
 struct tc_draw_multi {
@@ -2512,8 +2562,8 @@ struct tc_draw_multi {
    struct pipe_draw_start_count_bias slot[]; /* variable-sized array */
 };
 
-static void
-tc_call_draw_multi(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_draw_multi(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_draw_multi *info = (struct tc_draw_multi*)call;
 
@@ -2524,6 +2574,8 @@ tc_call_draw_multi(struct pipe_context *pipe, void *call)
    pipe->draw_vbo(pipe, &info->info, 0, NULL, info->slot, info->num_draws);
    if (info->info.index_size)
       tc_drop_resource_reference(info->info.index.resource);
+
+   return info->base.num_slots;
 }
 
 #define DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX \
@@ -2730,13 +2782,14 @@ struct tc_launch_grid_call {
    struct pipe_grid_info info;
 };
 
-static void
-tc_call_launch_grid(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_launch_grid(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct pipe_grid_info *p = &to_call(call, tc_launch_grid_call)->info;
 
    pipe->launch_grid(pipe, p);
    tc_drop_resource_reference(p->indirect);
+   return call_size(tc_launch_grid_call);
 }
 
 static void
@@ -2752,8 +2805,8 @@ tc_launch_grid(struct pipe_context *_pipe,
    memcpy(&p->info, info, sizeof(*info));
 }
 
-static void
-tc_call_resource_copy_region(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_resource_copy_region(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_resource_copy_region *p = to_call(call, tc_resource_copy_region);
 
@@ -2761,6 +2814,7 @@ tc_call_resource_copy_region(struct pipe_context *pipe, void *call)
                               p->dstz, p->src, p->src_level, &p->src_box);
    tc_drop_resource_reference(p->dst);
    tc_drop_resource_reference(p->src);
+   return call_size(tc_resource_copy_region);
 }
 
 static void
@@ -2795,14 +2849,15 @@ struct tc_blit_call {
    struct pipe_blit_info info;
 };
 
-static void
-tc_call_blit(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_blit(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct pipe_blit_info *blit = &to_call(call, tc_blit_call)->info;
 
    pipe->blit(pipe, blit);
    tc_drop_resource_reference(blit->dst.resource);
    tc_drop_resource_reference(blit->src.resource);
+   return call_size(tc_blit_call);
 }
 
 static void
@@ -2826,8 +2881,8 @@ struct tc_generate_mipmap {
    struct pipe_resource *res;
 };
 
-static void
-tc_call_generate_mipmap(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_generate_mipmap(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_generate_mipmap *p = to_call(call, tc_generate_mipmap);
    ASSERTED bool result = pipe->generate_mipmap(pipe, p->res, p->format,
@@ -2837,6 +2892,7 @@ tc_call_generate_mipmap(struct pipe_context *pipe, void *call)
                                                     p->last_layer);
    assert(result);
    tc_drop_resource_reference(p->res);
+   return call_size(tc_generate_mipmap);
 }
 
 static bool
@@ -2880,13 +2936,14 @@ struct tc_resource_call {
    struct pipe_resource *resource;
 };
 
-static void
-tc_call_flush_resource(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_flush_resource(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct pipe_resource *resource = to_call(call, tc_resource_call)->resource;
 
    pipe->flush_resource(pipe, resource);
    tc_drop_resource_reference(resource);
+   return call_size(tc_resource_call);
 }
 
 static void
@@ -2899,13 +2956,14 @@ tc_flush_resource(struct pipe_context *_pipe, struct pipe_resource *resource)
    tc_set_resource_reference(&call->resource, resource);
 }
 
-static void
-tc_call_invalidate_resource(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_invalidate_resource(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct pipe_resource *resource = to_call(call, tc_resource_call)->resource;
 
    pipe->invalidate_resource(pipe, resource);
    tc_drop_resource_reference(resource);
+   return call_size(tc_resource_call);
 }
 
 static void
@@ -2934,11 +2992,13 @@ struct tc_clear {
    union pipe_color_union color;
 };
 
-static void
-tc_call_clear(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_clear(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_clear *p = to_call(call, tc_clear);
+
    pipe->clear(pipe, p->buffers, p->scissor_state_set ? &p->scissor_state : NULL, &p->color, p->depth, p->stencil);
+   return call_size(tc_clear);
 }
 
 static void
@@ -2999,14 +3059,15 @@ struct tc_clear_buffer {
    struct pipe_resource *res;
 };
 
-static void
-tc_call_clear_buffer(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_clear_buffer(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_clear_buffer *p = to_call(call, tc_clear_buffer);
 
    pipe->clear_buffer(pipe, p->res, p->offset, p->size, p->clear_value,
                       p->clear_value_size);
    tc_drop_resource_reference(p->res);
+   return call_size(tc_clear_buffer);
 }
 
 static void
@@ -3036,13 +3097,14 @@ struct tc_clear_texture {
    struct pipe_resource *res;
 };
 
-static void
-tc_call_clear_texture(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_clear_texture(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_clear_texture *p = to_call(call, tc_clear_texture);
 
    pipe->clear_texture(pipe, p->res, p->level, &p->box, p->data);
    tc_drop_resource_reference(p->res);
+   return call_size(tc_clear_texture);
 }
 
 static void
@@ -3068,13 +3130,14 @@ struct tc_resource_commit {
    struct pipe_resource *res;
 };
 
-static void
-tc_call_resource_commit(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_resource_commit(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_resource_commit *p = to_call(call, tc_resource_commit);
 
    pipe->resource_commit(pipe, p->res, p->level, &p->box, p->commit);
    tc_drop_resource_reference(p->res);
+   return call_size(tc_resource_commit);
 }
 
 static bool
@@ -3145,10 +3208,11 @@ tc_new_intel_perf_query_obj(struct pipe_context *_pipe, unsigned query_index)
    return pipe->new_intel_perf_query_obj(pipe, query_index);
 }
 
-static void
-tc_call_begin_intel_perf_query(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_begin_intel_perf_query(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    (void)pipe->begin_intel_perf_query(pipe, to_call(call, tc_query_call)->query);
+   return call_size(tc_query_call);
 }
 
 static bool
@@ -3162,10 +3226,11 @@ tc_begin_intel_perf_query(struct pipe_context *_pipe, struct pipe_query *q)
    return true;
 }
 
-static void
-tc_call_end_intel_perf_query(struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_end_intel_perf_query(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    pipe->end_intel_perf_query(pipe, to_call(call, tc_query_call)->query);
+   return call_size(tc_query_call);
 }
 
 static void
@@ -3230,12 +3295,13 @@ struct tc_callback_call {
    void *data;
 };
 
-static void
-tc_call_callback(UNUSED struct pipe_context *pipe, void *call)
+static uint16_t
+tc_call_callback(UNUSED struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_callback_call *p = to_call(call, tc_callback_call);
 
    p->fn(p->data);
+   return call_size(tc_callback_call);
 }
 
 static void
