@@ -787,15 +787,18 @@ vtn_get_builtin_location(struct vtn_builder *b,
 {
    switch (builtin) {
    case SpvBuiltInPosition:
+   case SpvBuiltInPositionPerViewNV:
       *location = VARYING_SLOT_POS;
       break;
    case SpvBuiltInPointSize:
       *location = VARYING_SLOT_PSIZ;
       break;
    case SpvBuiltInClipDistance:
-      *location = VARYING_SLOT_CLIP_DIST0; /* XXX CLIP_DIST1? */
+   case SpvBuiltInClipDistancePerViewNV:
+      *location = VARYING_SLOT_CLIP_DIST0;
       break;
    case SpvBuiltInCullDistance:
+   case SpvBuiltInCullDistancePerViewNV:
       *location = VARYING_SLOT_CULL_DIST0;
       break;
    case SpvBuiltInVertexId:
@@ -840,7 +843,8 @@ vtn_get_builtin_location(struct vtn_builder *b,
          *mode = nir_var_shader_out;
       else if (b->options && b->options->caps.shader_viewport_index_layer &&
                (b->shader->info.stage == MESA_SHADER_VERTEX ||
-                b->shader->info.stage == MESA_SHADER_TESS_EVAL))
+                b->shader->info.stage == MESA_SHADER_TESS_EVAL ||
+                b->shader->info.stage == MESA_SHADER_MESH))
          *mode = nir_var_shader_out;
       else
          vtn_fail("invalid stage for SpvBuiltInLayer");
@@ -851,7 +855,8 @@ vtn_get_builtin_location(struct vtn_builder *b,
          *mode = nir_var_shader_out;
       else if (b->options && b->options->caps.shader_viewport_index_layer &&
                (b->shader->info.stage == MESA_SHADER_VERTEX ||
-                b->shader->info.stage == MESA_SHADER_TESS_EVAL))
+                b->shader->info.stage == MESA_SHADER_TESS_EVAL ||
+                b->shader->info.stage == MESA_SHADER_MESH))
          *mode = nir_var_shader_out;
       else if (b->shader->info.stage == MESA_SHADER_FRAGMENT)
          *mode = nir_var_shader_in;
@@ -1123,6 +1128,15 @@ vtn_get_builtin_location(struct vtn_builder *b,
          vtn_fail("invalid stage for SpvBuiltInPrimitiveShadingRateKHR");
       }
       break;
+   case SpvBuiltInPrimitiveCountNV:
+      *location = VARYING_SLOT_PRIMITIVE_COUNT;
+      break;
+   case SpvBuiltInPrimitiveIndicesNV:
+      *location = VARYING_SLOT_PRIMITIVE_INDICES;
+      break;
+   case SpvBuiltInTaskCountNV:
+      *location = VARYING_SLOT_TASK_COUNT;
+      break;
    default:
       vtn_fail("Unsupported builtin: %s (%u)",
                spirv_builtin_to_string(builtin), builtin);
@@ -1276,18 +1290,64 @@ apply_var_decoration(struct vtn_builder *b,
       /* TODO: We should actually plumb alias information through NIR. */
       break;
 
+   case SpvDecorationPerPrimitiveNV:
+      vtn_fail_if(
+         !(b->shader->info.stage == MESA_SHADER_MESH && var_data->mode == nir_var_shader_out) &&
+         !(b->shader->info.stage == MESA_SHADER_FRAGMENT && var_data->mode == nir_var_shader_in),
+         "PerPrimitiveNV decoration only allowed for Mesh shader outputs or Fragment shader inputs");
+      var_data->per_primitive = true;
+      break;
+
+   case SpvDecorationPerTaskNV:
+      vtn_fail_if(
+         !(b->shader->info.stage == MESA_SHADER_TASK && var_data->mode == nir_var_shader_out) &&
+         !(b->shader->info.stage == MESA_SHADER_MESH && var_data->mode == nir_var_shader_in),
+         "PerTaskNV decoration only allowed for Task shader outputs or Mesh shader inputs");
+      /* Don't set anything, because this decoration is implied by being a
+       * non-builtin Task Output or Mesh Input.
+       */
+      break;
+
+   case SpvDecorationPerViewNV:
+      vtn_fail_if(b->shader->info.stage != MESA_SHADER_MESH,
+                  "PerViewNV decoration only allowed in Mesh shaders");
+      var_data->per_view = true;
+      break;
+
    default:
       vtn_fail_with_decoration("Unhandled decoration", dec->decoration);
    }
 }
 
 static void
-var_is_patch_cb(struct vtn_builder *b, struct vtn_value *val, int member,
-                const struct vtn_decoration *dec, void *void_var)
+gather_var_kind_cb(struct vtn_builder *b, struct vtn_value *val, int member,
+                   const struct vtn_decoration *dec, void *void_var)
 {
    struct vtn_variable *vtn_var = void_var;
-   if (dec->decoration == SpvDecorationPatch)
+   switch (dec->decoration) {
+   case SpvDecorationPatch:
       vtn_var->var->data.patch = true;
+      break;
+   case SpvDecorationPerPrimitiveNV:
+      vtn_var->var->data.per_primitive = true;
+      break;
+   case SpvDecorationBuiltIn:
+      if (b->shader->info.stage == MESA_SHADER_MESH) {
+         SpvBuiltIn builtin = dec->operands[0];
+         switch (builtin) {
+         case SpvBuiltInPrimitiveIndicesNV:
+            vtn_var->var->data.per_primitive = true;
+            break;
+         default:
+            /* Nothing to do. */
+            break;
+         }
+      }
+      break;
+   default:
+      /* Nothing to do. */
+      break;
+   }
 }
 
 static void
@@ -1878,12 +1938,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
        * it to be all or nothing, we'll call it patch if any of the members
        * are declared patch.
        */
-      vtn_foreach_decoration(b, val, var_is_patch_cb, var);
+      vtn_foreach_decoration(b, val, gather_var_kind_cb, var);
       if (glsl_type_is_array(var->type->type) &&
           glsl_type_is_struct_or_ifc(without_array->type)) {
          vtn_foreach_decoration(b, vtn_value(b, without_array->id,
                                              vtn_value_type_type),
-                                var_is_patch_cb, var);
+                                gather_var_kind_cb, var);
       }
 
       struct vtn_type *per_vertex_type = var->type;
@@ -1935,6 +1995,17 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       vtn_foreach_decoration(b, vtn_value(b, per_vertex_type->id,
                                           vtn_value_type_type),
                              var_decoration_cb, var);
+
+      /* PerTask I/O is always a single block without any Location, so
+       * initialize the base_location of the block and let
+       * assign_missing_member_locations() do the rest.
+       */
+      if ((b->shader->info.stage == MESA_SHADER_TASK && var->mode == vtn_variable_mode_output) ||
+          (b->shader->info.stage == MESA_SHADER_MESH && var->mode == vtn_variable_mode_input)) {
+         if (var->type->block)
+            var->base_location = VARYING_SLOT_VAR0;
+      }
+
       break;
    }
 
