@@ -43,7 +43,7 @@ get_deref_info(nir_shader *shader, nir_variable *var, nir_deref_instr *deref,
    *cross_invocation = false;
    *indirect = false;
 
-   const bool per_vertex = nir_is_arrayed_io(var, shader->info.stage);
+   const bool is_arrayed = nir_is_arrayed_io(var, shader->info.stage);
 
    nir_deref_path path;
    nir_deref_path_init(&path, deref, NULL);
@@ -51,7 +51,7 @@ get_deref_info(nir_shader *shader, nir_variable *var, nir_deref_instr *deref,
    nir_deref_instr **p = &path.path[1];
 
    /* Vertex index is the outermost array index. */
-   if (per_vertex) {
+   if (is_arrayed) {
       assert((*p)->deref_type == nir_deref_type_array);
       *cross_invocation = !src_is_invocation_id(&(*p)->arr.index);
       p++;
@@ -194,7 +194,7 @@ mark_whole_variable(nir_shader *shader, nir_variable *var,
 }
 
 static unsigned
-get_io_offset(nir_deref_instr *deref, nir_variable *var, bool per_vertex)
+get_io_offset(nir_deref_instr *deref, nir_variable *var, bool is_arrayed)
 {
    if (var->data.compact) {
       assert(deref->deref_type == nir_deref_type_array);
@@ -207,7 +207,7 @@ get_io_offset(nir_deref_instr *deref, nir_variable *var, bool per_vertex)
 
    for (nir_deref_instr *d = deref; d; d = nir_deref_instr_parent(d)) {
       if (d->deref_type == nir_deref_type_array) {
-         if (per_vertex && nir_deref_instr_parent(d)->deref_type == nir_deref_type_var)
+         if (is_arrayed && nir_deref_instr_parent(d)->deref_type == nir_deref_type_var)
             break;
 
          if (!nir_src_is_const(d->arr.index))
@@ -239,9 +239,9 @@ try_mask_partial_io(nir_shader *shader, nir_variable *var,
                     nir_deref_instr *deref, bool is_output_read)
 {
    const struct glsl_type *type = var->type;
-   bool per_vertex = nir_is_arrayed_io(var, shader->info.stage);
+   bool is_arrayed = nir_is_arrayed_io(var, shader->info.stage);
 
-   if (per_vertex) {
+   if (is_arrayed) {
       assert(glsl_type_is_array(type));
       type = glsl_get_array_element(type);
    }
@@ -250,7 +250,7 @@ try_mask_partial_io(nir_shader *shader, nir_variable *var,
    if (var->data.per_view)
       return false;
 
-   unsigned offset = get_io_offset(deref, var, per_vertex);
+   unsigned offset = get_io_offset(deref, var, is_arrayed);
    if (offset == -1)
       return false;
 
