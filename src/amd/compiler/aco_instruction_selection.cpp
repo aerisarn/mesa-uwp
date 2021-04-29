@@ -8949,8 +8949,94 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
                bool_to_vector_condition(ctx, shader_query_enabled));
       break;
    }
+   case nir_intrinsic_load_cull_front_face_enabled_amd:
+   case nir_intrinsic_load_cull_back_face_enabled_amd:
+   case nir_intrinsic_load_cull_ccw_amd:
+   case nir_intrinsic_load_cull_small_primitives_enabled_amd: {
+      unsigned cmp_bit;
+      if (instr->intrinsic == nir_intrinsic_load_cull_front_face_enabled_amd)
+         cmp_bit = 0;
+      else if (instr->intrinsic == nir_intrinsic_load_cull_back_face_enabled_amd)
+         cmp_bit = 1;
+      else if (instr->intrinsic == nir_intrinsic_load_cull_ccw_amd)
+         cmp_bit = 2;
+      else if (instr->intrinsic == nir_intrinsic_load_cull_small_primitives_enabled_amd)
+         cmp_bit = 3;
+      else
+         unreachable("unimplemented culling intrinsic");
+
+      Builder::Result enabled =
+         bld.sopc(aco_opcode::s_bitcmp1_b32, bld.def(s1, scc),
+                  get_arg(ctx, ctx->args->ngg_culling_settings), Operand::c32(cmp_bit));
+      enabled.instr->definitions[0].setNoCSE(true);
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
+               bool_to_vector_condition(ctx, enabled));
+      break;
+   }
    case nir_intrinsic_load_sbt_amd: visit_load_sbt_amd(ctx, instr); break;
    case nir_intrinsic_bvh64_intersect_ray_amd: visit_bvh64_intersect_ray_amd(ctx, instr); break;
+   case nir_intrinsic_load_cull_any_enabled_amd: {
+      Builder::Result cull_any_enabled =
+         bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc),
+                  get_arg(ctx, ctx->args->ngg_culling_settings), Operand::c32(0x00ffffffu));
+      cull_any_enabled.instr->definitions[1].setNoCSE(true);
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
+               bool_to_vector_condition(ctx, cull_any_enabled.def(1).getTemp()));
+      break;
+   }
+   case nir_intrinsic_load_cull_small_prim_precision_amd: {
+      /* Exponent is 8-bit signed int, move that into a signed 32-bit int. */
+      Temp exponent = bld.sop2(aco_opcode::s_ashr_i32, bld.def(s1), bld.def(s1, scc),
+                               get_arg(ctx, ctx->args->ngg_gs_state), Operand::c32(24u));
+      /* small_prim_precision = 1.0 * 2^X */
+      bld.vop3(aco_opcode::v_ldexp_f32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
+               Operand::c32(0x3f800000u), Operand(exponent));
+      break;
+   }
+   case nir_intrinsic_load_viewport_x_scale: {
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
+               get_arg(ctx, ctx->args->ngg_viewport_scale[0]));
+      break;
+   }
+   case nir_intrinsic_load_viewport_y_scale: {
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
+               get_arg(ctx, ctx->args->ngg_viewport_scale[1]));
+      break;
+   }
+   case nir_intrinsic_load_viewport_x_offset: {
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
+               get_arg(ctx, ctx->args->ngg_viewport_translate[0]));
+      break;
+   }
+   case nir_intrinsic_load_viewport_y_offset: {
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
+               get_arg(ctx, ctx->args->ngg_viewport_translate[1]));
+      break;
+   }
+   case nir_intrinsic_overwrite_vs_arguments_amd: {
+      ctx->arg_temps[ctx->args->ac.vertex_id.arg_index] = get_ssa_temp(ctx, instr->src[0].ssa);
+      ctx->arg_temps[ctx->args->ac.instance_id.arg_index] = get_ssa_temp(ctx, instr->src[1].ssa);
+      break;
+   }
+   case nir_intrinsic_overwrite_tes_arguments_amd: {
+      ctx->arg_temps[ctx->args->ac.tes_u.arg_index] = get_ssa_temp(ctx, instr->src[0].ssa);
+      ctx->arg_temps[ctx->args->ac.tes_v.arg_index] = get_ssa_temp(ctx, instr->src[1].ssa);
+      ctx->arg_temps[ctx->args->ac.tes_rel_patch_id.arg_index] =
+         get_ssa_temp(ctx, instr->src[2].ssa);
+      ctx->arg_temps[ctx->args->ac.tes_patch_id.arg_index] = get_ssa_temp(ctx, instr->src[3].ssa);
+      break;
+   }
+   case nir_intrinsic_overwrite_subgroup_num_vertices_and_primitives_amd: {
+      Temp old_merged_wave_info = get_arg(ctx, ctx->args->ac.merged_wave_info);
+      Temp num_vertices = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
+      Temp num_primitives = bld.as_uniform(get_ssa_temp(ctx, instr->src[1].ssa));
+      Temp tmp = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), num_primitives,
+                          Operand::c32(8u));
+      tmp = bld.sop2(aco_opcode::s_or_b32, bld.def(s1), bld.def(s1, scc), tmp, num_vertices);
+      ctx->arg_temps[ctx->args->ac.merged_wave_info.arg_index] =
+         bld.sop2(aco_opcode::s_pack_lh_b32_b16, bld.def(s1), tmp, old_merged_wave_info);
+      break;
+   }
    default:
       isel_err(&instr->instr, "Unimplemented intrinsic instr");
       abort();

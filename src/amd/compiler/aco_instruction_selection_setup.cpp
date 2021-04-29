@@ -671,7 +671,16 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_has_input_primitive_amd:
                case nir_intrinsic_load_workgroup_num_input_vertices_amd:
                case nir_intrinsic_load_workgroup_num_input_primitives_amd:
-               case nir_intrinsic_load_shader_query_enabled_amd: type = RegType::sgpr; break;
+               case nir_intrinsic_load_shader_query_enabled_amd:
+               case nir_intrinsic_load_cull_front_face_enabled_amd:
+               case nir_intrinsic_load_cull_back_face_enabled_amd:
+               case nir_intrinsic_load_cull_ccw_amd:
+               case nir_intrinsic_load_cull_small_primitives_enabled_amd:
+               case nir_intrinsic_load_cull_any_enabled_amd:
+               case nir_intrinsic_load_viewport_x_scale:
+               case nir_intrinsic_load_viewport_y_scale:
+               case nir_intrinsic_load_viewport_x_offset:
+               case nir_intrinsic_load_viewport_y_offset: type = RegType::sgpr; break;
                case nir_intrinsic_load_sample_id:
                case nir_intrinsic_load_sample_mask_in:
                case nir_intrinsic_load_input:
@@ -753,7 +762,8 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_packed_passthrough_primitive_amd:
                case nir_intrinsic_gds_atomic_add_amd:
                case nir_intrinsic_load_sbt_amd:
-               case nir_intrinsic_bvh64_intersect_ray_amd: type = RegType::vgpr; break;
+               case nir_intrinsic_bvh64_intersect_ray_amd:
+               case nir_intrinsic_load_cull_small_prim_precision_amd: type = RegType::vgpr; break;
                case nir_intrinsic_load_shared:
                   /* When the result of these loads is only used by cross-lane instructions,
                    * it is beneficial to use a VGPR destination. This is because this allows
