@@ -96,7 +96,7 @@ public:
    bool has_param_output;
    PValue m_last_addr;
    int m_loop_nesting;
-   int m_nliterals_in_group;
+   std::set<uint32_t> m_nliterals_in_group;
    std::set<int> vtx_fetch_results;
    std::set<int> tex_fetch_results;
    bool m_last_op_was_barrier;
@@ -188,7 +188,6 @@ AssemblyFromShaderLegacyImpl::AssemblyFromShaderLegacyImpl(r600_shader *sh,
    has_pos_output(false),
    has_param_output(false),
    m_loop_nesting(0),
-   m_nliterals_in_group(0),
    m_last_op_was_barrier(false)
 {
    m_max_color_exports = MAX2(m_key->ps.nr_cbufs, 1);
@@ -226,19 +225,25 @@ bool AssemblyFromShaderLegacyImpl::visit(const AluInstruction& ai)
 
    m_last_op_was_barrier = ai.opcode() == op0_group_barrier;
 
-   unsigned old_nliterals_in_group = m_nliterals_in_group;
    for (unsigned i = 0; i < ai.n_sources(); ++i) {
       auto& s = ai.src(i);
-      if (s.type() == Value::literal)
-         ++m_nliterals_in_group;
+      if (s.type() == Value::literal) {
+         auto& v = static_cast<const LiteralValue&>(s);
+         if (v.value() != 0 &&
+             v.value() != 1 &&
+             v.value_float() != 1.0f &&
+             v.value_float() != 0.5f &&
+             v.value() != 0xffffffff)
+            m_nliterals_in_group.insert(v.value());
+      }
    }
 
    /* This instruction group would exceed the limit of literals, so
     * force a new instruction group by adding a NOP as last
     * instruction. This will no loner be needed with a real
     * scheduler */
-   if (m_nliterals_in_group > 4) {
-      sfn_log << SfnLog::assembly << "  Have " << m_nliterals_in_group << " inject a last op (nop)\n";
+   if (m_nliterals_in_group.size() > 4) {
+      sfn_log << SfnLog::assembly << "  Have " << m_nliterals_in_group.size() << " inject a last op (nop)\n";
       alu.op = ALU_OP0_NOP;
       alu.last = 1;
       alu.dst.chan = 3;
@@ -246,7 +251,14 @@ bool AssemblyFromShaderLegacyImpl::visit(const AluInstruction& ai)
       if (retval)
          return false;
       memset(&alu, 0, sizeof(alu));
-      m_nliterals_in_group -= old_nliterals_in_group;
+      m_nliterals_in_group.clear();
+      for (unsigned i = 0; i < ai.n_sources(); ++i) {
+         auto& s = ai.src(i);
+         if (s.type() == Value::literal) {
+            auto& v = static_cast<const LiteralValue&>(s);
+            m_nliterals_in_group.insert(v.value());
+         }
+      }
    }
 
    alu.op = opcode_map.at(ai.opcode());
@@ -337,7 +349,7 @@ bool AssemblyFromShaderLegacyImpl::visit(const AluInstruction& ai)
    }
 
    if (alu.last)
-      m_nliterals_in_group = 0;
+      m_nliterals_in_group.clear();
 
    bool retval = !r600_bytecode_add_alu_type(m_bc, &alu, type);
 
@@ -1171,31 +1183,26 @@ bool AssemblyFromShaderLegacyImpl::copy_src(r600_bytecode_alu_src& src, const Va
       if (v.value() == 0) {
          src.sel = ALU_SRC_0;
          src.chan = 0;
-         --m_nliterals_in_group;
          return true;
       }
       if (v.value() == 1) {
          src.sel = ALU_SRC_1_INT;
          src.chan = 0;
-         --m_nliterals_in_group;
          return true;
       }
       if (v.value_float() == 1.0f) {
          src.sel = ALU_SRC_1;
          src.chan = 0;
-         --m_nliterals_in_group;
          return true;
       }
       if (v.value_float() == 0.5f) {
          src.sel = ALU_SRC_0_5;
          src.chan = 0;
-         --m_nliterals_in_group;
          return true;
       }
       if (v.value() == 0xffffffff) {
          src.sel = ALU_SRC_M_1_INT;
          src.chan = 0;
-         --m_nliterals_in_group;
          return true;
       }
       src.value = v.value();
