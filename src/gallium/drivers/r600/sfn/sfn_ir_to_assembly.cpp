@@ -33,7 +33,7 @@
 #include "sfn_instruction_lds.h"
 
 #include "../r600_shader.h"
-#include "../r600_sq.h"
+#include "../eg_sq.h"
 
 namespace r600 {
 
@@ -675,7 +675,7 @@ bool AssemblyFromShaderLegacyImpl::visit(const TexInstruction & tex_instr)
    tex.offset_y = tex_instr.get_offset(1);
    tex.offset_z = tex_instr.get_offset(2);
    tex.resource_index_mode = index_mode;
-   tex.sampler_index_mode = tex.resource_index_mode;
+   tex.sampler_index_mode = index_mode;
 
    if (tex.dst_sel_x < 4 &&
        tex.dst_sel_y < 4 &&
@@ -764,6 +764,7 @@ bool AssemblyFromShaderLegacyImpl::visit(const FetchInstruction& fetch_instr)
    vtx.array_size = fetch_instr.array_size();
    vtx.srf_mode_all = fetch_instr.srf_mode_no_zero();
 
+
    if (fetch_instr.use_tc()) {
       if ((r600_bytecode_add_vtx_tc(m_bc, &vtx))) {
          R600_ERR("shader_from_nir: Error creating tex assembly instruction\n");
@@ -796,8 +797,10 @@ bool AssemblyFromShaderLegacyImpl::visit(const EmitVertex &instr)
 bool AssemblyFromShaderLegacyImpl::visit(const WaitAck& instr)
 {
    int r = r600_bytecode_add_cfinst(m_bc, instr.op());
-   if (!r)
+   if (!r) {
       m_bc->cf_last->cf_addr = instr.n_ack();
+      m_bc->cf_last->barrier = 1;
+   }
 
    return r == 0;
 }
@@ -1073,8 +1076,6 @@ AssemblyFromShaderLegacyImpl::emit_index_reg(const Value& addr, unsigned idx)
 {
    assert(idx < 2);
 
-   EAluOp idxop = idx ? op1_set_cf_idx1 : op1_set_cf_idx0;
-
    if (!m_bc->index_loaded[idx] || m_loop_nesting ||
        m_bc->index_reg[idx] != addr.sel()
        ||  m_bc->index_reg_chan[idx] != addr.chan()) {
@@ -1084,29 +1085,44 @@ AssemblyFromShaderLegacyImpl::emit_index_reg(const Value& addr, unsigned idx)
       if ((m_bc->cf_last->ndw>>1) >= 110)
          m_bc->force_add_cf = 1;
 
-      memset(&alu, 0, sizeof(alu));
-      alu.op = opcode_map.at(op1_mova_int);
-      alu.dst.chan = 0;
-      alu.src[0].sel = addr.sel();
-      alu.src[0].chan = addr.chan();
-      alu.last = 1;
-      sfn_log << SfnLog::assembly << "   mova_int, ";
-      int r = r600_bytecode_add_alu(m_bc, &alu);
-      if (r)
-         return bim_invalid;
+      if (m_bc->chip_class != CAYMAN) {
+
+         EAluOp idxop = idx ? op1_set_cf_idx1 : op1_set_cf_idx0;
+         memset(&alu, 0, sizeof(alu));
+         alu.op = opcode_map.at(op1_mova_int);
+         alu.dst.chan = 0;
+         alu.src[0].sel = addr.sel();
+         alu.src[0].chan = addr.chan();
+         alu.last = 1;
+         sfn_log << SfnLog::assembly << "   mova_int, ";
+         int r = r600_bytecode_add_alu(m_bc, &alu);
+         if (r)
+            return bim_invalid;
+
+         alu.op = opcode_map.at(idxop);
+         alu.dst.chan = 0;
+         alu.src[0].sel = 0;
+         alu.src[0].chan = 0;
+         alu.last = 1;
+         sfn_log << SfnLog::assembly << "op1_set_cf_idx" << idx;
+         r = r600_bytecode_add_alu(m_bc, &alu);
+         if (r)
+            return bim_invalid;
+      } else {
+         memset(&alu, 0, sizeof(alu));
+         alu.op = opcode_map.at(op1_mova_int);
+         alu.dst.sel = idx == 0 ? CM_V_SQ_MOVA_DST_CF_IDX0 : CM_V_SQ_MOVA_DST_CF_IDX1;
+         alu.dst.chan = 0;
+         alu.src[0].sel = addr.sel();
+         alu.src[0].chan = addr.chan();
+         alu.last = 1;
+         sfn_log << SfnLog::assembly << "   mova_int, ";
+         int r = r600_bytecode_add_alu(m_bc, &alu);
+         if (r)
+            return bim_invalid;
+      }
 
       m_bc->ar_loaded = 0;
-
-      alu.op = opcode_map.at(idxop);
-      alu.dst.chan = 0;
-      alu.src[0].sel = 0;
-      alu.src[0].chan = 0;
-      alu.last = 1;
-      sfn_log << SfnLog::assembly << "op1_set_cf_idx" << idx;
-      r = r600_bytecode_add_alu(m_bc, &alu);
-      if (r)
-         return bim_invalid;
-
       m_bc->index_reg[idx] = addr.sel();
       m_bc->index_reg_chan[idx] = addr.chan();
       m_bc->index_loaded[idx] = true;
