@@ -1875,6 +1875,11 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
           * in an order that matches the output of the previous pipeline stage
           * (geometry or vertex shader).
           */
+
+         /* Re-compute the VUE map here in the case that the one coming from
+          * geometry has more than one position slot (used for Primitive
+          * Replication).
+          */
          struct brw_vue_map prev_stage_vue_map;
          brw_compute_vue_map(devinfo, &prev_stage_vue_map,
                              key->input_slots_valid,
