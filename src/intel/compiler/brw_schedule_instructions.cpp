@@ -536,6 +536,22 @@ schedule_node::set_latency_gfx7(bool is_haswell)
          case LSC_OP_STORE_CMASK:
             latency = 300;
             break;
+         case LSC_OP_ATOMIC_INC:
+         case LSC_OP_ATOMIC_DEC:
+         case LSC_OP_ATOMIC_LOAD:
+         case LSC_OP_ATOMIC_STORE:
+         case LSC_OP_ATOMIC_ADD:
+         case LSC_OP_ATOMIC_SUB:
+         case LSC_OP_ATOMIC_MIN:
+         case LSC_OP_ATOMIC_MAX:
+         case LSC_OP_ATOMIC_UMIN:
+         case LSC_OP_ATOMIC_UMAX:
+         case LSC_OP_ATOMIC_CMPXCHG:
+         case LSC_OP_ATOMIC_AND:
+         case LSC_OP_ATOMIC_OR:
+         case LSC_OP_ATOMIC_XOR:
+            latency = 1400;
+            break;
          default:
             unreachable("unsupported new data port message instruction");
          }
