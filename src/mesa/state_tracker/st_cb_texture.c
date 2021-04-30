@@ -3054,6 +3054,8 @@ st_texture_storage(struct gl_context *ctx,
                                    width, height, depth,
                                    &ptWidth, &ptHeight, &ptDepth, &ptLayers);
 
+   pipe_resource_reference(&stObj->pt, NULL);
+
    if (smObj) {
       stObj->pt = st_texture_create_from_memory(st,
                                                 smObj,
