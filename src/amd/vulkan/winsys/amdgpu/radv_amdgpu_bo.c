@@ -420,9 +420,13 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws, uint64_t size, unsigned 
    if (size >= ws->info.pte_fragment_size)
       virt_alignment = MAX2(virt_alignment, ws->info.pte_fragment_size);
 
-   r = amdgpu_va_range_alloc(
-      ws->dev, amdgpu_gpu_va_range_general, size, virt_alignment, replay_address, &va, &va_handle,
-      (flags & RADEON_FLAG_32BIT ? AMDGPU_VA_RANGE_32_BIT : 0) | AMDGPU_VA_RANGE_HIGH);
+   assert(!replay_address || (flags & RADEON_FLAG_REPLAYABLE));
+
+   const uint64_t va_flags = AMDGPU_VA_RANGE_HIGH |
+                             (flags & RADEON_FLAG_32BIT ? AMDGPU_VA_RANGE_32_BIT : 0) |
+                             (flags & RADEON_FLAG_REPLAYABLE ? AMDGPU_VA_RANGE_REPLAYABLE : 0);
+   r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general, size, virt_alignment, replay_address,
+                             &va, &va_handle, va_flags);
    if (r) {
       result =
          replay_address ? VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS : VK_ERROR_OUT_OF_DEVICE_MEMORY;

@@ -63,6 +63,7 @@ enum radeon_bo_flag { /* bitfield */
                       RADEON_FLAG_32BIT = (1 << 8),
                       RADEON_FLAG_PREFER_LOCAL_BO = (1 << 9),
                       RADEON_FLAG_ZERO_VRAM = (1 << 10),
+                      RADEON_FLAG_REPLAYABLE = (1 << 11),
 };
 
 enum radeon_ctx_priority {
