@@ -356,14 +356,6 @@ traces:
         checksum: daa6f0258a8f25e8cc6aa242ed796f64
       - device: gl-intel-amly
         checksum: daa6f0258a8f25e8cc6aa242ed796f64
-  - path: gputest/gimark.trace
-    expectations:
-      - device: gl-intel-apl
-        checksum: 021e731119a20b4c6a70e22eebb05e39
-      - device: gl-intel-glk
-        checksum: 021e731119a20b4c6a70e22eebb05e39
-      - device: gl-intel-amly
-        checksum: 021e731119a20b4c6a70e22eebb05e39
   - path: gputest/pixmark-julia-fp32.trace
     expectations:
       - device: gl-intel-apl
