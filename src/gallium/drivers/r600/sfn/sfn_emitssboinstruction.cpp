@@ -419,8 +419,7 @@ EmitSSBOInstruction::emit_ssbo_atomic_op(const nir_intrinsic_instr *intrin)
    if (intrin->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
       emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(0),
                                           from_nir(intrin->src[3], 0), {alu_write}));
-      // TODO: cayman wants channel 2 here
-      emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(3),
+      emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(get_chip_class() == CAYMAN ? 2 : 3),
                                           from_nir(intrin->src[2], 0), {alu_last_instr, alu_write}));
    } else {
       emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(0),
@@ -491,7 +490,7 @@ EmitSSBOInstruction::emit_image_load(const nir_intrinsic_instr *intrin)
       if (intrin->intrinsic == nir_intrinsic_image_atomic_comp_swap) {
          emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(0),
                                              from_nir(intrin->src[4], 0), {alu_write}));
-         emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(3),
+         emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(get_chip_class() == CAYMAN ? 2 : 3),
                                              from_nir(intrin->src[3], 0), {alu_last_instr, alu_write}));
       } else {
          emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(0),
