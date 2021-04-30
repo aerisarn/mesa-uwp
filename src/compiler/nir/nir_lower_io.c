@@ -158,7 +158,8 @@ nir_is_arrayed_io(const nir_variable *var, gl_shader_stage stage)
              stage == MESA_SHADER_TESS_EVAL;
 
    if (var->data.mode == nir_var_shader_out)
-      return stage == MESA_SHADER_TESS_CTRL;
+      return stage == MESA_SHADER_TESS_CTRL ||
+             stage == MESA_SHADER_MESH;
 
    return false;
 }
