@@ -633,36 +633,17 @@ bool AssemblyFromShaderLegacyImpl::visit(const MemRingOutIntruction& instr)
 
 bool AssemblyFromShaderLegacyImpl::visit(const TexInstruction & tex_instr)
 {
+   int sampler_offset = 0;
    auto addr = tex_instr.sampler_offset();
-   if (addr && (!m_bc->index_loaded[1] || m_loop_nesting
-                ||  m_bc->index_reg[1] != addr->sel()
-                ||  m_bc->index_reg_chan[1] != addr->chan())) {
-      struct r600_bytecode_alu alu;
-      memset(&alu, 0, sizeof(alu));
-      alu.op = opcode_map.at(op1_mova_int);
-      alu.dst.chan = 0;
-      alu.src[0].sel = addr->sel();
-      alu.src[0].chan = addr->chan();
-      alu.last = 1;
-      int r = r600_bytecode_add_alu(m_bc, &alu);
-      if (r)
-         return false;
+   EBufferIndexMode index_mode = bim_none;
 
-      m_bc->ar_loaded = 0;
-
-      alu.op = opcode_map.at(op1_set_cf_idx1);
-      alu.dst.chan = 0;
-      alu.src[0].sel = 0;
-      alu.src[0].chan = 0;
-      alu.last = 1;
-
-      r = r600_bytecode_add_alu(m_bc, &alu);
-      if (r)
-         return false;
-
-      m_bc->index_reg[1] = addr->sel();
-      m_bc->index_reg_chan[1] = addr->chan();
-      m_bc->index_loaded[1] = true;
+   if (addr) {
+      if (addr->type() == Value::literal) {
+         const auto& boffs = static_cast<const LiteralValue&>(*addr);
+         sampler_offset = boffs.value();
+      } else {
+         index_mode = emit_index_reg(*addr, 1);
+      }
    }
 
    if (tex_fetch_results.find(tex_instr.src().sel()) !=
@@ -674,10 +655,8 @@ bool AssemblyFromShaderLegacyImpl::visit(const TexInstruction & tex_instr)
    r600_bytecode_tex tex;
    memset(&tex, 0, sizeof(struct r600_bytecode_tex));
    tex.op = tex_instr.opcode();
-   tex.sampler_id = tex_instr.sampler_id();
-   tex.sampler_index_mode = 0;
-   tex.resource_id = tex_instr.resource_id();;
-   tex.resource_index_mode = 0;
+   tex.sampler_id = tex_instr.sampler_id() + sampler_offset;
+   tex.resource_id = tex_instr.resource_id() + sampler_offset;
    tex.src_gpr = tex_instr.src().sel();
    tex.dst_gpr = tex_instr.dst().sel();
    tex.dst_sel_x = tex_instr.dest_swizzle(0);
@@ -695,7 +674,7 @@ bool AssemblyFromShaderLegacyImpl::visit(const TexInstruction & tex_instr)
    tex.offset_x = tex_instr.get_offset(0);
    tex.offset_y = tex_instr.get_offset(1);
    tex.offset_z = tex_instr.get_offset(2);
-   tex.resource_index_mode = (!!addr) ? 2 : 0;
+   tex.resource_index_mode = index_mode;
    tex.sampler_index_mode = tex.resource_index_mode;
 
    if (tex.dst_sel_x < 4 &&
@@ -1103,7 +1082,7 @@ AssemblyFromShaderLegacyImpl::emit_index_reg(const Value& addr, unsigned idx)
 
       // Make sure MOVA is not last instr in clause
       if ((m_bc->cf_last->ndw>>1) >= 110)
-              m_bc->force_add_cf = 1;
+         m_bc->force_add_cf = 1;
 
       memset(&alu, 0, sizeof(alu));
       alu.op = opcode_map.at(op1_mova_int);
