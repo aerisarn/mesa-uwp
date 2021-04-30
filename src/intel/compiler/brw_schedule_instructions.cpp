@@ -532,6 +532,8 @@ schedule_node::set_latency_gfx7(bool is_haswell)
       case GFX12_SFID_TGM:
       case GFX12_SFID_SLM:
          switch (lsc_msg_desc_opcode(devinfo, inst->desc)) {
+         case LSC_OP_LOAD:
+         case LSC_OP_STORE:
          case LSC_OP_LOAD_CMASK:
          case LSC_OP_STORE_CMASK:
             latency = 300;

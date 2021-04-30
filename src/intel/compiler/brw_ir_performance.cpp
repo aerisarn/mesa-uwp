@@ -1097,6 +1097,8 @@ namespace {
          case GFX12_SFID_TGM:
          case GFX12_SFID_SLM:
             switch (lsc_msg_desc_opcode(devinfo, info.desc)) {
+            case LSC_OP_LOAD:
+            case LSC_OP_STORE:
             case LSC_OP_LOAD_CMASK:
             case LSC_OP_STORE_CMASK:
                return calculate_desc(info, unit_dp_dc, 2, 0, 0,

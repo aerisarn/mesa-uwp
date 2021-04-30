@@ -5893,6 +5893,19 @@ brw_atomic_op_to_lsc_fatomic_op(uint32_t aop)
    }
 }
 
+static enum lsc_data_size
+lsc_bits_to_data_size(unsigned bit_size)
+{
+   switch (bit_size / 8) {
+   case 1:  return LSC_DATA_SIZE_D8U32;
+   case 2:  return LSC_DATA_SIZE_D16U32;
+   case 4:  return LSC_DATA_SIZE_D32;
+   case 8:  return LSC_DATA_SIZE_D64;
+   default:
+      unreachable("Unsupported data size.");
+   }
+}
+
 static void
 lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 {
@@ -5986,6 +5999,26 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
                                 !inst->dst.is_null());
       break;
    }
+   case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD, inst->exec_size,
+                                surf_type, LSC_ADDR_SIZE_A32,
+                                1 /* num_coordinates */,
+                                lsc_bits_to_data_size(arg.ud),
+                                1 /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_LOAD_L1STATE_L3MOCS,
+                                true /* has_dest */);
+      break;
+   case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_STORE, inst->exec_size,
+                                surf_type, LSC_ADDR_SIZE_A32,
+                                1 /* num_coordinates */,
+                                lsc_bits_to_data_size(arg.ud),
+                                1 /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_STORE_L1STATE_L3MOCS,
+                                false /* has_dest */);
+      break;
    default:
       unreachable("Unknown surface logical instruction");
    }
@@ -6603,12 +6636,12 @@ fs_visitor::lower_logical_sends()
       case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
       case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
       case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
+      case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
+      case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
          if (devinfo->has_lsc) {
             lower_lsc_surface_logical_send(ibld, inst);
             break;
          }
-      case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
-      case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
       case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
       case SHADER_OPCODE_DWORD_SCATTERED_WRITE_LOGICAL:
       case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
