@@ -892,6 +892,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
       NIR_PASS_V(sel->nir, r600_vectorize_vs_inputs);
 
    if (sel->nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(sel->nir, nir_lower_fragcoord_wtrans);
       NIR_PASS_V(sel->nir, r600_lower_fs_out_to_vector);
    }
 
