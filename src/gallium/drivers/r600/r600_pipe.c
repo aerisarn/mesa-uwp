@@ -247,8 +247,7 @@ fail:
 
 static bool is_nir_enabled(struct r600_common_screen *screen) {
    return ((screen->debug_flags & DBG_NIR_PREFERRED) &&
-       screen->family >= CHIP_CEDAR &&
-       screen->family < CHIP_CAYMAN);
+       screen->family >= CHIP_CEDAR);
 }
 
 /*
