@@ -547,6 +547,11 @@ schedule_node::set_latency_gfx7(bool is_haswell)
          case LSC_OP_ATOMIC_UMIN:
          case LSC_OP_ATOMIC_UMAX:
          case LSC_OP_ATOMIC_CMPXCHG:
+         case LSC_OP_ATOMIC_FADD:
+         case LSC_OP_ATOMIC_FSUB:
+         case LSC_OP_ATOMIC_FMIN:
+         case LSC_OP_ATOMIC_FMAX:
+         case LSC_OP_ATOMIC_FCMPXCHG:
          case LSC_OP_ATOMIC_AND:
          case LSC_OP_ATOMIC_OR:
          case LSC_OP_ATOMIC_XOR:
