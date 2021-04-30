@@ -350,7 +350,7 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
    m_store_ops.push_back(store);
 
    for (unsigned i = 1; i < nir_src_num_components(instr->src[0]); ++i) {
-      emit_instruction(new AluInstruction(op1_mov, temp2.reg_i(0), from_nir(instr->src[0], i), write));
+      emit_instruction(new AluInstruction(op1_mov, temp2.reg_i(0), from_nir(instr->src[0], i), get_chip_class() == CAYMAN  ?  last_write : write));
       emit_instruction(new AluInstruction(op2_add_int, addr_vec.reg_i(0),
                                           {addr_vec.reg_i(0), Value::one_i}, last_write));
       store = new RatInstruction(cf_op, RatInstruction::STORE_TYPED,
