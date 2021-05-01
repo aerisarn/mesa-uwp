@@ -1301,6 +1301,15 @@ void st_init_extensions(struct pipe_screen *screen,
       extensions->OES_geometry_shader = GL_TRUE;
    }
 
+   /* Some hardware may not support indirect draws, but still wants ES
+    * 3.1. This allows the extension to be enabled only in ES contexts to
+    * avoid claiming hw support when there is none, and using a software
+    * fallback for ES.
+    */
+   if (api == API_OPENGLES2 && ESSLVersion >= 310) {
+      extensions->ARB_draw_indirect = GL_TRUE;
+   }
+
    /* Needs PIPE_CAP_SAMPLE_SHADING + all the sample-related bits of
     * ARB_gpu_shader5. This enables all the per-sample shading ES extensions.
     */
