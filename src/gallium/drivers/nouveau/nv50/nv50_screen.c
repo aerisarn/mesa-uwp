@@ -129,6 +129,8 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 330;
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
       return 330;
+   case PIPE_CAP_ESSL_FEATURE_LEVEL:
+      return class_3d >= NVA3_3D_CLASS ? 310 : 300;
    case PIPE_CAP_MAX_RENDER_TARGETS:
       return 8;
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
@@ -413,7 +415,6 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       FALLTHROUGH;
    /* caps where we want the default value */
    case PIPE_CAP_DMABUF:
-   case PIPE_CAP_ESSL_FEATURE_LEVEL:
    case PIPE_CAP_THROTTLE:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
