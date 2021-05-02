@@ -119,12 +119,17 @@ ac_modifier_fill_dcc_params(uint64_t modifier, struct radeon_surf *surf,
 {
    assert(ac_modifier_has_dcc(modifier));
 
-   surf_info->flags.metaRbUnaligned = 0;
    if (AMD_FMT_MOD_GET(DCC_RETILE, modifier)) {
       surf_info->flags.metaPipeUnaligned = 0;
    } else {
       surf_info->flags.metaPipeUnaligned = !AMD_FMT_MOD_GET(DCC_PIPE_ALIGN, modifier);
    }
+
+   /* The metaPipeUnaligned is not strictly necessary, but ensure we don't set metaRbUnaligned on
+    * non-displayable DCC surfaces just because num_render_backends = 1 */
+   surf_info->flags.metaRbUnaligned = AMD_FMT_MOD_GET(TILE_VERSION, modifier) == AMD_FMT_MOD_TILE_VER_GFX9 &&
+                                      AMD_FMT_MOD_GET(RB, modifier) == 0 &&
+                                      surf_info->flags.metaPipeUnaligned;
 
    surf->u.gfx9.color.dcc.independent_64B_blocks = AMD_FMT_MOD_GET(DCC_INDEPENDENT_64B, modifier);
    surf->u.gfx9.color.dcc.independent_128B_blocks = AMD_FMT_MOD_GET(DCC_INDEPENDENT_128B, modifier);
@@ -218,22 +223,23 @@ bool ac_get_supported_modifiers(const struct radeon_info *info,
                             AMD_FMT_MOD_SET(DCC_MAX_COMPRESSED_BLOCK, AMD_FMT_MOD_DCC_BLOCK_64B) |
                             AMD_FMT_MOD_SET(DCC_CONSTANT_ENCODE, info->has_dcc_constant_encode) |
                             AMD_FMT_MOD_SET(PIPE_XOR_BITS, pipe_xor_bits) |
-                            AMD_FMT_MOD_SET(BANK_XOR_BITS, bank_xor_bits) |
-                            AMD_FMT_MOD_SET(RB, rb);
+                            AMD_FMT_MOD_SET(BANK_XOR_BITS, bank_xor_bits);
 
       ADD_MOD(AMD_FMT_MOD |
               AMD_FMT_MOD_SET(TILE, AMD_FMT_MOD_TILE_GFX9_64K_D_X) |
               AMD_FMT_MOD_SET(TILE_VERSION, AMD_FMT_MOD_TILE_VER_GFX9) |
               AMD_FMT_MOD_SET(DCC_PIPE_ALIGN, 1) |
               common_dcc |
-              AMD_FMT_MOD_SET(PIPE, pipes))
+              AMD_FMT_MOD_SET(PIPE, pipes) |
+              AMD_FMT_MOD_SET(RB, rb))
 
       ADD_MOD(AMD_FMT_MOD |
               AMD_FMT_MOD_SET(TILE, AMD_FMT_MOD_TILE_GFX9_64K_S_X) |
               AMD_FMT_MOD_SET(TILE_VERSION, AMD_FMT_MOD_TILE_VER_GFX9) |
               AMD_FMT_MOD_SET(DCC_PIPE_ALIGN, 1) |
               common_dcc |
-              AMD_FMT_MOD_SET(PIPE, pipes))
+              AMD_FMT_MOD_SET(PIPE, pipes) |
+              AMD_FMT_MOD_SET(RB, rb))
 
       if (util_format_get_blocksizebits(format) == 32) {
          if (info->max_render_backends == 1) {
@@ -249,7 +255,8 @@ bool ac_get_supported_modifiers(const struct radeon_info *info,
                  AMD_FMT_MOD_SET(TILE_VERSION, AMD_FMT_MOD_TILE_VER_GFX9) |
                  AMD_FMT_MOD_SET(DCC_RETILE, 1) |
                  common_dcc |
-                 AMD_FMT_MOD_SET(PIPE, pipes))
+                 AMD_FMT_MOD_SET(PIPE, pipes) |
+                 AMD_FMT_MOD_SET(RB, rb))
       }
 
 
