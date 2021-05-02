@@ -303,6 +303,7 @@ bool ShaderFromNir::emit_instruction(nir_instr *instr)
 
 bool ShaderFromNir::process_declaration()
 {
+   impl->set_shader_info(sh);
 
    if (!impl->scan_inputs_read(sh))
       return false;
