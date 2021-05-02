@@ -40,6 +40,8 @@ enum instruction_scheduler_mode {
    SCHEDULE_POST,
 };
 
+#define UBO_START ((1 << 16) - 4)
+
 struct backend_shader {
 protected:
 

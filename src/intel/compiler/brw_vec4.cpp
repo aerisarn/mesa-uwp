@@ -593,7 +593,7 @@ vec4_visitor::split_uniform_registers()
     */
    foreach_block_and_inst(block, vec4_instruction, inst, cfg) {
       for (int i = 0 ; i < 3; i++) {
-	 if (inst->src[i].file != UNIFORM)
+         if (inst->src[i].file != UNIFORM || inst->src[i].nr >= UBO_START)
 	    continue;
 
 	 assert(!inst->src[i].reladdr);
@@ -672,7 +672,7 @@ vec4_visitor::pack_uniform_registers()
       }
 
       for (int i = 0 ; i < 3; i++) {
-         if (inst->src[i].file != UNIFORM)
+         if (inst->src[i].file != UNIFORM || inst->src[i].nr >= UBO_START)
             continue;
 
          assert(type_sz(inst->src[i].type) % 4 == 0);
@@ -782,7 +782,7 @@ vec4_visitor::pack_uniform_registers()
       for (int i = 0 ; i < 3; i++) {
          int src = inst->src[i].nr;
 
-         if (inst->src[i].file != UNIFORM)
+         if (inst->src[i].file != UNIFORM || inst->src[i].nr >= UBO_START)
             continue;
 
          int chan = new_chan[src] / channel_sizes[src];
@@ -977,7 +977,7 @@ vec4_visitor::move_push_constants_to_pull_constants()
     */
    foreach_block_and_inst_safe(block, vec4_instruction, inst, cfg) {
       for (int i = 0 ; i < 3; i++) {
-         if (inst->src[i].file != UNIFORM ||
+         if (inst->src[i].file != UNIFORM || inst->src[i].nr >= UBO_START ||
              pull_constant_loc[inst->src[i].nr] == -1)
             continue;
 
@@ -2078,11 +2078,19 @@ vec4_visitor::convert_to_hw_regs()
          }
 
          case UNIFORM: {
-            reg = stride(byte_offset(brw_vec4_grf(
-                                        prog_data->base.dispatch_grf_start_reg +
-                                        src.nr / 2, src.nr % 2 * 4),
-                                     src.offset),
-                         0, 4, 1);
+            if (src.nr >= UBO_START) {
+               reg = byte_offset(brw_vec4_grf(
+                                    prog_data->base.dispatch_grf_start_reg +
+                                    ubo_push_start[src.nr - UBO_START] +
+                                    src.offset / 32, 0),
+                                 src.offset % 32);
+            } else {
+               reg = byte_offset(brw_vec4_grf(
+                                    prog_data->base.dispatch_grf_start_reg +
+                                    src.nr / 2, src.nr % 2 * 4),
+                                 src.offset);
+            }
+            reg = stride(reg, 0, 4, 1);
             reg.type = src.type;
             reg.abs = src.abs;
             reg.negate = src.negate;
