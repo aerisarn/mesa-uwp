@@ -3013,6 +3013,13 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
       };
    }
 
+   case ANV_DESCRIPTOR_SET_SHADER_CONSTANTS:
+      return (struct anv_address) {
+         .bo = cmd_buffer->device->instruction_state_pool.block_pool.bo,
+         .offset = shader->kernel.offset +
+                   shader->prog_data->const_data_offset,
+      };
+
    default: {
       assert(range->set < MAX_SETS);
       struct anv_descriptor_set *set =
@@ -3074,6 +3081,9 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
 
    case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS:
       return (range->start + range->length) * 32;
+
+   case ANV_DESCRIPTOR_SET_SHADER_CONSTANTS:
+      return ALIGN(shader->prog_data->const_data_size, ANV_UBO_ALIGNMENT);
 
    default: {
       assert(range->set < MAX_SETS);
