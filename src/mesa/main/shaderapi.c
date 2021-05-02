@@ -914,7 +914,7 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
       }
       return;
    case GL_ACTIVE_ATOMIC_COUNTER_BUFFERS:
-      if (!ctx->Extensions.ARB_shader_atomic_counters)
+      if (!ctx->Extensions.ARB_shader_atomic_counters && !_mesa_is_gles31(ctx))
          break;
 
       *params = shProg->data->NumAtomicBuffers;
