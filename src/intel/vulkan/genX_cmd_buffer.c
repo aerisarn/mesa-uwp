@@ -2987,7 +2987,7 @@ cmd_buffer_emit_descriptor_pointers(struct anv_cmd_buffer *cmd_buffer,
 
 static struct anv_address
 get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
-                       gl_shader_stage stage,
+                       const struct anv_shader_bin *shader,
                        const struct anv_push_range *range)
 {
    struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
@@ -3058,10 +3058,10 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
  */
 static uint32_t
 get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
-                          gl_shader_stage stage,
+                          const struct anv_shader_bin *shader,
                           const struct anv_push_range *range)
 {
-   assert(stage != MESA_SHADER_COMPUTE);
+   assert(shader->stage != MESA_SHADER_COMPUTE);
    const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
    switch (range->set) {
    case ANV_DESCRIPTOR_SET_DESCRIPTORS: {
@@ -3287,8 +3287,8 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
          if (!anv_pipeline_has_stage(pipeline, stage))
             continue;
 
-         const struct anv_pipeline_bind_map *bind_map =
-            &pipeline->shaders[stage]->bind_map;
+         const struct anv_shader_bin *shader = pipeline->shaders[stage];
+         const struct anv_pipeline_bind_map *bind_map = &shader->bind_map;
          struct anv_push_constants *push = &gfx_state->base.push_constants;
 
          push->push_reg_mask[stage] = 0;
@@ -3302,7 +3302,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                continue;
 
             unsigned bound_size =
-               get_push_range_bound_size(cmd_buffer, stage, range);
+               get_push_range_bound_size(cmd_buffer, shader, range);
             if (bound_size >= range->start * 32) {
                unsigned bound_regs =
                   MIN2(DIV_ROUND_UP(bound_size, 32) - range->start,
@@ -3332,8 +3332,8 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
 
       struct anv_address buffers[4] = {};
       if (anv_pipeline_has_stage(pipeline, stage)) {
-         const struct anv_pipeline_bind_map *bind_map =
-            &pipeline->shaders[stage]->bind_map;
+         const struct anv_shader_bin *shader = pipeline->shaders[stage];
+         const struct anv_pipeline_bind_map *bind_map = &shader->bind_map;
 
          /* We have to gather buffer addresses as a second step because the
           * loop above puts data into the push constant area and the call to
@@ -3347,7 +3347,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
             if (range->length == 0)
                break;
 
-            buffers[i] = get_push_range_address(cmd_buffer, stage, range);
+            buffers[i] = get_push_range_address(cmd_buffer, shader, range);
             max_push_range = MAX2(max_push_range, range->length);
             buffer_count++;
          }
