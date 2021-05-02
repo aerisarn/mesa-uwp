@@ -2698,6 +2698,20 @@ vec4_visitor::run()
 
    setup_push_ranges();
 
+   if (prog_data->base.zero_push_reg) {
+      /* push_reg_mask_param is in uint32 params and UNIFORM is in vec4s */
+      const unsigned mask_param = stage_prog_data->push_reg_mask_param;
+      src_reg mask = src_reg(dst_reg(UNIFORM, mask_param / 4));
+      assert(mask_param % 2 == 0); /* Should be 64-bit-aligned */
+      mask.swizzle = BRW_SWIZZLE4((mask_param + 0) % 4,
+                                  (mask_param + 1) % 4,
+                                  (mask_param + 0) % 4,
+                                  (mask_param + 1) % 4);
+
+      emit(VEC4_OPCODE_ZERO_OOB_PUSH_REGS,
+           dst_reg(VGRF, alloc.allocate(3)), mask);
+   }
+
    emit_prolog();
 
    emit_nir_code();

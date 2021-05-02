@@ -1465,6 +1465,57 @@ generate_mov_indirect(struct brw_codegen *p,
 }
 
 static void
+generate_zero_oob_push_regs(struct brw_codegen *p,
+                            struct brw_stage_prog_data *prog_data,
+                            struct brw_reg scratch,
+                            struct brw_reg bit_mask_in)
+{
+   const uint64_t want_zero = prog_data->zero_push_reg;
+   assert(want_zero);
+
+   assert(bit_mask_in.file == BRW_GENERAL_REGISTER_FILE);
+   assert(BRW_GET_SWZ(bit_mask_in.swizzle, 1) ==
+          BRW_GET_SWZ(bit_mask_in.swizzle, 0) + 1);
+   bit_mask_in.subnr += BRW_GET_SWZ(bit_mask_in.swizzle, 0) * 4;
+   bit_mask_in.type = BRW_REGISTER_TYPE_W;
+
+   /* Scratch should be 3 registers in the GRF */
+   assert(scratch.file == BRW_GENERAL_REGISTER_FILE);
+   scratch = vec8(scratch);
+   struct brw_reg mask_w16 = retype(scratch, BRW_REGISTER_TYPE_W);
+   struct brw_reg mask_d16 = retype(byte_offset(scratch, REG_SIZE),
+                                    BRW_REGISTER_TYPE_D);
+
+   brw_push_insn_state(p);
+   brw_set_default_access_mode(p, BRW_ALIGN_1);
+   brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+
+   for (unsigned i = 0; i < 64; i++) {
+      if (i % 16 == 0 && (want_zero & BITFIELD64_RANGE(i, 16))) {
+         brw_set_default_exec_size(p, BRW_EXECUTE_8);
+         brw_SHL(p, suboffset(mask_w16, 8),
+                    vec1(byte_offset(bit_mask_in, i / 8)),
+                    brw_imm_v(0x01234567));
+         brw_SHL(p, mask_w16, suboffset(mask_w16, 8), brw_imm_w(8));
+
+         brw_set_default_exec_size(p, BRW_EXECUTE_16);
+         brw_ASR(p, mask_d16, mask_w16, brw_imm_w(15));
+      }
+
+      if (want_zero & BITFIELD64_BIT(i)) {
+         unsigned push_start = prog_data->dispatch_grf_start_reg;
+         struct brw_reg push_reg =
+            retype(brw_vec8_grf(push_start + i, 0), BRW_REGISTER_TYPE_D);
+
+         brw_set_default_exec_size(p, BRW_EXECUTE_8);
+         brw_AND(p, push_reg, push_reg, vec1(suboffset(mask_d16, i)));
+      }
+   }
+
+   brw_pop_insn_state(p);
+}
+
+static void
 generate_code(struct brw_codegen *p,
               const struct brw_compiler *compiler,
               void *log_data,
@@ -2064,6 +2115,9 @@ generate_code(struct brw_codegen *p,
          brw_set_default_access_mode(p, BRW_ALIGN_16);
          break;
       }
+
+      case VEC4_OPCODE_ZERO_OOB_PUSH_REGS:
+         generate_zero_oob_push_regs(p, &prog_data->base, dst, src[0]);
 
       case TCS_OPCODE_URB_WRITE:
          generate_tcs_urb_write(p, inst, src[0]);

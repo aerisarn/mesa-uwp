@@ -423,6 +423,8 @@ brw_instruction_name(const struct intel_device_info *devinfo, enum opcode op)
       return "set_high_32bit";
    case VEC4_OPCODE_MOV_FOR_SCRATCH:
       return "mov_for_scratch";
+   case VEC4_OPCODE_ZERO_OOB_PUSH_REGS:
+      return "zero_oob_push_regs";
 
    case FS_OPCODE_DDX_COARSE:
       return "ddx_coarse";
@@ -1136,6 +1138,7 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_BTD_SPAWN_LOGICAL:
    case SHADER_OPCODE_BTD_RETIRE_LOGICAL:
    case RT_OPCODE_TRACE_RAY_LOGICAL:
+   case VEC4_OPCODE_ZERO_OOB_PUSH_REGS:
       return true;
    default:
       return eot;
