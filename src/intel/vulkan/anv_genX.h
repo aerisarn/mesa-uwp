@@ -46,6 +46,8 @@ extern const uint32_t genX(vk_to_intel_compare_op)[];
 
 extern const uint32_t genX(vk_to_intel_stencil_op)[];
 
+extern const uint32_t genX(vk_to_intel_logic_op)[];
+
 void genX(init_physical_device_state)(struct anv_physical_device *device);
 
 VkResult genX(init_device_state)(struct anv_device *device);

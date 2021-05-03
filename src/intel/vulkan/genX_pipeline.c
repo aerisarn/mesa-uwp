@@ -857,7 +857,7 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
 #endif
 }
 
-static const uint32_t vk_to_intel_logic_op[] = {
+const uint32_t genX(vk_to_intel_logic_op)[] = {
    [VK_LOGIC_OP_COPY]                        = LOGICOP_COPY,
    [VK_LOGIC_OP_CLEAR]                       = LOGICOP_CLEAR,
    [VK_LOGIC_OP_AND]                         = LOGICOP_AND,
@@ -1263,7 +1263,7 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          .AlphaToOneEnable = ms_info && ms_info->alphaToOneEnable,
 #endif
          .LogicOpEnable = info->logicOpEnable,
-         .LogicOpFunction = vk_to_intel_logic_op[info->logicOp],
+         .LogicOpFunction = genX(vk_to_intel_logic_op)[info->logicOp],
          /* Vulkan specification 1.2.168, VkLogicOp:
           *
           *   "Logical operations are controlled by the logicOpEnable and
