@@ -2426,7 +2426,7 @@ for op in ['fpow']:
         (('bcsel', a, (op, b, c), (op + '(is_used_once)', d, c)), (op, ('bcsel', a, b, d), c)),
     ]
 
-for op in ['frcp', 'frsq', 'fsqrt', 'fexp2', 'flog2', 'fsign', 'fsin', 'fcos', 'fneg', 'fabs', 'fsign']:
+for op in ['frcp', 'frsq', 'fsqrt', 'fexp2', 'flog2', 'fsign', 'fsin', 'fcos', 'fsin_amd', 'fcos_amd', 'fneg', 'fabs', 'fsign']:
     optimizations += [
         (('bcsel', c, (op + '(is_used_once)', a), (op + '(is_used_once)', b)), (op, ('bcsel', c, a, b))),
     ]
