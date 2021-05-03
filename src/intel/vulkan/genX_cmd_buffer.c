@@ -3894,6 +3894,19 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_XFB_ENABLE) ||
        (GFX_VER == 7 && (cmd_buffer->state.gfx.dirty &
                          ANV_CMD_DIRTY_PIPELINE))) {
+      /* Wa_16011411144:
+       *
+       * SW must insert a PIPE_CONTROL cmd before and after the
+       * 3dstate_so_buffer_index_0/1/2/3 states to ensure so_buffer_index_*
+       * state is not combined with other state changes.
+       */
+      if (intel_device_info_is_dg2(&cmd_buffer->device->info)) {
+         anv_add_pending_pipe_bits(cmd_buffer,
+                                   ANV_PIPE_CS_STALL_BIT,
+                                   "before SO_BUFFER change WA");
+         genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+      }
+
       /* We don't need any per-buffer dirty tracking because you're not
        * allowed to bind different XFB buffers while XFB is enabled.
        */
@@ -3931,8 +3944,14 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          }
       }
 
-      /* CNL and later require a CS stall after 3DSTATE_SO_BUFFER */
-      if (GFX_VER >= 10) {
+      if (intel_device_info_is_dg2(&cmd_buffer->device->info)) {
+         /* Wa_16011411144: also CS_STALL after touching SO_BUFFER change */
+         anv_add_pending_pipe_bits(cmd_buffer,
+                                   ANV_PIPE_CS_STALL_BIT,
+                                   "after SO_BUFFER change WA");
+         genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+      } else if (GFX_VER >= 10) {
+         /* CNL and later require a CS stall after 3DSTATE_SO_BUFFER */
          anv_add_pending_pipe_bits(cmd_buffer,
                                    ANV_PIPE_CS_STALL_BIT,
                                    "after 3DSTATE_SO_BUFFER call");
