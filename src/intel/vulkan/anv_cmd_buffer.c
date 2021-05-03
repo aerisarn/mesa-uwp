@@ -101,6 +101,7 @@ const struct anv_dynamic_state default_dynamic_state = {
    .dyn_vbo_stride = 0,
    .dyn_vbo_size = 0,
    .color_writes = 0xff,
+   .raster_discard = 0,
 };
 
 /**
@@ -188,6 +189,8 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
 
    ANV_CMP_COPY(dyn_vbo_stride, ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE);
    ANV_CMP_COPY(dyn_vbo_size, ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE);
+
+   ANV_CMP_COPY(raster_discard, ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
 
    if (copy_mask & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS) {
       dest->sample_locations.samples = src->sample_locations.samples;
@@ -502,6 +505,17 @@ void anv_CmdBindPipeline(
       assert(!"invalid bind point");
       break;
    }
+}
+
+void anv_CmdSetRasterizerDiscardEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    rasterizerDiscardEnable)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.raster_discard = rasterizerDiscardEnable;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
 }
 
 void anv_CmdSetViewport(

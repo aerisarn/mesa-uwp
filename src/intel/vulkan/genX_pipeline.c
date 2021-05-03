@@ -1483,7 +1483,8 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
 
 static void
 emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
-                       const VkPipelineRasterizationStateCreateInfo *rs_info)
+                       const VkPipelineRasterizationStateCreateInfo *rs_info,
+                       const uint32_t dynamic_states)
 {
    const struct brw_vue_prog_data *prog_data =
       anv_pipeline_get_last_vue_prog_data(pipeline);
@@ -1497,71 +1498,87 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
    else
       xfb_info = pipeline->shaders[MESA_SHADER_VERTEX]->xfb_info;
 
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_STREAMOUT), so) {
-      so.RenderingDisable = rs_info->rasterizerDiscardEnable;
-
-      if (xfb_info) {
-         so.SOFunctionEnable = true;
-         so.SOStatisticsEnable = true;
-
-         switch (vk_provoking_vertex_mode(rs_info)) {
-         case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
-            so.ReorderMode = LEADING;
-            break;
-
-         case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
-            so.ReorderMode = TRAILING;
-            break;
-
-         default:
-            unreachable("Invalid provoking vertex mode");
-         }
-
-         const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
-            vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT);
-         so.RenderStreamSelect = stream_info ?
-                                 stream_info->rasterizationStream : 0;
-
-#if GFX_VER >= 8
-         so.Buffer0SurfacePitch = xfb_info->buffers[0].stride;
-         so.Buffer1SurfacePitch = xfb_info->buffers[1].stride;
-         so.Buffer2SurfacePitch = xfb_info->buffers[2].stride;
-         so.Buffer3SurfacePitch = xfb_info->buffers[3].stride;
+#if GFX_VER == 7
+#  define streamout_state_dw pipeline->gfx7.streamout_state
 #else
-         pipeline->gfx7.xfb_bo_pitch[0] = xfb_info->buffers[0].stride;
-         pipeline->gfx7.xfb_bo_pitch[1] = xfb_info->buffers[1].stride;
-         pipeline->gfx7.xfb_bo_pitch[2] = xfb_info->buffers[2].stride;
-         pipeline->gfx7.xfb_bo_pitch[3] = xfb_info->buffers[3].stride;
-
-         /* On Gfx7, the SO buffer enables live in 3DSTATE_STREAMOUT which
-          * is a bit inconvenient because we don't know what buffers will
-          * actually be enabled until draw time.  We do our best here by
-          * setting them based on buffers_written and we disable them
-          * as-needed at draw time by setting EndAddress = BaseAddress.
-          */
-         so.SOBufferEnable0 = xfb_info->buffers_written & (1 << 0);
-         so.SOBufferEnable1 = xfb_info->buffers_written & (1 << 1);
-         so.SOBufferEnable2 = xfb_info->buffers_written & (1 << 2);
-         so.SOBufferEnable3 = xfb_info->buffers_written & (1 << 3);
+#  define streamout_state_dw pipeline->gfx8.streamout_state
 #endif
 
-         int urb_entry_read_offset = 0;
-         int urb_entry_read_length =
-            (prog_data->vue_map.num_slots + 1) / 2 - urb_entry_read_offset;
+   struct GENX(3DSTATE_STREAMOUT) so = {
+      GENX(3DSTATE_STREAMOUT_header),
+      .RenderingDisable =
+         (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE) ?
+            0 : rs_info->rasterizerDiscardEnable,
+   };
 
-         /* We always read the whole vertex.  This could be reduced at some
-          * point by reading less and offsetting the register index in the
-          * SO_DECLs.
-          */
-         so.Stream0VertexReadOffset = urb_entry_read_offset;
-         so.Stream0VertexReadLength = urb_entry_read_length - 1;
-         so.Stream1VertexReadOffset = urb_entry_read_offset;
-         so.Stream1VertexReadLength = urb_entry_read_length - 1;
-         so.Stream2VertexReadOffset = urb_entry_read_offset;
-         so.Stream2VertexReadLength = urb_entry_read_length - 1;
-         so.Stream3VertexReadOffset = urb_entry_read_offset;
-         so.Stream3VertexReadLength = urb_entry_read_length - 1;
+   if (xfb_info) {
+      so.SOFunctionEnable = true;
+      so.SOStatisticsEnable = true;
+
+      switch (vk_provoking_vertex_mode(rs_info)) {
+      case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
+         so.ReorderMode = LEADING;
+         break;
+
+      case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
+         so.ReorderMode = TRAILING;
+         break;
+
+      default:
+         unreachable("Invalid provoking vertex mode");
       }
+
+      const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
+         vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT);
+      so.RenderStreamSelect = stream_info ?
+                              stream_info->rasterizationStream : 0;
+
+#if GFX_VER >= 8
+      so.Buffer0SurfacePitch = xfb_info->buffers[0].stride;
+      so.Buffer1SurfacePitch = xfb_info->buffers[1].stride;
+      so.Buffer2SurfacePitch = xfb_info->buffers[2].stride;
+      so.Buffer3SurfacePitch = xfb_info->buffers[3].stride;
+#else
+      pipeline->gfx7.xfb_bo_pitch[0] = xfb_info->buffers[0].stride;
+      pipeline->gfx7.xfb_bo_pitch[1] = xfb_info->buffers[1].stride;
+      pipeline->gfx7.xfb_bo_pitch[2] = xfb_info->buffers[2].stride;
+      pipeline->gfx7.xfb_bo_pitch[3] = xfb_info->buffers[3].stride;
+
+      /* On Gfx7, the SO buffer enables live in 3DSTATE_STREAMOUT which
+       * is a bit inconvenient because we don't know what buffers will
+       * actually be enabled until draw time.  We do our best here by
+       * setting them based on buffers_written and we disable them
+       * as-needed at draw time by setting EndAddress = BaseAddress.
+       */
+      so.SOBufferEnable0 = xfb_info->buffers_written & (1 << 0);
+      so.SOBufferEnable1 = xfb_info->buffers_written & (1 << 1);
+      so.SOBufferEnable2 = xfb_info->buffers_written & (1 << 2);
+      so.SOBufferEnable3 = xfb_info->buffers_written & (1 << 3);
+#endif
+
+      int urb_entry_read_offset = 0;
+      int urb_entry_read_length =
+         (prog_data->vue_map.num_slots + 1) / 2 - urb_entry_read_offset;
+
+      /* We always read the whole vertex.  This could be reduced at some
+       * point by reading less and offsetting the register index in the
+       * SO_DECLs.
+       */
+      so.Stream0VertexReadOffset = urb_entry_read_offset;
+      so.Stream0VertexReadLength = urb_entry_read_length - 1;
+      so.Stream1VertexReadOffset = urb_entry_read_offset;
+      so.Stream1VertexReadLength = urb_entry_read_length - 1;
+      so.Stream2VertexReadOffset = urb_entry_read_offset;
+      so.Stream2VertexReadLength = urb_entry_read_length - 1;
+      so.Stream3VertexReadOffset = urb_entry_read_offset;
+      so.Stream3VertexReadLength = urb_entry_read_length - 1;
+   }
+
+   if (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
+      GENX(3DSTATE_STREAMOUT_pack)(NULL, streamout_state_dw, &so);
+   } else {
+      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_STREAMOUT), _so)
+         _so = so;
    }
 
    if (xfb_info) {
@@ -2404,11 +2421,23 @@ genX(graphics_pipeline_create)(
       return result;
    }
 
+   /* Information on which states are considered dynamic. */
+   const VkPipelineDynamicStateCreateInfo *dyn_info =
+      pCreateInfo->pDynamicState;
+   uint32_t dynamic_states = 0;
+   if (dyn_info) {
+      for (unsigned i = 0; i < dyn_info->dynamicStateCount; i++)
+         dynamic_states |=
+            anv_cmd_dirty_bit_for_vk_dynamic_state(dyn_info->pDynamicStates[i]);
+   }
+
+
    /* If rasterization is not enabled, various CreateInfo structs must be
     * ignored.
     */
    const bool raster_enabled =
-      !pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
+      !pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
+      (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
 
    const VkPipelineViewportStateCreateInfo *vp_info =
       raster_enabled ? pCreateInfo->pViewportState : NULL;
@@ -2425,16 +2454,6 @@ genX(graphics_pipeline_create)(
    const VkPipelineRasterizationLineStateCreateInfoEXT *line_info =
       vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
                            PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
-
-   /* Information on which states are considered dynamic. */
-   const VkPipelineDynamicStateCreateInfo *dyn_info =
-      pCreateInfo->pDynamicState;
-   uint32_t dynamic_states = 0;
-   if (dyn_info) {
-      for (unsigned i = 0; i < dyn_info->dynamicStateCount; i++)
-         dynamic_states |=
-            anv_cmd_dirty_bit_for_vk_dynamic_state(dyn_info->pDynamicStates[i]);
-   }
 
    enum intel_urb_deref_block_size urb_deref_block_size;
    emit_urb_setup(pipeline, &urb_deref_block_size);
@@ -2456,7 +2475,8 @@ genX(graphics_pipeline_create)(
                      vp_info,
                      pCreateInfo->pRasterizationState,
                      dynamic_states);
-   emit_3dstate_streamout(pipeline, pCreateInfo->pRasterizationState);
+   emit_3dstate_streamout(pipeline, pCreateInfo->pRasterizationState,
+                          dynamic_states);
 
 #if GFX_VER == 12
    emit_3dstate_primitive_replication(pipeline);

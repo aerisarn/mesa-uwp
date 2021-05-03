@@ -35,6 +35,8 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
+#include "nir/nir_xfb_info.h"
+
 /* We reserve :
  *    - GPR 14 for secondary command buffer returns
  *    - GPR 15 for conditional rendering
@@ -3438,6 +3440,28 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
                         pipeline->gfx7.clip);
 }
 
+static void
+cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
+{
+   const struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
+   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+
+#if GFX_VER == 7
+#  define streamout_state_dw pipeline->gfx7.streamout_state
+#else
+#  define streamout_state_dw pipeline->gfx8.streamout_state
+#endif
+
+   uint32_t dwords[GENX(3DSTATE_STREAMOUT_length)];
+
+   struct GENX(3DSTATE_STREAMOUT) so = {
+      GENX(3DSTATE_STREAMOUT_header),
+      .RenderingDisable = d->raster_discard,
+   };
+   GENX(3DSTATE_STREAMOUT_pack)(NULL, dwords, &so);
+   anv_batch_emit_merge(&cmd_buffer->batch, dwords, streamout_state_dw);
+}
+
 void
 genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -3658,6 +3682,9 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       cmd_buffer_emit_descriptor_pointers(cmd_buffer, dirty);
 
    cmd_buffer_emit_clip(cmd_buffer);
+
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE)
+      cmd_buffer_emit_streamout(cmd_buffer);
 
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_VIEWPORT)
       gfx8_cmd_buffer_emit_viewport(cmd_buffer);

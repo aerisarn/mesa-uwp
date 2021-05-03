@@ -2676,6 +2676,7 @@ struct anv_dynamic_state {
    VkCompareOp                                  depth_compare_op;
    bool                                         depth_bounds_test_enable;
    bool                                         stencil_test_enable;
+   bool                                         raster_discard;
    bool                                         dyn_vbo_stride;
    bool                                         dyn_vbo_size;
 
@@ -3426,6 +3427,7 @@ struct anv_graphics_pipeline {
       uint32_t                                  xfb_bo_pitch[4];
       uint32_t                                  wm[3];
       uint32_t                                  blend_state[MAX_RTS * 2];
+      uint32_t                                  streamout_state[3];
    } gfx7;
 
    struct {
@@ -3435,6 +3437,7 @@ struct anv_graphics_pipeline {
       uint32_t                                  wm[2];
       uint32_t                                  ps_blend[2];
       uint32_t                                  blend_state[1 + MAX_RTS * 2];
+      uint32_t                                  streamout_state[5];
    } gfx8;
 
    struct {
