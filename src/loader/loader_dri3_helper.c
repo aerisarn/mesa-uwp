@@ -1309,7 +1309,7 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
                          int width, int height, int depth)
 {
    struct loader_dri3_buffer *buffer;
-   __DRIimage *pixmap_buffer;
+   __DRIimage *pixmap_buffer = NULL, *linear_buffer_display_gpu = NULL;
    xcb_pixmap_t pixmap;
    xcb_sync_fence_t sync_fence;
    struct xshmfence *shm_fence;
@@ -1422,18 +1422,37 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
       if (!buffer->image)
          goto no_image;
 
-      buffer->linear_buffer =
-        draw->ext->image->createImage(draw->dri_screen,
-                                      width, height,
-                                      dri3_linear_format_for_format(draw, format),
-                                      __DRI_IMAGE_USE_SHARE |
-                                      __DRI_IMAGE_USE_LINEAR |
-                                      __DRI_IMAGE_USE_BACKBUFFER,
-                                      buffer);
-      pixmap_buffer = buffer->linear_buffer;
+      /* if driver name is same only then dri_screen_display_gpu is set.
+       * This check is needed because for simplicity render gpu image extension
+       * is also used for display gpu.
+       */
+      if (draw->dri_screen_display_gpu) {
+         linear_buffer_display_gpu =
+           draw->ext->image->createImage(draw->dri_screen_display_gpu,
+                                         width, height,
+                                         dri3_linear_format_for_format(draw, format),
+                                         __DRI_IMAGE_USE_SHARE |
+                                         __DRI_IMAGE_USE_LINEAR |
+                                         __DRI_IMAGE_USE_BACKBUFFER,
+                                         buffer);
+         pixmap_buffer = linear_buffer_display_gpu;
+      }
 
-      if (!buffer->linear_buffer)
-         goto no_linear_buffer;
+      if (!pixmap_buffer) {
+         buffer->linear_buffer =
+           draw->ext->image->createImage(draw->dri_screen,
+                                         width, height,
+                                         dri3_linear_format_for_format(draw, format),
+                                         __DRI_IMAGE_USE_SHARE |
+                                         __DRI_IMAGE_USE_LINEAR |
+                                         __DRI_IMAGE_USE_BACKBUFFER,
+                                         buffer);
+
+         pixmap_buffer = buffer->linear_buffer;
+         if (!buffer->linear_buffer) {
+            goto no_linear_buffer;
+         }
+      }
    }
 
    /* X want some information about the planes, so ask the image for it
@@ -1474,6 +1493,26 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
 
    if (!ret)
       buffer->modifier = DRM_FORMAT_MOD_INVALID;
+
+   if (draw->is_different_gpu && draw->dri_screen_display_gpu &&
+       linear_buffer_display_gpu) {
+      /* The linear buffer was created in the display GPU's vram, so we
+       * need to make it visible to render GPU
+       */
+      buffer->linear_buffer =
+         draw->ext->image->createImageFromFds(draw->dri_screen,
+                                              width,
+                                              height,
+                                              image_format_to_fourcc(format),
+                                              &buffer_fds[0], num_planes,
+                                              &buffer->strides[0],
+                                              &buffer->offsets[0],
+                                              buffer);
+      if (!buffer->linear_buffer)
+         goto no_buffer_attrib;
+
+      draw->ext->image->destroyImage(linear_buffer_display_gpu);
+   }
 
    pixmap = xcb_generate_id(draw->conn);
 #ifdef HAVE_DRI3_MODIFIERS

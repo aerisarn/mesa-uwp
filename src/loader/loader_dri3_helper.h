@@ -42,8 +42,14 @@ enum loader_dri3_buffer_type {
 
 struct loader_dri3_buffer {
    __DRIimage   *image;
-   __DRIimage   *linear_buffer;
    uint32_t     pixmap;
+
+   /* default case: linear buffer allocated in render gpu vram.
+    * p2p case: linear buffer allocated in display gpu vram and imported
+    *           to render gpu. p2p case is enabled when driver name matches
+    *           while creating screen in dri3_create_screen() function.
+    */
+   __DRIimage   *linear_buffer;
 
    /* Synchronization between the client and X server is done using an
     * xshmfence that is mapped into an X server SyncFence. This lets the
