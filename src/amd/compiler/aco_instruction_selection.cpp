@@ -2750,27 +2750,22 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       }
       break;
    }
-   case nir_op_fsin:
-   case nir_op_fcos: {
+   case nir_op_fsin_amd:
+   case nir_op_fcos_amd: {
       Temp src = as_vgpr(ctx, get_alu_src(ctx, instr->src[0]));
       aco_ptr<Instruction> norm;
       if (dst.regClass() == v2b) {
-         Temp half_pi = bld.copy(bld.def(s1), Operand::c32(0x3118u));
-         Temp tmp = bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), half_pi, src);
          aco_opcode opcode =
-            instr->op == nir_op_fsin ? aco_opcode::v_sin_f16 : aco_opcode::v_cos_f16;
-         bld.vop1(opcode, Definition(dst), tmp);
+            instr->op == nir_op_fsin_amd ? aco_opcode::v_sin_f16 : aco_opcode::v_cos_f16;
+         bld.vop1(opcode, Definition(dst), src);
       } else if (dst.regClass() == v1) {
-         Temp half_pi = bld.copy(bld.def(s1), Operand::c32(0x3e22f983u));
-         Temp tmp = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), half_pi, src);
-
          /* before GFX9, v_sin_f32 and v_cos_f32 had a valid input domain of [-256, +256] */
          if (ctx->options->gfx_level < GFX9)
-            tmp = bld.vop1(aco_opcode::v_fract_f32, bld.def(v1), tmp);
+            src = bld.vop1(aco_opcode::v_fract_f32, bld.def(v1), src);
 
          aco_opcode opcode =
-            instr->op == nir_op_fsin ? aco_opcode::v_sin_f32 : aco_opcode::v_cos_f32;
-         bld.vop1(opcode, Definition(dst), tmp);
+            instr->op == nir_op_fsin_amd ? aco_opcode::v_sin_f32 : aco_opcode::v_cos_f32;
+         bld.vop1(opcode, Definition(dst), src);
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
       }

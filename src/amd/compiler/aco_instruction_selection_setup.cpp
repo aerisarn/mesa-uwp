@@ -501,8 +501,8 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_op_fceil:
                case nir_op_ftrunc:
                case nir_op_fround_even:
-               case nir_op_fsin:
-               case nir_op_fcos:
+               case nir_op_fsin_amd:
+               case nir_op_fcos_amd:
                case nir_op_f2f16:
                case nir_op_f2f16_rtz:
                case nir_op_f2f16_rtne:
