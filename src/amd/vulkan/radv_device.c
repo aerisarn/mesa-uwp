@@ -451,7 +451,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_4444_formats = true,
       .EXT_buffer_device_address = true,
       .EXT_calibrated_timestamps = RADV_SUPPORT_CALIBRATED_TIMESTAMPS,
-      .EXT_color_write_enable = false,
+      .EXT_color_write_enable = true,
       .EXT_conditional_rendering = true,
       .EXT_conservative_rasterization = device->rad_info.chip_class >= GFX9,
       .EXT_custom_border_color = true,
@@ -1652,6 +1652,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR *features =
             (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR *)ext;
          features->shaderSubgroupUniformControlFlow = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT: {
+         VkPhysicalDeviceColorWriteEnableFeaturesEXT *features =
+            (VkPhysicalDeviceColorWriteEnableFeaturesEXT *)ext;
+         features->colorWriteEnable = true;
          break;
       }
       default:

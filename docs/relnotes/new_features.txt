@@ -4,6 +4,7 @@ VK_EXT_extended_dynamic_state2 on RADV.
 VK_EXT_global_priority_query on RADV.
 VK_EXT_physical_device_drm on RADV.
 VK_KHR_shader_subgroup_uniform_control_flow on Intel and RADV.
+VK_EXT_color_write_enable on RADV.
 32-bit x86 builds now default disable x87 math and use sse2.
 GL ES 3.1 on GT21x hardware.
 VK_EXT_acquire_drm_display on RADV.
