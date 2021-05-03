@@ -103,6 +103,9 @@ struct dri3_screen {
    int fd;
    bool is_different_gpu;
 
+   /* fd for display GPU in case of prime */
+   int fd_display_gpu;
+
    int show_fps_interval;
 
    struct loader_dri3_extensions loader_dri3_ext;

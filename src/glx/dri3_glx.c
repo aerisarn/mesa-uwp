@@ -607,6 +607,8 @@ dri3_destroy_screen(struct glx_screen *base)
    struct dri3_screen *psc = (struct dri3_screen *) base;
 
    /* Free the direct rendering per screen data */
+   if (psc->is_different_gpu)
+      close(psc->fd_display_gpu);
    loader_dri3_close_screen(psc->driScreen);
    (*psc->core->destroyScreen) (psc->driScreen);
    driDestroyConfigs(psc->driver_configs);
@@ -842,6 +844,7 @@ dri3_create_screen(int screen, struct glx_display * priv)
       return NULL;
 
    psc->fd = -1;
+   psc->fd_display_gpu = -1;
 
    if (!glx_screen_init(&psc->base, screen, priv)) {
       free(psc);
@@ -862,7 +865,12 @@ dri3_create_screen(int screen, struct glx_display * priv)
       return NULL;
    }
 
+   psc->fd_display_gpu = fcntl(psc->fd, F_DUPFD_CLOEXEC, 3);
    psc->fd = loader_get_user_preferred_fd(psc->fd, &psc->is_different_gpu);
+   if (!psc->is_different_gpu) {
+      close(psc->fd_display_gpu);
+      psc->fd_display_gpu = -1;
+   }
 
    driverName = loader_get_driver_for_fd(psc->fd);
    if (!driverName) {
@@ -1013,6 +1021,8 @@ handle_error:
    psc->driScreen = NULL;
    if (psc->fd >= 0)
       close(psc->fd);
+   if (psc->fd_display_gpu >= 0)
+      close(psc->fd_display_gpu);
    if (psc->driver)
       dlclose(psc->driver);
 
