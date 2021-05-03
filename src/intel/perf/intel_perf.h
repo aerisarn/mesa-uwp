@@ -41,6 +41,10 @@
 
 #include "drm-uapi/i915_drm.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct intel_device_info;
 
 struct intel_perf_config;
@@ -509,5 +513,9 @@ void intel_perf_get_counters_passes(struct intel_perf_config *perf,
                                     const uint32_t *counter_indices,
                                     uint32_t counter_indices_count,
                                     struct intel_perf_counter_pass *counter_pass);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif /* INTEL_PERF_H */

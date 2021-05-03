@@ -22,6 +22,7 @@
  */
 
 #include <unistd.h>
+#include <poll.h>
 
 #include "common/intel_gem.h"
 
@@ -347,7 +348,7 @@ dec_n_users(struct intel_perf_context *perf_ctx)
    }
 }
 
-static void
+void
 intel_perf_close(struct intel_perf_context *perfquery,
                  const struct intel_perf_query_info *query)
 {
@@ -355,20 +356,21 @@ intel_perf_close(struct intel_perf_context *perfquery,
       close(perfquery->oa_stream_fd);
       perfquery->oa_stream_fd = -1;
    }
-   if (query->kind == INTEL_PERF_QUERY_TYPE_RAW) {
+   if (query && query->kind == INTEL_PERF_QUERY_TYPE_RAW) {
       struct intel_perf_query_info *raw_query =
          (struct intel_perf_query_info *) query;
       raw_query->oa_metrics_set_id = 0;
    }
 }
 
-static bool
+bool
 intel_perf_open(struct intel_perf_context *perf_ctx,
                 int metrics_set_id,
                 int report_format,
                 int period_exponent,
                 int drm_fd,
-                uint32_t ctx_id)
+                uint32_t ctx_id,
+                bool enable)
 {
    uint64_t properties[DRM_I915_PERF_PROP_MAX * 2];
    uint32_t p = 0;
@@ -402,7 +404,7 @@ intel_perf_open(struct intel_perf_context *perf_ctx,
    struct drm_i915_perf_open_param param = {
       .flags = I915_PERF_FLAG_FD_CLOEXEC |
                I915_PERF_FLAG_FD_NONBLOCK |
-               I915_PERF_FLAG_DISABLED,
+               (enable ? 0 : I915_PERF_FLAG_DISABLED),
       .num_properties = p / 2,
       .properties_ptr = (uintptr_t) properties,
    };
@@ -416,6 +418,9 @@ intel_perf_open(struct intel_perf_context *perf_ctx,
 
    perf_ctx->current_oa_metrics_set_id = metrics_set_id;
    perf_ctx->current_oa_format = report_format;
+
+   if (enable)
+      ++perf_ctx->n_oa_users;
 
    return true;
 }
@@ -829,7 +834,7 @@ intel_perf_begin_query(struct intel_perf_context *perf_ctx,
 
          if (!intel_perf_open(perf_ctx, metric_id, queryinfo->oa_format,
                             perf_ctx->period_exponent, perf_ctx->drm_fd,
-                            perf_ctx->hw_ctx))
+                            perf_ctx->hw_ctx, false))
             return false;
       } else {
          assert(perf_ctx->current_oa_metrics_set_id == metric_id &&
@@ -956,6 +961,33 @@ intel_perf_end_query(struct intel_perf_context *perf_ctx,
       unreachable("Unknown query type");
       break;
    }
+}
+
+bool intel_perf_oa_stream_ready(struct intel_perf_context *perf_ctx)
+{
+   struct pollfd pfd;
+
+   pfd.fd = perf_ctx->oa_stream_fd;
+   pfd.events = POLLIN;
+   pfd.revents = 0;
+
+   if (poll(&pfd, 1, 0) < 0) {
+      DBG("Error polling OA stream\n");
+      return false;
+   }
+
+   if (!(pfd.revents & POLLIN))
+      return false;
+
+   return true;
+}
+
+ssize_t
+intel_perf_read_oa_stream(struct intel_perf_context *perf_ctx,
+                          void* buf,
+                          size_t nbytes)
+{
+   return read(perf_ctx->oa_stream_fd, buf, nbytes);
 }
 
 enum OaReadStatus {
