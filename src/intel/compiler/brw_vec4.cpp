@@ -929,6 +929,9 @@ vec4_visitor::move_push_constants_to_pull_constants()
    if (this->uniforms * 4 <= max_uniform_components)
       return;
 
+   assert(compiler->supports_pull_constants);
+   assert(compiler->compact_params);
+
    /* Make some sort of choice as to which uniforms get sent to pull
     * constants.  We could potentially do something clever here like
     * look for the most infrequently used uniform vec4s, but leave
