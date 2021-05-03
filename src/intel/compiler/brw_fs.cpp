@@ -6152,6 +6152,72 @@ emit_a64_oword_block_header(const fs_builder &bld, const fs_reg &addr)
 }
 
 static void
+lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
+{
+   const intel_device_info *devinfo = bld.shader->devinfo;
+
+   /* Get the logical send arguments. */
+   const fs_reg &addr = inst->src[0];
+   const fs_reg &src = inst->src[1];
+   const unsigned src_sz = type_sz(src.type);
+
+   const unsigned src_comps = inst->components_read(1);
+   assert(inst->src[2].file == IMM);
+   const unsigned arg = inst->src[2].ud;
+   const bool has_side_effects = inst->has_side_effects();
+
+   /* If the surface message has side effects and we're a fragment shader, we
+    * have to predicate with the sample mask to avoid helper invocations.
+    */
+   if (has_side_effects && bld.shader->stage == MESA_SHADER_FRAGMENT)
+      emit_predicate_on_sample_mask(bld, inst);
+
+   fs_reg payload = retype(bld.move_to_vgrf(addr, 1), BRW_REGISTER_TYPE_UD);
+   fs_reg payload2 = retype(bld.move_to_vgrf(src, src_comps),
+                            BRW_REGISTER_TYPE_UD);
+   unsigned ex_mlen = src_comps * src_sz * inst->exec_size / REG_SIZE;
+
+   switch (inst->opcode) {
+   case SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL:
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD_CMASK, inst->exec_size,
+                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A64,
+                                1 /* num_coordinates */,
+                                LSC_DATA_SIZE_D32, arg /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_LOAD_L1STATE_L3MOCS,
+                                true /* has_dest */);
+      break;
+   case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_STORE_CMASK, inst->exec_size,
+                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A64,
+                                1 /* num_coordinates */,
+                                LSC_DATA_SIZE_D32, arg /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_STORE_L1STATE_L3MOCS,
+                                false /* has_dest */);
+      break;
+   default:
+      unreachable("Unknown A64 logical instruction");
+   }
+
+   /* Update the original instruction. */
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+   inst->ex_mlen = ex_mlen;
+   inst->header_size = 0;
+   inst->send_has_side_effects = has_side_effects;
+   inst->send_is_volatile = !has_side_effects;
+
+   /* Set up SFID and descriptors */
+   inst->sfid = GFX12_SFID_UGM;
+   inst->resize_sources(4);
+   inst->src[0] = brw_imm_ud(0); /* desc */
+   inst->src[1] = brw_imm_ud(0); /* ex_desc */
+   inst->src[2] = payload;
+   inst->src[3] = payload2;
+}
+
+static void
 lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
@@ -6658,6 +6724,10 @@ fs_visitor::lower_logical_sends()
 
       case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:
       case SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL:
+         if (devinfo->has_lsc) {
+            lower_lsc_a64_logical_send(ibld, inst);
+            break;
+         }
       case SHADER_OPCODE_A64_OWORD_BLOCK_READ_LOGICAL:
       case SHADER_OPCODE_A64_UNALIGNED_OWORD_BLOCK_READ_LOGICAL:
       case SHADER_OPCODE_A64_OWORD_BLOCK_WRITE_LOGICAL:
