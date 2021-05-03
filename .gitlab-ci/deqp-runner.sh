@@ -210,7 +210,7 @@ check_vk_device_name() {
     export LD_PRELOAD=
     DEVICENAME=`grep deviceName $RESULTS/deqp-info.qpa | sed 's|deviceName: ||g'`
     echo "deviceName: $DEVICENAME"
-    if [ -n "$DEQP_EXPECTED_RENDERER" -a "x$DEVICENAME" != "x$DEQP_EXPECTED_RENDERER" ]; then
+    if ! echo $DEVICENAME | grep -q "$DEQP_EXPECTED_RENDERER"; then
         echo "Expected deviceName $DEQP_EXPECTED_RENDERER"
         exit 1
     fi
