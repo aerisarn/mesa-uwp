@@ -17,6 +17,21 @@ export __LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$INSTALL/lib/"
 # run against the Mesa built by CI, rather than any installed distro version.
 MESA_VERSION=$(cat "$INSTALL/VERSION" | sed 's/\./\\./g')
 
+print_red() {
+    RED='\033[0;31m'
+    NC='\033[0m' # No Color
+    printf "${RED}"
+    "$@"
+    printf "${NC}"
+}
+
+# wrapper to supress +x to avoid spamming the log
+quiet() {
+    set +x
+    "$@"
+    set -x
+}
+
 if [ "$VK_DRIVER" ]; then
 
     ### VULKAN ###
@@ -43,15 +58,18 @@ if [ "$VK_DRIVER" ]; then
 
     # Set up the Window System Interface (WSI)
 
-    # IMPORTANT:
-    #
-    # Nothing to do here.
-    #
-    # Run vulkan against the host's running X server (xvfb doesn't
-    # have DRI3 support).
-    # Set the DISPLAY env variable in each gitlab-runner's
-    # configuration file:
-    # https://docs.gitlab.com/runner/configuration/advanced-configuration.html#the-runners-section
+    if [ ${TEST_START_XORG:-0} -eq 1 ]; then
+        "$INSTALL"/common/start-x.sh "$INSTALL"
+        export DISPLAY=:0
+    else
+        # Run vulkan against the host's running X server (xvfb doesn't
+        # have DRI3 support).
+        # Set the DISPLAY env variable in each gitlab-runner's
+        # configuration file:
+        # https://docs.gitlab.com/runner/configuration/advanced-configuration.html#the-runners-section
+        quiet printf "%s%s\n" "Running against the hosts' X server. " \
+              "DISPLAY is \"$DISPLAY\"."
+    fi
 else
 
     ### GL/ES ###
@@ -119,21 +137,6 @@ if [ -n "$CI_NODE_INDEX" ]; then
 
     USE_CASELIST=1
 fi
-
-print_red() {
-    RED='\033[0;31m'
-    NC='\033[0m' # No Color
-    printf "${RED}"
-    "$@"
-    printf "${NC}"
-}
-
-# wrapper to supress +x to avoid spamming the log
-quiet() {
-    set +x
-    "$@"
-    set -x
-}
 
 replay_minio_upload_images() {
     find "$RESULTS/$__PREFIX" -type f -name "*.png" -printf "%P\n" \
