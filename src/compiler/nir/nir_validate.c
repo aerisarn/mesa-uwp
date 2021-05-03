@@ -676,6 +676,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
    case nir_intrinsic_load_interpolated_input:
    case nir_intrinsic_load_output:
    case nir_intrinsic_load_per_vertex_output:
+   case nir_intrinsic_load_per_primitive_output:
    case nir_intrinsic_load_push_constant:
       /* All memory load operations must load at least a byte */
       validate_assert(state, nir_dest_bit_size(instr->dest) >= 8);
