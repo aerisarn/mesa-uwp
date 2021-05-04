@@ -6216,6 +6216,32 @@ lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
                                 LSC_CACHE_STORE_L1STATE_L3MOCS,
                                 false /* has_dest */);
       break;
+   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
+   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL:
+   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL: {
+   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT16_LOGICAL:
+   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT32_LOGICAL:
+      /* Bspec: Atomic instruction -> Cache section:
+       *
+       *    Atomic messages are always forced to "un-cacheable" in the L1
+       *    cache.
+       */
+      enum lsc_opcode opcode =
+         (inst->opcode == SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL ||
+          inst->opcode == SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL ||
+          inst->opcode == SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL) ?
+         brw_atomic_op_to_lsc_atomic_op(arg) :
+         brw_atomic_op_to_lsc_fatomic_op(arg);
+      inst->desc = lsc_msg_desc(devinfo, opcode, inst->exec_size,
+                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A64,
+                                1 /* num_coordinates */,
+                                lsc_bits_to_data_size(src_sz * 8),
+                                1 /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_STORE_L1UC_L3WB,
+                                !inst->dst.is_null());
+      break;
+   }
    default:
       unreachable("Unknown A64 logical instruction");
    }
@@ -6746,6 +6772,11 @@ fs_visitor::lower_logical_sends()
       case SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL:
       case SHADER_OPCODE_A64_BYTE_SCATTERED_WRITE_LOGICAL:
       case SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL:
+      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
+      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL:
+      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
+      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT16_LOGICAL:
+      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT32_LOGICAL:
          if (devinfo->has_lsc) {
             lower_lsc_a64_logical_send(ibld, inst);
             break;
@@ -6753,11 +6784,6 @@ fs_visitor::lower_logical_sends()
       case SHADER_OPCODE_A64_OWORD_BLOCK_READ_LOGICAL:
       case SHADER_OPCODE_A64_UNALIGNED_OWORD_BLOCK_READ_LOGICAL:
       case SHADER_OPCODE_A64_OWORD_BLOCK_WRITE_LOGICAL:
-      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
-      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL:
-      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
-      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT16_LOGICAL:
-      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT32_LOGICAL:
          lower_a64_logical_send(ibld, inst);
          break;
 
