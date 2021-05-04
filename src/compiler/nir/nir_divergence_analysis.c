@@ -124,6 +124,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_viewport_y_scale:
    case nir_intrinsic_load_viewport_z_scale:
    case nir_intrinsic_load_viewport_offset:
+   case nir_intrinsic_load_viewport_x_offset:
+   case nir_intrinsic_load_viewport_y_offset:
    case nir_intrinsic_load_viewport_z_offset:
    case nir_intrinsic_load_blend_const_color_a_float:
    case nir_intrinsic_load_blend_const_color_b_float:
@@ -146,6 +148,12 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_workgroup_num_input_vertices_amd:
    case nir_intrinsic_load_workgroup_num_input_primitives_amd:
    case nir_intrinsic_load_shader_query_enabled_amd:
+   case nir_intrinsic_load_cull_front_face_enabled_amd:
+   case nir_intrinsic_load_cull_back_face_enabled_amd:
+   case nir_intrinsic_load_cull_ccw_amd:
+   case nir_intrinsic_load_cull_small_primitives_enabled_amd:
+   case nir_intrinsic_load_cull_any_enabled_amd:
+   case nir_intrinsic_load_cull_small_prim_precision_amd:
       is_divergent = false;
       break;
 
