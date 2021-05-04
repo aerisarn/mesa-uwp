@@ -409,6 +409,33 @@ remove_culling_shader_outputs(nir_shader *culling_shader, lower_ngg_nogs_state *
    } while (progress);
 }
 
+static void
+rewrite_uses_to_var(nir_builder *b, nir_ssa_def *old_def, nir_variable *replacement_var, unsigned replacement_var_channel)
+{
+   if (old_def->parent_instr->type == nir_instr_type_load_const)
+      return;
+
+   b->cursor = nir_after_instr(old_def->parent_instr);
+   if (b->cursor.instr->type == nir_instr_type_phi)
+      b->cursor = nir_after_phis(old_def->parent_instr->block);
+
+   nir_ssa_def *pos_val_rep = nir_load_var(b, replacement_var);
+   nir_ssa_def *replacement = nir_channel(b, pos_val_rep, replacement_var_channel);
+
+   if (old_def->num_components > 1) {
+      /* old_def uses a swizzled vector component.
+       * There is no way to replace the uses of just a single vector component,
+       * so instead create a new vector and replace all uses of the old vector.
+       */
+      nir_ssa_def *old_def_elements[NIR_MAX_VEC_COMPONENTS] = {0};
+      for (unsigned j = 0; j < old_def->num_components; ++j)
+         old_def_elements[j] = nir_channel(b, old_def, j);
+      replacement = nir_vec(b, old_def_elements, old_def->num_components);
+   }
+
+   nir_ssa_def_rewrite_uses_after(old_def, replacement, replacement->parent_instr);
+}
+
 static bool
 remove_extra_pos_output(nir_builder *b, nir_instr *instr, void *state)
 {
@@ -433,9 +460,47 @@ remove_extra_pos_output(nir_builder *b, nir_instr *instr, void *state)
 
    b->cursor = nir_before_instr(instr);
 
-   /* TODO: in case other outputs use what we calculated for pos, rewrite the usages of the store components here */
+   /* In case other outputs use what we calculated for pos,
+    * try to avoid calculating it again by rewriting the usages
+    * of the store components here.
+    */
+   nir_ssa_def *store_val = intrin->src[0].ssa;
+   unsigned store_pos_component = nir_intrinsic_component(intrin);
 
    nir_instr_remove(instr);
+
+   if (store_val->parent_instr->type == nir_instr_type_alu) {
+      nir_alu_instr *alu = nir_instr_as_alu(store_val->parent_instr);
+      if (nir_op_is_vec(alu->op)) {
+         /* Output store uses a vector, we can easily rewrite uses of each vector element. */
+
+         unsigned num_vec_src = 0;
+         if (alu->op == nir_op_mov)
+            num_vec_src = 1;
+         else if (alu->op == nir_op_vec2)
+            num_vec_src = 2;
+         else if (alu->op == nir_op_vec3)
+            num_vec_src = 3;
+         else if (alu->op == nir_op_vec4)
+            num_vec_src = 4;
+         assert(num_vec_src);
+
+         /* Remember the current components whose uses we wish to replace.
+          * This is needed because rewriting one source can affect the others too.
+          */
+         nir_ssa_def *vec_comps[NIR_MAX_VEC_COMPONENTS] = {0};
+         for (unsigned i = 0; i < num_vec_src; i++)
+            vec_comps[i] = alu->src[i].src.ssa;
+
+         for (unsigned i = 0; i < num_vec_src; i++)
+            rewrite_uses_to_var(b, vec_comps[i], s->pos_value_replacement, store_pos_component + i);
+      } else {
+         rewrite_uses_to_var(b, store_val, s->pos_value_replacement, store_pos_component);
+      }
+   } else {
+      rewrite_uses_to_var(b, store_val, s->pos_value_replacement, store_pos_component);
+   }
+
    return true;
 }
 
