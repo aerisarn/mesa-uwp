@@ -6423,6 +6423,85 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
 }
 
 static void
+lower_lsc_varying_pull_constant_logical_send(const fs_builder &bld,
+                                             fs_inst *inst)
+{
+   const intel_device_info *devinfo = bld.shader->devinfo;
+   ASSERTED const brw_compiler *compiler = bld.shader->compiler;
+
+   fs_reg index = inst->src[0];
+
+   /* We are switching the instruction from an ALU-like instruction to a
+    * send-from-grf instruction.  Since sends can't handle strides or
+    * source modifiers, we have to make a copy of the offset source.
+    */
+   fs_reg ubo_offset = bld.move_to_vgrf(inst->src[1], 1);
+
+   assert(inst->src[2].file == BRW_IMMEDIATE_VALUE);
+   unsigned alignment = inst->src[2].ud;
+
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->sfid = GFX12_SFID_UGM;
+   inst->resize_sources(3);
+   inst->src[0] = brw_imm_ud(0);
+
+   if (index.file == IMM) {
+      inst->src[1] = brw_imm_ud(lsc_bti_ex_desc(devinfo, index.ud));
+   } else {
+      const fs_builder ubld = bld.exec_all().group(1, 0);
+      fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+      ubld.SHL(tmp, index, brw_imm_ud(24));
+      inst->src[1] = component(tmp, 0);
+   }
+
+   assert(!compiler->indirect_ubos_use_sampler);
+
+   inst->src[2] = ubo_offset; /* payload */
+   if (alignment >= 4) {
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD_CMASK, inst->exec_size,
+                                LSC_ADDR_SURFTYPE_BTI, LSC_ADDR_SIZE_A32,
+                                1 /* num_coordinates */,
+                                LSC_DATA_SIZE_D32,
+                                4 /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_LOAD_L1STATE_L3MOCS,
+                                true /* has_dest */);
+      inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+   } else {
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD, inst->exec_size,
+                                LSC_ADDR_SURFTYPE_BTI, LSC_ADDR_SIZE_A32,
+                                1 /* num_coordinates */,
+                                LSC_DATA_SIZE_D32,
+                                1 /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_LOAD_L1STATE_L3MOCS,
+                                true /* has_dest */);
+      inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+      /* The byte scattered messages can only read one dword at a time so
+       * we have to duplicate the message 4 times to read the full vec4.
+       * Hopefully, dead code will clean up the mess if some of them aren't
+       * needed.
+       */
+      assert(inst->size_written == 16 * inst->exec_size);
+      inst->size_written /= 4;
+      for (unsigned c = 1; c < 4; c++) {
+         /* Emit a copy of the instruction because we're about to modify
+          * it.  Because this loop starts at 1, we will emit copies for the
+          * first 3 and the final one will be the modified instruction.
+          */
+         bld.emit(*inst);
+
+         /* Offset the source */
+         inst->src[2] = bld.vgrf(BRW_REGISTER_TYPE_UD);
+         bld.ADD(inst->src[2], ubo_offset, brw_imm_ud(c * 4));
+
+         /* Offset the destination */
+         inst->dst = offset(inst->dst, bld, 1);
+      }
+   }
+}
+
+static void
 lower_varying_pull_constant_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
@@ -6788,7 +6867,10 @@ fs_visitor::lower_logical_sends()
          break;
 
       case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_LOGICAL:
-         lower_varying_pull_constant_logical_send(ibld, inst);
+         if (devinfo->has_lsc && !compiler->indirect_ubos_use_sampler)
+            lower_lsc_varying_pull_constant_logical_send(ibld, inst);
+         else
+            lower_varying_pull_constant_logical_send(ibld, inst);
          break;
 
       case SHADER_OPCODE_RCP:
