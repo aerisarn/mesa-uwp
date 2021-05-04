@@ -775,6 +775,7 @@ vec4_visitor::pack_uniform_registers()
 
    ralloc_free(param);
    this->uniforms = new_uniform_count;
+   stage_prog_data->nr_params = new_uniform_count * 4;
 
    /* Now, update the instructions for our repacked uniforms. */
    foreach_block_and_inst(block, vec4_instruction, inst, cfg) {
@@ -1833,8 +1834,6 @@ vec4_visitor::setup_uniforms(int reg)
 
    for (int i = 0; i < 4; i++)
       reg += stage_prog_data->ubo_ranges[i].length;
-
-   stage_prog_data->nr_params = this->uniforms * 4;
 
    prog_data->base.curb_read_length =
       reg - prog_data->base.dispatch_grf_start_reg;
