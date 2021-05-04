@@ -2218,43 +2218,27 @@ void anv_GetPhysicalDeviceProperties2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR: {
          VkPhysicalDeviceFragmentShadingRatePropertiesKHR *props =
             (VkPhysicalDeviceFragmentShadingRatePropertiesKHR *)ext;
-         if (pdevice->info.ver < 11) {
-            props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
-            props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
-            props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 0;
-            props->primitiveFragmentShadingRateWithMultipleViewports = false;
-            props->layeredShadingRateAttachments = false;
-            props->fragmentShadingRateNonTrivialCombinerOps = true;
-            props->maxFragmentSize = (VkExtent2D) { 1, 1 };
-            props->maxFragmentSizeAspectRatio = 1;
-            props->maxFragmentShadingRateCoverageSamples = 0;
-            props->maxFragmentShadingRateRasterizationSamples = 0;
-            props->fragmentShadingRateWithShaderDepthStencilWrites = false;
-            props->fragmentShadingRateWithSampleMask = false;
-            props->fragmentShadingRateWithShaderSampleMask = false;
-            props->fragmentShadingRateWithConservativeRasterization = true;
-            props->fragmentShadingRateWithFragmentShaderInterlock = false;
-            props->fragmentShadingRateWithCustomSampleLocations = false;
-            props->fragmentShadingRateStrictMultiplyCombiner = false;
-         } else {
-            props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 1, 1 };
-            props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 4, 4 };
-            props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 0;
-            props->primitiveFragmentShadingRateWithMultipleViewports = pdevice->info.ver >= 12;
-            props->layeredShadingRateAttachments = false;
-            props->fragmentShadingRateNonTrivialCombinerOps = true;
-            props->maxFragmentSize = (VkExtent2D) { 4, 4 };
-            props->maxFragmentSizeAspectRatio = 4;
-            props->maxFragmentShadingRateCoverageSamples = 4 * 4;
-            props->maxFragmentShadingRateRasterizationSamples = VK_SAMPLE_COUNT_16_BIT;
-            props->fragmentShadingRateWithShaderDepthStencilWrites = false;
-            props->fragmentShadingRateWithSampleMask = true;
-            props->fragmentShadingRateWithShaderSampleMask = false;
-            props->fragmentShadingRateWithConservativeRasterization = true;
-            props->fragmentShadingRateWithFragmentShaderInterlock = true;
-            props->fragmentShadingRateWithCustomSampleLocations = true;
-            props->fragmentShadingRateStrictMultiplyCombiner = false;
-         }
+         /* Those must be 0 if attachmentFragmentShadingRate is not
+          * supported.
+          */
+         props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
+         props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
+         props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 0;
+
+         props->primitiveFragmentShadingRateWithMultipleViewports = pdevice->info.ver >= 12;
+         props->layeredShadingRateAttachments = false;
+         props->fragmentShadingRateNonTrivialCombinerOps = true;
+         props->maxFragmentSize = (VkExtent2D) { 4, 4 };
+         props->maxFragmentSizeAspectRatio = 4;
+         props->maxFragmentShadingRateCoverageSamples = 4 * 4;
+         props->maxFragmentShadingRateRasterizationSamples = VK_SAMPLE_COUNT_16_BIT;
+         props->fragmentShadingRateWithShaderDepthStencilWrites = false;
+         props->fragmentShadingRateWithSampleMask = true;
+         props->fragmentShadingRateWithShaderSampleMask = false;
+         props->fragmentShadingRateWithConservativeRasterization = true;
+         props->fragmentShadingRateWithFragmentShaderInterlock = true;
+         props->fragmentShadingRateWithCustomSampleLocations = true;
+         props->fragmentShadingRateStrictMultiplyCombiner = false;
          break;
       }
 
