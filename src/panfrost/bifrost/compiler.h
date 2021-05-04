@@ -524,6 +524,9 @@ typedef struct bi_block {
         /* If true, uses clauses; if false, uses instructions */
         bool scheduled;
         struct list_head clauses; /* list of bi_clause */
+
+        /* Post-RA liveness */
+        uint64_t reg_live_in, reg_live_out;
 } bi_block;
 
 typedef struct {
@@ -771,10 +774,12 @@ void bi_print_shader(bi_context *ctx, FILE *fp);
 /* BIR passes */
 
 void bi_opt_copy_prop(bi_context *ctx);
-void bi_opt_dead_code_eliminate(bi_context *ctx, bool soft);
+void bi_opt_dead_code_eliminate(bi_context *ctx);
+void bi_opt_dce_post_ra(bi_context *ctx);
 void bi_opt_push_ubo(bi_context *ctx);
 void bi_opt_constant_fold(bi_context *ctx);
 void bi_lower_swizzle(bi_context *ctx);
+void bi_lower_fau(bi_context *ctx);
 void bi_schedule(bi_context *ctx);
 void bi_assign_scoreboard(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
@@ -783,14 +788,6 @@ void bi_register_allocate(bi_context *ctx);
 int bi_test_scheduler(void);
 int bi_test_packing(void);
 int bi_test_packing_formats(void);
-
-bi_clause *
-bi_singleton(void *memctx, bi_instr *ins,
-                bi_block *block,
-                unsigned scoreboard_id,
-                unsigned dependencies,
-                uint64_t combined_constant,
-                bool osrb);
 
 /* Liveness */
 

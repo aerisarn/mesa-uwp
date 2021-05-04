@@ -104,10 +104,10 @@ struct bi_clause_state {
         /* Has a message-passing instruction already been assigned? */
         bool message;
 
-        /* Indices already read, this needs to be tracked to avoid hazards
+        /* Indices already accessed, this needs to be tracked to avoid hazards
          * around message-passing instructions */
-        unsigned read_count;
-        bi_index reads[BI_MAX_SRCS * 16];
+        unsigned access_count;
+        bi_index accesses[(BI_MAX_SRCS + 1) * 16];
 
         unsigned tuple_count;
         struct bi_const_state consts[8];
@@ -223,13 +223,15 @@ bi_lower_seg_add(bi_context *ctx,
         bi_instr *pinstr = tuple->add;
         bi_builder b = bi_init_builder(ctx, bi_before_instr(pinstr));
 
-        bi_instr *fma = bi_seg_add_to(&b, bi_word(pinstr->dest[0], 0),
-                        pinstr->src[0], pinstr->preserve_null, pinstr->seg);
+        bi_instr *fma = bi_seg_add_to(&b, pinstr->dest[0], pinstr->src[0],
+                        pinstr->preserve_null, pinstr->seg);
 
         pinstr->op = BI_OPCODE_SEG_ADD;
-        pinstr->dest[0] = bi_word(pinstr->dest[0], 1);
         pinstr->src[0] = pinstr->src[1];
         pinstr->src[1] = bi_null();
+
+        assert(pinstr->dest[0].type == BI_INDEX_REGISTER);
+        pinstr->dest[0].value += 1;
 
         return fma;
 }
@@ -323,59 +325,6 @@ bi_back_to_back(bi_block *block)
 
         /* Back to back only if the successor has only a single predecessor */
         return (count == 1);
-}
-
-/* Insert a clause wrapping a single instruction */
-
-bi_clause *
-bi_singleton(void *memctx, bi_instr *ins,
-                bi_block *block,
-                unsigned scoreboard_id,
-                unsigned dependencies,
-                uint64_t combined_constant,
-                bool osrb)
-{
-        bi_clause *u = rzalloc(memctx, bi_clause);
-        u->tuple_count = 1;
-
-        ASSERTED bool can_fma = bi_opcode_props[ins->op].fma;
-        bool can_add = bi_opcode_props[ins->op].add;
-        assert(can_fma || can_add);
-
-        if (can_add)
-                u->tuples[0].add = ins;
-        else
-                u->tuples[0].fma = ins;
-
-        u->scoreboard_id = scoreboard_id;
-        u->staging_barrier = osrb;
-        u->dependencies = dependencies;
-
-        if (ins->op == BI_OPCODE_ATEST)
-                u->dependencies |= (1 << 6);
-
-        if (ins->op == BI_OPCODE_BLEND)
-                u->dependencies |= (1 << 6) | (1 << 7);
-
-        /* Let's be optimistic, we'll fix up later */
-        u->flow_control = BIFROST_FLOW_NBTB;
-
-        assert(!ins->branch_target);
-
-        if (combined_constant) {
-                /* Clause in 64-bit, above in 32-bit */
-                u->constant_count = 1;
-                u->constants[0] = combined_constant;
-                u->tuples[0].fau_idx = bi_constant_field(0) |
-                        (combined_constant & 0xF);
-        }
-
-        u->next_clause_prefetch = (ins->op != BI_OPCODE_JUMP);
-        u->message_type = bi_message_type_for_instr(ins);
-        u->message = u->message_type ? ins : NULL;
-        u->block = block;
-
-        return u;
 }
 
 /* Scheduler predicates */
@@ -696,16 +645,17 @@ bi_has_staging_passthrough_hazard(bi_index fma, bi_instr *add)
 {
         bi_foreach_src(add, s) {
                 bi_index src = add->src[s];
+
+                if (src.type != BI_INDEX_REGISTER)
+                        continue;
+
                 unsigned count = bi_count_read_registers(add, s);
+                bool read = false;
 
-                if (!bi_is_equiv(fma, src))
-                        continue;
+                for (unsigned d = 0; d < count; ++d)
+                        read |= bi_is_equiv(fma, bi_register(src.value + d));
 
-                /* fma \in [src, src + src_count) */
-                if (!(fma.offset >= src.offset && fma.offset < src.offset + count))
-                        continue;
-
-                if (!bi_reads_t(add, s))
+                if (read && !bi_reads_t(add, s))
                         return true;
         }
 
@@ -769,12 +719,33 @@ bi_instr_schedulable(bi_instr *instr,
 
         /* Message-passing instructions are not guaranteed write within the
          * same clause (most likely they will not), so if a later instruction
-         * in the clause reads from the destination, the message-passing
+         * in the clause accesses the destination, the message-passing
          * instruction can't be scheduled */
-        if (bi_opcode_props[instr->op].sr_write) {
-                for (unsigned i = 0; i < clause->read_count; ++i) {
-                        if (bi_is_equiv(instr->dest[0], clause->reads[i]))
-                                return false;
+        if (bi_opcode_props[instr->op].sr_write && !bi_is_null(instr->dest[0])) {
+                unsigned nr = bi_count_write_registers(instr, 0);
+                assert(instr->dest[0].type == BI_INDEX_REGISTER);
+                unsigned reg = instr->dest[0].value;
+
+                for (unsigned i = 0; i < clause->access_count; ++i) {
+                        bi_index idx = clause->accesses[i];
+                        for (unsigned d = 0; d < nr; ++d) {
+                                if (bi_is_equiv(bi_register(reg + d), idx))
+                                        return false;
+                        }
+                }
+        }
+
+        if (bi_opcode_props[instr->op].sr_read && !bi_is_null(instr->src[0])) {
+                unsigned nr = bi_count_read_registers(instr, 0);
+                assert(instr->src[0].type == BI_INDEX_REGISTER);
+                unsigned reg = instr->src[0].value;
+
+                for (unsigned i = 0; i < clause->access_count; ++i) {
+                        bi_index idx = clause->accesses[i];
+                        for (unsigned d = 0; d < nr; ++d) {
+                                if (bi_is_equiv(bi_register(reg + d), idx))
+                                        return false;
+                        }
                 }
         }
 
@@ -853,7 +824,7 @@ bi_choose_index(struct bi_worklist st,
 
                 signed cost = bi_instr_cost(instr);
 
-                if (cost <= best_cost) {
+                if (cost < best_cost) {
                         best_idx = i;
                         best_cost = cost;
                 }
@@ -869,9 +840,10 @@ bi_pop_instr(struct bi_clause_state *clause, struct bi_tuple_state *tuple,
         bi_update_fau(clause, tuple, instr, fma, true);
 
         /* TODO: maybe opt a bit? or maybe doesn't matter */
-        assert(clause->read_count + BI_MAX_SRCS <= ARRAY_SIZE(clause->reads));
-        memcpy(clause->reads + clause->read_count, instr->src, sizeof(instr->src));
-        clause->read_count += BI_MAX_SRCS;
+        assert(clause->access_count + BI_MAX_SRCS <= ARRAY_SIZE(clause->accesses));
+        memcpy(clause->accesses + clause->access_count, instr->src, sizeof(instr->src));
+        clause->access_count += BI_MAX_SRCS;
+        clause->accesses[clause->access_count++] = instr->dest[0];
 
         if (bi_writes_reg(instr))
                 tuple->reg.nr_writes++;
@@ -915,6 +887,7 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
 
         /* Update state to reflect taking the instruction */
         bi_instr *instr = st.instructions[idx];
+
         BITSET_CLEAR(st.worklist, idx);
         bi_update_worklist(st, idx);
         bi_pop_instr(clause, tuple, instr, fma);
@@ -1577,13 +1550,11 @@ bi_check_fau_src(bi_instr *ins, unsigned s, uint32_t *constants, unsigned *cword
         return true;
 }
 
-static void
-bi_lower_fau(bi_context *ctx, bi_block *block)
+void
+bi_lower_fau(bi_context *ctx)
 {
-        bi_builder b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
-
-        bi_foreach_instr_in_block_safe(block, _ins) {
-                bi_instr *ins = (bi_instr *) _ins;
+        bi_foreach_instr_global_safe(ctx, ins) {
+                bi_builder b = bi_init_builder(ctx, bi_before_instr(ins));
 
                 uint32_t constants[2];
                 unsigned cwords = 0;
@@ -1597,7 +1568,6 @@ bi_lower_fau(bi_context *ctx, bi_block *block)
                 bi_foreach_src(ins, s) {
                         if (bi_check_fau_src(ins, s, constants, &cwords, &fau)) continue;
 
-                        b.cursor = bi_before_instr(ins);
                         bi_index copy = bi_mov_i32(&b, ins->src[s]);
                         ins->src[s] = bi_replace_index(ins->src[s], copy);
                 }
@@ -1609,11 +1579,10 @@ bi_schedule(bi_context *ctx)
 {
         bi_foreach_block(ctx, block) {
                 bi_block *bblock = (bi_block *) block;
-                bi_lower_fau(ctx, bblock);
                 bi_schedule_block(ctx, bblock);
         }
 
-        bi_opt_dead_code_eliminate(ctx, true);
+        bi_opt_dce_post_ra(ctx);
 }
 
 #ifndef NDEBUG

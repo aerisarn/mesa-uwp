@@ -29,42 +29,10 @@
 #include "panfrost/util/lcra.h"
 #include "util/u_memory.h"
 
-/* A clause may contain 1 message-passing instruction.  No subsequent
- * instruction in the clause may access its registers due to data races.
- * Scheduling ensures this is possible but RA needs to preserve this. The
- * simplest solution is forcing accessed registers live in _all_ words at the
- * end (and consequently throughout) the clause, addressing corner cases where
- * a single component is masked out */
-
 static void
-bi_mark_msg_live(bi_block *block, bi_clause *clause, unsigned node_count, uint16_t *live)
+bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, unsigned node_count, bool is_blend)
 {
-        bi_foreach_instr_in_clause(block, clause, ins) {
-                if (!bi_opcode_props[ins->op].message) continue;
-
-                bi_foreach_dest(ins, d) {
-                        unsigned node = bi_get_node(ins->dest[d]);
-                        if (node < node_count)
-                                live[node] |= bi_writemask(ins, d);
-                }
-
-                bi_foreach_src(ins, s) {
-                        unsigned node = bi_get_node(ins->src[s]);
-                        if (node < node_count) {
-                                unsigned count = bi_count_read_registers(ins, s);
-                                unsigned rmask = (1 << (4 * count)) - 1;
-                                live[node] |= (rmask << (4 * ins->src[s].offset));
-                        }
-                }
-
-                break;
-        }
-}
-
-static void
-bi_mark_interference(bi_block *block, bi_clause *clause, struct lcra_state *l, uint16_t *live, unsigned node_count, bool is_blend)
-{
-        bi_foreach_instr_in_clause_rev(block, clause, ins) {
+        bi_foreach_instr_in_block_rev(block, ins) {
                 /* Mark all registers live after the instruction as
                  * interfering with the destination */
 
@@ -111,11 +79,8 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
                 bi_block *blk = (bi_block *) _blk;
                 uint16_t *live = mem_dup(_blk->live_out, node_count * sizeof(uint16_t));
 
-                bi_foreach_clause_in_block_rev(blk, clause) {
-                        bi_mark_msg_live(blk, clause, node_count, live);
-                        bi_mark_interference(blk, clause, l, live, node_count,
-                                             ctx->inputs->is_blend);
-                }
+                bi_mark_interference(blk, l, live, node_count,
+                                     ctx->inputs->is_blend);
 
                 free(live);
         }
@@ -261,79 +226,57 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
 
 static void
 bi_spill_dest(bi_builder *b, bi_index index, bi_index temp, uint32_t offset,
-                bi_clause *clause, bi_block *block, unsigned channels)
+                bi_instr *instr, bi_block *block, unsigned channels)
 {
-        b->cursor = bi_after_clause(clause);
-
-        /* setup FAU as [offset][0] */
-        bi_instr *st = bi_store(b, channels * 32, temp,
-                        bi_passthrough(BIFROST_SRC_FAU_LO),
-                        bi_passthrough(BIFROST_SRC_FAU_HI),
+        b->cursor = bi_after_instr(instr);
+        bi_store(b, channels * 32, temp, bi_imm_u32(offset), bi_zero(),
                         BI_SEG_TL);
 
-        bi_clause *singleton = bi_singleton(b->shader, st, block, 0, (1 << 0),
-                        offset, true);
-
-        list_add(&singleton->link, &clause->link);
         b->shader->spills++;
 }
 
 static void
 bi_fill_src(bi_builder *b, bi_index index, bi_index temp, uint32_t offset,
-                bi_clause *clause, bi_block *block, unsigned channels)
+                bi_instr *instr, bi_block *block, unsigned channels)
 {
-        b->cursor = bi_before_clause(clause);
+        b->cursor = bi_before_instr(instr);
         bi_instr *ld = bi_load_to(b, channels * 32, temp,
-                        bi_passthrough(BIFROST_SRC_FAU_LO),
-                        bi_passthrough(BIFROST_SRC_FAU_HI),
-                        BI_SEG_TL);
+                        bi_imm_u32(offset), bi_zero(), BI_SEG_TL);
         ld->no_spill = true;
 
-        bi_clause *singleton = bi_singleton(b->shader, ld, block, 0,
-                        (1 << 0), offset, true);
-
-        list_addtail(&singleton->link, &clause->link);
         b->shader->fills++;
 }
 
 static unsigned
-bi_clause_mark_spill(bi_context *ctx, bi_block *block,
-                bi_clause *clause, bi_index index, bi_index *temp)
+bi_instr_mark_spill(bi_context *ctx, bi_block *block,
+                bi_instr *ins, bi_index index, bi_index *temp)
 {
         unsigned channels = 0;
 
-        bi_foreach_instr_in_clause(block, clause, ins) {
-                bi_foreach_dest(ins, d) {
-                        if (!bi_is_equiv(ins->dest[d], index)) continue;
-                        if (bi_is_null(*temp)) *temp = bi_temp_reg(ctx);
-                        ins->no_spill = true;
+        bi_foreach_dest(ins, d) {
+                if (!bi_is_equiv(ins->dest[d], index)) continue;
+                if (bi_is_null(*temp)) *temp = bi_temp_reg(ctx);
+                ins->no_spill = true;
 
-                        unsigned offset = ins->dest[d].offset;
-                        ins->dest[d] = bi_replace_index(ins->dest[d], *temp);
-                        ins->dest[d].offset = offset;
+                unsigned offset = ins->dest[d].offset;
+                ins->dest[d] = bi_replace_index(ins->dest[d], *temp);
+                ins->dest[d].offset = offset;
 
-                        unsigned newc = util_last_bit(bi_writemask(ins, d)) >> 2;
-                        channels = MAX2(channels, newc);
-                }
+                unsigned newc = util_last_bit(bi_writemask(ins, d)) >> 2;
+                channels = MAX2(channels, newc);
         }
 
         return channels;
 }
 
 static bool
-bi_clause_mark_fill(bi_context *ctx, bi_block *block, bi_clause *clause,
+bi_instr_mark_fill(bi_context *ctx, bi_block *block, bi_instr *ins,
                 bi_index index, bi_index *temp)
 {
-        bool fills = false;
-
-        bi_foreach_instr_in_clause(block, clause, ins) {
-                if (!bi_has_arg(ins, index)) continue;
-                if (bi_is_null(*temp)) *temp = bi_temp_reg(ctx);
-                bi_rewrite_index_src_single(ins, index, *temp);
-                fills = true;
-        }
-
-        return fills;
+        if (!bi_has_arg(ins, index)) return false;
+        if (bi_is_null(*temp)) *temp = bi_temp_reg(ctx);
+        bi_rewrite_index_src_single(ins, index, *temp);
+        return true;
 }
 
 /* Once we've chosen a spill node, spill it. Precondition: node is a valid
@@ -351,17 +294,16 @@ bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
         /* Spill after every store, fill before every load */
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
-                bi_foreach_clause_in_block_safe(block, clause) {
-                        bi_index tmp = bi_null();
-
-                        unsigned local_channels = bi_clause_mark_spill(ctx,
-                                        block, clause, index, &tmp);
+                bi_foreach_instr_in_block_safe(block, instr) {
+                        bi_index tmp;
+                        unsigned local_channels = bi_instr_mark_spill(ctx,
+                                        block, instr, index, &tmp);
 
                         channels = MAX2(channels, local_channels);
 
                         if (local_channels) {
                                 bi_spill_dest(&_b, index, tmp, offset,
-                                                clause, block, channels);
+                                                instr, block, channels);
                         }
 
                         /* For SSA form, if we write/spill, there was no prior
@@ -369,11 +311,11 @@ bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
                          * garbage */
 
                         bool should_fill = !local_channels || index.reg;
-                        should_fill &= bi_clause_mark_fill(ctx, block, clause,
+                        should_fill &= bi_instr_mark_fill(ctx, block, instr,
                                         index, &tmp);
 
                         if (should_fill) {
-                                bi_fill_src(&_b, index, tmp, offset, clause,
+                                bi_fill_src(&_b, index, tmp, offset, instr,
                                                 block, channels);
                         }
                 }
