@@ -3140,6 +3140,15 @@ bifrost_nir_lower_i8_frag(struct nir_builder *b,
                 return false;
 }
 
+static void
+bi_opt_post_ra(bi_context *ctx)
+{
+        bi_foreach_instr_global_safe(ctx, ins) {
+                if (ins->op == BI_OPCODE_MOV_I32 && bi_is_equiv(ins->dest[0], ins->src[0]))
+                        bi_remove_instruction(ins);
+        }
+}
+
 /* Dead code elimination for branches at the end of a block - only one branch
  * per block is legal semantically, but unreachable jumps can be generated.
  * Likewise we can generate jumps to the terminal block which need to be
@@ -3280,6 +3289,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 bi_print_shader(ctx, stdout);
         bi_lower_fau(ctx);
         bi_register_allocate(ctx);
+        bi_opt_post_ra(ctx);
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
         bi_schedule(ctx);
