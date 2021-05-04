@@ -920,18 +920,17 @@ vec4_visitor::move_push_constants_to_pull_constants()
 {
    int pull_constant_loc[this->uniforms];
 
-   /* Only allow 32 registers (256 uniform components) as push constants,
-    * which is the limit on gfx6.
-    *
-    * If changing this value, note the limitation about total_regs in
-    * brw_curbe.c.
-    */
-   int max_uniform_components = 32 * 8;
+   const int max_uniform_components = push_length * 8;
+
    if (this->uniforms * 4 <= max_uniform_components)
       return;
 
    assert(compiler->supports_pull_constants);
    assert(compiler->compact_params);
+
+   /* If we got here, we also can't have any push ranges */
+   for (unsigned i = 0; i < 4; i++)
+      assert(prog_data->base.ubo_ranges[i].length == 0);
 
    /* Make some sort of choice as to which uniforms get sent to pull
     * constants.  We could potentially do something clever here like
@@ -1811,34 +1810,64 @@ vec4_vs_visitor::setup_attributes(int payload_reg)
    return payload_reg + vs_prog_data->nr_attribute_slots;
 }
 
+void
+vec4_visitor::setup_push_ranges()
+{
+   /* Only allow 32 registers (256 uniform components) as push constants,
+    * which is the limit on gfx6.
+    *
+    * If changing this value, note the limitation about total_regs in
+    * brw_curbe.c.
+    */
+   const unsigned max_push_length = 32;
+
+   push_length = DIV_ROUND_UP(prog_data->base.nr_params, 8);
+   push_length = MIN2(push_length, max_push_length);
+
+   /* Shrink UBO push ranges so it all fits in max_push_length */
+   for (unsigned i = 0; i < 4; i++) {
+      struct brw_ubo_range *range = &prog_data->base.ubo_ranges[i];
+
+      if (push_length + range->length > max_push_length)
+         range->length = max_push_length - push_length;
+
+      push_length += range->length;
+   }
+   assert(push_length <= max_push_length);
+}
+
 int
 vec4_visitor::setup_uniforms(int reg)
 {
-   prog_data->base.dispatch_grf_start_reg = reg;
+   /* It's possible that uniform compaction will shrink further than expected
+    * so we re-compute the layout and set up our UBO push starts.
+    */
+   const unsigned old_push_length = push_length;
+   push_length = DIV_ROUND_UP(prog_data->base.nr_params, 8);
+   for (unsigned i = 0; i < 4; i++) {
+      ubo_push_start[i] = push_length;
+      push_length += stage_prog_data->ubo_ranges[i].length;
+   }
+   assert(push_length <= old_push_length);
+   if (push_length < old_push_length)
+      assert(compiler->compact_params);
 
    /* The pre-gfx6 VS requires that some push constants get loaded no
     * matter what, or the GPU would hang.
     */
-   if (devinfo->ver < 6 && this->uniforms == 0) {
+   if (devinfo->ver < 6 && push_length == 0) {
       brw_stage_prog_data_add_params(stage_prog_data, 4);
       for (unsigned int i = 0; i < 4; i++) {
 	 unsigned int slot = this->uniforms * 4 + i;
 	 stage_prog_data->param[slot] = BRW_PARAM_BUILTIN_ZERO;
       }
-
-      this->uniforms++;
-      reg++;
-   } else {
-      reg += ALIGN(uniforms, 2) / 2;
+      push_length = 1;
    }
 
-   for (int i = 0; i < 4; i++)
-      reg += stage_prog_data->ubo_ranges[i].length;
+   prog_data->base.dispatch_grf_start_reg = reg;
+   prog_data->base.curb_read_length = push_length;
 
-   prog_data->base.curb_read_length =
-      reg - prog_data->base.dispatch_grf_start_reg;
-
-   return reg;
+   return reg + push_length;
 }
 
 void
@@ -2666,6 +2695,8 @@ vec4_visitor::run()
 {
    if (shader_time_index >= 0)
       emit_shader_time_begin();
+
+   setup_push_ranges();
 
    emit_prolog();
 
