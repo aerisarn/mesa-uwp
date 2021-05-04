@@ -2568,6 +2568,7 @@ bi_is_simple_tex(nir_tex_instr *instr)
         switch (instr->sampler_dim) {
         case GLSL_SAMPLER_DIM_2D:
         case GLSL_SAMPLER_DIM_EXTERNAL:
+        case GLSL_SAMPLER_DIM_RECT:
                 break;
 
         case GLSL_SAMPLER_DIM_CUBE:
