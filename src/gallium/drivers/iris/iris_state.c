@@ -6105,6 +6105,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
 
       if ((dirty & IRIS_DIRTY_SO_DECL_LIST) && ice->state.streamout) {
+         /* Wa_16011773973:
+          * If SOL is enabled and SO_DECL state has to be programmed,
+          *    1. Send 3D State SOL state with SOL disabled
+          *    2. Send SO_DECL NP state
+          *    3. Send 3D State SOL with SOL Enabled
+          */
+         if (intel_device_info_is_dg2(&batch->screen->devinfo))
+            iris_emit_cmd(batch, GENX(3DSTATE_STREAMOUT), sol);
+
          uint32_t *decl_list =
             ice->state.streamout + GENX(3DSTATE_STREAMOUT_length);
          iris_batch_emit(batch, decl_list, 4 * ((decl_list[0] & 0xff) + 2));
