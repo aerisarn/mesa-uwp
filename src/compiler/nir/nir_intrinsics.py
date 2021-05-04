@@ -1102,6 +1102,9 @@ intrinsic("load_buffer_amd", src_comp=[4, 1, 1], dest_comp=0, indices=[BASE, IS_
 # src[] = { store value, descriptor, base address, scalar offset }
 intrinsic("store_buffer_amd", src_comp=[0, 4, 1, 1], indices=[BASE, WRITE_MASK, IS_SWIZZLED, SLC_AMD, MEMORY_MODES])
 
+# Same as shared_atomic_add, but with GDS. src[] = {store_val, gds_addr, m0}
+intrinsic("gds_atomic_add_amd",  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
+
 # Descriptor where TCS outputs are stored for TES
 system_value("ring_tess_offchip_amd", 4)
 system_value("ring_tess_offchip_offset_amd", 1)
@@ -1118,6 +1121,33 @@ system_value("tcs_num_patches_amd", 1)
 system_value("tess_rel_patch_id_amd", 1)
 # Vertex offsets used for GS per-vertex inputs
 system_value("gs_vertex_offset_amd", 1, [BASE])
+
+# AMD merged shader intrinsics
+
+# Whether the current invocation has an input vertex / primitive to process (also known as "ES thread" or "GS thread").
+# Not safe to reorder because it changes after overwrite_subgroup_num_vertices_and_primitives_amd.
+# Also, the generated code is more optimal if they are not CSE'd.
+intrinsic("has_input_vertex_amd", src_comp=[], dest_comp=1, bit_sizes=[1], indices=[])
+intrinsic("has_input_primitive_amd", src_comp=[], dest_comp=1, bit_sizes=[1], indices=[])
+
+# AMD NGG intrinsics
+
+# Number of initial input vertices in the current workgroup.
+system_value("workgroup_num_input_vertices_amd", 1)
+# Number of initial input primitives in the current workgroup.
+system_value("workgroup_num_input_primitives_amd", 1)
+# For NGG passthrough mode only. Pre-packed argument for export_primitive_amd.
+system_value("packed_passthrough_primitive_amd", 1)
+# Whether NGG GS should execute shader query.
+system_value("shader_query_enabled_amd", 1, bit_sizes=[1])
+# Initial edge flag in a Vertex Shader. src = {vertex index}.
+intrinsic("load_initial_edgeflag_amd", src_comp=[1], dest_comp=1, indices=[])
+# Exports the current invocation's vertex. This is a placeholder where all vertex attribute export instructions should be emitted.
+intrinsic("export_vertex_amd", src_comp=[], indices=[])
+# Exports the current invocation's primitive. src[] = {packed_primitive_data}.
+intrinsic("export_primitive_amd", src_comp=[1], indices=[])
+# Allocates export space for vertices and primitives. src[] = {num_vertices, num_primitives}.
+intrinsic("alloc_vertices_and_primitives_amd", src_comp=[1, 1], indices=[])
 
 # V3D-specific instrinc for tile buffer color reads.
 #
