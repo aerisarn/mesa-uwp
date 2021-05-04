@@ -584,6 +584,12 @@ block_id(struct ir3_block *block)
 #endif
 }
 
+static inline struct ir3_block *
+ir3_start_block(struct ir3 *ir)
+{
+	return list_first_entry(&ir->block_list, struct ir3_block, node);
+}
+
 void ir3_block_add_predecessor(struct ir3_block *block, struct ir3_block *pred);
 void ir3_block_remove_predecessor(struct ir3_block *block, struct ir3_block *pred);
 unsigned ir3_block_get_pred_index(struct ir3_block *block, struct ir3_block *pred);

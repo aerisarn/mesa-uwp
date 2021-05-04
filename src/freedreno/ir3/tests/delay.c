@@ -122,8 +122,7 @@ static void
 regs_to_ssa(struct ir3 *ir)
 {
 	struct ir3_instruction *regfile[2 * MAX_REG] = {};
-	struct ir3_block *block =
-		list_first_entry(&ir->block_list, struct ir3_block, node);
+	struct ir3_block *block = ir3_start_block(ir);
 
 	foreach_instr_safe (instr, &block->instr_list) {
 		foreach_src (reg, instr) {

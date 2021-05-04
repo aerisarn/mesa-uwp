@@ -127,7 +127,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 	 * with the end of the program.
 	 */
 	assert(input_count == 0 || !ctx->early_input_release ||
-		   block == list_first_entry(&block->shader->block_list, struct ir3_block, node));
+		   block == ir3_start_block(block->shader));
 
 	/* remove all the instructions from the list, we'll be adding
 	 * them back in as we go
@@ -793,11 +793,10 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 	 * a5xx and a6xx do automatically release varying storage at the end.
 	 */
 	ctx->early_input_release = true;
-	struct ir3_block *first_block =
-		list_first_entry(&ir->block_list, struct ir3_block, node);
+	struct ir3_block *start_block = ir3_start_block(ir);
 	foreach_block (block, &ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
-			if (is_input(instr) && block != first_block) {
+			if (is_input(instr) && block != start_block) {
 				ctx->early_input_release = false;
 				break;
 			}
