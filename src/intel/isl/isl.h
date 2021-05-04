@@ -1422,6 +1422,11 @@ struct isl_surf_fill_state_info {
     */
    isl_channel_mask_t write_disables;
 
+   /**
+    * blend enable for gfx4-5
+    */
+   bool blend_enable;
+
    /* Intra-tile offset */
    uint16_t x_offset_sa, y_offset_sa;
 };

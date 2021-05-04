@@ -320,6 +320,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 
 #if GFX_VER <= 5
    s.ColorBufferComponentWriteDisables = info->write_disables;
+   s.ColorBlendEnable = info->blend_enable;
 #else
    assert(info->write_disables == 0);
 #endif
