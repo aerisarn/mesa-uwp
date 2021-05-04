@@ -6196,6 +6196,26 @@ lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
                                 LSC_CACHE_STORE_L1STATE_L3MOCS,
                                 false /* has_dest */);
       break;
+   case SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL:
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD, inst->exec_size,
+                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A64,
+                                1 /* num_coordinates */,
+                                lsc_bits_to_data_size(arg),
+                                1 /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_STORE_L1STATE_L3MOCS,
+                                true /* has_dest */);
+      break;
+   case SHADER_OPCODE_A64_BYTE_SCATTERED_WRITE_LOGICAL:
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_STORE, inst->exec_size,
+                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A64,
+                                1 /* num_coordinates */,
+                                lsc_bits_to_data_size(arg),
+                                1 /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_STORE_L1STATE_L3MOCS,
+                                false /* has_dest */);
+      break;
    default:
       unreachable("Unknown A64 logical instruction");
    }
@@ -6724,6 +6744,8 @@ fs_visitor::lower_logical_sends()
 
       case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:
       case SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL:
+      case SHADER_OPCODE_A64_BYTE_SCATTERED_WRITE_LOGICAL:
+      case SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL:
          if (devinfo->has_lsc) {
             lower_lsc_a64_logical_send(ibld, inst);
             break;
@@ -6731,8 +6753,6 @@ fs_visitor::lower_logical_sends()
       case SHADER_OPCODE_A64_OWORD_BLOCK_READ_LOGICAL:
       case SHADER_OPCODE_A64_UNALIGNED_OWORD_BLOCK_READ_LOGICAL:
       case SHADER_OPCODE_A64_OWORD_BLOCK_WRITE_LOGICAL:
-      case SHADER_OPCODE_A64_BYTE_SCATTERED_WRITE_LOGICAL:
-      case SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL:
       case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
       case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL:
       case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
