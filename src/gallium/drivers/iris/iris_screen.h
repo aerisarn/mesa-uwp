@@ -180,6 +180,7 @@ struct iris_screen {
       bool dual_color_blend_by_location;
       bool disable_throttling;
       bool always_flush_cache;
+      bool sync_compile;
    } driconf;
 
    /** Does the kernel support various features (KERNEL_HAS_* bitfield)? */
