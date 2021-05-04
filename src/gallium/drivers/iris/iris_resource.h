@@ -168,6 +168,11 @@ struct iris_resource {
     * be DRM_FORMAT_MOD_INVALID.
     */
    const struct isl_drm_modifier_info *mod_info;
+
+   /**
+    * The screen the resource was originally created with, stored for refcounting.
+    */
+   struct pipe_screen *orig_screen;
 };
 
 /**

@@ -456,7 +456,7 @@ iris_resource_destroy(struct pipe_screen *screen,
 
    threaded_resource_deinit(p_res);
    iris_bo_unreference(res->bo);
-   iris_pscreen_unref(res->base.b.screen);
+   iris_pscreen_unref(res->orig_screen);
 
    free(res);
 }
@@ -470,7 +470,8 @@ iris_alloc_resource(struct pipe_screen *pscreen,
       return NULL;
 
    res->base.b = *templ;
-   res->base.b.screen = iris_pscreen_ref(pscreen);
+   res->base.b.screen = pscreen;
+   res->orig_screen = iris_pscreen_ref(pscreen);
    pipe_reference_init(&res->base.b.reference, 1);
    threaded_resource_init(&res->base.b);
 
