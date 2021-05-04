@@ -1119,6 +1119,38 @@ nir_bitcast_vector(nir_builder *b, nir_ssa_def *src, unsigned dest_bit_size)
 }
 
 /**
+ * Pad a value to N components with undefs of matching bit size.
+ * If the value already contains >= num_components, it is returned without change.
+ */
+static inline nir_ssa_def *
+nir_pad_vector(nir_builder *b, nir_ssa_def *src, unsigned num_components)
+{
+   assert(src->num_components <= num_components);
+   if (src->num_components == num_components)
+      return src;
+
+   nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS];
+   nir_ssa_def *undef = nir_ssa_undef(b, 1, src->bit_size);
+   unsigned i = 0;
+   for (; i < src->num_components; i++)
+      components[i] = nir_channel(b, src, i);
+   for (; i < num_components; i++)
+      components[i] = undef;
+
+   return nir_vec(b, components, num_components);
+}
+
+/**
+ * Pad a value to 4 components with undefs of matching bit size.
+ * If the value already contains >= 4 components, it is returned without change.
+ */
+static inline nir_ssa_def *
+nir_pad_vec4(nir_builder *b, nir_ssa_def *src)
+{
+   return nir_pad_vector(b, src, 4);
+}
+
+/**
  * Turns a nir_src into a nir_ssa_def * so it can be passed to
  * nir_build_alu()-based builder calls.
  *
