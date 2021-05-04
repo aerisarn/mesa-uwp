@@ -93,22 +93,24 @@ bi_count_read_registers(bi_instr *ins, unsigned s)
 }
 
 unsigned
-bi_writemask(bi_instr *ins, unsigned d)
+bi_count_write_registers(bi_instr *ins, unsigned d)
 {
-        /* Assume we write a scalar */
-        unsigned mask = 0xF;
-
         if (d == 0 && bi_opcode_props[ins->op].sr_write) {
-                unsigned count = bi_count_staging_registers(ins);
-
                 /* TODO: this special case is even more special, TEXC has a
                  * generic write mask stuffed in the desc... */
                 if (ins->op == BI_OPCODE_TEXC)
-                        count = 4;
-
-                mask = (1 << (count * 4)) - 1;
+                        return 4;
+                else
+                        return bi_count_staging_registers(ins);
         }
 
+        return 1;
+}
+
+unsigned
+bi_writemask(bi_instr *ins, unsigned d)
+{
+        unsigned mask = BITFIELD_MASK(bi_count_write_registers(ins, d) * 4);
         unsigned shift = ins->dest[d].offset * 4; /* 32-bit words */
         return (mask << shift);
 }
