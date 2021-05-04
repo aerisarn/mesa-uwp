@@ -78,6 +78,7 @@ apt-get install -y --no-remove \
                    libegl1-mesa-dev \
                    libgbm-dev \
                    libgles2-mesa-dev \
+                   libpng-dev \
                    libssl-dev \
                    libudev-dev \
                    libvulkan-dev \
@@ -99,6 +100,7 @@ if [[ "$DEBIAN_ARCH" = "armhf" ]]; then
                        libelf-dev:armhf \
                        libgbm-dev:armhf \
                        libgles2-mesa-dev:armhf \
+                       libpng-dev:armhf \
                        libudev-dev:armhf \
                        libvulkan-dev:armhf \
                        libwaffle-dev:armhf \
@@ -111,6 +113,13 @@ fi
 ############### Building
 STRIP_CMD="${GCC_ARCH}-strip"
 mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}
+
+
+############### Build apitrace
+. .gitlab-ci/container/build-apitrace.sh
+mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/apitrace
+mv /apitrace/build /lava-files/rootfs-${DEBIAN_ARCH}/apitrace
+rm -rf /apitrace
 
 
 ############### Build dEQP runner

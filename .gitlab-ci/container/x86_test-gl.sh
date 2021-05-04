@@ -18,6 +18,7 @@ STABLE_EPHEMERAL=" \
       libgles2-mesa-dev \
       libllvmspirvlib-dev \
       libpciaccess-dev \
+      libpng-dev \
       libudev-dev \
       libvulkan-dev \
       libwaffle-dev \
@@ -39,7 +40,6 @@ STABLE_EPHEMERAL=" \
 
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
-      apitrace \
       clinfo \
       libclang-common-11-dev \
       libclang-cpp11 \
@@ -76,6 +76,9 @@ PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON -DPIGLIT_BUILD_VK_TESTS=OFF" . .gitlab-c
 
 DEQP_TARGET=surfaceless . .gitlab-ci/container/build-deqp.sh
 
+############### Build apitrace
+
+. .gitlab-ci/container/build-apitrace.sh
 
 ############### Uninstall the build software
 
