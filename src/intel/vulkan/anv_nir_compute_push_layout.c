@@ -154,17 +154,21 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
    if (push_ubo_ranges) {
       brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
 
-      /* We can push at most 64 registers worth of data.  The back-end
-       * compiler would do this fixup for us but we'd like to calculate
-       * the push constant layout ourselves.
+      /* The vec4 back-end pushes at most 32 regs while the scalar back-end
+       * pushes up to 64.  This is primarily because the scalar back-end has a
+       * massively more competent register allocator and so the risk of
+       * spilling due to UBO pushing isn't nearly as high.
        */
+      const unsigned max_push_regs =
+         compiler->scalar_stage[nir->info.stage] ? 64 : 32;
+
       unsigned total_push_regs = push_constant_range.length;
       for (unsigned i = 0; i < 4; i++) {
-         if (total_push_regs + prog_data->ubo_ranges[i].length > 64)
-            prog_data->ubo_ranges[i].length = 64 - total_push_regs;
+         if (total_push_regs + prog_data->ubo_ranges[i].length > max_push_regs)
+            prog_data->ubo_ranges[i].length = max_push_regs - total_push_regs;
          total_push_regs += prog_data->ubo_ranges[i].length;
       }
-      assert(total_push_regs <= 64);
+      assert(total_push_regs <= max_push_regs);
 
       int n = 0;
 
