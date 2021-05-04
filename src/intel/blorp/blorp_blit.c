@@ -894,7 +894,7 @@ bit_cast_color(struct nir_builder *b, nir_ssa_def *color,
          if (src_fmtl->channels_array[c].type == ISL_UNORM)
             chan = nir_format_float_to_unorm(b, chan, &chan_bits);
 
-         packed = nir_ior(b, packed, nir_shift(b, chan, chan_start_bit));
+         packed = nir_ior(b, packed, nir_shift_imm(b, chan, chan_start_bit));
       }
 
       nir_ssa_def *chans[4] = { };
@@ -906,7 +906,7 @@ bit_cast_color(struct nir_builder *b, nir_ssa_def *color,
 
          const unsigned chan_start_bit = dst_fmtl->channels_array[c].start_bit;
          const unsigned chan_bits = dst_fmtl->channels_array[c].bits;
-         chans[c] = nir_iand(b, nir_shift(b, packed, -(int)chan_start_bit),
+         chans[c] = nir_iand(b, nir_shift_imm(b, packed, -(int)chan_start_bit),
                                 nir_imm_int(b, BITFIELD_MASK(chan_bits)));
 
          if (dst_fmtl->channels_array[c].type == ISL_UNORM)
