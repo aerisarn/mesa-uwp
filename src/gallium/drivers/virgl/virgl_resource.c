@@ -642,7 +642,7 @@ void virgl_init_screen_resource_functions(struct pipe_screen *screen)
     screen->resource_create = virgl_resource_create;
     screen->resource_from_handle = virgl_resource_from_handle;
     screen->resource_get_handle = virgl_resource_get_handle;
-    screen->resource_destroy = u_resource_destroy_vtbl;
+    screen->resource_destroy = virgl_resource_destroy;
 }
 
 static void virgl_buffer_subdata(struct pipe_context *pipe,

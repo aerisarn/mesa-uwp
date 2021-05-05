@@ -304,7 +304,7 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
 
 static const struct u_resource_vtbl virgl_texture_vtbl =
 {
-   virgl_resource_destroy,              /* resource_destroy */
+   NULL,                                /* resource_destroy */
    virgl_texture_transfer_map,          /* transfer_map */
    virgl_texture_transfer_unmap,        /* transfer_unmap */
 };
