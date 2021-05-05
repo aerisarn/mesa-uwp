@@ -373,4 +373,9 @@ svga_winsys_buffer_create(struct svga_context *svga,
                           unsigned usage,
                           unsigned size);
 
+void
+svga_buffer_transfer_flush_region(struct pipe_context *pipe,
+                                  struct pipe_transfer *transfer,
+                                  const struct pipe_box *box);
+
 #endif /* SVGA_BUFFER_H */

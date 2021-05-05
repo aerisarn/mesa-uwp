@@ -502,12 +502,15 @@ static void r600_buffer_do_flush_region(struct pipe_context *ctx,
 		       box->x + box->width);
 }
 
-static void r600_buffer_flush_region(struct pipe_context *ctx,
-				     struct pipe_transfer *transfer,
-				     const struct pipe_box *rel_box)
+void r600_buffer_flush_region(struct pipe_context *ctx,
+			      struct pipe_transfer *transfer,
+			      const struct pipe_box *rel_box)
 {
 	unsigned required_usage = PIPE_MAP_WRITE |
 				  PIPE_MAP_FLUSH_EXPLICIT;
+
+	if (r600_resource(transfer->resource)->compute_global_bo)
+		return;
 
 	if ((transfer->usage & required_usage) == required_usage) {
 		struct pipe_box box;
@@ -563,7 +566,6 @@ static const struct u_resource_vtbl r600_buffer_vtbl =
 {
 	r600_buffer_destroy,		/* resource_destroy */
 	r600_buffer_transfer_map,	/* transfer_map */
-	r600_buffer_flush_region,	/* transfer_flush_region */
 	r600_buffer_transfer_unmap,	/* transfer_unmap */
 };
 
@@ -586,6 +588,7 @@ r600_alloc_buffer_struct(struct pipe_screen *screen,
 	rbuffer->buf = NULL;
 	rbuffer->bind_history = 0;
 	rbuffer->immed_buffer = NULL;
+	rbuffer->compute_global_bo = false;
 	util_range_init(&rbuffer->valid_buffer_range);
 	return rbuffer;
 }

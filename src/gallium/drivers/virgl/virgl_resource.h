@@ -107,6 +107,10 @@ static inline struct virgl_transfer *virgl_transfer(struct pipe_transfer *trans)
    return (struct virgl_transfer *)trans;
 }
 
+void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
+                                        struct pipe_transfer *transfer,
+                                        const struct pipe_box *box);
+
 void virgl_buffer_init(struct virgl_resource *res);
 
 static inline unsigned pipe_to_virgl_bind(const struct virgl_screen *vs,

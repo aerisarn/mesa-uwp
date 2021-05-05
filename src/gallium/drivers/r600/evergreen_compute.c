@@ -1297,13 +1297,6 @@ static void r600_compute_global_transfer_unmap(struct pipe_context *ctx,
 	assert (!"This function should not be called");
 }
 
-static void r600_compute_global_transfer_flush_region(struct pipe_context *ctx,
-						      struct pipe_transfer *transfer,
-						      const struct pipe_box *box)
-{
-	assert(0 && "TODO");
-}
-
 static void r600_compute_global_buffer_destroy(struct pipe_screen *screen,
 					       struct pipe_resource *res)
 {
@@ -1326,7 +1319,6 @@ static const struct u_resource_vtbl r600_global_buffer_vtbl =
 {
 	r600_compute_global_buffer_destroy, /* resource_destroy */
 	r600_compute_global_transfer_map, /* transfer_map */
-	r600_compute_global_transfer_flush_region,/* transfer_flush_region */
 	r600_compute_global_transfer_unmap, /* transfer_unmap */
 };
 
@@ -1354,6 +1346,7 @@ struct pipe_resource *r600_compute_global_buffer_create(struct pipe_screen *scre
 	result->base.b.vtbl = &r600_global_buffer_vtbl;
 	result->base.b.b = *templ;
 	result->base.b.b.screen = screen;
+	result->base.compute_global_bo = true;
 	pipe_reference_init(&result->base.b.b.reference, 1);
 
 	size_in_dw = (templ->width0+3) / 4;

@@ -46,11 +46,6 @@ struct u_resource_vtbl {
                          const struct pipe_box *,
                          struct pipe_transfer **);
 
-
-   void (*transfer_flush_region)( struct pipe_context *,
-                                  struct pipe_transfer *transfer,
-                                  const struct pipe_box *);
-
    void (*transfer_unmap)( struct pipe_context *,
                            struct pipe_transfer *transfer );
 };
@@ -71,10 +66,6 @@ void *u_transfer_map_vtbl(struct pipe_context *context,
                           unsigned usage,
                           const struct pipe_box *box,
                           struct pipe_transfer **transfer);
-
-void u_transfer_flush_region_vtbl( struct pipe_context *pipe,
-                                   struct pipe_transfer *transfer,
-                                   const struct pipe_box *box);
 
 void u_transfer_unmap_vtbl( struct pipe_context *rm_ctx,
                             struct pipe_transfer *transfer );

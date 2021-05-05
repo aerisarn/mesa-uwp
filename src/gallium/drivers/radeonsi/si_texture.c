@@ -1476,7 +1476,6 @@ static void si_auxiliary_texture_destroy(struct pipe_screen *screen,
 static const struct u_resource_vtbl si_auxiliary_texture_vtbl = {
    si_auxiliary_texture_destroy,    /* resource_destroy */
    NULL,                        /* transfer_map */
-   NULL,                        /* transfer_flush_region */
    NULL,                        /* transfer_unmap */
 };
 
@@ -1963,7 +1962,6 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx, struct pipe_tran
 static const struct u_resource_vtbl si_texture_vtbl = {
    si_texture_destroy,              /* resource_destroy */
    si_texture_transfer_map,         /* transfer_map */
-   u_default_transfer_flush_region, /* transfer_flush_region */
    si_texture_transfer_unmap,       /* transfer_unmap */
 };
 

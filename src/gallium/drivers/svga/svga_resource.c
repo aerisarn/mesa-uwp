@@ -121,7 +121,7 @@ void
 svga_init_resource_functions(struct svga_context *svga)
 {
    svga->pipe.transfer_map = u_transfer_map_vtbl;
-   svga->pipe.transfer_flush_region = u_transfer_flush_region_vtbl;
+   svga->pipe.transfer_flush_region = svga_buffer_transfer_flush_region;
    svga->pipe.transfer_unmap = u_transfer_unmap_vtbl;
    svga->pipe.buffer_subdata = u_default_buffer_subdata;
    svga->pipe.texture_subdata = u_default_texture_subdata;

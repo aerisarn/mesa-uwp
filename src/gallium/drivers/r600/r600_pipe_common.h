@@ -167,6 +167,7 @@ struct r600_resource {
 	/* Whether this resource is referenced by bindless handles. */
 	bool				texture_handle_allocated;
 	bool				image_handle_allocated;
+	bool                            compute_global_bo;
 
 	/*
 	 * EG/Cayman only - for RAT operations hw need an immediate buffer
@@ -640,6 +641,9 @@ void r600_init_resource_fields(struct r600_common_screen *rscreen,
 			       uint64_t size, unsigned alignment);
 bool r600_alloc_resource(struct r600_common_screen *rscreen,
 			 struct r600_resource *res);
+void r600_buffer_flush_region(struct pipe_context *ctx,
+			      struct pipe_transfer *transfer,
+			      const struct pipe_box *rel_box);
 struct pipe_resource *r600_buffer_create(struct pipe_screen *screen,
 					 const struct pipe_resource *templ,
 					 unsigned alignment);

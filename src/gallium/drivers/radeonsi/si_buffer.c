@@ -553,7 +553,6 @@ static void si_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *bu
 static const struct u_resource_vtbl si_buffer_vtbl = {
    si_buffer_destroy,        /* resource_destroy */
    si_buffer_transfer_map,   /* transfer_map */
-   si_buffer_flush_region,   /* transfer_flush_region */
    si_buffer_transfer_unmap, /* transfer_unmap */
 };
 
@@ -730,7 +729,7 @@ void si_init_buffer_functions(struct si_context *sctx)
 {
    sctx->b.invalidate_resource = si_invalidate_resource;
    sctx->b.transfer_map = u_transfer_map_vtbl;
-   sctx->b.transfer_flush_region = u_transfer_flush_region_vtbl;
+   sctx->b.transfer_flush_region = si_buffer_flush_region;
    sctx->b.transfer_unmap = u_transfer_unmap_vtbl;
    sctx->b.texture_subdata = u_default_texture_subdata;
    sctx->b.buffer_subdata = si_buffer_subdata;

@@ -117,14 +117,6 @@ void *u_transfer_map_vtbl(struct pipe_context *context,
                                  transfer);
 }
 
-void u_transfer_flush_region_vtbl( struct pipe_context *pipe,
-                                   struct pipe_transfer *transfer,
-                                   const struct pipe_box *box)
-{
-   struct u_resource *ur = u_resource(transfer->resource);
-   ur->vtbl->transfer_flush_region(pipe, transfer, box);
-}
-
 void u_transfer_unmap_vtbl( struct pipe_context *pipe,
                             struct pipe_transfer *transfer )
 {

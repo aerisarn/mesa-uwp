@@ -95,7 +95,7 @@ void
 nv50_init_resource_functions(struct pipe_context *pcontext)
 {
    pcontext->transfer_map = u_transfer_map_vtbl;
-   pcontext->transfer_flush_region = u_transfer_flush_region_vtbl;
+   pcontext->transfer_flush_region = nouveau_buffer_transfer_flush_region;
    pcontext->transfer_unmap = u_transfer_unmap_vtbl;
    pcontext->buffer_subdata = u_default_buffer_subdata;
    pcontext->texture_subdata = u_default_texture_subdata;

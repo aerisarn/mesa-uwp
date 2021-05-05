@@ -590,7 +590,7 @@ bool r600_common_context_init(struct r600_common_context *rctx,
 	rctx->b.invalidate_resource = r600_invalidate_resource;
 	rctx->b.resource_commit = r600_resource_commit;
 	rctx->b.transfer_map = u_transfer_map_vtbl;
-	rctx->b.transfer_flush_region = u_transfer_flush_region_vtbl;
+	rctx->b.transfer_flush_region = r600_buffer_flush_region;
 	rctx->b.transfer_unmap = u_transfer_unmap_vtbl;
 	rctx->b.texture_subdata = u_default_texture_subdata;
 	rctx->b.flush = r600_flush_from_st;

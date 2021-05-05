@@ -915,7 +915,6 @@ struct u_resource_vtbl i915_texture_vtbl =
 {
    i915_texture_destroy,	      /* resource_destroy */
    i915_texture_transfer_map,	      /* transfer_map */
-   u_default_transfer_flush_region,   /* transfer_flush_region */
    i915_texture_transfer_unmap,	      /* transfer_unmap */
 };
 

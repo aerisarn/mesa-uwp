@@ -879,7 +879,6 @@ struct u_resource_vtbl svga_texture_vtbl =
 {
    svga_texture_destroy,	      /* resource_destroy */
    svga_texture_transfer_map,	      /* transfer_map */
-   u_default_transfer_flush_region,   /* transfer_flush_region */
    svga_texture_transfer_unmap,	      /* transfer_unmap */
 };
 

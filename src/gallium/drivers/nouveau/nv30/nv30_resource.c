@@ -84,7 +84,7 @@ void
 nv30_resource_init(struct pipe_context *pipe)
 {
    pipe->transfer_map = u_transfer_map_vtbl;
-   pipe->transfer_flush_region = u_transfer_flush_region_vtbl;
+   pipe->transfer_flush_region = nouveau_buffer_transfer_flush_region;
    pipe->transfer_unmap = u_transfer_unmap_vtbl;
    pipe->buffer_subdata = u_default_buffer_subdata;
    pipe->texture_subdata = u_default_texture_subdata;

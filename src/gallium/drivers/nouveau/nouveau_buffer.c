@@ -506,7 +506,7 @@ nouveau_buffer_transfer_map(struct pipe_context *pipe,
 
 
 
-static void
+void
 nouveau_buffer_transfer_flush_region(struct pipe_context *pipe,
                                      struct pipe_transfer *transfer,
                                      const struct pipe_box *box)
@@ -632,7 +632,6 @@ const struct u_resource_vtbl nouveau_buffer_vtbl =
 {
    nouveau_buffer_destroy,               /* resource_destroy */
    nouveau_buffer_transfer_map,          /* transfer_map */
-   nouveau_buffer_transfer_flush_region, /* transfer_flush_region */
    nouveau_buffer_transfer_unmap,        /* transfer_unmap */
 };
 
@@ -671,7 +670,6 @@ const struct u_resource_vtbl nouveau_user_ptr_buffer_vtbl =
 {
    nouveau_user_ptr_destroy,        /* resource_destroy */
    nouveau_user_ptr_transfer_map,   /* transfer_map */
-   u_default_transfer_flush_region, /* transfer_flush_region */
    nouveau_user_ptr_transfer_unmap, /* transfer_unmap */
 };
 

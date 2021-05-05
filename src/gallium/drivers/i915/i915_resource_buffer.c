@@ -99,7 +99,6 @@ struct u_resource_vtbl i915_buffer_vtbl =
 {
    i915_buffer_destroy,		     /* resource_destroy */
    i915_buffer_transfer_map,	     /* transfer_map */
-   u_default_transfer_flush_region,  /* transfer_flush_region */
    i915_buffer_transfer_unmap,	     /* transfer_unmap */
 };
 

@@ -37,7 +37,7 @@ void
 i915_init_resource_functions(struct i915_context *i915 )
 {
    i915->base.transfer_map = u_transfer_map_vtbl;
-   i915->base.transfer_flush_region = u_transfer_flush_region_vtbl;
+   i915->base.transfer_flush_region = u_default_transfer_flush_region;
    i915->base.transfer_unmap = u_transfer_unmap_vtbl;
    i915->base.buffer_subdata = i915_buffer_subdata;
    i915->base.texture_subdata = u_default_texture_subdata;
