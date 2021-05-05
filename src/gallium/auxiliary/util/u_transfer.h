@@ -14,10 +14,6 @@ struct winsys_handle;
 extern "C" {
 #endif
 
-bool u_default_resource_get_handle(struct pipe_screen *screen,
-                                   struct pipe_resource *resource,
-                                   struct winsys_handle *handle);
-
 void u_default_buffer_subdata(struct pipe_context *pipe,
                               struct pipe_resource *resource,
                               unsigned usage, unsigned offset,
@@ -40,11 +36,6 @@ void u_default_transfer_flush_region( struct pipe_context *pipe,
  * to exist in a single driver.  This is intended to be transitionary!
  */
 struct u_resource_vtbl {
-
-   bool (*resource_get_handle)(struct pipe_screen *,
-                               struct pipe_resource *tex,
-                               struct winsys_handle *handle);
-
    void (*resource_destroy)(struct pipe_screen *,
                             struct pipe_resource *pt);
 
@@ -70,12 +61,6 @@ struct u_resource {
    const struct u_resource_vtbl *vtbl;
 };
 
-
-bool u_resource_get_handle_vtbl(struct pipe_screen *screen,
-                                struct pipe_context *ctx,
-                                struct pipe_resource *resource,
-                                struct winsys_handle *handle,
-                                unsigned usage);
 
 void u_resource_destroy_vtbl(struct pipe_screen *screen,
                              struct pipe_resource *resource);

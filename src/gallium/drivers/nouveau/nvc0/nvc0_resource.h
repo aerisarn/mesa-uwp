@@ -53,6 +53,13 @@ nvc0_miptree_create(struct pipe_screen *pscreen,
                     const struct pipe_resource *tmp,
                     const uint64_t *modifiers, unsigned int count);
 
+bool
+nvc0_miptree_get_handle(struct pipe_screen *pscreen,
+                        struct pipe_context *context,
+                        struct pipe_resource *pt,
+                        struct winsys_handle *whandle,
+                        unsigned usage);
+
 extern const struct u_resource_vtbl nvc0_miptree_vtbl;
 
 struct pipe_surface *

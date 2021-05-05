@@ -561,7 +561,6 @@ void r600_buffer_subdata(struct pipe_context *ctx,
 
 static const struct u_resource_vtbl r600_buffer_vtbl =
 {
-	NULL,				/* get_handle */
 	r600_buffer_destroy,		/* resource_destroy */
 	r600_buffer_transfer_map,	/* transfer_map */
 	r600_buffer_flush_region,	/* transfer_flush_region */

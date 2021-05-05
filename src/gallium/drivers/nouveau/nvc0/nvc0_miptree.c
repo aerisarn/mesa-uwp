@@ -339,15 +339,17 @@ nvc0_miptree_get_modifier(struct pipe_screen *pscreen, struct nv50_miptree *mt)
              NVC0_TILE_MODE_Y(config->nvc0.tile_mode));
 }
 
-static bool
+bool
 nvc0_miptree_get_handle(struct pipe_screen *pscreen,
+                        struct pipe_context *context,
                         struct pipe_resource *pt,
-                        struct winsys_handle *whandle)
+                        struct winsys_handle *whandle,
+                        unsigned usage)
 {
    struct nv50_miptree *mt = nv50_miptree(pt);
    bool ret;
 
-   ret = nv50_miptree_get_handle(pscreen, pt, whandle);
+   ret = nv50_miptree_get_handle(pscreen, context, pt, whandle, usage);
    if (!ret)
       return ret;
 
@@ -436,7 +438,6 @@ nvc0_miptree_select_best_modifier(struct pipe_screen *pscreen,
 
 const struct u_resource_vtbl nvc0_miptree_vtbl =
 {
-   nvc0_miptree_get_handle,         /* get_handle */
    nv50_miptree_destroy,            /* resource_destroy */
    nvc0_miptree_transfer_map,       /* transfer_map */
    u_default_transfer_flush_region, /* transfer_flush_region */

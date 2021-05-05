@@ -109,6 +109,6 @@ nv50_screen_init_resource_functions(struct pipe_screen *pscreen)
 {
    pscreen->resource_create = nv50_resource_create;
    pscreen->resource_from_handle = nv50_resource_from_handle;
-   pscreen->resource_get_handle = u_resource_get_handle_vtbl;
+   pscreen->resource_get_handle = nv50_miptree_get_handle;
    pscreen->resource_destroy = u_resource_destroy_vtbl;
 }

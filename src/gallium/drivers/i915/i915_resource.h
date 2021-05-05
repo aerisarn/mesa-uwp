@@ -113,6 +113,13 @@ i915_texture_create(struct pipe_screen *screen,
                     const struct pipe_resource *template,
                     boolean force_untiled);
 
+bool
+i915_resource_get_handle(struct pipe_screen *screen,
+                         struct pipe_context *context,
+                         struct pipe_resource *texture,
+                         struct winsys_handle *whandle,
+                         unsigned usage);
+
 struct pipe_resource *
 i915_texture_from_handle(struct pipe_screen * screen,
 			 const struct pipe_resource *template,

@@ -630,7 +630,6 @@ nouveau_resource_map_offset(struct nouveau_context *nv,
 
 const struct u_resource_vtbl nouveau_buffer_vtbl =
 {
-   u_default_resource_get_handle,     /* get_handle */
    nouveau_buffer_destroy,               /* resource_destroy */
    nouveau_buffer_transfer_map,          /* transfer_map */
    nouveau_buffer_transfer_flush_region, /* transfer_flush_region */
@@ -670,7 +669,6 @@ nouveau_user_ptr_transfer_unmap(struct pipe_context *pipe,
 
 const struct u_resource_vtbl nouveau_user_ptr_buffer_vtbl =
 {
-   u_default_resource_get_handle,   /* get_handle */
    nouveau_user_ptr_destroy,        /* resource_destroy */
    nouveau_user_ptr_transfer_map,   /* transfer_map */
    u_default_transfer_flush_region, /* transfer_flush_region */

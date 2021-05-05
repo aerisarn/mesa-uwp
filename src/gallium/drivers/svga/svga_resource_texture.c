@@ -196,13 +196,18 @@ svga_transfer_dma(struct svga_context *svga,
 
 
 
-static bool
-svga_texture_get_handle(struct pipe_screen *screen,
-                        struct pipe_resource *texture,
-                        struct winsys_handle *whandle)
+bool
+svga_resource_get_handle(struct pipe_screen *screen,
+                         struct pipe_context *context,
+                         struct pipe_resource *texture,
+                         struct winsys_handle *whandle,
+                         unsigned usage)
 {
    struct svga_winsys_screen *sws = svga_winsys_screen(texture->screen);
    unsigned stride;
+
+   if (texture->target == PIPE_BUFFER)
+      return false;
 
    assert(svga_texture(texture)->key.cachable == 0);
    svga_texture(texture)->key.cachable = 0;
@@ -872,7 +877,6 @@ format_has_depth(enum pipe_format format)
 
 struct u_resource_vtbl svga_texture_vtbl =
 {
-   svga_texture_get_handle,	      /* get_handle */
    svga_texture_destroy,	      /* resource_destroy */
    svga_texture_transfer_map,	      /* transfer_map */
    u_default_transfer_flush_region,   /* transfer_flush_region */

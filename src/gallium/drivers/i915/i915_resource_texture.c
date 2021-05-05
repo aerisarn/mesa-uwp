@@ -681,11 +681,16 @@ i945_texture_layout(struct i915_texture * tex)
 
 
 
-static bool
-i915_texture_get_handle(struct pipe_screen * screen,
-                        struct pipe_resource *texture,
-                        struct winsys_handle *whandle)
+bool
+i915_resource_get_handle(struct pipe_screen *screen,
+                         struct pipe_context *context,
+                         struct pipe_resource *texture,
+                         struct winsys_handle *whandle,
+                         unsigned usage)
 {
+   if (texture->target == PIPE_BUFFER)
+      return false;
+
    struct i915_screen *is = i915_screen(screen);
    struct i915_texture *tex = i915_texture(texture);
    struct i915_winsys *iws = is->iws;
@@ -908,7 +913,6 @@ out:
 
 struct u_resource_vtbl i915_texture_vtbl =
 {
-   i915_texture_get_handle,	      /* get_handle */
    i915_texture_destroy,	      /* resource_destroy */
    i915_texture_transfer_map,	      /* transfer_map */
    u_default_transfer_flush_region,   /* transfer_flush_region */

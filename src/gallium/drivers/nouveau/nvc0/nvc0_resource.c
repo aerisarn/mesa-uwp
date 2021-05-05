@@ -163,7 +163,7 @@ nvc0_screen_init_resource_functions(struct pipe_screen *pscreen)
    pscreen->query_dmabuf_modifiers = nvc0_query_dmabuf_modifiers;
    pscreen->is_dmabuf_modifier_supported = nvc0_is_dmabuf_modifier_supported;
    pscreen->resource_from_handle = nvc0_resource_from_handle;
-   pscreen->resource_get_handle = u_resource_get_handle_vtbl;
+   pscreen->resource_get_handle = nvc0_miptree_get_handle;
    pscreen->resource_destroy = u_resource_destroy_vtbl;
    pscreen->resource_from_user_memory = nvc0_resource_from_user_memory;
 }

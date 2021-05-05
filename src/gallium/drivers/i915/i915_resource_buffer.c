@@ -40,15 +40,6 @@
 #include "i915_resource.h"
 
 
-
-static bool
-i915_buffer_get_handle(struct pipe_screen *screen,
-		       struct pipe_resource *resource,
-		       struct winsys_handle *handle)
-{
-   return FALSE;
-}
-
 static void
 i915_buffer_destroy(struct pipe_screen *screen,
 		    struct pipe_resource *resource)
@@ -106,7 +97,6 @@ i915_buffer_subdata(struct pipe_context *rm_ctx,
 
 struct u_resource_vtbl i915_buffer_vtbl = 
 {
-   i915_buffer_get_handle,	     /* get_handle */
    i915_buffer_destroy,		     /* resource_destroy */
    i915_buffer_transfer_map,	     /* transfer_map */
    u_default_transfer_flush_region,  /* transfer_flush_region */

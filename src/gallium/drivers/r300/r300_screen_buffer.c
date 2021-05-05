@@ -148,7 +148,6 @@ static void r300_buffer_transfer_unmap( struct pipe_context *pipe,
 
 static const struct u_resource_vtbl r300_buffer_vtbl =
 {
-   NULL,                               /* get_handle */
    r300_buffer_destroy,                /* resource_destroy */
    r300_buffer_transfer_map,           /* transfer_map */
    NULL,                               /* transfer_flush_region */

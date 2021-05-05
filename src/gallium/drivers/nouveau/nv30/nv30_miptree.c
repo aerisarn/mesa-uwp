@@ -46,11 +46,16 @@ layer_offset(struct pipe_resource *pt, unsigned level, unsigned layer)
    return lvl->offset + (layer * lvl->zslice_size);
 }
 
-static bool
+bool
 nv30_miptree_get_handle(struct pipe_screen *pscreen,
+                        struct pipe_context *context,
                         struct pipe_resource *pt,
-                        struct winsys_handle *handle)
+                        struct winsys_handle *handle,
+                        unsigned usage)
 {
+   if (pt->target == PIPE_BUFFER)
+      return false;
+
    struct nv30_miptree *mt = nv30_miptree(pt);
    unsigned stride;
 
@@ -398,7 +403,6 @@ nv30_miptree_transfer_unmap(struct pipe_context *pipe,
 }
 
 const struct u_resource_vtbl nv30_miptree_vtbl = {
-   nv30_miptree_get_handle,
    nv30_miptree_destroy,
    nv30_miptree_transfer_map,
    u_default_transfer_flush_region,

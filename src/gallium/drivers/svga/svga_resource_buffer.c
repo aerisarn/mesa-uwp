@@ -424,7 +424,6 @@ svga_buffer_destroy(struct pipe_screen *screen,
 
 struct u_resource_vtbl svga_buffer_vtbl =
 {
-   u_default_resource_get_handle,      /* get_handle */
    svga_buffer_destroy,		     /* resource_destroy */
    svga_buffer_transfer_map,	     /* transfer_map */
    svga_buffer_transfer_flush_region,  /* transfer_flush_region */

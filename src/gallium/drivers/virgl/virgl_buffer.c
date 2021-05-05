@@ -78,7 +78,6 @@ static void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
 
 static const struct u_resource_vtbl virgl_buffer_vtbl =
 {
-   u_default_resource_get_handle,            /* get_handle */
    virgl_resource_destroy,                   /* resource_destroy */
    virgl_resource_transfer_map,              /* transfer_map */
    virgl_buffer_transfer_flush_region,       /* transfer_flush_region */

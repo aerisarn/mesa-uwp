@@ -641,7 +641,7 @@ void virgl_init_screen_resource_functions(struct pipe_screen *screen)
 {
     screen->resource_create = virgl_resource_create;
     screen->resource_from_handle = virgl_resource_from_handle;
-    screen->resource_get_handle = u_resource_get_handle_vtbl;
+    screen->resource_get_handle = virgl_resource_get_handle;
     screen->resource_destroy = u_resource_destroy_vtbl;
 }
 
@@ -772,8 +772,10 @@ void virgl_resource_destroy(struct pipe_screen *screen,
 }
 
 bool virgl_resource_get_handle(struct pipe_screen *screen,
+                               struct pipe_context *context,
                                struct pipe_resource *resource,
-                               struct winsys_handle *whandle)
+                               struct winsys_handle *whandle,
+                               unsigned usage)
 {
    struct virgl_screen *vs = virgl_screen(screen);
    struct virgl_resource *res = virgl_resource(resource);

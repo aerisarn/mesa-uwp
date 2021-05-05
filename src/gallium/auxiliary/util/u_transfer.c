@@ -84,16 +84,6 @@ void u_default_texture_subdata(struct pipe_context *pipe,
    pipe_transfer_unmap(pipe, transfer);
 }
 
-
-bool u_default_resource_get_handle(UNUSED struct pipe_screen *screen,
-                                   UNUSED struct pipe_resource *resource,
-                                   UNUSED struct winsys_handle *handle)
-{
-   return FALSE;
-}
-
-
-
 void u_default_transfer_flush_region(UNUSED struct pipe_context *pipe,
                                      UNUSED struct pipe_transfer *transfer,
                                      UNUSED const struct pipe_box *box)
@@ -106,16 +96,6 @@ static inline struct u_resource *
 u_resource( struct pipe_resource *res )
 {
    return (struct u_resource *)res;
-}
-
-bool u_resource_get_handle_vtbl(struct pipe_screen *screen,
-                                UNUSED struct pipe_context *ctx,
-                                struct pipe_resource *resource,
-                                struct winsys_handle *handle,
-                                UNUSED unsigned usage)
-{
-   struct u_resource *ur = u_resource(resource);
-   return ur->vtbl->resource_get_handle(screen, resource, handle);
 }
 
 void u_resource_destroy_vtbl(struct pipe_screen *screen,

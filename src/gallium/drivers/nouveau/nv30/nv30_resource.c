@@ -76,7 +76,7 @@ nv30_resource_screen_init(struct pipe_screen *pscreen)
 {
    pscreen->resource_create = nv30_resource_create;
    pscreen->resource_from_handle = nv30_resource_from_handle;
-   pscreen->resource_get_handle = u_resource_get_handle_vtbl;
+   pscreen->resource_get_handle = nv30_miptree_get_handle;
    pscreen->resource_destroy = u_resource_destroy_vtbl;
 }
 

@@ -188,8 +188,10 @@ void virgl_resource_destroy(struct pipe_screen *screen,
                             struct pipe_resource *resource);
 
 bool virgl_resource_get_handle(struct pipe_screen *screen,
+                               struct pipe_context *context,
                                struct pipe_resource *resource,
-                               struct winsys_handle *whandle);
+                               struct winsys_handle *whandle,
+                               unsigned usage);
 
 void virgl_resource_dirty(struct virgl_resource *res, uint32_t level);
 

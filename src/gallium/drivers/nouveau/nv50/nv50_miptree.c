@@ -180,9 +180,14 @@ nv50_miptree_destroy(struct pipe_screen *pscreen, struct pipe_resource *pt)
 
 bool
 nv50_miptree_get_handle(struct pipe_screen *pscreen,
+                        struct pipe_context *context,
                         struct pipe_resource *pt,
-                        struct winsys_handle *whandle)
+                        struct winsys_handle *whandle,
+                        unsigned usage)
 {
+   if (pt->target == PIPE_BUFFER)
+      return false;
+
    struct nv50_miptree *mt = nv50_miptree(pt);
    unsigned stride;
 
@@ -199,7 +204,6 @@ nv50_miptree_get_handle(struct pipe_screen *pscreen,
 
 const struct u_resource_vtbl nv50_miptree_vtbl =
 {
-   nv50_miptree_get_handle,         /* get_handle */
    nv50_miptree_destroy,            /* resource_destroy */
    nv50_miptree_transfer_map,       /* transfer_map */
    u_default_transfer_flush_region, /* transfer_flush_region */
