@@ -438,8 +438,6 @@ nvc0_miptree_select_best_modifier(struct pipe_screen *pscreen,
 
 const struct u_resource_vtbl nvc0_miptree_vtbl =
 {
-   nvc0_miptree_transfer_map,       /* transfer_map */
-   nvc0_miptree_transfer_unmap,     /* transfer_unmap */
 };
 
 struct pipe_resource *

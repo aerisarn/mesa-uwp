@@ -46,5 +46,13 @@ struct r600_resource* r600_compute_buffer_alloc_vram(struct r600_screen *screen,
 struct pipe_resource *r600_compute_global_buffer_create(struct pipe_screen *screen, const struct pipe_resource *templ);
 void r600_compute_global_buffer_destroy(struct pipe_screen *screen,
 					struct pipe_resource *res);
+void *r600_compute_global_transfer_map(struct pipe_context *ctx,
+				      struct pipe_resource *resource,
+				      unsigned level,
+				      unsigned usage,
+				      const struct pipe_box *box,
+				      struct pipe_transfer **ptransfer);
+void r600_compute_global_transfer_unmap(struct pipe_context *ctx,
+					struct pipe_transfer *transfer);
 
 #endif

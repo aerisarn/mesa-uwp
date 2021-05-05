@@ -1287,12 +1287,12 @@ static void r600_texture_invalidate_storage(struct r600_common_context *rctx,
 	rctx->num_alloc_tex_transfer_bytes += rtex->size;
 }
 
-static void *r600_texture_transfer_map(struct pipe_context *ctx,
-				       struct pipe_resource *texture,
-				       unsigned level,
-				       unsigned usage,
-				       const struct pipe_box *box,
-				       struct pipe_transfer **ptransfer)
+void *r600_texture_transfer_map(struct pipe_context *ctx,
+			       struct pipe_resource *texture,
+			       unsigned level,
+			       unsigned usage,
+			       const struct pipe_box *box,
+			       struct pipe_transfer **ptransfer)
 {
 	struct r600_common_context *rctx = (struct r600_common_context*)ctx;
 	struct r600_texture *rtex = (struct r600_texture*)texture;
@@ -1472,8 +1472,8 @@ static void *r600_texture_transfer_map(struct pipe_context *ctx,
 	return map + offset;
 }
 
-static void r600_texture_transfer_unmap(struct pipe_context *ctx,
-					struct pipe_transfer* transfer)
+void r600_texture_transfer_unmap(struct pipe_context *ctx,
+				struct pipe_transfer* transfer)
 {
 	struct r600_common_context *rctx = (struct r600_common_context*)ctx;
 	struct r600_transfer *rtransfer = (struct r600_transfer*)transfer;
@@ -1520,8 +1520,6 @@ static void r600_texture_transfer_unmap(struct pipe_context *ctx,
 
 static const struct u_resource_vtbl r600_texture_vtbl =
 {
-	r600_texture_transfer_map,	/* transfer_map */
-	r600_texture_transfer_unmap,	/* transfer_unmap */
 };
 
 struct pipe_surface *r600_create_surface_custom(struct pipe_context *pipe,

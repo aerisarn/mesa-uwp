@@ -97,22 +97,3 @@ u_resource( struct pipe_resource *res )
 {
    return (struct u_resource *)res;
 }
-
-void *u_transfer_map_vtbl(struct pipe_context *context,
-                          struct pipe_resource *resource,
-                          unsigned level,
-                          unsigned usage,
-                          const struct pipe_box *box,
-                          struct pipe_transfer **transfer)
-{
-   struct u_resource *ur = u_resource(resource);
-   return ur->vtbl->transfer_map(context, resource, level, usage, box,
-                                 transfer);
-}
-
-void u_transfer_unmap_vtbl( struct pipe_context *pipe,
-                            struct pipe_transfer *transfer )
-{
-   struct u_resource *ur = u_resource(transfer->resource);
-   ur->vtbl->transfer_unmap(pipe, transfer);
-}

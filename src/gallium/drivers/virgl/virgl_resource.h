@@ -111,6 +111,9 @@ void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
                                         struct pipe_transfer *transfer,
                                         const struct pipe_box *box);
 
+void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
+                                 struct pipe_transfer *transfer);
+
 void virgl_buffer_init(struct virgl_resource *res);
 
 static inline unsigned pipe_to_virgl_bind(const struct virgl_screen *vs,
@@ -198,5 +201,15 @@ bool virgl_resource_get_handle(struct pipe_screen *screen,
                                unsigned usage);
 
 void virgl_resource_dirty(struct virgl_resource *res, uint32_t level);
+
+void *virgl_texture_transfer_map(struct pipe_context *ctx,
+                                 struct pipe_resource *resource,
+                                 unsigned level,
+                                 unsigned usage,
+                                 const struct pipe_box *box,
+                                 struct pipe_transfer **transfer);
+
+void virgl_texture_transfer_unmap(struct pipe_context *ctx,
+                                  struct pipe_transfer *transfer);
 
 #endif

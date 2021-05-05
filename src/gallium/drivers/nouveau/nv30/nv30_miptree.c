@@ -276,7 +276,7 @@ nv30_flush_resource(struct pipe_context *pipe,
 {
 }
 
-static void *
+void *
 nv30_miptree_transfer_map(struct pipe_context *pipe, struct pipe_resource *pt,
                           unsigned level, unsigned usage,
                           const struct pipe_box *box,
@@ -370,7 +370,7 @@ nv30_miptree_transfer_map(struct pipe_context *pipe, struct pipe_resource *pt,
    return tx->tmp.bo->map;
 }
 
-static void
+void
 nv30_miptree_transfer_unmap(struct pipe_context *pipe,
                             struct pipe_transfer *ptx)
 {
@@ -403,8 +403,6 @@ nv30_miptree_transfer_unmap(struct pipe_context *pipe,
 }
 
 const struct u_resource_vtbl nv30_miptree_vtbl = {
-   nv30_miptree_transfer_map,
-   nv30_miptree_transfer_unmap,
 };
 
 struct pipe_resource *

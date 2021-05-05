@@ -120,11 +120,11 @@ svga_can_create_resource(struct pipe_screen *screen,
 void
 svga_init_resource_functions(struct svga_context *svga)
 {
-   svga->pipe.buffer_map = u_transfer_map_vtbl;
-   svga->pipe.texture_map = u_transfer_map_vtbl;
+   svga->pipe.buffer_map = svga_buffer_transfer_map;
+   svga->pipe.texture_map = svga_texture_transfer_map;
    svga->pipe.transfer_flush_region = svga_buffer_transfer_flush_region;
-   svga->pipe.buffer_unmap = u_transfer_unmap_vtbl;
-   svga->pipe.texture_unmap = u_transfer_unmap_vtbl;
+   svga->pipe.buffer_unmap = svga_buffer_transfer_unmap;
+   svga->pipe.texture_unmap = svga_texture_transfer_unmap;
    svga->pipe.buffer_subdata = u_default_buffer_subdata;
    svga->pipe.texture_subdata = u_default_texture_subdata;
 

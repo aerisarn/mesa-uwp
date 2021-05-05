@@ -698,7 +698,7 @@ i915_resource_get_handle(struct pipe_screen *screen,
    return iws->buffer_get_handle(iws, tex->buffer, whandle, tex->stride);
 }
 
-static void *
+void *
 i915_texture_transfer_map(struct pipe_context *pipe,
                           struct pipe_resource *resource,
                           unsigned level,
@@ -774,7 +774,7 @@ i915_texture_transfer_map(struct pipe_context *pipe,
       box->x / util_format_get_blockwidth(format) * util_format_get_blocksize(format);
 }
 
-static void
+void
 i915_texture_transfer_unmap(struct pipe_context *pipe,
 			    struct pipe_transfer *transfer)
 {
@@ -895,8 +895,6 @@ out:
 
 struct u_resource_vtbl i915_texture_vtbl =
 {
-   i915_texture_transfer_map,	      /* transfer_map */
-   i915_texture_transfer_unmap,	      /* transfer_unmap */
 };
 
 

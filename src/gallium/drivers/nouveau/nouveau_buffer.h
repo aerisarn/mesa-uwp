@@ -128,4 +128,15 @@ nouveau_scratch_data(struct nouveau_context *,
                      const void *data, unsigned base, unsigned size,
                      struct nouveau_bo **);
 
+void *
+nouveau_buffer_transfer_map(struct pipe_context *pipe,
+                            struct pipe_resource *resource,
+                            unsigned level, unsigned usage,
+                            const struct pipe_box *box,
+                            struct pipe_transfer **ptransfer);
+
+void
+nouveau_buffer_transfer_unmap(struct pipe_context *pipe,
+                              struct pipe_transfer *transfer);
+
 #endif

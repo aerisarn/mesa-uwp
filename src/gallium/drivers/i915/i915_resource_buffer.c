@@ -66,7 +66,7 @@ i915_resource_destroy(struct pipe_screen *screen,
 }
 
 
-static void *
+void *
 i915_buffer_transfer_map(struct pipe_context *pipe,
                          struct pipe_resource *resource,
                          unsigned level,
@@ -90,7 +90,7 @@ i915_buffer_transfer_map(struct pipe_context *pipe,
    return buffer->data + transfer->box.x;
 }
 
-static void
+void
 i915_buffer_transfer_unmap(struct pipe_context *pipe,
                            struct pipe_transfer *transfer)
 {
@@ -112,8 +112,6 @@ i915_buffer_subdata(struct pipe_context *rm_ctx,
 
 struct u_resource_vtbl i915_buffer_vtbl = 
 {
-   i915_buffer_transfer_map,	     /* transfer_map */
-   i915_buffer_transfer_unmap,	     /* transfer_unmap */
 };
 
 

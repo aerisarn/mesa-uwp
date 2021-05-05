@@ -103,11 +103,11 @@ nv50_invalidate_resource(struct pipe_context *pipe, struct pipe_resource *res)
 void
 nv50_init_resource_functions(struct pipe_context *pcontext)
 {
-   pcontext->buffer_map = u_transfer_map_vtbl;
-   pcontext->texture_map = u_transfer_map_vtbl;
+   pcontext->buffer_map = nouveau_buffer_transfer_map;
+   pcontext->texture_map = nv50_miptree_transfer_map;
    pcontext->transfer_flush_region = nouveau_buffer_transfer_flush_region;
-   pcontext->buffer_unmap = u_transfer_unmap_vtbl;
-   pcontext->texture_unmap = u_transfer_unmap_vtbl;
+   pcontext->buffer_unmap = nouveau_buffer_transfer_unmap;
+   pcontext->texture_unmap = nv50_miptree_transfer_unmap;
    pcontext->buffer_subdata = u_default_buffer_subdata;
    pcontext->texture_subdata = u_default_texture_subdata;
    pcontext->create_surface = nv50_surface_create;

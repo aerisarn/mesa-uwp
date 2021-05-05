@@ -146,4 +146,28 @@ i915_buffer_subdata(struct pipe_context *rm_ctx,
                     unsigned usage, unsigned offset,
                     unsigned size, const void *data);
 
+void *
+i915_buffer_transfer_map(struct pipe_context *pipe,
+                         struct pipe_resource *resource,
+                         unsigned level,
+                         unsigned usage,
+                         const struct pipe_box *box,
+                         struct pipe_transfer **ptransfer);
+
+void
+i915_buffer_transfer_unmap(struct pipe_context *pipe,
+                           struct pipe_transfer *transfer);
+
+void *
+i915_texture_transfer_map(struct pipe_context *pipe,
+                          struct pipe_resource *resource,
+                          unsigned level,
+                          unsigned usage,
+                          const struct pipe_box *box,
+                          struct pipe_transfer **ptransfer);
+
+void
+i915_texture_transfer_unmap(struct pipe_context *pipe,
+			    struct pipe_transfer *transfer);
+
 #endif /* I915_RESOURCE_H */

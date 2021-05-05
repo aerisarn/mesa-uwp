@@ -1230,12 +1230,12 @@ void evergreen_init_compute_state_functions(struct r600_context *rctx)
 
 }
 
-static void *r600_compute_global_transfer_map(struct pipe_context *ctx,
-					      struct pipe_resource *resource,
-					      unsigned level,
-					      unsigned usage,
-					      const struct pipe_box *box,
-					      struct pipe_transfer **ptransfer)
+void *r600_compute_global_transfer_map(struct pipe_context *ctx,
+				      struct pipe_resource *resource,
+				      unsigned level,
+				      unsigned usage,
+				      const struct pipe_box *box,
+				      struct pipe_transfer **ptransfer)
 {
 	struct r600_context *rctx = (struct r600_context*)ctx;
 	struct compute_memory_pool *pool = rctx->screen->global_pool;
@@ -1281,8 +1281,8 @@ static void *r600_compute_global_transfer_map(struct pipe_context *ctx,
 			offset, box->width, usage, ptransfer);
 }
 
-static void r600_compute_global_transfer_unmap(struct pipe_context *ctx,
-					       struct pipe_transfer *transfer)
+void r600_compute_global_transfer_unmap(struct pipe_context *ctx,
+					struct pipe_transfer *transfer)
 {
 	/* struct r600_resource_global are not real resources, they just map
 	 * to an offset within the compute memory pool.  The function
@@ -1317,8 +1317,6 @@ void r600_compute_global_buffer_destroy(struct pipe_screen *screen,
 
 static const struct u_resource_vtbl r600_global_buffer_vtbl =
 {
-	r600_compute_global_transfer_map, /* transfer_map */
-	r600_compute_global_transfer_unmap, /* transfer_unmap */
 };
 
 struct pipe_resource *r600_compute_global_buffer_create(struct pipe_screen *screen,

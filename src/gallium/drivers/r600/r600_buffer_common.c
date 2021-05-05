@@ -25,6 +25,7 @@
  */
 
 #include "r600_cs.h"
+#include "evergreen_compute.h"
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
 #include <inttypes.h>
@@ -338,17 +339,21 @@ static bool r600_can_dma_copy_buffer(struct r600_common_context *rctx,
 
 }
 
-static void *r600_buffer_transfer_map(struct pipe_context *ctx,
-                                      struct pipe_resource *resource,
-                                      unsigned level,
-                                      unsigned usage,
-                                      const struct pipe_box *box,
-                                      struct pipe_transfer **ptransfer)
+void *r600_buffer_transfer_map(struct pipe_context *ctx,
+                               struct pipe_resource *resource,
+                               unsigned level,
+                               unsigned usage,
+                               const struct pipe_box *box,
+                               struct pipe_transfer **ptransfer)
 {
 	struct r600_common_context *rctx = (struct r600_common_context*)ctx;
 	struct r600_common_screen *rscreen = (struct r600_common_screen*)ctx->screen;
 	struct r600_resource *rbuffer = r600_resource(resource);
 	uint8_t *data;
+
+	if (r600_resource(resource)->compute_global_bo) {
+		return r600_compute_global_transfer_map(ctx, resource, level, usage, box, ptransfer);
+	}
 
 	assert(box->x + box->width <= resource->width0);
 
@@ -519,11 +524,16 @@ void r600_buffer_flush_region(struct pipe_context *ctx,
 	}
 }
 
-static void r600_buffer_transfer_unmap(struct pipe_context *ctx,
-				       struct pipe_transfer *transfer)
+void r600_buffer_transfer_unmap(struct pipe_context *ctx,
+				struct pipe_transfer *transfer)
 {
 	struct r600_common_context *rctx = (struct r600_common_context*)ctx;
 	struct r600_transfer *rtransfer = (struct r600_transfer*)transfer;
+
+	if (r600_resource(transfer->resource)->compute_global_bo) {
+		r600_compute_global_transfer_unmap(ctx, transfer);
+		return;
+	}
 
 	if (transfer->usage & PIPE_MAP_WRITE &&
 	    !(transfer->usage & PIPE_MAP_FLUSH_EXPLICIT))
@@ -563,8 +573,6 @@ void r600_buffer_subdata(struct pipe_context *ctx,
 
 static const struct u_resource_vtbl r600_buffer_vtbl =
 {
-	r600_buffer_transfer_map,	/* transfer_map */
-	r600_buffer_transfer_unmap,	/* transfer_unmap */
 };
 
 static struct r600_resource *

@@ -672,11 +672,11 @@ static void virgl_buffer_subdata(struct pipe_context *pipe,
 
 void virgl_init_context_resource_functions(struct pipe_context *ctx)
 {
-    ctx->buffer_map = u_transfer_map_vtbl;
-    ctx->texture_map = u_transfer_map_vtbl;
+    ctx->buffer_map = virgl_resource_transfer_map;
+    ctx->texture_map = virgl_texture_transfer_map;
     ctx->transfer_flush_region = virgl_buffer_transfer_flush_region;
-    ctx->buffer_unmap = u_transfer_unmap_vtbl;
-    ctx->texture_unmap = u_transfer_unmap_vtbl;
+    ctx->buffer_unmap = virgl_buffer_transfer_unmap;
+    ctx->texture_unmap = virgl_texture_transfer_unmap;
     ctx->buffer_subdata = virgl_buffer_subdata;
     ctx->texture_subdata = u_default_texture_subdata;
 }

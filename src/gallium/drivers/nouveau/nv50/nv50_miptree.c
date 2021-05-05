@@ -204,8 +204,6 @@ nv50_miptree_get_handle(struct pipe_screen *pscreen,
 
 const struct u_resource_vtbl nv50_miptree_vtbl =
 {
-   nv50_miptree_transfer_map,       /* transfer_map */
-   nv50_miptree_transfer_unmap,     /* transfer_unmap */
 };
 
 static inline bool

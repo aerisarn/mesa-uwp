@@ -569,8 +569,6 @@ static void si_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *bu
 }
 
 static const struct u_resource_vtbl si_buffer_vtbl = {
-   si_buffer_transfer_map,   /* transfer_map */
-   si_buffer_transfer_unmap, /* transfer_unmap */
 };
 
 static struct si_resource *si_alloc_buffer_struct(struct pipe_screen *screen,
@@ -745,11 +743,9 @@ void si_init_screen_buffer_functions(struct si_screen *sscreen)
 void si_init_buffer_functions(struct si_context *sctx)
 {
    sctx->b.invalidate_resource = si_invalidate_resource;
-   sctx->b.buffer_map = u_transfer_map_vtbl;
-   sctx->b.texture_map = u_transfer_map_vtbl;
+   sctx->b.buffer_map = si_buffer_transfer_map;
    sctx->b.transfer_flush_region = si_buffer_flush_region;
-   sctx->b.buffer_unmap = u_transfer_unmap_vtbl;
-   sctx->b.texture_unmap = u_transfer_unmap_vtbl;
+   sctx->b.buffer_unmap = si_buffer_transfer_unmap;
    sctx->b.texture_subdata = u_default_texture_subdata;
    sctx->b.buffer_subdata = si_buffer_subdata;
    sctx->b.resource_commit = si_resource_commit;

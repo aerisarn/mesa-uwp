@@ -90,7 +90,7 @@ svga_buffer_needs_hw_storage(const struct svga_screen *ss,
  * the end result is exactly the same as if one DMA was used for every mapped
  * range.
  */
-static void *
+void *
 svga_buffer_transfer_map(struct pipe_context *pipe,
                          struct pipe_resource *resource,
                          unsigned level,
@@ -329,7 +329,7 @@ svga_buffer_transfer_flush_region(struct pipe_context *pipe,
 }
 
 
-static void
+void
 svga_buffer_transfer_unmap(struct pipe_context *pipe,
                            struct pipe_transfer *transfer)
 {
@@ -456,8 +456,6 @@ svga_resource_destroy(struct pipe_screen *screen,
 
 struct u_resource_vtbl svga_buffer_vtbl =
 {
-   svga_buffer_transfer_map,	     /* transfer_map */
-   svga_buffer_transfer_unmap,	     /* transfer_unmap */
 };
 
 

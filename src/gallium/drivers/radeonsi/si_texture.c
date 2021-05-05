@@ -1432,8 +1432,6 @@ si_texture_create_with_modifiers(struct pipe_screen *screen,
 }
 
 static const struct u_resource_vtbl si_auxiliary_texture_vtbl = {
-   NULL,                        /* transfer_map */
-   NULL,                        /* transfer_unmap */
 };
 
 static bool si_texture_is_aux_plane(const struct pipe_resource *resource)
@@ -1742,6 +1740,9 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    assert(!(texture->flags & SI_RESOURCE_FLAG_FORCE_LINEAR));
    assert(box->width && box->height && box->depth);
 
+   if (tex->buffer.b.b.flags & SI_RESOURCE_AUX_PLANE)
+      return NULL;
+
    if (tex->buffer.flags & RADEON_FLAG_ENCRYPTED)
       return NULL;
 
@@ -1918,8 +1919,6 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx, struct pipe_tran
 }
 
 static const struct u_resource_vtbl si_texture_vtbl = {
-   si_texture_transfer_map,         /* transfer_map */
-   si_texture_transfer_unmap,       /* transfer_unmap */
 };
 
 /* Return if it's allowed to reinterpret one format as another with DCC enabled.
@@ -2232,6 +2231,8 @@ void si_init_screen_texture_functions(struct si_screen *sscreen)
 
 void si_init_context_texture_functions(struct si_context *sctx)
 {
+   sctx->b.texture_map = si_texture_transfer_map;
+   sctx->b.texture_unmap = si_texture_transfer_unmap;
    sctx->b.create_surface = si_create_surface;
    sctx->b.surface_destroy = si_surface_destroy;
 }

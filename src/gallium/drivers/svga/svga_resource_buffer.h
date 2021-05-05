@@ -382,4 +382,16 @@ void
 svga_resource_destroy(struct pipe_screen *screen,
                       struct pipe_resource *buf);
 
+void *
+svga_buffer_transfer_map(struct pipe_context *pipe,
+                         struct pipe_resource *resource,
+                         unsigned level,
+                         unsigned usage,
+                         const struct pipe_box *box,
+                         struct pipe_transfer **ptransfer);
+
+void
+svga_buffer_transfer_unmap(struct pipe_context *pipe,
+                           struct pipe_transfer *transfer);
+
 #endif /* SVGA_BUFFER_H */

@@ -28,8 +28,8 @@
 #include "virgl_resource.h"
 #include "virgl_screen.h"
 
-static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
-                                        struct pipe_transfer *transfer)
+void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
+                                 struct pipe_transfer *transfer)
 {
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_transfer *trans = virgl_transfer(transfer);
@@ -78,8 +78,6 @@ void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
 
 static const struct u_resource_vtbl virgl_buffer_vtbl =
 {
-   virgl_resource_transfer_map,              /* transfer_map */
-   virgl_buffer_transfer_unmap,              /* transfer_unmap */
 };
 
 void virgl_buffer_init(struct virgl_resource *res)

@@ -486,7 +486,7 @@ svga_texture_transfer_map_direct(struct svga_context *svga,
 /**
  * Request a transfer map to the texture resource
  */
-static void *
+void *
 svga_texture_transfer_map(struct pipe_context *pipe,
                           struct pipe_resource *texture,
                           unsigned level,
@@ -789,7 +789,7 @@ svga_texture_transfer_unmap_direct(struct svga_context *svga,
 }
 
 
-static void
+void
 svga_texture_transfer_unmap(struct pipe_context *pipe,
                             struct pipe_transfer *transfer)
 {
@@ -843,8 +843,6 @@ format_has_depth(enum pipe_format format)
 
 struct u_resource_vtbl svga_texture_vtbl =
 {
-   svga_texture_transfer_map,	      /* transfer_map */
-   svga_texture_transfer_unmap,	      /* transfer_unmap */
 };
 
 

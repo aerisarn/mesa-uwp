@@ -78,7 +78,7 @@ void r300_resource_destroy(struct pipe_screen *screen,
    }
 }
 
-static void *
+void *
 r300_buffer_transfer_map( struct pipe_context *context,
                           struct pipe_resource *resource,
                           unsigned level,
@@ -153,8 +153,8 @@ r300_buffer_transfer_map( struct pipe_context *context,
     return map + box->x;
 }
 
-static void r300_buffer_transfer_unmap( struct pipe_context *pipe,
-                                        struct pipe_transfer *transfer )
+void r300_buffer_transfer_unmap( struct pipe_context *pipe,
+                                 struct pipe_transfer *transfer )
 {
     struct r300_context *r300 = r300_context(pipe);
 
@@ -163,8 +163,6 @@ static void r300_buffer_transfer_unmap( struct pipe_context *pipe,
 
 static const struct u_resource_vtbl r300_buffer_vtbl =
 {
-   r300_buffer_transfer_map,           /* transfer_map */
-   r300_buffer_transfer_unmap,         /* transfer_unmap */
 };
 
 struct pipe_resource *r300_buffer_create(struct pipe_screen *screen,

@@ -83,4 +83,14 @@ void
 nv30_flush_resource(struct pipe_context *pipe,
                     struct pipe_resource *resource);
 
+void *
+nv30_miptree_transfer_map(struct pipe_context *pipe, struct pipe_resource *pt,
+                          unsigned level, unsigned usage,
+                          const struct pipe_box *box,
+                          struct pipe_transfer **ptransfer);
+
+void
+nv30_miptree_transfer_unmap(struct pipe_context *pipe,
+                            struct pipe_transfer *ptx);
+
 #endif

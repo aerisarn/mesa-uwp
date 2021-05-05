@@ -54,4 +54,15 @@ static inline struct r300_buffer *r300_buffer(struct pipe_resource *buffer)
     return (struct r300_buffer *)buffer;
 }
 
+void *
+r300_buffer_transfer_map( struct pipe_context *context,
+                          struct pipe_resource *resource,
+                          unsigned level,
+                          unsigned usage,
+                          const struct pipe_box *box,
+                          struct pipe_transfer **ptransfer );
+
+void r300_buffer_transfer_unmap( struct pipe_context *pipe,
+                                 struct pipe_transfer *transfer );
+
 #endif

@@ -92,11 +92,11 @@ nv30_resource_screen_init(struct pipe_screen *pscreen)
 void
 nv30_resource_init(struct pipe_context *pipe)
 {
-   pipe->buffer_map = u_transfer_map_vtbl;
-   pipe->texture_map = u_transfer_map_vtbl;
+   pipe->buffer_map = nouveau_buffer_transfer_map;
+   pipe->texture_map = nv30_miptree_transfer_map;
    pipe->transfer_flush_region = nouveau_buffer_transfer_flush_region;
-   pipe->buffer_unmap = u_transfer_unmap_vtbl;
-   pipe->texture_unmap = u_transfer_unmap_vtbl;
+   pipe->buffer_unmap = nouveau_buffer_transfer_unmap;
+   pipe->texture_unmap = nv30_miptree_transfer_unmap;
    pipe->buffer_subdata = u_default_buffer_subdata;
    pipe->texture_subdata = u_default_texture_subdata;
    pipe->create_surface = nv30_miptree_surface_new;
