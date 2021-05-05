@@ -574,8 +574,7 @@ static bool r600_texture_get_handle(struct pipe_screen* screen,
 	return rscreen->ws->buffer_get_handle(rscreen->ws, res->buf, whandle);
 }
 
-static void r600_texture_destroy(struct pipe_screen *screen,
-				 struct pipe_resource *ptex)
+void r600_texture_destroy(struct pipe_screen *screen, struct pipe_resource *ptex)
 {
 	struct r600_texture *rtex = (struct r600_texture*)ptex;
 	struct r600_resource *resource = &rtex->resource;
@@ -1521,7 +1520,7 @@ static void r600_texture_transfer_unmap(struct pipe_context *ctx,
 
 static const struct u_resource_vtbl r600_texture_vtbl =
 {
-	r600_texture_destroy,		/* resource_destroy */
+	NULL,                		/* resource_destroy */
 	r600_texture_transfer_map,	/* transfer_map */
 	r600_texture_transfer_unmap,	/* transfer_unmap */
 };

@@ -641,6 +641,7 @@ void r600_init_resource_fields(struct r600_common_screen *rscreen,
 			       uint64_t size, unsigned alignment);
 bool r600_alloc_resource(struct r600_common_screen *rscreen,
 			 struct r600_resource *res);
+void r600_buffer_destroy(struct pipe_screen *screen, struct pipe_resource *buf);
 void r600_buffer_flush_region(struct pipe_context *ctx,
 			      struct pipe_transfer *transfer,
 			      const struct pipe_box *rel_box);
@@ -743,6 +744,7 @@ bool r600_prepare_for_dma_blit(struct r600_common_context *rctx,
 				struct r600_texture *rsrc,
 				unsigned src_level,
 				const struct pipe_box *src_box);
+void r600_texture_destroy(struct pipe_screen *screen, struct pipe_resource *ptex);
 void r600_texture_get_fmask_info(struct r600_common_screen *rscreen,
 				 struct r600_texture *rtex,
 				 unsigned nr_samples,

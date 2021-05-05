@@ -1297,8 +1297,8 @@ static void r600_compute_global_transfer_unmap(struct pipe_context *ctx,
 	assert (!"This function should not be called");
 }
 
-static void r600_compute_global_buffer_destroy(struct pipe_screen *screen,
-					       struct pipe_resource *res)
+void r600_compute_global_buffer_destroy(struct pipe_screen *screen,
+					struct pipe_resource *res)
 {
 	struct r600_resource_global* buffer = NULL;
 	struct r600_screen* rscreen = NULL;
@@ -1317,7 +1317,7 @@ static void r600_compute_global_buffer_destroy(struct pipe_screen *screen,
 
 static const struct u_resource_vtbl r600_global_buffer_vtbl =
 {
-	r600_compute_global_buffer_destroy, /* resource_destroy */
+	NULL,                               /* resource_destroy */
 	r600_compute_global_transfer_map, /* transfer_map */
 	r600_compute_global_transfer_unmap, /* transfer_unmap */
 };

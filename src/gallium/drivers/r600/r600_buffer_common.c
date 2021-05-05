@@ -222,8 +222,7 @@ bool r600_alloc_resource(struct r600_common_screen *rscreen,
 	return true;
 }
 
-static void r600_buffer_destroy(struct pipe_screen *screen,
-				struct pipe_resource *buf)
+void r600_buffer_destroy(struct pipe_screen *screen, struct pipe_resource *buf)
 {
 	struct r600_resource *rbuffer = r600_resource(buf);
 
@@ -564,7 +563,7 @@ void r600_buffer_subdata(struct pipe_context *ctx,
 
 static const struct u_resource_vtbl r600_buffer_vtbl =
 {
-	r600_buffer_destroy,		/* resource_destroy */
+	NULL,               		/* resource_destroy */
 	r600_buffer_transfer_map,	/* transfer_map */
 	r600_buffer_transfer_unmap,	/* transfer_unmap */
 };

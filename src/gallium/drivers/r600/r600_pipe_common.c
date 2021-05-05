@@ -26,6 +26,7 @@
 
 #include "r600_pipe_common.h"
 #include "r600_cs.h"
+#include "evergreen_compute.h"
 #include "tgsi/tgsi_parse.h"
 #include "util/list.h"
 #include "util/u_draw_quad.h"
@@ -1183,6 +1184,19 @@ r600_get_compiler_options(struct pipe_screen *screen,
 
 extern bool r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *);
 
+static void r600_resource_destroy(struct pipe_screen *screen,
+				  struct pipe_resource *res)
+{
+	if (res->target == PIPE_BUFFER) {
+		if (r600_resource(res)->compute_global_bo)
+			r600_compute_global_buffer_destroy(screen, res);
+		else
+			r600_buffer_destroy(screen, res);
+	} else {
+		r600_texture_destroy(screen, res);
+	}
+}
+
 bool r600_common_screen_init(struct r600_common_screen *rscreen,
 			     struct radeon_winsys *ws)
 {
@@ -1219,7 +1233,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 	rscreen->b.get_compiler_options = r600_get_compiler_options;
 	rscreen->b.fence_finish = r600_fence_finish;
 	rscreen->b.fence_reference = r600_fence_reference;
-	rscreen->b.resource_destroy = u_resource_destroy_vtbl;
+	rscreen->b.resource_destroy = r600_resource_destroy;
 	rscreen->b.resource_from_user_memory = r600_buffer_from_user_memory;
 	rscreen->b.query_memory_info = r600_query_memory_info;
 
