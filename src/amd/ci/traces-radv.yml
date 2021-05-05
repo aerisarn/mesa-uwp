@@ -19,5 +19,5 @@ traces:
       - device: vk-amd-polaris10
         checksum: 24cddd40ee8afdf129a59e593bedd463
       - device: vk-amd-raven
-        checksum: 117880d4561af71c562a9fec27cdce22
+        checksum: 6d71f2737ccf94e5090bee3e6e331101
 
