@@ -220,40 +220,6 @@ svga_resource_get_handle(struct pipe_screen *screen,
 }
 
 
-static void
-svga_texture_destroy(struct pipe_screen *screen,
-                     struct pipe_resource *pt)
-{
-   struct svga_screen *ss = svga_screen(screen);
-   struct svga_texture *tex = svga_texture(pt);
-
-   ss->texture_timestamp++;
-
-   svga_sampler_view_reference(&tex->cached_view, NULL);
-
-   /*
-     DBG("%s deleting %p\n", __FUNCTION__, (void *) tex);
-   */
-   SVGA_DBG(DEBUG_DMA, "unref sid %p (texture)\n", tex->handle);
-   svga_screen_surface_destroy(ss, &tex->key, &tex->handle);
-
-   /* Destroy the backed surface handle if exists */
-   if (tex->backed_handle)
-      svga_screen_surface_destroy(ss, &tex->backed_key, &tex->backed_handle);
-
-   ss->hud.total_resource_bytes -= tex->size;
-
-   FREE(tex->defined);
-   FREE(tex->rendered_to);
-   FREE(tex->dirty);
-   FREE(tex);
-
-   assert(ss->hud.num_resources > 0);
-   if (ss->hud.num_resources > 0)
-      ss->hud.num_resources--;
-}
-
-
 /**
  * Determine if we need to read back a texture image before mapping it.
  */
@@ -877,7 +843,7 @@ format_has_depth(enum pipe_format format)
 
 struct u_resource_vtbl svga_texture_vtbl =
 {
-   svga_texture_destroy,	      /* resource_destroy */
+   NULL,                	      /* resource_destroy */
    svga_texture_transfer_map,	      /* transfer_map */
    svga_texture_transfer_unmap,	      /* transfer_unmap */
 };

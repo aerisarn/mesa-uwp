@@ -37,6 +37,8 @@
 #include "svga_screen.h"
 #include "svga_resource_buffer.h"
 #include "svga_resource_buffer_upload.h"
+#include "svga_resource_texture.h"
+#include "svga_sampler_view.h"
 #include "svga_winsys.h"
 #include "svga_debug.h"
 
@@ -388,43 +390,73 @@ svga_buffer_transfer_unmap(struct pipe_context *pipe,
 }
 
 
-static void
-svga_buffer_destroy(struct pipe_screen *screen,
-                    struct pipe_resource *buf)
+void
+svga_resource_destroy(struct pipe_screen *screen,
+                      struct pipe_resource *buf)
 {
-   struct svga_screen *ss = svga_screen(screen);
-   struct svga_buffer *sbuf = svga_buffer(buf);
+   if (buf->target == PIPE_BUFFER) {
+      struct svga_screen *ss = svga_screen(screen);
+      struct svga_buffer *sbuf = svga_buffer(buf);
 
-   assert(!p_atomic_read(&buf->reference.count));
+      assert(!p_atomic_read(&buf->reference.count));
 
-   assert(!sbuf->dma.pending);
+      assert(!sbuf->dma.pending);
 
-   if (sbuf->handle)
-      svga_buffer_destroy_host_surface(ss, sbuf);
+      if (sbuf->handle)
+         svga_buffer_destroy_host_surface(ss, sbuf);
 
-   if (sbuf->uploaded.buffer)
-      pipe_resource_reference(&sbuf->uploaded.buffer, NULL);
+      if (sbuf->uploaded.buffer)
+         pipe_resource_reference(&sbuf->uploaded.buffer, NULL);
 
-   if (sbuf->hwbuf)
-      svga_buffer_destroy_hw_storage(ss, sbuf);
+      if (sbuf->hwbuf)
+         svga_buffer_destroy_hw_storage(ss, sbuf);
 
-   if (sbuf->swbuf && !sbuf->user)
-      align_free(sbuf->swbuf);
+      if (sbuf->swbuf && !sbuf->user)
+         align_free(sbuf->swbuf);
 
-   pipe_resource_reference(&sbuf->translated_indices.buffer, NULL);
+      pipe_resource_reference(&sbuf->translated_indices.buffer, NULL);
 
-   ss->hud.total_resource_bytes -= sbuf->size;
-   assert(ss->hud.num_resources > 0);
-   if (ss->hud.num_resources > 0)
-      ss->hud.num_resources--;
+      ss->hud.total_resource_bytes -= sbuf->size;
+      assert(ss->hud.num_resources > 0);
+      if (ss->hud.num_resources > 0)
+         ss->hud.num_resources--;
 
-   FREE(sbuf);
+      FREE(sbuf);
+   } else {
+      struct svga_screen *ss = svga_screen(screen);
+      struct svga_texture *tex = svga_texture(buf);
+
+      ss->texture_timestamp++;
+
+      svga_sampler_view_reference(&tex->cached_view, NULL);
+
+      /*
+        DBG("%s deleting %p\n", __FUNCTION__, (void *) tex);
+      */
+      SVGA_DBG(DEBUG_DMA, "unref sid %p (texture)\n", tex->handle);
+      svga_screen_surface_destroy(ss, &tex->key, &tex->handle);
+
+      /* Destroy the backed surface handle if exists */
+      if (tex->backed_handle)
+         svga_screen_surface_destroy(ss, &tex->backed_key, &tex->backed_handle);
+
+      ss->hud.total_resource_bytes -= tex->size;
+
+      FREE(tex->defined);
+      FREE(tex->rendered_to);
+      FREE(tex->dirty);
+      FREE(tex);
+
+      assert(ss->hud.num_resources > 0);
+      if (ss->hud.num_resources > 0)
+         ss->hud.num_resources--;
+   }
 }
 
 
 struct u_resource_vtbl svga_buffer_vtbl =
 {
-   svga_buffer_destroy,		     /* resource_destroy */
+   NULL,               		     /* resource_destroy */
    svga_buffer_transfer_map,	     /* transfer_map */
    svga_buffer_transfer_unmap,	     /* transfer_unmap */
 };

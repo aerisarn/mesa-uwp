@@ -139,6 +139,6 @@ svga_init_screen_resource_functions(struct svga_screen *is)
    is->screen.resource_create = svga_resource_create;
    is->screen.resource_from_handle = svga_resource_from_handle;
    is->screen.resource_get_handle = svga_resource_get_handle;
-   is->screen.resource_destroy = u_resource_destroy_vtbl;
+   is->screen.resource_destroy = svga_resource_destroy;
    is->screen.can_create_resource = svga_can_create_resource;
 }

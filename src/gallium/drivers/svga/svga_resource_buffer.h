@@ -378,4 +378,8 @@ svga_buffer_transfer_flush_region(struct pipe_context *pipe,
                                   struct pipe_transfer *transfer,
                                   const struct pipe_box *box);
 
+void
+svga_resource_destroy(struct pipe_screen *screen,
+                      struct pipe_resource *buf);
+
 #endif /* SVGA_BUFFER_H */
