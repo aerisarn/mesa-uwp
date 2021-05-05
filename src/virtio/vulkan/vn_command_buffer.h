@@ -33,17 +33,22 @@ enum vn_command_buffer_state {
    VN_COMMAND_BUFFER_STATE_INVALID,
 };
 
+struct vn_command_buffer_builder {
+   /* for scrubbing VK_IMAGE_LAYOUT_PRESENT_SRC_KHR */
+   uint32_t image_barrier_count;
+   VkImageMemoryBarrier *image_barriers;
+};
+
 struct vn_command_buffer {
    struct vn_object_base base;
 
    struct vn_device *device;
 
-   /* for scrubbing VK_IMAGE_LAYOUT_PRESENT_SRC_KHR */
    VkAllocationCallbacks allocator;
-   uint32_t image_barrier_count;
-   VkImageMemoryBarrier *image_barriers;
 
    struct list_head head;
+
+   struct vn_command_buffer_builder builder;
 
    enum vn_command_buffer_state state;
    struct vn_cs_encoder cs;
