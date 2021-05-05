@@ -635,7 +635,6 @@ nouveau_resource_map_offset(struct nouveau_context *nv,
 
 const struct u_resource_vtbl nouveau_buffer_vtbl =
 {
-   NULL,                                 /* resource_destroy */
    nouveau_buffer_transfer_map,          /* transfer_map */
    nouveau_buffer_transfer_unmap,        /* transfer_unmap */
 };
@@ -665,7 +664,6 @@ nouveau_user_ptr_transfer_unmap(struct pipe_context *pipe,
 
 const struct u_resource_vtbl nouveau_user_ptr_buffer_vtbl =
 {
-   NULL,                            /* resource_destroy */
    nouveau_user_ptr_transfer_map,   /* transfer_map */
    nouveau_user_ptr_transfer_unmap, /* transfer_unmap */
 };

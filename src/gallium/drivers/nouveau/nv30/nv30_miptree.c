@@ -403,7 +403,6 @@ nv30_miptree_transfer_unmap(struct pipe_context *pipe,
 }
 
 const struct u_resource_vtbl nv30_miptree_vtbl = {
-   NULL,
    nv30_miptree_transfer_map,
    nv30_miptree_transfer_unmap,
 };

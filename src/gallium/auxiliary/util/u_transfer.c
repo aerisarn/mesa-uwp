@@ -98,13 +98,6 @@ u_resource( struct pipe_resource *res )
    return (struct u_resource *)res;
 }
 
-void u_resource_destroy_vtbl(struct pipe_screen *screen,
-                             struct pipe_resource *resource)
-{
-   struct u_resource *ur = u_resource(resource);
-   ur->vtbl->resource_destroy(screen, resource);
-}
-
 void *u_transfer_map_vtbl(struct pipe_context *context,
                           struct pipe_resource *resource,
                           unsigned level,

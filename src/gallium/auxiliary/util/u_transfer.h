@@ -36,9 +36,6 @@ void u_default_transfer_flush_region( struct pipe_context *pipe,
  * to exist in a single driver.  This is intended to be transitionary!
  */
 struct u_resource_vtbl {
-   void (*resource_destroy)(struct pipe_screen *,
-                            struct pipe_resource *pt);
-
    void *(*transfer_map)(struct pipe_context *,
                          struct pipe_resource *resource,
                          unsigned level,
@@ -56,9 +53,6 @@ struct u_resource {
    const struct u_resource_vtbl *vtbl;
 };
 
-
-void u_resource_destroy_vtbl(struct pipe_screen *screen,
-                             struct pipe_resource *resource);
 
 void *u_transfer_map_vtbl(struct pipe_context *context,
                           struct pipe_resource *resource,

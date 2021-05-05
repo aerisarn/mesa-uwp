@@ -569,7 +569,6 @@ static void si_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *bu
 }
 
 static const struct u_resource_vtbl si_buffer_vtbl = {
-   NULL,                     /* resource_destroy */
    si_buffer_transfer_map,   /* transfer_map */
    si_buffer_transfer_unmap, /* transfer_unmap */
 };

@@ -112,7 +112,6 @@ i915_buffer_subdata(struct pipe_context *rm_ctx,
 
 struct u_resource_vtbl i915_buffer_vtbl = 
 {
-   NULL,
    i915_buffer_transfer_map,	     /* transfer_map */
    i915_buffer_transfer_unmap,	     /* transfer_unmap */
 };

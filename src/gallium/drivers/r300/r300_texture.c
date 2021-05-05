@@ -1042,7 +1042,6 @@ bool r300_resource_get_handle(struct pipe_screen* screen,
 
 static const struct u_resource_vtbl r300_texture_vtbl =
 {
-    NULL,                           /* resource_destroy */
     r300_texture_transfer_map,      /* transfer_map */
     r300_texture_transfer_unmap,    /* transfer_unmap */
 };

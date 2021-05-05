@@ -1121,7 +1121,6 @@ vc4_resource_screen_init(struct pipe_screen *pscreen)
         pscreen->resource_create_with_modifiers =
                 vc4_resource_create_with_modifiers;
         pscreen->resource_from_handle = vc4_resource_from_handle;
-        pscreen->resource_destroy = u_resource_destroy_vtbl;
         pscreen->resource_get_handle = vc4_resource_get_handle;
         pscreen->resource_destroy = vc4_resource_destroy;
         pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl,

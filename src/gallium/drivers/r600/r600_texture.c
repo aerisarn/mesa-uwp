@@ -1520,7 +1520,6 @@ static void r600_texture_transfer_unmap(struct pipe_context *ctx,
 
 static const struct u_resource_vtbl r600_texture_vtbl =
 {
-	NULL,                		/* resource_destroy */
 	r600_texture_transfer_map,	/* transfer_map */
 	r600_texture_transfer_unmap,	/* transfer_unmap */
 };

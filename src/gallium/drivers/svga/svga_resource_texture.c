@@ -843,7 +843,6 @@ format_has_depth(enum pipe_format format)
 
 struct u_resource_vtbl svga_texture_vtbl =
 {
-   NULL,                	      /* resource_destroy */
    svga_texture_transfer_map,	      /* transfer_map */
    svga_texture_transfer_unmap,	      /* transfer_unmap */
 };

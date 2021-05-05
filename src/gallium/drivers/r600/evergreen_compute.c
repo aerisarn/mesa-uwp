@@ -1317,7 +1317,6 @@ void r600_compute_global_buffer_destroy(struct pipe_screen *screen,
 
 static const struct u_resource_vtbl r600_global_buffer_vtbl =
 {
-	NULL,                               /* resource_destroy */
 	r600_compute_global_transfer_map, /* transfer_map */
 	r600_compute_global_transfer_unmap, /* transfer_unmap */
 };

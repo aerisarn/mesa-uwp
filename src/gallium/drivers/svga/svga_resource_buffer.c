@@ -456,7 +456,6 @@ svga_resource_destroy(struct pipe_screen *screen,
 
 struct u_resource_vtbl svga_buffer_vtbl =
 {
-   NULL,               		     /* resource_destroy */
    svga_buffer_transfer_map,	     /* transfer_map */
    svga_buffer_transfer_unmap,	     /* transfer_unmap */
 };

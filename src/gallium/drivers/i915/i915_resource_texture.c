@@ -895,7 +895,6 @@ out:
 
 struct u_resource_vtbl i915_texture_vtbl =
 {
-   NULL,                	      /* resource_destroy */
    i915_texture_transfer_map,	      /* transfer_map */
    i915_texture_transfer_unmap,	      /* transfer_unmap */
 };
