@@ -1020,10 +1020,27 @@ bi_instr_schedulable(bi_instr *instr,
 }
 
 static signed
-bi_instr_cost(bi_instr *instr)
+bi_instr_cost(bi_instr *instr, struct bi_tuple_state *tuple)
 {
-        /* TODO: stub */
-        return 0;
+        signed cost = 0;
+
+        /* Instructions that can schedule to either FMA or to ADD should be
+         * deprioritized since they're easier to reschedule elsewhere */
+        if (bi_can_fma(instr) && bi_can_add(instr))
+                cost++;
+
+        /* Message-passing instructions impose constraints on the registers
+         * later in the clause, so schedule them as late within a clause as
+         * possible (<==> prioritize them since we're backwards <==> decrease
+         * cost) */
+        if (bi_must_message(instr))
+                cost--;
+
+        /* Last instructions are big constraints (XXX: no effect on shader-db) */
+        if (bi_must_last(instr))
+                cost -= 2;
+
+        return cost;
 }
 
 static unsigned
@@ -1042,9 +1059,14 @@ bi_choose_index(struct bi_worklist st,
                 if (!bi_instr_schedulable(instr, clause, tuple, live_after_temp, fma))
                         continue;
 
-                signed cost = bi_instr_cost(instr);
+                signed cost = bi_instr_cost(instr, tuple);
 
-                if (cost < best_cost) {
+                /* Tie break in favour of later instructions, under the
+                 * assumption this promotes temporary usage (reducing pressure
+                 * on the register file). This is a side effect of a prepass
+                 * scheduling for pressure. */
+
+                if (cost <= best_cost) {
                         best_idx = i;
                         best_cost = cost;
                 }
