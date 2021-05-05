@@ -574,14 +574,6 @@ fail1:
    return NULL;
 }
 
-static const struct u_resource_vtbl zink_resource_vtbl = {
-   NULL,
-   zink_resource_destroy,
-   zink_transfer_map,
-   zink_transfer_flush_region,
-   zink_transfer_unmap,
-};
-
 static struct pipe_resource *
 resource_create(struct pipe_screen *pscreen,
                 const struct pipe_resource *templ,
@@ -593,7 +585,6 @@ resource_create(struct pipe_screen *pscreen,
 
    res->base.b = *templ;
 
-   res->base.vtbl = &zink_resource_vtbl;
    threaded_resource_init(&res->base.b);
    pipe_reference_init(&res->base.b.reference, 1);
    res->base.b.screen = pscreen;
