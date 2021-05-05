@@ -4803,9 +4803,9 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
 
    case SpvExecutionModeLocalSize:
       vtn_assert(gl_shader_stage_is_compute(b->shader->info.stage));
-      b->shader->info.cs.workgroup_size[0] = mode->operands[0];
-      b->shader->info.cs.workgroup_size[1] = mode->operands[1];
-      b->shader->info.cs.workgroup_size[2] = mode->operands[2];
+      b->shader->info.workgroup_size[0] = mode->operands[0];
+      b->shader->info.workgroup_size[1] = mode->operands[1];
+      b->shader->info.workgroup_size[2] = mode->operands[2];
       break;
 
    case SpvExecutionModeOutputVertices:
@@ -5016,9 +5016,9 @@ vtn_handle_execution_mode_id(struct vtn_builder *b, struct vtn_value *entry_poin
 
    switch (mode->exec_mode) {
    case SpvExecutionModeLocalSizeId:
-      b->shader->info.cs.workgroup_size[0] = vtn_constant_uint(b, mode->operands[0]);
-      b->shader->info.cs.workgroup_size[1] = vtn_constant_uint(b, mode->operands[1]);
-      b->shader->info.cs.workgroup_size[2] = vtn_constant_uint(b, mode->operands[2]);
+      b->shader->info.workgroup_size[0] = vtn_constant_uint(b, mode->operands[0]);
+      b->shader->info.workgroup_size[1] = vtn_constant_uint(b, mode->operands[1]);
+      b->shader->info.workgroup_size[2] = vtn_constant_uint(b, mode->operands[2]);
       break;
 
    case SpvExecutionModeLocalSizeHintId:
@@ -5986,16 +5986,16 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
                                  vtn_handle_execution_mode_id, NULL);
 
    if (b->workgroup_size_builtin) {
-      vtn_assert(stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL);
+      vtn_assert(gl_shader_stage_uses_workgroup(stage));
       vtn_assert(b->workgroup_size_builtin->type->type ==
                  glsl_vector_type(GLSL_TYPE_UINT, 3));
 
       nir_const_value *const_size =
          b->workgroup_size_builtin->constant->values;
 
-      b->shader->info.cs.workgroup_size[0] = const_size[0].u32;
-      b->shader->info.cs.workgroup_size[1] = const_size[1].u32;
-      b->shader->info.cs.workgroup_size[2] = const_size[2].u32;
+      b->shader->info.workgroup_size[0] = const_size[0].u32;
+      b->shader->info.workgroup_size[1] = const_size[1].u32;
+      b->shader->info.workgroup_size[2] = const_size[2].u32;
    }
 
    /* Set types on all vtn_values */

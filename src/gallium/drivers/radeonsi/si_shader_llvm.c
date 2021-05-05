@@ -411,7 +411,7 @@ static LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
-   assert(ctx->shader->selector->info.base.cs.workgroup_size_variable &&
+   assert(ctx->shader->selector->info.base.workgroup_size_variable &&
           ctx->shader->selector->info.uses_variable_block_size);
 
    LLVMValueRef chan[3] = {

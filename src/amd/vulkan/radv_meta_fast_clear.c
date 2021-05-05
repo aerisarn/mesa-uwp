@@ -37,9 +37,9 @@ build_dcc_decompress_compute_shader(struct radv_device *dev)
       nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "dcc_decompress_compute");
 
    /* We need at least 16/16/1 to cover an entire DCC block in a single workgroup. */
-   b.shader->info.cs.workgroup_size[0] = 16;
-   b.shader->info.cs.workgroup_size[1] = 16;
-   b.shader->info.cs.workgroup_size[2] = 1;
+   b.shader->info.workgroup_size[0] = 16;
+   b.shader->info.workgroup_size[1] = 16;
+   b.shader->info.workgroup_size[2] = 1;
    nir_variable *input_img = nir_variable_create(b.shader, nir_var_uniform, img_type, "in_img");
    input_img->data.descriptor_set = 0;
    input_img->data.binding = 0;
@@ -51,8 +51,8 @@ build_dcc_decompress_compute_shader(struct radv_device *dev)
    nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
    nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
    nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.cs.workgroup_size[0], b.shader->info.cs.workgroup_size[1],
-                    b.shader->info.cs.workgroup_size[2], 0);
+      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
+                    b.shader->info.workgroup_size[2], 0);
 
    nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
 

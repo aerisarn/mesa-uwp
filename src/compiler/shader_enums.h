@@ -73,6 +73,15 @@ gl_shader_stage_is_compute(gl_shader_stage stage)
 }
 
 static inline bool
+gl_shader_stage_uses_workgroup(gl_shader_stage stage)
+{
+   return stage == MESA_SHADER_COMPUTE ||
+          stage == MESA_SHADER_KERNEL ||
+          stage == MESA_SHADER_TASK ||
+          stage == MESA_SHADER_MESH;
+}
+
+static inline bool
 gl_shader_stage_is_callable(gl_shader_stage stage)
 {
    return stage == MESA_SHADER_ANY_HIT ||

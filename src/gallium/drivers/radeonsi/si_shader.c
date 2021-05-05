@@ -218,10 +218,10 @@ unsigned si_get_max_workgroup_size(const struct si_shader *shader)
    }
 
    /* Compile a variable block size using the maximum variable size. */
-   if (shader->selector->info.base.cs.workgroup_size_variable)
+   if (shader->selector->info.base.workgroup_size_variable)
       return SI_MAX_VARIABLE_THREADS_PER_BLOCK;
 
-   uint16_t *local_size = shader->selector->info.base.cs.workgroup_size;
+   uint16_t *local_size = shader->selector->info.base.workgroup_size;
    unsigned max_work_group_size = (uint32_t)local_size[0] *
                                   (uint32_t)local_size[1] *
                                   (uint32_t)local_size[2];

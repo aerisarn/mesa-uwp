@@ -73,9 +73,9 @@ lower_load_local_group_size(nir_builder *b, nir_intrinsic_instr *intr)
    b->cursor = nir_after_instr(&intr->instr);
 
    nir_const_value v[3] = {
-      nir_const_value_for_int(b->shader->info.cs.workgroup_size[0], 32),
-      nir_const_value_for_int(b->shader->info.cs.workgroup_size[1], 32),
-      nir_const_value_for_int(b->shader->info.cs.workgroup_size[2], 32)
+      nir_const_value_for_int(b->shader->info.workgroup_size[0], 32),
+      nir_const_value_for_int(b->shader->info.workgroup_size[1], 32),
+      nir_const_value_for_int(b->shader->info.workgroup_size[2], 32)
    };
    nir_ssa_def *size = nir_build_imm(b, 3, 32, v);
    nir_ssa_def_rewrite_uses(&intr->dest.ssa, size);

@@ -2354,15 +2354,15 @@ ttn_compile_init(const void *tgsi_tokens,
          break;
       case TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH:
          if (s->info.stage == MESA_SHADER_COMPUTE)
-            s->info.cs.workgroup_size[0] = value;
+            s->info.workgroup_size[0] = value;
          break;
       case TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT:
          if (s->info.stage == MESA_SHADER_COMPUTE)
-            s->info.cs.workgroup_size[1] = value;
+            s->info.workgroup_size[1] = value;
          break;
       case TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH:
          if (s->info.stage == MESA_SHADER_COMPUTE)
-            s->info.cs.workgroup_size[2] = value;
+            s->info.workgroup_size[2] = value;
          break;
       case TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD:
          if (s->info.stage == MESA_SHADER_COMPUTE)
@@ -2381,10 +2381,10 @@ ttn_compile_init(const void *tgsi_tokens,
    }
 
    if (s->info.stage == MESA_SHADER_COMPUTE &&
-       (!s->info.cs.workgroup_size[0] ||
-        !s->info.cs.workgroup_size[1] ||
-        !s->info.cs.workgroup_size[2]))
-      s->info.cs.workgroup_size_variable = true;
+       (!s->info.workgroup_size[0] ||
+        !s->info.workgroup_size[1] ||
+        !s->info.workgroup_size[2]))
+      s->info.workgroup_size_variable = true;
 
    c->inputs = rzalloc_array(c, struct nir_variable *, s->num_inputs);
    c->outputs = rzalloc_array(c, struct nir_variable *, s->num_outputs);

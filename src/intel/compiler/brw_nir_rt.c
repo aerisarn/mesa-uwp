@@ -426,7 +426,7 @@ brw_nir_create_raygen_trampoline(const struct brw_compiler *compiler,
                                                   "RT Ray-Gen Trampoline");
    ralloc_steal(mem_ctx, b.shader);
 
-   b.shader->info.cs.workgroup_size_variable = true;
+   b.shader->info.workgroup_size_variable = true;
 
    /* The RT global data and raygen BINDLESS_SHADER_RECORD addresses are
     * passed in as push constants in the first register.  We deal with the

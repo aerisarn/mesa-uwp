@@ -2791,9 +2791,9 @@ radv_fill_shader_keys(struct radv_device *device, struct radv_shader_variant_key
       if (!subgroup_size)
          subgroup_size = device->physical_device->cs_wave_size;
 
-      unsigned local_size = nir[MESA_SHADER_COMPUTE]->info.cs.workgroup_size[0] *
-                            nir[MESA_SHADER_COMPUTE]->info.cs.workgroup_size[1] *
-                            nir[MESA_SHADER_COMPUTE]->info.cs.workgroup_size[2];
+      unsigned local_size = nir[MESA_SHADER_COMPUTE]->info.workgroup_size[0] *
+                            nir[MESA_SHADER_COMPUTE]->info.workgroup_size[1] *
+                            nir[MESA_SHADER_COMPUTE]->info.workgroup_size[2];
 
       /* Games don't always request full subgroups when they should,
        * which can cause bugs if cswave32 is enabled.

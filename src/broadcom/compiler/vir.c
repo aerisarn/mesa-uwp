@@ -804,9 +804,9 @@ v3d_cs_set_prog_data(struct v3d_compile *c,
 {
         prog_data->shared_size = c->s->info.shared_size;
 
-        prog_data->local_size[0] = c->s->info.cs.workgroup_size[0];
-        prog_data->local_size[1] = c->s->info.cs.workgroup_size[1];
-        prog_data->local_size[2] = c->s->info.cs.workgroup_size[2];
+        prog_data->local_size[0] = c->s->info.workgroup_size[0];
+        prog_data->local_size[1] = c->s->info.workgroup_size[1];
+        prog_data->local_size[2] = c->s->info.workgroup_size[2];
 }
 
 static void

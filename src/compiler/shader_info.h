@@ -198,6 +198,11 @@ typedef struct shader_info {
     */
    unsigned shared_size;
 
+   /**
+    * Local workgroup size used by compute/task/mesh shaders.
+    */
+   uint16_t workgroup_size[3];
+
    uint16_t inlinable_uniform_dw_offsets[MAX_INLINABLE_UNIFORMS];
    uint8_t num_inlinable_uniforms:4;
 
@@ -258,6 +263,11 @@ typedef struct shader_info {
     * Used for VK_KHR_zero_initialize_workgroup_memory.
     */
    bool zero_initialize_shared_memory:1;
+
+   /**
+    * Used for ARB_compute_variable_group_size.
+    */
+   bool workgroup_size_variable:1;
 
    union {
       struct {
@@ -389,10 +399,8 @@ typedef struct shader_info {
       } fs;
 
       struct {
-         uint16_t workgroup_size[3];
          uint16_t workgroup_size_hint[3];
 
-         bool workgroup_size_variable:1;
          uint8_t user_data_components_amd:3;
 
          /*

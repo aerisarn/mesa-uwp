@@ -134,7 +134,7 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
    OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_COMPUTE));
 
    const unsigned *local_size =
-      info->block; // v->shader->nir->info->cs.workgroup_size;
+      info->block; // v->shader->nir->info->workgroup_size;
    const unsigned *num_groups = info->grid;
    /* for some reason, mesa/st doesn't set info->work_dim, so just assume 3: */
    const unsigned work_dim = info->work_dim ? info->work_dim : 3;

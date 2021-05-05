@@ -428,10 +428,10 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
          throw build_error();
       }
 
-      nir->info.cs.workgroup_size_variable = sym.reqd_work_group_size[0] == 0;
-      nir->info.cs.workgroup_size[0] = sym.reqd_work_group_size[0];
-      nir->info.cs.workgroup_size[1] = sym.reqd_work_group_size[1];
-      nir->info.cs.workgroup_size[2] = sym.reqd_work_group_size[2];
+      nir->info.workgroup_size_variable = sym.reqd_work_group_size[0] == 0;
+      nir->info.workgroup_size[0] = sym.reqd_work_group_size[0];
+      nir->info.workgroup_size[1] = sym.reqd_work_group_size[1];
+      nir->info.workgroup_size[2] = sym.reqd_work_group_size[2];
       nir_validate_shader(nir, "clover");
 
       // Inline all functions first.

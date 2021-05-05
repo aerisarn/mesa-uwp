@@ -3744,9 +3744,9 @@ nir_to_vir(struct v3d_compile *c)
                 /* Set up the division between gl_LocalInvocationIndex and
                  * wg_in_mem in the payload reg.
                  */
-                int wg_size = (c->s->info.cs.workgroup_size[0] *
-                               c->s->info.cs.workgroup_size[1] *
-                               c->s->info.cs.workgroup_size[2]);
+                int wg_size = (c->s->info.workgroup_size[0] *
+                               c->s->info.workgroup_size[1] *
+                               c->s->info.workgroup_size[2]);
                 c->local_invocation_index_bits =
                         ffs(util_next_power_of_two(MAX2(wg_size, 64))) - 1;
                 assert(c->local_invocation_index_bits <= 8);
@@ -3754,9 +3754,9 @@ nir_to_vir(struct v3d_compile *c)
                 if (c->s->info.shared_size) {
                         struct qreg wg_in_mem = vir_SHR(c, c->cs_payload[1],
                                                         vir_uniform_ui(c, 16));
-                        if (c->s->info.cs.workgroup_size[0] != 1 ||
-                            c->s->info.cs.workgroup_size[1] != 1 ||
-                            c->s->info.cs.workgroup_size[2] != 1) {
+                        if (c->s->info.workgroup_size[0] != 1 ||
+                            c->s->info.workgroup_size[1] != 1 ||
+                            c->s->info.workgroup_size[2] != 1) {
                                 int wg_bits = (16 -
                                                c->local_invocation_index_bits);
                                 int wg_mask = (1 << wg_bits) - 1;

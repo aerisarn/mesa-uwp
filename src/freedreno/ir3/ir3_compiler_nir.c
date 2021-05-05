@@ -4102,10 +4102,10 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		so->need_pixlod = true;
 
 	if (so->type == MESA_SHADER_COMPUTE) {
-		so->local_size[0] = ctx->s->info.cs.workgroup_size[0];
-		so->local_size[1] = ctx->s->info.cs.workgroup_size[1];
-		so->local_size[2] = ctx->s->info.cs.workgroup_size[2];
-		so->local_size_variable = ctx->s->info.cs.workgroup_size_variable;
+		so->local_size[0] = ctx->s->info.workgroup_size[0];
+		so->local_size[1] = ctx->s->info.workgroup_size[1];
+		so->local_size[2] = ctx->s->info.workgroup_size[2];
+		so->local_size_variable = ctx->s->info.workgroup_size_variable;
 	}
 
 out:

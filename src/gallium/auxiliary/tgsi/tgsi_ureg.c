@@ -2354,11 +2354,11 @@ ureg_setup_compute_shader(struct ureg_program *ureg,
                           const struct shader_info *info)
 {
    ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH,
-                 info->cs.workgroup_size[0]);
+                 info->workgroup_size[0]);
    ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT,
-                 info->cs.workgroup_size[1]);
+                 info->workgroup_size[1]);
    ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH,
-                 info->cs.workgroup_size[2]);
+                 info->workgroup_size[2]);
 
    if (info->shared_size)
       ureg_DECL_memory(ureg, TGSI_MEMORY_TYPE_SHARED);
