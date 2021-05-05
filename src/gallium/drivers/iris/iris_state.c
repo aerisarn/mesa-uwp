@@ -6878,7 +6878,8 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
    const struct brw_cs_dispatch_info dispatch =
       brw_cs_get_dispatch_info(devinfo, cs_prog_data, grid->block);
 
-   if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
+   if ((stage_dirty & IRIS_STAGE_DIRTY_CS) ||
+       cs_prog_data->local_size[0] == 0 /* Variable local group size */) {
       /* The MEDIA_VFE_STATE documentation for Gfx8+ says:
        *
        *   "A stalling PIPE_CONTROL is required before MEDIA_VFE_STATE unless
