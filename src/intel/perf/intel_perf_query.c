@@ -375,9 +375,11 @@ intel_perf_open(struct intel_perf_context *perf_ctx,
    uint64_t properties[DRM_I915_PERF_PROP_MAX * 2];
    uint32_t p = 0;
 
-   /* Single context sampling */
-   properties[p++] = DRM_I915_PERF_PROP_CTX_HANDLE;
-   properties[p++] = ctx_id;
+   /* Single context sampling if valid context id. */
+   if (ctx_id != INTEL_PERF_INVALID_CTX_ID) {
+      properties[p++] = DRM_I915_PERF_PROP_CTX_HANDLE;
+      properties[p++] = ctx_id;
+   }
 
    /* Include OA reports in samples */
    properties[p++] = DRM_I915_PERF_PROP_SAMPLE_OA;

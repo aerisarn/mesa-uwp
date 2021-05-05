@@ -50,6 +50,8 @@ struct intel_device_info;
 struct intel_perf_config;
 struct intel_perf_query_info;
 
+#define INTEL_PERF_INVALID_CTX_ID (0xffffffff)
+
 enum intel_perf_counter_type {
    INTEL_PERF_COUNTER_TYPE_EVENT,
    INTEL_PERF_COUNTER_TYPE_DURATION_NORM,

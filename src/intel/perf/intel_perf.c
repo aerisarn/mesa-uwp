@@ -53,8 +53,6 @@
 
 #define FILE_DEBUG_FLAG DEBUG_PERFMON
 
-#define OA_REPORT_INVALID_CTX_ID (0xffffffff)
-
 static bool
 is_dir_or_link(const struct dirent *entry, const char *parent_dir)
 {
@@ -1052,8 +1050,8 @@ intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
 {
    int i;
 
-   if (result->hw_id == OA_REPORT_INVALID_CTX_ID &&
-       start[2] != OA_REPORT_INVALID_CTX_ID)
+   if (result->hw_id == INTEL_PERF_INVALID_CTX_ID &&
+       start[2] != INTEL_PERF_INVALID_CTX_ID)
       result->hw_id = start[2];
    if (result->reports_accumulated == 0)
       result->begin_timestamp = start[1];
@@ -1229,7 +1227,7 @@ void
 intel_perf_query_result_clear(struct intel_perf_query_result *result)
 {
    memset(result, 0, sizeof(*result));
-   result->hw_id = OA_REPORT_INVALID_CTX_ID; /* invalid */
+   result->hw_id = INTEL_PERF_INVALID_CTX_ID;
 }
 
 void
