@@ -669,7 +669,7 @@ make_texture(struct st_context *st,
       ctx->_ImageTransferState = 0x0;
 
       /* map texture transfer */
-      dest = pipe_transfer_map(pipe, pt, 0, 0,
+      dest = pipe_texture_map(pipe, pt, 0, 0,
                                PIPE_MAP_WRITE, 0, 0,
                                width, height, &transfer);
       if (!dest) {
@@ -715,7 +715,7 @@ make_texture(struct st_context *st,
       }
 
       /* unmap */
-      pipe_transfer_unmap(pipe, transfer);
+      pipe_texture_unmap(pipe, transfer);
 
       /* restore */
       ctx->_ImageTransferState = imageTransferStateSave;
@@ -989,7 +989,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
       usage = PIPE_MAP_WRITE;
    }
 
-   stmap = pipe_transfer_map(pipe, strb->texture,
+   stmap = pipe_texture_map(pipe, strb->texture,
                              strb->surface->u.tex.level,
                              strb->surface->u.tex.first_layer,
                              usage, x, y,
@@ -1120,7 +1120,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
    _mesa_unmap_pbo_source(ctx, &clippedUnpack);
 
    /* unmap the stencil buffer */
-   pipe_transfer_unmap(pipe, pt);
+   pipe_texture_unmap(pipe, pt);
 }
 
 
@@ -1501,7 +1501,7 @@ copy_stencil_pixels(struct gl_context *ctx, GLint srcx, GLint srcy,
    assert(util_format_get_blockheight(rbDraw->texture->format) == 1);
 
    /* map the stencil buffer */
-   drawMap = pipe_transfer_map(pipe,
+   drawMap = pipe_texture_map(pipe,
                                rbDraw->texture,
                                rbDraw->surface->u.tex.level,
                                rbDraw->surface->u.tex.first_layer,
@@ -1530,7 +1530,7 @@ copy_stencil_pixels(struct gl_context *ctx, GLint srcx, GLint srcy,
    free(buffer);
 
    /* unmap the stencil buffer */
-   pipe_transfer_unmap(pipe, ptDraw);
+   pipe_texture_unmap(pipe, ptDraw);
 }
 
 

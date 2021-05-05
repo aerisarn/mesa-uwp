@@ -421,7 +421,7 @@ drisw_update_tex_buffer(struct dri_drawable *drawable,
 
    get_drawable_info(dPriv, &x, &y, &w, &h);
 
-   map = pipe_transfer_map(pipe, res,
+   map = pipe_texture_map(pipe, res,
                            0, 0, // level, layer,
                            PIPE_MAP_WRITE,
                            x, y, w, h, &transfer);
@@ -439,7 +439,7 @@ drisw_update_tex_buffer(struct dri_drawable *drawable,
               ximage_stride);
    }
 
-   pipe_transfer_unmap(pipe, transfer);
+   pipe_texture_unmap(pipe, transfer);
 }
 
 static __DRIimageExtension driSWImageExtension = {

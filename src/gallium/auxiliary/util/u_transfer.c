@@ -31,12 +31,12 @@ void u_default_buffer_subdata(struct pipe_context *pipe,
 
    u_box_1d(offset, size, &box);
 
-   map = pipe->transfer_map(pipe, resource, 0, usage, &box, &transfer);
+   map = pipe->buffer_map(pipe, resource, 0, usage, &box, &transfer);
    if (!map)
       return;
 
    memcpy(map, data, size);
-   pipe_transfer_unmap(pipe, transfer);
+   pipe_buffer_unmap(pipe, transfer);
 }
 
 void u_default_texture_subdata(struct pipe_context *pipe,
@@ -60,7 +60,7 @@ void u_default_texture_subdata(struct pipe_context *pipe,
    /* texture_subdata implicitly discards the rewritten buffer range */
    usage |= PIPE_MAP_DISCARD_RANGE;
 
-   map = pipe->transfer_map(pipe,
+   map = pipe->texture_map(pipe,
                             resource,
                             level,
                             usage,
@@ -81,7 +81,7 @@ void u_default_texture_subdata(struct pipe_context *pipe,
                  layer_stride, /* bytes */
                  0, 0, 0);
 
-   pipe_transfer_unmap(pipe, transfer);
+   pipe_texture_unmap(pipe, transfer);
 }
 
 void u_default_transfer_flush_region(UNUSED struct pipe_context *pipe,

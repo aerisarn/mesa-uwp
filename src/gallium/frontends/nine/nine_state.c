@@ -2571,7 +2571,7 @@ CSMT_ITEM_NO_WAIT_WITH_COUNTER(nine_context_box_upload,
             return;
     }
 
-    map = pipe->transfer_map(pipe,
+    map = pipe->texture_map(pipe,
                              res,
                              level,
                              PIPE_MAP_WRITE | PIPE_MAP_DISCARD_RANGE,
@@ -2592,7 +2592,7 @@ CSMT_ITEM_NO_WAIT_WITH_COUNTER(nine_context_box_upload,
                                     dst_box->width, dst_box->height,
                                     dst_box->depth);
 
-    pipe_transfer_unmap(pipe, transfer);
+    pipe_texture_unmap(pipe, transfer);
 }
 
 struct pipe_query *
@@ -3128,7 +3128,7 @@ update_vertex_buffers_sw(struct NineDevice9 *device, int start_vertice, int num_
                 u_box_1d(vtxbuf.buffer_offset + offset + start_vertice * vtxbuf.stride,
                          num_vertices * vtxbuf.stride, &box);
 
-                userbuf = pipe->transfer_map(pipe, buf, 0, PIPE_MAP_READ, &box,
+                userbuf = pipe->buffer_map(pipe, buf, 0, PIPE_MAP_READ, &box,
                                              &(sw_internal->transfers_so[i]));
                 vtxbuf.is_user_buffer = true;
                 vtxbuf.buffer.user = userbuf;
@@ -3290,7 +3290,7 @@ nine_state_after_draw_sw(struct NineDevice9 *device)
     for (i = 0; i < 4; i++) {
         pipe_sw->set_vertex_buffers(pipe_sw, i, 0, 1, false, NULL);
         if (sw_internal->transfers_so[i])
-            pipe->transfer_unmap(pipe, sw_internal->transfers_so[i]);
+            pipe->buffer_unmap(pipe, sw_internal->transfers_so[i]);
         sw_internal->transfers_so[i] = NULL;
     }
     nine_context_get_pipe_release(device);

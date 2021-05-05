@@ -1697,7 +1697,7 @@ dri2_map_image(__DRIcontext *context, __DRIimage *image,
    if (flags & __DRI_IMAGE_TRANSFER_WRITE)
          pipe_access |= PIPE_MAP_WRITE;
 
-   map = pipe_transfer_map(pipe, resource, 0, 0, pipe_access, x0, y0,
+   map = pipe_texture_map(pipe, resource, 0, 0, pipe_access, x0, y0,
                            width, height, &trans);
    if (map) {
       *data = trans;
@@ -1713,7 +1713,7 @@ dri2_unmap_image(__DRIcontext *context, __DRIimage *image, void *data)
    struct dri_context *ctx = dri_context(context);
    struct pipe_context *pipe = ctx->st->pipe;
 
-   pipe_transfer_unmap(pipe, (struct pipe_transfer *)data);
+   pipe_texture_unmap(pipe, (struct pipe_transfer *)data);
 }
 
 static int

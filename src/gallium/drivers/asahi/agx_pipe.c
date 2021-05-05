@@ -522,9 +522,11 @@ agx_create_context(struct pipe_screen *screen,
    pctx->end_query = agx_end_query;
    pctx->get_query_result = agx_get_query_result;
    pctx->set_active_query_state = agx_set_active_query_state;
-   pctx->transfer_map = agx_transfer_map;
+   pctx->buffer_map = agx_transfer_map;
+   pctx->texture_map = agx_transfer_map;
    pctx->transfer_flush_region = agx_transfer_flush_region;
-   pctx->transfer_unmap = agx_transfer_unmap;
+   pctx->buffer_unmap = agx_transfer_unmap;
+   pctx->texture_unmap = agx_transfer_unmap;
    pctx->buffer_subdata = u_default_buffer_subdata;
    pctx->texture_subdata = u_default_texture_subdata;
    pctx->invalidate_resource = agx_invalidate_resource;

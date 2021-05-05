@@ -1351,8 +1351,10 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
 void
 zink_context_resource_init(struct pipe_context *pctx)
 {
-   pctx->transfer_map = u_transfer_helper_deinterleave_transfer_map;
-   pctx->transfer_unmap = u_transfer_helper_deinterleave_transfer_unmap;
+   pctx->buffer_map = u_transfer_helper_deinterleave_transfer_map;
+   pctx->buffer_unmap = u_transfer_helper_deinterleave_transfer_unmap;
+   pctx->texture_map = u_transfer_helper_deinterleave_transfer_map;
+   pctx->texture_unmap = u_transfer_helper_deinterleave_transfer_unmap;
 
    pctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
    pctx->buffer_subdata = zink_buffer_subdata;

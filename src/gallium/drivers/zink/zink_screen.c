@@ -1077,7 +1077,7 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
 
    if (map) {
       struct pipe_transfer *transfer = NULL;
-      void *res_map = pipe_transfer_map(pcontext, pres, level, layer, PIPE_MAP_READ, 0, 0,
+      void *res_map = pipe_texture_map(pcontext, pres, level, layer, PIPE_MAP_READ, 0, 0,
                                         u_minify(pres->width0, level),
                                         u_minify(pres->height0, level),
                                         &transfer);
@@ -1085,7 +1085,7 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
          util_copy_rect((ubyte*)map, pres->format, res->dt_stride, 0, 0,
                         transfer->box.width, transfer->box.height,
                         (const ubyte*)res_map, transfer->stride, 0, 0);
-         pipe_transfer_unmap(pcontext, transfer);
+         pipe_texture_unmap(pcontext, transfer);
       }
       winsys->displaytarget_unmap(winsys, res->dt);
    }

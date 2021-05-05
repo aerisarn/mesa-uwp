@@ -745,9 +745,11 @@ void si_init_screen_buffer_functions(struct si_screen *sscreen)
 void si_init_buffer_functions(struct si_context *sctx)
 {
    sctx->b.invalidate_resource = si_invalidate_resource;
-   sctx->b.transfer_map = u_transfer_map_vtbl;
+   sctx->b.buffer_map = u_transfer_map_vtbl;
+   sctx->b.texture_map = u_transfer_map_vtbl;
    sctx->b.transfer_flush_region = si_buffer_flush_region;
-   sctx->b.transfer_unmap = u_transfer_unmap_vtbl;
+   sctx->b.buffer_unmap = u_transfer_unmap_vtbl;
+   sctx->b.texture_unmap = u_transfer_unmap_vtbl;
    sctx->b.texture_subdata = u_default_texture_subdata;
    sctx->b.buffer_subdata = si_buffer_subdata;
    sctx->b.resource_commit = si_resource_commit;

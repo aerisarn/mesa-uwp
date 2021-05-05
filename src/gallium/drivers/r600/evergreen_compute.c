@@ -555,7 +555,7 @@ static void evergreen_compute_upload_input(struct pipe_context *ctx,
 	}
 
 	u_box_1d(0, input_size, &box);
-	num_work_groups_start = ctx->transfer_map(ctx,
+	num_work_groups_start = ctx->buffer_map(ctx,
 			(struct pipe_resource*)shader->kernel_param,
 			0, PIPE_MAP_WRITE | PIPE_MAP_DISCARD_RANGE,
 			&box, &transfer);
@@ -582,7 +582,7 @@ static void evergreen_compute_upload_input(struct pipe_context *ctx,
 			((unsigned*)num_work_groups_start)[i]);
 	}
 
-	ctx->transfer_unmap(ctx, transfer);
+	ctx->buffer_unmap(ctx, transfer);
 
 	/* ID=0 and ID=3 are reserved for the parameters.
 	 * LLVM will preferably use ID=0, but it does not work for dynamic

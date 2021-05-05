@@ -143,7 +143,7 @@ make_bitmap_texture(struct gl_context *ctx, GLsizei width, GLsizei height,
       return NULL;
    }
 
-   dest = pipe_transfer_map(st->pipe, pt, 0, 0,
+   dest = pipe_texture_map(st->pipe, pt, 0, 0,
                             PIPE_MAP_WRITE,
                             0, 0, width, height, &transfer);
 
@@ -155,7 +155,7 @@ make_bitmap_texture(struct gl_context *ctx, GLsizei width, GLsizei height,
    _mesa_unmap_pbo_source(ctx, unpack);
 
    /* Release transfer */
-   pipe_transfer_unmap(pipe, transfer);
+   pipe_texture_unmap(pipe, transfer);
    return pt;
 }
 
@@ -406,7 +406,7 @@ create_cache_trans(struct st_context *st)
    /* Map the texture transfer.
     * Subsequent glBitmap calls will write into the texture image.
     */
-   cache->buffer = pipe_transfer_map(pipe, cache->texture, 0, 0,
+   cache->buffer = pipe_texture_map(pipe, cache->texture, 0, 0,
                                      PIPE_MAP_WRITE, 0, 0,
                                      BITMAP_CACHE_WIDTH,
                                      BITMAP_CACHE_HEIGHT, &cache->trans);
@@ -442,7 +442,7 @@ st_flush_bitmap_cache(struct st_context *st)
       if (cache->trans && cache->buffer) {
          if (0)
             print_cache(cache);
-         pipe_transfer_unmap(pipe, cache->trans);
+         pipe_texture_unmap(pipe, cache->trans);
          cache->buffer = NULL;
          cache->trans = NULL;
       }
@@ -810,7 +810,7 @@ st_destroy_bitmap(struct st_context *st)
    struct st_bitmap_cache *cache = &st->bitmap.cache;
 
    if (cache->trans && cache->buffer) {
-      pipe_transfer_unmap(pipe, cache->trans);
+      pipe_texture_unmap(pipe, cache->trans);
    }
    pipe_resource_reference(&st->bitmap.cache.texture, NULL);
 }

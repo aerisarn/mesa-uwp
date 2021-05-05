@@ -249,7 +249,7 @@ enum pipe_map_flags
    PIPE_MAP_READ = 1 << 0,
    
    /**
-    * Resource contents will be written back at transfer_unmap
+    * Resource contents will be written back at buffer/texture_unmap
     * time (or modified as a result of being accessed directly).
     */
    PIPE_MAP_WRITE = 1 << 1,

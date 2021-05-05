@@ -154,9 +154,11 @@ nvc0_resource_from_user_memory(struct pipe_screen *pipe,
 void
 nvc0_init_resource_functions(struct pipe_context *pcontext)
 {
-   pcontext->transfer_map = u_transfer_map_vtbl;
+   pcontext->buffer_map = u_transfer_map_vtbl;
+   pcontext->texture_map = u_transfer_map_vtbl;
    pcontext->transfer_flush_region = nouveau_buffer_transfer_flush_region;
-   pcontext->transfer_unmap = u_transfer_unmap_vtbl;
+   pcontext->buffer_unmap = u_transfer_unmap_vtbl;
+   pcontext->texture_unmap = u_transfer_unmap_vtbl;
    pcontext->buffer_subdata = u_default_buffer_subdata;
    pcontext->texture_subdata = u_default_texture_subdata;
    pcontext->create_surface = nvc0_surface_create;

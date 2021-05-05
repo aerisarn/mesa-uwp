@@ -1080,8 +1080,10 @@ d3d12_resource_make_writeable(struct pipe_context *pctx,
 void
 d3d12_context_resource_init(struct pipe_context *pctx)
 {
-   pctx->transfer_map = d3d12_transfer_map;
-   pctx->transfer_unmap = d3d12_transfer_unmap;
+   pctx->buffer_map = d3d12_transfer_map;
+   pctx->buffer_unmap = d3d12_transfer_unmap;
+   pctx->texture_map = d3d12_transfer_map;
+   pctx->texture_unmap = d3d12_transfer_unmap;
 
    pctx->transfer_flush_region = u_default_transfer_flush_region;
    pctx->buffer_subdata = u_default_buffer_subdata;

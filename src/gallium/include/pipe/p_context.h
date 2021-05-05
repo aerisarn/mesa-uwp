@@ -762,14 +762,14 @@ struct pipe_context {
     *
     * out_transfer will contain the transfer object that must be passed
     * to all the other transfer functions. It also contains useful
-    * information (like texture strides).
+    * information (like texture strides for texture_map).
     */
-   void *(*transfer_map)(struct pipe_context *,
-                         struct pipe_resource *resource,
-                         unsigned level,
-                         unsigned usage,  /* a combination of PIPE_MAP_x */
-                         const struct pipe_box *,
-                         struct pipe_transfer **out_transfer);
+   void *(*buffer_map)(struct pipe_context *,
+		       struct pipe_resource *resource,
+		       unsigned level,
+		       unsigned usage,  /* a combination of PIPE_MAP_x */
+		       const struct pipe_box *,
+		       struct pipe_transfer **out_transfer);
 
    /* If transfer was created with WRITE|FLUSH_EXPLICIT, only the
     * regions specified with this call are guaranteed to be written to
@@ -779,8 +779,18 @@ struct pipe_context {
 				  struct pipe_transfer *transfer,
 				  const struct pipe_box *);
 
-   void (*transfer_unmap)(struct pipe_context *,
-                          struct pipe_transfer *transfer);
+   void (*buffer_unmap)(struct pipe_context *,
+			struct pipe_transfer *transfer);
+
+   void *(*texture_map)(struct pipe_context *,
+			struct pipe_resource *resource,
+			unsigned level,
+			unsigned usage,  /* a combination of PIPE_MAP_x */
+			const struct pipe_box *,
+			struct pipe_transfer **out_transfer);
+
+   void (*texture_unmap)(struct pipe_context *,
+			 struct pipe_transfer *transfer);
 
    /* One-shot transfer operation with data supplied in a user
     * pointer.

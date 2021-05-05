@@ -903,9 +903,11 @@ lima_resource_context_init(struct lima_context *ctx)
 
    ctx->base.blit = lima_blit;
 
-   ctx->base.transfer_map = lima_transfer_map;
+   ctx->base.buffer_map = lima_transfer_map;
+   ctx->base.texture_map = lima_transfer_map;
    ctx->base.transfer_flush_region = lima_transfer_flush_region;
-   ctx->base.transfer_unmap = lima_transfer_unmap;
+   ctx->base.buffer_unmap = lima_transfer_unmap;
+   ctx->base.texture_unmap = lima_transfer_unmap;
 
    ctx->base.flush_resource = lima_flush_resource;
 }

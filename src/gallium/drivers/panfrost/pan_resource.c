@@ -1352,8 +1352,10 @@ panfrost_resource_screen_init(struct pipe_screen *pscreen)
 void
 panfrost_resource_context_init(struct pipe_context *pctx)
 {
-        pctx->transfer_map = u_transfer_helper_transfer_map;
-        pctx->transfer_unmap = u_transfer_helper_transfer_unmap;
+        pctx->buffer_map = u_transfer_helper_transfer_map;
+        pctx->buffer_unmap = u_transfer_helper_transfer_unmap;
+        pctx->texture_map = u_transfer_helper_transfer_map;
+        pctx->texture_unmap = u_transfer_helper_transfer_unmap;
         pctx->create_surface = panfrost_create_surface;
         pctx->surface_destroy = panfrost_surface_destroy;
         pctx->resource_copy_region = util_resource_copy_region;

@@ -1981,80 +1981,100 @@ tc_improve_map_buffer_flags(struct threaded_context *tc,
 }
 
 static void *
-tc_transfer_map(struct pipe_context *_pipe,
-                struct pipe_resource *resource, unsigned level,
-                unsigned usage, const struct pipe_box *box,
-                struct pipe_transfer **transfer)
+tc_buffer_map(struct pipe_context *_pipe,
+              struct pipe_resource *resource, unsigned level,
+              unsigned usage, const struct pipe_box *box,
+              struct pipe_transfer **transfer)
 {
    struct threaded_context *tc = threaded_context(_pipe);
    struct threaded_resource *tres = threaded_resource(resource);
    struct pipe_context *pipe = tc->pipe;
 
-   if (resource->target == PIPE_BUFFER) {
-      usage = tc_improve_map_buffer_flags(tc, tres, usage, box->x, box->width);
+   usage = tc_improve_map_buffer_flags(tc, tres, usage, box->x, box->width);
 
-      /* Do a staging transfer within the threaded context. The driver should
-       * only get resource_copy_region.
+   /* Do a staging transfer within the threaded context. The driver should
+    * only get resource_copy_region.
+    */
+   if (usage & PIPE_MAP_DISCARD_RANGE) {
+      struct threaded_transfer *ttrans = slab_alloc(&tc->pool_transfers);
+      uint8_t *map;
+
+      ttrans->staging = NULL;
+
+      u_upload_alloc(tc->base.stream_uploader, 0,
+                     box->width + (box->x % tc->map_buffer_alignment),
+                     tc->map_buffer_alignment, &ttrans->b.offset,
+                     &ttrans->staging, (void**)&map);
+      if (!map) {
+         slab_free(&tc->pool_transfers, ttrans);
+         return NULL;
+      }
+
+      ttrans->b.resource = resource;
+      ttrans->b.level = 0;
+      ttrans->b.usage = usage;
+      ttrans->b.box = *box;
+      ttrans->b.stride = 0;
+      ttrans->b.layer_stride = 0;
+      ttrans->valid_buffer_range = &tres->valid_buffer_range;
+      *transfer = &ttrans->b;
+
+      p_atomic_inc(&tres->pending_staging_uploads);
+      util_range_add(resource, &tres->pending_staging_uploads_range,
+                     box->x, box->x + box->width);
+
+      return map + (box->x % tc->map_buffer_alignment);
+   }
+
+   if (usage & PIPE_MAP_UNSYNCHRONIZED &&
+       p_atomic_read(&tres->pending_staging_uploads) &&
+       util_ranges_intersect(&tres->pending_staging_uploads_range, box->x, box->x + box->width)) {
+      /* Write conflict detected between a staging transfer and the direct mapping we're
+       * going to do. Resolve the conflict by ignoring UNSYNCHRONIZED so the direct mapping
+       * will have to wait for the staging transfer completion.
+       * Note: The conflict detection is only based on the mapped range, not on the actual
+       * written range(s).
        */
-      if (usage & PIPE_MAP_DISCARD_RANGE) {
-         struct threaded_transfer *ttrans = slab_alloc(&tc->pool_transfers);
-         uint8_t *map;
-
-         ttrans->staging = NULL;
-
-         u_upload_alloc(tc->base.stream_uploader, 0,
-                        box->width + (box->x % tc->map_buffer_alignment),
-                        tc->map_buffer_alignment, &ttrans->b.offset,
-                        &ttrans->staging, (void**)&map);
-         if (!map) {
-            slab_free(&tc->pool_transfers, ttrans);
-            return NULL;
-         }
-
-         ttrans->b.resource = resource;
-         ttrans->b.level = 0;
-         ttrans->b.usage = usage;
-         ttrans->b.box = *box;
-         ttrans->b.stride = 0;
-         ttrans->b.layer_stride = 0;
-         ttrans->valid_buffer_range = &tres->valid_buffer_range;
-         *transfer = &ttrans->b;
-
-         p_atomic_inc(&tres->pending_staging_uploads);
-         util_range_add(resource, &tres->pending_staging_uploads_range,
-                        box->x, box->x + box->width);
-
-         return map + (box->x % tc->map_buffer_alignment);
-      }
-
-      if (usage & PIPE_MAP_UNSYNCHRONIZED &&
-          p_atomic_read(&tres->pending_staging_uploads) &&
-          util_ranges_intersect(&tres->pending_staging_uploads_range, box->x, box->x + box->width)) {
-         /* Write conflict detected between a staging transfer and the direct mapping we're
-          * going to do. Resolve the conflict by ignoring UNSYNCHRONIZED so the direct mapping
-          * will have to wait for the staging transfer completion.
-          * Note: The conflict detection is only based on the mapped range, not on the actual
-          * written range(s).
-          */
-         usage &= ~PIPE_MAP_UNSYNCHRONIZED & ~TC_TRANSFER_MAP_THREADED_UNSYNC;
-         tc->use_forced_staging_uploads = false;
-      }
+      usage &= ~PIPE_MAP_UNSYNCHRONIZED & ~TC_TRANSFER_MAP_THREADED_UNSYNC;
+      tc->use_forced_staging_uploads = false;
    }
 
    /* Unsychronized buffer mappings don't have to synchronize the thread. */
    if (!(usage & TC_TRANSFER_MAP_THREADED_UNSYNC)) {
-      tc_sync_msg(tc, resource->target != PIPE_BUFFER ? "  texture" :
-                      usage & PIPE_MAP_DISCARD_RANGE ? "  discard_range" :
+      tc_sync_msg(tc, usage & PIPE_MAP_DISCARD_RANGE ? "  discard_range" :
                       usage & PIPE_MAP_READ ? "  read" : "  staging conflict");
       tc_set_driver_thread(tc);
    }
 
    tc->bytes_mapped_estimate += box->width;
 
-   void *ret = pipe->transfer_map(pipe, tres->latest ? tres->latest : resource,
-                             level, usage, box, transfer);
-   if (resource->target == PIPE_BUFFER)
-      threaded_transfer(*transfer)->valid_buffer_range = &tres->valid_buffer_range;
+   void *ret = pipe->buffer_map(pipe, tres->latest ? tres->latest : resource,
+                                level, usage, box, transfer);
+   threaded_transfer(*transfer)->valid_buffer_range = &tres->valid_buffer_range;
+
+   if (!(usage & TC_TRANSFER_MAP_THREADED_UNSYNC))
+      tc_clear_driver_thread(tc);
+
+   return ret;
+}
+
+static void *
+tc_texture_map(struct pipe_context *_pipe,
+               struct pipe_resource *resource, unsigned level,
+               unsigned usage, const struct pipe_box *box,
+               struct pipe_transfer **transfer)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   struct threaded_resource *tres = threaded_resource(resource);
+   struct pipe_context *pipe = tc->pipe;
+
+   tc_sync_msg(tc, "texture");
+   tc_set_driver_thread(tc);
+
+   tc->bytes_mapped_estimate += box->width;
+
+   void *ret = pipe->texture_map(pipe, tres->latest ? tres->latest : resource,
+                                 level, usage, box, transfer);
 
    if (!(usage & TC_TRANSFER_MAP_THREADED_UNSYNC))
       tc_clear_driver_thread(tc);
@@ -2147,7 +2167,11 @@ tc_transfer_flush_region(struct pipe_context *_pipe,
    p->box = *rel_box;
 }
 
-struct tc_transfer_unmap {
+static void
+tc_flush(struct pipe_context *_pipe, struct pipe_fence_handle **fence,
+         unsigned flags);
+
+struct tc_buffer_unmap {
    struct tc_call_base base;
    bool was_staging_transfer;
    union {
@@ -2157,9 +2181,9 @@ struct tc_transfer_unmap {
 };
 
 static uint16_t
-tc_call_transfer_unmap(struct pipe_context *pipe, void *call, uint64_t *last)
+tc_call_buffer_unmap(struct pipe_context *pipe, void *call, uint64_t *last)
 {
-   struct tc_transfer_unmap *p = to_call(call, tc_transfer_unmap);
+   struct tc_buffer_unmap *p = to_call(call, tc_buffer_unmap);
 
    if (p->was_staging_transfer) {
       struct threaded_resource *tres = threaded_resource(p->resource);
@@ -2168,18 +2192,14 @@ tc_call_transfer_unmap(struct pipe_context *pipe, void *call, uint64_t *last)
       p_atomic_dec(&tres->pending_staging_uploads);
       tc_drop_resource_reference(p->resource);
    } else {
-      pipe->transfer_unmap(pipe, p->transfer);
+      pipe->buffer_unmap(pipe, p->transfer);
    }
 
-   return call_size(tc_transfer_unmap);
+   return call_size(tc_buffer_unmap);
 }
 
 static void
-tc_flush(struct pipe_context *_pipe, struct pipe_fence_handle **fence,
-         unsigned flags);
-
-static void
-tc_transfer_unmap(struct pipe_context *_pipe, struct pipe_transfer *transfer)
+tc_buffer_unmap(struct pipe_context *_pipe, struct pipe_transfer *transfer)
 {
    struct threaded_context *tc = threaded_context(_pipe);
    struct threaded_transfer *ttrans = threaded_transfer(transfer);
@@ -2194,30 +2214,28 @@ tc_transfer_unmap(struct pipe_context *_pipe, struct pipe_transfer *transfer)
                                   PIPE_MAP_DISCARD_RANGE)));
 
       struct pipe_context *pipe = tc->pipe;
-      if (tres->b.target == PIPE_BUFFER) {
-         util_range_add(&tres->b, ttrans->valid_buffer_range,
-                         transfer->box.x, transfer->box.x + transfer->box.width);
-      }
-      pipe->transfer_unmap(pipe, transfer);
+      util_range_add(&tres->b, ttrans->valid_buffer_range,
+                      transfer->box.x, transfer->box.x + transfer->box.width);
+
+      pipe->buffer_unmap(pipe, transfer);
       return;
    }
 
    bool was_staging_transfer = false;
 
-   if (tres->b.target == PIPE_BUFFER) {
-      if (transfer->usage & PIPE_MAP_WRITE &&
-          !(transfer->usage & PIPE_MAP_FLUSH_EXPLICIT))
-         tc_buffer_do_flush_region(tc, ttrans, &transfer->box);
+   if (transfer->usage & PIPE_MAP_WRITE &&
+       !(transfer->usage & PIPE_MAP_FLUSH_EXPLICIT))
+      tc_buffer_do_flush_region(tc, ttrans, &transfer->box);
 
-      if (ttrans->staging) {
-         was_staging_transfer = true;
+   if (ttrans->staging) {
+      was_staging_transfer = true;
 
-         tc_drop_resource_reference(ttrans->staging);
-         slab_free(&tc->pool_transfers, ttrans);
-      }
+      tc_drop_resource_reference(ttrans->staging);
+      slab_free(&tc->pool_transfers, ttrans);
    }
-   struct tc_transfer_unmap *p = tc_add_call(tc, TC_CALL_transfer_unmap,
-                                             tc_transfer_unmap);
+
+   struct tc_buffer_unmap *p = tc_add_call(tc, TC_CALL_buffer_unmap,
+                                           tc_buffer_unmap);
    if (was_staging_transfer) {
       tc_set_resource_reference(&p->resource, &tres->b);
       p->was_staging_transfer = true;
@@ -2226,7 +2244,40 @@ tc_transfer_unmap(struct pipe_context *_pipe, struct pipe_transfer *transfer)
       p->was_staging_transfer = false;
    }
 
-   /* tc_transfer_map directly maps the buffers, but tc_transfer_unmap
+   /* tc_buffer_map directly maps the buffers, but tc_buffer_unmap
+    * defers the unmap operation to the batch execution.
+    * bytes_mapped_estimate is an estimation of the map/unmap bytes delta
+    * and if it goes over an optional limit the current batch is flushed,
+    * to reclaim some RAM. */
+   if (!ttrans->staging && tc->bytes_mapped_limit &&
+       tc->bytes_mapped_estimate > tc->bytes_mapped_limit) {
+      tc_flush(_pipe, NULL, PIPE_FLUSH_ASYNC);
+   }
+}
+
+struct tc_texture_unmap {
+   struct tc_call_base base;
+   struct pipe_transfer *transfer;
+};
+
+static uint16_t
+tc_call_texture_unmap(struct pipe_context *pipe, void *call, uint64_t *last)
+{
+   struct tc_texture_unmap *p = (struct tc_texture_unmap *) call;
+
+   pipe->texture_unmap(pipe, p->transfer);
+   return call_size(tc_texture_unmap);
+}
+
+static void
+tc_texture_unmap(struct pipe_context *_pipe, struct pipe_transfer *transfer)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   struct threaded_transfer *ttrans = threaded_transfer(transfer);
+
+   tc_add_call(tc, TC_CALL_texture_unmap, tc_texture_unmap)->transfer = transfer;
+
+   /* tc_texture_map directly maps the textures, but tc_texture_unmap
     * defers the unmap operation to the batch execution.
     * bytes_mapped_estimate is an estimation of the map/unmap bytes delta
     * and if it goes over an optional limit the current batch is flushed,
@@ -2287,10 +2338,10 @@ tc_buffer_subdata(struct pipe_context *_pipe,
 
       u_box_1d(offset, size, &box);
 
-      map = tc_transfer_map(_pipe, resource, 0, usage, &box, &transfer);
+      map = tc_buffer_map(_pipe, resource, 0, usage, &box, &transfer);
       if (map) {
          memcpy(map, data, size);
-         tc_transfer_unmap(_pipe, transfer);
+         tc_buffer_unmap(_pipe, transfer);
       }
       return;
    }
@@ -3945,9 +3996,11 @@ threaded_context_create(struct pipe_context *pipe,
    CTX_INIT(sampler_view_destroy);
    CTX_INIT(create_surface);
    CTX_INIT(surface_destroy);
-   CTX_INIT(transfer_map);
+   CTX_INIT(buffer_map);
+   CTX_INIT(texture_map);
    CTX_INIT(transfer_flush_region);
-   CTX_INIT(transfer_unmap);
+   CTX_INIT(buffer_unmap);
+   CTX_INIT(texture_unmap);
    CTX_INIT(buffer_subdata);
    CTX_INIT(texture_subdata);
    CTX_INIT(texture_barrier);

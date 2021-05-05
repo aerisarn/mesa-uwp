@@ -1572,7 +1572,10 @@ trace_context_transfer_map(struct pipe_context *_context,
     * to texture/buffer_subdata and ignore read transfers.
     */
 
-   map = context->transfer_map(context, resource, level, usage, box, &result);
+   if (resource->target == PIPE_BUFFER)
+      map = context->buffer_map(context, resource, level, usage, box, &result);
+   else
+      map = context->texture_map(context, resource, level, usage, box, &result);
    if (!map)
       return NULL;
 
@@ -1672,7 +1675,10 @@ trace_context_transfer_unmap(struct pipe_context *_context,
       tr_trans->map = NULL;
    }
 
-   context->transfer_unmap(context, transfer);
+   if (transfer->resource->target == PIPE_BUFFER)
+      context->buffer_unmap(context, transfer);
+   else
+      context->texture_unmap(context, transfer);
    trace_transfer_destroy(tr_ctx, tr_trans);
 }
 
@@ -2160,8 +2166,8 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(delete_image_handle);
    TR_CTX_INIT(make_image_handle_resident);
 
-   TR_CTX_INIT(transfer_map);
-   TR_CTX_INIT(transfer_unmap);
+   tr_ctx->base.buffer_map = tr_ctx->base.texture_map = trace_context_transfer_map;
+   tr_ctx->base.buffer_unmap = tr_ctx->base.texture_unmap = trace_context_transfer_unmap;
    TR_CTX_INIT(transfer_flush_region);
    TR_CTX_INIT(buffer_subdata);
    TR_CTX_INIT(texture_subdata);

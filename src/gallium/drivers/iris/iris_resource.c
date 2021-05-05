@@ -2396,9 +2396,11 @@ iris_init_resource_functions(struct pipe_context *ctx)
 {
    ctx->flush_resource = iris_flush_resource;
    ctx->invalidate_resource = iris_invalidate_resource;
-   ctx->transfer_map = u_transfer_helper_transfer_map;
+   ctx->buffer_map = u_transfer_helper_transfer_map;
+   ctx->texture_map = u_transfer_helper_transfer_map;
    ctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
-   ctx->transfer_unmap = u_transfer_helper_transfer_unmap;
+   ctx->buffer_unmap = u_transfer_helper_transfer_unmap;
+   ctx->texture_unmap = u_transfer_helper_transfer_unmap;
    ctx->buffer_subdata = u_default_buffer_subdata;
    ctx->texture_subdata = iris_texture_subdata;
 }
