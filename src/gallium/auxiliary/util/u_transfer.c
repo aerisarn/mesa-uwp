@@ -102,12 +102,6 @@ void u_default_transfer_flush_region(UNUSED struct pipe_context *pipe,
     */
 }
 
-void u_default_transfer_unmap(UNUSED struct pipe_context *pipe,
-                              UNUSED struct pipe_transfer *transfer)
-{
-}
-
-
 static inline struct u_resource *
 u_resource( struct pipe_resource *res )
 {

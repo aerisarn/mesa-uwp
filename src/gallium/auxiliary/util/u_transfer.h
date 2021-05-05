@@ -36,11 +36,6 @@ void u_default_transfer_flush_region( struct pipe_context *pipe,
                                       struct pipe_transfer *transfer,
                                       const struct pipe_box *box);
 
-void u_default_transfer_unmap( struct pipe_context *pipe,
-                               struct pipe_transfer *transfer );
-
-
-
 /* Useful helper to allow >1 implementation of resource functionality
  * to exist in a single driver.  This is intended to be transitionary!
  */
