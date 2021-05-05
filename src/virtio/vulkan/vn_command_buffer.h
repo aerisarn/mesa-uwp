@@ -19,6 +19,8 @@ struct vn_command_pool {
    struct vn_object_base base;
 
    VkAllocationCallbacks allocator;
+   uint32_t queue_family_index;
+
    struct list_head command_buffers;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_command_pool,
@@ -45,6 +47,8 @@ struct vn_command_buffer {
    struct vn_device *device;
 
    VkAllocationCallbacks allocator;
+   VkCommandBufferLevel level;
+   uint32_t queue_family_index;
 
    struct list_head head;
 

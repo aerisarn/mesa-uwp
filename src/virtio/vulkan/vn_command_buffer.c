@@ -36,6 +36,7 @@ vn_CreateCommandPool(VkDevice device,
    vn_object_base_init(&pool->base, VK_OBJECT_TYPE_COMMAND_POOL, &dev->base);
 
    pool->allocator = *alloc;
+   pool->queue_family_index = pCreateInfo->queueFamilyIndex;
    list_inithead(&pool->command_buffers);
 
    VkCommandPool pool_handle = vn_command_pool_to_handle(pool);
@@ -135,6 +136,8 @@ vn_AllocateCommandBuffers(VkDevice device,
                           &dev->base);
       cmd->device = dev;
       cmd->allocator = pool->allocator;
+      cmd->level = pAllocateInfo->level;
+      cmd->queue_family_index = pool->queue_family_index;
 
       list_addtail(&cmd->head, &pool->command_buffers);
 
