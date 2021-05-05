@@ -72,6 +72,10 @@ nouveau_resource_map_offset(struct nouveau_context *, struct nv04_resource *,
                             uint32_t offset, uint32_t flags);
 
 void
+nouveau_buffer_destroy(struct pipe_screen *pscreen,
+                       struct pipe_resource *presource);
+
+void
 nouveau_buffer_transfer_flush_region(struct pipe_context *pipe,
                                      struct pipe_transfer *transfer,
                                      const struct pipe_box *box);

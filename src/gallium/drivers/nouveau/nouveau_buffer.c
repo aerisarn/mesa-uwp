@@ -112,11 +112,16 @@ nouveau_buffer_reallocate(struct nouveau_screen *screen,
    return nouveau_buffer_allocate(screen, buf, domain);
 }
 
-static void
+void
 nouveau_buffer_destroy(struct pipe_screen *pscreen,
                        struct pipe_resource *presource)
 {
    struct nv04_resource *res = nv04_resource(presource);
+
+   if (res->status & NOUVEAU_BUFFER_STATUS_USER_PTR) {
+      FREE(res);
+      return;
+   }
 
    nouveau_buffer_release_gpu_storage(res);
 
@@ -630,18 +635,10 @@ nouveau_resource_map_offset(struct nouveau_context *nv,
 
 const struct u_resource_vtbl nouveau_buffer_vtbl =
 {
-   nouveau_buffer_destroy,               /* resource_destroy */
+   NULL,                                 /* resource_destroy */
    nouveau_buffer_transfer_map,          /* transfer_map */
    nouveau_buffer_transfer_unmap,        /* transfer_unmap */
 };
-
-static void
-nouveau_user_ptr_destroy(struct pipe_screen *pscreen,
-                         struct pipe_resource *presource)
-{
-   struct nv04_resource *res = nv04_resource(presource);
-   FREE(res);
-}
 
 static void *
 nouveau_user_ptr_transfer_map(struct pipe_context *pipe,
@@ -668,7 +665,7 @@ nouveau_user_ptr_transfer_unmap(struct pipe_context *pipe,
 
 const struct u_resource_vtbl nouveau_user_ptr_buffer_vtbl =
 {
-   nouveau_user_ptr_destroy,        /* resource_destroy */
+   NULL,                            /* resource_destroy */
    nouveau_user_ptr_transfer_map,   /* transfer_map */
    nouveau_user_ptr_transfer_unmap, /* transfer_unmap */
 };

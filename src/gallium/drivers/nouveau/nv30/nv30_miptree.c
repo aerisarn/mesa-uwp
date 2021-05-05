@@ -67,7 +67,7 @@ nv30_miptree_get_handle(struct pipe_screen *pscreen,
    return nouveau_screen_bo_get_handle(pscreen, mt->base.bo, stride, handle);
 }
 
-static void
+void
 nv30_miptree_destroy(struct pipe_screen *pscreen, struct pipe_resource *pt)
 {
    struct nv30_miptree *mt = nv30_miptree(pt);
@@ -403,7 +403,7 @@ nv30_miptree_transfer_unmap(struct pipe_context *pipe,
 }
 
 const struct u_resource_vtbl nv30_miptree_vtbl = {
-   nv30_miptree_destroy,
+   NULL,
    nv30_miptree_transfer_map,
    nv30_miptree_transfer_unmap,
 };

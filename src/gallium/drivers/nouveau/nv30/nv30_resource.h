@@ -66,6 +66,9 @@ nv30_miptree_get_handle(struct pipe_screen *pscreen,
                         unsigned usage);
 
 void
+nv30_miptree_destroy(struct pipe_screen *pscreen, struct pipe_resource *pt);
+
+void
 nv30_resource_copy_region(struct pipe_context *pipe,
                           struct pipe_resource *dst, unsigned dst_level,
                           unsigned dstx, unsigned dsty, unsigned dstz,

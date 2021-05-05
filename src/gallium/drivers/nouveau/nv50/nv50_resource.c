@@ -19,6 +19,15 @@ nv50_resource_create(struct pipe_screen *screen,
    }
 }
 
+static void
+nv50_resource_destroy(struct pipe_screen *pscreen, struct pipe_resource *res)
+{
+   if (res->target == PIPE_BUFFER)
+      nouveau_buffer_destroy(pscreen, res);
+   else
+      nv50_miptree_destroy(pscreen, res);
+}
+
 static struct pipe_resource *
 nv50_resource_from_handle(struct pipe_screen * screen,
                           const struct pipe_resource *templ,
@@ -110,5 +119,5 @@ nv50_screen_init_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_create = nv50_resource_create;
    pscreen->resource_from_handle = nv50_resource_from_handle;
    pscreen->resource_get_handle = nv50_miptree_get_handle;
-   pscreen->resource_destroy = u_resource_destroy_vtbl;
+   pscreen->resource_destroy = nv50_resource_destroy;
 }
