@@ -33,7 +33,6 @@ struct nouveau_bo;
  */
 struct nv04_resource {
    struct pipe_resource base;
-   const struct u_resource_vtbl *vtbl;
 
    uint64_t address; /* virtual address (nv50+) */
 

@@ -161,10 +161,6 @@ void r300_buffer_transfer_unmap( struct pipe_context *pipe,
     slab_free(&r300->pool_transfers, transfer);
 }
 
-static const struct u_resource_vtbl r300_buffer_vtbl =
-{
-};
-
 struct pipe_resource *r300_buffer_create(struct pipe_screen *screen,
 					 const struct pipe_resource *templ)
 {
@@ -174,7 +170,6 @@ struct pipe_resource *r300_buffer_create(struct pipe_screen *screen,
     rbuf = MALLOC_STRUCT(r300_resource);
 
     rbuf->b.b = *templ;
-    rbuf->b.vtbl = &r300_buffer_vtbl;
     pipe_reference_init(&rbuf->b.b.reference, 1);
     rbuf->b.b.screen = screen;
     rbuf->domain = RADEON_DOMAIN_GTT;

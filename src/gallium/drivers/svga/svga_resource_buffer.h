@@ -47,9 +47,6 @@ struct svga_context;
 struct svga_winsys_buffer;
 struct svga_winsys_surface;
 
-
-extern struct u_resource_vtbl svga_buffer_vtbl;
-
 struct svga_buffer_range
 {
    unsigned start;
@@ -233,7 +230,7 @@ static inline struct svga_buffer *
 svga_buffer(struct pipe_resource *resource)
 {
    struct svga_buffer *buf = (struct svga_buffer *) resource;
-   assert(buf == NULL || buf->b.vtbl == &svga_buffer_vtbl);
+   assert(buf == NULL || buf->b.b.target == PIPE_BUFFER);
    return buf;
 }
 

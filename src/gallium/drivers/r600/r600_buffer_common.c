@@ -571,10 +571,6 @@ void r600_buffer_subdata(struct pipe_context *ctx,
 	r600_buffer_transfer_unmap(ctx, transfer);
 }
 
-static const struct u_resource_vtbl r600_buffer_vtbl =
-{
-};
-
 static struct r600_resource *
 r600_alloc_buffer_struct(struct pipe_screen *screen,
 			 const struct pipe_resource *templ)
@@ -588,7 +584,6 @@ r600_alloc_buffer_struct(struct pipe_screen *screen,
 	pipe_reference_init(&rbuffer->b.b.reference, 1);
 	rbuffer->b.b.screen = screen;
 
-	rbuffer->b.vtbl = &r600_buffer_vtbl;
 	threaded_resource_init(&rbuffer->b.b);
 
 	rbuffer->buf = NULL;

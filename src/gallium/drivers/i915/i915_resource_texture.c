@@ -893,11 +893,6 @@ out:
 }
 #endif
 
-struct u_resource_vtbl i915_texture_vtbl =
-{
-};
-
-
 struct pipe_resource *
 i915_texture_create(struct pipe_screen *screen,
                     const struct pipe_resource *template,
@@ -912,7 +907,6 @@ i915_texture_create(struct pipe_screen *screen,
       return NULL;
 
    tex->b.b = *template;
-   tex->b.vtbl = &i915_texture_vtbl;
    pipe_reference_init(&tex->b.b.reference, 1);
    tex->b.b.screen = screen;
 
@@ -985,7 +979,6 @@ i915_texture_from_handle(struct pipe_screen * screen,
       return NULL;
 
    tex->b.b = *template;
-   tex->b.vtbl = &i915_texture_vtbl;
    pipe_reference_init(&tex->b.b.reference, 1);
    tex->b.b.screen = screen;
 

@@ -60,8 +60,6 @@ nvc0_miptree_get_handle(struct pipe_screen *pscreen,
                         struct winsys_handle *whandle,
                         unsigned usage);
 
-extern const struct u_resource_vtbl nvc0_miptree_vtbl;
-
 struct pipe_surface *
 nvc0_miptree_surface_new(struct pipe_context *,
                          struct pipe_resource *,

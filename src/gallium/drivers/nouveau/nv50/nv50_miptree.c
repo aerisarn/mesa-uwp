@@ -202,10 +202,6 @@ nv50_miptree_get_handle(struct pipe_screen *pscreen,
                                        whandle);
 }
 
-const struct u_resource_vtbl nv50_miptree_vtbl =
-{
-};
-
 static inline bool
 nv50_miptree_init_ms_mode(struct nv50_miptree *mt)
 {
@@ -347,7 +343,6 @@ nv50_miptree_create(struct pipe_screen *pscreen,
    if (!mt)
       return NULL;
 
-   mt->base.vtbl = &nv50_miptree_vtbl;
    *pt = *templ;
    pipe_reference_init(&pt->reference, 1);
    pt->screen = pscreen;
@@ -434,7 +429,6 @@ nv50_miptree_from_handle(struct pipe_screen *pscreen,
    mt->base.address = mt->base.bo->offset;
 
    mt->base.base = *templ;
-   mt->base.vtbl = &nv50_miptree_vtbl;
    pipe_reference_init(&mt->base.base.reference, 1);
    mt->base.base.screen = pscreen;
    mt->level[0].pitch = stride;

@@ -122,8 +122,6 @@ nvc0_resource_from_handle(struct pipe_screen * screen,
    } else {
       struct pipe_resource *res = nv50_miptree_from_handle(screen,
                                                            templ, whandle);
-      if (res)
-         nv04_resource(res)->vtbl = &nvc0_miptree_vtbl;
       return res;
    }
 }

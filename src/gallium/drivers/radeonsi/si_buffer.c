@@ -568,9 +568,6 @@ static void si_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *bu
    si_buffer_transfer_unmap(ctx, transfer);
 }
 
-static const struct u_resource_vtbl si_buffer_vtbl = {
-};
-
 static struct si_resource *si_alloc_buffer_struct(struct pipe_screen *screen,
                                                   const struct pipe_resource *templ)
 {
@@ -583,7 +580,6 @@ static struct si_resource *si_alloc_buffer_struct(struct pipe_screen *screen,
    pipe_reference_init(&buf->b.b.reference, 1);
    buf->b.b.screen = screen;
 
-   buf->b.vtbl = &si_buffer_vtbl;
    threaded_resource_init(&buf->b.b);
 
    buf->buf = NULL;

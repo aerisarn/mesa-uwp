@@ -652,10 +652,6 @@ nouveau_resource_map_offset(struct nouveau_context *nv,
    return (uint8_t *)res->bo->map + res->offset + offset;
 }
 
-const struct u_resource_vtbl nouveau_buffer_vtbl =
-{
-};
-
 static void *
 nouveau_user_ptr_transfer_map(struct pipe_context *pipe,
                               struct pipe_resource *resource,
@@ -679,10 +675,6 @@ nouveau_user_ptr_transfer_unmap(struct pipe_context *pipe,
    FREE(tx);
 }
 
-const struct u_resource_vtbl nouveau_user_ptr_buffer_vtbl =
-{
-};
-
 struct pipe_resource *
 nouveau_buffer_create(struct pipe_screen *pscreen,
                       const struct pipe_resource *templ)
@@ -696,7 +688,6 @@ nouveau_buffer_create(struct pipe_screen *pscreen,
       return NULL;
 
    buffer->base = *templ;
-   buffer->vtbl = &nouveau_buffer_vtbl;
    pipe_reference_init(&buffer->base.reference, 1);
    buffer->base.screen = pscreen;
 
@@ -763,7 +754,6 @@ nouveau_buffer_create_from_user(struct pipe_screen *pscreen,
       return NULL;
 
    buffer->base = *templ;
-   buffer->vtbl = &nouveau_user_ptr_buffer_vtbl;
    /* set address and data to the same thing for higher compatibility with
     * existing code. It's correct nonetheless as the same pointer is equally
     * valid on the CPU and the GPU.
@@ -789,7 +779,6 @@ nouveau_user_buffer_create(struct pipe_screen *pscreen, void *ptr,
       return NULL;
 
    pipe_reference_init(&buffer->base.reference, 1);
-   buffer->vtbl = &nouveau_buffer_vtbl;
    buffer->base.screen = pscreen;
    buffer->base.format = PIPE_FORMAT_R8_UNORM;
    buffer->base.usage = PIPE_USAGE_IMMUTABLE;

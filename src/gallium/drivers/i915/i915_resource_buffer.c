@@ -109,13 +109,6 @@ i915_buffer_subdata(struct pipe_context *rm_ctx,
    memcpy(buffer->data + offset, data, size);
 }
 
-
-struct u_resource_vtbl i915_buffer_vtbl = 
-{
-};
-
-
-
 struct pipe_resource *
 i915_buffer_create(struct pipe_screen *screen,
                     const struct pipe_resource *template)
@@ -126,7 +119,6 @@ i915_buffer_create(struct pipe_screen *screen,
       return NULL;
 
    buf->b.b = *template;
-   buf->b.vtbl = &i915_buffer_vtbl;
    pipe_reference_init(&buf->b.b.reference, 1);
    buf->b.b.screen = screen;
    buf->data = align_malloc(template->width0, 64);
@@ -156,7 +148,6 @@ i915_user_buffer_create(struct pipe_screen *screen,
       return NULL;
 
    pipe_reference_init(&buf->b.b.reference, 1);
-   buf->b.vtbl = &i915_buffer_vtbl;
    buf->b.b.screen = screen;
    buf->b.b.format = PIPE_FORMAT_R8_UNORM; /* ?? */
    buf->b.b.usage = PIPE_USAGE_IMMUTABLE;

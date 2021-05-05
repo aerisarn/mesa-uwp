@@ -302,11 +302,6 @@ void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    }
 }
 
-static const struct u_resource_vtbl virgl_texture_vtbl =
-{
-};
-
 void virgl_texture_init(struct virgl_resource *res)
 {
-   res->u.vtbl = &virgl_texture_vtbl;
 }

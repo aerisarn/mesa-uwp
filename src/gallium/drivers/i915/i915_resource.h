@@ -91,20 +91,17 @@ unsigned i915_texture_offset(const struct i915_texture *tex,
 void i915_init_screen_resource_functions(struct i915_screen *is);
 void i915_init_resource_functions(struct i915_context *i915);
 
-extern struct u_resource_vtbl i915_buffer_vtbl;
-extern struct u_resource_vtbl i915_texture_vtbl;
-
 static inline struct i915_texture *i915_texture(struct pipe_resource *resource)
 {
    struct i915_texture *tex = (struct i915_texture *)resource;
-   assert(tex->b.vtbl == &i915_texture_vtbl);
+   assert(tex->b.b.target != PIPE_BUFFER);
    return tex;
 }
 
 static inline struct i915_buffer *i915_buffer(struct pipe_resource *resource)
 {
    struct i915_buffer *tex = (struct i915_buffer *)resource;
-   assert(tex->b.vtbl == &i915_buffer_vtbl);
+   assert(tex->b.b.target == PIPE_BUFFER);
    return tex;
 }
 

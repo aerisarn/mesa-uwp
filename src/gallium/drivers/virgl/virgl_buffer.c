@@ -76,11 +76,6 @@ void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
    util_range_add(transfer->resource, &trans->range, box->x, box->x + box->width);
 }
 
-static const struct u_resource_vtbl virgl_buffer_vtbl =
-{
-};
-
 void virgl_buffer_init(struct virgl_resource *res)
 {
-   res->u.vtbl = &virgl_buffer_vtbl;
 }

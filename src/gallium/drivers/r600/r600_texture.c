@@ -589,8 +589,6 @@ void r600_texture_destroy(struct pipe_screen *screen, struct pipe_resource *ptex
 	FREE(rtex);
 }
 
-static const struct u_resource_vtbl r600_texture_vtbl;
-
 /* The number of samples can be specified independently of the texture. */
 void r600_texture_get_fmask_info(struct r600_common_screen *rscreen,
 				 struct r600_texture *rtex,
@@ -915,7 +913,6 @@ r600_texture_create_object(struct pipe_screen *screen,
 
 	resource = &rtex->resource;
 	resource->b.b = *base;
-	resource->b.vtbl = &r600_texture_vtbl;
 	pipe_reference_init(&resource->b.b.reference, 1);
 	resource->b.b.screen = screen;
 
@@ -1517,10 +1514,6 @@ void r600_texture_transfer_unmap(struct pipe_context *ctx,
 	pipe_resource_reference(&transfer->resource, NULL);
 	FREE(transfer);
 }
-
-static const struct u_resource_vtbl r600_texture_vtbl =
-{
-};
 
 struct pipe_surface *r600_create_surface_custom(struct pipe_context *pipe,
 						struct pipe_resource *texture,

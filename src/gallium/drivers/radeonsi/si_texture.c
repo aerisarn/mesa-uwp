@@ -784,8 +784,6 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
    return sscreen->ws->buffer_get_handle(sscreen->ws, res->buf, whandle);
 }
 
-static const struct u_resource_vtbl si_texture_vtbl;
-
 void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
                            struct u_log_context *log)
 {
@@ -898,7 +896,6 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
 
    resource = &tex->buffer;
    resource->b.b = *base;
-   resource->b.vtbl = &si_texture_vtbl;
    pipe_reference_init(&resource->b.b.reference, 1);
    resource->b.b.screen = screen;
 
@@ -1431,12 +1428,9 @@ si_texture_create_with_modifiers(struct pipe_screen *screen,
    return si_texture_create_with_modifier(screen, templ, modifier);
 }
 
-static const struct u_resource_vtbl si_auxiliary_texture_vtbl = {
-};
-
 static bool si_texture_is_aux_plane(const struct pipe_resource *resource)
 {
-   return ((struct threaded_resource*)resource)->vtbl == &si_auxiliary_texture_vtbl;
+   return resource->flags & SI_RESOURCE_AUX_PLANE;
 }
 
 static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *sscreen,
@@ -1581,7 +1575,6 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
          return NULL;
       tex->b.b = *templ;
       tex->b.b.flags |= SI_RESOURCE_AUX_PLANE;
-      tex->b.vtbl = &si_auxiliary_texture_vtbl;
       tex->stride = whandle->stride;
       tex->offset = whandle->offset;
       tex->buffer = buf;
@@ -1917,9 +1910,6 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx, struct pipe_tran
    pipe_resource_reference(&transfer->resource, NULL);
    FREE(transfer);
 }
-
-static const struct u_resource_vtbl si_texture_vtbl = {
-};
 
 /* Return if it's allowed to reinterpret one format as another with DCC enabled.
  */

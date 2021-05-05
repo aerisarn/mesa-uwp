@@ -1315,10 +1315,6 @@ void r600_compute_global_buffer_destroy(struct pipe_screen *screen,
 	free(res);
 }
 
-static const struct u_resource_vtbl r600_global_buffer_vtbl =
-{
-};
-
 struct pipe_resource *r600_compute_global_buffer_create(struct pipe_screen *screen,
 							const struct pipe_resource *templ)
 {
@@ -1340,7 +1336,6 @@ struct pipe_resource *r600_compute_global_buffer_create(struct pipe_screen *scre
 	COMPUTE_DBG(rscreen, "width = %u array_size = %u\n", templ->width0,
 			templ->array_size);
 
-	result->base.b.vtbl = &r600_global_buffer_vtbl;
 	result->base.b.b = *templ;
 	result->base.b.b.screen = screen;
 	result->base.compute_global_bo = true;

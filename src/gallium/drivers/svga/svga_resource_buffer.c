@@ -453,13 +453,6 @@ svga_resource_destroy(struct pipe_screen *screen,
    }
 }
 
-
-struct u_resource_vtbl svga_buffer_vtbl =
-{
-};
-
-
-
 struct pipe_resource *
 svga_buffer_create(struct pipe_screen *screen,
                    const struct pipe_resource *template)
@@ -475,7 +468,6 @@ svga_buffer_create(struct pipe_screen *screen,
       goto error1;
 
    sbuf->b.b = *template;
-   sbuf->b.vtbl = &svga_buffer_vtbl;
    pipe_reference_init(&sbuf->b.b.reference, 1);
    sbuf->b.b.screen = screen;
    bind_flags = template->bind & ~PIPE_BIND_CUSTOM;
@@ -571,7 +563,6 @@ svga_user_buffer_create(struct pipe_screen *screen,
       goto no_sbuf;
 
    pipe_reference_init(&sbuf->b.b.reference, 1);
-   sbuf->b.vtbl = &svga_buffer_vtbl;
    sbuf->b.b.screen = screen;
    sbuf->b.b.format = PIPE_FORMAT_R8_UNORM; /* ?? */
    sbuf->b.b.usage = PIPE_USAGE_IMMUTABLE;

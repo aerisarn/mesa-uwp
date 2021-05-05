@@ -840,12 +840,6 @@ format_has_depth(enum pipe_format format)
    return util_format_has_depth(desc);
 }
 
-
-struct u_resource_vtbl svga_texture_vtbl =
-{
-};
-
-
 struct pipe_resource *
 svga_texture_create(struct pipe_screen *screen,
                     const struct pipe_resource *template)
@@ -920,7 +914,6 @@ svga_texture_create(struct pipe_screen *screen,
    }
 
    tex->b.b = *template;
-   tex->b.vtbl = &svga_texture_vtbl;
    pipe_reference_init(&tex->b.b.reference, 1);
    tex->b.b.screen = screen;
 
@@ -1179,7 +1172,6 @@ svga_texture_from_handle(struct pipe_screen *screen,
       goto out_no_defined;
 
    tex->b.b = *template;
-   tex->b.vtbl = &svga_texture_vtbl;
    pipe_reference_init(&tex->b.b.reference, 1);
    tex->b.b.screen = screen;
 

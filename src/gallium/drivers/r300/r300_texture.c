@@ -1040,10 +1040,6 @@ bool r300_resource_get_handle(struct pipe_screen* screen,
     return rws->buffer_get_handle(rws, tex->buf, whandle);
 }
 
-static const struct u_resource_vtbl r300_texture_vtbl =
-{
-};
-
 /* The common texture constructor. */
 static struct r300_resource*
 r300_texture_create_object(struct r300_screen *rscreen,
@@ -1067,7 +1063,6 @@ r300_texture_create_object(struct r300_screen *rscreen,
     tex->b.b.usage = base->usage;
     tex->b.b.bind = base->bind;
     tex->b.b.flags = base->flags;
-    tex->b.vtbl = &r300_texture_vtbl;
     tex->tex.microtile = microtile;
     tex->tex.macrotile[0] = macrotile;
     tex->tex.stride_in_bytes_override = stride_in_bytes_override;
@@ -1197,8 +1192,6 @@ struct pipe_resource *r300_texture_from_handle(struct pipe_screen *screen,
                                       whandle->stride, buffer);
 }
 
-/* Not required to implement u_resource_vtbl, consider moving to another file:
- */
 struct pipe_surface* r300_create_surface_custom(struct pipe_context * ctx,
                                          struct pipe_resource* texture,
                                          const struct pipe_surface *surf_tmpl,
@@ -1283,8 +1276,6 @@ struct pipe_surface* r300_create_surface(struct pipe_context * ctx,
                                       texture->height0);
 }
 
-/* Not required to implement u_resource_vtbl, consider moving to another file:
- */
 void r300_surface_destroy(struct pipe_context *ctx, struct pipe_surface* s)
 {
     pipe_resource_reference(&s->texture, NULL);

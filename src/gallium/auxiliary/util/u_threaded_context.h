@@ -270,7 +270,6 @@ typedef bool (*tc_is_resource_busy)(struct pipe_screen *screen,
 
 struct threaded_resource {
    struct pipe_resource b;
-   const struct u_resource_vtbl *vtbl;
 
    /* Since buffer invalidations are queued, we can't use the base resource
     * for unsychronized mappings. This points to the latest version of

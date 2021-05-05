@@ -43,10 +43,6 @@ enum SVGA3dSurfaceFormat;
 
 #define SVGA_MAX_TEXTURE_LEVELS 16
 
-
-extern struct u_resource_vtbl svga_texture_vtbl;
-
-
 struct svga_texture
 {
    struct u_resource b;
@@ -159,7 +155,7 @@ static inline struct svga_texture *
 svga_texture(struct pipe_resource *resource)
 {
    struct svga_texture *tex = (struct svga_texture *)resource;
-   assert(tex == NULL || tex->b.vtbl == &svga_texture_vtbl);
+   assert(tex == NULL || tex->b.b.target != PIPE_BUFFER);
    return tex;
 }
 

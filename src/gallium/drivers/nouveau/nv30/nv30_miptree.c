@@ -402,9 +402,6 @@ nv30_miptree_transfer_unmap(struct pipe_context *pipe,
    FREE(tx);
 }
 
-const struct u_resource_vtbl nv30_miptree_vtbl = {
-};
-
 struct pipe_resource *
 nv30_miptree_create(struct pipe_screen *pscreen,
                     const struct pipe_resource *tmpl)
@@ -434,7 +431,6 @@ nv30_miptree_create(struct pipe_screen *pscreen,
       break;
    }
 
-   mt->base.vtbl = &nv30_miptree_vtbl;
    *pt = *tmpl;
    pipe_reference_init(&pt->reference, 1);
    pt->screen = pscreen;
@@ -534,7 +530,6 @@ nv30_miptree_from_handle(struct pipe_screen *pscreen,
    }
 
    mt->base.base = *tmpl;
-   mt->base.vtbl = &nv30_miptree_vtbl;
    pipe_reference_init(&mt->base.base.reference, 1);
    mt->base.base.screen = pscreen;
    mt->uniform_pitch = stride;

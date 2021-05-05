@@ -436,10 +436,6 @@ nvc0_miptree_select_best_modifier(struct pipe_screen *pscreen,
    return prio_supported_mods[top_mod_slot];
 }
 
-const struct u_resource_vtbl nvc0_miptree_vtbl =
-{
-};
-
 struct pipe_resource *
 nvc0_miptree_create(struct pipe_screen *pscreen,
                     const struct pipe_resource *templ,
@@ -459,7 +455,6 @@ nvc0_miptree_create(struct pipe_screen *pscreen,
    if (!mt)
       return NULL;
 
-   mt->base.vtbl = &nvc0_miptree_vtbl;
    *pt = *templ;
    pipe_reference_init(&pt->reference, 1);
    pt->screen = pscreen;
