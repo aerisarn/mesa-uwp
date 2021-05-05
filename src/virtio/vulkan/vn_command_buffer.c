@@ -14,6 +14,7 @@
 #include "venus-protocol/vn_protocol_driver_command_pool.h"
 
 #include "vn_device.h"
+#include "vn_image.h"
 #include "vn_render_pass.h"
 
 static void
@@ -24,13 +25,55 @@ vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
 {
    cmd->builder.render_pass = pass;
    cmd->builder.framebuffer = fb;
+
+   if (!pass->present_src_count ||
+       cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+      return;
+
+   /* find fb attachments */
+   const VkImageView *views;
+   uint32_t view_count;
+   if (fb->image_view_count) {
+      views = fb->image_views;
+      view_count = fb->image_view_count;
+   } else {
+      const VkRenderPassAttachmentBeginInfo *imageless_info =
+         vk_find_struct_const(begin_info->pNext,
+                              RENDER_PASS_ATTACHMENT_BEGIN_INFO);
+      assert(imageless_info);
+      views = imageless_info->pAttachments;
+      view_count = imageless_info->attachmentCount;
+   }
+
+   const struct vn_image **images =
+      vk_alloc(&cmd->allocator, sizeof(*images) * pass->present_src_count,
+               VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!images) {
+      cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
+      return;
+   }
+
+   for (uint32_t i = 0; i < pass->present_src_count; i++) {
+      const uint32_t index = pass->present_src_attachments[i].index;
+      assert(index < view_count);
+      images[i] = vn_image_view_from_handle(views[index])->image;
+   }
+
+   cmd->builder.present_src_images = images;
 }
 
 static void
 vn_cmd_end_render_pass(struct vn_command_buffer *cmd)
 {
+   const struct vn_render_pass *pass = cmd->builder.render_pass;
+
    cmd->builder.render_pass = NULL;
    cmd->builder.framebuffer = NULL;
+
+   if (!pass->present_src_count || !cmd->builder.present_src_images)
+      return;
+
+   vk_free(&cmd->allocator, cmd->builder.present_src_images);
 }
 
 /* command pool commands */
