@@ -2501,7 +2501,6 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
         /* Allocate staging registers contiguously by compacting the array.
          * Index is not SSA (tied operands) */
 
-        bi_index idx = bi_temp_reg(b->shader);
         unsigned sr_count = 0;
 
         for (unsigned i = 0; i < ARRAY_SIZE(dregs); ++i) {
@@ -2509,19 +2508,22 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                         dregs[sr_count++] = dregs[i];
         }
 
+        bi_index idx = sr_count ? bi_temp_reg(b->shader) : bi_null();
+
         if (sr_count)
                 bi_make_vec_to(b, idx, dregs, NULL, sr_count, 32);
-        else
-                bi_mov_i32_to(b, idx, bi_zero()); /* XXX: shouldn't be necessary */
 
         uint32_t desc_u = 0;
         memcpy(&desc_u, &desc, sizeof(desc_u));
-        bi_texc_to(b, idx, idx, cx, cy, bi_imm_u32(desc_u), sr_count);
+        bi_texc_to(b, sr_count ? idx : bi_dest_index(&instr->dest),
+                        idx, cx, cy, bi_imm_u32(desc_u), sr_count);
 
         /* Explicit copy to facilitate tied operands */
-        bi_index srcs[4] = { idx, idx, idx, idx };
-        unsigned channels[4] = { 0, 1, 2, 3 };
-        bi_make_vec_to(b, bi_dest_index(&instr->dest), srcs, channels, 4, 32);
+        if (sr_count) {
+                bi_index srcs[4] = { idx, idx, idx, idx };
+                unsigned channels[4] = { 0, 1, 2, 3 };
+                bi_make_vec_to(b, bi_dest_index(&instr->dest), srcs, channels, 4, 32);
+        }
 }
 
 /* Simple textures ops correspond to NIR tex or txl with LOD = 0 on 2D/cube
