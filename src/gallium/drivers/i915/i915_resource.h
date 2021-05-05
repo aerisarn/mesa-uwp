@@ -137,6 +137,10 @@ i915_buffer_create(struct pipe_screen *screen,
 		   const struct pipe_resource *template);
 
 void
+i915_resource_destroy(struct pipe_screen *screen,
+                      struct pipe_resource *resource);
+
+void
 i915_buffer_subdata(struct pipe_context *rm_ctx,
                     struct pipe_resource *resource,
                     unsigned usage, unsigned offset,

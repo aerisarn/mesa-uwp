@@ -38,16 +38,31 @@
 
 #include "i915_context.h"
 #include "i915_resource.h"
+#include "i915_screen.h"
 
 
-static void
-i915_buffer_destroy(struct pipe_screen *screen,
-		    struct pipe_resource *resource)
+void
+i915_resource_destroy(struct pipe_screen *screen,
+                      struct pipe_resource *resource)
 {
-   struct i915_buffer *buffer = i915_buffer(resource);
-   if (buffer->free_on_destroy)
-      align_free(buffer->data);
-   FREE(buffer);
+   if (resource->target == PIPE_BUFFER) {
+      struct i915_buffer *buffer = i915_buffer(resource);
+      if (buffer->free_on_destroy)
+         align_free(buffer->data);
+      FREE(buffer);
+   } else {
+      struct i915_texture *tex = i915_texture(resource);
+      struct i915_winsys *iws = i915_screen(screen)->iws;
+      uint i;
+
+      if (tex->buffer)
+         iws->buffer_destroy(iws, tex->buffer);
+
+      for (i = 0; i < ARRAY_SIZE(tex->image_offset); i++)
+         FREE(tex->image_offset[i]);
+
+      FREE(tex);
+   }
 }
 
 
@@ -97,7 +112,7 @@ i915_buffer_subdata(struct pipe_context *rm_ctx,
 
 struct u_resource_vtbl i915_buffer_vtbl = 
 {
-   i915_buffer_destroy,		     /* resource_destroy */
+   NULL,
    i915_buffer_transfer_map,	     /* transfer_map */
    i915_buffer_transfer_unmap,	     /* transfer_unmap */
 };

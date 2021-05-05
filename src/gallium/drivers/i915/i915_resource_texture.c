@@ -698,24 +698,6 @@ i915_resource_get_handle(struct pipe_screen *screen,
    return iws->buffer_get_handle(iws, tex->buffer, whandle, tex->stride);
 }
 
-
-static void
-i915_texture_destroy(struct pipe_screen *screen,
-                     struct pipe_resource *pt)
-{
-   struct i915_texture *tex = i915_texture(pt);
-   struct i915_winsys *iws = i915_screen(screen)->iws;
-   uint i;
-
-   if (tex->buffer)
-      iws->buffer_destroy(iws, tex->buffer);
-
-   for (i = 0; i < ARRAY_SIZE(tex->image_offset); i++)
-      FREE(tex->image_offset[i]);
-
-   FREE(tex);
-}
-
 static void *
 i915_texture_transfer_map(struct pipe_context *pipe,
                           struct pipe_resource *resource,
@@ -913,7 +895,7 @@ out:
 
 struct u_resource_vtbl i915_texture_vtbl =
 {
-   i915_texture_destroy,	      /* resource_destroy */
+   NULL,                	      /* resource_destroy */
    i915_texture_transfer_map,	      /* transfer_map */
    i915_texture_transfer_unmap,	      /* transfer_unmap */
 };
