@@ -14,6 +14,24 @@
 #include "venus-protocol/vn_protocol_driver_command_pool.h"
 
 #include "vn_device.h"
+#include "vn_render_pass.h"
+
+static void
+vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
+                         const struct vn_render_pass *pass,
+                         const struct vn_framebuffer *fb,
+                         const VkRenderPassBeginInfo *begin_info)
+{
+   cmd->builder.render_pass = pass;
+   cmd->builder.framebuffer = fb;
+}
+
+static void
+vn_cmd_end_render_pass(struct vn_command_buffer *cmd)
+{
+   cmd->builder.render_pass = NULL;
+   cmd->builder.framebuffer = NULL;
+}
 
 /* command pool commands */
 
@@ -228,6 +246,16 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    vn_encode_vkBeginCommandBuffer(&cmd->cs, 0, commandBuffer, pBeginInfo);
 
    cmd->state = VN_COMMAND_BUFFER_STATE_RECORDING;
+
+   if (cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+       (pBeginInfo->flags &
+        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
+      const VkCommandBufferInheritanceInfo *inheritance_info =
+         pBeginInfo->pInheritanceInfo;
+      vn_cmd_begin_render_pass(
+         cmd, vn_render_pass_from_handle(inheritance_info->renderPass),
+         vn_framebuffer_from_handle(inheritance_info->framebuffer), NULL);
+   }
 
    return VK_SUCCESS;
 }
@@ -1196,6 +1224,11 @@ vn_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
       vn_command_buffer_from_handle(commandBuffer);
    size_t cmd_size;
 
+   vn_cmd_begin_render_pass(
+      cmd, vn_render_pass_from_handle(pRenderPassBegin->renderPass),
+      vn_framebuffer_from_handle(pRenderPassBegin->framebuffer),
+      pRenderPassBegin);
+
    cmd_size = vn_sizeof_vkCmdBeginRenderPass(commandBuffer, pRenderPassBegin,
                                              contents);
    if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
@@ -1231,6 +1264,8 @@ vn_CmdEndRenderPass(VkCommandBuffer commandBuffer)
       return;
 
    vn_encode_vkCmdEndRenderPass(&cmd->cs, 0, commandBuffer);
+
+   vn_cmd_end_render_pass(cmd);
 }
 
 void
@@ -1241,6 +1276,11 @@ vn_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    struct vn_command_buffer *cmd =
       vn_command_buffer_from_handle(commandBuffer);
    size_t cmd_size;
+
+   vn_cmd_begin_render_pass(
+      cmd, vn_render_pass_from_handle(pRenderPassBegin->renderPass),
+      vn_framebuffer_from_handle(pRenderPassBegin->framebuffer),
+      pRenderPassBegin);
 
    cmd_size = vn_sizeof_vkCmdBeginRenderPass2(commandBuffer, pRenderPassBegin,
                                               pSubpassBeginInfo);
@@ -1282,6 +1322,8 @@ vn_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
       return;
 
    vn_encode_vkCmdEndRenderPass2(&cmd->cs, 0, commandBuffer, pSubpassEndInfo);
+
+   vn_cmd_end_render_pass(cmd);
 }
 
 void

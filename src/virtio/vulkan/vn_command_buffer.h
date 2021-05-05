@@ -39,6 +39,9 @@ struct vn_command_buffer_builder {
    /* for scrubbing VK_IMAGE_LAYOUT_PRESENT_SRC_KHR */
    uint32_t image_barrier_count;
    VkImageMemoryBarrier *image_barriers;
+
+   const struct vn_render_pass *render_pass;
+   const struct vn_framebuffer *framebuffer;
 };
 
 struct vn_command_buffer {
