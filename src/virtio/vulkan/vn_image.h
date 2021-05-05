@@ -62,6 +62,8 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_image,
 
 struct vn_image_view {
    struct vn_object_base base;
+
+   const struct vn_image *image;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_image_view,
                                base.base,
