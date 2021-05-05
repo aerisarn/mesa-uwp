@@ -573,20 +573,6 @@ struct iris_stream_output_target {
 };
 
 /**
- * A pool containing SAMPLER_BORDER_COLOR_STATE entries.
- *
- * See iris_border_color.c for more information.
- */
-struct iris_border_color_pool {
-   struct iris_bo *bo;
-   void *map;
-   unsigned insert_point;
-
-   /** Map from border colors to offsets in the buffer. */
-   struct hash_table *ht;
-};
-
-/**
  * The API context (derived from pipe_context).
  *
  * Most driver state is tracked here.
@@ -815,8 +801,6 @@ struct iris_context {
 
       struct iris_binder binder;
 
-      struct iris_border_color_pool border_color_pool;
-
       /** The high 16-bits of the last VBO/index buffer addresses */
       uint16_t last_vbo_high_bits[33];
       uint16_t last_index_bo_high_bits;
@@ -935,14 +919,6 @@ void iris_flush_all_caches(struct iris_batch *batch);
       iris_flush_all_caches(batch);
 
 void iris_init_flush_functions(struct pipe_context *ctx);
-
-/* iris_border_color.c */
-
-void iris_init_border_color_pool(struct iris_context *ice);
-void iris_destroy_border_color_pool(struct iris_context *ice);
-void iris_border_color_pool_reserve(struct iris_context *ice, unsigned count);
-uint32_t iris_upload_border_color(struct iris_context *ice,
-                                  union pipe_color_union *color);
 
 /* iris_program.c */
 void iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,

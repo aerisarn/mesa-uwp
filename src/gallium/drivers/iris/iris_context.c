@@ -233,7 +233,6 @@ iris_destroy_context(struct pipe_context *ctx)
       pipe_resource_reference(&ice->shaders.scratch_surfs[i].res, NULL);
 
    iris_destroy_program_cache(ice);
-   iris_destroy_border_color_pool(ice);
    if (screen->measure.config)
       iris_destroy_ctx_measure(ice);
 
@@ -329,7 +328,6 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    iris_init_perfquery_functions(ctx);
 
    iris_init_program_cache(ice);
-   iris_init_border_color_pool(ice);
    iris_init_binder(ice);
 
    slab_create_child(&ice->transfer_pool, &screen->transfer_pool);
