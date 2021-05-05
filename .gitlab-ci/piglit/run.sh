@@ -15,7 +15,7 @@ export __LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$INSTALL/lib/"
 
 # Sanity check to ensure that our environment is sufficient to make our tests
 # run against the Mesa built by CI, rather than any installed distro version.
-MESA_VERSION=$(cat "$INSTALL/VERSION" | sed 's/\./\\./g')
+MESA_VERSION=$(head -1 "$INSTALL/VERSION" | sed 's/\./\\./g')
 
 print_red() {
     RED='\033[0;31m'
