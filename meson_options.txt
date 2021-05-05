@@ -143,6 +143,12 @@ option(
   description : 'build gallium "nine" Direct3D 9.x frontend.',
 )
 option(
+  'gallium-d3d10umd',
+  type : 'boolean',
+  value : false,
+  description : 'build gallium D3D10 WDDM UMD frontend.',
+)
+option(
   'gallium-opencl',
   type : 'combo',
   choices : ['icd', 'standalone', 'disabled'],

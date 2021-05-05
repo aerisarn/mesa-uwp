@@ -787,6 +787,12 @@ if with_gallium_st_nine
     error('Using nine with wine requires dri3')
   endif
 endif
+with_gallium_st_d3d10umd =  get_option('gallium-d3d10umd')
+if with_gallium_st_d3d10umd
+  if not with_gallium_softpipe
+    error('The d3d10umd state tracker requires gallium softpipe/llvmpipe.')
+  endif
+endif
 _power8 = get_option('power8')
 if _power8 == 'true'
   _power8 = 'enabled'
