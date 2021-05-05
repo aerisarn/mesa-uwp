@@ -23,6 +23,21 @@ same timeline, to better understand and tune/debug system level performance:
 - mesa: Per-process producer within mesa to capture render-stage traces
   on the GPU timeline, track events, etc.
 
+The exact supported features vary per driver:
+
+.. list-table:: Supported data-sources
+   :header-rows: 1
+
+   * - Driver
+     - PPS Counters
+     - Render Stages
+   * - Freedreno
+     - ``gpu.counters.msm``
+     - ``gpu.renderstages.msm``
+   * - Turnip
+     - ``gpu.counters.msm``
+     -
+
 Run
 ---
 
@@ -58,6 +73,22 @@ To capture a trace with perfetto you need to take the following steps:
 
 8. Alternatively you can open the trace in `AGI <https://gpuinspector.dev/>`__
    (which despite the name can be used to view non-android traces).
+
+Driver Specifics
+~~~~~~~~~~~~~~~~
+
+Below is driver specific information/instructions for the PPS
+provider.
+
+Freedreno / Turnip
+^^^^^^^^^^^^^^^^^^
+
+The Freedreno PPS driver needs root access to read system-wide
+performance counters, so you can simply run it with sudo:
+
+.. code-block:: console
+
+   sudo ./build/pps-producer
 
 Troubleshooting
 ---------------
