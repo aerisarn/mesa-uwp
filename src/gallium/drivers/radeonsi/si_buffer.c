@@ -218,14 +218,32 @@ bool si_alloc_resource(struct si_screen *sscreen, struct si_resource *res)
    return true;
 }
 
-static void si_buffer_destroy(struct pipe_screen *screen, struct pipe_resource *buf)
+static void si_resource_destroy(struct pipe_screen *screen, struct pipe_resource *buf)
 {
-   struct si_resource *buffer = si_resource(buf);
+   if (buf->target == PIPE_BUFFER) {
+      struct si_resource *buffer = si_resource(buf);
 
-   threaded_resource_deinit(buf);
-   util_range_destroy(&buffer->valid_buffer_range);
-   radeon_bo_reference(((struct si_screen*)screen)->ws, &buffer->buf, NULL);
-   FREE(buffer);
+      threaded_resource_deinit(buf);
+      util_range_destroy(&buffer->valid_buffer_range);
+      radeon_bo_reference(((struct si_screen*)screen)->ws, &buffer->buf, NULL);
+      FREE(buffer);
+   } else if (buf->flags & SI_RESOURCE_AUX_PLANE) {
+      struct si_auxiliary_texture *tex = (struct si_auxiliary_texture *)buf;
+
+      radeon_bo_reference(((struct si_screen*)screen)->ws, &tex->buffer, NULL);
+      FREE(tex);
+   } else {
+      struct si_texture *tex = (struct si_texture *)buf;
+      struct si_resource *resource = &tex->buffer;
+
+      si_texture_reference(&tex->flushed_depth_texture, NULL);
+
+      if (tex->cmask_buffer != &tex->buffer) {
+         si_resource_reference(&tex->cmask_buffer, NULL);
+      }
+      radeon_bo_reference(((struct si_screen*)screen)->ws, &resource->buf, NULL);
+      FREE(tex);
+   }
 }
 
 /* Reallocate the buffer a update all resource bindings where the buffer is
@@ -551,7 +569,7 @@ static void si_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *bu
 }
 
 static const struct u_resource_vtbl si_buffer_vtbl = {
-   si_buffer_destroy,        /* resource_destroy */
+   NULL,                     /* resource_destroy */
    si_buffer_transfer_map,   /* transfer_map */
    si_buffer_transfer_unmap, /* transfer_unmap */
 };
@@ -721,7 +739,7 @@ static bool si_resource_commit(struct pipe_context *pctx, struct pipe_resource *
 void si_init_screen_buffer_functions(struct si_screen *sscreen)
 {
    sscreen->b.resource_create = si_resource_create;
-   sscreen->b.resource_destroy = u_resource_destroy_vtbl;
+   sscreen->b.resource_destroy = si_resource_destroy;
    sscreen->b.resource_from_user_memory = si_buffer_from_user_memory;
 }
 

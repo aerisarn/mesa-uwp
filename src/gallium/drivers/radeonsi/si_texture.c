@@ -784,20 +784,6 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
    return sscreen->ws->buffer_get_handle(sscreen->ws, res->buf, whandle);
 }
 
-static void si_texture_destroy(struct pipe_screen *screen, struct pipe_resource *ptex)
-{
-   struct si_texture *tex = (struct si_texture *)ptex;
-   struct si_resource *resource = &tex->buffer;
-
-   si_texture_reference(&tex->flushed_depth_texture, NULL);
-
-   if (tex->cmask_buffer != &tex->buffer) {
-      si_resource_reference(&tex->cmask_buffer, NULL);
-   }
-   radeon_bo_reference(((struct si_screen*)screen)->ws, &resource->buf, NULL);
-   FREE(tex);
-}
-
 static const struct u_resource_vtbl si_texture_vtbl;
 
 void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
@@ -1445,36 +1431,8 @@ si_texture_create_with_modifiers(struct pipe_screen *screen,
    return si_texture_create_with_modifier(screen, templ, modifier);
 }
 
-/* State trackers create separate textures in a next-chain for extra planes
- * even if those are planes created purely for modifiers. Because the linking
- * of the chain happens outside of the driver, and NULL is interpreted as
- * failure, let's create some dummy texture structs. We could use these
- * later to use the offsets for linking if we really wanted to.
- *
- * For now just create a dummy struct and completely ignore it.
- *
- * Potentially in the future we could store stride/offset and use it during
- * creation, though we might want to change how linking is done first.
- */
-
-struct si_auxiliary_texture {
-   struct threaded_resource b;
-   struct pb_buffer *buffer;
-   uint32_t offset;
-   uint32_t stride;
-};
-
-static void si_auxiliary_texture_destroy(struct pipe_screen *screen,
-                                         struct pipe_resource *ptex)
-{
-   struct si_auxiliary_texture *tex = (struct si_auxiliary_texture *)ptex;
-
-   radeon_bo_reference(((struct si_screen*)screen)->ws, &tex->buffer, NULL);
-   FREE(ptex);
-}
-
 static const struct u_resource_vtbl si_auxiliary_texture_vtbl = {
-   si_auxiliary_texture_destroy,    /* resource_destroy */
+   NULL,                            /* resource_destroy */
    NULL,                        /* transfer_map */
    NULL,                        /* transfer_unmap */
 };
@@ -1625,6 +1583,7 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
       if (!tex)
          return NULL;
       tex->b.b = *templ;
+      tex->b.b.flags |= SI_RESOURCE_AUX_PLANE;
       tex->b.vtbl = &si_auxiliary_texture_vtbl;
       tex->stride = whandle->stride;
       tex->offset = whandle->offset;
@@ -1960,7 +1919,7 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx, struct pipe_tran
 }
 
 static const struct u_resource_vtbl si_texture_vtbl = {
-   si_texture_destroy,              /* resource_destroy */
+   NULL,                            /* resource_destroy */
    si_texture_transfer_map,         /* transfer_map */
    si_texture_transfer_unmap,       /* transfer_unmap */
 };
