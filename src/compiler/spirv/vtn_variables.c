@@ -1960,7 +1960,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                      "as initializer, but have %u instead",
                      vtn_id_for_value(b, val),
                      vtn_id_for_value(b, initializer));
-         b->shader->info.cs.zero_initialize_shared_memory = true;
+         b->shader->info.zero_initialize_shared_memory = true;
          break;
 
       case SpvStorageClassUniformConstant:

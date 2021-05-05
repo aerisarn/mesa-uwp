@@ -254,6 +254,11 @@ typedef struct shader_info {
     */
    bool shared_memory_explicit_layout:1;
 
+   /**
+    * Used for VK_KHR_zero_initialize_workgroup_memory.
+    */
+   bool zero_initialize_shared_memory:1;
+
    union {
       struct {
          /* Which inputs are doubles */
@@ -395,8 +400,6 @@ typedef struct shader_info {
           * shader.  From NV_compute_shader_derivatives.
           */
          enum gl_derivative_group derivative_group:2;
-
-         bool zero_initialize_shared_memory;
 
          /**
           * pointer size is:

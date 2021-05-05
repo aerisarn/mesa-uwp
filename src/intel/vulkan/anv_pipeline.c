@@ -1808,7 +1808,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       NIR_PASS_V(stage.nir, nir_lower_explicit_io,
                  nir_var_mem_shared, nir_address_format_32bit_offset);
 
-      if (stage.nir->info.cs.zero_initialize_shared_memory &&
+      if (stage.nir->info.zero_initialize_shared_memory &&
           stage.nir->info.shared_size > 0) {
          /* The effective Shared Local Memory size is at least 1024 bytes and
           * is always rounded to a power of two, so it is OK to align the size

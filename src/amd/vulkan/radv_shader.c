@@ -648,7 +648,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
       }
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared, nir_address_format_32bit_offset);
 
-      if (nir->info.cs.zero_initialize_shared_memory && nir->info.shared_size > 0) {
+      if (nir->info.zero_initialize_shared_memory && nir->info.shared_size > 0) {
          const unsigned chunk_size = 16; /* max single store size */
          const unsigned shared_size = ALIGN(nir->info.shared_size, chunk_size);
          NIR_PASS_V(nir, nir_zero_initialize_shared_memory, shared_size, chunk_size);
