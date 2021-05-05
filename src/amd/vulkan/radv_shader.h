@@ -467,7 +467,7 @@ unsigned radv_get_max_workgroup_size(enum chip_class chip_class, gl_shader_stage
 const char *radv_get_shader_name(struct radv_shader_info *info, gl_shader_stage stage);
 
 bool radv_can_dump_shader(struct radv_device *device, struct vk_shader_module *module,
-                          bool is_gs_copy_shader);
+                          bool meta_shader);
 
 bool radv_can_dump_shader_stats(struct radv_device *device, struct vk_shader_module *module);
 
