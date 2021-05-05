@@ -44,6 +44,9 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_render_pass,
 
 struct vn_framebuffer {
    struct vn_object_base base;
+
+   uint32_t image_view_count;
+   VkImageView image_views[];
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_framebuffer,
                                base.base,
