@@ -43,3 +43,17 @@ libd3d10sw = shared_library(
   name_prefix : '',  # otherwise mingw will create libd3d10sw.dll
   install : true,
 )
+
+if with_tests
+  test(
+    'd3d10sw',
+    executable(
+      'test_d3d10sw',
+      files('tests/tri.cpp'),
+      cpp_args : [cpp_msvc_compat_args],
+      dependencies : [cpp.find_library('d3d11')],
+      link_with : [libd3d10sw],
+    ),
+    suite : ['d3d10sw'],
+  )
+endif
