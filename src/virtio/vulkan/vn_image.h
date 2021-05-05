@@ -13,6 +13,13 @@
 
 #include "vn_common.h"
 
+/* XXX drop the #ifdef after fixing common wsi */
+#ifdef ANDROID
+#define VN_PRESENT_SRC_INTERNAL_LAYOUT VK_IMAGE_LAYOUT_GENERAL
+#else
+#define VN_PRESENT_SRC_INTERNAL_LAYOUT VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+#endif
+
 enum {
    VN_IMAGE_OWNERSHIP_ACQUIRE = 0,
    VN_IMAGE_OWNERSHIP_RELEASE = 1,

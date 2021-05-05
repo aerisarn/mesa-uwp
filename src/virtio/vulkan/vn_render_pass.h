@@ -13,10 +13,23 @@
 
 #include "vn_common.h"
 
+struct vn_present_src_attachment {
+   bool acquire;
+   uint32_t index;
+};
+
 struct vn_render_pass {
    struct vn_object_base base;
 
    VkExtent2D granularity;
+
+   /* track attachments that have PRESENT_SRC as their initialLayout or
+    * finalLayout
+    */
+   uint32_t acquire_count;
+   uint32_t release_count;
+   uint32_t present_src_count;
+   struct vn_present_src_attachment present_src_attachments[];
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_render_pass,
                                base.base,
