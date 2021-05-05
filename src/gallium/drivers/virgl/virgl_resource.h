@@ -51,7 +51,7 @@ struct virgl_resource_metadata
 };
 
 struct virgl_resource {
-   struct u_resource u;
+   struct pipe_resource b;
    uint16_t clean_mask;
    struct virgl_hw_res *hw_res;
    struct virgl_resource_metadata metadata;

@@ -29,10 +29,6 @@ void u_default_transfer_flush_region( struct pipe_context *pipe,
                                       struct pipe_transfer *transfer,
                                       const struct pipe_box *box);
 
-struct u_resource {
-   struct pipe_resource b;
-};
-
 #ifdef __cplusplus
 } // extern "C" {
 #endif

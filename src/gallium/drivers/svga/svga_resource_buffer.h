@@ -72,7 +72,7 @@ struct svga_buffer_surface
  */
 struct svga_buffer
 {
-   struct u_resource b;
+   struct pipe_resource b;
 
    /** This is a superset of b.b.bind */
    unsigned bind_flags;
@@ -230,7 +230,7 @@ static inline struct svga_buffer *
 svga_buffer(struct pipe_resource *resource)
 {
    struct svga_buffer *buf = (struct svga_buffer *) resource;
-   assert(buf == NULL || buf->b.b.target == PIPE_BUFFER);
+   assert(buf == NULL || buf->b.target == PIPE_BUFFER);
    return buf;
 }
 
@@ -256,7 +256,7 @@ svga_buffer_is_user_buffer(struct pipe_resource *buffer)
 static inline struct svga_winsys_screen *
 svga_buffer_winsys_screen(struct svga_buffer *sbuf)
 {
-   return svga_screen(sbuf->b.b.screen)->sws;
+   return svga_screen(sbuf->b.screen)->sws;
 }
 
 

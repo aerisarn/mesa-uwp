@@ -873,7 +873,7 @@ static void virgl_query_memory_info(struct pipe_screen *screen, struct pipe_memo
    virgl_encode_get_memory_info(vctx, res);
    ctx->flush(ctx, NULL, 0);
    vscreen->vws->resource_wait(vscreen->vws, res->hw_res);
-   pipe_buffer_read(ctx, &res->u.b, 0, sizeof(struct virgl_memory_info), &virgl_info);
+   pipe_buffer_read(ctx, &res->b, 0, sizeof(struct virgl_memory_info), &virgl_info);
 
    info->avail_device_memory = virgl_info.avail_device_memory;
    info->avail_staging_memory = virgl_info.avail_staging_memory;
@@ -882,7 +882,7 @@ static void virgl_query_memory_info(struct pipe_screen *screen, struct pipe_memo
    info->total_device_memory = virgl_info.total_device_memory;
    info->total_staging_memory = virgl_info.total_staging_memory;
 
-   screen->resource_destroy(screen, &res->u.b);
+   screen->resource_destroy(screen, &res->b);
    ctx->destroy(ctx);
 }
 

@@ -130,7 +130,7 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
     * We can proceed as if PIPE_MAP_UNSYNCHRONIZED and
     * PIPE_MAP_DISCARD_RANGE are set.
     */
-   if (res->u.b.target == PIPE_BUFFER &&
+   if (res->b.target == PIPE_BUFFER &&
        !util_ranges_intersect(&res->valid_buffer_range, xfer->base.box.x,
                               xfer->base.box.x + xfer->base.box.width) &&
        likely(!(virgl_debug & VIRGL_DEBUG_XFER))) {
@@ -156,7 +156,7 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
        * valid data.
        */
       if (xfer->base.usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
-         can_realloc = virgl_can_rebind_resource(vctx, &res->u.b);
+         can_realloc = virgl_can_rebind_resource(vctx, &res->b);
       } else {
          can_staging = vctx->supports_staging;
       }
@@ -294,7 +294,7 @@ virgl_staging_map(struct virgl_context *vctx,
     *         |---|             ==> align_offset
     *         |------------|    ==> allocation of size + align_offset
     */
-   align_offset = vres->u.b.target == PIPE_BUFFER ?
+   align_offset = vres->b.target == PIPE_BUFFER ?
                   vtransfer->base.box.x % VIRGL_MAP_BUFFER_ALIGNMENT :
                   0;
 
@@ -334,7 +334,7 @@ static bool
 virgl_resource_realloc(struct virgl_context *vctx, struct virgl_resource *res)
 {
    struct virgl_screen *vs = virgl_screen(vctx->base.screen);
-   const struct pipe_resource *templ = &res->u.b;
+   const struct pipe_resource *templ = &res->b;
    unsigned vbind, vflags;
    struct virgl_hw_res *hw_res;
 
@@ -366,7 +366,7 @@ virgl_resource_realloc(struct virgl_context *vctx, struct virgl_resource *res)
    /* count toward the staging resource size limit */
    vctx->queued_staging_res_size += res->metadata.total_size;
 
-   virgl_rebind_resource(vctx, &res->u.b);
+   virgl_rebind_resource(vctx, &res->b);
 
    return true;
 }
@@ -425,7 +425,7 @@ virgl_resource_transfer_map(struct pipe_context *ctx,
       return NULL;
    }
 
-   if (vres->u.b.target == PIPE_BUFFER) {
+   if (vres->b.target == PIPE_BUFFER) {
       /* For the checks below to be able to use 'usage', we assume that
        * transfer preparation doesn't affect the usage.
        */
@@ -448,7 +448,7 @@ virgl_resource_transfer_map(struct pipe_context *ctx,
       }
 
       if (usage & PIPE_MAP_WRITE)
-          util_range_add(&vres->u.b, &vres->valid_buffer_range, box->x, box->x + box->width);
+          util_range_add(&vres->b, &vres->valid_buffer_range, box->x, box->x + box->width);
    }
 
    *transfer = &trans->base;
@@ -507,12 +507,12 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
    struct virgl_screen *vs = virgl_screen(screen);
    struct virgl_resource *res = CALLOC_STRUCT(virgl_resource);
 
-   res->u.b = *templ;
-   res->u.b.screen = &vs->base;
-   pipe_reference_init(&res->u.b.reference, 1);
+   res->b = *templ;
+   res->b.screen = &vs->base;
+   pipe_reference_init(&res->b.reference, 1);
    vbind = pipe_to_virgl_bind(vs, templ->bind);
    vflags = pipe_to_virgl_flags(vs, templ->flags);
-   virgl_resource_layout(&res->u.b, &res->metadata, 0, 0, 0, 0);
+   virgl_resource_layout(&res->b, &res->metadata, 0, 0, 0, 0);
 
    if ((vs->caps.caps.v2.capability_bits & VIRGL_CAP_APP_TWEAK_SUPPORT) &&
        vs->tweak_gles_emulate_bgra &&
@@ -547,7 +547,7 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
       virgl_texture_init(res);
    }
 
-   return &res->u.b;
+   return &res->b;
 
 }
 
@@ -563,9 +563,9 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
       return NULL;
 
    struct virgl_resource *res = CALLOC_STRUCT(virgl_resource);
-   res->u.b = *templ;
-   res->u.b.screen = &vs->base;
-   pipe_reference_init(&res->u.b.reference, 1);
+   res->b = *templ;
+   res->b.screen = &vs->base;
+   pipe_reference_init(&res->b.reference, 1);
 
    plane = winsys_stride = plane_offset = modifier = 0;
    res->hw_res = vs->vws->resource_create_from_handle(vs->vws, whandle,
@@ -582,7 +582,7 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
       modifier = 0;
    }
 
-   virgl_resource_layout(&res->u.b, &res->metadata, plane, winsys_stride,
+   virgl_resource_layout(&res->b, &res->metadata, plane, winsys_stride,
                          plane_offset, modifier);
    if (!res->hw_res) {
       FREE(res);
@@ -595,17 +595,17 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
       uint32_t plane_strides[VIRGL_MAX_PLANE_COUNT];
       uint32_t plane_offsets[VIRGL_MAX_PLANE_COUNT];
       uint32_t plane_count = 0;
-      struct pipe_resource *iter = &res->u.b;
+      struct pipe_resource *iter = &res->b;
 
       do {
          struct virgl_resource *plane = virgl_resource(iter);
 
          /* must be a plain 2D texture sharing the same hw_res */
-         if (plane->u.b.target != PIPE_TEXTURE_2D ||
-             plane->u.b.depth0 != 1 ||
-             plane->u.b.array_size != 1 ||
-             plane->u.b.last_level != 0 ||
-             plane->u.b.nr_samples > 1 ||
+         if (plane->b.target != PIPE_TEXTURE_2D ||
+             plane->b.depth0 != 1 ||
+             plane->b.array_size != 1 ||
+             plane->b.last_level != 0 ||
+             plane->b.nr_samples > 1 ||
              plane->hw_res != res->hw_res ||
              plane_count >= VIRGL_MAX_PLANE_COUNT) {
             vs->vws->resource_reference(vs->vws, &res->hw_res, NULL);
@@ -621,10 +621,10 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
 
       vs->vws->resource_set_type(vs->vws,
                                  res->hw_res,
-                                 pipe_to_virgl_format(res->u.b.format),
-                                 pipe_to_virgl_bind(vs, res->u.b.bind),
-                                 res->u.b.width0,
-                                 res->u.b.height0,
+                                 pipe_to_virgl_format(res->b.format),
+                                 pipe_to_virgl_bind(vs, res->b.bind),
+                                 res->b.width0,
+                                 res->b.height0,
                                  usage,
                                  res->metadata.modifier,
                                  plane_count,
@@ -634,7 +634,7 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
 
    virgl_texture_init(res);
 
-   return &res->u.b;
+   return &res->b;
 }
 
 void virgl_init_screen_resource_functions(struct pipe_screen *screen)
@@ -663,7 +663,7 @@ static void virgl_buffer_subdata(struct pipe_context *pipe,
        likely(!(virgl_debug & VIRGL_DEBUG_XFER)) &&
        virgl_transfer_queue_extend_buffer(&vctx->queue,
                                           vbuf->hw_res, offset, size, data)) {
-      util_range_add(&vbuf->u.b, &vbuf->valid_buffer_range, offset, offset + size);
+      util_range_add(&vbuf->b, &vbuf->valid_buffer_range, offset, offset + size);
       return;
    }
 
@@ -766,7 +766,7 @@ void virgl_resource_destroy(struct pipe_screen *screen,
    struct virgl_screen *vs = virgl_screen(screen);
    struct virgl_resource *res = virgl_resource(resource);
 
-   if (res->u.b.target == PIPE_BUFFER)
+   if (res->b.target == PIPE_BUFFER)
       util_range_destroy(&res->valid_buffer_range);
 
    vs->vws->resource_reference(vs->vws, &res->hw_res, NULL);
@@ -782,7 +782,7 @@ bool virgl_resource_get_handle(struct pipe_screen *screen,
    struct virgl_screen *vs = virgl_screen(screen);
    struct virgl_resource *res = virgl_resource(resource);
 
-   if (res->u.b.target == PIPE_BUFFER)
+   if (res->b.target == PIPE_BUFFER)
       return false;
 
    return vs->vws->resource_get_handle(vs->vws, res->hw_res,
@@ -793,7 +793,7 @@ bool virgl_resource_get_handle(struct pipe_screen *screen,
 void virgl_resource_dirty(struct virgl_resource *res, uint32_t level)
 {
    if (res) {
-      if (res->u.b.target == PIPE_BUFFER)
+      if (res->b.target == PIPE_BUFFER)
          res->clean_mask &= ~1;
       else
          res->clean_mask &= ~(1 << level);

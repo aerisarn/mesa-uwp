@@ -911,7 +911,7 @@ void r300_texture_setup_format_state(struct r300_screen *screen,
                                      unsigned height0_override,
                                      struct r300_texture_format_state *out)
 {
-    struct pipe_resource *pt = &tex->b.b;
+    struct pipe_resource *pt = &tex->b;
     struct r300_texture_desc *desc = &tex->tex;
     boolean is_r500 = screen->caps.is_r500;
     unsigned width, height, depth;
@@ -1058,11 +1058,11 @@ r300_texture_create_object(struct r300_screen *rscreen,
         goto fail;
     }
 
-    pipe_reference_init(&tex->b.b.reference, 1);
-    tex->b.b.screen = &rscreen->screen;
-    tex->b.b.usage = base->usage;
-    tex->b.b.bind = base->bind;
-    tex->b.b.flags = base->flags;
+    pipe_reference_init(&tex->b.reference, 1);
+    tex->b.screen = &rscreen->screen;
+    tex->b.usage = base->usage;
+    tex->b.bind = base->bind;
+    tex->b.flags = base->flags;
     tex->tex.microtile = microtile;
     tex->tex.macrotile[0] = macrotile;
     tex->tex.stride_in_bytes_override = stride_in_bytes_override;
@@ -1234,7 +1234,7 @@ struct pipe_surface* r300_create_surface_custom(struct pipe_context * ctx,
 
         /* Height must be aligned to the size of a tile. */
         tile_height = r300_get_pixel_alignment(surface->base.format,
-                                               tex->b.b.nr_samples,
+                                               tex->b.nr_samples,
                                                tex->tex.microtile,
                                                tex->tex.macrotile[level],
                                                DIM_HEIGHT, 0);

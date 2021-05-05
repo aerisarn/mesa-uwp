@@ -621,7 +621,7 @@ int virgl_encode_clear_texture(struct virgl_context *ctx,
                                const struct pipe_box *box,
                                const void *data)
 {
-   const struct util_format_description *desc = util_format_description(res->u.b.format);
+   const struct util_format_description *desc = util_format_description(res->b.format);
    unsigned block_bits = desc->block.bits;
    uint32_t arr[4] = {0};
    /* The spec describe <data> as a pointer to an array of between one
@@ -889,7 +889,7 @@ int virgl_encoder_inline_write(struct virgl_context *ctx,
    struct virgl_transfer transfer;
    struct virgl_screen *vs = virgl_screen(ctx->base.screen);
 
-   transfer.base.resource = &res->u.b;
+   transfer.base.resource = &res->b;
    transfer.hw_res = res->hw_res;
    transfer.base.level = level;
    transfer.base.usage = usage;
@@ -976,7 +976,7 @@ int virgl_encode_sampler_view(struct virgl_context *ctx,
    if (rs->caps.caps.v2.capability_bits & VIRGL_CAP_TEXTURE_VIEW)
      dword_fmt_target |= (state->target << 24);
    virgl_encoder_write_dword(ctx->cbuf, dword_fmt_target);
-   if (res->u.b.target == PIPE_BUFFER) {
+   if (res->b.target == PIPE_BUFFER) {
       virgl_encoder_write_dword(ctx->cbuf, state->u.buf.offset / elem_size);
       virgl_encoder_write_dword(ctx->cbuf, (state->u.buf.offset + state->u.buf.size) / elem_size - 1);
    } else {
@@ -1319,7 +1319,7 @@ int virgl_encode_set_shader_buffers(struct virgl_context *ctx,
          virgl_encoder_write_dword(ctx->cbuf, buffers[i].buffer_size);
          virgl_encoder_write_res(ctx, res);
 
-         util_range_add(&res->u.b, &res->valid_buffer_range, buffers[i].buffer_offset,
+         util_range_add(&res->b, &res->valid_buffer_range, buffers[i].buffer_offset,
                buffers[i].buffer_offset + buffers[i].buffer_size);
          virgl_resource_dirty(res, 0);
       } else {
@@ -1346,7 +1346,7 @@ int virgl_encode_set_hw_atomic_buffers(struct virgl_context *ctx,
          virgl_encoder_write_dword(ctx->cbuf, buffers[i].buffer_size);
          virgl_encoder_write_res(ctx, res);
 
-         util_range_add(&res->u.b, &res->valid_buffer_range, buffers[i].buffer_offset,
+         util_range_add(&res->b, &res->valid_buffer_range, buffers[i].buffer_offset,
                buffers[i].buffer_offset + buffers[i].buffer_size);
          virgl_resource_dirty(res, 0);
       } else {
@@ -1377,8 +1377,8 @@ int virgl_encode_set_shader_images(struct virgl_context *ctx,
          virgl_encoder_write_dword(ctx->cbuf, images[i].u.buf.size);
          virgl_encoder_write_res(ctx, res);
 
-         if (res->u.b.target == PIPE_BUFFER) {
-            util_range_add(&res->u.b, &res->valid_buffer_range, images[i].u.buf.offset,
+         if (res->b.target == PIPE_BUFFER) {
+            util_range_add(&res->b, &res->valid_buffer_range, images[i].u.buf.offset,
                   images[i].u.buf.offset + images[i].u.buf.size);
          }
          virgl_resource_dirty(res, images[i].u.tex.level);

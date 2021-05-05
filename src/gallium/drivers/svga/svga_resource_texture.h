@@ -45,7 +45,7 @@ enum SVGA3dSurfaceFormat;
 
 struct svga_texture
 {
-   struct u_resource b;
+   struct pipe_resource b;
 
    ushort *defined;
 
@@ -155,7 +155,7 @@ static inline struct svga_texture *
 svga_texture(struct pipe_resource *resource)
 {
    struct svga_texture *tex = (struct svga_texture *)resource;
-   assert(tex == NULL || tex->b.b.target != PIPE_BUFFER);
+   assert(tex == NULL || tex->b.target != PIPE_BUFFER);
    return tex;
 }
 
@@ -186,14 +186,14 @@ static inline void
 check_face_level(const struct svga_texture *tex,
                  unsigned face, unsigned level)
 {
-   if (tex->b.b.target == PIPE_TEXTURE_CUBE) {
+   if (tex->b.target == PIPE_TEXTURE_CUBE) {
       assert(face < 6);
    }
-   else if (tex->b.b.target == PIPE_TEXTURE_3D) {
-      assert(face < tex->b.b.depth0);
+   else if (tex->b.target == PIPE_TEXTURE_3D) {
+      assert(face < tex->b.depth0);
    }
    else {
-      assert(face < tex->b.b.array_size);
+      assert(face < tex->b.array_size);
    }
 
    assert(level < 8 * sizeof(tex->rendered_to[0]));
@@ -261,7 +261,7 @@ static inline void
 svga_clear_texture_dirty(struct svga_texture *tex)
 {
    unsigned i;
-   for (i = 0; i < tex->b.b.depth0 * tex->b.b.array_size; i++) {
+   for (i = 0; i < tex->b.depth0 * tex->b.array_size; i++) {
       tex->dirty[i] = 0;
    }
 }

@@ -255,10 +255,10 @@ svga_buffer_transfer_map(struct pipe_context *pipe,
             debug_printf("%s: failed to allocate %u KB of DMA, "
                          "splitting DMA transfers\n",
                          __FUNCTION__,
-                         (sbuf->b.b.width0 + 1023)/1024);
+                         (sbuf->b.width0 + 1023)/1024);
          }
 
-         sbuf->swbuf = align_malloc(sbuf->b.b.width0, 16);
+         sbuf->swbuf = align_malloc(sbuf->b.width0, 16);
          if (!sbuf->swbuf) {
             FREE(transfer);
             goto done;
@@ -367,7 +367,7 @@ svga_buffer_transfer_unmap(struct pipe_context *pipe,
          sbuf->dma.flags.discard = TRUE;
 
          if (!(svga->swc->force_coherent || sbuf->key.coherent) || sbuf->swbuf)
-            svga_buffer_add_range(sbuf, 0, sbuf->b.b.width0);
+            svga_buffer_add_range(sbuf, 0, sbuf->b.width0);
       }
 
       if (sbuf->swbuf &&
@@ -467,9 +467,9 @@ svga_buffer_create(struct pipe_screen *screen,
    if (!sbuf)
       goto error1;
 
-   sbuf->b.b = *template;
-   pipe_reference_init(&sbuf->b.b.reference, 1);
-   sbuf->b.b.screen = screen;
+   sbuf->b = *template;
+   pipe_reference_init(&sbuf->b.reference, 1);
+   sbuf->b.screen = screen;
    bind_flags = template->bind & ~PIPE_BIND_CUSTOM;
 
    list_inithead(&sbuf->surfaces);
@@ -487,7 +487,7 @@ svga_buffer_create(struct pipe_screen *screen,
     * in multiples of 16, in order to allow bind_flags promotion,
     * we are mandating all buffer size to be in multiples of 16.
     */
-   sbuf->b.b.width0 = align(sbuf->b.b.width0, 16);
+   sbuf->b.width0 = align(sbuf->b.width0, 16);
 
    if (svga_buffer_needs_hw_storage(ss, template)) {
 
@@ -517,7 +517,7 @@ svga_buffer_create(struct pipe_screen *screen,
          goto error2;
    }
    else {
-      sbuf->swbuf = align_malloc(sbuf->b.b.width0, 64);
+      sbuf->swbuf = align_malloc(sbuf->b.width0, 64);
       if (!sbuf->swbuf)
          goto error2;
 
@@ -529,17 +529,17 @@ svga_buffer_create(struct pipe_screen *screen,
          sbuf->use_swbuf = TRUE;
    }
 
-   debug_reference(&sbuf->b.b.reference,
+   debug_reference(&sbuf->b.reference,
                    (debug_reference_descriptor)debug_describe_resource, 0);
 
    sbuf->bind_flags = bind_flags;
-   sbuf->size = util_resource_size(&sbuf->b.b);
+   sbuf->size = util_resource_size(&sbuf->b);
    ss->hud.total_resource_bytes += sbuf->size;
 
    ss->hud.num_resources++;
    SVGA_STATS_TIME_POP(ss->sws);
 
-   return &sbuf->b.b;
+   return &sbuf->b;
 
 error2:
    FREE(sbuf);
@@ -562,26 +562,26 @@ svga_user_buffer_create(struct pipe_screen *screen,
    if (!sbuf)
       goto no_sbuf;
 
-   pipe_reference_init(&sbuf->b.b.reference, 1);
-   sbuf->b.b.screen = screen;
-   sbuf->b.b.format = PIPE_FORMAT_R8_UNORM; /* ?? */
-   sbuf->b.b.usage = PIPE_USAGE_IMMUTABLE;
-   sbuf->b.b.bind = bind;
-   sbuf->b.b.width0 = bytes;
-   sbuf->b.b.height0 = 1;
-   sbuf->b.b.depth0 = 1;
-   sbuf->b.b.array_size = 1;
+   pipe_reference_init(&sbuf->b.reference, 1);
+   sbuf->b.screen = screen;
+   sbuf->b.format = PIPE_FORMAT_R8_UNORM; /* ?? */
+   sbuf->b.usage = PIPE_USAGE_IMMUTABLE;
+   sbuf->b.bind = bind;
+   sbuf->b.width0 = bytes;
+   sbuf->b.height0 = 1;
+   sbuf->b.depth0 = 1;
+   sbuf->b.array_size = 1;
 
    sbuf->bind_flags = bind;
    sbuf->swbuf = ptr;
    sbuf->user = TRUE;
 
-   debug_reference(&sbuf->b.b.reference,
+   debug_reference(&sbuf->b.reference,
                    (debug_reference_descriptor)debug_describe_resource, 0);
 
    ss->hud.num_resources++;
 
-   return &sbuf->b.b;
+   return &sbuf->b;
 
 no_sbuf:
    return NULL;

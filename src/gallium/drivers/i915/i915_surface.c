@@ -209,8 +209,8 @@ i915_surface_copy_blitter(struct pipe_context *pipe,
 {
    struct i915_texture *dst_tex = i915_texture(dst);
    struct i915_texture *src_tex = i915_texture(src);
-   struct pipe_resource *dpt = &dst_tex->b.b;
-   struct pipe_resource *spt = &src_tex->b.b;
+   struct pipe_resource *dpt = &dst_tex->b;
+   struct pipe_resource *spt = &src_tex->b;
    unsigned dst_offset, src_offset;  /* in bytes */
 
    /* Fallback for buffers. */
@@ -287,7 +287,7 @@ i915_clear_render_target_blitter(struct pipe_context *pipe,
                                  bool render_condition_enabled)
 {
    struct i915_texture *tex = i915_texture(dst->texture);
-   struct pipe_resource *pt = &tex->b.b;
+   struct pipe_resource *pt = &tex->b;
    union util_color uc;
    unsigned offset = i915_texture_offset(tex, dst->u.tex.level, dst->u.tex.first_layer);
 
@@ -316,7 +316,7 @@ i915_clear_depth_stencil_blitter(struct pipe_context *pipe,
                                  bool render_condition_enabled)
 {
    struct i915_texture *tex = i915_texture(dst->texture);
-   struct pipe_resource *pt = &tex->b.b;
+   struct pipe_resource *pt = &tex->b;
    unsigned packedds;
    unsigned mask = 0;
    unsigned offset = i915_texture_offset(tex, dst->u.tex.level, dst->u.tex.first_layer);

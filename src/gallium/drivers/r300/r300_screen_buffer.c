@@ -116,7 +116,7 @@ r300_buffer_transfer_map( struct pipe_context *context,
             struct pb_buffer *new_buf;
 
             /* Create a new one in the same pipe_resource. */
-            new_buf = r300->rws->buffer_create(r300->rws, rbuf->b.b.width0,
+            new_buf = r300->rws->buffer_create(r300->rws, rbuf->b.width0,
                                                R300_BUFFER_ALIGNMENT,
                                                rbuf->domain,
                                                RADEON_FLAG_NO_INTERPROCESS_SHARING);
@@ -127,7 +127,7 @@ r300_buffer_transfer_map( struct pipe_context *context,
 
                 /* We changed the buffer, now we need to bind it where the old one was bound. */
                 for (i = 0; i < r300->nr_vertex_buffers; i++) {
-                    if (r300->vertex_buffer[i].buffer.resource == &rbuf->b.b) {
+                    if (r300->vertex_buffer[i].buffer.resource == &rbuf->b) {
                         r300->vertex_arrays_dirty = TRUE;
                         break;
                     }
@@ -169,9 +169,9 @@ struct pipe_resource *r300_buffer_create(struct pipe_screen *screen,
 
     rbuf = MALLOC_STRUCT(r300_resource);
 
-    rbuf->b.b = *templ;
-    pipe_reference_init(&rbuf->b.b.reference, 1);
-    rbuf->b.b.screen = screen;
+    rbuf->b = *templ;
+    pipe_reference_init(&rbuf->b.reference, 1);
+    rbuf->b.screen = screen;
     rbuf->domain = RADEON_DOMAIN_GTT;
     rbuf->buf = NULL;
     rbuf->malloced_buffer = NULL;
@@ -183,11 +183,11 @@ struct pipe_resource *r300_buffer_create(struct pipe_screen *screen,
     if (templ->bind & PIPE_BIND_CONSTANT_BUFFER ||
         (!r300screen->caps.has_tcl && !(templ->bind & PIPE_BIND_CUSTOM))) {
         rbuf->malloced_buffer = align_malloc(templ->width0, 64);
-        return &rbuf->b.b;
+        return &rbuf->b;
     }
 
     rbuf->buf =
-        r300screen->rws->buffer_create(r300screen->rws, rbuf->b.b.width0,
+        r300screen->rws->buffer_create(r300screen->rws, rbuf->b.width0,
                                        R300_BUFFER_ALIGNMENT,
                                        rbuf->domain,
                                        RADEON_FLAG_NO_INTERPROCESS_SHARING);
@@ -195,5 +195,5 @@ struct pipe_resource *r300_buffer_create(struct pipe_screen *screen,
         FREE(rbuf);
         return NULL;
     }
-    return &rbuf->b.b;
+    return &rbuf->b;
 }

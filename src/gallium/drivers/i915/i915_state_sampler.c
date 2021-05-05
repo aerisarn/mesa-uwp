@@ -85,7 +85,7 @@ static void update_sampler(struct i915_context *i915,
                            const struct i915_texture *tex,
                            unsigned state[3])
 {
-   const struct pipe_resource *pt = &tex->b.b;
+   const struct pipe_resource *pt = &tex->b;
    unsigned minlod, lastlod;
 
    state[0] = sampler->state[0];
@@ -304,7 +304,7 @@ static void update_map(struct i915_context *i915,
                        const struct pipe_sampler_view* view,
                        uint state[3])
 {
-   const struct pipe_resource *pt = &tex->b.b;
+   const struct pipe_resource *pt = &tex->b;
    uint width = pt->width0, height = pt->height0, depth = pt->depth0;
    int first_level = view->u.tex.first_level;
    const uint num_levels = pt->last_level - first_level;

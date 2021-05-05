@@ -118,16 +118,16 @@ i915_buffer_create(struct pipe_screen *screen,
    if (!buf)
       return NULL;
 
-   buf->b.b = *template;
-   pipe_reference_init(&buf->b.b.reference, 1);
-   buf->b.b.screen = screen;
+   buf->b = *template;
+   pipe_reference_init(&buf->b.reference, 1);
+   buf->b.screen = screen;
    buf->data = align_malloc(template->width0, 64);
    buf->free_on_destroy = TRUE;
 
    if (!buf->data)
       goto err;
 
-   return &buf->b.b;
+   return &buf->b;
 
 err:
    FREE(buf);
@@ -147,19 +147,19 @@ i915_user_buffer_create(struct pipe_screen *screen,
    if (!buf)
       return NULL;
 
-   pipe_reference_init(&buf->b.b.reference, 1);
-   buf->b.b.screen = screen;
-   buf->b.b.format = PIPE_FORMAT_R8_UNORM; /* ?? */
-   buf->b.b.usage = PIPE_USAGE_IMMUTABLE;
-   buf->b.b.bind = bind;
-   buf->b.b.flags = 0;
-   buf->b.b.width0 = bytes;
-   buf->b.b.height0 = 1;
-   buf->b.b.depth0 = 1;
-   buf->b.b.array_size = 1;
+   pipe_reference_init(&buf->b.reference, 1);
+   buf->b.screen = screen;
+   buf->b.format = PIPE_FORMAT_R8_UNORM; /* ?? */
+   buf->b.usage = PIPE_USAGE_IMMUTABLE;
+   buf->b.bind = bind;
+   buf->b.flags = 0;
+   buf->b.width0 = bytes;
+   buf->b.height0 = 1;
+   buf->b.depth0 = 1;
+   buf->b.array_size = 1;
 
    buf->data = ptr;
    buf->free_on_destroy = FALSE;
 
-   return &buf->b.b;
+   return &buf->b;
 }

@@ -64,7 +64,7 @@ i915_clear_emit(struct pipe_context *pipe, unsigned buffers,
       cbuf_tex = i915_texture(cbuf->texture);
 
       util_pack_color(color->f, cbuf->format, &u_color);
-      if (util_format_get_blocksize(cbuf_tex->b.b.format) == 4) {
+      if (util_format_get_blocksize(cbuf_tex->b.format) == 4) {
          clear_color = u_color.ui[0];
          color_clear_bbp = 32;
       } else {
@@ -87,12 +87,12 @@ i915_clear_emit(struct pipe_context *pipe, unsigned buffers,
 
       clear_params |= CLEARPARAM_WRITE_DEPTH;
       depth_tex = i915_texture(zbuf->texture);
-      packed_z_stencil = util_pack_z_stencil(depth_tex->b.b.format, depth, stencil);
+      packed_z_stencil = util_pack_z_stencil(depth_tex->b.format, depth, stencil);
 
-      if (util_format_get_blocksize(depth_tex->b.b.format) == 4) {
+      if (util_format_get_blocksize(depth_tex->b.format) == 4) {
          /* Avoid read-modify-write if there's no stencil. */
          if (buffers & PIPE_CLEAR_STENCIL
-               || depth_tex->b.b.format != PIPE_FORMAT_Z24_UNORM_S8_UINT) {
+               || depth_tex->b.format != PIPE_FORMAT_Z24_UNORM_S8_UINT) {
             clear_params |= CLEARPARAM_WRITE_STENCIL;
             clear_stencil = packed_z_stencil >> 24;
          }
@@ -108,9 +108,9 @@ i915_clear_emit(struct pipe_context *pipe, unsigned buffers,
 
       clear_params |= CLEARPARAM_WRITE_STENCIL;
       depth_tex = i915_texture(zbuf->texture);
-      assert(depth_tex->b.b.format == PIPE_FORMAT_Z24_UNORM_S8_UINT);
+      assert(depth_tex->b.format == PIPE_FORMAT_Z24_UNORM_S8_UINT);
 
-      packed_z_stencil = util_pack_z_stencil(depth_tex->b.b.format, depth, stencil);
+      packed_z_stencil = util_pack_z_stencil(depth_tex->b.format, depth, stencil);
       depth_clear_bbp = 32;
       clear_stencil = packed_z_stencil >> 24;
    }

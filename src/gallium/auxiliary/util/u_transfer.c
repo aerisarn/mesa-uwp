@@ -91,9 +91,3 @@ void u_default_transfer_flush_region(UNUSED struct pipe_context *pipe,
    /* This is a no-op implementation, nothing to do.
     */
 }
-
-static inline struct u_resource *
-u_resource( struct pipe_resource *res )
-{
-   return (struct u_resource *)res;
-}

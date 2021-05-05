@@ -40,7 +40,7 @@ struct i915_screen;
 
 
 struct i915_buffer {
-   struct u_resource b;
+   struct pipe_resource b;
    uint8_t *data;
    boolean free_on_destroy;
 };
@@ -64,7 +64,7 @@ struct offset_pair {
 };
 
 struct i915_texture {
-   struct u_resource b;
+   struct pipe_resource b;
 
    /* tiling flags */
    enum i915_winsys_buffer_tile tiling;
@@ -94,14 +94,14 @@ void i915_init_resource_functions(struct i915_context *i915);
 static inline struct i915_texture *i915_texture(struct pipe_resource *resource)
 {
    struct i915_texture *tex = (struct i915_texture *)resource;
-   assert(tex->b.b.target != PIPE_BUFFER);
+   assert(tex->b.target != PIPE_BUFFER);
    return tex;
 }
 
 static inline struct i915_buffer *i915_buffer(struct pipe_resource *resource)
 {
    struct i915_buffer *tex = (struct i915_buffer *)resource;
-   assert(tex->b.b.target == PIPE_BUFFER);
+   assert(tex->b.target == PIPE_BUFFER);
    return tex;
 }
 
