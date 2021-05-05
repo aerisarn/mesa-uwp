@@ -50,17 +50,32 @@ void r300_upload_index_buffer(struct r300_context *r300,
     *start = index_offset / index_size;
 }
 
-static void r300_buffer_destroy(struct pipe_screen *screen,
-				struct pipe_resource *buf)
+void r300_resource_destroy(struct pipe_screen *screen,
+                           struct pipe_resource *buf)
 {
-    struct r300_resource *rbuf = r300_resource(buf);
+   if (buf->target == PIPE_BUFFER) {
+      struct r300_resource *rbuf = r300_resource(buf);
 
-    align_free(rbuf->malloced_buffer);
+      align_free(rbuf->malloced_buffer);
 
-    if (rbuf->buf)
-        pb_reference(&rbuf->buf, NULL);
+      if (rbuf->buf)
+         pb_reference(&rbuf->buf, NULL);
 
-    FREE(rbuf);
+      FREE(rbuf);
+   } else {
+      struct r300_screen *rscreen = r300_screen(screen);
+      struct r300_resource* tex = (struct r300_resource*)buf;
+
+      if (tex->tex.cmask_dwords) {
+          mtx_lock(&rscreen->cmask_mutex);
+          if (buf == rscreen->cmask_resource) {
+              rscreen->cmask_resource = NULL;
+          }
+          mtx_unlock(&rscreen->cmask_mutex);
+      }
+      pb_reference(&tex->buf, NULL);
+      FREE(tex);
+   }
 }
 
 static void *
@@ -148,7 +163,7 @@ static void r300_buffer_transfer_unmap( struct pipe_context *pipe,
 
 static const struct u_resource_vtbl r300_buffer_vtbl =
 {
-   r300_buffer_destroy,                /* resource_destroy */
+   NULL,                               /* resource_destroy */
    r300_buffer_transfer_map,           /* transfer_map */
    r300_buffer_transfer_unmap,         /* transfer_unmap */
 };

@@ -41,6 +41,9 @@ void r300_upload_index_buffer(struct r300_context *r300,
 			      unsigned index_size, unsigned *start,
 			      unsigned count, const uint8_t *ptr);
 
+void r300_resource_destroy(struct pipe_screen *screen,
+                           struct pipe_resource *buf);
+
 struct pipe_resource *r300_buffer_create(struct pipe_screen *screen,
 					 const struct pipe_resource *templ);
 

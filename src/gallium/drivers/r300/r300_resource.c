@@ -54,5 +54,5 @@ void r300_init_screen_resource_functions(struct r300_screen *r300screen)
    r300screen->screen.resource_create = r300_resource_create;
    r300screen->screen.resource_from_handle = r300_texture_from_handle;
    r300screen->screen.resource_get_handle = r300_resource_get_handle;
-   r300screen->screen.resource_destroy = u_resource_destroy_vtbl;
+   r300screen->screen.resource_destroy = r300_resource_destroy;
 }

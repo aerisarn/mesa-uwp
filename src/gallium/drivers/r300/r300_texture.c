@@ -1021,23 +1021,6 @@ static void r300_texture_setup_fb_state(struct r300_surface *surf)
     }
 }
 
-static void r300_texture_destroy(struct pipe_screen *screen,
-                                 struct pipe_resource* texture)
-{
-    struct r300_screen *rscreen = r300_screen(screen);
-    struct r300_resource* tex = (struct r300_resource*)texture;
-
-    if (tex->tex.cmask_dwords) {
-        mtx_lock(&rscreen->cmask_mutex);
-        if (texture == rscreen->cmask_resource) {
-            rscreen->cmask_resource = NULL;
-        }
-        mtx_unlock(&rscreen->cmask_mutex);
-    }
-    pb_reference(&tex->buf, NULL);
-    FREE(tex);
-}
-
 bool r300_resource_get_handle(struct pipe_screen* screen,
                               struct pipe_context *ctx,
                               struct pipe_resource *texture,
@@ -1059,7 +1042,7 @@ bool r300_resource_get_handle(struct pipe_screen* screen,
 
 static const struct u_resource_vtbl r300_texture_vtbl =
 {
-    r300_texture_destroy,           /* resource_destroy */
+    NULL,                           /* resource_destroy */
     r300_texture_transfer_map,      /* transfer_map */
     r300_texture_transfer_unmap,    /* transfer_unmap */
 };
