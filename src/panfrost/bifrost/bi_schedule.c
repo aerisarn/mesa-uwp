@@ -951,21 +951,25 @@ bi_use_passthrough(bi_instr *ins, bi_index old,
 
 /* Rewrites an adjacent pair of tuples _prec_eding and _succ_eding to use
  * intertuple passthroughs where necessary. Passthroughs are allowed as a
- * post-condition of scheduling. */
+ * post-condition of scheduling. Note we rewrite ADD first, FMA second --
+ * opposite the order of execution. This is deliberate -- if both FMA and ADD
+ * write to the same logical register, the next executed tuple will get the
+ * latter result. There's no interference issue under the assumption of correct
+ * register allocation. */
 
 static void
 bi_rewrite_passthrough(bi_tuple prec, bi_tuple succ)
 {
         bool sr_read = succ.add ? bi_opcode_props[succ.add->op].sr_read : false;
 
-        if (prec.fma) {
-                bi_use_passthrough(succ.fma, prec.fma->dest[0], BIFROST_SRC_PASS_FMA, false);
-                bi_use_passthrough(succ.add, prec.fma->dest[0], BIFROST_SRC_PASS_FMA, sr_read);
-        }
-
         if (prec.add) {
                 bi_use_passthrough(succ.fma, prec.add->dest[0], BIFROST_SRC_PASS_ADD, false);
                 bi_use_passthrough(succ.add, prec.add->dest[0], BIFROST_SRC_PASS_ADD, sr_read);
+        }
+
+        if (prec.fma) {
+                bi_use_passthrough(succ.fma, prec.fma->dest[0], BIFROST_SRC_PASS_FMA, false);
+                bi_use_passthrough(succ.add, prec.fma->dest[0], BIFROST_SRC_PASS_FMA, sr_read);
         }
 }
 
