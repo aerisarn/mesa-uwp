@@ -49,8 +49,8 @@ enum zink_resource_access {
 };
 
 struct mem_key {
+   unsigned heap_index;
    VkMemoryRequirements reqs;
-   VkMemoryPropertyFlags flags;
 };
 
 struct zink_resource_object {

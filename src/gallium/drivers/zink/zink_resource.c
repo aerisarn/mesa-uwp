@@ -110,7 +110,7 @@ mem_equals(const void *a, const void *b)
 static void
 cache_or_free_mem(struct zink_screen *screen, struct zink_resource_object *obj)
 {
-   if (obj->mkey.flags) {
+   if (obj->mkey.heap_index != UINT32_MAX) {
       simple_mtx_lock(&screen->mem_cache_mtx);
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(screen->resource_mem_cache, obj->mem_hash, &obj->mkey);
       struct util_dynarray *array = he ? (void*)he->data : NULL;
@@ -539,9 +539,9 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    /* don't cache visible vram because it's more likely to be limited */
    VkMemoryPropertyFlags visible_vram = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-   if (!mai.pNext && !(templ->flags & (PIPE_RESOURCE_FLAG_MAP_COHERENT | PIPE_RESOURCE_FLAG_SPARSE)) && ((flags & visible_vram) != visible_vram)) {
+   if (!mai.pNext && !(templ->flags & (PIPE_RESOURCE_FLAG_MAP_COHERENT | PIPE_RESOURCE_FLAG_SPARSE)) && ((mem_type.propertyFlags & visible_vram) != visible_vram)) {
       obj->mkey.reqs = reqs;
-      obj->mkey.flags = flags;
+      obj->mkey.heap_index = mai.memoryTypeIndex;
       obj->mem_hash = mem_hash(&obj->mkey);
       simple_mtx_lock(&screen->mem_cache_mtx);
 
@@ -554,7 +554,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          obj->map = mc.map;
       }
       simple_mtx_unlock(&screen->mem_cache_mtx);
-   }
+   } else
+      obj->mkey.heap_index = UINT32_MAX;
 
    /* TODO: sparse buffers should probably allocate multiple regions of memory instead of giant blobs? */
    if (!obj->mem && vkAllocateMemory(screen->dev, &mai, NULL, &obj->mem) != VK_SUCCESS) {
