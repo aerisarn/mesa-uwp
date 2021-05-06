@@ -525,11 +525,11 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
       return;
 
    if (util_queue_is_initialized(&batch->flush_queue)) {
-      batch->state->queue = batch->thread_queue;
+      batch->state->queue = screen->thread_queue;
       util_queue_add_job(&batch->flush_queue, batch->state, &batch->state->flush_completed,
                          submit_queue, post_submit, 0);
    } else {
-      batch->state->queue = batch->queue;
+      batch->state->queue = screen->queue;
       submit_queue(batch->state, 0);
       post_submit(batch->state, 0);
    }

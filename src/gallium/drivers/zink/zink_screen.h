@@ -117,6 +117,8 @@ struct zink_screen {
    uint32_t max_queues;
    uint32_t timestamp_valid_bits;
    VkDevice dev;
+   VkQueue queue; //gfx+compute
+   VkQueue thread_queue; //gfx+compute
    VkDebugUtilsMessengerEXT debugUtilsCallbackHandle;
 
    uint32_t cur_custom_border_color_samplers;

@@ -85,7 +85,7 @@ zink_context_destroy(struct pipe_context *pctx)
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
 
-   if (ctx->batch.queue && !screen->device_lost && vkQueueWaitIdle(ctx->batch.queue) != VK_SUCCESS)
+   if (screen->queue && !screen->device_lost && vkQueueWaitIdle(screen->queue) != VK_SUCCESS)
       debug_printf("vkQueueWaitIdle failed\n");
 
    util_blitter_destroy(ctx->blitter);
@@ -3181,7 +3181,7 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
    mem_bind.memoryOffset = box->x;
    mem_bind.flags = 0;
    sparse_bind.pBinds = &mem_bind;
-   VkQueue queue = util_queue_is_initialized(&ctx->batch.flush_queue) ? ctx->batch.thread_queue : ctx->batch.queue;
+   VkQueue queue = util_queue_is_initialized(&ctx->batch.flush_queue) ? screen->thread_queue : screen->queue;
 
    VkResult ret = vkQueueBindSparse(queue, 1, &sparse, VK_NULL_HANDLE);
    if (!zink_screen_handle_vkresult(screen, ret)) {
@@ -3476,11 +3476,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       if (!screen->descriptors_init(ctx))
          goto fail;
    }
-   vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &ctx->batch.queue);
-   if (screen->threaded && screen->max_queues > 1)
-      vkGetDeviceQueue(screen->dev, screen->gfx_queue, 1, &ctx->batch.thread_queue);
-   else
-      ctx->batch.thread_queue = ctx->batch.queue;
 
    ctx->have_timelines = screen->info.have_KHR_timeline_semaphore;
    simple_mtx_init(&ctx->batch_mtx, mtx_plain);

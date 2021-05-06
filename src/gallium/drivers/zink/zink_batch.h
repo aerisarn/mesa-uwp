@@ -95,8 +95,6 @@ struct zink_batch {
    struct zink_batch_state *state;
 
    uint32_t last_batch_id;
-   VkQueue queue; //gfx+compute
-   VkQueue thread_queue; //gfx+compute
    struct util_queue flush_queue; //TODO: move to wsi
 
    bool has_work;
