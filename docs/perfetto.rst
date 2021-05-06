@@ -31,14 +31,8 @@ The exact supported features vary per driver:
    * - Driver
      - PPS Counters
      - Render Stages
-   * - Freedreno
-     - ``gpu.counters.msm``
-     - ``gpu.renderstages.msm``
-   * - Turnip
-     - ``gpu.counters.msm``
-     -
-   * - Intel
-     - ``gpu.counters.i915``
+   * - Panfrost
+     - gpu.counters.panfrost
      -
 
 Run
@@ -80,37 +74,30 @@ To capture a trace with perfetto you need to take the following steps:
 Driver Specifics
 ~~~~~~~~~~~~~~~~
 
-Below is driver specific information/instructions for the PPS
-provider.
+Below is driver specific information/instructions for the PPS producer.
 
-Freedreno / Turnip
-^^^^^^^^^^^^^^^^^^
+Panfrost
+^^^^^^^^
 
-The Freedreno PPS driver needs root access to read system-wide
-performance counters, so you can simply run it with sudo:
+The Panfrost PPS driver uses unstable ioctls that behave correctly on
+kernel version `5.4.23+ <https://lwn.net/Articles/813601/>`__ and
+`5.5.7+ <https://lwn.net/Articles/813600/>`__.
 
-.. code-block:: console
+To run the producer, follow these two simple steps:
 
-   sudo ./build/src/tool/pps/pps-producer
+1. Enable Panfrost unstable ioctls via kernel parameter:
 
-Intel
-^^^^^
+   .. code-block:: console
 
-The Intel PPS driver needs root access to read system-wide
-`RenderBasic <https://software.intel.com/content/www/us/en/develop/documentation/vtune-help/top/reference/gpu-metrics-reference.html>`__
-performance counters, so you can simply run it with sudo:
+      modprobe panfrost unstable_ioctls=1
 
-.. code-block:: console
+   Alternatively you could add ``panfrost.unstable_ioctls=1`` to your kernel command line, or ``echo 1 > /sys/module/panfrost/parameters/unstable_ioctls``.
 
-   sudo ./build/src/tool/pps/pps-producer
+2. Run the producer:
 
-Another option to enable access wide data without root permissions would be running the following:
+   .. code-block:: console
 
-.. code-block:: console
-
-   sudo sysctl dev.i915.perf_stream_paranoid=0
-
-Alternatively using the ``CAP_PERFMON`` permission on the binary should work too.
+      ./build/pps-producer
 
 Troubleshooting
 ---------------
