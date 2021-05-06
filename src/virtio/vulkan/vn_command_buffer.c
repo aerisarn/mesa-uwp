@@ -29,6 +29,27 @@ vn_image_memory_barrier_has_present_src(
    return false;
 }
 
+static VkImageMemoryBarrier *
+vn_cmd_get_image_memory_barriers(struct vn_command_buffer *cmd,
+                                 uint32_t count)
+{
+   /* avoid shrinking in case of non efficient reallocation implementation */
+   if (count > cmd->builder.image_barrier_count) {
+      size_t size = sizeof(VkImageMemoryBarrier) * count;
+      VkImageMemoryBarrier *img_barriers =
+         vk_realloc(&cmd->allocator, cmd->builder.image_barriers, size,
+                    VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (!img_barriers)
+         return NULL;
+
+      /* update upon successful reallocation */
+      cmd->builder.image_barrier_count = count;
+      cmd->builder.image_barriers = img_barriers;
+   }
+
+   return cmd->builder.image_barriers;
+}
+
 static void
 vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
                          const struct vn_render_pass *pass,
@@ -1050,33 +1071,24 @@ vn_get_intercepted_barriers(struct vn_command_buffer *cmd,
    if (!has_present_src)
       return img_barriers;
 
+   VkImageMemoryBarrier *barriers =
+      vn_cmd_get_image_memory_barriers(cmd, count);
+   if (!barriers)
+      return img_barriers;
+
+   memcpy(barriers, img_barriers, sizeof(*img_barriers) * count);
+
    /* XXX drop the #ifdef after fixing common wsi */
 #ifdef ANDROID
-   size_t size = sizeof(VkImageMemoryBarrier) * count;
-   /* avoid shrinking in case of non efficient reallocation implementation */
-   VkImageMemoryBarrier *barriers = cmd->builder.image_barriers;
-   if (count > cmd->builder.image_barrier_count) {
-      barriers =
-         vk_realloc(&cmd->allocator, cmd->builder.image_barriers, size,
-                    VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      if (!barriers)
-         return img_barriers;
-
-      /* update upon successful reallocation */
-      cmd->builder.image_barrier_count = count;
-      cmd->builder.image_barriers = barriers;
-   }
-   memcpy(barriers, img_barriers, size);
    for (uint32_t i = 0; i < count; i++) {
       if (barriers[i].oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
          barriers[i].oldLayout = VK_IMAGE_LAYOUT_GENERAL;
       if (barriers[i].newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
          barriers[i].newLayout = VK_IMAGE_LAYOUT_GENERAL;
    }
-   return barriers;
-#else
-   return img_barriers;
 #endif
+
+   return barriers;
 }
 
 void
