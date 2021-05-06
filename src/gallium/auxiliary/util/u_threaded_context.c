@@ -552,6 +552,30 @@ tc_rebind_buffer(struct threaded_context *tc, uint32_t old_id, uint32_t new_id)
       BITSET_SET(tc->buffer_lists[tc->next_buf_list].buffer_list, new_id & TC_BUFFER_ID_MASK);
 }
 
+static bool
+tc_is_buffer_busy(struct threaded_context *tc, struct threaded_resource *tbuf,
+                  unsigned map_usage)
+{
+   if (!tc->is_resource_busy)
+      return true;
+
+   uint32_t id_hash = tbuf->buffer_id_unique & TC_BUFFER_ID_MASK;
+
+   for (unsigned i = 0; i < TC_MAX_BUFFER_LISTS; i++) {
+      struct tc_buffer_list *buf_list = &tc->buffer_lists[i];
+
+      /* If the buffer is referenced by a batch that hasn't been flushed (by tc or the driver),
+       * then the buffer is considered busy. */
+      if (!util_queue_fence_is_signalled(&buf_list->driver_flushed_fence) &&
+          BITSET_TEST(buf_list->buffer_list, id_hash))
+         return true;
+   }
+
+   /* The buffer isn't referenced by any unflushed batch: we can safely ask to the driver whether
+    * this buffer is busy or not. */
+   return tc->is_resource_busy(tc->pipe->screen, tbuf->latest, map_usage);
+}
+
 void
 threaded_resource_init(struct pipe_resource *res)
 {
@@ -1806,12 +1830,14 @@ tc_call_replace_buffer_storage(struct pipe_context *pipe, void *call, uint64_t *
    return call_size(tc_replace_buffer_storage);
 }
 
+/* Return true if the buffer has been invalidated or is idle. */
 static bool
 tc_invalidate_buffer(struct threaded_context *tc,
                      struct threaded_resource *tbuf)
 {
-   /* We can't check if the buffer is idle, so we invalidate it
-    * unconditionally. */
+   if (!tc_is_buffer_busy(tc, tbuf, PIPE_MAP_READ_WRITE))
+      return true;
+
    struct pipe_screen *screen = tc->base.screen;
    struct pipe_resource *new_buf;
 
