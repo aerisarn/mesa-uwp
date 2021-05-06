@@ -1295,9 +1295,10 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
     * even less than that. It's risky to enable on dGPUs.
     */
    sscreen->always_allow_dcc_stores = !(sscreen->debug_flags & DBG(NO_DCC_STORE)) &&
-                                      ((sscreen->info.chip_class >= GFX10_3 &&
-                                        !sscreen->info.has_dedicated_vram) ||
-                                       sscreen->debug_flags & DBG(DCC_STORE));
+                                      (sscreen->debug_flags & DBG(DCC_STORE) ||
+                                       sscreen->info.chip_class >= GFX11 || /* always enabled on gfx11 */
+                                       (sscreen->info.chip_class >= GFX10_3 &&
+                                        !sscreen->info.has_dedicated_vram));
 
    sscreen->dpbb_allowed = !(sscreen->debug_flags & DBG(NO_DPBB)) &&
                            (sscreen->info.chip_class >= GFX10 ||
