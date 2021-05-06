@@ -2311,7 +2311,9 @@ radv_emit_fb_mip_change_flush(struct radv_cmd_buffer *cmd_buffer)
 
       struct radv_image_view *iview = cmd_buffer->state.attachments[idx].iview;
 
-      if ((radv_image_has_CB_metadata(iview->image) || radv_image_has_dcc(iview->image)) &&
+      if ((radv_image_has_CB_metadata(iview->image) ||
+           radv_dcc_enabled(iview->image, iview->base_mip) ||
+           radv_dcc_enabled(iview->image, cmd_buffer->state.cb_mip[i])) &&
           cmd_buffer->state.cb_mip[i] != iview->base_mip)
          color_mip_changed = true;
 
