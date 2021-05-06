@@ -299,6 +299,9 @@ struct tu_queue
 
    uint32_t msm_queue_id;
    int fence;
+
+   /* Queue containing deferred submits */
+   struct list_head queued_submits;
 };
 
 struct tu_bo
@@ -399,6 +402,11 @@ struct tu_device
    /* Command streams to set pass index to a scratch reg */
    struct tu_cs *perfcntrs_pass_cs;
    struct tu_cs_entry *perfcntrs_pass_cs_entries;
+
+   /* Condition variable for timeline semaphore to notify waiters when a
+    * new submit is executed. */
+   pthread_cond_t timeline_cond;
+   pthread_mutex_t submit_mutex;
 };
 
 VkResult _tu_device_set_lost(struct tu_device *device,
@@ -411,6 +419,9 @@ tu_device_is_lost(struct tu_device *device)
 {
    return unlikely(p_atomic_read(&device->_lost));
 }
+
+VkResult
+tu_device_submit_deferred_locked(struct tu_device *dev);
 
 VkResult
 tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size, bool dump);

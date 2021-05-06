@@ -32,6 +32,8 @@
 #include "vk_util.h"
 
 #include "drm-uapi/msm_drm.h"
+#include "util/timespec.h"
+#include "util/os_time.h"
 
 #include "tu_private.h"
 
@@ -39,12 +41,71 @@ struct tu_binary_syncobj {
    uint32_t permanent, temporary;
 };
 
+struct tu_timeline_point {
+   struct list_head link;
+
+   uint64_t value;
+   uint32_t syncobj;
+   uint32_t wait_count;
+};
+
+struct tu_timeline {
+   uint64_t highest_submitted;
+   uint64_t highest_signaled;
+
+   /* A timeline can have multiple timeline points */
+   struct list_head points;
+
+   /* A list containing points that has been already submited.
+    * A point will be moved to 'points' when new point is required
+    * at submit time.
+    */
+   struct list_head free_points;
+};
+
+typedef enum {
+   TU_SEMAPHORE_BINARY,
+   TU_SEMAPHORE_TIMELINE,
+} tu_semaphore_type;
+
+
 struct tu_syncobj {
    struct vk_object_base base;
 
+   tu_semaphore_type type;
    union {
       struct tu_binary_syncobj binary;
+      struct tu_timeline timeline;
    };
+};
+
+struct tu_queue_submit
+{
+   struct   list_head link;
+
+   struct   tu_syncobj **wait_semaphores;
+   uint32_t wait_semaphore_count;
+   struct   tu_syncobj **signal_semaphores;
+   uint32_t signal_semaphore_count;
+
+   struct   tu_syncobj **wait_timelines;
+   uint64_t *wait_timeline_values;
+   uint32_t wait_timeline_count;
+   uint32_t wait_timeline_array_length;
+
+   struct   tu_syncobj **signal_timelines;
+   uint64_t *signal_timeline_values;
+   uint32_t signal_timeline_count;
+   uint32_t signal_timeline_array_length;
+
+   struct   drm_msm_gem_submit_cmd *cmds;
+   struct   drm_msm_gem_submit_syncobj *in_syncobjs;
+   uint32_t nr_in_syncobjs;
+   struct   drm_msm_gem_submit_syncobj *out_syncobjs;
+   uint32_t nr_out_syncobjs;
+
+   bool     last_submit;
+   uint32_t entry_count;
 };
 
 static int
@@ -454,11 +515,33 @@ tu_enumerate_devices(struct tu_instance *instance)
    return result;
 }
 
+static void
+tu_timeline_finish(struct tu_device *device,
+                    struct tu_timeline *timeline)
+{
+   list_for_each_entry_safe(struct tu_timeline_point, point,
+                            &timeline->free_points, link) {
+      list_del(&point->link);
+      ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+            &(struct drm_syncobj_destroy) { .handle = point->syncobj });
+
+      vk_free(&device->vk.alloc, point);
+   }
+   list_for_each_entry_safe(struct tu_timeline_point, point,
+                            &timeline->points, link) {
+      list_del(&point->link);
+      ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+            &(struct drm_syncobj_destroy) { .handle = point->syncobj });
+      vk_free(&device->vk.alloc, point);
+   }
+}
+
 static VkResult
 sync_create(VkDevice _device,
             bool signaled,
             bool fence,
             bool binary,
+            uint64_t timeline_value,
             const VkAllocationCallbacks *pAllocator,
             void **p_sync)
 {
@@ -483,6 +566,13 @@ sync_create(VkDevice _device,
 
       sync->binary.permanent = create.handle;
       sync->binary.temporary = 0;
+      sync->type = TU_SEMAPHORE_BINARY;
+   } else {
+      sync->type = TU_SEMAPHORE_TIMELINE;
+      sync->timeline.highest_signaled = sync->timeline.highest_submitted =
+             timeline_value;
+      list_inithead(&sync->timeline.points);
+      list_inithead(&sync->timeline.free_points);
    }
 
    *p_sync = sync;
@@ -508,9 +598,13 @@ sync_destroy(VkDevice _device, struct tu_syncobj *sync, const VkAllocationCallba
    if (!sync)
       return;
 
-   sync_set_temporary(device, sync, 0);
-   ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
-         &(struct drm_syncobj_destroy) { .handle = sync->binary.permanent });
+   if (sync->type == TU_SEMAPHORE_BINARY) {
+      sync_set_temporary(device, sync, 0);
+      ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+            &(struct drm_syncobj_destroy) { .handle = sync->binary.permanent });
+   } else {
+      tu_timeline_finish(device, &sync->timeline);
+   }
 
    vk_object_free(&device->vk, pAllocator, sync);
 }
@@ -588,13 +682,31 @@ sync_export(VkDevice _device, struct tu_syncobj *sync, bool sync_fd, int *p_fd)
    return VK_SUCCESS;
 }
 
+static VkSemaphoreTypeKHR
+get_semaphore_type(const void *pNext, uint64_t *initial_value)
+{
+   const VkSemaphoreTypeCreateInfoKHR *type_info =
+      vk_find_struct_const(pNext, SEMAPHORE_TYPE_CREATE_INFO_KHR);
+
+   if (!type_info)
+      return VK_SEMAPHORE_TYPE_BINARY_KHR;
+
+   if (initial_value)
+      *initial_value = type_info->initialValue;
+   return type_info->semaphoreType;
+}
+
 VkResult
 tu_CreateSemaphore(VkDevice device,
                    const VkSemaphoreCreateInfo *pCreateInfo,
                    const VkAllocationCallbacks *pAllocator,
                    VkSemaphore *pSemaphore)
 {
-   return sync_create(device, false, false, true, pAllocator, (void**) pSemaphore);
+   uint64_t timeline_value = 0;
+   VkSemaphoreTypeKHR sem_type = get_semaphore_type(pCreateInfo->pNext, &timeline_value);
+
+   return sync_create(device, false, false, (sem_type == VK_SEMAPHORE_TYPE_BINARY_KHR),
+                      timeline_value, pAllocator, (void**) pSemaphore);
 }
 
 void
@@ -626,8 +738,11 @@ tu_GetPhysicalDeviceExternalSemaphoreProperties(
    const VkPhysicalDeviceExternalSemaphoreInfo *pExternalSemaphoreInfo,
    VkExternalSemaphoreProperties *pExternalSemaphoreProperties)
 {
-   if (pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT ||
-       pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT) {
+   VkSemaphoreTypeKHR type = get_semaphore_type(pExternalSemaphoreInfo->pNext, NULL);
+
+   if (type != VK_SEMAPHORE_TYPE_TIMELINE &&
+       (pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT ||
+       pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT )) {
       pExternalSemaphoreProperties->exportFromImportedHandleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT | VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
       pExternalSemaphoreProperties->compatibleHandleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT | VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
       pExternalSemaphoreProperties->externalSemaphoreFeatures = VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT |
@@ -637,6 +752,413 @@ tu_GetPhysicalDeviceExternalSemaphoreProperties(
       pExternalSemaphoreProperties->compatibleHandleTypes = 0;
       pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
    }
+}
+
+static VkResult
+tu_queue_submit_add_timeline_wait_locked(struct tu_queue_submit* submit,
+                                         struct tu_device *device,
+                                         struct tu_syncobj *timeline,
+                                         uint64_t value)
+{
+   if (submit->wait_timeline_count >= submit->wait_timeline_array_length) {
+      uint32_t new_len = MAX2(submit->wait_timeline_array_length * 2, 64);
+
+      submit->wait_timelines = vk_realloc(&device->vk.alloc,
+            submit->wait_timelines,
+            new_len * sizeof(*submit->wait_timelines),
+            8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+      if (submit->wait_timelines == NULL)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+      submit->wait_timeline_values = vk_realloc(&device->vk.alloc,
+            submit->wait_timeline_values,
+            new_len * sizeof(*submit->wait_timeline_values),
+            8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+      if (submit->wait_timeline_values == NULL) {
+         vk_free(&device->vk.alloc, submit->wait_timelines);
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
+
+      submit->wait_timeline_array_length = new_len;
+   }
+
+   submit->wait_timelines[submit->wait_timeline_count] = timeline;
+   submit->wait_timeline_values[submit->wait_timeline_count] = value;
+
+   submit->wait_timeline_count++;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+tu_queue_submit_add_timeline_signal_locked(struct tu_queue_submit* submit,
+                                           struct tu_device *device,
+                                           struct tu_syncobj *timeline,
+                                           uint64_t value)
+{
+   if (submit->signal_timeline_count >= submit->signal_timeline_array_length) {
+      uint32_t new_len = MAX2(submit->signal_timeline_array_length * 2, 32);
+
+      submit->signal_timelines = vk_realloc(&device->vk.alloc,
+            submit->signal_timelines,
+            new_len * sizeof(*submit->signal_timelines),
+            8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+      if (submit->signal_timelines == NULL)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+      submit->signal_timeline_values = vk_realloc(&device->vk.alloc,
+            submit->signal_timeline_values,
+            new_len * sizeof(*submit->signal_timeline_values),
+            8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+      if (submit->signal_timeline_values == NULL) {
+         vk_free(&device->vk.alloc, submit->signal_timelines);
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
+
+      submit->signal_timeline_array_length = new_len;
+   }
+
+   submit->signal_timelines[submit->signal_timeline_count] = timeline;
+   submit->signal_timeline_values[submit->signal_timeline_count] = value;
+
+   submit->signal_timeline_count++;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+tu_queue_submit_create_locked(struct tu_queue *queue,
+                              const VkSubmitInfo *submit_info,
+                              const uint32_t entry_count,
+                              const uint32_t nr_in_syncobjs,
+                              const uint32_t nr_out_syncobjs,
+                              const bool last_submit,
+                              struct tu_queue_submit **submit)
+{
+   VkResult result;
+
+   const VkTimelineSemaphoreSubmitInfoKHR *timeline_info =
+         vk_find_struct_const(submit_info->pNext,
+                              TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR);
+
+   const uint32_t wait_values_count =
+         timeline_info ? timeline_info->waitSemaphoreValueCount : 0;
+   const uint32_t signal_values_count =
+         timeline_info ? timeline_info->signalSemaphoreValueCount : 0;
+
+   const uint64_t *wait_values =
+         wait_values_count ? timeline_info->pWaitSemaphoreValues : NULL;
+   const uint64_t *signal_values =
+         signal_values_count ?  timeline_info->pSignalSemaphoreValues : NULL;
+
+   struct tu_queue_submit *new_submit = vk_zalloc(&queue->device->vk.alloc,
+               sizeof(*new_submit), 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   new_submit->wait_semaphores = vk_zalloc(&queue->device->vk.alloc,
+         submit_info->waitSemaphoreCount * sizeof(*new_submit->wait_semaphores),
+         8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (new_submit->wait_semaphores == NULL) {
+      result = vk_error(queue->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY)
+      goto fail_wait_semaphores;
+   }
+   new_submit->wait_semaphore_count = submit_info->waitSemaphoreCount;
+
+   new_submit->signal_semaphores = vk_zalloc(&queue->device->vk.alloc,
+         submit_info->signalSemaphoreCount *sizeof(*new_submit->signal_semaphores),
+         8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (new_submit->signal_semaphores == NULL) {
+      result = vk_error(queue->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY)
+      goto fail_signal_semaphores;
+   }
+   new_submit->signal_semaphore_count = submit_info->signalSemaphoreCount;
+
+   for (uint32_t i = 0; i < submit_info->waitSemaphoreCount; i++) {
+      TU_FROM_HANDLE(tu_syncobj, sem, submit_info->pWaitSemaphores[i]);
+      new_submit->wait_semaphores[i] = sem;
+
+      if (sem->type == TU_SEMAPHORE_TIMELINE) {
+         result = tu_queue_submit_add_timeline_wait_locked(new_submit,
+               queue->device, sem, wait_values[i]);
+         if (result != VK_SUCCESS)
+            goto fail_wait_timelines;
+      }
+   }
+
+   for (uint32_t i = 0; i < submit_info->signalSemaphoreCount; i++) {
+      TU_FROM_HANDLE(tu_syncobj, sem, submit_info->pSignalSemaphores[i]);
+      new_submit->signal_semaphores[i] = sem;
+
+      if (sem->type == TU_SEMAPHORE_TIMELINE) {
+         result = tu_queue_submit_add_timeline_signal_locked(new_submit,
+               queue->device, sem, signal_values[i]);
+         if (result != VK_SUCCESS)
+            goto fail_signal_timelines;
+      }
+   }
+
+   new_submit->cmds = vk_zalloc(&queue->device->vk.alloc,
+         entry_count * sizeof(*new_submit->cmds), 8,
+         VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   if (new_submit->cmds == NULL) {
+      result = vk_error(queue->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY)
+      goto fail_cmds;
+   }
+
+   /* Allocate without wait timeline semaphores */
+   new_submit->in_syncobjs = vk_zalloc(&queue->device->vk.alloc,
+         (nr_in_syncobjs - new_submit->wait_timeline_count) *
+         sizeof(*new_submit->in_syncobjs), 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   if (new_submit->in_syncobjs == NULL) {
+      result = vk_error(queue->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY)
+      goto fail_in_syncobjs;
+   }
+
+   /* Allocate with signal timeline semaphores considered */
+   new_submit->out_syncobjs = vk_zalloc(&queue->device->vk.alloc,
+         nr_out_syncobjs * sizeof(*new_submit->out_syncobjs), 8,
+         VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   if (new_submit->out_syncobjs == NULL) {
+      result = vk_error(queue->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY)
+      goto fail_out_syncobjs;
+   }
+
+   new_submit->entry_count = entry_count;
+   new_submit->nr_in_syncobjs = nr_in_syncobjs;
+   new_submit->nr_out_syncobjs = nr_out_syncobjs;
+   new_submit->last_submit = last_submit;
+   list_inithead(&new_submit->link);
+
+   *submit = new_submit;
+
+   return VK_SUCCESS;
+
+fail_out_syncobjs:
+   vk_free(&queue->device->vk.alloc, new_submit->in_syncobjs);
+fail_in_syncobjs:
+   vk_free(&queue->device->vk.alloc, new_submit->cmds);
+fail_cmds:
+fail_signal_timelines:
+fail_wait_timelines:
+   vk_free(&queue->device->vk.alloc, new_submit->signal_semaphores);
+fail_signal_semaphores:
+   vk_free(&queue->device->vk.alloc, new_submit->wait_semaphores);
+fail_wait_semaphores:
+   return result;
+}
+
+static void
+tu_queue_submit_free(struct tu_queue *queue, struct tu_queue_submit *submit)
+{
+   vk_free(&queue->device->vk.alloc, submit->wait_semaphores);
+   vk_free(&queue->device->vk.alloc, submit->signal_semaphores);
+
+   vk_free(&queue->device->vk.alloc, submit->wait_timelines);
+   vk_free(&queue->device->vk.alloc, submit->wait_timeline_values);
+   vk_free(&queue->device->vk.alloc, submit->signal_timelines);
+   vk_free(&queue->device->vk.alloc, submit->signal_timeline_values);
+
+   vk_free(&queue->device->vk.alloc, submit->cmds);
+   vk_free(&queue->device->vk.alloc, submit->in_syncobjs);
+   vk_free(&queue->device->vk.alloc, submit->out_syncobjs);
+   vk_free(&queue->device->vk.alloc, submit);
+}
+
+static VkResult
+tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
+{
+   uint32_t flags = MSM_PIPE_3D0;
+
+   if (submit->nr_in_syncobjs)
+      flags |= MSM_SUBMIT_SYNCOBJ_IN;
+
+   if (submit->nr_out_syncobjs)
+      flags |= MSM_SUBMIT_SYNCOBJ_OUT;
+
+   if (submit->last_submit)
+      flags |= MSM_SUBMIT_FENCE_FD_OUT;
+
+   mtx_lock(&queue->device->bo_mutex);
+
+   struct drm_msm_gem_submit req = {
+      .flags = flags,
+      .queueid = queue->msm_queue_id,
+      .bos = (uint64_t)(uintptr_t) queue->device->bo_list,
+      .nr_bos = queue->device->bo_count,
+      .cmds = (uint64_t)(uintptr_t)submit->cmds,
+      .nr_cmds = submit->entry_count,
+      .in_syncobjs = (uint64_t)(uintptr_t)submit->in_syncobjs,
+      .out_syncobjs = (uint64_t)(uintptr_t)submit->out_syncobjs,
+      .nr_in_syncobjs = submit->nr_in_syncobjs - submit->wait_timeline_count,
+      .nr_out_syncobjs = submit->nr_out_syncobjs,
+      .syncobj_stride = sizeof(struct drm_msm_gem_submit_syncobj),
+   };
+
+   int ret = drmCommandWriteRead(queue->device->fd,
+                                 DRM_MSM_GEM_SUBMIT,
+                                 &req, sizeof(req));
+
+   mtx_unlock(&queue->device->bo_mutex);
+
+   if (ret)
+      return tu_device_set_lost(queue->device, "submit failed: %s\n",
+                                strerror(errno));
+
+   /* restore permanent payload on wait */
+   for (uint32_t i = 0; i < submit->wait_semaphore_count; i++) {
+      TU_FROM_HANDLE(tu_syncobj, sem, submit->wait_semaphores[i]);
+      if(sem->type == TU_SEMAPHORE_BINARY)
+         sync_set_temporary(queue->device, sem, 0);
+   }
+
+   if (submit->last_submit) {
+      if (queue->fence >= 0)
+         close(queue->fence);
+      queue->fence = req.fence_fd;
+   }
+
+   /* Update highest_submitted values in the timeline. */
+   for (uint32_t i = 0; i < submit->signal_timeline_count; i++) {
+      struct tu_syncobj *sem = submit->signal_timelines[i];
+      uint64_t signal_value = submit->signal_timeline_values[i];
+
+      assert(signal_value > sem->timeline.highest_submitted);
+
+      sem->timeline.highest_submitted = signal_value;
+   }
+
+   pthread_cond_broadcast(&queue->device->timeline_cond);
+
+   return VK_SUCCESS;
+}
+
+
+static bool
+tu_queue_submit_ready_locked(struct tu_queue_submit *submit)
+{
+   for (uint32_t i = 0; i < submit->wait_timeline_count; i++) {
+      if (submit->wait_timeline_values[i] >
+            submit->wait_timelines[i]->timeline.highest_submitted) {
+         return false;
+      }
+   }
+
+   return true;
+}
+
+static VkResult
+tu_timeline_add_point_locked(struct tu_device *device,
+                             struct tu_timeline *timeline,
+                             uint64_t value,
+                             struct tu_timeline_point **point)
+{
+
+   if (list_is_empty(&timeline->free_points)) {
+      *point = vk_zalloc(&device->vk.alloc, sizeof(**point), 8,
+            VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+      if (!(*point))
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      struct drm_syncobj_create create = {};
+
+      int ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
+      if (ret) {
+         vk_free(&device->vk.alloc, *point);
+         return vk_error(device->instance, VK_ERROR_DEVICE_LOST);
+      }
+
+      (*point)->syncobj = create.handle;
+
+   } else {
+      *point = list_first_entry(&timeline->free_points,
+                                struct tu_timeline_point, link);
+      list_del(&(*point)->link);
+   }
+
+   (*point)->value = value;
+   list_addtail(&(*point)->link, &timeline->points);
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+tu_queue_submit_timeline_locked(struct tu_queue *queue,
+                                struct tu_queue_submit *submit)
+{
+   VkResult result;
+   uint32_t timeline_idx =
+         submit->nr_out_syncobjs - submit->signal_timeline_count;
+
+   for (uint32_t i = 0; i < submit->signal_timeline_count; i++) {
+      struct tu_timeline *timeline = &submit->signal_timelines[i]->timeline;
+      uint64_t signal_value = submit->signal_timeline_values[i];
+      struct tu_timeline_point *point;
+
+      result = tu_timeline_add_point_locked(queue->device, timeline,
+            signal_value, &point);
+      if (result != VK_SUCCESS)
+         return result;
+
+      submit->out_syncobjs[timeline_idx + i] =
+         (struct drm_msm_gem_submit_syncobj) {
+            .handle = point->syncobj,
+            .flags = 0,
+         };
+   }
+
+   return tu_queue_submit_locked(queue, submit);
+}
+
+static VkResult
+tu_queue_submit_deferred_locked(struct tu_queue *queue, uint32_t *advance)
+{
+   VkResult result = VK_SUCCESS;
+
+   list_for_each_entry_safe(struct tu_queue_submit, submit,
+                            &queue->queued_submits, link) {
+      if (!tu_queue_submit_ready_locked(submit))
+         break;
+
+      (*advance)++;
+
+      result = tu_queue_submit_timeline_locked(queue, submit);
+
+      list_del(&submit->link);
+      tu_queue_submit_free(queue, submit);
+
+      if (result != VK_SUCCESS)
+         break;
+   }
+
+   return result;
+}
+
+VkResult
+tu_device_submit_deferred_locked(struct tu_device *dev)
+{
+    VkResult result = VK_SUCCESS;
+
+    uint32_t advance = 0;
+    do {
+       advance = 0;
+       for (uint32_t i = 0; i < dev->queue_count[0]; i++) {
+          /* Try again if there's signaled submission. */
+          result = tu_queue_submit_deferred_locked(&dev->queues[0][i],
+                &advance);
+          if (result != VK_SUCCESS)
+             return result;
+       }
+
+    } while(advance);
+
+    return result;
 }
 
 VkResult
@@ -659,13 +1181,39 @@ tu_QueueSubmit(VkQueue _queue,
 
       if (last_submit && fence)
          out_syncobjs_size += 1;
+
+      uint32_t entry_count = 0;
+      for (uint32_t j = 0; j < submit->commandBufferCount; ++j) {
+         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
+
+         if (perf_info)
+            entry_count++;
+
+         entry_count += cmdbuf->cs.entry_count;
+      }
+
+      pthread_mutex_lock(&queue->device->submit_mutex);
+      struct tu_queue_submit *submit_req = NULL;
+
+      VkResult ret = tu_queue_submit_create_locked(queue, submit,
+            entry_count, submit->waitSemaphoreCount, out_syncobjs_size,
+            last_submit, &submit_req);
+
+      if (ret != VK_SUCCESS) {
+         pthread_mutex_unlock(&queue->device->submit_mutex);
+         return ret;
+      }
+
       /* note: assuming there won't be any very large semaphore counts */
-      struct drm_msm_gem_submit_syncobj in_syncobjs[submit->waitSemaphoreCount];
-      struct drm_msm_gem_submit_syncobj out_syncobjs[out_syncobjs_size];
+      struct drm_msm_gem_submit_syncobj *in_syncobjs = submit_req->in_syncobjs;
+      struct drm_msm_gem_submit_syncobj *out_syncobjs = submit_req->out_syncobjs;
       uint32_t nr_in_syncobjs = 0, nr_out_syncobjs = 0;
 
       for (uint32_t i = 0; i < submit->waitSemaphoreCount; i++) {
          TU_FROM_HANDLE(tu_syncobj, sem, submit->pWaitSemaphores[i]);
+         if (sem->type == TU_SEMAPHORE_TIMELINE)
+            continue;
+
          in_syncobjs[nr_in_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
             .handle = sem->binary.temporary ?: sem->binary.permanent,
             .flags = MSM_SUBMIT_SYNCOBJ_RESET,
@@ -674,6 +1222,13 @@ tu_QueueSubmit(VkQueue _queue,
 
       for (uint32_t i = 0; i < submit->signalSemaphoreCount; i++) {
          TU_FROM_HANDLE(tu_syncobj, sem, submit->pSignalSemaphores[i]);
+
+         /* In case of timeline semaphores, we can defer the creation of syncobj
+          * and adding it at real submit time.
+          */
+         if (sem->type == TU_SEMAPHORE_TIMELINE)
+            continue;
+
          out_syncobjs[nr_out_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
             .handle = sem->binary.temporary ?: sem->binary.permanent,
             .flags = 0,
@@ -687,19 +1242,8 @@ tu_QueueSubmit(VkQueue _queue,
          };
       }
 
-      uint32_t entry_count = 0;
-      for (uint32_t j = 0; j < submit->commandBufferCount; ++j) {
-         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
+      struct drm_msm_gem_submit_cmd *cmds = submit_req->cmds;
 
-         if (perf_info)
-            entry_count++;
-
-         entry_count += cmdbuf->cs.entry_count;
-      }
-
-      mtx_lock(&queue->device->bo_mutex);
-
-      struct drm_msm_gem_submit_cmd cmds[entry_count];
       uint32_t entry_idx = 0;
       for (uint32_t j = 0; j < submit->commandBufferCount; ++j) {
          TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
@@ -730,51 +1274,13 @@ tu_QueueSubmit(VkQueue _queue,
          }
       }
 
-      uint32_t flags = MSM_PIPE_3D0;
-      if (nr_in_syncobjs) {
-         flags |= MSM_SUBMIT_SYNCOBJ_IN;
-      }
-      if (nr_out_syncobjs) {
-         flags |= MSM_SUBMIT_SYNCOBJ_OUT;
-      }
-      if (last_submit) {
-         flags |= MSM_SUBMIT_FENCE_FD_OUT;
-      }
+      /* Queue the current submit */
+      list_addtail(&submit_req->link, &queue->queued_submits);
+      ret = tu_device_submit_deferred_locked(queue->device);
 
-      struct drm_msm_gem_submit req = {
-         .flags = flags,
-         .queueid = queue->msm_queue_id,
-         .bos = (uint64_t)(uintptr_t) queue->device->bo_list,
-         .nr_bos = queue->device->bo_count,
-         .cmds = (uint64_t)(uintptr_t)cmds,
-         .nr_cmds = entry_count,
-         .in_syncobjs = (uint64_t)(uintptr_t)in_syncobjs,
-         .out_syncobjs = (uint64_t)(uintptr_t)out_syncobjs,
-         .nr_in_syncobjs = nr_in_syncobjs,
-         .nr_out_syncobjs = nr_out_syncobjs,
-         .syncobj_stride = sizeof(struct drm_msm_gem_submit_syncobj),
-      };
-
-      int ret = drmCommandWriteRead(queue->device->fd,
-                                    DRM_MSM_GEM_SUBMIT,
-                                    &req, sizeof(req));
-      mtx_unlock(&queue->device->bo_mutex);
-      if (ret) {
-         return tu_device_set_lost(queue->device, "submit failed: %s\n",
-                                   strerror(errno));
-      }
-
-      /* restore permanent payload on wait */
-      for (uint32_t i = 0; i < submit->waitSemaphoreCount; i++) {
-         TU_FROM_HANDLE(tu_syncobj, sem, submit->pWaitSemaphores[i]);
-         sync_set_temporary(queue->device, sem, 0);
-      }
-
-      if (last_submit) {
-         if (queue->fence >= 0)
-            close(queue->fence);
-         queue->fence = req.fence_fd;
-      }
+      pthread_mutex_unlock(&queue->device->submit_mutex);
+      if (ret != VK_SUCCESS)
+          return ret;
    }
 
    if (!submitCount && fence) {
@@ -794,7 +1300,7 @@ tu_CreateFence(VkDevice device,
                const VkAllocationCallbacks *pAllocator,
                VkFence *pFence)
 {
-   return sync_create(device, info->flags & VK_FENCE_CREATE_SIGNALED_BIT, true, true,
+   return sync_create(device, info->flags & VK_FENCE_CREATE_SIGNALED_BIT, true, true, 0,
                       pAllocator, (void**) pFence);
 }
 
@@ -952,6 +1458,200 @@ tu_syncobj_to_fd(struct tu_device *device, struct tu_syncobj *sync)
    ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
 
    return ret ? -1 : handle.fd;
+}
+
+static VkResult
+tu_timeline_gc_locked(struct tu_device *dev, struct tu_timeline *timeline)
+{
+   VkResult result = VK_SUCCESS;
+
+   /* Go through every point in the timeline and check if any signaled point */
+   list_for_each_entry_safe(struct tu_timeline_point, point,
+                            &timeline->points, link) {
+
+      /* If the value of the point is higher than highest_submitted,
+       * the point has not been submited yet.
+       */
+      if (point->wait_count || point->value > timeline->highest_submitted)
+         return VK_SUCCESS;
+
+      result = drm_syncobj_wait(dev, (uint32_t[]){point->syncobj}, 1, 0, true);
+
+      if (result == VK_TIMEOUT) {
+         /* This means the syncobj is still busy and it should wait
+          * with timeout specified by users via vkWaitSemaphores.
+          */
+         result = VK_SUCCESS;
+      } else {
+         timeline->highest_signaled =
+               MAX2(timeline->highest_signaled, point->value);
+         list_del(&point->link);
+         list_add(&point->link, &timeline->free_points);
+      }
+   }
+
+   return result;
+}
+
+
+static VkResult
+tu_timeline_wait_locked(struct tu_device *device,
+                        struct tu_timeline *timeline,
+                        uint64_t value,
+                        uint64_t abs_timeout)
+{
+   VkResult result;
+
+   while(timeline->highest_submitted < value) {
+      struct timespec abstime;
+      timespec_from_nsec(&abstime, abs_timeout);
+
+      pthread_cond_timedwait(&device->timeline_cond, &device->submit_mutex,
+            &abstime);
+
+      if (os_time_get_nano() >= abs_timeout &&
+            timeline->highest_submitted < value)
+         return VK_TIMEOUT;
+   }
+
+   /* Visit every point in the timeline and wait until
+    * the highest_signaled reaches the value.
+    */
+   while (1) {
+      result = tu_timeline_gc_locked(device, timeline);
+      if (result != VK_SUCCESS)
+         return result;
+
+      if (timeline->highest_signaled >= value)
+          return VK_SUCCESS;
+
+      struct tu_timeline_point *point =
+            list_first_entry(&timeline->points,
+                             struct tu_timeline_point, link);
+
+      point->wait_count++;
+      pthread_mutex_unlock(&device->submit_mutex);
+      result = drm_syncobj_wait(device, (uint32_t[]){point->syncobj}, 1,
+                                abs_timeout, true);
+
+      pthread_mutex_lock(&device->submit_mutex);
+      point->wait_count--;
+
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   return result;
+}
+
+static VkResult
+tu_wait_timelines(struct tu_device *device,
+                  const VkSemaphoreWaitInfoKHR* pWaitInfo,
+                  uint64_t abs_timeout)
+{
+   if ((pWaitInfo->flags & VK_SEMAPHORE_WAIT_ANY_BIT_KHR) &&
+         pWaitInfo->semaphoreCount > 1) {
+      pthread_mutex_lock(&device->submit_mutex);
+
+      /* Visit every timline semaphore in the queue until timeout */
+      while (1) {
+         for(uint32_t i = 0; i < pWaitInfo->semaphoreCount; ++i) {
+            TU_FROM_HANDLE(tu_syncobj, semaphore, pWaitInfo->pSemaphores[i]);
+            VkResult result = tu_timeline_wait_locked(device,
+                  &semaphore->timeline, pWaitInfo->pValues[i], 0);
+
+            /* Returns result values including VK_SUCCESS except for VK_TIMEOUT */
+            if (result != VK_TIMEOUT) {
+               pthread_mutex_unlock(&device->submit_mutex);
+               return result;
+            }
+         }
+
+         if (os_time_get_nano() > abs_timeout) {
+            pthread_mutex_unlock(&device->submit_mutex);
+            return VK_TIMEOUT;
+         }
+      }
+   } else {
+      VkResult result = VK_SUCCESS;
+
+      pthread_mutex_lock(&device->submit_mutex);
+      for(uint32_t i = 0; i < pWaitInfo->semaphoreCount; ++i) {
+         TU_FROM_HANDLE(tu_syncobj, semaphore, pWaitInfo->pSemaphores[i]);
+         assert(semaphore->type == TU_SEMAPHORE_TIMELINE);
+
+         result = tu_timeline_wait_locked(device, &semaphore->timeline,
+               pWaitInfo->pValues[i], abs_timeout);
+         if (result != VK_SUCCESS)
+            break;
+      }
+      pthread_mutex_unlock(&device->submit_mutex);
+
+      return result;
+   }
+}
+
+
+VkResult
+tu_GetSemaphoreCounterValue(VkDevice _device,
+                                 VkSemaphore _semaphore,
+                                 uint64_t* pValue)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_syncobj, semaphore, _semaphore);
+
+   assert(semaphore->type == TU_SEMAPHORE_TIMELINE);
+
+   VkResult result;
+
+   pthread_mutex_lock(&device->submit_mutex);
+
+   result = tu_timeline_gc_locked(device, &semaphore->timeline);
+   *pValue = semaphore->timeline.highest_signaled;
+
+   pthread_mutex_unlock(&device->submit_mutex);
+
+   return result;
+}
+
+
+VkResult
+tu_WaitSemaphores(VkDevice _device,
+                  const VkSemaphoreWaitInfoKHR* pWaitInfo,
+                  uint64_t timeout)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+
+   return tu_wait_timelines(device, pWaitInfo, absolute_timeout(timeout));
+}
+
+VkResult
+tu_SignalSemaphore(VkDevice _device,
+                   const VkSemaphoreSignalInfoKHR* pSignalInfo)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_syncobj, semaphore, pSignalInfo->semaphore);
+   VkResult result;
+
+   assert(semaphore->type == TU_SEMAPHORE_TIMELINE);
+
+   pthread_mutex_lock(&device->submit_mutex);
+
+   result = tu_timeline_gc_locked(device, &semaphore->timeline);
+   if (result != VK_SUCCESS) {
+      pthread_mutex_unlock(&device->submit_mutex);
+      return result;
+   }
+
+   semaphore->timeline.highest_submitted = pSignalInfo->value;
+   semaphore->timeline.highest_signaled = pSignalInfo->value;
+
+   result = tu_device_submit_deferred_locked(device);
+
+   pthread_cond_broadcast(&device->timeline_cond);
+   pthread_mutex_unlock(&device->submit_mutex);
+
+   return result;
 }
 
 #ifdef ANDROID
