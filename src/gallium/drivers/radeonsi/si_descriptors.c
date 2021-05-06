@@ -700,7 +700,7 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
 
    res = si_resource(view->resource);
 
-   if (res->b.b.target == PIPE_BUFFER || view->shader_access & SI_IMAGE_ACCESS_AS_BUFFER) {
+   if (res->b.b.target == PIPE_BUFFER) {
       if (view->access & PIPE_IMAGE_ACCESS_WRITE)
          si_mark_image_range_valid(view);
 
@@ -780,7 +780,7 @@ static void si_set_shader_image(struct si_context *ctx, unsigned shader, unsigne
    if (&images->views[slot] != view)
       util_copy_image_view(&images->views[slot], view);
 
-   if (res->b.b.target == PIPE_BUFFER || view->shader_access & SI_IMAGE_ACCESS_AS_BUFFER) {
+   if (res->b.b.target == PIPE_BUFFER) {
       images->needs_color_decompress_mask &= ~(1 << slot);
       images->display_dcc_store_mask &= ~(1u << slot);
       res->bind_history |= PIPE_BIND_SHADER_IMAGE;
