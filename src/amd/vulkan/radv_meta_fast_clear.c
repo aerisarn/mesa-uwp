@@ -626,7 +626,7 @@ radv_process_color_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
    bool flush_cb = false;
    VkPipeline *pipeline;
 
-   if (decompress_dcc && radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
+   if (decompress_dcc) {
       pipeline = &device->meta_state.fast_clear_flush.dcc_decompress_pipeline;
    } else if (radv_image_has_fmask(image) && !image->tc_compatible_cmask) {
       pipeline = &device->meta_state.fast_clear_flush.fmask_decompress_pipeline;
@@ -701,7 +701,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer, struct radv_image
 
    assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
 
-   if ((decompress_dcc && radv_dcc_enabled(image, subresourceRange->baseMipLevel)) ||
+   if (decompress_dcc ||
        (!(radv_image_has_fmask(image) && !image->tc_compatible_cmask) && image->fce_pred_offset)) {
       use_predication = true;
    }
@@ -756,11 +756,9 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer, struct radv_image
       radv_update_fce_metadata(cmd_buffer, image, subresourceRange, false);
    }
 
-   if (radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
-      /* Mark the image as being decompressed. */
-      if (decompress_dcc)
-         radv_update_dcc_metadata(cmd_buffer, image, subresourceRange, false);
-   }
+   /* Mark the image as being decompressed. */
+   if (decompress_dcc)
+      radv_update_dcc_metadata(cmd_buffer, image, subresourceRange, false);
 }
 
 void
@@ -784,6 +782,7 @@ static void
 radv_decompress_dcc_gfx(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                         const VkImageSubresourceRange *subresourceRange)
 {
+   assert(radv_dcc_enabled(image, subresourceRange->baseMipLevel));
    radv_emit_color_decompress(cmd_buffer, image, subresourceRange, true);
 }
 
