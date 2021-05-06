@@ -30,6 +30,7 @@
 #include "util/build_id.h"
 #include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
+#include "util/u_dynarray.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -38,8 +39,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
-
-#define MAX_CLANG_ARGS 64
 
 static struct disk_cache *
 get_disk_cache(struct brw_compiler *compiler)
@@ -255,7 +254,7 @@ static void
 print_usage(char *exec_name, FILE *f)
 {
    fprintf(f,
-"Usage: %s [options] [clang args] file\n"
+"Usage: %s [options] [clang args | input file]\n"
 "Options:\n"
 "  -h  --help              Print this help.\n"
 "  -e, --entrypoint <name> Specify the entry-point name.\n"
@@ -276,11 +275,23 @@ int main(int argc, char **argv)
       {"entrypoint", required_argument,   0, 'e'},
       {"platform",   required_argument,   0, 'p'},
       {"prefix",     required_argument,   0, OPT_PREFIX},
+      {"in",         required_argument,   0, 'i'},
       {"out",        required_argument,   0, 'o'},
       {0, 0, 0, 0}
    };
 
    char *entry_point = NULL, *platform = NULL, *outfile = NULL, *prefix = NULL;
+   struct util_dynarray clang_args;
+   struct util_dynarray input_files;
+   struct util_dynarray spirv_objs;
+   struct util_dynarray spirv_ptr_objs;
+
+   void *mem_ctx = ralloc_context(NULL);
+
+   util_dynarray_init(&clang_args, mem_ctx);
+   util_dynarray_init(&input_files, mem_ctx);
+   util_dynarray_init(&spirv_objs, mem_ctx);
+   util_dynarray_init(&spirv_ptr_objs, mem_ctx);
 
    int ch;
    while ((ch = getopt_long(argc, argv, "he:p:o:", long_options, NULL)) != -1)
@@ -309,6 +320,19 @@ int main(int argc, char **argv)
       }
    }
 
+   for (int i = optind; i < argc; i++) {
+      if (argv[i][0] == '-')
+         util_dynarray_append(&clang_args, char *, argv[i]);
+      else
+         util_dynarray_append(&input_files, char *, argv[i]);
+   }
+
+   if (util_dynarray_num_elements(&input_files, char *) == 0) {
+      fprintf(stderr, "No input file(s).\n");
+      print_usage(argv[0], stderr);
+      return -1;
+   }
+
    if (platform == NULL) {
       fprintf(stderr, "No target platform name specified.\n");
       print_usage(argv[0], stderr);
@@ -333,71 +357,80 @@ int main(int argc, char **argv)
       return -1;
    }
 
-   const char *infile = argv[optind];
-
-   const char * const *clang_args = (const char * const *)&argv[optind + 1];
-   unsigned num_clang_args = argc - optind - 1;
-
-   int fd = open(infile, O_RDONLY);
-   if (fd < 0) {
-      fprintf(stderr, "Failed to open %s\n", infile);
-      return 1;
-   }
-
-   off_t len = lseek(fd, 0, SEEK_END);
-   const void *map = mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
-   close(fd);
-   if (map == MAP_FAILED) {
-      fprintf(stderr, "Failed to mmap the file: errno=%d, %s\n",
-              errno, strerror(errno));
-      return 1;
-   }
-
-   struct clc_compile_args clc_args = {
-      .source = {
-         .name = infile,
-         .value = map,
-      },
-      .args = clang_args,
-      .num_args = num_clang_args,
-   };
-
    struct clc_logger logger = {
       .error = msg_callback,
       .warning = msg_callback,
    };
 
-   struct clc_binary out_spirv;
-   if (!clc_compile_c_to_spir(&clc_args, &logger, &out_spirv))
-      return 1;
+   util_dynarray_foreach(&input_files, char *, infile) {
+      int fd = open(*infile, O_RDONLY);
+      if (fd < 0) {
+         fprintf(stderr, "Failed to open %s\n", *infile);
+         ralloc_free(mem_ctx);
+         return 1;
+      }
 
-   const struct clc_binary *link_spirv_objs[] = { &out_spirv };
+      off_t len = lseek(fd, 0, SEEK_END);
+      const void *map = mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
+      close(fd);
+      if (map == MAP_FAILED) {
+         fprintf(stderr, "Failed to mmap the file: errno=%d, %s\n",
+                 errno, strerror(errno));
+         ralloc_free(mem_ctx);
+         return 1;
+      }
+
+      struct clc_compile_args clc_args = {
+         .source = {
+            .name = *infile,
+            .value = map,
+         },
+         .args = util_dynarray_begin(&clang_args),
+         .num_args = util_dynarray_num_elements(&clang_args, char *),
+      };
+
+      struct clc_binary *spirv_out =
+         util_dynarray_grow(&spirv_objs, struct clc_binary, 1);
+
+      if (!clc_compile_c_to_spirv(&clc_args, &logger, spirv_out)) {
+         ralloc_free(mem_ctx);
+         return 1;
+      }
+
+      util_dynarray_append(&spirv_ptr_objs, struct clc_binary *, spirv_out);
+   }
+
    struct clc_linker_args link_args = {
-      .in_objs = link_spirv_objs,
-      .num_in_objs = 1,
+      .in_objs = util_dynarray_begin(&spirv_ptr_objs),
+      .num_in_objs = util_dynarray_num_elements(&spirv_ptr_objs,
+                                                struct clc_binary *),
       .create_library = true,
    };
-   struct clc_binary out_final_spirv;
-   if (!clc_link_spirv(&link_args, &logger, &out_final_spirv))
+   struct clc_binary final_spirv;
+   if (!clc_link_spirv(&link_args, &logger, &final_spirv)) {
+      ralloc_free(mem_ctx);
       return 1;
+   }
 
-   struct clc_parsed_spirv spirv_info;
-   if (!clc_parse_spirv(&out_final_spirv, &logger, &spirv_info))
+   struct clc_parsed_spirv parsed_spirv_data;
+   if (!clc_parse_spirv(&final_spirv, &logger, &parsed_spirv_data)) {
+      ralloc_free(mem_ctx);
       return 1;
+   }
 
    const struct clc_kernel_info *kernel_info = NULL;
-   for (unsigned i = 0; i < spirv_info.num_kernels; i++) {
-      if (strcmp(spirv_info.kernels[i].name, entry_point) == 0) {
-         kernel_info = &spirv_info.kernels[i];
+   for (unsigned i = 0; i < parsed_spirv_data.num_kernels; i++) {
+      if (strcmp(parsed_spirv_data.kernels[i].name, entry_point) == 0) {
+         kernel_info = &parsed_spirv_data.kernels[i];
          break;
       }
    }
    if (kernel_info == NULL) {
       fprintf(stderr, "Kernel entrypoint %s not found\n", entry_point);
+      ralloc_free(mem_ctx);
       return 1;
    }
 
-   void *mem_ctx = ralloc_context(NULL);
    struct brw_kernel kernel = {};
    char *error_str;
 
@@ -409,9 +442,10 @@ int main(int argc, char **argv)
    glsl_type_singleton_init_or_ref();
 
    if (!brw_kernel_from_spirv(compiler, disk_cache, &kernel, NULL, mem_ctx,
-                              out_final_spirv.data, out_final_spirv.size,
+                              final_spirv.data, final_spirv.size,
                               entry_point, &error_str)) {
       fprintf(stderr, "Compile failed: %s\n", error_str);
+      ralloc_free(mem_ctx);
       return 1;
    }
 
@@ -432,6 +466,8 @@ int main(int argc, char **argv)
    } else {
       print_kernel(stdout, prefix, &kernel, devinfo);
    }
+
+   ralloc_free(mem_ctx);
 
    return 0;
 }
