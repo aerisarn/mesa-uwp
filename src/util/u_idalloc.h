@@ -29,6 +29,8 @@
 #define U_IDALLOC_H
 
 #include <inttypes.h>
+#include <stdbool.h>
+#include "simple_mtx.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,6 +60,37 @@ util_idalloc_free(struct util_idalloc *buf, unsigned id);
 
 void
 util_idalloc_reserve(struct util_idalloc *buf, unsigned id);
+
+
+/* Thread-safe variant. */
+struct util_idalloc_mt {
+   struct util_idalloc buf;
+   simple_mtx_t mutex;
+   bool skip_zero;
+};
+
+void
+util_idalloc_mt_init(struct util_idalloc_mt *buf,
+                     unsigned initial_num_elements, bool skip_zero);
+
+void
+util_idalloc_mt_init_tc(struct util_idalloc_mt *buf);
+
+void
+util_idalloc_mt_fini(struct util_idalloc_mt *buf);
+
+void
+util_idalloc_mt_resize(struct util_idalloc_mt *buf, unsigned new_num_elements);
+
+unsigned
+util_idalloc_mt_alloc(struct util_idalloc_mt *buf);
+
+void
+util_idalloc_mt_free(struct util_idalloc_mt *buf, unsigned id);
+
+void
+util_idalloc_mt_reserve(struct util_idalloc_mt *buf, unsigned id);
+
 
 #ifdef __cplusplus
 }

@@ -108,3 +108,70 @@ util_idalloc_reserve(struct util_idalloc *buf, unsigned id)
    assert((buf->data[id / 32] & (1u << (id % 32))) == 0);
    buf->data[id / 32] |= 1u << (id % 32);
 }
+
+void
+util_idalloc_mt_init(struct util_idalloc_mt *buf,
+                     unsigned initial_num_elements, bool skip_zero)
+{
+   simple_mtx_init(&buf->mutex, mtx_plain);
+   util_idalloc_init(&buf->buf);
+   buf->skip_zero = skip_zero;
+
+   if (initial_num_elements)
+      util_idalloc_resize(&buf->buf, initial_num_elements);
+
+   if (skip_zero) {
+      ASSERTED unsigned zero = util_idalloc_alloc(&buf->buf);
+      assert(zero == 0);
+   }
+}
+
+/* Callback for drivers using u_threaded_context (abbreviated as tc). */
+void
+util_idalloc_mt_init_tc(struct util_idalloc_mt *buf)
+{
+   util_idalloc_mt_init(buf, 1 << 16, true);
+}
+
+void
+util_idalloc_mt_fini(struct util_idalloc_mt *buf)
+{
+   util_idalloc_fini(&buf->buf);
+   simple_mtx_destroy(&buf->mutex);
+}
+
+void
+util_idalloc_mt_resize(struct util_idalloc_mt *buf, unsigned new_num_elements)
+{
+   simple_mtx_lock(&buf->mutex);
+   util_idalloc_resize(&buf->buf, new_num_elements);
+   simple_mtx_unlock(&buf->mutex);
+}
+
+unsigned
+util_idalloc_mt_alloc(struct util_idalloc_mt *buf)
+{
+   simple_mtx_lock(&buf->mutex);
+   unsigned id = util_idalloc_alloc(&buf->buf);
+   simple_mtx_unlock(&buf->mutex);
+   return id;
+}
+
+void
+util_idalloc_mt_free(struct util_idalloc_mt *buf, unsigned id)
+{
+   if (id == 0 && buf->skip_zero)
+      return;
+
+   simple_mtx_lock(&buf->mutex);
+   util_idalloc_free(&buf->buf, id);
+   simple_mtx_unlock(&buf->mutex);
+}
+
+void
+util_idalloc_mt_reserve(struct util_idalloc_mt *buf, unsigned id)
+{
+   simple_mtx_lock(&buf->mutex);
+   util_idalloc_reserve(&buf->buf, id);
+   simple_mtx_unlock(&buf->mutex);
+}
