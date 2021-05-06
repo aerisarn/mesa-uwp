@@ -496,15 +496,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    obj->coherent = flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-   if (templ->target != PIPE_BUFFER) {
-      VkMemoryType mem_type =
-         screen->info.mem_props.memoryTypes[mai.memoryTypeIndex];
-      obj->host_visible = mem_type.propertyFlags &
-                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-   } else if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE)) {
-      obj->host_visible = true;
-      if (!obj->coherent)
-         mai.allocationSize = reqs.size = align(reqs.size, screen->info.props.limits.nonCoherentAtomSize);
+   VkMemoryType mem_type = screen->info.mem_props.memoryTypes[mai.memoryTypeIndex];
+   obj->host_visible = mem_type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+   if (templ->target == PIPE_BUFFER && !obj->coherent) {
+      mai.allocationSize = reqs.size = align(reqs.size, screen->info.props.limits.nonCoherentAtomSize);
    }
 
    VkExportMemoryAllocateInfo emai = {0};
