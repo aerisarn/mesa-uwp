@@ -583,69 +583,73 @@ zink_draw_vbo(struct pipe_context *pctx,
          debug_printf("BUG: wide lines not supported, needs fallback!");
    }
 
-   if (dsa_state->base.stencil[0].enabled) {
-      if (dsa_state->base.stencil[1].enabled) {
-         vkCmdSetStencilReference(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT,
-                                  ctx->stencil_ref.ref_value[0]);
-         vkCmdSetStencilReference(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT,
-                                  ctx->stencil_ref.ref_value[1]);
-      } else
-         vkCmdSetStencilReference(batch->state->cmdbuf,
-                                  VK_STENCIL_FACE_FRONT_AND_BACK,
-                                  ctx->stencil_ref.ref_value[0]);
-   }
-
-   if (screen->info.have_EXT_extended_dynamic_state) {
-      screen->vk.CmdSetDepthBoundsTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_bounds_test);
-      if (dsa_state->hw_state.depth_bounds_test)
-         vkCmdSetDepthBounds(batch->state->cmdbuf,
-                             dsa_state->hw_state.min_depth_bounds,
-                             dsa_state->hw_state.max_depth_bounds);
-      screen->vk.CmdSetDepthTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_test);
-      if (dsa_state->hw_state.depth_test)
-         screen->vk.CmdSetDepthCompareOpEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_compare_op);
-      screen->vk.CmdSetDepthWriteEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_write);
-      screen->vk.CmdSetStencilTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.stencil_test);
-      if (dsa_state->hw_state.stencil_test) {
-         screen->vk.CmdSetStencilOpEXT(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT,
-                                       dsa_state->hw_state.stencil_front.failOp,
-                                       dsa_state->hw_state.stencil_front.passOp,
-                                       dsa_state->hw_state.stencil_front.depthFailOp,
-                                       dsa_state->hw_state.stencil_front.compareOp);
-         screen->vk.CmdSetStencilOpEXT(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT,
-                                       dsa_state->hw_state.stencil_back.failOp,
-                                       dsa_state->hw_state.stencil_back.passOp,
-                                       dsa_state->hw_state.stencil_back.depthFailOp,
-                                       dsa_state->hw_state.stencil_back.compareOp);
-      }
+   if (pipeline_changed || ctx->dsa_state_changed) {
       if (dsa_state->base.stencil[0].enabled) {
          if (dsa_state->base.stencil[1].enabled) {
-            vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.writeMask);
-            vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.writeMask);
-            vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.compareMask);
-            vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.compareMask);
-         } else {
-            vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.writeMask);
-            vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.compareMask);
+            vkCmdSetStencilReference(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT,
+                                     ctx->stencil_ref.ref_value[0]);
+            vkCmdSetStencilReference(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT,
+                                     ctx->stencil_ref.ref_value[1]);
+         } else
+            vkCmdSetStencilReference(batch->state->cmdbuf,
+                                     VK_STENCIL_FACE_FRONT_AND_BACK,
+                                     ctx->stencil_ref.ref_value[0]);
+      }
+
+      if (screen->info.have_EXT_extended_dynamic_state) {
+         screen->vk.CmdSetDepthBoundsTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_bounds_test);
+         if (dsa_state->hw_state.depth_bounds_test)
+            vkCmdSetDepthBounds(batch->state->cmdbuf,
+                                dsa_state->hw_state.min_depth_bounds,
+                                dsa_state->hw_state.max_depth_bounds);
+         screen->vk.CmdSetDepthTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_test);
+         if (dsa_state->hw_state.depth_test)
+            screen->vk.CmdSetDepthCompareOpEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_compare_op);
+         screen->vk.CmdSetDepthWriteEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_write);
+         screen->vk.CmdSetStencilTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.stencil_test);
+         if (dsa_state->hw_state.stencil_test) {
+            screen->vk.CmdSetStencilOpEXT(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT,
+                                          dsa_state->hw_state.stencil_front.failOp,
+                                          dsa_state->hw_state.stencil_front.passOp,
+                                          dsa_state->hw_state.stencil_front.depthFailOp,
+                                          dsa_state->hw_state.stencil_front.compareOp);
+            screen->vk.CmdSetStencilOpEXT(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT,
+                                          dsa_state->hw_state.stencil_back.failOp,
+                                          dsa_state->hw_state.stencil_back.passOp,
+                                          dsa_state->hw_state.stencil_back.depthFailOp,
+                                          dsa_state->hw_state.stencil_back.compareOp);
+         }
+         if (dsa_state->base.stencil[0].enabled) {
+            if (dsa_state->base.stencil[1].enabled) {
+               vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.writeMask);
+               vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.writeMask);
+               vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.compareMask);
+               vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.compareMask);
+            } else {
+               vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.writeMask);
+               vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.compareMask);
+            }
          }
       }
-      screen->vk.CmdSetFrontFaceEXT(batch->state->cmdbuf, ctx->gfx_pipeline_state.front_face);
-
-      if (ctx->sample_locations_changed) {
-         VkSampleLocationsInfoEXT loc;
-         zink_init_vk_sample_locations(ctx, &loc);
-         screen->vk.CmdSetSampleLocationsEXT(batch->state->cmdbuf, &loc);
-      }
-      ctx->sample_locations_changed = false;
+      ctx->dsa_state_changed = false;
    }
 
    if (pipeline_changed || ctx->rast_state_changed) {
+      if (screen->info.have_EXT_extended_dynamic_state)
+         screen->vk.CmdSetFrontFaceEXT(batch->state->cmdbuf, ctx->gfx_pipeline_state.front_face);
       if (depth_bias)
          vkCmdSetDepthBias(batch->state->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);
       else
          vkCmdSetDepthBias(batch->state->cmdbuf, 0.0f, 0.0f, 0.0f);
       ctx->rast_state_changed = false;
    }
+
+   if (ctx->sample_locations_changed) {
+      VkSampleLocationsInfoEXT loc;
+      zink_init_vk_sample_locations(ctx, &loc);
+      screen->vk.CmdSetSampleLocationsEXT(batch->state->cmdbuf, &loc);
+   }
+   ctx->sample_locations_changed = false;
 
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->state->cmdbuf, ctx->blend_constants);

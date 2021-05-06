@@ -167,6 +167,7 @@ struct zink_context {
    struct zink_rasterizer_state *rast_state;
    struct zink_depth_stencil_alpha_state *dsa_state;
    bool rast_state_changed : 1;
+   bool dsa_state_changed : 1;
 
    struct hash_table desc_set_layouts[ZINK_DESCRIPTOR_TYPES];
    bool pipeline_changed[2]; //gfx, compute
