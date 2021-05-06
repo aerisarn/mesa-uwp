@@ -1787,6 +1787,21 @@ trace_context_set_context_param(struct pipe_context *_context,
 }
 
 static void
+trace_context_set_debug_callback(struct pipe_context *_context, const struct pipe_debug_callback *cb)
+{
+   struct trace_context *tr_context = trace_context(_context);
+   struct pipe_context *context = tr_context->pipe;
+
+   trace_dump_call_begin("pipe_context", "set_debug_callback");
+
+   trace_dump_arg(ptr, context);
+
+   trace_dump_call_end();
+
+   context->set_debug_callback(context, cb);
+}
+
+static void
 trace_context_render_condition(struct pipe_context *_context,
                                struct pipe_query *query,
                                bool condition,
@@ -2173,6 +2188,7 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(texture_subdata);
    TR_CTX_INIT(invalidate_resource);
    TR_CTX_INIT(set_context_param);
+   TR_CTX_INIT(set_debug_callback);
 
 #undef TR_CTX_INIT
 
