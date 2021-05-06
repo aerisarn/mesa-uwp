@@ -1648,7 +1648,7 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index,
    struct radv_image *image = iview->image;
 
    if (!radv_layout_dcc_compressed(
-          cmd_buffer->device, image, layout, in_render_loop,
+          cmd_buffer->device, image, iview->base_mip, layout, in_render_loop,
           radv_image_queue_family_mask(image, cmd_buffer->queue_family_index,
                                        cmd_buffer->queue_family_index)) ||
        disable_dcc) {
@@ -6345,7 +6345,7 @@ radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_i
          /* TODO: Fix clearing CMASK layers on GFX9. */
          if (radv_image_is_tc_compat_cmask(image) ||
              (radv_image_has_fmask(image) &&
-              radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout,
+              radv_layout_can_fast_clear(cmd_buffer->device, image, range->baseMipLevel, dst_layout,
                                          dst_render_loop, dst_queue_mask))) {
             value = 0xccccccccu;
          } else {
@@ -6368,8 +6368,8 @@ radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_i
    if (radv_dcc_enabled(image, range->baseMipLevel)) {
       uint32_t value = 0xffffffffu; /* Fully expanded mode. */
 
-      if (radv_layout_dcc_compressed(cmd_buffer->device, image, dst_layout, dst_render_loop,
-                                     dst_queue_mask)) {
+      if (radv_layout_dcc_compressed(cmd_buffer->device, image, range->baseMipLevel,
+                                     dst_layout, dst_render_loop, dst_queue_mask)) {
          value = 0u;
       }
 
@@ -6431,16 +6431,16 @@ radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffer, struct ra
    if (radv_dcc_enabled(image, range->baseMipLevel)) {
       if (src_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
          cmd_buffer->state.flush_bits |= radv_init_dcc(cmd_buffer, image, range, 0xffffffffu);
-      } else if (radv_layout_dcc_compressed(cmd_buffer->device, image, src_layout, src_render_loop,
-                                            src_queue_mask) &&
-                 !radv_layout_dcc_compressed(cmd_buffer->device, image, dst_layout, dst_render_loop,
-                                             dst_queue_mask)) {
+      } else if (radv_layout_dcc_compressed(cmd_buffer->device, image, range->baseMipLevel,
+                                            src_layout, src_render_loop, src_queue_mask) &&
+                 !radv_layout_dcc_compressed(cmd_buffer->device, image, range->baseMipLevel,
+                                             dst_layout, dst_render_loop, dst_queue_mask)) {
          radv_decompress_dcc(cmd_buffer, image, range);
          dcc_decompressed = true;
-      } else if (radv_layout_can_fast_clear(cmd_buffer->device, image, src_layout, src_render_loop,
-                                            src_queue_mask) &&
-                 !radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout, dst_render_loop,
-                                             dst_queue_mask)) {
+      } else if (radv_layout_can_fast_clear(cmd_buffer->device, image, range->baseMipLevel,
+                                            src_layout, src_render_loop, src_queue_mask) &&
+                 !radv_layout_can_fast_clear(cmd_buffer->device, image, range->baseMipLevel,
+                                             dst_layout, dst_render_loop, dst_queue_mask)) {
          radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
          fast_clear_flushed = true;
       }
@@ -6448,10 +6448,10 @@ radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffer, struct ra
       if (radv_image_need_retile(image))
          radv_retile_transition(cmd_buffer, image, src_layout, dst_layout, dst_queue_mask);
    } else if (radv_image_has_cmask(image) || radv_image_has_fmask(image)) {
-      if (radv_layout_can_fast_clear(cmd_buffer->device, image, src_layout, src_render_loop,
-                                     src_queue_mask) &&
-          !radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout, dst_render_loop,
-                                      dst_queue_mask)) {
+      if (radv_layout_can_fast_clear(cmd_buffer->device, image, range->baseMipLevel,
+                                     src_layout, src_render_loop, src_queue_mask) &&
+          !radv_layout_can_fast_clear(cmd_buffer->device, image, range->baseMipLevel,
+                                      dst_layout, dst_render_loop, dst_queue_mask)) {
          radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
          fast_clear_flushed = true;
       }

@@ -1888,10 +1888,12 @@ bool radv_layout_is_htile_compressed(const struct radv_device *device,
                                      bool in_render_loop, unsigned queue_mask);
 
 bool radv_layout_can_fast_clear(const struct radv_device *device, const struct radv_image *image,
-                                VkImageLayout layout, bool in_render_loop, unsigned queue_mask);
+                                unsigned level, VkImageLayout layout, bool in_render_loop,
+                                unsigned queue_mask);
 
 bool radv_layout_dcc_compressed(const struct radv_device *device, const struct radv_image *image,
-                                VkImageLayout layout, bool in_render_loop, unsigned queue_mask);
+                                unsigned level, VkImageLayout layout, bool in_render_loop,
+                                unsigned queue_mask);
 
 bool radv_layout_fmask_compressed(const struct radv_device *device, const struct radv_image *image,
                                   VkImageLayout layout, unsigned queue_mask);
