@@ -420,10 +420,14 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       }
 
       vkGetBufferMemoryRequirements(screen->dev, obj->buffer, &reqs);
-      if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
+      if (templ->usage == PIPE_USAGE_STAGING)
+         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+      else if (templ->usage == PIPE_USAGE_STREAM)
+         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+      else if (templ->usage == PIPE_USAGE_IMMUTABLE)
          flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
       else
-         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
       obj->is_buffer = true;
       obj->transfer_dst = true;
    } else {
