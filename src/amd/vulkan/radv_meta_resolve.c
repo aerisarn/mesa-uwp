@@ -497,7 +497,11 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
    const struct VkOffset3D dstOffset =
       radv_sanitize_image_offset(dst_image->type, region->dstOffset);
 
-   if (radv_dcc_enabled(dst_image, region->dstSubresource.mipLevel)) {
+   uint32_t queue_mask = radv_image_queue_family_mask(dst_image, cmd_buffer->queue_family_index,
+                                                      cmd_buffer->queue_family_index);
+
+   if (radv_layout_dcc_compressed(cmd_buffer->device, dst_image, region->dstSubresource.mipLevel,
+                                  dst_image_layout, false, queue_mask)) {
       VkImageSubresourceRange range = {
          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
          .baseMipLevel = region->dstSubresource.mipLevel,
@@ -692,8 +696,13 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
 
       struct radv_image_view *dest_iview = cmd_buffer->state.attachments[dest_att.attachment].iview;
       struct radv_image *dst_img = dest_iview->image;
+      VkImageLayout dst_image_layout = cmd_buffer->state.attachments[dest_att.attachment].current_layout;
 
-      if (radv_dcc_enabled(dst_img, dest_iview->base_mip)) {
+      uint32_t queue_mask = radv_image_queue_family_mask(dst_img, cmd_buffer->queue_family_index,
+                                                         cmd_buffer->queue_family_index);
+
+      if (radv_layout_dcc_compressed(cmd_buffer->device, dst_img, dest_iview->base_mip,
+                                     dst_image_layout, false, queue_mask)) {
          VkImageSubresourceRange range = {
             .aspectMask = dest_iview->aspect_mask,
             .baseMipLevel = dest_iview->base_mip,
