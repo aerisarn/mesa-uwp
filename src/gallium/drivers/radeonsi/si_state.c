@@ -24,6 +24,7 @@
 
 #include "si_build_pm4.h"
 #include "si_query.h"
+#include "si_shader_internal.h"
 #include "sid.h"
 #include "util/fast_idiv_by_const.h"
 #include "util/format/u_format.h"
@@ -445,6 +446,14 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
    blend->alpha_to_one = state->alpha_to_one;
    blend->dual_src_blend = util_blend_state_is_dual(state, 0);
    blend->logicop_enable = logicop_enable;
+   blend->allows_noop_optimization =
+      state->rt[0].rgb_func == PIPE_BLEND_ADD &&
+      state->rt[0].alpha_func == PIPE_BLEND_ADD &&
+      state->rt[0].rgb_src_factor == PIPE_BLENDFACTOR_DST_COLOR &&
+      state->rt[0].alpha_src_factor == PIPE_BLENDFACTOR_DST_COLOR &&
+      state->rt[0].rgb_dst_factor == PIPE_BLENDFACTOR_ZERO &&
+      state->rt[0].alpha_dst_factor == PIPE_BLENDFACTOR_ZERO &&
+      mode == V_028808_CB_NORMAL;
 
    unsigned num_shader_outputs = state->max_rt + 1; /* estimate */
    if (blend->dual_src_blend)
@@ -627,6 +636,57 @@ static void *si_create_blend_state(struct pipe_context *ctx, const struct pipe_b
    return si_create_blend_state_mode(ctx, state, V_028808_CB_NORMAL);
 }
 
+static void si_draw_blend_dst_sampler_noop(struct pipe_context *ctx,
+                                           const struct pipe_draw_info *info,
+                                           unsigned drawid_offset,
+                                           const struct pipe_draw_indirect_info *indirect,
+                                           const struct pipe_draw_start_count_bias *draws,
+                                           unsigned num_draws) {
+   struct si_context *sctx = (struct si_context *)ctx;
+
+   if (sctx->framebuffer.state.nr_cbufs == 1) {
+      struct si_shader_selector *sel = sctx->shader.ps.cso;
+      bool free_nir;
+      if (unlikely(sel->info.writes_1_if_tex_is_1 == 0xff)) {
+         struct nir_shader *nir = si_get_nir_shader(sel, NULL, &free_nir);
+
+         /* Determine if this fragment shader always writes vec4(1) if a specific texture
+          * is all 1s.
+          */
+         float in[4] = { 1.0, 1.0, 1.0, 1.0 };
+         float out[4];
+         int texunit;
+         if (si_nir_is_output_const_if_tex_is_const(nir, in, out, &texunit) &&
+             !memcmp(in, out, 4 * sizeof(float))) {
+            sel->info.writes_1_if_tex_is_1 = 1 + texunit;
+         } else {
+            sel->info.writes_1_if_tex_is_1 = 0;
+         }
+
+         if (free_nir)
+            ralloc_free(nir);
+      }
+
+      if (sel->info.writes_1_if_tex_is_1 &&
+          sel->info.writes_1_if_tex_is_1 != 0xff) {
+         /* Now check if the texture is cleared to 1 */
+         int unit = sctx->shader.ps.cso->info.writes_1_if_tex_is_1 - 1;
+         struct si_samplers *samp = &sctx->samplers[PIPE_SHADER_FRAGMENT];
+         if ((1u << unit) & samp->enabled_mask) {
+            struct si_texture* tex = (struct si_texture*) samp->views[unit]->texture;
+            if (tex->is_depth &&
+                tex->depth_cleared_level_mask & BITFIELD_BIT(samp->views[unit]->u.tex.first_level) &&
+                tex->depth_clear_value[0] == 1) {
+               return;
+            }
+            /* TODO: handle color textures */
+         }
+      }
+   }
+
+   sctx->real_draw_vbo(ctx, info, drawid_offset, indirect, draws, num_draws);
+}
+
 static void si_bind_blend_state(struct pipe_context *ctx, void *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
@@ -664,6 +724,14 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
          old_blend->commutative_4bit != blend->commutative_4bit ||
          old_blend->logicop_enable != blend->logicop_enable)))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
+
+   if (likely(!radeon_uses_secure_bos(sctx->ws))) {
+      if (unlikely(blend->allows_noop_optimization)) {
+         si_install_draw_wrapper(sctx, si_draw_blend_dst_sampler_noop);
+      } else {
+         si_install_draw_wrapper(sctx, NULL);
+      }
+   }
 }
 
 static void si_delete_blend_state(struct pipe_context *ctx, void *state)

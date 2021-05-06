@@ -402,6 +402,13 @@ struct si_shader_info {
     * fragment shader invocations if flat shading.
     */
    bool allow_flat_shading;
+
+   /* Optimization: if the texture bound to this texunit has been cleared to 1,
+    * then the draw can be skipped (see si_draw_vbo_skip_noop). Initially the
+    * value is 0xff (undetermined) and can be later changed to 0 (= false) or
+    * texunit + 1.
+    */
+   uint8_t writes_1_if_tex_is_1;
 };
 
 /* A shader selector is a gallium CSO and contains shader variants and

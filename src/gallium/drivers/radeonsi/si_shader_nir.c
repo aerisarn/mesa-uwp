@@ -418,6 +418,10 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
       info->color_interpolate_loc[1] = nir->info.fs.color1_sample ? TGSI_INTERPOLATE_LOC_SAMPLE :
                                        nir->info.fs.color1_centroid ? TGSI_INTERPOLATE_LOC_CENTROID :
                                                                       TGSI_INTERPOLATE_LOC_CENTER;
+      /* Set an invalid value. Will be determined at draw time if needed when the expected
+       * conditions are met.
+       */
+      info->writes_1_if_tex_is_1 = nir->info.writes_memory ? 0 : 0xff;
    }
 
    info->constbuf0_num_slots = nir->num_uniforms;
