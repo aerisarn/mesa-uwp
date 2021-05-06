@@ -325,7 +325,7 @@ trace_screen_flush_frontbuffer(struct pipe_screen *_screen,
 {
    struct trace_screen *tr_scr = trace_screen(_screen);
    struct pipe_screen *screen = tr_scr->screen;
-   struct pipe_context *pipe = _pipe ? trace_context(_pipe)->pipe : NULL;
+   struct pipe_context *pipe = _pipe ? trace_get_possibly_threaded_context(_pipe) : NULL;
 
    trace_dump_call_begin("pipe_screen", "flush_frontbuffer");
 
@@ -596,12 +596,12 @@ trace_screen_resource_get_handle(struct pipe_screen *_screen,
                                  unsigned usage)
 {
    struct trace_screen *tr_screen = trace_screen(_screen);
-   struct trace_context *tr_pipe = _pipe ? trace_context(_pipe) : NULL;
+   struct pipe_context *pipe = _pipe ? trace_get_possibly_threaded_context(_pipe) : NULL;
    struct pipe_screen *screen = tr_screen->screen;
 
    /* TODO trace call */
 
-   return screen->resource_get_handle(screen, tr_pipe ? tr_pipe->pipe : NULL,
+   return screen->resource_get_handle(screen, pipe,
                                       resource, handle, usage);
 }
 
@@ -617,12 +617,12 @@ trace_screen_resource_get_param(struct pipe_screen *_screen,
                                 uint64_t *value)
 {
    struct trace_screen *tr_screen = trace_screen(_screen);
-   struct trace_context *tr_pipe = _pipe ? trace_context(_pipe) : NULL;
+   struct pipe_context *pipe = _pipe ? trace_get_possibly_threaded_context(_pipe) : NULL;
    struct pipe_screen *screen = tr_screen->screen;
 
    /* TODO trace call */
 
-   return screen->resource_get_param(screen, tr_pipe ? tr_pipe->pipe : NULL,
+   return screen->resource_get_param(screen, pipe,
                                      resource, plane, layer, level, param,
                                      handle_usage, value);
 }
@@ -760,7 +760,7 @@ trace_screen_fence_finish(struct pipe_screen *_screen,
 {
    struct trace_screen *tr_scr = trace_screen(_screen);
    struct pipe_screen *screen = tr_scr->screen;
-   struct pipe_context *ctx = _ctx ? trace_context(_ctx)->pipe : NULL;
+   struct pipe_context *ctx = _ctx ? trace_get_possibly_threaded_context(_ctx) : NULL;
    int result;
 
    result = screen->fence_finish(screen, ctx, fence, timeout);

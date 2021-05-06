@@ -2211,3 +2211,12 @@ trace_context_check(const struct pipe_context *pipe)
    ASSERTED struct trace_context *tr_ctx = (struct trace_context *) pipe;
    assert(tr_ctx->base.destroy == trace_context_destroy);
 }
+
+/**
+ * Threaded context is not wrapped, and so it may call fence functions directly
+ */
+struct pipe_context *
+trace_get_possibly_threaded_context(struct pipe_context *pipe)
+{
+   return pipe->destroy == trace_context_destroy ? ((struct trace_context*)pipe)->pipe : pipe;
+}

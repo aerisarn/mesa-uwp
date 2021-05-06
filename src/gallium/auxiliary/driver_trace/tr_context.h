@@ -62,7 +62,8 @@ struct trace_context
 
 void
 trace_context_check(const struct pipe_context *pipe);
-
+struct pipe_context *
+trace_get_possibly_threaded_context(struct pipe_context *pipe);
 
 static inline struct trace_context *
 trace_context(struct pipe_context *pipe)
