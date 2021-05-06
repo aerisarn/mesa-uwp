@@ -75,7 +75,7 @@ struct loop_info {
 };
 
 struct block_info {
-   std::vector<std::pair<Temp, uint8_t>> exec;
+   std::vector<std::pair<Operand, uint8_t>> exec;
    std::vector<WQMState> instr_needs;
    uint8_t block_needs;
    uint8_t ever_again_needs;
@@ -325,12 +325,12 @@ void calculate_wqm_needs(exec_ctx& exec_ctx)
    exec_ctx.handle_wqm = true;
 }
 
-Operand get_exec_op(Temp t)
+Operand get_exec_op(Operand t)
 {
-   if (t == Temp())
+   if (t.isUndefined())
       return Operand(exec, t.regClass());
    else
-      return Operand(t);
+      return t;
 }
 
 void transition_to_WQM(exec_ctx& ctx, Builder bld, unsigned idx)
@@ -338,8 +338,8 @@ void transition_to_WQM(exec_ctx& ctx, Builder bld, unsigned idx)
    if (ctx.info[idx].exec.back().second & mask_type_wqm)
       return;
    if (ctx.info[idx].exec.back().second & mask_type_global) {
-      Temp exec_mask = ctx.info[idx].exec.back().first;
-      if (exec_mask == Temp()) {
+      Operand exec_mask = ctx.info[idx].exec.back().first;
+      if (exec_mask.isUndefined()) {
          exec_mask = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm), Operand(exec, bld.lm));
          ctx.info[idx].exec.back().first = exec_mask;
       }
@@ -352,7 +352,7 @@ void transition_to_WQM(exec_ctx& ctx, Builder bld, unsigned idx)
    ctx.info[idx].exec.pop_back();
    assert(ctx.info[idx].exec.back().second & mask_type_wqm);
    assert(ctx.info[idx].exec.back().first.size() == bld.lm.size());
-   assert(ctx.info[idx].exec.back().first.id());
+   assert(ctx.info[idx].exec.back().first.isTemp());
    ctx.info[idx].exec.back().first = bld.pseudo(aco_opcode::p_parallelcopy, Definition(exec, bld.lm),
                                                 ctx.info[idx].exec.back().first);
 }
@@ -369,21 +369,21 @@ void transition_to_Exact(exec_ctx& ctx, Builder bld, unsigned idx)
       ctx.info[idx].exec.pop_back();
       assert(ctx.info[idx].exec.back().second & mask_type_exact);
       assert(ctx.info[idx].exec.back().first.size() == bld.lm.size());
-      assert(ctx.info[idx].exec.back().first.id());
+      assert(ctx.info[idx].exec.back().first.isTemp());
       ctx.info[idx].exec.back().first = bld.pseudo(aco_opcode::p_parallelcopy, Definition(exec, bld.lm),
                                                    ctx.info[idx].exec.back().first);
       return;
    }
    /* otherwise, we create an exact mask and push to the stack */
-   Temp wqm = ctx.info[idx].exec.back().first;
-   if (wqm == Temp()) {
+   Operand wqm = ctx.info[idx].exec.back().first;
+   if (wqm.isUndefined()) {
       wqm = bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.def(s1, scc),
                      Definition(exec, bld.lm), ctx.info[idx].exec[0].first, Operand(exec, bld.lm));
    } else {
       bld.sop2(Builder::s_and, Definition(exec, bld.lm), bld.def(s1, scc), ctx.info[idx].exec[0].first, wqm);
    }
-   ctx.info[idx].exec.back().first = wqm;
-   ctx.info[idx].exec.emplace_back(Temp(0, bld.lm), mask_type_exact);
+   ctx.info[idx].exec.back().first = Operand(wqm);
+   ctx.info[idx].exec.emplace_back(Operand(bld.lm), mask_type_exact);
 }
 
 unsigned add_coupling_code(exec_ctx& ctx, Block* block,
@@ -405,7 +405,7 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
       }
 
       if (ctx.handle_wqm) {
-         ctx.info[0].exec.emplace_back(Temp(0, bld.lm), mask_type_global | mask_type_exact);
+         ctx.info[0].exec.emplace_back(Operand(bld.lm), mask_type_global | mask_type_exact);
          /* if this block only needs WQM, initialize already */
          if (ctx.info[0].block_needs == WQM)
             transition_to_WQM(ctx, bld, 0);
@@ -417,7 +417,7 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
          } else {
             mask |= mask_type_exact;
          }
-         ctx.info[0].exec.emplace_back(Temp(0, bld.lm), mask);
+         ctx.info[0].exec.emplace_back(Operand(bld.lm), mask);
       }
 
       return 1;
@@ -464,7 +464,7 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
          uint8_t mask_type = (ctx.info[idx].exec.back().second & (mask_type_wqm | mask_type_exact)) | mask_type_loop;
          ctx.info[idx].exec.emplace_back(loop_active, mask_type);
       } else {
-         ctx.info[idx].exec.back().first = loop_active;
+         ctx.info[idx].exec.back().first = Operand(loop_active);
          ctx.info[idx].exec.back().second |= mask_type_loop;
       }
 
@@ -523,7 +523,7 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
 
       /* create the loop exit phis if not trivial */
       for (unsigned exec_idx = 0; exec_idx < info.num_exec_masks; exec_idx++) {
-         Temp same = ctx.info[preds[0]].exec[exec_idx].first;
+         Operand same = ctx.info[preds[0]].exec[exec_idx].first;
          uint8_t type = ctx.info[header_preds[0]].exec[exec_idx].second;
          bool trivial = true;
 
@@ -598,9 +598,9 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
       for (unsigned i = 0; i < num_exec_masks; i++) {
          /* skip trivial phis */
          if (ctx.info[preds[0]].exec[i].first == ctx.info[preds[1]].exec[i].first) {
-            Temp t = ctx.info[preds[0]].exec[i].first;
+            Operand t = ctx.info[preds[0]].exec[i].first;
             /* discard/demote can change the state of the current exec mask */
-            assert(!t.id() || ctx.info[preds[0]].exec[i].second == ctx.info[preds[1]].exec[i].second);
+            assert(!t.isTemp() || ctx.info[preds[0]].exec[i].second == ctx.info[preds[1]].exec[i].second);
             uint8_t mask = ctx.info[preds[0]].exec[i].second & ctx.info[preds[1]].exec[i].second;
             ctx.info[idx].exec.emplace_back(t, mask);
             continue;
@@ -638,8 +638,8 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
          transition_to_Exact(ctx, bld, idx);
    }
 
-   if (block->kind & block_kind_merge && ctx.info[idx].exec.back().first != Temp()) {
-      Temp restore = ctx.info[idx].exec.back().first;
+   if (block->kind & block_kind_merge && !ctx.info[idx].exec.back().first.isUndefined()) {
+      Operand restore = ctx.info[idx].exec.back().first;
       assert(restore.size() == bld.lm.size());
       ctx.info[idx].exec.back().first = bld.pseudo(aco_opcode::p_parallelcopy, Definition(exec, bld.lm), restore);
    }
@@ -699,7 +699,7 @@ void process_instructions(exec_ctx& ctx, Block* block,
          for (int i = num - 2; i >= 0; i--) {
             Instruction *andn2 = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc),
                                           ctx.info[block->index].exec[i].first, cond);
-            ctx.info[block->index].exec[i].first = andn2->definitions[0].getTemp();
+            ctx.info[block->index].exec[i].first = Operand(andn2->definitions[0].getTemp());
             exit_cond = andn2->definitions[1].getTemp();
          }
 
@@ -723,7 +723,7 @@ void process_instructions(exec_ctx& ctx, Block* block,
             instr->operands[0] = Operand(0u);
             instr->definitions[0] = dst;
          } else {
-            std::pair<Temp, uint8_t>& exact_mask = ctx.info[block->index].exec[0];
+            std::pair<Operand, uint8_t>& exact_mask = ctx.info[block->index].exec[0];
             assert(exact_mask.second & mask_type_exact);
 
             instr.reset(create_instruction<SOP2_instruction>(bld.w64or32(Builder::s_andn2), Format::SOP2, 2, 2));
@@ -747,8 +747,8 @@ void process_instructions(exec_ctx& ctx, Block* block,
 
             num = ctx.info[block->index].exec.size() - 2;
             if (!(ctx.info[block->index].exec.back().second & mask_type_exact)) {
-               ctx.info[block->index].exec.back().first = cond;
-               ctx.info[block->index].exec.emplace_back(Temp(0, bld.lm), mask_type_exact);
+               ctx.info[block->index].exec.back().first = Operand(cond);
+               ctx.info[block->index].exec.emplace_back(Operand(bld.lm), mask_type_exact);
             }
          } else {
             /* demote_if: transition to exact */
@@ -767,7 +767,7 @@ void process_instructions(exec_ctx& ctx, Block* block,
                   andn2->definitions[0] = Definition(exec, bld.lm);
                }
 
-               ctx.info[block->index].exec[i].first = andn2->definitions[0].getTemp();
+               ctx.info[block->index].exec[i].first = Operand(andn2->definitions[0].getTemp());
                exit_cond = andn2->definitions[1].getTemp();
             } else {
                assert(i != 0);
@@ -902,7 +902,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
             andn2->definitions[0] = Definition(exec, bld.lm);
          if (i == 0)
             bld.pseudo(aco_opcode::p_exit_early_if, bld.scc(andn2->definitions[1].getTemp()));
-         ctx.info[block->index].exec[i].first = andn2->definitions[0].getTemp();
+         ctx.info[block->index].exec[i].first = Operand(andn2->definitions[0].getTemp());
       }
       assert(!ctx.handle_wqm || (ctx.info[block->index].exec[0].second & mask_type_wqm) == 0);
 
@@ -965,10 +965,10 @@ void add_branch_code(exec_ctx& ctx, Block* block)
       Temp old_exec = bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.def(s1, scc),
                                Definition(exec, bld.lm), cond, Operand(exec, bld.lm));
 
-      ctx.info[idx].exec.back().first = old_exec;
+      ctx.info[idx].exec.back().first = Operand(old_exec);
 
       /* add next current exec to the stack */
-      ctx.info[idx].exec.emplace_back(Temp(0, bld.lm), mask_type);
+      ctx.info[idx].exec.emplace_back(Operand(bld.lm), mask_type);
 
       bld.branch(aco_opcode::p_cbranch_z, bld.hint_vcc(bld.def(s2)), Operand(exec, bld.lm), block->linear_succs[1], block->linear_succs[0]);
       return;
@@ -979,7 +979,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
       assert(block->instructions.back()->opcode == aco_opcode::p_cbranch_nz);
       block->instructions.pop_back();
       assert(ctx.info[idx].exec.size() >= 2);
-      Temp orig_exec = ctx.info[idx].exec[ctx.info[idx].exec.size() - 2].first;
+      Operand orig_exec = ctx.info[idx].exec[ctx.info[idx].exec.size() - 2].first;
       bld.sop2(Builder::s_andn2, Definition(exec, bld.lm), bld.def(s1, scc), orig_exec, Operand(exec, bld.lm));
 
       bld.branch(aco_opcode::p_cbranch_z, bld.hint_vcc(bld.def(s2)), Operand(exec, bld.lm), block->linear_succs[1], block->linear_succs[0]);
@@ -994,7 +994,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
       Temp cond = Temp();
       for (int exec_idx = ctx.info[idx].exec.size() - 2; exec_idx >= 0; exec_idx--) {
          cond = bld.tmp(s1);
-         Temp exec_mask = ctx.info[idx].exec[exec_idx].first;
+         Operand exec_mask = ctx.info[idx].exec[exec_idx].first;
          exec_mask = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.scc(Definition(cond)),
                               exec_mask, break_cond);
          ctx.info[idx].exec[exec_idx].first = exec_mask;
@@ -1023,7 +1023,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
          if (ctx.info[idx].exec[exec_idx].second & mask_type_loop)
             break;
          cond = bld.tmp(s1);
-         Temp exec_mask = ctx.info[idx].exec[exec_idx].first;
+         Operand exec_mask = ctx.info[idx].exec[exec_idx].first;
          exec_mask = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.scc(Definition(cond)),
                               exec_mask, Operand(exec, bld.lm));
          ctx.info[idx].exec[exec_idx].first = exec_mask;
