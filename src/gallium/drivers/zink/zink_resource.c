@@ -844,7 +844,7 @@ map_resource(struct zink_screen *screen, struct zink_resource *res)
    VkResult result = VK_SUCCESS;
    if (res->obj->map)
       return res->obj->map;
-   assert(!(res->base.b.flags & PIPE_RESOURCE_FLAG_SPARSE));
+   assert(res->obj->host_visible);
    result = vkMapMemory(screen->dev, res->obj->mem, res->obj->offset,
                         res->obj->size, 0, &res->obj->map);
    return result == VK_SUCCESS ? res->obj->map : NULL;
@@ -895,13 +895,13 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
 
    if ((usage & PIPE_MAP_WRITE) &&
        (usage & PIPE_MAP_DISCARD_RANGE || (!(usage & PIPE_MAP_READ) && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_RW))) &&
-       ((res->base.b.flags & PIPE_RESOURCE_FLAG_SPARSE) || !(usage & (PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT)))) {
+       ((!res->obj->host_visible) || !(usage & (PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT)))) {
 
       /* Check if mapping this buffer would cause waiting for the GPU.
        */
 
       uint32_t latest_access = get_most_recent_access(res, ZINK_RESOURCE_ACCESS_RW);
-      if (res->base.b.flags & PIPE_RESOURCE_FLAG_SPARSE ||
+      if (!res->obj->host_visible ||
           zink_resource_has_curr_read_usage(ctx, res) ||
           (latest_access && !zink_check_batch_completion(ctx, latest_access))) {
          /* Do a wait-free write-only transfer using a temporary buffer. */
@@ -929,15 +929,15 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_THREAD_SAFE)));
       uint32_t latest_write = get_most_recent_access(res, ZINK_RESOURCE_ACCESS_WRITE);
       if (usage & PIPE_MAP_DONTBLOCK) {
-         /* sparse will always need to wait since it has to copy */
-         if (res->base.b.flags & PIPE_RESOURCE_FLAG_SPARSE)
+         /* sparse/device-local will always need to wait since it has to copy */
+         if (!res->obj->host_visible)
             return NULL;
          if (latest_write &&
              (latest_write == ctx->curr_batch || !zink_check_batch_completion(ctx, latest_write)))
             return NULL;
          latest_write = 0;
       }
-      if (res->base.b.flags & PIPE_RESOURCE_FLAG_SPARSE) {
+      if (!res->obj->host_visible) {
          zink_fence_wait(&ctx->base);
          trans->staging_res = pipe_buffer_create(&screen->base, PIPE_BIND_LINEAR, PIPE_USAGE_STAGING, box->x + box->width);
          if (!trans->staging_res)
