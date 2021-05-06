@@ -51,6 +51,58 @@ vn_cmd_get_image_memory_barriers(struct vn_command_buffer *cmd,
 }
 
 static void
+vn_cmd_fix_image_memory_barrier(const struct vn_command_buffer *cmd,
+                                const VkImageMemoryBarrier *src_barrier,
+                                VkImageMemoryBarrier *out_barrier)
+{
+   *out_barrier = *src_barrier;
+
+   /* XXX drop the #ifdef after fixing common wsi */
+#ifdef ANDROID
+   for (uint32_t i = 0; i < count; i++) {
+      if (out_barrier->oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+         out_barrier->oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+      if (out_barrier->newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+         out_barrier->newLayout = VK_IMAGE_LAYOUT_GENERAL;
+   }
+#endif
+}
+
+static const VkImageMemoryBarrier *
+vn_cmd_wait_events_fix_image_memory_barriers(
+   struct vn_command_buffer *cmd,
+   const VkImageMemoryBarrier *src_barriers,
+   uint32_t count)
+{
+   if (!vn_image_memory_barrier_has_present_src(src_barriers, count))
+      return src_barriers;
+
+   VkImageMemoryBarrier *img_barriers =
+      vn_cmd_get_image_memory_barriers(cmd, count);
+   if (!img_barriers) {
+      cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
+      return src_barriers;
+   }
+
+   for (uint32_t i = 0; i < count; i++) {
+      vn_cmd_fix_image_memory_barrier(cmd, &src_barriers[i],
+                                      &img_barriers[i]);
+   }
+
+   return img_barriers;
+}
+
+static const VkImageMemoryBarrier *
+vn_cmd_pipeline_barrier_fix_image_memory_barriers(
+   struct vn_command_buffer *cmd,
+   const VkImageMemoryBarrier *src_barriers,
+   uint32_t count)
+{
+   return vn_cmd_wait_events_fix_image_memory_barriers(cmd, src_barriers,
+                                                       count);
+}
+
+static void
 vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
                          const struct vn_render_pass *pass,
                          const struct vn_framebuffer *fb,
@@ -1061,36 +1113,6 @@ vn_CmdResetEvent(VkCommandBuffer commandBuffer,
    vn_encode_vkCmdResetEvent(&cmd->cs, 0, commandBuffer, event, stageMask);
 }
 
-static const VkImageMemoryBarrier *
-vn_get_intercepted_barriers(struct vn_command_buffer *cmd,
-                            const VkImageMemoryBarrier *img_barriers,
-                            uint32_t count)
-{
-   const bool has_present_src =
-      vn_image_memory_barrier_has_present_src(img_barriers, count);
-   if (!has_present_src)
-      return img_barriers;
-
-   VkImageMemoryBarrier *barriers =
-      vn_cmd_get_image_memory_barriers(cmd, count);
-   if (!barriers)
-      return img_barriers;
-
-   memcpy(barriers, img_barriers, sizeof(*img_barriers) * count);
-
-   /* XXX drop the #ifdef after fixing common wsi */
-#ifdef ANDROID
-   for (uint32_t i = 0; i < count; i++) {
-      if (barriers[i].oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-         barriers[i].oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-      if (barriers[i].newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-         barriers[i].newLayout = VK_IMAGE_LAYOUT_GENERAL;
-   }
-#endif
-
-   return barriers;
-}
-
 void
 vn_CmdWaitEvents(VkCommandBuffer commandBuffer,
                  uint32_t eventCount,
@@ -1108,6 +1130,9 @@ vn_CmdWaitEvents(VkCommandBuffer commandBuffer,
       vn_command_buffer_from_handle(commandBuffer);
    size_t cmd_size;
 
+   pImageMemoryBarriers = vn_cmd_wait_events_fix_image_memory_barriers(
+      cmd, pImageMemoryBarriers, imageMemoryBarrierCount);
+
    cmd_size = vn_sizeof_vkCmdWaitEvents(
       commandBuffer, eventCount, pEvents, srcStageMask, dstStageMask,
       memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount,
@@ -1115,14 +1140,11 @@ vn_CmdWaitEvents(VkCommandBuffer commandBuffer,
    if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
       return;
 
-   const VkImageMemoryBarrier *img_barriers = vn_get_intercepted_barriers(
-      cmd, pImageMemoryBarriers, imageMemoryBarrierCount);
-
    vn_encode_vkCmdWaitEvents(&cmd->cs, 0, commandBuffer, eventCount, pEvents,
                              srcStageMask, dstStageMask, memoryBarrierCount,
                              pMemoryBarriers, bufferMemoryBarrierCount,
                              pBufferMemoryBarriers, imageMemoryBarrierCount,
-                             img_barriers);
+                             pImageMemoryBarriers);
 }
 
 void
@@ -1141,6 +1163,9 @@ vn_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
       vn_command_buffer_from_handle(commandBuffer);
    size_t cmd_size;
 
+   pImageMemoryBarriers = vn_cmd_pipeline_barrier_fix_image_memory_barriers(
+      cmd, pImageMemoryBarriers, imageMemoryBarrierCount);
+
    cmd_size = vn_sizeof_vkCmdPipelineBarrier(
       commandBuffer, srcStageMask, dstStageMask, dependencyFlags,
       memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount,
@@ -1148,13 +1173,10 @@ vn_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
    if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
       return;
 
-   const VkImageMemoryBarrier *img_barriers = vn_get_intercepted_barriers(
-      cmd, pImageMemoryBarriers, imageMemoryBarrierCount);
-
    vn_encode_vkCmdPipelineBarrier(
       &cmd->cs, 0, commandBuffer, srcStageMask, dstStageMask, dependencyFlags,
       memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount,
-      pBufferMemoryBarriers, imageMemoryBarrierCount, img_barriers);
+      pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers);
 }
 
 void
