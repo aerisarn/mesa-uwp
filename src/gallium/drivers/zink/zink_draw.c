@@ -639,10 +639,13 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->sample_locations_changed = false;
    }
 
-   if (depth_bias)
-      vkCmdSetDepthBias(batch->state->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);
-   else
-      vkCmdSetDepthBias(batch->state->cmdbuf, 0.0f, 0.0f, 0.0f);
+   if (pipeline_changed || ctx->rast_state_changed) {
+      if (depth_bias)
+         vkCmdSetDepthBias(batch->state->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);
+      else
+         vkCmdSetDepthBias(batch->state->cmdbuf, 0.0f, 0.0f, 0.0f);
+      ctx->rast_state_changed = false;
+   }
 
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->state->cmdbuf, ctx->blend_constants);

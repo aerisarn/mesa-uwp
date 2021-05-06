@@ -492,6 +492,7 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
             zink_batch_no_rp(ctx);
          ctx->gfx_pipeline_state.rast_state = &ctx->rast_state->hw_state;
          ctx->gfx_pipeline_state.dirty = true;
+         ctx->rast_state_changed = true;
       }
 
       if (clip_halfz != ctx->rast_state->base.clip_halfz) {

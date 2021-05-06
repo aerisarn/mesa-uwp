@@ -1801,6 +1801,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       ctx->vertex_buffers_dirty = true;
       ctx->vp_state_changed = true;
       ctx->scissor_changed = true;
+      ctx->rast_state_changed = true;
    }
 }
 
