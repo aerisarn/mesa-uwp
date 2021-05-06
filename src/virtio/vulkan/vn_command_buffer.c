@@ -17,6 +17,18 @@
 #include "vn_image.h"
 #include "vn_render_pass.h"
 
+static bool
+vn_image_memory_barrier_has_present_src(
+   const VkImageMemoryBarrier *img_barriers, uint32_t count)
+{
+   for (uint32_t i = 0; i < count; i++) {
+      if (img_barriers[i].oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR ||
+          img_barriers[i].newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+         return true;
+   }
+   return false;
+}
+
 static void
 vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
                          const struct vn_render_pass *pass,
@@ -1033,19 +1045,13 @@ vn_get_intercepted_barriers(struct vn_command_buffer *cmd,
                             const VkImageMemoryBarrier *img_barriers,
                             uint32_t count)
 {
-   /* XXX drop the #ifdef after fixing common wsi */
-#ifdef ANDROID
-   bool has_present_src = false;
-   for (uint32_t i = 0; i < count; i++) {
-      if (img_barriers[i].oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR ||
-          img_barriers[i].newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-         has_present_src = false;
-         break;
-      }
-   }
+   const bool has_present_src =
+      vn_image_memory_barrier_has_present_src(img_barriers, count);
    if (!has_present_src)
       return img_barriers;
 
+   /* XXX drop the #ifdef after fixing common wsi */
+#ifdef ANDROID
    size_t size = sizeof(VkImageMemoryBarrier) * count;
    /* avoid shrinking in case of non efficient reallocation implementation */
    VkImageMemoryBarrier *barriers = cmd->builder.image_barriers;
