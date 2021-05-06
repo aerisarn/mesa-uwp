@@ -795,6 +795,9 @@ void bi_compute_liveness(bi_context *ctx);
 void bi_liveness_ins_update(uint16_t *live, bi_instr *ins, unsigned max);
 void bi_invalidate_liveness(bi_context *ctx);
 
+void bi_postra_liveness(bi_context *ctx);
+uint64_t bi_postra_liveness_ins(uint64_t live, bi_instr *ins);
+
 /* Layout */
 
 bool bi_can_insert_tuple(bi_clause *clause, bool constant);

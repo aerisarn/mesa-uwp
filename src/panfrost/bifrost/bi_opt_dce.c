@@ -69,7 +69,7 @@ bi_opt_dead_code_eliminate(bi_context *ctx)
 
 /* Post-RA liveness-based dead code analysis to clean up results of bundling */
 
-static uint64_t
+uint64_t
 bi_postra_liveness_ins(uint64_t live, bi_instr *ins)
 {
         bi_foreach_dest(ins, d) {
@@ -115,7 +115,7 @@ bi_postra_liveness_block(bi_block *blk)
  * adding the predecessors of the block to the work list if we made progress.
  */
 
-static void
+void
 bi_postra_liveness(bi_context *ctx)
 {
         struct set *work_list = _mesa_set_create(NULL,
