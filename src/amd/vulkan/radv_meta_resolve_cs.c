@@ -678,7 +678,8 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
    uint32_t queue_mask = radv_image_queue_family_mask(dest_image, cmd_buffer->queue_family_index,
                                                       cmd_buffer->queue_family_index);
 
-   if (radv_layout_dcc_compressed(cmd_buffer->device, dest_image, region->dstSubresource.mipLevel,
+   if (!radv_image_use_dcc_image_stores(cmd_buffer->device, dest_image) &&
+       radv_layout_dcc_compressed(cmd_buffer->device, dest_image, region->dstSubresource.mipLevel,
                                   dest_image_layout, false, queue_mask) &&
        (region->dstOffset.x || region->dstOffset.y || region->dstOffset.z ||
         region->extent.width != dest_image->info.width ||
