@@ -3506,12 +3506,12 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       goto fail;
 
    const uint8_t data[] = {0};
-   ctx->dummy_vertex_buffer = pipe_buffer_create_with_data(&ctx->base,
-      PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_SHADER_IMAGE, PIPE_USAGE_IMMUTABLE, sizeof(data), data);
+   ctx->dummy_vertex_buffer = pipe_buffer_create(&screen->base,
+      PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_SHADER_IMAGE, PIPE_USAGE_IMMUTABLE, sizeof(data));
    if (!ctx->dummy_vertex_buffer)
       goto fail;
-   ctx->dummy_xfb_buffer = pipe_buffer_create_with_data(&ctx->base,
-      PIPE_BIND_STREAM_OUTPUT, PIPE_USAGE_DEFAULT, sizeof(data), data);
+   ctx->dummy_xfb_buffer = pipe_buffer_create(&screen->base,
+      PIPE_BIND_STREAM_OUTPUT, PIPE_USAGE_DEFAULT, sizeof(data));
    if (!ctx->dummy_xfb_buffer)
       goto fail;
    ctx->dummy_surface = zink_surface_create_null(ctx, PIPE_TEXTURE_2D, 1, 1, 1);
@@ -3535,6 +3535,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    zink_start_batch(ctx, &ctx->batch);
    if (!ctx->batch.state)
       goto fail;
+
+   pipe_buffer_write(&ctx->base, ctx->dummy_vertex_buffer, 0, sizeof(data), data);
+   pipe_buffer_write(&ctx->base, ctx->dummy_xfb_buffer, 0, sizeof(data), data);
 
    for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
       /* need to update these based on screen config for null descriptors */
