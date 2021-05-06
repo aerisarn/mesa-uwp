@@ -189,22 +189,23 @@ panfrost_add_job(
 /* Generates a write value job, used to initialize the tiler structures. Note
  * this is called right before frame submission. */
 
-void
+struct panfrost_ptr
 panfrost_scoreboard_initialize_tiler(struct pan_pool *pool,
-                struct pan_scoreboard *scoreboard,
-                mali_ptr polygon_list)
+                                     struct pan_scoreboard *scoreboard,
+                                     mali_ptr polygon_list)
 {
+        struct panfrost_ptr transfer = { 0 };
+
         /* Check if we even need tiling */
         if (pan_is_bifrost(pool->dev) || !scoreboard->first_tiler)
-                return;
+                return transfer;
 
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
          * regardless of size. */
 
-        struct panfrost_ptr transfer =
-                panfrost_pool_alloc_aligned(pool,
-                                            MALI_WRITE_VALUE_JOB_LENGTH,
-                                            64);
+        transfer = panfrost_pool_alloc_aligned(pool,
+                                               MALI_WRITE_VALUE_JOB_LENGTH,
+                                               64);
 
         pan_section_pack(transfer.cpu, WRITE_VALUE_JOB, HEADER, header) {
                 header.type = MALI_JOB_TYPE_WRITE_VALUE;
@@ -218,4 +219,5 @@ panfrost_scoreboard_initialize_tiler(struct pan_pool *pool,
         }
 
         scoreboard->first_job = transfer.gpu;
+        return transfer;
 }
