@@ -759,7 +759,9 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tg_size);
 
       /* Hardware VGPRs. */
-      if (!ctx->screen->info.has_graphics && ctx->screen->info.family >= CHIP_ALDEBARAN)
+      /* Thread IDs are packed in VGPR0, 10 bits per component or stored in 3 separate VGPRs */
+      if (ctx->screen->info.chip_class >= GFX11 ||
+          (!ctx->screen->info.has_graphics && ctx->screen->info.family >= CHIP_ALDEBARAN))
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.local_invocation_ids);
       else
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 3, AC_ARG_INT, &ctx->args.local_invocation_ids);
