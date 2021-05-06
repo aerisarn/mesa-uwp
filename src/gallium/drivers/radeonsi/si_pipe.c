@@ -876,6 +876,8 @@ static void si_destroy_screen(struct pipe_screen *pscreen)
 
    disk_cache_destroy(sscreen->disk_shader_cache);
    util_live_shader_cache_deinit(&sscreen->live_shader_cache);
+   util_idalloc_mt_fini(&sscreen->buffer_ids);
+
    sscreen->ws->destroy(sscreen->ws);
    FREE(sscreen);
 }
@@ -1027,6 +1029,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       return NULL;
    }
 
+   util_idalloc_mt_init_tc(&sscreen->buffer_ids);
 
    /* Set functions first. */
    sscreen->b.context_create = si_pipe_create_context;

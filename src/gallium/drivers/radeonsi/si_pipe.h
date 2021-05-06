@@ -666,6 +666,8 @@ struct si_screen {
    unsigned ps_wave_size;
    unsigned ge_wave_size;
    unsigned ngg_subgroup_size;
+
+   struct util_idalloc_mt buffer_ids;
 };
 
 struct si_sampler_view {
