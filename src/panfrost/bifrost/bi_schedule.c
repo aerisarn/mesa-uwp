@@ -329,6 +329,15 @@ bi_back_to_back(bi_block *block)
 
 /* Scheduler predicates */
 
+/* IADDC.i32 can implement IADD.u32 if no saturation or swizzling is in use */
+static bool
+bi_can_iaddc(bi_instr *ins)
+{
+        return (ins->op == BI_OPCODE_IADD_U32 && !ins->saturate &&
+                ins->src[0].swizzle == BI_SWIZZLE_H01 &&
+                ins->src[1].swizzle == BI_SWIZZLE_H01);
+}
+
 ASSERTED static bool
 bi_can_fma(bi_instr *ins)
 {
@@ -337,6 +346,10 @@ bi_can_fma(bi_instr *ins)
         if (ins->op == BI_OPCODE_V2F32_TO_V2F16 &&
                         !bi_is_word_equiv(ins->src[0], ins->src[1]))
                 return false;
+
+        /* +IADD.i32 -> *IADDC.i32 */
+        if (bi_can_iaddc(ins))
+                return true;
 
         /* TODO: some additional fp16 constraints */
         return bi_opcode_props[ins->op].fma;
@@ -902,6 +915,13 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
         BITSET_CLEAR(st.worklist, idx);
         bi_update_worklist(st, idx);
         bi_pop_instr(clause, tuple, instr, live_after_temp, fma);
+
+        /* Fixups */
+        if (instr->op == BI_OPCODE_IADD_U32 && fma) {
+                assert(bi_can_iaddc(instr));
+                instr->op = BI_OPCODE_IADDC_I32;
+                instr->src[2] = bi_zero();
+        }
 
         return instr;
 }
