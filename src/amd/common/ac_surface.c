@@ -1371,9 +1371,19 @@ static int gfx9_get_preferred_swizzle_mode(ADDR_HANDLE addrlib, const struct rad
    sin.resourceType = in->resourceType;
    sin.format = in->format;
    sin.resourceLoction = ADDR_RSRC_LOC_INVIS;
+
    /* TODO: We could allow some of these: */
    sin.forbiddenBlock.micro = 1; /* don't allow the 256B swizzle modes */
-   sin.forbiddenBlock.var = 1;   /* don't allow the variable-sized swizzle modes */
+
+   if (info->chip_class >= GFX11) {
+      if ((1 << G_0098F8_NUM_PIPES(info->gb_addr_config)) <= 16) {
+         sin.forbiddenBlock.gfx11.thin256KB = 1;
+         sin.forbiddenBlock.gfx11.thick256KB = 1;
+      }
+   } else {
+      sin.forbiddenBlock.var = 1;   /* don't allow the variable-sized swizzle modes */
+   }
+
    sin.bpp = in->bpp;
    sin.width = in->width;
    sin.height = in->height;
@@ -1394,6 +1404,10 @@ static int gfx9_get_preferred_swizzle_mode(ADDR_HANDLE addrlib, const struct rad
    if (sin.flags.prt) {
       sin.forbiddenBlock.macroThin4KB = 1;
       sin.forbiddenBlock.macroThick4KB = 1;
+      if (info->chip_class >= GFX11) {
+         sin.forbiddenBlock.gfx11.thin256KB = 1;
+         sin.forbiddenBlock.gfx11.thick256KB = 1;
+      }
       sin.forbiddenBlock.linear = 1;
    }
 
@@ -1437,6 +1451,10 @@ static int gfx9_get_preferred_swizzle_mode(ADDR_HANDLE addrlib, const struct rad
 
 static bool is_dcc_supported_by_CB(const struct radeon_info *info, unsigned sw_mode)
 {
+   if (info->chip_class >= GFX11)
+      return sw_mode == ADDR_SW_64KB_Z_X || sw_mode == ADDR_SW_64KB_R_X ||
+             sw_mode == ADDR_SW_256KB_Z_X || sw_mode == ADDR_SW_256KB_R_X;
+
    if (info->chip_class >= GFX10)
       return sw_mode == ADDR_SW_64KB_Z_X || sw_mode == ADDR_SW_64KB_R_X;
 
@@ -1543,6 +1561,7 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
       return true;
    case GFX10:
    case GFX10_3:
+   case GFX11:
       /* DCN requires INDEPENDENT_128B_BLOCKS = 0 only on Navi1x. */
       if (info->chip_class == GFX10 && surf->u.gfx9.color.dcc.independent_128B_blocks)
          return false;
@@ -1938,8 +1957,9 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          }
       }
 
-      /* FMASK */
-      if (in->numSamples > 1 && info->has_graphics && !(surf->flags & RADEON_SURF_NO_FMASK)) {
+      /* FMASK (it doesn't exist on GFX11) */
+      if (info->chip_class <= GFX10_3 && info->has_graphics &&
+          in->numSamples > 1 && !(surf->flags & RADEON_SURF_NO_FMASK)) {
          ADDR2_COMPUTE_FMASK_INFO_INPUT fin = {0};
          ADDR2_COMPUTE_FMASK_INFO_OUTPUT fout = {0};
 
@@ -1993,8 +2013,9 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          }
       }
 
-      /* CMASK -- on GFX10 only for FMASK */
-      if (in->swizzleMode != ADDR_SW_LINEAR && in->resourceType == ADDR_RSRC_TEX_2D &&
+      /* CMASK -- on GFX10 only for FMASK (and it doesn't exist on GFX11) */
+      if (info->chip_class <= GFX10_3 && info->has_graphics &&
+          in->swizzleMode != ADDR_SW_LINEAR && in->resourceType == ADDR_RSRC_TEX_2D &&
           ((info->chip_class <= GFX9 && in->numSamples == 1 && in->flags.metaPipeUnaligned == 0 &&
             in->flags.metaRbUnaligned == 0) ||
            (surf->fmask_size && in->numSamples >= 2))) {
@@ -2348,6 +2369,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    case ADDR_SW_64KB_S_T:
    case ADDR_SW_4KB_S_X:
    case ADDR_SW_64KB_S_X:
+   case ADDR_SW_256KB_S_X:
       surf->micro_tile_mode = RADEON_MICRO_MODE_STANDARD;
       break;
 
@@ -2359,6 +2381,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    case ADDR_SW_64KB_D_T:
    case ADDR_SW_4KB_D_X:
    case ADDR_SW_64KB_D_X:
+   case ADDR_SW_256KB_D_X:
       surf->micro_tile_mode = RADEON_MICRO_MODE_DISPLAY;
       break;
 
@@ -2369,7 +2392,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    case ADDR_SW_64KB_R_T:
    case ADDR_SW_4KB_R_X:
    case ADDR_SW_64KB_R_X:
-   case ADDR_SW_VAR_R_X:
+   case ADDR_SW_256KB_R_X:
       /* The rotated micro tile mode doesn't work if both CMASK and RB+ are
        * used at the same time. We currently do not use rotated
        * in gfx9.
@@ -2384,7 +2407,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    case ADDR_SW_64KB_Z_T:
    case ADDR_SW_4KB_Z_X:
    case ADDR_SW_64KB_Z_X:
-   case ADDR_SW_VAR_Z_X:
+   case ADDR_SW_256KB_Z_X:
       surf->micro_tile_mode = RADEON_MICRO_MODE_DEPTH;
       break;
 
@@ -2692,6 +2715,7 @@ bool ac_surface_set_umd_metadata(const struct radeon_info *info, struct radeon_s
 
       case GFX10:
       case GFX10_3:
+      case GFX11:
          surf->meta_offset =
             ((uint64_t)G_00A018_META_DATA_ADDRESS_LO(desc[6]) << 8) | ((uint64_t)desc[7] << 16);
          surf->u.gfx9.color.dcc.pipe_aligned = G_00A018_META_PIPE_ALIGNED(desc[6]);
@@ -2733,6 +2757,7 @@ void ac_surface_get_umd_metadata(const struct radeon_info *info, struct radeon_s
       break;
    case GFX10:
    case GFX10_3:
+   case GFX11:
       desc[6] &= C_00A018_META_DATA_ADDRESS_LO;
       desc[6] |= S_00A018_META_DATA_ADDRESS_LO(surf->meta_offset >> 8);
       desc[7] = surf->meta_offset >> 16;
@@ -2788,7 +2813,8 @@ static uint32_t ac_surface_get_gfx9_pitch_align(struct radeon_surf *surf)
    case ADDR_SW_64KB_Z_T:
    case ADDR_SW_64KB_Z_X:
       return 256 >> bpe_shift;
-   case ADDR_SW_VAR_Z_X:
+   case ADDR_SW_256KB_Z_X:
+      return 512 >> bpe_shift;
    default:
       return 1; /* TODO */
    }
