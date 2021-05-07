@@ -813,9 +813,7 @@ out:
    _mesa_hash_table_insert_pre_hashed(pool->desc_sets, hash, &zds->key, zds);
 quick_out:
    zds->punted = zds->invalid = false;
-   if (batch_add_desc_set(batch, zds)) {
-      batch->state->descs_used += pool->key.layout->num_descriptors;
-   }
+   batch_add_desc_set(batch, zds);
    if (push_set)
       ctx->dd->last_set[is_compute] = zds;
    else

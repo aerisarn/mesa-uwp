@@ -82,7 +82,6 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    bs->flush_res = NULL;
 
-   bs->descs_used = 0;
    ctx->resource_size -= bs->resource_size;
    bs->resource_size = 0;
 

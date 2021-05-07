@@ -69,8 +69,6 @@ struct zink_batch_state {
 
    struct zink_resource *flush_res;
 
-   unsigned short descs_used; //number of descriptors currently allocated
-
    struct set *fbs;
    struct set *programs;
 
