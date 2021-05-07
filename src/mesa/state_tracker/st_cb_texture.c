@@ -3162,7 +3162,7 @@ st_TestProxyTexImage(struct gl_context *ctx, GLenum target,
       }
       else {
          /* assume a full set of mipmaps */
-         pt.last_level = util_logbase2(MAX3(width, height, depth));
+         pt.last_level = util_logbase2(MAX4(width, height, depth, 0));
       }
 
       return st->screen->can_create_resource(st->screen, &pt);
