@@ -5075,7 +5075,7 @@ radv_pipeline_generate_vgt_shader_config(struct radeon_cmdbuf *ctx_cs,
 
       if (pipeline->shaders[MESA_SHADER_GEOMETRY]) {
          vs_size = gs_size = pipeline->shaders[MESA_SHADER_GEOMETRY]->info.wave_size;
-         if (pipeline->gs_copy_shader)
+         if (radv_pipeline_has_gs_copy_shader(pipeline))
             vs_size = pipeline->gs_copy_shader->info.wave_size;
       } else if (pipeline->shaders[MESA_SHADER_TESS_EVAL])
          vs_size = pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.wave_size;
