@@ -120,10 +120,18 @@ log_error(validate_state *state, const char *cond, const char *file, int line)
    _mesa_hash_table_insert(state->errors, obj, msg);
 }
 
-#define validate_assert(state, cond) do {             \
-      if (!(cond))                                    \
-         log_error(state, #cond, __FILE__, __LINE__); \
-   } while (0)
+static bool
+validate_assert_impl(validate_state *state, bool cond, const char *str,
+                     const char *file, unsigned line)
+{
+   if (!cond)
+      log_error(state, str, file, line);
+   return cond;
+}
+
+#define validate_assert(state, cond) \
+   validate_assert_impl(state, (cond), #cond, __FILE__, __LINE__)
+
 
 static void validate_src(nir_src *src, validate_state *state,
                          unsigned bit_sizes, unsigned num_components);
