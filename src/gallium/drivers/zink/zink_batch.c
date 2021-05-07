@@ -566,18 +566,14 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
       }
        }
    if (write) {
-      if (res->obj->writes.usage != batch->state->fence.batch_id) {
-         if (stencil)
-            zink_batch_usage_set(&stencil->obj->writes, batch->state->fence.batch_id);
-         zink_batch_usage_set(&res->obj->writes, batch->state->fence.batch_id);
-      }
+      if (stencil)
+         zink_batch_usage_set(&stencil->obj->writes, batch->state->fence.batch_id);
+      zink_batch_usage_set(&res->obj->writes, batch->state->fence.batch_id);
       res->scanout_dirty = !!res->scanout_obj;
    } else {
-      if (res->obj->reads.usage != batch->state->fence.batch_id) {
-         if (stencil)
-            zink_batch_usage_set(&stencil->obj->reads, batch->state->fence.batch_id);
-         zink_batch_usage_set(&res->obj->reads, batch->state->fence.batch_id);
-      }
+      if (stencil)
+         zink_batch_usage_set(&stencil->obj->reads, batch->state->fence.batch_id);
+      zink_batch_usage_set(&res->obj->reads, batch->state->fence.batch_id);
    }
    /* multiple array entries are fine */
    if (res->obj->persistent_maps)
