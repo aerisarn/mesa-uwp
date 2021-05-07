@@ -112,8 +112,9 @@ cache_or_free_mem(struct zink_screen *screen, struct zink_resource_object *obj)
       struct util_dynarray *array = he->data;
       struct mem_key *mkey = (void*)he->key;
 
+      unsigned seen = mkey->seen_count;
       mkey->seen_count--;
-      if (util_dynarray_num_elements(array, struct mem_cache_entry) < MIN2(mkey->seen_count, 5)) {
+      if (util_dynarray_num_elements(array, struct mem_cache_entry) < seen) {
          struct mem_cache_entry mc = { obj->mem, obj->map };
          util_dynarray_append(array, struct mem_cache_entry, mc);
          simple_mtx_unlock(&screen->mem_cache_mtx);
