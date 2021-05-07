@@ -91,12 +91,8 @@ nouveau_buffer_release_gpu_storage(struct nv04_resource *buf)
 {
    assert(!(buf->status & NOUVEAU_BUFFER_STATUS_USER_PTR));
 
-   if (buf->fence && buf->fence->state < NOUVEAU_FENCE_STATE_FLUSHED) {
-      nouveau_fence_work(buf->fence, nouveau_fence_unref_bo, buf->bo);
-      buf->bo = NULL;
-   } else {
-      nouveau_bo_ref(NULL, &buf->bo);
-   }
+   nouveau_fence_work(buf->fence, nouveau_fence_unref_bo, buf->bo);
+   buf->bo = NULL;
 
    if (buf->mm)
       release_allocation(&buf->mm, buf->fence);
