@@ -183,7 +183,7 @@ zink_batch_usage_unset(struct zink_batch_usage *u, uint32_t batch_id)
 static inline void
 zink_batch_usage_set(struct zink_batch_usage *u, uint32_t batch_id)
 {
-   p_atomic_set(&u->usage, batch_id);
+   u->usage = batch_id;
 }
 
 static inline bool
