@@ -77,8 +77,8 @@ debug_describe_zink_resource_object(char *buf, const struct zink_resource_object
 static uint32_t
 get_resource_usage(struct zink_resource *res)
 {
-   uint32_t reads = p_atomic_read(&res->obj->reads.usage);
-   uint32_t writes = p_atomic_read(&res->obj->writes.usage);
+   bool reads = zink_batch_usage_exists(&res->obj->reads);
+   bool writes = zink_batch_usage_exists(&res->obj->writes);
    uint32_t batch_uses = 0;
    if (reads)
       batch_uses |= ZINK_RESOURCE_ACCESS_READ;
