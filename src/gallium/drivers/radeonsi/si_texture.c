@@ -1991,6 +1991,10 @@ bool vi_dcc_formats_compatible(struct si_screen *sscreen, enum pipe_format forma
 {
    const struct util_format_description *desc1, *desc2;
 
+   /* All formats are compatible on GFX11. */
+   if (sscreen->info.chip_class >= GFX11)
+      return true;
+
    /* No format change - exit early. */
    if (format1 == format2)
       return true;
