@@ -114,7 +114,8 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
                  */
                 if (type == nir_type_float &&
                     (var->data.precision == GLSL_PRECISION_MEDIUM ||
-                     var->data.precision == GLSL_PRECISION_LOW)) {
+                     var->data.precision == GLSL_PRECISION_LOW) &&
+                    !s->info.has_transform_feedback_varyings) {
                         type |= 16;
                 } else {
                         type |= 32;
