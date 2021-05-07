@@ -420,7 +420,7 @@ nvc0_hw_get_query_result_resource(struct nvc0_context *nvc0,
    /* If the fence guarding this query has not been emitted, that makes a lot
     * of the following logic more complicated.
     */
-   if (hq->is64bit && hq->fence->state < NOUVEAU_FENCE_STATE_EMITTED)
+   if (hq->is64bit)
       nouveau_fence_emit(hq->fence);
 
    /* We either need to compute a 32- or 64-bit difference between 2 values,
@@ -642,7 +642,7 @@ nvc0_hw_query_fifo_wait(struct nvc0_context *nvc0, struct nvc0_query *q)
    unsigned offset = hq->offset;
 
    /* ensure the query's fence has been emitted */
-   if (hq->is64bit && hq->fence->state < NOUVEAU_FENCE_STATE_EMITTED)
+   if (hq->is64bit)
       nouveau_fence_emit(hq->fence);
 
    PUSH_SPACE(push, 5);
