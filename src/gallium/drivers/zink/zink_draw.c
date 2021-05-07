@@ -370,7 +370,7 @@ update_barriers(struct zink_context *ctx, bool is_compute)
          else {
             u_foreach_bit(stage, res->bind_history) {
                if ((1 << stage) != ZINK_RESOURCE_USAGE_STREAMOUT)
-                  pipeline |= zink_pipeline_flags_from_stage(zink_shader_stage(stage));
+                  pipeline |= zink_pipeline_flags_from_pipe_stage(stage);
             }
          }
          if (res->base.b.target == PIPE_BUFFER)

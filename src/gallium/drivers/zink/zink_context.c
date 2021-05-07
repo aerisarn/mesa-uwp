@@ -1010,7 +1010,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
          if (!ctx->descriptor_refs_dirty[shader == PIPE_SHADER_COMPUTE])
             zink_batch_reference_resource_rw(&ctx->batch, new_res, false);
          zink_fake_buffer_barrier(new_res, VK_ACCESS_UNIFORM_READ_BIT,
-                                      zink_pipeline_flags_from_stage(zink_shader_stage(shader)));
+                                      zink_pipeline_flags_from_pipe_stage(shader));
       }
       update |= ((index || screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) && ctx->ubos[shader][index].buffer_offset != offset) ||
                 !!res != !!buffer || (res && res->obj->buffer != new_res->obj->buffer) ||
@@ -1104,7 +1104,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          util_range_add(&new_res->base.b, &new_res->valid_buffer_range, ssbo->buffer_offset,
                         ssbo->buffer_offset + ssbo->buffer_size);
          zink_fake_buffer_barrier(new_res, access,
-                                      zink_pipeline_flags_from_stage(zink_shader_stage(p_stage)));
+                                      zink_pipeline_flags_from_pipe_stage(p_stage));
          update = true;
          max_slot = MAX2(max_slot, start_slot + i);
       } else {
@@ -1236,7 +1236,7 @@ zink_set_shader_images(struct pipe_context *pctx,
             util_range_add(&res->base.b, &res->valid_buffer_range, images[i].u.buf.offset,
                            images[i].u.buf.offset + images[i].u.buf.size);
             zink_fake_buffer_barrier(res, access,
-                                         zink_pipeline_flags_from_stage(zink_shader_stage(p_stage)));
+                                         zink_pipeline_flags_from_pipe_stage(p_stage));
          } else {
             struct pipe_surface tmpl = {0};
             tmpl.format = images[i].format;
@@ -1327,7 +1327,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
                }
             }
             zink_fake_buffer_barrier(res, VK_ACCESS_SHADER_READ_BIT,
-                                         zink_pipeline_flags_from_stage(zink_shader_stage(shader_type)));
+                                         zink_pipeline_flags_from_pipe_stage(shader_type));
             if (!a || a->buffer_view->buffer_view != b->buffer_view->buffer_view)
                update = true;
          } else if (!res->obj->is_buffer) {
@@ -3116,7 +3116,7 @@ check_and_rebind_buffer(struct zink_context *ctx, struct zink_resource *res, uns
    if (is_write)
       access |= VK_ACCESS_SHADER_WRITE_BIT;
    zink_resource_buffer_barrier(ctx, NULL, res, access,
-                                zink_pipeline_flags_from_stage(zink_shader_stage(shader)));
+                                zink_pipeline_flags_from_pipe_stage(shader));
    return true;
 }
 
