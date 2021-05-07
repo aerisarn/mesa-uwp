@@ -181,9 +181,9 @@ zink_batch_usage_unset(struct zink_batch_usage *u, struct zink_batch_state *bs)
 }
 
 static inline void
-zink_batch_usage_set(struct zink_batch_usage *u, uint32_t batch_id)
+zink_batch_usage_set(struct zink_batch_usage *u, struct zink_batch_state *bs)
 {
-   u->usage = batch_id;
+   u->usage = bs->fence.batch_id;
 }
 
 static inline bool

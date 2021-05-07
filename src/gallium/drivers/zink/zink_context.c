@@ -539,7 +539,7 @@ zink_bind_sampler_states(struct pipe_context *pctx,
       ctx->sampler_states[shader][start_slot + i] = state;
       ctx->di.textures[shader][start_slot + i].sampler = state ? state->sampler : VK_NULL_HANDLE;
       if (state)
-         zink_batch_usage_set(&state->batch_uses, ctx->curr_batch);
+         zink_batch_usage_set(&state->batch_uses, ctx->batch.state);
    }
    ctx->di.num_samplers[shader] = start_slot + num_samplers;
 }
@@ -1741,7 +1741,7 @@ update_resource_refs_for_stage(struct zink_context *ctx, enum pipe_shader_type s
             struct zink_sampler_state *sampler_state = ctx->sampler_states[stage][j];
             struct zink_image_view *iv = &ctx->image_views[stage][j];
             if (sampler_state && i == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW && j <= ctx->di.num_samplers[stage])
-               zink_batch_usage_set(&sampler_state->batch_uses, ctx->curr_batch);
+               zink_batch_usage_set(&sampler_state->batch_uses, ctx->batch.state);
             if (sv && i == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW && j <= ctx->di.num_sampler_views[stage])
                zink_batch_reference_sampler_view(batch, sv);
             else if (i == ZINK_DESCRIPTOR_TYPE_IMAGE && j <= ctx->di.num_images[stage])

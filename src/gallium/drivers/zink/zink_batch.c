@@ -567,13 +567,13 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
        }
    if (write) {
       if (stencil)
-         zink_batch_usage_set(&stencil->obj->writes, batch->state->fence.batch_id);
-      zink_batch_usage_set(&res->obj->writes, batch->state->fence.batch_id);
+         zink_batch_usage_set(&stencil->obj->writes, batch->state);
+      zink_batch_usage_set(&res->obj->writes, batch->state);
       res->scanout_dirty = !!res->scanout_obj;
    } else {
       if (stencil)
-         zink_batch_usage_set(&stencil->obj->reads, batch->state->fence.batch_id);
-      zink_batch_usage_set(&res->obj->reads, batch->state->fence.batch_id);
+         zink_batch_usage_set(&stencil->obj->reads, batch->state);
+      zink_batch_usage_set(&res->obj->reads, batch->state);
    }
    /* multiple array entries are fine */
    if (res->obj->persistent_maps)
@@ -590,7 +590,7 @@ batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct z
       return false;
    _mesa_set_search_and_add(s, ptr, &found);
    assert(!found);
-   zink_batch_usage_set(u, batch->state->fence.batch_id);
+   zink_batch_usage_set(u, batch->state);
    return true;
 }
 

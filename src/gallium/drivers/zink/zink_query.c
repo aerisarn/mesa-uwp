@@ -684,7 +684,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    if (needs_stats_list(q))
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
    p_atomic_inc(&q->fences);
-   zink_batch_usage_set(&q->batch_id, batch->state->fence.batch_id);
+   zink_batch_usage_set(&q->batch_id, batch->state);
    _mesa_set_add(batch->state->active_queries, q);
 }
 
@@ -718,7 +718,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
          reset_pool(ctx, batch, q);
       vkCmdWriteTimestamp(batch->state->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           q->query_pool, q->curr_query);
-      zink_batch_usage_set(&q->batch_id, batch->state->fence.batch_id);
+      zink_batch_usage_set(&q->batch_id, batch->state);
    } else if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED ||
             q->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
             q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
