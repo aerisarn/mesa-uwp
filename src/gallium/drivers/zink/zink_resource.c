@@ -1204,7 +1204,7 @@ zink_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *buffer,
    struct pipe_box box;
    uint8_t *map = NULL;
 
-   usage |= PIPE_MAP_WRITE;
+   usage |= PIPE_MAP_WRITE | PIPE_MAP_ONCE;
 
    if (!(usage & PIPE_MAP_DIRECTLY))
       usage |= PIPE_MAP_DISCARD_RANGE;
