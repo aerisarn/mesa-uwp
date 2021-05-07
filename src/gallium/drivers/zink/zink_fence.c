@@ -31,21 +31,6 @@
 #include "util/set.h"
 #include "util/u_memory.h"
 
-
-void
-zink_fence_clear_resources(struct zink_screen *screen, struct zink_fence *fence)
-{
-   simple_mtx_lock(&fence->resource_mtx);
-   /* unref all used resources */
-   set_foreach_remove(fence->resources, entry) {
-      struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
-      zink_batch_usage_unset(&obj->reads, zink_batch_state(fence));
-      zink_batch_usage_unset(&obj->writes, zink_batch_state(fence));
-      zink_resource_object_reference(screen, &obj, NULL);
-   }
-   simple_mtx_unlock(&fence->resource_mtx);
-}
-
 static void
 destroy_fence(struct zink_screen *screen, struct zink_tc_fence *mfence)
 {
@@ -160,7 +145,6 @@ zink_vkfence_wait(struct zink_screen *screen, struct zink_fence *fence, uint64_t
       p_atomic_set(&fence->completed, true);
       zink_batch_state(fence)->usage.usage = 0;
       zink_screen_update_last_finished(screen, fence->batch_id);
-      zink_fence_clear_resources(screen, fence);
    }
    return success;
 }

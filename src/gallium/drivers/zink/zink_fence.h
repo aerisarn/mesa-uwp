@@ -51,8 +51,6 @@ struct zink_tc_fence {
 struct zink_fence {
    VkFence fence;
    uint32_t batch_id;
-   simple_mtx_t resource_mtx;
-   struct set *resources; /* resources need access removed asap, so they're on the fence */
    bool submitted;
    bool completed;
 };

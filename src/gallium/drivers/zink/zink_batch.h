@@ -27,6 +27,7 @@
 #include <vulkan/vulkan.h>
 
 #include "util/list.h"
+#include "util/set.h"
 #include "util/u_dynarray.h"
 
 #include "zink_fence.h"
@@ -77,6 +78,7 @@ struct zink_batch_state {
    struct set *fbs;
    struct set *programs;
 
+   struct set *resources;
    struct set *surfaces;
    struct set *bufferviews;
 

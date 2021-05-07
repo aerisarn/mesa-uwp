@@ -33,7 +33,13 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    if (vkResetCommandPool(screen->dev, bs->cmdpool, 0) != VK_SUCCESS)
       debug_printf("vkResetCommandPool failed\n");
 
-   zink_fence_clear_resources(screen, &bs->fence);
+   /* unref all used resources */
+   set_foreach_remove(bs->resources, entry) {
+      struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
+      zink_batch_usage_unset(&obj->reads, bs);
+      zink_batch_usage_unset(&obj->writes, bs);
+      zink_resource_object_reference(screen, &obj, NULL);
+   }
 
    set_foreach_remove(bs->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
@@ -149,7 +155,6 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    _mesa_set_destroy(bs->programs, NULL);
    _mesa_set_destroy(bs->active_queries, NULL);
    screen->batch_descriptor_deinit(screen, bs);
-   simple_mtx_destroy(&bs->fence.resource_mtx);
    ralloc_free(bs);
 }
 
@@ -187,7 +192,7 @@ create_batch_state(struct zink_context *ctx)
    pipe_reference_init(&bs->reference, 1);
 
    SET_CREATE_OR_FAIL(bs->fbs);
-   SET_CREATE_OR_FAIL(bs->fence.resources);
+   SET_CREATE_OR_FAIL(bs->resources);
    SET_CREATE_OR_FAIL(bs->surfaces);
    SET_CREATE_OR_FAIL(bs->bufferviews);
    SET_CREATE_OR_FAIL(bs->programs);
@@ -207,7 +212,6 @@ create_batch_state(struct zink_context *ctx)
    if (vkCreateFence(screen->dev, &fci, NULL, &bs->fence.fence) != VK_SUCCESS)
       goto fail;
 
-   simple_mtx_init(&bs->fence.resource_mtx, mtx_plain);
    util_queue_fence_init(&bs->flush_completed);
 
    return bs;
@@ -579,7 +583,7 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    if (!zink_batch_usage_matches(res->obj->reads, batch->state) &&
        !zink_batch_usage_matches(res->obj->writes, batch->state)) {
       bool found = false;
-      _mesa_set_search_and_add(batch->state->fence.resources, res->obj, &found);
+      _mesa_set_search_and_add(batch->state->resources, res->obj, &found);
       if (!found) {
          pipe_reference(NULL, &res->obj->reference);
          if (!batch->last_batch_usage || res->obj->reads != batch->last_batch_usage)
