@@ -74,7 +74,7 @@ struct MoveState {
    /* for moving instructions after the first use of the current instruction upwards */
    void upwards_init(int source_idx, bool improved_rar);
    bool upwards_check_deps();
-   void upwards_set_insert_idx(int before);
+   void upwards_update_insert_idx();
    MoveResult upwards_move();
    void upwards_skip();
 
@@ -261,10 +261,10 @@ bool MoveState::upwards_check_deps()
    return true;
 }
 
-void MoveState::upwards_set_insert_idx(int before)
+void MoveState::upwards_update_insert_idx()
 {
-   insert_idx = before;
-   total_demand = register_demand[before - 1];
+   insert_idx = source_idx;
+   total_demand = register_demand[insert_idx];
 }
 
 MoveResult MoveState::upwards_move()
@@ -635,7 +635,7 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
 
       if (is_dependency) {
          if (!found_dependency) {
-            ctx.mv.upwards_set_insert_idx(candidate_idx);
+            ctx.mv.upwards_update_insert_idx();
             init_hazard_query(&hq);
             found_dependency = true;
          }
@@ -776,7 +776,7 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       is_dependency |= !found_dependency && !ctx.mv.upwards_check_deps();
       if (is_dependency) {
          if (!found_dependency) {
-            ctx.mv.upwards_set_insert_idx(candidate_idx);
+            ctx.mv.upwards_update_insert_idx();
             init_hazard_query(&indep_hq);
             found_dependency = true;
          }
