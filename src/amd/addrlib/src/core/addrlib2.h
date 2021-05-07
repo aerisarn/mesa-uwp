@@ -104,6 +104,8 @@ enum AddrBlockType
     AddrBlockThickVar  = 7, // Resource uses thick var block
     AddrBlockMaxTiledType,
 
+    AddrBlockThin256KB  = AddrBlockThinVar,
+    AddrBlockThick256KB = AddrBlockThickVar,
 };
 
 enum AddrSwSet
