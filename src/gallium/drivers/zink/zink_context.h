@@ -141,16 +141,15 @@ struct zink_context {
 
    struct pipe_device_reset_callback reset;
 
-   bool is_device_lost;
-
    uint32_t curr_batch; //the current batch id
-   struct zink_batch batch;
+
    simple_mtx_t batch_mtx;
    struct zink_fence *deferred_fence;
    struct zink_fence *last_fence; //the last command buffer submitted
    struct hash_table batch_states; //submitted batch states
    struct util_dynarray free_batch_states; //unused batch states
    VkDeviceSize resource_size; //the accumulated size of resources in submitted buffers
+   struct zink_batch batch;
 
    unsigned shader_has_inlinable_uniforms_mask;
    unsigned inlinable_uniforms_valid_mask;
@@ -166,9 +165,6 @@ struct zink_context {
    struct zink_vertex_elements_state *element_state;
    struct zink_rasterizer_state *rast_state;
    struct zink_depth_stencil_alpha_state *dsa_state;
-   bool rast_state_changed : 1;
-   bool dsa_state_changed : 1;
-   bool stencil_ref_changed : 1;
 
    struct hash_table desc_set_layouts[ZINK_DESCRIPTOR_TYPES];
    bool pipeline_changed[2]; //gfx, compute
@@ -274,6 +270,11 @@ struct zink_context {
    bool xfb_barrier;
    bool first_frame_done;
    bool have_timelines;
+
+   bool is_device_lost;
+   bool rast_state_changed : 1;
+   bool dsa_state_changed : 1;
+   bool stencil_ref_changed : 1;
 };
 
 static inline struct zink_context *
