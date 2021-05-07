@@ -16,6 +16,12 @@
 struct vn_present_src_attachment {
    bool acquire;
    uint32_t index;
+
+   VkPipelineStageFlags src_stage_mask;
+   VkAccessFlags src_access_mask;
+
+   VkPipelineStageFlags dst_stage_mask;
+   VkAccessFlags dst_access_mask;
 };
 
 struct vn_render_pass {

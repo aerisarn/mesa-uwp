@@ -88,6 +88,31 @@ vn_render_pass_replace_present_src2(struct vn_render_pass *pass,
                        create_info->attachmentCount, out_atts);
 }
 
+static void
+vn_render_pass_setup_present_src_barriers(struct vn_render_pass *pass)
+{
+   /* TODO parse VkSubpassDependency for more accurate barriers */
+   for (uint32_t i = 0; i < pass->present_src_count; i++) {
+      struct vn_present_src_attachment *att =
+         &pass->present_src_attachments[i];
+
+      if (att->acquire) {
+         att->src_stage_mask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+         att->src_access_mask = 0;
+
+         att->dst_stage_mask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+         att->dst_access_mask =
+            VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+      } else {
+         att->src_stage_mask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+         att->src_access_mask = VK_ACCESS_MEMORY_WRITE_BIT;
+
+         att->dst_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+         att->dst_access_mask = 0;
+      }
+   }
+}
+
 static struct vn_render_pass *
 vn_render_pass_create(struct vn_device *dev,
                       uint32_t acquire_count,
@@ -144,6 +169,7 @@ vn_CreateRenderPass(VkDevice device,
       }
 
       vn_render_pass_replace_present_src(pass, pCreateInfo, temp_atts);
+      vn_render_pass_setup_present_src_barriers(pass);
 
       local_pass_info = *pCreateInfo;
       local_pass_info.pAttachments = temp_atts;
@@ -193,6 +219,7 @@ vn_CreateRenderPass2(VkDevice device,
       }
 
       vn_render_pass_replace_present_src2(pass, pCreateInfo, temp_atts);
+      vn_render_pass_setup_present_src_barriers(pass);
 
       local_pass_info = *pCreateInfo;
       local_pass_info.pAttachments = temp_atts;
