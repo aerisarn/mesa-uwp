@@ -966,11 +966,14 @@ void add_branch_code(exec_ctx& ctx, Block* block)
          transition_to_Exact(ctx, bld, idx);
 
       uint8_t mask_type = ctx.info[idx].exec.back().second & (mask_type_wqm | mask_type_exact);
+      if (ctx.info[idx].exec.back().first.constantEquals(-1u)) {
+         bld.pseudo(aco_opcode::p_parallelcopy, Definition(exec, bld.lm), cond);
+      } else {
+         Temp old_exec = bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.def(s1, scc),
+                                 Definition(exec, bld.lm), cond, Operand(exec, bld.lm));
 
-      Temp old_exec = bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.def(s1, scc),
-                               Definition(exec, bld.lm), cond, Operand(exec, bld.lm));
-
-      ctx.info[idx].exec.back().first = Operand(old_exec);
+         ctx.info[idx].exec.back().first = Operand(old_exec);
+      }
 
       /* add next current exec to the stack */
       ctx.info[idx].exec.emplace_back(Operand(bld.lm), mask_type);
