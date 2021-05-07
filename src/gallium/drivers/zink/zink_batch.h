@@ -200,4 +200,9 @@ zink_batch_usage_exists(struct zink_batch_usage *u)
    return !!usage;
 }
 
+bool
+zink_batch_usage_check_completion(struct zink_context *ctx, const struct zink_batch_usage *u);
+
+void
+zink_batch_usage_wait(struct zink_context *ctx, const struct zink_batch_usage *u);
 #endif

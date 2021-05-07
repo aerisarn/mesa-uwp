@@ -655,3 +655,19 @@ zink_batch_reference_image_view(struct zink_batch *batch,
    else
       zink_batch_reference_surface(batch, image_view->surface);
 }
+
+bool
+zink_batch_usage_check_completion(struct zink_context *ctx, const struct zink_batch_usage *u)
+{
+   if (!zink_batch_usage_exists(u))
+      return true;
+   return zink_check_batch_completion(ctx, u->usage);
+}
+
+void
+zink_batch_usage_wait(struct zink_context *ctx, const struct zink_batch_usage *u)
+{
+   if (!zink_batch_usage_exists(u))
+      return;
+   zink_wait_on_batch(ctx, u->usage);
+}
