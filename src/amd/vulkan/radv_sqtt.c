@@ -66,8 +66,7 @@ radv_emit_thread_trace_start(struct radv_device *device, struct radeon_cmdbuf *c
             cs, R_008D04_SQ_THREAD_TRACE_BUF0_SIZE,
             S_008D04_SIZE(shifted_size) | S_008D04_BASE_HI(shifted_va >> 32));
 
-         radeon_set_privileged_config_reg(cs, R_008D00_SQ_THREAD_TRACE_BUF0_BASE,
-                                          S_008D00_BASE_LO(shifted_va));
+         radeon_set_privileged_config_reg(cs, R_008D00_SQ_THREAD_TRACE_BUF0_BASE, shifted_va);
 
          radeon_set_privileged_config_reg(
             cs, R_008D14_SQ_THREAD_TRACE_MASK,
@@ -102,7 +101,7 @@ radv_emit_thread_trace_start(struct radv_device *device, struct radeon_cmdbuf *c
          radeon_set_uconfig_reg(cs, R_030CDC_SQ_THREAD_TRACE_BASE2,
                                 S_030CDC_ADDR_HI(shifted_va >> 32));
 
-         radeon_set_uconfig_reg(cs, R_030CC0_SQ_THREAD_TRACE_BASE, S_030CC0_ADDR(shifted_va));
+         radeon_set_uconfig_reg(cs, R_030CC0_SQ_THREAD_TRACE_BASE, shifted_va);
 
          radeon_set_uconfig_reg(cs, R_030CC4_SQ_THREAD_TRACE_SIZE, S_030CC4_SIZE(shifted_size));
 
@@ -128,8 +127,7 @@ radv_emit_thread_trace_start(struct radv_device *device, struct radeon_cmdbuf *c
          radeon_set_uconfig_reg(cs, R_030CD0_SQ_THREAD_TRACE_PERF_MASK,
                                 S_030CD0_SH0_MASK(0xffff) | S_030CD0_SH1_MASK(0xffff));
 
-         radeon_set_uconfig_reg(cs, R_030CE0_SQ_THREAD_TRACE_TOKEN_MASK2,
-                                S_030CE0_INST_MASK(0xffffffff));
+         radeon_set_uconfig_reg(cs, R_030CE0_SQ_THREAD_TRACE_TOKEN_MASK2, 0xffffffff);
 
          radeon_set_uconfig_reg(cs, R_030CEC_SQ_THREAD_TRACE_HIWATER, S_030CEC_HIWATER(4));
 
