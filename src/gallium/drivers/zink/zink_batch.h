@@ -187,10 +187,9 @@ zink_batch_usage_set(struct zink_batch_usage *u, struct zink_batch_state *bs)
 }
 
 static inline bool
-zink_batch_usage_matches(struct zink_batch_usage *u, uint32_t batch_id)
+zink_batch_usage_matches(const struct zink_batch_usage *u, const struct zink_batch_state *bs)
 {
-   uint32_t usage = p_atomic_read(&u->usage);
-   return usage == batch_id;
+   return u->usage == bs->fence.batch_id;
 }
 
 static inline bool

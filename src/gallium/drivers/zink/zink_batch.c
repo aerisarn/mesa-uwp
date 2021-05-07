@@ -547,20 +547,20 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
       zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
 
    /* if the resource already has usage of any sort set for this batch, we can skip hashing */
-   if (res->obj->reads.usage != batch->state->fence.batch_id &&
-       res->obj->writes.usage != batch->state->fence.batch_id) {
+   if (!zink_batch_usage_matches(&res->obj->reads, batch->state) &&
+       !zink_batch_usage_matches(&res->obj->writes, batch->state)) {
       bool found = false;
       _mesa_set_search_and_add(batch->state->fence.resources, res->obj, &found);
       if (!found) {
          pipe_reference(NULL, &res->obj->reference);
-         if (!batch->last_batch_id || !zink_batch_usage_matches(&res->obj->reads, batch->last_batch_id))
+         if (!batch->last_batch_id || res->obj->reads.usage != batch->last_batch_id)
             /* only add resource usage if it's "new" usage, though this only checks the most recent usage
              * and not all pending usages
              */
             batch->state->resource_size += res->obj->size;
          if (stencil) {
             pipe_reference(NULL, &stencil->obj->reference);
-            if (!batch->last_batch_id || !zink_batch_usage_matches(&stencil->obj->reads, batch->last_batch_id))
+            if (!batch->last_batch_id || stencil->obj->reads.usage != batch->last_batch_id)
                batch->state->resource_size += stencil->obj->size;
          }
       }

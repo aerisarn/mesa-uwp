@@ -825,7 +825,7 @@ init_mem_range(struct zink_screen *screen, struct zink_resource *res, VkDeviceSi
 bool
 zink_resource_has_curr_read_usage(struct zink_context *ctx, struct zink_resource *res)
 {
-   return zink_batch_usage_matches(&res->obj->reads, ctx->curr_batch);
+   return res->obj->reads.usage == ctx->curr_batch;
 }
 
 static uint32_t

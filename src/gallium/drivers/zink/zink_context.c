@@ -3146,8 +3146,8 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
    struct zink_screen *screen = zink_screen(pctx->screen);
 
    /* if any current usage exists, flush the queue */
-   if (zink_batch_usage_matches(&res->obj->reads, ctx->curr_batch) ||
-       zink_batch_usage_matches(&res->obj->writes, ctx->curr_batch))
+   if (res->obj->reads.usage == ctx->curr_batch ||
+       res->obj->writes.usage == ctx->curr_batch)
       zink_flush_queue(ctx);
 
    VkBindSparseInfo sparse;
