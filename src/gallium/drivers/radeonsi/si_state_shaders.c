@@ -2849,22 +2849,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
                   sscreen->info.chip_class == GFX10_3 ||
                   (sscreen->info.chip_class == GFX10 &&
                    sscreen->info.is_pro_graphics)) {
-            /* Rough estimates. */
-            switch (sctx->family) {
-            case CHIP_NAVI10:
-            case CHIP_NAVI12:
-            case CHIP_SIENNA_CICHLID:
-               sel->ngg_cull_vert_threshold = 511;
-               break;
-            case CHIP_NAVI14:
-            case CHIP_NAVY_FLOUNDER:
-            case CHIP_DIMGREY_CAVEFISH:
-            case CHIP_VANGOGH:
-               sel->ngg_cull_vert_threshold = 255;
-               break;
-            default:
-               assert(!sscreen->use_ngg_culling);
-            }
+            sel->ngg_cull_vert_threshold = sscreen->info.num_se >= 3 ? 511 : 255;
          }
       } else if (sel->info.stage == MESA_SHADER_TESS_EVAL) {
          if (sel->rast_prim == PIPE_PRIM_TRIANGLES &&
