@@ -90,30 +90,30 @@ get_resource_usage(struct zink_resource *res)
 static uint32_t
 mem_hash(const void *key)
 {
-   return _mesa_hash_data(key, sizeof(struct mem_key));
+   const struct mem_key *mkey = key;
+   return _mesa_hash_data(&mkey->key, sizeof(mkey->key));
 }
 
 static bool
 mem_equals(const void *a, const void *b)
 {
-   return !memcmp(a, b, sizeof(struct mem_key));
+   const struct mem_key *ma = a;
+   const struct mem_key *mb = b;
+   return !memcmp(&ma->key, &mb->key, sizeof(ma->key));
 }
 
 static void
 cache_or_free_mem(struct zink_screen *screen, struct zink_resource_object *obj)
 {
-   if (obj->mkey.heap_index != UINT32_MAX) {
+   if (obj->mkey.key.heap_index != UINT32_MAX) {
       simple_mtx_lock(&screen->mem_cache_mtx);
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(screen->resource_mem_cache, obj->mem_hash, &obj->mkey);
-      struct util_dynarray *array = he ? (void*)he->data : NULL;
-      if (!array) {
-         struct mem_key *mkey = rzalloc(screen->resource_mem_cache, struct mem_key);
-         memcpy(mkey, &obj->mkey, sizeof(struct mem_key));
-         array = rzalloc(screen->resource_mem_cache, struct util_dynarray);
-         util_dynarray_init(array, screen->resource_mem_cache);
-         _mesa_hash_table_insert_pre_hashed(screen->resource_mem_cache, obj->mem_hash, mkey, array);
-      }
-      if (util_dynarray_num_elements(array, struct mem_cache_entry) < 5) {
+      assert(he);
+      struct util_dynarray *array = he->data;
+      struct mem_key *mkey = (void*)he->key;
+
+      mkey->seen_count--;
+      if (util_dynarray_num_elements(array, struct mem_cache_entry) < MIN2(mkey->seen_count, 5)) {
          struct mem_cache_entry mc = { obj->mem, obj->map };
          util_dynarray_append(array, struct mem_cache_entry, mc);
          simple_mtx_unlock(&screen->mem_cache_mtx);
@@ -535,22 +535,33 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    /* don't cache visible vram because it's more likely to be limited */
    VkMemoryPropertyFlags visible_vram = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
    if (!mai.pNext && !(templ->flags & (PIPE_RESOURCE_FLAG_MAP_COHERENT | PIPE_RESOURCE_FLAG_SPARSE)) && ((mem_type.propertyFlags & visible_vram) != visible_vram)) {
-      obj->mkey.reqs = reqs;
-      obj->mkey.heap_index = mai.memoryTypeIndex;
+      obj->mkey.key.reqs = reqs;
+      obj->mkey.key.heap_index = mai.memoryTypeIndex;
       obj->mem_hash = mem_hash(&obj->mkey);
       simple_mtx_lock(&screen->mem_cache_mtx);
 
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(screen->resource_mem_cache, obj->mem_hash, &obj->mkey);
-
-      struct util_dynarray *array = he ? (void*)he->data : NULL;
-      if (array && util_dynarray_num_elements(array, struct mem_cache_entry)) {
-         struct mem_cache_entry mc = util_dynarray_pop(array, struct mem_cache_entry);
-         obj->mem = mc.mem;
-         obj->map = mc.map;
+      struct mem_key *mkey;
+      if (he) {
+         struct util_dynarray *array = he->data;
+         mkey = (void*)he->key;
+         if (array && util_dynarray_num_elements(array, struct mem_cache_entry)) {
+            struct mem_cache_entry mc = util_dynarray_pop(array, struct mem_cache_entry);
+            obj->mem = mc.mem;
+            obj->map = mc.map;
+         }
+      } else {
+         mkey = ralloc(screen->resource_mem_cache, struct mem_key);
+         memcpy(&mkey->key, &obj->mkey.key, sizeof(obj->mkey.key));
+         mkey->seen_count = 0;
+         struct util_dynarray *array = rzalloc(screen->resource_mem_cache, struct util_dynarray);
+         util_dynarray_init(array, screen->resource_mem_cache);
+         _mesa_hash_table_insert_pre_hashed(screen->resource_mem_cache, obj->mem_hash, mkey, array);
       }
+      mkey->seen_count++;
       simple_mtx_unlock(&screen->mem_cache_mtx);
    } else
-      obj->mkey.heap_index = UINT32_MAX;
+      obj->mkey.key.heap_index = UINT32_MAX;
 
    /* TODO: sparse buffers should probably allocate multiple regions of memory instead of giant blobs? */
    if (!obj->mem && vkAllocateMemory(screen->dev, &mai, NULL, &obj->mem) != VK_SUCCESS) {
