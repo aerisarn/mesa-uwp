@@ -254,7 +254,7 @@ ADDR_E_RETURNCODE Gfx10Lib::HwlComputeHtileInfo(
         }
 
         // Get the HTILE address equation (copied from HtileAddrFromCoord).
-        // Note that HTILE doesn't depend on the number of samples.
+        // HTILE addressing depends on the number of samples, but this code doesn't support it yet.
         const UINT_32 index = m_xmaskBaseIndex;
         const UINT_8* patIdxTable = m_settings.supportRbPlus ? GFX10_HTILE_RBPLUS_PATIDX : GFX10_HTILE_PATIDX;
 
