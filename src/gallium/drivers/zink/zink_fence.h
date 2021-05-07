@@ -41,12 +41,12 @@ struct tc_unflushed_batch_token;
 
 struct zink_tc_fence {
    struct pipe_reference reference;
+   uint32_t deferred_id;
    struct tc_unflushed_batch_token *tc_token;
    struct util_queue_fence ready;
-   struct pipe_context *deferred_ctx;
-   uint32_t deferred_id;
-   struct zink_fence *fence;
    uint32_t batch_id;
+   struct pipe_context *deferred_ctx;
+   struct zink_fence *fence;
 };
 
 struct zink_fence {
