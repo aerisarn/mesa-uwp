@@ -92,6 +92,8 @@ lvp_image_create(VkDevice _device,
       image->bo = device->pscreen->resource_create_unbacked(device->pscreen,
                                                             &template,
                                                             &image->size);
+      if (!image->bo)
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
    *pImage = lvp_image_to_handle(image);
 
