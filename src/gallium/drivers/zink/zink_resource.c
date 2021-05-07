@@ -116,6 +116,11 @@ cache_or_free_mem(struct zink_screen *screen, struct zink_resource_object *obj)
       mkey->seen_count--;
       if (util_dynarray_num_elements(array, struct mem_cache_entry) < seen) {
          struct mem_cache_entry mc = { obj->mem, obj->map };
+         screen->mem_cache_size += obj->size;
+         if (sizeof(void*) == 4 && obj->map) {
+            vkUnmapMemory(screen->dev, obj->mem);
+            mc.map = NULL;
+         }
          util_dynarray_append(array, struct mem_cache_entry, mc);
          simple_mtx_unlock(&screen->mem_cache_mtx);
          return;
@@ -548,6 +553,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             struct mem_cache_entry mc = util_dynarray_pop(array, struct mem_cache_entry);
             obj->mem = mc.mem;
             obj->map = mc.map;
+            screen->mem_cache_size -= reqs.size;
+            screen->mem_cache_count--;
          }
       } else {
          mkey = ralloc(screen->resource_mem_cache, struct mem_key);
@@ -1086,10 +1093,15 @@ zink_transfer_map(struct pipe_context *pctx,
             vkFlushMappedMemoryRanges(screen->dev, 1, &range);
          }
          ptr = ((uint8_t *)base) + offset;
+         if (sizeof(void*) == 4)
+            trans->base.b.usage |= ZINK_MAP_TEMPORARY;
       }
    }
    if ((usage & PIPE_MAP_PERSISTENT) && !(usage & PIPE_MAP_COHERENT))
       res->obj->persistent_maps++;
+
+   if (trans->base.b.usage & (PIPE_MAP_ONCE | ZINK_MAP_TEMPORARY))
+      p_atomic_inc(&res->obj->map_count);
 
    *transfer = &trans->base.b;
    return ptr;
@@ -1148,7 +1160,8 @@ zink_transfer_unmap(struct pipe_context *pctx,
       zink_transfer_flush_region(pctx, ptrans, &ptrans->box);
    }
 
-   if (trans->base.b.usage & PIPE_MAP_ONCE && !trans->staging_res && !screen->threaded)
+   if ((trans->base.b.usage & PIPE_MAP_ONCE && !trans->staging_res && !screen->threaded) ||
+       (trans->base.b.usage & ZINK_MAP_TEMPORARY && !p_atomic_dec_return(&res->obj->map_count)))
       unmap_resource(screen, res);
    if ((trans->base.b.usage & PIPE_MAP_PERSISTENT) && !(trans->base.b.usage & PIPE_MAP_COHERENT))
       res->obj->persistent_maps--;

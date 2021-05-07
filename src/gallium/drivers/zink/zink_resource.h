@@ -42,6 +42,8 @@ struct zink_context;
 
 #include <vulkan/vulkan.h>
 
+#define ZINK_MAP_TEMPORARY (PIPE_MAP_DRV_PRV << 0)
+
 enum zink_resource_access {
    ZINK_RESOURCE_ACCESS_READ = 1,
    ZINK_RESOURCE_ACCESS_WRITE = 32,
@@ -81,6 +83,7 @@ struct zink_resource_object {
    struct zink_batch_usage *reads;
    struct zink_batch_usage *writes;
    void *map;
+   unsigned map_count;
    bool is_buffer;
    bool host_visible;
    bool coherent;
