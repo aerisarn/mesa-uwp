@@ -89,5 +89,10 @@ v3d_hw_set_isr(struct v3d_hw *hw, void (*isr)(uint32_t status))
         hw->set_isr(isr);
 }
 
+uint32_t v3d_hw_get_hub_core()
+{
+        return V3D_HW_HUB_CORE;
+}
+
 }
 #endif /* USE_V3D_SIMULATOR */
