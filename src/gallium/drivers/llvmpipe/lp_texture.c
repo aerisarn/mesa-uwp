@@ -842,7 +842,7 @@ static void llvmpipe_free_memory(struct pipe_screen *screen,
    os_free_aligned(pmem);
 }
 
-static void llvmpipe_resource_bind_backing(struct pipe_screen *screen,
+static bool llvmpipe_resource_bind_backing(struct pipe_screen *screen,
                                            struct pipe_resource *pt,
                                            struct pipe_memory_allocation *pmem,
                                            uint64_t offset)
@@ -850,13 +850,16 @@ static void llvmpipe_resource_bind_backing(struct pipe_screen *screen,
    struct llvmpipe_resource *lpr = llvmpipe_resource(pt);
 
    if (!lpr->backable)
-      return;
+      return FALSE;
+
 
    if (llvmpipe_resource_is_texture(&lpr->base))
       lpr->tex_data = (char *)pmem + offset;
    else
       lpr->data = (char *)pmem + offset;
    lpr->backing_offset = offset;
+
+   return TRUE;
 }
 
 static void *llvmpipe_map_memory(struct pipe_screen *screen,

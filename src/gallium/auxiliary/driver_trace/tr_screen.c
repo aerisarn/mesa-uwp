@@ -456,7 +456,7 @@ trace_screen_free_memory(struct pipe_screen *_screen,
    trace_dump_call_end();
 }
 
-static void
+static bool
 trace_screen_resource_bind_backing(struct pipe_screen *_screen,
                                    struct pipe_resource *resource,
                                    struct pipe_memory_allocation *pmem,
@@ -464,6 +464,7 @@ trace_screen_resource_bind_backing(struct pipe_screen *_screen,
 {
    struct trace_screen *tr_scr = trace_screen(_screen);
    struct pipe_screen *screen = tr_scr->screen;
+   bool result;
 
    trace_dump_call_begin("pipe_screen", "resource_bind_backing");
 
@@ -472,9 +473,11 @@ trace_screen_resource_bind_backing(struct pipe_screen *_screen,
    trace_dump_arg(ptr, pmem);
    trace_dump_arg(uint, offset);
 
-   screen->resource_bind_backing(screen, resource, pmem, offset);
+   result = screen->resource_bind_backing(screen, resource, pmem, offset);
 
    trace_dump_call_end();
+
+   return result;
 }
 
 static struct pipe_resource *
