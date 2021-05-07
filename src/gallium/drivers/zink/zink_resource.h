@@ -152,9 +152,6 @@ zink_resource_setup_transfer_layouts(struct zink_context *ctx, struct zink_resou
 bool
 zink_resource_has_usage(struct zink_resource *res, enum zink_resource_access usage);
 
-bool
-zink_resource_has_curr_read_usage(struct zink_context *ctx, struct zink_resource *res);
-
 void
 zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_object *resource_object);
 

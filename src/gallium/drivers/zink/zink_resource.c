@@ -87,14 +87,6 @@ get_resource_usage(struct zink_resource *res)
    return batch_uses;
 }
 
-static void
-resource_sync_writes_from_batch_usage(struct zink_context *ctx, struct zink_resource *res)
-{
-   uint32_t writes = p_atomic_read(&res->obj->writes.usage);
-
-   zink_wait_on_batch(ctx, writes);
-}
-
 static uint32_t
 mem_hash(const void *key)
 {
@@ -810,34 +802,6 @@ init_mem_range(struct zink_screen *screen, struct zink_resource *res, VkDeviceSi
    };
    assert(range.size);
    return range;
-}
-
-bool
-zink_resource_has_curr_read_usage(struct zink_context *ctx, struct zink_resource *res)
-{
-   return res->obj->reads.usage == ctx->curr_batch;
-}
-
-static uint32_t
-get_most_recent_access(struct zink_resource *res, enum zink_resource_access flags)
-{
-   uint32_t usage[3]; // read, write, failure
-   uint32_t latest = ARRAY_SIZE(usage) - 1;
-   usage[latest] = 0;
-
-   if (flags & ZINK_RESOURCE_ACCESS_READ) {
-      usage[0] = p_atomic_read(&res->obj->reads.usage);
-      if (usage[0] > usage[latest]) {
-         latest = 0;
-      }
-   }
-   if (flags & ZINK_RESOURCE_ACCESS_WRITE) {
-      usage[1] = p_atomic_read(&res->obj->writes.usage);
-      if (usage[1] > usage[latest]) {
-         latest = 1;
-      }
-   }
-   return usage[latest];
 }
 
 static void *
