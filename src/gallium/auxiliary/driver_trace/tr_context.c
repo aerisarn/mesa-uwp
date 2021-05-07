@@ -1634,7 +1634,7 @@ trace_context_transfer_unmap(struct pipe_context *_context,
 
    trace_dump_call_end();
 
-   if (tr_trans->map) {
+   if (tr_trans->map && !tr_ctx->threaded) {
       /*
        * Fake a texture/buffer_subdata
        */
