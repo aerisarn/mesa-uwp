@@ -2097,7 +2097,8 @@ varying_matches::assign_locations(struct gl_shader_program *prog,
       } else {
          if ((this->disable_varying_packing &&
               !is_varying_packing_safe(type, var)) ||
-              (this->disable_xfb_packing && var->data.is_xfb) ||
+              (this->disable_xfb_packing && var->data.is_xfb &&
+               !(type->is_array() || type->is_struct() || type->is_matrix())) ||
              var->data.must_be_shader_input) {
             num_components = type->count_attribute_slots(false) * 4;
          } else {
