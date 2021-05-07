@@ -1796,6 +1796,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       zink_begin_render_pass(ctx, batch);
    zink_end_render_pass(ctx, batch);
    zink_end_batch(ctx, batch);
+   ctx->deferred_fence = NULL;
 
    if (sync)
       sync_flush(ctx, ctx->batch.state);
@@ -2388,6 +2389,7 @@ zink_flush(struct pipe_context *pctx,
    struct zink_batch *batch = &ctx->batch;
    struct zink_fence *fence = NULL;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+   unsigned submit_count = 0;
 
    /* triggering clears will force has_work */
    if (!deferred && ctx->clears_enabled)
@@ -2410,6 +2412,7 @@ zink_flush(struct pipe_context *pctx,
        tc_driver_internal_flush_notify(ctx->tc);
    } else {
       fence = &batch->state->fence;
+      submit_count = batch->state->submit_count;
       if (deferred && !(flags & PIPE_FLUSH_FENCE_FD) && pfence)
          deferred_fence = true;
       else
@@ -2429,15 +2432,17 @@ zink_flush(struct pipe_context *pctx,
          *pfence = (struct pipe_fence_handle *)mfence;
       }
 
-      zink_batch_state_reference(screen, NULL, zink_batch_state(fence));
+      struct zink_batch_state *bs = zink_batch_state(fence);
+      zink_batch_state_reference(screen, NULL, bs);
       mfence->fence = fence;
       if (fence)
-         mfence->batch_id = fence->batch_id;
+         mfence->submit_count = submit_count;
 
       if (deferred_fence) {
          assert(fence);
          mfence->deferred_ctx = pctx;
-         mfence->deferred_id = fence->batch_id;
+         assert(!ctx->deferred_fence || ctx->deferred_fence == fence);
+         ctx->deferred_fence = fence;
       }
 
       if (!fence || flags & TC_FLUSH_ASYNC) {

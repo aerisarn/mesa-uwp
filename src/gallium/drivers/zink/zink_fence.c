@@ -175,30 +175,34 @@ zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct 
       return true;
 
    if (pctx && mfence->deferred_ctx == pctx) {
-      if (mfence->deferred_id == ctx->curr_batch) {
+      if (mfence->fence == ctx->deferred_fence) {
          zink_context(pctx)->batch.has_work = true;
          /* this must be the current batch */
          pctx->flush(pctx, NULL, !timeout_ns ? PIPE_FLUSH_ASYNC : 0);
          if (!timeout_ns)
             return false;
       }
-      /* this batch is known to have finished */
-      if (mfence->deferred_id <= screen->last_finished)
-         return true;
    }
 
    /* need to ensure the tc mfence has been flushed before we wait */
    bool tc_finish = tc_fence_finish(ctx, mfence, &timeout_ns);
-   struct zink_fence *fence = mfence->fence;
-   if (!tc_finish || (fence && !fence->submitted))
-      return zink_screen_check_last_finished(screen, mfence->batch_id) ? true :
-             (fence ? p_atomic_read(&fence->completed) : false);
-
+   /* the submit thread hasn't finished yet */
+   if (!tc_finish)
+      return false;
    /* this was an invalid flush, just return completed */
    if (!mfence->fence)
       return true;
-   /* if the zink fence has a different batch id then it must have completed and been recycled already */
-   if (mfence->fence->batch_id != mfence->batch_id)
+
+   struct zink_fence *fence = mfence->fence;
+
+   unsigned submit_diff = zink_batch_state(mfence->fence)->submit_count - mfence->submit_count;
+   /* this batch is known to have finished because it has been submitted more than 1 time
+    * since the tc fence last saw it
+    */
+   if (submit_diff > 1)
+      return true;
+
+   if (fence->submitted && zink_screen_check_last_finished(screen, fence->batch_id))
       return true;
 
    return zink_vkfence_wait(screen, fence, timeout_ns);

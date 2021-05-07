@@ -147,6 +147,7 @@ struct zink_context {
    uint32_t curr_batch; //the current batch id
    struct zink_batch batch;
    simple_mtx_t batch_mtx;
+   struct zink_fence *deferred_fence;
    struct zink_fence *last_fence; //the last command buffer submitted
    struct hash_table batch_states; //submitted batch states
    struct util_dynarray free_batch_states; //unused batch states

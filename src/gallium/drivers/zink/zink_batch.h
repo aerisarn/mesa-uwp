@@ -86,6 +86,9 @@ struct zink_batch_state {
 
    VkDeviceSize resource_size;
 
+    /* this is a monotonic int used to disambiguate internal fences from their tc fence references */
+   unsigned submit_count;
+
    bool is_device_lost;
    bool have_timelines;
    bool has_barriers;

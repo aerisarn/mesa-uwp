@@ -93,6 +93,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    bs->has_barriers = false;
    if (bs->fence.batch_id)
       zink_screen_update_last_finished(screen, bs->fence.batch_id);
+   bs->submit_count++;
    bs->fence.batch_id = 0;
    bs->draw_count = bs->compute_count = 0;
 }
@@ -353,6 +354,7 @@ submit_queue(void *data, void *gdata, int thread_index)
       debug_printf("ZINK: vkQueueSubmit() failed\n");
       bs->is_device_lost = true;
    }
+   bs->submit_count++;
    p_atomic_set(&bs->fence.submitted, true);
 }
 
