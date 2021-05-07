@@ -62,7 +62,6 @@ struct zink_batch_state {
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
    VkCommandBuffer barrier_cmdbuf;
-   bool has_barriers;
 
    VkQueue queue; //duplicated from batch for threading
    VkSemaphore sem;
@@ -89,6 +88,7 @@ struct zink_batch_state {
 
    bool is_device_lost;
    bool have_timelines;
+   bool has_barriers;
 };
 
 struct zink_batch {
