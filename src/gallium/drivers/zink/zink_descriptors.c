@@ -1387,7 +1387,7 @@ zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state 
 {
    set_foreach(bs->dd->desc_sets, entry) {
       struct zink_descriptor_set *zds = (void*)entry->key;
-      zink_batch_usage_unset(&zds->batch_uses, bs->fence.batch_id);
+      zink_batch_usage_unset(&zds->batch_uses, bs);
       /* reset descriptor pools when no bs is using this program to avoid
        * having some inactive program hogging a billion descriptors
        */

@@ -42,12 +42,12 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    set_foreach_remove(bs->surfaces, entry) {
       struct zink_surface *surf = (struct zink_surface *)entry->key;
-      zink_batch_usage_unset(&surf->batch_uses, bs->fence.batch_id);
+      zink_batch_usage_unset(&surf->batch_uses, bs);
       zink_surface_reference(screen, &surf, NULL);
    }
    set_foreach_remove(bs->bufferviews, entry) {
       struct zink_buffer_view *buffer_view = (struct zink_buffer_view *)entry->key;
-      zink_batch_usage_unset(&buffer_view->batch_uses, bs->fence.batch_id);
+      zink_batch_usage_unset(&buffer_view->batch_uses, bs);
       zink_buffer_view_reference(screen, &buffer_view, NULL);
    }
 

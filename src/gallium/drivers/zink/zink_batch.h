@@ -175,9 +175,9 @@ zink_batch_state_reference(struct zink_screen *screen,
 }
 
 static inline void
-zink_batch_usage_unset(struct zink_batch_usage *u, uint32_t batch_id)
+zink_batch_usage_unset(struct zink_batch_usage *u, struct zink_batch_state *bs)
 {
-   p_atomic_cmpxchg(&u->usage, batch_id, 0);
+   p_atomic_cmpxchg(&u->usage, bs->fence.batch_id, 0);
 }
 
 static inline void
