@@ -250,6 +250,14 @@ ADDR_E_RETURNCODE Gfx11Lib::HwlComputeHtileInfo(
                 pOut->pMipInfo[0].sliceSize = pOut->sliceSize;
             }
         }
+
+        // Get the HTILE address equation (copied from HtileAddrFromCoord).
+        // HTILE addressing depends on the number of samples, but this code doesn't support it yet.
+        const UINT_32  index         = m_htileBaseIndex;
+        const UINT_8* patIdxTable = GFX11_HTILE_PATIDX;
+
+        ADDR_C_ASSERT(sizeof(GFX11_HTILE_SW_PATTERN[patIdxTable[index]]) == 72 * 2);
+        pOut->equation.gfx10_bits = (UINT_16 *)GFX11_HTILE_SW_PATTERN[patIdxTable[index]];
     }
 
     return ret;
@@ -373,6 +381,36 @@ ADDR_E_RETURNCODE Gfx11Lib::HwlComputeDccInfo(
                     pOut->pMipInfo[0].sliceSize = pOut->dccRamSliceSize;
                 }
             }
+
+            // Get the DCC address equation (copied from DccAddrFromCoord)
+            const UINT_32 elemLog2    = Log2(pIn->bpp >> 3);
+            const UINT_32 numPipeLog2 = m_pipesLog2;
+            UINT_32       index       = m_dccBaseIndex + elemLog2;
+            const UINT_8* patIdxTable = (pIn->swizzleMode == ADDR_SW_64KB_R_X) ?
+                                        GFX11_DCC_64K_R_X_PATIDX : GFX11_DCC_256K_R_X_PATIDX;
+
+            if (pIn->dccKeyFlags.pipeAligned)
+            {
+                index += MaxNumOfBpp;
+
+                if (m_numPkrLog2 < 2)
+                {
+                    index += m_pipesLog2 * MaxNumOfBpp;
+                }
+                else
+                {
+                    // 4 groups for "m_numPkrLog2 < 2" case
+                    index += 4 * MaxNumOfBpp;
+
+                    const UINT_32 dccPipePerPkr = 3;
+
+                    index += (m_numPkrLog2 - 2) * dccPipePerPkr * MaxNumOfBpp +
+                             (m_pipesLog2 - m_numPkrLog2) * MaxNumOfBpp;
+                }
+            }
+
+            ADDR_C_ASSERT(sizeof(GFX11_DCC_R_X_SW_PATTERN[patIdxTable[index]]) == 68 * 2);
+            pOut->equation.gfx10_bits = (UINT_16*)GFX11_DCC_R_X_SW_PATTERN[patIdxTable[index]];
         }
     }
 
