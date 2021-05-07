@@ -482,7 +482,7 @@ static void si_reallocate_texture_inplace(struct si_context *sctx, struct si_tex
    tex->db_render_format = new_tex->db_render_format;
    memcpy(tex->stencil_clear_value, new_tex->stencil_clear_value, sizeof(tex->stencil_clear_value));
    tex->tc_compatible_htile = new_tex->tc_compatible_htile;
-   tex->depth_cleared_level_mask = new_tex->depth_cleared_level_mask;
+   tex->depth_cleared_level_mask_once = new_tex->depth_cleared_level_mask_once;
    tex->stencil_cleared_level_mask = new_tex->stencil_cleared_level_mask;
    tex->upgraded_depth = new_tex->upgraded_depth;
    tex->db_compatible = new_tex->db_compatible;
