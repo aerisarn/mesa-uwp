@@ -178,8 +178,12 @@ llvmpipe_set_sampler_views(struct pipe_context *pipe,
    }
    else if (shader == PIPE_SHADER_COMPUTE) {
       llvmpipe->cs_dirty |= LP_CSNEW_SAMPLER_VIEW;
-   } else {
+   }
+   else if (shader == PIPE_SHADER_FRAGMENT) {
       llvmpipe->dirty |= LP_NEW_SAMPLER_VIEW;
+      lp_setup_set_fragment_sampler_views(llvmpipe->setup,
+                                          llvmpipe->num_sampler_views[PIPE_SHADER_FRAGMENT],
+                                          llvmpipe->sampler_views[PIPE_SHADER_FRAGMENT]);
    }
 }
 

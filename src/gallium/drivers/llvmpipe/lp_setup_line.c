@@ -586,15 +586,8 @@ try_setup_line( struct lp_setup_context *setup,
       bbox.y1--;
    }
 
-   if (bbox.x1 < bbox.x0 ||
-       bbox.y1 < bbox.y0) {
-      if (0) debug_printf("empty bounding box\n");
-      LP_COUNT(nr_culled_tris);
-      return TRUE;
-   }
-
    if (!u_rect_test_intersection(&setup->draw_regions[viewport_index], &bbox)) {
-      if (0) debug_printf("offscreen\n");
+      if (0) debug_printf("no intersection\n");
       LP_COUNT(nr_culled_tris);
       return TRUE;
    }
@@ -611,9 +604,11 @@ try_setup_line( struct lp_setup_context *setup,
     * Determine how many scissor planes we need, that is drop scissor
     * edges if the bounding box of the tri is fully inside that edge.
     */
-   scissor = &setup->draw_regions[viewport_index];
-   scissor_planes_needed(s_planes, &bboxpos, scissor);
-   nr_planes += s_planes[0] + s_planes[1] + s_planes[2] + s_planes[3];
+   if (setup->scissor_or_vp_clip) {
+      scissor = &setup->draw_regions[viewport_index];
+      scissor_planes_needed(s_planes, &bboxpos, scissor);
+      nr_planes += s_planes[0] + s_planes[1] + s_planes[2] + s_planes[3];
+   }
 
    line = lp_setup_alloc_triangle(scene,
                                   key->num_inputs,

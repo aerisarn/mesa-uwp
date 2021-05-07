@@ -447,7 +447,7 @@ util_test_constant_buffer(struct pipe_context *ctx,
             "MOV OUT[0], CONST[0][0]\n"
             "END\n";
       struct tgsi_token tokens[1000];
-      struct pipe_shader_state state;
+      struct pipe_shader_state state = {0};
 
       if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
          puts("Can't compile a fragment shader.");
@@ -743,7 +743,7 @@ test_texture_barrier(struct pipe_context *ctx, bool use_fbfetch,
    }
 
    struct tgsi_token tokens[1000];
-   struct pipe_shader_state state;
+   struct pipe_shader_state state = {0};
 
    if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
       assert(0);

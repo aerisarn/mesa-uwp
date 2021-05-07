@@ -454,7 +454,7 @@ lp_build_sample_image_nearest(struct lp_build_sample_context *bld,
    LLVMValueRef s_float, t_float = NULL, r_float = NULL;
    LLVMValueRef x_stride;
    LLVMValueRef x_offset, offset;
-   LLVMValueRef x_subcoord, y_subcoord, z_subcoord;
+   LLVMValueRef x_subcoord, y_subcoord = NULL, z_subcoord;
 
    lp_build_context_init(&i32, bld->gallivm, lp_type_int_vec(32, bld->vector_width));
 
@@ -778,7 +778,7 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
    LLVMValueRef y_offset0, y_offset1;
    LLVMValueRef z_offset0, z_offset1;
    LLVMValueRef offset[2][2][2]; /* [z][y][x] */
-   LLVMValueRef x_subcoord[2], y_subcoord[2], z_subcoord[2];
+   LLVMValueRef x_subcoord[2], y_subcoord[2] = {NULL, NULL}, z_subcoord[2];
    unsigned x, y, z;
 
    lp_build_context_init(&i32, bld->gallivm, lp_type_int_vec(32, bld->vector_width));

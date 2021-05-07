@@ -156,6 +156,9 @@ struct llvmpipe_context {
    unsigned nr_fs_variants;
    unsigned nr_fs_instrs;
 
+   boolean permit_linear_rasterizer;
+   boolean single_vp;
+
    struct lp_setup_variant_list_item setup_variants_list;
    unsigned nr_setup_variants;
 

@@ -324,6 +324,94 @@ typedef void
                     unsigned depth_sample_stride);
 
 
+#define LP_MAX_LINEAR_CONSTANTS 16
+#define LP_MAX_LINEAR_TEXTURES 2
+#define LP_MAX_LINEAR_INPUTS 8
+
+
+/**
+ * This structure is passed directly to the generated fragment shader.
+ *
+ * It contains the derived state.
+ *
+ * Changes here must be reflected in the lp_jit_linear_context_* macros and
+ * lp_jit_init_types function. Changes to the ordering should be avoided.
+ *
+ * Only use types with a clear size and padding here, in particular prefer the
+ * stdint.h types to the basic integer types.
+ */
+struct lp_jit_linear_context
+{
+   /**
+    * Constants in 8bit unorm values.
+    */
+   const uint8_t (*constants)[4];
+   struct lp_linear_elem *tex[LP_MAX_LINEAR_TEXTURES];
+   struct lp_linear_elem *inputs[LP_MAX_LINEAR_INPUTS];
+
+   uint8_t *color0;
+   uint32_t blend_color;
+
+   uint8_t alpha_ref_value;
+};
+
+
+/**
+ * These enum values must match the position of the fields in the
+ * lp_jit_linear_context struct above.
+ */
+enum {
+   LP_JIT_LINEAR_CTX_CONSTANTS = 0,
+   LP_JIT_LINEAR_CTX_TEX,
+   LP_JIT_LINEAR_CTX_INPUTS,
+   LP_JIT_LINEAR_CTX_COLOR0,
+   LP_JIT_LINEAR_CTX_BLEND_COLOR,
+   LP_JIT_LINEAR_CTX_ALPHA_REF,
+   LP_JIT_LINEAR_CTX_COUNT
+};
+
+
+#define lp_jit_linear_context_constants(_gallivm, _ptr) \
+   lp_build_struct_get(_gallivm, _ptr, LP_JIT_LINEAR_CTX_CONSTANTS, "constants")
+
+#define lp_jit_linear_context_tex(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_LINEAR_CTX_TEX, "tex")
+
+#define lp_jit_linear_context_inputs(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_LINEAR_CTX_INPUTS, "inputs")
+
+#define lp_jit_linear_context_color0(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_LINEAR_CTX_COLOR0, "color0")
+
+#define lp_jit_linear_context_blend_color(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_LINEAR_CTX_BLEND_COLOR, "blend_color")
+
+#define lp_jit_linear_context_alpha_ref(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_LINEAR_CTX_ALPHA_REF, "alpha_ref_value")
+
+
+typedef const uint8_t *
+(*lp_jit_linear_llvm_func)(struct lp_jit_linear_context *context,
+                           uint32_t x,
+                           uint32_t y,
+                           uint32_t w);
+
+/* We're not really jitting this, but I need to get into the
+ * rast_state struct to call the function we actually are jitting.
+ */
+struct lp_rast_state;
+typedef boolean
+(*lp_jit_linear_func)(const struct lp_rast_state *state,
+                      uint32_t x,
+                      uint32_t y,
+                      uint32_t w,
+                      uint32_t h,
+                      const float (*a0)[4],
+                      const float (*dadx)[4],
+                      const float (*dady)[4],
+                      uint8_t *color,
+                      uint32_t color_stride);
+
 struct lp_jit_cs_thread_data
 {
    struct lp_build_format_cache *cache;

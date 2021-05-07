@@ -70,11 +70,15 @@ static const struct debug_named_value lp_debug_flags[] = {
    { "counters", DEBUG_COUNTERS, NULL },
    { "scene", DEBUG_SCENE, NULL },
    { "fence", DEBUG_FENCE, NULL },
+   { "no_fastpath", DEBUG_NO_FASTPATH, NULL },
+   { "linear", DEBUG_LINEAR, NULL },
+   { "linear2", DEBUG_LINEAR2, NULL },
    { "mem", DEBUG_MEM, NULL },
    { "fs", DEBUG_FS, NULL },
    { "cs", DEBUG_CS, NULL },
    { "tgsi_ir", DEBUG_TGSI_IR, NULL },
    { "cache_stats", DEBUG_CACHE_STATS, NULL },
+   { "accurate_a0", DEBUG_ACCURATE_A0 },
    DEBUG_NAMED_VALUE_END
 };
 #endif
@@ -89,6 +93,8 @@ static const struct debug_named_value lp_perf_flags[] = {
    { "no_blend",       PERF_NO_BLEND, NULL },
    { "no_depth",       PERF_NO_DEPTH, NULL },
    { "no_alphatest",   PERF_NO_ALPHATEST, NULL },
+   { "no_rast_linear", PERF_NO_RAST_LINEAR, NULL },
+   { "no_shade",       PERF_NO_SHADE, NULL },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -1026,7 +1032,7 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    screen->use_tgsi = (LP_DEBUG & DEBUG_TGSI_IR);
    screen->num_threads = util_get_cpu_caps()->nr_cpus > 1 ? util_get_cpu_caps()->nr_cpus : 0;
 #ifdef EMBEDDED_DEVICE
-   screen->num_threads = 0;
+   screen->num_threads = MIN2(screen->num_threads, 2);
 #endif
    screen->num_threads = debug_get_num_option("LP_NUM_THREADS", screen->num_threads);
    screen->num_threads = MIN2(screen->num_threads, LP_MAX_THREADS);

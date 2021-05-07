@@ -71,6 +71,7 @@ struct lp_setup_args
    LLVMValueRef a0;
    LLVMValueRef dadx;
    LLVMValueRef dady;
+   LLVMValueRef key;
 
    /* Derived:
     */
@@ -708,7 +709,7 @@ generate_setup_variant(struct lp_setup_variant_key *key,
    char func_name[64];
    LLVMTypeRef vec4f_type;
    LLVMTypeRef func_type;
-   LLVMTypeRef arg_types[7];
+   LLVMTypeRef arg_types[8];
    LLVMBasicBlockRef block;
    LLVMBuilderRef builder;
    int64_t t0 = 0, t1;
@@ -752,6 +753,7 @@ generate_setup_variant(struct lp_setup_variant_key *key,
    arg_types[4] = LLVMPointerType(vec4f_type, 0);	/* a0, aligned */
    arg_types[5] = LLVMPointerType(vec4f_type, 0);	/* dadx, aligned */
    arg_types[6] = LLVMPointerType(vec4f_type, 0);	/* dady, aligned */
+   arg_types[7] = LLVMPointerType(vec4f_type, 0);	/* key (placeholder) */
 
    func_type = LLVMFunctionType(LLVMVoidTypeInContext(gallivm->context),
                                 arg_types, ARRAY_SIZE(arg_types), 0);
@@ -769,6 +771,7 @@ generate_setup_variant(struct lp_setup_variant_key *key,
    args.a0       = LLVMGetParam(variant->function, 4);
    args.dadx     = LLVMGetParam(variant->function, 5);
    args.dady     = LLVMGetParam(variant->function, 6);
+   args.key      = LLVMGetParam(variant->function, 7);
 
    lp_build_name(args.v0, "in_v0");
    lp_build_name(args.v1, "in_v1");
@@ -777,6 +780,7 @@ generate_setup_variant(struct lp_setup_variant_key *key,
    lp_build_name(args.a0, "out_a0");
    lp_build_name(args.dadx, "out_dadx");
    lp_build_name(args.dady, "out_dady");
+   lp_build_name(args.key, "key");
 
    /*
     * Function body
@@ -864,6 +868,7 @@ lp_make_setup_variant_key(struct llvmpipe_context *lp,
 
    key->pgon_offset_scale = lp->rasterizer->offset_scale;
    key->pgon_offset_clamp = lp->rasterizer->offset_clamp;
+   key->uses_constant_interp = 0;
    key->pad = 0;
    memcpy(key->inputs, fs->inputs, key->num_inputs * sizeof key->inputs[0]);
    for (i = 0; i < key->num_inputs; i++) {
@@ -873,8 +878,10 @@ lp_make_setup_variant_key(struct llvmpipe_context *lp,
          else
             key->inputs[i].interp = LP_INTERP_PERSPECTIVE;
       }
+      if (key->inputs[i].interp == LP_INTERP_CONSTANT) {
+         key->uses_constant_interp = 1;
+      }
    }
-
 }
 
 
