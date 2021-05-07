@@ -624,7 +624,7 @@ nv50_draw_elements(struct nv50_context *nv50, bool shorten,
        * the not-yet-written data. Ideally this wait would only happen on
        * pushbuf submit, but it's probably not a big performance difference.
        */
-      if (buf->fence_wr && !nouveau_fence_signalled(buf->fence_wr))
+      if (buf->fence_wr)
          nouveau_fence_wait(buf->fence_wr, &nv50->base.debug);
 
       while (instance_count--) {
