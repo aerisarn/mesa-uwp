@@ -137,6 +137,22 @@ static void init_gfx103(struct radeon_info *info)
    info->gb_addr_config = 0x00000040; /* Other fields are set by test cases. */
 }
 
+static void init_gfx11(struct radeon_info *info)
+{
+   info->family = CHIP_UNKNOWN;
+   info->chip_class = GFX11;
+   info->family_id = 0x00;
+   info->chip_external_rev = 0x01;
+   info->use_display_dcc_unaligned = false;
+   info->use_display_dcc_with_retile_blit = true;
+   info->has_graphics = true;
+   info->tcc_cache_line_size = 128;
+   info->has_rbplus = true;
+   info->rbplus_allowed = true;
+
+   info->gb_addr_config = 0x00000040; /* Other fields are set by test cases. */
+}
+
 struct testcase {
    const char *name;
    gpu_init_func init;
@@ -190,6 +206,7 @@ static struct radeon_info get_radeon_info(struct testcase *testcase)
       break;
    case GFX10:
    case GFX10_3:
+   case GFX11:
       info.gb_addr_config = (info.gb_addr_config &
                              C_0098F8_NUM_PIPES &
                              C_0098F8_NUM_PKRS) |
