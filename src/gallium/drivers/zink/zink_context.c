@@ -2458,7 +2458,7 @@ zink_maybe_flush_or_stall(struct zink_context *ctx)
    /* flush anytime our total batch memory usage is potentially >= 50% of total video memory */
    if (ctx->batch.state->resource_size >= screen->total_video_mem / 2 ||
        /* or if there's >100k draws+computes */
-       ctx->batch.state->work_count[0] + ctx->batch.state->work_count[1] >= 100000)
+       ctx->batch.state->draw_count + ctx->batch.state->compute_count >= 100000)
       flush_batch(ctx, true);
 
    if (ctx->resource_size >= screen->total_video_mem / 2 || _mesa_hash_table_num_entries(&ctx->batch_states) > 100) {

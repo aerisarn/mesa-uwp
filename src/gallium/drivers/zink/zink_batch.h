@@ -56,6 +56,8 @@ batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct z
 struct zink_batch_state {
    struct zink_fence fence;
    struct pipe_reference reference;
+   unsigned draw_count;
+
    struct zink_context *ctx;
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
@@ -66,6 +68,7 @@ struct zink_batch_state {
    VkSemaphore sem;
 
    struct util_queue_fence flush_completed;
+   unsigned compute_count;
 
    struct zink_resource *flush_res;
 
@@ -86,7 +89,6 @@ struct zink_batch_state {
 
    bool is_device_lost;
    bool have_timelines;
-   unsigned work_count[2];
 };
 
 struct zink_batch {

@@ -695,7 +695,7 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    unsigned draw_id = drawid_offset;
    bool needs_drawid = ctx->drawid_broken;
-   batch->state->work_count[0] += num_draws;
+   batch->state->draw_count += num_draws;
    if (dinfo->index_size > 0) {
       VkIndexType index_type;
       unsigned index_size = dinfo->index_size;
@@ -819,7 +819,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
                          offsetof(struct zink_cs_push_constant, work_dim), sizeof(uint32_t),
                          &info->work_dim);
 
-   batch->state->work_count[1]++;
+   batch->state->compute_count++;
    if (info->indirect) {
       vkCmdDispatchIndirect(batch->state->cmdbuf, zink_resource(info->indirect)->obj->buffer, info->indirect_offset);
       zink_batch_reference_resource_rw(batch, zink_resource(info->indirect), false);
