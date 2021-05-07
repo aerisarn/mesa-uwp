@@ -126,13 +126,7 @@ llvmpipe_texture_layout(struct llvmpipe_screen *screen,
       else
          lpr->row_stride[level] = align(nblocksx * block_size, util_get_cpu_caps()->cacheline);
 
-      /* if row_stride * height > LP_MAX_TEXTURE_SIZE */
-      if ((uint64_t)lpr->row_stride[level] * nblocksy > LP_MAX_TEXTURE_SIZE) {
-         /* image too large */
-         goto fail;
-      }
-
-      lpr->img_stride[level] = lpr->row_stride[level] * nblocksy;
+      lpr->img_stride[level] = (uint64_t)lpr->row_stride[level] * nblocksy;
 
       /* Number of 3D image slices, cube faces or texture array layers */
       if (lpr->base.target == PIPE_TEXTURE_CUBE) {
@@ -149,19 +143,10 @@ llvmpipe_texture_layout(struct llvmpipe_screen *screen,
       else
          num_slices = 1;
 
-      /* if img_stride * num_slices_faces > LP_MAX_TEXTURE_SIZE */
-      mipsize = (uint64_t)lpr->img_stride[level] * num_slices;
-      if (mipsize > LP_MAX_TEXTURE_SIZE) {
-         /* volume too large */
-         goto fail;
-      }
-
+      mipsize = lpr->img_stride[level] * num_slices;
       lpr->mip_offsets[level] = total_size;
 
-      total_size += align((unsigned)mipsize, mip_align);
-      if (total_size > LP_MAX_TEXTURE_SIZE) {
-         goto fail;
-      }
+      total_size += align64(mipsize, mip_align);
 
       /* Compute size of next mipmap level */
       width = u_minify(width, 1);
@@ -174,6 +159,9 @@ llvmpipe_texture_layout(struct llvmpipe_screen *screen,
 
    lpr->size_required = total_size;
    if (allocate) {
+      if (total_size > LP_MAX_TEXTURE_SIZE)
+         goto fail;
+
       lpr->tex_data = align_malloc(total_size, mip_align);
       if (!lpr->tex_data) {
          return FALSE;
@@ -201,7 +189,10 @@ llvmpipe_can_create_resource(struct pipe_screen *screen,
    struct llvmpipe_resource lpr;
    memset(&lpr, 0, sizeof(lpr));
    lpr.base = *res;
-   return llvmpipe_texture_layout(llvmpipe_screen(screen), &lpr, false);
+   if (!llvmpipe_texture_layout(llvmpipe_screen(screen), &lpr, false))
+      return false;
+
+   return lpr.size_required <= LP_MAX_TEXTURE_SIZE;
 }
 
 
