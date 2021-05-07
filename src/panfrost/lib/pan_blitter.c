@@ -1159,7 +1159,7 @@ pan_preload_emit_midgard_tiler_job(struct pan_pool *desc_pool,
                          false, false, 0, 0, &job, true);
 }
 
-static void
+static struct panfrost_ptr
 pan_blit_emit_midgard_tiler_job(struct pan_pool *desc_pool,
                                 struct pan_scoreboard *scoreboard,
                                 mali_ptr src_coords, mali_ptr dst_coords,
@@ -1192,9 +1192,10 @@ pan_blit_emit_midgard_tiler_job(struct pan_pool *desc_pool,
 
         panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
                          false, false, 0, 0, &job, false);
+        return job;
 }
 
-static void
+static struct panfrost_ptr
 pan_blit_emit_bifrost_tiler_job(struct pan_pool *desc_pool,
                                 struct pan_scoreboard *scoreboard,
                                 mali_ptr src_coords, mali_ptr dst_coords,
@@ -1233,6 +1234,7 @@ pan_blit_emit_bifrost_tiler_job(struct pan_pool *desc_pool,
 
         panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
                          false, false, 0, 0, &job, false);
+        return job;
 }
 
 static void
@@ -1483,14 +1485,14 @@ pan_blit_next_surface(struct pan_blit_context *ctx)
         return true;
 }
 
-void
+struct panfrost_ptr
 pan_blit(struct pan_blit_context *ctx,
          struct pan_pool *pool,
          struct pan_scoreboard *scoreboard,
          mali_ptr tsd, mali_ptr tiler)
 {
         if (ctx->dst.cur_layer < 0 || ctx->dst.cur_layer > ctx->dst.last_layer)
-                return;
+                return (struct panfrost_ptr){ 0 };
 
         int32_t layer = ctx->dst.cur_layer - ctx->dst.layer_offset;
         float src_z;
@@ -1510,17 +1512,21 @@ pan_blit(struct pan_blit_context *ctx,
                 pan_pool_upload_aligned(pool, src_rect,
                                         sizeof(src_rect), 64);
 
+        struct panfrost_ptr job;
+
         if (pan_is_bifrost(pool->dev)) {
-                pan_blit_emit_bifrost_tiler_job(pool, scoreboard,
-                                                src_coords, ctx->position,
-                                                ctx->textures, ctx->samplers,
-                                                ctx->vpd, ctx->rsd, tsd, tiler);
+                job = pan_blit_emit_bifrost_tiler_job(pool, scoreboard,
+                                                      src_coords, ctx->position,
+                                                      ctx->textures, ctx->samplers,
+                                                      ctx->vpd, ctx->rsd, tsd, tiler);
         } else {
-                pan_blit_emit_midgard_tiler_job(pool, scoreboard,
-                                                src_coords, ctx->position,
-                                                ctx->textures, ctx->samplers,
-                                                ctx->vpd, ctx->rsd, tsd);
+                job = pan_blit_emit_midgard_tiler_job(pool, scoreboard,
+                                                      src_coords, ctx->position,
+                                                      ctx->textures, ctx->samplers,
+                                                      ctx->vpd, ctx->rsd, tsd);
         }
+
+        return job;
 }
 
 static uint32_t pan_blit_shader_key_hash(const void *key)

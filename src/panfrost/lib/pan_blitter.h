@@ -102,7 +102,7 @@ pan_blit_ctx_init(struct panfrost_device *dev,
 bool
 pan_blit_next_surface(struct pan_blit_context *ctx);
 
-void
+struct panfrost_ptr
 pan_blit(struct pan_blit_context *ctx,
          struct pan_pool *pool,
          struct pan_scoreboard *scoreboard,
