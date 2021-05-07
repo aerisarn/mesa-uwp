@@ -127,3 +127,105 @@ TEST(bitset, test_range_bits)
       EXPECT_EQ(BITSET_TEST(mask128, i), true);
    }
 }
+
+TEST(bitset, test_and)
+{
+   BITSET_DECLARE(r, 128);
+   BITSET_DECLARE(a, 128);
+   BITSET_DECLARE(b, 128);
+   BITSET_ZERO(r);
+   BITSET_ZERO(a);
+   BITSET_ZERO(b);
+
+   BITSET_AND(r, a, b);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 64, 95), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), false);
+
+
+   BITSET_SET_RANGE(a, 32, 63);
+   BITSET_SET_RANGE(b, 96, 127);
+   BITSET_AND(r, a, b);
+
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 64, 95), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), false);
+
+
+   BITSET_SET(a, 80);
+   BITSET_SET(b, 80);
+   BITSET_AND(r, a, b);
+
+   EXPECT_EQ(BITSET_TEST(r, 80), true);
+
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 64, 95), true);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), false);
+}
+
+TEST(bitset, test_or)
+{
+   BITSET_DECLARE(r, 128);
+   BITSET_DECLARE(a, 128);
+   BITSET_DECLARE(b, 128);
+   BITSET_ZERO(r);
+   BITSET_ZERO(a);
+   BITSET_ZERO(b);
+
+   BITSET_OR(r, a, b);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 64, 95), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), false);
+
+
+   BITSET_SET_RANGE(a, 32, 63);
+   BITSET_SET_RANGE(b, 96, 127);
+   BITSET_OR(r, a, b);
+
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), true);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 64, 95), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), true);
+
+
+   BITSET_SET(a, 80);
+   BITSET_OR(r, a, b);
+   EXPECT_EQ(BITSET_TEST(r, 80), true);
+
+   BITSET_SET(b, 81);
+   BITSET_OR(r, a, b);
+   EXPECT_EQ(BITSET_TEST(r, 81), true);
+
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), true);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 64, 95), true);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), true);
+}
+
+TEST(bitset, test_not)
+{
+   BITSET_DECLARE(r, 128);
+   BITSET_ZERO(r);
+
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 64, 95), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), false);
+
+   BITSET_NOT(r);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), true);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), true);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 64, 95), true);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), true);
+
+   BITSET_CLEAR_RANGE(r, 32, 63);
+   BITSET_NOT(r);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), true);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 64, 95), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), false);
+}
