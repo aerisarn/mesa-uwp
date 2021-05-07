@@ -655,23 +655,3 @@ zink_batch_reference_image_view(struct zink_batch *batch,
    else
       zink_batch_reference_surface(batch, image_view->surface);
 }
-
-void
-zink_batch_usage_set(struct zink_batch_usage *u, uint32_t batch_id)
-{
-   p_atomic_set(&u->usage, batch_id);
-}
-
-bool
-zink_batch_usage_matches(struct zink_batch_usage *u, uint32_t batch_id)
-{
-   uint32_t usage = p_atomic_read(&u->usage);
-   return usage == batch_id;
-}
-
-bool
-zink_batch_usage_exists(struct zink_batch_usage *u)
-{
-   uint32_t usage = p_atomic_read(&u->usage);
-   return !!usage;
-}

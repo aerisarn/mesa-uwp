@@ -174,16 +174,30 @@ zink_batch_state_reference(struct zink_screen *screen,
    if (dst) *dst = src;
 }
 
-void
-zink_batch_usage_set(struct zink_batch_usage *u, uint32_t batch_id);
-bool
-zink_batch_usage_matches(struct zink_batch_usage *u, uint32_t batch_id);
-bool
-zink_batch_usage_exists(struct zink_batch_usage *u);
-
 static inline void
 zink_batch_usage_unset(struct zink_batch_usage *u, uint32_t batch_id)
 {
    p_atomic_cmpxchg(&u->usage, batch_id, 0);
 }
+
+static inline void
+zink_batch_usage_set(struct zink_batch_usage *u, uint32_t batch_id)
+{
+   p_atomic_set(&u->usage, batch_id);
+}
+
+static inline bool
+zink_batch_usage_matches(struct zink_batch_usage *u, uint32_t batch_id)
+{
+   uint32_t usage = p_atomic_read(&u->usage);
+   return usage == batch_id;
+}
+
+static inline bool
+zink_batch_usage_exists(struct zink_batch_usage *u)
+{
+   uint32_t usage = p_atomic_read(&u->usage);
+   return !!usage;
+}
+
 #endif
