@@ -632,6 +632,9 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       case GFX10_3:
          si_init_draw_functions_GFX10_3(sctx);
          break;
+      case GFX11:
+         si_init_draw_functions_GFX11(sctx);
+         break;
       default:
          unreachable("unhandled chip class");
       }
@@ -1270,15 +1273,23 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->has_out_of_order_rast =
       sscreen->info.has_out_of_order_rast && !(sscreen->debug_flags & DBG(NO_OUT_OF_ORDER));
 
-   sscreen->use_ngg = !(sscreen->debug_flags & DBG(NO_NGG)) &&
-                      sscreen->info.chip_class >= GFX10 &&
-                      (sscreen->info.family != CHIP_NAVI14 ||
-                       sscreen->info.is_pro_graphics);
-   sscreen->use_ngg_culling = sscreen->use_ngg &&
-                              sscreen->info.max_render_backends >= 2 &&
-                              !((sscreen->debug_flags & DBG(NO_NGG_CULLING)) ||
-                                LLVM_VERSION_MAJOR <= 11 /* hangs on 11, see #4874 */);
-   sscreen->use_ngg_streamout = false;
+   if (sscreen->info.chip_class >= GFX11) {
+      sscreen->use_ngg = true;
+      sscreen->use_ngg_streamout = true;
+      /* TODO: Disable for now. Investigate if it helps.  */
+      sscreen->use_ngg_culling = (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL)) &&
+                                 !(sscreen->debug_flags & DBG(NO_NGG_CULLING));
+   } else {
+      sscreen->use_ngg = !(sscreen->debug_flags & DBG(NO_NGG)) &&
+                         sscreen->info.chip_class >= GFX10 &&
+                         (sscreen->info.family != CHIP_NAVI14 ||
+                          sscreen->info.is_pro_graphics);
+      sscreen->use_ngg_streamout = false;
+      sscreen->use_ngg_culling = sscreen->use_ngg &&
+                                 sscreen->info.max_render_backends >= 2 &&
+                                 !(sscreen->debug_flags & DBG(NO_NGG_CULLING)) &&
+                                 LLVM_VERSION_MAJOR >= 12; /* hangs on 11, see #4874 */
+   }
 
    /* Only set this for the cases that are known to work, which are:
     * - GFX9 if bpp >= 4 (in bytes)

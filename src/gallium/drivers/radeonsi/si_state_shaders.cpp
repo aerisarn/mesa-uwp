@@ -999,6 +999,8 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
    unsigned max_stream = util_last_bit(sel->info.base.gs.active_stream_mask);
    unsigned offset;
 
+   assert(sscreen->info.chip_class < GFX11); /* gfx11 doesn't have the legacy pipeline */
+
    pm4 = si_get_shader_pm4_state(shader);
    if (!pm4)
       return;
@@ -3069,6 +3071,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
        * - LDS usage is too high
        */
       sel->tess_turns_off_ngg = sscreen->info.chip_class >= GFX10 &&
+                                sscreen->info.chip_class <= GFX10_3 &&
                                 (sel->info.base.gs.invocations * sel->info.base.gs.vertices_out > 256 ||
                                  sel->info.base.gs.invocations * sel->info.base.gs.vertices_out *
                                  (sel->info.num_outputs * 4 + 1) > 6500 /* max dw per GS primitive */);

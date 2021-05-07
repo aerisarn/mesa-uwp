@@ -42,6 +42,8 @@
 #define GFX(name) name##GFX10
 #elif (GFX_VER == 103)
 #define GFX(name) name##GFX10_3
+#elif (GFX_VER == 11)
+#define GFX(name) name##GFX11
 #else
 #error "Unknown gfx version"
 #endif
@@ -425,8 +427,26 @@ static void si_prefetch_shaders(struct si_context *sctx)
       return;
 
    /* Prefetch shaders and VBO descriptors to TC L2. */
-   if (GFX_VERSION >= GFX9) {
-      /* Choose the right spot for the VBO prefetch. */
+   if (GFX_VERSION >= GFX11) {
+      if (HAS_TESS) {
+         if (mode != PREFETCH_AFTER_DRAW) {
+            if (mask & SI_PREFETCH_HS)
+               si_prefetch_shader_async(sctx, sctx->queued.named.hs);
+
+            if (mode == PREFETCH_BEFORE_DRAW)
+               return;
+         }
+
+         if (mask & SI_PREFETCH_GS)
+            si_prefetch_shader_async(sctx, sctx->queued.named.gs);
+      } else if (mode != PREFETCH_AFTER_DRAW) {
+         if (mask & SI_PREFETCH_GS)
+            si_prefetch_shader_async(sctx, sctx->queued.named.gs);
+
+         if (mode == PREFETCH_BEFORE_DRAW)
+            return;
+      }
+   } else if (GFX_VERSION >= GFX9) {
       if (HAS_TESS) {
          if (mode != PREFETCH_AFTER_DRAW) {
             if (mask & SI_PREFETCH_HS)
@@ -1735,6 +1755,9 @@ void si_set_vertex_buffer_descriptor(struct si_screen *sscreen, struct si_vertex
    case GFX10_3:
       si_set_vb_descriptor<GFX10_3>(velems, vb, element_index, out);
       break;
+   case GFX11:
+      si_set_vb_descriptor<GFX11>(velems, vb, element_index, out);
+      break;
    default:
       unreachable("unhandled chip class");
    }
@@ -2570,6 +2593,9 @@ template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has
 static void si_init_draw_vbo(struct si_context *sctx)
 {
    if (NGG && GFX_VERSION < GFX10)
+      return;
+
+   if (!NGG && GFX_VERSION >= GFX11)
       return;
 
    sctx->draw_vbo[HAS_TESS][HAS_GS][NGG] =
