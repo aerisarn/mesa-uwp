@@ -154,7 +154,6 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PREFER_COMPUTE_FOR_MULTIMEDIA:
    case PIPE_CAP_TGSI_DIV:
    case PIPE_CAP_PACKED_UNIFORMS:
-   case PIPE_CAP_SHADER_SAMPLES_IDENTICAL:
    case PIPE_CAP_GL_SPIRV:
    case PIPE_CAP_ALPHA_TO_COVERAGE_DITHER_CONTROL:
    case PIPE_CAP_MAP_UNSYNCHRONIZED_THREAD_SAFE:
@@ -174,6 +173,9 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_DRAW_VERTEX_STATE:
       return !(sscreen->debug_flags & DBG(NO_FAST_DISPLAY_LIST));
+
+   case PIPE_CAP_SHADER_SAMPLES_IDENTICAL:
+      return sscreen->info.chip_class < GFX11;
 
    case PIPE_CAP_GLSL_ZERO_INIT:
       return 2;

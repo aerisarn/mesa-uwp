@@ -253,6 +253,9 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
             flags |= RADEON_SURF_DISABLE_DCC;
          break;
 
+      case GFX11:
+         break;
+
       default:
          assert(0);
       }
@@ -279,6 +282,11 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
    }
 
    if (ptex->flags & SI_RESOURCE_FLAG_FORCE_MSAA_TILING) {
+      /* GFX11 shouldn't get here because the flag is only used by the CB MSAA resolving
+       * that GFX11 doesn't have.
+       */
+      assert(sscreen->info.chip_class <= GFX10_3);
+
       flags |= RADEON_SURF_FORCE_SWIZZLE_MODE;
 
       if (sscreen->info.chip_class >= GFX10)
@@ -997,6 +1005,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       tex->db_compatible = surface->flags & RADEON_SURF_ZBUFFER;
    } else {
       if (tex->surface.cmask_offset) {
+         assert(sscreen->info.chip_class < GFX11);
          tex->cb_color_info |= S_028C70_FAST_CLEAR(1);
          tex->cmask_buffer = &tex->buffer;
       }
@@ -1068,7 +1077,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
          /* Simple case - all tiles have DCC enabled. */
          assert(num_clears < ARRAY_SIZE(clears));
          si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.meta_offset,
-                              tex->surface.meta_size, DCC_CLEAR_COLOR_0000);
+                              tex->surface.meta_size, DCC_CLEAR_0000);
       } else if (sscreen->info.chip_class >= GFX9) {
          /* Clear to uncompressed. Clearing this to black is complicated. */
          assert(num_clears < ARRAY_SIZE(clears));
@@ -1097,7 +1106,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
             if (size) {
                assert(num_clears < ARRAY_SIZE(clears));
                si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.meta_offset, size,
-                                    DCC_CLEAR_COLOR_0000);
+                                    DCC_CLEAR_0000);
             }
             /* Mipmap levels without DCC. */
             if (size != tex->surface.meta_size) {
@@ -1115,7 +1124,9 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
        * Clear to white to indicate that. */
       assert(num_clears < ARRAY_SIZE(clears));
       si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.display_dcc_offset,
-                           tex->surface.u.gfx9.color.display_dcc_size, DCC_CLEAR_COLOR_1111);
+                           tex->surface.u.gfx9.color.display_dcc_size,
+                           sscreen->info.chip_class >= GFX11 ? GFX11_DCC_CLEAR_1111_UNORM
+                                                             : GFX8_DCC_CLEAR_1111);
    }
 
    /* Execute the clears. */

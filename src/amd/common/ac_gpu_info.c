@@ -853,7 +853,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->si_TA_CS_BC_BASE_ADDR_allowed = true;
    info->has_bo_metadata = true;
    info->has_gpu_reset_status_query = true;
-   info->has_eqaa_surface_allocator = true;
+   info->has_eqaa_surface_allocator = info->chip_class < GFX11;
    info->has_format_bc1_through_bc7 = true;
    /* DRM 3.1.0 doesn't flush TC for GFX8 correctly. */
    info->kernel_flushes_tc_l2_after_ib = info->chip_class != GFX8 || info->drm_minor >= 2;

@@ -112,12 +112,18 @@ static void si_emit_cb_render_state(struct si_context *sctx)
          blend->dcc_msaa_corruption_4bit & cb_target_mask && sctx->framebuffer.nr_samples >= 2;
       unsigned watermark = sctx->framebuffer.dcc_overwrite_combiner_watermark;
 
-      radeon_opt_set_context_reg(
-         sctx, R_028424_CB_DCC_CONTROL, SI_TRACKED_CB_DCC_CONTROL,
-         S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(sctx->chip_class <= GFX9) |
-            S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
-            S_028424_OVERWRITE_COMBINER_DISABLE(oc_disable) |
-            S_028424_DISABLE_CONSTANT_ENCODE_REG(sctx->screen->info.has_dcc_constant_encode));
+      if (sctx->chip_class >= GFX11) {
+         radeon_opt_set_context_reg(sctx, R_028424_CB_FDCC_CONTROL, SI_TRACKED_CB_DCC_CONTROL,
+                                    S_028424_SAMPLE_MASK_TRACKER_DISABLE(oc_disable) |
+                                    S_028424_SAMPLE_MASK_TRACKER_WATERMARK(watermark));
+      } else {
+         radeon_opt_set_context_reg(
+            sctx, R_028424_CB_DCC_CONTROL, SI_TRACKED_CB_DCC_CONTROL,
+            S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(sctx->chip_class <= GFX9) |
+               S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
+               S_028424_OVERWRITE_COMBINER_DISABLE(oc_disable) |
+               S_028424_DISABLE_CONSTANT_ENCODE_REG(sctx->screen->info.has_dcc_constant_encode));
+      }
    }
 
    /* RB+ register settings. */
@@ -486,6 +492,8 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
    blend->cb_target_mask = 0;
    blend->cb_target_enabled_4bit = 0;
 
+   unsigned last_blend_cntl;
+
    for (int i = 0; i < num_shader_outputs; i++) {
       /* state->rt entries > 0 only written if independent blending */
       const int j = state->independent_blend_enable ? i : 0;
@@ -505,9 +513,12 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
 
       /* Only set dual source blending for MRT0 to avoid a hang. */
       if (i >= 1 && blend->dual_src_blend) {
-         /* Vulkan does this for dual source blending. */
-         if (i == 1)
-            blend_cntl |= S_028780_ENABLE(1);
+         if (i == 1) {
+            if (sctx->chip_class >= GFX11)
+               blend_cntl = last_blend_cntl;
+            else
+               blend_cntl = S_028780_ENABLE(1);
+         }
 
          si_pm4_set_reg(pm4, R_028780_CB_BLEND0_CONTROL + i * 4, blend_cntl);
          continue;
@@ -586,6 +597,7 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
          blend_cntl |= S_028780_ALPHA_DESTBLEND(si_translate_blend_factor(sctx->chip_class, dstA));
       }
       si_pm4_set_reg(pm4, R_028780_CB_BLEND0_CONTROL + i * 4, blend_cntl);
+      last_blend_cntl = blend_cntl;
 
       blend->blend_enable_4bit |= 0xfu << (i * 4);
 
@@ -2525,18 +2537,19 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
       unsigned log_samples = util_logbase2(tex->buffer.b.b.nr_samples);
       unsigned log_fragments = util_logbase2(tex->buffer.b.b.nr_storage_samples);
 
-      if (sctx->chip_class >= GFX11)
+      if (sctx->chip_class >= GFX11) {
          color_attrib |= S_028C74_NUM_FRAGMENTS_GFX11(log_fragments);
-      else
+      } else {
          color_attrib |= S_028C74_NUM_SAMPLES(log_samples) | S_028C74_NUM_FRAGMENTS_GFX6(log_fragments);
 
-      if (tex->surface.fmask_offset) {
-         color_info |= S_028C70_COMPRESSION(1);
-         unsigned fmask_bankh = util_logbase2(tex->surface.u.legacy.color.fmask.bankh);
+         if (tex->surface.fmask_offset) {
+            color_info |= S_028C70_COMPRESSION(1);
+            unsigned fmask_bankh = util_logbase2(tex->surface.u.legacy.color.fmask.bankh);
 
-         if (sctx->chip_class == GFX6) {
-            /* due to a hw bug, FMASK_BANK_HEIGHT must be set on GFX6 too */
-            color_attrib |= S_028C74_FMASK_BANK_HEIGHT(fmask_bankh);
+            if (sctx->chip_class == GFX6) {
+               /* due to a hw bug, FMASK_BANK_HEIGHT must be set on GFX6 too */
+               color_attrib |= S_028C74_FMASK_BANK_HEIGHT(fmask_bankh);
+            }
          }
       }
    }
@@ -2582,6 +2595,8 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
    /* GFX10 field has the same base shift as the GFX6 field */
    unsigned color_view = S_028C6C_SLICE_START(surf->base.u.tex.first_layer) |
                          S_028C6C_SLICE_MAX_GFX10(surf->base.u.tex.last_layer);
+   unsigned mip0_width = surf->width0 - 1;
+   unsigned mip0_height = surf->height0 - 1;
    unsigned mip0_depth = util_max_layer(&tex->buffer.b.b, 0);
 
    if (sctx->chip_class >= GFX10) {
@@ -2597,8 +2612,8 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
    }
 
    if (sctx->chip_class >= GFX9) {
-      surf->cb_color_attrib2 = S_028C68_MIP0_WIDTH(surf->width0 - 1) |
-                               S_028C68_MIP0_HEIGHT(surf->height0 - 1) |
+      surf->cb_color_attrib2 = S_028C68_MIP0_WIDTH(mip0_width) |
+                               S_028C68_MIP0_HEIGHT(mip0_height) |
                                S_028C68_MAX_MIP(tex->buffer.b.b.last_level);
    }
 
@@ -3141,7 +3156,9 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
       cb = (struct si_surface *)state->cbufs[i];
       if (!cb) {
          radeon_set_context_reg(R_028C70_CB_COLOR0_INFO + i * 0x3C,
-                                S_028C70_FORMAT_GFX6(V_028C70_COLOR_INVALID));
+                                sctx->chip_class >= GFX11 ?
+                                   S_028C70_FORMAT_GFX11(V_028C70_COLOR_INVALID) :
+                                   S_028C70_FORMAT_GFX6(V_028C70_COLOR_INVALID));
          continue;
       }
 
@@ -3178,7 +3195,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          cb_color_info |= S_028C70_COMP_SWAP(swap);
       }
 
-      if (cb->base.u.tex.level > 0)
+      if (sctx->chip_class < GFX11 && cb->base.u.tex.level > 0)
          cb_color_info &= C_028C70_FAST_CLEAR;
 
       if (tex->surface.fmask_offset) {
@@ -3192,6 +3209,9 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
                                     state->cbufs[1] == &cb->base &&
                                     state->cbufs[1]->texture->nr_samples <= 1;
 
+         /* CB can't do MSAA resolve on gfx11. */
+         assert(!is_msaa_resolve_dst || sctx->chip_class < GFX11);
+
          if (!is_msaa_resolve_dst && sctx->chip_class < GFX11)
             cb_color_info |= S_028C70_DCC_ENABLE(1);
 
@@ -3202,7 +3222,33 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          cb_dcc_base |= dcc_tile_swizzle;
       }
 
-      if (sctx->chip_class >= GFX10) {
+      if (sctx->chip_class >= GFX11) {
+         unsigned cb_color_attrib3, cb_fdcc_control;
+
+         /* Set mutable surface parameters. */
+         cb_color_base += tex->surface.u.gfx9.surf_offset >> 8;
+         cb_color_base |= tex->surface.tile_swizzle;
+
+         cb_color_attrib3 = cb->cb_color_attrib3 |
+                            S_028EE0_COLOR_SW_MODE(tex->surface.u.gfx9.swizzle_mode) |
+                            S_028EE0_DCC_PIPE_ALIGNED(tex->surface.u.gfx9.color.dcc.pipe_aligned);
+         cb_fdcc_control = cb->cb_dcc_control |
+                           S_028C78_DISABLE_CONSTANT_ENCODE_REG(1) |
+                           S_028C78_FDCC_ENABLE(vi_dcc_enabled(tex, cb->base.u.tex.level));
+
+         radeon_set_context_reg_seq(R_028C6C_CB_COLOR0_VIEW + i * 0x3C, 4);
+         radeon_emit(cb->cb_color_view);                      /* CB_COLOR0_VIEW */
+         radeon_emit(cb_color_info);                          /* CB_COLOR0_INFO */
+         radeon_emit(cb_color_attrib);                        /* CB_COLOR0_ATTRIB */
+         radeon_emit(cb_fdcc_control);                        /* CB_COLOR0_FDCC_CONTROL */
+
+         radeon_set_context_reg(R_028C60_CB_COLOR0_BASE + i * 0x3C, cb_color_base);
+         radeon_set_context_reg(R_028E40_CB_COLOR0_BASE_EXT + i * 4, cb_color_base >> 32);
+         radeon_set_context_reg(R_028C94_CB_COLOR0_DCC_BASE + i * 0x3C, cb_dcc_base);
+         radeon_set_context_reg(R_028EA0_CB_COLOR0_DCC_BASE_EXT + i * 4, cb_dcc_base >> 32);
+         radeon_set_context_reg(R_028EC0_CB_COLOR0_ATTRIB2 + i * 4, cb->cb_color_attrib2);
+         radeon_set_context_reg(R_028EE0_CB_COLOR0_ATTRIB3 + i * 4, cb_color_attrib3);
+      } else if (sctx->chip_class >= GFX10) {
          unsigned cb_color_attrib3;
 
          /* Set mutable surface parameters. */
@@ -5310,14 +5356,18 @@ void si_init_state_functions(struct si_context *sctx)
    sctx->b.delete_depth_stencil_alpha_state = si_delete_dsa_state;
 
    sctx->custom_dsa_flush = si_create_db_flush_dsa(sctx);
-   sctx->custom_blend_resolve = si_create_blend_custom(sctx, V_028808_CB_RESOLVE);
-   sctx->custom_blend_fmask_decompress = si_create_blend_custom(sctx, V_028808_CB_FMASK_DECOMPRESS);
-   sctx->custom_blend_eliminate_fastclear =
-      si_create_blend_custom(sctx, V_028808_CB_ELIMINATE_FAST_CLEAR);
+
+   if (sctx->chip_class < GFX11) {
+      sctx->custom_blend_resolve = si_create_blend_custom(sctx, V_028808_CB_RESOLVE);
+      sctx->custom_blend_fmask_decompress = si_create_blend_custom(sctx, V_028808_CB_FMASK_DECOMPRESS);
+      sctx->custom_blend_eliminate_fastclear =
+         si_create_blend_custom(sctx, V_028808_CB_ELIMINATE_FAST_CLEAR);
+   }
+
    sctx->custom_blend_dcc_decompress =
       si_create_blend_custom(sctx, sctx->chip_class >= GFX11 ?
-                                       V_028808_CB_DCC_DECOMPRESS_GFX11 :
-                                       V_028808_CB_DCC_DECOMPRESS_GFX8);
+                                V_028808_CB_DCC_DECOMPRESS_GFX11 :
+                                V_028808_CB_DCC_DECOMPRESS_GFX8);
 
    sctx->b.set_clip_state = si_set_clip_state;
    sctx->b.set_stencil_ref = si_set_stencil_ref;

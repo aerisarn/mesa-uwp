@@ -106,6 +106,8 @@ void si_execute_clears(struct si_context *sctx, struct si_clear_info *info,
 
 static bool si_alloc_separate_cmask(struct si_screen *sscreen, struct si_texture *tex)
 {
+   assert(sscreen->info.chip_class < GFX11);
+
    /* CMASK for MSAA is allocated in advance or always disabled
     * by "nofmask" option.
     */
@@ -180,10 +182,10 @@ bool vi_alpha_is_on_msb(struct si_screen *sscreen, enum pipe_format format)
    return comp_swap != V_028C70_SWAP_STD_REV && comp_swap != V_028C70_SWAP_ALT_REV;
 }
 
-static bool vi_get_fast_clear_parameters(struct si_screen *sscreen, enum pipe_format base_format,
-                                         enum pipe_format surface_format,
-                                         const union pipe_color_union *color, uint32_t *clear_value,
-                                         bool *eliminate_needed)
+static bool gfx8_get_dcc_clear_parameters(struct si_screen *sscreen, enum pipe_format base_format,
+                                          enum pipe_format surface_format,
+                                          const union pipe_color_union *color, uint32_t *clear_value,
+                                          bool *eliminate_needed)
 {
    /* If we want to clear without needing a fast clear eliminate step, we
     * can set color and alpha independently to 0 or 1 (or 0/max for integer
@@ -204,7 +206,7 @@ static bool vi_get_fast_clear_parameters(struct si_screen *sscreen, enum pipe_fo
       return false;
 
    *eliminate_needed = true;
-   *clear_value = DCC_CLEAR_COLOR_REG;
+   *clear_value = GFX8_DCC_CLEAR_REG;
 
    if (desc->layout != UTIL_FORMAT_LAYOUT_PLAIN)
       return true; /* need ELIMINATE_FAST_CLEAR */
@@ -278,16 +280,141 @@ static bool vi_get_fast_clear_parameters(struct si_screen *sscreen, enum pipe_fo
 
    if (color_value) {
       if (alpha_value)
-         *clear_value = DCC_CLEAR_COLOR_1111;
+         *clear_value = GFX8_DCC_CLEAR_1111;
       else
-         *clear_value = DCC_CLEAR_COLOR_1110;
+         *clear_value = GFX8_DCC_CLEAR_1110;
    } else {
       if (alpha_value)
-         *clear_value = DCC_CLEAR_COLOR_0001;
+         *clear_value = GFX8_DCC_CLEAR_0001;
       else
-         *clear_value = DCC_CLEAR_COLOR_0000;
+         *clear_value = GFX8_DCC_CLEAR_0000;
    }
    return true;
+}
+
+static bool gfx11_get_dcc_clear_parameters(struct si_screen *sscreen, enum pipe_format surface_format,
+                                           const union pipe_color_union *color, uint32_t *clear_value)
+{
+   const struct util_format_description *desc =
+      util_format_description(si_simplify_cb_format(surface_format));
+   unsigned start_bit = UINT_MAX;
+   unsigned end_bit = 0;
+
+   /* TODO: 8bpp and 16bpp fast DCC clears don't work. */
+   if (desc->block.bits <= 16)
+      return false;
+
+   /* Find the used bit range. */
+   for (unsigned i = 0; i < 4; i++) {
+      unsigned swizzle = desc->swizzle[i];
+
+      if (swizzle >= PIPE_SWIZZLE_0)
+         continue;
+
+      start_bit = MIN2(start_bit, desc->channel[swizzle].shift);
+      end_bit = MAX2(end_bit, desc->channel[swizzle].shift + desc->channel[swizzle].size);
+   }
+
+   union {
+      uint8_t ub[16];
+      uint16_t us[8];
+      uint32_t ui[4];
+   } value = {};
+   util_pack_color_union(surface_format, (union util_color*)&value, color);
+
+   /* Check the cases where all components or bits are either all 0 or all 1. */
+   bool all_bits_are_0 = true;
+   bool all_bits_are_1 = true;
+   bool all_words_are_fp16_1 = false;
+   bool all_words_are_fp32_1 = false;
+
+   for (unsigned i = start_bit; i < end_bit; i++) {
+      bool bit = value.ub[i / 8] & BITFIELD_BIT(i % 8);
+
+      all_bits_are_0 &= !bit;
+      all_bits_are_1 &= bit;
+   }
+
+   if (start_bit % 16 == 0 && end_bit % 16 == 0) {
+      all_words_are_fp16_1 = true;
+      for (unsigned i = start_bit / 16; i < end_bit / 16; i++)
+         all_words_are_fp16_1 &= value.us[i] == 0x3c00;
+   }
+
+   if (start_bit % 32 == 0 && end_bit % 32 == 0) {
+      all_words_are_fp32_1 = true;
+      for (unsigned i = start_bit / 32; i < end_bit / 32; i++)
+         all_words_are_fp32_1 &= value.ui[i] == 0x3f800000;
+   }
+
+#if 0 /* debug code */
+   int i = util_format_get_first_non_void_channel(surface_format);
+   if (desc->channel[i].type == UTIL_FORMAT_TYPE_SIGNED && desc->channel[i].pure_integer) {
+      printf("%i %i %i %i\n", color->i[0], color->i[1], color->i[2], color->i[3]);
+   } else if (desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED && desc->channel[i].pure_integer) {
+      printf("%u %u %u %u\n", color->ui[0], color->ui[1], color->ui[2], color->ui[3]);
+   } else {
+      printf("%f %f %f %f\n", color->f[0], color->f[1], color->f[2], color->f[3]);
+   }
+   for (unsigned i = 0; i < end_bit / 8; i++)
+      printf("%02x", value.ub[i]);
+   printf("\n");
+   printf("bits=[%u..%u)%s%s%s%s\n", start_bit, end_bit,
+          all_bits_are_0 ? ", all 0" : "",
+          all_bits_are_1 ? ", all 1" : "",
+          all_words_are_fp16_1 ? ", all fp16 1" : "",
+          all_words_are_fp32_1 ? ", all fp32 1" : "");
+#endif
+
+   *clear_value = 0;
+
+   if (all_bits_are_0 || all_bits_are_1 || all_words_are_fp16_1 || all_words_are_fp32_1) {
+      if (all_bits_are_0)
+         *clear_value = GFX11_DCC_CLEAR_0000;
+      else if (all_bits_are_1)
+         *clear_value = GFX11_DCC_CLEAR_1111_UNORM;
+      else if (all_words_are_fp16_1)
+         *clear_value = GFX11_DCC_CLEAR_1111_FP16;
+      else if (all_words_are_fp32_1)
+         *clear_value = GFX11_DCC_CLEAR_1111_FP32;
+
+      return true;
+   }
+
+   /* Check 0001 and 1110 cases. */
+   if (vi_alpha_is_on_msb(sscreen, surface_format)) {
+      if (desc->nr_channels == 2 && desc->channel[0].size == 8) {
+         if (value.ub[0] == 0x00 && value.ub[1] == 0xff) {
+            *clear_value = GFX11_DCC_CLEAR_0001_UNORM;
+            return true;
+         } else if (value.ub[0] == 0xff && value.ub[1] == 0x00) {
+            *clear_value = GFX11_DCC_CLEAR_1110_UNORM;
+            return true;
+         }
+      } else if (desc->nr_channels == 4 && desc->channel[0].size == 8) {
+         if (value.ub[0] == 0x00 && value.ub[1] == 0x00 &&
+             value.ub[2] == 0x00 && value.ub[3] == 0xff) {
+            *clear_value = GFX11_DCC_CLEAR_0001_UNORM;
+            return true;
+         } else if (value.ub[0] == 0xff && value.ub[1] == 0xff &&
+                    value.ub[2] == 0xff && value.ub[3] == 0x00) {
+            *clear_value = GFX11_DCC_CLEAR_1110_UNORM;
+            return true;
+         }
+      } else if (desc->nr_channels == 4 && desc->channel[0].size == 16) {
+         if (value.us[0] == 0x0000 && value.us[1] == 0x0000 &&
+             value.us[2] == 0x0000 && value.us[3] == 0xffff) {
+            *clear_value = GFX11_DCC_CLEAR_0001_UNORM;
+            return true;
+         } else if (value.us[0] == 0xffff && value.us[1] == 0xffff &&
+                    value.us[2] == 0xffff && value.us[3] == 0x0000) {
+            *clear_value = GFX11_DCC_CLEAR_1110_UNORM;
+            return true;
+         }
+      }
+   }
+
+   return false;
 }
 
 bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsigned level,
@@ -301,8 +428,9 @@ bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsi
 
    if (sctx->chip_class >= GFX10) {
       /* 4x and 8x MSAA needs a sophisticated compute shader for
-       * the clear. */
-      if (tex->buffer.b.b.nr_storage_samples >= 4)
+       * the clear. GFX11 doesn't need that.
+       */
+      if (sctx->chip_class < GFX11 && tex->buffer.b.b.nr_storage_samples >= 4)
          return false;
 
       unsigned num_layers = util_num_layers(&tex->buffer.b.b, level);
@@ -607,10 +735,16 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
          if (sctx->screen->debug_flags & DBG(NO_DCC_CLEAR))
             continue;
 
-         if (!vi_get_fast_clear_parameters(sctx->screen, tex->buffer.b.b.format,
-                                           fb->cbufs[i]->format, color, &reset_value,
-                                           &eliminate_needed))
-            continue;
+         if (sctx->chip_class >= GFX11) {
+            if (!gfx11_get_dcc_clear_parameters(sctx->screen, fb->cbufs[i]->format, color,
+                                                &reset_value))
+               continue;
+         } else {
+            if (!gfx8_get_dcc_clear_parameters(sctx->screen, tex->buffer.b.b.format,
+                                               fb->cbufs[i]->format, color, &reset_value,
+                                               &eliminate_needed))
+               continue;
+         }
 
          /* Shared textures can't use fast clear without an explicit flush
           * because the clear color is not exported.
@@ -649,6 +783,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
 
          /* DCC fast clear with MSAA should clear CMASK to 0xC. */
          if (tex->buffer.b.b.nr_samples >= 2 && tex->cmask_buffer) {
+            assert(sctx->chip_class < GFX11); /* no FMASK/CMASK on GFX11 */
             assert(num_clears < ARRAY_SIZE(info));
             si_init_buffer_clear(&info[num_clears++], &tex->cmask_buffer->b.b,
                                  tex->surface.cmask_offset, tex->surface.cmask_size, 0xCCCCCCCC);
@@ -656,6 +791,10 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
             fmask_decompress_needed = true;
          }
       } else {
+         /* No CMASK on GFX11. */
+         if (sctx->chip_class >= GFX11)
+            continue;
+
          if (level > 0)
             continue;
 
@@ -740,6 +879,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
 
       if ((eliminate_needed || fmask_decompress_needed) &&
           !(tex->dirty_level_mask & (1 << level))) {
+         assert(sctx->chip_class < GFX11); /* no decompression needed on GFX11 */
          tex->dirty_level_mask |= 1 << level;
          si_set_sampler_depth_decompress_mask(sctx, tex);
          p_atomic_inc(&sctx->screen->compressed_colortex_counter);
@@ -752,6 +892,9 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
        */
       if (sctx->screen->info.has_dcc_constant_encode && !eliminate_needed)
          continue;
+
+      /* There are no clear color registers on GFX11. */
+      assert(sctx->chip_class < GFX11);
 
       if (si_set_clear_color(tex, fb->cbufs[i]->format, color)) {
          sctx->framebuffer.dirty_cbufs |= 1 << i;

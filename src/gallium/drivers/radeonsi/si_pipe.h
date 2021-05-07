@@ -162,14 +162,30 @@ enum si_has_ngg {
    NGG_ON,
 };
 
+#define DCC_CODE(x) (((x) << 24) | ((x) << 16) | ((x) << 8) | (x))
+
 enum si_clear_code
 {
-   DCC_CLEAR_COLOR_0000 = 0x00000000,
-   DCC_CLEAR_COLOR_0001 = 0x40404040,
-   DCC_CLEAR_COLOR_1110 = 0x80808080,
-   DCC_CLEAR_COLOR_1111 = 0xC0C0C0C0,
-   DCC_CLEAR_COLOR_REG = 0x20202020,
-   DCC_UNCOMPRESSED = 0xFFFFFFFF,
+   /* Common clear codes. */
+   DCC_CLEAR_0000    = DCC_CODE(0x00), /* all bits are 0 */
+   DCC_UNCOMPRESSED  = DCC_CODE(0xFF),
+
+   GFX8_DCC_CLEAR_0000     = DCC_CLEAR_0000,
+   GFX8_DCC_CLEAR_0001     = DCC_CODE(0x40),
+   GFX8_DCC_CLEAR_1110     = DCC_CODE(0x80),
+   GFX8_DCC_CLEAR_1111     = DCC_CODE(0xC0),
+   GFX8_DCC_CLEAR_REG      = DCC_CODE(0x20),
+   GFX9_DCC_CLEAR_SINGLE   = DCC_CODE(0x10),
+
+   GFX11_DCC_CLEAR_SINGLE     = DCC_CODE(0x01),
+   GFX11_DCC_CLEAR_0000       = DCC_CLEAR_0000, /* all bits are 0 */
+   GFX11_DCC_CLEAR_1111_UNORM = DCC_CODE(0x02), /* all bits are 1 */
+   GFX11_DCC_CLEAR_1111_FP16  = DCC_CODE(0x04), /* all 16-bit words are 0x3c00, max 64bpp */
+   GFX11_DCC_CLEAR_1111_FP32  = DCC_CODE(0x06), /* all 32-bit words are 0x3f800000 */
+   /* Color bits are 0, alpha bits are 1; only 88, 8888, 16161616 with alpha_on_msb=1 */
+   GFX11_DCC_CLEAR_0001_UNORM = DCC_CODE(0x08),
+   /* Color bits are 1, alpha bits are 0, only 88, 8888, 16161616 with alpha_on_msb=1 */
+   GFX11_DCC_CLEAR_1110_UNORM = DCC_CODE(0x0A),
 };
 
 #define SI_IMAGE_ACCESS_DCC_OFF              (1 << 8)
@@ -378,7 +394,7 @@ struct si_texture {
    uint64_t cmask_base_address_reg;
    struct si_resource *cmask_buffer;
    unsigned cb_color_info; /* fast clear enable bit */
-   unsigned color_clear_value[2];
+   unsigned color_clear_value[2]; /* not on gfx11 */
    unsigned last_msaa_resolve_target_micro_mode;
    bool swap_rgb_to_bgr_on_next_clear;
    bool swap_rgb_to_bgr;

@@ -757,6 +757,8 @@ void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uin
 {
    struct si_texture *tex = (struct si_texture*)res;
 
+   assert(sctx->chip_class < GFX11);
+
    /* Set the DCC buffer. */
    assert(tex->surface.meta_offset && tex->surface.meta_offset <= UINT_MAX);
    assert(tex->buffer.bo_size <= UINT_MAX);
@@ -808,6 +810,8 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
    unsigned log_fragments = util_logbase2(tex->nr_storage_samples);
    unsigned log_samples = util_logbase2(tex->nr_samples);
    assert(tex->nr_samples >= 2);
+
+   assert(sctx->chip_class < GFX11);
 
    /* EQAA FMASK expansion is unimplemented. */
    if (tex->nr_samples != tex->nr_storage_samples)

@@ -447,6 +447,9 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
    if (!level_mask)
       goto expand_fmask;
 
+   /* No color decompression is needed on GFX11. */
+   assert(sctx->chip_class < GFX11 || need_dcc_decompress);
+
    if (unlikely(sctx->log))
       u_log_printf(sctx->log,
                    "\n------------------------------------------------\n"
@@ -534,6 +537,7 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
 
 expand_fmask:
    if (need_fmask_expand && tex->surface.fmask_offset && !tex->fmask_is_identity) {
+      assert(sctx->chip_class < GFX11); /* no FMASK on gfx11 */
       si_compute_expand_fmask(&sctx->b, &tex->buffer.b.b);
       tex->fmask_is_identity = true;
    }
