@@ -80,6 +80,7 @@ struct MoveState {
 
 private:
    void downwards_advance_helper();
+   void upwards_verify_invariants();
 };
 
 struct sched_ctx {
@@ -115,6 +116,22 @@ void move_element(T begin_it, size_t idx, size_t before) {
 void MoveState::downwards_advance_helper()
 {
    source_idx--;
+
+   assert(source_idx < insert_idx_clause);
+   assert(insert_idx_clause < insert_idx);
+
+#ifndef NDEBUG
+   RegisterDemand reference_demand;
+   for (int i = source_idx + 1; i < insert_idx_clause; ++i) {
+      reference_demand.update(register_demand[i]);
+   }
+   assert(total_demand_clause == reference_demand);
+
+   for (int i = insert_idx_clause; i < insert_idx; ++i) {
+      reference_demand.update(register_demand[i]);
+   }
+   assert(total_demand == reference_demand);
+#endif
 }
 
 void MoveState::downwards_init(int current_idx, bool improved_rar_, bool may_form_clauses)
@@ -174,8 +191,8 @@ MoveResult MoveState::downwards_move(bool clause)
       }
    }
 
-   int dest_insert_idx = clause ? insert_idx_clause : insert_idx;
-   RegisterDemand register_pressure = clause ? total_demand_clause : total_demand;
+   const int dest_insert_idx = clause ? insert_idx_clause : insert_idx;
+   const RegisterDemand register_pressure = clause ? total_demand_clause : total_demand;
 
    const RegisterDemand candidate_diff = get_live_changes(instr);
    const RegisterDemand temp = get_temp_registers(instr);
@@ -233,6 +250,22 @@ void MoveState::downwards_skip()
    total_demand.update(register_demand[source_idx]);
 
    downwards_advance_helper();
+}
+
+void MoveState::upwards_verify_invariants() {
+#ifndef NDEBUG
+   if (insert_idx < 0) {
+      return;
+   }
+
+   assert(insert_idx < source_idx);
+
+   RegisterDemand reference_demand;
+   for (int i = insert_idx; i < source_idx; ++i) {
+      reference_demand.update(register_demand[i]);
+   }
+   assert(total_demand == reference_demand);
+#endif
 }
 
 void MoveState::upwards_init(int source_idx_, bool improved_rar_)
@@ -308,6 +341,8 @@ MoveResult MoveState::upwards_move()
    total_demand.update(register_demand[source_idx]);
    source_idx++;
 
+   upwards_verify_invariants();
+
    return move_success;
 }
 
@@ -327,6 +362,8 @@ void MoveState::upwards_skip()
    }
 
    source_idx++;
+
+   upwards_verify_invariants();
 }
 
 bool is_gs_or_done_sendmsg(const Instruction *instr)
