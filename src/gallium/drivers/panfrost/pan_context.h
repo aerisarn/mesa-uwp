@@ -84,7 +84,7 @@ struct panfrost_query {
         bool msaa;
 };
 
-struct panfrost_fence {
+struct pipe_fence_handle {
         struct pipe_reference reference;
         uint32_t syncobj;
         bool signaled;

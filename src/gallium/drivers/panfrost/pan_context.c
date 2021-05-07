@@ -105,9 +105,9 @@ panfrost_flush(
         panfrost_flush_all_batches(ctx);
 
         if (fence) {
-                struct panfrost_fence *f = panfrost_fence_create(ctx);
+                struct pipe_fence_handle *f = panfrost_fence_create(ctx);
                 pipe->screen->fence_reference(pipe->screen, fence, NULL);
-                *fence = (struct pipe_fence_handle *)f;
+                *fence = f;
         }
 
         if (dev->debug & PAN_DBG_TRACE)

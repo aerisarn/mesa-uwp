@@ -61,7 +61,7 @@ pan_device(struct pipe_screen *p)
         return &(pan_screen(p)->dev);
 }
 
-struct panfrost_fence *
+struct pipe_fence_handle *
 panfrost_fence_create(struct panfrost_context *ctx);
 
 #endif /* PAN_SCREEN_H */
