@@ -303,6 +303,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_scalar_block_layout               = true,
       .EXT_separate_stencil_usage            = true,
       .EXT_shader_atomic_float               = true,
+      .EXT_shader_atomic_float2              = device->info.ver >= 9,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_stencil_export             = device->info.ver >= 9,
       .EXT_shader_subgroup_ballot            = true,
@@ -1669,6 +1670,23 @@ void anv_GetPhysicalDeviceFeatures2(
          features->shaderImageFloat32AtomicAdd =   false;
          features->sparseImageFloat32Atomics =     false;
          features->sparseImageFloat32AtomicAdd =   false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT: {
+         VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT *features = (void *)ext;
+         features->shaderBufferFloat16Atomics      = false;
+         features->shaderBufferFloat16AtomicAdd    = false;
+         features->shaderBufferFloat16AtomicMinMax = false;
+         features->shaderBufferFloat32AtomicMinMax = pdevice->info.ver >= 9;
+         features->shaderBufferFloat64AtomicMinMax = false;
+         features->shaderSharedFloat16Atomics      = false;
+         features->shaderSharedFloat16AtomicAdd    = false;
+         features->shaderSharedFloat16AtomicMinMax = false;
+         features->shaderSharedFloat32AtomicMinMax = pdevice->info.ver >= 9;
+         features->shaderSharedFloat64AtomicMinMax = false;
+         features->shaderImageFloat32AtomicMinMax  = false;
+         features->sparseImageFloat32AtomicMinMax  = false;
          break;
       }
 
