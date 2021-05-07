@@ -852,10 +852,12 @@ static bool llvmpipe_resource_bind_backing(struct pipe_screen *screen,
    if (!lpr->backable)
       return FALSE;
 
+   if (llvmpipe_resource_is_texture(&lpr->base)) {
+      if (lpr->size_required > LP_MAX_TEXTURE_SIZE)
+         return FALSE;
 
-   if (llvmpipe_resource_is_texture(&lpr->base))
       lpr->tex_data = (char *)pmem + offset;
-   else
+   } else
       lpr->data = (char *)pmem + offset;
    lpr->backing_offset = offset;
 

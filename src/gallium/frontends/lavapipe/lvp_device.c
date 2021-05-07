@@ -1629,12 +1629,18 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_BindImageMemory2(VkDevice _device,
       }
 
       if (!did_bind) {
+         if (!device->pscreen->resource_bind_backing(device->pscreen,
+                                                     image->bo,
+                                                     mem->pmem,
+                                                     bind_info->memoryOffset)) {
+            /* This is probably caused by the texture being too large, so let's
+             * report this as the *closest* allowed error-code. It's not ideal,
+             * but it's unlikely that anyone will care too much.
+             */
+            return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
          image->pmem = mem->pmem;
          image->memory_offset = bind_info->memoryOffset;
-         device->pscreen->resource_bind_backing(device->pscreen,
-                                                image->bo,
-                                                mem->pmem,
-                                                bind_info->memoryOffset);
       }
    }
    return VK_SUCCESS;
