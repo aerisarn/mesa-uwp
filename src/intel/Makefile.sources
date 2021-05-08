@@ -41,6 +41,7 @@ COMPILER_FILES = \
 	compiler/brw_clip_unfilled.c \
 	compiler/brw_clip_util.c \
 	compiler/brw_compile_clip.c \
+	compiler/brw_compile_ff_gs.c \
 	compiler/brw_compile_sf.c \
 	compiler/brw_compiler.c \
 	compiler/brw_compiler.h \
