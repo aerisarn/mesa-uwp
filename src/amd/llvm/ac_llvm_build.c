@@ -1764,22 +1764,7 @@ void ac_set_range_metadata(struct ac_llvm_context *ctx, LLVMValueRef value, unsi
 
 LLVMValueRef ac_get_thread_id(struct ac_llvm_context *ctx)
 {
-   LLVMValueRef tid;
-
-   LLVMValueRef tid_args[2];
-   tid_args[0] = LLVMConstInt(ctx->i32, 0xffffffff, false);
-   tid_args[1] = ctx->i32_0;
-   tid_args[1] =
-      ac_build_intrinsic(ctx, "llvm.amdgcn.mbcnt.lo", ctx->i32, tid_args, 2, AC_FUNC_ATTR_READNONE);
-
-   if (ctx->wave_size == 32) {
-      tid = tid_args[1];
-   } else {
-      tid = ac_build_intrinsic(ctx, "llvm.amdgcn.mbcnt.hi", ctx->i32, tid_args, 2,
-                               AC_FUNC_ATTR_READNONE);
-   }
-   ac_set_range_metadata(ctx, tid, 0, ctx->wave_size);
-   return tid;
+   return ac_build_mbcnt(ctx, LLVMConstInt(ctx->iN_wavemask, ~0ull, 0));
 }
 
 /*
@@ -3466,8 +3451,10 @@ LLVMValueRef ac_build_writelane(struct ac_llvm_context *ctx, LLVMValueRef src, L
 LLVMValueRef ac_build_mbcnt(struct ac_llvm_context *ctx, LLVMValueRef mask)
 {
    if (ctx->wave_size == 32) {
-      return ac_build_intrinsic(ctx, "llvm.amdgcn.mbcnt.lo", ctx->i32,
+      LLVMValueRef val = ac_build_intrinsic(ctx, "llvm.amdgcn.mbcnt.lo", ctx->i32,
                                 (LLVMValueRef[]){mask, ctx->i32_0}, 2, AC_FUNC_ATTR_READNONE);
+      ac_set_range_metadata(ctx, val, 0, ctx->wave_size);
+      return val;
    }
    LLVMValueRef mask_vec = LLVMBuildBitCast(ctx->builder, mask, ctx->v2i32, "");
    LLVMValueRef mask_lo = LLVMBuildExtractElement(ctx->builder, mask_vec, ctx->i32_0, "");
@@ -3477,6 +3464,7 @@ LLVMValueRef ac_build_mbcnt(struct ac_llvm_context *ctx, LLVMValueRef mask)
                          (LLVMValueRef[]){mask_lo, ctx->i32_0}, 2, AC_FUNC_ATTR_READNONE);
    val = ac_build_intrinsic(ctx, "llvm.amdgcn.mbcnt.hi", ctx->i32, (LLVMValueRef[]){mask_hi, val},
                             2, AC_FUNC_ATTR_READNONE);
+   ac_set_range_metadata(ctx, val, 0, ctx->wave_size);
    return val;
 }
 
