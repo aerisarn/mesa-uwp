@@ -315,6 +315,8 @@ void ac_build_raw_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsrc, 
                                 unsigned num_channels, unsigned dfmt, unsigned nfmt,
                                 unsigned cache_policy);
 
+void ac_set_range_metadata(struct ac_llvm_context *ctx, LLVMValueRef value, unsigned lo,
+                           unsigned hi);
 LLVMValueRef ac_get_thread_id(struct ac_llvm_context *ctx);
 
 #define AC_TID_MASK_TOP_LEFT 0xfffffffc

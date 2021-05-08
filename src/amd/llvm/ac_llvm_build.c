@@ -1728,8 +1728,8 @@ void ac_build_tbuffer_store_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
  * \p lo is the minimum value inclusive.
  * \p hi is the maximum value exclusive.
  */
-static void set_range_metadata(struct ac_llvm_context *ctx, LLVMValueRef value, unsigned lo,
-                               unsigned hi)
+void ac_set_range_metadata(struct ac_llvm_context *ctx, LLVMValueRef value, unsigned lo,
+                           unsigned hi)
 {
    LLVMValueRef range_md, md_args[2];
    LLVMTypeRef type = LLVMTypeOf(value);
@@ -1757,7 +1757,7 @@ LLVMValueRef ac_get_thread_id(struct ac_llvm_context *ctx)
       tid = ac_build_intrinsic(ctx, "llvm.amdgcn.mbcnt.hi", ctx->i32, tid_args, 2,
                                AC_FUNC_ATTR_READNONE);
    }
-   set_range_metadata(ctx, tid, 0, ctx->wave_size);
+   ac_set_range_metadata(ctx, tid, 0, ctx->wave_size);
    return tid;
 }
 
