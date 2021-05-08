@@ -675,7 +675,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
       ac_cull_triangle(&ctx->ac, pos, prim_restart_accepted, vp_scale, vp_translate,
                        ac_get_arg(&ctx->ac, param_smallprim_precision), &options);
 
-   ac_build_optimization_barrier(&ctx->ac, &accepted);
+   ac_build_optimization_barrier(&ctx->ac, &accepted, false);
    LLVMValueRef accepted_threadmask = ac_get_i1_sgpr_mask(&ctx->ac, accepted);
 
    /* Count the number of active threads by doing bitcount(accepted). */

@@ -401,25 +401,46 @@ void ac_build_s_barrier(struct ac_llvm_context *ctx)
  * Optionally, a value can be passed through the inline assembly to prevent
  * LLVM from hoisting calls to ReadNone functions.
  */
-void ac_build_optimization_barrier(struct ac_llvm_context *ctx, LLVMValueRef *pvgpr)
+void ac_build_optimization_barrier(struct ac_llvm_context *ctx, LLVMValueRef *pgpr, bool sgpr)
 {
    static int counter = 0;
 
    LLVMBuilderRef builder = ctx->builder;
    char code[16];
+   const char *constraint = sgpr ? "=s,0" : "=v,0";
 
    snprintf(code, sizeof(code), "; %d", (int)p_atomic_inc_return(&counter));
 
-   if (!pvgpr) {
+   if (!pgpr) {
       LLVMTypeRef ftype = LLVMFunctionType(ctx->voidt, NULL, 0, false);
       LLVMValueRef inlineasm = LLVMConstInlineAsm(ftype, code, "", true, false);
       LLVMBuildCall(builder, inlineasm, NULL, 0, "");
+   } else if (LLVMTypeOf(*pgpr) == ctx->i32) {
+      /* Simple version for i32 that allows the caller to set LLVM metadata on the call
+       * instruction. */
+      LLVMTypeRef ftype = LLVMFunctionType(ctx->i32, &ctx->i32, 1, false);
+      LLVMValueRef inlineasm = LLVMConstInlineAsm(ftype, code, constraint, true, false);
+
+      *pgpr = LLVMBuildCall(builder, inlineasm, pgpr, 1, "");
+   } else if (LLVMTypeOf(*pgpr) == ctx->i16) {
+      /* Simple version for i16 that allows the caller to set LLVM metadata on the call
+       * instruction. */
+      LLVMTypeRef ftype = LLVMFunctionType(ctx->i16, &ctx->i16, 1, false);
+      LLVMValueRef inlineasm = LLVMConstInlineAsm(ftype, code, constraint, true, false);
+
+      *pgpr = LLVMBuildCall(builder, inlineasm, pgpr, 1, "");
+   } else if (LLVMGetTypeKind(LLVMTypeOf(*pgpr)) == LLVMPointerTypeKind) {
+      LLVMTypeRef type = LLVMTypeOf(*pgpr);
+      LLVMTypeRef ftype = LLVMFunctionType(type, &type, 1, false);
+      LLVMValueRef inlineasm = LLVMConstInlineAsm(ftype, code, constraint, true, false);
+
+      *pgpr = LLVMBuildCall(builder, inlineasm, pgpr, 1, "");
    } else {
       LLVMTypeRef ftype = LLVMFunctionType(ctx->i32, &ctx->i32, 1, false);
-      LLVMValueRef inlineasm = LLVMConstInlineAsm(ftype, code, "=v,0", true, false);
-      LLVMTypeRef type = LLVMTypeOf(*pvgpr);
+      LLVMValueRef inlineasm = LLVMConstInlineAsm(ftype, code, constraint, true, false);
+      LLVMTypeRef type = LLVMTypeOf(*pgpr);
       unsigned bitsize = ac_get_elem_bits(ctx, type);
-      LLVMValueRef vgpr = *pvgpr;
+      LLVMValueRef vgpr = *pgpr;
       LLVMTypeRef vgpr_type;
       unsigned vgpr_size;
       LLVMValueRef vgpr0;
@@ -441,7 +462,7 @@ void ac_build_optimization_barrier(struct ac_llvm_context *ctx, LLVMValueRef *pv
       if (bitsize < 32)
          vgpr = LLVMBuildTrunc(builder, vgpr, type, "");
 
-      *pvgpr = vgpr;
+      *pgpr = vgpr;
    }
 }
 
@@ -471,7 +492,7 @@ LLVMValueRef ac_build_ballot(struct ac_llvm_context *ctx, LLVMValueRef value)
    /* We currently have no other way to prevent LLVM from lifting the icmp
     * calls to a dominating basic block.
     */
-   ac_build_optimization_barrier(ctx, &args[0]);
+   ac_build_optimization_barrier(ctx, &args[0], false);
 
    args[0] = ac_to_integer(ctx, args[0]);
 
@@ -3366,7 +3387,7 @@ static LLVMValueRef _ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef
    LLVMValueRef result;
 
    if (with_opt_barrier)
-      ac_build_optimization_barrier(ctx, &src);
+      ac_build_optimization_barrier(ctx, &src, false);
 
    src = LLVMBuildZExt(ctx->builder, src, ctx->i32, "");
    if (lane)
@@ -4061,7 +4082,7 @@ LLVMValueRef ac_build_inclusive_scan(struct ac_llvm_context *ctx, LLVMValueRef s
       return result;
    }
 
-   ac_build_optimization_barrier(ctx, &src);
+   ac_build_optimization_barrier(ctx, &src, false);
 
    LLVMValueRef identity = get_reduction_identity(ctx, op, ac_get_type_size(LLVMTypeOf(src)));
    result = LLVMBuildBitCast(ctx->builder, ac_build_set_inactive(ctx, src, identity),
@@ -4083,7 +4104,7 @@ LLVMValueRef ac_build_exclusive_scan(struct ac_llvm_context *ctx, LLVMValueRef s
       return result;
    }
 
-   ac_build_optimization_barrier(ctx, &src);
+   ac_build_optimization_barrier(ctx, &src, false);
 
    LLVMValueRef identity = get_reduction_identity(ctx, op, ac_get_type_size(LLVMTypeOf(src)));
    result = LLVMBuildBitCast(ctx->builder, ac_build_set_inactive(ctx, src, identity),
@@ -4098,7 +4119,7 @@ LLVMValueRef ac_build_reduce(struct ac_llvm_context *ctx, LLVMValueRef src, nir_
 {
    if (cluster_size == 1)
       return src;
-   ac_build_optimization_barrier(ctx, &src);
+   ac_build_optimization_barrier(ctx, &src, false);
    LLVMValueRef result, swap;
    LLVMValueRef identity = get_reduction_identity(ctx, op, ac_get_type_size(LLVMTypeOf(src)));
    result = LLVMBuildBitCast(ctx->builder, ac_build_set_inactive(ctx, src, identity),
@@ -4219,7 +4240,7 @@ void ac_build_wg_wavescan_bottom(struct ac_llvm_context *ctx, struct ac_wg_scan 
    {
       tmp = LLVMBuildLoad(builder, LLVMBuildGEP(builder, ws->scratch, &tid, 1, ""), "");
 
-      ac_build_optimization_barrier(ctx, &tmp);
+      ac_build_optimization_barrier(ctx, &tmp, false);
 
       bbs[1] = LLVMGetInsertBlock(builder);
       phivalues_scan[1] = ac_build_scan(ctx, ws->op, tmp, identity, ws->maxwaves, true);
