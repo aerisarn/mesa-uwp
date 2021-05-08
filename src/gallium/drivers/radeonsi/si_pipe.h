@@ -64,7 +64,8 @@ extern "C" {
 /* Tunables for compute-based clear_buffer and copy_buffer: */
 #define SI_COMPUTE_CLEAR_DW_PER_THREAD 4
 #define SI_COMPUTE_COPY_DW_PER_THREAD  4
-#define SI_COMPUTE_DST_CACHE_POLICY    L2_STREAM
+/* L2 LRU is recommended because the compute shader can finish sooner due to fewer L2 evictions. */
+#define SI_COMPUTE_DST_CACHE_POLICY    L2_LRU
 
 /* Pipeline & streamout query controls. */
 #define SI_CONTEXT_START_PIPELINE_STATS  (1 << 0)

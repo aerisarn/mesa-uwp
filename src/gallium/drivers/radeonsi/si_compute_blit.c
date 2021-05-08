@@ -27,9 +27,7 @@
 #include "util/format/u_format.h"
 #include "util/format_srgb.h"
 
-/* Note: Compute shaders always use SI_COMPUTE_DST_CACHE_POLICY for dst
- * and L2_STREAM for src.
- */
+/* Determine the cache policy. */
 static enum si_cache_policy get_cache_policy(struct si_context *sctx, enum si_coherency coher,
                                              uint64_t size)
 {
@@ -37,7 +35,7 @@ static enum si_cache_policy get_cache_policy(struct si_context *sctx, enum si_co
                                      coher == SI_COHERENCY_DB_META ||
                                      coher == SI_COHERENCY_CP)) ||
        (sctx->chip_class >= GFX7 && coher == SI_COHERENCY_SHADER))
-      return size <= sctx->screen->info.l2_cache_size / 8 ? L2_LRU : L2_STREAM;
+      return L2_LRU; /* it's faster if L2 doesn't evict anything  */
 
    return L2_BYPASS;
 }

@@ -62,10 +62,10 @@ void si_execute_clears(struct si_context *sctx, struct si_clear_info *info,
 
    /* Flush caches and wait for idle. */
    if (types & (SI_CLEAR_TYPE_CMASK | SI_CLEAR_TYPE_DCC))
-      sctx->flags |= si_get_flush_flags(sctx, SI_COHERENCY_CB_META, L2_STREAM);
+      sctx->flags |= si_get_flush_flags(sctx, SI_COHERENCY_CB_META, L2_LRU);
 
    if (types & SI_CLEAR_TYPE_HTILE)
-      sctx->flags |= si_get_flush_flags(sctx, SI_COHERENCY_DB_META, L2_STREAM);
+      sctx->flags |= si_get_flush_flags(sctx, SI_COHERENCY_DB_META, L2_LRU);
 
    /* Flush caches in case we use compute. */
    sctx->flags |= SI_CONTEXT_INV_VCACHE;
