@@ -365,6 +365,7 @@ IndirectPropagation::visit(BasicBlock *bb)
 class ConstantFolding : public Pass
 {
 public:
+   ConstantFolding() : foldCount(0) {}
    bool foldAll(Program *);
 
 private:
