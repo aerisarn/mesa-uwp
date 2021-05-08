@@ -40,9 +40,6 @@
 #include "decode.h"
 #include "isa.h"
 
-#define BITSET_FORMAT "016"PRIx64
-#define BITSET_VALUE(v) v
-
 /**
  * The set of leaf node bitsets in the bitset hiearchy which defines all
  * the possible instructions.
@@ -80,7 +77,7 @@ struct decode_scope {
 	/**
 	 * Current bitset value being decoded
 	 */
-	uint64_t val;
+	bitmask_t val;
 
 	/**
 	 * Current bitset.
@@ -215,11 +212,11 @@ pop_expr(struct decode_state *state)
 }
 
 static struct decode_scope *
-push_scope(struct decode_state *state, const struct isa_bitset *bitset, uint64_t val)
+push_scope(struct decode_state *state, const struct isa_bitset *bitset, bitmask_t val)
 {
 	struct decode_scope *scope = rzalloc_size(state, sizeof(*scope));
 
-	scope->val = val;
+	BITSET_COPY(scope->val.bitset, val.bitset);
 	scope->bitset = bitset;
 	scope->parent = state->scope;
 	scope->state  = state;
@@ -273,7 +270,7 @@ evaluate_expr(struct decode_scope *scope, isa_expr_t expr)
  */
 static const struct isa_bitset *
 find_bitset(struct decode_state *state, const struct isa_bitset **bitsets,
-		uint64_t val)
+		bitmask_t val)
 {
 	const struct isa_bitset *match = NULL;
 	for (int n = 0; bitsets[n]; n++) {
@@ -282,9 +279,18 @@ find_bitset(struct decode_state *state, const struct isa_bitset **bitsets,
 		if (state->options->gpu_id < bitsets[n]->gen.min)
 			continue;
 
-		uint64_t m = (val & bitsets[n]->mask) & ~bitsets[n]->dontcare;
+		// m = (val & bitsets[n]->mask) & ~bitsets[n]->dontcare;
+		bitmask_t m = { 0 };
+		bitmask_t not_dontcare;
 
-		if (m != bitsets[n]->match) {
+		BITSET_AND(m.bitset, val.bitset, bitsets[n]->mask.bitset);
+
+		BITSET_COPY(not_dontcare.bitset, bitsets[n]->dontcare.bitset);
+		BITSET_NOT(not_dontcare.bitset);
+
+		BITSET_AND(m.bitset, m.bitset, not_dontcare.bitset);
+
+		if (!BITSET_EQUAL(m.bitset, bitsets[n]->match.bitset)) {
 			continue;
 		}
 
@@ -302,9 +308,14 @@ find_bitset(struct decode_state *state, const struct isa_bitset **bitsets,
 		match = bitsets[n];
 	}
 
-	if (match && (match->dontcare & val)) {
-		decode_error(state, "dontcare bits in %s: %"BITSET_FORMAT,
-				match->name, BITSET_VALUE(match->dontcare & val));
+	if (match) {
+		bitmask_t m = { 0 };
+		BITSET_AND(m.bitset, match->dontcare.bitset, val.bitset);
+
+		if (BITSET_COUNT(m.bitset)) {
+			decode_error(state, "dontcare bits in %s: %"BITSET_FORMAT,
+					match->name, BITSET_VALUE(m.bitset));
+		}
 	}
 
 	return match;
@@ -349,12 +360,19 @@ find_field(struct decode_scope *scope, const struct isa_bitset *bitset,
 	return NULL;
 }
 
-static uint64_t
+static bitmask_t
 extract_field(struct decode_scope *scope, const struct isa_field *field)
 {
-	uint64_t val = scope->val;
-	val = (val >> field->low) & ((1ul << (1 + field->high - field->low)) - 1);
-	return val;
+   bitmask_t val, mask;
+
+   BITSET_COPY(val.bitset, scope->val.bitset);
+   BITSET_ZERO(mask.bitset);
+
+   BITSET_SET_RANGE(mask.bitset, field->low, field->high);
+   BITSET_AND(val.bitset, val.bitset, mask.bitset);
+   BITSET_SHR(val.bitset, field->low);
+
+   return val;
 }
 
 /**
@@ -374,12 +392,14 @@ find_display(struct decode_scope *scope, const struct isa_bitset *bitset)
 		for (unsigned j = 0; j < c->num_fields; j++) {
 			if (c->fields[j].type == TYPE_ASSERT) {
 				const struct isa_field *f = &c->fields[j];
-				uint64_t val = extract_field(scope, f);
-				if (val != f->val) {
+				bitmask_t val;
+
+				val = extract_field(scope, f);
+				if (!BITSET_EQUAL(val.bitset, f->val.bitset)) {
 					decode_error(scope->state, "WARNING: unexpected "
 							"bits[%u:%u] in %s: %"BITSET_FORMAT" vs %"BITSET_FORMAT,
 							f->low, f->high, bitset->name,
-							BITSET_VALUE(val), BITSET_VALUE(f->val));
+							BITSET_VALUE(val.bitset), BITSET_VALUE(f->val.bitset));
 				}
 			}
 		}
@@ -402,12 +422,12 @@ find_display(struct decode_scope *scope, const struct isa_bitset *bitset)
  * Decode a field that is itself another bitset type
  */
 static void
-display_bitset_field(struct decode_scope *scope, const struct isa_field *field, uint64_t val)
+display_bitset_field(struct decode_scope *scope, const struct isa_field *field, bitmask_t val)
 {
 	const struct isa_bitset *b = find_bitset(scope->state, field->bitsets, val);
 	if (!b) {
 		decode_error(scope->state, "no match: FIELD: '%s.%s': %"BITSET_FORMAT,
-				scope->bitset->name, field->name, BITSET_VALUE(val));
+				scope->bitset->name, field->name, BITSET_VALUE(val.bitset));
 		return;
 	}
 
@@ -419,23 +439,25 @@ display_bitset_field(struct decode_scope *scope, const struct isa_field *field, 
 }
 
 static void
-display_enum_field(struct decode_scope *scope, const struct isa_field *field, uint64_t val)
+display_enum_field(struct decode_scope *scope, const struct isa_field *field, bitmask_t val)
 {
 	FILE *out = scope->state->out;
 
 	const struct isa_enum *e = field->enums;
+	const uint64_t ui = bitmask_to_uint64_t(val);
+
 	for (unsigned i = 0; i < e->num_values; i++) {
-		if (e->values[i].val == val) {
+		if (e->values[i].val == ui) {
 			fprintf(out, "%s", e->values[i].display);
 			return;
 		}
 	}
 
-	fprintf(out, "%u", (unsigned)val);
+	fprintf(out, "%u", (unsigned)ui);
 }
 
 static const struct isa_field *
-resolve_field(struct decode_scope *scope, const char *field_name, uint64_t *valp)
+resolve_field(struct decode_scope *scope, const char *field_name, bitmask_t *valp)
 {
 	if (!scope) {
 		/* We've reached the bottom of the stack! */
@@ -460,7 +482,9 @@ resolve_field(struct decode_scope *scope, const char *field_name, uint64_t *valp
 
 	/* extract out raw field value: */
 	if (field->expr) {
-		*valp = evaluate_expr(scope, field->expr);
+		uint64_t val = evaluate_expr(scope, field->expr);
+
+		*valp = uint64_t_to_bitmask(val);
 	} else {
 		*valp = extract_field(scope, field);
 	}
@@ -472,14 +496,14 @@ resolve_field(struct decode_scope *scope, const char *field_name, uint64_t *valp
 uint64_t
 isa_decode_field(struct decode_scope *scope, const char *field_name)
 {
-	uint64_t val;
+	bitmask_t val;
 	const struct isa_field *field = resolve_field(scope, field_name, &val);
 	if (!field) {
 		decode_error(scope->state, "no field '%s'", field_name);
 		return 0;
 	}
 
-	return val;
+	return bitmask_to_uint64_t(val);
 }
 
 static void
@@ -500,12 +524,14 @@ display_field(struct decode_scope *scope, const char *field_name)
 		return;
 	}
 
-	uint64_t val;
-	const struct isa_field *field = resolve_field(scope, field_name, &val);
+	bitmask_t v;
+	const struct isa_field *field = resolve_field(scope, field_name, &v);
 	if (!field) {
 		decode_error(scope->state, "no field '%s'", field_name);
 		return;
 	}
+
+	uint64_t val = bitmask_to_uint64_t(v);
 
 	if (options->field_cb) {
 		options->field_cb(options->cbdata, field_name, &(struct isa_decode_value){
@@ -566,7 +592,7 @@ display_field(struct decode_scope *scope, const char *field_name)
 		}
 		break;
 	case TYPE_ENUM:
-		display_enum_field(scope, field, val);
+		display_enum_field(scope, field, v);
 		break;
 
 	case TYPE_ASSERT:
@@ -576,7 +602,7 @@ display_field(struct decode_scope *scope, const char *field_name)
 
 	/* For fields that are decoded with another bitset hierarchy: */
 	case TYPE_BITSET:
-		display_bitset_field(scope, field, val);
+		display_bitset_field(scope, field, v);
 		break;
 	default:
 		decode_error(scope->state, "Bad field type: %d (%s)",
@@ -616,22 +642,18 @@ display(struct decode_scope *scope)
 	}
 }
 
-static inline void
-next_instruction(bitmask_t *instr, uint64_t *start)
-{
-	*instr = *start;
-}
-
 static void
 decode(struct decode_state *state, void *bin, int sz)
 {
-	uint64_t *instrs = bin;
+	BITSET_WORD *instrs = bin;
 	unsigned errors = 0;   /* number of consecutive unmatched instructions */
+
+	assert(sz % BITMASK_WORDS == 0);
 
 	for (state->n = 0; state->n < state->num_instr; state->n++) {
 		bitmask_t instr = { 0 };
 
-		next_instruction(&instr, &instrs[state->n]);
+		next_instruction(&instr, &instrs[state->n * BITMASK_WORDS]);
 
 		if (state->options->max_errors && (errors > state->options->max_errors)) {
 			break;
@@ -641,18 +663,18 @@ decode(struct decode_state *state, void *bin, int sz)
 				BITSET_TEST(state->branch_targets, state->n)) {
 			if (state->options->instr_cb) {
 				state->options->instr_cb(state->options->cbdata,
-						state->n, instr);
+						state->n, instr.bitset);
 			}
 			fprintf(state->out, "l%d:\n", state->n);
 		}
 
 		if (state->options->instr_cb) {
-			state->options->instr_cb(state->options->cbdata, state->n, instr);
+			state->options->instr_cb(state->options->cbdata, state->n, instr.bitset);
 		}
 
 		const struct isa_bitset *b = find_bitset(state, __instruction, instr);
 		if (!b) {
-			fprintf(state->out, "no match: %"BITSET_FORMAT"\n", BITSET_VALUE(instr));
+			fprintf(state->out, "no match: %"BITSET_FORMAT"\n", BITSET_VALUE(instr.bitset));
 			errors++;
 			continue;
 		}
@@ -690,7 +712,7 @@ isa_decode(void *bin, int sz, FILE *out, const struct isa_decode_options *option
 
 	state = rzalloc_size(NULL, sizeof(*state));
 	state->options = options;
-	state->num_instr = sz / 8;
+	state->num_instr = sz / (BITMASK_WORDS * sizeof(BITSET_WORD));
 
 	if (state->options->branch_labels) {
 		state->branch_targets = rzalloc_size(state,
