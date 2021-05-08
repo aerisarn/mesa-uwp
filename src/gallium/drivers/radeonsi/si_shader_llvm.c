@@ -93,9 +93,7 @@ bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
    if (!si_replace_shader(count, binary)) {
       struct ac_compiler_passes *passes = compiler->passes;
 
-      if (ac->wave_size == 32)
-         passes = compiler->passes_wave32;
-      else if (less_optimized && compiler->low_opt_passes)
+      if (less_optimized && compiler->low_opt_passes)
          passes = compiler->low_opt_passes;
 
       struct si_llvm_diagnostics diag = {debug};
@@ -190,6 +188,7 @@ void si_llvm_create_func(struct si_shader_context *ctx, const char *name, LLVMTy
    }
 
    ac_llvm_set_workgroup_size(ctx->main_fn, max_workgroup_size);
+   ac_llvm_set_target_features(ctx->main_fn, &ctx->ac);
 }
 
 void si_llvm_create_main_func(struct si_shader_context *ctx, bool ngg_cull_shader)

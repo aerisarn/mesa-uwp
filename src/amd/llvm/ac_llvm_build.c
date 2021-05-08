@@ -69,8 +69,7 @@ void ac_llvm_context_init(struct ac_llvm_context *ctx, struct ac_llvm_compiler *
    ctx->wave_size = wave_size;
    ctx->ballot_mask_bits = ballot_mask_bits;
    ctx->float_mode = float_mode;
-   ctx->module =
-      ac_create_module(wave_size == 32 ? compiler->tm_wave32 : compiler->tm, ctx->context);
+   ctx->module = ac_create_module(compiler->tm, ctx->context);
    ctx->builder = ac_create_builder(ctx->context, float_mode);
 
    ctx->voidt = LLVMVoidTypeInContext(ctx->context);

@@ -142,7 +142,6 @@ void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compil
 
    enum ac_target_machine_options tm_options =
       (sscreen->debug_flags & DBG(GISEL) ? AC_TM_ENABLE_GLOBAL_ISEL : 0) |
-      (!sscreen->llvm_has_working_vgpr_indexing ? AC_TM_PROMOTE_ALLOCA_TO_SCRATCH : 0) |
       (sscreen->debug_flags & DBG(CHECK_IR) ? AC_TM_CHECK_IR : 0) |
       (create_low_opt_compiler ? AC_TM_CREATE_LOW_OPT : 0);
 
@@ -150,8 +149,6 @@ void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compil
    ac_init_llvm_compiler(compiler, sscreen->info.family, tm_options);
    compiler->passes = ac_create_llvm_passes(compiler->tm);
 
-   if (compiler->tm_wave32)
-      compiler->passes_wave32 = ac_create_llvm_passes(compiler->tm_wave32);
    if (compiler->low_opt_tm)
       compiler->low_opt_passes = ac_create_llvm_passes(compiler->low_opt_tm);
 }
@@ -1265,9 +1262,6 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       assert(sscreen->pbb_persistent_states_per_bin >= 1 &&
              sscreen->pbb_persistent_states_per_bin <= 32);
    }
-
-   /* LLVM doesn't support VGPR indexing on GFX9. */
-   sscreen->llvm_has_working_vgpr_indexing = sscreen->info.chip_class != GFX9;
 
    (void)simple_mtx_init(&sscreen->shader_parts_mutex, mtx_plain);
    sscreen->use_monolithic_shaders = (sscreen->debug_flags & DBG(MONOLITHIC_SHADERS)) != 0;

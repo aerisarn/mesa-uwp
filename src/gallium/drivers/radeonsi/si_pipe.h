@@ -548,7 +548,6 @@ struct si_screen {
    bool commutative_blend_add;
    bool dpbb_allowed;
    bool dfsm_allowed;
-   bool llvm_has_working_vgpr_indexing;
    bool use_ngg;
    bool use_ngg_culling;
    bool use_ngg_streamout;

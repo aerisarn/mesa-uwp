@@ -47,12 +47,6 @@ class radv_llvm_per_thread_info {
       if (!passes)
          return false;
 
-      if (llvm_info.tm_wave32) {
-         passes_wave32 = ac_create_llvm_passes(llvm_info.tm_wave32);
-         if (!passes_wave32)
-            return false;
-      }
-
       return true;
    }
 
