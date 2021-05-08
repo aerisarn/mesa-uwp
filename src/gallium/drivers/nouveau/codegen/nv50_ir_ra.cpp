@@ -876,9 +876,9 @@ private:
 
 const GCRA::RelDegree GCRA::relDegree;
 
-GCRA::RIG_Node::RIG_Node() : Node(NULL), next(this), prev(this)
+GCRA::RIG_Node::RIG_Node() : Node(NULL), degree(0), degreeLimit(0), maxReg(0),
+   colors(0), f(FILE_NULL), reg(0), weight(0), next(this), prev(this)
 {
-   colors = 0;
 }
 
 void
