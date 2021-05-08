@@ -796,7 +796,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
    struct si_shader_selector *sel = shader->selector;
    struct si_shader_info *info = &sel->info;
    LLVMBuilderRef builder = ctx->ac.builder;
-   unsigned subgroup_size = 128;
+   unsigned subgroup_size = ctx->screen->ngg_subgroup_size;
    unsigned max_waves = ctx->ac.wave_size == 64 ? DIV_ROUND_UP(subgroup_size, 64) :
                                                   DIV_ROUND_UP(subgroup_size, 32);
 
@@ -2018,18 +2018,15 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    /* All these are per subgroup: */
    const unsigned min_esverts = gs_sel->screen->info.chip_class >= GFX10_3 ? 29 : 24;
    bool max_vert_out_per_gs_instance = false;
-   unsigned max_gsprims_base = 128; /* default prim group size clamp */
-   unsigned max_esverts_base = 128;
+   unsigned max_gsprims_base = gs_sel->screen->ngg_subgroup_size; /* default prim group size clamp */
+   unsigned max_esverts_base = gs_sel->screen->ngg_subgroup_size;
 
    if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST) {
-      /* Exactly 1 wave32 executes culling in primitive threads (there is no
-       * divergence), other waves are idle.
-       */
-      max_gsprims_base = 32;
+      /* All lanes are filled in wave32. */
+      max_gsprims_base = ROUND_DOWN_TO(max_gsprims_base / 3, 32);
       max_esverts_base = max_gsprims_base * 3;
    } else if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP) {
-      max_gsprims_base = 126;
-      max_esverts_base = 128;
+      max_gsprims_base = max_esverts_base - 2;
    }
 
    if (gs_stage == MESA_SHADER_GEOMETRY) {

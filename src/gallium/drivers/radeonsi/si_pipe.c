@@ -1300,6 +1300,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       }
    }
 
+   sscreen->ngg_subgroup_size = 128;
    sscreen->ge_wave_size = 64;
    sscreen->ps_wave_size = 64;
    sscreen->compute_wave_size = 64;
