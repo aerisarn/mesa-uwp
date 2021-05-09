@@ -311,7 +311,8 @@ util_queue_thread_func(void *input)
 
       if (job.job) {
          job.execute(job.job, thread_index);
-         util_queue_fence_signal(job.fence);
+         if (job.fence)
+            util_queue_fence_signal(job.fence);
          if (job.cleanup)
             job.cleanup(job.job, thread_index);
       }
@@ -323,7 +324,8 @@ util_queue_thread_func(void *input)
       for (unsigned i = queue->read_idx; i != queue->write_idx;
            i = (i + 1) % queue->max_jobs) {
          if (queue->jobs[i].job) {
-            util_queue_fence_signal(queue->jobs[i].fence);
+            if (queue->jobs[i].fence)
+               util_queue_fence_signal(queue->jobs[i].fence);
             queue->jobs[i].job = NULL;
          }
       }
@@ -552,7 +554,8 @@ util_queue_add_job(struct util_queue *queue,
       return;
    }
 
-   util_queue_fence_reset(fence);
+   if (fence)
+      util_queue_fence_reset(fence);
 
    assert(queue->num_queued >= 0 && queue->num_queued <= queue->max_jobs);
 
