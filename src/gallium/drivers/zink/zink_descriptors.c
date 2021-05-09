@@ -389,7 +389,7 @@ equals_descriptor_layout(const void *a, const void *b)
           !memcmp(a_k->bindings, b_k->bindings, a_k->num_descriptors * sizeof(VkDescriptorSetLayoutBinding));
 }
 
-VkDescriptorSetLayout
+struct zink_descriptor_layout *
 zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_type type,
                       VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings,
                       struct zink_descriptor_layout_key **layout_key)
@@ -418,11 +418,7 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->desc_set_layouts[type], hash, &key);
       if (he) {
          *layout_key = (void*)he->key;
-#if VK_USE_64_BIT_PTR_DEFINES == 1
-         return (VkDescriptorSetLayout)he->data;
-#else
-         return *((VkDescriptorSetLayout*)he->data);
-#endif
+         return he->data;
       }
    }
 
@@ -441,23 +437,17 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
    }
    memcpy(k->bindings, key.bindings, bindings_size);
 
+   struct zink_descriptor_layout *layout = rzalloc(ctx, struct zink_descriptor_layout);
+   layout->layout = dsl;
    if (type != ZINK_DESCRIPTOR_TYPES) {
-#if VK_USE_64_BIT_PTR_DEFINES == 1
-      _mesa_hash_table_insert_pre_hashed(&ctx->desc_set_layouts[type], hash, k, dsl);
-#else
-      {
-         VkDescriptorSetLayout *dsl_p = ralloc(NULL, VkDescriptorSetLayout);
-         *dsl_p = dsl;
-         _mesa_hash_table_insert_pre_hashed(&ctx->desc_set_layouts[type], hash, k, dsl_p);
-      }
-#endif
+      _mesa_hash_table_insert_pre_hashed(&ctx->desc_set_layouts[type], hash, k, layout);
    }
    *layout_key = k;
-   return dsl;
+   return layout;
 }
 
 bool
-zink_descriptor_util_push_layouts_get(struct zink_context *ctx, VkDescriptorSetLayout *dsls, struct zink_descriptor_layout_key **layout_keys)
+zink_descriptor_util_push_layouts_get(struct zink_context *ctx, struct zink_descriptor_layout **dsls, struct zink_descriptor_layout_key **layout_keys)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkDescriptorSetLayoutBinding bindings[PIPE_SHADER_TYPES];
@@ -604,7 +594,7 @@ allocate_desc_set(struct zink_context *ctx, struct zink_program *pg, enum zink_d
          bucket_size = desc_factor;
    }
    VkDescriptorSet desc_set[bucket_size];
-   if (!zink_descriptor_util_alloc_sets(screen, push_set ? ctx->dd->push_dsl[is_compute] : pg->dsl[type + 1], pool->descpool, desc_set, bucket_size))
+   if (!zink_descriptor_util_alloc_sets(screen, push_set ? ctx->dd->push_dsl[is_compute]->layout : pg->dsl[type + 1], pool->descpool, desc_set, bucket_size))
       return VK_NULL_HANDLE;
 
    struct zink_descriptor_set *alloc = ralloc_array(pool, struct zink_descriptor_set, bucket_size);
@@ -1652,13 +1642,11 @@ zink_descriptor_layouts_deinit(struct zink_context *ctx)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       hash_table_foreach(&ctx->desc_set_layouts[i], he) {
-#if VK_USE_64_BIT_PTR_DEFINES == 1
-         vkDestroyDescriptorSetLayout(screen->dev, (VkDescriptorSetLayout)he->data, NULL);
-#else
-         VkDescriptorSetLayout *r = (VkDescriptorSetLayout *)(he->data);
-         vkDestroyDescriptorSetLayout(screen->dev, *r, NULL);
-         ralloc_free(r);
-#endif
+         struct zink_descriptor_layout *layout = he->data;
+         vkDestroyDescriptorSetLayout(screen->dev, layout->layout, NULL);
+         if (layout->template)
+            screen->vk.DestroyDescriptorUpdateTemplate(screen->dev, layout->template, NULL);
+         ralloc_free(layout);
          _mesa_hash_table_remove(&ctx->desc_set_layouts[i], he);
       }
    }

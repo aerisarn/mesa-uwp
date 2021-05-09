@@ -88,6 +88,11 @@ struct zink_descriptor_layout_key {
    VkDescriptorSetLayoutBinding *bindings;
 };
 
+struct zink_descriptor_layout {
+   VkDescriptorSetLayout layout;
+   VkDescriptorUpdateTemplateKHR template;
+};
+
 struct zink_descriptor_pool_key {
    struct zink_descriptor_layout_key *layout;
    unsigned num_type_sizes;
@@ -107,7 +112,7 @@ struct zink_descriptor_data {
 
    struct zink_descriptor_layout_key *push_layout_keys[2]; //gfx, compute
    struct zink_descriptor_pool *push_pool[2]; //gfx, compute
-   VkDescriptorSetLayout push_dsl[2]; //gfx, compute
+   struct zink_descriptor_layout *push_dsl[2]; //gfx, compute
    uint8_t last_push_usage[2];
    bool push_valid[2];
    uint32_t push_state[2];
@@ -116,7 +121,7 @@ struct zink_descriptor_data {
    struct zink_descriptor_set *last_set[2];
 
    VkDescriptorPool dummy_pool;
-   VkDescriptorSetLayout dummy_dsl;
+   struct zink_descriptor_layout *dummy_dsl;
    VkDescriptorSet dummy_set;
 
    bool changed[2][ZINK_DESCRIPTOR_TYPES + 1];
@@ -128,7 +133,8 @@ struct zink_program_descriptor_data {
    VkDescriptorPoolSize sizes[6]; //zink_descriptor_size_index
    struct zink_descriptor_layout_key *layout_key[ZINK_DESCRIPTOR_TYPES]; //push set doesn't need one
    uint8_t binding_usage;
-   VkDescriptorUpdateTemplateKHR templates[ZINK_DESCRIPTOR_TYPES + 1];
+   struct zink_descriptor_layout *layouts[ZINK_DESCRIPTOR_TYPES + 1];
+   VkDescriptorUpdateTemplateKHR push_template;
 };
 
 struct zink_batch_descriptor_data {
@@ -187,12 +193,12 @@ uint32_t
 zink_get_image_view_hash(struct zink_context *ctx, struct zink_image_view *image_view, bool is_buffer);
 bool
 zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayout dsl, VkDescriptorPool pool, VkDescriptorSet *sets, unsigned num_sets);
-VkDescriptorSetLayout
+struct zink_descriptor_layout *
 zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_type type,
                       VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings,
                       struct zink_descriptor_layout_key **layout_key);
 bool
-zink_descriptor_util_push_layouts_get(struct zink_context *ctx, VkDescriptorSetLayout *dsls, struct zink_descriptor_layout_key **layout_keys);
+zink_descriptor_util_push_layouts_get(struct zink_context *ctx, struct zink_descriptor_layout **dsls, struct zink_descriptor_layout_key **layout_keys);
 void
 zink_descriptor_util_init_null_set(struct zink_context *ctx, VkDescriptorSet desc_set);
 struct zink_resource *

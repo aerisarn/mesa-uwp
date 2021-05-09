@@ -202,18 +202,20 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       return !!pg->layout;
    }
 
-   pg->dsl[pg->num_dsl++] = push_count ? ctx->dd->push_dsl[pg->is_compute] : ctx->dd->dummy_dsl;
+   pg->dsl[pg->num_dsl++] = push_count ? ctx->dd->push_dsl[pg->is_compute]->layout : ctx->dd->dummy_dsl->layout;
    if (has_bindings) {
       u_foreach_bit(type, has_bindings) {
          for (unsigned i = 0; i < type; i++) {
             /* push set is always 0 */
             if (!pg->dsl[i + 1]) {
                /* inject a null dsl */
-               pg->dsl[pg->num_dsl++] = ctx->dd->dummy_dsl;
+               pg->dsl[pg->num_dsl++] = ctx->dd->dummy_dsl->layout;
                pg->dd->binding_usage |= BITFIELD_BIT(i);
             }
          }
-         pg->dsl[pg->num_dsl++] = zink_descriptor_util_layout_get(ctx, type, bindings[type], num_bindings[type], &pg->dd->layout_key[type]);
+         pg->dd->layouts[pg->num_dsl] = zink_descriptor_util_layout_get(ctx, type, bindings[type], num_bindings[type], &pg->dd->layout_key[type]);
+         pg->dsl[pg->num_dsl] = pg->dd->layouts[pg->num_dsl]->layout;
+         pg->num_dsl++;
       }
       for (unsigned i = 0; i < ARRAY_SIZE(pg->dd->sizes); i++)
          pg->dd->sizes[i].descriptorCount *= ZINK_DEFAULT_MAX_DESCS;
@@ -244,8 +246,9 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
    };
    for (unsigned i = 0; i < pg->num_dsl; i++) {
       bool is_push = i == 0;
-      if (pg->dsl[i] == ctx->dd->dummy_dsl)
-         /* no need for empty templates */
+      /* no need for empty templates */
+      if (pg->dsl[i] == ctx->dd->dummy_dsl->layout ||
+          (!is_push && pg->dd->layouts[i]->template))
          continue;
       template[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO;
       assert(wd_count[i]);
@@ -259,8 +262,13 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       template[i].pipelineBindPoint = pg->is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
       template[i].pipelineLayout = pg->layout;
       template[i].set = i;
-      if (screen->vk.CreateDescriptorUpdateTemplate(screen->dev, &template[i], NULL, &pg->dd->templates[i]) != VK_SUCCESS)
+      VkDescriptorUpdateTemplateKHR t;
+      if (screen->vk.CreateDescriptorUpdateTemplate(screen->dev, &template[i], NULL, &t) != VK_SUCCESS)
          return false;
+      if (is_push)
+         pg->dd->push_template = t;
+      else
+         pg->dd->layouts[i]->template = t;
    }
    return true;
 }
@@ -268,12 +276,8 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
 void
 zink_descriptor_program_deinit_lazy(struct zink_screen *screen, struct zink_program *pg)
 {
-   if (!pg->dd)
-      return;
-   for (unsigned i = 0; i < ARRAY_SIZE(pg->dd->templates); i++) {
-      if (pg->dd->templates[i])
-         screen->vk.DestroyDescriptorUpdateTemplate(screen->dev, pg->dd->templates[i], NULL);
-   }
+   if (pg->dd && pg->dd->push_template)
+      screen->vk.DestroyDescriptorUpdateTemplate(screen->dev, pg->dd->push_template, NULL);
    ralloc_free(pg->dd);
 }
 
@@ -334,7 +338,7 @@ get_descriptor_set_lazy(struct zink_context *ctx, struct zink_program *pg, enum 
       zink_fence_wait(&ctx->base);
       return get_descriptor_set_lazy(ctx, pg, type, pool, is_compute);
    }
-   if (!zink_descriptor_util_alloc_sets(screen, pg ? pg->dsl[type + 1] : ctx->dd->push_dsl[is_compute],
+   if (!zink_descriptor_util_alloc_sets(screen, pg ? pg->dsl[type + 1] : ctx->dd->push_dsl[is_compute]->layout,
                                         pool->pool, &pool->sets[pool->sets_alloc], sets_to_alloc))
       return VK_NULL_HANDLE;
    pool->sets_alloc += sets_to_alloc;
@@ -381,7 +385,7 @@ void
 zink_descriptor_set_update_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, set, pg->dd->templates[type + 1], ctx);
+   screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, set, pg->dd->layouts[type + 1]->template, ctx);
 }
 
 void
@@ -436,7 +440,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    if (pg->dd->binding_usage && changed_sets) {
       u_foreach_bit(type, changed_sets) {
          if (pg->dd->layout_key[type])
-            screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, desc_sets[type + 1], pg->dd->templates[type + 1], ctx);
+            screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, desc_sets[type + 1], pg->dd->layouts[type + 1]->template, ctx);
          assert(type + 1 < pg->num_dsl);
          vkCmdBindDescriptorSets(bs->cmdbuf,
                                  is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -449,11 +453,11 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
 
    if (pg->dd->push_usage && dd_lazy(ctx)->push_state_changed[is_compute]) {
       if (screen->info.have_KHR_push_descriptor)
-         screen->vk.CmdPushDescriptorSetWithTemplateKHR(batch->state->cmdbuf, pg->dd->templates[0],
+         screen->vk.CmdPushDescriptorSetWithTemplateKHR(batch->state->cmdbuf, pg->dd->push_template,
                                                      pg->layout, 0, ctx);
       else {
          assert(desc_sets[0]);
-         screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, desc_sets[0], pg->dd->templates[0], ctx);
+         screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, desc_sets[0], pg->dd->push_template, ctx);
          vkCmdBindDescriptorSets(batch->state->cmdbuf,
                                  is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
                                  pg->layout, 0, 1, &desc_sets[0],
@@ -575,7 +579,7 @@ zink_descriptors_init_lazy(struct zink_context *ctx)
       return false;
    VkDescriptorPoolSize null_size = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1};
    ctx->dd->dummy_pool = create_pool(screen, 1, &null_size, 0);
-   zink_descriptor_util_alloc_sets(screen, ctx->dd->dummy_dsl,
+   zink_descriptor_util_alloc_sets(screen, ctx->dd->dummy_dsl->layout,
                                    ctx->dd->dummy_pool, &ctx->dd->dummy_set, 1);
    zink_descriptor_util_init_null_set(ctx, ctx->dd->dummy_set);
    return true;
@@ -590,8 +594,8 @@ zink_descriptors_deinit_lazy(struct zink_context *ctx)
          vkDestroyDescriptorPool(screen->dev, ctx->dd->dummy_pool, NULL);
       if (screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY &&
           screen->info.have_KHR_push_descriptor) {
-         vkDestroyDescriptorSetLayout(screen->dev, ctx->dd->push_dsl[0], NULL);
-         vkDestroyDescriptorSetLayout(screen->dev, ctx->dd->push_dsl[1], NULL);
+         vkDestroyDescriptorSetLayout(screen->dev, ctx->dd->push_dsl[0]->layout, NULL);
+         vkDestroyDescriptorSetLayout(screen->dev, ctx->dd->push_dsl[1]->layout, NULL);
       }
    }
    ralloc_free(ctx->dd);
