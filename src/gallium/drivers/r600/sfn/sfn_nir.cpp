@@ -863,6 +863,12 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
    r600::sort_uniforms(sel->nir);
 
+   /* Cayman seems very crashy about accessing images that don't exists or are
+    * accessed out of range, this lowering seems to help (but it can also be
+    * another problem */
+   if (sel->nir->info.num_images > 0 && rctx->b.chip_class == CAYMAN)
+       NIR_PASS_V(sel->nir, r600_legalize_image_load_store);
+
    NIR_PASS_V(sel->nir, nir_lower_vars_to_ssa);
    NIR_PASS_V(sel->nir, nir_lower_regs_to_ssa);
    nir_lower_idiv_options idiv_options = {
