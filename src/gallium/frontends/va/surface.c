@@ -615,10 +615,16 @@ surface_from_external_memory(VADriverContextP ctx, vlVaSurface *surface,
    // Create a resource for each plane.
    memset(resources, 0, sizeof resources);
    for (i = 0; i < memory_attribute->num_planes; i++) {
+      unsigned num_planes = util_format_get_num_planes(templat->buffer_format);
+
       res_templ.format = resource_formats[i];
       if (res_templ.format == PIPE_FORMAT_NONE) {
-         result = VA_STATUS_ERROR_INVALID_PARAMETER;
-         goto fail;
+         if (i < num_planes) {
+            result = VA_STATUS_ERROR_INVALID_PARAMETER;
+            goto fail;
+         } else {
+            continue;
+         }
       }
 
       res_templ.width0 = util_format_get_plane_width(templat->buffer_format, i,
