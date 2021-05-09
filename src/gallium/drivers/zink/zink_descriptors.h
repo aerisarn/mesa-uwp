@@ -86,6 +86,7 @@ struct zink_descriptor_state_key {
 struct zink_descriptor_layout_key {
    unsigned num_descriptors;
    VkDescriptorSetLayoutBinding *bindings;
+   unsigned use_count;
 };
 
 struct zink_descriptor_layout {

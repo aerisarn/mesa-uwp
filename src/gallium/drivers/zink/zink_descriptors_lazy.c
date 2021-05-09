@@ -214,6 +214,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
             }
          }
          pg->dd->layouts[pg->num_dsl] = zink_descriptor_util_layout_get(ctx, type, bindings[type], num_bindings[type], &pg->dd->layout_key[type]);
+         pg->dd->layout_key[type]->use_count++;
          pg->dsl[pg->num_dsl] = pg->dd->layouts[pg->num_dsl]->layout;
          pg->num_dsl++;
       }
@@ -276,6 +277,10 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
 void
 zink_descriptor_program_deinit_lazy(struct zink_screen *screen, struct zink_program *pg)
 {
+   for (unsigned i = 0; pg->num_dsl && i < ZINK_DESCRIPTOR_TYPES; i++) {
+      if (pg->dd->layout_key[i])
+         pg->dd->layout_key[i]->use_count--;
+   }
    if (pg->dd && pg->dd->push_template)
       screen->vk.DestroyDescriptorUpdateTemplate(screen->dev, pg->dd->push_template, NULL);
    ralloc_free(pg->dd);
