@@ -757,7 +757,7 @@ bool AssemblyFromShaderLegacyImpl::visit(const FetchInstruction& fetch_instr)
       }
    }
 
-   m_bc->cf_last->vpm = fetch_instr.use_vpm();
+   m_bc->cf_last->vpm = (m_bc->type == PIPE_SHADER_FRAGMENT) && fetch_instr.use_vpm();
    m_bc->cf_last->barrier = 1;
 
    return true;
@@ -858,7 +858,7 @@ bool AssemblyFromShaderLegacyImpl::visit(const GDSInstr& instr)
    int r = r600_bytecode_add_gds(m_bc, &gds);
    if (r)
       return false;
-   m_bc->cf_last->vpm = 1;
+   m_bc->cf_last->vpm = PIPE_SHADER_FRAGMENT == m_bc->type;
    m_bc->cf_last->barrier = 1;
    return true;
 }
@@ -1041,7 +1041,7 @@ bool AssemblyFromShaderLegacyImpl::visit(const RatInstruction& instr)
              instr.data_swz(2) == PIPE_SWIZZLE_MAX) ;
    }
 
-   cf->vpm = 1;
+   cf->vpm = m_bc->type == PIPE_SHADER_FRAGMENT;
    cf->barrier = 1;
    cf->mark = instr.need_ack();
    cf->output.elem_size = instr.elm_size();
