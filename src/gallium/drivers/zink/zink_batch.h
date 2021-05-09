@@ -101,7 +101,6 @@ struct zink_batch {
    struct zink_batch_state *state;
 
    struct zink_batch_usage *last_batch_usage;
-   struct util_queue flush_queue; //TODO: move to wsi
 
    bool has_work;
    bool in_rp; //renderpass is currently active

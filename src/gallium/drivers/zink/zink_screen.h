@@ -35,6 +35,7 @@
 #include "util/disk_cache.h"
 #include "util/log.h"
 #include "util/simple_mtx.h"
+#include "util/u_queue.h"
 #include "util/u_live_shader_cache.h"
 
 #include <vulkan/vulkan.h>
@@ -72,6 +73,7 @@ struct zink_screen {
    uint32_t last_finished; //this is racy but ultimately doesn't matter
    VkSemaphore sem;
    VkSemaphore prev_sem;
+   struct util_queue flush_queue;
 
    bool device_lost;
    struct sw_winsys *winsys;

@@ -90,9 +90,6 @@ zink_context_destroy(struct pipe_context *pctx)
    zink_surface_reference(screen, (struct zink_surface**)&ctx->dummy_surface, NULL);
    zink_buffer_view_reference(screen, &ctx->dummy_bufferview, NULL);
 
-   if (ctx->tc)
-      util_queue_destroy(&ctx->batch.flush_queue);
-
    simple_mtx_destroy(&ctx->batch_mtx);
    zink_clear_batch_state(ctx, ctx->batch.state);
    zink_batch_state_reference(screen, &ctx->batch.state, NULL);
@@ -187,7 +184,7 @@ zink_set_context_param(struct pipe_context *pctx, enum pipe_context_param param,
 
    switch (param) {
    case PIPE_CONTEXT_PARAM_PIN_THREADS_TO_L3_CACHE:
-      util_set_thread_affinity(ctx->batch.flush_queue.threads[0],
+      util_set_thread_affinity(zink_screen(ctx->base.screen)->flush_queue.threads[0],
                                util_get_cpu_caps()->L3_affinity_mask[value],
                                NULL, util_get_cpu_caps()->num_cpu_mask_bits);
       break;
@@ -1688,7 +1685,7 @@ zink_end_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 static void
 sync_flush(struct zink_context *ctx, struct zink_batch_state *bs)
 {
-   if (util_queue_is_initialized(&ctx->batch.flush_queue))
+   if (zink_screen(ctx->base.screen)->threaded)
       util_queue_fence_wait(&bs->flush_completed);
 }
 
@@ -2560,7 +2557,7 @@ zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id)
    }
    simple_mtx_unlock(&ctx->batch_mtx);
    assert(fence);
-   if (util_queue_is_initialized(&ctx->batch.flush_queue) &&
+   if (zink_screen(ctx->base.screen)->threaded &&
        !util_queue_fence_is_signalled(&zink_batch_state(fence)->flush_completed))
       return false;
    return zink_vkfence_wait(zink_screen(ctx->base.screen), fence, 0);
@@ -3177,7 +3174,7 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
    mem_bind.memoryOffset = box->x;
    mem_bind.flags = 0;
    sparse_bind.pBinds = &mem_bind;
-   VkQueue queue = util_queue_is_initialized(&ctx->batch.flush_queue) ? screen->thread_queue : screen->queue;
+   VkQueue queue = screen->threaded ? screen->thread_queue : screen->queue;
 
    VkResult ret = vkQueueBindSparse(queue, 1, &sparse, VK_NULL_HANDLE);
    if (!zink_screen_handle_vkresult(screen, ret)) {

@@ -1020,6 +1020,8 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    if (screen->prev_sem)
       vkDestroySemaphore(screen->dev, screen->prev_sem, NULL);
 
+   if (screen->threaded)
+      util_queue_destroy(&screen->flush_queue);
 
    vkDestroyDevice(screen->dev, NULL);
    vkDestroyInstance(screen->instance, NULL);
@@ -1596,6 +1598,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    util_cpu_detect();
    screen->threaded = util_get_cpu_caps()->nr_cpus > 1 && debug_get_bool_option("GALLIUM_THREAD", util_get_cpu_caps()->nr_cpus > 1);
+   if (screen->threaded)
+      util_queue_init(&screen->flush_queue, "zfq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, NULL);
 
    zink_debug = debug_get_option_zink_debug();
    screen->descriptor_mode = debug_get_option_zink_descriptor_mode();
