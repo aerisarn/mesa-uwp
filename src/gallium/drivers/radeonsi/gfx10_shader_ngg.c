@@ -873,6 +873,35 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
    };
    es_vtxptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
 
+   /* Adding these optimization barriers improves the generated code as follows. Crazy right?
+    *
+    * - s_mov_b32 s4, 0xffff
+    * - v_lshrrev_b32_e32 v10, 16, v0
+    * - v_and_b32_e32 v12, s4, v0
+    * - v_and_b32_e32 v11, s4, v1
+    *   s_bfe_u32 s4, s3, 0x80008
+    * - s_mov_b64 s[8:9], 0
+    * - v_mul_u32_u24_e32 v0, 28, v10
+    * - v_mul_u32_u24_e32 v9, 28, v12
+    * - v_mul_u32_u24_e32 v1, 28, v11
+    * + v_mov_b32_e32 v11, 28
+    *   v_cmp_gt_u32_e32 vcc, s4, v2
+    * + s_mov_b64 s[8:9], 0
+    *   s_waitcnt lgkmcnt(0)
+    *   s_barrier
+    * + v_mul_u32_u24_sdwa v10, v0, v11 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
+    * + v_mul_u32_u24_sdwa v23, v0, v11 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
+    * + v_mul_u32_u24_sdwa v0, v1, v11 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
+    *   s_and_saveexec_b64 s[44:45], vcc
+    *   s_cbranch_execz BB2_8
+    * - v_mul_u32_u24_e32 v16, 28, v12
+    * - v_mul_u32_u24_e32 v17, 28, v11
+    * - v_mul_u32_u24_e32 v18, 28, v10
+    */
+   ac_build_optimization_barrier(&ctx->ac, &gs_vtxptr[0], false);
+   ac_build_optimization_barrier(&ctx->ac, &gs_vtxptr[1], false);
+   ac_build_optimization_barrier(&ctx->ac, &gs_vtxptr[2], false);
+
    LLVMValueRef gs_accepted = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
 
    /* Do culling in GS threads. */
