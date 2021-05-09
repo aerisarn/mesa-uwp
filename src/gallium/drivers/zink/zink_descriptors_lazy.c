@@ -517,8 +517,15 @@ zink_batch_descriptor_reset_lazy(struct zink_screen *screen, struct zink_batch_s
       return;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       hash_table_foreach(&bdd_lazy(bs)->pools[i], entry) {
+         const struct zink_descriptor_layout_key *key = entry->key;
          struct zink_descriptor_pool *pool = (void*)entry->data;
-         pool->set_idx = 0;
+         if (key->use_count)
+            pool->set_idx = 0;
+         else {
+            vkDestroyDescriptorPool(screen->dev, pool->pool, NULL);
+            ralloc_free(pool);
+            _mesa_hash_table_remove(&bdd_lazy(bs)->pools[i], entry);
+         }
       }
    }
    for (unsigned i = 0; i < 2; i++) {
