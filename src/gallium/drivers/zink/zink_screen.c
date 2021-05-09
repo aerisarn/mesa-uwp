@@ -151,30 +151,75 @@ disk_cache_init(struct zink_screen *screen)
    snprintf(buf, sizeof(buf), "zink_%x04x", screen->info.props.vendorID);
 
    screen->disk_cache = disk_cache_create(buf, screen->info.props.deviceName, 0);
-   if (screen->disk_cache)
-      disk_cache_compute_key(screen->disk_cache, buf, strlen(buf), screen->disk_cache_key);
+   if (screen->disk_cache) {
+      util_queue_init(&screen->cache_put_thread, "zcq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen);
+      util_queue_init(&screen->cache_get_thread, "zcfq", 8, 4, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen);
+   }
 #endif
 }
 
-void
-zink_screen_update_pipeline_cache(struct zink_screen *screen)
-{
-   size_t size = 0;
 
+static void
+cache_put_job(void *data, void *gdata, int thread_index)
+{
+   struct zink_program *pg = data;
+   struct zink_screen *screen = gdata;
+   size_t size = 0;
+   if (vkGetPipelineCacheData(screen->dev, pg->pipeline_cache, &size, NULL) != VK_SUCCESS)
+      return;
+   if (pg->pipeline_cache_size == size)
+      return;
+   void *pipeline_data = malloc(size);
+   if (!pipeline_data)
+      return;
+   if (vkGetPipelineCacheData(screen->dev, pg->pipeline_cache, &size, pipeline_data) == VK_SUCCESS) {
+      pg->pipeline_cache_size = size;
+
+      cache_key key;
+      disk_cache_compute_key(screen->disk_cache, pg->sha1, sizeof(pg->sha1), key);
+      disk_cache_put_nocopy(screen->disk_cache, key, pipeline_data, size, NULL);
+   }
+}
+
+void
+zink_screen_update_pipeline_cache(struct zink_screen *screen, struct zink_program *pg)
+{
+   util_queue_fence_init(&pg->cache_fence);
    if (!screen->disk_cache)
       return;
-   if (vkGetPipelineCacheData(screen->dev, screen->pipeline_cache, &size, NULL) != VK_SUCCESS)
+
+   util_queue_add_job(&screen->cache_put_thread, pg, NULL, cache_put_job, NULL, 0);
+}
+
+static void
+cache_get_job(void *data, void *gdata, int thread_index)
+{
+   struct zink_program *pg = data;
+   struct zink_screen *screen = gdata;
+
+   VkPipelineCacheCreateInfo pcci;
+   pcci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+   pcci.pNext = NULL;
+   pcci.flags = screen->info.have_EXT_pipeline_creation_cache_control ? VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT : 0;
+   pcci.initialDataSize = 0;
+   pcci.pInitialData = NULL;
+
+   cache_key key;
+   disk_cache_compute_key(screen->disk_cache, pg->sha1, sizeof(pg->sha1), key);
+   pcci.pInitialData = disk_cache_get(screen->disk_cache, key, &pg->pipeline_cache_size);
+   pcci.initialDataSize = pg->pipeline_cache_size;
+   vkCreatePipelineCache(screen->dev, &pcci, NULL, &pg->pipeline_cache);
+   free((void*)pcci.pInitialData);
+}
+
+void
+zink_screen_get_pipeline_cache(struct zink_screen *screen, struct zink_program *pg)
+{
+   util_queue_fence_init(&pg->cache_fence);
+   if (!screen->disk_cache)
       return;
-   if (screen->pipeline_cache_size == size)
-      return;
-   void *data = malloc(size);
-   if (!data)
-      return;
-   if (vkGetPipelineCacheData(screen->dev, screen->pipeline_cache, &size, data) == VK_SUCCESS) {
-      screen->pipeline_cache_size = size;
-      disk_cache_put(screen->disk_cache, screen->disk_cache_key, data, size, NULL);
-   }
-   free(data);
+
+   util_queue_add_job(&screen->cache_get_thread, pg, &pg->cache_fence, cache_get_job, NULL, 0);
 }
 
 static int
@@ -1029,10 +1074,14 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    simple_mtx_destroy(&screen->framebuffer_mtx);
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
-   zink_screen_update_pipeline_cache(screen);
 #ifdef ENABLE_SHADER_CACHE
-   if (screen->disk_cache)
+   if (screen->disk_cache) {
+      util_queue_finish(&screen->cache_put_thread);
+      util_queue_finish(&screen->cache_get_thread);
       disk_cache_wait_for_idle(screen->disk_cache);
+      util_queue_destroy(&screen->cache_put_thread);
+      util_queue_destroy(&screen->cache_get_thread);
+   }
 #endif
    disk_cache_destroy(screen->disk_cache);
    simple_mtx_lock(&screen->mem_cache_mtx);
@@ -1041,7 +1090,6 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    _mesa_hash_table_destroy(screen->resource_mem_cache, NULL);
    simple_mtx_unlock(&screen->mem_cache_mtx);
    simple_mtx_destroy(&screen->mem_cache_mtx);
-   vkDestroyPipelineCache(screen->dev, screen->pipeline_cache, NULL);
 
    util_live_shader_cache_deinit(&screen->shaders);
 
@@ -1736,20 +1784,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    disk_cache_init(screen);
    populate_format_props(screen);
    pre_hash_descriptor_states(screen);
-
-   VkPipelineCacheCreateInfo pcci;
-   pcci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-   pcci.pNext = NULL;
-   /* we're single-threaded now, so we don't need synchronization */
-   pcci.flags = screen->info.have_EXT_pipeline_creation_cache_control ? VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT : 0;
-   pcci.initialDataSize = 0;
-   pcci.pInitialData = NULL;
-   if (screen->disk_cache) {
-      pcci.pInitialData = disk_cache_get(screen->disk_cache, screen->disk_cache_key, &screen->pipeline_cache_size);
-      pcci.initialDataSize = screen->pipeline_cache_size;
-   }
-   vkCreatePipelineCache(screen->dev, &pcci, NULL, &screen->pipeline_cache);
-   free((void*)pcci.pInitialData);
 
    slab_create_parent(&screen->transfer_pool, sizeof(struct zink_transfer), 16);
 

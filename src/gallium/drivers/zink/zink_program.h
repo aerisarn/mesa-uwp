@@ -73,6 +73,10 @@ struct zink_shader_cache {
 
 struct zink_program {
    struct pipe_reference reference;
+   unsigned char sha1[20];
+   struct util_queue_fence cache_fence;
+   VkPipelineCache pipeline_cache;
+   size_t pipeline_cache_size;
    struct zink_batch_usage *batch_uses;
    bool is_compute;
 

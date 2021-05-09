@@ -552,17 +552,22 @@ zink_create_gfx_program(struct zink_context *ctx,
          goto fail;
    }
 
+   struct mesa_sha1 sctx;
+   _mesa_sha1_init(&sctx);
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       if (prog->modules[i]) {
          _mesa_set_add(stages[i]->programs, prog);
          zink_gfx_program_reference(screen, NULL, prog);
+         _mesa_sha1_update(&sctx, prog->shaders[i]->base.sha1, sizeof(prog->shaders[i]->base.sha1));
       }
    }
+   _mesa_sha1_final(&sctx, prog->base.sha1);
    p_atomic_dec(&prog->base.reference.count);
 
    if (!screen->descriptor_program_init(ctx, &prog->base))
       goto fail;
 
+   zink_screen_get_pipeline_cache(screen, &prog->base);
    return prog;
 
 fail:
@@ -653,10 +658,12 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
 
    _mesa_set_add(shader->programs, comp);
    comp->shader = shader;
+   memcpy(comp->base.sha1, shader->base.sha1, sizeof(shader->base.sha1));
 
    if (!screen->descriptor_program_init(ctx, &comp->base))
       goto fail;
 
+   zink_screen_get_pipeline_cache(screen, &comp->base);
    return comp;
 
 fail:
@@ -792,6 +799,8 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       _mesa_hash_table_destroy(prog->pipelines[i], NULL);
    }
    zink_shader_cache_reference(screen, &prog->shader_cache, NULL);
+   if (prog->base.pipeline_cache)
+      vkDestroyPipelineCache(screen->dev, prog->base.pipeline_cache, NULL);
    screen->descriptor_program_deinit(screen, &prog->base);
 
    ralloc_free(prog);
@@ -817,6 +826,8 @@ zink_destroy_compute_program(struct zink_screen *screen,
    }
    _mesa_hash_table_destroy(comp->pipelines, NULL);
    zink_shader_cache_reference(screen, &comp->shader_cache, NULL);
+   if (comp->base.pipeline_cache)
+      vkDestroyPipelineCache(screen->dev, comp->base.pipeline_cache, NULL);
    screen->descriptor_program_deinit(screen, &comp->base);
 
    ralloc_free(comp);
@@ -908,6 +919,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[vkmode], state->final_hash, state);
 
    if (!entry) {
+      util_queue_fence_wait(&prog->base.cache_fence);
       VkPipeline pipeline = zink_create_gfx_pipeline(screen, prog,
                                                      state, vkmode);
       if (pipeline == VK_NULL_HANDLE)
@@ -946,6 +958,7 @@ zink_get_compute_pipeline(struct zink_screen *screen,
    entry = _mesa_hash_table_search_pre_hashed(comp->pipelines, state->hash, state);
 
    if (!entry) {
+      util_queue_fence_wait(&comp->base.cache_fence);
       VkPipeline pipeline = zink_create_compute_pipeline(screen, comp, state);
 
       if (pipeline == VK_NULL_HANDLE)
