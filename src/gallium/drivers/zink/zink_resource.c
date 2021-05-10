@@ -538,10 +538,16 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    if (templ->target == PIPE_BUFFER) {
       if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE))
-         vkBindBufferMemory(screen->dev, obj->buffer, obj->mem, obj->offset);
-   } else
-      vkBindImageMemory(screen->dev, obj->image, obj->mem, obj->offset);
+         if (vkBindBufferMemory(screen->dev, obj->buffer, obj->mem, obj->offset) != VK_SUCCESS)
+            goto fail3;
+   } else {
+      if (vkBindImageMemory(screen->dev, obj->image, obj->mem, obj->offset) != VK_SUCCESS)
+         goto fail3;
+   }
    return obj;
+
+fail3:
+   vkFreeMemory(screen->dev, obj->mem, NULL);
 
 fail2:
    if (templ->target == PIPE_BUFFER)
