@@ -443,8 +443,6 @@ glx_context_init(struct glx_context *gc,
       (gc)->error = code;       \
    }
 
-extern void __glFreeAttributeState(struct glx_context *);
-
 /************************************************************************/
 
 /**

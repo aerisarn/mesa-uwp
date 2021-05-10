@@ -47,6 +47,23 @@ extern struct _glapi_table *__glXNewIndirectAPI(void);
 static struct _glapi_table *IndirectAPI = NULL;
 
 static void
+__glFreeAttributeState(struct glx_context * gc)
+{
+   __GLXattribute *sp, **spp;
+
+   for (spp = &gc->attributes.stack[0];
+        spp < &gc->attributes.stack[__GL_CLIENT_ATTRIB_STACK_DEPTH]; spp++) {
+      sp = *spp;
+      if (sp) {
+         free((char *) sp);
+      }
+      else {
+         break;
+      }
+   }
+}
+
+static void
 indirect_destroy_context(struct glx_context *gc)
 {
    __glXFreeVertexArrayState(gc);
