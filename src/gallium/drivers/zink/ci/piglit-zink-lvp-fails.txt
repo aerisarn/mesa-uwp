@@ -85,7 +85,6 @@ spec@arb_sample_shading@samplemask 4 all,Fail
 spec@arb_seamless_cube_map@arb_seamless_cubemap,Fail
 spec@arb_shader_storage_buffer_object@array-ssbo-binding,Crash
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
-spec@arb_tessellation_shader@arb_tessellation_shader-tes-gs-max-output -small -scan 1 50,Crash
 spec@arb_texture_buffer_object@render-no-bo,Crash
 spec@arb_texture_buffer_range@ranges-2 compat,Fail
 spec@arb_texture_cube_map_array@arb_texture_cube_map_array-sampler-cube-array-shadow,Fail
@@ -180,7 +179,6 @@ spec@glsl-1.50@execution@geometry@primitive-id-restart gl_triangles ffs,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_triangles other,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_triangles_adjacency ffs,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_triangles_adjacency other,Fail
-spec@glsl-1.50@gs-max-output,Crash
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 spec@khr_texture_compression_astc@array-gl,Fail
 spec@khr_texture_compression_astc@miptree-gl ldr,Fail
