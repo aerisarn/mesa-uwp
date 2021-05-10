@@ -2305,7 +2305,9 @@ get_vs_output_info(const struct radv_pipeline *pipeline)
 }
 
 static void
-radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
+radv_link_shaders(struct radv_pipeline *pipeline,
+                  const struct radv_pipeline_key *pipeline_key,
+                  nir_shader **shaders,
                   bool optimize_conservatively)
 {
    nir_shader *ordered_shaders[MESA_SHADER_STAGES];
@@ -2385,6 +2387,39 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
             nir_remove_dead_variables(
                ordered_shaders[i], nir_var_function_temp | nir_var_shader_in | nir_var_shader_out,
                NULL);
+         }
+      }
+   }
+
+   if (!optimize_conservatively) {
+      /* Remove PSIZ from shaders when it's not needed.
+       * This is typically produced by translation layers like Zink or D9VK.
+       */
+      for (unsigned i = 0; i < shader_count; ++i) {
+         shader_info *info = &ordered_shaders[i]->info;
+         if (!(info->outputs_written & VARYING_BIT_PSIZ))
+            continue;
+
+         bool next_stage_needs_psiz =
+            i != 0 && /* ordered_shaders is backwards, so next stage is: i - 1 */
+            ordered_shaders[i - 1]->info.inputs_read & VARYING_BIT_PSIZ;
+         bool topology_uses_psiz =
+            info->stage == pipeline->graphics.last_vgt_api_stage &&
+            ((info->stage == MESA_SHADER_VERTEX && pipeline_key->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) ||
+             (info->stage == MESA_SHADER_TESS_EVAL && info->tess.point_mode) ||
+             (info->stage == MESA_SHADER_GEOMETRY && info->gs.output_primitive == GL_POINTS));
+
+         if (!next_stage_needs_psiz && !topology_uses_psiz) {
+            /* Change PSIZ to a global variable which allows it to be DCE'd. */
+            nir_variable *psiz_var =
+               nir_find_variable_with_location(ordered_shaders[i], nir_var_shader_out, VARYING_SLOT_PSIZ);
+            psiz_var->data.location = 0;
+            psiz_var->data.mode = nir_var_shader_temp;
+
+            info->outputs_written &= ~VARYING_BIT_PSIZ;
+            nir_fixup_deref_modes(ordered_shaders[i]);
+            nir_remove_dead_variables(ordered_shaders[i], nir_var_shader_temp, NULL);
+            nir_opt_dce(ordered_shaders[i]);
          }
       }
    }
@@ -3395,7 +3430,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
 
    bool optimize_conservatively = flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
 
-   radv_link_shaders(pipeline, nir, optimize_conservatively);
+   radv_link_shaders(pipeline, pipeline_key, nir, optimize_conservatively);
    radv_set_driver_locations(pipeline, nir, infos);
 
    for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
