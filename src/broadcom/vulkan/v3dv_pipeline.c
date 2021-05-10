@@ -379,8 +379,7 @@ preprocess_nir(nir_shader *nir,
    /* Lower a bunch of stuff */
    NIR_PASS_V(nir, nir_lower_var_copies);
 
-   NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in |
-              nir_var_shader_out, UINT32_MAX);
+   NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in, UINT32_MAX);
 
    NIR_PASS_V(nir, nir_lower_indirect_derefs,
               nir_var_function_temp, 2);
