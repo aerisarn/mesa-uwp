@@ -1838,7 +1838,6 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
                        bool local_progress = false;
                        NIR_PASS(local_progress, s, nir_opt_loop_unroll,
                                 nir_var_shader_in |
-                                nir_var_shader_out |
                                 nir_var_function_temp);
                        c->unrolled_any_loops |= local_progress;
                        progress |= local_progress;
