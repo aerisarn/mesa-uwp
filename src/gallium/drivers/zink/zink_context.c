@@ -2164,8 +2164,9 @@ is_shader_pipline_stage(VkPipelineStageFlags pipeline)
 }
 
 static void
-resource_check_defer_barrier(struct zink_context *ctx, struct zink_resource *res, VkPipelineStageFlags pipeline)
+resource_check_defer_buffer_barrier(struct zink_context *ctx, struct zink_resource *res, VkPipelineStageFlags pipeline)
 {
+   assert(res->obj->is_buffer);
    if (res->bind_count[0]) {
       if ((res->obj->is_buffer && res->vbo_bind_count && !(pipeline & VK_PIPELINE_STAGE_VERTEX_INPUT_BIT)) ||
           ((!res->obj->is_buffer || res->vbo_bind_count != res->bind_count[0]) && !is_shader_pipline_stage(pipeline)))
@@ -2189,6 +2190,32 @@ get_cmdbuf(struct zink_context *ctx, struct zink_resource *res)
    res->unordered_barrier = true;
    ctx->batch.state->has_barriers = true;
    return ctx->batch.state->barrier_cmdbuf;
+}
+
+static void
+resource_check_defer_image_barrier(struct zink_context *ctx, struct zink_resource *res, VkImageLayout layout, VkPipelineStageFlags pipeline)
+{
+   assert(!res->obj->is_buffer);
+
+   bool is_compute = pipeline == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+   /* if this is a non-shader barrier and there are binds, always queue a shader barrier */
+   bool is_shader = is_shader_pipline_stage(pipeline);
+   if ((is_shader || !res->bind_count[is_compute]) &&
+       /* if no layout change is needed between gfx and compute, do nothing */
+       !res->bind_count[!is_compute] && (!is_compute || !res->fb_binds))
+      return;
+
+   if (res->bind_count[!is_compute] && is_shader) {
+      /* if the layout is the same between gfx and compute, do nothing */
+      if (layout == zink_descriptor_util_image_layout_eval(res, !is_compute))
+         return;
+   }
+   /* queue a layout change if a layout change will be needed */
+   if (res->bind_count[!is_compute])
+      _mesa_set_add(ctx->need_barriers[!is_compute], res);
+   /* also queue a layout change if this is a non-shader layout */
+   if (res->bind_count[is_compute] && !is_shader)
+      _mesa_set_add(ctx->need_barriers[is_compute], res);
 }
 
 void
@@ -2217,7 +2244,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_batch *batch, 
       1, &imb
    );
 
-   resource_check_defer_barrier(ctx, res, pipeline);
+   resource_check_defer_image_barrier(ctx, res, new_layout, pipeline);
 
    if (res->unordered_barrier) {
       res->access |= imb.dstAccessMask;
@@ -2314,7 +2341,7 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_batch *batch,
       0, NULL
    );
 
-   resource_check_defer_barrier(ctx, res, pipeline);
+   resource_check_defer_buffer_barrier(ctx, res, pipeline);
 
    if (res->unordered_barrier) {
       res->access |= bmb.dstAccessMask;
