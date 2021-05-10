@@ -136,6 +136,10 @@ bool r600_lower_tess_io(nir_shader *shader, enum pipe_prim_type prim_type);
 bool r600_append_tcs_TF_emission(nir_shader *shader, enum pipe_prim_type prim_type);
 bool r600_lower_tess_coord(nir_shader *sh, enum pipe_prim_type prim_type);
 
+bool
+r600_legalize_image_load_store(nir_shader *shader);
+
+
 #else
 #include "gallium/drivers/r600/r600_shader.h"
 #endif
