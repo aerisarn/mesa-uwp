@@ -1199,7 +1199,7 @@ _mi_resolve_address_token(struct mi_builder *b,
 #if GFX_VERx10 >= 125
 
 /*
- * Indirect load/store.  Only available on GFX 12.5+
+ * Indirect load/store.  Only available on XE_HP+
  */
 
 MUST_CHECK static inline struct mi_value
@@ -1254,7 +1254,7 @@ mi_store_mem64_offset(struct mi_builder *b,
 }
 
 /*
- * Control-flow Section.  Only available on GFX 12.5+
+ * Control-flow Section.  Only available on XE_HP+
  */
 
 struct _mi_goto {

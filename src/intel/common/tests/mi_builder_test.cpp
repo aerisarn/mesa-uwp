@@ -958,7 +958,7 @@ TEST_F(mi_builder_test, store_if)
 #if GFX_VERx10 >= 125
 
 /*
- * Indirect load/store tests.  Only available on GFX 12.5+
+ * Indirect load/store tests.  Only available on XE_HP+
  */
 
 TEST_F(mi_builder_test, load_mem64_offset)
@@ -1018,7 +1018,7 @@ TEST_F(mi_builder_test, store_mem64_offset)
 }
 
 /*
- * Control-flow tests.  Only available on GFX 12.5+
+ * Control-flow tests.  Only available on XE_HP+
  */
 
 TEST_F(mi_builder_test, goto)
