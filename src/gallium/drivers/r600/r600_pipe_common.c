@@ -1334,6 +1334,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.lower_find_msb_to_reverse = true,
                 .lower_to_scalar = true,
                 .lower_to_scalar_filter = r600_lower_to_scalar_instr_filter,
+                .linker_ignore_precision = true,
 	};
 
 	rscreen->nir_options = nir_options;
