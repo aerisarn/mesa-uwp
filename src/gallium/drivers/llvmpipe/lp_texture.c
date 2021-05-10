@@ -217,20 +217,7 @@ llvmpipe_displaytarget_layout(struct llvmpipe_screen *screen,
                                           map_front_private,
                                           &lpr->row_stride[0] );
 
-   if (lpr->dt == NULL)
-      return FALSE;
-
-   if (!map_front_private) {
-      void *map = winsys->displaytarget_map(winsys, lpr->dt,
-                                            PIPE_MAP_WRITE);
-
-      if (map)
-         memset(map, 0, height * lpr->row_stride[0]);
-
-      winsys->displaytarget_unmap(winsys, lpr->dt);
-   }
-
-   return TRUE;
+   return lpr->dt != NULL;
 }
 
 
