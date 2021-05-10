@@ -139,6 +139,7 @@ boolean translate_is_output_format_supported(enum pipe_format format);
 
 static inline int translate_keysize( const struct translate_key *key )
 {
+   assert(key->nr_elements <= TRANSLATE_MAX_ATTRIBS);
    return 2 * sizeof(int) + key->nr_elements * sizeof(struct translate_element);
 }
 
