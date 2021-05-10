@@ -569,22 +569,8 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 }
 
 void
-zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource *res, bool write)
+zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *res, bool write)
 {
-   /* if the resource already has usage of any sort set for this batch, we can skip hashing */
-   if (!zink_batch_usage_matches(res->obj->reads, batch->state) &&
-       !zink_batch_usage_matches(res->obj->writes, batch->state)) {
-      bool found = false;
-      _mesa_set_search_and_add(batch->state->resources, res->obj, &found);
-      if (!found) {
-         pipe_reference(NULL, &res->obj->reference);
-         if (!batch->last_batch_usage || res->obj->reads != batch->last_batch_usage)
-            /* only add resource usage if it's "new" usage, though this only checks the most recent usage
-             * and not all pending usages
-             */
-            batch->state->resource_size += res->obj->size;
-      }
-   }
    if (write) {
       zink_batch_usage_set(&res->obj->writes, batch->state);
       if (res->scanout_obj)
@@ -599,6 +585,17 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    batch->has_work = true;
 }
 
+void
+zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource *res, bool write)
+{
+   /* if the resource already has usage of any sort set for this batch, we can skip hashing */
+   if (!zink_batch_usage_matches(res->obj->reads, batch->state) &&
+       !zink_batch_usage_matches(res->obj->writes, batch->state)) {
+      zink_batch_reference_resource(batch, res);
+   }
+   zink_batch_resource_usage_set(batch, res, write);
+}
+
 bool
 batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_batch_usage **u)
 {
@@ -609,6 +606,18 @@ batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct z
    assert(!found);
    zink_batch_usage_set(u, batch->state);
    return true;
+}
+
+void
+zink_batch_reference_resource(struct zink_batch *batch, struct zink_resource *res)
+{
+   bool found = false;
+   _mesa_set_search_and_add(batch->state->resources, res->obj, &found);
+   if (!found) {
+      pipe_reference(NULL, &res->obj->reference);
+      batch->state->resource_size += res->obj->size;
+   }
+   batch->has_work = true;
 }
 
 void

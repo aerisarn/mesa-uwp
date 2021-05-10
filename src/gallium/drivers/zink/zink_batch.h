@@ -147,9 +147,14 @@ void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch);
 
 void
+zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *res, bool write);
+
+void
 zink_batch_reference_resource_rw(struct zink_batch *batch,
                                  struct zink_resource *res,
                                  bool write);
+void
+zink_batch_reference_resource(struct zink_batch *batch, struct zink_resource *res);
 
 void
 zink_batch_reference_sampler_view(struct zink_batch *batch,
