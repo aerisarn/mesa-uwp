@@ -335,16 +335,15 @@ panfrost_get_shader_param(struct pipe_screen *screen,
             !(shader == PIPE_SHADER_COMPUTE && is_deqp))
                 return 0;
 
-        /* this is probably not totally correct.. but it's a start: */
         switch (param) {
         case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
         case PIPE_SHADER_CAP_MAX_ALU_INSTRUCTIONS:
         case PIPE_SHADER_CAP_MAX_TEX_INSTRUCTIONS:
         case PIPE_SHADER_CAP_MAX_TEX_INDIRECTIONS:
-                return 16384;
+                return 16384; /* arbitrary */
 
         case PIPE_SHADER_CAP_MAX_CONTROL_FLOW_DEPTH:
-                return 1024;
+                return 1024; /* arbitrary */
 
         case PIPE_SHADER_CAP_MAX_INPUTS:
                 /* Hardware limit is 4095 but we have driver internal inputs */
@@ -355,7 +354,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return shader == PIPE_SHADER_FRAGMENT ? 8 : PIPE_MAX_ATTRIBS;
 
         case PIPE_SHADER_CAP_MAX_TEMPS:
-                return 256; /* GL_MAX_PROGRAM_TEMPORARIES_ARB */
+                return 256; /* arbitrary */
 
         case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
                 return 16 * 1024 * sizeof(float);
@@ -438,7 +437,6 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
 
         default:
-                /* Other params are unknown */
                 return 0;
         }
 
