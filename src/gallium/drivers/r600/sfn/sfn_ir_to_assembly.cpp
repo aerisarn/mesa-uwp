@@ -98,6 +98,7 @@ public:
    int m_loop_nesting;
    int m_nliterals_in_group;
    std::set<int> vtx_fetch_results;
+   std::set<int> tex_fetch_results;
    bool m_last_op_was_barrier;
 };
 
@@ -158,8 +159,11 @@ bool AssemblyFromShaderLegacyImpl::visit(const InstructionBlock& block)
 {
    for (const auto& i : block) {
 
-      if (i->type() != Instruction::vtx)
+      if (i->type() != Instruction::vtx) {
           vtx_fetch_results.clear();
+          if (i->type() != Instruction::tex)
+              tex_fetch_results.clear();
+      }
 
       m_last_op_was_barrier &= i->type() == Instruction::alu;
 
@@ -649,6 +653,12 @@ bool AssemblyFromShaderLegacyImpl::visit(const TexInstruction & tex_instr)
       m_bc->index_loaded[1] = true;
    }
 
+   if (tex_fetch_results.find(tex_instr.src().sel()) !=
+       tex_fetch_results.end()) {
+      m_bc->force_add_cf = 1;
+      tex_fetch_results.clear();
+   }
+
    r600_bytecode_tex tex;
    memset(&tex, 0, sizeof(struct r600_bytecode_tex));
    tex.op = tex_instr.opcode();
@@ -675,6 +685,12 @@ bool AssemblyFromShaderLegacyImpl::visit(const TexInstruction & tex_instr)
    tex.offset_z = tex_instr.get_offset(2);
    tex.resource_index_mode = (!!addr) ? 2 : 0;
    tex.sampler_index_mode = tex.resource_index_mode;
+
+   if (tex.dst_sel_x < 4 &&
+       tex.dst_sel_y < 4 &&
+       tex.dst_sel_z < 4 &&
+       tex.dst_sel_w < 4)
+      tex_fetch_results.insert(tex.dst_gpr);
 
    if (tex_instr.opcode() == TexInstruction::get_gradient_h ||
        tex_instr.opcode() == TexInstruction::get_gradient_v)
@@ -710,12 +726,25 @@ bool AssemblyFromShaderLegacyImpl::visit(const FetchInstruction& fetch_instr)
       }
    }
 
-   if (vtx_fetch_results.find(fetch_instr.src().sel()) !=
+   bool use_tc = fetch_instr.use_tc() || (m_bc->chip_class == CAYMAN);
+   if (!use_tc &&
+       vtx_fetch_results.find(fetch_instr.src().sel()) !=
        vtx_fetch_results.end()) {
       m_bc->force_add_cf = 1;
       vtx_fetch_results.clear();
    }
-   vtx_fetch_results.insert(fetch_instr.dst().sel());
+
+   if (fetch_instr.use_tc() &&
+       tex_fetch_results.find(fetch_instr.src().sel()) !=
+       tex_fetch_results.end()) {
+      m_bc->force_add_cf = 1;
+      tex_fetch_results.clear();
+   }
+
+   if (use_tc)
+      tex_fetch_results.insert(fetch_instr.dst().sel());
+   else
+      vtx_fetch_results.insert(fetch_instr.dst().sel());
 
    struct r600_bytecode_vtx vtx;
    memset(&vtx, 0, sizeof(vtx));
