@@ -212,7 +212,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
          is_divergent = !(options & nir_divergence_single_patch_per_tcs_subgroup);
       else if (stage == MESA_SHADER_TESS_EVAL)
          is_divergent = !(options & nir_divergence_single_patch_per_tes_subgroup);
-      else if (stage == MESA_SHADER_GEOMETRY)
+      else if (stage == MESA_SHADER_GEOMETRY || stage == MESA_SHADER_VERTEX)
          is_divergent = true;
       else
          unreachable("Invalid stage for load_primitive_id");
