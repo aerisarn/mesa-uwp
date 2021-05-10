@@ -1713,17 +1713,22 @@ emit_frag_end(struct v3d_compile *c)
 static inline void
 vir_VPM_WRITE_indirect(struct v3d_compile *c,
                        struct qreg val,
-                       struct qreg vpm_index)
+                       struct qreg vpm_index,
+                       bool uniform_vpm_index)
 {
         assert(c->devinfo->ver >= 40);
-        vir_STVPMV(c, vpm_index, val);
+        if (uniform_vpm_index)
+                vir_STVPMV(c, vpm_index, val);
+        else
+                vir_STVPMD(c, vpm_index, val);
 }
 
 static void
 vir_VPM_WRITE(struct v3d_compile *c, struct qreg val, uint32_t vpm_index)
 {
         if (c->devinfo->ver >= 40) {
-                vir_VPM_WRITE_indirect(c, val, vir_uniform_ui(c, vpm_index));
+                vir_VPM_WRITE_indirect(c, val,
+                                       vir_uniform_ui(c, vpm_index), true);
         } else {
                 /* XXX: v3d33_vir_vpm_write_setup(c); */
                 vir_MOV_dest(c, vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_VPM), val);
@@ -2461,10 +2466,8 @@ emit_store_output_gs(struct v3d_compile *c, nir_intrinsic_instr *instr)
          * different offsets in the VPM and we need to use the scatter write
          * instruction to have a different offset for each lane.
          */
-        if (nir_src_is_dynamically_uniform(instr->src[1]))
-                vir_VPM_WRITE_indirect(c, val, offset);
-        else
-                vir_STVPMD(c, offset, val);
+         vir_VPM_WRITE_indirect(c, val, offset,
+                                nir_src_is_dynamically_uniform(instr->src[1]));
 
         if (vir_in_nonuniform_control_flow(c)) {
                 struct qinst *last_inst =
@@ -2492,10 +2495,7 @@ emit_store_output_vs(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 bool is_uniform_offset =
                         !vir_in_nonuniform_control_flow(c) &&
                         !nir_src_is_divergent(instr->src[1]);
-                if (is_uniform_offset)
-                        vir_VPM_WRITE_indirect(c, val, offset);
-                else
-                        vir_STVPMD(c, offset, val);
+                vir_VPM_WRITE_indirect(c, val, offset, is_uniform_offset);
         }
 }
 
