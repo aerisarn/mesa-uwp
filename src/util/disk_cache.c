@@ -261,17 +261,22 @@ disk_cache_remove(struct disk_cache *cache, const cache_key key)
 
 static struct disk_cache_put_job *
 create_put_job(struct disk_cache *cache, const cache_key key,
-               const void *data, size_t size,
-               struct cache_item_metadata *cache_item_metadata)
+               void *data, size_t size,
+               struct cache_item_metadata *cache_item_metadata,
+               bool take_ownership)
 {
    struct disk_cache_put_job *dc_job = (struct disk_cache_put_job *)
-      malloc(sizeof(struct disk_cache_put_job) + size);
+      malloc(sizeof(struct disk_cache_put_job) + (take_ownership ? 0 : size));
 
    if (dc_job) {
       dc_job->cache = cache;
       memcpy(dc_job->key, key, sizeof(cache_key));
-      dc_job->data = dc_job + 1;
-      memcpy(dc_job->data, data, size);
+      if (take_ownership) {
+         dc_job->data = data;
+      } else {
+         dc_job->data = dc_job + 1;
+         memcpy(dc_job->data, data, size);
+      }
       dc_job->size = size;
 
       /* Copy the cache item metadata */
@@ -310,9 +315,16 @@ destroy_put_job(void *job, int thread_index)
    if (job) {
       struct disk_cache_put_job *dc_job = (struct disk_cache_put_job *) job;
       free(dc_job->cache_item_metadata.keys);
-
       free(job);
    }
+}
+
+static void
+destroy_put_job_nocopy(void *job, int thread_index)
+{
+   struct disk_cache_put_job *dc_job = (struct disk_cache_put_job *) job;
+   free(dc_job->data);
+   destroy_put_job(job, thread_index);
 }
 
 static void
@@ -359,12 +371,38 @@ disk_cache_put(struct disk_cache *cache, const cache_key key,
       return;
 
    struct disk_cache_put_job *dc_job =
-      create_put_job(cache, key, data, size, cache_item_metadata);
+      create_put_job(cache, key, (void*)data, size, cache_item_metadata, false);
 
    if (dc_job) {
       util_queue_fence_init(&dc_job->fence);
       util_queue_add_job(&cache->cache_queue, dc_job, &dc_job->fence,
                          cache_put, destroy_put_job, dc_job->size);
+   }
+}
+
+void
+disk_cache_put_nocopy(struct disk_cache *cache, const cache_key key,
+                      void *data, size_t size,
+                      struct cache_item_metadata *cache_item_metadata)
+{
+   if (cache->blob_put_cb) {
+      cache->blob_put_cb(key, CACHE_KEY_SIZE, data, size);
+      free(data);
+      return;
+   }
+
+   if (cache->path_init_failed) {
+      free(data);
+      return;
+   }
+
+   struct disk_cache_put_job *dc_job =
+      create_put_job(cache, key, data, size, cache_item_metadata, true);
+
+   if (dc_job) {
+      util_queue_fence_init(&dc_job->fence);
+      util_queue_add_job(&cache->cache_queue, dc_job, &dc_job->fence,
+                         cache_put, destroy_put_job_nocopy, dc_job->size);
    }
 }
 
