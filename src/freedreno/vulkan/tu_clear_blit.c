@@ -1427,6 +1427,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
    VkOffset3D src_offset = info->srcOffset;
    VkOffset3D dst_offset = info->dstOffset;
    VkExtent3D extent = info->extent;
+   uint32_t layers_to_copy = MAX2(info->extent.depth, info->srcSubresource.layerCount);
 
    /* From the Vulkan 1.2.140 spec, section 19.3 "Copying Data Between
     * Images":
@@ -1537,7 +1538,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       ops->setup(cmd, cs, src_format, VK_IMAGE_ASPECT_COLOR_BIT, 0, false, false);
       coords(ops, cs, &staging_offset, &src_offset, &extent);
 
-      for (uint32_t i = 0; i < info->extent.depth; i++) {
+      for (uint32_t i = 0; i < layers_to_copy; i++) {
          ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST);
          ops->dst(cs, &staging, i);
          ops->run(cmd, cs);
@@ -1556,7 +1557,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
                  0, false, dst_image->layout[0].ubwc);
       coords(ops, cs, &dst_offset, &staging_offset, &extent);
 
-      for (uint32_t i = 0; i < info->extent.depth; i++) {
+      for (uint32_t i = 0; i < layers_to_copy; i++) {
          ops->src(cmd, cs, &staging, i, VK_FILTER_NEAREST);
          ops->dst(cs, &dst, i);
          ops->run(cmd, cs);
@@ -1569,7 +1570,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
                  0, false, dst_image->layout[0].ubwc);
       coords(ops, cs, &dst_offset, &src_offset, &extent);
 
-      for (uint32_t i = 0; i < info->extent.depth; i++) {
+      for (uint32_t i = 0; i < layers_to_copy; i++) {
          ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST);
          ops->dst(cs, &dst, i);
          ops->run(cmd, cs);
