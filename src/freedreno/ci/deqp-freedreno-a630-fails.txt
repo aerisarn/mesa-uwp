@@ -15,8 +15,11 @@ dEQP-VK.api.driver_properties.conformance_version,Fail
 dEQP-VK.api.driver_properties.driver_id_match,Fail
 dEQP-VK.api.info.format_properties.g8b8g8r8_422_unorm,Fail
 dEQP-VK.api.info.get_physical_device_properties2.memory_properties,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/9409
 dEQP-VK.compute.basic.max_local_size_x,Crash
 dEQP-VK.compute.basic.max_local_size_y,Crash
+
 dEQP-VK.draw.shader_viewport_index.fragment_shader_10,Fail
 dEQP-VK.draw.shader_viewport_index.fragment_shader_12,Fail
 dEQP-VK.draw.shader_viewport_index.fragment_shader_13,Fail
@@ -56,6 +59,8 @@ dEQP-VK.image.extend_operands_spirv1p4.r16g16_sint_relaxed_force_sign_extend,Fai
 dEQP-VK.image.extend_operands_spirv1p4.r32g32_sint_force_sign_extend,Fail
 dEQP-VK.image.extend_operands_spirv1p4.r8_sint_relaxed_force_sign_extend,Fail
 dEQP-VK.image.extend_operands_spirv1p4.r8g8_sint_relaxed_force_sign_extend,Fail
+
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2917
 dEQP-VK.image.subresource_layout.2d.1_level.b8g8r8a8_snorm,Fail
 dEQP-VK.image.subresource_layout.2d.1_level.r16g16_snorm,Fail
 dEQP-VK.image.subresource_layout.2d.1_level.r8_snorm,Fail
@@ -125,7 +130,10 @@ dEQP-VK.image.subresource_layout.3d.all_levels.r16g16_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.all_levels.r16g16b16a16_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.all_levels.r8_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.all_levels.r8g8b8a8_snorm,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4462
 dEQP-VK.pipeline.framebuffer_attachment.diff_attachments_2d_19x27_32x32_ms,Fail
+
 dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.renderpass.suballocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.renderpass.suballocation.subpass_dependencies.implicit_dependencies.render_passes_5,Fail
@@ -139,7 +147,10 @@ dEQP-VK.spirv_assembly.instruction.compute.float_controls.fp32.input_args.roundi
 dEQP-VK.spirv_assembly.instruction.compute.float_controls.fp32.input_args.rounding_rtz_vmulm,Fail
 dEQP-VK.spirv_assembly.instruction.compute.float_controls.fp32.input_args.sign_denorm_preserve,Fail
 dEQP-VK.spirv_assembly.instruction.compute.opcopymemory.array,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/3208
 dEQP-VK.spirv_assembly.instruction.compute.opquantize.infinities,Fail
+
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.abs_denorm_preserve_frag,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.abs_denorm_preserve_vert,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denorm_nclamp_denorm_preserve_frag,Fail
@@ -148,6 +159,8 @@ dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denor
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denorm_nmax_denorm_preserve_vert,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denorm_nmin_denorm_preserve_frag,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denorm_nmin_denorm_preserve_vert,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/3208
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_bit_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_bit_tessc,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_to_exponent_frag,Fail
@@ -178,6 +191,7 @@ dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_positive_round
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_positive_round_up_or_round_down_tessc,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.too_small_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.too_small_tessc,Fail
+
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_single_buffer_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
 dEQP-VK.spirv_assembly.instruction.spirv1p4.opcopylogical.nested_arrays_different_inner_stride,Fail
