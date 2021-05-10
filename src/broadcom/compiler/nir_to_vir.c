@@ -2476,25 +2476,27 @@ emit_store_output_gs(struct v3d_compile *c, nir_intrinsic_instr *instr)
 static void
 emit_store_output_vs(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
-        /* XXX perf: Use stvpmv with uniform non-constant offsets and
-         * stvpmd with non-uniform offsets and enable
-         * PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR.
-         */
-       assert(c->s->info.stage == MESA_SHADER_VERTEX);
-       assert(instr->num_components == 1);
+        assert(c->s->info.stage == MESA_SHADER_VERTEX);
+        assert(instr->num_components == 1);
 
-       uint32_t base = nir_intrinsic_base(instr);
-       if (nir_src_is_const(instr->src[1])) {
-               vir_VPM_WRITE(c,
-                             ntq_get_src(c, instr->src[0], 0),
-                             base + nir_src_as_uint(instr->src[1]));
-       } else {
-               vir_VPM_WRITE_indirect(c,
-                                      ntq_get_src(c, instr->src[0], 0),
-                                      vir_ADD(c,
-                                              ntq_get_src(c, instr->src[1], 1),
-                                              vir_uniform_ui(c, base)));
-       }
+        uint32_t base = nir_intrinsic_base(instr);
+        struct qreg val = ntq_get_src(c, instr->src[0], 0);
+
+        if (nir_src_is_const(instr->src[1])) {
+                vir_VPM_WRITE(c, val,
+                              base + nir_src_as_uint(instr->src[1]));
+        } else {
+                struct qreg offset = vir_ADD(c,
+                                             ntq_get_src(c, instr->src[1], 1),
+                                             vir_uniform_ui(c, base));
+                bool is_uniform_offset =
+                        !vir_in_nonuniform_control_flow(c) &&
+                        !nir_src_is_divergent(instr->src[1]);
+                if (is_uniform_offset)
+                        vir_VPM_WRITE_indirect(c, val, offset);
+                else
+                        vir_STVPMD(c, offset, val);
+        }
 }
 
 static void
