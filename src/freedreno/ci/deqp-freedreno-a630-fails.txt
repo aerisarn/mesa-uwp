@@ -126,10 +126,6 @@ dEQP-VK.image.subresource_layout.3d.all_levels.r16g16b16a16_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.all_levels.r8_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.all_levels.r8g8b8a8_snorm,Fail
 dEQP-VK.pipeline.framebuffer_attachment.diff_attachments_2d_19x27_32x32_ms,Fail
-dEQP-VK.pipeline.push_descriptor.compute.binding0_numcalls2_combined_image_sampler,Crash
-dEQP-VK.pipeline.push_descriptor.compute.binding0_numcalls2_sampled_image,Crash
-dEQP-VK.pipeline.push_descriptor.compute.binding0_numcalls2_sampler,Crash
-dEQP-VK.pipeline.push_descriptor.compute.binding0_numcalls2_storage_image,Crash
 dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.renderpass.suballocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.renderpass.suballocation.subpass_dependencies.implicit_dependencies.render_passes_5,Fail
