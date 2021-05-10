@@ -1305,12 +1305,10 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(sscreen->info.use_late_alloc) |
                                      S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
 
-   if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST) {
+   if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST ||
+       shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP) {
       shader->ge_cntl = S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
-                        S_03096C_VERT_GRP_SIZE(shader->ngg.max_gsprims * 3);
-   } else if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP) {
-      shader->ge_cntl = S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
-                        S_03096C_VERT_GRP_SIZE(shader->ngg.max_gsprims + 2);
+                        S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts);
    } else {
       shader->ge_cntl = S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
                         S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts) |

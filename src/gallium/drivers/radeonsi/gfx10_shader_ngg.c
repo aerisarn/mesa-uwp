@@ -2103,12 +2103,36 @@ retry_select_mode:
       prim_amp_factor = gs_sel->info.base.gs.vertices_out;
    }
 
+   /* Fix up the thread counts for fast launch. */
+   if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST) {
+      /* The vertex count must be a multiple of 3. */
+      max_esverts -= max_esverts % 3;
+      /* We can only decrease the size, not increase it. */
+      if (max_gsprims * 3 < max_esverts) {
+         max_esverts = max_gsprims * 3;
+      } else {
+         max_gsprims = max_esverts / 3;
+      }
+   } else if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP) {
+      /* The primitive count must be even to get correct winding for triangle strips. */
+      max_gsprims &= ~1;
+      if (max_gsprims - 2 < max_esverts) {
+         max_esverts = max_gsprims + 2;
+      } else {
+         max_gsprims = max_esverts - 2;
+         max_gsprims &= ~1;
+         max_esverts = max_gsprims + 2;
+      }
+   }
+
    /* On gfx10, the GE only checks against the maximum number of ES verts after
     * allocating a full GS primitive. So we need to ensure that whenever
     * this check passes, there is enough space for a full primitive without
     * vertex reuse.
     */
-   if (gs_sel->screen->info.chip_class == GFX10)
+   if (gs_sel->screen->info.chip_class == GFX10 &&
+       !(shader->key.opt.ngg_culling & (SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST |
+                                        SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP)))
       shader->ngg.hw_max_esverts = max_esverts - max_verts_per_prim + 1;
    else
       shader->ngg.hw_max_esverts = max_esverts;
