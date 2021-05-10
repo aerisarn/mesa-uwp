@@ -3445,6 +3445,11 @@ typedef struct nir_shader_compiler_options {
 
    bool lower_uniforms_to_ubo;
 
+   /* If the precision is ignored, backends that don't handle
+    * different precisions when passing data between stages and use
+    * vectorized IO can pack more varyings when linking. */
+   bool linker_ignore_precision;
+
    nir_lower_int64_options lower_int64_options;
    nir_lower_doubles_options lower_doubles_options;
    nir_divergence_options divergence_analysis_options;
