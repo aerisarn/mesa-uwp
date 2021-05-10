@@ -180,10 +180,12 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 0;
 
         case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
-                return 4;
+                return PIPE_MAX_SO_BUFFERS;
+
         case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
         case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
-                return 64;
+                return PIPE_MAX_SO_OUTPUTS;
+
         case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
         case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
                 return 1;
@@ -283,7 +285,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 4;
 
         case PIPE_CAP_MAX_VARYINGS:
-                return 16;
+                return PIPE_MAX_ATTRIBS;
 
         /* Removed in v6 (Bifrost) */
         case PIPE_CAP_ALPHA_TEST:
@@ -345,10 +347,12 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 1024;
 
         case PIPE_SHADER_CAP_MAX_INPUTS:
-                return 16;
+                /* Hardware limit is 4095 but we have driver internal inputs */
+                STATIC_ASSERT(PIPE_MAX_ATTRIBS < (0x1000 - 16));
+                return PIPE_MAX_ATTRIBS;
 
         case PIPE_SHADER_CAP_MAX_OUTPUTS:
-                return shader == PIPE_SHADER_FRAGMENT ? 8 : 16;
+                return shader == PIPE_SHADER_FRAGMENT ? 8 : PIPE_MAX_ATTRIBS;
 
         case PIPE_SHADER_CAP_MAX_TEMPS:
                 return 256; /* GL_MAX_PROGRAM_TEMPORARIES_ARB */
@@ -357,6 +361,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 16 * 1024 * sizeof(float);
 
         case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
+                STATIC_ASSERT(PAN_MAX_CONST_BUFFERS < 0x100);
                 return PAN_MAX_CONST_BUFFERS;
 
         case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
@@ -406,8 +411,12 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
 
         case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
+                STATIC_ASSERT(PIPE_MAX_SAMPLERS < 0x10000);
+                return PIPE_MAX_SAMPLERS;
+
         case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
-                return 16; /* XXX: How many? */
+                STATIC_ASSERT(PIPE_MAX_SHADER_SAMPLER_VIEWS < 0x10000);
+                return PIPE_MAX_SHADER_SAMPLER_VIEWS;
 
         case PIPE_SHADER_CAP_PREFERRED_IR:
                 return PIPE_SHADER_IR_NIR;
