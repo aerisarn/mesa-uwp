@@ -571,14 +571,6 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 void
 zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource *res, bool write)
 {
-   /* u_transfer_helper unrefs the stencil buffer when the depth buffer is unrefed,
-    * so we add an extra ref here to the stencil buffer to compensate
-    */
-   struct zink_resource *stencil = NULL;
-
-   if (!res->obj->is_buffer && res->aspect == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
-      zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
-
    /* if the resource already has usage of any sort set for this batch, we can skip hashing */
    if (!zink_batch_usage_matches(res->obj->reads, batch->state) &&
        !zink_batch_usage_matches(res->obj->writes, batch->state)) {
@@ -591,22 +583,13 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
              * and not all pending usages
              */
             batch->state->resource_size += res->obj->size;
-         if (stencil) {
-            pipe_reference(NULL, &stencil->obj->reference);
-            if (!batch->last_batch_usage || stencil->obj->reads != batch->last_batch_usage)
-               batch->state->resource_size += stencil->obj->size;
-         }
       }
-       }
+   }
    if (write) {
-      if (stencil)
-         zink_batch_usage_set(&stencil->obj->writes, batch->state);
       zink_batch_usage_set(&res->obj->writes, batch->state);
       if (res->scanout_obj)
          batch->state->scanout_flush = true;
    } else {
-      if (stencil)
-         zink_batch_usage_set(&stencil->obj->reads, batch->state);
       zink_batch_usage_set(&res->obj->reads, batch->state);
    }
    /* multiple array entries are fine */
