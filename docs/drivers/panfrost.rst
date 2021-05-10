@@ -33,19 +33,17 @@ Other graphics APIs (Vulkan, OpenCL) are not supported at this time.
 Building
 --------
 
-Panfrost's OpenGL support is a Gallium driver. Since Mali GPUs are
-3D-only and do not include a display controller, Mesa must be
-additionally built with kmsro support which supports a number of display
-controllers commonly paired with Mali GPUs. If your board with a Panfrost
-supported GPU has a display controller with mainline Linux support not
-supported by kmsro, it's easy to add support, see the commit
-``cff7de4bb597e9`` as an example.
+Panfrost's OpenGL support is a Gallium driver. Since Mali GPUs are 3D-only and
+do not include a display controller, Mesa uses kmsro to support display
+controllers paired with Mali GPUs. If your board with a Panfrost supported GPU
+has a display controller with mainline Linux support not supported by kmsro,
+it's easy to add support, see the commit ``cff7de4bb597e9`` as an example.
 
 LLVM is *not* required by Panfrost's compilers. LLVM support in Mesa can
 safely be disabled for most OpenGL ES users with Panfrost.
 
 Build with meson like ``meson . build/ -Ddri-drivers= -Dvulkan-drivers=
--Dgallium-drivers=panfrost,kmsro -Dllvm=false`` for a build directory
+-Dgallium-drivers=panfrost -Dllvm=false`` for a build directory
 ``build``.
 
 Building for Android via the legacy ``Android.mk`` system is not officially

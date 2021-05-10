@@ -23,7 +23,7 @@ Each SoC has its own separate display engine to control the display
 output. To display the contents rendered by the Mali GPU to a screen, a
 separate `display driver <#display-drivers>`__ is also required, which
 is able to share buffers with the GPU. In Mesa, this is handled by
-enabling the ``kmsro`` driver in addition to Lima.
+``kmsro``.
 
 Supported APIs
 --------------
