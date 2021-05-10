@@ -64,7 +64,7 @@ struct MoveState {
 
    int source_idx;
    int insert_idx, insert_idx_clause;
-   RegisterDemand total_demand, total_demand_clause;
+   RegisterDemand clause_demand, total_demand;
 
    /* for moving instructions before the current instruction to after it */
    void downwards_init(int current_idx, bool improved_rar, bool may_form_clauses);
@@ -125,12 +125,13 @@ void MoveState::downwards_advance_helper()
    for (int i = source_idx + 1; i < insert_idx_clause; ++i) {
       reference_demand.update(register_demand[i]);
    }
-   assert(total_demand_clause == reference_demand);
+   assert(total_demand == reference_demand);
 
+   reference_demand = {};
    for (int i = insert_idx_clause; i < insert_idx; ++i) {
       reference_demand.update(register_demand[i]);
    }
-   assert(total_demand == reference_demand);
+   assert(clause_demand == reference_demand);
 #endif
 }
 
@@ -142,8 +143,8 @@ void MoveState::downwards_init(int current_idx, bool improved_rar_, bool may_for
    insert_idx = current_idx + 1;
    insert_idx_clause = current_idx;
 
-   total_demand = register_demand[current_idx];
-   total_demand_clause = {};
+   clause_demand = register_demand[current_idx];
+   total_demand = {};
 
    std::fill(depends_on.begin(), depends_on.end(), false);
    if (improved_rar) {
@@ -164,7 +165,10 @@ void MoveState::downwards_init(int current_idx, bool improved_rar_, bool may_for
    downwards_advance_helper();
 }
 
-MoveResult MoveState::downwards_move(bool clause)
+/* If add_to_clause is true, the current clause is extended by moving the
+ * instruction at source_idx in front of the clause. Otherwise, the instruction
+ * is moved past the end of the clause without extending it */
+MoveResult MoveState::downwards_move(bool add_to_clause)
 {
    aco_ptr<Instruction>& instr = block->instructions[source_idx];
 
@@ -173,7 +177,7 @@ MoveResult MoveState::downwards_move(bool clause)
          return move_fail_ssa;
 
    /* check if one of candidate's operands is killed by depending instruction */
-   std::vector<bool>& RAR_deps = improved_rar ? (clause ? RAR_dependencies_clause : RAR_dependencies) : depends_on;
+   std::vector<bool>& RAR_deps = improved_rar ? (add_to_clause ? RAR_dependencies_clause : RAR_dependencies) : depends_on;
    for (const Operand& op : instr->operands) {
       if (op.isTemp() && RAR_deps[op.tempId()]) {
          // FIXME: account for difference in register pressure
@@ -181,7 +185,7 @@ MoveResult MoveState::downwards_move(bool clause)
       }
    }
 
-   if (clause) {
+   if (add_to_clause) {
       for (const Operand& op : instr->operands) {
          if (op.isTemp()) {
             depends_on[op.tempId()] = true;
@@ -191,13 +195,19 @@ MoveResult MoveState::downwards_move(bool clause)
       }
    }
 
-   const int dest_insert_idx = clause ? insert_idx_clause : insert_idx;
-   const RegisterDemand register_pressure = clause ? total_demand_clause : total_demand;
+   const int dest_insert_idx = add_to_clause ? insert_idx_clause : insert_idx;
+   RegisterDemand register_pressure = total_demand;
+   if (!add_to_clause) {
+      register_pressure.update(clause_demand);
+   }
 
+   /* Check the new demand of the instructions being moved over */
    const RegisterDemand candidate_diff = get_live_changes(instr);
-   const RegisterDemand temp = get_temp_registers(instr);
    if (RegisterDemand(register_pressure - candidate_diff).exceeds(max_registers))
       return move_fail_pressure;
+
+   /* New demand for the moved instruction */
+   const RegisterDemand temp = get_temp_registers(instr);
    const RegisterDemand temp2 = get_temp_registers(block->instructions[dest_insert_idx - 1]);
    const RegisterDemand new_demand = register_demand[dest_insert_idx - 1] - temp2 + temp;
    if (new_demand.exceeds(max_registers))
@@ -212,21 +222,17 @@ MoveResult MoveState::downwards_move(bool clause)
       register_demand[i] -= candidate_diff;
    register_demand[dest_insert_idx - 1] = new_demand;
    insert_idx_clause--;
-   total_demand_clause -= candidate_diff;
-   if (source_idx == insert_idx_clause) {
-      total_demand_clause = RegisterDemand{};
-   }
-   if (!clause) {
+   if (source_idx != insert_idx_clause) {
+      /* Update demand if we moved over any instructions before the clause */
       total_demand -= candidate_diff;
-      insert_idx--;
    } else {
-      /* The local demand of clause instructions did not change. But if
-       * previously total_demand_clause was greater than or equal to
-       * total_demand, the global maximum may have changed still */
-      total_demand = total_demand_clause;
-      for (int i = insert_idx_clause; i < insert_idx; ++i) {
-         total_demand.update(register_demand[i]);
-      }
+      assert(total_demand == RegisterDemand{});
+   }
+   if (add_to_clause) {
+      clause_demand.update(new_demand);
+   } else {
+      clause_demand -= candidate_diff;
+      insert_idx--;
    }
 
    downwards_advance_helper();
@@ -246,7 +252,6 @@ void MoveState::downwards_skip()
          }
       }
    }
-   total_demand_clause.update(register_demand[source_idx]);
    total_demand.update(register_demand[source_idx]);
 
    downwards_advance_helper();
