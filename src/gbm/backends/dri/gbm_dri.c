@@ -298,6 +298,8 @@ dri_bind_extensions(struct gbm_dri_device *dri,
    for (size_t j = 0; j < num_matches; j++) {
       field = ((char *) dri + matches[j].offset);
       if ((*(const __DRIextension **) field == NULL) && !matches[j].optional) {
+         fprintf(stderr, "gbm: did not find extension %s version %d\n",
+                 matches[j].name, matches[j].version);
          ret = false;
       }
    }
