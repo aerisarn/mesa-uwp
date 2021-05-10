@@ -240,6 +240,9 @@ vn_EndCommandBuffer(VkCommandBuffer commandBuffer)
    struct vn_instance *instance = cmd->device->instance;
    size_t cmd_size;
 
+   if (cmd->state != VN_COMMAND_BUFFER_STATE_RECORDING)
+      return vn_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
    cmd_size = vn_sizeof_vkEndCommandBuffer(commandBuffer);
    if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size)) {
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
