@@ -584,11 +584,39 @@ bool EmitSSBOInstruction::emit_image_size(const nir_intrinsic_instr *intrin)
           nir_intrinsic_image_array(intrin) && nir_dest_num_components(intrin->dest) > 2) {
          /* Need to load the layers from a const buffer */
 
-         unsigned lookup_resid = const_offset[0].u32;
-         emit_instruction(new AluInstruction(op1_mov, dest.reg_i(2),
-                                             PValue(new UniformValue(lookup_resid/4 + R600_SHADER_BUFFER_INFO_SEL, lookup_resid % 4,
-                                                                     R600_BUFFER_INFO_CONST_BUFFER)),
-         EmitInstruction::last_write));
+         set_has_txs_cube_array_comp();
+
+         if (const_offset) {
+            unsigned lookup_resid = const_offset[0].u32;
+            emit_instruction(new AluInstruction(op1_mov, dest.reg_i(2),
+                                                PValue(new UniformValue(lookup_resid/4 + R600_SHADER_BUFFER_INFO_SEL, lookup_resid % 4,
+                                                                        R600_BUFFER_INFO_CONST_BUFFER)),
+                                                EmitInstruction::last_write));
+         } else {
+            /* If the adressing is indirect we have to get the z-value by using a binary search */
+            GPRVector trgt;
+            GPRVector help;
+
+            auto addr = help.reg_i(0);
+            auto comp = help.reg_i(1);
+            auto low_bit = help.reg_i(2);
+            auto high_bit = help.reg_i(3);
+
+            emit_instruction(new AluInstruction(op2_lshr_int, addr, from_nir(intrin->src[0], 0),
+                             literal(2), EmitInstruction::write));
+            emit_instruction(new AluInstruction(op2_and_int, comp, from_nir(intrin->src[0], 0),
+                             literal(3), EmitInstruction::last_write));
+
+            emit_instruction(new FetchInstruction(vc_fetch, no_index_offset, trgt, addr, R600_SHADER_BUFFER_INFO_SEL,
+                                                  R600_BUFFER_INFO_CONST_BUFFER, PValue(), bim_none));
+
+            emit_instruction(new AluInstruction(op3_cnde_int, comp, high_bit, trgt.reg_i(0), trgt.reg_i(2),
+                                                EmitInstruction::write));
+            emit_instruction(new AluInstruction(op3_cnde_int, high_bit, high_bit, trgt.reg_i(1), trgt.reg_i(3),
+                                                EmitInstruction::last_write));
+
+            emit_instruction(new AluInstruction(op3_cnde_int, dest.reg_i(2), low_bit, comp, high_bit, EmitInstruction::last_write));
+         }
       }
    }
    return true;
