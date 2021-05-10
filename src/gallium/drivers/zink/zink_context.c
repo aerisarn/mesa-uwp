@@ -3142,7 +3142,8 @@ check_and_rebind_buffer(struct zink_context *ctx, struct zink_resource *res, uns
    }
 
    zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, shader, type, i, 1);
-   zink_batch_reference_resource_rw(&ctx->batch, res, is_write);
+   if (!ctx->descriptor_refs_dirty[shader == PIPE_SHADER_COMPUTE])
+      zink_batch_reference_resource_rw(&ctx->batch, res, is_write);
    VkAccessFlags access = 0;
    if (is_read)
       access |= VK_ACCESS_SHADER_READ_BIT;
@@ -3212,7 +3213,7 @@ out:
    assert(total_binds == num_rebinds);
    if (!res->vbo_bind_count)
       return;
-   if (!num_rebinds)
+   if (!num_rebinds && !ctx->descriptor_refs_dirty[0])
       zink_batch_reference_resource_rw(&ctx->batch, res, false);
    ctx->vertex_buffers_dirty = true;
    zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
