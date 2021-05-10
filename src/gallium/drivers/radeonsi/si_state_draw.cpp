@@ -2077,12 +2077,10 @@ static void si_draw_vbo(struct pipe_context *ctx,
                if (!index_size) {
                   ngg_culling |= SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP;
                } else if (!primitive_restart) {
-#if 0 /* It's disabled because this hangs: AMD_DEBUG=nggc torcs */
                   ngg_culling |= SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP |
                                  SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(MIN2(index_size, 3));
                   /* The index buffer will be emulated. */
                   index_size = 0;
-#endif
                }
             }
          }
