@@ -370,7 +370,7 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
         case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
                 return 1;
         case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR:
-                return 0;
+                return 1;
         case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
                 return 1;
         case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
