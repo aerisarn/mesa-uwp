@@ -299,7 +299,14 @@ panfrost_blit(struct pipe_context *pipe,
                                  panfrost_batch_get_bifrost_tiler(batch, ~0) : 0;
                 pan_blit(&bctx, &batch->pool, &batch->scoreboard,
                          panfrost_batch_reserve_tls(batch, false), tiler);
-                panfrost_freeze_batch(batch);
+
+                /* We don't want this batch to interfere with subsequent draw
+                 * calls, but we want to keep it in the list of pending batches
+                 * (so it gets flushed when glFlush() is called), so calling
+                 * panfrost_freeze_batch() is not an option. Reset the
+                 * ctx->batch pointer manually.
+                 */
+                ctx->batch = NULL;
         } while (pan_blit_next_surface(&bctx));
 
         pan_blit_ctx_cleanup(&bctx);
