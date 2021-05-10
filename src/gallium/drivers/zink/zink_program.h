@@ -128,6 +128,11 @@ zink_desc_type_from_vktype(VkDescriptorType type)
    
 }
 
+void
+zink_delete_shader_state(struct pipe_context *pctx, void *cso);
+void *
+zink_create_gfx_shader_state(struct pipe_context *pctx, const struct pipe_shader_state *shader);
+
 unsigned
 zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descriptor_type type, bool is_compute);
 

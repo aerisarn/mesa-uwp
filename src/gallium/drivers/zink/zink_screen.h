@@ -35,6 +35,7 @@
 #include "util/disk_cache.h"
 #include "util/log.h"
 #include "util/simple_mtx.h"
+#include "util/u_live_shader_cache.h"
 
 #include <vulkan/vulkan.h>
 
@@ -87,6 +88,8 @@ struct zink_screen {
    size_t pipeline_cache_size;
    struct disk_cache *disk_cache;
    cache_key disk_cache_key;
+
+   struct util_live_shader_cache shaders;
 
    simple_mtx_t mem_cache_mtx;
    struct hash_table *resource_mem_cache;

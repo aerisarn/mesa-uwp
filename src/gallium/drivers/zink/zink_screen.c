@@ -31,6 +31,7 @@
 #include "zink_format.h"
 #include "zink_framebuffer.h"
 #include "zink_instance.h"
+#include "zink_program.h"
 #include "zink_public.h"
 #include "zink_resource.h"
 #include "nir_to_spirv/nir_to_spirv.h" // for SPIRV_VERSION
@@ -1012,6 +1013,8 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    simple_mtx_destroy(&screen->mem_cache_mtx);
    vkDestroyPipelineCache(screen->dev, screen->pipeline_cache, NULL);
 
+   util_live_shader_cache_deinit(&screen->shaders);
+
    if (screen->sem)
       vkDestroySemaphore(screen->dev, screen->sem, NULL);
    if (screen->prev_sem)
@@ -1654,6 +1657,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 #endif // VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME
 
    check_base_requirements(screen);
+   util_live_shader_cache_init(&screen->shaders, zink_create_gfx_shader_state, zink_delete_shader_state);
 
    screen->base.get_name = zink_get_name;
    screen->base.get_vendor = zink_get_vendor;
