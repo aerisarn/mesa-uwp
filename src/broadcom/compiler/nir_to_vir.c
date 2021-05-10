@@ -2474,33 +2474,38 @@ emit_store_output_gs(struct v3d_compile *c, nir_intrinsic_instr *instr)
 }
 
 static void
-ntq_emit_store_output(struct v3d_compile *c, nir_intrinsic_instr *instr)
+emit_store_output_vs(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
         /* XXX perf: Use stvpmv with uniform non-constant offsets and
          * stvpmd with non-uniform offsets and enable
          * PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR.
          */
-        if (c->s->info.stage == MESA_SHADER_FRAGMENT) {
-               ntq_emit_color_write(c, instr);
-        } else if (c->s->info.stage == MESA_SHADER_GEOMETRY)  {
-               emit_store_output_gs(c, instr);
-        } else {
-               assert(c->s->info.stage == MESA_SHADER_VERTEX);
-               assert(instr->num_components == 1);
+       assert(c->s->info.stage == MESA_SHADER_VERTEX);
+       assert(instr->num_components == 1);
 
-               uint32_t base = nir_intrinsic_base(instr);
-               if (nir_src_is_const(instr->src[1])) {
-                  vir_VPM_WRITE(c,
-                                ntq_get_src(c, instr->src[0], 0),
-                                base + nir_src_as_uint(instr->src[1]));
-               } else {
-                  vir_VPM_WRITE_indirect(c,
-                                         ntq_get_src(c, instr->src[0], 0),
-                                         vir_ADD(c,
-                                                 ntq_get_src(c, instr->src[1], 1),
-                                                 vir_uniform_ui(c, base)));
-               }
-        }
+       uint32_t base = nir_intrinsic_base(instr);
+       if (nir_src_is_const(instr->src[1])) {
+               vir_VPM_WRITE(c,
+                             ntq_get_src(c, instr->src[0], 0),
+                             base + nir_src_as_uint(instr->src[1]));
+       } else {
+               vir_VPM_WRITE_indirect(c,
+                                      ntq_get_src(c, instr->src[0], 0),
+                                      vir_ADD(c,
+                                              ntq_get_src(c, instr->src[1], 1),
+                                              vir_uniform_ui(c, base)));
+       }
+}
+
+static void
+ntq_emit_store_output(struct v3d_compile *c, nir_intrinsic_instr *instr)
+{
+        if (c->s->info.stage == MESA_SHADER_FRAGMENT)
+               ntq_emit_color_write(c, instr);
+        else if (c->s->info.stage == MESA_SHADER_GEOMETRY)
+               emit_store_output_gs(c, instr);
+        else
+               emit_store_output_vs(c, instr);
 }
 
 /**
