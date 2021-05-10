@@ -52,8 +52,6 @@
 /* Forward declare to avoid extra header dep */
 struct prim_convert_context;
 
-#define MAX_VARYINGS   4096
-
 #define SET_BIT(lval, bit, cond) \
 	if (cond) \
 		lval |= (bit); \
