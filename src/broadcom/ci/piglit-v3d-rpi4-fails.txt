@@ -41,6 +41,8 @@ spec@!opengl 1.1@windowoverlap,Fail
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail
+spec@!opengl 2.0@max-samplers, Fail
+spec@!opengl 2.0@max-samplers border, Fail
 spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
