@@ -5404,9 +5404,26 @@ compressed_subtexture_error_check(struct gl_context *ctx, GLint dims,
    struct gl_texture_image *texImage;
    GLint expectedSize;
 
+   GLenum is_generic_compressed_token =
+      _mesa_generic_compressed_format_to_uncompressed_format(format) !=
+      format;
+
+   /* OpenGL 4.6 and OpenGL ES 3.2 spec:
+    *
+    *   "An INVALID_OPERATION error is generated if format does not match the
+    *    internal format of the texture image being modified, since these commands do
+    *    not provide for image format conversion."
+    *
+    *  Desktop spec has an additional rule for GL_INVALID_ENUM:
+    *
+    *   "An INVALID_ENUM error is generated if format is one of the generic
+    *    compressed internal formats."
+    */
    /* this will catch any invalid compressed format token */
    if (!_mesa_is_compressed_format(ctx, format)) {
-      _mesa_error(ctx, GL_INVALID_ENUM, "%s(format)", callerName);
+      GLenum error = _mesa_is_desktop_gl(ctx) && is_generic_compressed_token ?
+         GL_INVALID_ENUM : GL_INVALID_OPERATION;
+      _mesa_error(ctx, error, "%s(format)", callerName);
       return GL_TRUE;
    }
 
