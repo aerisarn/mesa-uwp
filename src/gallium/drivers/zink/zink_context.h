@@ -321,12 +321,6 @@ zink_fb_clear_enabled(const struct zink_context *ctx, unsigned idx)
    return ctx->clears_enabled & (PIPE_CLEAR_COLOR0 << idx);
 }
 
-struct zink_batch *
-zink_batch_rp(struct zink_context *ctx);
-
-struct zink_batch *
-zink_batch_no_rp(struct zink_context *ctx);
-
 void
 zink_fence_wait(struct pipe_context *ctx);
 
@@ -363,6 +357,31 @@ zink_update_descriptor_refs(struct zink_context *ctx, bool compute);
 void
 zink_init_vk_sample_locations(struct zink_context *ctx, VkSampleLocationsInfoEXT *loc);
 
+void
+zink_begin_render_pass(struct zink_context *ctx,
+                       struct zink_batch *batch);
+void
+zink_end_render_pass(struct zink_context *ctx, struct zink_batch *batch);
+
+static inline struct zink_batch *
+zink_batch_rp(struct zink_context *ctx)
+{
+   struct zink_batch *batch = &ctx->batch;
+   if (!batch->in_rp) {
+      zink_begin_render_pass(ctx, batch);
+   }
+   return batch;
+}
+
+static inline struct zink_batch *
+zink_batch_no_rp(struct zink_context *ctx)
+{
+   struct zink_batch *batch = &ctx->batch;
+   zink_end_render_pass(ctx, batch);
+   assert(!batch->in_rp);
+   return batch;
+}
+
 static inline VkPipelineStageFlags
 zink_pipeline_flags_from_pipe_stage(enum pipe_shader_type pstage)
 {
@@ -394,12 +413,6 @@ zink_init_grid_functions(struct zink_context *ctx);
 #endif
 
 #ifndef __cplusplus
- void
- zink_begin_render_pass(struct zink_context *ctx,
-                        struct zink_batch *batch);
-void
-zink_end_render_pass(struct zink_context *ctx, struct zink_batch *batch);
-
 VkPipelineStageFlags
 zink_pipeline_flags_from_stage(VkShaderStageFlagBits stage);
 

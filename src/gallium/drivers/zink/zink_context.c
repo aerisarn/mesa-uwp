@@ -1916,26 +1916,6 @@ flush_batch(struct zink_context *ctx, bool sync)
    }
 }
 
-struct zink_batch *
-zink_batch_rp(struct zink_context *ctx)
-{
-   struct zink_batch *batch = &ctx->batch;
-   if (!batch->in_rp) {
-      zink_begin_render_pass(ctx, batch);
-      assert(ctx->framebuffer && ctx->framebuffer->rp);
-   }
-   return batch;
-}
-
-struct zink_batch *
-zink_batch_no_rp(struct zink_context *ctx)
-{
-   struct zink_batch *batch = &ctx->batch;
-   zink_end_render_pass(ctx, batch);
-   assert(!batch->in_rp);
-   return batch;
-}
-
 void
 zink_flush_queue(struct zink_context *ctx)
 {
