@@ -108,6 +108,13 @@ struct indirect_draw_info {
         uint32_t count;
         uint32_t instance_count;
         uint32_t start;
+        uint32_t start_instance;
+};
+
+struct indirect_indexed_draw_info {
+        uint32_t count;
+        uint32_t instance_count;
+        uint32_t start;
         int32_t index_bias;
         uint32_t start_instance;
 };
@@ -279,6 +286,12 @@ update_max(struct indirect_draw_shader_builder *builder, nir_ssa_def *val)
                     get_address_imm(b, draw_ptr, \
                                     offsetof(struct indirect_draw_info, field)), \
                     1, sizeof(((struct indirect_draw_info *)0)->field) * 8)
+
+#define get_indexed_draw_field(b, draw_ptr, field) \
+        load_global(b, \
+                    get_address_imm(b, draw_ptr, \
+                                    offsetof(struct indirect_indexed_draw_info, field)), \
+                    1, sizeof(((struct indirect_indexed_draw_info *)0)->field) * 8)
 
 static void
 extract_inputs(struct indirect_draw_shader_builder *builder)
@@ -869,15 +882,19 @@ patch(struct indirect_draw_shader_builder *builder)
 
         nir_ssa_def *draw_ptr = builder->draw.draw_buf;
 
-        builder->draw.vertex_count = get_draw_field(b, draw_ptr, count);
-        assert(builder->draw.vertex_count->num_components);
-        builder->draw.instance_count =
-                get_draw_field(b, draw_ptr, instance_count);
-        builder->draw.vertex_start = get_draw_field(b, draw_ptr, start);
         if (index_size) {
-                builder->draw.index_bias =
-                        get_draw_field(b, draw_ptr, index_bias);
+                builder->draw.vertex_count = get_indexed_draw_field(b, draw_ptr, count);
+                builder->draw.instance_count =
+                        get_indexed_draw_field(b, draw_ptr, instance_count);
+                builder->draw.vertex_start = get_indexed_draw_field(b, draw_ptr, start);
+                builder->draw.index_bias = get_indexed_draw_field(b, draw_ptr, index_bias);
+        } else {
+                builder->draw.vertex_count = get_draw_field(b, draw_ptr, count);
+                builder->draw.instance_count = get_draw_field(b, draw_ptr, instance_count);
+                builder->draw.vertex_start = get_draw_field(b, draw_ptr, start);
         }
+
+        assert(builder->draw.vertex_count->num_components);
 
         get_instance_size(builder);
 
