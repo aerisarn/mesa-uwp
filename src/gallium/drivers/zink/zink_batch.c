@@ -615,6 +615,15 @@ zink_batch_reference_resource(struct zink_batch *batch, struct zink_resource *re
 }
 
 void
+zink_batch_reference_resource_move(struct zink_batch *batch, struct zink_resource *res)
+{
+   if (!batch_ptr_add_usage(batch, batch->state->resources, res->obj))
+      return;
+   batch->state->resource_size += res->obj->size;
+   batch->has_work = true;
+}
+
+void
 zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_view *buffer_view)
 {
    if (!batch_ptr_add_usage(batch, batch->state->bufferviews, buffer_view))

@@ -157,6 +157,9 @@ void
 zink_batch_reference_resource(struct zink_batch *batch, struct zink_resource *res);
 
 void
+zink_batch_reference_resource_move(struct zink_batch *batch, struct zink_resource *res);
+
+void
 zink_batch_reference_sampler_view(struct zink_batch *batch,
                                   struct zink_sampler_view *sv);
 
