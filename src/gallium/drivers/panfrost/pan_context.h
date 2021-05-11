@@ -134,6 +134,7 @@ struct panfrost_context {
         struct panfrost_query *occlusion_query;
 
         bool indirect_draw;
+        unsigned drawid;
         unsigned vertex_count;
         unsigned instance_count;
         unsigned offset_start;

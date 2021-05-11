@@ -1092,6 +1092,9 @@ panfrost_upload_sysvals(struct panfrost_batch *batch,
                         uniforms[i].u[1] = batch->ctx->base_vertex;
                         uniforms[i].u[2] = batch->ctx->base_instance;
                         break;
+                case PAN_SYSVAL_DRAWID:
+                        uniforms[i].u[0] = batch->ctx->drawid;
+                        break;
                 default:
                         assert(0);
                 }

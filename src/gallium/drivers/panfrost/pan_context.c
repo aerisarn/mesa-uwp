@@ -453,6 +453,7 @@ panfrost_direct_draw(struct panfrost_context *ctx,
         ctx->base_vertex = info->index_size ? draw->index_bias : 0;
         ctx->base_instance = info->start_instance;
         ctx->active_prim = info->mode;
+        ctx->drawid = drawid_offset;
 
         struct panfrost_ptr tiler =
                 pan_is_bifrost(device) ?
@@ -565,6 +566,7 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
 
         assert(ctx->draw_modes & (1 << info->mode));
         ctx->active_prim = info->mode;
+        ctx->drawid = drawid_offset;
         ctx->indirect_draw = true;
 
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);

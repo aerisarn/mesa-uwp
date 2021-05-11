@@ -1166,6 +1166,10 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_load_sysval_nir(b, instr, 1, 8);
                 break;
 
+        case nir_intrinsic_load_draw_id:
+                bi_load_sysval_nir(b, instr, 1, 0);
+                break;
+
         case nir_intrinsic_get_ssbo_size:
                 bi_load_sysval_nir(b, instr, 1, 8);
                 break;
