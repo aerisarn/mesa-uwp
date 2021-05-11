@@ -270,6 +270,7 @@ draw_indexed_need_index_buffer_unref(struct zink_context *ctx,
    }
 }
 
+template <zink_multidraw HAS_MULTIDRAW>
 ALWAYS_INLINE static void
 draw_indexed(struct zink_context *ctx,
              const struct pipe_draw_info *dinfo,
@@ -290,12 +291,12 @@ draw_indexed(struct zink_context *ctx,
    } else {
       if (needs_drawid)
          update_drawid(ctx, draw_id);
-      if (zink_screen(ctx->base.screen)->info.have_EXT_multi_draw)
+      if (HAS_MULTIDRAW) {
          zink_screen(ctx->base.screen)->vk.CmdDrawMultiIndexedEXT(cmdbuf, num_draws, (const VkMultiDrawIndexedInfoEXT*)draws,
                                                                    dinfo->instance_count,
                                                                    dinfo->start_instance, sizeof(struct pipe_draw_start_count_bias),
                                                                    dinfo->index_bias_varies ? NULL : &draws[0].index_bias);
-      else {
+      } else {
          for (unsigned i = 0; i < num_draws; i++)
             vkCmdDrawIndexed(cmdbuf,
                draws[i].count, dinfo->instance_count,
@@ -304,6 +305,7 @@ draw_indexed(struct zink_context *ctx,
    }
 }
 
+template <zink_multidraw HAS_MULTIDRAW>
 ALWAYS_INLINE static void
 draw(struct zink_context *ctx,
      const struct pipe_draw_info *dinfo,
@@ -322,7 +324,7 @@ draw(struct zink_context *ctx,
    } else {
       if (needs_drawid)
          update_drawid(ctx, draw_id);
-      if (zink_screen(ctx->base.screen)->info.have_EXT_multi_draw)
+      if (HAS_MULTIDRAW)
          zink_screen(ctx->base.screen)->vk.CmdDrawMultiEXT(cmdbuf, num_draws, (const VkMultiDrawInfoEXT*)draws,
                                                             dinfo->instance_count, dinfo->start_instance,
                                                             sizeof(struct pipe_draw_start_count_bias));
@@ -392,6 +394,7 @@ update_barriers(struct zink_context *ctx, bool is_compute)
    }
 }
 
+template <zink_multidraw HAS_MULTIDRAW>
 void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo,
@@ -422,8 +425,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (!dindirect || !dindirect->buffer)
       ctx->drawid_broken = BITSET_TEST(ctx->gfx_stages[PIPE_SHADER_VERTEX]->nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID) &&
                            (drawid_offset != 0 ||
-                           (!screen->info.have_EXT_multi_draw && num_draws > 1) ||
-                           (screen->info.have_EXT_multi_draw && num_draws > 1 && !dinfo->increment_draw_id));
+                           (!HAS_MULTIDRAW && num_draws > 1) ||
+                           (HAS_MULTIDRAW && num_draws > 1 && !dinfo->increment_draw_id));
    if (drawid_broken != ctx->drawid_broken)
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
    ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
@@ -692,7 +695,7 @@ zink_draw_vbo(struct pipe_context *pctx,
          if (need_index_buffer_unref)
             draw_indexed_need_index_buffer_unref(ctx, dinfo, draws, num_draws, draw_id, needs_drawid);
          else
-            draw_indexed(ctx, dinfo, draws, num_draws, draw_id, needs_drawid);
+            draw_indexed<HAS_MULTIDRAW>(ctx, dinfo, draws, num_draws, draw_id, needs_drawid);
       }
    } else {
       if (so_target && screen->info.tf_props.transformFeedbackDraw) {
@@ -718,7 +721,7 @@ zink_draw_vbo(struct pipe_context *pctx,
          } else
             vkCmdDrawIndirect(batch->state->cmdbuf, indirect->obj->buffer, dindirect->offset, dindirect->draw_count, dindirect->stride);
       } else {
-         draw(ctx, dinfo, draws, num_draws, draw_id, needs_drawid);
+         draw<HAS_MULTIDRAW>(ctx, dinfo, draws, num_draws, draw_id, needs_drawid);
       }
    }
 
@@ -764,7 +767,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
       vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
    ctx->pipeline_changed[1] = false;
 
-   if (BITSET_TEST(ctx->curr_compute->shader->nir->info.system_values_read, SYSTEM_VALUE_WORK_DIM))
+   if (BITSET_TEST(ctx->compute_stage->nir->info.system_values_read, SYSTEM_VALUE_WORK_DIM))
       vkCmdPushConstants(batch->state->cmdbuf, ctx->curr_compute->base.layout, VK_SHADER_STAGE_COMPUTE_BIT,
                          offsetof(struct zink_cs_push_constant, work_dim), sizeof(uint32_t),
                          &info->work_dim);
@@ -778,4 +781,40 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    batch->has_work = true;
    /* check memory usage and flush/stall as needed to avoid oom */
    zink_maybe_flush_or_stall(ctx);
+}
+
+template <zink_multidraw HAS_MULTIDRAW>
+static void
+init_multidraw_functions(struct zink_context *ctx)
+{
+   ctx->draw_vbo[HAS_MULTIDRAW] = zink_draw_vbo<HAS_MULTIDRAW>;
+}
+
+static void
+init_all_draw_functions(struct zink_context *ctx)
+{
+   init_multidraw_functions<ZINK_NO_MULTIDRAW>(ctx);
+   init_multidraw_functions<ZINK_MULTIDRAW>(ctx);
+}
+
+static void
+zink_invalid_draw_vbo(struct pipe_context *pipe,
+                      const struct pipe_draw_info *dinfo,
+                      unsigned drawid_offset,
+                      const struct pipe_draw_indirect_info *dindirect,
+                      const struct pipe_draw_start_count_bias *draws,
+                      unsigned num_draws)
+{
+   unreachable("vertex shader not bound");
+}
+
+extern "C"
+void
+zink_init_draw_functions(struct zink_context *ctx)
+{
+   init_all_draw_functions(ctx);
+   /* Bind a fake draw_vbo, so that draw_vbo isn't NULL, which would skip
+    * initialization of callbacks in upper layers (such as u_threaded_context).
+    */
+   ctx->base.draw_vbo = zink_invalid_draw_vbo;
 }

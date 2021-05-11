@@ -29,7 +29,7 @@ files_libzink = files(
   'zink_context.c',
   'zink_descriptors.c',
   'zink_descriptors_lazy.c',
-  'zink_draw.c',
+  'zink_draw.cpp',
   'zink_fence.c',
   'zink_format.c',
   'zink_framebuffer.c',
