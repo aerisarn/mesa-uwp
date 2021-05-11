@@ -357,8 +357,8 @@ enum
    /* Image descriptor of color buffer 0 for KHR_blend_equation_advanced. */
    SI_PS_IMAGE_COLORBUF0,
    SI_PS_IMAGE_COLORBUF0_HI,
-   SI_PS_IMAGE_COLORBUF0_FMASK,
-   SI_PS_IMAGE_COLORBUF0_FMASK_HI,
+   SI_PS_IMAGE_COLORBUF0_FMASK,        /* gfx6-10 */
+   SI_PS_IMAGE_COLORBUF0_FMASK_HI,     /* gfx6-10 */
 
    /* Internal constant buffers. */
    SI_HS_CONST_DEFAULT_TESS_LEVELS,
@@ -368,12 +368,17 @@ enum
    SI_PS_CONST_SAMPLE_POSITIONS,
 
    SI_RING_ESGS,                       /* gfx6-8 */
-   SI_RING_GSVS,
+   SI_RING_GSVS,                       /* gfx6-10 */
 
    SI_NUM_INTERNAL_BINDINGS,
 
    /* Aliases to reuse slots that are unused on other generations. */
    SI_GS_QUERY_BUF = SI_RING_ESGS,     /* gfx10+ */
+
+   /* Only u_blitter uses this (and compute should be used in most cases, so this shouldn't
+    * be used much). Normal draws get the address from a user SGPR.
+    */
+   SI_GS_ATTRIBUTE_RING = SI_RING_GSVS, /* gfx11+ */
 };
 
 /* Indices into sctx->descriptors, laid out so that gfx and compute pipelines

@@ -99,6 +99,9 @@ void si_blitter_end(struct si_context *sctx)
     * non-global VS user SGPRs. */
    sctx->shader_pointers_dirty |= SI_DESCS_SHADER_MASK(VERTEX);
 
+   if (sctx->chip_class >= GFX11)
+      sctx->gs_attribute_ring_pointer_dirty = true;
+
    /* Reset SI_SGPR_SMALL_PRIM_CULL_INFO: */
    if (sctx->screen->use_ngg_culling)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.ngg_cull_state);

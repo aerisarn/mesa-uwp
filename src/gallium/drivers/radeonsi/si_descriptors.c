@@ -2072,6 +2072,8 @@ void si_shader_pointers_mark_dirty(struct si_context *sctx)
    sctx->compute_bindless_pointer_dirty = sctx->bindless_descriptors.buffer != NULL;
    sctx->compute_shaderbuf_sgprs_dirty = true;
    sctx->compute_image_sgprs_dirty = true;
+   if (sctx->chip_class >= GFX11)
+      sctx->gs_attribute_ring_pointer_dirty = true;
 }
 
 /* Set a base register address for user data constants in the given shader.
@@ -2227,6 +2229,13 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx)
                                        sh_base[PIPE_SHADER_TESS_CTRL]);
    si_emit_consecutive_shader_pointers(sctx, SI_DESCS_SHADER_MASK(GEOMETRY),
                                        sh_base[PIPE_SHADER_GEOMETRY]);
+
+   if (sctx->gs_attribute_ring_pointer_dirty) {
+      assert(sctx->chip_class >= GFX11);
+      radeon_set_sh_reg(R_00B230_SPI_SHADER_USER_DATA_GS_0 + GFX9_SGPR_ATTRIBUTE_RING_ADDR * 4,
+                        sctx->screen->attribute_ring->gpu_address);
+      sctx->gs_attribute_ring_pointer_dirty = false;
+   }
    radeon_end();
 
    sctx->shader_pointers_dirty &= ~u_bit_consecutive(SI_DESCS_INTERNAL, SI_DESCS_FIRST_COMPUTE);
@@ -2791,6 +2800,9 @@ void si_init_all_descriptors(struct si_context *sctx)
                          si_get_user_data_base(sctx->chip_class, TESS_OFF, GS_OFF,
                                                NGG_OFF, PIPE_SHADER_GEOMETRY));
    si_set_user_data_base(sctx, PIPE_SHADER_FRAGMENT, R_00B030_SPI_SHADER_USER_DATA_PS_0);
+
+   si_set_ring_buffer(sctx, SI_GS_ATTRIBUTE_RING, &sctx->screen->attribute_ring->b.b,
+                      0, ~0u, false, true, 16, 32, 0);
 }
 
 static bool si_upload_shader_descriptors(struct si_context *sctx, unsigned mask)

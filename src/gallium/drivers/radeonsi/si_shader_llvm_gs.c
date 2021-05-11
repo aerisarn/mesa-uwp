@@ -110,14 +110,18 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
    else
       ret = si_insert_input_ret(ctx, ret, ctx->args.gs2vs_offset, 2);
    ret = si_insert_input_ret(ctx, ret, ctx->args.merged_wave_info, 3);
-   ret = si_insert_input_ret(ctx, ret, ctx->args.scratch_offset, 5);
-
+   if (ctx->screen->info.chip_class >= GFX11)
+      ret = si_insert_input_ret(ctx, ret, ctx->args.gs_attr_offset, 5);
+   else
+      ret = si_insert_input_ret(ctx, ret, ctx->args.scratch_offset, 5);
    ret = si_insert_input_ptr(ctx, ret, ctx->internal_bindings, 8 + SI_SGPR_INTERNAL_BINDINGS);
    ret = si_insert_input_ptr(ctx, ret, ctx->bindless_samplers_and_images,
                              8 + SI_SGPR_BINDLESS_SAMPLERS_AND_IMAGES);
    if (ctx->screen->use_ngg) {
       ret = si_insert_input_ptr(ctx, ret, ctx->vs_state_bits, 8 + SI_SGPR_VS_STATE_BITS);
       ret = si_insert_input_ptr(ctx, ret, ctx->small_prim_cull_info, 8 + GFX9_SGPR_SMALL_PRIM_CULL_INFO);
+      if (ctx->screen->info.chip_class >= GFX11)
+         ret = si_insert_input_ptr(ctx, ret, ctx->gs_attr_address, 8 + GFX9_SGPR_ATTRIBUTE_RING_ADDR);
    }
 
    unsigned vgpr = 8 + GFX9_GS_NUM_USER_SGPR;

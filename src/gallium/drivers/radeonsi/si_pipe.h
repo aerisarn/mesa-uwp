@@ -707,6 +707,8 @@ struct si_screen {
 
    struct util_idalloc_mt buffer_ids;
    struct util_vertex_state_cache vertex_state_cache;
+
+   struct si_resource *attribute_ring;
 };
 
 struct si_sampler_view {
@@ -1209,6 +1211,7 @@ struct si_context {
    bool bindless_descriptors_dirty;
    bool graphics_bindless_pointer_dirty;
    bool compute_bindless_pointer_dirty;
+   bool gs_attribute_ring_pointer_dirty;
 
    /* Allocated bindless handles */
    struct hash_table *tex_handles;

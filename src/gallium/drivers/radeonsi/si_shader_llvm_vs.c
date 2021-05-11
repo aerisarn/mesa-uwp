@@ -690,6 +690,9 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
       ac_build_export(&ctx->ac, &pos_args[i]);
    }
 
+   if (!shader->info.nr_param_exports)
+      return;
+
    /* Build parameter exports. Use 2 loops to export params in ascending order.
     * 32 is the maximum number of parameter exports.
     */
@@ -707,8 +710,61 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
                                   &param_exports[offset]);
    }
 
-   for (unsigned i = 0; i < shader->info.nr_param_exports; i++)
-      ac_build_export(&ctx->ac, &param_exports[i]);
+   if (ctx->screen->info.chip_class >= GFX11) {
+      /* Get the attribute ring address and descriptor. */
+      LLVMValueRef attr_address;
+      if (ctx->stage == MESA_SHADER_VERTEX && shader->selector->info.base.vs.blit_sgprs_amd) {
+         LLVMValueRef ptr =
+            LLVMBuildPointerCast(ctx->ac.builder,
+                                 ac_get_arg(&ctx->ac, ctx->internal_bindings),
+                                 LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_CONST_32BIT), "");
+         attr_address = ac_build_load_to_sgpr(&ctx->ac, ptr,
+                                              LLVMConstInt(ctx->ac.i32, SI_GS_ATTRIBUTE_RING * 4, 0));
+      } else {
+         attr_address = ac_get_arg(&ctx->ac, ctx->gs_attr_address);
+      }
+
+      unsigned stride = 16 * shader->info.nr_param_exports;
+      LLVMValueRef attr_desc[4] = {
+         attr_address,
+         LLVMConstInt(ctx->ac.i32, S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi) |
+                                   S_008F04_STRIDE(stride) |
+                                   S_008F04_SWIZZLE_ENABLE_GFX11(3) /* 16B */, 0),
+         LLVMConstInt(ctx->ac.i32, 0xffffffff, 0),
+         LLVMConstInt(ctx->ac.i32, S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+                                   S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+                                   S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+                                   S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+                                   S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_32_32_32_FLOAT) |
+                                   S_008F0C_INDEX_STRIDE(2) /* 32 elements */, 0),
+      };
+      LLVMValueRef attr_rsrc = ac_build_gather_values(&ctx->ac, attr_desc, 4);
+      LLVMValueRef attr_offset = LLVMBuildShl(ctx->ac.builder,
+                                              si_unpack_param(ctx, ctx->args.gs_attr_offset, 0, 15),
+                                              LLVMConstInt(ctx->ac.i32, 9, 0), ""); /* 512B increments */
+      LLVMValueRef vindex = gfx10_get_thread_id_in_tg(ctx);
+
+      LLVMValueRef soffset[32];
+
+      /* Compute scalar offsets first. */
+      for (unsigned i = 0; i < shader->info.nr_param_exports; i++) {
+         soffset[i] = LLVMBuildAdd(ctx->ac.builder, attr_offset,
+                                   LLVMConstInt(ctx->ac.i32, 32 * i * 16, 0), "");
+      }
+
+      /* Write attributes to the attribute ring buffer. */
+      for (unsigned i = 0; i < shader->info.nr_param_exports; i++) {
+         LLVMValueRef vdata = ac_build_gather_values_extended(&ctx->ac, param_exports[i].out,
+                                                              4, 1, false);
+
+         ac_build_buffer_store_dword(&ctx->ac, attr_rsrc, vdata, vindex,
+                                     ctx->ac.i32_0, soffset[i], ac_swizzled);
+      }
+   } else {
+      /* Export attributes using parameter exports. */
+      for (unsigned i = 0; i < shader->info.nr_param_exports; i++)
+         ac_build_export(&ctx->ac, &param_exports[i]);
+   }
 }
 
 void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi)

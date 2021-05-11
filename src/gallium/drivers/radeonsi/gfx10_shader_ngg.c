@@ -1322,6 +1322,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
    ret = LLVMBuildInsertValue(ctx->ac.builder, ret, new_merged_wave_info, 3, "");
    if (ctx->stage == MESA_SHADER_TESS_EVAL)
       ret = si_insert_input_ret(ctx, ret, ctx->args.tess_offchip_offset, 4);
+   if (ctx->ac.chip_class >= GFX11)
+      ret = si_insert_input_ret(ctx, ret, ctx->args.gs_attr_offset, 5);
 
    ret = si_insert_input_ptr(ctx, ret, ctx->internal_bindings, 8 + SI_SGPR_INTERNAL_BINDINGS);
    ret = si_insert_input_ptr(ctx, ret, ctx->bindless_samplers_and_images,
@@ -1330,6 +1332,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
                              8 + SI_SGPR_CONST_AND_SHADER_BUFFERS);
    ret = si_insert_input_ptr(ctx, ret, ctx->samplers_and_images, 8 + SI_SGPR_SAMPLERS_AND_IMAGES);
    ret = si_insert_input_ptr(ctx, ret, ctx->vs_state_bits, 8 + SI_SGPR_VS_STATE_BITS);
+   if (ctx->ac.chip_class >= GFX11)
+      ret = si_insert_input_ptr(ctx, ret, ctx->gs_attr_address, 8 + GFX9_SGPR_ATTRIBUTE_RING_ADDR);
 
    if (ctx->stage == MESA_SHADER_VERTEX) {
       ret = si_insert_input_ptr(ctx, ret, ctx->args.base_vertex, 8 + SI_SGPR_BASE_VERTEX);

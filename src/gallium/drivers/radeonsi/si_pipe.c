@@ -878,6 +878,8 @@ static void si_destroy_screen(struct pipe_screen *pscreen)
              sscreen->num_disk_shader_cache_misses);
    }
 
+   si_resource_reference(&sscreen->attribute_ring, NULL);
+
    simple_mtx_destroy(&sscreen->aux_context_lock);
 
    if (sscreen->aux_context) {
@@ -1380,6 +1382,17 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    }
 
    sscreen->ngg_subgroup_size = 128;
+
+   if (sscreen->info.chip_class >= GFX11) {
+      /* TODO: tweak this */
+      unsigned attr_ring_size_per_se = align(1400000, 64 * 1024);
+      unsigned attr_ring_size = attr_ring_size_per_se * sscreen->info.max_se;
+      assert(attr_ring_size <= 16 * 1024 * 1024); /* maximum size */
+      sscreen->attribute_ring = si_aligned_buffer_create(&sscreen->b, SI_RESOURCE_FLAG_32BIT,
+                                                         PIPE_USAGE_DEFAULT,
+                                                         /* TODO: remove the overallocation */
+                                                         attr_ring_size * 16, 2 * 1024 * 1024);
+   }
 
    /* Create the auxiliary context. This must be done last. */
    sscreen->aux_context = si_create_context(

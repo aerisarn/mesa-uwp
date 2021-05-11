@@ -73,6 +73,7 @@ struct si_shader_context {
    struct ac_arg internal_bindings;
    struct ac_arg bindless_samplers_and_images;
    struct ac_arg small_prim_cull_info;
+   struct ac_arg gs_attr_address;
    /* API VS */
    struct ac_arg vb_descriptors[5];
    struct ac_arg vertex_index0;

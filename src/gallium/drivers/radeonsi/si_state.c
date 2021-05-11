@@ -5791,5 +5791,27 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
                      S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE));
    }
 
+   if (sctx->chip_class >= GFX11) {
+      /* We must wait for idle before changing the SPI attribute ring registers. */
+      si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
+      si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+
+      si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
+      si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
+
+      si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
+      si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_PS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+
+      assert((sscreen->attribute_ring->gpu_address >> 32) == sscreen->info.address32_hi);
+
+      /* The PS will read inputs from this address. */
+      si_pm4_set_reg(pm4, R_031118_SPI_ATTRIBUTE_RING_BASE,
+                     sscreen->attribute_ring->gpu_address >> 16);
+      si_pm4_set_reg(pm4, R_03111C_SPI_ATTRIBUTE_RING_SIZE,
+                     S_03111C_MEM_SIZE(((sscreen->attribute_ring->bo_size /
+                                         sscreen->info.max_se) >> 16) - 1) |
+                     S_03111C_L1_POLICY(1));
+   }
+
    sctx->cs_preamble_state = pm4;
 }

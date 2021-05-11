@@ -385,6 +385,10 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    if (ctx->screen->info.has_vgt_flush_ngg_legacy_bug && !ctx->ngg)
       ctx->flags |= SI_CONTEXT_VGT_FLUSH;
 
+   if (ctx->screen->attribute_ring) {
+      radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, ctx->screen->attribute_ring,
+                                RADEON_USAGE_READWRITE | RADEON_PRIO_SHADER_RINGS);
+   }
    if (ctx->border_color_buffer) {
       radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, ctx->border_color_buffer,
                                 RADEON_USAGE_READ | RADEON_PRIO_BORDER_COLORS);
