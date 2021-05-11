@@ -1904,6 +1904,18 @@ rebind_fb_state(struct zink_context *ctx, struct zink_resource *match_res, bool 
 }
 
 static void
+unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, bool changed)
+{
+   if (!surf)
+      return;
+   if (changed) {
+      zink_fb_clears_apply(ctx, surf->texture);
+      ctx->rp_changed = true;
+   }
+   zink_resource(surf->texture)->fb_binds--;
+}
+
+static void
 zink_set_framebuffer_state(struct pipe_context *pctx,
                            const struct pipe_framebuffer_state *state)
 {
@@ -1911,26 +1923,18 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *surf = ctx->fb_state.cbufs[i];
-      if (surf && (i >= state->nr_cbufs || surf != state->cbufs[i])) {
-         zink_fb_clears_apply(ctx, surf->texture);
-         ctx->rp_changed = true;
-      }
-      if (surf)
-         zink_resource(surf->texture)->fb_binds--;
+      unbind_fb_surface(ctx, surf, i >= state->nr_cbufs || surf != state->cbufs[i]);
    }
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *surf = ctx->fb_state.zsbuf;
-      if (surf != state->zsbuf) {
-         struct zink_resource *res = zink_resource(surf->texture);
-         zink_fb_clears_apply(ctx, ctx->fb_state.zsbuf->texture);
-         if (unlikely(res->obj->needs_zs_evaluate))
-            /* have to flush zs eval while the sample location data still exists,
-             * so just throw some random barrier */
-            zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-         ctx->rp_changed = true;
-      }
-      zink_resource(surf->texture)->fb_binds--;
+      struct zink_resource *res = zink_resource(surf->texture);
+      bool changed = surf != state->zsbuf;
+      unbind_fb_surface(ctx, surf, changed);
+      if (changed && unlikely(res->obj->needs_zs_evaluate))
+         /* have to flush zs eval while the sample location data still exists,
+          * so just throw some random barrier */
+         zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
    }
    /* renderpass changes if the number or types of attachments change */
    ctx->rp_changed |= ctx->fb_state.nr_cbufs != state->nr_cbufs;
