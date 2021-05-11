@@ -62,9 +62,6 @@ struct dri_drawable
    struct pipe_fence_handle *throttle_fence;
    bool flushing; /* prevents recursion in dri_flush */
 
-   /* used only by DRISW */
-   struct pipe_surface *drisw_surface;
-
    /* hooks filled in by dri2 & drisw */
    void (*allocate_textures)(struct dri_context *ctx,
                              struct dri_drawable *drawable,

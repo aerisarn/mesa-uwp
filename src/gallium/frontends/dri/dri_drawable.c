@@ -196,8 +196,6 @@ dri_destroy_buffer(__DRIdrawable * dPriv)
    struct st_api *stapi = screen->st_api;
    int i;
 
-   pipe_surface_reference(&drawable->drisw_surface, NULL);
-
    for (i = 0; i < ST_ATTACHMENT_COUNT; i++)
       pipe_resource_reference(&drawable->textures[i], NULL);
    for (i = 0; i < ST_ATTACHMENT_COUNT; i++)
