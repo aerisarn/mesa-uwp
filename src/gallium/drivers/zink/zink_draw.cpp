@@ -500,11 +500,11 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkPipeline pipeline = zink_get_gfx_pipeline(ctx, ctx->curr_program,
                                                &ctx->gfx_pipeline_state,
                                                dinfo->mode);
-   bool pipeline_changed = prev_pipeline != pipeline || BATCH_CHANGED;
-   if (pipeline_changed)
+   bool pipeline_changed = prev_pipeline != pipeline;
+   if (BATCH_CHANGED || pipeline_changed)
       vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-   if (ctx->vp_state_changed || pipeline_changed) {
+   if (BATCH_CHANGED || ctx->vp_state_changed || (!HAS_DYNAMIC_STATE && pipeline_changed)) {
       VkViewport viewports[PIPE_MAX_VIEWPORTS];
       for (unsigned i = 0; i < ctx->vp_state.num_viewports; i++) {
          VkViewport viewport = {
@@ -524,7 +524,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       else
          vkCmdSetViewport(batch->state->cmdbuf, 0, ctx->vp_state.num_viewports, viewports);
    }
-   if (ctx->scissor_changed || ctx->vp_state_changed || pipeline_changed) {
+   if (BATCH_CHANGED || ctx->scissor_changed || ctx->vp_state_changed || (!HAS_DYNAMIC_STATE && pipeline_changed)) {
       VkRect2D scissors[PIPE_MAX_VIEWPORTS];
       if (ctx->rast_state->base.scissor) {
          for (unsigned i = 0; i < ctx->vp_state.num_viewports; i++) {
@@ -549,7 +549,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    ctx->vp_state_changed = false;
    ctx->scissor_changed = false;
 
-   if (ctx->stencil_ref_changed) {
+   if (BATCH_CHANGED || ctx->stencil_ref_changed) {
       vkCmdSetStencilReference(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT,
                                ctx->stencil_ref.ref_value[0]);
       vkCmdSetStencilReference(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT,
@@ -557,7 +557,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->stencil_ref_changed = false;
    }
 
-   if (HAS_DYNAMIC_STATE && (pipeline_changed || ctx->dsa_state_changed)) {
+   if (HAS_DYNAMIC_STATE && (BATCH_CHANGED || ctx->dsa_state_changed)) {
       screen->vk.CmdSetDepthBoundsTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_bounds_test);
       if (dsa_state->hw_state.depth_bounds_test)
          vkCmdSetDepthBounds(batch->state->cmdbuf,
@@ -595,10 +595,10 @@ zink_draw_vbo(struct pipe_context *pctx,
    ctx->dsa_state_changed = false;
 
    bool rast_state_changed = ctx->rast_state_changed;
-   if (HAS_DYNAMIC_STATE && (pipeline_changed || rast_state_changed))
+   if (HAS_DYNAMIC_STATE && (BATCH_CHANGED || rast_state_changed))
       screen->vk.CmdSetFrontFaceEXT(batch->state->cmdbuf, ctx->gfx_pipeline_state.front_face);
 
-   if (pipeline_changed || rast_state_changed || mode_changed) {
+   if (BATCH_CHANGED || ctx->rast_state_changed || mode_changed) {
       enum pipe_prim_type reduced_prim = u_reduced_prim(dinfo->mode);
 
       bool depth_bias = false;
@@ -644,7 +644,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->state->cmdbuf, ctx->blend_constants);
 
-   if (ctx->vertex_buffers_dirty || pipeline_changed)
+   if (BATCH_CHANGED || ctx->vertex_buffers_dirty || pipeline_changed)
       zink_bind_vertex_buffers<HAS_DYNAMIC_STATE>(batch, ctx);
 
    if (BITSET_TEST(ctx->gfx_stages[PIPE_SHADER_VERTEX]->nir->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX)) {
