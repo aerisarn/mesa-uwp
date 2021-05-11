@@ -107,6 +107,7 @@ struct zink_resource {
          uint16_t vbo_bind_count;
          uint8_t ubo_bind_count[2];
          uint32_t ubo_bind_mask[PIPE_SHADER_TYPES];
+         uint32_t ssbo_bind_mask[PIPE_SHADER_TYPES];
       };
       struct {
          VkFormat format;

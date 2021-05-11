@@ -1083,13 +1083,14 @@ zink_set_constant_buffer(struct pipe_context *pctx,
 }
 
 ALWAYS_INLINE static void
-unbind_ssbo(struct zink_context *ctx, struct zink_resource *res, bool is_compute, bool writable)
+unbind_ssbo(struct zink_context *ctx, struct zink_resource *res, enum pipe_shader_type pstage, unsigned slot, bool writable)
 {
    if (!res)
       return;
-   update_res_bind_count(ctx, res, is_compute, true);
+   res->ssbo_bind_mask[pstage] &= ~BITFIELD_BIT(slot);
+   update_res_bind_count(ctx, res, pstage == PIPE_SHADER_COMPUTE, true);
    if (writable)
-      res->write_bind_count[is_compute]--;
+      res->write_bind_count[pstage == PIPE_SHADER_COMPUTE]--;
 }
 
 static void
@@ -1115,9 +1116,10 @@ zink_set_shader_buffers(struct pipe_context *pctx,
       if (buffers && buffers[i].buffer) {
          struct zink_resource *new_res = zink_resource(buffers[i].buffer);
          if (new_res != res) {
-            unbind_ssbo(ctx, res, p_stage == PIPE_SHADER_COMPUTE, was_writable);
+            unbind_ssbo(ctx, res, p_stage, i, was_writable);
             new_res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SSBO);
             new_res->bind_stages |= 1 << p_stage;
+            new_res->ssbo_bind_mask[p_stage] |= BITFIELD_BIT(i);
             update_res_bind_count(ctx, new_res, p_stage == PIPE_SHADER_COMPUTE, false);
          }
          VkAccessFlags access = VK_ACCESS_SHADER_READ_BIT;
@@ -1138,7 +1140,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
       } else {
          update = !!res;
          if (res)
-            unbind_ssbo(ctx, res, p_stage == PIPE_SHADER_COMPUTE, was_writable);
+            unbind_ssbo(ctx, res, p_stage, i, was_writable);
          pipe_resource_reference(&ssbo->buffer, NULL);
          ssbo->buffer_offset = 0;
          ssbo->buffer_size = 0;
