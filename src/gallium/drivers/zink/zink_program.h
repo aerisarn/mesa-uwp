@@ -220,7 +220,7 @@ zink_get_compute_pipeline(struct zink_screen *screen,
 static inline bool
 zink_program_has_descriptors(const struct zink_program *pg)
 {
-   return pg->dsl[0] || pg->dsl[1] || pg->dsl[2] || pg->dsl[3];
+   return pg->num_dsl > 0;
 }
 
 #endif
