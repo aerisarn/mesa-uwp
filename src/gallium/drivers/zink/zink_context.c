@@ -3184,13 +3184,6 @@ check_and_rebind_buffer(struct zink_context *ctx, struct zink_resource *res, uns
 
    zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, shader, type, i, 1);
    zink_batch_resource_usage_set(&ctx->batch, res, is_write);
-   VkAccessFlags access = 0;
-   if (is_read)
-      access |= VK_ACCESS_SHADER_READ_BIT;
-   if (is_write)
-      access |= VK_ACCESS_SHADER_WRITE_BIT;
-   zink_resource_buffer_barrier(ctx, NULL, res, access,
-                                zink_pipeline_flags_from_pipe_stage(shader));
    return true;
 }
 
@@ -3255,8 +3248,6 @@ out:
       return;
    zink_batch_resource_usage_set(&ctx->batch, res, false);
    ctx->vertex_buffers_dirty = true;
-   zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-                                VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
 }
 
 static inline struct zink_screen **
