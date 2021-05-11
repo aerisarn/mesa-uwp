@@ -999,12 +999,13 @@ zink_set_inlinable_constants(struct pipe_context *pctx,
 }
 
 ALWAYS_INLINE static void
-unbind_ubo(struct zink_context *ctx, struct zink_resource *res, bool is_compute)
+unbind_ubo(struct zink_context *ctx, struct zink_resource *res, enum pipe_shader_type pstage, unsigned slot)
 {
    if (!res)
       return;
-   res->ubo_bind_count[is_compute]--;
-   update_res_bind_count(ctx, res, is_compute, true);
+   res->ubo_bind_mask[pstage] &= ~BITFIELD_BIT(slot);
+   res->ubo_bind_count[pstage == PIPE_SHADER_COMPUTE]--;
+   update_res_bind_count(ctx, res, pstage == PIPE_SHADER_COMPUTE, true);
 }
 
 static void
@@ -1029,10 +1030,11 @@ zink_set_constant_buffer(struct pipe_context *pctx,
       struct zink_resource *new_res = zink_resource(buffer);
       if (new_res) {
          if (new_res != res) {
-            unbind_ubo(ctx, res, shader == PIPE_SHADER_COMPUTE);
+            unbind_ubo(ctx, res, shader, index);
             new_res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_UBO);
             new_res->bind_stages |= 1 << shader;
             new_res->ubo_bind_count[shader == PIPE_SHADER_COMPUTE]++;
+            new_res->ubo_bind_mask[shader] |= BITFIELD_BIT(index);
             update_res_bind_count(ctx, new_res, shader == PIPE_SHADER_COMPUTE, false);
          }
          zink_batch_resource_usage_set(&ctx->batch, new_res, false);
@@ -1060,7 +1062,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
          ctx->di.num_ubos[shader] = index + 1;
    } else {
       if (res)
-         unbind_ubo(ctx, res, shader == PIPE_SHADER_COMPUTE);
+         unbind_ubo(ctx, res, shader, index);
       update = !!ctx->ubos[shader][index].buffer;
 
       pipe_resource_reference(&ctx->ubos[shader][index].buffer, NULL);
