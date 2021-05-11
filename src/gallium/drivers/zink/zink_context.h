@@ -339,9 +339,6 @@ zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id);
 void
 zink_flush_queue(struct zink_context *ctx);
 
-void
-zink_maybe_flush_or_stall(struct zink_context *ctx);
-
 bool
 zink_resource_access_is_write(VkAccessFlags flags);
 

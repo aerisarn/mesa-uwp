@@ -750,8 +750,10 @@ zink_draw_vbo(struct pipe_context *pctx,
       screen->vk.CmdEndTransformFeedbackEXT(batch->state->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
    batch->has_work = true;
-   /* check memory usage and flush/stall as needed to avoid oom */
-   zink_maybe_flush_or_stall(ctx);
+   /* flush if there's >100k draws */
+   if (unlikely(ctx->batch.state->resource_size >= zink_screen(ctx->base.screen)->total_video_mem / 2 ||
+                ctx->batch.state->draw_count >= 100000))
+      pctx->flush(pctx, NULL, PIPE_FLUSH_ASYNC);
 }
 
 template <bool BATCH_CHANGED>
@@ -802,8 +804,10 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    } else
       vkCmdDispatch(batch->state->cmdbuf, info->grid[0], info->grid[1], info->grid[2]);
    batch->has_work = true;
-   /* check memory usage and flush/stall as needed to avoid oom */
-   zink_maybe_flush_or_stall(ctx);
+   /* flush if there's >100k computes */
+   if (unlikely(ctx->batch.state->resource_size >= zink_screen(ctx->base.screen)->total_video_mem / 2 ||
+                ctx->batch.state->compute_count >= 100000))
+      pctx->flush(pctx, NULL, PIPE_FLUSH_ASYNC);
 }
 
 template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE, bool BATCH_CHANGED>

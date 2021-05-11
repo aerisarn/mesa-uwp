@@ -1906,6 +1906,13 @@ flush_batch(struct zink_context *ctx, bool sync)
       ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
       zink_select_draw_vbo(ctx);
       zink_select_launch_grid(ctx);
+
+      if (ctx->resource_size >= zink_screen(ctx->base.screen)->total_video_mem / 2 ||
+          _mesa_hash_table_num_entries(&ctx->batch_states) > 100) {
+         sync_flush(ctx, zink_batch_state(ctx->last_fence));
+         zink_vkfence_wait(zink_screen(ctx->base.screen), ctx->last_fence, PIPE_TIMEOUT_INFINITE);
+         zink_batch_reset_all(ctx);
+      }
    }
 }
 
@@ -2587,23 +2594,6 @@ zink_flush(struct pipe_context *pctx,
             zink_vkfence_wait(screen, fence, PIPE_TIMEOUT_INFINITE);
          ctx->first_frame_done = true;
       }
-   }
-}
-
-void
-zink_maybe_flush_or_stall(struct zink_context *ctx)
-{
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   /* flush anytime our total batch memory usage is potentially >= 50% of total video memory */
-   if (ctx->batch.state->resource_size >= screen->total_video_mem / 2 ||
-       /* or if there's >100k draws+computes */
-       ctx->batch.state->draw_count + ctx->batch.state->compute_count >= 100000)
-      flush_batch(ctx, true);
-
-   if (ctx->resource_size >= screen->total_video_mem / 2 || _mesa_hash_table_num_entries(&ctx->batch_states) > 100) {
-      sync_flush(ctx, zink_batch_state(ctx->last_fence));
-      zink_vkfence_wait(screen, ctx->last_fence, PIPE_TIMEOUT_INFINITE);
-      zink_batch_reset_all(ctx);
    }
 }
 
