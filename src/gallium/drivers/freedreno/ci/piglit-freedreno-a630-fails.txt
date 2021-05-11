@@ -39,7 +39,6 @@ spec@!opengl 1.1@draw-pixels,Fail
 spec@!opengl 1.1@getteximage-depth,Fail
 spec@!opengl 1.1@getteximage-formats,Fail
 spec@!opengl 1.1@linestipple,Fail
-spec@!opengl 1.1@max-texture-size,Crash
 spec@!opengl 1.1@polygon-mode,Fail
 spec@!opengl 1.1@polygon-mode-facing,Fail
 spec@!opengl 1.1@polygon-mode-offset,Fail

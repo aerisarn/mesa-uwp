@@ -37,7 +37,6 @@ spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
 spec@!opengl 1.1@clipflat,Fail
 spec@!opengl 1.1@linestipple,Fail
-spec@!opengl 1.1@max-texture-size,Crash
 spec@!opengl 1.1@polygon-mode,Fail
 spec@!opengl 1.1@polygon-mode-facing,Fail
 spec@!opengl 1.1@polygon-mode-offset,Fail
