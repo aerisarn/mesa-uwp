@@ -69,6 +69,13 @@ debug_describe_zink_buffer_view(char *buf, const struct zink_buffer_view *ptr)
    sprintf(buf, "zink_buffer_view");
 }
 
+ALWAYS_INLINE static void
+check_resource_for_batch_ref(struct zink_context *ctx, struct zink_resource *res)
+{
+   if (!res->bind_count[0] && !res->bind_count[1])
+      zink_batch_reference_resource(&ctx->batch, res);
+}
+
 static void
 zink_context_destroy(struct pipe_context *pctx)
 {
@@ -878,6 +885,7 @@ update_res_bind_count(struct zink_context *ctx, struct zink_resource *res, bool 
       assert(res->bind_count[is_compute]);
       if (!--res->bind_count[is_compute])
          _mesa_set_remove_key(ctx->need_barriers[is_compute], res);
+      check_resource_for_batch_ref(ctx, res);
    } else
       res->bind_count[is_compute]++;
 }
