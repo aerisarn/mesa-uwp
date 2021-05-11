@@ -79,7 +79,7 @@ struct zink_gfx_pipeline_state {
    bool have_EXT_extended_dynamic_state;
 
    VkPipeline pipeline;
-   enum pipe_prim_type mode;
+   enum pipe_prim_type mode : 8;
 };
 
 struct zink_compute_pipeline_state {
