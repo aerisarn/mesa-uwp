@@ -1035,8 +1035,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
             new_res->ubo_bind_count[shader == PIPE_SHADER_COMPUTE]++;
             update_res_bind_count(ctx, new_res, shader == PIPE_SHADER_COMPUTE, false);
          }
-         if (!ctx->descriptor_refs_dirty[shader == PIPE_SHADER_COMPUTE])
-            zink_batch_resource_usage_set(&ctx->batch, new_res, false);
+         zink_batch_resource_usage_set(&ctx->batch, new_res, false);
          zink_fake_buffer_barrier(new_res, VK_ACCESS_UNIFORM_READ_BIT,
                                       zink_pipeline_flags_from_pipe_stage(shader));
       }
@@ -1125,8 +1124,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
             access |= VK_ACCESS_SHADER_WRITE_BIT;
          }
          pipe_resource_reference(&ssbo->buffer, &new_res->base.b);
-         if (!ctx->descriptor_refs_dirty[p_stage == PIPE_SHADER_COMPUTE])
-            zink_batch_resource_usage_set(&ctx->batch, new_res, access & VK_ACCESS_SHADER_WRITE_BIT);
+         zink_batch_resource_usage_set(&ctx->batch, new_res, access & VK_ACCESS_SHADER_WRITE_BIT);
          ssbo->buffer_offset = buffers[i].buffer_offset;
          ssbo->buffer_size = MIN2(buffers[i].buffer_size, new_res->base.b.width0 - ssbo->buffer_offset);
          util_range_add(&new_res->base.b, &new_res->valid_buffer_range, ssbo->buffer_offset,
@@ -1298,10 +1296,8 @@ zink_set_shader_images(struct pipe_context *pctx,
             zink_batch_usage_set(&image_view->surface->batch_uses, ctx->batch.state);
             flush_pending_clears(ctx, res);
          }
-         if (!ctx->descriptor_refs_dirty[p_stage == PIPE_SHADER_COMPUTE]) {
-            zink_batch_resource_usage_set(&ctx->batch, zink_resource(image_view->base.resource),
-                                             zink_resource_access_is_write(access));
-         }
+         zink_batch_resource_usage_set(&ctx->batch, zink_resource(image_view->base.resource),
+                                          zink_resource_access_is_write(access));
          update = true;
       } else if (image_view->base.resource) {
          update |= !!image_view->base.resource;
