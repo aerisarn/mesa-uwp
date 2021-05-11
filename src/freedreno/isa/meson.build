@@ -36,7 +36,7 @@ ir3_isa_c = custom_target(
   input: ['decode.py', 'ir3.xml'],
   output: 'ir3-isa.c',
   command: [
-    prog_python, '@INPUT0@', '@INPUT1@', '@OUTPUT@'
+    prog_python, '@INPUT@', '@OUTPUT@'
   ],
   depend_files: isa_depend_files,
 )
@@ -78,7 +78,7 @@ encode_h = custom_target(
   input: ['encode.py', 'ir3.xml'],
   output: 'encode.h',
   command: [
-    prog_python, '@INPUT0@', '@INPUT1@', '@OUTPUT@'
+    prog_python, '@INPUT@', '@OUTPUT@'
   ],
   depend_files: isa_depend_files,
 )
