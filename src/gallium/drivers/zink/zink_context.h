@@ -174,6 +174,7 @@ struct zink_context {
    bool pipeline_changed[2]; //gfx, compute
 
    struct zink_shader *gfx_stages[ZINK_SHADER_COUNT];
+   struct zink_shader *last_vertex_stage;
    struct zink_gfx_pipeline_state gfx_pipeline_state;
    enum pipe_prim_type gfx_prim_mode;
    struct hash_table *program_cache;

@@ -471,6 +471,13 @@ zink_create_gfx_program(struct zink_context *ctx,
          goto fail;
    }
 
+   if (stages[PIPE_SHADER_GEOMETRY])
+      prog->last_vertex_stage = stages[PIPE_SHADER_GEOMETRY];
+   else if (stages[PIPE_SHADER_TESS_EVAL])
+      prog->last_vertex_stage = stages[PIPE_SHADER_TESS_EVAL];
+   else
+      prog->last_vertex_stage = stages[PIPE_SHADER_VERTEX];
+
    struct mesa_sha1 sctx;
    _mesa_sha1_init(&sctx);
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
@@ -906,7 +913,12 @@ static void
 zink_bind_vs_state(struct pipe_context *pctx,
                    void *cso)
 {
-   bind_stage(zink_context(pctx), PIPE_SHADER_VERTEX, cso);
+   struct zink_context *ctx = zink_context(pctx);
+   bind_stage(ctx, PIPE_SHADER_VERTEX, cso);
+   if (!ctx->gfx_stages[PIPE_SHADER_GEOMETRY] &&
+       !ctx->gfx_stages[PIPE_SHADER_TESS_EVAL]) {
+      ctx->last_vertex_stage = cso;
+   }
 }
 
 static void
@@ -925,6 +937,14 @@ zink_bind_gs_state(struct pipe_context *pctx,
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX) |
                                   BITFIELD_BIT(PIPE_SHADER_TESS_EVAL);
    bind_stage(ctx, PIPE_SHADER_GEOMETRY, cso);
+   if (cso)
+      ctx->last_vertex_stage = cso;
+   else {
+      if (ctx->gfx_stages[PIPE_SHADER_TESS_EVAL])
+         ctx->last_vertex_stage = ctx->gfx_stages[PIPE_SHADER_TESS_EVAL];
+      else
+         ctx->last_vertex_stage = ctx->gfx_stages[PIPE_SHADER_VERTEX];
+   }
 }
 
 static void
@@ -948,6 +968,12 @@ zink_bind_tes_state(struct pipe_context *pctx,
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
    }
    bind_stage(ctx, PIPE_SHADER_TESS_EVAL, cso);
+   if (!ctx->gfx_stages[PIPE_SHADER_GEOMETRY]) {
+      if (cso)
+         ctx->last_vertex_stage = cso;
+      else
+         ctx->last_vertex_stage = ctx->gfx_stages[PIPE_SHADER_VERTEX];
+   }
 }
 
 static void *

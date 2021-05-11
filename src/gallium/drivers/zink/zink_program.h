@@ -95,6 +95,8 @@ struct zink_gfx_program {
 
    struct zink_shader_module *default_variants[ZINK_SHADER_COUNT][2]; //[default, no streamout]
    const void *default_variant_key[ZINK_SHADER_COUNT];
+   struct zink_shader *last_vertex_stage;
+
    struct zink_shader *shaders[ZINK_SHADER_COUNT];
    struct hash_table *pipelines[11]; // number of draw modes we support
 };
