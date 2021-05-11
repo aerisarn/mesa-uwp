@@ -638,20 +638,10 @@ zink_draw_vbo(struct pipe_context *pctx,
    zink_query_update_gs_states(ctx);
 
    if (have_streamout) {
-      for (int i = 0; i < ZINK_SHADER_COUNT; i++) {
-         struct zink_shader *shader = ctx->gfx_stages[i];
-         if (!shader)
-            continue;
-         enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
-         if ((stage == PIPE_SHADER_GEOMETRY ||
-             (stage == PIPE_SHADER_TESS_EVAL && !ctx->gfx_stages[PIPE_SHADER_GEOMETRY]) ||
-             (stage == PIPE_SHADER_VERTEX && !ctx->gfx_stages[PIPE_SHADER_GEOMETRY] && !ctx->gfx_stages[PIPE_SHADER_TESS_EVAL]))) {
-            for (unsigned j = 0; j < ctx->num_so_targets; j++) {
-               struct zink_so_target *t = zink_so_target(ctx->so_targets[j]);
-               if (t)
-                  t->stride = shader->streamout.so_info.stride[j] * sizeof(uint32_t);
-            }
-         }
+      for (unsigned j = 0; j < ctx->num_so_targets; j++) {
+         struct zink_so_target *t = zink_so_target(ctx->so_targets[j]);
+         if (t)
+            t->stride = ctx->last_vertex_stage->streamout.so_info.stride[j] * sizeof(uint32_t);
       }
 
       for (unsigned i = 0; i < ctx->num_so_targets; i++) {
