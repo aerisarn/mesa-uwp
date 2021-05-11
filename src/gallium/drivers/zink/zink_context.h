@@ -152,7 +152,6 @@ struct zink_context {
    VkDeviceSize resource_size; //the accumulated size of resources in submitted buffers
 
    unsigned shader_has_inlinable_uniforms_mask;
-   unsigned inlinable_uniforms_dirty_mask;
    unsigned inlinable_uniforms_valid_mask;
    uint32_t inlinable_uniforms[PIPE_SHADER_TYPES][MAX_INLINABLE_UNIFORMS];
 

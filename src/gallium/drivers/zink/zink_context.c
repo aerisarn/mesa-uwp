@@ -974,7 +974,7 @@ zink_set_inlinable_constants(struct pipe_context *pctx,
    struct zink_context *ctx = (struct zink_context *)pctx;
 
    memcpy(ctx->inlinable_uniforms[shader], values, num_values * 4);
-   ctx->inlinable_uniforms_dirty_mask |= 1 << shader;
+   ctx->dirty_shader_stages |= 1 << shader;
    ctx->inlinable_uniforms_valid_mask |= 1 << shader;
 }
 
