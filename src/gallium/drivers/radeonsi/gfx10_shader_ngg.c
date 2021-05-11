@@ -1964,16 +1964,6 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
       max_esverts_base = 128;
    }
 
-   /* Hardware has the following non-natural restrictions on the value
-    * of GE_CNTL.VERT_GRP_SIZE based on based on the primitive type of
-    * the draw:
-    *  - at most 252 for any line input primitive type
-    *  - at most 251 for any quad input primitive type
-    *  - at most 251 for triangle strips with adjacency (this happens to
-    *    be the natural limit for triangle *lists* with adjacency)
-    */
-   max_esverts_base = MIN2(max_esverts_base, 251 + max_verts_per_prim - 1);
-
    if (gs_stage == MESA_SHADER_GEOMETRY) {
       bool force_multi_cycling = false;
       unsigned max_out_verts_per_gsprim = gs_sel->info.base.gs.vertices_out * gs_num_invocations;
@@ -2125,18 +2115,7 @@ retry_select_mode:
       }
    }
 
-   /* On gfx10, the GE only checks against the maximum number of ES verts after
-    * allocating a full GS primitive. So we need to ensure that whenever
-    * this check passes, there is enough space for a full primitive without
-    * vertex reuse.
-    */
-   if (gs_sel->screen->info.chip_class == GFX10 &&
-       !(shader->key.opt.ngg_culling & (SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST |
-                                        SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP)))
-      shader->ngg.hw_max_esverts = max_esverts - max_verts_per_prim + 1;
-   else
-      shader->ngg.hw_max_esverts = max_esverts;
-
+   shader->ngg.hw_max_esverts = max_esverts;
    shader->ngg.max_gsprims = max_gsprims;
    shader->ngg.max_out_verts = max_out_vertices;
    shader->ngg.prim_amp_factor = prim_amp_factor;

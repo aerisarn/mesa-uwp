@@ -1314,19 +1314,23 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                         S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts) |
                         S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
 
-      /* Bug workaround for a possible hang with non-tessellation cases.
-       * Tessellation always sets GE_CNTL.VERT_GRP_SIZE = 0
+      /* On gfx10, the GE only checks against the maximum number of ES verts after
+       * allocating a full GS primitive. So we need to ensure that whenever
+       * this check passes, there is enough space for a full primitive without
+       * vertex reuse. VERT_GRP_SIZE=256 doesn't need this. We should always get 256
+       * if we have enough LDS.
        *
-       * Requirement: GE_CNTL.VERT_GRP_SIZE = VGT_GS_ONCHIP_CNTL.ES_VERTS_PER_SUBGRP - 5
+       * Tessellation is unaffected because it always sets GE_CNTL.VERT_GRP_SIZE = 0.
        */
       if ((sscreen->info.chip_class == GFX10) &&
           (es_stage == MESA_SHADER_VERTEX || gs_stage == MESA_SHADER_VERTEX) && /* = no tess */
-          shader->ngg.hw_max_esverts != 256) {
+          shader->ngg.hw_max_esverts != 256 &&
+          shader->ngg.hw_max_esverts > 5) {
+         /* This could be based on the input primitive type. 5 is the worst case
+          * for primitive types with adjacency.
+          */
          shader->ge_cntl &= C_03096C_VERT_GRP_SIZE;
-
-         if (shader->ngg.hw_max_esverts > 5) {
-            shader->ge_cntl |= S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts - 5);
-         }
+         shader->ge_cntl |= S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts - 5);
       }
    }
 
