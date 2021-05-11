@@ -426,8 +426,10 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                 panfrost_emit_midgard_blend(batch, blend, rts);
 
         for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
-                if (!blend[i].no_colour && batch->key.cbufs[i])
+                if (!blend[i].no_colour && batch->key.cbufs[i]) {
                         batch->draws |= (PIPE_CLEAR_COLOR0 << i);
+                        batch->resolve |= (PIPE_CLEAR_COLOR0 << i);
+                }
         }
 }
 
@@ -696,8 +698,10 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
 
         if (!(dev->quirks & MIDGARD_SFBD))
                 panfrost_emit_blend(batch, xfer.cpu + MALI_RENDERER_STATE_LENGTH, blend);
-        else
+        else {
                 batch->draws |= PIPE_CLEAR_COLOR0;
+                batch->resolve |= PIPE_CLEAR_COLOR0;
+        }
 
         if (ctx->depth_stencil->base.depth_enabled)
                 batch->read |= PIPE_CLEAR_DEPTH;

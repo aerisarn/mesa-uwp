@@ -289,6 +289,7 @@ panfrost_blit(struct pipe_context *pipe,
                 panfrost_batch_add_fbo_bos(batch);
                 panfrost_blit_add_ctx_bos(batch, &bctx);
                 batch->draws = draw_flags;
+                batch->resolve = draw_flags;
                 batch->minx = minx;
                 batch->miny = miny;
                 batch->maxx = maxx;

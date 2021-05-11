@@ -1276,12 +1276,16 @@ void
 panfrost_batch_set_requirements(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
+        unsigned draws = 0;
 
         if (ctx->depth_stencil && ctx->depth_stencil->base.depth_writemask)
-                batch->draws |= PIPE_CLEAR_DEPTH;
+                draws |= PIPE_CLEAR_DEPTH;
 
         if (ctx->depth_stencil && ctx->depth_stencil->base.stencil[0].enabled)
-                batch->draws |= PIPE_CLEAR_STENCIL;
+                draws |= PIPE_CLEAR_STENCIL;
+
+        batch->draws |= draws;
+        batch->resolve |= draws;
 }
 
 void
@@ -1414,6 +1418,7 @@ panfrost_batch_clear(struct panfrost_batch *batch,
         }
 
         batch->clear |= buffers;
+        batch->resolve |= buffers;
 
         /* Clearing affects the entire framebuffer (by definition -- this is
          * the Gallium clear callback, which clears the whole framebuffer. If
