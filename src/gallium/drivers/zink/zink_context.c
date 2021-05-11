@@ -1036,7 +1036,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
             update_res_bind_count(ctx, new_res, shader == PIPE_SHADER_COMPUTE, false);
          }
          if (!ctx->descriptor_refs_dirty[shader == PIPE_SHADER_COMPUTE])
-            zink_batch_reference_resource_rw(&ctx->batch, new_res, false);
+            zink_batch_resource_usage_set(&ctx->batch, new_res, false);
          zink_fake_buffer_barrier(new_res, VK_ACCESS_UNIFORM_READ_BIT,
                                       zink_pipeline_flags_from_pipe_stage(shader));
       }
