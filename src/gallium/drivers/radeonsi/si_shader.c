@@ -1295,6 +1295,9 @@ bool si_vs_needs_prolog(const struct si_shader_selector *sel,
     * VS prolog. */
    return sel->vs_needs_prolog || prolog_key->ls_vgpr_fix ||
           prolog_key->unpack_instance_id_from_vertex_id ||
+          /* The 2nd VS prolog loads input VGPRs from LDS */
+          (key->opt.ngg_culling && !ngg_cull_shader) ||
+          /* The 1st VS prolog generates input VGPRs for fast launch. */
           (ngg_cull_shader && key->opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL);
 }
 
@@ -1329,6 +1332,8 @@ void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_
          !!(shader_out->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP);
       key->vs_prolog.gs_fast_launch_index_size_packed =
          SI_GET_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(shader_out->key.opt.ngg_culling);
+   } else if (shader_out->key.opt.ngg_culling) {
+      key->vs_prolog.load_vgprs_after_culling = 1;
    }
 
    if (shader_out->selector->info.stage == MESA_SHADER_TESS_CTRL) {

@@ -582,6 +582,7 @@ union si_shader_part_key {
       unsigned gs_fast_launch_tri_list : 1;  /* for NGG culling */
       unsigned gs_fast_launch_tri_strip : 1; /* for NGG culling */
       unsigned gs_fast_launch_index_size_packed : 2;
+      unsigned load_vgprs_after_culling : 1;
       /* Prologs for monolithic shaders shouldn't set EXEC. */
       unsigned is_monolithic : 1;
    } vs_prolog;
