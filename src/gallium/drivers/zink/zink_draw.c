@@ -411,6 +411,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS];
    bool need_index_buffer_unref = false;
+   bool mode_changed = ctx->gfx_pipeline_state.mode != dinfo->mode;
 
    update_barriers(ctx, false);
 
@@ -436,26 +437,6 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->gfx_pipeline_state.primitive_restart != dinfo->primitive_restart)
       ctx->gfx_pipeline_state.dirty = true;
    ctx->gfx_pipeline_state.primitive_restart = dinfo->primitive_restart;
-
-   enum pipe_prim_type reduced_prim = u_reduced_prim(dinfo->mode);
-
-   bool depth_bias = false;
-   switch (reduced_prim) {
-   case PIPE_PRIM_POINTS:
-      depth_bias = rast_state->offset_point;
-      break;
-
-   case PIPE_PRIM_LINES:
-      depth_bias = rast_state->offset_line;
-      break;
-
-   case PIPE_PRIM_TRIANGLES:
-      depth_bias = rast_state->offset_tri;
-      break;
-
-   default:
-      unreachable("unexpected reduced prim");
-   }
 
    unsigned index_offset = 0;
    struct pipe_resource *index_buffer = NULL;
@@ -557,13 +538,6 @@ zink_draw_vbo(struct pipe_context *pctx,
    ctx->vp_state_changed = false;
    ctx->scissor_changed = false;
 
-   if (line_width_needed(reduced_prim, rast_state->hw_state.polygon_mode)) {
-      if (screen->info.feats.features.wideLines || ctx->line_width == 1.0f)
-         vkCmdSetLineWidth(batch->state->cmdbuf, ctx->line_width);
-      else
-         debug_printf("BUG: wide lines not supported, needs fallback!");
-   }
-
    if (ctx->stencil_ref_changed) {
       vkCmdSetStencilReference(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT,
                                ctx->stencil_ref.ref_value[0]);
@@ -611,15 +585,45 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->dsa_state_changed = false;
    }
 
-   if (pipeline_changed || ctx->rast_state_changed) {
+   bool rast_state_changed = ctx->rast_state_changed;
+   if (pipeline_changed || rast_state_changed) {
       if (screen->info.have_EXT_extended_dynamic_state)
          screen->vk.CmdSetFrontFaceEXT(batch->state->cmdbuf, ctx->gfx_pipeline_state.front_face);
+   }
+
+   if (pipeline_changed || rast_state_changed || mode_changed) {
+      enum pipe_prim_type reduced_prim = u_reduced_prim(dinfo->mode);
+
+      bool depth_bias = false;
+      switch (reduced_prim) {
+      case PIPE_PRIM_POINTS:
+         depth_bias = rast_state->offset_point;
+         break;
+
+      case PIPE_PRIM_LINES:
+         depth_bias = rast_state->offset_line;
+         break;
+
+      case PIPE_PRIM_TRIANGLES:
+         depth_bias = rast_state->offset_tri;
+         break;
+
+      default:
+         unreachable("unexpected reduced prim");
+      }
+
+      if (line_width_needed(reduced_prim, rast_state->hw_state.polygon_mode)) {
+         if (screen->info.feats.features.wideLines || ctx->line_width == 1.0f)
+            vkCmdSetLineWidth(batch->state->cmdbuf, ctx->line_width);
+         else
+            debug_printf("BUG: wide lines not supported, needs fallback!");
+      }
       if (depth_bias)
          vkCmdSetDepthBias(batch->state->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);
       else
          vkCmdSetDepthBias(batch->state->cmdbuf, 0.0f, 0.0f, 0.0f);
-      ctx->rast_state_changed = false;
    }
+   ctx->rast_state_changed = false;
 
    if (ctx->sample_locations_changed) {
       VkSampleLocationsInfoEXT loc;
