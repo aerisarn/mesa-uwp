@@ -281,7 +281,7 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
         for (unsigned i = 0; i < rt_count; i++) {
                 if (rts[i]) {
                         tex_count++;
-                        if (rts[i]->image->layout.nr_samples > 1)
+                        if (rts[i]->nr_samples > 1)
                                 ms = true;
                 }
         }
