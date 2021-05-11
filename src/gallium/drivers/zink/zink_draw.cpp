@@ -491,7 +491,7 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
 
-   if (ctx->descriptor_refs_dirty[0])
+   if (BATCH_CHANGED)
       zink_update_descriptor_refs(ctx, false);
 
    batch = zink_batch_rp(ctx);
@@ -776,7 +776,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    VkPipeline pipeline = zink_get_compute_pipeline(screen, ctx->curr_compute,
                                                &ctx->compute_pipeline_state);
 
-   if (ctx->descriptor_refs_dirty[1])
+   if (BATCH_CHANGED)
       zink_update_descriptor_refs(ctx, true);
 
    if (prev_pipeline != pipeline || BATCH_CHANGED)
