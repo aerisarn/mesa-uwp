@@ -256,6 +256,8 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
 
    simple_mtx_lock(&screen->surface_mtx);
    struct hash_entry *new_entry = _mesa_hash_table_search_pre_hashed(&screen->surface_cache, hash, &ivci);
+   if (zink_batch_usage_exists(surface->batch_uses))
+      zink_batch_reference_surface(&ctx->batch, surface);
    surface_clear_fb_refs(screen, *psurface);
    zink_descriptor_set_refs_clear(&surface->desc_set_refs, surface);
    if (new_entry) {
