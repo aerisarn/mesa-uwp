@@ -1771,7 +1771,7 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
    zink_clear_framebuffer(ctx, clear_buffers);
 }
 
-static void
+void
 zink_end_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 {
    if (batch->in_rp) {
