@@ -636,8 +636,8 @@ static unsigned si_get_vs_vgpr_comp_cnt(struct si_screen *sscreen, struct si_sha
 
    /* GFX6-9   LS    (VertexID, RelAutoIndex,           InstanceID / StepRate0, InstanceID)
     * GFX6-9   ES,VS (VertexID, InstanceID / StepRate0, VSPrimID,               InstanceID)
-    * GFX10    LS    (VertexID, RelAutoIndex,           UserVGPR1,              UserVGPR2 or InstanceID)
-    * GFX10    ES,VS (VertexID, UserVGPR1,              UserVGPR2 or VSPrimID,  UserVGPR3 or InstanceID)
+    * GFX10-11 LS    (VertexID, RelAutoIndex,           UserVGPR1,              UserVGPR2 or InstanceID)
+    * GFX10-11 ES,VS (VertexID, UserVGPR1,              UserVGPR2 or VSPrimID,  UserVGPR3 or InstanceID)
     */
    bool is_ls = shader->selector->stage == MESA_SHADER_TESS_CTRL || shader->key.ge.as_ls;
    unsigned max = 0;
@@ -654,7 +654,10 @@ static unsigned si_get_vs_vgpr_comp_cnt(struct si_screen *sscreen, struct si_sha
    if (legacy_vs_prim_id)
       max = MAX2(max, 2); /* VSPrimID */
 
-   if (is_ls)
+   /* GFX11: We prefer to compute RelAutoIndex using (WaveID * WaveSize + ThreadID).
+    * Older chips didn't have WaveID in LS.
+    */
+   if (is_ls && sscreen->info.chip_class <= GFX10_3)
       max = MAX2(max, 1); /* RelAutoIndex */
 
    return max;

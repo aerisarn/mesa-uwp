@@ -97,6 +97,7 @@ struct ac_shader_args {
 
    /* TCS */
    struct ac_arg tcs_factor_offset;
+   struct ac_arg tcs_wave_id; /* gfx11+ */
    struct ac_arg tcs_patch_id;
    struct ac_arg tcs_rel_ids;
 

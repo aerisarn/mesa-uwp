@@ -3054,7 +3054,12 @@ static void emit_demote(struct ac_nir_context *ctx, const nir_intrinsic_instr *i
 
 static LLVMValueRef visit_load_local_invocation_index(struct ac_nir_context *ctx)
 {
-   if (ctx->args->vs_rel_patch_id.used) {
+   if (ctx->args->tcs_wave_id.used) {
+      return ac_build_imad(&ctx->ac,
+                           ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->tcs_wave_id), 0, 5),
+                           LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, 0),
+                           ac_get_thread_id(&ctx->ac));
+   } else if (ctx->args->vs_rel_patch_id.used) {
       return ac_get_arg(&ctx->ac, ctx->args->vs_rel_patch_id);
    } else if (ctx->args->merged_wave_info.used) {
       /* Thread ID in threadgroup in merged ESGS. */

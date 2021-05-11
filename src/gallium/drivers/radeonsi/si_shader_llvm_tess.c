@@ -917,7 +917,8 @@ static void si_set_ls_return_value_for_tcs(struct si_shader_context *ctx)
    ret = si_insert_input_ret(ctx, ret, ctx->args.tess_offchip_offset, 2);
    ret = si_insert_input_ret(ctx, ret, ctx->args.merged_wave_info, 3);
    ret = si_insert_input_ret(ctx, ret, ctx->args.tcs_factor_offset, 4);
-   ret = si_insert_input_ret(ctx, ret, ctx->args.scratch_offset, 5);
+   if (ctx->screen->info.chip_class <= GFX10_3)
+      ret = si_insert_input_ret(ctx, ret, ctx->args.scratch_offset, 5);
 
    ret = si_insert_input_ptr(ctx, ret, ctx->internal_bindings, 8 + SI_SGPR_INTERNAL_BINDINGS);
    ret = si_insert_input_ptr(ctx, ret, ctx->bindless_samplers_and_images,
@@ -945,7 +946,14 @@ void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi)
    struct si_shader *shader = ctx->shader;
    struct si_shader_info *info = &shader->selector->info;
    unsigned i, chan;
-   LLVMValueRef vertex_id = ac_get_arg(&ctx->ac, ctx->args.vs_rel_patch_id);
+   LLVMValueRef vertex_id;
+   if (ctx->screen->info.chip_class >= GFX11) {
+      vertex_id = ac_build_imad(&ctx->ac, si_unpack_param(ctx, ctx->args.tcs_wave_id, 0, 5),
+                                LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, 0),
+                                ac_get_thread_id(&ctx->ac));
+   } else {
+      vertex_id = ac_get_arg(&ctx->ac, ctx->args.vs_rel_patch_id);
+   }
    LLVMValueRef vertex_dw_stride = get_tcs_in_vertex_dw_stride(ctx);
    LLVMValueRef base_dw_addr = LLVMBuildMul(ctx->ac.builder, vertex_id, vertex_dw_stride, "");
    LLVMValueRef *addrs = abi->outputs;
