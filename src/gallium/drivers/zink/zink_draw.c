@@ -406,6 +406,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_rasterizer_state *rast_state = ctx->rast_state;
    struct zink_depth_stencil_alpha_state *dsa_state = ctx->dsa_state;
+   struct zink_batch *batch = &ctx->batch;
    struct zink_so_target *so_target =
       dindirect && dindirect->count_from_stream_output ?
          zink_so_target(dindirect->count_from_stream_output) : NULL;
@@ -520,7 +521,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->descriptor_refs_dirty[0])
       zink_update_descriptor_refs(ctx, false);
 
-   struct zink_batch *batch = zink_batch_rp(ctx);
+   batch = zink_batch_rp(ctx);
 
    VkPipeline prev_pipeline = ctx->gfx_pipeline_state.pipeline;
    VkPipeline pipeline = zink_get_gfx_pipeline(ctx, ctx->curr_program,
