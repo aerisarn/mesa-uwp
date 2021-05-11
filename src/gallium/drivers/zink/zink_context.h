@@ -149,6 +149,11 @@ typedef enum {
    ZINK_MULTIDRAW,
 } zink_multidraw;
 
+typedef enum {
+   ZINK_NO_DYNAMIC_STATE,
+   ZINK_DYNAMIC_STATE,
+} zink_dynamic_state;
+
 struct zink_context {
    struct pipe_context base;
    struct threaded_context *tc;
@@ -156,8 +161,9 @@ struct zink_context {
    struct slab_child_pool transfer_pool_unsync;
    struct blitter_context *blitter;
 
-   zink_multidraw multidraw;
-   pipe_draw_vbo_func draw_vbo[2]; //multidraw
+   zink_multidraw multidraw : 1;
+   zink_dynamic_state dynamic_state : 1;
+   pipe_draw_vbo_func draw_vbo[2][2]; //multidraw, dynamic state
 
    struct pipe_device_reset_callback reset;
 

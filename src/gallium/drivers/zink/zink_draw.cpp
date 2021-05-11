@@ -122,6 +122,7 @@ barrier_draw_buffers(struct zink_context *ctx, const struct pipe_draw_info *dinf
    }
 }
 
+template <zink_dynamic_state HAS_DYNAMIC_STATE>
 static void
 zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
 {
@@ -149,7 +150,7 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
       }
    }
 
-   if (screen->info.have_EXT_extended_dynamic_state)
+   if (HAS_DYNAMIC_STATE)
       screen->vk.CmdBindVertexBuffers2EXT(batch->state->cmdbuf, 0,
                                           elems->hw_state.num_bindings,
                                           buffers, buffer_offsets, NULL, buffer_strides);
@@ -394,7 +395,7 @@ update_barriers(struct zink_context *ctx, bool is_compute)
    }
 }
 
-template <zink_multidraw HAS_MULTIDRAW>
+template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE>
 void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo,
@@ -511,7 +512,7 @@ zink_draw_vbo(struct pipe_context *pctx,
          };
          viewports[i] = viewport;
       }
-      if (screen->info.have_EXT_extended_dynamic_state)
+      if (HAS_DYNAMIC_STATE)
          screen->vk.CmdSetViewportWithCountEXT(batch->state->cmdbuf, ctx->vp_state.num_viewports, viewports);
       else
          vkCmdSetViewport(batch->state->cmdbuf, 0, ctx->vp_state.num_viewports, viewports);
@@ -533,7 +534,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             scissors[i].extent.height = ctx->fb_state.height;
          }
       }
-      if (screen->info.have_EXT_extended_dynamic_state)
+      if (HAS_DYNAMIC_STATE)
          screen->vk.CmdSetScissorWithCountEXT(batch->state->cmdbuf, ctx->vp_state.num_viewports, scissors);
       else
          vkCmdSetScissor(batch->state->cmdbuf, 0, ctx->vp_state.num_viewports, scissors);
@@ -549,50 +550,46 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->stencil_ref_changed = false;
    }
 
-   if (pipeline_changed || ctx->dsa_state_changed) {
-      if (screen->info.have_EXT_extended_dynamic_state) {
-         screen->vk.CmdSetDepthBoundsTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_bounds_test);
-         if (dsa_state->hw_state.depth_bounds_test)
-            vkCmdSetDepthBounds(batch->state->cmdbuf,
-                                dsa_state->hw_state.min_depth_bounds,
-                                dsa_state->hw_state.max_depth_bounds);
-         screen->vk.CmdSetDepthTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_test);
-         if (dsa_state->hw_state.depth_test)
-            screen->vk.CmdSetDepthCompareOpEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_compare_op);
-         screen->vk.CmdSetDepthWriteEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_write);
-         screen->vk.CmdSetStencilTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.stencil_test);
-         if (dsa_state->hw_state.stencil_test) {
-            screen->vk.CmdSetStencilOpEXT(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT,
-                                          dsa_state->hw_state.stencil_front.failOp,
-                                          dsa_state->hw_state.stencil_front.passOp,
-                                          dsa_state->hw_state.stencil_front.depthFailOp,
-                                          dsa_state->hw_state.stencil_front.compareOp);
-            screen->vk.CmdSetStencilOpEXT(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT,
-                                          dsa_state->hw_state.stencil_back.failOp,
-                                          dsa_state->hw_state.stencil_back.passOp,
-                                          dsa_state->hw_state.stencil_back.depthFailOp,
-                                          dsa_state->hw_state.stencil_back.compareOp);
-         }
-         if (dsa_state->base.stencil[0].enabled) {
-            if (dsa_state->base.stencil[1].enabled) {
-               vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.writeMask);
-               vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.writeMask);
-               vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.compareMask);
-               vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.compareMask);
-            } else {
-               vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.writeMask);
-               vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.compareMask);
-            }
+   if (HAS_DYNAMIC_STATE && (pipeline_changed || ctx->dsa_state_changed)) {
+      screen->vk.CmdSetDepthBoundsTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_bounds_test);
+      if (dsa_state->hw_state.depth_bounds_test)
+         vkCmdSetDepthBounds(batch->state->cmdbuf,
+                             dsa_state->hw_state.min_depth_bounds,
+                             dsa_state->hw_state.max_depth_bounds);
+      screen->vk.CmdSetDepthTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_test);
+      if (dsa_state->hw_state.depth_test)
+         screen->vk.CmdSetDepthCompareOpEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_compare_op);
+      screen->vk.CmdSetDepthWriteEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_write);
+      screen->vk.CmdSetStencilTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.stencil_test);
+      if (dsa_state->hw_state.stencil_test) {
+         screen->vk.CmdSetStencilOpEXT(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT,
+                                       dsa_state->hw_state.stencil_front.failOp,
+                                       dsa_state->hw_state.stencil_front.passOp,
+                                       dsa_state->hw_state.stencil_front.depthFailOp,
+                                       dsa_state->hw_state.stencil_front.compareOp);
+         screen->vk.CmdSetStencilOpEXT(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT,
+                                       dsa_state->hw_state.stencil_back.failOp,
+                                       dsa_state->hw_state.stencil_back.passOp,
+                                       dsa_state->hw_state.stencil_back.depthFailOp,
+                                       dsa_state->hw_state.stencil_back.compareOp);
+      }
+      if (dsa_state->base.stencil[0].enabled) {
+         if (dsa_state->base.stencil[1].enabled) {
+            vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.writeMask);
+            vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.writeMask);
+            vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.compareMask);
+            vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.compareMask);
+         } else {
+            vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.writeMask);
+            vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.compareMask);
          }
       }
-      ctx->dsa_state_changed = false;
    }
+   ctx->dsa_state_changed = false;
 
    bool rast_state_changed = ctx->rast_state_changed;
-   if (pipeline_changed || rast_state_changed) {
-      if (screen->info.have_EXT_extended_dynamic_state)
-         screen->vk.CmdSetFrontFaceEXT(batch->state->cmdbuf, ctx->gfx_pipeline_state.front_face);
-   }
+   if (HAS_DYNAMIC_STATE && (pipeline_changed || rast_state_changed))
+      screen->vk.CmdSetFrontFaceEXT(batch->state->cmdbuf, ctx->gfx_pipeline_state.front_face);
 
    if (pipeline_changed || rast_state_changed || mode_changed) {
       enum pipe_prim_type reduced_prim = u_reduced_prim(dinfo->mode);
@@ -628,18 +625,20 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
    ctx->rast_state_changed = false;
 
-   if (ctx->sample_locations_changed) {
-      VkSampleLocationsInfoEXT loc;
-      zink_init_vk_sample_locations(ctx, &loc);
-      screen->vk.CmdSetSampleLocationsEXT(batch->state->cmdbuf, &loc);
+   if (HAS_DYNAMIC_STATE) {
+      if (ctx->sample_locations_changed) {
+         VkSampleLocationsInfoEXT loc;
+         zink_init_vk_sample_locations(ctx, &loc);
+         screen->vk.CmdSetSampleLocationsEXT(batch->state->cmdbuf, &loc);
+      }
+      ctx->sample_locations_changed = false;
    }
-   ctx->sample_locations_changed = false;
 
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->state->cmdbuf, ctx->blend_constants);
 
    if (ctx->vertex_buffers_dirty || pipeline_changed)
-      zink_bind_vertex_buffers(batch, ctx);
+      zink_bind_vertex_buffers<HAS_DYNAMIC_STATE>(batch, ctx);
 
    if (BITSET_TEST(ctx->gfx_stages[PIPE_SHADER_VERTEX]->nir->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX)) {
       unsigned draw_mode_is_indexed = index_size > 0;
@@ -783,11 +782,19 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    zink_maybe_flush_or_stall(ctx);
 }
 
+template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE>
+static void
+init_dynamic_state_functions(struct zink_context *ctx)
+{
+   ctx->draw_vbo[HAS_MULTIDRAW][HAS_DYNAMIC_STATE] = zink_draw_vbo<HAS_MULTIDRAW, HAS_DYNAMIC_STATE>;
+}
+
 template <zink_multidraw HAS_MULTIDRAW>
 static void
 init_multidraw_functions(struct zink_context *ctx)
 {
-   ctx->draw_vbo[HAS_MULTIDRAW] = zink_draw_vbo<HAS_MULTIDRAW>;
+   init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_NO_DYNAMIC_STATE>(ctx);
+   init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_DYNAMIC_STATE>(ctx);
 }
 
 static void
