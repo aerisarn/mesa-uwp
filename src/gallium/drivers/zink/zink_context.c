@@ -1217,11 +1217,15 @@ unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsig
    struct zink_resource *res = zink_resource(image_view->base.resource);
    unbind_shader_image_counts(ctx, res, is_compute, image_view->base.access & PIPE_IMAGE_ACCESS_WRITE);
 
-   if (image_view->base.resource->target == PIPE_BUFFER)
+   if (image_view->base.resource->target == PIPE_BUFFER) {
+      if (zink_batch_usage_exists(image_view->buffer_view->batch_uses))
+         zink_batch_reference_bufferview(&ctx->batch, image_view->buffer_view);
       zink_buffer_view_reference(zink_screen(ctx->base.screen), &image_view->buffer_view, NULL);
-   else {
+   } else {
       if (!res->image_bind_count[is_compute])
          check_for_layout_update(ctx, res, is_compute);
+      if (zink_batch_usage_exists(image_view->surface->batch_uses))
+         zink_batch_reference_surface(&ctx->batch, image_view->surface);
       zink_surface_reference(zink_screen(ctx->base.screen), &image_view->surface, NULL);
    }
    pipe_resource_reference(&image_view->base.resource, NULL);
@@ -1297,7 +1301,6 @@ zink_set_shader_images(struct pipe_context *pctx,
          if (!ctx->descriptor_refs_dirty[p_stage == PIPE_SHADER_COMPUTE]) {
             zink_batch_resource_usage_set(&ctx->batch, zink_resource(image_view->base.resource),
                                              zink_resource_access_is_write(access));
-            zink_batch_reference_image_view(&ctx->batch, image_view);
          }
          update = true;
       } else if (image_view->base.resource) {
@@ -3144,6 +3147,8 @@ check_and_rebind_buffer(struct zink_context *ctx, struct zink_resource *res, uns
    case ZINK_DESCRIPTOR_TYPE_IMAGE: {
       struct zink_image_view *image_view = &ctx->image_views[shader][i];
       zink_descriptor_set_refs_clear(&image_view->buffer_view->desc_set_refs, image_view->buffer_view);
+      if (zink_batch_usage_exists(image_view->buffer_view->batch_uses))
+         zink_batch_reference_bufferview(&ctx->batch, image_view->buffer_view);
       zink_buffer_view_reference(zink_screen(ctx->base.screen), &image_view->buffer_view, NULL);
       if (!zink_resource_object_init_storage(ctx, res)) {
          debug_printf("couldn't create storage image!");
