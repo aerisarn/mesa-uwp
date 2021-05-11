@@ -368,6 +368,15 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
         case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
                 return 0;
         case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
+                /* We don't currently support this in the backend, but that is
+                 * okay because our NIR compiler sets the option
+                 * lower_all_io_to_temps, which will eliminate indirect
+                 * indexing on all input/output variables by translating it to
+                 * indirect indexing on temporary variables instead, which we
+                 * will then lower to scratch. We prefer this over setting this
+                 * to 0, which would cause if-ladder injection to eliminate
+                 * indirect indexing on inputs.
+                 */
                 return 1;
         case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR:
                 return 1;
