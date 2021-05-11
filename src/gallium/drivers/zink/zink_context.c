@@ -1338,8 +1338,7 @@ unbind_samplerview(struct zink_context *ctx, enum pipe_shader_type stage, unsign
    struct zink_resource *res = zink_resource(sv->base.texture);
    check_samplerview_for_batch_ref(ctx, sv);
    update_res_bind_count(ctx, res, stage == PIPE_SHADER_COMPUTE, true);
-   if (!res->obj->is_buffer)
-      res->sampler_binds[stage] &= ~BITFIELD_BIT(slot);
+   res->sampler_binds[stage] &= ~BITFIELD_BIT(slot);
 }
 
 static void
@@ -1401,12 +1400,12 @@ zink_set_sampler_views(struct pipe_context *pctx,
              } else  if (a != b)
                 update = true;
              flush_pending_clears(ctx, res);
-             res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
              check_for_layout_update(ctx, res, shader_type == PIPE_SHADER_COMPUTE);
              zink_batch_usage_set(&b->image_view->batch_uses, ctx->batch.state);
              if (!a)
                 update = true;
          }
+         res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
          zink_batch_resource_usage_set(&ctx->batch, res, false);
       } else if (a) {
          unbind_samplerview(ctx, shader_type, start_slot + i);
