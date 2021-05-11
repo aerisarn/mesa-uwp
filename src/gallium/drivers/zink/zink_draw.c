@@ -169,20 +169,19 @@ get_compute_program(struct zink_context *ctx)
                                ctx->inlinable_uniforms_valid_mask &
                                ctx->shader_has_inlinable_uniforms_mask & bits;
    if (ctx->dirty_shader_stages & bits) {
+      struct zink_compute_program *comp = NULL;
       struct hash_entry *entry = _mesa_hash_table_search(ctx->compute_program_cache,
                                                          &ctx->compute_stage->shader_id);
       if (!entry) {
-         struct zink_compute_program *comp;
          comp = zink_create_compute_program(ctx, ctx->compute_stage);
          entry = _mesa_hash_table_insert(ctx->compute_program_cache, &comp->shader->shader_id, comp);
-         if (!entry)
-            return NULL;
       }
-      if (ctx->curr_compute != entry->data) {
+      comp = entry ? entry->data : NULL;
+      if (comp && comp != ctx->curr_compute) {
          ctx->compute_pipeline_state.dirty = true;
-         zink_batch_reference_program(&ctx->batch, entry->data);
+         zink_batch_reference_program(&ctx->batch, &comp->base);
       }
-      ctx->curr_compute = entry->data;
+      ctx->curr_compute = comp;
       ctx->dirty_shader_stages &= bits;
       ctx->inlinable_uniforms_dirty_mask &= bits;
    }
@@ -208,22 +207,21 @@ get_gfx_program(struct zink_context *ctx)
                                ctx->inlinable_uniforms_valid_mask &
                                ctx->shader_has_inlinable_uniforms_mask & bits;
    if (ctx->dirty_shader_stages & bits) {
+      struct zink_gfx_program *prog = NULL;
       struct hash_entry *entry = _mesa_hash_table_search(ctx->program_cache,
                                                          ctx->gfx_stages);
       if (entry)
          zink_update_gfx_program(ctx, entry->data);
       else {
-         struct zink_gfx_program *prog;
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages);
          entry = _mesa_hash_table_insert(ctx->program_cache, prog->shaders, prog);
-         if (!entry)
-            return NULL;
       }
-      if (ctx->curr_program != entry->data) {
+      prog = entry ? entry->data : NULL;
+      if (prog && prog != ctx->curr_program) {
          ctx->gfx_pipeline_state.combined_dirty = true;
-         zink_batch_reference_program(&ctx->batch, entry->data);
+         zink_batch_reference_program(&ctx->batch, &prog->base);
       }
-      ctx->curr_program = entry->data;
+      ctx->curr_program = prog;
       ctx->dirty_shader_stages &= ~bits;
       ctx->inlinable_uniforms_dirty_mask &= ~bits;
    }
