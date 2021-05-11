@@ -2466,8 +2466,10 @@ emit_store_output_gs(struct v3d_compile *c, nir_intrinsic_instr *instr)
          * different offsets in the VPM and we need to use the scatter write
          * instruction to have a different offset for each lane.
          */
-         vir_VPM_WRITE_indirect(c, val, offset,
-                                nir_src_is_dynamically_uniform(instr->src[1]));
+         bool is_uniform_offset =
+                 !vir_in_nonuniform_control_flow(c) &&
+                 !nir_src_is_divergent(instr->src[1]);
+         vir_VPM_WRITE_indirect(c, val, offset, is_uniform_offset);
 
         if (vir_in_nonuniform_control_flow(c)) {
                 struct qinst *last_inst =
