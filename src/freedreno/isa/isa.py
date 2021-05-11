@@ -400,6 +400,9 @@ class ISA(object):
         # Table of all bitsets:
         self.bitsets = {}
 
+        # Max needed bitsize for one instruction
+        self.bitsize = 0
+
         root = ElementTree.parse(xmlpath).getroot()
         self.parse_file(root)
         self.validate_isa()
@@ -435,6 +438,7 @@ class ISA(object):
             if b.size is not None:
                 dbg("toplevel: " + b.name)
                 self.roots[b.name] = b
+                self.bitsize = max(self.bitsize, b.size)
             else:
                 dbg("derived: " + b.name)
             self.bitsets[b.name] = b
