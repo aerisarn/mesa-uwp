@@ -790,9 +790,7 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
                                sizeof((fb->rts[i].clear_value)));
                 }
 
-                /* Discard RTs that have no draws or clear. */
-                if (!reserve && !((batch->clear | batch->draws) & mask))
-                        fb->rts[i].discard = true;
+                fb->rts[i].discard = !reserve && !(batch->resolve & mask);
 
                 rts[i].format = surf->format;
                 rts[i].dim = MALI_TEXTURE_DIMENSION_2D;
@@ -862,12 +860,8 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
                 fb->zs.clear_value.stencil = batch->clear_stencil;
         }
 
-        /* Discard if Z/S are not updated */
-        if (!reserve && !((batch->draws | batch->clear) & PIPE_CLEAR_DEPTH))
-                fb->zs.discard.z = true;
-
-        if (!reserve && !((batch->draws | batch->clear) & PIPE_CLEAR_STENCIL))
-                fb->zs.discard.s = true;
+        fb->zs.discard.z = !reserve && !(batch->resolve & PIPE_CLEAR_DEPTH);
+        fb->zs.discard.s = !reserve && !(batch->resolve & PIPE_CLEAR_STENCIL);
 
         if (!fb->zs.clear.z &&
             ((batch->read & PIPE_CLEAR_DEPTH) ||
