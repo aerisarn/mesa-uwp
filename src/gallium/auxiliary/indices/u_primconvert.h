@@ -29,6 +29,10 @@
 
 #include "pipe/p_state.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct primconvert_context;
 
 struct primconvert_config {
@@ -51,5 +55,9 @@ void util_primconvert_draw_vbo(struct primconvert_context *pc,
                                const struct pipe_draw_indirect_info *indirect,
                                const struct pipe_draw_start_count_bias *draws,
                                unsigned num_draws);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* U_PRIMCONVERT_H_ */
