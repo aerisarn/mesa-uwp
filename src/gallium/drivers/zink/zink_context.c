@@ -933,7 +933,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             update_res_bind_count(ctx, res, false, false);
             ctx_vb->stride = vb->stride;
             ctx_vb->buffer_offset = vb->buffer_offset;
-            zink_batch_reference_resource_rw(&ctx->batch, res, false);
+            zink_batch_resource_usage_set(&ctx->batch, res, false);
             zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
                                          VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
          }
@@ -1835,7 +1835,7 @@ zink_update_descriptor_refs(struct zink_context *ctx, bool compute)
       unsigned last_vbo = util_last_bit(vertex_buffers_enabled_mask);
       for (unsigned i = 0; i < last_vbo + 1; i++) {
          if (ctx->vertex_buffers[i].buffer.resource)
-            zink_batch_reference_resource_rw(batch, zink_resource(ctx->vertex_buffers[i].buffer.resource), false);
+            zink_batch_resource_usage_set(batch, zink_resource(ctx->vertex_buffers[i].buffer.resource), false);
       }
       if (ctx->curr_program)
          zink_batch_reference_program(batch, &ctx->curr_program->base);
