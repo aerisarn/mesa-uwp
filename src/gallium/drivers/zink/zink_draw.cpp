@@ -417,6 +417,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS];
    bool need_index_buffer_unref = false;
    bool mode_changed = ctx->gfx_pipeline_state.mode != dinfo->mode;
+   bool reads_drawid = ctx->shader_reads_drawid;
 
    update_barriers(ctx, false);
 
@@ -424,9 +425,8 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->gfx_pipeline_state.dirty = true;
    bool drawid_broken = ctx->drawid_broken;
    ctx->drawid_broken = false;
-   if (!dindirect || !dindirect->buffer)
-      ctx->drawid_broken = BITSET_TEST(ctx->gfx_stages[PIPE_SHADER_VERTEX]->nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID) &&
-                           (drawid_offset != 0 ||
+   if (reads_drawid && (!dindirect || !dindirect->buffer))
+      ctx->drawid_broken = (drawid_offset != 0 ||
                            (!HAS_MULTIDRAW && num_draws > 1) ||
                            (HAS_MULTIDRAW && num_draws > 1 && !dinfo->increment_draw_id));
    if (drawid_broken != ctx->drawid_broken)

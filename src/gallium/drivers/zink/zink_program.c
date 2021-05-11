@@ -890,6 +890,13 @@ zink_bind_vs_state(struct pipe_context *pctx,
        !ctx->gfx_stages[PIPE_SHADER_TESS_EVAL]) {
       ctx->last_vertex_stage = cso;
    }
+   if (cso) {
+      struct zink_shader *zs = cso;
+      ctx->shader_reads_drawid = BITSET_TEST(zs->nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
+   } else {
+      ctx->shader_reads_drawid = false;
+   }
+
 }
 
 static void
