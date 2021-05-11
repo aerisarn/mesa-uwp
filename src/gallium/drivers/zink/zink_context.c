@@ -3164,8 +3164,7 @@ check_and_rebind_buffer(struct zink_context *ctx, struct zink_resource *res, uns
    }
 
    zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, shader, type, i, 1);
-   if (!ctx->descriptor_refs_dirty[shader == PIPE_SHADER_COMPUTE])
-      zink_batch_reference_resource_rw(&ctx->batch, res, is_write);
+   zink_batch_resource_usage_set(&ctx->batch, res, is_write);
    VkAccessFlags access = 0;
    if (is_read)
       access |= VK_ACCESS_SHADER_READ_BIT;
@@ -3235,8 +3234,7 @@ out:
    assert(total_binds == num_rebinds);
    if (!res->vbo_bind_count)
       return;
-   if (!num_rebinds && !ctx->descriptor_refs_dirty[0])
-      zink_batch_reference_resource_rw(&ctx->batch, res, false);
+   zink_batch_resource_usage_set(&ctx->batch, res, false);
    ctx->vertex_buffers_dirty = true;
    zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
                                 VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
@@ -3380,6 +3378,9 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
 
    assert(d->internal_format == s->internal_format);
    util_idalloc_mt_free(&zink_screen(pctx->screen)->buffer_ids, delete_buffer_id);
+   if (zink_batch_usage_is_unflushed(d->obj->reads) ||
+       zink_batch_usage_is_unflushed(d->obj->writes))
+      zink_batch_reference_resource(&zink_context(pctx)->batch, d);
    zink_resource_object_reference(zink_screen(pctx->screen), &d->obj, s->obj);
    d->access = s->access;
    d->access_stage = s->access_stage;
