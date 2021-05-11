@@ -1687,7 +1687,6 @@ begin_render_pass(struct zink_context *ctx)
       if (ctx->framebuffer->surfaces[i]) {
          struct zink_surface *surf = zink_surface(ctx->framebuffer->surfaces[i]);
          zink_batch_reference_resource_rw(batch, zink_resource(surf->base.texture), true);
-         zink_batch_reference_surface(batch, surf);
          zink_batch_usage_set(&surf->batch_uses, batch->state);
 
          struct zink_resource *res = zink_resource(surf->base.texture);
@@ -1946,6 +1945,8 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, bool chan
       return;
    if (changed) {
       zink_fb_clears_apply(ctx, surf->texture);
+      if (zink_batch_usage_exists(zink_surface(surf)->batch_uses))
+         zink_batch_reference_surface(&ctx->batch, zink_surface(surf));
       ctx->rp_changed = true;
    }
    zink_resource(surf->texture)->fb_binds--;
