@@ -436,6 +436,33 @@ iris_resource_disable_aux(struct iris_resource *res)
    res->aux.state = NULL;
 }
 
+static uint32_t
+iris_resource_alloc_flags(const struct iris_screen *screen,
+                          const struct pipe_resource *templ)
+{
+   uint32_t flags = 0;
+
+   switch (templ->usage) {
+   case PIPE_USAGE_STAGING:
+      flags |= BO_ALLOC_SMEM | BO_ALLOC_COHERENT;
+      break;
+   case PIPE_USAGE_STREAM:
+      flags |= BO_ALLOC_SMEM;
+      break;
+   case PIPE_USAGE_DYNAMIC:
+   case PIPE_USAGE_DEFAULT:
+   case PIPE_USAGE_IMMUTABLE:
+      /* Use LMEM for these if possible */
+      break;
+   }
+
+   if (templ->flags & (PIPE_RESOURCE_FLAG_MAP_COHERENT |
+                       PIPE_RESOURCE_FLAG_MAP_PERSISTENT))
+      flags |= BO_ALLOC_SMEM;
+
+   return flags;
+}
+
 static void
 iris_resource_destroy(struct pipe_screen *screen,
                       struct pipe_resource *p_res)
@@ -950,7 +977,11 @@ iris_resource_create_for_buffer(struct pipe_screen *pscreen,
       name = "dynamic state";
    }
 
-   res->bo = iris_bo_alloc(screen->bufmgr, name, templ->width0, 1, memzone, 0);
+   unsigned flags = iris_resource_alloc_flags(screen, templ);
+
+   res->bo =
+      iris_bo_alloc(screen->bufmgr, name, templ->width0, 1, memzone, flags);
+
    if (!res->bo) {
       iris_resource_destroy(pscreen, &res->base.b);
       return NULL;
@@ -992,9 +1023,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    const char *name = "miptree";
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
 
-   unsigned int flags = 0;
-   if (templ->usage == PIPE_USAGE_STAGING)
-      flags |= BO_ALLOC_COHERENT;
+   unsigned int flags = iris_resource_alloc_flags(screen, templ);
 
    /* These are for u_upload_mgr buffers only */
    assert(!(templ->flags & (IRIS_RESOURCE_FLAG_SHADER_MEMZONE |

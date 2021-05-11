@@ -242,6 +242,7 @@ struct iris_bo {
 
 #define BO_ALLOC_ZEROED     (1<<0)
 #define BO_ALLOC_COHERENT   (1<<1)
+#define BO_ALLOC_SMEM       (1<<2)
 
 /**
  * Allocate a buffer object.
