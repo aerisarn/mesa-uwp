@@ -99,8 +99,8 @@ d3d12_create_vertex_elements_state(struct pipe_context *pctx,
       return NULL;
 
    for (unsigned i = 0; i < num_elements; ++i) {
-      cso->elements[i].SemanticName = dxil_vs_attr_index_to_name(i);
-      cso->elements[i].SemanticIndex = 0;
+      cso->elements[i].SemanticName = "TEXCOORD";
+      cso->elements[i].SemanticIndex = i;
 
       enum pipe_format format_helper = d3d12_emulated_vtx_format(elements[i].src_format);
       bool needs_emulation = format_helper != elements[i].src_format;

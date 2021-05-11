@@ -1340,7 +1340,8 @@ emit_metadata(struct ntd_context *ctx)
          return false;
    }
 
-   const struct dxil_mdnode *signatures = get_signatures(&ctx->mod, ctx->shader);
+   const struct dxil_mdnode *signatures = get_signatures(&ctx->mod, ctx->shader,
+                                                         ctx->opts->vulkan_environment);
 
    const struct dxil_mdnode *dx_entry_point = emit_entrypoint(ctx, main_func,
        "main", signatures, resources_node, shader_properties);
@@ -4755,24 +4756,6 @@ out:
    ralloc_free(ctx->ralloc_ctx);
    free(ctx);
    return retval;
-}
-
-static const char *generics_semantics[] = {
-   "GENERICAA", "GENERICAB", "GENERICAC", "GENERICAD",
-   "GENERICAE", "GENERICAF", "GENERICAG", "GENERICAH",
-   "GENERICBA", "GENERICBB", "GENERICBC", "GENERICBD",
-   "GENERICBE", "GENERICBF", "GENERICBG", "GENERICBH",
-   "GENERICCA", "GENERICCB", "GENERICCC", "GENERICCD",
-   "GENERICCE", "GENERICCF", "GENERICCG", "GENERICCH",
-   "GENERICDA", "GENERICDB", "GENERICDC", "GENERICDD",
-   "GENERICDE", "GENERICDF", "GENERICDG", "GENERICDH"
-};
-
-const char *
-dxil_vs_attr_index_to_name(unsigned index)
-{
-   assert(index < 32);
-   return generics_semantics[index];
 }
 
 enum dxil_sysvalue_type
