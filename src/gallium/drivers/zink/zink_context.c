@@ -1295,7 +1295,7 @@ zink_set_shader_images(struct pipe_context *pctx,
             flush_pending_clears(ctx, res);
          }
          if (!ctx->descriptor_refs_dirty[p_stage == PIPE_SHADER_COMPUTE]) {
-            zink_batch_reference_resource_rw(&ctx->batch, zink_resource(image_view->base.resource),
+            zink_batch_resource_usage_set(&ctx->batch, zink_resource(image_view->base.resource),
                                              zink_resource_access_is_write(access));
             zink_batch_reference_image_view(&ctx->batch, image_view);
          }
