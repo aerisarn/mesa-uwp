@@ -49,6 +49,7 @@ bifrost_get_quirks(unsigned product_id)
                 return BIFROST_NO_PRELOAD;
         case 0x70:
         case 0x72:
+        case 0x74:
                 return 0;
         default:
                 unreachable("Unknown Bifrost GPU ID");

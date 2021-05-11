@@ -217,6 +217,7 @@ panfrost_model_name(unsigned gpu_id)
         case 0x6221: return "Mali G72 (Panfrost)";
         case 0x7093: return "Mali G31 (Panfrost)";
         case 0x7212: return "Mali G52 (Panfrost)";
+        case 0x7402: return "Mali G52L (Panfrost)";
         default:
                     unreachable("Invalid GPU ID");
         }
