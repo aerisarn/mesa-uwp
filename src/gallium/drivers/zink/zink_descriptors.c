@@ -1324,10 +1324,11 @@ update_descriptors_internal(struct zink_context *ctx, struct zink_descriptor_set
 static void
 zink_context_update_descriptor_states(struct zink_context *ctx, struct zink_program *pg);
 
-void
+bool
 zink_descriptors_update(struct zink_context *ctx, bool is_compute)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
+   struct zink_batch_state *bs = ctx->batch.state;
 
    zink_context_update_descriptor_states(ctx, pg);
    bool cache_hit[ZINK_DESCRIPTOR_TYPES + 1];
@@ -1376,6 +1377,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                            pg->layout, 0, pg->num_dsl, sets,
                            dynamic_offset_idx, dynamic_offsets);
    ctx->dd->pg[is_compute] = pg;
+   return bs != batch->state;
 }
 
 void
