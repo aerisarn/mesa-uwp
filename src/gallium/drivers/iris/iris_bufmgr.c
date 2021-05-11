@@ -622,10 +622,11 @@ struct iris_bo *
 iris_bo_alloc(struct iris_bufmgr *bufmgr,
               const char *name,
               uint64_t size,
-              enum iris_memory_zone memzone)
+              enum iris_memory_zone memzone,
+              unsigned flags)
 {
    return bo_alloc_internal(bufmgr, name, size, 1, memzone,
-                            0, I915_TILING_NONE, 0);
+                            flags, I915_TILING_NONE, 0);
 }
 
 struct iris_bo *

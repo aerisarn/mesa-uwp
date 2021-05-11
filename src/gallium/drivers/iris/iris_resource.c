@@ -904,10 +904,9 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
       /* Add on a clear color BO. */
       if (iris_get_aux_clear_color_state_size(screen) > 0) {
          res->aux.clear_color_bo =
-            iris_bo_alloc_tiled(screen->bufmgr, "clear color_buffer",
-                                iris_get_aux_clear_color_state_size(screen),
-                                1, IRIS_MEMZONE_OTHER, I915_TILING_NONE, 0,
-                                BO_ALLOC_ZEROED);
+            iris_bo_alloc(screen->bufmgr, "clear color_buffer",
+                          iris_get_aux_clear_color_state_size(screen),
+                          IRIS_MEMZONE_OTHER, BO_ALLOC_ZEROED);
       }
    } else if (num_main_planes == 1 && num_planes == 3) {
       import_aux_info(r[0], r[1]);
@@ -964,7 +963,7 @@ iris_resource_create_for_buffer(struct pipe_screen *pscreen,
       name = "dynamic state";
    }
 
-   res->bo = iris_bo_alloc(screen->bufmgr, name, templ->width0, memzone);
+   res->bo = iris_bo_alloc(screen->bufmgr, name, templ->width0, memzone, 0);
    if (!res->bo) {
       iris_resource_destroy(pscreen, &res->base.b);
       return NULL;
@@ -1516,7 +1515,7 @@ iris_invalidate_resource(struct pipe_context *ctx,
    struct iris_bo *old_bo = res->bo;
    struct iris_bo *new_bo =
       iris_bo_alloc(screen->bufmgr, res->bo->name, resource->width0,
-                    iris_memzone_for_address(old_bo->gtt_offset));
+                    iris_memzone_for_address(old_bo->gtt_offset), 0);
    if (!new_bo)
       return;
 
