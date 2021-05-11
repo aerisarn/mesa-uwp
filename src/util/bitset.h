@@ -105,6 +105,47 @@ __bitset_not(BITSET_WORD *x, unsigned n)
 #define BITSET_NOT(x)   \
    __bitset_not(x, ARRAY_SIZE(x))
 
+static inline void
+__bitset_rotate_right(BITSET_WORD *x, unsigned amount, unsigned n)
+{
+   assert(amount < BITSET_WORDBITS);
+
+   if (amount == 0)
+      return;
+
+   for (unsigned i = 0; i < n - 1; i++) {
+      x[i] = (x[i] >> amount) | (x[i + 1] << (BITSET_WORDBITS - amount));
+   }
+
+   x[n - 1] = x[n - 1] >> amount;
+}
+
+static inline void
+__bitset_shr(BITSET_WORD *x, unsigned amount, unsigned n)
+{
+   const unsigned int words = amount / BITSET_WORDBITS;
+
+   if (amount == 0)
+      return;
+
+   if (words) {
+      unsigned i;
+
+      for (i = 0; i < n - words; i++)
+         x[i] = x[i + words];
+
+      while (i < n)
+         x[i++] = 0;
+
+      amount %= BITSET_WORDBITS;
+   }
+
+   __bitset_rotate_right(x, amount, n);
+}
+
+#define BITSET_SHR(x, n)   \
+   __bitset_shr(x, n, ARRAY_SIZE(x));
+
 /* bit range operations
  */
 #define BITSET_TEST_RANGE(x, b, e) \
