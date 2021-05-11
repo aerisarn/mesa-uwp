@@ -644,7 +644,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->state->cmdbuf, ctx->blend_constants);
 
-   if (BATCH_CHANGED || ctx->vertex_buffers_dirty || pipeline_changed)
+   if (BATCH_CHANGED || ctx->vertex_buffers_dirty)
       zink_bind_vertex_buffers<HAS_DYNAMIC_STATE>(batch, ctx);
 
    if (BITSET_TEST(ctx->gfx_stages[PIPE_SHADER_VERTEX]->nir->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX)) {
