@@ -1795,7 +1795,7 @@ update_resource_refs_for_stage(struct zink_context *ctx, enum pipe_shader_type s
             if (!res)
                continue;
             bool is_write = zink_resource_access_is_write(get_access_flags_for_binding(ctx, i, stage, j));
-            zink_batch_reference_resource_rw(batch, res, is_write);
+            zink_batch_resource_usage_set(batch, res, is_write);
 
             struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[stage][j]);
             struct zink_sampler_state *sampler_state = ctx->sampler_states[stage][j];
