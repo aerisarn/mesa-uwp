@@ -550,10 +550,6 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
          ctx->gfx_pipeline_state.front_face = ctx->rast_state->front_face;
          ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
       }
-      if (ctx->line_width != ctx->rast_state->line_width) {
-         ctx->line_width = ctx->rast_state->line_width;
-         ctx->gfx_pipeline_state.dirty = true;
-      }
       if (ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization)
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);
       if (ctx->rast_state->base.scissor != scissor)

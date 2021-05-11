@@ -234,7 +234,6 @@ struct zink_context {
    bool vp_state_changed;
    bool scissor_changed;
 
-   float line_width;
    float blend_constants[4];
 
    bool sample_locations_changed;

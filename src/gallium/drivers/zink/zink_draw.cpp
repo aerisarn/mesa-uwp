@@ -620,8 +620,8 @@ zink_draw_vbo(struct pipe_context *pctx,
       }
 
       if (line_width_needed(reduced_prim, rast_state->hw_state.polygon_mode)) {
-         if (screen->info.feats.features.wideLines || ctx->line_width == 1.0f)
-            vkCmdSetLineWidth(batch->state->cmdbuf, ctx->line_width);
+         if (screen->info.feats.features.wideLines || rast_state->line_width == 1.0f)
+            vkCmdSetLineWidth(batch->state->cmdbuf, rast_state->line_width);
          else
             debug_printf("BUG: wide lines not supported, needs fallback!");
       }
