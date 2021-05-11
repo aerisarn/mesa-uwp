@@ -575,6 +575,13 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
                                                       &modifier,
                                                       &res->blob_mem);
 
+   /* do not use winsys returns for guest storage info of classic resource */
+   if (!res->blob_mem) {
+      winsys_stride = 0;
+      plane_offset = 0;
+      modifier = 0;
+   }
+
    virgl_resource_layout(&res->u.b, &res->metadata, plane, winsys_stride,
                          plane_offset, modifier);
    if (!res->hw_res) {
