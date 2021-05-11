@@ -105,6 +105,7 @@ tc_clear_driver_thread(struct threaded_context *tc)
 #define call_size(type)          size_to_slots(sizeof(struct type))
 #define call_size_with_slots(type, num_slots) size_to_slots( \
    sizeof(struct type) + sizeof(((struct type*)NULL)->slot[0]) * (num_slots))
+#define get_next_call(ptr, type) ((struct type*)((uint64_t*)ptr + call_size(type)))
 
 /* Assign src to dst while dst is uninitialized. */
 static inline void
@@ -245,10 +246,10 @@ tc_batch_execute(void *job, UNUSED int thread_index)
                tc_drop_resource_reference(next->info.index.resource);
 
             /* Find how many other draws can be merged. */
-            next++;
+            next = get_next_call(next, tc_draw_single);
             for (; (uint64_t*)next != last &&
                  is_next_call_a_mergeable_draw(first, next);
-                 next++, num_draws++) {
+                 next = get_next_call(next, tc_draw_single), num_draws++) {
                /* u_threaded_context stores start/count in min/max_index for single draws. */
                multi[num_draws].start = next->info.min_index;
                multi[num_draws].count = next->info.max_index;
