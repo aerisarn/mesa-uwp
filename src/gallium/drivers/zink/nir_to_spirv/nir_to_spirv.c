@@ -3912,6 +3912,5 @@ fail:
 void
 spirv_shader_delete(struct spirv_shader *s)
 {
-   FREE(s->words);
-   FREE(s);
+   ralloc_free(s);
 }
