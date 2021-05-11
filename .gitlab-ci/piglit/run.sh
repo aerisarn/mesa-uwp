@@ -244,9 +244,11 @@ if [ -n "$USE_CASELIST" ]; then
 
     grep -F -f /tmp/executed.txt "$INSTALL/$PIGLIT_RESULTS.txt" \
        > ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" || true
-else
+elif [ -f "$INSTALL/$PIGLIT_RESULTS.txt" ]; then
     cp "$INSTALL/$PIGLIT_RESULTS.txt" \
        ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline"
+else
+    touch ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline"
 fi
 
 if diff -q ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE; then
