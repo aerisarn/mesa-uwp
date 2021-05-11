@@ -299,6 +299,7 @@ struct zink_context {
    bool have_timelines;
 
    bool is_device_lost;
+   bool blend_state_changed : 1;
    bool rast_state_changed : 1;
    bool dsa_state_changed : 1;
    bool stencil_ref_changed : 1;

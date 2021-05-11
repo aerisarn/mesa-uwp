@@ -293,6 +293,7 @@ zink_bind_blend_state(struct pipe_context *pctx, void *cso)
    if (state->blend_state != cso) {
       state->blend_state = cso;
       state->dirty = true;
+      zink_context(pctx)->blend_state_changed = true;
    }
 }
 

@@ -642,8 +642,11 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->sample_locations_changed = false;
    }
 
-   if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
+   if ((BATCH_CHANGED || ctx->blend_state_changed) &&
+       ctx->gfx_pipeline_state.blend_state->need_blend_constants) {
       vkCmdSetBlendConstants(batch->state->cmdbuf, ctx->blend_constants);
+   }
+   ctx->blend_state_changed = false;
 
    if (BATCH_CHANGED || ctx->vertex_buffers_dirty)
       zink_bind_vertex_buffers<HAS_DYNAMIC_STATE>(batch, ctx);
