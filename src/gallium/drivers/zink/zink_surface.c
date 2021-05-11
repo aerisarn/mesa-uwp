@@ -264,6 +264,7 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
       /* reuse existing surface; old one will be cleaned up naturally */
       struct zink_surface *new_surface = new_entry->data;
       simple_mtx_unlock(&screen->surface_mtx);
+      zink_batch_usage_set(&new_surface->batch_uses, ctx->batch.state);
       zink_surface_reference(screen, (struct zink_surface**)psurface, new_surface);
       return true;
    }
@@ -283,6 +284,7 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    surface->simage_view = surface->image_view;
    surface->image_view = image_view;
    surface->obj = zink_resource(surface->base.texture)->obj;
+   zink_batch_usage_set(&surface->batch_uses, ctx->batch.state);
    simple_mtx_unlock(&screen->surface_mtx);
    return true;
 }
