@@ -79,6 +79,8 @@ panfrost_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
         case nir_intrinsic_load_sample_positions_pan:
                 return PAN_SYSVAL_SAMPLE_POSITIONS;
         case nir_intrinsic_load_first_vertex:
+        case nir_intrinsic_load_base_vertex:
+        case nir_intrinsic_load_base_instance:
                 return PAN_SYSVAL_VERTEX_INSTANCE_OFFSETS;
         case nir_intrinsic_load_ssbo_address: 
         case nir_intrinsic_get_ssbo_size: 

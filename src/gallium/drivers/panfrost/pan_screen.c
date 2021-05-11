@@ -310,6 +310,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_DRAW_INDIRECT:
                 return has_heap && is_deqp;
 
+        case PIPE_CAP_START_INSTANCE:
+                return pan_is_bifrost(dev) && is_deqp;
+
         default:
                 return u_pipe_screen_get_param_defaults(screen, param);
         }

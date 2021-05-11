@@ -32,6 +32,8 @@ struct pan_indirect_draw_info {
         mali_ptr draw_buf;
         mali_ptr index_buf;
         mali_ptr first_vertex_sysval;
+        mali_ptr base_vertex_sysval;
+        mali_ptr base_instance_sysval;
         mali_ptr vertex_job;
         mali_ptr tiler_job;
         mali_ptr attrib_bufs;

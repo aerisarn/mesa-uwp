@@ -1083,8 +1083,14 @@ panfrost_upload_sysvals(struct panfrost_batch *batch,
                 case PAN_SYSVAL_VERTEX_INSTANCE_OFFSETS:
                         batch->ctx->first_vertex_sysval_ptr =
                                 ptr->gpu + (i * sizeof(*uniforms));
+                        batch->ctx->base_vertex_sysval_ptr =
+                                batch->ctx->first_vertex_sysval_ptr + 4;
+                        batch->ctx->base_instance_sysval_ptr =
+                                batch->ctx->first_vertex_sysval_ptr + 8;
 
                         uniforms[i].u[0] = batch->ctx->offset_start;
+                        uniforms[i].u[1] = batch->ctx->base_vertex;
+                        uniforms[i].u[2] = batch->ctx->base_instance;
                         break;
                 default:
                         assert(0);
@@ -1199,6 +1205,12 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                                 switch (sysval_comp) {
                                 case 0:
                                         batch->ctx->first_vertex_sysval_ptr = ptr;
+                                        break;
+                                case 1:
+                                        batch->ctx->base_vertex_sysval_ptr = ptr;
+                                        break;
+                                case 2:
+                                        batch->ctx->base_instance_sysval_ptr = ptr;
                                         break;
                                 default:
                                         unreachable("Invalid vertex/instance offset component\n");
@@ -1729,6 +1741,12 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
                 /* BOs aligned to 4k so guaranteed aligned to 64 */
                 src_offset += (buf->buffer_offset & 63);
+
+                /* Base instance offset */
+                if (ctx->base_instance && so->pipe[i].instance_divisor) {
+                        src_offset += (ctx->base_instance * buf->stride) /
+                                      so->pipe[i].instance_divisor;
+                }
 
                 /* Also, somewhat obscurely per-instance data needs to be
                  * offset in response to a delayed start in an indexed draw */

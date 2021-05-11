@@ -450,6 +450,8 @@ panfrost_direct_draw(struct panfrost_context *ctx,
         ctx->indirect_draw = false;
         ctx->vertex_count = draw->count + (info->index_size ? abs(draw->index_bias) : 0);
         ctx->instance_count = info->instance_count;
+        ctx->base_vertex = info->index_size ? draw->index_bias : 0;
+        ctx->base_instance = info->start_instance;
         ctx->active_prim = info->mode;
 
         struct panfrost_ptr tiler =
@@ -613,6 +615,9 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
          * vertex shader uses gl_VertexID or gl_BaseVertex.
          */
         ctx->first_vertex_sysval_ptr = 0;
+        ctx->base_vertex_sysval_ptr = 0;
+        ctx->base_instance_sysval_ptr = 0;
+
         bool point_coord_replace = (info->mode == PIPE_PRIM_POINTS);
 
         panfrost_emit_varying_descriptor(batch, 0,
@@ -660,6 +665,8 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
                 .draw_buf = draw_buf->image.data.bo->ptr.gpu + indirect->offset,
                 .index_buf = index_buf ? index_buf->ptr.gpu : 0,
                 .first_vertex_sysval = ctx->first_vertex_sysval_ptr,
+                .base_vertex_sysval = ctx->base_vertex_sysval_ptr,
+                .base_instance_sysval = ctx->base_instance_sysval_ptr,
                 .vertex_job = vertex.gpu,
                 .tiler_job = tiler.gpu,
                 .attrib_bufs = attrib_bufs,

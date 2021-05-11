@@ -55,6 +55,7 @@ struct draw_data {
         nir_ssa_def *index_buf;
         nir_ssa_def *restart_index;
         nir_ssa_def *vertex_count;
+        nir_ssa_def *start_instance;
         nir_ssa_def *instance_count;
         nir_ssa_def *vertex_start;
         nir_ssa_def *index_bias;
@@ -73,6 +74,8 @@ struct jobs_data {
         nir_ssa_def *tiler_job;
         nir_ssa_def *base_vertex_offset;
         nir_ssa_def *first_vertex_sysval;
+        nir_ssa_def *base_vertex_sysval;
+        nir_ssa_def *base_instance_sysval;
         nir_ssa_def *offset_start;
         nir_ssa_def *invocation;
 };
@@ -160,6 +163,9 @@ struct indirect_draw_inputs {
 
         /* {base,first}_{vertex,instance} sysvals */
         mali_ptr first_vertex_sysval;
+        mali_ptr base_vertex_sysval;
+        mali_ptr base_instance_sysval;
+
         /* Pointers to various cmdstream structs that need to be patched */
         mali_ptr vertex_job;
         mali_ptr tiler_job;
@@ -318,6 +324,8 @@ extract_inputs(struct indirect_draw_shader_builder *builder)
                 return;
 
         builder->jobs.first_vertex_sysval = get_input_field(b, first_vertex_sysval);
+        builder->jobs.base_vertex_sysval = get_input_field(b, base_vertex_sysval);
+        builder->jobs.base_instance_sysval = get_input_field(b, base_instance_sysval);
         builder->jobs.vertex_job = get_input_field(b, vertex_job);
         builder->jobs.tiler_job = get_input_field(b, tiler_job);
         builder->attribs.attrib_bufs = get_input_field(b, attrib_bufs);
@@ -506,7 +514,8 @@ update_vertex_attrib_buf(struct indirect_draw_shader_builder *builder,
 
 static void
 adjust_attrib_offset(struct indirect_draw_shader_builder *builder,
-                     nir_ssa_def *attrib_ptr, nir_ssa_def *attrib_buf_ptr)
+                     nir_ssa_def *attrib_ptr, nir_ssa_def *attrib_buf_ptr,
+                     nir_ssa_def *instance_div)
 {
         nir_builder *b = &builder->b;
         nir_ssa_def *zero = nir_imm_int(b, 0);
@@ -515,18 +524,34 @@ adjust_attrib_offset(struct indirect_draw_shader_builder *builder,
                 nir_iand(b, nir_ine(b, builder->jobs.offset_start, zero),
                          nir_ige(b, builder->draw.instance_count, two));
 
-        IF (sub_cur_offset) {
+        nir_ssa_def *add_base_inst_offset =
+                nir_iand(b, nir_ine(b, builder->draw.start_instance, zero),
+                         nir_ine(b, instance_div, zero));
+
+        IF (nir_ior(b, sub_cur_offset, add_base_inst_offset)) {
+                nir_ssa_def *offset =
+                        load_global(b, get_address_imm(b, attrib_ptr, WORD(1)), 1, 32);
+                nir_ssa_def *stride =
+                        load_global(b, get_address_imm(b, attrib_buf_ptr, WORD(2)), 1, 32);
+
                 /* Per-instance data needs to be offset in response to a
                  * delayed start in an indexed draw.
                  */
-                nir_ssa_def *stride =
-                        load_global(b, get_address_imm(b, attrib_buf_ptr, WORD(2)), 1, 32);
-                nir_ssa_def *offset =
-                        load_global(b, get_address_imm(b, attrib_ptr, WORD(1)), 1, 32);
 
-                offset = nir_isub(b, offset,
-                                  nir_imul(b, stride,
-                                  builder->jobs.offset_start));
+                IF (add_base_inst_offset) {
+                        offset = nir_iadd(b, offset,
+                                          nir_idiv(b,
+                                                   nir_imul(b, stride,
+                                                            builder->draw.start_instance),
+                                                   instance_div));
+                } ENDIF
+
+                IF (sub_cur_offset) {
+                        offset = nir_isub(b, offset,
+                                          nir_imul(b, stride,
+                                                   builder->jobs.offset_start));
+                } ENDIF
+
                 store_global(b, get_address_imm(b, attrib_ptr, WORD(1)),
                              offset, 1);
         } ENDIF
@@ -600,10 +625,10 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
                         } ENDIF
                 }
 
-                nir_ssa_def *div =
+                nir_ssa_def *instance_div =
                         load_global(b, get_address_imm(b, attrib_buf_ptr, WORD(7)), 1, 32);
 
-                div = nir_imul(b, div, builder->instance_size.padded);
+                nir_ssa_def *div = nir_imul(b, instance_div, builder->instance_size.padded);
 
                 nir_ssa_def *multi_instance =
                         nir_ige(b, builder->draw.instance_count, nir_imm_int(b, 2));
@@ -636,7 +661,7 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
                                                          nir_imm_int(b, 31), NULL);
                         } ENDIF
 
-                        adjust_attrib_offset(builder, attrib_ptr, attrib_buf_ptr);
+                        adjust_attrib_offset(builder, attrib_ptr, attrib_buf_ptr, instance_div);
                 } ELSE {
                         IF (multi_instance) {
                                 update_vertex_attrib_buf(builder, attrib_buf_ptr,
@@ -888,12 +913,14 @@ patch(struct indirect_draw_shader_builder *builder)
 
         if (index_size) {
                 builder->draw.vertex_count = get_indexed_draw_field(b, draw_ptr, count);
+                builder->draw.start_instance = get_indexed_draw_field(b, draw_ptr, start_instance);
                 builder->draw.instance_count =
                         get_indexed_draw_field(b, draw_ptr, instance_count);
                 builder->draw.vertex_start = get_indexed_draw_field(b, draw_ptr, start);
                 builder->draw.index_bias = get_indexed_draw_field(b, draw_ptr, index_bias);
         } else {
                 builder->draw.vertex_count = get_draw_field(b, draw_ptr, count);
+                builder->draw.start_instance = get_draw_field(b, draw_ptr, start_instance);
                 builder->draw.instance_count = get_draw_field(b, draw_ptr, instance_count);
                 builder->draw.vertex_start = get_draw_field(b, draw_ptr, start);
         }
@@ -914,6 +941,20 @@ patch(struct indirect_draw_shader_builder *builder)
                 store_global(b, builder->jobs.first_vertex_sysval,
                              builder->jobs.offset_start, 1);
         } ENDIF
+
+        IF (nir_ine(b, builder->jobs.base_vertex_sysval, nir_imm_int64(b, 0))) {
+                store_global(b, builder->jobs.base_vertex_sysval,
+                             index_size ?
+                             builder->draw.index_bias :
+                             nir_imm_int(b, 0),
+                             1);
+        } ENDIF
+
+        IF (nir_ine(b, builder->jobs.base_instance_sysval, nir_imm_int64(b, 0))) {
+                store_global(b, builder->jobs.base_instance_sysval,
+                             builder->draw.start_instance, 1);
+        } ENDIF
+
 }
 
 /* Search the min/max index in the range covered by the indirect draw call */
@@ -1255,6 +1296,8 @@ panfrost_emit_indirect_draw(struct pan_pool *pool,
                 .draw_buf = draw_info->draw_buf,
                 .index_buf = draw_info->index_buf,
                 .first_vertex_sysval = draw_info->first_vertex_sysval,
+                .base_vertex_sysval = draw_info->base_vertex_sysval,
+                .base_instance_sysval = draw_info->base_instance_sysval,
                 .vertex_job = draw_info->vertex_job,
                 .tiler_job = draw_info->tiler_job,
                 .attrib_bufs = draw_info->attrib_bufs,
