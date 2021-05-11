@@ -620,7 +620,6 @@ zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_vie
    if (!batch_ptr_add_usage(batch, batch->state->bufferviews, buffer_view))
       return;
    pipe_reference(NULL, &buffer_view->reference);
-   zink_batch_usage_set(&buffer_view->batch_uses, batch->state);
    batch->has_work = true;
 }
 
@@ -631,7 +630,6 @@ zink_batch_reference_surface(struct zink_batch *batch, struct zink_surface *surf
       return;
    struct pipe_surface *surf = NULL;
    pipe_surface_reference(&surf, &surface->base);
-   zink_batch_usage_set(&surface->batch_uses, batch->state);
    batch->has_work = true;
 }
 
