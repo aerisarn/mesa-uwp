@@ -638,17 +638,12 @@ zink_draw_vbo(struct pipe_context *pctx,
    zink_query_update_gs_states(ctx);
 
    if (have_streamout) {
-      for (unsigned j = 0; j < ctx->num_so_targets; j++) {
-         struct zink_so_target *t = zink_so_target(ctx->so_targets[j]);
-         if (t)
-            t->stride = ctx->last_vertex_stage->streamout.so_info.stride[j] * sizeof(uint32_t);
-      }
-
       for (unsigned i = 0; i < ctx->num_so_targets; i++) {
          struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
          counter_buffers[i] = VK_NULL_HANDLE;
          if (t) {
             struct zink_resource *res = zink_resource(t->counter_buffer);
+            t->stride = ctx->last_vertex_stage->streamout.so_info.stride[i] * sizeof(uint32_t);
             zink_batch_reference_resource_rw(batch, res, true);
             if (t->counter_buffer_valid) {
                counter_buffers[i] = res->obj->buffer;
