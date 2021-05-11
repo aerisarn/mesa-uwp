@@ -115,10 +115,10 @@ struct zink_resource {
          VkImageAspectFlags aspect;
          bool optimal_tiling;
          uint8_t fb_binds;
-         uint16_t image_bind_count[2]; //gfx, compute
       };
    };
    uint32_t sampler_binds[PIPE_SHADER_TYPES];
+   uint16_t image_bind_count[2]; //gfx, compute
    uint16_t write_bind_count[2]; //gfx, compute
    uint16_t bind_count[2]; //gfx, compute
 

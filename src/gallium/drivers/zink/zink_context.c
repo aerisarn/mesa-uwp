@@ -1189,11 +1189,9 @@ unbind_shader_image_counts(struct zink_context *ctx, struct zink_resource *res, 
    update_res_bind_count(ctx, res, is_compute, true);
    if (writable)
       res->write_bind_count[is_compute]--;
-   if (res->obj->is_buffer)
-      return;
    res->image_bind_count[is_compute]--;
    /* if this was the last image bind, the sampler bind layouts must be updated */
-   if (!res->image_bind_count[is_compute] && res->bind_count[is_compute])
+   if (!res->obj->is_buffer && !res->image_bind_count[is_compute] && res->bind_count[is_compute])
       update_binds_for_samplerviews(ctx, res, is_compute);
 }
 
@@ -1272,6 +1270,7 @@ zink_set_shader_images(struct pipe_context *pctx,
          if (image_view->base.access & PIPE_IMAGE_ACCESS_READ) {
             access |= VK_ACCESS_SHADER_READ_BIT;
          }
+         res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
          if (images[i].resource->target == PIPE_BUFFER) {
             image_view->buffer_view = get_buffer_view(ctx, res, images[i].format, images[i].u.buf.offset, images[i].u.buf.size);
             assert(image_view->buffer_view);
@@ -1289,7 +1288,6 @@ zink_set_shader_images(struct pipe_context *pctx,
             tmpl.u.tex.last_layer = images[i].u.tex.last_layer;
             image_view->surface = zink_surface(pctx->create_surface(pctx, &res->base.b, &tmpl));
             assert(image_view->surface);
-            res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
             /* if this is the first image bind and there are sampler binds, the image's sampler layout
              * must be updated to GENERAL
              */
