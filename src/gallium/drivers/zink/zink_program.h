@@ -128,8 +128,6 @@ zink_desc_type_from_vktype(VkDescriptorType type)
    default:
       unreachable("unhandled descriptor type");
    }
-   return 0;
-   
 }
 
 void
