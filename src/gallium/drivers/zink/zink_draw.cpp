@@ -439,8 +439,13 @@ zink_draw_vbo(struct pipe_context *pctx,
    ctx->gfx_prim_mode = dinfo->mode;
    update_gfx_program(ctx);
 
-   if (zink_program_has_descriptors(&ctx->curr_program->base))
-      screen->descriptors_update(ctx, false);
+   if (zink_program_has_descriptors(&ctx->curr_program->base)) {
+      if (screen->descriptors_update(ctx, false)) {
+         /* descriptors have flushed the batch */
+         pctx->draw_vbo(pctx, dinfo, drawid_offset, dindirect, draws, num_draws);
+         return;
+      }
+   }
 
    if (ctx->gfx_pipeline_state.primitive_restart != dinfo->primitive_restart)
       ctx->gfx_pipeline_state.dirty = true;
@@ -751,13 +756,18 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 
    update_compute_program(ctx);
 
+   if (zink_program_has_descriptors(&ctx->curr_compute->base)) {
+      if (screen->descriptors_update(ctx, true)) {
+         /* descriptors have flushed the batch */
+         pctx->launch_grid(pctx, info);
+         return;
+      }
+   }
+
    zink_program_update_compute_pipeline_state(ctx, ctx->curr_compute, info->block);
    VkPipeline prev_pipeline = ctx->compute_pipeline_state.pipeline;
    VkPipeline pipeline = zink_get_compute_pipeline(screen, ctx->curr_compute,
                                                &ctx->compute_pipeline_state);
-
-   if (zink_program_has_descriptors(&ctx->curr_compute->base))
-      screen->descriptors_update(ctx, true);
 
    if (ctx->descriptor_refs_dirty[1])
       zink_update_descriptor_refs(ctx, true);
