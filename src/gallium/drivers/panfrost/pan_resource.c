@@ -1193,9 +1193,21 @@ panfrost_ptr_flush_region(struct pipe_context *pctx,
 }
 
 static void
-panfrost_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
+panfrost_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsrc)
 {
-        /* TODO */
+        struct panfrost_context *ctx = pan_context(pctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
+        /* Handle the glInvalidateFramebuffer case */
+        if (batch->key.zsbuf && batch->key.zsbuf->texture == prsrc)
+                batch->resolve &= ~PIPE_CLEAR_DEPTHSTENCIL;
+
+        for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
+                struct pipe_surface *surf = batch->key.cbufs[i];
+
+                if (surf && surf->texture == prsrc)
+                        batch->resolve &= ~(PIPE_CLEAR_COLOR0 << i);
+        }
 }
 
 static enum pipe_format
