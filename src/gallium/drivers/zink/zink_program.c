@@ -893,10 +893,11 @@ zink_bind_vs_state(struct pipe_context *pctx,
    if (cso) {
       struct zink_shader *zs = cso;
       ctx->shader_reads_drawid = BITSET_TEST(zs->nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
+      ctx->shader_reads_basevertex = BITSET_TEST(zs->nir->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX);
    } else {
       ctx->shader_reads_drawid = false;
+      ctx->shader_reads_basevertex = false;
    }
-
 }
 
 static void

@@ -200,6 +200,7 @@ struct zink_context {
    struct zink_shader *gfx_stages[ZINK_SHADER_COUNT];
    struct zink_shader *last_vertex_stage;
    bool shader_reads_drawid;
+   bool shader_reads_basevertex;
    struct zink_gfx_pipeline_state gfx_pipeline_state;
    enum pipe_prim_type gfx_prim_mode;
    struct hash_table *program_cache;

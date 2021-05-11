@@ -418,6 +418,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    bool need_index_buffer_unref = false;
    bool mode_changed = ctx->gfx_pipeline_state.mode != dinfo->mode;
    bool reads_drawid = ctx->shader_reads_drawid;
+   bool reads_basevertex = ctx->shader_reads_basevertex;
 
    update_barriers(ctx, false);
 
@@ -647,7 +648,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (BATCH_CHANGED || ctx->vertex_buffers_dirty)
       zink_bind_vertex_buffers<HAS_DYNAMIC_STATE>(batch, ctx);
 
-   if (BITSET_TEST(ctx->gfx_stages[PIPE_SHADER_VERTEX]->nir->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX)) {
+   if (reads_basevertex) {
       unsigned draw_mode_is_indexed = index_size > 0;
       vkCmdPushConstants(batch->state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_VERTEX_BIT,
                          offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed), sizeof(unsigned),
@@ -682,7 +683,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       zink_select_draw_vbo(ctx);
    }
 
-   bool needs_drawid = ctx->drawid_broken;
+   bool needs_drawid = reads_drawid && ctx->drawid_broken;
    batch->state->draw_count += num_draws;
    if (index_size > 0) {
       if (dindirect && dindirect->buffer) {
