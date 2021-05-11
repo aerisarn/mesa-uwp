@@ -420,7 +420,7 @@ static void si_llvm_emit_clipvertex(struct si_shader_context *ctx, struct ac_exp
 }
 
 /* Initialize arguments for the shader export intrinsic */
-static void si_llvm_init_vs_export_args(struct si_shader_context *ctx, LLVMValueRef *values,
+static void si_llvm_init_vs_export_args(struct si_shader_context *ctx, const LLVMValueRef *values,
                                         unsigned target, struct ac_export_args *args)
 {
    args->enabled_channels = 0xf; /* writemask - default is 0xf */
@@ -432,16 +432,9 @@ static void si_llvm_init_vs_export_args(struct si_shader_context *ctx, LLVMValue
    memcpy(&args->out[0], values, sizeof(values[0]) * 4);
 }
 
-static void si_export_param(struct si_shader_context *ctx, unsigned index, LLVMValueRef *values)
-{
-   struct ac_export_args args;
-
-   si_llvm_init_vs_export_args(ctx, values, V_008DFC_SQ_EXP_PARAM + index, &args);
-   ac_build_export(&ctx->ac, &args);
-}
-
-static void si_build_param_exports(struct si_shader_context *ctx,
-                                   struct si_shader_output_values *outputs, unsigned noutput)
+static void si_prepare_param_exports(struct si_shader_context *ctx,
+                                     const struct si_shader_output_values *outputs, unsigned noutput,
+                                     struct ac_export_args exports[32])
 {
    struct si_shader *shader = ctx->shader;
    unsigned param_count = 0;
@@ -478,7 +471,8 @@ static void si_build_param_exports(struct si_shader_context *ctx,
              (1ull << si_shader_io_get_unique_index(semantic, true)))
          continue;
 
-      si_export_param(ctx, param_count, outputs[i].values);
+      si_llvm_init_vs_export_args(ctx, outputs[i].values, V_008DFC_SQ_EXP_PARAM + param_count,
+                                  &exports[param_count]);
 
       assert(i < ARRAY_SIZE(shader->info.vs_output_param_offset));
       shader->info.vs_output_param_offset[i] = param_count++;
@@ -569,6 +563,9 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
    int i;
 
    si_vertex_color_clamping(ctx, outputs, noutput);
+
+   struct ac_export_args param_exports[32];
+   si_prepare_param_exports(ctx, outputs, noutput, param_exports);
 
    /* Build position exports. */
    for (i = 0; i < noutput; i++) {
@@ -719,15 +716,28 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
       /* Specify the target we are exporting */
       pos_args[i].target = V_008DFC_SQ_EXP_POS + pos_idx++;
 
-      if (pos_idx == shader->info.nr_pos_exports)
+      if (pos_idx == shader->info.nr_pos_exports) {
          /* Specify that this is the last export */
          pos_args[i].done = 1;
+
+         /* If a shader has no param exports, rasterization can start before
+          * the shader finishes and thus memory stores might not finish before
+          * the pixel shader starts.
+          *
+          * VLOAD is for atomics with return.
+          */
+         if (ctx->screen->info.chip_class >= GFX10 &&
+             !shader->info.nr_param_exports &&
+             shader->selector->info.base.writes_memory)
+            ac_build_waitcnt(&ctx->ac, AC_WAIT_VLOAD | AC_WAIT_VSTORE);
+      }
 
       ac_build_export(&ctx->ac, &pos_args[i]);
    }
 
    /* Build parameter exports. */
-   si_build_param_exports(ctx, outputs, noutput);
+   for (unsigned i = 0; i < shader->info.nr_param_exports; i++)
+      ac_build_export(&ctx->ac, &param_exports[i]);
 }
 
 void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LLVMValueRef *addrs)
