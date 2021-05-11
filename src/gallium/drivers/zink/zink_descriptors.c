@@ -101,9 +101,11 @@ pdd_cached(struct zink_program *pg)
 static bool
 batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds)
 {
-   if (!batch_ptr_add_usage(batch, batch->state->dd->desc_sets, zds, &zds->batch_uses))
+   if (zink_batch_usage_matches(zds->batch_uses, batch->state) ||
+       !batch_ptr_add_usage(batch, batch->state->dd->desc_sets, zds))
       return false;
    pipe_reference(NULL, &zds->reference);
+   zink_batch_usage_set(&zds->batch_uses, batch->state);
    return true;
 }
 

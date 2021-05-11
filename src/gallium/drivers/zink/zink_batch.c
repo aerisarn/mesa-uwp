@@ -597,45 +597,41 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
 }
 
 bool
-batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_batch_usage **u)
+batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr)
 {
    bool found = false;
-   if (*u == &batch->state->usage)
-      return false;
-   _mesa_set_search_and_add(s, ptr, &found);
-   assert(!found);
-   zink_batch_usage_set(u, batch->state);
-   return true;
+   _mesa_set_search_or_add(s, ptr, &found);
+   return !found;
 }
 
 void
 zink_batch_reference_resource(struct zink_batch *batch, struct zink_resource *res)
 {
-   bool found = false;
-   _mesa_set_search_and_add(batch->state->resources, res->obj, &found);
-   if (!found) {
-      pipe_reference(NULL, &res->obj->reference);
-      batch->state->resource_size += res->obj->size;
-   }
+   if (!batch_ptr_add_usage(batch, batch->state->resources, res->obj))
+      return;
+   pipe_reference(NULL, &res->obj->reference);
+   batch->state->resource_size += res->obj->size;
    batch->has_work = true;
 }
 
 void
 zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_view *buffer_view)
 {
-   if (!batch_ptr_add_usage(batch, batch->state->bufferviews, buffer_view, &buffer_view->batch_uses))
+   if (!batch_ptr_add_usage(batch, batch->state->bufferviews, buffer_view))
       return;
    pipe_reference(NULL, &buffer_view->reference);
+   zink_batch_usage_set(&buffer_view->batch_uses, batch->state);
    batch->has_work = true;
 }
 
 void
 zink_batch_reference_surface(struct zink_batch *batch, struct zink_surface *surface)
 {
-   if (!batch_ptr_add_usage(batch, batch->state->surfaces, surface, &surface->batch_uses))
+   if (!batch_ptr_add_usage(batch, batch->state->surfaces, surface))
       return;
    struct pipe_surface *surf = NULL;
    pipe_surface_reference(&surf, &surface->base);
+   zink_batch_usage_set(&surface->batch_uses, batch->state);
    batch->has_work = true;
 }
 
@@ -663,9 +659,11 @@ void
 zink_batch_reference_program(struct zink_batch *batch,
                              struct zink_program *pg)
 {
-   if (!batch_ptr_add_usage(batch, batch->state->programs, pg, &pg->batch_uses))
+   if (zink_batch_usage_matches(pg->batch_uses, batch->state) ||
+       !batch_ptr_add_usage(batch, batch->state->programs, pg))
       return;
    pipe_reference(NULL, &pg->reference);
+   zink_batch_usage_set(&pg->batch_uses, batch->state);
    batch->has_work = true;
 }
 
