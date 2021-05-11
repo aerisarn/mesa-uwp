@@ -182,7 +182,7 @@
 struct threaded_context;
 struct tc_unflushed_batch_token;
 
-/* 0 = disabled, 1 = assertions, 2 = printfs */
+/* 0 = disabled, 1 = assertions, 2 = printfs, 3 = logging */
 #define TC_DEBUG 0
 
 /* These are map flags sent to drivers. */

@@ -59,6 +59,14 @@ enum tc_call_id {
    TC_NUM_CALLS,
 };
 
+#if TC_DEBUG >= 3
+static const char *tc_call_names[] = {
+#define CALL(name) #name,
+#include "u_threaded_context_calls.h"
+#undef CALL
+};
+#endif
+
 struct tc_draw_single {
    struct tc_call_base base;
    unsigned index_bias;
@@ -280,6 +288,10 @@ tc_batch_execute(void *job, UNUSED int thread_index)
          }
       }
 
+#if TC_DEBUG >= 3
+      tc_printf("CALL: %s", tc_call_names[call->call_id]);
+#endif
+
       execute_func[call->call_id](pipe, call);
       iter += call->num_slots;
    }
@@ -339,6 +351,10 @@ tc_add_sized_call(struct threaded_context *tc, enum tc_call_id id,
 #endif
    call->call_id = id;
    call->num_slots = num_slots;
+
+#if TC_DEBUG >= 3
+   tc_printf("ENQUEUE: %s", tc_call_names[id]);
+#endif
 
    tc_debug_check(tc);
    return call;
