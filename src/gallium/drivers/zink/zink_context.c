@@ -1391,9 +1391,9 @@ zink_set_sampler_views(struct pipe_context *pctx,
                 update = true;
          }
          if (!ctx->descriptor_refs_dirty[shader_type == PIPE_SHADER_COMPUTE]) {
-            zink_batch_reference_resource_rw(&ctx->batch, res, false);
             zink_batch_reference_sampler_view(&ctx->batch, b);
          }
+         zink_batch_resource_usage_set(&ctx->batch, res, false);
       } else if (a) {
          unbind_samplerview(ctx, shader_type, start_slot + i);
          update = true;
