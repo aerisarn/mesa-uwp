@@ -449,33 +449,19 @@ zink_draw_vbo(struct pipe_context *pctx,
        } else
           index_buffer = dinfo->index.resource;
    }
-   if (ctx->xfb_barrier)
-      zink_emit_xfb_counter_barrier(ctx);
 
-   if (ctx->dirty_so_targets && ctx->num_so_targets)
-      zink_emit_stream_output_targets(pctx);
+   bool have_streamout = !!ctx->num_so_targets;
+   if (have_streamout) {
+      if (ctx->xfb_barrier)
+         zink_emit_xfb_counter_barrier(ctx);
+      if (ctx->dirty_so_targets)
+         zink_emit_stream_output_targets(pctx);
+   }
 
    if (so_target)
       zink_emit_xfb_vertex_input_barrier(ctx, zink_resource(so_target->base.buffer));
 
    barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
-
-   for (int i = 0; i < ZINK_SHADER_COUNT; i++) {
-      struct zink_shader *shader = ctx->gfx_stages[i];
-      if (!shader)
-         continue;
-      enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
-      if (ctx->num_so_targets &&
-          (stage == PIPE_SHADER_GEOMETRY ||
-          (stage == PIPE_SHADER_TESS_EVAL && !ctx->gfx_stages[PIPE_SHADER_GEOMETRY]) ||
-          (stage == PIPE_SHADER_VERTEX && !ctx->gfx_stages[PIPE_SHADER_GEOMETRY] && !ctx->gfx_stages[PIPE_SHADER_TESS_EVAL]))) {
-         for (unsigned j = 0; j < ctx->num_so_targets; j++) {
-            struct zink_so_target *t = zink_so_target(ctx->so_targets[j]);
-            if (t)
-               t->stride = shader->streamout.so_info.stride[j] * sizeof(uint32_t);
-         }
-      }
-   }
 
    if (zink_program_has_descriptors(&ctx->curr_program->base))
       screen->descriptors_update(ctx, false);
@@ -651,7 +637,23 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    zink_query_update_gs_states(ctx);
 
-   if (ctx->num_so_targets) {
+   if (have_streamout) {
+      for (int i = 0; i < ZINK_SHADER_COUNT; i++) {
+         struct zink_shader *shader = ctx->gfx_stages[i];
+         if (!shader)
+            continue;
+         enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
+         if ((stage == PIPE_SHADER_GEOMETRY ||
+             (stage == PIPE_SHADER_TESS_EVAL && !ctx->gfx_stages[PIPE_SHADER_GEOMETRY]) ||
+             (stage == PIPE_SHADER_VERTEX && !ctx->gfx_stages[PIPE_SHADER_GEOMETRY] && !ctx->gfx_stages[PIPE_SHADER_TESS_EVAL]))) {
+            for (unsigned j = 0; j < ctx->num_so_targets; j++) {
+               struct zink_so_target *t = zink_so_target(ctx->so_targets[j]);
+               if (t)
+                  t->stride = shader->streamout.so_info.stride[j] * sizeof(uint32_t);
+            }
+         }
+      }
+
       for (unsigned i = 0; i < ctx->num_so_targets; i++) {
          struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
          counter_buffers[i] = VK_NULL_HANDLE;
@@ -746,7 +748,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (dinfo->index_size > 0 && (dinfo->has_user_indices || need_index_buffer_unref))
       pipe_resource_reference(&index_buffer, NULL);
 
-   if (ctx->num_so_targets) {
+   if (have_streamout) {
       for (unsigned i = 0; i < ctx->num_so_targets; i++) {
          struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
          if (t) {
