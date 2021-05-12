@@ -460,7 +460,6 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
         bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
 
         if (!panfrost_fs_required(fs, blend, &ctx->pipe_framebuffer)) {
-                state->properties.uniform_buffer_count = 32;
                 state->properties.bifrost.shader_modifies_coverage = true;
                 state->properties.bifrost.allow_forward_pixel_to_kill = true;
                 state->properties.bifrost.allow_forward_pixel_to_be_killed = true;
