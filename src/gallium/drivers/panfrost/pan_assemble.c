@@ -101,8 +101,6 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 memcpy(state->bo->ptr.cpu, binary.data, binary.size);
         }
 
-        /* Midgard needs the first tag on the bottom nibble */
-
         if (stage != MESA_SHADER_FRAGMENT)
                 pan_upload_shader_descriptor(ctx, state);
 
