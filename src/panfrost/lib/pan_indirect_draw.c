@@ -1372,7 +1372,7 @@ panfrost_init_indirect_draw_shaders(struct panfrost_device *dev)
          */
         pthread_mutex_init(&dev->indirect_draw_shaders.lock, NULL);
         panfrost_pool_init(&dev->indirect_draw_shaders.bin_pool, NULL, dev,
-                           PAN_BO_EXECUTE, false, true);
+                           PAN_BO_EXECUTE, "Indirect draw shaders", false, true);
 }
 
 void

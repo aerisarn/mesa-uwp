@@ -51,7 +51,7 @@ panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
          * fragment/vertex+tiler pools separate.
          */
         struct panfrost_bo *bo = panfrost_bo_create(pool->dev, bo_sz,
-                        pool->create_flags, "Pool memory");
+                        pool->create_flags, pool->label);
 
         if (pool->owned)
                 util_dynarray_append(&pool->bos, struct panfrost_bo *, bo);
@@ -67,13 +67,14 @@ panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
 void
 panfrost_pool_init(struct pan_pool *pool, void *memctx,
                    struct panfrost_device *dev,
-                   unsigned create_flags, bool prealloc,
-                   bool owned)
+                   unsigned create_flags, const char *label,
+                   bool prealloc, bool owned)
 {
         memset(pool, 0, sizeof(*pool));
         pool->dev = dev;
         pool->create_flags = create_flags;
         pool->owned = owned;
+        pool->label = label;
 
         if (owned)
                 util_dynarray_init(&pool->bos, memctx);

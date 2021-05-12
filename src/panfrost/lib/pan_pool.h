@@ -47,6 +47,9 @@ struct pan_pool {
         /* Within the topmost transient BO, how much has been used? */
         unsigned transient_offset;
 
+        /* Label for created BOs */
+        const char *label;
+
         /* BO flags to use in the pool */
         unsigned create_flags;
 
@@ -58,7 +61,7 @@ struct pan_pool {
 void
 panfrost_pool_init(struct pan_pool *pool, void *memctx,
                    struct panfrost_device *dev, unsigned create_flags,
-                   bool prealloc, bool owned);
+                   const char *label, bool prealloc, bool owned);
 
 void
 panfrost_pool_cleanup(struct pan_pool *pool);
