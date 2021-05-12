@@ -390,9 +390,12 @@ panfrost_get_shader_param(struct pipe_screen *screen,
         case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
                 return !is_nofp16;
         case PIPE_SHADER_CAP_FP16_DERIVATIVES:
-        case PIPE_SHADER_CAP_INT16:
         case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
                 return pan_is_bifrost(dev) && !is_nofp16;
+        case PIPE_SHADER_CAP_INT16:
+                /* XXX: Advertise this CAP when a proper fix to lower_precision
+                 * lands. GLSL IR validation failure in glmark2 -bterrain */
+                return pan_is_bifrost(dev) && !is_nofp16 && is_deqp;
 
         case PIPE_SHADER_CAP_INT64_ATOMICS:
         case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
