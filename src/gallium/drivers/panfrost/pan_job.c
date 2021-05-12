@@ -75,8 +75,9 @@ panfrost_batch_init(struct panfrost_context *ctx,
 
         batch->seqnum = ++ctx->batches.seqnum;
 
-        batch->bos = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                        _mesa_key_pointer_equal);
+        batch->first_bo = INT32_MAX;
+        batch->last_bo = INT32_MIN;
+        util_sparse_array_init(&batch->bos, sizeof(uint32_t), 64);
 
         batch->minx = batch->miny = ~0;
         batch->maxx = batch->maxy = 0;
@@ -122,17 +123,22 @@ panfrost_batch_cleanup(struct panfrost_batch *batch)
                 return;
 
         struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
 
         assert(batch->seqnum);
 
         if (ctx->batch == batch)
                 ctx->batch = NULL;
 
-        hash_table_foreach(batch->bos, entry) {
-                struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
-                uint32_t flags = (uintptr_t)entry->data;
+        for (int i = batch->first_bo; i <= batch->last_bo; i++) {
+                uint32_t *flags = util_sparse_array_get(&batch->bos, i);
 
-                if (!(flags & PAN_BO_ACCESS_SHARED)) {
+                if (!*flags)
+                        continue;
+
+                struct panfrost_bo *bo = pan_lookup_bo(dev, i);
+
+                if (!(*flags & PAN_BO_ACCESS_SHARED)) {
                         panfrost_bo_unreference(bo);
                         continue;
                 }
@@ -144,10 +150,10 @@ panfrost_batch_cleanup(struct panfrost_batch *batch)
 
                 struct panfrost_bo_access *access = access_entry->data;
 
-                if (flags & PAN_BO_ACCESS_WRITE) {
+                if (*flags & PAN_BO_ACCESS_WRITE) {
                         assert(access->writer == batch);
                         access->writer = NULL;
-                } else if (flags & PAN_BO_ACCESS_READ) {
+                } else if (*flags & PAN_BO_ACCESS_READ) {
                         util_dynarray_foreach(&access->readers,
                                               struct panfrost_batch *, reader) {
                                 if (*reader == batch) {
@@ -165,7 +171,7 @@ panfrost_batch_cleanup(struct panfrost_batch *batch)
 
         util_unreference_framebuffer_state(&batch->key);
 
-        _mesa_hash_table_destroy(batch->bos, NULL);
+        util_sparse_array_finish(&batch->bos);
 
         memset(batch, 0, sizeof(*batch));
 }
@@ -389,29 +395,25 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
         if (!bo)
                 return;
 
-        struct hash_entry *entry;
-        uint32_t old_flags = 0;
+        uint32_t *entry = util_sparse_array_get(&batch->bos, bo->gem_handle);
+        uint32_t old_flags = *entry;
 
-        entry = _mesa_hash_table_search(batch->bos, bo);
-        if (!entry) {
-                entry = _mesa_hash_table_insert(batch->bos, bo,
-                                                (void *)(uintptr_t)flags);
+        if (!old_flags) {
+                batch->num_bos++;
+                batch->first_bo = MIN2(batch->first_bo, bo->gem_handle);
+                batch->last_bo = MAX2(batch->last_bo, bo->gem_handle);
                 panfrost_bo_reference(bo);
-	} else {
-                old_flags = (uintptr_t)entry->data;
-
+        } else {
                 /* All batches have to agree on the shared flag. */
                 assert((old_flags & PAN_BO_ACCESS_SHARED) ==
                        (flags & PAN_BO_ACCESS_SHARED));
         }
 
-        assert(entry);
-
         if (old_flags == flags)
                 return;
 
         flags |= old_flags;
-        entry->data = (void *)(uintptr_t)flags;
+        *entry = flags;
 
         /* If this is not a shared BO, we don't really care about dependency
          * tracking.
@@ -755,25 +757,6 @@ panfrost_batch_draw_wallpaper(struct panfrost_batch *batch,
                        pan_is_bifrost(dev) ? batch->tiler_ctx.bifrost : 0);
 }
 
-static void
-panfrost_batch_record_bo(struct hash_entry *entry, unsigned *bo_handles, unsigned idx)
-{
-        struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
-        uint32_t flags = (uintptr_t)entry->data;
-
-        assert(bo->gem_handle > 0);
-        bo_handles[idx] = bo->gem_handle;
-
-        /* Update the BO access flags so that panfrost_bo_wait() knows
-         * about all pending accesses.
-         * We only keep the READ/WRITE info since this is all the BO
-         * wait logic cares about.
-         * We also preserve existing flags as this batch might not
-         * be the first one to access the BO.
-         */
-        bo->gpu_access |= flags & (PAN_BO_ACCESS_RW);
-}
-
 static int
 panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                             mali_ptr first_job_desc,
@@ -806,12 +789,30 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 
         bo_handles = calloc(panfrost_pool_num_bos(&batch->pool) +
                             panfrost_pool_num_bos(&batch->invisible_pool) +
-                            batch->bos->entries + 2,
+                            batch->num_bos + 2,
                             sizeof(*bo_handles));
         assert(bo_handles);
 
-        hash_table_foreach(batch->bos, entry)
-                panfrost_batch_record_bo(entry, bo_handles, submit.bo_handle_count++);
+        for (int i = batch->first_bo; i <= batch->last_bo; i++) {
+                uint32_t *flags = util_sparse_array_get(&batch->bos, i);
+
+                if (!*flags)
+                        continue;
+
+                assert(submit.bo_handle_count < batch->num_bos);
+                bo_handles[submit.bo_handle_count++] = i;
+
+                /* Update the BO access flags so that panfrost_bo_wait() knows
+                 * about all pending accesses.
+                 * We only keep the READ/WRITE info since this is all the BO
+                 * wait logic cares about.
+                 * We also preserve existing flags as this batch might not
+                 * be the first one to access the BO.
+                 */
+                struct panfrost_bo *bo = pan_lookup_bo(dev, i);
+
+                bo->gpu_access |= *flags & (PAN_BO_ACCESS_RW);
+        }
 
         panfrost_pool_get_bo_handles(&batch->pool, bo_handles + submit.bo_handle_count);
         submit.bo_handle_count += panfrost_pool_num_bos(&batch->pool);
