@@ -1205,6 +1205,11 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                 }
         }
 
+        buf->dirty_mask = 0;
+
+        if (ss->info.push.count == 0)
+                return ubos.gpu;
+
         /* Copy push constants required by the shader */
         struct panfrost_ptr push_transfer =
                 panfrost_pool_alloc_aligned(&batch->pool,
@@ -1259,7 +1264,6 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                 memcpy(push_cpu + i, (uint8_t *) mapped_ubo + src.offset, 4);
         }
 
-        buf->dirty_mask = 0;
         return ubos.gpu;
 }
 
