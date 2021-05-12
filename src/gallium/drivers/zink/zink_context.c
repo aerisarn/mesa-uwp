@@ -2240,9 +2240,8 @@ zink_fence_wait(struct pipe_context *pctx)
 }
 
 static bool
-timeline_wait(struct zink_context *ctx, uint32_t batch_id, uint64_t timeout)
+timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_t timeout)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkSemaphoreWaitInfo wi = {};
    wi.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
    wi.semaphoreCount = 1;
@@ -2258,8 +2257,6 @@ timeline_wait(struct zink_context *ctx, uint32_t batch_id, uint64_t timeout)
 
    if (success)
       zink_screen_update_last_finished(screen, batch_id);
-   else
-      check_device_lost(ctx);
 
    return success;
 }
@@ -2273,7 +2270,8 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
       /* not submitted yet */
       flush_batch(ctx, true);
    if (ctx->have_timelines) {
-      timeline_wait(ctx, batch_id, UINT64_MAX);
+      if (!timeline_wait(zink_screen(ctx->base.screen), batch_id, UINT64_MAX))
+         check_device_lost(ctx);
       return;
    }
    simple_mtx_lock(&ctx->batch_mtx);
@@ -2315,8 +2313,12 @@ zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id)
    if (zink_screen_check_last_finished(zink_screen(ctx->base.screen), batch_id))
       return true;
 
-   if (ctx->have_timelines)
-      return timeline_wait(ctx, batch_id, 0);
+   if (ctx->have_timelines) {
+      bool success = timeline_wait(zink_screen(ctx->base.screen), batch_id, 0);
+      if (!success)
+         check_device_lost(ctx);
+      return success;
+   }
    struct zink_fence *fence;
 
    simple_mtx_lock(&ctx->batch_mtx);
