@@ -381,3 +381,23 @@ TEST(bitset, test_shl_two_words)
    EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
    EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), true);
 }
+
+TEST(bitset, test_setrange_across_word_boundary)
+{
+   BITSET_DECLARE(r, 128);
+   BITSET_ZERO(r);
+
+   BITSET_SET_RANGE(r, 62, 65);
+
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 32, 63), true);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 64, 95), true);
+   EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), false);
+
+   EXPECT_EQ(BITSET_TEST(r, 61), false);
+
+   for (int i = 62; i <= 65; i++)
+      EXPECT_EQ(BITSET_TEST(r, i), true);
+
+   EXPECT_EQ(BITSET_TEST(r, 66), false);
+}
