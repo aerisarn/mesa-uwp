@@ -1424,6 +1424,28 @@ zink_screen_init_semaphore(struct zink_screen *screen)
    return false;
 }
 
+bool
+zink_screen_timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_t timeout)
+{
+   VkSemaphoreWaitInfo wi = {};
+   wi.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+   wi.semaphoreCount = 1;
+   /* handle batch_id overflow */
+   wi.pSemaphores = batch_id > screen->curr_batch ? &screen->prev_sem : &screen->sem;
+   uint64_t batch_id64 = batch_id;
+   wi.pValues = &batch_id64;
+   bool success = false;
+   if (screen->device_lost)
+      return true;
+   VkResult ret = screen->vk_WaitSemaphores(screen->dev, &wi, timeout);
+   success = zink_screen_handle_vkresult(screen, ret);
+
+   if (success)
+      zink_screen_update_last_finished(screen, batch_id);
+
+   return success;
+}
+
 static uint32_t
 zink_get_loader_version(void)
 {
