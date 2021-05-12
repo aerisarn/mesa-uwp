@@ -133,6 +133,8 @@ schedule_barrier(compiler_context *ctx)
 
 M_LOAD(ld_attr_32, nir_type_uint32);
 M_LOAD(ld_vary_32, nir_type_uint32);
+M_LOAD(ld_ubo_32, nir_type_uint32);
+M_LOAD(ld_ubo_64, nir_type_uint32);
 M_LOAD(ld_ubo_128, nir_type_uint32);
 M_LOAD(ld_32, nir_type_uint32);
 M_LOAD(ld_64, nir_type_uint32);
@@ -1161,11 +1163,26 @@ emit_ubo_read(
         unsigned offset,
         nir_src *indirect_offset,
         unsigned indirect_shift,
-        unsigned index)
+        unsigned index,
+        unsigned nr_comps)
 {
-        /* TODO: half-floats */
+        midgard_instruction ins;
 
-        midgard_instruction ins = m_ld_ubo_128(dest, 0);
+        unsigned dest_size = (instr->type == nir_instr_type_intrinsic) ?
+                nir_dest_bit_size(nir_instr_as_intrinsic(instr)->dest) : 32;
+
+        unsigned bitsize = dest_size * nr_comps;
+
+        /* Pick the smallest intrinsic to avoid out-of-bounds reads */
+        if (bitsize <= 32)
+                ins = m_ld_ubo_32(dest, 0);
+        else if (bitsize <= 64)
+                ins = m_ld_ubo_64(dest, 0);
+        else if (bitsize <= 128)
+                ins = m_ld_ubo_128(dest, 0);
+        else
+                unreachable("Invalid UBO read size");
+
         ins.constants.u32[0] = offset;
 
         if (instr->type == nir_instr_type_intrinsic)
@@ -1498,7 +1515,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr,
         /* Emit the read itself -- this is never indirect */
         midgard_instruction *ins =
                 emit_ubo_read(ctx, instr, dest, (uniform * 16) + offset, NULL, 0,
-                              sysval_ubo);
+                              sysval_ubo, nr_components);
 
         ins->mask = mask_of(nr_components);
 }
@@ -1752,7 +1769,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_dest_index(&instr->dest);
 
                 if (is_kernel) {
-                        emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, 0);
+                        emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, 0, nr_comp);
                 } else if (is_ubo) {
                         nir_src index = instr->src[0];
 
@@ -1760,7 +1777,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         assert(nir_src_is_const(index));
 
                         uint32_t uindex = nir_src_as_uint(index);
-                        emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, uindex);
+                        emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, uindex, nr_comp);
                 } else if (is_global || is_shared || is_scratch) {
                         unsigned seg = is_global ? LDST_GLOBAL : (is_shared ? LDST_SHARED : LDST_SCRATCH);
                         emit_global(ctx, &instr->instr, true, reg, src_offset, seg);
