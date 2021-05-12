@@ -104,8 +104,12 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
    for (int i = 0; i < ARRAY_SIZE(image->fds); i++)
       image->fds[i] = -1;
 
+   struct wsi_image_create_info image_wsi_info = {
+      .sType = VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
+   };
    VkImageCreateInfo image_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .pNext = &image_wsi_info,
       .flags = 0,
       .imageType = VK_IMAGE_TYPE_2D,
       .format = pCreateInfo->imageFormat,
@@ -148,7 +152,6 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
       __vk_append_struct(&image_info, &image_format_list);
    }
 
-   struct wsi_image_create_info image_wsi_info;
    VkImageDrmFormatModifierListCreateInfoEXT image_modifier_list;
 
    uint32_t image_modifier_count = 0, modifier_prop_count = 0;
@@ -156,11 +159,7 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
    uint64_t *image_modifiers = NULL;
    if (num_modifier_lists == 0) {
       /* If we don't have modifiers, fall back to the legacy "scanout" flag */
-      image_wsi_info = (struct wsi_image_create_info) {
-         .sType = VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
-         .scanout = true,
-      };
-      __vk_append_struct(&image_info, &image_wsi_info);
+      image_wsi_info.scanout = true;
    } else {
       /* The winsys can't request modifiers if we don't support them. */
       assert(wsi->supports_modifiers);
@@ -490,9 +489,13 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
    if (result != VK_SUCCESS)
       goto fail;
 
+   const struct wsi_image_create_info image_wsi_info = {
+      .sType = VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
+      .prime_blit_buffer = image->prime.buffer,
+   };
    const VkImageCreateInfo image_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .pNext = NULL,
+      .pNext = &image_wsi_info,
       .flags = 0,
       .imageType = VK_IMAGE_TYPE_2D,
       .format = pCreateInfo->imageFormat,

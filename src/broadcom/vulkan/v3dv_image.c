@@ -291,7 +291,7 @@ create_image(struct v3dv_device *device,
    } else {
       const struct wsi_image_create_info *wsi_info =
          vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
-      if (wsi_info)
+      if (wsi_info && wsi_info->scanout)
          modifier = DRM_FORMAT_MOD_LINEAR;
    }
 
