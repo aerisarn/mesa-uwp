@@ -4414,7 +4414,9 @@ radv_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer, uint32_t firstBindi
       vb[idx].buffer = buffer;
       vb[idx].offset = pOffsets[i];
       vb[idx].size = size;
-      vb[idx].stride = stride;
+      /* if pStrides=NULL, it shouldn't overwrite the strides specified by CmdSetVertexInputEXT */
+      if (pStrides)
+         vb[idx].stride = stride;
 
       if (buffer) {
          radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, vb[idx].buffer->bo);
@@ -5369,6 +5371,64 @@ radv_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer, uint32_t attachmen
    state->dynamic.color_write_enable = color_write_enable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
+}
+
+void
+radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingDescriptionCount,
+                          const VkVertexInputBindingDescription2EXT *pVertexBindingDescriptions,
+                          uint32_t vertexAttributeDescriptionCount,
+                          const VkVertexInputAttributeDescription2EXT *pVertexAttributeDescriptions)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
+
+   const VkVertexInputBindingDescription2EXT *bindings[MAX_VBS];
+   for (unsigned i = 0; i < vertexBindingDescriptionCount; i++)
+      bindings[pVertexBindingDescriptions[i].binding] = &pVertexBindingDescriptions[i];
+
+   state->attribute_mask = 0;
+   state->instance_rate_inputs = 0;
+   state->nontrivial_divisors = 0;
+   state->post_shuffle = 0;
+   state->alpha_adjust_lo = 0;
+   state->alpha_adjust_hi = 0;
+
+   for (unsigned i = 0; i < vertexAttributeDescriptionCount; i++) {
+      const VkVertexInputAttributeDescription2EXT *attrib = &pVertexAttributeDescriptions[i];
+      const VkVertexInputBindingDescription2EXT *binding = bindings[attrib->binding];
+      unsigned loc = attrib->location;
+      const struct util_format_description *format_desc = vk_format_description(attrib->format);
+      unsigned nfmt, dfmt;
+      bool post_shuffle;
+      enum radv_vs_input_alpha_adjust alpha_adjust;
+
+      state->attribute_mask |= 1u << loc;
+      state->bindings[loc] = attrib->binding;
+      if (binding->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE) {
+         state->instance_rate_inputs |= 1u << loc;
+         state->divisors[loc] = binding->divisor;
+         if (binding->divisor != 1)
+            state->nontrivial_divisors |= 1u << loc;
+      }
+      cmd_buffer->vertex_bindings[attrib->binding].stride = binding->stride;
+      state->offsets[loc] = attrib->offset;
+
+      radv_translate_vertex_format(cmd_buffer->device->physical_device, attrib->format, format_desc,
+                                   &dfmt, &nfmt, &post_shuffle, &alpha_adjust);
+
+      state->formats[loc] = dfmt | (nfmt << 4);
+      state->format_align_req_minus_1[loc] =
+         format_desc->channel[0].size >= 32 ? 3 : (format_desc->block.bits / 8u - 1);
+      state->format_sizes[loc] = format_desc->block.bits / 8u;
+
+      state->alpha_adjust_lo |= (alpha_adjust & 0x1) << loc;
+      state->alpha_adjust_hi |= (alpha_adjust >> 1) << loc;
+
+      if (post_shuffle)
+         state->post_shuffle |= 1u << loc;
+   }
+
+   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_STATE;
 }
 
 void
