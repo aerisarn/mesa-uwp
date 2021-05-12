@@ -397,25 +397,9 @@ panfrost_gc_fences(struct panfrost_context *ctx)
         }
 }
 
-#ifdef PAN_BATCH_DEBUG
-static bool
-panfrost_batch_in_readers(struct panfrost_batch *batch,
-                          struct panfrost_bo_access *access)
-{
-        util_dynarray_foreach(&access->readers, struct panfrost_batch_fence *,
-                              reader) {
-                if (*reader && (*reader)->batch == batch)
-                        return true;
-        }
-
-        return false;
-}
-#endif
-
 static void
 panfrost_batch_update_bo_access(struct panfrost_batch *batch,
-                                struct panfrost_bo *bo, bool writes,
-                                bool already_accessed)
+                                struct panfrost_bo *bo, bool writes)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_bo_access *access;
@@ -507,16 +491,6 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
                                              batch->out_sync);
                 }
         } else {
-                /* We already accessed this BO before, so we should already be
-                 * in the reader array.
-                 */
-#ifdef PAN_BATCH_DEBUG
-                if (already_accessed) {
-                        assert(panfrost_batch_in_readers(batch, access));
-                        return;
-                }
-#endif
-
                 /* Previous access was a read and we want to read this BO.
                  * Add ourselves to the readers array and add a dependency on
                  * the previous writer if any.
@@ -570,9 +544,14 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
         if (!(flags & PAN_BO_ACCESS_SHARED))
                 return;
 
+        /* RW flags didn't change since our last access, no need to update the
+         * BO access entry.
+         */
+        if ((old_flags & PAN_BO_ACCESS_RW) == (flags & PAN_BO_ACCESS_RW))
+                return;
+
         assert(flags & PAN_BO_ACCESS_RW);
-        panfrost_batch_update_bo_access(batch, bo, flags & PAN_BO_ACCESS_WRITE,
-                        old_flags != 0);
+        panfrost_batch_update_bo_access(batch, bo, flags & PAN_BO_ACCESS_WRITE);
 }
 
 static void
