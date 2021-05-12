@@ -113,8 +113,21 @@ trace_screen_get_compiler_options(struct pipe_screen *_screen,
 {
    struct trace_screen *tr_scr = trace_screen(_screen);
    struct pipe_screen *screen = tr_scr->screen;
+   const void *result;
 
-   return screen->get_compiler_options(screen, ir, shader);
+   trace_dump_call_begin("pipe_screen", "get_compiler_options");
+
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg_enum(ir, tr_util_pipe_shader_ir_name(ir));
+   trace_dump_arg_enum(shader, tr_util_pipe_shader_type_name(shader));
+
+   result = screen->get_compiler_options(screen, ir, shader);
+
+   trace_dump_ret(ptr, result);
+
+   trace_dump_call_end();
+
+   return result;
 }
 
 
@@ -646,9 +659,18 @@ trace_screen_resource_from_handle(struct pipe_screen *_screen,
    struct pipe_screen *screen = tr_screen->screen;
    struct pipe_resource *result;
 
-   /* TODO trace call */
+   trace_dump_call_begin("pipe_screen", "resource_from_handle");
+
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(resource_template, templ);
+   trace_dump_arg(ptr, handle);
+   trace_dump_arg(uint, usage);
 
    result = screen->resource_from_handle(screen, templ, handle, usage);
+
+   trace_dump_ret(ptr, result);
+
+   trace_dump_call_end();
 
    if (result)
       result->screen = _screen;
@@ -675,11 +697,22 @@ trace_screen_resource_get_handle(struct pipe_screen *_screen,
    struct trace_screen *tr_screen = trace_screen(_screen);
    struct pipe_context *pipe = _pipe ? trace_get_possibly_threaded_context(_pipe) : NULL;
    struct pipe_screen *screen = tr_screen->screen;
+   bool result;
 
-   /* TODO trace call */
+   trace_dump_call_begin("pipe_screen", "resource_get_handle");
 
-   return screen->resource_get_handle(screen, pipe,
-                                      resource, handle, usage);
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(ptr, resource);
+   trace_dump_arg(ptr, handle);
+   trace_dump_arg(uint, usage);
+
+   result = screen->resource_get_handle(screen, pipe, resource, handle, usage);
+
+   trace_dump_ret(bool, result);
+
+   trace_dump_call_end();
+
+   return result;
 }
 
 static bool
@@ -696,12 +729,28 @@ trace_screen_resource_get_param(struct pipe_screen *_screen,
    struct trace_screen *tr_screen = trace_screen(_screen);
    struct pipe_context *pipe = _pipe ? trace_get_possibly_threaded_context(_pipe) : NULL;
    struct pipe_screen *screen = tr_screen->screen;
+   bool result;
 
-   /* TODO trace call */
+   trace_dump_call_begin("pipe_screen", "resource_get_param");
 
-   return screen->resource_get_param(screen, pipe,
-                                     resource, plane, layer, level, param,
-                                     handle_usage, value);
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(ptr, resource);
+   trace_dump_arg(uint, plane);
+   trace_dump_arg(uint, layer);
+   trace_dump_arg(uint, level);
+   trace_dump_arg_enum(param, tr_util_pipe_resource_param_name(param));
+   trace_dump_arg(uint, handle_usage);
+
+   result = screen->resource_get_param(screen, pipe,
+                                       resource, plane, layer, level, param,
+                                       handle_usage, value);
+
+   trace_dump_arg(uint, *value);
+   trace_dump_ret(bool, result);
+
+   trace_dump_call_end();
+
+   return result;
 }
 
 static void
@@ -713,9 +762,16 @@ trace_screen_resource_get_info(struct pipe_screen *_screen,
    struct trace_screen *tr_screen = trace_screen(_screen);
    struct pipe_screen *screen = tr_screen->screen;
 
-   /* TODO trace call */
+   trace_dump_call_begin("pipe_screen", "resource_get_info");
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(ptr, resource);
 
    screen->resource_get_info(screen, resource, stride, offset);
+
+   trace_dump_arg(uint, *stride);
+   trace_dump_arg(uint, *offset);
+
+   trace_dump_call_end();
 }
 
 static struct pipe_resource *
