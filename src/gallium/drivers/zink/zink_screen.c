@@ -1085,9 +1085,8 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 #endif
    disk_cache_destroy(screen->disk_cache);
    simple_mtx_lock(&screen->mem.mem_cache_mtx);
-   hash_table_foreach(screen->mem.resource_mem_cache, he)
+   hash_table_foreach(&screen->mem.resource_mem_cache, he)
       resource_cache_entry_destroy(screen, he);
-   _mesa_hash_table_destroy(screen->mem.resource_mem_cache, NULL);
    simple_mtx_unlock(&screen->mem.mem_cache_mtx);
    simple_mtx_destroy(&screen->mem.mem_cache_mtx);
 
