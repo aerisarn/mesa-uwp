@@ -98,10 +98,6 @@ descriptor_set_invalidate(struct zink_descriptor_set *zds)
 static void
 descriptor_pool_clear(struct hash_table *ht)
 {
-   hash_table_foreach(ht, entry) {
-      struct zink_descriptor_set *zds = entry->data;
-      descriptor_set_invalidate(zds);
-   }
    _mesa_hash_table_clear(ht, NULL);
 }
 #endif
