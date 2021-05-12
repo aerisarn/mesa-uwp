@@ -7564,6 +7564,18 @@ ast_process_struct_or_iface_block_members(exec_list *instructions,
             }
          }
 
+         if (qual->flags.q.explicit_component) {
+            unsigned qual_component;
+            if (process_qualifier_constant(state, &loc, "component",
+                                           qual->component, &qual_component)) {
+               validate_component_layout_for_type(state, &loc, fields[i].type,
+                                                  qual_component);
+               fields[i].component = qual_component;
+            }
+         } else {
+            fields[i].component = -1;
+         }
+
          /* Offset can only be used with std430 and std140 layouts an initial
           * value of 0 is used for error detection.
           */
