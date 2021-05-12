@@ -33,22 +33,6 @@
 #include "pan_resource.h"
 #include "pan_scoreboard.h"
 
-/* panfrost_batch_fence is the out fence of a batch that users or other batches
- * might want to wait on. The batch fence lifetime is different from the batch
- * one as want will certainly want to wait upon the fence after the batch has
- * been submitted (which is when panfrost_batch objects are freed).
- */
-struct panfrost_batch_fence {
-        /* Refcounting object for the fence. */
-        struct pipe_reference reference;
-
-        /* Batch that created this fence object. Will become NULL at batch
-         * submission time. This field is mainly here to know whether the
-         * batch has been flushed or not.
-         */
-        struct panfrost_batch *batch;
-};
-
 /* A panfrost_batch corresponds to a bound FBO we're rendering to,
  * collecting over multiple draws. */
 
@@ -121,12 +105,6 @@ struct panfrost_batch {
         /* Tiler context */
         struct pan_tiler_context tiler_ctx;
 
-        /* Output sync object. Only valid when submitted is true. */
-        struct panfrost_batch_fence *out_sync;
-
-        /* Batch dependencies */
-        struct util_dynarray dependencies;
-
         /* Indirect draw data */
         struct panfrost_ptr indirect_draw_ctx;
         unsigned indirect_draw_job_id;
@@ -137,12 +115,6 @@ struct panfrost_batch {
 
 /* Functions for managing the above */
 
-void
-panfrost_batch_fence_unreference(struct panfrost_batch_fence *fence);
-
-void
-panfrost_batch_fence_reference(struct panfrost_batch_fence *batch);
-
 struct panfrost_batch *
 panfrost_get_fresh_batch(struct panfrost_context *ctx,
                          const struct pipe_framebuffer_state *key);
@@ -152,9 +124,6 @@ panfrost_get_batch_for_fbo(struct panfrost_context *ctx);
 
 struct panfrost_batch *
 panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx);
-
-void
-panfrost_freeze_batch(struct panfrost_batch *batch);
 
 void
 panfrost_batch_init(struct panfrost_context *ctx);

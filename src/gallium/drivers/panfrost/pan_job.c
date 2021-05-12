@@ -60,41 +60,9 @@
  */
 struct panfrost_bo_access {
         struct util_dynarray readers;
-        struct panfrost_batch_fence *writer;
+        struct panfrost_batch *writer;
         bool last_is_write;
 };
-
-static struct panfrost_batch_fence *
-panfrost_create_batch_fence(struct panfrost_batch *batch)
-{
-        struct panfrost_batch_fence *fence;
-
-        fence = rzalloc(NULL, struct panfrost_batch_fence);
-        assert(fence);
-        pipe_reference_init(&fence->reference, 1);
-        fence->batch = batch;
-
-        return fence;
-}
-
-static void
-panfrost_free_batch_fence(struct panfrost_batch_fence *fence)
-{
-        ralloc_free(fence);
-}
-
-void
-panfrost_batch_fence_unreference(struct panfrost_batch_fence *fence)
-{
-        if (pipe_reference(&fence->reference, NULL))
-                 panfrost_free_batch_fence(fence);
-}
-
-void
-panfrost_batch_fence_reference(struct panfrost_batch_fence *fence)
-{
-        pipe_reference(NULL, &fence->reference);
-}
 
 static struct panfrost_batch *
 panfrost_create_batch(struct panfrost_context *ctx,
@@ -111,7 +79,6 @@ panfrost_create_batch(struct panfrost_context *ctx,
         batch->minx = batch->miny = ~0;
         batch->maxx = batch->maxy = 0;
 
-        batch->out_sync = panfrost_create_batch_fence(batch);
         util_copy_framebuffer_state(&batch->key, key);
 
         /* Preallocate the main pool, since every batch has at least one job
@@ -128,127 +95,64 @@ panfrost_create_batch(struct panfrost_context *ctx,
         return batch;
 }
 
-void
-panfrost_freeze_batch(struct panfrost_batch *batch)
-{
-        struct panfrost_context *ctx = batch->ctx;
-        struct hash_entry *entry;
-
-        /* Remove the entry in the FBO -> batch hash table if the batch
-         * matches and drop the context reference. This way, next draws/clears
-         * targeting this FBO will trigger the creation of a new batch.
-         */
-        entry = _mesa_hash_table_search(ctx->batches, &batch->key);
-        if (entry && entry->data == batch)
-                _mesa_hash_table_remove(ctx->batches, entry);
-
-        if (ctx->batch == batch)
-                ctx->batch = NULL;
-}
-
-#ifdef PAN_BATCH_DEBUG
-static bool panfrost_batch_is_frozen(struct panfrost_batch *batch)
-{
-        struct panfrost_context *ctx = batch->ctx;
-        struct hash_entry *entry;
-
-        entry = _mesa_hash_table_search(ctx->batches, &batch->key);
-        if (entry && entry->data == batch)
-                return false;
-
-        if (ctx->batch == batch)
-                return false;
-
-        return true;
-}
-#endif
-
 static void
 panfrost_free_batch(struct panfrost_batch *batch)
 {
         if (!batch)
                 return;
 
-#ifdef PAN_BATCH_DEBUG
-        assert(panfrost_batch_is_frozen(batch));
-#endif
+        struct panfrost_context *ctx = batch->ctx;
 
-        hash_table_foreach(batch->bos, entry)
-                panfrost_bo_unreference((struct panfrost_bo *)entry->key);
+        /* Remove the entry in the FBO -> batch hash table if the batch
+         * matches and drop the context reference. This way, next draws/clears
+         * targeting this FBO will trigger the creation of a new batch.
+         */
+        struct hash_entry *batch_entry =
+                _mesa_hash_table_search(ctx->batches, &batch->key);
+        if (batch_entry && batch_entry->data == batch)
+                _mesa_hash_table_remove(ctx->batches, batch_entry);
+
+        if (ctx->batch == batch)
+                ctx->batch = NULL;
+
+        hash_table_foreach(batch->bos, entry) {
+                struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
+                uint32_t flags = (uintptr_t)entry->data;
+
+                if (!(flags & PAN_BO_ACCESS_SHARED)) {
+                        panfrost_bo_unreference(bo);
+                        continue;
+                }
+
+                struct hash_entry *access_entry =
+                        _mesa_hash_table_search(ctx->accessed_bos, bo);
+
+                assert(access_entry && access_entry->data);
+
+                struct panfrost_bo_access *access = access_entry->data;
+
+                if (flags & PAN_BO_ACCESS_WRITE) {
+                        assert(access->writer == batch);
+                        access->writer = NULL;
+                } else if (flags & PAN_BO_ACCESS_READ) {
+                        util_dynarray_foreach(&access->readers,
+                                              struct panfrost_batch *, reader) {
+                                if (*reader == batch) {
+                                        *reader = NULL;
+                                        break;
+                                }
+                        }
+                }
+
+                panfrost_bo_unreference(bo);
+        }
 
         panfrost_pool_cleanup(&batch->pool);
         panfrost_pool_cleanup(&batch->invisible_pool);
 
-        util_dynarray_foreach(&batch->dependencies,
-                              struct panfrost_batch_fence *, dep) {
-                panfrost_batch_fence_unreference(*dep);
-        }
-
-        util_dynarray_fini(&batch->dependencies);
-
-        /* The out_sync fence lifetime is different from the the batch one
-         * since other batches might want to wait on a fence of already
-         * submitted/signaled batch. All we need to do here is make sure the
-         * fence does not point to an invalid batch, which the core will
-         * interpret as 'batch is already submitted'.
-         */
-        batch->out_sync->batch = NULL;
-        panfrost_batch_fence_unreference(batch->out_sync);
-
         util_unreference_framebuffer_state(&batch->key);
+
         ralloc_free(batch);
-}
-
-#ifdef PAN_BATCH_DEBUG
-static bool
-panfrost_dep_graph_contains_batch(struct panfrost_batch *root,
-                                  struct panfrost_batch *batch)
-{
-        if (!root)
-                return false;
-
-        util_dynarray_foreach(&root->dependencies,
-                              struct panfrost_batch_fence *, dep) {
-                if ((*dep)->batch == batch ||
-                    panfrost_dep_graph_contains_batch((*dep)->batch, batch))
-                        return true;
-        }
-
-        return false;
-}
-#endif
-
-static void
-panfrost_batch_add_dep(struct panfrost_batch *batch,
-                       struct panfrost_batch_fence *newdep)
-{
-        if (batch == newdep->batch)
-                return;
-
-        /* We might want to turn ->dependencies into a set if the number of
-         * deps turns out to be big enough to make this 'is dep already there'
-         * search inefficient.
-         */
-        util_dynarray_foreach(&batch->dependencies,
-                              struct panfrost_batch_fence *, dep) {
-                if (*dep == newdep)
-                        return;
-        }
-
-#ifdef PAN_BATCH_DEBUG
-        /* Make sure the dependency graph is acyclic. */
-        assert(!panfrost_dep_graph_contains_batch(newdep->batch, batch));
-#endif
-
-        panfrost_batch_fence_reference(newdep);
-        util_dynarray_append(&batch->dependencies,
-                             struct panfrost_batch_fence *, newdep);
-
-        /* We now have a batch depending on us, let's make sure new draw/clear
-         * calls targeting the same FBO use a new batch object.
-         */
-        if (newdep->batch)
-                panfrost_freeze_batch(newdep->batch);
 }
 
 static struct panfrost_batch *
@@ -271,6 +175,10 @@ panfrost_get_batch(struct panfrost_context *ctx,
         return batch;
 }
 
+static void
+panfrost_batch_submit(struct panfrost_batch *batch,
+                      uint32_t in_sync, uint32_t out_sync);
+
 struct panfrost_batch *
 panfrost_get_fresh_batch(struct panfrost_context *ctx,
                          const struct pipe_framebuffer_state *key)
@@ -286,10 +194,10 @@ panfrost_get_fresh_batch(struct panfrost_context *ctx,
                 return batch;
         }
 
-        /* Otherwise, we need to freeze the existing one and instantiate a new
+        /* Otherwise, we need to flush the existing one and instantiate a new
          * one.
          */
-        panfrost_freeze_batch(batch);
+        panfrost_batch_submit(batch, 0, 0);
         batch = panfrost_get_batch(ctx, key);
         return batch;
 }
@@ -337,64 +245,10 @@ panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx)
         /* Otherwise, we need to freeze the existing one and instantiate a new
          * one.
          */
-        panfrost_freeze_batch(batch);
+        panfrost_batch_submit(batch, 0, 0);
         batch = panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
         ctx->batch = batch;
         return batch;
-}
-
-static void
-panfrost_bo_access_gc_fences(struct panfrost_context *ctx,
-                             struct panfrost_bo_access *access,
-			     const struct panfrost_bo *bo)
-{
-        if (access->writer) {
-                panfrost_batch_fence_unreference(access->writer);
-                access->writer = NULL;
-        }
-
-        struct panfrost_batch_fence **readers_array = util_dynarray_begin(&access->readers);
-        struct panfrost_batch_fence **new_readers = readers_array;
-
-        util_dynarray_foreach(&access->readers, struct panfrost_batch_fence *,
-                              reader) {
-                if (!(*reader))
-                        continue;
-
-                panfrost_batch_fence_unreference(*reader);
-                *reader = NULL;
-        }
-
-        if (!util_dynarray_resize(&access->readers, struct panfrost_batch_fence *,
-                                  new_readers - readers_array) &&
-            new_readers != readers_array)
-                unreachable("Invalid dynarray access->readers");
-}
-
-/* Collect signaled fences to keep the kernel-side syncobj-map small. The
- * idea is to collect those signaled fences at the end of each flush_all
- * call. This function is likely to collect only fences from previous
- * batch flushes not the one that have just have just been submitted and
- * are probably still in flight when we trigger the garbage collection.
- * Anyway, we need to do this garbage collection at some point if we don't
- * want the BO access map to keep invalid entries around and retain
- * syncobjs forever.
- */
-static void
-panfrost_gc_fences(struct panfrost_context *ctx)
-{
-        hash_table_foreach(ctx->accessed_bos, entry) {
-                struct panfrost_bo_access *access = entry->data;
-
-                assert(access);
-                panfrost_bo_access_gc_fences(ctx, access, entry->key);
-                if (!util_dynarray_num_elements(&access->readers,
-                                                struct panfrost_batch_fence *) &&
-                    !access->writer) {
-                        ralloc_free(access);
-                        _mesa_hash_table_remove(ctx->accessed_bos, entry);
-                }
-        }
 }
 
 static void
@@ -423,85 +277,76 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
         assert(access);
 
         if (writes && !old_writes) {
+                assert(!access->writer);
+
                 /* Previous access was a read and we want to write this BO.
-                 * We first need to add explicit deps between our batch and
-                 * the previous readers.
+                 * We need to flush readers.
                  */
                 util_dynarray_foreach(&access->readers,
-                                      struct panfrost_batch_fence *, reader) {
-                        /* We were already reading the BO, no need to add a dep
-                         * on ourself (the acyclic check would complain about
-                         * that).
-                         */
-                        if (!(*reader) || (*reader)->batch == batch)
-                                continue;
-
-                        panfrost_batch_add_dep(batch, *reader);
-                }
-                panfrost_batch_fence_reference(batch->out_sync);
-
-                if (access->writer)
-                        panfrost_batch_fence_unreference(access->writer);
-
-                /* We now are the new writer. */
-                access->writer = batch->out_sync;
-
-                /* Release the previous readers and reset the readers array. */
-                util_dynarray_foreach(&access->readers,
-                                      struct panfrost_batch_fence *,
-                                      reader) {
+                                      struct panfrost_batch *, reader) {
                         if (!*reader)
                                 continue;
-                        panfrost_batch_fence_unreference(*reader);
+
+                        /* Skip the entry if this our batch. */
+                        if (*reader == batch) {
+                                *reader = NULL;
+                                continue;
+                        }
+
+                        panfrost_batch_submit(*reader, 0, 0);
+                        assert(!*reader);
                 }
 
+                /* We now are the new writer. */
+                access->writer = batch;
+
+                /* Reset the readers array. */
                 util_dynarray_clear(&access->readers);
         } else if (writes && old_writes) {
                 /* First check if we were the previous writer, in that case
-                 * there's nothing to do. Otherwise we need to add a
-                 * dependency between the new writer and the old one.
+                 * there's nothing to do. Otherwise we need flush the previous
+                 * writer.
                  */
-		if (access->writer != batch->out_sync) {
+		if (access->writer != batch) {
                         if (access->writer) {
-                                panfrost_batch_add_dep(batch, access->writer);
-                                panfrost_batch_fence_unreference(access->writer);
+                                panfrost_batch_submit(access->writer, 0, 0);
+                                assert(!access->writer);
                         }
-                        panfrost_batch_fence_reference(batch->out_sync);
-                        access->writer = batch->out_sync;
+
+                        access->writer = batch;
                 }
         } else if (!writes && old_writes) {
                 /* First check if we were the previous writer, in that case
                  * we want to keep the access type unchanged, as a write is
                  * more constraining than a read.
                  */
-                if (access->writer != batch->out_sync) {
-                        /* Add a dependency on the previous writer. */
-                        panfrost_batch_add_dep(batch, access->writer);
+                if (access->writer != batch) {
+                        /* Flush the previous writer. */
+                        if (access->writer) {
+                                panfrost_batch_submit(access->writer, 0, 0);
+                                assert(!access->writer);
+                        }
 
                         /* The previous access was a write, there's no reason
                          * to have entries in the readers array.
                          */
                         assert(!util_dynarray_num_elements(&access->readers,
-                                                           struct panfrost_batch_fence *));
+                                                           struct panfrost_batch *));
 
                         /* Add ourselves to the readers array. */
-                        panfrost_batch_fence_reference(batch->out_sync);
                         util_dynarray_append(&access->readers,
-                                             struct panfrost_batch_fence *,
-                                             batch->out_sync);
+                                             struct panfrost_batch *,
+                                             batch);
                 }
         } else {
-                /* Previous access was a read and we want to read this BO.
-                 * Add ourselves to the readers array and add a dependency on
-                 * the previous writer if any.
-                 */
-                panfrost_batch_fence_reference(batch->out_sync);
-                util_dynarray_append(&access->readers,
-                                     struct panfrost_batch_fence *,
-                                     batch->out_sync);
+                assert(!access->writer);
 
-                if (access->writer)
-                        panfrost_batch_add_dep(batch, access->writer);
+                /* Previous access was a read and we want to read this BO.
+                 * Add ourselves to the readers array.
+                 */
+                util_dynarray_append(&access->readers,
+                                     struct panfrost_batch *,
+                                     batch);
         }
 
         access->last_is_write = writes;
@@ -1087,11 +932,11 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
         return ret;
 }
 
-static void ATTRIBUTE_NOINLINE
-panfrost_batch_submit_nodep(struct panfrost_device *dev,
-                            struct panfrost_batch *batch,
-                            uint32_t in_sync, uint32_t out_sync)
+static void
+panfrost_batch_submit(struct panfrost_batch *batch,
+                      uint32_t in_sync, uint32_t out_sync)
 {
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
         int ret;
 
         /* Nothing to do! */
@@ -1150,26 +995,7 @@ panfrost_batch_submit_nodep(struct panfrost_device *dev,
         }
 
 out:
-        panfrost_freeze_batch(batch);
         panfrost_free_batch(batch);
-}
-
-static void ATTRIBUTE_NOINLINE
-panfrost_batch_submit(struct panfrost_batch *batch,
-                      uint32_t in_sync, uint32_t out_sync)
-{
-        assert(batch);
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-
-        /* Submit the dependencies first. Don't pass along the out_sync since
-         * they are guaranteed to terminate sooner */
-        util_dynarray_foreach(&batch->dependencies,
-                              struct panfrost_batch_fence *, dep) {
-                if ((*dep)->batch)
-                        panfrost_batch_submit((*dep)->batch, 0, 0);
-        }
-
-        panfrost_batch_submit_nodep(dev, batch, in_sync, out_sync);
 }
 
 /* Submit all batches, applying the out_sync to the currently bound batch */
@@ -1188,9 +1014,6 @@ panfrost_flush_all_batches(struct panfrost_context *ctx)
         }
 
         assert(!ctx->batches->entries);
-
-        /* Collect batch fences before returning */
-        panfrost_gc_fences(ctx);
 }
 
 bool
@@ -1205,12 +1028,11 @@ panfrost_pending_batches_access_bo(struct panfrost_context *ctx,
         if (!access)
                 return false;
 
-        if (access->writer && access->writer->batch)
+        if (access->writer)
                 return true;
 
-        util_dynarray_foreach(&access->readers, struct panfrost_batch_fence *,
-                              reader) {
-                if (*reader && (*reader)->batch)
+        util_dynarray_foreach(&access->readers, struct panfrost_batch *, reader) {
+                if (*reader)
                         return true;
         }
 
@@ -1232,16 +1054,20 @@ panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
         if (!access)
                 return;
 
-        if (access->writer && access->writer->batch)
-                panfrost_batch_submit(access->writer->batch, ctx->syncobj, ctx->syncobj);
+        if (access->writer) {
+                panfrost_batch_submit(access->writer, ctx->syncobj, ctx->syncobj);
+                assert(!access->writer);
+        }
 
         if (!flush_readers)
                 return;
 
-        util_dynarray_foreach(&access->readers, struct panfrost_batch_fence *,
+        util_dynarray_foreach(&access->readers, struct panfrost_batch *,
                               reader) {
-                if (*reader && (*reader)->batch)
-                        panfrost_batch_submit((*reader)->batch, ctx->syncobj, ctx->syncobj);
+                if (*reader) {
+                        panfrost_batch_submit(*reader, ctx->syncobj, ctx->syncobj);
+                        assert(!*reader);
+                }
         }
 }
 
