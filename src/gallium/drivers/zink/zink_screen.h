@@ -66,6 +66,13 @@ struct zink_modifier_prop {
     VkDrmFormatModifierPropertiesEXT*    pDrmFormatModifierProperties;
 };
 
+struct zink_mem_cache {
+   simple_mtx_t mem_cache_mtx;
+   struct hash_table resource_mem_cache;
+   uint64_t mem_cache_size;
+   unsigned mem_cache_count;
+};
+
 struct zink_screen {
    struct pipe_screen base;
    bool threaded;
@@ -92,12 +99,7 @@ struct zink_screen {
 
    struct util_live_shader_cache shaders;
 
-   struct {
-      simple_mtx_t mem_cache_mtx;
-      struct hash_table resource_mem_cache;
-      uint64_t mem_cache_size;
-      unsigned mem_cache_count;
-   } mem;
+   struct zink_mem_cache *mem;
 
    uint64_t total_video_mem;
    uint64_t clamp_video_mem;

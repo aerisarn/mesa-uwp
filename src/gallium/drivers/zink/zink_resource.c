@@ -110,8 +110,8 @@ static void
 cache_or_free_mem(struct zink_screen *screen, struct zink_resource_object *obj)
 {
    if (obj->mkey.key.heap_index != UINT32_MAX) {
-      simple_mtx_lock(&screen->mem.mem_cache_mtx);
-      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->mem.resource_mem_cache, obj->mem_hash, &obj->mkey);
+      simple_mtx_lock(&screen->mem[obj->mkey.key.heap_index].mem_cache_mtx);
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->mem[obj->mkey.key.heap_index].resource_mem_cache, obj->mem_hash, &obj->mkey);
       assert(he);
       struct util_dynarray *array = he->data;
       struct mem_key *mkey = (void*)he->key;
@@ -120,16 +120,16 @@ cache_or_free_mem(struct zink_screen *screen, struct zink_resource_object *obj)
       mkey->seen_count--;
       if (util_dynarray_num_elements(array, struct mem_cache_entry) < seen) {
          struct mem_cache_entry mc = { obj->mem, obj->map };
-         screen->mem.mem_cache_size += obj->size;
+         screen->mem[obj->mkey.key.heap_index].mem_cache_size += obj->size;
          if (sizeof(void*) == 4 && obj->map) {
             vkUnmapMemory(screen->dev, obj->mem);
             mc.map = NULL;
          }
          util_dynarray_append(array, struct mem_cache_entry, mc);
-         simple_mtx_unlock(&screen->mem.mem_cache_mtx);
+         simple_mtx_unlock(&screen->mem[obj->mkey.key.heap_index].mem_cache_mtx);
          return;
       }
-      simple_mtx_unlock(&screen->mem.mem_cache_mtx);
+      simple_mtx_unlock(&screen->mem[obj->mkey.key.heap_index].mem_cache_mtx);
    }
    vkFreeMemory(screen->dev, obj->mem, NULL);
 }
@@ -712,9 +712,9 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       obj->mkey.key.reqs = reqs;
       obj->mkey.key.heap_index = mai.memoryTypeIndex;
       obj->mem_hash = mem_hash(&obj->mkey);
-      simple_mtx_lock(&screen->mem.mem_cache_mtx);
+      simple_mtx_lock(&screen->mem[mai.memoryTypeIndex].mem_cache_mtx);
 
-      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->mem.resource_mem_cache, obj->mem_hash, &obj->mkey);
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->mem[mai.memoryTypeIndex].resource_mem_cache, obj->mem_hash, &obj->mkey);
       struct mem_key *mkey;
       if (he) {
          struct util_dynarray *array = he->data;
@@ -723,8 +723,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             struct mem_cache_entry mc = util_dynarray_pop(array, struct mem_cache_entry);
             obj->mem = mc.mem;
             obj->map = mc.map;
-            screen->mem.mem_cache_size -= reqs.size;
-            screen->mem.mem_cache_count--;
+            screen->mem[mai.memoryTypeIndex].mem_cache_size -= reqs.size;
+            screen->mem[mai.memoryTypeIndex].mem_cache_count--;
          }
       } else {
          mkey = ralloc(screen, struct mem_key);
@@ -732,10 +732,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          mkey->seen_count = 0;
          struct util_dynarray *array = rzalloc(screen, struct util_dynarray);
          util_dynarray_init(array, screen);
-         _mesa_hash_table_insert_pre_hashed(&screen->mem.resource_mem_cache, obj->mem_hash, mkey, array);
+         _mesa_hash_table_insert_pre_hashed(&screen->mem[mai.memoryTypeIndex].resource_mem_cache, obj->mem_hash, mkey, array);
       }
       mkey->seen_count++;
-      simple_mtx_unlock(&screen->mem.mem_cache_mtx);
+      simple_mtx_unlock(&screen->mem[mai.memoryTypeIndex].mem_cache_mtx);
    } else
       obj->mkey.key.heap_index = UINT32_MAX;
 
@@ -1684,8 +1684,15 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
       pscreen->resource_from_handle = zink_resource_from_handle;
    }
    pscreen->resource_get_param = zink_resource_get_param;
-   simple_mtx_init(&screen->mem.mem_cache_mtx, mtx_plain);
-   return _mesa_hash_table_init(&screen->mem.resource_mem_cache, screen, mem_hash, mem_equals);
+
+   screen->mem = rzalloc_array(screen, struct zink_mem_cache, screen->info.mem_props.memoryTypeCount);
+   if (!screen->mem)
+      return false;
+   for (uint32_t i = 0; i < screen->info.mem_props.memoryTypeCount; ++i) {
+      simple_mtx_init(&screen->mem[i].mem_cache_mtx, mtx_plain);
+      _mesa_hash_table_init(&screen->mem[i].resource_mem_cache, screen, mem_hash, mem_equals);
+   }
+   return true;
 }
 
 void

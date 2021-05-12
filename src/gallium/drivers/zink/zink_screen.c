@@ -1084,11 +1084,14 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    }
 #endif
    disk_cache_destroy(screen->disk_cache);
-   simple_mtx_lock(&screen->mem.mem_cache_mtx);
-   hash_table_foreach(&screen->mem.resource_mem_cache, he)
-      resource_cache_entry_destroy(screen, he);
-   simple_mtx_unlock(&screen->mem.mem_cache_mtx);
-   simple_mtx_destroy(&screen->mem.mem_cache_mtx);
+
+   for (uint32_t i = 0; i < screen->info.mem_props.memoryHeapCount; ++i) {
+      simple_mtx_lock(&screen->mem[i].mem_cache_mtx);
+      hash_table_foreach(&screen->mem[i].resource_mem_cache, he)
+         resource_cache_entry_destroy(screen, he);
+      simple_mtx_unlock(&screen->mem[i].mem_cache_mtx);
+      simple_mtx_destroy(&screen->mem[i].mem_cache_mtx);
+   }
 
    util_live_shader_cache_deinit(&screen->shaders);
 
