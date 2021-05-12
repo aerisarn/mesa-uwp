@@ -104,10 +104,8 @@ struct panfrost_context {
         /* Gallium context */
         struct pipe_context base;
 
-        /* Upload manager for small resident GPU-internal data structures, like
-         * sampler descriptors. We use an upload manager since the minimum BO
-         * size from the kernel is 4kb */
-        struct u_upload_mgr *state_uploader;
+        /* Unowned pools, so manage yourself. */
+        struct pan_pool descs, shaders;
 
         /* Sync obj used to keep track of in-flight jobs. */
         uint32_t syncobj;
@@ -213,21 +211,13 @@ struct panfrost_shader_state {
         /* Compiled, mapped descriptor, ready for the hardware */
         bool compiled;
 
-        /* Uploaded shader descriptor (TODO: maybe stuff the packed unuploaded
-         * bits in a union to save some memory?) */
-
-        struct {
-                struct pipe_resource *rsrc;
-                uint32_t offset;
-        } upload;
+        /* Respectively, shader binary and Renderer State Descriptor */
+        struct pan_pool_ref bin, state;
 
         struct pan_shader_info info;
 
         struct pipe_stream_output_info stream_output;
         uint64_t so_mask;
-
-        /* GPU-executable memory */
-        struct panfrost_bo *bo;
 
         /* Variants */
         enum pipe_format rt_formats[8];

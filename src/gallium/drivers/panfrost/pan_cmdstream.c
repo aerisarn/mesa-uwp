@@ -339,15 +339,15 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                  * the same top 32 bit as the fragment shader.
                                  * TODO: Ensure that's always the case.
                                  */
-                                assert(!fs->bo ||
+                                assert(!fs->bin.bo ||
                                         (blend[i].shader.gpu & (0xffffffffull << 32)) ==
-                                       (fs->bo->ptr.gpu & (0xffffffffull << 32)));
+                                       (fs->bin.gpu & (0xffffffffull << 32)));
                                 cfg.bifrost.internal.shader.pc = (u32)blend[i].shader.gpu;
                                 unsigned ret_offset = fs->info.bifrost.blend[i].return_offset;
                                 if (ret_offset) {
                                         assert(!(ret_offset & 0x7));
                                         cfg.bifrost.internal.shader.return_value =
-                                                fs->bo->ptr.gpu + ret_offset;
+                                                fs->bin.gpu + ret_offset;
                                 }
                                 cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_SHADER;
                         } else {
@@ -465,9 +465,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                 state->properties.bifrost.allow_forward_pixel_to_be_killed = true;
                 state->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
         } else {
-                pan_shader_prepare_rsd(dev, &fs->info,
-                                       fs->bo ? fs->bo->ptr.gpu : 0,
-                                       state);
+                pan_shader_prepare_rsd(dev, &fs->info, fs->bin.gpu, state);
 
                 /* Track if any colour buffer is reused across draws, either
                  * from reading it directly, or from failing to write it */
@@ -513,9 +511,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 state->properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
                 state->properties.midgard.force_early_z = true;
         } else {
-                pan_shader_prepare_rsd(dev, &fs->info,
-                                       fs->bo ? fs->bo->ptr.gpu : 0,
-                                       state);
+                pan_shader_prepare_rsd(dev, &fs->info, fs->bin.gpu, state);
 
                 /* Reasons to disable early-Z from a shader perspective */
                 bool late_z = fs->info.fs.can_discard || fs->info.writes_global ||
@@ -659,19 +655,18 @@ mali_ptr
 panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader_type stage)
 {
         struct panfrost_shader_state *ss = panfrost_get_shader_state(batch->ctx, stage);
-        struct panfrost_resource *rsrc = pan_resource(ss->upload.rsrc);
 
-        panfrost_batch_add_bo(batch, ss->bo,
+        panfrost_batch_add_bo(batch, ss->bin.bo,
                               PAN_BO_ACCESS_PRIVATE |
                               PAN_BO_ACCESS_READ |
                               PAN_BO_ACCESS_VERTEX_TILER);
 
-        panfrost_batch_add_bo(batch, rsrc->image.data.bo,
+        panfrost_batch_add_bo(batch, ss->state.bo,
                               PAN_BO_ACCESS_PRIVATE |
                               PAN_BO_ACCESS_READ |
                               PAN_BO_ACCESS_VERTEX_TILER);
 
-        return rsrc->image.data.bo->ptr.gpu + ss->upload.offset;
+        return ss->state.gpu;
 }
 
 mali_ptr
@@ -681,7 +676,7 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
         struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
         /* Add the shader BO to the batch. */
-        panfrost_batch_add_bo(batch, ss->bo,
+        panfrost_batch_add_bo(batch, ss->bin.bo,
                               PAN_BO_ACCESS_PRIVATE |
                               PAN_BO_ACCESS_READ |
                               PAN_BO_ACCESS_FRAGMENT);

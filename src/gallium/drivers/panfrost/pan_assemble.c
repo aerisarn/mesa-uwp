@@ -44,18 +44,15 @@ pan_upload_shader_descriptor(struct panfrost_context *ctx,
                         struct panfrost_shader_state *state)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct mali_state_packed *out;
+        struct panfrost_ptr ptr =
+                panfrost_pool_alloc_desc(&ctx->descs, RENDERER_STATE);
 
-        u_upload_alloc(ctx->state_uploader, 0, MALI_RENDERER_STATE_LENGTH, MALI_RENDERER_STATE_LENGTH,
-                        &state->upload.offset, &state->upload.rsrc, (void **) &out);
+        state->state = pan_take_ref(&ctx->descs, ptr.gpu);
 
-        pan_pack(out, RENDERER_STATE, cfg) {
-                pan_shader_prepare_rsd(dev, &state->info,
-                                       state->bo ? state->bo->ptr.gpu : 0,
+        pan_pack(ptr.cpu, RENDERER_STATE, cfg) {
+                pan_shader_prepare_rsd(dev, &state->info, state->bin.gpu,
                                        &cfg);
         }
-
-        u_upload_unmap(ctx->state_uploader);
 }
 
 void
@@ -95,11 +92,10 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         util_dynarray_init(&binary, NULL);
         pan_shader_compile(dev, s, &inputs, &binary, &state->info);
 
-        /* Prepare the compiled binary for upload */
         if (binary.size) {
-                state->bo = panfrost_bo_create(dev, binary.size,
-                                PAN_BO_EXECUTE, "Shader binary");
-                memcpy(state->bo->ptr.cpu, binary.data, binary.size);
+                state->bin = pan_take_ref(&ctx->shaders,
+                        panfrost_pool_upload_aligned(&ctx->shaders,
+                                binary.data, binary.size, 128));
         }
 
         if (stage != MESA_SHADER_FRAGMENT)

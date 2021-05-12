@@ -893,16 +893,11 @@ panfrost_delete_shader_state(
 
         for (unsigned i = 0; i < cso->variant_count; ++i) {
                 struct panfrost_shader_state *shader_state = &cso->variants[i];
-                panfrost_bo_unreference(shader_state->bo);
-
-                if (shader_state->upload.rsrc)
-                        pipe_resource_reference(&shader_state->upload.rsrc, NULL);
-
-                shader_state->bo = NULL;
+                panfrost_bo_unreference(shader_state->bin.bo);
+                panfrost_bo_unreference(shader_state->state.bo);
         }
+
         free(cso->variants);
-
-
         free(so);
 }
 
@@ -1548,7 +1543,9 @@ panfrost_destroy(struct pipe_context *pipe)
 
         util_unreference_framebuffer_state(&panfrost->pipe_framebuffer);
         u_upload_destroy(pipe->stream_uploader);
-        u_upload_destroy(panfrost->state_uploader);
+
+        panfrost_pool_cleanup(&panfrost->descs);
+        panfrost_pool_cleanup(&panfrost->shaders);
 
         ralloc_free(pipe);
 }
@@ -1852,8 +1849,11 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->stream_uploader = u_upload_create_default(gallium);
         gallium->const_uploader = gallium->stream_uploader;
 
-        ctx->state_uploader = u_upload_create(gallium, 4096,
-                        PIPE_BIND_CONSTANT_BUFFER, PIPE_USAGE_DYNAMIC, 0);
+        panfrost_pool_init(&ctx->descs, ctx, dev,
+                        0, 4096, "Descriptors", true, false);
+
+        panfrost_pool_init(&ctx->shaders, ctx, dev,
+                        PAN_BO_EXECUTE, 4096, "Shaders", true, false);
 
         /* All of our GPUs support ES mode. Midgard supports additionally
          * QUADS/QUAD_STRIPS/POLYGON. Bifrost supports just QUADS. */
