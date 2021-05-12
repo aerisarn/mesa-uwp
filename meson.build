@@ -79,6 +79,7 @@ if with_tools.contains('all')
 endif
 with_clc = false
 
+with_any_vulkan_layers = get_option('vulkan-layers').length() != 0
 with_intel_tools = with_tools.contains('intel') or with_tools.contains('intel-ui')
 with_imgui = with_intel_tools or with_vulkan_overlay_layer
 
@@ -2174,6 +2175,9 @@ lines += ''
 if with_any_vk
   lines += 'Vulkan drivers:  ' + ' '.join(_vulkan_drivers)
   lines += 'Vulkan ICD dir:  ' + with_vulkan_icd_dir
+  if with_any_vulkan_layers
+    lines += 'Vulkan layers:   ' + ' '.join(get_option('vulkan-layers'))
+  endif
 else
   lines += 'Vulkan drivers:  no'
 endif
