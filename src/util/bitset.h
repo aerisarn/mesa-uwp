@@ -205,6 +205,25 @@ __bitset_shl(BITSET_WORD *x, unsigned amount, unsigned n)
    ((x)[BITSET_BITWORD(b)] &= ~BITSET_RANGE(b, e)) : \
    (assert (!"BITSET_CLEAR_RANGE: bit range crosses word boundary"), 0))
 
+static inline void
+__bitset_set_range(BITSET_WORD *r, unsigned start, unsigned end)
+{
+   const unsigned size = end - start;
+   const unsigned start_mod = start % BITSET_WORDBITS;
+
+   if (start_mod + size <= BITSET_WORDBITS) {
+      BITSET_SET_RANGE_INSIDE_WORD(r, start, end);
+   } else {
+      const unsigned first_size = BITSET_WORDBITS - start_mod;
+
+      __bitset_set_range(r, start, start + first_size - 1);
+      __bitset_set_range(r, start + first_size, end);
+   }
+}
+
+#define BITSET_SET_RANGE(x, b, e) \
+   __bitset_set_range(x, b, e)
+
 static inline unsigned
 __bitset_prefix_sum(const BITSET_WORD *x, unsigned b, unsigned n)
 {
