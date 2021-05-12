@@ -290,28 +290,20 @@ vn_CreateImage(VkDevice device,
    struct vn_image *img;
    VkResult result;
 
-#ifdef VN_USE_WSI_PLATFORM
    const struct wsi_image_create_info *wsi_info =
-      vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
+      vn_wsi_find_wsi_image_create_info(pCreateInfo);
+   const VkNativeBufferANDROID *anb_info =
+      vn_android_find_native_buffer(pCreateInfo);
+
    if (wsi_info) {
       assert(wsi_info->scanout);
       result = vn_wsi_create_scanout_image(dev, pCreateInfo, alloc, &img);
-      goto out;
-   }
-#endif
-
-#ifdef ANDROID
-   const VkNativeBufferANDROID *anb_info =
-      vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
-   if (anb_info) {
+   } else if (anb_info) {
       result = vn_image_from_anb(dev, pCreateInfo, anb_info, alloc, &img);
-      goto out;
+   } else {
+      result = vn_image_create(dev, pCreateInfo, alloc, &img);
    }
-#endif
 
-   result = vn_image_create(dev, pCreateInfo, alloc, &img);
-
-out:
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
 

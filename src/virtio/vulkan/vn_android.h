@@ -19,9 +19,6 @@
 /* venus implements VK_ANDROID_native_buffer up to spec version 7 */
 #define VN_ANDROID_NATIVE_BUFFER_SPEC_VERSION 7
 
-struct vn_device;
-struct vn_image;
-
 struct vn_android_wsi {
    /* command pools, one per queue family */
    VkCommandPool *cmd_pools;
@@ -31,14 +28,8 @@ struct vn_android_wsi {
    uint32_t *queue_family_indices;
 };
 
-VkResult
-vn_image_from_anb(struct vn_device *dev,
-                  const VkImageCreateInfo *image_info,
-                  const VkNativeBufferANDROID *anb_info,
-                  const VkAllocationCallbacks *alloc,
-                  struct vn_image **out_img);
-
 #ifdef ANDROID
+
 VkResult
 vn_android_wsi_init(struct vn_device *dev,
                     const VkAllocationCallbacks *alloc);
@@ -46,7 +37,22 @@ vn_android_wsi_init(struct vn_device *dev,
 void
 vn_android_wsi_fini(struct vn_device *dev,
                     const VkAllocationCallbacks *alloc);
+
+static inline const VkNativeBufferANDROID *
+vn_android_find_native_buffer(const VkImageCreateInfo *create_info)
+{
+   return vk_find_struct_const(create_info->pNext, NATIVE_BUFFER_ANDROID);
+}
+
+VkResult
+vn_image_from_anb(struct vn_device *dev,
+                  const VkImageCreateInfo *image_info,
+                  const VkNativeBufferANDROID *anb_info,
+                  const VkAllocationCallbacks *alloc,
+                  struct vn_image **out_img);
+
 #else
+
 static inline VkResult
 vn_android_wsi_init(UNUSED struct vn_device *dev,
                     UNUSED const VkAllocationCallbacks *alloc)
@@ -60,6 +66,23 @@ vn_android_wsi_fini(UNUSED struct vn_device *dev,
 {
    return;
 }
-#endif
+
+static inline const VkNativeBufferANDROID *
+vn_android_find_native_buffer(const VkImageCreateInfo *create_info)
+{
+   return NULL;
+}
+
+static inline VkResult
+vn_image_from_anb(struct vn_device *dev,
+                  const VkImageCreateInfo *image_info,
+                  const VkNativeBufferANDROID *anb_info,
+                  const VkAllocationCallbacks *alloc,
+                  struct vn_image **out_img)
+{
+   return VK_ERROR_OUT_OF_HOST_MEMORY;
+}
+
+#endif /* ANDROID */
 
 #endif /* VN_ANDROID_H */
