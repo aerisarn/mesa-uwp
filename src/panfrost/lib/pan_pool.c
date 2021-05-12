@@ -67,7 +67,7 @@ panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
 void
 panfrost_pool_init(struct pan_pool *pool, void *memctx,
                    struct panfrost_device *dev,
-                   unsigned create_flags, const char *label,
+                   unsigned create_flags, size_t slab_size, const char *label,
                    bool prealloc, bool owned)
 {
         memset(pool, 0, sizeof(*pool));
@@ -75,12 +75,13 @@ panfrost_pool_init(struct pan_pool *pool, void *memctx,
         pool->create_flags = create_flags;
         pool->owned = owned;
         pool->label = label;
+        pool->slab_size = slab_size;
 
         if (owned)
                 util_dynarray_init(&pool->bos, memctx);
 
         if (prealloc)
-                panfrost_pool_alloc_backing(pool, TRANSIENT_SLAB_SIZE);
+                panfrost_pool_alloc_backing(pool, pool->slab_size);
 }
 
 void
@@ -128,9 +129,9 @@ panfrost_pool_alloc_aligned(struct pan_pool *pool, size_t sz, unsigned alignment
         unsigned offset = ALIGN_POT(pool->transient_offset, alignment);
 
         /* If we don't fit, allocate a new backing */
-        if (unlikely(bo == NULL || (offset + sz) >= TRANSIENT_SLAB_SIZE)) {
+        if (unlikely(bo == NULL || (offset + sz) >= pool->slab_size)) {
                 bo = panfrost_pool_alloc_backing(pool,
-                                ALIGN_POT(MAX2(TRANSIENT_SLAB_SIZE, sz), 4096));
+                                ALIGN_POT(MAX2(pool->slab_size, sz), 4096));
                 offset = 0;
         }
 

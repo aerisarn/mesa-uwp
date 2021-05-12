@@ -49,22 +49,6 @@ extern "C" {
 /* Driver limits */
 #define PAN_MAX_CONST_BUFFERS 16
 
-/* Transient slab size. This is a balance between fragmentation against cache
- * locality and ease of bookkeeping */
-
-#define TRANSIENT_SLAB_PAGES (16) /* 64kb */
-#define TRANSIENT_SLAB_SIZE (4096 * TRANSIENT_SLAB_PAGES)
-
-/* Maximum number of transient slabs so we don't need dynamic arrays. Most
- * interesting Mali boards are 4GB RAM max, so if the entire RAM was filled
- * with transient slabs, you could never exceed (4GB / TRANSIENT_SLAB_SIZE)
- * allocations anyway. By capping, we can use a fixed-size bitset for tracking
- * free slabs, eliminating quite a bit of complexity. We can pack the free
- * state of 8 slabs into a single byte, so for 128kb transient slabs the bitset
- * occupies a cheap 4kb of memory */
-
-#define MAX_TRANSIENT_SLABS (1024*1024 / TRANSIENT_SLAB_PAGES)
-
 /* How many power-of-two levels in the BO cache do we want? 2^12
  * minimum chosen as it is the page size that all allocations are
  * rounded to */

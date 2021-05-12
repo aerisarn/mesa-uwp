@@ -53,6 +53,9 @@ struct pan_pool {
         /* BO flags to use in the pool */
         unsigned create_flags;
 
+        /* Minimum size for allocated BOs. */
+        size_t slab_size;
+
         /* Mode of the pool. BO management is in the pool for owned mode, but
          * the consumed for unowned mode. */
         bool owned;
@@ -61,7 +64,8 @@ struct pan_pool {
 void
 panfrost_pool_init(struct pan_pool *pool, void *memctx,
                    struct panfrost_device *dev, unsigned create_flags,
-                   const char *label, bool prealloc, bool owned);
+                   size_t slab_size, const char *label, bool prealloc, bool
+                   owned);
 
 void
 panfrost_pool_cleanup(struct pan_pool *pool);
