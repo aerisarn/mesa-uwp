@@ -165,7 +165,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                    PAN_BO_EXECUTE,
                    PAN_BO_ACCESS_PRIVATE |
                    PAN_BO_ACCESS_READ |
-                   PAN_BO_ACCESS_FRAGMENT);
+                   PAN_BO_ACCESS_FRAGMENT, "Blend shader");
         }
 
         struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);

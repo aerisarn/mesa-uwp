@@ -1188,7 +1188,7 @@ panfrost_indirect_draw_alloc_deps(struct panfrost_device *dev)
                                  MALI_LOCAL_STORAGE_LENGTH;
 
         dev->indirect_draw_shaders.states =
-                panfrost_bo_create(dev, state_bo_size, 0);
+                panfrost_bo_create(dev, state_bo_size, 0, "Indirect draw states");
 
         /* Prepare the thread storage descriptor now since it's invariant. */
         void *tsd = dev->indirect_draw_shaders.states->ptr.cpu +
@@ -1206,7 +1206,8 @@ panfrost_indirect_draw_alloc_deps(struct panfrost_device *dev)
          */
         dev->indirect_draw_shaders.varying_heap =
                 panfrost_bo_create(dev, 512 * 1024 * 1024,
-                                   PAN_BO_INVISIBLE | PAN_BO_GROWABLE);
+                                   PAN_BO_INVISIBLE | PAN_BO_GROWABLE,
+                                   "Indirect draw varying heap");
 
 out:
         pthread_mutex_unlock(&dev->indirect_draw_shaders.lock);

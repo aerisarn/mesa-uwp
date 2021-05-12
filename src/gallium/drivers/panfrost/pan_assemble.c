@@ -97,7 +97,8 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         /* Prepare the compiled binary for upload */
         if (binary.size) {
-                state->bo = panfrost_bo_create(dev, binary.size, PAN_BO_EXECUTE);
+                state->bo = panfrost_bo_create(dev, binary.size,
+                                PAN_BO_EXECUTE, "Shader binary");
                 memcpy(state->bo->ptr.cpu, binary.data, binary.size);
         }
 

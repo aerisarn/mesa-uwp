@@ -259,7 +259,7 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
          * shared across batches/contextes */
 
         dev->tiler_heap = panfrost_bo_create(dev, 4096 * 4096,
-                        PAN_BO_INVISIBLE | PAN_BO_GROWABLE);
+                        PAN_BO_INVISIBLE | PAN_BO_GROWABLE, "Tiler heap");
 
         pthread_mutex_init(&dev->submit_lock, NULL);
 

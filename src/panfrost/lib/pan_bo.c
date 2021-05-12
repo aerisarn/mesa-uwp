@@ -57,7 +57,7 @@
 
 static struct panfrost_bo *
 panfrost_bo_alloc(struct panfrost_device *dev, size_t size,
-                  uint32_t flags)
+                  uint32_t flags, const char *label)
 {
         struct drm_panfrost_create_bo create_bo = { .size = size };
         struct panfrost_bo *bo;
@@ -85,6 +85,7 @@ panfrost_bo_alloc(struct panfrost_device *dev, size_t size,
         bo->gem_handle = create_bo.handle;
         bo->flags = flags;
         bo->dev = dev;
+        bo->label = label;
         return bo;
 }
 
@@ -189,7 +190,8 @@ pan_bucket(struct panfrost_device *dev, unsigned size)
 
 static struct panfrost_bo *
 panfrost_bo_cache_fetch(struct panfrost_device *dev,
-                        size_t size, uint32_t flags, bool dontwait)
+                        size_t size, uint32_t flags, const char *label,
+                        bool dontwait)
 {
         pthread_mutex_lock(&dev->bo_cache.lock);
         struct list_head *bucket = pan_bucket(dev, size);
@@ -224,6 +226,7 @@ panfrost_bo_cache_fetch(struct panfrost_device *dev,
                 }
                 /* Let's go! */
                 bo = entry;
+                bo->label = label;
                 break;
         }
         pthread_mutex_unlock(&dev->bo_cache.lock);
@@ -291,6 +294,9 @@ panfrost_bo_cache_put(struct panfrost_bo *bo)
          */
         panfrost_bo_cache_evict_stale_bos(dev);
         pthread_mutex_unlock(&dev->bo_cache.lock);
+
+        /* Update the label to help debug BO cache memory usage issues */
+        bo->label = "Unused (BO cache)";
 
         return true;
 }
@@ -361,7 +367,7 @@ panfrost_bo_munmap(struct panfrost_bo *bo)
 
 struct panfrost_bo *
 panfrost_bo_create(struct panfrost_device *dev, size_t size,
-                   uint32_t flags)
+                   uint32_t flags, const char *label)
 {
         struct panfrost_bo *bo;
 
@@ -382,11 +388,11 @@ panfrost_bo_create(struct panfrost_device *dev, size_t size,
          * and if that fails too, we try one more time to allocate from the
          * cache, but this time we accept to wait.
          */
-        bo = panfrost_bo_cache_fetch(dev, size, flags, true);
+        bo = panfrost_bo_cache_fetch(dev, size, flags, label, true);
         if (!bo)
-                bo = panfrost_bo_alloc(dev, size, flags);
+                bo = panfrost_bo_alloc(dev, size, flags, label);
         if (!bo)
-                bo = panfrost_bo_cache_fetch(dev, size, flags, false);
+                bo = panfrost_bo_cache_fetch(dev, size, flags, label, false);
 
         if (!bo)
                 fprintf(stderr, "BO creation failed\n");

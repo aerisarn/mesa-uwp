@@ -237,7 +237,8 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
         assert(!shader_info.sysvals.sysval_count);
 
         dev->indirect_dispatch.bin =
-                panfrost_bo_create(dev, binary.size, PAN_BO_EXECUTE);
+                panfrost_bo_create(dev, binary.size, PAN_BO_EXECUTE,
+                                "Indirect dispatch shader");
 
         memcpy(dev->indirect_dispatch.bin->ptr.cpu, binary.data, binary.size);
         util_dynarray_fini(&binary);
@@ -247,7 +248,7 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
                 panfrost_bo_create(dev,
                                    MALI_RENDERER_STATE_LENGTH +
                                    MALI_LOCAL_STORAGE_LENGTH,
-                                   0);
+                                   0, "Indirect dispatch descriptors");
 
         mali_ptr address = dev->indirect_dispatch.bin->ptr.gpu;
         if (!pan_is_bifrost(dev))

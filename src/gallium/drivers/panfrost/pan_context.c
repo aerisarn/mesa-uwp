@@ -1270,7 +1270,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 (pan_is_bifrost(device) ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
                 panfrost_estimate_texture_payload_size(device, &iview);
 
-        so->bo = panfrost_bo_create(device, size, 0);
+        so->bo = panfrost_bo_create(device, size, 0, "Texture view");
 
         struct panfrost_ptr payload = so->bo->ptr;
         void *tex = pan_is_bifrost(device) ?
@@ -1594,7 +1594,8 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
 
                 /* Allocate a bo for the query results to be stored */
                 if (!query->bo) {
-                        query->bo = panfrost_bo_create(dev, size, 0);
+                        query->bo = panfrost_bo_create(dev, size, 0,
+                                        "Occlusion query result");
                 }
 
                 /* Default to 0 if nothing at all drawn. */

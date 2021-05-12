@@ -445,12 +445,13 @@ panfrost_batch_add_fbo_bos(struct panfrost_batch *batch)
 
 struct panfrost_bo *
 panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
-                         uint32_t create_flags, uint32_t access_flags)
+                         uint32_t create_flags, uint32_t access_flags,
+                         const char *label)
 {
         struct panfrost_bo *bo;
 
         bo = panfrost_bo_create(pan_device(batch->ctx->base.screen), size,
-                                create_flags);
+                                create_flags, label);
         panfrost_batch_add_bo(batch, bo, access_flags);
 
         /* panfrost_batch_add_bo() has retained a reference and
@@ -492,7 +493,7 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch)
                                                  PAN_BO_ACCESS_PRIVATE |
                                                  PAN_BO_ACCESS_RW |
                                                  PAN_BO_ACCESS_VERTEX_TILER |
-                                                 PAN_BO_ACCESS_FRAGMENT);
+                                                 PAN_BO_ACCESS_FRAGMENT, "Polygon list");
 
 
                 if (init_polygon_list) {
@@ -527,7 +528,8 @@ panfrost_batch_get_scratchpad(struct panfrost_batch *batch,
                                              PAN_BO_ACCESS_PRIVATE |
                                              PAN_BO_ACCESS_RW |
                                              PAN_BO_ACCESS_VERTEX_TILER |
-                                             PAN_BO_ACCESS_FRAGMENT);
+                                             PAN_BO_ACCESS_FRAGMENT,
+                                             "Thread local storage");
         }
 
         return batch->scratchpad;
@@ -545,7 +547,8 @@ panfrost_batch_get_shared_memory(struct panfrost_batch *batch,
                                              PAN_BO_INVISIBLE,
                                              PAN_BO_ACCESS_PRIVATE |
                                              PAN_BO_ACCESS_RW |
-                                             PAN_BO_ACCESS_VERTEX_TILER);
+                                             PAN_BO_ACCESS_VERTEX_TILER,
+                                             "Workgroup shared memory");
         }
 
         return batch->shared_memory;

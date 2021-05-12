@@ -137,7 +137,8 @@ panfrost_batch_add_fbo_bos(struct panfrost_batch *batch);
 
 struct panfrost_bo *
 panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
-                         uint32_t create_flags, uint32_t access_flags);
+                         uint32_t create_flags, uint32_t access_flags,
+                         const char *label);
 
 void
 panfrost_flush_all_batches(struct panfrost_context *ctx);
