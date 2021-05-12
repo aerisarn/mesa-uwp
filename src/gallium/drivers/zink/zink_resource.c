@@ -750,13 +750,20 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
       debug_printf("new backing resource alloc failed!");
       return false;
    }
+   bool needs_unref = true;
+   if (zink_batch_usage_exists(old_obj->reads) ||
+       zink_batch_usage_exists(old_obj->writes)) {
+      zink_batch_reference_resource_move(&ctx->batch, res);
+      needs_unref = false;
+   }
    res->obj = new_obj;
    res->access_stage = 0;
    res->access = 0;
    res->unordered_barrier = false;
    zink_resource_rebind(ctx, res);
    zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
-   zink_resource_object_reference(screen, &old_obj, NULL);
+   if (needs_unref)
+      zink_resource_object_reference(screen, &old_obj, NULL);
    return true;
 }
 
