@@ -2518,6 +2518,20 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
       alloc.ConstantBufferSize = push_constant_kb - kb_used;
    }
 
+#if GFX_VERx10 == 125
+   /* Wa_22011440098
+    *
+    * In 3D mode, after programming push constant alloc command immediately
+    * program push constant command(ZERO length) without any commit between
+    * them.
+    */
+   if (intel_device_info_is_dg2(&cmd_buffer->device->info)) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_ALL), c) {
+         c.MOCS = anv_mocs(cmd_buffer->device, NULL, 0);
+      }
+   }
+#endif
+
    cmd_buffer->state.gfx.push_constant_stages = stages;
 
    /* From the BDW PRM for 3DSTATE_PUSH_CONSTANT_ALLOC_VS:

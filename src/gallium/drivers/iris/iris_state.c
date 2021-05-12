@@ -939,6 +939,20 @@ iris_alloc_push_constants(struct iris_batch *batch)
          alloc.ConstantBufferSize = i == MESA_SHADER_FRAGMENT ? frag_size : stage_size;
       }
    }
+
+#if GFX_VERx10 == 125
+   /* Wa_22011440098
+    *
+    * In 3D mode, after programming push constant alloc command immediately
+    * program push constant command(ZERO length) without any commit between
+    * them.
+    */
+   if (intel_device_info_is_dg2(devinfo)) {
+      iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_ALL), c) {
+         c.MOCS = iris_mocs(NULL, &batch->screen->isl_dev, 0);
+      }
+   }
+#endif
 }
 
 #if GFX_VER >= 12
