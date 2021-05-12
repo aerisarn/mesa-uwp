@@ -375,7 +375,8 @@ lima_pack_reload_plbu_cmd(struct lima_job *job, struct pipe_surface *psurf)
 
    if (util_format_is_depth_or_stencil(psurf->format)) {
       reload_render_state.alpha_blend &= 0x0fffffff;
-      reload_render_state.depth_test |= 0x400;
+      if (psurf->format != PIPE_FORMAT_Z16_UNORM)
+         reload_render_state.depth_test |= 0x400;
       if (surf->reload & PIPE_CLEAR_DEPTH)
          reload_render_state.depth_test |= 0x801;
       if (surf->reload & PIPE_CLEAR_STENCIL) {
