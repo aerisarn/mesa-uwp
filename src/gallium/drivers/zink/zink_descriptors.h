@@ -92,7 +92,7 @@ struct zink_descriptor_layout_key {
 
 struct zink_descriptor_layout {
    VkDescriptorSetLayout layout;
-   VkDescriptorUpdateTemplateKHR template;
+   VkDescriptorUpdateTemplateKHR desc_template;
 };
 
 struct zink_descriptor_pool_key {

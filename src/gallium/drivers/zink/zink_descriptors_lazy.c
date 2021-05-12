@@ -249,7 +249,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       bool is_push = i == 0;
       /* no need for empty templates */
       if (pg->dsl[i] == ctx->dd->dummy_dsl->layout ||
-          (!is_push && pg->dd->layouts[i]->template))
+          (!is_push && pg->dd->layouts[i]->desc_template))
          continue;
       template[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO;
       assert(wd_count[i]);
@@ -269,7 +269,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       if (is_push)
          pg->dd->push_template = t;
       else
-         pg->dd->layouts[i]->template = t;
+         pg->dd->layouts[i]->desc_template = t;
    }
    return true;
 }
@@ -390,7 +390,7 @@ void
 zink_descriptor_set_update_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, set, pg->dd->layouts[type + 1]->template, ctx);
+   screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, set, pg->dd->layouts[type + 1]->desc_template, ctx);
 }
 
 void
@@ -445,7 +445,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    if (pg->dd->binding_usage && changed_sets) {
       u_foreach_bit(type, changed_sets) {
          if (pg->dd->layout_key[type])
-            screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, desc_sets[type + 1], pg->dd->layouts[type + 1]->template, ctx);
+            screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, desc_sets[type + 1], pg->dd->layouts[type + 1]->desc_template, ctx);
          assert(type + 1 < pg->num_dsl);
          vkCmdBindDescriptorSets(bs->cmdbuf,
                                  is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,

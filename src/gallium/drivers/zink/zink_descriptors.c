@@ -1657,8 +1657,8 @@ zink_descriptor_layouts_deinit(struct zink_context *ctx)
       hash_table_foreach(&ctx->desc_set_layouts[i], he) {
          struct zink_descriptor_layout *layout = he->data;
          vkDestroyDescriptorSetLayout(screen->dev, layout->layout, NULL);
-         if (layout->template)
-            screen->vk.DestroyDescriptorUpdateTemplate(screen->dev, layout->template, NULL);
+         if (layout->desc_template)
+            screen->vk.DestroyDescriptorUpdateTemplate(screen->dev, layout->desc_template, NULL);
          ralloc_free(layout);
          _mesa_hash_table_remove(&ctx->desc_set_layouts[i], he);
       }
