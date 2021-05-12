@@ -2928,6 +2928,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
                                    struct rendering_state *state)
 {
    struct lvp_cmd_buffer_entry *cmd;
+   bool first = true;
 
    LIST_FOR_EACH_ENTRY(cmd, &cmd_buffer->cmds, cmd_link) {
       switch (cmd->cmd_type) {
@@ -3035,6 +3036,11 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          handle_wait_events(cmd, state);
          break;
       case LVP_CMD_PIPELINE_BARRIER:
+         /* skip flushes since every cmdbuf does a flush
+            after iterating its cmds and so this is redundant
+          */
+         if (first || cmd->cmd_link.next == &cmd_buffer->cmds)
+            continue;
          handle_pipeline_barrier(cmd, state);
          break;
       case LVP_CMD_BEGIN_QUERY:
@@ -3126,6 +3132,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          handle_set_stencil_op(cmd, state);
          break;
       }
+      first = false;
    }
 }
 
