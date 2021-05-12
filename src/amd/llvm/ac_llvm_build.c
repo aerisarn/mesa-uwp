@@ -4572,7 +4572,8 @@ void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wav
       prim.passthrough = ctx->i32_0;
 
       struct ac_export_args pos = {0};
-      pos.out[0] = pos.out[1] = pos.out[2] = pos.out[3] = ctx->f32_0;
+      /* The hw culls primitives with NaN. */
+      pos.out[0] = pos.out[1] = pos.out[2] = pos.out[3] = LLVMConstReal(ctx->f32, NAN);
       pos.target = V_008DFC_SQ_EXP_POS;
       pos.enabled_channels = 0xf;
       pos.done = true;
