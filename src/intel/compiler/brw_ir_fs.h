@@ -573,7 +573,7 @@ has_dst_aligned_region_restriction(const intel_device_info *devinfo,
       return devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
              devinfo->verx10 >= 125;
 
-   else if (brw_reg_type_is_floating_point(inst->dst.type))
+   else if (brw_reg_type_is_floating_point(dst_type))
       return devinfo->verx10 >= 125;
 
    else
