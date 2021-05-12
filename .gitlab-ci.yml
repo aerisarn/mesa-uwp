@@ -801,6 +801,53 @@ debian-release:
   script:
     - .gitlab-ci/meson/build.sh
 
+fedora-release:
+  extends:
+    - .meson-build
+    - .use-fedora/x86_build
+  variables:
+    BUILDTYPE: "release"
+    C_ARGS: >
+      -Wno-error=array-bounds
+      -Wno-error=maybe-uninitialized
+      -Wno-error=stringop-overread
+      -Wno-error=uninitialized
+    CPP_ARGS: >
+      -Wno-error=array-bounds
+    DRI_DRIVERS: "nouveau,i915,i965,r100,r200"
+    DRI_LOADERS: >
+      -D glx=dri
+      -D gbm=enabled
+      -D egl=enabled
+      -D glvnd=true
+      -D platforms=x11,wayland
+    EXTRA_OPTION: >
+      -D osmesa=true
+      -D selinux=true
+      -D tools=drm-shim,etnaviv,freedreno,glsl,intel,nir,nouveau,lima,panfrost
+    GALLIUM_DRIVERS: "crocus,etnaviv,freedreno,iris,kmsro,lima,nouveau,panfrost,r300,r600,radeonsi,svga,swrast,tegra,v3d,vc4,virgl,zink"
+    GALLIUM_ST: >
+      -D dri3=enabled
+      -D gallium-extra-hud=true
+      -D gallium-vdpau=enabled
+      -D gallium-xvmc=disabled
+      -D gallium-omx=disabled
+      -D gallium-va=enabled
+      -D gallium-xa=enabled
+      -D gallium-nine=false
+      -D gallium-opencl=icd
+      -D gles1=disabled
+      -D gles2=enabled
+      -D llvm=enabled
+      -D microsoft-clc=disabled
+      -D shared-llvm=enabled
+      -D vulkan-device-select-layer=true
+    LLVM_VERSION: ""
+    UNWIND: "disabled"
+    VULKAN_DRIVERS: "amd,broadcom,freedreno,intel"
+  script:
+    - .gitlab-ci/meson/build.sh
+
 debian-android:
   extends:
     - .meson-cross
