@@ -27,9 +27,19 @@
 #include "pan_device.h"
 #include "pan_pool.h"
 
-/* Transient command stream pooling: command stream uploads try to simply copy
- * into whereever we left off. If there isn't space, we allocate a new entry
- * into the pool and copy there */
+/* Knockoff u_upload_mgr. Uploads whereever we left off, allocating new entries
+ * when needed.
+ *
+ * In "owned" mode, a single parent owns the entire pool, and the pool owns all
+ * created BOs. All BOs are tracked and addable as
+ * panfrost_pool_get_bo_handles. Freeing occurs at the level of an entire pool.
+ * This is useful for streaming uploads, where the batch owns the pool.
+ *
+ * In "unowned" mode, the pool is freestanding. It does not track created BOs
+ * or hold references. Instead, the consumer must manage the created BOs. This
+ * is more flexible, enabling non-transient CSO state or shader code to be
+ * packed with conservative lifetime handling.
+ */
 
 static struct panfrost_bo *
 panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
@@ -43,7 +53,11 @@ panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
         struct panfrost_bo *bo = panfrost_bo_create(pool->dev, bo_sz,
                         pool->create_flags);
 
-        util_dynarray_append(&pool->bos, struct panfrost_bo *, bo);
+        if (pool->owned)
+                util_dynarray_append(&pool->bos, struct panfrost_bo *, bo);
+        else
+                panfrost_bo_unreference(pool->transient_bo);
+
         pool->transient_bo = bo;
         pool->transient_offset = 0;
 
@@ -53,12 +67,16 @@ panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
 void
 panfrost_pool_init(struct pan_pool *pool, void *memctx,
                    struct panfrost_device *dev,
-                   unsigned create_flags, bool prealloc)
+                   unsigned create_flags, bool prealloc,
+                   bool owned)
 {
         memset(pool, 0, sizeof(*pool));
         pool->dev = dev;
         pool->create_flags = create_flags;
-        util_dynarray_init(&pool->bos, memctx);
+        pool->owned = owned;
+
+        if (owned)
+                util_dynarray_init(&pool->bos, memctx);
 
         if (prealloc)
                 panfrost_pool_alloc_backing(pool, TRANSIENT_SLAB_SIZE);
@@ -67,6 +85,11 @@ panfrost_pool_init(struct pan_pool *pool, void *memctx,
 void
 panfrost_pool_cleanup(struct pan_pool *pool)
 {
+        if (!pool->owned) {
+                panfrost_bo_unreference(pool->transient_bo);
+                return;
+        }
+
         util_dynarray_foreach(&pool->bos, struct panfrost_bo *, bo)
                 panfrost_bo_unreference(*bo);
 
@@ -76,6 +99,8 @@ panfrost_pool_cleanup(struct pan_pool *pool)
 void
 panfrost_pool_get_bo_handles(struct pan_pool *pool, uint32_t *handles)
 {
+        assert(pool->owned && "pool does not track BOs in unowned mode");
+
         unsigned idx = 0;
         util_dynarray_foreach(&pool->bos, struct panfrost_bo *, bo) {
                 assert((*bo)->gem_handle > 0);

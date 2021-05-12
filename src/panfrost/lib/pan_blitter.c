@@ -1348,7 +1348,7 @@ pan_blit_ctx_init(struct panfrost_device *dev,
                   struct pan_blit_context *ctx)
 {
         memset(ctx, 0, sizeof(*ctx));
-        panfrost_pool_init(&ctx->pool, NULL, dev, 0, false);
+        panfrost_pool_init(&ctx->pool, NULL, dev, 0, false, true);
 
         ctx->z_scale = (float)(info->dst.end.z - info->dst.start.z + 1) /
                        (info->src.end.z - info->src.start.z + 1);
@@ -1599,11 +1599,11 @@ pan_blitter_init(struct panfrost_device *dev)
                 _mesa_hash_table_create(NULL, pan_blit_blend_shader_key_hash,
                                         pan_blit_blend_shader_key_equal);
         panfrost_pool_init(&dev->blitter.shaders.pool, NULL, dev,
-                           PAN_BO_EXECUTE, false);
+                           PAN_BO_EXECUTE, false, true);
         pthread_mutex_init(&dev->blitter.shaders.lock, NULL);
         pan_blitter_prefill_blit_shader_cache(dev);
 
-        panfrost_pool_init(&dev->blitter.rsds.pool, NULL, dev, 0, false);
+        panfrost_pool_init(&dev->blitter.rsds.pool, NULL, dev, 0, false, true);
         dev->blitter.rsds.rsds =
                 _mesa_hash_table_create(NULL, pan_blit_rsd_key_hash,
                                         pan_blit_rsd_key_equal);

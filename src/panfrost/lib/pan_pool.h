@@ -31,10 +31,8 @@
 
 #include "util/u_dynarray.h"
 
-/* Represents a pool of memory that can only grow, used to allocate objects
- * with the same lifetime as the pool itself. In OpenGL, a pool is owned by the
- * batch for transient structures. In Vulkan, it may be owned by e.g. the
- * command pool */
+/* Represents grow-only memory. It may be owned by the batch (OpenGL) or
+ * command pool (Vulkan), or may be unowned for persistent uploads. */
 
 struct pan_pool {
         /* Parent device for allocation */
@@ -51,12 +49,16 @@ struct pan_pool {
 
         /* BO flags to use in the pool */
         unsigned create_flags;
+
+        /* Mode of the pool. BO management is in the pool for owned mode, but
+         * the consumed for unowned mode. */
+        bool owned;
 };
 
 void
 panfrost_pool_init(struct pan_pool *pool, void *memctx,
                    struct panfrost_device *dev, unsigned create_flags,
-                   bool prealloc);
+                   bool prealloc, bool owned);
 
 void
 panfrost_pool_cleanup(struct pan_pool *pool);
@@ -64,6 +66,7 @@ panfrost_pool_cleanup(struct pan_pool *pool);
 static inline unsigned
 panfrost_pool_num_bos(struct pan_pool *pool)
 {
+        assert(pool->owned && "pool does not track BOs in unowned mode");
         return util_dynarray_num_elements(&pool->bos, struct panfrost_bo *);
 }
 
