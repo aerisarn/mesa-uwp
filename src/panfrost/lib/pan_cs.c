@@ -878,16 +878,13 @@ pan_emit_fbd(const struct panfrost_device *dev,
              const struct pan_tiler_context *tiler_ctx,
              void *out)
 {
-        unsigned tags = 0;
-
         if (dev->quirks & MIDGARD_SFBD) {
                 assert(fb->rt_count <= 1);
                 pan_emit_sfbd(dev, fb, tls, tiler_ctx, out);
+                return 0;
         } else {
-                tags = pan_emit_mfbd(dev, fb, tls, tiler_ctx, out);
+                return pan_emit_mfbd(dev, fb, tls, tiler_ctx, out);
         }
-
-        return tags;
 }
 
 void
