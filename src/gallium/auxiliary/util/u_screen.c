@@ -515,6 +515,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
                                    PIPE_SHADER_CAP_MAX_SHADER_BUFFERS);
    }
 
+   case PIPE_CAP_QUERY_TIMESTAMP_BITS:
+      return 64;
+
    default:
       unreachable("bad PIPE_CAP_*");
    }

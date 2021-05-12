@@ -407,6 +407,9 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
        */
       return devinfo->ver >= 11;
 
+   case PIPE_CAP_QUERY_TIMESTAMP_BITS:
+      return TIMESTAMP_BITS;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }

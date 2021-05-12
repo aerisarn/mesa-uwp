@@ -676,6 +676,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_QUERY_TIMESTAMP:
       return screen->timestamp_valid_bits > 0;
 
+   case PIPE_CAP_QUERY_TIMESTAMP_BITS:
+      return screen->timestamp_valid_bits;
+
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
       return 1 << MIN_SLAB_ORDER;
 
