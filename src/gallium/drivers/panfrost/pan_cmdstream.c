@@ -1132,7 +1132,7 @@ panfrost_map_constant_buffer_cpu(struct panfrost_context *ctx,
 
         if (rsrc) {
                 panfrost_bo_mmap(rsrc->image.data.bo);
-                panfrost_flush_batches_accessing_bo(ctx, rsrc->image.data.bo, false);
+                panfrost_flush_batches_accessing_rsrc(ctx, rsrc, false);
                 panfrost_bo_wait(rsrc->image.data.bo, INT64_MAX, false);
 
                 return rsrc->image.data.bo->ptr.cpu + cb->buffer_offset;

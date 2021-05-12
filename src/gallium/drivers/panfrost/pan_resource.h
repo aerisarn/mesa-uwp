@@ -34,6 +34,7 @@
 #include "util/u_range.h"
 
 #define LAYOUT_CONVERT_THRESHOLD 8
+#define PAN_MAX_BATCHES 32
 
 struct panfrost_resource {
         struct pipe_resource base;
@@ -46,6 +47,11 @@ struct panfrost_resource {
                         BITSET_WORD *data;
                 } tile_map;
         } damage;
+
+        struct {
+                struct panfrost_batch *writer;
+                BITSET_DECLARE(users, PAN_MAX_BATCHES);
+        } track;
 
         struct renderonly_scanout *scanout;
 

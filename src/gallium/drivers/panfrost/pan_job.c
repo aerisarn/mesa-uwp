@@ -42,27 +42,11 @@
 #include "decode.h"
 #include "panfrost-quirks.h"
 
-/* panfrost_bo_access is here to help us keep track of batch accesses to BOs
- * and build a proper dependency graph such that batches can be pipelined for
- * better GPU utilization.
- *
- * Each accessed BO has a corresponding entry in the ->accessed_bos hash table.
- * A BO is either being written or read at any time (see last_is_write).
- * When the last access is a write, the batch writing the BO might have read
- * dependencies (readers that have not been executed yet and want to read the
- * previous BO content), and when the last access is a read, all readers might
- * depend on another batch to push its results to memory. That's what the
- * readers/writers keep track off.
- * There can only be one writer at any given time, if a new batch wants to
- * write to the same BO, a dependency will be added between the new writer and
- * the old writer (at the batch level), and panfrost_bo_access->writer will be
- * updated to point to the new writer.
- */
-struct panfrost_bo_access {
-        struct util_dynarray readers;
-        struct panfrost_batch *writer;
-        bool last_is_write;
-};
+static unsigned
+panfrost_batch_idx(struct panfrost_batch *batch)
+{
+        return batch - batch->ctx->batches.slots;
+}
 
 static void
 panfrost_batch_init(struct panfrost_context *ctx,
@@ -83,6 +67,7 @@ panfrost_batch_init(struct panfrost_context *ctx,
         batch->maxx = batch->maxy = 0;
 
         util_copy_framebuffer_state(&batch->key, key);
+        util_dynarray_init(&batch->resources, NULL);
 
         /* Preallocate the main pool, since every batch has at least one job
          * structure so it will be used */
@@ -130,6 +115,8 @@ panfrost_batch_cleanup(struct panfrost_batch *batch)
         if (ctx->batch == batch)
                 ctx->batch = NULL;
 
+        unsigned batch_idx = panfrost_batch_idx(batch);
+
         for (int i = batch->first_bo; i <= batch->last_bo; i++) {
                 uint32_t *flags = util_sparse_array_get(&batch->bos, i);
 
@@ -137,35 +124,19 @@ panfrost_batch_cleanup(struct panfrost_batch *batch)
                         continue;
 
                 struct panfrost_bo *bo = pan_lookup_bo(dev, i);
-
-                if (!(*flags & PAN_BO_ACCESS_SHARED)) {
-                        panfrost_bo_unreference(bo);
-                        continue;
-                }
-
-                struct hash_entry *access_entry =
-                        _mesa_hash_table_search(ctx->accessed_bos, bo);
-
-                assert(access_entry && access_entry->data);
-
-                struct panfrost_bo_access *access = access_entry->data;
-
-                if (*flags & PAN_BO_ACCESS_WRITE) {
-                        assert(access->writer == batch);
-                        access->writer = NULL;
-                } else if (*flags & PAN_BO_ACCESS_READ) {
-                        util_dynarray_foreach(&access->readers,
-                                              struct panfrost_batch *, reader) {
-                                if (*reader == batch) {
-                                        *reader = NULL;
-                                        break;
-                                }
-                        }
-                }
-
                 panfrost_bo_unreference(bo);
         }
 
+        util_dynarray_foreach(&batch->resources, struct panfrost_resource *, rsrc) {
+                BITSET_CLEAR((*rsrc)->track.users, batch_idx);
+
+                if ((*rsrc)->track.writer == batch)
+                        (*rsrc)->track.writer = NULL;
+
+                pipe_resource_reference((struct pipe_resource **) rsrc, NULL);
+        }
+
+        util_dynarray_fini(&batch->resources);
         panfrost_pool_cleanup(&batch->pool);
         panfrost_pool_cleanup(&batch->invisible_pool);
 
@@ -288,104 +259,38 @@ panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx)
 }
 
 static void
-panfrost_batch_update_bo_access(struct panfrost_batch *batch,
-                                struct panfrost_bo *bo, bool writes)
+panfrost_batch_update_access(struct panfrost_batch *batch,
+                             struct panfrost_resource *rsrc, bool writes)
 {
         struct panfrost_context *ctx = batch->ctx;
-        struct panfrost_bo_access *access;
-        bool old_writes = false;
-        struct hash_entry *entry;
+        uint32_t batch_idx = panfrost_batch_idx(batch);
+        struct panfrost_batch *writer = rsrc->track.writer;
 
-        entry = _mesa_hash_table_search(ctx->accessed_bos, bo);
-        access = entry ? entry->data : NULL;
-        if (access) {
-                old_writes = access->last_is_write;
-        } else {
-                access = rzalloc(ctx, struct panfrost_bo_access);
-                util_dynarray_init(&access->readers, access);
-                _mesa_hash_table_insert(ctx->accessed_bos, bo, access);
-                /* We are the first to access this BO, let's initialize
-                 * old_writes to our own access type in that case.
-                 */
-                old_writes = writes;
+        if (unlikely(!BITSET_TEST(rsrc->track.users, batch_idx))) {
+                BITSET_SET(rsrc->track.users, batch_idx);
+
+                /* Reference the resource on the batch */
+                struct pipe_resource **dst = util_dynarray_grow(&batch->resources,
+                                struct pipe_resource *, 1);
+
+                *dst = NULL;
+                pipe_resource_reference(dst, &rsrc->base);
         }
 
-        assert(access);
-
-        if (writes && !old_writes) {
-                assert(!access->writer);
-
-                /* Previous access was a read and we want to write this BO.
-                 * We need to flush readers.
-                 */
-                util_dynarray_foreach(&access->readers,
-                                      struct panfrost_batch *, reader) {
-                        if (!*reader)
-                                continue;
-
+        /* Flush users if required */
+        if (writes || ((writer != NULL) && (writer != batch))) {
+                unsigned i;
+                BITSET_FOREACH_SET(i, rsrc->track.users, PAN_MAX_BATCHES) {
                         /* Skip the entry if this our batch. */
-                        if (*reader == batch) {
-                                *reader = NULL;
+                        if (i == batch_idx)
                                 continue;
-                        }
 
-                        panfrost_batch_submit(*reader, 0, 0);
-                        assert(!*reader);
+                        panfrost_batch_submit(&ctx->batches.slots[i], 0, 0);
                 }
-
-                /* We now are the new writer. */
-                access->writer = batch;
-
-                /* Reset the readers array. */
-                util_dynarray_clear(&access->readers);
-        } else if (writes && old_writes) {
-                /* First check if we were the previous writer, in that case
-                 * there's nothing to do. Otherwise we need flush the previous
-                 * writer.
-                 */
-		if (access->writer != batch) {
-                        if (access->writer) {
-                                panfrost_batch_submit(access->writer, 0, 0);
-                                assert(!access->writer);
-                        }
-
-                        access->writer = batch;
-                }
-        } else if (!writes && old_writes) {
-                /* First check if we were the previous writer, in that case
-                 * we want to keep the access type unchanged, as a write is
-                 * more constraining than a read.
-                 */
-                if (access->writer != batch) {
-                        /* Flush the previous writer. */
-                        if (access->writer) {
-                                panfrost_batch_submit(access->writer, 0, 0);
-                                assert(!access->writer);
-                        }
-
-                        /* The previous access was a write, there's no reason
-                         * to have entries in the readers array.
-                         */
-                        assert(!util_dynarray_num_elements(&access->readers,
-                                                           struct panfrost_batch *));
-
-                        /* Add ourselves to the readers array. */
-                        util_dynarray_append(&access->readers,
-                                             struct panfrost_batch *,
-                                             batch);
-                }
-        } else {
-                assert(!access->writer);
-
-                /* Previous access was a read and we want to read this BO.
-                 * Add ourselves to the readers array.
-                 */
-                util_dynarray_append(&access->readers,
-                                     struct panfrost_batch *,
-                                     batch);
         }
 
-        access->last_is_write = writes;
+        if (writes)
+                rsrc->track.writer = batch;
 }
 
 static void
@@ -410,21 +315,6 @@ panfrost_batch_add_bo_old(struct panfrost_batch *batch,
 
         flags |= old_flags;
         *entry = flags;
-
-        /* If this is not a shared BO, we don't really care about dependency
-         * tracking.
-         */
-        if (!(flags & PAN_BO_ACCESS_SHARED))
-                return;
-
-        /* RW flags didn't change since our last access, no need to update the
-         * BO access entry.
-         */
-        if ((old_flags & PAN_BO_ACCESS_RW) == (flags & PAN_BO_ACCESS_RW))
-                return;
-
-        assert(flags & PAN_BO_ACCESS_RW);
-        panfrost_batch_update_bo_access(batch, bo, flags & PAN_BO_ACCESS_WRITE);
 }
 
 static uint32_t
@@ -447,9 +337,7 @@ panfrost_batch_read_rsrc(struct panfrost_batch *batch,
                          struct panfrost_resource *rsrc,
                          enum pipe_shader_type stage)
 {
-        uint32_t access =
-                PAN_BO_ACCESS_SHARED |
-                PAN_BO_ACCESS_READ |
+        uint32_t access = PAN_BO_ACCESS_READ |
                 panfrost_access_for_stage(stage);
 
         panfrost_batch_add_bo_old(batch, rsrc->image.data.bo, access);
@@ -459,6 +347,8 @@ panfrost_batch_read_rsrc(struct panfrost_batch *batch,
 
         if (rsrc->separate_stencil)
                 panfrost_batch_add_bo_old(batch, rsrc->separate_stencil->image.data.bo, access);
+
+        panfrost_batch_update_access(batch, rsrc, false);
 }
 
 void
@@ -466,9 +356,7 @@ panfrost_batch_write_rsrc(struct panfrost_batch *batch,
                          struct panfrost_resource *rsrc,
                          enum pipe_shader_type stage)
 {
-        uint32_t access =
-                PAN_BO_ACCESS_SHARED |
-                PAN_BO_ACCESS_WRITE |
+        uint32_t access = PAN_BO_ACCESS_WRITE |
                 panfrost_access_for_stage(stage);
 
         panfrost_batch_add_bo_old(batch, rsrc->image.data.bo, access);
@@ -478,6 +366,8 @@ panfrost_batch_write_rsrc(struct panfrost_batch *batch,
 
         if (rsrc->separate_stencil)
                 panfrost_batch_add_bo_old(batch, rsrc->separate_stencil->image.data.bo, access);
+
+        panfrost_batch_update_access(batch, rsrc, true);
 }
 
 /* Adds the BO backing surface to a batch if the surface is non-null */
@@ -1015,59 +905,28 @@ panfrost_flush_all_batches(struct panfrost_context *ctx)
         }
 }
 
-bool
-panfrost_pending_batches_access_bo(struct panfrost_context *ctx,
-                                   const struct panfrost_bo *bo)
-{
-        struct panfrost_bo_access *access;
-        struct hash_entry *hentry;
-
-        hentry = _mesa_hash_table_search(ctx->accessed_bos, bo);
-        access = hentry ? hentry->data : NULL;
-        if (!access)
-                return false;
-
-        if (access->writer)
-                return true;
-
-        util_dynarray_foreach(&access->readers, struct panfrost_batch *, reader) {
-                if (*reader)
-                        return true;
-        }
-
-        return false;
-}
-
 /* We always flush writers. We might also need to flush readers */
 
 void
-panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
-                                    struct panfrost_bo *bo,
-                                    bool flush_readers)
+panfrost_flush_batches_accessing_rsrc(struct panfrost_context *ctx,
+                                      struct panfrost_resource *rsrc,
+                                      bool flush_readers)
 {
-        struct panfrost_bo_access *access;
-        struct hash_entry *hentry;
-
-        hentry = _mesa_hash_table_search(ctx->accessed_bos, bo);
-        access = hentry ? hentry->data : NULL;
-        if (!access)
-                return;
-
-        if (access->writer) {
-                panfrost_batch_submit(access->writer, ctx->syncobj, ctx->syncobj);
-                assert(!access->writer);
+        if (rsrc->track.writer) {
+                panfrost_batch_submit(rsrc->track.writer, ctx->syncobj, ctx->syncobj);
+                rsrc->track.writer = NULL;
         }
 
         if (!flush_readers)
                 return;
 
-        util_dynarray_foreach(&access->readers, struct panfrost_batch *,
-                              reader) {
-                if (*reader) {
-                        panfrost_batch_submit(*reader, ctx->syncobj, ctx->syncobj);
-                        assert(!*reader);
-                }
+        unsigned i;
+        BITSET_FOREACH_SET(i, rsrc->track.users, PAN_MAX_BATCHES) {
+                panfrost_batch_submit(&ctx->batches.slots[i],
+                                      ctx->syncobj, ctx->syncobj);
         }
+
+        assert(!BITSET_COUNT(rsrc->track.users));
 }
 
 void

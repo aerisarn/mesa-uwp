@@ -119,8 +119,6 @@ struct panfrost_streamout {
         unsigned num_targets;
 };
 
-#define PAN_MAX_BATCHES 32
-
 struct panfrost_context {
         /* Gallium context */
         struct pipe_context base;
@@ -147,9 +145,6 @@ struct panfrost_context {
 
         /* Bound job batch */
         struct panfrost_batch *batch;
-
-        /* panfrost_bo -> panfrost_bo_access */
-        struct hash_table *accessed_bos;
 
         /* Within a launch_grid call.. */
         const struct pipe_grid_info *compute_grid;

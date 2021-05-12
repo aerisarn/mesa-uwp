@@ -1821,7 +1821,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-                panfrost_flush_batches_accessing_bo(ctx, rsrc->image.data.bo, false);
+                panfrost_flush_batches_accessing_rsrc(ctx, rsrc, false);
                 panfrost_bo_wait(rsrc->image.data.bo, INT64_MAX, false);
 
                 /* Read back the query results */
@@ -2035,10 +2035,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         assert(ctx->blitter);
 
         /* Prepare for render! */
-
-        ctx->accessed_bos =
-                _mesa_hash_table_create(ctx, _mesa_hash_pointer,
-                                        _mesa_key_pointer_equal);
 
         /* By default mask everything on */
         ctx->sample_mask = ~0;

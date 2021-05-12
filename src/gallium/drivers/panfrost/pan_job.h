@@ -129,6 +129,9 @@ struct panfrost_batch {
         mali_ptr attrib_bufs[PIPE_SHADER_TYPES];
         mali_ptr uniform_buffers[PIPE_SHADER_TYPES];
         mali_ptr push_uniforms[PIPE_SHADER_TYPES];
+
+        /* Referenced resources for cleanup */
+        struct util_dynarray resources;
 };
 
 /* Functions for managing the above */
@@ -169,13 +172,10 @@ panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
 void
 panfrost_flush_all_batches(struct panfrost_context *ctx);
 
-bool
-panfrost_pending_batches_access_bo(struct panfrost_context *ctx,
-                                   const struct panfrost_bo *bo);
-
 void
-panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
-                                    struct panfrost_bo *bo, bool flush_readers);
+panfrost_flush_batches_accessing_rsrc(struct panfrost_context *ctx,
+                                      struct panfrost_resource *rsrc,
+                                      bool flush_readers);
 
 void
 panfrost_batch_adjust_stack_size(struct panfrost_batch *batch);
