@@ -110,8 +110,8 @@ static void
 cache_or_free_mem(struct zink_screen *screen, struct zink_resource_object *obj)
 {
    if (obj->mkey.key.heap_index != UINT32_MAX) {
-      simple_mtx_lock(&screen->mem_cache_mtx);
-      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(screen->resource_mem_cache, obj->mem_hash, &obj->mkey);
+      simple_mtx_lock(&screen->mem.mem_cache_mtx);
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(screen->mem.resource_mem_cache, obj->mem_hash, &obj->mkey);
       assert(he);
       struct util_dynarray *array = he->data;
       struct mem_key *mkey = (void*)he->key;
@@ -120,16 +120,16 @@ cache_or_free_mem(struct zink_screen *screen, struct zink_resource_object *obj)
       mkey->seen_count--;
       if (util_dynarray_num_elements(array, struct mem_cache_entry) < seen) {
          struct mem_cache_entry mc = { obj->mem, obj->map };
-         screen->mem_cache_size += obj->size;
+         screen->mem.mem_cache_size += obj->size;
          if (sizeof(void*) == 4 && obj->map) {
             vkUnmapMemory(screen->dev, obj->mem);
             mc.map = NULL;
          }
          util_dynarray_append(array, struct mem_cache_entry, mc);
-         simple_mtx_unlock(&screen->mem_cache_mtx);
+         simple_mtx_unlock(&screen->mem.mem_cache_mtx);
          return;
       }
-      simple_mtx_unlock(&screen->mem_cache_mtx);
+      simple_mtx_unlock(&screen->mem.mem_cache_mtx);
    }
    vkFreeMemory(screen->dev, obj->mem, NULL);
 }
@@ -712,9 +712,9 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       obj->mkey.key.reqs = reqs;
       obj->mkey.key.heap_index = mai.memoryTypeIndex;
       obj->mem_hash = mem_hash(&obj->mkey);
-      simple_mtx_lock(&screen->mem_cache_mtx);
+      simple_mtx_lock(&screen->mem.mem_cache_mtx);
 
-      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(screen->resource_mem_cache, obj->mem_hash, &obj->mkey);
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(screen->mem.resource_mem_cache, obj->mem_hash, &obj->mkey);
       struct mem_key *mkey;
       if (he) {
          struct util_dynarray *array = he->data;
@@ -723,19 +723,19 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             struct mem_cache_entry mc = util_dynarray_pop(array, struct mem_cache_entry);
             obj->mem = mc.mem;
             obj->map = mc.map;
-            screen->mem_cache_size -= reqs.size;
-            screen->mem_cache_count--;
+            screen->mem.mem_cache_size -= reqs.size;
+            screen->mem.mem_cache_count--;
          }
       } else {
-         mkey = ralloc(screen->resource_mem_cache, struct mem_key);
+         mkey = ralloc(screen->mem.resource_mem_cache, struct mem_key);
          memcpy(&mkey->key, &obj->mkey.key, sizeof(obj->mkey.key));
          mkey->seen_count = 0;
-         struct util_dynarray *array = rzalloc(screen->resource_mem_cache, struct util_dynarray);
-         util_dynarray_init(array, screen->resource_mem_cache);
-         _mesa_hash_table_insert_pre_hashed(screen->resource_mem_cache, obj->mem_hash, mkey, array);
+         struct util_dynarray *array = rzalloc(screen->mem.resource_mem_cache, struct util_dynarray);
+         util_dynarray_init(array, screen->mem.resource_mem_cache);
+         _mesa_hash_table_insert_pre_hashed(screen->mem.resource_mem_cache, obj->mem_hash, mkey, array);
       }
       mkey->seen_count++;
-      simple_mtx_unlock(&screen->mem_cache_mtx);
+      simple_mtx_unlock(&screen->mem.mem_cache_mtx);
    } else
       obj->mkey.key.heap_index = UINT32_MAX;
 
@@ -1684,9 +1684,9 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
       pscreen->resource_from_handle = zink_resource_from_handle;
    }
    pscreen->resource_get_param = zink_resource_get_param;
-   simple_mtx_init(&screen->mem_cache_mtx, mtx_plain);
-   screen->resource_mem_cache = _mesa_hash_table_create(NULL, mem_hash, mem_equals);
-   return !!screen->resource_mem_cache;
+   simple_mtx_init(&screen->mem.mem_cache_mtx, mtx_plain);
+   screen->mem.resource_mem_cache = _mesa_hash_table_create(NULL, mem_hash, mem_equals);
+   return !!screen->mem.resource_mem_cache;
 }
 
 void
