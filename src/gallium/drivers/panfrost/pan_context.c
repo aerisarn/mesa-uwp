@@ -1874,7 +1874,9 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         /* Prepare for render! */
 
-        panfrost_batch_init(ctx);
+        ctx->accessed_bos =
+                _mesa_hash_table_create(ctx, _mesa_hash_pointer,
+                                        _mesa_key_pointer_equal);
 
         /* By default mask everything on */
         ctx->sample_mask = ~0;

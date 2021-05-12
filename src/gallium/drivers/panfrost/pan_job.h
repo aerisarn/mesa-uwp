@@ -40,6 +40,9 @@ struct panfrost_batch {
         struct panfrost_context *ctx;
         struct pipe_framebuffer_state key;
 
+        /* Sequence number used to implement LRU eviction when all batch slots are used */
+        uint64_t seqnum;
+
         /* Buffers cleared (PIPE_CLEAR_* bitmask) */
         unsigned clear;
 
@@ -124,9 +127,6 @@ panfrost_get_batch_for_fbo(struct panfrost_context *ctx);
 
 struct panfrost_batch *
 panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx);
-
-void
-panfrost_batch_init(struct panfrost_context *ctx);
 
 void
 panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,

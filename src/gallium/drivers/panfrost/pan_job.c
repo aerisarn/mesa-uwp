@@ -64,16 +64,18 @@ struct panfrost_bo_access {
         bool last_is_write;
 };
 
-static struct panfrost_batch *
-panfrost_create_batch(struct panfrost_context *ctx,
-                      const struct pipe_framebuffer_state *key)
+static void
+panfrost_batch_init(struct panfrost_context *ctx,
+                    const struct pipe_framebuffer_state *key,
+                    struct panfrost_batch *batch)
 {
-        struct panfrost_batch *batch = rzalloc(ctx, struct panfrost_batch);
         struct panfrost_device *dev = pan_device(ctx->base.screen);
 
         batch->ctx = ctx;
 
-        batch->bos = _mesa_hash_table_create(batch, _mesa_hash_pointer,
+        batch->seqnum = ++ctx->batches.seqnum;
+
+        batch->bos = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
         batch->minx = batch->miny = ~0;
@@ -83,34 +85,25 @@ panfrost_create_batch(struct panfrost_context *ctx,
 
         /* Preallocate the main pool, since every batch has at least one job
          * structure so it will be used */
-        panfrost_pool_init(&batch->pool, batch, dev, 0, true);
+        panfrost_pool_init(&batch->pool, NULL, dev, 0, true);
 
         /* Don't preallocate the invisible pool, since not every batch will use
          * the pre-allocation, particularly if the varyings are larger than the
          * preallocation and a reallocation is needed after anyway. */
-        panfrost_pool_init(&batch->invisible_pool, batch, dev, PAN_BO_INVISIBLE, false);
+        panfrost_pool_init(&batch->invisible_pool, NULL, dev, PAN_BO_INVISIBLE, false);
 
         panfrost_batch_add_fbo_bos(batch);
-
-        return batch;
 }
 
 static void
-panfrost_free_batch(struct panfrost_batch *batch)
+panfrost_batch_cleanup(struct panfrost_batch *batch)
 {
         if (!batch)
                 return;
 
         struct panfrost_context *ctx = batch->ctx;
 
-        /* Remove the entry in the FBO -> batch hash table if the batch
-         * matches and drop the context reference. This way, next draws/clears
-         * targeting this FBO will trigger the creation of a new batch.
-         */
-        struct hash_entry *batch_entry =
-                _mesa_hash_table_search(ctx->batches, &batch->key);
-        if (batch_entry && batch_entry->data == batch)
-                _mesa_hash_table_remove(ctx->batches, batch_entry);
+        assert(batch->seqnum);
 
         if (ctx->batch == batch)
                 ctx->batch = NULL;
@@ -152,32 +145,45 @@ panfrost_free_batch(struct panfrost_batch *batch)
 
         util_unreference_framebuffer_state(&batch->key);
 
-        ralloc_free(batch);
-}
+        _mesa_hash_table_destroy(batch->bos, NULL);
 
-static struct panfrost_batch *
-panfrost_get_batch(struct panfrost_context *ctx,
-                   const struct pipe_framebuffer_state *key)
-{
-        /* Lookup the job first */
-        struct hash_entry *entry = _mesa_hash_table_search(ctx->batches, key);
-
-        if (entry)
-                return entry->data;
-
-        /* Otherwise, let's create a job */
-
-        struct panfrost_batch *batch = panfrost_create_batch(ctx, key);
-
-        /* Save the created job */
-        _mesa_hash_table_insert(ctx->batches, &batch->key, batch);
-
-        return batch;
+        memset(batch, 0, sizeof(*batch));
 }
 
 static void
 panfrost_batch_submit(struct panfrost_batch *batch,
                       uint32_t in_sync, uint32_t out_sync);
+
+static struct panfrost_batch *
+panfrost_get_batch(struct panfrost_context *ctx,
+                   const struct pipe_framebuffer_state *key)
+{
+        struct panfrost_batch *batch = NULL;
+
+        for (unsigned i = 0; i < PAN_MAX_BATCHES; i++) {
+                if (ctx->batches.slots[i].seqnum &&
+                    util_framebuffer_state_equal(&ctx->batches.slots[i].key, key)) {
+                        /* We found a match, increase the seqnum for the LRU
+                         * eviction logic.
+                         */
+                        ctx->batches.slots[i].seqnum = ++ctx->batches.seqnum;
+                        return &ctx->batches.slots[i];
+                }
+
+                if (!batch || batch->seqnum > ctx->batches.slots[i].seqnum)
+                        batch = &ctx->batches.slots[i];
+        }
+
+        assert(batch);
+
+        /* The selected slot is used, we need to flush the batch */
+        if (batch->seqnum)
+                panfrost_batch_submit(batch, 0, 0);
+
+        panfrost_batch_init(ctx, key, batch);
+
+        return batch;
+}
 
 struct panfrost_batch *
 panfrost_get_fresh_batch(struct panfrost_context *ctx,
@@ -995,7 +1001,7 @@ panfrost_batch_submit(struct panfrost_batch *batch,
         }
 
 out:
-        panfrost_free_batch(batch);
+        panfrost_batch_cleanup(batch);
 }
 
 /* Submit all batches, applying the out_sync to the currently bound batch */
@@ -1006,14 +1012,12 @@ panfrost_flush_all_batches(struct panfrost_context *ctx)
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         panfrost_batch_submit(batch, ctx->syncobj, ctx->syncobj);
 
-        hash_table_foreach(ctx->batches, hentry) {
-                struct panfrost_batch *batch = hentry->data;
-                assert(batch);
-
-                panfrost_batch_submit(batch, ctx->syncobj, ctx->syncobj);
+        for (unsigned i = 0; i < PAN_MAX_BATCHES; i++) {
+                if (ctx->batches.slots[i].seqnum) {
+                        panfrost_batch_submit(&ctx->batches.slots[i],
+                                              ctx->syncobj, ctx->syncobj);
+                }
         }
-
-        assert(!ctx->batches->entries);
 }
 
 bool
@@ -1229,18 +1233,6 @@ panfrost_batch_clear(struct panfrost_batch *batch,
                                      ctx->pipe_framebuffer.height);
 }
 
-static bool
-panfrost_batch_compare(const void *a, const void *b)
-{
-        return util_framebuffer_state_equal(a, b);
-}
-
-static uint32_t
-panfrost_batch_hash(const void *key)
-{
-        return _mesa_hash_data(key, sizeof(struct pipe_framebuffer_state));
-}
-
 /* Given a new bounding rectangle (scissor), let the job cover the union of the
  * new and old bounding rectangles */
 
@@ -1264,14 +1256,4 @@ panfrost_batch_intersection_scissor(struct panfrost_batch *batch,
         batch->miny = MAX2(batch->miny, miny);
         batch->maxx = MIN2(batch->maxx, maxx);
         batch->maxy = MIN2(batch->maxy, maxy);
-}
-
-void
-panfrost_batch_init(struct panfrost_context *ctx)
-{
-        ctx->batches = _mesa_hash_table_create(ctx,
-                                               panfrost_batch_hash,
-                                               panfrost_batch_compare);
-        ctx->accessed_bos = _mesa_hash_table_create(ctx, _mesa_hash_pointer,
-                                                    _mesa_key_pointer_equal);
 }
