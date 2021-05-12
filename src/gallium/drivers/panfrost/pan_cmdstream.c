@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2018 Alyssa Rosenzweig
  * Copyright (C) 2020 Collabora Ltd.
+ * Copyright © 2017 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -36,6 +37,25 @@
 #include "pan_job.h"
 #include "pan_shader.h"
 #include "pan_texture.h"
+
+/* Statically assert that PIPE_* enums match the hardware enums.
+ * (As long as they match, we don't need to translate them.)
+ */
+UNUSED static void
+pan_pipe_asserts()
+{
+#define PIPE_ASSERT(x) STATIC_ASSERT((int)x)
+
+        /* Compare functions are natural in both Gallium and Mali */
+        PIPE_ASSERT(PIPE_FUNC_NEVER    == MALI_FUNC_NEVER);
+        PIPE_ASSERT(PIPE_FUNC_LESS     == MALI_FUNC_LESS);
+        PIPE_ASSERT(PIPE_FUNC_EQUAL    == MALI_FUNC_EQUAL);
+        PIPE_ASSERT(PIPE_FUNC_LEQUAL   == MALI_FUNC_LEQUAL);
+        PIPE_ASSERT(PIPE_FUNC_GREATER  == MALI_FUNC_GREATER);
+        PIPE_ASSERT(PIPE_FUNC_NOTEQUAL == MALI_FUNC_NOT_EQUAL);
+        PIPE_ASSERT(PIPE_FUNC_GEQUAL   == MALI_FUNC_GEQUAL);
+        PIPE_ASSERT(PIPE_FUNC_ALWAYS   == MALI_FUNC_ALWAYS);
+}
 
 /* If a BO is accessed for a particular shader stage, will it be in the primary
  * batch (vertex/tiler) or the secondary batch (fragment)? Anything but
@@ -149,11 +169,8 @@ translate_tex_wrap(enum pipe_tex_wrap w, bool supports_clamp, bool using_nearest
 static enum mali_func
 panfrost_sampler_compare_func(const struct pipe_sampler_state *cso)
 {
-        if (!cso->compare_mode)
-                return MALI_FUNC_NEVER;
-
-        enum mali_func f = panfrost_translate_compare_func(cso->compare_func);
-        return panfrost_flip_compare_func(f);
+        return !cso->compare_mode ? MALI_FUNC_NEVER :
+                panfrost_flip_compare_func((enum mali_func) cso->compare_func);
 }
 
 static enum mali_mipmap_mode
@@ -599,8 +616,7 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                 msaa && (ctx->min_samples > 1 || fs->info.fs.sample_shading);
 
         state->multisample_misc.depth_function = zsa->base.depth_enabled ?
-                panfrost_translate_compare_func(zsa->base.depth_func) :
-                MALI_FUNC_ALWAYS;
+                (enum mali_func) zsa->base.depth_func : MALI_FUNC_ALWAYS;
 
         state->multisample_misc.depth_write_mask = zsa->base.depth_writemask;
         state->multisample_misc.fixed_function_near_discard = rast->depth_clip_near;

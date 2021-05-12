@@ -107,22 +107,6 @@ void
 panfrost_emit_tile_map(struct panfrost_batch *batch,
                        struct pan_fb_info *fb);
 
-static inline unsigned
-panfrost_translate_compare_func(enum pipe_compare_func in)
-{
-        switch (in) {
-        case PIPE_FUNC_NEVER: return MALI_FUNC_NEVER;
-        case PIPE_FUNC_LESS: return MALI_FUNC_LESS;
-        case PIPE_FUNC_EQUAL: return MALI_FUNC_EQUAL;
-        case PIPE_FUNC_LEQUAL: return MALI_FUNC_LEQUAL;
-        case PIPE_FUNC_GREATER: return MALI_FUNC_GREATER;
-        case PIPE_FUNC_NOTEQUAL: return MALI_FUNC_NOT_EQUAL;
-        case PIPE_FUNC_GEQUAL: return MALI_FUNC_GEQUAL;
-        case PIPE_FUNC_ALWAYS: return MALI_FUNC_ALWAYS;
-        default: unreachable("Invalid func");
-        }
-}
-
 static inline enum mali_sample_pattern
 panfrost_sample_pattern(unsigned samples)
 {

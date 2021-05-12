@@ -1402,7 +1402,7 @@ pan_pipe_to_stencil(const struct pipe_stencil_state *in, struct MALI_STENCIL *ou
 {
         pan_prepare(out, STENCIL);
         out->mask = in->valuemask;
-        out->compare_function = panfrost_translate_compare_func(in->func);
+        out->compare_function = (enum mali_func) in->func;
         out->stencil_fail = pan_pipe_to_stencil_op(in->fail_op);
         out->depth_fail = pan_pipe_to_stencil_op(in->zfail_op);
         out->depth_pass = pan_pipe_to_stencil_op(in->zpass_op);
@@ -1427,8 +1427,7 @@ panfrost_create_depth_stencil_state(struct pipe_context *pipe,
         }
 
         so->alpha_func = zsa->alpha_enabled ?
-                panfrost_translate_compare_func(zsa->alpha_func) :
-                MALI_FUNC_ALWAYS;
+                (enum mali_func) zsa->alpha_func : MALI_FUNC_ALWAYS;
 
         /* TODO: Bounds test should be easy */
         assert(!zsa->depth_bounds_test);
