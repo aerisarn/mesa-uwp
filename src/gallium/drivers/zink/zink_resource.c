@@ -1255,6 +1255,11 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
       }
       struct zink_resource staging = *res;
       staging.obj = old_obj;
+      bool needs_unref = true;
+      if (get_resource_usage(res)) {
+         zink_batch_reference_resource_move(&ctx->batch, res);
+         needs_unref = false;
+      }
       res->obj = new_obj;
       zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
       for (unsigned i = 0; i <= res->base.b.last_level; i++) {
@@ -1264,7 +1269,8 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
          box.depth = util_num_layers(&res->base.b, i);
          ctx->base.resource_copy_region(&ctx->base, &res->base.b, i, 0, 0, 0, &staging.base.b, i, &box);
       }
-      zink_resource_object_reference(screen, &old_obj, NULL);
+      if (needs_unref)
+         zink_resource_object_reference(screen, &old_obj, NULL);
    }
 
    zink_resource_rebind(ctx, res);
