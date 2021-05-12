@@ -399,8 +399,8 @@ vn_CreateImage(VkDevice device,
       external_info->handleTypes ==
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
 
-   if (wsi_info && wsi_info->scanout) {
-      result = vn_wsi_create_scanout_image(dev, pCreateInfo, alloc, &img);
+   if (wsi_info) {
+      result = vn_wsi_create_image(dev, pCreateInfo, wsi_info, alloc, &img);
    } else if (anb_info) {
       result =
          vn_android_image_from_anb(dev, pCreateInfo, anb_info, alloc, &img);

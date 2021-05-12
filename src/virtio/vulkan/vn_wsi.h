@@ -31,10 +31,11 @@ vn_wsi_find_wsi_image_create_info(const VkImageCreateInfo *create_info)
 }
 
 VkResult
-vn_wsi_create_scanout_image(struct vn_device *dev,
-                            const VkImageCreateInfo *create_info,
-                            const VkAllocationCallbacks *alloc,
-                            struct vn_image **out_img);
+vn_wsi_create_image(struct vn_device *dev,
+                    const VkImageCreateInfo *create_info,
+                    const struct wsi_image_create_info *wsi_info,
+                    const VkAllocationCallbacks *alloc,
+                    struct vn_image **out_img);
 
 #else
 
@@ -56,10 +57,11 @@ vn_wsi_find_wsi_image_create_info(const VkImageCreateInfo *create_info)
 }
 
 static inline VkResult
-vn_wsi_create_scanout_image(struct vn_device *dev,
-                            const VkImageCreateInfo *create_info,
-                            const VkAllocationCallbacks *alloc,
-                            struct vn_image **out_img)
+vn_wsi_create_image(struct vn_device *dev,
+                    const VkImageCreateInfo *create_info,
+                    const struct wsi_image_create_info *wsi_info,
+                    const VkAllocationCallbacks *alloc,
+                    struct vn_image **out_img)
 {
    return VK_ERROR_OUT_OF_HOST_MEMORY;
 }
