@@ -22,6 +22,7 @@ include:
     ref: *ci-templates-commit
     file:
       - '/templates/debian.yml'
+      - '/templates/fedora.yml'
   - local: '.gitlab-ci/lava/lava-gitlab-ci.yml'
   - local: '.gitlab-ci/test-source-dep.yml'
   - local: 'src/amd/ci/gitlab-ci.yml'
@@ -451,6 +452,26 @@ debian/arm_build:
     MESA_ARTIFACTS_TAG: *debian-arm_build
   needs:
     - debian/arm_build
+
+
+# Fedora 34 based x86 build image
+fedora/x86_build:
+  extends:
+    - .fdo.container-build@fedora
+    - .container
+  variables:
+    FDO_DISTRIBUTION_VERSION: 34
+    MESA_IMAGE_TAG: &fedora-x86_build "2021-07-08-bump-libdrm"
+
+.use-fedora/x86_build:
+  extends:
+    - .set-image
+  variables:
+    MESA_IMAGE_PATH: "fedora/x86_build"
+    MESA_IMAGE_TAG: *fedora-x86_build
+  needs:
+    - fedora/x86_build
+
 
 .kernel+rootfs:
   extends:
