@@ -468,6 +468,14 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
                 default: unreachable("Invalid dim\n");
                 }
 
+                coord_comps = MAX2(coord_comps,
+                                   (key->surfaces[i].dim ? : 3) +
+                                   (key->surfaces[i].array ? 1 : 0));
+                first = false;
+
+                if (sig_offset >= sizeof(sig))
+                        continue;
+
                 sig_offset += snprintf(sig + sig_offset, sizeof(sig) - sig_offset,
                                        "%s[%s;%s;%s%s;src_samples=%d,dst_samples=%d]",
                                        first ? "" : ",",
@@ -476,10 +484,6 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
                                        key->surfaces[i].array ? "[]" : "",
                                        key->surfaces[i].src_samples,
                                        key->surfaces[i].dst_samples);
-                first = false;
-                coord_comps = MAX2(coord_comps,
-                                   (key->surfaces[i].dim ? : 3) +
-                                   (key->surfaces[i].array ? 1 : 0));
         }
 
         nir_builder b =
