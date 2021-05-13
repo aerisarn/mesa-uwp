@@ -116,7 +116,16 @@ vn_wsi_create_image(struct vn_device *dev,
          vn_log(dev->instance, "forcing scanout image linear");
    }
 
-   return vn_image_create(dev, create_info, alloc, out_img);
+   struct vn_image *img;
+   VkResult result = vn_image_create(dev, create_info, alloc, &img);
+   if (result != VK_SUCCESS)
+      return result;
+
+   img->is_wsi = true;
+   img->prime_blit_buffer = wsi_info->prime_blit_buffer;
+
+   *out_img = img;
+   return VK_SUCCESS;
 }
 
 /* surface commands */
