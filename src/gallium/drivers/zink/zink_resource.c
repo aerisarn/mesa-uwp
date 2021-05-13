@@ -782,10 +782,10 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    struct pipe_box box = trans->base.b.box;
    int x = box.x;
    if (buf2img)
-      box.x = src->obj->offset + trans->offset;
+      box.x = trans->offset;
 
    if (dst->obj->transfer_dst)
-      zink_copy_image_buffer(ctx, NULL, dst, src, trans->base.b.level, buf2img ? x : dst->obj->offset,
+      zink_copy_image_buffer(ctx, NULL, dst, src, trans->base.b.level, buf2img ? x : 0,
                               box.y, box.z, trans->base.b.level, &box, trans->base.b.usage);
    else
       util_blitter_copy_texture(ctx->blitter, &dst->base.b, trans->base.b.level,
