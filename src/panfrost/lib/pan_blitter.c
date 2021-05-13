@@ -1599,7 +1599,7 @@ pan_blitter_init(struct panfrost_device *dev)
                 _mesa_hash_table_create(NULL, pan_blit_blend_shader_key_hash,
                                         pan_blit_blend_shader_key_equal);
         panfrost_pool_init(&dev->blitter.shaders.pool, NULL, dev,
-                           PAN_BO_EXECUTE, 65536, "Blitter shaders", false, true);
+                           PAN_BO_EXECUTE, 4096, "Blitter shaders", false, true);
         pthread_mutex_init(&dev->blitter.shaders.lock, NULL);
         pan_blitter_prefill_blit_shader_cache(dev);
 
