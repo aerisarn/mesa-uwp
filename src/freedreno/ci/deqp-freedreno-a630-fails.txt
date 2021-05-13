@@ -52,11 +52,6 @@ dEQP-VK.glsl.atomic_operations.or_signed_geometry,Fail
 dEQP-VK.glsl.atomic_operations.or_unsigned_geometry,Fail
 dEQP-VK.glsl.atomic_operations.xor_signed_geometry,Fail
 dEQP-VK.glsl.atomic_operations.xor_unsigned_geometry,Fail
-dEQP-VK.image.extend_operands_spirv1p4.r16_sint_relaxed_force_sign_extend,Fail
-dEQP-VK.image.extend_operands_spirv1p4.r16g16_sint_relaxed_force_sign_extend,Fail
-dEQP-VK.image.extend_operands_spirv1p4.r32g32_sint_force_sign_extend,Fail
-dEQP-VK.image.extend_operands_spirv1p4.r8_sint_relaxed_force_sign_extend,Fail
-dEQP-VK.image.extend_operands_spirv1p4.r8g8_sint_relaxed_force_sign_extend,Fail
 
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2917
 dEQP-VK.image.subresource_layout.2d.1_level.b8g8r8a8_snorm,Fail
