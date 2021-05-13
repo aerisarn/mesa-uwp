@@ -2048,9 +2048,8 @@ iris_transfer_map(struct pipe_context *ctx,
     * contain state we're constructing for a GPU draw call, which would
     * kill us with infinite stack recursion.
     */
-   bool no_gpu = usage & (PIPE_MAP_PERSISTENT |
-                          PIPE_MAP_COHERENT |
-                          PIPE_MAP_DIRECTLY);
+   if (usage & (PIPE_MAP_PERSISTENT | PIPE_MAP_COHERENT))
+      usage |= PIPE_MAP_DIRECTLY;
 
    /* GPU copies are not useful for buffer reads.  Instead of stalling to
     * read from the original buffer, we'd simply copy it to a temporary...
@@ -2063,19 +2062,19 @@ iris_transfer_map(struct pipe_context *ctx,
     */
    if (!(usage & PIPE_MAP_DISCARD_RANGE) &&
        !iris_has_invalid_primary(res, level, 1, box->z, box->depth)) {
-      no_gpu = true;
+      usage |= PIPE_MAP_DIRECTLY;
    }
 
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
    if (fmtl->txc == ISL_TXC_ASTC)
-      no_gpu = true;
+      usage |= PIPE_MAP_DIRECTLY;
 
    if (!map_would_stall &&
        !isl_aux_usage_has_compression(res->aux.usage)) {
-      no_gpu = true;
+      usage |= PIPE_MAP_DIRECTLY;
    }
 
-   if (!no_gpu) {
+   if (!(usage & PIPE_MAP_DIRECTLY)) {
       /* If we need a synchronous mapping and the resource is busy, or needs
        * resolving, we copy to/from a linear temporary buffer using the GPU.
        */
