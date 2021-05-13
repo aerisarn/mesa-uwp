@@ -1128,7 +1128,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          if (!ctx->descriptor_refs_dirty[p_stage == PIPE_SHADER_COMPUTE])
             zink_batch_reference_resource_rw(&ctx->batch, new_res, access & VK_ACCESS_SHADER_WRITE_BIT);
          ssbo->buffer_offset = buffers[i].buffer_offset;
-         ssbo->buffer_size = MIN2(buffers[i].buffer_size, new_res->obj->size - ssbo->buffer_offset);
+         ssbo->buffer_size = MIN2(buffers[i].buffer_size, new_res->base.b.width0 - ssbo->buffer_offset);
          util_range_add(&new_res->base.b, &new_res->valid_buffer_range, ssbo->buffer_offset,
                         ssbo->buffer_offset + ssbo->buffer_size);
          zink_fake_buffer_barrier(new_res, access,
