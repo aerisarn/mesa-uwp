@@ -29,11 +29,19 @@
 #include "pipe/p_state.h"
 
 struct zink_vertex_elements_hw_state {
-   VkVertexInputAttributeDescription attribs[PIPE_MAX_ATTRIBS];
-   VkVertexInputBindingDivisorDescriptionEXT divisors[PIPE_MAX_ATTRIBS];
-   VkVertexInputBindingDescription bindings[PIPE_MAX_ATTRIBS]; // combination of element_state and stride
+   union {
+      VkVertexInputAttributeDescription attribs[PIPE_MAX_ATTRIBS];
+      VkVertexInputAttributeDescription2EXT dynattribs[PIPE_MAX_ATTRIBS];
+   };
+   union {
+      struct {
+         VkVertexInputBindingDivisorDescriptionEXT divisors[PIPE_MAX_ATTRIBS];
+         VkVertexInputBindingDescription bindings[PIPE_MAX_ATTRIBS]; // combination of element_state and stride
+         uint8_t divisors_present;
+      } b;
+      VkVertexInputBindingDescription2EXT dynbindings[PIPE_MAX_ATTRIBS];
+   };
    uint32_t num_bindings, num_attribs;
-   uint8_t divisors_present;
 };
 
 struct zink_vertex_elements_state {

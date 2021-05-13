@@ -130,7 +130,7 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
    VkBuffer buffers[PIPE_MAX_ATTRIBS];
    VkDeviceSize buffer_offsets[PIPE_MAX_ATTRIBS];
    VkDeviceSize buffer_strides[PIPE_MAX_ATTRIBS];
-   const struct zink_vertex_elements_state *elems = ctx->element_state;
+   struct zink_vertex_elements_state *elems = ctx->element_state;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
 
    if (!elems->hw_state.num_bindings)
@@ -143,12 +143,16 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
       if (vb->buffer.resource) {
          buffers[i] = ctx->vbufs[buffer_id];
          assert(buffers[i]);
+         if (screen->info.have_EXT_vertex_input_dynamic_state)
+            elems->hw_state.dynbindings[i].stride = vb->stride;
          buffer_offsets[i] = ctx->vbuf_offsets[buffer_id];
          buffer_strides[i] = vb->stride;
       } else {
          buffers[i] = zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
          buffer_offsets[i] = 0;
          buffer_strides[i] = 0;
+         if (screen->info.have_EXT_vertex_input_dynamic_state)
+            elems->hw_state.dynbindings[i].stride = 0;
       }
    }
 
@@ -160,6 +164,13 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
       vkCmdBindVertexBuffers(batch->state->cmdbuf, 0,
                              elems->hw_state.num_bindings,
                              buffers, buffer_offsets);
+
+   if (screen->info.have_EXT_vertex_input_dynamic_state)
+      screen->vk.CmdSetVertexInputEXT(batch->state->cmdbuf,
+                                      elems->hw_state.num_bindings, elems->hw_state.dynbindings,
+                                      elems->hw_state.num_attribs, elems->hw_state.dynattribs);
+
+   ctx->vertex_state_changed = false;
    ctx->vertex_buffers_dirty = false;
 }
 

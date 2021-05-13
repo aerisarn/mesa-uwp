@@ -764,41 +764,49 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
                       struct zink_gfx_pipeline_state *state,
                       enum pipe_prim_type mode)
 {
-   if (!state->dirty && !state->combined_dirty && !state->vertex_state_dirty && mode == state->mode)
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   const bool have_EXT_vertex_input_dynamic_state = screen->info.have_EXT_vertex_input_dynamic_state;
+   if (!state->dirty && !state->combined_dirty && mode == state->mode &&
+       (have_EXT_vertex_input_dynamic_state || !ctx->vertex_state_changed))
       return state->pipeline;
 
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkPrimitiveTopology vkmode = primitive_topology(mode);
    assert(vkmode <= ARRAY_SIZE(prog->pipelines));
 
    struct hash_entry *entry = NULL;
 
    if (state->dirty) {
-      state->vertex_state_dirty = state->combined_dirty = true;
+      if (!have_EXT_vertex_input_dynamic_state)
+         ctx->vertex_state_changed = true;
+      state->combined_dirty = true;
       state->hash = hash_gfx_pipeline_state(state);
       state->dirty = false;
    }
    if (state->combined_dirty) {
-      state->vertex_state_dirty = true;
+      if (!have_EXT_vertex_input_dynamic_state)
+         ctx->vertex_state_changed = true;
       state->combined_hash = XXH32(&state->module_hash, sizeof(uint32_t), state->hash);
       state->combined_dirty = false;
    }
-   if (state->vertex_state_dirty) {
-      uint32_t hash = state->combined_hash;
-      if (!state->have_EXT_extended_dynamic_state) {
-         /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
-         uint32_t vertex_buffers_enabled_mask = state->vertex_buffers_enabled_mask;
-         hash = XXH32(&vertex_buffers_enabled_mask, sizeof(uint32_t), hash);
+   if (have_EXT_vertex_input_dynamic_state)
+      state->final_hash = state->combined_hash;
+   else
+      if (ctx->vertex_state_changed) {
+         uint32_t hash = state->combined_hash;
+         if (!state->have_EXT_extended_dynamic_state) {
+            /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
+            uint32_t vertex_buffers_enabled_mask = state->vertex_buffers_enabled_mask;
+            hash = XXH32(&vertex_buffers_enabled_mask, sizeof(uint32_t), hash);
 
-         for (unsigned i = 0; i < state->element_state->num_bindings; i++) {
-            struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ctx->element_state->binding_map[i];
-            state->vertex_strides[i] = vb->buffer.resource ? vb->stride : 0;
-            hash = XXH32(&state->vertex_strides[i], sizeof(uint32_t), hash);
+            for (unsigned i = 0; i < state->element_state->num_bindings; i++) {
+               struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ctx->element_state->binding_map[i];
+               state->vertex_strides[i] = vb->buffer.resource ? vb->stride : 0;
+               hash = XXH32(&state->vertex_strides[i], sizeof(uint32_t), hash);
+            }
          }
+         state->final_hash = XXH32(&state->element_state, sizeof(void*), hash);
+         ctx->vertex_state_changed = false;
       }
-      state->final_hash = XXH32(&state->element_state, sizeof(void*), hash);
-      state->vertex_state_dirty = false;
-   }
    entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[vkmode], state->final_hash, state);
 
    if (!entry) {

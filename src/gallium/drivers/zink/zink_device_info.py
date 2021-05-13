@@ -176,6 +176,10 @@ EXTENSIONS = [
         alias="line_rast",
         properties=True,
         features=True),
+    Extension("VK_EXT_vertex_input_dynamic_state",
+        alias="vertex_input",
+	features=True,
+	conditions=["$feats.vertexInputDynamicState"]),
     Extension("VK_KHR_dedicated_allocation",
         alias="dedicated"),
 ]

@@ -66,23 +66,45 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
       ves->divisor[binding] = elem->instance_divisor;
       assert(elem->instance_divisor <= screen->info.vdiv_props.maxVertexAttribDivisor);
 
-      ves->hw_state.attribs[i].binding = binding;
-      ves->hw_state.attribs[i].location = i;
-      ves->hw_state.attribs[i].format = zink_get_format(screen,
-                                                        elem->src_format);
-      assert(ves->hw_state.attribs[i].format != VK_FORMAT_UNDEFINED);
-      ves->hw_state.attribs[i].offset = elem->src_offset;
+      if (screen->info.have_EXT_vertex_input_dynamic_state) {
+         ves->hw_state.dynattribs[i].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+         ves->hw_state.dynattribs[i].binding = binding;
+         ves->hw_state.dynattribs[i].location = i;
+         ves->hw_state.dynattribs[i].format = zink_get_format(screen,
+                                                           elem->src_format);
+         assert(ves->hw_state.dynattribs[i].format != VK_FORMAT_UNDEFINED);
+         ves->hw_state.dynattribs[i].offset = elem->src_offset;
+      } else {
+         ves->hw_state.attribs[i].binding = binding;
+         ves->hw_state.attribs[i].location = i;
+         ves->hw_state.attribs[i].format = zink_get_format(screen,
+                                                           elem->src_format);
+         assert(ves->hw_state.attribs[i].format != VK_FORMAT_UNDEFINED);
+         ves->hw_state.attribs[i].offset = elem->src_offset;
+      }
    }
 
    ves->hw_state.num_bindings = num_bindings;
    ves->hw_state.num_attribs = num_elements;
-   for (int i = 0; i < num_bindings; ++i) {
-      ves->hw_state.bindings[i].binding = ves->bindings[i].binding;
-      ves->hw_state.bindings[i].inputRate = ves->bindings[i].inputRate;
-      if (ves->divisor[i]) {
-         ves->hw_state.divisors[ves->hw_state.divisors_present].divisor = ves->divisor[i];
-         ves->hw_state.divisors[ves->hw_state.divisors_present].binding = ves->bindings[i].binding;
-         ves->hw_state.divisors_present++;
+   if (screen->info.have_EXT_vertex_input_dynamic_state) {
+      for (int i = 0; i < num_bindings; ++i) {
+         ves->hw_state.dynbindings[i].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT;
+         ves->hw_state.dynbindings[i].binding = ves->bindings[i].binding;
+         ves->hw_state.dynbindings[i].inputRate = ves->bindings[i].inputRate;
+         if (ves->divisor[i])
+            ves->hw_state.dynbindings[i].divisor = ves->divisor[i];
+         else
+            ves->hw_state.dynbindings[i].divisor = 1;
+      }
+   } else {
+      for (int i = 0; i < num_bindings; ++i) {
+         ves->hw_state.b.bindings[i].binding = ves->bindings[i].binding;
+         ves->hw_state.b.bindings[i].inputRate = ves->bindings[i].inputRate;
+         if (ves->divisor[i]) {
+            ves->hw_state.b.divisors[ves->hw_state.b.divisors_present].divisor = ves->divisor[i];
+            ves->hw_state.b.divisors[ves->hw_state.b.divisors_present].binding = ves->bindings[i].binding;
+            ves->hw_state.b.divisors_present++;
+         }
       }
    }
    return ves;
@@ -97,7 +119,7 @@ zink_bind_vertex_elements_state(struct pipe_context *pctx,
    ctx->element_state = cso;
    if (cso) {
       if (state->element_state != &ctx->element_state->hw_state) {
-         state->vertex_state_dirty = true;
+         ctx->vertex_state_changed = true;
          ctx->vertex_buffers_dirty = ctx->element_state->hw_state.num_bindings > 0;
       }
       state->element_state = &ctx->element_state->hw_state;

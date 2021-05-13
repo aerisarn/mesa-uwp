@@ -945,7 +945,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
 
    if (buffers) {
       if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state)
-         ctx->gfx_pipeline_state.vertex_state_dirty = true;
+         ctx->vertex_state_changed = true;
       for (unsigned i = 0; i < num_buffers; ++i) {
          const struct pipe_vertex_buffer *vb = buffers + i;
          struct pipe_vertex_buffer *ctx_vb = &ctx->vertex_buffers[start_slot + i];
@@ -971,7 +971,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
       }
    } else {
       if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state)
-         ctx->gfx_pipeline_state.vertex_state_dirty = true;
+         ctx->vertex_state_changed = true;
       for (unsigned i = 0; i < num_buffers; ++i) {
          update_existing_vbo(ctx, start_slot + i);
          pipe_resource_reference(&ctx->vertex_buffers[start_slot + i].buffer.resource, NULL);
