@@ -272,7 +272,7 @@ struct panfrost_sampler_state {
 
 struct panfrost_sampler_view {
         struct pipe_sampler_view base;
-        struct panfrost_bo *bo;
+        struct pan_pool_ref state;
         struct mali_bifrost_texture_packed bifrost_descriptor;
         mali_ptr texture_bo;
         uint64_t modifier;

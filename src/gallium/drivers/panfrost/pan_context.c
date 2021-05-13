@@ -1190,6 +1190,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 struct pipe_resource *texture)
 {
         struct panfrost_device *device = pan_device(pctx->screen);
+        struct panfrost_context *ctx = pan_context(pctx);
         struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
         enum pipe_format format = so->base.format;
         assert(prsrc->image.data.bo);
@@ -1265,11 +1266,11 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 (pan_is_bifrost(device) ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
                 panfrost_estimate_texture_payload_size(device, &iview);
 
-        so->bo = panfrost_bo_create(device, size, 0, "Texture view");
+        struct panfrost_ptr payload = panfrost_pool_alloc_aligned(&ctx->descs, size, 64);
+        so->state = pan_take_ref(&ctx->descs, payload.gpu);
 
-        struct panfrost_ptr payload = so->bo->ptr;
         void *tex = pan_is_bifrost(device) ?
-                    &so->bifrost_descriptor : so->bo->ptr.cpu;
+                    &so->bifrost_descriptor : payload.cpu;
 
         if (!pan_is_bifrost(device)) {
                 payload.cpu += MALI_MIDGARD_TEXTURE_LENGTH;
@@ -1338,7 +1339,7 @@ panfrost_sampler_view_destroy(
         struct panfrost_sampler_view *view = (struct panfrost_sampler_view *) pview;
 
         pipe_resource_reference(&pview->texture, NULL);
-        panfrost_bo_unreference(view->bo);
+        panfrost_bo_unreference(view->state.bo);
         ralloc_free(view);
 }
 

@@ -657,12 +657,12 @@ panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader
         struct panfrost_shader_state *ss = panfrost_get_shader_state(batch->ctx, stage);
 
         panfrost_batch_add_bo(batch, ss->bin.bo,
-                              PAN_BO_ACCESS_PRIVATE |
+                              PAN_BO_ACCESS_SHARED |
                               PAN_BO_ACCESS_READ |
                               PAN_BO_ACCESS_VERTEX_TILER);
 
         panfrost_batch_add_bo(batch, ss->state.bo,
-                              PAN_BO_ACCESS_PRIVATE |
+                              PAN_BO_ACCESS_SHARED |
                               PAN_BO_ACCESS_READ |
                               PAN_BO_ACCESS_VERTEX_TILER);
 
@@ -677,7 +677,7 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
 
         /* Add the shader BO to the batch. */
         panfrost_batch_add_bo(batch, ss->bin.bo,
-                              PAN_BO_ACCESS_PRIVATE |
+                              PAN_BO_ACCESS_SHARED |
                               PAN_BO_ACCESS_READ |
                               PAN_BO_ACCESS_FRAGMENT);
 
@@ -1324,11 +1324,11 @@ panfrost_get_tex_desc(struct panfrost_batch *batch,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                               panfrost_bo_access_for_stage(st));
 
-        panfrost_batch_add_bo(batch, view->bo,
+        panfrost_batch_add_bo(batch, view->state.bo,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                               panfrost_bo_access_for_stage(st));
 
-        return view->bo->ptr.gpu;
+        return view->state.gpu;
 }
 
 static void
@@ -1338,7 +1338,7 @@ panfrost_update_sampler_view(struct panfrost_sampler_view *view,
         struct panfrost_resource *rsrc = pan_resource(view->base.texture);
         if (view->texture_bo != rsrc->image.data.bo->ptr.gpu ||
             view->modifier != rsrc->image.layout.modifier) {
-                panfrost_bo_unreference(view->bo);
+                panfrost_bo_unreference(view->state.bo);
                 panfrost_create_sampler_view_bo(view, pctx, &rsrc->base);
         }
 }
@@ -1375,7 +1375,7 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                                               panfrost_bo_access_for_stage(stage));
 
-                        panfrost_batch_add_bo(batch, view->bo,
+                        panfrost_batch_add_bo(batch, view->state.bo,
                                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                                               panfrost_bo_access_for_stage(stage));
                 }
