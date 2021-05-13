@@ -780,8 +780,12 @@ zink_get_query_result(struct pipe_context *pctx,
    if (query->needs_update)
       update_qbo(ctx, query);
 
-   if (!threaded_query(q)->flushed && query->batch_id.usage == ctx->curr_batch)
-      pctx->flush(pctx, NULL, 0);
+   if (query->batch_id.usage == ctx->curr_batch) {
+      if (!threaded_query(q)->flushed)
+         pctx->flush(pctx, NULL, 0);
+      if (!wait)
+         return false;
+   }
 
    return get_query_result(pctx, q, wait, result);
 }
