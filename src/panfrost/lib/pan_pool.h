@@ -61,6 +61,30 @@ struct pan_pool {
         bool owned;
 };
 
+/* Reference to pool allocated memory for an unowned pool */
+
+struct pan_pool_ref {
+        /* Owning BO */
+        struct panfrost_bo *bo;
+
+        /* Mapped GPU VA */
+        mali_ptr gpu;
+};
+
+/* Take a reference to an allocation pool. Call directly after allocating from
+ * an unowned pool for correct operation. */
+
+static inline struct pan_pool_ref
+pan_take_ref(struct pan_pool *pool, mali_ptr ptr)
+{
+        panfrost_bo_reference(pool->transient_bo);
+
+        return (struct pan_pool_ref) {
+                .gpu = ptr,
+                .bo = pool->transient_bo
+        };
+}
+
 void
 panfrost_pool_init(struct pan_pool *pool, void *memctx,
                    struct panfrost_device *dev, unsigned create_flags,
