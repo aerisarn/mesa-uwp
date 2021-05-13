@@ -346,6 +346,8 @@ droid_create_image_from_prime_fds(_EGLDisplay *disp,
 static const char cros_gralloc_module_name[] = "CrOS Gralloc";
 
 #define CROS_GRALLOC_DRM_GET_BUFFER_INFO 4
+#define CROS_GRALLOC_DRM_GET_USAGE 5
+#define CROS_GRALLOC_DRM_GET_USAGE_FRONT_RENDERING_BIT 0x1
 
 struct cros_gralloc0_buffer_info {
    uint32_t drm_fourcc;
@@ -632,6 +634,10 @@ droid_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
       uint32_t usage = strcmp(dri2_dpy->driver_name, "kms_swrast") == 0
             ? GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN
             : GRALLOC_USAGE_HW_RENDER;
+
+      if (conf->SurfaceType & EGL_MUTABLE_RENDER_BUFFER_BIT_KHR)
+         usage |= dri2_dpy->front_rendering_usage;
+
       native_window_set_usage(window, usage);
    }
 
@@ -1671,10 +1677,47 @@ dri2_initialize_android(_EGLDisplay *disp)
    }
 
    disp->Extensions.KHR_image = EGL_TRUE;
+
+   dri2_dpy->front_rendering_usage = 0;
 #if ANDROID_API_LEVEL >= 24
    if (dri2_dpy->mutable_render_buffer &&
-       dri2_dpy->loader_extensions == droid_image_loader_extensions) {
-      disp->Extensions.KHR_mutable_render_buffer = EGL_TRUE;
+       dri2_dpy->loader_extensions == droid_image_loader_extensions &&
+       /* In big GL, front rendering is done at the core API level by directly
+        * rendering on the front buffer. However, in ES, the front buffer is
+        * completely inaccessible through the core ES API.
+        *
+        * EGL_KHR_mutable_render_buffer is Android's attempt to re-introduce
+        * front rendering into ES by squeezing into EGL. Unlike big GL, this
+        * extension redirects GL_BACK used by ES for front rendering. Thus we
+        * restrict the enabling of this extension to ES only.
+        */
+       (disp->ClientAPIs & ~(EGL_OPENGL_ES_BIT | EGL_OPENGL_ES2_BIT |
+                             EGL_OPENGL_ES3_BIT_KHR)) == 0) {
+      /* For cros gralloc, if the front rendering query is supported, then all
+       * available window surface configs support front rendering because:
+       *
+       * 1) EGL queries cros gralloc for the front rendering usage bit here
+       * 2) EGL combines the front rendering usage bit with the existing usage
+       *    if the window surface requests mutable render buffer
+       * 3) EGL sets the combined usage onto the ANativeWindow and the next
+       *    dequeueBuffer will ask gralloc for an allocation/re-allocation with
+       *    the new combined usage
+       * 4) cros gralloc(on top of minigbm) resolves the front rendering usage
+       *    bit into either BO_USE_FRONT_RENDERING or BO_USE_LINEAR based on
+       *    the format support checking.
+       *
+       * So at least we can force BO_USE_LINEAR as the fallback.
+       */
+      uint32_t front_rendering_usage = 0;
+      if (!strcmp(dri2_dpy->gralloc->common.name, cros_gralloc_module_name) &&
+          dri2_dpy->gralloc->perform &&
+          dri2_dpy->gralloc->perform(
+                dri2_dpy->gralloc, CROS_GRALLOC_DRM_GET_USAGE,
+                CROS_GRALLOC_DRM_GET_USAGE_FRONT_RENDERING_BIT,
+                &front_rendering_usage) == 0) {
+         dri2_dpy->front_rendering_usage = front_rendering_usage;
+         disp->Extensions.KHR_mutable_render_buffer = EGL_TRUE;
+      }
    }
 #endif
 

@@ -247,6 +247,8 @@ struct dri2_egl_display
 
 #ifdef HAVE_ANDROID_PLATFORM
    const gralloc_module_t *gralloc;
+   /* gralloc vendor usage bit for front rendering */
+   uint32_t front_rendering_usage;
 #endif
 
    bool                      is_render_node;
