@@ -935,7 +935,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
 #endif
       ) {
       VkDeviceSize size = box->width;
-      VkDeviceSize offset = trans->offset + box->x;
+      VkDeviceSize offset = res->obj->offset + trans->offset + box->x;
       VkMappedMemoryRange range = init_mem_range(screen, res, offset, size);
       if (vkInvalidateMappedMemoryRanges(screen->dev, 1, &range) != VK_SUCCESS) {
          vkUnmapMemory(screen->dev, res->obj->mem);
@@ -1059,7 +1059,7 @@ zink_transfer_map(struct pipe_context *pctx,
                            (box->x / desc->block.width) * (desc->block.bits / 8);
          if (!res->obj->coherent) {
             VkDeviceSize size = box->width * box->height * desc->block.bits / 8;
-            VkMappedMemoryRange range = init_mem_range(screen, res, offset, size);
+            VkMappedMemoryRange range = init_mem_range(screen, res, res->obj->offset + offset, size);
             vkFlushMappedMemoryRanges(screen->dev, 1, &range);
          }
          ptr = ((uint8_t *)base) + offset;
