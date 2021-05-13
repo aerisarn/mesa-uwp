@@ -23,12 +23,13 @@
 
 #ifdef __cplusplus
 
+#include "macros.h"
 #include <type_traits>
 
 // some enum helpers
 #define MESA_DEFINE_CPP_ENUM_BINARY_OPERATOR(Enum, op) \
 extern "C++" {                                         \
-static inline                                          \
+UNUSED static constexpr                                \
 Enum operator op (Enum a, Enum b)                      \
 {                                                      \
    using IntType = std::underlying_type_t<Enum>;       \
@@ -37,7 +38,7 @@ Enum operator op (Enum a, Enum b)                      \
    return static_cast<Enum>(ua op ub);                 \
 }                                                      \
                                                        \
-static inline                                          \
+UNUSED static constexpr                                \
 Enum& operator op##= (Enum &a, Enum b)                 \
 {                                                      \
    using IntType = std::underlying_type_t<Enum>;       \
@@ -51,7 +52,7 @@ Enum& operator op##= (Enum &a, Enum b)                 \
 
 #define MESA_DEFINE_CPP_ENUM_UNARY_OPERATOR(Enum, op) \
 extern "C++" {                                        \
-static inline                                         \
+UNUSED static constexpr                               \
 Enum operator op (Enum a)                             \
 {                                                     \
    using IntType = std::underlying_type_t<Enum>;      \
