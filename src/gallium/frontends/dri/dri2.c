@@ -506,6 +506,21 @@ dri2_allocate_textures(struct dri_context *ctx,
          pipe_resource_reference(buf, texture);
       }
 
+      if (images.image_mask & __DRI_IMAGE_BUFFER_SHARED) {
+         struct pipe_resource **buf =
+            &drawable->textures[ST_ATTACHMENT_BACK_LEFT];
+         struct pipe_resource *texture = images.back->texture;
+
+         dri_drawable->w = texture->width0;
+         dri_drawable->h = texture->height0;
+
+         pipe_resource_reference(buf, texture);
+
+         ctx->is_shared_buffer_bound = true;
+      } else {
+         ctx->is_shared_buffer_bound = false;
+      }
+
       /* Note: if there is both a back and a front buffer,
        * then they have the same size.
        */
@@ -680,26 +695,41 @@ dri2_flush_frontbuffer(struct dri_context *ctx,
    __DRIdrawable *dri_drawable = drawable->dPriv;
    const __DRIimageLoaderExtension *image = drawable->sPriv->image.loader;
    const __DRIdri2LoaderExtension *loader = drawable->sPriv->dri2.loader;
+   const __DRImutableRenderBufferLoaderExtension *shared_buffer_loader =
+      drawable->sPriv->mutableRenderBuffer.loader;
    struct pipe_context *pipe = ctx->st->pipe;
+   struct pipe_fence_handle *fence = NULL;
+   int fence_fd = -1;
 
-   if (statt != ST_ATTACHMENT_FRONT_LEFT)
-      return false;
+   /* We need to flush for front buffer rendering when either we're using the
+    * front buffer at the GL API level, or when EGL_KHR_mutable_render_buffer
+    * has redirected GL_BACK to the front buffer.
+    */
+   if (statt != ST_ATTACHMENT_FRONT_LEFT &&
+       (!ctx->is_shared_buffer_bound || statt != ST_ATTACHMENT_BACK_LEFT))
+         return false;
 
    if (drawable->stvis.samples > 1) {
-      /* Resolve the front buffer. */
-      dri_pipe_blit(ctx->st->pipe,
-                    drawable->textures[ST_ATTACHMENT_FRONT_LEFT],
-                    drawable->msaa_textures[ST_ATTACHMENT_FRONT_LEFT]);
+      /* Resolve the buffer used for front rendering. */
+      dri_pipe_blit(ctx->st->pipe, drawable->textures[statt],
+                    drawable->msaa_textures[statt]);
    }
 
-   if (drawable->textures[ST_ATTACHMENT_FRONT_LEFT]) {
-      pipe->flush_resource(pipe, drawable->textures[ST_ATTACHMENT_FRONT_LEFT]);
+   if (drawable->textures[statt]) {
+      pipe->flush_resource(pipe, drawable->textures[statt]);
    }
 
-   pipe->flush(pipe, NULL, 0);
+   pipe->flush(pipe, ctx->is_shared_buffer_bound ? &fence : NULL, 0);
 
    if (image) {
       image->flushFrontBuffer(dri_drawable, dri_drawable->loaderPrivate);
+      if (ctx->is_shared_buffer_bound) {
+         if (fence)
+            fence_fd = pipe->screen->fence_get_fd(pipe->screen, fence);
+
+         shared_buffer_loader->displaySharedBuffer(dri_drawable, fence_fd,
+                                                   dri_drawable->loaderPrivate);
+      }
    }
    else if (loader->flushFrontBuffer) {
       loader->flushFrontBuffer(dri_drawable, dri_drawable->loaderPrivate);
@@ -2178,6 +2208,10 @@ static const __DRI2blobExtension driBlobExtension = {
    .set_cache_funcs = set_blob_cache_funcs
 };
 
+static const __DRImutableRenderBufferDriverExtension driMutableRenderBufferExtension = {
+   .base = { __DRI_MUTABLE_RENDER_BUFFER_DRIVER, 1 },
+};
+
 /*
  * Backend function init_screen.
  */
@@ -2192,6 +2226,7 @@ static const __DRIextension *dri_screen_extensions_base[] = {
    &dri2InteropExtension.base,
    &dri2NoErrorExtension.base,
    &driBlobExtension.base,
+   &driMutableRenderBufferExtension.base,
 };
 
 /**
