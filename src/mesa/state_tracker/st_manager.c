@@ -1167,15 +1167,22 @@ st_manager_flush_frontbuffer(struct st_context *st)
        !stfb->Base.Visual.doubleBufferMode)
       return;
 
+   /* Check front buffer used at the GL API level. */
+   enum st_attachment_type statt = ST_ATTACHMENT_FRONT_LEFT;
    strb = st_renderbuffer(stfb->Base.Attachment[BUFFER_FRONT_LEFT].
                           Renderbuffer);
+   if (!strb) {
+       /* Check back buffer redirected by EGL_KHR_mutable_render_buffer. */
+       statt = ST_ATTACHMENT_BACK_LEFT;
+       strb = st_renderbuffer(stfb->Base.Attachment[BUFFER_BACK_LEFT].
+                              Renderbuffer);
+   }
 
    /* Do we have a front color buffer and has it been drawn to since last
     * frontbuffer flush?
     */
-   if (strb && strb->defined) {
-      stfb->iface->flush_front(&st->iface, stfb->iface,
-                               ST_ATTACHMENT_FRONT_LEFT);
+   if (strb && strb->defined &&
+       stfb->iface->flush_front(&st->iface, stfb->iface, statt)) {
       strb->defined = GL_FALSE;
 
       /* Trigger an update of strb->defined on next draw */

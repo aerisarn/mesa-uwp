@@ -672,7 +672,7 @@ dri2_allocate_textures(struct dri_context *ctx,
    }
 }
 
-static void
+static bool
 dri2_flush_frontbuffer(struct dri_context *ctx,
                        struct dri_drawable *drawable,
                        enum st_attachment_type statt)
@@ -683,7 +683,7 @@ dri2_flush_frontbuffer(struct dri_context *ctx,
    struct pipe_context *pipe = ctx->st->pipe;
 
    if (statt != ST_ATTACHMENT_FRONT_LEFT)
-      return;
+      return false;
 
    if (drawable->stvis.samples > 1) {
       /* Resolve the front buffer. */
@@ -704,6 +704,8 @@ dri2_flush_frontbuffer(struct dri_context *ctx,
    else if (loader->flushFrontBuffer) {
       loader->flushFrontBuffer(dri_drawable, dri_drawable->loaderPrivate);
    }
+
+   return true;
 }
 
 /**

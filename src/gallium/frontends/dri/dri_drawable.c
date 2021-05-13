@@ -124,9 +124,7 @@ dri_st_framebuffer_flush_front(struct st_context_iface *stctx,
       (struct dri_drawable *) stfbi->st_manager_private;
 
    /* XXX remove this and just set the correct one on the framebuffer */
-   drawable->flush_frontbuffer(ctx, drawable, statt);
-
-   return true;
+   return drawable->flush_frontbuffer(ctx, drawable, statt);
 }
 
 /**

@@ -70,7 +70,7 @@ struct dri_drawable
 
    void (*update_drawable_info)(struct dri_drawable *drawable);
 
-   void (*flush_frontbuffer)(struct dri_context *ctx,
+   bool (*flush_frontbuffer)(struct dri_context *ctx,
                              struct dri_drawable *drawable,
                              enum st_attachment_type statt);
 

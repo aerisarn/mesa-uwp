@@ -65,6 +65,9 @@ hgl_st_framebuffer_flush_front(struct st_context_iface* stctxi,
 	struct hgl_buffer* buffer = hgl_st_framebuffer(stfbi);
 	struct pipe_resource* ptex = buffer->textures[statt];
 
+	if (statt != ST_ATTACHMENT_FRONT_LEFT)
+		return false;
+
 	if (!ptex)
 		return true;
 

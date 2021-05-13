@@ -366,6 +366,9 @@ osmesa_st_framebuffer_flush_front(struct st_context_iface *stctx,
    unsigned bpp;
    int dst_stride;
 
+   if (statt != ST_ATTACHMENT_FRONT_LEFT)
+      return false;
+
    if (osmesa->pp) {
       struct pipe_resource *zsbuf = NULL;
       unsigned i;
