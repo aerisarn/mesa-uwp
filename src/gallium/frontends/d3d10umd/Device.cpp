@@ -159,301 +159,119 @@ CreateDevice(D3D10DDI_HADAPTER hAdapter,                 // IN
    /*
     * Fill in the D3D10 DDI functions
     */
-   switch (pCreateData->Interface) {
-   case D3D10_0_DDI_INTERFACE_VERSION:
-   case D3D10_0_x_DDI_INTERFACE_VERSION:
-   case D3D10_0_7_DDI_INTERFACE_VERSION:
-      pCreateData->pDeviceFuncs->pfnDefaultConstantBufferUpdateSubresourceUP =
-         ResourceUpdateSubResourceUP;
-      pCreateData->pDeviceFuncs->pfnVsSetConstantBuffers = VsSetConstantBuffers;
-      pCreateData->pDeviceFuncs->pfnPsSetShaderResources = PsSetShaderResources;
-      pCreateData->pDeviceFuncs->pfnPsSetShader = PsSetShader;
-      pCreateData->pDeviceFuncs->pfnPsSetSamplers = PsSetSamplers;
-      pCreateData->pDeviceFuncs->pfnVsSetShader = VsSetShader;
-      pCreateData->pDeviceFuncs->pfnDrawIndexed = DrawIndexed;
-      pCreateData->pDeviceFuncs->pfnDraw = Draw;
-      pCreateData->pDeviceFuncs->pfnDynamicIABufferMapNoOverwrite =
-         ResourceMap;
-      pCreateData->pDeviceFuncs->pfnDynamicIABufferUnmap = ResourceUnmap;
-      pCreateData->pDeviceFuncs->pfnDynamicConstantBufferMapDiscard =
-         ResourceMap;
-      pCreateData->pDeviceFuncs->pfnDynamicIABufferMapDiscard =
-         ResourceMap;
-      pCreateData->pDeviceFuncs->pfnDynamicConstantBufferUnmap =
-         ResourceUnmap;
-      pCreateData->pDeviceFuncs->pfnPsSetConstantBuffers = PsSetConstantBuffers;
-      pCreateData->pDeviceFuncs->pfnIaSetInputLayout = IaSetInputLayout;
-      pCreateData->pDeviceFuncs->pfnIaSetVertexBuffers = IaSetVertexBuffers;
-      pCreateData->pDeviceFuncs->pfnIaSetIndexBuffer = IaSetIndexBuffer;
-      pCreateData->pDeviceFuncs->pfnDrawIndexedInstanced = DrawIndexedInstanced;
-      pCreateData->pDeviceFuncs->pfnDrawInstanced = DrawInstanced;
-      pCreateData->pDeviceFuncs->pfnDynamicResourceMapDiscard =
-         ResourceMap;
-      pCreateData->pDeviceFuncs->pfnDynamicResourceUnmap = ResourceUnmap;
-      pCreateData->pDeviceFuncs->pfnGsSetConstantBuffers = GsSetConstantBuffers;
-      pCreateData->pDeviceFuncs->pfnGsSetShader = GsSetShader;
-      pCreateData->pDeviceFuncs->pfnIaSetTopology = IaSetTopology;
-      pCreateData->pDeviceFuncs->pfnStagingResourceMap = ResourceMap;
-      pCreateData->pDeviceFuncs->pfnStagingResourceUnmap = ResourceUnmap;
-      pCreateData->pDeviceFuncs->pfnVsSetShaderResources = VsSetShaderResources;
-      pCreateData->pDeviceFuncs->pfnVsSetSamplers = VsSetSamplers;
-      pCreateData->pDeviceFuncs->pfnGsSetShaderResources = GsSetShaderResources;
-      pCreateData->pDeviceFuncs->pfnGsSetSamplers = GsSetSamplers;
-      pCreateData->pDeviceFuncs->pfnSetRenderTargets = SetRenderTargets;
-      pCreateData->pDeviceFuncs->pfnShaderResourceViewReadAfterWriteHazard =
-         ShaderResourceViewReadAfterWriteHazard;
-      pCreateData->pDeviceFuncs->pfnResourceReadAfterWriteHazard =
-         ResourceReadAfterWriteHazard;
-      pCreateData->pDeviceFuncs->pfnSetBlendState = SetBlendState;
-      pCreateData->pDeviceFuncs->pfnSetDepthStencilState = SetDepthStencilState;
-      pCreateData->pDeviceFuncs->pfnSetRasterizerState = SetRasterizerState;
-      pCreateData->pDeviceFuncs->pfnQueryEnd = QueryEnd;
-      pCreateData->pDeviceFuncs->pfnQueryBegin = QueryBegin;
-      pCreateData->pDeviceFuncs->pfnResourceCopyRegion = ResourceCopyRegion;
-      pCreateData->pDeviceFuncs->pfnResourceUpdateSubresourceUP =
-         ResourceUpdateSubResourceUP;
-      pCreateData->pDeviceFuncs->pfnSoSetTargets = SoSetTargets;
-      pCreateData->pDeviceFuncs->pfnDrawAuto = DrawAuto;
-      pCreateData->pDeviceFuncs->pfnSetViewports = SetViewports;
-      pCreateData->pDeviceFuncs->pfnSetScissorRects = SetScissorRects;
-      pCreateData->pDeviceFuncs->pfnClearRenderTargetView = ClearRenderTargetView;
-      pCreateData->pDeviceFuncs->pfnClearDepthStencilView = ClearDepthStencilView;
-      pCreateData->pDeviceFuncs->pfnSetPredication = SetPredication;
-      pCreateData->pDeviceFuncs->pfnQueryGetData = QueryGetData;
-      pCreateData->pDeviceFuncs->pfnFlush = Flush;
-      pCreateData->pDeviceFuncs->pfnGenMips = GenMips;
-      pCreateData->pDeviceFuncs->pfnResourceCopy = ResourceCopy;
-      pCreateData->pDeviceFuncs->pfnResourceResolveSubresource =
-         ResourceResolveSubResource;
-      pCreateData->pDeviceFuncs->pfnResourceMap = ResourceMap;
-      pCreateData->pDeviceFuncs->pfnResourceUnmap = ResourceUnmap;
-      pCreateData->pDeviceFuncs->pfnResourceIsStagingBusy = ResourceIsStagingBusy;
-      pCreateData->pDeviceFuncs->pfnRelocateDeviceFuncs = RelocateDeviceFuncs;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateResourceSize =
-         CalcPrivateResourceSize;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateOpenedResourceSize =
-         CalcPrivateOpenedResourceSize;
-      pCreateData->pDeviceFuncs->pfnCreateResource = CreateResource;
-      pCreateData->pDeviceFuncs->pfnOpenResource = OpenResource;
-      pCreateData->pDeviceFuncs->pfnDestroyResource = DestroyResource;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateShaderResourceViewSize =
-         CalcPrivateShaderResourceViewSize;
-      pCreateData->pDeviceFuncs->pfnCreateShaderResourceView =
-         CreateShaderResourceView;
-      pCreateData->pDeviceFuncs->pfnDestroyShaderResourceView =
-         DestroyShaderResourceView;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateRenderTargetViewSize =
-         CalcPrivateRenderTargetViewSize;
-      pCreateData->pDeviceFuncs->pfnCreateRenderTargetView =
-         CreateRenderTargetView;
-      pCreateData->pDeviceFuncs->pfnDestroyRenderTargetView =
-         DestroyRenderTargetView;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateDepthStencilViewSize =
-         CalcPrivateDepthStencilViewSize;
-      pCreateData->pDeviceFuncs->pfnCreateDepthStencilView =
-         CreateDepthStencilView;
-      pCreateData->pDeviceFuncs->pfnDestroyDepthStencilView =
-         DestroyDepthStencilView;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateElementLayoutSize =
-         CalcPrivateElementLayoutSize;
-      pCreateData->pDeviceFuncs->pfnCreateElementLayout = CreateElementLayout;
-      pCreateData->pDeviceFuncs->pfnDestroyElementLayout = DestroyElementLayout;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateBlendStateSize =
-         CalcPrivateBlendStateSize;
-      pCreateData->pDeviceFuncs->pfnCreateBlendState = CreateBlendState;
-      pCreateData->pDeviceFuncs->pfnDestroyBlendState = DestroyBlendState;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateDepthStencilStateSize =
-         CalcPrivateDepthStencilStateSize;
-      pCreateData->pDeviceFuncs->pfnCreateDepthStencilState =
-         CreateDepthStencilState;
-      pCreateData->pDeviceFuncs->pfnDestroyDepthStencilState =
-         DestroyDepthStencilState;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateRasterizerStateSize =
-         CalcPrivateRasterizerStateSize;
-      pCreateData->pDeviceFuncs->pfnCreateRasterizerState =
-         CreateRasterizerState;
-      pCreateData->pDeviceFuncs->pfnDestroyRasterizerState =
-         DestroyRasterizerState;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateShaderSize = CalcPrivateShaderSize;
-      pCreateData->pDeviceFuncs->pfnCreateVertexShader = CreateVertexShader;
-      pCreateData->pDeviceFuncs->pfnCreateGeometryShader = CreateGeometryShader;
-      pCreateData->pDeviceFuncs->pfnCreatePixelShader = CreatePixelShader;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateGeometryShaderWithStreamOutput =
-         CalcPrivateGeometryShaderWithStreamOutput;
-      pCreateData->pDeviceFuncs->pfnCreateGeometryShaderWithStreamOutput =
-         CreateGeometryShaderWithStreamOutput;
-      pCreateData->pDeviceFuncs->pfnDestroyShader = DestroyShader;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateSamplerSize = CalcPrivateSamplerSize;
-      pCreateData->pDeviceFuncs->pfnCreateSampler = CreateSampler;
-      pCreateData->pDeviceFuncs->pfnDestroySampler = DestroySampler;
-      pCreateData->pDeviceFuncs->pfnCalcPrivateQuerySize = CalcPrivateQuerySize;
-      pCreateData->pDeviceFuncs->pfnCreateQuery = CreateQuery;
-      pCreateData->pDeviceFuncs->pfnDestroyQuery = DestroyQuery;
-      pCreateData->pDeviceFuncs->pfnCheckFormatSupport = CheckFormatSupport;
-      pCreateData->pDeviceFuncs->pfnCheckMultisampleQualityLevels =
-         CheckMultisampleQualityLevels;
-      pCreateData->pDeviceFuncs->pfnCheckCounterInfo = CheckCounterInfo;
-      pCreateData->pDeviceFuncs->pfnCheckCounter = CheckCounter;
-      pCreateData->pDeviceFuncs->pfnDestroyDevice = DestroyDevice;
-      pCreateData->pDeviceFuncs->pfnSetTextFilterSize = SetTextFilterSize;
-      break;
-   case D3D10_1_DDI_INTERFACE_VERSION:
-   case D3D10_1_x_DDI_INTERFACE_VERSION:
-   case D3D10_1_7_DDI_INTERFACE_VERSION:
-      pCreateData->p10_1DeviceFuncs->pfnDefaultConstantBufferUpdateSubresourceUP =
-         ResourceUpdateSubResourceUP;
-      pCreateData->p10_1DeviceFuncs->pfnVsSetConstantBuffers = VsSetConstantBuffers;
-      pCreateData->p10_1DeviceFuncs->pfnPsSetShaderResources = PsSetShaderResources;
-      pCreateData->p10_1DeviceFuncs->pfnPsSetShader = PsSetShader;
-      pCreateData->p10_1DeviceFuncs->pfnPsSetSamplers = PsSetSamplers;
-      pCreateData->p10_1DeviceFuncs->pfnVsSetShader = VsSetShader;
-      pCreateData->p10_1DeviceFuncs->pfnDrawIndexed = DrawIndexed;
-      pCreateData->p10_1DeviceFuncs->pfnDraw = Draw;
-      pCreateData->p10_1DeviceFuncs->pfnDynamicIABufferMapNoOverwrite =
-         ResourceMap;
-      pCreateData->p10_1DeviceFuncs->pfnDynamicIABufferUnmap = ResourceUnmap;
-      pCreateData->p10_1DeviceFuncs->pfnDynamicConstantBufferMapDiscard =
-         ResourceMap;
-      pCreateData->p10_1DeviceFuncs->pfnDynamicIABufferMapDiscard =
-         ResourceMap;
-      pCreateData->p10_1DeviceFuncs->pfnDynamicConstantBufferUnmap =
-         ResourceUnmap;
-      pCreateData->p10_1DeviceFuncs->pfnPsSetConstantBuffers = PsSetConstantBuffers;
-      pCreateData->p10_1DeviceFuncs->pfnIaSetInputLayout = IaSetInputLayout;
-      pCreateData->p10_1DeviceFuncs->pfnIaSetVertexBuffers = IaSetVertexBuffers;
-      pCreateData->p10_1DeviceFuncs->pfnIaSetIndexBuffer = IaSetIndexBuffer;
-      pCreateData->p10_1DeviceFuncs->pfnDrawIndexedInstanced = DrawIndexedInstanced;
-      pCreateData->p10_1DeviceFuncs->pfnDrawInstanced = DrawInstanced;
-      pCreateData->p10_1DeviceFuncs->pfnDynamicResourceMapDiscard =
-         ResourceMap;
-      pCreateData->p10_1DeviceFuncs->pfnDynamicResourceUnmap = ResourceUnmap;
-      pCreateData->p10_1DeviceFuncs->pfnGsSetConstantBuffers = GsSetConstantBuffers;
-      pCreateData->p10_1DeviceFuncs->pfnGsSetShader = GsSetShader;
-      pCreateData->p10_1DeviceFuncs->pfnIaSetTopology = IaSetTopology;
-      pCreateData->p10_1DeviceFuncs->pfnStagingResourceMap = ResourceMap;
-      pCreateData->p10_1DeviceFuncs->pfnStagingResourceUnmap = ResourceUnmap;
-      pCreateData->p10_1DeviceFuncs->pfnVsSetShaderResources = VsSetShaderResources;
-      pCreateData->p10_1DeviceFuncs->pfnVsSetSamplers = VsSetSamplers;
-      pCreateData->p10_1DeviceFuncs->pfnGsSetShaderResources = GsSetShaderResources;
-      pCreateData->p10_1DeviceFuncs->pfnGsSetSamplers = GsSetSamplers;
-      pCreateData->p10_1DeviceFuncs->pfnSetRenderTargets = SetRenderTargets;
-      pCreateData->p10_1DeviceFuncs->pfnShaderResourceViewReadAfterWriteHazard =
-         ShaderResourceViewReadAfterWriteHazard;
-      pCreateData->p10_1DeviceFuncs->pfnResourceReadAfterWriteHazard =
-         ResourceReadAfterWriteHazard;
-      pCreateData->p10_1DeviceFuncs->pfnSetBlendState = SetBlendState;
-      pCreateData->p10_1DeviceFuncs->pfnSetDepthStencilState = SetDepthStencilState;
-      pCreateData->p10_1DeviceFuncs->pfnSetRasterizerState = SetRasterizerState;
-      pCreateData->p10_1DeviceFuncs->pfnQueryEnd = QueryEnd;
-      pCreateData->p10_1DeviceFuncs->pfnQueryBegin = QueryBegin;
-      pCreateData->p10_1DeviceFuncs->pfnResourceCopyRegion = ResourceCopyRegion;
-      pCreateData->p10_1DeviceFuncs->pfnResourceUpdateSubresourceUP =
-         ResourceUpdateSubResourceUP;
-      pCreateData->p10_1DeviceFuncs->pfnSoSetTargets = SoSetTargets;
-      pCreateData->p10_1DeviceFuncs->pfnDrawAuto = DrawAuto;
-      pCreateData->p10_1DeviceFuncs->pfnSetViewports = SetViewports;
-      pCreateData->p10_1DeviceFuncs->pfnSetScissorRects = SetScissorRects;
-      pCreateData->p10_1DeviceFuncs->pfnClearRenderTargetView = ClearRenderTargetView;
-      pCreateData->p10_1DeviceFuncs->pfnClearDepthStencilView = ClearDepthStencilView;
-      pCreateData->p10_1DeviceFuncs->pfnSetPredication = SetPredication;
-      pCreateData->p10_1DeviceFuncs->pfnQueryGetData = QueryGetData;
-      pCreateData->p10_1DeviceFuncs->pfnFlush = Flush;
-      pCreateData->p10_1DeviceFuncs->pfnGenMips = GenMips;
-      pCreateData->p10_1DeviceFuncs->pfnResourceCopy = ResourceCopy;
-      pCreateData->p10_1DeviceFuncs->pfnResourceResolveSubresource =
-         ResourceResolveSubResource;
-      pCreateData->p10_1DeviceFuncs->pfnResourceMap = ResourceMap;
-      pCreateData->p10_1DeviceFuncs->pfnResourceUnmap = ResourceUnmap;
-      pCreateData->p10_1DeviceFuncs->pfnResourceIsStagingBusy = ResourceIsStagingBusy;
-      pCreateData->p10_1DeviceFuncs->pfnRelocateDeviceFuncs = RelocateDeviceFuncs1;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateResourceSize =
-         CalcPrivateResourceSize;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateOpenedResourceSize =
-         CalcPrivateOpenedResourceSize;
-      pCreateData->p10_1DeviceFuncs->pfnCreateResource = CreateResource;
-      pCreateData->p10_1DeviceFuncs->pfnOpenResource = OpenResource;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyResource = DestroyResource;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateShaderResourceViewSize =
-         CalcPrivateShaderResourceViewSize1;
-      pCreateData->p10_1DeviceFuncs->pfnCreateShaderResourceView =
-         CreateShaderResourceView1;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyShaderResourceView =
-         DestroyShaderResourceView;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateRenderTargetViewSize =
-         CalcPrivateRenderTargetViewSize;
-      pCreateData->p10_1DeviceFuncs->pfnCreateRenderTargetView =
-         CreateRenderTargetView;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyRenderTargetView =
-         DestroyRenderTargetView;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateDepthStencilViewSize =
-         CalcPrivateDepthStencilViewSize;
-      pCreateData->p10_1DeviceFuncs->pfnCreateDepthStencilView =
-         CreateDepthStencilView;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyDepthStencilView =
-         DestroyDepthStencilView;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateElementLayoutSize =
-         CalcPrivateElementLayoutSize;
-      pCreateData->p10_1DeviceFuncs->pfnCreateElementLayout = CreateElementLayout;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyElementLayout = DestroyElementLayout;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateBlendStateSize =
-         CalcPrivateBlendStateSize1;
-      pCreateData->p10_1DeviceFuncs->pfnCreateBlendState = CreateBlendState1;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyBlendState = DestroyBlendState;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateDepthStencilStateSize =
-         CalcPrivateDepthStencilStateSize;
-      pCreateData->p10_1DeviceFuncs->pfnCreateDepthStencilState =
-         CreateDepthStencilState;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyDepthStencilState =
-         DestroyDepthStencilState;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateRasterizerStateSize =
-         CalcPrivateRasterizerStateSize;
-      pCreateData->p10_1DeviceFuncs->pfnCreateRasterizerState =
-         CreateRasterizerState;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyRasterizerState =
-         DestroyRasterizerState;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateShaderSize = CalcPrivateShaderSize;
-      pCreateData->p10_1DeviceFuncs->pfnCreateVertexShader = CreateVertexShader;
-      pCreateData->p10_1DeviceFuncs->pfnCreateGeometryShader = CreateGeometryShader;
-      pCreateData->p10_1DeviceFuncs->pfnCreatePixelShader = CreatePixelShader;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateGeometryShaderWithStreamOutput =
-         CalcPrivateGeometryShaderWithStreamOutput;
-      pCreateData->p10_1DeviceFuncs->pfnCreateGeometryShaderWithStreamOutput =
-         CreateGeometryShaderWithStreamOutput;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyShader = DestroyShader;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateSamplerSize = CalcPrivateSamplerSize;
-      pCreateData->p10_1DeviceFuncs->pfnCreateSampler = CreateSampler;
-      pCreateData->p10_1DeviceFuncs->pfnDestroySampler = DestroySampler;
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateQuerySize = CalcPrivateQuerySize;
-      pCreateData->p10_1DeviceFuncs->pfnCreateQuery = CreateQuery;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyQuery = DestroyQuery;
-      pCreateData->p10_1DeviceFuncs->pfnCheckFormatSupport = CheckFormatSupport;
-      pCreateData->p10_1DeviceFuncs->pfnCheckMultisampleQualityLevels =
-         CheckMultisampleQualityLevels;
-      pCreateData->p10_1DeviceFuncs->pfnCheckCounterInfo = CheckCounterInfo;
-      pCreateData->p10_1DeviceFuncs->pfnCheckCounter = CheckCounter;
-      pCreateData->p10_1DeviceFuncs->pfnDestroyDevice = DestroyDevice;
-      pCreateData->p10_1DeviceFuncs->pfnSetTextFilterSize = SetTextFilterSize;
-
-      pCreateData->p10_1DeviceFuncs->pfnRelocateDeviceFuncs = RelocateDeviceFuncs1;
-
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateShaderResourceViewSize =
-         CalcPrivateShaderResourceViewSize1;
-      pCreateData->p10_1DeviceFuncs->pfnCreateShaderResourceView =
-         CreateShaderResourceView1;
-
-      pCreateData->p10_1DeviceFuncs->pfnCalcPrivateBlendStateSize =
-         CalcPrivateBlendStateSize1;
-      pCreateData->p10_1DeviceFuncs->pfnCreateBlendState = CreateBlendState1;
-
-      pCreateData->p10_1DeviceFuncs->pfnResourceConvert =
-         pCreateData->p10_1DeviceFuncs->pfnResourceCopy;
-      pCreateData->p10_1DeviceFuncs->pfnResourceConvertRegion =
-         pCreateData->p10_1DeviceFuncs->pfnResourceCopyRegion;
-
-      break;
-   default:
-      assert(0);
-      break;
+   D3D10DDI_DEVICEFUNCS *pDeviceFuncs = pCreateData->pDeviceFuncs;
+   pDeviceFuncs->pfnDefaultConstantBufferUpdateSubresourceUP = ResourceUpdateSubResourceUP;
+   pDeviceFuncs->pfnVsSetConstantBuffers = VsSetConstantBuffers;
+   pDeviceFuncs->pfnPsSetShaderResources = PsSetShaderResources;
+   pDeviceFuncs->pfnPsSetShader = PsSetShader;
+   pDeviceFuncs->pfnPsSetSamplers = PsSetSamplers;
+   pDeviceFuncs->pfnVsSetShader = VsSetShader;
+   pDeviceFuncs->pfnDrawIndexed = DrawIndexed;
+   pDeviceFuncs->pfnDraw = Draw;
+   pDeviceFuncs->pfnDynamicIABufferMapNoOverwrite = ResourceMap;
+   pDeviceFuncs->pfnDynamicIABufferUnmap = ResourceUnmap;
+   pDeviceFuncs->pfnDynamicConstantBufferMapDiscard = ResourceMap;
+   pDeviceFuncs->pfnDynamicIABufferMapDiscard = ResourceMap;
+   pDeviceFuncs->pfnDynamicConstantBufferUnmap = ResourceUnmap;
+   pDeviceFuncs->pfnPsSetConstantBuffers = PsSetConstantBuffers;
+   pDeviceFuncs->pfnIaSetInputLayout = IaSetInputLayout;
+   pDeviceFuncs->pfnIaSetVertexBuffers = IaSetVertexBuffers;
+   pDeviceFuncs->pfnIaSetIndexBuffer = IaSetIndexBuffer;
+   pDeviceFuncs->pfnDrawIndexedInstanced = DrawIndexedInstanced;
+   pDeviceFuncs->pfnDrawInstanced = DrawInstanced;
+   pDeviceFuncs->pfnDynamicResourceMapDiscard = ResourceMap;
+   pDeviceFuncs->pfnDynamicResourceUnmap = ResourceUnmap;
+   pDeviceFuncs->pfnGsSetConstantBuffers = GsSetConstantBuffers;
+   pDeviceFuncs->pfnGsSetShader = GsSetShader;
+   pDeviceFuncs->pfnIaSetTopology = IaSetTopology;
+   pDeviceFuncs->pfnStagingResourceMap = ResourceMap;
+   pDeviceFuncs->pfnStagingResourceUnmap = ResourceUnmap;
+   pDeviceFuncs->pfnVsSetShaderResources = VsSetShaderResources;
+   pDeviceFuncs->pfnVsSetSamplers = VsSetSamplers;
+   pDeviceFuncs->pfnGsSetShaderResources = GsSetShaderResources;
+   pDeviceFuncs->pfnGsSetSamplers = GsSetSamplers;
+   pDeviceFuncs->pfnSetRenderTargets = SetRenderTargets;
+   pDeviceFuncs->pfnShaderResourceViewReadAfterWriteHazard = ShaderResourceViewReadAfterWriteHazard;
+   pDeviceFuncs->pfnResourceReadAfterWriteHazard = ResourceReadAfterWriteHazard;
+   pDeviceFuncs->pfnSetBlendState = SetBlendState;
+   pDeviceFuncs->pfnSetDepthStencilState = SetDepthStencilState;
+   pDeviceFuncs->pfnSetRasterizerState = SetRasterizerState;
+   pDeviceFuncs->pfnQueryEnd = QueryEnd;
+   pDeviceFuncs->pfnQueryBegin = QueryBegin;
+   pDeviceFuncs->pfnResourceCopyRegion = ResourceCopyRegion;
+   pDeviceFuncs->pfnResourceUpdateSubresourceUP = ResourceUpdateSubResourceUP;
+   pDeviceFuncs->pfnSoSetTargets = SoSetTargets;
+   pDeviceFuncs->pfnDrawAuto = DrawAuto;
+   pDeviceFuncs->pfnSetViewports = SetViewports;
+   pDeviceFuncs->pfnSetScissorRects = SetScissorRects;
+   pDeviceFuncs->pfnClearRenderTargetView = ClearRenderTargetView;
+   pDeviceFuncs->pfnClearDepthStencilView = ClearDepthStencilView;
+   pDeviceFuncs->pfnSetPredication = SetPredication;
+   pDeviceFuncs->pfnQueryGetData = QueryGetData;
+   pDeviceFuncs->pfnFlush = Flush;
+   pDeviceFuncs->pfnGenMips = GenMips;
+   pDeviceFuncs->pfnResourceCopy = ResourceCopy;
+   pDeviceFuncs->pfnResourceResolveSubresource = ResourceResolveSubResource;
+   pDeviceFuncs->pfnResourceMap = ResourceMap;
+   pDeviceFuncs->pfnResourceUnmap = ResourceUnmap;
+   pDeviceFuncs->pfnResourceIsStagingBusy = ResourceIsStagingBusy;
+   pDeviceFuncs->pfnRelocateDeviceFuncs = RelocateDeviceFuncs;
+   pDeviceFuncs->pfnCalcPrivateResourceSize = CalcPrivateResourceSize;
+   pDeviceFuncs->pfnCalcPrivateOpenedResourceSize = CalcPrivateOpenedResourceSize;
+   pDeviceFuncs->pfnCreateResource = CreateResource;
+   pDeviceFuncs->pfnOpenResource = OpenResource;
+   pDeviceFuncs->pfnDestroyResource = DestroyResource;
+   pDeviceFuncs->pfnCalcPrivateShaderResourceViewSize = CalcPrivateShaderResourceViewSize;
+   pDeviceFuncs->pfnCreateShaderResourceView = CreateShaderResourceView;
+   pDeviceFuncs->pfnDestroyShaderResourceView = DestroyShaderResourceView;
+   pDeviceFuncs->pfnCalcPrivateRenderTargetViewSize = CalcPrivateRenderTargetViewSize;
+   pDeviceFuncs->pfnCreateRenderTargetView = CreateRenderTargetView;
+   pDeviceFuncs->pfnDestroyRenderTargetView = DestroyRenderTargetView;
+   pDeviceFuncs->pfnCalcPrivateDepthStencilViewSize = CalcPrivateDepthStencilViewSize;
+   pDeviceFuncs->pfnCreateDepthStencilView = CreateDepthStencilView;
+   pDeviceFuncs->pfnDestroyDepthStencilView = DestroyDepthStencilView;
+   pDeviceFuncs->pfnCalcPrivateElementLayoutSize = CalcPrivateElementLayoutSize;
+   pDeviceFuncs->pfnCreateElementLayout = CreateElementLayout;
+   pDeviceFuncs->pfnDestroyElementLayout = DestroyElementLayout;
+   pDeviceFuncs->pfnCalcPrivateBlendStateSize = CalcPrivateBlendStateSize;
+   pDeviceFuncs->pfnCreateBlendState = CreateBlendState;
+   pDeviceFuncs->pfnDestroyBlendState = DestroyBlendState;
+   pDeviceFuncs->pfnCalcPrivateDepthStencilStateSize = CalcPrivateDepthStencilStateSize;
+   pDeviceFuncs->pfnCreateDepthStencilState = CreateDepthStencilState;
+   pDeviceFuncs->pfnDestroyDepthStencilState = DestroyDepthStencilState;
+   pDeviceFuncs->pfnCalcPrivateRasterizerStateSize = CalcPrivateRasterizerStateSize;
+   pDeviceFuncs->pfnCreateRasterizerState = CreateRasterizerState;
+   pDeviceFuncs->pfnDestroyRasterizerState = DestroyRasterizerState;
+   pDeviceFuncs->pfnCalcPrivateShaderSize = CalcPrivateShaderSize;
+   pDeviceFuncs->pfnCreateVertexShader = CreateVertexShader;
+   pDeviceFuncs->pfnCreateGeometryShader = CreateGeometryShader;
+   pDeviceFuncs->pfnCreatePixelShader = CreatePixelShader;
+   pDeviceFuncs->pfnCalcPrivateGeometryShaderWithStreamOutput = CalcPrivateGeometryShaderWithStreamOutput;
+   pDeviceFuncs->pfnCreateGeometryShaderWithStreamOutput = CreateGeometryShaderWithStreamOutput;
+   pDeviceFuncs->pfnDestroyShader = DestroyShader;
+   pDeviceFuncs->pfnCalcPrivateSamplerSize = CalcPrivateSamplerSize;
+   pDeviceFuncs->pfnCreateSampler = CreateSampler;
+   pDeviceFuncs->pfnDestroySampler = DestroySampler;
+   pDeviceFuncs->pfnCalcPrivateQuerySize = CalcPrivateQuerySize;
+   pDeviceFuncs->pfnCreateQuery = CreateQuery;
+   pDeviceFuncs->pfnDestroyQuery = DestroyQuery;
+   pDeviceFuncs->pfnCheckFormatSupport = CheckFormatSupport;
+   pDeviceFuncs->pfnCheckMultisampleQualityLevels = CheckMultisampleQualityLevels;
+   pDeviceFuncs->pfnCheckCounterInfo = CheckCounterInfo;
+   pDeviceFuncs->pfnCheckCounter = CheckCounter;
+   pDeviceFuncs->pfnDestroyDevice = DestroyDevice;
+   pDeviceFuncs->pfnSetTextFilterSize = SetTextFilterSize;
+   if (pCreateData->Interface == D3D10_1_DDI_INTERFACE_VERSION ||
+       pCreateData->Interface == D3D10_1_x_DDI_INTERFACE_VERSION ||
+       pCreateData->Interface == D3D10_1_7_DDI_INTERFACE_VERSION) {
+      D3D10_1DDI_DEVICEFUNCS *p10_1DeviceFuncs = pCreateData->p10_1DeviceFuncs;
+      p10_1DeviceFuncs->pfnRelocateDeviceFuncs = RelocateDeviceFuncs1;
+      p10_1DeviceFuncs->pfnCalcPrivateShaderResourceViewSize = CalcPrivateShaderResourceViewSize1;
+      p10_1DeviceFuncs->pfnCreateShaderResourceView = CreateShaderResourceView1;
+      p10_1DeviceFuncs->pfnCalcPrivateBlendStateSize = CalcPrivateBlendStateSize1;
+      p10_1DeviceFuncs->pfnCreateBlendState = CreateBlendState1;
+      p10_1DeviceFuncs->pfnResourceConvert = ResourceCopy;
+      p10_1DeviceFuncs->pfnResourceConvertRegion = ResourceCopyRegion;
    }
 
    /*
