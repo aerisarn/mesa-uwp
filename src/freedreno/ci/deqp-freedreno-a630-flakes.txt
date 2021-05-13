@@ -86,3 +86,7 @@ dEQP-GLES31.functional.tessellation.invariance.primitive_set.quads_equal_spacing
 dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_basic
 dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_scale
 dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_stencil_only
+
+# Could trip hangcheck timeout
+dEQP-VK.api.command_buffers.record_many_draws_primary_2
+dEQP-VK.api.command_buffers.record_many_draws_secondary_2

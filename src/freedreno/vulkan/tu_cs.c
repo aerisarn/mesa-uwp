@@ -372,8 +372,10 @@ tu_cs_reserve_space(struct tu_cs *cs, uint32_t reserved_size)
          tu_cs_emit(cs, CP_COND_REG_EXEC_1_DWORDS(0));
       }
 
-      /* double the size for the next bo */
-      new_size <<= 1;
+      /* double the size for the next bo, also there is an upper
+       * bound on IB size, which appears to be 0x0fffff
+       */
+      new_size = MIN2(new_size << 1, 0x0fffff);
       if (cs->next_bo_size < new_size)
          cs->next_bo_size = new_size;
    }
