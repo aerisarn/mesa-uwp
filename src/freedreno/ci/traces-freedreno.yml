@@ -223,8 +223,9 @@ traces:
         checksum: 749531db9fdfe92b74432fdac2e8b037
   - path: glmark2/refract.trace
     expectations:
-      - device: freedreno-a306
-        checksum: 0c57ccc3989b75a940b28ea1cc09cb0d
+      # Occasional hangcheck on a306 since switching to apitraces
+      #- device: freedreno-a306
+      #  checksum: 0c57ccc3989b75a940b28ea1cc09cb0d
       - device: freedreno-a530
         checksum: bc19f0f58935fdb348f401396e6845e1
       - device: freedreno-a630
