@@ -57,20 +57,26 @@ static void anv_spirv_nir_debug(void *private_data,
                                 const char *message)
 {
    struct anv_spirv_debug_data *debug_data = private_data;
-   struct anv_instance *instance = debug_data->device->physical->instance;
 
-   static const VkDebugReportFlagsEXT vk_flags[] = {
-      [NIR_SPIRV_DEBUG_LEVEL_INFO] = VK_DEBUG_REPORT_INFORMATION_BIT_EXT,
-      [NIR_SPIRV_DEBUG_LEVEL_WARNING] = VK_DEBUG_REPORT_WARNING_BIT_EXT,
-      [NIR_SPIRV_DEBUG_LEVEL_ERROR] = VK_DEBUG_REPORT_ERROR_BIT_EXT,
-   };
-   char buffer[256];
-
-   snprintf(buffer, sizeof(buffer), "SPIR-V offset %lu: %s", (unsigned long) spirv_offset, message);
-
-   vk_debug_report(&instance->vk, vk_flags[level],
-                   &debug_data->module->base,
-                   0, 0, "anv", buffer);
+   switch (level) {
+   case NIR_SPIRV_DEBUG_LEVEL_INFO:
+      vk_logi(VK_LOG_OBJS(&debug_data->module->base),
+              "SPIR-V offset %lu: %s",
+              (unsigned long) spirv_offset, message);
+      break;
+   case NIR_SPIRV_DEBUG_LEVEL_WARNING:
+      vk_logw(VK_LOG_OBJS(&debug_data->module->base),
+              "SPIR-V offset %lu: %s",
+              (unsigned long) spirv_offset, message);
+      break;
+   case NIR_SPIRV_DEBUG_LEVEL_ERROR:
+      vk_loge(VK_LOG_OBJS(&debug_data->module->base),
+              "SPIR-V offset %lu: %s",
+              (unsigned long) spirv_offset, message);
+      break;
+   default:
+      break;
+   }
 }
 
 /* Eventually, this will become part of anv_CreateShader.  Unfortunately,
@@ -1541,13 +1547,10 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
           */
          assert(found < __builtin_popcount(pipeline->active_stages));
 
-         vk_debug_report(&pipeline->base.device->physical->instance->vk,
-                         VK_DEBUG_REPORT_WARNING_BIT_EXT |
-                         VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
-                         &cache->base, 0, 0, "anv",
-                         "Found a partial pipeline in the cache.  This is "
-                         "most likely caused by an incomplete pipeline cache "
-                         "import or export");
+         vk_perf(VK_LOG_OBJS(&cache->base),
+                 "Found a partial pipeline in the cache.  This is "
+                 "most likely caused by an incomplete pipeline cache "
+                 "import or export");
 
          /* We're going to have to recompile anyway, so just throw away our
           * references to the shaders in the cache.  We'll get them out of the

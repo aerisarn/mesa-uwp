@@ -73,6 +73,7 @@
 #include "vk_util.h"
 #include "vk_command_buffer.h"
 #include "vk_queue.h"
+#include "vk_log.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
@@ -441,12 +442,14 @@ void anv_loge_v(const char *format, va_list va);
 /**
  * Print a perf warning message.  Set INTEL_DEBUG=perf to see these.
  */
-#define anv_perf_warn(instance, obj, format, ...) \
+#define anv_perf_warn(objects_macro, format, ...)   \
    do { \
       static bool reported = false; \
       if (!reported && (INTEL_DEBUG & DEBUG_PERF)) { \
-         __anv_perf_warn(instance, obj, __FILE__, __LINE__,\
-                         format, ##__VA_ARGS__); \
+         __vk_log(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,      \
+                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,      \
+                  objects_macro, __FILE__, __LINE__,                    \
+                  format, ## __VA_ARGS__);                              \
          reported = true; \
       } \
    } while (0)

@@ -92,17 +92,12 @@ compiler_debug_log(void *data, UNUSED unsigned *id, const char *fmt, ...)
    struct anv_device *device = (struct anv_device *)data;
    struct anv_instance *instance = device->physical->instance;
 
-   if (list_is_empty(&instance->vk.debug_report.callbacks))
-      return;
-
    va_list args;
    va_start(args, fmt);
    (void) vsnprintf(str, MAX_DEBUG_MESSAGE_LENGTH, fmt, args);
    va_end(args);
 
-   vk_debug_report(&instance->vk,
-                   VK_DEBUG_REPORT_DEBUG_BIT_EXT,
-                   NULL, 0, 0, "anv", str);
+   vk_logd(VK_LOG_NO_OBJS(&instance->vk), "%s", str);
 }
 
 static void
@@ -438,7 +433,7 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
       /* If, for whatever reason, we can't actually get the GTT size from the
        * kernel (too old?) fall back to the aperture size.
        */
-      anv_perf_warn(NULL, NULL,
+      anv_perf_warn(VK_LOG_NO_OBJS(&device->instance->vk),
                     "Failed to get I915_CONTEXT_PARAM_GTT_SIZE: %m");
 
       if (intel_get_aperture_size(fd, &device->gtt_size) == -1) {

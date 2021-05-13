@@ -32,6 +32,7 @@
 #include "nir/nir_xfb_info.h"
 #include "vk_util.h"
 #include "vk_format.h"
+#include "vk_log.h"
 
 static uint32_t
 vertex_element_comp_control(enum isl_format format, unsigned comp)
@@ -1330,11 +1331,9 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
            is_dual_src_blend_factor(a->dstColorBlendFactor) ||
            is_dual_src_blend_factor(a->srcAlphaBlendFactor) ||
            is_dual_src_blend_factor(a->dstAlphaBlendFactor))) {
-         vk_debug_report(&device->physical->instance->vk,
-                         VK_DEBUG_REPORT_WARNING_BIT_EXT,
-                         &device->vk.base, 0, 0, "anv",
-                         "Enabled dual-src blend factors without writing both targets "
-                         "in the shader.  Disabling blending to avoid GPU hangs.");
+         vk_logw(VK_LOG_OBJS(&device->vk.base),
+                 "Enabled dual-src blend factors without writing both targets "
+                 "in the shader.  Disabling blending to avoid GPU hangs.");
          entry.ColorBufferBlendEnable = false;
       }
 

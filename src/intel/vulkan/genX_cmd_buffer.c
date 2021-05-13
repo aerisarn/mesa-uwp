@@ -401,7 +401,7 @@ anv_can_fast_clear_color_view(struct anv_device * device,
    if (isl_color_value_requires_conversion(clear_color,
                                            &iview->image->planes[0].primary_surface.isl,
                                            &iview->planes[0].isl)) {
-      anv_perf_warn(device, &iview->vk.base,
+      anv_perf_warn(VK_LOG_OBJS(&iview->vk.base),
                     "Cannot fast-clear to colors which would require "
                     "format conversion on resolve");
       return false;
@@ -416,7 +416,7 @@ anv_can_fast_clear_color_view(struct anv_device * device,
     */
    if (iview->planes[0].isl.base_level > 0 ||
        iview->planes[0].isl.base_array_layer > 0) {
-      anv_perf_warn(device, &iview->image->vk.base,
+      anv_perf_warn(VK_LOG_OBJS(&iview->image->vk.base),
                     "Rendering with multi-lod or multi-layer framebuffer "
                     "with LOAD_OP_LOAD and baseMipLevel > 0 or "
                     "baseArrayLayer > 0.  Not fast clearing.");
@@ -424,7 +424,7 @@ anv_can_fast_clear_color_view(struct anv_device * device,
    }
 
    if (num_layers > 1) {
-      anv_perf_warn(device, &iview->image->vk.base,
+      anv_perf_warn(VK_LOG_OBJS(&iview->image->vk.base),
                     "Rendering to a multi-layer framebuffer with "
                     "LOAD_OP_CLEAR.  Only fast-clearing the first slice");
    }
@@ -1385,7 +1385,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
          }
       } else {
          if (image->vk.samples == 4 || image->vk.samples == 16) {
-            anv_perf_warn(cmd_buffer->device, &image->vk.base,
+            anv_perf_warn(VK_LOG_OBJS(&image->vk.base),
                           "Doing a potentially unnecessary fast-clear to "
                           "define an MCS buffer.");
          }
