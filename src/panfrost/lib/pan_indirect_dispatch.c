@@ -82,20 +82,10 @@ get_ubos(struct pan_pool *pool,
 
         memcpy(inputs_buf.cpu, inputs, sizeof(*inputs));
 
-        /* The midgard compiler calls the uniform -> UBO lowering pass which
-         * increments UBOs index even if there's no uniform to move to UBO0.
-         */
-        unsigned num_ubos = pan_is_bifrost(pool->dev) ? 1 : 2;
         struct panfrost_ptr ubos_buf =
-                panfrost_pool_alloc_desc_array(pool, num_ubos, UNIFORM_BUFFER);
+                panfrost_pool_alloc_desc(pool, UNIFORM_BUFFER);
 
-        void *inputs_ubo = ubos_buf.cpu;
-        if (num_ubos > 1) {
-                memset(ubos_buf.cpu, 0, MALI_UNIFORM_BUFFER_LENGTH);
-                inputs_ubo += MALI_UNIFORM_BUFFER_LENGTH;
-        }
-
-        pan_pack(inputs_ubo, UNIFORM_BUFFER, cfg) {
+        pan_pack(ubos_buf.cpu, UNIFORM_BUFFER, cfg) {
                 cfg.entries = DIV_ROUND_UP(sizeof(*inputs), 16);
                 cfg.pointer = inputs_buf.gpu;
         }

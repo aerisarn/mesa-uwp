@@ -334,15 +334,6 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
 
         NIR_PASS(progress, nir, midgard_nir_lower_algebraic_early);
 
-        /* Peephole select is more effective before lowering uniforms to UBO,
-         * so do a round of that, and then call lower_uniforms_to_ubo
-         * explicitly (instead of relying on the state tracker to do it). Note
-         * the state tracker does run peephole_select before lowering uniforms
-         * to UBO ordinarily, but it isn't as aggressive as we need. */
-
-        NIR_PASS(progress, nir, nir_opt_peephole_select, 64, false, true);
-        NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, true, false);
-
         do {
                 progress = false;
 
