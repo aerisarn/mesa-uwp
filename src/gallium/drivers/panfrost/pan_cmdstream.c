@@ -2066,17 +2066,6 @@ panfrost_emit_varying(const struct panfrost_device *dev,
 /* Links varyings and uploads ATTRIBUTE descriptors. Can execute at link time,
  * rather than draw time (under good conditions). */
 
-struct pan_linkage {
-        /* Uploaded attribute descriptors */
-        mali_ptr producer, consumer;
-
-        /* Varyings buffers required */
-        uint32_t present;
-
-        /* Per-vertex stride for general varying buffer */
-        uint32_t stride;
-};
-
 static void
 panfrost_emit_varying_descs(
                 struct pan_pool *pool,
@@ -2099,6 +2088,12 @@ panfrost_emit_varying_descs(
         /* Allocate enough descriptors for both shader stages */
         struct panfrost_ptr T = panfrost_pool_alloc_desc_array(pool,
                         producer_count + consumer_count, ATTRIBUTE);
+
+        /* Take a reference if we're being put on the CSO */
+        if (!pool->owned) {
+                out->bo = pool->transient_bo;
+                panfrost_bo_reference(out->bo);
+        }
 
         struct mali_attribute_packed *descs = T.cpu;
         out->producer = producer_count ? T.gpu : 0;
@@ -2177,7 +2172,6 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *vs, *fs;
-        struct pan_linkage linkage;
 
         vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
         fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
@@ -2188,11 +2182,28 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         if (!point_coord_replace || pan_is_bifrost(dev))
                 point_coord_mask =  0;
 
-        /* Emit ATTRIBUTE descriptors */
-        panfrost_emit_varying_descs(&batch->pool, vs, fs, &ctx->streamout, point_coord_mask, &linkage);
+        /* In good conditions, we only need to link varyings once */
+        bool prelink =
+                (point_coord_mask == 0) &&
+                (ctx->streamout.num_targets == 0) &&
+                !vs->info.separable &&
+                !fs->info.separable;
+
+        /* Try to reduce copies */
+        struct pan_linkage _linkage;
+        struct pan_linkage *linkage = prelink ? &vs->linkage : &_linkage;
+
+        /* Emit ATTRIBUTE descriptors if needed */
+        if (!prelink || vs->linkage.bo == NULL) {
+                struct pan_pool *pool =
+                        prelink ? &ctx->descs : &batch->pool;
+
+                panfrost_emit_varying_descs(pool, vs, fs, &ctx->streamout, point_coord_mask, linkage);
+        }
 
         struct pipe_stream_output_info *so = &vs->stream_output;
-        unsigned xfb_base = pan_xfb_base(linkage.present);
+        unsigned present = linkage->present, stride = linkage->stride;
+        unsigned xfb_base = pan_xfb_base(present);
         struct panfrost_ptr T =
                 panfrost_pool_alloc_desc_array(&batch->pool,
                                                xfb_base +
@@ -2220,30 +2231,30 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         }
 
         panfrost_emit_varyings(batch,
-                        &varyings[pan_varying_index(linkage.present, PAN_VARY_GENERAL)],
-                        linkage.stride, vertex_count);
+                        &varyings[pan_varying_index(present, PAN_VARY_GENERAL)],
+                        stride, vertex_count);
 
         /* fp32 vec4 gl_Position */
         *position = panfrost_emit_varyings(batch,
-                        &varyings[pan_varying_index(linkage.present, PAN_VARY_POSITION)],
+                        &varyings[pan_varying_index(present, PAN_VARY_POSITION)],
                         sizeof(float) * 4, vertex_count);
 
-        if (linkage.present & BITFIELD_BIT(PAN_VARY_PSIZ)) {
+        if (present & BITFIELD_BIT(PAN_VARY_PSIZ)) {
                 *psiz = panfrost_emit_varyings(batch,
-                                &varyings[pan_varying_index(linkage.present, PAN_VARY_PSIZ)],
+                                &varyings[pan_varying_index(present, PAN_VARY_PSIZ)],
                                 2, vertex_count);
         }
 
-        pan_emit_special_input(varyings, linkage.present,
+        pan_emit_special_input(varyings, present,
                         PAN_VARY_PNTCOORD, MALI_ATTRIBUTE_SPECIAL_POINT_COORD);
-        pan_emit_special_input(varyings, linkage.present, PAN_VARY_FACE,
+        pan_emit_special_input(varyings, present, PAN_VARY_FACE,
                         MALI_ATTRIBUTE_SPECIAL_FRONT_FACING);
-        pan_emit_special_input(varyings, linkage.present, PAN_VARY_FRAGCOORD,
+        pan_emit_special_input(varyings, present, PAN_VARY_FRAGCOORD,
                         MALI_ATTRIBUTE_SPECIAL_FRAG_COORD);
 
         *buffers = T.gpu;
-        *vs_attribs = linkage.producer;
-        *fs_attribs = linkage.consumer;
+        *vs_attribs = linkage->producer;
+        *fs_attribs = linkage->consumer;
 }
 
 void

@@ -190,6 +190,7 @@ struct pan_shader_info {
                 } vs;
         };
 
+        bool separable;
         bool contains_barrier;
         bool writes_global;
         uint64_t outputs_written;

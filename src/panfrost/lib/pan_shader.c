@@ -174,6 +174,7 @@ pan_shader_compile(const struct panfrost_device *dev,
         info->stage = s->info.stage;
         info->contains_barrier = s->info.uses_memory_barrier ||
                                  s->info.uses_control_barrier;
+        info->separable = s->info.separate_shader;
 
         switch (info->stage) {
         case MESA_SHADER_VERTEX:

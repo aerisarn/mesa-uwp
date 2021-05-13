@@ -977,6 +977,7 @@ panfrost_delete_shader_state(
                 struct panfrost_shader_state *shader_state = &cso->variants[i];
                 panfrost_bo_unreference(shader_state->bin.bo);
                 panfrost_bo_unreference(shader_state->state.bo);
+                panfrost_bo_unreference(shader_state->linkage.bo);
         }
 
         free(cso->variants);

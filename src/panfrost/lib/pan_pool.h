@@ -77,7 +77,8 @@ struct pan_pool_ref {
 static inline struct pan_pool_ref
 pan_take_ref(struct pan_pool *pool, mali_ptr ptr)
 {
-        panfrost_bo_reference(pool->transient_bo);
+        if (!pool->owned)
+                panfrost_bo_reference(pool->transient_bo);
 
         return (struct pan_pool_ref) {
                 .gpu = ptr,

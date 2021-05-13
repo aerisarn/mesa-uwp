@@ -235,6 +235,23 @@ struct panfrost_rasterizer {
         struct mali_stencil_mask_misc_packed stencil_misc;
 };
 
+/* Linked varyings */
+struct pan_linkage {
+        /* If the upload is owned by the CSO instead
+         * of the pool, the referenced BO. Else,
+         * NULL. */
+        struct panfrost_bo *bo;
+
+        /* Uploaded attribute descriptors */
+        mali_ptr producer, consumer;
+
+        /* Varyings buffers required */
+        uint32_t present;
+
+        /* Per-vertex stride for general varying buffer */
+        uint32_t stride;
+};
+
 /* Variants bundle together to form the backing CSO, bundling multiple
  * shaders with varying emulated features baked in */
 
@@ -250,6 +267,9 @@ struct panfrost_shader_state {
         struct mali_renderer_state_packed partial_rsd;
 
         struct pan_shader_info info;
+
+        /* Linked varyings, for non-separable programs */
+        struct pan_linkage linkage;
 
         struct pipe_stream_output_info stream_output;
         uint64_t so_mask;
