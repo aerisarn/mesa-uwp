@@ -28,7 +28,7 @@ struct pipe_screen;
 struct sw_displaytarget;
 struct zink_batch;
 struct zink_context;
-
+struct zink_bo;
 #define ZINK_RESOURCE_USAGE_STREAMOUT (1 << 10) //much greater than ZINK_DESCRIPTOR_TYPES
 
 #include "util/simple_mtx.h"
@@ -43,12 +43,6 @@ struct zink_context;
 #include <vulkan/vulkan.h>
 
 #define ZINK_MAP_TEMPORARY (PIPE_MAP_DRV_PRV << 0)
-
-enum zink_resource_access {
-   ZINK_RESOURCE_ACCESS_READ = 1,
-   ZINK_RESOURCE_ACCESS_WRITE = 32,
-   ZINK_RESOURCE_ACCESS_RW = ZINK_RESOURCE_ACCESS_READ | ZINK_RESOURCE_ACCESS_WRITE,
-};
 
 struct mem_key {
    unsigned seen_count;
@@ -70,9 +64,9 @@ struct zink_resource_object {
    bool transfer_dst;
    VkImageAspectFlags modifier_aspect;
 
+   bool dedicated;
+   struct zink_bo *bo;
    VkDeviceMemory mem;
-   uint32_t mem_hash;
-   struct mem_key mkey;
    VkDeviceSize offset, size, alignment;
 
    VkSampleLocationsInfoEXT zs_evaluate;
@@ -187,75 +181,98 @@ bool
 zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource *res);
 
 #ifndef __cplusplus
+#include "zink_bo.h"
 
 static inline bool
 zink_resource_usage_is_unflushed(const struct zink_resource *res)
 {
-   return zink_batch_usage_is_unflushed(res->obj->reads) ||
-          zink_batch_usage_is_unflushed(res->obj->writes);
+   if (res->obj->dedicated)
+      return zink_batch_usage_is_unflushed(res->obj->reads) ||
+             zink_batch_usage_is_unflushed(res->obj->writes);
+   return zink_bo_has_unflushed_usage(res->obj->bo);
 }
 
 static inline bool
 zink_resource_usage_is_unflushed_write(const struct zink_resource *res)
 {
-   return zink_batch_usage_is_unflushed(res->obj->writes);
+   if (res->obj->dedicated)
+      return zink_batch_usage_is_unflushed(res->obj->writes);
+   return zink_batch_usage_is_unflushed(res->obj->bo->writes);
 }
 
 
 static inline bool
 zink_resource_usage_matches(const struct zink_resource *res, const struct zink_batch_state *bs)
 {
-   return zink_batch_usage_matches(res->obj->reads, bs) ||
-          zink_batch_usage_matches(res->obj->writes, bs);
+   if (res->obj->dedicated)
+      return zink_batch_usage_matches(res->obj->reads, bs) ||
+             zink_batch_usage_matches(res->obj->writes, bs);
+   return zink_bo_usage_matches(res->obj->bo, bs);
 }
 
 static inline bool
 zink_resource_has_usage(const struct zink_resource *res)
 {
-   return zink_batch_usage_exists(res->obj->reads) ||
-          zink_batch_usage_exists(res->obj->writes);
+   if (res->obj->dedicated)
+      return zink_batch_usage_exists(res->obj->reads) ||
+             zink_batch_usage_exists(res->obj->writes);
+   return zink_bo_has_usage(res->obj->bo);
 }
 
 static inline bool
 zink_resource_has_unflushed_usage(const struct zink_resource *res)
 {
-   return zink_batch_usage_is_unflushed(res->obj->reads) ||
-          zink_batch_usage_is_unflushed(res->obj->writes);
+   if (res->obj->dedicated)
+      return zink_batch_usage_is_unflushed(res->obj->reads) ||
+             zink_batch_usage_is_unflushed(res->obj->writes);
+   return zink_bo_has_unflushed_usage(res->obj->bo);
 }
 
 static inline bool
 zink_resource_usage_check_completion(struct zink_screen *screen, struct zink_resource *res, enum zink_resource_access access)
 {
-   if (access & ZINK_RESOURCE_ACCESS_READ && !zink_screen_usage_check_completion(screen, res->obj->reads))
-      return false;
-   if (access & ZINK_RESOURCE_ACCESS_WRITE && !zink_screen_usage_check_completion(screen, res->obj->writes))
-      return false;
-   return true;
+   if (res->obj->dedicated) {
+      if (access & ZINK_RESOURCE_ACCESS_READ && !zink_screen_usage_check_completion(screen, res->obj->reads))
+         return false;
+      if (access & ZINK_RESOURCE_ACCESS_WRITE && !zink_screen_usage_check_completion(screen, res->obj->writes))
+         return false;
+      return true;
+   }
+   return zink_bo_usage_check_completion(screen, res->obj->bo, access);
 }
 
 static inline void
 zink_resource_usage_wait(struct zink_context *ctx, struct zink_resource *res, enum zink_resource_access access)
 {
-   if (access & ZINK_RESOURCE_ACCESS_READ)
-      zink_batch_usage_wait(ctx, res->obj->reads);
-   if (access & ZINK_RESOURCE_ACCESS_WRITE)
-      zink_batch_usage_wait(ctx, res->obj->writes);
+   if (res->obj->dedicated) {
+      if (access & ZINK_RESOURCE_ACCESS_READ)
+         zink_batch_usage_wait(ctx, res->obj->reads);
+      if (access & ZINK_RESOURCE_ACCESS_WRITE)
+         zink_batch_usage_wait(ctx, res->obj->writes);
+   } else
+      zink_bo_usage_wait(ctx, res->obj->bo, access);
 }
 
 static inline void
 zink_resource_usage_set(struct zink_resource *res, struct zink_batch_state *bs, bool write)
 {
-   if (write)
-      zink_batch_usage_set(&res->obj->writes, bs);
-   else
-      zink_batch_usage_set(&res->obj->reads, bs);
+   if (res->obj->dedicated) {
+      if (write)
+         zink_batch_usage_set(&res->obj->writes, bs);
+      else
+         zink_batch_usage_set(&res->obj->reads, bs);
+   } else
+      zink_bo_usage_set(res->obj->bo, bs, write);
 }
 
 static inline void
 zink_resource_object_usage_unset(struct zink_resource_object *obj, struct zink_batch_state *bs)
 {
-   zink_batch_usage_unset(&obj->reads, bs);
-   zink_batch_usage_unset(&obj->writes, bs);
+   if (obj->dedicated) {
+      zink_batch_usage_unset(&obj->reads, bs);
+      zink_batch_usage_unset(&obj->writes, bs);
+   } else
+      zink_bo_usage_unset(obj->bo, bs);
 }
 
 #endif
