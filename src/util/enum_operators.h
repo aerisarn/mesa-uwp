@@ -23,20 +23,26 @@
 
 #ifdef __cplusplus
 
+#include <type_traits>
+
 // some enum helpers
 #define MESA_DEFINE_CPP_ENUM_BINARY_OPERATOR(Enum, op) \
 extern "C++" {                                         \
 static inline                                          \
 Enum operator op (Enum a, Enum b)                      \
 {                                                      \
-   uint64_t ua = a, ub = b;                            \
+   using IntType = std::underlying_type_t<Enum>;       \
+   IntType ua = static_cast<IntType>(a);               \
+   IntType ub = static_cast<IntType>(b);               \
    return static_cast<Enum>(ua op ub);                 \
 }                                                      \
                                                        \
 static inline                                          \
 Enum& operator op##= (Enum &a, Enum b)                 \
 {                                                      \
-   uint64_t ua = a, ub = b;                            \
+   using IntType = std::underlying_type_t<Enum>;       \
+   IntType ua = static_cast<IntType>(a);               \
+   IntType ub = static_cast<IntType>(b);               \
    ua op##= ub;                                        \
    a = static_cast<Enum>(ua);                          \
    return a;                                           \
@@ -48,7 +54,8 @@ extern "C++" {                                        \
 static inline                                         \
 Enum operator op (Enum a)                             \
 {                                                     \
-   uint64_t ua = a;                                   \
+   using IntType = std::underlying_type_t<Enum>;      \
+   IntType ua = static_cast<IntType>(a);              \
    return static_cast<Enum>(op ua);                   \
 }                                                     \
 }
