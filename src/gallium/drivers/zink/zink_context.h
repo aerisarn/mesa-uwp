@@ -224,6 +224,8 @@ struct zink_context {
    uint16_t clears_enabled;
    uint16_t rp_clears_enabled;
 
+   VkBuffer vbufs[PIPE_MAX_ATTRIBS];
+   unsigned vbuf_offsets[PIPE_MAX_ATTRIBS];
    struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
    bool vertex_buffers_dirty;
 

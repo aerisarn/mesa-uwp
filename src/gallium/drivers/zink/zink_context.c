@@ -900,7 +900,33 @@ update_existing_vbo(struct zink_context *ctx, unsigned slot)
       return;
    struct zink_resource *res = zink_resource(ctx->vertex_buffers[slot].buffer.resource);
    res->vbo_bind_mask &= ~BITFIELD_BIT(slot);
+   ctx->vbufs[slot] = VK_NULL_HANDLE;
+   ctx->vbuf_offsets[slot] = 0;
    update_res_bind_count(ctx, res, false, true);
+}
+
+ALWAYS_INLINE static void
+set_vertex_buffer_clamped(struct zink_context *ctx, unsigned slot)
+{
+   const struct pipe_vertex_buffer *ctx_vb = &ctx->vertex_buffers[slot];
+   struct zink_resource *res = zink_resource(ctx_vb->buffer.resource);
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (ctx_vb->buffer_offset > screen->info.props.limits.maxVertexInputAttributeOffset) {
+      /* buffer offset exceeds maximum: make a tmp buffer at this offset */
+      ctx->vbufs[slot] = zink_resource_tmp_buffer(screen, res, ctx_vb->buffer_offset, 0, &ctx->vbuf_offsets[slot]);
+      util_dynarray_append(&res->obj->tmp, VkBuffer, ctx->vbufs[slot]);
+      /* the driver is broken and sets a min alignment that's larger than its max offset: rebind as staging buffer */
+      if (unlikely(ctx->vbuf_offsets[slot] > screen->info.props.limits.maxVertexInputAttributeOffset)) {
+         static bool warned = false;
+         if (!warned)
+            debug_printf("zink: this vulkan driver is BROKEN! maxVertexInputAttributeOffset < VkMemoryRequirements::alignment\n");
+         warned = true;
+      }
+   } else {
+      ctx->vbufs[slot] = res->obj->buffer;
+      ctx->vbuf_offsets[slot] = ctx_vb->buffer_offset;
+   }
+   assert(ctx->vbufs[slot]);
 }
 
 static void
@@ -936,9 +962,11 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             update_res_bind_count(ctx, res, false, false);
             ctx_vb->stride = vb->stride;
             ctx_vb->buffer_offset = vb->buffer_offset;
-            zink_batch_resource_usage_set(&ctx->batch, res, false);
+            /* always barrier before possible rebind */
             zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
                                          VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+            set_vertex_buffer_clamped(ctx, start_slot + i);
+            zink_batch_resource_usage_set(&ctx->batch, res, false);
          }
       }
    } else {
@@ -3128,10 +3156,10 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
       u_foreach_bit(slot, res->vbo_bind_mask) {
          if (ctx->vertex_buffers[slot].buffer.resource != &res->base.b) //wrong context
             return;
-         break;
+         set_vertex_buffer_clamped(ctx, slot);
+         num_rebinds++;
       }
       ctx->vertex_buffers_dirty = true;
-      num_rebinds += util_bitcount(res->vbo_bind_mask);
    }
    for (unsigned shader = 0; num_rebinds < total_rebinds && shader < PIPE_SHADER_TYPES; shader++) {
       u_foreach_bit(slot, res->ubo_bind_mask[shader]) {
