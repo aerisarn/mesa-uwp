@@ -32,6 +32,7 @@ subdir('util')
 subdir('midgard')
 subdir('bifrost')
 subdir('lib')
+subdir('perf')
 
 files_bifrost = files(
   'bifrost/cmdline.c',
