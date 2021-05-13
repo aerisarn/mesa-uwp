@@ -137,26 +137,10 @@ dEQP-VK.renderpass.suballocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.renderpass.suballocation.subpass_dependencies.implicit_dependencies.render_passes_5,Fail
 dEQP-VK.renderpass2.dedicated_allocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.renderpass2.suballocation.attachment_allocation.input_output.7,Fail
-dEQP-VK.spirv_assembly.instruction.compute.float_controls.fp32.input_args.denorm_clamp_denorm_preserve,Fail
-dEQP-VK.spirv_assembly.instruction.compute.float_controls.fp32.input_args.rounding_rtz_dot,Fail
-dEQP-VK.spirv_assembly.instruction.compute.float_controls.fp32.input_args.rounding_rtz_mmulm,Fail
-dEQP-VK.spirv_assembly.instruction.compute.float_controls.fp32.input_args.rounding_rtz_mmuls,Fail
-dEQP-VK.spirv_assembly.instruction.compute.float_controls.fp32.input_args.rounding_rtz_sub,Fail
-dEQP-VK.spirv_assembly.instruction.compute.float_controls.fp32.input_args.rounding_rtz_vmulm,Fail
-dEQP-VK.spirv_assembly.instruction.compute.float_controls.fp32.input_args.sign_denorm_preserve,Fail
 dEQP-VK.spirv_assembly.instruction.compute.opcopymemory.array,Fail
 
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/3208
 dEQP-VK.spirv_assembly.instruction.compute.opquantize.infinities,Fail
-
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.abs_denorm_preserve_frag,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.abs_denorm_preserve_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denorm_nclamp_denorm_preserve_frag,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denorm_nclamp_denorm_preserve_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denorm_nmax_denorm_preserve_frag,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denorm_nmax_denorm_preserve_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denorm_nmin_denorm_preserve_frag,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.denorm_nmin_denorm_preserve_vert,Fail
 
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/3208
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_bit_geom,Fail
