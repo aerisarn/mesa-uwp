@@ -196,6 +196,11 @@ anv_shader_compile_to_nir(struct anv_device *device,
       spirv_to_nir(spirv, module->size / 4,
                    spec_entries, num_spec_entries,
                    stage, entrypoint_name, &spirv_options, nir_options);
+   if (!nir) {
+      free(spec_entries);
+      return NULL;
+   }
+
    assert(nir->info.stage == stage);
    nir_validate_shader(nir, "after spirv_to_nir");
    nir_validate_ssa_dominance(nir, "after spirv_to_nir");
@@ -1471,7 +1476,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                                                  pipeline_ctx,
                                                  &stages[s]);
       if (stages[s].nir == NULL) {
-         result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         result = vk_error(VK_ERROR_UNKNOWN);
          goto fail;
       }
 
@@ -1777,7 +1782,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       stage.nir = anv_pipeline_stage_get_nir(&pipeline->base, cache, mem_ctx, &stage);
       if (stage.nir == NULL) {
          ralloc_free(mem_ctx);
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         return vk_error(VK_ERROR_UNKNOWN);
       }
 
       NIR_PASS_V(stage.nir, anv_nir_add_base_work_group_id);
