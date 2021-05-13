@@ -475,6 +475,8 @@ trace_screen_resource_bind_backing(struct pipe_screen *_screen,
 
    result = screen->resource_bind_backing(screen, resource, pmem, offset);
 
+   trace_dump_ret(bool, result);
+
    trace_dump_call_end();
 
    return result;
