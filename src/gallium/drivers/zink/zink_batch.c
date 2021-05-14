@@ -579,7 +579,7 @@ zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *re
       zink_batch_usage_set(&res->obj->reads, batch->state);
    }
    /* multiple array entries are fine */
-   if (res->obj->persistent_maps)
+   if (!res->obj->coherent && res->obj->persistent_maps)
       util_dynarray_append(&batch->state->persistent_resources, struct zink_resource_object*, res->obj);
 
    batch->has_work = true;
