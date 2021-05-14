@@ -271,47 +271,40 @@ pan_blend_reads_dest(const struct pan_blend_equation equation)
                 equation.alpha_invert_dst_factor;
 }
 
-/* Create the descriptor for a fixed blend mode given the corresponding Gallium
- * state, if possible. Return true and write out the blend descriptor into
- * blend_equation. If it is not possible with the fixed function
- * representation, return false to handle degenerate cases with a blend shader
- */
+/* Create the descriptor for a fixed blend mode given the corresponding API
+ * state. Assumes the equation can be represented as fixed-function. */
 
 void
-pan_blend_to_fixed_function_equation(ASSERTED const struct panfrost_device *dev,
-                                     const struct pan_blend_state *state,
-                                     unsigned rt,
-                                     struct MALI_BLEND_EQUATION *equation)
+pan_blend_to_fixed_function_equation(const struct pan_blend_equation equation,
+                                     struct MALI_BLEND_EQUATION *out)
 {
-        const struct pan_blend_rt_state *rt_state = &state->rts[rt];
-
         /* If no blending is enabled, default back on `replace` mode */
-        if (!rt_state->equation.blend_enable) {
-                equation->color_mask = rt_state->equation.color_mask;
-                equation->rgb.a = MALI_BLEND_OPERAND_A_SRC;
-                equation->rgb.b = MALI_BLEND_OPERAND_B_SRC;
-                equation->rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-                equation->alpha.a = MALI_BLEND_OPERAND_A_SRC;
-                equation->alpha.b = MALI_BLEND_OPERAND_B_SRC;
-                equation->alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+        if (!equation.blend_enable) {
+                out->color_mask = equation.color_mask;
+                out->rgb.a = MALI_BLEND_OPERAND_A_SRC;
+                out->rgb.b = MALI_BLEND_OPERAND_B_SRC;
+                out->rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+                out->alpha.a = MALI_BLEND_OPERAND_A_SRC;
+                out->alpha.b = MALI_BLEND_OPERAND_B_SRC;
+                out->alpha.c = MALI_BLEND_OPERAND_C_ZERO;
                 return;
         }
 
-        /* Try to compile the actual fixed-function blend */
-        to_panfrost_function(rt_state->equation.rgb_func,
-                             rt_state->equation.rgb_src_factor,
-                             rt_state->equation.rgb_invert_src_factor,
-                             rt_state->equation.rgb_dst_factor,
-                             rt_state->equation.rgb_invert_dst_factor,
-                             &equation->rgb);
+        /* Compile the fixed-function blend */
+        to_panfrost_function(equation.rgb_func,
+                             equation.rgb_src_factor,
+                             equation.rgb_invert_src_factor,
+                             equation.rgb_dst_factor,
+                             equation.rgb_invert_dst_factor,
+                             &out->rgb);
 
-        to_panfrost_function(rt_state->equation.alpha_func,
-                             rt_state->equation.alpha_src_factor,
-                             rt_state->equation.alpha_invert_src_factor,
-                             rt_state->equation.alpha_dst_factor,
-                             rt_state->equation.alpha_invert_dst_factor,
-                             &equation->alpha);
-        equation->color_mask = rt_state->equation.color_mask;
+        to_panfrost_function(equation.alpha_func,
+                             equation.alpha_src_factor,
+                             equation.alpha_invert_src_factor,
+                             equation.alpha_dst_factor,
+                             equation.alpha_invert_dst_factor,
+                             &out->alpha);
+        out->color_mask = equation.color_mask;
 }
 
 static const char *

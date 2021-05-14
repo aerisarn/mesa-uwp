@@ -161,8 +161,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                         .no_colour = pan_blend.rts[rti].equation.color_mask == 0,
                 };
 
-                pan_blend_to_fixed_function_equation(dev, &pan_blend, rti,
-                                                     &final.equation.equation);
+                pan_blend_to_fixed_function_equation(eq, &final.equation.equation);
                 return final;
         }
 
