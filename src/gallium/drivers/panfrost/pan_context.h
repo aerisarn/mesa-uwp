@@ -201,6 +201,10 @@ struct panfrost_context {
 
 struct panfrost_rasterizer {
         struct pipe_rasterizer_state base;
+
+        /* Partially packed RSD words */
+        struct mali_multisample_misc_packed multisample;
+        struct mali_stencil_mask_misc_packed stencil_misc;
 };
 
 /* Variants bundle together to form the backing CSO, bundling multiple

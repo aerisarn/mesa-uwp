@@ -599,20 +599,12 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                 panfrost_prepare_midgard_fs_state(ctx, blend_shaders, state);
 
         bool msaa = rast->multisample;
-        state->multisample_misc.multisample_enable = msaa;
         state->multisample_misc.sample_mask = msaa ? ctx->sample_mask : 0xFFFF;
 
         state->multisample_misc.evaluate_per_sample =
                 msaa && (ctx->min_samples > 1);
 
-        state->multisample_misc.fixed_function_near_discard = rast->depth_clip_near;
-        state->multisample_misc.fixed_function_far_discard = rast->depth_clip_far;
-        state->multisample_misc.shader_depth_range_fixed = true;
-
         state->stencil_mask_misc.alpha_to_coverage = alpha_to_coverage;
-        state->stencil_mask_misc.depth_range_1 = rast->offset_tri;
-        state->stencil_mask_misc.depth_range_2 = rast->offset_tri;
-        state->stencil_mask_misc.single_sampled_lines = !rast->multisample;
         state->depth_units = rast->offset_units * 2.0f;
         state->depth_factor = rast->offset_scale;
 
@@ -625,7 +617,6 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                 state->alpha_reference = zsa->base.alpha_ref_value;
 }
 
-
 static void
 panfrost_emit_frag_shader(struct panfrost_context *ctx,
                           struct mali_renderer_state_packed *fragmeta,
@@ -633,6 +624,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 {
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         const struct panfrost_zsa_state *zsa = ctx->depth_stencil;
+        const struct panfrost_rasterizer *rast = ctx->rasterizer;
         struct panfrost_shader_state *fs =
                 panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
@@ -659,8 +651,11 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                 pan_merge(rsd, fs->partial_rsd, RENDERER_STATE);
 
         /* Word 8, 9 Misc state */
-        rsd.opaque[8] |= zsa->rsd_depth.opaque[0];
-        rsd.opaque[9] |= zsa->rsd_stencil.opaque[0];
+        rsd.opaque[8] |= zsa->rsd_depth.opaque[0]
+                       | rast->multisample.opaque[0];
+
+        rsd.opaque[9] |= zsa->rsd_stencil.opaque[0]
+                       | rast->stencil_misc.opaque[0];
 
         /* Word 10, 11 Stencil Front and Back */
         rsd.opaque[10] |= zsa->stencil_front.opaque[0];

@@ -756,6 +756,19 @@ panfrost_create_rasterizer_state(
         /* Gauranteed with the core GL call, so don't expose ARB_polygon_offset */
         assert(cso->offset_clamp == 0.0);
 
+        pan_pack(&so->multisample, MULTISAMPLE_MISC, cfg) {
+                cfg.multisample_enable = cso->multisample;
+                cfg.fixed_function_near_discard = cso->depth_clip_near;
+                cfg.fixed_function_far_discard = cso->depth_clip_far;
+                cfg.shader_depth_range_fixed = true;
+        }
+
+        pan_pack(&so->stencil_misc, STENCIL_MASK_MISC, cfg) {
+                cfg.depth_range_1 = cso->offset_tri;
+                cfg.depth_range_2 = cso->offset_tri;
+                cfg.single_sampled_lines = !cso->multisample;
+        }
+
         return so;
 }
 
