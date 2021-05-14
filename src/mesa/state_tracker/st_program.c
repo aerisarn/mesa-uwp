@@ -1450,6 +1450,8 @@ st_create_fp_variant(struct st_context *st,
          finalize = true;
       }
 
+      bool need_lower_tex_src_plane = false;
+
       if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
                    key->external.lower_xy_uxvx || key->external.lower_yx_xuxv ||
                    key->external.lower_ayuv || key->external.lower_xyuv ||
@@ -1468,6 +1470,7 @@ st_create_fp_variant(struct st_context *st,
          options.lower_yuv_external = key->external.lower_yuv;
          NIR_PASS_V(state.ir.nir, nir_lower_tex, &options);
          finalize = true;
+         need_lower_tex_src_plane = true;
       }
 
       if (finalize || !st->allow_st_finalize_nir_twice) {
@@ -1476,10 +1479,7 @@ st_create_fp_variant(struct st_context *st,
       }
 
       /* This pass needs to happen *after* nir_lower_sampler */
-      if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
-                   key->external.lower_xy_uxvx || key->external.lower_yx_xuxv ||
-                   key->external.lower_ayuv || key->external.lower_xyuv ||
-                   key->external.lower_yuv)) {
+      if (unlikely(need_lower_tex_src_plane)) {
          NIR_PASS_V(state.ir.nir, st_nir_lower_tex_src_plane,
                     ~stfp->Base.SamplersUsed,
                     key->external.lower_nv12 | key->external.lower_xy_uxvx |
