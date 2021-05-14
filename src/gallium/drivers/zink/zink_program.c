@@ -317,11 +317,12 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
          struct zink_shader_module *zm;
          zm = get_shader_module_for_stage(ctx, dirty[i] ? dirty[i] : stages[type], prog);
          zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], zm);
+         ctx->gfx_pipeline_state.combined_dirty |= zm->shader != ctx->gfx_pipeline_state.modules[type];
+         ctx->gfx_pipeline_state.modules[type] = zm->shader;
+      } else if (!stages[type]) {
+         ctx->gfx_pipeline_state.combined_dirty |= ctx->gfx_pipeline_state.modules[type] != VK_NULL_HANDLE;
+         ctx->gfx_pipeline_state.modules[type] = VK_NULL_HANDLE;
       }
-      if (ctx->gfx_pipeline_state.modules[type] !=
-          (prog->modules[type] ? prog->modules[type]->shader : VK_NULL_HANDLE))
-         ctx->gfx_pipeline_state.combined_dirty = true;
-      ctx->gfx_pipeline_state.modules[type] = prog->modules[type] ? prog->modules[type]->shader : VK_NULL_HANDLE;
    }
    ctx->gfx_pipeline_state.module_hash = _mesa_hash_data(ctx->gfx_pipeline_state.modules, sizeof(ctx->gfx_pipeline_state.modules));
    unsigned clean = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);
