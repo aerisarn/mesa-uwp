@@ -40,16 +40,22 @@
 #include "tgsi/tgsi_dump.h"
 
 static void
-pan_upload_shader_descriptor(struct panfrost_context *ctx,
-                        struct panfrost_shader_state *state)
+pan_prepare_shader_descriptor(struct panfrost_context *ctx,
+                              struct panfrost_shader_state *state,
+                              bool upload)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct panfrost_ptr ptr =
-                panfrost_pool_alloc_desc(&ctx->descs, RENDERER_STATE);
+        struct mali_renderer_state_packed *out = &state->partial_rsd;
 
-        state->state = pan_take_ref(&ctx->descs, ptr.gpu);
+        if (upload) {
+                struct panfrost_ptr ptr =
+                        panfrost_pool_alloc_desc(&ctx->descs, RENDERER_STATE);
 
-        pan_pack(ptr.cpu, RENDERER_STATE, cfg) {
+                state->state = pan_take_ref(&ctx->descs, ptr.gpu);
+                out = ptr.cpu;
+        }
+
+        pan_pack(out, RENDERER_STATE, cfg) {
                 pan_shader_prepare_rsd(dev, &state->info, state->bin.gpu,
                                        &cfg);
         }
@@ -98,8 +104,8 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                                 binary.data, binary.size, 128));
         }
 
-        if (stage != MESA_SHADER_FRAGMENT)
-                pan_upload_shader_descriptor(ctx, state);
+        pan_prepare_shader_descriptor(ctx, state, 
+                        stage != MESA_SHADER_FRAGMENT);
 
         util_dynarray_fini(&binary);
 

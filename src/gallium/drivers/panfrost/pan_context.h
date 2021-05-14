@@ -214,6 +214,9 @@ struct panfrost_shader_state {
         /* Respectively, shader binary and Renderer State Descriptor */
         struct pan_pool_ref bin, state;
 
+        /* For fragment shaders, a prepared (but not uploaded RSD) */
+        struct mali_renderer_state_packed partial_rsd;
+
         struct pan_shader_info info;
 
         struct pipe_stream_output_info stream_output;

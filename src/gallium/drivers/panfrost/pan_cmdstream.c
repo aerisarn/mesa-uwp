@@ -460,7 +460,6 @@ static void
 panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                                   struct MALI_RENDERER_STATE *state)
 {
-        const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
         struct panfrost_blend_state *so = ctx->blend;
         bool alpha_to_coverage = so->base.alpha_to_coverage;
@@ -471,8 +470,6 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                 state->properties.bifrost.allow_forward_pixel_to_be_killed = true;
                 state->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
         } else {
-                pan_shader_prepare_rsd(dev, &fs->info, fs->bin.gpu, state);
-
                 /* Track if any colour buffer is reused across draws, either
                  * from reading it directly, or from failing to write it */
                 bool blend_reads_dest = false;
@@ -517,8 +514,6 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 state->properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
                 state->properties.midgard.force_early_z = true;
         } else {
-                pan_shader_prepare_rsd(dev, &fs->info, fs->bin.gpu, state);
-
                 /* Reasons to disable early-Z from a shader perspective */
                 bool late_z = fs->info.fs.can_discard || fs->info.writes_global ||
                               fs->info.fs.writes_depth || fs->info.fs.writes_stencil ||
@@ -653,8 +648,15 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                           mali_ptr *blend_shaders)
 {
         struct panfrost_device *dev = pan_device(ctx->base.screen);
+        struct panfrost_shader_state *fs =
+                panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
-        pan_pack(fragmeta, RENDERER_STATE, cfg) {
+        /* We need to merge several several partial renderer state descriptors,
+         * so stage to temporary storage rather than reading back write-combine
+         * memory, which will trash performance. */
+        struct mali_renderer_state_packed rsd;
+
+        pan_pack(&rsd, RENDERER_STATE, cfg) {
                 panfrost_prepare_fs_state(ctx, blend_shaders, &cfg);
         }
 
@@ -664,8 +666,14 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
                 /* Word 14: SFBD Blend Equation */
                 STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
-                fragmeta->opaque[14] = ctx->blend->equation[0].opaque[0];
+                rsd.opaque[14] = ctx->blend->equation[0].opaque[0];
         }
+
+        /* Merge with CSO state and upload */
+        if (panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer))
+                pan_merge(rsd, fs->partial_rsd, RENDERER_STATE);
+
+        memcpy(fragmeta, &rsd, sizeof(rsd));
 }
 
 mali_ptr
