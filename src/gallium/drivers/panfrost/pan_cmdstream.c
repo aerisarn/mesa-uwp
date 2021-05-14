@@ -517,12 +517,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 /* Reasons to disable early-Z from a shader perspective */
                 bool late_z = fs->info.fs.can_discard || fs->info.writes_global ||
                               fs->info.fs.writes_depth || fs->info.fs.writes_stencil ||
-                              (zsa->alpha_func != MALI_FUNC_ALWAYS);
-
-                /* If either depth or stencil is enabled, discard matters */
-                bool zs_enabled =
-                        (zsa->base.depth_enabled && zsa->base.depth_func != PIPE_FUNC_ALWAYS) ||
-                        zsa->base.stencil[0].enabled;
+                              ((enum mali_func) zsa->base.alpha_func != MALI_FUNC_ALWAYS);
 
                 bool has_blend_shader = false;
 
@@ -543,9 +538,9 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                  * reads tilebuffer? flag to compensate */
                 state->properties.midgard.shader_reads_tilebuffer =
                         fs->info.fs.outputs_read ||
-                        (!zs_enabled && fs->info.fs.can_discard);
+                        (!zsa->enabled && fs->info.fs.can_discard);
                 state->properties.midgard.shader_contains_discard =
-                        zs_enabled && fs->info.fs.can_discard;
+                        zsa->enabled && fs->info.fs.can_discard;
         }
 
         if (dev->quirks & MIDGARD_SFBD && ctx->pipe_framebuffer.nr_cbufs > 0) {
@@ -611,19 +606,11 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         state->multisample_misc.evaluate_per_sample =
                 msaa && (ctx->min_samples > 1 || fs->info.fs.sample_shading);
 
-        state->multisample_misc.depth_function = zsa->base.depth_enabled ?
-                (enum mali_func) zsa->base.depth_func : MALI_FUNC_ALWAYS;
-
-        state->multisample_misc.depth_write_mask = zsa->base.depth_writemask;
         state->multisample_misc.fixed_function_near_discard = rast->depth_clip_near;
         state->multisample_misc.fixed_function_far_discard = rast->depth_clip_far;
         state->multisample_misc.shader_depth_range_fixed = true;
 
-        state->stencil_mask_misc.stencil_mask_front = zsa->stencil_mask_front;
-        state->stencil_mask_misc.stencil_mask_back = zsa->stencil_mask_back;
-        state->stencil_mask_misc.stencil_enable = zsa->base.stencil[0].enabled;
         state->stencil_mask_misc.alpha_to_coverage = alpha_to_coverage;
-        state->stencil_mask_misc.alpha_test_compare_function = zsa->alpha_func;
         state->stencil_mask_misc.depth_range_1 = rast->offset_tri;
         state->stencil_mask_misc.depth_range_2 = rast->offset_tri;
         state->stencil_mask_misc.single_sampled_lines = !rast->multisample;
@@ -631,8 +618,6 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         state->depth_factor = rast->offset_scale;
 
         bool back_enab = zsa->base.stencil[1].enabled;
-        state->stencil_front = zsa->stencil_front;
-        state->stencil_back = zsa->stencil_back;
         state->stencil_front.reference_value = ctx->stencil_ref.ref_value[0];
         state->stencil_back.reference_value = ctx->stencil_ref.ref_value[back_enab ? 1 : 0];
 
@@ -648,6 +633,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                           mali_ptr *blend_shaders)
 {
         struct panfrost_device *dev = pan_device(ctx->base.screen);
+        const struct panfrost_zsa_state *zsa = ctx->depth_stencil;
         struct panfrost_shader_state *fs =
                 panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
@@ -672,6 +658,14 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         /* Merge with CSO state and upload */
         if (panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer))
                 pan_merge(rsd, fs->partial_rsd, RENDERER_STATE);
+
+        /* Word 8, 9 Misc state */
+        rsd.opaque[8] |= zsa->rsd_depth.opaque[0];
+        rsd.opaque[9] |= zsa->rsd_stencil.opaque[0];
+
+        /* Word 10, 11 Stencil Front and Back */
+        rsd.opaque[10] |= zsa->stencil_front.opaque[0];
+        rsd.opaque[11] |= zsa->stencil_back.opaque[0];
 
         memcpy(fragmeta, &rsd, sizeof(rsd));
 }

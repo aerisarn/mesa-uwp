@@ -1392,36 +1392,62 @@ pan_pipe_to_stencil_op(enum pipe_stencil_op in)
 }
 
 static inline void
-pan_pipe_to_stencil(const struct pipe_stencil_state *in, struct MALI_STENCIL *out)
+pan_pipe_to_stencil(const struct pipe_stencil_state *in,
+                    struct mali_stencil_packed *out)
 {
-        pan_prepare(out, STENCIL);
-        out->mask = in->valuemask;
-        out->compare_function = (enum mali_func) in->func;
-        out->stencil_fail = pan_pipe_to_stencil_op(in->fail_op);
-        out->depth_fail = pan_pipe_to_stencil_op(in->zfail_op);
-        out->depth_pass = pan_pipe_to_stencil_op(in->zpass_op);
+        pan_pack(out, STENCIL, s) {
+                s.mask = in->valuemask;
+                s.compare_function = (enum mali_func) in->func;
+                s.stencil_fail = pan_pipe_to_stencil_op(in->fail_op);
+                s.depth_fail = pan_pipe_to_stencil_op(in->zfail_op);
+                s.depth_pass = pan_pipe_to_stencil_op(in->zpass_op);
+        }
 }
 
 static void *
 panfrost_create_depth_stencil_state(struct pipe_context *pipe,
                                     const struct pipe_depth_stencil_alpha_state *zsa)
 {
+        struct panfrost_device *dev = pan_device(pipe->screen);
         struct panfrost_zsa_state *so = CALLOC_STRUCT(panfrost_zsa_state);
         so->base = *zsa;
 
-        pan_pipe_to_stencil(&zsa->stencil[0], &so->stencil_front);
-        so->stencil_mask_front = zsa->stencil[0].writemask;
+        /* Normalize (there's no separate enable) */
+        if (!zsa->alpha_enabled)
+                so->base.alpha_func = MALI_FUNC_ALWAYS;
 
-        if (zsa->stencil[1].enabled) {
-                pan_pipe_to_stencil(&zsa->stencil[1], &so->stencil_back);
-                so->stencil_mask_back = zsa->stencil[1].writemask;
-	} else {
-                so->stencil_back = so->stencil_front;
-                so->stencil_mask_back = so->stencil_mask_front;
+        /* Prepack relevant parts of the Renderer State Descriptor. They will
+         * be ORed in at draw-time */
+        pan_pack(&so->rsd_depth, MULTISAMPLE_MISC, cfg) {
+                cfg.depth_function = zsa->depth_enabled ?
+                        (enum mali_func) zsa->depth_func : MALI_FUNC_ALWAYS;
+
+                cfg.depth_write_mask = zsa->depth_writemask;
         }
 
-        so->alpha_func = zsa->alpha_enabled ?
-                (enum mali_func) zsa->alpha_func : MALI_FUNC_ALWAYS;
+        pan_pack(&so->rsd_stencil, STENCIL_MASK_MISC, cfg) {
+                cfg.stencil_enable = zsa->stencil[0].enabled;
+
+                cfg.stencil_mask_front = zsa->stencil[0].writemask;
+                cfg.stencil_mask_back = zsa->stencil[1].enabled ?
+                        zsa->stencil[1].writemask : zsa->stencil[0].writemask;
+
+                if (dev->arch < 6) {
+                        cfg.alpha_test_compare_function =
+                                (enum mali_func) so->base.alpha_func;
+                }
+        }
+
+        /* Stencil tests have their own words in the RSD */
+        pan_pipe_to_stencil(&zsa->stencil[0], &so->stencil_front);
+
+        if (zsa->stencil[1].enabled)
+                pan_pipe_to_stencil(&zsa->stencil[1], &so->stencil_back);
+	else
+                so->stencil_back = so->stencil_front;
+
+        so->enabled = zsa->stencil[0].enabled ||
+                (zsa->depth_enabled && zsa->depth_func != PIPE_FUNC_ALWAYS);
 
         /* TODO: Bounds test should be easy */
         assert(!zsa->depth_bounds_test);

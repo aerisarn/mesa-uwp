@@ -257,13 +257,14 @@ struct panfrost_vertex_state {
 
 struct panfrost_zsa_state {
         struct pipe_depth_stencil_alpha_state base;
-        enum mali_func alpha_func;
 
-        /* Precomputed stencil state */
-        struct MALI_STENCIL stencil_front;
-        struct MALI_STENCIL stencil_back;
-        u8 stencil_mask_front;
-        u8 stencil_mask_back;
+        /* Is any depth, stencil, or alpha testing enabled? */
+        bool enabled;
+
+        /* Prepacked words from the RSD */
+        struct mali_multisample_misc_packed rsd_depth;
+        struct mali_stencil_mask_misc_packed rsd_stencil;
+        struct mali_stencil_packed stencil_front, stencil_back;
 };
 
 struct panfrost_sampler_state {
