@@ -119,8 +119,8 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                 /* Converting equations to Mali style is expensive, do it at
                  * CSO create time instead of draw-time */
                 if (so->info[c].fixed_function) {
-                        pan_blend_to_fixed_function_equation(equation,
-                                        &so->equation[c]);
+                        pan_pack(&so->equation[c], BLEND_EQUATION, cfg)
+                                pan_blend_to_fixed_function_equation(equation, &cfg);
                 }
         }
 

@@ -60,7 +60,7 @@ struct panfrost_blend_state {
         struct pipe_blend_state base;
         struct pan_blend_state pan;
         struct pan_blend_info info[PIPE_MAX_COLOR_BUFS];
-        struct MALI_BLEND_EQUATION equation[PIPE_MAX_COLOR_BUFS];
+        struct mali_blend_equation_packed equation[PIPE_MAX_COLOR_BUFS];
 };
 
 /* Container for a final blend state, specialized to constants and a

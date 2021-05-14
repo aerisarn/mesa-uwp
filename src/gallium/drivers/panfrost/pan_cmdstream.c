@@ -325,7 +325,9 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                         continue;
                 }
 
-                pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
+                struct mali_blend_packed *packed = rts + (i * MALI_BLEND_LENGTH);
+
+                pan_pack(packed, BLEND, cfg) {
                         struct pan_blend_info info = so->info[i];
 
                         if (info.no_colour) {
@@ -364,8 +366,6 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 for (unsigned i = 0; i < format_desc->nr_channels; i++)
                                         chan_size = MAX2(format_desc->channel[0].size, chan_size);
 
-                                cfg.bifrost.equation = so->equation[i];
-
                                 /* Fixed point constant */
                                 u16 constant = blend[i].equation.constant * ((1 << chan_size) - 1);
                                 constant <<= 16 - chan_size;
@@ -386,6 +386,12 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 cfg.bifrost.internal.fixed_function.rt = i;
                         }
                 }
+
+                if (!blend[i].is_shader) {
+                        /* Word 1: Blend Equation */
+                        STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
+                        packed->opaque[1] = so->equation[i].opaque[0];
+                }
         }
 }
 
@@ -400,9 +406,11 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
 
         /* Always have at least one render target for depth-only passes */
         for (unsigned i = 0; i < MAX2(rt_count, 1); ++i) {
+                struct mali_blend_packed *packed = rts + (i * MALI_BLEND_LENGTH);
+
                 /* Disable blending for unbacked render targets */
                 if (rt_count == 0 || !batch->key.cbufs[i]) {
-                        pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
+                        pan_pack(packed, BLEND, cfg) {
                                 cfg.midgard.equation.color_mask = 0xf;
                                 cfg.midgard.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
                                 cfg.midgard.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
@@ -415,7 +423,7 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                         continue;
                 }
 
-                pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
+                pan_pack(packed, BLEND, cfg) {
                         struct pan_blend_info info = so->info[i];
 
                         if (info.no_colour) {
@@ -431,9 +439,14 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                         if (blend[i].is_shader) {
                                 cfg.midgard.shader_pc = blend[i].shader.gpu | blend[i].shader.first_tag;
                         } else {
-                                cfg.midgard.equation = ctx->blend->equation[i];
                                 cfg.midgard.constant = blend[i].equation.constant;
                         }
+                }
+
+                if (!blend[i].is_shader) {
+                        /* Word 2: Blend Equation */
+                        STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
+                        packed->opaque[2] = so->equation[i].opaque[0];
                 }
         }
 }
@@ -569,7 +582,6 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                         state->sfbd_blend_shader = blend[0].shader.gpu |
                                                    blend[0].shader.first_tag;
                 } else {
-                        state->sfbd_blend_equation = so->equation[0];
                         state->sfbd_blend_constant = blend[0].equation.constant;
                 }
         } else if (dev->quirks & MIDGARD_SFBD) {
@@ -595,6 +607,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                         break;
                 }
         }
+
 }
 
 static void
@@ -656,8 +669,19 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                           struct mali_renderer_state_packed *fragmeta,
                           struct panfrost_blend_final *blend)
 {
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
+
         pan_pack(fragmeta, RENDERER_STATE, cfg) {
                 panfrost_prepare_fs_state(ctx, blend, &cfg);
+        }
+
+        if ((dev->quirks & MIDGARD_SFBD)
+                        && ctx->pipe_framebuffer.nr_cbufs > 0
+                        && !blend[0].is_shader) {
+
+                /* Word 14: SFBD Blend Equation */
+                STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
+                fragmeta->opaque[14] = ctx->blend->equation[0].opaque[0];
         }
 }
 
