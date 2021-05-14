@@ -1974,6 +1974,9 @@ radv_layout_dcc_compressed(const struct radv_device *device, const struct radv_i
    if (!radv_dcc_enabled(image, level))
       return false;
 
+   if (image->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT && queue_mask & (1u << RADV_QUEUE_FOREIGN))
+      return true;
+
    /* If the image is read-only, we can always just keep it compressed */
    if (!(image->usage & RADV_IMAGE_USAGE_WRITE_BITS))
       return true;
