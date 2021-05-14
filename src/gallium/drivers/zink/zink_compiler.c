@@ -524,69 +524,155 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
 }
 
 static void
-assign_io_locations(nir_shader *nir, unsigned char *shader_slot_map,
-                    unsigned char *shader_slots_reserved)
+assign_producer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reserved, unsigned char *slot_map)
 {
-   unsigned reserved = shader_slots_reserved ? *shader_slots_reserved : 0;
-   nir_foreach_variable_with_modes(var, nir, nir_var_shader_in | nir_var_shader_out) {
-      if ((nir->info.stage == MESA_SHADER_VERTEX && var->data.mode == nir_var_shader_in) ||
-          (nir->info.stage == MESA_SHADER_FRAGMENT && var->data.mode == nir_var_shader_out))
-         continue;
+   unsigned slot = var->data.location;
+   switch (var->data.location) {
+   case VARYING_SLOT_POS:
+   case VARYING_SLOT_PNTC:
+   case VARYING_SLOT_PSIZ:
+   case VARYING_SLOT_LAYER:
+   case VARYING_SLOT_PRIMITIVE_ID:
+   case VARYING_SLOT_CLIP_DIST0:
+   case VARYING_SLOT_CULL_DIST0:
+   case VARYING_SLOT_VIEWPORT:
+   case VARYING_SLOT_FACE:
+   case VARYING_SLOT_TESS_LEVEL_OUTER:
+   case VARYING_SLOT_TESS_LEVEL_INNER:
+      /* use a sentinel value to avoid counting later */
+      var->data.driver_location = UINT_MAX;
+      break;
 
-      unsigned slot = var->data.location;
-      switch (var->data.location) {
-      case VARYING_SLOT_POS:
-      case VARYING_SLOT_PNTC:
-      case VARYING_SLOT_PSIZ:
-      case VARYING_SLOT_LAYER:
-      case VARYING_SLOT_PRIMITIVE_ID:
-      case VARYING_SLOT_CLIP_DIST0:
-      case VARYING_SLOT_CULL_DIST0:
-      case VARYING_SLOT_VIEWPORT:
-      case VARYING_SLOT_FACE:
-      case VARYING_SLOT_TESS_LEVEL_OUTER:
-      case VARYING_SLOT_TESS_LEVEL_INNER:
-         /* use a sentinel value to avoid counting later */
-         var->data.driver_location = UINT_MAX;
-         break;
-
-      default:
-         if (var->data.patch) {
-            assert(var->data.location >= VARYING_SLOT_PATCH0);
-            slot = var->data.location - VARYING_SLOT_PATCH0;
-         } else if (var->data.location >= VARYING_SLOT_VAR0 &&
-                     ((var->data.mode == nir_var_shader_out &&
-                     nir->info.stage == MESA_SHADER_TESS_CTRL) ||
-                    (var->data.mode != nir_var_shader_out &&
-                     nir->info.stage == MESA_SHADER_TESS_EVAL))) {
-            slot = var->data.location - VARYING_SLOT_VAR0;
-         } else {
-            if (shader_slot_map[var->data.location] == 0xff) {
-               assert(reserved < MAX_VARYING);
-               shader_slot_map[var->data.location] = reserved;
-               if (nir->info.stage == MESA_SHADER_TESS_CTRL && var->data.location >= VARYING_SLOT_VAR0)
-                  reserved += (glsl_count_vec4_slots(var->type, false, false) / 32 /*MAX_PATCH_VERTICES*/);
-               else
-                  reserved += glsl_count_vec4_slots(var->type, false, false);
-            }
-            slot = shader_slot_map[var->data.location];
-            assert(slot < MAX_VARYING);
+   default:
+      if (var->data.patch) {
+         assert(var->data.location >= VARYING_SLOT_PATCH0);
+         slot = var->data.location - VARYING_SLOT_PATCH0;
+      } else if (var->data.location >= VARYING_SLOT_VAR0 &&
+                 var->data.mode == nir_var_shader_in &&
+                  stage == MESA_SHADER_TESS_EVAL) {
+         slot = var->data.location - VARYING_SLOT_VAR0;
+      } else {
+         if (slot_map[var->data.location] == 0xff) {
+            assert(*reserved < MAX_VARYING);
+            slot_map[var->data.location] = *reserved;
+            *reserved += glsl_count_vec4_slots(var->type, false, false);
          }
-         var->data.driver_location = slot;
+         slot = slot_map[var->data.location];
+         assert(slot < MAX_VARYING);
+      }
+      var->data.driver_location = slot;
+   }
+}
+
+ALWAYS_INLINE static bool
+is_texcoord(gl_shader_stage stage, const nir_variable *var)
+{
+   if (stage != MESA_SHADER_FRAGMENT)
+      return false;
+   return var->data.location >= VARYING_SLOT_TEX0 && 
+          var->data.location <= VARYING_SLOT_TEX7;
+}
+
+static bool
+assign_consumer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reserved, unsigned char *slot_map)
+{
+   switch (var->data.location) {
+   case VARYING_SLOT_POS:
+   case VARYING_SLOT_PNTC:
+   case VARYING_SLOT_PSIZ:
+   case VARYING_SLOT_LAYER:
+   case VARYING_SLOT_PRIMITIVE_ID:
+   case VARYING_SLOT_CLIP_DIST0:
+   case VARYING_SLOT_CULL_DIST0:
+   case VARYING_SLOT_VIEWPORT:
+   case VARYING_SLOT_FACE:
+   case VARYING_SLOT_TESS_LEVEL_OUTER:
+   case VARYING_SLOT_TESS_LEVEL_INNER:
+      /* use a sentinel value to avoid counting later */
+      var->data.driver_location = UINT_MAX;
+      break;
+   default:
+      if (var->data.patch) {
+         assert(var->data.location >= VARYING_SLOT_PATCH0);
+         var->data.driver_location = var->data.location - VARYING_SLOT_PATCH0;
+      } else if (var->data.location >= VARYING_SLOT_VAR0 &&
+          stage == MESA_SHADER_TESS_CTRL &&
+          var->data.mode == nir_var_shader_out)
+         var->data.driver_location = var->data.location - VARYING_SLOT_VAR0;
+      else {
+         if (slot_map[var->data.location] == (unsigned char)-1) {
+            if (!is_texcoord(stage, var))
+               /* dead io */
+               return false;
+            /* texcoords can't be eliminated in fs due to GL_COORD_REPLACE */
+            slot_map[var->data.location] = (*reserved)++;
+         }
+         var->data.driver_location = slot_map[var->data.location];
       }
    }
+   return true;
+}
 
-   if (shader_slots_reserved)
-      *shader_slots_reserved = reserved;
+
+static bool
+rewrite_and_discard_read(nir_builder *b, nir_instr *instr, void *data)
+{
+   nir_variable *var = data;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_deref)
+      return false;
+   nir_variable *deref_var = nir_intrinsic_get_var(intr, 0);
+   if (deref_var != var)
+      return false;
+   nir_ssa_def *undef = nir_ssa_undef(b, nir_dest_num_components(intr->dest), nir_dest_bit_size(intr->dest));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, undef);
+   return true;
+}
+
+void
+zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer)
+{
+   unsigned reserved = 0;
+   unsigned char slot_map[VARYING_SLOT_MAX];
+   memset(slot_map, -1, sizeof(slot_map));
+   bool do_fixup = false;
+   nir_shader *nir = producer->info.stage == MESA_SHADER_TESS_CTRL ? producer : consumer;
+   if (producer->info.stage == MESA_SHADER_TESS_CTRL) {
+      /* never assign from tcs -> tes, always invert */
+      nir_foreach_variable_with_modes(var, consumer, nir_var_shader_in)
+         assign_producer_var_io(consumer->info.stage, var, &reserved, slot_map);
+      nir_foreach_variable_with_modes_safe(var, producer, nir_var_shader_out) {
+         if (!assign_consumer_var_io(producer->info.stage, var, &reserved, slot_map))
+            /* this is an output, nothing more needs to be done for it to be dropped */
+            do_fixup = true;
+      }
+   } else {
+      nir_foreach_variable_with_modes(var, producer, nir_var_shader_out)
+         assign_producer_var_io(producer->info.stage, var, &reserved, slot_map);
+      nir_foreach_variable_with_modes_safe(var, consumer, nir_var_shader_in) {
+         if (!assign_consumer_var_io(consumer->info.stage, var, &reserved, slot_map)) {
+            do_fixup = true;
+            /* input needs to be rewritten as an undef to ensure the entire deref chain is deleted */
+            nir_shader_instructions_pass(consumer, rewrite_and_discard_read, nir_metadata_dominance, var);
+         }
+      }
+   }
+   if (!do_fixup)
+      return;
+   nir_fixup_deref_modes(nir);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+   optimize_nir(nir);
 }
 
 VkShaderModule
-zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct zink_shader_key *key,
-                    unsigned char *shader_slot_map, unsigned char *shader_slots_reserved)
+zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *base_nir, struct zink_shader_key *key)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
    void *streamout = NULL;
-   nir_shader *nir = nir_shader_clone(NULL, zs->nir);
+   nir_shader *nir = nir_shader_clone(NULL, base_nir);
 
    if (key) {
       if (key->inline_uniforms) {
@@ -639,8 +725,6 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
       }
    }
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
-
-   assign_io_locations(nir, shader_slot_map, shader_slots_reserved);
 
    struct spirv_shader *spirv = nir_to_spirv(nir, streamout, screen->spirv_version);
    if (!spirv)

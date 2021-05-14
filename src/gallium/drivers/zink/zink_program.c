@@ -249,8 +249,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
          return NULL;
       }
       pipe_reference_init(&zm->reference, 1);
-      mod = zink_shader_compile(zink_screen(ctx->base.screen), zs, &key,
-                                prog->shader_slot_map, &prog->shader_slots_reserved);
+      mod = zink_shader_compile(zink_screen(ctx->base.screen), zs, prog->nir[stage], &key);
       if (!mod) {
          ralloc_free(keybox);
          FREE(zm);
@@ -370,82 +369,6 @@ equals_gfx_pipeline_state(const void *a, const void *b)
           !memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash));
 }
 
-static void
-init_slot_map(struct zink_context *ctx, struct zink_gfx_program *prog)
-{
-   unsigned existing_shaders = 0;
-   bool needs_new_map = false;
-
-   /* if there's a case where we'll be reusing any shaders, we need to (maybe) reuse the slot map too */
-   if (ctx->curr_program) {
-      for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
-          if (ctx->curr_program->shaders[i])
-             existing_shaders |= 1 << i;
-      }
-      /* if there's reserved slots, check whether we have enough remaining slots */
-      if (ctx->curr_program->shader_slots_reserved) {
-         uint64_t max_outputs = 0;
-         uint32_t num_xfb_outputs = 0;
-         for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
-            if (i != PIPE_SHADER_TESS_CTRL &&
-                i != PIPE_SHADER_FRAGMENT &&
-                ctx->gfx_stages[i]) {
-               uint32_t user_outputs = ctx->gfx_stages[i]->nir->info.outputs_written >> 32;
-               uint32_t builtin_outputs = ctx->gfx_stages[i]->nir->info.outputs_written;
-               num_xfb_outputs = MAX2(num_xfb_outputs, ctx->gfx_stages[i]->streamout.so_info.num_outputs);
-               unsigned user_outputs_count = 0;
-               /* check builtins first */
-               u_foreach_bit(slot, builtin_outputs) {
-                  switch (slot) {
-                  /* none of these require slot map entries */
-                  case VARYING_SLOT_POS:
-                  case VARYING_SLOT_PSIZ:
-                  case VARYING_SLOT_LAYER:
-                  case VARYING_SLOT_PRIMITIVE_ID:
-                  case VARYING_SLOT_CULL_DIST0:
-                  case VARYING_SLOT_CLIP_DIST0:
-                  case VARYING_SLOT_VIEWPORT:
-                  case VARYING_SLOT_TESS_LEVEL_INNER:
-                  case VARYING_SLOT_TESS_LEVEL_OUTER:
-                     break;
-                  default:
-                     /* remaining legacy builtins only require 1 slot each */
-                     if (ctx->curr_program->shader_slot_map[slot] == -1)
-                        user_outputs_count++;
-                     break;
-                  }
-               }
-               u_foreach_bit(slot, user_outputs) {
-                  if (ctx->curr_program->shader_slot_map[slot] == -1) {
-                     /* user variables can span multiple slots */
-                     nir_variable *var = nir_find_variable_with_location(ctx->gfx_stages[i]->nir,
-                                                                         nir_var_shader_out, slot);
-                     assert(var);
-                     if (i == PIPE_SHADER_TESS_CTRL && var->data.location >= VARYING_SLOT_VAR0)
-                        user_outputs_count += (glsl_count_vec4_slots(var->type, false, false) / 32 /*MAX_PATCH_VERTICES*/);
-                     else
-                        user_outputs_count += glsl_count_vec4_slots(var->type, false, false);
-                  }
-               }
-               max_outputs = MAX2(max_outputs, user_outputs_count);
-            }
-         }
-         /* slot map can only hold 32 entries, so dump this one if we'll exceed that */
-         if (ctx->curr_program->shader_slots_reserved + max_outputs + num_xfb_outputs > 32)
-            needs_new_map = true;
-      }
-   }
-
-   if (needs_new_map || ctx->dirty_shader_stages == existing_shaders || !existing_shaders) {
-      /* all shaders are being recompiled: new slot map */
-      memset(prog->shader_slot_map, -1, sizeof(prog->shader_slot_map));
-   } else {
-      /* at least some shaders are being reused: use existing slot map so locations match up */
-      memcpy(prog->shader_slot_map, ctx->curr_program->shader_slot_map, sizeof(prog->shader_slot_map));
-      prog->shader_slots_reserved = ctx->curr_program->shader_slots_reserved;
-   }
-}
-
 void
 zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog)
 {
@@ -489,6 +412,32 @@ zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg)
    return layout;
 }
 
+static void
+assign_io(struct zink_gfx_program *prog, struct zink_shader *stages[ZINK_SHADER_COUNT])
+{
+   struct zink_shader *shaders[PIPE_SHADER_TYPES];
+
+   /* build array in pipeline order */
+   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++)
+      shaders[tgsi_processor_to_shader_stage(i)] = stages[i];
+
+   for (unsigned i = 0; i < MESA_SHADER_FRAGMENT;) {
+      nir_shader *producer = shaders[i]->nir;
+      for (unsigned j = i + 1; j < ZINK_SHADER_COUNT; i++, j++) {
+         struct zink_shader *consumer = shaders[j];
+         if (!consumer)
+            continue;
+         if (!prog->nir[producer->info.stage])
+            prog->nir[producer->info.stage] = nir_shader_clone(prog, producer);
+         if (!prog->nir[j])
+            prog->nir[j] = nir_shader_clone(prog, consumer->nir);
+         zink_compiler_assign_io(prog->nir[producer->info.stage], prog->nir[j]);
+         i = j;
+         break;
+      }
+   }
+}
+
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
                         struct zink_shader *stages[ZINK_SHADER_COUNT])
@@ -513,7 +462,7 @@ zink_create_gfx_program(struct zink_context *ctx,
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_TESS_CTRL);
    }
 
-   init_slot_map(ctx, prog);
+   assign_io(prog, prog->shaders);
 
    update_shader_modules(ctx, prog->shaders, prog, false);
 
@@ -604,7 +553,7 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    comp->module = CALLOC_STRUCT(zink_shader_module);
    assert(comp->module);
    pipe_reference_init(&comp->module->reference, 1);
-   comp->module->shader = zink_shader_compile(screen, shader, NULL, NULL, NULL);
+   comp->module->shader = zink_shader_compile(screen, shader, shader->nir, NULL);
    assert(comp->module->shader);
    _mesa_hash_table_insert(&comp->base.shader_cache[0], &shader->shader_id, comp->module);
 
