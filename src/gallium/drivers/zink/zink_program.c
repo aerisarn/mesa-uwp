@@ -447,6 +447,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    assign_io(prog, prog->shaders);
 
    update_shader_modules(ctx, prog->shaders, prog, false);
+   prog->default_variant_hash = ctx->gfx_pipeline_state.module_hash;
 
    for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
       prog->pipelines[i] = _mesa_hash_table_create(NULL,
