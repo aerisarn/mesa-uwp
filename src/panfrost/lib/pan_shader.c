@@ -226,6 +226,14 @@ pan_shader_compile(const struct panfrost_device *dev,
                         !info->fs.writes_stencil &&
                         !info->fs.writes_coverage;
 
+                /* Similiarly with suitable state, is FPK possible? */
+                info->fs.can_fpk =
+                        !info->fs.writes_depth &&
+                        !info->fs.writes_stencil &&
+                        !info->fs.writes_coverage &&
+                        !info->fs.can_discard &&
+                        !info->fs.outputs_read;
+
                 info->fs.reads_frag_coord =
                         (s->info.inputs_read & (1 << VARYING_SLOT_POS)) ||
                         BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_FRAG_COORD);

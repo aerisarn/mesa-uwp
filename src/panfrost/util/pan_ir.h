@@ -180,7 +180,7 @@ struct pan_shader_info {
                         bool reads_helper_invocation;
                         bool sample_shading;
                         bool early_fragment_tests;
-                        bool can_early_z;
+                        bool can_early_z, can_fpk;
                         BITSET_WORD outputs_read;
                         BITSET_WORD outputs_written;
                 } fs;

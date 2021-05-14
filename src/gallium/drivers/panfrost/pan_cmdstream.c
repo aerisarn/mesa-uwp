@@ -506,11 +506,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                 }
 
                 state->properties.bifrost.allow_forward_pixel_to_kill =
-                        !fs->info.fs.writes_depth &&
-                        !fs->info.fs.writes_stencil &&
-                        !fs->info.fs.writes_coverage &&
-                        !fs->info.fs.can_discard &&
-                        !fs->info.fs.outputs_read &&
+                        fs->info.fs.can_fpk &&
                         !(rt_mask & ~fs->info.outputs_written) &&
                         !alpha_to_coverage &&
                         !blend_reads_dest;
