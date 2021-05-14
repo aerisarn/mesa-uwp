@@ -931,7 +931,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
    bool have_psiz = false;
 
-   ret->shader_id = p_atomic_inc_return(&screen->shader_id);
    ret->programs = _mesa_pointer_set_create(NULL);
 
    nir_variable_mode indirect_derefs_modes = nir_var_function_temp;
@@ -1065,7 +1064,7 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
    set_foreach(shader->programs, entry) {
       if (shader->nir->info.stage == MESA_SHADER_COMPUTE) {
          struct zink_compute_program *comp = (void*)entry->key;
-         _mesa_hash_table_remove_key(ctx->compute_program_cache, &comp->shader->shader_id);
+         _mesa_hash_table_remove_key(ctx->compute_program_cache, comp->shader);
          comp->shader = NULL;
          bool in_use = comp == ctx->curr_compute;
          if (in_use)
@@ -1123,7 +1122,6 @@ zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
 {
    unsigned vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch;
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
-   ret->shader_id = 0; //special value for internal shaders
    ret->programs = _mesa_pointer_set_create(NULL);
 
    nir_shader *nir = nir_shader_create(NULL, MESA_SHADER_TESS_CTRL, &zink_screen(ctx->base.screen)->nir_options, NULL);

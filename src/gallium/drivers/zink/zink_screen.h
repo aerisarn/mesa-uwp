@@ -92,8 +92,6 @@ struct zink_screen {
    uint64_t mem_cache_size;
    unsigned mem_cache_count;
 
-   unsigned shader_id;
-
    uint64_t total_video_mem;
    uint64_t total_mem;
 

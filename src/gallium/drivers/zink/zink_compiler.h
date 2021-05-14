@@ -68,7 +68,6 @@ zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens);
 
 struct zink_shader {
    struct util_live_shader base;
-   unsigned shader_id;
    struct nir_shader *nir;
 
    struct zink_so_info streamout;

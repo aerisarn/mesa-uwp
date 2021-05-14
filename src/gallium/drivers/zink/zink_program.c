@@ -114,7 +114,6 @@ shader_key_vs_gen(struct zink_context *ctx, struct zink_shader *zs,
    struct zink_vs_key *vs_key = &key->key.vs;
    key->size = sizeof(struct zink_vs_key);
 
-   vs_key->shader_id = zs->shader_id;
    vs_key->clip_halfz = ctx->rast_state->base.clip_halfz;
    switch (zs->nir->info.stage) {
    case MESA_SHADER_VERTEX:
@@ -140,8 +139,6 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
    struct zink_fs_key *fs_key = &key->key.fs;
    key->size = sizeof(struct zink_fs_key);
 
-   fs_key->shader_id = zs->shader_id;
-
    /* if gl_SampleMask[] is written to, we have to ensure that we get a shader with the same sample count:
     * in GL, rast_samples==1 means ignore gl_SampleMask[]
     * in VK, gl_SampleMask[] is never ignored
@@ -165,7 +162,6 @@ shader_key_tcs_gen(struct zink_context *ctx, struct zink_shader *zs,
    struct zink_tcs_key *tcs_key = &key->key.tcs;
    key->size = sizeof(struct zink_tcs_key);
 
-   tcs_key->shader_id = zs->shader_id;
    tcs_key->vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch;
    tcs_key->vs_outputs_written = shaders[PIPE_SHADER_VERTEX]->nir->info.outputs_written;
 }
@@ -548,14 +544,14 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    pipe_reference_init(&comp->base.reference, 1);
    comp->base.is_compute = true;
    /* TODO: cs shader keys placeholder for now */
-   _mesa_hash_table_init(&comp->base.shader_cache[0], comp, _mesa_hash_u32, _mesa_key_u32_equal);
+   _mesa_hash_table_init(&comp->base.shader_cache[0], comp, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
    comp->module = CALLOC_STRUCT(zink_shader_module);
    assert(comp->module);
    pipe_reference_init(&comp->module->reference, 1);
    comp->module->shader = zink_shader_compile(screen, shader, shader->nir, NULL);
    assert(comp->module->shader);
-   _mesa_hash_table_insert(&comp->base.shader_cache[0], &shader->shader_id, comp->module);
+   _mesa_hash_table_insert(&comp->base.shader_cache[0], shader, comp->module);
 
    struct zink_shader_module *zm = NULL;
    zink_shader_module_reference(zink_screen(ctx->base.screen), &zm, comp->module);

@@ -167,10 +167,10 @@ update_compute_program(struct zink_context *ctx)
    if (ctx->dirty_shader_stages & bits) {
       struct zink_compute_program *comp = NULL;
       struct hash_entry *entry = _mesa_hash_table_search(ctx->compute_program_cache,
-                                                         &ctx->compute_stage->shader_id);
+                                                         ctx->compute_stage);
       if (!entry) {
          comp = zink_create_compute_program(ctx, ctx->compute_stage);
-         entry = _mesa_hash_table_insert(ctx->compute_program_cache, &comp->shader->shader_id, comp);
+         entry = _mesa_hash_table_insert(ctx->compute_program_cache, comp->shader, comp);
       }
       comp = (struct zink_compute_program*)(entry ? entry->data : NULL);
       if (comp && comp != ctx->curr_compute) {
