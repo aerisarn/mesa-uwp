@@ -2149,7 +2149,7 @@ iris_get_scratch_space(struct iris_context *ice,
    const struct intel_device_info *devinfo = &screen->devinfo;
 
    unsigned encoded_size = ffs(per_thread_scratch) - 11;
-   assert(encoded_size < (1 << 16));
+   assert(encoded_size < ARRAY_SIZE(ice->shaders.scratch_bos));
 
    struct iris_bo **bop = &ice->shaders.scratch_bos[encoded_size][stage];
 
