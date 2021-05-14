@@ -484,28 +484,6 @@ pan_merge_empty_fs(struct mali_renderer_state_packed *rsd, bool is_bifrost)
         pan_merge((*rsd), empty_rsd, RENDERER_STATE);
 }
 
-static void
-panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
-                                  struct MALI_RENDERER_STATE *state)
-{
-        struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
-        struct panfrost_blend_state *so = ctx->blend;
-        bool alpha_to_coverage = so->base.alpha_to_coverage;
-
-        if (panfrost_fs_required(fs, so, &ctx->pipe_framebuffer)) {
-                /* Track if any colour buffer is reused across draws, either
-                 * from reading it directly, or from failing to write it */
-                unsigned rt_mask = ctx->fb_rt_mask;
-                bool blend_reads_dest = (so->load_dest_mask & rt_mask);
-
-                state->properties.bifrost.allow_forward_pixel_to_kill =
-                        fs->info.fs.can_fpk &&
-                        !(rt_mask & ~fs->info.outputs_written) &&
-                        !alpha_to_coverage &&
-                        !blend_reads_dest;
-        }
-}
-
 /* Get the last blend shader, for an erratum workaround */
 
 static mali_ptr
@@ -520,107 +498,107 @@ panfrost_last_nonnull(mali_ptr *ptrs, unsigned count)
 }
 
 static void
-panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
-                                  mali_ptr *blend_shaders,
-                                  struct MALI_RENDERER_STATE *state)
-{
-        const struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
-        const struct panfrost_zsa_state *zsa = ctx->depth_stencil;
-        unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
-        bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
-
-        if (panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer)) {
-                state->properties.midgard.force_early_z =
-                        fs->info.fs.can_early_z && !alpha_to_coverage &&
-                        ((enum mali_func) zsa->base.alpha_func == MALI_FUNC_ALWAYS);
-
-                bool has_blend_shader = false;
-
-                for (unsigned c = 0; c < rt_count; ++c)
-                        has_blend_shader |= (blend_shaders[c] != 0);
-
-                /* TODO: Reduce this limit? */
-                if (has_blend_shader)
-                        state->properties.midgard.work_register_count = MAX2(fs->info.work_reg_count, 8);
-                else
-                        state->properties.midgard.work_register_count = fs->info.work_reg_count;
-
-                /* Workaround a hardware errata where early-z cannot be enabled
-                 * when discarding even when the depth buffer is read-only, by
-                 * lying to the hardware about the discard and setting the
-                 * reads tilebuffer? flag to compensate */
-                state->properties.midgard.shader_reads_tilebuffer =
-                        !zsa->enabled && fs->info.fs.can_discard;
-                state->properties.midgard.shader_contains_discard =
-                        zsa->enabled && fs->info.fs.can_discard;
-        }
-
-        if (dev->quirks & MIDGARD_SFBD && ctx->pipe_framebuffer.nr_cbufs > 0) {
-                struct panfrost_blend_state *so = ctx->blend;
-                state->multisample_misc.sfbd_load_destination = so->info[0].load_dest;
-                state->multisample_misc.sfbd_blend_shader = (blend_shaders[0] != 0);
-                state->stencil_mask_misc.sfbd_write_enable = !so->info[0].no_colour;
-                state->stencil_mask_misc.sfbd_srgb = util_format_is_srgb(ctx->pipe_framebuffer.cbufs[0]->format);
-                state->stencil_mask_misc.sfbd_dither_disable = !so->base.dither;
-                state->stencil_mask_misc.sfbd_alpha_to_one = so->base.alpha_to_one;
-
-                if (blend_shaders[0]) {
-                        state->sfbd_blend_shader = blend_shaders[0];
-                } else {
-                        state->sfbd_blend_constant = pan_blend_get_constant(
-                                        so->info[0].constant_mask,
-                                        ctx->blend_color.color);
-                }
-        } else if (dev->quirks & MIDGARD_SFBD) {
-                /* If there is no colour buffer, leaving fields default is
-                 * fine, except for blending which is nonnullable */
-                state->sfbd_blend_equation.color_mask = 0xf;
-                state->sfbd_blend_equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-                state->sfbd_blend_equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-                state->sfbd_blend_equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-                state->sfbd_blend_equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-                state->sfbd_blend_equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-                state->sfbd_blend_equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-        } else {
-                /* Workaround on v5 */
-                state->sfbd_blend_shader = panfrost_last_nonnull(blend_shaders, rt_count);
-        }
-
-}
-
-static void
 panfrost_prepare_fs_state(struct panfrost_context *ctx,
                           mali_ptr *blend_shaders,
-                          struct MALI_RENDERER_STATE *state)
+                          struct mali_renderer_state_packed *rsd)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
         const struct panfrost_zsa_state *zsa = ctx->depth_stencil;
+        struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
+        struct panfrost_blend_state *so = ctx->blend;
         bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
-
-        if (pan_is_bifrost(dev))
-                panfrost_prepare_bifrost_fs_state(ctx, state);
-        else
-                panfrost_prepare_midgard_fs_state(ctx, blend_shaders, state);
-
         bool msaa = rast->multisample;
-        state->multisample_misc.sample_mask = msaa ? ctx->sample_mask : 0xFFFF;
 
-        state->multisample_misc.evaluate_per_sample =
-                msaa && (ctx->min_samples > 1);
+        pan_pack(rsd, RENDERER_STATE, cfg) {
+                if (pan_is_bifrost(dev) && panfrost_fs_required(fs, so, &ctx->pipe_framebuffer)) {
+                        /* Track if any colour buffer is reused across draws, either
+                         * from reading it directly, or from failing to write it */
+                        unsigned rt_mask = ctx->fb_rt_mask;
+                        bool blend_reads_dest = (so->load_dest_mask & rt_mask);
 
-        state->stencil_mask_misc.alpha_to_coverage = alpha_to_coverage;
-        state->depth_units = rast->offset_units * 2.0f;
-        state->depth_factor = rast->offset_scale;
+                        cfg.properties.bifrost.allow_forward_pixel_to_kill =
+                                fs->info.fs.can_fpk &&
+                                !(rt_mask & ~fs->info.outputs_written) &&
+                                !alpha_to_coverage &&
+                                !blend_reads_dest;
+                } else if (!pan_is_bifrost(dev)) {
+                        unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
 
-        bool back_enab = zsa->base.stencil[1].enabled;
-        state->stencil_front.reference_value = ctx->stencil_ref.ref_value[0];
-        state->stencil_back.reference_value = ctx->stencil_ref.ref_value[back_enab ? 1 : 0];
+                        if (panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer)) {
+                                cfg.properties.midgard.force_early_z =
+                                        fs->info.fs.can_early_z && !alpha_to_coverage &&
+                                        ((enum mali_func) zsa->base.alpha_func == MALI_FUNC_ALWAYS);
 
-        /* v6+ fits register preload here, no alpha testing */
-        if (dev->arch <= 5)
-                state->alpha_reference = zsa->base.alpha_ref_value;
+                                bool has_blend_shader = false;
+
+                                for (unsigned c = 0; c < rt_count; ++c)
+                                        has_blend_shader |= (blend_shaders[c] != 0);
+
+                                /* TODO: Reduce this limit? */
+                                if (has_blend_shader)
+                                        cfg.properties.midgard.work_register_count = MAX2(fs->info.work_reg_count, 8);
+                                else
+                                        cfg.properties.midgard.work_register_count = fs->info.work_reg_count;
+
+                                /* Workaround a hardware errata where early-z cannot be enabled
+                                 * when discarding even when the depth buffer is read-only, by
+                                 * lying to the hardware about the discard and setting the
+                                 * reads tilebuffer? flag to compensate */
+                                cfg.properties.midgard.shader_reads_tilebuffer =
+                                        !zsa->enabled && fs->info.fs.can_discard;
+                                cfg.properties.midgard.shader_contains_discard =
+                                        zsa->enabled && fs->info.fs.can_discard;
+                        }
+
+                        if (dev->quirks & MIDGARD_SFBD && rt_count > 0) {
+                                cfg.multisample_misc.sfbd_load_destination = so->info[0].load_dest;
+                                cfg.multisample_misc.sfbd_blend_shader = (blend_shaders[0] != 0);
+                                cfg.stencil_mask_misc.sfbd_write_enable = !so->info[0].no_colour;
+                                cfg.stencil_mask_misc.sfbd_srgb = util_format_is_srgb(ctx->pipe_framebuffer.cbufs[0]->format);
+                                cfg.stencil_mask_misc.sfbd_dither_disable = !so->base.dither;
+                                cfg.stencil_mask_misc.sfbd_alpha_to_one = so->base.alpha_to_one;
+
+                                if (blend_shaders[0]) {
+                                        cfg.sfbd_blend_shader = blend_shaders[0];
+                                } else {
+                                        cfg.sfbd_blend_constant = pan_blend_get_constant(
+                                                        so->info[0].constant_mask,
+                                                        ctx->blend_color.color);
+                                }
+                        } else if (dev->quirks & MIDGARD_SFBD) {
+                                /* If there is no colour buffer, leaving fields default is
+                                 * fine, except for blending which is nonnullable */
+                                cfg.sfbd_blend_equation.color_mask = 0xf;
+                                cfg.sfbd_blend_equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+                                cfg.sfbd_blend_equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+                                cfg.sfbd_blend_equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+                                cfg.sfbd_blend_equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+                                cfg.sfbd_blend_equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+                                cfg.sfbd_blend_equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+                        } else {
+                                /* Workaround on v5 */
+                                cfg.sfbd_blend_shader = panfrost_last_nonnull(blend_shaders, rt_count);
+                        }
+                }
+
+                cfg.multisample_misc.sample_mask = msaa ? ctx->sample_mask : 0xFFFF;
+
+                cfg.multisample_misc.evaluate_per_sample =
+                        msaa && (ctx->min_samples > 1);
+
+                cfg.stencil_mask_misc.alpha_to_coverage = alpha_to_coverage;
+                cfg.depth_units = rast->offset_units * 2.0f;
+                cfg.depth_factor = rast->offset_scale;
+
+                bool back_enab = zsa->base.stencil[1].enabled;
+                cfg.stencil_front.reference_value = ctx->stencil_ref.ref_value[0];
+                cfg.stencil_back.reference_value = ctx->stencil_ref.ref_value[back_enab ? 1 : 0];
+
+                /* v6+ fits register preload here, no alpha testing */
+                if (dev->arch <= 5)
+                        cfg.alpha_reference = zsa->base.alpha_ref_value;
+        }
 }
 
 static void
@@ -638,10 +616,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
          * so stage to temporary storage rather than reading back write-combine
          * memory, which will trash performance. */
         struct mali_renderer_state_packed rsd;
-
-        pan_pack(&rsd, RENDERER_STATE, cfg) {
-                panfrost_prepare_fs_state(ctx, blend_shaders, &cfg);
-        }
+        panfrost_prepare_fs_state(ctx, blend_shaders, &rsd);
 
         if ((dev->quirks & MIDGARD_SFBD)
                         && ctx->pipe_framebuffer.nr_cbufs > 0
