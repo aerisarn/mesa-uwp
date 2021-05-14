@@ -770,8 +770,12 @@ struct radv_device {
     */
    uint32_t image_mrt_offset_counter;
    uint32_t fmask_mrt_offset_counter;
-   struct list_head shader_slabs;
-   mtx_t shader_slab_mutex;
+
+   struct list_head shader_arenas;
+   uint8_t shader_free_list_mask;
+   struct list_head shader_free_lists[RADV_SHADER_ALLOC_NUM_FREE_LISTS];
+   struct list_head shader_block_obj_pool;
+   mtx_t shader_arena_mutex;
 
    /* For detecting VM faults reported by dmesg. */
    uint64_t dmesg_timestamp;

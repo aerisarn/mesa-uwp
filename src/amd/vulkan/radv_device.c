@@ -2904,8 +2904,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
 
    device->image_float32_atomics = image_float32_atomics;
 
-   mtx_init(&device->shader_slab_mutex, mtx_plain);
-   list_inithead(&device->shader_slabs);
+   radv_init_shader_arenas(device);
 
    device->overallocation_disallowed = overallocation_disallowed;
    mtx_init(&device->overallocation_mutex, mtx_plain);
@@ -3212,7 +3211,7 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    radv_trap_handler_finish(device);
    radv_finish_trace(device);
 
-   radv_destroy_shader_slabs(device);
+   radv_destroy_shader_arenas(device);
 
    u_cnd_monotonic_destroy(&device->timeline_cond);
 

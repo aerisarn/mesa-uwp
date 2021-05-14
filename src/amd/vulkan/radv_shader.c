@@ -1023,84 +1023,265 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
    }
 }
 
-static void *
-radv_alloc_shader_memory(struct radv_device *device, struct radv_shader_variant *shader)
+static unsigned
+get_size_class(unsigned size, bool round_up)
 {
-   mtx_lock(&device->shader_slab_mutex);
-   list_for_each_entry(struct radv_shader_slab, slab, &device->shader_slabs, slabs)
-   {
-      uint64_t offset = 0;
+   size = round_up ? util_logbase2_ceil(size) : util_logbase2(size);
+   unsigned size_class =
+      MAX2(size, RADV_SHADER_ALLOC_MIN_SIZE_CLASS) - RADV_SHADER_ALLOC_MIN_SIZE_CLASS;
+   return MIN2(size_class, RADV_SHADER_ALLOC_NUM_FREE_LISTS - 1);
+}
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#endif
-      list_for_each_entry(struct radv_shader_variant, s, &slab->shaders, slab_list)
+static void
+remove_hole(struct radv_device *device, union radv_shader_arena_block *hole)
+{
+   unsigned size_class = get_size_class(hole->size, false);
+   list_del(&hole->freelist);
+   if (list_is_empty(&device->shader_free_lists[size_class]))
+      device->shader_free_list_mask &= ~(1u << size_class);
+}
+
+static void
+add_hole(struct radv_device *device, union radv_shader_arena_block *hole)
+{
+   unsigned size_class = get_size_class(hole->size, false);
+   list_addtail(&hole->freelist, &device->shader_free_lists[size_class]);
+   device->shader_free_list_mask |= 1u << size_class;
+}
+
+static union radv_shader_arena_block *
+alloc_block_obj(struct radv_device *device)
+{
+   if (!list_is_empty(&device->shader_block_obj_pool)) {
+      union radv_shader_arena_block *block =
+         list_first_entry(&device->shader_block_obj_pool, union radv_shader_arena_block, pool);
+      list_del(&block->pool);
+      return block;
+   }
+
+   return malloc(sizeof(union radv_shader_arena_block));
+}
+
+static void
+free_block_obj(struct radv_device *device, union radv_shader_arena_block *block)
+{
+   list_add(&block->pool, &device->shader_block_obj_pool);
+}
+
+/* Segregated fit allocator, implementing a good-fit allocation policy.
+ *
+ * This is an variation of sequential fit allocation with several lists of free blocks ("holes")
+ * instead of one. Each list of holes only contains holes of a certain range of sizes, so holes that
+ * are too small can easily be ignored while allocating. Because this also ignores holes that are
+ * larger than necessary (approximating best-fit allocation), this could be described as a
+ * "good-fit" allocator.
+ *
+ * Typically, shaders are allocated and only free'd when the device is destroyed. For this pattern,
+ * this should allocate blocks for shaders fast and with no fragmentation, while still allowing
+ * free'd memory to be re-used.
+ */
+static union radv_shader_arena_block *
+alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
+{
+   size = align(size, RADV_SHADER_ALLOC_ALIGNMENT);
+
+   mtx_lock(&device->shader_arena_mutex);
+
+   /* Try to use an existing hole. Unless the shader is very large, this should only have to look
+    * at the first one available.
+    */
+   unsigned free_list_mask = BITFIELD_MASK(RADV_SHADER_ALLOC_NUM_FREE_LISTS);
+   unsigned size_class =
+      ffs(device->shader_free_list_mask & (free_list_mask << get_size_class(size, true)));
+   if (size_class) {
+      size_class--;
+
+      list_for_each_entry(union radv_shader_arena_block, hole,
+                          &device->shader_free_lists[size_class], freelist)
       {
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-         if (s->bo_offset - offset >= shader->code_size) {
-            shader->bo = slab->bo;
-            shader->bo_offset = offset;
-            list_addtail(&shader->slab_list, &s->slab_list);
-            mtx_unlock(&device->shader_slab_mutex);
-            return slab->ptr + offset;
+         if (hole->size < size)
+            continue;
+
+         assert(hole->offset % RADV_SHADER_ALLOC_ALIGNMENT == 0);
+
+         if (size == hole->size) {
+            remove_hole(device, hole);
+            hole->freelist.next = ptr;
+            mtx_unlock(&device->shader_arena_mutex);
+            return hole;
+         } else {
+            union radv_shader_arena_block *alloc = alloc_block_obj(device);
+            if (!alloc) {
+               mtx_unlock(&device->shader_arena_mutex);
+               return NULL;
+            }
+            list_addtail(&alloc->list, &hole->list);
+            alloc->freelist.prev = NULL;
+            alloc->freelist.next = ptr;
+            alloc->arena = hole->arena;
+            alloc->offset = hole->offset;
+            alloc->size = size;
+
+            remove_hole(device, hole);
+            hole->offset += size;
+            hole->size -= size;
+            add_hole(device, hole);
+
+            mtx_unlock(&device->shader_arena_mutex);
+            return alloc;
          }
-         offset = align_u64(s->bo_offset + s->code_size, 256);
-      }
-      if (offset <= slab->size && slab->size - offset >= shader->code_size) {
-         shader->bo = slab->bo;
-         shader->bo_offset = offset;
-         list_addtail(&shader->slab_list, &slab->shaders);
-         mtx_unlock(&device->shader_slab_mutex);
-         return slab->ptr + offset;
       }
    }
 
-   mtx_unlock(&device->shader_slab_mutex);
-   struct radv_shader_slab *slab = calloc(1, sizeof(struct radv_shader_slab));
+   /* Allocate a new shader arena. */
+   struct radv_shader_arena *arena = calloc(1, sizeof(struct radv_shader_arena));
+   union radv_shader_arena_block *alloc = NULL, *hole = NULL;
+   if (!arena)
+      goto fail;
 
-   slab->size = MAX2(256 * 1024, shader->code_size);
+   unsigned arena_size = MAX2(RADV_SHADER_ALLOC_MIN_ARENA_SIZE, size);
    VkResult result = device->ws->buffer_create(
-      device->ws, slab->size, 256, RADEON_DOMAIN_VRAM,
+      device->ws, arena_size, RADV_SHADER_ALLOC_ALIGNMENT, RADEON_DOMAIN_VRAM,
       RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_32BIT |
          (device->physical_device->rad_info.cpdma_prefetch_writes_memory ? 0
                                                                          : RADEON_FLAG_READ_ONLY),
-      RADV_BO_PRIORITY_SHADER, 0, &slab->bo);
-   if (result != VK_SUCCESS) {
-      free(slab);
-      return NULL;
+      RADV_BO_PRIORITY_SHADER, 0, &arena->bo);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   list_inithead(&arena->entries);
+
+   arena->ptr = (char *)device->ws->buffer_map(arena->bo);
+   if (!arena->ptr)
+      goto fail;
+
+   alloc = alloc_block_obj(device);
+   hole = arena_size - size > 0 ? alloc_block_obj(device) : alloc;
+   if (!alloc || !hole)
+      goto fail;
+   list_addtail(&alloc->list, &arena->entries);
+   alloc->freelist.prev = NULL;
+   alloc->freelist.next = ptr;
+   alloc->arena = arena;
+   alloc->offset = 0;
+   alloc->size = size;
+
+   if (hole != alloc) {
+      hole->arena = arena;
+      hole->offset = size;
+      hole->size = arena_size - size;
+
+      list_addtail(&hole->list, &arena->entries);
+      add_hole(device, hole);
    }
 
-   slab->ptr = (char *)device->ws->buffer_map(slab->bo);
-   if (!slab->ptr) {
-      device->ws->buffer_destroy(device->ws, slab->bo);
-      free(slab);
+   list_addtail(&arena->list, &device->shader_arenas);
+
+   mtx_unlock(&device->shader_arena_mutex);
+   return alloc;
+
+fail:
+   mtx_unlock(&device->shader_arena_mutex);
+   free(alloc);
+   free(hole);
+   if (arena && arena->bo)
+      device->ws->buffer_destroy(device->ws, arena->bo);
+   free(arena);
+   return NULL;
+}
+
+static union radv_shader_arena_block *
+get_hole(struct radv_shader_arena *arena, struct list_head *head)
+{
+   if (head == &arena->entries)
       return NULL;
+
+   union radv_shader_arena_block *hole = LIST_ENTRY(union radv_shader_arena_block, head, list);
+   return hole->freelist.prev ? hole : NULL;
+}
+
+static void
+free_shader_memory(struct radv_device *device, union radv_shader_arena_block *alloc)
+{
+   mtx_lock(&device->shader_arena_mutex);
+
+   union radv_shader_arena_block *hole_prev = get_hole(alloc->arena, alloc->list.prev);
+   union radv_shader_arena_block *hole_next = get_hole(alloc->arena, alloc->list.next);
+
+   union radv_shader_arena_block *hole = alloc;
+
+   /* merge with previous hole */
+   if (hole_prev) {
+      remove_hole(device, hole_prev);
+
+      hole_prev->size += hole->size;
+      list_del(&hole->list);
+      free_block_obj(device, hole);
+
+      hole = hole_prev;
    }
 
-   list_inithead(&slab->shaders);
+   /* merge with next hole */
+   if (hole_next) {
+      remove_hole(device, hole_next);
 
-   mtx_lock(&device->shader_slab_mutex);
-   list_add(&slab->slabs, &device->shader_slabs);
+      hole_next->offset -= hole->size;
+      hole_next->size += hole->size;
+      list_del(&hole->list);
+      free_block_obj(device, hole);
 
-   shader->bo = slab->bo;
-   shader->bo_offset = 0;
-   list_add(&shader->slab_list, &slab->shaders);
-   mtx_unlock(&device->shader_slab_mutex);
-   return slab->ptr;
+      hole = hole_next;
+   }
+
+   if (list_is_singular(&hole->list)) {
+      struct radv_shader_arena *arena = hole->arena;
+      free_block_obj(device, hole);
+
+      device->ws->buffer_destroy(device->ws, arena->bo);
+      list_del(&arena->list);
+      free(arena);
+   } else {
+      add_hole(device, hole);
+   }
+
+   mtx_unlock(&device->shader_arena_mutex);
+}
+
+static void *
+radv_alloc_shader_memory(struct radv_device *device, struct radv_shader_variant *shader)
+{
+   shader->alloc = alloc_shader_memory(device, shader->code_size, shader);
+   if (!shader->alloc)
+      return NULL;
+   shader->bo = shader->alloc->arena->bo;
+   return shader->alloc->arena->ptr + shader->alloc->offset;
 }
 
 void
-radv_destroy_shader_slabs(struct radv_device *device)
+radv_init_shader_arenas(struct radv_device *device)
 {
-   list_for_each_entry_safe(struct radv_shader_slab, slab, &device->shader_slabs, slabs)
+   mtx_init(&device->shader_arena_mutex, mtx_plain);
+
+   device->shader_free_list_mask = 0;
+
+   list_inithead(&device->shader_arenas);
+   list_inithead(&device->shader_block_obj_pool);
+   for (unsigned i = 0; i < RADV_SHADER_ALLOC_NUM_FREE_LISTS; i++)
+      list_inithead(&device->shader_free_lists[i]);
+}
+
+void
+radv_destroy_shader_arenas(struct radv_device *device)
+{
+   list_for_each_entry_safe(union radv_shader_arena_block, block, &device->shader_block_obj_pool,
+                            pool) free(block);
+
+   list_for_each_entry_safe(struct radv_shader_arena, arena, &device->shader_arenas, list)
    {
-      device->ws->buffer_destroy(device->ws, slab->bo);
-      free(slab);
+      device->ws->buffer_destroy(device->ws, arena->bo);
+      free(arena);
    }
-   mtx_destroy(&device->shader_slab_mutex);
+   mtx_destroy(&device->shader_arena_mutex);
 }
 
 /* For the UMR disassembler. */
@@ -1735,9 +1916,7 @@ radv_shader_variant_destroy(struct radv_device *device, struct radv_shader_varia
    if (!p_atomic_dec_zero(&variant->ref_count))
       return;
 
-   mtx_lock(&device->shader_slab_mutex);
-   list_del(&variant->slab_list);
-   mtx_unlock(&device->shader_slab_mutex);
+   free_shader_memory(device, variant->alloc);
 
    free(variant->spirv);
    free(variant->nir_string);
@@ -1750,36 +1929,33 @@ radv_shader_variant_destroy(struct radv_device *device, struct radv_shader_varia
 uint64_t
 radv_shader_variant_get_va(const struct radv_shader_variant *variant)
 {
-   return radv_buffer_get_va(variant->bo) + variant->bo_offset;
+   return radv_buffer_get_va(variant->bo) + variant->alloc->offset;
 }
 
 struct radv_shader_variant *
 radv_find_shader_variant(struct radv_device *device, uint64_t pc)
 {
-   mtx_lock(&device->shader_slab_mutex);
-
-   list_for_each_entry(struct radv_shader_slab, slab, &device->shader_slabs, slabs)
+   mtx_lock(&device->shader_arena_mutex);
+   list_for_each_entry(struct radv_shader_arena, arena, &device->shader_arenas, list)
    {
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 #endif
-      list_for_each_entry(struct radv_shader_variant, s, &slab->shaders, slab_list)
+      list_for_each_entry(union radv_shader_arena_block, block, &arena->entries, list)
       {
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
-         uint64_t offset = align_u64(s->bo_offset + s->code_size, 256);
-         uint64_t va = radv_buffer_get_va(s->bo);
-
-         if (pc >= va + s->bo_offset && pc < va + offset) {
-            mtx_unlock(&device->shader_slab_mutex);
-            return s;
+         uint64_t start = radv_buffer_get_va(block->arena->bo) + block->offset;
+         if (!block->freelist.prev && pc >= start && pc < start + block->size) {
+            mtx_unlock(&device->shader_arena_mutex);
+            return (struct radv_shader_variant *)block->freelist.next;
          }
       }
    }
-   mtx_unlock(&device->shader_slab_mutex);
 
+   mtx_unlock(&device->shader_arena_mutex);
    return NULL;
 }
 
