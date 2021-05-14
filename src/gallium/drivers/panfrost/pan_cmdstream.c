@@ -589,7 +589,6 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                           struct MALI_RENDERER_STATE *state)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
         struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
         const struct panfrost_zsa_state *zsa = ctx->depth_stencil;
         bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
@@ -604,7 +603,7 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         state->multisample_misc.sample_mask = (msaa ? ctx->sample_mask : ~0) & 0xFFFF;
 
         state->multisample_misc.evaluate_per_sample =
-                msaa && (ctx->min_samples > 1 || fs->info.fs.sample_shading);
+                msaa && (ctx->min_samples > 1);
 
         state->multisample_misc.fixed_function_near_discard = rast->depth_clip_near;
         state->multisample_misc.fixed_function_far_discard = rast->depth_clip_far;

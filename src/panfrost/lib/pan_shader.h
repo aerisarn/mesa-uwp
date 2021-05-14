@@ -185,6 +185,11 @@ pan_shader_prepare_rsd(const struct panfrost_device *dev,
                         shader_info->fs.writes_depth ?
                         MALI_DEPTH_SOURCE_SHADER :
                         MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+
+                /* This also needs to be set if the API forces per-sample
+                 * shading, but that'll just got ORed in */
+                rsd->multisample_misc.evaluate_per_sample =
+                        shader_info->fs.sample_shading;
         } else {
                 rsd->properties.depth_source =
                         MALI_DEPTH_SOURCE_FIXED_FUNCTION;
