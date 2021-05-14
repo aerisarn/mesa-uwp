@@ -3148,15 +3148,20 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
       }
       ctx->vertex_buffers_dirty = true;
    }
-   for (unsigned shader = 0; num_rebinds < total_rebinds && shader < PIPE_SHADER_TYPES; shader++) {
-      u_foreach_bit(slot, res->ubo_bind_mask[shader]) {
-         if (&res->base.b != ctx->ubos[shader][slot].buffer) //wrong context
-            return;
+   if (res->ubo_bind_count[0] + res->ubo_bind_count[1] > 0) {
+      for (unsigned shader = res->ubo_bind_count[0] ? 0 : PIPE_SHADER_COMPUTE;
+           num_rebinds < total_rebinds && shader < PIPE_SHADER_TYPES; shader++) {
+         u_foreach_bit(slot, res->ubo_bind_mask[shader]) {
+            if (&res->base.b != ctx->ubos[shader][slot].buffer) //wrong context
+               return;
 
-         update_descriptor_state_ubo(ctx, shader, slot);
-         zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_UBO, slot, 1);
-         num_rebinds++;
+            update_descriptor_state_ubo(ctx, shader, slot);
+            zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_UBO, slot, 1);
+            num_rebinds++;
+         }
       }
+   }
+   for (unsigned shader = 0; num_rebinds < total_rebinds && shader < PIPE_SHADER_TYPES; shader++) {
       u_foreach_bit(slot, res->ssbo_bind_mask[shader]) {
          struct pipe_shader_buffer *ssbo = &ctx->ssbos[shader][slot];
          if (&res->base.b != ssbo->buffer) //wrong context
