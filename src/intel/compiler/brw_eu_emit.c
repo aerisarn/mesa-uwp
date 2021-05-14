@@ -321,7 +321,7 @@ brw_set_src0(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
                 * descriptions for registers in align_16 as align_1:
                 */
                brw_inst_set_src0_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_4);
-            } else if (devinfo->ver == 7 && !devinfo->is_haswell &&
+            } else if (devinfo->verx10 == 70 &&
                        reg.type == BRW_REGISTER_TYPE_DF &&
                        reg.vstride == BRW_VERTICAL_STRIDE_2) {
                /* From SNB PRM:
@@ -428,7 +428,7 @@ brw_set_src1(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
                 * descriptions for registers in align_16 as align_1:
                 */
                brw_inst_set_src1_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_4);
-            } else if (devinfo->ver == 7 && !devinfo->is_haswell &&
+            } else if (devinfo->verx10 == 70 &&
                        reg.type == BRW_REGISTER_TYPE_DF &&
                        reg.vstride == BRW_VERTICAL_STRIDE_2) {
                /* From SNB PRM:
@@ -1108,7 +1108,7 @@ brw_MOV(struct brw_codegen *p, struct brw_reg dest, struct brw_reg src0)
     * To avoid the problems that causes, we use an <X,2,0> source region to
     * read each element twice.
     */
-   if (devinfo->ver == 7 && !devinfo->is_haswell &&
+   if (devinfo->verx10 == 70 &&
        brw_get_default_access_mode(p) == BRW_ALIGN_1 &&
        dest.type == BRW_REGISTER_TYPE_DF &&
        (src0.type == BRW_REGISTER_TYPE_F ||
@@ -2573,7 +2573,7 @@ void brw_adjust_sampler_state_pointer(struct brw_codegen *p,
       uint32_t sampler = sampler_index.ud;
 
       if (sampler >= 16) {
-         assert(devinfo->is_haswell || devinfo->ver >= 8);
+         assert(devinfo->verx10 >= 75);
          brw_ADD(p,
                  get_element_ud(header, 3),
                  get_element_ud(brw_vec8_grf(0, 0), 3),
@@ -2581,7 +2581,7 @@ void brw_adjust_sampler_state_pointer(struct brw_codegen *p,
       }
    } else {
       /* Non-const sampler array indexing case */
-      if (devinfo->ver < 8 && !devinfo->is_haswell) {
+      if (devinfo->verx10 <= 70) {
          return;
       }
 
@@ -3108,12 +3108,12 @@ brw_untyped_atomic(struct brw_codegen *p,
                    bool header_present)
 {
    const struct intel_device_info *devinfo = p->devinfo;
-   const unsigned sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
+   const unsigned sfid = (devinfo->verx10 >= 75 ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GFX7_SFID_DATAPORT_DATA_CACHE);
    const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    /* SIMD4x2 untyped atomic instructions only exist on HSW+ */
-   const bool has_simd4x2 = devinfo->ver >= 8 || devinfo->is_haswell;
+   const bool has_simd4x2 = devinfo->verx10 >= 75;
    const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) :
                               has_simd4x2 ? 0 : 8;
    const unsigned response_length =
@@ -3143,7 +3143,7 @@ brw_untyped_surface_read(struct brw_codegen *p,
                          unsigned num_channels)
 {
    const struct intel_device_info *devinfo = p->devinfo;
-   const unsigned sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
+   const unsigned sfid = (devinfo->verx10 >= 75 ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GFX7_SFID_DATAPORT_DATA_CACHE);
    const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
@@ -3166,12 +3166,12 @@ brw_untyped_surface_write(struct brw_codegen *p,
                           bool header_present)
 {
    const struct intel_device_info *devinfo = p->devinfo;
-   const unsigned sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
+   const unsigned sfid = (devinfo->verx10 >= 75 ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GFX7_SFID_DATAPORT_DATA_CACHE);
    const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    /* SIMD4x2 untyped surface write instructions only exist on HSW+ */
-   const bool has_simd4x2 = devinfo->ver >= 8 || devinfo->is_haswell;
+   const bool has_simd4x2 = devinfo->verx10 >= 75;
    const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) :
                               has_simd4x2 ? 0 : 8;
    const unsigned desc =
@@ -3551,7 +3551,7 @@ void brw_shader_time_add(struct brw_codegen *p,
                          uint32_t surf_index)
 {
    const struct intel_device_info *devinfo = p->devinfo;
-   const unsigned sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
+   const unsigned sfid = (devinfo->verx10 >= 75 ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GFX7_SFID_DATAPORT_DATA_CACHE);
    assert(devinfo->ver >= 7);

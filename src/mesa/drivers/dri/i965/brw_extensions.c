@@ -271,7 +271,7 @@ brw_init_extensions(struct gl_context *ctx)
              ctx->Const.MaxComputeWorkGroupSize[0] >= 1024) {
             ctx->Extensions.ARB_compute_shader = true;
             ctx->Extensions.ARB_ES3_1_compatibility =
-               devinfo->ver >= 8 || devinfo->is_haswell;
+               devinfo->verx10 >= 75;
             ctx->Extensions.NV_compute_shader_derivatives = true;
             ctx->Extensions.ARB_compute_variable_group_size = true;
          }
@@ -286,7 +286,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.ARB_spirv_extensions = true;
    }
 
-   if (devinfo->ver >= 8 || devinfo->is_haswell) {
+   if (devinfo->verx10 >= 75) {
       ctx->Extensions.ARB_stencil_texturing = true;
       ctx->Extensions.ARB_texture_stencil8 = true;
       ctx->Extensions.OES_geometry_shader = true;
@@ -294,7 +294,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.OES_viewport_array = true;
    }
 
-   if (devinfo->ver >= 8 || devinfo->is_haswell || devinfo->is_baytrail) {
+   if (devinfo->verx10 >= 75 || devinfo->is_baytrail) {
       ctx->Extensions.ARB_robust_buffer_access_behavior = true;
    }
 

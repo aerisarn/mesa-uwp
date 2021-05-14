@@ -623,7 +623,7 @@ brw_dp_untyped_atomic_desc(const struct intel_device_info *devinfo,
    assert(exec_size <= 8 || exec_size == 16);
 
    unsigned msg_type;
-   if (devinfo->ver >= 8 || devinfo->is_haswell) {
+   if (devinfo->verx10 >= 75) {
       if (exec_size > 0) {
          msg_type = HSW_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_OP;
       } else {
@@ -678,14 +678,14 @@ brw_dp_untyped_surface_rw_desc(const struct intel_device_info *devinfo,
 
    unsigned msg_type;
    if (write) {
-      if (devinfo->ver >= 8 || devinfo->is_haswell) {
+      if (devinfo->verx10 >= 75) {
          msg_type = HSW_DATAPORT_DC_PORT1_UNTYPED_SURFACE_WRITE;
       } else {
          msg_type = GFX7_DATAPORT_DC_UNTYPED_SURFACE_WRITE;
       }
    } else {
       /* Read */
-      if (devinfo->ver >= 8 || devinfo->is_haswell) {
+      if (devinfo->verx10 >= 75) {
          msg_type = HSW_DATAPORT_DC_PORT1_UNTYPED_SURFACE_READ;
       } else {
          msg_type = GFX7_DATAPORT_DC_UNTYPED_SURFACE_READ;
@@ -693,7 +693,7 @@ brw_dp_untyped_surface_rw_desc(const struct intel_device_info *devinfo,
    }
 
    /* SIMD4x2 is only valid for read messages on IVB; use SIMD8 instead */
-   if (write && devinfo->ver == 7 && !devinfo->is_haswell && exec_size == 0)
+   if (write && devinfo->verx10 == 70 && exec_size == 0)
       exec_size = 8;
 
    /* See also MDC_SM3 in the SKL PRM Vol 2d. */
@@ -730,7 +730,7 @@ brw_dp_byte_scattered_rw_desc(const struct intel_device_info *devinfo,
 {
    assert(exec_size <= 8 || exec_size == 16);
 
-   assert(devinfo->ver > 7 || devinfo->is_haswell);
+   assert(devinfo->verx10 >= 75);
    const unsigned msg_type =
       write ? HSW_DATAPORT_DC_PORT0_BYTE_SCATTERED_WRITE :
               HSW_DATAPORT_DC_PORT0_BYTE_SCATTERED_READ;
@@ -940,7 +940,7 @@ brw_dp_typed_atomic_desc(const struct intel_device_info *devinfo,
    assert(exec_group % 8 == 0);
 
    unsigned msg_type;
-   if (devinfo->ver >= 8 || devinfo->is_haswell) {
+   if (devinfo->verx10 >= 75) {
       if (exec_size == 0) {
          msg_type = HSW_DATAPORT_DC_PORT1_TYPED_ATOMIC_OP_SIMD4X2;
       } else {
@@ -977,13 +977,13 @@ brw_dp_typed_surface_rw_desc(const struct intel_device_info *devinfo,
 
    unsigned msg_type;
    if (write) {
-      if (devinfo->ver >= 8 || devinfo->is_haswell) {
+      if (devinfo->verx10 >= 75) {
          msg_type = HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_WRITE;
       } else {
          msg_type = GFX7_DATAPORT_RC_TYPED_SURFACE_WRITE;
       }
    } else {
-      if (devinfo->ver >= 8 || devinfo->is_haswell) {
+      if (devinfo->verx10 >= 75) {
          msg_type = HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_READ;
       } else {
          msg_type = GFX7_DATAPORT_RC_TYPED_SURFACE_READ;
@@ -992,7 +992,7 @@ brw_dp_typed_surface_rw_desc(const struct intel_device_info *devinfo,
 
    /* See also MDC_SG3 in the SKL PRM Vol 2d. */
    unsigned msg_control;
-   if (devinfo->ver >= 8 || devinfo->is_haswell) {
+   if (devinfo->verx10 >= 75) {
       /* See also MDC_SG3 in the SKL PRM Vol 2d. */
       const unsigned slot_group = exec_size == 0 ? 0 : /* SIMD4x2 */
                                   1 + ((exec_group / 8) % 2);

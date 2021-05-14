@@ -299,7 +299,7 @@ convert_color_for_load(nir_builder *b, const struct intel_device_info *devinfo,
        * their least significant bits.  However, the data in the high bits is
        * garbage so we have to discard it.
        */
-      if (devinfo->ver == 7 && !devinfo->is_haswell &&
+      if (devinfo->verx10 == 70 &&
           (lower_fmt == ISL_FORMAT_R16_UINT ||
            lower_fmt == ISL_FORMAT_R8_UINT))
          color = nir_format_mask_uvec(b, color, lower.bits);
@@ -408,7 +408,7 @@ lower_image_load_instr(nir_builder *b,
       nir_ssa_def *coord = intrin->src[1].ssa;
 
       nir_ssa_def *do_load = image_coord_is_in_bounds(b, deref, coord);
-      if (devinfo->ver == 7 && !devinfo->is_haswell) {
+      if (devinfo->verx10 == 70) {
          /* Check whether the first stride component (i.e. the Bpp value)
           * is greater than four, what on Gfx7 indicates that a surface of
           * type RAW has been bound for untyped access.  Reading or writing
@@ -556,7 +556,7 @@ lower_image_store_instr(nir_builder *b,
       nir_ssa_def *coord = intrin->src[1].ssa;
 
       nir_ssa_def *do_store = image_coord_is_in_bounds(b, deref, coord);
-      if (devinfo->ver == 7 && !devinfo->is_haswell) {
+      if (devinfo->verx10 == 70) {
          /* Check whether the first stride component (i.e. the Bpp value)
           * is greater than four, what on Gfx7 indicates that a surface of
           * type RAW has been bound for untyped access.  Reading or writing
@@ -595,7 +595,7 @@ lower_image_atomic_instr(nir_builder *b,
                          const struct intel_device_info *devinfo,
                          nir_intrinsic_instr *intrin)
 {
-   if (devinfo->is_haswell || devinfo->ver >= 8)
+   if (devinfo->verx10 >= 75)
       return false;
 
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);

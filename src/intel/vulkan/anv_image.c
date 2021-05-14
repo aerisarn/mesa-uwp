@@ -2376,7 +2376,7 @@ anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
    /* We don't support MSAA fast-clears on Ivybridge or Bay Trail because they
     * lack the MI ALU which we need to determine the predicates.
     */
-   if (devinfo->ver == 7 && !devinfo->is_haswell && image->samples > 1)
+   if (devinfo->verx10 == 70 && image->samples > 1)
       return ANV_FAST_CLEAR_NONE;
 
    enum isl_aux_state aux_state =
@@ -2500,7 +2500,7 @@ anv_image_fill_surface_state(struct anv_device *device,
       view.swizzle = anv_swizzle_for_render(view.swizzle);
 
    /* On Ivy Bridge and Bay Trail we do the swizzle in the shader */
-   if (device->info.ver == 7 && !device->info.is_haswell)
+   if (device->info.verx10 == 70)
       view.swizzle = ISL_SWIZZLE_IDENTITY;
 
    /* If this is a HiZ buffer we can sample from with a programmable clear

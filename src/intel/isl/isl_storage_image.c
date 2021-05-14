@@ -108,7 +108,7 @@ isl_lower_storage_image_format(const struct intel_device_info *devinfo,
    case ISL_FORMAT_R32G32_SINT:
    case ISL_FORMAT_R32G32_FLOAT:
       return (devinfo->ver >= 9 ? format :
-              devinfo->ver >= 8 || devinfo->is_haswell ?
+              devinfo->verx10 >= 75 ?
               ISL_FORMAT_R16G16B16A16_UINT :
               ISL_FORMAT_R32G32_UINT);
 
@@ -125,20 +125,20 @@ isl_lower_storage_image_format(const struct intel_device_info *devinfo,
    case ISL_FORMAT_R8G8B8A8_UINT:
    case ISL_FORMAT_R8G8B8A8_SINT:
       return (devinfo->ver >= 9 ? format :
-              devinfo->ver >= 8 || devinfo->is_haswell ?
+              devinfo->verx10 >= 75 ?
               ISL_FORMAT_R8G8B8A8_UINT : ISL_FORMAT_R32_UINT);
 
    case ISL_FORMAT_R16G16_UINT:
    case ISL_FORMAT_R16G16_SINT:
    case ISL_FORMAT_R16G16_FLOAT:
       return (devinfo->ver >= 9 ? format :
-              devinfo->ver >= 8 || devinfo->is_haswell ?
+              devinfo->verx10 >= 75 ?
               ISL_FORMAT_R16G16_UINT : ISL_FORMAT_R32_UINT);
 
    case ISL_FORMAT_R8G8_UINT:
    case ISL_FORMAT_R8G8_SINT:
       return (devinfo->ver >= 9 ? format :
-              devinfo->ver >= 8 || devinfo->is_haswell ?
+              devinfo->verx10 >= 75 ?
               ISL_FORMAT_R8G8_UINT : ISL_FORMAT_R16_UINT);
 
    case ISL_FORMAT_R16_UINT:
@@ -162,26 +162,26 @@ isl_lower_storage_image_format(const struct intel_device_info *devinfo,
    case ISL_FORMAT_R16G16B16A16_UNORM:
    case ISL_FORMAT_R16G16B16A16_SNORM:
       return (devinfo->ver >= 11 ? format :
-              devinfo->ver >= 8 || devinfo->is_haswell ?
+              devinfo->verx10 >= 75 ?
               ISL_FORMAT_R16G16B16A16_UINT :
               ISL_FORMAT_R32G32_UINT);
 
    case ISL_FORMAT_R8G8B8A8_UNORM:
    case ISL_FORMAT_R8G8B8A8_SNORM:
       return (devinfo->ver >= 11 ? format :
-              devinfo->ver >= 8 || devinfo->is_haswell ?
+              devinfo->verx10 >= 75 ?
               ISL_FORMAT_R8G8B8A8_UINT : ISL_FORMAT_R32_UINT);
 
    case ISL_FORMAT_R16G16_UNORM:
    case ISL_FORMAT_R16G16_SNORM:
       return (devinfo->ver >= 11 ? format :
-              devinfo->ver >= 8 || devinfo->is_haswell ?
+              devinfo->verx10 >= 75 ?
               ISL_FORMAT_R16G16_UINT : ISL_FORMAT_R32_UINT);
 
    case ISL_FORMAT_R8G8_UNORM:
    case ISL_FORMAT_R8G8_SNORM:
       return (devinfo->ver >= 11 ? format :
-              devinfo->ver >= 8 || devinfo->is_haswell ?
+              devinfo->verx10 >= 75 ?
               ISL_FORMAT_R8G8_UINT : ISL_FORMAT_R16_UINT);
 
    case ISL_FORMAT_R16_UNORM:
@@ -204,7 +204,7 @@ isl_has_matching_typed_storage_image_format(const struct intel_device_info *devi
 {
    if (devinfo->ver >= 9) {
       return true;
-   } else if (devinfo->ver >= 8 || devinfo->is_haswell) {
+   } else if (devinfo->verx10 >= 75) {
       return isl_format_get_layout(fmt)->bpb <= 64;
    } else {
       return isl_format_get_layout(fmt)->bpb <= 32;

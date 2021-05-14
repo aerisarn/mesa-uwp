@@ -1054,7 +1054,7 @@ namespace {
          }
          case GFX7_SFID_DATAPORT_DATA_CACHE:
          case HSW_SFID_DATAPORT_DATA_CACHE_1:
-            if (devinfo->ver >= 8 || devinfo->is_haswell) {
+            if (devinfo->verx10 >= 75) {
                switch (brw_dp_desc_msg_type(devinfo, info.desc)) {
                case HSW_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_OP:
                case HSW_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_OP_SIMD4X2:

@@ -1521,7 +1521,7 @@ generate_code(struct brw_codegen *p,
                          inst->opcode != VEC4_OPCODE_SET_HIGH_32BIT;
 
       unsigned exec_size = inst->exec_size;
-      if (devinfo->ver == 7 && !devinfo->is_haswell && is_df)
+      if (devinfo->verx10 == 70 && is_df)
          exec_size *= 2;
 
       brw_set_default_exec_size(p, cvt(exec_size) - 1);
@@ -1955,7 +1955,7 @@ generate_code(struct brw_codegen *p,
           * need to explicitly set stride 2, but 1.
           */
          struct brw_reg spread_dst;
-         if (devinfo->ver == 7 && !devinfo->is_haswell)
+         if (devinfo->verx10 == 70)
             spread_dst = stride(dst, 8, 4, 1);
          else
             spread_dst = stride(dst, 8, 4, 2);

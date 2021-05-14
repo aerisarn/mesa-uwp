@@ -110,7 +110,7 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
     * VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT because they already must
     * have identity swizzle.
     */
-   if (device->info.ver == 7 && !device->info.is_haswell &&
+   if (device->info.verx10 == 70 &&
        (type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
         type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER))
       data |= ANV_DESCRIPTOR_TEXTURE_SWIZZLE;

@@ -225,7 +225,7 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
          /* Haswell handles texture swizzling as surface format overrides
           * (except for GL_ALPHA); all other platforms need MOVs in the shader.
           */
-         if (alpha_depth || (devinfo->ver < 8 && !devinfo->is_haswell))
+         if (alpha_depth || (devinfo->verx10 <= 70))
             key->swizzles[s] = brw_get_texture_swizzle(ctx, t);
 
          if (devinfo->ver < 8 &&

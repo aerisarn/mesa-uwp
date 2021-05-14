@@ -409,7 +409,7 @@ brw_init_driver_functions(struct brw_context *brw,
 
    brw_init_frag_prog_functions(functions);
    brw_init_common_queryobj_functions(functions);
-   if (devinfo->ver >= 8 || devinfo->is_haswell)
+   if (devinfo->verx10 >= 75)
       hsw_init_queryobj_functions(functions);
    else if (devinfo->ver >= 6)
       gfx6_init_queryobj_functions(functions);
@@ -518,7 +518,7 @@ brw_initialize_context_constants(struct brw_context *brw)
    }
 
    unsigned max_samplers =
-      devinfo->ver >= 8 || devinfo->is_haswell ? BRW_MAX_TEX_UNIT : 16;
+      devinfo->verx10 >= 75 ? BRW_MAX_TEX_UNIT : 16;
 
    ctx->Const.MaxDualSourceDrawBuffers = 1;
    ctx->Const.MaxDrawBuffers = BRW_MAX_DRAW_BUFFERS;

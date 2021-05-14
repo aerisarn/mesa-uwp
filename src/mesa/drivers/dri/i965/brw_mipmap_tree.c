@@ -1488,7 +1488,7 @@ brw_miptree_level_enable_hiz(struct brw_context *brw,
    assert(mt->aux_buf);
    assert(mt->surf.size_B > 0);
 
-   if (devinfo->ver >= 8 || devinfo->is_haswell) {
+   if (devinfo->verx10 >= 75) {
       uint32_t width = minify(mt->surf.phys_level0_sa.width, level);
       uint32_t height = minify(mt->surf.phys_level0_sa.height, level);
 

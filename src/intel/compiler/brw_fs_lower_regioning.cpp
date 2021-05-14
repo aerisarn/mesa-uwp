@@ -201,7 +201,7 @@ namespace {
 
       case SHADER_OPCODE_BROADCAST:
       case SHADER_OPCODE_MOV_INDIRECT:
-         return (((devinfo->ver == 7 && !devinfo->is_haswell) ||
+         return (((devinfo->verx10 == 70) ||
                   devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
                   devinfo->verx10 >= 125) && type_sz(inst->src[0].type) > 4) ||
                 (devinfo->verx10 >= 125 &&

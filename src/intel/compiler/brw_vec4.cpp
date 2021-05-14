@@ -2227,7 +2227,7 @@ get_lowered_simd_width(const struct intel_device_info *devinfo,
     * compressed instruction bug in gfx7, which is another reason to enforce
     * this limit).
     */
-   if (devinfo->ver == 7 && !devinfo->is_haswell &&
+   if (devinfo->verx10 == 70 &&
        (get_exec_type_size(inst) == 8 || type_sz(inst->dst.type) == 8))
       lowered_width = MIN2(lowered_width, 4);
 

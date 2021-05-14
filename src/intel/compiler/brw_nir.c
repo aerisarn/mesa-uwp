@@ -548,7 +548,7 @@ brw_nir_no_indirect_mask(const struct brw_compiler *compiler,
     * indirects as scratch all the time, we may easily exceed this limit
     * without having any fallback.
     */
-   if (is_scalar && devinfo->ver <= 7 && !devinfo->is_haswell)
+   if (is_scalar && devinfo->verx10 <= 70)
       indirect_mask |= nir_var_function_temp;
 
    return indirect_mask;
@@ -1265,7 +1265,7 @@ brw_nir_apply_sampler_key(nir_shader *nir,
    }
 
    /* Prior to Haswell, we have to lower gradients on shadow samplers */
-   tex_options.lower_txd_shadow = devinfo->ver < 8 && !devinfo->is_haswell;
+   tex_options.lower_txd_shadow = devinfo->verx10 <= 70;
 
    tex_options.lower_y_uv_external = key_tex->y_uv_image_mask;
    tex_options.lower_y_u_v_external = key_tex->y_u_v_image_mask;

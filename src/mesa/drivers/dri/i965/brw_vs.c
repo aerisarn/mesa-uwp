@@ -294,7 +294,7 @@ brw_vs_populate_key(struct brw_context *brw,
    }
 
    /* BRW_NEW_VS_ATTRIB_WORKAROUNDS */
-   if (devinfo->ver < 8 && !devinfo->is_haswell) {
+   if (devinfo->verx10 <= 70) {
       memcpy(key->gl_attrib_wa_flags, brw->vb.attrib_wa_flags,
              sizeof(brw->vb.attrib_wa_flags));
    }

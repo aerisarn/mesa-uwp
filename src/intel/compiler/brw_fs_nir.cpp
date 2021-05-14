@@ -4338,7 +4338,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        * to flush it too.
        */
       const bool needs_render_fence =
-         devinfo->ver == 7 && !devinfo->is_haswell;
+         devinfo->verx10 == 70;
 
       /* Be conservative in Gfx11+ and always stall in a fence.  Since there
        * are two different fences, and shader might want to synchronize

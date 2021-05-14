@@ -2074,7 +2074,7 @@ try_blorp_blit(struct blorp_batch *batch,
       params->dst.view.format = ISL_FORMAT_R32_UINT;
    }
 
-   if (devinfo->ver <= 7 && !devinfo->is_haswell &&
+   if (devinfo->verx10 <= 70 &&
        !isl_swizzle_is_identity(params->src.view.swizzle)) {
       wm_prog_key->src_swizzle = params->src.view.swizzle;
       params->src.view.swizzle = ISL_SWIZZLE_IDENTITY;

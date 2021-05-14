@@ -1801,7 +1801,7 @@ void anv_GetPhysicalDeviceProperties(
       pdevice->has_bindless_images ? UINT16_MAX : 128;
    const uint32_t max_samplers =
       pdevice->has_bindless_samplers ? UINT16_MAX :
-      (devinfo->ver >= 8 || devinfo->is_haswell) ? 128 : 16;
+      (devinfo->verx10 >= 75) ? 128 : 16;
    const uint32_t max_images =
       pdevice->has_bindless_images ? UINT16_MAX : MAX_IMAGES;
 

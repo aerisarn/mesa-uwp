@@ -833,7 +833,7 @@ TEST_P(validation_test, vstride_on_align16_must_be_0_or_4)
    } vstride[] = {
       { BRW_VERTICAL_STRIDE_0, true },
       { BRW_VERTICAL_STRIDE_1, false },
-      { BRW_VERTICAL_STRIDE_2, devinfo.is_haswell || devinfo.ver >= 8 },
+      { BRW_VERTICAL_STRIDE_2, devinfo.verx10 >= 75 },
       { BRW_VERTICAL_STRIDE_4, true },
       { BRW_VERTICAL_STRIDE_8, false },
       { BRW_VERTICAL_STRIDE_16, false },

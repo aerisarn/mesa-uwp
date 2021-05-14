@@ -762,7 +762,7 @@ general_restrictions_based_on_operand_types(const struct intel_device_info *devi
     * 32-bit elements, so they are doubled. For evaluating the validity of an
     * instruction, we halve them.
     */
-   if (devinfo->ver == 7 && !devinfo->is_haswell &&
+   if (devinfo->verx10 == 70 &&
        exec_type_size == 8 && dst_type_size == 4)
       dst_type_size = 8;
 
@@ -946,7 +946,7 @@ general_restrictions_on_region_parameters(const struct intel_device_info *devinf
                   "Destination Horizontal Stride must be 1");
 
       if (num_sources >= 1) {
-         if (devinfo->is_haswell || devinfo->ver >= 8) {
+         if (devinfo->verx10 >= 75) {
             ERROR_IF(brw_inst_src0_reg_file(devinfo, inst) != BRW_IMMEDIATE_VALUE &&
                      brw_inst_src0_vstride(devinfo, inst) != BRW_VERTICAL_STRIDE_0 &&
                      brw_inst_src0_vstride(devinfo, inst) != BRW_VERTICAL_STRIDE_2 &&
@@ -961,7 +961,7 @@ general_restrictions_on_region_parameters(const struct intel_device_info *devinf
       }
 
       if (num_sources == 2) {
-         if (devinfo->is_haswell || devinfo->ver >= 8) {
+         if (devinfo->verx10 >= 75) {
             ERROR_IF(brw_inst_src1_reg_file(devinfo, inst) != BRW_IMMEDIATE_VALUE &&
                      brw_inst_src1_vstride(devinfo, inst) != BRW_VERTICAL_STRIDE_0 &&
                      brw_inst_src1_vstride(devinfo, inst) != BRW_VERTICAL_STRIDE_2 &&
@@ -1005,7 +1005,7 @@ general_restrictions_on_region_parameters(const struct intel_device_info *devinf
        * 32-bit elements, so they are doubled. For evaluating the validity of an
        * instruction, we halve them.
        */
-      if (devinfo->ver == 7 && !devinfo->is_haswell &&
+      if (devinfo->verx10 == 70 &&
           element_size == 8)
          element_size = 4;
 
@@ -1447,7 +1447,7 @@ region_alignment_rules(const struct intel_device_info *devinfo,
     * 32-bit elements, so they are doubled. For evaluating the validity of an
     * instruction, we halve them.
     */
-   if (devinfo->ver == 7 && !devinfo->is_haswell &&
+   if (devinfo->verx10 == 70 &&
        element_size == 8)
       element_size = 4;
 

@@ -336,7 +336,7 @@ brw_merge_inputs(struct brw_context *brw)
    const struct intel_device_info *devinfo = &brw->screen->devinfo;
    const struct gl_context *ctx = &brw->ctx;
 
-   if (devinfo->ver < 8 && !devinfo->is_haswell) {
+   if (devinfo->verx10 <= 70) {
       /* Prior to Haswell, the hardware can't natively support GL_FIXED or
        * 2_10_10_10_REV vertex formats.  Set appropriate workaround flags.
        */

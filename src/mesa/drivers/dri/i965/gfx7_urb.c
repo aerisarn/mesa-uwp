@@ -173,7 +173,7 @@ gfx7_emit_push_constant_state(struct brw_context *brw, unsigned vs_size,
     *
     * No such restriction exists for Haswell or Baytrail.
     */
-   if (devinfo->ver < 8 && !devinfo->is_haswell && !devinfo->is_baytrail)
+   if (devinfo->verx10 <= 70 && !devinfo->is_baytrail)
       gfx7_emit_cs_stall_flush(brw);
 }
 
@@ -252,7 +252,7 @@ gfx7_upload_urb(struct brw_context *brw, unsigned vs_size,
                         tess_present, gs_present, entry_size,
                         entries, start, NULL, &constrained);
 
-   if (devinfo->ver == 7 && !devinfo->is_haswell && !devinfo->is_baytrail)
+   if (devinfo->verx10 == 70 && !devinfo->is_baytrail)
       gfx7_emit_vs_workaround_flush(brw);
 
    BEGIN_BATCH(8);

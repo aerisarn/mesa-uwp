@@ -4228,7 +4228,7 @@ fs_visitor::lower_mulh_inst(fs_inst *inst, bblock_t *block)
       if (mul->src[1].file == IMM) {
          mul->src[1] = brw_imm_uw(mul->src[1].ud);
       }
-   } else if (devinfo->ver == 7 && !devinfo->is_haswell &&
+   } else if (devinfo->verx10 == 70 &&
               inst->group > 0) {
       /* Among other things the quarter control bits influence which
        * accumulator register is used by the hardware for instructions
@@ -4555,7 +4555,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
 
       assert(length == 0);
       length = 2;
-   } else if ((devinfo->ver <= 7 && !devinfo->is_haswell &&
+   } else if ((devinfo->verx10 <= 70 &&
                prog_data->uses_kill) ||
               (devinfo->ver < 11 &&
                (color1.file != BAD_FILE || key->nr_color_regions > 1))) {
@@ -5013,7 +5013,7 @@ lower_sampler_logical_send_gfx5(const fs_builder &bld, fs_inst *inst, opcode op,
 static bool
 is_high_sampler(const struct intel_device_info *devinfo, const fs_reg &sampler)
 {
-   if (devinfo->ver < 8 && !devinfo->is_haswell)
+   if (devinfo->verx10 <= 70)
       return false;
 
    return sampler.file != IMM || sampler.ud >= 16;
@@ -5041,7 +5041,7 @@ sampler_msg_type(const intel_device_info *devinfo,
    case SHADER_OPCODE_IMAGE_SIZE_LOGICAL:
       return GFX5_SAMPLER_MESSAGE_SAMPLE_RESINFO;
    case SHADER_OPCODE_TXD:
-      assert(!shadow_compare || devinfo->ver >= 8 || devinfo->is_haswell);
+      assert(!shadow_compare || devinfo->verx10 >= 75);
       return shadow_compare ? HSW_SAMPLER_MESSAGE_SAMPLE_DERIV_COMPARE :
                               GFX5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
    case SHADER_OPCODE_TXF:
@@ -5720,7 +5720,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       /* Untyped Surface messages go through the data cache but the SFID value
        * changed on Haswell.
        */
-      sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
+      sfid = (devinfo->verx10 >= 75 ?
               HSW_SFID_DATAPORT_DATA_CACHE_1 :
               GFX7_SFID_DATAPORT_DATA_CACHE);
       break;
@@ -5731,7 +5731,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       /* Typed surface messages go through the render cache on IVB and the
        * data cache on HSW+.
        */
-      sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
+      sfid = (devinfo->verx10 >= 75 ?
               HSW_SFID_DATAPORT_DATA_CACHE_1 :
               GFX6_SFID_DATAPORT_RENDER_CACHE);
       break;
@@ -6121,7 +6121,7 @@ lower_varying_pull_constant_logical_send(const fs_builder &bld, fs_inst *inst)
                                         GFX5_SAMPLER_MESSAGE_SAMPLE_LD,
                                         simd_mode, 0);
       } else if (alignment >= 4) {
-         inst->sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
+         inst->sfid = (devinfo->verx10 >= 75 ?
                        HSW_SFID_DATAPORT_DATA_CACHE_1 :
                        GFX7_SFID_DATAPORT_DATA_CACHE);
          inst->desc |= brw_dp_untyped_surface_rw_desc(devinfo, inst->exec_size,
@@ -6684,7 +6684,7 @@ get_fpu_lowered_simd_width(const struct intel_device_info *devinfo,
        * the compressed instruction which will be just wrong under
        * non-uniform control flow.
        */
-      if (devinfo->ver == 7 && !devinfo->is_haswell &&
+      if (devinfo->verx10 == 70 &&
           (exec_type_size == 8 || type_sz(inst->dst.type) == 8))
          max_width = MIN2(max_width, 4);
    }
@@ -6854,7 +6854,7 @@ get_lowered_simd_width(const struct intel_device_info *devinfo,
        * coissuing would affect CMP instructions not otherwise affected by
        * the errata.
        */
-      const unsigned max_width = (devinfo->ver == 7 && !devinfo->is_haswell &&
+      const unsigned max_width = (devinfo->verx10 == 70 &&
                                   !inst->dst.is_null() ? 8 : ~0);
       return MIN2(max_width, get_fpu_lowered_simd_width(devinfo, inst));
    }
@@ -6955,7 +6955,7 @@ get_lowered_simd_width(const struct intel_device_info *devinfo,
        * numbers don't appear to work on Sandybridge either.
        */
       return (devinfo->ver == 4 || devinfo->ver == 6 ||
-              (devinfo->ver == 7 && !devinfo->is_haswell) ?
+              (devinfo->verx10 == 70) ?
               MIN2(8, inst->exec_size) : MIN2(16, inst->exec_size));
 
    case SHADER_OPCODE_MULH:
@@ -9474,7 +9474,7 @@ cs_fill_push_const_info(const struct intel_device_info *devinfo,
 {
    const struct brw_stage_prog_data *prog_data = &cs_prog_data->base;
    int subgroup_id_index = get_subgroup_id_param_index(devinfo, prog_data);
-   bool cross_thread_supported = devinfo->ver > 7 || devinfo->is_haswell;
+   bool cross_thread_supported = devinfo->verx10 >= 75;
 
    /* The thread ID should be stored in the last param dword */
    assert(subgroup_id_index == -1 ||

@@ -104,7 +104,7 @@ brw_reg_from_fs_reg(const struct intel_device_info *devinfo, fs_inst *inst,
             brw_reg = stride(brw_reg, width * reg->stride, width, reg->stride);
          }
 
-         if (devinfo->ver == 7 && !devinfo->is_haswell) {
+         if (devinfo->verx10 == 70) {
             /* From the IvyBridge PRM (EU Changes by Processor Generation, page 13):
              *  "Each DF (Double Float) operand uses an element size of 4 rather
              *   than 8 and all regioning parameters are twice what the values
@@ -171,7 +171,7 @@ brw_reg_from_fs_reg(const struct intel_device_info *devinfo, fs_inst *inst,
     * region, but on IVB and BYT DF regions must be programmed in terms of
     * floats. A <0,2,1> region accomplishes this.
     */
-   if (devinfo->ver == 7 && !devinfo->is_haswell &&
+   if (devinfo->verx10 == 70 &&
        type_sz(reg->type) == 8 &&
        brw_reg.vstride == BRW_VERTICAL_STRIDE_0 &&
        brw_reg.width == BRW_WIDTH_1 &&
@@ -397,7 +397,7 @@ fs_generator::fire_fb_write(fs_inst *inst,
 void
 fs_generator::generate_fb_write(fs_inst *inst, struct brw_reg payload)
 {
-   if (devinfo->ver < 8 && !devinfo->is_haswell) {
+   if (devinfo->verx10 <= 70) {
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
       brw_set_default_flag_reg(p, 0, 0);
    }
@@ -549,7 +549,7 @@ fs_generator::generate_mov_indirect(fs_inst *inst,
          brw_inst_set_no_dd_check(devinfo, insn, use_dep_ctrl);
 
       if (type_sz(reg.type) > 4 &&
-          ((devinfo->ver == 7 && !devinfo->is_haswell) ||
+          ((devinfo->verx10 == 70) ||
            devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
            !devinfo->has_64bit_float || devinfo->verx10 >= 125)) {
          /* IVB has an issue (which we found empirically) where it reads two
@@ -606,7 +606,7 @@ fs_generator::generate_shuffle(fs_inst *inst,
    /* Ivy bridge has some strange behavior that makes this a real pain to
     * implement for 64-bit values so we just don't bother.
     */
-   assert(devinfo->ver >= 8 || devinfo->is_haswell || type_sz(src.type) <= 4);
+   assert(devinfo->verx10 >= 75 || type_sz(src.type) <= 4);
 
    /* Because we're using the address register, we're limited to 8-wide
     * execution on gfx7.  On gfx8, we're limited to 16-wide by the address
@@ -714,7 +714,7 @@ fs_generator::generate_shuffle(fs_inst *inst,
          brw_ADD(p, addr, addr, brw_imm_uw(src_start_offset));
 
          if (type_sz(src.type) > 4 &&
-             ((devinfo->ver == 7 && !devinfo->is_haswell) ||
+             ((devinfo->verx10 == 70) ||
               devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
               !devinfo->has_64bit_float)) {
             /* IVB has an issue (which we found empirically) where it reads
@@ -2019,7 +2019,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       brw_set_default_swsb(p, inst->sched);
 
       unsigned exec_size = inst->exec_size;
-      if (devinfo->ver == 7 && !devinfo->is_haswell &&
+      if (devinfo->verx10 == 70 &&
           (get_exec_type_size(inst) == 8 || type_sz(inst->dst.type) == 8)) {
          exec_size *= 2;
       }
@@ -2123,7 +2123,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          brw_F16TO32(p, dst, src[0]);
          break;
       case BRW_OPCODE_CMP:
-         if (inst->exec_size >= 16 && devinfo->ver == 7 && !devinfo->is_haswell &&
+         if (inst->exec_size >= 16 && devinfo->verx10 == 70 &&
              dst.file == BRW_ARCHITECTURE_REGISTER_FILE) {
             /* For unknown reasons the WaCMPInstFlagDepClearedEarly workaround
              * implemented in the compiler is not sufficient. Overriding the
@@ -2135,7 +2135,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          brw_CMP(p, dst, inst->conditional_mod, src[0], src[1]);
 	 break;
       case BRW_OPCODE_CMPN:
-         if (inst->exec_size >= 16 && devinfo->ver == 7 && !devinfo->is_haswell &&
+         if (inst->exec_size >= 16 && devinfo->verx10 == 70 &&
              dst.file == BRW_ARCHITECTURE_REGISTER_FILE) {
             /* For unknown reasons the WaCMPInstFlagDepClearedEarly workaround
              * implemented in the compiler is not sufficient. Overriding the

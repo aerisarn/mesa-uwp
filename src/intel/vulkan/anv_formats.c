@@ -507,7 +507,7 @@ anv_get_format_plane(const struct intel_device_info *devinfo,
     * can reliably do texture upload with BLORP so just don't claim support
     * for any of them.
     */
-   if (devinfo->ver == 7 && !devinfo->is_haswell &&
+   if (devinfo->verx10 == 70 &&
        (isl_layout->bpb == 24 || isl_layout->bpb == 48))
       return unsupported;
 
