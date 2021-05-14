@@ -152,11 +152,11 @@ struct PhysRegInterval {
    }
 
    bool contains(PhysReg reg) const {
-       return lo() <= reg && reg < hi();
+      return lo() <= reg && reg < hi();
    }
 
    bool contains(const PhysRegInterval& needle) const {
-       return needle.lo() >= lo() && needle.hi() <= hi();
+      return needle.lo() >= lo() && needle.hi() <= hi();
    }
 
    PhysRegIterator begin() const {
@@ -255,6 +255,7 @@ public:
    /* Returns true if any of the bytes in the given range are allocated or blocked */
    bool test(PhysReg start, unsigned num_bytes) {
       for (PhysReg i = start; i.reg_b < start.reg_b + num_bytes; i = PhysReg(i + 1)) {
+         assert(i <= 511);
          if (regs[i] & 0x0FFFFFFF)
             return true;
          if (regs[i] == 0xF0000000) {
@@ -1187,6 +1188,7 @@ bool get_reg_specified(ra_ctx& ctx,
                        aco_ptr<Instruction>& instr,
                        PhysReg reg)
 {
+   assert(reg <= 511);
    std::pair<unsigned, unsigned> sdw_def_info;
    if (rc.is_subdword())
       sdw_def_info = get_subdword_definition_info(ctx.program, instr, rc);
@@ -1197,7 +1199,7 @@ bool get_reg_specified(ra_ctx& ctx,
       return false;
 
    if (rc.type() == RegType::sgpr && reg % get_stride(rc) != 0)
-         return false;
+      return false;
 
    PhysRegInterval reg_win = { reg, rc.size() };
    PhysRegInterval bounds = get_reg_bounds(ctx.program, rc.type());
@@ -1385,9 +1387,12 @@ PhysReg get_reg(ra_ctx& ctx,
                 op.getTemp().type() == temp.type() &&
                 ctx.assignments[op.tempId()].assigned) {
                PhysReg reg = ctx.assignments[op.tempId()].reg;
-               reg.reg_b += (byte_offset - k);
-               if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
-                  return reg;
+               /* prevent underflow */
+               if (int(reg.reg_b + byte_offset - k) >= 0) {
+                  reg.reg_b += (byte_offset - k);
+                  if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
+                     return reg;
+               }
             }
             k += op.bytes();
          }
