@@ -277,23 +277,21 @@ to_panfrost_function(enum blend_func blend_func,
 }
 
 bool
-pan_blend_is_opaque(const struct pan_blend_state *state, unsigned rt)
+pan_blend_is_opaque(const struct pan_blend_equation equation)
 {
-        const struct pan_blend_equation *equation = &state->rts[rt].equation;
-
-        return equation->rgb_src_factor == BLEND_FACTOR_ZERO &&
-               equation->rgb_invert_src_factor &&
-               equation->rgb_dst_factor == BLEND_FACTOR_ZERO &&
-               !equation->rgb_invert_dst_factor &&
-               (equation->rgb_func == BLEND_FUNC_ADD ||
-                equation->rgb_func == BLEND_FUNC_SUBTRACT) &&
-               equation->alpha_src_factor == BLEND_FACTOR_ZERO &&
-               equation->alpha_invert_src_factor &&
-               equation->alpha_dst_factor == BLEND_FACTOR_ZERO &&
-               !equation->alpha_invert_dst_factor &&
-               (equation->alpha_func == BLEND_FUNC_ADD ||
-                equation->alpha_func == BLEND_FUNC_SUBTRACT) &&
-               equation->color_mask == 0xf;
+        return equation.rgb_src_factor == BLEND_FACTOR_ZERO &&
+               equation.rgb_invert_src_factor &&
+               equation.rgb_dst_factor == BLEND_FACTOR_ZERO &&
+               !equation.rgb_invert_dst_factor &&
+               (equation.rgb_func == BLEND_FUNC_ADD ||
+                equation.rgb_func == BLEND_FUNC_SUBTRACT) &&
+               equation.alpha_src_factor == BLEND_FACTOR_ZERO &&
+               equation.alpha_invert_src_factor &&
+               equation.alpha_dst_factor == BLEND_FACTOR_ZERO &&
+               !equation.alpha_invert_dst_factor &&
+               (equation.alpha_func == BLEND_FUNC_ADD ||
+                equation.alpha_func == BLEND_FUNC_SUBTRACT) &&
+               equation.color_mask == 0xf;
 }
 
 static bool

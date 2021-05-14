@@ -148,7 +148,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                 struct panfrost_blend_final final = {
                         .load_dest = pan_blend_reads_dest(pan_blend.rts[rti].equation),
                         .equation.constant = pan_blend_get_constant(dev, &pan_blend, rti),
-                        .opaque = pan_blend_is_opaque(&pan_blend, rti),
+                        .opaque = pan_blend_is_opaque(pan_blend.rts[rti].equation),
                         .no_colour = pan_blend.rts[rti].equation.color_mask == 0,
                 };
 
