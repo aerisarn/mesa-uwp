@@ -456,6 +456,34 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_sha
         }
 }
 
+/* Construct a partial RSD corresponding to no executed fragment shader, and
+ * merge with the existing partial RSD. This depends only on the architecture,
+ * so packing separately allows the packs to be constant folded away. */
+
+static void
+pan_merge_empty_fs(struct mali_renderer_state_packed *rsd, bool is_bifrost)
+{
+        struct mali_renderer_state_packed empty_rsd;
+
+        if (is_bifrost) {
+                pan_pack(&empty_rsd, RENDERER_STATE, cfg) {
+                        cfg.properties.bifrost.shader_modifies_coverage = true;
+                        cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
+                        cfg.properties.bifrost.allow_forward_pixel_to_be_killed = true;
+                        cfg.properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
+                }
+        } else {
+                pan_pack(&empty_rsd, RENDERER_STATE, cfg) {
+                        cfg.shader.shader = 0x1;
+                        cfg.properties.midgard.work_register_count = 1;
+                        cfg.properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+                        cfg.properties.midgard.force_early_z = true;
+                }
+        }
+
+        pan_merge((*rsd), empty_rsd, RENDERER_STATE);
+}
+
 static void
 panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                                   struct MALI_RENDERER_STATE *state)
@@ -464,12 +492,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
         struct panfrost_blend_state *so = ctx->blend;
         bool alpha_to_coverage = so->base.alpha_to_coverage;
 
-        if (!panfrost_fs_required(fs, so, &ctx->pipe_framebuffer)) {
-                state->properties.bifrost.shader_modifies_coverage = true;
-                state->properties.bifrost.allow_forward_pixel_to_kill = true;
-                state->properties.bifrost.allow_forward_pixel_to_be_killed = true;
-                state->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
-        } else {
+        if (panfrost_fs_required(fs, so, &ctx->pipe_framebuffer)) {
                 /* Track if any colour buffer is reused across draws, either
                  * from reading it directly, or from failing to write it */
                 bool blend_reads_dest = false;
@@ -508,12 +531,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
         unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
         bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
 
-        if (!panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer)) {
-                state->shader.shader = 0x1;
-                state->properties.midgard.work_register_count = 1;
-                state->properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
-                state->properties.midgard.force_early_z = true;
-        } else {
+        if (panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer)) {
                 state->properties.midgard.force_early_z =
                         fs->info.fs.can_early_z && !alpha_to_coverage &&
                         ((enum mali_func) zsa->base.alpha_func == MALI_FUNC_ALWAYS);
@@ -646,6 +664,8 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         /* Merge with CSO state and upload */
         if (panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer))
                 pan_merge(rsd, fs->partial_rsd, RENDERER_STATE);
+        else
+                pan_merge_empty_fs(&rsd, pan_is_bifrost(dev));
 
         /* Word 8, 9 Misc state */
         rsd.opaque[8] |= zsa->rsd_depth.opaque[0]
