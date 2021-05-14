@@ -152,7 +152,7 @@ panfrost_set_blend_color(struct pipe_context *pipe,
 
 /* Create a final blend given the context */
 
-struct panfrost_blend_final
+mali_ptr
 panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struct panfrost_bo **bo, unsigned *shader_offset)
 {
         struct panfrost_device *dev = pan_device(ctx->base.screen);
@@ -181,11 +181,8 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
         ff &= pan_blend_is_homogenous_constant(blend->info[rti].constant_mask,
                         ctx->blend_color.color);
 
-        if (ff) {
-                struct panfrost_blend_final final = {};
-                return final;
-        }
-
+        if (ff)
+                return 0;
 
         /* Otherwise, we need to grab a shader */
         /* Upload the shader, sharing a BO */
@@ -214,23 +211,14 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                 pan_blend_get_shader_locked(dev, &pan_blend,
                                 col0_type, col1_type, rti);
 
-        /* Size check */
-        assert((*shader_offset + shader->binary.size) < 4096);
-
-        memcpy((*bo)->ptr.cpu + *shader_offset, shader->binary.data, shader->binary.size);
-
-        struct panfrost_blend_final final = {
-                .is_shader = true,
-                .shader = {
-                        .first_tag = shader->first_tag,
-                        .gpu = (*bo)->ptr.gpu + *shader_offset,
-                },
-        };
-
+        /* Size check and upload */
+        unsigned offset = *shader_offset;
+        assert((offset + shader->binary.size) < 4096);
+        memcpy((*bo)->ptr.cpu + offset, shader->binary.data, shader->binary.size);
         *shader_offset += shader->binary.size;
         pthread_mutex_unlock(&dev->blend_shaders.lock);
 
-        return final;
+        return ((*bo)->ptr.gpu + offset) | shader->first_tag;
 }
 
 void

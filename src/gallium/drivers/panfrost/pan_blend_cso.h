@@ -34,16 +34,6 @@
 
 struct panfrost_bo;
 
-/* A blend shader descriptor ready for actual use */
-
-struct panfrost_blend_shader_final {
-        /* GPU address where we're compiled to */
-        uint64_t gpu;
-
-        /* First instruction tag (for tagging the pointer) */
-        unsigned first_tag;
-};
-
 struct pan_blend_info {
         unsigned constant_mask : 4;
         bool fixed_function : 1;
@@ -59,19 +49,10 @@ struct panfrost_blend_state {
         struct mali_blend_equation_packed equation[PIPE_MAX_COLOR_BUFS];
 };
 
-/* Container for a final blend state, specialized to constants and a
- * framebuffer formats. */
-
-struct panfrost_blend_final {
-        /* Set for a shader, clear for an equation */
-        bool is_shader;
-        struct panfrost_blend_shader_final shader;
-};
-
 void
 panfrost_blend_context_init(struct pipe_context *pipe);
 
-struct panfrost_blend_final
+mali_ptr
 panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rt, struct panfrost_bo **bo, unsigned *shader_offset);
 
 #endif

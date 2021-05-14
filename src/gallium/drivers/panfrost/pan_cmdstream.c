@@ -304,8 +304,7 @@ bifrost_blend_type_from_nir(nir_alu_type nir_type)
 
 static void
 panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
-                            struct panfrost_blend_final *blend,
-                            void *rts)
+                            mali_ptr *blend_shaders, void *rts)
 {
         unsigned rt_count = batch->key.nr_cbufs;
         struct panfrost_context *ctx = batch->ctx;
@@ -340,15 +339,15 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 cfg.alpha_to_one = ctx->blend->base.alpha_to_one;
                         }
 
-                        if (blend[i].is_shader) {
+                        if (blend_shaders[i]) {
                                 /* The blend shader's address needs to be at
                                  * the same top 32 bit as the fragment shader.
                                  * TODO: Ensure that's always the case.
                                  */
                                 assert(!fs->bin.bo ||
-                                        (blend[i].shader.gpu & (0xffffffffull << 32)) ==
+                                        (blend_shaders[i] & (0xffffffffull << 32)) ==
                                        (fs->bin.gpu & (0xffffffffull << 32)));
-                                cfg.bifrost.internal.shader.pc = (u32)blend[i].shader.gpu;
+                                cfg.bifrost.internal.shader.pc = (u32) blend_shaders[i];
                                 unsigned ret_offset = fs->info.bifrost.blend[i].return_offset;
                                 if (ret_offset) {
                                         assert(!(ret_offset & 0x7));
@@ -391,7 +390,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                         }
                 }
 
-                if (!blend[i].is_shader) {
+                if (!blend_shaders[i]) {
                         /* Word 1: Blend Equation */
                         STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
                         packed->opaque[1] = so->equation[i].opaque[0];
@@ -401,8 +400,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
 
 static void
 panfrost_emit_midgard_blend(struct panfrost_batch *batch,
-                            struct panfrost_blend_final *blend,
-                            void *rts)
+                            mali_ptr *blend_shaders, void *rts)
 {
         unsigned rt_count = batch->key.nr_cbufs;
         struct panfrost_context *ctx = batch->ctx;
@@ -439,9 +437,9 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                         cfg.load_destination = info.load_dest;
                         cfg.round_to_fb_precision = !ctx->blend->base.dither;
                         cfg.alpha_to_one = ctx->blend->base.alpha_to_one;
-                        cfg.midgard.blend_shader = blend[i].is_shader;
-                        if (blend[i].is_shader) {
-                                cfg.midgard.shader_pc = blend[i].shader.gpu | blend[i].shader.first_tag;
+                        cfg.midgard.blend_shader = (blend_shaders[i] != 0);
+                        if (blend_shaders[i]) {
+                                cfg.midgard.shader_pc = blend_shaders[i];
                         } else {
                                 cfg.midgard.constant = pan_blend_get_constant(
                                                 info.constant_mask,
@@ -449,7 +447,7 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                         }
                 }
 
-                if (!blend[i].is_shader) {
+                if (!blend_shaders[i]) {
                         /* Word 2: Blend Equation */
                         STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
                         packed->opaque[2] = so->equation[i].opaque[0];
@@ -458,16 +456,15 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
 }
 
 static void
-panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
-                struct panfrost_blend_final *blend)
+panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_shaders)
 {
         const struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
         struct panfrost_blend_state *so = batch->ctx->blend;
 
         if (pan_is_bifrost(dev))
-                panfrost_emit_bifrost_blend(batch, blend, rts);
+                panfrost_emit_bifrost_blend(batch, blend_shaders, rts);
         else
-                panfrost_emit_midgard_blend(batch, blend, rts);
+                panfrost_emit_midgard_blend(batch, blend_shaders, rts);
 
         for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
                 if (!so->info[i].no_colour && batch->key.cbufs[i]) {
@@ -479,7 +476,6 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
 
 static void
 panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
-                                  struct panfrost_blend_final *blend,
                                   struct MALI_RENDERER_STATE *state)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
@@ -524,7 +520,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
 
 static void
 panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
-                                  struct panfrost_blend_final *blend,
+                                  mali_ptr *blend_shaders,
                                   struct MALI_RENDERER_STATE *state)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
@@ -554,7 +550,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 bool has_blend_shader = false;
 
                 for (unsigned c = 0; c < rt_count; ++c)
-                        has_blend_shader |= blend[c].is_shader;
+                        has_blend_shader |= (blend_shaders[c] != 0);
 
                 /* TODO: Reduce this limit? */
                 if (has_blend_shader)
@@ -578,15 +574,14 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
         if (dev->quirks & MIDGARD_SFBD && ctx->pipe_framebuffer.nr_cbufs > 0) {
                 struct panfrost_blend_state *so = ctx->blend;
                 state->multisample_misc.sfbd_load_destination = so->info[0].load_dest;
-                state->multisample_misc.sfbd_blend_shader = blend[0].is_shader;
+                state->multisample_misc.sfbd_blend_shader = (blend_shaders[0] != 0);
                 state->stencil_mask_misc.sfbd_write_enable = !so->info[0].no_colour;
                 state->stencil_mask_misc.sfbd_srgb = util_format_is_srgb(ctx->pipe_framebuffer.cbufs[0]->format);
                 state->stencil_mask_misc.sfbd_dither_disable = !so->base.dither;
                 state->stencil_mask_misc.sfbd_alpha_to_one = so->base.alpha_to_one;
 
-                if (blend[0].is_shader) {
-                        state->sfbd_blend_shader = blend[0].shader.gpu |
-                                                   blend[0].shader.first_tag;
+                if (blend_shaders[0]) {
+                        state->sfbd_blend_shader = blend_shaders[0];
                 } else {
                         state->sfbd_blend_constant = pan_blend_get_constant(
                                         so->info[0].constant_mask,
@@ -607,12 +602,10 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                  * shader from here instead of the usual location? */
 
                 for (signed rt = ((signed) rt_count - 1); rt >= 0; --rt) {
-                        if (!blend[rt].is_shader)
-                                continue;
-
-                        state->sfbd_blend_shader = blend[rt].shader.gpu |
-                                                   blend[rt].shader.first_tag;
-                        break;
+                        if (blend_shaders[rt]) {
+                                state->sfbd_blend_shader = blend_shaders[rt];
+                                break;
+                        }
                 }
         }
 
@@ -620,7 +613,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
 
 static void
 panfrost_prepare_fs_state(struct panfrost_context *ctx,
-                          struct panfrost_blend_final *blend,
+                          mali_ptr *blend_shaders,
                           struct MALI_RENDERER_STATE *state)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
@@ -630,9 +623,9 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
 
         if (pan_is_bifrost(dev))
-                panfrost_prepare_bifrost_fs_state(ctx, blend, state);
+                panfrost_prepare_bifrost_fs_state(ctx, state);
         else
-                panfrost_prepare_midgard_fs_state(ctx, blend, state);
+                panfrost_prepare_midgard_fs_state(ctx, blend_shaders, state);
 
         bool msaa = rast->multisample;
         state->multisample_misc.multisample_enable = msaa;
@@ -675,17 +668,17 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
 static void
 panfrost_emit_frag_shader(struct panfrost_context *ctx,
                           struct mali_renderer_state_packed *fragmeta,
-                          struct panfrost_blend_final *blend)
+                          mali_ptr *blend_shaders)
 {
         struct panfrost_device *dev = pan_device(ctx->base.screen);
 
         pan_pack(fragmeta, RENDERER_STATE, cfg) {
-                panfrost_prepare_fs_state(ctx, blend, &cfg);
+                panfrost_prepare_fs_state(ctx, blend_shaders, &cfg);
         }
 
         if ((dev->quirks & MIDGARD_SFBD)
                         && ctx->pipe_framebuffer.nr_cbufs > 0
-                        && !blend[0].is_shader) {
+                        && !blend_shaders[0]) {
 
                 /* Word 14: SFBD Blend Equation */
                 STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
@@ -735,21 +728,21 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
                                                           PAN_DESC_ARRAY(rt_count, BLEND));
         }
 
-        struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
+        mali_ptr blend_shaders[PIPE_MAX_COLOR_BUFS];
         unsigned shader_offset = 0;
         struct panfrost_bo *shader_bo = NULL;
 
         for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c) {
                 if (ctx->pipe_framebuffer.cbufs[c]) {
-                        blend[c] = panfrost_get_blend_for_context(ctx, c,
-                                        &shader_bo, &shader_offset);
+                        blend_shaders[c] = panfrost_get_blend_for_context(ctx,
+                                        c, &shader_bo, &shader_offset);
                 }
         }
 
-        panfrost_emit_frag_shader(ctx, (struct mali_renderer_state_packed *) xfer.cpu, blend);
+        panfrost_emit_frag_shader(ctx, (struct mali_renderer_state_packed *) xfer.cpu, blend_shaders);
 
         if (!(dev->quirks & MIDGARD_SFBD))
-                panfrost_emit_blend(batch, xfer.cpu + MALI_RENDERER_STATE_LENGTH, blend);
+                panfrost_emit_blend(batch, xfer.cpu + MALI_RENDERER_STATE_LENGTH, blend_shaders);
         else {
                 batch->draws |= PIPE_CLEAR_COLOR0;
                 batch->resolve |= PIPE_CLEAR_COLOR0;
