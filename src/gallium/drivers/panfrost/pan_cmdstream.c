@@ -551,8 +551,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                  * lying to the hardware about the discard and setting the
                  * reads tilebuffer? flag to compensate */
                 state->properties.midgard.shader_reads_tilebuffer =
-                        fs->info.fs.outputs_read ||
-                        (!zsa->enabled && fs->info.fs.can_discard);
+                        !zsa->enabled && fs->info.fs.can_discard;
                 state->properties.midgard.shader_contains_discard =
                         zsa->enabled && fs->info.fs.can_discard;
         }

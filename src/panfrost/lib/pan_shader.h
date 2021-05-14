@@ -55,8 +55,12 @@ pan_shader_prepare_midgard_rsd(const struct pan_shader_info *info,
 
         /* For fragment shaders, work register count, early-z, reads at draw-time */
 
-        if (info->stage != MESA_SHADER_FRAGMENT)
+        if (info->stage != MESA_SHADER_FRAGMENT) {
                 rsd->properties.midgard.work_register_count = info->work_reg_count;
+        } else {
+                rsd->properties.midgard.shader_reads_tilebuffer =
+                        info->fs.outputs_read;
+        }
 }
 
 /* Classify a shader into the following pixel kill categories:
