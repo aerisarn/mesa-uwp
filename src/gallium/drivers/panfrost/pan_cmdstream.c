@@ -600,7 +600,7 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
 
         bool msaa = rast->multisample;
         state->multisample_misc.multisample_enable = msaa;
-        state->multisample_misc.sample_mask = (msaa ? ctx->sample_mask : ~0) & 0xFFFF;
+        state->multisample_misc.sample_mask = msaa ? ctx->sample_mask : 0xFFFF;
 
         state->multisample_misc.evaluate_per_sample =
                 msaa && (ctx->min_samples > 1);

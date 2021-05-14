@@ -187,7 +187,7 @@ struct panfrost_context {
         struct pipe_blend_color blend_color;
         struct panfrost_zsa_state *depth_stencil;
         struct pipe_stencil_ref stencil_ref;
-        unsigned sample_mask;
+        uint16_t sample_mask;
         unsigned min_samples;
 
         struct panfrost_query *cond_query;
