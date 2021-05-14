@@ -1379,6 +1379,14 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
         ctx->batch = NULL;
 
+        /* Hot draw call path needs the mask of active render targets */
+        ctx->fb_rt_mask = 0;
+
+        for (unsigned i = 0; i < ctx->pipe_framebuffer.nr_cbufs; ++i) {
+                if (ctx->pipe_framebuffer.cbufs[i])
+                        ctx->fb_rt_mask |= BITFIELD_BIT(i);
+        }
+
         /* We may need to generate a new variant if the fragment shader is
          * keyed to the framebuffer format (due to EXT_framebuffer_fetch) */
         struct panfrost_shader_variants *fs = ctx->shader[PIPE_SHADER_FRAGMENT];

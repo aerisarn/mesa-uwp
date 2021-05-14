@@ -495,15 +495,8 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
         if (panfrost_fs_required(fs, so, &ctx->pipe_framebuffer)) {
                 /* Track if any colour buffer is reused across draws, either
                  * from reading it directly, or from failing to write it */
-                bool blend_reads_dest = false;
-                unsigned rt_mask = 0;
-
-                for (unsigned i = 0; i < ctx->pipe_framebuffer.nr_cbufs; ++i) {
-                        if (ctx->pipe_framebuffer.cbufs[i]) {
-                                rt_mask |= (1 << i);
-                                blend_reads_dest |= so->info[i].load_dest;
-                        }
-                }
+                unsigned rt_mask = ctx->fb_rt_mask;
+                bool blend_reads_dest = (so->load_dest_mask & rt_mask);
 
                 state->properties.bifrost.allow_forward_pixel_to_kill =
                         fs->info.fs.can_fpk &&

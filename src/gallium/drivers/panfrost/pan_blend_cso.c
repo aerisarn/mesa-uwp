@@ -115,6 +115,11 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 
                 so->pan.rts[c].equation = equation;
 
+                /* Bifrost needs to know if any render target loads its
+                 * destination in the hot draw path, so precompute this */
+                if (so->info[c].load_dest)
+                        so->load_dest_mask |= BITFIELD_BIT(c);
+
                 /* Converting equations to Mali style is expensive, do it at
                  * CSO create time instead of draw-time */
                 if (so->info[c].fixed_function) {
