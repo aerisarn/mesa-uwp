@@ -881,8 +881,12 @@ bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
       ctx->compute_stage = shader;
       if (shader)
          zink_select_launch_grid(ctx);
-   } else
+   } else {
       ctx->gfx_stages[stage] = shader;
+      ctx->gfx_pipeline_state.combined_dirty = true;
+      if (!shader)
+         ctx->gfx_pipeline_state.modules[stage] = VK_NULL_HANDLE;
+   }
    ctx->dirty_shader_stages |= 1 << stage;
    if (shader && shader->nir->info.num_inlinable_uniforms)
       ctx->shader_has_inlinable_uniforms_mask |= 1 << stage;
