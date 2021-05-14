@@ -34,26 +34,6 @@
 
 struct panfrost_bo;
 
-struct panfrost_blend_shader_key {
-        /* RT format */
-        enum pipe_format format;
-
-        /* Render target */
-        unsigned rt : 3;
-
-        /* Blend shader uses blend constants */
-        unsigned has_constants : 1;
-
-        /* Logic Op info */
-        unsigned logicop_enable : 1;
-        unsigned logicop_func:4;
-
-        /* Number of samples */
-        unsigned nr_samples : 5;
-
-        struct pipe_rt_blend_state equation;
-};
-
 /* A blend shader descriptor ready for actual use */
 
 struct panfrost_blend_shader_final {
@@ -101,12 +81,5 @@ panfrost_blend_context_init(struct pipe_context *pipe);
 
 struct panfrost_blend_final
 panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rt, struct panfrost_bo **bo, unsigned *shader_offset);
-
-struct panfrost_blend_shader *
-panfrost_get_blend_shader(struct panfrost_context *ctx,
-                          struct panfrost_blend_state *blend,
-                          enum pipe_format fmt, unsigned nr_samples,
-                          unsigned rt,
-                          const float *constants);
 
 #endif
