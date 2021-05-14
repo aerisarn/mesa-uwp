@@ -218,6 +218,14 @@ pan_shader_compile(const struct panfrost_device *dev,
                 info->fs.sidefx = s->info.writes_memory ||
                                   s->info.fs.uses_discard ||
                                   s->info.fs.uses_demote;
+
+                /* With suitable ZSA/blend, is early-z possible? */
+                info->fs.can_early_z =
+                        !info->fs.sidefx &&
+                        !info->fs.writes_depth &&
+                        !info->fs.writes_stencil &&
+                        !info->fs.writes_coverage;
+
                 info->fs.reads_frag_coord =
                         (s->info.inputs_read & (1 << VARYING_SLOT_POS)) ||
                         BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_FRAG_COORD);

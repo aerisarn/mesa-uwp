@@ -514,10 +514,9 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 state->properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
                 state->properties.midgard.force_early_z = true;
         } else {
-                /* Reasons to disable early-Z from a shader perspective */
-                bool late_z = fs->info.fs.can_discard || fs->info.writes_global ||
-                              fs->info.fs.writes_depth || fs->info.fs.writes_stencil ||
-                              ((enum mali_func) zsa->base.alpha_func != MALI_FUNC_ALWAYS);
+                state->properties.midgard.force_early_z =
+                        fs->info.fs.can_early_z && !alpha_to_coverage &&
+                        ((enum mali_func) zsa->base.alpha_func == MALI_FUNC_ALWAYS);
 
                 bool has_blend_shader = false;
 
@@ -529,8 +528,6 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                         state->properties.midgard.work_register_count = MAX2(fs->info.work_reg_count, 8);
                 else
                         state->properties.midgard.work_register_count = fs->info.work_reg_count;
-
-                state->properties.midgard.force_early_z = !(late_z || alpha_to_coverage);
 
                 /* Workaround a hardware errata where early-z cannot be enabled
                  * when discarding even when the depth buffer is read-only, by
