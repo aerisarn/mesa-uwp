@@ -53,6 +53,6 @@ void
 panfrost_blend_context_init(struct pipe_context *pipe);
 
 mali_ptr
-panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rt, struct panfrost_bo **bo, unsigned *shader_offset);
+panfrost_get_blend(struct panfrost_batch *batch, unsigned rt, struct panfrost_bo **bo, unsigned *shader_offset);
 
 #endif

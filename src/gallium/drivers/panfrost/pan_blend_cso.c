@@ -153,10 +153,10 @@ panfrost_set_blend_color(struct pipe_context *pipe,
 /* Create a final blend given the context */
 
 mali_ptr
-panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struct panfrost_bo **bo, unsigned *shader_offset)
+panfrost_get_blend(struct panfrost_batch *batch, unsigned rti, struct panfrost_bo **bo, unsigned *shader_offset)
 {
+        struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
         enum pipe_format fmt = fb->cbufs[rti]->format;
         unsigned nr_samples = fb->cbufs[rti]->nr_samples ? :

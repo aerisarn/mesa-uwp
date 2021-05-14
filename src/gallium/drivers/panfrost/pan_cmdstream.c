@@ -734,7 +734,7 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
 
         for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c) {
                 if (ctx->pipe_framebuffer.cbufs[c]) {
-                        blend_shaders[c] = panfrost_get_blend_for_context(ctx,
+                        blend_shaders[c] = panfrost_get_blend(batch,
                                         c, &shader_bo, &shader_offset);
                 }
         }
