@@ -324,11 +324,28 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                         continue;
                 }
 
+                struct pan_blend_info info = so->info[i];
+                enum pipe_format format = batch->key.cbufs[i]->format;
+                const struct util_format_description *format_desc;
+                unsigned chan_size = 0;
+
+                format_desc = util_format_description(format);
+
+                for (unsigned i = 0; i < format_desc->nr_channels; i++)
+                        chan_size = MAX2(format_desc->channel[0].size, chan_size);
+
+                /* Fixed point constant */
+                float constant_f = pan_blend_get_constant(
+                                info.constant_mask,
+                                ctx->blend_color.color);
+
+                u16 constant = constant_f * ((1 << chan_size) - 1);
+                constant <<= 16 - chan_size;
+
                 struct mali_blend_packed *packed = rts + (i * MALI_BLEND_LENGTH);
 
+                /* Word 0: Flags and constant */
                 pan_pack(packed, BLEND, cfg) {
-                        struct pan_blend_info info = so->info[i];
-
                         if (info.no_colour) {
                                 cfg.enable = false;
                         } else {
@@ -339,61 +356,50 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 cfg.alpha_to_one = ctx->blend->base.alpha_to_one;
                         }
 
-                        if (blend_shaders[i]) {
-                                /* The blend shader's address needs to be at
-                                 * the same top 32 bit as the fragment shader.
-                                 * TODO: Ensure that's always the case.
-                                 */
-                                assert(!fs->bin.bo ||
-                                        (blend_shaders[i] & (0xffffffffull << 32)) ==
-                                       (fs->bin.gpu & (0xffffffffull << 32)));
-                                cfg.bifrost.internal.shader.pc = (u32) blend_shaders[i];
-                                unsigned ret_offset = fs->info.bifrost.blend[i].return_offset;
-                                if (ret_offset) {
-                                        assert(!(ret_offset & 0x7));
-                                        cfg.bifrost.internal.shader.return_value =
-                                                fs->bin.gpu + ret_offset;
-                                }
-                                cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_SHADER;
-                        } else {
-                                enum pipe_format format = batch->key.cbufs[i]->format;
-                                const struct util_format_description *format_desc;
-                                unsigned chan_size = 0;
-
-                                format_desc = util_format_description(format);
-
-                                for (unsigned i = 0; i < format_desc->nr_channels; i++)
-                                        chan_size = MAX2(format_desc->channel[0].size, chan_size);
-
-                                /* Fixed point constant */
-                                float constant_f = pan_blend_get_constant(
-                                                info.constant_mask,
-                                                ctx->blend_color.color);
-
-                                u16 constant = constant_f * ((1 << chan_size) - 1);
-                                constant <<= 16 - chan_size;
-                                cfg.bifrost.constant = constant;
-
-                                cfg.bifrost.internal.mode = info.opaque ?
-                                        MALI_BIFROST_BLEND_MODE_OPAQUE :
-                                        MALI_BIFROST_BLEND_MODE_FIXED_FUNCTION;
-
-                                /* If we want the conversion to work properly,
-                                 * num_comps must be set to 4
-                                 */
-                                cfg.bifrost.internal.fixed_function.num_comps = 4;
-                                cfg.bifrost.internal.fixed_function.conversion.memory_format =
-                                        panfrost_format_to_bifrost_blend(dev, format);
-                                cfg.bifrost.internal.fixed_function.conversion.register_format =
-                                        bifrost_blend_type_from_nir(fs->info.bifrost.blend[i].type);
-                                cfg.bifrost.internal.fixed_function.rt = i;
-                        }
+                        cfg.bifrost.constant = constant;
                 }
 
                 if (!blend_shaders[i]) {
                         /* Word 1: Blend Equation */
                         STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
                         packed->opaque[1] = so->equation[i].opaque[0];
+                }
+
+                /* Words 2 and 3: Internal blend */
+                if (blend_shaders[i]) {
+                        /* The blend shader's address needs to be at
+                         * the same top 32 bit as the fragment shader.
+                         * TODO: Ensure that's always the case.
+                         */
+                        assert(!fs->bin.bo ||
+                                        (blend_shaders[i] & (0xffffffffull << 32)) ==
+                                        (fs->bin.gpu & (0xffffffffull << 32)));
+
+                        unsigned ret_offset = fs->info.bifrost.blend[i].return_offset;
+                        assert(!(ret_offset & 0x7));
+
+                        pan_pack(&packed->opaque[2], BIFROST_INTERNAL_BLEND, cfg) {
+                                cfg.mode = MALI_BIFROST_BLEND_MODE_SHADER;
+                                cfg.shader.pc = (u32) blend_shaders[i];
+                                cfg.shader.return_value = ret_offset ?
+                                        fs->bin.gpu + ret_offset : 0;
+                        }
+                } else {
+                        pan_pack(&packed->opaque[2], BIFROST_INTERNAL_BLEND, cfg) {
+                                cfg.mode = info.opaque ?
+                                        MALI_BIFROST_BLEND_MODE_OPAQUE :
+                                        MALI_BIFROST_BLEND_MODE_FIXED_FUNCTION;
+
+                                /* If we want the conversion to work properly,
+                                 * num_comps must be set to 4
+                                 */
+                                cfg.fixed_function.num_comps = 4;
+                                cfg.fixed_function.conversion.memory_format =
+                                        panfrost_format_to_bifrost_blend(dev, format);
+                                cfg.fixed_function.conversion.register_format =
+                                        bifrost_blend_type_from_nir(fs->info.bifrost.blend[i].type);
+                                cfg.fixed_function.rt = i;
+                        }
                 }
         }
 }
