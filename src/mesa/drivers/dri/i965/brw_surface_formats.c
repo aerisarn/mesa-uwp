@@ -212,10 +212,6 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
    memset(&screen->mesa_format_supports_texture, 0,
           sizeof(screen->mesa_format_supports_texture));
 
-   int gen = devinfo->ver * 10;
-   if (devinfo->is_g4x || devinfo->is_haswell)
-      gen += 5;
-
    for (format = MESA_FORMAT_NONE + 1; format < MESA_FORMAT_COUNT; format++) {
       if (!_mesa_get_format_name(format))
          continue;
@@ -227,7 +223,7 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
       /* Only exposed with EXT_memory_object_* support which
        * is not for older gens.
        */
-      if (gen < 70 && format == MESA_FORMAT_Z_UNORM16)
+      if (devinfo->ver < 7 && format == MESA_FORMAT_Z_UNORM16)
          continue;
 
       if (texture == ISL_FORMAT_UNSUPPORTED)
@@ -322,7 +318,7 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
    screen->mesa_format_supports_render[MESA_FORMAT_S_UINT8] = true;
    screen->mesa_format_supports_render[MESA_FORMAT_Z_FLOAT32] = true;
    screen->mesa_format_supports_render[MESA_FORMAT_Z32_FLOAT_S8X24_UINT] = true;
-   if (gen >= 80)
+   if (devinfo->ver >= 8)
       screen->mesa_format_supports_render[MESA_FORMAT_Z_UNORM16] = true;
 
    /* We remap depth formats to a supported texturing format in
@@ -348,7 +344,7 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
     * With the PMA stall workaround in place, Z16 is faster than Z24, as it
     * should be.
     */
-   if (gen >= 80)
+   if (devinfo->ver >= 8)
       screen->mesa_format_supports_texture[MESA_FORMAT_Z_UNORM16] = true;
 
    /* The RGBX formats are not renderable. Normally these get mapped
@@ -364,7 +360,7 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
     * doesn't implement this swizzle override. We don't need to do this for
     * BGRX because that actually is supported natively on Gfx8+.
     */
-   if (gen >= 90) {
+   if (devinfo->ver >= 9) {
       static const mesa_format rgbx_formats[] = {
          MESA_FORMAT_R8G8B8X8_UNORM,
          MESA_FORMAT_R8G8B8X8_SRGB,
