@@ -144,10 +144,16 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                sizeof(pan_blend.constants));
 
         /* First, we'll try fixed function, matching equation and constant */
-        if (pan_blend_can_fixed_function(dev, &pan_blend, rti)) {
-                const struct pan_blend_equation eq = pan_blend.rts[rti].equation;
-                unsigned constant_mask = pan_blend_constant_mask(eq);
+        const struct pan_blend_equation eq = pan_blend.rts[rti].equation;
+        unsigned constant_mask = pan_blend_constant_mask(eq);
 
+        bool ff = pan_blend_can_fixed_function(eq);
+        ff &= pan_blend_is_homogenous_constant(constant_mask, ctx->blend_color.color);
+        ff &= (pan_blend_supports_constant(dev->arch, rti) || !constant_mask);
+        ff &= !pan_blend.logicop_enable;
+        ff &= panfrost_blendable_formats[fmt].internal;
+
+        if (ff) {
                 struct panfrost_blend_final final = {
                         .load_dest = pan_blend_reads_dest(pan_blend.rts[rti].equation),
                         .equation.constant = pan_blend_get_constant(constant_mask, ctx->blend_color.color),

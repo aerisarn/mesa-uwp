@@ -100,9 +100,7 @@ bool
 pan_blend_reads_dest(const struct pan_blend_equation eq);
 
 bool
-pan_blend_can_fixed_function(const struct panfrost_device *dev,
-                             const struct pan_blend_state *state,
-                             unsigned rt);
+pan_blend_can_fixed_function(const struct pan_blend_equation equation);
 
 bool
 pan_blend_is_opaque(const struct pan_blend_equation eq);
@@ -119,6 +117,19 @@ pan_blend_get_constant(unsigned mask, float *constants)
 {
         return mask ? constants[ffs(mask) - 1] : 0.0;
 }
+
+/* v6 doesn't support blend constants in FF blend equations whatsoever, and v7
+ * only uses the constant from RT 0 (TODO: what if it's the same constant? or a
+ * constant is shared?) */
+
+static inline bool
+pan_blend_supports_constant(unsigned arch, unsigned rt)
+{
+        return !((arch == 6) || (arch == 7 && rt > 0));
+}
+
+bool
+pan_blend_is_homogenous_constant(unsigned mask, float *constants);
 
 void
 pan_blend_to_fixed_function_equation(const struct panfrost_device *dev,

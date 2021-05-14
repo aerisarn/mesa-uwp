@@ -86,61 +86,34 @@ pan_blend_constant_mask(const struct pan_blend_equation eq)
                blend_factor_constant_mask(eq.alpha_dst_factor);
 }
 
-static bool
-can_blend_constant(const struct panfrost_device *dev,
-                   const struct pan_blend_state *state,
-                   unsigned rt)
+/* Only "homogenous" (scalar or vector with all components equal) constants are
+ * valid for fixed-function, so check for this condition */
+
+bool
+pan_blend_is_homogenous_constant(unsigned mask, float *constants)
 {
-        unsigned constant_mask = pan_blend_constant_mask(state->rts[rt].equation);
-        if (!constant_mask)
-                return true;
+        float constant = pan_blend_get_constant(mask, constants);
 
-        /* v6 doesn't support blend constants in FF blend equations. */
-        if (dev->arch == 6)
-                return false;
-
-        /* v7 only uses the constant from RT 0 (TODO: what if it's the same
-         * constant? or a constant is shared?) */
-        if (dev->arch == 7 && rt > 0)
-                return false;
-
-        float constant = pan_blend_get_constant(constant_mask, state->constants);
-
-        u_foreach_bit(i, constant_mask) {
-                if (state->constants[i] != constant)
+        u_foreach_bit(i, mask) {
+                if (constants[i] != constant)
                         return false;
         }
 
         return true;
 }
 
+/* Determines if an equation can run in fixed function */
+
 bool
-pan_blend_can_fixed_function(const struct panfrost_device *dev,
-                             const struct pan_blend_state *state,
-                             unsigned rt)
+pan_blend_can_fixed_function(const struct pan_blend_equation equation)
 {
-        const struct pan_blend_rt_state *rt_state = &state->rts[rt];
-
-        /* LogicOp requires a blend shader */
-        if (state->logicop_enable)
-                return false;
-
-        /* Not all formats can be blended by fixed-function hardware */
-        if (!panfrost_blendable_formats[rt_state->format].internal)
-                return false;
-
-        if (!rt_state->equation.blend_enable)
-                return true;
-
-        if (!can_blend_constant(dev, state, rt))
-                return false;
-
-        return can_fixed_function_equation(rt_state->equation.rgb_func,
-                                           rt_state->equation.rgb_src_factor,
-                                           rt_state->equation.rgb_dst_factor) &&
-               can_fixed_function_equation(rt_state->equation.alpha_func,
-                                           rt_state->equation.alpha_src_factor,
-                                           rt_state->equation.alpha_dst_factor);
+        return !equation.blend_enable ||
+               (can_fixed_function_equation(equation.rgb_func,
+                                            equation.rgb_src_factor,
+                                            equation.rgb_dst_factor) &&
+                can_fixed_function_equation(equation.alpha_func,
+                                            equation.alpha_src_factor,
+                                            equation.alpha_dst_factor));
 }
 
 static enum mali_blend_operand_c
@@ -311,8 +284,6 @@ pan_blend_to_fixed_function_equation(ASSERTED const struct panfrost_device *dev,
                                      struct MALI_BLEND_EQUATION *equation)
 {
         const struct pan_blend_rt_state *rt_state = &state->rts[rt];
-
-        assert(pan_blend_can_fixed_function(dev, state, rt));
 
         /* If no blending is enabled, default back on `replace` mode */
         if (!rt_state->equation.blend_enable) {
