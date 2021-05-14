@@ -52,9 +52,11 @@ struct lp_linear_sampler {
 struct lp_linear_interp {
    struct lp_linear_elem base;
 
+#if defined(PIPE_ARCH_SSE)
    __m128i a0;
    __m128i dadx;
    __m128i dady;
+#endif
 
    int width;                   /* rounded up to multiple of 4 */
 

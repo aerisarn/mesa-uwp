@@ -227,7 +227,6 @@ lp_linear_check_fastpath(struct lp_fragment_shader_variant *variant)
    return variant->jit_linear != NULL;
 }
 #else
-void
 boolean
 lp_linear_check_fastpath(struct lp_fragment_shader_variant *variant)
 {

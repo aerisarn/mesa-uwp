@@ -360,4 +360,9 @@ fail:
 }
 
 
+#else
+void
+lp_linear_check_variant(struct lp_fragment_shader_variant *variant)
+{
+}
 #endif
