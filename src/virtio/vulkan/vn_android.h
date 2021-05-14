@@ -45,11 +45,11 @@ vn_android_find_native_buffer(const VkImageCreateInfo *create_info)
 }
 
 VkResult
-vn_image_from_anb(struct vn_device *dev,
-                  const VkImageCreateInfo *image_info,
-                  const VkNativeBufferANDROID *anb_info,
-                  const VkAllocationCallbacks *alloc,
-                  struct vn_image **out_img);
+vn_android_image_from_anb(struct vn_device *dev,
+                          const VkImageCreateInfo *image_info,
+                          const VkNativeBufferANDROID *anb_info,
+                          const VkAllocationCallbacks *alloc,
+                          struct vn_image **out_img);
 
 #else
 
@@ -68,17 +68,17 @@ vn_android_wsi_fini(UNUSED struct vn_device *dev,
 }
 
 static inline const VkNativeBufferANDROID *
-vn_android_find_native_buffer(const VkImageCreateInfo *create_info)
+vn_android_find_native_buffer(UNUSED const VkImageCreateInfo *create_info)
 {
    return NULL;
 }
 
 static inline VkResult
-vn_image_from_anb(struct vn_device *dev,
-                  const VkImageCreateInfo *image_info,
-                  const VkNativeBufferANDROID *anb_info,
-                  const VkAllocationCallbacks *alloc,
-                  struct vn_image **out_img)
+vn_android_image_from_anb(UNUSED struct vn_device *dev,
+                          UNUSED const VkImageCreateInfo *image_info,
+                          UNUSED const VkNativeBufferANDROID *anb_info,
+                          UNUSED const VkAllocationCallbacks *alloc,
+                          UNUSED struct vn_image **out_img)
 {
    return VK_ERROR_OUT_OF_HOST_MEMORY;
 }

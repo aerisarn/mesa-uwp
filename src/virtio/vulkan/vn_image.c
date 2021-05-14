@@ -299,7 +299,8 @@ vn_CreateImage(VkDevice device,
       assert(wsi_info->scanout);
       result = vn_wsi_create_scanout_image(dev, pCreateInfo, alloc, &img);
    } else if (anb_info) {
-      result = vn_image_from_anb(dev, pCreateInfo, anb_info, alloc, &img);
+      result =
+         vn_android_image_from_anb(dev, pCreateInfo, anb_info, alloc, &img);
    } else {
       result = vn_image_create(dev, pCreateInfo, alloc, &img);
    }

@@ -211,11 +211,11 @@ vn_num_planes_from_format_and_modifier(VkPhysicalDevice physical_device,
 }
 
 VkResult
-vn_image_from_anb(struct vn_device *dev,
-                  const VkImageCreateInfo *image_info,
-                  const VkNativeBufferANDROID *anb_info,
-                  const VkAllocationCallbacks *alloc,
-                  struct vn_image **out_img)
+vn_android_image_from_anb(struct vn_device *dev,
+                          const VkImageCreateInfo *image_info,
+                          const VkNativeBufferANDROID *anb_info,
+                          const VkAllocationCallbacks *alloc,
+                          struct vn_image **out_img)
 {
    /* If anb_info->handle points to a classic resouce created from
     * virtio_gpu_cmd_resource_create_3d, anb_info->stride is the stride of the
