@@ -97,7 +97,7 @@ struct pan_blend_shader {
 };
 
 bool
-pan_blend_reads_dest(const struct pan_blend_state *state, unsigned rt);
+pan_blend_reads_dest(const struct pan_blend_equation eq);
 
 bool
 pan_blend_can_fixed_function(const struct panfrost_device *dev,
