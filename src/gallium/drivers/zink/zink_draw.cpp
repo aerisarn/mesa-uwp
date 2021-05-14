@@ -177,22 +177,14 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
 static void
 update_compute_program(struct zink_context *ctx)
 {
-   unsigned bits = 1 << PIPE_SHADER_COMPUTE;
+   const unsigned bits = 1 << PIPE_SHADER_COMPUTE;
    if (ctx->dirty_shader_stages & bits) {
-      struct zink_compute_program *comp = NULL;
-      struct hash_entry *entry = _mesa_hash_table_search(ctx->compute_program_cache,
-                                                         ctx->compute_stage);
-      if (!entry) {
-         comp = zink_create_compute_program(ctx, ctx->compute_stage);
-         entry = _mesa_hash_table_insert(ctx->compute_program_cache, comp->shader, comp);
-      }
-      comp = (struct zink_compute_program*)(entry ? entry->data : NULL);
-      if (comp && comp != ctx->curr_compute) {
-         ctx->compute_pipeline_state.dirty = true;
-         zink_batch_reference_program(&ctx->batch, &comp->base);
-      }
+      struct zink_compute_program *comp = zink_create_compute_program(ctx, ctx->compute_stage);
+      _mesa_hash_table_insert(ctx->compute_program_cache, comp->shader, comp);
+      ctx->compute_pipeline_state.dirty = true;
       ctx->curr_compute = comp;
       ctx->dirty_shader_stages &= bits;
+      zink_batch_reference_program(&ctx->batch, &ctx->curr_compute->base);
    }
 }
 
@@ -786,8 +778,10 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    VkPipeline pipeline = zink_get_compute_pipeline(screen, ctx->curr_compute,
                                                &ctx->compute_pipeline_state);
 
-   if (BATCH_CHANGED)
+   if (BATCH_CHANGED) {
       zink_update_descriptor_refs(ctx, true);
+      zink_batch_reference_program(&ctx->batch, &ctx->curr_compute->base);
+   }
 
    if (prev_pipeline != pipeline || BATCH_CHANGED)
       vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
