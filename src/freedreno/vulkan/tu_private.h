@@ -862,6 +862,7 @@ struct tu_lrz_pipeline
    uint32_t force_disable_mask;
    bool fs_has_kill;
    bool force_late_z;
+   bool early_fragment_tests;
 };
 
 struct tu_lrz_state

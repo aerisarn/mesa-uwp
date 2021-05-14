@@ -1442,6 +1442,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 
    if (pipeline) {
       pipeline->lrz.fs_has_kill = fs->has_kill;
+      pipeline->lrz.early_fragment_tests = fs->shader->nir->info.fs.early_fragment_tests;
 
       if ((fs->shader && !fs->shader->nir->info.fs.early_fragment_tests) &&
           (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || no_earlyz || fs->writes_smask)) {
