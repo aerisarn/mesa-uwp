@@ -794,15 +794,15 @@ align_offset_size(const VkDeviceSize alignment, VkDeviceSize *offset, VkDeviceSi
       *size += align;
 }
 
-static VkMappedMemoryRange
-init_mem_range(struct zink_screen *screen, struct zink_resource *res, VkDeviceSize offset, VkDeviceSize size)
+VkMappedMemoryRange
+zink_resource_init_mem_range(struct zink_screen *screen, struct zink_resource_object *obj, VkDeviceSize offset, VkDeviceSize size)
 {
-   assert(res->obj->size);
-   align_offset_size(screen->info.props.limits.nonCoherentAtomSize, &offset, &size, res->obj->size);
+   assert(obj->size);
+   align_offset_size(screen->info.props.limits.nonCoherentAtomSize, &offset, &size, obj->size);
    VkMappedMemoryRange range = {
       VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
       NULL,
-      res->obj->mem,
+      obj->mem,
       offset,
       size
    };
@@ -942,7 +942,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
       ) {
       VkDeviceSize size = box->width;
       VkDeviceSize offset = res->obj->offset + trans->offset + box->x;
-      VkMappedMemoryRange range = init_mem_range(screen, res, offset, size);
+      VkMappedMemoryRange range = zink_resource_init_mem_range(screen, res->obj, offset, size);
       if (vkInvalidateMappedMemoryRanges(screen->dev, 1, &range) != VK_SUCCESS) {
          vkUnmapMemory(screen->dev, res->obj->mem);
          return NULL;
@@ -1065,7 +1065,7 @@ zink_transfer_map(struct pipe_context *pctx,
                            (box->x / desc->block.width) * (desc->block.bits / 8);
          if (!res->obj->coherent) {
             VkDeviceSize size = box->width * box->height * desc->block.bits / 8;
-            VkMappedMemoryRange range = init_mem_range(screen, res, res->obj->offset + offset, size);
+            VkMappedMemoryRange range = zink_resource_init_mem_range(screen, res->obj, res->obj->offset + offset, size);
             vkFlushMappedMemoryRanges(screen->dev, 1, &range);
          }
          ptr = ((uint8_t *)base) + offset;
@@ -1104,7 +1104,7 @@ zink_transfer_flush_region(struct pipe_context *pctx,
          assert(offset + size <= res->obj->size);
       }
       if (!m->obj->coherent) {
-         VkMappedMemoryRange range = init_mem_range(screen, m, m->obj->offset, m->obj->size);
+         VkMappedMemoryRange range = zink_resource_init_mem_range(screen, m->obj, m->obj->offset, m->obj->size);
          vkFlushMappedMemoryRanges(screen->dev, 1, &range);
       }
       if (trans->staging_res) {
