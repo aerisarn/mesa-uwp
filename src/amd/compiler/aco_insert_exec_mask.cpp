@@ -230,8 +230,7 @@ void handle_wqm_loops(wqm_ctx& ctx, exec_ctx& exec_ctx, unsigned preheader)
  */
 void handle_exact_loops(wqm_ctx& ctx, exec_ctx& exec_ctx, unsigned preheader)
 {
-   unsigned header = preheader + 1;
-   assert(exec_ctx.program->blocks[header].kind & block_kind_loop_header);
+   assert(exec_ctx.program->blocks[preheader + 1].kind & block_kind_loop_header);
 
    int parent_branch = preheader;
    unsigned rel_branch_depth = 0;
