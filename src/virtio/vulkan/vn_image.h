@@ -13,12 +13,10 @@
 
 #include "vn_common.h"
 
-/* XXX drop the #ifdef after fixing common wsi */
-#ifdef ANDROID
+/* changing this to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR disables ownership
+ * transfers and can be useful for debugging
+ */
 #define VN_PRESENT_SRC_INTERNAL_LAYOUT VK_IMAGE_LAYOUT_GENERAL
-#else
-#define VN_PRESENT_SRC_INTERNAL_LAYOUT VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-#endif
 
 struct vn_image_create_deferred_info {
    VkImageCreateInfo create;
