@@ -181,7 +181,8 @@ check_linear_rasterizer( struct llvmpipe_context *lp )
    boolean single_vp;
    boolean clipping_changed = FALSE;
 
-   bgr8 = (lp->framebuffer.nr_cbufs == 1 &&
+   bgr8 = (lp->framebuffer.nr_cbufs == 1 && lp->framebuffer.cbufs[0] &&
+           lp->framebuffer.cbufs[0]->texture->nr_samples == 1 &&
            lp->framebuffer.cbufs[0]->texture->target == PIPE_TEXTURE_2D &&
            (lp->framebuffer.cbufs[0]->format == PIPE_FORMAT_B8G8R8A8_UNORM ||
             lp->framebuffer.cbufs[0]->format == PIPE_FORMAT_B8G8R8X8_UNORM));
