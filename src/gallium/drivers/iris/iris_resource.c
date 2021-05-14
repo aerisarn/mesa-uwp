@@ -2065,8 +2065,7 @@ iris_transfer_map(struct pipe_context *ctx,
       no_gpu = true;
 
    if (!map_would_stall &&
-       res->aux.usage != ISL_AUX_USAGE_CCS_E &&
-       res->aux.usage != ISL_AUX_USAGE_GFX12_CCS_E) {
+       !isl_aux_usage_has_compression(res->aux.usage)) {
       no_gpu = true;
    }
 
@@ -2210,8 +2209,7 @@ iris_texture_subdata(struct pipe_context *ctx,
     * stall-avoidance blits.
     */
    if (surf->tiling == ISL_TILING_LINEAR ||
-       (isl_aux_usage_has_ccs(res->aux.usage) &&
-        res->aux.usage != ISL_AUX_USAGE_CCS_D) ||
+       isl_aux_usage_has_compression(res->aux.usage) ||
        resource_is_busy(ice, res)) {
       return u_default_texture_subdata(ctx, resource, level, usage, box,
                                        data, stride, layer_stride);
