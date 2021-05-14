@@ -430,6 +430,8 @@ zink_create_gfx_program(struct zink_context *ctx,
       if (stages[i] || prog->shaders[i])
          _mesa_hash_table_init(&prog->base.shader_cache[i], prog, keybox_hash, keybox_equals);
       prog->shaders[i] = stages[i];
+      /* always force shader creation during init */
+      ctx->dirty_shader_stages |= BITFIELD_BIT(i);
    }
    if (stages[PIPE_SHADER_TESS_EVAL] && !stages[PIPE_SHADER_TESS_CTRL]) {
       prog->shaders[PIPE_SHADER_TESS_EVAL]->generated =
