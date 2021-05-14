@@ -346,7 +346,7 @@ struct IDSet {
    }
 
    std::vector<uint64_t> words;
-   uint32_t bits_set;
+   uint32_t bits_set = 0;
 };
 
 inline IDSet::Iterator& IDSet::Iterator::operator ++() {
