@@ -132,6 +132,30 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
         }
 }
 
+static enum mali_bifrost_register_file_format
+bifrost_blend_type_from_nir(nir_alu_type nir_type)
+{
+        switch(nir_type) {
+        case 0: /* Render target not in use */
+                return 0;
+        case nir_type_float16:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_F16;
+        case nir_type_float32:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_F32;
+        case nir_type_int32:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_I32;
+        case nir_type_uint32:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
+        case nir_type_int16:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_I16;
+        case nir_type_uint16:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_U16;
+        default:
+                unreachable("Unsupported blend shader type for NIR alu type");
+                return 0;
+        }
+}
+
 void
 pan_shader_compile(const struct panfrost_device *dev,
                    nir_shader *s,
@@ -232,4 +256,12 @@ pan_shader_compile(const struct panfrost_device *dev,
         info->writes_global = s->info.writes_memory;
 
         info->sampler_count = info->texture_count = BITSET_LAST_BIT(s->info.textures_used);
+
+        /* This is "redundant" information, but is needed in a draw-time hot path */
+        if (pan_is_bifrost(dev)) {
+                for (unsigned i = 0; i < ARRAY_SIZE(info->bifrost.blend); ++i) {
+                        info->bifrost.blend[i].format =
+                                bifrost_blend_type_from_nir(info->bifrost.blend[i].type);
+                }
+        }
 }

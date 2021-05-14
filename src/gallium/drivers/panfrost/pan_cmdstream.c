@@ -278,30 +278,6 @@ panfrost_fs_required(
         return (fs->info.fs.writes_depth || fs->info.fs.writes_stencil);
 }
 
-static enum mali_bifrost_register_file_format
-bifrost_blend_type_from_nir(nir_alu_type nir_type)
-{
-        switch(nir_type) {
-        case 0: /* Render target not in use */
-                return 0;
-        case nir_type_float16:
-                return MALI_BIFROST_REGISTER_FILE_FORMAT_F16;
-        case nir_type_float32:
-                return MALI_BIFROST_REGISTER_FILE_FORMAT_F32;
-        case nir_type_int32:
-                return MALI_BIFROST_REGISTER_FILE_FORMAT_I32;
-        case nir_type_uint32:
-                return MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
-        case nir_type_int16:
-                return MALI_BIFROST_REGISTER_FILE_FORMAT_I16;
-        case nir_type_uint16:
-                return MALI_BIFROST_REGISTER_FILE_FORMAT_U16;
-        default:
-                unreachable("Unsupported blend shader type for NIR alu type");
-                return 0;
-        }
-}
-
 static void
 panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                             mali_ptr *blend_shaders, void *rts)
@@ -397,7 +373,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 cfg.fixed_function.conversion.memory_format =
                                         panfrost_format_to_bifrost_blend(dev, format);
                                 cfg.fixed_function.conversion.register_format =
-                                        bifrost_blend_type_from_nir(fs->info.bifrost.blend[i].type);
+                                        fs->info.bifrost.blend[i].format;
                                 cfg.fixed_function.rt = i;
                         }
                 }

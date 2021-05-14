@@ -142,6 +142,9 @@ struct pan_shader_varying {
 struct bifrost_shader_blend_info {
         nir_alu_type type;
         uint32_t return_offset;
+
+        /* mali_bifrost_register_file_format corresponding to nir_alu_type */
+        unsigned format;
 };
 
 struct bifrost_shader_info {
