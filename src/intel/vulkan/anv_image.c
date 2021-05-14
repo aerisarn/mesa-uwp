@@ -45,7 +45,7 @@ vk_to_isl_surf_dim[] = {
    [VK_IMAGE_TYPE_3D] = ISL_SURF_DIM_3D,
 };
 
-static uint64_t MUST_CHECK
+static uint64_t MUST_CHECK UNUSED
 memory_range_end(struct anv_image_memory_range memory_range)
 {
    assert(anv_is_aligned(memory_range.offset, memory_range.alignment));
@@ -817,7 +817,7 @@ struct check_memory_range_params {
 #define check_memory_range(...) \
    check_memory_range_s(&(struct check_memory_range_params) { __VA_ARGS__ })
 
-static void
+static void UNUSED
 check_memory_range_s(const struct check_memory_range_params *p)
 {
    assert((p->test_surface == NULL) != (p->test_range == NULL));
