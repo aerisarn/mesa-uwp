@@ -64,7 +64,6 @@ struct zink_cs_push_constant {
  * allowing us to skip going through shader keys
  */
 struct zink_shader_module {
-   struct pipe_reference reference;
    VkShaderModule shader;
 };
 

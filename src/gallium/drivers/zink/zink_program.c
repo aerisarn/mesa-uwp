@@ -63,12 +63,6 @@ debug_describe_zink_compute_program(char *buf, const struct zink_compute_program
    sprintf(buf, "zink_compute_program");
 }
 
-static void
-debug_describe_zink_shader_module(char *buf, const struct zink_shader_module *ptr)
-{
-   sprintf(buf, "zink_shader_module");
-}
-
 /* copied from iris */
 struct keybox {
    uint16_t size;
@@ -244,7 +238,6 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
          ralloc_free(keybox);
          return NULL;
       }
-      pipe_reference_init(&zm->reference, 1);
       mod = zink_shader_compile(zink_screen(ctx->base.screen), zs, prog->nir[stage], &key);
       if (!mod) {
          ralloc_free(keybox);
@@ -270,25 +263,12 @@ zink_destroy_shader_module(struct zink_screen *screen, struct zink_shader_module
    free(zm);
 }
 
-static inline void
-zink_shader_module_reference(struct zink_screen *screen,
-                           struct zink_shader_module **dst,
-                           struct zink_shader_module *src)
-{
-   struct zink_shader_module *old_dst = dst ? *dst : NULL;
-
-   if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
-                                (debug_reference_descriptor)debug_describe_zink_shader_module))
-      zink_destroy_shader_module(screen, old_dst);
-   if (dst) *dst = src;
-}
-
 static void
 destroy_shader_cache(struct zink_screen *screen, struct hash_table *sc)
 {
    hash_table_foreach(sc, entry) {
       struct zink_shader_module *zm = entry->data;
-      zink_shader_module_reference(screen, &zm, NULL);
+      zink_destroy_shader_module(screen, zm);
    }
 }
 
@@ -316,7 +296,7 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
       if (dirty[i] || (stages[type] && !prog->modules[type])) {
          struct zink_shader_module *zm;
          zm = get_shader_module_for_stage(ctx, dirty[i] ? dirty[i] : stages[type], prog);
-         zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], zm);
+         prog->modules[type] = zm;
          ctx->gfx_pipeline_state.combined_dirty |= zm->shader != ctx->gfx_pipeline_state.modules[type];
          ctx->gfx_pipeline_state.modules[type] = zm->shader;
       } else if (!stages[type]) {
@@ -556,13 +536,10 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
 
    comp->module = CALLOC_STRUCT(zink_shader_module);
    assert(comp->module);
-   pipe_reference_init(&comp->module->reference, 1);
    comp->module->shader = zink_shader_compile(screen, shader, shader->nir, NULL);
    assert(comp->module->shader);
    _mesa_hash_table_insert(&comp->base.shader_cache[0], shader, comp->module);
 
-   struct zink_shader_module *zm = NULL;
-   zink_shader_module_reference(zink_screen(ctx->base.screen), &zm, comp->module);
    ctx->dirty_shader_stages &= ~(1 << PIPE_SHADER_COMPUTE);
 
    comp->pipelines = _mesa_hash_table_create(NULL, hash_compute_pipeline_state,
@@ -696,9 +673,6 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       if (prog->shaders[i]) {
          _mesa_set_remove_key(prog->shaders[i]->programs, prog);
          prog->shaders[i] = NULL;
-      }
-      if (prog->modules[i]) {
-         zink_shader_module_reference(screen, &prog->modules[i], NULL);
          destroy_shader_cache(screen, &prog->base.shader_cache[i]);
       }
    }
@@ -728,8 +702,6 @@ zink_destroy_compute_program(struct zink_screen *screen,
 
    if (comp->shader)
       _mesa_set_remove_key(comp->shader->programs, comp);
-   if (comp->module)
-      zink_shader_module_reference(screen, &comp->module, NULL);
 
    hash_table_foreach(comp->pipelines, entry) {
       struct compute_pipeline_cache_entry *pc_entry = entry->data;
