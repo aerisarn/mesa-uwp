@@ -157,34 +157,28 @@ panfrost_get_blend(struct panfrost_batch *batch, unsigned rti, struct panfrost_b
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
-        enum pipe_format fmt = fb->cbufs[rti]->format;
-        unsigned nr_samples = fb->cbufs[rti]->nr_samples ? :
-                              fb->cbufs[rti]->texture->nr_samples;
-
-        /* Grab the blend state */
         struct panfrost_blend_state *blend = ctx->blend;
+        struct pan_blend_info info = blend->info[rti];
+        struct pipe_surface *surf = batch->key.cbufs[rti];
+        enum pipe_format fmt = surf->format;
+
+        /* Use fixed-function if the equation permits, the format is blendable,
+         * and no more than one unique constant is accessed */
+        if (info.fixed_function && panfrost_blendable_formats[fmt].internal &&
+                        pan_blend_is_homogenous_constant(info.constant_mask,
+                                ctx->blend_color.color)) {
+                return 0;
+        }
+
+        /* Otherwise, we need to grab a shader */
         struct pan_blend_state pan_blend = blend->pan;
+        unsigned nr_samples = surf->nr_samples ? : surf->texture->nr_samples;
 
         pan_blend.rts[rti].format = fmt;
         pan_blend.rts[rti].nr_samples = nr_samples;
         memcpy(pan_blend.constants, ctx->blend_color.color,
                sizeof(pan_blend.constants));
 
-        /* First, we'll try fixed function, matching equation and constant */
-        bool ff = blend->info[rti].fixed_function;
-
-        /* Not all formats are blendable, check if this one is */
-        ff &= panfrost_blendable_formats[fmt].internal;
-
-        /* There are hazards around constants, check that */
-        ff &= pan_blend_is_homogenous_constant(blend->info[rti].constant_mask,
-                        ctx->blend_color.color);
-
-        if (ff)
-                return 0;
-
-        /* Otherwise, we need to grab a shader */
         /* Upload the shader, sharing a BO */
         if (!(*bo)) {
                 *bo = panfrost_batch_create_bo(batch, 4096,
