@@ -899,7 +899,7 @@ update_existing_vbo(struct zink_context *ctx, unsigned slot)
    if (!ctx->vertex_buffers[slot].buffer.resource)
       return;
    struct zink_resource *res = zink_resource(ctx->vertex_buffers[slot].buffer.resource);
-   res->vbo_bind_count--;
+   res->vbo_bind_mask &= ~BITFIELD_BIT(slot);
    update_res_bind_count(ctx, res, false, true);
 }
 
@@ -932,7 +932,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
          }
          if (vb->buffer.resource) {
             struct zink_resource *res = zink_resource(vb->buffer.resource);
-            res->vbo_bind_count++;
+            res->vbo_bind_mask |= BITFIELD_BIT(start_slot + i);
             update_res_bind_count(ctx, res, false, false);
             ctx_vb->stride = vb->stride;
             ctx_vb->buffer_offset = vb->buffer_offset;
@@ -2247,8 +2247,8 @@ resource_check_defer_buffer_barrier(struct zink_context *ctx, struct zink_resour
 {
    assert(res->obj->is_buffer);
    if (res->bind_count[0]) {
-      if ((res->obj->is_buffer && res->vbo_bind_count && !(pipeline & VK_PIPELINE_STAGE_VERTEX_INPUT_BIT)) ||
-          ((!res->obj->is_buffer || res->vbo_bind_count != res->bind_count[0]) && !is_shader_pipline_stage(pipeline)))
+      if ((res->obj->is_buffer && res->vbo_bind_mask && !(pipeline & VK_PIPELINE_STAGE_VERTEX_INPUT_BIT)) ||
+          ((!res->obj->is_buffer || util_bitcount(res->vbo_bind_mask) != res->bind_count[0]) && !is_shader_pipline_stage(pipeline)))
          /* gfx rebind */
          _mesa_set_add(ctx->need_barriers[0], res);
    }
@@ -3124,9 +3124,14 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
    unsigned num_rebinds = 0, num_image_rebinds_remaining[2] = {res->image_bind_count[0], res->image_bind_count[1]};
    bool has_write = false;
 
-   if (res->vbo_bind_count) {
+   if (res->vbo_bind_mask) {
+      u_foreach_bit(slot, res->vbo_bind_mask) {
+         if (ctx->vertex_buffers[slot].buffer.resource != &res->base.b) //wrong context
+            return;
+         break;
+      }
       ctx->vertex_buffers_dirty = true;
-      num_rebinds += res->vbo_bind_count;
+      num_rebinds += util_bitcount(res->vbo_bind_mask);
    }
    for (unsigned shader = 0; num_rebinds < total_rebinds && shader < PIPE_SHADER_TYPES; shader++) {
       u_foreach_bit(slot, res->ubo_bind_mask[shader]) {

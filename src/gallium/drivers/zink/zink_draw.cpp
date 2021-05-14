@@ -360,10 +360,10 @@ update_barriers(struct zink_context *ctx, bool is_compute)
                   access |= VK_ACCESS_UNIFORM_READ_BIT;
                   bind_count -= res->ubo_bind_count[is_compute];
                }
-               if (!is_compute && res->vbo_bind_count) {
+               if (!is_compute && res->vbo_bind_mask) {
                   access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
                   pipeline |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-                  bind_count -= res->vbo_bind_count;
+                  bind_count -= util_bitcount(res->vbo_bind_mask);
                }
             }
             if (bind_count)

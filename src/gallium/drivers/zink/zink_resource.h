@@ -105,7 +105,7 @@ struct zink_resource {
    union {
       struct {
          struct util_range valid_buffer_range;
-         uint16_t vbo_bind_count;
+         uint32_t vbo_bind_mask : PIPE_MAX_ATTRIBS;
          uint8_t ubo_bind_count[2];
          uint32_t ubo_bind_mask[PIPE_SHADER_TYPES];
          uint32_t ssbo_bind_mask[PIPE_SHADER_TYPES];
