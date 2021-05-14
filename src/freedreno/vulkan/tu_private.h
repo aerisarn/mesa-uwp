@@ -423,8 +423,16 @@ tu_device_is_lost(struct tu_device *device)
 VkResult
 tu_device_submit_deferred_locked(struct tu_device *dev);
 
+enum tu_bo_alloc_flags
+{
+   TU_BO_ALLOC_NO_FLAGS = 0,
+   TU_BO_ALLOC_ALLOW_DUMP = 1 << 0,
+   TU_BO_ALLOC_GPU_READ_ONLY = 1 << 1,
+};
+
 VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size, bool dump);
+tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size,
+               enum tu_bo_alloc_flags flags);
 VkResult
 tu_bo_init_dmabuf(struct tu_device *dev,
                   struct tu_bo *bo,

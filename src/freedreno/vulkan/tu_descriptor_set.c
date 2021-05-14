@@ -557,7 +557,7 @@ tu_CreateDescriptorPool(VkDevice _device,
    }
 
    if (bo_size) {
-      ret = tu_bo_init_new(device, &pool->bo, bo_size, true);
+      ret = tu_bo_init_new(device, &pool->bo, bo_size, TU_BO_ALLOC_ALLOW_DUMP);
       if (ret)
          goto fail_alloc;
 

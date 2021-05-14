@@ -110,7 +110,8 @@ tu_cs_add_bo(struct tu_cs *cs, uint32_t size)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    VkResult result =
-      tu_bo_init_new(cs->device, new_bo, size * sizeof(uint32_t), true);
+      tu_bo_init_new(cs->device, new_bo, size * sizeof(uint32_t),
+                     TU_BO_ALLOC_ALLOW_DUMP);
    if (result != VK_SUCCESS) {
       free(new_bo);
       return result;

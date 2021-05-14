@@ -279,7 +279,8 @@ tu_bo_init(struct tu_device *dev,
 }
 
 VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size, bool dump)
+tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size,
+               enum tu_bo_alloc_flags flags)
 {
    /* TODO: Choose better flags. As of 2018-11-12, freedreno/drm/msm_bo.c
     * always sets `flags = MSM_BO_WC`, and we copy that behavior here.
@@ -289,12 +290,15 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size, bool dump
       .flags = MSM_BO_WC
    };
 
+   if (flags & TU_BO_ALLOC_GPU_READ_ONLY)
+      req.flags |= MSM_BO_GPU_READONLY;
+
    int ret = drmCommandWriteRead(dev->fd,
                                  DRM_MSM_GEM_NEW, &req, sizeof(req));
    if (ret)
       return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   return tu_bo_init(dev, bo, req.handle, size, dump);
+   return tu_bo_init(dev, bo, req.handle, size, flags & TU_BO_ALLOC_ALLOW_DUMP);
 }
 
 VkResult

@@ -81,11 +81,16 @@ tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
 }
 
 VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size, bool dump)
+tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size,
+               enum tu_bo_alloc_flags flags)
 {
    struct kgsl_gpumem_alloc_id req = {
       .size = size,
    };
+
+   if (flags & TU_BO_ALLOC_GPU_READ_ONLY)
+      req.flags |= KGSL_MEMFLAGS_GPUREADONLY;
+
    int ret;
 
    ret = safe_ioctl(dev->physical_device->local_fd,
