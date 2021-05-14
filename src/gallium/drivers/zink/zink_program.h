@@ -84,7 +84,7 @@ struct zink_program {
    unsigned num_dsl;
 
    /* the shader cache stores a mapping of zink_shader_key::VkShaderModule */
-   struct hash_table shader_cache;
+   struct hash_table shader_cache[ZINK_SHADER_COUNT];
 };
 
 struct zink_gfx_program {
