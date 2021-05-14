@@ -329,7 +329,7 @@ build_array_deref_of_new_var(nir_builder *b, nir_variable *new_var,
 
 static nir_ssa_def *
 build_array_index(nir_builder *b, nir_deref_instr *deref, nir_ssa_def *base,
-                  bool vs_in)
+                  bool vs_in, bool per_vertex)
 {
    switch (deref->deref_type) {
    case nir_deref_type_var:
@@ -337,8 +337,13 @@ build_array_index(nir_builder *b, nir_deref_instr *deref, nir_ssa_def *base,
    case nir_deref_type_array: {
       nir_ssa_def *index = nir_i2i(b, deref->arr.index.ssa,
                                    deref->dest.ssa.bit_size);
+
+      if (nir_deref_instr_parent(deref)->deref_type == nir_deref_type_var &&
+          per_vertex)
+         return base;
+
       return nir_iadd(
-         b, build_array_index(b, nir_deref_instr_parent(deref), base, vs_in),
+         b, build_array_index(b, nir_deref_instr_parent(deref), base, vs_in, per_vertex),
          nir_amul_imm(b, index, glsl_count_attribute_slots(deref->type, vs_in)));
    }
    default:
@@ -353,10 +358,16 @@ build_array_deref_of_new_var_flat(nir_shader *shader,
 {
    nir_deref_instr *deref = nir_build_deref_var(b, new_var);
 
-   if (nir_is_arrayed_io(new_var, shader->info.stage)) {
-      assert(leader->deref_type == nir_deref_type_array);
-      nir_ssa_def *index = leader->arr.index.ssa;
-      leader = nir_deref_instr_parent(leader);
+   bool per_vertex = nir_is_arrayed_io(new_var, shader->info.stage);
+   if (per_vertex) {
+      nir_deref_path path;
+      nir_deref_path_init(&path, leader, NULL);
+
+      assert(path.path[0]->deref_type == nir_deref_type_var);
+      nir_deref_instr *p = path.path[1];
+      nir_deref_path_finish(&path);
+
+      nir_ssa_def *index = p->arr.index.ssa;
       deref = nir_build_deref_array(b, deref, index);
    }
 
@@ -365,8 +376,8 @@ build_array_deref_of_new_var_flat(nir_shader *shader,
 
    bool vs_in = shader->info.stage == MESA_SHADER_VERTEX &&
                 new_var->data.mode == nir_var_shader_in;
-   return nir_build_deref_array(
-      b, deref, build_array_index(b, leader, nir_imm_int(b, base), vs_in));
+   return nir_build_deref_array(b, deref,
+      build_array_index(b, leader, nir_imm_int(b, base), vs_in, per_vertex));
 }
 
 static bool
