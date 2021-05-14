@@ -44,10 +44,6 @@ struct panfrost_blend_shader_final {
         unsigned first_tag;
 };
 
-struct panfrost_blend_equation_final {
-        float constant;
-};
-
 struct pan_blend_info {
         unsigned constant_mask : 4;
         bool fixed_function : 1;
@@ -69,11 +65,7 @@ struct panfrost_blend_state {
 struct panfrost_blend_final {
         /* Set for a shader, clear for an equation */
         bool is_shader;
-
-        union {
-                struct panfrost_blend_shader_final shader;
-                struct panfrost_blend_equation_final equation;
-        };
+        struct panfrost_blend_shader_final shader;
 };
 
 void

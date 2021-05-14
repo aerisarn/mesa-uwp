@@ -182,12 +182,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                         ctx->blend_color.color);
 
         if (ff) {
-                struct panfrost_blend_final final = {
-                        .equation.constant = pan_blend_get_constant(
-                                        blend->info[rti].constant_mask,
-                                        ctx->blend_color.color),
-                };
-
+                struct panfrost_blend_final final = {};
                 return final;
         }
 
