@@ -506,6 +506,19 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
         }
 }
 
+/* Get the last blend shader, for an erratum workaround */
+
+static mali_ptr
+panfrost_last_nonnull(mali_ptr *ptrs, unsigned count)
+{
+        for (signed i = ((signed) count - 1); i >= 0; --i) {
+                if (ptrs[i])
+                        return ptrs[i];
+        }
+
+        return 0;
+}
+
 static void
 panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                                   mali_ptr *blend_shaders,
@@ -571,15 +584,8 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 state->sfbd_blend_equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
                 state->sfbd_blend_equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
         } else {
-                /* Bug where MRT-capable hw apparently reads the last blend
-                 * shader from here instead of the usual location? */
-
-                for (signed rt = ((signed) rt_count - 1); rt >= 0; --rt) {
-                        if (blend_shaders[rt]) {
-                                state->sfbd_blend_shader = blend_shaders[rt];
-                                break;
-                        }
-                }
+                /* Workaround on v5 */
+                state->sfbd_blend_shader = panfrost_last_nonnull(blend_shaders, rt_count);
         }
 
 }
