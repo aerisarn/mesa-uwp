@@ -1809,6 +1809,9 @@ isl_aux_state_transition_write(enum isl_aux_state initial_state,
 bool
 isl_aux_usage_has_fast_clears(enum isl_aux_usage usage);
 
+bool
+isl_aux_usage_has_compression(enum isl_aux_usage usage);
+
 static inline bool
 isl_aux_usage_has_hiz(enum isl_aux_usage usage)
 {
