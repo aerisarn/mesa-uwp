@@ -194,7 +194,7 @@ tu_cs_reserve(struct tu_cs *cs, uint32_t reserved_size)
       return;
    }
 
-   VkResult result = tu_cs_reserve_space(cs, reserved_size);
+   ASSERTED VkResult result = tu_cs_reserve_space(cs, reserved_size);
    /* TODO: set this error in tu_cs and use it */
    assert(result == VK_SUCCESS);
 }
