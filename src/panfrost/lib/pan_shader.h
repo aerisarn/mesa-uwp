@@ -127,6 +127,9 @@ pan_shader_prepare_bifrost_rsd(const struct panfrost_device *dev,
                         rsd->properties.bifrost.shader_wait_dependency_7 = info->bifrost.wait_7;
                 }
 
+                rsd->properties.bifrost.allow_forward_pixel_to_be_killed =
+                        !info->fs.sidefx;
+
                 rsd->preload.fragment.fragment_position = info->fs.reads_frag_coord;
                 rsd->preload.fragment.coverage = true;
                 rsd->preload.fragment.primitive_flags = info->fs.reads_face;
