@@ -1257,7 +1257,7 @@ brw_load_register_imm64(struct brw_context *brw, uint32_t reg, uint64_t imm)
 void
 brw_load_register_reg(struct brw_context *brw, uint32_t dest, uint32_t src)
 {
-   assert(brw->screen->devinfo.ver >= 8 || brw->screen->devinfo.is_haswell);
+   assert(brw->screen->devinfo.verx10 >= 75);
 
    BEGIN_BATCH(3);
    OUT_BATCH(MI_LOAD_REGISTER_REG | (3 - 2));
@@ -1272,7 +1272,7 @@ brw_load_register_reg(struct brw_context *brw, uint32_t dest, uint32_t src)
 void
 brw_load_register_reg64(struct brw_context *brw, uint32_t dest, uint32_t src)
 {
-   assert(brw->screen->devinfo.ver >= 8 || brw->screen->devinfo.is_haswell);
+   assert(brw->screen->devinfo.verx10 >= 75);
 
    BEGIN_BATCH(6);
    OUT_BATCH(MI_LOAD_REGISTER_REG | (3 - 2));

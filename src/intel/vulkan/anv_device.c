@@ -258,8 +258,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_buffer_device_address             = device->has_a64_buffer_access,
       .EXT_calibrated_timestamps             = device->has_reg_timestamp,
       .EXT_color_write_enable                = true,
-      .EXT_conditional_rendering             = device->info.ver >= 8 ||
-                                               device->info.is_haswell,
+      .EXT_conditional_rendering             = device->info.verx10 >= 75,
       .EXT_conservative_rasterization        = device->info.ver >= 9,
       .EXT_custom_border_color               = device->info.ver >= 8,
       .EXT_depth_clip_enable                 = true,
@@ -1397,10 +1396,8 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
          VkPhysicalDeviceConditionalRenderingFeaturesEXT *features =
             (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)ext;
-         features->conditionalRendering = pdevice->info.ver >= 8 ||
-                                          pdevice->info.is_haswell;
-         features->inheritedConditionalRendering = pdevice->info.ver >= 8 ||
-                                                   pdevice->info.is_haswell;
+         features->conditionalRendering = pdevice->info.verx10 >= 75;
+         features->inheritedConditionalRendering = pdevice->info.verx10 >= 75;
          break;
       }
 
@@ -2533,8 +2530,7 @@ void anv_GetPhysicalDeviceProperties2(
          props->transformFeedbackStreamsLinesTriangles = false;
          props->transformFeedbackRasterizationStreamSelect = false;
          /* This requires MI_MATH */
-         props->transformFeedbackDraw = pdevice->info.is_haswell ||
-                                        pdevice->info.ver >= 8;
+         props->transformFeedbackDraw = pdevice->info.verx10 >= 75;
          break;
       }
 
