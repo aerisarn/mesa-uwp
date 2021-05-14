@@ -65,6 +65,7 @@ struct zink_cs_push_constant {
  */
 struct zink_shader_module {
    VkShaderModule shader;
+   bool default_variant;
 };
 
 struct zink_program {

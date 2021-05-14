@@ -250,6 +250,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
       if (key.is_default_variant) {
          /* previously returned */
          *default_zm = zm;
+         zm->default_variant = true;
          prog->default_variant_key[pstage] = keybox;
       }
    }
