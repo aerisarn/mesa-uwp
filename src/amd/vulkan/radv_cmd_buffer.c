@@ -6502,13 +6502,13 @@ radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer, struct radv_ima
          return;
    }
 
-   if (src_layout == dst_layout && src_render_loop == dst_render_loop)
-      return;
-
    unsigned src_queue_mask =
       radv_image_queue_family_mask(image, src_family, cmd_buffer->queue_family_index);
    unsigned dst_queue_mask =
       radv_image_queue_family_mask(image, dst_family, cmd_buffer->queue_family_index);
+
+   if (src_layout == dst_layout && src_render_loop == dst_render_loop && src_queue_mask == dst_queue_mask)
+      return;
 
    if (vk_format_has_depth(image->vk_format)) {
       radv_handle_depth_image_transition(cmd_buffer, image, src_layout, src_render_loop, dst_layout,
