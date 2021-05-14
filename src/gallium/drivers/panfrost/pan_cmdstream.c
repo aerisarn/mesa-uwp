@@ -364,7 +364,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 for (unsigned i = 0; i < format_desc->nr_channels; i++)
                                         chan_size = MAX2(format_desc->channel[0].size, chan_size);
 
-                                cfg.bifrost.equation = blend[i].equation.equation;
+                                cfg.bifrost.equation = so->equation[i];
 
                                 /* Fixed point constant */
                                 u16 constant = blend[i].equation.constant * ((1 << chan_size) - 1);
@@ -431,7 +431,7 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                         if (blend[i].is_shader) {
                                 cfg.midgard.shader_pc = blend[i].shader.gpu | blend[i].shader.first_tag;
                         } else {
-                                cfg.midgard.equation = blend[i].equation.equation;
+                                cfg.midgard.equation = ctx->blend->equation[i];
                                 cfg.midgard.constant = blend[i].equation.constant;
                         }
                 }
@@ -569,7 +569,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                         state->sfbd_blend_shader = blend[0].shader.gpu |
                                                    blend[0].shader.first_tag;
                 } else {
-                        state->sfbd_blend_equation = blend[0].equation.equation;
+                        state->sfbd_blend_equation = so->equation[0];
                         state->sfbd_blend_constant = blend[0].equation.constant;
                 }
         } else if (dev->quirks & MIDGARD_SFBD) {

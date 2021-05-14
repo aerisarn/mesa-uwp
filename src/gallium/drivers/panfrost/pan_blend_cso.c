@@ -115,6 +115,13 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                 };
 
                 so->pan.rts[c].equation = equation;
+
+                /* Converting equations to Mali style is expensive, do it at
+                 * CSO create time instead of draw-time */
+                if (so->info[c].fixed_function) {
+                        pan_blend_to_fixed_function_equation(equation,
+                                        &so->equation[c]);
+                }
         }
 
         return so;
@@ -165,7 +172,6 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                sizeof(pan_blend.constants));
 
         /* First, we'll try fixed function, matching equation and constant */
-        const struct pan_blend_equation eq = pan_blend.rts[rti].equation;
         bool ff = blend->info[rti].fixed_function;
 
         /* Not all formats are blendable, check if this one is */
@@ -182,7 +188,6 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                                         ctx->blend_color.color),
                 };
 
-                pan_blend_to_fixed_function_equation(eq, &final.equation.equation);
                 return final;
         }
 
