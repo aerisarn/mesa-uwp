@@ -427,20 +427,22 @@ zink_create_gfx_program(struct zink_context *ctx,
    pipe_reference_init(&prog->base.reference, 1);
 
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
-      if (stages[i] || prog->shaders[i])
+      if (stages[i]) {
          _mesa_hash_table_init(&prog->base.shader_cache[i], prog, keybox_hash, keybox_equals);
-      prog->shaders[i] = stages[i];
-      /* always force shader creation during init */
-      ctx->dirty_shader_stages |= BITFIELD_BIT(i);
+         prog->shaders[i] = stages[i];
+         prog->stages_present |= BITFIELD_BIT(i);
+      }
    }
    if (stages[PIPE_SHADER_TESS_EVAL] && !stages[PIPE_SHADER_TESS_CTRL]) {
       prog->shaders[PIPE_SHADER_TESS_EVAL]->generated =
       prog->shaders[PIPE_SHADER_TESS_CTRL] =
         zink_shader_tcs_create(ctx, stages[PIPE_SHADER_VERTEX]);
         _mesa_hash_table_init(&prog->base.shader_cache[PIPE_SHADER_TESS_CTRL], prog, keybox_hash, keybox_equals);
-      ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_TESS_CTRL);
+      prog->stages_present |= BITFIELD_BIT(PIPE_SHADER_TESS_CTRL);
    }
 
+   /* always force shader creation during init */
+   ctx->dirty_shader_stages |= prog->stages_present;
    assign_io(prog, prog->shaders);
 
    update_shader_modules(ctx, prog->shaders, prog, false);
