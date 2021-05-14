@@ -66,6 +66,7 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                             const struct pipe_blend_state *blend)
 {
         struct panfrost_context *ctx = pan_context(pipe);
+        struct panfrost_device *dev = pan_device(pipe->screen);
         struct panfrost_blend_state *so = rzalloc(ctx, struct panfrost_blend_state);
         so->base = *blend;
 
@@ -76,24 +77,44 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 
         for (unsigned c = 0; c < so->pan.rt_count; ++c) {
                 unsigned g = blend->independent_blend_enable ? c : 0;
-                const struct pipe_rt_blend_state *pipe = &blend->rt[g];
-                struct pan_blend_equation *equation = &so->pan.rts[c].equation;
+                const struct pipe_rt_blend_state pipe = blend->rt[g];
+                struct pan_blend_equation equation;
 
-                equation->color_mask = pipe->colormask;
-                equation->blend_enable = pipe->blend_enable;
-                if (!equation->blend_enable)
-                        continue;
+                equation.color_mask = pipe.colormask;
+                equation.blend_enable = pipe.blend_enable;
 
-                equation->rgb_func = util_blend_func_to_shader(pipe->rgb_func);
-                equation->rgb_src_factor = util_blend_factor_to_shader(pipe->rgb_src_factor);
-                equation->rgb_invert_src_factor = util_blend_factor_is_inverted(pipe->rgb_src_factor);
-                equation->rgb_dst_factor = util_blend_factor_to_shader(pipe->rgb_dst_factor);
-                equation->rgb_invert_dst_factor = util_blend_factor_is_inverted(pipe->rgb_dst_factor);
-                equation->alpha_func = util_blend_func_to_shader(pipe->alpha_func);
-                equation->alpha_src_factor = util_blend_factor_to_shader(pipe->alpha_src_factor);
-                equation->alpha_invert_src_factor = util_blend_factor_is_inverted(pipe->alpha_src_factor);
-                equation->alpha_dst_factor = util_blend_factor_to_shader(pipe->alpha_dst_factor);
-                equation->alpha_invert_dst_factor = util_blend_factor_is_inverted(pipe->alpha_dst_factor);
+                if (pipe.blend_enable) {
+                        equation.rgb_func = util_blend_func_to_shader(pipe.rgb_func);
+                        equation.rgb_src_factor = util_blend_factor_to_shader(pipe.rgb_src_factor);
+                        equation.rgb_invert_src_factor = util_blend_factor_is_inverted(pipe.rgb_src_factor);
+                        equation.rgb_dst_factor = util_blend_factor_to_shader(pipe.rgb_dst_factor);
+                        equation.rgb_invert_dst_factor = util_blend_factor_is_inverted(pipe.rgb_dst_factor);
+                        equation.alpha_func = util_blend_func_to_shader(pipe.alpha_func);
+                        equation.alpha_src_factor = util_blend_factor_to_shader(pipe.alpha_src_factor);
+                        equation.alpha_invert_src_factor = util_blend_factor_is_inverted(pipe.alpha_src_factor);
+                        equation.alpha_dst_factor = util_blend_factor_to_shader(pipe.alpha_dst_factor);
+                        equation.alpha_invert_dst_factor = util_blend_factor_is_inverted(pipe.alpha_dst_factor);
+                }
+
+                /* Determine some common properties */
+                unsigned constant_mask = pan_blend_constant_mask(equation);
+                so->info[c] = (struct pan_blend_info) {
+                        .no_colour = (equation.color_mask == 0),
+                        .opaque = pan_blend_is_opaque(equation),
+                        .constant_mask = constant_mask,
+
+                        /* TODO: check the dest for the logicop */
+                        .load_dest = blend->logicop_enable ||
+                                pan_blend_reads_dest(equation),
+
+                        /* Could this possibly be fixed-function? */
+                        .fixed_function = !blend->logicop_enable &&
+                                pan_blend_can_fixed_function(equation) &&
+                                (!constant_mask ||
+                                 pan_blend_supports_constant(dev->arch, c))
+                };
+
+                so->pan.rts[c].equation = equation;
         }
 
         return so;
@@ -145,20 +166,20 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
 
         /* First, we'll try fixed function, matching equation and constant */
         const struct pan_blend_equation eq = pan_blend.rts[rti].equation;
-        unsigned constant_mask = pan_blend_constant_mask(eq);
+        bool ff = blend->info[rti].fixed_function;
 
-        bool ff = pan_blend_can_fixed_function(eq);
-        ff &= pan_blend_is_homogenous_constant(constant_mask, ctx->blend_color.color);
-        ff &= (pan_blend_supports_constant(dev->arch, rti) || !constant_mask);
-        ff &= !pan_blend.logicop_enable;
+        /* Not all formats are blendable, check if this one is */
         ff &= panfrost_blendable_formats[fmt].internal;
+
+        /* There are hazards around constants, check that */
+        ff &= pan_blend_is_homogenous_constant(blend->info[rti].constant_mask,
+                        ctx->blend_color.color);
 
         if (ff) {
                 struct panfrost_blend_final final = {
-                        .load_dest = pan_blend_reads_dest(pan_blend.rts[rti].equation),
-                        .equation.constant = pan_blend_get_constant(constant_mask, ctx->blend_color.color),
-                        .opaque = pan_blend_is_opaque(pan_blend.rts[rti].equation),
-                        .no_colour = pan_blend.rts[rti].equation.color_mask == 0,
+                        .equation.constant = pan_blend_get_constant(
+                                        blend->info[rti].constant_mask,
+                                        ctx->blend_color.color),
                 };
 
                 pan_blend_to_fixed_function_equation(eq, &final.equation.equation);
@@ -204,8 +225,6 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                         .first_tag = shader->first_tag,
                         .gpu = (*bo)->ptr.gpu + *shader_offset,
                 },
-                .load_dest = pan_blend.logicop_enable ||
-                        pan_blend_reads_dest(pan_blend.rts[rti].equation),
         };
 
         *shader_offset += shader->binary.size;

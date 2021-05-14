@@ -260,7 +260,7 @@ void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
 static bool
 panfrost_fs_required(
                 struct panfrost_shader_state *fs,
-                struct panfrost_blend_final *blend,
+                struct panfrost_blend_state *blend,
                 struct pipe_framebuffer_state *state)
 {
         /* If we generally have side effects */
@@ -269,7 +269,7 @@ panfrost_fs_required(
 
         /* If colour is written we need to execute */
         for (unsigned i = 0; i < state->nr_cbufs; ++i) {
-                if (!blend[i].no_colour && state->cbufs[i])
+                if (state->cbufs[i] && !blend->info[i].no_colour)
                         return true;
         }
 
@@ -308,8 +308,10 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                             void *rts)
 {
         unsigned rt_count = batch->key.nr_cbufs;
-        const struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-        struct panfrost_shader_state *fs = panfrost_get_shader_state(batch->ctx, PIPE_SHADER_FRAGMENT);
+        struct panfrost_context *ctx = batch->ctx;
+        const struct panfrost_blend_state *so = ctx->blend;
+        const struct panfrost_device *dev = pan_device(ctx->base.screen);
+        struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
         /* Always have at least one render target for depth-only passes */
         for (unsigned i = 0; i < MAX2(rt_count, 1); ++i) {
@@ -324,14 +326,16 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                 }
 
                 pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
-                        if (blend[i].no_colour) {
+                        struct pan_blend_info info = so->info[i];
+
+                        if (info.no_colour) {
                                 cfg.enable = false;
                         } else {
                                 cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
-                                cfg.load_destination = blend[i].load_dest;
+                                cfg.load_destination = info.load_dest;
 
-                                cfg.round_to_fb_precision = !batch->ctx->blend->base.dither;
-                                cfg.alpha_to_one = batch->ctx->blend->base.alpha_to_one;
+                                cfg.round_to_fb_precision = !ctx->blend->base.dither;
+                                cfg.alpha_to_one = ctx->blend->base.alpha_to_one;
                         }
 
                         if (blend[i].is_shader) {
@@ -367,10 +371,9 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 constant <<= 16 - chan_size;
                                 cfg.bifrost.constant = constant;
 
-                                if (blend[i].opaque)
-                                        cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OPAQUE;
-                                else
-                                        cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_FIXED_FUNCTION;
+                                cfg.bifrost.internal.mode = info.opaque ?
+                                        MALI_BIFROST_BLEND_MODE_OPAQUE :
+                                        MALI_BIFROST_BLEND_MODE_FIXED_FUNCTION;
 
                                 /* If we want the conversion to work properly,
                                  * num_comps must be set to 4
@@ -392,6 +395,8 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                             void *rts)
 {
         unsigned rt_count = batch->key.nr_cbufs;
+        struct panfrost_context *ctx = batch->ctx;
+        const struct panfrost_blend_state *so = ctx->blend;
 
         /* Always have at least one render target for depth-only passes */
         for (unsigned i = 0; i < MAX2(rt_count, 1); ++i) {
@@ -411,15 +416,17 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                 }
 
                 pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
-                        if (blend[i].no_colour) {
+                        struct pan_blend_info info = so->info[i];
+
+                        if (info.no_colour) {
                                 cfg.enable = false;
                                 continue;
                         }
 
                         cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
-                        cfg.load_destination = blend[i].load_dest;
-                        cfg.round_to_fb_precision = !batch->ctx->blend->base.dither;
-                        cfg.alpha_to_one = batch->ctx->blend->base.alpha_to_one;
+                        cfg.load_destination = info.load_dest;
+                        cfg.round_to_fb_precision = !ctx->blend->base.dither;
+                        cfg.alpha_to_one = ctx->blend->base.alpha_to_one;
                         cfg.midgard.blend_shader = blend[i].is_shader;
                         if (blend[i].is_shader) {
                                 cfg.midgard.shader_pc = blend[i].shader.gpu | blend[i].shader.first_tag;
@@ -436,6 +443,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                 struct panfrost_blend_final *blend)
 {
         const struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+        struct panfrost_blend_state *so = batch->ctx->blend;
 
         if (pan_is_bifrost(dev))
                 panfrost_emit_bifrost_blend(batch, blend, rts);
@@ -443,7 +451,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                 panfrost_emit_midgard_blend(batch, blend, rts);
 
         for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
-                if (!blend[i].no_colour && batch->key.cbufs[i]) {
+                if (!so->info[i].no_colour && batch->key.cbufs[i]) {
                         batch->draws |= (PIPE_CLEAR_COLOR0 << i);
                         batch->resolve |= (PIPE_CLEAR_COLOR0 << i);
                 }
@@ -457,9 +465,10 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
-        bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
+        struct panfrost_blend_state *so = ctx->blend;
+        bool alpha_to_coverage = so->base.alpha_to_coverage;
 
-        if (!panfrost_fs_required(fs, blend, &ctx->pipe_framebuffer)) {
+        if (!panfrost_fs_required(fs, so, &ctx->pipe_framebuffer)) {
                 state->properties.bifrost.shader_modifies_coverage = true;
                 state->properties.bifrost.allow_forward_pixel_to_kill = true;
                 state->properties.bifrost.allow_forward_pixel_to_be_killed = true;
@@ -475,7 +484,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                 for (unsigned i = 0; i < ctx->pipe_framebuffer.nr_cbufs; ++i) {
                         if (ctx->pipe_framebuffer.cbufs[i]) {
                                 rt_mask |= (1 << i);
-                                blend_reads_dest |= blend[i].load_dest;
+                                blend_reads_dest |= so->info[i].load_dest;
                         }
                 }
 
@@ -505,7 +514,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
         unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
         bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
 
-        if (!panfrost_fs_required(fs, blend, &ctx->pipe_framebuffer)) {
+        if (!panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer)) {
                 state->shader.shader = 0x1;
                 state->properties.midgard.work_register_count = 1;
                 state->properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
@@ -548,12 +557,13 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
         }
 
         if (dev->quirks & MIDGARD_SFBD && ctx->pipe_framebuffer.nr_cbufs > 0) {
-                state->multisample_misc.sfbd_load_destination = blend[0].load_dest;
+                struct panfrost_blend_state *so = ctx->blend;
+                state->multisample_misc.sfbd_load_destination = so->info[0].load_dest;
                 state->multisample_misc.sfbd_blend_shader = blend[0].is_shader;
-                state->stencil_mask_misc.sfbd_write_enable = !blend[0].no_colour;
+                state->stencil_mask_misc.sfbd_write_enable = !so->info[0].no_colour;
                 state->stencil_mask_misc.sfbd_srgb = util_format_is_srgb(ctx->pipe_framebuffer.cbufs[0]->format);
-                state->stencil_mask_misc.sfbd_dither_disable = !ctx->blend->base.dither;
-                state->stencil_mask_misc.sfbd_alpha_to_one = ctx->blend->base.alpha_to_one;
+                state->stencil_mask_misc.sfbd_dither_disable = !so->base.dither;
+                state->stencil_mask_misc.sfbd_alpha_to_one = so->base.alpha_to_one;
 
                 if (blend[0].is_shader) {
                         state->sfbd_blend_shader = blend[0].shader.gpu |

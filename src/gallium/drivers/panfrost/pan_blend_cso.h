@@ -69,9 +69,18 @@ struct panfrost_blend_equation_final {
         float constant;
 };
 
+struct pan_blend_info {
+        unsigned constant_mask : 4;
+        bool fixed_function : 1;
+        bool no_colour : 1;
+        bool load_dest : 1;
+        bool opaque : 1;
+};
+
 struct panfrost_blend_state {
         struct pipe_blend_state base;
         struct pan_blend_state pan;
+        struct pan_blend_info info[PIPE_MAX_COLOR_BUFS];
 };
 
 /* Container for a final blend state, specialized to constants and a
@@ -80,15 +89,6 @@ struct panfrost_blend_state {
 struct panfrost_blend_final {
         /* Set for a shader, clear for an equation */
         bool is_shader;
-
-        /* Set if this is the replace mode */
-        bool opaque;
-
-        /* Set if destination is loaded */
-        bool load_dest;
-
-        /* Set if the colour mask is 0x0 (nothing is written) */
-        bool no_colour;
 
         union {
                 struct panfrost_blend_shader_final shader;
