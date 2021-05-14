@@ -70,7 +70,6 @@ panfrost_create_blend_state(struct pipe_context *pipe,
         struct panfrost_blend_state *so = rzalloc(ctx, struct panfrost_blend_state);
         so->base = *blend;
 
-        so->pan.dither = blend->dither;
         so->pan.logicop_enable = blend->logicop_enable;
         so->pan.logicop_func = blend->logicop_func;
         so->pan.rt_count = blend->max_rt + 1;

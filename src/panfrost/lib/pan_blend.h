@@ -61,7 +61,6 @@ struct pan_blend_rt_state {
 };
 
 struct pan_blend_state {
-        bool dither;
         bool logicop_enable;
         enum pipe_logicop logicop_func;
         float constants[4];
