@@ -3409,14 +3409,13 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx)
       goto fail;
    ctx->have_timelines = screen->info.have_KHR_timeline_semaphore;
-   ctx->dynamic_state = screen->info.have_EXT_extended_dynamic_state;
 
    ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
    ctx->gfx_pipeline_state.dirty = true;
    ctx->compute_pipeline_state.dirty = true;
    ctx->fb_changed = ctx->rp_changed = true;
 
-   zink_init_draw_functions(ctx);
+   zink_init_draw_functions(ctx, screen);
    zink_init_grid_functions(ctx);
 
    ctx->base.screen = pscreen;
@@ -3579,7 +3578,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (tc && (struct zink_context*)tc != ctx) {
       tc->bytes_mapped_limit = screen->total_mem / 4;
       ctx->base.set_context_param = zink_set_context_param;
-      ctx->multidraw = screen->info.have_EXT_multi_draw;
    }
 
    return (struct pipe_context*)tc;

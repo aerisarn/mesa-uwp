@@ -162,9 +162,7 @@ struct zink_context {
    struct slab_child_pool transfer_pool_unsync;
    struct blitter_context *blitter;
 
-   zink_multidraw multidraw : 1;
-   zink_dynamic_state dynamic_state : 1;
-   pipe_draw_vbo_func draw_vbo[2][2][2]; //multidraw, dynamic state, batch changed
+   pipe_draw_vbo_func draw_vbo[2]; //batch changed
    pipe_launch_grid_func launch_grid[2]; //batch changed
 
    struct pipe_device_reset_callback reset;
@@ -387,7 +385,7 @@ zink_pipeline_flags_from_pipe_stage(enum pipe_shader_type pstage)
 }
 
 void
-zink_init_draw_functions(struct zink_context *ctx);
+zink_init_draw_functions(struct zink_context *ctx, struct zink_screen *screen);
 void
 zink_init_grid_functions(struct zink_context *ctx);
 

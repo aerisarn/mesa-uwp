@@ -804,32 +804,33 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 
 template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE, bool BATCH_CHANGED>
 static void
-init_batch_changed_functions(struct zink_context *ctx)
+init_batch_changed_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2])
 {
-   ctx->draw_vbo[HAS_MULTIDRAW][HAS_DYNAMIC_STATE][BATCH_CHANGED] = zink_draw_vbo<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, BATCH_CHANGED>;
+   draw_vbo_array[HAS_MULTIDRAW][HAS_DYNAMIC_STATE][BATCH_CHANGED] =
+   zink_draw_vbo<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, BATCH_CHANGED>;
 }
 
 template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE>
 static void
-init_dynamic_state_functions(struct zink_context *ctx)
+init_dynamic_state_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2])
 {
-   init_batch_changed_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, false>(ctx);
-   init_batch_changed_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, true>(ctx);
+   init_batch_changed_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, false>(ctx, draw_vbo_array);
+   init_batch_changed_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, true>(ctx, draw_vbo_array);
 }
 
 template <zink_multidraw HAS_MULTIDRAW>
 static void
-init_multidraw_functions(struct zink_context *ctx)
+init_multidraw_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2])
 {
-   init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_NO_DYNAMIC_STATE>(ctx);
-   init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_DYNAMIC_STATE>(ctx);
+   init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_NO_DYNAMIC_STATE>(ctx, draw_vbo_array);
+   init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_DYNAMIC_STATE>(ctx, draw_vbo_array);
 }
 
 static void
-init_all_draw_functions(struct zink_context *ctx)
+init_all_draw_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2])
 {
-   init_multidraw_functions<ZINK_NO_MULTIDRAW>(ctx);
-   init_multidraw_functions<ZINK_MULTIDRAW>(ctx);
+   init_multidraw_functions<ZINK_NO_MULTIDRAW>(ctx, draw_vbo_array);
+   init_multidraw_functions<ZINK_MULTIDRAW>(ctx, draw_vbo_array);
 }
 
 template <bool BATCH_CHANGED>
@@ -865,9 +866,14 @@ zink_invalid_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info 
 
 extern "C"
 void
-zink_init_draw_functions(struct zink_context *ctx)
+zink_init_draw_functions(struct zink_context *ctx, struct zink_screen *screen)
 {
-   init_all_draw_functions(ctx);
+   pipe_draw_vbo_func draw_vbo_array[2][2][2]; //multidraw, dynamic state, batch changed
+   init_all_draw_functions(ctx, draw_vbo_array);
+   memcpy(ctx->draw_vbo, &draw_vbo_array[screen->info.have_EXT_multi_draw]
+                                        [screen->info.have_EXT_extended_dynamic_state],
+                                        sizeof(ctx->draw_vbo));
+
    /* Bind a fake draw_vbo, so that draw_vbo isn't NULL, which would skip
     * initialization of callbacks in upper layers (such as u_threaded_context).
     */
