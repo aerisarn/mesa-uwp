@@ -169,6 +169,12 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
 #define pan_section_print(fp, A, S, var, indent)                          \\
         MALI_ ## A ## _SECTION_ ## S ## _print(fp, &(var), indent)
 
+#define pan_merge(packed1, packed2, type) \
+        do { \
+                for (unsigned i = 0; i < (MALI_ ## type ## _LENGTH / 4); ++i) \
+                        packed1.opaque[i] |= packed2.opaque[i]; \
+        } while(0)
+
 #define mali_pixel_format_print_v6(fp, format) \\
     fprintf(fp, "%*sFormat (v6): %s%s%s %s%s%s%s\\n", indent, "", \\
         mali_format_as_str((enum mali_format)((format >> 12) & 0xFF)), \\
