@@ -1716,6 +1716,7 @@ vn_physical_device_fini(struct vn_physical_device *physical_dev)
 static VkResult
 vn_instance_enumerate_physical_devices(struct vn_instance *instance)
 {
+   /* TODO cache device group info here as well */
    const VkAllocationCallbacks *alloc = &instance->base.base.alloc;
    struct vn_physical_device *physical_devs = NULL;
    VkResult result;
@@ -2051,6 +2052,9 @@ vn_EnumeratePhysicalDeviceGroups(
    if (result != VK_SUCCESS)
       return vn_error(instance, result);
 
+   if (pPhysicalDeviceGroupProperties && *pPhysicalDeviceGroupCount == 0)
+      return instance->physical_device_count ? VK_INCOMPLETE : VK_SUCCESS;
+
    /* make sure VkPhysicalDevice point to objects, as they are considered
     * inputs by the encoder
     */
@@ -2077,7 +2081,7 @@ vn_EnumeratePhysicalDeviceGroups(
    }
 
    result = vn_call_vkEnumeratePhysicalDeviceGroups(
-      instance, vn_instance_to_handle(instance), pPhysicalDeviceGroupCount,
+      instance, _instance, pPhysicalDeviceGroupCount,
       pPhysicalDeviceGroupProperties);
    if (result != VK_SUCCESS) {
       if (dummy)
