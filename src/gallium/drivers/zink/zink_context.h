@@ -174,7 +174,8 @@ struct zink_context {
    struct zink_fence *last_fence; //the last command buffer submitted
    struct hash_table batch_states; //submitted batch states
    struct util_dynarray free_batch_states; //unused batch states
-   VkDeviceSize resource_size; //the accumulated size of resources in submitted buffers
+   bool oom_flush;
+   bool oom_stall;
    struct zink_batch batch;
 
    unsigned shader_has_inlinable_uniforms_mask;

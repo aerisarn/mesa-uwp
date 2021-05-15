@@ -1907,12 +1907,10 @@ flush_batch(struct zink_context *ctx, bool sync)
       zink_select_draw_vbo(ctx);
       zink_select_launch_grid(ctx);
 
-      if (ctx->resource_size >= zink_screen(ctx->base.screen)->total_video_mem / 2 ||
-          _mesa_hash_table_num_entries(&ctx->batch_states) > 100) {
-         sync_flush(ctx, zink_batch_state(ctx->last_fence));
-         zink_vkfence_wait(zink_screen(ctx->base.screen), ctx->last_fence, PIPE_TIMEOUT_INFINITE);
-         zink_batch_reset_all(ctx);
-      }
+      if (ctx->oom_stall)
+         zink_fence_wait(&ctx->base);
+      ctx->oom_flush = false;
+      ctx->oom_stall = false;
    }
 }
 
@@ -2050,6 +2048,9 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    /* need to ensure we start a new rp on next draw */
    zink_batch_no_rp(ctx);
+   /* this is an ideal time to oom flush since it won't split a renderpass */
+   if (ctx->oom_flush)
+      flush_batch(ctx, false);
 }
 
 static void

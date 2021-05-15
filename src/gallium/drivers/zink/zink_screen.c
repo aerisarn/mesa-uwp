@@ -1904,6 +1904,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->driconf.inline_uniforms = debug_get_bool_option("ZINK_INLINE_UNIFORMS", false);
 
    screen->total_video_mem = get_video_mem(screen);
+   screen->clamp_video_mem = screen->total_video_mem * 0.8;
    if (!os_get_total_physical_memory(&screen->total_mem))
       goto fail;
    if (screen->info.have_KHR_timeline_semaphore)

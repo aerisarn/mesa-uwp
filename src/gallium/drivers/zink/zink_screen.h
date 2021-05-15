@@ -98,6 +98,7 @@ struct zink_screen {
    unsigned mem_cache_count;
 
    uint64_t total_video_mem;
+   uint64_t clamp_video_mem;
    uint64_t total_mem;
 
    VkInstance instance;
