@@ -3288,7 +3288,9 @@ radv_stage_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags src_st
 {
    if (src_stage_mask &
        (VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT | VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
+        VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
+        VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT |
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
    }
 
@@ -3341,6 +3343,7 @@ radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags src_flag
          if (!image_is_coherent)
             flush_bits |= RADV_CMD_FLAG_WB_L2;
          break;
+      case VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR:
       case VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT:
       case VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT:
          if (!image_is_coherent)
@@ -3437,7 +3440,13 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags dst_flag
          if (!image_is_coherent)
             flush_bits |= RADV_CMD_FLAG_INV_L2;
          break;
+      case VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR:
+         flush_bits |= RADV_CMD_FLAG_INV_VCACHE;
+         if (cmd_buffer->device->physical_device->rad_info.chip_class < GFX9)
+            flush_bits |= RADV_CMD_FLAG_INV_L2;
+         break;
       case VK_ACCESS_SHADER_WRITE_BIT:
+      case VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR:
          break;
       case VK_ACCESS_COLOR_ATTACHMENT_READ_BIT:
       case VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT:
