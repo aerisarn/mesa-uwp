@@ -212,6 +212,48 @@ struct cros_gralloc0_buffer_info {
    uint32_t stride[4];
 };
 
+static VkResult
+vn_android_get_dma_buf_from_native_handle(const native_handle_t *handle,
+                                          int *out_dma_buf)
+{
+   /* TODO support multi-planar format */
+   if (handle->numFds != 1) {
+      if (VN_DEBUG(WSI))
+         vn_log(NULL, "handle->numFds is %d, expected 1", handle->numFds);
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   }
+
+   if (handle->data[0] < 0)
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+   *out_dma_buf = handle->data[0];
+   return VK_SUCCESS;
+}
+
+static VkResult
+vn_android_get_mem_type_bits_from_dma_buf(VkDevice device,
+                                          int dma_buf,
+                                          uint32_t *out_mem_type_bits)
+{
+   VkMemoryFdPropertiesKHR fd_props = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR,
+      .pNext = NULL,
+      .memoryTypeBits = 0,
+   };
+   VkResult result = vn_GetMemoryFdPropertiesKHR(
+      device, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, dma_buf,
+      &fd_props);
+   if (result != VK_SUCCESS)
+      return result;
+
+   if (!fd_props.memoryTypeBits)
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+   *out_mem_type_bits = fd_props.memoryTypeBits;
+
+   return VK_SUCCESS;
+}
+
 static bool
 vn_get_gralloc_buffer_info(buffer_handle_t handle,
                            uint32_t out_strides[4],
@@ -310,19 +352,10 @@ vn_android_image_from_anb(struct vn_device *dev,
    uint64_t format_modifier = 0;
    uint32_t num_planes = 0;
 
-   if (anb_info->handle->numFds != 1) {
-      if (VN_DEBUG(WSI))
-         vn_log(dev->instance, "handle->numFds is %d, expected 1",
-                anb_info->handle->numFds);
-      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   result = vn_android_get_dma_buf_from_native_handle(anb_info->handle,
+                                                      &dma_buf_fd);
+   if (result != VK_SUCCESS)
       goto fail;
-   }
-
-   dma_buf_fd = anb_info->handle->data[0];
-   if (dma_buf_fd < 0) {
-      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
-      goto fail;
-   }
 
    if (!vn_get_gralloc_buffer_info(anb_info->handle, strides, offsets,
                                    &format_modifier) ||
@@ -405,27 +438,16 @@ vn_android_image_from_anb(struct vn_device *dev,
       goto fail;
    }
 
-   VkMemoryFdPropertiesKHR fd_prop = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR,
-      .pNext = NULL,
-      .memoryTypeBits = 0,
-   };
-   result = vn_GetMemoryFdPropertiesKHR(
-      device, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, dma_buf_fd,
-      &fd_prop);
+   result = vn_android_get_mem_type_bits_from_dma_buf(device, dma_buf_fd,
+                                                      &mem_type_bits);
    if (result != VK_SUCCESS)
       goto fail;
 
-   if (!fd_prop.memoryTypeBits) {
-      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
-      goto fail;
-   }
-
    if (VN_DEBUG(WSI))
       vn_log(dev->instance, "memoryTypeBits = img(0x%X) & fd(0x%X)",
-             mem_req.memoryTypeBits, fd_prop.memoryTypeBits);
+             mem_req.memoryTypeBits, mem_type_bits);
 
-   mem_type_bits = mem_req.memoryTypeBits & fd_prop.memoryTypeBits;
+   mem_type_bits &= mem_req.memoryTypeBits;
    if (!mem_type_bits) {
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
@@ -704,4 +726,31 @@ vn_android_wsi_fini(struct vn_device *dev, const VkAllocationCallbacks *alloc)
       vk_free(alloc, dev->android_wsi->queue_family_indices);
 
    vk_free(alloc, dev->android_wsi);
+}
+
+VkResult
+vn_GetAndroidHardwareBufferPropertiesANDROID(
+   VkDevice device,
+   const struct AHardwareBuffer *buffer,
+   VkAndroidHardwareBufferPropertiesANDROID *pProperties)
+{
+   struct vn_device *dev = vn_device_from_handle(device);
+   VkResult result = VK_SUCCESS;
+   int dma_buf_fd = -1;
+   uint32_t mem_type_bits = 0;
+
+   const native_handle_t *handle = AHardwareBuffer_getNativeHandle(buffer);
+   result = vn_android_get_dma_buf_from_native_handle(handle, &dma_buf_fd);
+   if (result != VK_SUCCESS)
+      return vn_error(dev->instance, result);
+
+   result = vn_android_get_mem_type_bits_from_dma_buf(device, dma_buf_fd,
+                                                      &mem_type_bits);
+   if (result != VK_SUCCESS)
+      return vn_error(dev->instance, result);
+
+   pProperties->allocationSize = lseek(dma_buf_fd, 0, SEEK_END);
+   pProperties->memoryTypeBits = mem_type_bits;
+
+   return VK_SUCCESS;
 }
