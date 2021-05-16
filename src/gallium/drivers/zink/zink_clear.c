@@ -33,6 +33,7 @@
 #include "util/u_inlines.h"
 #include "util/u_rect.h"
 #include "util/u_surface.h"
+#include "util/u_helpers.h"
 
 static inline bool
 check_3d_layers(struct pipe_surface *psurf)
@@ -434,6 +435,9 @@ zink_clear_buffer(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_resource *res = zink_resource(pres);
 
+   uint32_t clamped;
+   if (util_lower_clearsize_to_dword(clear_value, &clear_value_size, &clamped))
+      clear_value = &clamped;
    if (offset % 4 == 0 && size % 4 == 0 && clear_value_size == sizeof(uint32_t)) {
       /*
          - dstOffset is the byte offset into the buffer at which to start filling,
