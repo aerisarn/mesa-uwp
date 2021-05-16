@@ -26,6 +26,7 @@
 #include "si_pipe.h"
 #include "util/format/u_format.h"
 #include "util/format_srgb.h"
+#include "util/u_helpers.h"
 
 /* Determine the cache policy. */
 static enum si_cache_policy get_cache_policy(struct si_context *sctx, enum si_coherency coher,
@@ -321,35 +322,9 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
    assert(size % clear_alignment == 0);
    assert(size < (UINT_MAX & ~0xf)); /* TODO: test 64-bit sizes in all codepaths */
 
-   /* Reduce a large clear value size if possible. */
-   if (clear_value_size > 4) {
-      bool clear_dword_duplicated = true;
-
-      /* See if we can lower large fills to dword fills. */
-      for (unsigned i = 1; i < clear_value_size / 4; i++) {
-         if (clear_value[0] != clear_value[i]) {
-            clear_dword_duplicated = false;
-            break;
-         }
-      }
-      if (clear_dword_duplicated)
-         clear_value_size = 4;
-   }
-
-   /* Expand a small clear value size. */
-   uint32_t tmp_clear_value;
-   if (clear_value_size <= 2) {
-      if (clear_value_size == 1) {
-         tmp_clear_value = *(uint8_t *)clear_value;
-         tmp_clear_value |=
-            (tmp_clear_value << 8) | (tmp_clear_value << 16) | (tmp_clear_value << 24);
-      } else {
-         tmp_clear_value = *(uint16_t *)clear_value;
-         tmp_clear_value |= tmp_clear_value << 16;
-      }
-      clear_value = &tmp_clear_value;
-      clear_value_size = 4;
-   }
+   uint32_t clamped;
+   if (util_lower_clearsize_to_dword(clear_value, (int*)&clear_value_size, &clamped))
+      clear_value = &clamped;
 
    if (clear_value_size == 12) {
       si_compute_clear_12bytes_buffer(sctx, dst, offset, size, clear_value, flags, coher);
