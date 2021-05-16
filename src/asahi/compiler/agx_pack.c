@@ -398,22 +398,26 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
    }
 
    case AGX_OPCODE_LD_VARY:
+   case AGX_OPCODE_LD_VARY_FLAT:
    {
+      bool flat = (I->op == AGX_OPCODE_LD_VARY_FLAT);
       unsigned D = agx_pack_alu_dst(I->dest[0]);
       unsigned channels = (I->channels & 0x3);
       assert(I->mask < 0xF); /* 0 indicates full mask */
       agx_index index_src = I->src[0];
       assert(index_src.type == AGX_INDEX_IMMEDIATE);
+      assert(!(flat && I->perspective));
       unsigned index = index_src.value;
 
       uint64_t raw =
-            0x21 | (I->perspective ? (1 << 6) : 0) |
+            0x21 | (flat ? (1 << 7) : 0) |
+            (I->perspective ? (1 << 6) : 0) |
             ((D & 0xFF) << 7) |
             (1ull << 15) | /* XXX */
             (((uint64_t) index) << 16) |
             (((uint64_t) channels) << 30) |
-            (1ull << 46) | /* XXX */
-            (1ull << 52) | /* XXX */
+            (!flat ? (1ull << 46) : 0) | /* XXX */
+            (!flat ? (1ull << 52) : 0) | /* XXX */
             (((uint64_t) (D >> 8)) << 56);
 
       unsigned size = 8;
