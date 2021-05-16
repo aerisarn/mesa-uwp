@@ -24,6 +24,8 @@
 #ifndef _AFUC_H_
 #define _AFUC_H_
 
+#include <stdbool.h>
+
 #include "util/macros.h"
 
 /*
@@ -164,6 +166,16 @@ typedef union PACKED {
    } alu;
    struct PACKED {
       uint32_t uimm : 12;
+      /* TODO this needs to be confirmed:
+       *
+       * flags:
+       *   0x4 - post-increment src2 by uimm (need to confirm this is also
+       *         true for load/cread).  TBD whether, when used in conjunction
+       *         with @LOAD_STORE_HI, 32b rollover works properly.
+       *
+       * other values tbd, also need to confirm if different bits can be
+       * set together (I don't see examples of this in existing fw)
+       */
       uint32_t flags : 4;
       uint32_t src1 : 5; /* dst (cread) or src (cwrite) register */
       uint32_t src2 : 5; /* read or write address is src2+uimm */
@@ -217,5 +229,10 @@ afuc_set_opc(afuc_instr *ai, afuc_opc opc, bool rep)
       ai->opc_r = opc;
    }
 }
+
+void print_src(unsigned reg);
+void print_dst(unsigned reg);
+void print_control_reg(uint32_t id);
+void print_pipe_reg(uint32_t id);
 
 #endif /* _AFUC_H_ */

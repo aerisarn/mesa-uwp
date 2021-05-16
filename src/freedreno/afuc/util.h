@@ -35,9 +35,12 @@ char * afuc_control_reg_name(unsigned id);
 
 unsigned afuc_pipe_reg(const char *name);
 char * afuc_pipe_reg_name(unsigned id);
+bool afuc_pipe_reg_is_void(unsigned id);
 
 unsigned afuc_gpu_reg(const char *name);
 char * afuc_gpu_reg_name(unsigned id);
+
+unsigned afuc_gpr_reg(const char *name);
 
 int afuc_pm4_id(const char *name);
 const char * afuc_pm_id_name(unsigned id);

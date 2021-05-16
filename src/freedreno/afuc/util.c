@@ -29,6 +29,7 @@
 #include "rnn.h"
 #include "rnndec.h"
 
+#include "afuc.h"
 #include "util.h"
 
 static struct rnndeccontext *ctx;
@@ -104,6 +105,24 @@ afuc_pipe_reg(const char *name)
 }
 
 /**
+ * "void" pipe regs don't have a value written, the $addr right is
+ * enough to trigger what they do
+ */
+bool
+afuc_pipe_reg_is_void(unsigned id)
+{
+   if (rnndec_checkaddr(ctx, pipe_regs, id, 0)) {
+      struct rnndecaddrinfo *info = rnndec_decodeaddr(ctx, pipe_regs, id, 0);
+      free(info->name);
+      bool ret = !strcmp(info->typeinfo->name, "void");
+      free(info);
+      return ret;
+   } else {
+      return false;
+   }
+}
+
+/**
  * Map offset to pipe reg name (or NULL), caller frees
  */
 char *
@@ -156,6 +175,37 @@ afuc_gpu_reg_name(unsigned id)
    }
 
    return NULL;
+}
+
+unsigned
+afuc_gpr_reg(const char *name)
+{
+   /* If it starts with '$' just swallow it: */
+   if (name[0] == '$')
+      name++;
+
+   /* handle aliases: */
+   if (!strcmp(name, "rem")) {
+      return REG_REM;
+   } else if (!strcmp(name, "memdata")) {
+      return REG_MEMDATA;
+   } else if (!strcmp(name, "addr")) {
+      return REG_ADDR;
+   } else if (!strcmp(name, "regdata")) {
+      return REG_REGDATA;
+   } else if (!strcmp(name, "usraddr")) {
+      return REG_USRADDR;
+   } else if (!strcmp(name, "data")) {
+      return REG_DATA;
+   } else {
+      char *endptr = NULL;
+      unsigned val = strtol(name, &endptr, 16);
+      if (endptr && *endptr) {
+         printf("invalid gpr reg: %s\n", name);
+         exit(2);
+      }
+      return val;
+   }
 }
 
 static int

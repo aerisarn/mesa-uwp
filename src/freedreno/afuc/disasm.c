@@ -39,6 +39,7 @@
 
 #include "afuc.h"
 #include "util.h"
+#include "emu.h"
 
 static int gpuver;
 
@@ -47,6 +48,9 @@ static int gpuver;
  * (like unexpected bits that are set)
  */
 static bool verbose = false;
+
+/* emulator mode: */
+static bool emulator = false;
 
 static void
 print_gpu_reg(uint32_t regbase)
@@ -64,7 +68,7 @@ print_gpu_reg(uint32_t regbase)
 #define printerr(fmt, ...) afuc_printc(AFUC_ERR, fmt, ##__VA_ARGS__)
 #define printlbl(fmt, ...) afuc_printc(AFUC_LBL, fmt, ##__VA_ARGS__)
 
-static void
+void
 print_src(unsigned reg)
 {
    if (reg == REG_REM)
@@ -79,7 +83,7 @@ print_src(unsigned reg)
       printf("$%02x", reg);
 }
 
-static void
+void
 print_dst(unsigned reg)
 {
    if (reg == REG_REM)
@@ -257,7 +261,7 @@ fxn_name(uint32_t offset)
    return name;
 }
 
-static void
+void
 print_control_reg(uint32_t id)
 {
    char *name = afuc_control_reg_name(id);
@@ -269,7 +273,7 @@ print_control_reg(uint32_t id)
    }
 }
 
-static void
+void
 print_pipe_reg(uint32_t id)
 {
    char *name = afuc_pipe_reg_name(id);
@@ -752,6 +756,20 @@ disasm(uint32_t *buf, int sizedwords)
       }
    }
 
+   if (emulator) {
+      struct emu state = {
+            .instrs = instrs,
+            .sizedwords = sizedwords,
+      };
+
+      emu_init(&state);
+
+      while (true) {
+         disasm_instr(instrs, state.gpr_regs.pc);
+         emu_step(&state);
+      }
+   }
+
    /* print instructions: */
    for (i = 0; i < jmptbl_start; i++) {
       disasm_instr(instrs, i);
@@ -784,7 +802,8 @@ usage(void)
                    "\tdisasm [-g GPUVER] [-v] [-c] filename.asm\n"
                    "\t\t-g - specify GPU version (5, etc)\n"
                    "\t\t-c - use colors\n"
-                   "\t\t-v - verbose output\n");
+                   "\t\t-v - verbose output\n"
+                   "\t\t-e - emulator mode\n");
    exit(2);
 }
 
@@ -798,7 +817,7 @@ main(int argc, char **argv)
    int c, ret;
 
    /* Argument parsing: */
-   while ((c = getopt(argc, argv, "g:vc")) != -1) {
+   while ((c = getopt(argc, argv, "g:vce")) != -1) {
       switch (c) {
       case 'g':
          gpuver = atoi(optarg);
@@ -808,6 +827,10 @@ main(int argc, char **argv)
          break;
       case 'c':
          colors = true;
+         break;
+      case 'e':
+         emulator = true;
+         verbose  = true;
          break;
       default:
          usage();
@@ -828,6 +851,15 @@ main(int argc, char **argv)
       } else if (strstr(file, "a6")) {
          gpuver = 6;
       }
+   }
+
+   /* a6xx is *mostly* a superset of a5xx, but some opcodes shuffle
+    * around, and behavior of special regs is a bit different.  Right
+    * now we only bother to support the a6xx variant.
+    */
+   if (emulator && (gpuver != 6)) {
+      fprintf(stderr, "Emulator only supported on a6xx!\n");
+      return 1;
    }
 
    ret = afuc_util_init(gpuver, colors);
