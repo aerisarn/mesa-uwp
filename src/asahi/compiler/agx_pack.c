@@ -389,7 +389,6 @@ agx_pack_instr(struct util_dynarray *emission, agx_instr *I)
       assert(I->mask < 0xF); /* 0 indicates full mask */
       agx_index index_src = I->src[0];
       assert(index_src.type == AGX_INDEX_IMMEDIATE);
-      assert((D >> 8) == 0); /* TODO: Dx? */
       unsigned index = index_src.value;
 
       uint64_t raw =
@@ -399,7 +398,8 @@ agx_pack_instr(struct util_dynarray *emission, agx_instr *I)
             (((uint64_t) index) << 16) |
             (((uint64_t) channels) << 30) |
             (1ull << 46) | /* XXX */
-            (1ull << 52); /* XXX */
+            (1ull << 52) | /* XXX */
+            (((uint64_t) (D >> 8)) << 56);
 
       unsigned size = 8;
       memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
