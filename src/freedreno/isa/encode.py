@@ -339,6 +339,23 @@ typedef struct {
     BITSET_WORD bitset[BITSET_WORDS(${isa.bitsize})];
 } bitmask_t;
 
+static inline uint64_t
+bitmask_to_uint64_t(bitmask_t mask)
+{
+    return ((uint64_t)mask.bitset[1] << 32) | mask.bitset[0];
+}
+
+static inline bitmask_t
+uint64_t_to_bitmask(uint64_t val)
+{
+    bitmask_t mask = {
+        .bitset[0] = val & 0xffffffff,
+        .bitset[1] = (val >> 32) & 0xffffffff,
+    };
+
+    return mask;
+}
+
 /**
  * Opaque type from the PoV of generated code, but allows state to be passed
  * thru to the hand written helpers used by the generated code.

@@ -216,12 +216,30 @@ header = """\
 #ifndef _${guard}_
 #define _${guard}_
 
+#include <stdint.h>
 #include <util/bitset.h>
 
 typedef struct {
     BITSET_WORD bitset[BITMASK_WORDS];
 } bitmask_t;
 
+
+static inline uint64_t
+bitmask_to_uint64_t(bitmask_t mask)
+{
+    return ((uint64_t)mask.bitset[1] << 32) | mask.bitset[0];
+}
+
+static inline bitmask_t
+uint64_t_to_bitmask(uint64_t val)
+{
+    bitmask_t mask = {
+        .bitset[0] = val & 0xffffffff,
+        .bitset[1] = (val >> 32) & 0xffffffff,
+    };
+
+    return mask;
+}
 
 #endif /* _${guard}_ */
 
