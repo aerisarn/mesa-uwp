@@ -3092,28 +3092,11 @@ fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
 }
 
 static nir_ssa_def *
-expand_to_vec4(nir_builder *b, nir_ssa_def *value)
-{
-   nir_ssa_def *components[4];
-   if (value->num_components == 4)
-      return value;
-
-   nir_ssa_def *undef = nir_ssa_undef(b, 1, value->bit_size);
-   for (unsigned i = 0; i < 4; i++) {
-      if (i < value->num_components)
-         components[i] = nir_channel(b, value, i);
-      else
-         components[i] = undef;
-   }
-   return nir_vec(b, components, 4);
-}
-
-static nir_ssa_def *
 get_image_coord(struct vtn_builder *b, uint32_t value)
 {
    nir_ssa_def *coord = vtn_get_nir_ssa(b, value);
    /* The image_load_store intrinsics assume a 4-dim coordinate */
-   return expand_to_vec4(&b->nb, coord);
+   return nir_pad_vec4(&b->nb, coord);
 }
 
 static void
@@ -3337,7 +3320,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       /* The image coordinate is always 4 components but we may not have that
        * many.  Swizzle to compensate.
        */
-      intrin->src[1] = nir_src_for_ssa(expand_to_vec4(&b->nb, image.coord));
+      intrin->src[1] = nir_src_for_ssa(nir_pad_vec4(&b->nb, image.coord));
       intrin->src[2] = nir_src_for_ssa(image.sample);
       break;
    }
@@ -3387,7 +3370,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       /* nir_intrinsic_image_deref_store always takes a vec4 value */
       assert(op == nir_intrinsic_image_deref_store);
       intrin->num_components = 4;
-      intrin->src[3] = nir_src_for_ssa(expand_to_vec4(&b->nb, value->def));
+      intrin->src[3] = nir_src_for_ssa(nir_pad_vec4(&b->nb, value->def));
       /* Only OpImageWrite can support a lod parameter if
        * SPV_AMD_shader_image_load_store_lod is used but the current NIR
        * intrinsics definition for atomics requires us to set it for
