@@ -374,3 +374,41 @@ util_throttle_memory_usage(struct pipe_context *pipe,
 
    t->ring[t->flush_index].mem_usage += memory_size;
 }
+
+bool
+util_lower_clearsize_to_dword(const void *clearValue, int *clearValueSize, uint32_t *clamped)
+{
+   /* Reduce a large clear value size if possible. */
+   if (*clearValueSize > 4) {
+      bool clear_dword_duplicated = true;
+      const uint32_t *clear_value = clearValue;
+
+      /* See if we can lower large fills to dword fills. */
+      for (unsigned i = 1; i < *clearValueSize / 4; i++) {
+         if (clear_value[0] != clear_value[i]) {
+            clear_dword_duplicated = false;
+            break;
+         }
+      }
+      if (clear_dword_duplicated) {
+         *clamped = *clear_value;
+         *clearValueSize = 4;
+      }
+      return clear_dword_duplicated;
+   }
+
+   /* Expand a small clear value size. */
+   if (*clearValueSize <= 2) {
+      if (*clearValueSize == 1) {
+         *clamped = *(uint8_t *)clearValue;
+         *clamped |=
+            (*clamped << 8) | (*clamped << 16) | (*clamped << 24);
+      } else {
+         *clamped = *(uint16_t *)clearValue;
+         *clamped |= *clamped << 16;
+      }
+      *clearValueSize = 4;
+      return true;
+   }
+   return false;
+}

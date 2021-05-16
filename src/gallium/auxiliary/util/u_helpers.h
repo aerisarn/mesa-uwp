@@ -113,6 +113,9 @@ void util_throttle_deinit(struct pipe_screen *screen, struct util_throttle *t);
 void util_throttle_memory_usage(struct pipe_context *pipe,
                                 struct util_throttle *t, uint64_t memory_size);
 
+bool
+util_lower_clearsize_to_dword(const void *clearValue, int *clearValueSize, uint32_t *clamped);
+
 #ifdef __cplusplus
 }
 #endif
