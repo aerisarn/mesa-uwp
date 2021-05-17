@@ -94,6 +94,8 @@ struct radv_meta_saved_state {
    bool depth_bias_enable;
    bool primitive_restart_enable;
    bool rasterizer_discard_enable;
+
+   unsigned logic_op;
 };
 
 VkResult radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand);

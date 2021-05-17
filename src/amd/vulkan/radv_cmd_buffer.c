@@ -115,6 +115,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .depth_bias_enable = 0u,
    .primitive_restart_enable = 0u,
    .rasterizer_discard_enable = 0u,
+   .logic_op = 0u,
 };
 
 static void
@@ -324,6 +325,13 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
       if (dest->rasterizer_discard_enable != src->rasterizer_discard_enable) {
          dest->rasterizer_discard_enable = src->rasterizer_discard_enable;
          dest_mask |= RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
+      }
+   }
+
+   if (copy_mask & RADV_DYNAMIC_LOGIC_OP) {
+      if (dest->logic_op != src->logic_op) {
+         dest->logic_op = src->logic_op;
+         dest_mask |= RADV_DYNAMIC_LOGIC_OP;
       }
    }
 
@@ -1282,6 +1290,11 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
           pipeline->graphics.pa_cl_clip_cntl)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
 
+   if (!cmd_buffer->state.emitted_pipeline ||
+       cmd_buffer->state.emitted_pipeline->graphics.cb_color_control !=
+       pipeline->graphics.cb_color_control)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
+
    if (!cmd_buffer->state.emitted_pipeline)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
@@ -1596,6 +1609,18 @@ radv_emit_rasterizer_discard_enable(struct radv_cmd_buffer *cmd_buffer)
    pa_cl_clip_cntl |= S_028810_DX_RASTERIZATION_KILL(d->rasterizer_discard_enable);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028810_PA_CL_CLIP_CNTL, pa_cl_clip_cntl);
+}
+
+static void
+radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
+{
+   unsigned cb_color_control = cmd_buffer->state.pipeline->graphics.cb_color_control;
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   cb_color_control &= C_028808_ROP3;
+   cb_color_control |= S_028808_ROP3(d->logic_op);
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028808_CB_COLOR_CONTROL, cb_color_control);
 }
 
 static void
@@ -2597,6 +2622,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE)
       radv_emit_rasterizer_discard_enable(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP)
+      radv_emit_logic_op(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -4765,7 +4793,16 @@ radv_CmdSetPatchControlPointsEXT(VkCommandBuffer commandBuffer, uint32_t patchCo
 void
 radv_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer, VkLogicOp logicOp)
 {
-   /* not implemented */
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+   unsigned logic_op = si_translate_blend_logic_op(logicOp);
+
+   if (state->dynamic.logic_op == logic_op)
+      return;
+
+   state->dynamic.logic_op = logic_op;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
 }
 
 void
