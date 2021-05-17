@@ -1159,6 +1159,137 @@ static inline unsigned ir3_cat3_absneg(opc_t opc)
 	}
 }
 
+/* Return the type (float, int, or uint) the op uses when converting from the
+ * internal result of the op (which is assumed to be the same size as the
+ * sources) to the destination when they are not the same size. If F32 it does
+ * a floating-point conversion, if U32 it does a truncation/zero-extension, if
+ * S32 it does a truncation/sign-extension. "can_fold" will be false if it
+ * doesn't do anything sensible or is unknown.
+ */
+static inline type_t
+ir3_output_conv_type(struct ir3_instruction *instr, bool *can_fold)
+{
+	*can_fold = true;
+	switch (instr->opc) {
+	case OPC_ADD_F:
+	case OPC_MUL_F:
+	case OPC_BARY_F:
+	case OPC_MAD_F32:
+	case OPC_MAD_F16:
+		return TYPE_F32;
+
+	case OPC_ADD_U:
+	case OPC_SUB_U:
+	case OPC_MIN_U:
+	case OPC_MAX_U:
+	case OPC_AND_B:
+	case OPC_OR_B:
+	case OPC_NOT_B:
+	case OPC_XOR_B:
+	case OPC_MUL_U24:
+	case OPC_MULL_U:
+	case OPC_SHL_B:
+	case OPC_SHR_B:
+	case OPC_ASHR_B:
+	case OPC_MAD_U24:
+	/* Comparison ops zero-extend/truncate their results, so consider them as
+	 * unsigned here.
+	 */
+	case OPC_CMPS_F:
+	case OPC_CMPV_F:
+	case OPC_CMPS_U:
+	case OPC_CMPS_S:
+		return TYPE_U32;
+
+	case OPC_ADD_S:
+	case OPC_SUB_S:
+	case OPC_MIN_S:
+	case OPC_MAX_S:
+	case OPC_ABSNEG_S:
+	case OPC_MUL_S24:
+	case OPC_MAD_S24:
+		return TYPE_S32;
+
+	/* We assume that any move->move folding that could be done was done by
+	 * NIR.
+	 */
+	case OPC_MOV:
+	default:
+		*can_fold = false;
+		return TYPE_U32;
+	}
+}
+
+/* Return the src and dst types for the conversion which is already folded
+ * into the op. We can assume that instr has folded in a conversion from
+ * ir3_output_conv_src_type() to ir3_output_conv_dst_type(). Only makes sense
+ * to call if ir3_output_conv_type() returns can_fold = true.
+ */
+static inline type_t
+ir3_output_conv_src_type(struct ir3_instruction *instr, type_t base_type)
+{
+	switch (instr->opc) {
+	case OPC_CMPS_F:
+	case OPC_CMPV_F:
+	case OPC_CMPS_U:
+	case OPC_CMPS_S:
+		/* Comparisons only return 0/1 and the size of the comparison sources
+		 * is irrelevant, never consider them as having an output conversion
+		 * by returning a type with the dest size here:
+		 */
+		return (instr->regs[0]->flags & IR3_REG_HALF) ? half_type(base_type) :
+			full_type(base_type);
+
+	case OPC_BARY_F:
+		/* bary.f doesn't have an explicit source, but we can assume here that
+		 * the varying data it reads is in fp32.
+		 *
+		 * This may be fp16 on older gen's depending on some register
+		 * settings, but it's probably not worth plumbing that through for a
+		 * small improvement that NIR would hopefully handle for us anyway.
+		 */
+		return TYPE_F32;
+
+	default:
+		return (instr->regs[1]->flags & IR3_REG_HALF) ? half_type(base_type) :
+			full_type(base_type);
+	}
+}
+
+static inline type_t
+ir3_output_conv_dst_type(struct ir3_instruction *instr, type_t base_type)
+{
+	return (instr->regs[0]->flags & IR3_REG_HALF) ? half_type(base_type) :
+		full_type(base_type);
+}
+
+/* Some instructions have signed/unsigned variants which are identical except
+ * for whether the folded conversion sign-extends or zero-extends, and we can
+ * fold in a mismatching move by rewriting the opcode. Return the opcode to
+ * switch signedness, and whether one exists.
+ */
+static inline opc_t
+ir3_try_swap_signedness(opc_t opc, bool *can_swap)
+{
+	switch (opc) {
+#define PAIR(u, s)		\
+	case OPC_##u:		\
+		return OPC_##s;	\
+	case OPC_##s:		\
+		return OPC_##u;
+	PAIR(ADD_U, ADD_S)
+	PAIR(SUB_U, SUB_S)
+	/* Note: these are only identical when the sources are half, but that's
+	 * the only case we call this function for anyway.
+	 */
+	PAIR(MUL_U24, MUL_S24)
+
+	default:
+		*can_swap = false;
+		return opc;
+	}
+}
+
 #define MASK(n) ((1 << (n)) - 1)
 
 /* iterator for an instructions's sources (reg), also returns src #: */

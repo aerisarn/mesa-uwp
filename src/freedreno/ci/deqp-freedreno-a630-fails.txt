@@ -162,36 +162,11 @@ dEQP-VK.spirv_assembly.instruction.compute.opcopymemory.array,Fail
 dEQP-VK.spirv_assembly.instruction.compute.opquantize.infinities,Fail
 
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/3208
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_bit_geom,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_bit_tessc,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_to_exponent_frag,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_to_exponent_tesse,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.carry_to_exponent_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.negative_round_up_or_round_down_frag,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.negative_round_up_or_round_down_tesse,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.negative_round_up_or_round_down_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.negative_too_small_frag,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.negative_too_small_tesse,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.negative_too_small_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.positive_round_up_or_round_down_geom,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.positive_round_up_or_round_down_tessc,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_inf_frag,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_inf_tesse,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_inf_vert,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_negative_inf_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_negative_inf_tessc,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_carry_bit_geom,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_carry_bit_tessc,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_carry_to_exponent_frag,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_carry_to_exponent_tesse,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_carry_to_exponent_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_negative_round_up_or_round_down_frag,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_negative_round_up_or_round_down_tesse,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_negative_round_up_or_round_down_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_positive_round_up_or_round_down_geom,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_positive_round_up_or_round_down_tessc,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.too_small_geom,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.too_small_tessc,Fail
 
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_single_buffer_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
