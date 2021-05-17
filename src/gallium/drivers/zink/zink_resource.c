@@ -935,7 +935,6 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
          if (!zink_batch_usage_check_completion(ctx, res->obj->writes))
             return NULL;
       } else if (!res->obj->host_visible) {
-         zink_fence_wait(&ctx->base);
          trans->staging_res = pipe_buffer_create(&screen->base, PIPE_BIND_LINEAR, PIPE_USAGE_STAGING, box->x + box->width);
          if (!trans->staging_res)
             return NULL;
