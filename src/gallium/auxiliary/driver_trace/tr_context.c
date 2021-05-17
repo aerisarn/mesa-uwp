@@ -1411,6 +1411,32 @@ trace_context_clear_depth_stencil(struct pipe_context *_pipe,
 }
 
 static inline void
+trace_context_clear_buffer(struct pipe_context *_pipe,
+                           struct pipe_resource *res,
+                           unsigned offset,
+                           unsigned size,
+                           const void *clear_value,
+                           int clear_value_size)
+{
+   struct trace_context *tr_ctx = trace_context(_pipe);
+   struct pipe_context *pipe = tr_ctx->pipe;
+
+
+   trace_dump_call_begin("pipe_context", "clear_buffer");
+
+   trace_dump_arg(ptr, pipe);
+   trace_dump_arg(ptr, res);
+   trace_dump_arg(uint, offset);
+   trace_dump_arg(uint, size);
+   trace_dump_arg(ptr, clear_value);
+   trace_dump_arg(int, clear_value_size);
+
+   pipe->clear_buffer(pipe, res, offset, size, clear_value, clear_value_size);
+
+   trace_dump_call_end();
+}
+
+static inline void
 trace_context_clear_texture(struct pipe_context *_pipe,
                             struct pipe_resource *res,
                             unsigned level,
@@ -2191,6 +2217,7 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(clear_render_target);
    TR_CTX_INIT(clear_depth_stencil);
    TR_CTX_INIT(clear_texture);
+   TR_CTX_INIT(clear_buffer);
    TR_CTX_INIT(flush);
    TR_CTX_INIT(create_fence_fd);
    TR_CTX_INIT(fence_server_sync);
