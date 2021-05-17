@@ -2787,20 +2787,14 @@ zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
                   VK_ACCESS_SHADER_WRITE_BIT,
                   VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
 
-   if (flags & PIPE_BARRIER_FRAMEBUFFER) {
-      mem_barrier(batch, all_flags, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                  VK_ACCESS_SHADER_WRITE_BIT,
-                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
-      mem_barrier(batch, all_flags, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
-   }
+   if (flags & PIPE_BARRIER_FRAMEBUFFER)
+      zink_texture_barrier(pctx, 0);
    if (flags & PIPE_BARRIER_STREAMOUT_BUFFER)
       mem_barrier(batch, all_flags,
                   VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+                  VK_ACCESS_SHADER_WRITE_BIT,
                   VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT |
-                  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
-                  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT);
+                  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT);
 }
 
 static void
