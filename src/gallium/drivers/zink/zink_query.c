@@ -428,7 +428,7 @@ get_query_result(struct pipe_context *pctx,
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_query *query = (struct zink_query *)q;
-   unsigned flags = PIPE_MAP_READ;
+   unsigned flags = PIPE_MAP_READ | PIPE_MAP_ONCE;
 
    if (!wait)
       flags |= PIPE_MAP_DONTBLOCK;
