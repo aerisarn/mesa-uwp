@@ -24,12 +24,64 @@
 #ifndef _UTIL_PERFETTO_H
 #define _UTIL_PERFETTO_H
 
+#include "util/u_atomic.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void util_perfetto_init(void);
+enum util_perfetto_category {
+   UTIL_PERFETTO_CATEGORY_DEFAULT,
+   UTIL_PERFETTO_CATEGORY_SLOW,
+
+   UTIL_PERFETTO_CATEGORY_COUNT,
+};
+
+#ifdef HAVE_PERFETTO
+
+extern int util_perfetto_category_states[UTIL_PERFETTO_CATEGORY_COUNT];
+
+void
+util_perfetto_init(void);
+
+static inline bool
+util_perfetto_is_category_enabled(enum util_perfetto_category category)
+{
+   return p_atomic_read_relaxed(&util_perfetto_category_states[category]);
+}
+
+void
+util_perfetto_trace_begin(enum util_perfetto_category category,
+                          const char *name);
+
+void
+util_perfetto_trace_end(enum util_perfetto_category category);
+
+#else /* HAVE_PERFETTO */
+
+static inline void
+util_perfetto_init(void)
+{
+}
+
+static inline bool
+util_perfetto_is_category_enabled(enum util_perfetto_category category)
+{
+   return false;
+}
+
+static inline void
+util_perfetto_trace_begin(enum util_perfetto_category category,
+                          const char *name)
+{
+}
+
+static inline void
+util_perfetto_trace_end(enum util_perfetto_category category)
+{
+}
+
+#endif /* HAVE_PERFETTO */
 
 #ifdef __cplusplus
 }
