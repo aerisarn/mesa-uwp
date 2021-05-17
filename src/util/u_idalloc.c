@@ -99,7 +99,6 @@ util_idalloc_reserve(struct util_idalloc *buf, unsigned id)
 {
    if (id / 32 >= buf->num_elements)
       util_idalloc_resize(buf, (id / 32 + 1) * 2);
-   assert((buf->data[id / 32] & (1u << (id % 32))) == 0);
    buf->data[id / 32] |= 1u << (id % 32);
 }
 
