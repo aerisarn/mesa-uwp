@@ -446,8 +446,10 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                                 cfg.occlusion_query = MALI_OCCLUSION_MODE_COUNTER;
                         else
                                 cfg.occlusion_query = MALI_OCCLUSION_MODE_PREDICATE;
-                        cfg.occlusion = ctx->occlusion_query->bo->ptr.gpu;
-                        panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
+
+                        struct panfrost_resource *rsrc = pan_resource(ctx->occlusion_query->rsrc);
+                        cfg.occlusion = rsrc->image.data.bo->ptr.gpu;
+                        panfrost_batch_write_rsrc(ctx->batch, rsrc,
                                               PIPE_SHADER_FRAGMENT);
                 }
         }
@@ -1726,10 +1728,8 @@ panfrost_destroy_query(struct pipe_context *pipe, struct pipe_query *q)
 {
         struct panfrost_query *query = (struct panfrost_query *) q;
 
-        if (query->bo) {
-                panfrost_bo_unreference(query->bo);
-                query->bo = NULL;
-        }
+        if (query->rsrc)
+                pipe_resource_reference(&query->rsrc, NULL);
 
         ralloc_free(q);
 }
@@ -1747,14 +1747,16 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE: {
                 unsigned size = sizeof(uint64_t) * dev->core_count;
 
-                /* Allocate a bo for the query results to be stored */
-                if (!query->bo) {
-                        query->bo = panfrost_bo_create(dev, size, 0,
-                                        "Occlusion query result");
+                /* Allocate a resource for the query results to be stored */
+                if (!query->rsrc) {
+                        query->rsrc = pipe_buffer_create(ctx->base.screen,
+                                        PIPE_BIND_QUERY_BUFFER, 0, size);
                 }
 
                 /* Default to 0 if nothing at all drawn. */
-                memset(query->bo->ptr.cpu, 0, size);
+                uint8_t *zeroes = alloca(size);
+                memset(zeroes, 0, size);
+                pipe_buffer_write(pipe, query->rsrc, 0, size, zeroes);
 
                 query->msaa = (ctx->pipe_framebuffer.samples > 1);
                 ctx->occlusion_query = query;
@@ -1813,16 +1815,17 @@ panfrost_get_query_result(struct pipe_context *pipe,
         struct panfrost_query *query = (struct panfrost_query *) q;
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *dev = pan_device(ctx->base.screen);
+        struct panfrost_resource *rsrc = pan_resource(query->rsrc);
 
         switch (query->type) {
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-                panfrost_flush_batches_accessing_bo(ctx, query->bo, false);
-                panfrost_bo_wait(query->bo, INT64_MAX, false);
+                panfrost_flush_batches_accessing_bo(ctx, rsrc->image.data.bo, false);
+                panfrost_bo_wait(rsrc->image.data.bo, INT64_MAX, false);
 
                 /* Read back the query results */
-                uint64_t *result = (uint64_t *) query->bo->ptr.cpu;
+                uint64_t *result = (uint64_t *) rsrc->image.data.bo->ptr.cpu;
 
                 if (query->type == PIPE_QUERY_OCCLUSION_COUNTER) {
                         uint64_t passed = 0;

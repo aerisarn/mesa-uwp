@@ -97,7 +97,7 @@ struct panfrost_query {
         };
 
         /* Memory for the GPU to writeback the value of the query */
-        struct panfrost_bo *bo;
+        struct pipe_resource *rsrc;
 
         /* Whether an occlusion query is for a MSAA framebuffer */
         bool msaa;
