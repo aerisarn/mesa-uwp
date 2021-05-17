@@ -3230,7 +3230,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_fddy_fine:
    case nir_op_fddx_coarse:
    case nir_op_fddy_coarse: {
-      Temp src = get_alu_src(ctx, instr->src[0]);
+      Temp src = as_vgpr(ctx, get_alu_src(ctx, instr->src[0]));
       uint16_t dpp_ctrl1, dpp_ctrl2;
       if (instr->op == nir_op_fddx_fine) {
          dpp_ctrl1 = dpp_quad_perm(0, 0, 2, 2);
@@ -7930,6 +7930,10 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          if (instr->intrinsic == nir_intrinsic_read_invocation || !nir_src_is_divergent(instr->src[1]))
             tid = bld.as_uniform(tid);
          Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+
+         if (instr->dest.ssa.bit_size != 1)
+            src = as_vgpr(ctx, src);
+
          if (src.regClass() == v1b || src.regClass() == v2b) {
             Temp tmp = bld.tmp(v1);
             tmp = emit_wqm(bld, emit_bpermute(ctx, bld, tid, src), tmp);
@@ -8103,6 +8107,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          unsigned lane = nir_src_as_const_value(instr->src[1])->u32;
          uint32_t dpp_ctrl = dpp_quad_perm(lane, lane, lane, lane);
 
+         if (instr->dest.ssa.bit_size != 1)
+            src = as_vgpr(ctx, src);
+
          if (instr->dest.ssa.bit_size == 1) {
             assert(src.regClass() == bld.lm);
             assert(dst.regClass() == bld.lm);
@@ -8180,6 +8187,10 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          dpp_ctrl |= (1 << 15);
 
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+
+      if (instr->dest.ssa.bit_size != 1)
+         src = as_vgpr(ctx, src);
+
       if (instr->dest.ssa.bit_size == 1) {
          assert(src.regClass() == bld.lm);
          src = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0u), Operand((uint32_t)-1), src);
@@ -8235,6 +8246,10 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       }
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       uint32_t mask = nir_intrinsic_swizzle_mask(instr);
+
+      if (instr->dest.ssa.bit_size != 1)
+         src = as_vgpr(ctx, src);
+
       if (instr->dest.ssa.bit_size == 1) {
          assert(src.regClass() == bld.lm);
          src = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0u), Operand((uint32_t)-1), src);
