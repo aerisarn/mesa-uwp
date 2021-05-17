@@ -263,6 +263,7 @@ trace_context_get_query_result(struct pipe_context *_pipe,
 
    trace_dump_arg(ptr, pipe);
    trace_dump_arg(ptr, query);
+   trace_dump_arg(bool, wait);
 
    if (tr_ctx->threaded)
       threaded_query(query)->flushed = trace_query(_query)->base.flushed;
