@@ -1521,7 +1521,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr,
 }
 
 static unsigned
-compute_builtin_arg(nir_op op)
+compute_builtin_arg(nir_intrinsic_op op)
 {
         switch (op) {
         case nir_intrinsic_load_work_group_id:
@@ -1604,7 +1604,7 @@ emit_compute_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static unsigned
-vertex_builtin_arg(nir_op op)
+vertex_builtin_arg(nir_intrinsic_op op)
 {
         switch (op) {
         case nir_intrinsic_load_vertex_id:
