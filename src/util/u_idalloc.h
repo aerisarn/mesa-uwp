@@ -25,6 +25,12 @@
  *
  **************************************************************************/
 
+/* Allocator of IDs (e.g. OpenGL object IDs), or simply an allocator of
+ * numbers.
+ *
+ * The allocator uses a bit array to track allocated IDs.
+ */
+
 #ifndef U_IDALLOC_H
 #define U_IDALLOC_H
 
@@ -57,6 +63,20 @@ util_idalloc_free(struct util_idalloc *buf, unsigned id);
 
 void
 util_idalloc_reserve(struct util_idalloc *buf, unsigned id);
+
+static inline bool
+util_idalloc_exists(struct util_idalloc *buf, unsigned id)
+{
+   return id / 32 < buf->num_elements &&
+          buf->data[id / 32] & BITFIELD_BIT(id % 32);
+}
+
+#define util_idalloc_foreach(buf, id) \
+   for (uint32_t i = 0, mask = (buf)->num_elements ? (buf)->data[0] : 0, id, \
+                 count = (buf)->num_elements; \
+        i < count; mask = ++i < count ? (buf)->data[i] : 0) \
+      while (mask) \
+         if ((id = i * 32 + u_bit_scan(&mask)), true)
 
 
 /* Thread-safe variant. */
