@@ -4852,6 +4852,18 @@ radv_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
 }
 
 void
+radv_CmdSetPatchControlPointsEXT(VkCommandBuffer commandBuffer, uint32_t patchControlPoints)
+{
+   /* not implemented */
+}
+
+void
+radv_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer, VkLogicOp logicOp)
+{
+   /* not implemented */
+}
+
+void
 radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCount,
                         const VkCommandBuffer *pCmdBuffers)
 {
