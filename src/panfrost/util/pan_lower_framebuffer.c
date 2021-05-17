@@ -215,27 +215,53 @@ pan_unpack_pure_8(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
         return nir_channels(b, unpacked, (1 << num_components) - 1);
 }
 
-/* For <= 8-bits per channel, UNORM formats are packed like UNORM 8, with
- * zeroes spacing out each component as needed */
+/* For <= 8-bits per channel, [U,S]NORM formats are packed like [U,S]NORM 8,
+ * with zeroes spacing out each component as needed */
 
 static nir_ssa_def *
-pan_pack_unorm(nir_builder *b, nir_ssa_def *v,
-               unsigned x, unsigned y, unsigned z, unsigned w)
+pan_pack_norm(nir_builder *b, nir_ssa_def *v,
+              unsigned x, unsigned y, unsigned z, unsigned w,
+              bool is_signed)
 {
-        /* If a channel has N bits, 1.0 is encoded as 2^N - 1 */
-        nir_ssa_def *scales = nir_imm_vec4_16(b,
-                        (1 << x) - 1, (1 << y) - 1, 
-                        (1 << z) - 1, (1 << w) - 1);
+        /* If a channel has N bits, 1.0 is encoded as 2^N - 1 for UNORMs and
+         * 2^(N-1) - 1 for SNORMs */
+        nir_ssa_def *scales =
+                is_signed ?
+                nir_imm_vec4_16(b,
+                                (1 << (x - 1)) - 1, (1 << (y - 1)) - 1,
+                                (1 << (z - 1)) - 1, (1 << (w - 1)) - 1) :
+                nir_imm_vec4_16(b,
+                                (1 << x) - 1, (1 << y) - 1,
+                                (1 << z) - 1, (1 << w) - 1);
 
         /* If a channel has N bits, we pad out to the byte by (8 - N) bits */
         nir_ssa_def *shifts = nir_imm_ivec4(b, 8 - x, 8 - y, 8 - z, 8 - w);
 
-        nir_ssa_def *f = nir_fmul(b, nir_fsat(b, nir_pad_vec4(b, v)), scales);
+        nir_ssa_def *clamped =
+                is_signed ?
+                nir_fsat_signed_mali(b, nir_pad_vec4(b, v)) :
+                nir_fsat(b, nir_pad_vec4(b, v));
+
+        nir_ssa_def *f = nir_fmul(b, clamped, scales);
         nir_ssa_def *u8 = nir_f2u8(b, nir_fround_even(b, f));
         nir_ssa_def *s = nir_ishl(b, u8, shifts);
         nir_ssa_def *repl = nir_pack_32_4x8(b, s);
 
         return pan_replicate_4(b, repl);
+}
+
+static nir_ssa_def *
+pan_pack_unorm(nir_builder *b, nir_ssa_def *v,
+               unsigned x, unsigned y, unsigned z, unsigned w)
+{
+        return pan_pack_norm(b, v, x, y, z, w, false);
+}
+
+static nir_ssa_def *
+pan_pack_snorm(nir_builder *b, nir_ssa_def *v,
+               unsigned x, unsigned y, unsigned z, unsigned w)
+{
+        return pan_pack_norm(b, v, x, y, z, w, true);
 }
 
 /* RGB10_A2 is packed in the tilebuffer as the bottom 3 bytes being the top
@@ -391,6 +417,9 @@ pan_pack(nir_builder *b,
 
         if (util_format_is_unorm8(desc))
                 return pan_pack_unorm(b, unpacked, 8, 8, 8, 8);
+
+        if (util_format_is_snorm8(desc->format))
+                return pan_pack_snorm(b, unpacked, 8, 8, 8, 8);
 
         if (desc->is_array) {
                 int c = util_format_get_first_non_void_channel(desc->format);
