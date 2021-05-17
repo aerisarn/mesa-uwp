@@ -2030,24 +2030,29 @@ calc_pvtmem_size(struct tu_device *dev, struct tu_pvtmem_config *config,
    return dev->physical_device->info.num_sp_cores * per_sp_size;
 }
 
-static void
+static VkResult
 tu_setup_pvtmem(struct tu_device *dev,
                 struct tu_pipeline *pipeline,
                 struct tu_pvtmem_config *config,
                 uint32_t pvtmem_bytes, bool per_wave)
 {
-   struct tu_cs_memory memory;
-
    if (!pvtmem_bytes) {
       memset(config, 0, sizeof(*config));
-      return;
+      return VK_SUCCESS;
    }
 
    uint32_t total_size = calc_pvtmem_size(dev, config, pvtmem_bytes);
    config->per_wave = per_wave;
 
-   tu_cs_alloc(&pipeline->cs, total_size / 32, 8, &memory);
-   config->iova = memory.iova;
+   VkResult result =
+      tu_bo_init_new(dev, &pipeline->pvtmem_bo, total_size,
+                     TU_BO_ALLOC_NO_FLAGS);
+   if (result != VK_SUCCESS)
+      return result;
+
+   config->iova = pipeline->pvtmem_bo.iova;
+
+   return result;
 }
 
 
@@ -2846,6 +2851,9 @@ tu_pipeline_finish(struct tu_pipeline *pipeline,
 {
    tu_cs_finish(&pipeline->cs);
 
+   if (pipeline->pvtmem_bo.size)
+      tu_bo_finish(dev, &pipeline->pvtmem_bo);
+
    ralloc_free(pipeline->executables_mem_ctx);
 }
 
@@ -2904,8 +2912,12 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
          per_wave = false;
    }
 
-   tu_setup_pvtmem(builder->device, *pipeline, &builder->pvtmem,
-                   pvtmem_size, per_wave);
+   result = tu_setup_pvtmem(builder->device, *pipeline, &builder->pvtmem,
+                            pvtmem_size, per_wave);
+   if (result != VK_SUCCESS) {
+      vk_object_free(&builder->device->vk, builder->alloc, *pipeline);
+      return result;
+   }
 
    tu_pipeline_builder_parse_dynamic(builder, *pipeline);
    tu_pipeline_builder_parse_shader_stages(builder, *pipeline);

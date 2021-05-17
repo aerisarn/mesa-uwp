@@ -1110,6 +1110,9 @@ struct tu_pipeline
 
    struct tu_cs cs;
 
+   /* Separate BO for private memory since it should GPU writable */
+   struct tu_bo pvtmem_bo;
+
    struct tu_pipeline_layout *layout;
 
    bool need_indirect_descriptor_sets;
