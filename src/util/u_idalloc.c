@@ -85,6 +85,62 @@ util_idalloc_alloc(struct util_idalloc *buf)
    return num_elements * 32;
 }
 
+static unsigned
+find_free_block(struct util_idalloc *buf, unsigned start)
+{
+   for (unsigned i = start; i < buf->num_elements; i++) {
+      if (!buf->data[i])
+         return i;
+   }
+   return buf->num_elements;
+}
+
+/* Allocate a range of consecutive IDs. Return the first ID. */
+unsigned
+util_idalloc_alloc_range(struct util_idalloc *buf, unsigned num)
+{
+   if (num == 1)
+      return util_idalloc_alloc(buf);
+
+   unsigned num_alloc = DIV_ROUND_UP(num, 32);
+   unsigned num_elements = buf->num_elements;
+   unsigned base = find_free_block(buf, buf->lowest_free_idx);
+
+   while (1) {
+      unsigned i;
+      for (i = base;
+           i < num_elements && i - base < num_alloc && !buf->data[i]; i++);
+
+      if (i - base == num_alloc)
+         goto ret; /* found */
+
+      if (i == num_elements)
+         break; /* not found */
+
+      /* continue searching */
+      base = !buf->data[i] ? i : i + 1;
+   }
+
+   /* No slots available, allocate more. */
+   util_idalloc_resize(buf, num_elements * 2 + num_alloc);
+
+ret:
+   /* Mark the bits as used. */
+   for (unsigned i = base; i < base + num_alloc - (num % 32 != 0); i++)
+      buf->data[i] = 0xffffffff;
+   if (num % 32 != 0)
+      buf->data[base + num_alloc - 1] |= BITFIELD_MASK(num % 32);
+
+   if (buf->lowest_free_idx == base)
+      buf->lowest_free_idx = base + num / 32;
+
+   /* Validate this algorithm. */
+   for (unsigned i = 0; i < num; i++)
+      assert(util_idalloc_exists(buf, base * 32 + i));
+
+   return base * 32;
+}
+
 void
 util_idalloc_free(struct util_idalloc *buf, unsigned id)
 {

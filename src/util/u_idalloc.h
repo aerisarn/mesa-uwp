@@ -58,6 +58,9 @@ util_idalloc_fini(struct util_idalloc *buf);
 unsigned
 util_idalloc_alloc(struct util_idalloc *buf);
 
+unsigned
+util_idalloc_alloc_range(struct util_idalloc *buf, unsigned num);
+
 void
 util_idalloc_free(struct util_idalloc *buf, unsigned id);
 
