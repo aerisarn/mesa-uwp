@@ -255,10 +255,10 @@ vn_android_get_mem_type_bits_from_dma_buf(VkDevice device,
 }
 
 static bool
-vn_get_gralloc_buffer_info(buffer_handle_t handle,
-                           uint32_t out_strides[4],
-                           uint32_t out_offsets[4],
-                           uint64_t *out_format_modifier)
+vn_android_get_gralloc_buffer_info(buffer_handle_t handle,
+                                   uint32_t out_strides[4],
+                                   uint32_t out_offsets[4],
+                                   uint64_t *out_format_modifier)
 {
    static const int32_t CROS_GRALLOC_DRM_GET_BUFFER_INFO = 4;
    struct cros_gralloc0_buffer_info info;
@@ -276,11 +276,11 @@ vn_get_gralloc_buffer_info(buffer_handle_t handle,
 }
 
 static VkResult
-vn_num_planes_from_format_and_modifier(VkPhysicalDevice physical_device,
-                                       VkFormat format,
-                                       uint64_t modifier,
-                                       const VkAllocationCallbacks *alloc,
-                                       uint32_t *out_num_planes)
+vn_android_get_modifier_properties(VkPhysicalDevice physical_device,
+                                   VkFormat format,
+                                   uint64_t modifier,
+                                   const VkAllocationCallbacks *alloc,
+                                   VkDrmFormatModifierPropertiesEXT *out_props)
 {
    VkDrmFormatModifierPropertiesListEXT mod_prop_list = {
       .sType = VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT,
@@ -312,7 +312,7 @@ vn_num_planes_from_format_and_modifier(VkPhysicalDevice physical_device,
 
    for (uint32_t i = 0; i < mod_prop_list.drmFormatModifierCount; i++) {
       if (mod_props[i].drmFormatModifier == modifier) {
-         *out_num_planes = mod_props[i].drmFormatModifierPlaneCount;
+         *out_props = mod_props[i];
          break;
       }
    }
@@ -350,30 +350,31 @@ vn_android_image_from_anb(struct vn_device *dev,
    uint32_t strides[4] = { 0, 0, 0, 0 };
    uint32_t offsets[4] = { 0, 0, 0, 0 };
    uint64_t format_modifier = 0;
-   uint32_t num_planes = 0;
 
    result = vn_android_get_dma_buf_from_native_handle(anb_info->handle,
                                                       &dma_buf_fd);
    if (result != VK_SUCCESS)
       goto fail;
 
-   if (!vn_get_gralloc_buffer_info(anb_info->handle, strides, offsets,
-                                   &format_modifier) ||
+   if (!vn_android_get_gralloc_buffer_info(anb_info->handle, strides, offsets,
+                                           &format_modifier) ||
        format_modifier == DRM_FORMAT_MOD_INVALID) {
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
    }
 
-   result = vn_num_planes_from_format_and_modifier(
-      physical_device, image_info->format, format_modifier, alloc,
-      &num_planes);
+   VkDrmFormatModifierPropertiesEXT mod_props;
+   result =
+      vn_android_get_modifier_properties(physical_device, image_info->format,
+                                         format_modifier, alloc, &mod_props);
    if (result != VK_SUCCESS)
       goto fail;
 
    /* TODO support multi-planar format */
-   if (num_planes != 1) {
+   if (mod_props.drmFormatModifierPlaneCount != 1) {
       if (VN_DEBUG(WSI))
-         vn_log(dev->instance, "num_planes is %d, expected 1", num_planes);
+         vn_log(dev->instance, "plane count is %d, expected 1",
+                mod_props.drmFormatModifierPlaneCount);
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
    }
@@ -728,6 +729,76 @@ vn_android_wsi_fini(struct vn_device *dev, const VkAllocationCallbacks *alloc)
    vk_free(alloc, dev->android_wsi);
 }
 
+static VkResult
+vn_android_get_ahb_format_properties(
+   struct vn_device *dev,
+   const struct AHardwareBuffer *ahb,
+   VkAndroidHardwareBufferFormatPropertiesANDROID *out_props)
+{
+   VkPhysicalDevice physical_device =
+      vn_physical_device_to_handle(dev->physical_device);
+
+   AHardwareBuffer_Desc desc;
+   AHardwareBuffer_describe(ahb, &desc);
+
+   /* AHB usage must include at least one GPU bit for image or buffer */
+   if (!(desc.usage & (AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+                       AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER |
+                       AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER)))
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+   /* We implement AHB extension support with EXT_image_drm_format_modifier.
+    * It requires us to have a compatible VkFormat but not DRM formats. So if
+    * the ahb is not intended for backing a VkBuffer, error out early if the
+    * format is VK_FORMAT_UNDEFINED.
+    */
+   VkFormat format = vn_android_ahb_format_to_vk_format(desc.format);
+   if (format == VK_FORMAT_UNDEFINED) {
+      if (desc.format != AHARDWAREBUFFER_FORMAT_BLOB)
+         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+      out_props->format = format;
+      out_props->externalFormat = desc.format;
+      return VK_SUCCESS;
+   }
+
+   uint32_t strides[4] = { 0, 0, 0, 0 };
+   uint32_t offsets[4] = { 0, 0, 0, 0 };
+   uint64_t format_modifier = 0;
+   const native_handle_t *handle = AHardwareBuffer_getNativeHandle(ahb);
+   if (!vn_android_get_gralloc_buffer_info(handle, strides, offsets,
+                                           &format_modifier) ||
+       format_modifier == DRM_FORMAT_MOD_INVALID)
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+   VkDrmFormatModifierPropertiesEXT mod_props;
+   VkResult result = vn_android_get_modifier_properties(
+      physical_device, format, format_modifier, &dev->base.base.alloc,
+      &mod_props);
+   if (result != VK_SUCCESS)
+      return result;
+
+   *out_props = (VkAndroidHardwareBufferFormatPropertiesANDROID) {
+      .sType = out_props->sType,
+      .pNext = out_props->pNext,
+      .format = format,
+      .externalFormat = desc.format,
+      .formatFeatures = mod_props.drmFormatModifierTilingFeatures,
+      .samplerYcbcrConversionComponents = {
+         .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+         .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+         .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+         .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+      },
+      .suggestedYcbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601,
+      .suggestedYcbcrRange = VK_SAMPLER_YCBCR_RANGE_ITU_FULL,
+      .suggestedXChromaOffset = VK_CHROMA_LOCATION_MIDPOINT,
+      .suggestedYChromaOffset = VK_CHROMA_LOCATION_MIDPOINT,
+   };
+
+   return VK_SUCCESS;
+}
+
 VkResult
 vn_GetAndroidHardwareBufferPropertiesANDROID(
    VkDevice device,
@@ -738,6 +809,16 @@ vn_GetAndroidHardwareBufferPropertiesANDROID(
    VkResult result = VK_SUCCESS;
    int dma_buf_fd = -1;
    uint32_t mem_type_bits = 0;
+
+   VkAndroidHardwareBufferFormatPropertiesANDROID *format_props =
+      vk_find_struct(pProperties->pNext,
+                     ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID);
+   if (format_props) {
+      result =
+         vn_android_get_ahb_format_properties(dev, buffer, format_props);
+      if (result != VK_SUCCESS)
+         return vn_error(dev->instance, result);
+   }
 
    const native_handle_t *handle = AHardwareBuffer_getNativeHandle(buffer);
    result = vn_android_get_dma_buf_from_native_handle(handle, &dma_buf_fd);
