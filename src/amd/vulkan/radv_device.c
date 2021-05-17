@@ -1630,7 +1630,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *features =
             (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *)ext;
          features->extendedDynamicState2 = true;
-         features->extendedDynamicState2LogicOp = false;
+         features->extendedDynamicState2LogicOp = true;
          features->extendedDynamicState2PatchControlPoints = false;
          break;
       }
