@@ -725,6 +725,11 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
 
          if (ia_vert_info.count) {
             FREE(vert_info->verts);
+            if (free_prim_info) {
+               FREE(prim_info->primitive_lengths);
+               FREE(tes_elts_out);
+               tes_elts_out = NULL;
+            }
             vert_info = &ia_vert_info;
             prim_info = &ia_prim_info;
             free_prim_info = TRUE;
