@@ -304,6 +304,23 @@
       when: on_success
     - when: never
 
+.i915g-rules:
+  stage: intel
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+      - src/gallium/drivers/i915/**/*
+      - src/gallium/winsys/i915/**/*
+      - src/intel/**/*
+      when: on_success
+    - when: never
+
 .iris-rules:
   stage: intel
   rules:

@@ -1,0 +1,8 @@
+dEQP-GLES2.functional.shaders.discard.function_always
+dEQP-GLES2.functional.shaders.random.texture.*
+
+# Some of these compile fail, which results in drawing undefined
+# VARYING_SLOT_COL0 to the output, causing occasional passes in
+# tests that normally fail.
+dEQP-GLES2.functional.shaders.random.all_features.fragment.*
+dEQP-GLES2.functional.uniform_api.random.*

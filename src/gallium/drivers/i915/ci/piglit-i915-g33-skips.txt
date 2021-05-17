@@ -1,0 +1,2 @@
+# Timeout
+spec@arb_internalformat_query2@all internalformat_.*_type
