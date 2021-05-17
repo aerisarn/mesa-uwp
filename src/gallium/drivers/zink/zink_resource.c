@@ -933,7 +933,6 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
          if (!trans->staging_res)
             return NULL;
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
-         trans->offset = staging_res->obj->offset;
          zink_copy_buffer(ctx, NULL, staging_res, res, box->x, box->x, box->width);
          res = staging_res;
          zink_fence_wait(&ctx->base);
@@ -1142,7 +1141,7 @@ zink_transfer_flush_region(struct pipe_context *pctx,
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
          if (ptrans->resource->target == PIPE_BUFFER)
-            zink_copy_buffer(ctx, NULL, res, staging_res, box->x, box->x + trans->offset + m->obj->offset, box->width);
+            zink_copy_buffer(ctx, NULL, res, staging_res, box->x, offset, box->width);
          else
             zink_transfer_copy_bufimage(ctx, res, staging_res, trans);
       }
