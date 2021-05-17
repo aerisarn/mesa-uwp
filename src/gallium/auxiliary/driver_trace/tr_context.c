@@ -45,6 +45,7 @@
 
 struct trace_query
 {
+   struct threaded_query base;
    unsigned type;
 
    struct pipe_query *query;
@@ -224,19 +225,21 @@ trace_context_begin_query(struct pipe_context *_pipe,
 
 static bool
 trace_context_end_query(struct pipe_context *_pipe,
-                        struct pipe_query *query)
+                        struct pipe_query *_query)
 {
    struct trace_context *tr_ctx = trace_context(_pipe);
    struct pipe_context *pipe = tr_ctx->pipe;
    bool ret;
 
-   query = trace_query_unwrap(query);
+   struct pipe_query *query = trace_query_unwrap(_query);
 
    trace_dump_call_begin("pipe_context", "end_query");
 
    trace_dump_arg(ptr, pipe);
    trace_dump_arg(ptr, query);
 
+   if (tr_ctx->threaded)
+      threaded_query(query)->flushed = trace_query(_query)->base.flushed;
    ret = pipe->end_query(pipe, query);
 
    trace_dump_call_end();
@@ -260,6 +263,9 @@ trace_context_get_query_result(struct pipe_context *_pipe,
 
    trace_dump_arg(ptr, pipe);
    trace_dump_arg(ptr, query);
+
+   if (tr_ctx->threaded)
+      threaded_query(query)->flushed = trace_query(_query)->base.flushed;
 
    ret = pipe->get_query_result(pipe, query, wait, result);
 
