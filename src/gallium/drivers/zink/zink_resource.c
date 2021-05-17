@@ -1158,9 +1158,10 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
       }
    }
 
-   if ((usage & PIPE_MAP_WRITE) &&
-       (usage & PIPE_MAP_DISCARD_RANGE || (!(usage & PIPE_MAP_READ) && zink_resource_has_usage(res))) &&
-       ((!res->obj->host_visible) || !(usage & (PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT)))) {
+   if (usage & PIPE_MAP_DISCARD_RANGE &&
+        (!res->obj->host_visible ||
+        !(usage & (PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT)))) {
+
       /* Check if mapping this buffer would cause waiting for the GPU.
        */
 
@@ -1182,29 +1183,43 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
                      screen->info.props.limits.minMemoryMapAlignment, &offset,
                      (struct pipe_resource **)&trans->staging_res, (void **)&ptr);
          res = zink_resource(trans->staging_res);
-         trans->offset = offset;
+         trans->offset = offset + box->x;
+         usage |= PIPE_MAP_UNSYNCHRONIZED;
+         ptr = ((uint8_t *)ptr) + box->x;
       } else {
          /* At this point, the buffer is always idle (we checked it above). */
          usage |= PIPE_MAP_UNSYNCHRONIZED;
       }
-   } else if ((usage & PIPE_MAP_READ) && !(usage & PIPE_MAP_PERSISTENT)) {
+   } else if (((usage & PIPE_MAP_READ) && !(usage & PIPE_MAP_PERSISTENT) && res->base.b.usage != PIPE_USAGE_STAGING) || !res->obj->host_visible) {
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_THREAD_SAFE)));
-      if (usage & PIPE_MAP_DONTBLOCK) {
-         /* sparse/device-local will always need to wait since it has to copy */
-         if (!res->obj->host_visible)
-            return NULL;
-         if (!zink_resource_usage_check_completion(screen, res, ZINK_RESOURCE_ACCESS_WRITE))
-            return NULL;
-      } else if (!res->obj->host_visible) {
-         trans->staging_res = pipe_buffer_create(&screen->base, PIPE_BIND_LINEAR, PIPE_USAGE_STAGING, box->x + box->width);
+      if (!res->obj->host_visible || !(usage & PIPE_MAP_ONCE)) {
+         trans->offset = box->x % screen->info.props.limits.minMemoryMapAlignment;
+         trans->staging_res = pipe_buffer_create(&screen->base, PIPE_BIND_LINEAR, PIPE_USAGE_STAGING, box->width + trans->offset);
          if (!trans->staging_res)
             return NULL;
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
-         zink_copy_buffer(ctx, NULL, staging_res, res, box->x, box->x, box->width);
+         zink_copy_buffer(ctx, NULL, staging_res, res, trans->offset, box->x, box->width);
          res = staging_res;
-         zink_fence_wait(&ctx->base);
-      } else
+         usage &= ~PIPE_MAP_UNSYNCHRONIZED;
+         ptr = map_resource(screen, res);
+         ptr = ((uint8_t *)ptr) + trans->offset;
+      }
+   } else if (usage & PIPE_MAP_DONTBLOCK) {
+      /* sparse/device-local will always need to wait since it has to copy */
+      if (!res->obj->host_visible)
+         return NULL;
+      if (!zink_resource_usage_check_completion(screen, res, ZINK_RESOURCE_ACCESS_WRITE))
+         return NULL;
+      usage |= PIPE_MAP_UNSYNCHRONIZED;
+   }
+
+   if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
+      if (usage & PIPE_MAP_WRITE)
+         zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_RW);
+      else
          zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_WRITE);
+      res->access = 0;
+      res->access_stage = 0;
    }
 
    if (!ptr) {
@@ -1217,6 +1232,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
       ptr = map_resource(screen, res);
       if (!ptr)
          return NULL;
+      ptr = ((uint8_t *)ptr) + box->x;
    }
 
    if (!res->obj->coherent
@@ -1230,7 +1246,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
 #endif
       ) {
       VkDeviceSize size = box->width;
-      VkDeviceSize offset = res->obj->offset + trans->offset + box->x;
+      VkDeviceSize offset = res->obj->offset + trans->offset;
       VkMappedMemoryRange range = zink_resource_init_mem_range(screen, res->obj, offset, size);
       if (vkInvalidateMappedMemoryRanges(screen->dev, 1, &range) != VK_SUCCESS) {
          vkUnmapMemory(screen->dev, res->obj->mem);
@@ -1276,8 +1292,7 @@ zink_transfer_map(struct pipe_context *pctx,
 
    void *ptr, *base;
    if (pres->target == PIPE_BUFFER) {
-      base = buffer_transfer_map(ctx, res, usage, box, trans);
-      ptr = ((uint8_t *)base) + box->x;
+      ptr = base = buffer_transfer_map(ctx, res, usage, box, trans);
    } else {
       if (usage & PIPE_MAP_WRITE && !(usage & PIPE_MAP_READ))
          /* this is like a blit, so we can potentially dump some clears or maybe we have to  */
@@ -1391,7 +1406,7 @@ zink_transfer_flush_region(struct pipe_context *pctx,
       ASSERTED VkDeviceSize size, offset;
       if (m->obj->is_buffer) {
          size = box->width;
-         offset = trans->offset + box->x;
+         offset = trans->offset;
       } else {
          size = box->width * box->height * util_format_get_blocksize(m->base.b.format);
          offset = trans->offset +
