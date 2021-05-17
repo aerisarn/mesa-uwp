@@ -268,5 +268,42 @@ void
 aco_compile_vs_prolog(const struct radv_vs_prolog_key* key, struct radv_prolog_binary** binary,
                       const struct radv_shader_args* args)
 {
-   unreachable("TODO");
+   aco::init();
+
+   /* create program */
+   ac_shader_config config = {0};
+   std::unique_ptr<aco::Program> program{new aco::Program};
+   program->collect_statistics = false;
+   program->debug.func = NULL;
+   program->debug.private_data = NULL;
+
+   /* create IR */
+   unsigned num_preserved_sgprs;
+   aco::select_vs_prolog(program.get(), key, &config, args, &num_preserved_sgprs);
+   aco::insert_NOPs(program.get());
+
+   if (args->options->dump_shader)
+      aco_print_program(program.get(), stderr);
+
+   /* assembly */
+   std::vector<uint32_t> code;
+   code.reserve(align(program->blocks[0].instructions.size() * 2, 16));
+   unsigned exec_size = aco::emit_program(program.get(), code);
+
+   if (args->options->dump_shader) {
+      aco::print_asm(program.get(), code, exec_size / 4u, stderr);
+      fprintf(stderr, "\n");
+   }
+
+   /* copy into binary */
+   size_t size = code.size() * sizeof(uint32_t) + sizeof(radv_prolog_binary);
+   radv_prolog_binary* prolog_binary = (radv_prolog_binary*)calloc(size, 1);
+
+   prolog_binary->num_sgprs = config.num_sgprs;
+   prolog_binary->num_vgprs = config.num_vgprs;
+   prolog_binary->num_preserved_sgprs = num_preserved_sgprs;
+   prolog_binary->code_size = code.size() * sizeof(uint32_t);
+   memcpy(prolog_binary->data, code.data(), prolog_binary->code_size);
+
+   *binary = prolog_binary;
 }

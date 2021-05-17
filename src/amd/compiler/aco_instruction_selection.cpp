@@ -11820,4 +11820,325 @@ select_trap_handler_shader(Program* program, struct nir_shader* shader, ac_shade
 
    cleanup_cfg(program);
 }
+
+Operand
+get_arg_fixed(const struct radv_shader_args* args, struct ac_arg arg)
+{
+   assert(arg.used);
+
+   enum ac_arg_regfile file = args->ac.args[arg.arg_index].file;
+   unsigned size = args->ac.args[arg.arg_index].size;
+   unsigned reg = args->ac.args[arg.arg_index].offset;
+
+   return Operand(PhysReg(file == AC_ARG_SGPR ? reg : reg + 256),
+                  RegClass(file == AC_ARG_SGPR ? RegType::sgpr : RegType::vgpr, size));
+}
+
+unsigned
+load_vb_descs(Builder& bld, PhysReg dest, Operand base, unsigned start, unsigned max)
+{
+   unsigned count = MIN2((bld.program->dev.sgpr_limit - dest.reg()) / 4u, max);
+
+   unsigned num_loads = (count / 4u) + util_bitcount(count & 0x3);
+   if (bld.program->chip_class >= GFX10 && num_loads > 1)
+      bld.sopp(aco_opcode::s_clause, -1, num_loads - 1);
+
+   for (unsigned i = 0; i < count;) {
+      unsigned size = 1u << util_logbase2(MIN2(count - i, 4));
+
+      if (size == 4)
+         bld.smem(aco_opcode::s_load_dwordx16, Definition(dest, s16), base,
+                  Operand::c32((start + i) * 16u));
+      else if (size == 2)
+         bld.smem(aco_opcode::s_load_dwordx8, Definition(dest, s8), base,
+                  Operand::c32((start + i) * 16u));
+      else
+         bld.smem(aco_opcode::s_load_dwordx4, Definition(dest, s4), base,
+                  Operand::c32((start + i) * 16u));
+
+      dest = dest.advance(size * 16u);
+      i += size;
+   }
+
+   return count;
+}
+
+Operand
+calc_nontrivial_instance_id(Builder& bld, const struct radv_shader_args* args, unsigned index,
+                            Operand instance_id, Operand start_instance, PhysReg tmp_sgpr,
+                            PhysReg tmp_vgpr0, PhysReg tmp_vgpr1)
+{
+   bld.smem(aco_opcode::s_load_dwordx2, Definition(tmp_sgpr, s2),
+            get_arg_fixed(args, args->prolog_inputs), Operand::c32(8u + index * 8u));
+
+   wait_imm lgkm_imm;
+   lgkm_imm.lgkm = 0;
+   bld.sopp(aco_opcode::s_waitcnt, -1, lgkm_imm.pack(bld.program->chip_class));
+
+   Definition fetch_index_def(tmp_vgpr0, v1);
+   Operand fetch_index(tmp_vgpr0, v1);
+
+   Operand div_info(tmp_sgpr, s1);
+   if (bld.program->chip_class >= GFX8) {
+      /* use SDWA */
+      if (bld.program->chip_class < GFX9) {
+         bld.vop1(aco_opcode::v_mov_b32, Definition(tmp_vgpr1, v1), div_info);
+         div_info = Operand(tmp_vgpr1, v1);
+      }
+
+      bld.vop2(aco_opcode::v_lshrrev_b32, fetch_index_def, div_info, instance_id).instr;
+
+      Instruction* instr;
+      if (bld.program->chip_class >= GFX9)
+         instr = bld.vop2_sdwa(aco_opcode::v_add_u32, fetch_index_def, div_info, fetch_index).instr;
+      else
+         instr = bld.vop2_sdwa(aco_opcode::v_add_co_u32, fetch_index_def, Definition(vcc, bld.lm),
+                               div_info, fetch_index)
+                    .instr;
+      instr->sdwa().sel[0] = SubdwordSel::ubyte1;
+
+      bld.vop3(aco_opcode::v_mul_hi_u32, fetch_index_def, Operand(tmp_sgpr.advance(4), s1),
+               fetch_index);
+
+      instr =
+         bld.vop2_sdwa(aco_opcode::v_lshrrev_b32, fetch_index_def, div_info, fetch_index).instr;
+      instr->sdwa().sel[0] = SubdwordSel::ubyte2;
+   } else {
+      Operand tmp_op(tmp_vgpr1, v1);
+      Definition tmp_def(tmp_vgpr1, v1);
+
+      bld.vop2(aco_opcode::v_lshrrev_b32, fetch_index_def, div_info, instance_id);
+
+      bld.vop3(aco_opcode::v_bfe_u32, tmp_def, div_info, Operand::c32(8u), Operand::c32(8u));
+      bld.vadd32(fetch_index_def, tmp_op, fetch_index, false, Operand(s2), true);
+
+      bld.vop3(aco_opcode::v_mul_hi_u32, fetch_index_def, fetch_index,
+               Operand(tmp_sgpr.advance(4), s1));
+
+      bld.vop3(aco_opcode::v_bfe_u32, tmp_def, div_info, Operand::c32(16u), Operand::c32(8u));
+      bld.vop2(aco_opcode::v_lshrrev_b32, fetch_index_def, tmp_op, fetch_index);
+   }
+
+   bld.vadd32(fetch_index_def, start_instance, fetch_index, false, Operand(s2), true);
+
+   return fetch_index;
+}
+
+void
+select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shader_config* config,
+                 const struct radv_shader_args* args, unsigned* num_preserved_sgprs)
+{
+   assert(key->num_attributes > 0);
+
+   /* This should be enough for any shader/stage. */
+   unsigned max_user_sgprs = args->options->chip_class >= GFX9 ? 32 : 16;
+   *num_preserved_sgprs = max_user_sgprs + 14;
+
+   init_program(program, compute_cs, args->shader_info, args->options->chip_class,
+                args->options->family, args->options->wgp_mode, config);
+
+   Block* block = program->create_and_insert_block();
+   block->kind = block_kind_top_level;
+
+   program->workgroup_size = 64;
+   calc_min_waves(program);
+
+   Builder bld(program, block);
+
+   block->instructions.reserve(16 + key->num_attributes * 4);
+
+   bld.sopp(aco_opcode::s_setprio, -1u, 0x3u);
+
+   uint32_t attrib_mask = BITFIELD_MASK(key->num_attributes);
+   bool has_nontrivial_divisors = key->state->nontrivial_divisors & attrib_mask;
+
+   wait_imm lgkm_imm;
+   lgkm_imm.lgkm = 0;
+
+   /* choose sgprs */
+   PhysReg vertex_buffers(align(*num_preserved_sgprs, 2));
+   PhysReg prolog_input = vertex_buffers.advance(8);
+   PhysReg desc(
+      align((has_nontrivial_divisors ? prolog_input : vertex_buffers).advance(8).reg(), 4));
+
+   Operand start_instance = get_arg_fixed(args, args->ac.start_instance);
+   Operand instance_id = get_arg_fixed(args, args->ac.instance_id);
+
+   PhysReg attributes_start(256 + args->ac.num_vgprs_used);
+   /* choose vgprs that won't be used for anything else until the last attribute load */
+   PhysReg vertex_index(attributes_start.reg() + key->num_attributes * 4 - 1);
+   PhysReg instance_index(attributes_start.reg() + key->num_attributes * 4 - 2);
+   PhysReg start_instance_vgpr(attributes_start.reg() + key->num_attributes * 4 - 3);
+   PhysReg nontrivial_tmp_vgpr0(attributes_start.reg() + key->num_attributes * 4 - 4);
+   PhysReg nontrivial_tmp_vgpr1(attributes_start.reg() + key->num_attributes * 4);
+
+   bld.sop1(aco_opcode::s_mov_b32, Definition(vertex_buffers, s1),
+            get_arg_fixed(args, args->ac.vertex_buffers));
+   bld.sop1(aco_opcode::s_mov_b32, Definition(vertex_buffers.advance(4), s1),
+            Operand::c32((unsigned)args->options->address32_hi));
+
+   /* calculate vgpr requirements */
+   unsigned num_vgprs = attributes_start.reg() - 256;
+   num_vgprs += key->num_attributes * 4;
+   if (has_nontrivial_divisors && program->chip_class <= GFX8)
+      num_vgprs++; /* make space for nontrivial_tmp_vgpr1 */
+   unsigned num_sgprs = 0;
+
+   for (unsigned loc = 0; loc < key->num_attributes;) {
+      unsigned num_descs =
+         load_vb_descs(bld, desc, Operand(vertex_buffers, s2), loc, key->num_attributes - loc);
+      num_sgprs = MAX2(num_sgprs, desc.advance(num_descs * 16u).reg());
+
+      if (loc == 0) {
+         /* perform setup while we load the descriptors */
+         if (key->is_ngg || key->next_stage != MESA_SHADER_VERTEX) {
+            Operand count = get_arg_fixed(args, args->ac.merged_wave_info);
+            bld.sop2(aco_opcode::s_bfm_b64, Definition(exec, s2), count, Operand::c32(0u));
+            if (program->wave_size == 64) {
+               bld.sopc(aco_opcode::s_bitcmp1_b32, Definition(scc, s1), count,
+                        Operand::c32(6u /* log2(64) */));
+               bld.sop2(aco_opcode::s_cselect_b64, Definition(exec, s2), Operand::c64(UINT64_MAX),
+                        Operand(exec, s2), Operand(scc, s1));
+            }
+         }
+
+         bool needs_instance_index = false;
+         bool needs_start_instance = false;
+         u_foreach_bit(i, key->state->instance_rate_inputs & attrib_mask)
+         {
+            needs_instance_index |= key->state->divisors[i] == 1;
+            needs_start_instance |= key->state->divisors[i] == 0;
+         }
+         bool needs_vertex_index = ~key->state->instance_rate_inputs & attrib_mask;
+         if (needs_vertex_index)
+            bld.vadd32(Definition(vertex_index, v1), get_arg_fixed(args, args->ac.base_vertex),
+                       get_arg_fixed(args, args->ac.vertex_id), false, Operand(s2), true);
+         if (needs_instance_index)
+            bld.vadd32(Definition(instance_index, v1), start_instance, instance_id, false,
+                       Operand(s2), true);
+         if (needs_start_instance)
+            bld.vop1(aco_opcode::v_mov_b32, Definition(start_instance_vgpr, v1), start_instance);
+      }
+
+      bld.sopp(aco_opcode::s_waitcnt, -1, lgkm_imm.pack(program->chip_class));
+
+      for (unsigned i = 0; i < num_descs; i++, loc++) {
+         PhysReg dest(attributes_start.reg() + loc * 4u);
+
+         /* calculate index */
+         Operand fetch_index = Operand(vertex_index, v1);
+         if (key->state->instance_rate_inputs & (1u << loc)) {
+            uint32_t divisor = key->state->divisors[loc];
+            if (divisor) {
+               fetch_index = instance_id;
+               if (key->state->nontrivial_divisors & (1u << loc)) {
+                  unsigned index =
+                     util_bitcount(key->state->nontrivial_divisors & BITFIELD_MASK(loc));
+                  fetch_index = calc_nontrivial_instance_id(
+                     bld, args, index, instance_id, start_instance, prolog_input,
+                     nontrivial_tmp_vgpr0, nontrivial_tmp_vgpr1);
+               } else {
+                  fetch_index = Operand(instance_index, v1);
+               }
+            } else {
+               fetch_index = Operand(start_instance_vgpr, v1);
+            }
+         }
+
+         /* perform load */
+         PhysReg cur_desc = desc.advance(i * 16);
+         if ((key->misaligned_mask & (1u << loc))) {
+            unsigned dfmt = key->state->formats[loc] & 0xf;
+            unsigned nfmt = key->state->formats[loc] >> 4;
+            const struct ac_data_format_info* vtx_info = ac_get_data_format_info(dfmt);
+            for (unsigned j = 0; j < vtx_info->num_channels; j++) {
+               bool post_shuffle = key->state->post_shuffle & (1u << loc);
+               unsigned offset = vtx_info->chan_byte_size * (post_shuffle && j < 3 ? 2 - j : j);
+
+               /* Use MUBUF to workaround hangs for byte-aligned dword loads. The Vulkan spec
+                * doesn't require this to work, but some GL CTS tests over Zink do this anyway.
+                * MTBUF can hang, but MUBUF doesn't (probably gives garbage, but GL CTS doesn't
+                * care).
+                */
+               if (vtx_info->chan_format == V_008F0C_BUF_DATA_FORMAT_32)
+                  bld.mubuf(aco_opcode::buffer_load_dword, Definition(dest.advance(j * 4u), v1),
+                            Operand(cur_desc, s4), fetch_index, Operand::c32(0u), offset, false,
+                            false, true);
+               else
+                  bld.mtbuf(aco_opcode::tbuffer_load_format_x, Definition(dest.advance(j * 4u), v1),
+                            Operand(cur_desc, s4), fetch_index, Operand::c32(0u),
+                            vtx_info->chan_format, nfmt, offset, false, true);
+            }
+            uint32_t one =
+               nfmt == V_008F0C_BUF_NUM_FORMAT_UINT || nfmt == V_008F0C_BUF_NUM_FORMAT_SINT
+                  ? 1u
+                  : 0x3f800000u;
+            for (unsigned j = vtx_info->num_channels; j < 4; j++) {
+               bld.vop1(aco_opcode::v_mov_b32, Definition(dest.advance(j * 4u), v1),
+                        Operand::c32(j == 3 ? one : 0u));
+            }
+         } else {
+            bld.mubuf(aco_opcode::buffer_load_format_xyzw, Definition(dest, v4),
+                      Operand(cur_desc, s4), fetch_index, Operand::c32(0u), 0u, false, false, true);
+         }
+      }
+   }
+
+   if (key->state->alpha_adjust_lo | key->state->alpha_adjust_hi) {
+      wait_imm vm_imm;
+      vm_imm.vm = 0;
+      bld.sopp(aco_opcode::s_waitcnt, -1, vm_imm.pack(program->chip_class));
+   }
+
+   /* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
+    * so we may need to fix it up. */
+   u_foreach_bit(loc, (key->state->alpha_adjust_lo | key->state->alpha_adjust_hi))
+   {
+      PhysReg alpha(attributes_start.reg() + loc * 4u + 3);
+
+      unsigned alpha_adjust = (key->state->alpha_adjust_lo >> loc) & 0x1;
+      alpha_adjust |= ((key->state->alpha_adjust_hi >> loc) & 0x1) << 1;
+
+      if (alpha_adjust == ALPHA_ADJUST_SSCALED)
+         bld.vop1(aco_opcode::v_cvt_u32_f32, Definition(alpha, v1), Operand(alpha, v1));
+
+      /* For the integer-like cases, do a natural sign extension.
+       *
+       * For the SNORM case, the values are 0.0, 0.333, 0.666, 1.0
+       * and happen to contain 0, 1, 2, 3 as the two LSBs of the
+       * exponent.
+       */
+      unsigned offset = alpha_adjust == ALPHA_ADJUST_SNORM ? 23u : 0u;
+      bld.vop3(aco_opcode::v_bfe_i32, Definition(alpha, v1), Operand(alpha, v1),
+               Operand::c32(offset), Operand::c32(2u));
+
+      /* Convert back to the right type. */
+      if (alpha_adjust == ALPHA_ADJUST_SNORM) {
+         bld.vop1(aco_opcode::v_cvt_f32_i32, Definition(alpha, v1), Operand(alpha, v1));
+         bld.vop2(aco_opcode::v_max_f32, Definition(alpha, v1), Operand::c32(0xbf800000u),
+                  Operand(alpha, v1));
+      } else if (alpha_adjust == ALPHA_ADJUST_SSCALED) {
+         bld.vop1(aco_opcode::v_cvt_f32_i32, Definition(alpha, v1), Operand(alpha, v1));
+      }
+   }
+
+   block->kind |= block_kind_uniform;
+
+   /* continue on to the main shader */
+   Operand continue_pc = get_arg_fixed(args, args->prolog_inputs);
+   if (has_nontrivial_divisors) {
+      bld.smem(aco_opcode::s_load_dwordx2, Definition(prolog_input, s2),
+               get_arg_fixed(args, args->prolog_inputs), Operand::c32(0u));
+      bld.sopp(aco_opcode::s_waitcnt, -1, lgkm_imm.pack(program->chip_class));
+      continue_pc = Operand(prolog_input, s2);
+   }
+
+   bld.sop1(aco_opcode::s_setpc_b64, continue_pc);
+
+   program->config->float_mode = program->blocks[0].fp_mode.val;
+   /* addition on GFX6-8 requires a carry-out (we use VCC) */
+   program->needs_vcc = program->chip_class <= GFX8;
+   program->config->num_vgprs = get_vgpr_alloc(program, num_vgprs);
+   program->config->num_sgprs = get_sgpr_alloc(program, num_sgprs);
+}
 } // namespace aco
