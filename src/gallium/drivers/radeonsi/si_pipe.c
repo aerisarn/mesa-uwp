@@ -1048,8 +1048,12 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    /* Set these flags in debug_flags early, so that the shader cache takes
     * them into account.
+    *
+    * Enable FS_CORRECT_DERIVS_AFTER_KILL by default if LLVM is >= 13. This makes
+    * nir_opt_move_discards_to_top more effective.
     */
-   if (driQueryOptionb(config->options, "glsl_correct_derivatives_after_discard"))
+   if (driQueryOptionb(config->options, "glsl_correct_derivatives_after_discard") ||
+       LLVM_VERSION_MAJOR >= 13)
       sscreen->debug_flags |= DBG(FS_CORRECT_DERIVS_AFTER_KILL);
 
    if (sscreen->debug_flags & DBG(INFO))
