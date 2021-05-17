@@ -604,6 +604,7 @@ static struct pipe_resource *si_buffer_create(struct pipe_screen *screen,
       buf->flags |= RADEON_FLAG_SPARSE;
 
    if (!si_alloc_resource(sscreen, buf)) {
+      threaded_resource_deinit(&buf->b.b);
       FREE(buf);
       return NULL;
    }
@@ -651,6 +652,7 @@ static struct pipe_resource *si_buffer_from_user_memory(struct pipe_screen *scre
    /* Convert a user pointer to a buffer. */
    buf->buf = ws->buffer_from_ptr(ws, user_memory, templ->width0);
    if (!buf->buf) {
+      threaded_resource_deinit(&buf->b.b);
       FREE(buf);
       return NULL;
    }
