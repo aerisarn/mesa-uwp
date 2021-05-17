@@ -1188,7 +1188,10 @@ bool get_reg_specified(ra_ctx& ctx,
                        aco_ptr<Instruction>& instr,
                        PhysReg reg)
 {
-   assert(reg <= 511);
+   /* catch out-of-range registers */
+   if (reg >= PhysReg{512})
+      return false;
+
    std::pair<unsigned, unsigned> sdw_def_info;
    if (rc.is_subdword())
       sdw_def_info = get_subdword_definition_info(ctx.program, instr, rc);
@@ -1387,12 +1390,9 @@ PhysReg get_reg(ra_ctx& ctx,
                 op.getTemp().type() == temp.type() &&
                 ctx.assignments[op.tempId()].assigned) {
                PhysReg reg = ctx.assignments[op.tempId()].reg;
-               /* prevent underflow */
-               if (int(reg.reg_b + byte_offset - k) >= 0) {
-                  reg.reg_b += (byte_offset - k);
-                  if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
-                     return reg;
-               }
+               reg.reg_b += (byte_offset - k);
+               if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
+                  return reg;
             }
             k += op.bytes();
          }
