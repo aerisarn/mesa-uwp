@@ -2649,6 +2649,35 @@ radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
 
+unsigned
+radv_instance_rate_prolog_index(unsigned num_attributes, uint32_t instance_rate_inputs)
+{
+   /* instance_rate_vs_prologs is a flattened array of array of arrays of different sizes, or a
+    * single array sorted in ascending order using:
+    * - total number of attributes
+    * - number of instanced attributes
+    * - index of first instanced attribute
+    */
+
+   /* From total number of attributes to offset. */
+   static const uint16_t total_to_offset[16] = {0,   1,   4,   10,  20,  35,  56,  84,
+                                                120, 165, 220, 286, 364, 455, 560, 680};
+   unsigned start_index = total_to_offset[num_attributes - 1];
+
+   /* From number of instanced attributes to offset. This would require a different LUT depending on
+    * the total number of attributes, but we can exploit a pattern to use just the LUT for 16 total
+    * attributes.
+    */
+   static const uint8_t count_to_offset_total16[16] = {0,   16,  31,  45,  58,  70,  81,  91,
+                                                       100, 108, 115, 121, 126, 130, 133, 135};
+   unsigned count = util_bitcount(instance_rate_inputs);
+   unsigned offset_from_start_index =
+      count_to_offset_total16[count - 1] - ((16 - num_attributes) * (count - 1));
+
+   unsigned first = ffs(instance_rate_inputs) - 1;
+   return start_index + offset_from_start_index + first;
+}
+
 union vs_prolog_key_header {
    struct {
       uint32_t key_size : 8;
@@ -2734,6 +2763,25 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant 
    else if (pipeline->shaders[MESA_SHADER_GEOMETRY] == vs_shader)
       key.next_stage = MESA_SHADER_GEOMETRY;
 
+   /* try to use a pre-compiled prolog first */
+   struct radv_shader_prolog *prolog = NULL;
+   if (!key.as_ls && key.next_stage == MESA_SHADER_VERTEX &&
+       key.is_ngg == device->physical_device->use_ngg && !misaligned_mask &&
+       !state->alpha_adjust_lo && !state->alpha_adjust_hi &&
+       vs_shader->info.wave_size == device->physical_device->ge_wave_size) {
+      if (!instance_rate_inputs) {
+         prolog = device->simple_vs_prologs[num_attributes - 1];
+      } else if (num_attributes <= 16 && !*nontrivial_divisors &&
+                 util_bitcount(instance_rate_inputs) ==
+                    (util_last_bit(instance_rate_inputs) - ffs(instance_rate_inputs) + 1)) {
+         unsigned index = radv_instance_rate_prolog_index(num_attributes, instance_rate_inputs);
+         prolog = device->instance_rate_vs_prologs[index];
+      }
+   }
+   if (prolog)
+      return prolog;
+
+   /* if we couldn't use a pre-compiled prolog, find one in the cache or create one */
    uint32_t key_words[16];
    unsigned key_size = 1;
 
@@ -2801,7 +2849,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant 
          return prolog_entry->data;
       }
 
-      struct radv_shader_prolog *prolog = radv_create_vs_prolog(device, &key);
+      prolog = radv_create_vs_prolog(device, &key);
       uint32_t *key2 = malloc(key_size * 4);
       if (!prolog || !key2) {
          free(key2);

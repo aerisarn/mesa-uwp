@@ -835,6 +835,9 @@ struct radv_device {
 
    struct u_rwlock vs_prologs_lock;
    struct hash_table *vs_prologs;
+
+   struct radv_shader_prolog *simple_vs_prologs[MAX_VERTEX_ATTRIBS];
+   struct radv_shader_prolog *instance_rate_vs_prologs[816];
 };
 
 VkResult _radv_device_set_lost(struct radv_device *device, const char *file, int line,
@@ -1543,6 +1546,7 @@ void si_cp_dma_wait_for_idle(struct radv_cmd_buffer *cmd_buffer);
 
 void radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer);
 
+unsigned radv_instance_rate_prolog_index(unsigned num_attributes, uint32_t instance_rate_inputs);
 uint32_t radv_hash_vs_prolog(const void *key_);
 bool radv_cmp_vs_prolog(const void *a_, const void *b_);
 

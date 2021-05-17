@@ -2675,6 +2675,61 @@ radv_device_init_vs_prologs(struct radv_device *device)
    if (!device->vs_prologs)
       return vk_error(device->physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   /* don't pre-compile prologs if we want to print them */
+   if (device->instance->debug_flags & RADV_DEBUG_DUMP_PROLOGS)
+      return VK_SUCCESS;
+
+   struct radv_vs_input_state state;
+   state.nontrivial_divisors = 0;
+   memset(state.offsets, 0, sizeof(state.offsets));
+   state.alpha_adjust_lo = 0;
+   state.alpha_adjust_hi = 0;
+   memset(state.formats, 0, sizeof(state.formats));
+
+   struct radv_vs_prolog_key key;
+   key.state = &state;
+   key.misaligned_mask = 0;
+   key.as_ls = false;
+   key.is_ngg = device->physical_device->use_ngg;
+   key.next_stage = MESA_SHADER_VERTEX;
+   key.wave32 = device->physical_device->ge_wave_size == 32;
+
+   for (unsigned i = 1; i <= MAX_VERTEX_ATTRIBS; i++) {
+      state.attribute_mask = BITFIELD_MASK(i);
+      state.instance_rate_inputs = 0;
+
+      key.num_attributes = i;
+
+      device->simple_vs_prologs[i - 1] = radv_create_vs_prolog(device, &key);
+      if (!device->simple_vs_prologs[i - 1])
+         return vk_error(device->physical_device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   }
+
+   unsigned idx = 0;
+   for (unsigned num_attributes = 1; num_attributes <= 16; num_attributes++) {
+      state.attribute_mask = BITFIELD_MASK(num_attributes);
+
+      for (unsigned i = 0; i < num_attributes; i++)
+         state.divisors[i] = 1;
+
+      for (unsigned count = 1; count <= num_attributes; count++) {
+         for (unsigned start = 0; start <= (num_attributes - count); start++) {
+            state.instance_rate_inputs = u_bit_consecutive(start, count);
+
+            key.num_attributes = num_attributes;
+
+            struct radv_shader_prolog *prolog = radv_create_vs_prolog(device, &key);
+            if (!prolog)
+               return vk_error(device->physical_device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
+            assert(idx ==
+                   radv_instance_rate_prolog_index(num_attributes, state.instance_rate_inputs));
+            device->instance_rate_vs_prologs[idx++] = prolog;
+         }
+      }
+   }
+   assert(idx == ARRAY_SIZE(device->instance_rate_vs_prologs));
+
    return VK_SUCCESS;
 }
 
@@ -2689,6 +2744,12 @@ radv_device_finish_vs_prologs(struct radv_device *device)
       }
       _mesa_hash_table_destroy(device->vs_prologs, NULL);
    }
+
+   for (unsigned i = 0; i < ARRAY_SIZE(device->simple_vs_prologs); i++)
+      radv_prolog_destroy(device, device->simple_vs_prologs[i]);
+
+   for (unsigned i = 0; i < ARRAY_SIZE(device->instance_rate_vs_prologs); i++)
+      radv_prolog_destroy(device, device->instance_rate_vs_prologs[i]);
 }
 
 VkResult
