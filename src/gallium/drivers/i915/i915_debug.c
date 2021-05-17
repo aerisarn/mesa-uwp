@@ -32,7 +32,8 @@
 #include "i915_debug_private.h"
 #include "i915_batch.h"
 #include "util/u_debug.h"
-
+#include "util/log.h"
+#include "util/ralloc.h"
 
 
 static const struct debug_named_value i915_debug_options[] = {
@@ -66,19 +67,6 @@ void i915_debug_init(struct i915_screen *is)
  * Batchbuffer dumping
  */
 
-static void
-PRINTF(
-   struct debug_stream  *stream,
-   const char           *fmt,
-                        ... )
-{
-   va_list  args;
-
-   va_start( args, fmt );
-   debug_vprintf( fmt, args );
-   va_end( args );
-}
-
 
 static boolean debug( struct debug_stream *stream, const char *name, unsigned len )
 {
@@ -86,19 +74,19 @@ static boolean debug( struct debug_stream *stream, const char *name, unsigned le
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
    
    if (len == 0) {
-      PRINTF(stream, "Error - zero length packet (0x%08x)\n", stream->ptr[0]);
+      mesa_logi("Error - zero length packet (0x%08x)", stream->ptr[0]);
       assert(0);
       return FALSE;
    }
 
    if (stream->print_addresses)
-      PRINTF(stream, "%08x:  ", stream->offset);
+      mesa_logi("%08x:  ", stream->offset);
 
 
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
+   mesa_logi("%s (%d dwords):", name, len);
    for (i = 0; i < len; i++)
-      PRINTF(stream, "\t0x%08x\n",  ptr[i]);   
-   PRINTF(stream, "\n");
+      mesa_logi("\t0x%08x",  ptr[i]);
+   mesa_logi("%s", "");
 
    stream->offset += len * sizeof(unsigned);
    
@@ -135,17 +123,16 @@ static boolean debug_prim( struct debug_stream *stream, const char *name,
    
 
 
-   PRINTF(stream, "%s %s (%d dwords):\n", name, prim, len);
-   PRINTF(stream, "\t0x%08x\n",  ptr[0]);   
+   mesa_logi("%s %s (%d dwords):", name, prim, len);
+   mesa_logi("\t0x%08x",  ptr[0]);
    for (i = 1; i < len; i++) {
       if (dump_floats)
-	 PRINTF(stream, "\t0x%08x // %f\n",  ptr[i], *(float *)&ptr[i]);   
+	 mesa_logi("\t0x%08x // %f",  ptr[i], *(float *)&ptr[i]);
       else
-	 PRINTF(stream, "\t0x%08x\n",  ptr[i]);   
+	 mesa_logi("\t0x%08x",  ptr[i]);
    }
 
-      
-   PRINTF(stream, "\n");
+   mesa_logi("%s", "");
 
    stream->offset += len * sizeof(unsigned);
    
@@ -160,16 +147,16 @@ static boolean debug_program( struct debug_stream *stream, const char *name, uns
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
 
    if (len == 0) {
-      PRINTF(stream, "Error - zero length packet (0x%08x)\n", stream->ptr[0]);
+      mesa_logi("Error - zero length packet (0x%08x)", stream->ptr[0]);
       assert(0);
       return FALSE;
    }
 
    if (stream->print_addresses)
-      PRINTF(stream, "%08x:  ", stream->offset);
+      mesa_logi("%08x:  ", stream->offset);
 
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
-   i915_disassemble_program( stream, ptr, len );
+   mesa_logi("%s (%d dwords):", name, len);
+   i915_disassemble_program( ptr, len );
 
    stream->offset += len * sizeof(unsigned);
    return TRUE;
@@ -182,17 +169,17 @@ static boolean debug_chain( struct debug_stream *stream, const char *name, unsig
    unsigned old_offset = stream->offset + len * sizeof(unsigned);
    unsigned i;
 
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
+   mesa_logi("%s (%d dwords):", name, len);
    for (i = 0; i < len; i++)
-      PRINTF(stream, "\t0x%08x\n",  ptr[i]);
+      mesa_logi("\t0x%08x",  ptr[i]);
 
    stream->offset = ptr[1] & ~0x3;
    
    if (stream->offset < old_offset)
-      PRINTF(stream, "\n... skipping backwards from 0x%x --> 0x%x ...\n\n", 
+      mesa_logi("... skipping backwards from 0x%x --> 0x%x ...",
 		   old_offset, stream->offset );
    else
-      PRINTF(stream, "\n... skipping from 0x%x --> 0x%x ...\n\n", 
+      mesa_logi("... skipping from 0x%x --> 0x%x ...",
 		   old_offset, stream->offset );
 
 
@@ -212,10 +199,10 @@ static boolean debug_variable_length_prim( struct debug_stream *stream )
 
    len = 1+(i+2)/2;
 
-   PRINTF(stream, "3DPRIM, %s variable length %d indicies (%d dwords):\n", prim, i, len);
+   mesa_logi("3DPRIM, %s variable length %d indicies (%d dwords):", prim, i, len);
    for (i = 0; i < len; i++)
-      PRINTF(stream, "\t0x%08x\n",  ptr[i]);
-   PRINTF(stream, "\n");
+      mesa_logi("\t0x%08x",  ptr[i]);
+   mesa_logi("%s", "");
 
    stream->offset += len * sizeof(unsigned);
    return TRUE;
@@ -234,16 +221,15 @@ BITS(
    va_list  args;
    unsigned himask = 0xFFFFFFFFUL >> (31 - (hi));
 
-   PRINTF(stream, "\t\t ");
-
    va_start( args, fmt );
-   debug_vprintf( fmt, args );
+   char *out = ralloc_vasprintf(NULL, fmt, args);
    va_end( args );
 
-   PRINTF(stream, ": 0x%x\n", ((dw) & himask) >> (lo));
+   mesa_logi("\t\t %s : 0x%x", out, ((dw)&himask) >> (lo));
+
+   ralloc_free(out);
 }
 
-#ifdef DEBUG
 #define MBZ( dw, hi, lo) do {							\
    unsigned x = (dw) >> (lo);				\
    unsigned lomask = (1 << (lo)) - 1;			\
@@ -251,10 +237,6 @@ BITS(
    himask = (1UL << (hi)) - 1;				\
    assert ((x & himask & ~lomask) == 0);	\
 } while (0)
-#else
-#define MBZ( dw, hi, lo) do {							\
-} while (0)
-#endif
 
 static void
 FLAG(
@@ -265,15 +247,14 @@ FLAG(
                         ... )
 {
    if (((dw) >> (bit)) & 1) {
-      va_list  args;
-
-      PRINTF(stream, "\t\t ");
-
+      va_list args;
       va_start( args, fmt );
-      debug_vprintf( fmt, args );
+      char *out = ralloc_vasprintf(NULL, fmt, args);
       va_end( args );
 
-      PRINTF(stream, "\n");
+      mesa_logi("\t\t %s", out);
+
+      ralloc_free(out);
    }
 }
 
@@ -285,17 +266,17 @@ static boolean debug_load_immediate( struct debug_stream *stream,
    unsigned bits = (ptr[0] >> 4) & 0xff;
    unsigned j = 0;
    
-   PRINTF(stream, "%s (%d dwords, flags: %x):\n", name, len, bits);
-   PRINTF(stream, "\t0x%08x\n",  ptr[j++]);
+   mesa_logi("%s (%d dwords, flags: %x):", name, len, bits);
+   mesa_logi("\t0x%08x",  ptr[j++]);
 
    if (bits & (1<<0)) {
-      PRINTF(stream, "\t  LIS0: 0x%08x\n", ptr[j]);
-      PRINTF(stream, "\t vb address: 0x%08x\n", (ptr[j] & ~0x3));
+      mesa_logi("\t  LIS0: 0x%08x", ptr[j]);
+      mesa_logi("\t vb address: 0x%08x", (ptr[j] & ~0x3));
       BITS(stream, ptr[j], 0, 0, "vb invalidate disable");
       j++;
    }
    if (bits & (1<<1)) {
-      PRINTF(stream, "\t  LIS1: 0x%08x\n", ptr[j]);
+      mesa_logi("\t  LIS1: 0x%08x", ptr[j]);
       BITS(stream, ptr[j], 29, 24, "vb dword width");
       BITS(stream, ptr[j], 21, 16, "vb dword pitch");
       BITS(stream, ptr[j], 15, 0, "vb max index");
@@ -303,7 +284,7 @@ static boolean debug_load_immediate( struct debug_stream *stream,
    }
    if (bits & (1<<2)) {
       int i;
-      PRINTF(stream, "\t  LIS2: 0x%08x\n", ptr[j]);
+      mesa_logi("\t  LIS2: 0x%08x", ptr[j]);
       for (i = 0; i < 8; i++) {
 	 unsigned tc = (ptr[j] >> (i * 4)) & 0xf;
 	 if (tc != 0xf)
@@ -312,11 +293,11 @@ static boolean debug_load_immediate( struct debug_stream *stream,
       j++;
    }
    if (bits & (1<<3)) {
-      PRINTF(stream, "\t  LIS3: 0x%08x\n", ptr[j]);
+      mesa_logi("\t  LIS3: 0x%08x", ptr[j]);
       j++;
    }
    if (bits & (1<<4)) {
-      PRINTF(stream, "\t  LIS4: 0x%08x\n", ptr[j]);
+      mesa_logi("\t  LIS4: 0x%08x", ptr[j]);
       BITS(stream, ptr[j], 31, 23, "point width");
       BITS(stream, ptr[j], 22, 19, "line width");
       FLAG(stream, ptr[j], 18, "alpha flatshade");
@@ -338,7 +319,7 @@ static boolean debug_load_immediate( struct debug_stream *stream,
       j++;
    }
    if (bits & (1<<5)) {
-      PRINTF(stream, "\t  LIS5: 0x%08x\n", ptr[j]);
+      mesa_logi("\t  LIS5: 0x%08x", ptr[j]);
       BITS(stream, ptr[j], 31, 28, "rgba write disables");
       FLAG(stream, ptr[j], 27,     "force dflt point width");
       FLAG(stream, ptr[j], 26,     "last pixel enable");
@@ -356,7 +337,7 @@ static boolean debug_load_immediate( struct debug_stream *stream,
       j++;
    }
    if (bits & (1<<6)) {
-      PRINTF(stream, "\t  LIS6: 0x%08x\n", ptr[j]);
+      mesa_logi("\t  LIS6: 0x%08x", ptr[j]);
       FLAG(stream, ptr[j], 31,      "alpha test enable");
       BITS(stream, ptr[j], 30, 28,  "alpha func");
       BITS(stream, ptr[j], 27, 20,  "alpha ref");
@@ -373,7 +354,7 @@ static boolean debug_load_immediate( struct debug_stream *stream,
    }
 
 
-   PRINTF(stream, "\n");
+   mesa_logi("%s", "");
 
    assert(j == len);
 
@@ -392,34 +373,34 @@ static boolean debug_load_indirect( struct debug_stream *stream,
    unsigned bits = (ptr[0] >> 8) & 0x3f;
    unsigned i, j = 0;
    
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
-   PRINTF(stream, "\t0x%08x\n",  ptr[j++]);
+   mesa_logi("%s (%d dwords):", name, len);
+   mesa_logi("\t0x%08x",  ptr[j++]);
 
    for (i = 0; i < 6; i++) {
       if (bits & (1<<i)) {
 	 switch (1<<(8+i)) {
 	 case LI0_STATE_STATIC_INDIRECT:
-	    PRINTF(stream, "        STATIC: 0x%08x | %x\n", ptr[j]&~3, ptr[j]&3); j++;
-	    PRINTF(stream, "                0x%08x\n", ptr[j++]);
+	    mesa_logi("        STATIC: 0x%08x | %x", ptr[j]&~3, ptr[j]&3); j++;
+	    mesa_logi("                0x%08x", ptr[j++]);
 	    break;
 	 case LI0_STATE_DYNAMIC_INDIRECT:
-	    PRINTF(stream, "       DYNAMIC: 0x%08x | %x\n", ptr[j]&~3, ptr[j]&3); j++;
+	    mesa_logi("       DYNAMIC: 0x%08x | %x", ptr[j]&~3, ptr[j]&3); j++;
 	    break;
 	 case LI0_STATE_SAMPLER:
-	    PRINTF(stream, "       SAMPLER: 0x%08x | %x\n", ptr[j]&~3, ptr[j]&3); j++;
-	    PRINTF(stream, "                0x%08x\n", ptr[j++]);
+	    mesa_logi("       SAMPLER: 0x%08x | %x", ptr[j]&~3, ptr[j]&3); j++;
+	    mesa_logi("                0x%08x", ptr[j++]);
 	    break;
 	 case LI0_STATE_MAP:
-	    PRINTF(stream, "           MAP: 0x%08x | %x\n", ptr[j]&~3, ptr[j]&3); j++;
-	    PRINTF(stream, "                0x%08x\n", ptr[j++]);
+	    mesa_logi("           MAP: 0x%08x | %x", ptr[j]&~3, ptr[j]&3); j++;
+	    mesa_logi("                0x%08x", ptr[j++]);
 	    break;
 	 case LI0_STATE_PROGRAM:
-	    PRINTF(stream, "       PROGRAM: 0x%08x | %x\n", ptr[j]&~3, ptr[j]&3); j++;
-	    PRINTF(stream, "                0x%08x\n", ptr[j++]);
+	    mesa_logi("       PROGRAM: 0x%08x | %x", ptr[j]&~3, ptr[j]&3); j++;
+	    mesa_logi("                0x%08x", ptr[j++]);
 	    break;
 	 case LI0_STATE_CONSTANTS:
-	    PRINTF(stream, "     CONSTANTS: 0x%08x | %x\n", ptr[j]&~3, ptr[j]&3); j++;
-	    PRINTF(stream, "                0x%08x\n", ptr[j++]);
+	    mesa_logi("     CONSTANTS: 0x%08x | %x", ptr[j]&~3, ptr[j]&3); j++;
+	    mesa_logi("                0x%08x", ptr[j++]);
 	    break;
 	 default:
 	    assert(0);
@@ -429,10 +410,10 @@ static boolean debug_load_indirect( struct debug_stream *stream,
    }
 
    if (bits == 0) {
-      PRINTF(stream, "\t  DUMMY: 0x%08x\n", ptr[j++]);
+      mesa_logi("\t  DUMMY: 0x%08x", ptr[j++]);
    }
 
-   PRINTF(stream, "\n");
+   mesa_logi("%s", "");
 
 
    assert(j == len);
@@ -445,7 +426,7 @@ static boolean debug_load_indirect( struct debug_stream *stream,
 static void BR13( struct debug_stream *stream,
 		  unsigned val )
 {
-   PRINTF(stream, "\t0x%08x\n",  val);
+   mesa_logi("\t0x%08x",  val);
    FLAG(stream, val, 30, "clipping enable");
    BITS(stream, val, 25, 24, "color depth (3==32bpp)");
    BITS(stream, val, 23, 16, "raster op");
@@ -456,7 +437,7 @@ static void BR13( struct debug_stream *stream,
 static void BR22( struct debug_stream *stream,
 		  unsigned val )
 {
-   PRINTF(stream, "\t0x%08x\n",  val);
+   mesa_logi("\t0x%08x",  val);
    BITS(stream, val, 31, 16, "dest y1");
    BITS(stream, val, 15, 0,  "dest x1");
 }
@@ -464,7 +445,7 @@ static void BR22( struct debug_stream *stream,
 static void BR23( struct debug_stream *stream,
 		  unsigned val )
 {
-   PRINTF(stream, "\t0x%08x\n",  val);
+   mesa_logi("\t0x%08x",  val);
    BITS(stream, val, 31, 16, "dest y2");
    BITS(stream, val, 15, 0,  "dest x2");
 }
@@ -472,13 +453,13 @@ static void BR23( struct debug_stream *stream,
 static void BR09( struct debug_stream *stream,
 		  unsigned val )
 {
-   PRINTF(stream, "\t0x%08x -- dest address\n",  val);
+   mesa_logi("\t0x%08x -- dest address",  val);
 }
 
 static void BR26( struct debug_stream *stream,
 		  unsigned val )
 {
-   PRINTF(stream, "\t0x%08x\n",  val);
+   mesa_logi("\t0x%08x",  val);
    BITS(stream, val, 31, 16, "src y1");
    BITS(stream, val, 15, 0,  "src x1");
 }
@@ -486,20 +467,20 @@ static void BR26( struct debug_stream *stream,
 static void BR11( struct debug_stream *stream,
 		  unsigned val )
 {
-   PRINTF(stream, "\t0x%08x\n",  val);
+   mesa_logi("\t0x%08x",  val);
    BITS(stream, val, 15, 0,  "src pitch");
 }
 
 static void BR12( struct debug_stream *stream,
 		  unsigned val )
 {
-   PRINTF(stream, "\t0x%08x -- src address\n",  val);
+   mesa_logi("\t0x%08x -- src address",  val);
 }
 
 static void BR16( struct debug_stream *stream,
 		  unsigned val )
 {
-   PRINTF(stream, "\t0x%08x -- color\n",  val);
+   mesa_logi("\t0x%08x -- color",  val);
 }
    
 static boolean debug_copy_blit( struct debug_stream *stream,
@@ -509,8 +490,8 @@ static boolean debug_copy_blit( struct debug_stream *stream,
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
    int j = 0;
 
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
-   PRINTF(stream, "\t0x%08x\n",  ptr[j++]);
+   mesa_logi("%s (%d dwords):", name, len);
+   mesa_logi("\t0x%08x",  ptr[j++]);
    
    BR13(stream, ptr[j++]);
    BR22(stream, ptr[j++]);
@@ -532,8 +513,8 @@ static boolean debug_color_blit( struct debug_stream *stream,
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
    int j = 0;
 
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
-   PRINTF(stream, "\t0x%08x\n",  ptr[j++]);
+   mesa_logi("%s (%d dwords):", name, len);
+   mesa_logi("\t0x%08x",  ptr[j++]);
 
    BR13(stream, ptr[j++]);
    BR22(stream, ptr[j++]);
@@ -553,8 +534,8 @@ static boolean debug_modes4( struct debug_stream *stream,
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
    int j = 0;
 
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
-   PRINTF(stream, "\t0x%08x\n",  ptr[j]);
+   mesa_logi("%s (%d dwords):", name, len);
+   mesa_logi("\t0x%08x",  ptr[j]);
    BITS(stream, ptr[j], 21, 18, "logicop func");
    FLAG(stream, ptr[j], 17, "stencil test mask modify-enable");
    FLAG(stream, ptr[j], 16, "stencil write mask modify-enable");
@@ -574,26 +555,26 @@ static boolean debug_map_state( struct debug_stream *stream,
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
    unsigned j = 0;
 
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
-   PRINTF(stream, "\t0x%08x\n",  ptr[j++]);
+   mesa_logi("%s (%d dwords):", name, len);
+   mesa_logi("\t0x%08x",  ptr[j++]);
    
    {
-      PRINTF(stream, "\t0x%08x\n",  ptr[j]);
+      mesa_logi("\t0x%08x",  ptr[j]);
       BITS(stream, ptr[j], 15, 0,   "map mask");
       j++;
    }
 
    while (j < len) {
       {
-	 PRINTF(stream, "\t  TMn.0: 0x%08x\n", ptr[j]);
-	 PRINTF(stream, "\t map address: 0x%08x\n", (ptr[j] & ~0x3));
+	 mesa_logi("\t  TMn.0: 0x%08x", ptr[j]);
+	 mesa_logi("\t map address: 0x%08x", (ptr[j] & ~0x3));
 	 FLAG(stream, ptr[j], 1, "vertical line stride");
 	 FLAG(stream, ptr[j], 0, "vertical line stride offset");
 	 j++;
       }
 
       {
-	 PRINTF(stream, "\t  TMn.1: 0x%08x\n", ptr[j]);
+	 mesa_logi("\t  TMn.1: 0x%08x", ptr[j]);
 	 BITS(stream, ptr[j], 31, 21, "height");
 	 BITS(stream, ptr[j], 20, 10, "width");
 	 BITS(stream, ptr[j], 9, 7, "surface format");
@@ -604,7 +585,7 @@ static boolean debug_map_state( struct debug_stream *stream,
 	 j++;
       }
       {
-	 PRINTF(stream, "\t  TMn.2: 0x%08x\n", ptr[j]);
+	 mesa_logi("\t  TMn.2: 0x%08x", ptr[j]);
 	 BITS(stream, ptr[j], 31, 21, "dword pitch");
 	 BITS(stream, ptr[j], 20, 15, "cube face enables");
 	 BITS(stream, ptr[j], 14, 9, "max lod");
@@ -626,18 +607,18 @@ static boolean debug_sampler_state( struct debug_stream *stream,
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
    unsigned j = 0;
 
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
-   PRINTF(stream, "\t0x%08x\n",  ptr[j++]);
+   mesa_logi("%s (%d dwords):", name, len);
+   mesa_logi("\t0x%08x",  ptr[j++]);
    
    {
-      PRINTF(stream, "\t0x%08x\n",  ptr[j]);
+      mesa_logi("\t0x%08x",  ptr[j]);
       BITS(stream, ptr[j], 15, 0,   "sampler mask");
       j++;
    }
 
    while (j < len) {
       {
-	 PRINTF(stream, "\t  TSn.0: 0x%08x\n", ptr[j]);
+	 mesa_logi("\t  TSn.0: 0x%08x", ptr[j]);
 	 FLAG(stream, ptr[j], 31, "reverse gamma");
 	 FLAG(stream, ptr[j], 30, "planar to packed");
 	 FLAG(stream, ptr[j], 29, "yuv->rgb");
@@ -654,7 +635,7 @@ static boolean debug_sampler_state( struct debug_stream *stream,
       }
 
       {
-	 PRINTF(stream, "\t  TSn.1: 0x%08x\n", ptr[j]);
+	 mesa_logi("\t  TSn.1: 0x%08x", ptr[j]);
 	 BITS(stream, ptr[j], 31, 24, "min lod");
 	 MBZ( ptr[j], 23, 18 );
 	 FLAG(stream, ptr[j], 17,     "kill pixel enable");
@@ -669,7 +650,7 @@ static boolean debug_sampler_state( struct debug_stream *stream,
 	 j++;
       }
       {
-	 PRINTF(stream, "\t  TSn.2: 0x%08x  (default color)\n", ptr[j]);
+	 mesa_logi("\t  TSn.2: 0x%08x  (default color)", ptr[j]);
 	 j++;
       }
    }
@@ -686,11 +667,11 @@ static boolean debug_dest_vars( struct debug_stream *stream,
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
    int j = 0;
 
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
-   PRINTF(stream, "\t0x%08x\n",  ptr[j++]);
+   mesa_logi("%s (%d dwords):", name, len);
+   mesa_logi("\t0x%08x",  ptr[j++]);
 
    {
-      PRINTF(stream, "\t0x%08x\n",  ptr[j]);
+      mesa_logi("\t0x%08x",  ptr[j]);
       FLAG(stream, ptr[j], 31,     "early classic ztest");
       FLAG(stream, ptr[j], 30,     "opengl tex default color");
       FLAG(stream, ptr[j], 29,     "bypass iz");
@@ -721,11 +702,11 @@ static boolean debug_buf_info( struct debug_stream *stream,
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
    int j = 0;
 
-   PRINTF(stream, "%s (%d dwords):\n", name, len);
-   PRINTF(stream, "\t0x%08x\n",  ptr[j++]);
+   mesa_logi("%s (%d dwords):", name, len);
+   mesa_logi("\t0x%08x",  ptr[j++]);
 
    {
-      PRINTF(stream, "\t0x%08x\n",  ptr[j]);
+      mesa_logi("\t0x%08x",  ptr[j]);
       BITS(stream, ptr[j], 28, 28, "aux buffer id");
       BITS(stream, ptr[j], 27, 24, "buffer id (7=depth, 3=back)");
       FLAG(stream, ptr[j], 23,     "use fence regs");
@@ -737,7 +718,7 @@ static boolean debug_buf_info( struct debug_stream *stream,
       j++;
    }
    
-   PRINTF(stream, "\t0x%08x -- buffer base address\n",  ptr[j++]);
+   mesa_logi("\t0x%08x -- buffer base address",  ptr[j++]);
 
    stream->offset += len * sizeof(unsigned);
    assert(j == len);
@@ -910,11 +891,11 @@ i915_dump_batchbuffer( struct i915_winsys_batchbuffer *batch )
    stream.print_addresses = 0;
 
    if (!start || !end) {
-      debug_printf( "\n\nBATCH: ???\n");
+      mesa_logi( "BATCH: ???");
       return;
    }
 
-   debug_printf( "\n\nBATCH: (%d)\n", (int)bytes / 4);
+   mesa_logi( "BATCH: (%d)", (int)bytes / 4);
 
    while (!done &&
 	  stream.offset < bytes)
@@ -925,7 +906,7 @@ i915_dump_batchbuffer( struct i915_winsys_batchbuffer *batch )
       assert(stream.offset <= bytes);
    }
 
-   debug_printf( "END-BATCH\n\n\n");
+   mesa_logi( "END-BATCH");
 }
 
 
@@ -961,11 +942,11 @@ i915_dump_dirty(struct i915_context *i915, const char *func)
    };
    int i;
 
-   debug_printf("%s: ", func);
+   mesa_logi("%s: ", func);
    for (i = 0; l[i].name; i++)
       if (i915->dirty & l[i].dirty)
-         debug_printf("%s ", l[i].name);
-   debug_printf("\n");
+         mesa_logi("%s ", l[i].name);
+   mesa_logi("%s", "");
 }
 
 void
@@ -987,9 +968,9 @@ i915_dump_hardware_dirty(struct i915_context *i915, const char *func)
    };
    int i;
 
-   debug_printf("%s: ", func);
+   mesa_logi("%s: ", func);
    for (i = 0; l[i].name; i++)
       if (i915->hardware_dirty & l[i].dirty)
-         debug_printf("%s ", l[i].name);
-   debug_printf("\n");
+         mesa_logi("%s ", l[i].name);
+   mesa_logi("%s", "");
 }

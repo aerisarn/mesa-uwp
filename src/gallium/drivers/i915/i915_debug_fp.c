@@ -29,22 +29,11 @@
 #include "i915_reg.h"
 #include "i915_debug.h"
 #include "i915_debug_private.h"
+#include "util/log.h"
 #include "util/u_debug.h"
+#include "util/ralloc.h"
 
-
-static void
-PRINTF(
-   struct debug_stream  *stream,
-   const char           *fmt,
-                        ... )
-{
-   va_list  args;
-
-   va_start( args, fmt );
-   debug_vprintf( fmt, args );
-   va_end( args );
-}
-
+#define PRINTF ralloc_asprintf_append
 
 static const char *opcodes[0x20] = {
    "NOP",
@@ -130,7 +119,7 @@ static const char *regname[0x8] = {
 };
 
 static void
-print_reg_type_nr(struct debug_stream *stream, unsigned type, unsigned nr)
+print_reg_type_nr(char **stream, unsigned type, unsigned nr)
 {
    switch (type) {
    case REG_TYPE_T:
@@ -177,7 +166,7 @@ print_reg_type_nr(struct debug_stream *stream, unsigned type, unsigned nr)
 
 
 static void
-print_reg_neg_swizzle(struct debug_stream *stream, unsigned reg)
+print_reg_neg_swizzle(char **stream, unsigned reg)
 {
    int i;
 
@@ -219,7 +208,7 @@ print_reg_neg_swizzle(struct debug_stream *stream, unsigned reg)
 
 
 static void
-print_src_reg(struct debug_stream *stream, unsigned dword)
+print_src_reg(char **stream, unsigned dword)
 {
    unsigned nr = (dword >> A2_SRC2_NR_SHIFT) & REG_NR_MASK;
    unsigned type = (dword >> A2_SRC2_TYPE_SHIFT) & REG_TYPE_MASK;
@@ -229,7 +218,7 @@ print_src_reg(struct debug_stream *stream, unsigned dword)
 
 
 static void
-print_dest_reg(struct debug_stream *stream, unsigned dword)
+print_dest_reg(char **stream, unsigned dword)
 {
    unsigned nr = (dword >> A0_DEST_NR_SHIFT) & REG_NR_MASK;
    unsigned type = (dword >> A0_DEST_TYPE_SHIFT) & REG_TYPE_MASK;
@@ -254,7 +243,7 @@ print_dest_reg(struct debug_stream *stream, unsigned dword)
 
 
 static void
-print_arith_op(struct debug_stream *stream, 
+print_arith_op(char **stream,
 	       unsigned opcode, const unsigned * program)
 {
    if (opcode != A0_NOP) {
@@ -268,27 +257,22 @@ print_arith_op(struct debug_stream *stream,
    PRINTF(stream, "%s ", opcodes[opcode]);
 
    print_src_reg(stream, GET_SRC0_REG(program[0], program[1]));
-   if (args[opcode] == 1) {
-      PRINTF(stream, "\n");
+   if (args[opcode] == 1)
       return;
-   }
 
    PRINTF(stream, ", ");
    print_src_reg(stream, GET_SRC1_REG(program[1], program[2]));
-   if (args[opcode] == 2) {
-      PRINTF(stream, "\n");
+   if (args[opcode] == 2)
       return;
-   }
 
    PRINTF(stream, ", ");
    print_src_reg(stream, GET_SRC2_REG(program[2]));
-   PRINTF(stream, "\n");
    return;
 }
 
 
 static void
-print_tex_op(struct debug_stream *stream, 
+print_tex_op(char **stream,
 	     unsigned opcode, const unsigned * program)
 {
    print_dest_reg(stream, program[0] | A0_DEST_CHANNEL_ALL);
@@ -302,11 +286,10 @@ print_tex_op(struct debug_stream *stream,
 		     (program[1] >> T1_ADDRESS_REG_TYPE_SHIFT) &
                      REG_TYPE_MASK,
                      (program[1] >> T1_ADDRESS_REG_NR_SHIFT) & REG_NR_MASK);
-   PRINTF(stream, "\n");
 }
 
 static void
-print_texkil_op(struct debug_stream *stream, 
+print_texkil_op(char **stream,
                 unsigned opcode, const unsigned * program)
 {
    PRINTF(stream, "TEXKIL ");
@@ -315,48 +298,48 @@ print_texkil_op(struct debug_stream *stream,
 		     (program[1] >> T1_ADDRESS_REG_TYPE_SHIFT) &
                      REG_TYPE_MASK,
                      (program[1] >> T1_ADDRESS_REG_NR_SHIFT) & REG_NR_MASK);
-   PRINTF(stream, "\n");
 }
 
 static void
-print_dcl_op(struct debug_stream *stream, 
+print_dcl_op(char **stream,
 	     unsigned opcode, const unsigned * program)
 {
    PRINTF(stream, "%s ", opcodes[opcode]);
    print_dest_reg(stream, 
 		  program[0] | A0_DEST_CHANNEL_ALL);
-   PRINTF(stream, "\n");
 }
 
 
 void
-i915_disassemble_program(struct debug_stream *stream, 
-			 const unsigned * program, unsigned sz)
+i915_disassemble_program(const unsigned * program, unsigned sz)
 {
    unsigned i;
 
-   PRINTF(stream, "\t\tBEGIN\n");
+   mesa_logi("\t\tBEGIN");
 
    assert((program[0] & 0x1ff) + 2 == sz);
 
    for (i = 1; i < sz; i += 3, program += 3) {
       unsigned opcode = program[0] & (0x1f << 24);
 
-      PRINTF(stream, "\t\t");
-
-      if ((int) opcode >= A0_NOP && opcode <= A0_SLT)
-         print_arith_op(stream, opcode >> 24, program);
+      char *stream = ralloc_strdup(NULL, "");
+      if ((int)opcode >= A0_NOP && opcode <= A0_SLT)
+         print_arith_op(&stream, opcode >> 24, program);
       else if (opcode >= T0_TEXLD && opcode < T0_TEXKILL)
-         print_tex_op(stream, opcode >> 24, program);
+         print_tex_op(&stream, opcode >> 24, program);
       else if (opcode == T0_TEXKILL)
-         print_texkil_op(stream, opcode >> 24, program);
+         print_texkil_op(&stream, opcode >> 24, program);
       else if (opcode == D0_DCL)
-         print_dcl_op(stream, opcode >> 24, program);
+         print_dcl_op(&stream, opcode >> 24, program);
       else
-         PRINTF(stream, "Unknown opcode 0x%x\n", opcode);
+         ralloc_asprintf_append(&stream, "\t\t Unknown opcode 0x%x\n", opcode);
+
+      mesa_logi("\t\t %s ", stream);
+      ralloc_free(stream);
    }
 
-   PRINTF(stream, "\t\tEND\n\n");
+   mesa_logi("\t\tEND");
+   mesa_logi("\t\t");
 }
 
 

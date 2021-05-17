@@ -1234,6 +1234,6 @@ i915_translate_fragment_program( struct i915_context *i915,
    i915_optimize_free(i_tokens);
 
 #if 0
-   i915_disassemble_program(NULL, fs->program, fs->program_len);
+   i915_disassemble_program(fs->program, fs->program_len);
 #endif
 }

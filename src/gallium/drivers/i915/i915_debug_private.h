@@ -39,7 +39,6 @@ struct debug_stream
    unsigned print_addresses;
 };
 
-void i915_disassemble_program(struct debug_stream *stream,
-			      const unsigned *program, unsigned sz);
+void i915_disassemble_program(const unsigned *program, unsigned sz);
 
 #endif
