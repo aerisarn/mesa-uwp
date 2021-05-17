@@ -60,6 +60,7 @@ static const struct debug_named_value midgard_debug_options[] = {
         {"shaderdb",  MIDGARD_DBG_SHADERDB,     "Prints shader-db statistics"},
         {"inorder",   MIDGARD_DBG_INORDER,      "Disables out-of-order scheduling"},
         {"verbose",   MIDGARD_DBG_VERBOSE,      "Dump shaders verbosely"},
+        {"internal",  MIDGARD_DBG_INTERNAL,     "Dump internal shaders"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -3108,7 +3109,8 @@ midgard_compile_shader_nir(nir_shader *nir,
 
         NIR_PASS_V(nir, pan_nir_reorder_writeout);
 
-        if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal) {
+        if ((midgard_debug & MIDGARD_DBG_SHADERS) &&
+            ((midgard_debug & MIDGARD_DBG_INTERNAL) || !nir->info.internal)) {
                 nir_print_shader(nir, stdout);
         }
 
@@ -3228,7 +3230,8 @@ midgard_compile_shader_nir(nir_shader *nir,
         /* Report the very first tag executed */
         info->midgard.first_tag = midgard_get_first_tag_from_block(ctx, 0);
 
-        if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal) {
+        if ((midgard_debug & MIDGARD_DBG_SHADERS) &&
+            ((midgard_debug & MIDGARD_DBG_INTERNAL) || !nir->info.internal)) {
                 disassemble_midgard(stdout, binary->data,
                                     binary->size, inputs->gpu_id,
                                     midgard_debug & MIDGARD_DBG_VERBOSE);
