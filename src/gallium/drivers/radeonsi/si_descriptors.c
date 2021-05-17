@@ -2135,8 +2135,7 @@ static void si_init_bindless_descriptors(struct si_context *sctx, struct si_desc
    sctx->num_bindless_descriptors = 1;
 
    /* Track which bindless slots are used (or not). */
-   util_idalloc_init(&sctx->bindless_used_slots);
-   util_idalloc_resize(&sctx->bindless_used_slots, num_elements);
+   util_idalloc_init(&sctx->bindless_used_slots, num_elements);
 
    /* Reserve slot 0 because it's an invalid handle for bindless. */
    desc_slot = util_idalloc_alloc(&sctx->bindless_used_slots);

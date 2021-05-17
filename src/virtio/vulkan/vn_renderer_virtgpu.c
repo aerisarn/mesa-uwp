@@ -153,8 +153,7 @@ sim_syncobj_create(struct virtgpu *gpu, bool signaled)
          return 0;
       }
 
-      util_idalloc_init(&sim.ida);
-      util_idalloc_resize(&sim.ida, 32);
+      util_idalloc_init(&sim.ida, 32);
 
       struct drm_virtgpu_execbuffer args = {
          .flags = VIRTGPU_EXECBUF_FENCE_FD_OUT,

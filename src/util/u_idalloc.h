@@ -44,7 +44,7 @@ struct util_idalloc
 };
 
 void
-util_idalloc_init(struct util_idalloc *buf);
+util_idalloc_init(struct util_idalloc *buf, unsigned initial_num_ids);
 
 void
 util_idalloc_fini(struct util_idalloc *buf);
@@ -71,7 +71,7 @@ struct util_idalloc_mt {
 
 void
 util_idalloc_mt_init(struct util_idalloc_mt *buf,
-                     unsigned initial_num_elements, bool skip_zero);
+                     unsigned initial_num_ids, bool skip_zero);
 
 void
 util_idalloc_mt_init_tc(struct util_idalloc_mt *buf);
