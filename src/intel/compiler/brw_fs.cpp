@@ -3049,9 +3049,11 @@ bool
 fs_visitor::opt_zero_samples()
 {
    /* Gfx4 infers the texturing opcode based on the message length so we can't
-    * change it.
+    * change it.  Gfx12.5 has restrictions on the number of coordinate
+    * parameters that have to be provided for some texture types
+    * (Wa_14013363432).
     */
-   if (devinfo->ver < 5)
+   if (devinfo->ver < 5 || devinfo->verx10 == 125)
       return false;
 
    bool progress = false;
