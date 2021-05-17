@@ -38,16 +38,9 @@
 #include "freedreno_pm4.h"
 
 #include "afuc.h"
-#include "rnn.h"
-#include "rnndec.h"
+#include "util.h"
 
 static int gpuver;
-
-static struct rnndeccontext *ctx;
-static struct rnndb *db;
-static struct rnndomain *control_regs;
-struct rnndomain *dom[2];
-const char *variant;
 
 /* non-verbose mode should output something suitable to feed back into
  * assembler.. verbose mode has additional output useful for debugging
@@ -58,40 +51,18 @@ static bool verbose = false;
 static void
 print_gpu_reg(uint32_t regbase)
 {
-   struct rnndomain *d = NULL;
-
    if (regbase < 0x100)
       return;
 
-   if (rnndec_checkaddr(ctx, dom[0], regbase, 0))
-      d = dom[0];
-   else if (rnndec_checkaddr(ctx, dom[1], regbase, 0))
-      d = dom[1];
-
-   if (d) {
-      struct rnndecaddrinfo *info = rnndec_decodeaddr(ctx, d, regbase, 0);
-      if (info) {
-         printf("\t; %s", info->name);
-         free(info->name);
-         free(info);
-         return;
-      }
+   char *name = afuc_gpu_reg_name(regbase);
+   if (name) {
+      printf("\t; %s", name);
+      free(name);
    }
 }
 
-static void
-printc(const char *c, const char *fmt, ...)
-{
-   va_list args;
-   printf("%s", c);
-   va_start(args, fmt);
-   vprintf(fmt, args);
-   va_end(args);
-   printf("%s", ctx->colors->reset);
-}
-
-#define printerr(fmt, ...) printc(ctx->colors->err, fmt, ##__VA_ARGS__)
-#define printlbl(fmt, ...) printc(ctx->colors->btarg, fmt, ##__VA_ARGS__)
+#define printerr(fmt, ...) afuc_printc(AFUC_ERR, fmt, ##__VA_ARGS__)
+#define printlbl(fmt, ...) afuc_printc(AFUC_LBL, fmt, ##__VA_ARGS__)
 
 static void
 print_reg(unsigned reg)
@@ -170,7 +141,7 @@ print_alu_name(afuc_opc opc, uint32_t instr)
 static const char *
 getpm4(uint32_t id)
 {
-   return rnndec_decode_enum(ctx, "adreno_pm4_type3_packets", id);
+   return afuc_pm_id_name(id);
 }
 
 static struct {
@@ -290,11 +261,10 @@ fxn_name(uint32_t offset)
 static void
 print_control_reg(uint32_t id)
 {
-   if (rnndec_checkaddr(ctx, control_regs, id, 0)) {
-      struct rnndecaddrinfo *info = rnndec_decodeaddr(ctx, control_regs, id, 0);
-      printf("@%s", info->name);
-      free(info->name);
-      free(info);
+   char *name = afuc_control_reg_name(id);
+   if (name) {
+      printf("@%s", name);
+      free(name);
    } else {
       printf("0x%03x", id);
    }
@@ -794,10 +764,10 @@ int
 main(int argc, char **argv)
 {
    uint32_t *buf;
-   char *file, *control_reg_name;
+   char *file;
    bool colors = false;
    size_t sz;
-   int c;
+   int c, ret;
 
    /* Argument parsing: */
    while ((c = getopt(argc, argv, "g:vc")) != -1) {
@@ -832,37 +802,12 @@ main(int argc, char **argv)
       }
    }
 
-   switch (gpuver) {
-   case 6:
-      printf("; a6xx microcode\n");
-      variant = "A6XX";
-      control_reg_name = "A6XX_CONTROL_REG";
-      break;
-   case 5:
-      printf("; a5xx microcode\n");
-      variant = "A5XX";
-      control_reg_name = "A5XX_CONTROL_REG";
-      break;
-   default:
-      fprintf(stderr, "unknown GPU version!\n");
+   ret = afuc_util_init(gpuver, colors);
+   if (ret < 0) {
       usage();
    }
 
-   rnn_init();
-   db = rnn_newdb();
-
-   ctx = rnndec_newcontext(db);
-   ctx->colors = colors ? &envy_def_colors : &envy_null_colors;
-
-   rnn_parsefile(db, "adreno.xml");
-   rnn_prepdb(db);
-   if (db->estatus)
-      errx(db->estatus, "failed to parse register database");
-   dom[0] = rnn_finddomain(db, variant);
-   dom[1] = rnn_finddomain(db, "AXXX");
-   control_regs = rnn_finddomain(db, control_reg_name);
-
-   rnndec_varadd(ctx, "chip", variant);
+   printf("; a%dxx microcode\n", gpuver);
 
    buf = (uint32_t *)os_read_file(file, &sz);
 
