@@ -332,6 +332,7 @@ void
 vn_instance_wait_roundtrip(struct vn_instance *instance,
                            uint32_t roundtrip_seqno)
 {
+   VN_TRACE_FUNC();
    const struct vn_ring *ring = &instance->ring.ring;
    const volatile atomic_uint *ptr = ring->shared.extra;
    uint32_t iter = 0;
@@ -478,6 +479,7 @@ static struct vn_cs_encoder *
 vn_instance_ring_cs_upload_locked(struct vn_instance *instance,
                                   const struct vn_cs_encoder *cs)
 {
+   VN_TRACE_FUNC();
    assert(cs->storage_type == VN_CS_ENCODER_STORAGE_POINTER &&
           cs->buffer_count == 1);
    const void *cs_data = cs->buffers[0].base;
@@ -554,6 +556,7 @@ vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
                                    size_t size,
                                    void **out_ptr)
 {
+   VN_TRACE_FUNC();
    struct vn_renderer_shmem_pool *pool = &instance->reply_shmem_pool;
    const struct vn_renderer_shmem *saved_pool_shmem = pool->shmem;
 

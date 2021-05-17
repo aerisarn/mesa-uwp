@@ -623,6 +623,7 @@ VkResult
 vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                       const VkCommandBufferBeginInfo *pBeginInfo)
 {
+   VN_TRACE_FUNC();
    struct vn_command_buffer *cmd =
       vn_command_buffer_from_handle(commandBuffer);
    struct vn_instance *instance = cmd->device->instance;
@@ -703,6 +704,7 @@ vn_cmd_submit(struct vn_command_buffer *cmd)
 VkResult
 vn_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
+   VN_TRACE_FUNC();
    struct vn_command_buffer *cmd =
       vn_command_buffer_from_handle(commandBuffer);
    struct vn_instance *instance = cmd->device->instance;

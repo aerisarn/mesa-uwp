@@ -68,6 +68,7 @@ vn_renderer_shmem_pool_grow(struct vn_renderer *renderer,
                             struct vn_renderer_shmem_pool *pool,
                             size_t size)
 {
+   VN_TRACE_FUNC();
    /* power-of-two to hit shmem cache */
    size_t alloc_size = pool->min_alloc_size;
    while (alloc_size < size) {

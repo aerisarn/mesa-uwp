@@ -124,6 +124,7 @@ vn_renderer_shmem_cache_get(struct vn_renderer_shmem_cache *cache,
    int idx;
    struct vn_renderer_shmem_bucket *bucket = choose_bucket(cache, size, &idx);
    if (!bucket) {
+      VN_TRACE_SCOPE("shmem cache skip");
       simple_mtx_lock(&cache->mutex);
       cache->debug.cache_skip_count++;
       simple_mtx_unlock(&cache->mutex);
@@ -144,6 +145,7 @@ vn_renderer_shmem_cache_get(struct vn_renderer_shmem_cache *cache,
 
       cache->debug.cache_hit_count++;
    } else {
+      VN_TRACE_SCOPE("shmem cache miss");
       cache->debug.cache_miss_count++;
    }
    simple_mtx_unlock(&cache->mutex);

@@ -277,6 +277,7 @@ vn_renderer_wait(struct vn_renderer *renderer,
 static inline struct vn_renderer_shmem *
 vn_renderer_shmem_create(struct vn_renderer *renderer, size_t size)
 {
+   VN_TRACE_FUNC();
    struct vn_renderer_shmem *shmem =
       renderer->shmem_ops.create(renderer, size);
    if (shmem) {

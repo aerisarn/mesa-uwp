@@ -184,6 +184,7 @@ vn_cs_encoder_grow_buffer_array(struct vn_cs_encoder *enc)
 bool
 vn_cs_encoder_reserve_internal(struct vn_cs_encoder *enc, size_t size)
 {
+   VN_TRACE_FUNC();
    if (unlikely(enc->storage_type == VN_CS_ENCODER_STORAGE_POINTER))
       return false;
 
