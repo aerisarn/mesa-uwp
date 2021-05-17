@@ -39,7 +39,7 @@ extern "C" {
 struct util_idalloc
 {
    uint32_t *data;
-   unsigned num_elements;
+   unsigned num_elements;    /* number of allocated elements of "data" */
    unsigned lowest_free_idx;
 };
 
