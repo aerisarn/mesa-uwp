@@ -5004,7 +5004,36 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    nir_src offset = *nir_get_io_offset_src(instr);
 
-   if (ctx->shader->info.stage == MESA_SHADER_VERTEX) {
+   if (ctx->shader->info.stage == MESA_SHADER_VERTEX && ctx->args->shader_info->vs.dynamic_inputs) {
+      if (!nir_src_is_const(offset) || nir_src_as_uint(offset))
+         isel_err(offset.ssa->parent_instr,
+                  "Unimplemented non-zero nir_intrinsic_load_input offset");
+
+      unsigned location = nir_intrinsic_base(instr) - VERT_ATTRIB_GENERIC0;
+      unsigned component = nir_intrinsic_component(instr);
+      unsigned bitsize = instr->dest.ssa.bit_size;
+      unsigned num_components = instr->dest.ssa.num_components;
+
+      Temp input = get_arg(ctx, ctx->args->vs_inputs[location]);
+
+      aco_ptr<Instruction> vec{create_instruction<Pseudo_instruction>(
+         aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1)};
+      std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
+      for (unsigned i = 0; i < num_components; i++) {
+         elems[i] = emit_extract_vector(ctx, input, component + i, bitsize == 64 ? v2 : v1);
+         if (bitsize == 16) {
+            if (nir_alu_type_get_base_type(nir_intrinsic_dest_type(instr)) == nir_type_float)
+               elems[i] = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), elems[i]);
+            else
+               elems[i] = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), elems[i],
+                                     Operand::c32(0u));
+         }
+         vec->operands[i] = Operand(elems[i]);
+      }
+      vec->definitions[0] = Definition(dst);
+      ctx->block->instructions.emplace_back(std::move(vec));
+      ctx->allocated_vec.emplace(dst.id(), elems);
+   } else if (ctx->shader->info.stage == MESA_SHADER_VERTEX) {
 
       if (!nir_src_is_const(offset) || nir_src_as_uint(offset))
          isel_err(offset.ssa->parent_instr,
@@ -11273,6 +11302,18 @@ add_startpgm(struct isel_context* ctx)
    ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ring_offsets);
    ctx->program->scratch_offset = get_arg(ctx, ctx->args->ac.scratch_offset);
 
+   if (ctx->stage.has(SWStage::VS) && ctx->program->info->vs.dynamic_inputs) {
+      unsigned num_attributes = util_last_bit(ctx->program->info->vs.vb_desc_usage_mask);
+      for (unsigned i = 0; i < num_attributes; i++) {
+         Definition def(get_arg(ctx, ctx->args->vs_inputs[i]));
+
+         unsigned idx = ctx->args->vs_inputs[i].arg_index;
+         def.setFixed(PhysReg(256 + ctx->args->ac.args[idx].offset));
+
+         ctx->program->vs_inputs.push_back(def);
+      }
+   }
+
    return instr;
 }
 
@@ -11571,7 +11612,8 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
 
          split_arguments(&ctx, startpgm);
 
-         if (program->stage.has(SWStage::VS) || program->stage.has(SWStage::TES)) {
+         if (!args->shader_info->vs.has_prolog &&
+             (program->stage.has(SWStage::VS) || program->stage.has(SWStage::TES))) {
             Builder(ctx.program, ctx.block).sopp(aco_opcode::s_setprio, -1u, 0x3u);
          }
       }
