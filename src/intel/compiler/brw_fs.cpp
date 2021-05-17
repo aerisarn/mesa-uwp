@@ -9623,7 +9623,7 @@ brw_nir_demote_sample_qualifiers(nir_shader *nir)
                                        NULL);
 }
 
-void
+static void
 brw_nir_populate_wm_prog_data(const nir_shader *shader,
                               const struct intel_device_info *devinfo,
                               const struct brw_wm_prog_key *key,
