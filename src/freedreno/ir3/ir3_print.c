@@ -331,16 +331,18 @@ print_instr(struct ir3_instruction *instr, int lvl)
 				printf(".%u", instr->cat0.idx);
 			}
 			if (brinfo[instr->cat0.brtype].nsrc >= 1) {
-				printf(" %sp0.%c ("SYN_SSA("ssa_%u")"),",
+				printf(" %sp0.%c (",
 						instr->cat0.inv1 ? "!" : "",
-						"xyzw"[instr->cat0.comp1 & 0x3],
-						instr->regs[1]->def->instr->serialno);
+						"xyzw"[instr->cat0.comp1 & 0x3]);
+				print_reg_name(instr, instr->regs[1]);
+				printf("), ");
 			}
 			if (brinfo[instr->cat0.brtype].nsrc >= 2) {
-				printf(" %sp0.%c ("SYN_SSA("ssa_%u")"),",
+				printf(" %sp0.%c (",
 						instr->cat0.inv2 ? "!" : "",
-						"xyzw"[instr->cat0.comp2 & 0x3],
-						instr->regs[2]->def->instr->serialno);
+						"xyzw"[instr->cat0.comp2 & 0x3]);
+				print_reg_name(instr, instr->regs[2]);
+				printf("), ");
 			}
 		}
 		printf(" target=block%u", block_id(instr->cat0.target));
