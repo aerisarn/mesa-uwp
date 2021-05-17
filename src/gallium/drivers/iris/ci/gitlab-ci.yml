@@ -11,21 +11,21 @@
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.iris-apl-traces:amd64:
+iris-apl-traces:amd64:
   extends:
     - .iris-traces:amd64
   variables:
     DEVICE_TYPE: asus-C523NA-A20057-coral
     GPU_VERSION: intel-apl
 
-.iris-glk-traces:amd64:
+iris-glk-traces:amd64:
   extends:
     - .iris-traces:amd64
   variables:
     DEVICE_TYPE: hp-x360-12b-n4000-octopus
     GPU_VERSION: intel-glk
 
-.iris-amly-traces:amd64:
+iris-amly-traces:amd64:
   extends:
     - .iris-traces:amd64
   variables:
