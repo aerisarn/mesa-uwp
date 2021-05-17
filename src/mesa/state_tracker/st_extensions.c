@@ -379,16 +379,18 @@ void st_init_limits(struct pipe_screen *screen,
             options->LowerBuiltinVariablesXfb |= VARYING_BIT_PSIZ;
       }
 
-      options->LowerPrecisionFloat16 =
-         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16);
-      options->LowerPrecisionDerivatives =
-         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16_DERIVATIVES);
-      options->LowerPrecisionInt16 =
-         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_INT16);
-      options->LowerPrecisionConstants =
-         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_GLSL_16BIT_CONSTS);
-      options->LowerPrecisionFloat16Uniforms =
-         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16_CONST_BUFFERS);
+      if (prefer_nir) {
+         options->LowerPrecisionFloat16 =
+            screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16);
+         options->LowerPrecisionDerivatives =
+            screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16_DERIVATIVES);
+         options->LowerPrecisionInt16 =
+            screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_INT16);
+         options->LowerPrecisionConstants =
+            screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_GLSL_16BIT_CONSTS);
+         options->LowerPrecisionFloat16Uniforms =
+            screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16_CONST_BUFFERS);
+      }
    }
 
    c->MaxUserAssignableUniformLocations =
