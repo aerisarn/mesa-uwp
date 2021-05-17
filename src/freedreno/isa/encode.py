@@ -335,8 +335,10 @@ template = """\
 isa = s.isa
 %>
 
+#define BITMASK_WORDS BITSET_WORDS(${isa.bitsize})
+
 typedef struct {
-    BITSET_WORD bitset[BITSET_WORDS(${isa.bitsize})];
+    BITSET_WORD bitset[BITMASK_WORDS];
 } bitmask_t;
 
 static inline uint64_t

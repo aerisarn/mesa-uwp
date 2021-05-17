@@ -219,6 +219,8 @@ header = """\
 #include <stdint.h>
 #include <util/bitset.h>
 
+#define BITMASK_WORDS BITSET_WORDS(${isa.bitsize})
+
 typedef struct {
     BITSET_WORD bitset[BITMASK_WORDS];
 } bitmask_t;
