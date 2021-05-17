@@ -448,9 +448,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                                 cfg.occlusion_query = MALI_OCCLUSION_MODE_PREDICATE;
                         cfg.occlusion = ctx->occlusion_query->bo->ptr.gpu;
                         panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
-                                              PAN_BO_ACCESS_SHARED |
-                                              PAN_BO_ACCESS_RW |
-                                              PAN_BO_ACCESS_FRAGMENT);
+                                              PIPE_SHADER_FRAGMENT);
                 }
         }
 
@@ -610,11 +608,9 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
 
         if (info->index_size) {
                 assert(!info->has_user_indices);
-                index_buf = pan_resource(info->index.resource)->image.data.bo;
-                panfrost_batch_add_bo(batch,
-                                      index_buf,
-                                      PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
-                                      PAN_BO_ACCESS_VERTEX_TILER);
+                struct panfrost_resource *rsrc = pan_resource(info->index.resource);
+                index_buf = rsrc->image.data.bo;
+                panfrost_batch_read_rsrc(batch, rsrc, PIPE_SHADER_VERTEX);
         }
 
         mali_ptr varyings = 0, vs_vary = 0, fs_vary = 0, pos = 0, psiz = 0;
@@ -662,8 +658,7 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
         if (varyings) {
                 panfrost_batch_add_bo(batch,
                                       dev->indirect_draw_shaders.varying_heap,
-                                      PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_RW |
-                                      PAN_BO_ACCESS_VERTEX_TILER);
+                                      PIPE_SHADER_VERTEX);
         }
 
         assert(indirect->buffer);
@@ -675,9 +670,7 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
                 vs->info.attribute_count -
                 util_bitcount(ctx->image_mask[PIPE_SHADER_VERTEX]);
 
-        panfrost_batch_add_bo(batch, draw_buf->image.data.bo,
-                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
-                              PAN_BO_ACCESS_VERTEX_TILER);
+        panfrost_batch_read_rsrc(batch, draw_buf, PIPE_SHADER_VERTEX);
 
         struct pan_indirect_draw_info draw_info = {
                 .last_indirect_draw = batch->indirect_draw_job_id,

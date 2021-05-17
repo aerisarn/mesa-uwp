@@ -57,23 +57,6 @@ pan_pipe_asserts()
         PIPE_ASSERT(PIPE_FUNC_ALWAYS   == MALI_FUNC_ALWAYS);
 }
 
-/* If a BO is accessed for a particular shader stage, will it be in the primary
- * batch (vertex/tiler) or the secondary batch (fragment)? Anything but
- * fragment will be primary, e.g. compute jobs will be considered
- * "vertex/tiler" by analogy */
-
-static inline uint32_t
-panfrost_bo_access_for_stage(enum pipe_shader_type stage)
-{
-        assert(stage == PIPE_SHADER_FRAGMENT ||
-               stage == PIPE_SHADER_VERTEX ||
-               stage == PIPE_SHADER_COMPUTE);
-
-        return stage == PIPE_SHADER_FRAGMENT ?
-               PAN_BO_ACCESS_FRAGMENT :
-               PAN_BO_ACCESS_VERTEX_TILER;
-}
-
 /* Gets a GPU address for the associated index buffer. Only gauranteed to be
  * good for the duration of the draw (transient), could last longer. Also get
  * the bounds on the index buffer for the range accessed by the draw. We do
@@ -100,10 +83,7 @@ panfrost_get_index_buffer_bounded(struct panfrost_batch *batch,
 
         if (!info->has_user_indices) {
                 /* Only resources can be directly mapped */
-                panfrost_batch_add_bo(batch, rsrc->image.data.bo,
-                                      PAN_BO_ACCESS_SHARED |
-                                      PAN_BO_ACCESS_READ |
-                                      PAN_BO_ACCESS_VERTEX_TILER);
+                panfrost_batch_read_rsrc(batch, rsrc, PIPE_SHADER_VERTEX);
                 out = rsrc->image.data.bo->ptr.gpu + offset;
 
                 /* Check the cache */
@@ -639,15 +619,8 @@ panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader
 {
         struct panfrost_shader_state *ss = panfrost_get_shader_state(batch->ctx, stage);
 
-        panfrost_batch_add_bo(batch, ss->bin.bo,
-                              PAN_BO_ACCESS_SHARED |
-                              PAN_BO_ACCESS_READ |
-                              PAN_BO_ACCESS_VERTEX_TILER);
-
-        panfrost_batch_add_bo(batch, ss->state.bo,
-                              PAN_BO_ACCESS_SHARED |
-                              PAN_BO_ACCESS_READ |
-                              PAN_BO_ACCESS_VERTEX_TILER);
+        panfrost_batch_add_bo(batch, ss->bin.bo, PIPE_SHADER_VERTEX);
+        panfrost_batch_add_bo(batch, ss->state.bo, PIPE_SHADER_VERTEX);
 
         return ss->state.gpu;
 }
@@ -658,11 +631,7 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
-        /* Add the shader BO to the batch. */
-        panfrost_batch_add_bo(batch, ss->bin.bo,
-                              PAN_BO_ACCESS_SHARED |
-                              PAN_BO_ACCESS_READ |
-                              PAN_BO_ACCESS_FRAGMENT);
+        panfrost_batch_add_bo(batch, ss->bin.bo, PIPE_SHADER_FRAGMENT);
 
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         unsigned rt_count = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
@@ -772,10 +741,7 @@ panfrost_map_constant_buffer_gpu(struct panfrost_batch *batch,
         struct panfrost_resource *rsrc = pan_resource(cb->buffer);
 
         if (rsrc) {
-                panfrost_batch_add_bo(batch, rsrc->image.data.bo,
-                                      PAN_BO_ACCESS_SHARED |
-                                      PAN_BO_ACCESS_READ |
-                                      panfrost_bo_access_for_stage(st));
+                panfrost_batch_read_rsrc(batch, rsrc, st);
 
                 /* Alignment gauranteed by
                  * PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT */
@@ -907,9 +873,7 @@ panfrost_upload_ssbo_sysval(struct panfrost_batch *batch,
         struct panfrost_resource *rsrc = pan_resource(sb.buffer);
         struct panfrost_bo *bo = rsrc->image.data.bo;
 
-        panfrost_batch_add_bo(batch, bo,
-                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_RW |
-                              panfrost_bo_access_for_stage(st));
+        panfrost_batch_write_rsrc(batch, rsrc, st);
 
         util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
                         sb.buffer_offset, sb.buffer_size);
@@ -1366,15 +1330,8 @@ panfrost_get_tex_desc(struct panfrost_batch *batch,
         struct pipe_sampler_view *pview = &view->base;
         struct panfrost_resource *rsrc = pan_resource(pview->texture);
 
-        /* Add the BO to the job so it's retained until the job is done. */
-
-        panfrost_batch_add_bo(batch, rsrc->image.data.bo,
-                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
-                              panfrost_bo_access_for_stage(st));
-
-        panfrost_batch_add_bo(batch, view->state.bo,
-                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
-                              panfrost_bo_access_for_stage(st));
+        panfrost_batch_read_rsrc(batch, rsrc, st);
+        panfrost_batch_add_bo(batch, view->state.bo, st);
 
         return view->state.gpu;
 }
@@ -1417,15 +1374,8 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                         panfrost_update_sampler_view(view, &ctx->base);
                         out[i] = view->bifrost_descriptor;
 
-                        /* Add the BOs to the job so they are retained until the job is done. */
-
-                        panfrost_batch_add_bo(batch, rsrc->image.data.bo,
-                                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
-                                              panfrost_bo_access_for_stage(stage));
-
-                        panfrost_batch_add_bo(batch, view->state.bo,
-                                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
-                                              panfrost_bo_access_for_stage(stage));
+                        panfrost_batch_read_rsrc(batch, rsrc, stage);
+                        panfrost_batch_add_bo(batch, view->state.bo, stage);
                 }
 
                 return T.gpu;
@@ -1541,12 +1491,9 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                                                 is_3d ? 0 : image->u.tex.first_layer,
                                                 is_3d ? image->u.tex.first_layer : 0);
 
-                /* Add a dependency of the batch on the shader image buffer */
-                uint32_t flags = PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_VERTEX_TILER;
-                if (image->shader_access & PIPE_IMAGE_ACCESS_READ)
-                        flags |= PAN_BO_ACCESS_READ;
                 if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE) {
-                        flags |= PAN_BO_ACCESS_WRITE;
+                        panfrost_batch_write_rsrc(batch, rsrc, shader);
+
                         unsigned level = is_buffer ? 0 : image->u.tex.level;
                         BITSET_SET(rsrc->valid.data, level);
 
@@ -1554,8 +1501,9 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                                 util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
                                                 0, rsrc->base.width0);
                         }
+                } else {
+                        panfrost_batch_read_rsrc(batch, rsrc, shader);
                 }
-                panfrost_batch_add_bo(batch, rsrc->image.data.bo, flags);
 
                 pan_pack(bufs + (i * 2), ATTRIBUTE_BUFFER, cfg) {
                         cfg.type = pan_modifier_to_attr_type(rsrc->image.layout.modifier);
@@ -1697,11 +1645,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 if (!rsrc)
                         continue;
 
-                /* Add a dependency of the batch on the vertex buffer */
-                panfrost_batch_add_bo(batch, rsrc->image.data.bo,
-                                      PAN_BO_ACCESS_SHARED |
-                                      PAN_BO_ACCESS_READ |
-                                      PAN_BO_ACCESS_VERTEX_TILER);
+                panfrost_batch_read_rsrc(batch, rsrc, PIPE_SHADER_VERTEX);
 
                 /* Mask off lower bits, see offset fixup below */
                 mali_ptr raw_addr = rsrc->image.data.bo->ptr.gpu + buf->buffer_offset;
@@ -1906,14 +1850,8 @@ panfrost_emit_streamout(struct panfrost_batch *batch,
         struct panfrost_resource *rsrc = pan_resource(target->buffer);
         struct panfrost_bo *bo = rsrc->image.data.bo;
 
-        /* Varyings are WRITE from the perspective of the VERTEX but READ from
-         * the perspective of the TILER and FRAGMENT.
-         */
-        panfrost_batch_add_bo(batch, bo,
-                              PAN_BO_ACCESS_SHARED |
-                              PAN_BO_ACCESS_RW |
-                              PAN_BO_ACCESS_VERTEX_TILER |
-                              PAN_BO_ACCESS_FRAGMENT);
+        panfrost_batch_write_rsrc(batch, rsrc, PIPE_SHADER_VERTEX);
+        panfrost_batch_read_rsrc(batch, rsrc, PIPE_SHADER_FRAGMENT);
 
         unsigned offset = panfrost_xfb_offset(stride, target);
 

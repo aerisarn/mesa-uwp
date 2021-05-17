@@ -187,11 +187,8 @@ panfrost_get_blend(struct panfrost_batch *batch, unsigned rti, struct panfrost_b
 
         /* Upload the shader, sharing a BO */
         if (!(*bo)) {
-                *bo = panfrost_batch_create_bo(batch, 4096,
-                   PAN_BO_EXECUTE,
-                   PAN_BO_ACCESS_PRIVATE |
-                   PAN_BO_ACCESS_READ |
-                   PAN_BO_ACCESS_FRAGMENT, "Blend shader");
+                *bo = panfrost_batch_create_bo(batch, 4096, PAN_BO_EXECUTE,
+                                PIPE_SHADER_FRAGMENT, "Blend shader");
         }
 
         struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);

@@ -388,9 +388,9 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
         access->last_is_write = writes;
 }
 
-void
-panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
-                      uint32_t flags)
+static void
+panfrost_batch_add_bo_old(struct panfrost_batch *batch,
+                struct panfrost_bo *bo, uint32_t flags)
 {
         if (!bo)
                 return;
@@ -403,10 +403,6 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
                 batch->first_bo = MIN2(batch->first_bo, bo->gem_handle);
                 batch->last_bo = MAX2(batch->last_bo, bo->gem_handle);
                 panfrost_bo_reference(bo);
-        } else {
-                /* All batches have to agree on the shared flag. */
-                assert((old_flags & PAN_BO_ACCESS_SHARED) ==
-                       (flags & PAN_BO_ACCESS_SHARED));
         }
 
         if (old_flags == flags)
@@ -431,18 +427,57 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
         panfrost_batch_update_bo_access(batch, bo, flags & PAN_BO_ACCESS_WRITE);
 }
 
-static void
-panfrost_batch_add_resource_bos(struct panfrost_batch *batch,
-                                struct panfrost_resource *rsrc,
-                                uint32_t flags)
+static uint32_t
+panfrost_access_for_stage(enum pipe_shader_type stage)
 {
-        panfrost_batch_add_bo(batch, rsrc->image.data.bo, flags);
+        return (stage == PIPE_SHADER_FRAGMENT) ?
+                PAN_BO_ACCESS_FRAGMENT : PAN_BO_ACCESS_VERTEX_TILER;
+}
+
+void
+panfrost_batch_add_bo(struct panfrost_batch *batch,
+                struct panfrost_bo *bo, enum pipe_shader_type stage)
+{
+        panfrost_batch_add_bo_old(batch, bo, PAN_BO_ACCESS_READ |
+                        panfrost_access_for_stage(stage));
+}
+
+void
+panfrost_batch_read_rsrc(struct panfrost_batch *batch,
+                         struct panfrost_resource *rsrc,
+                         enum pipe_shader_type stage)
+{
+        uint32_t access =
+                PAN_BO_ACCESS_SHARED |
+                PAN_BO_ACCESS_READ |
+                panfrost_access_for_stage(stage);
+
+        panfrost_batch_add_bo_old(batch, rsrc->image.data.bo, access);
 
         if (rsrc->image.crc.bo)
-                panfrost_batch_add_bo(batch, rsrc->image.crc.bo, flags);
+                panfrost_batch_add_bo_old(batch, rsrc->image.crc.bo, access);
 
         if (rsrc->separate_stencil)
-                panfrost_batch_add_bo(batch, rsrc->separate_stencil->image.data.bo, flags);
+                panfrost_batch_add_bo_old(batch, rsrc->separate_stencil->image.data.bo, access);
+}
+
+void
+panfrost_batch_write_rsrc(struct panfrost_batch *batch,
+                         struct panfrost_resource *rsrc,
+                         enum pipe_shader_type stage)
+{
+        uint32_t access =
+                PAN_BO_ACCESS_SHARED |
+                PAN_BO_ACCESS_WRITE |
+                panfrost_access_for_stage(stage);
+
+        panfrost_batch_add_bo_old(batch, rsrc->image.data.bo, access);
+
+        if (rsrc->image.crc.bo)
+                panfrost_batch_add_bo_old(batch, rsrc->image.crc.bo, access);
+
+        if (rsrc->separate_stencil)
+                panfrost_batch_add_bo_old(batch, rsrc->separate_stencil->image.data.bo, access);
 }
 
 /* Adds the BO backing surface to a batch if the surface is non-null */
@@ -450,14 +485,10 @@ panfrost_batch_add_resource_bos(struct panfrost_batch *batch,
 static void
 panfrost_batch_add_surface(struct panfrost_batch *batch, struct pipe_surface *surf)
 {
-        uint32_t flags = PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_WRITE |
-                         PAN_BO_ACCESS_VERTEX_TILER |
-                         PAN_BO_ACCESS_FRAGMENT;
         if (surf) {
                 struct panfrost_resource *rsrc = pan_resource(surf->texture);
-                panfrost_batch_add_resource_bos(batch, rsrc, flags);
+                panfrost_batch_write_rsrc(batch, rsrc, PIPE_SHADER_FRAGMENT);
         }
-
 }
 
 void
@@ -471,14 +502,14 @@ panfrost_batch_add_fbo_bos(struct panfrost_batch *batch)
 
 struct panfrost_bo *
 panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
-                         uint32_t create_flags, uint32_t access_flags,
+                         uint32_t create_flags, enum pipe_shader_type stage,
                          const char *label)
 {
         struct panfrost_bo *bo;
 
         bo = panfrost_bo_create(pan_device(batch->ctx->base.screen), size,
                                 create_flags, label);
-        panfrost_batch_add_bo(batch, bo, access_flags);
+        panfrost_batch_add_bo(batch, bo, stage);
 
         /* panfrost_batch_add_bo() has retained a reference and
          * panfrost_bo_create() initialize the refcnt to 1, so let's
@@ -516,11 +547,10 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch)
                 batch->tiler_ctx.midgard.polygon_list =
                         panfrost_batch_create_bo(batch, size,
                                                  init_polygon_list ? 0 : PAN_BO_INVISIBLE,
-                                                 PAN_BO_ACCESS_PRIVATE |
-                                                 PAN_BO_ACCESS_RW |
-                                                 PAN_BO_ACCESS_VERTEX_TILER |
-                                                 PAN_BO_ACCESS_FRAGMENT, "Polygon list");
-
+                                                 PIPE_SHADER_VERTEX,
+                                                 "Polygon list");
+                panfrost_batch_add_bo(batch, batch->tiler_ctx.midgard.polygon_list,
+                                PIPE_SHADER_FRAGMENT);
 
                 if (init_polygon_list) {
                         assert(batch->tiler_ctx.midgard.polygon_list->ptr.cpu);
@@ -551,11 +581,11 @@ panfrost_batch_get_scratchpad(struct panfrost_batch *batch,
         } else {
                 batch->scratchpad = panfrost_batch_create_bo(batch, size,
                                              PAN_BO_INVISIBLE,
-                                             PAN_BO_ACCESS_PRIVATE |
-                                             PAN_BO_ACCESS_RW |
-                                             PAN_BO_ACCESS_VERTEX_TILER |
-                                             PAN_BO_ACCESS_FRAGMENT,
+                                             PIPE_SHADER_VERTEX,
                                              "Thread local storage");
+
+                panfrost_batch_add_bo(batch, batch->scratchpad,
+                                PIPE_SHADER_FRAGMENT);
         }
 
         return batch->scratchpad;
@@ -571,9 +601,7 @@ panfrost_batch_get_shared_memory(struct panfrost_batch *batch,
         } else {
                 batch->shared_memory = panfrost_batch_create_bo(batch, size,
                                              PAN_BO_INVISIBLE,
-                                             PAN_BO_ACCESS_PRIVATE |
-                                             PAN_BO_ACCESS_RW |
-                                             PAN_BO_ACCESS_VERTEX_TILER,
+                                             PIPE_SHADER_VERTEX,
                                              "Workgroup shared memory");
         }
 

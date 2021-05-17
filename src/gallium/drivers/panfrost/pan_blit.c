@@ -93,10 +93,10 @@ panfrost_blit_add_ctx_bos(struct panfrost_batch *batch,
 {
         util_dynarray_foreach(&blit_pool->bos, struct panfrost_bo *, bo) {
                 panfrost_batch_add_bo(batch, *bo,
-                                      PAN_BO_ACCESS_SHARED |
-                                      PAN_BO_ACCESS_READ |
-                                      PAN_BO_ACCESS_VERTEX_TILER |
-                                      PAN_BO_ACCESS_FRAGMENT);
+                                PIPE_SHADER_VERTEX);
+
+                panfrost_batch_add_bo(batch, *bo,
+                                PIPE_SHADER_FRAGMENT);
         }
 }
 
@@ -270,18 +270,7 @@ panfrost_blit(struct pipe_context *pipe,
 
                 pipe_surface_reference(&dst_surf, NULL);
 
-                panfrost_batch_add_bo(batch, pinfo.src.planes[0].image->data.bo,
-                                      PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
-                                      PAN_BO_ACCESS_FRAGMENT);
-
-                if (pinfo.src.planes[1].image) {
-                        panfrost_batch_add_bo(batch,
-                                              pinfo.src.planes[1].image->data.bo,
-                                              PAN_BO_ACCESS_SHARED |
-                                              PAN_BO_ACCESS_READ |
-                                              PAN_BO_ACCESS_FRAGMENT);
-                }
-
+                panfrost_batch_read_rsrc(batch, psrc, PIPE_SHADER_FRAGMENT);
                 panfrost_batch_add_fbo_bos(batch);
                 panfrost_blit_add_ctx_bos(batch, &blit_pool);
                 batch->draws = draw_flags;

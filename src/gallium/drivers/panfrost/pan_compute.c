@@ -237,9 +237,7 @@ panfrost_set_global_binding(struct pipe_context *pctx,
 
         for (unsigned i = first; i < first + count; ++i) {
                 struct panfrost_resource *rsrc = pan_resource(resources[i]);
-
-                panfrost_batch_add_bo(batch, rsrc->image.data.bo,
-                                      PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_RW);
+                panfrost_batch_write_rsrc(batch, rsrc, PIPE_SHADER_COMPUTE);
 
                 util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
                                 0, rsrc->base.width0);
