@@ -56,6 +56,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(draw_no_fse, "DRAW_NO_FSE", FALSE)
 static boolean
 draw_pt_arrays(struct draw_context *draw,
                unsigned prim,
+               bool index_bias_varies,
                const struct pipe_draw_start_count_bias *draw_info,
                unsigned num_draws)
 {
@@ -153,7 +154,9 @@ draw_pt_arrays(struct draw_context *draw,
       } else
          draw_pt_split_prim(prim, &first, &incr);
       count = draw_pt_trim_count(draw_info[i].count, first, incr);
-      draw->pt.user.eltBias = draw->pt.user.eltSize ? draw_info[i].index_bias : 0;
+      draw->pt.user.eltBias = draw->pt.user.eltSize ?
+                              (index_bias_varies ? draw_info[i].index_bias : draw_info[0].index_bias) :
+                              0;
       if (count >= first)
          frontend->run( frontend, draw_info[i].start, count );
 
@@ -390,7 +393,7 @@ prim_restart_loop(struct draw_context *draw,
       if (i < elt_max && restart_idx == info->restart_index) {
          if (cur.count > 0) {
             /* draw elts up to prev pos */
-            draw_pt_arrays(draw, info->mode, &cur, 1);
+            draw_pt_arrays(draw, info->mode, info->index_bias_varies, &cur, 1);
          }
          /* begin new prim at next elt */
          cur.start = i + 1;
@@ -401,7 +404,7 @@ prim_restart_loop(struct draw_context *draw,
       }
    }
    if (cur.count > 0) {
-      draw_pt_arrays(draw, info->mode, &cur, 1);
+      draw_pt_arrays(draw, info->mode, info->index_bias_varies, &cur, 1);
    }
 }
 
@@ -429,7 +432,7 @@ draw_pt_arrays_restart(struct draw_context *draw,
       /* Non-indexed prims (draw_arrays).
        * Primitive restart should have been handled in gallium frontends.
        */
-      draw_pt_arrays(draw, prim, draw_info, num_draws);
+      draw_pt_arrays(draw, prim, info->index_bias_varies, draw_info, num_draws);
    }
 }
 
@@ -491,7 +494,7 @@ draw_instances(struct draw_context *draw,
          draw_pt_arrays_restart(draw, info, draws, num_draws);
       }
       else {
-         draw_pt_arrays(draw, info->mode, draws, num_draws);
+         draw_pt_arrays(draw, info->mode, info->index_bias_varies, draws, num_draws);
       }
    }
 }
@@ -577,7 +580,8 @@ draw_vbo(struct draw_context *draw,
 
    if (0) {
       for (unsigned i = 0; i < num_draws; i++)
-         draw_print_arrays(draw, use_info->mode, use_draws[i].start, MIN2(use_draws[i].count, 20), use_draws[i].index_bias);
+         draw_print_arrays(draw, use_info->mode, use_draws[i].start, MIN2(use_draws[i].count, 20),
+                           use_info->index_bias_varies ? use_draws[i].index_bias : use_draws[0].index_bias);
    }
 
    index_limit = util_draw_max_index(draw->pt.vertex_buffer,
