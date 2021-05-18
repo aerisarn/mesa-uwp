@@ -93,15 +93,15 @@ rm dxvk-"${DXVK_VERSION}".tar.gz
 
 ############### Install Windows' apitrace binaries
 
-APITRACE_VERSION="9.0"
-APITRACE_VERSION_DATE="20191126"
+APITRACE_VERSION="10.0"
+APITRACE_VERSION_DATE=""
 
-wget "https://github.com/apitrace/apitrace/releases/download/${APITRACE_VERSION}/apitrace-${APITRACE_VERSION}.${APITRACE_VERSION_DATE}-win64.7z"
-7zr x "apitrace-${APITRACE_VERSION}.${APITRACE_VERSION_DATE}-win64.7z" \
-      "apitrace-${APITRACE_VERSION}.${APITRACE_VERSION_DATE}-win64/bin/apitrace.exe" \
-      "apitrace-${APITRACE_VERSION}.${APITRACE_VERSION_DATE}-win64/bin/d3dretrace.exe"
-mv "apitrace-${APITRACE_VERSION}.${APITRACE_VERSION_DATE}-win64" /apitrace-msvc-win64
-rm "apitrace-${APITRACE_VERSION}.${APITRACE_VERSION_DATE}-win64.7z"
+wget "https://github.com/apitrace/apitrace/releases/download/${APITRACE_VERSION}/apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64.7z"
+7zr x "apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64.7z" \
+      "apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64/bin/apitrace.exe" \
+      "apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64/bin/d3dretrace.exe"
+mv "apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64" /apitrace-msvc-win64
+rm "apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64.7z"
 
 # Add the apitrace path to the registry
 wine \
