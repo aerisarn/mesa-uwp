@@ -28,7 +28,7 @@ radv-raven-traces:
     PIGLIT_REPLAY_DEVICE_NAME: "vk-amd-raven"
     PIGLIT_RESULTS: "radv-raven-replay"
   tags:
-    - raven
+    - amdgpu:codename:RAVEN
 
 # Can only be triggered manually on personal branches because RADV is the only
 # driver that does Vulkan testing at the moment.
