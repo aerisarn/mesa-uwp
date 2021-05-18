@@ -62,7 +62,7 @@ export WINEPREFIX="/dxvk-wine64"
 
 ############### Install DXVK
 
-DXVK_VERSION="1.6"
+DXVK_VERSION="1.8.1"
 
 # We don't want crash dialogs
 cat >crashdialog.reg <<EOF
