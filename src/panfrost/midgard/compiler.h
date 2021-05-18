@@ -574,7 +574,7 @@ v_load_store_scratch(
                 .load_store = {
                         /* For register spilling - to thread local storage */
                         .arg_reg = REGISTER_LDST_LOCAL_STORAGE_PTR,
-                        .arg_comp = COMPONENT_Z,
+                        .arg_comp = COMPONENT_X,
                         .bitsize_toggle = true,
                         .index_format = midgard_index_address_u32,
                         .index_reg = REGISTER_LDST_ZERO,
