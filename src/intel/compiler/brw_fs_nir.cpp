@@ -53,7 +53,10 @@ fs_visitor::emit_nir_code()
 void
 fs_visitor::nir_setup_outputs()
 {
-   if (stage == MESA_SHADER_TESS_CTRL || stage == MESA_SHADER_FRAGMENT)
+   if (stage == MESA_SHADER_TESS_CTRL ||
+       stage == MESA_SHADER_TASK ||
+       stage == MESA_SHADER_MESH ||
+       stage == MESA_SHADER_FRAGMENT)
       return;
 
    unsigned vec4s[VARYING_SLOT_TESS_MAX] = { 0, };
