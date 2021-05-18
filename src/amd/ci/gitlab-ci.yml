@@ -6,18 +6,6 @@
     VK_DRIVER: radeon
     ACO_DEBUG: validateir,validatera
 
-radv-polaris10-traces:
-  extends:
-    - .test-radv
-    - .piglit-traces-test
-    - .test-manual
-  variables:
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-radv.yml"
-    PIGLIT_REPLAY_DEVICE_NAME: "vk-amd-polaris10"
-    PIGLIT_RESULTS: "radv-polaris10-replay"
-  tags:
-    - polaris10
-
 radv-raven-traces:
   extends:
     - .test-radv
