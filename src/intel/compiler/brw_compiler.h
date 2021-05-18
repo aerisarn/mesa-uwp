@@ -1418,6 +1418,32 @@ struct brw_clip_prog_data {
    uint32_t total_grf;
 };
 
+struct brw_tue_map {
+   int32_t start_dw[VARYING_SLOT_MAX];
+
+   uint32_t size_dw;
+
+   uint32_t per_task_data_start_dw;
+};
+
+struct brw_mue_map {
+   int32_t start_dw[VARYING_SLOT_MAX];
+
+   uint32_t size_dw;
+
+   uint32_t max_primitives;
+   uint32_t per_primitive_start_dw;
+   uint32_t per_primitive_header_size_dw;
+   uint32_t per_primitive_data_size_dw;
+   uint32_t per_primitive_pitch_dw;
+
+   uint32_t max_vertices;
+   uint32_t per_vertex_start_dw;
+   uint32_t per_vertex_header_size_dw;
+   uint32_t per_vertex_data_size_dw;
+   uint32_t per_vertex_pitch_dw;
+};
+
 /* brw_any_prog_data is prog_data for any stage that maps to an API stage */
 union brw_any_prog_data {
    struct brw_stage_prog_data base;
