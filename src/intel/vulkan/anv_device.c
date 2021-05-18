@@ -1596,6 +1596,14 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV: {
+         VkPhysicalDeviceMeshShaderFeaturesNV *features =
+            (VkPhysicalDeviceMeshShaderFeaturesNV *)ext;
+         features->taskShader = false;
+         features->meshShader = false;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: {
          VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *features =
             (VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *)ext;
@@ -2383,6 +2391,34 @@ void anv_GetPhysicalDeviceProperties2(
          VkPhysicalDeviceMaintenance4PropertiesKHR *properties =
             (VkPhysicalDeviceMaintenance4PropertiesKHR *)ext;
          properties->maxBufferSize = pdevice->isl_dev.max_buffer_size;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV: {
+         VkPhysicalDeviceMeshShaderPropertiesNV *props =
+            (VkPhysicalDeviceMeshShaderPropertiesNV *)ext;
+
+         props->maxDrawMeshTasksCount = UINT16_MAX;
+
+         props->maxTaskWorkGroupInvocations = 32;
+         props->maxTaskWorkGroupSize[0] = 32;
+         props->maxTaskWorkGroupSize[1] = 1;
+         props->maxTaskWorkGroupSize[2] = 1;
+         props->maxTaskTotalMemorySize = 16 * 1024;
+         props->maxTaskOutputCount = UINT16_MAX;
+
+         props->maxMeshWorkGroupInvocations = 32;
+         props->maxMeshWorkGroupSize[0] = 32;
+         props->maxMeshWorkGroupSize[1] = 1;
+         props->maxMeshWorkGroupSize[2] = 1;
+         props->maxMeshTotalMemorySize = 16 * 1024;
+         props->maxMeshOutputVertices = 256;
+         props->maxMeshOutputPrimitives = 256;
+         props->maxMeshMultiviewViewCount = 1;
+
+         props->meshOutputPerVertexGranularity = 32;
+         props->meshOutputPerPrimitiveGranularity = 32;
+
          break;
       }
 
