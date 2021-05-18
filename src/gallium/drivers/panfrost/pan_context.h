@@ -58,6 +58,25 @@ struct prim_convert_context;
 	else \
 		lval &= ~(bit);
 
+/* Dirty tracking flags. 3D is for general 3D state. Shader flags are
+ * per-stage. Renderer refers to Renderer State Descriptors. Vertex refers to
+ * vertex attributes/elements. */
+
+enum pan_dirty_3d {
+        PAN_DIRTY_VIEWPORT       = BITFIELD_BIT(0),
+        PAN_DIRTY_SCISSOR        = BITFIELD_BIT(1),
+        PAN_DIRTY_VERTEX         = BITFIELD_BIT(2),
+};
+
+enum pan_dirty_shader {
+        PAN_DIRTY_STAGE_RENDERER = BITFIELD_BIT(0),
+        PAN_DIRTY_STAGE_TEXTURE  = BITFIELD_BIT(1),
+        PAN_DIRTY_STAGE_SAMPLER  = BITFIELD_BIT(2),
+        PAN_DIRTY_STAGE_IMAGE    = BITFIELD_BIT(3),
+        PAN_DIRTY_STAGE_CONST    = BITFIELD_BIT(4),
+        PAN_DIRTY_STAGE_SSBO     = BITFIELD_BIT(5),
+};
+
 struct panfrost_constant_buffer {
         struct pipe_constant_buffer cb[PIPE_MAX_CONSTANT_BUFFERS];
         uint32_t enabled_mask;
@@ -103,6 +122,12 @@ struct panfrost_streamout {
 struct panfrost_context {
         /* Gallium context */
         struct pipe_context base;
+
+        /* Dirty global state */
+        enum pan_dirty_3d dirty;
+
+        /* Per shader stage dirty state */
+        enum pan_dirty_shader dirty_shader[PIPE_SHADER_TYPES];
 
         /* Unowned pools, so manage yourself. */
         struct pan_pool descs, shaders;
