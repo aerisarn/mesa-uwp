@@ -324,13 +324,13 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_EXT_memory_object_fd                               DONE (radeonsi, i965/gen7+)
   GL_EXT_memory_object_win32                            not started
   GL_EXT_multisampled_render_to_texture                 DONE (freedreno/a6xx, panfrost)
-  GL_EXT_render_snorm                                   DONE (i965, r600, radeonsi, softpipe)
+  GL_EXT_render_snorm                                   DONE (i965, r600, radeonsi, softpipe, zink)
   GL_EXT_semaphore                                      DONE (radeonsi, i965/gen7+)
   GL_EXT_semaphore_fd                                   DONE (radeonsi, i965/gen7+)
   GL_EXT_semaphore_win32                                not started
   GL_EXT_shader_group_vote                              DONE (all drivers that support ARB_shader_group_vote)
   GL_EXT_sRGB_write_control                             DONE (all drivers that support GLES 3.0+)
-  GL_EXT_texture_norm16                                 DONE (freedreno, i965, r600, radeonsi, nvc0i, softpipe)
+  GL_EXT_texture_norm16                                 DONE (freedreno, i965, r600, radeonsi, nvc0i, softpipe, zink)
   GL_EXT_texture_sRGB_R8                                DONE (all drivers that support GLES 3.0+)
   GL_KHR_blend_equation_advanced_coherent               DONE (i965/gen9+, panfrost)
   GL_KHR_texture_compression_astc_hdr                   DONE (i965/bxt, panfrost)
@@ -346,7 +346,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_OES_texture_float_linear                           DONE (freedreno, i965, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe, panfrost, swr, zink)
   GL_OES_texture_half_float                             DONE (freedreno, i965, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe, panfrost, swr, zink, lima)
   GL_OES_texture_half_float_linear                      DONE (freedreno, i965, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe, panfrost, swr, zink, lima)
-  GL_OES_texture_view                                   DONE (freedreno, i965/gen8+, r600, radeonsi, nv50, nvc0, softpipe, llvmpipe, swr)
+  GL_OES_texture_view                                   DONE (freedreno, i965/gen8+, r600, radeonsi, nv50, nvc0, softpipe, llvmpipe, swr, zink)
   GL_OES_viewport_array                                 DONE (i965, nvc0, r600, radeonsi, softpipe, zink)
   GLX_ARB_context_flush_control                         not started
   GLX_ARB_robustness_application_isolation              not started
