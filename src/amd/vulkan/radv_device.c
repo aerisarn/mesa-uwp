@@ -2429,9 +2429,15 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
        * too small for games but the budgets need to be redistributed accordingly.
        */
 
+      assert(device->heaps == (RADV_HEAP_GTT | RADV_HEAP_VRAM_VIS));
+      assert(device->memory_properties.memoryHeaps[0].flags == 0); /* GTT */
+      assert(device->memory_properties.memoryHeaps[1].flags == VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
+      uint8_t gtt_heap_idx = 0, vram_vis_heap_idx = 1;
+
       /* Get the visible VRAM/GTT heap sizes and internal usages. */
-      uint64_t vram_vis_heap_size = device->memory_properties.memoryHeaps[RADV_HEAP_VRAM_VIS].size;
-      uint64_t gtt_heap_size = device->memory_properties.memoryHeaps[RADV_HEAP_GTT].size;
+      uint64_t gtt_heap_size = device->memory_properties.memoryHeaps[gtt_heap_idx].size;
+      uint64_t vram_vis_heap_size = device->memory_properties.memoryHeaps[vram_vis_heap_idx].size;
+
       uint64_t vram_vis_internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM_VIS) +
                                          device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM);
       uint64_t gtt_internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_GTT);
@@ -2457,10 +2463,10 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
                                           device->rad_info.gart_page_size);
       uint64_t gtt_free_space = total_free_space - vram_vis_free_space;
 
-      memoryBudget->heapBudget[RADV_HEAP_VRAM_VIS] = vram_vis_free_space + vram_vis_internal_usage;
-      memoryBudget->heapUsage[RADV_HEAP_VRAM_VIS] = vram_vis_internal_usage;
-      memoryBudget->heapBudget[RADV_HEAP_GTT] = gtt_free_space + gtt_internal_usage;
-      memoryBudget->heapUsage[RADV_HEAP_GTT] = gtt_internal_usage;
+      memoryBudget->heapBudget[vram_vis_heap_idx] = vram_vis_free_space + vram_vis_internal_usage;
+      memoryBudget->heapUsage[vram_vis_heap_idx] = vram_vis_internal_usage;
+      memoryBudget->heapBudget[gtt_heap_idx] = gtt_free_space + gtt_internal_usage;
+      memoryBudget->heapUsage[gtt_heap_idx] = gtt_internal_usage;
    } else {
       unsigned mask = device->heaps;
       unsigned heap = 0;
