@@ -1080,22 +1080,6 @@ panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
 }
 
 void
-panfrost_batch_set_requirements(struct panfrost_batch *batch)
-{
-        struct panfrost_context *ctx = batch->ctx;
-        unsigned draws = 0;
-
-        if (ctx->depth_stencil && ctx->depth_stencil->base.depth_writemask)
-                draws |= PIPE_CLEAR_DEPTH;
-
-        if (ctx->depth_stencil && ctx->depth_stencil->base.stencil[0].enabled)
-                draws |= PIPE_CLEAR_STENCIL;
-
-        batch->draws |= draws;
-        batch->resolve |= draws;
-}
-
-void
 panfrost_batch_adjust_stack_size(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;

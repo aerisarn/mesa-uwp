@@ -268,6 +268,9 @@ struct panfrost_zsa_state {
         /* Is any depth, stencil, or alpha testing enabled? */
         bool enabled;
 
+        /* Mask of PIPE_CLEAR_{DEPTH,STENCIL} written */
+        unsigned draws;
+
         /* Prepacked words from the RSD */
         struct mali_multisample_misc_packed rsd_depth;
         struct mali_stencil_mask_misc_packed rsd_stencil;

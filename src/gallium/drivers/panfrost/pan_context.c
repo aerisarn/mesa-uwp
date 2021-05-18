@@ -444,7 +444,9 @@ panfrost_direct_draw(struct panfrost_context *ctx,
         if (batch->scoreboard.job_index > 10000)
                 batch = panfrost_get_fresh_batch_for_fbo(ctx);
 
-        panfrost_batch_set_requirements(batch);
+        unsigned zs_draws = ctx->depth_stencil->draws;
+        batch->draws |= zs_draws;
+        batch->resolve |= zs_draws;
 
         /* Take into account a negative bias */
         ctx->indirect_draw = false;
@@ -575,7 +577,9 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
         if (batch->scoreboard.job_index + (indirect->draw_count * 3) > 10000)
                 batch = panfrost_get_fresh_batch_for_fbo(ctx);
 
-        panfrost_batch_set_requirements(batch);
+        unsigned zs_draws = ctx->depth_stencil->draws;
+        batch->draws |= zs_draws;
+        batch->resolve |= zs_draws;
 
         mali_ptr shared_mem = panfrost_batch_reserve_tls(batch, false);
 
@@ -1469,6 +1473,13 @@ panfrost_create_depth_stencil_state(struct pipe_context *pipe,
 
         so->enabled = zsa->stencil[0].enabled ||
                 (zsa->depth_enabled && zsa->depth_func != PIPE_FUNC_ALWAYS);
+
+        /* Write masks need tracking together */
+        if (zsa->depth_writemask)
+                so->draws |= PIPE_CLEAR_DEPTH;
+
+        if (zsa->stencil[0].enabled)
+                so->draws |= PIPE_CLEAR_STENCIL;
 
         /* TODO: Bounds test should be easy */
         assert(!zsa->depth_bounds_test);
