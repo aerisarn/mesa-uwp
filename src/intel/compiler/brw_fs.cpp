@@ -1865,7 +1865,8 @@ static void
 calculate_urb_setup(const struct intel_device_info *devinfo,
                     const struct brw_wm_prog_key *key,
                     struct brw_wm_prog_data *prog_data,
-                    const nir_shader *nir)
+                    const nir_shader *nir,
+                    const struct brw_mue_map *mue_map)
 {
    memset(prog_data->urb_setup, -1,
           sizeof(prog_data->urb_setup[0]) * VARYING_SLOT_MAX);
@@ -1877,6 +1878,7 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
     * real HW registers.
     */
    if (nir->info.per_primitive_inputs) {
+      assert(mue_map);
       for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
          if (nir->info.per_primitive_inputs & BITFIELD64_BIT(i)) {
             prog_data->urb_setup[i] = urb_next++;
@@ -1922,6 +1924,7 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
           * number of outputs in Mesh (hence a lot of inputs in Fragment)
           * should already trigger this.
           */
+         assert(mue_map == NULL);
 
          /* Re-compute the VUE map here in the case that the one coming from
           * geometry has more than one position slot (used for Primitive
@@ -9794,7 +9797,8 @@ static void
 brw_nir_populate_wm_prog_data(const nir_shader *shader,
                               const struct intel_device_info *devinfo,
                               const struct brw_wm_prog_key *key,
-                              struct brw_wm_prog_data *prog_data)
+                              struct brw_wm_prog_data *prog_data,
+                              const struct brw_mue_map *mue_map)
 {
    /* key->alpha_test_func means simulating alpha testing via discards,
     * so the shader definitely kills pixels.
@@ -9857,7 +9861,7 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
       BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) &&
       prog_data->per_coarse_pixel_dispatch;
 
-   calculate_urb_setup(devinfo, key, prog_data, shader);
+   calculate_urb_setup(devinfo, key, prog_data, shader, mue_map);
    brw_compute_flat_inputs(prog_data, shader);
 }
 
@@ -9915,7 +9919,8 @@ brw_compile_fs(const struct brw_compiler *compiler,
    brw_postprocess_nir(nir, compiler, true, debug_enabled,
                        key->base.robust_buffer_access);
 
-   brw_nir_populate_wm_prog_data(nir, compiler->devinfo, key, prog_data);
+   brw_nir_populate_wm_prog_data(nir, compiler->devinfo, key, prog_data,
+                                 params->mue_map);
 
    fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
    cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL;

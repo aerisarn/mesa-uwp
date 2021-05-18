@@ -1652,7 +1652,9 @@ struct brw_compile_fs_params {
 
    const struct brw_wm_prog_key *key;
    struct brw_wm_prog_data *prog_data;
+
    const struct brw_vue_map *vue_map;
+   const struct brw_mue_map *mue_map;
 
    bool shader_time;
    int shader_time_index8;
