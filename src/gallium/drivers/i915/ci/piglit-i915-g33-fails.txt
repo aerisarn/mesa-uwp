@@ -136,7 +136,6 @@ shaders@glsl-fs-raytrace-bug27060,Fail
 shaders@glsl-fwidth,Fail
 shaders@glsl-max-varyings,Fail
 shaders@glsl-max-varyings >max_varying_components,Fail
-shaders@glsl-routing,Fail
 shaders@glsl-sin,Fail
 shaders@glsl-uniform-interstage-limits@520 vs- 1 fs,Fail
 shaders@glsl-uniform-interstage-limits@subdivide 5,Fail
@@ -170,7 +169,6 @@ spec@!opengl 1.1@gl_select - depth-test enabled,Crash
 spec@!opengl 1.1@gl_select - no test function,Crash
 spec@!opengl 1.1@gl_select - scissor-test enabled,Crash
 spec@!opengl 1.1@gl_select - stencil-test enabled,Crash
-spec@!opengl 1.1@line-aa-width,Fail
 spec@!opengl 1.1@line-flat-clip-color,Fail
 spec@!opengl 1.1@linestipple,Fail
 spec@!opengl 1.1@longprim,Crash
@@ -270,7 +268,6 @@ spec@arb_es2_compatibility@arb_es2_compatibility-drawbuffers,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor,Fail
 spec@arb_fragment_coord_conventions@fp-arb-fragment-coord-conventions-integer,Crash
 spec@arb_fragment_coord_conventions@fp-arb-fragment-coord-conventions-none,Crash
-spec@arb_fragment_program@fp-abs-01,Fail
 spec@arb_fragment_program@fp-dst-aliasing-1,Crash
 spec@arb_fragment_program@fp-dst-aliasing-2,Crash
 spec@arb_fragment_program@fp-ex2-sat,Crash
@@ -380,6 +377,7 @@ spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 spec@ext_framebuffer_object@fbo-blending-formats,Fail
 spec@ext_framebuffer_object@fbo-clear-formats,Fail
 spec@ext_framebuffer_object@fbo-colormask-formats,Fail
+spec@ext_framebuffer_object@fbo-depth-sample-compare,Fail
 spec@ext_framebuffer_object@fbo-fragcoord2,Fail
 spec@ext_framebuffer_object@fbo-generatemipmap-filtering,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index1-blit,Fail
@@ -448,24 +446,11 @@ spec@ext_texture_srgb@tex-srgb,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc,Crash
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor,Crash
-spec@glsl-1.10@execution@built-in-functions@fs-abs-vec2,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-abs-vec3,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-abs-vec4,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-acos-vec2,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-acos-vec3,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-acos-vec4,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-asin-float,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-asin-vec2,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-asin-vec3,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-asin-vec4,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-atan-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-float-float,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-atan-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec2-vec2,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-atan-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec3-vec3,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-atan-vec4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec4-vec4,Fail
+spec@glsl-1.10@execution@built-in-functions@fs-cos-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-cos-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-cos-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-cos-vec4,Fail
@@ -475,6 +460,7 @@ spec@glsl-1.10@execution@built-in-functions@fs-degrees-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-degrees-vec4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-distance-float-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-dot-float-float,Fail
+spec@glsl-1.10@execution@built-in-functions@fs-dot-vec2-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-dot-vec3-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-dot-vec4-vec4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-exp-float,Fail
@@ -491,6 +477,7 @@ spec@glsl-1.10@execution@built-in-functions@fs-log-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-log-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-log-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-log-vec4,Fail
+spec@glsl-1.10@execution@built-in-functions@fs-log2-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-log2-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-log2-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-log2-vec4,Fail
@@ -638,6 +625,7 @@ spec@glsl-1.10@execution@built-in-functions@fs-sin-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-sin-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-sin-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-sin-vec4,Fail
+spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-float-float-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-float-float-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-float-float-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-float-float-vec4,Fail
@@ -648,16 +636,9 @@ spec@glsl-1.10@execution@built-in-functions@fs-tan-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-tan-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-tan-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-tan-vec4,Fail
-spec@glsl-1.10@execution@builtins@glsl-fs-abs-01,Fail
-spec@glsl-1.10@execution@builtins@glsl-fs-abs-02,Fail
-spec@glsl-1.10@execution@builtins@glsl-fs-abs-03,Fail
-spec@glsl-1.10@execution@builtins@glsl-fs-abs-04,Fail
-spec@glsl-1.10@execution@builtins@glsl-fs-abs-neg-with-intermediate,Fail
-spec@glsl-1.10@execution@builtins@glsl-fs-asin,Fail
 spec@glsl-1.10@execution@builtins@glsl-fs-atan-1,Fail
 spec@glsl-1.10@execution@builtins@glsl-fs-atan-2,Fail
 spec@glsl-1.10@execution@builtins@glsl-fs-atan-3,Fail
-spec@glsl-1.10@execution@builtins@glsl-fs-neg-abs,Fail
 spec@glsl-1.10@execution@builtins@glsl-fs-tan-1,Fail
 spec@glsl-1.10@execution@copy-propagation@glsl-copy-propagation-loop-1,Fail
 spec@glsl-1.10@execution@copy-propagation@glsl-copy-propagation-loop-2,Fail
@@ -676,7 +657,6 @@ spec@glsl-1.10@execution@fs-loop-bounds-unrolled,Fail
 spec@glsl-1.10@execution@fs-nested-loop-unrolled-with-return,Fail
 spec@glsl-1.10@execution@fs-nested-return-in-loop-nested_in_if,Fail
 spec@glsl-1.10@execution@fs-notequal-of-expression,Fail
-spec@glsl-1.10@execution@fs-sign-neg-abs,Fail
 spec@glsl-1.10@execution@fs-sign-times-abs,Fail
 spec@glsl-1.10@execution@fs-sign-times-neg,Fail
 spec@glsl-1.10@execution@fs-sign-times-neg-abs,Fail
@@ -913,11 +893,6 @@ spec@glsl-1.10@execution@varying-packing@simple vec3 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec3 separate,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec4 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec4 separate,Fail
-spec@glsl-1.10@linker@override-builtin-uniform-01,Fail
-spec@glsl-1.10@linker@override-builtin-uniform-03,Fail
-spec@glsl-1.10@linker@override-builtin-uniform-05,Fail
-spec@glsl-1.10@linker@override-builtin-uniform-06,Fail
-spec@glsl-1.10@linker@override-builtin-uniform-07,Fail
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
 spec@glsl-1.20@execution@array_bounds@glsl-array-bounds-02,Fail
 spec@glsl-1.20@execution@array_bounds@glsl-array-bounds-06,Fail
