@@ -662,4 +662,6 @@ uint32_t brw_fb_write_msg_control(const fs_inst *inst,
 
 void brw_compute_urb_setup_index(struct brw_wm_prog_data *wm_prog_data);
 
+void brw_nir_lower_simd(nir_shader *nir, unsigned dispatch_width);
+
 #endif /* BRW_FS_H */

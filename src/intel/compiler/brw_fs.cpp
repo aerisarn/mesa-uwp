@@ -10240,7 +10240,7 @@ lower_simd(nir_builder *b, nir_instr *instr, void *options)
    }
 }
 
-static void
+void
 brw_nir_lower_simd(nir_shader *nir, unsigned dispatch_width)
 {
    nir_shader_lower_instructions(nir, filter_simd, lower_simd,
