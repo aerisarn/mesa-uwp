@@ -63,7 +63,7 @@ fill_cbv_descriptors(struct d3d12_context *ctx,
       D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {};
       if (buffer && buffer->buffer) {
          struct d3d12_resource *res = d3d12_resource(buffer->buffer);
-         d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+         d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_BIND_INVALIDATE_NONE);
          cbv_desc.BufferLocation = d3d12_resource_gpu_virtual_address(res) + buffer->buffer_offset;
          cbv_desc.SizeInBytes = MIN2(D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16,
             align(buffer->buffer_size, 256));
@@ -110,14 +110,16 @@ fill_srv_descriptors(struct d3d12_context *ctx,
                                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
          if (view->base.texture->target == PIPE_BUFFER) {
             d3d12_transition_resource_state(ctx, d3d12_resource(view->base.texture),
-                                            state);
+                                            state,
+                                            D3D12_BIND_INVALIDATE_NONE);
          } else {
             d3d12_transition_subresources_state(ctx, d3d12_resource(view->base.texture),
                                                 view->base.u.tex.first_level, view->mip_levels,
                                                 view->base.u.tex.first_layer, view->array_size,
                                                 d3d12_get_format_start_plane(view->base.format),
                                                 d3d12_get_format_num_planes(view->base.format),
-                                                state);
+                                                state,
+                                                D3D12_BIND_INVALIDATE_NONE);
          }
       } else {
          descs[desc_idx] = screen->null_srvs[shader->srv_bindings[i].dimension].cpu_handle;
@@ -388,7 +390,8 @@ transition_surface_subresources_state(struct d3d12_context *ctx,
                                        start_layer, num_layers,
                                        d3d12_get_format_start_plane(psurf->format),
                                        d3d12_get_format_num_planes(psurf->format),
-                                       state);
+                                       state,
+                                       D3D12_BIND_INVALIDATE_FULL);
 }
 
 static bool
@@ -625,7 +628,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
    for (unsigned i = 0; i < ctx->num_vbs; ++i) {
       if (ctx->vbs[i].buffer.resource) {
          struct d3d12_resource *res = d3d12_resource(ctx->vbs[i].buffer.resource);
-         d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+         d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_BIND_INVALIDATE_NONE);
          if (ctx->cmdlist_dirty & D3D12_DIRTY_VERTEX_BUFFERS)
             d3d12_batch_reference_resource(batch, res);
       }
@@ -639,7 +642,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       ibv.BufferLocation = d3d12_resource_gpu_virtual_address(res) + index_offset;
       ibv.SizeInBytes = res->base.width0 - index_offset;
       ibv.Format = ib_format(dinfo->index_size);
-      d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+      d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_INDEX_BUFFER, D3D12_BIND_INVALIDATE_NONE);
       if (ctx->cmdlist_dirty & D3D12_DIRTY_INDEX_BUFFER ||
           memcmp(&ctx->ibv, &ibv, sizeof(D3D12_INDEX_BUFFER_VIEW)) != 0) {
          ctx->ibv = ibv;
@@ -691,8 +694,8 @@ d3d12_draw_vbo(struct pipe_context *pctx,
          d3d12_batch_reference_resource(batch, fill_buffer);
       }
 
-      d3d12_transition_resource_state(ctx, so_buffer, D3D12_RESOURCE_STATE_STREAM_OUT);
-      d3d12_transition_resource_state(ctx, fill_buffer, D3D12_RESOURCE_STATE_STREAM_OUT);
+      d3d12_transition_resource_state(ctx, so_buffer, D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_BIND_INVALIDATE_NONE);
+      d3d12_transition_resource_state(ctx, fill_buffer, D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_BIND_INVALIDATE_NONE);
    }
    if (ctx->cmdlist_dirty & D3D12_DIRTY_STREAM_OUTPUT)
       ctx->cmdlist->SOSetTargets(0, 4, so_buffer_views);

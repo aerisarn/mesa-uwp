@@ -277,6 +277,8 @@ d3d12_resource_create(struct pipe_screen *pscreen,
 
    init_valid_range(res);
 
+   memset(&res->bind_counts, 0, sizeof(d3d12_resource::bind_counts));
+
    return &res->base;
 }
 
@@ -413,9 +415,8 @@ copy_texture_region(struct d3d12_context *ctx,
 
    d3d12_batch_reference_resource(batch, info.src);
    d3d12_batch_reference_resource(batch, info.dst);
-
-   d3d12_transition_resource_state(ctx, info.src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-   d3d12_transition_resource_state(ctx, info.dst, D3D12_RESOURCE_STATE_COPY_DEST);
+   d3d12_transition_resource_state(ctx, info.src, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_BIND_INVALIDATE_FULL);
+   d3d12_transition_resource_state(ctx, info.dst, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_BIND_INVALIDATE_FULL);
    d3d12_apply_resource_states(ctx);
    ctx->cmdlist->CopyTextureRegion(&info.dst_loc, info.dst_x, info.dst_y, info.dst_z,
                                    &info.src_loc, info.src_box);
@@ -593,8 +594,8 @@ transfer_buf_to_buf(struct d3d12_context *ctx,
 
    // Same-resource copies not supported, since the resource would need to be in both states
    assert(src_d3d12 != dst_d3d12);
-   d3d12_transition_resource_state(ctx, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-   d3d12_transition_resource_state(ctx, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+   d3d12_transition_resource_state(ctx, src, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_BIND_INVALIDATE_FULL);
+   d3d12_transition_resource_state(ctx, dst, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_BIND_INVALIDATE_FULL);
    d3d12_apply_resource_states(ctx);
    ctx->cmdlist->CopyBufferRegion(dst_d3d12, dst_offset,
                                   src_d3d12, src_offset,
