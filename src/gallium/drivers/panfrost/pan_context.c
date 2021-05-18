@@ -406,7 +406,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
 }
 
 static void
-panfrost_direct_draw(struct panfrost_context *ctx,
+panfrost_direct_draw(struct panfrost_batch *batch,
                      const struct pipe_draw_info *info,
                      unsigned drawid_offset,
                      const struct pipe_draw_start_count_bias *draw)
@@ -414,10 +414,8 @@ panfrost_direct_draw(struct panfrost_context *ctx,
         if (!draw->count || !info->instance_count)
                 return;
 
+        struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *device = pan_device(ctx->base.screen);
-
-        if (!panfrost_render_condition_check(ctx))
-                return;
 
         int mode = info->mode;
 
@@ -435,18 +433,6 @@ panfrost_direct_draw(struct panfrost_context *ctx,
                 util_primconvert_draw_vbo(ctx->primconvert, info, drawid_offset, NULL, draw, 1);
                 return;
         }
-
-        /* Now that we have a guaranteed terminating path, find the job. */
-
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        /* Don't add too many jobs to a single batch */
-        if (batch->scoreboard.job_index > 10000)
-                batch = panfrost_get_fresh_batch_for_fbo(ctx);
-
-        unsigned zs_draws = ctx->depth_stencil->draws;
-        batch->draws |= zs_draws;
-        batch->resolve |= zs_draws;
 
         /* Take into account a negative bias */
         ctx->indirect_draw = false;
@@ -539,47 +525,26 @@ panfrost_direct_draw(struct panfrost_context *ctx,
 }
 
 static void
-panfrost_indirect_draw(struct panfrost_context *ctx,
+panfrost_indirect_draw(struct panfrost_batch *batch,
                        const struct pipe_draw_info *info,
                        unsigned drawid_offset,
                        const struct pipe_draw_indirect_info *indirect,
                        const struct pipe_draw_start_count_bias *draw)
 {
-        if (indirect->count_from_stream_output) {
-                struct pipe_draw_start_count_bias tmp_draw = *draw;
-                struct panfrost_streamout_target *so =
-                        pan_so_target(indirect->count_from_stream_output);
-
-                tmp_draw.start = 0;
-                tmp_draw.count = so->offset;
-                tmp_draw.index_bias = 0;
-                panfrost_direct_draw(ctx, info, drawid_offset, &tmp_draw);
-                return;
-        }
-
         /* Indirect draw count and multi-draw not supported. */
         assert(indirect->draw_count == 1 && !indirect->indirect_draw_count);
+
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
 
         /* TODO: update statistics (see panfrost_statistics_record()) */
         /* TODO: Increment transform feedback offsets */
         assert(ctx->streamout.num_targets == 0);
 
-        struct panfrost_device *dev = pan_device(ctx->base.screen);
-
         assert(ctx->draw_modes & (1 << info->mode));
         ctx->active_prim = info->mode;
         ctx->drawid = drawid_offset;
         ctx->indirect_draw = true;
-
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        /* Don't add too many jobs to a single batch */
-        if (batch->scoreboard.job_index + (indirect->draw_count * 3) > 10000)
-                batch = panfrost_get_fresh_batch_for_fbo(ctx);
-
-        unsigned zs_draws = ctx->depth_stencil->draws;
-        batch->draws |= zs_draws;
-        batch->resolve |= zs_draws;
 
         mali_ptr shared_mem = panfrost_batch_reserve_tls(batch, false);
 
@@ -723,9 +688,38 @@ panfrost_draw_vbo(struct pipe_context *pipe,
         if (panfrost_scissor_culls_everything(ctx))
                 return;
 
+        if (!panfrost_render_condition_check(ctx))
+                return;
+
+        /* Do some common setup */
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
+        /* Don't add too many jobs to a single batch. Hardware has a hard limit
+         * of 65536 jobs, but we choose a smaller soft limit (arbitrary) to
+         * avoid the risk of timeouts. This might not be a good idea. */
+        if (batch->scoreboard.job_index > 10000)
+                batch = panfrost_get_fresh_batch_for_fbo(ctx);
+
+        unsigned zs_draws = ctx->depth_stencil->draws;
+        batch->draws |= zs_draws;
+        batch->resolve |= zs_draws;
+
         if (indirect) {
                 assert(num_draws == 1);
-                panfrost_indirect_draw(ctx, info, drawid_offset, indirect, &draws[0]);
+
+                if (indirect->count_from_stream_output) {
+                        struct pipe_draw_start_count_bias tmp_draw = *draws;
+                        struct panfrost_streamout_target *so =
+                                pan_so_target(indirect->count_from_stream_output);
+
+                        tmp_draw.start = 0;
+                        tmp_draw.count = so->offset;
+                        tmp_draw.index_bias = 0;
+                        panfrost_direct_draw(batch, info, drawid_offset, &tmp_draw);
+                        return;
+                }
+
+                panfrost_indirect_draw(batch, info, drawid_offset, indirect, &draws[0]);
                 return;
         }
 
@@ -733,7 +727,7 @@ panfrost_draw_vbo(struct pipe_context *pipe,
         unsigned drawid = drawid_offset;
 
         for (unsigned i = 0; i < num_draws; i++) {
-                panfrost_direct_draw(ctx, &tmp_info, drawid, &draws[i]);
+                panfrost_direct_draw(batch, &tmp_info, drawid, &draws[i]);
                 if (tmp_info.increment_draw_id)
                        drawid++;
         }
