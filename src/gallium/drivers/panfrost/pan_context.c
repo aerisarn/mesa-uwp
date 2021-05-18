@@ -420,9 +420,6 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         int mode = info->mode;
 
         /* Fallback for unsupported modes */
-
-        assert(ctx->rasterizer != NULL);
-
         if (!(ctx->draw_modes & (1 << mode))) {
                 if (draw->count < 4) {
                         /* Degenerate case? */
