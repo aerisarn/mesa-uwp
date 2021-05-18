@@ -646,7 +646,7 @@ i915_translate_instruction(struct i915_fp_compile *p,
                       tmp,                                   /* dest reg: a dummy reg */
                       A0_DEST_CHANNEL_ALL,                   /* dest writemask */
                       0,                                     /* sampler */
-                      negate(swizzle(0, ONE, ONE, ONE, ONE), 1, 1, 1, 1), /* coord */
+                      negate(swizzle(UREG(REG_TYPE_R, 0), ONE, ONE, ONE, ONE), 1, 1, 1, 1), /* coord */
                       T0_TEXKILL,                            /* opcode */
                       1);                                    /* num_coord */
       break;

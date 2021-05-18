@@ -1,2 +1,1 @@
-dEQP-GLES2.functional.shaders.discard.function_always
 dEQP-GLES2.functional.shaders.random.texture.*
