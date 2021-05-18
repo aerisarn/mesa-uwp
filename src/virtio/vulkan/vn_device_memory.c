@@ -171,6 +171,57 @@ vn_device_memory_pool_free(struct vn_device *dev,
 }
 
 VkResult
+vn_device_memory_import_dmabuf(struct vn_device *dev,
+                               struct vn_device_memory *mem,
+                               const VkMemoryAllocateInfo *alloc_info,
+                               int fd)
+{
+   VkDevice device = vn_device_to_handle(dev);
+   VkDeviceMemory memory = vn_device_memory_to_handle(mem);
+   const VkExportMemoryAllocateInfo *export_info =
+      vk_find_struct_const(alloc_info->pNext, EXPORT_MEMORY_ALLOCATE_INFO);
+   const VkPhysicalDeviceMemoryProperties *mem_props =
+      &dev->physical_device->memory_properties.memoryProperties;
+   const VkMemoryType *mem_type =
+      &mem_props->memoryTypes[alloc_info->memoryTypeIndex];
+   struct vn_renderer_bo *bo;
+   VkResult result = VK_SUCCESS;
+
+   result = vn_renderer_bo_create_from_dmabuf(
+      dev->renderer, alloc_info->allocationSize, fd, mem_type->propertyFlags,
+      export_info ? export_info->handleTypes : 0, &bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   vn_instance_roundtrip(dev->instance);
+
+   /* XXX fix VkImportMemoryResourceInfoMESA to support memory planes */
+   const VkImportMemoryResourceInfoMESA import_memory_resource_info = {
+      .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_RESOURCE_INFO_MESA,
+      .pNext = alloc_info->pNext,
+      .resourceId = bo->res_id,
+   };
+   const VkMemoryAllocateInfo memory_allocate_info = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .pNext = &import_memory_resource_info,
+      .allocationSize = alloc_info->allocationSize,
+      .memoryTypeIndex = alloc_info->memoryTypeIndex,
+   };
+   result = vn_call_vkAllocateMemory(dev->instance, device,
+                                     &memory_allocate_info, NULL, &memory);
+   if (result != VK_SUCCESS) {
+      vn_renderer_bo_unref(dev->renderer, bo);
+      return result;
+   }
+
+   /* need to close import fd on success to avoid fd leak */
+   close(fd);
+   mem->base_bo = bo;
+
+   return VK_SUCCESS;
+}
+
+VkResult
 vn_AllocateMemory(VkDevice device,
                   const VkMemoryAllocateInfo *pAllocateInfo,
                   const VkAllocationCallbacks *pAllocator,
@@ -184,7 +235,7 @@ vn_AllocateMemory(VkDevice device,
       &dev->physical_device->memory_properties.memoryProperties;
    const VkMemoryType *mem_type =
       &mem_props->memoryTypes[pAllocateInfo->memoryTypeIndex];
-   const VkImportMemoryFdInfoKHR *import_info =
+   const VkImportMemoryFdInfoKHR *import_fd_info =
       vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_FD_INFO_KHR);
    const VkExportMemoryAllocateInfo *export_info =
       vk_find_struct_const(pAllocateInfo->pNext, EXPORT_MEMORY_ALLOCATE_INFO);
@@ -193,7 +244,7 @@ vn_AllocateMemory(VkDevice device,
 
    const bool need_bo =
       (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ||
-      import_info || export_info;
+      export_info;
    const bool suballocate =
       need_bo && !pAllocateInfo->pNext &&
       !(mem_type->propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT) &&
@@ -210,60 +261,21 @@ vn_AllocateMemory(VkDevice device,
 
    VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
    VkResult result;
-   if (import_info) {
-      assert(import_info->handleType &
-             (VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
-              VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT));
-
-      struct vn_renderer_bo *bo;
-      result = vn_renderer_bo_create_from_dmabuf(
-         dev->renderer, pAllocateInfo->allocationSize, import_info->fd,
-         mem_type->propertyFlags, export_info ? export_info->handleTypes : 0,
-         &bo);
-      if (result != VK_SUCCESS) {
-         vk_free(alloc, mem);
-         return vn_error(dev->instance, result);
-      }
-      vn_instance_roundtrip(dev->instance);
-
-      /* XXX fix VkImportMemoryResourceInfoMESA to support memory planes */
-      const VkImportMemoryResourceInfoMESA import_memory_resource_info = {
-         .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_RESOURCE_INFO_MESA,
-         .pNext = pAllocateInfo->pNext,
-         .resourceId = bo->res_id,
-      };
-      const VkMemoryAllocateInfo memory_allocate_info = {
-         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-         .pNext = &import_memory_resource_info,
-         .allocationSize = pAllocateInfo->allocationSize,
-         .memoryTypeIndex = pAllocateInfo->memoryTypeIndex,
-      };
-      result = vn_call_vkAllocateMemory(
-         dev->instance, device, &memory_allocate_info, NULL, &mem_handle);
-      if (result != VK_SUCCESS) {
-         vn_renderer_bo_unref(dev->renderer, bo);
-         vk_free(alloc, mem);
-         return vn_error(dev->instance, result);
-      }
-
-      /* need to close import fd on success to avoid fd leak */
-      close(import_info->fd);
-      mem->base_bo = bo;
+   if (import_fd_info) {
+      result = vn_device_memory_import_dmabuf(dev, mem, pAllocateInfo,
+                                              import_fd_info->fd);
+      assert(mem->base_bo);
    } else if (suballocate) {
       result = vn_device_memory_pool_alloc(
          dev, pAllocateInfo->memoryTypeIndex, mem->size, &mem->base_memory,
          &mem->base_bo, &mem->base_offset);
-      if (result != VK_SUCCESS) {
-         vk_free(alloc, mem);
-         return vn_error(dev->instance, result);
-      }
    } else {
       result = vn_call_vkAllocateMemory(dev->instance, device, pAllocateInfo,
                                         NULL, &mem_handle);
-      if (result != VK_SUCCESS) {
-         vk_free(alloc, mem);
-         return vn_error(dev->instance, result);
-      }
+   }
+   if (result != VK_SUCCESS) {
+      vk_free(alloc, mem);
+      return vn_error(dev->instance, result);
    }
 
    if (need_bo && !mem->base_bo) {

@@ -40,4 +40,10 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_device_memory,
 void
 vn_device_memory_pool_fini(struct vn_device *dev, uint32_t mem_type_index);
 
+VkResult
+vn_device_memory_import_dmabuf(struct vn_device *dev,
+                               struct vn_device_memory *mem,
+                               const VkMemoryAllocateInfo *alloc_info,
+                               int fd);
+
 #endif /* VN_DEVICE_MEMORY_H */
