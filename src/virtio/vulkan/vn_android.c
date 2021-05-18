@@ -972,3 +972,20 @@ vn_android_image_from_ahb(struct vn_device *dev,
 
    return vn_image_create_deferred(dev, create_info, alloc, out_img);
 }
+
+VkResult
+vn_android_device_import_ahb(struct vn_device *dev,
+                             struct vn_device_memory *mem,
+                             const VkMemoryAllocateInfo *alloc_info,
+                             struct AHardwareBuffer *ahb)
+{
+   return VK_ERROR_OUT_OF_HOST_MEMORY;
+}
+
+VkResult
+vn_android_device_allocate_ahb(struct vn_device *dev,
+                               struct vn_device_memory *mem,
+                               const VkMemoryAllocateInfo *alloc_info)
+{
+   return VK_ERROR_OUT_OF_HOST_MEMORY;
+}
