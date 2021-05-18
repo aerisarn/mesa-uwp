@@ -933,6 +933,7 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_scalar_alu *alu_field = (midgard_scalar_alu *) words;
         bool is_int = midgard_is_integer_op(alu_field->op);
+        bool is_int_out = midgard_is_integer_out_op(alu_field->op);
         bool full = alu_field->output_full;
 
         if (alu_field->unknown)
@@ -945,7 +946,7 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         /* Print lane width, in this case the lane width is always 32-bit, but
          * we print it anyway to make it consistent with the other instructions. */
-        fprintf(fp, ".%c32", is_int ? 'i' : 'f');
+        fprintf(fp, ".%c32", is_int_out ? 'i' : 'f');
 
         fprintf(fp, " ");
 
@@ -959,7 +960,7 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         fprintf(fp, ".%c", components[c]);
 
-        print_alu_outmod(fp, alu_field->outmod, is_int, !full);
+        print_alu_outmod(fp, alu_field->outmod, is_int_out, !full);
 
         fprintf(fp, ", ");
 
