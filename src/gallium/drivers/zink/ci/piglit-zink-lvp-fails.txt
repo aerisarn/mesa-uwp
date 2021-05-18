@@ -104,6 +104,7 @@ spec@ext_external_objects@vk-image-overwrite,Fail
 spec@ext_external_objects@vk-pix-buf-update-errors,Fail
 spec@ext_external_objects@vk-semaphores-2,Fail
 spec@ext_external_objects@vk-semaphores,Fail
+spec@ext_external_objects@vk-stencil-display,Fail
 spec@ext_external_objects@vk-vert-buf-reuse,Fail
 spec@ext_external_objects@vk-vert-buf-update-errors,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
