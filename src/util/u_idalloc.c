@@ -36,6 +36,17 @@
 #include "util/u_math.h"
 #include <stdlib.h>
 
+static void
+util_idalloc_resize(struct util_idalloc *buf, unsigned new_num_elements)
+{
+   if (new_num_elements > buf->num_elements) {
+      buf->data = realloc(buf->data, new_num_elements * sizeof(*buf->data));
+      memset(&buf->data[buf->num_elements], 0,
+             (new_num_elements - buf->num_elements) * sizeof(*buf->data));
+      buf->num_elements = new_num_elements;
+   }
+}
+
 void
 util_idalloc_init(struct util_idalloc *buf, unsigned initial_num_ids)
 {
@@ -49,17 +60,6 @@ util_idalloc_fini(struct util_idalloc *buf)
 {
    if (buf->data)
       free(buf->data);
-}
-
-void
-util_idalloc_resize(struct util_idalloc *buf, unsigned new_num_elements)
-{
-   if (new_num_elements > buf->num_elements) {
-      buf->data = realloc(buf->data, new_num_elements * sizeof(*buf->data));
-      memset(&buf->data[buf->num_elements], 0,
-             (new_num_elements - buf->num_elements) * sizeof(*buf->data));
-      buf->num_elements = new_num_elements;
-   }
 }
 
 unsigned
@@ -130,14 +130,6 @@ util_idalloc_mt_fini(struct util_idalloc_mt *buf)
    simple_mtx_destroy(&buf->mutex);
 }
 
-void
-util_idalloc_mt_resize(struct util_idalloc_mt *buf, unsigned new_num_elements)
-{
-   simple_mtx_lock(&buf->mutex);
-   util_idalloc_resize(&buf->buf, DIV_ROUND_UP(new_num_elements, 32));
-   simple_mtx_unlock(&buf->mutex);
-}
-
 unsigned
 util_idalloc_mt_alloc(struct util_idalloc_mt *buf)
 {
@@ -155,13 +147,5 @@ util_idalloc_mt_free(struct util_idalloc_mt *buf, unsigned id)
 
    simple_mtx_lock(&buf->mutex);
    util_idalloc_free(&buf->buf, id);
-   simple_mtx_unlock(&buf->mutex);
-}
-
-void
-util_idalloc_mt_reserve(struct util_idalloc_mt *buf, unsigned id)
-{
-   simple_mtx_lock(&buf->mutex);
-   util_idalloc_reserve(&buf->buf, id);
    simple_mtx_unlock(&buf->mutex);
 }

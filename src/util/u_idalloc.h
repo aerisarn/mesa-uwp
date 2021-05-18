@@ -49,9 +49,6 @@ util_idalloc_init(struct util_idalloc *buf, unsigned initial_num_ids);
 void
 util_idalloc_fini(struct util_idalloc *buf);
 
-void
-util_idalloc_resize(struct util_idalloc *buf, unsigned new_num_elements);
-
 unsigned
 util_idalloc_alloc(struct util_idalloc *buf);
 
@@ -79,17 +76,11 @@ util_idalloc_mt_init_tc(struct util_idalloc_mt *buf);
 void
 util_idalloc_mt_fini(struct util_idalloc_mt *buf);
 
-void
-util_idalloc_mt_resize(struct util_idalloc_mt *buf, unsigned new_num_elements);
-
 unsigned
 util_idalloc_mt_alloc(struct util_idalloc_mt *buf);
 
 void
 util_idalloc_mt_free(struct util_idalloc_mt *buf, unsigned id);
-
-void
-util_idalloc_mt_reserve(struct util_idalloc_mt *buf, unsigned id);
 
 
 #ifdef __cplusplus
