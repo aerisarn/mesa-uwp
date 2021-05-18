@@ -1149,6 +1149,15 @@ meson-mingw32-x86_64:
     - x86_test-gl
     - meson-clover-testing
 
+.vkd3d-proton-test:
+  artifacts:
+    when: on_failure
+    name: "mesa_${CI_JOB_NAME}"
+    paths:
+      - results/vkd3d-proton.log
+  script:
+    - install/vkd3d-proton/run.sh
+
 .piglit-test:
   artifacts:
     when: on_failure
