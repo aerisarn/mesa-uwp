@@ -81,13 +81,13 @@ panfrost_bo_access_for_stage(enum pipe_shader_type stage)
  * require them to be together. */
 
 mali_ptr
-panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
+panfrost_get_index_buffer_bounded(struct panfrost_batch *batch,
                                   const struct pipe_draw_info *info,
                                   const struct pipe_draw_start_count_bias *draw,
                                   unsigned *min_index, unsigned *max_index)
 {
         struct panfrost_resource *rsrc = pan_resource(info->index.resource);
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        struct panfrost_context *ctx = batch->ctx;
         off_t offset = draw->start * info->index_size;
         bool needs_indices = true;
         mali_ptr out = 0;

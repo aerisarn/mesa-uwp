@@ -458,7 +458,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         mali_ptr indices = 0;
 
         if (info->index_size) {
-                indices = panfrost_get_index_buffer_bounded(ctx, info, draw,
+                indices = panfrost_get_index_buffer_bounded(batch, info, draw,
                                                             &min_index,
                                                             &max_index);
 
