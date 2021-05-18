@@ -459,6 +459,7 @@ EmitSSBOInstruction::emit_ssbo_atomic_op(const nir_intrinsic_instr *intrin)
                                      {0,7,7,7});
    fetch->set_flag(vtx_srf_mode);
    fetch->set_flag(vtx_use_tc);
+   fetch->set_flag(vtx_vpm);
    emit_instruction(fetch);
    return true;
 
@@ -548,6 +549,7 @@ bool EmitSSBOInstruction::fetch_return_value(const nir_intrinsic_instr *intrin)
                                      image_offset, {0,1,2,3});
    fetch->set_flag(vtx_srf_mode);
    fetch->set_flag(vtx_use_tc);
+   fetch->set_flag(vtx_vpm);
    if (format_comp)
       fetch->set_flag(vtx_format_comp_signed);
 
