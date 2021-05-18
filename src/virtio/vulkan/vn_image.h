@@ -22,6 +22,12 @@ struct vn_image_ownership_cmds {
    VkCommandBuffer cmds[2];
 };
 
+struct vn_image_create_deferred_info {
+   VkImageCreateInfo create;
+   VkImageFormatListCreateInfo list;
+   VkImageStencilUsageCreateInfo stencil;
+};
+
 struct vn_image {
    struct vn_object_base base;
 
@@ -29,6 +35,10 @@ struct vn_image {
    VkMemoryDedicatedRequirements dedicated_requirements[4];
    /* For VK_ANDROID_native_buffer, the WSI image owns the memory, */
    VkDeviceMemory private_memory;
+   /* For VK_ANDROID_external_memory_android_hardware_buffer, real image
+    * creation is deferred until bind image memory.
+    */
+   struct vn_image_create_deferred_info *deferred_info;
    /* For queue family ownership transfer of WSI images */
    VkSharingMode sharing_mode;
    struct vn_image_ownership_cmds *ownership_cmds;
@@ -68,6 +78,17 @@ vn_image_create(struct vn_device *dev,
                 const VkImageCreateInfo *create_info,
                 const VkAllocationCallbacks *alloc,
                 struct vn_image **out_img);
+
+VkResult
+vn_image_init_deferred(struct vn_device *dev,
+                       const VkImageCreateInfo *create_info,
+                       struct vn_image *img);
+
+VkResult
+vn_image_create_deferred(struct vn_device *dev,
+                         const VkImageCreateInfo *create_info,
+                         const VkAllocationCallbacks *alloc,
+                         struct vn_image **out_img);
 
 VkResult
 vn_image_android_wsi_init(struct vn_device *dev,
