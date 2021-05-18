@@ -1285,7 +1285,7 @@ get_subgroup_size(gl_shader_stage stage,
    case BRW_SUBGROUP_SIZE_REQUIRE_8:
    case BRW_SUBGROUP_SIZE_REQUIRE_16:
    case BRW_SUBGROUP_SIZE_REQUIRE_32:
-      assert(stage == MESA_SHADER_COMPUTE);
+      assert(gl_shader_stage_uses_workgroup(stage));
       /* These enum values are expressly chosen to be equal to the subgroup
        * size that they require.
        */

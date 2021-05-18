@@ -265,15 +265,15 @@ lower_cs_intrinsics_convert_impl(struct lower_intrinsics_state *state)
 bool
 brw_nir_lower_cs_intrinsics(nir_shader *nir)
 {
-   assert(nir->info.stage == MESA_SHADER_COMPUTE ||
-          nir->info.stage == MESA_SHADER_KERNEL);
+   assert(gl_shader_stage_uses_workgroup(nir->info.stage));
 
    struct lower_intrinsics_state state = {
       .nir = nir,
    };
 
    /* Constraints from NV_compute_shader_derivatives. */
-   if (!nir->info.workgroup_size_variable) {
+   if (gl_shader_stage_is_compute(nir->info.stage) &&
+       !nir->info.workgroup_size_variable) {
       if (nir->info.cs.derivative_group == DERIVATIVE_GROUP_QUADS) {
          assert(nir->info.workgroup_size[0] % 2 == 0);
          assert(nir->info.workgroup_size[1] % 2 == 0);
