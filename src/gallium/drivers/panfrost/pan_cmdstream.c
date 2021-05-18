@@ -397,7 +397,7 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
         for (unsigned i = 0; i < MAX2(rt_count, 1); ++i) {
                 /* Disable blending for unbacked render targets */
                 if (rt_count == 0 || !batch->key.cbufs[i]) {
-                        pan_pack(rts, BLEND, cfg) {
+                        pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
                                 cfg.midgard.equation.color_mask = 0xf;
                                 cfg.midgard.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
                                 cfg.midgard.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
