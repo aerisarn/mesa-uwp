@@ -131,6 +131,13 @@ spec@!opengl 1.0@gl-1.0-ortho-pos,Crash
 spec@!opengl 1.0@gl-1.0-rendermode-feedback,Crash
 spec@!opengl 1.0@gl-1.0-scissor-offscreen,Fail
 spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
+
+# mesa/st draw path doesn't do nir-to-tgsi, so gallivm NIR fails
+# to handle our vector-y, non-native-integers shaders.  We could extend
+# gallivm NIR to handle it, or disentangle per-stage native integers on the
+# frontend.
+spec@!opengl 1.0@rasterpos,Crash
+
 spec@!opengl 1.1@clipflat,Fail
 spec@!opengl 1.1@clipflat@glBegin/End(GL_POLYGON)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center bottom PV: FIRST,Fail
 spec@!opengl 1.1@clipflat@glBegin/End(GL_POLYGON)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center top PV: FIRST,Fail
@@ -417,7 +424,7 @@ spec@!opengl 1.1@linestipple@Factor 3x,Fail
 spec@!opengl 1.1@linestipple@Line loop,Fail
 spec@!opengl 1.1@linestipple@Line strip,Fail
 spec@!opengl 1.1@longprim,Crash
-spec@!opengl 1.1@point-line-no-cull,Fail
+spec@!opengl 1.1@point-line-no-cull,Crash
 spec@!opengl 1.1@polygon-mode-offset,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 0: Expected white pixel on bottom edge,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 0: Expected white pixel on left edge,Fail
@@ -492,6 +499,12 @@ spec@!opengl 1.2@texwrap 3d proj bordercolor,Fail
 spec@!opengl 1.2@texwrap 3d proj bordercolor@GL_RGBA8- projected- border color only,Fail
 spec@!opengl 1.4@copy-pixels,Fail
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
+
+# 1D textures are treated as 2D, but we don't force
+# the Y clamp to repeat or edge, so you get interpolation, and we get
+# different undefined values in the y coordinate in the new shader.
+spec@!opengl 1.4@gl-1.4-tex1d-2dborder,Fail
+
 spec@!opengl 1.4@tex-miplevel-selection,Fail
 spec@!opengl 1.4@tex-miplevel-selection-lod,Fail
 spec@!opengl 1.4@tex-miplevel-selection-lod-bias,Fail
@@ -636,7 +649,10 @@ spec@arb_pixel_buffer_object@cubemap npot pbo,Fail
 spec@arb_pixel_buffer_object@fbo-pbo-readpixels-small,Fail
 spec@arb_pixel_buffer_object@pbo-getteximage,Fail
 spec@arb_pixel_buffer_object@texsubimage pbo,Fail
-spec@arb_point_parameters@arb_point_parameters-point-attenuation,Fail
+
+# nir_lower_aapoint_impl() uses b32csel instead of fcsel.
+spec@arb_point_parameters@arb_point_parameters-point-attenuation,Crash
+
 spec@arb_point_parameters@arb_point_parameters-point-attenuation@Aliased combinations,Fail
 spec@arb_point_parameters@arb_point_parameters-point-attenuation@Antialiased combinations,Fail
 spec@arb_provoking_vertex@arb-provoking-vertex-render,Fail
@@ -661,6 +677,10 @@ spec@arb_texture_rectangle@glsl-fs-shadow2drect-08,Fail
 spec@arb_texture_rectangle@glsl-fs-shadow2drectproj,Fail
 spec@arb_texture_rectangle@tex-miplevel-selection gl2:texture() 2drectshadow,Fail
 spec@arb_texture_rectangle@tex-miplevel-selection gl2:textureproj 2drectshadow,Fail
+
+# Too many texture phases, would be avoided if nir_to_tgsi did TXP or if we scheduled.
+spec@arb_texture_rectangle@texrect-many,Fail
+
 spec@arb_texture_rectangle@texwrap rect bordercolor,Fail
 spec@arb_texture_rectangle@texwrap rect bordercolor@GL_RGBA8- border color only,Fail
 spec@arb_texture_rectangle@texwrap rect proj bordercolor,Fail
@@ -867,7 +887,6 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SLUMINANCE_
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- border color only,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-atan-float-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec2-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec3-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec4-vec4,Fail
@@ -906,12 +925,6 @@ spec@glsl-1.10@execution@built-in-functions@fs-matrixcompmult-mat2-mat2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-matrixcompmult-mat3-mat3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-matrixcompmult-mat4-mat4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-mix-float-float-float,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-mix-vec2-vec2-float,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-mix-vec2-vec2-vec2,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-mix-vec3-vec3-float,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-mix-vec3-vec3-vec3,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-mix-vec4-vec4-float,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-mix-vec4-vec4-vec4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-mod-float-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-mod-vec2-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-mod-vec2-vec2,Fail
@@ -1057,8 +1070,6 @@ spec@glsl-1.10@execution@built-in-functions@fs-tan-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-tan-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-tan-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-tan-vec4,Fail
-spec@glsl-1.10@execution@builtins@glsl-fs-atan-1,Fail
-spec@glsl-1.10@execution@builtins@glsl-fs-atan-2,Fail
 spec@glsl-1.10@execution@builtins@glsl-fs-atan-3,Fail
 spec@glsl-1.10@execution@builtins@glsl-fs-tan-1,Fail
 spec@glsl-1.10@execution@copy-propagation@glsl-copy-propagation-loop-1,Fail
@@ -1073,10 +1084,7 @@ spec@glsl-1.10@execution@fs-frontfacing-ternary-0.0-neg-1.0,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-1-neg-1,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-1.0-neg-1.0,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-neg-1.0-1.0,Fail
-spec@glsl-1.10@execution@fs-frontfacing-ternary-vec4-neg-1.0-1.0,Fail
-spec@glsl-1.10@execution@fs-loop-bounds-unrolled,Fail
-spec@glsl-1.10@execution@fs-nested-loop-unrolled-with-return,Fail
-spec@glsl-1.10@execution@fs-nested-return-in-loop-nested_in_if,Fail
+spec@glsl-1.10@execution@fs-loop-bounds-unrolled,Crash
 spec@glsl-1.10@execution@fs-notequal-of-expression,Fail
 spec@glsl-1.10@execution@fs-sign-times-abs,Fail
 spec@glsl-1.10@execution@fs-sign-times-neg,Fail
@@ -1111,12 +1119,10 @@ spec@glsl-1.10@execution@interpolation@interpolation-none-gl_frontcolor-smooth-v
 spec@glsl-1.10@execution@interpolation@interpolation-none-gl_frontsecondarycolor-smooth-fixed,Fail
 spec@glsl-1.10@execution@interpolation@interpolation-none-gl_frontsecondarycolor-smooth-none,Fail
 spec@glsl-1.10@execution@interpolation@interpolation-none-gl_frontsecondarycolor-smooth-vertex,Fail
-spec@glsl-1.10@execution@loops@complex-loop-analysis-bug,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-continue-inside-do-while,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-300,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-break,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-continue,Fail
-spec@glsl-1.10@execution@loops@glsl-fs-loop-diagonal-break,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-ge,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-gt,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-le,Fail
@@ -1130,7 +1136,6 @@ spec@glsl-1.10@execution@loops@glsl-fs-loop-two-counter-04,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-zero-iter,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-unroll-out-param,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-unroll-side-effect,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-lots-of-tex,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-01,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-03,Fail
@@ -1165,6 +1170,7 @@ spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat3-index-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-row-wr,Fail
+spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-uniform-array-mat4-index-col-row-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-varying-array-mat3-index-col-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-varying-array-mat3-index-col-row-rd,Fail
@@ -1326,6 +1332,8 @@ spec@glsl-1.20@execution@built-in-functions@fs-outerproduct-vec3-vec4,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-outerproduct-vec4-vec2,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-outerproduct-vec4-vec3,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-outerproduct-vec4-vec4,Fail
+spec@glsl-1.20@execution@fs-const-array-of-struct,Fail
+spec@glsl-1.20@execution@fs-const-array-of-struct-of-array,Fail
 spec@glsl-1.20@execution@fs-function-inout-array-of-structs,Fail
 spec@glsl-1.20@execution@fs-mix-1.0,Fail
 spec@glsl-1.20@execution@fs-nan-builtin-max,Fail
@@ -1337,7 +1345,6 @@ spec@glsl-1.20@execution@fs-vec4-const-array-indirect-access-128-elements,Fail
 spec@glsl-1.20@execution@fs-vec4-const-array-indirect-access-256-elements,Fail
 spec@glsl-1.20@execution@glsl-fs-frontfacing,Fail
 spec@glsl-1.20@execution@glsl-fs-frontfacing-not,Fail
-spec@glsl-1.20@execution@matrix-out-of-bounds-access@fs-mat4-out-of-bounds-6,Crash
 spec@glsl-1.20@execution@out-parameter-indexing@fs-inout-index-two-level,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1d,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1dshadow,Fail
@@ -1374,6 +1381,8 @@ spec@glsl-1.20@execution@uniform-initializer@fs-mat4,Fail
 spec@glsl-1.20@execution@uniform-initializer@fs-mat4-array,Fail
 spec@glsl-1.20@execution@uniform-initializer@fs-mat4-from-const,Fail
 spec@glsl-1.20@execution@uniform-initializer@fs-mat4-set-by-other-stage,Fail
+spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat2-index-col-wr,Fail
+spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat2-index-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat2-index-col-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat3-index-col-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat3-index-col-wr,Fail
@@ -1381,6 +1390,7 @@ spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat3-index-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-col-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-col-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-row-wr,Fail
+spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-uniform-array-mat4-index-col-row-rd,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-varying-array-mat3-index-col-rd,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-varying-array-mat3-index-col-row-rd,Fail

@@ -26,6 +26,7 @@
  **************************************************************************/
 
 
+#include "compiler/nir/nir.h"
 #include "draw/draw_context.h"
 #include "util/os_misc.h"
 #include "util/format/u_format.h"
@@ -107,11 +108,107 @@ i915_get_name(struct pipe_screen *screen)
    return buffer;
 }
 
+static const nir_shader_compiler_options i915_compiler_options = {
+   .fuse_ffma32 = true,
+   .lower_bitops = true, /* required for !CAP_INTEGERS nir_to_tgsi */
+   .lower_extract_byte = true,
+   .lower_extract_word = true,
+   .lower_fdiv = true,
+   .lower_fdph = true,
+   .lower_flrp32 = true,
+   .lower_fmod = true,
+   .lower_rotate = true,
+   .lower_uniforms_to_ubo = true,
+   .lower_vector_cmp = true,
+   .use_interpolated_input_intrinsics = true,
+};
+
+static const struct nir_shader_compiler_options gallivm_nir_options = {
+   .lower_bitops = true, /* required for !CAP_INTEGERS nir_to_tgsi */
+   .lower_scmp = true,
+   .lower_flrp32 = true,
+   .lower_flrp64 = true,
+   .lower_fsat = true,
+   .lower_bitfield_insert_to_shifts = true,
+   .lower_bitfield_extract_to_shifts = true,
+   .lower_fdph = true,
+   .lower_ffma16 = true,
+   .lower_ffma32 = true,
+   .lower_ffma64 = true,
+   .lower_fmod = true,
+   .lower_hadd = true,
+   .lower_add_sat = true,
+   .lower_ldexp = true,
+   .lower_pack_snorm_2x16 = true,
+   .lower_pack_snorm_4x8 = true,
+   .lower_pack_unorm_2x16 = true,
+   .lower_pack_unorm_4x8 = true,
+   .lower_pack_half_2x16 = true,
+   .lower_pack_split = true,
+   .lower_unpack_snorm_2x16 = true,
+   .lower_unpack_snorm_4x8 = true,
+   .lower_unpack_unorm_2x16 = true,
+   .lower_unpack_unorm_4x8 = true,
+   .lower_unpack_half_2x16 = true,
+   .lower_extract_byte = true,
+   .lower_extract_word = true,
+   .lower_rotate = true,
+   .lower_uadd_carry = true,
+   .lower_usub_borrow = true,
+   .lower_mul_2x32_64 = true,
+   .lower_ifind_msb = true,
+   .max_unroll_iterations = 32,
+   .use_interpolated_input_intrinsics = true,
+   .lower_cs_local_index_from_id = true,
+   .lower_uniforms_to_ubo = true,
+   .lower_vector_cmp = true,
+   .lower_device_index_to_zero = true,
+   /* .support_16bit_alu = true, */
+};
+
+static const void *
+i915_get_compiler_options(struct pipe_screen *pscreen,
+                              enum pipe_shader_ir ir,
+                              enum pipe_shader_type shader)
+{
+   assert(ir == PIPE_SHADER_IR_NIR);
+   if (shader == PIPE_SHADER_FRAGMENT)
+      return &i915_compiler_options;
+   else
+      return &gallivm_nir_options;
+}
+
 static int
 i915_get_shader_param(struct pipe_screen *screen,
                       enum pipe_shader_type shader,
                       enum pipe_shader_cap cap)
 {
+   switch (cap) {
+      case PIPE_SHADER_CAP_PREFERRED_IR:
+         return PIPE_SHADER_IR_NIR;
+      case PIPE_SHADER_CAP_SUPPORTED_IRS:
+         return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
+
+      case PIPE_SHADER_CAP_INTEGERS:
+         /* mesa/st requires that this cap is the same across stages, and the FS
+          * can't do ints.
+          */
+         return 0;
+
+      case PIPE_SHADER_CAP_INT16:
+         return 0;
+
+      case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
+         /* While draw could normally handle this for the VS, the NIR lowering
+          * to regs can't handle our non-native-integers, so we have to lower to
+          * if ladders.
+          */
+         return 0;
+
+      default:
+         break;
+   }
+
    switch(shader) {
    case PIPE_SHADER_VERTEX:
       switch (cap) {
@@ -156,7 +253,6 @@ i915_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
       case PIPE_SHADER_CAP_SUBROUTINES:
          return 0;
-      case PIPE_SHADER_CAP_INTEGERS:
       case PIPE_SHADER_CAP_INT64_ATOMICS:
       case PIPE_SHADER_CAP_FP16:
       case PIPE_SHADER_CAP_FP16_DERIVATIVES:
@@ -175,11 +271,11 @@ i915_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
       case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
       case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
-      case PIPE_SHADER_CAP_PREFERRED_IR:
       case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
       case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
       case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
          return 0;
+
       case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
          return 32;
       default:
@@ -277,6 +373,9 @@ i915_get_param(struct pipe_screen *screen, enum pipe_cap cap)
       return PIPE_ENDIAN_LITTLE;
    case PIPE_CAP_MAX_VARYINGS:
       return 10;
+
+   case PIPE_CAP_NIR_IMAGES_AS_DEREF:
+      return 0;
 
    case PIPE_CAP_VENDOR_ID:
       return 0x8086;
@@ -530,6 +629,7 @@ i915_screen_create(struct i915_winsys *iws)
    is->base.get_param = i915_get_param;
    is->base.get_shader_param = i915_get_shader_param;
    is->base.get_paramf = i915_get_paramf;
+   is->base.get_compiler_options = i915_get_compiler_options;
    is->base.is_format_supported = i915_is_format_supported;
 
    is->base.context_create = i915_create_context;

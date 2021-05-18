@@ -12,7 +12,7 @@ traces:
   - path: gputest/plot3d.trace
     expectations:
       - device: i915-g33
-        checksum: c85a570e1d2a45555b9e92298522f7d8
+        checksum: dc187485584bc45b9050e88163e72c34
   - path: gputest/triangle.trace
     expectations:
       # Weird white bar behind Tux's head.
@@ -23,11 +23,14 @@ traces:
   #  expectations:
   #    - device: i915-g33
   #      checksum: 8d4c52f0af9c09710d358f24c73fae3c
-  - path: humus/CelShading.trace
-    # The cel shading is pretty chunky, but maybe that's just precision stuff.
-    expectations:
-      - device: i915-g33
-        checksum: 4605ceed2b5c3a03f9262c546d75a8d8
+  #- path: humus/CelShading.trace
+  #  # The cel shading is pretty chunky, but maybe that's just precision stuff.
+  #  # Since the NIR change, 1D textures are getting undefined .y channels that
+  #  # could trigger the known bad 1D texture wrap behavior, and the rendering looks
+  #  # like undefined data.
+  #  expectations:
+  #    - device: i915-g33
+  #      checksum: 4605ceed2b5c3a03f9262c546d75a8d8
   # Requires GLSL 1.30
   #- path: humus/DynamicBranching3.trace
   #  expectations:
@@ -41,7 +44,7 @@ traces:
   - path: humus/Portals.trace
     expectations:
       - device: i915-g33
-        checksum: 9306a8d9f37d83a327759319c46f7cae
+        checksum: 46a5f3c04ef40f275e1d330c2ac965c8
   # The shadow raytracing shader fails to compile
   #- path: humus/RaytracedShadows.trace
   #  expectations:
@@ -55,9 +58,9 @@ traces:
   - path: neverball/neverball.trace
     expectations:
       - device: i915-g33
-        checksum: 344479e929ad4bc7f7316b5e574b0131
+        checksum: e621fd97320f24ea4451565390f9b1ac
   - path: valve/counterstrike-v2.trace
     # Tree foliage rendering is extra aliased.
     expectations:
       - device: i915-g33
-        checksum: 66a18e91b95674a3a1d227ed5681257d
+        checksum: 4a693fcd3b2fbe388ba847ca3a93f079

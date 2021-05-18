@@ -30,6 +30,8 @@
 
 
 #include "draw/draw_context.h"
+#include "nir.h"
+#include "nir/nir_to_tgsi.h"
 #include "util/u_helpers.h"
 #include "util/u_inlines.h"
 #include "util/u_math.h"
@@ -476,9 +478,18 @@ i915_create_fs_state(struct pipe_context *pipe,
       return NULL;
 
    ifs->draw_data = draw_create_fragment_shader(i915->draw, templ);
-   ifs->state.tokens = tgsi_dup_tokens(templ->tokens);
 
-   tgsi_scan_shader(templ->tokens, &ifs->info);
+   if (templ->type == PIPE_SHADER_IR_NIR) {
+      ifs->state.tokens = nir_to_tgsi(templ->ir.nir, pipe->screen);
+   } else {
+      assert(templ->type == PIPE_SHADER_IR_TGSI);
+      /* we need to keep a local copy of the tokens */
+      ifs->state.tokens = tgsi_dup_tokens(templ->tokens);
+   }
+
+   ifs->state.type = PIPE_SHADER_IR_TGSI;
+
+   tgsi_scan_shader(ifs->state.tokens, &ifs->info);
 
    /* The shader's compiled to i915 instructions here */
    i915_translate_fragment_program(i915, ifs);
@@ -527,7 +538,18 @@ i915_create_vs_state(struct pipe_context *pipe,
 {
    struct i915_context *i915 = i915_context(pipe);
 
-   /* just pass-through to draw module */
+   struct pipe_shader_state from_nir;
+   if (templ->type == PIPE_SHADER_IR_NIR) {
+      /* The gallivm draw path doesn't support non-native-integers NIR shaders,
+       * st/mesa does native-integers for the screen as a whole rather than
+       * per-stage, and i915 FS can't do native integers.  So, convert to TGSI,
+       * where the draw path *does* support non-native-integers.
+       */
+      from_nir.type = PIPE_SHADER_IR_TGSI;
+      from_nir.tokens = nir_to_tgsi(templ->ir.nir, pipe->screen);
+      templ = &from_nir;
+   }
+
    return draw_create_vertex_shader(i915->draw, templ);
 }
 
