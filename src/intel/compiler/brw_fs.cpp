@@ -10082,19 +10082,25 @@ brw_compile_fs(const struct brw_compiler *compiler,
 }
 
 fs_reg *
-fs_visitor::emit_cs_work_group_id_setup()
+fs_visitor::emit_work_group_id_setup()
 {
-   assert(stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL);
+   assert(gl_shader_stage_uses_workgroup(stage));
 
    fs_reg *reg = new(this->mem_ctx) fs_reg(vgrf(glsl_type::uvec3_type));
 
    struct brw_reg r0_1(retype(brw_vec1_grf(0, 1), BRW_REGISTER_TYPE_UD));
-   struct brw_reg r0_6(retype(brw_vec1_grf(0, 6), BRW_REGISTER_TYPE_UD));
-   struct brw_reg r0_7(retype(brw_vec1_grf(0, 7), BRW_REGISTER_TYPE_UD));
-
    bld.MOV(*reg, r0_1);
-   bld.MOV(offset(*reg, bld, 1), r0_6);
-   bld.MOV(offset(*reg, bld, 2), r0_7);
+
+   if (gl_shader_stage_is_compute(stage)) {
+      struct brw_reg r0_6(retype(brw_vec1_grf(0, 6), BRW_REGISTER_TYPE_UD));
+      struct brw_reg r0_7(retype(brw_vec1_grf(0, 7), BRW_REGISTER_TYPE_UD));
+      bld.MOV(offset(*reg, bld, 1), r0_6);
+      bld.MOV(offset(*reg, bld, 2), r0_7);
+   } else {
+      /* Task/Mesh have a single Workgroup ID dimension in the HW. */
+      bld.MOV(offset(*reg, bld, 1), brw_imm_ud(0));
+      bld.MOV(offset(*reg, bld, 2), brw_imm_ud(0));
+   }
 
    return reg;
 }

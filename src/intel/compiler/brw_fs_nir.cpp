@@ -195,7 +195,7 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
          assert(gl_shader_stage_uses_workgroup(v->stage));
          reg = &v->nir_system_values[SYSTEM_VALUE_WORKGROUP_ID];
          if (reg->file == BAD_FILE)
-            *reg = *v->emit_cs_work_group_id_setup();
+            *reg = *v->emit_work_group_id_setup();
          break;
 
       case nir_intrinsic_load_helper_invocation:

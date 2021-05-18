@@ -319,7 +319,7 @@ public:
                            unsigned base_offset, const nir_src &offset_src,
                            unsigned num_components, unsigned first_component);
    void emit_cs_terminate();
-   fs_reg *emit_cs_work_group_id_setup();
+   fs_reg *emit_work_group_id_setup();
 
    void emit_barrier();
 
