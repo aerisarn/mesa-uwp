@@ -391,6 +391,13 @@ vn_CreateImage(VkDevice device,
       vn_wsi_find_wsi_image_create_info(pCreateInfo);
    const VkNativeBufferANDROID *anb_info =
       vn_android_find_native_buffer(pCreateInfo);
+   const VkExternalMemoryImageCreateInfo *external_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
+   const bool ahb_info =
+      external_info &&
+      external_info->handleTypes ==
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
 
    if (wsi_info) {
       assert(wsi_info->scanout);
@@ -398,6 +405,8 @@ vn_CreateImage(VkDevice device,
    } else if (anb_info) {
       result =
          vn_android_image_from_anb(dev, pCreateInfo, anb_info, alloc, &img);
+   } else if (ahb_info) {
+      result = vn_android_image_from_ahb(dev, pCreateInfo, alloc, &img);
    } else {
       result = vn_image_create(dev, pCreateInfo, alloc, &img);
    }

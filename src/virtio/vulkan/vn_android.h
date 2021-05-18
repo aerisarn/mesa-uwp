@@ -61,6 +61,12 @@ uint64_t
 vn_android_get_ahb_usage(const VkImageUsageFlags usage,
                          const VkImageCreateFlags flags);
 
+VkResult
+vn_android_image_from_ahb(struct vn_device *dev,
+                          const VkImageCreateInfo *create_info,
+                          const VkAllocationCallbacks *alloc,
+                          struct vn_image **out_img);
+
 #else
 
 static inline VkResult
@@ -106,6 +112,15 @@ vn_android_get_ahb_usage(UNUSED const VkImageUsageFlags usage,
                          UNUSED const VkImageCreateFlags flags)
 {
    return 0;
+}
+
+static inline VkResult
+vn_android_image_from_ahb(UNUSED struct vn_device *dev,
+                          UNUSED const VkImageCreateInfo *create_info,
+                          UNUSED const VkAllocationCallbacks *alloc,
+                          UNUSED struct vn_image **out_img)
+{
+   return VK_ERROR_OUT_OF_HOST_MEMORY;
 }
 
 #endif /* ANDROID */

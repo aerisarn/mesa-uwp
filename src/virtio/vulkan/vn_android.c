@@ -947,3 +947,28 @@ vn_android_get_drm_format_modifier_info(
    AHardwareBuffer_release(ahb);
    return true;
 }
+
+VkResult
+vn_android_image_from_ahb(struct vn_device *dev,
+                          const VkImageCreateInfo *create_info,
+                          const VkAllocationCallbacks *alloc,
+                          struct vn_image **out_img)
+{
+   const VkExternalFormatANDROID *ext_info =
+      vk_find_struct_const(create_info->pNext, EXTERNAL_FORMAT_ANDROID);
+
+   VkImageCreateInfo local_info;
+   if (ext_info && ext_info->externalFormat) {
+      assert(create_info->format == VK_FORMAT_UNDEFINED);
+      assert(create_info->imageType == VK_IMAGE_TYPE_2D);
+      assert(create_info->usage == VK_IMAGE_USAGE_SAMPLED_BIT);
+      assert(create_info->tiling == VK_IMAGE_TILING_OPTIMAL);
+
+      local_info = *create_info;
+      local_info.format =
+         vn_android_ahb_format_to_vk_format(ext_info->externalFormat);
+      create_info = &local_info;
+   }
+
+   return vn_image_create_deferred(dev, create_info, alloc, out_img);
+}
