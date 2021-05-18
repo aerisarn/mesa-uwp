@@ -474,8 +474,14 @@ radv_device_init_meta(struct radv_device *device)
    if (result != VK_SUCCESS)
       goto fail_fmask_expand;
 
+   result = radv_device_init_accel_struct_build_state(device);
+   if (result != VK_SUCCESS)
+      goto fail_accel_struct_build;
+
    return VK_SUCCESS;
 
+fail_accel_struct_build:
+   radv_device_finish_meta_fmask_expand_state(device);
 fail_fmask_expand:
    radv_device_finish_meta_resolve_fragment_state(device);
 fail_resolve_fragment:
@@ -507,6 +513,7 @@ fail_clear:
 void
 radv_device_finish_meta(struct radv_device *device)
 {
+   radv_device_finish_accel_struct_build_state(device);
    radv_device_finish_meta_clear_state(device);
    radv_device_finish_meta_resolve_state(device);
    radv_device_finish_meta_blit_state(device);
