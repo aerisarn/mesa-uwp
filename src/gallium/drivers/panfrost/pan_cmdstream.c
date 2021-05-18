@@ -725,7 +725,6 @@ panfrost_emit_viewport(struct panfrost_batch *batch)
         const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
         const struct pipe_scissor_state *ss = &ctx->scissor;
         const struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
-        const struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
 
         /* Derive min/max from translate/scale. Note since |x| >= 0 by
          * definition, we have that -|x| <= |x| hence translate - |scale| <=
@@ -740,10 +739,10 @@ panfrost_emit_viewport(struct panfrost_batch *batch)
         /* Scissor to the intersection of viewport and to the scissor, clamped
          * to the framebuffer */
 
-        unsigned minx = MIN2(fb->width, MAX2((int) vp_minx, 0));
-        unsigned maxx = MIN2(fb->width, MAX2((int) vp_maxx, 0));
-        unsigned miny = MIN2(fb->height, MAX2((int) vp_miny, 0));
-        unsigned maxy = MIN2(fb->height, MAX2((int) vp_maxy, 0));
+        unsigned minx = MIN2(batch->key.width, MAX2((int) vp_minx, 0));
+        unsigned maxx = MIN2(batch->key.width, MAX2((int) vp_maxx, 0));
+        unsigned miny = MIN2(batch->key.height, MAX2((int) vp_miny, 0));
+        unsigned maxy = MIN2(batch->key.height, MAX2((int) vp_maxy, 0));
 
         if (ss && rast->scissor) {
                 minx = MAX2(ss->minx, minx);
