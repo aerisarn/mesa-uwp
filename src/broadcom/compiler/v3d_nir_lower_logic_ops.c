@@ -202,12 +202,23 @@ v3d_get_format_swizzle_for_rt(struct v3d_compile *c, int rt)
 }
 
 static nir_ssa_def *
-v3d_nir_get_tlb_color(nir_builder *b, int rt, int sample)
+v3d_nir_get_tlb_color(nir_builder *b, struct v3d_compile *c, int rt, int sample)
 {
-        nir_ssa_def *color[4];
-        for (int i = 0; i < 4; i++)
-                color[i] = nir_load_tlb_color_v3d(b, 1, 32, nir_imm_int(b, rt), .base = sample, .component = i);
+        uint32_t num_components =
+                util_format_get_nr_components(c->fs_key->color_fmt[rt].format);
 
+        nir_ssa_def *color[4];
+        for (int i = 0; i < 4; i++) {
+                if (i < num_components) {
+                        color[i] =
+                                nir_load_tlb_color_v3d(b, 1, 32, nir_imm_int(b, rt),
+                                                       .base = sample,
+                                                       .component = i);
+                } else {
+                        /* These will be DCEd */
+                        color[i] = nir_imm_int(b, 0);
+                }
+        }
         return nir_vec4(b, color[0], color[1], color[2], color[3]);
 }
 
@@ -257,7 +268,7 @@ static nir_ssa_def *
 v3d_nir_emit_logic_op(struct v3d_compile *c, nir_builder *b,
                       nir_ssa_def *src, int rt, int sample)
 {
-        nir_ssa_def *dst = v3d_nir_get_tlb_color(b, rt, sample);
+        nir_ssa_def *dst = v3d_nir_get_tlb_color(b, c, rt, sample);
 
         nir_ssa_def *src_chans[4], *dst_chans[4];
         for (unsigned i = 0; i < 4; i++) {
