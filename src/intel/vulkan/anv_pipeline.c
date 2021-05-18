@@ -1576,7 +1576,20 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
 
    void *pipeline_ctx = ralloc_context(NULL);
 
-   for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
+   const gl_shader_stage shader_order[] = {
+      MESA_SHADER_VERTEX,
+      MESA_SHADER_TESS_CTRL,
+      MESA_SHADER_TESS_EVAL,
+      MESA_SHADER_GEOMETRY,
+
+      MESA_SHADER_TASK,
+      MESA_SHADER_MESH,
+
+      MESA_SHADER_FRAGMENT,
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
+      gl_shader_stage s = shader_order[i];
       if (!stages[s].entrypoint)
          continue;
 
@@ -1621,7 +1634,8 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
 
    /* Walk backwards to link */
    struct anv_pipeline_stage *next_stage = NULL;
-   for (int s = ARRAY_SIZE(pipeline->shaders) - 1; s >= 0; s--) {
+   for (int i = ARRAY_SIZE(shader_order) - 1; i >= 0; i--) {
+      gl_shader_stage s = shader_order[i];
       if (!stages[s].entrypoint)
          continue;
 
@@ -1666,7 +1680,8 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    }
 
    struct anv_pipeline_stage *prev_stage = NULL;
-   for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
+      gl_shader_stage s = shader_order[i];
       if (!stages[s].entrypoint)
          continue;
 
@@ -1693,7 +1708,8 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    }
 
    prev_stage = NULL;
-   for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
+      gl_shader_stage s = shader_order[i];
       if (!stages[s].entrypoint)
          continue;
 
