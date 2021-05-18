@@ -31,7 +31,6 @@ spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=2,F
 spec@!opengl 1.1@getteximage-depth,Fail
 spec@!opengl 1.1@getteximage-formats,Fail
 spec@!opengl 1.1@linestipple,Fail
-spec@!opengl 1.1@max-texture-size,Crash
 spec@!opengl 1.1@point-line-no-cull,Fail
 spec@!opengl 1.1@polygon-mode,Fail
 spec@!opengl 1.1@polygon-mode-offset,Fail
@@ -41,8 +40,8 @@ spec@!opengl 1.1@windowoverlap,Fail
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail
-spec@!opengl 2.0@max-samplers, Fail
-spec@!opengl 2.0@max-samplers border, Fail
+spec@!opengl 2.0@max-samplers,Fail
+spec@!opengl 2.0@max-samplers border,Fail
 spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail

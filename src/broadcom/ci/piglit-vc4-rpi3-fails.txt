@@ -59,7 +59,6 @@ spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 vbo gl_quads,Crash
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 vbo gl_triangle_fan,Fail
 spec@!opengl 1.1@line-flat-clip-color,Fail
 spec@!opengl 1.1@linestipple,Fail
-spec@!opengl 1.1@max-texture-size,Crash
 spec@!opengl 1.1@polygon-mode,Fail
 spec@!opengl 1.1@polygon-mode-offset,Fail
 spec@!opengl 1.1@read-front clear-front-first samples=2,Crash
