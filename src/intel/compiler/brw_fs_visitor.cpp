@@ -136,6 +136,11 @@ fs_visitor::emit_dummy_fs()
    calculate_cfg();
 }
 
+/* Input data is organized with first the per-primitive values, followed
+ * by per-vertex values.  The per-vertex will have interpolation information
+ * associated, so use 4 components for each value.
+ */
+
 /* The register location here is relative to the start of the URB
  * data.  It will get adjusted to be a real location before
  * generate_code() time.
@@ -144,9 +149,39 @@ fs_reg
 fs_visitor::interp_reg(int location, int channel)
 {
    assert(stage == MESA_SHADER_FRAGMENT);
-   struct brw_wm_prog_data *prog_data = brw_wm_prog_data(this->prog_data);
-   int regnr = prog_data->urb_setup[location] * 4 + channel;
-   assert(prog_data->urb_setup[location] != -1);
+   assert(BITFIELD64_BIT(location) & ~nir->info.per_primitive_inputs);
+
+   const struct brw_wm_prog_data *prog_data = brw_wm_prog_data(this->prog_data);
+
+   assert(prog_data->urb_setup[location] >= 0);
+   unsigned nr = prog_data->urb_setup[location];
+
+   /* Adjust so we start counting from the first per_vertex input. */
+   assert(nr >= prog_data->num_per_primitive_inputs);
+   nr -= prog_data->num_per_primitive_inputs;
+
+   const unsigned per_vertex_start = prog_data->num_per_primitive_inputs;
+   const unsigned regnr = per_vertex_start + (nr * 4) + channel;
+
+   return fs_reg(ATTR, regnr, BRW_REGISTER_TYPE_F);
+}
+
+/* The register location here is relative to the start of the URB
+ * data.  It will get adjusted to be a real location before
+ * generate_code() time.
+ */
+fs_reg
+fs_visitor::per_primitive_reg(int location)
+{
+   assert(stage == MESA_SHADER_FRAGMENT);
+   assert(BITFIELD64_BIT(location) & nir->info.per_primitive_inputs);
+
+   const struct brw_wm_prog_data *prog_data = brw_wm_prog_data(this->prog_data);
+
+   assert(prog_data->urb_setup[location] >= 0);
+
+   const unsigned regnr = prog_data->urb_setup[location];
+   assert(regnr < prog_data->num_per_primitive_inputs);
 
    return fs_reg(ATTR, regnr, BRW_REGISTER_TYPE_F);
 }

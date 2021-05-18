@@ -848,6 +848,7 @@ enum brw_pixel_shader_computed_depth_mode {
 struct brw_wm_prog_data {
    struct brw_stage_prog_data base;
 
+   GLuint num_per_primitive_inputs;
    GLuint num_varying_inputs;
 
    uint8_t reg_blocks_8;

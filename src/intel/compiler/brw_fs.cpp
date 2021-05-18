@@ -1871,10 +1871,31 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
           sizeof(prog_data->urb_setup[0]) * VARYING_SLOT_MAX);
 
    int urb_next = 0;
+
+   /* Per-Primitive Attributes are laid out by Hardware before the regular
+    * attributes, so order them like this to make easy later to map setup into
+    * real HW registers.
+    */
+   if (nir->info.per_primitive_inputs) {
+      for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
+         if (nir->info.per_primitive_inputs & BITFIELD64_BIT(i)) {
+            prog_data->urb_setup[i] = urb_next++;
+         }
+      }
+
+      /* The actual setup attributes later must be aligned to a full GRF. */
+      urb_next = ALIGN(urb_next, 2);
+
+      prog_data->num_per_primitive_inputs = urb_next;
+   }
+
+   const uint64_t inputs_read =
+      nir->info.inputs_read & ~nir->info.per_primitive_inputs;
+
    /* Figure out where each of the incoming setup attributes lands. */
    if (devinfo->ver >= 6) {
-      if (util_bitcount64(nir->info.inputs_read &
-                            BRW_FS_VARYING_INPUT_MASK) <= 16) {
+      if (util_bitcount64(inputs_read &
+                          BRW_FS_VARYING_INPUT_MASK) <= 16) {
          /* The SF/SBE pipeline stage can do arbitrary rearrangement of the
           * first 16 varying inputs, so we can put them wherever we want.
           * Just put them in order.
@@ -1885,7 +1906,7 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
           * a different vertex (or geometry) shader.
           */
          for (unsigned int i = 0; i < VARYING_SLOT_MAX; i++) {
-            if (nir->info.inputs_read & BRW_FS_VARYING_INPUT_MASK &
+            if (inputs_read & BRW_FS_VARYING_INPUT_MASK &
                 BITFIELD64_BIT(i)) {
                prog_data->urb_setup[i] = urb_next++;
             }
@@ -1895,6 +1916,11 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
           * arbitrarily rearrange them to suit our whim; we have to put them
           * in an order that matches the output of the previous pipeline stage
           * (geometry or vertex shader).
+          */
+
+         /* TODO(mesh): Implement this case for Mesh. Basically have a large
+          * number of outputs in Mesh (hence a lot of inputs in Fragment)
+          * should already trigger this.
           */
 
          /* Re-compute the VUE map here in the case that the one coming from
@@ -1907,7 +1933,7 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
                              nir->info.separate_shader, 1);
 
          int first_slot =
-            brw_compute_first_urb_slot_required(nir->info.inputs_read,
+            brw_compute_first_urb_slot_required(inputs_read,
                                                 &prev_stage_vue_map);
 
          assert(prev_stage_vue_map.num_slots <= first_slot + 32);
@@ -1915,7 +1941,7 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
               slot++) {
             int varying = prev_stage_vue_map.slot_to_varying[slot];
             if (varying != BRW_VARYING_SLOT_PAD &&
-                (nir->info.inputs_read & BRW_FS_VARYING_INPUT_MASK &
+                (inputs_read & BRW_FS_VARYING_INPUT_MASK &
                  BITFIELD64_BIT(varying))) {
                prog_data->urb_setup[varying] = slot - first_slot;
             }
@@ -1948,12 +1974,12 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
        *
        * See compile_sf_prog() for more info.
        */
-      if (nir->info.inputs_read & BITFIELD64_BIT(VARYING_SLOT_PNTC))
+      if (inputs_read & BITFIELD64_BIT(VARYING_SLOT_PNTC))
          prog_data->urb_setup[VARYING_SLOT_PNTC] = urb_next++;
    }
 
-   prog_data->num_varying_inputs = urb_next;
-   prog_data->inputs = nir->info.inputs_read;
+   prog_data->num_varying_inputs = urb_next - prog_data->num_per_primitive_inputs;
+   prog_data->inputs = inputs_read;
 
    brw_compute_urb_setup_index(prog_data);
 }
@@ -1995,6 +2021,12 @@ fs_visitor::assign_urb_setup()
 
    /* Each attribute is 4 setup channels, each of which is half a reg. */
    this->first_non_payload_grf += prog_data->num_varying_inputs * 2;
+
+   /* Unlike regular attributes, per-primitive attributes have all 4 channels
+    * in the same slot, so each GRF can store two slots.
+    */
+   assert(prog_data->num_per_primitive_inputs % 2 == 0);
+   this->first_non_payload_grf += prog_data->num_per_primitive_inputs / 2;
 }
 
 void

@@ -332,6 +332,7 @@ public:
    fs_reg get_timestamp(const brw::fs_builder &bld);
 
    fs_reg interp_reg(int location, int channel);
+   fs_reg per_primitive_reg(int location);
 
    virtual void dump_instructions() const;
    virtual void dump_instructions(const char *name) const;
