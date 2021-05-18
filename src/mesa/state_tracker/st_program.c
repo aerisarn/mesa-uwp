@@ -774,11 +774,14 @@ st_create_common_variant(struct st_context *st,
 
       state.type = PIPE_SHADER_IR_NIR;
       state.ir.nir = get_nir_shader(st, stp);
+      const nir_shader_compiler_options *options = ((nir_shader *)state.ir.nir)->options;
+
       if (key->clamp_color) {
          NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
          finalize = true;
       }
       if (key->passthrough_edgeflags) {
+         assert(!options->unify_interfaces);
          NIR_PASS_V(state.ir.nir, nir_lower_passthrough_edgeflags);
          finalize = true;
       }
@@ -806,6 +809,7 @@ st_create_common_variant(struct st_context *st,
       }
 
       if (key->lower_ucp) {
+         assert(!options->unify_interfaces);
          lower_ucp(st, state.ir.nir, key->lower_ucp, params);
          finalize = true;
       }
@@ -823,9 +827,18 @@ st_create_common_variant(struct st_context *st,
          st_finalize_nir(st, &stp->Base, stp->shader_program, state.ir.nir,
                          true, false);
 
-         /* Some of the lowering above may have introduced new varyings */
-         nir_shader_gather_info(state.ir.nir,
-                                nir_shader_get_entrypoint(state.ir.nir));
+         /* Clip lowering and edgeflags may have introduced new varyings, so
+          * update the inputs_read/outputs_written. However, with
+          * unify_interfaces set (aka iris) the non-SSO varyings layout is
+          * decided at link time with outputs_written updated so the two line
+          * up.  A driver with this flag set may not use any of the lowering
+          * passes that would change the varyings, so skip to make sure we don't
+          * break its linkage.
+          */
+         if (!options->unify_interfaces) {
+            nir_shader_gather_info(state.ir.nir,
+                                   nir_shader_get_entrypoint(state.ir.nir));
+         }
       }
 
       if (key->is_draw_shader)
