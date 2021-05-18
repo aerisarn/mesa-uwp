@@ -52,16 +52,7 @@
  */
 static unsigned passthrough_decl[] =
 {
-   _3DSTATE_PIXEL_SHADER_PROGRAM | ((2*3)-1),
-
-   /* declare input color:
-    */
-   (D0_DCL |
-    (REG_TYPE_T << D0_TYPE_SHIFT) |
-    (T_DIFFUSE << D0_NR_SHIFT) |
-    D0_CHANNEL_ALL),
-   0,
-   0,
+   _3DSTATE_PIXEL_SHADER_PROGRAM | ((1*3)-1),
 };
 
 static unsigned passthrough_program[] =
@@ -71,9 +62,12 @@ static unsigned passthrough_program[] =
    (A0_MOV |
     (REG_TYPE_OC << A0_DEST_TYPE_SHIFT) |
     A0_DEST_CHANNEL_ALL |
-    (REG_TYPE_T << A0_SRC0_TYPE_SHIFT) |
-    (T_DIFFUSE << A0_SRC0_NR_SHIFT)),
-   0x01230000,			/* .xyzw */
+    (REG_TYPE_R << A0_SRC0_TYPE_SHIFT) |
+    (0 << A0_SRC0_NR_SHIFT)),
+   ((SRC_ONE << A1_SRC0_CHANNEL_X_SHIFT) |
+    (SRC_ZERO << A1_SRC0_CHANNEL_Y_SHIFT) |
+    (SRC_ZERO << A1_SRC0_CHANNEL_Z_SHIFT) |
+    (SRC_ONE << A1_SRC0_CHANNEL_W_SHIFT)),
    0
 };
 

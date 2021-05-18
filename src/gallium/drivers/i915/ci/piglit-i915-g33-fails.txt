@@ -720,8 +720,6 @@ spec@glsl-1.10@execution@loops@complex-loop-analysis-bug,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-continue-inside-do-while,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-300,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-break,Fail
-spec@glsl-1.10@execution@loops@glsl-fs-loop-const-decr,Fail
-spec@glsl-1.10@execution@loops@glsl-fs-loop-const-incr,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-continue,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-diagonal-break,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-ge,Fail
