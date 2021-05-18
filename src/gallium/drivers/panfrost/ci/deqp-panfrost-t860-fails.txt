@@ -12,3 +12,8 @@ dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x,Fa
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_y,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_y,Fail
+
+dEQP-GLES31.functional.shaders.framebuffer_fetch.framebuffer_format.rgb10_a2,Fail
+dEQP-GLES31.functional.draw_base_vertex.draw_elements_instanced_base_vertex.builtin_variable.vertex_id,Fail
+dEQP-GLES31.functional.draw_base_vertex.draw_range_elements_base_vertex.builtin_variable.vertex_id,Fail
+dEQP-GLES31.functional.draw_base_vertex.draw_elements_base_vertex.builtin_variable.vertex_id,Fail
