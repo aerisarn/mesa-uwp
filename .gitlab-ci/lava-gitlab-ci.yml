@@ -98,7 +98,7 @@
     TEST_SUITE: "deqp"
     LAVA_TEST_SCRIPT: "/install/deqp-runner.sh"
   extends:
-    - .use-x86_build-base # for same $MESA_BASE_TAG as in kernel+rootfs_amd64
+    - .use-x86_build-base # for same $MESA_ARTIFACTS_BASE_TAG as in kernel+rootfs_amd64
     - .use-arm_build # ARM because it must match the architecture of the runner
     - .lava-test
     - .use-kernel+rootfs-amd64
