@@ -553,6 +553,9 @@ typedef struct {
        /* Analysis results */
        bool has_liveness;
 
+       /* Mask of UBOs that need to be uploaded */
+       uint32_t ubo_mask;
+
        /* Stats for shader-db */
        unsigned instruction_count;
        unsigned loop_count;
