@@ -745,6 +745,7 @@ typedef struct rvcn_dec_message_hevc_s {
    unsigned char hevc_reserved[2];
 
    unsigned char direct_reflist[2][15];
+   unsigned int st_rps_bits;
 } rvcn_dec_message_hevc_t;
 
 typedef struct rvcn_dec_message_vp9_s {
