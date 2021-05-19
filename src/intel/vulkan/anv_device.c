@@ -177,6 +177,9 @@ get_device_extensions(const struct anv_physical_device *device,
    const bool has_syncobj_wait =
       (device->sync_syncobj_type.features & VK_SYNC_FEATURE_CPU_WAIT) != 0;
 
+   const bool nv_mesh_shading_enabled =
+      env_var_as_boolean("ANV_EXPERIMENTAL_NV_MESH_SHADER", false);
+
    *ext = (struct vk_device_extension_table) {
       .KHR_8bit_storage                      = device->info.ver >= 8,
       .KHR_16bit_storage                     = device->info.ver >= 8,
@@ -312,6 +315,8 @@ get_device_extensions(const struct anv_physical_device *device,
       .INTEL_shader_integer_functions2       = device->info.ver >= 8,
       .EXT_multi_draw                        = true,
       .NV_compute_shader_derivatives         = true,
+      .NV_mesh_shader                        = device->info.has_mesh_shading &&
+                                               nv_mesh_shading_enabled,
       .VALVE_mutable_descriptor_type         = true,
    };
 }
@@ -1599,8 +1604,8 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV: {
          VkPhysicalDeviceMeshShaderFeaturesNV *features =
             (VkPhysicalDeviceMeshShaderFeaturesNV *)ext;
-         features->taskShader = false;
-         features->meshShader = false;
+         features->taskShader = pdevice->vk.supported_extensions.NV_mesh_shader;
+         features->meshShader = pdevice->vk.supported_extensions.NV_mesh_shader;
          break;
       }
 
@@ -2402,23 +2407,55 @@ void anv_GetPhysicalDeviceProperties2(
          VkPhysicalDeviceMeshShaderPropertiesNV *props =
             (VkPhysicalDeviceMeshShaderPropertiesNV *)ext;
 
-         props->maxDrawMeshTasksCount = UINT16_MAX;
+         /* Bounded by the maximum representable size in
+          * 3DSTATE_MESH_SHADER_BODY::SharedLocalMemorySize.  Same for Task.
+          */
+         const uint32_t max_slm_size = 64 * 1024;
 
-         props->maxTaskWorkGroupInvocations = 32;
-         props->maxTaskWorkGroupSize[0] = 32;
+         /* Bounded by the maximum representable size in
+          * 3DSTATE_MESH_SHADER_BODY::LocalXMaximum.  Same for Task.
+          */
+         const uint32_t max_workgroup_size = 1 << 10;
+
+         /* Bounded by the maximum representable count in
+          * 3DSTATE_MESH_SHADER_BODY::MaximumPrimitiveCount.
+          */
+         const uint32_t max_primitives = 1024;
+
+         /* TODO(mesh): Multiview. */
+         const uint32_t max_view_count = 1;
+
+         props->maxDrawMeshTasksCount = UINT32_MAX;
+
+         /* TODO(mesh): Implement workgroup Y and Z sizes larger than one by
+          * mapping them to/from the single value that HW provides us
+          * (currently used for X).
+          */
+
+         props->maxTaskWorkGroupInvocations = max_workgroup_size;
+         props->maxTaskWorkGroupSize[0] = max_workgroup_size;
          props->maxTaskWorkGroupSize[1] = 1;
          props->maxTaskWorkGroupSize[2] = 1;
-         props->maxTaskTotalMemorySize = 16 * 1024;
+         props->maxTaskTotalMemorySize = max_slm_size;
          props->maxTaskOutputCount = UINT16_MAX;
 
-         props->maxMeshWorkGroupInvocations = 32;
-         props->maxMeshWorkGroupSize[0] = 32;
+         props->maxMeshWorkGroupInvocations = max_workgroup_size;
+         props->maxMeshWorkGroupSize[0] = max_workgroup_size;
          props->maxMeshWorkGroupSize[1] = 1;
          props->maxMeshWorkGroupSize[2] = 1;
-         props->maxMeshTotalMemorySize = 16 * 1024;
-         props->maxMeshOutputVertices = 256;
-         props->maxMeshOutputPrimitives = 256;
-         props->maxMeshMultiviewViewCount = 1;
+         props->maxMeshTotalMemorySize = max_slm_size / max_view_count;
+         props->maxMeshOutputPrimitives = max_primitives / max_view_count;
+         props->maxMeshMultiviewViewCount = max_view_count;
+
+         /* Depends on what indices can be represented with IndexFormat.  For
+          * now we always use U32, so bound to the maximum unique vertices we
+          * need for the maximum primitives.
+          *
+          * TODO(mesh): Revisit this if we drop "U32" IndexFormat when adding
+          * support for others.
+          */
+         props->maxMeshOutputVertices = 3 * props->maxMeshOutputPrimitives;
+
 
          props->meshOutputPerVertexGranularity = 32;
          props->meshOutputPerPrimitiveGranularity = 32;

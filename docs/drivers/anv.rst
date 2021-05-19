@@ -32,6 +32,16 @@ specific to Anv:
    using instanced rendering. If unspecified, the value default to
    ``2``.
 
+
+Experimental features
+---------------------
+
+:envvar:`ANV_EXPERIMENTAL_NV_MESH_SHADER`
+   If defined to ``1`` or ``true``, this advertise support for
+   VK_NV_mesh_shader extension for platforms that have hardware
+   support for it.
+
+
 .. _`Bindless model`:
 
 Binding Model
