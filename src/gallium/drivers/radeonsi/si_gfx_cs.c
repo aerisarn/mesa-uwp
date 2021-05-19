@@ -368,6 +368,23 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    ctx->last_gs_out_prim = 0; /* cleared by CLEAR_STATE */
 }
 
+static void si_draw_vbo_tmz_preamble(struct pipe_context *ctx,
+                                     const struct pipe_draw_info *info,
+                                     unsigned drawid_offset,
+                                     const struct pipe_draw_indirect_info *indirect,
+                                     const struct pipe_draw_start_count_bias *draws,
+                                     unsigned num_draws) {
+   struct si_context *sctx = (struct si_context *)ctx;
+
+   bool secure = si_gfx_resources_check_encrypted(sctx);
+   if (secure != sctx->ws->cs_is_secure(&sctx->gfx_cs)) {
+      si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW |
+                            RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION, NULL);
+   }
+
+   sctx->real_draw_vbo(ctx, info, drawid_offset, indirect, draws, num_draws);
+}
+
 void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
 {
    bool is_secure = false;
@@ -379,6 +396,8 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
       ctx->prim_discard_vertex_count_threshold = UINT_MAX;
 
       is_secure = ctx->ws->cs_is_secure(&ctx->gfx_cs);
+
+      si_install_draw_wrapper(ctx, si_draw_vbo_tmz_preamble);
    }
 
    if (ctx->is_debug)

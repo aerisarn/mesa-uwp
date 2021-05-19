@@ -1777,15 +1777,6 @@ static void si_draw_vbo(struct pipe_context *ctx,
    si_decompress_textures(sctx, u_bit_consecutive(0, SI_NUM_GRAPHICS_SHADERS));
    si_need_gfx_cs_space(sctx, num_draws);
 
-   /* If we're using a secure context, determine if cs must be secure or not */
-   if (GFX_VERSION >= GFX9 && unlikely(radeon_uses_secure_bos(sctx->ws))) {
-      bool secure = si_gfx_resources_check_encrypted(sctx);
-      if (secure != sctx->ws->cs_is_secure(&sctx->gfx_cs)) {
-         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW |
-                               RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION, NULL);
-      }
-   }
-
    if (HAS_TESS) {
       struct si_shader_selector *tcs = sctx->shader.tcs.cso;
 
