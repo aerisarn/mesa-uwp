@@ -500,29 +500,6 @@ use_hw_binning(struct tu_cmd_buffer *cmd)
    if (cmd->state.xfb_used)
       return true;
 
-   /* Some devices have a newer a630_sqe.fw in which, only in CP_DRAW_INDX and
-    * CP_DRAW_INDX_OFFSET, visibility-based skipping happens *before*
-    * predication-based skipping. It seems this breaks predication, because
-    * draws skipped by predication will not be executed in the binning phase,
-    * and therefore won't have an entry in the draw stream, but the
-    * visibility-based skipping will expect it to have an entry. The result is
-    * a GPU hang when actually executing the first non-predicated draw.
-    * However, it seems that things still work if the whole renderpass is
-    * predicated. Affected tests are
-    * dEQP-VK.conditional_rendering.draw_clear.draw.case_2 as well as a few
-    * other case_N.
-    *
-    * Broken FW version: 016ee181
-    * linux-firmware (working) FW version: 016ee176
-    *
-    * All known a650_sqe.fw versions don't have this bug.
-    *
-    * TODO: we should do version detection of the FW so that devices using the
-    * linux-firmware version of a630_sqe.fw don't need this workaround.
-    */
-   if (cmd->state.has_subpass_predication && cmd->device->physical_device->gpu_id != 650)
-      return false;
-
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_NOBIN))
       return false;
 
@@ -536,13 +513,6 @@ static bool
 use_sysmem_rendering(struct tu_cmd_buffer *cmd)
 {
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_SYSMEM))
-      return true;
-
-   /* If hw binning is required because of XFB but doesn't work because of the
-    * conditional rendering bug, fallback to sysmem.
-    */
-   if (cmd->state.xfb_used && cmd->state.has_subpass_predication &&
-       cmd->device->physical_device->gpu_id != 650)
       return true;
 
    /* can't fit attachments into gmem */
