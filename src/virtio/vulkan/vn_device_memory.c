@@ -344,6 +344,9 @@ vn_FreeMemory(VkDevice device,
       vn_async_vkFreeMemory(dev->instance, device, memory, NULL);
    }
 
+   if (mem->ahb)
+      vn_android_release_ahb(mem->ahb);
+
    vn_object_base_fini(&mem->base);
    vk_free(alloc, mem);
 }

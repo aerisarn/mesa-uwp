@@ -21,6 +21,7 @@
 #include "util/os_file.h"
 
 #include "vn_device.h"
+#include "vn_device_memory.h"
 #include "vn_image.h"
 #include "vn_queue.h"
 
@@ -240,10 +241,14 @@ static VkResult
 vn_android_get_dma_buf_from_native_handle(const native_handle_t *handle,
                                           int *out_dma_buf)
 {
-   /* TODO support multi-planar format */
-   if (handle->numFds != 1) {
-      if (VN_DEBUG(WSI))
-         vn_log(NULL, "handle->numFds is %d, expected 1", handle->numFds);
+   /* There can be multiple fds wrapped inside a native_handle_t, but we
+    * expect only the 1st one points to the dma_buf. For multi-planar format,
+    * there should only exist one dma_buf as well. The other fd(s) may point
+    * to shared memory used to store buffer metadata or other vendor specific
+    * bits.
+    */
+   if (handle->numFds < 1) {
+      vn_log(NULL, "handle->numFds is %d, expected >= 1", handle->numFds);
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
    }
 
@@ -979,7 +984,116 @@ vn_android_device_import_ahb(struct vn_device *dev,
                              const VkMemoryAllocateInfo *alloc_info,
                              struct AHardwareBuffer *ahb)
 {
-   return VK_ERROR_OUT_OF_HOST_MEMORY;
+   const VkMemoryDedicatedAllocateInfo *dedicated_info =
+      vk_find_struct_const(alloc_info->pNext, MEMORY_DEDICATED_ALLOCATE_INFO);
+   const native_handle_t *handle = NULL;
+   int dma_buf_fd = -1;
+   int dup_fd = -1;
+   VkDeviceSize alloc_size = alloc_info->allocationSize;
+   VkResult result = VK_SUCCESS;
+
+   handle = AHardwareBuffer_getNativeHandle(ahb);
+   result = vn_android_get_dma_buf_from_native_handle(handle, &dma_buf_fd);
+   if (result != VK_SUCCESS)
+      return result;
+
+   /* If ahb is for an image, finish the deferred image creation first */
+   if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
+      const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+      struct vn_image *img = vn_image_from_handle(dedicated_info->image);
+      VkImageCreateInfo *image_info = &img->deferred_info->create;
+      uint32_t strides[4] = { 0, 0, 0, 0 };
+      uint32_t offsets[4] = { 0, 0, 0, 0 };
+      uint64_t format_modifier = 0;
+      VkDrmFormatModifierPropertiesEXT mod_props;
+
+      if (!vn_android_get_gralloc_buffer_info(handle, strides, offsets,
+                                              &format_modifier))
+         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+      result = vn_android_get_modifier_properties(
+         vn_physical_device_to_handle(dev->physical_device),
+         image_info->format, format_modifier, alloc, &mod_props);
+      if (result != VK_SUCCESS)
+         return result;
+
+      /* XXX fix plane count > 1 case for external memory  */
+      if (mod_props.drmFormatModifierPlaneCount != 1) {
+         vn_log(dev->instance, "plane count is %d, expected 1",
+                mod_props.drmFormatModifierPlaneCount);
+         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      }
+
+      const VkSubresourceLayout layout = {
+         .offset = offsets[0],
+         .size = 0,
+         .rowPitch = strides[0],
+         .arrayPitch = 0,
+         .depthPitch = 0,
+      };
+      const VkImageDrmFormatModifierExplicitCreateInfoEXT drm_mod_info = {
+         .sType =
+            VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
+         .pNext = image_info->pNext,
+         .drmFormatModifier = format_modifier,
+         .drmFormatModifierPlaneCount = 1,
+         .pPlaneLayouts = &layout,
+      };
+      const VkExternalMemoryImageCreateInfo external_img_info = {
+         .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+         .pNext = &drm_mod_info,
+         .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+      };
+      image_info->pNext = &external_img_info;
+      image_info->tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+      result = vn_image_init_deferred(dev, image_info, img);
+      if (result != VK_SUCCESS)
+         return result;
+
+      /* For AHB memory allocation of a dedicated image, allocationSize must
+       * be zero from the app side. So we need to get the proper allocation
+       * size here used to override memory allocation info.
+       */
+      VkMemoryRequirements mem_req;
+      vn_GetImageMemoryRequirements(vn_device_to_handle(dev),
+                                    dedicated_info->image, &mem_req);
+      alloc_size = mem_req.size;
+   }
+
+   errno = 0;
+   dup_fd = os_dupfd_cloexec(dma_buf_fd);
+   if (dup_fd < 0)
+      return (errno == EMFILE) ? VK_ERROR_TOO_MANY_OBJECTS
+                               : VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   /* Spec requires AHB export info to be present, so we must strip it. In
+    * practice, the AHB import path here only needs the main allocation info
+    * and the dedicated_info.
+    */
+   VkMemoryDedicatedAllocateInfo local_dedicated_info;
+   /* Override when dedicated_info exists and is not the tail struct. */
+   if (dedicated_info && dedicated_info->pNext) {
+      local_dedicated_info = *dedicated_info;
+      local_dedicated_info.pNext = NULL;
+      dedicated_info = &local_dedicated_info;
+   }
+   const VkMemoryAllocateInfo local_alloc_info = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .pNext = dedicated_info,
+      .allocationSize = alloc_size,
+      .memoryTypeIndex = alloc_info->memoryTypeIndex,
+   };
+   result =
+      vn_device_memory_import_dmabuf(dev, mem, &local_alloc_info, dup_fd);
+   if (result != VK_SUCCESS) {
+      close(dup_fd);
+      return result;
+   }
+
+   AHardwareBuffer_acquire(ahb);
+   mem->ahb = ahb;
+
+   return VK_SUCCESS;
 }
 
 VkResult
@@ -987,5 +1101,54 @@ vn_android_device_allocate_ahb(struct vn_device *dev,
                                struct vn_device_memory *mem,
                                const VkMemoryAllocateInfo *alloc_info)
 {
-   return VK_ERROR_OUT_OF_HOST_MEMORY;
+   const VkMemoryDedicatedAllocateInfo *dedicated_info =
+      vk_find_struct_const(alloc_info->pNext, MEMORY_DEDICATED_ALLOCATE_INFO);
+   uint32_t width = 0;
+   uint32_t height = 1;
+   uint32_t layers = 1;
+   uint32_t format = 0;
+   uint64_t usage = 0;
+   struct AHardwareBuffer *ahb = NULL;
+
+   if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
+      const VkImageCreateInfo *image_info =
+         &vn_image_from_handle(dedicated_info->image)->deferred_info->create;
+      assert(image_info);
+      width = image_info->extent.width;
+      height = image_info->extent.height;
+      layers = image_info->arrayLayers;
+      format = vn_android_ahb_format_from_vk_format(image_info->format);
+      /* TODO Need to further resolve the gralloc usage bits for image format
+       * list info, which might involve disabling compression if there exists
+       * no universally applied compression strategy across the formats.
+       */
+      usage = vn_android_get_ahb_usage(image_info->usage, image_info->flags);
+   } else {
+      width = alloc_info->allocationSize;
+      format = AHARDWAREBUFFER_FORMAT_BLOB;
+      /* TODO AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER is not supported by cros
+       * gralloc. So here we work around with CPU usage bits for VkBuffer.
+       */
+      usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
+              AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+   }
+
+   ahb = vn_android_ahb_allocate(width, height, layers, format, usage);
+   if (!ahb)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   VkResult result = vn_android_device_import_ahb(dev, mem, alloc_info, ahb);
+
+   /* ahb alloc has already acquired a ref and import will acquire another,
+    * must release one here to avoid leak.
+    */
+   AHardwareBuffer_release(ahb);
+
+   return result;
+}
+
+void
+vn_android_release_ahb(struct AHardwareBuffer *ahb)
+{
+   AHardwareBuffer_release(ahb);
 }

@@ -31,6 +31,9 @@ struct vn_device_memory {
    VkDeviceSize base_offset;
 
    VkDeviceSize map_end;
+
+   /* non-NULL when backed by AHB */
+   struct AHardwareBuffer *ahb;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_device_memory,
                                base.base,
