@@ -991,6 +991,7 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 
    vkDestroyDevice(screen->dev, NULL);
    vkDestroyInstance(screen->instance, NULL);
+   util_idalloc_mt_fini(&screen->buffer_ids);
 
    slab_destroy_parent(&screen->transfer_pool);
    ralloc_free(screen);
@@ -1685,6 +1686,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    _mesa_hash_table_init(&screen->bufferview_cache, screen, NULL, equals_bvci);
 
    zink_screen_init_descriptor_funcs(screen, false);
+   util_idalloc_mt_init_tc(&screen->buffer_ids);
 
    return screen;
 

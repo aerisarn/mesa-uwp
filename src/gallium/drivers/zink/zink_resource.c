@@ -151,8 +151,10 @@ zink_resource_destroy(struct pipe_screen *pscreen,
 {
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_resource *res = zink_resource(pres);
-   if (pres->target == PIPE_BUFFER)
+   if (pres->target == PIPE_BUFFER) {
       util_range_destroy(&res->valid_buffer_range);
+      util_idalloc_mt_free(&screen->buffer_ids, res->base.buffer_id_unique);
+   }
 
    zink_resource_object_reference(screen, &res->obj, NULL);
    zink_resource_object_reference(screen, &res->scanout_obj, NULL);
@@ -623,6 +625,8 @@ resource_create(struct pipe_screen *pscreen,
                                              64, NULL,
                                              &res->dt_stride);
    }
+   if (res->obj->is_buffer)
+      res->base.buffer_id_unique = util_idalloc_mt_alloc(&screen->buffer_ids);
 
    return &res->base.b;
 }

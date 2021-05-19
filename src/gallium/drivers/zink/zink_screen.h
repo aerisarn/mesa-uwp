@@ -27,6 +27,7 @@
 #include "zink_device_info.h"
 #include "zink_instance.h"
 
+#include "util/u_idalloc.h"
 #include "pipe/p_screen.h"
 #include "util/slab.h"
 #include "compiler/nir/nir.h"
@@ -93,6 +94,7 @@ struct zink_screen {
 
    VkPhysicalDevice pdev;
    uint32_t vk_version;
+   struct util_idalloc_mt buffer_ids;
 
    struct zink_device_info info;
    struct nir_shader_compiler_options nir_options;

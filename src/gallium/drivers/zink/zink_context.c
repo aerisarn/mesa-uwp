@@ -2964,6 +2964,7 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    struct zink_resource *s = zink_resource(src);
 
    assert(d->internal_format == s->internal_format);
+   util_idalloc_mt_free(&zink_screen(pctx->screen)->buffer_ids, delete_buffer_id);
    zink_resource_object_reference(zink_screen(pctx->screen), &d->obj, s->obj);
    d->access = s->access;
    d->access_stage = s->access_stage;
