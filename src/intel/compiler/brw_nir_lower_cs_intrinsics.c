@@ -111,14 +111,28 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
             nir_ssa_def *id_x, *id_y, *id_z;
             switch (state->nir->info.cs.derivative_group) {
             case DERIVATIVE_GROUP_NONE:
-               /* If not using derivatives, just set the local invocation
-                * index linearly, and calculate local invocation ID from that.
-                */
-               id_x = nir_umod(b, linear, size_x);
-               id_y = nir_umod(b, nir_udiv(b, linear, size_x), size_y);
+               if (nir->info.num_images == 0 &&
+                   nir->info.num_textures == 0) {
+                  /* X-major lid order. Optimal for linear accesses only,
+                   * which are usually buffers. X,Y ordering will look like:
+                   * (0,0) (1,0) (2,0) ... (size_x-1,0) (0,1) (1,1) ...
+                   */
+                  id_x = nir_umod(b, linear, size_x);
+                  id_y = nir_umod(b, nir_udiv(b, linear, size_x), size_y);
+                  local_index = linear;
+               } else {
+                  /* Y-major lid order. Optimal for tileY accesses only,
+                   * which are usually images. X,Y ordering will look like:
+                   * (0,0) (0,1) (0,2) ... (0,size_y-1) (1,0) (1,1) ...
+                   */
+                  id_y = nir_umod(b, linear, size_y);
+                  id_x = nir_umod(b, nir_udiv(b, linear, size_y), size_x);
+                  local_index = nir_iadd(b, nir_iadd(b, id_x,
+                                                        nir_imul(b, id_y, size_x)),
+                                                        nir_imul(b, id_z, size_xy));
+               }
                id_z = nir_udiv(b, linear, size_xy);
                local_id = nir_vec3(b, id_x, id_y, id_z);
-               local_index = linear;
                break;
             case DERIVATIVE_GROUP_LINEAR:
                /* For linear, just set the local invocation index linearly,
