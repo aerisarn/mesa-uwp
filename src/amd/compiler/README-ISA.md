@@ -246,3 +246,7 @@ or vice versa: DS instruction, then a branch, then a VMEM/GLOBAL/SCRATCH instruc
 
 Mitigated by:
 Only `s_waitcnt_vscnt null, 0`. Needed even if the first instruction is a load.
+
+### NSAClauseBug
+
+"MIMG-NSA in a hard clause has unpredictable results on GFX10.1"

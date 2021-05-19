@@ -73,14 +73,18 @@ void form_hard_clauses(Program *program)
          aco_ptr<Instruction>& instr = block.instructions[i];
 
          clause_type type = clause_other;
-         if (instr->isVMEM() && !instr->operands.empty())
+         if (instr->isVMEM() && !instr->operands.empty()) {
+            if (program->chip_class == GFX10 && instr->isMIMG() && get_mimg_nsa_dwords(instr.get()) > 0)
+               type = clause_other;
+            else
+               type = clause_vmem;
+         } else if (instr->isScratch() || instr->isGlobal()) {
             type = clause_vmem;
-         else if (instr->isScratch() || instr->isGlobal())
-            type = clause_vmem;
-         else if (instr->isFlat())
+         } else if (instr->isFlat()) {
             type = clause_flat;
-         else if (instr->isSMEM() && !instr->operands.empty())
+         } else if (instr->isSMEM() && !instr->operands.empty()) {
             type = clause_smem;
+         }
 
          if (type != current_type || num_instrs == 64 ||
              (num_instrs && !should_form_clause(current_instrs[0].get(), instr.get()))) {
