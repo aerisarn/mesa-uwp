@@ -3230,6 +3230,8 @@ midgard_compile_shader_nir(nir_shader *nir,
         /* Report the very first tag executed */
         info->midgard.first_tag = midgard_get_first_tag_from_block(ctx, 0);
 
+        info->ubo_mask = ctx->ubo_mask & BITSET_MASK(ctx->nir->info.num_ubos);
+
         if ((midgard_debug & MIDGARD_DBG_SHADERS) &&
             ((midgard_debug & MIDGARD_DBG_INTERNAL) || !nir->info.internal)) {
                 disassemble_midgard(stdout, binary->data,

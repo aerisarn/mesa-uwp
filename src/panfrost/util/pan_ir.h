@@ -216,6 +216,8 @@ struct pan_shader_info {
          * Uniforms (Bifrost) */
         struct panfrost_ubo_push push;
 
+        uint32_t ubo_mask;
+
         union {
                 struct bifrost_shader_info bifrost;
                 struct midgard_shader_info midgard;

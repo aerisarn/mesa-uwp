@@ -3467,6 +3467,8 @@ bifrost_compile_shader_nir(nir_shader *nir,
         info->bifrost.wait_6 = (first_deps & (1 << 6));
         info->bifrost.wait_7 = (first_deps & (1 << 7));
 
+        info->ubo_mask = ctx->ubo_mask & BITSET_MASK(ctx->nir->info.num_ubos);
+
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal) {
                 disassemble_bifrost(stdout, binary->data, binary->size,
                                     bifrost_debug & BIFROST_DBG_VERBOSE);

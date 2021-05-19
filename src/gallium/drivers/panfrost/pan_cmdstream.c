@@ -1221,12 +1221,10 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
 
         /* The rest are honest-to-goodness UBOs */
 
-        for (unsigned ubo = 0; ubo < ubo_count; ++ubo) {
+        u_foreach_bit(ubo, ss->info.ubo_mask & buf->enabled_mask) {
                 size_t usz = buf->cb[ubo].buffer_size;
-                bool enabled = buf->enabled_mask & (1 << ubo);
-                bool empty = usz == 0;
 
-                if (!enabled || empty) {
+                if (usz == 0) {
                         ubo_ptr[ubo] = 0;
                         continue;
                 }
