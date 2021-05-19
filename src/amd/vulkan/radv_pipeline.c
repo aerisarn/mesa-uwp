@@ -1367,9 +1367,27 @@ radv_dynamic_state_mask(VkDynamicState state)
    }
 }
 
+static bool
+radv_pipeline_is_blend_enabled(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   const VkPipelineColorBlendStateCreateInfo *vkblend =
+      radv_pipeline_get_color_blend_state(pCreateInfo);
+
+   assert(vkblend);
+
+   for (uint32_t i = 0; i < vkblend->attachmentCount; i++) {
+      const VkPipelineColorBlendAttachmentState *att = &vkblend->pAttachments[i];
+      if (att->colorWriteMask && att->blendEnable)
+         return true;
+   }
+   return false;
+}
+
 static uint64_t
 radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
+   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
+   struct radv_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
    uint64_t states = RADV_DYNAMIC_ALL;
 
    /* If rasterization is disabled we do not care about any of the
@@ -1415,7 +1433,11 @@ radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateIn
        !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR))
       states &= ~RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
 
-   /* TODO: blend constants & line width. */
+   if (!subpass->has_color_att ||
+       !radv_pipeline_is_blend_enabled(pCreateInfo))
+      states &= ~RADV_DYNAMIC_BLEND_CONSTANTS;
+
+   /* TODO: line width. */
 
    return states;
 }
@@ -1586,7 +1608,7 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
     *    disabled or if the subpass of the render pass the pipeline is
     *    created against does not use any color attachments.
     */
-   if (subpass->has_color_att && states & RADV_DYNAMIC_BLEND_CONSTANTS) {
+   if (states & RADV_DYNAMIC_BLEND_CONSTANTS) {
       assert(pCreateInfo->pColorBlendState);
       typed_memcpy(dynamic->blend_constants, pCreateInfo->pColorBlendState->blendConstants, 4);
    }
