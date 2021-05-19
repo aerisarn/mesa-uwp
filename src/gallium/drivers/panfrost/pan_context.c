@@ -302,6 +302,15 @@ panfrost_update_state_tex(struct panfrost_batch *batch,
         }
 }
 
+static inline void
+panfrost_update_state_3d(struct panfrost_batch *batch)
+{
+        unsigned dirty = batch->ctx->dirty;
+
+        if (dirty & (PAN_DIRTY_VIEWPORT | PAN_DIRTY_SCISSOR))
+                batch->viewport = panfrost_emit_viewport(batch);
+}
+
 static void
 panfrost_update_state_vs(struct panfrost_batch *batch)
 {
@@ -407,7 +416,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.position = pos;
                 cfg.state = batch->rsd[PIPE_SHADER_FRAGMENT];
                 cfg.attributes = panfrost_emit_image_attribs(batch, &cfg.attribute_buffers, PIPE_SHADER_FRAGMENT);
-                cfg.viewport = panfrost_emit_viewport(batch);
+                cfg.viewport = batch->viewport;
                 cfg.varyings = fs_vary;
                 cfg.varying_buffers = fs_vary ? varyings : 0;
                 cfg.thread_storage = shared_mem;
@@ -742,6 +751,7 @@ panfrost_draw_vbo(struct pipe_context *pipe,
         batch->draws |= zs_draws;
         batch->resolve |= zs_draws;
 
+        panfrost_update_state_3d(batch);
         panfrost_update_state_vs(batch);
         panfrost_update_state_fs(batch);
         panfrost_clean_state_3d(ctx);
@@ -819,6 +829,12 @@ panfrost_bind_rasterizer_state(
 {
         struct panfrost_context *ctx = pan_context(pctx);
         ctx->rasterizer = hwcso;
+
+        /* We can assume the renderer state descriptor is always dirty, the
+         * dependencies are too intricate to bother tracking in detail. However
+         * we could probably diff the renderers for viewport dirty tracking,
+         * that just cares about the scissor enable and the depth clips. */
+        ctx->dirty |= PAN_DIRTY_SCISSOR;
         ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
 }
 
@@ -1590,6 +1606,7 @@ panfrost_set_viewport_states(struct pipe_context *pipe,
         assert(num_viewports == 1);
 
         ctx->pipe_viewport = *viewports;
+        ctx->dirty |= PAN_DIRTY_VIEWPORT;
 }
 
 static void
@@ -1604,6 +1621,7 @@ panfrost_set_scissor_states(struct pipe_context *pipe,
         assert(num_scissors == 1);
 
         ctx->scissor = *scissors;
+        ctx->dirty |= PAN_DIRTY_SCISSOR;
 }
 
 static void

@@ -116,6 +116,7 @@ struct panfrost_batch {
         mali_ptr num_wg_sysval[3];
 
         /* Cached descriptors */
+        mali_ptr viewport;
         mali_ptr rsd[PIPE_SHADER_TYPES];
         mali_ptr textures[PIPE_SHADER_TYPES];
         mali_ptr samplers[PIPE_SHADER_TYPES];
