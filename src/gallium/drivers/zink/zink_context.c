@@ -2972,6 +2972,47 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    zink_resource_rebind(zink_context(pctx), d);
 }
 
+static bool
+zink_context_is_resource_busy(struct pipe_screen *pscreen, struct pipe_resource *pres, unsigned usage)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   struct zink_resource *res = zink_resource(pres);
+   uint32_t reads = 0, writes = 0;
+   if (((usage & (PIPE_MAP_READ | PIPE_MAP_WRITE)) == (PIPE_MAP_READ | PIPE_MAP_WRITE)) ||
+       usage & PIPE_MAP_WRITE) {
+      reads = p_atomic_read(&res->obj->reads.usage);
+      writes = p_atomic_read(&res->obj->writes.usage);
+   } else if (usage & PIPE_MAP_READ)
+      writes = p_atomic_read(&res->obj->writes.usage);
+
+   /* get latest usage accounting for 32bit int rollover:
+    * a rollover is detected if there are reads and writes,
+    * but one of the values is over UINT32_MAX/2 while the other is under,
+    * as it is impossible for this many unflushed batch states to ever
+    * exist at any given time
+    */
+   uint32_t last;
+
+   if (reads && writes)
+      last = abs(reads - writes) > UINT32_MAX / 2 ? MIN2(reads, writes) : MAX2(reads, writes);
+   else
+      last = reads ? reads : writes;
+
+   if (!last)
+      return false;
+
+   /* check fastpath first */
+   if (zink_screen_check_last_finished(screen, last))
+      return false;
+
+   /* if we have timelines, do a quick check */
+   if (screen->info.have_KHR_timeline_semaphore)
+      return !zink_screen_timeline_wait(screen, last, 0);
+
+   /* otherwise assume busy */
+   return true;
+}
+
 struct pipe_context *
 zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -3139,7 +3180,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    struct threaded_context *tc = (struct threaded_context*)threaded_context_create(&ctx->base, &screen->transfer_pool,
                                                      zink_context_replace_buffer_storage,
-                                                     zink_create_tc_fence_for_tc, NULL, false, &ctx->tc);
+                                                     zink_create_tc_fence_for_tc,
+                                                     zink_context_is_resource_busy, false, &ctx->tc);
 
    if (tc && (struct zink_context*)tc != ctx) {
       tc->bytes_mapped_limit = screen->total_mem / 4;
