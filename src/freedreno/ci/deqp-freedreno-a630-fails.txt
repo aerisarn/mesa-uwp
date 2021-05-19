@@ -158,16 +158,6 @@ dEQP-VK.renderpass2.dedicated_allocation.attachment_allocation.input_output.7,Fa
 dEQP-VK.renderpass2.suballocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.spirv_assembly.instruction.compute.opcopymemory.array,Fail
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/3208
-dEQP-VK.spirv_assembly.instruction.compute.opquantize.infinities,Fail
-
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/3208
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_inf_frag,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_inf_tesse,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_inf_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_negative_inf_geom,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.opquantize.round_to_negative_inf_tessc,Fail
-
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_single_buffer_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
 dEQP-VK.spirv_assembly.instruction.spirv1p4.opcopylogical.nested_arrays_different_inner_stride,Fail

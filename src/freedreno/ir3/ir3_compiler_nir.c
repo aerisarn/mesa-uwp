@@ -392,7 +392,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 
 	case nir_op_fquantize2f16:
 		dst[0] = create_cov(ctx,
-							create_cov(ctx, src[0], 32, nir_op_f2f16_rtz),
+							create_cov(ctx, src[0], 32, nir_op_f2f16_rtne),
 							16, nir_op_f2f32);
 		break;
 	case nir_op_f2b1:
