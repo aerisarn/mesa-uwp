@@ -1749,13 +1749,8 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 unsigned vbi = so->pipe[i].vertex_buffer_index;
                 struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[vbi];
 
-                /* Adjust by the masked off bits of the offset. Make sure we
-                 * read src_offset from so->hw (which is not GPU visible)
-                 * rather than target (which is) due to caching effects */
-
+                /* BOs are aligned; just fixup for buffer_offset */
                 unsigned src_offset = so->pipe[i].src_offset;
-
-                /* BOs aligned to 4k so guaranteed aligned to 64 */
                 src_offset += (buf->buffer_offset & 63);
 
                 /* Base instance offset */
