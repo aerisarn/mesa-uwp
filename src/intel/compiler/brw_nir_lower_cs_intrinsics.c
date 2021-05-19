@@ -89,6 +89,7 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
                size_x = nir_imm_int(b, nir->info.cs.local_size[0]);
                size_y = nir_imm_int(b, nir->info.cs.local_size[1]);
             }
+            nir_ssa_def *size_xy = nir_imul(b, size_x, size_y);
 
             /* The local invocation index and ID must respect the following
              *
@@ -113,21 +114,21 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
                /* If not using derivatives, just set the local invocation
                 * index linearly, and calculate local invocation ID from that.
                 */
-               local_index = linear;
-               id_x = nir_umod(b, local_index, size_x);
-               id_y = nir_umod(b, nir_udiv(b, local_index, size_x), size_y);
-               id_z = nir_udiv(b, local_index, nir_imul(b, size_x, size_y));
+               id_x = nir_umod(b, linear, size_x);
+               id_y = nir_umod(b, nir_udiv(b, linear, size_x), size_y);
+               id_z = nir_udiv(b, linear, size_xy);
                local_id = nir_vec3(b, id_x, id_y, id_z);
+               local_index = linear;
                break;
             case DERIVATIVE_GROUP_LINEAR:
                /* For linear, just set the local invocation index linearly,
                 * and calculate local invocation ID from that.
                 */
-               local_index = linear;
-               id_x = nir_umod(b, local_index, size_x);
-               id_y = nir_umod(b, nir_udiv(b, local_index, size_x), size_y);
-               id_z = nir_udiv(b, local_index, nir_imul(b, size_x, size_y));
+               id_x = nir_umod(b, linear, size_x);
+               id_y = nir_umod(b, nir_udiv(b, linear, size_x), size_y);
+               id_z = nir_udiv(b, linear, size_xy);
                local_id = nir_vec3(b, id_x, id_y, id_z);
+               local_index = linear;
                break;
             case DERIVATIVE_GROUP_QUADS: {
                /* For quads, first we figure out the 2x2 grid the invocation
