@@ -120,6 +120,26 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
                   id_x = nir_umod(b, linear, size_x);
                   id_y = nir_umod(b, nir_udiv(b, linear, size_x), size_y);
                   local_index = linear;
+               } else if (!nir->info.cs.local_size_variable &&
+                          nir->info.cs.local_size[1] % 4 == 0) {
+                  /* 1x4 block X-major lid order. Same as X-major except increments in
+                   * blocks of width=1 height=4. Always optimal for tileY and usually
+                   * optimal for linear accesses.
+                   *   x = (linear / 4) % size_x
+                   *   y = ((linear % 4) + (linear / 4 / size_x) * 4) % size_y
+                   * X,Y ordering will look like: (0,0) (0,1) (0,2) (0,3) (1,0) (1,1)
+                   * (1,2) (1,3) (2,0) ... (size_x-1,3) (0,4) (0,5) (0,6) (0,7) (1,4) ...
+                   */
+                  const unsigned height = 4;
+                  nir_ssa_def *block = nir_udiv_imm(b, linear, height);
+                  id_x = nir_umod(b, block, size_x);
+                  id_y = nir_umod(b,
+                                  nir_iadd(b,
+                                           nir_umod(b, linear, nir_imm_int(b, height)),
+                                           nir_imul_imm(b,
+                                                        nir_udiv(b, block, size_x),
+                                                        height)),
+                                  size_y);
                } else {
                   /* Y-major lid order. Optimal for tileY accesses only,
                    * which are usually images. X,Y ordering will look like:
@@ -127,12 +147,15 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
                    */
                   id_y = nir_umod(b, linear, size_y);
                   id_x = nir_umod(b, nir_udiv(b, linear, size_y), size_x);
+               }
+
+               id_z = nir_udiv(b, linear, size_xy);
+               local_id = nir_vec3(b, id_x, id_y, id_z);
+               if (!local_index) {
                   local_index = nir_iadd(b, nir_iadd(b, id_x,
                                                         nir_imul(b, id_y, size_x)),
                                                         nir_imul(b, id_z, size_xy));
                }
-               id_z = nir_udiv(b, linear, size_xy);
-               local_id = nir_vec3(b, id_x, id_y, id_z);
                break;
             case DERIVATIVE_GROUP_LINEAR:
                /* For linear, just set the local invocation index linearly,
