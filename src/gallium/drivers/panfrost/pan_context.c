@@ -733,6 +733,7 @@ panfrost_draw_vbo(struct pipe_context *pipe,
                   unsigned num_draws)
 {
         struct panfrost_context *ctx = pan_context(pipe);
+        struct panfrost_device *dev = pan_device(pipe->screen);
 
         /* First of all, check the scissor to see if anything is drawn at all.
          * If it's not, we drop the draw (mostly a conformance issue;
@@ -756,6 +757,10 @@ panfrost_draw_vbo(struct pipe_context *pipe,
         unsigned zs_draws = ctx->depth_stencil->draws;
         batch->draws |= zs_draws;
         batch->resolve |= zs_draws;
+
+        /* Mark everything dirty when debugging */
+        if (unlikely(dev->debug & PAN_DBG_DIRTY))
+                panfrost_dirty_state_all(ctx);
 
         panfrost_update_state_3d(batch);
         panfrost_update_state_vs(batch);
