@@ -5387,66 +5387,117 @@ radv_emit_draw_packets_indexed(struct radv_cmd_buffer *cmd_buffer,
    const bool uses_drawid = state->pipeline->graphics.uses_drawid;
    const bool can_eop = !uses_drawid && cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10;
 
-   if (vertexOffset) {
-      radv_emit_userdata_vertex(cmd_buffer, info, *vertexOffset);
-      vk_foreach_multi_draw_indexed(draw, i, minfo, drawCount, stride) {
-         const uint32_t remaining_indexes = MAX2(state->max_index_count, draw->firstIndex) - draw->firstIndex;
+   if (uses_drawid) {
+      if (vertexOffset) {
+         radv_emit_userdata_vertex(cmd_buffer, info, *vertexOffset);
+         vk_foreach_multi_draw_indexed(draw, i, minfo, drawCount, stride) {
+            const uint32_t remaining_indexes = MAX2(state->max_index_count, draw->firstIndex) - draw->firstIndex;
 
-         /* Skip draw calls with 0-sized index buffers if the GPU can't handle them */
-         if (!remaining_indexes &&
-             cmd_buffer->device->physical_device->rad_info.has_zero_index_buffer_bug)
-            continue;
+            /* Skip draw calls with 0-sized index buffers if the GPU can't handle them */
+            if (!remaining_indexes &&
+                cmd_buffer->device->physical_device->rad_info.has_zero_index_buffer_bug)
+               continue;
 
-         if (i > 0 && uses_drawid)
-            radeon_set_sh_reg(cs, state->pipeline->graphics.vtx_base_sgpr + sizeof(uint32_t), i);
+            if (i > 0)
+               radeon_set_sh_reg(cs, state->pipeline->graphics.vtx_base_sgpr + sizeof(uint32_t), i);
 
-         const uint64_t index_va = state->index_va + draw->firstIndex * index_size;
+            const uint64_t index_va = state->index_va + draw->firstIndex * index_size;
 
-         if (!state->subpass->view_mask) {
-            radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, can_eop && i < drawCount - 1);
-         } else {
-            u_foreach_bit(view, state->subpass->view_mask) {
-               radv_emit_view_index(cmd_buffer, view);
-
+            if (!state->subpass->view_mask) {
                radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, false);
+            } else {
+               u_foreach_bit(view, state->subpass->view_mask) {
+                  radv_emit_view_index(cmd_buffer, view);
+
+                  radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, false);
+               }
             }
          }
+      } else {
+         vk_foreach_multi_draw_indexed(draw, i, minfo, drawCount, stride) {
+            const uint32_t remaining_indexes = MAX2(state->max_index_count, draw->firstIndex) - draw->firstIndex;
+
+            /* Skip draw calls with 0-sized index buffers if the GPU can't handle them */
+            if (!remaining_indexes &&
+                cmd_buffer->device->physical_device->rad_info.has_zero_index_buffer_bug)
+               continue;
+
+            if (i > 0) {
+               if (state->last_vertex_offset != draw->vertexOffset)
+                  radv_emit_userdata_vertex_drawid(cmd_buffer, draw->vertexOffset, i);
+               else
+                  radeon_set_sh_reg(cs, state->pipeline->graphics.vtx_base_sgpr + sizeof(uint32_t), i);
+            } else
+               radv_emit_userdata_vertex(cmd_buffer, info, draw->vertexOffset);
+
+            const uint64_t index_va = state->index_va + draw->firstIndex * index_size;
+
+            if (!state->subpass->view_mask) {
+               radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, false);
+            } else {
+               u_foreach_bit(view, state->subpass->view_mask) {
+                  radv_emit_view_index(cmd_buffer, view);
+
+                  radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, false);
+               }
+            }
+         }
+      }
+      if (drawCount > 1) {
+         state->last_drawid = drawCount - 1;
       }
    } else {
-      vk_foreach_multi_draw_indexed(draw, i, minfo, drawCount, stride) {
-         const uint32_t remaining_indexes = MAX2(state->max_index_count, draw->firstIndex) - draw->firstIndex;
+      if (vertexOffset) {
+         radv_emit_userdata_vertex(cmd_buffer, info, *vertexOffset);
+         vk_foreach_multi_draw_indexed(draw, i, minfo, drawCount, stride) {
+            const uint32_t remaining_indexes = MAX2(state->max_index_count, draw->firstIndex) - draw->firstIndex;
 
-         /* Skip draw calls with 0-sized index buffers if the GPU can't handle them */
-         if (!remaining_indexes &&
-             cmd_buffer->device->physical_device->rad_info.has_zero_index_buffer_bug)
-            continue;
+            /* Skip draw calls with 0-sized index buffers if the GPU can't handle them */
+            if (!remaining_indexes &&
+                cmd_buffer->device->physical_device->rad_info.has_zero_index_buffer_bug)
+               continue;
 
-         const VkMultiDrawIndexedInfoEXT *next = (void*)(i < drawCount - 1 ? ((uint8_t*)draw + stride) : NULL);
-         const bool offset_changes = next && next->vertexOffset != draw->vertexOffset;
-         if (i > 0) {
-            if (state->last_vertex_offset != draw->vertexOffset)
-               radv_emit_userdata_vertex_drawid(cmd_buffer, draw->vertexOffset, uses_drawid ? i : 0);
-            else if (uses_drawid)
-               radeon_set_sh_reg(cs, state->pipeline->graphics.vtx_base_sgpr + sizeof(uint32_t), i);
-         } else {
-            radv_emit_userdata_vertex(cmd_buffer, info, draw->vertexOffset);
+            const uint64_t index_va = state->index_va + draw->firstIndex * index_size;
+
+            if (!state->subpass->view_mask) {
+               radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, can_eop && i < drawCount - 1);
+            } else {
+               u_foreach_bit(view, state->subpass->view_mask) {
+                  radv_emit_view_index(cmd_buffer, view);
+
+                  radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, false);
+               }
+            }
          }
+      } else {
+         vk_foreach_multi_draw_indexed(draw, i, minfo, drawCount, stride) {
+            const uint32_t remaining_indexes = MAX2(state->max_index_count, draw->firstIndex) - draw->firstIndex;
 
-         const uint64_t index_va = state->index_va + draw->firstIndex * index_size;
+            /* Skip draw calls with 0-sized index buffers if the GPU can't handle them */
+            if (!remaining_indexes &&
+                cmd_buffer->device->physical_device->rad_info.has_zero_index_buffer_bug)
+               continue;
 
-         if (!state->subpass->view_mask) {
-            radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, can_eop && !offset_changes && i < drawCount - 1);
-         } else {
-            u_foreach_bit(view, state->subpass->view_mask) {
-               radv_emit_view_index(cmd_buffer, view);
+            const VkMultiDrawIndexedInfoEXT *next = (const VkMultiDrawIndexedInfoEXT*)(i < drawCount - 1 ? ((uint8_t*)draw + stride) : NULL);
+            const bool offset_changes = next && next->vertexOffset != draw->vertexOffset;
+            radv_emit_userdata_vertex(cmd_buffer, info, draw->vertexOffset);
 
-               radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, false);
+            const uint64_t index_va = state->index_va + draw->firstIndex * index_size;
+
+            if (!state->subpass->view_mask) {
+               radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, can_eop && !offset_changes && i < drawCount - 1);
+            } else {
+               u_foreach_bit(view, state->subpass->view_mask) {
+                  radv_emit_view_index(cmd_buffer, view);
+
+                  radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, false);
+               }
             }
          }
       }
-   }
-   if (drawCount > 1 && uses_drawid) {
-      state->last_drawid = drawCount - 1;
+      if (drawCount > 1) {
+         state->last_drawid = drawCount - 1;
+      }
    }
 }
 
