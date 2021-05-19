@@ -381,5 +381,24 @@ panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i);
 void
 panfrost_compute_context_init(struct pipe_context *pctx);
 
+static inline void
+panfrost_dirty_state_all(struct panfrost_context *ctx)
+{
+        ctx->dirty = ~0;
+
+        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
+                ctx->dirty_shader[i] = ~0;
+}
+
+static inline void
+panfrost_clean_state_3d(struct panfrost_context *ctx)
+{
+        ctx->dirty = 0;
+
+        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i) {
+                if (i != PIPE_SHADER_COMPUTE)
+                        ctx->dirty_shader[i] = 0;
+        }
+}
 
 #endif
