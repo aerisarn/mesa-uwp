@@ -247,7 +247,7 @@ panfrost_draw_emit_vertex(struct panfrost_batch *batch,
                 cfg.draw_descriptor_is_64b = true;
                 if (!pan_is_bifrost(device))
                         cfg.texture_descriptor_is_64b = true;
-                cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
+                cfg.state = batch->rsd[PIPE_SHADER_VERTEX];
                 cfg.attributes = attribs;
                 cfg.attribute_buffers = attrib_bufs;
                 cfg.varyings = vs_vary;
@@ -283,6 +283,26 @@ panfrost_is_implicit_prim_restart(const struct pipe_draw_info *info)
         unsigned implicit_index = (1 << (info->index_size * 8)) - 1;
         bool implicit = info->restart_index == implicit_index;
         return info->primitive_restart && implicit;
+}
+
+static void
+panfrost_update_state_vs(struct panfrost_batch *batch)
+{
+        enum pipe_shader_type st = PIPE_SHADER_VERTEX;
+        unsigned dirty = batch->ctx->dirty_shader[st];
+
+        if (dirty & PAN_DIRTY_STAGE_RENDERER)
+                batch->rsd[st] = panfrost_emit_compute_shader_meta(batch, st);
+}
+
+static void
+panfrost_update_state_fs(struct panfrost_batch *batch)
+{
+        enum pipe_shader_type st = PIPE_SHADER_FRAGMENT;
+        unsigned dirty = batch->ctx->dirty_shader[st];
+
+        if (dirty & PAN_DIRTY_STAGE_RENDERER)
+                batch->rsd[st] = panfrost_emit_frag_shader_meta(batch);
 }
 
 static void
@@ -364,7 +384,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.cull_front_face = rast->cull_face & PIPE_FACE_FRONT;
                 cfg.cull_back_face = rast->cull_face & PIPE_FACE_BACK;
                 cfg.position = pos;
-                cfg.state = panfrost_emit_frag_shader_meta(batch);
+                cfg.state = batch->rsd[PIPE_SHADER_FRAGMENT];
                 cfg.attributes = panfrost_emit_image_attribs(batch, &cfg.attribute_buffers, PIPE_SHADER_FRAGMENT);
                 cfg.viewport = panfrost_emit_viewport(batch);
                 cfg.varyings = fs_vary;
@@ -701,6 +721,10 @@ panfrost_draw_vbo(struct pipe_context *pipe,
         batch->draws |= zs_draws;
         batch->resolve |= zs_draws;
 
+        panfrost_update_state_vs(batch);
+        panfrost_update_state_fs(batch);
+        panfrost_clean_state_3d(ctx);
+
         if (indirect) {
                 assert(num_draws == 1);
 
@@ -774,6 +798,7 @@ panfrost_bind_rasterizer_state(
 {
         struct panfrost_context *ctx = pan_context(pctx);
         ctx->rasterizer = hwcso;
+        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
 }
 
 static void
@@ -1029,6 +1054,7 @@ panfrost_bind_shader_state(
         struct panfrost_context *ctx = pan_context(pctx);
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         ctx->shader[type] = hwcso;
+        ctx->dirty_shader[type] |= PAN_DIRTY_STAGE_RENDERER;
 
         if (!hwcso) return;
 
@@ -1187,6 +1213,7 @@ panfrost_set_stencil_ref(
 {
         struct panfrost_context *ctx = pan_context(pctx);
         ctx->stencil_ref = ref;
+        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
 }
 
 void
@@ -1481,6 +1508,7 @@ panfrost_bind_depth_stencil_state(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
         ctx->depth_stencil = cso;
+        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
 }
 
 static void
@@ -1495,6 +1523,7 @@ panfrost_set_sample_mask(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
         ctx->sample_mask = sample_mask;
+        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
 }
 
 static void
@@ -1503,6 +1532,7 @@ panfrost_set_min_samples(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
         ctx->min_samples = min_samples;
+        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
 }
 
 static void

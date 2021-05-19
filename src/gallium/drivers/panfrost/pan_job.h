@@ -114,6 +114,9 @@ struct panfrost_batch {
 
         /* Keep the num_work_groups sysval around for indirect dispatch */
         mali_ptr num_wg_sysval[3];
+
+        /* Cached descriptors */
+        mali_ptr rsd[PIPE_SHADER_TYPES];
 };
 
 /* Functions for managing the above */

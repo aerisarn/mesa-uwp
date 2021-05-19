@@ -136,6 +136,7 @@ panfrost_bind_blend_state(struct pipe_context *pipe, void *cso)
 {
         struct panfrost_context *ctx = pan_context(pipe);
         ctx->blend = cso;
+        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
 }
 
 static void
@@ -149,6 +150,7 @@ panfrost_set_blend_color(struct pipe_context *pipe,
                          const struct pipe_blend_color *blend_color)
 {
         struct panfrost_context *ctx = pan_context(pipe);
+        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
 
         if (blend_color)
                 ctx->blend_color = *blend_color;
