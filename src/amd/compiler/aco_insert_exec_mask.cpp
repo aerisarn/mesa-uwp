@@ -983,7 +983,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
 
    if (block->kind & block_kind_invert) {
       // exec = s_andn2_b64 (original_exec, exec)
-      assert(block->instructions.back()->opcode == aco_opcode::p_cbranch_nz);
+      assert(block->instructions.back()->opcode == aco_opcode::p_branch);
       block->instructions.pop_back();
       assert(ctx.info[idx].exec.size() >= 2);
       Operand orig_exec = ctx.info[idx].exec[ctx.info[idx].exec.size() - 2].first;
