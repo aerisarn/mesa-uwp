@@ -943,6 +943,12 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
    }
 
    if (!ptr) {
+      /* if writing to a streamout buffer, ensure synchronization next time it's used */
+      if (usage & PIPE_MAP_WRITE && res->bind_history & ZINK_RESOURCE_USAGE_STREAMOUT) {
+         ctx->dirty_so_targets = true;
+         /* force counter buffer reset */
+         res->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
+      }
       ptr = map_resource(screen, res);
       if (!ptr)
          return NULL;
