@@ -37,7 +37,7 @@
 #define SMEM_MAX_MOVES      (64 - ctx.num_waves * 4)
 #define VMEM_MAX_MOVES      (256 - ctx.num_waves * 16)
 /* creating clauses decreases def-use distances, so make it less aggressive the lower num_waves is */
-#define VMEM_CLAUSE_MAX_GRAB_DIST (ctx.num_waves * 8)
+#define VMEM_CLAUSE_MAX_GRAB_DIST (ctx.num_waves * 4)
 #define POS_EXP_MAX_MOVES         512
 
 namespace aco {
@@ -822,7 +822,7 @@ schedule_VMEM(sched_ctx& ctx, Block* block, std::vector<RegisterDemand>& registe
          /* We can't easily tell how much this will decrease the def-to-use
           * distances, so just use how far it will be moved as a heuristic. */
          part_of_clause =
-            grab_dist < clause_max_grab_dist && should_form_clause(current, candidate.get());
+            grab_dist < clause_max_grab_dist + k && should_form_clause(current, candidate.get());
       }
 
       /* if current depends on candidate, add additional dependencies and continue */
