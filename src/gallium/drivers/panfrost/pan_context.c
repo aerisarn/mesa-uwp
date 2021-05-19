@@ -208,8 +208,8 @@ pan_emit_draw_descs(struct panfrost_batch *batch,
                            batch->ctx->padded_count : 1;
 
         d->uniform_buffers = panfrost_emit_const_buf(batch, st, &d->push_uniforms);
-        d->textures = panfrost_emit_texture_descriptors(batch, st);
-        d->samplers = panfrost_emit_sampler_descriptors(batch, st);
+        d->textures = batch->textures[st];
+        d->samplers = batch->samplers[st];
 }
 
 static enum mali_index_type
@@ -285,6 +285,23 @@ panfrost_is_implicit_prim_restart(const struct pipe_draw_info *info)
         return info->primitive_restart && implicit;
 }
 
+static inline void
+panfrost_update_state_tex(struct panfrost_batch *batch,
+                          enum pipe_shader_type st)
+{
+        unsigned dirty = batch->ctx->dirty_shader[st];
+
+        if (dirty & PAN_DIRTY_STAGE_TEXTURE) {
+                batch->textures[st] =
+                        panfrost_emit_texture_descriptors(batch, st);
+        }
+
+        if (dirty & PAN_DIRTY_STAGE_SAMPLER) {
+                batch->samplers[st] =
+                        panfrost_emit_sampler_descriptors(batch, st);
+        }
+}
+
 static void
 panfrost_update_state_vs(struct panfrost_batch *batch)
 {
@@ -293,6 +310,8 @@ panfrost_update_state_vs(struct panfrost_batch *batch)
 
         if (dirty & PAN_DIRTY_STAGE_RENDERER)
                 batch->rsd[st] = panfrost_emit_compute_shader_meta(batch, st);
+
+        panfrost_update_state_tex(batch, st);
 }
 
 static void
@@ -303,6 +322,8 @@ panfrost_update_state_fs(struct panfrost_batch *batch)
 
         if (dirty & PAN_DIRTY_STAGE_RENDERER)
                 batch->rsd[st] = panfrost_emit_frag_shader_meta(batch);
+
+        panfrost_update_state_tex(batch, st);
 }
 
 static void
@@ -962,6 +983,7 @@ panfrost_bind_sampler_states(
         assert(start_slot == 0);
 
         struct panfrost_context *ctx = pan_context(pctx);
+        ctx->dirty_shader[shader] |= PAN_DIRTY_STAGE_SAMPLER;
 
         ctx->sampler_count[shader] = sampler ? num_sampler : 0;
         if (sampler)
@@ -1341,6 +1363,8 @@ panfrost_set_sampler_views(
         struct pipe_sampler_view **views)
 {
         struct panfrost_context *ctx = pan_context(pctx);
+        ctx->dirty_shader[shader] |= PAN_DIRTY_STAGE_TEXTURE;
+
         unsigned new_nr = 0;
         unsigned i;
 
