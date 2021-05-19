@@ -120,6 +120,8 @@ struct panfrost_batch {
         mali_ptr rsd[PIPE_SHADER_TYPES];
         mali_ptr textures[PIPE_SHADER_TYPES];
         mali_ptr samplers[PIPE_SHADER_TYPES];
+        mali_ptr attribs[PIPE_SHADER_TYPES];
+        mali_ptr attrib_bufs[PIPE_SHADER_TYPES];
 };
 
 /* Functions for managing the above */

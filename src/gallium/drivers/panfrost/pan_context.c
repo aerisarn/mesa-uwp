@@ -332,6 +332,11 @@ panfrost_update_state_fs(struct panfrost_batch *batch)
         if (dirty & PAN_DIRTY_STAGE_RENDERER)
                 batch->rsd[st] = panfrost_emit_frag_shader_meta(batch);
 
+        if (dirty & PAN_DIRTY_STAGE_IMAGE) {
+                batch->attribs[st] = panfrost_emit_image_attribs(batch,
+                                &batch->attrib_bufs[st], st);
+        }
+
         panfrost_update_state_tex(batch, st);
 }
 
@@ -415,7 +420,8 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.cull_back_face = rast->cull_face & PIPE_FACE_BACK;
                 cfg.position = pos;
                 cfg.state = batch->rsd[PIPE_SHADER_FRAGMENT];
-                cfg.attributes = panfrost_emit_image_attribs(batch, &cfg.attribute_buffers, PIPE_SHADER_FRAGMENT);
+                cfg.attributes = batch->attribs[PIPE_SHADER_FRAGMENT];
+                cfg.attribute_buffers = batch->attrib_bufs[PIPE_SHADER_FRAGMENT];
                 cfg.viewport = batch->viewport;
                 cfg.varyings = fs_vary;
                 cfg.varying_buffers = fs_vary ? varyings : 0;
@@ -846,6 +852,7 @@ panfrost_set_shader_images(
         const struct pipe_image_view *iviews)
 {
         struct panfrost_context *ctx = pan_context(pctx);
+        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_IMAGE;
 
         /* Unbind start_slot...start_slot+count */
         if (!iviews) {
