@@ -143,6 +143,7 @@ GENX(panfrost_blendable_formats)[PIPE_FORMAT_COUNT] = {
 #define V6_RRR1 PAN_V6_SWIZZLE(R, R, R, 1)
 #define V6_RRRG PAN_V6_SWIZZLE(R, R, R, G)
 #define V6_RRRR PAN_V6_SWIZZLE(R, R, R, R)
+#define V6_GGGG PAN_V6_SWIZZLE(G, G, G, G)
 
 #define FMT(pipe, mali, swizzle, srgb, flags) \
         [PIPE_FORMAT_ ## pipe] = { \
@@ -410,8 +411,8 @@ const struct panfrost_format GENX(panfrost_pipe_format)[PIPE_FORMAT_COUNT] = {
         FMT(Z24_UNORM_S8_UINT,       Z24X8_UNORM,     RRRR, L, _T_Z),
         FMT(Z24X8_UNORM,             Z24X8_UNORM,     RRRR, L, _T_Z),
         FMT(Z32_FLOAT,               R32F,            RRRR, L, _T_Z),
-        FMT(Z32_FLOAT_S8X24_UINT,    R32F,            RRRR, L, _T_Z),
-        FMT(X32_S8X24_UINT,          R32UI,           RRRR, L, _T__),
+        FMT(Z32_FLOAT_S8X24_UINT,    RG32F,           RRRR, L, _T_Z),
+        FMT(X32_S8X24_UINT,          X32_S8X24,       GGGG, L, _T_Z),
         FMT(X24S8_UINT,              RGBA8UI,         AAAA, L, _T_Z),
         FMT(S8_UINT,                 R8UI,            RRRR, L, _T__),
 
@@ -436,8 +437,8 @@ const struct panfrost_format GENX(panfrost_pipe_format)[PIPE_FORMAT_COUNT] = {
         FMT(Z24_UNORM_S8_UINT,       Z24X8_UNORM,     RGBA, L, _T_Z),
         FMT(Z24X8_UNORM,             Z24X8_UNORM,     RGBA, L, _T_Z),
         FMT(Z32_FLOAT,               R32F,            RGBA, L, _T_Z),
-        FMT(Z32_FLOAT_S8X24_UINT,    R32F,            RGBA, L, _T_Z),
-        FMT(X32_S8X24_UINT,          S8X24,           GRBA, L, _T__),
+        FMT(Z32_FLOAT_S8X24_UINT,    Z32_X32,         RGBA, L, _T_Z),
+        FMT(X32_S8X24_UINT,          X32_S8X24,       GRBA, L, _T_Z),
         FMT(X24S8_UINT,              TILEBUFFER_NATIVE /* XXX: Deduplicate enum */, GRBA, L, _T_Z),
         FMT(S8_UINT,                 S8,              GRBA, L, _T__),
 
