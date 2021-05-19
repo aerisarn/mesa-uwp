@@ -371,6 +371,11 @@ enum iris_predicate_state {
  * See iris_compiled_shader, which represents a compiled shader variant.
  */
 struct iris_uncompiled_shader {
+   /**
+    * NIR for the shader.
+    *
+    * Even for shaders that originate as TGSI, this pointer will be non-NULL.
+    */
    struct nir_shader *nir;
 
    struct pipe_stream_output_info stream_output;
