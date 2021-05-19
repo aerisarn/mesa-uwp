@@ -2265,8 +2265,6 @@ anv_pipeline_validate_create_info(const VkGraphicsPipelineCreateInfo *info)
    subpass = &renderpass->subpasses[info->subpass];
 
    assert(info->stageCount >= 1);
-   assert(info->pVertexInputState);
-   assert(info->pInputAssemblyState);
    assert(info->pRasterizationState);
    if (!info->pRasterizationState->rasterizerDiscardEnable) {
       assert(info->pViewportState);
@@ -2291,6 +2289,10 @@ anv_pipeline_validate_create_info(const VkGraphicsPipelineCreateInfo *info)
 
    for (uint32_t i = 0; i < info->stageCount; ++i) {
       switch (info->pStages[i].stage) {
+      case VK_SHADER_STAGE_VERTEX_BIT:
+         assert(info->pVertexInputState);
+         assert(info->pInputAssemblyState);
+         break;
       case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
       case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
          assert(info->pTessellationState);
