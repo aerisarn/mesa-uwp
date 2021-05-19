@@ -1437,8 +1437,6 @@ radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateIn
        !radv_pipeline_is_blend_enabled(pCreateInfo))
       states &= ~RADV_DYNAMIC_BLEND_CONSTANTS;
 
-   /* TODO: line width. */
-
    return states;
 }
 
