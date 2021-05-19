@@ -107,18 +107,29 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
              * large so it can safely be omitted.
              */
 
-            if (state->nir->info.cs.derivative_group != DERIVATIVE_GROUP_QUADS) {
-               /* If we are not grouping in quads, just set the local invocatio
+            nir_ssa_def *id_x, *id_y, *id_z;
+            switch (state->nir->info.cs.derivative_group) {
+            case DERIVATIVE_GROUP_NONE:
+               /* If not using derivatives, just set the local invocation
                 * index linearly, and calculate local invocation ID from that.
                 */
                local_index = linear;
-
-               nir_ssa_def *id_x, *id_y, *id_z;
                id_x = nir_umod(b, local_index, size_x);
                id_y = nir_umod(b, nir_udiv(b, local_index, size_x), size_y);
                id_z = nir_udiv(b, local_index, nir_imul(b, size_x, size_y));
                local_id = nir_vec3(b, id_x, id_y, id_z);
-            } else {
+               break;
+            case DERIVATIVE_GROUP_LINEAR:
+               /* For linear, just set the local invocation index linearly,
+                * and calculate local invocation ID from that.
+                */
+               local_index = linear;
+               id_x = nir_umod(b, local_index, size_x);
+               id_y = nir_umod(b, nir_udiv(b, local_index, size_x), size_y);
+               id_z = nir_udiv(b, local_index, nir_imul(b, size_x, size_y));
+               local_id = nir_vec3(b, id_x, id_y, id_z);
+               break;
+            case DERIVATIVE_GROUP_QUADS: {
                /* For quads, first we figure out the 2x2 grid the invocation
                 * belongs to -- treating extra Z layers as just more rows.
                 * Then map that into local invocation ID (trivial) and local
@@ -146,6 +157,10 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
                                    nir_umod(b, y, size_y),
                                    nir_udiv(b, y, size_y));
                local_index = nir_iadd(b, x, nir_imul(b, y, size_x));
+               break;
+            }
+            default:
+               unreachable("invalid derivative group");
             }
          }
 
