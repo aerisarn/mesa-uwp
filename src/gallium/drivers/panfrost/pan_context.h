@@ -306,8 +306,19 @@ struct panfrost_shader_variants {
         unsigned active_variant;
 };
 
+struct pan_vertex_buffer {
+        unsigned vbi;
+        unsigned divisor;
+};
+
 struct panfrost_vertex_state {
         unsigned num_elements;
+
+        /* buffers corresponds to attribute buffer, element_buffers corresponds
+         * to an index in buffers for each vertex element */
+        struct pan_vertex_buffer buffers[PIPE_MAX_ATTRIBS];
+        unsigned element_buffer[PIPE_MAX_ATTRIBS];
+        unsigned nr_bufs;
 
         struct pipe_vertex_element pipe[PIPE_MAX_ATTRIBS];
         unsigned formats[PIPE_MAX_ATTRIBS];
