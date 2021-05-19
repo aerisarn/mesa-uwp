@@ -2322,29 +2322,12 @@ iris_create_uncompiled_shader(struct iris_screen *screen,
    return ish;
 }
 
-static struct iris_uncompiled_shader *
-iris_create_shader_state(struct pipe_context *ctx,
-                         const struct pipe_shader_state *state)
-{
-   struct iris_screen *screen = (void *) ctx->screen;
-   struct nir_shader *nir;
-
-   if (state->type == PIPE_SHADER_IR_TGSI)
-      nir = tgsi_to_nir(state->tokens, ctx->screen, false);
-   else
-      nir = state->ir.nir;
-
-   return iris_create_uncompiled_shader(screen, nir, &state->stream_output);
-}
-
 static void *
-iris_create_vs_state(struct pipe_context *ctx,
-                     const struct pipe_shader_state *state)
+iris_create_vs_state(struct iris_context *ice,
+                     struct iris_uncompiled_shader *ish)
 {
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_screen *screen = (void *) ice->ctx.screen;
    struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
-   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
 
    /* User clip planes */
    if (ish->nir->info.clip_distance_array_size == 0)
@@ -2361,14 +2344,12 @@ iris_create_vs_state(struct pipe_context *ctx,
 }
 
 static void *
-iris_create_tcs_state(struct pipe_context *ctx,
-                      const struct pipe_shader_state *state)
+iris_create_tcs_state(struct iris_context *ice,
+                      struct iris_uncompiled_shader *ish)
 {
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_screen *screen = (void *) ice->ctx.screen;
    const struct brw_compiler *compiler = screen->compiler;
    struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
-   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
 
    if (screen->precompile) {
@@ -2399,13 +2380,11 @@ iris_create_tcs_state(struct pipe_context *ctx,
 }
 
 static void *
-iris_create_tes_state(struct pipe_context *ctx,
-                      const struct pipe_shader_state *state)
+iris_create_tes_state(struct iris_context *ice,
+                      struct iris_uncompiled_shader *ish)
 {
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_screen *screen = (void *) ice->ctx.screen;
    struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
-   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
 
    /* User clip planes */
@@ -2428,13 +2407,11 @@ iris_create_tes_state(struct pipe_context *ctx,
 }
 
 static void *
-iris_create_gs_state(struct pipe_context *ctx,
-                     const struct pipe_shader_state *state)
+iris_create_gs_state(struct iris_context *ice,
+                     struct iris_uncompiled_shader *ish)
 {
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_screen *screen = (void *) ice->ctx.screen;
    struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
-   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
 
    /* User clip planes */
    if (ish->nir->info.clip_distance_array_size == 0)
@@ -2451,13 +2428,11 @@ iris_create_gs_state(struct pipe_context *ctx,
 }
 
 static void *
-iris_create_fs_state(struct pipe_context *ctx,
-                     const struct pipe_shader_state *state)
+iris_create_fs_state(struct iris_context *ice,
+                     struct iris_uncompiled_shader *ish)
 {
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_screen *screen = (void *) ice->ctx.screen;
    struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
-   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
 
    ish->nos |= (1ull << IRIS_NOS_FRAMEBUFFER) |
@@ -2547,6 +2522,39 @@ iris_create_compute_state(struct pipe_context *ctx,
    }
 
    return ish;
+}
+
+static void *
+iris_create_shader_state(struct pipe_context *ctx,
+                         const struct pipe_shader_state *state)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct nir_shader *nir;
+   struct shader_info *info = &ish->nir->info;
+
+   if (state->type == PIPE_SHADER_IR_TGSI)
+      nir = tgsi_to_nir(state->tokens, ctx->screen, false);
+   else
+      nir = state->ir.nir;
+
+   struct iris_uncompiled_shader *ish =
+      iris_create_uncompiled_shader(screen, nir, &state->stream_output);
+
+   switch (info->stage) {
+   case MESA_SHADER_VERTEX:
+      return iris_create_vs_state(ice, ish);
+   case MESA_SHADER_TESS_CTRL:
+      return iris_create_tcs_state(ice, ish);
+   case MESA_SHADER_TESS_EVAL:
+      return iris_create_tes_state(ice, ish);
+   case MESA_SHADER_GEOMETRY:
+      return iris_create_gs_state(ice, ish);
+   case MESA_SHADER_FRAGMENT:
+      return iris_create_fs_state(ice, ish);
+   default:
+      unreachable("Invalid shader stage.");
+   }
 }
 
 /**
@@ -2725,11 +2733,11 @@ iris_bind_cs_state(struct pipe_context *ctx, void *state)
 void
 iris_init_program_functions(struct pipe_context *ctx)
 {
-   ctx->create_vs_state  = iris_create_vs_state;
-   ctx->create_tcs_state = iris_create_tcs_state;
-   ctx->create_tes_state = iris_create_tes_state;
-   ctx->create_gs_state  = iris_create_gs_state;
-   ctx->create_fs_state  = iris_create_fs_state;
+   ctx->create_vs_state  = iris_create_shader_state;
+   ctx->create_tcs_state = iris_create_shader_state;
+   ctx->create_tes_state = iris_create_shader_state;
+   ctx->create_gs_state  = iris_create_shader_state;
+   ctx->create_fs_state  = iris_create_shader_state;
    ctx->create_compute_state = iris_create_compute_state;
 
    ctx->delete_vs_state  = iris_delete_shader_state;
