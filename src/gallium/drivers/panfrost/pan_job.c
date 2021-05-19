@@ -192,6 +192,8 @@ panfrost_get_fresh_batch(struct panfrost_context *ctx,
 {
         struct panfrost_batch *batch = panfrost_get_batch(ctx, key);
 
+        panfrost_dirty_state_all(ctx);
+
         /* The batch has no draw/clear queued, let's return it directly.
          * Note that it's perfectly fine to re-use a batch with an
          * existing clear, we'll just update it with the new clear request.
@@ -230,6 +232,7 @@ panfrost_get_batch_for_fbo(struct panfrost_context *ctx)
          * FB state and when submitting or releasing a job.
          */
         ctx->batch = batch;
+        panfrost_dirty_state_all(ctx);
         return batch;
 }
 
@@ -239,6 +242,7 @@ panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx)
         struct panfrost_batch *batch;
 
         batch = panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
+        panfrost_dirty_state_all(ctx);
 
         /* The batch has no draw/clear queued, let's return it directly.
          * Note that it's perfectly fine to re-use a batch with an
