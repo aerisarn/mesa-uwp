@@ -25,6 +25,12 @@ spec@arb_texture_gather@texturegather.*
 
 # First flake on Apr 29th on a clearly innocent MR
 spec@arb_direct_state_access@dsa-textures
+spec@arb_depth_buffer_float@depthstencil-render-miplevels_292_ds=z32f_s8
 
 # First flaked on May 3 on a clearly innocent MR.
 spec@arb_draw_instanced@arb_draw_instanced-drawarrays
+
+# Intermittent crashes.  First flaked on May 11th in the piglit 3351e8952
+# uprev, so presumably it regressed some time earlier and then showed up in the
+# piglit reshuffle.
+spec@arb_copy_buffer@intra-buffer-copy
