@@ -2416,3 +2416,18 @@ void si_init_draw_functions(struct si_context *sctx)
 
    si_init_ia_multi_vgt_param_table(sctx);
 }
+
+extern "C"
+void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper)
+{
+   if (wrapper) {
+      if (wrapper != sctx->b.draw_vbo) {
+         assert (!sctx->real_draw_vbo);
+         sctx->real_draw_vbo = sctx->b.draw_vbo;
+         sctx->b.draw_vbo = wrapper;
+      }
+   } else if (sctx->real_draw_vbo) {
+      sctx->real_draw_vbo = NULL;
+      si_select_draw_vbo(sctx);
+   }
+}

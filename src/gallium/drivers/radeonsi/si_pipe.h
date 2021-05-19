@@ -1286,6 +1286,8 @@ struct si_context {
    struct hash_table *dirty_implicit_resources;
 
    pipe_draw_vbo_func draw_vbo[NUM_GFX_VERSIONS - GFX6][2][2][2][2];
+   /* When b.draw_vbo is a wrapper, real_draw_vbo is the real draw_vbo function */
+   pipe_draw_vbo_func real_draw_vbo;
 
    /* SQTT */
    struct ac_thread_trace_data *thread_trace;
@@ -1340,6 +1342,11 @@ void si_replace_buffer_storage(struct pipe_context *ctx, struct pipe_resource *d
                                uint32_t rebind_mask, uint32_t delete_buffer_id);
 void si_init_screen_buffer_functions(struct si_screen *sscreen);
 void si_init_buffer_functions(struct si_context *sctx);
+
+/* Replace the sctx->b.draw_vbo function with a wrapper. This can be use to implement
+ * optimizations without affecting the normal draw_vbo functions perf.
+ */
+void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper);
 
 /* si_clear.c */
 #define SI_CLEAR_TYPE_CMASK  (1 << 0)
@@ -2010,12 +2017,16 @@ static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
 
 static inline void si_select_draw_vbo(struct si_context *sctx)
 {
-   sctx->b.draw_vbo = sctx->draw_vbo[sctx->chip_class - GFX6]
-                                    [!!sctx->shader.tes.cso]
-                                    [!!sctx->shader.gs.cso]
-                                    [sctx->ngg]
-                                    [si_compute_prim_discard_enabled(sctx)];
-   assert(sctx->b.draw_vbo);
+   pipe_draw_vbo_func draw_vbo = sctx->draw_vbo[sctx->chip_class - GFX6]
+                                               [!!sctx->shader.tes.cso]
+                                               [!!sctx->shader.gs.cso]
+                                               [sctx->ngg]
+                                               [si_compute_prim_discard_enabled(sctx)];
+   assert(draw_vbo);
+   if (unlikely(sctx->real_draw_vbo))
+      sctx->real_draw_vbo = draw_vbo;
+   else
+      sctx->b.draw_vbo = draw_vbo;
 }
 
 /* Return the number of samples that the rasterizer uses. */
