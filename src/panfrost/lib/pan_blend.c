@@ -90,7 +90,7 @@ pan_blend_constant_mask(const struct pan_blend_equation eq)
  * valid for fixed-function, so check for this condition */
 
 bool
-pan_blend_is_homogenous_constant(unsigned mask, float *constants)
+pan_blend_is_homogenous_constant(unsigned mask, const float *constants)
 {
         float constant = pan_blend_get_constant(mask, constants);
 

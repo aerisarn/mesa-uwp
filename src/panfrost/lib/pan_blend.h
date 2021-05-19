@@ -112,7 +112,7 @@ pan_blend_constant_mask(const struct pan_blend_equation eq);
  * just the first constant. */
 
 static inline float
-pan_blend_get_constant(unsigned mask, float *constants)
+pan_blend_get_constant(unsigned mask, const float *constants)
 {
         return mask ? constants[ffs(mask) - 1] : 0.0;
 }
@@ -128,7 +128,7 @@ pan_blend_supports_constant(unsigned arch, unsigned rt)
 }
 
 bool
-pan_blend_is_homogenous_constant(unsigned mask, float *constants);
+pan_blend_is_homogenous_constant(unsigned mask, const float *constants);
 
 void
 pan_blend_to_fixed_function_equation(const struct pan_blend_equation eq,
