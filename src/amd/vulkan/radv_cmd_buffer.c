@@ -3054,7 +3054,7 @@ radv_flush_ngg_gs_state(struct radv_cmd_buffer *cmd_buffer)
    uint32_t ngg_gs_state = 0;
    uint32_t base_reg;
 
-   if (!radv_pipeline_has_gs(pipeline) || !radv_pipeline_has_ngg(pipeline))
+   if (!radv_pipeline_has_gs(pipeline) || !pipeline->graphics.is_ngg)
       return;
 
    /* By default NGG GS queries are disabled but they are enabled if the
@@ -4378,8 +4378,8 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
       if (cmd_buffer->device->physical_device->rad_info.has_vgt_flush_ngg_legacy_bug &&
           cmd_buffer->state.emitted_pipeline &&
-          radv_pipeline_has_ngg(cmd_buffer->state.emitted_pipeline) &&
-          !radv_pipeline_has_ngg(cmd_buffer->state.pipeline)) {
+          cmd_buffer->state.emitted_pipeline->graphics.is_ngg &&
+          !cmd_buffer->state.pipeline->graphics.is_ngg) {
          /* Transitioning from NGG to legacy GS requires
           * VGT_FLUSH on GFX10 and Sienna Cichlid. VGT_FLUSH
           * is also emitted at the beginning of IBs when legacy

@@ -142,7 +142,7 @@ radv_pipeline_get_color_blend_state(const VkGraphicsPipelineCreateInfo *pCreateI
    return NULL;
 }
 
-bool
+static bool
 radv_pipeline_has_ngg(const struct radv_pipeline *pipeline)
 {
    struct radv_shader_variant *variant = NULL;
@@ -5480,6 +5480,8 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
 
    /* Find the last vertex shader stage that eventually uses streamout. */
    pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
+
+   pipeline->graphics.is_ngg = radv_pipeline_has_ngg(pipeline);
 
    radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend);
 
