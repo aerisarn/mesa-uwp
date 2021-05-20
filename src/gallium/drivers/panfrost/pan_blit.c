@@ -298,7 +298,7 @@ panfrost_blit(struct pipe_context *pipe,
                 mali_ptr tiler = pan_is_bifrost(dev) ?
                                  panfrost_batch_get_bifrost_tiler(batch, ~0) : 0;
                 pan_blit(&bctx, &batch->pool, &batch->scoreboard,
-                         panfrost_batch_reserve_tls(batch, false), tiler);
+                                batch->tls.gpu, tiler);
 
                 /* We don't want this batch to interfere with subsequent draw
                  * calls, but we want to keep it in the list of pending batches

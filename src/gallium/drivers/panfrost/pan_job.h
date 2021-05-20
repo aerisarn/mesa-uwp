@@ -189,7 +189,4 @@ panfrost_batch_intersection_scissor(struct panfrost_batch *batch,
 mali_ptr
 panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_count);
 
-mali_ptr
-panfrost_batch_reserve_tls(struct panfrost_batch *batch, bool compute);
-
 #endif

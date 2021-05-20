@@ -103,11 +103,6 @@ panfrost_launch_grid(struct pipe_context *pipe,
         struct panfrost_device *dev = pan_device(pipe->screen);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
-        /* Reserve a thread storage descriptor now (will be emitted at submit
-         * time).
-         */
-        panfrost_batch_reserve_tls(batch, true);
-
         ctx->compute_grid = info;
 
         struct panfrost_ptr t =

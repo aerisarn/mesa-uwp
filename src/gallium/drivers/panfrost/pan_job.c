@@ -94,6 +94,25 @@ panfrost_batch_init(struct panfrost_context *ctx,
                         PAN_BO_INVISIBLE, 65536, "Varyings", false, true);
 
         panfrost_batch_add_fbo_bos(batch);
+
+        /* Reserve the framebuffer and local storage descriptors */
+        batch->framebuffer =
+                (dev->quirks & MIDGARD_SFBD) ?
+                panfrost_pool_alloc_desc(&batch->pool, SINGLE_TARGET_FRAMEBUFFER) :
+                panfrost_pool_alloc_desc_aggregate(&batch->pool,
+                                                   PAN_DESC(MULTI_TARGET_FRAMEBUFFER),
+                                                   PAN_DESC(ZS_CRC_EXTENSION),
+                                                   PAN_DESC_ARRAY(MAX2(key->nr_cbufs, 1), RENDER_TARGET));
+
+        /* Add the MFBD tag now, other tags will be added at submit-time */
+        if (!(dev->quirks & MIDGARD_SFBD))
+                batch->framebuffer.gpu |= MALI_FBD_TAG_IS_MFBD;
+
+        /* On Midgard, the TLS is embedded in the FB descriptor */
+        if (pan_is_bifrost(dev))
+                batch->tls = panfrost_pool_alloc_desc(&batch->pool, LOCAL_STORAGE);
+        else
+                batch->tls = batch->framebuffer;
 }
 
 static void
@@ -729,66 +748,6 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
         }
 }
 
-static mali_ptr
-panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
-{
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-
-        if (batch->framebuffer.gpu)
-                return batch->framebuffer.gpu;
-
-        /* If we haven't, reserve space for a framebuffer descriptor */
-
-        struct pan_image_view rts[8];
-        struct pan_image_view zs;
-        struct pan_image_view s;
-        struct pan_fb_info fb;
-
-        panfrost_batch_to_fb_info(batch, &fb, rts, &zs, &s, true);
-
-        unsigned zs_crc_count = pan_fbd_has_zs_crc_ext(dev, &fb) ? 1 : 0;
-        unsigned rt_count = MAX2(fb.rt_count, 1);
-        batch->framebuffer =
-                (dev->quirks & MIDGARD_SFBD) ?
-                panfrost_pool_alloc_desc(&batch->pool, SINGLE_TARGET_FRAMEBUFFER) :
-                panfrost_pool_alloc_desc_aggregate(&batch->pool,
-                                                   PAN_DESC(MULTI_TARGET_FRAMEBUFFER),
-                                                   PAN_DESC_ARRAY(zs_crc_count, ZS_CRC_EXTENSION),
-                                                   PAN_DESC_ARRAY(rt_count, RENDER_TARGET));
-
-        /* Add the MFBD tag now, other tags will be added when emitting the
-         * FB desc.
-         */
-        if (!(dev->quirks & MIDGARD_SFBD))
-                batch->framebuffer.gpu |= MALI_FBD_TAG_IS_MFBD;
-
-        return batch->framebuffer.gpu;
-}
-
-mali_ptr
-panfrost_batch_reserve_tls(struct panfrost_batch *batch, bool compute)
-{
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-
-        /* If we haven't, reserve space for the thread storage descriptor */
-
-        if (batch->tls.gpu)
-                return batch->tls.gpu;
-
-        if (pan_is_bifrost(dev) || compute) {
-                batch->tls = panfrost_pool_alloc_desc(&batch->pool, LOCAL_STORAGE);
-        } else {
-                /* On Midgard, the FB descriptor contains a thread storage
-                 * descriptor, and tiler jobs need more than thread storage
-                 * info. Let's point to the FB desc in that case.
-                 */
-                panfrost_batch_reserve_framebuffer(batch);
-                batch->tls = batch->framebuffer;
-        }
-
-        return batch->tls.gpu;
-}
-
 static void
 panfrost_batch_draw_wallpaper(struct panfrost_batch *batch,
                               struct pan_fb_info *fb)
@@ -962,15 +921,11 @@ panfrost_batch_submit(struct panfrost_batch *batch,
         if (!batch->scoreboard.first_job && !batch->clear)
                 goto out;
 
-        if (batch->scoreboard.first_tiler || batch->clear)
-                panfrost_batch_reserve_framebuffer(batch);
-
         struct pan_fb_info fb;
         struct pan_image_view rts[8], zs, s;
 
         panfrost_batch_to_fb_info(batch, &fb, rts, &zs, &s, false);
 
-        panfrost_batch_reserve_tls(batch, false);
         panfrost_batch_draw_wallpaper(batch, &fb);
 
 
@@ -981,13 +936,12 @@ panfrost_batch_submit(struct panfrost_batch *batch,
         }
 
         /* Now that all draws are in, we can finally prepare the
-         * FBD for the batch */
+         * FBD for the batch (if there is one). */
 
         panfrost_emit_tls(batch);
-
         panfrost_emit_tile_map(batch, &fb);
 
-        if (batch->framebuffer.gpu)
+        if (batch->scoreboard.first_tiler || batch->clear)
                 panfrost_emit_fbd(batch, &fb);
 
         ret = panfrost_batch_submit_jobs(batch, &fb, in_sync, out_sync);

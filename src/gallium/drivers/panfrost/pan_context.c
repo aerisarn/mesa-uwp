@@ -227,8 +227,7 @@ static void
 panfrost_draw_emit_vertex(struct panfrost_batch *batch,
                           const struct pipe_draw_info *info,
                           void *invocation_template,
-                          mali_ptr shared_mem, mali_ptr vs_vary,
-                          mali_ptr varyings,
+                          mali_ptr vs_vary, mali_ptr varyings,
                           mali_ptr attribs, mali_ptr attrib_bufs,
                           void *job)
 {
@@ -252,7 +251,7 @@ panfrost_draw_emit_vertex(struct panfrost_batch *batch,
                 cfg.attribute_buffers = attrib_bufs;
                 cfg.varyings = vs_vary;
                 cfg.varying_buffers = vs_vary ? varyings : 0;
-                cfg.thread_storage = shared_mem;
+                cfg.thread_storage = batch->tls.gpu;
                 pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_VERTEX);
         }
 
@@ -357,8 +356,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                          const struct pipe_draw_info *info,
                          const struct pipe_draw_start_count_bias *draw,
                          void *invocation_template,
-                         mali_ptr shared_mem, mali_ptr indices,
-                         mali_ptr fs_vary, mali_ptr varyings,
+                         mali_ptr indices, mali_ptr fs_vary, mali_ptr varyings,
                          mali_ptr pos, mali_ptr psiz, void *job)
 {
         struct panfrost_context *ctx = batch->ctx;
@@ -438,7 +436,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.viewport = batch->viewport;
                 cfg.varyings = fs_vary;
                 cfg.varying_buffers = fs_vary ? varyings : 0;
-                cfg.thread_storage = shared_mem;
+                cfg.thread_storage = batch->tls.gpu;
 
                 /* For all primitives but lines DRAW.flat_shading_vertex must
                  * be set to 0 and the provoking vertex is selected with the
@@ -516,8 +514,6 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 
         unsigned vertex_count = ctx->vertex_count;
 
-        mali_ptr shared_mem = panfrost_batch_reserve_tls(batch, false);
-
         unsigned min_index = 0, max_index = 0;
         mali_ptr indices = 0;
 
@@ -571,9 +567,9 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         attribs = panfrost_emit_vertex_data(batch, &attrib_bufs);
 
         /* Fire off the draw itself */
-        panfrost_draw_emit_vertex(batch, info, &invocation, shared_mem,
+        panfrost_draw_emit_vertex(batch, info, &invocation,
                                   vs_vary, varyings, attribs, attrib_bufs, vertex.cpu);
-        panfrost_draw_emit_tiler(batch, info, draw, &invocation, shared_mem, indices,
+        panfrost_draw_emit_tiler(batch, info, draw, &invocation, indices,
                                  fs_vary, varyings, pos, psiz, tiler.cpu);
         panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
 
@@ -602,8 +598,6 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
         ctx->active_prim = info->mode;
         ctx->drawid = drawid_offset;
         ctx->indirect_draw = true;
-
-        mali_ptr shared_mem = panfrost_batch_reserve_tls(batch, false);
 
         struct panfrost_ptr tiler =
                 panfrost_pool_alloc_aligned(&batch->pool,
@@ -660,10 +654,9 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
         static struct mali_invocation_packed invocation;
 
         /* Fire off the draw itself */
-        panfrost_draw_emit_vertex(batch, info, &invocation, shared_mem,
-                                  vs_vary, varyings, attribs, attrib_bufs,
-                                  vertex.cpu);
-        panfrost_draw_emit_tiler(batch, info, draw, &invocation, shared_mem,
+        panfrost_draw_emit_vertex(batch, info, &invocation, vs_vary, varyings,
+                                  attribs, attrib_bufs, vertex.cpu);
+        panfrost_draw_emit_tiler(batch, info, draw, &invocation,
                                  index_buf ? index_buf->ptr.gpu : 0,
                                  fs_vary, varyings, pos, psiz, tiler.cpu);
 
