@@ -386,7 +386,7 @@ tu_render_pass_gmem_config(struct tu_render_pass *pass,
     * result:  nblocks = {12, 52}, pixels = 196608
     * optimal: nblocks = {13, 51}, pixels = 208896
     */
-   uint32_t gmem_blocks = phys_dev->info.a6xx.ccu_offset_gmem / gmem_align;
+   uint32_t gmem_blocks = phys_dev->ccu_offset_gmem / gmem_align;
    uint32_t offset = 0, pixels = ~0u, i;
    for (i = 0; i < pass->attachment_count; i++) {
       struct tu_render_pass_attachment *att = &pass->attachments[i];

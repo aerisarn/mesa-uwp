@@ -2229,18 +2229,18 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8e05" name="RB_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
 	<!-- 0x8e06 invalid -->
 	<reg32 offset="0x8e07" name="RB_CCU_CNTL">
-		<!-- offset into GMEM for something.
-			important for sysmem path
-			BLIT_OP_SCALE also writes to GMEM at this offset for GMEM store
-			blob values for GMEM path (note: close to GMEM size):
-			a618: 0x7c000 a630/a640: 0xf8000 a650: 0x114000
-			SYSMEM path values:
-			a618: 0x10000 a630/a640: 0x20000 a650: 0x30000
-			TODO: valid mask 0xfffffc1f
+		<!-- GMEM offset of CCU color cache
+			CCU depth cache starts at zero, so this should be the size
+			of the depth cache for direct rendering
+			for GMEM rendering, we set it to GMEM size minus the minimum
+			CCU color cache size. CCU color cache will be needed in some
+			resolve cases, and in those cases we need to reserve the end
+			of GMEM for color cache.
 		-->
-		<bitfield name="OFFSET" low="23" high="31" shr="12" type="hex"/>
+		<bitfield name="COLOR_OFFSET" low="23" high="31" shr="12" type="hex"/>
 		<bitfield name="GMEM" pos="22" type="boolean"/> <!-- set for GMEM path -->
 		<bitfield name="UNK2" pos="2" type="boolean"/> <!-- sometimes set with GMEM? -->
+		<!--TODO: valid mask 0xfffffc1f -->
 	</reg32>
 	<reg32 offset="0x8e08" name="RB_NC_MODE_CNTL">
 		<bitfield name="MODE" pos="0" type="boolean"/>

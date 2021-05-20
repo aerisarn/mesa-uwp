@@ -245,7 +245,7 @@ emit_setup(struct fd_batch *batch)
    /* normal BLIT_OP_SCALE operation needs bypass RB_CCU_CNTL */
    OUT_WFI5(ring);
    OUT_PKT4(ring, REG_A6XX_RB_CCU_CNTL, 1);
-   OUT_RING(ring, A6XX_RB_CCU_CNTL_OFFSET(screen->info.a6xx.ccu_offset_bypass));
+   OUT_RING(ring, A6XX_RB_CCU_CNTL_COLOR_OFFSET(screen->ccu_offset_bypass));
 }
 
 static void

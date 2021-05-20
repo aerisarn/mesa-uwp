@@ -49,8 +49,6 @@ freedreno_dev_info_init(struct freedreno_dev_info *info, uint32_t gpu_id)
       case 618:
          info->num_sp_cores = 1;
          info->fibers_per_sp = 128 * 16;
-         info->a6xx.ccu_offset_gmem = 0x7c000;
-         info->a6xx.ccu_offset_bypass = 0x10000;
          info->a6xx.ccu_cntl_gmem_unk2 = true;
          info->a6xx.supports_multiview_mask = false;
          info->a6xx.magic.RB_UNKNOWN_8E04_blit = 0x00100000;
@@ -60,8 +58,6 @@ freedreno_dev_info_init(struct freedreno_dev_info *info, uint32_t gpu_id)
       case 630:
          info->num_sp_cores = 2;
          info->fibers_per_sp = 128 * 16;
-         info->a6xx.ccu_offset_gmem = 0xf8000;
-         info->a6xx.ccu_offset_bypass = 0x20000;
          info->a6xx.ccu_cntl_gmem_unk2 = true;
          info->a6xx.supports_multiview_mask = false;
          info->a6xx.magic.RB_UNKNOWN_8E04_blit = 0x01000000;
@@ -82,8 +78,6 @@ freedreno_dev_info_init(struct freedreno_dev_info *info, uint32_t gpu_id)
           * the per-wave layout though.
           */
          info->fibers_per_sp = 128 * 4 * 16;
-         info->a6xx.ccu_offset_gmem = 0xf8000;
-         info->a6xx.ccu_offset_bypass = 0x20000;
          info->a6xx.supports_multiview_mask = true;
          info->a6xx.magic.RB_UNKNOWN_8E04_blit = 0x00100000;
          info->a6xx.magic.PC_UNKNOWN_9805 = 1;
@@ -93,8 +87,6 @@ freedreno_dev_info_init(struct freedreno_dev_info *info, uint32_t gpu_id)
       case 650:
          info->num_sp_cores = 3;
          info->fibers_per_sp = 128 * 2 * 16;
-         info->a6xx.ccu_offset_gmem = 0x114000;
-         info->a6xx.ccu_offset_bypass = 0x30000;
          info->a6xx.supports_multiview_mask = true;
          info->a6xx.magic.RB_UNKNOWN_8E04_blit = 0x04100000;
          info->a6xx.magic.PC_UNKNOWN_9805 = 2;

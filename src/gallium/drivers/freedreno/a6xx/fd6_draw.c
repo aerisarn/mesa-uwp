@@ -380,8 +380,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 
    OUT_WFI5(ring);
 
-   OUT_REG(ring,
-           A6XX_RB_CCU_CNTL(.offset = screen->info.a6xx.ccu_offset_bypass));
+   OUT_REG(ring, A6XX_RB_CCU_CNTL(.color_offset = screen->ccu_offset_bypass));
 
    OUT_REG(ring,
            A6XX_HLSQ_INVALIDATE_CMD(.vs_state = true, .hs_state = true,

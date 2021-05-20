@@ -1067,6 +1067,12 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 
    freedreno_dev_info_init(&screen->info, screen->gpu_id);
 
+   if (is_a6xx(screen)) {
+      screen->ccu_offset_bypass = screen->info.num_ccu * A6XX_CCU_DEPTH_SIZE;
+      screen->ccu_offset_gmem = (screen->gmemsize_bytes -
+         screen->info.num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);
+   }
+
    if (FD_DBG(PERFC)) {
       screen->perfcntr_groups =
          fd_perfcntrs(screen->gpu_id, &screen->num_perfcntr_groups);

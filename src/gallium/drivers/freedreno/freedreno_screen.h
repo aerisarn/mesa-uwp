@@ -92,6 +92,8 @@ struct fd_screen {
    bool has_syncobj;
 
    struct freedreno_dev_info info;
+   uint32_t ccu_offset_gmem;
+   uint32_t ccu_offset_bypass;
 
    /* Bitmask of gmem_reasons that do not force GMEM path over bypass
     * for current generation.

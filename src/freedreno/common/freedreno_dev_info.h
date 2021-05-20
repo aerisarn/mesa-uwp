@@ -46,8 +46,13 @@ struct freedreno_dev_info {
 
    uint32_t num_vsc_pipes;
 
+   /* number of CCU is always equal to the number of SP */
+   union {
+      uint32_t num_sp_cores;
+      uint32_t num_ccu;
+   };
    /* Information for private memory calculations */
-   uint32_t num_sp_cores, fibers_per_sp;
+   uint32_t fibers_per_sp;
 
    union {
       struct {
@@ -55,8 +60,6 @@ struct freedreno_dev_info {
          bool supports_multiview_mask;
 
          /* info for setting RB_CCU_CNTL */
-         uint32_t ccu_offset_gmem;
-         uint32_t ccu_offset_bypass;
          bool ccu_cntl_gmem_unk2;
          bool has_z24uint_s8uint;
 
@@ -68,6 +71,17 @@ struct freedreno_dev_info {
       } a6xx;
    };
 };
+
+/* per CCU GMEM amount reserved for depth cache for direct rendering */
+#define A6XX_CCU_DEPTH_SIZE (64 * 1024)
+/* per CCU GMEM amount reserved for color cache used by GMEM resolves
+ * which require color cache (non-BLIT event case).
+ * this is smaller than what is normally used by direct rendering
+ * (RB_CCU_CNTL.GMEM bit enables this smaller size)
+ * if a GMEM resolve requires color cache, the driver needs to make sure
+ * it will not overwrite pixel data in GMEM that is still needed
+ */
+#define A6XX_CCU_GMEM_COLOR_SIZE (16 * 1024)
 
 void freedreno_dev_info_init(struct freedreno_dev_info *info, uint32_t gpu_id);
 
