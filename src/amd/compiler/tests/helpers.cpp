@@ -206,6 +206,13 @@ void finish_insert_nops_test()
    aco_print_program(program.get(), output);
 }
 
+void finish_form_hard_clause_test()
+{
+   finish_program(program.get());
+   aco::form_hard_clauses(program.get());
+   aco_print_program(program.get(), output);
+}
+
 void finish_assembler_test()
 {
    finish_program(program.get());

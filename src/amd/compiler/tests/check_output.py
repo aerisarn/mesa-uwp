@@ -37,6 +37,8 @@ else:
     set_normal = ''
 
 initial_code = '''
+import re
+
 def insert_code(code):
     insert_queue.append(CodeCheck(code))
 
@@ -70,6 +72,11 @@ def _match_func(names):
     return ' '.join(f'${name}' for name in names.split(' '))
 
 funcs['match_func'] = _match_func
+
+def search_re(pattern):
+    global success
+    success = re.search(pattern, output.read_line()) != None and success
+
 '''
 
 class Check:
@@ -149,10 +156,12 @@ class StringStream:
     def get_line(self, num):
         return self.data.split('\n')[num - 1].rstrip()
 
-    def skip_line(self):
+    def read_line(self):
+        line = ''
         while self.peek(1) not in ['\n', '']:
-            self.read(1)
+            line += self.read(1)
         self.read(1)
+        return line
 
     def skip_whitespace(self, inc_line):
         chars = [' ', '\t'] + (['\n'] if inc_line else [])
@@ -308,7 +317,7 @@ def do_match(g, pattern, output, skip_lines, in_func=False):
                 g.clear()
                 g.update(old_g)
                 res.success = True
-                output.skip_line()
+                output.read_line()
                 pattern.reset()
                 output.skip_whitespace(False)
                 pattern.skip_whitespace(False)

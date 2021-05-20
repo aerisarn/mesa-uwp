@@ -83,6 +83,7 @@ void finish_ra_test(aco::ra_test_policy);
 void finish_optimizer_postRA_test();
 void finish_to_hw_instr_test();
 void finish_insert_nops_test();
+void finish_form_hard_clause_test();
 void finish_assembler_test();
 
 void writeout(unsigned i, aco::Temp tmp=aco::Temp(0, aco::s1));
