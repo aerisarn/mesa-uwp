@@ -393,6 +393,14 @@ bo_calloc(void)
    return bo;
 }
 
+static void
+bo_unmap(struct iris_bo *bo)
+{
+   VG_NOACCESS(bo->map, bo->size);
+   os_munmap(bo->map, bo->size);
+   bo->map = NULL;
+}
+
 static struct iris_bo *
 alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
                     struct bo_cache_bucket *bucket,
@@ -534,6 +542,10 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
    uint64_t bo_size =
       bucket ? bucket->size : MAX2(ALIGN(size, page_size), page_size);
 
+   enum iris_mmap_mode desired_mmap_mode =
+      (bufmgr->has_llc || (flags & BO_ALLOC_COHERENT)) ? IRIS_MMAP_WB
+                                                       : IRIS_MMAP_WC;
+
    mtx_lock(&bufmgr->lock);
 
    /* Get a buffer out of the cache if available.  First, we try to find
@@ -579,6 +591,11 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
     */
    if (memzone < IRIS_MEMZONE_OTHER)
       bo->kflags |= EXEC_OBJECT_CAPTURE;
+
+   if (bo->mmap_mode != desired_mmap_mode && bo->map)
+      bo_unmap(bo);
+
+   bo->mmap_mode = desired_mmap_mode;
 
    if ((flags & BO_ALLOC_COHERENT) && !bo->cache_coherent) {
       struct drm_i915_gem_caching arg = {
@@ -651,7 +668,7 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
 
    bo->name = name;
    bo->size = size;
-   bo->map_cpu = ptr;
+   bo->map = ptr;
 
    bo->bufmgr = bufmgr;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
@@ -668,6 +685,7 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
    bo->cache_coherent = true;
    bo->index = -1;
    bo->idle = true;
+   bo->mmap_mode = IRIS_MMAP_WB;
 
    return bo;
 
@@ -731,6 +749,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    bo->global_name = handle;
    bo->reusable = false;
    bo->imported = true;
+   bo->mmap_mode = IRIS_MMAP_WC;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
@@ -808,16 +827,8 @@ bo_free(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (bo->map_cpu && !bo->userptr) {
-      VG_NOACCESS(bo->map_cpu, bo->size);
-      os_munmap(bo->map_cpu, bo->size);
-      bo->map_cpu = NULL;
-   }
-   if (bo->map_wc) {
-      VG_NOACCESS(bo->map_wc, bo->size);
-      os_munmap(bo->map_wc, bo->size);
-      bo->map_wc = NULL;
-   }
+   if (!bo->userptr)
+      bo_unmap(bo);
 
    if (bo->idle) {
       bo_close(bo);
@@ -950,15 +961,14 @@ print_flags(unsigned flags)
 }
 
 static void *
-iris_bo_gem_mmap_legacy(struct pipe_debug_callback *dbg,
-                        struct iris_bo *bo, bool wc)
+iris_bo_gem_mmap_legacy(struct pipe_debug_callback *dbg, struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
    struct drm_i915_gem_mmap mmap_arg = {
       .handle = bo->gem_handle,
       .size = bo->size,
-      .flags = wc ? I915_MMAP_WC : 0,
+      .flags = bo->mmap_mode == IRIS_MMAP_WC ? I915_MMAP_WC : 0,
    };
 
    int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
@@ -973,15 +983,20 @@ iris_bo_gem_mmap_legacy(struct pipe_debug_callback *dbg,
 }
 
 static void *
-iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo,
-                        bool wc)
+iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
    struct drm_i915_gem_mmap_offset mmap_arg = {
       .handle = bo->gem_handle,
-      .flags = wc ? I915_MMAP_OFFSET_WC : I915_MMAP_OFFSET_WB,
    };
+
+   if (bo->mmap_mode == IRIS_MMAP_WB)
+      mmap_arg.flags = I915_MMAP_OFFSET_WB;
+   else if (bo->mmap_mode == IRIS_MMAP_WC)
+      mmap_arg.flags = I915_MMAP_OFFSET_WC;
+   else
+      mmap_arg.flags = I915_MMAP_OFFSET_UC;
 
    /* Get the fake offset back */
    int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP_OFFSET, &mmap_arg);
@@ -1003,152 +1018,37 @@ iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo,
    return map;
 }
 
-static void *
-iris_bo_gem_mmap(struct pipe_debug_callback *dbg, struct iris_bo *bo, bool wc)
-{
-   struct iris_bufmgr *bufmgr = bo->bufmgr;
-
-   if (bufmgr->has_mmap_offset)
-      return iris_bo_gem_mmap_offset(dbg, bo, wc);
-   else
-      return iris_bo_gem_mmap_legacy(dbg, bo, wc);
-}
-
-static void *
-iris_bo_map_cpu(struct pipe_debug_callback *dbg,
-                struct iris_bo *bo, unsigned flags)
-{
-   /* We disallow CPU maps for writing to non-coherent buffers, as the
-    * CPU map can become invalidated when a batch is flushed out, which
-    * can happen at unpredictable times.  You should use WC maps instead.
-    */
-   assert(bo->cache_coherent || !(flags & MAP_WRITE));
-
-   if (!bo->map_cpu) {
-      DBG("iris_bo_map_cpu: %d (%s)\n", bo->gem_handle, bo->name);
-      void *map = iris_bo_gem_mmap(dbg, bo, false);
-      if (!map) {
-         return NULL;
-      }
-
-      VG_DEFINED(map, bo->size);
-
-      if (p_atomic_cmpxchg(&bo->map_cpu, NULL, map)) {
-         VG_NOACCESS(map, bo->size);
-         os_munmap(map, bo->size);
-      }
-   }
-   assert(bo->map_cpu);
-
-   DBG("iris_bo_map_cpu: %d (%s) -> %p, ", bo->gem_handle, bo->name,
-       bo->map_cpu);
-   print_flags(flags);
-
-   if (!(flags & MAP_ASYNC)) {
-      bo_wait_with_stall_warning(dbg, bo, "CPU mapping");
-   }
-
-   if (!bo->cache_coherent && !bo->bufmgr->has_llc) {
-      /* If we're reusing an existing CPU mapping, the CPU caches may
-       * contain stale data from the last time we read from that mapping.
-       * (With the BO cache, it might even be data from a previous buffer!)
-       * Even if it's a brand new mapping, the kernel may have zeroed the
-       * buffer via CPU writes.
-       *
-       * We need to invalidate those cachelines so that we see the latest
-       * contents, and so long as we only read from the CPU mmap we do not
-       * need to write those cachelines back afterwards.
-       *
-       * On LLC, the empirical evidence suggests that writes from the GPU
-       * that bypass the LLC (i.e. for scanout) do *invalidate* the CPU
-       * cachelines. (Other reads, such as the display engine, bypass the
-       * LLC entirely requiring us to keep dirty pixels for the scanout
-       * out of any cache.)
-       */
-      intel_invalidate_range(bo->map_cpu, bo->size);
-   }
-
-   return bo->map_cpu;
-}
-
-static void *
-iris_bo_map_wc(struct pipe_debug_callback *dbg,
-               struct iris_bo *bo, unsigned flags)
-{
-   if (!bo->map_wc) {
-      DBG("iris_bo_map_wc: %d (%s)\n", bo->gem_handle, bo->name);
-      void *map = iris_bo_gem_mmap(dbg, bo, true);
-      if (!map) {
-         return NULL;
-      }
-
-      VG_DEFINED(map, bo->size);
-
-      if (p_atomic_cmpxchg(&bo->map_wc, NULL, map)) {
-         VG_NOACCESS(map, bo->size);
-         os_munmap(map, bo->size);
-      }
-   }
-   assert(bo->map_wc);
-
-   DBG("iris_bo_map_wc: %d (%s) -> %p\n", bo->gem_handle, bo->name, bo->map_wc);
-   print_flags(flags);
-
-   if (!(flags & MAP_ASYNC)) {
-      bo_wait_with_stall_warning(dbg, bo, "WC mapping");
-   }
-
-   return bo->map_wc;
-}
-
-static bool
-can_map_cpu(struct iris_bo *bo, unsigned flags)
-{
-   if (bo->cache_coherent)
-      return true;
-
-   /* Even if the buffer itself is not cache-coherent (such as a scanout), on
-    * an LLC platform reads always are coherent (as they are performed via the
-    * central system agent). It is just the writes that we need to take special
-    * care to ensure that land in main memory and not stick in the CPU cache.
-    */
-   if (!(flags & MAP_WRITE) && bo->bufmgr->has_llc)
-      return true;
-
-   /* If PERSISTENT or COHERENT are set, the mmapping needs to remain valid
-    * across batch flushes where the kernel will change cache domains of the
-    * bo, invalidating continued access to the CPU mmap on non-LLC device.
-    *
-    * Similarly, ASYNC typically means that the buffer will be accessed via
-    * both the CPU and the GPU simultaneously.  Batches may be executed that
-    * use the BO even while it is mapped.  While OpenGL technically disallows
-    * most drawing while non-persistent mappings are active, we may still use
-    * the GPU for blits or other operations, causing batches to happen at
-    * inconvenient times.
-    *
-    * If RAW is set, we expect the caller to be able to handle a WC buffer
-    * more efficiently than the involuntary clflushes.
-    */
-   if (flags & (MAP_PERSISTENT | MAP_COHERENT | MAP_ASYNC | MAP_RAW))
-      return false;
-
-   return !(flags & MAP_WRITE);
-}
-
 void *
 iris_bo_map(struct pipe_debug_callback *dbg,
             struct iris_bo *bo, unsigned flags)
 {
-   assert((flags & MAP_RAW) || bo->tiling_mode == I915_TILING_NONE);
+   struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   void *map = NULL;
+   if (!bo->map) {
+      DBG("iris_bo_map: %d (%s)\n", bo->gem_handle, bo->name);
+      void *map = bufmgr->has_mmap_offset ? iris_bo_gem_mmap_offset(dbg, bo)
+                                          : iris_bo_gem_mmap_legacy(dbg, bo);
+      if (!map) {
+         return NULL;
+      }
 
-   if (can_map_cpu(bo, flags))
-      map = iris_bo_map_cpu(dbg, bo, flags);
-   else
-      map = iris_bo_map_wc(dbg, bo, flags);
+      VG_DEFINED(map, bo->size);
 
-   return map;
+      if (p_atomic_cmpxchg(&bo->map, NULL, map)) {
+         VG_NOACCESS(map, bo->size);
+         os_munmap(map, bo->size);
+      }
+   }
+   assert(bo->map);
+
+   DBG("iris_bo_map: %d (%s) -> %p\n", bo->gem_handle, bo->name, bo->map);
+   print_flags(flags);
+
+   if (!(flags & MAP_ASYNC)) {
+      bo_wait_with_stall_warning(dbg, bo, "memory mapping");
+   }
+
+   return bo->map;
 }
 
 /** Waits for all GPU rendering with the object to have completed. */
@@ -1336,6 +1236,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
    bo->name = "prime";
    bo->reusable = false;
    bo->imported = true;
+   bo->mmap_mode = IRIS_MMAP_WC;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
    /* From the Bspec, Memory Compression - Gfx12:
@@ -1421,6 +1322,7 @@ iris_bo_import_dmabuf_no_mods(struct iris_bufmgr *bufmgr,
    bo->name = "prime";
    bo->reusable = false;
    bo->imported = true;
+   bo->mmap_mode = IRIS_MMAP_WC;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
    bo->gem_handle = handle;

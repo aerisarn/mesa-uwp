@@ -118,6 +118,12 @@ iris_domain_is_read_only(enum iris_domain access)
    return access == IRIS_DOMAIN_OTHER_READ;
 }
 
+enum iris_mmap_mode {
+   IRIS_MMAP_UC, /**< Fully uncached memory map */
+   IRIS_MMAP_WC, /**< Write-combining map with no caching of reads */
+   IRIS_MMAP_WB, /**< Write-back mapping with CPU caches enabled */
+};
+
 struct iris_bo {
    /**
     * Size in bytes of the buffer object.
@@ -185,9 +191,7 @@ struct iris_bo {
    time_t free_time;
 
    /** Mapped address for the buffer, saved across map/unmap cycles */
-   void *map_cpu;
-   /** WC CPU address for the buffer, saved across map/unmap cycles */
-   void *map_wc;
+   void *map;
 
    /** BO cache list */
    struct list_head head;
@@ -236,6 +240,9 @@ struct iris_bo {
     * Boolean of whether this buffer points into user memory
     */
    bool userptr;
+
+   /** The mmap coherency mode selected at BO allocation time */
+   enum iris_mmap_mode mmap_mode;
 };
 
 #define BO_ALLOC_ZEROED     (1<<0)
