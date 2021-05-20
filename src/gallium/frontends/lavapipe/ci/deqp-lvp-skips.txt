@@ -24,4 +24,5 @@ dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.mirror_cl
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.mirrored_repeat.mirrored_repeat.mirrored_repeat
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.repeat.clamp_to_edge.mirrored_repeat
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.repeat.mirror_clamp_to_edge.mirrored_repeat
+dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.repeat.repeat.mirrored_repeat
 dEQP-VK.texture.filtering.3d.sizes.32x64x16.linear_mipmap_linear
