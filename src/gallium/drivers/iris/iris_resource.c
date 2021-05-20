@@ -76,13 +76,17 @@ static const uint64_t priority_to_modifier[] = {
 
 static bool
 modifier_is_supported(const struct intel_device_info *devinfo,
-                      enum pipe_format pfmt, uint64_t modifier)
+                      enum pipe_format pfmt, unsigned bind,
+                      uint64_t modifier)
 {
    /* Check for basic device support. */
    switch (modifier) {
    case DRM_FORMAT_MOD_LINEAR:
    case I915_FORMAT_MOD_X_TILED:
+      break;
    case I915_FORMAT_MOD_Y_TILED:
+      if (devinfo->ver <= 8 && (bind & PIPE_BIND_SCANOUT))
+         return false;
       break;
    case I915_FORMAT_MOD_Y_TILED_CCS:
       if (devinfo->ver <= 8 || devinfo->ver >= 12)
@@ -138,14 +142,16 @@ modifier_is_supported(const struct intel_device_info *devinfo,
 }
 
 static uint64_t
-select_best_modifier(struct intel_device_info *devinfo, enum pipe_format pfmt,
+select_best_modifier(struct intel_device_info *devinfo,
+                     const struct pipe_resource *templ,
                      const uint64_t *modifiers,
                      int count)
 {
    enum modifier_priority prio = MODIFIER_PRIORITY_INVALID;
 
    for (int i = 0; i < count; i++) {
-      if (!modifier_is_supported(devinfo, pfmt, modifiers[i]))
+      if (!modifier_is_supported(devinfo, templ->format, templ->bind,
+                                 modifiers[i]))
          continue;
 
       switch (modifiers[i]) {
@@ -213,7 +219,7 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    int supported_mods = 0;
 
    for (int i = 0; i < ARRAY_SIZE(all_modifiers); i++) {
-      if (!modifier_is_supported(devinfo, pfmt, all_modifiers[i]))
+      if (!modifier_is_supported(devinfo, pfmt, 0, all_modifiers[i]))
          continue;
 
       if (supported_mods < max) {
@@ -240,7 +246,7 @@ iris_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
    struct iris_screen *screen = (void *) pscreen;
    const struct intel_device_info *devinfo = &screen->devinfo;
 
-   if (modifier_is_supported(devinfo, pfmt, modifier)) {
+   if (modifier_is_supported(devinfo, pfmt, 0, modifier)) {
       if (external_only)
          *external_only = is_modifier_external_only(pfmt, modifier);
 
@@ -986,7 +992,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       return NULL;
 
    uint64_t modifier =
-      select_best_modifier(devinfo, templ->format, modifiers, modifiers_count);
+      select_best_modifier(devinfo, templ, modifiers, modifiers_count);
 
    if (modifier == DRM_FORMAT_MOD_INVALID && modifiers_count > 0) {
       fprintf(stderr, "Unsupported modifier, resource creation failed.\n");
