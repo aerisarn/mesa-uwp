@@ -343,6 +343,15 @@ void iris_bufmgr_unref(struct iris_bufmgr *bufmgr);
 int iris_bo_flink(struct iris_bo *bo, uint32_t *name);
 
 /**
+ * Is this buffer shared with external clients (imported or exported)?
+ */
+static inline bool
+iris_bo_is_external(const struct iris_bo *bo)
+{
+   return bo->external;
+}
+
+/**
  * Make a BO externally accessible.
  *
  * \param bo Buffer to make external

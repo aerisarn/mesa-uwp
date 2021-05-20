@@ -307,7 +307,7 @@ iris_mocs(const struct iris_bo *bo,
           const struct isl_device *dev,
           isl_surf_usage_flags_t usage)
 {
-   return isl_mocs(dev, usage, bo && bo->external);
+   return isl_mocs(dev, usage, bo && iris_bo_is_external(bo));
 }
 
 struct iris_format_info iris_format_for_usage(const struct intel_device_info *,

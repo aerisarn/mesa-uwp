@@ -211,7 +211,7 @@ find_and_ref_external_bo(struct hash_table *ht, unsigned int key)
    struct iris_bo *bo = entry ? entry->data : NULL;
 
    if (bo) {
-      assert(bo->external);
+      assert(iris_bo_is_external(bo));
       assert(!bo->reusable);
 
       /* Being non-reusable, the BO cannot be in the cache lists, but it
@@ -762,7 +762,7 @@ bo_close(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (bo->external) {
+   if (iris_bo_is_external(bo)) {
       struct hash_entry *entry;
 
       if (bo->global_name) {
@@ -1297,7 +1297,7 @@ iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns)
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
    /* If we know it's idle, don't bother with the kernel round trip */
-   if (bo->idle && !bo->external)
+   if (bo->idle && !iris_bo_is_external(bo))
       return 0;
 
    struct drm_i915_gem_wait wait = {
