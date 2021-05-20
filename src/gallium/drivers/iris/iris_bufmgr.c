@@ -1224,8 +1224,7 @@ void *
 iris_bo_map(struct pipe_debug_callback *dbg,
             struct iris_bo *bo, unsigned flags)
 {
-   if (bo->tiling_mode != I915_TILING_NONE && !(flags & MAP_RAW))
-      return iris_bo_map_gtt(dbg, bo, flags);
+   assert((flags & MAP_RAW) || bo->tiling_mode == I915_TILING_NONE);
 
    void *map;
 
