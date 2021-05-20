@@ -369,13 +369,6 @@ _mesa_MultiTexGendEXT(GLenum texunit, GLenum coord, GLenum pname, GLdouble param
 }
 
 void GLAPIENTRY
-_es_GetTexGenfv(GLenum coord, GLenum pname, GLfloat *params)
-{
-   _mesa_GetTexGenfv(GL_S, pname, params);
-}
-
-
-void GLAPIENTRY
 _es_TexGenf(GLenum coord, GLenum pname, GLfloat param)
 {
    if (coord != GL_TEXTURE_GEN_STR_OES) {
@@ -387,21 +380,6 @@ _es_TexGenf(GLenum coord, GLenum pname, GLfloat param)
    _mesa_TexGenf(GL_S, pname, param);
    _mesa_TexGenf(GL_T, pname, param);
    _mesa_TexGenf(GL_R, pname, param);
-}
-
-
-void GLAPIENTRY
-_es_TexGenfv(GLenum coord, GLenum pname, const GLfloat *params)
-{
-   if (coord != GL_TEXTURE_GEN_STR_OES) {
-      GET_CURRENT_CONTEXT(ctx);
-      _mesa_error( ctx, GL_INVALID_ENUM, "glTexGen[fx]v(pname)" );
-      return;
-   }
-   /* set S, T, and R at the same time */
-   _mesa_TexGenfv(GL_S, pname, params);
-   _mesa_TexGenfv(GL_T, pname, params);
-   _mesa_TexGenfv(GL_R, pname, params);
 }
 
 
