@@ -73,7 +73,7 @@ dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 # Started appearing with the new deqp runner.  possibly different test order?
 dEQP-GLES3.functional.fbo.blit.conversion.rg8i_to_r16i
 
-# No valgrind warning I've seen, not sure.
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4575
 dEQP-VK.wsi.display.get_display_plane_capabilities
 
 # Undiagnosed flakes appearing more than once in the last 2 months as
