@@ -35,7 +35,6 @@ spec@!opengl 1.0@gl-1.0-edgeflag,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag-quads,Fail
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
-spec@!opengl 1.1@clipflat,Fail
 spec@!opengl 1.1@linestipple,Fail
 spec@!opengl 1.1@polygon-mode,Fail
 spec@!opengl 1.1@polygon-mode-facing,Fail
@@ -72,7 +71,6 @@ spec@arb_point_parameters@arb_point_parameters-point-attenuation,Fail
 spec@arb_point_sprite@arb_point_sprite-checkerboard,Fail
 spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
-spec@arb_provoking_vertex@arb-provoking-vertex-render,Fail
 spec@arb_sample_shading@ignore-centroid-qualifier 2,Fail
 spec@arb_sample_shading@ignore-centroid-qualifier 4,Fail
 spec@arb_sample_shading@interpolate-at-sample-position 2,Fail
