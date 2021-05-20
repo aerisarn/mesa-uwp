@@ -568,6 +568,61 @@ tc_rebind_buffer(struct threaded_context *tc, uint32_t old_id, uint32_t new_id, 
 }
 
 static bool
+tc_is_buffer_bound_with_mask(uint32_t id, uint32_t *bindings, unsigned binding_mask)
+{
+   while (binding_mask) {
+      if (bindings[u_bit_scan(&binding_mask)] == id)
+         return true;
+   }
+   return false;
+}
+
+static bool
+tc_is_buffer_shader_bound_for_write(struct threaded_context *tc, uint32_t id,
+                                    enum pipe_shader_type shader)
+{
+   if (tc->seen_shader_buffers[shader] &&
+       tc_is_buffer_bound_with_mask(id, tc->shader_buffers[shader],
+                                    tc->shader_buffers_writeable_mask[shader]))
+      return true;
+
+   if (tc->seen_image_buffers[shader] &&
+       tc_is_buffer_bound_with_mask(id, tc->image_buffers[shader],
+                                    tc->image_buffers_writeable_mask[shader]))
+      return true;
+
+   return false;
+}
+
+static bool
+tc_is_buffer_bound_for_write(struct threaded_context *tc, uint32_t id)
+{
+   if (tc->seen_streamout_buffers &&
+       tc_is_buffer_bound_with_mask(id, tc->streamout_buffers,
+                                    BITFIELD_MASK(PIPE_MAX_SO_BUFFERS)))
+      return true;
+
+   if (tc_is_buffer_shader_bound_for_write(tc, id, PIPE_SHADER_VERTEX) ||
+       tc_is_buffer_shader_bound_for_write(tc, id, PIPE_SHADER_FRAGMENT) ||
+       tc_is_buffer_shader_bound_for_write(tc, id, PIPE_SHADER_COMPUTE))
+      return true;
+
+   if (tc->seen_tcs &&
+       tc_is_buffer_shader_bound_for_write(tc, id, PIPE_SHADER_TESS_CTRL))
+      return true;
+
+   if (tc->seen_tes &&
+       tc_is_buffer_shader_bound_for_write(tc, id, PIPE_SHADER_TESS_EVAL))
+      return true;
+
+   if (tc->seen_gs &&
+       tc_is_buffer_shader_bound_for_write(tc, id, PIPE_SHADER_GEOMETRY))
+      return true;
+
+   return false;
+}
+
+static bool
 tc_is_buffer_busy(struct threaded_context *tc, struct threaded_resource *tbuf,
                   unsigned map_usage)
 {
@@ -1367,6 +1422,7 @@ tc_set_shader_images(struct pipe_context *_pipe,
    struct tc_shader_images *p =
       tc_add_slot_based_call(tc, TC_CALL_set_shader_images, tc_shader_images,
                              images ? count : 0);
+   unsigned writable_buffers = 0;
 
    p->shader = shader;
    p->start = start;
@@ -1391,6 +1447,7 @@ tc_set_shader_images(struct pipe_context *_pipe,
                util_range_add(&tres->b, &tres->valid_buffer_range,
                               images[i].u.buf.offset,
                               images[i].u.buf.offset + images[i].u.buf.size);
+               writable_buffers |= BITFIELD_BIT(start + i);
             }
          } else {
             tc_unbind_buffer(&tc->image_buffers[shader][start + i]);
@@ -1408,6 +1465,9 @@ tc_set_shader_images(struct pipe_context *_pipe,
       tc_unbind_buffers(&tc->image_buffers[shader][start],
                         count + unbind_num_trailing_slots);
    }
+
+   tc->image_buffers_writeable_mask[shader] &= ~BITFIELD_RANGE(start, count);
+   tc->image_buffers_writeable_mask[shader] |= writable_buffers << start;
 }
 
 struct tc_shader_buffers {
@@ -1488,6 +1548,9 @@ tc_set_shader_buffers(struct pipe_context *_pipe,
    } else {
       tc_unbind_buffers(&tc->shader_buffers[shader][start], count);
    }
+
+   tc->shader_buffers_writeable_mask[shader] &= ~BITFIELD_RANGE(start, count);
+   tc->shader_buffers_writeable_mask[shader] |= writable_bitmask << start;
 }
 
 struct tc_vertex_buffers {
@@ -1855,8 +1918,17 @@ static bool
 tc_invalidate_buffer(struct threaded_context *tc,
                      struct threaded_resource *tbuf)
 {
-   if (!tc_is_buffer_busy(tc, tbuf, PIPE_MAP_READ_WRITE))
+   if (!tc_is_buffer_busy(tc, tbuf, PIPE_MAP_READ_WRITE)) {
+      /* It's idle, so invalidation would be a no-op, but we can still clear
+       * the valid range because we are technically doing invalidation, but
+       * skipping it because it's useless.
+       *
+       * If the buffer is bound for write, we can't invalidate the range.
+       */
+      if (!tc_is_buffer_bound_for_write(tc, tbuf->buffer_id_unique))
+         util_range_set_empty(&tbuf->valid_buffer_range);
       return true;
+   }
 
    struct pipe_screen *screen = tc->base.screen;
    struct pipe_resource *new_buf;
@@ -1892,10 +1964,14 @@ tc_invalidate_buffer(struct threaded_context *tc,
    p->rebind_mask = 0;
 
    /* Treat the current buffer as the new buffer. */
+   bool bound_for_write = tc_is_buffer_bound_for_write(tc, tbuf->buffer_id_unique);
    p->num_rebinds = tc_rebind_buffer(tc, tbuf->buffer_id_unique,
                                      threaded_resource(new_buf)->buffer_id_unique,
                                      &p->rebind_mask);
-   util_range_set_empty(&tbuf->valid_buffer_range);
+
+   /* If the buffer is not bound for write, clear the valid range. */
+   if (!bound_for_write)
+      util_range_set_empty(&tbuf->valid_buffer_range);
 
    tbuf->buffer_id_unique = threaded_resource(new_buf)->buffer_id_unique;
    threaded_resource(new_buf)->buffer_id_unique = 0;
