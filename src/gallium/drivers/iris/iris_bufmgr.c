@@ -1226,29 +1226,12 @@ iris_bo_map(struct pipe_debug_callback *dbg,
 {
    assert((flags & MAP_RAW) || bo->tiling_mode == I915_TILING_NONE);
 
-   void *map;
+   void *map = NULL;
 
    if (can_map_cpu(bo, flags))
       map = iris_bo_map_cpu(dbg, bo, flags);
    else
       map = iris_bo_map_wc(dbg, bo, flags);
-
-   /* Allow the attempt to fail by falling back to the GTT where necessary.
-    *
-    * Not every buffer can be mmaped directly using the CPU (or WC), for
-    * example buffers that wrap stolen memory or are imported from other
-    * devices. For those, we have little choice but to use a GTT mmapping.
-    * However, if we use a slow GTT mmapping for reads where we expected fast
-    * access, that order of magnitude difference in throughput will be clearly
-    * expressed by angry users.
-    *
-    * We skip MAP_RAW because we want to avoid map_gtt's fence detiling.
-    */
-   if (!map && !(flags & MAP_RAW)) {
-      perf_debug(dbg, "Fallback GTT mapping for %s with access flags %x\n",
-                 bo->name, flags);
-      map = iris_bo_map_gtt(dbg, bo, flags);
-   }
 
    return map;
 }
