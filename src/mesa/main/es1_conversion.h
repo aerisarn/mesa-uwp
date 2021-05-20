@@ -85,9 +85,6 @@ void GL_APIENTRY
 _mesa_GetMaterialxv(GLenum face, GLenum pname, GLfixed *params);
 
 void GL_APIENTRY
-_check_GetTexGenivOES(GLenum coord, GLenum pname, GLint *params);
-
-void GL_APIENTRY
 _mesa_GetTexEnvxv(GLenum target, GLenum pname, GLfixed *params);
 
 void GL_APIENTRY
@@ -163,12 +160,6 @@ _mesa_TexEnvx(GLenum target, GLenum pname, GLfixed param);
 
 void GL_APIENTRY
 _mesa_TexEnvxv(GLenum target, GLenum pname, const GLfixed *params);
-
-void GL_APIENTRY
-_check_TexGeniOES(GLenum coord, GLenum pname, GLint param);
-
-void GL_APIENTRY
-_check_TexGenivOES(GLenum coord, GLenum pname, const GLint *params);
 
 void GL_APIENTRY
 _mesa_TexGenxOES(GLenum coord, GLenum pname, GLfixed param);

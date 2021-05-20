@@ -406,12 +406,6 @@ _mesa_GetTexEnvxv(GLenum target, GLenum pname, GLfixed *params)
 }
 
 void GL_APIENTRY
-_check_GetTexGenivOES(GLenum coord, GLenum pname, GLint *params)
-{
-   _mesa_GetTexGeniv(coord, pname, params);
-}
-
-void GL_APIENTRY
 _mesa_GetTexGenxvOES(GLenum coord, GLenum pname, GLfixed *params)
 {
    _mesa_GetTexGeniv(coord, pname, (GLint *) params);
@@ -854,18 +848,6 @@ _mesa_TexEnvxv(GLenum target, GLenum pname, const GLfixed *params)
                   "glTexEnvxv(pname=0x%x)", pname);
       return;
    }
-}
-
-void GL_APIENTRY
-_check_TexGeniOES(GLenum coord, GLenum pname, GLint param)
-{
-   _es_TexGenf(coord, pname, (GLfloat) param);
-}
-
-void GL_APIENTRY
-_check_TexGenivOES(GLenum coord, GLenum pname, const GLint *params)
-{
-   _es_TexGenf(coord, pname, (GLfloat) params[0]);
 }
 
 void GL_APIENTRY
