@@ -626,7 +626,9 @@
     <field name="Workgroups X shift" size="6" start="1:10" type="uint"/>
     <field name="Workgroups Y shift" size="6" start="1:16" type="uint"/>
     <field name="Workgroups Z shift" size="6" start="1:22" type="uint"/>
-    <field name="Unknown shift" size="4" start="1:28" type="uint"/>
+    <field name="Thread group split" size="4" start="1:28" type="uint" prefix="MALI_SPLIT">
+      <value name="Min efficient" value="2"/>
+    </field>
   </struct>
 
   <enum name="Point Size Array Format">

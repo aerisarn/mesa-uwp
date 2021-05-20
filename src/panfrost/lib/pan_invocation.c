@@ -98,9 +98,11 @@ panfrost_pack_work_groups_compute(
                 if (quirk_graphics && (num_z <= 1))
                         cfg.workgroups_z_shift = 32;
 
-                /* Quirk: for graphics, >= 2.  For compute, 2 without barriers
-                 * but equal to workgroups_x_shift with barriers */
+                /* For graphics, set to the minimum efficient value. For
+                 * compute, must equal the workgroup X shift for barriers to
+                 * function correctly */
 
-                cfg.unknown_shift = quirk_graphics ? 2 : cfg.workgroups_x_shift;
+                cfg.thread_group_split = quirk_graphics ?
+                        MALI_SPLIT_MIN_EFFICIENT : cfg.workgroups_x_shift;
         }
 }
