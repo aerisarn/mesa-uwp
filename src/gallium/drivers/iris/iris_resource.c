@@ -2058,8 +2058,7 @@ iris_transfer_map(struct pipe_context *ctx,
     *
     * Images are less clear-cut.  Resolves can be destructive, removing some
     * of the underlying compression, so we'd rather blit the data to a linear
-    * temporary and map that, to avoid the resolve.  (It might be better to
-    * a tiled temporary and use the tiled_memcpy paths...)
+    * temporary and map that, to avoid the resolve.
     */
    if (!(usage & PIPE_MAP_DISCARD_RANGE) &&
        !iris_has_invalid_primary(res, level, 1, box->z, box->depth)) {
