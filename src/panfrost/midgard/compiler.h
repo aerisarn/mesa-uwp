@@ -306,6 +306,9 @@ typedef struct compiler_context {
         midgard_instruction *writeout_branch[MIDGARD_NUM_RTS][MIDGARD_MAX_SAMPLE_ITER];
 
         struct hash_table_u64 *sysval_to_id;
+
+        /* Mask of UBOs that need to be uploaded */
+        uint32_t ubo_mask;
 } compiler_context;
 
 /* Per-block live_in/live_out */

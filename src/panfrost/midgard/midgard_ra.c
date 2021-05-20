@@ -1042,6 +1042,8 @@ mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
                                 unsigned idx = (23 - SSA_REG_FROM_FIXED(ins->src[i])) * 4;
                                 assert(idx < ctx->info->push.count);
 
+                                ctx->ubo_mask |= BITSET_BIT(ctx->info->push.words[idx].ubo);
+
                                 midgard_instruction ld = {
                                         .type = TAG_LOAD_STORE_4,
                                         .mask = 0xF,
