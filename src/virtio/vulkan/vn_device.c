@@ -1377,9 +1377,14 @@ vn_physical_device_init_external_memory(
       physical_dev->external_memory.renderer_handle_type =
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
 
+#ifdef ANDROID
+      physical_dev->external_memory.supported_handle_types =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+#else
       physical_dev->external_memory.supported_handle_types =
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+#endif
    }
 }
 
@@ -2794,13 +2799,39 @@ vn_GetPhysicalDeviceImageFormatProperties2(
    result = vn_call_vkGetPhysicalDeviceImageFormatProperties2(
       physical_dev->instance, physicalDevice, pImageFormatInfo,
       pImageFormatProperties);
+   if (result != VK_SUCCESS || !external_info)
+      return vn_result(physical_dev->instance, result);
 
-   if (result == VK_SUCCESS && external_info) {
-      VkExternalImageFormatProperties *img_props = vk_find_struct(
-         pImageFormatProperties->pNext, EXTERNAL_IMAGE_FORMAT_PROPERTIES);
-      VkExternalMemoryProperties *mem_props =
-         &img_props->externalMemoryProperties;
+   VkExternalImageFormatProperties *img_props = vk_find_struct(
+      pImageFormatProperties->pNext, EXTERNAL_IMAGE_FORMAT_PROPERTIES);
+   VkExternalMemoryProperties *mem_props =
+      &img_props->externalMemoryProperties;
 
+   if (external_info->handleType ==
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
+      /* AHB backed image requires renderer to support import bit */
+      if (!(mem_props->externalMemoryFeatures &
+            VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT))
+         return vn_error(physical_dev->instance,
+                         VK_ERROR_FORMAT_NOT_SUPPORTED);
+
+      mem_props->externalMemoryFeatures =
+         VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT |
+         VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+         VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+      mem_props->exportFromImportedHandleTypes =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+      mem_props->compatibleHandleTypes =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+
+      VkAndroidHardwareBufferUsageANDROID *ahb_usage =
+         vk_find_struct(pImageFormatProperties->pNext,
+                        ANDROID_HARDWARE_BUFFER_USAGE_ANDROID);
+      if (ahb_usage) {
+         ahb_usage->androidHardwareBufferUsage = vn_android_get_ahb_usage(
+            pImageFormatInfo->usage, pImageFormatInfo->flags);
+      }
+   } else {
       mem_props->compatibleHandleTypes = supported_handle_types;
       mem_props->exportFromImportedHandleTypes =
          (mem_props->exportFromImportedHandleTypes & renderer_handle_type)
@@ -2861,11 +2892,33 @@ vn_GetPhysicalDeviceExternalBufferProperties(
       physical_dev->instance, physicalDevice, pExternalBufferInfo,
       pExternalBufferProperties);
 
-   props->compatibleHandleTypes = supported_handle_types;
-   props->exportFromImportedHandleTypes =
-      (props->exportFromImportedHandleTypes & renderer_handle_type)
-         ? supported_handle_types
-         : 0;
+   if (pExternalBufferInfo->handleType ==
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
+      props->compatibleHandleTypes =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+      /* AHB backed buffer requires renderer to support import bit while it
+       * also requires the renderer to must not advertise dedicated only bit
+       */
+      if (!(props->externalMemoryFeatures &
+            VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT) ||
+          (props->externalMemoryFeatures &
+           VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT)) {
+         props->externalMemoryFeatures = 0;
+         props->exportFromImportedHandleTypes = 0;
+         return;
+      }
+      props->externalMemoryFeatures =
+         VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+         VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+      props->exportFromImportedHandleTypes =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+   } else {
+      props->compatibleHandleTypes = supported_handle_types;
+      props->exportFromImportedHandleTypes =
+         (props->exportFromImportedHandleTypes & renderer_handle_type)
+            ? supported_handle_types
+            : 0;
+   }
 }
 
 void
