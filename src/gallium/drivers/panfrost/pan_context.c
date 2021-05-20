@@ -207,7 +207,8 @@ pan_emit_draw_descs(struct panfrost_batch *batch,
         d->instance_size = batch->ctx->instance_count > 1 ?
                            batch->ctx->padded_count : 1;
 
-        d->uniform_buffers = panfrost_emit_const_buf(batch, st, &d->push_uniforms);
+        d->uniform_buffers = batch->uniform_buffers[st];
+        d->push_uniforms = batch->push_uniforms[st];
         d->textures = batch->textures[st];
         d->samplers = batch->samplers[st];
 }
@@ -289,7 +290,11 @@ static inline void
 panfrost_update_state_tex(struct panfrost_batch *batch,
                           enum pipe_shader_type st)
 {
-        unsigned dirty = batch->ctx->dirty_shader[st];
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, st);
+
+        unsigned dirty_3d = ctx->dirty;
+        unsigned dirty = ctx->dirty_shader[st];
 
         if (dirty & PAN_DIRTY_STAGE_TEXTURE) {
                 batch->textures[st] =
@@ -299,6 +304,11 @@ panfrost_update_state_tex(struct panfrost_batch *batch,
         if (dirty & PAN_DIRTY_STAGE_SAMPLER) {
                 batch->samplers[st] =
                         panfrost_emit_sampler_descriptors(batch, st);
+        }
+
+        if ((dirty & ss->dirty_shader) || (dirty_3d & ss->dirty_3d)) {
+                batch->uniform_buffers[st] = panfrost_emit_const_buf(batch, st,
+                                &batch->push_uniforms[st]);
         }
 }
 
@@ -762,6 +772,9 @@ panfrost_draw_vbo(struct pipe_context *pipe,
         if (unlikely(dev->debug & PAN_DBG_DIRTY))
                 panfrost_dirty_state_all(ctx);
 
+        /* Conservatively assume draw parameters always change */
+        ctx->dirty |= PAN_DIRTY_PARAMS | PAN_DIRTY_DRAWID;
+
         panfrost_update_state_3d(batch);
         panfrost_update_state_vs(batch);
         panfrost_update_state_fs(batch);
@@ -791,8 +804,11 @@ panfrost_draw_vbo(struct pipe_context *pipe,
 
         for (unsigned i = 0; i < num_draws; i++) {
                 panfrost_direct_draw(batch, &tmp_info, drawid, &draws[i]);
-                if (tmp_info.increment_draw_id)
-                       drawid++;
+
+                if (tmp_info.increment_draw_id) {
+                        ctx->dirty |= PAN_DIRTY_DRAWID;
+                        drawid++;
+                }
         }
 
 }
@@ -1259,6 +1275,7 @@ panfrost_set_constant_buffer(
 
         pbuf->enabled_mask |= mask;
         pbuf->dirty_mask |= mask;
+        ctx->dirty_shader[shader] |= PAN_DIRTY_STAGE_CONST;
 }
 
 static void
