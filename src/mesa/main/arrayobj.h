@@ -104,11 +104,6 @@ _mesa_set_vao_immutable(struct gl_context *ctx,
 extern bool
 _mesa_all_varyings_in_vbos(const struct gl_vertex_array_object *vao);
 
-/* Returns true if all vbos are unmapped */
-extern bool
-_mesa_all_buffers_are_unmapped(const struct gl_vertex_array_object *vao);
-
-
 extern void
 _mesa_vao_map_arrays(struct gl_context *ctx, struct gl_vertex_array_object *vao,
                      GLbitfield access);
