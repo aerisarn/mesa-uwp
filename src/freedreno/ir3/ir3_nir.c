@@ -553,10 +553,13 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 	 * expensive.
 	 */
 	if (so->shader->compiler->has_pvtmem) {
-		NIR_PASS_V(s, nir_lower_vars_to_scratch, nir_var_function_temp,
-				   16 * 16 /* bytes */, glsl_get_natural_size_align_bytes);
+		progress |=
+			OPT(s, nir_lower_vars_to_scratch, nir_var_function_temp,
+				16 * 16 /* bytes */, glsl_get_natural_size_align_bytes);
 	}
 
+	/* Lower scratch writemasks */
+	progress |= OPT(s, nir_lower_wrmasks, should_split_wrmask, s);
 
 	OPT_V(s, nir_lower_amul, ir3_glsl_type_size);
 

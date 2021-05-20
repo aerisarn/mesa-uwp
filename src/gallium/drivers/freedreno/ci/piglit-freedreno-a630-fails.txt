@@ -482,9 +482,6 @@ spec@arb_tessellation_shader@execution@vs-tes-max-in-out-components,Fail
 spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-quads,Fail
 spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-tris,Fail
 spec@arb_tessellation_shader@execution@vs-tes-vertex,Fail
-spec@glsl-1.30@execution@fs-large-local-array-vec2,Crash
-spec@glsl-1.30@execution@fs-large-local-array-vec3,Crash
-spec@glsl-1.30@execution@fs-large-local-array-vec4,Crash
 spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-const-accept,Fail
 spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-different-from-position,Fail
 spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-enables,Fail
@@ -512,7 +509,7 @@ spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-input-array-float-index-rd,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec2-index-rd,Fail
-spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec3-index-rd,Crash
+spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec3-index-rd,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-output-array-vec3-index-wr,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-output-array-vec4-index-wr,Crash
 spec@glsl-1.50@execution@variable-indexing@vs-output-array-vec3-index-wr-before-gs,Fail
