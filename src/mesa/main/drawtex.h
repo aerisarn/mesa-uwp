@@ -46,11 +46,4 @@ _mesa_DrawTexsOES(GLshort x, GLshort y, GLshort z, GLshort width, GLshort height
 extern void GLAPIENTRY
 _mesa_DrawTexsvOES(const GLshort *coords);
 
-extern void GLAPIENTRY
-_mesa_DrawTexx(GLfixed x, GLfixed y, GLfixed z, GLfixed width, GLfixed height);
-
-extern void GLAPIENTRY
-_mesa_DrawTexxv(const GLfixed *coords);
-
-
 #endif /* DRAWTEX_H */
