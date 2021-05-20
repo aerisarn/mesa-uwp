@@ -66,6 +66,8 @@ enum pan_dirty_3d {
         PAN_DIRTY_VIEWPORT       = BITFIELD_BIT(0),
         PAN_DIRTY_SCISSOR        = BITFIELD_BIT(1),
         PAN_DIRTY_VERTEX         = BITFIELD_BIT(2),
+        PAN_DIRTY_PARAMS         = BITFIELD_BIT(3),
+        PAN_DIRTY_DRAWID         = BITFIELD_BIT(4),
 };
 
 enum pan_dirty_shader {
