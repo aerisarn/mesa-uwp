@@ -229,9 +229,7 @@ enum
    DBG_SWITCH_ON_EOP,
    DBG_NO_OUT_OF_ORDER,
    DBG_NO_DPBB,
-   DBG_NO_DFSM,
    DBG_DPBB,
-   DBG_DFSM,
    DBG_NO_HYPERZ,
    DBG_NO_2D_TILING,
    DBG_NO_TILING,
@@ -547,7 +545,6 @@ struct si_screen {
    bool assume_no_z_fights;
    bool commutative_blend_add;
    bool dpbb_allowed;
-   bool dfsm_allowed;
    bool use_ngg;
    bool use_ngg_culling;
    bool use_ngg_streamout;

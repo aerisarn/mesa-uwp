@@ -100,9 +100,7 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"switch_on_eop", DBG(SWITCH_ON_EOP), "Program WD/IA to switch on end-of-packet."},
    {"nooutoforder", DBG(NO_OUT_OF_ORDER), "Disable out-of-order rasterization"},
    {"nodpbb", DBG(NO_DPBB), "Disable DPBB."},
-   {"nodfsm", DBG(NO_DFSM), "Disable DFSM."},
    {"dpbb", DBG(DPBB), "Enable DPBB."},
-   {"dfsm", DBG(DFSM), "Enable DFSM."},
    {"nohyperz", DBG(NO_HYPERZ), "Disable Hyper-Z"},
    {"no2d", DBG(NO_2D_TILING), "Disable 2D tiling"},
    {"notiling", DBG(NO_TILING), "Disable tiling"},
@@ -1229,30 +1227,11 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
          sscreen->allow_dcc_msaa_clear_to_reg_for_bpp[bpp_log2] = true;
    }
 
-   /* Only enable primitive binning on APUs by default. */
-   if (sscreen->info.chip_class >= GFX10) {
-      sscreen->dpbb_allowed = true;
-      /* DFSM is not supported on GFX 10.3 and not beneficial on Navi1x. */
-   } else if (sscreen->info.chip_class == GFX9) {
-      sscreen->dpbb_allowed = !sscreen->info.has_dedicated_vram;
-      /* DFSM reduces the Raven2 draw prim rate by ~43%. Disable it. */
-      sscreen->dfsm_allowed = false;
-   }
-
-   /* Process DPBB enable flags. */
-   if (sscreen->debug_flags & DBG(DPBB)) {
-      sscreen->dpbb_allowed = true;
-      if (sscreen->debug_flags & DBG(DFSM))
-         sscreen->dfsm_allowed = true;
-   }
-
-   /* Process DPBB disable flags. */
-   if (sscreen->debug_flags & DBG(NO_DPBB)) {
-      sscreen->dpbb_allowed = false;
-      sscreen->dfsm_allowed = false;
-   } else if (sscreen->debug_flags & DBG(NO_DFSM)) {
-      sscreen->dfsm_allowed = false;
-   }
+   sscreen->dpbb_allowed = !(sscreen->debug_flags & DBG(NO_DPBB)) &&
+                           (sscreen->info.chip_class >= GFX10 ||
+                            /* Only enable primitive binning on gfx9 APUs by default. */
+                            (sscreen->info.chip_class == GFX9 && !sscreen->info.has_dedicated_vram) ||
+                            sscreen->debug_flags & DBG(DPBB));
 
    if (sscreen->dpbb_allowed) {
       if (sscreen->info.has_dedicated_vram) {
