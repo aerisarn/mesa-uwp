@@ -2280,9 +2280,11 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                         ctx->streamout.targets[i]);
         }
 
-        panfrost_emit_varyings(batch,
-                        &varyings[pan_varying_index(present, PAN_VARY_GENERAL)],
-                        stride, vertex_count);
+        if (stride) {
+                panfrost_emit_varyings(batch,
+                                &varyings[pan_varying_index(present, PAN_VARY_GENERAL)],
+                                stride, vertex_count);
+        }
 
         /* fp32 vec4 gl_Position */
         *position = panfrost_emit_varyings(batch,
