@@ -818,11 +818,6 @@ bo_free(struct iris_bo *bo)
       os_munmap(bo->map_wc, bo->size);
       bo->map_wc = NULL;
    }
-   if (bo->map_gtt) {
-      VG_NOACCESS(bo->map_gtt, bo->size);
-      os_munmap(bo->map_gtt, bo->size);
-      bo->map_gtt = NULL;
-   }
 
    if (bo->idle) {
       bo_close(bo);
@@ -1104,86 +1099,6 @@ iris_bo_map_wc(struct pipe_debug_callback *dbg,
    }
 
    return bo->map_wc;
-}
-
-/**
- * Perform an uncached mapping via the GTT.
- *
- * Write access through the GTT is not quite fully coherent. On low power
- * systems especially, like modern Atoms, we can observe reads from RAM before
- * the write via GTT has landed. A write memory barrier that flushes the Write
- * Combining Buffer (i.e. sfence/mfence) is not sufficient to order the later
- * read after the write as the GTT write suffers a small delay through the GTT
- * indirection. The kernel uses an uncached mmio read to ensure the GTT write
- * is ordered with reads (either by the GPU, WB or WC) and unconditionally
- * flushes prior to execbuf submission. However, if we are not informing the
- * kernel about our GTT writes, it will not flush before earlier access, such
- * as when using the cmdparser. Similarly, we need to be careful if we should
- * ever issue a CPU read immediately following a GTT write.
- *
- * Telling the kernel about write access also has one more important
- * side-effect. Upon receiving notification about the write, it cancels any
- * scanout buffering for FBC/PSR and friends. Later FBC/PSR is then flushed by
- * either SW_FINISH or DIRTYFB. The presumption is that we never write to the
- * actual scanout via a mmaping, only to a backbuffer and so all the FBC/PSR
- * tracking is handled on the buffer exchange instead.
- */
-static void *
-iris_bo_map_gtt(struct pipe_debug_callback *dbg,
-                struct iris_bo *bo, unsigned flags)
-{
-   struct iris_bufmgr *bufmgr = bo->bufmgr;
-
-   /* If we don't support get/set_tiling, there's no support for GTT mapping
-    * either (it won't do any de-tiling for us).
-    */
-   assert(bufmgr->has_tiling_uapi);
-
-   /* Get a mapping of the buffer if we haven't before. */
-   if (bo->map_gtt == NULL) {
-      DBG("bo_map_gtt: mmap %d (%s)\n", bo->gem_handle, bo->name);
-
-      struct drm_i915_gem_mmap_gtt mmap_arg = { .handle = bo->gem_handle };
-
-      /* Get the fake offset back... */
-      int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP_GTT, &mmap_arg);
-      if (ret != 0) {
-         DBG("%s:%d: Error preparing buffer map %d (%s): %s .\n",
-             __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
-         return NULL;
-      }
-
-      /* and mmap it. */
-      void *map = os_mmap(0, bo->size, PROT_READ | PROT_WRITE,
-                          MAP_SHARED, bufmgr->fd, mmap_arg.offset);
-      if (map == MAP_FAILED) {
-         DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
-             __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
-         return NULL;
-      }
-
-      /* We don't need to use VALGRIND_MALLOCLIKE_BLOCK because Valgrind will
-       * already intercept this mmap call. However, for consistency between
-       * all the mmap paths, we mark the pointer as defined now and mark it
-       * as inaccessible afterwards.
-       */
-      VG_DEFINED(map, bo->size);
-
-      if (p_atomic_cmpxchg(&bo->map_gtt, NULL, map)) {
-         VG_NOACCESS(map, bo->size);
-         os_munmap(map, bo->size);
-      }
-   }
-   assert(bo->map_gtt);
-
-   DBG("bo_map_gtt: %d (%s) -> %p, ", bo->gem_handle, bo->name, bo->map_gtt);
-   print_flags(flags);
-
-   if (!(flags & MAP_ASYNC)) {
-      bo_wait_with_stall_warning(dbg, bo, "GTT mapping");
-   }
-
-   return bo->map_gtt;
 }
 
 static bool

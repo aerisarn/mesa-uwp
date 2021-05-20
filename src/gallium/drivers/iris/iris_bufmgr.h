@@ -186,8 +186,6 @@ struct iris_bo {
 
    /** Mapped address for the buffer, saved across map/unmap cycles */
    void *map_cpu;
-   /** GTT virtual address for the buffer, saved across map/unmap cycles */
-   void *map_gtt;
    /** WC CPU address for the buffer, saved across map/unmap cycles */
    void *map_wc;
 
