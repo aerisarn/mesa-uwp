@@ -68,6 +68,7 @@ enum pan_dirty_3d {
         PAN_DIRTY_VERTEX         = BITFIELD_BIT(2),
         PAN_DIRTY_PARAMS         = BITFIELD_BIT(3),
         PAN_DIRTY_DRAWID         = BITFIELD_BIT(4),
+        PAN_DIRTY_TLS_SIZE       = BITFIELD_BIT(5),
 };
 
 enum pan_dirty_shader {

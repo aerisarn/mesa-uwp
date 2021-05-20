@@ -319,6 +319,9 @@ panfrost_update_state_3d(struct panfrost_batch *batch)
 
         if (dirty & (PAN_DIRTY_VIEWPORT | PAN_DIRTY_SCISSOR))
                 batch->viewport = panfrost_emit_viewport(batch);
+
+        if (dirty & PAN_DIRTY_TLS_SIZE)
+                panfrost_batch_adjust_stack_size(batch);
 }
 
 static void
@@ -580,9 +583,6 @@ panfrost_direct_draw(struct panfrost_batch *batch,
                                  fs_vary, varyings, pos, psiz, tiler.cpu);
         panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
 
-        /* Adjust the batch stack size based on the new shader stack sizes. */
-        panfrost_batch_adjust_stack_size(batch);
-
         /* Increment transform feedback offsets */
         panfrost_update_streamout_offsets(ctx);
 }
@@ -729,9 +729,6 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
                                             &batch->indirect_draw_ctx);
 
         panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
-
-        /* Adjust the batch stack size based on the new shader stack sizes. */
-        panfrost_batch_adjust_stack_size(batch);
 }
 
 static void
@@ -1123,6 +1120,8 @@ panfrost_bind_shader_state(
         struct panfrost_context *ctx = pan_context(pctx);
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         ctx->shader[type] = hwcso;
+
+        ctx->dirty |= PAN_DIRTY_TLS_SIZE;
         ctx->dirty_shader[type] |= PAN_DIRTY_STAGE_RENDERER;
 
         if (!hwcso) return;
