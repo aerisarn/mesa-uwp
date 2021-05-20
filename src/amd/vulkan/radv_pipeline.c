@@ -177,18 +177,7 @@ radv_pipeline_has_ngg_passthrough(const struct radv_pipeline *pipeline)
 bool
 radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline)
 {
-   if (!radv_pipeline_has_gs(pipeline))
-      return false;
-
-   /* The GS copy shader is required if the pipeline has GS on GFX6-GFX9.
-    * On GFX10, it might be required in rare cases if it's not possible to
-    * enable NGG.
-    */
-   if (radv_pipeline_has_ngg(pipeline))
-      return false;
-
-   assert(pipeline->gs_copy_shader);
-   return true;
+   return !!pipeline->gs_copy_shader;
 }
 
 static void
