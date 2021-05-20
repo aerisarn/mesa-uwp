@@ -67,7 +67,7 @@ dEQP-EGL.functional.wide_color.pbuffer_888_colorspace_srgb
 dEQP-EGL.functional.wide_color.window_8888_colorspace_default
 dEQP-EGL.functional.wide_color.window_8888_colorspace_srgb
 
-# Flakes reported more than once during Jan-Feb 2020
+# Started at least by Jan 2020, current as of May 2021
 dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 
 # Started appearing with the new deqp runner.  possibly different test order?
@@ -80,5 +80,4 @@ dEQP-VK.wsi.display.get_display_plane_capabilities
 # of 2020-08-19, in descending order of frequency.
 dEQP-GLES3.functional.fragment_out.random.39
 dEQP-VK.image.texel_view_compatible.graphic.extended.2d_image.texture_read.astc_10x6_unorm_block.r32g32b32a32_uint
-dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 dEQP-GLES31.functional.tessellation.invariance.primitive_set.quads_equal_spacing_cw
