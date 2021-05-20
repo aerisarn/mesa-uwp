@@ -195,6 +195,7 @@ namespace {
    has_invalid_exec_type(const intel_device_info *devinfo, const fs_inst *inst)
    {
       switch (inst->opcode) {
+      case SHADER_OPCODE_SHUFFLE:
       case SHADER_OPCODE_QUAD_SWIZZLE:
          return has_dst_aligned_region_restriction(devinfo, inst) ?
                 0x1 : 0;
