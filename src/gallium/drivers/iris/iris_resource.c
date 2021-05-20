@@ -2069,8 +2069,12 @@ iris_transfer_map(struct pipe_context *ctx,
    if (fmtl->txc == ISL_TXC_ASTC)
       usage |= PIPE_MAP_DIRECTLY;
 
+   /* We can map directly if it wouldn't stall, there's no compression,
+    * and we aren't doing an uncached read.
+    */
    if (!map_would_stall &&
-       !isl_aux_usage_has_compression(res->aux.usage)) {
+       !isl_aux_usage_has_compression(res->aux.usage) &&
+       !((usage & PIPE_MAP_READ) && !res->bo->cache_coherent)) {
       usage |= PIPE_MAP_DIRECTLY;
    }
 
