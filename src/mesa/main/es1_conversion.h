@@ -44,9 +44,6 @@ void GL_APIENTRY
 _mesa_ClipPlanex(GLenum plane, const GLfixed *equation);
 
 void GL_APIENTRY
-_es_Color4ub(GLubyte red, GLubyte green, GLubyte blue, GLubyte alpha);
-
-void GL_APIENTRY
 _mesa_Color4x(GLfixed red, GLfixed green, GLfixed blue, GLfixed alpha);
 
 void GL_APIENTRY
