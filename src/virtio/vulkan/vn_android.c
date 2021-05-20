@@ -1152,3 +1152,17 @@ vn_android_release_ahb(struct AHardwareBuffer *ahb)
 {
    AHardwareBuffer_release(ahb);
 }
+
+VkResult
+vn_GetMemoryAndroidHardwareBufferANDROID(
+   VkDevice device,
+   const VkMemoryGetAndroidHardwareBufferInfoANDROID *pInfo,
+   struct AHardwareBuffer **pBuffer)
+{
+   struct vn_device_memory *mem = vn_device_memory_from_handle(pInfo->memory);
+
+   AHardwareBuffer_acquire(mem->ahb);
+   *pBuffer = mem->ahb;
+
+   return VK_SUCCESS;
+}
