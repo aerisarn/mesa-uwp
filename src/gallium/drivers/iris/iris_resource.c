@@ -2007,9 +2007,12 @@ iris_transfer_map(struct pipe_context *ctx,
    if (usage & (PIPE_MAP_PERSISTENT | PIPE_MAP_COHERENT))
       usage |= PIPE_MAP_DIRECTLY;
 
-   /* We cannot provide a direct mapping of tiled resources */
-   if (surf->tiling != ISL_TILING_LINEAR &&
-       (usage & PIPE_MAP_DIRECTLY))
+   /* We cannot provide a direct mapping of tiled resources, and we
+    * may not be able to mmap imported BOs since they may come from
+    * other devices that I915_GEM_MMAP cannot work with.
+    */
+   if ((usage & PIPE_MAP_DIRECTLY) &&
+       (surf->tiling != ISL_TILING_LINEAR || res->bo->imported))
       return NULL;
 
    bool map_would_stall = false;
@@ -2052,30 +2055,33 @@ iris_transfer_map(struct pipe_context *ctx,
    if (usage & PIPE_MAP_WRITE)
       util_range_add(&res->base.b, &res->valid_buffer_range, box->x, box->x + box->width);
 
-   /* GPU copies are not useful for buffer reads.  Instead of stalling to
-    * read from the original buffer, we'd simply copy it to a temporary...
-    * then stall (a bit longer) to read from that buffer.
-    *
-    * Images are less clear-cut.  Resolves can be destructive, removing some
-    * of the underlying compression, so we'd rather blit the data to a linear
-    * temporary and map that, to avoid the resolve.
-    */
-   if (!(usage & PIPE_MAP_DISCARD_RANGE) &&
-       !iris_has_invalid_primary(res, level, 1, box->z, box->depth)) {
-      usage |= PIPE_MAP_DIRECTLY;
-   }
+   if (!res->bo->imported) {
+      /* GPU copies are not useful for buffer reads.  Instead of stalling to
+       * read from the original buffer, we'd simply copy it to a temporary...
+       * then stall (a bit longer) to read from that buffer.
+       *
+       * Images are less clear-cut.  Resolves can be destructive, removing
+       * some of the underlying compression, so we'd rather blit the data to
+       * a linear temporary and map that, to avoid the resolve.
+       */
+      if (!(usage & PIPE_MAP_DISCARD_RANGE) &&
+          !iris_has_invalid_primary(res, level, 1, box->z, box->depth)) {
+         usage |= PIPE_MAP_DIRECTLY;
+      }
 
-   const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
-   if (fmtl->txc == ISL_TXC_ASTC)
-      usage |= PIPE_MAP_DIRECTLY;
+      const struct isl_format_layout *fmtl =
+         isl_format_get_layout(surf->format);
+      if (fmtl->txc == ISL_TXC_ASTC)
+         usage |= PIPE_MAP_DIRECTLY;
 
-   /* We can map directly if it wouldn't stall, there's no compression,
-    * and we aren't doing an uncached read.
-    */
-   if (!map_would_stall &&
-       !isl_aux_usage_has_compression(res->aux.usage) &&
-       !((usage & PIPE_MAP_READ) && !res->bo->cache_coherent)) {
-      usage |= PIPE_MAP_DIRECTLY;
+      /* We can map directly if it wouldn't stall, there's no compression,
+       * and we aren't doing an uncached read.
+       */
+      if (!map_would_stall &&
+          !isl_aux_usage_has_compression(res->aux.usage) &&
+          !((usage & PIPE_MAP_READ) && !res->bo->cache_coherent)) {
+         usage |= PIPE_MAP_DIRECTLY;
+      }
    }
 
    if (!(usage & PIPE_MAP_DIRECTLY)) {
