@@ -279,6 +279,9 @@ struct panfrost_shader_state {
         /* Variants */
         enum pipe_format rt_formats[8];
         unsigned nr_cbufs;
+
+        /* Mask of state that dirties the sysvals */
+        unsigned dirty_3d, dirty_shader;
 };
 
 /* A collection of varyings (the CSO) */
@@ -389,6 +392,9 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                         const void *ir,
                         gl_shader_stage stage,
                         struct panfrost_shader_state *state);
+
+void
+panfrost_analyze_sysvals(struct panfrost_shader_state *ss);
 
 void
 panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,

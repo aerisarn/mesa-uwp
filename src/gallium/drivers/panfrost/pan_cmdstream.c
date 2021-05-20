@@ -1021,6 +1021,61 @@ panfrost_upload_rt_conversion_sysval(struct panfrost_batch *batch,
         }
 }
 
+void
+panfrost_analyze_sysvals(struct panfrost_shader_state *ss)
+{
+        unsigned dirty = 0;
+        unsigned dirty_shader =
+                PAN_DIRTY_STAGE_RENDERER | PAN_DIRTY_STAGE_CONST;
+
+        for (unsigned i = 0; i < ss->info.sysvals.sysval_count; ++i) {
+                switch (PAN_SYSVAL_TYPE(ss->info.sysvals.sysvals[i])) {
+                case PAN_SYSVAL_VIEWPORT_SCALE:
+                case PAN_SYSVAL_VIEWPORT_OFFSET:
+                        dirty |= PAN_DIRTY_VIEWPORT;
+                        break;
+
+                case PAN_SYSVAL_TEXTURE_SIZE:
+                        dirty_shader |= PAN_DIRTY_STAGE_TEXTURE;
+                        break;
+
+                case PAN_SYSVAL_SSBO:
+                        dirty_shader |= PAN_DIRTY_STAGE_SSBO;
+                        break;
+
+                case PAN_SYSVAL_SAMPLER:
+                        dirty_shader |= PAN_DIRTY_STAGE_SAMPLER;
+                        break;
+
+                case PAN_SYSVAL_IMAGE_SIZE:
+                        dirty_shader |= PAN_DIRTY_STAGE_IMAGE;
+                        break;
+
+                case PAN_SYSVAL_NUM_WORK_GROUPS:
+                case PAN_SYSVAL_LOCAL_GROUP_SIZE:
+                case PAN_SYSVAL_WORK_DIM:
+                case PAN_SYSVAL_VERTEX_INSTANCE_OFFSETS:
+                        dirty |= PAN_DIRTY_PARAMS;
+                        break;
+
+                case PAN_SYSVAL_DRAWID:
+                        dirty |= PAN_DIRTY_DRAWID;
+                        break;
+
+                case PAN_SYSVAL_SAMPLE_POSITIONS:
+                case PAN_SYSVAL_MULTISAMPLED:
+                case PAN_SYSVAL_RT_CONVERSION:
+                        /* Nothing beyond the batch itself */
+                        break;
+                default:
+                        unreachable("Invalid sysval");
+                }
+        }
+
+        ss->dirty_3d = dirty;
+        ss->dirty_shader = dirty_shader;
+}
+
 static void
 panfrost_upload_sysvals(struct panfrost_batch *batch,
                         const struct panfrost_ptr *ptr,

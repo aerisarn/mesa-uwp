@@ -101,6 +101,8 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                                        &cfg);
         }
 
+        panfrost_analyze_sysvals(state);
+
         util_dynarray_fini(&binary);
 
         /* In both clone and tgsi_to_nir paths, the shader is ralloc'd against
