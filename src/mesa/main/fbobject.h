@@ -175,10 +175,6 @@ _mesa_RenderbufferStorageMultisampleAdvancedAMD(
       GLenum internalFormat, GLsizei width, GLsizei height);
 
 extern void GLAPIENTRY
-_es_RenderbufferStorageEXT(GLenum target, GLenum internalFormat,
-			   GLsizei width, GLsizei height);
-
-extern void GLAPIENTRY
 _mesa_NamedRenderbufferStorage(GLuint renderbuffer, GLenum internalformat,
                                GLsizei width, GLsizei height);
 extern void GLAPIENTRY

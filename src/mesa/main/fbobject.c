@@ -2816,27 +2816,6 @@ _mesa_RenderbufferStorageMultisampleAdvancedAMD(
 }
 
 
-/**
- * OpenGL ES version of glRenderBufferStorage.
- */
-void GLAPIENTRY
-_es_RenderbufferStorageEXT(GLenum target, GLenum internalFormat,
-                           GLsizei width, GLsizei height)
-{
-   switch (internalFormat) {
-   case GL_RGB565:
-      /* XXX this confuses GL_RENDERBUFFER_INTERNAL_FORMAT_OES */
-      /* choose a closest format */
-      internalFormat = GL_RGB5;
-      break;
-   default:
-      break;
-   }
-
-   renderbuffer_storage_target(target, internalFormat, width, height, 0, 0,
-                               "glRenderbufferStorageEXT");
-}
-
 void GLAPIENTRY
 _mesa_NamedRenderbufferStorage(GLuint renderbuffer, GLenum internalformat,
                                GLsizei width, GLsizei height)
