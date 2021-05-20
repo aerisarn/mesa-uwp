@@ -5708,6 +5708,7 @@ radv_CmdDrawIndirect(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkDeviceSi
    info.strmout_buffer = NULL;
    info.count_buffer = NULL;
    info.indexed = false;
+   info.instance_count = 0;
 
    if (!radv_before_draw(cmd_buffer, &info, 0))
       return;
@@ -5730,6 +5731,7 @@ radv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkD
    info.stride = stride;
    info.count_buffer = NULL;
    info.strmout_buffer = NULL;
+   info.instance_count = 0;
 
    if (!radv_before_draw(cmd_buffer, &info, 0))
       return;
@@ -5755,6 +5757,7 @@ radv_CmdDrawIndirectCount(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkDev
    info.stride = stride;
    info.strmout_buffer = NULL;
    info.indexed = false;
+   info.instance_count = 0;
 
    if (!radv_before_draw(cmd_buffer, &info, 0))
       return;
@@ -5781,6 +5784,7 @@ radv_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer, VkBuffer _buffer
    info.count_buffer_offset = countBufferOffset;
    info.stride = stride;
    info.strmout_buffer = NULL;
+   info.instance_count = 0;
 
    if (!radv_before_draw(cmd_buffer, &info, 0))
       return;
