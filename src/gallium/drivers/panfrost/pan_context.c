@@ -131,7 +131,7 @@ panfrost_set_frontend_noop(struct pipe_context *pipe, bool enable)
 
 #define DEFINE_CASE(c) case PIPE_PRIM_##c: return MALI_DRAW_MODE_##c;
 
-static int
+static uint8_t
 pan_draw_mode(enum pipe_prim_type mode)
 {
         switch (mode) {
