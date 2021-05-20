@@ -1466,9 +1466,12 @@ isl_calc_row_pitch_alignment(const struct isl_device *dev,
     * PRI_STRIDE Stride (p1254):
     *
     *    "When using linear memory, this must be at least 64 byte aligned."
+    *
+    * However, when displaying on NVIDIA and recent AMD GPUs via PRIME,
+    * we need a larger pitch of 256 bytes.  We do that just in case.
     */
    if (surf_info->usage & ISL_SURF_USAGE_DISPLAY_BIT)
-      alignment = isl_align(alignment, 64);
+      alignment = isl_align(alignment, 256);
 
    return alignment;
 }
