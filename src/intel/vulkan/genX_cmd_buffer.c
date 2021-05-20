@@ -2569,8 +2569,6 @@ void genX(CmdPipelineBarrier2KHR)(
 static void
 cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
 {
-   assert(anv_pipeline_is_primitive(cmd_buffer->state.gfx.pipeline));
-
    VkShaderStageFlags stages =
       cmd_buffer->state.gfx.pipeline->active_stages;
 
@@ -2579,7 +2577,9 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
     * uses push concstants, this may be suboptimal.  However, avoiding stalls
     * seems more important.
     */
-   stages |= VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+   stages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+   if (anv_pipeline_is_primitive(cmd_buffer->state.gfx.pipeline))
+      stages |= VK_SHADER_STAGE_VERTEX_BIT;
 
    if (stages == cmd_buffer->state.gfx.push_constant_stages)
       return;
@@ -3576,6 +3576,7 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
    };
    uint32_t dwords[GENX(3DSTATE_CLIP_length)];
 
+   /* TODO(mesh): Multiview. */
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    if (anv_pipeline_is_primitive(pipeline)) {
       const struct brw_vue_prog_data *last =
@@ -4838,13 +4839,29 @@ void genX(CmdEndTransformFeedbackEXT)(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_XFB_ENABLE;
 }
 
+#if GFX_VERx10 >= 125
 void
 genX(CmdDrawMeshTasksNV)(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    taskCount,
     uint32_t                                    firstTask)
 {
-   unreachable("Unimplemented");
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (anv_batch_has_error(&cmd_buffer->batch))
+      return;
+
+   /* TODO(mesh): Check if this is not emitting more packets than we need. */
+   genX(cmd_buffer_flush_state)(cmd_buffer);
+
+   /* TODO(mesh): Emit conditional render predicate. */
+
+   /* TODO(mesh): Support non-zero firstTask. */
+   assert(firstTask == 0);
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DMESH_1D), m) {
+      m.ThreadGroupCountX = taskCount;
+   }
 }
 
 void
@@ -4870,6 +4887,7 @@ genX(CmdDrawMeshTasksIndirectCountNV)(
 {
    unreachable("Unimplemented");
 }
+#endif /* GFX_VERx10 >= 125 */
 
 void
 genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)

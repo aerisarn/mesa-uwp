@@ -3052,9 +3052,9 @@ struct anv_cmd_state {
    struct anv_state                             binding_tables[MESA_VULKAN_SHADER_STAGES];
    struct anv_state                             samplers[MESA_VULKAN_SHADER_STAGES];
 
-   unsigned char                                sampler_sha1s[MESA_SHADER_STAGES][20];
-   unsigned char                                surface_sha1s[MESA_SHADER_STAGES][20];
-   unsigned char                                push_sha1s[MESA_SHADER_STAGES][20];
+   unsigned char                                sampler_sha1s[MESA_VULKAN_SHADER_STAGES][20];
+   unsigned char                                surface_sha1s[MESA_VULKAN_SHADER_STAGES][20];
+   unsigned char                                push_sha1s[MESA_VULKAN_SHADER_STAGES][20];
 
    /**
     * Whether or not the gfx8 PMA fix is enabled.  We ensure that, at the top
@@ -3617,6 +3617,12 @@ anv_pipeline_is_primitive(const struct anv_graphics_pipeline *pipeline)
    return anv_pipeline_has_stage(pipeline, MESA_SHADER_VERTEX);
 }
 
+static inline bool
+anv_pipeline_is_mesh(const struct anv_graphics_pipeline *pipeline)
+{
+   return anv_pipeline_has_stage(pipeline, MESA_SHADER_MESH);
+}
+
 #define ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(prefix, stage)             \
 static inline const struct brw_##prefix##_prog_data *                   \
 get_##prefix##_prog_data(const struct anv_graphics_pipeline *pipeline)  \
@@ -3634,6 +3640,8 @@ ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(tcs, MESA_SHADER_TESS_CTRL)
 ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(tes, MESA_SHADER_TESS_EVAL)
 ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(gs, MESA_SHADER_GEOMETRY)
 ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(wm, MESA_SHADER_FRAGMENT)
+ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(mesh, MESA_SHADER_MESH)
+ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(task, MESA_SHADER_TASK)
 
 static inline const struct brw_cs_prog_data *
 get_cs_prog_data(const struct anv_compute_pipeline *pipeline)
