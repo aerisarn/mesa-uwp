@@ -939,6 +939,11 @@ coords(const struct blit_ops *ops,
    ops->coords(cs, (const VkOffset2D*) dst, (const VkOffset2D*) src, (const VkExtent2D*) extent);
 }
 
+/* Decides the VK format to treat our data as for a memcpy-style blit. We have
+ * to be a bit careful because we have to pick a format with matching UBWC
+ * compression behavior, so no just returning R8_UINT/R16_UINT/R32_UINT for
+ * everything.
+ */
 static VkFormat
 copy_format(VkFormat format, VkImageAspectFlags aspect_mask, bool copy_buffer)
 {
@@ -955,6 +960,38 @@ copy_format(VkFormat format, VkImageAspectFlags aspect_mask, bool copy_buffer)
    }
 
    switch (format) {
+   /* For SNORM formats, copy them as the equivalent UNORM format.  If we treat
+    * them as snorm then the 0x80 (-1.0 snorm8) value will get clamped to 0x81
+    * (also -1.0), when we're supposed to be memcpying the bits. See
+    * https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2917 for discussion.
+    */
+   case VK_FORMAT_R8_SNORM:
+      return VK_FORMAT_R8_UNORM;
+   case VK_FORMAT_R8G8_SNORM:
+      return VK_FORMAT_R8G8_UNORM;
+   case VK_FORMAT_R8G8B8_SNORM:
+      return VK_FORMAT_R8G8B8_UNORM;
+   case VK_FORMAT_B8G8R8_SNORM:
+      return VK_FORMAT_B8G8R8_UNORM;
+   case VK_FORMAT_R8G8B8A8_SNORM:
+      return VK_FORMAT_R8G8B8A8_UNORM;
+   case VK_FORMAT_B8G8R8A8_SNORM:
+      return VK_FORMAT_B8G8R8A8_UNORM;
+   case VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+      return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
+   case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+      return VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+   case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+      return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+   case VK_FORMAT_R16_SNORM:
+      return VK_FORMAT_R16_UNORM;
+   case VK_FORMAT_R16G16_SNORM:
+      return VK_FORMAT_R16G16_UNORM;
+   case VK_FORMAT_R16G16B16_SNORM:
+      return VK_FORMAT_R16G16B16_UNORM;
+   case VK_FORMAT_R16G16B16A16_SNORM:
+      return VK_FORMAT_R16G16B16A16_UNORM;
+
    case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
       return VK_FORMAT_R32_UINT;
 
