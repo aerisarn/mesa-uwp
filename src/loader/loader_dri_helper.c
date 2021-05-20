@@ -37,7 +37,7 @@ __DRIimage *loader_dri_create_image(__DRIscreen *screen,
                                     unsigned int modifiers_count,
                                     void *loaderPrivate)
 {
-   if (modifiers &&
+   if (modifiers && modifiers_count > 0 &&
        image->base.version > 14 && image->createImageWithModifiers) {
       bool has_valid_modifier = false;
       int i;
