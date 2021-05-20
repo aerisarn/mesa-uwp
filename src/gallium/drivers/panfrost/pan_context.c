@@ -486,10 +486,8 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *device = pan_device(ctx->base.screen);
 
-        int mode = info->mode;
-
         /* Fallback for unsupported modes */
-        if (!(ctx->draw_modes & (1 << mode))) {
+        if (!(ctx->draw_modes & BITFIELD_BIT(info->mode))) {
                 if (draw->count < 4) {
                         /* Degenerate case? */
                         return;
@@ -535,8 +533,6 @@ panfrost_direct_draw(struct panfrost_batch *batch,
                 ctx->offset_start = draw->start;
         }
 
-        /* Encode the padded vertex count */
-
         if (info->instance_count > 1)
                 ctx->padded_count = panfrost_padded_vertex_count(vertex_count);
         else
@@ -564,14 +560,12 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         /* Emit all sort of descriptors. */
         mali_ptr varyings = 0, vs_vary = 0, fs_vary = 0, pos = 0, psiz = 0;
 
-        bool point_coord_replace = (info->mode == PIPE_PRIM_POINTS);
-
         panfrost_emit_varying_descriptor(batch,
                                          ctx->padded_count *
                                          ctx->instance_count,
                                          &vs_vary, &fs_vary, &varyings,
                                          NULL, &pos, &psiz,
-                                         point_coord_replace);
+                                         info->mode == PIPE_PRIM_POINTS);
 
         mali_ptr attribs, attrib_bufs;
         attribs = panfrost_emit_vertex_data(batch, &attrib_bufs);
