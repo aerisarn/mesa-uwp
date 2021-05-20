@@ -971,7 +971,7 @@ iris_resource_create_for_buffer(struct pipe_screen *pscreen,
    }
 
    if (templ->bind & PIPE_BIND_SHARED) {
-      iris_bo_make_external(res->bo);
+      iris_bo_mark_exported(res->bo);
       res->base.is_shared = true;
    }
 
@@ -1068,7 +1068,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    }
 
    if (templ->bind & PIPE_BIND_SHARED) {
-      iris_bo_make_external(res->bo);
+      iris_bo_mark_exported(res->bo);
       res->base.is_shared = true;
    }
 

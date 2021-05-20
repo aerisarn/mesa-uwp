@@ -223,10 +223,11 @@ struct iris_bo {
     */
    bool reusable;
 
-   /**
-    * Boolean of whether this buffer has been shared with an external client.
-    */
-   bool external;
+   /** Was this buffer imported from an external client? */
+   bool imported;
+
+   /** Has this buffer been exported to external clients? */
+   bool exported;
 
    /**
     * Boolean of whether this buffer is cache coherent
@@ -348,15 +349,13 @@ int iris_bo_flink(struct iris_bo *bo, uint32_t *name);
 static inline bool
 iris_bo_is_external(const struct iris_bo *bo)
 {
-   return bo->external;
+   return bo->exported || bo->imported;
 }
 
 /**
- * Make a BO externally accessible.
- *
- * \param bo Buffer to make external
+ * Mark a buffer as being shared with other external clients.
  */
-void iris_bo_make_external(struct iris_bo *bo);
+void iris_bo_mark_exported(struct iris_bo *bo);
 
 /**
  * Returns 1 if mapping the buffer for write could cause the process

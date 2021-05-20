@@ -730,7 +730,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    bo->name = name;
    bo->global_name = handle;
    bo->reusable = false;
-   bo->external = true;
+   bo->imported = true;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
@@ -1438,7 +1438,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
    bo->bufmgr = bufmgr;
    bo->name = "prime";
    bo->reusable = false;
-   bo->external = true;
+   bo->imported = true;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
    /* From the Bspec, Memory Compression - Gfx12:
@@ -1523,7 +1523,7 @@ iris_bo_import_dmabuf_no_mods(struct iris_bufmgr *bufmgr,
    bo->bufmgr = bufmgr;
    bo->name = "prime";
    bo->reusable = false;
-   bo->external = true;
+   bo->imported = true;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
    bo->gem_handle = handle;
@@ -1535,32 +1535,34 @@ out:
 }
 
 static void
-iris_bo_make_external_locked(struct iris_bo *bo)
+iris_bo_mark_exported_locked(struct iris_bo *bo)
 {
-   if (!bo->external) {
+   if (!iris_bo_is_external(bo))
       _mesa_hash_table_insert(bo->bufmgr->handle_table, &bo->gem_handle, bo);
+
+   if (!bo->exported) {
       /* If a BO is going to be used externally, it could be sent to the
        * display HW. So make sure our CPU mappings don't assume cache
        * coherency since display is outside that cache.
        */
       bo->cache_coherent = false;
-      bo->external = true;
+      bo->exported = true;
       bo->reusable = false;
    }
 }
 
 void
-iris_bo_make_external(struct iris_bo *bo)
+iris_bo_mark_exported(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (bo->external) {
+   if (bo->exported) {
       assert(!bo->reusable);
       return;
    }
 
    mtx_lock(&bufmgr->lock);
-   iris_bo_make_external_locked(bo);
+   iris_bo_mark_exported_locked(bo);
    mtx_unlock(&bufmgr->lock);
 }
 
@@ -1569,7 +1571,7 @@ iris_bo_export_dmabuf(struct iris_bo *bo, int *prime_fd)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   iris_bo_make_external(bo);
+   iris_bo_mark_exported(bo);
 
    if (drmPrimeHandleToFD(bufmgr->fd, bo->gem_handle,
                           DRM_CLOEXEC | DRM_RDWR, prime_fd) != 0)
@@ -1581,7 +1583,7 @@ iris_bo_export_dmabuf(struct iris_bo *bo, int *prime_fd)
 uint32_t
 iris_bo_export_gem_handle(struct iris_bo *bo)
 {
-   iris_bo_make_external(bo);
+   iris_bo_mark_exported(bo);
 
    return bo->gem_handle;
 }
@@ -1599,7 +1601,7 @@ iris_bo_flink(struct iris_bo *bo, uint32_t *name)
 
       mtx_lock(&bufmgr->lock);
       if (!bo->global_name) {
-         iris_bo_make_external_locked(bo);
+         iris_bo_mark_exported_locked(bo);
          bo->global_name = flink.name;
          _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
       }
