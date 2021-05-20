@@ -1998,6 +1998,20 @@ iris_transfer_map(struct pipe_context *ctx,
       usage |= PIPE_MAP_UNSYNCHRONIZED;
    }
 
+   /* Avoid using GPU copies for persistent/coherent buffers, as the idea
+    * there is to access them simultaneously on the CPU & GPU.  This also
+    * avoids trying to use GPU copies for our u_upload_mgr buffers which
+    * contain state we're constructing for a GPU draw call, which would
+    * kill us with infinite stack recursion.
+    */
+   if (usage & (PIPE_MAP_PERSISTENT | PIPE_MAP_COHERENT))
+      usage |= PIPE_MAP_DIRECTLY;
+
+   /* We cannot provide a direct mapping of tiled resources */
+   if (surf->tiling != ISL_TILING_LINEAR &&
+       (usage & PIPE_MAP_DIRECTLY))
+      return NULL;
+
    bool map_would_stall = false;
 
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
@@ -2009,10 +2023,6 @@ iris_transfer_map(struct pipe_context *ctx,
                              (usage & PIPE_MAP_DIRECTLY))
          return NULL;
    }
-
-   if (surf->tiling != ISL_TILING_LINEAR &&
-       (usage & PIPE_MAP_DIRECTLY))
-      return NULL;
 
    struct iris_transfer *map;
 
@@ -2041,15 +2051,6 @@ iris_transfer_map(struct pipe_context *ctx,
 
    if (usage & PIPE_MAP_WRITE)
       util_range_add(&res->base.b, &res->valid_buffer_range, box->x, box->x + box->width);
-
-   /* Avoid using GPU copies for persistent/coherent buffers, as the idea
-    * there is to access them simultaneously on the CPU & GPU.  This also
-    * avoids trying to use GPU copies for our u_upload_mgr buffers which
-    * contain state we're constructing for a GPU draw call, which would
-    * kill us with infinite stack recursion.
-    */
-   if (usage & (PIPE_MAP_PERSISTENT | PIPE_MAP_COHERENT))
-      usage |= PIPE_MAP_DIRECTLY;
 
    /* GPU copies are not useful for buffer reads.  Instead of stalling to
     * read from the original buffer, we'd simply copy it to a temporary...
