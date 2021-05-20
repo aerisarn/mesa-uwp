@@ -879,12 +879,8 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                 ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
         free(bo_handles);
 
-        if (ret) {
-                if (dev->debug & PAN_DBG_MSGS)
-                        fprintf(stderr, "Error submitting: %m\n");
-
+        if (ret)
                 return errno;
-        }
 
         /* Trace the job if we're doing that */
         if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC)) {
@@ -927,7 +923,9 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
         if (has_draws) {
                 ret = panfrost_batch_submit_ioctl(batch, batch->scoreboard.first_job,
                                                   0, in_sync, has_frag ? 0 : out_sync);
-                assert(!ret);
+
+                if (ret)
+                        goto done;
         }
 
         if (has_frag) {
@@ -942,9 +940,11 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
                 ret = panfrost_batch_submit_ioctl(batch, fragjob,
                                                   PANFROST_JD_REQ_FS, 0,
                                                   out_sync);
-                assert(!ret);
+                if (ret)
+                        goto done;
         }
 
+done:
         if (has_tiler)
                 pthread_mutex_unlock(&dev->submit_lock);
 
@@ -992,7 +992,7 @@ panfrost_batch_submit(struct panfrost_batch *batch,
 
         ret = panfrost_batch_submit_jobs(batch, &fb, in_sync, out_sync);
 
-        if (ret && dev->debug & PAN_DBG_MSGS)
+        if (ret)
                 fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);
 
         /* We must reset the damage info of our render targets here even

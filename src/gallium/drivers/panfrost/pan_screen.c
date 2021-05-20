@@ -58,7 +58,6 @@
 #include "panfrost-quirks.h"
 
 static const struct debug_named_value panfrost_debug_options[] = {
-        {"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
         {"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
         {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"},
         {"dirty",     PAN_DBG_DIRTY,    "Always re-emit all state"},
