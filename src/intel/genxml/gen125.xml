@@ -235,12 +235,6 @@
     <value name="XYZW" value="15"/>
   </enum>
 
-  <struct name="3DSTATE_CLIP_MESH_BODY" length="1">
-    <field name="User Clip Distance Cull Test Enable Bitmask" start="0" end="7" type="uint"/>
-    <field name="User Clip Distance Clip Test Enable Bitmask" start="8" end="15" type="uint"/>
-    <field name="Primitive Header Enable" start="16" end="16" type="uint"/>
-  </struct>
-
   <struct name="3DSTATE_CONSTANT_ALL_DATA" length="2">
     <field name="Constant Buffer Read Length" start="0" end="4" type="uint"/>
     <field name="Pointer To Constant Buffer" start="5" end="63" type="address"/>
@@ -255,104 +249,6 @@
     </group>
   </struct>
 
-  <struct name="3DSTATE_MESH_CONTROL_BODY" length="2">
-    <field name="Maximum Number of ThreadGroups" start="0" end="8" type="uint"/>
-    <field name="Thread Dispatch Priority" start="28" end="28" type="uint">
-      <value name="High" value="1"/>
-    </field>
-    <field name="Fused EU Dispatch" start="29" end="29" type="bool"/>
-    <field name="Statistics Enable" start="30" end="30" type="bool"/>
-    <field name="MeshShader Enable" start="31" end="31" type="uint"/>
-    <field name="Scratch Space Buffer" start="42" end="63" type="uint"/>
-  </struct>
-
-  <struct name="3DSTATE_MESH_DISTRIB_BODY" length="1">
-    <field name="Mesh Distribution Disable" start="0" end="0" type="bool"/>
-    <field name="Task Distribution Disable" start="1" end="1" type="bool"/>
-    <field name="Distribution Mode" start="2" end="2" type="uint" prefix="MESH">
-      <value name="RR_FREE" value="1"/>
-      <value name="RR_STRICT" value="0"/>
-    </field>
-    <field name="Mesh Distribution Batch Size" start="4" end="7" type="uint"/>
-    <field name="Task Distribution Batch Size" start="10" end="13" type="uint"/>
-  </struct>
-
-  <struct name="3DSTATE_MESH_SHADER_BODY" length="7">
-    <field name="Kernel Start Pointer" start="6" end="63" type="offset"/>
-    <field name="Local X Maximum" start="64" end="73" type="uint"/>
-    <field name="Software Exception Enable" start="74" end="74" type="bool"/>
-    <field name="Mask Stack Exception Enable" start="75" end="75" type="bool"/>
-    <field name="Illegal Opcode Exception Enable" start="77" end="77" type="bool"/>
-    <field name="Floating Point Mode" start="80" end="80" type="uint">
-      <value name="IEEE-754" value="0"/>
-      <value name="Alternate" value="1"/>
-    </field>
-    <field name="Single Program Flow" start="82" end="82" type="uint"/>
-    <field name="Denorm Mode" start="83" end="83" type="uint">
-      <value name="Ftz" value="0"/>
-      <value name="SetByKernel" value="1"/>
-    </field>
-    <field name="Number of Threads in GPGPU Thread Group" start="96" end="105" type="uint"/>
-    <field name="Shared Local Memory Size" start="112" end="116" type="uint"/>
-    <field name="Barrier Enable" start="117" end="117" type="bool"/>
-    <field name="Rounding Mode" start="118" end="119" type="uint">
-      <value name="RTNE" value="0"/>
-      <value name="RU" value="1"/>
-      <value name="RD" value="2"/>
-      <value name="RTZ" value="3"/>
-    </field>
-    <field name="Preferred SLM Allocation Size" start="120" end="123" type="uint"/>
-    <field name="Number of Barriers" start="124" end="126" type="uint"/>
-    <field name="Indirect Data Length" start="128" end="144" type="uint"/>
-    <field name="L3 Prefetch Disable" start="145" end="145" type="bool"/>
-    <field name="Emit Local ID X" start="146" end="146" type="bool"/>
-    <field name="Emit Inline Parameter" start="147" end="147" type="bool"/>
-    <field name="Systolic Mode Enable" start="148" end="148" type="bool"/>
-    <field name="Accesses UAV" start="149" end="149" type="bool"/>
-    <field name="XP0 Required" start="150" end="150" type="uint"/>
-    <field name="Message SIMD" start="156" end="157" type="uint">
-      <value name="SIMD8" value="0"/>
-      <value name="SIMD16" value="1"/>
-      <value name="SIMD32" value="2"/>
-    </field>
-    <field name="SIMD Size" start="158" end="159" type="uint">
-      <value name="SIMD8" value="0"/>
-      <value name="SIMD16" value="1"/>
-      <value name="SIMD32" value="2"/>
-    </field>
-    <field name="Execution Mask" start="160" end="191" type="uint"/>
-    <field name="Maximum Primitive Count" start="192" end="201" type="uint"/>
-    <field name="Per-Primitive Data Pitch" start="204" end="208" type="uint"/>
-    <field name="Per-Vertex Data Pitch" start="212" end="216" type="uint"/>
-    <field name="Index Format" start="217" end="219" type="uint" prefix="INDEX">
-      <value name="U888X" value="0"/>
-      <value name="U101010X" value="1"/>
-      <value name="U8" value="4"/>
-      <value name="U16" value="5"/>
-      <value name="U32" value="3"/>
-    </field>
-    <field name="Output Topology" start="220" end="221" type="uint" prefix="OUTPUT">
-      <value name="POINT" value="0"/>
-      <value name="LINE" value="1"/>
-      <value name="TRI" value="2"/>
-    </field>
-    <field name="Per-Primitive Data Present" start="223" end="223" type="uint"/>
-  </struct>
-
-  <struct name="3DSTATE_MESH_SHADER_DATA_BODY" length="9">
-    <field name="Indirect Data Start Address" start="6" end="31" type="offset"/>
-    <group count="8" start="32" size="32">
-      <field name="Inline Data" start="0" end="31" type="uint"/>
-    </group>
-  </struct>
-
-  <struct name="3DSTATE_SBE_MESH_BODY" length="1">
-    <field name="Per-Vertex URB Entry Output Read Length" start="0" end="4" type="uint"/>
-    <field name="Per-Vertex URB Entry Output Read Offset" start="5" end="10" type="uint"/>
-    <field name="Per-Primitive URB Entry Output Read Length" start="11" end="15" type="uint"/>
-    <field name="Per-Primitive URB Entry Output Read Offset" start="16" end="21" type="uint"/>
-  </struct>
-
   <struct name="3DSTATE_SO_BUFFER_INDEX_BODY" length="7">
     <field name="Stream Output Buffer Offset Address Enable" start="20" end="20" type="bool"/>
     <field name="Stream Offset Write Enable" start="21" end="21" type="bool"/>
@@ -362,106 +258,6 @@
     <field name="Surface Size" start="96" end="125" type="uint"/>
     <field name="Stream Output Buffer Offset Address" start="130" end="175" type="address"/>
     <field name="Stream Offset" start="192" end="223" type="uint"/>
-  </struct>
-
-  <struct name="3DSTATE_TASK_CONTROL_BODY" length="2">
-    <field name="Maximum Number of ThreadGroups" start="0" end="8" type="uint"/>
-    <field name="Thread Dispatch Priority" start="28" end="28" type="uint">
-      <value name="High" value="1"/>
-    </field>
-    <field name="Fused EU Dispatch" start="29" end="29" type="bool"/>
-    <field name="Statistics Enable" start="30" end="30" type="bool"/>
-    <field name="TaskShader Enable" start="31" end="31" type="uint"/>
-    <field name="Scratch Space Buffer" start="42" end="63" type="uint"/>
-  </struct>
-
-  <struct name="3DSTATE_TASK_REDISTRIB_BODY" length="1">
-    <field name="Task Redistribution Mode" start="0" end="1" type="uint">
-      <value name="TASKREDISTRIB_OFF" value="0"/>
-      <value name="TASKREDISTRIB_RR_STRICT" value="1"/>
-      <value name="TASKREDISTRIB_RR_FREE" value="2"/>
-    </field>
-    <field name="Task Redistribution Level" start="2" end="3" type="uint">
-      <value name="TASKREDISTRIB_TASK" value="0"/>
-      <value name="TASKREDISTRIB_BOM" value="1"/>
-    </field>
-    <field name="Target Mesh Batch Size" start="4" end="7" type="uint"/>
-    <field name="Small TaskThreshold" start="10" end="12" type="uint"/>
-    <field name="Local BOT Accumulator Threshold" start="16" end="17" type="uint">
-      <value name="MULTIPLIER_0" value="0"/>
-      <value name="MULTIPLIER_1" value="1"/>
-      <value name="MULTIPLIER_2" value="2"/>
-      <value name="MULTIPLIER_4" value="3"/>
-    </field>
-  </struct>
-
-  <struct name="3DSTATE_TASK_SHADER_BODY" length="6">
-    <field name="Kernel Start Pointer" start="6" end="63" type="offset"/>
-    <field name="Local X Maximum" start="64" end="73" type="uint"/>
-    <field name="Software Exception Enable" start="74" end="74" type="bool"/>
-    <field name="Mask Stack Exception Enable" start="75" end="75" type="bool"/>
-    <field name="Illegal Opcode Exception Enable" start="77" end="77" type="bool"/>
-    <field name="Floating Point Mode" start="80" end="80" type="uint">
-      <value name="IEEE-754" value="0"/>
-      <value name="Alternate" value="1"/>
-    </field>
-    <field name="Single Program Flow" start="82" end="82" type="uint"/>
-    <field name="Denorm Mode" start="83" end="83" type="uint">
-      <value name="Ftz" value="0"/>
-      <value name="SetByKernel" value="1"/>
-    </field>
-    <field name="Number of Threads in GPGPU Thread Group" start="96" end="105" type="uint"/>
-    <field name="Shared Local Memory Size" start="112" end="116" type="uint"/>
-    <field name="Barrier Enable" start="117" end="117" type="bool"/>
-    <field name="Rounding Mode" start="118" end="119" type="uint">
-      <value name="RTNE" value="0"/>
-      <value name="RU" value="1"/>
-      <value name="RD" value="2"/>
-      <value name="RTZ" value="3"/>
-    </field>
-    <field name="Preferred SLM Allocation Size" start="120" end="123" type="uint"/>
-    <field name="Number of Barriers" start="124" end="126" type="uint"/>
-    <field name="Indirect Data Length" start="128" end="144" type="uint"/>
-    <field name="L3 Prefetch Disable" start="145" end="145" type="bool"/>
-    <field name="Emit Local ID X" start="146" end="146" type="bool"/>
-    <field name="Emit Inline Parameter" start="147" end="147" type="bool"/>
-    <field name="Systolic Mode Enable" start="148" end="148" type="bool"/>
-    <field name="Accesses UAV" start="149" end="149" type="bool"/>
-    <field name="XP0 Required" start="150" end="150" type="uint"/>
-    <field name="Message SIMD" start="156" end="157" type="uint">
-      <value name="SIMD8" value="0"/>
-      <value name="SIMD16" value="1"/>
-      <value name="SIMD32" value="2"/>
-    </field>
-    <field name="SIMD Size" start="158" end="159" type="uint">
-      <value name="SIMD8" value="0"/>
-      <value name="SIMD16" value="1"/>
-      <value name="SIMD32" value="2"/>
-    </field>
-    <field name="Execution Mask" start="160" end="191" type="uint"/>
-  </struct>
-
-  <struct name="3DSTATE_TASK_SHADER_DATA_BODY" length="9">
-    <field name="Indirect Data Start Address" start="6" end="31" type="offset"/>
-    <group count="8" start="32" size="32">
-      <field name="Inline Data" start="0" end="31" type="uint"/>
-    </group>
-  </struct>
-
-  <struct name="3DSTATE_URB_ALLOC_MESH_BODY" length="2">
-    <field name="MESH URB Entry Allocation Size" start="0" end="9" type="uint"/>
-    <field name="MESH URB Starting Address Slice0" start="10" end="17" type="uint"/>
-    <field name="MESH URB Starting Address SliceN" start="21" end="28" type="uint"/>
-    <field name="MESH Number of URB Entries Slice0" start="32" end="47" type="uint"/>
-    <field name="MESH Number of URB Entries SliceN" start="48" end="63" type="uint"/>
-  </struct>
-
-  <struct name="3DSTATE_URB_ALLOC_TASK_BODY" length="2">
-    <field name="TASK URB Entry Allocation Size" start="0" end="9" type="uint"/>
-    <field name="TASK URB Starting Address Slice0" start="10" end="17" type="uint"/>
-    <field name="TASK URB Starting Address SliceN" start="21" end="28" type="uint"/>
-    <field name="TASK Number of URB Entries Slice0" start="32" end="47" type="uint"/>
-    <field name="TASK Number of URB Entries SliceN" start="48" end="63" type="uint"/>
   </struct>
 
   <struct name="BINDING_TABLE_EDIT_ENTRY" length="1">
@@ -1825,7 +1621,9 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Clip Mesh State Body" start="32" end="63" type="3DSTATE_CLIP_MESH_BODY"/>
+    <field name="User Clip Distance Cull Test Enable Bitmask" start="32" end="39" type="uint"/>
+    <field name="User Clip Distance Clip Test Enable Bitmask" start="40" end="47" type="uint"/>
+    <field name="Primitive Header Enable" start="48" end="48" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_CONSTANT_ALL" bias="2" length="2">
@@ -2329,7 +2127,14 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Mesh Shader Control Body" start="32" end="95" type="3DSTATE_MESH_CONTROL_BODY"/>
+    <field name="Maximum Number of ThreadGroups" start="32" end="40" type="uint"/>
+    <field name="Thread Dispatch Priority" start="60" end="60" type="uint">
+      <value name="High" value="1"/>
+    </field>
+    <field name="Fused EU Dispatch" start="61" end="61" type="bool"/>
+    <field name="Statistics Enable" start="62" end="62" type="bool"/>
+    <field name="MeshShader Enable" start="63" end="63" type="uint"/>
+    <field name="Scratch Space Buffer" start="74" end="95" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_MESH_DISTRIB" bias="2" length="2">
@@ -2338,7 +2143,14 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Mesh Shader Distrib Body" start="32" end="63" type="3DSTATE_MESH_DISTRIB_BODY"/>
+    <field name="Mesh Distribution Disable" start="32" end="32" type="bool"/>
+    <field name="Task Distribution Disable" start="33" end="33" type="bool"/>
+    <field name="Distribution Mode" start="34" end="34" type="uint" prefix="MESH">
+      <value name="RR_FREE" value="1"/>
+      <value name="RR_STRICT" value="0"/>
+    </field>
+    <field name="Mesh Distribution Batch Size" start="36" end="39" type="uint"/>
+    <field name="Task Distribution Batch Size" start="42" end="45" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_MESH_SHADER" bias="2" length="8">
@@ -2347,7 +2159,65 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Mesh Shader Body" start="32" end="255" type="3DSTATE_MESH_SHADER_BODY"/>
+    <field name="Kernel Start Pointer" start="38" end="95" type="offset"/>
+    <field name="Local X Maximum" start="96" end="105" type="uint"/>
+    <field name="Software Exception Enable" start="106" end="106" type="bool"/>
+    <field name="Mask Stack Exception Enable" start="107" end="107" type="bool"/>
+    <field name="Illegal Opcode Exception Enable" start="109" end="109" type="bool"/>
+    <field name="Floating Point Mode" start="112" end="112" type="uint">
+      <value name="IEEE-754" value="0"/>
+      <value name="Alternate" value="1"/>
+    </field>
+    <field name="Single Program Flow" start="114" end="114" type="uint"/>
+    <field name="Denorm Mode" start="115" end="115" type="uint">
+      <value name="Ftz" value="0"/>
+      <value name="SetByKernel" value="1"/>
+    </field>
+    <field name="Number of Threads in GPGPU Thread Group" start="128" end="137" type="uint"/>
+    <field name="Shared Local Memory Size" start="144" end="148" type="uint"/>
+    <field name="Barrier Enable" start="149" end="149" type="bool"/>
+    <field name="Rounding Mode" start="150" end="151" type="uint">
+      <value name="RTNE" value="0"/>
+      <value name="RU" value="1"/>
+      <value name="RD" value="2"/>
+      <value name="RTZ" value="3"/>
+    </field>
+    <field name="Preferred SLM Allocation Size" start="152" end="155" type="uint"/>
+    <field name="Number of Barriers" start="156" end="158" type="uint"/>
+    <field name="Indirect Data Length" start="160" end="176" type="uint"/>
+    <field name="L3 Prefetch Disable" start="177" end="177" type="bool"/>
+    <field name="Emit Local ID X" start="178" end="178" type="bool"/>
+    <field name="Emit Inline Parameter" start="179" end="179" type="bool"/>
+    <field name="Systolic Mode Enable" start="180" end="180" type="bool"/>
+    <field name="Accesses UAV" start="181" end="181" type="bool"/>
+    <field name="XP0 Required" start="182" end="182" type="uint"/>
+    <field name="Message SIMD" start="188" end="189" type="uint">
+      <value name="SIMD8" value="0"/>
+      <value name="SIMD16" value="1"/>
+      <value name="SIMD32" value="2"/>
+    </field>
+    <field name="SIMD Size" start="190" end="191" type="uint">
+      <value name="SIMD8" value="0"/>
+      <value name="SIMD16" value="1"/>
+      <value name="SIMD32" value="2"/>
+    </field>
+    <field name="Execution Mask" start="192" end="223" type="uint"/>
+    <field name="Maximum Primitive Count" start="224" end="233" type="uint"/>
+    <field name="Per-Primitive Data Pitch" start="236" end="240" type="uint"/>
+    <field name="Per-Vertex Data Pitch" start="244" end="248" type="uint"/>
+    <field name="Index Format" start="249" end="251" type="uint" prefix="INDEX">
+      <value name="U888X" value="0"/>
+      <value name="U101010X" value="1"/>
+      <value name="U8" value="4"/>
+      <value name="U16" value="5"/>
+      <value name="U32" value="3"/>
+    </field>
+    <field name="Output Topology" start="252" end="253" type="uint" prefix="OUTPUT">
+      <value name="POINT" value="0"/>
+      <value name="LINE" value="1"/>
+      <value name="TRI" value="2"/>
+    </field>
+    <field name="Per-Primitive Data Present" start="255" end="255" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_MESH_SHADER_DATA" bias="2" length="10">
@@ -2356,7 +2226,10 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Mesh Shader Data Body" start="32" end="319" type="3DSTATE_MESH_SHADER_DATA_BODY"/>
+    <field name="Indirect Data Start Address" start="38" end="63" type="offset"/>
+    <group count="8" start="64" size="32">
+      <field name="Inline Data" start="0" end="31" type="uint"/>
+    </group>
   </instruction>
 
   <instruction name="3DSTATE_MONOFILTER_SIZE" bias="2" length="2" engine="render">
@@ -2856,7 +2729,10 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="SBE Mesh State Body" start="32" end="63" type="3DSTATE_SBE_MESH_BODY"/>
+    <field name="Per-Vertex URB Entry Output Read Length" start="32" end="36" type="uint"/>
+    <field name="Per-Vertex URB Entry Output Read Offset" start="37" end="42" type="uint"/>
+    <field name="Per-Primitive URB Entry Output Read Length" start="43" end="47" type="uint"/>
+    <field name="Per-Primitive URB Entry Output Read Offset" start="48" end="53" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_SBE_SWIZ" bias="2" length="11" engine="render">
@@ -3108,7 +2984,14 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Task Shader Control Body" start="32" end="95" type="3DSTATE_TASK_CONTROL_BODY"/>
+    <field name="Maximum Number of ThreadGroups" start="32" end="32" type="uint"/>
+    <field name="Thread Dispatch Priority" start="60" end="60" type="uint">
+      <value name="High" value="1"/>
+    </field>
+    <field name="Fused EU Dispatch" start="61" end="61" type="bool"/>
+    <field name="Statistics Enable" start="62" end="62" type="bool"/>
+    <field name="TaskShader Enable" start="63" end="63" type="uint"/>
+    <field name="Scratch Space Buffer" start="74" end="95" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_TASK_REDISTRIB" bias="2" length="2">
@@ -3117,7 +3000,23 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Task Shader Redistrib Body" start="32" end="63" type="3DSTATE_TASK_REDISTRIB_BODY"/>
+    <field name="Task Redistribution Mode" start="32" end="33" type="uint">
+      <value name="TASKREDISTRIB_OFF" value="0"/>
+      <value name="TASKREDISTRIB_RR_STRICT" value="1"/>
+      <value name="TASKREDISTRIB_RR_FREE" value="2"/>
+    </field>
+    <field name="Task Redistribution Level" start="34" end="35" type="uint">
+      <value name="TASKREDISTRIB_TASK" value="0"/>
+      <value name="TASKREDISTRIB_BOM" value="1"/>
+    </field>
+    <field name="Target Mesh Batch Size" start="36" end="39" type="uint"/>
+    <field name="Small TaskThreshold" start="42" end="44" type="uint"/>
+    <field name="Local BOT Accumulator Threshold" start="48" end="49" type="uint">
+      <value name="MULTIPLIER_0" value="0"/>
+      <value name="MULTIPLIER_1" value="1"/>
+      <value name="MULTIPLIER_2" value="2"/>
+      <value name="MULTIPLIER_4" value="3"/>
+    </field>
   </instruction>
 
   <instruction name="3DSTATE_TASK_SHADER" bias="2" length="7">
@@ -3126,7 +3025,49 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Task Shader Body" start="32" end="223" type="3DSTATE_TASK_SHADER_BODY"/>
+    <field name="Kernel Start Pointer" start="38" end="95" type="offset"/>
+    <field name="Local X Maximum" start="96" end="105" type="uint"/>
+    <field name="Software Exception Enable" start="106" end="106" type="bool"/>
+    <field name="Mask Stack Exception Enable" start="107" end="107" type="bool"/>
+    <field name="Illegal Opcode Exception Enable" start="109" end="109" type="bool"/>
+    <field name="Floating Point Mode" start="112" end="112" type="uint">
+      <value name="IEEE-754" value="0"/>
+      <value name="Alternate" value="1"/>
+    </field>
+    <field name="Single Program Flow" start="114" end="114" type="uint"/>
+    <field name="Denorm Mode" start="115" end="115" type="uint">
+      <value name="Ftz" value="0"/>
+      <value name="SetByKernel" value="1"/>
+    </field>
+    <field name="Number of Threads in GPGPU Thread Group" start="128" end="137" type="uint"/>
+    <field name="Shared Local Memory Size" start="144" end="148" type="uint"/>
+    <field name="Barrier Enable" start="149" end="149" type="bool"/>
+    <field name="Rounding Mode" start="150" end="151" type="uint">
+      <value name="RTNE" value="0"/>
+      <value name="RU" value="1"/>
+      <value name="RD" value="2"/>
+      <value name="RTZ" value="3"/>
+    </field>
+    <field name="Preferred SLM Allocation Size" start="152" end="155" type="uint"/>
+    <field name="Number of Barriers" start="156" end="158" type="uint"/>
+    <field name="Indirect Data Length" start="160" end="176" type="uint"/>
+    <field name="L3 Prefetch Disable" start="177" end="177" type="bool"/>
+    <field name="Emit Local ID X" start="178" end="178" type="bool"/>
+    <field name="Emit Inline Parameter" start="179" end="179" type="bool"/>
+    <field name="Systolic Mode Enable" start="180" end="180" type="bool"/>
+    <field name="Accesses UAV" start="181" end="181" type="bool"/>
+    <field name="XP0 Required" start="182" end="182" type="uint"/>
+    <field name="Message SIMD" start="188" end="189" type="uint">
+      <value name="SIMD8" value="0"/>
+      <value name="SIMD16" value="1"/>
+      <value name="SIMD32" value="2"/>
+    </field>
+    <field name="SIMD Size" start="190" end="191" type="uint">
+      <value name="SIMD8" value="0"/>
+      <value name="SIMD16" value="1"/>
+      <value name="SIMD32" value="2"/>
+    </field>
+    <field name="Execution Mask" start="192" end="223" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_TASK_SHADER_DATA" bias="2" length="10">
@@ -3135,7 +3076,10 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Task Shader Data Body" start="32" end="319" type="3DSTATE_TASK_SHADER_DATA_BODY"/>
+    <field name="Indirect Data Start Address" start="38" end="63" type="offset"/>
+    <group count="8" start="64" size="32">
+      <field name="Inline Data" start="0" end="31" type="uint"/>
+    </group>
   </instruction>
 
   <instruction name="3DSTATE_TE" bias="2" length="4" engine="render">
@@ -3212,7 +3156,11 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="URB Alloc MESH State Body" start="32" end="95" type="3DSTATE_URB_ALLOC_MESH_BODY"/>
+    <field name="MESH URB Entry Allocation Size" start="32" end="41" type="uint"/>
+    <field name="MESH URB Starting Address Slice0" start="42" end="49" type="uint"/>
+    <field name="MESH URB Starting Address SliceN" start="53" end="60" type="uint"/>
+    <field name="MESH Number of URB Entries Slice0" start="64" end="79" type="uint"/>
+    <field name="MESH Number of URB Entries SliceN" start="80" end="95" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_URB_ALLOC_TASK" bias="2" length="3">
@@ -3221,7 +3169,11 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="URB Alloc TASK State Body" start="32" end="95" type="3DSTATE_URB_ALLOC_TASK_BODY"/>
+    <field name="TASK URB Entry Allocation Size" start="32" end="41" type="uint"/>
+    <field name="TASK URB Starting Address Slice0" start="42" end="49" type="uint"/>
+    <field name="TASK URB Starting Address SliceN" start="53" end="60" type="uint"/>
+    <field name="TASK Number of URB Entries Slice0" start="64" end="79" type="uint"/>
+    <field name="TASK Number of URB Entries SliceN" start="80" end="95" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_URB_CLEAR" bias="2" length="2" engine="render">
