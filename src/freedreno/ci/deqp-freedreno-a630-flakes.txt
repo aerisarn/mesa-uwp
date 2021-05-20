@@ -79,11 +79,6 @@ dEQP-VK.wsi.display.get_display_plane_capabilities
 # Undiagnosed flakes appearing more than once in the last 2 months as
 # of 2020-08-19, in descending order of frequency.
 dEQP-GLES3.functional.fragment_out.random.39
-dEQP-VK.subgroups.shuffle.framebuffer.subgroupshufflexor_bvec3_tess_eval
 dEQP-VK.image.texel_view_compatible.graphic.extended.2d_image.texture_read.astc_10x6_unorm_block.r32g32b32a32_uint
-dEQP-VK.api.copy_and_blit.dedicated_allocation.blit_image.all_formats.generate_mipmaps.from_base_level.layercount_6.r8g8b8a8_sint.general_optimal_nearest
-dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r16_unorm.b8g8r8a8_snorm.optimal_optimal_nearest
 dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
-dEQP-VK.subgroups.quad.framebuffer.subgroupquadswapvertical_ivec2_tess_eval
-dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_snorm.r32_sfloat.general_optimal_nearest
 dEQP-GLES31.functional.tessellation.invariance.primitive_set.quads_equal_spacing_cw
