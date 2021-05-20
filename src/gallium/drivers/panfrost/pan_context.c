@@ -213,15 +213,14 @@ pan_emit_draw_descs(struct panfrost_batch *batch,
         d->samplers = batch->samplers[st];
 }
 
-static enum mali_index_type
+static inline enum mali_index_type
 panfrost_translate_index_size(unsigned size)
 {
-        switch (size) {
-        case 1: return MALI_INDEX_TYPE_UINT8;
-        case 2: return MALI_INDEX_TYPE_UINT16;
-        case 4: return MALI_INDEX_TYPE_UINT32;
-        default: unreachable("Invalid index size");
-        }
+        STATIC_ASSERT(MALI_INDEX_TYPE_NONE  == 0);
+        STATIC_ASSERT(MALI_INDEX_TYPE_UINT8  == 1);
+        STATIC_ASSERT(MALI_INDEX_TYPE_UINT16 == 2);
+
+        return (size == 4) ? MALI_INDEX_TYPE_UINT32 : size;
 }
 
 static void
@@ -400,8 +399,9 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.job_task_split = 6;
 
                 cfg.index_count = ctx->indirect_draw ? 1 : draw->count;
-                if (info->index_size) {
-                        cfg.index_type = panfrost_translate_index_size(info->index_size);
+                cfg.index_type = panfrost_translate_index_size(info->index_size);
+
+                if (cfg.index_type) {
                         cfg.indices = indices;
                         cfg.base_vertex_offset = draw->index_bias - ctx->offset_start;
                 }
