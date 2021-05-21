@@ -1,7 +1,7 @@
 panfrost-t720-gles2:arm64:
   extends:
     - .lava-test:arm64
-    - .panfrost-rules
+    - .panfrost-midgard-rules
   variables:
     DEVICE_TYPE: sun50i-h6-pine-h64
     DTB: ${DEVICE_TYPE}
@@ -13,7 +13,7 @@ panfrost-t720-gles2:arm64:
 panfrost-t760-gles2:armhf:
   extends:
     - .lava-test:armhf
-    - .panfrost-rules
+    - .panfrost-midgard-rules
   variables:
     DEVICE_TYPE: rk3288-veyron-jaq
     DTB: ${DEVICE_TYPE}
@@ -27,7 +27,7 @@ panfrost-t760-gles2:armhf:
 panfrost-t760-traces:armhf:
   extends:
     - .lava-piglit-traces:armhf
-    - .panfrost-rules
+    - .panfrost-midgard-rules
   variables:
     DEVICE_TYPE: rk3288-veyron-jaq
     DTB: ${DEVICE_TYPE}
@@ -41,7 +41,7 @@ panfrost-t760-traces:armhf:
 
 .lava-rk3399-gru-kevin:
   extends:
-    - .panfrost-rules
+    - .panfrost-midgard-rules
   variables:
     DEVICE_TYPE: rk3399-gru-kevin
     DTB: ${DEVICE_TYPE}
@@ -85,7 +85,7 @@ panfrost-t860-traces:arm64:
 
 .lava-meson-g12b-a311d-khadas-vim3:
   extends:
-    - .panfrost-rules
+    - .panfrost-bifrost-rules
   variables:
     DEVICE_TYPE: meson-g12b-a311d-khadas-vim3
     DTB: ${DEVICE_TYPE}
@@ -119,7 +119,7 @@ panfrost-g52-gles31:arm64:
 
 .lava-acer-mt8183-cp311-3h-jacuzzi:
   extends:
-    - .panfrost-rules
+    - .panfrost-bifrost-rules
   variables:
     DEVICE_TYPE: acer-mt8183-cp311-3h-jacuzzi
     DTB: mt8183-kukui-jacuzzi-juniper-sku16
@@ -156,7 +156,7 @@ panfrost-g52-gles31:arm64:
 .panfrost-t820-gles2:arm64:
   extends:
     - .lava-test:arm64
-    - .panfrost-rules
+    - .panfrost-midgard-rules
   variables:
     DEVICE_TYPE: meson-gxm-khadas-vim2
     DTB: ${DEVICE_TYPE}

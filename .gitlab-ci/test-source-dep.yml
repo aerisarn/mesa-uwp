@@ -167,7 +167,32 @@
       when: on_success
     - when: never
 
-.panfrost-rules:
+.panfrost-midgard-rules:
+  stage: arm
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes: &panfrost_gallium_file_list
+      - src/gallium/drivers/panfrost/**/*
+      - src/gallium/winsys/panfrost/**/*
+      when: on_success
+    - changes: &panfrost_common_file_list
+      - src/panfrost/include/*
+      - src/panfrost/lib/*
+      - src/panfrost/shared/*
+      - src/panfrost/util/*
+      when: on_success
+    - changes:
+      - src/panfrost/midgard/**/*
+      when: on_success
+    - when: never
+
+.panfrost-bifrost-rules:
   stage: arm
   rules:
     - *ignore_scheduled_pipelines
@@ -178,9 +203,13 @@
         *gallium_core_file_list
       when: on_success
     - changes:
-      - src/gallium/drivers/panfrost/**/*
-      - src/gallium/winsys/panfrost/**/*
-      - src/panfrost/**/*
+        *panfrost_common_file_list
+      when: on_success
+    - changes:
+        *panfrost_gallium_file_list
+      when: on_success
+    - changes:
+      - src/panfrost/bifrost/**/*
       when: on_success
     - when: never
 
