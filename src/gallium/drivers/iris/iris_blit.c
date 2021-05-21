@@ -752,7 +752,8 @@ iris_resource_copy_region(struct pipe_context *ctx,
 
    /* Use MI_COPY_MEM_MEM for tiny (<= 16 byte, % 4) buffer copies. */
    if (p_src->target == PIPE_BUFFER && p_dst->target == PIPE_BUFFER &&
-       (src_box->width % 4 == 0) && src_box->width <= 16) {
+       dstx % 4 == 0 && src_box->x % 4 == 0 &&
+       src_box->width % 4 == 0 && src_box->width <= 16) {
       struct iris_bo *dst_bo = iris_resource_bo(p_dst);
       batch = get_preferred_batch(ice, dst_bo);
       iris_batch_maybe_flush(batch, 24 + 5 * (src_box->width / 4));
