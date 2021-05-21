@@ -961,7 +961,7 @@ wsi_common_queue_present(const struct wsi_device *wsi,
             goto fail_present;
          }
          for (uint32_t s = 0; s < pPresentInfo->waitSemaphoreCount; s++)
-            stage_flags[s] = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+            stage_flags[s] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
          submit_info.pWaitDstStageMask = stage_flags;
       }
