@@ -119,14 +119,18 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    void *dst;
    unsigned ib_offset;
 
-   /* indirect emulated prims is not possible, as we need to know
-    * draw start/count, so we must emulate.  Too bad, so sad, but
-    * we are already off the fast-path here.
-    */
    if (indirect && indirect->buffer) {
-      /* num_draws is only applicable for direct draws: */
-      assert(num_draws == 1);
-      util_draw_indirect(pc->pipe, info, indirect);
+      /* this is stupid, but we're already doing a readback,
+       * so this thing may as well get the rest of the job done
+       */
+      unsigned draw_count = 0;
+      struct u_indirect_params *new_draws = util_draw_indirect_read(pc->pipe, info, indirect, &draw_count);
+      if (!new_draws)
+         return;
+
+      for (unsigned i = 0; i < draw_count; i++)
+         util_primconvert_draw_vbo(pc, &new_draws[i].info, drawid_offset + i, NULL, &new_draws[i].draw, 1);
+      free(new_draws);
       return;
    }
 
