@@ -254,8 +254,8 @@ IRC
 
 In order to make things a bit easier to follow, we have decided to create our
 own IRC channel. If you're interested in contributing, or have any technical
-questions, don't hesitate to visit `#zink on FreeNode
-<irc://irc.freenode.net/zink>`_ and say hi!
+questions, don't hesitate to visit `#zink on OFTC
+<irc://irc.oftc.net/zink>`__ and say hi!
 
 
 .. _VK_KHR_maintenance1: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_maintenance1.html
