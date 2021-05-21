@@ -92,6 +92,8 @@ u_index_size_convert(unsigned index_size)
    return (index_size == 4) ? 4 : 2;
 }
 
+unsigned
+u_index_count_converted_indices(unsigned hw_mask, bool pv_matches, enum pipe_prim_type prim, unsigned nr);
 
 /**
  * For indexed drawing, this function determines what kind of primitive
