@@ -243,6 +243,16 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.feats.features.samplerAnisotropy;
    case PIPE_CAP_EMULATE_NONFIXED_PRIMITIVE_RESTART:
       return 1;
+   case PIPE_CAP_SUPPORTED_PRIM_MODES_WITH_RESTART: {
+      uint32_t modes = BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
+                       BITFIELD_BIT(PIPE_PRIM_LINE_STRIP_ADJACENCY) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY) |
+                       BITFIELD_BIT(PIPE_PRIM_PATCHES);
+      if (screen->have_triangle_fans)
+         modes |= BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN);
+      return modes;
+   }
    case PIPE_CAP_SUPPORTED_PRIM_MODES: {
       uint32_t modes = BITFIELD_MASK(PIPE_PRIM_MAX);
       modes &= ~BITFIELD_BIT(PIPE_PRIM_QUADS);

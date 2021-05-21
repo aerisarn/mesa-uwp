@@ -235,12 +235,6 @@ line_width_needed(enum pipe_prim_type reduced_prim,
    }
 }
 
-static inline bool
-restart_supported(enum pipe_prim_type mode)
-{
-    return mode == PIPE_PRIM_LINE_STRIP || mode == PIPE_PRIM_TRIANGLE_STRIP || mode == PIPE_PRIM_TRIANGLE_FAN;
-}
-
 ALWAYS_INLINE static void
 update_drawid(struct zink_context *ctx, unsigned draw_id)
 {
@@ -422,10 +416,6 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    update_barriers(ctx, false);
 
-   if (dinfo->primitive_restart && !restart_supported(dinfo->mode)) {
-       util_draw_vbo_without_prim_restart(pctx, dinfo, drawid_offset, dindirect, &draws[0]);
-       return;
-   }
    if (ctx->gfx_pipeline_state.vertices_per_patch != dinfo->vertices_per_patch)
       ctx->gfx_pipeline_state.dirty = true;
    bool drawid_broken = ctx->drawid_broken;
