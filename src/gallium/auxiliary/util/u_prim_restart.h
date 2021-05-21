@@ -53,6 +53,15 @@ util_translate_prim_restart_ib(struct pipe_context *context,
                                const struct pipe_draw_start_count_bias *draw,
                                struct pipe_resource **dst_buffer);
 
+struct pipe_draw_start_count_bias *
+util_prim_restart_convert_to_direct(const void *index_map,
+                                    const struct pipe_draw_info *info,
+                                    const struct pipe_draw_start_count_bias *draw,
+                                    unsigned *num_draws,
+                                    unsigned *min_index,
+                                    unsigned *max_index,
+                                    unsigned *total_index_count);
+
 enum pipe_error
 util_draw_vbo_without_prim_restart(struct pipe_context *context,
                                    const struct pipe_draw_info *info,
