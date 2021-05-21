@@ -347,9 +347,8 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 1024; /* arbitrary */
 
         case PIPE_SHADER_CAP_MAX_INPUTS:
-                /* Hardware limit is 4095 but we have driver internal inputs */
-                STATIC_ASSERT(PIPE_MAX_ATTRIBS < (0x1000 - 16));
-                return PIPE_MAX_ATTRIBS;
+                /* Used as ABI on Midgard */
+                return 16;
 
         case PIPE_SHADER_CAP_MAX_OUTPUTS:
                 return shader == PIPE_SHADER_FRAGMENT ? 8 : PIPE_MAX_ATTRIBS;
