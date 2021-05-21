@@ -101,7 +101,6 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    bs->submit_count++;
    bs->fence.batch_id = 0;
    bs->usage.usage = 0;
-   bs->draw_count = bs->compute_count = 0;
 }
 
 void
@@ -565,6 +564,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
       if (_mesa_hash_table_num_entries(&ctx->batch_states) > 50)
          ctx->oom_flush = true;
    }
+   batch->work_count = 0;
 
    if (screen->device_lost)
       return;

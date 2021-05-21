@@ -420,7 +420,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    bool mode_changed = ctx->gfx_pipeline_state.mode != dinfo->mode;
    bool reads_drawid = ctx->shader_reads_drawid;
    bool reads_basevertex = ctx->shader_reads_basevertex;
-   unsigned draw_count = ctx->batch.state->draw_count;
+   unsigned work_count = ctx->batch.work_count;
    enum pipe_prim_type mode = dinfo->mode;
 
    update_barriers(ctx, false);
@@ -690,7 +690,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
 
    bool needs_drawid = reads_drawid && ctx->drawid_broken;
-   draw_count += num_draws;
+   work_count += num_draws;
    if (index_size > 0) {
       if (dindirect && dindirect->buffer) {
          assert(num_draws == 1);
@@ -752,10 +752,9 @@ zink_draw_vbo(struct pipe_context *pctx,
       screen->vk.CmdEndTransformFeedbackEXT(batch->state->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
    batch->has_work = true;
-   ctx->batch.state->draw_count = draw_count;
+   ctx->batch.work_count = work_count;
    /* flush if there's >100k draws */
-   if (unlikely(ctx->batch.state->resource_size >= screen->total_video_mem / 2 ||
-                draw_count >= 100000))
+   if (unlikely(work_count >= 100000))
       pctx->flush(pctx, NULL, PIPE_FLUSH_ASYNC);
 }
 
@@ -800,7 +799,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
                          offsetof(struct zink_cs_push_constant, work_dim), sizeof(uint32_t),
                          &info->work_dim);
 
-   batch->state->compute_count++;
+   batch->work_count++;
    if (info->indirect) {
       vkCmdDispatchIndirect(batch->state->cmdbuf, zink_resource(info->indirect)->obj->buffer, info->indirect_offset);
       zink_batch_reference_resource_rw(batch, zink_resource(info->indirect), false);
@@ -808,8 +807,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
       vkCmdDispatch(batch->state->cmdbuf, info->grid[0], info->grid[1], info->grid[2]);
    batch->has_work = true;
    /* flush if there's >100k computes */
-   if (unlikely(ctx->batch.state->resource_size >= zink_screen(ctx->base.screen)->total_video_mem / 2 ||
-                ctx->batch.state->compute_count >= 100000))
+   if (unlikely(ctx->batch.work_count >= 100000))
       pctx->flush(pctx, NULL, PIPE_FLUSH_ASYNC);
 }
 

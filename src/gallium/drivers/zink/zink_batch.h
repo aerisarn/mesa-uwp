@@ -63,7 +63,6 @@ batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr);
 struct zink_batch_state {
    struct zink_fence fence;
    struct pipe_reference reference;
-   unsigned draw_count;
 
    struct zink_batch_usage usage;
    struct zink_context *ctx;
@@ -75,7 +74,6 @@ struct zink_batch_state {
    VkSemaphore sem;
 
    struct util_queue_fence flush_completed;
-   unsigned compute_count;
 
    struct pipe_resource *flush_res;
 
@@ -108,6 +106,8 @@ struct zink_batch {
    struct zink_batch_state *state;
 
    struct zink_batch_usage *last_batch_usage;
+
+   unsigned work_count;
 
    bool has_work;
    bool in_rp; //renderpass is currently active
