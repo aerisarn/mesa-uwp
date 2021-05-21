@@ -1600,7 +1600,8 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
    */
 
    u_upload_unmap(pipe->stream_uploader);
-   u_vbuf_set_driver_vertex_buffers(mgr);
+   if (mgr->dirty_real_vb_mask)
+      u_vbuf_set_driver_vertex_buffers(mgr);
 
    pipe->draw_vbo(pipe, &new_info, drawid_offset, indirect, &new_draw, 1);
 
