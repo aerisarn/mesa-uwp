@@ -140,7 +140,7 @@ u_index_translator(unsigned hw_mask,
    u_index_init();
 
    in_idx = in_size_idx(in_index_size);
-   *out_index_size = (in_index_size == 4) ? 4 : 2;
+   *out_index_size = u_index_size_convert(in_index_size);
    out_idx = out_size_idx(*out_index_size);
 
    if ((hw_mask & (1<<prim)) &&

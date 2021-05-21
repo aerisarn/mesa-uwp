@@ -86,6 +86,12 @@ void u_index_init( void );
 enum pipe_prim_type
 u_index_prim_type_convert(unsigned hw_mask, enum pipe_prim_type prim);
 
+static inline unsigned
+u_index_size_convert(unsigned index_size)
+{
+   return (index_size == 4) ? 4 : 2;
+}
+
 
 /**
  * For indexed drawing, this function determines what kind of primitive
