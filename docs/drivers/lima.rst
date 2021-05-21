@@ -234,7 +234,7 @@ seems to be the bottleneck would also be helpful).
 Communication channels
 ----------------------
 
-- `#lima channel <irc://chat.freenode.net#lima>`__ on `irc.freenode.net <https://webchat.freenode.net/>`__
+- `#lima channel <irc://irc.oftc.net/lima>`__ on `irc.oftc.net <https://webchat.oftc.net/>`__
 - `lima mailing list <https://lists.freedesktop.org/mailman/listinfo/lima>`__
 - `dri-devel mailing list <https://lists.freedesktop.org/mailman/listinfo/dri-devel>`__
 
