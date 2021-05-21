@@ -78,6 +78,7 @@ struct radeon_info {
    bool has_zero_index_buffer_bug;
    bool has_image_load_dcc_bug;
    bool has_two_planes_iterate256_bug;
+   bool has_vgt_flush_ngg_legacy_bug;
    bool has_32bit_predication;
    bool has_3d_cube_border_color_mipmap;
 

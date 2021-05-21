@@ -892,6 +892,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     */
    info->has_two_planes_iterate256_bug = info->chip_class == GFX10;
 
+   /* GE has a bug when a legacy GS draw follows an NGG draw and it requires
+    * a VGT_FLUSH to fix that.
+    */
+   info->has_vgt_flush_ngg_legacy_bug = info->chip_class == GFX10 ||
+                                        info->family == CHIP_SIENNA_CICHLID;
+
    /* Support for GFX10.3 was added with F32_ME_FEATURE_VERSION_31 but the
     * firmware version wasn't bumped.
     */
