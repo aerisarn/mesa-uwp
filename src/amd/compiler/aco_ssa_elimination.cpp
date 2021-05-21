@@ -294,17 +294,17 @@ void eliminate_useless_exec_writes_in_block(ssa_elimination_ctx& ctx, Block& blo
    if (!ctx.logical_phi_info[block.index].empty()) {
       exec_write_used = true;
    } else {
-      bool will_insert_exec_copy = false;
-      bool will_inserted_exec_copy_need_exec = false;
+      bool copy_to_exec = false;
+      bool copy_from_exec = false;
 
       for (const auto& successor_phi_info : ctx.linear_phi_info[block.index]) {
-         if (successor_phi_info.def.physReg() == exec)
-            will_insert_exec_copy = true;
-         if (successor_phi_info.op.physReg() == exec)
-            will_inserted_exec_copy_need_exec = true;
+         copy_to_exec |= successor_phi_info.def.physReg() == exec;
+         copy_from_exec |= successor_phi_info.op.physReg() == exec;
       }
 
-      if (will_insert_exec_copy && !will_inserted_exec_copy_need_exec)
+      if (copy_from_exec)
+         exec_write_used = true;
+      else if (copy_to_exec)
          exec_write_used = false;
       else
          /* blocks_incoming_exec_used is initialized to true, so this is correct even for loops. */
