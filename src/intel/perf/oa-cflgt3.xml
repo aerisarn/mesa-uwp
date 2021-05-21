@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<metrics version="1609843831" merge_md5="">
-  <set name="Render Metrics Basic Gen9"
+<metrics version="1619078711" merge_md5="">
+  <set name="Render Metrics Basic set"
        chipset="CFLGT3"
        symbol_name="RenderBasic"
        underscore_name="render_basic"
@@ -825,7 +825,7 @@
     </register_config>
   </set>
 
-  <set name="Compute Metrics Basic Gen9"
+  <set name="Compute Metrics Basic set"
        chipset="CFLGT3"
        symbol_name="ComputeBasic"
        underscore_name="compute_basic"
@@ -1456,7 +1456,7 @@
     </register_config>
   </set>
 
-  <set name="Render Metrics for 3D Pipeline Profile Gen9"
+  <set name="Render Metrics set for 3D Pipeline Profile"
        chipset="CFLGT3"
        symbol_name="RenderPipeProfile"
        underscore_name="render_pipe_profile"
@@ -2201,7 +2201,7 @@
     </register_config>
   </set>
 
-  <set name="Memory Reads Distribution Gen9"
+  <set name="Memory Reads Distribution metrics set"
        chipset="CFLGT3"
        symbol_name="MemoryReads"
        underscore_name="memory_reads"
@@ -2841,7 +2841,7 @@
     </register_config>
   </set>
 
-  <set name="Memory Writes Distribution Gen9"
+  <set name="Memory Writes Distribution metrics set"
        chipset="CFLGT3"
        symbol_name="MemoryWrites"
        underscore_name="memory_writes"
@@ -3482,7 +3482,7 @@
     </register_config>
   </set>
 
-  <set name="Compute Metrics Extended Gen9"
+  <set name="Compute Metrics Extended metrics set"
        chipset="CFLGT3"
        symbol_name="ComputeExtended"
        underscore_name="compute_extended"
@@ -4103,7 +4103,7 @@
     </register_config>
   </set>
 
-  <set name="Compute Metrics L3 Cache Gen9"
+  <set name="Compute Metrics L3 Cache metrics set"
        chipset="CFLGT3"
        symbol_name="ComputeL3Cache"
        underscore_name="compute_l3_cache"
@@ -10046,7 +10046,7 @@
     </register_config>
   </set>
 
-  <set name="Compute Metrics Extra Gen9"
+  <set name="Compute Metrics Extra set"
        chipset="CFLGT3"
        symbol_name="ComputeExtra"
        underscore_name="compute_extra"
@@ -10194,7 +10194,7 @@
     </register_config>
   </set>
 
-  <set name="Media Vme Pipe Gen9"
+  <set name="Media Vme Pipe metrics set"
        chipset="CFLGT3"
        symbol_name="VMEPipe"
        underscore_name="vme_pipe"
@@ -10438,7 +10438,7 @@
     </register_config>
   </set>
 
-  <set name="Gpu Rings Busyness"
+  <set name="Gpu Rings Busyness metrics set"
        chipset="CFLGT3"
        symbol_name="GpuBusyness"
        underscore_name="gpu_busyness"
@@ -10624,7 +10624,7 @@
     </register_config>
   </set>
 
-  <set name="MDAPI testing set Gen9"
+  <set name="MDAPI testing set"
        chipset="CFLGT3"
        symbol_name="TestOa"
        underscore_name="test_oa"
@@ -10933,7 +10933,7 @@
     </register_config>
   </set>
 
-  <set name="AsyncCompute"
+  <set name="AsyncCompute metrics set"
        chipset="CFLGT3"
        symbol_name="AsyncCompute"
        underscore_name="async_compute"
