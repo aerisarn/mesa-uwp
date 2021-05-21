@@ -426,15 +426,6 @@ zink_draw_vbo(struct pipe_context *pctx,
        util_draw_vbo_without_prim_restart(pctx, dinfo, drawid_offset, dindirect, &draws[0]);
        return;
    }
-   if (dinfo->mode == PIPE_PRIM_QUADS ||
-       dinfo->mode == PIPE_PRIM_QUAD_STRIP ||
-       dinfo->mode == PIPE_PRIM_POLYGON ||
-       (dinfo->mode == PIPE_PRIM_TRIANGLE_FAN && !screen->have_triangle_fans) ||
-       dinfo->mode == PIPE_PRIM_LINE_LOOP) {
-      util_primconvert_save_rasterizer_state(ctx->primconvert, &rast_state->base);
-      util_primconvert_draw_vbo(ctx->primconvert, dinfo, drawid_offset, dindirect, draws, num_draws);
-      return;
-   }
    if (ctx->gfx_pipeline_state.vertices_per_patch != dinfo->vertices_per_patch)
       ctx->gfx_pipeline_state.dirty = true;
    bool drawid_broken = ctx->drawid_broken;
