@@ -1,3 +1,4 @@
+glx@glx-swap-event_interval
 glx@glx_arb_sync_control@swapbuffersmsc-divisor-zero
 glx@glx_arb_sync_control@waitformsc
 glx@glx-multithread-texture
