@@ -27,6 +27,7 @@
 #ifndef U_THREAD_H_
 #define U_THREAD_H_
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -104,7 +105,14 @@ static inline void u_thread_setname( const char *name )
 {
 #if defined(HAVE_PTHREAD)
 #if DETECT_OS_LINUX || DETECT_OS_CYGWIN || DETECT_OS_SOLARIS
-   pthread_setname_np(pthread_self(), name);
+   int ret = pthread_setname_np(pthread_self(), name);
+   if (ret == ERANGE) {
+      char buf[16];
+      const size_t len = MIN2(strlen(name), ARRAY_SIZE(buf) - 1);
+      memcpy(buf, name, len);
+      buf[len] = '\0';
+      pthread_setname_np(pthread_self(), buf);
+   }
 #elif DETECT_OS_FREEBSD || DETECT_OS_OPENBSD
    pthread_set_name_np(pthread_self(), name);
 #elif DETECT_OS_NETBSD
