@@ -110,6 +110,35 @@ typedef enum {
    OPC_SETSECURE = 0x3b,     /* switch secure mode on/off */
 } afuc_opc;
 
+/**
+ * Special GPR registers:
+ *
+ * Notes:  (applicable to a6xx, double check a5xx)
+ *
+ *   0x1d:
+ *      $addr:    writes configure GPU reg address to read/write
+ *                (does not respect CP_PROTECT)
+ *      $memdata: reads from FIFO filled based on MEM_READ_DWORDS/
+ *                MEM_READ_ADDR
+ *   0x1e: (note different mnemonic for src vs dst)
+ *      $usraddr: writes configure GPU reg address to read/write,
+ *                respecting CP_PROTECT
+ *      $regdata: reads from FIFO filled based on REG_READ_DWORDS/
+ *                REG_READ_ADDR
+ *   0x1f:
+ *      $data:    reads from from pm4 input stream
+ *      $data:    writes to stream configured by write to $addr
+ *                or $usraddr
+ */
+typedef enum {
+   REG_REM     = 0x1c,
+   REG_MEMDATA = 0x1d,  /* when used as src */
+   REG_ADDR    = 0x1d,  /* when used as dst */
+   REG_REGDATA = 0x1e,  /* when used as src */
+   REG_USRADDR = 0x1e,  /* when used as dst */
+   REG_DATA    = 0x1f,
+} afuc_reg;
+
 typedef union PACKED {
    /* addi, subi, andi, ori, xori, etc: */
    struct PACKED {

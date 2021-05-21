@@ -97,26 +97,26 @@ ret
 nop
 
 CP_REG_RMW:
-; Test various ALU instructions, and read/write $addr2
+; Test various ALU instructions, and read/write $regdata
 cwrite $data, [$00 + @REG_READ_ADDR], 0x0
-add $02, $addr2, 0x42
-addhi $03, $00, $addr2
-sub $02, $02, $addr2
+add $02, $regdata, 0x42
+addhi $03, $00, $regdata
+sub $02, $02, $regdata
 call #euclid
-subhi $03, $03, $addr2
-and $02, $02, $addr2
+subhi $03, $03, $regdata
+and $02, $02, $regdata
 or $02, $02, 0x1
 xor $02, $02, 0x1
 not $02, $02
-shl $02, $02, $addr2
-ushr $02, $02, $addr2
-ishr $02, $02, $addr2
-rot $02, $02, $addr2
-min $02, $02, $addr2
-max $02, $02, $addr2
-mul8 $02, $02, $addr2
+shl $02, $02, $regdata
+ushr $02, $02, $regdata
+ishr $02, $02, $regdata
+rot $02, $02, $regdata
+min $02, $02, $regdata
+max $02, $02, $regdata
+mul8 $02, $02, $regdata
 msb $02, $02
-mov $addr2, $data
+mov $usraddr, $data
 mov $data, $02
 waitin
 mov $01, $data
@@ -148,7 +148,7 @@ mov $02, $data
 cwrite $data, [$00 + @LOAD_STORE_HI], 0x0
 mov $rem, $data
 cwrite $rem, [$00 + @MEM_READ_DWORDS], 0x0
-(rep)store $addr, [$02 + 0x004], 0x4
+(rep)store $memdata, [$02 + 0x004], 0x4
 waitin
 mov $01, $data
 

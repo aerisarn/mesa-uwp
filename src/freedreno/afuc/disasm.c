@@ -65,34 +65,33 @@ print_gpu_reg(uint32_t regbase)
 #define printlbl(fmt, ...) afuc_printc(AFUC_LBL, fmt, ##__VA_ARGS__)
 
 static void
-print_reg(unsigned reg)
+print_src(unsigned reg)
 {
-   // XXX seems like *reading* $00 --> literal zero??
-   // seems like read from $1c gives packet remaining len??
-   // $01 current packet header, writing to $01 triggers
-   // parsing header and jumping to appropriate handler.
-   if (reg == 0x1c)
+   if (reg == REG_REM)
       printf("$rem"); /* remainding dwords in packet */
-   else if (reg == 0x1d)
-      printf("$addr");
-   else if (reg == 0x1e)
-      printf("$addr2"); // XXX
-   else if (reg == 0x1f)
+   else if (reg == REG_MEMDATA)
+      printf("$memdata");
+   else if (reg == REG_REGDATA)
+      printf("$regdata");
+   else if (reg == REG_DATA)
       printf("$data");
    else
       printf("$%02x", reg);
 }
 
 static void
-print_src(unsigned reg)
-{
-   print_reg(reg);
-}
-
-static void
 print_dst(unsigned reg)
 {
-   print_reg(reg);
+   if (reg == REG_REM)
+      printf("$rem"); /* remainding dwords in packet */
+   else if (reg == REG_ADDR)
+      printf("$addr");
+   else if (reg == REG_USRADDR)
+      printf("$usraddr");
+   else if (reg == REG_DATA)
+      printf("$data");
+   else
+      printf("$%02x", reg);
 }
 
 static void
@@ -518,12 +517,14 @@ disasm_instr(uint32_t *instrs, unsigned pc)
          printf("(rep)");
 
       bool is_control_reg = true;
+      bool is_store = true;
       if (gpuver >= 6) {
          switch (opc) {
          case OPC_CWRITE6:
             printf("cwrite ");
             break;
          case OPC_CREAD6:
+            is_store = false;
             printf("cread ");
             break;
          case OPC_STORE6:
@@ -532,6 +533,7 @@ disasm_instr(uint32_t *instrs, unsigned pc)
             break;
          case OPC_LOAD6:
             is_control_reg = false;
+            is_store = false;
             printf("load ");
             break;
          default:
@@ -543,6 +545,7 @@ disasm_instr(uint32_t *instrs, unsigned pc)
             printf("cwrite ");
             break;
          case OPC_CREAD5:
+            is_store = false;
             printf("cread ");
             break;
          default:
@@ -551,7 +554,10 @@ disasm_instr(uint32_t *instrs, unsigned pc)
          }
       }
 
-      print_src(instr->control.src1);
+      if (is_store)
+         print_src(instr->control.src1);
+      else
+         print_dst(instr->control.src1);
       printf(", [");
       print_src(instr->control.src2);
       printf(" + ");
