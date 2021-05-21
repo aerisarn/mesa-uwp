@@ -89,11 +89,17 @@ util_primconvert_save_rasterizer_state(struct primconvert_context *pc,
                                        const struct pipe_rasterizer_state
                                        *rast)
 {
+   util_primconvert_save_flatshade_first(pc, rast->flatshade_first);
+}
+
+void
+util_primconvert_save_flatshade_first(struct primconvert_context *pc, bool flatshade_first)
+{
    /* if we actually translated the provoking vertex for the buffer,
     * we would actually need to save/restore rasterizer state.  As
     * it is, we just need to make note of the pv.
     */
-   pc->api_pv = rast->flatshade_first ? PV_FIRST : PV_LAST;
+   pc->api_pv = flatshade_first ? PV_FIRST : PV_LAST;
 }
 
 void
