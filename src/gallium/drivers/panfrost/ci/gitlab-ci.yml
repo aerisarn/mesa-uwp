@@ -52,7 +52,7 @@ panfrost-t760-traces:armhf:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-panfrost-t860-gles2:arm64:
+.panfrost-t860-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .lava-rk3399-gru-kevin
@@ -93,7 +93,7 @@ panfrost-t860-traces:arm64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-panfrost-g52-gles2:arm64:
+.panfrost-g52-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .lava-meson-g12b-a311d-khadas-vim3
@@ -129,7 +129,7 @@ panfrost-g52-gles31:arm64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-panfrost-g72-gles2:arm64:
+.panfrost-g72-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .lava-acer-mt8183-cp311-3h-jacuzzi
