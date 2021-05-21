@@ -91,6 +91,8 @@
 #include "util/format/u_format.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
+#include "indices/u_primconvert.h"
+#include "util/u_prim_restart.h"
 #include "util/u_screen.h"
 #include "util/u_upload_mgr.h"
 #include "translate/translate.h"
@@ -152,6 +154,7 @@ struct u_vbuf {
    struct translate_cache *translate_cache;
    struct cso_cache cso_cache;
 
+   struct primconvert_context *pc;
    bool flatshade_first;
 
    /* This is what was set in set_vertex_buffers.
@@ -302,6 +305,12 @@ void u_vbuf_get_caps(struct pipe_screen *screen, struct u_vbuf_caps *caps,
    caps->max_vertex_buffers =
       screen->get_param(screen, PIPE_CAP_MAX_VERTEX_BUFFERS);
 
+   if (screen->get_param(screen, PIPE_CAP_PRIMITIVE_RESTART) ||
+       screen->get_param(screen, PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX)) {
+      caps->rewrite_restart_index = screen->get_param(screen, PIPE_CAP_EMULATE_NONFIXED_PRIMITIVE_RESTART);
+      caps->fallback_always |= caps->rewrite_restart_index;
+   }
+
    /* OpenGL 2.0 requires a minimum of 16 vertex buffers */
    if (caps->max_vertex_buffers < 16)
       caps->fallback_always = true;
@@ -322,6 +331,13 @@ u_vbuf_create(struct pipe_context *pipe, struct u_vbuf_caps *caps)
 
    mgr->caps = *caps;
    mgr->pipe = pipe;
+   if (caps->rewrite_restart_index) {
+      struct primconvert_config cfg;
+      cfg.fixed_prim_restart = caps->rewrite_restart_index;
+      cfg.primtypes_mask = 0xff;
+      cfg.restart_primtypes_mask = 0xff;
+      mgr->pc = util_primconvert_create_config(pipe, &cfg);
+   }
    mgr->translate_cache = translate_cache_create();
    memset(mgr->fallback_vbs, ~0, sizeof(mgr->fallback_vbs));
    mgr->allowed_vb_mask = u_bit_consecutive(0, mgr->caps.max_vertex_buffers);
@@ -404,6 +420,9 @@ void u_vbuf_destroy(struct u_vbuf *mgr)
       pipe_vertex_buffer_unreference(&mgr->vertex_buffer[i]);
    for (i = 0; i < PIPE_MAX_ATTRIBS; i++)
       pipe_vertex_buffer_unreference(&mgr->real_vertex_buffer[i]);
+
+   if (mgr->pc)
+      util_primconvert_destroy(mgr->pc);
 
    translate_cache_destroy(mgr->translate_cache);
    cso_cache_delete(&mgr->cso_cache);
@@ -1356,11 +1375,15 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
       mgr->incompatible_vb_mask & used_vb_mask;
    struct pipe_draw_info new_info;
    struct pipe_draw_start_count_bias new_draw;
+   unsigned fixed_restart_index = info->index_size ? util_prim_restart_index_from_size(info->index_size) : 0;
 
    /* Normal draw. No fallback and no user buffers. */
    if (!incompatible_vb_mask &&
        !mgr->ve->incompatible_elem_mask &&
-       !user_vb_mask) {
+       !user_vb_mask &&
+       (!info->primitive_restart ||
+        info->restart_index == fixed_restart_index ||
+        !mgr->caps.rewrite_restart_index)) {
 
       /* Set vertex buffers if needed. */
       if (mgr->dirty_real_vb_mask & used_vb_mask) {
@@ -1639,7 +1662,12 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
    if (mgr->dirty_real_vb_mask)
       u_vbuf_set_driver_vertex_buffers(mgr);
 
-   pipe->draw_vbo(pipe, &new_info, drawid_offset, indirect, &new_draw, 1);
+   if (new_info.primitive_restart &&
+       (new_info.restart_index != fixed_restart_index && mgr->caps.rewrite_restart_index)) {
+      util_primconvert_save_flatshade_first(mgr->pc, mgr->flatshade_first);
+      util_primconvert_draw_vbo(mgr->pc, &new_info, drawid_offset, indirect, &new_draw, 1);
+   } else
+      pipe->draw_vbo(pipe, &new_info, drawid_offset, indirect, &new_draw, 1);
 
    if (mgr->using_translate) {
       u_vbuf_translate_end(mgr);
