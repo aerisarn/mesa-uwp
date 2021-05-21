@@ -152,6 +152,8 @@ struct u_vbuf {
    struct translate_cache *translate_cache;
    struct cso_cache cso_cache;
 
+   bool flatshade_first;
+
    /* This is what was set in set_vertex_buffers.
     * May contain user buffers. */
    struct pipe_vertex_buffer vertex_buffer[PIPE_MAX_ATTRIBS];
@@ -377,6 +379,11 @@ void u_vbuf_set_vertex_elements(struct u_vbuf *mgr,
                                 const struct cso_velems_state *velems)
 {
    mgr->ve = u_vbuf_set_vertex_elements_internal(mgr, velems);
+}
+
+void u_vbuf_set_flatshade_first(struct u_vbuf *mgr, bool flatshade_first)
+{
+   mgr->flatshade_first = flatshade_first;
 }
 
 void u_vbuf_unset_vertex_elements(struct u_vbuf *mgr)
