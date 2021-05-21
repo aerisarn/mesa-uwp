@@ -1057,6 +1057,7 @@ meson-s390x:
   extends:
     - meson-ppc64el
     - .use-s390x_build
+    - .s390x-rules
   tags:
     - kvm
   variables:
