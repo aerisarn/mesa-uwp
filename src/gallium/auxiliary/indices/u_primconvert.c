@@ -139,7 +139,13 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    }
 
    if (num_draws > 1) {
-      util_draw_multi(pc->pipe, info, drawid_offset, indirect, draws, num_draws);
+      unsigned drawid = drawid_offset;
+      for (unsigned i = 0; i < num_draws; i++) {
+         if (draws[i].count && info->instance_count)
+            util_primconvert_draw_vbo(pc, info, drawid, NULL, &draws[i], 1);
+         if (info->increment_draw_id)
+            drawid++;
+      }
       return;
    }
 
