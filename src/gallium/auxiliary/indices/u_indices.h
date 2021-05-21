@@ -82,6 +82,10 @@ enum indices_mode {
 
 void u_index_init( void );
 
+/* returns the primitive type resulting from index translation */
+enum pipe_prim_type
+u_index_prim_type_convert(unsigned hw_mask, enum pipe_prim_type prim);
+
 
 /**
  * For indexed drawing, this function determines what kind of primitive
