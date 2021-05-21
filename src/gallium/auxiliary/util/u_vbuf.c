@@ -311,6 +311,9 @@ void u_vbuf_get_caps(struct pipe_screen *screen, struct u_vbuf_caps *caps,
       caps->fallback_always |= caps->rewrite_restart_index;
    }
 
+   if (!screen->is_format_supported(screen, PIPE_FORMAT_R8_UINT, PIPE_BUFFER, 0, 0, PIPE_BIND_INDEX_BUFFER))
+      caps->fallback_always = caps->rewrite_ubyte_ibs = true;
+
    /* OpenGL 2.0 requires a minimum of 16 vertex buffers */
    if (caps->max_vertex_buffers < 16)
       caps->fallback_always = true;
@@ -331,7 +334,7 @@ u_vbuf_create(struct pipe_context *pipe, struct u_vbuf_caps *caps)
 
    mgr->caps = *caps;
    mgr->pipe = pipe;
-   if (caps->rewrite_restart_index) {
+   if (caps->rewrite_ubyte_ibs || caps->rewrite_restart_index) {
       struct primconvert_config cfg;
       cfg.fixed_prim_restart = caps->rewrite_restart_index;
       cfg.primtypes_mask = 0xff;
@@ -1381,6 +1384,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
    if (!incompatible_vb_mask &&
        !mgr->ve->incompatible_elem_mask &&
        !user_vb_mask &&
+       (info->index_size != 1 || !mgr->caps.rewrite_ubyte_ibs) &&
        (!info->primitive_restart ||
         info->restart_index == fixed_restart_index ||
         !mgr->caps.rewrite_restart_index)) {
@@ -1662,8 +1666,9 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
    if (mgr->dirty_real_vb_mask)
       u_vbuf_set_driver_vertex_buffers(mgr);
 
-   if (new_info.primitive_restart &&
-       (new_info.restart_index != fixed_restart_index && mgr->caps.rewrite_restart_index)) {
+   if ((new_info.index_size == 1 && mgr->caps.rewrite_ubyte_ibs) ||
+       (new_info.primitive_restart &&
+        (new_info.restart_index != fixed_restart_index && mgr->caps.rewrite_restart_index))) {
       util_primconvert_save_flatshade_first(mgr->pc, mgr->flatshade_first);
       util_primconvert_draw_vbo(mgr->pc, &new_info, drawid_offset, indirect, &new_draw, 1);
    } else

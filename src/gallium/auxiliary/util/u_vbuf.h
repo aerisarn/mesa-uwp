@@ -59,6 +59,7 @@ struct u_vbuf_caps {
 
    bool fallback_always;
    bool fallback_only_for_user_vbuffers;
+   bool rewrite_ubyte_ibs;
    bool rewrite_restart_index;
 };
 
