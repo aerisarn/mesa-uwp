@@ -157,23 +157,25 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    new_info.primitive_restart = info->primitive_restart;
    new_info.restart_index = info->restart_index;
    if (info->index_size) {
-      enum pipe_prim_type mode = 0;
-      unsigned index_size;
+      enum pipe_prim_type mode = new_info.mode = u_index_prim_type_convert(pc->cfg.primtypes_mask, info->mode, true);
+      unsigned index_size = info->index_size;
+      new_info.index_size = u_index_size_convert(info->index_size);
 
-      u_index_translator(pc->cfg.primtypes_mask,
-                         info->mode, info->index_size, draw->count,
-                         pc->api_pv, pc->api_pv,
-                         info->primitive_restart ? PR_ENABLE : PR_DISABLE,
-                         &mode, &index_size, &new_draw.count,
-                         &trans_func);
-      new_info.mode = mode;
-      new_info.index_size = index_size;
       src = info->has_user_indices ? info->index.user : NULL;
       if (!src) {
          src = pipe_buffer_map(pc->pipe, info->index.resource,
                                PIPE_MAP_READ, &src_transfer);
       }
       src = (const uint8_t *)src;
+
+      u_index_translator(pc->cfg.primtypes_mask,
+                         info->mode, index_size, draws->count,
+                         pc->api_pv, pc->api_pv,
+                         new_info.primitive_restart ? PR_ENABLE : PR_DISABLE,
+                         &mode, &index_size, &new_draw.count,
+                         &trans_func);
+      assert(new_info.mode == mode);
+      assert(new_info.index_size == index_size);
    }
    else {
       enum pipe_prim_type mode = 0;
