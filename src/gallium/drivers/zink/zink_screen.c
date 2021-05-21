@@ -849,6 +849,9 @@ zink_is_format_supported(struct pipe_screen *pscreen,
              vk_sample_count_flags(sample_count);
 
    if (bind & PIPE_BIND_INDEX_BUFFER) {
+      if (format == PIPE_FORMAT_R8_UINT &&
+          !screen->info.have_EXT_index_type_uint8)
+         return false;
       if (format != PIPE_FORMAT_R8_UINT &&
           format != PIPE_FORMAT_R16_UINT &&
           format != PIPE_FORMAT_R32_UINT)

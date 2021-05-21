@@ -478,18 +478,13 @@ zink_draw_vbo(struct pipe_context *pctx,
    unsigned index_offset = 0;
    struct pipe_resource *index_buffer = NULL;
    if (dinfo->index_size > 0) {
-       if (!screen->info.have_EXT_index_type_uint8 && dinfo->index_size == 1) {
-          util_translate_prim_restart_ib(pctx, dinfo, dindirect, &draws[0], &index_buffer);
-          need_index_buffer_unref = true;
-       } else {
-          if (dinfo->has_user_indices) {
-             if (!util_upload_index_buffer(pctx, dinfo, &draws[0], &index_buffer, &index_offset, 4)) {
-                debug_printf("util_upload_index_buffer() failed\n");
-                return;
-             }
-          } else
-             index_buffer = dinfo->index.resource;
-       }
+       if (dinfo->has_user_indices) {
+          if (!util_upload_index_buffer(pctx, dinfo, &draws[0], &index_buffer, &index_offset, 4)) {
+             debug_printf("util_upload_index_buffer() failed\n");
+             return;
+          }
+       } else
+          index_buffer = dinfo->index.resource;
    }
    if (ctx->xfb_barrier)
       zink_emit_xfb_counter_barrier(ctx);
