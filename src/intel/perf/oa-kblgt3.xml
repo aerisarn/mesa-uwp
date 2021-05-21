@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<metrics version="1599482527" merge_md5="">
+<metrics version="1609842140" merge_md5="">
   <set name="Render Metrics Basic Gen9"
        chipset="KBLGT3"
        symbol_name="RenderBasic"
@@ -10629,7 +10629,7 @@
        symbol_name="TestOa"
        underscore_name="test_oa"
        mdapi_supported_apis="VK OGL OCL IO BB"
-       hw_config_guid="f1792f32-6db2-4b50-b4b2-557128f1688d"
+       hw_config_guid="bb3344bf-2551-40f7-b75f-cbf29e4195f7"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -10826,6 +10826,9 @@
         <register type="OA" address="0x000027A4" value="0x0000FFE7" />
         <register type="OA" address="0x000027A8" value="0x00100001" />
         <register type="OA" address="0x000027AC" value="0x0000FFE7" />
+    </register_config>
+    <register_config type="FLEX">
+        <register type="FLEX" address="0x0000E65C" value="0x00222222" />
     </register_config>
   </set>
 
