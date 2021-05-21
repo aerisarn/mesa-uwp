@@ -81,7 +81,7 @@
     - changes:
         *gallium_core_file_list
       when: on_success
-    - changes:
+    - changes: &softpipe_file_list
       - src/gallium/drivers/softpipe/**/*
       - src/gallium/winsys/sw/**/*
       when: on_success
@@ -288,7 +288,7 @@
     - changes:
         *mesa_core_file_list
       when: on_success
-    - changes:
+    - changes: &radv_file_list
       - src/amd/**/*
       - src/vulkan/**/*
       when: on_success
@@ -307,7 +307,7 @@
     - changes:
         *llvmpipe_file_list
       when: on_success
-    - changes:
+    - changes: &virgl_file_list
       - src/gallium/drivers/virgl/**/*
       - src/gallium/winsys/virgl/**/*
       when: on_success
@@ -323,7 +323,7 @@
     - changes:
         *gallium_core_file_list
       when: on_success
-    - changes:
+    - changes: &radeonsi_file_list
       - src/gallium/drivers/radeonsi/**/*
       - src/gallium/winsys/amdgpu/**/*
       - src/amd/*
@@ -442,7 +442,44 @@
     - changes:
         *lavapipe_file_list
       when: on_success
-    - changes:
+    - changes: &zink_file_list
       - src/gallium/drivers/zink/**/*
+      when: on_success
+    - when: never
+
+# Rules for unusual architectures that only build a subset of drivers
+.ppc64el-rules:
+   rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+        *softpipe_file_list
+      when: on_success
+    - changes:
+        *llvmpipe_file_list
+      when: on_success
+    - changes:
+        *lavapipe_file_list
+      when: on_success
+    - changes:
+        *radv_file_list
+      when: on_success
+    - changes:
+        *radeonsi_file_list
+      when: on_success
+    - changes:
+        *zink_file_list
+      when: on_success
+    - changes:
+        *virgl_file_list
+      when: on_success
+    - changes:
+      - src/gallium/drivers/nouveau/**/*
+      - src/gallium/winsys/nouveau/**/*
       when: on_success
     - when: never
