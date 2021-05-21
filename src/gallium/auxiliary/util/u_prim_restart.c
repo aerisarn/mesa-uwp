@@ -28,6 +28,7 @@
 #include "u_inlines.h"
 #include "util/u_memory.h"
 #include "u_prim_restart.h"
+#include "u_prim.h"
 
 typedef struct {
   uint32_t count;
@@ -184,8 +185,12 @@ struct range_info {
  * \return true for success, false if out of memory
  */
 static boolean
-add_range(struct range_info *info, unsigned start, unsigned count)
+add_range(enum pipe_prim_type mode, struct range_info *info, unsigned start, unsigned count)
 {
+   /* degenerate primitive: ignore */
+   if (!u_trim_pipe_prim(mode, (unsigned*)&count))
+      return TRUE;
+
    if (info->max == 0) {
       info->max = 10;
       info->ranges = MALLOC(info->max * sizeof(struct range));
@@ -285,7 +290,7 @@ util_draw_vbo_without_prim_restart(struct pipe_context *context,
           ((const TYPE *) src_map)[i] == info->restart_index) { \
          /* cut / restart */ \
          if (count > 0) { \
-            if (!add_range(&ranges, info_start + start, count)) { \
+            if (!add_range(info->mode, &ranges, info_start + start, count)) { \
                if (src_transfer) \
                   pipe_buffer_unmap(context, src_transfer); \
                return PIPE_ERROR_OUT_OF_MEMORY; \
