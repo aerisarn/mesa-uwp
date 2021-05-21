@@ -414,15 +414,10 @@ populate_sets(struct zink_context *ctx, struct zink_program *pg, uint8_t *change
             return false;
    } else
       sets[0] = VK_NULL_HANDLE;
-   /* no flushing allowed */
-   assert(ctx->batch.state == bs);
-   bs = ctx->batch.state;
    u_foreach_bit(type, *changed_sets) {
       if (pg->dd->layout_key[type]) {
          struct zink_descriptor_pool *pool = get_descriptor_pool_lazy(ctx, pg, type, bs, pg->is_compute);
          sets[type + 1] = get_descriptor_set_lazy(pool);
-         /* no flushing allowed */
-         assert(ctx->batch.state == bs);
       } else
          sets[type + 1] = ctx->dd->dummy_set;
       if (!sets[type + 1])
