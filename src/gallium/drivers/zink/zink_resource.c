@@ -384,7 +384,8 @@ create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsign
       debug_printf("ZINK: failed to validate image creation\n");
 
    if (templ->target == PIPE_TEXTURE_CUBE ||
-       templ->target == PIPE_TEXTURE_CUBE_ARRAY) {
+       templ->target == PIPE_TEXTURE_CUBE_ARRAY ||
+       templ->target == PIPE_TEXTURE_2D_ARRAY) {
       VkImageFormatProperties props;
       if (vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici.format,
                                                    ici.imageType, ici.tiling,

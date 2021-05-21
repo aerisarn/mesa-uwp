@@ -88,7 +88,6 @@ spec@arb_texture_cube_map_array@arb_texture_cube_map_array-sampler-cube-array-sh
 spec@arb_texture_float@fbo-blending-formats,Fail
 spec@arb_texture_rg@multisample-fast-clear gl_arb_texture_rg-int,Fail
 spec@arb_texture_view@rendering-formats,Fail
-spec@arb_texture_view@sampling-2d-array-as-cubemap-array,Fail
 spec@egl 1.4@egl-copy-buffers,Fail
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24,Fail
