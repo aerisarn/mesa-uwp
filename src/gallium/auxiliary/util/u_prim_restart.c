@@ -178,6 +178,7 @@ struct range_info {
    struct range *ranges;
    unsigned count, max;
    unsigned min_index, max_index;
+   unsigned total_index_count;
 };
 
 
@@ -217,6 +218,7 @@ add_range(enum pipe_prim_type mode, struct range_info *info, unsigned start, uns
    info->ranges[info->count].start = start;
    info->ranges[info->count].count = count;
    info->count++;
+   info->total_index_count += count;
 
    return TRUE;
 }
