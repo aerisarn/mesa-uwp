@@ -227,7 +227,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg);
 void
 zink_descriptor_program_deinit(struct zink_screen *screen, struct zink_program *pg);
 
-bool
+void
 zink_descriptors_update(struct zink_context *ctx, bool is_compute);
 
 
@@ -261,7 +261,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
 void
 zink_descriptor_program_deinit_lazy(struct zink_screen *screen, struct zink_program *pg);
 
-bool
+void
 zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute);
 
 

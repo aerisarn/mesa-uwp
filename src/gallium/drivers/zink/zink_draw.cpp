@@ -455,15 +455,6 @@ zink_draw_vbo(struct pipe_context *pctx,
    ctx->gfx_prim_mode = mode;
    update_gfx_program(ctx);
 
-   if (zink_program_has_descriptors(&ctx->curr_program->base)) {
-      if (screen->descriptors_update(ctx, false)) {
-         /* descriptors have flushed the batch */
-         zink_select_draw_vbo(ctx);
-         pctx->draw_vbo(pctx, dinfo, drawid_offset, dindirect, draws, num_draws);
-         return;
-      }
-   }
-
    if (ctx->gfx_pipeline_state.primitive_restart != dinfo->primitive_restart)
       ctx->gfx_pipeline_state.dirty = true;
    ctx->gfx_pipeline_state.primitive_restart = dinfo->primitive_restart;
@@ -492,6 +483,9 @@ zink_draw_vbo(struct pipe_context *pctx,
       struct zink_resource *res = zink_resource(index_buffer);
       vkCmdBindIndexBuffer(batch->state->cmdbuf, res->obj->buffer, index_offset, index_type[index_size >> 1]);
    }
+
+   if (zink_program_has_descriptors(&ctx->curr_program->base))
+      screen->descriptors_update(ctx, false);
 
    bool have_streamout = !!ctx->num_so_targets;
    if (have_streamout) {
@@ -781,14 +775,8 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 
    update_compute_program(ctx);
 
-   if (zink_program_has_descriptors(&ctx->curr_compute->base)) {
-      if (screen->descriptors_update(ctx, true)) {
-         /* descriptors have flushed the batch */
-         zink_select_launch_grid(ctx);
-         pctx->launch_grid(pctx, info);
-         return;
-      }
-   }
+   if (zink_program_has_descriptors(&ctx->curr_compute->base))
+      screen->descriptors_update(ctx, true);
 
    zink_program_update_compute_pipeline_state(ctx, ctx->curr_compute, info->block);
    VkPipeline prev_pipeline = ctx->compute_pipeline_state.pipeline;
