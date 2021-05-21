@@ -511,6 +511,10 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
       ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ring_offsets);
    }
 
+   /* To ensure prologs match the main VS, VS specific input SGPRs have to be placed before other
+    * sgprs.
+    */
+
    switch (stage) {
    case MESA_SHADER_COMPUTE:
       declare_global_input_sgprs(args, &user_sgpr_info);
@@ -547,9 +551,9 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
       /* NGG is handled by the GS case */
       assert(!args->shader_info->is_ngg);
 
-      declare_global_input_sgprs(args, &user_sgpr_info);
-
       declare_vs_specific_input_sgprs(args, stage, has_previous_stage, previous_stage);
+
+      declare_global_input_sgprs(args, &user_sgpr_info);
 
       if (needs_view_index) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
@@ -580,9 +584,9 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
 
-         declare_global_input_sgprs(args, &user_sgpr_info);
-
          declare_vs_specific_input_sgprs(args, stage, has_previous_stage, previous_stage);
+
+         declare_global_input_sgprs(args, &user_sgpr_info);
 
          if (needs_view_index) {
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
@@ -646,11 +650,11 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
 
-         declare_global_input_sgprs(args, &user_sgpr_info);
-
          if (previous_stage != MESA_SHADER_TESS_EVAL) {
             declare_vs_specific_input_sgprs(args, stage, has_previous_stage, previous_stage);
          }
+
+         declare_global_input_sgprs(args, &user_sgpr_info);
 
          if (needs_view_index) {
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
@@ -721,6 +725,9 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
    if (has_previous_stage)
       user_sgpr_idx = 0;
 
+   if (stage == MESA_SHADER_VERTEX || (has_previous_stage && previous_stage == MESA_SHADER_VERTEX))
+      set_vs_specific_input_locs(args, stage, has_previous_stage, previous_stage, &user_sgpr_idx);
+
    set_global_input_locs(args, &user_sgpr_info, &user_sgpr_idx);
 
    switch (stage) {
@@ -736,12 +743,10 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
       }
       break;
    case MESA_SHADER_VERTEX:
-      set_vs_specific_input_locs(args, stage, has_previous_stage, previous_stage, &user_sgpr_idx);
       if (args->ac.view_index.used)
          set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
       break;
    case MESA_SHADER_TESS_CTRL:
-      set_vs_specific_input_locs(args, stage, has_previous_stage, previous_stage, &user_sgpr_idx);
       if (args->ac.view_index.used)
          set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
       break;
@@ -750,11 +755,6 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
          set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
       break;
    case MESA_SHADER_GEOMETRY:
-      if (has_previous_stage) {
-         if (previous_stage == MESA_SHADER_VERTEX)
-            set_vs_specific_input_locs(args, stage, has_previous_stage, previous_stage,
-                                       &user_sgpr_idx);
-      }
       if (args->ac.view_index.used)
          set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
 
