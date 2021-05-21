@@ -574,6 +574,8 @@ enum pipe_error cso_set_rasterizer(struct cso_context *ctx,
    if (ctx->rasterizer != handle) {
       ctx->rasterizer = handle;
       ctx->flatshade_first = templ->flatshade_first;
+      if (ctx->vbuf)
+         u_vbuf_set_flatshade_first(ctx->vbuf, ctx->flatshade_first);
       ctx->pipe->bind_rasterizer_state(ctx->pipe, handle);
    }
    return PIPE_OK;
@@ -593,6 +595,8 @@ cso_restore_rasterizer(struct cso_context *ctx)
    if (ctx->rasterizer != ctx->rasterizer_saved) {
       ctx->rasterizer = ctx->rasterizer_saved;
       ctx->flatshade_first = ctx->flatshade_first_saved;
+      if (ctx->vbuf)
+         u_vbuf_set_flatshade_first(ctx->vbuf, ctx->flatshade_first);
       ctx->pipe->bind_rasterizer_state(ctx->pipe, ctx->rasterizer_saved);
    }
    ctx->rasterizer_saved = NULL;
