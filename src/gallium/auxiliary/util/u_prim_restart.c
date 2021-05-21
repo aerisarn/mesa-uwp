@@ -325,6 +325,9 @@ util_draw_vbo_without_prim_restart(struct pipe_context *context,
       assert(!"Bad index size");
       return PIPE_ERROR_BAD_INPUT;
    }
+   new_info.index_bounds_valid = true;
+   new_info.min_index = ranges.min_index;
+   new_info.max_index = ranges.max_index;
 
    /* unmap index buffer */
    if (src_transfer)
