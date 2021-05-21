@@ -6,7 +6,7 @@ panfrost-t720-gles2:arm64:
     DEVICE_TYPE: sun50i-h6-pine-h64
     DTB: ${DEVICE_TYPE}
     GPU_VERSION: panfrost-t720
-    ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T720"
+    ENV_VARS: "PAN_MESA_DEBUG= DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T720"
   tags:
     - mesa-ci-aarch64-lava-collabora
 
@@ -20,7 +20,7 @@ panfrost-t760-gles2:armhf:
     GPU_VERSION: panfrost-t760
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
-    ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T760"
+    ENV_VARS: "PAN_MESA_DEBUG= DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T760"
   tags:
     - mesa-ci-aarch64-lava-collabora
 
@@ -57,7 +57,7 @@ panfrost-t760-traces:armhf:
     - .lava-test:arm64
     - .lava-rk3399-gru-kevin
   variables:
-    ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
+    ENV_VARS: "PAN_MESA_DEBUG= DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
 panfrost-t860-gles3:arm64:
   parallel: 2
@@ -66,7 +66,7 @@ panfrost-t860-gles3:arm64:
     - .lava-rk3399-gru-kevin
   variables:
     DEQP_VERSION: gles3
-    ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
+    ENV_VARS: "PAN_MESA_DEBUG= DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
 panfrost-t860-gles31:arm64:
   extends:
@@ -162,6 +162,6 @@ panfrost-g52-gles31:arm64:
     DTB: ${DEVICE_TYPE}
     GPU_VERSION: panfrost-t820
     LAVA_TAGS: panfrost
-    ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T820"
+    ENV_VARS: "PAN_MESA_DEBUG= DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T820"
   tags:
     - mesa-ci-aarch64-lava-baylibre
