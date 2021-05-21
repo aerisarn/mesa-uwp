@@ -241,6 +241,16 @@ util_draw_vbo_without_prim_restart(struct pipe_context *context,
    assert(info->index_size);
    assert(info->primitive_restart);
 
+   switch (info->index_size) {
+   case 1:
+   case 2:
+   case 4:
+      break;
+   default:
+      assert(!"Bad index size");
+      return PIPE_ERROR_BAD_INPUT;
+   }
+
    if (indirect_info && indirect_info->buffer) {
       indirect = read_indirect_elements(context, indirect_info);
       info_count = indirect.count;
