@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<metrics version="1609842035" merge_md5="">
+<metrics version="1609843831" merge_md5="">
   <set name="Render Metrics Basic Gen9"
        chipset="CFLGT3"
        symbol_name="RenderBasic"
@@ -10938,7 +10938,7 @@
        symbol_name="AsyncCompute"
        underscore_name="async_compute"
        mdapi_supported_apis="VK OGL OGL4 OCL MEDIA IO BB"
-       hw_config_guid="4a97c6cf-8e84-4854-a031-6c6e7b42e07c"
+       hw_config_guid="0c824ec1-af53-4545-84a3-ede5e3572fc1"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -11240,6 +11240,7 @@
         <register type="FLEX" address="0x0000E758" value="0x00011010" />
         <register type="FLEX" address="0x0000E45C" value="0x00061060" />
         <register type="FLEX" address="0x0000E55C" value="0x00000008" />
+        <register type="FLEX" address="0x0000E65C" value="0x00222222" />
     </register_config>
   </set>
 
