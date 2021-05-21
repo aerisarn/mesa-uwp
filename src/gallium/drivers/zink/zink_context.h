@@ -47,7 +47,6 @@
 #include <vulkan/vulkan.h>
 
 struct blitter_context;
-struct primconvert_context;
 struct list_head;
 
 struct zink_blend_state;
@@ -194,8 +193,6 @@ struct zink_context {
    bool new_swapchain;
    bool fb_changed;
    bool rp_changed;
-
-   struct primconvert_context *primconvert;
 
    struct zink_framebuffer *framebuffer;
    struct zink_framebuffer_clear fb_clears[PIPE_MAX_COLOR_BUFS + 1];

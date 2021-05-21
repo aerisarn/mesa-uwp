@@ -37,7 +37,6 @@
 #include "zink_state.h"
 #include "zink_surface.h"
 
-#include "indices/u_primconvert.h"
 #include "util/u_blitter.h"
 #include "util/u_debug.h"
 #include "util/format_srgb.h"
@@ -114,7 +113,6 @@ zink_context_destroy(struct pipe_context *pctx)
    hash_table_foreach(ctx->render_pass_cache, he)
       zink_destroy_render_pass(screen, he->data);
 
-   util_primconvert_destroy(ctx->primconvert);
    u_upload_destroy(pctx->stream_uploader);
    u_upload_destroy(pctx->const_uploader);
    slab_destroy_child(&ctx->transfer_pool);
@@ -3439,18 +3437,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.const_uploader = u_upload_create_default(&ctx->base);
    for (int i = 0; i < ARRAY_SIZE(ctx->fb_clears); i++)
       util_dynarray_init(&ctx->fb_clears[i].clears, ctx);
-
-   int prim_hwsupport = 1 << PIPE_PRIM_POINTS |
-                        1 << PIPE_PRIM_LINES |
-                        1 << PIPE_PRIM_LINE_STRIP |
-                        1 << PIPE_PRIM_TRIANGLES |
-                        1 << PIPE_PRIM_TRIANGLE_STRIP;
-   if (screen->have_triangle_fans)
-      prim_hwsupport |= 1 << PIPE_PRIM_TRIANGLE_FAN;
-
-   ctx->primconvert = util_primconvert_create(&ctx->base, prim_hwsupport);
-   if (!ctx->primconvert)
-      goto fail;
 
    ctx->blitter = util_blitter_create(&ctx->base);
    if (!ctx->blitter)

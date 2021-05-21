@@ -7,7 +7,6 @@
 #include "zink_state.h"
 #include "zink_surface.h"
 
-#include "indices/u_primconvert.h"
 #include "tgsi/tgsi_from_mesa.h"
 #include "util/hash_table.h"
 #include "util/u_debug.h"
