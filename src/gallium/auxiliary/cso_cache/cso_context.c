@@ -107,6 +107,7 @@ struct cso_context {
    struct pipe_query *render_condition, *render_condition_saved;
    uint render_condition_mode, render_condition_mode_saved;
    boolean render_condition_cond, render_condition_cond_saved;
+   bool flatshade_first, flatshade_first_saved;
 
    struct pipe_framebuffer_state fb, fb_saved;
    struct pipe_viewport_state vp, vp_saved;
@@ -572,6 +573,7 @@ enum pipe_error cso_set_rasterizer(struct cso_context *ctx,
 
    if (ctx->rasterizer != handle) {
       ctx->rasterizer = handle;
+      ctx->flatshade_first = templ->flatshade_first;
       ctx->pipe->bind_rasterizer_state(ctx->pipe, handle);
    }
    return PIPE_OK;
@@ -582,6 +584,7 @@ cso_save_rasterizer(struct cso_context *ctx)
 {
    assert(!ctx->rasterizer_saved);
    ctx->rasterizer_saved = ctx->rasterizer;
+   ctx->flatshade_first_saved = ctx->flatshade_first;
 }
 
 static void
@@ -589,6 +592,7 @@ cso_restore_rasterizer(struct cso_context *ctx)
 {
    if (ctx->rasterizer != ctx->rasterizer_saved) {
       ctx->rasterizer = ctx->rasterizer_saved;
+      ctx->flatshade_first = ctx->flatshade_first_saved;
       ctx->pipe->bind_rasterizer_state(ctx->pipe, ctx->rasterizer_saved);
    }
    ctx->rasterizer_saved = NULL;
