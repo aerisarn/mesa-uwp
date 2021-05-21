@@ -609,6 +609,8 @@ allocate_desc_set(struct zink_context *ctx, struct zink_program *pg, enum zink_d
       for (unsigned desc_factor = DESC_BUCKET_FACTOR; desc_factor < descs_used; desc_factor *= DESC_BUCKET_FACTOR)
          bucket_size = desc_factor;
    }
+   /* never grow more than this many at a time */
+   bucket_size = MIN2(bucket_size, ZINK_DEFAULT_MAX_DESCS);
    VkDescriptorSet *desc_set = alloca(sizeof(*desc_set) * bucket_size);
    if (!zink_descriptor_util_alloc_sets(screen, push_set ? ctx->dd->push_dsl[is_compute]->layout : pg->dsl[type + 1], pool->descpool, desc_set, bucket_size))
       return VK_NULL_HANDLE;
