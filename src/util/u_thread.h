@@ -65,6 +65,22 @@
 #define UTIL_MAX_CPUS               1024  /* this should be enough */
 #define UTIL_MAX_L3_CACHES          UTIL_MAX_CPUS
 
+/* Some highly performance-sensitive thread-local variables like the current GL
+ * context are declared with the initial-exec model on Linux.  glibc allocates a
+ * fixed number of extra slots for initial-exec TLS variables at startup, and
+ * Mesa relies on (even if it's dlopen()ed after init) being able to fit into
+ * those.  This model saves the call to look up the address of the TLS variable.
+ *
+ * However, if we don't have this TLS model available on the platform, then we
+ * still want to use normal TLS (which involves a function call, but not the
+ * expensive pthread_getspecific() or its equivalent).
+ */
+#ifdef _MSC_VER
+#define __THREAD_INITIAL_EXEC __declspec(thread)
+#else
+#define __THREAD_INITIAL_EXEC __thread __attribute__((tls_model("initial-exec")))
+#endif
+
 static inline int
 util_get_current_cpu(void)
 {

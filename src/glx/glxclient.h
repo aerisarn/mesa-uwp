@@ -53,6 +53,7 @@
 #include "glxconfig.h"
 #include "glxhash.h"
 #include "util/macros.h"
+#include "util/u_thread.h"
 #include "loader.h"
 #include "glxextensions.h"
 
@@ -645,8 +646,7 @@ extern void __glXSetCurrentContext(struct glx_context * c);
 
 # if defined( USE_ELF_TLS )
 
-extern __thread void *__glX_tls_Context
-   __attribute__ ((tls_model("initial-exec")));
+extern __THREAD_INITIAL_EXEC void *__glX_tls_Context;
 
 #  define __glXGetCurrentContext() __glX_tls_Context
 

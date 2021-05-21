@@ -76,8 +76,7 @@ _X_HIDDEN pthread_mutex_t __glXmutex = PTHREAD_MUTEX_INITIALIZER;
  * \b never be \c NULL.  This is important!  Because of this
  * \c __glXGetCurrentContext can be implemented as trivial macro.
  */
-__thread void *__glX_tls_Context __attribute__ ((tls_model("initial-exec")))
-   = &dummyContext;
+__THREAD_INITIAL_EXEC void *__glX_tls_Context = &dummyContext;
 
 _X_HIDDEN void
 __glXSetCurrentContext(struct glx_context * c)
