@@ -8,6 +8,7 @@
 #pragma once
 
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <intel/dev/intel_device_info.h>
