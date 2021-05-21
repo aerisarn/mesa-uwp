@@ -105,6 +105,8 @@ nv30_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    /* nv35 capabilities */
    case PIPE_CAP_DEPTH_BOUNDS_TEST:
       return eng3d->oclass == NV35_3D_CLASS || eng3d->oclass >= NV40_3D_CLASS;
+   case PIPE_CAP_SUPPORTED_PRIM_MODES:
+      return BITFIELD_MASK(PIPE_PRIM_MAX);
    /* nv4x capabilities */
    case PIPE_CAP_BLEND_EQUATION_SEPARATE:
    case PIPE_CAP_NPOT_TEXTURES:

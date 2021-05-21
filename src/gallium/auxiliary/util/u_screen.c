@@ -87,6 +87,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_RGB_OVERRIDE_DST_ALPHA_BLEND:
       return 0;
 
+   case PIPE_CAP_SUPPORTED_PRIM_MODES:
+      return BITFIELD_MASK(PIPE_PRIM_MAX);
+
    case PIPE_CAP_MIN_TEXEL_OFFSET:
       /* GL 3.x minimum value. */
       return -8;

@@ -57,6 +57,7 @@ struct u_vbuf_caps {
    /* Maximum number of vertex buffers */
    unsigned max_vertex_buffers:6;
 
+   uint16_t supported_prim_modes;
    bool fallback_always;
    bool fallback_only_for_user_vbuffers;
    bool rewrite_ubyte_ibs;

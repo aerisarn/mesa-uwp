@@ -310,6 +310,9 @@ void u_vbuf_get_caps(struct pipe_screen *screen, struct u_vbuf_caps *caps,
       caps->rewrite_restart_index = screen->get_param(screen, PIPE_CAP_EMULATE_NONFIXED_PRIMITIVE_RESTART);
       caps->fallback_always |= caps->rewrite_restart_index;
    }
+   caps->supported_prim_modes = screen->get_param(screen, PIPE_CAP_SUPPORTED_PRIM_MODES);
+   if (caps->supported_prim_modes != BITFIELD_MASK(PIPE_PRIM_MAX))
+      caps->fallback_always = true;
 
    if (!screen->is_format_supported(screen, PIPE_FORMAT_R8_UINT, PIPE_BUFFER, 0, 0, PIPE_BIND_INDEX_BUFFER))
       caps->fallback_always = caps->rewrite_ubyte_ibs = true;
@@ -334,10 +337,11 @@ u_vbuf_create(struct pipe_context *pipe, struct u_vbuf_caps *caps)
 
    mgr->caps = *caps;
    mgr->pipe = pipe;
-   if (caps->rewrite_ubyte_ibs || caps->rewrite_restart_index) {
+   if (caps->rewrite_ubyte_ibs || caps->rewrite_restart_index ||
+       (caps->supported_prim_modes & BITFIELD_MASK(PIPE_PRIM_MAX)) != BITFIELD_MASK(PIPE_PRIM_MAX)) {
       struct primconvert_config cfg;
       cfg.fixed_prim_restart = caps->rewrite_restart_index;
-      cfg.primtypes_mask = 0xff;
+      cfg.primtypes_mask = caps->supported_prim_modes;
       cfg.restart_primtypes_mask = 0xff;
       mgr->pc = util_primconvert_create_config(pipe, &cfg);
    }
@@ -1387,7 +1391,8 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
        (info->index_size != 1 || !mgr->caps.rewrite_ubyte_ibs) &&
        (!info->primitive_restart ||
         info->restart_index == fixed_restart_index ||
-        !mgr->caps.rewrite_restart_index)) {
+        !mgr->caps.rewrite_restart_index) &&
+       mgr->caps.supported_prim_modes & BITFIELD_BIT(info->mode)) {
 
       /* Set vertex buffers if needed. */
       if (mgr->dirty_real_vb_mask & used_vb_mask) {
@@ -1668,7 +1673,8 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
 
    if ((new_info.index_size == 1 && mgr->caps.rewrite_ubyte_ibs) ||
        (new_info.primitive_restart &&
-        (new_info.restart_index != fixed_restart_index && mgr->caps.rewrite_restart_index))) {
+        new_info.restart_index != fixed_restart_index && mgr->caps.rewrite_restart_index) ||
+       !(mgr->caps.supported_prim_modes & BITFIELD_BIT(new_info.mode))) {
       util_primconvert_save_flatshade_first(mgr->pc, mgr->flatshade_first);
       util_primconvert_draw_vbo(mgr->pc, &new_info, drawid_offset, indirect, &new_draw, 1);
    } else
