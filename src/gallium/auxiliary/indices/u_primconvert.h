@@ -37,6 +37,7 @@ struct primconvert_context;
 
 struct primconvert_config {
    uint32_t primtypes_mask;
+   uint32_t restart_primtypes_mask;
    bool fixed_prim_restart;
 };
 
