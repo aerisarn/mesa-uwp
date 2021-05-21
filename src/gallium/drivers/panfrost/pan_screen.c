@@ -62,7 +62,7 @@ static const struct debug_named_value panfrost_debug_options[] = {
         {"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
         {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"},
         {"dirty",     PAN_DBG_DIRTY,    "Always re-emit all state"},
-        {"sync",      PAN_DBG_SYNC,     "Wait for each job's completion and check for any GPU fault"},
+        {"sync",      PAN_DBG_SYNC,     "Wait for each job's completion and abort on GPU faults"},
         {"precompile", PAN_DBG_PRECOMPILE, "Precompile shaders for shader-db"},
         {"nofp16",     PAN_DBG_NOFP16,     "Disable 16-bit support"},
         {"gl3",       PAN_DBG_GL3,      "Enable experimental GL 3.x implementation, up to 3.3"},

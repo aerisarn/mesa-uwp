@@ -892,9 +892,11 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                 drmSyncobjWait(dev->fd, &out_sync, 1,
                                INT64_MAX, 0, NULL);
 
-                /* Trace gets priority over sync */
-                bool minimal = !(dev->debug & PAN_DBG_TRACE);
-                pandecode_jc(submit.jc, pan_is_bifrost(dev), dev->gpu_id, minimal);
+                if (dev->debug & PAN_DBG_TRACE)
+                        pandecode_jc(submit.jc, pan_is_bifrost(dev), dev->gpu_id, false);
+
+                if (dev->debug & PAN_DBG_SYNC)
+                        pandecode_abort_on_fault(submit.jc);
         }
 
         return 0;
