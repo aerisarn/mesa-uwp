@@ -136,7 +136,7 @@ panfrost-g52-gles31:arm64:
   variables:
     ENV_VARS: "DEQP_EXPECTED_RENDERER=G72"
 
-panfrost-g72-gles3:arm64:
+.panfrost-g72-gles3:arm64:
   parallel: 2
   extends:
     - .lava-test:arm64
@@ -145,7 +145,7 @@ panfrost-g72-gles3:arm64:
     DEQP_VERSION: gles3
     ENV_VARS: "PAN_MESA_DEBUG=deqp DEQP_EXPECTED_RENDERER=G72"
 
-panfrost-g72-gles31:arm64:
+.panfrost-g72-gles31:arm64:
   extends:
     - .lava-test:arm64
     - .lava-acer-mt8183-cp311-3h-jacuzzi
