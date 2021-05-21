@@ -35,6 +35,7 @@
 #include "adreno_common.xml.h"
 #include "adreno_pm4.xml.h"
 #include "freedreno_drmif.h"
+#include "freedreno_pm4.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -312,7 +313,7 @@ static inline void
 OUT_PKT0(struct fd_ringbuffer *ring, uint16_t regindx, uint16_t cnt)
 {
    BEGIN_RING(ring, cnt + 1);
-   OUT_RING(ring, CP_TYPE0_PKT | ((cnt - 1) << 16) | (regindx & 0x7FFF));
+   OUT_RING(ring, pm4_pkt0_hdr(regindx, cnt));
 }
 
 static inline void
@@ -333,35 +334,18 @@ OUT_PKT3(struct fd_ringbuffer *ring, uint8_t opcode, uint16_t cnt)
  * Starting with a5xx, pkt4/pkt7 are used instead of pkt0/pkt3
  */
 
-static inline unsigned
-_odd_parity_bit(unsigned val)
-{
-   /* See: http://graphics.stanford.edu/~seander/bithacks.html#ParityParallel
-    * note that we want odd parity so 0x6996 is inverted.
-    */
-   val ^= val >> 16;
-   val ^= val >> 8;
-   val ^= val >> 4;
-   val &= 0xf;
-   return (~0x6996 >> val) & 1;
-}
-
 static inline void
 OUT_PKT4(struct fd_ringbuffer *ring, uint16_t regindx, uint16_t cnt)
 {
    BEGIN_RING(ring, cnt + 1);
-   OUT_RING(ring, CP_TYPE4_PKT | cnt | (_odd_parity_bit(cnt) << 7) |
-                     ((regindx & 0x3ffff) << 8) |
-                     ((_odd_parity_bit(regindx) << 27)));
+   OUT_RING(ring, pm4_pkt4_hdr(regindx, cnt));
 }
 
 static inline void
 OUT_PKT7(struct fd_ringbuffer *ring, uint8_t opcode, uint16_t cnt)
 {
    BEGIN_RING(ring, cnt + 1);
-   OUT_RING(ring, CP_TYPE7_PKT | cnt | (_odd_parity_bit(cnt) << 15) |
-                     ((opcode & 0x7f) << 16) |
-                     ((_odd_parity_bit(opcode) << 23)));
+   OUT_RING(ring, pm4_pkt7_hdr(opcode, cnt));
 }
 
 static inline void

@@ -24,6 +24,7 @@ libfreedreno_common = static_library(
     'disasm.h',
     'freedreno_dev_info.c',
     'freedreno_dev_info.h',
+    'freedreno_pm4.h',
     'freedreno_uuid.c',
     'freedreno_uuid.h',
     'freedreno_guardband.h',
