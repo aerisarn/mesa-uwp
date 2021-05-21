@@ -22,6 +22,7 @@
 .iris-glk-test:
   extends:
     - .iris-test
+    - .test-manual-mr
   variables:
     DEVICE_TYPE: hp-x360-12b-n4000-octopus
     GPU_VERSION: iris-glk
