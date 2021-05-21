@@ -394,7 +394,7 @@ get_descriptor_pool_lazy(struct zink_context *ctx, struct zink_program *pg, enum
 }
 
 ALWAYS_INLINE static VkDescriptorSet
-get_descriptor_set_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, struct zink_descriptor_pool *pool, bool is_compute)
+get_descriptor_set_lazy(struct zink_descriptor_pool *pool)
 {
    if (!pool)
       return VK_NULL_HANDLE;
@@ -409,7 +409,7 @@ populate_sets(struct zink_context *ctx, struct zink_program *pg, uint8_t *change
    struct zink_batch_state *bs = ctx->batch.state;
    if (need_push && !zink_screen(ctx->base.screen)->info.have_KHR_push_descriptor) {
          struct zink_descriptor_pool *pool = check_push_pool_alloc(ctx, bdd_lazy(bs)->push_pool[pg->is_compute], bs, pg->is_compute);
-         sets[0] = get_descriptor_set_lazy(ctx, NULL, 0, pool, pg->is_compute);
+         sets[0] = get_descriptor_set_lazy(pool);
          if (!sets[0])
             return false;
    } else
@@ -420,7 +420,7 @@ populate_sets(struct zink_context *ctx, struct zink_program *pg, uint8_t *change
    u_foreach_bit(type, *changed_sets) {
       if (pg->dd->layout_key[type]) {
          struct zink_descriptor_pool *pool = get_descriptor_pool_lazy(ctx, pg, type, bs, pg->is_compute);
-         sets[type + 1] = get_descriptor_set_lazy(ctx, pg, type, pool, pg->is_compute);
+         sets[type + 1] = get_descriptor_set_lazy(pool);
          /* no flushing allowed */
          assert(ctx->batch.state == bs);
       } else
