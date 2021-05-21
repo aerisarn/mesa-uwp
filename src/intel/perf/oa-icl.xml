@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
-<metrics version="1609842547" merge_md5="">
+<metrics version="1609843132" merge_md5="">
   <set name="Render Metrics Basic Gen11"
        chipset="ICL"
        symbol_name="RenderBasic"
        underscore_name="render_basic"
        mdapi_supported_apis="VK OGL OCL IO BB"
-       hw_config_guid="193093b2-da24-49bf-b407-442c213b71b4"
+       hw_config_guid="e3cd52cf-c6b0-4019-b369-3bc9c75a0cbc"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -639,12 +639,12 @@
         <register type="OA" address="0x00002724" value="0x00800000" />
     </register_config>
     <register_config type="FLEX">
-        <register type="FLEX" address="0x0000E65C" value="0xFFFFFFFF" />
         <register type="FLEX" address="0x0000E458" value="0x00005004" />
         <register type="FLEX" address="0x0000E558" value="0x00010003" />
         <register type="FLEX" address="0x0000E658" value="0x00012011" />
         <register type="FLEX" address="0x0000E758" value="0x00051050" />
         <register type="FLEX" address="0x0000E45C" value="0x00000052" />
+        <register type="FLEX" address="0x0000E65C" value="0xFFFFFFFF" />
     </register_config>
   </set>
 
