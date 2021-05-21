@@ -58,7 +58,11 @@ disasm = executable(
   'afuc-disasm',
   'disasm.c',
   include_directories: [
-    inc_freedreno_rnn, inc_include, inc_src, inc_util,
+    inc_freedreno,
+    inc_freedreno_rnn,
+    inc_include,
+    inc_src,
+    inc_util,
   ],
   link_with: [
     libfreedreno_rnn,

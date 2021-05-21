@@ -35,6 +35,8 @@
 
 #include "util/os_file.h"
 
+#include "freedreno_pm4.h"
+
 #include "afuc.h"
 #include "rnn.h"
 #include "rnndec.h"
@@ -169,19 +171,6 @@ static const char *
 getpm4(uint32_t id)
 {
    return rnndec_decode_enum(ctx, "adreno_pm4_type3_packets", id);
-}
-
-static inline unsigned
-_odd_parity_bit(unsigned val)
-{
-   /* See: http://graphics.stanford.edu/~seander/bithacks.html#ParityParallel
-    * note that we want odd parity so 0x6996 is inverted.
-    */
-   val ^= val >> 16;
-   val ^= val >> 8;
-   val ^= val >> 4;
-   val &= 0xf;
-   return (~0x6996 >> val) & 1;
 }
 
 static struct {
@@ -483,7 +472,7 @@ disasm(uint32_t *buf, int sizedwords)
             unsigned opc, p;
 
             opc = instr->movi.uimm & 0x7f;
-            p = _odd_parity_bit(opc);
+            p = pm4_odd_parity_bit(opc);
 
             /* So, you'd think that checking the parity bit would be
              * a good way to rule out false positives, but seems like

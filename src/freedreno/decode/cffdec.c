@@ -39,6 +39,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "freedreno_pm4.h"
+
 #include "buffers.h"
 #include "cffdec.h"
 #include "disasm.h"

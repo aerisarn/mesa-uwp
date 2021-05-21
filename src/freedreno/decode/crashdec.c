@@ -47,6 +47,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "freedreno_pm4.h"
+
 #include "ir3/instr-a3xx.h"
 #include "buffers.h"
 #include "cffdec.h"

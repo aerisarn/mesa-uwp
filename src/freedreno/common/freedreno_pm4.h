@@ -84,6 +84,49 @@ pm4_pkt7_hdr(uint8_t opcode, uint16_t cnt)
          ((pm4_odd_parity_bit(opcode) << 23));
 }
 
+/*
+ * Helpers for packet parsing:
+ */
+
+#define pkt_is_type0(pkt)     (((pkt)&0XC0000000) == CP_TYPE0_PKT)
+#define type0_pkt_size(pkt)   ((((pkt) >> 16) & 0x3FFF) + 1)
+#define type0_pkt_offset(pkt) ((pkt)&0x7FFF)
+
+#define pkt_is_type2(pkt) ((pkt) == CP_TYPE2_PKT)
+
+#define pkt_is_type3(pkt)                                                      \
+   ((((pkt)&0xC0000000) == CP_TYPE3_PKT) && (((pkt)&0x80FE) == 0))
+
+#define cp_type3_opcode(pkt) (((pkt) >> 8) & 0xFF)
+#define type3_pkt_size(pkt)  ((((pkt) >> 16) & 0x3FFF) + 1)
+
+static inline uint
+pm4_calc_odd_parity_bit(uint val)
+{
+   return (0x9669 >> (0xf & ((val) ^ ((val) >> 4) ^ ((val) >> 8) ^
+                             ((val) >> 12) ^ ((val) >> 16) ^ ((val) >> 20) ^
+                             ((val) >> 24) ^ ((val) >> 28)))) &
+          1;
+}
+
+#define pkt_is_type4(pkt)                                                      \
+   ((((pkt)&0xF0000000) == CP_TYPE4_PKT) &&                                    \
+    ((((pkt) >> 27) & 0x1) ==                                                  \
+     pm4_calc_odd_parity_bit(type4_pkt_offset(pkt))) &&                        \
+    ((((pkt) >> 7) & 0x1) == pm4_calc_odd_parity_bit(type4_pkt_size(pkt))))
+
+#define type4_pkt_offset(pkt) (((pkt) >> 8) & 0x7FFFF)
+#define type4_pkt_size(pkt)   ((pkt)&0x7F)
+
+#define pkt_is_type7(pkt)                                                      \
+   ((((pkt)&0xF0000000) == CP_TYPE7_PKT) && (((pkt)&0x0F000000) == 0) &&       \
+    ((((pkt) >> 23) & 0x1) ==                                                  \
+     pm4_calc_odd_parity_bit(cp_type7_opcode(pkt))) &&                         \
+    ((((pkt) >> 15) & 0x1) == pm4_calc_odd_parity_bit(type7_pkt_size(pkt))))
+
+#define cp_type7_opcode(pkt) (((pkt) >> 16) & 0x7F)
+#define type7_pkt_size(pkt)  ((pkt)&0x3FFF)
+
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif
