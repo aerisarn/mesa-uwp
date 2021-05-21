@@ -806,7 +806,7 @@ skip_hash_tables:
       }
    }
 
-   if (pool->num_sets_allocated + pool->key.layout->num_descriptors > ZINK_DEFAULT_MAX_DESCS) {
+   if (pool->num_sets_allocated == ZINK_DEFAULT_MAX_DESCS) {
       simple_mtx_unlock(&pool->mtx);
       zink_fence_wait(&ctx->base);
       zink_batch_reference_program(batch, pg);
