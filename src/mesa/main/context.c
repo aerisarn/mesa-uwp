@@ -1772,7 +1772,9 @@ _mesa_flush(struct gl_context *ctx)
 {
    FLUSH_VERTICES(ctx, 0, 0);
    if (ctx->Driver.Flush) {
-      ctx->Driver.Flush(ctx, 0);
+      bool async = !ctx->Shared->HasExternallySharedImages;
+
+      ctx->Driver.Flush(ctx, async ? PIPE_FLUSH_ASYNC : 0);
    }
 }
 
