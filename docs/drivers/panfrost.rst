@@ -55,4 +55,4 @@ For general information on building Mesa, read :doc:`the install documentation
 Chat
 ----
 
-Panfrost developers and users hang out on IRC at ``#panfrost`` on Freenode.
+Panfrost developers and users hang out on IRC at ``#panfrost`` on OFTC.
