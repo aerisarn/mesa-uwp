@@ -34,6 +34,7 @@
 static struct rnndeccontext *ctx;
 static struct rnndb *db;
 static struct rnndomain *control_regs;
+static struct rnndomain *pipe_regs;
 struct rnndomain *dom[2];
 static struct rnnenum *pm4_packets;
 
@@ -47,22 +48,41 @@ find_reg(struct rnndomain *dom, const char *name)
    return -1;
 }
 
+static unsigned
+reg(struct rnndomain *dom, const char *type, const char *name)
+{
+   int val = find_reg(dom, name);
+   if (val < 0) {
+      char *endptr = NULL;
+      val = strtol(name, &endptr, 0);
+      if (endptr && *endptr) {
+         printf("invalid %s reg: %s\n", type, name);
+         exit(2);
+      }
+   }
+   return (unsigned)val;
+}
+
+static char *
+reg_name(struct rnndomain *dom, unsigned id)
+{
+   if (rnndec_checkaddr(ctx, dom, id, 0)) {
+      struct rnndecaddrinfo *info = rnndec_decodeaddr(ctx, dom, id, 0);
+      char *name = info->name;
+      free(info);
+      return name;
+   } else {
+      return NULL;
+   }
+}
+
 /**
  * Map control reg name to offset.
  */
 unsigned
 afuc_control_reg(const char *name)
 {
-   int val = find_reg(control_regs, name);
-   if (val < 0) {
-      char *endptr = NULL;
-      val = strtol(name, &endptr, 0);
-      if (endptr) {
-         printf("invalid control reg: %s\n", name);
-         exit(2);
-      }
-   }
-   return (unsigned)val;
+   return reg(control_regs, "control", name);
 }
 
 /**
@@ -71,14 +91,25 @@ afuc_control_reg(const char *name)
 char *
 afuc_control_reg_name(unsigned id)
 {
-   if (rnndec_checkaddr(ctx, control_regs, id, 0)) {
-      struct rnndecaddrinfo *info = rnndec_decodeaddr(ctx, control_regs, id, 0);
-      char *name = info->name;
-      free(info);
-      return name;
-   } else {
-      return NULL;
-   }
+   return reg_name(control_regs, id);
+}
+
+/**
+ * Map pipe reg name to offset.
+ */
+unsigned
+afuc_pipe_reg(const char *name)
+{
+   return reg(pipe_regs, "pipe", name);
+}
+
+/**
+ * Map offset to pipe reg name (or NULL), caller frees
+ */
+char *
+afuc_pipe_reg_name(unsigned id)
+{
+   return reg_name(pipe_regs, id);
 }
 
 /**
@@ -93,7 +124,7 @@ afuc_gpu_reg(const char *name)
    if (val < 0) {
       char *endptr = NULL;
       val = strtol(name, &endptr, 0);
-      if (endptr) {
+      if (endptr && *endptr) {
          printf("invalid control reg: %s\n", name);
          exit(2);
       }
@@ -172,15 +203,18 @@ afuc_printc(enum afuc_color c, const char *fmt, ...)
 int afuc_util_init(int gpuver, bool colors)
 {
    char *name, *control_reg_name;
+   char *pipe_reg_name = NULL;
 
    switch (gpuver) {
    case 6:
       name = "A6XX";
       control_reg_name = "A6XX_CONTROL_REG";
+      pipe_reg_name = "A6XX_PIPE_REG";
       break;
    case 5:
       name = "A5XX";
       control_reg_name = "A5XX_CONTROL_REG";
+      pipe_reg_name = "A5XX_PIPE_REG";
       break;
    default:
       fprintf(stderr, "unknown GPU version!\n");
@@ -200,6 +234,7 @@ int afuc_util_init(int gpuver, bool colors)
    dom[0] = rnn_finddomain(db, name);
    dom[1] = rnn_finddomain(db, "AXXX");
    control_regs = rnn_finddomain(db, control_reg_name);
+   pipe_regs = rnn_finddomain(db, pipe_reg_name);
 
    rnndec_varadd(ctx, "chip", name);
 

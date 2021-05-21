@@ -270,6 +270,18 @@ print_control_reg(uint32_t id)
 }
 
 static void
+print_pipe_reg(uint32_t id)
+{
+   char *name = afuc_pipe_reg_name(id);
+   if (name) {
+      printf("|%s", name);
+      free(name);
+   } else {
+      printf("0x%03x", id);
+   }
+}
+
+static void
 disasm_instr(uint32_t *instrs, unsigned pc)
 {
    int jump_label_idx;
@@ -385,6 +397,16 @@ disasm_instr(uint32_t *instrs, unsigned pc)
       if (instr->movi.shift)
          printf(" << %u", instr->movi.shift);
 
+      if ((instr->movi.dst == REG_ADDR) && (instr->movi.shift >= 16)) {
+         uint32_t val = instr->movi.uimm << instr->movi.shift;
+         val &= ~0x40000;  /* b18 seems to be a flag */
+
+         if ((val & 0x00ffffff) == 0) {
+            printf("\t; ");
+            print_pipe_reg(val >> 24);
+            break;
+         }
+      }
       /* using mov w/ << 16 is popular way to construct a pkt7
        * header to send (for ex, from PFP to ME), so check that
        * case first

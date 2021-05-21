@@ -19,10 +19,10 @@ CP_ME_INIT:
         mov $01, $data
 
 CP_MEM_WRITE:
-        mov $addr, 0x00a0 << 24
+        mov $addr, 0x00a0 << 24	; |NRT_ADDR
         mov $02, 0x0004
         (xmov1)add $data, $02, $data
-        mov $addr, 0xa204 << 16
+        mov $addr, 0xa204 << 16	; |NRT_DATA
         (rep)(xmov3)mov $data, $data
         waitin
         mov $01, $data
