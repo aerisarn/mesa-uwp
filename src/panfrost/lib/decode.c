@@ -1080,13 +1080,10 @@ pandecode_write_value_job(const struct pandecode_mapped_memory *mem,
  * in the chain; later jobs are found by walking the chain. Bifrost is, well,
  * if it's bifrost or not. GPU ID is the more finegrained ID (at some point, we
  * might wish to combine this with the bifrost parameter) because some details
- * are model-specific even within a particular architecture. Minimal traces
- * *only* examine the job descriptors, skipping printing entirely if there is
- * no faults, and only descends into the payload if there are faults. This is
- * useful for looking for faults without the overhead of invasive traces. */
+ * are model-specific even within a particular architecture. */
 
 void
-pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
+pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
 {
         pandecode_dump_file_open();
 
@@ -1102,10 +1099,6 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                 next_job = h.next;
 
                 int job_no = job_descriptor_number++;
-
-                /* If the job is good to go, skip it in minimal mode */
-                if (minimal && (h.exception_status == 0x0 || h.exception_status == 0x1))
-                        continue;
 
                 DUMP_UNPACKED(JOB_HEADER, h, "Job Header:\n");
                 pandecode_log("\n");
