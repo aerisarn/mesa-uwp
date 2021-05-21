@@ -304,7 +304,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
    GENX(3DSTATE_HIER_DEPTH_BUFFER_pack)(NULL, dw, &hiz);
    dw += GENX(3DSTATE_HIER_DEPTH_BUFFER_length);
 
-#if GFX_VER == 12
+#if GFX_VERx10 == 120
    /* Wa_14010455700
     *
     * To avoid sporadic corruptions “Set 0x7010[9] when Depth Buffer Surface

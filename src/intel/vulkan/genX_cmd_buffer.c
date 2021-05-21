@@ -5705,7 +5705,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
 #endif
 
-#if GFX_VER == 12
+#if GFX_VERx10 == 120
    /* Wa_14010455700
     *
     * ISL will change some CHICKEN registers depending on the depth surface

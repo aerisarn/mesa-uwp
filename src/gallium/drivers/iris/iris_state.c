@@ -6231,7 +6231,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       uint32_t clear_length = GENX(3DSTATE_CLEAR_PARAMS_length) * 4;
       uint32_t cso_z_size = batch->screen->isl_dev.ds.size - clear_length;;
 
-#if GFX_VER == 12
+#if GFX_VERx10 == 120
       /* Wa_14010455700
        *
        * ISL will change some CHICKEN registers depending on the depth surface
