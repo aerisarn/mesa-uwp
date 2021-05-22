@@ -437,8 +437,15 @@ anv_create_ahw_memory(VkDevice device_h,
    if (AHardwareBuffer_allocate(&desc, &ahw) != 0)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   mem->ahw = ahw;
-   return VK_SUCCESS;
+   const VkImportAndroidHardwareBufferInfoANDROID import_info = {
+      .buffer = ahw,
+   };
+   result = anv_import_ahw_memory(device_h, mem, &import_info);
+
+   /* Release a reference to avoid leak for AHB allocation. */
+   AHardwareBuffer_release(ahw);
+
+   return result;
 #else
    return VK_ERROR_EXTENSION_NOT_PRESENT;
 #endif

@@ -3828,13 +3828,6 @@ VkResult anv_AllocateMemory(
       if (result != VK_SUCCESS)
          goto fail;
 
-      const VkImportAndroidHardwareBufferInfoANDROID import_info = {
-         .buffer = mem->ahw,
-      };
-      result = anv_import_ahw_memory(_device, mem, &import_info);
-      if (result != VK_SUCCESS)
-         goto fail;
-
       goto success;
    }
 
