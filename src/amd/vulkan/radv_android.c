@@ -807,8 +807,10 @@ radv_create_ahb_memory(struct radv_device *device, struct radv_device_memory *me
    };
 
    VkResult result = radv_import_ahb_memory(device, mem, priority, &import_info);
-   if (result != VK_SUCCESS)
-      AHardwareBuffer_release(mem->android_hardware_buffer);
+
+   /* Release a reference to avoid leak for AHB allocation. */
+   AHardwareBuffer_release(mem->android_hardware_buffer);
+
    return result;
 #else /* RADV_SUPPORT_ANDROID_HARDWARE_BUFFER */
    return VK_ERROR_EXTENSION_NOT_PRESENT;
