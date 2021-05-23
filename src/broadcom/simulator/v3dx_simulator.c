@@ -81,6 +81,12 @@ v3d_invalidate_l2c(struct v3d_hw *v3d)
                   V3D_CTL_0_L2CACTL_L2CENA_SET);
 }
 
+enum v3d_l2t_cache_flush_mode {
+        V3D_CACHE_FLUSH_MODE_FLUSH,
+        V3D_CACHE_FLUSH_MODE_CLEAR,
+        V3D_CACHE_FLUSH_MODE_CLEAN,
+};
+
 /* Invalidates texture L2 cachelines */
 static void
 v3d_invalidate_l2t(struct v3d_hw *v3d)
@@ -89,7 +95,7 @@ v3d_invalidate_l2t(struct v3d_hw *v3d)
         V3D_WRITE(V3D_CTL_0_L2TFLEND, ~0);
         V3D_WRITE(V3D_CTL_0_L2TCACTL,
                   V3D_CTL_0_L2TCACTL_L2TFLS_SET |
-                  (0 << V3D_CTL_0_L2TCACTL_L2TFLM_LSB));
+                  (V3D_CACHE_FLUSH_MODE_FLUSH << V3D_CTL_0_L2TCACTL_L2TFLM_LSB));
 }
 
 /* Flushes dirty texture cachelines from the L1 write combiner */
@@ -110,7 +116,7 @@ v3d_flush_l2t(struct v3d_hw *v3d)
         V3D_WRITE(V3D_CTL_0_L2TFLEND, ~0);
         V3D_WRITE(V3D_CTL_0_L2TCACTL,
                   V3D_CTL_0_L2TCACTL_L2TFLS_SET |
-                  (2 << V3D_CTL_0_L2TCACTL_L2TFLM_LSB));
+                  (V3D_CACHE_FLUSH_MODE_CLEAN << V3D_CTL_0_L2TCACTL_L2TFLM_LSB));
 
         assert(!(V3D_READ(V3D_CTL_0_L2TCACTL) & V3D_CTL_0_L2TCACTL_L2TFLS_SET));
 }
