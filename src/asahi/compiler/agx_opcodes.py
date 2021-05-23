@@ -86,6 +86,7 @@ DIM = immediate("dim", "enum agx_dim")
 SCOREBOARD = immediate("scoreboard")
 ICOND = immediate("icond")
 FCOND = immediate("fcond")
+NEST = immediate("nest")
 
 FUNOP = lambda x: (x << 28)
 FUNOP_MASK = FUNOP((1 << 14) - 1)

@@ -278,6 +278,9 @@ typedef struct {
     * scoreboarding (everything but memory load/store and texturing). */
    unsigned scoreboard : 1;
 
+   /* Number of nested control flow layers to jump by */
+   unsigned nest : 2;
+
    /* Output modifiers */
    bool saturate : 1;
    unsigned mask : 4;
