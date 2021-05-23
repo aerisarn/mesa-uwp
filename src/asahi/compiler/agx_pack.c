@@ -260,6 +260,10 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
 
       raw |= (D & BITFIELD_MASK(8)) << 7;
       extend |= ((D >> 8) << extend_offset);
+   } else if (info.immediates & AGX_IMMEDIATE_NEST) {
+      raw |= (I->invert_cond << 8);
+      raw |= (I->nest << 11);
+      raw |= (I->icond << 13);
    }
 
    for (unsigned s = 0; s < info.nr_srcs; ++s) {
