@@ -321,6 +321,9 @@ typedef struct {
    /* I don't really understand how writeout ops work yet */
    bool did_writeout;
 
+   /* During instruction selection, for inserting control flow */
+   agx_block *current_block;
+
    /* Stats for shader-db */
    unsigned loop_count;
    unsigned spills;

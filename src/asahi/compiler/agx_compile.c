@@ -732,6 +732,7 @@ emit_block(agx_context *ctx, nir_block *block)
    agx_block *blk = agx_create_block(ctx);
    list_addtail(&blk->link, &ctx->blocks);
    list_inithead(&blk->instructions);
+   ctx->current_block = blk;
 
    agx_builder _b = agx_init_builder(ctx, agx_after_block(blk));
 
