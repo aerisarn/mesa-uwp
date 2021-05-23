@@ -867,3 +867,83 @@ vn_GetAndroidHardwareBufferPropertiesANDROID(
 
    return VK_SUCCESS;
 }
+
+static AHardwareBuffer *
+vn_android_ahb_allocate(uint32_t width,
+                        uint32_t height,
+                        uint32_t layers,
+                        uint32_t format,
+                        uint64_t usage)
+{
+   AHardwareBuffer *ahb = NULL;
+   AHardwareBuffer_Desc desc;
+   int ret = 0;
+
+   memset(&desc, 0, sizeof(desc));
+   desc.width = width;
+   desc.height = height;
+   desc.layers = layers;
+   desc.format = format;
+   desc.usage = usage;
+
+   ret = AHardwareBuffer_allocate(&desc, &ahb);
+   if (ret) {
+      /* We just log the error code here for now since the platform falsely
+       * maps all gralloc allocation failures to oom.
+       */
+      vn_log(NULL, "AHB alloc(w=%u,h=%u,l=%u,f=%u,u=%" PRIu64 ") failed(%d)",
+             width, height, layers, format, usage, ret);
+      return NULL;
+   }
+
+   return ahb;
+}
+
+bool
+vn_android_get_drm_format_modifier_info(
+   const VkPhysicalDeviceImageFormatInfo2 *format_info,
+   VkPhysicalDeviceImageDrmFormatModifierInfoEXT *out_info)
+{
+   /* To properly fill VkPhysicalDeviceImageDrmFormatModifierInfoEXT, we have
+    * to allocate an ahb to retrieve the drm format modifier. For the image
+    * sharing mode, we assume VK_SHARING_MODE_EXCLUSIVE for now.
+    */
+   AHardwareBuffer *ahb = NULL;
+   const native_handle_t *handle = NULL;
+   uint32_t format = 0;
+   uint64_t usage = 0;
+   uint32_t strides[4] = { 0, 0, 0, 0 };
+   uint32_t offsets[4] = { 0, 0, 0, 0 };
+   uint64_t format_modifier = 0;
+
+   assert(format_info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
+
+   format = vn_android_ahb_format_from_vk_format(format_info->format);
+   if (!format)
+      return false;
+
+   usage = vn_android_get_ahb_usage(format_info->usage, format_info->flags);
+   ahb = vn_android_ahb_allocate(16, 16, 1, format, usage);
+   if (!ahb)
+      return false;
+
+   handle = AHardwareBuffer_getNativeHandle(ahb);
+   if (!vn_android_get_gralloc_buffer_info(handle, strides, offsets,
+                                           &format_modifier)) {
+      AHardwareBuffer_release(ahb);
+      return false;
+   }
+
+   *out_info = (VkPhysicalDeviceImageDrmFormatModifierInfoEXT){
+      .sType =
+         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT,
+      .pNext = NULL,
+      .drmFormatModifier = format_modifier,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+      .queueFamilyIndexCount = 0,
+      .pQueueFamilyIndices = NULL,
+   };
+
+   AHardwareBuffer_release(ahb);
+   return true;
+}

@@ -2718,6 +2718,7 @@ struct vn_physical_device_image_format_info {
    VkPhysicalDeviceExternalImageFormatInfo external;
    VkImageFormatListCreateInfo list;
    VkImageStencilUsageCreateInfo stencil_usage;
+   VkPhysicalDeviceImageDrmFormatModifierInfoEXT modifier;
 };
 
 static const VkPhysicalDeviceImageFormatInfo2 *
@@ -2729,12 +2730,16 @@ vn_physical_device_fix_image_format_info(
    local_info->format = *info;
    VkBaseOutStructure *dst = (void *)&local_info->format;
 
+   bool use_modifier = false;
    /* we should generate deep copy functions... */
    vk_foreach_struct_const(src, info->pNext) {
       void *pnext = NULL;
       switch (src->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
          memcpy(&local_info->external, src, sizeof(local_info->external));
+         use_modifier =
+            local_info->external.handleType ==
+            VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
          local_info->external.handleType =
             physical_dev->external_memory.renderer_handle_type;
          pnext = &local_info->external;
@@ -2758,7 +2763,15 @@ vn_physical_device_fix_image_format_info(
       }
    }
 
-   dst->pNext = NULL;
+   if (use_modifier) {
+      local_info->format.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+      if (!vn_android_get_drm_format_modifier_info(&local_info->format,
+                                                   &local_info->modifier))
+         return NULL;
+   }
+
+   dst->pNext = use_modifier ? (void *)&local_info->modifier : NULL;
+
    return &local_info->format;
 }
 
@@ -2791,6 +2804,10 @@ vn_GetPhysicalDeviceImageFormatProperties2(
       if (external_info->handleType != renderer_handle_type) {
          pImageFormatInfo = vn_physical_device_fix_image_format_info(
             physical_dev, pImageFormatInfo, &local_info);
+         if (!pImageFormatInfo) {
+            return vn_error(physical_dev->instance,
+                            VK_ERROR_FORMAT_NOT_SUPPORTED);
+         }
       }
    }
 
