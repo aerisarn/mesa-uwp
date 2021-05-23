@@ -285,17 +285,17 @@ struct v3dv_pipeline_cache_stats {
  *
  * FIXME: perhaps move to common
  */
-typedef enum {
+enum broadcom_shader_stage {
    BROADCOM_SHADER_VERTEX,
    BROADCOM_SHADER_VERTEX_BIN,
    BROADCOM_SHADER_FRAGMENT,
    BROADCOM_SHADER_COMPUTE,
-} broadcom_shader_stage;
+};
 
 #define BROADCOM_SHADER_STAGES (BROADCOM_SHADER_COMPUTE + 1)
 
 /* Assumes that coordinate shaders will be custom-handled by the caller */
-static inline broadcom_shader_stage
+static inline enum broadcom_shader_stage
 gl_shader_stage_to_broadcom(gl_shader_stage stage)
 {
    switch (stage) {
@@ -311,7 +311,7 @@ gl_shader_stage_to_broadcom(gl_shader_stage stage)
 }
 
 static inline gl_shader_stage
-broadcom_shader_stage_to_gl(broadcom_shader_stage stage)
+broadcom_shader_stage_to_gl(enum broadcom_shader_stage stage)
 {
    switch (stage) {
    case BROADCOM_SHADER_VERTEX:
@@ -327,7 +327,7 @@ broadcom_shader_stage_to_gl(broadcom_shader_stage stage)
 }
 
 static inline const char *
-broadcom_shader_stage_name(broadcom_shader_stage stage)
+broadcom_shader_stage_name(enum broadcom_shader_stage stage)
 {
    switch(stage) {
    case BROADCOM_SHADER_VERTEX_BIN:
@@ -1386,7 +1386,7 @@ struct v3dv_event {
 };
 
 struct v3dv_shader_variant {
-   broadcom_shader_stage stage;
+   enum broadcom_shader_stage stage;
 
    union {
       struct v3d_prog_data *base;
@@ -1425,7 +1425,7 @@ struct v3dv_shader_variant {
 struct v3dv_pipeline_stage {
    struct v3dv_pipeline *pipeline;
 
-   broadcom_shader_stage stage;
+   enum broadcom_shader_stage stage;
 
    const struct vk_shader_module *module;
    const char *entrypoint;
@@ -1942,7 +1942,7 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
 
 struct v3dv_shader_variant *
 v3dv_shader_variant_create(struct v3dv_device *device,
-                           broadcom_shader_stage stage,
+                           enum broadcom_shader_stage stage,
                            struct v3d_prog_data *prog_data,
                            uint32_t prog_data_size,
                            uint32_t assembly_offset,

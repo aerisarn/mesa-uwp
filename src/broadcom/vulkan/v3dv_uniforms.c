@@ -125,7 +125,7 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
 static void
 write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
              struct v3dv_pipeline *pipeline,
-             broadcom_shader_stage stage,
+             enum broadcom_shader_stage stage,
              struct v3dv_cl_out **uniforms,
              uint32_t data,
              struct texture_bo_list *tex_bos,
@@ -169,7 +169,7 @@ write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
 static void
 write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
              struct v3dv_pipeline *pipeline,
-             broadcom_shader_stage stage,
+             enum broadcom_shader_stage stage,
              struct v3dv_cl_out **uniforms,
              uint32_t data,
              struct state_bo_list *state_bos)
@@ -219,7 +219,7 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
 static void
 write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                         struct v3dv_pipeline *pipeline,
-                        broadcom_shader_stage stage,
+                        enum broadcom_shader_stage stage,
                         struct v3dv_cl_out **uniforms,
                         enum quniform_contents content,
                         uint32_t data,
@@ -348,7 +348,7 @@ get_texture_size_from_buffer_view(struct v3dv_buffer_view *buffer_view,
 static uint32_t
 get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
                  struct v3dv_pipeline *pipeline,
-                 broadcom_shader_stage stage,
+                 enum broadcom_shader_stage stage,
                  enum quniform_contents contents,
                  uint32_t data)
 {

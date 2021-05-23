@@ -576,7 +576,7 @@ pipeline_get_descriptor_map(struct v3dv_pipeline *pipeline,
                             gl_shader_stage gl_stage,
                             bool is_sampler)
 {
-   broadcom_shader_stage broadcom_stage =
+   enum broadcom_shader_stage broadcom_stage =
       gl_shader_stage_to_broadcom(gl_stage);
 
    assert(pipeline->shared_data &&
@@ -1449,7 +1449,7 @@ pipeline_check_spill_size(struct v3dv_pipeline *pipeline)
  */
 struct v3dv_shader_variant *
 v3dv_shader_variant_create(struct v3dv_device *device,
-                           broadcom_shader_stage stage,
+                           enum broadcom_shader_stage stage,
                            struct v3d_prog_data *prog_data,
                            uint32_t prog_data_size,
                            uint32_t assembly_offset,

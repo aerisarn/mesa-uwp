@@ -492,7 +492,7 @@ shader_variant_create_from_blob(struct v3dv_device *device,
 {
    VkResult result;
 
-   broadcom_shader_stage stage = blob_read_uint32(blob);
+   enum broadcom_shader_stage stage = blob_read_uint32(blob);
 
    uint32_t prog_data_size = blob_read_uint32(blob);
    /* FIXME: as we include the stage perhaps we can avoid prog_data_size? */
