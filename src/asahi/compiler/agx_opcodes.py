@@ -88,6 +88,7 @@ ICOND = immediate("icond")
 FCOND = immediate("fcond")
 NEST = immediate("nest")
 INVERT_COND = immediate("invert_cond")
+NEST = immediate("nest")
 TARGET = immediate("target", "agx_block *")
 
 FUNOP = lambda x: (x << 28)
@@ -181,6 +182,19 @@ op("ld_tile", (0x49, 0x7F, 8, _), dests = 1, srcs = 0,
 
 op("st_tile", (0x09, 0x7F, 8, _), dests = 0, srcs = 1,
       can_eliminate = False, imms = [FORMAT])
+
+# TODO: model implicit r0l destinations
+for is_float in [False, True]:
+   mod_mask = 0 if is_float else (0x3 << 26) | (0x3 << 38)
+
+   for (cf, cf_op) in [("if", 0), ("else", 1), ("while", 2)]:
+      name = "{}_{}cmp".format(cf, "f" if is_float else "i")
+      exact = 0x42 | (0x0 if is_float else 0x10) | (cf_op << 9)
+      mask = 0x7F | (0x3 << 9) | mod_mask | (0x3 << 44)
+      imms = [NEST, FCOND if is_float else ICOND, INVERT_COND]
+
+      op(name, (exact, mask, 6, _), dests = 0, srcs = 2, can_eliminate = False,
+            imms = imms, is_float = is_float)
 
 op("bitop", (0x7E, 0x7F, 6, _), srcs = 2, imms = [TRUTH_TABLE])
 op("convert", (0x3E | L, 0x7F | L | (0x3 << 38), 6, _), srcs = 2, imms = [ROUND]) 
