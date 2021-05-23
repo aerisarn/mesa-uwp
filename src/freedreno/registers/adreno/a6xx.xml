@@ -978,8 +978,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0821" name="CP_HW_FAULT"/>
 	<reg32 offset="0x0823" name="CP_INTERRUPT_STATUS"/>
 	<reg32 offset="0x0824" name="CP_PROTECT_STATUS"/>
-	<reg32 offset="0x0830" name="CP_SQE_INSTR_BASE_LO"/>
-	<reg32 offset="0x0831" name="CP_SQE_INSTR_BASE_HI"/>
+	<reg64 offset="0x0830" name="CP_SQE_INSTR_BASE"/>
 	<reg32 offset="0x0840" name="CP_MISC_CNTL"/>
 	<reg32 offset="0x0844" name="CP_APRIV_CNTL"/>
 	<!-- all the threshold values seem to be in units of quad-dwords: -->
@@ -1095,6 +1094,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0A00" name="CP_APERTURE_CNTL_HOST"/>
 	<reg32 offset="0x0A03" name="CP_APERTURE_CNTL_CD"/>
 	<reg32 offset="0x0B34" name="CP_LPAC_PROG_FIFO_SIZE"/>
+	<reg64 offset="0x0b82" name="CP_LPAC_SQE_INSTR_BASE"/>
 	<reg32 offset="0x0C01" name="VSC_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0201" name="RBBM_INT_0_STATUS" type="A6XX_RBBM_INT_0_MASK"/>
 	<reg32 offset="0x0210" name="RBBM_STATUS">
@@ -2492,6 +2492,13 @@ to upconvert to 32b float internally?
 		<bitfield name="EVENT" low="0" high="6" type="vgt_event_type"/>
 	</reg32>
 
+	<!--
+		0x9880 written in a lot of places by SQE, same value gets written
+		to control reg 0x12a.  Set by CP_SET_MARKER, so lets name it after
+		that
+	 -->
+	<reg32 offset="0x9880" name="PC_MARKER"/>
+
 	<!-- 0x9843-0x997f invalid -->
 
 	<reg32 offset="0x9981" name="PC_POLYGON_MODE">
@@ -2580,7 +2587,19 @@ to upconvert to 32b float internally?
 	<!-- TODO: 0x9e00-0xa000 range incomplete -->
 	<reg32 offset="0x9e00" name="PC_DBG_ECO_CNTL"/>
 	<reg32 offset="0x9e01" name="PC_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
+	<reg64 offset="0x9e04" name="PC_DRAW_INDX_BASE"/>
+	<reg32 offset="0x9e06" name="PC_DRAW_FIRST_INDX" type="uint"/>
+	<reg32 offset="0x9e07" name="PC_DRAW_MAX_INDICES" type="uint"/>
 	<reg64 offset="0x9e08" name="PC_TESSFACTOR_ADDR" type="waddress" align="32"/>
+
+	<reg32 offset="0x9e0b" name="PC_DRAW_INITIATOR" type="vgt_draw_initiator_a4xx">
+		<doc>
+			Possibly not really "initiating" the draw but the layout is similar
+			to VGT_DRAW_INITIATOR on older gens
+		</doc>
+	</reg32>
+	<reg32 offset="0x9e0c" name="PC_DRAW_NUM_INSTANCES" type="uint"/>
+	<reg32 offset="0x9e0d" name="PC_DRAW_NUM_INDICES" type="uint"/>
 
 	<!-- These match the contents of CP_SET_BIN_DATA (not written directly) -->
 	<reg32 offset="0x9e11" name="PC_VSTREAM_CONTROL">
@@ -2590,6 +2609,11 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg64 offset="0x9e12" name="PC_BIN_PRIM_STRM" type="waddress" align="32"/>
 	<reg64 offset="0x9e14" name="PC_BIN_DRAW_STRM" type="waddress" align="32"/>
+
+	<reg32 offset="0x9e1c" name="PC_VISIBILITY_OVERRIDE">
+		<doc>Written by CP_SET_VISIBILITY_OVERRIDE handler</doc>
+		<bitfield name="OVERRIDE" pos="0" type="boolean"/>
+	</reg32>
 
 	<array offset="0x9e34" name="PC_PERFCTR_PC_SEL" stride="1" length="8"/>
 
