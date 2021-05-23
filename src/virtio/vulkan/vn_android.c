@@ -266,6 +266,9 @@ vn_android_get_gralloc_buffer_info(buffer_handle_t handle,
                         &info) != 0)
       return false;
 
+   if (info.modifier == DRM_FORMAT_MOD_INVALID)
+      return false;
+
    for (uint32_t i = 0; i < 4; i++) {
       out_strides[i] = info.stride[i];
       out_offsets[i] = info.offset[i];
@@ -357,8 +360,7 @@ vn_android_image_from_anb(struct vn_device *dev,
       goto fail;
 
    if (!vn_android_get_gralloc_buffer_info(anb_info->handle, strides, offsets,
-                                           &format_modifier) ||
-       format_modifier == DRM_FORMAT_MOD_INVALID) {
+                                           &format_modifier)) {
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
    }
@@ -767,8 +769,7 @@ vn_android_get_ahb_format_properties(
    uint64_t format_modifier = 0;
    const native_handle_t *handle = AHardwareBuffer_getNativeHandle(ahb);
    if (!vn_android_get_gralloc_buffer_info(handle, strides, offsets,
-                                           &format_modifier) ||
-       format_modifier == DRM_FORMAT_MOD_INVALID)
+                                           &format_modifier))
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
    VkDrmFormatModifierPropertiesEXT mod_props;
