@@ -50,6 +50,31 @@ int agx_debug = 0;
             __FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
 static void
+agx_block_add_successor(agx_block *block, agx_block *successor)
+{
+   assert(block != NULL && successor != NULL);
+
+   /* Cull impossible edges */
+   if (block->unconditional_jumps)
+      return;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(block->successors); ++i) {
+      if (block->successors[i]) {
+         if (block->successors[i] == successor)
+            return;
+         else
+            continue;
+      }
+
+      block->successors[i] = successor;
+      _mesa_set_add(successor->predecessors, block);
+      return;
+   }
+
+   unreachable("Too many successors");
+}
+
+static void
 agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
 {
    /* Ensure we've been scalarized and bit size lowered */
