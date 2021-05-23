@@ -265,6 +265,9 @@ typedef struct {
       enum agx_lod_mode lod_mode;
    };
 
+   /* Invert icond/fcond */
+   bool invert_cond : 1;
+
    /* TODO: Handle tex ops more efficient */
    enum agx_dim dim : 3;
 

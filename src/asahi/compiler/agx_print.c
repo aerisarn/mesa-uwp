@@ -176,6 +176,15 @@ agx_print_instr(agx_instr *I, FILE *fp)
       fprintf(fp, "n=%u", I->nest);
    }
 
+   if ((info.immediates & AGX_IMMEDIATE_INVERT_COND) && I->invert_cond) {
+      if (print_comma)
+         fprintf(fp, ", ");
+      else
+         print_comma = true;
+
+      fprintf(fp, "inv");
+   }
+
    fprintf(fp, "\n");
 }
 
