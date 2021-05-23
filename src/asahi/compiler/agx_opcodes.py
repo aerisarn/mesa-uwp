@@ -184,6 +184,9 @@ op("st_tile", (0x09, 0x7F, 8, _), dests = 0, srcs = 1,
       can_eliminate = False, imms = [FORMAT])
 
 # TODO: model implicit r0l destinations
+op("pop_exec", (0x52 | (0x3 << 9), ((1 << 48) - 1) ^ (0x3 << 7) ^ (0x3 << 11), 6, _),
+      dests = 0, srcs = 0, can_eliminate = False, imms = [NEST])
+
 for is_float in [False, True]:
    mod_mask = 0 if is_float else (0x3 << 26) | (0x3 << 38)
 
