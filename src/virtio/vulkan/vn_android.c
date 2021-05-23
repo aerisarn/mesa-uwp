@@ -803,12 +803,19 @@ vn_android_get_ahb_format_properties(
    if (result != VK_SUCCESS)
       return result;
 
+   /* The spec requires that formatFeatures must include at least one of
+    * VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT or
+    * VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT.
+    */
+   const VkFormatFeatureFlags format_features =
+      mod_props.drmFormatModifierTilingFeatures |
+      VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT;
    *out_props = (VkAndroidHardwareBufferFormatPropertiesANDROID) {
       .sType = out_props->sType,
       .pNext = out_props->pNext,
       .format = format,
       .externalFormat = desc.format,
-      .formatFeatures = mod_props.drmFormatModifierTilingFeatures,
+      .formatFeatures = format_features,
       .samplerYcbcrConversionComponents = {
          .r = VK_COMPONENT_SWIZZLE_IDENTITY,
          .g = VK_COMPONENT_SWIZZLE_IDENTITY,
