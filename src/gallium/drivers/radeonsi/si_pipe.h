@@ -2021,15 +2021,25 @@ static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
 
 static inline void si_select_draw_vbo(struct si_context *sctx)
 {
+   bool has_prim_discard_cs = si_compute_prim_discard_enabled(sctx) &&
+                              !sctx->shader.tes.cso && !sctx->shader.gs.cso;
    pipe_draw_vbo_func draw_vbo = sctx->draw_vbo[!!sctx->shader.tes.cso]
                                                [!!sctx->shader.gs.cso]
                                                [sctx->ngg]
-                                               [si_compute_prim_discard_enabled(sctx)];
+                                               [has_prim_discard_cs];
    assert(draw_vbo);
    if (unlikely(sctx->real_draw_vbo))
       sctx->real_draw_vbo = draw_vbo;
    else
       sctx->b.draw_vbo = draw_vbo;
+
+   if (!has_prim_discard_cs) {
+      /* Reset this to false if prim discard CS is disabled because draw_vbo doesn't reset it. */
+      if (sctx->prim_discard_cs_instancing) {
+         sctx->do_update_shaders = true;
+         sctx->prim_discard_cs_instancing = false;
+      }
+   }
 }
 
 /* Return the number of samples that the rasterizer uses. */

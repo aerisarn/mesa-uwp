@@ -1920,7 +1920,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
    unsigned original_index_size = index_size;
 
    /* Determine if we can use the primitive discard compute shader. */
-   if (ALLOW_PRIM_DISCARD_CS && !HAS_TESS && !HAS_GS &&
+   if (ALLOW_PRIM_DISCARD_CS &&
        (total_direct_count > sctx->prim_discard_vertex_count_threshold
            ? (sctx->compute_num_verts_rejected += total_direct_count, true)
            : /* Add, then return true. */
@@ -1949,8 +1949,6 @@ static void si_draw_vbo(struct pipe_context *ctx,
         (!sctx->num_pipeline_stat_queries && !sctx->streamout.prims_gen_query_enabled) ||
         pd_msg("pipestat or primgen query")) &&
        (!sctx->vertex_elements->instance_divisor_is_fetched || pd_msg("loads instance divisors")) &&
-       (!HAS_TESS || pd_msg("uses tess")) &&
-       (!HAS_GS || pd_msg("uses GS")) &&
        (!sctx->shader.ps.cso->info.uses_primid || pd_msg("PS uses PrimID")) &&
        !rs->polygon_mode_enabled &&
 #if SI_PRIM_DISCARD_DEBUG /* same as cso->prim_discard_cs_allowed */
@@ -2180,8 +2178,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
       assert(sctx->dirty_atoms == 0);
 
-      si_emit_draw_packets<GFX_VERSION, NGG,
-                           !HAS_TESS && !HAS_GS ? PRIM_DISCARD_CS_OFF : ALLOW_PRIM_DISCARD_CS>
+      si_emit_draw_packets<GFX_VERSION, NGG, ALLOW_PRIM_DISCARD_CS>
             (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf, index_size,
              index_offset, instance_count, dispatch_prim_discard_cs,
              original_index_size);
@@ -2220,8 +2217,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
       assert(sctx->dirty_atoms == 0);
 
-      si_emit_draw_packets<GFX_VERSION, NGG,
-                           !HAS_TESS && !HAS_GS ? PRIM_DISCARD_CS_OFF : ALLOW_PRIM_DISCARD_CS>
+      si_emit_draw_packets<GFX_VERSION, NGG, ALLOW_PRIM_DISCARD_CS>
             (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf, index_size,
              index_offset, instance_count,
              dispatch_prim_discard_cs, original_index_size);
@@ -2317,6 +2313,9 @@ static void si_init_draw_vbo(struct si_context *sctx)
 {
    /* Prim discard CS is only useful on gfx7+ because gfx6 doesn't have async compute. */
    if (ALLOW_PRIM_DISCARD_CS && GFX_VERSION < GFX7)
+      return;
+
+   if (ALLOW_PRIM_DISCARD_CS && (HAS_TESS || HAS_GS))
       return;
 
    if (NGG && GFX_VERSION < GFX10)
