@@ -920,7 +920,8 @@ static const struct intel_device_info intel_device_info_ehl_2x4 = {
       [MESA_SHADER_VERTEX]    = 3576,               \
       [MESA_SHADER_TESS_CTRL] = 1548,               \
       [MESA_SHADER_TESS_EVAL] = 3576,               \
-      [MESA_SHADER_GEOMETRY]  = 1548,               \
+      /* Wa_14013840143 */                          \
+      [MESA_SHADER_GEOMETRY]  = 1536,               \
    }
 
 #define GFX12_HW_INFO                               \
