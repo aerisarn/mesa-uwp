@@ -1573,9 +1573,23 @@ check_base_requirements(struct zink_screen *screen)
          screen->info.have_EXT_scalar_block_layout) ||
        !screen->info.have_KHR_maintenance1 ||
        !screen->info.have_EXT_custom_border_color) {
-      fprintf(stderr, "WARNING: The Vulkan device doesn't support "
-              "the base Zink requirements, some incorrect rendering "
-              "might occur\n");
+      fprintf(stderr, "WARNING: Some incorrect rendering "
+              "might occur because the selected Vulkan device (%s) doesn't support "
+              "base Zink requirements: ", screen->info.props.deviceName);
+#define CHECK_OR_PRINT(X) \
+      if (!screen->info.X) \
+         fprintf(stderr, "%s ", #X)
+      CHECK_OR_PRINT(feats.features.logicOp);
+      CHECK_OR_PRINT(feats.features.fillModeNonSolid);
+      CHECK_OR_PRINT(feats.features.wideLines);
+      CHECK_OR_PRINT(feats.features.largePoints);
+      CHECK_OR_PRINT(feats.features.alphaToOne);
+      CHECK_OR_PRINT(feats.features.shaderClipDistance);
+      if (!screen->info.feats12.scalarBlockLayout && !screen->info.have_EXT_scalar_block_layout)
+         printf("scalarBlockLayout OR EXT_scalar_block_layout ");
+      CHECK_OR_PRINT(have_KHR_maintenance1);
+      CHECK_OR_PRINT(have_EXT_custom_border_color);
+      fprintf(stderr, "\n");
    }
 }
 
