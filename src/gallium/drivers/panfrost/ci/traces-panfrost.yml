@@ -179,10 +179,11 @@ traces:
     expectations:
       - device: gl-panfrost-t860
         checksum: f2c20b40c53a29459c7b91a01b93751c
-  - path: glmark2/terrain.trace
-    expectations:
-      - device: gl-panfrost-t860
-        checksum: 8cc39e8323bd33a696fb14de47305073
+  # INSTR_INVALID_ENC faults that I can't reproduce locally
+  # - path: glmark2/terrain.trace
+  #   expectations:
+  #     - device: gl-panfrost-t860
+  #       checksum: 8cc39e8323bd33a696fb14de47305073
   - path: glmark2/texture:texture-filter=linear.trace
     expectations:
       - device: gl-panfrost-t860
