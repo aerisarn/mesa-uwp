@@ -149,7 +149,7 @@ replay_minio_upload_images() {
             fi
             __MINIO_PATH="$PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL"
             __DESTINATION_FILE_PATH="${line##*-}"
-            if ci-fairy minio ls "minio://${MINIO_HOST}${__MINIO_PATH}/${__DESTINATION_FILE_PATH}" 2>/dev/null; then
+            if wget -q --method=HEAD "${MINIO_HOST}${__MINIO_PATH}/${__DESTINATION_FILE_PATH}" 2>/dev/null; then
                 continue
             fi
         else
