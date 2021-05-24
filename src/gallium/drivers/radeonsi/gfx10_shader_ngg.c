@@ -1881,13 +1881,6 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 
    /* Allocate export space. Send this message as early as possible, to
     * hide the latency of the SQ <-> SPI roundtrip.
-    *
-    * Note: We could consider compacting primitives for export as well.
-    *       PA processes 1 non-null prim / clock, but it fetches 4 DW of
-    *       prim data per clock and skips null primitives at no additional
-    *       cost. So compacting primitives can only be beneficial when
-    *       there are 4 or more contiguous null primitives in the export
-    *       (in the common case of single-dword prim exports).
     */
    ac_build_sendmsg_gs_alloc_req(&ctx->ac, get_wave_id_in_tg(ctx), vertlive_scan.result_reduce,
                                  num_emit_threads);
