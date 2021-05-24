@@ -5287,11 +5287,8 @@ void visit_discard(isel_context* ctx, nir_intrinsic_instr *instr)
     */
    if (!ctx->cf_info.parent_if.is_divergent) {
       /* program just ends here */
-      ctx->block->kind |= block_kind_uniform;
-      bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1),
-              0 /* enabled mask */, 9 /* dest */,
-              false /* compressed */, true/* done */, true /* valid mask */);
-      bld.sopp(aco_opcode::s_endpgm);
+      ctx->block->kind |= block_kind_uses_discard_if;
+      bld.pseudo(aco_opcode::p_discard_if, Operand(0xFFFFFFFFu));
       // TODO: it will potentially be followed by a branch which is dead code to sanitize NIR phis
    } else {
       ctx->block->kind |= block_kind_discard;
