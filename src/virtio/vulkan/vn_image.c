@@ -729,6 +729,26 @@ vn_CreateSamplerYcbcrConversion(
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
+   const VkExternalFormatANDROID *ext_info =
+      vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_FORMAT_ANDROID);
+
+   VkSamplerYcbcrConversionCreateInfo local_info;
+   if (ext_info && ext_info->externalFormat) {
+      assert(pCreateInfo->format == VK_FORMAT_UNDEFINED);
+
+      VkFormat format =
+         vn_android_ahb_format_to_vk_format(ext_info->externalFormat);
+      if (format == VK_FORMAT_UNDEFINED)
+         return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      local_info = *pCreateInfo;
+      local_info.format = format;
+      local_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+      local_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+      local_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+      local_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+      pCreateInfo = &local_info;
+   }
 
    struct vn_sampler_ycbcr_conversion *conv =
       vk_zalloc(alloc, sizeof(*conv), VN_DEFAULT_ALIGN,

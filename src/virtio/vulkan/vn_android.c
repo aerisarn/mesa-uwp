@@ -137,7 +137,7 @@ vn_android_ahb_format_from_vk_format(VkFormat format)
    }
 }
 
-static VkFormat
+VkFormat
 vn_android_ahb_format_to_vk_format(uint32_t format)
 {
    switch (format) {
