@@ -1562,7 +1562,6 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
                const struct brw_gs_prog_key *key,
                struct brw_gs_prog_data *prog_data,
                nir_shader *nir,
-               struct gl_program *prog,
                int shader_time_index,
                struct brw_compile_stats *stats,
                char **error_str);

@@ -1660,7 +1660,7 @@ iris_compile_gs(struct iris_screen *screen,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_gs(compiler, dbg, mem_ctx, &brw_key, gs_prog_data,
-                     nir, NULL, -1, NULL, &error_str);
+                     nir, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile geometry shader: %s\n", error_str);
       ralloc_free(mem_ctx);

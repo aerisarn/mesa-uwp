@@ -998,7 +998,7 @@ anv_pipeline_compile_gs(const struct brw_compiler *compiler,
    gs_stage->code = brw_compile_gs(compiler, device, mem_ctx,
                                    &gs_stage->key.gs,
                                    &gs_stage->prog_data.gs,
-                                   gs_stage->nir, NULL, -1,
+                                   gs_stage->nir, -1,
                                    gs_stage->stats, NULL);
 }
 
