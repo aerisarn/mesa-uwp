@@ -71,8 +71,9 @@ panfrost_create_compute_state(
                 so->cbase.ir_type = PIPE_SHADER_IR_NIR;
         }
 
-        panfrost_shader_compile(ctx, so->cbase.ir_type, so->cbase.prog,
-                                MESA_SHADER_COMPUTE, v);
+        panfrost_shader_compile(pctx->screen, &ctx->shaders, &ctx->descs,
+                        so->cbase.ir_type, so->cbase.prog, MESA_SHADER_COMPUTE,
+                        v);
 
         return so;
 }

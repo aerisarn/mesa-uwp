@@ -40,13 +40,15 @@
 #include "tgsi/tgsi_dump.h"
 
 void
-panfrost_shader_compile(struct panfrost_context *ctx,
+panfrost_shader_compile(struct pipe_screen *pscreen,
+                        struct pan_pool *shader_pool,
+                        struct pan_pool *desc_pool,
                         enum pipe_shader_ir ir_type,
                         const void *ir,
                         gl_shader_stage stage,
                         struct panfrost_shader_state *state)
 {
-        struct panfrost_device *dev = pan_device(ctx->base.screen);
+        struct panfrost_device *dev = pan_device(pscreen);
 
         nir_shader *s;
 
@@ -54,7 +56,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 s = nir_shader_clone(NULL, ir);
         } else {
                 assert (ir_type == PIPE_SHADER_IR_TGSI);
-                s = tgsi_to_nir(ir, ctx->base.screen, false);
+                s = tgsi_to_nir(ir, pscreen, false);
         }
 
         /* Lower this early so the backends don't have to worry about it */
@@ -77,8 +79,8 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         pan_shader_compile(dev, s, &inputs, &binary, &state->info);
 
         if (binary.size) {
-                state->bin = pan_take_ref(&ctx->shaders,
-                        panfrost_pool_upload_aligned(&ctx->shaders,
+                state->bin = pan_take_ref(shader_pool,
+                        panfrost_pool_upload_aligned(shader_pool,
                                 binary.data, binary.size, 128));
         }
 
@@ -88,9 +90,9 @@ panfrost_shader_compile(struct panfrost_context *ctx,
          * time finalization based on the renderer state. */
         if (stage != MESA_SHADER_FRAGMENT) {
                 struct panfrost_ptr ptr =
-                        panfrost_pool_alloc_desc(&ctx->descs, RENDERER_STATE);
+                        panfrost_pool_alloc_desc(desc_pool, RENDERER_STATE);
 
-                state->state = pan_take_ref(&ctx->descs, ptr.gpu);
+                state->state = pan_take_ref(desc_pool, ptr.gpu);
                 out = ptr.cpu;
         }
 

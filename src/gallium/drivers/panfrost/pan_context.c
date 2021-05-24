@@ -953,7 +953,9 @@ panfrost_create_shader_state(
 
                 struct panfrost_shader_state state = { 0 };
 
-                panfrost_shader_compile(ctx, PIPE_SHADER_IR_NIR,
+                panfrost_shader_compile(pctx->screen,
+                                        &ctx->shaders, &ctx->descs,
+                                        PIPE_SHADER_IR_NIR,
                                         so->base.ir.nir,
                                         tgsi_processor_to_shader_stage(stage),
                                         &state);
@@ -1177,7 +1179,9 @@ panfrost_bind_shader_state(
         /* We finally have a variant, so compile it */
 
         if (!shader_state->compiled) {
-                panfrost_shader_compile(ctx, variants->base.type,
+                panfrost_shader_compile(ctx->base.screen,
+                                        &ctx->shaders, &ctx->descs,
+                                        variants->base.type,
                                         variants->base.type == PIPE_SHADER_IR_NIR ?
                                         variants->base.ir.nir :
                                         variants->base.tokens,

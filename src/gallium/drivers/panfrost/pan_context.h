@@ -380,7 +380,9 @@ bool
 panfrost_render_condition_check(struct panfrost_context *ctx);
 
 void
-panfrost_shader_compile(struct panfrost_context *ctx,
+panfrost_shader_compile(struct pipe_screen *pscreen,
+                        struct pan_pool *shader_pool,
+                        struct pan_pool *desc_pool,
                         enum pipe_shader_ir ir_type,
                         const void *ir,
                         gl_shader_stage stage,
