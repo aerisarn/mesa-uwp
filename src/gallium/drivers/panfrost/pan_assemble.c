@@ -39,28 +39,6 @@
 
 #include "tgsi/tgsi_dump.h"
 
-static void
-pan_prepare_shader_descriptor(struct panfrost_context *ctx,
-                              struct panfrost_shader_state *state,
-                              bool upload)
-{
-        const struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct mali_renderer_state_packed *out = &state->partial_rsd;
-
-        if (upload) {
-                struct panfrost_ptr ptr =
-                        panfrost_pool_alloc_desc(&ctx->descs, RENDERER_STATE);
-
-                state->state = pan_take_ref(&ctx->descs, ptr.gpu);
-                out = ptr.cpu;
-        }
-
-        pan_pack(out, RENDERER_STATE, cfg) {
-                pan_shader_prepare_rsd(dev, &state->info, state->bin.gpu,
-                                       &cfg);
-        }
-}
-
 void
 panfrost_shader_compile(struct panfrost_context *ctx,
                         enum pipe_shader_ir ir_type,
@@ -104,8 +82,22 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                                 binary.data, binary.size, 128));
         }
 
-        pan_prepare_shader_descriptor(ctx, state, 
-                        stage != MESA_SHADER_FRAGMENT);
+        struct mali_renderer_state_packed *out = &state->partial_rsd;
+
+        /* Upload RSDs for non-fragment shaders. Fragment shaders need draw
+         * time finalization based on the renderer state. */
+        if (stage != MESA_SHADER_FRAGMENT) {
+                struct panfrost_ptr ptr =
+                        panfrost_pool_alloc_desc(&ctx->descs, RENDERER_STATE);
+
+                state->state = pan_take_ref(&ctx->descs, ptr.gpu);
+                out = ptr.cpu;
+        }
+
+        pan_pack(out, RENDERER_STATE, cfg) {
+                pan_shader_prepare_rsd(dev, &state->info, state->bin.gpu,
+                                       &cfg);
+        }
 
         util_dynarray_fini(&binary);
 
