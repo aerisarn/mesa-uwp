@@ -1954,12 +1954,12 @@ static void si_draw_vbo(struct pipe_context *ctx,
        (!sctx->shader.ps.cso->info.uses_primid || pd_msg("PS uses PrimID")) &&
        !rs->polygon_mode_enabled &&
 #if SI_PRIM_DISCARD_DEBUG /* same as cso->prim_discard_cs_allowed */
-       (!sctx->vs_shader.cso->info.uses_bindless_images || pd_msg("uses bindless images")) &&
-       (!sctx->vs_shader.cso->info.uses_bindless_samplers || pd_msg("uses bindless samplers")) &&
-       (!sctx->vs_shader.cso->info.writes_memory || pd_msg("writes memory")) &&
-       (!sctx->vs_shader.cso->info.writes_viewport_index || pd_msg("writes viewport index")) &&
-       !sctx->vs_shader.cso->info.base.vs.window_space_position &&
-       !sctx->vs_shader.cso->so.num_outputs &&
+       (!sctx->shader.vs.cso->info.uses_bindless_images || pd_msg("uses bindless images")) &&
+       (!sctx->shader.vs.cso->info.uses_bindless_samplers || pd_msg("uses bindless samplers")) &&
+       (!sctx->shader.vs.cso->info.base.writes_memory || pd_msg("writes memory")) &&
+       (!sctx->shader.vs.cso->info.writes_viewport_index || pd_msg("writes viewport index")) &&
+       !sctx->shader.vs.cso->info.base.vs.window_space_position &&
+       !sctx->shader.vs.cso->so.num_outputs &&
 #else
        (sctx->shader.vs.cso->prim_discard_cs_allowed ||
         pd_msg("VS shader uses unsupported features")) &&
