@@ -1,5 +1,5 @@
 traces-db:
-  download-url: "https://minio-packet.freedesktop.org/mesa-tracie-public/"
+  download-url: "http://caching-proxy/cache/?uri=https://minio-packet.freedesktop.org/mesa-tracie-public/"
 
 traces:
   - path: glmark2/desktop:windows=4:effect=blur:blur-radius=5:passes=1:separable=true.trace
