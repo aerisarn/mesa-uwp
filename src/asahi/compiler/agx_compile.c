@@ -681,10 +681,40 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    agx_wait(b, 0);
 }
 
+/* NIR loops are treated as a pair of AGX loops:
+ *
+ *    do {
+ *       do {
+ *          ...
+ *       } while (0);
+ *    } while (cond);
+ *
+ * By manipulating the nesting counter (r0l), we may break out of nested loops,
+ * so under the model, both break and continue may be implemented as breaks,
+ * where break breaks out of the outer loop (2 layers) and continue breaks out
+ * of the inner loop (1 layer).
+ *
+ * After manipulating the nesting counter directly, pop_exec #0 must be used to
+ * flush the update to the execution mask.
+ */
+
 static void
 agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
 {
-   unreachable("stub");
+   assert (instr->type == nir_jump_break || instr->type == nir_jump_continue);
+
+   /* Break out of either one or two loops */
+   unsigned nestings = b->shader->loop_nesting;
+
+   if (instr->type == nir_jump_continue)
+      nestings += 1;
+   else if (instr->type == nir_jump_break)
+      nestings += 2;
+
+   /* Update the counter and flush */
+   agx_index r0l = agx_register(0, false);
+   agx_mov_to(b, r0l, agx_immediate(nestings));
+   agx_pop_exec(b, 0);
 }
 
 static void
