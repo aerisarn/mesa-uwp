@@ -50,6 +50,7 @@ libtu_files = files(
   'tu_shader.c',
   'tu_util.c',
   'tu_util.h',
+  'tu_perfetto.h',
   'vk_format.h',
 )
 
@@ -106,9 +107,28 @@ else
   tu_deps += dep_libdrm
 endif
 
+tu_tracepoints = custom_target(
+  'tu_tracepoints.[ch]',
+  input: 'tu_tracepoints.py',
+  output: ['tu_tracepoints.c', 'tu_tracepoints.h', 'tu_tracepoints_perfetto.h'],
+  command: [
+    prog_python, '@INPUT@',
+    '-p', join_paths(meson.source_root(), 'src/util/perf/'),
+    '--utrace-src', '@OUTPUT0@',
+    '--utrace-hdr', '@OUTPUT1@',
+    '--perfetto-hdr', '@OUTPUT2@',
+  ],
+  depend_files: u_trace_py,
+)
+
+if with_perfetto
+  libtu_files += ['tu_perfetto.cc', 'tu_perfetto_util.c']
+  tu_deps += dep_perfetto
+endif
+
 libvulkan_freedreno = shared_library(
   'vulkan_freedreno',
-  [libtu_files, tu_entrypoints, freedreno_xml_header_files],
+  [libtu_files, tu_entrypoints, tu_tracepoints, freedreno_xml_header_files],
   include_directories : [
     inc_include,
     inc_src,

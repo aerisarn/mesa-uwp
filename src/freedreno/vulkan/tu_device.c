@@ -347,6 +347,10 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    *pInstance = tu_instance_to_handle(instance);
 
+#ifdef HAVE_PERFETTO
+   tu_perfetto_init();
+#endif
+
    return VK_SUCCESS;
 }
 
@@ -1240,6 +1244,92 @@ tu_queue_finish(struct tu_queue *queue)
    tu_drm_submitqueue_close(queue->device, queue->msm_queue_id);
 }
 
+uint64_t
+tu_device_ticks_to_ns(struct tu_device *dev, uint64_t ts)
+{
+   /* This is based on the 19.2MHz always-on rbbm timer.
+    *
+    * TODO we should probably query this value from kernel..
+    */
+   return ts * (1000000000 / 19200000);
+}
+
+static void*
+tu_trace_create_ts_buffer(struct u_trace_context *utctx, uint32_t size)
+{
+   struct tu_device *device =
+      container_of(utctx, struct tu_device, trace_context);
+
+   struct tu_bo *bo = ralloc(NULL, struct tu_bo);
+   tu_bo_init_new(device, bo, size, false);
+
+   return bo;
+}
+
+static void
+tu_trace_destroy_ts_buffer(struct u_trace_context *utctx, void *timestamps)
+{
+   struct tu_device *device =
+      container_of(utctx, struct tu_device, trace_context);
+   struct tu_bo *bo = timestamps;
+
+   tu_bo_finish(device, bo);
+   ralloc_free(bo);
+}
+
+static void
+tu_trace_record_ts(struct u_trace *ut, void *timestamps,
+                   unsigned idx)
+{
+   struct tu_cmd_buffer *cmd = container_of(ut, struct tu_cmd_buffer, trace);
+   struct tu_bo *bo = timestamps;
+   struct tu_cs *cs = &cmd->cs;
+
+   unsigned ts_offset = idx * sizeof(uint64_t);
+   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 4);
+   tu_cs_emit(cs, CP_EVENT_WRITE_0_EVENT(RB_DONE_TS) | CP_EVENT_WRITE_0_TIMESTAMP);
+   tu_cs_emit_qw(cs, bo->iova + ts_offset);
+   tu_cs_emit(cs, 0x00000000);
+}
+
+static uint64_t
+tu_trace_read_ts(struct u_trace_context *utctx,
+                 void *timestamps, unsigned idx, void *flush_data)
+{
+   struct tu_device *device =
+      container_of(utctx, struct tu_device, trace_context);
+   struct tu_bo *bo = timestamps;
+   struct tu_u_trace_flush_data *trace_flush_data = flush_data;
+
+   /* Only need to stall on results for the first entry: */
+   if (idx == 0) {
+      tu_device_wait_u_trace(device, trace_flush_data->syncobj);
+   }
+
+   if (tu_bo_map(device, bo) != VK_SUCCESS) {
+      return U_TRACE_NO_TIMESTAMP;
+   }
+
+   uint64_t *ts = bo->map;
+
+   /* Don't translate the no-timestamp marker: */
+   if (ts[idx] == U_TRACE_NO_TIMESTAMP)
+      return U_TRACE_NO_TIMESTAMP;
+
+   return tu_device_ticks_to_ns(device, ts[idx]);
+}
+
+static void
+tu_trace_delete_flush_data(struct u_trace_context *utctx, void *flush_data)
+{
+   struct tu_device *device =
+      container_of(utctx, struct tu_device, trace_context);
+   struct tu_u_trace_flush_data *trace_flush_data = flush_data;
+
+   vk_free(&device->vk.alloc, trace_flush_data->syncobj);
+   vk_free(&device->vk.alloc, trace_flush_data);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateDevice(VkPhysicalDevice physicalDevice,
                 const VkDeviceCreateInfo *pCreateInfo,
@@ -1480,6 +1570,14 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
 
    mtx_init(&device->mutex, mtx_plain);
 
+   device->submit_count = 0;
+   u_trace_context_init(&device->trace_context, device,
+                     tu_trace_create_ts_buffer,
+                     tu_trace_destroy_ts_buffer,
+                     tu_trace_record_ts,
+                     tu_trace_read_ts,
+                     tu_trace_delete_flush_data);
+
    *pDevice = tu_device_to_handle(device);
    return VK_SUCCESS;
 
@@ -1520,6 +1618,8 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    if (!device)
       return;
+
+   u_trace_context_fini(&device->trace_context);
 
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
       for (unsigned q = 0; q < device->queue_count[i]; q++)

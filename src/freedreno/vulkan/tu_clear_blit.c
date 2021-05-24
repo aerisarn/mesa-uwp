@@ -19,6 +19,8 @@
 #include "util/half_float.h"
 #include "compiler/nir/nir_builder.h"
 
+#include "tu_tracepoints.h"
+
 static uint32_t
 tu_pack_float32_for_unorm(float val, int bits)
 {
@@ -1370,6 +1372,8 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
          unreachable("unexpected D32_S8 aspect mask in blit_image");
    }
 
+   trace_start_blit(&cmd->trace);
+
    ops->setup(cmd, cs, format, info->dstSubresource.aspectMask,
               blit_param, false, dst_image->layout[0].ubwc,
               dst_image->layout[0].nr_samples);
@@ -1418,6 +1422,12 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
    }
 
    ops->teardown(cmd, cs);
+
+   trace_end_blit(&cmd->trace,
+                  ops == &r3d_ops,
+                  src_image->vk_format,
+                  dst_image->vk_format,
+                  layers);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2032,6 +2042,8 @@ resolve_sysmem(struct tu_cmd_buffer *cmd,
 {
    const struct blit_ops *ops = &r2d_ops;
 
+   trace_start_resolve(&cmd->trace);
+
    ops->setup(cmd, cs, format, VK_IMAGE_ASPECT_COLOR_BIT,
               0, false, dst->ubwc_enabled, VK_SAMPLE_COUNT_1_BIT);
    ops->coords(cs, &rect->offset, &rect->offset, &rect->extent);
@@ -2048,6 +2060,8 @@ resolve_sysmem(struct tu_cmd_buffer *cmd,
    }
 
    ops->teardown(cmd, cs);
+
+   trace_end_resolve(&cmd->trace);
 }
 
 void

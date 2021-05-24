@@ -34,6 +34,7 @@
 #include "drm-uapi/msm_drm.h"
 #include "util/timespec.h"
 #include "util/os_time.h"
+#include "util/perf/u_trace.h"
 
 #include "tu_private.h"
 
@@ -112,6 +113,12 @@ struct tu_queue_submit
    uint32_t counter_pass_index;
 };
 
+struct tu_u_trace_syncobj
+{
+   uint32_t msm_queue_id;
+   uint32_t fence;
+};
+
 static int
 tu_drm_get_param(const struct tu_physical_device *dev,
                  uint32_t param,
@@ -163,6 +170,12 @@ static int
 tu_drm_get_gmem_base(const struct tu_physical_device *dev, uint64_t *base)
 {
    return tu_drm_get_param(dev, MSM_PARAM_GMEM_BASE, base);
+}
+
+int
+tu_drm_get_timestamp(struct tu_physical_device *device, uint64_t *ts)
+{
+   return tu_drm_get_param(device, MSM_PARAM_TIMESTAMP, ts);
 }
 
 int
@@ -1052,6 +1065,12 @@ tu_queue_build_msm_gem_submit_cmds(struct tu_queue *queue,
 static VkResult
 tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
 {
+   queue->device->submit_count++;
+
+#if HAVE_PERFETTO
+   tu_perfetto_submit(queue->device, queue->device->submit_count);
+#endif
+
    uint32_t flags = MSM_PIPE_3D0;
 
    if (submit->nr_in_syncobjs)
@@ -1116,6 +1135,35 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
       assert(signal_value > sem->timeline.highest_submitted);
 
       sem->timeline.highest_submitted = signal_value;
+   }
+
+   if (u_trace_context_tracing(&queue->device->trace_context)) {
+      bool has_chunks = false;
+      for (uint32_t i = 0; i < submit->cmd_buffer_count; i++) {
+         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->cmd_buffers[i]);
+         if (!list_is_empty(&cmdbuf->trace.trace_chunks)) {
+            has_chunks = true;
+            break;
+         }
+      }
+
+      if (has_chunks) {
+         struct tu_u_trace_flush_data *flush_data =
+            vk_alloc(&queue->device->vk.alloc, sizeof(struct tu_u_trace_flush_data),
+                  8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+         flush_data->submission_id = queue->device->submit_count;
+         flush_data->syncobj =
+            vk_alloc(&queue->device->vk.alloc, sizeof(struct tu_u_trace_syncobj),
+                  8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+         flush_data->syncobj->fence = req.fence;
+         flush_data->syncobj->msm_queue_id = queue->msm_queue_id;
+
+         for (uint32_t i = 0; i < submit->cmd_buffer_count; i++) {
+            TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->cmd_buffers[i]);
+            bool free_data = i == (submit->cmd_buffer_count - 1);
+            u_trace_flush(&cmdbuf->trace, flush_data, free_data);
+         }
+      }
    }
 
    pthread_cond_broadcast(&queue->device->timeline_cond);
@@ -1244,6 +1292,37 @@ tu_device_submit_deferred_locked(struct tu_device *dev)
     } while(advance);
 
     return result;
+}
+
+static inline void
+get_abs_timeout(struct drm_msm_timespec *tv, uint64_t ns)
+{
+   struct timespec t;
+   clock_gettime(CLOCK_MONOTONIC, &t);
+   tv->tv_sec = t.tv_sec + ns / 1000000000;
+   tv->tv_nsec = t.tv_nsec + ns % 1000000000;
+}
+
+VkResult
+tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj)
+{
+   struct drm_msm_wait_fence req = {
+      .fence = syncobj->fence,
+      .queueid = syncobj->msm_queue_id,
+   };
+   int ret;
+
+   get_abs_timeout(&req.timeout, 1000000000);
+
+   ret = drmCommandWrite(dev->fd, DRM_MSM_WAIT_FENCE, &req, sizeof(req));
+   if (ret && (ret != -ETIMEDOUT)) {
+      fprintf(stderr, "wait-fence failed! %d (%s)", ret, strerror(errno));
+      return VK_TIMEOUT;
+   }
+
+   close(syncobj->fence);
+
+   return VK_SUCCESS;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
