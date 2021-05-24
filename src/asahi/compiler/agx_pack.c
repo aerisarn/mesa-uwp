@@ -552,6 +552,13 @@ agx_pack_instr(struct util_dynarray *emission, agx_instr *I)
 void
 agx_pack(agx_context *ctx, struct util_dynarray *emission)
 {
-   agx_foreach_instr_global(ctx, ins)
-      agx_pack_instr(emission, ins);
+   agx_foreach_block(ctx, block) {
+      /* Relative to the start of the binary, the block begins at the current
+       * number of bytes emitted */
+      block->offset = emission->size;
+
+      agx_foreach_instr_in_block(block, ins) {
+         agx_pack_instr(emission, ins);
+      }
+   }
 }

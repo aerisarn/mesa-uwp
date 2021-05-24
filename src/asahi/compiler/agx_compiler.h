@@ -303,6 +303,9 @@ typedef struct agx_block {
    /* Liveness analysis results */
    BITSET_WORD *live_in;
    BITSET_WORD *live_out;
+
+   /* Offset of the block in the emitted binary */
+   off_t offset;
 } agx_block;
 
 typedef struct {
