@@ -33,6 +33,7 @@
 #include "util/u_memory.h"
 #include "util/u_string.h"
 #include "u_tracepoints.h"
+#include "util/u_trace_gallium.h"
 
 #include "freedreno_context.h"
 #include "freedreno_fence.h"
@@ -761,7 +762,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 
    flush_ring(batch);
 
-   u_trace_flush(&batch->trace);
+   u_trace_flush(&batch->trace, NULL, false);
 }
 
 /* Determine a worst-case estimate (ie. assuming we don't eliminate an

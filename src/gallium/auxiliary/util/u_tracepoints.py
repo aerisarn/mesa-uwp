@@ -89,4 +89,4 @@ Tracepoint('grid_info',
         '__entry->grid_x', '__entry->grid_y', '__entry->grid_z'],
 )
 
-utrace_generate(cpath=args.src, hpath=args.hdr)
+utrace_generate(cpath=args.src, hpath=args.hdr, ctx_param='struct pipe_context *pctx')

@@ -34,7 +34,7 @@
 #include "util/u_blitter.h"
 #include "util/u_string.h"
 #include "util/u_threaded_context.h"
-#include "util/u_trace.h"
+#include "util/perf/u_trace.h"
 
 #include "freedreno_autotune.h"
 #include "freedreno_gmem.h"

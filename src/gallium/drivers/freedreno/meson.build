@@ -223,7 +223,7 @@ freedreno_tracepoints = custom_target(
   output: ['freedreno_tracepoints.c', 'freedreno_tracepoints.h'],
   command: [
     prog_python, '@INPUT@',
-    '-p', join_paths(meson.source_root(), 'src/gallium/auxiliary/util/'),
+    '-p', join_paths(meson.source_root(), 'src/util/perf/'),
     '-C', '@OUTPUT0@',
     '-H', '@OUTPUT1@',
   ],

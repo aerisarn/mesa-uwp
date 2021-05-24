@@ -141,4 +141,4 @@ Tracepoint('start_compute',
 Tracepoint('end_compute',
     tp_perfetto='fd_end_compute')
 
-utrace_generate(cpath=args.src, hpath=args.hdr)
+utrace_generate(cpath=args.src, hpath=args.hdr, ctx_param='struct pipe_context *pctx')
