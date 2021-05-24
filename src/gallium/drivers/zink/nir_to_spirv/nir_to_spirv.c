@@ -1809,48 +1809,30 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
    unsigned bit_size = load_const->def.bit_size;
    unsigned num_components = load_const->def.num_components;
 
-   SpvId constant;
-   if (num_components > 1) {
-      SpvId components[num_components];
-      SpvId type = get_vec_from_bit_size(ctx, bit_size, num_components);
-      if (bit_size == 1) {
-         for (int i = 0; i < num_components; i++)
-            components[i] = spirv_builder_const_bool(&ctx->builder,
-                                                     load_const->value[i].b);
-
-      } else {
-         for (int i = 0; i < num_components; i++) {
-            if (bit_size == 16)
-               components[i] = emit_uint_const(ctx, bit_size,
-                                               load_const->value[i].u16);
-            else if (bit_size == 32)
-               components[i] = emit_uint_const(ctx, bit_size,
-                                               load_const->value[i].u32);
-            else if (bit_size == 64)
-               components[i] = emit_uint_const(ctx, bit_size,
-                                               load_const->value[i].u64);
-            else
-               unreachable("unhandled constant bit size!");
-         }
-      }
-      constant = spirv_builder_const_composite(&ctx->builder, type,
-                                               components, num_components);
+   SpvId components[NIR_MAX_VEC_COMPONENTS];
+   if (bit_size == 1) {
+      for (int i = 0; i < num_components; i++)
+         components[i] = spirv_builder_const_bool(&ctx->builder,
+                                                  load_const->value[i].b);
    } else {
-      assert(num_components == 1);
-      if (bit_size == 1)
-         constant = spirv_builder_const_bool(&ctx->builder,
-                                             load_const->value[0].b);
-      else if (bit_size == 16)
-         constant = emit_uint_const(ctx, bit_size, load_const->value[0].u16);
-      else if (bit_size == 32)
-         constant = emit_uint_const(ctx, bit_size, load_const->value[0].u32);
-      else if (bit_size == 64)
-         constant = emit_uint_const(ctx, bit_size, load_const->value[0].u64);
-      else
-         unreachable("unhandled constant bit size!");
+      for (int i = 0; i < num_components; i++) {
+         uint64_t tmp = nir_const_value_as_uint(load_const->value[i],
+                                                bit_size);
+         components[i] = emit_uint_const(ctx, bit_size, tmp);
+      }
    }
 
-   store_ssa_def(ctx, &load_const->def, constant);
+   if (num_components > 1) {
+      SpvId type = get_vec_from_bit_size(ctx, bit_size,
+                                         num_components);
+      SpvId value = spirv_builder_const_composite(&ctx->builder,
+                                                  type, components,
+                                                  num_components);
+      store_ssa_def(ctx, &load_const->def, value);
+   } else {
+      assert(num_components == 1);
+      store_ssa_def(ctx, &load_const->def, components[0]);
+   }
 }
 
 static void
