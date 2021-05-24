@@ -758,7 +758,81 @@ setup_labels(uint32_t *instrs, uint32_t sizedwords)
 }
 
 static void
-disasm(uint32_t *buf, int sizedwords)
+disasm(struct emu *emu)
+{
+   uint32_t sizedwords = emu->sizedwords;
+   uint32_t lpac_offset = 0;
+
+   EMU_GPU_REG(CP_SQE_INSTR_BASE);
+   EMU_GPU_REG(CP_LPAC_SQE_INSTR_BASE);
+
+   emu_init(emu);
+
+#ifdef BOOTSTRAP_DEBUG
+   while (true) {
+      disasm_instr(emu->instrs, emu->gpr_regs.pc);
+      emu_step(emu);
+   }
+#endif
+
+   emu_run_bootstrap(emu);
+
+   /* Figure out if we have LPAC SQE appended: */
+   if (emu_get_reg64(emu, &CP_LPAC_SQE_INSTR_BASE)) {
+      lpac_offset = emu_get_reg64(emu, &CP_LPAC_SQE_INSTR_BASE) -
+            emu_get_reg64(emu, &CP_SQE_INSTR_BASE);
+      lpac_offset /= 4;
+      sizedwords = lpac_offset;
+   }
+
+   setup_packet_table(emu->jmptbl, ARRAY_SIZE(emu->jmptbl));
+   setup_labels(emu->instrs, emu->sizedwords);
+
+   /* TODO add option to emulate LPAC SQE instead: */
+   if (emulator) {
+      /* Start from clean slate: */
+      emu_fini(emu);
+      emu_init(emu);
+
+      while (true) {
+         disasm_instr(emu->instrs, emu->gpr_regs.pc);
+         emu_step(emu);
+      }
+   }
+
+   /* print instructions: */
+   for (int i = 0; i < sizedwords; i++) {
+      disasm_instr(emu->instrs, i);
+   }
+
+   if (!lpac_offset)
+      return;
+
+   printf(";\n");
+   printf("; LPAC microcode:\n");
+   printf(";\n");
+
+   emu_fini(emu);
+
+   emu->lpac = true;
+   emu->instrs += lpac_offset;
+   emu->sizedwords -= lpac_offset;
+
+   emu_init(emu);
+   emu_run_bootstrap(emu);
+
+   setup_packet_table(emu->jmptbl, ARRAY_SIZE(emu->jmptbl));
+   setup_labels(emu->instrs, emu->sizedwords);
+
+   /* print instructions: */
+   for (int i = 0; i < emu->sizedwords; i++) {
+      disasm_instr(emu->instrs, i);
+   }
+}
+
+
+static void
+disasm_legacy(uint32_t *buf, int sizedwords)
 {
    uint32_t *instrs = buf;
    const int jmptbl_start = instrs[1] & 0xffff;
@@ -772,20 +846,6 @@ disasm(uint32_t *buf, int sizedwords)
     * and add labels for them:
     */
    setup_labels(instrs, jmptbl_start);
-
-   if (emulator) {
-      struct emu state = {
-            .instrs = instrs,
-            .sizedwords = sizedwords,
-      };
-
-      emu_init(&state);
-
-      while (true) {
-         disasm_instr(instrs, state.gpr_regs.pc);
-         emu_step(&state);
-      }
-   }
 
    /* print instructions: */
    for (i = 0; i < jmptbl_start; i++) {
@@ -898,7 +958,18 @@ main(int argc, char **argv)
 
    printf("; Disassembling microcode: %s\n", file);
    printf("; Version: %08x\n\n", buf[1]);
-   disasm(&buf[1], sz / 4 - 1);
+
+   if (gpuver < 6) {
+      disasm_legacy(&buf[1], sz / 4 - 1);
+   } else {
+      struct emu emu = {
+            .instrs = &buf[1],
+            .sizedwords = sz / 4 - 1,
+            .gpu_id = gpu_id,
+      };
+
+      disasm(&emu);
+   }
 
    return 0;
 }
