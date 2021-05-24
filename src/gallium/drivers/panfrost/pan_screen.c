@@ -307,9 +307,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_NIR_IMAGES_AS_DEREF:
                 return 0;
 
-        case PIPE_CAP_SHAREABLE_SHADERS:
-                return 0;
-
         case PIPE_CAP_DRAW_INDIRECT:
                 return has_heap && is_deqp;
 
