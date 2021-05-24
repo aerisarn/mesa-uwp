@@ -882,6 +882,9 @@ radv_handle_per_app_options(struct radv_instance *instance, const VkApplicationI
    instance->disable_shrink_image_store =
       driQueryOptionb(&instance->dri_options, "radv_disable_shrink_image_store");
 
+   instance->absolute_depth_bias =
+      driQueryOptionb(&instance->dri_options, "radv_absolute_depth_bias");
+
    if (driQueryOptionb(&instance->dri_options, "radv_no_dynamic_bounds"))
       instance->debug_flags |= RADV_DEBUG_NO_DYNAMIC_BOUNDS;
 }
@@ -892,7 +895,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_VK_X11_ENSURE_MIN_IMAGE_COUNT(false) DRI_CONF_RADV_REPORT_LLVM9_VERSION_STRING(false)
          DRI_CONF_RADV_ENABLE_MRT_OUTPUT_NAN_FIXUP(false)
             DRI_CONF_RADV_DISABLE_SHRINK_IMAGE_STORE(false) DRI_CONF_RADV_NO_DYNAMIC_BOUNDS(false)
-               DRI_CONF_RADV_OVERRIDE_UNIFORM_OFFSET_ALIGNMENT(0) DRI_CONF_SECTION_END
+               DRI_CONF_RADV_ABSOLUTE_DEPTH_BIAS(false) DRI_CONF_RADV_OVERRIDE_UNIFORM_OFFSET_ALIGNMENT(0) DRI_CONF_SECTION_END
 
                   DRI_CONF_SECTION_DEBUG DRI_CONF_OVERRIDE_VRAM_SIZE()
                      DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST(false) DRI_CONF_SECTION_END};
@@ -6681,32 +6684,31 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
    unsigned level = iview->base_mip;
    unsigned format, stencil_format;
    uint64_t va, s_offs, z_offs;
-   bool stencil_only = false;
+   bool stencil_only = iview->image->vk_format == VK_FORMAT_S8_UINT;
    const struct radv_image_plane *plane = &iview->image->planes[0];
    const struct radeon_surf *surf = &plane->surface;
 
    assert(vk_format_get_plane_count(iview->image->vk_format) == 1);
 
    memset(ds, 0, sizeof(*ds));
-   switch (iview->image->vk_format) {
-   case VK_FORMAT_D24_UNORM_S8_UINT:
-   case VK_FORMAT_X8_D24_UNORM_PACK32:
-      ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-24);
-      break;
-   case VK_FORMAT_D16_UNORM:
-   case VK_FORMAT_D16_UNORM_S8_UINT:
-      ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-16);
-      break;
-   case VK_FORMAT_D32_SFLOAT:
-   case VK_FORMAT_D32_SFLOAT_S8_UINT:
-      ds->pa_su_poly_offset_db_fmt_cntl =
-         S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-23) | S_028B78_POLY_OFFSET_DB_IS_FLOAT_FMT(1);
-      break;
-   case VK_FORMAT_S8_UINT:
-      stencil_only = true;
-      break;
-   default:
-      break;
+   if (!device->instance->absolute_depth_bias) {
+      switch (iview->image->vk_format) {
+      case VK_FORMAT_D24_UNORM_S8_UINT:
+      case VK_FORMAT_X8_D24_UNORM_PACK32:
+         ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-24);
+         break;
+      case VK_FORMAT_D16_UNORM:
+      case VK_FORMAT_D16_UNORM_S8_UINT:
+         ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-16);
+         break;
+      case VK_FORMAT_D32_SFLOAT:
+      case VK_FORMAT_D32_SFLOAT_S8_UINT:
+         ds->pa_su_poly_offset_db_fmt_cntl =
+            S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-23) | S_028B78_POLY_OFFSET_DB_IS_FLOAT_FMT(1);
+         break;
+      default:
+         break;
+      }
    }
 
    format = radv_translate_dbformat(iview->image->vk_format);
