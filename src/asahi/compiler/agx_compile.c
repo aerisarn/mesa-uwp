@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2021 Alyssa Rosenzweig <alyssa@rosenzweig.io>
  * Copyright (C) 2020 Collabora Ltd.
+ * Copyright © 2016 Broadcom
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -754,12 +755,18 @@ emit_cf_list(agx_context *ctx, struct exec_list *list);
  *       ...
  *    pop_exec
  *
- * This is not usually optimal, but it's a start.
+ * If the else is empty, we can omit the else_icmp. This is not usually
+ * optimal, but it's a start.
  */
 
 static void
 emit_if(agx_context *ctx, nir_if *nif)
 {
+   nir_block *nir_else_block = nir_if_first_else_block(nif);
+   bool empty_else_block =
+      (nir_else_block == nir_if_last_else_block(nif) &&
+       exec_list_is_empty(&nir_else_block->instr_list));
+
    agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
    agx_index cond = agx_src_index(&nif->condition);
 
@@ -769,10 +776,13 @@ emit_if(agx_context *ctx, nir_if *nif)
    /* Emit the two subblocks. */
    emit_cf_list(ctx, &nif->then_list);
 
-   _b.cursor = agx_after_block(ctx->current_block);
-   agx_else_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, false);
+   if (!empty_else_block) {
+      _b.cursor = agx_after_block(ctx->current_block);
+      agx_else_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, false);
 
-   emit_cf_list(ctx, &nif->else_list);
+      emit_cf_list(ctx, &nif->else_list);
+   }
+
    _b.cursor = agx_after_block(ctx->current_block);
    agx_pop_exec(&_b, 1);
    ctx->loop_nesting--;
