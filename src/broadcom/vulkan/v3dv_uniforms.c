@@ -352,7 +352,8 @@ get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
                  enum quniform_contents contents,
                  uint32_t data)
 {
-   uint32_t texture_idx = v3d_unit_data_get_unit(data);
+   uint32_t texture_idx = data;
+
    struct v3dv_descriptor_state *descriptor_state =
       v3dv_cmd_buffer_get_descriptor_state(cmd_buffer, pipeline);
 
