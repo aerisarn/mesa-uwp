@@ -287,13 +287,13 @@ radv_get_compiler_string(struct radv_physical_device *pdevice)
        * missing. This gives 2-5% performance with SotTR and ACO.
        */
       if (driQueryOptionb(&pdevice->instance->dri_options, "radv_report_llvm9_version_string")) {
-         return "ACO/LLVM 9.0.1";
+         return " (LLVM 9.0.1)";
       }
 
-      return "ACO";
+      return "";
    }
 
-   return "LLVM " MESA_LLVM_VERSION_STRING;
+   return " (LLVM " MESA_LLVM_VERSION_STRING ")";
 }
 
 int
@@ -625,7 +625,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
    device->use_llvm = instance->debug_flags & RADV_DEBUG_LLVM;
 
-   snprintf(device->name, sizeof(device->name), "AMD RADV %s (%s)", device->rad_info.name,
+   snprintf(device->name, sizeof(device->name), "AMD RADV %s%s", device->rad_info.name,
             radv_get_compiler_string(device));
 
 #ifdef ENABLE_SHADER_CACHE
@@ -1868,7 +1868,7 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
 
    p->driverID = VK_DRIVER_ID_MESA_RADV;
    snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE, "radv");
-   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE, "Mesa " PACKAGE_VERSION MESA_GIT_SHA1 " (%s)",
+   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE, "Mesa " PACKAGE_VERSION MESA_GIT_SHA1 "%s",
             radv_get_compiler_string(pdevice));
    p->conformanceVersion = (VkConformanceVersion){
       .major = 1,
