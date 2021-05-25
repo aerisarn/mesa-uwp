@@ -26,8 +26,183 @@
 
 #include "compiler.h"
 #include "bi_builder.h"
-#include "panfrost/util/lcra.h"
 #include "util/u_memory.h"
+
+struct lcra_state {
+        unsigned node_count;
+        uint64_t *affinity;
+
+        /* Linear constraints imposed. Nested array sized upfront, organized as
+         * linear[node_left][node_right]. That is, calculate indices as:
+         *
+         * Each element is itself a bit field denoting whether (c_j - c_i) bias
+         * is present or not, including negative biases.
+         *
+         * Note for Midgard, there are 16 components so the bias is in range
+         * [-15, 15] so encoded by 32-bit field. */
+
+        uint32_t *linear;
+
+        /* Before solving, forced registers; after solving, solutions. */
+        unsigned *solutions;
+
+        /* For register spilling, the costs to spill nodes (as set by the user)
+         * are in spill_cost[], negative if a node is unspillable. */
+        signed *spill_cost;
+};
+
+/* This module is an implementation of "Linearly Constrained
+ * Register Allocation". The paper is available in PDF form
+ * (https://people.collabora.com/~alyssa/LCRA.pdf) as well as Markdown+LaTeX
+ * (https://gitlab.freedesktop.org/alyssa/lcra/blob/master/LCRA.md)
+ */
+
+static struct lcra_state *
+lcra_alloc_equations(unsigned node_count)
+{
+        struct lcra_state *l = calloc(1, sizeof(*l));
+
+        l->node_count = node_count;
+
+        l->linear = calloc(sizeof(l->linear[0]), node_count * node_count);
+        l->solutions = calloc(sizeof(l->solutions[0]), node_count);
+        l->spill_cost = calloc(sizeof(l->spill_cost[0]), node_count);
+        l->affinity = calloc(sizeof(l->affinity[0]), node_count);
+
+        memset(l->solutions, ~0, sizeof(l->solutions[0]) * node_count);
+
+        return l;
+}
+
+static void
+lcra_free(struct lcra_state *l)
+{
+        free(l->linear);
+        free(l->affinity);
+        free(l->spill_cost);
+        free(l->solutions);
+        free(l);
+}
+
+static void
+lcra_add_node_interference(struct lcra_state *l, unsigned i, unsigned cmask_i, unsigned j, unsigned cmask_j)
+{
+        if (i == j)
+                return;
+
+        uint32_t constraint_fw = 0;
+        uint32_t constraint_bw = 0;
+
+        for (unsigned D = 0; D < 16; ++D) {
+                if (cmask_i & (cmask_j << D)) {
+                        constraint_bw |= (1 << (15 + D));
+                        constraint_fw |= (1 << (15 - D));
+                }
+
+                if (cmask_i & (cmask_j >> D)) {
+                        constraint_fw |= (1 << (15 + D));
+                        constraint_bw |= (1 << (15 - D));
+                }
+        }
+
+        l->linear[j * l->node_count + i] |= constraint_fw;
+        l->linear[i * l->node_count + j] |= constraint_bw;
+}
+
+static bool
+lcra_test_linear(struct lcra_state *l, unsigned *solutions, unsigned i)
+{
+        unsigned *row = &l->linear[i * l->node_count];
+        signed constant = solutions[i];
+
+        for (unsigned j = 0; j < l->node_count; ++j) {
+                if (solutions[j] == ~0) continue;
+
+                signed lhs = solutions[j] - constant;
+
+                if (lhs < -15 || lhs > 15)
+                        continue;
+
+                if (row[j] & (1 << (lhs + 15)))
+                        return false;
+        }
+
+        return true;
+}
+
+static bool
+lcra_solve(struct lcra_state *l)
+{
+        for (unsigned step = 0; step < l->node_count; ++step) {
+                if (l->solutions[step] != ~0) continue;
+                if (l->affinity[step] == 0) continue;
+
+                bool succ = false;
+
+                u_foreach_bit64(r, l->affinity[step]) {
+                        l->solutions[step] = r * 4;
+
+                        if (lcra_test_linear(l, l->solutions, step)) {
+                                succ = true;
+                                break;
+                        }
+                }
+
+                /* Out of registers - prepare to spill */
+                if (!succ)
+                        return false;
+        }
+
+        return true;
+}
+
+/* Register spilling is implemented with a cost-benefit system. Costs are set
+ * by the user. Benefits are calculated from the constraints. */
+
+static void
+lcra_set_node_spill_cost(struct lcra_state *l, unsigned node, signed cost)
+{
+        if (node < l->node_count)
+                l->spill_cost[node] = cost;
+}
+
+static unsigned
+lcra_count_constraints(struct lcra_state *l, unsigned i)
+{
+        unsigned count = 0;
+        unsigned *constraints = &l->linear[i * l->node_count];
+
+        for (unsigned j = 0; j < l->node_count; ++j)
+                count += util_bitcount(constraints[j]);
+
+        return count;
+}
+
+static signed
+lcra_get_best_spill_node(struct lcra_state *l)
+{
+        /* If there are no constraints on a node, do not pick it to spill under
+         * any circumstance, or else we would hang rather than fail RA */
+        float best_benefit = 0.0;
+        signed best_node = -1;
+
+        for (unsigned i = 0; i < l->node_count; ++i) {
+                /* Find spillable nodes */
+                if (l->spill_cost[i] < 0) continue;
+
+                /* Adapted from Chaitin's heuristic */
+                float constraints = lcra_count_constraints(l, i);
+                float cost = (l->spill_cost[i] + 1);
+                float benefit = constraints / cost;
+
+                if (benefit > best_benefit) {
+                        best_benefit = benefit;
+                        best_node = i;
+                }
+        }
+
+        return best_node;
+}
 
 static void
 bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, unsigned node_count, bool is_blend)
@@ -49,17 +224,12 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, unsi
                 }
 
                 if (!is_blend && ins->op == BI_OPCODE_BLEND) {
-                        /* Add blend shader interference: blend shaders might
-                         * clobber r0-r15. */
-                        for (unsigned i = 0; i < node_count; ++i) {
-                                if (!live[i])
-                                        continue;
+                        /* Blend shaders might clobber r0-r15. */
+                        uint64_t clobber = BITFIELD64_MASK(16);
 
-                                for (unsigned j = 0; j < 4; j++) {
-                                        lcra_add_node_interference(l, node_count + j,
-                                                                   0xFFFF,
-                                                                   i, live[i]);
-                                }
+                        for (unsigned i = 0; i < node_count; ++i) {
+                                if (live[i])
+                                        l->affinity[i] &= ~clobber;
                         }
                 }
 
@@ -86,34 +256,17 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
         }
 }
 
-enum {
-        BI_REG_CLASS_WORK = 0,
-} bi_reg_class;
-
 static struct lcra_state *
 bi_allocate_registers(bi_context *ctx, bool *success)
 {
         unsigned node_count = bi_max_temp(ctx);
+        struct lcra_state *l = lcra_alloc_equations(node_count);
 
-        /* We need 4 hidden nodes to encode interference caused by non-terminal
-         * BLEND (blend shaders are allowed to use r0-r16).
-         */
-        struct lcra_state *l =
-                lcra_alloc_equations(node_count + 4, 1);
-
-        /* Preset solutions for the blend shader pseudo nodes */
-        for (unsigned i = 0; i < 4; i++)
-                l->solutions[node_count + i] = i * 16;
-
-        if (ctx->inputs->is_blend) {
+        uint64_t default_affinity =
                 /* R0-R3 are reserved for the blend input */
-                l->class_start[BI_REG_CLASS_WORK] = 0;
-                l->class_size[BI_REG_CLASS_WORK] = 16 * 4;
-        } else {
+                (ctx->inputs->is_blend) ? BITFIELD64_MASK(16) :
                 /* R0 - R63, all 32-bit */
-                l->class_start[BI_REG_CLASS_WORK] = 0;
-                l->class_size[BI_REG_CLASS_WORK] = 59 * 4;
-        }
+                BITFIELD64_MASK(59);
 
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_dest(ins, d) {
@@ -127,12 +280,8 @@ bi_allocate_registers(bi_context *ctx, bool *success)
                                 l->solutions[node] = 0;
                         }
 
-                        if (dest >= node_count)
-                                continue;
-
-                        l->class[dest] = BI_REG_CLASS_WORK;
-                        lcra_set_alignment(l, dest, 2, 16); /* 2^2 = 4 */
-                        lcra_restrict_range(l, dest, 4);
+                        if (dest < node_count)
+                                l->affinity[dest] = default_affinity;
                 }
 
         }
