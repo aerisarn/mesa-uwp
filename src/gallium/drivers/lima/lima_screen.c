@@ -412,9 +412,9 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
 
    if (usage & PIPE_BIND_INDEX_BUFFER) {
       switch (format) {
-      case PIPE_FORMAT_I8_UINT:
-      case PIPE_FORMAT_I16_UINT:
-      case PIPE_FORMAT_I32_UINT:
+      case PIPE_FORMAT_R8_UINT:
+      case PIPE_FORMAT_R16_UINT:
+      case PIPE_FORMAT_R32_UINT:
          break;
       default:
          return false;
