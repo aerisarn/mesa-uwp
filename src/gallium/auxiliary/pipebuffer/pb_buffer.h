@@ -288,7 +288,7 @@ pb_reference_with_winsys(void *winsys,
  * the requested or not.
  */
 static inline boolean
-pb_check_alignment(pb_size requested, pb_size provided)
+pb_check_alignment(uint32_t requested, uint32_t provided)
 {
    if (!requested)
       return TRUE;
