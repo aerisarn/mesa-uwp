@@ -1129,17 +1129,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
         /* Fall back for weird desktop GL primitive restart values. */
         if (info->primitive_restart &&
             info->index_size) {
-                uint32_t mask = ~0;
-
-                switch (info->index_size) {
-                case 2:
-                        mask = 0xffff;
-                        break;
-                case 1:
-                        mask = 0xff;
-                        break;
-                }
-
+                uint32_t mask = util_prim_restart_index_from_size(info->index_size);
                 if (info->restart_index != mask) {
                         util_draw_vbo_without_prim_restart(pctx, info, drawid_offset, indirect, &draws[0]);
                         return;
