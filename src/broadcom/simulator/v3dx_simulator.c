@@ -98,6 +98,22 @@ v3d_invalidate_l2t(struct v3d_hw *v3d)
                   (V3D_CACHE_FLUSH_MODE_FLUSH << V3D_CTL_0_L2TCACTL_L2TFLM_LSB));
 }
 
+/*
+ * Wait for l2tcactl, used for flushes.
+ *
+ * FIXME: for a multicore scenario we should pass here the core. All wrapper
+ * assumes just one core, so would be better to handle that on that case.
+ */
+static UNUSED void v3d_core_wait_l2tcactl(struct v3d_hw *v3d,
+                                          uint32_t ctrl)
+{
+   assert(!(ctrl & ~(V3D_CTL_0_L2TCACTL_TMUWCF_SET | V3D_CTL_0_L2TCACTL_L2TFLS_SET)));
+
+   while (V3D_READ(V3D_CTL_0_L2TCACTL) & ctrl) {
+           v3d_hw_tick(v3d);
+   }
+}
+
 /* Flushes dirty texture cachelines from the L1 write combiner */
 static void
 v3d_flush_l1td(struct v3d_hw *v3d)
@@ -105,7 +121,13 @@ v3d_flush_l1td(struct v3d_hw *v3d)
         V3D_WRITE(V3D_CTL_0_L2TCACTL,
                   V3D_CTL_0_L2TCACTL_TMUWCF_SET);
 
-        assert(!(V3D_READ(V3D_CTL_0_L2TCACTL) & V3D_CTL_0_L2TCACTL_L2TFLS_SET));
+        /* Note: here the kernel (and previous versions of the simulator
+         * wrapper) is using V3D_CTL_0_L2TCACTL_L2TFLS_SET, as with l2t. We
+         * understand that it makes more sense to do like this. We need to
+         * confirm which one is doing it correctly. So far things work fine on
+         * the simulator this way.
+         */
+        v3d_core_wait_l2tcactl(v3d, V3D_CTL_0_L2TCACTL_TMUWCF_SET);
 }
 
 /* Flushes dirty texture L2 cachelines */
@@ -118,7 +140,7 @@ v3d_flush_l2t(struct v3d_hw *v3d)
                   V3D_CTL_0_L2TCACTL_L2TFLS_SET |
                   (V3D_CACHE_FLUSH_MODE_CLEAN << V3D_CTL_0_L2TCACTL_L2TFLM_LSB));
 
-        assert(!(V3D_READ(V3D_CTL_0_L2TCACTL) & V3D_CTL_0_L2TCACTL_L2TFLS_SET));
+        v3d_core_wait_l2tcactl(v3d, V3D_CTL_0_L2TCACTL_L2TFLS_SET);
 }
 
 /* Invalidates the slice caches.  These are read-only caches. */
