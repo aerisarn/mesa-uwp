@@ -885,8 +885,20 @@ radv_handle_per_app_options(struct radv_instance *instance, const VkApplicationI
    instance->absolute_depth_bias =
       driQueryOptionb(&instance->dri_options, "radv_absolute_depth_bias");
 
+   instance->disable_tc_compat_htile_in_general =
+      driQueryOptionb(&instance->dri_options, "radv_disable_tc_compat_htile_general");
+
    if (driQueryOptionb(&instance->dri_options, "radv_no_dynamic_bounds"))
       instance->debug_flags |= RADV_DEBUG_NO_DYNAMIC_BOUNDS;
+
+   if (driQueryOptionb(&instance->dri_options, "radv_zero_vram"))
+      instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
+
+   if (driQueryOptionb(&instance->dri_options, "radv_lower_discard_to_demote"))
+      instance->debug_flags |= RADV_DEBUG_DISCARD_TO_DEMOTE;
+
+   if (driQueryOptionb(&instance->dri_options, "radv_invariant_geom"))
+      instance->debug_flags |= RADV_DEBUG_INVARIANT_GEOM;
 }
 
 // clang-format off
@@ -907,6 +919,10 @@ static const driOptionDescription radv_dri_options[] = {
    DRI_CONF_SECTION_DEBUG
       DRI_CONF_OVERRIDE_VRAM_SIZE()
       DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST(false)
+      DRI_CONF_RADV_ZERO_VRAM(false)
+      DRI_CONF_RADV_LOWER_DISCARD_TO_DEMOTE(false)
+      DRI_CONF_RADV_INVARIANT_GEOM(false)
+      DRI_CONF_RADV_DISABLE_TC_COMPAT_HTILE_GENERAL(false)
    DRI_CONF_SECTION_END
 };
 // clang-format on
