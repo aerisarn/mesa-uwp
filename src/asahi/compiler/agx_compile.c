@@ -847,6 +847,24 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    assert(ctx->loop_nesting == 0);
 }
 
+/* Before the first control flow structure, the nesting counter (r0l) needs to
+ * be zeroed for correct operation. This only happens at most once, since by
+ * definition this occurs at the end of the first block, which dominates the
+ * rest of the program. */
+
+static void
+emit_first_cf(agx_context *ctx)
+{
+   if (ctx->any_cf)
+      return;
+
+   agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
+   agx_index r0l = agx_register(0, false);
+
+   agx_mov_to(&_b, r0l, agx_immediate(0));
+   ctx->any_cf = true;
+}
+
 static agx_block *
 emit_cf_list(agx_context *ctx, struct exec_list *list)
 {
@@ -864,10 +882,12 @@ emit_cf_list(agx_context *ctx, struct exec_list *list)
       }
 
       case nir_cf_node_if:
+         emit_first_cf(ctx);
          emit_if(ctx, nir_cf_node_as_if(node));
          break;
 
       case nir_cf_node_loop:
+         emit_first_cf(ctx);
          emit_loop(ctx, nir_cf_node_as_loop(node));
          break;
 
