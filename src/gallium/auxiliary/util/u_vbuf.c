@@ -1271,8 +1271,25 @@ static void u_vbuf_set_driver_vertex_buffers(struct u_vbuf *mgr)
    start_slot = ffs(mgr->dirty_real_vb_mask) - 1;
    count = util_last_bit(mgr->dirty_real_vb_mask >> start_slot);
 
-   pipe->set_vertex_buffers(pipe, start_slot, count, 0, false,
-                            mgr->real_vertex_buffer + start_slot);
+   if (mgr->dirty_real_vb_mask == mgr->enabled_vb_mask &&
+       mgr->dirty_real_vb_mask == mgr->user_vb_mask) {
+      /* Fast path that allows us to transfer the VBO references to the driver
+       * to skip atomic reference counting there. These are freshly uploaded
+       * user buffers that can be discarded after this call.
+       */
+      pipe->set_vertex_buffers(pipe, start_slot, count, 0, true,
+                               mgr->real_vertex_buffer + start_slot);
+
+      /* We don't own the VBO references now. Set them to NULL. */
+      for (unsigned i = 0; i < count; i++) {
+         assert(!mgr->real_vertex_buffer[start_slot + i].is_user_buffer);
+         mgr->real_vertex_buffer[start_slot + i].buffer.resource = NULL;
+      }
+   } else {
+      /* Slow path where we have to keep VBO references. */
+      pipe->set_vertex_buffers(pipe, start_slot, count, 0, false,
+                               mgr->real_vertex_buffer + start_slot);
+   }
    mgr->dirty_real_vb_mask = 0;
 }
 
