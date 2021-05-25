@@ -23,6 +23,15 @@
 
 #include "agx_compiler.h"
 
+/* Binary patches needed for branch offsets */
+struct agx_branch_fixup {
+   /* Offset into the binary to patch */
+   off_t offset;
+
+   /* Value to patch with will be block->offset */
+   agx_block *block;
+};
+
 /* Texturing has its own operands */
 static unsigned
 agx_pack_sample_coords(agx_index index, bool *flag)
@@ -357,7 +366,7 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
 }
 
 static void
-agx_pack_instr(struct util_dynarray *emission, agx_instr *I)
+agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx_instr *I)
 {
    switch (I->op) {
    case AGX_OPCODE_LD_TILE:
@@ -547,22 +556,67 @@ agx_pack_instr(struct util_dynarray *emission, agx_instr *I)
       break;
    }
 
+   case AGX_OPCODE_JMP_EXEC_ANY:
+   case AGX_OPCODE_JMP_EXEC_NONE:
+   {
+      /* We don't implement indirect branches */
+      assert(I->target != NULL);
+
+      /* We'll fix the offset later. */
+      struct agx_branch_fixup fixup = {
+         .block = I->target,
+         .offset = emission->size
+      };
+
+      util_dynarray_append(fixups, struct agx_branch_fixup, fixup);
+
+      /* The rest of the instruction is fixed */
+      struct agx_opcode_info info = agx_opcodes_info[I->op];
+      uint64_t raw = info.encoding.exact;
+      memcpy(util_dynarray_grow_bytes(emission, 1, 6), &raw, 6);
+      break;
+   }
+
    default:
       agx_pack_alu(emission, I);
       return;
    }
 }
 
+/* Relative branches may be emitted before their targets, so we patch the
+ * binary to fix up the branch offsets after the main emit */
+
+static void
+agx_fixup_branch(struct util_dynarray *emission, struct agx_branch_fixup fix)
+{
+   /* Branch offset is 2 bytes into the jump instruction */
+   uint8_t *location = ((uint8_t *) emission->data) + fix.offset + 2;
+
+   /* Offsets are relative to the jump instruction */
+   int32_t patch = (int32_t) fix.block->offset - (int32_t) fix.offset;
+
+   /* Patch the binary */
+   memcpy(location, &patch, sizeof(patch));
+}
+
 void
 agx_pack(agx_context *ctx, struct util_dynarray *emission)
 {
+   struct util_dynarray fixups;
+   util_dynarray_init(&fixups, ctx);
+
    agx_foreach_block(ctx, block) {
       /* Relative to the start of the binary, the block begins at the current
        * number of bytes emitted */
       block->offset = emission->size;
 
       agx_foreach_instr_in_block(block, ins) {
-         agx_pack_instr(emission, ins);
+         agx_pack_instr(emission, &fixups, ins);
       }
    }
+
+   util_dynarray_foreach(&fixups, struct agx_branch_fixup, fixup)
+      agx_fixup_branch(emission, *fixup);
+
+   util_dynarray_fini(&fixups);
 }
