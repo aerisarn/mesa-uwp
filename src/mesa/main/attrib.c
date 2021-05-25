@@ -1391,9 +1391,6 @@ copy_array_attrib(struct gl_context *ctx,
 
    /* skip ArrayBufferObj */
    /* skip IndexBufferObj */
-
-   /* Invalidate array state. It will be updated during the next draw. */
-   _mesa_set_draw_vao(ctx, ctx->Array._EmptyVAO, 0);
 }
 
 /**
@@ -1453,6 +1450,9 @@ restore_array_attrib(struct gl_context *ctx,
    } else {
       copy_array_attrib(ctx, dest, src, true);
    }
+
+   /* Invalidate array state. It will be updated during the next draw. */
+   _mesa_set_draw_vao(ctx, ctx->Array._EmptyVAO, 0);
 
    if (is_vao_name_zero || !src->VAO->IndexBufferObj ||
        _mesa_IsBuffer(src->VAO->IndexBufferObj->Name)) {
