@@ -2233,9 +2233,9 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
    }
 
    if (usage & PIPE_BIND_INDEX_BUFFER) {
-      if (format == PIPE_FORMAT_I8_UINT ||
-          format == PIPE_FORMAT_I16_UINT ||
-          format == PIPE_FORMAT_I32_UINT)
+      if (format == PIPE_FORMAT_R8_UINT ||
+          format == PIPE_FORMAT_R16_UINT ||
+          format == PIPE_FORMAT_R32_UINT)
          retval |= PIPE_BIND_INDEX_BUFFER;
    }
 
