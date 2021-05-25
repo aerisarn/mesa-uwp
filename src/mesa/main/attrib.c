@@ -1300,6 +1300,35 @@ copy_pixelstore(struct gl_context *ctx,
 #define GL_CLIENT_PACK_BIT (1<<20)
 #define GL_CLIENT_UNPACK_BIT (1<<21)
 
+static void
+copy_vertex_attrib_array(struct gl_context *ctx,
+                         struct gl_array_attributes *dst,
+                         const struct gl_array_attributes *src)
+{
+   dst->Ptr            = src->Ptr;
+   dst->RelativeOffset = src->RelativeOffset;
+   dst->Format         = src->Format;
+   dst->Stride         = src->Stride;
+   dst->BufferBindingIndex = src->BufferBindingIndex;
+   dst->_EffBufferBindingIndex = src->_EffBufferBindingIndex;
+   dst->_EffRelativeOffset = src->_EffRelativeOffset;
+}
+
+static void
+copy_vertex_buffer_binding(struct gl_context *ctx,
+                           struct gl_vertex_buffer_binding *dst,
+                           const struct gl_vertex_buffer_binding *src)
+{
+   dst->Offset          = src->Offset;
+   dst->Stride          = src->Stride;
+   dst->InstanceDivisor = src->InstanceDivisor;
+   dst->_BoundArrays    = src->_BoundArrays;
+   dst->_EffBoundArrays = src->_EffBoundArrays;
+   dst->_EffOffset      = src->_EffOffset;
+
+   _mesa_reference_buffer_object(ctx, &dst->BufferObj, src->BufferObj);
+}
+
 /**
  * Copy gl_vertex_array_object from src to dest.
  * 'dest' must be in an initialized state.
@@ -1315,8 +1344,8 @@ copy_array_object(struct gl_context *ctx,
    /* skip RefCount */
 
    for (i = 0; i < ARRAY_SIZE(src->VertexAttrib); i++) {
-      _mesa_copy_vertex_attrib_array(ctx, &dest->VertexAttrib[i], &src->VertexAttrib[i]);
-      _mesa_copy_vertex_buffer_binding(ctx, &dest->BufferBinding[i], &src->BufferBinding[i]);
+      copy_vertex_attrib_array(ctx, &dest->VertexAttrib[i], &src->VertexAttrib[i]);
+      copy_vertex_buffer_binding(ctx, &dest->BufferBinding[i], &src->BufferBinding[i]);
    }
 
    /* Enabled must be the same than on push */

@@ -3786,36 +3786,6 @@ _mesa_VertexArrayVertexBindingDivisorEXT(GLuint vaobj, GLuint bindingIndex,
                                 "glVertexArrayVertexBindingDivisorEXT");
 }
 
-
-void
-_mesa_copy_vertex_attrib_array(struct gl_context *ctx,
-                               struct gl_array_attributes *dst,
-                               const struct gl_array_attributes *src)
-{
-   dst->Ptr            = src->Ptr;
-   dst->RelativeOffset = src->RelativeOffset;
-   dst->Format         = src->Format;
-   dst->Stride         = src->Stride;
-   dst->BufferBindingIndex = src->BufferBindingIndex;
-   dst->_EffBufferBindingIndex = src->_EffBufferBindingIndex;
-   dst->_EffRelativeOffset = src->_EffRelativeOffset;
-}
-
-void
-_mesa_copy_vertex_buffer_binding(struct gl_context *ctx,
-                                 struct gl_vertex_buffer_binding *dst,
-                                 const struct gl_vertex_buffer_binding *src)
-{
-   dst->Offset          = src->Offset;
-   dst->Stride          = src->Stride;
-   dst->InstanceDivisor = src->InstanceDivisor;
-   dst->_BoundArrays    = src->_BoundArrays;
-   dst->_EffBoundArrays = src->_EffBoundArrays;
-   dst->_EffOffset      = src->_EffOffset;
-
-   _mesa_reference_buffer_object(ctx, &dst->BufferObj, src->BufferObj);
-}
-
 /**
  * Print current vertex object/array info.  For debug.
  */
