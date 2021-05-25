@@ -45,10 +45,6 @@ struct lcra_state {
 
         /* Before solving, forced registers; after solving, solutions. */
         unsigned *solutions;
-
-        /* For register spilling, the costs to spill nodes (as set by the user)
-         * are in spill_cost[], negative if a node is unspillable. */
-        signed *spill_cost;
 };
 
 /* This module is an implementation of "Linearly Constrained
@@ -66,7 +62,6 @@ lcra_alloc_equations(unsigned node_count)
 
         l->linear = calloc(sizeof(l->linear[0]), node_count * node_count);
         l->solutions = calloc(sizeof(l->solutions[0]), node_count);
-        l->spill_cost = calloc(sizeof(l->spill_cost[0]), node_count);
         l->affinity = calloc(sizeof(l->affinity[0]), node_count);
 
         memset(l->solutions, ~0, sizeof(l->solutions[0]) * node_count);
@@ -79,7 +74,6 @@ lcra_free(struct lcra_state *l)
 {
         free(l->linear);
         free(l->affinity);
-        free(l->spill_cost);
         free(l->solutions);
         free(l);
 }
@@ -159,13 +153,6 @@ lcra_solve(struct lcra_state *l)
 /* Register spilling is implemented with a cost-benefit system. Costs are set
  * by the user. Benefits are calculated from the constraints. */
 
-static void
-lcra_set_node_spill_cost(struct lcra_state *l, unsigned node, signed cost)
-{
-        if (node < l->node_count)
-                l->spill_cost[node] = cost;
-}
-
 static unsigned
 lcra_count_constraints(struct lcra_state *l, unsigned i)
 {
@@ -176,32 +163,6 @@ lcra_count_constraints(struct lcra_state *l, unsigned i)
                 count += util_bitcount(constraints[j]);
 
         return count;
-}
-
-static signed
-lcra_get_best_spill_node(struct lcra_state *l)
-{
-        /* If there are no constraints on a node, do not pick it to spill under
-         * any circumstance, or else we would hang rather than fail RA */
-        float best_benefit = 0.0;
-        signed best_node = -1;
-
-        for (unsigned i = 0; i < l->node_count; ++i) {
-                /* Find spillable nodes */
-                if (l->spill_cost[i] < 0) continue;
-
-                /* Adapted from Chaitin's heuristic */
-                float constraints = lcra_count_constraints(l, i);
-                float cost = (l->spill_cost[i] + 1);
-                float benefit = constraints / cost;
-
-                if (benefit > best_benefit) {
-                        best_benefit = benefit;
-                        best_node = i;
-                }
-        }
-
-        return best_node;
 }
 
 static void
@@ -358,19 +319,34 @@ static signed
 bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
 {
         /* Pick a node satisfying bi_spill_register's preconditions */
+        BITSET_WORD *no_spill = calloc(sizeof(BITSET_WORD), BITSET_WORDS(l->node_count));
 
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_dest(ins, d) {
                         if (ins->no_spill || ins->dest[d].offset)
-                                lcra_set_node_spill_cost(l, bi_get_node(ins->dest[d]), -1);
+                                BITSET_SET(no_spill, bi_get_node(ins->dest[d]));
                 }
         }
 
-        unsigned node_count = bi_max_temp(ctx);
-        for (unsigned i = PAN_IS_REG; i < node_count; i += 2)
-                lcra_set_node_spill_cost(l, i, -1);
+        /* If there are no constraints on a node, do not pick it to spill under
+         * any circumstance, or else we would hang rather than fail RA */
+        unsigned best_benefit = 0.0;
+        signed best_node = -1;
 
-        return lcra_get_best_spill_node(l);
+        /* Skip register nodes (with bit 0 set) */
+        for (unsigned i = 0; i < l->node_count; i += 2) {
+                if (BITSET_TEST(no_spill, i)) continue;
+
+                unsigned benefit = lcra_count_constraints(l, i);
+
+                if (benefit > best_benefit) {
+                        best_benefit = benefit;
+                        best_node = i;
+                }
+        }
+
+        free(no_spill);
+        return best_node;
 }
 
 static void
