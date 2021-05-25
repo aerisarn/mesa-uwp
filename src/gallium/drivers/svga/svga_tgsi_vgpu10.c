@@ -5678,6 +5678,48 @@ emit_sampler_declarations(struct svga_shader_emitter_v10 *emit)
 
 
 /**
+ * Translate PIPE_TEXTURE_x to VGPU10_RESOURCE_DIMENSION_x.
+ */
+static unsigned
+pipe_texture_to_resource_dimension(enum tgsi_texture_type target,
+                                   unsigned num_samples,
+                                   boolean is_array)
+{
+   switch (target) {
+   case PIPE_BUFFER:
+      return VGPU10_RESOURCE_DIMENSION_BUFFER;
+   case PIPE_TEXTURE_1D:
+      return VGPU10_RESOURCE_DIMENSION_TEXTURE1D;
+   case PIPE_TEXTURE_2D:
+      return num_samples > 2 ? VGPU10_RESOURCE_DIMENSION_TEXTURE2DMS :
+         VGPU10_RESOURCE_DIMENSION_TEXTURE2D;
+   case PIPE_TEXTURE_RECT:
+      return VGPU10_RESOURCE_DIMENSION_TEXTURE2D;
+   case PIPE_TEXTURE_3D:
+      return VGPU10_RESOURCE_DIMENSION_TEXTURE3D;
+   case PIPE_TEXTURE_CUBE:
+      return VGPU10_RESOURCE_DIMENSION_TEXTURECUBE;
+   case PIPE_TEXTURE_1D_ARRAY:
+      return is_array ? VGPU10_RESOURCE_DIMENSION_TEXTURE1DARRAY
+         : VGPU10_RESOURCE_DIMENSION_TEXTURE1D;
+   case PIPE_TEXTURE_2D_ARRAY:
+      if (num_samples > 2 && is_array)
+         return VGPU10_RESOURCE_DIMENSION_TEXTURE2DMSARRAY;
+      else if (is_array)
+         return VGPU10_RESOURCE_DIMENSION_TEXTURE2DARRAY;
+      else
+         return VGPU10_RESOURCE_DIMENSION_TEXTURE2D;
+   case PIPE_TEXTURE_CUBE_ARRAY:
+         return is_array ? VGPU10_RESOURCE_DIMENSION_TEXTURECUBEARRAY :
+                         VGPU10_RESOURCE_DIMENSION_TEXTURECUBE;
+   default:
+      assert(!"Unexpected resource type");
+      return VGPU10_RESOURCE_DIMENSION_TEXTURE2D;
+   }
+}
+
+
+/**
  * Translate TGSI_TEXTURE_x to VGPU10_RESOURCE_DIMENSION_x.
  */
 static unsigned
@@ -5776,10 +5818,18 @@ emit_resource_declarations(struct svga_shader_emitter_v10 *emit)
 
       opcode0.value = 0;
       opcode0.opcodeType = VGPU10_OPCODE_DCL_RESOURCE;
-      opcode0.resourceDimension =
-         tgsi_texture_to_resource_dimension(emit->sampler_target[i],
-                                            emit->key.tex[i].num_samples,
-                                            emit->key.tex[i].is_array);
+      if (emit->sampler_view[i] || !emit->key.tex[i].sampler_view) {
+         opcode0.resourceDimension =
+            tgsi_texture_to_resource_dimension(emit->sampler_target[i],
+                                               emit->key.tex[i].num_samples,
+                                               emit->key.tex[i].is_array);
+      }
+      else {
+         opcode0.resourceDimension =
+            pipe_texture_to_resource_dimension(emit->key.tex[i].target,
+                                               emit->key.tex[i].num_samples,
+                                               emit->key.tex[i].is_array);
+      }
       opcode0.sampleCount = emit->key.tex[i].num_samples;
       operand0.value = 0;
       operand0.numComponents = VGPU10_OPERAND_0_COMPONENT;
@@ -5795,7 +5845,12 @@ emit_resource_declarations(struct svga_shader_emitter_v10 *emit)
       STATIC_ASSERT(VGPU10_RETURN_TYPE_UINT == TGSI_RETURN_TYPE_UINT + 1);
       STATIC_ASSERT(VGPU10_RETURN_TYPE_FLOAT == TGSI_RETURN_TYPE_FLOAT + 1);
       assert(emit->sampler_return_type[i] <= TGSI_RETURN_TYPE_FLOAT);
-      rt = emit->sampler_return_type[i] + 1;
+      if (emit->sampler_view[i] || !emit->key.tex[i].sampler_view) {
+         rt = emit->sampler_return_type[i] + 1;
+      }
+      else {
+         rt = emit->key.tex[i].sampler_return_type;
+      }
 #else
       switch (emit->sampler_return_type[i]) {
          case TGSI_RETURN_TYPE_UNORM: rt = VGPU10_RETURN_TYPE_UNORM; break;

@@ -275,6 +275,7 @@ svga_init_shader_key_common(const struct svga_context *svga,
 
 	 key->tex[i].target = target;
 	 key->tex[i].sampler_return_type = vgpu10_return_type(view->format);
+	 key->tex[i].sampler_view = 1;
 
 
          /* 1D/2D array textures with one slice and cube map array textures
@@ -344,6 +345,9 @@ svga_init_shader_key_common(const struct svga_context *svga,
          key->tex[i].swizzle_g = swizzle_tab[view->swizzle_g];
          key->tex[i].swizzle_b = swizzle_tab[view->swizzle_b];
          key->tex[i].swizzle_a = swizzle_tab[view->swizzle_a];
+      }
+      else {
+	 key->tex[i].sampler_view = 0;
       }
 
       if (sampler) {
