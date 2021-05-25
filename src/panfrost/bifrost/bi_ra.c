@@ -262,11 +262,10 @@ bi_allocate_registers(bi_context *ctx, bool *success)
         unsigned node_count = bi_max_temp(ctx);
         struct lcra_state *l = lcra_alloc_equations(node_count);
 
+        /* R0-R3 are reserved for the blend input in blend shaders, otherwise
+         * we can use the whole register file */
         uint64_t default_affinity =
-                /* R0-R3 are reserved for the blend input */
-                (ctx->inputs->is_blend) ? BITFIELD64_MASK(16) :
-                /* R0 - R63, all 32-bit */
-                BITFIELD64_MASK(59);
+                ctx->inputs->is_blend ? BITFIELD64_MASK(16) : ~0ull;
 
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_dest(ins, d) {
