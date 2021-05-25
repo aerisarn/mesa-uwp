@@ -91,6 +91,7 @@ Linux, FreeBSD, and other operating systems.
    drivers/panfrost
    drivers/v3d
    drivers/vc4
+   drivers/venus
    drivers/vmware-guest
    drivers/zink
 
