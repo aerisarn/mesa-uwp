@@ -371,6 +371,8 @@ enum iris_predicate_state {
  * See iris_compiled_shader, which represents a compiled shader variant.
  */
 struct iris_uncompiled_shader {
+   struct pipe_reference ref;
+
    /**
     * NIR for the shader.
     *
@@ -954,6 +956,26 @@ struct iris_compiled_shader *iris_upload_shader(struct iris_screen *screen,
                                                 unsigned num_cbufs,
                                                 const struct iris_binding_table *bt);
 void iris_delete_shader_variant(struct iris_compiled_shader *shader);
+
+void iris_destroy_shader_state(struct pipe_context *ctx, void *state);
+
+static inline void
+iris_uncompiled_shader_reference(struct pipe_context *ctx,
+                                 struct iris_uncompiled_shader **dst,
+                                 struct iris_uncompiled_shader *src)
+{
+   if (*dst == src)
+      return;
+
+   struct iris_uncompiled_shader *old_dst = *dst;
+
+   if (pipe_reference(old_dst != NULL ? &old_dst->ref : NULL,
+                      src != NULL ? &src->ref : NULL)) {
+      iris_destroy_shader_state(ctx, *dst);
+   }
+
+   *dst = src;
+}
 
 static inline void
 iris_shader_variant_reference(struct iris_compiled_shader **dst,

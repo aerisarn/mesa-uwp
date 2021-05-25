@@ -2282,6 +2282,7 @@ iris_create_uncompiled_shader(struct iris_screen *screen,
    if (!ish)
       return NULL;
 
+   pipe_reference_init(&ish->ref, 1);
    list_inithead(&ish->variants);
    simple_mtx_init(&ish->lock, mtx_plain);
 
@@ -2537,9 +2538,35 @@ iris_create_shader_state(struct pipe_context *ctx,
 }
 
 /**
- * The pipe->delete_[stage]_state() driver hooks.
+ * Called when the refcount on the iris_uncompiled_shader reaches 0.
  *
  * Frees the iris_uncompiled_shader.
+ *
+ * \sa iris_delete_shader_state
+ */
+void
+iris_destroy_shader_state(struct pipe_context *ctx, void *state)
+{
+   struct iris_uncompiled_shader *ish = state;
+
+   /* No need to take ish->lock; we hold the last reference to ish */
+   list_for_each_entry_safe(struct iris_compiled_shader, shader,
+                            &ish->variants, link) {
+      list_del(&shader->link);
+
+      iris_shader_variant_reference(&shader, NULL);
+   }
+
+   simple_mtx_destroy(&ish->lock);
+
+   ralloc_free(ish->nir);
+   free(ish);
+}
+
+/**
+ * The pipe->delete_[stage]_state() driver hooks.
+ *
+ * \sa iris_destroy_shader_state
  */
 static void
 iris_delete_shader_state(struct pipe_context *ctx, void *state)
@@ -2554,18 +2581,8 @@ iris_delete_shader_state(struct pipe_context *ctx, void *state)
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_UNCOMPILED_VS << stage;
    }
 
-   /* No need to take ish->lock; we hold the last reference to ish */
-   list_for_each_entry_safe(struct iris_compiled_shader, shader,
-                            &ish->variants, link) {
-      list_del(&shader->link);
-
-      iris_shader_variant_reference(&shader, NULL);
-   }
-
-   simple_mtx_destroy(&ish->lock);
-
-   ralloc_free(ish->nir);
-   free(ish);
+   if (pipe_reference(&ish->ref, NULL))
+      iris_destroy_shader_state(ctx, state);
 }
 
 /**
