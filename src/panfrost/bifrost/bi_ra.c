@@ -220,8 +220,8 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, uint
                 }
 
                 if (!is_blend && ins->op == BI_OPCODE_BLEND) {
-                        /* Blend shaders might clobber r0-r15. */
-                        uint64_t clobber = BITFIELD64_MASK(16);
+                        /* Blend shaders might clobber r0-r15, r48. */
+                        uint64_t clobber = BITFIELD64_MASK(16) | BITFIELD64_BIT(48);
 
                         for (unsigned i = 0; i < node_count; ++i) {
                                 if (live[i])
