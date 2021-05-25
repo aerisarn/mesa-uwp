@@ -131,6 +131,16 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
+   nir->info.inputs_read =
+      dxil_reassign_driver_locations(nir, nir_var_shader_in, 0);
+
+   if (stage != MESA_SHADER_FRAGMENT) {
+      nir->info.outputs_written =
+         dxil_reassign_driver_locations(nir, nir_var_shader_out, 0);
+   } else {
+      dxil_sort_ps_outputs(nir);
+   }
+
    struct nir_to_dxil_options opts = {.vulkan_environment = true};
 
    struct blob dxil_blob;
