@@ -129,6 +129,11 @@ bi_postra_liveness(bi_context *ctx)
         struct set_entry *cur;
         cur = _mesa_set_add(work_list, pan_exit_block(&ctx->blocks));
 
+        bi_foreach_block(ctx, _block) {
+                bi_block *block = (bi_block *) _block;
+                block->reg_live_out = block->reg_live_in = 0;
+        }
+
         do {
                 bi_block *blk = (struct bi_block *) cur->key;
                 _mesa_set_remove(work_list, cur);
