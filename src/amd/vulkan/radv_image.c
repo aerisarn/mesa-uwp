@@ -282,13 +282,11 @@ radv_image_use_dcc_image_stores(const struct radv_device *device, const struct r
 /*
  * Whether to use a predicate to determine whether DCC is in a compressed
  * state. This can be used to avoid decompressing an image multiple times.
- *
- * This function assumes the image uses DCC compression.
  */
 bool
 radv_image_use_dcc_predication(const struct radv_device *device, const struct radv_image *image)
 {
-   return !radv_image_use_dcc_image_stores(device, image);
+   return radv_image_has_dcc(image) && !radv_image_use_dcc_image_stores(device, image);
 }
 
 static inline bool
