@@ -79,7 +79,7 @@ and a few other tools.
 A typical run takes between 30 minutes and an hour.
 
 If you're having issues with the Intel CI, your best bet is to ask about
-it on ``#dri-devel`` on Freenode and tag `Clayton Craft
+it on ``#dri-devel`` on OFTC and tag `Clayton Craft
 <https://gitlab.freedesktop.org/craftyguy>`__ (``craftyguy`` on IRC) or
 `Nico Cortes <https://gitlab.freedesktop.org/ngcortes>`__ (``ngcortes``
 on IRC).
