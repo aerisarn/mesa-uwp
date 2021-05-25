@@ -49,6 +49,14 @@ descriptor_bo_size(VkDescriptorType type)
    }
 }
 
+uint32_t
+v3dv_max_descriptor_bo_size()
+{
+   return MAX3(sizeof(struct v3dv_sampler_descriptor),
+               sizeof(struct v3dv_combined_image_sampler_descriptor),
+               sizeof(struct v3dv_sampled_image_descriptor));
+}
+
 /*
  * For a given descriptor defined by the descriptor_set it belongs, its
  * binding layout, and array_index, it returns the map region assigned to it
@@ -1095,4 +1103,47 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
 
       }
    }
+}
+
+void
+v3dv_GetDescriptorSetLayoutSupport(
+   VkDevice device,
+   const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
+   VkDescriptorSetLayoutSupport *pSupport)
+{
+   VkDescriptorSetLayoutBinding *bindings = NULL;
+   VkResult result = vk_create_sorted_bindings(
+      pCreateInfo->pBindings, pCreateInfo->bindingCount, &bindings);
+   if (result != VK_SUCCESS) {
+      pSupport->supported = false;
+      return;
+   }
+
+   bool supported = true;
+
+   uint32_t desc_host_size = sizeof(struct v3dv_descriptor);
+   uint32_t host_size = sizeof(struct v3dv_descriptor_set);
+   uint32_t bo_size = 0;
+   for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+      const VkDescriptorSetLayoutBinding *binding = bindings + i;
+
+      if ((UINT32_MAX - host_size) / desc_host_size < binding->descriptorCount) {
+         supported = false;
+         break;
+      }
+
+      uint32_t desc_bo_size = descriptor_bo_size(binding->descriptorType);
+      if (desc_bo_size > 0 &&
+          (UINT32_MAX - bo_size) / desc_bo_size < binding->descriptorCount) {
+         supported = false;
+         break;
+      }
+
+      host_size += binding->descriptorCount * desc_host_size;
+      bo_size += binding->descriptorCount * desc_bo_size;
+   }
+
+   free(bindings);
+
+   pSupport->supported = supported;
 }

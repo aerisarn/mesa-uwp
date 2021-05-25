@@ -134,6 +134,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_external_memory_fd              = true,
       .KHR_maintenance1                    = true,
       .KHR_maintenance2                    = true,
+      .KHR_maintenance3                    = true,
 #ifdef V3DV_HAS_SURFACE
       .KHR_swapchain                       = true,
 #endif
@@ -1250,6 +1251,29 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
+         VkPhysicalDeviceMaintenance3Properties *props =
+            (VkPhysicalDeviceMaintenance3Properties *)ext;
+         /* We don't really have special restrictions for the maximum
+          * descriptors per set, other than maybe not exceeding the limits
+          * of addressable memory in a single allocation on either the host
+          * or the GPU. This will be a much larger limit than any of the
+          * per-stage limits already available in Vulkan though, so in practice,
+          * it is not expected to limit anything beyond what is already
+          * constrained through per-stage limits.
+          */
+         uint32_t max_host_descriptors =
+            (UINT32_MAX - sizeof(struct v3dv_descriptor_set)) /
+            sizeof(struct v3dv_descriptor);
+         uint32_t max_gpu_descriptors =
+            (UINT32_MAX / v3dv_max_descriptor_bo_size());
+         props->maxPerSetDescriptors =
+            MIN2(max_host_descriptors, max_gpu_descriptors);
+
+         /* Minimum required by the spec */
+         props->maxMemoryAllocationSize = MAX_MEMORY_ALLOCATION_SIZE;
+         break;
+      }
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
@@ -1586,8 +1610,7 @@ device_alloc(struct v3dv_device *device,
              VkDeviceSize size)
 {
    /* Our kernel interface is 32-bit */
-   if (size > UINT32_MAX)
-      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   assert(size <= UINT32_MAX);
 
    mem->bo = v3dv_bo_alloc(device, size, "device_alloc", false);
    if (!mem->bo)
@@ -1828,20 +1851,28 @@ v3dv_AllocateMemory(VkDevice _device,
    }
 
    VkResult result = VK_SUCCESS;
-   if (wsi_info) {
-      result = device_alloc_for_wsi(device, pAllocator, mem,
-                                    pAllocateInfo->allocationSize);
-   } else if (fd_info && fd_info->handleType) {
-      assert(fd_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
-             fd_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
-      result = device_import_bo(device, pAllocator,
-                                fd_info->fd, pAllocateInfo->allocationSize,
-                                &mem->bo);
-      mem->has_bo_ownership = false;
-      if (result == VK_SUCCESS)
-         close(fd_info->fd);
+
+   /* We always allocate device memory in multiples of a page, so round up
+    * requested size to that.
+    */
+   VkDeviceSize alloc_size = ALIGN(pAllocateInfo->allocationSize, 4096);
+
+   if (unlikely(alloc_size > MAX_MEMORY_ALLOCATION_SIZE)) {
+      result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
    } else {
-      result = device_alloc(device, mem, pAllocateInfo->allocationSize);
+      if (wsi_info) {
+         result = device_alloc_for_wsi(device, pAllocator, mem, alloc_size);
+      } else if (fd_info && fd_info->handleType) {
+         assert(fd_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
+                fd_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
+         result = device_import_bo(device, pAllocator,
+                                   fd_info->fd, alloc_size, &mem->bo);
+         mem->has_bo_ownership = false;
+         if (result == VK_SUCCESS)
+            close(fd_info->fd);
+      } else {
+         result = device_alloc(device, mem, alloc_size);
+      }
    }
 
    if (result != VK_SUCCESS) {

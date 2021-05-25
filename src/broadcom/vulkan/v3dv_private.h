@@ -124,6 +124,9 @@ struct v3dv_instance;
 
 struct v3d_simulator_file;
 
+/* Minimum required by the Vulkan 1.1 spec */
+#define MAX_MEMORY_ALLOCATION_SIZE (1ull << 30)
+
 struct v3dv_physical_device {
    struct vk_physical_device vk;
 
@@ -1515,6 +1518,8 @@ struct v3dv_descriptor_set {
     */
    struct v3dv_descriptor descriptors[0];
 };
+
+uint32_t v3dv_max_descriptor_bo_size(void);
 
 struct v3dv_descriptor_set_binding_layout {
    VkDescriptorType type;
