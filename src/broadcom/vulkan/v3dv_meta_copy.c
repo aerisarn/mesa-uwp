@@ -27,6 +27,7 @@
 #include "broadcom/cle/v3dx_pack.h"
 #include "vk_format_info.h"
 #include "util/u_pack_color.h"
+#include "vulkan/util/vk_common_entrypoints.h"
 
 static uint32_t
 meta_blit_key_hash(const void *key)
@@ -1118,9 +1119,10 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
          cmd_buffer, (uintptr_t)uiview,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
 
-      result = v3dv_BindImageMemory(_device, uiview,
-                                    v3dv_device_memory_to_handle(image->mem),
-                                    image->mem_offset);
+      result =
+         vk_common_BindImageMemory(_device, uiview,
+                                   v3dv_device_memory_to_handle(image->mem),
+                                   image->mem_offset);
       if (result != VK_SUCCESS)
          return handled;
 
@@ -1158,9 +1160,10 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
       /* Bind the buffer memory to the image */
       VkDeviceSize buffer_offset = buffer->mem_offset + region->bufferOffset +
          i * buf_width * buf_height * buffer_bpp;
-      result = v3dv_BindImageMemory(_device, buffer_image,
-                                    v3dv_device_memory_to_handle(buffer->mem),
-                                    buffer_offset);
+      result =
+         vk_common_BindImageMemory(_device, buffer_image,
+                                   v3dv_device_memory_to_handle(buffer->mem),
+                                   buffer_offset);
       if (result != VK_SUCCESS)
          return handled;
 
@@ -3741,7 +3744,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
             cmd_buffer, (uintptr_t)buffer_image,
             (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
 
-         result = v3dv_BindImageMemory(_device, buffer_image, mem, 0);
+         result = vk_common_BindImageMemory(_device, buffer_image, mem, 0);
          if (result != VK_SUCCESS)
             return handled;
 

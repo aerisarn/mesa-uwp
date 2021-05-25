@@ -130,6 +130,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
                       struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
+      .KHR_bind_memory2                    = true,
       .KHR_external_memory                 = true,
       .KHR_external_memory_fd              = true,
       .KHR_maintenance1                    = true,
@@ -1977,14 +1978,11 @@ v3dv_GetImageMemoryRequirements(VkDevice _device,
    pMemoryRequirements->memoryTypeBits = 0x1;
 }
 
-VkResult
-v3dv_BindImageMemory(VkDevice _device,
-                     VkImage _image,
-                     VkDeviceMemory _memory,
-                     VkDeviceSize memoryOffset)
+static void
+bind_image_memory(const VkBindImageMemoryInfo *info)
 {
-   V3DV_FROM_HANDLE(v3dv_device_memory, mem, _memory);
-   V3DV_FROM_HANDLE(v3dv_image, image, _image);
+   V3DV_FROM_HANDLE(v3dv_image, image, info->image);
+   V3DV_FROM_HANDLE(v3dv_device_memory, mem, info->memory);
 
    /* Valid usage:
     *
@@ -1992,11 +1990,20 @@ v3dv_BindImageMemory(VkDevice _device,
     *    the VkMemoryRequirements structure returned from a call to
     *    vkGetImageMemoryRequirements with image"
     */
-   assert(memoryOffset % image->alignment == 0);
-   assert(memoryOffset < mem->bo->size);
+   assert(info->memoryOffset % image->alignment == 0);
+   assert(info->memoryOffset < mem->bo->size);
 
    image->mem = mem;
-   image->mem_offset = memoryOffset;
+   image->mem_offset = info->memoryOffset;
+}
+
+VkResult
+v3dv_BindImageMemory2(VkDevice _device,
+                      uint32_t bindInfoCount,
+                      const VkBindImageMemoryInfo *pBindInfos)
+{
+   for (uint32_t i = 0; i < bindInfoCount; i++)
+      bind_image_memory(&pBindInfos[i]);
 
    return VK_SUCCESS;
 }
@@ -2014,14 +2021,11 @@ v3dv_GetBufferMemoryRequirements(VkDevice _device,
       align64(buffer->size, pMemoryRequirements->alignment);
 }
 
-VkResult
-v3dv_BindBufferMemory(VkDevice _device,
-                      VkBuffer _buffer,
-                      VkDeviceMemory _memory,
-                      VkDeviceSize memoryOffset)
+static void
+bind_buffer_memory(const VkBindBufferMemoryInfo *info)
 {
-   V3DV_FROM_HANDLE(v3dv_device_memory, mem, _memory);
-   V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, info->buffer);
+   V3DV_FROM_HANDLE(v3dv_device_memory, mem, info->memory);
 
    /* Valid usage:
     *
@@ -2029,11 +2033,21 @@ v3dv_BindBufferMemory(VkDevice _device,
     *    the VkMemoryRequirements structure returned from a call to
     *    vkGetBufferMemoryRequirements with buffer"
     */
-   assert(memoryOffset % buffer->alignment == 0);
-   assert(memoryOffset < mem->bo->size);
+   assert(info->memoryOffset % buffer->alignment == 0);
+   assert(info->memoryOffset < mem->bo->size);
 
    buffer->mem = mem;
-   buffer->mem_offset = memoryOffset;
+   buffer->mem_offset = info->memoryOffset;
+}
+
+
+VkResult
+v3dv_BindBufferMemory2(VkDevice device,
+                       uint32_t bindInfoCount,
+                       const VkBindBufferMemoryInfo *pBindInfos)
+{
+   for (uint32_t i = 0; i < bindInfoCount; i++)
+      bind_buffer_memory(&pBindInfos[i]);
 
    return VK_SUCCESS;
 }
