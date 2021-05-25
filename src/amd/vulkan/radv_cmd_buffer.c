@@ -950,12 +950,6 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
    radeon_emit(cs, centroid_priority);
    radeon_emit(cs, centroid_priority >> 32);
 
-   /* GFX9: Flush DFSM when the AA mode changes. */
-   if (cmd_buffer->device->dfsm_allowed) {
-      radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_DFSM) | EVENT_INDEX(0));
-   }
-
    cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
 
@@ -1001,8 +995,7 @@ radv_update_binning_state(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeli
 
    if (old_pipeline &&
        old_pipeline->graphics.binning.pa_sc_binner_cntl_0 ==
-          pipeline->graphics.binning.pa_sc_binner_cntl_0 &&
-       old_pipeline->graphics.binning.db_dfsm_control == pipeline->graphics.binning.db_dfsm_control)
+          pipeline->graphics.binning.pa_sc_binner_cntl_0)
       return;
 
    bool binning_flush = false;
@@ -1018,14 +1011,6 @@ radv_update_binning_state(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeli
    radeon_set_context_reg(cmd_buffer->cs, R_028C44_PA_SC_BINNER_CNTL_0,
                           pipeline->graphics.binning.pa_sc_binner_cntl_0 |
                              S_028C44_FLUSH_ON_BINNING_TRANSITION(!!binning_flush));
-
-   if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
-      radeon_set_context_reg(cmd_buffer->cs, R_028038_DB_DFSM_CONTROL,
-                             pipeline->graphics.binning.db_dfsm_control);
-   } else {
-      radeon_set_context_reg(cmd_buffer->cs, R_028060_DB_DFSM_CONTROL,
-                             pipeline->graphics.binning.db_dfsm_control);
-   }
 
    cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
@@ -2479,11 +2464,6 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
                              S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(chip_class <= GFX9) |
                                 S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
                                 S_028424_DISABLE_CONSTANT_ENCODE_REG(disable_constant_encode));
-   }
-
-   if (cmd_buffer->device->dfsm_allowed) {
-      radeon_emit(cmd_buffer->cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      radeon_emit(cmd_buffer->cs, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
    }
 
    cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_FRAMEBUFFER;

@@ -71,9 +71,8 @@ enum {
    RADV_PERFTEST_CS_WAVE_32 = 1u << 3,
    RADV_PERFTEST_PS_WAVE_32 = 1u << 4,
    RADV_PERFTEST_GE_WAVE_32 = 1u << 5,
-   RADV_PERFTEST_DFSM = 1u << 6,
-   RADV_PERFTEST_NO_SAM = 1u << 7,
-   RADV_PERFTEST_SAM = 1u << 8,
+   RADV_PERFTEST_NO_SAM = 1u << 6,
+   RADV_PERFTEST_SAM = 1u << 7,
 };
 
 bool radv_init_trace(struct radv_device *device);

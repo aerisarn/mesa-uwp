@@ -4080,7 +4080,6 @@ radv_pipeline_init_disabled_binning_state(struct radv_pipeline *pipeline,
 {
    uint32_t pa_sc_binner_cntl_0 = S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
                                   S_028C44_DISABLE_START_OF_PRIM(1);
-   uint32_t db_dfsm_control = S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF);
 
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
       RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
@@ -4112,7 +4111,6 @@ radv_pipeline_init_disabled_binning_state(struct radv_pipeline *pipeline,
    }
 
    pipeline->graphics.binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
-   pipeline->graphics.binning.db_dfsm_control = db_dfsm_control;
 }
 
 struct radv_binning_settings
@@ -4162,17 +4160,6 @@ radv_pipeline_init_binning_state(struct radv_pipeline *pipeline,
       struct radv_binning_settings settings =
          radv_get_binning_settings(pipeline->device->physical_device);
 
-      bool disable_start_of_prim = true;
-      uint32_t db_dfsm_control = S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF);
-
-      const struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
-
-      if (pipeline->device->dfsm_allowed && ps && !ps->info.ps.can_discard &&
-          !ps->info.ps.writes_memory && blend->cb_target_enabled_4bit) {
-         db_dfsm_control = S_028060_PUNCHOUT_MODE(V_028060_AUTO);
-         disable_start_of_prim = (blend->blend_enable_4bit & blend->cb_target_enabled_4bit) != 0;
-      }
-
       const uint32_t pa_sc_binner_cntl_0 =
          S_028C44_BINNING_MODE(V_028C44_BINNING_ALLOWED) |
          S_028C44_BIN_SIZE_X(bin_size.width == 16) | S_028C44_BIN_SIZE_Y(bin_size.height == 16) |
@@ -4180,11 +4167,10 @@ radv_pipeline_init_binning_state(struct radv_pipeline *pipeline,
          S_028C44_BIN_SIZE_Y_EXTEND(util_logbase2(MAX2(bin_size.height, 32)) - 5) |
          S_028C44_CONTEXT_STATES_PER_BIN(settings.context_states_per_bin - 1) |
          S_028C44_PERSISTENT_STATES_PER_BIN(settings.persistent_states_per_bin - 1) |
-         S_028C44_DISABLE_START_OF_PRIM(disable_start_of_prim) |
+         S_028C44_DISABLE_START_OF_PRIM(1) |
          S_028C44_FPOVS_PER_BATCH(settings.fpovs_per_batch) | S_028C44_OPTIMAL_BIN_SELECTION(1);
 
       pipeline->graphics.binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
-      pipeline->graphics.binning.db_dfsm_control = db_dfsm_control;
    } else
       radv_pipeline_init_disabled_binning_state(pipeline, pCreateInfo);
 }
@@ -4331,12 +4317,6 @@ radv_pipeline_generate_multisample_state(struct radeon_cmdbuf *ctx_cs,
    radeon_set_context_reg(
       ctx_cs, R_02882C_PA_SU_PRIM_FILTER_CNTL,
       S_02882C_XMAX_RIGHT_EXCLUSION(exclusion) | S_02882C_YMAX_BOTTOM_EXCLUSION(exclusion));
-
-   /* GFX9: Flush DFSM when the AA mode changes. */
-   if (pipeline->device->dfsm_allowed) {
-      radeon_emit(ctx_cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      radeon_emit(ctx_cs, EVENT_TYPE(V_028A90_FLUSH_DFSM) | EVENT_INDEX(0));
-   }
 }
 
 static void
@@ -5038,12 +5018,6 @@ radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct rade
       ctx_cs, R_028710_SPI_SHADER_Z_FORMAT,
       ac_get_spi_shader_z_format(ps->info.ps.writes_z, ps->info.ps.writes_stencil,
                                  ps->info.ps.writes_sample_mask));
-
-   if (pipeline->device->dfsm_allowed) {
-      /* optimise this? */
-      radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_DFSM) | EVENT_INDEX(0));
-   }
 }
 
 static void

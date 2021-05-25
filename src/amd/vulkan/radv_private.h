@@ -756,7 +756,6 @@ struct radv_device {
    struct radeon_cmdbuf *empty_cs[RADV_MAX_QUEUE_FAMILIES];
 
    bool pbb_allowed;
-   bool dfsm_allowed;
    uint32_t tess_offchip_block_dw_size;
    uint32_t scratch_waves;
    uint32_t dispatch_initiator;
@@ -1686,7 +1685,6 @@ struct radv_ia_multi_vgt_param_helpers {
 
 struct radv_binning_state {
    uint32_t pa_sc_binner_cntl_0;
-   uint32_t db_dfsm_control;
 };
 
 #define SI_GS_PER_ES 128
