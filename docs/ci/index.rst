@@ -37,7 +37,7 @@ empty (or set to the default ``.gitlab-ci.yml``), and that the
 "Public pipelines" box is checked.
 
 If you're having issues with the GitLab CI, your best bet is to ask
-about it on ``#freedesktop`` on Freenode and tag `Daniel Stone
+about it on ``#freedesktop`` on OFTC and tag `Daniel Stone
 <https://gitlab.freedesktop.org/daniels>`__ (``daniels`` on IRC) or
 `Eric Anholt <https://gitlab.freedesktop.org/anholt>`__ (``anholt`` on
 IRC).
