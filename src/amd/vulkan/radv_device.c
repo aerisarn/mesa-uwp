@@ -825,82 +825,6 @@ radv_get_perftest_option_name(int id)
    return radv_perftest_options[id].string;
 }
 
-static void
-radv_handle_per_app_options(struct radv_instance *instance, const VkApplicationInfo *info)
-{
-   const char *name = info ? info->pApplicationName : NULL;
-   const char *engine_name = info ? info->pEngineName : NULL;
-
-   if (name) {
-      if (!strcmp(name, "DOOM_VFR")) {
-         /* Work around a Doom VFR game bug */
-         instance->debug_flags |= RADV_DEBUG_NO_DYNAMIC_BOUNDS;
-      } else if (!strcmp(name, "Fledge")) {
-         /*
-          * Zero VRAM for "The Surge 2"
-          *
-          * This avoid a hang when when rendering any level. Likely
-          * uninitialized data in an indirect draw.
-          */
-         instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
-      } else if (!strcmp(name, "No Man's Sky")) {
-         /* Work around a NMS game bug */
-         instance->debug_flags |= RADV_DEBUG_DISCARD_TO_DEMOTE;
-      } else if (!strcmp(name, "DOOMEternal")) {
-         /* Zero VRAM for Doom Eternal to fix rendering issues. */
-         instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
-      } else if (!strcmp(name, "ShadowOfTheTomb")) {
-         /* Work around flickering foliage for native Shadow of the Tomb Raider
-          * on GFX10.3 */
-         instance->debug_flags |= RADV_DEBUG_INVARIANT_GEOM;
-      }
-   }
-
-   if (engine_name) {
-      if (!strcmp(engine_name, "vkd3d")) {
-         /* Zero VRAM for all VKD3D (DX12->VK) games to fix
-          * rendering issues.
-          */
-         instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
-      } else if (!strcmp(engine_name, "Quantic Dream Engine")) {
-         /* Fix various artifacts in Detroit: Become Human */
-         instance->debug_flags |= RADV_DEBUG_ZERO_VRAM | RADV_DEBUG_DISCARD_TO_DEMOTE;
-
-         /* Fix rendering issues in Detroit: Become Human
-          * because the game uses render loops (it
-          * samples/renders from/to the same depth/stencil
-          * texture inside the same draw) without input
-          * attachments and that is invalid Vulkan usage.
-          */
-         instance->disable_tc_compat_htile_in_general = true;
-      }
-   }
-
-   instance->enable_mrt_output_nan_fixup =
-      driQueryOptionb(&instance->dri_options, "radv_enable_mrt_output_nan_fixup");
-
-   instance->disable_shrink_image_store =
-      driQueryOptionb(&instance->dri_options, "radv_disable_shrink_image_store");
-
-   instance->absolute_depth_bias =
-      driQueryOptionb(&instance->dri_options, "radv_absolute_depth_bias");
-
-   instance->disable_tc_compat_htile_in_general =
-      driQueryOptionb(&instance->dri_options, "radv_disable_tc_compat_htile_general");
-
-   if (driQueryOptionb(&instance->dri_options, "radv_no_dynamic_bounds"))
-      instance->debug_flags |= RADV_DEBUG_NO_DYNAMIC_BOUNDS;
-
-   if (driQueryOptionb(&instance->dri_options, "radv_zero_vram"))
-      instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
-
-   if (driQueryOptionb(&instance->dri_options, "radv_lower_discard_to_demote"))
-      instance->debug_flags |= RADV_DEBUG_DISCARD_TO_DEMOTE;
-
-   if (driQueryOptionb(&instance->dri_options, "radv_invariant_geom"))
-      instance->debug_flags |= RADV_DEBUG_INVARIANT_GEOM;
-}
-
 // clang-format off
 static const driOptionDescription radv_dri_options[] = {
    DRI_CONF_SECTION_PERFORMANCE
@@ -935,6 +859,30 @@ radv_init_dri_options(struct radv_instance *instance)
    driParseConfigFiles(&instance->dri_options, &instance->available_dri_options, 0, "radv", NULL,
                        instance->vk.app_info.app_name, instance->vk.app_info.app_version,
                        instance->vk.app_info.engine_name, instance->vk.app_info.engine_version);
+
+   instance->enable_mrt_output_nan_fixup =
+      driQueryOptionb(&instance->dri_options, "radv_enable_mrt_output_nan_fixup");
+
+   instance->disable_shrink_image_store =
+      driQueryOptionb(&instance->dri_options, "radv_disable_shrink_image_store");
+
+   instance->absolute_depth_bias =
+      driQueryOptionb(&instance->dri_options, "radv_absolute_depth_bias");
+
+   instance->disable_tc_compat_htile_in_general =
+      driQueryOptionb(&instance->dri_options, "radv_disable_tc_compat_htile_general");
+
+   if (driQueryOptionb(&instance->dri_options, "radv_no_dynamic_bounds"))
+      instance->debug_flags |= RADV_DEBUG_NO_DYNAMIC_BOUNDS;
+
+   if (driQueryOptionb(&instance->dri_options, "radv_zero_vram"))
+      instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
+
+   if (driQueryOptionb(&instance->dri_options, "radv_lower_discard_to_demote"))
+      instance->debug_flags |= RADV_DEBUG_DISCARD_TO_DEMOTE;
+
+   if (driQueryOptionb(&instance->dri_options, "radv_invariant_geom"))
+      instance->debug_flags |= RADV_DEBUG_INVARIANT_GEOM;
 }
 
 VkResult
@@ -972,7 +920,6 @@ radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
    radv_init_dri_options(instance);
-   radv_handle_per_app_options(instance, pCreateInfo->pApplicationInfo);
 
    *pInstance = radv_instance_to_handle(instance);
 
