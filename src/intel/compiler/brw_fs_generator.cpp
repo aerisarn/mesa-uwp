@@ -1969,6 +1969,23 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                          inst->dst.is_accumulator();
       }
 
+      /* Wa_14013745556:
+       *
+       * Always use @1 SWSB for EOT.
+       */
+      if (inst->eot && devinfo->ver >= 12) {
+         if (tgl_swsb_src_dep(swsb).mode) {
+            brw_set_default_exec_size(p, BRW_EXECUTE_1);
+            brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+            brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+            brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
+            brw_SYNC(p, TGL_SYNC_NOP);
+            last_insn_offset = p->next_insn_offset;
+         }
+
+         swsb = tgl_swsb_dst_dep(swsb, 1);
+      }
+
       if (unlikely(debug_flag))
          disasm_annotate(disasm_info, inst, p->next_insn_offset);
 
