@@ -552,6 +552,7 @@ void trace_dump_sampler_view_template(const struct pipe_sampler_view *state,
    trace_dump_struct_begin("pipe_sampler_view");
 
    trace_dump_member(format, state, format);
+   trace_dump_member(ptr, state, texture);
 
    trace_dump_member_begin("u");
    trace_dump_struct_begin(""); /* anonymous */
@@ -604,6 +605,7 @@ void trace_dump_surface_template(const struct pipe_surface *state,
    trace_dump_struct_begin("pipe_surface");
 
    trace_dump_member(format, state, format);
+   trace_dump_member(ptr, state, texture);
    trace_dump_member(uint, state, width);
    trace_dump_member(uint, state, height);
 
