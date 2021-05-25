@@ -185,6 +185,7 @@ _mesa_vertex_attrib_binding(struct gl_context *ctx,
       array->BufferBindingIndex = bindingIndex;
 
       vao->NewArrays |= vao->Enabled & array_bit;
+      vao->NonDefaultStateMask |= array_bit | BITFIELD_BIT(bindingIndex);
    }
 }
 
@@ -241,6 +242,7 @@ _mesa_bind_vertex_buffer(struct gl_context *ctx,
       }
 
       vao->NewArrays |= vao->Enabled & binding->_BoundArrays;
+      vao->NonDefaultStateMask |= BITFIELD_BIT(index);
    }
 }
 
@@ -268,6 +270,7 @@ vertex_binding_divisor(struct gl_context *ctx,
          vao->NonZeroDivisorMask &= ~binding->_BoundArrays;
 
       vao->NewArrays |= vao->Enabled & binding->_BoundArrays;
+      vao->NonDefaultStateMask |= BITFIELD_BIT(bindingIndex);
    }
 }
 
@@ -648,6 +651,7 @@ _mesa_update_array_format(struct gl_context *ctx,
    array->Format = new_format;
 
    vao->NewArrays |= vao->Enabled & VERT_BIT(attrib);
+   vao->NonDefaultStateMask |= BITFIELD_BIT(attrib);
 }
 
 /**
@@ -907,6 +911,7 @@ update_array(struct gl_context *ctx,
       array->Stride = stride;
       array->Ptr = ptr;
       vao->NewArrays |= vao->Enabled & VERT_BIT(attrib);
+      vao->NonDefaultStateMask |= BITFIELD_BIT(attrib);
    }
 
    /* Update the vertex buffer binding */
@@ -1878,6 +1883,7 @@ _mesa_enable_vertex_array_attribs(struct gl_context *ctx,
       /* was disabled, now being enabled */
       vao->Enabled |= attrib_bits;
       vao->NewArrays |= attrib_bits;
+      vao->NonDefaultStateMask |= attrib_bits;
 
       /* Update the map mode if needed */
       if (attrib_bits & (VERT_BIT_POS|VERT_BIT_GENERIC0))

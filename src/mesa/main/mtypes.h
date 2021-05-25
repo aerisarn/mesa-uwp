@@ -1610,6 +1610,15 @@ struct gl_vertex_array_object
    GLbitfield Enabled;
 
    /**
+    * Mask indicating which VertexAttrib and BufferBinding structures have
+    * been changed since the VAO creation. No bit is ever cleared to 0 by
+    * state updates. Setting to the default state doesn't update this.
+    * (e.g. unbinding) Setting the derived state (_* fields) doesn't update
+    * this either.
+    */
+   GLbitfield NonDefaultStateMask;
+
+   /**
     * Mask of VERT_BIT_* enabled arrays past position/generic0 mapping
     *
     * The value is valid past calling _mesa_update_vao_derived_arrays.

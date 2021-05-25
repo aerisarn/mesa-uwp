@@ -1336,14 +1336,15 @@ copy_vertex_buffer_binding(struct gl_context *ctx,
 static void
 copy_array_object(struct gl_context *ctx,
                   struct gl_vertex_array_object *dest,
-                  struct gl_vertex_array_object *src)
+                  struct gl_vertex_array_object *src,
+                  unsigned copy_attrib_mask)
 {
-   GLuint i;
-
    /* skip Name */
    /* skip RefCount */
 
-   for (i = 0; i < ARRAY_SIZE(src->VertexAttrib); i++) {
+   while (copy_attrib_mask) {
+      unsigned i = u_bit_scan(&copy_attrib_mask);
+
       copy_vertex_attrib_array(ctx, &dest->VertexAttrib[i], &src->VertexAttrib[i]);
       copy_vertex_buffer_binding(ctx, &dest->BufferBinding[i], &src->BufferBinding[i]);
    }
@@ -1370,7 +1371,8 @@ static void
 copy_array_attrib(struct gl_context *ctx,
                   struct gl_array_attrib *dest,
                   struct gl_array_attrib *src,
-                  bool vbo_deleted)
+                  bool vbo_deleted,
+                  unsigned copy_attrib_mask)
 {
    /* skip ArrayObj */
    /* skip DefaultArrayObj, Objects */
@@ -1387,7 +1389,7 @@ copy_array_attrib(struct gl_context *ctx,
    /* skip RebindArrays */
 
    if (!vbo_deleted)
-      copy_array_object(ctx, dest->VAO, src->VAO);
+      copy_array_object(ctx, dest->VAO, src->VAO, copy_attrib_mask);
 
    /* skip ArrayBufferObj */
    /* skip IndexBufferObj */
@@ -1404,8 +1406,9 @@ save_array_attrib(struct gl_context *ctx,
    /* Set the Name, needed for restore, but do never overwrite.
     * Needs to match value in the object hash. */
    dest->VAO->Name = src->VAO->Name;
+   dest->VAO->NonDefaultStateMask = src->VAO->NonDefaultStateMask;
    /* And copy all of the rest. */
-   copy_array_attrib(ctx, dest, src, false);
+   copy_array_attrib(ctx, dest, src, false, src->VAO->NonDefaultStateMask);
 
    /* Just reference them here */
    _mesa_reference_buffer_object(ctx, &dest->ArrayBufferObj,
@@ -1442,13 +1445,15 @@ restore_array_attrib(struct gl_context *ctx,
    if (is_vao_name_zero || !src->ArrayBufferObj ||
        _mesa_IsBuffer(src->ArrayBufferObj->Name)) {
       /* ... and restore its content */
-      copy_array_attrib(ctx, dest, src, false);
+      dest->VAO->NonDefaultStateMask |= src->VAO->NonDefaultStateMask;
+      copy_array_attrib(ctx, dest, src, false,
+                        dest->VAO->NonDefaultStateMask);
 
       _mesa_BindBuffer(GL_ARRAY_BUFFER_ARB,
                        src->ArrayBufferObj ?
                           src->ArrayBufferObj->Name : 0);
    } else {
-      copy_array_attrib(ctx, dest, src, true);
+      copy_array_attrib(ctx, dest, src, true, 0);
    }
 
    /* Invalidate array state. It will be updated during the next draw. */
