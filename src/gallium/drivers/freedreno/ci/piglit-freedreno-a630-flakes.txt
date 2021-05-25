@@ -32,3 +32,6 @@ spec@arb_depth_texture@fbo-clear-formats
 # Flaky since around 2021-04-21.  First appeared on
 # https://gitlab.freedesktop.org/robclark/mesa/-/jobs/9101752 (fd/go-fast)
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil
+
+# Flaky since around 2021-05-21, the day after a piglit uprev reshuffled us.
+spec@arb_map_buffer_range@map_invalidate_buffer_bit_offset=0
