@@ -43,6 +43,8 @@
  *  - ip instruction pointer
  *  - tm0 timestamp register
  *  - dbg0 debug register
+ *  - acc2-9 special accumulator registers on TGL
+ *  - mme0-7 math macro extended accumulator registers
  *
  * The following ARF registers don't need to be tracked here because data
  * coherency is still provided transparently by the hardware:
@@ -615,9 +617,7 @@ namespace {
             sb.grf_deps[i] = merge(eq, sb0.grf_deps[i], sb1.grf_deps[i]);
 
          sb.addr_dep = merge(eq, sb0.addr_dep, sb1.addr_dep);
-
-         for (unsigned i = 0; i < ARRAY_SIZE(sb.accum_deps); i++)
-            sb.accum_deps[i] = merge(eq, sb0.accum_deps[i], sb1.accum_deps[i]);
+         sb.accum_dep = merge(eq, sb0.accum_dep, sb1.accum_dep);
 
          return sb;
       }
@@ -635,9 +635,7 @@ namespace {
             sb.grf_deps[i] = shadow(sb0.grf_deps[i], sb1.grf_deps[i]);
 
          sb.addr_dep = shadow(sb0.addr_dep, sb1.addr_dep);
-
-         for (unsigned i = 0; i < ARRAY_SIZE(sb.accum_deps); i++)
-            sb.accum_deps[i] = shadow(sb0.accum_deps[i], sb1.accum_deps[i]);
+         sb.accum_dep = shadow(sb0.accum_dep, sb1.accum_dep);
 
          return sb;
       }
@@ -655,9 +653,7 @@ namespace {
             sb.grf_deps[i] = transport(sb0.grf_deps[i], delta);
 
          sb.addr_dep = transport(sb0.addr_dep, delta);
-
-         for (unsigned i = 0; i < ARRAY_SIZE(sb.accum_deps); i++)
-            sb.accum_deps[i] = transport(sb0.accum_deps[i], delta);
+         sb.accum_dep = transport(sb0.accum_dep, delta);
 
          return sb;
       }
@@ -673,10 +669,8 @@ namespace {
          if (sb0.addr_dep != sb1.addr_dep)
             return false;
 
-         for (unsigned i = 0; i < ARRAY_SIZE(sb0.accum_deps); i++) {
-            if (sb0.accum_deps[i] != sb1.accum_deps[i])
-               return false;
-         }
+         if (sb0.accum_dep != sb1.accum_dep)
+            return false;
 
          return true;
       }
@@ -690,7 +684,7 @@ namespace {
    private:
       dependency grf_deps[BRW_MAX_GRF];
       dependency addr_dep;
-      dependency accum_deps[10];
+      dependency accum_dep;
 
       dependency *
       dep(const fs_reg &r)
@@ -703,8 +697,7 @@ namespace {
                  r.file == ARF && reg >= BRW_ARF_ADDRESS &&
                                   reg < BRW_ARF_ACCUMULATOR ? &addr_dep :
                  r.file == ARF && reg >= BRW_ARF_ACCUMULATOR &&
-                                  reg < BRW_ARF_FLAG ? &accum_deps[
-                                     reg - BRW_ARF_ACCUMULATOR] :
+                                  reg < BRW_ARF_FLAG ? &accum_dep :
                  NULL);
       }
    };
