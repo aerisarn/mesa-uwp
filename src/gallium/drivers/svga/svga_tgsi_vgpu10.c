@@ -4662,6 +4662,7 @@ emit_vgpu10_declaration(struct svga_shader_emitter_v10 *emit,
          unsigned unit = decl->Range.First;
          assert(decl->Range.First == decl->Range.Last);
          emit->sampler_target[unit] = decl->SamplerView.Resource;
+
          /* Note: we can ignore YZW return types for now */
          emit->sampler_return_type[unit] = decl->SamplerView.ReturnTypeX;
          emit->sampler_view[unit] = TRUE;
@@ -5605,15 +5606,14 @@ emit_constant_declaration(struct svga_shader_emitter_v10 *emit)
 
    for (i = 0; i < emit->num_samplers; i++) {
 
-      if (emit->sampler_view[i]) {
-
+      if (emit->key.tex[i].sampler_view) {
          /* Texcoord scale factors for RECT textures */
          if (emit->key.tex[i].unnormalized) {
             emit->texcoord_scale_index[i] = total_consts++;
          }
 
          /* Texture buffer sizes */
-         if (emit->sampler_target[i] == TGSI_TEXTURE_BUFFER) {
+         if (emit->key.tex[i].target == PIPE_BUFFER) {
             emit->texture_buffer_size_index[i] = total_consts++;
          }
       }
@@ -7721,7 +7721,7 @@ setup_texcoord(struct svga_shader_emitter_v10 *emit,
                unsigned unit,
                const struct tgsi_full_src_register *coord)
 {
-   if (emit->sampler_view[unit] && emit->key.tex[unit].unnormalized) {
+   if (emit->key.tex[unit].sampler_view && emit->key.tex[unit].unnormalized) {
       unsigned scale_index = emit->texcoord_scale_index[unit];
       unsigned tmp = get_temp_index(emit);
       struct tgsi_full_src_register tmp_src = make_src_temp_reg(tmp);
@@ -8561,7 +8561,7 @@ emit_txq(struct svga_shader_emitter_v10 *emit,
 {
    const uint unit = inst->Src[1].Register.Index;
 
-   if (emit->sampler_target[unit] == TGSI_TEXTURE_BUFFER) {
+   if (emit->key.tex[unit].target == PIPE_BUFFER) {
       /* RESINFO does not support querying texture buffers, so we instead
        * store texture buffer sizes in shader constants, then copy them to
        * implement TXQ instead of emitting RESINFO.
@@ -10890,6 +10890,7 @@ transform_fs_pstipple(struct svga_shader_emitter_v10 *emit,
    emit->key.tex[unit].swizzle_g = TGSI_SWIZZLE_Y;
    emit->key.tex[unit].swizzle_b = TGSI_SWIZZLE_Z;
    emit->key.tex[unit].swizzle_a = TGSI_SWIZZLE_W;
+   emit->key.tex[unit].target = PIPE_TEXTURE_2D;
 
    if (0) {
       debug_printf("After pstipple ------------------\n");
