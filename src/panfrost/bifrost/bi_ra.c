@@ -165,20 +165,55 @@ lcra_count_constraints(struct lcra_state *l, unsigned i)
         return count;
 }
 
+/* Construct an affinity mask such that the vector with `count` elements does
+ * not intersect any of the registers in the bitset `clobber`. In other words,
+ * an allocated register r needs to satisfy for each i < count: a + i != b.
+ * Equivalently that's a != b - i, so we need a \ne { b - i : i < n }. For the
+ * entire clobber set B, we need a \ne union b \in B { b - i : i < n }, where
+ * that union is the desired clobber set. That may be written equivalently as
+ * the union over i < n of (B - i), where subtraction is defined elementwise
+ * and corresponds to a shift of the entire bitset.
+ */
+
+static uint64_t
+bi_make_affinity(uint64_t clobber, unsigned count)
+{
+        uint64_t clobbered = 0;
+
+        for (unsigned i = 0; i < count; ++i)
+                clobbered |= (clobber >> i);
+
+        /* We can use a register iff it's not clobberred */
+        return ~clobbered;
+}
+
 static void
-bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, unsigned node_count, bool is_blend)
+bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, uint64_t preload_live, unsigned node_count, bool is_blend)
 {
         bi_foreach_instr_in_block_rev(block, ins) {
                 /* Mark all registers live after the instruction as
                  * interfering with the destination */
 
                 bi_foreach_dest(ins, d) {
-                        if (bi_get_node(ins->dest[d]) >= node_count)
+                        unsigned node = bi_get_node(ins->dest[d]);
+
+                        if (node >= node_count)
                                 continue;
+
+                        /* Don't allocate to anything that's read later as a
+                         * preloaded register. The affinity is the intersection
+                         * of affinity masks for each write. Since writes have
+                         * offsets, but the affinity is for the whole node, we
+                         * need to offset the affinity opposite the write
+                         * offset, so we shift right. */
+                        unsigned count = bi_count_write_registers(ins, d);
+                        unsigned offset = ins->dest[d].offset;
+                        uint64_t affinity = bi_make_affinity(preload_live, count);
+                        l->affinity[node] &= (affinity >> offset);
 
                         for (unsigned i = 0; i < node_count; ++i) {
                                 if (live[i]) {
-                                        lcra_add_node_interference(l, bi_get_node(ins->dest[d]),
+                                        lcra_add_node_interference(l, node,
                                                         bi_writemask(ins, d), i, live[i]);
                                 }
                         }
@@ -195,8 +230,11 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, unsi
                 }
 
                 /* Update live_in */
+                preload_live = bi_postra_liveness_ins(preload_live, ins);
                 bi_liveness_ins_update(live, ins, node_count);
         }
+
+        block->reg_live_in = preload_live;
 }
 
 static void
@@ -205,13 +243,14 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
         unsigned node_count = bi_max_temp(ctx);
 
         bi_compute_liveness(ctx);
+        bi_postra_liveness(ctx);
 
-        bi_foreach_block(ctx, _blk) {
+        bi_foreach_block_rev(ctx, _blk) {
                 bi_block *blk = (bi_block *) _blk;
                 uint16_t *live = mem_dup(_blk->live_out, node_count * sizeof(uint16_t));
 
-                bi_mark_interference(blk, l, live, node_count,
-                                     ctx->inputs->is_blend);
+                bi_mark_interference(blk, l, live, blk->reg_live_out,
+                                node_count, ctx->inputs->is_blend);
 
                 free(live);
         }
