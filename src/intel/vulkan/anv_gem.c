@@ -386,10 +386,10 @@ close_and_return:
 }
 
 bool
-anv_gem_has_context_priority(int fd)
+anv_gem_has_context_priority(int fd, int priority)
 {
    return !anv_gem_set_context_param(fd, 0, I915_CONTEXT_PARAM_PRIORITY,
-                                     INTEL_CONTEXT_MEDIUM_PRIORITY);
+                                     priority);
 }
 
 int

@@ -256,7 +256,10 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_external_memory_dma_buf           = true,
       .EXT_external_memory_host              = true,
       .EXT_fragment_shader_interlock         = device->info.ver >= 9,
-      .EXT_global_priority                   = device->has_context_priority,
+      .EXT_global_priority                   = device->max_context_priority >=
+                                               INTEL_CONTEXT_MEDIUM_PRIORITY,
+      .EXT_global_priority_query             = device->max_context_priority >=
+                                               INTEL_CONTEXT_MEDIUM_PRIORITY,
       .EXT_host_query_reset                  = true,
       .EXT_image_robustness                  = true,
       .EXT_image_drm_format_modifier         = true,
@@ -868,7 +871,18 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->has_syncobj_wait_available =
       anv_gem_get_drm_cap(fd, DRM_CAP_SYNCOBJ_TIMELINE) != 0;
 
-   device->has_context_priority = anv_gem_has_context_priority(fd);
+   /* Start with medium; sorted low to high */
+   const int priorities[] = {
+      INTEL_CONTEXT_MEDIUM_PRIORITY,
+      INTEL_CONTEXT_HIGH_PRIORITY,
+      INTEL_CONTEXT_REALTIME_PRIORITY,
+   };
+   device->max_context_priority = INT_MIN;
+   for (unsigned i = 0; i < ARRAY_SIZE(priorities); i++) {
+      if (!anv_gem_has_context_priority(fd, priorities[i]))
+         break;
+      device->max_context_priority = priorities[i];
+   }
 
    /* Initialize memory regions struct to 0. */
    memset(&device->vram, 0, sizeof(device->vram));
@@ -1497,6 +1511,13 @@ void anv_GetPhysicalDeviceFeatures2(
          features->fragmentShaderSampleInterlock = pdevice->info.ver >= 9;
          features->fragmentShaderPixelInterlock = pdevice->info.ver >= 9;
          features->fragmentShaderShadingRateInterlock = false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_EXT: {
+         VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT *features =
+            (VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT *)ext;
+         features->globalPriorityQuery = true;
          break;
       }
 
@@ -2494,6 +2515,23 @@ void anv_GetPhysicalDeviceProperties2(
    }
 }
 
+static int
+vk_priority_to_gen(int priority)
+{
+   switch (priority) {
+   case VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT:
+      return INTEL_CONTEXT_LOW_PRIORITY;
+   case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT:
+      return INTEL_CONTEXT_MEDIUM_PRIORITY;
+   case VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT:
+      return INTEL_CONTEXT_HIGH_PRIORITY;
+   case VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT:
+      return INTEL_CONTEXT_REALTIME_PRIORITY;
+   default:
+      unreachable("Invalid priority");
+   }
+}
+
 static const VkQueueFamilyProperties
 anv_queue_family_properties_template = {
    .timestampValidBits = 36, /* XXX: Real value here */
@@ -2533,8 +2571,35 @@ void anv_GetPhysicalDeviceQueueFamilyProperties2(
          p->queueFamilyProperties.queueFlags = queue_family->queueFlags;
          p->queueFamilyProperties.queueCount = queue_family->queueCount;
 
-         vk_foreach_struct(s, p->pNext) {
-            anv_debug_ignored_stype(s->sType);
+         vk_foreach_struct(ext, p->pNext) {
+            switch (ext->sType) {
+            case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_EXT: {
+               VkQueueFamilyGlobalPriorityPropertiesEXT *properties =
+                  (VkQueueFamilyGlobalPriorityPropertiesEXT *)ext;
+
+               /* Deliberately sorted low to high */
+               VkQueueGlobalPriorityEXT all_priorities[] = {
+                  VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT,
+                  VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT,
+                  VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT,
+                  VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT,
+               };
+
+               uint32_t count = 0;
+               for (unsigned i = 0; i < ARRAY_SIZE(all_priorities); i++) {
+                  if (vk_priority_to_gen(all_priorities[i]) >
+                      pdevice->max_context_priority)
+                     break;
+
+                  properties->priorities[count++] = all_priorities[i];
+               }
+               properties->priorityCount = count;
+               break;
+            }
+
+            default:
+               anv_debug_ignored_stype(ext->sType);
+            }
          }
       }
    }
@@ -2771,23 +2836,6 @@ anv_device_init_trivial_batch(struct anv_device *device)
       intel_clflush_range(batch.start, batch.next - batch.start);
 
    return VK_SUCCESS;
-}
-
-static int
-vk_priority_to_gen(int priority)
-{
-   switch (priority) {
-   case VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT:
-      return INTEL_CONTEXT_LOW_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT:
-      return INTEL_CONTEXT_MEDIUM_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT:
-      return INTEL_CONTEXT_HIGH_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT:
-      return INTEL_CONTEXT_REALTIME_PRIORITY;
-   default:
-      unreachable("Invalid priority");
-   }
 }
 
 static bool
@@ -3087,7 +3135,7 @@ VkResult anv_CreateDevice(
     * have sufficient privileges. In this scenario VK_ERROR_NOT_PERMITTED_EXT
     * is returned.
     */
-   if (physical_device->has_context_priority) {
+   if (physical_device->max_context_priority >= INTEL_CONTEXT_MEDIUM_PRIORITY) {
       int err = anv_gem_set_context_param(device->fd, device->context_id,
                                           I915_CONTEXT_PARAM_PRIORITY,
                                           vk_priority_to_gen(priority));

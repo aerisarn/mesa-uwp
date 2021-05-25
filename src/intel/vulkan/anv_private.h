@@ -893,7 +893,7 @@ struct anv_physical_device {
     bool                                        has_exec_fence;
     bool                                        has_syncobj_wait;
     bool                                        has_syncobj_wait_available;
-    bool                                        has_context_priority;
+    int                                         max_context_priority;
     bool                                        has_context_isolation;
     bool                                        has_thread_submit;
     bool                                        has_mmap_offset;
@@ -1434,7 +1434,7 @@ int anv_gem_create_context_engines(struct anv_device *device,
                                    const struct drm_i915_query_engine_info *info,
                                    int num_engines,
                                    uint16_t *engine_classes);
-bool anv_gem_has_context_priority(int fd);
+bool anv_gem_has_context_priority(int fd, int priority);
 int anv_gem_destroy_context(struct anv_device *device, int context);
 int anv_gem_set_context_param(int fd, int context, uint32_t param,
                               uint64_t value);
