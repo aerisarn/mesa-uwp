@@ -1805,8 +1805,15 @@ endif
 
 dep_selinux = null_dep
 if get_option('selinux')
+  if get_option('execmem') != true
+    warning('execmem option is disabled, selinux will not be able to use execmem.')
+  endif
   dep_selinux = dependency('libselinux')
   pre_args += '-DMESA_SELINUX'
+endif
+
+if get_option('execmem')
+  pre_args += '-DMESA_EXECMEM'
 endif
 
 _libunwind = get_option('libunwind')
