@@ -40,6 +40,9 @@
 #include "decode.h"
 #include "isa.h"
 
+#define BITSET_FORMAT "016"PRIx64
+#define BITSET_VALUE(v) v
+
 /**
  * The set of leaf node bitsets in the bitset hiearchy which defines all
  * the possible instructions.
@@ -300,8 +303,8 @@ find_bitset(struct decode_state *state, const struct isa_bitset **bitsets,
 	}
 
 	if (match && (match->dontcare & val)) {
-		decode_error(state, "dontcare bits in %s: %016"PRIx64,
-				match->name, (match->dontcare & val));
+		decode_error(state, "dontcare bits in %s: %"BITSET_FORMAT,
+				match->name, BITSET_VALUE(match->dontcare & val));
 	}
 
 	return match;
@@ -374,9 +377,9 @@ find_display(struct decode_scope *scope, const struct isa_bitset *bitset)
 				uint64_t val = extract_field(scope, f);
 				if (val != f->val) {
 					decode_error(scope->state, "WARNING: unexpected "
-							"bits[%u:%u] in %s: %016"PRIx64" vs %016"PRIx64,
+							"bits[%u:%u] in %s: %"BITSET_FORMAT" vs %"BITSET_FORMAT,
 							f->low, f->high, bitset->name,
-							val, f->val);
+							BITSET_VALUE(val), BITSET_VALUE(f->val));
 				}
 			}
 		}
@@ -403,8 +406,8 @@ display_bitset_field(struct decode_scope *scope, const struct isa_field *field, 
 {
 	const struct isa_bitset *b = find_bitset(scope->state, field->bitsets, val);
 	if (!b) {
-		decode_error(scope->state, "no match: FIELD: '%s.%s': %016"PRIx64,
-				scope->bitset->name, field->name, val);
+		decode_error(scope->state, "no match: FIELD: '%s.%s': %"BITSET_FORMAT,
+				scope->bitset->name, field->name, BITSET_VALUE(val));
 		return;
 	}
 
@@ -649,7 +652,7 @@ decode(struct decode_state *state, void *bin, int sz)
 
 		const struct isa_bitset *b = find_bitset(state, __instruction, instr);
 		if (!b) {
-			fprintf(state->out, "no match: %016"PRIx64"\n", instr);
+			fprintf(state->out, "no match: %"BITSET_FORMAT"\n", BITSET_VALUE(instr));
 			errors++;
 			continue;
 		}
