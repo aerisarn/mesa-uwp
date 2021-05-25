@@ -1106,6 +1106,7 @@ namespace {
                                      10 /* XXX */, 100 /* XXX */, 0, 0,
                                      0, 0);
 
+            case LSC_OP_FENCE:
             case LSC_OP_ATOMIC_INC:
             case LSC_OP_ATOMIC_DEC:
             case LSC_OP_ATOMIC_LOAD:

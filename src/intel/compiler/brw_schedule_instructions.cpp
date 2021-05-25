@@ -538,6 +538,7 @@ schedule_node::set_latency_gfx7(bool is_haswell)
          case LSC_OP_STORE_CMASK:
             latency = 300;
             break;
+         case LSC_OP_FENCE:
          case LSC_OP_ATOMIC_INC:
          case LSC_OP_ATOMIC_DEC:
          case LSC_OP_ATOMIC_LOAD:
