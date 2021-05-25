@@ -210,6 +210,21 @@ namespace {
    };
 
    /**
+    * Return true if the specified ordered address is trivially satisfied for
+    * all pipelines except potentially for the specified pipeline \p p.
+    */
+   bool
+   is_single_pipe(const ordered_address &jp, tgl_pipe p)
+   {
+      for (unsigned q = 0; q < IDX(TGL_PIPE_ALL); q++) {
+         if ((p == TGL_PIPE_NONE || IDX(p) != q) && jp.jp[q] > INT_MIN)
+            return false;
+      }
+
+      return true;
+   }
+
+   /**
     * Return the number of instructions in the program.
     */
    unsigned
@@ -962,6 +977,9 @@ namespace {
             sb.set(byte_offset(inst->src[i], REG_SIZE * j), rd_dep);
       }
 
+      if (inst->reads_accumulator_implicitly())
+         sb.set(brw_acc_reg(8), dependency(TGL_REGDIST_SRC, jp, exec_all));
+
       if (is_send(inst) && inst->base_mrf != -1) {
          const dependency rd_dep = dependency(TGL_SBID_SRC, ip, exec_all);
 
@@ -975,6 +993,9 @@ namespace {
          ordered_unit(devinfo, inst, IDX(TGL_PIPE_ALL)) ?
             dependency(TGL_REGDIST_DST, jp, exec_all) :
          dependency();
+
+      if (inst->writes_accumulator_implicitly(devinfo))
+         sb.set(brw_acc_reg(8), wr_dep);
 
       if (is_valid(wr_dep) && inst->dst.file != BAD_FILE &&
           !inst->dst.is_null()) {
@@ -1059,6 +1080,7 @@ namespace {
    gather_inst_dependencies(const fs_visitor *shader,
                             const ordered_address *jps)
    {
+      const struct intel_device_info *devinfo = shader->devinfo;
       equivalence_relation eq(num_instructions(shader));
       scoreboard *sbs = propagate_block_scoreboards(shader, jps, eq);
       const unsigned *ids = eq.flatten();
@@ -1067,12 +1089,25 @@ namespace {
 
       foreach_block_and_inst(block, fs_inst, inst, shader->cfg) {
          const bool exec_all = inst->force_writemask_all;
+         const tgl_pipe p = inferred_exec_pipe(devinfo, inst);
          scoreboard &sb = sbs[block->num];
 
          for (unsigned i = 0; i < inst->sources; i++) {
             for (unsigned j = 0; j < regs_read(inst, i); j++)
                add_dependency(ids, deps[ip], dependency_for_read(
                   sb.get(byte_offset(inst->src[i], REG_SIZE * j))));
+         }
+
+         if (inst->reads_accumulator_implicitly()) {
+            /* Wa_22012725308:
+             *
+             * "When the accumulator registers are used as source and/or
+             *  destination, hardware does not ensure prevention of write
+             *  after read hazard across execution pipes."
+             */
+            const dependency dep = sb.get(brw_acc_reg(8));
+            if (dep.ordered && !is_single_pipe(dep.jp, p))
+               add_dependency(ids, deps[ip], dep);
          }
 
          if (is_send(inst) && inst->base_mrf != -1) {
@@ -1086,11 +1121,25 @@ namespace {
                            dependency(TGL_SBID_SET, ip, exec_all));
 
          if (!inst->no_dd_check) {
-            if (inst->dst.file != BAD_FILE && !inst->dst.is_null()) {
+            if (inst->dst.file != BAD_FILE && !inst->dst.is_null() &&
+                !inst->dst.is_accumulator()) {
                for (unsigned j = 0; j < regs_written(inst); j++) {
                   add_dependency(ids, deps[ip], dependency_for_write(inst,
                      sb.get(byte_offset(inst->dst, REG_SIZE * j))));
                }
+            }
+
+            if (inst->writes_accumulator_implicitly(devinfo) ||
+                inst->dst.is_accumulator()) {
+               /* Wa_22012725308:
+                *
+                * "When the accumulator registers are used as source and/or
+                *  destination, hardware does not ensure prevention of write
+                *  after read hazard across execution pipes."
+                */
+               const dependency dep = sb.get(brw_acc_reg(8));
+               if (dep.ordered && !is_single_pipe(dep.jp, p))
+                  add_dependency(ids, deps[ip], dep);
             }
 
             if (is_send(inst) && inst->base_mrf != -1) {
