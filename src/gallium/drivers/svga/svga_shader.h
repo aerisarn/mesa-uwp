@@ -138,6 +138,8 @@ struct svga_compile_key
       unsigned swizzle_b:3;
       unsigned swizzle_a:3;
       unsigned num_samples:5;   /**< Up to 16 samples */
+      unsigned target:4;
+      unsigned sampler_return_type:4;
    } tex[PIPE_MAX_SAMPLERS];
    /* Note: svga_compile_keys_equal() depends on the variable-size
     * tex[] array being at the end of this structure.
