@@ -27,6 +27,8 @@
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
 
+#include "u_tracepoints.h"
+
 #ifdef  __cplusplus
 extern "C" {
 #endif
@@ -71,23 +73,21 @@ u_trace_pipe_context_init(struct u_trace_context *utctx,
                         delete_flush_data);
 }
 
-void __trace_surface(struct u_trace *ut, const struct pipe_surface *psurf);
-void __trace_framebuffer(struct u_trace *ut, const struct pipe_framebuffer_state *pfb);
-
 inline void
 trace_framebuffer_state(struct u_trace *ut, const struct pipe_framebuffer_state *pfb)
 {
    if (likely(!ut->enabled))
       return;
 
-   __trace_framebuffer(ut, pfb);
+   trace_framebuffer(ut, pfb);
+
    for (unsigned i = 0; i < pfb->nr_cbufs; i++) {
       if (pfb->cbufs[i]) {
-         __trace_surface(ut, pfb->cbufs[i]);
+         trace_surface(ut, pfb->cbufs[i]);
       }
    }
    if (pfb->zsbuf) {
-      __trace_surface(ut, pfb->zsbuf);
+      trace_surface(ut, pfb->zsbuf);
    }
 }
 
