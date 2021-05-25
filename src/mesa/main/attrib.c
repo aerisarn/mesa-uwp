@@ -1525,7 +1525,17 @@ _mesa_PopClientAttrib(void)
 
    if (head->Mask & GL_CLIENT_VERTEX_ARRAY_BIT) {
       restore_array_attrib(ctx, &ctx->Array, &head->Array);
-      _mesa_unbind_array_object_vbos(ctx, &head->VAO);
+
+      /* _mesa_unbind_array_object_vbos can't use NonDefaultStateMask because
+       * it's used by internal VAOs which don't always update the mask, so do
+       * it manually here.
+       */
+      GLbitfield mask = head->VAO.NonDefaultStateMask;
+      while (mask) {
+         unsigned i = u_bit_scan(&mask);
+         _mesa_reference_buffer_object(ctx, &head->VAO.BufferBinding[i].BufferObj, NULL);
+      }
+
       _mesa_reference_buffer_object(ctx, &head->VAO.IndexBufferObj, NULL);
       _mesa_reference_buffer_object(ctx, &head->Array.ArrayBufferObj, NULL);
    }
