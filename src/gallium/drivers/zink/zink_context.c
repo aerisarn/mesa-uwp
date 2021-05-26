@@ -3018,6 +3018,31 @@ zink_context_is_resource_busy(struct pipe_screen *pscreen, struct pipe_resource 
    return true;
 }
 
+static void
+zink_emit_string_marker(struct pipe_context *pctx,
+                        const char *string, int len)
+{
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   struct zink_batch *batch = &zink_context(pctx)->batch;
+
+   /* make sure string is nul-terminated */
+   char buf[512], *temp = NULL;
+   if (len < ARRAY_SIZE(buf)) {
+      memcpy(buf, string, len);
+      buf[len] = '\0';
+      string = buf;
+   } else
+      string = temp = strndup(string, len);
+
+   VkDebugUtilsLabelEXT label = {
+      VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, NULL,
+      string,
+      { 0 }
+   };
+   screen->vk_CmdInsertDebugUtilsLabelEXT(batch->state->cmdbuf, &label);
+   free(temp);
+}
+
 struct pipe_context *
 zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -3086,6 +3111,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->base.set_stream_output_targets = zink_set_stream_output_targets;
    ctx->base.flush_resource = zink_flush_resource;
+
+   ctx->base.emit_string_marker = zink_emit_string_marker;
+
    zink_context_surface_init(&ctx->base);
    zink_context_resource_init(&ctx->base);
    zink_context_query_init(&ctx->base);

@@ -171,6 +171,7 @@ struct zink_screen {
 
    PFN_vkCreateDebugUtilsMessengerEXT vk_CreateDebugUtilsMessengerEXT;
    PFN_vkDestroyDebugUtilsMessengerEXT vk_DestroyDebugUtilsMessengerEXT;
+   PFN_vkCmdInsertDebugUtilsLabelEXT vk_CmdInsertDebugUtilsLabelEXT;
 
 #if defined(MVK_VERSION)
    PFN_vkGetMoltenVKConfigurationMVK vk_GetMoltenVKConfigurationMVK;
