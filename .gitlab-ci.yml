@@ -92,7 +92,7 @@ stages:
     - .ci-run-policy
   script:
   - apk --no-cache add graphviz
-  - pip3 install sphinx sphinx_rtd_theme
+  - pip3 install "sphinx<4.0" sphinx_rtd_theme
   - sphinx-build -W -b html docs public
 
 pages:
