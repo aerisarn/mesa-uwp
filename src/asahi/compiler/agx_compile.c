@@ -54,7 +54,7 @@ agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
    /* Ensure we've been scalarized and bit size lowered */
    unsigned bit_size = instr->def.bit_size;
    assert(instr->def.num_components == 1);
-   assert(bit_size == 16 || bit_size == 32);
+   assert(bit_size == 1 || bit_size == 16 || bit_size == 32);
 
    /* Emit move, later passes can inline/push if useful */
    agx_mov_imm_to(b,
