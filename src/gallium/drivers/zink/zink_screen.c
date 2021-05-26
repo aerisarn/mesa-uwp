@@ -618,6 +618,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_VERTEX_STREAMS:
       return screen->info.tf_props.maxTransformFeedbackStreams;
 
+   case PIPE_CAP_COMPUTE_SHADER_DERIVATIVES:
+      return screen->info.have_NV_compute_shader_derivatives;
+
    case PIPE_CAP_INT64:
    case PIPE_CAP_INT64_DIVMOD:
    case PIPE_CAP_DOUBLES:
