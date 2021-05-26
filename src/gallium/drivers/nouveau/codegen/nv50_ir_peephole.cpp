@@ -1502,6 +1502,9 @@ ConstantFolding::opnd(Instruction *i, ImmediateValue &imm0, int s)
 
          bld.setPosition(i, false);
          i->op = OP_MUL;
+         i->subOp = 0;
+         i->dType = si->dType;
+         i->sType = si->sType;
          i->setSrc(0, si->getSrc(!muls));
          i->setSrc(1, bld.loadImm(NULL, imm1.reg.data.u32 << imm0.reg.data.u32));
          break;
