@@ -4604,6 +4604,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(amd_image_gather_bias_lod, cap);
          break;
 
+      case SpvCapabilityAtomicFloat16AddEXT:
+         spv_check_supported(float16_atomic_add, cap);
+         break;
+
       case SpvCapabilityAtomicFloat32AddEXT:
          spv_check_supported(float32_atomic_add, cap);
          break;

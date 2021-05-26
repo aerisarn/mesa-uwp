@@ -45,6 +45,7 @@ struct spirv_supported_capabilities {
    bool descriptor_indexing;
    bool device_group;
    bool draw_parameters;
+   bool float16_atomic_add;
    bool float16_atomic_min_max;
    bool float32_atomic_add;
    bool float32_atomic_min_max;
