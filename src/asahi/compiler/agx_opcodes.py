@@ -183,6 +183,10 @@ op("ld_tile", (0x49, 0x7F, 8, _), dests = 1, srcs = 0,
 op("st_tile", (0x09, 0x7F, 8, _), dests = 0, srcs = 1,
       can_eliminate = False, imms = [FORMAT])
 
+for (name, exact) in [("any", 0xC000), ("none", 0xC200)]:
+   op("jmp_exec_" + name, (exact, (1 << 16) - 1, 6, _), dests = 0, srcs = 0,
+         can_eliminate = False, imms = [TARGET])
+
 # TODO: model implicit r0l destinations
 op("pop_exec", (0x52 | (0x3 << 9), ((1 << 48) - 1) ^ (0x3 << 7) ^ (0x3 << 11), 6, _),
       dests = 0, srcs = 0, can_eliminate = False, imms = [NEST])
