@@ -213,6 +213,8 @@ v3dX(simulator_submit_csd_ioctl)(struct v3d_hw *v3d,
                                  struct drm_v3d_submit_csd *args,
                                  uint32_t gmp_ofs)
 {
+        int last_completed_jobs = (V3D_READ(V3D_CSD_0_STATUS) &
+                                   V3D_CSD_0_STATUS_NUM_COMPLETED_JOBS_SET);
         g_gmp_ofs = gmp_ofs;
         v3d_reload_gmp(v3d);
 
@@ -227,9 +229,13 @@ v3dX(simulator_submit_csd_ioctl)(struct v3d_hw *v3d,
         /* CFG0 kicks off the job */
         V3D_WRITE(V3D_CSD_0_QUEUED_CFG0, args->cfg[0]);
 
-        while (V3D_READ(V3D_CSD_0_STATUS) &
-               (V3D_CSD_0_STATUS_HAVE_CURRENT_DISPATCH_SET |
-                V3D_CSD_0_STATUS_HAVE_QUEUED_DISPATCH_SET)) {
+        /* Now we wait for the dispatch to finish. The safest way is to check
+         * if NUM_COMPLETED_JOBS has increased. Note that in spite of that
+         * name that register field is about the number of completed
+         * dispatches.
+         */
+        while ((V3D_READ(V3D_CSD_0_STATUS) &
+                V3D_CSD_0_STATUS_NUM_COMPLETED_JOBS_SET) == last_completed_jobs) {
                 v3d_hw_tick(v3d);
         }
 
