@@ -444,7 +444,7 @@ static int amdgpu_lookup_buffer(struct amdgpu_cs_context *cs, struct amdgpu_wins
           *         AAAAAAAAAAABBBBBBBBBBBBBBCCCCCCCC
           * will collide here: ^ and here:   ^,
           * meaning that we should get very few collisions in the end. */
-         cs->buffer_indices_hashlist[hash] = i;
+         cs->buffer_indices_hashlist[hash] = i & 0x7fff;
          return i;
       }
    }
@@ -523,7 +523,7 @@ amdgpu_lookup_or_add_real_buffer(struct radeon_cmdbuf *rcs, struct amdgpu_cs *ac
    idx = amdgpu_do_add_real_buffer(acs->ws, cs, bo);
 
    hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
-   cs->buffer_indices_hashlist[hash] = idx;
+   cs->buffer_indices_hashlist[hash] = idx & 0x7fff;
 
    if (bo->base.placement & RADEON_DOMAIN_VRAM)
       rcs->used_vram_kb += bo->base.size / 1024;
@@ -578,7 +578,7 @@ static int amdgpu_lookup_or_add_slab_buffer(struct amdgpu_winsys *ws,
    cs->num_slab_buffers++;
 
    hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
-   cs->buffer_indices_hashlist[hash] = idx;
+   cs->buffer_indices_hashlist[hash] = idx & 0x7fff;
 
    return idx;
 }
@@ -622,7 +622,7 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct amdgpu_winsys *ws,
    cs->num_sparse_buffers++;
 
    hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
-   cs->buffer_indices_hashlist[hash] = idx;
+   cs->buffer_indices_hashlist[hash] = idx & 0x7fff;
 
    /* We delay adding the backing buffers until we really have to. However,
     * we cannot delay accounting for memory use.
