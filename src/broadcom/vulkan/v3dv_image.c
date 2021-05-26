@@ -296,6 +296,9 @@ v3dv_CreateImage(VkDevice _device,
          modifier = DRM_FORMAT_MOD_LINEAR;
    }
 
+   const VkExternalMemoryImageCreateInfo *external_info =
+      vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
+
    /* 1D and 1D_ARRAY textures are always raster-order */
    VkImageTiling tiling;
    if (pCreateInfo->imageType == VK_IMAGE_TYPE_1D)
@@ -332,6 +335,7 @@ v3dv_CreateImage(VkDevice _device,
    image->drm_format_mod = modifier;
    image->tiling = tiling;
    image->tiled = tiling == VK_IMAGE_TILING_OPTIMAL;
+   image->external = external_info != NULL;
 
    image->cpp = vk_format_get_blocksize(image->vk_format);
 

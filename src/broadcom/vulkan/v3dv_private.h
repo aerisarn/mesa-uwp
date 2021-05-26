@@ -518,6 +518,7 @@ struct v3dv_image {
 
    uint64_t drm_format_mod;
    bool tiled;
+   bool external;
 
    struct v3d_resource_slice slices[V3D_MAX_MIP_LEVELS];
    uint64_t size; /* Total size in bytes */
