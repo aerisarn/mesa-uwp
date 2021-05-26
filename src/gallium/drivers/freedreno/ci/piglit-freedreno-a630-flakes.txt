@@ -34,4 +34,4 @@ spec@arb_depth_texture@fbo-clear-formats
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil
 
 # Flaky since around 2021-05-21, the day after a piglit uprev reshuffled us.
-spec@arb_map_buffer_range@map_invalidate_buffer_bit_offset=0
+spec@arb_map_buffer_range@map_invalidate_buffer_bit offset=0
