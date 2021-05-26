@@ -126,17 +126,17 @@ a530_gles31:
 a530_piglit_gl:
   extends:
     - .a530_piglit
+    - .test-manual-mr
   variables:
     PIGLIT_PROFILES: quick_gl
     PIGLIT_FRACTION: 2
 
-# Run 1/2 of piglit_shader since it takes a bit under 20 minutes
 a530_piglit_shader:
   extends:
     - .a530_piglit
+  parallel: 2
   variables:
     PIGLIT_PROFILES: quick_shader
-    PIGLIT_FRACTION: 2
 
 a530-traces:
   extends:
