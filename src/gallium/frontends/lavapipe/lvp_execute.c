@@ -2929,6 +2929,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
 {
    struct lvp_cmd_buffer_entry *cmd;
    bool first = true;
+   bool did_flush = false;
 
    LIST_FOR_EACH_ENTRY(cmd, &cmd_buffer->cmds, cmd_link) {
       switch (cmd->cmd_type) {
@@ -3039,10 +3040,11 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          /* skip flushes since every cmdbuf does a flush
             after iterating its cmds and so this is redundant
           */
-         if (first || cmd->cmd_link.next == &cmd_buffer->cmds)
+         if (first || did_flush || cmd->cmd_link.next == &cmd_buffer->cmds)
             continue;
          handle_pipeline_barrier(cmd, state);
-         break;
+         did_flush = true;
+         continue;
       case LVP_CMD_BEGIN_QUERY:
          maybe_emit_state_for_begin_query(cmd, state);
          handle_begin_query(cmd, state);
@@ -3133,6 +3135,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          break;
       }
       first = false;
+      did_flush = false;
    }
 }
 
