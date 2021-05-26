@@ -781,7 +781,6 @@ st_create_common_variant(struct st_context *st,
          finalize = true;
       }
       if (key->passthrough_edgeflags) {
-         assert(!options->unify_interfaces);
          NIR_PASS_V(state.ir.nir, nir_lower_passthrough_edgeflags);
          finalize = true;
       }
