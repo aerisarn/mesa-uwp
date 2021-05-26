@@ -1664,6 +1664,12 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!screen->instance)
       goto fail;
 
+   vk_instance_dispatch_table_load(&screen->vk.instance, &vkGetInstanceProcAddr, screen->instance);
+   vk_physical_device_dispatch_table_load(&screen->vk.physical_device, &vkGetInstanceProcAddr, screen->instance);
+
+   if (!zink_load_instance_extensions(screen))
+      goto fail;
+
    if (screen->instance_info.have_EXT_debug_utils &&
       (zink_debug & ZINK_DEBUG_VALIDATION) && !create_debug(screen))
       debug_printf("ZINK: failed to setup debug utils\n");
@@ -1678,9 +1684,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
                                               VK_FORMAT_X8_D24_UNORM_PACK32);
    screen->have_D24_UNORM_S8_UINT = zink_is_depth_format_supported(screen,
                                               VK_FORMAT_D24_UNORM_S8_UINT);
-
-   if (!zink_load_instance_extensions(screen))
-      goto fail;
 
    if (!zink_get_physical_device_info(screen)) {
       debug_printf("ZINK: failed to detect features\n");
@@ -1703,8 +1706,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
        screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
       /* this has bad perf on AMD */
       screen->info.have_KHR_push_descriptor = false;
+
    if (!load_device_extensions(screen))
       goto fail;
+
+   vk_device_dispatch_table_load(&screen->vk.device, &vkGetDeviceProcAddr, screen->dev);
 
    check_base_requirements(screen);
 

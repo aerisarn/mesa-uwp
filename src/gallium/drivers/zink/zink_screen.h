@@ -26,6 +26,7 @@
 
 #include "zink_device_info.h"
 #include "zink_instance.h"
+#include "zink_dispatch_table.h"
 
 #include "util/u_idalloc.h"
 #include "pipe/p_screen.h"
@@ -113,6 +114,8 @@ struct zink_screen {
 
    bool needs_mesa_wsi;
    bool needs_mesa_flush_wsi;
+
+   struct vk_dispatch_table vk;
 
    PFN_vkGetPhysicalDeviceFeatures2 vk_GetPhysicalDeviceFeatures2;
    PFN_vkGetPhysicalDeviceProperties2 vk_GetPhysicalDeviceProperties2;
