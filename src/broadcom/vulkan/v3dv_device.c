@@ -1852,6 +1852,12 @@ v3dv_AllocateMemory(VkDevice _device,
           * allocations that won't be suballocated to multiple resources.
           */
          break;
+      case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR:
+         /* The mask of handle types specified here must be supported
+          * according to VkExternalImageFormatProperties, so it must be
+          * fd or dmabuf, which don't have special requirements for us.
+          */
+         break;
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
