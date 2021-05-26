@@ -1612,7 +1612,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!screen->instance)
       goto fail;
 
-   if (screen->instance_info.have_EXT_debug_utils && !create_debug(screen))
+   if (screen->instance_info.have_EXT_debug_utils &&
+      (zink_debug & ZINK_DEBUG_VALIDATION) && !create_debug(screen))
       debug_printf("ZINK: failed to setup debug utils\n");
 
    choose_pdev(screen);
