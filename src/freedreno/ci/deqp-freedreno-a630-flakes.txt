@@ -81,3 +81,8 @@ dEQP-VK.wsi.display.get_display_plane_capabilities
 dEQP-GLES3.functional.fragment_out.random.39
 dEQP-VK.image.texel_view_compatible.graphic.extended.2d_image.texture_read.astc_10x6_unorm_block.r32g32b32a32_uint
 dEQP-GLES31.functional.tessellation.invariance.primitive_set.quads_equal_spacing_cw
+
+# Started appearing after disabling cpufreq, devfreq and disabling runtime PM
+dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_basic
+dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_scale
+dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_stencil_only
