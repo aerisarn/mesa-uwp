@@ -1499,6 +1499,10 @@ bool
 zink_screen_timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_t timeout)
 {
    VkSemaphoreWaitInfo wi = {0};
+
+   if (zink_screen_check_last_finished(screen, batch_id))
+      return true;
+
    wi.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
    wi.semaphoreCount = 1;
    /* handle batch_id overflow */
