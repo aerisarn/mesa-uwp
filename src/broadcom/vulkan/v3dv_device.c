@@ -131,6 +131,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
 {
    *ext = (struct vk_device_extension_table) {
       .KHR_bind_memory2                    = true,
+      .KHR_dedicated_allocation            = true,
       .KHR_external_memory                 = true,
       .KHR_external_memory_fd              = true,
       .KHR_get_memory_requirements2        = true,
@@ -1846,6 +1847,11 @@ v3dv_AllocateMemory(VkDevice _device,
       case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR:
          fd_info = (void *)ext;
          break;
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR:
+         /* We don't have particular optimizations associated with memory
+          * allocations that won't be suballocated to multiple resources.
+          */
+         break;
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
@@ -1980,6 +1986,13 @@ v3dv_GetImageMemoryRequirements2(VkDevice device,
 
    vk_foreach_struct(ext, pMemoryRequirements->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+         VkMemoryDedicatedRequirements *req =
+            (VkMemoryDedicatedRequirements *) ext;
+         req->requiresDedicatedAllocation = image->external;
+         req->prefersDedicatedAllocation = image->external;
+         break;
+      }
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
@@ -2032,6 +2045,13 @@ v3dv_GetBufferMemoryRequirements2(VkDevice device,
 
    vk_foreach_struct(ext, pMemoryRequirements->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+         VkMemoryDedicatedRequirements *req =
+            (VkMemoryDedicatedRequirements *) ext;
+         req->requiresDedicatedAllocation = false;
+         req->prefersDedicatedAllocation = false;
+         break;
+      }
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
