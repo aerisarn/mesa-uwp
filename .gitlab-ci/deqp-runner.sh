@@ -91,9 +91,8 @@ if [ -e "$INSTALL/deqp-$GPU_VERSION-fails.txt" ]; then
     DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --baseline $INSTALL/deqp-$GPU_VERSION-fails.txt"
 fi
 
-if [ -e "$INSTALL/deqp-$GPU_VERSION-flakes.txt" ]; then
-    DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt"
-fi
+# Default to an empty known flakes file if it doesn't exist.
+touch $INSTALL/deqp-$GPU_VERSION-flakes.txt
 
 if [ -e "$INSTALL/deqp-$GPU_VERSION-skips.txt" ]; then
     DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --skips $INSTALL/deqp-$GPU_VERSION-skips.txt"
@@ -125,55 +124,13 @@ run_cts() {
         --deqp $deqp \
         --output $RESULTS \
         --caselist $caselist \
+        --flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt \
         --testlog-to-xml  /deqp/executor/testlog-to-xml \
         $JOB \
         $SUMMARY_LIMIT \
 	$DEQP_RUNNER_OPTIONS \
         -- \
         $DEQP_OPTIONS
-}
-
-report_flakes() {
-    flakes=`grep ",Flake" $1 | sed 's|,Flake.*||g'`
-    if [ -z "$flakes" ]; then
-        return 0
-    fi
-
-    if [ -z "$FLAKES_CHANNEL" ]; then
-        return 0
-    fi
-
-    # The nick needs to be something unique so that multiple runners
-    # connecting at the same time don't race for one nick and get blocked.
-    # freenode has a 16-char limit on nicks (9 is the IETF standard, but
-    # various servers extend that).  So, trim off the common prefixes of the
-    # runner name, and append the job ID so that software runners with more
-    # than one concurrent job (think swrast) don't collide.  For freedreno,
-    # that gives us a nick as long as db410c-N-JJJJJJJJ, and it'll be a while
-    # before we make it to 9-digit jobs (we're at 7 so far).
-    runner=`echo $CI_RUNNER_DESCRIPTION | sed 's|mesa-||' | sed 's|google-freedreno-||g'`
-    bot="$runner-$CI_JOB_ID"
-    channel="$FLAKES_CHANNEL"
-    (
-    echo NICK $bot
-    echo USER $bot unused unused :Gitlab CI Notifier
-    sleep 10
-    echo "JOIN $channel"
-    sleep 1
-    desc="Flakes detected in job: $CI_JOB_URL on $CI_RUNNER_DESCRIPTION"
-    if [ -n "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
-        desc="$desc on branch $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME ($CI_MERGE_REQUEST_TITLE)"
-    elif [ -n "$CI_COMMIT_BRANCH" ]; then
-        desc="$desc on branch $CI_COMMIT_BRANCH ($CI_COMMIT_TITLE)"
-    fi
-    echo "PRIVMSG $channel :$desc"
-    for flake in $flakes; do
-        echo "PRIVMSG $channel :$flake"
-    done
-    echo "PRIVMSG $channel :See $CI_JOB_URL/artifacts/browse/results/"
-    echo "QUIT"
-    ) | nc irc.freenode.net 6667 > /dev/null
-
 }
 
 parse_renderer() {
@@ -281,6 +238,18 @@ deqp-runner junit \
    --template "See https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/results/{{testcase}}.xml"
 
 # Report the flakes to the IRC channel for monitoring (if configured):
-quiet report_flakes $RESULTS_CSV
+if [ -n "$FLAKES_CHANNEL" ]; then
+  python3 $INSTALL/report-flakes.py \
+         --host irc.freenode.net \
+         --port 6667 \
+         --results $RESULTS_CSV \
+         --known-flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt \
+         --channel "$FLAKES_CHANNEL" \
+         --runner "$CI_RUNNER_DESCRIPTION" \
+         --job "$CI_JOB_ID" \
+         --url "$CI_JOB_URL" \
+         --branch "${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_BRANCH}" \
+         --branch-title "${CI_MERGE_REQUEST_TITLE:-$CI_COMMIT_TITLE}"
+fi
 
 exit $DEQP_EXITCODE
