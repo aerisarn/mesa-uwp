@@ -590,10 +590,29 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
 
       NIR_PASS(progress, nir, nir_copy_prop);
       NIR_PASS(progress, nir, nir_opt_dce);
-      NIR_PASS(progress, nir, nir_opt_dead_cf);
-      NIR_PASS(progress, nir, nir_opt_cse);
+      NIR_PASS(progress, nir, nir_opt_peephole_select, 8, true, true);
+
       NIR_PASS(progress, nir, nir_opt_algebraic);
       NIR_PASS(progress, nir, nir_opt_constant_folding);
+
+      NIR_PASS(progress, nir, nir_opt_remove_phis);
+      bool trivial_continues = false;
+      NIR_PASS(trivial_continues, nir, nir_opt_trivial_continues);
+      progress |= trivial_continues;
+      if (trivial_continues) {
+         /* If nir_opt_trivial_continues makes progress, then we need to clean
+          * things up if we want any hope of nir_opt_if or nir_opt_loop_unroll
+          * to make progress.
+          */
+         NIR_PASS(progress, nir, nir_copy_prop);
+         NIR_PASS(progress, nir, nir_opt_dce);
+         NIR_PASS(progress, nir, nir_opt_remove_phis);
+      }
+      NIR_PASS(progress, nir, nir_opt_if, true);
+      NIR_PASS(progress, nir, nir_opt_dead_cf);
+      NIR_PASS(progress, nir, nir_opt_conditional_discard);
+      NIR_PASS(progress, nir, nir_opt_remove_phis);
+      NIR_PASS(progress, nir, nir_opt_cse);
       NIR_PASS(progress, nir, nir_opt_undef);
 
       NIR_PASS(progress, nir, nir_opt_deref);
@@ -602,6 +621,8 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
 
    NIR_PASS_V(nir, nir_lower_var_copies);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+   NIR_PASS_V(nir, nir_opt_dce);
+   nir_sweep(nir);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
