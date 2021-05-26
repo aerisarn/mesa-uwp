@@ -710,6 +710,17 @@ zink_batch_reference_image_view(struct zink_batch *batch,
 }
 
 bool
+zink_screen_usage_check_completion(struct zink_screen *screen, const struct zink_batch_usage *u)
+{
+   if (!zink_batch_usage_exists(u))
+      return true;
+   if (zink_batch_usage_is_unflushed(u))
+      return false;
+
+   return zink_screen_batch_id_wait(screen, u->usage, 0);
+}
+
+bool
 zink_batch_usage_check_completion(struct zink_context *ctx, const struct zink_batch_usage *u)
 {
    if (!zink_batch_usage_exists(u))
