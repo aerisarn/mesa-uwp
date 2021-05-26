@@ -114,7 +114,6 @@ spec/arb_tessellation_shader/execution/compatibility/tes-clip-vertex-different-f
 spec/arb_tessellation_shader/execution/compatibility/vs-tcs-tes-clip-vertex-different-from-position: skip
 spec/arb_tessellation_shader/execution/compatibility/vs-tcs-tes-clip-vertex-enables: skip
 spec/arb_tessellation_shader/execution/compatibility/vs-tcs-tes-gs-clip-vertex-different-from-position: skip
-spec/arb_tessellation_shader/execution/fs-primitiveid-instanced: fail
 spec/arb_tessellation_shader/execution/gs-primitiveid-instanced: fail
 spec/arb_tessellation_shader/execution/tcs-tes-vertex-dlist: skip
 spec/arb_tessellation_shader/execution/vs-tes-tessinner-tessouter-inputs-quads-dlist: skip
