@@ -78,7 +78,7 @@ deqp-runner junit \
 # Report the flakes to the IRC channel for monitoring (if configured):
 if [ -n "$FLAKES_CHANNEL" ]; then
   python3 $INSTALL/report-flakes.py \
-         --host irc.freenode.net \
+         --host irc.oftc.net \
          --port 6667 \
          --results $RESULTS_CSV \
          --known-flakes $INSTALL/piglit-$GPU_VERSION-flakes.txt \
