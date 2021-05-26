@@ -45,6 +45,7 @@ enum lp_texture_usage
 struct pipe_context;
 struct pipe_screen;
 struct llvmpipe_context;
+struct llvmpipe_screen;
 
 struct sw_displaytarget;
 
@@ -59,6 +60,9 @@ struct sw_displaytarget;
 struct llvmpipe_resource
 {
    struct pipe_resource base;
+
+   /** an extra screen pointer to avoid crashing in driver trace */
+   struct llvmpipe_screen *screen;
 
    /** Row stride in bytes */
    unsigned row_stride[LP_MAX_TEXTURE_LEVELS];

@@ -232,6 +232,7 @@ llvmpipe_resource_create_all(struct pipe_screen *_screen,
       return NULL;
 
    lpr->base = *templat;
+   lpr->screen = screen;
    pipe_reference_init(&lpr->base.reference, 1);
    lpr->base.screen = &screen->base;
 
@@ -454,12 +455,13 @@ llvmpipe_resource_data(struct pipe_resource *resource)
 
 
 static struct pipe_resource *
-llvmpipe_resource_from_handle(struct pipe_screen *screen,
+llvmpipe_resource_from_handle(struct pipe_screen *_screen,
                               const struct pipe_resource *template,
                               struct winsys_handle *whandle,
                               unsigned usage)
 {
-   struct sw_winsys *winsys = llvmpipe_screen(screen)->winsys;
+   struct llvmpipe_screen *screen = llvmpipe_screen(_screen);
+   struct sw_winsys *winsys = screen->winsys;
    struct llvmpipe_resource *lpr;
 
    /* XXX Seems like from_handled depth textures doesn't work that well */
@@ -470,8 +472,9 @@ llvmpipe_resource_from_handle(struct pipe_screen *screen,
    }
 
    lpr->base = *template;
+   lpr->screen = screen;
    pipe_reference_init(&lpr->base.reference, 1);
-   lpr->base.screen = screen;
+   lpr->base.screen = _screen;
 
    /*
     * Looks like unaligned displaytargets work just fine,
@@ -733,6 +736,7 @@ llvmpipe_user_buffer_create(struct pipe_screen *screen,
    if (!buffer)
       return NULL;
 
+   buffer->screen = llvmpipe_screen(screen);
    pipe_reference_init(&buffer->base.reference, 1);
    buffer->base.screen = screen;
    buffer->base.format = PIPE_FORMAT_R8_UNORM; /* ?? */
