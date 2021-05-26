@@ -579,11 +579,16 @@ namespace {
    /**
     * Return simplified dependency removing any synchronization modes not
     * applicable to an instruction \p inst writing the same register location.
+    *
+    * This clears any WaR dependency for writes performed from the same
+    * pipeline as the read, since there is no possibility for a data hazard.
     */
    dependency
-   dependency_for_write(const fs_inst *inst, dependency dep)
+   dependency_for_write(const struct intel_device_info *devinfo,
+                        const fs_inst *inst, dependency dep)
    {
-      if (!is_unordered(inst))
+      if (!is_unordered(inst) &&
+          is_single_pipe(dep.jp, inferred_exec_pipe(devinfo, inst)))
          dep.ordered &= TGL_REGDIST_DST;
       return dep;
    }
@@ -1124,7 +1129,7 @@ namespace {
             if (inst->dst.file != BAD_FILE && !inst->dst.is_null() &&
                 !inst->dst.is_accumulator()) {
                for (unsigned j = 0; j < regs_written(inst); j++) {
-                  add_dependency(ids, deps[ip], dependency_for_write(inst,
+                  add_dependency(ids, deps[ip], dependency_for_write(devinfo, inst,
                      sb.get(byte_offset(inst->dst, REG_SIZE * j))));
                }
             }
@@ -1144,7 +1149,7 @@ namespace {
 
             if (is_send(inst) && inst->base_mrf != -1) {
                for (unsigned j = 0; j < inst->implied_mrf_writes(); j++)
-                  add_dependency(ids, deps[ip], dependency_for_write(inst,
+                  add_dependency(ids, deps[ip], dependency_for_write(devinfo, inst,
                      sb.get(brw_uvec_mrf(8, inst->base_mrf + j, 0))));
             }
          }
