@@ -133,6 +133,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_bind_memory2                    = true,
       .KHR_external_memory                 = true,
       .KHR_external_memory_fd              = true,
+      .KHR_get_memory_requirements2        = true,
       .KHR_maintenance1                    = true,
       .KHR_maintenance2                    = true,
       .KHR_maintenance3                    = true,
@@ -1965,17 +1966,25 @@ v3dv_InvalidateMappedMemoryRanges(VkDevice _device,
 }
 
 void
-v3dv_GetImageMemoryRequirements(VkDevice _device,
-                                VkImage _image,
-                                VkMemoryRequirements *pMemoryRequirements)
+v3dv_GetImageMemoryRequirements2(VkDevice device,
+                                 const VkImageMemoryRequirementsInfo2 *pInfo,
+                                 VkMemoryRequirements2 *pMemoryRequirements)
 {
-   V3DV_FROM_HANDLE(v3dv_image, image, _image);
+   V3DV_FROM_HANDLE(v3dv_image, image, pInfo->image);
 
-   assert(image->size > 0);
+   pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
+      .memoryTypeBits = 0x1,
+      .alignment = image->alignment,
+      .size = image->size
+   };
 
-   pMemoryRequirements->size = image->size;
-   pMemoryRequirements->alignment = image->alignment;
-   pMemoryRequirements->memoryTypeBits = 0x1;
+   vk_foreach_struct(ext, pMemoryRequirements->pNext) {
+      switch (ext->sType) {
+      default:
+         v3dv_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
 }
 
 static void
@@ -2009,16 +2018,25 @@ v3dv_BindImageMemory2(VkDevice _device,
 }
 
 void
-v3dv_GetBufferMemoryRequirements(VkDevice _device,
-                                 VkBuffer _buffer,
-                                 VkMemoryRequirements* pMemoryRequirements)
+v3dv_GetBufferMemoryRequirements2(VkDevice device,
+                                  const VkBufferMemoryRequirementsInfo2 *pInfo,
+                                  VkMemoryRequirements2 *pMemoryRequirements)
 {
-   V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, pInfo->buffer);
 
-   pMemoryRequirements->memoryTypeBits = 0x1;
-   pMemoryRequirements->alignment = buffer->alignment;
-   pMemoryRequirements->size =
-      align64(buffer->size, pMemoryRequirements->alignment);
+   pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
+      .memoryTypeBits = 0x1,
+      .alignment = buffer->alignment,
+      .size = align64(buffer->size, buffer->alignment),
+   };
+
+   vk_foreach_struct(ext, pMemoryRequirements->pNext) {
+      switch (ext->sType) {
+      default:
+         v3dv_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
 }
 
 static void
@@ -2450,16 +2468,6 @@ v3dv_GetDeviceMemoryCommitment(VkDevice device,
                                VkDeviceSize *pCommittedMemoryInBytes)
 {
    *pCommittedMemoryInBytes = 0;
-}
-
-void
-v3dv_GetImageSparseMemoryRequirements(
-   VkDevice device,
-   VkImage image,
-   uint32_t *pSparseMemoryRequirementCount,
-   VkSparseImageMemoryRequirements *pSparseMemoryRequirements)
-{
-   *pSparseMemoryRequirementCount = 0;
 }
 
 void

@@ -3656,7 +3656,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       return handled;
 
    VkMemoryRequirements reqs;
-   v3dv_GetImageMemoryRequirements(_device, dummy_image, &reqs);
+   vk_common_GetImageMemoryRequirements(_device, dummy_image, &reqs);
    v3dv_DestroyImage(_device, dummy_image, &device->vk.alloc);
 
    VkDeviceMemory mem;

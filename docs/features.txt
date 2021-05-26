@@ -433,7 +433,7 @@ Vulkan 1.1 -- all DONE: anv, lvp, radv, tu, vn
   VK_KHR_external_memory_capabilities                   DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_external_semaphore                             DONE (anv, lvp, radv, tu, vn)
   VK_KHR_external_semaphore_capabilities                DONE (anv, lvp, radv, tu, vn)
-  VK_KHR_get_memory_requirements2                       DONE (anv, lvp, radv, tu, vn)
+  VK_KHR_get_memory_requirements2                       DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_get_physical_device_properties2                DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_maintenance1                                   DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_maintenance2                                   DONE (anv, lvp, radv, tu, v3dv, vn)
