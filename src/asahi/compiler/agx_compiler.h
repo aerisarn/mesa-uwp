@@ -334,6 +334,11 @@ typedef struct {
    /* I don't really understand how writeout ops work yet */
    bool did_writeout;
 
+   /* Number of nested control flow structures within the innermost loop. Since
+    * NIR is just loop and if-else, this is the number of nested if-else
+    * statements in the loop */
+   unsigned loop_nesting;
+
    /* During instruction selection, for inserting control flow */
    agx_block *current_block;
 
