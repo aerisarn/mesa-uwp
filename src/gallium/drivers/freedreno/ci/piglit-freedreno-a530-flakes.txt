@@ -36,6 +36,7 @@ spec@arb_draw_instanced@arb_draw_instanced-drawarrays
 # uprev, so presumably it regressed some time earlier and then showed up in the
 # piglit reshuffle.
 spec@arb_copy_buffer@intra-buffer-copy
+spec@arb_copy_buffer@dlist
 
 # Intermittent failure, mostly passes but sometimes fails. Was noticed on May 26th.
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420
