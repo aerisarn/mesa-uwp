@@ -104,7 +104,7 @@ struct amdgpu_cs_context {
    unsigned                    max_sparse_buffers;
    struct amdgpu_cs_buffer     *sparse_buffers;
 
-   int                         buffer_indices_hashlist[4096];
+   int                         *buffer_indices_hashlist;
 
    struct amdgpu_winsys_bo     *last_added_bo;
    unsigned                    last_added_bo_index;
@@ -128,6 +128,8 @@ struct amdgpu_cs_context {
    bool secure;
 };
 
+#define BUFFER_HASHLIST_SIZE 4096
+
 struct amdgpu_cs {
    struct amdgpu_ib main; /* must be first because this is inherited */
    struct amdgpu_ib compute_ib;      /* optional parallel compute IB */
@@ -145,6 +147,8 @@ struct amdgpu_cs {
    struct amdgpu_cs_context *csc;
    /* The CS being currently-owned by the other thread. */
    struct amdgpu_cs_context *cst;
+   /* This is only used by csc, not cst */
+   int buffer_indices_hashlist[BUFFER_HASHLIST_SIZE];
 
    /* Flush CS. */
    void (*flush_cs)(void *ctx, unsigned flags, struct pipe_fence_handle **fence);
