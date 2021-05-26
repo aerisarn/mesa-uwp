@@ -387,7 +387,7 @@ llvmpipe_resource_map(struct pipe_resource *resource,
 
    if (lpr->dt) {
       /* display target */
-      struct llvmpipe_screen *screen = llvmpipe_screen(resource->screen);
+      struct llvmpipe_screen *screen = lpr->screen;
       struct sw_winsys *winsys = screen->winsys;
       unsigned dt_usage;
 
@@ -432,7 +432,7 @@ llvmpipe_resource_unmap(struct pipe_resource *resource,
 
    if (lpr->dt) {
       /* display target */
-      struct llvmpipe_screen *lp_screen = llvmpipe_screen(resource->screen);
+      struct llvmpipe_screen *lp_screen = lpr->screen;
       struct sw_winsys *winsys = lp_screen->winsys;
 
       assert(level == 0);
