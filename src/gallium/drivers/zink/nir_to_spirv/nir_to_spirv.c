@@ -2954,11 +2954,6 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       }
    }
 
-   if (lod == 0 && ctx->stage != MESA_SHADER_FRAGMENT) {
-      lod = emit_float_const(ctx, 32, 0.0f);
-      assert(lod != 0);
-   }
-
    unsigned texture_index = tex->texture_index;
    if (!tex_offset) {
       /* convert constant index back to base + offset */
