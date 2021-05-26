@@ -414,15 +414,9 @@ static bool amdgpu_cs_has_user_fence(struct amdgpu_cs_context *cs)
           cs->ib[IB_MAIN].ip_type != AMDGPU_HW_IP_VCN_JPEG;
 }
 
-static bool amdgpu_cs_has_chaining(struct amdgpu_cs *cs)
+static inline unsigned amdgpu_cs_epilog_dws(struct amdgpu_cs *cs)
 {
-   return cs->ws->info.chip_class >= GFX7 &&
-          (cs->ring_type == RING_GFX || cs->ring_type == RING_COMPUTE);
-}
-
-static unsigned amdgpu_cs_epilog_dws(struct amdgpu_cs *cs)
-{
-   if (amdgpu_cs_has_chaining(cs))
+   if (cs->has_chaining)
       return 4; /* for chaining */
 
    return 0;
@@ -721,10 +715,10 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
     * is the largest power of two that fits into the size field of the
     * INDIRECT_BUFFER packet.
     */
-   if (amdgpu_cs_has_chaining(cs))
-      buffer_size = 4 *util_next_power_of_two(ib->max_ib_size);
+   if (cs->has_chaining)
+      buffer_size = 4 * util_next_power_of_two(ib->max_ib_size);
    else
-      buffer_size = 4 *util_next_power_of_two(4 * ib->max_ib_size);
+      buffer_size = 4 * util_next_power_of_two(4 * ib->max_ib_size);
 
    const unsigned min_size = MAX2(ib->max_check_space_size, 8 * 1024 * 4);
    const unsigned max_size = 512 * 1024 * 4;
@@ -803,7 +797,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
     */
    ib_size = MAX2(ib_size, ib->max_check_space_size);
 
-   if (!amdgpu_cs_has_chaining(cs)) {
+   if (!cs->has_chaining) {
       ib_size = MAX2(ib_size,
                      4 * MIN2(util_next_power_of_two(ib->max_ib_size),
                               amdgpu_ib_max_submit_dwords(ib->ib_type)));
@@ -997,6 +991,8 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    cs->ring_type = ring_type;
    cs->stop_exec_on_failure = stop_exec_on_failure;
    cs->noop = ctx->ws->noop_cs;
+   cs->has_chaining = ctx->ws->info.chip_class >= GFX7 &&
+                      (ring_type == RING_GFX || ring_type == RING_COMPUTE);
 
    struct amdgpu_cs_fence_info fence_info;
    fence_info.handle = cs->ctx->user_fence_bo;
@@ -1154,7 +1150,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
          return true;
    }
 
-   if (!amdgpu_cs_has_chaining(cs)) {
+   if (!cs->has_chaining) {
       assert(!force_chaining);
       return false;
    }
