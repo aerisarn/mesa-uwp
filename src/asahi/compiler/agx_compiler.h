@@ -240,6 +240,9 @@ enum agx_dim {
    AGX_DIM_TEX_CUBE_ARRAY = 7
 };
 
+/* Forward declare for branch target */
+struct agx_block;
+
 typedef struct {
    /* Must be first */
    struct list_head link;
@@ -263,6 +266,7 @@ typedef struct {
       enum agx_format format;
       enum agx_round round;
       enum agx_lod_mode lod_mode;
+      struct agx_block *target;
    };
 
    /* Invert icond/fcond */
