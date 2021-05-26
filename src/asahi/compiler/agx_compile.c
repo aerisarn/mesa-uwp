@@ -793,7 +793,28 @@ emit_if(agx_context *ctx, nir_if *nif)
 static void
 emit_loop(agx_context *ctx, nir_loop *nloop)
 {
-   unreachable("loops todo");
+   /* We only track nesting within the innermost loop, so reset */
+   ctx->loop_nesting = 0;
+
+   /* Make room for break/continue nesting (TODO: skip if no divergent CF) */
+   agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
+   agx_push_exec(&_b, 2);
+
+   /* Emit the body */
+   agx_block *start_block = emit_cf_list(ctx, &nloop->body);
+
+   /* Fix up the nesting counter via an always true while_icmp, and branch back
+    * to start of loop if any lanes are active */
+   _b.cursor = agx_after_block(ctx->current_block);
+   agx_while_icmp(&_b, agx_zero(), agx_zero(), 2, AGX_ICOND_UEQ, false);
+   agx_jmp_exec_any(&_b, start_block);
+   agx_pop_exec(&_b, 2);
+
+   /* Update shader-db stats */
+   ++ctx->loop_count;
+
+   /* All nested control flow must have finished */
+   assert(ctx->loop_nesting == 0);
 }
 
 static agx_block *
