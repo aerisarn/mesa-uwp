@@ -2896,9 +2896,26 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          break;
 
       case nir_tex_src_offset:
-         if (nir_src_is_const(tex->src[i].src))
-            const_offset = get_src_int(ctx, &tex->src[i].src);
-         else
+         if (nir_src_is_const(tex->src[i].src)) {
+            nir_const_value *v = nir_src_as_const_value(tex->src[i].src);
+            unsigned bit_size = nir_src_bit_size(tex->src[i].src);
+            unsigned num_components = nir_src_num_components(tex->src[i].src);
+
+            SpvId components[NIR_MAX_VEC_COMPONENTS];
+            for (int i = 0; i < num_components; ++i) {
+               int64_t tmp = nir_const_value_as_int(v[i], bit_size);
+               components[i] = emit_int_const(ctx, bit_size, tmp);
+            }
+
+            if (num_components > 1) {
+               SpvId type = get_ivec_type(ctx, bit_size, num_components);
+               const_offset = spirv_builder_const_composite(&ctx->builder,
+                                                            type,
+                                                            components,
+                                                            num_components);
+            } else
+               const_offset = components[0];
+         } else
             offset = get_src_int(ctx, &tex->src[i].src);
          break;
 
