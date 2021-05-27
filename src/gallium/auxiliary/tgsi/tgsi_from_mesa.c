@@ -269,7 +269,7 @@ tgsi_get_sysval_semantic(unsigned sysval)
       return TGSI_SEMANTIC_BLOCK_ID;
    case SYSTEM_VALUE_NUM_WORK_GROUPS:
       return TGSI_SEMANTIC_GRID_SIZE;
-   case SYSTEM_VALUE_LOCAL_GROUP_SIZE:
+   case SYSTEM_VALUE_WORKGROUP_SIZE:
       return TGSI_SEMANTIC_BLOCK_SIZE;
 
    /* ARB_shader_ballot */

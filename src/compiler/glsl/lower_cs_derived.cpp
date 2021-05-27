@@ -138,7 +138,7 @@ lower_cs_derived_visitor::find_sysvals()
       if (local_size_variable) {
          gl_WorkGroupSize = new(shader) ir_dereference_variable(
                add_system_value(
-                     SYSTEM_VALUE_LOCAL_GROUP_SIZE, glsl_type::uvec3_type,
+                     SYSTEM_VALUE_WORKGROUP_SIZE, glsl_type::uvec3_type,
                      "gl_LocalGroupSizeARB"));
       } else {
          ir_constant_data data;

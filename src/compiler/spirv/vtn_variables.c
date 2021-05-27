@@ -919,7 +919,7 @@ vtn_get_builtin_location(struct vtn_builder *b,
       break;
    case SpvBuiltInWorkgroupSize:
    case SpvBuiltInEnqueuedWorkgroupSize:
-      *location = SYSTEM_VALUE_LOCAL_GROUP_SIZE;
+      *location = SYSTEM_VALUE_WORKGROUP_SIZE;
       set_mode_system_value(b, mode);
       break;
    case SpvBuiltInWorkgroupId:

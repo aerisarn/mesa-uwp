@@ -1456,7 +1456,7 @@ builtin_variable_generator::generate_cs_special_vars()
    add_system_value(SYSTEM_VALUE_NUM_WORK_GROUPS, uvec3_t, "gl_NumWorkGroups");
 
    if (state->ARB_compute_variable_group_size_enable) {
-      add_system_value(SYSTEM_VALUE_LOCAL_GROUP_SIZE,
+      add_system_value(SYSTEM_VALUE_WORKGROUP_SIZE,
                        uvec3_t, "gl_LocalGroupSizeARB");
    }
 
