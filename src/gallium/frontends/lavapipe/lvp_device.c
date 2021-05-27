@@ -410,7 +410,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures(
       .largePoints                              = true,
       .alphaToOne                               = true,
       .multiViewport                            = true,
-      .samplerAnisotropy                        = false, /* FINISHME */
+      .samplerAnisotropy                        = true,
       .textureCompressionETC2                   = false,
       .textureCompressionASTC_LDR               = false,
       .textureCompressionBC                     = true,

@@ -865,7 +865,10 @@ static void fill_sampler(struct pipe_sampler_state *ss,
    ss->min_lod = samp->create_info.minLod;
    ss->max_lod = samp->create_info.maxLod;
    ss->lod_bias = samp->create_info.mipLodBias;
-   ss->max_anisotropy = samp->create_info.maxAnisotropy;
+   if (samp->create_info.anisotropyEnable)
+      ss->max_anisotropy = samp->create_info.maxAnisotropy;
+   else
+      ss->max_anisotropy = 1;
    ss->normalized_coords = !samp->create_info.unnormalizedCoordinates;
    ss->compare_mode = samp->create_info.compareEnable ? PIPE_TEX_COMPARE_R_TO_TEXTURE : PIPE_TEX_COMPARE_NONE;
    ss->compare_func = samp->create_info.compareOp;
