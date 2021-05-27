@@ -2079,7 +2079,7 @@ iris_transfer_map(struct pipe_context *ctx,
        */
       if (!map_would_stall &&
           !isl_aux_usage_has_compression(res->aux.usage) &&
-          !((usage & PIPE_MAP_READ) && !res->bo->cache_coherent)) {
+          !((usage & PIPE_MAP_READ) && res->bo->mmap_mode != IRIS_MMAP_WB)) {
          usage |= PIPE_MAP_DIRECTLY;
       }
    }
