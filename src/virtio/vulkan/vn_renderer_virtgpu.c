@@ -1148,7 +1148,6 @@ virtgpu_bo_create_from_dma_buf(
    VkDeviceSize size,
    int fd,
    VkMemoryPropertyFlags flags,
-   VkExternalMemoryHandleTypeFlags external_handles,
    struct vn_renderer_bo **out_bo)
 {
    struct virtgpu *gpu = (struct virtgpu *)renderer;
@@ -1176,7 +1175,8 @@ virtgpu_bo_create_from_dma_buf(
       if (info.size < size)
          goto fail;
 
-      blob_flags = virtgpu_bo_blob_flags(flags, external_handles);
+      blob_flags = virtgpu_bo_blob_flags(
+         flags, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
       mmap_size = size;
    } else {
       /* must be classic resource here
