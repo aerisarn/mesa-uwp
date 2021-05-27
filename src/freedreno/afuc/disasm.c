@@ -709,26 +709,26 @@ disasm_instr(uint32_t *instrs, unsigned pc)
 }
 
 static void
-disasm(uint32_t *buf, int sizedwords)
+setup_packet_table(uint32_t *jmptbl, uint32_t sizedwords)
 {
-   uint32_t *instrs = buf;
-   const int jmptbl_start = instrs[1] & 0xffff;
-   uint32_t *jmptbl = &buf[jmptbl_start];
-   afuc_opc opc;
-   bool rep;
-   int i;
+   num_jump_labels = 0;
 
-   /* parse jumptable: */
-   for (i = 0; i < 0x80; i++) {
+   for (unsigned i = 0; i < sizedwords; i++) {
       unsigned offset = jmptbl[i];
       unsigned n = i; // + CP_NOP;
       add_jump_table_entry(n, offset);
    }
+}
 
-   /* do a pre-pass to find instructions that are potential branch targets,
-    * and add labels for them:
-    */
-   for (i = 0; i < jmptbl_start; i++) {
+static void
+setup_labels(uint32_t *instrs, uint32_t sizedwords)
+{
+   afuc_opc opc;
+   bool rep;
+
+   num_label_offsets = 0;
+
+   for (unsigned i = 0; i < sizedwords; i++) {
       afuc_instr *instr = (void *)&instrs[i];
 
       afuc_get_opc(instr, &opc, &rep);
@@ -755,6 +755,23 @@ disasm(uint32_t *buf, int sizedwords)
          break;
       }
    }
+}
+
+static void
+disasm(uint32_t *buf, int sizedwords)
+{
+   uint32_t *instrs = buf;
+   const int jmptbl_start = instrs[1] & 0xffff;
+   uint32_t *jmptbl = &buf[jmptbl_start];
+   int i;
+
+   /* parse jumptable: */
+   setup_packet_table(jmptbl, 0x80);
+
+   /* do a pre-pass to find instructions that are potential branch targets,
+    * and add labels for them:
+    */
+   setup_labels(instrs, jmptbl_start);
 
    if (emulator) {
       struct emu state = {
