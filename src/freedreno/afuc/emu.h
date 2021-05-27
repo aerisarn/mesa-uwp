@@ -149,8 +149,17 @@ struct emu_draw_state {
  * Emulated hw state.
  */
 struct emu {
+   /**
+    * In bootstrap mode, execute bootstrap without outputting anything.
+    * Useful to (for example) extract packet-table.
+    */
+   bool quiet;
+
+   bool lpac;
+
    uint32_t *instrs;
    unsigned sizedwords;
+   unsigned gpu_id;
 
    struct emu_control_regs control_regs;
    struct emu_pipe_regs    pipe_regs;
@@ -214,7 +223,9 @@ struct emu {
  * API for disasm to use:
  */
 void emu_step(struct emu *emu);
+void emu_run_bootstrap(struct emu *emu);
 void emu_init(struct emu *emu);
+void emu_fini(struct emu *emu);
 
 /*
  * Internal APIs

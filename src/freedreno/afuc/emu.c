@@ -191,7 +191,7 @@ emu_instr(struct emu *emu, afuc_instr *instr)
 
       if (instr->control.flags == 0x4) {
          emu_set_gpr_reg(emu, instr->control.src2, src2 + instr->control.uimm);
-      } else if (instr->control.flags) {
+      } else if (instr->control.flags && !emu->quiet) {
          printf("unhandled flags: %x\n", instr->control.flags);
       }
 
@@ -203,7 +203,7 @@ emu_instr(struct emu *emu, afuc_instr *instr)
 
       if (instr->control.flags == 0x4) {
          emu_set_gpr_reg(emu, instr->control.src2, src2 + instr->control.uimm);
-      } else if (instr->control.flags) {
+      } else if (instr->control.flags && !emu->quiet) {
          printf("unhandled flags: %x\n", instr->control.flags);
       }
 
@@ -218,7 +218,7 @@ emu_instr(struct emu *emu, afuc_instr *instr)
       if (instr->control.flags == 0x4) {
          uint32_t src2 = emu_get_gpr_reg(emu, instr->control.src2);
          emu_set_gpr_reg(emu, instr->control.src2, src2 + instr->control.uimm);
-      } else if (instr->control.flags) {
+      } else if (instr->control.flags && !emu->quiet) {
          printf("unhandled flags: %x\n", instr->control.flags);
       }
 
@@ -235,7 +235,7 @@ emu_instr(struct emu *emu, afuc_instr *instr)
       if (instr->control.flags == 0x4) {
          uint32_t src2 = emu_get_gpr_reg(emu, instr->control.src2);
          emu_set_gpr_reg(emu, instr->control.src2, src2 + instr->control.uimm);
-      } else if (instr->control.flags) {
+      } else if (instr->control.flags && !emu->quiet) {
          printf("unhandled flags: %x\n", instr->control.flags);
       }
 
@@ -382,6 +382,20 @@ emu_step(struct emu *emu)
    emu_dump_state_change(emu);
 }
 
+void
+emu_run_bootstrap(struct emu *emu)
+{
+   EMU_CONTROL_REG(PACKET_TABLE_WRITE_ADDR);
+
+   emu->quiet = true;
+   emu->run_mode = true;
+
+   while (emu_get_reg32(emu, &PACKET_TABLE_WRITE_ADDR) < 0x80) {
+      emu_step(emu);
+   }
+}
+
+
 static void
 check_access(struct emu *emu, uintptr_t gpuaddr, unsigned sz)
 {
@@ -435,10 +449,34 @@ emu_init(struct emu *emu)
       mem_write_dword(emu, EMU_INSTR_BASE + (4 * i), emu->instrs[i]);
    }
 
-   printf("instruction base: %p\n", (void *)(uintptr_t)EMU_INSTR_BASE);
+   EMU_GPU_REG(CP_SQE_INSTR_BASE);
+   EMU_GPU_REG(CP_LPAC_SQE_INSTR_BASE);
 
    /* Setup the address of the SQE fw, just use the normal CPU ptr address: */
-   EMU_GPU_REG(CP_SQE_INSTR_BASE);
-   emu_set_reg64(emu, &CP_SQE_INSTR_BASE, EMU_INSTR_BASE);
+   if (emu->lpac) {
+      emu_set_reg64(emu, &CP_LPAC_SQE_INSTR_BASE, EMU_INSTR_BASE);
+   } else {
+      emu_set_reg64(emu, &CP_SQE_INSTR_BASE, EMU_INSTR_BASE);
+   }
+
+   if (emu->gpu_id == 660) {
+      emu_set_control_reg(emu, 0, 3 << 28);
+   } else if (emu->gpu_id == 650) {
+      emu_set_control_reg(emu, 0, 1 << 28);
+   }
 }
 
+void
+emu_fini(struct emu *emu)
+{
+   uint32_t *instrs = emu->instrs;
+   unsigned sizedwords = emu->sizedwords;
+   unsigned gpu_id = emu->gpu_id;
+
+   munmap(emu->gpumem, EMU_MEMORY_SIZE);
+   memset(emu, 0, sizeof(*emu));
+
+   emu->instrs = instrs;
+   emu->sizedwords = sizedwords;
+   emu->gpu_id = gpu_id;
+}

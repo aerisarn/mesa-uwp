@@ -508,6 +508,9 @@ emu_dump_state_change(struct emu *emu)
 {
    unsigned i;
 
+   if (emu->quiet)
+      return;
+
    /* Print the GPRs that changed: */
    BITSET_FOREACH_SET (i, emu->gpr_regs.written, EMU_NUM_GPR_REGS) {
       dump_gpr_register(emu, i);
