@@ -519,31 +519,6 @@ spec/arb_separate_shader_objects/programuniform coverage/double matrices: skip
 spec/arb_separate_shader_objects/programuniform coverage/double scalar and vectors: skip
 spec/arb_shader_atomic_counters/max-counters/combined test above maximum number of atomic counter buffers: skip
 spec/arb_shader_image_load_store/early-z/occlusion query test/early-z pass: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r11f_g11f_b10f: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16_snorm: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16f: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16i: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16ui: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r32f: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r32i: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r32ui: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r8: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r8_snorm: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r8i: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r8ui: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg16: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg16_snorm: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg16f: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg16i: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg16ui: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg32f: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg32i: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg32ui: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8_snorm: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8i: fail
-spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8ui: fail
 spec/arb_shader_image_load_store/max-size/image2dmsarray max size test/4x16384x8x8: skip
 spec/arb_shader_image_load_store/max-size/image2dmsarray max size test/4x8x16384x8: skip
 spec/arb_shader_image_load_store/max-size/imagebuffer max size test/134217728x1x1x1: skip
