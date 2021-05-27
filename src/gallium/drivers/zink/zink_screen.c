@@ -246,7 +246,6 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CLIP_HALFZ:
    case PIPE_CAP_TGSI_TXQS:
    case PIPE_CAP_TEXTURE_BARRIER:
-   case PIPE_CAP_TGSI_VOTE:
    case PIPE_CAP_DRAW_PARAMETERS:
    case PIPE_CAP_QUERY_SO_OVERFLOW:
    case PIPE_CAP_GL_SPIRV:
@@ -256,6 +255,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PACKED_UNIFORMS:
    case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
       return 1;
+
+   case PIPE_CAP_TGSI_VOTE:
+      return screen->spirv_version >= 0x00010300;
 
    case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
       return screen->info.have_EXT_provoking_vertex;
