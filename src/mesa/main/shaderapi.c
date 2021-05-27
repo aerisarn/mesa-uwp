@@ -64,7 +64,46 @@
 #include "util/crc32.h"
 #include "util/os_file.h"
 #include "util/simple_list.h"
+#include "util/u_process.h"
 #include "util/u_string.h"
+
+#ifdef ENABLE_SHADER_CACHE
+#if CUSTOM_SHADER_REPLACEMENT
+#include "shader_replacement.h"
+/* shader_replacement.h must declare a variable like this:
+
+   struct _shader_replacement {
+      // process name. If null, only sha1 is used to match
+      const char *app;
+      // original glsl shader sha1
+      const char *sha1;
+      // shader stage
+      gl_shader_stage stage;
+      ... any other information ...
+   };
+   struct _shader_replacement shader_replacements[...];
+
+   And a method to load a given replacement and return the new
+   glsl source:
+
+   char* load_shader_replacement(struct _shader_replacement *repl);
+
+   shader_replacement.h can be generated at build time, or copied
+   from an external folder, or any other method.
+*/
+#else
+struct _shader_replacement {
+   const char *app;
+   const char *sha1;
+   gl_shader_stage stage;
+};
+struct _shader_replacement shader_replacements[0];
+static char* load_shader_replacement(struct _shader_replacement *repl)
+{
+   return NULL;
+}
+#endif
+#endif
 
 /**
  * Return mask of GLSL_x flags by examining the MESA_GLSL env var.
@@ -78,10 +117,12 @@ _mesa_get_shader_flags(void)
    if (env) {
       if (strstr(env, "dump_on_error"))
          flags |= GLSL_DUMP_ON_ERROR;
+#ifndef CUSTOM_SHADER_REPLACEMENT
       else if (strstr(env, "dump"))
          flags |= GLSL_DUMP;
       if (strstr(env, "log"))
          flags |= GLSL_LOG;
+#endif
       if (strstr(env, "cache_fb"))
          flags |= GLSL_CACHE_FALLBACK;
       if (strstr(env, "cache_info"))
@@ -1342,6 +1383,7 @@ link_program(struct gl_context *ctx, struct gl_shader_program *shProg,
       }
    }
 
+#ifndef CUSTOM_SHADER_REPLACEMENT
    /* Capture .shader_test files. */
    const char *capture_path = _mesa_get_shader_capture_path();
    if (shProg->Name != 0 && shProg->Name != ~0 && capture_path != NULL) {
@@ -1386,6 +1428,7 @@ link_program(struct gl_context *ctx, struct gl_shader_program *shProg,
 
       ralloc_free(filename);
    }
+#endif
 
    if (shProg->data->LinkStatus == LINKING_FAILURE &&
        (ctx->_Shader->Flags & GLSL_REPORT_ERRORS)) {
@@ -1953,6 +1996,7 @@ construct_name(const gl_shader_stage stage, const char *sha,
 void
 _mesa_dump_shader_source(const gl_shader_stage stage, const char *source)
 {
+#ifndef CUSTOM_SHADER_REPLACEMENT
    static bool path_exists = true;
    char *dump_path;
    FILE *f;
@@ -1980,6 +2024,7 @@ _mesa_dump_shader_source(const gl_shader_stage stage, const char *source)
                     strerror(errno));
    }
    ralloc_free(name);
+#endif
 }
 
 /**
@@ -1996,6 +2041,24 @@ _mesa_read_shader_source(const gl_shader_stage stage, const char *source)
    FILE *f;
    char sha[64];
 
+   generate_sha1(source, sha);
+
+   const char *process_name =
+      ARRAY_SIZE(shader_replacements) ? util_get_process_name() : NULL;
+   for (size_t i = 0; i < ARRAY_SIZE(shader_replacements); i++) {
+      if (stage != shader_replacements[i].stage)
+         continue;
+
+      if (shader_replacements[i].app &&
+          strcmp(process_name, shader_replacements[i].app) != 0)
+         continue;
+
+      if (memcmp(sha, shader_replacements[i].sha1, 40) != 0)
+         continue;
+
+      return load_shader_replacement(&shader_replacements[i]);
+   }
+
    if (!path_exists)
       return NULL;
 
@@ -2005,8 +2068,7 @@ _mesa_read_shader_source(const gl_shader_stage stage, const char *source)
       return NULL;
    }
 
-   char *name = construct_name(stage, generate_sha1(source, sha),
-                               source, read_path);
+   char *name = construct_name(stage, sha, source, read_path);
    f = fopen(name, "r");
    ralloc_free(name);
    if (!f)

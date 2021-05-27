@@ -502,3 +502,9 @@ option(
   choices : ['auto', 'panfrost', 'intel', 'freedreno'],
   description: 'List of Perfetto datasources to build. If this is set to `auto`, datasources that can not be build are skipped. Default: [`auto`]'
 )
+option(
+  'custom-shader-replacement',
+  type : 'string',
+  value : '',
+  description : 'Enable a custom shader replacement mechanism. Note that enabling this option requires adding/generating a shader_replacement.h file that can be included (see shaderapi.c).'
+)

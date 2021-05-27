@@ -2006,6 +2006,12 @@ else
   dep_lmsensors = null_dep
 endif
 
+_shader_replacement = get_option('custom-shader-replacement')
+if _shader_replacement == ''
+else
+  pre_args += '-DCUSTOM_SHADER_REPLACEMENT'
+endif
+
 with_perfetto = get_option('perfetto')
 with_datasources = get_option('datasources')
 with_any_datasource = with_datasources.length() != 0
