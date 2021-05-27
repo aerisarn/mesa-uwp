@@ -1918,12 +1918,13 @@ _mesa_LinkProgram(GLuint programObj)
 /**
  * Generate a SHA-1 hash value string for given source string.
  */
-static void
+static char *
 generate_sha1(const char *source, char sha_str[64])
 {
    unsigned char sha[20];
    _mesa_sha1_compute(source, strlen(source), sha);
    _mesa_sha1_format(sha_str, sha);
+   return sha_str;
 }
 
 /**
@@ -1934,17 +1935,15 @@ generate_sha1(const char *source, char sha_str[64])
  * <path>/<stage prefix>_<CHECKSUM>.arb
  */
 static char *
-construct_name(const gl_shader_stage stage, const char *source,
-               const char *path)
+construct_name(const gl_shader_stage stage, const char *sha,
+               const char *source, const char *path)
 {
-   char sha[64];
    static const char *types[] = {
       "VS", "TC", "TE", "GS", "FS", "CS",
    };
 
    const char *format = strncmp(source, "!!ARB", 5) ? "glsl" : "arb";
 
-   generate_sha1(source, sha);
    return ralloc_asprintf(NULL, "%s/%s_%s.%s", path, types[stage], sha, format);
 }
 
@@ -1957,6 +1956,7 @@ _mesa_dump_shader_source(const gl_shader_stage stage, const char *source)
    static bool path_exists = true;
    char *dump_path;
    FILE *f;
+   char sha[64];
 
    if (!path_exists)
       return;
@@ -1967,7 +1967,8 @@ _mesa_dump_shader_source(const gl_shader_stage stage, const char *source)
       return;
    }
 
-   char *name = construct_name(stage, source, dump_path);
+   char *name = construct_name(stage, generate_sha1(source, sha),
+                               source, dump_path);
 
    f = fopen(name, "w");
    if (f) {
@@ -1993,6 +1994,7 @@ _mesa_read_shader_source(const gl_shader_stage stage, const char *source)
    int len, shader_size = 0;
    GLcharARB *buffer;
    FILE *f;
+   char sha[64];
 
    if (!path_exists)
       return NULL;
@@ -2003,7 +2005,8 @@ _mesa_read_shader_source(const gl_shader_stage stage, const char *source)
       return NULL;
    }
 
-   char *name = construct_name(stage, source, read_path);
+   char *name = construct_name(stage, generate_sha1(source, sha),
+                               source, read_path);
    f = fopen(name, "r");
    ralloc_free(name);
    if (!f)
