@@ -1004,6 +1004,7 @@ struct v3dv_job {
    struct {
       struct v3dv_bo *shared_memory;
       uint32_t wg_count[3];
+      uint32_t wg_base[3];
       struct drm_v3d_submit_csd submit;
    } csd;
 };

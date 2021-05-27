@@ -299,6 +299,11 @@ enum quniform_contents {
          */
         QUNIFORM_NUM_WORK_GROUPS,
 
+        /* Base workgroup offset passed to vkCmdDispatchBase in the dimension
+         * selected by the data value.
+         */
+        QUNIFORM_WORK_GROUP_BASE,
+
         /**
          * Returns the the offset of the scratch buffer for register spilling.
          */

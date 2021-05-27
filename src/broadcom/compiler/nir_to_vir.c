@@ -3003,17 +3003,31 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                                        vir_uniform_ui(c, 32 - c->local_invocation_index_bits)));
                 break;
 
-        case nir_intrinsic_load_work_group_id:
-                ntq_store_dest(c, &instr->dest, 0,
-                               vir_AND(c, c->cs_payload[0],
-                                       vir_uniform_ui(c, 0xffff)));
-                ntq_store_dest(c, &instr->dest, 1,
-                               vir_SHR(c, c->cs_payload[0],
-                                       vir_uniform_ui(c, 16)));
-                ntq_store_dest(c, &instr->dest, 2,
-                               vir_AND(c, c->cs_payload[1],
-                                       vir_uniform_ui(c, 0xffff)));
+        case nir_intrinsic_load_work_group_id: {
+                struct qreg x = vir_AND(c, c->cs_payload[0],
+                                         vir_uniform_ui(c, 0xffff));
+
+                struct qreg y = vir_SHR(c, c->cs_payload[0],
+                                         vir_uniform_ui(c, 16));
+
+                struct qreg z = vir_AND(c, c->cs_payload[1],
+                                         vir_uniform_ui(c, 0xffff));
+
+                /* We only support dispatch base in Vulkan */
+                if (c->key->environment == V3D_ENVIRONMENT_VULKAN) {
+                        x = vir_ADD(c, x,
+                                    vir_uniform(c, QUNIFORM_WORK_GROUP_BASE, 0));
+                        y = vir_ADD(c, y,
+                                    vir_uniform(c, QUNIFORM_WORK_GROUP_BASE, 1));
+                        z = vir_ADD(c, z,
+                                    vir_uniform(c, QUNIFORM_WORK_GROUP_BASE, 2));
+                }
+
+                ntq_store_dest(c, &instr->dest, 0, vir_MOV(c, x));
+                ntq_store_dest(c, &instr->dest, 1, vir_MOV(c, y));
+                ntq_store_dest(c, &instr->dest, 2, vir_MOV(c, z));
                 break;
+        }
 
         case nir_intrinsic_load_subgroup_id:
                 ntq_store_dest(c, &instr->dest, 0, vir_EIDX(c));

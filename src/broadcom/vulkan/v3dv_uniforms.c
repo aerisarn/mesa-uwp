@@ -486,6 +486,11 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
          cl_aligned_u32(&uniforms, job->csd.wg_count[data]);
          break;
 
+      case QUNIFORM_WORK_GROUP_BASE:
+         assert(job->type == V3DV_JOB_TYPE_GPU_CSD);
+         cl_aligned_u32(&uniforms, job->csd.wg_base[data]);
+         break;
+
       case QUNIFORM_SHARED_OFFSET:
          assert(job->type == V3DV_JOB_TYPE_GPU_CSD);
          assert(job->csd.shared_memory);

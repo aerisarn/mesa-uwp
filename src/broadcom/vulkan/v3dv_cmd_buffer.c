@@ -5270,6 +5270,9 @@ v3dv_cmd_buffer_rewrite_indirect_csd_job(
 
 static struct v3dv_job *
 cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
+                          uint32_t base_offset_x,
+                          uint32_t base_offset_y,
+                          uint32_t base_offset_z,
                           uint32_t group_count_x,
                           uint32_t group_count_y,
                           uint32_t group_count_z,
@@ -5297,6 +5300,10 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
    job->csd.wg_count[0] = group_count_x;
    job->csd.wg_count[1] = group_count_y;
    job->csd.wg_count[2] = group_count_z;
+
+   job->csd.wg_base[0] = base_offset_x;
+   job->csd.wg_base[1] = base_offset_y;
+   job->csd.wg_base[2] = base_offset_z;
 
    submit->cfg[0] |= group_count_x << V3D_CSD_CFG012_WG_COUNT_SHIFT;
    submit->cfg[1] |= group_count_y << V3D_CSD_CFG012_WG_COUNT_SHIFT;
@@ -5367,6 +5374,9 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
 
 static void
 cmd_buffer_dispatch(struct v3dv_cmd_buffer *cmd_buffer,
+                    uint32_t base_offset_x,
+                    uint32_t base_offset_y,
+                    uint32_t base_offset_z,
                     uint32_t group_count_x,
                     uint32_t group_count_y,
                     uint32_t group_count_z)
@@ -5376,6 +5386,9 @@ cmd_buffer_dispatch(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct v3dv_job *job =
       cmd_buffer_create_csd_job(cmd_buffer,
+                                base_offset_x,
+                                base_offset_y,
+                                base_offset_z,
                                 group_count_x,
                                 group_count_y,
                                 group_count_z,
@@ -5394,8 +5407,26 @@ v3dv_CmdDispatch(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
    cmd_buffer_emit_pre_dispatch(cmd_buffer);
-   cmd_buffer_dispatch(cmd_buffer, groupCountX, groupCountY, groupCountZ);
+   cmd_buffer_dispatch(cmd_buffer, 0, 0, 0,
+                       groupCountX, groupCountY, groupCountZ);
 }
+
+void v3dv_CmdDispatchBase(VkCommandBuffer commandBuffer,
+                          uint32_t baseGroupX,
+                          uint32_t baseGroupY,
+                          uint32_t baseGroupZ,
+                          uint32_t groupCountX,
+                          uint32_t groupCountY,
+                          uint32_t groupCountZ)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer_emit_pre_dispatch(cmd_buffer);
+   cmd_buffer_dispatch(cmd_buffer,
+                       baseGroupX, baseGroupY, baseGroupZ,
+                       groupCountX, groupCountY, groupCountZ);
+}
+
 
 static void
 cmd_buffer_dispatch_indirect(struct v3dv_cmd_buffer *cmd_buffer,
@@ -5421,6 +5452,7 @@ cmd_buffer_dispatch_indirect(struct v3dv_cmd_buffer *cmd_buffer,
     */
    struct v3dv_job *csd_job =
       cmd_buffer_create_csd_job(cmd_buffer,
+                                0, 0, 0,
                                 1, 1, 1,
                                 &job->cpu.csd_indirect.wg_uniform_offsets[0],
                                 &job->cpu.csd_indirect.wg_size);
