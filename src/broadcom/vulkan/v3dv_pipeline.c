@@ -172,7 +172,9 @@ v3dv_DestroyPipeline(VkDevice _device,
 }
 
 static const struct spirv_to_nir_options default_spirv_options =  {
-   .caps = { false },
+   .caps = {
+      .device_group = true,
+    },
    .ubo_addr_format = nir_address_format_32bit_index_offset,
    .ssbo_addr_format = nir_address_format_32bit_index_offset,
    .phys_ssbo_addr_format = nir_address_format_64bit_global,
@@ -228,6 +230,7 @@ const nir_shader_compiler_options v3dv_nir_options = {
    .lower_wpos_pntc = true,
    .lower_rotate = true,
    .lower_to_scalar = true,
+   .lower_device_index_to_zero = true,
    .has_fsub = true,
    .has_isub = true,
    .vertex_id_zero_based = false, /* FIXME: to set this to true, the intrinsic

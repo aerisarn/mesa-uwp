@@ -5488,3 +5488,10 @@ v3dv_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    cmd_buffer_emit_pre_dispatch(cmd_buffer);
    cmd_buffer_dispatch_indirect(cmd_buffer, buffer, offset);
 }
+
+void
+v3dv_CmdSetDeviceMask(VkCommandBuffer commandBuffer, uint32_t deviceMask)
+{
+   /* Nothing to do here since we only support a single device */
+   assert(deviceMask = 0x1);
+}

@@ -104,6 +104,7 @@ v3dv_EnumerateInstanceVersion(uint32_t *pApiVersion)
                           VK_USE_PLATFORM_DISPLAY_KHR)
 
 static const struct vk_instance_extension_table instance_extensions = {
+   .KHR_device_group_creation           = true,
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
    .KHR_display                         = true,
 #endif
@@ -132,6 +133,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
    *ext = (struct vk_device_extension_table) {
       .KHR_bind_memory2                    = true,
       .KHR_dedicated_allocation            = true,
+      .KHR_device_group                    = true,
       .KHR_external_memory                 = true,
       .KHR_external_memory_fd              = true,
       .KHR_get_memory_requirements2        = true,
@@ -915,6 +917,36 @@ v3dv_EnumeratePhysicalDevices(VkInstance _instance,
    return vk_outarray_status(&out);
 }
 
+VkResult
+v3dv_EnumeratePhysicalDeviceGroups(
+    VkInstance _instance,
+    uint32_t *pPhysicalDeviceGroupCount,
+    VkPhysicalDeviceGroupProperties *pPhysicalDeviceGroupProperties)
+{
+   V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
+   VK_OUTARRAY_MAKE(out, pPhysicalDeviceGroupProperties,
+                         pPhysicalDeviceGroupCount);
+
+   VkResult result = instance_ensure_physical_device(instance);
+   if (result != VK_SUCCESS)
+      return result;
+
+   assert(instance->physicalDeviceCount == 1);
+
+   vk_outarray_append(&out, p) {
+      p->physicalDeviceCount = 1;
+      memset(p->physicalDevices, 0, sizeof(p->physicalDevices));
+      p->physicalDevices[0] =
+         v3dv_physical_device_to_handle(&instance->physicalDevice);
+      p->subsetAllocation = false;
+
+      vk_foreach_struct(ext, p->pNext)
+         v3dv_debug_ignored_stype(ext->sType);
+   }
+
+   return vk_outarray_status(&out);
+}
+
 void
 v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
                                VkPhysicalDeviceFeatures *pFeatures)
@@ -1004,6 +1036,20 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
    }
+}
+
+void
+v3dv_GetDeviceGroupPeerMemoryFeatures(VkDevice device,
+                                      uint32_t heapIndex,
+                                      uint32_t localDeviceIndex,
+                                      uint32_t remoteDeviceIndex,
+                                      VkPeerMemoryFeatureFlags *pPeerMemoryFeatures)
+{
+   assert(localDeviceIndex == 0 && remoteDeviceIndex == 0);
+   *pPeerMemoryFeatures = VK_PEER_MEMORY_FEATURE_COPY_SRC_BIT |
+                          VK_PEER_MEMORY_FEATURE_COPY_DST_BIT |
+                          VK_PEER_MEMORY_FEATURE_GENERIC_SRC_BIT |
+                          VK_PEER_MEMORY_FEATURE_GENERIC_DST_BIT;
 }
 
 uint32_t
@@ -1846,6 +1892,11 @@ v3dv_AllocateMemory(VkDevice _device,
          break;
       case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR:
          fd_info = (void *)ext;
+         break;
+      case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO:
+         /* We don't support VK_KHR_buffer_device_address or multiple
+          * devices per device group, so we can ignore this.
+          */
          break;
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR:
          /* We don't have particular optimizations associated with memory
