@@ -93,7 +93,7 @@ struct zink_screen {
    struct zink_instance_info instance_info;
 
    VkPhysicalDevice pdev;
-   uint32_t vk_version;
+   uint32_t vk_version, spirv_version;
    struct util_idalloc_mt buffer_ids;
 
    struct zink_device_info info;

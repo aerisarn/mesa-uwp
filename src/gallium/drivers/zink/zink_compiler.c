@@ -640,9 +640,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
 
    assign_io_locations(nir, shader_slot_map, shader_slots_reserved);
 
-   uint32_t spirv_version = screen->vk_version >= VK_MAKE_VERSION(1, 2, 0) ?
-                            0x00010500 : 0x00010000;
-   struct spirv_shader *spirv = nir_to_spirv(nir, streamout, spirv_version);
+   struct spirv_shader *spirv = nir_to_spirv(nir, streamout, screen->spirv_version);
    if (!spirv)
       goto done;
 
