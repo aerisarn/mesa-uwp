@@ -3,7 +3,31 @@
 ; Version: 01000001
 
         [01000001]  ; nop
-        [01000060]  ; nop
+        [01000078]  ; nop
+        mov $01, 0x0830	; CP_SQE_INSTR_BASE
+        mov $02, 0x0002
+        cwrite $01, [$00 + @REG_READ_ADDR], 0x0
+        cwrite $02, [$00 + @REG_READ_DWORDS], 0x0
+        mov $01, $regdata
+        mov $02, $regdata
+        add $01, $01, 0x0004
+        addhi $02, $02, 0x0000
+        mov $03, 0x0001
+        cwrite $01, [$00 + @MEM_READ_ADDR], 0x0
+        cwrite $02, [$00 + @MEM_READ_ADDR+0x1], 0x0
+        cwrite $03, [$00 + @MEM_READ_DWORDS], 0x0
+        rot $04, $memdata, 0x0008
+        ushr $04, $04, 0x0006
+        sub $04, $04, 0x0004
+        add $01, $01, $04
+        addhi $02, $02, 0x0000
+        mov $rem, 0x0080
+        cwrite $01, [$00 + @MEM_READ_ADDR], 0x0
+        cwrite $02, [$00 + @MEM_READ_ADDR+0x1], 0x0
+        cwrite $02, [$00 + @LOAD_STORE_HI], 0x0
+        cwrite $rem, [$00 + @MEM_READ_DWORDS], 0x0
+        cwrite $00, [$00 + @PACKET_TABLE_WRITE_ADDR], 0x0
+        (rep)cwrite $memdata, [$00 + @PACKET_TABLE_WRITE], 0x0
         mov $02, 0x0883	; CP_SCRATCH[0].REG
         mov $03, 0xbeef
         mov $04, 0xdead << 16
