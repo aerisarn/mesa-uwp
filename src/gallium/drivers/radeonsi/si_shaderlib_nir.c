@@ -43,7 +43,7 @@ static nir_ssa_def *get_global_ids(nir_builder *b, unsigned num_components)
 
    nir_ssa_def *local_ids = nir_channels(b, nir_load_local_invocation_id(b), mask);
    nir_ssa_def *block_ids = nir_channels(b, nir_load_work_group_id(b, 32), mask);
-   nir_ssa_def *block_size = nir_channels(b, nir_load_local_group_size(b), mask);
+   nir_ssa_def *block_size = nir_channels(b, nir_load_workgroup_size(b), mask);
    return nir_iadd(b, nir_imul(b, block_ids, block_size), local_ids);
 }
 

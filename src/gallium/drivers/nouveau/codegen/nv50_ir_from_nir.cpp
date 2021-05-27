@@ -1566,7 +1566,7 @@ Converter::convert(nir_intrinsic_op intr)
       return SV_INSTANCE_ID;
    case nir_intrinsic_load_invocation_id:
       return SV_INVOCATION_ID;
-   case nir_intrinsic_load_local_group_size:
+   case nir_intrinsic_load_workgroup_size:
       return SV_NTID;
    case nir_intrinsic_load_local_invocation_id:
       return SV_TID;
@@ -1843,7 +1843,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_load_helper_invocation:
    case nir_intrinsic_load_instance_id:
    case nir_intrinsic_load_invocation_id:
-   case nir_intrinsic_load_local_group_size:
+   case nir_intrinsic_load_workgroup_size:
    case nir_intrinsic_load_local_invocation_id:
    case nir_intrinsic_load_num_work_groups:
    case nir_intrinsic_load_patch_vertices_in:

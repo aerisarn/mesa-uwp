@@ -3814,7 +3814,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       break;
    }
 
-   case nir_intrinsic_load_local_group_size: {
+   case nir_intrinsic_load_workgroup_size: {
       assert(compiler->lower_variable_group_size);
       assert(nir->info.cs.workgroup_size_variable);
       for (unsigned i = 0; i < 3; i++) {

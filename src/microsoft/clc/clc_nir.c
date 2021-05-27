@@ -146,7 +146,7 @@ clc_nir_lower_system_values(nir_shader *nir, nir_variable *var)
             case nir_intrinsic_load_work_dim:
                progress |= lower_load_work_dim(&b, intr, var);
                break;
-            case nir_intrinsic_load_local_group_size:
+            case nir_intrinsic_load_workgroup_size:
                lower_load_local_group_size(&b, intr);
                break;
             case nir_intrinsic_load_num_work_groups:

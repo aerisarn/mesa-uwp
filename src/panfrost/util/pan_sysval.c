@@ -72,7 +72,7 @@ panfrost_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
                 return PAN_SYSVAL_VIEWPORT_OFFSET;
         case nir_intrinsic_load_num_work_groups:
                 return PAN_SYSVAL_NUM_WORK_GROUPS;
-        case nir_intrinsic_load_local_group_size:
+        case nir_intrinsic_load_workgroup_size:
                 return PAN_SYSVAL_LOCAL_GROUP_SIZE;
         case nir_intrinsic_load_work_dim:
                 return PAN_SYSVAL_WORK_DIM;

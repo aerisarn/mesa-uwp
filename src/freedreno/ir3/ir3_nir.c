@@ -680,7 +680,7 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 					layout->num_driver_params =
 						MAX2(layout->num_driver_params, IR3_DP_NUM_WORK_GROUPS_Z + 1);
 					break;
-				case nir_intrinsic_load_local_group_size:
+				case nir_intrinsic_load_workgroup_size:
 					layout->num_driver_params =
 						MAX2(layout->num_driver_params, IR3_DP_LOCAL_GROUP_SIZE_Z + 1);
 					break;

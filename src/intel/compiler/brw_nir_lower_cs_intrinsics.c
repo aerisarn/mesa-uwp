@@ -53,7 +53,7 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
 
       nir_ssa_def *sysval;
       switch (intrinsic->intrinsic) {
-      case nir_intrinsic_load_local_group_size:
+      case nir_intrinsic_load_workgroup_size:
       case nir_intrinsic_load_work_group_id:
       case nir_intrinsic_load_num_work_groups:
          /* Convert this to 32-bit if it's not */
@@ -82,7 +82,7 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
             nir_ssa_def *size_x;
             nir_ssa_def *size_y;
             if (state->nir->info.cs.workgroup_size_variable) {
-               nir_ssa_def *size_xyz = nir_load_local_group_size(b);
+               nir_ssa_def *size_xyz = nir_load_workgroup_size(b);
                size_x = nir_channel(b, size_xyz, 0);
                size_y = nir_channel(b, size_xyz, 1);
             } else {
@@ -214,7 +214,7 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
       case nir_intrinsic_load_num_subgroups: {
          nir_ssa_def *size;
          if (state->nir->info.cs.workgroup_size_variable) {
-            nir_ssa_def *size_xyz = nir_load_local_group_size(b);
+            nir_ssa_def *size_xyz = nir_load_workgroup_size(b);
             nir_ssa_def *size_x = nir_channel(b, size_xyz, 0);
             nir_ssa_def *size_y = nir_channel(b, size_xyz, 1);
             nir_ssa_def *size_z = nir_channel(b, size_xyz, 2);

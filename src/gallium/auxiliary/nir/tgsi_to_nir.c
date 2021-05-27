@@ -623,7 +623,7 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
          load = nir_load_work_group_id(b, 32);
          break;
       case TGSI_SEMANTIC_BLOCK_SIZE:
-         load = nir_load_local_group_size(b);
+         load = nir_load_workgroup_size(b);
          break;
       case TGSI_SEMANTIC_CS_USER_DATA_AMD:
          load = nir_load_user_data_amd(b);
