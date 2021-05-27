@@ -3806,10 +3806,10 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
       if (s->info.shared_size)
          create_shared_block(&ctx, s->info.shared_size);
 
-      if (s->info.cs.local_size[0] || s->info.cs.local_size[1] || s->info.cs.local_size[2])
+      if (s->info.cs.workgroup_size[0] || s->info.cs.workgroup_size[1] || s->info.cs.workgroup_size[2])
          spirv_builder_emit_exec_mode_literal3(&ctx.builder, entry_point, SpvExecutionModeLocalSize,
-                                               (uint32_t[3]){(uint32_t)s->info.cs.local_size[0], (uint32_t)s->info.cs.local_size[1],
-                                               (uint32_t)s->info.cs.local_size[2]});
+                                               (uint32_t[3]){(uint32_t)s->info.cs.workgroup_size[0], (uint32_t)s->info.cs.workgroup_size[1],
+                                               (uint32_t)s->info.cs.workgroup_size[2]});
       else {
          SpvId sizes[3];
          uint32_t ids[] = {ZINK_WORKGROUP_SIZE_X, ZINK_WORKGROUP_SIZE_Y, ZINK_WORKGROUP_SIZE_Z};

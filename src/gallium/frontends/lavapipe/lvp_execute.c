@@ -348,9 +348,9 @@ static void handle_compute_pipeline(struct lvp_cmd_buffer_entry *cmd,
 {
    struct lvp_pipeline *pipeline = cmd->u.pipeline.pipeline;
 
-   state->dispatch_info.block[0] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.cs.local_size[0];
-   state->dispatch_info.block[1] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.cs.local_size[1];
-   state->dispatch_info.block[2] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.cs.local_size[2];
+   state->dispatch_info.block[0] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.cs.workgroup_size[0];
+   state->dispatch_info.block[1] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.cs.workgroup_size[1];
+   state->dispatch_info.block[2] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.cs.workgroup_size[2];
    state->pctx->bind_compute_state(state->pctx, pipeline->shader_cso[PIPE_SHADER_COMPUTE]);
 }
 

@@ -528,7 +528,7 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
             break;
          }
          case nir_intrinsic_load_local_group_size: {
-            assert(nir->info.cs.local_size_variable);
+            assert(nir->info.cs.workgroup_size_variable);
             if (variable_group_size_idx == -1) {
                variable_group_size_idx = num_system_values;
                num_system_values += 3;

@@ -89,7 +89,7 @@ validate_DispatchCompute(struct gl_context *ctx, const GLuint *num_groups)
     *  program for the compute shader stage has a variable work group size."
     */
    struct gl_program *prog = ctx->_Shader->CurrentProgram[MESA_SHADER_COMPUTE];
-   if (prog->info.cs.local_size_variable) {
+   if (prog->info.cs.workgroup_size_variable) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "glDispatchCompute(variable work group size forbidden)");
       return GL_FALSE;
@@ -113,7 +113,7 @@ validate_DispatchComputeGroupSizeARB(struct gl_context *ctx,
     *  shader stage has a fixed work group size."
     */
    struct gl_program *prog = ctx->_Shader->CurrentProgram[MESA_SHADER_COMPUTE];
-   if (!prog->info.cs.local_size_variable) {
+   if (!prog->info.cs.workgroup_size_variable) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "glDispatchComputeGroupSizeARB(fixed work group size "
                   "forbidden)");
@@ -269,7 +269,7 @@ valid_dispatch_indirect(struct gl_context *ctx,  GLintptr indirect)
     *  compute shader stage has a variable work group size."
     */
    struct gl_program *prog = ctx->_Shader->CurrentProgram[MESA_SHADER_COMPUTE];
-   if (prog->info.cs.local_size_variable) {
+   if (prog->info.cs.workgroup_size_variable) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "%s(variable work group size forbidden)", name);
       return GL_FALSE;

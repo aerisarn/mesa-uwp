@@ -1289,9 +1289,9 @@ Converter::parseNIR()
 
    switch(prog->getType()) {
    case Program::TYPE_COMPUTE:
-      info->prop.cp.numThreads[0] = nir->info.cs.local_size[0];
-      info->prop.cp.numThreads[1] = nir->info.cs.local_size[1];
-      info->prop.cp.numThreads[2] = nir->info.cs.local_size[2];
+      info->prop.cp.numThreads[0] = nir->info.cs.workgroup_size[0];
+      info->prop.cp.numThreads[1] = nir->info.cs.workgroup_size[1];
+      info->prop.cp.numThreads[2] = nir->info.cs.workgroup_size[2];
       info_out->bin.smemSize += nir->info.shared_size;
       break;
    case Program::TYPE_FRAGMENT:

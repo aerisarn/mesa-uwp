@@ -1160,9 +1160,9 @@ static const struct dxil_mdnode *
 emit_threads(struct ntd_context *ctx)
 {
    const nir_shader *s = ctx->shader;
-   const struct dxil_mdnode *threads_x = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.cs.local_size[0], 1));
-   const struct dxil_mdnode *threads_y = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.cs.local_size[1], 1));
-   const struct dxil_mdnode *threads_z = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.cs.local_size[2], 1));
+   const struct dxil_mdnode *threads_x = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.cs.workgroup_size[0], 1));
+   const struct dxil_mdnode *threads_y = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.cs.workgroup_size[1], 1));
+   const struct dxil_mdnode *threads_z = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.cs.workgroup_size[2], 1));
    if (!threads_x || !threads_y || !threads_z)
       return false;
 

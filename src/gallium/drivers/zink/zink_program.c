@@ -589,9 +589,9 @@ void
 zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const uint block[3])
 {
    struct zink_shader *zs = comp->shader;
-   bool use_local_size = !(zs->nir->info.cs.local_size[0] ||
-                           zs->nir->info.cs.local_size[1] ||
-                           zs->nir->info.cs.local_size[2]);
+   bool use_local_size = !(zs->nir->info.cs.workgroup_size[0] ||
+                           zs->nir->info.cs.workgroup_size[1] ||
+                           zs->nir->info.cs.workgroup_size[2]);
    if (ctx->compute_pipeline_state.use_local_size != use_local_size)
       ctx->compute_pipeline_state.dirty = true;
    ctx->compute_pipeline_state.use_local_size = use_local_size;

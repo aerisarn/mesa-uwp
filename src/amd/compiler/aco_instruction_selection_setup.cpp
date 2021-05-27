@@ -1078,9 +1078,9 @@ setup_isel_context(Program* program,
       program->workgroup_size = program->wave_size;
    } else if (program->stage == compute_cs) {
       /* CS sets the workgroup size explicitly */
-      program->workgroup_size = shaders[0]->info.cs.local_size[0] *
-                                shaders[0]->info.cs.local_size[1] *
-                                shaders[0]->info.cs.local_size[2];
+      program->workgroup_size = shaders[0]->info.cs.workgroup_size[0] *
+                                shaders[0]->info.cs.workgroup_size[1] *
+                                shaders[0]->info.cs.workgroup_size[2];
    } else if (program->stage.hw == HWStage::ES || program->stage == geometry_gs) {
       /* Unmerged ESGS operate in workgroups if on-chip GS (LDS rings) are enabled on GFX7-8 (not implemented in Mesa)  */
       program->workgroup_size = program->wave_size;

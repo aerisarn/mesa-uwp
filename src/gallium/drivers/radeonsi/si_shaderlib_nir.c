@@ -59,9 +59,9 @@ void *si_create_dcc_retile_cs(struct si_context *sctx, struct radeon_surf *surf)
       sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
 
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "dcc_retile");
-   b.shader->info.cs.local_size[0] = 8;
-   b.shader->info.cs.local_size[1] = 8;
-   b.shader->info.cs.local_size[2] = 1;
+   b.shader->info.cs.workgroup_size[0] = 8;
+   b.shader->info.cs.workgroup_size[1] = 8;
+   b.shader->info.cs.workgroup_size[2] = 1;
    b.shader->info.cs.user_data_components_amd = 3;
    b.shader->info.num_ssbos = 1;
 
@@ -107,9 +107,9 @@ void *gfx9_create_clear_dcc_msaa_cs(struct si_context *sctx, struct si_texture *
       sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
 
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "clear_dcc_msaa");
-   b.shader->info.cs.local_size[0] = 8;
-   b.shader->info.cs.local_size[1] = 8;
-   b.shader->info.cs.local_size[2] = 1;
+   b.shader->info.cs.workgroup_size[0] = 8;
+   b.shader->info.cs.workgroup_size[1] = 8;
+   b.shader->info.cs.workgroup_size[2] = 1;
    b.shader->info.cs.user_data_components_amd = 2;
    b.shader->info.num_ssbos = 1;
 

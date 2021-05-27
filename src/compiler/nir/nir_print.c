@@ -1606,11 +1606,11 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
       fprintf(fp, "label: %s\n", shader->info.label);
 
    if (gl_shader_stage_is_compute(shader->info.stage)) {
-      fprintf(fp, "local-size: %u, %u, %u%s\n",
-              shader->info.cs.local_size[0],
-              shader->info.cs.local_size[1],
-              shader->info.cs.local_size[2],
-              shader->info.cs.local_size_variable ? " (variable)" : "");
+      fprintf(fp, "workgroup-size: %u, %u, %u%s\n",
+              shader->info.cs.workgroup_size[0],
+              shader->info.cs.workgroup_size[1],
+              shader->info.cs.workgroup_size[2],
+              shader->info.cs.workgroup_size_variable ? " (variable)" : "");
       fprintf(fp, "shared-size: %u\n", shader->info.shared_size);
    }
 

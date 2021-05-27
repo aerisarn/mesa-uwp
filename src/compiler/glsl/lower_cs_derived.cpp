@@ -54,7 +54,7 @@ public:
    explicit lower_cs_derived_visitor(gl_linked_shader *shader)
       : progress(false),
         shader(shader),
-        local_size_variable(shader->Program->info.cs.local_size_variable),
+        local_size_variable(shader->Program->info.cs.workgroup_size_variable),
         gl_WorkGroupSize(NULL),
         gl_WorkGroupID(NULL),
         gl_LocalInvocationID(NULL),
@@ -144,7 +144,7 @@ lower_cs_derived_visitor::find_sysvals()
          ir_constant_data data;
          memset(&data, 0, sizeof(data));
          for (int i = 0; i < 3; i++)
-            data.u[i] = shader->Program->info.cs.local_size[i];
+            data.u[i] = shader->Program->info.cs.workgroup_size[i];
          gl_WorkGroupSize = new(shader) ir_constant(glsl_type::uvec3_type, &data);
       }
    }

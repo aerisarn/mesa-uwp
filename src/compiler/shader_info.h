@@ -384,10 +384,10 @@ typedef struct shader_info {
       } fs;
 
       struct {
-         uint16_t local_size[3];
-         uint16_t local_size_hint[3];
+         uint16_t workgroup_size[3];
+         uint16_t workgroup_size_hint[3];
 
-         bool local_size_variable:1;
+         bool workgroup_size_variable:1;
          uint8_t user_data_components_amd:3;
 
          /*

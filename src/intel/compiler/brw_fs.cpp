@@ -9534,10 +9534,10 @@ lower_simd(nir_builder *b, nir_instr *instr, void *options)
       /* If the whole workgroup fits in one thread, we can lower subgroup_id
        * to a constant zero.
        */
-      if (!b->shader->info.cs.local_size_variable) {
-         unsigned local_workgroup_size = b->shader->info.cs.local_size[0] *
-                                         b->shader->info.cs.local_size[1] *
-                                         b->shader->info.cs.local_size[2];
+      if (!b->shader->info.cs.workgroup_size_variable) {
+         unsigned local_workgroup_size = b->shader->info.cs.workgroup_size[0] *
+                                         b->shader->info.cs.workgroup_size[1] *
+                                         b->shader->info.cs.workgroup_size[2];
          if (local_workgroup_size <= simd_width)
             return nir_imm_int(b, 0);
       }
@@ -9599,15 +9599,15 @@ brw_compile_cs(const struct brw_compiler *compiler,
    unsigned min_dispatch_width;
    unsigned max_dispatch_width;
 
-   if (nir->info.cs.local_size_variable) {
+   if (nir->info.cs.workgroup_size_variable) {
       generate_all = true;
       min_dispatch_width = 8;
       max_dispatch_width = 32;
    } else {
       generate_all = false;
-      prog_data->local_size[0] = nir->info.cs.local_size[0];
-      prog_data->local_size[1] = nir->info.cs.local_size[1];
-      prog_data->local_size[2] = nir->info.cs.local_size[2];
+      prog_data->local_size[0] = nir->info.cs.workgroup_size[0];
+      prog_data->local_size[1] = nir->info.cs.workgroup_size[1];
+      prog_data->local_size[2] = nir->info.cs.workgroup_size[2];
       unsigned local_workgroup_size = prog_data->local_size[0] *
                                       prog_data->local_size[1] *
                                       prog_data->local_size[2];

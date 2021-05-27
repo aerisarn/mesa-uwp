@@ -649,7 +649,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
    switch (nir->info.stage) {
    case MESA_SHADER_COMPUTE:
       for (int i = 0; i < 3; ++i)
-         info->cs.block_size[i] = nir->info.cs.local_size[i];
+         info->cs.block_size[i] = nir->info.cs.workgroup_size[i];
       break;
    case MESA_SHADER_FRAGMENT:
       info->ps.can_discard = nir->info.fs.uses_discard;
