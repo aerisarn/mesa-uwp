@@ -621,18 +621,15 @@ radv_dump_device_name(struct radv_device *device, FILE *f)
    char kernel_version[128] = {0};
    struct utsname uname_data;
 #endif
-   const char *chip_name;
-
-   chip_name = device->ws->get_chip_name(device->ws);
 
 #ifdef _WIN32
-   fprintf(f, "Device name: %s (%s / DRM %i.%i.%i)\n\n", chip_name, device->physical_device->name,
+   fprintf(f, "Device name: %s (DRM %i.%i.%i)\n\n", device->physical_device->marketing_name,
            info->drm_major, info->drm_minor, info->drm_patchlevel);
 #else
    if (uname(&uname_data) == 0)
       snprintf(kernel_version, sizeof(kernel_version), " / %s", uname_data.release);
 
-   fprintf(f, "Device name: %s (%s / DRM %i.%i.%i%s)\n\n", chip_name, device->physical_device->name,
+   fprintf(f, "Device name: %s (DRM %i.%i.%i%s)\n\n", device->physical_device->marketing_name,
            info->drm_major, info->drm_minor, info->drm_patchlevel, kernel_version);
 #endif
 }
