@@ -813,6 +813,7 @@ main(int argc, char **argv)
    uint32_t *buf;
    char *file;
    bool colors = false;
+   uint32_t gpu_id = 0;
    size_t sz;
    int c, ret;
 
@@ -820,7 +821,7 @@ main(int argc, char **argv)
    while ((c = getopt(argc, argv, "g:vce")) != -1) {
       switch (c) {
       case 'g':
-         gpuver = atoi(optarg);
+         gpu_id = atoi(optarg);
          break;
       case 'v':
          verbose = true;
@@ -845,13 +846,20 @@ main(int argc, char **argv)
    file = argv[optind];
 
    /* if gpu version not specified, infer from filename: */
-   if (!gpuver) {
-      if (strstr(file, "a5")) {
-         gpuver = 5;
-      } else if (strstr(file, "a6")) {
-         gpuver = 6;
-      }
+   if (!gpu_id) {
+      char *str = strstr(file, "a5");
+      if (!str)
+         str = strstr(file, "a6");
+      if (str)
+         gpu_id = atoi(str + 1);
    }
+
+   if (gpu_id < 500) {
+      printf("invalid gpu_id: %d\n", gpu_id);
+      return -1;
+   }
+
+   gpuver = gpu_id / 100;
 
    /* a6xx is *mostly* a superset of a5xx, but some opcodes shuffle
     * around, and behavior of special regs is a bit different.  Right
