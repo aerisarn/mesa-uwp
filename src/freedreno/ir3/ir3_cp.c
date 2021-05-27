@@ -310,6 +310,17 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 {
 	struct ir3_instruction *src = ssa(reg);
 
+	/* Values that are uniform inside a loop can become divergent outside
+	 * it if the loop has a divergent trip count. This means that we can't
+	 * propagate a copy of a shared to non-shared register if it would
+	 * make the shared reg's live range extend outside of its loop. Users
+	 * outside the loop would see the value for the thread(s) that last
+	 * exited the loop, rather than for their own thread.
+	 */
+	if ((src->dsts[0]->flags & IR3_REG_SHARED) &&
+		src->block->loop_id != instr->block->loop_id)
+		return false;
+
 	if (is_eligible_mov(src, instr, true)) {
 		/* simple case, no immed/const/relativ, only mov's w/ ssa src: */
 		struct ir3_register *src_reg = src->srcs[0];

@@ -2861,6 +2861,8 @@ emit_block(struct ir3_context *ctx, nir_block *nblock)
 
 	list_addtail(&ctx->block->node, &ctx->ir->block_list);
 
+	ctx->block->loop_id = ctx->loop_id;
+
 	/* re-emit addr register in each block if needed: */
 	for (int i = 0; i < ARRAY_SIZE(ctx->addr0_ht); i++) {
 		_mesa_hash_table_destroy(ctx->addr0_ht[i], NULL);
@@ -2915,8 +2917,11 @@ emit_if(struct ir3_context *ctx, nir_if *nif)
 static void
 emit_loop(struct ir3_context *ctx, nir_loop *nloop)
 {
+	unsigned old_loop_id = ctx->loop_id;
+	ctx->loop_id = ctx->so->loops + 1;
 	emit_cf_list(ctx, &nloop->body);
 	ctx->so->loops++;
+	ctx->loop_id = old_loop_id;
 }
 
 static void
