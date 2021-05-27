@@ -252,7 +252,8 @@ cso_create_context(struct pipe_context *pipe, unsigned flags)
    ctx->pipe = pipe;
    ctx->sample_mask = ~0;
 
-   cso_init_vbuf(ctx, flags);
+   if (!(flags & CSO_NO_VBUF))
+      cso_init_vbuf(ctx, flags);
 
    /* Enable for testing: */
    if (0) cso_set_maximum_cache_size(&ctx->cache, 4);
