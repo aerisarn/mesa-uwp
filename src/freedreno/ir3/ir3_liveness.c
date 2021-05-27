@@ -96,6 +96,20 @@ compute_block_liveness(struct ir3_liveness *live, struct ir3_block *block,
 			}
 		}
 	}
+
+	for (unsigned i = 0; i < block->physical_predecessors_count; i++) {
+		const struct ir3_block *pred = block->physical_predecessors[i];
+		unsigned name;
+		BITSET_FOREACH_SET(name, tmp_live, live->definitions_count) {
+			struct ir3_register *reg = live->definitions[name];
+			if (!(reg->flags & IR3_REG_SHARED))
+				continue;
+			if (!BITSET_TEST(live->live_out[pred->index], name)) {
+				progress = true;
+				BITSET_SET(live->live_out[pred->index], name);
+			}
+		}
+	}
 	
 	return progress;
 }

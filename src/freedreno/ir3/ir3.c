@@ -363,6 +363,11 @@ void ir3_block_add_predecessor(struct ir3_block *block, struct ir3_block *pred)
 	array_insert(block, block->predecessors, pred);
 }
 
+void ir3_block_add_physical_predecessor(struct ir3_block *block, struct ir3_block *pred)
+{
+	array_insert(block, block->physical_predecessors, pred);
+}
+
 void ir3_block_remove_predecessor(struct ir3_block *block, struct ir3_block *pred)
 {
 	for (unsigned i = 0; i < block->predecessors_count; i++) {

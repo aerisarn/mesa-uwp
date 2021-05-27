@@ -192,8 +192,14 @@ merge_state(struct ra_val_ctx *ctx, struct reaching_state *dst,
 	bool progress = false;
 	progress |= merge_file(&dst->full, &src->full, ctx->full_size);
 	progress |= merge_file(&dst->half, &src->half, ctx->half_size);
-	progress |= merge_file(&dst->shared, &src->shared, RA_SHARED_SIZE);
 	return progress;
+}
+
+static bool
+merge_state_physical(struct ra_val_ctx *ctx, struct reaching_state *dst,
+					 const struct reaching_state *src)
+{
+	return merge_file(&dst->shared, &src->shared, RA_SHARED_SIZE);
 }
 
 static struct file_state *
@@ -337,11 +343,20 @@ propagate_block(struct ra_val_ctx *ctx, struct ir3_block *block)
 
 	bool progress = false;
 	for (unsigned i = 0; i < 2; i++) {
-		if (!block->successors[i])
+		struct ir3_block *succ = block->successors[i];
+		if (!succ)
 			continue;
 		progress |= merge_state(ctx,
-								&ctx->block_reaching[block->successors[i]->index],
+								&ctx->block_reaching[succ->index],
 								&ctx->reaching);
+	}
+	for (unsigned i = 0; i < 2; i++) {
+		struct ir3_block *succ = block->physical_successors[i];
+		if (!succ)
+			continue;
+		progress |= merge_state_physical(ctx,
+										 &ctx->block_reaching[succ->index],
+										 &ctx->reaching);
 	}
 	return progress;
 }

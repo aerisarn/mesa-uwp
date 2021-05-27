@@ -2882,6 +2882,7 @@ emit_block(struct ir3_context *ctx, nir_block *nblock)
 		if (nblock->successors[i]) {
 			ctx->block->successors[i] =
 				get_block(ctx, nblock->successors[i]);
+			ctx->block->physical_successors[i] = ctx->block->successors[i];
 		}
 	}
 
@@ -2899,6 +2900,16 @@ emit_if(struct ir3_context *ctx, nir_if *nif)
 
 	emit_cf_list(ctx, &nif->then_list);
 	emit_cf_list(ctx, &nif->else_list);
+
+	struct ir3_block *last_then = get_block(ctx, nir_if_last_then_block(nif));
+	struct ir3_block *first_else = get_block(ctx, nir_if_first_else_block(nif));
+	assert(last_then->physical_successors[0] && !last_then->physical_successors[1]);
+	last_then->physical_successors[1] = first_else;
+
+	struct ir3_block *last_else = get_block(ctx, nir_if_last_else_block(nif));
+	struct ir3_block *after_if =
+		get_block(ctx, nir_cf_node_as_block(nir_cf_node_next(&nif->cf_node)));
+	last_else->physical_successors[0] = after_if;
 }
 
 static void
@@ -3071,6 +3082,8 @@ setup_predecessors(struct ir3 *ir)
 		for (int i = 0; i < ARRAY_SIZE(block->successors); i++) {
 			if (block->successors[i])
 				ir3_block_add_predecessor(block->successors[i], block);
+			if (block->physical_successors[i])
+				ir3_block_add_physical_predecessor(block->physical_successors[i], block);
 		}
 	}
 }

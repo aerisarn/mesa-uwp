@@ -522,14 +522,26 @@ struct ir3_block {
 
 	struct list_head instr_list;  /* list of ir3_instruction */
 
-	/* each block has either one or two successors.. in case of
-	 * two successors, 'condition' decides which one to follow.
-	 * A block preceding an if/else has two successors.
+	/* each block has either one or two successors.. in case of two
+	 * successors, 'condition' decides which one to follow.  A block preceding
+	 * an if/else has two successors.
+	 *
+	 * In some cases the path that the machine actually takes through the
+	 * program may not match the per-thread view of the CFG. In particular
+	 * this is the case for if/else, where the machine jumps from the end of
+	 * the if to the beginning of the else and switches active lanes. While
+	 * most things only care about the per-thread view, we need to use the
+	 * "physical" view when allocating shared registers. "successors" contains
+	 * the per-thread successors, and "physical_successors" contains the
+	 * physical successors which includes the fallthrough edge from the if to
+	 * the else.
 	 */
 	struct ir3_instruction *condition;
 	struct ir3_block *successors[2];
+	struct ir3_block *physical_successors[2];
 
 	DECLARE_ARRAY(struct ir3_block *, predecessors);
+	DECLARE_ARRAY(struct ir3_block *, physical_predecessors);
 
 	uint16_t start_ip, end_ip;
 
@@ -573,6 +585,7 @@ ir3_start_block(struct ir3 *ir)
 }
 
 void ir3_block_add_predecessor(struct ir3_block *block, struct ir3_block *pred);
+void ir3_block_add_physical_predecessor(struct ir3_block *block, struct ir3_block *pred);
 void ir3_block_remove_predecessor(struct ir3_block *block, struct ir3_block *pred);
 unsigned ir3_block_get_pred_index(struct ir3_block *block, struct ir3_block *pred);
 
