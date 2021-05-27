@@ -2497,6 +2497,16 @@ v3dv_GetDeviceMemoryCommitment(VkDevice device,
 }
 
 void
+v3dv_GetImageSparseMemoryRequirements(
+    VkDevice device,
+    VkImage image,
+    uint32_t *pSparseMemoryRequirementCount,
+    VkSparseImageMemoryRequirements *pSparseMemoryRequirements)
+{
+   *pSparseMemoryRequirementCount = 0;
+}
+
+void
 v3dv_GetImageSparseMemoryRequirements2(
    VkDevice device,
    const VkImageSparseMemoryRequirementsInfo2 *pInfo,
