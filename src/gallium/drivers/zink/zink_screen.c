@@ -1222,6 +1222,27 @@ zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback)
 }
 
 static bool
+check_have_device_time(struct zink_screen *screen)
+{
+   uint32_t num_domains = 0;
+   screen->vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, NULL);
+   assert(num_domains > 0);
+
+   VkTimeDomainEXT *domains = malloc(sizeof(VkTimeDomainEXT) * num_domains);
+   screen->vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, domains);
+
+   /* VK_TIME_DOMAIN_DEVICE_EXT is used for the ctx->get_timestamp hook and is the only one we really need */
+   for (unsigned i = 0; i < num_domains; i++) {
+      if (domains[i] == VK_TIME_DOMAIN_DEVICE_EXT) {
+         return true;
+      }
+   }
+
+   free(domains);
+   return false;
+}
+
+static bool
 load_device_extensions(struct zink_screen *screen)
 {
    if (screen->info.have_EXT_transform_feedback) {
@@ -1248,24 +1269,6 @@ load_device_extensions(struct zink_screen *screen)
    if (screen->info.have_EXT_calibrated_timestamps) {
       GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceCalibrateableTimeDomainsEXT);
       GET_PROC_ADDR(GetCalibratedTimestampsEXT);
-
-      uint32_t num_domains = 0;
-      screen->vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, NULL);
-      assert(num_domains > 0);
-
-      VkTimeDomainEXT *domains = malloc(sizeof(VkTimeDomainEXT) * num_domains);
-      screen->vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, domains);
-
-      /* VK_TIME_DOMAIN_DEVICE_EXT is used for the ctx->get_timestamp hook and is the only one we really need */
-      ASSERTED bool have_device_time = false;
-      for (unsigned i = 0; i < num_domains; i++) {
-         if (domains[i] == VK_TIME_DOMAIN_DEVICE_EXT) {
-            have_device_time = true;
-            break;
-         }
-      }
-      assert(have_device_time);
-      free(domains);
    }
    if (screen->info.have_EXT_extended_dynamic_state) {
       GET_PROC_ADDR(CmdSetViewportWithCountEXT);
@@ -1299,13 +1302,6 @@ load_device_extensions(struct zink_screen *screen)
       GET_PROC_ADDR_KHR(DestroyDescriptorUpdateTemplate);
       GET_PROC_ADDR_KHR(UpdateDescriptorSetWithTemplate);
    }
-
-   screen->have_triangle_fans = true;
-#if defined(VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME)
-   if (screen->info.have_EXTX_portability_subset) {
-      screen->have_triangle_fans = (VK_TRUE == screen->info.portability_subset_extx_feats.triangleFans);
-   }
-#endif // VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME
 
    if (screen->info.have_KHR_swapchain) {
       GET_PROC_ADDR(CreateSwapchainKHR);
@@ -1717,6 +1713,16 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    if (!zink_verify_device_extensions(screen))
       goto fail;
+
+   if (!check_have_device_time(screen))
+      goto fail;
+
+   screen->have_triangle_fans = true;
+#if defined(VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME)
+   if (screen->info.have_EXTX_portability_subset) {
+      screen->have_triangle_fans = (VK_TRUE == screen->info.portability_subset_extx_feats.triangleFans);
+   }
+#endif // VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME
 
    check_base_requirements(screen);
 
