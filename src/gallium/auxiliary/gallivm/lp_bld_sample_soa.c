@@ -4235,10 +4235,16 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                               NULL,
                               outdata);
 
-      for (unsigned chan = 0; chan < 4; chan++) {
+      for (unsigned chan = 0; chan < 3; chan++) {
          outdata[chan] = lp_build_select(&texel_bld, out_of_bounds,
                                          texel_bld.zero, outdata[chan]);
       }
+      if (format_desc->swizzle[3] == PIPE_SWIZZLE_1)
+         outdata[3] = lp_build_select(&texel_bld, out_of_bounds,
+                                      texel_bld.one, outdata[3]);
+      else
+         outdata[3] = lp_build_select(&texel_bld, out_of_bounds,
+                                      texel_bld.zero, outdata[3]);
    } else if (params->img_op == LP_IMG_STORE) {
       lp_build_store_rgba_soa(gallivm, format_desc, params->type, params->exec_mask, base_ptr, offset, out_of_bounds,
                               params->indata);
