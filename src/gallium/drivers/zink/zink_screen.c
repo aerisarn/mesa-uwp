@@ -1670,6 +1670,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!zink_load_instance_extensions(screen))
       goto fail;
 
+   if (!zink_verify_instance_extensions(screen))
+      goto fail;
+
    if (screen->instance_info.have_EXT_debug_utils &&
       (zink_debug & ZINK_DEBUG_VALIDATION) && !create_debug(screen))
       debug_printf("ZINK: failed to setup debug utils\n");
@@ -1711,6 +1714,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       goto fail;
 
    vk_device_dispatch_table_load(&screen->vk.device, &vkGetDeviceProcAddr, screen->dev);
+
+   if (!zink_verify_device_extensions(screen))
+      goto fail;
 
    check_base_requirements(screen);
 

@@ -268,6 +268,9 @@ struct zink_device_info {
 bool
 zink_get_physical_device_info(struct zink_screen *screen);
 
+bool
+zink_verify_device_extensions(struct zink_screen *screen);
+
 #endif
 """
 
@@ -439,6 +442,25 @@ zink_get_physical_device_info(struct zink_screen *screen)
 fail:
    return false;
 }
+
+bool
+zink_verify_device_extensions(struct zink_screen *screen)
+{
+%for ext in extensions:
+%if registry.in_registry(ext.name):
+   if (screen->info.have_${ext.name_with_vendor()}) {
+%for cmd in registry.get_registry_entry(ext.name).device_commands:
+      if (!screen->vk.${cmd.lstrip("vk")}) {
+         mesa_loge("ZINK: GetDeviceProcAddr failed: ${cmd}\\n");
+         return false;
+      }
+%endfor
+   }
+%endif
+%endfor
+
+   return true;
+}
 """
 
 
@@ -514,6 +536,6 @@ if __name__ == "__main__":
         print(header, file=header_file)
 
     with open(impl_path, "w") as impl_file:
-        impl = Template(impl_code, lookup=lookup).render(extensions=extensions, versions=versions).strip()
+        impl = Template(impl_code, lookup=lookup).render(extensions=extensions, versions=versions, registry=registry).strip()
         impl = replace_code(impl, replacement)
         print(impl, file=impl_file)

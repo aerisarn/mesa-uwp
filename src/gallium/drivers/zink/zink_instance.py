@@ -98,6 +98,9 @@ zink_create_instance(struct zink_instance_info *instance_info);
 bool
 zink_load_instance_extensions(struct zink_screen *screen);
 
+bool
+zink_verify_instance_extensions(struct zink_screen *screen);
+
 #endif
 """
 
@@ -251,6 +254,31 @@ zink_load_instance_extensions(struct zink_screen *screen)
 
    return true;
 }
+
+bool
+zink_verify_instance_extensions(struct zink_screen *screen)
+{
+%for ext in extensions:
+%if registry.in_registry(ext.name):
+   if (screen->instance_info.have_${ext.name_with_vendor()}) {
+%for cmd in registry.get_registry_entry(ext.name).instance_commands:
+      if (!screen->vk.${cmd.lstrip("vk")}) {
+         mesa_loge("ZINK: GetInstanceProcAddr failed: ${cmd}\\n");
+         return false;
+      }
+%endfor
+%for cmd in registry.get_registry_entry(ext.name).pdevice_commands:
+      if (!screen->vk.${cmd.lstrip("vk")}) {
+         mesa_loge("ZINK: GetInstanceProcAddr failed: ${cmd}\\n");
+         return false;
+      }
+%endfor
+   }
+%endif
+%endfor
+
+   return true;
+}
 """
 
 
@@ -318,6 +346,6 @@ if __name__ == "__main__":
         print(header, file=header_file)
 
     with open(impl_path, "w") as impl_file:
-        impl = Template(impl_code).render(extensions=extensions, layers=layers).strip()
+        impl = Template(impl_code).render(extensions=extensions, layers=layers, registry=registry).strip()
         impl = replace_code(impl, replacement)
         print(impl, file=impl_file)
