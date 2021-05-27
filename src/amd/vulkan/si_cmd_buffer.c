@@ -268,10 +268,18 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
       radeon_set_uconfig_reg(cs, R_030928_GE_INDX_OFFSET, 0);
       radeon_set_uconfig_reg(cs, R_03097C_GE_STEREO_CNTL, 0);
       radeon_set_uconfig_reg(cs, R_030988_GE_USER_VGPR_EN, 0);
+
+      radeon_set_context_reg(cs, R_028038_DB_DFSM_CONTROL,
+                             S_028038_PUNCHOUT_MODE(V_028038_FORCE_OFF) |
+                             S_028038_POPS_DRAIN_PS_ON_OVERLAP(1));
    } else if (physical_device->rad_info.chip_class == GFX9) {
       radeon_set_uconfig_reg(cs, R_030920_VGT_MAX_VTX_INDX, ~0);
       radeon_set_uconfig_reg(cs, R_030924_VGT_MIN_VTX_INDX, 0);
       radeon_set_uconfig_reg(cs, R_030928_VGT_INDX_OFFSET, 0);
+
+      radeon_set_context_reg(cs, R_028060_DB_DFSM_CONTROL,
+                             S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF) |
+                             S_028060_POPS_DRAIN_PS_ON_OVERLAP(1));
    } else {
       /* These registers, when written, also overwrite the
        * CLEAR_STATE context, so we can't rely on CLEAR_STATE setting
