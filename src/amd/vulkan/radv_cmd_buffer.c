@@ -1061,7 +1061,7 @@ radv_emit_shader_prefetch(struct radv_cmd_buffer *cmd_buffer, struct radv_shader
    if (!shader)
       return;
 
-   va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+   va = radv_shader_variant_get_va(shader);
 
    si_cp_dma_prefetch(cmd_buffer, va, shader->code_size);
 }

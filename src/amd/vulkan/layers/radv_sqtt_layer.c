@@ -884,7 +884,7 @@ radv_add_code_object(struct radv_device *device, struct radv_pipeline *pipeline)
       }
       memcpy(code, shader->code_ptr, shader->code_size);
 
-      va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+      va = radv_shader_variant_get_va(shader);
 
       record->shader_data[i].hash[0] = (uint64_t)(uintptr_t)shader;
       record->shader_data[i].hash[1] = (uint64_t)(uintptr_t)shader >> 32;
@@ -929,7 +929,7 @@ radv_register_pipeline(struct radv_device *device, struct radv_pipeline *pipelin
       if (!shader)
          continue;
 
-      va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+      va = radv_shader_variant_get_va(shader);
       base_va = MIN2(base_va, va);
    }
 

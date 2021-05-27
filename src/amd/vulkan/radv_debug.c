@@ -306,7 +306,7 @@ radv_dump_annotated_shader(struct radv_shader_variant *shader, gl_shader_stage s
    if (!shader)
       return;
 
-   start_addr = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+   start_addr = radv_shader_variant_get_va(shader);
    end_addr = start_addr + shader->code_size;
 
    /* See if any wave executes the shader. */
@@ -883,38 +883,6 @@ radv_trap_handler_finish(struct radv_device *device)
    }
 }
 
-static struct radv_shader_variant *
-radv_get_faulty_shader(struct radv_device *device, uint64_t faulty_pc)
-{
-   struct radv_shader_variant *shader = NULL;
-
-   mtx_lock(&device->shader_slab_mutex);
-
-   list_for_each_entry(struct radv_shader_slab, slab, &device->shader_slabs, slabs)
-   {
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#endif
-      list_for_each_entry(struct radv_shader_variant, s, &slab->shaders, slab_list)
-      {
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-         uint64_t offset = align_u64(s->bo_offset + s->code_size, 256);
-         uint64_t va = radv_buffer_get_va(s->bo);
-
-         if (faulty_pc >= va + s->bo_offset && faulty_pc < va + offset) {
-            mtx_unlock(&device->shader_slab_mutex);
-            return s;
-         }
-      }
-   }
-   mtx_unlock(&device->shader_slab_mutex);
-
-   return shader;
-}
-
 static void
 radv_dump_faulty_shader(struct radv_device *device, uint64_t faulty_pc)
 {
@@ -922,11 +890,11 @@ radv_dump_faulty_shader(struct radv_device *device, uint64_t faulty_pc)
    uint64_t start_addr, end_addr;
    uint32_t instr_offset;
 
-   shader = radv_get_faulty_shader(device, faulty_pc);
+   shader = radv_find_shader_variant(device, faulty_pc);
    if (!shader)
       return;
 
-   start_addr = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+   start_addr = radv_shader_variant_get_va(shader);
    end_addr = start_addr + shader->code_size;
    instr_offset = faulty_pc - start_addr;
 

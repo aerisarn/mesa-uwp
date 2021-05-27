@@ -4385,7 +4385,7 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf 
                              const struct radv_pipeline *pipeline,
                              const struct radv_shader_variant *shader)
 {
-   uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+   uint64_t va = radv_shader_variant_get_va(shader);
 
    radeon_set_sh_reg_seq(cs, R_00B120_SPI_SHADER_PGM_LO_VS, 4);
    radeon_emit(cs, va >> 8);
@@ -4458,7 +4458,7 @@ static void
 radv_pipeline_generate_hw_es(struct radeon_cmdbuf *cs, const struct radv_pipeline *pipeline,
                              const struct radv_shader_variant *shader)
 {
-   uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+   uint64_t va = radv_shader_variant_get_va(shader);
 
    radeon_set_sh_reg_seq(cs, R_00B320_SPI_SHADER_PGM_LO_ES, 4);
    radeon_emit(cs, va >> 8);
@@ -4472,7 +4472,7 @@ radv_pipeline_generate_hw_ls(struct radeon_cmdbuf *cs, const struct radv_pipelin
                              const struct radv_shader_variant *shader)
 {
    unsigned num_lds_blocks = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_lds_blocks;
-   uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+   uint64_t va = radv_shader_variant_get_va(shader);
    uint32_t rsrc2 = shader->config.rsrc2;
 
    radeon_set_sh_reg(cs, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
@@ -4492,7 +4492,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
                               const struct radv_pipeline *pipeline,
                               const struct radv_shader_variant *shader)
 {
-   uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+   uint64_t va = radv_shader_variant_get_va(shader);
    gl_shader_stage es_type =
       radv_pipeline_has_tess(pipeline) ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
    struct radv_shader_variant *es = es_type == MESA_SHADER_TESS_EVAL
@@ -4632,7 +4632,7 @@ static void
 radv_pipeline_generate_hw_hs(struct radeon_cmdbuf *cs, const struct radv_pipeline *pipeline,
                              const struct radv_shader_variant *shader)
 {
-   uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+   uint64_t va = radv_shader_variant_get_va(shader);
 
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX9) {
       if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
@@ -4829,7 +4829,7 @@ radv_pipeline_generate_hw_gs(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf 
    radeon_set_context_reg(ctx_cs, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
                           gs_state->vgt_esgs_ring_itemsize);
 
-   va = radv_buffer_get_va(gs->bo) + gs->bo_offset;
+   va = radv_shader_variant_get_va(gs);
 
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX9) {
       if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
@@ -5050,7 +5050,7 @@ radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct rade
    assert(pipeline->shaders[MESA_SHADER_FRAGMENT]);
 
    ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
-   va = radv_buffer_get_va(ps->bo) + ps->bo_offset;
+   va = radv_shader_variant_get_va(ps);
 
    radeon_set_sh_reg_seq(cs, R_00B020_SPI_SHADER_PGM_LO_PS, 4);
    radeon_emit(cs, va >> 8);
@@ -5620,7 +5620,7 @@ static void
 radv_pipeline_generate_hw_cs(struct radeon_cmdbuf *cs, const struct radv_pipeline *pipeline)
 {
    struct radv_shader_variant *shader = pipeline->shaders[MESA_SHADER_COMPUTE];
-   uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+   uint64_t va = radv_shader_variant_get_va(shader);
    struct radv_device *device = pipeline->device;
 
    radeon_set_sh_reg(cs, R_00B830_COMPUTE_PGM_LO, va >> 8);
