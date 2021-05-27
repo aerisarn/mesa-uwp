@@ -6201,7 +6201,7 @@ save_Attr32bit(struct gl_context *ctx, unsigned attr, unsigned size,
     * FLOAT and INT.
     */
    if (type == GL_FLOAT) {
-      if (attr >= VERT_ATTRIB_GENERIC0) {
+      if (VERT_BIT(attr) & VERT_BIT_GENERIC_ALL) {
          base_op = OPCODE_ATTR_1F_ARB;
          attr -= VERT_ATTRIB_GENERIC0;
       } else {

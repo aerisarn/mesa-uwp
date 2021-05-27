@@ -42,7 +42,6 @@ _vbo_attribute_alias_map[VP_MODE_MAX][VERT_ATTRIB_MAX] = {
       VBO_ATTRIB_COLOR1,              /* VERT_ATTRIB_COLOR1 */
       VBO_ATTRIB_FOG,                 /* VERT_ATTRIB_FOG */
       VBO_ATTRIB_COLOR_INDEX,         /* VERT_ATTRIB_COLOR_INDEX */
-      VBO_ATTRIB_EDGEFLAG,            /* VERT_ATTRIB_EDGEFLAG */
       VBO_ATTRIB_TEX0,                /* VERT_ATTRIB_TEX0 */
       VBO_ATTRIB_TEX1,                /* VERT_ATTRIB_TEX1 */
       VBO_ATTRIB_TEX2,                /* VERT_ATTRIB_TEX2 */
@@ -67,7 +66,8 @@ _vbo_attribute_alias_map[VP_MODE_MAX][VERT_ATTRIB_MAX] = {
       VBO_ATTRIB_MAT_FRONT_SHININESS, /* VERT_ATTRIB_GENERIC12 */
       VBO_ATTRIB_MAT_BACK_SHININESS,  /* VERT_ATTRIB_GENERIC13 */
       VBO_ATTRIB_MAT_FRONT_INDEXES,   /* VERT_ATTRIB_GENERIC14 */
-      VBO_ATTRIB_MAT_BACK_INDEXES     /* VERT_ATTRIB_GENERIC15 */
+      VBO_ATTRIB_MAT_BACK_INDEXES,    /* VERT_ATTRIB_GENERIC15 */
+      VBO_ATTRIB_EDGEFLAG,            /* VERT_ATTRIB_EDGEFLAG */
    },
 
    /* VP_MODE_SHADER: */
@@ -78,7 +78,6 @@ _vbo_attribute_alias_map[VP_MODE_MAX][VERT_ATTRIB_MAX] = {
       VBO_ATTRIB_COLOR1,              /* VERT_ATTRIB_COLOR1 */
       VBO_ATTRIB_FOG,                 /* VERT_ATTRIB_FOG */
       VBO_ATTRIB_COLOR_INDEX,         /* VERT_ATTRIB_COLOR_INDEX */
-      VBO_ATTRIB_EDGEFLAG,            /* VERT_ATTRIB_EDGEFLAG */
       VBO_ATTRIB_TEX0,                /* VERT_ATTRIB_TEX0 */
       VBO_ATTRIB_TEX1,                /* VERT_ATTRIB_TEX1 */
       VBO_ATTRIB_TEX2,                /* VERT_ATTRIB_TEX2 */
@@ -103,7 +102,8 @@ _vbo_attribute_alias_map[VP_MODE_MAX][VERT_ATTRIB_MAX] = {
       VBO_ATTRIB_GENERIC12,           /* VERT_ATTRIB_GENERIC12 */
       VBO_ATTRIB_GENERIC13,           /* VERT_ATTRIB_GENERIC13 */
       VBO_ATTRIB_GENERIC14,           /* VERT_ATTRIB_GENERIC14 */
-      VBO_ATTRIB_GENERIC15            /* VERT_ATTRIB_GENERIC15 */
+      VBO_ATTRIB_GENERIC15,           /* VERT_ATTRIB_GENERIC15 */
+      VBO_ATTRIB_EDGEFLAG,            /* VERT_ATTRIB_EDGEFLAG */
    }
 };
 

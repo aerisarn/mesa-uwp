@@ -123,7 +123,6 @@ gl_vert_attrib_name(gl_vert_attrib attrib)
       ENUM(VERT_ATTRIB_COLOR1),
       ENUM(VERT_ATTRIB_FOG),
       ENUM(VERT_ATTRIB_COLOR_INDEX),
-      ENUM(VERT_ATTRIB_EDGEFLAG),
       ENUM(VERT_ATTRIB_TEX0),
       ENUM(VERT_ATTRIB_TEX1),
       ENUM(VERT_ATTRIB_TEX2),
@@ -149,6 +148,7 @@ gl_vert_attrib_name(gl_vert_attrib attrib)
       ENUM(VERT_ATTRIB_GENERIC13),
       ENUM(VERT_ATTRIB_GENERIC14),
       ENUM(VERT_ATTRIB_GENERIC15),
+      ENUM(VERT_ATTRIB_EDGEFLAG),
    };
    STATIC_ASSERT(ARRAY_SIZE(names) == VERT_ATTRIB_MAX);
    return NAME(attrib);
