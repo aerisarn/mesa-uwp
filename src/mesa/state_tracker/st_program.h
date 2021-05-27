@@ -47,8 +47,6 @@
 extern "C" {
 #endif
 
-#define ST_DOUBLE_ATTRIB_PLACEHOLDER 0xff
-
 struct st_external_sampler_key
 {
    GLuint lower_nv12;             /**< bitmask of 2 plane YUV samplers */
@@ -253,9 +251,7 @@ struct st_common_variant
    /* Parameters which generated this variant. */
    struct st_common_variant_key key;
 
-   /* Bitfield of VERT_BIT_* bits matching vertex shader inputs,
-    * but not include the high part of doubles.
-    */
+   /* Bitfield of VERT_BIT_* bits matching vertex shader inputs. */
    GLbitfield vert_attrib_mask;
 };
 

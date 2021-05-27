@@ -431,12 +431,6 @@ st_prepare_vertex_program(struct st_program *stp)
          stvp->input_to_index[attr] = stvp->num_inputs;
          stvp->index_to_input[stvp->num_inputs] = attr;
          stvp->num_inputs++;
-
-         if ((stp->Base.DualSlotInputs & BITFIELD64_BIT(attr)) != 0) {
-            /* add placeholder for second part of a double attribute */
-            stvp->index_to_input[stvp->num_inputs] = ST_DOUBLE_ATTRIB_PLACEHOLDER;
-            stvp->num_inputs++;
-         }
       }
    }
    /* pre-setup potentially unused edgeflag input */
@@ -984,8 +978,6 @@ st_get_common_variant(struct st_context *st,
             unsigned num_inputs = stvp->num_inputs + key->passthrough_edgeflags;
             for (unsigned index = 0; index < num_inputs; ++index) {
                unsigned attr = stvp->index_to_input[index];
-               if (attr == ST_DOUBLE_ATTRIB_PLACEHOLDER)
-                  continue;
                v->vert_attrib_mask |= 1u << attr;
             }
          }

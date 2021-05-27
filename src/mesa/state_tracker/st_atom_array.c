@@ -50,78 +50,21 @@
 #include "main/varray.h"
 #include "main/arrayobj.h"
 
-static void set_velement(struct pipe_vertex_element *velement,
-                          int src_offset, int format,
-                          int instance_divisor, int vbo_index)
-{
-   velement->src_offset = src_offset;
-   velement->src_format = format;
-   velement->instance_divisor = instance_divisor;
-   velement->vertex_buffer_index = vbo_index;
-   velement->dual_slot = false;
-   assert(velement->src_format);
-}
-
-static void init_velement_64bit(const struct st_vertex_program *vp,
-                                struct pipe_vertex_element *velements,
-                                const struct gl_vertex_format *vformat,
-                                int src_offset, int instance_divisor,
-                                int vbo_index, int idx)
-{
-   const GLubyte nr_components = vformat->Size;
-   int lower_format;
-
-   if (nr_components < 2)
-      lower_format = PIPE_FORMAT_R32G32_UINT;
-   else
-      lower_format = PIPE_FORMAT_R32G32B32A32_UINT;
-
-   set_velement(&velements[idx], src_offset,
-                lower_format, instance_divisor, vbo_index);
-   idx++;
-
-   if (idx < vp->num_inputs &&
-       vp->index_to_input[idx] == ST_DOUBLE_ATTRIB_PLACEHOLDER) {
-      if (nr_components >= 3) {
-         if (nr_components == 3)
-            lower_format = PIPE_FORMAT_R32G32_UINT;
-         else
-            lower_format = PIPE_FORMAT_R32G32B32A32_UINT;
-
-         set_velement(&velements[idx], src_offset + 4 * sizeof(float),
-                      lower_format, instance_divisor, vbo_index);
-      } else {
-         /* The values here are undefined. Fill in some conservative
-          * dummy values.
-          */
-         set_velement(&velements[idx], src_offset, PIPE_FORMAT_R32G32_UINT,
-                      instance_divisor, vbo_index);
-      }
-   }
-}
-
 /* Always inline the non-64bit element code, so that the compiler can see
  * that velements is on the stack.
  */
 static void ALWAYS_INLINE
-init_velement(const struct st_vertex_program *vp,
-              struct pipe_vertex_element *velements,
+init_velement(struct pipe_vertex_element *velements,
               const struct gl_vertex_format *vformat,
               int src_offset, int instance_divisor,
-              int vbo_index, int idx)
+              int vbo_index, bool dual_slot, int idx)
 {
-   if (!vformat->Doubles) {
-      velements[idx].src_offset = src_offset;
-      velements[idx].src_format = vformat->_PipeFormat;
-      velements[idx].instance_divisor = instance_divisor;
-      velements[idx].vertex_buffer_index = vbo_index;
-      velements[idx].dual_slot = false;
-      assert(velements[idx].src_format);
-      return;
-   }
-
-   init_velement_64bit(vp, velements, vformat, src_offset, instance_divisor,
-                       vbo_index, idx);
+   velements[idx].src_offset = src_offset;
+   velements[idx].src_format = vformat->_PipeFormat;
+   velements[idx].instance_divisor = instance_divisor;
+   velements[idx].vertex_buffer_index = vbo_index;
+   velements[idx].dual_slot = dual_slot;
+   assert(velements[idx].src_format);
 }
 
 /* ALWAYS_INLINE helps the compiler realize that most of the parameters are
@@ -138,6 +81,7 @@ setup_arrays(struct st_context *st,
    struct gl_context *ctx = st->ctx;
    const struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
    const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
+   const GLbitfield dual_slot_inputs = vp->Base.Base.DualSlotInputs;
    const ubyte *input_to_index = vp->input_to_index;
 
    /* Process attribute array data. */
@@ -172,8 +116,9 @@ setup_arrays(struct st_context *st,
          vbuffer[bufidx].stride = binding->Stride; /* in bytes */
 
          /* Set the vertex element. */
-         init_velement(vp, velements->velems, &attrib->Format, 0,
+         init_velement(velements->velems, &attrib->Format, 0,
                        binding->InstanceDivisor, bufidx,
+                       dual_slot_inputs & BITFIELD_BIT(attr),
                        input_to_index[attr]);
       }
       return;
@@ -213,8 +158,9 @@ setup_arrays(struct st_context *st,
          const struct gl_array_attributes *const attrib
             = _mesa_draw_array_attrib(vao, attr);
          const GLuint off = _mesa_draw_attributes_relative_offset(attrib);
-         init_velement(vp, velements->velems, &attrib->Format, off,
+         init_velement(velements->velems, &attrib->Format, off,
                        binding->InstanceDivisor, bufidx,
+                       dual_slot_inputs & BITFIELD_BIT(attr),
                        input_to_index[attr]);
       } while (attrmask);
    }
@@ -247,6 +193,7 @@ st_setup_current(struct st_context *st,
 {
    struct gl_context *ctx = st->ctx;
    const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
+   const GLbitfield dual_slot_inputs = vp->Base.Base.DualSlotInputs;
 
    /* Process values that should have better been uniforms in the application */
    GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
@@ -269,8 +216,9 @@ st_setup_current(struct st_context *st,
          if (alignment != size)
             memset(cursor + size, 0, alignment - size);
 
-         init_velement(vp, velements->velems, &attrib->Format, cursor - data,
-                       0, bufidx, input_to_index[attr]);
+         init_velement(velements->velems, &attrib->Format, cursor - data,
+                       0, bufidx, dual_slot_inputs & BITFIELD_BIT(attr),
+                       input_to_index[attr]);
 
          cursor += alignment;
       } while (curmask);
@@ -307,6 +255,7 @@ st_setup_current_user(struct st_context *st,
 {
    struct gl_context *ctx = st->ctx;
    const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
+   const GLbitfield dual_slot_inputs = vp->Base.Base.DualSlotInputs;
    const ubyte *input_to_index = vp->input_to_index;
 
    /* Process values that should have better been uniforms in the application */
@@ -318,8 +267,9 @@ st_setup_current_user(struct st_context *st,
          = _mesa_draw_current_attrib(ctx, attr);
       const unsigned bufidx = (*num_vbuffers)++;
 
-      init_velement(vp, velements->velems, &attrib->Format, 0, 0,
-                    bufidx, input_to_index[attr]);
+      init_velement(velements->velems, &attrib->Format, 0, 0,
+                    bufidx, dual_slot_inputs & BITFIELD_BIT(attr),
+                    input_to_index[attr]);
 
       vbuffer[bufidx].is_user_buffer = true;
       vbuffer[bufidx].buffer.user = attrib->Ptr;
