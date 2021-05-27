@@ -402,8 +402,23 @@ radv_dump_annotated_shaders(struct radv_pipeline *pipeline, VkShaderStageFlagBit
 }
 
 static void
+radv_dump_spirv(struct radv_shader_variant *shader, const char *sha1, const char *dump_dir)
+{
+   char dump_path[512];
+   FILE *f;
+
+   snprintf(dump_path, sizeof(dump_path), "%s/%s.spv", dump_dir, sha1);
+
+   f = fopen(dump_path, "w+");
+   if (f) {
+      fwrite(shader->spirv, shader->spirv_size, 1, f);
+      fclose(f);
+   }
+}
+
+static void
 radv_dump_shader(struct radv_pipeline *pipeline, struct radv_shader_variant *shader,
-                 gl_shader_stage stage, FILE *f)
+                 gl_shader_stage stage, const char *dump_dir, FILE *f)
 {
    if (!shader)
       return;
@@ -417,8 +432,8 @@ radv_dump_shader(struct radv_pipeline *pipeline, struct radv_shader_variant *sha
       _mesa_sha1_compute(shader->spirv, shader->spirv_size, sha1);
       _mesa_sha1_format(sha1buf, sha1);
 
-      fprintf(f, "SPIRV (sha1: %s):\n", sha1buf);
-      radv_print_spirv(shader->spirv, shader->spirv_size, f);
+      fprintf(f, "SPIRV (see %s.spv)\n\n", sha1buf);
+      radv_dump_spirv(shader, sha1buf, dump_dir);
    }
 
    if (shader->nir_string) {
@@ -433,14 +448,15 @@ radv_dump_shader(struct radv_pipeline *pipeline, struct radv_shader_variant *sha
 }
 
 static void
-radv_dump_shaders(struct radv_pipeline *pipeline, VkShaderStageFlagBits active_stages, FILE *f)
+radv_dump_shaders(struct radv_pipeline *pipeline, VkShaderStageFlagBits active_stages,
+                  const char *dump_dir, FILE *f)
 {
    /* Dump active graphics shaders. */
    unsigned stages = active_stages;
    while (stages) {
       int stage = u_bit_scan(&stages);
 
-      radv_dump_shader(pipeline, pipeline->shaders[stage], stage, f);
+      radv_dump_shader(pipeline, pipeline->shaders[stage], stage, dump_dir, f);
    }
 }
 
@@ -480,7 +496,7 @@ radv_get_saved_pipeline(struct radv_device *device, enum ring_type ring)
 }
 
 static void
-radv_dump_queue_state(struct radv_queue *queue, FILE *f)
+radv_dump_queue_state(struct radv_queue *queue, const char *dump_dir, FILE *f)
 {
    enum ring_type ring = radv_queue_family_to_ring(queue->queue_family_index);
    struct radv_pipeline *pipeline;
@@ -489,7 +505,7 @@ radv_dump_queue_state(struct radv_queue *queue, FILE *f)
 
    pipeline = radv_get_saved_pipeline(queue->device, ring);
    if (pipeline) {
-      radv_dump_shaders(pipeline, pipeline->active_stages, f);
+      radv_dump_shaders(pipeline, pipeline->active_stages, dump_dir, f);
       if (!(queue->device->instance->debug_flags & RADV_DEBUG_NO_UMR))
          radv_dump_annotated_shaders(pipeline, pipeline->active_stages, f);
       radv_dump_vertex_descriptors(pipeline, f);
@@ -689,7 +705,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
    snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "pipeline.log");
    f = fopen(dump_path, "w+");
    if (f) {
-      radv_dump_queue_state(queue, f);
+      radv_dump_queue_state(queue, dump_dir, f);
       fclose(f);
    }
 
