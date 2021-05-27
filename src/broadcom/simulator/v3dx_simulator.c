@@ -456,6 +456,12 @@ v3dX(simulator_submit_cl_ioctl)(struct v3d_hw *v3d,
                                 struct drm_v3d_submit_cl *submit,
                                 uint32_t gmp_ofs)
 {
+        int last_bfc = (V3D_READ(V3D_CLE_0_BFC) &
+                        V3D_CLE_0_BFC_BMFCT_SET);
+
+        int last_rfc = (V3D_READ(V3D_CLE_0_RFC) &
+                        V3D_CLE_0_RFC_RMFCT_SET);
+
         g_gmp_ofs = gmp_ofs;
         v3d_reload_gmp(v3d);
 
@@ -479,8 +485,8 @@ v3dX(simulator_submit_cl_ioctl)(struct v3d_hw *v3d,
          * scheduler implements this using the GPU scheduler blocking on the
          * bin fence completing.  (We don't use HW semaphores).
          */
-        while (V3D_READ(V3D_CLE_0_CT0CA) !=
-               V3D_READ(V3D_CLE_0_CT0EA)) {
+        while ((V3D_READ(V3D_CLE_0_BFC) &
+                V3D_CLE_0_BFC_BMFCT_SET) == last_bfc) {
                 v3d_hw_tick(v3d);
         }
 
@@ -489,10 +495,8 @@ v3dX(simulator_submit_cl_ioctl)(struct v3d_hw *v3d,
         V3D_WRITE(V3D_CLE_0_CT1QBA, submit->rcl_start);
         V3D_WRITE(V3D_CLE_0_CT1QEA, submit->rcl_end);
 
-        while (V3D_READ(V3D_CLE_0_CT1CA) !=
-               V3D_READ(V3D_CLE_0_CT1EA) ||
-               V3D_READ(V3D_CLE_1_CT1CA) !=
-               V3D_READ(V3D_CLE_1_CT1EA)) {
+        while ((V3D_READ(V3D_CLE_0_RFC) &
+                V3D_CLE_0_RFC_RMFCT_SET) == last_rfc) {
                 v3d_hw_tick(v3d);
         }
 }
