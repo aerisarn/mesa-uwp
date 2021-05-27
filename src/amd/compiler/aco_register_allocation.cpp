@@ -356,59 +356,77 @@ std::set<std::pair<unsigned, unsigned>> find_vars(ra_ctx& ctx, RegisterFile& reg
                                                   const PhysRegInterval reg_interval);
 
 /* helper function for debugging */
+UNUSED void print_reg(const RegisterFile& reg_file, PhysReg reg, bool has_adjacent_variable) {
+   if (reg_file[reg] == 0xFFFFFFFF) {
+      printf("☐");
+   } else if (reg_file[reg]) {
+      const bool show_subdword_alloc = (reg_file[reg] == 0xF0000000);
+      if (show_subdword_alloc) {
+         const char* block_chars[] = {
+            "?", "▘", "▝", "▀",
+            "▖", "▌", "▞", "▛",
+            "▗", "▚", "▐", "▜",
+            "▄", "▙", "▟", "▉"
+         };
+         unsigned index = 0;
+         for (int i = 0; i < 4; ++i) {
+            if (reg_file.subdword_regs.at(reg)[i]) {
+               index |= 1 << i;
+            }
+         }
+         printf("%s", block_chars[index]);
+      } else {
+         /* Indicate filled register slot */
+         if (!has_adjacent_variable) {
+            printf("█");
+         } else {
+            /* Use a slightly shorter box to leave a small gap between adjacent variables */
+            printf("▉");
+         }
+      }
+   } else {
+      printf("·");
+   }
+}
+
+/* helper function for debugging */
 UNUSED void print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
 {
    PhysRegInterval regs = get_reg_bounds(ctx.program, vgprs ? RegType::vgpr : RegType::sgpr);
    char reg_char = vgprs ? 'v' : 's';
+   const int max_regs_per_line = 64;
 
    /* print markers */
    printf("       ");
-   for (unsigned i = 0; i < regs.size; i += 3) {
-      printf("%.2u ", i);
+   for (int i = 0; i < std::min<int>(max_regs_per_line, ROUND_DOWN_TO(regs.size, 4)); i += 4) {
+      printf("%-3.2u ", i);
    }
    printf("\n");
 
    /* print usage */
-   printf("%cgprs: ", reg_char);
-   unsigned free_regs = 0;
-   for (auto reg_it = regs.begin(); reg_it != regs.end(); ++reg_it) {
-      auto reg = *reg_it;
-      if (reg_file[reg] == 0xFFFFFFFF) {
-         printf("☐");
-      } else if (reg_file[reg]) {
-         const bool show_subdword_alloc = (reg_file[reg] == 0xF0000000);
-         if (show_subdword_alloc) {
-            const char* block_chars[] = {
-               "?", "▘", "▝", "▀",
-               "▖", "▌", "▞", "▛",
-               "▗", "▚", "▐", "▜",
-               "▄", "▙", "▟", "▉"
-            };
-            unsigned index = 0;
-            for (int i = 0; i < 4; ++i) {
-               if (reg_file.subdword_regs[reg][i]) {
-                  index |= 1 << i;
-               }
-            }
-            printf("%s", block_chars[index]);
-         } else {
-            /* Indicate filled register slot */
-            if (std::next(reg_it) == regs.end() ||
-                reg_file[reg] == reg_file[*std::next(reg_it)] ||
-                !reg_file[*std::next(reg_it)]) {
-               printf("█");
-            } else {
-               /* Use a slightly shorter box to leave a small gap between adjacent variables */
-               printf("▉");
-            }
-         }
-      } else {
-         free_regs++;
-         printf("·");
-      }
-   }
-   printf("\n");
+   auto line_begin_it = regs.begin();
+   while (line_begin_it != regs.end()) {
+      const int regs_in_line = std::min<int>(max_regs_per_line, std::distance(line_begin_it, regs.end()));
 
+      if (line_begin_it == regs.begin()) {
+         printf("%cgprs: ", reg_char);
+      } else {
+         printf("  %+4d ", std::distance(regs.begin(), line_begin_it));
+      }
+      const auto line_end_it = std::next(line_begin_it, regs_in_line);
+
+      for (auto reg_it = line_begin_it; reg_it != line_end_it; ++reg_it) {
+         bool has_adjacent_variable = (std::next(reg_it) != line_end_it &&
+                                       reg_file[*reg_it] != reg_file[*std::next(reg_it)] &&
+                                       reg_file[*std::next(reg_it)]);
+         print_reg(reg_file, *reg_it, has_adjacent_variable);
+      }
+
+      line_begin_it = line_end_it;
+      printf("\n");
+   }
+
+   const unsigned free_regs = std::count_if(regs.begin(), regs.end(), [&](auto reg) { return !reg_file[reg]; });
    printf("%u/%u used, %u/%u free\n", regs.size - free_regs, regs.size, free_regs, regs.size);
 
    /* print assignments ordered by registers */
