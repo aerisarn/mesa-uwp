@@ -34,7 +34,11 @@
 
 struct ntv_context {
    void *mem_ctx;
-   bool spirv_15;
+
+   /* SPIR-V 1.4 and later requires entrypoints to list all global
+    * variables in the interface.
+    */
+   bool spirv_1_4_interfaces;
 
    struct spirv_builder builder;
 
@@ -407,7 +411,7 @@ create_shared_block(struct ntv_context *ctx, unsigned shared_size)
                                                SpvStorageClassWorkgroup,
                                                array);
    ctx->shared_block_var = spirv_builder_emit_var(&ctx->builder, ptr_type, SpvStorageClassWorkgroup);
-   if (ctx->spirv_15) {
+   if (ctx->spirv_1_4_interfaces) {
       assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
       ctx->entry_ifaces[ctx->num_entry_ifaces++] = ctx->shared_block_var;
    }
@@ -436,7 +440,7 @@ input_var_init(struct ntv_context *ctx, struct nir_variable *var)
    if (var->data.mode == nir_var_mem_push_const) {
       ctx->push_const_var = var_id;
 
-      if (ctx->spirv_15) {
+      if (ctx->spirv_1_4_interfaces) {
          assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
          ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
       }
@@ -836,7 +840,7 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
       _mesa_hash_table_insert(ctx->image_vars, key, var);
       emit_access_decorations(ctx, var, var_id);
    }
-   if (ctx->spirv_15) {
+   if (ctx->spirv_1_4_interfaces) {
       assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
       ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
    }
@@ -928,7 +932,7 @@ emit_bo(struct ntv_context *ctx, struct nir_variable *var)
       assert(!ctx->ubos[var->data.driver_location]);
       ctx->ubos[var->data.driver_location] = var_id;
    }
-   if (ctx->spirv_15) {
+   if (ctx->spirv_1_4_interfaces) {
       assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
       ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
    }
@@ -3555,7 +3559,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, bool spir
    struct ntv_context ctx = {};
    ctx.mem_ctx = ralloc_context(NULL);
    ctx.builder.mem_ctx = ctx.mem_ctx;
-   ctx.spirv_15 = spirv_15;
+   ctx.spirv_1_4_interfaces = spirv_15;
 
    ctx.glsl_types = _mesa_pointer_hash_table_create(ctx.mem_ctx);
    if (!ctx.glsl_types)
