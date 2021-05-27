@@ -409,9 +409,9 @@ trace_screen_flush_frontbuffer(struct pipe_screen *_screen,
    trace_dump_arg(ptr, context_private);
    */
 
-   screen->flush_frontbuffer(screen, pipe, resource, level, layer, context_private, sub_box);
-
    trace_dump_call_end();
+
+   screen->flush_frontbuffer(screen, pipe, resource, level, layer, context_private, sub_box);
 }
 
 
