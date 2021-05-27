@@ -2030,8 +2030,25 @@ v3dv_BindImageMemory2(VkDevice _device,
                       uint32_t bindInfoCount,
                       const VkBindImageMemoryInfo *pBindInfos)
 {
-   for (uint32_t i = 0; i < bindInfoCount; i++)
-      bind_image_memory(&pBindInfos[i]);
+   for (uint32_t i = 0; i < bindInfoCount; i++) {
+      const VkBindImageMemorySwapchainInfoKHR *swapchain_info =
+         vk_find_struct_const(pBindInfos->pNext,
+                              BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR);
+      if (swapchain_info && swapchain_info->swapchain) {
+         struct v3dv_image *swapchain_image =
+            v3dv_wsi_get_image_from_swapchain(swapchain_info->swapchain,
+                                              swapchain_info->imageIndex);
+         VkBindImageMemoryInfo swapchain_bind = {
+            .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
+            .image = pBindInfos[i].image,
+            .memory = v3dv_device_memory_to_handle(swapchain_image->mem),
+            .memoryOffset = swapchain_image->mem_offset,
+         };
+         bind_image_memory(&swapchain_bind);
+      } else {
+         bind_image_memory(&pBindInfos[i]);
+      }
+   }
 
    return VK_SUCCESS;
 }
