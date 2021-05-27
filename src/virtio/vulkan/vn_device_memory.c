@@ -467,37 +467,60 @@ vn_GetMemoryFdKHR(VkDevice device,
 }
 
 VkResult
+vn_get_memory_dma_buf_properties(struct vn_device *dev,
+                                 int fd,
+                                 uint64_t *out_alloc_size,
+                                 uint32_t *out_mem_type_bits)
+{
+   VkDevice device = vn_device_to_handle(dev);
+   struct vn_renderer_bo *bo = NULL;
+   VkResult result = VK_SUCCESS;
+
+   result = vn_renderer_bo_create_from_dma_buf(dev->renderer, 0 /* size */,
+                                               fd, 0 /* flags */, &bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   vn_instance_roundtrip(dev->instance);
+
+   VkMemoryResourcePropertiesMESA props = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_RESOURCE_PROPERTIES_MESA,
+      .pNext = NULL,
+      .memoryTypeBits = 0,
+   };
+   result = vn_call_vkGetMemoryResourcePropertiesMESA(dev->instance, device,
+                                                      bo->res_id, &props);
+   vn_renderer_bo_unref(dev->renderer, bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   /* XXX extend VkMemoryResourcePropertiesMESA for host storage size */
+   *out_alloc_size = lseek(fd, 0, SEEK_END);
+   *out_mem_type_bits = props.memoryTypeBits;
+
+   return VK_SUCCESS;
+}
+
+VkResult
 vn_GetMemoryFdPropertiesKHR(VkDevice device,
                             VkExternalMemoryHandleTypeFlagBits handleType,
                             int fd,
                             VkMemoryFdPropertiesKHR *pMemoryFdProperties)
 {
    struct vn_device *dev = vn_device_from_handle(device);
+   uint64_t alloc_size = 0;
+   uint32_t mem_type_bits = 0;
+   VkResult result = VK_SUCCESS;
 
    if (handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT)
       return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
-   struct vn_renderer_bo *bo;
-   VkResult result =
-      vn_renderer_bo_create_from_dma_buf(dev->renderer, 0, fd, 0, &bo);
-   if (result != VK_SUCCESS)
-      return vn_error(dev->instance, result);
-   vn_instance_roundtrip(dev->instance);
-
-   VkMemoryResourcePropertiesMESA memory_resource_properties = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_RESOURCE_PROPERTIES_MESA,
-      .pNext = NULL,
-      .memoryTypeBits = 0,
-   };
-   result = vn_call_vkGetMemoryResourcePropertiesMESA(
-      dev->instance, device, bo->res_id, &memory_resource_properties);
+   result =
+      vn_get_memory_dma_buf_properties(dev, fd, &alloc_size, &mem_type_bits);
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
 
-   pMemoryFdProperties->memoryTypeBits =
-      memory_resource_properties.memoryTypeBits;
+   pMemoryFdProperties->memoryTypeBits = mem_type_bits;
 
-   vn_renderer_bo_unref(dev->renderer, bo);
-
-   return result;
+   return VK_SUCCESS;
 }
