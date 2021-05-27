@@ -3552,14 +3552,15 @@ get_spacing(enum gl_tess_spacing spacing)
 }
 
 struct spirv_shader *
-nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, bool spirv_15)
+nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t spirv_version)
 {
    struct spirv_shader *ret = NULL;
 
    struct ntv_context ctx = {};
    ctx.mem_ctx = ralloc_context(NULL);
    ctx.builder.mem_ctx = ctx.mem_ctx;
-   ctx.spirv_1_4_interfaces = spirv_15;
+   assert(spirv_version >= 0x10000);
+   ctx.spirv_1_4_interfaces = spirv_version >= 0x10400;
 
    ctx.glsl_types = _mesa_pointer_hash_table_create(ctx.mem_ctx);
    if (!ctx.glsl_types)
@@ -3899,7 +3900,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, bool spir
    if (!ret->words)
       goto fail;
 
-   ret->num_words = spirv_builder_get_words(&ctx.builder, ret->words, num_words, ctx.spirv_15);
+   ret->num_words = spirv_builder_get_words(&ctx.builder, ret->words, num_words, spirv_version);
    assert(ret->num_words == num_words);
 
    ralloc_free(ctx.mem_ctx);
