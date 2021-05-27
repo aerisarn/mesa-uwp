@@ -96,9 +96,6 @@ VkInstance
 zink_create_instance(struct zink_instance_info *instance_info);
 
 bool
-zink_load_instance_extensions(struct zink_screen *screen);
-
-bool
 zink_verify_instance_extensions(struct zink_screen *screen);
 
 #endif
@@ -218,41 +215,6 @@ zink_create_instance(struct zink_instance_info *instance_info)
       return VK_NULL_HANDLE;
 
    return instance;
-}
-
-bool
-zink_load_instance_extensions(struct zink_screen *screen)
-{
-   if (zink_debug & ZINK_DEBUG_VALIDATION) {
-      printf("zink: Loader %d.%d.%d \\n", VK_VERSION_MAJOR(screen->instance_info.loader_version), VK_VERSION_MINOR(screen->instance_info.loader_version), VK_VERSION_PATCH(screen->instance_info.loader_version));
-   }
-
-%for ext in extensions:
-%if bool(ext.instance_funcs) and not ext.core_since:
-   if (screen->instance_info.have_${ext.name_with_vendor()}) {
-   %for func in ext.instance_funcs:
-      GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, ${func}${ext.vendor()});
-      screen->vk_${func} = vk_${func}${ext.vendor()};
-   %endfor
-   }
-%elif bool(ext.instance_funcs):
-   if (screen->instance_info.have_${ext.name_with_vendor()}) {
-      if (screen->vk_version < ${ext.core_since.version()}) {
-      %for func in ext.instance_funcs:
-         GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, ${func}${ext.vendor()});
-         screen->vk_${func} = vk_${func}${ext.vendor()};
-         if (!screen->vk_${func}) return false;
-      %endfor
-      } else {
-      %for func in ext.instance_funcs:
-         GET_PROC_ADDR_INSTANCE(${func});
-      %endfor
-      }
-   }
-%endif
-%endfor
-
-   return true;
 }
 
 bool

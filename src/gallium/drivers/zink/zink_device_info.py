@@ -341,7 +341,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
    }
 
    // get device features
-   if (screen->vk_GetPhysicalDeviceFeatures2) {
+   if (screen->vk.GetPhysicalDeviceFeatures2) {
       // check for device extension features
       info->feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 
@@ -366,13 +366,13 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %endif
 %endfor
 
-      screen->vk_GetPhysicalDeviceFeatures2(screen->pdev, &info->feats);
+      screen->vk.GetPhysicalDeviceFeatures2(screen->pdev, &info->feats);
    } else {
       vkGetPhysicalDeviceFeatures(screen->pdev, &info->feats.features);
    }
 
    // check for device properties
-   if (screen->vk_GetPhysicalDeviceProperties2) {
+   if (screen->vk.GetPhysicalDeviceProperties2) {
       VkPhysicalDeviceProperties2 props = {};
       props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 
@@ -397,11 +397,11 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %endfor
 
       // note: setting up local VkPhysicalDeviceProperties2.
-      screen->vk_GetPhysicalDeviceProperties2(screen->pdev, &props);
+      screen->vk.GetPhysicalDeviceProperties2(screen->pdev, &props);
    }
 
    // enable the extensions if they match the conditions given by ext.enable_conds 
-   if (screen->vk_GetPhysicalDeviceProperties2) {
+   if (screen->vk.GetPhysicalDeviceProperties2) {
         %for ext in extensions:
 <%helpers:guard ext="${ext}">
 <%

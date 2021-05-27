@@ -301,7 +301,7 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici)
 {
    VkImageFormatProperties image_props;
    VkResult ret;
-   if (screen->vk_GetPhysicalDeviceImageFormatProperties2) {
+   if (screen->vk.GetPhysicalDeviceImageFormatProperties2) {
       VkImageFormatProperties2 props2 = {};
       props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
       VkPhysicalDeviceImageFormatInfo2 info = {};
@@ -311,7 +311,7 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici)
       info.tiling = ici->tiling;
       info.usage = ici->usage;
       info.flags = ici->flags;
-      ret = screen->vk_GetPhysicalDeviceImageFormatProperties2(screen->pdev, &info, &props2);
+      ret = screen->vk.GetPhysicalDeviceImageFormatProperties2(screen->pdev, &info, &props2);
       image_props = props2.imageFormatProperties;
    } else
       ret = vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici->format, ici->imageType,
@@ -691,7 +691,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       //TODO: remove for wsi
       fd_info.memory = obj->mem;
       fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-      VkResult result = (*screen->vk_GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
+      VkResult result = (*screen->vk.GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
       if (result != VK_SUCCESS)
          return false;
       whandle->handle = fd;

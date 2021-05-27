@@ -254,7 +254,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       template[i].pipelineBindPoint = pg->is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
       template[i].pipelineLayout = pg->layout;
       template[i].set = i;
-      if (screen->vk_CreateDescriptorUpdateTemplate(screen->dev, &template[i], NULL, &pg->dd->templates[i]) != VK_SUCCESS)
+      if (screen->vk.CreateDescriptorUpdateTemplate(screen->dev, &template[i], NULL, &pg->dd->templates[i]) != VK_SUCCESS)
          return false;
    }
    return true;
@@ -267,7 +267,7 @@ zink_descriptor_program_deinit_lazy(struct zink_screen *screen, struct zink_prog
       return;
    for (unsigned i = 0; i < 1 + !!pg->dd->push_usage; i++) {
       if (pg->dd->templates[i])
-         screen->vk_DestroyDescriptorUpdateTemplate(screen->dev, pg->dd->templates[i], NULL);
+         screen->vk.DestroyDescriptorUpdateTemplate(screen->dev, pg->dd->templates[i], NULL);
    }
    ralloc_free(pg->dd);
 }
@@ -355,7 +355,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
       batch_changed |= bs->dd->pg[is_compute] != pg;
 
       assert(pg->dd->layout_key->num_descriptors);
-      screen->vk_UpdateDescriptorSetWithTemplate(screen->dev, desc_set, pg->dd->templates[0], ctx);
+      screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, desc_set, pg->dd->templates[0], ctx);
       if (pg->dd->layout_key)
          vkCmdBindDescriptorSets(batch->state->cmdbuf,
                                  is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -372,13 +372,13 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
                                  0, NULL);
       }
       if (screen->info.have_KHR_push_descriptor)
-         screen->vk_CmdPushDescriptorSetWithTemplateKHR(batch->state->cmdbuf, pg->dd->templates[1],
+         screen->vk.CmdPushDescriptorSetWithTemplateKHR(batch->state->cmdbuf, pg->dd->templates[1],
                                                      pg->layout, 1, ctx);
       else {
          struct zink_descriptor_pool *pool = bs->dd->push_pool[is_compute];
          VkDescriptorSet desc_set = get_descriptor_set_lazy(ctx, NULL, pool, is_compute);
          bs = ctx->batch.state;
-         screen->vk_UpdateDescriptorSetWithTemplate(screen->dev, desc_set, pg->dd->templates[1], ctx);
+         screen->vk.UpdateDescriptorSetWithTemplate(screen->dev, desc_set, pg->dd->templates[1], ctx);
          vkCmdBindDescriptorSets(batch->state->cmdbuf,
                                  is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
                                  pg->layout, 1, 1, &desc_set,

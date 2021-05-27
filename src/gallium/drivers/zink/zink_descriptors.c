@@ -296,8 +296,8 @@ descriptor_layout_create(struct zink_screen *screen, enum zink_descriptor_type t
    supp.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT;
    supp.pNext = NULL;
    supp.supported = VK_FALSE;
-   if (screen->vk_GetDescriptorSetLayoutSupport) {
-      screen->vk_GetDescriptorSetLayoutSupport(screen->dev, &dcslci, &supp);
+   if (screen->vk.GetDescriptorSetLayoutSupport) {
+      screen->vk.GetDescriptorSetLayoutSupport(screen->dev, &dcslci, &supp);
       if (supp.supported == VK_FALSE) {
          debug_printf("vkGetDescriptorSetLayoutSupport claims layout is unsupported\n");
          return VK_NULL_HANDLE;

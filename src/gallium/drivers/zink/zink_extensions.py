@@ -151,7 +151,6 @@ class ExtensionRegistryEntry:
     # the version in which the extension is promoted to core VK
     promoted_in       : Version   = None
     # functions added by the extension are referred to as "commands" in the registry
-    commands          : List[str] = None
     device_commands   : List[str] = None
     pdevice_commands  : List[str] = None
     instance_commands : List[str] = None

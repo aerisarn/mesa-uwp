@@ -962,7 +962,7 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    struct zink_screen *screen = zink_screen(pscreen);
 
    if (VK_NULL_HANDLE != screen->debugUtilsCallbackHandle) {
-      screen->vk_DestroyDebugUtilsMessengerEXT(screen->instance, screen->debugUtilsCallbackHandle, NULL);
+      screen->vk.DestroyDebugUtilsMessengerEXT(screen->instance, screen->debugUtilsCallbackHandle, NULL);
    }
 
    hash_table_foreach(&screen->surface_cache, entry) {
@@ -1225,11 +1225,11 @@ static bool
 check_have_device_time(struct zink_screen *screen)
 {
    uint32_t num_domains = 0;
-   screen->vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, NULL);
+   screen->vk.GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, NULL);
    assert(num_domains > 0);
 
    VkTimeDomainEXT *domains = malloc(sizeof(VkTimeDomainEXT) * num_domains);
-   screen->vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, domains);
+   screen->vk.GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, domains);
 
    /* VK_TIME_DOMAIN_DEVICE_EXT is used for the ctx->get_timestamp hook and is the only one we really need */
    for (unsigned i = 0; i < num_domains; i++) {
@@ -1240,80 +1240,6 @@ check_have_device_time(struct zink_screen *screen)
 
    free(domains);
    return false;
-}
-
-static bool
-load_device_extensions(struct zink_screen *screen)
-{
-   if (screen->info.have_EXT_transform_feedback) {
-      GET_PROC_ADDR(CmdBindTransformFeedbackBuffersEXT);
-      GET_PROC_ADDR(CmdBeginTransformFeedbackEXT);
-      GET_PROC_ADDR(CmdEndTransformFeedbackEXT);
-      GET_PROC_ADDR(CmdBeginQueryIndexedEXT);
-      GET_PROC_ADDR(CmdEndQueryIndexedEXT);
-      GET_PROC_ADDR(CmdDrawIndirectByteCountEXT);
-   }
-   if (screen->info.have_KHR_external_memory_fd)
-      GET_PROC_ADDR(GetMemoryFdKHR);
-
-   if (screen->info.have_EXT_conditional_rendering) {
-      GET_PROC_ADDR(CmdBeginConditionalRenderingEXT);
-      GET_PROC_ADDR(CmdEndConditionalRenderingEXT);
-   }
-
-   if (screen->info.have_KHR_draw_indirect_count) {
-      GET_PROC_ADDR_KHR(CmdDrawIndexedIndirectCount);
-      GET_PROC_ADDR_KHR(CmdDrawIndirectCount);
-   }
-
-   if (screen->info.have_EXT_calibrated_timestamps) {
-      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceCalibrateableTimeDomainsEXT);
-      GET_PROC_ADDR(GetCalibratedTimestampsEXT);
-   }
-   if (screen->info.have_EXT_extended_dynamic_state) {
-      GET_PROC_ADDR(CmdSetViewportWithCountEXT);
-      GET_PROC_ADDR(CmdSetScissorWithCountEXT);
-      GET_PROC_ADDR(CmdSetDepthBoundsTestEnableEXT);
-      GET_PROC_ADDR(CmdSetDepthCompareOpEXT);
-      GET_PROC_ADDR(CmdSetDepthTestEnableEXT);
-      GET_PROC_ADDR(CmdSetDepthWriteEnableEXT);
-      GET_PROC_ADDR(CmdSetStencilOpEXT);
-      GET_PROC_ADDR(CmdSetStencilTestEnableEXT);
-      GET_PROC_ADDR(CmdBindVertexBuffers2EXT);
-      GET_PROC_ADDR(CmdSetFrontFaceEXT);
-   }
-
-   if (screen->info.have_EXT_image_drm_format_modifier)
-      GET_PROC_ADDR(GetImageDrmFormatModifierPropertiesEXT);
-
-   if (screen->info.have_KHR_timeline_semaphore)
-      GET_PROC_ADDR_KHR(WaitSemaphores);
-
-   if (screen->info.have_KHR_maintenance3)
-      GET_PROC_ADDR_KHR(GetDescriptorSetLayoutSupport);
-
-   if (screen->info.have_KHR_push_descriptor) {
-      GET_PROC_ADDR(CmdPushDescriptorSetKHR);
-      GET_PROC_ADDR(CmdPushDescriptorSetWithTemplateKHR);
-   }
-
-   if (screen->info.have_KHR_descriptor_update_template) {
-      GET_PROC_ADDR_KHR(CreateDescriptorUpdateTemplate);
-      GET_PROC_ADDR_KHR(DestroyDescriptorUpdateTemplate);
-      GET_PROC_ADDR_KHR(UpdateDescriptorSetWithTemplate);
-   }
-
-   if (screen->info.have_KHR_swapchain) {
-      GET_PROC_ADDR(CreateSwapchainKHR);
-      GET_PROC_ADDR(DestroySwapchainKHR);
-   }
-
-   if (screen->info.have_EXT_sample_locations) {
-      GET_PROC_ADDR(CmdSetSampleLocationsEXT);
-      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceMultisamplePropertiesEXT);
-   }
-
-   return true;
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
@@ -1342,10 +1268,6 @@ zink_debug_util_callback(
 static bool
 create_debug(struct zink_screen *screen)
 {
-   GET_PROC_ADDR_INSTANCE(CreateDebugUtilsMessengerEXT);
-   GET_PROC_ADDR_INSTANCE(DestroyDebugUtilsMessengerEXT);
-   GET_PROC_ADDR_INSTANCE(CmdInsertDebugUtilsLabelEXT);
-
    VkDebugUtilsMessengerCreateInfoEXT vkDebugUtilsMessengerCreateInfoEXT = {
        VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
        NULL,
@@ -1363,7 +1285,7 @@ create_debug(struct zink_screen *screen)
 
    VkDebugUtilsMessengerEXT vkDebugUtilsCallbackEXT = VK_NULL_HANDLE;
 
-   screen->vk_CreateDebugUtilsMessengerEXT(
+   screen->vk.CreateDebugUtilsMessengerEXT(
        screen->instance,
        &vkDebugUtilsMessengerCreateInfoEXT,
        NULL,
@@ -1390,25 +1312,25 @@ zink_internal_setup_moltenvk(struct zink_screen *screen)
    GET_PROC_ADDR_INSTANCE(UseIOSurfaceMVK);
    GET_PROC_ADDR_INSTANCE(GetIOSurfaceMVK);
 
-   if (screen->vk_GetVersionStringsMVK) {
+   if (screen->vk.GetVersionStringsMVK) {
       char molten_version[64] = {0};
       char vulkan_version[64] = {0};
 
-      (*screen->vk_GetVersionStringsMVK)(molten_version, sizeof(molten_version) - 1, vulkan_version, sizeof(vulkan_version) - 1);
+      (*screen->vk.GetVersionStringsMVK)(molten_version, sizeof(molten_version) - 1, vulkan_version, sizeof(vulkan_version) - 1);
 
       printf("zink: MoltenVK %s Vulkan %s \n", molten_version, vulkan_version);
    }
 
-   if (screen->vk_GetMoltenVKConfigurationMVK && screen->vk_SetMoltenVKConfigurationMVK) {
+   if (screen->vk.GetMoltenVKConfigurationMVK && screen->vk.SetMoltenVKConfigurationMVK) {
       MVKConfiguration molten_config = {0};
       size_t molten_config_size = sizeof(molten_config);
 
-      VkResult res = (*screen->vk_GetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
+      VkResult res = (*screen->vk.GetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
       if (res == VK_SUCCESS || res == VK_INCOMPLETE) {
          // Needed to allow MoltenVK to accept VkImageView swizzles.
          // Encountered when using VK_FORMAT_R8G8_UNORM
          molten_config.fullImageViewSwizzle = VK_TRUE;
-         (*screen->vk_SetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
+         (*screen->vk.SetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
       }
    }
 #endif // MVK_VERSION
@@ -1439,10 +1361,10 @@ populate_format_props(struct zink_screen *screen)
       VkFormat format = zink_get_format(screen, i);
       if (!format)
          continue;
-      if (screen->vk_GetPhysicalDeviceFormatProperties2) {
+      if (screen->vk.GetPhysicalDeviceFormatProperties2) {
          VkFormatProperties2 props = {};
          props.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
-         screen->vk_GetPhysicalDeviceFormatProperties2(screen->pdev, format, &props);
+         screen->vk.GetPhysicalDeviceFormatProperties2(screen->pdev, format, &props);
          screen->format_props[i] = props.formatProperties;
       } else
          vkGetPhysicalDeviceFormatProperties(screen->pdev, format, &screen->format_props[i]);
@@ -1487,7 +1409,7 @@ zink_screen_timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_
    bool success = false;
    if (screen->device_lost)
       return true;
-   VkResult ret = screen->vk_WaitSemaphores(screen->dev, &wi, timeout);
+   VkResult ret = screen->vk.WaitSemaphores(screen->dev, &wi, timeout);
    success = zink_screen_handle_vkresult(screen, ret);
 
    if (success)
@@ -1519,14 +1441,14 @@ zink_query_memory_info(struct pipe_screen *pscreen, struct pipe_memory_info *inf
 {
    struct zink_screen *screen = zink_screen(pscreen);
    memset(info, 0, sizeof(struct pipe_memory_info));
-   if (screen->info.have_EXT_memory_budget && screen->vk_GetPhysicalDeviceMemoryProperties2) {
+   if (screen->info.have_EXT_memory_budget && screen->vk.GetPhysicalDeviceMemoryProperties2) {
       VkPhysicalDeviceMemoryProperties2 mem = {};
       mem.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
 
       VkPhysicalDeviceMemoryBudgetPropertiesEXT budget = {};
       budget.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
       mem.pNext = &budget;
-      screen->vk_GetPhysicalDeviceMemoryProperties2(screen->pdev, &mem);
+      screen->vk.GetPhysicalDeviceMemoryProperties2(screen->pdev, &mem);
 
       for (unsigned i = 0; i < mem.memoryProperties.memoryHeapCount; i++) {
          if (mem.memoryProperties.memoryHeaps[i].flags == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
@@ -1663,9 +1585,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    vk_instance_dispatch_table_load(&screen->vk.instance, &vkGetInstanceProcAddr, screen->instance);
    vk_physical_device_dispatch_table_load(&screen->vk.physical_device, &vkGetInstanceProcAddr, screen->instance);
 
-   if (!zink_load_instance_extensions(screen))
-      goto fail;
-
    if (!zink_verify_instance_extensions(screen))
       goto fail;
 
@@ -1706,9 +1625,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       /* this has bad perf on AMD */
       screen->info.have_KHR_push_descriptor = false;
 
-   if (!load_device_extensions(screen))
-      goto fail;
-
    vk_device_dispatch_table_load(&screen->vk.device, &vkGetDeviceProcAddr, screen->dev);
 
    if (!zink_verify_device_extensions(screen))
@@ -1748,7 +1664,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       prop.pNext = NULL;
       for (unsigned i = 0; i < ARRAY_SIZE(screen->maxSampleLocationGridSize); i++) {
          if (screen->info.sample_locations_props.sampleLocationSampleCounts & (1 << i)) {
-            screen->vk_GetPhysicalDeviceMultisamplePropertiesEXT(screen->pdev, 1 << i, &prop);
+            screen->vk.GetPhysicalDeviceMultisamplePropertiesEXT(screen->pdev, 1 << i, &prop);
             screen->maxSampleLocationGridSize[i] = prop.maxSampleLocationGridSize;
          }
       }

@@ -117,23 +117,6 @@ struct zink_screen {
 
    struct vk_dispatch_table vk;
 
-   PFN_vkGetPhysicalDeviceFeatures2 vk_GetPhysicalDeviceFeatures2;
-   PFN_vkGetPhysicalDeviceProperties2 vk_GetPhysicalDeviceProperties2;
-   PFN_vkGetPhysicalDeviceFormatProperties2 vk_GetPhysicalDeviceFormatProperties2;
-   PFN_vkGetPhysicalDeviceImageFormatProperties2 vk_GetPhysicalDeviceImageFormatProperties2;
-   PFN_vkGetPhysicalDeviceMemoryProperties2 vk_GetPhysicalDeviceMemoryProperties2;
-
-   PFN_vkCmdDrawIndirectCount vk_CmdDrawIndirectCount;
-   PFN_vkCmdDrawIndexedIndirectCount vk_CmdDrawIndexedIndirectCount;
-
-   PFN_vkWaitSemaphores vk_WaitSemaphores;
-
-   PFN_vkGetDescriptorSetLayoutSupport vk_GetDescriptorSetLayoutSupport;
-   PFN_vkCmdPushDescriptorSetKHR vk_CmdPushDescriptorSetKHR;
-   PFN_vkCreateDescriptorUpdateTemplate vk_CreateDescriptorUpdateTemplate;
-   PFN_vkDestroyDescriptorUpdateTemplate vk_DestroyDescriptorUpdateTemplate;
-   PFN_vkUpdateDescriptorSetWithTemplate vk_UpdateDescriptorSetWithTemplate;
-   PFN_vkCmdPushDescriptorSetWithTemplateKHR vk_CmdPushDescriptorSetWithTemplateKHR;
    bool (*descriptor_program_init)(struct zink_context *ctx, struct zink_program *pg);
    void (*descriptor_program_deinit)(struct zink_screen *screen, struct zink_program *pg);
    void (*descriptors_update)(struct zink_context *ctx, bool is_compute);
@@ -148,35 +131,6 @@ struct zink_screen {
    void (*descriptors_deinit)(struct zink_context *ctx);
    bool lazy_descriptors;
 
-   PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;
-   PFN_vkCmdBeginConditionalRenderingEXT vk_CmdBeginConditionalRenderingEXT;
-   PFN_vkCmdEndConditionalRenderingEXT vk_CmdEndConditionalRenderingEXT;
-
-   PFN_vkCmdBindTransformFeedbackBuffersEXT vk_CmdBindTransformFeedbackBuffersEXT;
-   PFN_vkCmdBeginTransformFeedbackEXT vk_CmdBeginTransformFeedbackEXT;
-   PFN_vkCmdEndTransformFeedbackEXT vk_CmdEndTransformFeedbackEXT;
-   PFN_vkCmdBeginQueryIndexedEXT vk_CmdBeginQueryIndexedEXT;
-   PFN_vkCmdEndQueryIndexedEXT vk_CmdEndQueryIndexedEXT;
-   PFN_vkCmdDrawIndirectByteCountEXT vk_CmdDrawIndirectByteCountEXT;
-
-   PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT;
-   PFN_vkGetCalibratedTimestampsEXT vk_GetCalibratedTimestampsEXT;
-
-   PFN_vkCmdSetViewportWithCountEXT vk_CmdSetViewportWithCountEXT;
-   PFN_vkCmdSetScissorWithCountEXT vk_CmdSetScissorWithCountEXT;
-   PFN_vkCmdSetDepthBoundsTestEnableEXT vk_CmdSetDepthBoundsTestEnableEXT;
-   PFN_vkCmdSetDepthCompareOpEXT vk_CmdSetDepthCompareOpEXT;
-   PFN_vkCmdSetDepthTestEnableEXT vk_CmdSetDepthTestEnableEXT;
-   PFN_vkCmdSetDepthWriteEnableEXT vk_CmdSetDepthWriteEnableEXT;
-   PFN_vkCmdSetStencilTestEnableEXT vk_CmdSetStencilTestEnableEXT;
-   PFN_vkCmdSetStencilOpEXT vk_CmdSetStencilOpEXT;
-   PFN_vkCmdBindVertexBuffers2EXT vk_CmdBindVertexBuffers2EXT;
-   PFN_vkCmdSetFrontFaceEXT vk_CmdSetFrontFaceEXT;
-
-   PFN_vkCreateDebugUtilsMessengerEXT vk_CreateDebugUtilsMessengerEXT;
-   PFN_vkDestroyDebugUtilsMessengerEXT vk_DestroyDebugUtilsMessengerEXT;
-   PFN_vkCmdInsertDebugUtilsLabelEXT vk_CmdInsertDebugUtilsLabelEXT;
-
 #if defined(MVK_VERSION)
    PFN_vkGetMoltenVKConfigurationMVK vk_GetMoltenVKConfigurationMVK;
    PFN_vkSetMoltenVKConfigurationMVK vk_SetMoltenVKConfigurationMVK;
@@ -187,15 +141,10 @@ struct zink_screen {
    PFN_vkGetIOSurfaceMVK vk_GetIOSurfaceMVK;
 #endif
 
-   PFN_vkCreateSwapchainKHR vk_CreateSwapchainKHR;
-   PFN_vkDestroySwapchainKHR vk_DestroySwapchainKHR;
-
    struct {
       bool dual_color_blend_by_location;
       bool inline_uniforms;
    } driconf;
-
-   PFN_vkGetImageDrmFormatModifierPropertiesEXT vk_GetImageDrmFormatModifierPropertiesEXT;
 
    VkFormatProperties format_props[PIPE_FORMAT_COUNT];
    struct {
