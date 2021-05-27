@@ -62,6 +62,11 @@ bool util_upload_index_buffer(struct pipe_context *pipe,
                               struct pipe_resource **out_buffer,
                               unsigned *out_offset, unsigned alignment);
 
+void
+util_lower_uint64_vertex_elements(const struct pipe_vertex_element **velems,
+                                  unsigned *velem_count,
+                                  struct pipe_vertex_element tmp[PIPE_MAX_ATTRIBS]);
+
 /* Helper function to determine if the varying should contain the point
  * coordinates, given the sprite_coord_enable mask.  Requires
  * PIPE_CAP_TGSI_TEXCOORD to be enabled.
