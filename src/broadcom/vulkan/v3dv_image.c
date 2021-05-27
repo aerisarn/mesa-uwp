@@ -245,13 +245,12 @@ v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer
       return image->mem_offset + slice->offset + layer * image->cube_map_stride;
 }
 
-VkResult
-v3dv_CreateImage(VkDevice _device,
-                 const VkImageCreateInfo *pCreateInfo,
-                 const VkAllocationCallbacks *pAllocator,
-                 VkImage *pImage)
+static VkResult
+create_image(struct v3dv_device *device,
+             const VkImageCreateInfo *pCreateInfo,
+             const VkAllocationCallbacks *pAllocator,
+             VkImage *pImage)
 {
-   V3DV_FROM_HANDLE(v3dv_device, device, _device);
    struct v3dv_image *image = NULL;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
@@ -344,6 +343,16 @@ v3dv_CreateImage(VkDevice _device,
    *pImage = v3dv_image_to_handle(image);
 
    return VK_SUCCESS;
+}
+
+VkResult
+v3dv_CreateImage(VkDevice _device,
+                 const VkImageCreateInfo *pCreateInfo,
+                 const VkAllocationCallbacks *pAllocator,
+                 VkImage *pImage)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   return create_image(device, pCreateInfo, pAllocator, pImage);
 }
 
 void
