@@ -540,8 +540,9 @@ traces:
       - device: freedreno-a530
         checksum: 102a09ce76092436173fd09a6a2bd941
       # Floor splatter rendering failure, probably the same alpha test issue.
-      - device: freedreno-a630
-        checksum: a3a9e158ccf7fa5ba978e045505a060e
+      # Skipped because the reticle is often missing.
+      #- device: freedreno-a630
+      #  checksum: a3a9e158ccf7fa5ba978e045505a060e
 # Throws errors on freedreno
 #  - path: supertuxkart/supertuxkart-antediluvian-abyss.rdc
 #    expectations:
