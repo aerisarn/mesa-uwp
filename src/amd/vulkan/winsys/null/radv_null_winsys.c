@@ -155,6 +155,12 @@ radv_null_winsys_query_info(struct radeon_winsys *rws, struct radeon_info *info)
 
 }
 
+static const char *
+radv_null_winsys_get_chip_name(struct radeon_winsys *rws)
+{
+   return "Null hardware";
+}
+
 static void
 radv_null_winsys_destroy(struct radeon_winsys *rws)
 {
@@ -186,6 +192,7 @@ radv_null_winsys_create()
    ws->base.query_info = radv_null_winsys_query_info;
    ws->base.get_fd = radv_null_winsys_get_fd;
    ws->base.get_sync_types = radv_null_winsys_get_sync_types;
+   ws->base.get_chip_name = radv_null_winsys_get_chip_name;
    radv_null_bo_init_functions(ws);
    radv_null_cs_init_functions(ws);
 
