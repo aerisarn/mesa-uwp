@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 #
 # Copyright © 2020 Google, Inc.
 #
