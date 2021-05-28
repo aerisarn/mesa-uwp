@@ -51,10 +51,7 @@ void brw_nir_lower_combined_intersection_any_hit(nir_shader *intersection,
 
 void brw_nir_lower_shader_returns(nir_shader *shader);
 
-bool brw_nir_lower_shader_calls(nir_shader *shader,
-                                nir_shader ***resume_shaders_out,
-                                uint32_t *num_resume_shaders_out,
-                                void *mem_ctx);
+bool brw_nir_lower_shader_calls(nir_shader *shader);
 
 void brw_nir_lower_rt_intrinsics(nir_shader *shader,
                                  const struct intel_device_info *devinfo);

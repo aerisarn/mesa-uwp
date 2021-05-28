@@ -2479,13 +2479,18 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
    nir_shader **resume_shaders = NULL;
    uint32_t num_resume_shaders = 0;
    if (nir->info.stage != MESA_SHADER_COMPUTE) {
-      NIR_PASS_V(nir, brw_nir_lower_shader_calls,
+      NIR_PASS_V(nir, nir_lower_shader_calls,
+                 nir_address_format_64bit_global,
+                 BRW_BTD_STACK_ALIGN,
                  &resume_shaders, &num_resume_shaders, mem_ctx);
+      NIR_PASS_V(nir, brw_nir_lower_shader_calls);
+      NIR_PASS_V(nir, brw_nir_lower_rt_intrinsics, devinfo);
    }
 
-   NIR_PASS_V(nir, brw_nir_lower_rt_intrinsics, devinfo);
-   for (unsigned i = 0; i < num_resume_shaders; i++)
+   for (unsigned i = 0; i < num_resume_shaders; i++) {
+      NIR_PASS_V(resume_shaders[i], brw_nir_lower_shader_calls);
       NIR_PASS_V(resume_shaders[i], brw_nir_lower_rt_intrinsics, devinfo);
+   }
 
    stage->code =
       brw_compile_bs(compiler, pipeline->base.device, mem_ctx,
