@@ -855,6 +855,8 @@ static void fill_sampler_view_stage(struct rendering_state *state,
       templ.target = PIPE_TEXTURE_2D;
    if (iv->view_type == VK_IMAGE_VIEW_TYPE_CUBE)
       templ.target = PIPE_TEXTURE_CUBE;
+   if (iv->view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
+      templ.target = PIPE_TEXTURE_CUBE_ARRAY;
    templ.u.tex.first_layer = iv->subresourceRange.baseArrayLayer;
    templ.u.tex.last_layer = iv->subresourceRange.baseArrayLayer + lvp_get_layerCount(iv->image, &iv->subresourceRange) - 1;
    templ.u.tex.first_level = iv->subresourceRange.baseMipLevel;
