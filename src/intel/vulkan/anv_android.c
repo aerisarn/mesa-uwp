@@ -440,7 +440,7 @@ anv_create_ahw_memory(VkDevice device_h,
    const VkImportAndroidHardwareBufferInfoANDROID import_info = {
       .buffer = ahw,
    };
-   result = anv_import_ahw_memory(device_h, mem, &import_info);
+   VkResult result = anv_import_ahw_memory(device_h, mem, &import_info);
 
    /* Release a reference to avoid leak for AHB allocation. */
    AHardwareBuffer_release(ahw);
