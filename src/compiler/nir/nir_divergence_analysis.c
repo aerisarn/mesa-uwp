@@ -294,6 +294,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_quad_swap_horizontal:
    case nir_intrinsic_quad_swap_vertical:
    case nir_intrinsic_quad_swap_diagonal:
+   case nir_intrinsic_byte_permute_amd:
    case nir_intrinsic_load_deref:
    case nir_intrinsic_load_shared:
    case nir_intrinsic_load_global:
@@ -496,6 +497,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_ballot_bit_count_inclusive:
    case nir_intrinsic_write_invocation_amd:
    case nir_intrinsic_mbcnt_amd:
+   case nir_intrinsic_lane_permute_16_amd:
    case nir_intrinsic_elect:
    case nir_intrinsic_load_tlb_color_v3d:
    case nir_intrinsic_load_tess_rel_patch_id_amd:
