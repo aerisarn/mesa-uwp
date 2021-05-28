@@ -1677,6 +1677,7 @@ ir3_MOVMSK(struct ir3_block *block, unsigned components)
 	struct ir3_register *dst = __ssa_dst(instr);
 	dst->flags |= IR3_REG_SHARED;
 	dst->wrmask = (1 << components) - 1;
+	instr->repeat = components - 1;
 	return instr;
 }
 

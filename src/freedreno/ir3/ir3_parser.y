@@ -800,6 +800,7 @@ cat1_movmsk:       T_OP_MOVMSK '.' T_W {
                        new_instr(OPC_MOVMSK);
                        instr->cat1.src_type = TYPE_U32;
                        instr->cat1.dst_type = TYPE_U32;
+                       instr->repeat = $3 - 1;
                    } dst_reg {
                        instr->dsts[0]->wrmask = (1 << $3) - 1;
                    }

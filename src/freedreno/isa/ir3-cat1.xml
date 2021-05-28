@@ -457,16 +457,6 @@ SOFTWARE.
 	<pattern low="50" high="52">011</pattern>       <!-- SRC_TYPE==u32 -->
 	<pattern low="53" high="54">00</pattern>
 	<pattern low="57" high="58">11</pattern>  <!-- OPC -->
-
-	<!--
-		TODO in ir3 things are encoded w/ instr->repeat==0 and repeat field is
-		reconstructed from wrmask.. but I'm not sure if that is actually accurate
-		(in terms of how delay slots work).. for now, work around that to match
-		the existing stuff:
-	 -->
-	<encode>
-		<map name="REPEAT">util_last_bit(src->dsts[0]->wrmask) - 1</map>
-	</encode>
 </bitset>
 
 
