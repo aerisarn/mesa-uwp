@@ -3031,6 +3031,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       }
       break;
    }
+   case nir_op_sad_u8x4: {
+      assert(dst.regClass() == v1);
+      emit_vop3a_instruction(ctx, instr, aco_opcode::v_sad_u8, dst, false, 3u, false);
+      break;
+   }
    case nir_op_fquantize2f16: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       Temp f16 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v1), src);

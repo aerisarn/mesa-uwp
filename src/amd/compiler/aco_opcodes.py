@@ -238,8 +238,10 @@ class Opcode(object):
       self.definition_size = def_dtype_sizes.get(def_dtype, self.operand_size)
 
       # exceptions for operands:
-      if 'sad_' in name:
+      if 'qsad_' in name:
         self.operand_size = 0
+      elif 'sad_' in name:
+        self.operand_size = 32
       elif name in ['v_mad_u64_u32', 'v_mad_i64_i32']:
         self.operand_size = 0
       elif self.operand_size == 24:
@@ -251,8 +253,10 @@ class Opcode(object):
         self.operand_size = 32
 
       # exceptions for definitions:
-      if 'sad_' in name:
+      if 'qsad_' in name:
         self.definition_size = 0
+      elif 'sad_' in name:
+        self.definition_size = 32
       elif '_pk' in name:
         self.definition_size = 32
 
