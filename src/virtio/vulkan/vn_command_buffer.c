@@ -211,6 +211,14 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    vn_cs_encoder_reset(&cmd->cs);
 
+   VkCommandBufferBeginInfo local_begin_info;
+   if (pBeginInfo->pInheritanceInfo &&
+       cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+      local_begin_info = *pBeginInfo;
+      local_begin_info.pInheritanceInfo = NULL;
+      pBeginInfo = &local_begin_info;
+   }
+
    cmd_size = vn_sizeof_vkBeginCommandBuffer(commandBuffer, pBeginInfo);
    if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size)) {
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
