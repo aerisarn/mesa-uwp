@@ -102,10 +102,12 @@ d3d12_create_vertex_elements_state(struct pipe_context *pctx,
       cso->elements[i].SemanticName = "TEXCOORD";
       cso->elements[i].SemanticIndex = i;
 
-      enum pipe_format format_helper = d3d12_emulated_vtx_format(elements[i].src_format);
+      enum pipe_format format_helper =
+         d3d12_emulated_vtx_format((enum pipe_format)elements[i].src_format);
       bool needs_emulation = format_helper != elements[i].src_format;
       cso->needs_format_emulation |= needs_emulation;
-      cso->format_conversion[i] = needs_emulation ? elements[i].src_format : PIPE_FORMAT_NONE;
+      cso->format_conversion[i] =
+         needs_emulation ? (enum pipe_format)elements[i].src_format : PIPE_FORMAT_NONE;
 
       cso->elements[i].Format = d3d12_get_format(format_helper);
       assert(cso->elements[i].Format != DXGI_FORMAT_UNKNOWN);

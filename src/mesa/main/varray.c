@@ -545,6 +545,8 @@ _mesa_set_vertex_format(struct gl_vertex_format *vertex_format,
    vertex_format->_PipeFormat =
       vertex_format_to_pipe_format(size, type, format, normalized, integer,
                                    doubles);
+   /* pipe_vertex_element::src_format has only 8 bits, assuming a signed enum */
+   assert(vertex_format->_PipeFormat <= 255);
 }
 
 

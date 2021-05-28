@@ -596,11 +596,11 @@ swr_create_vertex_elements_state(struct pipe_context *pipe,
          // XXX: we should do this keyed on the VS usage info
 
          const struct util_format_description *desc =
-            util_format_description(attribs[i].src_format);
+            util_format_description((enum pipe_format)attribs[i].src_format);
 
          velems->fsState.layout[i].AlignedByteOffset = attribs[i].src_offset;
          velems->fsState.layout[i].Format =
-            mesa_to_swr_format(attribs[i].src_format);
+            mesa_to_swr_format((enum pipe_format)attribs[i].src_format);
          velems->fsState.layout[i].StreamIndex =
             attribs[i].vertex_buffer_index;
          velems->fsState.layout[i].InstanceEnable =
@@ -627,7 +627,7 @@ swr_create_vertex_elements_state(struct pipe_context *pipe,
 
          /* Calculate the pitch of each stream */
          const SWR_FORMAT_INFO &swr_desc = GetFormatInfo(
-            mesa_to_swr_format(attribs[i].src_format));
+            mesa_to_swr_format((enum pipe_format)attribs[i].src_format));
          velems->stream_pitch[attribs[i].vertex_buffer_index] += swr_desc.Bpp;
 
          if (attribs[i].instance_divisor != 0) {

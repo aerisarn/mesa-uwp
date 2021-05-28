@@ -674,14 +674,17 @@ struct pipe_stream_output_target
 struct pipe_vertex_element
 {
    /** Offset of this attribute, in bytes, from the start of the vertex */
-   unsigned src_offset:16;
+   uint16_t src_offset;
 
    /** Which vertex_buffer (as given to pipe->set_vertex_buffer()) does
     * this attribute live in?
     */
-   unsigned vertex_buffer_index:5;
+   uint8_t vertex_buffer_index;
 
-   enum pipe_format src_format:11;
+   /**
+    * This has only 8 bits because all vertex formats should be <= 255.
+    */
+   uint8_t src_format; /* low 8 bits of enum pipe_format. */
 
    /** Instance data rate divisor. 0 means this is per-vertex data,
     *  n means per-instance data used for n consecutive instances (n > 0).
