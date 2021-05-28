@@ -117,6 +117,7 @@ struct asahi_shader_key {
 enum agx_dirty {
    AGX_DIRTY_VERTEX   = BITFIELD_BIT(0),
    AGX_DIRTY_VIEWPORT = BITFIELD_BIT(1),
+   AGX_DIRTY_SCISSOR  = BITFIELD_BIT(2),
 };
 
 struct agx_context {
@@ -136,6 +137,7 @@ struct agx_context {
    struct agx_blend *blend;
    struct pipe_blend_color blend_color;
    struct pipe_viewport_state viewport;
+   struct pipe_scissor_state scissor;
 
    uint8_t render_target[8][AGX_RENDER_TARGET_LENGTH];
 };

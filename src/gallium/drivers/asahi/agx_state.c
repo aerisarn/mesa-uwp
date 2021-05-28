@@ -407,11 +407,18 @@ agx_set_sample_mask(struct pipe_context *pipe, unsigned sample_mask)
 }
 
 static void
-agx_set_scissor_states(struct pipe_context *ctx,
+agx_set_scissor_states(struct pipe_context *pctx,
                        unsigned start_slot,
                        unsigned num_scissors,
-                       const struct pipe_scissor_state *state)
+                       const struct pipe_scissor_state *scissor)
 {
+   struct agx_context *ctx = agx_context(pctx);
+
+   assert(start_slot == 0 && "no geometry shaders");
+   assert(num_scissors == 1 && "no geometry shaders");
+
+   ctx->scissor = *scissor;
+   ctx->dirty |= AGX_DIRTY_SCISSOR;
 }
 
 static void
