@@ -8387,6 +8387,31 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       emit_wqm(bld, wqm_tmp, dst);
       break;
    }
+   case nir_intrinsic_byte_permute_amd: {
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      assert(dst.regClass() == v1);
+      assert(ctx->program->chip_class >= GFX8);
+      bld.vop3(aco_opcode::v_perm_b32, Definition(dst),
+               get_ssa_temp(ctx, instr->src[0].ssa),
+               as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa)),
+               as_vgpr(ctx, get_ssa_temp(ctx, instr->src[2].ssa)));
+      break;
+   }
+   case nir_intrinsic_lane_permute_16_amd: {
+      Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      assert(ctx->program->chip_class >= GFX10);
+
+      if (src.regClass() == s1) {
+         bld.copy(Definition(dst), src);
+      } else if (dst.regClass() == v1 && src.regClass() == v1) {
+         bld.vop3(aco_opcode::v_permlane16_b32, Definition(dst), src,
+                  bld.as_uniform(get_ssa_temp(ctx, instr->src[1].ssa)), bld.as_uniform(get_ssa_temp(ctx, instr->src[2].ssa)));
+      } else {
+         isel_err(&instr->instr, "Unimplemented lane_permute_16_amd");
+      }
+      break;
+   }
    case nir_intrinsic_load_helper_invocation:
    case nir_intrinsic_is_helper_invocation: {
       /* load_helper() after demote() get lowered to is_helper().
