@@ -98,3 +98,4 @@ if with_tests
 endif
 
 subdir('glsl')
+subdir('isaspec')
