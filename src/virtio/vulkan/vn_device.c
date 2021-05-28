@@ -1367,7 +1367,7 @@ vn_physical_device_init_external_memory(
     * the extension.
     */
 
-   if (!physical_dev->instance->renderer_info.has_dmabuf_import)
+   if (!physical_dev->instance->renderer_info.has_dma_buf_import)
       return;
 
    /* TODO We assume the renderer uses dma-bufs here.  This should be
@@ -1450,7 +1450,7 @@ vn_physical_device_get_native_extensions(
 
    /* see vn_physical_device_init_external_memory */
    if (renderer_exts->EXT_external_memory_dma_buf &&
-       renderer_info->has_dmabuf_import) {
+       renderer_info->has_dma_buf_import) {
 #ifdef ANDROID
       if (renderer_exts->EXT_image_drm_format_modifier &&
           renderer_exts->EXT_queue_family_foreign) {

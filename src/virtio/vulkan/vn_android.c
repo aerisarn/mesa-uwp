@@ -1084,7 +1084,7 @@ vn_android_device_import_ahb(struct vn_device *dev,
       .memoryTypeIndex = alloc_info->memoryTypeIndex,
    };
    result =
-      vn_device_memory_import_dmabuf(dev, mem, &local_alloc_info, dup_fd);
+      vn_device_memory_import_dma_buf(dev, mem, &local_alloc_info, dup_fd);
    if (result != VK_SUCCESS) {
       close(dup_fd);
       return result;

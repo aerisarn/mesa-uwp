@@ -172,10 +172,10 @@ vn_device_memory_pool_free(struct vn_device *dev,
 }
 
 VkResult
-vn_device_memory_import_dmabuf(struct vn_device *dev,
-                               struct vn_device_memory *mem,
-                               const VkMemoryAllocateInfo *alloc_info,
-                               int fd)
+vn_device_memory_import_dma_buf(struct vn_device *dev,
+                                struct vn_device_memory *mem,
+                                const VkMemoryAllocateInfo *alloc_info,
+                                int fd)
 {
    VkDevice device = vn_device_to_handle(dev);
    VkDeviceMemory memory = vn_device_memory_to_handle(mem);
@@ -188,7 +188,7 @@ vn_device_memory_import_dmabuf(struct vn_device *dev,
    struct vn_renderer_bo *bo;
    VkResult result = VK_SUCCESS;
 
-   result = vn_renderer_bo_create_from_dmabuf(
+   result = vn_renderer_bo_create_from_dma_buf(
       dev->renderer, alloc_info->allocationSize, fd, mem_type->propertyFlags,
       export_info ? export_info->handleTypes : 0, &bo);
    if (result != VK_SUCCESS)
@@ -290,8 +290,8 @@ vn_AllocateMemory(VkDevice device,
       result = vn_android_device_allocate_ahb(dev, mem, pAllocateInfo);
       assert(mem->base_bo);
    } else if (import_fd_info) {
-      result = vn_device_memory_import_dmabuf(dev, mem, pAllocateInfo,
-                                              import_fd_info->fd);
+      result = vn_device_memory_import_dma_buf(dev, mem, pAllocateInfo,
+                                               import_fd_info->fd);
       assert(mem->base_bo);
    } else if (suballocate) {
       result = vn_device_memory_pool_alloc(
@@ -461,7 +461,7 @@ vn_GetMemoryFdKHR(VkDevice device,
           (VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
            VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT));
    assert(!mem->base_memory && mem->base_bo);
-   *pFd = vn_renderer_bo_export_dmabuf(dev->renderer, mem->base_bo);
+   *pFd = vn_renderer_bo_export_dma_buf(dev->renderer, mem->base_bo);
    if (*pFd < 0)
       return vn_error(dev->instance, VK_ERROR_TOO_MANY_OBJECTS);
 
@@ -480,8 +480,8 @@ vn_GetMemoryFdPropertiesKHR(VkDevice device,
       return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
    struct vn_renderer_bo *bo;
-   VkResult result = vn_renderer_bo_create_from_dmabuf(dev->renderer, 0, fd,
-                                                       0, handleType, &bo);
+   VkResult result = vn_renderer_bo_create_from_dma_buf(dev->renderer, 0, fd,
+                                                        0, handleType, &bo);
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
    vn_instance_roundtrip(dev->instance);

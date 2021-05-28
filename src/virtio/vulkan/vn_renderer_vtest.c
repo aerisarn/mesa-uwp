@@ -697,7 +697,7 @@ vtest_bo_map(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
 
    /* not thread-safe but is fine */
    if (!bo->base.mmap_ptr && mappable) {
-      /* We wrongly assume that mmap(dmabuf) and vkMapMemory(VkDeviceMemory)
+      /* We wrongly assume that mmap(dma_buf) and vkMapMemory(VkDeviceMemory)
        * are equivalent when the blob type is VCMD_BLOB_TYPE_HOST3D.  While we
        * check for VCMD_PARAM_HOST_COHERENT_DMABUF_BLOB, we know vtest can
        * lie.
@@ -721,8 +721,8 @@ vtest_bo_map(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
 }
 
 static int
-vtest_bo_export_dmabuf(struct vn_renderer *renderer,
-                       struct vn_renderer_bo *_bo)
+vtest_bo_export_dma_buf(struct vn_renderer *renderer,
+                        struct vn_renderer_bo *_bo)
 {
    const struct vtest_bo *bo = (struct vtest_bo *)_bo;
    const bool shareable = bo->blob_flags & VCMD_BLOB_FLAG_SHAREABLE;
@@ -931,7 +931,7 @@ vtest_get_info(struct vn_renderer *renderer, struct vn_renderer_info *info)
    info->pci.vendor_id = VTEST_PCI_VENDOR_ID;
    info->pci.device_id = VTEST_PCI_DEVICE_ID;
 
-   info->has_dmabuf_import = false;
+   info->has_dma_buf_import = false;
    info->has_cache_management = false;
    info->has_external_sync = false;
    info->has_implicit_fencing = false;
@@ -1052,9 +1052,9 @@ vtest_init(struct vtest *vtest)
 
    vtest->base.bo_ops.create_from_device_memory =
       vtest_bo_create_from_device_memory;
-   vtest->base.bo_ops.create_from_dmabuf = NULL;
+   vtest->base.bo_ops.create_from_dma_buf = NULL;
    vtest->base.bo_ops.destroy = vtest_bo_destroy;
-   vtest->base.bo_ops.export_dmabuf = vtest_bo_export_dmabuf;
+   vtest->base.bo_ops.export_dma_buf = vtest_bo_export_dma_buf;
    vtest->base.bo_ops.map = vtest_bo_map;
    vtest->base.bo_ops.flush = vtest_bo_flush;
    vtest->base.bo_ops.invalidate = vtest_bo_invalidate;

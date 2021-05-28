@@ -109,7 +109,7 @@ struct virtgpu {
    struct util_sparse_array shmem_array;
    struct util_sparse_array bo_array;
 
-   mtx_t dmabuf_import_mutex;
+   mtx_t dma_buf_import_mutex;
 };
 
 #ifdef SIMULATE_SYNCOBJ
@@ -1086,8 +1086,8 @@ virtgpu_bo_map(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
 }
 
 static int
-virtgpu_bo_export_dmabuf(struct vn_renderer *renderer,
-                         struct vn_renderer_bo *_bo)
+virtgpu_bo_export_dma_buf(struct vn_renderer *renderer,
+                          struct vn_renderer_bo *_bo)
 {
    struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
@@ -1105,13 +1105,13 @@ virtgpu_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
    struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
 
-   mtx_lock(&gpu->dmabuf_import_mutex);
+   mtx_lock(&gpu->dma_buf_import_mutex);
 
    /* Check the refcount again after the import lock is grabbed.  Yes, we use
     * the double-checked locking anti-pattern.
     */
    if (atomic_load_explicit(&bo->base.refcount, memory_order_relaxed) > 0) {
-      mtx_unlock(&gpu->dmabuf_import_mutex);
+      mtx_unlock(&gpu->dma_buf_import_mutex);
       return false;
    }
 
@@ -1122,7 +1122,7 @@ virtgpu_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
    /* set gem_handle to 0 to indicate that the bo is invalid */
    bo->gem_handle = 0;
 
-   mtx_unlock(&gpu->dmabuf_import_mutex);
+   mtx_unlock(&gpu->dma_buf_import_mutex);
 
    return true;
 }
@@ -1143,19 +1143,20 @@ virtgpu_bo_blob_flags(VkMemoryPropertyFlags flags,
 }
 
 static VkResult
-virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
-                              VkDeviceSize size,
-                              int fd,
-                              VkMemoryPropertyFlags flags,
-                              VkExternalMemoryHandleTypeFlags external_handles,
-                              struct vn_renderer_bo **out_bo)
+virtgpu_bo_create_from_dma_buf(
+   struct vn_renderer *renderer,
+   VkDeviceSize size,
+   int fd,
+   VkMemoryPropertyFlags flags,
+   VkExternalMemoryHandleTypeFlags external_handles,
+   struct vn_renderer_bo **out_bo)
 {
    struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct drm_virtgpu_resource_info info;
    uint32_t gem_handle = 0;
    struct virtgpu_bo *bo = NULL;
 
-   mtx_lock(&gpu->dmabuf_import_mutex);
+   mtx_lock(&gpu->dma_buf_import_mutex);
 
    gem_handle = virtgpu_ioctl_prime_fd_to_handle(gpu, fd);
    if (!gem_handle)
@@ -1211,7 +1212,7 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
       };
    }
 
-   mtx_unlock(&gpu->dmabuf_import_mutex);
+   mtx_unlock(&gpu->dma_buf_import_mutex);
 
    *out_bo = &bo->base;
 
@@ -1220,7 +1221,7 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
 fail:
    if (gem_handle && bo->gem_handle != gem_handle)
       virtgpu_ioctl_gem_close(gpu, gem_handle);
-   mtx_unlock(&gpu->dmabuf_import_mutex);
+   mtx_unlock(&gpu->dma_buf_import_mutex);
    return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 }
 
@@ -1341,7 +1342,7 @@ virtgpu_get_info(struct vn_renderer *renderer, struct vn_renderer_info *info)
    info->pci.device = gpu->bus_info.dev;
    info->pci.function = gpu->bus_info.func;
 
-   info->has_dmabuf_import = true;
+   info->has_dma_buf_import = true;
    /* Kernel makes every mapping coherent.  We are better off filtering
     * incoherent memory types out than silently making them coherent.
     */
@@ -1371,7 +1372,7 @@ virtgpu_destroy(struct vn_renderer *renderer,
    if (gpu->fd >= 0)
       close(gpu->fd);
 
-   mtx_destroy(&gpu->dmabuf_import_mutex);
+   mtx_destroy(&gpu->dma_buf_import_mutex);
 
    util_sparse_array_finish(&gpu->shmem_array);
    util_sparse_array_finish(&gpu->bo_array);
@@ -1535,7 +1536,7 @@ virtgpu_init(struct virtgpu *gpu)
                           1024);
    util_sparse_array_init(&gpu->bo_array, sizeof(struct virtgpu_bo), 1024);
 
-   mtx_init(&gpu->dmabuf_import_mutex, mtx_plain);
+   mtx_init(&gpu->dma_buf_import_mutex, mtx_plain);
 
    VkResult result = virtgpu_open(gpu);
    if (result == VK_SUCCESS)
@@ -1558,9 +1559,9 @@ virtgpu_init(struct virtgpu *gpu)
 
    gpu->base.bo_ops.create_from_device_memory =
       virtgpu_bo_create_from_device_memory;
-   gpu->base.bo_ops.create_from_dmabuf = virtgpu_bo_create_from_dmabuf;
+   gpu->base.bo_ops.create_from_dma_buf = virtgpu_bo_create_from_dma_buf;
    gpu->base.bo_ops.destroy = virtgpu_bo_destroy;
-   gpu->base.bo_ops.export_dmabuf = virtgpu_bo_export_dmabuf;
+   gpu->base.bo_ops.export_dma_buf = virtgpu_bo_export_dma_buf;
    gpu->base.bo_ops.map = virtgpu_bo_map;
    gpu->base.bo_ops.flush = virtgpu_bo_flush;
    gpu->base.bo_ops.invalidate = virtgpu_bo_invalidate;
