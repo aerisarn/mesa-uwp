@@ -207,6 +207,12 @@
     <field name="Varying count" size="32" start="3:0" type="uint"/>
   </struct>
 
+  <!-- Indexes into the array of scissor descriptors -->
+  <struct name="Set scissor" size="8">
+    <field name="Tag" size="32" start="0:0" type="hex" default="0x100"/>
+    <field name="Index" size="32" start="1:0" type="uint"/>
+  </struct>
+
   <!--- Commands valid within a pipeline -->
   <struct name="Bind uniform" size="8">
     <field name="Tag" size="8" start="0:0" type="hex" default="0x1d"/>
