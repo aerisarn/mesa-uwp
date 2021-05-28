@@ -431,8 +431,14 @@ agx_set_viewport_states(struct pipe_context *pctx,
    assert(start_slot == 0 && "no geometry shaders");
    assert(num_viewports == 1 && "no geometry shaders");
 
-   if (!vp)
-      return;
+   ctx->viewport = *vp;
+}
+
+static uint64_t
+agx_upload_viewport(struct agx_pool *pool,
+                    const struct pipe_viewport_state *vp)
+{
+   struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_VIEWPORT_LENGTH, 64);
 
    float vp_minx = vp->translate[0] - fabsf(vp->scale[0]);
    float vp_maxx = vp->translate[0] + fabsf(vp->scale[0]);
@@ -442,7 +448,7 @@ agx_set_viewport_states(struct pipe_context *pctx,
    float near_z, far_z;
    util_viewport_zmin_zmax(vp, false, &near_z, &far_z);
 
-   agx_pack(ctx->viewport, VIEWPORT, cfg) {
+   agx_pack(T.cpu, VIEWPORT, cfg) {
       cfg.min_tile_x = vp_minx / 32;
       cfg.min_tile_y = vp_miny / 32;
       cfg.max_tile_x = MAX2(ceilf(vp_maxx / 32.0), 1.0);
@@ -456,6 +462,8 @@ agx_set_viewport_states(struct pipe_context *pctx,
       cfg.near_z = near_z;
       cfg.z_range = far_z - near_z;
    };
+
+   return T.gpu;
 }
 
 /* A framebuffer state can be reused across batches, so it doesn't make sense
@@ -1115,7 +1123,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    agx_push_record(&out, 4, demo_linkage(ctx->vs, pool));
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool));
    agx_push_record(&out, 5, demo_unk11(pool, is_lines, reads_tib));
-   agx_push_record(&out, 10, agx_pool_upload(pool, ctx->viewport, sizeof(ctx->viewport)));
+   agx_push_record(&out, 10, agx_upload_viewport(pool, &ctx->viewport));
    agx_push_record(&out, 3, demo_unk12(pool));
    agx_push_record(&out, 2, agx_pool_upload(pool, ctx->rast->cull, sizeof(ctx->rast->cull)));
    agx_push_record(&out, 2, demo_unk14(pool));
