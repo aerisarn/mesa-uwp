@@ -2045,6 +2045,7 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
          case GFX7_SFID_DATAPORT_DATA_CACHE:
             if (devinfo->ver >= 7) {
                format(file, " (");
+               space = 0;
 
                err |= control(file, "DP DC0 message type",
                               dp_dc0_msg_type_gfx7,
@@ -2080,6 +2081,7 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
          case HSW_SFID_DATAPORT_DATA_CACHE_1: {
             if (devinfo->ver >= 7) {
                format(file, " (");
+               space = 0;
 
                unsigned msg_ctrl = brw_dp_desc_msg_control(devinfo, imm_desc);
 
