@@ -414,14 +414,20 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
    return nir;
 }
 
+/**
+ * Prepare st_vertex_program info.
+ *
+ * attrib_to_index is an optional mapping from a vertex attrib to a shader
+ * input index.
+ */
 void
-st_prepare_vertex_program(struct st_program *stp)
+st_prepare_vertex_program(struct st_program *stp, uint8_t *out_attrib_to_index)
 {
    struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
+   uint8_t attrib_to_index[VERT_ATTRIB_MAX] = {0};
 
    stvp->num_inputs = 0;
    stvp->vert_attrib_mask = 0;
-   memset(stvp->input_to_index, ~0, sizeof(stvp->input_to_index));
    memset(stvp->result_to_output, ~0, sizeof(stvp->result_to_output));
 
    /* Determine number of inputs, the mappings between VERT_ATTRIB_x
@@ -429,14 +435,14 @@ st_prepare_vertex_program(struct st_program *stp)
     */
    for (unsigned attr = 0; attr < VERT_ATTRIB_MAX; attr++) {
       if ((stp->Base.info.inputs_read & BITFIELD64_BIT(attr)) != 0) {
-         stvp->input_to_index[attr] = stvp->num_inputs;
+         attrib_to_index[attr] = stvp->num_inputs;
          stvp->vert_attrib_mask |= BITFIELD_BIT(attr);
          stvp->num_inputs++;
       }
    }
 
    /* pre-setup potentially unused edgeflag input */
-   stvp->input_to_index[VERT_ATTRIB_EDGEFLAG] = stvp->num_inputs;
+   attrib_to_index[VERT_ATTRIB_EDGEFLAG] = stvp->num_inputs;
 
    /* Compute mapping of vertex program outputs to slots. */
    unsigned num_outputs = 0;
@@ -446,6 +452,9 @@ st_prepare_vertex_program(struct st_program *stp)
    }
    /* pre-setup potentially unused edgeflag output */
    stvp->result_to_output[VARYING_SLOT_EDGE] = num_outputs;
+
+   if (out_attrib_to_index)
+      memcpy(out_attrib_to_index, attrib_to_index, sizeof(attrib_to_index));
 }
 
 void
@@ -608,11 +617,12 @@ st_translate_vertex_program(struct st_context *st,
                                                MESA_SHADER_VERTEX);
       stp->Base.info = stp->Base.nir->info;
 
-      st_prepare_vertex_program(stp);
+      st_prepare_vertex_program(stp, NULL);
       return true;
    }
 
-   st_prepare_vertex_program(stp);
+   uint8_t input_to_index[VERT_ATTRIB_MAX];
+   st_prepare_vertex_program(stp, input_to_index);
 
    /* Get semantic names and indices. */
    for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
@@ -650,7 +660,7 @@ st_translate_vertex_program(struct st_context *st,
                                 &stp->Base,
                                 /* inputs */
                                 stvp->num_inputs,
-                                stvp->input_to_index,
+                                input_to_index,
                                 NULL, /* inputSlotToAttr */
                                 NULL, /* input semantic name */
                                 NULL, /* input semantic index */

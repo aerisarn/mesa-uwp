@@ -282,10 +282,7 @@ struct st_vertex_program
    struct st_program Base;
 
    uint32_t vert_attrib_mask; /**< mask of sourced vertex attribs */
-
    ubyte num_inputs;
-   /** Map a vertex attrib to a gallium vertex element index. */
-   ubyte input_to_index[VERT_ATTRIB_MAX];
 
    /** Maps VARYING_SLOT_x to slot */
    ubyte result_to_output[VARYING_SLOT_MAX];
@@ -357,7 +354,7 @@ extern void
 st_finalize_nir_before_variants(struct nir_shader *nir);
 
 extern void
-st_prepare_vertex_program(struct st_program *stvp);
+st_prepare_vertex_program(struct st_program *stvp, uint8_t *attrib_to_index);
 
 extern void
 st_translate_stream_output_info(struct gl_program *prog);

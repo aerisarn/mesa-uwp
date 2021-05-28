@@ -101,8 +101,6 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
 
       blob_write_uint32(&blob, stvp->num_inputs);
       blob_write_uint32(&blob, stvp->vert_attrib_mask);
-      blob_write_bytes(&blob, stvp->input_to_index,
-                       sizeof(stvp->input_to_index));
       blob_write_bytes(&blob, stvp->result_to_output,
                        sizeof(stvp->result_to_output));
    }
@@ -198,8 +196,6 @@ st_deserialise_ir_program(struct gl_context *ctx,
       struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
       stvp->num_inputs = blob_read_uint32(&blob_reader);
       stvp->vert_attrib_mask = blob_read_uint32(&blob_reader);
-      blob_copy_bytes(&blob_reader, (uint8_t *) stvp->input_to_index,
-                      sizeof(stvp->input_to_index));
       blob_copy_bytes(&blob_reader, (uint8_t *) stvp->result_to_output,
                       sizeof(stvp->result_to_output));
    }

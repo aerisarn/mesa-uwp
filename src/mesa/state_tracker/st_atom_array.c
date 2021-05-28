@@ -82,7 +82,6 @@ setup_arrays(struct st_context *st,
    const struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
    const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
    const GLbitfield dual_slot_inputs = vp->Base.Base.DualSlotInputs;
-   const ubyte *input_to_index = vp->input_to_index;
 
    /* Process attribute array data. */
    GLbitfield mask = inputs_read & _mesa_draw_array_bits(ctx);
@@ -119,7 +118,7 @@ setup_arrays(struct st_context *st,
          init_velement(velements->velems, &attrib->Format, 0,
                        binding->InstanceDivisor, bufidx,
                        dual_slot_inputs & BITFIELD_BIT(attr),
-                       input_to_index[attr]);
+                       util_bitcount(inputs_read & BITFIELD_MASK(attr)));
       }
       return;
    }
@@ -161,7 +160,7 @@ setup_arrays(struct st_context *st,
          init_velement(velements->velems, &attrib->Format, off,
                        binding->InstanceDivisor, bufidx,
                        dual_slot_inputs & BITFIELD_BIT(attr),
-                       input_to_index[attr]);
+                       util_bitcount(inputs_read & BITFIELD_MASK(attr)));
       } while (attrmask);
    }
 }
@@ -198,7 +197,6 @@ st_setup_current(struct st_context *st,
    /* Process values that should have better been uniforms in the application */
    GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
    if (curmask) {
-      const ubyte *input_to_index = vp->input_to_index;
       /* For each attribute, upload the maximum possible size. */
       GLubyte data[VERT_ATTRIB_MAX * sizeof(GLdouble) * 4];
       GLubyte *cursor = data;
@@ -218,7 +216,7 @@ st_setup_current(struct st_context *st,
 
          init_velement(velements->velems, &attrib->Format, cursor - data,
                        0, bufidx, dual_slot_inputs & BITFIELD_BIT(attr),
-                       input_to_index[attr]);
+                       util_bitcount(inputs_read & BITFIELD_MASK(attr)));
 
          cursor += alignment;
       } while (curmask);
@@ -256,7 +254,6 @@ st_setup_current_user(struct st_context *st,
    struct gl_context *ctx = st->ctx;
    const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
    const GLbitfield dual_slot_inputs = vp->Base.Base.DualSlotInputs;
-   const ubyte *input_to_index = vp->input_to_index;
 
    /* Process values that should have better been uniforms in the application */
    GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
@@ -269,7 +266,7 @@ st_setup_current_user(struct st_context *st,
 
       init_velement(velements->velems, &attrib->Format, 0, 0,
                     bufidx, dual_slot_inputs & BITFIELD_BIT(attr),
-                    input_to_index[attr]);
+                    util_bitcount(inputs_read & BITFIELD_MASK(attr)));
 
       vbuffer[bufidx].is_user_buffer = true;
       vbuffer[bufidx].buffer.user = attrib->Ptr;
