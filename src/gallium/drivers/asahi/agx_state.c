@@ -465,16 +465,23 @@ agx_upload_viewport_scissor(struct agx_pool *pool,
 {
    struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_VIEWPORT_LENGTH, 64);
 
-   unsigned minx = CLAMP((int) vp->translate[0] - fabsf(vp->scale[0]), 0, batch->width);
-   unsigned maxx = CLAMP((int) vp->translate[0] + fabsf(vp->scale[0]), 0, batch->width);
-   unsigned miny = CLAMP((int) vp->translate[1] - fabsf(vp->scale[1]), 0, batch->height);
-   unsigned maxy = CLAMP((int) vp->translate[1] + fabsf(vp->scale[1]), 0, batch->height);
+   float trans_x = vp->translate[0], trans_y = vp->translate[1];
+   float abs_scale_x = fabsf(vp->scale[0]), abs_scale_y = fabsf(vp->scale[1]);
+
+   /* Calculate the extent of the viewport. Note if a particular dimension of
+    * the viewport is an odd number of pixels, both the translate and the scale
+    * will have a fractional part of 0.5, so adding and subtracting them yields
+    * an integer. Therefore we don't need to round explicitly */
+   unsigned minx = CLAMP((int) (trans_x - abs_scale_x), 0, batch->width);
+   unsigned miny = CLAMP((int) (trans_y - abs_scale_y), 0, batch->height);
+   unsigned maxx = CLAMP((int) (trans_x + abs_scale_x), 0, batch->width);
+   unsigned maxy = CLAMP((int) (trans_y + abs_scale_y), 0, batch->height);
 
    if (ss) {
-	minx = MAX2(ss->minx, minx);
-	miny = MAX2(ss->miny, miny);
-	maxx = MIN2(ss->maxx, maxx);
-	maxy = MIN2(ss->maxy, maxy);
+      minx = MAX2(ss->minx, minx);
+      miny = MAX2(ss->miny, miny);
+      maxx = MIN2(ss->maxx, maxx);
+      maxy = MIN2(ss->maxy, maxy);
    }
 
    assert(maxx > minx && maxy > miny);
