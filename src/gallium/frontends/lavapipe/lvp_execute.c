@@ -718,6 +718,7 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
          state->velem.velems[location].src_offset = vi->pVertexAttributeDescriptions[i].offset;
          state->velem.velems[location].vertex_buffer_index = vi->pVertexAttributeDescriptions[i].binding;
          state->velem.velems[location].src_format = lvp_vk_format_to_pipe_format(vi->pVertexAttributeDescriptions[i].format);
+         state->velem.velems[location].dual_slot = false;
 
          switch (vi->pVertexBindingDescriptions[vi->pVertexAttributeDescriptions[i].binding].inputRate) {
          case VK_VERTEX_INPUT_RATE_VERTEX:

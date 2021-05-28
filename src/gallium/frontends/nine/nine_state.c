@@ -902,6 +902,7 @@ update_vertex_elements(struct NineDevice9 *device)
             ve.velems[n].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
             ve.velems[n].src_offset = 0;
             ve.velems[n].instance_divisor = 0;
+            ve.velems[n].dual_slot = false;
         }
     }
 
@@ -3089,6 +3090,7 @@ update_vertex_elements_sw(struct NineDevice9 *device)
             ve.velems[n].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
             ve.velems[n].src_offset = 0;
             ve.velems[n].instance_divisor = 0;
+            ve.velems[n].dual_slot = false;
         }
     }
 

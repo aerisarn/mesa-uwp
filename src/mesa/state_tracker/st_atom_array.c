@@ -58,6 +58,7 @@ static void set_velement(struct pipe_vertex_element *velement,
    velement->src_format = format;
    velement->instance_divisor = instance_divisor;
    velement->vertex_buffer_index = vbo_index;
+   velement->dual_slot = false;
    assert(velement->src_format);
 }
 
@@ -114,6 +115,7 @@ init_velement(const struct st_vertex_program *vp,
       velements[idx].src_format = vformat->_PipeFormat;
       velements[idx].instance_divisor = instance_divisor;
       velements[idx].vertex_buffer_index = vbo_index;
+      velements[idx].dual_slot = false;
       assert(velements[idx].src_format);
       return;
    }

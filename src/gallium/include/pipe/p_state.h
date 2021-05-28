@@ -679,7 +679,16 @@ struct pipe_vertex_element
    /** Which vertex_buffer (as given to pipe->set_vertex_buffer()) does
     * this attribute live in?
     */
-   uint8_t vertex_buffer_index;
+   uint8_t vertex_buffer_index:7;
+
+   /**
+    * Whether this element refers to a dual-slot vertex shader input.
+    * The purpose of this field is to do dual-slot lowering when the CSO is
+    * created instead of during every state change.
+    *
+    * It's lowered by util_lower_uint64_vertex_elements.
+    */
+   bool dual_slot:1;
 
    /**
     * This has only 8 bits because all vertex formats should be <= 255.
