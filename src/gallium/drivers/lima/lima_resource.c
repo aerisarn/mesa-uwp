@@ -370,9 +370,9 @@ lima_resource_from_handle(struct pipe_screen *pscreen,
          goto err_out;
       }
 
-      if (res->bo->size < size) {
+      if ((res->bo->size - res->levels[0].offset) < size) {
          fprintf(stderr, "imported bo size is smaller than expected: %d (BO) < %d (expected)\n",
-                 res->bo->size, size);
+                 (res->bo->size - res->levels[0].offset), size);
          goto err_out;
       }
 
