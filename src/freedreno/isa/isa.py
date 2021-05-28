@@ -492,3 +492,25 @@ class ISA(object):
         # TODO we should probably be able to look at the contexts where
         # an expression is evaluated and verify that it doesn't have any
         # {VARNAME} references that would be unresolved at evaluation time
+
+    def format(self):
+        ''' Generate format string used by printf(..) and friends '''
+        parts = []
+        words = self.bitsize / 32
+
+        for i in range(int(words)):
+            parts.append('%08x')
+
+        fmt = ''.join(parts)
+
+        return f"\"{fmt[1:]}\""
+
+    def value(self):
+        ''' Generate format values used by printf(..) and friends '''
+        parts = []
+        words = self.bitsize / 32
+
+        for i in range(int(words) - 1, -1, -1):
+            parts.append('v[' + str(i) + ']')
+
+        return ', '.join(parts)

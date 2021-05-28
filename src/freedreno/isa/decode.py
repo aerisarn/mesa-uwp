@@ -226,6 +226,9 @@ typedef struct {
 } bitmask_t;
 
 
+#define BITSET_FORMAT ${isa.format()}
+#define BITSET_VALUE(v) ${isa.value()}
+
 static inline uint64_t
 bitmask_to_uint64_t(bitmask_t mask)
 {
