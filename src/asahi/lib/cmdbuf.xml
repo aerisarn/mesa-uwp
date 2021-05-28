@@ -159,10 +159,10 @@
 
   <!--- Pointed to from the command buffer -->
   <struct name="Scissor" size="16">
-    <field name="Min X" size="16" start="0:0" type="uint"/>
-    <field name="X Range" size="16" start="0:16" type="uint"/>
-    <field name="Min Y" size="16" start="1:0" type="uint"/>
-    <field name="Y Range" size="16" start="1:16" type="uint"/>
+    <field name="Max X" size="16" start="0:0" type="uint"/>
+    <field name="Min X" size="16" start="0:16" type="uint"/>
+    <field name="Max Y" size="16" start="1:0" type="uint"/>
+    <field name="Min Y" size="16" start="1:16" type="uint"/>
     <field name="Min Z" size="32" start="2:0" type="float"/>
     <field name="Max Z" size="32" start="3:0" type="float"/>
   </struct>
