@@ -46,6 +46,16 @@ struct v3dv_cl_reloc {
    uint32_t offset;
 };
 
+static inline void
+pack_emit_reloc(void *cl, const void *reloc) {}
+
+#define __gen_user_data struct v3dv_cl
+#define __gen_address_type struct v3dv_cl_reloc
+#define __gen_address_offset(reloc) (((reloc)->bo ? (reloc)->bo->offset : 0) + \
+                                     (reloc)->offset)
+#define __gen_emit_reloc cl_pack_emit_reloc
+#define __gen_unpack_address(cl, s, e) __unpack_address(cl, s, e)
+
 struct v3dv_cl {
    void *base;
    struct v3dv_job *job;

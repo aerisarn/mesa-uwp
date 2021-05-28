@@ -28,6 +28,9 @@
 #include "v3dv_private.h"
 #include "vk_format_info.h"
 
+#include "broadcom/common/v3d_macros.h"
+#include "broadcom/cle/v3dx_pack.h"
+
 /* Our Vulkan resource indices represent indices in descriptor maps which
  * include all shader stages, so we need to size the arrays below
  * accordingly. For now we only support a maximum of 2 stages for VS and

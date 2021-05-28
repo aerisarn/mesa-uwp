@@ -75,24 +75,12 @@
 
 #include "drm-uapi/v3d_drm.h"
 
-/* FIXME: hooks for the packet definition functions. */
-static inline void
-pack_emit_reloc(void *cl, const void *reloc) {}
-
-#define __gen_user_data struct v3dv_cl
-#define __gen_address_type struct v3dv_cl_reloc
-#define __gen_address_offset(reloc) (((reloc)->bo ? (reloc)->bo->offset : 0) + \
-                                     (reloc)->offset)
-#define __gen_emit_reloc cl_pack_emit_reloc
-#define __gen_unpack_address(cl, s, e) __unpack_address(cl, s, e)
-#include "v3dv_cl.h"
-
 #include "vk_alloc.h"
 #include "simulator/v3d_simulator.h"
 
-#include "wsi_common.h"
+#include "v3dv_cl.h"
 
-#include "broadcom/cle/v3dx_pack.h"
+#include "wsi_common.h"
 
 /* A non-fatal assert.  Useful for debugging. */
 #ifdef DEBUG
