@@ -83,16 +83,13 @@ ir3_delayslots(struct ir3_instruction *assigner,
 	if (is_sfu(assigner) || is_tex(assigner) || is_mem(assigner))
 		return 0;
 
-	if (assigner->opc == OPC_MOVMSK)
-		return 4;
-
 	/* As far as we know, shader outputs don't need any delay. */
 	if (consumer->opc == OPC_END || consumer->opc == OPC_CHMASK)
 		return 0;
 
 	/* assigner must be alu: */
 	if (is_flow(consumer) || is_sfu(consumer) || is_tex(consumer) ||
-			is_mem(consumer)) {
+			is_mem(consumer) || (assigner->dsts[0]->flags & IR3_REG_SHARED)) {
 		return 6;
 	} else {
 		/* In mergedregs mode, there is an extra 2-cycle penalty when half of
