@@ -944,6 +944,16 @@ split_pred(struct ir3_sched_ctx *ctx)
 		}
 	}
 
+	if (ctx->block->condition == ctx->pred) {
+		if (!new_pred) {
+			new_pred = split_instr(ctx, ctx->pred);
+			/* original pred is scheduled, but new one isn't: */
+			new_pred->flags &= ~IR3_INSTR_MARK;
+		}
+		ctx->block->condition = new_pred;
+		d("new branch condition");
+	}
+
 	/* all remaining predicated remapped to new pred: */
 	ctx->pred = NULL;
 
