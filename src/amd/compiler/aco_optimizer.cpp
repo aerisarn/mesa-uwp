@@ -745,7 +745,9 @@ bool can_apply_sgprs(opt_ctx& ctx, aco_ptr<Instruction>& instr)
           instr->opcode != aco_opcode::v_readlane_b32 &&
           instr->opcode != aco_opcode::v_readlane_b32_e64 &&
           instr->opcode != aco_opcode::v_writelane_b32 &&
-          instr->opcode != aco_opcode::v_writelane_b32_e64;
+          instr->opcode != aco_opcode::v_writelane_b32_e64 &&
+          instr->opcode != aco_opcode::v_permlane16_b32 &&
+          instr->opcode != aco_opcode::v_permlanex16_b32;
 }
 
 void to_VOP3(opt_ctx& ctx, aco_ptr<Instruction>& instr)
@@ -818,6 +820,8 @@ bool valu_can_accept_vgpr(aco_ptr<Instruction>& instr, unsigned operand)
    if (instr->opcode == aco_opcode::v_readlane_b32 || instr->opcode == aco_opcode::v_readlane_b32_e64 ||
        instr->opcode == aco_opcode::v_writelane_b32 || instr->opcode == aco_opcode::v_writelane_b32_e64)
       return operand != 1;
+   if (instr->opcode == aco_opcode::v_permlane16_b32 || instr->opcode == aco_opcode::v_permlanex16_b32)
+      return operand == 0;
    return true;
 }
 

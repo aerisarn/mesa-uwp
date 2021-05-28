@@ -286,6 +286,16 @@ bool validate_ir(Program* program)
                            "Wrong Operand type for VALU instruction", instr.get());
                      continue;
                   }
+                  if (instr->opcode == aco_opcode::v_permlane16_b32 ||
+                      instr->opcode == aco_opcode::v_permlanex16_b32) {
+                     check(i != 0 ||
+                           (op.isTemp() && op.regClass().type() == RegType::vgpr),
+                           "Operand 0 of v_permlane must be VGPR", instr.get());
+                     check(i == 0 ||
+                           (op.isTemp() && op.regClass().type() == RegType::sgpr) ||
+                           op.isConstant(),
+                           "Lane select operands of v_permlane must be SGPR or constant", instr.get());
+                  }
 
                   if (instr->opcode == aco_opcode::v_writelane_b32 ||
                       instr->opcode == aco_opcode::v_writelane_b32_e64) {
