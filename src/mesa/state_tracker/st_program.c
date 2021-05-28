@@ -420,6 +420,7 @@ st_prepare_vertex_program(struct st_program *stp)
    struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
 
    stvp->num_inputs = 0;
+   stvp->vert_attrib_mask = 0;
    memset(stvp->input_to_index, ~0, sizeof(stvp->input_to_index));
    memset(stvp->result_to_output, ~0, sizeof(stvp->result_to_output));
 
@@ -429,13 +430,13 @@ st_prepare_vertex_program(struct st_program *stp)
    for (unsigned attr = 0; attr < VERT_ATTRIB_MAX; attr++) {
       if ((stp->Base.info.inputs_read & BITFIELD64_BIT(attr)) != 0) {
          stvp->input_to_index[attr] = stvp->num_inputs;
-         stvp->index_to_input[stvp->num_inputs] = attr;
+         stvp->vert_attrib_mask |= BITFIELD_BIT(attr);
          stvp->num_inputs++;
       }
    }
+
    /* pre-setup potentially unused edgeflag input */
    stvp->input_to_index[VERT_ATTRIB_EDGEFLAG] = stvp->num_inputs;
-   stvp->index_to_input[stvp->num_inputs] = VERT_ATTRIB_EDGEFLAG;
 
    /* Compute mapping of vertex program outputs to slots. */
    unsigned num_outputs = 0;
@@ -975,11 +976,10 @@ st_get_common_variant(struct st_context *st,
 
          if (stp->Base.info.stage == MESA_SHADER_VERTEX) {
             struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
-            unsigned num_inputs = stvp->num_inputs + key->passthrough_edgeflags;
-            for (unsigned index = 0; index < num_inputs; ++index) {
-               unsigned attr = stvp->index_to_input[index];
-               v->vert_attrib_mask |= 1u << attr;
-            }
+
+            v->vert_attrib_mask =
+               stvp->vert_attrib_mask |
+               (key->passthrough_edgeflags ? VERT_BIT_EDGEFLAG : 0);
          }
 
          st_add_variant(&stp->variants, &v->base);

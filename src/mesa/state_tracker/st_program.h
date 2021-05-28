@@ -281,10 +281,10 @@ struct st_vertex_program
 {
    struct st_program Base;
 
-   /** maps a TGSI input index back to a Mesa VERT_ATTRIB_x */
-   ubyte index_to_input[PIPE_MAX_ATTRIBS];
+   uint32_t vert_attrib_mask; /**< mask of sourced vertex attribs */
+
    ubyte num_inputs;
-   /** Reverse mapping of the above */
+   /** Map a vertex attrib to a gallium vertex element index. */
    ubyte input_to_index[VERT_ATTRIB_MAX];
 
    /** Maps VARYING_SLOT_x to slot */
