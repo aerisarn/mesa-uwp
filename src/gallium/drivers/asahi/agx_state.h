@@ -114,7 +114,10 @@ struct asahi_shader_key {
    enum pipe_format rt_formats[PIPE_MAX_COLOR_BUFS];
 };
 
-#define AGX_DIRTY_VERTEX (1 << 0)
+enum agx_dirty {
+   AGX_DIRTY_VERTEX   = BITFIELD_BIT(0),
+   AGX_DIRTY_VIEWPORT = BITFIELD_BIT(1),
+};
 
 struct agx_context {
    struct pipe_context base;

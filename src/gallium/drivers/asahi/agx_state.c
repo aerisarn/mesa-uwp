@@ -431,6 +431,7 @@ agx_set_viewport_states(struct pipe_context *pctx,
    assert(start_slot == 0 && "no geometry shaders");
    assert(num_viewports == 1 && "no geometry shaders");
 
+   ctx->dirty |= AGX_DIRTY_VIEWPORT;
    ctx->viewport = *vp;
 }
 
@@ -483,6 +484,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    ctx->batch->height = state->height;
    ctx->batch->nr_cbufs = state->nr_cbufs;
    ctx->batch->cbufs[0] = state->cbufs[0];
+   ctx->dirty = ~0;
 
    for (unsigned i = 0; i < state->nr_cbufs; ++i) {
       struct pipe_surface *surf = state->cbufs[i];
@@ -1123,7 +1125,10 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    agx_push_record(&out, 4, demo_linkage(ctx->vs, pool));
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool));
    agx_push_record(&out, 5, demo_unk11(pool, is_lines, reads_tib));
-   agx_push_record(&out, 10, agx_upload_viewport(pool, &ctx->viewport));
+
+   if (ctx->dirty & AGX_DIRTY_VIEWPORT)
+      agx_push_record(&out, 10, agx_upload_viewport(pool, &ctx->viewport));
+
    agx_push_record(&out, 3, demo_unk12(pool));
    agx_push_record(&out, 2, agx_pool_upload(pool, ctx->rast->cull, sizeof(ctx->rast->cull)));
    agx_push_record(&out, 2, demo_unk14(pool));
@@ -1245,6 +1250,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    }
 
    batch->encoder_current = out;
+   ctx->dirty = 0;
 }
 
 void agx_init_state_functions(struct pipe_context *ctx);
