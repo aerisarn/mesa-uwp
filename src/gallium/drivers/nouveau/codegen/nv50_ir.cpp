@@ -749,7 +749,7 @@ Instruction::clone(ClonePolicy<Function>& pol, Instruction *i) const
 {
    if (!i)
       i = new_Instruction(pol.context(), op, dType);
-#ifndef NDEBUG // non-conformant assert, so this is required
+#if !defined(NDEBUG) && defined(__cpp_rtti)
    assert(typeid(*i) == typeid(*this));
 #endif
 
