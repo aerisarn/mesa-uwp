@@ -81,8 +81,8 @@ pan_take_ref(struct pan_pool *pool, mali_ptr ptr)
                 panfrost_bo_reference(pool->transient_bo);
 
         return (struct pan_pool_ref) {
-                .gpu = ptr,
-                .bo = pool->transient_bo
+                .bo = pool->transient_bo,
+                .gpu = ptr
         };
 }
 
