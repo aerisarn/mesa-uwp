@@ -514,3 +514,18 @@ class ISA(object):
             parts.append('v[' + str(i) + ']')
 
         return ', '.join(parts)
+
+    def split_bits(self, value):
+        ''' Split `value` into a list of 32-bit integers '''
+        mask, parts = (1 << 32) - 1, []
+        words = self.bitsize / 32
+
+        while value:
+            parts.append(hex(value & mask))
+            value >>= 32
+
+        # Add 'missing' words
+        while len(parts) < words:
+            parts.append('0x0')
+
+        return parts
