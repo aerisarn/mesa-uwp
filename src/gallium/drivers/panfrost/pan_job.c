@@ -905,21 +905,20 @@ panfrost_flush_all_batches(struct panfrost_context *ctx)
         }
 }
 
-/* We always flush writers. We might also need to flush readers */
-
 void
-panfrost_flush_batches_accessing_rsrc(struct panfrost_context *ctx,
-                                      struct panfrost_resource *rsrc,
-                                      bool flush_readers)
+panfrost_flush_writer(struct panfrost_context *ctx,
+                      struct panfrost_resource *rsrc)
 {
         if (rsrc->track.writer) {
                 panfrost_batch_submit(rsrc->track.writer, ctx->syncobj, ctx->syncobj);
                 rsrc->track.writer = NULL;
         }
+}
 
-        if (!flush_readers)
-                return;
-
+void
+panfrost_flush_batches_accessing_rsrc(struct panfrost_context *ctx,
+                                      struct panfrost_resource *rsrc)
+{
         unsigned i;
         BITSET_FOREACH_SET(i, rsrc->track.users, PAN_MAX_BATCHES) {
                 panfrost_batch_submit(&ctx->batches.slots[i],
@@ -927,6 +926,7 @@ panfrost_flush_batches_accessing_rsrc(struct panfrost_context *ctx,
         }
 
         assert(!BITSET_COUNT(rsrc->track.users));
+        rsrc->track.writer = NULL;
 }
 
 void

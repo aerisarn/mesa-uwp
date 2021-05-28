@@ -174,8 +174,11 @@ panfrost_flush_all_batches(struct panfrost_context *ctx);
 
 void
 panfrost_flush_batches_accessing_rsrc(struct panfrost_context *ctx,
-                                      struct panfrost_resource *rsrc,
-                                      bool flush_readers);
+                                      struct panfrost_resource *rsrc);
+
+void
+panfrost_flush_writer(struct panfrost_context *ctx,
+                      struct panfrost_resource *rsrc);
 
 void
 panfrost_batch_adjust_stack_size(struct panfrost_batch *batch);
