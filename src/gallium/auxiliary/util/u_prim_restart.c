@@ -125,14 +125,13 @@ util_translate_prim_restart_ib(struct pipe_context *context,
    /* Create new index buffer */
    *dst_buffer = pipe_buffer_create(screen, PIPE_BIND_INDEX_BUFFER,
                                     PIPE_USAGE_STREAM,
-                                    (start + count) * dst_index_size);
+                                    count * dst_index_size);
    if (!*dst_buffer)
       goto error;
 
    /* Map new / dest index buffer */
-   dst_map = pipe_buffer_map_range(context, *dst_buffer,
-                                   start * dst_index_size, count * dst_index_size,
-                                   PIPE_MAP_WRITE, &dst_transfer);
+   dst_map = pipe_buffer_map(context, *dst_buffer,
+                             PIPE_MAP_WRITE, &dst_transfer);
    if (!dst_map)
       goto error;
 
