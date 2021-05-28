@@ -2,6 +2,7 @@ void
 demo_cmdbuf(uint64_t *buf, size_t size,
             struct agx_pool *pool,
             uint64_t encoder_ptr,
+            uint64_t scissor_ptr,
             unsigned width, unsigned height,
             uint32_t pipeline_null,
             uint32_t pipeline_clear,

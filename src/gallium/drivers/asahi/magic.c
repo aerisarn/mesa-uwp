@@ -55,6 +55,7 @@ void
 demo_cmdbuf(uint64_t *buf, size_t size,
             struct agx_pool *pool,
             uint64_t encoder_ptr,
+            uint64_t scissor_ptr,
             unsigned width, unsigned height,
             uint32_t pipeline_null,
             uint32_t pipeline_clear,
@@ -135,7 +136,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    EMIT32(cmdbuf, 0);
    EMIT32(cmdbuf, 0x12);
    EMIT64(cmdbuf, pipeline_store | 0x4);
-   EMIT64(cmdbuf, demo_zero(pool, 0x1000)); // Pointer to scissor descriptor
+   EMIT64(cmdbuf, scissor_ptr);
    EMIT64(cmdbuf, demo_zero(pool, 0x1000));
    EMIT64(cmdbuf, 0);
 

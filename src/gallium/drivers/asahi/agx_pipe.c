@@ -396,6 +396,7 @@ agx_flush(struct pipe_context *pctx,
    struct agx_batch *batch = ctx->batch;
 
    agx_batch_add_bo(batch, batch->encoder);
+   agx_batch_add_bo(batch, batch->scissor.bo);
    agx_batch_add_bo(batch, dev->internal.bo);
 
    for (unsigned i = 0; i < batch->nr_cbufs; ++i) {
@@ -439,6 +440,7 @@ agx_flush(struct pipe_context *pctx,
                dev->cmdbuf.size,
                &ctx->batch->pool,
                ctx->batch->encoder->ptr.gpu,
+               ctx->batch->scissor.bo->ptr.gpu,
                ctx->batch->width,
                ctx->batch->height,
                pipeline_null.gpu,
@@ -463,6 +465,7 @@ agx_flush(struct pipe_context *pctx,
    ctx->batch->clear = 0;
    ctx->batch->draw = 0;
    ctx->batch->encoder_current = ctx->batch->encoder->ptr.cpu;
+   ctx->batch->scissor.count = 0;
    ctx->dirty = ~0;
 }
 
@@ -501,6 +504,7 @@ agx_create_context(struct pipe_screen *screen,
                  agx_device(screen), AGX_MEMORY_TYPE_SHADER, true);
    ctx->batch->encoder = agx_bo_create(agx_device(screen), 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
    ctx->batch->encoder_current = ctx->batch->encoder->ptr.cpu;
+   ctx->batch->scissor.bo = agx_bo_create(agx_device(screen), 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
 
    /* Upload fixed shaders (TODO: compile them?) */
 

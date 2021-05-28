@@ -74,6 +74,12 @@ struct agx_stage {
    unsigned texture_count;
 };
 
+/* Uploaded scissor descriptors */
+struct agx_scissors {
+      struct agx_bo *bo;
+      unsigned count;
+};
+
 struct agx_batch {
    unsigned width, height, nr_cbufs;
    struct pipe_surface *cbufs[8];
@@ -91,6 +97,8 @@ struct agx_batch {
    struct agx_pool pool, pipeline_pool;
    struct agx_bo *encoder;
    uint8_t *encoder_current;
+
+   struct agx_scissors scissor;
 };
 
 struct agx_zsa {
