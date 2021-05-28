@@ -784,13 +784,16 @@ radv_get_debug_option_name(int id)
    return radv_debug_options[id].string;
 }
 
-static const struct debug_control radv_perftest_options[] = {
-   {"localbos", RADV_PERFTEST_LOCAL_BOS},   {"dccmsaa", RADV_PERFTEST_DCC_MSAA},
-   {"bolist", RADV_PERFTEST_BO_LIST},
-   {"cswave32", RADV_PERFTEST_CS_WAVE_32},  {"pswave32", RADV_PERFTEST_PS_WAVE_32},
-   {"gewave32", RADV_PERFTEST_GE_WAVE_32},
-   {"nosam", RADV_PERFTEST_NO_SAM},         {"sam", RADV_PERFTEST_SAM},
-   {NULL, 0}};
+static const struct debug_control radv_perftest_options[] = {{"localbos", RADV_PERFTEST_LOCAL_BOS},
+                                                             {"dccmsaa", RADV_PERFTEST_DCC_MSAA},
+                                                             {"bolist", RADV_PERFTEST_BO_LIST},
+                                                             {"cswave32", RADV_PERFTEST_CS_WAVE_32},
+                                                             {"pswave32", RADV_PERFTEST_PS_WAVE_32},
+                                                             {"gewave32", RADV_PERFTEST_GE_WAVE_32},
+                                                             {"nosam", RADV_PERFTEST_NO_SAM},
+                                                             {"sam", RADV_PERFTEST_SAM},
+                                                             {"rt", RADV_PERFTEST_RT},
+                                                             {NULL, 0}};
 
 const char *
 radv_get_perftest_option_name(int id)
