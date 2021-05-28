@@ -452,36 +452,71 @@ agx_set_viewport_states(struct pipe_context *pctx,
    ctx->viewport = *vp;
 }
 
-static uint64_t
-agx_upload_viewport(struct agx_pool *pool,
-                    const struct pipe_viewport_state *vp)
+struct agx_viewport_scissor {
+   uint64_t viewport;
+   unsigned scissor;
+};
+
+static struct agx_viewport_scissor
+agx_upload_viewport_scissor(struct agx_pool *pool,
+                            struct agx_batch *batch,
+                            const struct pipe_viewport_state *vp,
+                            const struct pipe_scissor_state *ss)
 {
    struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_VIEWPORT_LENGTH, 64);
 
-   float vp_minx = vp->translate[0] - fabsf(vp->scale[0]);
-   float vp_maxx = vp->translate[0] + fabsf(vp->scale[0]);
-   float vp_miny = vp->translate[1] - fabsf(vp->scale[1]);
-   float vp_maxy = vp->translate[1] + fabsf(vp->scale[1]);
+   unsigned minx = CLAMP((int) vp->translate[0] - fabsf(vp->scale[0]), 0, batch->width);
+   unsigned maxx = CLAMP((int) vp->translate[0] + fabsf(vp->scale[0]), 0, batch->width);
+   unsigned miny = CLAMP((int) vp->translate[1] - fabsf(vp->scale[1]), 0, batch->height);
+   unsigned maxy = CLAMP((int) vp->translate[1] + fabsf(vp->scale[1]), 0, batch->height);
 
-   float near_z, far_z;
-   util_viewport_zmin_zmax(vp, false, &near_z, &far_z);
+   if (ss) {
+	minx = MAX2(ss->minx, minx);
+	miny = MAX2(ss->miny, miny);
+	maxx = MIN2(ss->maxx, maxx);
+	maxy = MIN2(ss->maxy, maxy);
+   }
+
+   assert(maxx > minx && maxy > miny);
+
+   float minz, maxz;
+   util_viewport_zmin_zmax(vp, false, &minz, &maxz);
 
    agx_pack(T.cpu, VIEWPORT, cfg) {
-      cfg.min_tile_x = vp_minx / 32;
-      cfg.min_tile_y = vp_miny / 32;
-      cfg.max_tile_x = MAX2(ceilf(vp_maxx / 32.0), 1.0);
-      cfg.max_tile_y = MAX2(ceilf(vp_maxy / 32.0), 1.0);
+      cfg.min_tile_x = minx / 32;
+      cfg.min_tile_y = miny / 32;
+      cfg.max_tile_x = DIV_ROUND_UP(maxx, 32);
+      cfg.max_tile_y = DIV_ROUND_UP(maxy, 32);
       cfg.clip_tile = true;
 
       cfg.translate_x = vp->translate[0];
       cfg.translate_y = vp->translate[1];
       cfg.scale_x = vp->scale[0];
       cfg.scale_y = vp->scale[1];
-      cfg.translate_z = near_z;
-      cfg.scale_z = far_z - near_z;
+
+      /* Assumes [0, 1] clip coordinates. If half-z is not in use, lower_half_z
+       * is called to ensure this works. */
+      cfg.translate_z = minz;
+      cfg.scale_z = maxz - minz;
    };
 
-   return T.gpu;
+   /* Allocate a new scissor descriptor */
+   struct agx_scissor_packed *ptr = batch->scissor.bo->ptr.cpu;
+   unsigned index = (batch->scissor.count++);
+
+   agx_pack(ptr + index, SCISSOR, cfg) {
+      cfg.min_x = minx;
+      cfg.min_y = miny;
+      cfg.min_z = minz;
+      cfg.max_x = maxx;
+      cfg.max_y = maxy;
+      cfg.max_z = maxz;
+   }
+
+   return (struct agx_viewport_scissor) {
+      .viewport = T.gpu,
+      .scissor = index
+   };
 }
 
 /* A framebuffer state can be reused across batches, so it doesn't make sense
@@ -1056,6 +1091,11 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool)
 
       cfg.front.disable_depth_write = ctx->zs.disable_z_write;
       cfg.back.disable_depth_write = ctx->zs.disable_z_write;
+
+      /* Always enable scissoring so we may scissor to the viewport (TODO:
+       * optimize this out if the viewport is the default and the app does not
+       * use the scissor test) */
+      cfg.scissor_enable = true;
    };
 
    return t.gpu;
@@ -1096,13 +1136,15 @@ demo_unk12(struct agx_pool *pool)
 }
 
 static uint64_t
-demo_unk14(struct agx_pool *pool)
+agx_set_scissor_index(struct agx_pool *pool, unsigned index)
 {
-   uint32_t unk[] = {
-      0x100, 0x0,
+   struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_SET_SCISSOR_LENGTH, 64);
+
+   agx_pack(T.cpu, SET_SCISSOR, cfg) {
+      cfg.index = index;
    };
 
-   return agx_pool_upload(pool, unk, sizeof(unk));
+   return T.gpu;
 }
 
 static void
@@ -1144,12 +1186,17 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool));
    agx_push_record(&out, 5, demo_unk11(pool, is_lines, reads_tib));
 
-   if (ctx->dirty & AGX_DIRTY_VIEWPORT)
-      agx_push_record(&out, 10, agx_upload_viewport(pool, &ctx->viewport));
+   if (ctx->dirty & (AGX_DIRTY_VIEWPORT | AGX_DIRTY_SCISSOR)) {
+      struct agx_viewport_scissor vps = agx_upload_viewport_scissor(pool,
+            ctx->batch, &ctx->viewport,
+            ctx->rast->base.scissor ? &ctx->scissor : NULL);
+
+      agx_push_record(&out, 10, vps.viewport);
+      agx_push_record(&out, 2, agx_set_scissor_index(pool, vps.scissor));
+   }
 
    agx_push_record(&out, 3, demo_unk12(pool));
    agx_push_record(&out, 2, agx_pool_upload(pool, ctx->rast->cull, sizeof(ctx->rast->cull)));
-   agx_push_record(&out, 2, demo_unk14(pool));
 
    return (out - 1); // XXX: alignment fixup, or something
 }
