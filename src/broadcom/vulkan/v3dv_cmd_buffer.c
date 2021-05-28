@@ -87,7 +87,7 @@ v3dv_job_add_bo_unchecked(struct v3dv_job *job, struct v3dv_bo *bo)
 static void
 cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer);
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateCommandPool(VkDevice _device,
                        const VkCommandPoolCreateInfo *pCreateInfo,
                        const VkAllocationCallbacks *pAllocator,
@@ -915,7 +915,7 @@ cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_AllocateCommandBuffers(VkDevice _device,
                             const VkCommandBufferAllocateInfo *pAllocateInfo,
                             VkCommandBuffer *pCommandBuffers)
@@ -943,7 +943,7 @@ v3dv_AllocateCommandBuffers(VkDevice _device,
    return result;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_FreeCommandBuffers(VkDevice device,
                         VkCommandPool commandPool,
                         uint32_t commandBufferCount,
@@ -959,7 +959,7 @@ v3dv_FreeCommandBuffers(VkDevice device,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyCommandPool(VkDevice _device,
                         VkCommandPool commandPool,
                         const VkAllocationCallbacks *pAllocator)
@@ -978,7 +978,7 @@ v3dv_DestroyCommandPool(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, pool);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_TrimCommandPool(VkDevice device,
                      VkCommandPool commandPool,
                      VkCommandPoolTrimFlags flags)
@@ -1129,7 +1129,7 @@ cmd_buffer_begin_render_pass_secondary(
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                         const VkCommandBufferBeginInfo *pBeginInfo)
 {
@@ -1162,7 +1162,7 @@ v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_ResetCommandBuffer(VkCommandBuffer commandBuffer,
                         VkCommandBufferResetFlags flags)
 {
@@ -1170,7 +1170,7 @@ v3dv_ResetCommandBuffer(VkCommandBuffer commandBuffer,
    return cmd_buffer_reset(cmd_buffer, flags);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_ResetCommandPool(VkDevice device,
                       VkCommandPool commandPool,
                       VkCommandPoolResetFlags flags)
@@ -1383,7 +1383,7 @@ cmd_buffer_ensure_render_pass_attachment_state(struct v3dv_cmd_buffer *cmd_buffe
    assert(state->attachment_alloc_count >= pass->attachment_count);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
                         const VkRenderPassBeginInfo *pRenderPassBegin,
                         VkSubpassContents contents)
@@ -1423,7 +1423,7 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    v3dv_cmd_buffer_subpass_start(cmd_buffer, 0);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -2547,7 +2547,7 @@ v3dv_cmd_buffer_subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
       job->is_subpass_finish = true;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -2566,7 +2566,7 @@ v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    state->subpass_idx = -1;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -2905,7 +2905,7 @@ cmd_buffer_execute_outside_pass(struct v3dv_cmd_buffer *primary,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdExecuteCommands(VkCommandBuffer commandBuffer,
                         uint32_t commandBufferCount,
                         const VkCommandBuffer *pCommandBuffers)
@@ -3161,7 +3161,7 @@ bind_compute_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_COMPUTE_PIPELINE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
                      VkPipelineBindPoint pipelineBindPoint,
                      VkPipeline _pipeline)
@@ -3217,7 +3217,7 @@ v3dv_viewport_compute_xform(const VkViewport *viewport,
       scale[2] = min_abs_scale * (scale[2] < 0 ? -1.0f : 1.0f);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetViewport(VkCommandBuffer commandBuffer,
                     uint32_t firstViewport,
                     uint32_t viewportCount,
@@ -3250,7 +3250,7 @@ v3dv_CmdSetViewport(VkCommandBuffer commandBuffer,
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_VIEWPORT;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetScissor(VkCommandBuffer commandBuffer,
                    uint32_t firstScissor,
                    uint32_t scissorCount,
@@ -4460,7 +4460,7 @@ cmd_buffer_draw(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer_emit_draw(cmd_buffer, info);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdDraw(VkCommandBuffer commandBuffer,
              uint32_t vertexCount,
              uint32_t instanceCount,
@@ -4480,7 +4480,7 @@ v3dv_CmdDraw(VkCommandBuffer commandBuffer,
    cmd_buffer_draw(cmd_buffer, &info);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
                     uint32_t indexCount,
                     uint32_t instanceCount,
@@ -4542,7 +4542,7 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
                      VkBuffer _buffer,
                      VkDeviceSize offset,
@@ -4577,7 +4577,7 @@ v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
                             VkBuffer _buffer,
                             VkDeviceSize offset,
@@ -4615,7 +4615,7 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
                         VkPipelineStageFlags srcStageMask,
                         VkPipelineStageFlags dstStageMask,
@@ -4651,7 +4651,7 @@ v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
                           uint32_t firstBinding,
                           uint32_t bindingCount,
@@ -4697,7 +4697,7 @@ get_index_size(VkIndexType index_type)
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
                         VkBuffer buffer,
                         VkDeviceSize offset,
@@ -4718,7 +4718,7 @@ v3dv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_INDEX_BUFFER;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer,
                               VkStencilFaceFlags faceMask,
                               uint32_t compareMask)
@@ -4733,7 +4733,7 @@ v3dv_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer,
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_STENCIL_COMPARE_MASK;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
                             VkStencilFaceFlags faceMask,
                             uint32_t writeMask)
@@ -4748,7 +4748,7 @@ v3dv_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_STENCIL_WRITE_MASK;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetStencilReference(VkCommandBuffer commandBuffer,
                             VkStencilFaceFlags faceMask,
                             uint32_t reference)
@@ -4763,7 +4763,7 @@ v3dv_CmdSetStencilReference(VkCommandBuffer commandBuffer,
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_STENCIL_REFERENCE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetDepthBias(VkCommandBuffer commandBuffer,
                      float depthBiasConstantFactor,
                      float depthBiasClamp,
@@ -4777,7 +4777,7 @@ v3dv_CmdSetDepthBias(VkCommandBuffer commandBuffer,
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DEPTH_BIAS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
                        float minDepthBounds,
                        float maxDepthBounds)
@@ -4787,7 +4787,7 @@ v3dv_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
     */
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetLineWidth(VkCommandBuffer commandBuffer,
                      float lineWidth)
 {
@@ -4797,7 +4797,7 @@ v3dv_CmdSetLineWidth(VkCommandBuffer commandBuffer,
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_LINE_WIDTH;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                            VkPipelineBindPoint pipelineBindPoint,
                            VkPipelineLayout _layout,
@@ -4854,7 +4854,7 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdPushConstants(VkCommandBuffer commandBuffer,
                       VkPipelineLayout layout,
                       VkShaderStageFlags stageFlags,
@@ -4873,7 +4873,7 @@ v3dv_CmdPushConstants(VkCommandBuffer commandBuffer,
    cmd_buffer->state.dirty_push_constants_stages |= stageFlags;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
                           const float blendConstants[4])
 {
@@ -5058,7 +5058,7 @@ v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
    list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetEvent(VkCommandBuffer commandBuffer,
                  VkEvent _event,
                  VkPipelineStageFlags stageMask)
@@ -5084,7 +5084,7 @@ v3dv_CmdSetEvent(VkCommandBuffer commandBuffer,
    list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdResetEvent(VkCommandBuffer commandBuffer,
                    VkEvent _event,
                    VkPipelineStageFlags stageMask)
@@ -5110,7 +5110,7 @@ v3dv_CmdResetEvent(VkCommandBuffer commandBuffer,
    list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
                    uint32_t eventCount,
                    const VkEvent *pEvents,
@@ -5163,7 +5163,7 @@ v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
    list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
                        VkPipelineStageFlagBits pipelineStage,
                        VkQueryPool queryPool,
@@ -5398,7 +5398,7 @@ cmd_buffer_dispatch(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.job = NULL;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdDispatch(VkCommandBuffer commandBuffer,
                  uint32_t groupCountX,
                  uint32_t groupCountY,
@@ -5411,13 +5411,14 @@ v3dv_CmdDispatch(VkCommandBuffer commandBuffer,
                        groupCountX, groupCountY, groupCountZ);
 }
 
-void v3dv_CmdDispatchBase(VkCommandBuffer commandBuffer,
-                          uint32_t baseGroupX,
-                          uint32_t baseGroupY,
-                          uint32_t baseGroupZ,
-                          uint32_t groupCountX,
-                          uint32_t groupCountY,
-                          uint32_t groupCountZ)
+VKAPI_ATTR void VKAPI_CALL
+v3dv_CmdDispatchBase(VkCommandBuffer commandBuffer,
+                     uint32_t baseGroupX,
+                     uint32_t baseGroupY,
+                     uint32_t baseGroupZ,
+                     uint32_t groupCountX,
+                     uint32_t groupCountY,
+                     uint32_t groupCountZ)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -5475,7 +5476,7 @@ cmd_buffer_dispatch_indirect(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.job = NULL;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
                          VkBuffer _buffer,
                          VkDeviceSize offset)
@@ -5489,7 +5490,7 @@ v3dv_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    cmd_buffer_dispatch_indirect(cmd_buffer, buffer, offset);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetDeviceMask(VkCommandBuffer commandBuffer, uint32_t deviceMask)
 {
    /* Nothing to do here since we only support a single device */

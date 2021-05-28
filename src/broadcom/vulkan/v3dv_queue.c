@@ -142,7 +142,7 @@ gpu_queue_wait_idle(struct v3dv_queue *queue)
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_QueueWaitIdle(VkQueue _queue)
 {
    V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
@@ -1080,7 +1080,7 @@ done:
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_QueueSubmit(VkQueue _queue,
                  uint32_t submitCount,
                  const VkSubmitInfo* pSubmits,
@@ -1115,7 +1115,7 @@ done:
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateSemaphore(VkDevice _device,
                      const VkSemaphoreCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator,
@@ -1144,7 +1144,7 @@ v3dv_CreateSemaphore(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroySemaphore(VkDevice _device,
                       VkSemaphore semaphore,
                       const VkAllocationCallbacks *pAllocator)
@@ -1163,7 +1163,7 @@ v3dv_DestroySemaphore(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, sem);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateFence(VkDevice _device,
                  const VkFenceCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks *pAllocator,
@@ -1195,7 +1195,7 @@ v3dv_CreateFence(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyFence(VkDevice _device,
                   VkFence _fence,
                   const VkAllocationCallbacks *pAllocator)
@@ -1214,7 +1214,7 @@ v3dv_DestroyFence(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, fence);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_GetFenceStatus(VkDevice _device, VkFence _fence)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
@@ -1229,7 +1229,7 @@ v3dv_GetFenceStatus(VkDevice _device, VkFence _fence)
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
@@ -1254,7 +1254,7 @@ v3dv_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_WaitForFences(VkDevice _device,
                    uint32_t fenceCount,
                    const VkFence *pFences,
@@ -1295,7 +1295,7 @@ v3dv_WaitForFences(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_QueueBindSparse(VkQueue _queue,
                      uint32_t bindInfoCount,
                      const VkBindSparseInfo *pBindInfo,

@@ -100,7 +100,7 @@ pass_find_subpass_range_for_attachments(struct v3dv_render_pass *pass)
 }
 
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateRenderPass(VkDevice _device,
                       const VkRenderPassCreateInfo *pCreateInfo,
                       const VkAllocationCallbacks *pAllocator,
@@ -239,7 +239,7 @@ v3dv_CreateRenderPass(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyRenderPass(VkDevice _device,
                        VkRenderPass _pass,
                        const VkAllocationCallbacks *pAllocator)
@@ -306,7 +306,7 @@ subpass_get_granularity(struct v3dv_render_pass *pass,
    };
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetRenderAreaGranularity(VkDevice device,
                               VkRenderPass renderPass,
                               VkExtent2D *pGranularity)

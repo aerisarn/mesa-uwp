@@ -338,7 +338,7 @@ v3dv_descriptor_map_get_texture_shader_state(struct v3dv_descriptor_state *descr
  * just multiple descriptor set layouts pasted together."
  */
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreatePipelineLayout(VkDevice _device,
                          const VkPipelineLayoutCreateInfo *pCreateInfo,
                          const VkAllocationCallbacks *pAllocator,
@@ -388,7 +388,7 @@ v3dv_CreatePipelineLayout(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyPipelineLayout(VkDevice _device,
                           VkPipelineLayout _pipelineLayout,
                           const VkAllocationCallbacks *pAllocator)
@@ -401,7 +401,7 @@ v3dv_DestroyPipelineLayout(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, pipeline_layout);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateDescriptorPool(VkDevice _device,
                           const VkDescriptorPoolCreateInfo *pCreateInfo,
                           const VkAllocationCallbacks *pAllocator,
@@ -514,7 +514,7 @@ descriptor_set_destroy(struct v3dv_device *device,
    vk_object_free(&device->vk, NULL, set);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyDescriptorPool(VkDevice _device,
                            VkDescriptorPool _pool,
                            const VkAllocationCallbacks *pAllocator)
@@ -539,7 +539,7 @@ v3dv_DestroyDescriptorPool(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, pool);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_ResetDescriptorPool(VkDevice _device,
                          VkDescriptorPool descriptorPool,
                          VkDescriptorPoolResetFlags flags)
@@ -566,7 +566,7 @@ v3dv_ResetDescriptorPool(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateDescriptorSetLayout(VkDevice _device,
                                const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
                                const VkAllocationCallbacks *pAllocator,
@@ -702,7 +702,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyDescriptorSetLayout(VkDevice _device,
                                 VkDescriptorSetLayout _set_layout,
                                 const VkAllocationCallbacks *pAllocator)
@@ -843,7 +843,7 @@ descriptor_set_create(struct v3dv_device *device,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_AllocateDescriptorSets(VkDevice _device,
                             const VkDescriptorSetAllocateInfo *pAllocateInfo,
                             VkDescriptorSet *pDescriptorSets)
@@ -877,7 +877,7 @@ v3dv_AllocateDescriptorSets(VkDevice _device,
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_FreeDescriptorSets(VkDevice _device,
                         VkDescriptorPool descriptorPool,
                         uint32_t count,
@@ -959,7 +959,7 @@ write_buffer_view_descriptor(VkDescriptorType desc_type,
           sizeof(bview->texture_shader_state));
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_UpdateDescriptorSets(VkDevice  _device,
                           uint32_t descriptorWriteCount,
                           const VkWriteDescriptorSet *pDescriptorWrites,
@@ -1105,7 +1105,7 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetDescriptorSetLayoutSupport(
    VkDevice device,
    const VkDescriptorSetLayoutCreateInfo *pCreateInfo,

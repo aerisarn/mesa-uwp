@@ -565,7 +565,7 @@ v3dv_buffer_format_supports_features(VkFormat vk_format,
    return (supported & features) == features;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
                                        VkFormat format,
                                        VkFormatProperties* pFormatProperties)
@@ -582,7 +582,7 @@ v3dv_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
    };
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
                                         VkFormat format,
                                         VkFormatProperties2 *pFormatProperties)
@@ -775,7 +775,7 @@ static const VkExternalMemoryProperties prime_fd_props = {
       VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
 };
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_GetPhysicalDeviceImageFormatProperties(
    VkPhysicalDevice physicalDevice,
    VkFormat format,
@@ -801,7 +801,7 @@ v3dv_GetPhysicalDeviceImageFormatProperties(
                                       pImageFormatProperties, NULL);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
                                              const VkPhysicalDeviceImageFormatInfo2 *base_info,
                                              VkImageFormatProperties2 *base_props)
@@ -875,7 +875,7 @@ done:
    return result;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceSparseImageFormatProperties(
    VkPhysicalDevice physicalDevice,
    VkFormat format,
@@ -889,7 +889,7 @@ v3dv_GetPhysicalDeviceSparseImageFormatProperties(
    *pPropertyCount = 0;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceSparseImageFormatProperties2(
    VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceSparseImageFormatInfo2 *pFormatInfo,
@@ -899,7 +899,7 @@ v3dv_GetPhysicalDeviceSparseImageFormatProperties2(
    *pPropertyCount = 0;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceExternalBufferProperties(
    VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceExternalBufferInfo *pExternalBufferInfo,

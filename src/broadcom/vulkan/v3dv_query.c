@@ -23,7 +23,7 @@
 
 #include "v3dv_private.h"
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateQueryPool(VkDevice _device,
                      const VkQueryPoolCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator,
@@ -105,7 +105,7 @@ fail:
    return result;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyQueryPool(VkDevice _device,
                       VkQueryPool queryPool,
                       const VkAllocationCallbacks *pAllocator)
@@ -270,7 +270,7 @@ v3dv_get_query_pool_results_cpu(struct v3dv_device *device,
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_GetQueryPoolResults(VkDevice _device,
                          VkQueryPool queryPool,
                          uint32_t firstQuery,
@@ -287,7 +287,7 @@ v3dv_GetQueryPoolResults(VkDevice _device,
                                           pData, stride, flags);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdResetQueryPool(VkCommandBuffer commandBuffer,
                        VkQueryPool queryPool,
                        uint32_t firstQuery,
@@ -299,7 +299,7 @@ v3dv_CmdResetQueryPool(VkCommandBuffer commandBuffer,
    v3dv_cmd_buffer_reset_queries(cmd_buffer, pool, firstQuery, queryCount);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
                              VkQueryPool queryPool,
                              uint32_t firstQuery,
@@ -318,7 +318,7 @@ v3dv_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
                                       dst, dstOffset, stride, flags);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdBeginQuery(VkCommandBuffer commandBuffer,
                    VkQueryPool queryPool,
                    uint32_t query,
@@ -330,7 +330,7 @@ v3dv_CmdBeginQuery(VkCommandBuffer commandBuffer,
    v3dv_cmd_buffer_begin_query(cmd_buffer, pool, query, flags);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdEndQuery(VkCommandBuffer commandBuffer,
                  VkQueryPool queryPool,
                  uint32_t query)

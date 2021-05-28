@@ -656,7 +656,7 @@ pipeline_cache_load(struct v3dv_pipeline_cache *cache,
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreatePipelineCache(VkDevice _device,
                          const VkPipelineCacheCreateInfo *pCreateInfo,
                          const VkAllocationCallbacks *pAllocator,
@@ -715,7 +715,7 @@ v3dv_pipeline_cache_finish(struct v3dv_pipeline_cache *cache)
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyPipelineCache(VkDevice _device,
                           VkPipelineCache _cache,
                           const VkAllocationCallbacks *pAllocator)
@@ -731,7 +731,7 @@ v3dv_DestroyPipelineCache(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, cache);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_MergePipelineCaches(VkDevice device,
                          VkPipelineCache dstCache,
                          uint32_t srcCacheCount,
@@ -896,7 +896,7 @@ v3dv_pipeline_shared_data_write_to_blob(const struct v3dv_pipeline_shared_data *
 }
 
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_GetPipelineCacheData(VkDevice _device,
                           VkPipelineCache _cache,
                           size_t *pDataSize,

@@ -392,7 +392,7 @@ create_image_from_swapchain(struct v3dv_device *device,
    return create_image(device, &local_create_info, pAllocator, pImage);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateImage(VkDevice _device,
                  const VkImageCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks *pAllocator,
@@ -409,7 +409,7 @@ v3dv_CreateImage(VkDevice _device,
    return create_image(device, pCreateInfo, pAllocator, pImage);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetImageSubresourceLayout(VkDevice device,
                                VkImage _image,
                                const VkImageSubresource *subresource,
@@ -444,7 +444,7 @@ v3dv_GetImageSubresourceLayout(VkDevice device,
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_GetImageDrmFormatModifierPropertiesEXT(
    VkDevice device,
    VkImage _image,
@@ -460,7 +460,7 @@ v3dv_GetImageDrmFormatModifierPropertiesEXT(
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyImage(VkDevice _device,
                   VkImage _image,
                   const VkAllocationCallbacks* pAllocator)
@@ -681,7 +681,7 @@ vk_component_mapping_to_pipe_swizzle(VkComponentSwizzle comp,
    };
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateImageView(VkDevice _device,
                      const VkImageViewCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator,
@@ -810,7 +810,7 @@ v3dv_CreateImageView(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyImageView(VkDevice _device,
                       VkImageView imageView,
                       const VkAllocationCallbacks* pAllocator)
@@ -866,7 +866,7 @@ pack_texture_shader_state_from_buffer_view(struct v3dv_device *device,
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateBufferView(VkDevice _device,
                       const VkBufferViewCreateInfo *pCreateInfo,
                       const VkAllocationCallbacks *pAllocator,
@@ -912,7 +912,7 @@ v3dv_CreateBufferView(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyBufferView(VkDevice _device,
                        VkBufferView bufferView,
                        const VkAllocationCallbacks *pAllocator)

@@ -1319,7 +1319,7 @@ can_use_tlb(struct v3dv_image *image,
    return false;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
                           VkImage srcImage,
                           VkImageLayout srcImageLayout,
@@ -1915,7 +1915,7 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
    return handled;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdCopyImage(VkCommandBuffer commandBuffer,
                   VkImage srcImage,
                   VkImageLayout srcImageLayout,
@@ -2128,7 +2128,7 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    return true;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdClearColorImage(VkCommandBuffer commandBuffer,
                         VkImage _image,
                         VkImageLayout imageLayout,
@@ -2150,7 +2150,7 @@ v3dv_CmdClearColorImage(VkCommandBuffer commandBuffer,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
                                VkImage _image,
                                VkImageLayout imageLayout,
@@ -2359,7 +2359,7 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    return job;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdCopyBuffer(VkCommandBuffer commandBuffer,
                    VkBuffer srcBuffer,
                    VkBuffer dstBuffer,
@@ -2388,7 +2388,7 @@ destroy_update_buffer_cb(VkDevice _device,
    v3dv_bo_free(device, bo);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
                      VkBuffer dstBuffer,
                      VkDeviceSize dstOffset,
@@ -2543,7 +2543,7 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdFillBuffer(VkCommandBuffer commandBuffer,
                    VkBuffer dstBuffer,
                    VkDeviceSize dstOffset,
@@ -4031,7 +4031,7 @@ copy_buffer_to_image_cpu(struct v3dv_cmd_buffer *cmd_buffer,
    return true;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
                           VkBuffer srcBuffer,
                           VkImage dstImage,
@@ -5509,7 +5509,7 @@ fail:
    return handled;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
                   VkImage srcImage,
                   VkImageLayout srcImageLayout,
@@ -5717,7 +5717,7 @@ resolve_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                       &blit_region, VK_FILTER_NEAREST, true);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdResolveImage(VkCommandBuffer commandBuffer,
                      VkImage srcImage,
                      VkImageLayout srcImageLayout,

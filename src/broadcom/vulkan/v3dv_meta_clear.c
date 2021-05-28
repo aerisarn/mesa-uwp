@@ -1622,7 +1622,7 @@ all_clear_rects_in_base_layer(uint32_t rect_count, const VkClearRect *rects)
    return true;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdClearAttachments(VkCommandBuffer commandBuffer,
                          uint32_t attachmentCount,
                          const VkClearAttachment *pAttachments,

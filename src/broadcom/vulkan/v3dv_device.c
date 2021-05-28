@@ -61,21 +61,21 @@
 #include "drm-uapi/i915_drm.h"
 #endif
 
-static void *
+static VKAPI_ATTR void * VKAPI_CALL
 default_alloc_func(void *pUserData, size_t size, size_t align,
                    VkSystemAllocationScope allocationScope)
 {
    return malloc(size);
 }
 
-static void *
+static VKAPI_ATTR void * VKAPI_CALL
 default_realloc_func(void *pUserData, void *pOriginal, size_t size,
                      size_t align, VkSystemAllocationScope allocationScope)
 {
    return realloc(pOriginal, size);
 }
 
-static void
+static VKAPI_ATTR void VKAPI_CALL
 default_free_func(void *pUserData, void *pMemory)
 {
    free(pMemory);
@@ -90,7 +90,7 @@ static const VkAllocationCallbacks default_alloc = {
 
 #define V3DV_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_EnumerateInstanceVersion(uint32_t *pApiVersion)
 {
     *pApiVersion = V3DV_API_VERSION;
@@ -148,7 +148,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
    };
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_EnumerateInstanceExtensionProperties(const char *pLayerName,
                                           uint32_t *pPropertyCount,
                                           VkExtensionProperties *pProperties)
@@ -161,7 +161,7 @@ v3dv_EnumerateInstanceExtensionProperties(const char *pLayerName,
       &instance_extensions, pPropertyCount, pProperties);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
                     const VkAllocationCallbacks *pAllocator,
                     VkInstance *pInstance)
@@ -268,7 +268,7 @@ physical_device_finish(struct v3dv_physical_device *device)
    mtx_destroy(&device->mutex);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyInstance(VkInstance _instance,
                      const VkAllocationCallbacks *pAllocator)
 {
@@ -894,7 +894,7 @@ instance_ensure_physical_device(struct v3dv_instance *instance)
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult  VKAPI_CALL
 v3dv_EnumeratePhysicalDevices(VkInstance _instance,
                               uint32_t *pPhysicalDeviceCount,
                               VkPhysicalDevice *pPhysicalDevices)
@@ -917,7 +917,7 @@ v3dv_EnumeratePhysicalDevices(VkInstance _instance,
    return vk_outarray_status(&out);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_EnumeratePhysicalDeviceGroups(
     VkInstance _instance,
     uint32_t *pPhysicalDeviceGroupCount,
@@ -947,7 +947,7 @@ v3dv_EnumeratePhysicalDeviceGroups(
    return vk_outarray_status(&out);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
                                VkPhysicalDeviceFeatures *pFeatures)
 {
@@ -1016,7 +1016,7 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
    };
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
                                 VkPhysicalDeviceFeatures2 *pFeatures)
 {
@@ -1038,7 +1038,7 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetDeviceGroupPeerMemoryFeatures(VkDevice device,
                                       uint32_t heapIndex,
                                       uint32_t localDeviceIndex,
@@ -1094,7 +1094,7 @@ v3dv_physical_device_device_id(struct v3dv_physical_device *dev)
 #endif
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
                                  VkPhysicalDeviceProperties *pProperties)
 {
@@ -1269,7 +1269,7 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
           pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                                   VkPhysicalDeviceProperties2 *pProperties)
 {
@@ -1341,7 +1341,7 @@ v3dv_queue_family_properties = {
    .minImageTransferGranularity = { 1, 1, 1 },
 };
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice,
                                             uint32_t *pCount,
                                             VkQueueFamilyProperties *pQueueFamilyProperties)
@@ -1353,7 +1353,7 @@ v3dv_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice,
                                              uint32_t *pQueueFamilyPropertyCount,
                                              VkQueueFamilyProperties2 *pQueueFamilyProperties)
@@ -1369,7 +1369,7 @@ v3dv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice,
                                        VkPhysicalDeviceMemoryProperties *pMemoryProperties)
 {
@@ -1377,7 +1377,7 @@ v3dv_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice,
    *pMemoryProperties = device->memory;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
                                         VkPhysicalDeviceMemoryProperties2 *pMemoryProperties)
 {
@@ -1393,7 +1393,7 @@ v3dv_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
    }
 }
 
-PFN_vkVoidFunction
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 v3dv_GetInstanceProcAddr(VkInstance _instance,
                          const char *pName)
 {
@@ -1436,7 +1436,7 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
    return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
                                       VkLayerProperties *pProperties)
 {
@@ -1448,7 +1448,7 @@ v3dv_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
                                     uint32_t *pPropertyCount,
                                     VkLayerProperties *pProperties)
@@ -1504,7 +1504,7 @@ destroy_device_meta(struct v3dv_device *device)
    v3dv_meta_texel_buffer_copy_finish(device);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
                   const VkDeviceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator,
@@ -1605,7 +1605,7 @@ fail:
    return result;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyDevice(VkDevice _device,
                    const VkAllocationCallbacks *pAllocator)
 {
@@ -1632,7 +1632,7 @@ v3dv_DestroyDevice(VkDevice _device,
    vk_free2(&default_alloc, pAllocator, device);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetDeviceQueue(VkDevice _device,
                     uint32_t queueFamilyIndex,
                     uint32_t queueIndex,
@@ -1646,7 +1646,7 @@ v3dv_GetDeviceQueue(VkDevice _device,
    *pQueue = v3dv_queue_to_handle(&device->queue);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_DeviceWaitIdle(VkDevice _device)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
@@ -1858,7 +1858,7 @@ fail_create:
 #endif
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_AllocateMemory(VkDevice _device,
                     const VkMemoryAllocateInfo *pAllocateInfo,
                     const VkAllocationCallbacks *pAllocator,
@@ -1949,7 +1949,7 @@ v3dv_AllocateMemory(VkDevice _device,
    return result;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_FreeMemory(VkDevice _device,
                 VkDeviceMemory _mem,
                 const VkAllocationCallbacks *pAllocator)
@@ -1968,7 +1968,7 @@ v3dv_FreeMemory(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, mem);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_MapMemory(VkDevice _device,
                VkDeviceMemory _memory,
                VkDeviceSize offset,
@@ -1999,7 +1999,7 @@ v3dv_MapMemory(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_UnmapMemory(VkDevice _device,
                  VkDeviceMemory _memory)
 {
@@ -2012,7 +2012,7 @@ v3dv_UnmapMemory(VkDevice _device,
    device_unmap(device, mem);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_FlushMappedMemoryRanges(VkDevice _device,
                              uint32_t memoryRangeCount,
                              const VkMappedMemoryRange *pMemoryRanges)
@@ -2020,7 +2020,7 @@ v3dv_FlushMappedMemoryRanges(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_InvalidateMappedMemoryRanges(VkDevice _device,
                                   uint32_t memoryRangeCount,
                                   const VkMappedMemoryRange *pMemoryRanges)
@@ -2028,7 +2028,7 @@ v3dv_InvalidateMappedMemoryRanges(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetImageMemoryRequirements2(VkDevice device,
                                  const VkImageMemoryRequirementsInfo2 *pInfo,
                                  VkMemoryRequirements2 *pMemoryRequirements)
@@ -2076,7 +2076,7 @@ bind_image_memory(const VkBindImageMemoryInfo *info)
    image->mem_offset = info->memoryOffset;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_BindImageMemory2(VkDevice _device,
                       uint32_t bindInfoCount,
                       const VkBindImageMemoryInfo *pBindInfos)
@@ -2104,7 +2104,7 @@ v3dv_BindImageMemory2(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetBufferMemoryRequirements2(VkDevice device,
                                   const VkBufferMemoryRequirementsInfo2 *pInfo,
                                   VkMemoryRequirements2 *pMemoryRequirements)
@@ -2153,7 +2153,7 @@ bind_buffer_memory(const VkBindBufferMemoryInfo *info)
 }
 
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_BindBufferMemory2(VkDevice device,
                        uint32_t bindInfoCount,
                        const VkBindBufferMemoryInfo *pBindInfos)
@@ -2164,7 +2164,7 @@ v3dv_BindBufferMemory2(VkDevice device,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateBuffer(VkDevice  _device,
                   const VkBufferCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator,
@@ -2198,7 +2198,7 @@ v3dv_CreateBuffer(VkDevice  _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyBuffer(VkDevice _device,
                    VkBuffer _buffer,
                    const VkAllocationCallbacks *pAllocator)
@@ -2272,7 +2272,7 @@ v3dv_framebuffer_compute_internal_bpp_msaa(
    return;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateFramebuffer(VkDevice _device,
                        const VkFramebufferCreateInfo *pCreateInfo,
                        const VkAllocationCallbacks *pAllocator,
@@ -2309,7 +2309,7 @@ v3dv_CreateFramebuffer(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyFramebuffer(VkDevice _device,
                         VkFramebuffer _fb,
                         const VkAllocationCallbacks *pAllocator)
@@ -2323,7 +2323,7 @@ v3dv_DestroyFramebuffer(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, fb);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_GetMemoryFdPropertiesKHR(VkDevice _device,
                               VkExternalMemoryHandleTypeFlagBits handleType,
                               int fd,
@@ -2342,7 +2342,7 @@ v3dv_GetMemoryFdPropertiesKHR(VkDevice _device,
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_GetMemoryFdKHR(VkDevice _device,
                     const VkMemoryGetFdInfoKHR *pGetFdInfo,
                     int *pFd)
@@ -2366,7 +2366,7 @@ v3dv_GetMemoryFdKHR(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateEvent(VkDevice _device,
                  const VkEventCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks *pAllocator,
@@ -2386,7 +2386,7 @@ v3dv_CreateEvent(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyEvent(VkDevice _device,
                   VkEvent _event,
                   const VkAllocationCallbacks *pAllocator)
@@ -2400,14 +2400,14 @@ v3dv_DestroyEvent(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, event);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_GetEventStatus(VkDevice _device, VkEvent _event)
 {
    V3DV_FROM_HANDLE(v3dv_event, event, _event);
    return p_atomic_read(&event->state) ? VK_EVENT_SET : VK_EVENT_RESET;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_SetEvent(VkDevice _device, VkEvent _event)
 {
    V3DV_FROM_HANDLE(v3dv_event, event, _event);
@@ -2415,7 +2415,7 @@ v3dv_SetEvent(VkDevice _device, VkEvent _event)
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_ResetEvent(VkDevice _device, VkEvent _event)
 {
    V3DV_FROM_HANDLE(v3dv_event, event, _event);
@@ -2517,7 +2517,7 @@ pack_sampler_state(struct v3dv_sampler *sampler,
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateSampler(VkDevice _device,
                  const VkSamplerCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks *pAllocator,
@@ -2542,7 +2542,7 @@ v3dv_CreateSampler(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroySampler(VkDevice _device,
                   VkSampler _sampler,
                   const VkAllocationCallbacks *pAllocator)
@@ -2556,7 +2556,7 @@ v3dv_DestroySampler(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, sampler);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetDeviceMemoryCommitment(VkDevice device,
                                VkDeviceMemory memory,
                                VkDeviceSize *pCommittedMemoryInBytes)
@@ -2564,7 +2564,7 @@ v3dv_GetDeviceMemoryCommitment(VkDevice device,
    *pCommittedMemoryInBytes = 0;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetImageSparseMemoryRequirements(
     VkDevice device,
     VkImage image,
@@ -2574,7 +2574,7 @@ v3dv_GetImageSparseMemoryRequirements(
    *pSparseMemoryRequirementCount = 0;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_GetImageSparseMemoryRequirements2(
    VkDevice device,
    const VkImageSparseMemoryRequirementsInfo2 *pInfo,

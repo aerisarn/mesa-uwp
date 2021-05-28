@@ -157,7 +157,7 @@ v3dv_destroy_pipeline(struct v3dv_pipeline *pipeline,
    vk_object_free(&device->vk, pAllocator, pipeline);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyPipeline(VkDevice _device,
                      VkPipeline _pipeline,
                      const VkAllocationCallbacks *pAllocator)
@@ -3146,7 +3146,7 @@ graphics_pipeline_create(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateGraphicsPipelines(VkDevice _device,
                              VkPipelineCache pipelineCache,
                              uint32_t count,
@@ -3344,7 +3344,7 @@ compute_pipeline_create(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateComputePipelines(VkDevice _device,
                             VkPipelineCache pipelineCache,
                             uint32_t createInfoCount,
