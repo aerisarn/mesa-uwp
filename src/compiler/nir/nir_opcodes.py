@@ -1097,6 +1097,24 @@ if (bits == 0) {
 }
 """)
 
+triop_horiz("sad_u8x4", 1, 1, 1, 1, """
+uint8_t s0_b0 = (src0.x & 0x000000ff) >> 0;
+uint8_t s0_b1 = (src0.x & 0x0000ff00) >> 8;
+uint8_t s0_b2 = (src0.x & 0x00ff0000) >> 16;
+uint8_t s0_b3 = (src0.x & 0xff000000) >> 24;
+
+uint8_t s1_b0 = (src1.x & 0x000000ff) >> 0;
+uint8_t s1_b1 = (src1.x & 0x0000ff00) >> 8;
+uint8_t s1_b2 = (src1.x & 0x00ff0000) >> 16;
+uint8_t s1_b3 = (src1.x & 0xff000000) >> 24;
+
+dst.x = src2.x +
+        (s0_b0 > s1_b0 ? (s0_b0 - s1_b0) : (s1_b0 - s0_b0)) +
+        (s0_b1 > s1_b1 ? (s0_b1 - s1_b1) : (s1_b1 - s0_b1)) +
+        (s0_b2 > s1_b2 ? (s0_b2 - s1_b2) : (s1_b2 - s0_b2)) +
+        (s0_b3 > s1_b3 ? (s0_b3 - s1_b3) : (s1_b3 - s0_b3));
+""")
+
 # Combines the first component of each input to make a 3-component vector.
 
 triop_horiz("vec3", 3, 1, 1, 1, """

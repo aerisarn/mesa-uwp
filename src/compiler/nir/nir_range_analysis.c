@@ -1579,6 +1579,9 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
       case nir_op_u2u32:
          res = MIN2(src0, max);
          break;
+      case nir_op_sad_u8x4:
+         res = src2 + 4 * 255;
+         break;
       default:
          res = max;
          break;
