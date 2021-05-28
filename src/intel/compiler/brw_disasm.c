@@ -426,6 +426,13 @@ static const char *const dp_dc0_msg_type_gfx7[16] = {
    [GFX7_DATAPORT_DC_UNTYPED_SURFACE_WRITE] = "DC untyped surface write",
 };
 
+static const int dp_oword_block_rw[8] = {
+      [BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW] = 1,
+      [BRW_DATAPORT_OWORD_BLOCK_2_OWORDS] = 2,
+      [BRW_DATAPORT_OWORD_BLOCK_4_OWORDS] = 4,
+      [BRW_DATAPORT_OWORD_BLOCK_8_OWORDS] = 8,
+};
+
 static const char *const dp_dc1_msg_type_hsw[32] = {
    [HSW_DATAPORT_DC_PORT1_UNTYPED_SURFACE_READ] = "untyped surface read",
    [HSW_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_OP] = "DC untyped atomic op",
@@ -1915,7 +1922,7 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                       brw_sampler_desc_binding_table_index(devinfo, imm_desc),
                       brw_sampler_desc_sampler(devinfo, imm_desc));
             } else {
-               format(file, " (%u, %u, %u, ",
+               format(file, " (bti %u, sampler %u, msg_type %u, ",
                       brw_sampler_desc_binding_table_index(devinfo, imm_desc),
                       brw_sampler_desc_sampler(devinfo, imm_desc),
                       brw_sampler_desc_msg_type(devinfo, imm_desc));
@@ -1932,7 +1939,7 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
          case GFX6_SFID_DATAPORT_CONSTANT_CACHE:
             /* aka BRW_SFID_DATAPORT_READ on Gfx4-5 */
             if (devinfo->ver >= 6) {
-               format(file, " (%u, %u, %u, %u)",
+               format(file, " (bti %u, msg_ctrl %u, msg_type %u, write_commit %u)",
                       brw_dp_desc_binding_table_index(devinfo, imm_desc),
                       brw_dp_desc_msg_control(devinfo, imm_desc),
                       brw_dp_desc_msg_type(devinfo, imm_desc),
@@ -1991,7 +1998,7 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
          case BRW_SFID_URB: {
             unsigned opcode = brw_inst_urb_opcode(devinfo, inst);
 
-            format(file, " %"PRIu64, brw_inst_urb_global_offset(devinfo, inst));
+            format(file, " offset %"PRIu64, brw_inst_urb_global_offset(devinfo, inst));
 
             space = 1;
 
@@ -2043,7 +2050,7 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                               dp_dc0_msg_type_gfx7,
                               brw_dp_desc_msg_type(devinfo, imm_desc), &space);
 
-               format(file, ", %u, ",
+               format(file, ", bti %u, ",
                       brw_dp_desc_binding_table_index(devinfo, imm_desc));
 
                switch (brw_inst_dp_msg_type(devinfo, inst)) {
@@ -2052,6 +2059,14 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                           brw_dp_desc_msg_control(devinfo, imm_desc) & 0xf,
                           &space);
                   break;
+               case GFX7_DATAPORT_DC_OWORD_BLOCK_READ:
+               case GFX7_DATAPORT_DC_OWORD_BLOCK_WRITE: {
+                  unsigned msg_ctrl = brw_dp_desc_msg_control(devinfo, imm_desc);
+                  assert(dp_oword_block_rw[msg_ctrl & 7] > 0);
+                  format(file, "owords = %d, aligned = %d",
+                        dp_oword_block_rw[msg_ctrl & 7], (msg_ctrl >> 3) & 3);
+                  break;
+               }
                default:
                   format(file, "%u",
                          brw_dp_desc_msg_control(devinfo, imm_desc));
@@ -2105,6 +2120,12 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                   format(file, "SIMD%d,", (msg_ctrl & (1 << 4)) ? 8 : 16);
                   control(file, "atomic float op", aop_float, msg_ctrl & 0xf,
                           &space);
+                  break;
+               case GFX9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_WRITE:
+               case GFX9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_READ:
+                  assert(dp_oword_block_rw[msg_ctrl & 7] > 0);
+                  format(file, "owords = %d, aligned = %d",
+                        dp_oword_block_rw[msg_ctrl & 7], (msg_ctrl >> 3) & 3);
                   break;
                default:
                   format(file, "0x%x", msg_ctrl);
