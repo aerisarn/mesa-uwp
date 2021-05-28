@@ -2771,7 +2771,7 @@ zink_flush_resource(struct pipe_context *pctx,
     * WSI support is added
     */
    if (pres->bind & (PIPE_BIND_SHARED | PIPE_BIND_SCANOUT))
-      ctx->batch.state->flush_res = zink_resource(pres);
+      pipe_resource_reference(&ctx->batch.state->flush_res, pres);
 }
 
 void
