@@ -968,18 +968,28 @@ vn_android_device_import_ahb(struct vn_device *dev,
                              const VkMemoryAllocateInfo *alloc_info,
                              struct AHardwareBuffer *ahb)
 {
+   VkDevice device = vn_device_to_handle(dev);
    const VkMemoryDedicatedAllocateInfo *dedicated_info =
       vk_find_struct_const(alloc_info->pNext, MEMORY_DEDICATED_ALLOCATE_INFO);
    const native_handle_t *handle = NULL;
    int dma_buf_fd = -1;
    int dup_fd = -1;
-   VkDeviceSize alloc_size = alloc_info->allocationSize;
+   uint64_t alloc_size = 0;
+   uint32_t mem_type_bits = 0;
    VkResult result = VK_SUCCESS;
 
    handle = AHardwareBuffer_getNativeHandle(ahb);
    result = vn_android_get_dma_buf_from_native_handle(handle, &dma_buf_fd);
    if (result != VK_SUCCESS)
       return result;
+
+   result = vn_get_memory_dma_buf_properties(dev, dma_buf_fd, &alloc_size,
+                                             &mem_type_bits);
+   if (result != VK_SUCCESS)
+      return result;
+
+   if (((1 << alloc_info->memoryTypeIndex) & mem_type_bits) == 0)
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
    /* If ahb is for an image, finish the deferred image creation first */
    if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
@@ -1034,13 +1044,21 @@ vn_android_device_import_ahb(struct vn_device *dev,
       if (result != VK_SUCCESS)
          return result;
 
-      /* For AHB memory allocation of a dedicated image, allocationSize must
-       * be zero from the app side. So we need to get the proper allocation
-       * size here used to override memory allocation info.
+      /* TODO When alloc_size is fixed to return host storage size, we will
+       * also check alloc_size is not smaller than mem_req.size here.
        */
       VkMemoryRequirements mem_req;
-      vn_GetImageMemoryRequirements(vn_device_to_handle(dev),
-                                    dedicated_info->image, &mem_req);
+      vn_GetImageMemoryRequirements(device, dedicated_info->image, &mem_req);
+      alloc_size = mem_req.size;
+   }
+
+   if (dedicated_info && dedicated_info->buffer != VK_NULL_HANDLE) {
+      /* TODO When alloc_size is fixed to return host storage size, we will
+       * also check alloc_size is not smaller than mem_req.size here.
+       */
+      VkMemoryRequirements mem_req;
+      vn_GetBufferMemoryRequirements(device, dedicated_info->buffer,
+                                     &mem_req);
       alloc_size = mem_req.size;
    }
 
