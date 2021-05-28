@@ -219,6 +219,8 @@ vlVaDeriveImage(VADriverContextP ctx, VASurfaceID surface, VAImage *image)
    const char *proc = util_get_process_name();
    const char *derive_interlaced_allowlist[] = {
          "vlc",
+         "h264encode",
+         "hevcencode"
    };
 
    if (!ctx)
