@@ -1925,6 +1925,29 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdSetCullModeEXT(
    cmd_buf_queue(cmd_buffer, cmd);
 }
 
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetVertexInputEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    vertexBindingDescriptionCount,
+    const VkVertexInputBindingDescription2EXT*  pVertexBindingDescriptions,
+    uint32_t                                    vertexAttributeDescriptionCount,
+    const VkVertexInputAttributeDescription2EXT* pVertexAttributeDescriptions)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   size_t binding_size = vertexBindingDescriptionCount * sizeof(VkVertexInputBindingDescription2EXT);
+   size_t attr_size = vertexAttributeDescriptionCount * sizeof(VkVertexInputAttributeDescription2EXT);
+   cmd = cmd_buf_entry_alloc_size(cmd_buffer, binding_size + attr_size, LVP_CMD_SET_VERTEX_INPUT);
+   if (!cmd)
+      return;
+
+   cmd->u.set_vertex_input.binding_count = vertexBindingDescriptionCount;
+   cmd->u.set_vertex_input.attr_count = vertexAttributeDescriptionCount;
+   memcpy(cmd->u.set_vertex_input.data, pVertexBindingDescriptions, binding_size);
+   memcpy(cmd->u.set_vertex_input.data + binding_size, pVertexAttributeDescriptions, attr_size);
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
 VKAPI_ATTR void VKAPI_CALL lvp_CmdSetFrontFaceEXT(
     VkCommandBuffer                             commandBuffer,
     VkFrontFace                                 frontFace)

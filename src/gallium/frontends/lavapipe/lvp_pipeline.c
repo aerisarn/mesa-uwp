@@ -272,12 +272,15 @@ deep_copy_graphics_create_info(void *mem_ctx,
    dst->pStages = stages;
 
    /* pVertexInputState */
-   vertex_input = ralloc(mem_ctx, VkPipelineVertexInputStateCreateInfo);
-   result = deep_copy_vertex_input_state(mem_ctx, vertex_input,
-                                         src->pVertexInputState);
-   if (result != VK_SUCCESS)
-      return result;
-   dst->pVertexInputState = vertex_input;
+   if (!dynamic_state_contains(src->pDynamicState, VK_DYNAMIC_STATE_VERTEX_INPUT_EXT)) {
+      vertex_input = ralloc(mem_ctx, VkPipelineVertexInputStateCreateInfo);
+      result = deep_copy_vertex_input_state(mem_ctx, vertex_input,
+                                            src->pVertexInputState);
+      if (result != VK_SUCCESS)
+         return result;
+      dst->pVertexInputState = vertex_input;
+   } else
+      dst->pVertexInputState = NULL;
 
    /* pInputAssemblyState */
    LVP_PIPELINE_DUP(dst->pInputAssemblyState,

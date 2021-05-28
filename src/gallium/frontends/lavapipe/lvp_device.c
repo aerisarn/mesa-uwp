@@ -137,6 +137,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_shader_viewport_index_layer       = true,
    .EXT_transform_feedback                = true,
    .EXT_vertex_attribute_divisor          = true,
+   .EXT_vertex_input_dynamic_state        = true,
    .EXT_custom_border_color               = true,
    .EXT_provoking_vertex                  = true,
    .GOOGLE_decorate_string                = true,
@@ -554,6 +555,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceIndexTypeUint8FeaturesEXT *features =
             (VkPhysicalDeviceIndexTypeUint8FeaturesEXT *)ext;
          features->indexTypeUint8 = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT: {
+         VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *features =
+            (VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *)ext;
+         features->vertexInputDynamicState = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {

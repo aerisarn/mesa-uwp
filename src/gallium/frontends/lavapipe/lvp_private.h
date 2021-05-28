@@ -670,6 +670,7 @@ enum lvp_cmds {
    LVP_CMD_DRAW_INDIRECT_BYTE_COUNT,
    LVP_CMD_BEGIN_CONDITIONAL_RENDERING,
    LVP_CMD_END_CONDITIONAL_RENDERING,
+   LVP_CMD_SET_VERTEX_INPUT,
    LVP_CMD_SET_CULL_MODE,
    LVP_CMD_SET_FRONT_FACE,
    LVP_CMD_SET_PRIMITIVE_TOPOLOGY,
@@ -1012,6 +1013,14 @@ struct lvp_cmd_begin_conditional_rendering {
    bool inverted;
 };
 
+struct lvp_cmd_set_vertex_input {
+    uint32_t binding_count;
+    uint32_t attr_count;
+    uint8_t data[0];
+    //VkVertexInputBindingDescription2EXT bindings[binding_count];
+    //VkVertexInputAttributeDescription2EXT attrs[attr_count];
+};
+
 struct lvp_cmd_set_cull_mode {
    VkCullModeFlags cull_mode;
 };
@@ -1099,6 +1108,7 @@ struct lvp_cmd_buffer_entry {
       struct lvp_cmd_end_transform_feedback end_transform_feedback;
       struct lvp_cmd_draw_indirect_byte_count draw_indirect_byte_count;
       struct lvp_cmd_begin_conditional_rendering begin_conditional_rendering;
+      struct lvp_cmd_set_vertex_input set_vertex_input;
       struct lvp_cmd_set_cull_mode set_cull_mode;
       struct lvp_cmd_set_front_face set_front_face;
       struct lvp_cmd_set_primitive_topology set_primitive_topology;

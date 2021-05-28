@@ -7,3 +7,4 @@ VK_KHR_shader_subgroup_uniform_control_flow on Intel.
 32-bit x86 builds now default disable x87 math and use sse2.
 GL ES 3.1 on GT21x hardware.
 VK_EXT_acquire_drm_display on RADV.
+VK_EXT_vertex_input_dynamic_state on lavapipe

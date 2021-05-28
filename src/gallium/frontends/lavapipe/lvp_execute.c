@@ -348,6 +348,8 @@ static int conv_dynamic_state_idx(VkDynamicState dyn_state)
    if (dyn_state >= VK_DYNAMIC_STATE_CULL_MODE_EXT &&
        dyn_state <= VK_DYNAMIC_STATE_STENCIL_OP_EXT)
       return dyn_state - VK_DYNAMIC_STATE_CULL_MODE_EXT + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2;
+   if (dyn_state == VK_DYNAMIC_STATE_VERTEX_INPUT_EXT)
+      return (VK_DYNAMIC_STATE_STENCIL_OP_EXT - VK_DYNAMIC_STATE_CULL_MODE_EXT) + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2 + 1;
    assert(0);
    return -1;
 }
@@ -594,7 +596,7 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
       state->blend_dirty = true;
    }
 
-   {
+   if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VERTEX_INPUT_EXT)]) {
       const VkPipelineVertexInputStateCreateInfo *vi = pipeline->graphics_create_info.pVertexInputState;
       int i;
       const VkPipelineVertexInputDivisorStateCreateInfoEXT *div_state =
@@ -2820,6 +2822,43 @@ static void handle_end_conditional_rendering(struct rendering_state *state)
    state->pctx->render_condition_mem(state->pctx, NULL, 0, false);
 }
 
+static void handle_set_vertex_input(struct lvp_cmd_buffer_entry *cmd,
+                                    struct rendering_state *state)
+{
+   const struct lvp_cmd_set_vertex_input *vertex_input = &cmd->u.set_vertex_input;
+   const struct VkVertexInputBindingDescription2EXT *bindings = (void*)vertex_input->data;
+   const struct VkVertexInputAttributeDescription2EXT *attrs = (void*)(vertex_input->data +
+                                                               vertex_input->binding_count *
+                                                               sizeof(struct VkVertexInputBindingDescription2EXT));
+   int max_location = -1;
+   for (unsigned i = 0; i < vertex_input->attr_count; i++) {
+      const struct VkVertexInputBindingDescription2EXT *binding = &bindings[attrs[i].binding];
+      unsigned location = attrs[i].location;
+      state->velem.velems[location].src_offset = attrs[i].offset;
+      state->velem.velems[location].vertex_buffer_index = attrs[i].binding;
+      state->velem.velems[location].src_format = vk_format_to_pipe(attrs[i].format);
+      state->vb[attrs[i].binding].stride = binding->stride;
+
+      switch (binding->inputRate) {
+      case VK_VERTEX_INPUT_RATE_VERTEX:
+         state->velem.velems[location].instance_divisor = 0;
+         break;
+      case VK_VERTEX_INPUT_RATE_INSTANCE:
+         state->velem.velems[location].instance_divisor = binding->divisor;
+         break;
+      default:
+         assert(0);
+         break;
+      }
+
+      if ((int)location > max_location)
+         max_location = location;
+   }
+   state->velem.count = max_location + 1;
+   state->vb_dirty = true;
+   state->ve_dirty = true;
+}
+
 static void handle_set_cull_mode(struct lvp_cmd_buffer_entry *cmd,
                                  struct rendering_state *state)
 {
@@ -3078,6 +3117,9 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          break;
       case LVP_CMD_END_CONDITIONAL_RENDERING:
          handle_end_conditional_rendering(state);
+         break;
+      case LVP_CMD_SET_VERTEX_INPUT:
+         handle_set_vertex_input(cmd, state);
          break;
       case LVP_CMD_SET_CULL_MODE:
          handle_set_cull_mode(cmd, state);
