@@ -45,7 +45,7 @@ tar -cf artifacts/install.tar install
 
 if [ -n "$MINIO_ARTIFACT_NAME" ]; then
     # Pass needed files to the test stage
-    cp $CI_PROJECT_DIR/.gitlab-ci/generate_lava.py artifacts/.
+    cp $CI_PROJECT_DIR/.gitlab-ci/lava_job_submitter.py artifacts/.
     cp $CI_PROJECT_DIR/.gitlab-ci/lava.yml.jinja2 artifacts/.
 
     MINIO_ARTIFACT_NAME="$MINIO_ARTIFACT_NAME.tar.gz"
