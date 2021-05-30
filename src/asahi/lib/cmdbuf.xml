@@ -90,7 +90,10 @@
     <field name="Flip vertical" size="1" start="54" type="bool" default="false"/>
     <field name="Unk 55" size="9" start="55" type="hex"/>
     <field name="Buffer" size="36" start="64" type="address" modifier="shr(4)"/>
-    <field name="Unk 100" size="28" start="100" type="hex"/>
+    <!-- Off by 4? -->
+    <field name="Stride" size="24" start="104" type="hex" prefix="AGX_RT_STRIDE">
+      <value name="Tiled" value="0x100000"/>
+    </field>
   </struct>
 
   <!-- Payloads follow, right-shifted by 4 because of course -->
@@ -106,7 +109,8 @@
     <field name="Unk 1" size="36" start="66" type="hex" modifier="shr(4)"/>
     <field name="Compression" size="2" start="106" type="hex"/> <!-- 0 for 64x64 tiling -->
     <field name="sRGB" size="1" start="108" type="bool"/>
-    <field name="Unk 2" size="19" start="109" type="hex"/>
+    <field name="Unk 2" size="1" start="109" type="bool"/>
+    <field name="Stride" size="18" start="110" type="hex" modifier="shr(4)"/>
   </struct>
 
   <enum name="Wrap">
