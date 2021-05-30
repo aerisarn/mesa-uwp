@@ -170,7 +170,18 @@ static void
 agx_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
 {
    struct agx_context *ctx = agx_context(pctx);
-   ctx->rast = cso;
+   struct agx_rasterizer *so = cso;
+
+   /* Check if scissor state has changed, since scissor enable is part of the
+    * rasterizer state but everything else needed for scissors is part of
+    * viewport/scissor states */
+   bool scissor_changed = (cso == NULL) || (ctx->rast == NULL) ||
+      (ctx->rast->base.scissor != so->base.scissor);
+
+   ctx->rast = so;
+
+   if (scissor_changed)
+      ctx->dirty |= AGX_DIRTY_SCISSOR;
 }
 
 static enum agx_wrap
