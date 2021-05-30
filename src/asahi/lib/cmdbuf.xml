@@ -59,6 +59,12 @@
     <value name="Quad strip" value="15"/> <!-- guess, confirm with piglit later XXX -->
   </enum>
 
+  <enum name="Layout">
+    <value name="Linear" value="0"/>
+    <!-- Morton order with 64x64 tiles -->
+    <value name="Tiled 64x64" value="2"/>
+  </enum>
+
   <struct name="Varying header" size="8">
     <field name="Slots 1" size="8" start="0:0" type="uint"/>
     <field name="Slots 2" size="8" start="0:8" type="uint"/>
