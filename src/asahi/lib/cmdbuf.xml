@@ -196,6 +196,8 @@
     <field name="Tag" size="32" start="0:0" type="hex" default="0x200000"/>
     <field name="Cull front" size="1" start="1:0" type="bool"/>
     <field name="Cull back" size="1" start="1:1" type="bool"/>
+    <field name="Unk GL 1" size="1" start="1:7" type="bool"/>
+    <field name="Unk GL 2" size="1" start="1:8" type="bool"/>
     <field name="Depth clip" size="1" start="1:10" type="bool"/>
     <field name="Depth clamp" size="1" start="1:11" type="bool"/>
     <field name="Front face CCW" size="1" start="1:16" type="bool"/>
