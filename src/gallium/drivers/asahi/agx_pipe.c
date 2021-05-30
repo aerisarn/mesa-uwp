@@ -173,7 +173,7 @@ agx_resource_create(struct pipe_screen *screen,
       DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER :
       DRM_FORMAT_MOD_LINEAR;
 
-   nresource->slices[0].line_stride = stride;
+   nresource->slices[0].line_stride = ALIGN_POT(stride, 16);
 
    unsigned size = 4 * ALIGN_POT(templ->width0, 64) * ALIGN_POT(templ->height0, 64) * templ->depth0;
    nresource->bo = agx_bo_create(dev, size, AGX_MEMORY_TYPE_FRAMEBUFFER);
