@@ -344,7 +344,10 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
       cfg.unk_1 = rsrc->bo->ptr.gpu;
       cfg.unk_2 = false;
-      cfg.stride = AGX_RT_STRIDE_TILED;
+
+      cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
+         (rsrc->slices[0].line_stride - 16) :
+         AGX_RT_STRIDE_TILED;
    }
 
    /* Initialize base object */
@@ -580,7 +583,10 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          cfg.width = state->width;
          cfg.height = state->height;
          cfg.buffer = tex->bo->ptr.gpu;
-         cfg.stride = AGX_RT_STRIDE_TILED;
+
+         cfg.stride = (tex->modifier == DRM_FORMAT_MOD_LINEAR) ?
+            (tex->slices[0].line_stride - 4) :
+            AGX_RT_STRIDE_TILED;
       };
    }
 }
