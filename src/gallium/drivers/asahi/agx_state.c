@@ -1190,6 +1190,15 @@ agx_index_buffer_ptr(struct agx_batch *batch,
    }
 }
 
+static bool
+agx_scissor_culls_everything(struct agx_context *ctx)
+{
+        const struct pipe_scissor_state ss = ctx->scissor;
+
+        return ctx->rast->base.scissor &&
+		((ss.minx == ss.maxx) || (ss.miny == ss.maxy));
+}
+
 static void
 agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
              unsigned drawid_offset,
@@ -1209,6 +1218,9 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    struct agx_context *ctx = agx_context(pctx);
    struct agx_batch *batch = ctx->batch;
+
+   if (agx_scissor_culls_everything(ctx))
+	   return;
 
    /* TODO: masks */
    ctx->batch->draw |= ~0;
