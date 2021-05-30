@@ -155,11 +155,10 @@ agx_create_rs_state(struct pipe_context *ctx,
    so->base = *cso;
 
    agx_pack(so->cull, CULL, cfg) {
-      /* TODO: debug culling */
       cfg.cull_front = cso->cull_face & PIPE_FACE_FRONT;
       cfg.cull_back = cso->cull_face & PIPE_FACE_BACK;
       cfg.front_face_ccw = cso->front_ccw;
-      //    cfg.depth_clip = cso->depth_clip_near;
+      cfg.depth_clip = cso->depth_clip_near;
       cfg.depth_clamp = !cso->depth_clip_near;
    };
 
