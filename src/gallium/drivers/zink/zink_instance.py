@@ -137,7 +137,6 @@ zink_create_instance(struct zink_instance_info *instance_info)
         %for ext in extensions:
                 if (!strcmp(extension_props[i].extensionName, ${ext.extension_name_literal()})) {
                     have_${ext.name_with_vendor()} = true;
-                    extensions[num_extensions++] = ${ext.extension_name_literal()};
                 }
         %endfor
               }
@@ -172,7 +171,17 @@ zink_create_instance(struct zink_instance_info *instance_info)
     }
 
 %for ext in extensions:
-   instance_info->have_${ext.name_with_vendor()} = have_${ext.name_with_vendor()};
+<%
+    conditions = ""
+    if ext.enable_conds:
+        for cond in ext.enable_conds:
+            conditions += "&& (" + cond + ") "
+    conditions = conditions.strip()
+%>\
+   if (have_${ext.name_with_vendor()} ${conditions}) {
+      instance_info->have_${ext.name_with_vendor()} = have_${ext.name_with_vendor()};
+      extensions[num_extensions++] = ${ext.extension_name_literal()};
+   }
 %endfor
 
 %for layer in layers:
