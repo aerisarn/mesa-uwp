@@ -90,6 +90,7 @@
     <field name="Flip vertical" size="1" start="54" type="bool" default="false"/>
     <field name="Unk 55" size="9" start="55" type="hex"/>
     <field name="Buffer" size="36" start="64" type="address" modifier="shr(4)"/>
+    <!-- N.b. sRGB is not specified here -->
     <!-- Off by 4? -->
     <field name="Stride" size="24" start="104" type="hex" prefix="AGX_RT_STRIDE">
       <value name="Tiled" value="0x100000"/>
