@@ -118,6 +118,39 @@ agx_resource_get_handle(struct pipe_screen *pscreen,
    unreachable("Handles todo");
 }
 
+static inline bool
+agx_is_2d(const struct agx_resource *pres)
+{
+   switch (pres->base.target) {
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_RECT:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+agx_should_tile(struct agx_device *dev,
+                const struct agx_resource *pres)
+{
+   const unsigned valid_binding =
+      PIPE_BIND_DEPTH_STENCIL |
+      PIPE_BIND_RENDER_TARGET |
+      PIPE_BIND_BLENDABLE |
+      PIPE_BIND_SAMPLER_VIEW |
+      PIPE_BIND_DISPLAY_TARGET |
+      PIPE_BIND_SCANOUT |
+      PIPE_BIND_SHARED;
+
+   unsigned bpp = util_format_get_blocksizebits(pres->base.format);
+
+   bool can_tile = agx_is_2d(pres)
+      && (bpp == 32)
+      && ((pres->base.bind & ~valid_binding) == 0);
+
+   return can_tile && (pres->base.usage != PIPE_USAGE_STREAM);
+}
 
 static struct pipe_resource *
 agx_resource_create(struct pipe_screen *screen,
@@ -126,10 +159,6 @@ agx_resource_create(struct pipe_screen *screen,
    struct agx_device *dev = agx_device(screen);
    struct agx_resource *nresource;
    unsigned stride;
-   uint64_t modifier = DRM_FORMAT_MOD_LINEAR;
-
-   if (templ->bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW))
-      modifier = DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER;
 
    nresource = CALLOC_STRUCT(agx_resource);
    if (!nresource)
@@ -138,7 +167,12 @@ agx_resource_create(struct pipe_screen *screen,
    stride = util_format_get_stride(templ->format, templ->width0);
    nresource->base = *templ;
    nresource->base.screen = screen;
-   nresource->modifier = modifier;
+
+   nresource->modifier =
+      agx_should_tile(dev, nresource) ?
+      DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER :
+      DRM_FORMAT_MOD_LINEAR;
+
    nresource->slices[0].line_stride = stride;
 
    unsigned size = 4 * ALIGN_POT(templ->width0, 64) * ALIGN_POT(templ->height0, 64) * templ->depth0;
