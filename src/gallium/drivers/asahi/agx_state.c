@@ -752,7 +752,8 @@ static bool
 agx_update_vs(struct agx_context *ctx)
 {
    struct agx_vs_shader_key key = {
-      .num_vbufs = util_last_bit(ctx->vb_mask)
+      .num_vbufs = util_last_bit(ctx->vb_mask),
+      .clip_halfz = ctx->rast->base.clip_halfz,
    };
 
    memcpy(key.attributes, ctx->attributes,

@@ -595,6 +595,7 @@ agx_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
    case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
    case PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES:
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
+   case PIPE_CAP_CLIP_HALFZ:
       return 1;
 
    case PIPE_CAP_MAX_RENDER_TARGETS:

@@ -1080,8 +1080,13 @@ agx_compile_shader_nir(nir_shader *nir,
          glsl_get_natural_size_align_bytes);
    NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_function_temp, ~0);
 
-   if (ctx->stage == MESA_SHADER_VERTEX)
+   if (ctx->stage == MESA_SHADER_VERTEX) {
       agx_remap_varyings(nir);
+
+      /* Lower from OpenGL [-1, 1] to [0, 1] if half-z is not set */
+      if (!key->vs.clip_halfz)
+         NIR_PASS_V(nir, nir_lower_clip_halfz);
+   }
 
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_global_vars_to_local);
