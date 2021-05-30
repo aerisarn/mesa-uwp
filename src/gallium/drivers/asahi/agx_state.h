@@ -159,6 +159,7 @@ agx_context(struct pipe_context *pctx)
 struct agx_rasterizer {
    struct pipe_rasterizer_state base;
    uint8_t cull[AGX_CULL_LENGTH];
+   uint8_t line_width;
 };
 
 struct agx_query {

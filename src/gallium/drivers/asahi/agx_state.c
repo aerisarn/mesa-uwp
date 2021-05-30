@@ -154,6 +154,12 @@ agx_create_rs_state(struct pipe_context *ctx,
    struct agx_rasterizer *so = CALLOC_STRUCT(agx_rasterizer);
    so->base = *cso;
 
+   /* Line width is packed in a 4:4 fixed point format */
+   unsigned line_width_fixed = ((unsigned) (cso->line_width * 16.0f)) - 1;
+
+   /* Clamp to maximum line width */
+   so->line_width = MIN2(line_width_fixed, 0xFF);
+
    agx_pack(so->cull, CULL, cfg) {
       cfg.cull_front = cso->cull_face & PIPE_FACE_FRONT;
       cfg.cull_back = cso->cull_face & PIPE_FACE_BACK;
@@ -1091,10 +1097,13 @@ static uint64_t
 demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool)
 {
    struct agx_ptr t = agx_pool_alloc_aligned(pool, AGX_RASTERIZER_LENGTH, 64);
+   struct agx_rasterizer *rast = ctx->rast;
 
    agx_pack(t.cpu, RASTERIZER, cfg) {
       cfg.front.depth_function = ctx->zs.z_func;
       cfg.back.depth_function = ctx->zs.z_func;
+
+      cfg.front.line_width = cfg.back.line_width = rast->line_width;
 
       cfg.front.disable_depth_write = ctx->zs.disable_z_write;
       cfg.back.disable_depth_write = ctx->zs.disable_z_write;

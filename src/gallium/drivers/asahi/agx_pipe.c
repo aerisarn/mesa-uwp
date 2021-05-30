@@ -709,7 +709,7 @@ agx_get_paramf(struct pipe_screen* pscreen,
    switch (param) {
    case PIPE_CAPF_MAX_LINE_WIDTH:
    case PIPE_CAPF_MAX_LINE_WIDTH_AA:
-      return 255.0; /* arbitrary */
+      return 16.0; /* Off-by-one fixed point 4:4 encoding */
 
    case PIPE_CAPF_MAX_POINT_WIDTH:
    case PIPE_CAPF_MAX_POINT_WIDTH_AA:
