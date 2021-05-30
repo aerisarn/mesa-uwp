@@ -152,6 +152,9 @@ class ExtensionRegistryEntry:
     promoted_in       : Version   = None
     # functions added by the extension are referred to as "commands" in the registry
     commands          : List[str] = None
+    device_commands   : List[str] = None
+    pdevice_commands  : List[str] = None
+    instance_commands : List[str] = None
     constants         : List[str] = None
     features_struct   : str       = None
     properties_struct : str       = None
@@ -162,6 +165,20 @@ class ExtensionRegistry:
 
     def __init__(self, vkxml_path: str):
         vkxml = ElementTree.parse(vkxml_path)
+
+        commands_type = dict()
+        aliases = dict()
+
+        for cmd in vkxml.findall("commands/command"):
+            name = cmd.find("./proto/name")
+
+            if name is not None and name.text:
+                commands_type[name.text] = cmd.find("./param/type").text
+            elif cmd.get("name") is not None:
+                aliases[cmd.get("name")] = cmd.get("alias")
+
+        for (cmd, alias) in aliases.items():
+            commands_type[cmd] = commands_type[alias]
 
         for ext in vkxml.findall("extensions/extension"):
             # Reserved extensions are marked with `supported="disabled"`
@@ -175,10 +192,21 @@ class ExtensionRegistry:
             entry.promoted_in = self.parse_promotedto(ext.get("promotedto"))
 
             entry.commands = []
+            entry.device_commands = []
+            entry.pdevice_commands = []
+            entry.instance_commands = []
+
             for cmd in ext.findall("require/command"):
                 cmd_name = cmd.get("name")
                 if cmd_name:
                     entry.commands.append(cmd_name)
+
+                    if commands_type[cmd_name] in ("VkDevice", "VkCommandBuffer", "VkQueue"):
+                        entry.device_commands.append(cmd_name)
+                    elif commands_type[cmd_name] in ("VkPhysicalDevice"):
+                        entry.pdevice_commands.append(cmd_name)
+                    else:
+                        entry.instance_commands.append(cmd_name)
 
             entry.constants = []
             for enum in ext.findall("require/enum"):
