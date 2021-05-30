@@ -199,6 +199,9 @@ agx_resource_create(struct pipe_screen *screen,
                       NULL /*map_front_private*/,
                       &nresource->dt_stride);
 
+      nresource->slices[0].line_stride = nresource->dt_stride;
+      assert((nresource->dt_stride & 0xF) == 0);
+
       if (nresource->dt == NULL) {
          agx_bo_unreference(nresource->bo);
          FREE(nresource);
