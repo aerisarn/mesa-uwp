@@ -5,7 +5,7 @@ The Mesa project began as an open-source implementation of the
 `OpenGL`_ specification - a system for rendering interactive 3D graphics.
 
 Over the years the project has grown to implement more graphics APIs,
-including `OpenGL ES`_, `OpenCL`_, `OpenMAX`_, `VDPAU`_, `VA API`_,
+including `OpenGL ES`_, `OpenCL`_, `OpenMAX`_, `VDPAU`_, `VA-API`_,
 `XvMC`_, `Vulkan`_ and `EGL`_.
 
 A variety of device drivers allows the Mesa libraries to be used in many
@@ -21,7 +21,7 @@ Linux, FreeBSD, and other operating systems.
 .. _OpenCL: https://www.khronos.org/opencl/
 .. _OpenMAX: https://www.khronos.org/openmax/
 .. _VDPAU: https://en.wikipedia.org/wiki/VDPAU
-.. _VA API: https://en.wikipedia.org/wiki/Video_Acceleration_API
+.. _VA-API: https://en.wikipedia.org/wiki/Video_Acceleration_API
 .. _XvMC: https://en.wikipedia.org/wiki/X-Video_Motion_Compensation
 .. _Vulkan: https://www.khronos.org/vulkan/
 .. _EGL: https://www.khronos.org/egl/
