@@ -477,8 +477,8 @@ agx_upload_viewport(struct agx_pool *pool,
       cfg.translate_y = vp->translate[1];
       cfg.scale_x = vp->scale[0];
       cfg.scale_y = vp->scale[1];
-      cfg.near_z = near_z;
-      cfg.z_range = far_z - near_z;
+      cfg.translate_z = near_z;
+      cfg.scale_z = far_z - near_z;
    };
 
    return T.gpu;

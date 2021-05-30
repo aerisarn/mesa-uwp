@@ -153,8 +153,15 @@
     <field name="Scale X" size="32" start="5:0" type="float"/>
     <field name="Translate Y" size="32" start="6:0" type="float"/>
     <field name="Scale Y" size="32" start="7:0" type="float"/>
-    <field name="Near Z" size="32" start="8:0" type="float"/>
-    <field name="Z Range" size="32" start="9:0" type="float"/>
+
+    <!-- Specifies an affine transformation from clip coordinates to viewport
+    depth coordinates. For APIs with clip coordinates [0, 1], this cooresponds
+    to near z and (far z - near z) respectively. In general, given clip
+    coordinate z_in, the viewport depth is given as (z_in * scale_z) +
+    translate_z.  For example, the default [0, 1] depth buffer in OpenGL with
+    [-1, +1] clip coordinates is specified as scale = 1/2, bias = 1/2 -->
+    <field name="Translate Z" size="32" start="8:0" type="float"/>
+    <field name="Scale Z" size="32" start="9:0" type="float"/>
   </struct>
 
   <!--- Pointed to from the command buffer -->
