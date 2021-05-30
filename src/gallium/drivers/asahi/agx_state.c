@@ -289,12 +289,26 @@ agx_channel_from_pipe(enum pipe_swizzle in)
       return AGX_CHANNEL_0;
 }
 
+static enum agx_layout
+agx_translate_layout(uint64_t modifier)
+{
+   switch (modifier) {
+   case DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER:
+      return AGX_LAYOUT_TILED_64X64;
+   case DRM_FORMAT_MOD_LINEAR:
+      return AGX_LAYOUT_LINEAR;
+   default:
+      unreachable("Invalid modifier");
+   }
+}
+
 static struct pipe_sampler_view *
 agx_create_sampler_view(struct pipe_context *pctx,
                         struct pipe_resource *texture,
                         const struct pipe_sampler_view *state)
 {
    struct agx_device *dev = agx_device(pctx->screen);
+   struct agx_resource *rsrc = agx_resource(texture);
    struct agx_sampler_view *so = CALLOC_STRUCT(agx_sampler_view);
 
    if (!so)
@@ -320,7 +334,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
    /* Pack the descriptor into GPU memory */
    agx_pack(so->desc->ptr.cpu, TEXTURE, cfg) {
       assert(state->format == PIPE_FORMAT_B8G8R8A8_UNORM); // TODO: format table
-      cfg.format = 0xa22;
+      cfg.format = 0xa02 | (agx_translate_layout(rsrc->modifier) << 4);
       cfg.swizzle_r = agx_channel_from_pipe(out_swizzle[0]);
       cfg.swizzle_g = agx_channel_from_pipe(out_swizzle[1]);
       cfg.swizzle_b = agx_channel_from_pipe(out_swizzle[2]);
@@ -328,7 +342,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.width = texture->width0;
       cfg.height = texture->height0;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.unk_1 = agx_resource(texture)->bo->ptr.gpu;
+      cfg.unk_1 = rsrc->bo->ptr.gpu;
       cfg.unk_2 = 0x20000;
    }
 
@@ -554,9 +568,10 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    for (unsigned i = 0; i < state->nr_cbufs; ++i) {
       struct pipe_surface *surf = state->cbufs[i];
       struct agx_resource *tex = agx_resource(surf->texture);
+
       agx_pack(ctx->render_target[i], RENDER_TARGET, cfg) {
          assert(surf->format == PIPE_FORMAT_B8G8R8A8_UNORM); // TODO: format table
-         cfg.format = 0xa22;
+         cfg.format = 0xa02 | (agx_translate_layout(tex->modifier) << 4);
          cfg.swizzle_r = AGX_CHANNEL_B;
          cfg.swizzle_g = AGX_CHANNEL_G;
          cfg.swizzle_b = AGX_CHANNEL_R;
