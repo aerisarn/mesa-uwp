@@ -13,8 +13,8 @@ different environments ranging from software emulation to complete
 hardware acceleration for modern GPUs.
 
 Mesa ties into several other open-source projects: the `Direct Rendering
-Infrastructure`_ and `X.org`_ to provide OpenGL support on Linux, FreeBSD
-and other operating systems.
+Infrastructure`_, `X.org`_, and `Wayland`_ to provide OpenGL support on
+Linux, FreeBSD, and other operating systems.
 
 .. _OpenGL: https://www.opengl.org/
 .. _OpenGL ES: https://www.khronos.org/opengles/
@@ -27,6 +27,7 @@ and other operating systems.
 .. _EGL: https://www.khronos.org/egl/
 .. _Direct Rendering Infrastructure: https://dri.freedesktop.org/
 .. _X.org: https://x.org
+.. _Wayland: https://wayland.freedesktop.org
 
 .. toctree::
    :maxdepth: 1
