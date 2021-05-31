@@ -42,7 +42,7 @@
  *
  * It takes a monolithic VS in LLVM IR returning gl_Position and invokes it
  * in a compute shader. The shader processes 1 primitive/thread by invoking
- * the VS for each vertex to get the positions, decomposes strips and fans
+ * the VS for each vertex to get the positions, decomposes strips
  * into triangles (if needed), eliminates primitive restart (if needed),
  * does (W<0) culling, face culling, view XY culling, zero-area and
  * small-primitive culling, and generates a new index buffer that doesn't
@@ -77,7 +77,7 @@
  * represents the barrier in the previous gfx IB.
  *
  * Features:
- * - Triangle strips and fans are decomposed into an indexed triangle list.
+ * - Triangle strips are decomposed into an indexed triangle list.
  *   The decomposition differs based on the provoking vertex state.
  * - Instanced draws are converted into non-instanced draws for 16-bit indices.
  *   (InstanceID is stored in the high bits of VertexID and unpacked by VS)
@@ -96,7 +96,7 @@
  * - HiZ culling.
  *
  * Limitations (and unimplemented features that may be possible to implement):
- * - Only triangles, triangle strips, and triangle fans are supported.
+ * - Only triangles and triangle strips are supported.
  * - Primitive restart is only supported with triangle strips.
  * - Instancing and primitive restart can't be used together.
  * - Instancing is only supported with 16-bit indices and instance count <= 2^16.
@@ -430,22 +430,6 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    case PIPE_PRIM_TRIANGLE_STRIP:
       for (unsigned i = 0; i < 3; i++) {
          index[i] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->ac.i32, i, 0), "");
-      }
-      break;
-   case PIPE_PRIM_TRIANGLE_FAN:
-      /* Vertex 1 is first and vertex 2 is last. This will go to the hw clipper
-       * and rasterizer as a normal triangle, so we need to put the provoking
-       * vertex into the correct index variable and preserve orientation at the same time.
-       * gl_VertexID is preserved, because it's equal to the index.
-       */
-      if (key->opt.cs_provoking_vertex_first) {
-         index[0] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->ac.i32, 1, 0), "");
-         index[1] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->ac.i32, 2, 0), "");
-         index[2] = ctx->ac.i32_0;
-      } else {
-         index[0] = ctx->ac.i32_0;
-         index[1] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->ac.i32, 1, 0), "");
-         index[2] = LLVMBuildAdd(builder, prim_id, LLVMConstInt(ctx->ac.i32, 2, 0), "");
       }
       break;
    default:
@@ -967,9 +951,8 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
    /* Split draws at the draw call level if the ring is full. This makes
     * better use of the ring space.
     */
-   if (ring_full && num_prims > split_prims_draw_level &&
-       instance_count == 1 && /* TODO: support splitting instanced draws */
-       (1 << prim) & ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP))) {
+   if (ring_full && num_prims > PRIMS_PER_BATCH &&
+       instance_count == 1) { /* TODO: support splitting instanced draws */
       unsigned vert_count_per_subdraw = 0;
 
       if (prim == PIPE_PRIM_TRIANGLES)
@@ -1136,7 +1119,6 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
    switch (info->mode) {
    case PIPE_PRIM_TRIANGLES:
    case PIPE_PRIM_TRIANGLE_STRIP:
-   case PIPE_PRIM_TRIANGLE_FAN:
       vertices_per_prim = 3;
       output_indexbuf_format = V_008F0C_BUF_DATA_FORMAT_32_32_32;
       gfx10_output_indexbuf_format = V_008F0C_GFX10_FORMAT_32_32_32_UINT;

@@ -1933,8 +1933,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
               (instance_count == 1 || pd_msg("instance_count > 1 with primitive restart"))
                           :
                           /* Supported prim types without primitive restart + allow instancing: */
-           (1 << prim) & ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP) |
-                          (1 << PIPE_PRIM_TRIANGLE_FAN)) &&
+           (1 << prim) & ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP)) &&
               /* Instancing is limited to 16-bit indices, because InstanceID is packed into
                  VertexID. */
               /* TODO: DrawArraysInstanced doesn't sometimes work, so it's disabled. */
