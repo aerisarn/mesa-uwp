@@ -1158,7 +1158,7 @@ meson-mingw32-x86_64:
     paths:
       - results/vkd3d-proton.log
   script:
-    - install/vkd3d-proton/run.sh
+    - ./install/vkd3d-proton/run.sh
 
 .piglit-test:
   artifacts:

@@ -29,6 +29,21 @@ export WINEDEBUG="-all"
 export WINEPREFIX="/vkd3d-proton-wine64"
 export WINEESYNC=1
 
+print_red() {
+    RED='\033[0;31m'
+    NC='\033[0m' # No Color
+    printf "${RED}"
+    "$@"
+    printf "${NC}"
+}
+
+# wrapper to supress +x to avoid spamming the log
+quiet() {
+    set +x
+    "$@"
+    set -x
+}
+
 SANITY_MESA_VERSION_CMD="vulkaninfo | tee /tmp/version.txt | grep \"Mesa $MESA_VERSION\(\s\|$\)\""
 
 RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $SANITY_MESA_VERSION_CMD"
@@ -49,7 +64,7 @@ fi
 
 VKD3D_PROTON_TESTSUITE_CMD="wine /vkd3d-proton-tests/x64/bin/d3d12.exe >$RESULTS/vkd3d-proton.log 2>&1"
 
-printf "Running vkd3d-proton testsuite...\n"
+quiet printf "%s\n" "Running vkd3d-proton testsuite..."
 RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $VKD3D_PROTON_TESTSUITE_CMD"
 
 set +e
@@ -57,6 +72,7 @@ eval $RUN_CMD
 
 VKD3D_PROTON_RESULTS="vkd3d-proton-${VKD3D_PROTON_RESULTS:-results}"
 RESULTSFILE="$RESULTS/$VKD3D_PROTON_RESULTS.txt"
+mkdir -p .gitlab-ci/vkd3d-proton
 grep "Test failed" "$RESULTS"/vkd3d-proton.log > "$RESULTSFILE"
 
 if [ -f "$INSTALL/$VKD3D_PROTON_RESULTS.txt" ]; then
@@ -66,9 +82,10 @@ else
     touch ".gitlab-ci/vkd3d-proton/$VKD3D_PROTON_RESULTS.txt.baseline"
 fi
 
-if diff -q ".gitlab-ci/vkd3d-proton/$PIGLIT_RESULTS.txt.baseline" "$RESULTSFILE"; then
+if diff -q ".gitlab-ci/vkd3d-proton/$VKD3D_PROTON_RESULTS.txt.baseline" "$RESULTSFILE"; then
     exit 0
 fi
 
-printf "Regressions found, see vkd3d-proton.log!\n"
+quiet print_red printf "%s\n" "Changes found, see vkd3d-proton.log!"
+quiet diff --color=always -u ".gitlab-ci/vkd3d-proton/$VKD3D_PROTON_RESULTS.txt.baseline" "$RESULTSFILE"
 exit 1
