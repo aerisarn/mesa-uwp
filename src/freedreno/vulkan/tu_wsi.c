@@ -27,6 +27,7 @@
 
 #include "vk_util.h"
 #include "wsi_common.h"
+#include "wsi_common_drm.h"
 #include "drm-uapi/drm_fourcc.h"
 
 static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
@@ -34,6 +35,14 @@ tu_wsi_proc_addr(VkPhysicalDevice physicalDevice, const char *pName)
 {
    TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
    return vk_instance_get_proc_addr_unchecked(&pdevice->instance->vk, pName);
+}
+
+static bool
+tu_wsi_can_present_on_device(VkPhysicalDevice physicalDevice, int fd)
+{
+   TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
+
+   return wsi_common_drm_devices_equal(fd, pdevice->local_fd);
 }
 
 VkResult
@@ -52,6 +61,9 @@ tu_wsi_init(struct tu_physical_device *physical_device)
       return result;
 
    physical_device->wsi_device.supports_modifiers = true;
+   physical_device->wsi_device.can_present_on_device =
+      tu_wsi_can_present_on_device;
+
    physical_device->vk.wsi_device = &physical_device->wsi_device;
 
    return VK_SUCCESS;
