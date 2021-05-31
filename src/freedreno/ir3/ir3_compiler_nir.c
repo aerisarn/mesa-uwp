@@ -2081,6 +2081,65 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		break;
 	}
 
+	case nir_intrinsic_vote_any:
+	case nir_intrinsic_vote_all: {
+		struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
+		struct ir3_instruction *pred = ir3_get_predicate(ctx, src);
+		if (intr->intrinsic == nir_intrinsic_vote_any)
+			dst[0] = ir3_ANY_MACRO(ctx->block, pred, 0);
+		else
+			dst[0] = ir3_ALL_MACRO(ctx->block, pred, 0);
+		dst[0]->srcs[0]->num = regid(REG_P0, 0);
+		array_insert(ctx->ir, ctx->ir->predicates, dst[0]);
+		break;
+	}
+	case nir_intrinsic_elect:
+		dst[0] = ir3_ELECT_MACRO(ctx->block);
+		/* This may expand to a divergent if/then, so allocate stack space for
+		 * it.
+		 */
+		ctx->max_stack = MAX2(ctx->max_stack, ctx->stack + 1);
+		break;
+
+	case nir_intrinsic_read_invocation_cond_ir3: {
+		struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
+		struct ir3_instruction *cond = ir3_get_src(ctx, &intr->src[1])[0];
+		dst[0] = ir3_READ_COND_MACRO(ctx->block,
+									 ir3_get_predicate(ctx, cond), 0,
+									 src, 0);
+		dst[0]->dsts[0]->flags |= IR3_REG_SHARED;
+		dst[0]->srcs[0]->num = regid(REG_P0, 0);
+		array_insert(ctx->ir, ctx->ir->predicates, dst[0]);
+		ctx->max_stack = MAX2(ctx->max_stack, ctx->stack + 1);
+		break;
+	}
+
+	case nir_intrinsic_read_first_invocation: {
+		struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
+		dst[0] = ir3_READ_FIRST_MACRO(ctx->block, src, 0);
+		dst[0]->dsts[0]->flags |= IR3_REG_SHARED;
+		ctx->max_stack = MAX2(ctx->max_stack, ctx->stack + 1);
+		break;
+	}
+
+	case nir_intrinsic_ballot: {
+		struct ir3_instruction *ballot;
+		unsigned components = intr->dest.ssa.num_components;
+		if (nir_src_is_const(intr->src[0]) && nir_src_as_bool(intr->src[0])) {
+			/* ballot(true) is just MOVMSK */
+			ballot = ir3_MOVMSK(ctx->block, components);
+		} else {
+			struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
+			struct ir3_instruction *pred = ir3_get_predicate(ctx, src);
+			ballot = ir3_BALLOT_MACRO(ctx->block, pred, components);
+			ballot->srcs[0]->num = regid(REG_P0, 0);
+			array_insert(ctx->ir, ctx->ir->predicates, ballot);
+			ctx->max_stack = MAX2(ctx->max_stack, ctx->stack + 1);
+		}
+		ir3_split_dest(ctx->block, dst, ballot, 0, components);
+		break;
+	}
+
 	case nir_intrinsic_load_shared_ir3:
 		emit_intrinsic_load_shared_ir3(ctx, intr, dst);
 		break;
@@ -2898,7 +2957,19 @@ emit_if(struct ir3_context *ctx, nir_if *nif)
 {
 	struct ir3_instruction *condition = ir3_get_src(ctx, &nif->condition)[0];
 
-	ctx->block->condition = ir3_get_predicate(ctx, condition);
+	if (condition->opc == OPC_ANY_MACRO && condition->block == ctx->block) {
+		ctx->block->condition = ssa(condition->srcs[0]);
+		ctx->block->brtype = IR3_BRANCH_ANY;
+	} else if (condition->opc == OPC_ALL_MACRO && condition->block == ctx->block) {
+		ctx->block->condition = ssa(condition->srcs[0]);
+		ctx->block->brtype = IR3_BRANCH_ALL;
+	} else if (condition->opc == OPC_ELECT_MACRO && condition->block == ctx->block) {
+		ctx->block->condition = NULL;
+		ctx->block->brtype = IR3_BRANCH_GETONE;
+	} else {
+		ctx->block->condition = ir3_get_predicate(ctx, condition);
+		ctx->block->brtype = IR3_BRANCH_COND;
+	}
 
 	emit_cf_list(ctx, &nif->then_list);
 	emit_cf_list(ctx, &nif->else_list);
