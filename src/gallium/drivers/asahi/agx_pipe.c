@@ -43,6 +43,7 @@
 #include "asahi/compiler/agx_compile.h"
 #include "asahi/lib/decode.h"
 #include "asahi/lib/tiling.h"
+#include "asahi/lib/agx_formats.h"
 
 static const struct debug_named_value agx_debug_options[] = {
    {"trace",     AGX_DBG_TRACE,    "Trace the command stream"},
@@ -904,9 +905,15 @@ agx_is_format_supported(struct pipe_screen* pscreen,
    if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
       return false;
 
-   /* TODO: formats */
-   if (usage & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW))
-      return (format == PIPE_FORMAT_B8G8R8A8_UNORM);
+   if (usage & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW)) {
+      struct agx_pixel_format_entry ent = agx_pixel_format[format];
+
+      if (!agx_is_valid_pixel_format(format))
+         return false;
+
+      if ((usage & PIPE_BIND_RENDER_TARGET) && !ent.renderable)
+         return false;
+   }
 
    /* TODO: formats */
    if (usage & PIPE_BIND_VERTEX_BUFFER) {
