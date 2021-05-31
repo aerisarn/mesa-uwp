@@ -39,6 +39,7 @@ static unsigned cik_CB_select1[] = {
    R_037008_CB_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base cik_CB = {
+   .gpu_block = CB,
    .name = "CB",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS,
@@ -65,6 +66,7 @@ static unsigned cik_CPC_counters[] = {
    R_034010_CPC_PERFCOUNTER1_LO,
 };
 static struct ac_pc_block_base cik_CPC = {
+   .gpu_block = CPC,
    .name = "CPC",
    .num_counters = 2,
 
@@ -90,6 +92,7 @@ static unsigned cik_CPF_counters[] = {
    R_034020_CPF_PERFCOUNTER1_LO,
 };
 static struct ac_pc_block_base cik_CPF = {
+   .gpu_block = CPF,
    .name = "CPF",
    .num_counters = 2,
 
@@ -115,6 +118,7 @@ static unsigned cik_CPG_counters[] = {
    R_034000_CPG_PERFCOUNTER1_LO,
 };
 static struct ac_pc_block_base cik_CPG = {
+   .gpu_block = CPG,
    .name = "CPG",
    .num_counters = 2,
 
@@ -139,6 +143,7 @@ static unsigned cik_DB_select1[] = {
    R_03710C_DB_PERFCOUNTER1_SELECT1,
 };
 static struct ac_pc_block_base cik_DB = {
+   .gpu_block = DB,
    .name = "DB",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS,
@@ -163,6 +168,7 @@ static unsigned cik_GDS_select1[] = {
    R_036A10_GDS_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base cik_GDS = {
+   .gpu_block = GDS,
    .name = "GDS",
    .num_counters = 4,
 
@@ -185,6 +191,7 @@ static unsigned cik_GRBM_counters[] = {
    R_03410C_GRBM_PERFCOUNTER1_LO,
 };
 static struct ac_pc_block_base cik_GRBM = {
+   .gpu_block = GRBM,
    .name = "GRBM",
    .num_counters = 2,
 
@@ -200,6 +207,7 @@ static unsigned cik_GRBMSE_select0[] = {
    R_036114_GRBM_SE3_PERFCOUNTER_SELECT,
 };
 static struct ac_pc_block_base cik_GRBMSE = {
+   .gpu_block = GRBMSE,
    .name = "GRBMSE",
    .num_counters = 4,
 
@@ -218,6 +226,7 @@ static unsigned cik_IA_select1[] = {
    R_036220_IA_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base cik_IA = {
+   .gpu_block = IA,
    .name = "IA",
    .num_counters = 4,
 
@@ -245,6 +254,7 @@ static unsigned cik_PA_SC_select1[] = {
    R_036504_PA_SC_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base cik_PA_SC = {
+   .gpu_block = PA_SC,
    .name = "PA_SC",
    .num_counters = 8,
    .flags = AC_PC_BLOCK_SE,
@@ -271,6 +281,7 @@ static unsigned cik_PA_SU_select1[] = {
 };
 /* According to docs, PA_SU counters are only 48 bits wide. */
 static struct ac_pc_block_base cik_PA_SU = {
+   .gpu_block = PA_SU,
    .name = "PA_SU",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE,
@@ -300,6 +311,7 @@ static unsigned cik_SPI_select1[] = {
    R_03661C_SPI_PERFCOUNTER3_SELECT1
 };
 static struct ac_pc_block_base cik_SPI = {
+   .gpu_block = SPI,
    .name = "SPI",
    .num_counters = 6,
    .flags = AC_PC_BLOCK_SE,
@@ -333,6 +345,7 @@ static unsigned cik_SQ_select0[] = {
    R_03673C_SQ_PERFCOUNTER15_SELECT,
 };
 static struct ac_pc_block_base cik_SQ = {
+   .gpu_block = SQ,
    .name = "SQ",
    .num_counters = 16,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER,
@@ -357,6 +370,7 @@ static unsigned cik_SX_select1[] = {
    R_036914_SX_PERFCOUNTER1_SELECT1,
 };
 static struct ac_pc_block_base cik_SX = {
+   .gpu_block = SX,
    .name = "SX",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE,
@@ -379,6 +393,7 @@ static unsigned cik_TA_select1[] = {
    R_036B04_TA_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base cik_TA = {
+   .gpu_block = TA,
    .name = "TA",
    .num_counters = 2,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS | AC_PC_BLOCK_SHADER_WINDOWED,
@@ -401,6 +416,7 @@ static unsigned cik_TD_select1[] = {
    R_036C04_TD_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base cik_TD = {
+   .gpu_block = TD,
    .name = "TD",
    .num_counters = 2,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS | AC_PC_BLOCK_SHADER_WINDOWED,
@@ -426,6 +442,7 @@ static unsigned cik_TCA_select1[] = {
    R_036E4C_TCA_PERFCOUNTER1_SELECT1,
 };
 static struct ac_pc_block_base cik_TCA = {
+   .gpu_block = TCA,
    .name = "TCA",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_INSTANCE_GROUPS,
@@ -451,6 +468,7 @@ static unsigned cik_TCC_select1[] = {
    R_036E0C_TCC_PERFCOUNTER1_SELECT1,
 };
 static struct ac_pc_block_base cik_TCC = {
+   .gpu_block = TCC,
    .name = "TCC",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_INSTANCE_GROUPS,
@@ -476,6 +494,7 @@ static unsigned cik_TCP_select1[] = {
    R_036D0C_TCP_PERFCOUNTER1_SELECT1,
 };
 static struct ac_pc_block_base cik_TCP = {
+   .gpu_block = TCP,
    .name = "TCP",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS | AC_PC_BLOCK_SHADER_WINDOWED,
@@ -501,6 +520,7 @@ static unsigned cik_VGT_select1[] = {
    R_036244_VGT_PERFCOUNTER1_SELECT1,
 };
 static struct ac_pc_block_base cik_VGT = {
+   .gpu_block = VGT,
    .name = "VGT",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE,
@@ -522,6 +542,7 @@ static unsigned cik_WD_select0[] = {
    R_03620C_WD_PERFCOUNTER3_SELECT,
 };
 static struct ac_pc_block_base cik_WD = {
+   .gpu_block = WD,
    .name = "WD",
    .num_counters = 4,
 
@@ -531,12 +552,14 @@ static struct ac_pc_block_base cik_WD = {
 
 /* cik_MC */
 static struct ac_pc_block_base cik_MC = {
+   .gpu_block = MC,
    .name = "MC",
    .num_counters = 4,
 };
 
 /* cik_SRBM */
 static struct ac_pc_block_base cik_SRBM = {
+   .gpu_block = SRBM,
    .name = "SRBM",
    .num_counters = 2,
 };
@@ -552,6 +575,7 @@ static unsigned gfx10_CHA_select1[] = {
    R_037784_CHA_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base gfx10_CHA = {
+   .gpu_block = CHA,
    .name = "CHA",
    .num_counters = 4,
 
@@ -575,6 +599,7 @@ static unsigned gfx10_CHCG_select1[] = {
    R_036F1C_CHCG_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base gfx10_CHCG = {
+   .gpu_block = CHCG,
    .name = "CHCG",
    .num_counters = 4,
 
@@ -598,6 +623,7 @@ static unsigned gfx10_CHC_select1[] = {
    R_036F04_CHC_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base gfx10_CHC = {
+   .gpu_block = CHC,
    .name = "CHC",
    .num_counters = 4,
 
@@ -612,6 +638,7 @@ static struct ac_pc_block_base gfx10_CHC = {
 
 /* gfx10_DB */
 static struct ac_pc_block_base gfx10_DB = {
+   .gpu_block = DB,
    .name = "DB",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS,
@@ -634,6 +661,7 @@ static unsigned gfx10_GCR_select1[] = {
    R_037584_GCR_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base gfx10_GCR = {
+   .gpu_block = GCR,
    .name = "GCR",
    .num_counters = 2,
 
@@ -668,6 +696,7 @@ static unsigned gfx10_GE_select1[] = {
    R_03621C_GE_PERFCOUNTER3_SELECT1,
 };
 static struct ac_pc_block_base gfx10_GE = {
+   .gpu_block = GE,
    .name = "GE",
    .num_counters = 12,
 
@@ -691,6 +720,7 @@ static unsigned gfx10_GL1A_select1[] = {
    R_037704_GL1A_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base gfx10_GL1A = {
+   .gpu_block = GL1A,
    .name = "GL1A",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER_WINDOWED,
@@ -715,6 +745,7 @@ static unsigned gfx10_GL1C_select1[] = {
    R_036E84_GL1C_PERFCOUNTER0_SELECT1,
 };
 static struct ac_pc_block_base gfx10_GL1C = {
+   .gpu_block = GL1C,
    .name = "GL1C",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER_WINDOWED,
@@ -740,6 +771,7 @@ static unsigned gfx10_GL2A_select1[] = {
    R_036E4C_GL2A_PERFCOUNTER1_SELECT1,
 };
 static struct ac_pc_block_base gfx10_GL2A = {
+   .gpu_block = GL2A,
    .name = "GL2A",
    .num_counters = 4,
 
@@ -764,6 +796,7 @@ static unsigned gfx10_GL2C_select1[] = {
    R_036E0C_GL2C_PERFCOUNTER1_SELECT1,
 };
 static struct ac_pc_block_base gfx10_GL2C = {
+   .gpu_block = GL2C,
    .name = "GL2C",
    .num_counters = 4,
 
@@ -794,6 +827,7 @@ static unsigned gfx10_PA_PH_select1[] = {
    R_037648_PA_PH_PERFCOUNTER3_SELECT1,
 };
 static struct ac_pc_block_base gfx10_PA_PH = {
+   .gpu_block = PA_PH,
    .name = "PA_PH",
    .num_counters = 8,
    .flags = AC_PC_BLOCK_SE,
@@ -821,6 +855,7 @@ static unsigned gfx10_PA_SU_select1[] = {
    R_03641C_PA_SU_PERFCOUNTER3_SELECT1,
 };
 static struct ac_pc_block_base gfx10_PA_SU = {
+   .gpu_block = PA_SU,
    .name = "PA_SU",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE,
@@ -840,6 +875,7 @@ static unsigned gfx10_RLC_select0[] = {
    R_037308_RLC_PERFCOUNTER1_SELECT,
 };
 static struct ac_pc_block_base gfx10_RLC = {
+   .gpu_block = RLC,
    .name = "RLC",
    .num_counters = 2,
 
@@ -860,6 +896,7 @@ static unsigned gfx10_RMI_select1[] = {
    R_037410_RMI_PERFCOUNTER2_SELECT1,
 };
 static struct ac_pc_block_base gfx10_RMI = {
+   .gpu_block = RMI,
    .name = "RMI",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS,
@@ -875,6 +912,7 @@ static struct ac_pc_block_base gfx10_RMI = {
 
 /* gfx10_SQ */
 static struct ac_pc_block_base gfx10_SQ = {
+   .gpu_block = SQ,
    .name = "SQ",
    .num_counters = 16,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER,
@@ -889,6 +927,7 @@ static struct ac_pc_block_base gfx10_SQ = {
 
 /* gfx10_TCP */
 static struct ac_pc_block_base gfx10_TCP = {
+   .gpu_block = TCP,
    .name = "TCP",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS | AC_PC_BLOCK_SHADER_WINDOWED,
@@ -908,6 +947,7 @@ static unsigned gfx10_UTCL1_select0[] = {
    R_037590_UTCL1_PERFCOUNTER1_SELECT,
 };
 static struct ac_pc_block_base gfx10_UTCL1 = {
+   .gpu_block = UTCL1,
    .name = "UTCL1",
    .num_counters = 2,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER_WINDOWED,
