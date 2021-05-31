@@ -200,12 +200,18 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
 	 */
 	switch (opc_cat(instr->opc)) {
 	case 1: /* move instructions */
-		if (instr->opc == OPC_MOVMSK) {
+		if (instr->opc == OPC_MOVMSK || instr->opc == OPC_BALLOT_MACRO) {
 			validate_assert(ctx, instr->dsts_count == 1);
-			validate_assert(ctx, instr->srcs_count == 0);
 			validate_assert(ctx, instr->dsts[0]->flags & IR3_REG_SHARED);
 			validate_assert(ctx, !(instr->dsts[0]->flags & IR3_REG_HALF));
 			validate_assert(ctx, util_is_power_of_two_or_zero(instr->dsts[0]->wrmask + 1));
+		} else if (instr->opc == OPC_ANY_MACRO || instr->opc == OPC_ALL_MACRO ||
+				   instr->opc == OPC_READ_FIRST_MACRO ||
+				   instr->opc == OPC_READ_COND_MACRO) {
+			/* nothing yet */
+		} else if (instr->opc == OPC_ELECT_MACRO) {
+			validate_assert(ctx, instr->dsts_count == 1);
+			validate_assert(ctx, !(instr->dsts[0]->flags & IR3_REG_SHARED));
 		} else {
 			foreach_dst (dst, instr)
 				validate_reg_size(ctx, dst, instr->cat1.dst_type);

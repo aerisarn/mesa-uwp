@@ -191,6 +191,13 @@ static const struct opc_info {
 	OPC(1, OPC_SWZ,          swz),
 	OPC(1, OPC_SCT,          sct),
 	OPC(1, OPC_GAT,          gat),
+	OPC(1, OPC_BALLOT_MACRO, ballot.macro),
+	OPC(1, OPC_ANY_MACRO,    any.macro),
+	OPC(1, OPC_ALL_MACRO,    all.macro),
+	OPC(1, OPC_ELECT_MACRO,  elect.macro),
+	OPC(1, OPC_READ_COND_MACRO, read_cond.macro),
+	OPC(1, OPC_READ_FIRST_MACRO, read_first.macro),
+	OPC(1, OPC_SWZ_SHARED_MACRO, swz_shared.macro),
 
 	/* category 2: */
 	OPC(2, OPC_ADD_F,        add.f),

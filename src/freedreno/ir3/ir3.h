@@ -1458,6 +1458,8 @@ __ssa_srcp_n(struct ir3_instruction *instr, unsigned n)
 	list_for_each_entry_rev(struct ir3_instruction, __instr, __list, node)
 #define foreach_instr_safe(__instr, __list) \
 	list_for_each_entry_safe(struct ir3_instruction, __instr, __list, node)
+#define foreach_instr_from_safe(__instr, __start, __list) \
+	list_for_each_entry_from_safe(struct ir3_instruction, __instr, __start, __list, node)
 
 /* iterators for blocks: */
 #define foreach_block(__block, __list) \
@@ -1525,6 +1527,9 @@ bool ir3_postsched(struct ir3 *ir, struct ir3_shader_variant *v);
 
 /* register assignment: */
 int ir3_ra(struct ir3_shader_variant *v);
+
+/* lower subgroup ops: */
+bool ir3_lower_subgroups(struct ir3 *ir);
 
 /* legalize: */
 bool ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary);
@@ -1692,6 +1697,20 @@ ir3_MOVMSK(struct ir3_block *block, unsigned components)
 }
 
 static inline struct ir3_instruction *
+ir3_BALLOT_MACRO(struct ir3_block *block, struct ir3_instruction *src, unsigned components)
+{
+	struct ir3_instruction *instr = ir3_instr_create(block, OPC_BALLOT_MACRO, 1, 1);
+
+	struct ir3_register *dst = __ssa_dst(instr);
+	dst->flags |= IR3_REG_SHARED;
+	dst->wrmask = (1 << components) - 1;
+
+	__ssa_src(instr, src, 0);
+
+	return instr;
+}
+
+static inline struct ir3_instruction *
 ir3_NOP(struct ir3_block *block)
 {
 	return ir3_instr_create(block, OPC_NOP, 0, 0);
@@ -1851,6 +1870,21 @@ INSTR1NODST(PREDT)
 INSTR0(PREDF)
 INSTR0(PREDE)
 INSTR0(GETONE)
+
+/* cat1 macros */
+INSTR1(ANY_MACRO)
+INSTR1(ALL_MACRO)
+INSTR1(READ_FIRST_MACRO)
+INSTR2(READ_COND_MACRO)
+
+static inline struct ir3_instruction *
+ir3_ELECT_MACRO(struct ir3_block *block)
+{
+	struct ir3_instruction *instr =
+		ir3_instr_create(block, OPC_ELECT_MACRO, 1, 0);
+	__ssa_dst(instr);
+	return instr;
+}
 
 /* cat2 instructions, most 2 src but some 1 src: */
 INSTR2(ADD_F)

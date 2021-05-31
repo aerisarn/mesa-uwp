@@ -158,9 +158,6 @@ find_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 		}
 	}
 
-	/* note that we can end up with unused indirects, but we should
-	 * not end up with unused predicates.
-	 */
 	for (i = 0; i < ir->a0_users_count; i++) {
 		struct ir3_instruction *instr = ir->a0_users[i];
 		if (instr && (instr->flags & IR3_INSTR_UNUSED))
@@ -171,6 +168,12 @@ find_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 		struct ir3_instruction *instr = ir->a1_users[i];
 		if (instr && (instr->flags & IR3_INSTR_UNUSED))
 			ir->a1_users[i] = NULL;
+	}
+
+	for (i = 0; i < ir->predicates_count; i++) {
+		struct ir3_instruction *instr = ir->predicates[i];
+		if (instr && (instr->flags & IR3_INSTR_UNUSED))
+			ir->predicates[i] = NULL;
 	}
 
 	/* cleanup unused inputs: */

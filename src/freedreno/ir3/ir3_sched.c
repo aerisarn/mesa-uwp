@@ -919,6 +919,9 @@ split_pred(struct ir3_sched_ctx *ctx)
 	for (i = 0; i < ir->predicates_count; i++) {
 		struct ir3_instruction *predicated = ir->predicates[i];
 
+		if (!predicated)
+			continue;
+
 		/* skip instructions already scheduled: */
 		if (is_scheduled(predicated))
 			continue;

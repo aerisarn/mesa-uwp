@@ -113,6 +113,15 @@ typedef enum {
 	OPC_MOV_RELGPR      = _OPC(1, 43),
 	OPC_MOV_RELCONST    = _OPC(1, 44),
 
+	/* Macros that expand to an if statement + move */
+	OPC_BALLOT_MACRO    = _OPC(1, 50),
+	OPC_ANY_MACRO       = _OPC(1, 51),
+	OPC_ALL_MACRO       = _OPC(1, 52),
+	OPC_ELECT_MACRO     = _OPC(1, 53),
+	OPC_READ_COND_MACRO = _OPC(1, 54),
+	OPC_READ_FIRST_MACRO = _OPC(1, 55),
+	OPC_SWZ_SHARED_MACRO = _OPC(1, 56),
+
 	/* category 2: */
 	OPC_ADD_F           = _OPC(2, 0),
 	OPC_MIN_F           = _OPC(2, 1),
