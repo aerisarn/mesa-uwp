@@ -48,9 +48,11 @@ enum ir3_driver_param {
 	IR3_DP_BASE_GROUP_X = 4,
 	IR3_DP_BASE_GROUP_Y = 5,
 	IR3_DP_BASE_GROUP_Z = 6,
+	IR3_DP_SUBGROUP_SIZE = 7,
 	IR3_DP_LOCAL_GROUP_SIZE_X = 8,
 	IR3_DP_LOCAL_GROUP_SIZE_Y = 9,
 	IR3_DP_LOCAL_GROUP_SIZE_Z = 10,
+	IR3_DP_SUBGROUP_ID_SHIFT = 11,
 	/* NOTE: gl_NumWorkGroups should be vec4 aligned because
 	 * glDispatchComputeIndirect() needs to load these from
 	 * the info->indirect buffer.  Keep that in mind when/if

@@ -2005,6 +2005,12 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			dst[i] = create_driver_param(ctx, IR3_DP_LOCAL_GROUP_SIZE_X + i);
 		}
 		break;
+	case nir_intrinsic_load_subgroup_size:
+		dst[0] = create_driver_param(ctx, IR3_DP_SUBGROUP_SIZE);
+		break;
+	case nir_intrinsic_load_subgroup_id_shift_ir3:
+		dst[0] = create_driver_param(ctx, IR3_DP_SUBGROUP_ID_SHIFT);
+		break;
 	case nir_intrinsic_discard_if:
 	case nir_intrinsic_discard:
 	case nir_intrinsic_demote:

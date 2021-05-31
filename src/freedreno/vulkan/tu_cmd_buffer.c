@@ -4171,6 +4171,8 @@ tu_emit_compute_driver_params(struct tu_cmd_buffer *cmd,
       &pipeline->program.link[type];
    const struct ir3_const_state *const_state = &link->const_state;
    uint32_t offset = const_state->offsets.driver_param;
+   unsigned subgroup_size = pipeline->compute.subgroup_size;
+   unsigned subgroup_shift = util_logbase2(subgroup_size);
 
    if (link->constlen <= offset)
       return;
@@ -4179,13 +4181,15 @@ tu_emit_compute_driver_params(struct tu_cmd_buffer *cmd,
                               (link->constlen - offset) * 4);
 
    if (!info->indirect) {
-      uint32_t driver_params[8] = {
+      uint32_t driver_params[12] = {
          [IR3_DP_NUM_WORK_GROUPS_X] = info->blocks[0],
          [IR3_DP_NUM_WORK_GROUPS_Y] = info->blocks[1],
          [IR3_DP_NUM_WORK_GROUPS_Z] = info->blocks[2],
          [IR3_DP_BASE_GROUP_X] = info->offsets[0],
          [IR3_DP_BASE_GROUP_Y] = info->offsets[1],
          [IR3_DP_BASE_GROUP_Z] = info->offsets[2],
+         [IR3_DP_SUBGROUP_SIZE] = subgroup_size,
+         [IR3_DP_SUBGROUP_ID_SHIFT] = subgroup_shift,
       };
 
       assert(num_consts <= ARRAY_SIZE(driver_params));
@@ -4236,19 +4240,28 @@ tu_emit_compute_driver_params(struct tu_cmd_buffer *cmd,
       tu_cs_emit_qw(cs, global_iova(cmd, cs_indirect_xyz[0]));
    }
 
-   /* Zeroing of IR3_DP_BASE_GROUP_X/Y/Z for indirect dispatch */
+   /* Fill out IR3_DP_SUBGROUP_SIZE and IR3_DP_SUBGROUP_ID_SHIFT for indirect
+    * dispatch.
+    */
    if (info->indirect && num_consts > IR3_DP_BASE_GROUP_X) {
-      assert(num_consts == align(IR3_DP_BASE_GROUP_Z, 4));
-
       tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 7);
       tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(offset + (IR3_DP_BASE_GROUP_X / 4)) |
                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                  CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
-                 CP_LOAD_STATE6_0_NUM_UNIT(1));
+                 CP_LOAD_STATE6_0_NUM_UNIT((num_consts - IR3_DP_BASE_GROUP_X) / 4));
       tu_cs_emit_qw(cs, 0);
-      for (uint32_t i = 0; i < 4; i++)
-         tu_cs_emit(cs, 0);
+      tu_cs_emit(cs, 0); /* BASE_GROUP_X */
+      tu_cs_emit(cs, 0); /* BASE_GROUP_Y */
+      tu_cs_emit(cs, 0); /* BASE_GROUP_Z */
+      tu_cs_emit(cs, subgroup_size);
+      if (num_consts > IR3_DP_LOCAL_GROUP_SIZE_X) {
+         assert(num_consts == align(IR3_DP_SUBGROUP_ID_SHIFT, 4));
+         tu_cs_emit(cs, 0); /* LOCAL_GROUP_SIZE_X */
+         tu_cs_emit(cs, 0); /* LOCAL_GROUP_SIZE_Y */
+         tu_cs_emit(cs, 0); /* LOCAL_GROUP_SIZE_Z */
+         tu_cs_emit(cs, subgroup_shift);
+      }
    }
 }
 

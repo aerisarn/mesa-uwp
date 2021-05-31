@@ -1189,6 +1189,7 @@ struct tu_pipeline
    struct
    {
       uint32_t local_size[3];
+      uint32_t subgroup_size;
    } compute;
 
    bool provoking_vertex_last;

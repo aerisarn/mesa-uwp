@@ -409,6 +409,58 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 	nir_sweep(s);
 }
 
+static bool
+lower_subgroup_id_filter(const nir_instr *instr, const void *unused)
+{
+	(void)unused;
+
+	if (instr->type != nir_instr_type_intrinsic)
+		return false;
+
+	nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+	return intr->intrinsic == nir_intrinsic_load_subgroup_invocation ||
+		   intr->intrinsic == nir_intrinsic_load_subgroup_id ||
+		   intr->intrinsic == nir_intrinsic_load_num_subgroups;
+}
+
+static nir_ssa_def *
+lower_subgroup_id(nir_builder *b, nir_instr *instr, void *unused)
+{
+	(void)instr;
+	(void)unused;
+
+	nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+	if (intr->intrinsic == nir_intrinsic_load_subgroup_invocation) {
+		return nir_iand(b, nir_load_local_invocation_index(b),
+						nir_isub(b, nir_load_subgroup_size(b), nir_imm_int(b, 1)));
+	} else if (intr->intrinsic == nir_intrinsic_load_subgroup_id) {
+		return nir_ishr(b, nir_load_local_invocation_index(b),
+						nir_load_subgroup_id_shift_ir3(b));
+	} else {
+		assert(intr->intrinsic == nir_intrinsic_load_num_subgroups);
+		/* If the workgroup size is constant,
+		 * nir_lower_compute_system_values() will replace local_size with a
+		 * constant so this can mostly be constant folded away.
+		 */
+		nir_ssa_def *local_size = nir_load_workgroup_size(b);
+		nir_ssa_def *size =
+			nir_imul24(b, nir_channel(b, local_size, 0),
+					   nir_imul24(b, nir_channel(b, local_size, 1),
+								  nir_channel(b, local_size, 2)));
+		nir_ssa_def *one = nir_imm_int(b, 1);
+		return nir_iadd(b, one,
+						nir_ishr(b, nir_isub(b, size, one),
+							     nir_load_subgroup_id_shift_ir3(b)));
+	}
+}
+
+static bool
+ir3_nir_lower_subgroup_id_cs(nir_shader *shader)
+{
+	return nir_shader_lower_instructions(shader, lower_subgroup_id_filter,
+										 lower_subgroup_id, NULL);
+}
+
 /**
  * Late passes that need to be done after pscreen->finalize_nir()
  */
@@ -705,6 +757,14 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 				case nir_intrinsic_load_base_workgroup_id:
 					layout->num_driver_params =
 						MAX2(layout->num_driver_params, IR3_DP_BASE_GROUP_Z + 1);
+					break;
+				case nir_intrinsic_load_subgroup_size:
+					layout->num_driver_params =
+						MAX2(layout->num_driver_params, IR3_DP_SUBGROUP_SIZE + 1);
+					break;
+				case nir_intrinsic_load_subgroup_id_shift_ir3:
+					layout->num_driver_params =
+						MAX2(layout->num_driver_params, IR3_DP_SUBGROUP_ID_SHIFT + 1);
 					break;
 				default:
 					break;

@@ -1018,6 +1018,9 @@ system_value("tess_factor_base_ir3", 2)
 system_value("tess_param_base_ir3", 2)
 system_value("tcs_header_ir3", 1)
 
+# System values for freedreno compute shaders.
+system_value("subgroup_id_shift_ir3", 1)
+
 # IR3-specific intrinsics for tessellation control shaders.  cond_end_ir3 end
 # the shader when src0 is false and is used to narrow down the TCS shader to
 # just thread 0 before writing out tessellation levels.

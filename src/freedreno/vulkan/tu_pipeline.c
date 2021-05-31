@@ -3143,6 +3143,8 @@ tu_compute_pipeline_create(VkDevice device,
    for (int i = 0; i < 3; i++)
       pipeline->compute.local_size[i] = v->local_size[i];
 
+   pipeline->compute.subgroup_size = v->info.double_threadsize ? 128 : 64;
+
    struct tu_cs prog_cs;
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
    tu6_emit_cs_config(&prog_cs, shader, v, &pvtmem, shader_iova);
