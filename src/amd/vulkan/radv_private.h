@@ -2922,6 +2922,12 @@ radv_accel_struct_get_va(const struct radv_acceleration_structure *accel)
    return radv_buffer_get_va(accel->bo) + accel->mem_offset;
 }
 
+/* radv_perfcounter.c */
+void radv_perfcounter_emit_shaders(struct radeon_cmdbuf *cs, unsigned shaders);
+void radv_perfcounter_emit_reset(struct radeon_cmdbuf *cs);
+void radv_perfcounter_emit_start(struct radv_device *device, struct radeon_cmdbuf *cs, int family);
+void radv_perfcounter_emit_stop(struct radv_device *device, struct radeon_cmdbuf *cs, int family);
+
 #define RADV_FROM_HANDLE(__radv_type, __name, __handle) \
    VK_FROM_HANDLE(__radv_type, __name, __handle)
 

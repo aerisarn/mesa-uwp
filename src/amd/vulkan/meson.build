@@ -70,6 +70,7 @@ libradv_files = files(
   'radv_meta_resolve_fs.c',
   'radv_nir_lower_ycbcr_textures.c',
   'radv_pass.c',
+  'radv_perfcounter.c',
   'radv_pipeline.c',
   'radv_pipeline_cache.c',
   'radv_pipeline_rt.c',
