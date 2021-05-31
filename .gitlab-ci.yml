@@ -297,7 +297,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    MESA_IMAGE_TAG: &x86_build-base "2021-03-31-bullseye"
+    MESA_IMAGE_TAG: &x86_build-base "2021-05-31-glslang-tools"
 
 .use-x86_build-base:
   extends:
