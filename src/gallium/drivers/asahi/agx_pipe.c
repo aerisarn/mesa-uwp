@@ -668,6 +668,12 @@ agx_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
    case PIPE_CAP_PACKED_UNIFORMS:
       return 1;
 
+   case PIPE_CAP_TGSI_INSTANCEID:
+   case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
+   case PIPE_CAP_TEXTURE_MULTISAMPLE:
+   case PIPE_CAP_SURFACE_SAMPLE_COUNT:
+      return is_deqp;
+
    case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
       return 0;
 
@@ -796,6 +802,8 @@ agx_get_shader_param(struct pipe_screen* pscreen,
                      enum pipe_shader_type shader,
                      enum pipe_shader_cap param)
 {
+   bool is_deqp = agx_device(pscreen)->debug & AGX_DBG_DEQP;
+
    if (shader != PIPE_SHADER_VERTEX &&
        shader != PIPE_SHADER_FRAGMENT)
       return 0;
@@ -815,7 +823,7 @@ agx_get_shader_param(struct pipe_screen* pscreen,
       return 16;
 
    case PIPE_SHADER_CAP_MAX_OUTPUTS:
-      return shader == PIPE_SHADER_FRAGMENT ? 1 : 16;
+      return shader == PIPE_SHADER_FRAGMENT ? 4 : 16;
 
    case PIPE_SHADER_CAP_MAX_TEMPS:
       return 256; /* GL_MAX_PROGRAM_TEMPORARIES_ARB */
@@ -832,10 +840,12 @@ agx_get_shader_param(struct pipe_screen* pscreen,
    case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
    case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR:
    case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
-   case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
    case PIPE_SHADER_CAP_SUBROUTINES:
    case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
       return 0;
+
+   case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
+      return is_deqp;
 
    case PIPE_SHADER_CAP_FP16:
    case PIPE_SHADER_CAP_INTEGERS:
