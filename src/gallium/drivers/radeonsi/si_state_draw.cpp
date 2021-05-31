@@ -1195,7 +1195,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
             radeon_end();
 
             for (unsigned i = 0; i < num_draws; i++) {
-               uint64_t va = index_va + draws[0].start * original_index_size;
+               uint64_t va = index_va + draws[i].start * original_index_size;
 
                si_dispatch_prim_discard_cs_and_draw(sctx, info, draws[i].count,
                                                     original_index_size, base_vertex,
