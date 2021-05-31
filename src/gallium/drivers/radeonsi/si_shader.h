@@ -689,9 +689,7 @@ struct si_shader_key {
       unsigned cs_prim_type : 4;
       unsigned cs_indexed : 1;
       unsigned cs_instancing : 1;
-      unsigned cs_primitive_restart : 1;
       unsigned cs_provoking_vertex_first : 1;
-      unsigned cs_need_correct_orientation : 1;
       unsigned cs_cull_front : 1;
       unsigned cs_cull_back : 1;
 

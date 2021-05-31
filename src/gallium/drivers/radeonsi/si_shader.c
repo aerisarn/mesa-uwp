@@ -1187,9 +1187,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       fprintf(f, "  opt.cs_prim_type = %s\n", tgsi_primitive_names[key->opt.cs_prim_type]);
       fprintf(f, "  opt.cs_indexed = %u\n", key->opt.cs_indexed);
       fprintf(f, "  opt.cs_instancing = %u\n", key->opt.cs_instancing);
-      fprintf(f, "  opt.cs_primitive_restart = %u\n", key->opt.cs_primitive_restart);
       fprintf(f, "  opt.cs_provoking_vertex_first = %u\n", key->opt.cs_provoking_vertex_first);
-      fprintf(f, "  opt.cs_need_correct_orientation = %u\n", key->opt.cs_need_correct_orientation);
       fprintf(f, "  opt.cs_cull_front = %u\n", key->opt.cs_cull_front);
       fprintf(f, "  opt.cs_cull_back = %u\n", key->opt.cs_cull_back);
       break;

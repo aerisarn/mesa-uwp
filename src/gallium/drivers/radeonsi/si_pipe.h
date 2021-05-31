@@ -989,16 +989,15 @@ struct si_context {
    uint32_t vram_kb;
    uint32_t gtt_kb;
 
-   /* Compute-based primitive discard. */
-   unsigned prim_discard_vertex_count_threshold;
+   /* NGG streamout. */
    struct pb_buffer *gds;
    struct pb_buffer *gds_oa;
+   /* Compute-based primitive discard. */
+   unsigned prim_discard_vertex_count_threshold;
    struct radeon_cmdbuf prim_discard_compute_cs;
-   unsigned compute_gds_offset;
    struct si_shader *compute_ib_last_shader;
    uint32_t compute_rewind_va;
    unsigned compute_num_prims_in_batch;
-   bool preserve_prim_restart_gds_at_flush;
    /* index_ring is divided into 2 halves for doublebuffering. */
    struct si_resource *index_ring;
    unsigned index_ring_base;        /* offset of a per-IB portion */
@@ -1514,8 +1513,7 @@ enum si_prim_discard_outcome
 si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe_draw_info *info,
                                       unsigned drawid_offset,
                                       const struct pipe_draw_start_count_bias *draws,
-                                      unsigned num_draws, bool primitive_restart,
-                                      unsigned total_count);
+                                      unsigned num_draws, unsigned total_count);
 void si_compute_signal_gfx(struct si_context *sctx);
 void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
                                           const struct pipe_draw_info *info,

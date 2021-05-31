@@ -115,23 +115,8 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
 
    ctx->gfx_flush_in_progress = true;
 
-   if (radeon_emitted(&ctx->prim_discard_compute_cs, 0)) {
-      struct radeon_cmdbuf *compute_cs = &ctx->prim_discard_compute_cs;
+   if (radeon_emitted(&ctx->prim_discard_compute_cs, 0))
       si_compute_signal_gfx(ctx);
-
-      /* Make sure compute shaders are idle before leaving the IB, so that
-       * the next IB doesn't overwrite GDS that might be in use. */
-      radeon_begin(compute_cs);
-      radeon_emit(compute_cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      radeon_emit(compute_cs, EVENT_TYPE(V_028A90_CS_PARTIAL_FLUSH) | EVENT_INDEX(4));
-      radeon_end();
-
-      /* Save the GDS prim restart counter if needed. */
-      if (ctx->preserve_prim_restart_gds_at_flush) {
-         si_cp_copy_data(ctx, compute_cs, COPY_DATA_DST_MEM, ctx->wait_mem_scratch, 4,
-                         COPY_DATA_GDS, NULL, 4);
-      }
-   }
 
    if (ctx->has_graphics) {
       if (!list_is_empty(&ctx->active_queries))
