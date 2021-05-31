@@ -360,6 +360,7 @@ static void
 agx_blit(struct pipe_context *ctx,
          const struct pipe_blit_info *info)
 {
+   unreachable("todo: blits");
 }
 
 
