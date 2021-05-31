@@ -2874,7 +2874,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
 
          enum chip_class chip = cmd_buffer->device->physical_device->rad_info.chip_class;
          if (pipeline->use_per_attribute_vb_descs) {
-            uint16_t attrib_end = pipeline->attrib_ends[i];
+            uint32_t attrib_end = pipeline->attrib_ends[i];
 
             if (num_records < attrib_end)
                num_records = 0; /* not enough space for one vertex */
