@@ -48,6 +48,8 @@ AMD_COMMON_FILES = \
 	common/ac_nir.h \
 	common/ac_nir_lower_esgs_io_to_mem.c \
 	common/ac_nir_lower_tess_io_to_mem.c \
+	common/ac_perfcounter.c \
+	common/ac_perfcounter.h \
 	common/ac_surface.c \
 	common/ac_surface.h \
 	common/ac_rgp.c \
