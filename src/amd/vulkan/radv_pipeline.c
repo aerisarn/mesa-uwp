@@ -5070,8 +5070,10 @@ radv_pipeline_generate_vgt_shader_config(struct radeon_cmdbuf *ctx_cs,
       else if (pipeline->shaders[MESA_SHADER_VERTEX])
          vs_size = pipeline->shaders[MESA_SHADER_VERTEX]->info.wave_size;
 
-      if (radv_pipeline_has_ngg(pipeline))
+      if (radv_pipeline_has_ngg(pipeline)) {
+         assert(!radv_pipeline_has_gs_copy_shader(pipeline));
          gs_size = vs_size;
+      }
 
       /* legacy GS only supports Wave64 */
       stages |= S_028B54_HS_W32_EN(hs_size == 32 ? 1 : 0) |
