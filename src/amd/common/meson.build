@@ -80,6 +80,8 @@ amd_common_files = files(
   'ac_debug.h',
   'ac_shadowed_regs.c',
   'ac_shadowed_regs.h',
+  'ac_spm.c',
+  'ac_spm.h',
   'ac_sqtt.c',
   'ac_sqtt.h',
   'ac_rgp.c',
