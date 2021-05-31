@@ -67,7 +67,7 @@ panfrost-t760-traces:armhf:
   variables:
     ENV_VARS: "PAN_MESA_DEBUG=sync DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
-.panfrost-t860-gles3:arm64:
+panfrost-t860-gles3:arm64:
   parallel: 2
   extends:
     - .lava-test:arm64
@@ -76,7 +76,7 @@ panfrost-t760-traces:armhf:
     DEQP_VERSION: gles3
     ENV_VARS: "PAN_MESA_DEBUG=sync DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
-.panfrost-t860-gles31:arm64:
+panfrost-t860-gles31:arm64:
   extends:
     - .lava-test:arm64
     - .lava-rk3399-gru-kevin
@@ -84,7 +84,7 @@ panfrost-t760-traces:armhf:
     DEQP_VERSION: gles31
     ENV_VARS: "PAN_MESA_DEBUG=deqp,sync MESA_GLES_VERSION_OVERRIDE=3.1 MESA_GLSL_VERSION_OVERRIDE=310 DEQP_PARALLEL=1 DEQP_EXPECTED_RENDERER=T860"
 
-.panfrost-t860-traces:arm64:
+panfrost-t860-traces:arm64:
   extends:
     - .lava-piglit-traces:arm64
     - .lava-rk3399-gru-kevin
