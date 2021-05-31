@@ -42,6 +42,61 @@
 #include "asahi/lib/agx_pack.h"
 #include "asahi/lib/agx_formats.h"
 
+static struct pipe_stream_output_target *
+agx_create_stream_output_target(struct pipe_context *pctx,
+                                struct pipe_resource *prsc,
+                                unsigned buffer_offset,
+                                unsigned buffer_size)
+{
+   struct pipe_stream_output_target *target;
+
+   target = &rzalloc(pctx, struct agx_streamout_target)->base;
+
+   if (!target)
+      return NULL;
+
+   pipe_reference_init(&target->reference, 1);
+   pipe_resource_reference(&target->buffer, prsc);
+
+   target->context = pctx;
+   target->buffer_offset = buffer_offset;
+   target->buffer_size = buffer_size;
+
+   return target;
+}
+
+static void
+agx_stream_output_target_destroy(struct pipe_context *pctx,
+                                 struct pipe_stream_output_target *target)
+{
+   pipe_resource_reference(&target->buffer, NULL);
+   ralloc_free(target);
+}
+
+static void
+agx_set_stream_output_targets(struct pipe_context *pctx,
+                              unsigned num_targets,
+                              struct pipe_stream_output_target **targets,
+                              const unsigned *offsets)
+{
+   struct agx_context *ctx = agx_context(pctx);
+   struct agx_streamout *so = &ctx->streamout;
+
+   assert(num_targets <= ARRAY_SIZE(so->targets));
+
+   for (unsigned i = 0; i < num_targets; i++) {
+      if (offsets[i] != -1)
+         agx_so_target(targets[i])->offset = offsets[i];
+
+      pipe_so_target_reference(&so->targets[i], targets[i]);
+   }
+
+   for (unsigned i = 0; i < so->num_targets; i++)
+      pipe_so_target_reference(&so->targets[i], NULL);
+
+   so->num_targets = num_targets;
+}
+
 static void
 agx_set_blend_color(struct pipe_context *pctx,
                     const struct pipe_blend_color *state)
@@ -1412,4 +1467,7 @@ agx_init_state_functions(struct pipe_context *ctx)
    ctx->sampler_view_destroy = agx_sampler_view_destroy;
    ctx->surface_destroy = agx_surface_destroy;
    ctx->draw_vbo = agx_draw_vbo;
+   ctx->create_stream_output_target = agx_create_stream_output_target;
+   ctx->stream_output_target_destroy = agx_stream_output_target_destroy;
+   ctx->set_stream_output_targets = agx_set_stream_output_targets;
 }

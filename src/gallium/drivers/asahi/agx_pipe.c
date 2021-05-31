@@ -627,6 +627,8 @@ agx_get_name(struct pipe_screen* pscreen)
 static int
 agx_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 {
+   bool is_deqp = agx_device(pscreen)->debug & AGX_DBG_DEQP;
+
    switch (param) {
    case PIPE_CAP_NPOT_TEXTURES:
    case PIPE_CAP_MIXED_COLOR_DEPTH_BITS:
@@ -668,6 +670,20 @@ agx_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 
    case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
       return 0;
+
+   case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
+      return is_deqp ? PIPE_MAX_SO_BUFFERS : 0;
+
+   case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
+   case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
+      return is_deqp ? PIPE_MAX_SO_OUTPUTS : 0;
+
+   case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
+   case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
+      return is_deqp ? 1 : 0;
+ 
+   case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
+      return is_deqp ? 256 : 0;
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
