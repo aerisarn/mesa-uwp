@@ -593,9 +593,13 @@ agx_flush_frontbuffer(struct pipe_screen *_screen,
    void *map = winsys->displaytarget_map(winsys, rsrc->dt, PIPE_USAGE_DEFAULT);
    assert(map != NULL);
 
-   agx_detile(rsrc->bo->ptr.cpu, map,
-              rsrc->base.width0, 32, rsrc->dt_stride / 4,
-              0, 0, rsrc->base.width0, rsrc->base.height0);
+   if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
+      agx_detile(rsrc->bo->ptr.cpu, map,
+                 rsrc->base.width0, 32, rsrc->dt_stride / 4,
+                 0, 0, rsrc->base.width0, rsrc->base.height0);
+   } else {
+      memcpy(map, rsrc->bo->ptr.cpu, rsrc->dt_stride * rsrc->base.height0);
+   }
 
    winsys->displaytarget_display(winsys, rsrc->dt, context_private, box);
 }
