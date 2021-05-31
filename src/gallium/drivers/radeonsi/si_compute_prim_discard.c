@@ -157,8 +157,6 @@
 #define THREADGROUPS_PER_CU  1   /* TGs to launch on 1 CU before going onto the next, max 8 */
 #define MAX_WAVES_PER_SH     0   /* no limit */
 #define INDEX_STORES_USE_SLC 1   /* don't cache indices if L2 is full */
-/* Don't cull Z. We already do (W < 0) culling for primitives behind the viewer. */
-#define CULL_Z 0
 /* 0 = unordered memory counter, 1 = unordered GDS counter, 2 = ordered GDS counter */
 #define VERTEX_COUNTER_GDS_MODE 2
 #define GDS_SIZE_UNORDERED      (4 * 1024) /* only for the unordered GDS counter */
@@ -664,12 +662,9 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    options.cull_front = key->opt.cs_cull_front;
    options.cull_back = key->opt.cs_cull_back;
    options.cull_view_xy = true;
-   options.cull_view_near_z = CULL_Z && key->opt.cs_cull_z;
-   options.cull_view_far_z = CULL_Z && key->opt.cs_cull_z;
    options.cull_small_prims = true;
    options.cull_zero_area = true;
    options.cull_w = true;
-   options.use_halfz_clip_space = key->opt.cs_halfz_clip_space;
 
    LLVMValueRef accepted =
       ac_cull_triangle(&ctx->ac, pos, prim_restart_accepted, vp_scale, vp_translate,
@@ -876,11 +871,6 @@ static bool si_shader_select_prim_discard_cs(struct si_context *sctx,
    } else {
       key.opt.cs_cull_front = sctx->viewport0_y_inverted ? rs->cull_back : rs->cull_front;
       key.opt.cs_cull_back = sctx->viewport0_y_inverted ? rs->cull_front : rs->cull_back;
-   }
-
-   if (!rs->depth_clamp_any && CULL_Z) {
-      key.opt.cs_cull_z = 1;
-      key.opt.cs_halfz_clip_space = rs->clip_halfz;
    }
 
    sctx->cs_prim_discard_state.cso = sctx->shader.vs.cso;

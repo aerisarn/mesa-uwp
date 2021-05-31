@@ -694,8 +694,6 @@ struct si_shader_key {
       unsigned cs_need_correct_orientation : 1;
       unsigned cs_cull_front : 1;
       unsigned cs_cull_back : 1;
-      unsigned cs_cull_z : 1;
-      unsigned cs_halfz_clip_space : 1;
 
       /* VS and TCS have the same number of patch vertices. */
       unsigned same_patch_vertices:1;

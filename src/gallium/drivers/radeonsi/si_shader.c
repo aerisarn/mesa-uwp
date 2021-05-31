@@ -1192,8 +1192,6 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       fprintf(f, "  opt.cs_need_correct_orientation = %u\n", key->opt.cs_need_correct_orientation);
       fprintf(f, "  opt.cs_cull_front = %u\n", key->opt.cs_cull_front);
       fprintf(f, "  opt.cs_cull_back = %u\n", key->opt.cs_cull_back);
-      fprintf(f, "  opt.cs_cull_z = %u\n", key->opt.cs_cull_z);
-      fprintf(f, "  opt.cs_halfz_clip_space = %u\n", key->opt.cs_halfz_clip_space);
       break;
 
    case MESA_SHADER_TESS_CTRL:
