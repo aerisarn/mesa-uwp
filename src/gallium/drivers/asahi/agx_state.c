@@ -572,14 +572,16 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    for (unsigned i = 0; i < state->nr_cbufs; ++i) {
       struct pipe_surface *surf = state->cbufs[i];
       struct agx_resource *tex = agx_resource(surf->texture);
+      const struct util_format_description *desc =
+         util_format_description(surf->format);
 
       agx_pack(ctx->render_target[i], RENDER_TARGET, cfg) {
          cfg.layout = agx_translate_layout(tex->modifier);
          cfg.format = agx_pixel_format[surf->format].hw;
-         cfg.swizzle_r = AGX_CHANNEL_B;
-         cfg.swizzle_g = AGX_CHANNEL_G;
-         cfg.swizzle_b = AGX_CHANNEL_R;
-         cfg.swizzle_a = AGX_CHANNEL_A;
+         cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]);
+         cfg.swizzle_g = agx_channel_from_pipe(desc->swizzle[1]);
+         cfg.swizzle_b = agx_channel_from_pipe(desc->swizzle[2]);
+         cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]);
          cfg.width = state->width;
          cfg.height = state->height;
          cfg.buffer = tex->bo->ptr.gpu;
