@@ -87,8 +87,6 @@ do_swap(struct ir3_compiler *compiler, struct ir3_instruction *instr,
 		const struct copy_entry *entry)
 {
 	assert(!entry->src.flags);
-	/* TODO implement shared swaps */
-	assert(!(entry->flags & IR3_REG_SHARED));
 
 	if (entry->flags & IR3_REG_HALF) {
 		/* We currently make sure to never emit parallel copies where the
@@ -147,11 +145,21 @@ do_swap(struct ir3_compiler *compiler, struct ir3_instruction *instr,
 	 * in-place. If unsupported we emulate it using the xor trick.
 	 */
 	if (compiler->gpu_id < 500) {
+		/* Shared regs only exist since a5xx, so we don't have to provide a
+		 * fallback path for them.
+		 */
+		assert(!(entry->flags & IR3_REG_SHARED));
 		do_xor(instr, dst_num, dst_num, src_num, entry->flags);
 		do_xor(instr, src_num, src_num, dst_num, entry->flags);
 		do_xor(instr, dst_num, dst_num, src_num, entry->flags);
 	} else {
-		struct ir3_instruction *swz = ir3_instr_create(instr->block, OPC_SWZ, 2, 2);
+		/* Use a macro for shared regs because any shared reg writes need to
+		 * be wrapped in a getone block to work correctly. Writing shared regs
+		 * with multiple threads active does not work, even if they all return
+		 * the same value.
+		 */
+		unsigned opc = (entry->flags & IR3_REG_SHARED) ? OPC_SWZ_SHARED_MACRO : OPC_SWZ;
+		struct ir3_instruction *swz = ir3_instr_create(instr->block, opc, 2, 2);
 		ir3_dst_create(swz, dst_num, entry->flags)->wrmask = 1;
 		ir3_dst_create(swz, src_num, entry->flags)->wrmask = 1;
 		ir3_src_create(swz, src_num, entry->flags)->wrmask = 1;
@@ -167,9 +175,6 @@ static void
 do_copy(struct ir3_compiler *compiler, struct ir3_instruction *instr,
 		const struct copy_entry *entry)
 {
-	/* TODO implement shared copies */
-	assert(!(entry->flags & IR3_REG_SHARED));
-
 	if (entry->flags & IR3_REG_HALF) {
 		/* See do_swap() for why this is here. */
 		if (entry->dst >= RA_HALF_SIZE) {
@@ -224,7 +229,9 @@ do_copy(struct ir3_compiler *compiler, struct ir3_instruction *instr,
 	unsigned src_num = ra_physreg_to_num(entry->src.reg, entry->flags);
 	unsigned dst_num = ra_physreg_to_num(entry->dst, entry->flags);
 
-	struct ir3_instruction *mov = ir3_instr_create(instr->block, OPC_MOV, 1, 1);
+	/* Similar to the swap case, we have to use a macro for shared regs. */
+	unsigned opc = (entry->flags & IR3_REG_SHARED) ? OPC_READ_FIRST_MACRO : OPC_MOV;
+	struct ir3_instruction *mov = ir3_instr_create(instr->block, opc, 1, 1);
 	ir3_dst_create(mov, dst_num, entry->flags)->wrmask = 1;
 	ir3_src_create(mov, src_num, entry->flags | entry->src.flags)->wrmask = 1;
 	mov->cat1.dst_type = (entry->flags & IR3_REG_HALF) ? TYPE_U16 : TYPE_U32;
@@ -442,12 +449,23 @@ handle_copies(struct ir3_shader_variant *v, struct ir3_instruction *instr,
 {
 	struct copy_ctx ctx;	
 
+	/* handle shared copies first */
+	ctx.entry_count = 0;
+	for (unsigned i = 0; i < entry_count; i++) {
+		if (entries[i].flags & IR3_REG_SHARED)
+			ctx.entries[ctx.entry_count++] = entries[i];
+	}
+	_handle_copies(v->shader->compiler, instr, &ctx);
+
 	if (v->mergedregs) {
 		/* Half regs and full regs are in the same file, so handle everything
 		 * at once.
 		 */
-		memcpy(ctx.entries, entries, sizeof(struct copy_entry) * entry_count);
-		ctx.entry_count = entry_count;
+		ctx.entry_count = 0;
+		for (unsigned i = 0; i < entry_count; i++) {
+			if (!(entries[i].flags & IR3_REG_SHARED))
+				ctx.entries[ctx.entry_count++] = entries[i];
+		}
 		_handle_copies(v->shader->compiler, instr, &ctx);
 	} else {
 		/* There may be both half copies and full copies, so we have to split
@@ -462,7 +480,7 @@ handle_copies(struct ir3_shader_variant *v, struct ir3_instruction *instr,
 
 		ctx.entry_count = 0;
 		for (unsigned i = 0; i < entry_count; i++) {
-			if (!(entries[i].flags & IR3_REG_HALF))
+			if (!(entries[i].flags & (IR3_REG_HALF | IR3_REG_SHARED)))
 				ctx.entries[ctx.entry_count++] = entries[i];
 		}
 		_handle_copies(v->shader->compiler, instr, &ctx);
