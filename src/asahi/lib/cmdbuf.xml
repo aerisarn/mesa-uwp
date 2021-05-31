@@ -65,6 +65,70 @@
     <value name="Tiled 64x64" value="2"/>
   </enum>
 
+  <enum name="Channels">
+    <value name="R8" value="0x00"/>
+    <value name="R16" value="0x09"/>
+    <value name="R8G8" value="0x0A"/>
+    <value name="R5G6B5" value="0x0B"/>
+    <value name="R4G4B4A4" value="0x0C"/>
+    <value name="A1R5G5B5" value="0x0D"/>
+    <value name="R5G5B5A1" value="0x0E"/>
+    <value name="R32" value="0x21"/>
+    <value name="R16G16" value="0x23"/>
+    <value name="R11G11B10" value="0x25"/>
+    <value name="R10G10B10A2" value="0x26"/>
+    <value name="R9G9B9E5" value="0x27"/>
+    <value name="R8G8B8A8" value="0x28"/>
+    <value name="R32G32" value="0x31"/>
+    <value name="R16G16B16A16" value="0x32"/>
+    <value name="R32G32B32A32" value="0x38"/>
+    <value name="GBGR 422" value="0x40"/> <!-- Subsampled, swizzle BRG1 -->
+    <value name="BGRG 422" value="0x41"/> <!-- Subsampled, swizzle BRG1 -->
+
+    <!-- Compressed -->
+    <value name="PVRTC 2bpp" value="0x50"/>
+    <value name="PVRTC 4bpp" value="0x51"/>
+
+    <value name="ETC2 RGB8" value="0x58"/>
+    <value name="ETC2 RGBA8" value="0x59"/>
+    <value name="ETC2 RGB8A1" value="0x5A"/>
+    <value name="EAC R11" value="0x5B"/>
+    <value name="EAC RG11" value="0x5C"/>
+
+    <value name="ASTC 4x4 LDR" value="0x60"/>
+    <value name="ASTC 5x4 LDR" value="0x61"/>
+    <value name="ASTC 5x5 LDR" value="0x62"/>
+    <value name="ASTC 6x5 LDR" value="0x63"/>
+    <value name="ASTC 6x6 LDR" value="0x64"/>
+    <value name="ASTC 8x5 LDR" value="0x65"/>
+    <value name="ASTC 8x6 LDR" value="0x66"/>
+    <value name="ASTC 8x8 LDR" value="0x67"/>
+    <value name="ASTC 10x5 LDR" value="0x68"/>
+    <value name="ASTC 10x6 LDR" value="0x69"/>
+    <value name="ASTC 10x8 LDR" value="0x6A"/>
+    <value name="ASTC 10x10 LDR" value="0x6B"/>
+    <value name="ASTC 12x10 LDR" value="0x6C"/>
+    <value name="ASTC 12x12 LDR" value="0x6D"/>
+
+    <value name="BC1" value="0x74"/>
+    <value name="BC2" value="0x75"/>
+    <value name="BC3" value="0x76"/>
+    <value name="BC4" value="0x77"/>
+    <value name="BC5" value="0x78"/>
+    <value name="BC6H" value="0x79"/>
+    <value name="BC6H Ufloat" value="0x7A"/>
+    <value name="BC7" value="0x7B"/>
+  </enum>
+
+  <enum name="Texture Type">
+    <value name="Unorm" value="0"/>
+    <value name="Snorm" value="1"/>
+    <value name="Uint" value="2"/>
+    <value name="Sint" value="3"/>
+    <value name="Float" value="4"/>
+    <value name="XR" value="5"/>
+  </enum>
+
   <struct name="Varying header" size="8">
     <field name="Slots 1" size="8" start="0:0" type="uint"/>
     <field name="Slots 2" size="8" start="0:8" type="uint"/>
@@ -78,7 +142,10 @@
   </struct>
 
   <struct name="Render Target" size="16">
-    <field name="Format" size="17" start="0" type="hex"/>
+    <field name="Unknown" size="4" start="0" type="hex" default="0x2"/>
+    <field name="Layout" size="2" start="4" type="Layout"/>
+    <field name="Channels" size="7" start="6" type="Channels"/>
+    <field name="Type" size="3" start="13" type="Texture Type"/>
     <field name="Swizzle R" size="2" start="16" type="Channel"/>
     <field name="Swizzle G" size="2" start="18" type="Channel"/>
     <field name="Swizzle B" size="2" start="20" type="Channel"/>
@@ -99,8 +166,10 @@
 
   <!-- Payloads follow, right-shifted by 4 because of course -->
   <struct name="Texture" size="16">
-    <!-- See notes for a listing, TODO: enumify -->
-    <field name="Format" size="16" start="0" type="hex"/>
+    <field name="Unknown" size="4" start="0" type="hex" default="0x2"/>
+    <field name="Layout" size="2" start="4" type="Layout"/>
+    <field name="Channels" size="7" start="6" type="Channels"/>
+    <field name="Type" size="3" start="13" type="Texture Type"/>
     <field name="Swizzle R" size="3" start="16" type="Channel" default="R"/>
     <field name="Swizzle G" size="3" start="19" type="Channel" default="G"/>
     <field name="Swizzle B" size="3" start="22" type="Channel" default="B"/>
