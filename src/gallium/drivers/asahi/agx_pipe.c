@@ -945,6 +945,10 @@ agx_is_format_supported(struct pipe_screen* pscreen,
    /* TODO: formats */
    if (usage & PIPE_BIND_VERTEX_BUFFER) {
       switch (format) {
+      case PIPE_FORMAT_R16_FLOAT:
+      case PIPE_FORMAT_R16G16_FLOAT:
+      case PIPE_FORMAT_R16G16B16_FLOAT:
+      case PIPE_FORMAT_R16G16B16A16_FLOAT:
       case PIPE_FORMAT_R32_FLOAT:
       case PIPE_FORMAT_R32G32_FLOAT:
       case PIPE_FORMAT_R32G32B32_FLOAT:
