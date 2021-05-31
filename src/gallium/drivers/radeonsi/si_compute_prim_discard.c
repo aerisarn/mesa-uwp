@@ -180,8 +180,6 @@
                                  : UINT_MAX & ~(THREADGROUP_SIZE - 1))
 
 #define REWIND_SIGNAL_BIT 0x80000000
-/* For emulating the rewind packet on CI. */
-#define FORCE_REWIND_EMULATION 0
 
 void si_initialize_prim_discard_tunables(struct si_screen *sscreen, bool is_aux_context,
                                          unsigned *prim_discard_vertex_count_threshold,
@@ -189,7 +187,7 @@ void si_initialize_prim_discard_tunables(struct si_screen *sscreen, bool is_aux_
 {
    *prim_discard_vertex_count_threshold = UINT_MAX; /* disable */
 
-   if (sscreen->info.chip_class == GFX6 || /* SI support is not implemented */
+   if (sscreen->info.chip_class <= GFX7 || /* SI-CI support is not implemented */
        !sscreen->info.has_gds_ordered_append || sscreen->debug_flags & DBG(NO_PD) || is_aux_context)
       return;
 
@@ -1060,12 +1058,8 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
    unsigned need_compute_dw = 11 /* shader */ + 34 /* first draw */ +
                               24 * (num_subdraws - 1) + /* subdraws */
                               30;                       /* leave some space at the end */
-   unsigned need_gfx_dw = si_get_minimum_num_gfx_cs_dwords(sctx, 0);
-
-   if (sctx->chip_class <= GFX7 || FORCE_REWIND_EMULATION)
-      need_gfx_dw += 9; /* NOP(2) + WAIT_REG_MEM(7), then chain */
-   else
-      need_gfx_dw += num_subdraws * 8; /* use REWIND(2) + DRAW(6) */
+   unsigned need_gfx_dw = si_get_minimum_num_gfx_cs_dwords(sctx, 0) +
+                          num_subdraws * 8; /* use REWIND(2) + DRAW(6) */
 
    if (ring_full ||
        (VERTEX_COUNTER_GDS_MODE == 1 && sctx->compute_gds_offset + 8 > GDS_SIZE_UNORDERED) ||
@@ -1097,11 +1091,8 @@ void si_compute_signal_gfx(struct si_context *sctx)
    struct radeon_cmdbuf *cs = &sctx->prim_discard_compute_cs;
    unsigned writeback_L2_flags = 0;
 
-   /* The writeback L2 flags vary with each chip generation. */
-   /* CI needs to flush vertex indices to memory. */
-   if (sctx->chip_class <= GFX7)
-      writeback_L2_flags = EVENT_TC_WB_ACTION_ENA;
-   else if (sctx->chip_class == GFX8 && VERTEX_COUNTER_GDS_MODE == 0)
+   /* GFX8 needs to flush L2 for CP to see the updated vertex count. */
+   if (sctx->chip_class == GFX8 && VERTEX_COUNTER_GDS_MODE == 0)
       writeback_L2_flags = EVENT_TC_WB_ACTION_ENA | EVENT_TC_NC_ACTION_ENA;
 
    if (!sctx->compute_num_prims_in_batch)
@@ -1417,27 +1408,10 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
          assert((gfx_cs->gpu_address >> 32) == sctx->screen->info.address32_hi);
          sctx->compute_rewind_va = gfx_cs->gpu_address + (gfx_cs->current.cdw + 1) * 4;
 
-         if (sctx->chip_class <= GFX7 || FORCE_REWIND_EMULATION) {
-            radeon_begin(gfx_cs);
-            radeon_emit(gfx_cs, PKT3(PKT3_NOP, 0, 0));
-            radeon_emit(gfx_cs, 0);
-            radeon_end();
-
-            si_cp_wait_mem(
-               sctx, gfx_cs,
-               sctx->compute_rewind_va | (uint64_t)sctx->screen->info.address32_hi << 32,
-               REWIND_SIGNAL_BIT, REWIND_SIGNAL_BIT, WAIT_REG_MEM_EQUAL | WAIT_REG_MEM_PFP);
-
-            /* Use INDIRECT_BUFFER to chain to a different buffer
-             * to discard the CP prefetch cache.
-             */
-            sctx->ws->cs_check_space(gfx_cs, 0, true);
-         } else {
-            radeon_begin(gfx_cs);
-            radeon_emit(gfx_cs, PKT3(PKT3_REWIND, 0, 0));
-            radeon_emit(gfx_cs, 0);
-            radeon_end();
-         }
+         radeon_begin(gfx_cs);
+         radeon_emit(gfx_cs, PKT3(PKT3_REWIND, 0, 0));
+         radeon_emit(gfx_cs, 0);
+         radeon_end();
       }
 
       sctx->compute_num_prims_in_batch += num_subdraw_prims;

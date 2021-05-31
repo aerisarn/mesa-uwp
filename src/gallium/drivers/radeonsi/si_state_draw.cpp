@@ -2312,7 +2312,7 @@ template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS,
 static void si_init_draw_vbo(struct si_context *sctx)
 {
    /* Prim discard CS is only useful on gfx7+ because gfx6 doesn't have async compute. */
-   if (ALLOW_PRIM_DISCARD_CS && GFX_VERSION < GFX7)
+   if (ALLOW_PRIM_DISCARD_CS && GFX_VERSION < GFX8)
       return;
 
    if (ALLOW_PRIM_DISCARD_CS && (HAS_TESS || HAS_GS))
