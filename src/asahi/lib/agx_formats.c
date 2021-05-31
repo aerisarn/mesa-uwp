@@ -35,6 +35,17 @@
 
 const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
    AGX_FMT(B8G8R8A8_UNORM,          R8G8B8A8,         UNORM,      T),
+
+   AGX_FMT(ETC2_RGB8,               ETC2_RGB8,        UNORM,      F),
+   AGX_FMT(ETC2_SRGB8,              ETC2_RGB8,        UNORM,      F),
+   AGX_FMT(ETC2_RGB8A1,             ETC2_RGB8A1,      UNORM,      F),
+   AGX_FMT(ETC2_SRGB8A1,            ETC2_RGB8A1,      UNORM,      F),
+   AGX_FMT(ETC2_RGBA8,              ETC2_RGBA8,       UNORM,      F),
+   AGX_FMT(ETC2_SRGBA8,             ETC2_RGBA8,       UNORM,      F),
+   AGX_FMT(ETC2_R11_UNORM,          EAC_R11,          UNORM,      F),
+   AGX_FMT(ETC2_R11_SNORM,          EAC_R11,          SNORM,      F),
+   AGX_FMT(ETC2_RG11_UNORM,         EAC_RG11,         UNORM,      F),
+   AGX_FMT(ETC2_RG11_SNORM,         EAC_RG11,         SNORM,      F),
 };
 
 const enum agx_format
