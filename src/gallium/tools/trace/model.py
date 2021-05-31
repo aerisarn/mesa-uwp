@@ -108,6 +108,7 @@ class Pointer(Node):
     ptr_list = {}
     ptr_type_list = {}
     ptr_types_list = {}
+    ptr_ignore_list = ["ret", "elem"]
 
     def __init__(self, address, pname):
         self.address = address
@@ -115,15 +116,17 @@ class Pointer(Node):
         # Check if address exists in list and if it is a return value address
         t1 = address in self.ptr_list
         if t1:
-            t2 = self.ptr_type_list[address] == "ret" and pname != "ret"
+            rname = self.ptr_type_list[address]
+            t2 = rname in self.ptr_ignore_list and pname not in self.ptr_ignore_list
         else:
+            rname = pname
             t2 = False
 
         # If address does NOT exist (add it), OR IS a ret value (update with new type)
         if not t1 or t2:
             # If previously set to ret value, remove one from count
             if t1 and t2:
-                self.adjust_ptr_type_count("ret", -1)
+                self.adjust_ptr_type_count(rname, -1)
 
             # Add / update
             self.adjust_ptr_type_count(pname, 1)
