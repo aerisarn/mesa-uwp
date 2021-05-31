@@ -226,8 +226,9 @@ struct agx_resource {
    struct sw_displaytarget	*dt;
    unsigned dt_stride;
 
+   BITSET_DECLARE(data_valid, PIPE_MAX_TEXTURE_LEVELS);
+
    struct {
-      bool data_valid;
       unsigned offset;
       unsigned line_stride;
    } slices[PIPE_MAX_TEXTURE_LEVELS];

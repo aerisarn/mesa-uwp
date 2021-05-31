@@ -277,7 +277,7 @@ agx_transfer_map(struct pipe_context *pctx,
       transfer->map = calloc(transfer->base.layer_stride, box->depth);
       assert(box->depth == 1);
 
-      if ((usage & PIPE_MAP_READ) && rsrc->slices[level].data_valid) {
+      if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->data_valid, level)) {
          agx_detile(
             ((uint8_t *) bo->ptr.cpu) + rsrc->slices[level].offset,
             transfer->map,
@@ -296,7 +296,7 @@ agx_transfer_map(struct pipe_context *pctx,
       /* Be conservative for direct writes */
 
       if ((usage & PIPE_MAP_WRITE) && (usage & PIPE_MAP_DIRECTLY))
-         rsrc->slices[level].data_valid = true;
+         BITSET_SET(rsrc->data_valid, level);
 
       return ((uint8_t *) bo->ptr.cpu)
              + rsrc->slices[level].offset
@@ -318,7 +318,7 @@ agx_transfer_unmap(struct pipe_context *pctx,
    unsigned bytes_per_pixel = util_format_get_blocksize(prsrc->format);
 
    if (transfer->usage & PIPE_MAP_WRITE)
-      rsrc->slices[transfer->level].data_valid = true;
+      BITSET_SET(rsrc->data_valid, transfer->level);
 
    /* Tiling will occur in software from a staging cpu buffer */
    if ((transfer->usage & PIPE_MAP_WRITE) &&
@@ -423,7 +423,7 @@ agx_flush(struct pipe_context *pctx,
    memset(pipeline_null.cpu, 0, 64);
 
    struct agx_resource *rt0 = agx_resource(ctx->batch->cbufs[0]->texture);
-   rt0->slices[0].data_valid = true;
+   BITSET_SET(rt0->data_valid, 0);
 
    /* BO list for a given batch consists of:
     *  - BOs for the batch's framebuffer surfaces
