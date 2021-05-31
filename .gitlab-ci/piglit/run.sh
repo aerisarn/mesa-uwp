@@ -55,6 +55,8 @@ if [ "$VK_DRIVER" ]; then
 
     SANITY_MESA_VERSION_CMD="vulkaninfo"
 
+    HANG_DETECTION_CMD="/parallel-deqp-runner/build/bin/hang-detection"
+
 
     # Set up the Window System Interface (WSI)
 
@@ -84,6 +86,8 @@ else
     fi
 
     SANITY_MESA_VERSION_CMD="wflinfo"
+
+    HANG_DETECTION_CMD=""
 
 
     # Set up the platform windowing system.
@@ -199,7 +203,7 @@ PIGLIT_TESTS=$(printf "%s" "$PIGLIT_TESTS")
 
 PIGLIT_CMD="./piglit run --timeout 300 -j${FDO_CI_CONCURRENT:-4} $PIGLIT_OPTIONS $PIGLIT_TESTS $PIGLIT_PROFILES "$(/usr/bin/printf "%q" "$RESULTS")
 
-RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $SANITY_MESA_VERSION_CMD && $PIGLIT_CMD"
+RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $SANITY_MESA_VERSION_CMD && $HANG_DETECTION_CMD $PIGLIT_CMD"
 
 if [ "$RUN_CMD_WRAPPER" ]; then
     RUN_CMD="set +e; $RUN_CMD_WRAPPER "$(/usr/bin/printf "%q" "$RUN_CMD")"; set -e"

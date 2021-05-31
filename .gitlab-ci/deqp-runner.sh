@@ -43,10 +43,13 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 RESULTS=`pwd`/${DEQP_RESULTS_DIR:-results}
 mkdir -p $RESULTS
 
+HANG_DETECTION_CMD=""
+
 # Generate test case list file.
 if [ "$DEQP_VER" = "vk" ]; then
    cp /deqp/mustpass/vk-$DEQP_VARIANT.txt /tmp/case-list.txt
    DEQP=/deqp/external/vulkancts/modules/vulkan/deqp-vk
+   HANG_DETECTION_CMD="/parallel-deqp-runner/build/bin/hang-detection"
 elif [ "$DEQP_VER" = "gles2" -o "$DEQP_VER" = "gles3" -o "$DEQP_VER" = "gles31" -o "$DEQP_VER" = "egl" ]; then
    cp /deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt /tmp/case-list.txt
    DEQP=/deqp/modules/$DEQP_VER/deqp-$DEQP_VER
@@ -230,7 +233,7 @@ find $RESULTS -name \*.xml \
     -exec cp /deqp/testlog.css /deqp/testlog.xsl "$RESULTS/" ";" \
     -quit
 
-deqp-runner junit \
+$HANG_DETECTION_CMD deqp-runner junit \
    --testsuite $DEQP_VER \
    --results $RESULTS/failures.csv \
    --output $RESULTS/junit.xml \
