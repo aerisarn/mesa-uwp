@@ -13,6 +13,7 @@ STABLE_EPHEMERAL=" \
       clang-11 \
       cmake \
       g++ \
+      glslang-tools \
       libclang-cpp11-dev \
       libgbm-dev \
       libgles2-mesa-dev \
@@ -70,7 +71,7 @@ apt-get install -y --no-remove \
 
 ############### Build piglit
 
-PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON -DPIGLIT_BUILD_VK_TESTS=OFF" . .gitlab-ci/container/build-piglit.sh
+PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON" . .gitlab-ci/container/build-piglit.sh
 
 ############### Build dEQP GL
 

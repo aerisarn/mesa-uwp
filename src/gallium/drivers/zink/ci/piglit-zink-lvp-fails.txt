@@ -93,17 +93,6 @@ spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24,Fail
 spec@egl_khr_surfaceless_context@viewport,Fail
 spec@egl_mesa_configless_context@basic,Fail
-spec@ext_external_objects@vk-buf-exchange,Fail
-spec@ext_external_objects@vk-depth-display,Fail
-spec@ext_external_objects@vk-image-display,Fail
-spec@ext_external_objects@vk-image-display-overwrite,Fail
-spec@ext_external_objects@vk-image-overwrite,Fail
-spec@ext_external_objects@vk-pix-buf-update-errors,Fail
-spec@ext_external_objects@vk-semaphores-2,Fail
-spec@ext_external_objects@vk-semaphores,Fail
-spec@ext_external_objects@vk-stencil-display,Fail
-spec@ext_external_objects@vk-vert-buf-reuse,Fail
-spec@ext_external_objects@vk-vert-buf-update-errors,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
 spec@ext_framebuffer_multisample@blit-mismatched-formats,Fail
 spec@ext_framebuffer_multisample@clip-and-scissor-blit 2 msaa,Fail
