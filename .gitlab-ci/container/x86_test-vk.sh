@@ -117,13 +117,6 @@ wine \
     /d "C:\windows\system32;C:\windows;C:\windows\system32\wbem;Z:\apitrace-msvc-win64\bin" \
     /f
 
-############### Install glslang (needed for building VKD3D-Proton)
-
-wget https://github.com/KhronosGroup/glslang/releases/download/SDK-candidate-26-Jul-2020/glslang-master-linux-Release.zip
-unzip glslang-master-linux-Release.zip bin/glslangValidator
-install -m755 bin/glslangValidator /usr/local/bin/
-rm bin/glslangValidator glslang-master-linux-Release.zip
-
 ############### Building ...
 
 . .gitlab-ci/container/container_pre_build.sh

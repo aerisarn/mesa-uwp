@@ -421,7 +421,7 @@ x86_test-gl:
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-05-22-vkd3d-proton-tests"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-05-31-glslangValidator"
 
 # Debian 11 based ARM build image
 arm_build:
