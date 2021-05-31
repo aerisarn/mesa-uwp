@@ -122,6 +122,24 @@ __gen_unpack_sint(const uint8_t *restrict cl, uint32_t start, uint32_t end)
 #define agx_print(fp, T, var, indent)                   \\
         AGX_ ## T ## _print(fp, &(var), indent)
 
+#define agx_pixel_format_print(fp, format) do {\\
+   fprintf(fp, "%*sFormat: ", indent, ""); \\
+   \\
+   if (agx_channels_as_str((enum agx_channels)(format & 0x7F))) \\
+      fputs(agx_channels_as_str((enum agx_channels)(format & 0x7F)), fp); \\
+   else \\
+      fprintf(fp, "unknown channels %02X", format & 0x7F); \\
+   \\
+   fputs(" ", fp); \\
+   \\
+   if (agx_texture_type_as_str((enum agx_texture_type)(format >> 7))) \\
+      fputs(agx_texture_type_as_str((enum agx_texture_type)(format >> 7)), fp); \\
+   else \\
+      fprintf(fp, "unknown type %02X", format >> 7); \\
+   \\
+   fputs("\\n", fp); \\
+} while(0) \\
+
 """
 
 def to_alphanum(name):
@@ -245,7 +263,7 @@ class Field(object):
             type = 'uint64_t'
         elif self.type == 'int':
             type = 'int32_t'
-        elif self.type in ['uint', 'uint/float', 'hex']:
+        elif self.type in ['uint', 'uint/float', 'Pixel Format', 'hex']:
             type = 'uint32_t'
         elif self.type in self.parser.structs:
             type = 'struct ' + self.parser.gen_prefix(safe_name(self.type.upper()))
@@ -401,7 +419,7 @@ class Group(object):
                     elif field.modifier[0] == "log2":
                         value = "util_logbase2({})".format(value)
 
-                if field.type in ["uint", "hex", "address"]:
+                if field.type in ["uint", "hex", "Pixel Format", "address"]:
                     s = "__gen_uint(%s, %d, %d)" % \
                         (value, start, end)
                 elif field.type in self.parser.enums:
@@ -472,7 +490,7 @@ class Group(object):
             args.append(str(fieldref.start))
             args.append(str(fieldref.end))
 
-            if field.type in set(["uint", "uint/float", "address", "hex"]) | self.parser.enums:
+            if field.type in set(["uint", "uint/float", "address", "Pixel Format", "hex"]) | self.parser.enums:
                 convert = "__gen_unpack_uint"
             elif field.type == "int":
                 convert = "__gen_unpack_sint"
@@ -527,6 +545,8 @@ class Group(object):
                 print('   fprintf(fp, "%*s{}: 0x%" PRIx64 "\\n", indent, "", {});'.format(name, val))
             elif field.type == "hex":
                 print('   fprintf(fp, "%*s{}: 0x%" PRIx32 "\\n", indent, "", {});'.format(name, val))
+            elif field.type in "Pixel Format":
+                print('   agx_pixel_format_print(fp, {});'.format(val))
             elif field.type == "uint/float":
                 print('   fprintf(fp, "%*s{}: 0x%X (%f)\\n", indent, "", {}, uif({}));'.format(name, val, val))
             else:

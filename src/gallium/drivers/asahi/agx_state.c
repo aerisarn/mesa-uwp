@@ -268,6 +268,9 @@ agx_bind_sampler_states(struct pipe_context *pctx,
           sizeof(struct agx_bo *) * count);
 }
 
+#define AGX_TEXTURE_FORMAT(channels, type) \
+   ((AGX_CHANNELS_ ## channels) | ((AGX_TEXTURE_TYPE_ ## type) << 7))
+
 /* Channels agree for RGBA but are weird for force 0/1 */
 
 static enum agx_channel
@@ -335,8 +338,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
    agx_pack(so->desc->ptr.cpu, TEXTURE, cfg) {
       assert(state->format == PIPE_FORMAT_B8G8R8A8_UNORM); // TODO: format table
       cfg.layout = agx_translate_layout(rsrc->modifier);
-      cfg.channels = AGX_CHANNELS_R8G8B8A8;
-      cfg.type = AGX_TEXTURE_TYPE_UNORM;
+      cfg.format = AGX_TEXTURE_FORMAT(R8G8B8A8, UNORM);
       cfg.swizzle_r = agx_channel_from_pipe(out_swizzle[0]);
       cfg.swizzle_g = agx_channel_from_pipe(out_swizzle[1]);
       cfg.swizzle_b = agx_channel_from_pipe(out_swizzle[2]);
@@ -578,8 +580,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
       agx_pack(ctx->render_target[i], RENDER_TARGET, cfg) {
          assert(surf->format == PIPE_FORMAT_B8G8R8A8_UNORM); // TODO: format table
          cfg.layout = agx_translate_layout(tex->modifier);
-         cfg.channels = AGX_CHANNELS_R8G8B8A8;
-         cfg.type = AGX_TEXTURE_TYPE_UNORM;
+         cfg.format = AGX_TEXTURE_FORMAT(R8G8B8A8, UNORM);
          cfg.swizzle_r = AGX_CHANNEL_B;
          cfg.swizzle_g = AGX_CHANNEL_G;
          cfg.swizzle_b = AGX_CHANNEL_R;
