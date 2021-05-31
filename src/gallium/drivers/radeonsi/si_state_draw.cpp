@@ -1986,9 +1986,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
       case SI_PRIM_DISCARD_DISABLED:
          break;
       case SI_PRIM_DISCARD_DRAW_SPLIT:
-         sctx->compute_num_verts_rejected -= total_direct_count;
-         FALLTHROUGH;
       case SI_PRIM_DISCARD_MULTI_DRAW_SPLIT:
+         sctx->compute_num_verts_rejected -= total_direct_count;
          /* The multi draw was split into multiple ones and executed. Return. */
          DRAW_CLEANUP;
          return;
