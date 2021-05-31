@@ -673,6 +673,54 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
          return false;
    }
 
+   if (bind & PIPE_BIND_SHADER_IMAGE) {
+      switch (format) {
+         case PIPE_FORMAT_R32G32B32A32_FLOAT:
+         case PIPE_FORMAT_R16G16B16A16_FLOAT:
+         case PIPE_FORMAT_R32G32_FLOAT:
+         case PIPE_FORMAT_R16G16_FLOAT:
+         case PIPE_FORMAT_R11G11B10_FLOAT:
+         case PIPE_FORMAT_R32_FLOAT:
+         case PIPE_FORMAT_R16_FLOAT:
+         case PIPE_FORMAT_R32G32B32A32_UINT:
+         case PIPE_FORMAT_R16G16B16A16_UINT:
+         case PIPE_FORMAT_R10G10B10A2_UINT:
+         case PIPE_FORMAT_R8G8B8A8_UINT:
+         case PIPE_FORMAT_R32G32_UINT:
+         case PIPE_FORMAT_R16G16_UINT:
+         case PIPE_FORMAT_R8G8_UINT:
+         case PIPE_FORMAT_R32_UINT:
+         case PIPE_FORMAT_R16_UINT:
+         case PIPE_FORMAT_R8_UINT:
+         case PIPE_FORMAT_R32G32B32A32_SINT:
+         case PIPE_FORMAT_R16G16B16A16_SINT:
+         case PIPE_FORMAT_R8G8B8A8_SINT:
+         case PIPE_FORMAT_R32G32_SINT:
+         case PIPE_FORMAT_R16G16_SINT:
+         case PIPE_FORMAT_R8G8_SINT:
+         case PIPE_FORMAT_R32_SINT:
+         case PIPE_FORMAT_R16_SINT:
+         case PIPE_FORMAT_R8_SINT:
+         case PIPE_FORMAT_R16G16B16A16_UNORM:
+         case PIPE_FORMAT_R10G10B10A2_UNORM:
+         case PIPE_FORMAT_R8G8B8A8_UNORM:
+         case PIPE_FORMAT_R16G16_UNORM:
+         case PIPE_FORMAT_R8G8_UNORM:
+         case PIPE_FORMAT_R16_UNORM:
+         case PIPE_FORMAT_R8_UNORM:
+         case PIPE_FORMAT_R16G16B16A16_SNORM:
+         case PIPE_FORMAT_R8G8B8A8_SNORM:
+         case PIPE_FORMAT_R16G16_SNORM:
+         case PIPE_FORMAT_R8G8_SNORM:
+         case PIPE_FORMAT_R16_SNORM:
+         case PIPE_FORMAT_R8_SNORM:
+            break;
+
+         default:
+            return false;
+      }
+   }
+
    if ((bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW)) &&
        ((bind & PIPE_BIND_DISPLAY_TARGET) == 0)) {
       /* Disable all 3-channel formats, where channel size != 32 bits.
