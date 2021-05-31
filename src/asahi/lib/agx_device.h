@@ -34,6 +34,7 @@
 
 enum agx_dbg {
    AGX_DBG_TRACE = BITFIELD_BIT(0),
+   AGX_DBG_DEQP  = BITFIELD_BIT(1),
 };
 
 struct agx_device {

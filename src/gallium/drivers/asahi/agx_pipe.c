@@ -47,6 +47,7 @@
 
 static const struct debug_named_value agx_debug_options[] = {
    {"trace",     AGX_DBG_TRACE,    "Trace the command stream"},
+   {"deqp",      AGX_DBG_DEQP,     "Hacks for dEQP"},
    DEBUG_NAMED_VALUE_END
 };
 
