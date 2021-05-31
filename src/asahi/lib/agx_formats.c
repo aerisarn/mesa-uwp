@@ -21,7 +21,21 @@
  * SOFTWARE.
  */
 
+#include "agx_pack.h"
 #include "agx_formats.h"
+
+#define T true
+#define F false
+
+#define AGX_FMT(pipe, channels, type, is_renderable) \
+   [PIPE_FORMAT_ ## pipe] = { \
+      .hw = (AGX_CHANNELS_ ## channels) | ((AGX_TEXTURE_TYPE_ ## type) << 7), \
+      .renderable = is_renderable \
+   }
+
+const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
+   AGX_FMT(B8G8R8A8_UNORM,          R8G8B8A8,         UNORM,      T),
+};
 
 const enum agx_format
 agx_vertex_format[PIPE_FORMAT_COUNT] = {
