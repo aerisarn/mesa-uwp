@@ -10,7 +10,7 @@
     DRIVER_NAME: radeonsi
     ENV_VARS: "DEQP_PARALLEL=4 DEQP_EXPECTED_RENDERER=STONEY"
   tags:
-    - mesa-ci-aarch64-lava-collabora
+    - mesa-ci-x86-64-lava-hp-11A-G6-EE-grunt
 
 .radeonsi-stoney-deqp:amd64:
   extends:
@@ -48,7 +48,7 @@ radeonsi-stoney-traces:amd64:
   variables:
     ENV_VARS: "EGL_PLATFORM=surfaceless PIGLIT_PROFILES=replay PIGLIT_JUNIT_RESULTS=1"
   tags:
-    - mesa-ci-aarch64-lava-collabora
+    - mesa-ci-x86-64-lava-hp-11A-G6-EE-grunt
 
 radeonsi-stoney-piglit-gl:amd64:
   extends:

@@ -8,8 +8,6 @@
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
     FLAKES_CHANNEL: "#intel-ci"
-  tags:
-    - mesa-ci-aarch64-lava-collabora
 
 .iris-apl-test:
   extends:
@@ -18,6 +16,8 @@
     DEVICE_TYPE: asus-C523NA-A20057-coral
     GPU_VERSION: iris-apl
     ENV_VARS: "DEQP_EXPECTED_RENDERER=APL"
+  tags:
+    - mesa-ci-x86-64-lava-asus-C523NA-A20057-coral
 
 .iris-glk-test:
   extends:
@@ -27,6 +27,8 @@
     DEVICE_TYPE: hp-x360-12b-n4000-octopus
     GPU_VERSION: iris-glk
     ENV_VARS: "DEQP_EXPECTED_RENDERER=GLK"
+  tags:
+    - mesa-ci-x86-64-lava-hp-x360-12b-n4000-octopus
 
 .iris-amly-test:
   extends:
@@ -35,6 +37,8 @@
     DEVICE_TYPE: asus-C433TA-AJ0005-rammus
     GPU_VERSION: iris-amly
     ENV_VARS: "DEQP_EXPECTED_RENDERER=AML"
+  tags:
+    - mesa-ci-x86-64-lava-asus-C433TA-AJ0005-rammus
 
 iris-apl-gles2:
   extends:

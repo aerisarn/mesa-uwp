@@ -69,7 +69,7 @@ radv_stoney_vkcts:amd64:
     KERNEL_IMAGE_TYPE: ""
     VK_DRIVER: radeon
   tags:
-    - mesa-ci-aarch64-lava-collabora
+    - mesa-ci-x86-64-lava-hp-11A-G6-EE-grunt
 
 radv-fossils:
   extends:

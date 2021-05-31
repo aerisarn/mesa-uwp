@@ -77,7 +77,6 @@ apt-get install -y --no-remove \
 # Needed for ci-fairy, this revision is able to upload files to MinIO
 pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@6f5af7e5574509726c79109e3c147cee95e81366
 
-
 ############### Uninstall ephemeral packages
 
 apt-get purge -y $STABLE_EPHEMERAL

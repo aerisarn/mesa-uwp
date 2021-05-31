@@ -315,7 +315,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_build "2021-04-13-glvnd"
+    MESA_IMAGE_TAG: &x86_build "2021-06-02-lava-x86"
 
 .use-x86_build:
   extends:
@@ -431,7 +431,7 @@ arm_build:
   tags:
     - aarch64
   variables:
-    MESA_IMAGE_TAG: &arm_build "2021-04-13-bullseye"
+    MESA_IMAGE_TAG: &arm_build "2021-06-01-lava-x86"
 
 .use-arm_build:
   extends:
