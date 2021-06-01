@@ -539,8 +539,9 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
    }
    unsigned range_offset =
       sizeof(struct radv_descriptor_set_header) + sizeof(struct radeon_winsys_bo *) * buffer_count;
+   const unsigned dynamic_offset_count = layout->dynamic_offset_count;
    unsigned mem_size =
-      range_offset + sizeof(struct radv_descriptor_range) * layout->dynamic_offset_count;
+      range_offset + sizeof(struct radv_descriptor_range) * dynamic_offset_count;
 
    if (pool->host_memory_base) {
       if (pool->host_memory_end - pool->host_memory_ptr < mem_size)
@@ -560,7 +561,7 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
 
    vk_object_base_init(&device->vk, &set->header.base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
-   if (layout->dynamic_offset_count) {
+   if (dynamic_offset_count) {
       set->header.dynamic_descriptors =
          (struct radv_descriptor_range *)((uint8_t *)set + range_offset);
    }
