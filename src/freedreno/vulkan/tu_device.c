@@ -272,38 +272,6 @@ tu_physical_device_finish(struct tu_physical_device *device)
    vk_physical_device_finish(&device->vk);
 }
 
-static VKAPI_ATTR void *
-default_alloc_func(void *pUserData,
-                   size_t size,
-                   size_t align,
-                   VkSystemAllocationScope allocationScope)
-{
-   return malloc(size);
-}
-
-static VKAPI_ATTR void *
-default_realloc_func(void *pUserData,
-                     void *pOriginal,
-                     size_t size,
-                     size_t align,
-                     VkSystemAllocationScope allocationScope)
-{
-   return realloc(pOriginal, size);
-}
-
-static VKAPI_ATTR void
-default_free_func(void *pUserData, void *pMemory)
-{
-   free(pMemory);
-}
-
-static const VkAllocationCallbacks default_alloc = {
-   .pUserData = NULL,
-   .pfnAllocation = default_alloc_func,
-   .pfnReallocation = default_realloc_func,
-   .pfnFree = default_free_func,
-};
-
 static const struct debug_control tu_debug_options[] = {
    { "startup", TU_DEBUG_STARTUP },
    { "nir", TU_DEBUG_NIR },
@@ -335,7 +303,7 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
 
    if (pAllocator == NULL)
-      pAllocator = &default_alloc;
+      pAllocator = vk_default_allocator();
 
    instance = vk_zalloc(pAllocator, sizeof(*instance), 8,
                         VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
