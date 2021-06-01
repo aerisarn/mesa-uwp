@@ -231,6 +231,7 @@ with_gallium_v3d = gallium_drivers.contains('v3d')
 with_gallium_panfrost = gallium_drivers.contains('panfrost')
 with_gallium_etnaviv = gallium_drivers.contains('etnaviv')
 with_gallium_tegra = gallium_drivers.contains('tegra')
+with_gallium_crocus = gallium_drivers.contains('crocus')
 with_gallium_iris = gallium_drivers.contains('iris')
 with_gallium_i915 = gallium_drivers.contains('i915')
 with_gallium_svga = gallium_drivers.contains('svga')
@@ -284,7 +285,7 @@ with_broadcom_vk = _vulkan_drivers.contains('broadcom')
 with_any_vk = _vulkan_drivers.length() != 0
 
 with_any_broadcom = with_gallium_vc4 or with_gallium_v3d or with_broadcom_vk
-with_any_intel = with_dri_i965 or with_intel_vk or with_gallium_iris
+with_any_intel = with_dri_i965 or with_intel_vk or with_gallium_iris or with_gallium_crocus
 
 if with_swrast_vk and not with_gallium_softpipe
   error('swrast vulkan requires gallium swrast')
@@ -795,7 +796,7 @@ if with_gallium_st_nine
     error('The nine state tracker requires gallium softpipe/llvmpipe.')
   elif not (with_gallium_radeonsi or with_gallium_nouveau or with_gallium_r600
             or with_gallium_r300 or with_gallium_svga or with_gallium_i915
-            or with_gallium_iris)
+            or with_gallium_iris or with_gallium_crocus)
     error('The nine state tracker requires at least one non-swrast gallium driver.')
   endif
   if not with_dri3

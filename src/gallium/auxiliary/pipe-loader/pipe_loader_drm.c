@@ -70,6 +70,7 @@ static const struct pipe_loader_ops pipe_loader_drm_ops;
 static const struct drm_driver_descriptor *driver_descriptors[] = {
    &i915_driver_descriptor,
    &iris_driver_descriptor,
+   &crocus_driver_descriptor,
    &nouveau_driver_descriptor,
    &r300_driver_descriptor,
    &r600_driver_descriptor,

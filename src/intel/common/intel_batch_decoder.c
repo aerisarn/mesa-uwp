@@ -829,7 +829,7 @@ decode_dynamic_state_pointers(struct intel_batch_decode_ctx *ctx,
    struct intel_field_iterator iter;
    intel_field_iterator_init(&iter, inst, p, 0, false);
    while (intel_field_iterator_next(&iter)) {
-      if (str_ends_with(iter.name, "Pointer")) {
+      if (str_ends_with(iter.name, "Pointer") || !strncmp(iter.name, "Pointer", 7)) {
          state_offset = iter.raw_value;
          break;
       }
@@ -898,6 +898,13 @@ decode_3dstate_cc_state_pointers(struct intel_batch_decode_ctx *ctx,
                                  const uint32_t *p)
 {
    decode_dynamic_state_pointers(ctx, "COLOR_CALC_STATE", p, 1);
+}
+
+static void
+decode_3dstate_ds_state_pointers(struct intel_batch_decode_ctx *ctx,
+                                 const uint32_t *p)
+{
+   decode_dynamic_state_pointers(ctx, "DEPTH_STENCIL_STATE", p, 1);
 }
 
 static void
@@ -1208,6 +1215,7 @@ struct custom_decoder {
    { "3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP", decode_3dstate_viewport_state_pointers_sf_clip },
    { "3DSTATE_BLEND_STATE_POINTERS", decode_3dstate_blend_state_pointers },
    { "3DSTATE_CC_STATE_POINTERS", decode_3dstate_cc_state_pointers },
+   { "3DSTATE_DEPTH_STENCIL_STATE_POINTERS", decode_3dstate_ds_state_pointers },
    { "3DSTATE_SCISSOR_STATE_POINTERS", decode_3dstate_scissor_state_pointers },
    { "3DSTATE_SLICE_TABLE_STATE_POINTERS", decode_3dstate_slice_table_state_pointers },
    { "MI_LOAD_REGISTER_IMM", decode_load_register_imm },
