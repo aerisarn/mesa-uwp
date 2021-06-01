@@ -1299,7 +1299,7 @@ load_device_extensions(struct zink_screen *screen)
    return true;
 }
 
-static VkBool32 VKAPI_CALL
+static VKAPI_ATTR VkBool32 VKAPI_CALL
 zink_debug_util_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT           messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT                  messageType,
