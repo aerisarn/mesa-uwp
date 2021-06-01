@@ -33,7 +33,7 @@ Software drivers include:
    and is multi-threaded
 -  Softpipe - a reference Gallium driver
 -  :doc:`SVGA3D <drivers/svga3d>` - driver for VMware virtual GPU
--  `OpenSWR <https://www.openswr.org/>`__ - x86-optimized software renderer
+-  :doc:`OpenSWR <drivers/openswr>` - x86-optimized software renderer
    for visualization workloads
 -  `VirGL <https://virgil3d.github.io/>`__ - research project for
    accelerated graphics for qemu guests
