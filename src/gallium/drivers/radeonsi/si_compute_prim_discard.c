@@ -95,23 +95,24 @@
  * - Bindless textures and images must not occur in the vertex shader.
  *
  * User data SGPR layout:
+ *   VERTEX_COUNTER: address of "count" in the draw packet incremented atomically by the shader.
+ *   START_OUT_INDEX: output index buffer offset / 12
+ *   START_IN_INDEX:   input index buffer offset / index_size
+ *   VS.BASE_VERTEX:              same value as VS
  *   INDEX_BUFFERS: pointer to constants
  *     0..3: input index buffer - typed buffer view
  *     4..7: output index buffer - typed buffer view
  *     8..11: viewport state - scale.xy, translate.xy
- *   VERTEX_COUNTER: address of "count" in the draw packet incremented
- *       atomically by the shader.
  *   VS.VERTEX_BUFFERS:           same value as VS
  *   VS.CONST_AND_SHADER_BUFFERS: same value as VS
  *   VS.SAMPLERS_AND_IMAGES:      same value as VS
- *   VS.BASE_VERTEX:              same value as VS
  *   VS.START_INSTANCE:           same value as VS
+ *   SMALL_PRIM_CULLING_PRECISION: Scale the primitive bounding box by this number.
  *   NUM_PRIMS_UDIV_MULTIPLIER: For fast 31-bit division by the number of primitives
  *       per instance for instancing.
  *   NUM_PRIMS_UDIV_TERMS:
  *     - Bits [0:4]: "post_shift" for fast 31-bit division for instancing.
  *     - Bits [5:31]: The number of primitives per instance for computing the remainder.
- *   SMALL_PRIM_CULLING_PRECISION: Scale the primitive bounding box by this number.
  *
  * How to test primitive restart (the most complicated part because it needs
  * to get the primitive orientation right):
@@ -243,24 +244,26 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    memset(&ctx->args, 0, sizeof(ctx->args));
 
    struct ac_arg param_index_buffers_and_constants, param_vertex_counter;
-   struct ac_arg param_vb_desc, param_const_desc;
-   struct ac_arg param_base_vertex, param_start_instance;
-   struct ac_arg param_block_id, param_local_id;
-   struct ac_arg param_smallprim_precision;
+   struct ac_arg param_vb_desc, param_const_desc, param_start_out_index;
+   struct ac_arg param_base_vertex, param_start_instance, param_start_in_index;
+   struct ac_arg param_block_id, param_local_id, param_smallprim_precision;
    struct ac_arg param_num_prims_udiv_multiplier, param_num_prims_udiv_terms;
    struct ac_arg param_sampler_desc;
 
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR,
-              &param_index_buffers_and_constants);
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_vertex_counter);
+   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_start_out_index);
+   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_start_in_index);
+   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_base_vertex);
+   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &param_index_buffers_and_constants);
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &param_vb_desc);
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, const_desc_type, &param_const_desc);
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_IMAGE_PTR, &param_sampler_desc);
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_base_vertex);
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_start_instance);
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_num_prims_udiv_multiplier);
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_num_prims_udiv_terms);
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, &param_smallprim_precision);
+   if (key->opt.cs_instancing) {
+      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_num_prims_udiv_multiplier);
+      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_num_prims_udiv_terms);
+   }
 
    /* Block ID and thread ID inputs. */
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_block_id);
@@ -358,6 +361,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    /* Fetch indices. */
    if (key->opt.cs_indexed) {
       for (unsigned i = 0; i < 3; i++) {
+         index[i] = LLVMBuildAdd(builder, index[i], ac_get_arg(&ctx->ac, param_start_in_index), "");
          index[i] = ac_build_buffer_load_format(&ctx->ac, input_indexbuf, index[i], ctx->ac.i32_0,
                                                 1, 0, true, false, false);
          index[i] = ac_to_integer(&ctx->ac, index[i]);
@@ -473,6 +477,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
       /* Write indices for accepted primitives. */
       LLVMValueRef vindex = LLVMBuildAdd(builder, start, prim_index, "");
+      vindex = LLVMBuildAdd(builder, vindex, ac_get_arg(&ctx->ac, param_start_out_index), "");
       LLVMValueRef vdata = ac_build_gather_values(&ctx->ac, index, 3);
 
       if (!ac_has_vec3_support(ctx->ac.chip_class, true))
@@ -561,6 +566,8 @@ static bool si_check_ring_space(struct si_context *sctx, unsigned out_indexbuf_s
              align(out_indexbuf_size, sctx->screen->info.tcc_cache_line_size) <=
           sctx->index_ring_size_per_ib;
 }
+
+#define COMPUTE_PREAMBLE_SIZE (8 + 39 + 11 + 7)
 
 enum si_prim_discard_outcome
 si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe_draw_info *info,
@@ -680,12 +687,21 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
       return SI_PRIM_DISCARD_DISABLED;
    }
 
-   unsigned num_subdraws = DIV_ROUND_UP(num_prims, PRIMS_PER_BATCH) * num_draws;
-   unsigned need_compute_dw = 11 /* shader */ + 34 /* first draw */ +
-                              24 * (num_subdraws - 1) + /* subdraws */
-                              30;                       /* leave some space at the end */
-   unsigned need_gfx_dw = si_get_minimum_num_gfx_cs_dwords(sctx, 0) +
-                          num_subdraws * 8; /* use REWIND(2) + DRAW(6) */
+   /* Compute how many CS dwords we need to reserve. */
+   unsigned need_compute_dw = COMPUTE_PREAMBLE_SIZE +
+                              11 /* shader */ +
+                              30; /* leave some space at the end */
+   unsigned need_gfx_dw = si_get_minimum_num_gfx_cs_dwords(sctx, 0);
+
+   for (unsigned i = 0; i < num_draws; i++) {
+      unsigned num_subdraws = DIV_ROUND_UP(draws[i].count, PRIMS_PER_BATCH);
+
+      need_compute_dw += 8 * num_subdraws + /* signal REWIND */
+                         14 /* user SGPRs */ +
+                         4 * (num_subdraws - 1) + /* user SGPRs after the first subdraw */
+                         11 * num_subdraws;
+      need_gfx_dw += num_subdraws * 8; /* use REWIND(2) + DRAW(6) */
+   }
 
    if (ring_full ||
        !sctx->ws->cs_check_space(gfx_cs, need_gfx_dw, false)) {
@@ -708,6 +724,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
    ASSERTED bool compute_has_space = sctx->ws->cs_check_space(cs, need_compute_dw, false);
    assert(compute_has_space);
    assert(si_check_ring_space(sctx, out_indexbuf_size));
+   assert(cs->current.cdw + need_compute_dw <= cs->current.max_dw);
    return SI_PRIM_DISCARD_ENABLED;
 }
 
@@ -745,22 +762,29 @@ void si_compute_signal_gfx(struct si_context *sctx)
 /* Dispatch a primitive discard compute shader. */
 void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
                                           const struct pipe_draw_info *info,
-                                          unsigned count, unsigned index_size,
-                                          unsigned base_vertex, uint64_t input_indexbuf_va,
-                                          unsigned input_indexbuf_num_elements)
+                                          const struct pipe_draw_start_count_bias *draws,
+                                          unsigned num_draws, unsigned index_size,
+                                          unsigned total_count, uint64_t input_indexbuf_va,
+                                          unsigned index_max_size)
 {
    struct radeon_cmdbuf *gfx_cs = &sctx->gfx_cs;
    struct radeon_cmdbuf *cs = &sctx->prim_discard_compute_cs;
-   unsigned num_prims_per_instance = u_decomposed_prims_for_vertices(info->mode, count);
-   if (!num_prims_per_instance)
-      return;
-
-   unsigned num_prims = num_prims_per_instance * info->instance_count;
+   unsigned num_total_prims;
    unsigned vertices_per_prim, output_indexbuf_format, gfx10_output_indexbuf_format;
+
+   if (!info->instance_count)
+      return;
 
    switch (info->mode) {
    case PIPE_PRIM_TRIANGLES:
    case PIPE_PRIM_TRIANGLE_STRIP:
+      if (info->mode == PIPE_PRIM_TRIANGLES)
+         num_total_prims = total_count / 3;
+      else if (total_count >= 2)
+         num_total_prims = total_count - 2; /* tri strip approximation ignoring multi draws */
+      else
+         num_total_prims = 0;
+
       vertices_per_prim = 3;
       output_indexbuf_format = V_008F0C_BUF_DATA_FORMAT_32_32_32;
       gfx10_output_indexbuf_format = V_008F0C_GFX10_FORMAT_32_32_32_UINT;
@@ -770,8 +794,13 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
       return;
    }
 
+   if (!num_total_prims)
+      return;
+
+   num_total_prims *= info->instance_count;
+
    unsigned out_indexbuf_offset;
-   uint64_t output_indexbuf_size = num_prims * vertices_per_prim * 4;
+   uint64_t output_indexbuf_size = num_total_prims * vertices_per_prim * 4;
 
    /* Initialize the compute IB if it's empty. */
    if (!sctx->prim_discard_compute_ib_initialized) {
@@ -789,7 +818,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
       /* This needs to be done at the beginning of IBs due to possible
        * TTM buffer moves in the kernel.
        */
-      if (sctx->chip_class >= GFX10) {
+      if (sctx->chip_class >= GFX10) { /* 8 DW */
          radeon_begin(cs);
          radeon_emit(cs, PKT3(PKT3_ACQUIRE_MEM, 6, 0));
          radeon_emit(cs, 0);          /* CP_COHER_CNTL */
@@ -811,9 +840,9 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
                                  S_0085F0_SH_KCACHE_ACTION_ENA(1));
       }
 
-      si_emit_initial_compute_regs(sctx, cs);
+      si_emit_initial_compute_regs(sctx, cs); /* 39 DW */
 
-      radeon_begin(cs);
+      radeon_begin(cs); /* 11 DW */
       radeon_set_sh_reg(
          cs, R_00B860_COMPUTE_TMPRING_SIZE,
          S_00B860_WAVES(sctx->scratch_waves) | S_00B860_WAVESIZE(0)); /* no scratch */
@@ -832,12 +861,13 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
          assert(!sctx->last_ib_barrier_fence);
          radeon_add_to_buffer_list(sctx, gfx_cs, sctx->last_ib_barrier_buf, RADEON_USAGE_READ,
                                    RADEON_PRIO_FENCE);
-         si_cp_wait_mem(sctx, cs,
+         si_cp_wait_mem(sctx, cs, /* 7 DW */
                         sctx->last_ib_barrier_buf->gpu_address + sctx->last_ib_barrier_buf_offset,
                         1, 1, WAIT_REG_MEM_EQUAL);
       }
 
       sctx->prim_discard_compute_ib_initialized = true;
+      assert(cs->current.cdw <= COMPUTE_PREAMBLE_SIZE);
    }
 
    /* Allocate the output index buffer. */
@@ -864,7 +894,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
    /* Input index buffer. */
    desc[0] = input_indexbuf_va;
    desc[1] = S_008F04_BASE_ADDRESS_HI(input_indexbuf_va >> 32) | S_008F04_STRIDE(index_size);
-   desc[2] = input_indexbuf_num_elements * (sctx->chip_class == GFX8 ? index_size : 1);
+   desc[2] = index_max_size * (sctx->chip_class == GFX8 ? index_size : 1);
 
    if (sctx->chip_class >= GFX10) {
       desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
@@ -885,7 +915,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
    desc[4] = out_indexbuf_va;
    desc[5] =
       S_008F04_BASE_ADDRESS_HI(out_indexbuf_va >> 32) | S_008F04_STRIDE(vertices_per_prim * 4);
-   desc[6] = num_prims * (sctx->chip_class == GFX8 ? vertices_per_prim * 4 : 1);
+   desc[6] = num_total_prims * (sctx->chip_class == GFX8 ? vertices_per_prim * 4 : 1);
 
    if (sctx->chip_class >= GFX10) {
       desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
@@ -911,7 +941,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 
    /* Set user data SGPRs. */
    /* This can't be >= 16 if we want the fastest launch rate. */
-   unsigned user_sgprs = 10;
+   unsigned user_sgprs = info->instance_count > 1 ? 12 : 10;
 
    uint64_t index_buffers_va = indexbuf_desc->gpu_address + indexbuf_desc_offset;
    unsigned vs_const_desc = si_const_and_shader_buffer_descriptors_idx(PIPE_SHADER_VERTEX);
@@ -921,18 +951,9 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
    uint64_t vb_desc_va = sctx->vb_descriptors_buffer
                             ? sctx->vb_descriptors_buffer->gpu_address + sctx->vb_descriptors_offset
                             : 0;
-   struct si_fast_udiv_info32 num_prims_udiv = {};
-
-   if (info->instance_count > 1)
-      num_prims_udiv = si_compute_fast_udiv_info32(num_prims_per_instance, 31);
-
-   /* Limitations on how these two are packed in the user SGPR. */
-   assert(num_prims_udiv.post_shift < 32);
-   assert(num_prims_per_instance < 1 << 27);
-
    si_resource_reference(&indexbuf_desc, NULL);
 
-   /* Set shader registers. */
+   /* Set the compute shader. */
    struct si_shader *shader = sctx->cs_prim_discard_state.current;
 
    if (shader != sctx->compute_ib_last_shader) {
@@ -969,91 +990,141 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 
    STATIC_ASSERT(PRIMS_PER_BATCH % THREADGROUP_SIZE == 0);
 
-   /* Big draw calls are split into smaller dispatches and draw packets. */
-   for (unsigned start_prim = 0; start_prim < num_prims; start_prim = num_prims /* implement splitting */) {
-      unsigned num_subdraw_prims;
+   struct si_fast_udiv_info32 num_prims_udiv = {};
 
-      if (start_prim + PRIMS_PER_BATCH < num_prims)
-         num_subdraw_prims = PRIMS_PER_BATCH;
+   for (unsigned i = 0; i < num_draws; i++) {
+      unsigned count = draws[i].count;
+      unsigned num_prims_per_instance, num_prims;
+
+      /* Determine the number of primitives per instance. */
+      if (info->mode == PIPE_PRIM_TRIANGLES)
+         num_prims_per_instance = count / 3;
+      else if (count >= 2)
+         num_prims_per_instance = count - 2;
       else
-         num_subdraw_prims = num_prims - start_prim;
+         num_prims_per_instance = 0;
 
-      /* Small dispatches are executed back to back until a specific primitive
-       * count is reached. Then, a CS_DONE is inserted to signal the gfx IB
-       * to start drawing the batch. This batching adds latency to the gfx IB,
-       * but CS_DONE and REWIND are too slow.
-       */
-      if (sctx->compute_num_prims_in_batch + num_subdraw_prims > PRIMS_PER_BATCH)
-         si_compute_signal_gfx(sctx);
+      if (!num_prims_per_instance)
+         continue;
 
-      if (sctx->compute_num_prims_in_batch == 0) {
-         assert((gfx_cs->gpu_address >> 32) == sctx->screen->info.address32_hi);
-         sctx->compute_rewind_va = gfx_cs->gpu_address + (gfx_cs->current.cdw + 1) * 4;
+      num_prims = num_prims_per_instance;
 
+      if (info->instance_count > 1) {
+         num_prims_udiv = si_compute_fast_udiv_info32(num_prims_per_instance, 31);
+         num_prims *= info->instance_count;
+      }
+
+      /* Limitations on how these two are packed in the user SGPR. */
+      assert(num_prims_udiv.post_shift < 32);
+      assert(num_prims_per_instance < 1 << 27);
+
+      /* Big draw calls are split into smaller dispatches and draw packets. */
+      for (unsigned start_prim = 0; start_prim < num_prims; start_prim += PRIMS_PER_BATCH) {
+         unsigned num_subdraw_prims;
+
+         if (start_prim + PRIMS_PER_BATCH < num_prims) {
+            num_subdraw_prims = PRIMS_PER_BATCH;
+         } else {
+            num_subdraw_prims = num_prims - start_prim;
+         }
+
+         /* Small dispatches are executed back to back until a specific primitive
+          * count is reached. Then, a CS_DONE is inserted to signal the gfx IB
+          * to start drawing the batch. This batching adds latency to the gfx IB,
+          * but CS_DONE and REWIND are too slow.
+          */
+         if (sctx->compute_num_prims_in_batch + num_subdraw_prims > PRIMS_PER_BATCH)
+            si_compute_signal_gfx(sctx);
+
+         if (sctx->compute_num_prims_in_batch == 0) {
+            assert((gfx_cs->gpu_address >> 32) == sctx->screen->info.address32_hi);
+            sctx->compute_rewind_va = gfx_cs->gpu_address + (gfx_cs->current.cdw + 1) * 4;
+
+            radeon_begin(gfx_cs);
+            radeon_emit(gfx_cs, PKT3(PKT3_REWIND, 0, 0));
+            radeon_emit(gfx_cs, 0);
+            radeon_end();
+         }
+
+         sctx->compute_num_prims_in_batch += num_subdraw_prims;
+
+         uint32_t count_va = gfx_cs->gpu_address + (gfx_cs->current.cdw + 4) * 4;
+         uint64_t index_va = out_indexbuf_va + start_prim * 12;
+
+         /* Emit the draw packet into the gfx IB. */
          radeon_begin(gfx_cs);
-         radeon_emit(gfx_cs, PKT3(PKT3_REWIND, 0, 0));
+         radeon_emit(gfx_cs, PKT3(PKT3_DRAW_INDEX_2, 4, 0));
+         radeon_emit(gfx_cs, num_subdraw_prims * vertices_per_prim);
+         radeon_emit(gfx_cs, index_va);
+         radeon_emit(gfx_cs, index_va >> 32);
          radeon_emit(gfx_cs, 0);
+         radeon_emit(gfx_cs, V_0287F0_DI_SRC_SEL_DMA);
          radeon_end();
+
+         radeon_begin_again(cs);
+
+         /* Continue with the compute IB. */
+         if (start_prim == 0) {
+            if (i == 0) {
+               /* First draw. */
+               radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0, user_sgprs);
+               radeon_emit(cs, count_va);
+               radeon_emit(cs, start_prim);
+               radeon_emit(cs, draws[i].start);
+               radeon_emit(cs, index_size ? draws[i].index_bias : draws[i].start);
+               radeon_emit(cs, index_buffers_va);
+               radeon_emit(cs, vb_desc_va);
+               radeon_emit(cs, vs_const_desc_va);
+               radeon_emit(cs, vs_sampler_desc_va);
+               radeon_emit(cs, info->start_instance);
+               /* small-prim culling precision (same as rasterizer precision = QUANT_MODE) */
+               radeon_emit(cs, fui(cull_info.small_prim_precision));
+
+               if (info->instance_count > 1) {
+                  radeon_emit(cs, num_prims_udiv.multiplier);
+                  radeon_emit(cs, num_prims_udiv.post_shift | (num_prims_per_instance << 5));
+               }
+            } else {
+               /* Subsequent draws. */
+               radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0, 4);
+               radeon_emit(cs, count_va);
+               radeon_emit(cs, 0);
+               radeon_emit(cs, draws[i].start);
+               radeon_emit(cs, index_size ? draws[i].index_bias : draws[i].start);
+
+               if (info->instance_count > 1) {
+                  radeon_set_sh_reg_seq(cs, R_00B928_COMPUTE_USER_DATA_10, 2);
+                  radeon_emit(cs, num_prims_udiv.multiplier);
+                  radeon_emit(cs, num_prims_udiv.post_shift | (num_prims_per_instance << 5));
+               }
+            }
+         } else {
+            /* Draw split. Only update the SGPRs that changed. */
+            radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0, 2);
+            radeon_emit(cs, count_va);
+            radeon_emit(cs, start_prim);
+         }
+
+         /* Set grid dimensions. */
+         unsigned start_block = start_prim / THREADGROUP_SIZE;
+         unsigned num_full_blocks = num_subdraw_prims / THREADGROUP_SIZE;
+         unsigned partial_block_size = num_subdraw_prims % THREADGROUP_SIZE;
+
+         radeon_set_sh_reg(cs, R_00B810_COMPUTE_START_X, start_block);
+         radeon_set_sh_reg(cs, R_00B81C_COMPUTE_NUM_THREAD_X,
+                           S_00B81C_NUM_THREAD_FULL(THREADGROUP_SIZE) |
+                              S_00B81C_NUM_THREAD_PARTIAL(partial_block_size));
+
+         radeon_emit(cs, PKT3(PKT3_DISPATCH_DIRECT, 3, 0) | PKT3_SHADER_TYPE_S(1));
+         radeon_emit(cs, start_block + num_full_blocks + !!partial_block_size);
+         radeon_emit(cs, 1);
+         radeon_emit(cs, 1);
+         radeon_emit(cs, S_00B800_COMPUTE_SHADER_EN(1) | S_00B800_PARTIAL_TG_EN(!!partial_block_size) |
+                         S_00B800_ORDER_MODE(0 /* launch in order */));
+         radeon_end();
+
+         assert(cs->current.cdw <= cs->current.max_dw);
+         assert(gfx_cs->current.cdw <= gfx_cs->current.max_dw);
       }
-
-      sctx->compute_num_prims_in_batch += num_subdraw_prims;
-
-      uint32_t count_va = gfx_cs->gpu_address + (gfx_cs->current.cdw + 4) * 4;
-      uint64_t index_va = out_indexbuf_va + start_prim * 12;
-
-      /* Emit the draw packet into the gfx IB. */
-      radeon_begin(gfx_cs);
-      radeon_emit(gfx_cs, PKT3(PKT3_DRAW_INDEX_2, 4, 0));
-      radeon_emit(gfx_cs, num_prims * vertices_per_prim);
-      radeon_emit(gfx_cs, index_va);
-      radeon_emit(gfx_cs, index_va >> 32);
-      radeon_emit(gfx_cs, 0);
-      radeon_emit(gfx_cs, V_0287F0_DI_SRC_SEL_DMA);
-      radeon_end();
-
-      radeon_begin_again(cs);
-
-      /* Continue with the compute IB. */
-      if (start_prim == 0) {
-         radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0, user_sgprs);
-         radeon_emit(cs, index_buffers_va);
-         radeon_emit(cs, count_va);
-         radeon_emit(cs, vb_desc_va);
-         radeon_emit(cs, vs_const_desc_va);
-         radeon_emit(cs, vs_sampler_desc_va);
-         radeon_emit(cs, base_vertex);
-         radeon_emit(cs, info->start_instance);
-         radeon_emit(cs, num_prims_udiv.multiplier);
-         radeon_emit(cs, num_prims_udiv.post_shift | (num_prims_per_instance << 5));
-         /* small-prim culling precision (same as rasterizer precision = QUANT_MODE) */
-         radeon_emit(cs, fui(cull_info.small_prim_precision));
-      } else {
-#if 0 /* TODO: draw splitting could be enabled */
-         /* Only update the SGPRs that changed. */
-         radeon_set_sh_reg_seq(cs, R_00B904_COMPUTE_USER_DATA_1, 1);
-         radeon_emit(cs, count_va);
-#endif
-      }
-
-      /* Set grid dimensions. */
-      unsigned start_block = start_prim / THREADGROUP_SIZE;
-      unsigned num_full_blocks = num_subdraw_prims / THREADGROUP_SIZE;
-      unsigned partial_block_size = num_subdraw_prims % THREADGROUP_SIZE;
-
-      radeon_set_sh_reg(cs, R_00B810_COMPUTE_START_X, start_block);
-      radeon_set_sh_reg(cs, R_00B81C_COMPUTE_NUM_THREAD_X,
-                        S_00B81C_NUM_THREAD_FULL(THREADGROUP_SIZE) |
-                           S_00B81C_NUM_THREAD_PARTIAL(partial_block_size));
-
-      radeon_emit(cs, PKT3(PKT3_DISPATCH_DIRECT, 3, 0) | PKT3_SHADER_TYPE_S(1));
-      radeon_emit(cs, start_block + num_full_blocks + !!partial_block_size);
-      radeon_emit(cs, 1);
-      radeon_emit(cs, 1);
-      radeon_emit(cs, S_00B800_COMPUTE_SHADER_EN(1) | S_00B800_PARTIAL_TG_EN(!!partial_block_size) |
-                      S_00B800_ORDER_MODE(0 /* launch in order */));
-      radeon_end();
-
-      assert(cs->current.cdw <= cs->current.max_dw);
-      assert(gfx_cs->current.cdw <= gfx_cs->current.max_dw);
    }
 }

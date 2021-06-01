@@ -978,7 +978,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                                  unsigned drawid_base,
                                  const struct pipe_draw_indirect_info *indirect,
                                  const struct pipe_draw_start_count_bias *draws,
-                                 unsigned num_draws,
+                                 unsigned num_draws, unsigned total_count,
                                  struct pipe_resource *indexbuf, unsigned index_size,
                                  unsigned index_offset, unsigned instance_count,
                                  bool dispatch_prim_discard_cs, unsigned original_index_size)
@@ -1194,13 +1194,9 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
          if (ALLOW_PRIM_DISCARD_CS && dispatch_prim_discard_cs) {
             radeon_end();
 
-            for (unsigned i = 0; i < num_draws; i++) {
-               uint64_t va = index_va + draws[i].start * original_index_size;
-
-               si_dispatch_prim_discard_cs_and_draw(sctx, info, draws[i].count,
-                                                    original_index_size, base_vertex,
-                                                    va, MIN2(index_max_size, draws[i].count));
-            }
+            si_dispatch_prim_discard_cs_and_draw(sctx, info, draws, num_draws,
+                                                 original_index_size, total_count, index_va,
+                                                 index_max_size);
             EMIT_SQTT_END_DRAW;
             return;
          }
@@ -2172,8 +2168,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
       assert(sctx->dirty_atoms == 0);
 
       si_emit_draw_packets<GFX_VERSION, NGG, ALLOW_PRIM_DISCARD_CS>
-            (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf, index_size,
-             index_offset, instance_count, dispatch_prim_discard_cs,
+            (sctx, info, drawid_offset, indirect, draws, num_draws, total_direct_count, indexbuf,
+             index_size, index_offset, instance_count, dispatch_prim_discard_cs,
              original_index_size);
       /* <-- CUs are busy here. */
 
@@ -2211,9 +2207,9 @@ static void si_draw_vbo(struct pipe_context *ctx,
       assert(sctx->dirty_atoms == 0);
 
       si_emit_draw_packets<GFX_VERSION, NGG, ALLOW_PRIM_DISCARD_CS>
-            (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf, index_size,
-             index_offset, instance_count,
-             dispatch_prim_discard_cs, original_index_size);
+            (sctx, info, drawid_offset, indirect, draws, num_draws, total_direct_count, indexbuf,
+             index_size, index_offset, instance_count, dispatch_prim_discard_cs,
+             original_index_size);
 
       /* Prefetch the remaining shaders after the draw has been
        * started. */

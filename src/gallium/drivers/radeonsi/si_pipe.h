@@ -1518,9 +1518,10 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
 void si_compute_signal_gfx(struct si_context *sctx);
 void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
                                           const struct pipe_draw_info *info,
-                                          unsigned count, unsigned index_size,
-                                          unsigned base_vertex, uint64_t input_indexbuf_va,
-                                          unsigned input_indexbuf_max_elements);
+                                          const struct pipe_draw_start_count_bias *draws,
+                                          unsigned num_draws, unsigned index_size,
+                                          unsigned total_count, uint64_t input_indexbuf_va,
+                                          unsigned index_max_size);
 void si_initialize_prim_discard_tunables(struct si_screen *sscreen, bool is_aux_context,
                                          unsigned *prim_discard_vertex_count_threshold,
                                          unsigned *index_ring_size_per_ib);
