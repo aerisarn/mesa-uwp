@@ -450,7 +450,7 @@ update_job(struct indirect_draw_shader_builder *builder, enum mali_job_type type
         /* Update DRAW.{instance_size,offset_start} */
         nir_ssa_def *instance_size =
                 nir_bcsel(b,
-                          nir_ilt(b, builder->draw.instance_count, nir_imm_int(b, 2)),
+                          nir_ult(b, builder->draw.instance_count, nir_imm_int(b, 2)),
                           nir_imm_int(b, 0), builder->instance_size.packed);
         draw_w01 = nir_vec2(b,
                             nir_ior(b, nir_iand_imm(b, draw_w0, 0xffff),
@@ -473,7 +473,7 @@ split_div(nir_builder *b, nir_ssa_def *div, nir_ssa_def **r_e, nir_ssa_def **d)
                                    half_div64);
         nir_ssa_def *fi = nir_idiv(b, f0, div64);
         nir_ssa_def *ff = nir_isub(b, f0, nir_imul(b, fi, div64));
-        nir_ssa_def *e = nir_bcsel(b, nir_ilt(b, half_div64, ff),
+        nir_ssa_def *e = nir_bcsel(b, nir_ult(b, half_div64, ff),
                                    nir_imm_int(b, 1 << 5), nir_imm_int(b, 0));
         *d = nir_iand_imm(b, nir_u2u32(b, fi), ~(1 << 31));
         *r_e = nir_ior(b, r, e);
@@ -523,7 +523,7 @@ adjust_attrib_offset(struct indirect_draw_shader_builder *builder,
         nir_ssa_def *two = nir_imm_int(b, 2);
         nir_ssa_def *sub_cur_offset =
                 nir_iand(b, nir_ine(b, builder->jobs.offset_start, zero),
-                         nir_ige(b, builder->draw.instance_count, two));
+                         nir_uge(b, builder->draw.instance_count, two));
 
         nir_ssa_def *add_base_inst_offset =
                 nir_iand(b, nir_ine(b, builder->draw.start_instance, zero),
@@ -563,7 +563,7 @@ adjust_attrib_offset(struct indirect_draw_shader_builder *builder,
 static nir_ssa_def *
 nir_is_power_of_two_or_zero(nir_builder *b, nir_ssa_def *x)
 {
-        return nir_ilt(b, nir_bit_count(b, x), nir_imm_int(b, 2));
+        return nir_ult(b, nir_bit_count(b, x), nir_imm_int(b, 2));
 }
 
 /* Based on panfrost_emit_vertex_data() */
@@ -577,11 +577,11 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
                                           "attrib_idx");
         nir_store_var(b, attrib_idx_var, nir_imm_int(b, 0), 1);
         nir_ssa_def *single_instance =
-                nir_ilt(b, builder->draw.instance_count, nir_imm_int(b, 2));
+                nir_ult(b, builder->draw.instance_count, nir_imm_int(b, 2));
 
         LOOP {
                 nir_ssa_def *attrib_idx = nir_load_var(b, attrib_idx_var);
-                IF (nir_ige(b, attrib_idx, builder->attribs.attrib_count))
+                IF (nir_uge(b, attrib_idx, builder->attribs.attrib_count))
                         BREAK;
                 ENDIF
 
@@ -617,7 +617,7 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
                                           &r_e, &d);
                                 nir_ssa_def *default_div =
                                         nir_ior(b, single_instance,
-                                                nir_ilt(b,
+                                                nir_ult(b,
                                                         builder->instance_size.padded,
                                                         nir_imm_int(b, 2)));
                                 r_e = nir_bcsel(b, default_div,
@@ -640,7 +640,7 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
                 nir_ssa_def *div = nir_imul(b, instance_div, builder->instance_size.padded);
 
                 nir_ssa_def *multi_instance =
-                        nir_ige(b, builder->draw.instance_count, nir_imm_int(b, 2));
+                        nir_uge(b, builder->draw.instance_count, nir_imm_int(b, 2));
 
                 IF (nir_ine(b, div, nir_imm_int(b, 0))) {
                         IF (multi_instance) {
@@ -782,7 +782,7 @@ get_padded_count(nir_builder *b, nir_ssa_def *val, nir_ssa_def **packed)
         nir_ssa_def *rshift = nir_imax(b, nir_find_lsb(b, base), zero);
         exp = nir_iadd(b, exp, rshift);
         base = nir_ushr(b, base, rshift);
-        base = nir_iadd(b, base, nir_bcsel(b, nir_ige(b, base, eleven), one, zero));
+        base = nir_iadd(b, base, nir_bcsel(b, nir_uge(b, base, eleven), one, zero));
         rshift = nir_imax(b, nir_find_lsb(b, base), zero);
         exp = nir_iadd(b, exp, rshift);
         base = nir_ushr(b, base, rshift);
@@ -852,8 +852,8 @@ get_instance_size(struct indirect_draw_shader_builder *builder)
                         for (unsigned i = 0; i < sizeof(uint32_t); i += index_size) {
                                 nir_ssa_def *oob =
                                         nir_ior(b,
-                                                nir_ilt(b, nir_imm_int(b, i), offset),
-                                                nir_ige(b, nir_imm_int(b, i), end));
+                                                nir_ult(b, nir_imm_int(b, i), offset),
+                                                nir_uge(b, nir_imm_int(b, i), end));
                                 nir_ssa_def *data = nir_iand_imm(b, val, mask);
 
                                 min = nir_umin(b, min,
@@ -878,7 +878,7 @@ get_instance_size(struct indirect_draw_shader_builder *builder)
 
                         nir_ssa_def *val = load_global(b, get_address(b, base, aligned_end), 1, 32);
                         for (unsigned i = 0; i < sizeof(uint32_t); i += index_size) {
-                                nir_ssa_def *oob = nir_ige(b, nir_imm_int(b, i), remaining);
+                                nir_ssa_def *oob = nir_uge(b, nir_imm_int(b, i), remaining);
                                 nir_ssa_def *data = nir_iand_imm(b, val, mask);
 
                                 min = nir_umin(b, min,
@@ -1003,7 +1003,7 @@ get_index_min_max(struct indirect_draw_shader_builder *builder)
 
         LOOP {
                 nir_ssa_def *offset = nir_load_var(b, offset_var);
-                IF (nir_ige(b, offset, end))
+                IF (nir_uge(b, offset, end))
                         BREAK;
                 ENDIF
 
@@ -1033,7 +1033,7 @@ get_index_min_max(struct indirect_draw_shader_builder *builder)
                               nir_iadd_imm(b, offset, MIN_MAX_JOBS * sizeof(uint32_t)), 1);
         }
 
-        IF (nir_ilt(b, start, end))
+        IF (nir_ult(b, start, end))
                 update_min(builder, nir_load_var(b, min_var));
                 update_max(builder, nir_load_var(b, max_var));
         ENDIF
