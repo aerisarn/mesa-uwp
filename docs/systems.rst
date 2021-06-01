@@ -19,8 +19,8 @@ Hardware drivers include:
    Wiki <https://nouveau.freedesktop.org>`__
 -  Qualcomm Adreno A2xx-A6xx. See :doc:`Freedreno
    <drivers/freedreno>`
--  Broadcom VideoCore 4, 5. See `This Week in
-   V3D <https://anholt.github.io/twivc4/>`__
+-  Broadcom VideoCore 4 and 5. See :doc:`VC4 <drivers/vc4>` and
+   :doc:`V3D <drivers/v3d>`
 -  ARM Mali Utgard. See :doc:`Lima <drivers/lima>`
 -  ARM Mali Midgard, Bifrost. See :doc:`Panfrost <drivers/panfrost>`
 -  Vivante GCxxx. See `Etnaviv
@@ -29,9 +29,13 @@ Hardware drivers include:
 
 Layered driver include:
 
+-  :doc:`D3D12 <drivers/d3d12>` - driver providing OpenGL on top of
+   Microsoft's Direct3D 12 API.
 -  :doc:`SVGA3D <drivers/svga3d>` - driver for VMware virtual GPU
 -  `VirGL <https://virgil3d.github.io/>`__ - research project for
    accelerated graphics for qemu guests
+-  :doc:`Zink <drivers/zink>` - driver providing OpenGL on top of
+   Khoronos' Vulkan API.
 
 Software drivers include:
 
