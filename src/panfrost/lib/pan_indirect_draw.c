@@ -558,6 +558,14 @@ adjust_attrib_offset(struct indirect_draw_shader_builder *builder,
         } ENDIF
 }
 
+/* x is power of two or zero <===> x has 0 (zero) or 1 (POT) bits set */
+
+static nir_ssa_def *
+nir_is_power_of_two_or_zero(nir_builder *b, nir_ssa_def *x)
+{
+        return nir_ilt(b, nir_bit_count(b, x), nir_imm_int(b, 2));
+}
+
 /* Based on panfrost_emit_vertex_data() */
 
 static void
@@ -636,10 +644,7 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
 
                 IF (nir_ine(b, div, nir_imm_int(b, 0))) {
                         IF (multi_instance) {
-                                nir_ssa_def *div_pow2 =
-                                        nir_ilt(b, nir_bit_count(b, div), nir_imm_int(b, 2));
-
-                                IF (div_pow2) {
+                                IF (nir_is_power_of_two_or_zero(b, div)) {
                                         nir_ssa_def *exp =
                                                 nir_imax(b, nir_ufind_msb(b, div),
                                                          nir_imm_int(b, 0));
