@@ -27,6 +27,7 @@
 #define ZINK_SHADER_COUNT (PIPE_SHADER_TYPES - 1)
 
 #define ZINK_DEFAULT_MAX_DESCS 5000
+#define ZINK_DEFAULT_DESC_CLAMP (ZINK_DEFAULT_MAX_DESCS * 0.9)
 
 #include "zink_clear.h"
 #include "zink_pipeline.h"
