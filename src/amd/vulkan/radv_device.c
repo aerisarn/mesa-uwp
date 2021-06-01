@@ -739,33 +739,6 @@ radv_physical_device_destroy(struct radv_physical_device *device)
    vk_free(&device->instance->vk.alloc, device);
 }
 
-static void *
-default_alloc_func(void *pUserData, size_t size, size_t align,
-                   VkSystemAllocationScope allocationScope)
-{
-   return malloc(size);
-}
-
-static void *
-default_realloc_func(void *pUserData, void *pOriginal, size_t size, size_t align,
-                     VkSystemAllocationScope allocationScope)
-{
-   return realloc(pOriginal, size);
-}
-
-static void
-default_free_func(void *pUserData, void *pMemory)
-{
-   free(pMemory);
-}
-
-static const VkAllocationCallbacks default_alloc = {
-   .pUserData = NULL,
-   .pfnAllocation = default_alloc_func,
-   .pfnReallocation = default_realloc_func,
-   .pfnFree = default_free_func,
-};
-
 static const struct debug_control radv_debug_options[] = {
    {"nofastclears", RADV_DEBUG_NO_FAST_CLEARS},
    {"nodcc", RADV_DEBUG_NO_DCC},
@@ -893,7 +866,7 @@ radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    VkResult result;
 
    if (!pAllocator)
-      pAllocator = &default_alloc;
+      pAllocator = vk_default_allocator();
 
    instance = vk_zalloc(pAllocator, sizeof(*instance), 8, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!instance)
