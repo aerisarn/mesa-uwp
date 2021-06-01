@@ -54,15 +54,15 @@ systems. These have been removed from the Mesa source tree and
 distribution. If anyone's interested though, the code can be found in
 the Git repo. The list includes:
 
--  3dfx/glide
--  Matrox
--  ATI R128
--  Savage
--  VIA Unichrome
--  SIS
--  3Dlabs gamma
--  DOS
--  fbdev
--  DEC/VMS
--  Mach64
+-  3dfx Glide
+-  3DLABS Gamma
+-  ATI Mach 64
+-  ATI Rage 128
+-  DEC OpenVMS
 -  Intel i810
+-  Linux fbdev
+-  Matrox
+-  MS-DOS
+-  S3 Savage
+-  Silicon Integrated Systems
+-  VIA Unichrome
