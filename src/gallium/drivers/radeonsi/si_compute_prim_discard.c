@@ -261,7 +261,8 @@ struct si_thread0_section {
 
 /* Enter a section that only executes on thread 0. */
 static void si_enter_thread0_section(struct si_shader_context *ctx,
-                                     struct si_thread0_section *section, LLVMValueRef thread_id)
+                                     struct si_thread0_section *section, LLVMValueRef thread_id,
+                                     LLVMValueRef check_nonzero)
 {
    section->ctx = ctx;
    section->vgpr_result = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "result0");
@@ -274,8 +275,13 @@ static void si_enter_thread0_section(struct si_shader_context *ctx,
     *
     * It could just be s_and_saveexec_b64 s, 1.
     */
-   ac_build_ifcc(&ctx->ac, LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, thread_id, ctx->ac.i32_0, ""),
-                 12601);
+   LLVMValueRef cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, thread_id, ctx->ac.i32_0, "");
+   if (check_nonzero) {
+      cond = LLVMBuildAnd(ctx->ac.builder, cond,
+                          LLVMBuildICmp(ctx->ac.builder, LLVMIntNE, check_nonzero,
+                                        ctx->ac.i32_0, ""), "");
+   }
+   ac_build_ifcc(&ctx->ac, cond, 12601);
 }
 
 /* Exit a section that only executes on thread 0 and broadcast the result
@@ -537,7 +543,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
             last_strip_start = LLVMBuildAdd(builder, last_strip_start, ctx->ac.i32_1, "");
 
             struct si_thread0_section section;
-            si_enter_thread0_section(ctx, &section, thread_id);
+            si_enter_thread0_section(ctx, &section, thread_id, NULL);
 
             /* This must be done in the thread 0 section, because
              * we expect PrimID to be 0 for the whole first wave
@@ -664,7 +670,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
    /* Execute atomic_add on the vertex count. */
    struct si_thread0_section section;
-   si_enter_thread0_section(ctx, &section, thread_id);
+   si_enter_thread0_section(ctx, &section, thread_id, num_prims_accepted);
    {
       if (VERTEX_COUNTER_GDS_MODE == 0) {
          LLVMValueRef num_indices = LLVMBuildMul(
