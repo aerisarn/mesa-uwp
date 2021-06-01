@@ -1936,7 +1936,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
            (1 << prim) & ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP)) &&
               /* Instancing is limited to 16-bit indices, because InstanceID is packed into
                  VertexID. */
-              /* TODO: DrawArraysInstanced doesn't sometimes work, so it's disabled. */
+              /* Instanced index_size == 0 requires that start + count < USHRT_MAX, so just reject it. */
               (instance_count == 1 ||
                (instance_count <= USHRT_MAX && index_size && index_size <= 2) ||
                pd_msg("instance_count too large or index_size == 4 or DrawArraysInstanced"))) &&

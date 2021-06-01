@@ -956,9 +956,11 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
 
    /* Split draws at the draw call level if the ring is full. This makes
     * better use of the ring space.
+    *
+    * If instancing is enabled and there is not enough ring buffer space, compute-based
+    * primitive discard is disabled.
     */
-   if (ring_full && num_prims > PRIMS_PER_BATCH &&
-       instance_count == 1) { /* TODO: support splitting instanced draws */
+   if (ring_full && num_prims > PRIMS_PER_BATCH && instance_count == 1) {
       unsigned vert_count_per_subdraw = 0;
 
       if (prim == PIPE_PRIM_TRIANGLES)
