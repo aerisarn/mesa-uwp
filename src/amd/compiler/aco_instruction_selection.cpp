@@ -3894,14 +3894,13 @@ Temp global_load_callback(Builder& bld, const LoadEmitInfo &info,
 
 const EmitLoadParameters global_load_params { global_load_callback, true, true, 1 };
 
-Temp load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
+Temp load_lds(isel_context *ctx, unsigned elem_size_bytes, unsigned num_components, Temp dst,
               Temp address, unsigned base_offset, unsigned align)
 {
    assert(util_is_power_of_two_nonzero(align));
 
    Builder bld(ctx->program, ctx->block);
 
-   unsigned num_components = dst.bytes() / elem_size_bytes;
    LoadEmitInfo info = {Operand(as_vgpr(ctx, address)), dst, num_components, elem_size_bytes};
    info.align_mul = align;
    info.align_offset = 0;
@@ -6856,8 +6855,9 @@ void visit_load_shared(isel_context *ctx, nir_intrinsic_instr *instr)
    Builder bld(ctx->program, ctx->block);
 
    unsigned elem_size_bytes = instr->dest.ssa.bit_size / 8;
+   unsigned num_components = instr->dest.ssa.num_components;
    unsigned align = nir_intrinsic_align_mul(instr) ? nir_intrinsic_align(instr) : elem_size_bytes;
-   load_lds(ctx, elem_size_bytes, dst, address, nir_intrinsic_base(instr), align);
+   load_lds(ctx, elem_size_bytes, num_components, dst, address, nir_intrinsic_base(instr), align);
 }
 
 void visit_store_shared(isel_context *ctx, nir_intrinsic_instr *instr)
