@@ -413,9 +413,6 @@ panfrost_new_texture(const struct panfrost_device *dev,
         enum pipe_format format = iview->format;
         unsigned swizzle;
 
-        if (drm_is_afbc(layout->modifier))
-                format = panfrost_afbc_format_fixup(dev, format);
-
         if (dev->arch == 7 && util_format_is_depth_or_stencil(format)) {
                 /* v7 doesn't have an _RRRR component order, combine the
                  * user swizzle with a .XXXX swizzle to emulate that.

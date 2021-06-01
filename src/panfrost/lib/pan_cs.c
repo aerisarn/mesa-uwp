@@ -390,15 +390,10 @@ pan_rt_init_format(const struct panfrost_device *dev,
                    const struct pan_image_view *rt,
                    struct MALI_RENDER_TARGET *cfg)
 {
-        enum pipe_format format =
-                drm_is_afbc(rt->image->layout.modifier) ?
-                panfrost_afbc_format_fixup(dev, rt->format) :
-                rt->format;
-
         /* Explode details on the format */
 
         const struct util_format_description *desc =
-                util_format_description(format);
+                util_format_description(rt->format);
 
         /* The swizzle for rendering is inverted from texturing */
 

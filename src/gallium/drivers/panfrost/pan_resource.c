@@ -118,16 +118,6 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         rsc->state.slices[0].data_valid = true;
         panfrost_resource_set_damage_region(pscreen, &rsc->base, 0, NULL);
 
-        /* If we import an AFBC resource, it should be in a format that's
-         * supported, otherwise we don't know if the fixup is expected to be
-         * applied or not. In practice that's not a problem if the buffer has
-         * been exported by the GPU because the same constraint applies to both
-         * ends, but we might have issues if the exporter is a different piece
-         * of hardware (VPU?) that supports the BGR variants.
-         */
-        assert(!drm_is_afbc(whandle->modifier) ||
-               !panfrost_afbc_format_needs_fixup(dev, rsc->image.layout.format));
-
         if (dev->ro) {
                 rsc->scanout =
                         renderonly_create_gpu_import_for_resource(prsc, dev->ro, NULL);
@@ -147,16 +137,6 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
         struct panfrost_device *dev = pan_device(pscreen);
         struct panfrost_resource *rsrc = (struct panfrost_resource *) pt;
         struct renderonly_scanout *scanout = rsrc->scanout;
-
-        /* If we export an AFBC resource, it should be in a format that's
-         * supported, otherwise the importer has no clue about the format fixup
-         * done internally. In practice that shouldn't be an issue for GPU
-         * buffers because the same constraint applies to both ends, but we
-         * might have issues if the importer is a different piece of hardware
-         * that supports BGR variants.
-         */
-        assert(!drm_is_afbc(rsrc->image.layout.modifier) ||
-               !panfrost_afbc_format_needs_fixup(dev, rsrc->image.layout.format));
 
         handle->modifier = rsrc->image.layout.modifier;
         rsrc->modifier_constant = true;
@@ -387,14 +367,6 @@ panfrost_should_afbc(struct panfrost_device *dev,
 
         /* For one tile, AFBC is a loss compared to u-interleaved */
         if (pres->base.width0 <= 16 && pres->base.height0 <= 16)
-                return false;
-
-        /* AFBC(BGR) is not natively supported on Bifrost v7+. When we don't
-         * share the buffer we can fake those formats since we're in control
-         * of the format/swizzle we apply to the textures/RTs.
-         */
-        if (panfrost_afbc_format_needs_fixup(dev, fmt) &&
-            (pres->base.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)))
                 return false;
 
         /* Otherwise, we'd prefer AFBC as it is dramatically more efficient
