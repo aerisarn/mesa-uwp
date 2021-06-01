@@ -1704,6 +1704,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                          * compute shader do the rest.
                          */
                         pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
+                                cfg.type = MALI_ATTRIBUTE_TYPE_1D;
                                 cfg.pointer = addr;
                                 cfg.stride = stride;
                                 cfg.size = size;

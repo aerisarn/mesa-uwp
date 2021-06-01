@@ -663,17 +663,11 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
                         } ENDIF
 
                         adjust_attrib_offset(builder, attrib_ptr, attrib_buf_ptr, instance_div);
-                } ELSE {
-                        IF (multi_instance) {
-                                update_vertex_attrib_buf(builder, attrib_buf_ptr,
-                                                         MALI_ATTRIBUTE_TYPE_1D_MODULUS,
-                                                         builder->instance_size.packed, NULL);
-                        } ELSE {
-                                update_vertex_attrib_buf(builder, attrib_buf_ptr,
-                                                         MALI_ATTRIBUTE_TYPE_1D,
-                                                         nir_imm_int(b, 0), NULL);
-                        } ENDIF
-                } ENDIF
+                } ELSE IF (multi_instance) {
+                        update_vertex_attrib_buf(builder, attrib_buf_ptr,
+                                        MALI_ATTRIBUTE_TYPE_1D_MODULUS,
+                                        builder->instance_size.packed, NULL);
+                } ENDIF ENDIF
 
                 nir_store_var(b, attrib_idx_var, nir_iadd_imm(b, attrib_idx, 1), 1);
         }
