@@ -1390,6 +1390,11 @@
   <struct name="Render Target Bifrost AFBC Overlay" size="16">
     <field name="AFBC Split Block Enable" size="1" start="7:18" type="bool"/>
     <field name="AFBC Wide Block Enable" size="1" start="7:19" type="bool"/>
+
+    <!-- Flag in v7 to effectively disable AFBC as a race condition workaround
+    when in-place rendering is used with the AFBC block size differing
+    from the effective tile size (XXX: does v6 need a different workaround?) -->
+    <field name="Reverse Issue Order" size="1" start="7:20" type="bool"/>
   </struct>
 
   <struct name="RT Clear">
