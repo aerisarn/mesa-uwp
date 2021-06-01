@@ -811,8 +811,6 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    if (pscreen->is_format_supported(pscreen, map->pipe_format, screen->target, 0, 0,
                                     PIPE_BIND_SAMPLER_VIEW))
       tex_usage |= PIPE_BIND_SAMPLER_VIEW;
-   if (is_protected_content)
-      tex_usage |= PIPE_BIND_PROTECTED;
 
    /* For NV12, see if we have support for sampling r8_b8g8 */
    if (!tex_usage && map->pipe_format == PIPE_FORMAT_NV12 &&
@@ -853,6 +851,9 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
 
    if (!tex_usage)
       return NULL;
+
+   if (is_protected_content)
+      tex_usage |= PIPE_BIND_PROTECTED;
 
    img = CALLOC_STRUCT(__DRIimageRec);
    if (!img)
