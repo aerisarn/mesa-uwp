@@ -514,6 +514,16 @@ update_vertex_attrib_buf(struct indirect_draw_shader_builder *builder,
 }
 
 static void
+zero_attrib_buf_stride(struct indirect_draw_shader_builder *builder,
+                       nir_ssa_def *attrib_buf_ptr)
+{
+        /* Stride is an unadorned 32-bit uint at word 2 */
+        nir_builder *b = &builder->b;
+        store_global(b, get_address_imm(b, attrib_buf_ptr, WORD(2)),
+                        nir_imm_int(b, 0), 1);
+}
+
+static void
 adjust_attrib_offset(struct indirect_draw_shader_builder *builder,
                      nir_ssa_def *attrib_ptr, nir_ssa_def *attrib_buf_ptr,
                      nir_ssa_def *instance_div)
@@ -659,12 +669,8 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
                                 } ENDIF
                         } ELSE {
                                 /* Single instance with a non-0 divisor: all
-                                 * accesses should point to attribute 0, pick
-                                 * the biggest pot divisor.
-                                 */
-                                update_vertex_attrib_buf(builder, attrib_buf_ptr,
-                                                         MALI_ATTRIBUTE_TYPE_1D_POT_DIVISOR,
-                                                         nir_imm_int(b, 31), NULL);
+                                 * accesses should point to attribute 0 */
+                                zero_attrib_buf_stride(builder, attrib_buf_ptr);
                         } ENDIF
 
                         adjust_attrib_offset(builder, attrib_ptr, attrib_buf_ptr, instance_div);
