@@ -985,7 +985,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
       /* Tell ES threads whether their vertex survived. */
       ac_build_ifcc(&ctx->ac,
                     ac_cull_triangle(&ctx->ac, pos, ctx->ac.i1true, vp_scale, vp_translate,
-                                     small_prim_precision, &options),
+                                     small_prim_precision, &options, NULL, NULL),
                     16003);
       {
          LLVMBuildStore(builder, ctx->ac.i32_1, gs_accepted);
