@@ -422,7 +422,7 @@ Gallium environment variables
    ``src/mesa/state_tracker/st_debug.c`` for other options.
 
 Clover environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 
 ``CLOVER_EXTRA_BUILD_OPTIONS``
    allows specifying additional compiler and linker options. Specified
@@ -438,7 +438,7 @@ Clover environment variables
    ``clLinkProgram``.
 
 Softpipe driver environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
 
 ``SOFTPIPE_DEBUG``
    a comma-separated list of named flags, which do various things:
@@ -461,7 +461,7 @@ Softpipe driver environment variables
       of NIR.
 
 LLVMpipe driver environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
 
 ``LP_NO_RAST``
    if set LLVMpipe will no-op rasterization
@@ -477,7 +477,7 @@ LLVMpipe driver environment variables
    CPU cores present.
 
 VMware SVGA driver environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------------
 
 ``SVGA_FORCE_SWTNL``
    force use of software vertex transformation
@@ -497,7 +497,7 @@ VMware SVGA driver environment variables
 See the driver code for other, lesser-used variables.
 
 WGL environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------
 
 ``WGL_SWAP_INTERVAL``
    to set a swap interval, equivalent to calling
@@ -506,13 +506,13 @@ WGL environment variables
    have no effect.
 
 VA-API environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 
 ``VAAPI_MPEG4_ENABLED``
    enable MPEG4 for VA-API, disabled by default.
 
 VC4 driver environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------
 
 ``VC4_DEBUG``
    a comma-separated list of named flags, which do various things:
@@ -541,7 +541,7 @@ VC4 driver environment variables
       write a GPU command stream trace file (VC4 simulator only)
 
 RADV driver environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------
 
 ``RADV_DEBUG``
    a comma-separated list of named flags, which do various things:
@@ -670,7 +670,7 @@ RADV driver environment variables
       print liveness and register demand information before scheduling
 
 radeonsi driver environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
 
 ``AMD_DEBUG``
    a comma-separated list of named flags, which do various things:
@@ -773,7 +773,7 @@ radeonsi driver environment variables
       Enable DFSM.
 
 r600 driver environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------
 
 ``R600_DEBUG``
    a comma-separated list of named flags, which do various things:
