@@ -782,6 +782,23 @@ static void update_thread_counts(struct si_shader_context *ctx, LLVMValueRef *ne
       "");
 }
 
+static void gfx10_build_primitive_accepted(struct ac_llvm_context *ac, LLVMValueRef accepted,
+                                           void *userdata)
+{
+   struct si_shader_context *ctx = container_of(ac, struct si_shader_context, ac);
+   LLVMValueRef *params = (LLVMValueRef *)userdata;
+   LLVMValueRef gs_accepted = params[0];
+   LLVMValueRef *gs_vtxptr = (LLVMValueRef *)params[1];
+
+   ac_build_ifcc(&ctx->ac, accepted, 0);
+   LLVMBuildStore(ctx->ac.builder, ctx->ac.i32_1, gs_accepted);
+   for (unsigned vtx = 0; vtx < 3; vtx++) {
+      LLVMBuildStore(ctx->ac.builder, ctx->ac.i8_1,
+                     si_build_gep_i8(ctx, gs_vtxptr[vtx], lds_byte0_accept_flag));
+   }
+   ac_build_endif(&ctx->ac, 0);
+}
+
 /**
  * Cull primitives for NGG VS or TES, then compact vertices, which happens
  * before the VS or TES main function. Return values for the main function.
@@ -983,18 +1000,13 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
       options.cull_w = true;
 
       /* Tell ES threads whether their vertex survived. */
-      ac_build_ifcc(&ctx->ac,
-                    ac_cull_triangle(&ctx->ac, pos, ctx->ac.i1true, vp_scale, vp_translate,
-                                     small_prim_precision, &options, NULL, NULL),
-                    16003);
-      {
-         LLVMBuildStore(builder, ctx->ac.i32_1, gs_accepted);
-         for (unsigned vtx = 0; vtx < 3; vtx++) {
-            LLVMBuildStore(builder, ctx->ac.i8_1,
-                           si_build_gep_i8(ctx, gs_vtxptr[vtx], lds_byte0_accept_flag));
-         }
-      }
-      ac_build_endif(&ctx->ac, 16003);
+      LLVMValueRef params[] = {
+         gs_accepted,
+         (void*)gs_vtxptr,
+      };
+      ac_cull_triangle(&ctx->ac, pos, ctx->ac.i1true, vp_scale, vp_translate,
+                       small_prim_precision, &options,
+                       gfx10_build_primitive_accepted, params);
    }
    ac_build_endif(&ctx->ac, 16002);
    ac_build_s_barrier(&ctx->ac);
