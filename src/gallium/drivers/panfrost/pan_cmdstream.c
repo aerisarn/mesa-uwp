@@ -1494,6 +1494,19 @@ emit_image_attribs(struct panfrost_context *ctx, enum pipe_shader_type shader,
         }
 }
 
+static enum mali_attribute_type
+pan_modifier_to_attr_type(uint64_t modifier)
+{
+        switch (modifier) {
+        case DRM_FORMAT_MOD_LINEAR:
+                return MALI_ATTRIBUTE_TYPE_3D_LINEAR;
+        case DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED:
+                return MALI_ATTRIBUTE_TYPE_3D_INTERLEAVED;
+        default:
+                unreachable("Invalid modifier for attribute record");
+        }
+}
+
 static void
 emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                 struct mali_attribute_buffer_packed *bufs,
@@ -1520,7 +1533,6 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                 assert(image->resource->nr_samples <= 1 && "MSAA'd images not supported");
 
                 bool is_3d = rsrc->base.target == PIPE_TEXTURE_3D;
-                bool is_linear = rsrc->image.layout.modifier == DRM_FORMAT_MOD_LINEAR;
                 bool is_buffer = rsrc->base.target == PIPE_BUFFER;
 
                 unsigned offset = is_buffer ? image->u.buf.offset :
@@ -1528,9 +1540,6 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                                                 image->u.tex.level,
                                                 is_3d ? 0 : image->u.tex.first_layer,
                                                 is_3d ? image->u.tex.first_layer : 0);
-
-                /* AFBC should've been converted to tiled on panfrost_set_shader_image */
-                assert(!drm_is_afbc(rsrc->image.layout.modifier));
 
                 /* Add a dependency of the batch on the shader image buffer */
                 uint32_t flags = PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_VERTEX_TILER;
@@ -1544,10 +1553,7 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                 panfrost_batch_add_bo(batch, rsrc->image.data.bo, flags);
 
                 pan_pack(bufs + (i * 2), ATTRIBUTE_BUFFER, cfg) {
-                        cfg.type = is_linear ?
-                                MALI_ATTRIBUTE_TYPE_3D_LINEAR :
-                                MALI_ATTRIBUTE_TYPE_3D_INTERLEAVED;
-
+                        cfg.type = pan_modifier_to_attr_type(rsrc->image.layout.modifier);
                         cfg.pointer = rsrc->image.data.bo->ptr.gpu + offset;
                         cfg.stride = util_format_get_blocksize(image->format);
                         cfg.size = rsrc->image.data.bo->size;
