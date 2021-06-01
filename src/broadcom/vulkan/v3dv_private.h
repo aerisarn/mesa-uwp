@@ -1372,6 +1372,9 @@ struct v3dv_semaphore {
 
    /* A syncobject handle associated with this semaphore */
    uint32_t sync;
+
+   /* A temporary syncobject handle produced from a vkImportSemaphoreFd. */
+   uint32_t temp_sync;
 };
 
 struct v3dv_fence {
@@ -1379,6 +1382,9 @@ struct v3dv_fence {
 
    /* A syncobject handle associated with this fence */
    uint32_t sync;
+
+   /* A temporary syncobject handle produced from a vkImportFenceFd. */
+   uint32_t temp_sync;
 };
 
 struct v3dv_event {

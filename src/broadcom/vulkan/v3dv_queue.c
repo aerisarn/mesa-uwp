@@ -518,7 +518,12 @@ process_semaphores_to_signal(struct v3dv_device *device,
    for (uint32_t i = 0; i < count; i++) {
       struct v3dv_semaphore *sem = v3dv_semaphore_from_handle(sems[i]);
 
-      int ret = drmSyncobjImportSyncFile(render_fd, sem->sync, fd);
+      int ret;
+      if (!sem->temp_sync)
+         ret = drmSyncobjImportSyncFile(render_fd, sem->sync, fd);
+      else
+         ret = drmSyncobjImportSyncFile(render_fd, sem->temp_sync, fd);
+
       if (ret) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          break;
@@ -548,7 +553,11 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
    if (fd == -1)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   int ret = drmSyncobjImportSyncFile(render_fd, fence->sync, fd);
+   int ret;
+   if (!fence->temp_sync)
+      ret = drmSyncobjImportSyncFile(render_fd, fence->sync, fd);
+   else
+      ret = drmSyncobjImportSyncFile(render_fd, fence->temp_sync, fd);
 
    assert(fd >= 0);
    close(fd);
@@ -1110,6 +1119,14 @@ done:
    return result;
 }
 
+static void
+destroy_syncobj(uint32_t device_fd, uint32_t *sync)
+{
+   assert(sync);
+   drmSyncobjDestroy(device_fd, *sync);
+   *sync = 0;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateSemaphore(VkDevice _device,
                      const VkSemaphoreCreateInfo *pCreateInfo,
@@ -1138,6 +1155,157 @@ v3dv_CreateSemaphore(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+v3dv_GetPhysicalDeviceExternalSemaphoreProperties(
+    VkPhysicalDevice physicalDevice,
+    const VkPhysicalDeviceExternalSemaphoreInfo *pExternalSemaphoreInfo,
+    VkExternalSemaphoreProperties *pExternalSemaphoreProperties)
+{
+   switch (pExternalSemaphoreInfo->handleType) {
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
+      pExternalSemaphoreProperties->exportFromImportedHandleTypes =
+         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT |
+         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
+      pExternalSemaphoreProperties->compatibleHandleTypes =
+         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT |
+         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
+
+      /* FIXME: we can't import external semaphores until we improve the kernel
+       * submit interface to handle multiple in syncobjs, because once we have
+       * an imported semaphore in our list of semaphores to wait on, we can no
+       * longer use the workaround of waiting on the last syncobj fence produced
+       * from the device, since the imported semaphore may not (and in fact, it
+       * would typically not) have been produced from same device.
+       *
+       * This behavior is exercised via dEQP-VK.synchronization.cross_instance.*.
+       * Particularly, this test:
+       * dEQP-VK.synchronization.cross_instance.dedicated.
+       * write_ssbo_compute_read_vertex_input.buffer_16384_binary_semaphore_fd
+       * fails consistently because of this, so it'll be a good reference to
+       * verify the implementation when the kernel bits are in place.
+       */
+      pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
+
+      /* FIXME: See comment in GetPhysicalDeviceExternalFenceProperties
+       * for details on why we can't export to SYNC_FD.
+       */
+      if (pExternalSemaphoreInfo->handleType !=
+          VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT) {
+         pExternalSemaphoreProperties->externalSemaphoreFeatures |=
+            VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT;
+      }
+      break;
+   default:
+      pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
+      pExternalSemaphoreProperties->compatibleHandleTypes = 0;
+      pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
+      break;
+   }
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+v3dv_ImportSemaphoreFdKHR(
+   VkDevice _device,
+   const VkImportSemaphoreFdInfoKHR *pImportSemaphoreFdInfo)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_semaphore, sem, pImportSemaphoreFdInfo->semaphore);
+
+   assert(pImportSemaphoreFdInfo->sType ==
+          VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR);
+
+   int fd = pImportSemaphoreFdInfo->fd;
+   int render_fd = device->pdevice->render_fd;
+
+   bool is_temporary =
+      pImportSemaphoreFdInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT ||
+      (pImportSemaphoreFdInfo->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT);
+
+   uint32_t new_sync;
+   switch (pImportSemaphoreFdInfo->handleType) {
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT: {
+      /* "If handleType is VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT, the
+       *  special value -1 for fd is treated like a valid sync file descriptor
+       *  referring to an object that has already signaled. The import
+       *  operation will succeed and the VkSemaphore will have a temporarily
+       *  imported payload as if a valid file descriptor had been provided."
+       */
+      unsigned flags = fd == -1 ? DRM_SYNCOBJ_CREATE_SIGNALED : 0;
+      if (drmSyncobjCreate(render_fd, flags, &new_sync))
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      if (fd != -1) {
+         if (drmSyncobjImportSyncFile(render_fd, new_sync, fd)) {
+            drmSyncobjDestroy(render_fd, new_sync);
+            return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+         }
+      }
+      break;
+   }
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT: {
+      if (drmSyncobjFDToHandle(render_fd, fd, &new_sync))
+         return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+      break;
+   }
+   default:
+      return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+   }
+
+   destroy_syncobj(render_fd, &sem->temp_sync);
+   if (is_temporary) {
+      sem->temp_sync = new_sync;
+   } else {
+      destroy_syncobj(render_fd, &sem->sync);
+      sem->sync = new_sync;
+   }
+
+   /* From the Vulkan 1.0.53 spec:
+    *
+    *    "Importing a semaphore payload from a file descriptor transfers
+    *     ownership of the file descriptor from the application to the
+    *     Vulkan implementation. The application must not perform any
+    *     operations on the file descriptor after a successful import."
+    *
+    * If the import fails, we leave the file descriptor open.
+    */
+   if (fd != -1)
+      close(fd);
+
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+v3dv_GetSemaphoreFdKHR(VkDevice _device,
+                       const VkSemaphoreGetFdInfoKHR *pGetFdInfo,
+                       int *pFd)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_semaphore, sem, pGetFdInfo->semaphore);
+
+   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR);
+
+   *pFd = -1;
+   int render_fd = device->pdevice->render_fd;
+   switch (pGetFdInfo->handleType) {
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT: {
+      drmSyncobjExportSyncFile(render_fd, sem->sync, pFd);
+      if (*pFd == -1)
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      break;
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
+      drmSyncobjHandleToFD(render_fd, sem->sync, pFd);
+      if (*pFd == -1)
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      break;
+   }
+   default:
+      unreachable("Unsupported external semaphore handle type");
+   }
+
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroySemaphore(VkDevice _device,
                       VkSemaphore semaphore,
                       const VkAllocationCallbacks *pAllocator)
@@ -1148,7 +1316,8 @@ v3dv_DestroySemaphore(VkDevice _device,
    if (sem == NULL)
       return;
 
-   drmSyncobjDestroy(device->pdevice->render_fd, sem->sync);
+   destroy_syncobj(device->pdevice->render_fd, &sem->sync);
+   destroy_syncobj(device->pdevice->render_fd, &sem->temp_sync);
 
    vk_object_free(&device->vk, pAllocator, sem);
 }
@@ -1184,6 +1353,127 @@ v3dv_CreateFence(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+v3dv_GetPhysicalDeviceExternalFenceProperties(
+    VkPhysicalDevice physicalDevice,
+    const VkPhysicalDeviceExternalFenceInfo *pExternalFenceInfo,
+    VkExternalFenceProperties *pExternalFenceProperties)
+
+{
+   switch (pExternalFenceInfo->handleType) {
+   case VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT:
+   case VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT:
+      pExternalFenceProperties->exportFromImportedHandleTypes =
+         VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT |
+         VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
+      pExternalFenceProperties->compatibleHandleTypes =
+         VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT |
+         VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
+      pExternalFenceProperties->externalFenceFeatures =
+         VK_EXTERNAL_FENCE_FEATURE_IMPORTABLE_BIT;
+
+      /* FIXME: SYNC_FD exports the actual fence referenced by the syncobj, not
+       * the syncobj itself, and that fence is only created after we have
+       * submitted to the kernel and updated the syncobj for the fence to import
+       * the actual DRM fence created with the submission. Unfortunately, if the
+       * queue submission has a 'wait for events' we may hold any jobs after the
+       * wait in a user-space thread until the events are signaled, and in that
+       * case we don't update the out fence of the submit until the events are
+       * signaled and we can submit all the jobs involved with the vkQueueSubmit
+       * call. This means that if the applications submits with an out fence and
+       * a wait for events, trying to export the out fence to a SYNC_FD rigth
+       * after the submission and before the events are signaled will fail,
+       * because the actual DRM fence won't exist yet. This is not a problem
+       * with OPAQUE_FD because in this case we export the entire syncobj, not
+       * the underlying DRM fence. To fix this we need to rework our kernel
+       * interface to be more flexible and accept multiple in/out syncobjs so
+       * we can implement event waits as regular fence waits on the kernel side,
+       * until then, we can only reliably export OPAQUE_FD.
+       */
+      if (pExternalFenceInfo->handleType !=
+          VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT) {
+         pExternalFenceProperties->externalFenceFeatures |=
+            VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT;
+      }
+      break;
+   default:
+      pExternalFenceProperties->exportFromImportedHandleTypes = 0;
+      pExternalFenceProperties->compatibleHandleTypes = 0;
+      pExternalFenceProperties->externalFenceFeatures = 0;
+      break;
+   }
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+v3dv_ImportFenceFdKHR(VkDevice _device,
+                      const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_fence, fence, pImportFenceFdInfo->fence);
+
+   assert(pImportFenceFdInfo->sType ==
+          VK_STRUCTURE_TYPE_IMPORT_FENCE_FD_INFO_KHR);
+
+   int fd = pImportFenceFdInfo->fd;
+   int render_fd = device->pdevice->render_fd;
+
+   bool is_temporary =
+      pImportFenceFdInfo->handleType == VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT ||
+      (pImportFenceFdInfo->flags & VK_FENCE_IMPORT_TEMPORARY_BIT);
+
+   uint32_t new_sync;
+   switch (pImportFenceFdInfo->handleType) {
+   case VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT: {
+      /* "If handleType is VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT, the
+       *  special value -1 for fd is treated like a valid sync file descriptor
+       *  referring to an object that has already signaled. The import
+       *  operation will succeed and the VkFence will have a temporarily
+       *  imported payload as if a valid file descriptor had been provided."
+       */
+      unsigned flags = fd == -1 ? DRM_SYNCOBJ_CREATE_SIGNALED : 0;
+      if (drmSyncobjCreate(render_fd, flags, &new_sync))
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      if (fd != -1) {
+         if (drmSyncobjImportSyncFile(render_fd, new_sync, fd)) {
+            drmSyncobjDestroy(render_fd, new_sync);
+            return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+         }
+      }
+      break;
+   }
+   case VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT: {
+      if (drmSyncobjFDToHandle(render_fd, fd, &new_sync))
+         return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+      break;
+   }
+   default:
+      return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+   }
+
+   destroy_syncobj(render_fd, &fence->temp_sync);
+   if (is_temporary) {
+      fence->temp_sync = new_sync;
+   } else {
+      destroy_syncobj(render_fd, &fence->sync);
+      fence->sync = new_sync;
+   }
+
+   /* From the Vulkan 1.0.53 spec:
+    *
+    *    "Importing a fence payload from a file descriptor transfers
+    *     ownership of the file descriptor from the application to the
+    *     Vulkan implementation. The application must not perform any
+    *     operations on the file descriptor after a successful import."
+    *
+    * If the import fails, we leave the file descriptor open.
+    */
+   if (fd != -1)
+      close(fd);
+
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyFence(VkDevice _device,
                   VkFence _fence,
                   const VkAllocationCallbacks *pAllocator)
@@ -1194,7 +1484,8 @@ v3dv_DestroyFence(VkDevice _device,
    if (fence == NULL)
       return;
 
-   drmSyncobjDestroy(device->pdevice->render_fd, fence->sync);
+   destroy_syncobj(device->pdevice->render_fd, &fence->sync);
+   destroy_syncobj(device->pdevice->render_fd, &fence->temp_sync);
 
    vk_object_free(&device->vk, pAllocator, fence);
 }
@@ -1215,6 +1506,37 @@ v3dv_GetFenceStatus(VkDevice _device, VkFence _fence)
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
+v3dv_GetFenceFdKHR(VkDevice _device,
+                   const VkFenceGetFdInfoKHR *pGetFdInfo,
+                   int *pFd)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_fence, fence, pGetFdInfo->fence);
+
+   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR);
+
+   *pFd = -1;
+   int render_fd = device->pdevice->render_fd;
+   switch (pGetFdInfo->handleType) {
+   case VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT: {
+      drmSyncobjExportSyncFile(render_fd, fence->sync, pFd);
+      if (*pFd == -1)
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      break;
+   case VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT:
+      drmSyncobjHandleToFD(render_fd, fence->sync, pFd);
+      if (*pFd == -1)
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      break;
+   }
+   default:
+      unreachable("Unsupported external fence handle type");
+   }
+
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
@@ -1225,12 +1547,30 @@ v3dv_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
    if (!syncobjs)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   int render_fd = device->pdevice->render_fd;
+   uint32_t reset_count = 0;
    for (uint32_t i = 0; i < fenceCount; i++) {
       struct v3dv_fence *fence = v3dv_fence_from_handle(pFences[i]);
-      syncobjs[i] = fence->sync;
+      /* From the Vulkan spec, section 'Importing Fence Payloads':
+       *
+       *    "If the import is temporary, the fence will be restored to its
+       *     permanent state the next time that fence is passed to
+       *     vkResetFences.
+       *
+       *     Note: Restoring a fence to its prior permanent payload is a
+       *     distinct operation from resetting a fence payload."
+       *
+       * To restore the previous state, we just need to destroy the temporary.
+       */
+      if (fence->temp_sync)
+         destroy_syncobj(render_fd, &fence->temp_sync);
+      else
+         syncobjs[reset_count++] = fence->sync;
    }
 
-   int ret = drmSyncobjReset(device->pdevice->render_fd, syncobjs, fenceCount);
+   int ret = 0;
+   if (reset_count > 0)
+      ret = drmSyncobjReset(render_fd, syncobjs, reset_count);
 
    vk_free(&device->vk.alloc, syncobjs);
 
@@ -1258,7 +1598,7 @@ v3dv_WaitForFences(VkDevice _device,
 
    for (uint32_t i = 0; i < fenceCount; i++) {
       struct v3dv_fence *fence = v3dv_fence_from_handle(pFences[i]);
-      syncobjs[i] = fence->sync;
+      syncobjs[i] = fence->temp_sync ? fence->temp_sync : fence->sync;
    }
 
    unsigned flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT;

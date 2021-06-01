@@ -108,7 +108,9 @@ static const struct vk_instance_extension_table instance_extensions = {
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
    .KHR_display                         = true,
 #endif
+   .KHR_external_fence_capabilities     = true,
    .KHR_external_memory_capabilities    = true,
+   .KHR_external_semaphore_capabilities = true,
    .KHR_get_physical_device_properties2 = true,
 #ifdef V3DV_HAS_SURFACE
    .KHR_get_surface_capabilities2       = true,
@@ -134,8 +136,12 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_bind_memory2                    = true,
       .KHR_dedicated_allocation            = true,
       .KHR_device_group                    = true,
+      .KHR_external_fence                  = true,
+      .KHR_external_fence_fd               = true,
       .KHR_external_memory                 = true,
       .KHR_external_memory_fd              = true,
+      .KHR_external_semaphore              = true,
+      .KHR_external_semaphore_fd           = true,
       .KHR_get_memory_requirements2        = true,
       .KHR_maintenance1                    = true,
       .KHR_maintenance2                    = true,
