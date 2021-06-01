@@ -213,7 +213,7 @@ dump_gpumem(struct emu *emu, uintptr_t addr)
 {
    uint32_t val = emu_mem_read_dword(emu, addr);
 
-   printf("              MEM:  0x%016"PRIx64": ", addr);
+   printf("              MEM:  0x%016"PRIxPTR": ", addr);
    if (addr == emu->gpumem_written) {
       printdelta("0x%08x\n", val);
    } else {
