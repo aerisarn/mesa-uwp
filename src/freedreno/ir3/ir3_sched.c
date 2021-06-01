@@ -486,14 +486,15 @@ nearest_use(struct ir3_instruction *instr)
 	return nearest;
 }
 
-static int
-use_count(struct ir3_instruction *instr)
+static bool
+is_only_nonscheduled_use(struct ir3_instruction *instr, struct ir3_instruction *use)
 {
-	unsigned cnt = 0;
-	foreach_ssa_use (use, instr)
-		if (!is_scheduled(use))
-			cnt++;
-	return cnt;
+	foreach_ssa_use (other_use, instr) {
+		if (other_use != use && !is_scheduled(other_use))
+			return false;
+	}
+
+	return true;
 }
 
 /* find net change to live values if instruction were scheduled: */
@@ -517,7 +518,7 @@ live_effect(struct ir3_instruction *instr)
 		if (instr->block != src->block)
 			continue;
 
-		if (use_count(src) == 1)
+		if (is_only_nonscheduled_use(src, instr))
 			freed_live += dest_regs(src);
 	}
 
