@@ -29,29 +29,21 @@ from xml.etree import ElementTree
 from zink_extensions import Extension,Layer,ExtensionRegistry,Version
 import sys
 
-# constructor: Extension(name, core_since=None, functions=[])
+# constructor: Extension(name, conditions=[], nonstandard=False)
 # The attributes:
-#  - core_since: the Vulkan version where this extension is promoted to core.
-#                When instance_info->loader_version is greater than or equal to this
-#                instance_info.have_{name} is set to true unconditionally. This
-#                is done because loading extensions that are promoted to core is
-#                considered to be an error.
-#
-#  - functions: functions which are added by the extension. The function names
-#               should not include the "vk" prefix and the vendor suffix - these
-#               will be added by the codegen accordingly.
+#  - conditions: If the extension is provided by the Vulkan implementation, then
+#                these are the extra conditions needed to enable the extension.
+#  - nonstandard: Disables validation (cross-checking with vk.xml) if True.
 EXTENSIONS = [
     Extension("VK_EXT_debug_utils"),
-    Extension("VK_KHR_get_physical_device_properties2",
-        functions=["GetPhysicalDeviceFeatures2", "GetPhysicalDeviceProperties2",
-                   "GetPhysicalDeviceFormatProperties2", "GetPhysicalDeviceImageFormatProperties2",
-                   "GetPhysicalDeviceMemoryProperties2"]),
+    Extension("VK_KHR_get_physical_device_properties2"),
     Extension("VK_MVK_moltenvk",
         nonstandard=True),
     Extension("VK_KHR_surface"),
 ]
 
 # constructor: Layer(name, conditions=[])
+# - conditions: See documentation of EXTENSIONS.
 LAYERS = [
     # if we have debug_util, allow a validation layer to be added.
     Layer("VK_LAYER_KHRONOS_validation",
@@ -297,12 +289,6 @@ if __name__ == "__main__":
             error_count += 1
             print("The extension {} is {} extension - expected an instance extension.".format(ext.name, entry.ext_type))
             continue
-
-        if entry.commands and ext.instance_funcs:
-            for func in map(lambda f: "vk" + f + ext.vendor(), ext.instance_funcs):
-                if func not in entry.commands:
-                    error_count += 1
-                    print("The instance function {} is not added by the extension {}.".format(func, ext.name))
 
         if entry.promoted_in:
             ext.core_since = Version((*entry.promoted_in, 0))

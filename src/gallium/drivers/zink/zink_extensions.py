@@ -64,19 +64,16 @@ class Extension:
     is_required    : bool      = False
     is_nonstandard : bool      = False
     enable_conds   : List[str] = None
+    core_since     : Version   = None
 
     # these are specific to zink_device_info.py:
     has_properties : bool      = False
     has_features   : bool      = False
     guard          : bool      = False
 
-    # these are specific to zink_instance.py:
-    core_since     : Version   = None
-    instance_funcs : List[str] = None
-
     def __init__(self, name, alias="", required=False, nonstandard=False,
                  properties=False, features=False, conditions=None, guard=False,
-                 core_since=None, functions=None):
+                 core_since=None):
         self.name = name
         self.alias = alias
         self.is_required = required
@@ -86,7 +83,6 @@ class Extension:
         self.enable_conds = conditions
         self.guard = guard
         self.core_since = core_since
-        self.instance_funcs = functions
 
         if alias == "" and (properties == True or features == True):
             raise RuntimeError("alias must be available when properties and/or features are used")
@@ -190,7 +186,6 @@ class ExtensionRegistry:
             entry.ext_type = ext.attrib["type"]
             entry.promoted_in = self.parse_promotedto(ext.get("promotedto"))
 
-            entry.commands = []
             entry.device_commands = []
             entry.pdevice_commands = []
             entry.instance_commands = []
@@ -198,8 +193,6 @@ class ExtensionRegistry:
             for cmd in ext.findall("require/command"):
                 cmd_name = cmd.get("name")
                 if cmd_name:
-                    entry.commands.append(cmd_name)
-
                     if commands_type[cmd_name] in ("VkDevice", "VkCommandBuffer", "VkQueue"):
                         entry.device_commands.append(cmd_name)
                     elif commands_type[cmd_name] in ("VkPhysicalDevice"):
