@@ -386,6 +386,9 @@ agx_create_sampler_view(struct pipe_context *pctx,
 
    util_format_compose_swizzles(desc->swizzle, view_swizzle, out_swizzle);
 
+   if (state->u.tex.first_level != 0)
+      unreachable("todo: nonzero first level");
+
    /* Pack the descriptor into GPU memory */
    agx_pack(so->desc->ptr.cpu, TEXTURE, cfg) {
       cfg.layout = agx_translate_layout(rsrc->modifier);
@@ -396,6 +399,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.swizzle_a = agx_channel_from_pipe(out_swizzle[3]);
       cfg.width = texture->width0;
       cfg.height = texture->height0;
+      cfg.levels = state->u.tex.last_level + 1;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
       cfg.unk_1 = rsrc->bo->ptr.gpu;
       cfg.unk_2 = false;
