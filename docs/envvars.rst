@@ -419,7 +419,7 @@ Gallium environment variables
 ``ST_DEBUG``
    controls debug output from the Mesa/Gallium state tracker. Setting to
    ``tgsi``, for example, will print all the TGSI shaders. See
-   ``src/mesa/state_tracker/st_debug.c`` for other options.
+   :file:`src/mesa/state_tracker/st_debug.c` for other options.
 
 Clover environment variables
 ----------------------------
