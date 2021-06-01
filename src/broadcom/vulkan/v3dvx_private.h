@@ -137,6 +137,11 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(const struct v3dv_framebuffer *frame
                                             const struct v3dv_subpass *subpass,
                                             uint8_t *max_bpp, bool *msaa);
 
+#ifdef DEBUG
+void
+v3dX(device_check_prepacked_sizes)(void);
+#endif
+
 /* Used at v3dv_format */
 const struct v3dv_format *
 v3dX(get_format)(VkFormat);

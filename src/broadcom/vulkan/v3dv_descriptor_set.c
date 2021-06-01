@@ -803,7 +803,7 @@ descriptor_set_create(struct v3dv_device *device,
 
          memcpy(desc_map,
                 samplers[i].sampler_state,
-                cl_packet_length(SAMPLER_STATE));
+                sizeof(samplers[i].sampler_state));
       }
    }
 

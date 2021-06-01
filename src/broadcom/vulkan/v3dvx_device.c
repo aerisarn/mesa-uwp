@@ -235,3 +235,28 @@ v3dX(get_hw_clear_color)(const VkClearColorValue *color,
       break;
    }
 }
+
+#ifdef DEBUG
+void
+v3dX(device_check_prepacked_sizes)(void)
+{
+   STATIC_ASSERT(V3DV_SAMPLER_STATE_LENGTH >=
+                 cl_packet_length(SAMPLER_STATE));
+   STATIC_ASSERT(V3DV_TEXTURE_SHADER_STATE_LENGTH >=
+                 cl_packet_length(TEXTURE_SHADER_STATE));
+   STATIC_ASSERT(V3DV_SAMPLER_STATE_LENGTH >=
+                 cl_packet_length(SAMPLER_STATE));
+   STATIC_ASSERT(V3DV_BLEND_CFG_LENGTH>=
+                 cl_packet_length(BLEND_CFG));
+   STATIC_ASSERT(V3DV_CFG_BITS_LENGTH>=
+                 cl_packet_length(CFG_BITS));
+   STATIC_ASSERT(V3DV_GL_SHADER_STATE_RECORD_LENGTH >=
+                 cl_packet_length(GL_SHADER_STATE_RECORD));
+   STATIC_ASSERT(V3DV_VCM_CACHE_SIZE_LENGTH>=
+                 cl_packet_length(VCM_CACHE_SIZE));
+   STATIC_ASSERT(V3DV_GL_SHADER_STATE_ATTRIBUTE_RECORD_LENGTH >=
+                 cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD));
+   STATIC_ASSERT(V3DV_STENCIL_CFG_LENGTH >=
+                 cl_packet_length(STENCIL_CFG));
+}
+#endif
