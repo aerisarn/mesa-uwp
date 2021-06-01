@@ -1728,7 +1728,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    struct si_resource *buf;
    unsigned offset = 0;
    char *map;
-   bool use_staging_texture = false;
+   bool use_staging_texture = tex->buffer.flags & RADEON_FLAG_ENCRYPTED;
 
    assert(!(texture->flags & SI_RESOURCE_FLAG_FORCE_LINEAR));
    assert(box->width && box->height && box->depth);
@@ -1736,7 +1736,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    if (tex->buffer.b.b.flags & SI_RESOURCE_AUX_PLANE)
       return NULL;
 
-   if (tex->buffer.flags & RADEON_FLAG_ENCRYPTED)
+   if ((tex->buffer.flags & RADEON_FLAG_ENCRYPTED) && usage & PIPE_MAP_READ)
       return NULL;
 
    if (tex->is_depth) {
