@@ -135,6 +135,7 @@ html_extra_path = [
 ]
 
 html_redirects = [
+  ('drivers/vmware-guest', 'drivers/svga3d.html'),
   ('gallium/drivers/freedreno', 'drivers/freedreno.html'),
   ('gallium/drivers/freedreno/ir3-notes', 'drivers/freedreno/ir3-notes.html'),
   ('gallium/drivers/llvmpipe', 'drivers/llvmpipe.html'),

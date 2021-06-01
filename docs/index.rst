@@ -89,10 +89,10 @@ Linux, FreeBSD, and other operating systems.
    drivers/llvmpipe
    drivers/openswr
    drivers/panfrost
+   drivers/svga3d
    drivers/v3d
    drivers/vc4
    drivers/venus
-   drivers/vmware-guest
    drivers/zink
 
 .. toctree::

@@ -1,5 +1,5 @@
-VMware SVGA3D Guest Driver
-==========================
+VMware SVGA3D
+=============
 
 This page describes how to build, install and use the
 `VMware <https://www.vmware.com/>`__ guest GL driver (aka the SVGA or
