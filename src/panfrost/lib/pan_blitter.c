@@ -1431,10 +1431,10 @@ pan_blit_ctx_init(struct panfrost_device *dev,
 
         unsigned dst_w = u_minify(info->dst.planes[0].image->layout.width, info->dst.level);
         unsigned dst_h = u_minify(info->dst.planes[0].image->layout.height, info->dst.level);
-        unsigned minx = MAX2(info->dst.start.x, 0);
-        unsigned miny = MAX2(info->dst.start.y, 0);
-        unsigned maxx = MIN2(info->dst.end.x, dst_w - 1);
-        unsigned maxy = MIN2(info->dst.end.y, dst_h - 1);
+        unsigned maxx = MIN2(MAX2(info->dst.start.x, info->dst.end.x), dst_w - 1);
+        unsigned maxy = MIN2(MAX2(info->dst.start.y, info->dst.end.y), dst_h - 1);
+        unsigned minx = MAX2(MIN3(info->dst.start.x, info->dst.end.x, maxx), 0);
+        unsigned miny = MAX2(MIN3(info->dst.start.y, info->dst.end.y, maxy), 0);
 
         if (info->scissor.enable) {
                 minx = MAX2(minx, info->scissor.minx);
