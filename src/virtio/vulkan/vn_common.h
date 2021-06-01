@@ -132,9 +132,6 @@ vn_log_result(struct vn_instance *instance,
               VkResult result,
               const char *where);
 
-const VkAllocationCallbacks *
-vn_default_allocator(void);
-
 void
 vn_relax(uint32_t *iter);
 
