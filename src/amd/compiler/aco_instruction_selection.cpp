@@ -3668,7 +3668,6 @@ Temp lds_load_callback(Builder& bld, const LoadEmitInfo &info,
    bool read2 = false;
    unsigned size = 0;
    aco_opcode op;
-   //TODO: use ds_read_u8_d16_hi/ds_read_u16_d16_hi if beneficial
    if (bytes_needed >= 16 && align % 16 == 0 && large_ds_read) {
       size = 16;
       op = aco_opcode::ds_read_b128;
@@ -3691,10 +3690,10 @@ Temp lds_load_callback(Builder& bld, const LoadEmitInfo &info,
       op = aco_opcode::ds_read_b32;
    } else if (bytes_needed >= 2 && align % 2 == 0) {
       size = 2;
-      op = aco_opcode::ds_read_u16;
+      op = bld.program->chip_class >= GFX9 ? aco_opcode::ds_read_u16_d16 : aco_opcode::ds_read_u16;
    } else {
       size = 1;
-      op = aco_opcode::ds_read_u8;
+      op = bld.program->chip_class >= GFX9 ? aco_opcode::ds_read_u8_d16 : aco_opcode::ds_read_u8;
    }
 
    unsigned const_offset_unit = read2 ? size / 2u : 1u;
