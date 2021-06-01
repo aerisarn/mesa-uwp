@@ -1368,7 +1368,7 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             (UINT32_MAX - sizeof(struct v3dv_descriptor_set)) /
             sizeof(struct v3dv_descriptor);
          uint32_t max_gpu_descriptors =
-            (UINT32_MAX / v3dv_max_descriptor_bo_size());
+            (UINT32_MAX / v3dv_X(pdevice, max_descriptor_bo_size)());
          props->maxPerSetDescriptors =
             MIN2(max_host_descriptors, max_gpu_descriptors);
 

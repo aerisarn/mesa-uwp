@@ -1173,33 +1173,6 @@ struct v3dv_descriptor {
    };
 };
 
-/* The following v3dv_xxx_descriptor structs represent descriptor info that we
- * upload to a bo, specifically a subregion of the descriptor pool bo.
- *
- * The general rule that we apply right now to decide which info goes to such
- * bo is that we upload those that are referenced by an address when emitting
- * a packet, so needed to be uploaded to an bo in any case.
- *
- * Note that these structs are mostly helpers that improve the semantics when
- * doing all that, but we could do as other mesa vulkan drivers and just
- * upload the info we know it is expected based on the context.
- *
- * Also note that the sizes are aligned, as there is an alignment requirement
- * for addresses.
- */
-struct v3dv_sampled_image_descriptor {
-   uint8_t texture_state[cl_aligned_packet_length(TEXTURE_SHADER_STATE, 32)];
-};
-
-struct v3dv_sampler_descriptor {
-   uint8_t sampler_state[cl_aligned_packet_length(SAMPLER_STATE, 32)];
-};
-
-struct v3dv_combined_image_sampler_descriptor {
-   uint8_t texture_state[cl_aligned_packet_length(TEXTURE_SHADER_STATE, 32)];
-   uint8_t sampler_state[cl_aligned_packet_length(SAMPLER_STATE, 32)];
-};
-
 struct v3dv_query {
    bool maybe_available;
    union {
@@ -1501,8 +1474,6 @@ struct v3dv_descriptor_set {
     */
    struct v3dv_descriptor descriptors[0];
 };
-
-uint32_t v3dv_max_descriptor_bo_size(void);
 
 struct v3dv_descriptor_set_binding_layout {
    VkDescriptorType type;
@@ -1931,13 +1902,15 @@ v3dv_descriptor_map_get_sampler(struct v3dv_descriptor_state *descriptor_state,
                                 uint32_t index);
 
 struct v3dv_cl_reloc
-v3dv_descriptor_map_get_sampler_state(struct v3dv_descriptor_state *descriptor_state,
+v3dv_descriptor_map_get_sampler_state(struct v3dv_device *device,
+                                      struct v3dv_descriptor_state *descriptor_state,
                                       struct v3dv_descriptor_map *map,
                                       struct v3dv_pipeline_layout *pipeline_layout,
                                       uint32_t index);
 
 struct v3dv_cl_reloc
-v3dv_descriptor_map_get_texture_shader_state(struct v3dv_descriptor_state *descriptor_state,
+v3dv_descriptor_map_get_texture_shader_state(struct v3dv_device *device,
+                                             struct v3dv_descriptor_state *descriptor_state,
                                              struct v3dv_descriptor_map *map,
                                              struct v3dv_pipeline_layout *pipeline_layout,
                                              uint32_t index);

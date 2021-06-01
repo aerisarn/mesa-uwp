@@ -55,6 +55,7 @@ libv3dv_files = files(
 
 files_per_version = files(
   'v3dvx_cmd_buffer.c',
+  'v3dvx_descriptor_set.c',
   'v3dvx_device.c',
   'v3dvx_formats.c',
   'v3dvx_image.c',

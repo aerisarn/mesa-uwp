@@ -146,7 +146,7 @@ write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
    tex_bos->tex[texture_idx] = texture_bo;
 
    struct v3dv_cl_reloc state_reloc =
-      v3dv_descriptor_map_get_texture_shader_state(descriptor_state,
+      v3dv_descriptor_map_get_texture_shader_state(cmd_buffer->device, descriptor_state,
                                                    &pipeline->shared_data->maps[stage]->texture_map,
                                                    pipeline->layout,
                                                    texture_idx);
@@ -182,7 +182,7 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
           sampler_idx != V3DV_NO_SAMPLER_32BIT_IDX);
 
    struct v3dv_cl_reloc sampler_state_reloc =
-      v3dv_descriptor_map_get_sampler_state(descriptor_state,
+      v3dv_descriptor_map_get_sampler_state(cmd_buffer->device, descriptor_state,
                                             &pipeline->shared_data->maps[stage]->sampler_map,
                                             pipeline->layout, sampler_idx);
 
