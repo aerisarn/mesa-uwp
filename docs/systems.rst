@@ -17,8 +17,8 @@ Hardware drivers include:
    `RadeonFeature <https://www.x.org/wiki/RadeonFeature>`__
 -  NVIDIA GPUs (Riva TNT and later). See `Nouveau
    Wiki <https://nouveau.freedesktop.org>`__
--  Qualcomm Adreno A2xx-A6xx. See `Freedreno
-   Wiki <https://github.com/freedreno/freedreno/wiki>`__
+-  Qualcomm Adreno A2xx-A6xx. See :doc:`Freedreno
+   <drivers/freedreno>`
 -  Broadcom VideoCore 4, 5. See `This Week in
    V3D <https://anholt.github.io/twivc4/>`__
 -  ARM Mali Utgard. See :doc:`Lima <drivers/lima>`
