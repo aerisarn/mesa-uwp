@@ -410,9 +410,10 @@ Gallium environment variables
    if set, do extra sanity checking on TGSI shaders and print any errors
    to stderr.
 :envvar:`DRAW_FSE`
-   ???
+   Enable fetch-shade-emit middle-end even though its not correct (e.g.
+   for softpipe)
 :envvar:`DRAW_NO_FSE`
-   ???
+   Disable fetch-shade-emit middle-end even when it is correct
 :envvar:`DRAW_USE_LLVM`
    if set to zero, the draw module will not use LLVM to execute shaders,
    vertex fetch, etc.
