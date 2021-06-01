@@ -191,8 +191,8 @@ NIR passes environment variables
 --------------------------------
 
 The following are only applicable for drivers that uses NIR, as they
-modify the behavior for the common NIR_PASS and NIR_PASS_V macros, that
-wrap calls to NIR lowering/optimizations.
+modify the behavior for the common ``NIR_PASS`` and ``NIR_PASS_V`` macros,
+that wrap calls to NIR lowering/optimizations.
 
 ``NIR_PRINT``
    If defined, the resulting NIR shader will be printed out at each
