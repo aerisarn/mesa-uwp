@@ -37,7 +37,6 @@ Software drivers include:
    for visualization workloads
 -  `virgl <https://virgil3d.github.io/>`__ - research project for
    accelerated graphics for qemu guests
--  swrast - the legacy/original Mesa software rasterizer
 
 Additional driver information:
 
@@ -65,4 +64,5 @@ the Git repo. The list includes:
 -  MS-DOS
 -  S3 Savage
 -  Silicon Integrated Systems
+-  swrast
 -  VIA Unichrome
