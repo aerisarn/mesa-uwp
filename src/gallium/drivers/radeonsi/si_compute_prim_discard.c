@@ -129,20 +129,14 @@
 
 /* Grouping compute dispatches for small draw calls: How many primitives from multiple
  * draw calls to process by compute before signaling the gfx IB. This reduces the number
- * of EOP events + REWIND packets, because they decrease performance. */
-#define PRIMS_PER_BATCH (512 * 1024)
-/* Draw call splitting at the packet level. This allows signaling the gfx IB
- * for big draw calls sooner, but doesn't allow context flushes between packets. */
-#define SPLIT_PRIMS_PACKET_LEVEL_VALUE PRIMS_PER_BATCH
-/* If there is not enough ring buffer space for the current IB, split draw calls into
- * this number of primitives, so that we can flush the context and get free ring space. */
-#define SPLIT_PRIMS_DRAW_LEVEL PRIMS_PER_BATCH
+ * of EOP events + REWIND packets, because they decrease performance.
+ * This also determines the granularity of draw-level and packet-level splitting.
+ */
+#define PRIMS_PER_IB  (1024 * 1024)  /* size per gfx IB */
+#define PRIMS_PER_BATCH (128 * 1024) /* size between REWIND packets */
 
 /* Derived values. */
 #define WAVES_PER_TG DIV_ROUND_UP(THREADGROUP_SIZE, 64)
-#define SPLIT_PRIMS_PACKET_LEVEL                                                                   \
-   (false /* TODO */ ? SPLIT_PRIMS_PACKET_LEVEL_VALUE                                  \
-                                 : UINT_MAX & ~(THREADGROUP_SIZE - 1))
 
 #define REWIND_SIGNAL_BIT 0x80000000
 
@@ -159,31 +153,18 @@ void si_initialize_prim_discard_tunables(struct si_screen *sscreen, bool is_aux_
       return;
 
    /* TODO: enable this */
-   bool enable_on_pro_graphics_by_default = false;
+   bool enable_by_default = false;
 
    if (sscreen->debug_flags & DBG(ALWAYS_PD) || sscreen->debug_flags & DBG(PD) ||
-       (enable_on_pro_graphics_by_default && sscreen->info.is_pro_graphics &&
-        (sscreen->info.family == CHIP_BONAIRE || sscreen->info.family == CHIP_HAWAII ||
-         sscreen->info.family == CHIP_TONGA || sscreen->info.family == CHIP_FIJI ||
-         sscreen->info.family == CHIP_POLARIS10 || sscreen->info.family == CHIP_POLARIS11 ||
-         sscreen->info.family == CHIP_VEGA10 || sscreen->info.family == CHIP_VEGA20))) {
+       (enable_by_default && sscreen->allow_draw_out_of_order &&
+        sscreen->info.num_se >= 2)) {
       *prim_discard_vertex_count_threshold = 6000 * 3; /* 6K triangles */
 
       if (sscreen->debug_flags & DBG(ALWAYS_PD))
          *prim_discard_vertex_count_threshold = 0; /* always enable */
 
-      const uint32_t MB = 1024 * 1024;
-      const uint64_t GB = 1024 * 1024 * 1024;
-
-      /* The total size is double this per context.
-       * Greater numbers allow bigger gfx IBs.
-       */
-      if (sscreen->info.vram_size <= 2 * GB)
-         *index_ring_size_per_ib = 64 * MB;
-      else if (sscreen->info.vram_size <= 4 * GB)
-         *index_ring_size_per_ib = 128 * MB;
-      else
-         *index_ring_size_per_ib = 256 * MB;
+      /* The total size is double this per context. Greater numbers allow bigger gfx IBs. */
+      *index_ring_size_per_ib = PRIMS_PER_IB * 12; /* 3 32-bit indices per primitive. */
    }
 }
 
@@ -602,7 +583,6 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
    unsigned num_prims = num_prims_per_instance * instance_count;
    unsigned out_indexbuf_size = num_prims * 12;
    bool ring_full = !si_check_ring_space(sctx, out_indexbuf_size);
-   const unsigned split_prims_draw_level = SPLIT_PRIMS_DRAW_LEVEL;
 
    /* Split draws at the draw call level if the ring is full. This makes
     * better use of the ring space.
@@ -614,9 +594,9 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
       unsigned vert_count_per_subdraw = 0;
 
       if (prim == PIPE_PRIM_TRIANGLES)
-         vert_count_per_subdraw = split_prims_draw_level * 3;
+         vert_count_per_subdraw = PRIMS_PER_BATCH * 3;
       else if (prim == PIPE_PRIM_TRIANGLE_STRIP)
-         vert_count_per_subdraw = split_prims_draw_level;
+         vert_count_per_subdraw = PRIMS_PER_BATCH;
       else
          unreachable("shouldn't get here");
 
@@ -668,7 +648,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
       } else if (prim == PIPE_PRIM_TRIANGLE_STRIP) {
          /* No primitive pair can be split, because strips reverse orientation
           * for odd primitives. */
-         STATIC_ASSERT(split_prims_draw_level % 2 == 0);
+         STATIC_ASSERT(PRIMS_PER_BATCH % 2 == 0);
 
          for (unsigned start = 0; start < count - 2; start += vert_count_per_subdraw) {
             split_draw_range.start = base_start + start;
@@ -688,7 +668,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
       return SI_PRIM_DISCARD_DISABLED;
    }
 
-   unsigned num_subdraws = DIV_ROUND_UP(num_prims, SPLIT_PRIMS_PACKET_LEVEL) * num_draws;
+   unsigned num_subdraws = DIV_ROUND_UP(num_prims, PRIMS_PER_BATCH) * num_draws;
    unsigned need_compute_dw = 11 /* shader */ + 34 /* first draw */ +
                               24 * (num_subdraws - 1) + /* subdraws */
                               30;                       /* leave some space at the end */
@@ -975,14 +955,14 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
       sctx->compute_ib_last_shader = shader;
    }
 
-   STATIC_ASSERT(SPLIT_PRIMS_PACKET_LEVEL % THREADGROUP_SIZE == 0);
+   STATIC_ASSERT(PRIMS_PER_BATCH % THREADGROUP_SIZE == 0);
 
    /* Big draw calls are split into smaller dispatches and draw packets. */
-   for (unsigned start_prim = 0; start_prim < num_prims; start_prim += SPLIT_PRIMS_PACKET_LEVEL) {
+   for (unsigned start_prim = 0; start_prim < num_prims; start_prim = num_prims /* implement splitting */) {
       unsigned num_subdraw_prims;
 
-      if (start_prim + SPLIT_PRIMS_PACKET_LEVEL < num_prims)
-         num_subdraw_prims = SPLIT_PRIMS_PACKET_LEVEL;
+      if (start_prim + PRIMS_PER_BATCH < num_prims)
+         num_subdraw_prims = PRIMS_PER_BATCH;
       else
          num_subdraw_prims = num_prims - start_prim;
 
