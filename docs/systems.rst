@@ -27,16 +27,19 @@ Hardware drivers include:
    Wiki <https://github.com/laanwj/etna_viv/wiki>`__
 -  NVIDIA Tegra (K1 and later).
 
+Layered driver include:
+
+-  :doc:`SVGA3D <drivers/svga3d>` - driver for VMware virtual GPU
+-  `VirGL <https://virgil3d.github.io/>`__ - research project for
+   accelerated graphics for qemu guests
+
 Software drivers include:
 
 -  :doc:`LLVMpipe <drivers/llvmpipe>` - uses LLVM for x86 JIT code generation
    and is multi-threaded
 -  Softpipe - a reference Gallium driver
--  :doc:`SVGA3D <drivers/svga3d>` - driver for VMware virtual GPU
 -  :doc:`OpenSWR <drivers/openswr>` - x86-optimized software renderer
    for visualization workloads
--  `VirGL <https://virgil3d.github.io/>`__ - research project for
-   accelerated graphics for qemu guests
 
 Additional driver information:
 
