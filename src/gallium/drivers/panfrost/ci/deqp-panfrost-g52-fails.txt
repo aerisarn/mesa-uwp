@@ -12,16 +12,8 @@ dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffe
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.10,Fail
 dEQP-GLES31.functional.draw_indirect.draw_elements_indirect.line_strip.instanced_attributes,Fail
 dEQP-GLES31.functional.draw_indirect.random.31,Fail
-dEQP-GLES31.functional.layout_binding.image.image2d.vertex_binding_array,Fail
 dEQP-GLES31.functional.layout_binding.image.image2d.vertex_binding_max_array,Fail
-dEQP-GLES31.functional.layout_binding.image.image2d.vertex_binding_max,Fail
-dEQP-GLES31.functional.layout_binding.image.image2d.vertex_binding_multiple,Fail
-dEQP-GLES31.functional.layout_binding.image.image2d.vertex_binding_single,Fail
-dEQP-GLES31.functional.layout_binding.image.image3d.vertex_binding_array,Fail
 dEQP-GLES31.functional.layout_binding.image.image3d.vertex_binding_max_array,Fail
-dEQP-GLES31.functional.layout_binding.image.image3d.vertex_binding_max,Fail
-dEQP-GLES31.functional.layout_binding.image.image3d.vertex_binding_multiple,Fail
-dEQP-GLES31.functional.layout_binding.image.image3d.vertex_binding_single,Fail
 dEQP-GLES31.functional.separate_shader.random.23,Fail
 dEQP-GLES31.functional.separate_shader.random.35,Fail
 dEQP-GLES31.functional.separate_shader.random.49,Fail

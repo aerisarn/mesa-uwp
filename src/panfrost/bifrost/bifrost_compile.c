@@ -809,6 +809,25 @@ bi_emit_image_coord(bi_builder *b, bi_index coord)
                         bi_half(bi_word(coord, 1), false));
 }
 
+static bi_index
+bi_emit_image_index(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        nir_src src = instr->src[0];
+        bi_index index = bi_src_index(&src);
+        bi_context *ctx = b->shader;
+
+        /* Images come after vertex attributes, so handle an explicit offset */
+        unsigned offset = (ctx->stage == MESA_SHADER_VERTEX) ?
+                util_bitcount64(ctx->nir->info.inputs_read) : 0;
+
+        if (offset == 0)
+                return index;
+        else if (nir_src_is_const(src))
+                return bi_imm_u32(nir_src_as_uint(src) + offset);
+        else
+                return bi_iadd_u32(b, index, bi_imm_u32(offset), false);
+}
+
 static void
 bi_emit_image_load(bi_builder *b, nir_intrinsic_instr *instr)
 {
@@ -822,7 +841,7 @@ bi_emit_image_load(bi_builder *b, nir_intrinsic_instr *instr)
         bi_ld_attr_tex_to(b, bi_dest_index(&instr->dest),
                           bi_emit_image_coord(b, coords),
                           bi_emit_image_coord(b, bi_word(coords, 2)),
-                          bi_src_index(&instr->src[0]),
+                          bi_emit_image_index(b, instr),
                           bi_reg_fmt_for_nir(nir_intrinsic_dest_type(instr)),
                           instr->num_components - 1);
 }
@@ -845,7 +864,7 @@ bi_emit_lea_image(bi_builder *b, nir_intrinsic_instr *instr)
         bi_index zw = bi_emit_image_coord(b, bi_word(coords, 2));
 
         bi_instr *I = bi_lea_attr_tex_to(b, bi_temp(b->shader), xy, zw,
-                        bi_src_index(&instr->src[0]), type);
+                        bi_emit_image_index(b, instr), type);
 
         /* LEA_ATTR_TEX defaults to the secondary attribute table, but our ABI
          * has all images in the primary attribute table */
