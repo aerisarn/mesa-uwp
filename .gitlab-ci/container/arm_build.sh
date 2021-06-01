@@ -50,7 +50,6 @@ apt-get -y install \
 	python3-requests \
 	python3-setuptools \
 	u-boot-tools \
-	unzip \
 	wget \
 	xz-utils \
 	zlib1g-dev

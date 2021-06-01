@@ -14,7 +14,6 @@ sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 STABLE_EPHEMERAL=" \
         python3-pip \
         python3-setuptools \
-        unzip \
         "
 
 apt-get update

@@ -15,7 +15,6 @@ STABLE_EPHEMERAL=" \
       libgbm-dev \
       libtool \
       python3-pip \
-      unzip \
       "
 
 # We need multiarch for Wine

@@ -21,7 +21,6 @@ apt-get install -y --no-remove \
         python3-serial \
         rsync \
         snmp \
-        unzip \
         wget
 
 # setup nginx

@@ -36,7 +36,6 @@ STABLE_EPHEMERAL=" \
       patch \
       pkg-config \
       python3-distutils \
-      unzip \
       wget \
       xz-utils \
       "
