@@ -737,18 +737,15 @@ tu_gather_xfb_info(nir_shader *nir, struct ir3_stream_output_info *info)
    if (!xfb)
       return;
 
-   /* creating a map from VARYING_SLOT_* enums to consecutive index */
-   uint8_t num_outputs = 0;
-   uint64_t outputs_written = 0;
-   for (int i = 0; i < xfb->output_count; i++)
-      outputs_written |= BITFIELD64_BIT(xfb->outputs[i].location);
-
    uint8_t output_map[VARYING_SLOT_TESS_MAX];
    memset(output_map, 0, sizeof(output_map));
 
-   for (unsigned attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if (outputs_written & BITFIELD64_BIT(attr))
-         output_map[attr] = num_outputs++;
+   nir_foreach_shader_out_variable(var, nir) {
+      unsigned slots =
+         var->data.compact ? DIV_ROUND_UP(glsl_get_length(var->type), 4)
+                           : glsl_count_attribute_slots(var->type, false);
+      for (unsigned i = 0; i < slots; i++)
+         output_map[var->data.location + i] = var->data.driver_location + i;
    }
 
    assert(xfb->output_count < IR3_MAX_SO_OUTPUTS);
@@ -789,17 +786,6 @@ tu_shader_create(struct tu_device *dev,
       8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!shader)
       return NULL;
-
-   /* Gather information for transform feedback.
-    * This should be called after nir_split_per_member_structs.
-    * Also needs to be called after nir_remove_dead_variables with varyings,
-    * so that we could align stream outputs correctly.
-    */
-   struct ir3_stream_output_info so_info = {};
-   if (nir->info.stage == MESA_SHADER_VERTEX ||
-         nir->info.stage == MESA_SHADER_TESS_EVAL ||
-         nir->info.stage == MESA_SHADER_GEOMETRY)
-      tu_gather_xfb_info(nir, &so_info);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS_V(nir, nir_lower_input_attachments,
@@ -844,6 +830,18 @@ tu_shader_create(struct tu_device *dev,
 
    nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, nir->info.stage);
    nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs, nir->info.stage);
+
+  /* Gather information for transform feedback. This should be called after:
+    * - nir_split_per_member_structs.
+    * - nir_remove_dead_variables with varyings, so that we could align
+    *   stream outputs correctly.
+    * - nir_assign_io_var_locations - to have valid driver_location
+    */
+   struct ir3_stream_output_info so_info = {};
+   if (nir->info.stage == MESA_SHADER_VERTEX ||
+         nir->info.stage == MESA_SHADER_TESS_EVAL ||
+         nir->info.stage == MESA_SHADER_GEOMETRY)
+      tu_gather_xfb_info(nir, &so_info);
 
    NIR_PASS_V(nir, tu_lower_io, shader, layout);
 
