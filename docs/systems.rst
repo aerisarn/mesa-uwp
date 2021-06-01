@@ -6,8 +6,8 @@ support for Windows, other flavors of Unix and other systems such as
 Haiku. We're actively developing and maintaining several hardware and
 software drivers.
 
-The primary API is OpenGL but there's also support for OpenGL ES, OpenCL,
-VDPAU, XvMC and the EGL interface.
+The primary API is OpenGL but there's also support for OpenGL ES, Vulkan,
+EGL, OpenMAX, OpenCL, VDPAU, VA-API and XvMC.
 
 Hardware drivers include:
 
