@@ -160,13 +160,11 @@ agx_resource_create(struct pipe_screen *screen,
 {
    struct agx_device *dev = agx_device(screen);
    struct agx_resource *nresource;
-   unsigned stride;
 
    nresource = CALLOC_STRUCT(agx_resource);
    if (!nresource)
       return NULL;
 
-   stride = util_format_get_stride(templ->format, templ->width0);
    nresource->base = *templ;
    nresource->base.screen = screen;
 
@@ -175,14 +173,22 @@ agx_resource_create(struct pipe_screen *screen,
       DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER :
       DRM_FORMAT_MOD_LINEAR;
 
-   nresource->slices[0].line_stride = ALIGN_POT(stride, 16);
+   unsigned offset = 0;
 
-   unsigned size = 4 * ALIGN_POT(templ->width0, 64) * ALIGN_POT(templ->height0, 64) * templ->depth0;
-   nresource->bo = agx_bo_create(dev, size, AGX_MEMORY_TYPE_FRAMEBUFFER);
+   for (unsigned l = 0; l <= templ->last_level; ++l) {
+      unsigned width = u_minify(templ->width0, l);
+      unsigned height = u_minify(templ->height0, l);
 
-   if (!nresource->bo) {
-      FREE(nresource);
-      return NULL;
+      if (nresource->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
+         width = ALIGN_POT(width, 64);
+         height = ALIGN_POT(height, 64);
+      }
+
+      nresource->slices[l].line_stride =
+         util_format_get_stride(templ->format, width);
+
+      nresource->slices[l].offset = offset;
+      offset += ALIGN_POT(nresource->slices[l].line_stride * height, 0x80);
    }
 
    pipe_reference_init(&nresource->base.reference, 1);
@@ -192,11 +198,18 @@ agx_resource_create(struct pipe_screen *screen,
    if (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
                       PIPE_BIND_SCANOUT |
                       PIPE_BIND_SHARED)) {
+      unsigned width0 = templ->width0, height0 = templ->height0;
+
+      if (nresource->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
+         width0 = ALIGN_POT(width0, 64);
+         height0 = ALIGN_POT(height0, 64);
+      }
+
       nresource->dt = winsys->displaytarget_create(winsys,
                       templ->bind,
                       templ->format,
-                      templ->width0,
-                      templ->height0,
+                      width0,
+                      height0,
                       64,
                       NULL /*map_front_private*/,
                       &nresource->dt_stride);
@@ -204,11 +217,20 @@ agx_resource_create(struct pipe_screen *screen,
       nresource->slices[0].line_stride = nresource->dt_stride;
       assert((nresource->dt_stride & 0xF) == 0);
 
+      offset = nresource->slices[0].line_stride * ALIGN_POT(templ->height0, 64);
+
       if (nresource->dt == NULL) {
-         agx_bo_unreference(nresource->bo);
          FREE(nresource);
          return NULL;
       }
+   }
+
+   unsigned size = ALIGN_POT(offset, 4096);
+   nresource->bo = agx_bo_create(dev, size, AGX_MEMORY_TYPE_FRAMEBUFFER);
+
+   if (!nresource->bo) {
+      FREE(nresource);
+      return NULL;
    }
 
    return &nresource->base;
