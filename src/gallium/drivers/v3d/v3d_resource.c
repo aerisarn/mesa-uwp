@@ -36,7 +36,6 @@
 #include "v3d_screen.h"
 #include "v3d_context.h"
 #include "v3d_resource.h"
-#include "v3d_tiling.h"
 #include "broadcom/cle/v3d_packet_v33_pack.h"
 
 static void

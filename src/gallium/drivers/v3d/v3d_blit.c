@@ -26,7 +26,7 @@
 #include "util/u_blitter.h"
 #include "compiler/nir/nir_builder.h"
 #include "v3d_context.h"
-#include "v3d_tiling.h"
+#include "broadcom/common/v3d_tiling.h"
 
 void
 v3d_blitter_save(struct v3d_context *v3d)

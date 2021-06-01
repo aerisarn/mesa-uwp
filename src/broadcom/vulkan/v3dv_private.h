@@ -56,6 +56,7 @@
 
 #include "common/v3d_device_info.h"
 #include "common/v3d_limits.h"
+#include "common/v3d_tiling.h"
 #include "common/v3d_util.h"
 
 #include "compiler/shader_enums.h"
@@ -89,12 +90,6 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 #include "vk_alloc.h"
 #include "simulator/v3d_simulator.h"
 
-
-/* FIXME: pipe_box from Gallium. Needed for some v3d_tiling.c functions.
- * In the future we might want to drop that depedency, but for now it is
- * good enough.
- */
-#include "util/u_box.h"
 #include "wsi_common.h"
 
 #include "broadcom/cle/v3dx_pack.h"
@@ -455,34 +450,6 @@ struct v3dv_format {
 
    /* If the format supports (linear) filtering when texturing. */
    bool supports_filtering;
-};
-
-/**
- * Tiling mode enum used for v3d_resource.c, which maps directly to the Memory
- * Format field of render target and Z/Stencil config.
- */
-enum v3d_tiling_mode {
-   /* Untiled resources.  Not valid as texture inputs. */
-   V3D_TILING_RASTER,
-
-   /* Single line of u-tiles. */
-   V3D_TILING_LINEARTILE,
-
-   /* Departure from standard 4-UIF block column format. */
-   V3D_TILING_UBLINEAR_1_COLUMN,
-
-   /* Departure from standard 4-UIF block column format. */
-   V3D_TILING_UBLINEAR_2_COLUMN,
-
-   /* Normal tiling format: grouped in 4x4 UIFblocks, each of which is
-    * split 2x2 into utiles.
-    */
-   V3D_TILING_UIF_NO_XOR,
-
-   /* Normal tiling format: grouped in 4x4 UIFblocks, each of which is
-    * split 2x2 into utiles.
-    */
-   V3D_TILING_UIF_XOR,
 };
 
 struct v3d_resource_slice {
@@ -1897,21 +1864,6 @@ v3dv_get_compatible_tfu_format(const struct v3d_device_info *devinfo,
 bool v3dv_buffer_format_supports_features(VkFormat vk_format,
                                           VkFormatFeatureFlags features);
 bool v3dv_format_supports_tlb_resolve(const struct v3dv_format *format);
-
-uint32_t v3d_utile_width(int cpp);
-uint32_t v3d_utile_height(int cpp);
-
-void v3d_load_tiled_image(void *dst, uint32_t dst_stride,
-                          void *src, uint32_t src_stride,
-                          enum v3d_tiling_mode tiling_format,
-                          int cpp, uint32_t image_h,
-                          const struct pipe_box *box);
-
-void v3d_store_tiled_image(void *dst, uint32_t dst_stride,
-                           void *src, uint32_t src_stride,
-                           enum v3d_tiling_mode tiling_format,
-                           int cpp, uint32_t image_h,
-                           const struct pipe_box *box);
 
 struct v3dv_cl_reloc v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                                          struct v3dv_pipeline *pipeline,

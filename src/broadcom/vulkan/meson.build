@@ -51,7 +51,6 @@ libv3dv_files = files(
   'v3dv_uniforms.c',
   'v3dv_util.c',
   'v3dv_wsi.c',
-  'v3d_tiling.c',
 )
 
 # The vulkan driver only supports version >= 42, which is the version present in

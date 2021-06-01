@@ -28,8 +28,6 @@
  */
 
 #include <stdint.h>
-#include "v3d_screen.h"
-#include "v3d_context.h"
 #include "v3d_tiling.h"
 #include "broadcom/common/v3d_cpu_tiling.h"
 
