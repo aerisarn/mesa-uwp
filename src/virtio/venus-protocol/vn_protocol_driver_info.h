@@ -142,7 +142,7 @@ vn_info_extension_spec_version(const char *name)
         1,
         1,
         3,
-        0,
+        100000,
     };
     const char **found;
 
