@@ -136,7 +136,7 @@ class Format:
             self.be_swizzles = le_swizzles
 
         be_shift = 0
-        for channel in self.be_channels[3::-1]:
+        for channel in reversed(self.be_channels):
             channel.shift = be_shift
             be_shift += channel.size
 
