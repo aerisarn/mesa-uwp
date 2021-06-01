@@ -537,6 +537,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_pipeline_creation_feedback                     DONE (anv, radv)
   VK_EXT_post_depth_coverage                            DONE (anv/gfx10+, lvp, radv)
   VK_EXT_private_data                                   DONE (anv, lvp, radv, tu, v3dv)
+  VK_EXT_provoking_vertex                               DONE (anv, lvp, radv, tu)
   VK_EXT_queue_family_foreign                           DONE (anv, radv)
   VK_EXT_robustness2                                    DONE (anv, radv, tu)
   VK_EXT_sample_locations                               DONE (anv, radv/gfx9-, tu/a650)

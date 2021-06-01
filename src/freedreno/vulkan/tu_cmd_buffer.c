@@ -3632,6 +3632,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0(
          .primitive_restart =
                pipeline->ia.primitive_restart && indexed,
+         .provoking_vtx_last = pipeline->provoking_vertex_last,
          .tess_upper_left_domain_origin =
                pipeline->tess.upper_left_domain_origin));
 

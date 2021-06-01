@@ -2642,6 +2642,10 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                           rast_info->depthBiasSlopeFactor);
    }
 
+   const struct VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_state =
+      vk_find_struct_const(rast_info->pNext, PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
+   pipeline->provoking_vertex_last = provoking_vtx_state &&
+      provoking_vtx_state->provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
 }
 
 static void
