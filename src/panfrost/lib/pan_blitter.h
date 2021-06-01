@@ -105,10 +105,18 @@ GENX(pan_blit_ctx_init)(struct panfrost_device *dev,
 static inline bool
 pan_blit_next_surface(struct pan_blit_context *ctx)
 {
-        if (ctx->dst.cur_layer >= ctx->dst.last_layer)
-                return false;
+        if (ctx->dst.last_layer < ctx->dst.layer_offset) {
+                if (ctx->dst.cur_layer <= ctx->dst.last_layer)
+                        return false;
 
-        ctx->dst.cur_layer++;
+                ctx->dst.cur_layer--;
+        } else {
+                if (ctx->dst.cur_layer >= ctx->dst.last_layer)
+                        return false;
+
+                ctx->dst.cur_layer++;
+        }
+
         return true;
 }
 
