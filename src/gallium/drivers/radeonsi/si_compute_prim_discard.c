@@ -577,9 +577,16 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
 
    struct radeon_cmdbuf *gfx_cs = &sctx->gfx_cs;
    unsigned prim = info->mode;
-   unsigned count = total_count;
    unsigned instance_count = info->instance_count;
-   unsigned num_prims_per_instance = u_decomposed_prims_for_vertices(prim, count);
+
+   unsigned num_prims_per_instance;
+   if (prim == PIPE_PRIM_TRIANGLES)
+      num_prims_per_instance = total_count / 3;
+   else if (prim == PIPE_PRIM_TRIANGLE_STRIP)
+      num_prims_per_instance = total_count - 2; /* approximation ignoring multi draws */
+   else
+      unreachable("shouldn't get here");
+
    unsigned num_prims = num_prims_per_instance * instance_count;
    unsigned out_indexbuf_size = num_prims * 12;
    bool ring_full = !si_check_ring_space(sctx, out_indexbuf_size);
@@ -597,8 +604,6 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
          vert_count_per_subdraw = PRIMS_PER_BATCH * 3;
       else if (prim == PIPE_PRIM_TRIANGLE_STRIP)
          vert_count_per_subdraw = PRIMS_PER_BATCH;
-      else
-         unreachable("shouldn't get here");
 
       /* Split multi draws first. */
       if (num_draws > 1) {
@@ -628,6 +633,12 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
             count += draws[i].count;
             num_draws_split++;
          }
+
+         if (count) {
+            /* Submit the remaining draws.  */
+            assert(num_draws_split > 0);
+            sctx->b.draw_vbo(&sctx->b, info, drawid_offset, NULL, draws + first_draw, num_draws_split);
+         }
          return SI_PRIM_DISCARD_MULTI_DRAW_SPLIT;
       }
 
@@ -635,6 +646,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
       struct pipe_draw_info split_draw = *info;
       struct pipe_draw_start_count_bias split_draw_range = draws[0];
       unsigned base_start = split_draw_range.start;
+      unsigned count = draws[0].count;
 
       if (prim == PIPE_PRIM_TRIANGLES) {
          assert(vert_count_per_subdraw < count);
