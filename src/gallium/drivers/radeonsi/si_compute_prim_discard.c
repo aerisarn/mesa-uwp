@@ -224,6 +224,9 @@ static void si_exit_thread0_section(struct si_thread0_section *section, LLVMValu
       ac_build_readlane(&ctx->ac, LLVMBuildLoad(ctx->ac.builder, section->vgpr_result, ""), NULL);
 }
 
+static void si_build_primitive_accepted(struct ac_llvm_context *ac, LLVMValueRef accepted,
+                                        void *data);
+
 void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 {
    struct si_shader_key *key = &ctx->shader->key;
@@ -430,23 +433,49 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    options.cull_zero_area = true;
    options.cull_w = true;
 
-   LLVMValueRef accepted =
-      ac_cull_triangle(&ctx->ac, pos, prim_restart_accepted, vp_scale, vp_translate,
-                       ac_get_arg(&ctx->ac, param_smallprim_precision), &options,
-                       NULL, NULL);
+   LLVMValueRef params[] = {
+      instance_id,
+      vertex_counter,
+      output_indexbuf,
+      (void*)index,
+      ac_get_arg(&ctx->ac, param_start_out_index),
+   };
 
-   ac_build_optimization_barrier(&ctx->ac, &accepted, false);
+   ac_cull_triangle(&ctx->ac, pos, prim_restart_accepted, vp_scale, vp_translate,
+                    ac_get_arg(&ctx->ac, param_smallprim_precision), &options,
+                    si_build_primitive_accepted, params);
+   LLVMBuildRetVoid(builder);
+}
+
+static void si_build_primitive_accepted(struct ac_llvm_context *ac, LLVMValueRef accepted,
+                                        void *userdata)
+{
+   struct si_shader_context *ctx = container_of(ac, struct si_shader_context, ac);
+   struct si_shader_key *key = &ctx->shader->key;
+   LLVMBuilderRef builder = ctx->ac.builder;
+   unsigned vertices_per_prim = 3;
+   LLVMValueRef *params = (LLVMValueRef *)userdata;
+   LLVMValueRef instance_id = params[0];
+   LLVMValueRef vertex_counter = params[1];
+   LLVMValueRef output_indexbuf = params[2];
+   LLVMValueRef *index = (LLVMValueRef *)params[3];
+   LLVMValueRef start_out_index = params[4];
+
    LLVMValueRef accepted_threadmask = ac_get_i1_sgpr_mask(&ctx->ac, accepted);
+
+   ac_build_ifcc(&ctx->ac, accepted, 16607);
 
    /* Count the number of active threads by doing bitcount(accepted). */
    LLVMValueRef num_prims_accepted = ac_build_bit_count(&ctx->ac, accepted_threadmask);
    num_prims_accepted = LLVMBuildTrunc(builder, num_prims_accepted, ctx->ac.i32, "");
 
+   /* Get the number of bits set before the index of this thread. */
+   LLVMValueRef prim_index = ac_build_mbcnt(&ctx->ac, accepted_threadmask);
    LLVMValueRef start;
 
    /* Execute atomic_add on the vertex count. */
    struct si_thread0_section section;
-   si_enter_thread0_section(ctx, &section, thread_id, num_prims_accepted);
+   si_enter_thread0_section(ctx, &section, prim_index, num_prims_accepted);
    {
       LLVMValueRef num_indices = LLVMBuildMul(
          builder, num_prims_accepted, LLVMConstInt(ctx->ac.i32, vertices_per_prim, 0), "");
@@ -462,33 +491,26 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    /* Now we need to store the indices of accepted primitives into
     * the output index buffer.
     */
-   ac_build_ifcc(&ctx->ac, accepted, 16607);
-   {
-      /* Get the number of bits set before the index of this thread. */
-      LLVMValueRef prim_index = ac_build_mbcnt(&ctx->ac, accepted_threadmask);
 
-      /* We have lowered instancing. Pack the instance ID into vertex ID. */
-      if (key->opt.cs_instancing) {
-         instance_id = LLVMBuildShl(builder, instance_id, LLVMConstInt(ctx->ac.i32, 16, 0), "");
+   /* We have lowered instancing. Pack the instance ID into vertex ID. */
+   if (key->opt.cs_instancing) {
+      instance_id = LLVMBuildShl(builder, instance_id, LLVMConstInt(ctx->ac.i32, 16, 0), "");
 
-         for (unsigned i = 0; i < vertices_per_prim; i++)
-            index[i] = LLVMBuildOr(builder, index[i], instance_id, "");
-      }
-
-      /* Write indices for accepted primitives. */
-      LLVMValueRef vindex = LLVMBuildAdd(builder, start, prim_index, "");
-      vindex = LLVMBuildAdd(builder, vindex, ac_get_arg(&ctx->ac, param_start_out_index), "");
-      LLVMValueRef vdata = ac_build_gather_values(&ctx->ac, index, 3);
-
-      if (!ac_has_vec3_support(ctx->ac.chip_class, true))
-         vdata = ac_build_expand_to_vec4(&ctx->ac, vdata, 3);
-
-      ac_build_buffer_store_format(&ctx->ac, output_indexbuf, vdata, vindex, ctx->ac.i32_0,
-                                   ac_glc | (INDEX_STORES_USE_SLC ? ac_slc : 0));
+      for (unsigned i = 0; i < vertices_per_prim; i++)
+         index[i] = LLVMBuildOr(builder, index[i], instance_id, "");
    }
-   ac_build_endif(&ctx->ac, 16607);
 
-   LLVMBuildRetVoid(builder);
+   /* Write indices for accepted primitives. */
+   LLVMValueRef vindex = LLVMBuildAdd(builder, start, prim_index, "");
+   vindex = LLVMBuildAdd(builder, vindex, start_out_index, "");
+   LLVMValueRef vdata = ac_build_gather_values(&ctx->ac, index, 3);
+
+   if (!ac_has_vec3_support(ctx->ac.chip_class, true))
+      vdata = ac_build_expand_to_vec4(&ctx->ac, vdata, 3);
+
+   ac_build_buffer_store_format(&ctx->ac, output_indexbuf, vdata, vindex, ctx->ac.i32_0,
+                                ac_glc | (INDEX_STORES_USE_SLC ? ac_slc : 0));
+   ac_build_endif(&ctx->ac, 16607);
 }
 
 /* Return false if the shader isn't ready. */
