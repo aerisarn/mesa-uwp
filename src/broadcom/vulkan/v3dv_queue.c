@@ -514,21 +514,21 @@ process_semaphores_to_signal(struct v3dv_device *device,
    if (fd == -1)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   VkResult result = VK_SUCCESS;
    for (uint32_t i = 0; i < count; i++) {
       struct v3dv_semaphore *sem = v3dv_semaphore_from_handle(sems[i]);
 
-      if (sem->fd >= 0)
-         close(sem->fd);
-      sem->fd = -1;
-
       int ret = drmSyncobjImportSyncFile(render_fd, sem->sync, fd);
-      if (ret)
-         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-      sem->fd = fd;
+      if (ret) {
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         break;
+      }
    }
 
-   return VK_SUCCESS;
+   assert(fd >= 0);
+   close(fd);
+
+   return result;
 }
 
 static VkResult
@@ -538,10 +538,6 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
       return VK_SUCCESS;
 
    struct v3dv_fence *fence = v3dv_fence_from_handle(_fence);
-
-   if (fence->fd >= 0)
-      close(fence->fd);
-   fence->fd = -1;
 
    int render_fd = device->pdevice->render_fd;
 
@@ -553,12 +549,11 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    int ret = drmSyncobjImportSyncFile(render_fd, fence->sync, fd);
-   if (ret)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   fence->fd = fd;
+   assert(fd >= 0);
+   close(fd);
 
-   return VK_SUCCESS;
+   return ret ? VK_ERROR_OUT_OF_HOST_MEMORY : VK_SUCCESS;
 }
 
 static VkResult
@@ -1131,8 +1126,6 @@ v3dv_CreateSemaphore(VkDevice _device,
    if (sem == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   sem->fd = -1;
-
    int ret = drmSyncobjCreate(device->pdevice->render_fd, 0, &sem->sync);
    if (ret) {
       vk_object_free(&device->vk, pAllocator, sem);
@@ -1156,9 +1149,6 @@ v3dv_DestroySemaphore(VkDevice _device,
       return;
 
    drmSyncobjDestroy(device->pdevice->render_fd, sem->sync);
-
-   if (sem->fd != -1)
-      close(sem->fd);
 
    vk_object_free(&device->vk, pAllocator, sem);
 }
@@ -1188,8 +1178,6 @@ v3dv_CreateFence(VkDevice _device,
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
-   fence->fd = -1;
-
    *pFence = v3dv_fence_to_handle(fence);
 
    return VK_SUCCESS;
@@ -1207,9 +1195,6 @@ v3dv_DestroyFence(VkDevice _device,
       return;
 
    drmSyncobjDestroy(device->pdevice->render_fd, fence->sync);
-
-   if (fence->fd != -1)
-      close(fence->fd);
 
    vk_object_free(&device->vk, pAllocator, fence);
 }
