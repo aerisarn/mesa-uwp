@@ -1626,7 +1626,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         struct panfrost_shader_state *vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
         bool instanced = ctx->indirect_draw || ctx->instance_count > 1;
         uint32_t image_mask = ctx->image_mask[PIPE_SHADER_VERTEX];
-        unsigned nr_images = util_bitcount(image_mask);
+        unsigned nr_images = util_last_bit(image_mask);
 
         /* Worst case: everything is NPOT, which is only possible if instancing
          * is enabled. Otherwise single record is gauranteed.
@@ -1795,7 +1795,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         k = ALIGN_POT(k, 2);
         emit_image_attribs(ctx, PIPE_SHADER_VERTEX, out + so->num_elements, k);
         emit_image_bufs(batch, PIPE_SHADER_VERTEX, bufs + k, k);
-        k += util_bitcount(ctx->image_mask[PIPE_SHADER_VERTEX]);
+        k += util_last_bit(ctx->image_mask[PIPE_SHADER_VERTEX]);
 
         /* We need an empty attrib buf to stop the prefetching on Bifrost */
         if (pan_is_bifrost(dev))
