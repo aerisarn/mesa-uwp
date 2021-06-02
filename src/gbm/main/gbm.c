@@ -106,9 +106,7 @@ gbm_device_get_format_modifier_plane_count(struct gbm_device *gbm,
 GBM_EXPORT void
 gbm_device_destroy(struct gbm_device *gbm)
 {
-   gbm->refcount--;
-   if (gbm->refcount == 0)
-      gbm->destroy(gbm);
+   gbm->destroy(gbm);
 }
 
 /** Create a gbm device for allocating buffers
@@ -139,8 +137,6 @@ gbm_create_device(int fd)
       return NULL;
 
    gbm->dummy = gbm_create_device;
-   gbm->stat = buf;
-   gbm->refcount = 1;
 
    return gbm;
 }

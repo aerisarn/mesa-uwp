@@ -29,7 +29,6 @@
 #define INTERNAL_H_
 
 #include "gbm.h"
-#include <sys/stat.h>
 
 /* GCC visibility */
 #if defined(__GNUC__)
@@ -54,8 +53,6 @@ struct gbm_device {
 
    int fd;
    const char *name;
-   unsigned int refcount;
-   struct stat stat;
 
    void (*destroy)(struct gbm_device *gbm);
    int (*is_format_supported)(struct gbm_device *gbm,
