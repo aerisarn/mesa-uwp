@@ -111,6 +111,7 @@ ACO_FILES = \
 	compiler/aco_lower_to_cssa.cpp \
 	compiler/aco_lower_to_hw_instr.cpp \
 	compiler/aco_optimizer.cpp \
+	compiler/aco_optimizer_postRA.cpp \
 	compiler/aco_opt_value_numbering.cpp \
 	compiler/aco_print_asm.cpp \
 	compiler/aco_print_ir.cpp \
