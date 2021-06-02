@@ -388,7 +388,7 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                                    ATTRIBUTE_BUFFER_CONTINUATION_NPOT, temp2);
                         pan_print(pandecode_dump_stream, ATTRIBUTE_BUFFER_CONTINUATION_NPOT,
                                   temp2, (pandecode_indent + 1) * 2);
-                        i++; count++;
+                        i++;
                         break;
                 }
                 case MALI_ATTRIBUTE_TYPE_3D_LINEAR:
@@ -397,7 +397,7 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                                    ATTRIBUTE_BUFFER_CONTINUATION_3D, temp2);
                         pan_print(pandecode_dump_stream, ATTRIBUTE_BUFFER_CONTINUATION_3D,
                                   temp2, (pandecode_indent + 1) * 2);
-                        i++; count++;
+                        i++;
                         break;
                 }
                 default:
@@ -428,19 +428,20 @@ pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
         return b.midgard.blend_shader ? (b.midgard.shader_pc & ~0xf) : 0;
 }
 
-/* Attributes and varyings have descriptor records, which contain information
- * about their format and ordering with the attribute/varying buffers. We'll
- * want to validate that the combinations specified are self-consistent.
- */
-
-static int
-pandecode_attribute_meta(int count, mali_ptr attribute, bool varying, char *suffix)
+static unsigned
+pandecode_attribute_meta(int count, mali_ptr attribute, bool varying)
 {
-        for (int i = 0; i < count; ++i, attribute += MALI_ATTRIBUTE_LENGTH)
-                DUMP_ADDR(ATTRIBUTE, attribute, "%s:\n", varying ? "Varying" : "Attribute");
+        unsigned max = 0;
+
+        for (int i = 0; i < count; ++i, attribute += MALI_ATTRIBUTE_LENGTH) {
+                MAP_ADDR(ATTRIBUTE, attribute, cl);
+                pan_unpack(cl, ATTRIBUTE, a);
+                DUMP_UNPACKED(ATTRIBUTE, a, "%s:\n", varying ? "Varying" : "Attribute");
+                max = MAX2(max, a.buffer_index);
+        }
 
         pandecode_log("\n");
-        return count;
+        return MIN2(max + 1, 256);
 }
 
 /* return bits [lo, hi) of word */
@@ -872,7 +873,7 @@ pandecode_dcd(const struct MALI_DRAW *p,
         unsigned max_attr_index = 0;
 
         if (p->attributes)
-                max_attr_index = pandecode_attribute_meta(attribute_count, p->attributes, false, suffix);
+                max_attr_index = pandecode_attribute_meta(attribute_count, p->attributes, false);
 
         if (p->attribute_buffers) {
                 attr_mem = pandecode_find_mapped_gpu_mem_containing(p->attribute_buffers);
@@ -880,7 +881,7 @@ pandecode_dcd(const struct MALI_DRAW *p,
         }
 
         if (p->varyings) {
-                varying_count = pandecode_attribute_meta(varying_count, p->varyings, true, suffix);
+                varying_count = pandecode_attribute_meta(varying_count, p->varyings, true);
         }
 
         if (p->varying_buffers) {
