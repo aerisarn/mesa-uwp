@@ -97,9 +97,10 @@ struct fd_fence {
 };
 
 /* bo flags: */
-#define FD_BO_GPUREADONLY  BITSET_BIT(1)
-#define FD_BO_SCANOUT      BITSET_BIT(2)
-/* Default caching is WRITECOMBINE, we can add new bo flags later for cached/etc */
+#define FD_BO_GPUREADONLY         BITSET_BIT(1)
+#define FD_BO_SCANOUT             BITSET_BIT(2)
+#define FD_BO_CACHED_COHERENT     BITSET_BIT(3)
+/* Default caching is WRITECOMBINE */
 
 /* bo access flags: (keep aligned to MSM_PREP_x) */
 #define FD_BO_PREP_READ   BITSET_BIT(0)
@@ -128,6 +129,8 @@ enum fd_version {
    FD_VERSION_SOFTPIN = 4,             /* adds softpin, bo name, and dump flag */
    FD_VERSION_ROBUSTNESS = 5,          /* adds FD_NR_FAULTS and FD_PP_PGTABLE */
    FD_VERSION_MEMORY_FD = 2,           /* supports shared memory objects */
+   FD_VERSION_SUSPENDS = 7,            /* Adds MSM_PARAM_SUSPENDS to detect device suspend */
+   FD_VERSION_CACHED_COHERENT = 8,     /* Adds cached-coherent support (a6xx+) */
 };
 enum fd_version fd_device_version(struct fd_device *dev);
 

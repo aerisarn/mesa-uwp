@@ -130,7 +130,9 @@ struct fd_device {
    struct fd_bo_cache bo_cache;
    struct fd_bo_cache ring_cache;
 
-   int closefd; /* call close(fd) upon destruction */
+   bool has_cached_coherent;
+
+   bool closefd; /* call close(fd) upon destruction */
 
    /* just for valgrind: */
    int bo_size;

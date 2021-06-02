@@ -94,6 +94,10 @@ bo_new(struct fd_device *dev, uint32_t size, uint32_t flags,
    uint32_t handle;
    int ret;
 
+   /* demote cached-coherent to WC if not supported: */
+   if ((flags & FD_BO_CACHED_COHERENT) && !dev->has_cached_coherent)
+      flags &= ~FD_BO_CACHED_COHERENT;
+
    bo = fd_bo_cache_alloc(cache, &size, flags);
    if (bo)
       return bo;
