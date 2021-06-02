@@ -81,6 +81,12 @@ vn_image_init_memory_requirements(struct vn_image *img,
             .image = img_handle,
          },
          &img->memory_requirements[0]);
+
+      /* AHB backed image requires dedicated allocation */
+      if (img->deferred_info) {
+         img->dedicated_requirements[0].prefersDedicatedAllocation = VK_TRUE;
+         img->dedicated_requirements[0].requiresDedicatedAllocation = VK_TRUE;
+      }
    } else {
       for (uint32_t i = 0; i < plane_count; i++) {
          vn_call_vkGetImageMemoryRequirements2(

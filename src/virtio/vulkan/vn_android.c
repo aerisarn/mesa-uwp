@@ -165,6 +165,10 @@ vn_android_ahb_format_to_vk_format(uint32_t format)
    case AHARDWAREBUFFER_FORMAT_S8_UINT:
       return VK_FORMAT_S8_UINT;
    case AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420:
+   /* XXX Add a gralloc query for the resolved drm format and then map to a
+    * compatiable VkFormat.
+    */
+   case AHARDWAREBUFFER_FORMAT_IMPLEMENTATION_DEFINED:
       return VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
    default:
       return VK_FORMAT_UNDEFINED;
@@ -303,8 +307,19 @@ vn_android_get_modifier_properties(VkPhysicalDevice physical_device,
    vn_GetPhysicalDeviceFormatProperties2(physical_device, format,
                                          &format_prop);
 
-   if (!mod_prop_list.drmFormatModifierCount)
-      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   if (!mod_prop_list.drmFormatModifierCount) {
+      /* XXX Remove this fallback after host VK_EXT_image_drm_format_modifier
+       * can properly support VK_FORMAT_G8_B8R8_2PLANE_420_UNORM.
+       */
+      if (format != VK_FORMAT_G8_B8R8_2PLANE_420_UNORM)
+         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+      out_props->drmFormatModifier = modifier;
+      out_props->drmFormatModifierPlaneCount = 2;
+      out_props->drmFormatModifierTilingFeatures =
+         VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+      return VK_SUCCESS;
+   }
 
    VkDrmFormatModifierPropertiesEXT *mod_props =
       vk_zalloc(alloc,
@@ -378,7 +393,7 @@ vn_android_image_from_anb(struct vn_device *dev,
    if (result != VK_SUCCESS)
       goto fail;
 
-   /* TODO support multi-planar format */
+   /* WSI image must be single-planar */
    if (mod_props.drmFormatModifierPlaneCount != 1) {
       if (VN_DEBUG(WSI))
          vn_log(dev->instance, "plane count is %d, expected 1",
@@ -831,6 +846,7 @@ vn_android_device_import_ahb(struct vn_device *dev,
       const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
       struct vn_image *img = vn_image_from_handle(dedicated_info->image);
       VkImageCreateInfo *image_info = &img->deferred_info->create;
+      VkSubresourceLayout layouts[4];
       uint32_t strides[4] = { 0, 0, 0, 0 };
       uint32_t offsets[4] = { 0, 0, 0, 0 };
       uint64_t format_modifier = 0;
@@ -846,27 +862,18 @@ vn_android_device_import_ahb(struct vn_device *dev,
       if (result != VK_SUCCESS)
          return result;
 
-      /* XXX fix plane count > 1 case for external memory  */
-      if (mod_props.drmFormatModifierPlaneCount != 1) {
-         vn_log(dev->instance, "plane count is %d, expected 1",
-                mod_props.drmFormatModifierPlaneCount);
-         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      memset(layouts, 0, sizeof(layouts));
+      for (uint32_t i = 0; i < mod_props.drmFormatModifierPlaneCount; i++) {
+         layouts[i].offset = offsets[i];
+         layouts[i].rowPitch = strides[i];
       }
-
-      const VkSubresourceLayout layout = {
-         .offset = offsets[0],
-         .size = 0,
-         .rowPitch = strides[0],
-         .arrayPitch = 0,
-         .depthPitch = 0,
-      };
       const VkImageDrmFormatModifierExplicitCreateInfoEXT drm_mod_info = {
          .sType =
             VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
          .pNext = image_info->pNext,
          .drmFormatModifier = format_modifier,
-         .drmFormatModifierPlaneCount = 1,
-         .pPlaneLayouts = &layout,
+         .drmFormatModifierPlaneCount = mod_props.drmFormatModifierPlaneCount,
+         .pPlaneLayouts = layouts,
       };
       const VkExternalMemoryImageCreateInfo external_img_info = {
          .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
