@@ -826,6 +826,8 @@ struct brw_context
    bool has_separate_stencil;
    bool has_swizzling;
 
+   bool can_push_ubos;
+
    /** Derived stencil states. */
    bool stencil_enabled;
    bool stencil_two_sided;

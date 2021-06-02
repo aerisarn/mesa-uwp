@@ -1039,6 +1039,12 @@ brw_create_context(gl_api api,
 
    brw->has_swizzling = screen->hw_has_swizzling;
 
+   /* We don't push UBOs on IVB and earlier because the restrictions on
+    * 3DSTATE_CONSTANT_* make it really annoying to use push constants
+    * without dynamic state base address.
+    */
+   brw->can_push_ubos = devinfo->verx10 >= 75;
+
    brw->isl_dev = screen->isl_dev;
 
    brw->vs.base.stage = MESA_SHADER_VERTEX;
