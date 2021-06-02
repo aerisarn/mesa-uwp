@@ -83,7 +83,7 @@ varying_format(nir_alu_type t, unsigned ncomps)
 static void
 collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
                  struct pan_shader_varying *varyings,
-                 unsigned *varying_count)
+                 unsigned *varying_count, bool is_bifrost)
 {
         *varying_count = 0;
 
@@ -113,8 +113,11 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
                 unsigned chan = comps[loc];
 
                 nir_alu_type type = nir_get_nir_type_for_glsl_base_type(base_type);
-
                 type = nir_alu_type_get_base_type(type);
+
+                /* Can't do type conversion since GLSL IR packs in funny ways */
+                if (is_bifrost && var->data.interpolation == INTERP_MODE_FLAT)
+                        type = nir_type_uint;
 
                 /* Demote to fp16 where possible. int16 varyings are TODO as the hw
                  * will saturate instead of wrap which is not conformant, so we need to
@@ -202,7 +205,7 @@ pan_shader_compile(const struct panfrost_device *dev,
                 info->vs.writes_point_size =
                         s->info.outputs_written & (1 << VARYING_SLOT_PSIZ);
                 collect_varyings(s, nir_var_shader_out, info->varyings.output,
-                                 &info->varyings.output_count);
+                                 &info->varyings.output_count, pan_is_bifrost(dev));
                 break;
         case MESA_SHADER_FRAGMENT:
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
@@ -262,7 +265,7 @@ pan_shader_compile(const struct panfrost_device *dev,
                 info->fs.reads_helper_invocation =
                         BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_HELPER_INVOCATION);
                 collect_varyings(s, nir_var_shader_in, info->varyings.input,
-                                 &info->varyings.input_count);
+                                 &info->varyings.input_count, pan_is_bifrost(dev));
                 break;
         case MESA_SHADER_COMPUTE:
                 info->wls_size = s->info.shared_size;

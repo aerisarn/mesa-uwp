@@ -257,6 +257,8 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
         enum bi_vecsize vecsize = (instr->num_components + component - 1);
         bi_index dest = (component == 0) ? bi_dest_index(&instr->dest) : bi_temp(b->shader);
 
+        unsigned sz = nir_dest_bit_size(instr->dest);
+
         if (smooth) {
                 nir_intrinsic_instr *parent = nir_src_as_intrinsic(instr->src[0]);
                 assert(parent);
@@ -264,13 +266,12 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
                 sample = bi_interp_for_intrinsic(parent->intrinsic);
                 src0 = bi_varying_src0_for_barycentric(b, parent);
 
-                unsigned sz = nir_dest_bit_size(instr->dest);
                 assert(sz == 16 || sz == 32);
-
                 regfmt = (sz == 16) ? BI_REGISTER_FORMAT_F16
                         : BI_REGISTER_FORMAT_F32;
         } else {
-                regfmt = bi_reg_fmt_for_nir(nir_intrinsic_dest_type(instr));
+                assert(sz == 32);
+                regfmt = BI_REGISTER_FORMAT_U32;
         }
 
         nir_src *offset = nir_get_io_offset_src(instr);
@@ -602,8 +603,14 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
 static void
 bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
 {
-        nir_alu_type T = nir_intrinsic_src_type(instr);
-        enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
+        /* In principle we can do better for 16-bit. At the moment we require
+         * 32-bit to permit the use of .auto, in order to force .u32 for flat
+         * varyings, to handle internal TGSI shaders that set flat in the VS
+         * but smooth in the FS */
+
+        ASSERTED nir_alu_type T = nir_intrinsic_src_type(instr);
+        assert(nir_alu_type_get_type_size(T) == 32);
+        enum bi_register_format regfmt = BI_REGISTER_FORMAT_AUTO;
 
         unsigned imm_index = 0;
         bool immediate = bi_is_intr_immediate(instr, &imm_index, 16);
