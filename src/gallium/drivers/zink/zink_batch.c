@@ -14,6 +14,9 @@
 #include "util/u_debug.h"
 #include "util/set.h"
 
+#ifdef VK_USE_PLATFORM_METAL_EXT
+#include "QuartzCore/CAMetalLayer.h"
+#endif
 #include "wsi_common.h"
 
 void

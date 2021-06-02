@@ -51,6 +51,7 @@ pre_args = [
 c_args = []
 cpp_args = []
 
+with_moltenvk_dir = get_option('moltenvk-dir')
 with_vulkan_icd_dir = get_option('vulkan-icd-dir')
 with_tests = get_option('build-tests')
 with_aco_tests = get_option('build-aco-tests')

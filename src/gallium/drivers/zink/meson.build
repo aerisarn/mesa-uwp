@@ -74,15 +74,24 @@ zink_nir_algebraic_c = custom_target(
 )
 
 zink_c_args = []
+inc_zink_vk = []
+
 if with_swrast_vk
   zink_c_args += '-DZINK_WITH_SWRAST_VK'
+endif
+
+# MoltenVK options
+if with_moltenvk_dir != ''
+  inc_zink_vk  = [inc_zink_vk, include_directories( join_paths(with_moltenvk_dir, 'include') )]
+  zink_c_args += ['-x','objective-c'] # Put compiler into objective-C mode to allow for MacOS types, like IOSurface and CAMetalLayer
+  zink_c_args += ['-iframework' , 'Foundation']
 endif
 
 libzink = static_library(
   'zink',
   [files_libzink, zink_device_info, zink_instance, zink_nir_algebraic_c],
   gnu_symbol_visibility : 'hidden',
-  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_vulkan_wsi, inc_vulkan_util],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_vulkan_wsi, inc_vulkan_util, inc_zink_vk],
   dependencies: [dep_vulkan, idep_nir_headers, idep_mesautil],
   c_args: zink_c_args,
 )

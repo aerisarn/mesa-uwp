@@ -224,6 +224,12 @@ option(
   description : 'Location relative to prefix to put vulkan icds on install. Default: $datadir/vulkan/icd.d'
 )
 option(
+  'moltenvk-dir',
+  type : 'string',
+  value : '',
+  description : 'Location of the MoltenVk SDK. Default: '
+)
+option(
   'vulkan-layers',
   type : 'array',
   value : [],
