@@ -541,9 +541,12 @@ d3d12_is_format_supported(struct pipe_screen *pscreen,
           !(fmt_info.Support1 & D3D12_FORMAT_SUPPORT1_IA_VERTEX_BUFFER))
          return false;
 
-      if (bind & PIPE_BIND_INDEX_BUFFER &&
-          !(fmt_info.Support1 & D3D12_FORMAT_SUPPORT1_IA_INDEX_BUFFER))
-         return false;
+      if (bind & PIPE_BIND_INDEX_BUFFER) {
+         if (format != PIPE_FORMAT_R8_UINT &&
+             format != PIPE_FORMAT_R16_UINT &&
+             format != PIPE_FORMAT_R32_UINT)
+            return false;
+      }
 
       if (sample_count > 0)
          return false;
