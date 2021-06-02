@@ -3075,6 +3075,10 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                          nir_var_function_temp);
         } while (progress);
 
+        /* TODO: Why is 64-bit getting rematerialized?
+         * KHR-GLES31.core.shader_image_load_store.basic-allTargets-atomicFS */
+        NIR_PASS(progress, nir, nir_lower_int64);
+
         /* We need to cleanup after each iteration of late algebraic
          * optimizations, since otherwise NIR can produce weird edge cases
          * (like fneg of a constant) which we don't handle */
