@@ -87,13 +87,13 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
 {
         *varying_count = 0;
 
+        unsigned comps[MAX_VARYING] = { 0 };
+
         nir_foreach_variable_with_modes(var, s, varying_mode) {
                 unsigned loc = var->data.driver_location;
-                unsigned sz = glsl_count_attribute_slots(var->type, FALSE);
                 const struct glsl_type *column =
                         glsl_without_array_or_matrix(var->type);
                 unsigned chan = glsl_get_components(column);
-                enum glsl_base_type base_type = glsl_get_base_type(column);
 
                 /* If we have a fractional location added, we need to increase the size
                  * so it will fit, i.e. a vec3 in YZW requires us to allocate a vec4.
@@ -101,7 +101,16 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
                  * packed varyings will be aligned.
                  */
                 chan += var->data.location_frac;
-                assert(chan >= 1 && chan <= 4);
+                comps[loc] = MAX2(comps[loc], chan);
+        }
+
+        nir_foreach_variable_with_modes(var, s, varying_mode) {
+                unsigned loc = var->data.driver_location;
+                unsigned sz = glsl_count_attribute_slots(var->type, FALSE);
+                const struct glsl_type *column =
+                        glsl_without_array_or_matrix(var->type);
+                enum glsl_base_type base_type = glsl_get_base_type(column);
+                unsigned chan = comps[loc];
 
                 nir_alu_type type = nir_get_nir_type_for_glsl_base_type(base_type);
 
