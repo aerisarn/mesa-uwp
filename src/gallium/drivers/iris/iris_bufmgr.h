@@ -37,6 +37,7 @@
 struct iris_batch;
 struct intel_device_info;
 struct pipe_debug_callback;
+struct isl_surf;
 
 /**
  * Memory zones.  When allocating a buffer, you can request that it is
@@ -182,12 +183,6 @@ struct iris_bo {
     */
    unsigned global_name;
 
-   /**
-    * Current tiling mode
-    */
-   uint32_t tiling_mode;
-   uint32_t stride;
-
    time_t free_time;
 
    /** Mapped address for the buffer, saved across map/unmap cycles */
@@ -261,26 +256,6 @@ struct iris_bo *iris_bo_alloc(struct iris_bufmgr *bufmgr,
                               uint32_t alignment,
                               enum iris_memory_zone memzone,
                               unsigned flags);
-
-/**
- * Allocate a tiled buffer object.
- *
- * Alignment for tiled objects is set automatically; the 'flags'
- * argument provides a hint about how the object will be used initially.
- *
- * Valid tiling formats are:
- *  I915_TILING_NONE
- *  I915_TILING_X
- *  I915_TILING_Y
- */
-struct iris_bo *iris_bo_alloc_tiled(struct iris_bufmgr *bufmgr,
-                                    const char *name,
-                                    uint64_t size,
-                                    uint32_t alignment,
-                                    enum iris_memory_zone memzone,
-                                    uint32_t tiling_mode,
-                                    uint32_t pitch,
-                                    unsigned flags);
 
 struct iris_bo *
 iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
@@ -409,9 +384,11 @@ int iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
 
 void iris_destroy_hw_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
 
+int iris_gem_get_tiling(struct iris_bo *bo, uint32_t *tiling);
+int iris_gem_set_tiling(struct iris_bo *bo, const struct isl_surf *surf);
+
 int iris_bo_export_dmabuf(struct iris_bo *bo, int *prime_fd);
-struct iris_bo *iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
-                                      uint64_t modifier);
+struct iris_bo *iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd);
 
 /**
  * Exports a bo as a GEM handle into a given DRM file descriptor
@@ -424,9 +401,6 @@ struct iris_bo *iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
  */
 int iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
                                          uint32_t *out_handle);
-
-struct iris_bo *iris_bo_import_dmabuf_no_mods(struct iris_bufmgr *bufmgr,
-                                              int prime_fd);
 
 uint32_t iris_bo_export_gem_handle(struct iris_bo *bo);
 

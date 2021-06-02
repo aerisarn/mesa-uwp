@@ -308,7 +308,6 @@ iris_memobj_create_from_handle(struct pipe_screen *pscreen,
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    struct iris_memory_object *memobj = CALLOC_STRUCT(iris_memory_object);
    struct iris_bo *bo;
-   const struct isl_drm_modifier_info *mod_inf;
 
    if (!memobj)
       return NULL;
@@ -319,19 +318,7 @@ iris_memobj_create_from_handle(struct pipe_screen *pscreen,
                                         whandle->handle);
       break;
    case WINSYS_HANDLE_TYPE_FD:
-      mod_inf = isl_drm_modifier_get_info(whandle->modifier);
-      if (mod_inf) {
-         bo = iris_bo_import_dmabuf(screen->bufmgr, whandle->handle,
-                                    whandle->modifier);
-      } else {
-         /* If we can't get information about the tiling from the
-          * kernel we ignore it. We are going to set it when we
-          * create the resource.
-          */
-         bo = iris_bo_import_dmabuf_no_mods(screen->bufmgr,
-                                            whandle->handle);
-      }
-
+      bo = iris_bo_import_dmabuf(screen->bufmgr, whandle->handle);
       break;
    default:
       unreachable("invalid winsys handle type");
@@ -1048,10 +1035,8 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    }
 
    uint32_t alignment = MAX2(4096, res->surf.alignment_B);
-   res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, bo_size, alignment,
-                                 memzone,
-                                 isl_tiling_to_i915_tiling(res->surf.tiling),
-                                 res->surf.row_pitch_B, flags);
+   res->bo =
+      iris_bo_alloc(screen->bufmgr, name, bo_size, alignment, memzone, flags);
 
    if (!res->bo)
       goto fail;
@@ -1164,8 +1149,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
 
    switch (whandle->type) {
    case WINSYS_HANDLE_TYPE_FD:
-      res->bo = iris_bo_import_dmabuf(bufmgr, whandle->handle,
-                                      whandle->modifier);
+      res->bo = iris_bo_import_dmabuf(bufmgr, whandle->handle);
       break;
    case WINSYS_HANDLE_TYPE_SHARED:
       res->bo = iris_bo_gem_create_from_name(bufmgr, "winsys image",
@@ -1182,17 +1166,19 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
 
    /* Create a surface for each plane specified by the external format. */
    if (whandle->plane < util_format_get_num_planes(whandle->format)) {
+      uint64_t modifier = whandle->modifier;
 
-      const uint64_t modifier =
-         whandle->modifier != DRM_FORMAT_MOD_INVALID ?
-         whandle->modifier : tiling_to_modifier(res->bo->tiling_mode);
+      if (whandle->modifier == DRM_FORMAT_MOD_INVALID) {
+         /* We don't have a modifier; match whatever GEM_GET_TILING says */
+         uint32_t tiling;
+         iris_gem_get_tiling(res->bo, &tiling);
+         modifier = tiling_to_modifier(tiling);
+      }
 
       UNUSED const bool isl_surf_created_successfully =
          iris_resource_configure_main(screen, res, templ, modifier,
                                       whandle->stride);
       assert(isl_surf_created_successfully);
-      assert(res->bo->tiling_mode ==
-             isl_tiling_to_i915_tiling(res->surf.tiling));
 
       UNUSED const bool ok = iris_resource_configure_aux(screen, res, true);
       assert(ok);
@@ -1344,14 +1330,20 @@ iris_resource_get_param(struct pipe_screen *pscreen,
       return true;
    case PIPE_RESOURCE_PARAM_MODIFIER:
       *value = res->mod_info ? res->mod_info->modifier :
-               tiling_to_modifier(res->bo->tiling_mode);
+               tiling_to_modifier(isl_tiling_to_i915_tiling(res->surf.tiling));
       return true;
    case PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED:
+      if (!wants_aux)
+         iris_gem_set_tiling(bo, &res->surf);
+
       result = iris_bo_flink(bo, &handle) == 0;
       if (result)
          *value = handle;
       return result;
    case PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS: {
+      if (!wants_aux)
+         iris_gem_set_tiling(bo, &res->surf);
+
       /* Because we share the same drm file across multiple iris_screen, when
        * we export a GEM handle we must make sure it is valid in the DRM file
        * descriptor the caller is using (this is the FD given at screen
@@ -1365,6 +1357,9 @@ iris_resource_get_param(struct pipe_screen *pscreen,
    }
 
    case PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD:
+      if (!wants_aux)
+         iris_gem_set_tiling(bo, &res->surf);
+
       result = iris_bo_export_dmabuf(bo, (int *) &handle) == 0;
       if (result)
          *value = handle;
@@ -1408,7 +1403,7 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
    whandle->format = res->external_format;
    whandle->modifier =
       res->mod_info ? res->mod_info->modifier
-                    : tiling_to_modifier(res->bo->tiling_mode);
+                    : tiling_to_modifier(isl_tiling_to_i915_tiling(res->surf.tiling));
 
 #ifndef NDEBUG
    enum isl_aux_usage allowed_usage =
@@ -1424,8 +1419,11 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
 
    switch (whandle->type) {
    case WINSYS_HANDLE_TYPE_SHARED:
+      iris_gem_set_tiling(bo, &res->surf);
       return iris_bo_flink(bo, &whandle->handle) == 0;
    case WINSYS_HANDLE_TYPE_KMS: {
+      iris_gem_set_tiling(bo, &res->surf);
+
       /* Because we share the same drm file across multiple iris_screen, when
        * we export a GEM handle we must make sure it is valid in the DRM file
        * descriptor the caller is using (this is the FD given at screen
@@ -1438,6 +1436,7 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
       return true;
    }
    case WINSYS_HANDLE_TYPE_FD:
+      iris_gem_set_tiling(bo, &res->surf);
       return iris_bo_export_dmabuf(bo, (int *) &whandle->handle) == 0;
    }
 

@@ -53,6 +53,7 @@
 #include "dev/intel_debug.h"
 #include "common/intel_gem.h"
 #include "dev/intel_device_info.h"
+#include "isl/isl.h"
 #include "main/macros.h"
 #include "os/os_mman.h"
 #include "util/debug.h"
@@ -198,9 +199,6 @@ static struct list_head global_bufmgr_list = {
    .next = &global_bufmgr_list,
    .prev = &global_bufmgr_list,
 };
-
-static int bo_set_tiling_internal(struct iris_bo *bo, uint32_t tiling_mode,
-                                  uint32_t stride);
 
 static void bo_free(struct iris_bo *bo);
 
@@ -501,8 +499,6 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size)
    bo->bufmgr = bufmgr;
    bo->size = bo_size;
    bo->idle = true;
-   bo->tiling_mode = I915_TILING_NONE;
-   bo->stride = 0;
 
    /* Calling set_domain() will allocate pages for the BO outside of the
     * struct mutex lock in the kernel, which is more efficient than waiting
@@ -522,15 +518,13 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size)
    return bo;
 }
 
-static struct iris_bo *
-bo_alloc_internal(struct iris_bufmgr *bufmgr,
-                  const char *name,
-                  uint64_t size,
-                  uint32_t alignment,
-                  enum iris_memory_zone memzone,
-                  unsigned flags,
-                  uint32_t tiling_mode,
-                  uint32_t stride)
+struct iris_bo *
+iris_bo_alloc(struct iris_bufmgr *bufmgr,
+              const char *name,
+              uint64_t size,
+              uint32_t alignment,
+              enum iris_memory_zone memzone,
+              unsigned flags)
 {
    struct iris_bo *bo;
    unsigned int page_size = getpagesize();
@@ -576,9 +570,6 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
          goto err_free;
    }
 
-   if (bo_set_tiling_internal(bo, tiling_mode, stride))
-      goto err_free;
-
    bo->name = name;
    p_atomic_set(&bo->refcount, 1);
    bo->reusable = bucket && bufmgr->bo_reuse;
@@ -616,28 +607,6 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
 err_free:
    bo_free(bo);
    return NULL;
-}
-
-struct iris_bo *
-iris_bo_alloc(struct iris_bufmgr *bufmgr,
-              const char *name,
-              uint64_t size,
-              uint32_t alignment,
-              enum iris_memory_zone memzone,
-              unsigned flags)
-{
-   return bo_alloc_internal(bufmgr, name, size, alignment, memzone,
-                            flags, I915_TILING_NONE, 0);
-}
-
-struct iris_bo *
-iris_bo_alloc_tiled(struct iris_bufmgr *bufmgr, const char *name,
-                    uint64_t size, uint32_t alignment,
-                    enum iris_memory_zone memzone,
-                    uint32_t tiling_mode, uint32_t pitch, unsigned flags)
-{
-   return bo_alloc_internal(bufmgr, name, size, alignment, memzone,
-                            flags, tiling_mode, pitch);
 }
 
 struct iris_bo *
@@ -758,24 +727,11 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
    _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
 
-   struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
-   ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling);
-   if (ret != 0)
-      goto err_unref;
-
-   bo->tiling_mode = get_tiling.tiling_mode;
-
-   /* XXX stride is unknown */
    DBG("bo_create_from_handle: %d (%s)\n", handle, bo->name);
 
 out:
    mtx_unlock(&bufmgr->lock);
    return bo;
-
-err_unref:
-   bo_free(bo);
-   mtx_unlock(&bufmgr->lock);
-   return NULL;
 }
 
 static void
@@ -1153,50 +1109,64 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
    free(bufmgr);
 }
 
-static int
-bo_set_tiling_internal(struct iris_bo *bo, uint32_t tiling_mode,
-                       uint32_t stride)
+int
+iris_gem_get_tiling(struct iris_bo *bo, uint32_t *tiling)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
-   struct drm_i915_gem_set_tiling set_tiling;
-   int ret;
 
-   if (bo->global_name == 0 &&
-       tiling_mode == bo->tiling_mode && stride == bo->stride)
+   if (!bufmgr->has_tiling_uapi) {
+      *tiling = I915_TILING_NONE;
       return 0;
+   }
+
+   struct drm_i915_gem_get_tiling ti = { .handle = bo->gem_handle };
+   int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &ti);
+
+   if (ret) {
+      DBG("gem_get_tiling failed for BO %u: %s\n",
+          bo->gem_handle, strerror(ret));
+   }
+
+   *tiling = ti.tiling_mode;
+
+   return ret;
+}
+
+int
+iris_gem_set_tiling(struct iris_bo *bo, const struct isl_surf *surf)
+{
+   struct iris_bufmgr *bufmgr = bo->bufmgr;
+   uint32_t tiling_mode = isl_tiling_to_i915_tiling(surf->tiling);
+   int ret;
 
    /* If we can't do map_gtt, the set/get_tiling API isn't useful. And it's
     * actually not supported by the kernel in those cases.
     */
-   if (!bufmgr->has_tiling_uapi) {
-      bo->tiling_mode = tiling_mode;
-      bo->stride = stride;
+   if (!bufmgr->has_tiling_uapi)
       return 0;
-   }
 
-   memset(&set_tiling, 0, sizeof(set_tiling));
+   /* GEM_SET_TILING is slightly broken and overwrites the input on the
+    * error path, so we have to open code intel_ioctl().
+    */
    do {
-      /* set_tiling is slightly broken and overwrites the
-       * input on the error path, so we have to open code
-       * drm_ioctl.
-       */
-      set_tiling.handle = bo->gem_handle;
-      set_tiling.tiling_mode = tiling_mode;
-      set_tiling.stride = stride;
-
+      struct drm_i915_gem_set_tiling set_tiling = {
+         .handle = bo->gem_handle,
+         .tiling_mode = tiling_mode,
+         .stride = surf->row_pitch_B,
+      };
       ret = ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_TILING, &set_tiling);
    } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
-   if (ret == -1)
-      return -errno;
 
-   bo->tiling_mode = set_tiling.tiling_mode;
-   bo->stride = set_tiling.stride;
-   return 0;
+   if (ret) {
+      DBG("gem_set_tiling failed for BO %u: %s\n",
+          bo->gem_handle, strerror(ret));
+   }
+
+   return ret;
 }
 
 struct iris_bo *
-iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
-                      uint64_t modifier)
+iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
 {
    uint32_t handle;
    struct iris_bo *bo;
@@ -1254,79 +1224,6 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
    bo->gtt_offset =
       vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 64 * 1024);
 
-   bo->gem_handle = handle;
-   _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
-
-   const struct isl_drm_modifier_info *mod_info =
-      isl_drm_modifier_get_info(modifier);
-   if (mod_info) {
-      bo->tiling_mode = isl_tiling_to_i915_tiling(mod_info->tiling);
-   } else if (bufmgr->has_tiling_uapi) {
-      struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
-      if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling))
-         goto err;
-      bo->tiling_mode = get_tiling.tiling_mode;
-   } else {
-      bo->tiling_mode = I915_TILING_NONE;
-   }
-
-out:
-   mtx_unlock(&bufmgr->lock);
-   return bo;
-
-err:
-   bo_free(bo);
-   mtx_unlock(&bufmgr->lock);
-   return NULL;
-}
-
-struct iris_bo *
-iris_bo_import_dmabuf_no_mods(struct iris_bufmgr *bufmgr,
-                              int prime_fd)
-{
-   uint32_t handle;
-   struct iris_bo *bo;
-
-   mtx_lock(&bufmgr->lock);
-   int ret = drmPrimeFDToHandle(bufmgr->fd, prime_fd, &handle);
-   if (ret) {
-      DBG("import_dmabuf: failed to obtain handle from fd: %s\n",
-          strerror(errno));
-      mtx_unlock(&bufmgr->lock);
-      return NULL;
-   }
-
-   /*
-    * See if the kernel has already returned this buffer to us. Just as
-    * for named buffers, we must not create two bo's pointing at the same
-    * kernel object
-    */
-   bo = find_and_ref_external_bo(bufmgr->handle_table, handle);
-   if (bo)
-      goto out;
-
-   bo = bo_calloc();
-   if (!bo)
-      goto out;
-
-   p_atomic_set(&bo->refcount, 1);
-
-   /* Determine size of bo.  The fd-to-handle ioctl really should
-    * return the size, but it doesn't.  If we have kernel 3.12 or
-    * later, we can lseek on the prime fd to get the size.  Older
-    * kernels will just fail, in which case we fall back to the
-    * provided (estimated or guess size). */
-   ret = lseek(prime_fd, 0, SEEK_END);
-   if (ret != -1)
-      bo->size = ret;
-
-   bo->bufmgr = bufmgr;
-   bo->name = "prime";
-   bo->reusable = false;
-   bo->imported = true;
-   bo->mmap_mode = IRIS_MMAP_WC;
-   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
-   bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
    bo->gem_handle = handle;
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
 
