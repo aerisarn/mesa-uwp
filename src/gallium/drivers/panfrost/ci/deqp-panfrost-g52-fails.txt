@@ -14,14 +14,12 @@ dEQP-GLES31.functional.draw_indirect.draw_elements_indirect.line_strip.instanced
 dEQP-GLES31.functional.draw_indirect.random.31,Fail
 dEQP-GLES31.functional.layout_binding.image.image2d.vertex_binding_max_array,Fail
 dEQP-GLES31.functional.layout_binding.image.image3d.vertex_binding_max_array,Fail
+dEQP-GLES31.functional.separate_shader.random.22,Fail
 dEQP-GLES31.functional.separate_shader.random.23,Fail
 dEQP-GLES31.functional.separate_shader.random.35,Fail
-dEQP-GLES31.functional.separate_shader.random.49,Fail
 dEQP-GLES31.functional.separate_shader.random.68,Fail
-dEQP-GLES31.functional.separate_shader.random.6,Fail
 dEQP-GLES31.functional.separate_shader.random.79,Fail
 dEQP-GLES31.functional.separate_shader.random.80,Fail
-dEQP-GLES31.functional.separate_shader.random.82,Fail
 dEQP-GLES31.functional.separate_shader.random.89,Fail
 dEQP-GLES31.functional.draw_base_vertex.draw_elements_base_vertex.builtin_variable.vertex_id,Fail
 dEQP-GLES31.functional.draw_base_vertex.draw_elements_instanced_base_vertex.builtin_variable.vertex_id,Fail

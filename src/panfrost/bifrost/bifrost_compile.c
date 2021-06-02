@@ -184,20 +184,51 @@ bi_is_intr_immediate(nir_intrinsic_instr *instr, unsigned *immediate, unsigned m
 }
 
 static void
+bi_make_vec_to(bi_builder *b, bi_index final_dst,
+                bi_index *src,
+                unsigned *channel,
+                unsigned count,
+                unsigned bitsize);
+
+/* Bifrost's load instructions lack a component offset despite operating in
+ * terms of vec4 slots. Usually I/O vectorization avoids nonzero components,
+ * but they may be unavoidable with separate shaders in use. To solve this, we
+ * lower to a larger load and an explicit copy of the desired components. */
+
+static void
+bi_copy_component(bi_builder *b, nir_intrinsic_instr *instr, bi_index tmp)
+{
+        unsigned component = nir_intrinsic_component(instr);
+
+        if (component == 0)
+                return;
+
+        bi_index srcs[] = { tmp, tmp, tmp, tmp };
+        unsigned channels[] = { component, component + 1, component + 2 };
+
+        bi_make_vec_to(b,
+                        bi_dest_index(&instr->dest),
+                        srcs, channels, instr->num_components,
+                        nir_dest_bit_size(instr->dest));
+} 
+
+static void
 bi_emit_load_attr(bi_builder *b, nir_intrinsic_instr *instr)
 {
         nir_alu_type T = nir_intrinsic_dest_type(instr);
         enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
         nir_src *offset = nir_get_io_offset_src(instr);
+        unsigned component = nir_intrinsic_component(instr);
+        enum bi_vecsize vecsize = (instr->num_components + component - 1);
         unsigned imm_index = 0;
         unsigned base = nir_intrinsic_base(instr);
         bool constant = nir_src_is_const(*offset);
         bool immediate = bi_is_intr_immediate(instr, &imm_index, 16);
+        bi_index dest = (component == 0) ? bi_dest_index(&instr->dest) : bi_temp(b->shader);
 
         if (immediate) {
-                bi_ld_attr_imm_to(b, bi_dest_index(&instr->dest),
-                                bi_register(61), bi_register(62),
-                                regfmt, instr->num_components - 1, imm_index);
+                bi_ld_attr_imm_to(b, dest, bi_register(61), bi_register(62),
+                                regfmt, vecsize, imm_index);
         } else {
                 bi_index idx = bi_src_index(&instr->src[0]);
 
@@ -206,10 +237,11 @@ bi_emit_load_attr(bi_builder *b, nir_intrinsic_instr *instr)
                 else if (base != 0)
                         idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);
 
-                bi_ld_attr_to(b, bi_dest_index(&instr->dest),
-                                bi_register(61), bi_register(62),
-                                idx, regfmt, instr->num_components - 1);
+                bi_ld_attr_to(b, dest, bi_register(61), bi_register(62),
+                                idx, regfmt, vecsize);
         }
+
+        bi_copy_component(b, instr, dest);
 }
 
 static void
@@ -218,9 +250,12 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
         enum bi_sample sample = BI_SAMPLE_CENTER;
         enum bi_update update = BI_UPDATE_STORE;
         enum bi_register_format regfmt = BI_REGISTER_FORMAT_AUTO;
-        enum bi_vecsize vecsize = instr->num_components - 1;
         bool smooth = instr->intrinsic == nir_intrinsic_load_interpolated_input;
         bi_index src0 = bi_null();
+
+        unsigned component = nir_intrinsic_component(instr);
+        enum bi_vecsize vecsize = (instr->num_components + component - 1);
+        bi_index dest = (component == 0) ? bi_dest_index(&instr->dest) : bi_temp(b->shader);
 
         if (smooth) {
                 nir_intrinsic_instr *parent = nir_src_as_intrinsic(instr->src[0]);
@@ -243,12 +278,11 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
         bool immediate = bi_is_intr_immediate(instr, &imm_index, 20);
 
         if (immediate && smooth) {
-                bi_ld_var_imm_to(b, bi_dest_index(&instr->dest),
-                                src0, regfmt, sample, update, vecsize,
-                                imm_index);
+                bi_ld_var_imm_to(b, dest, src0, regfmt, sample, update,
+                                vecsize, imm_index);
         } else if (immediate && !smooth) {
-                bi_ld_var_flat_imm_to(b, bi_dest_index(&instr->dest),
-                                BI_FUNCTION_NONE, regfmt, vecsize, imm_index);
+                bi_ld_var_flat_imm_to(b, dest, BI_FUNCTION_NONE, regfmt,
+                                vecsize, imm_index);
         } else {
                 bi_index idx = bi_src_index(offset);
                 unsigned base = nir_intrinsic_base(instr);
@@ -257,15 +291,15 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
                         idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);
 
                 if (smooth) {
-                        bi_ld_var_to(b, bi_dest_index(&instr->dest),
-                                        src0, idx, regfmt, sample, update,
-                                        vecsize);
+                        bi_ld_var_to(b, dest, src0, idx, regfmt, sample,
+                                        update, vecsize);
                 } else {
-                        bi_ld_var_flat_to(b, bi_dest_index(&instr->dest),
-                                        idx, BI_FUNCTION_NONE, regfmt,
-                                        vecsize);
+                        bi_ld_var_flat_to(b, dest, idx, BI_FUNCTION_NONE,
+                                        regfmt, vecsize);
                 }
         }
+
+        bi_copy_component(b, instr, dest);
 }
 
 static void
