@@ -2065,7 +2065,7 @@ pan_assign_varyings(const struct panfrost_device *dev,
                 if (loc >= 0) {
                         offsets[i] = stride;
 
-                        enum pipe_format format = producer_vars[i].format;
+                        enum pipe_format format = consumer_vars[loc].format;
                         stride += util_format_get_blocksize(format);
                 } else {
                         offsets[i] = -1;
@@ -2177,9 +2177,16 @@ panfrost_emit_varying_descs(
         }
 
         for (unsigned i = 0; i < producer_count; ++i) {
+                signed j = pan_find_vary(consumer->info.varyings.input,
+                                consumer->info.varyings.input_count,
+                                producer->info.varyings.output[i].location);
+
+                enum pipe_format format = (j >= 0) ?
+                        consumer->info.varyings.input[j].format :
+                        producer->info.varyings.output[i].format;
+
                 panfrost_emit_varying(dev, descs + i,
-                                producer->info.varyings.output[i],
-                                producer->info.varyings.output[i].format,
+                                producer->info.varyings.output[i], format,
                                 out->present, 0, &producer->stream_output,
                                 producer->so_mask, xfb->num_targets,
                                 xfb_offsets, offsets[i], PAN_VARY_POSITION);
@@ -2194,7 +2201,7 @@ panfrost_emit_varying_descs(
 
                 panfrost_emit_varying(dev, descs + producer_count + i,
                                 consumer->info.varyings.input[i],
-                                producer->info.varyings.output[j].format,
+                                consumer->info.varyings.input[i].format,
                                 out->present, point_coord_mask,
                                 &producer->stream_output, producer->so_mask,
                                 xfb->num_targets, xfb_offsets, offset,
