@@ -524,6 +524,35 @@ job_compute_frame_tiling(struct v3dv_job *job,
    return tiling;
 }
 
+static void
+job_emit_binning_prolog(struct v3dv_job *job,
+                        const struct v3dv_frame_tiling *tiling,
+                        uint32_t layers)
+{
+   /* This must go before the binning mode configuration. It is
+    * required for layered framebuffers to work.
+    */
+   cl_emit(&job->bcl, NUMBER_OF_LAYERS, config) {
+      config.number_of_layers = layers;
+   }
+
+   cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
+      config.width_in_pixels = tiling->width;
+      config.height_in_pixels = tiling->height;
+      config.number_of_render_targets = MAX2(tiling->render_target_count, 1);
+      config.multisample_mode_4x = tiling->msaa;
+      config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
+   }
+
+   /* There's definitely nothing in the VCD cache we want. */
+   cl_emit(&job->bcl, FLUSH_VCD_CACHE, bin);
+
+   /* "Binning mode lists must have a Start Tile Binning item (6) after
+    *  any prefix state data before the binning list proper starts."
+    */
+   cl_emit(&job->bcl, START_TILE_BINNING, bin);
+}
+
 void
 v3dv_job_start_frame(struct v3dv_job *job,
                      uint32_t width,
@@ -588,28 +617,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
 
    v3dv_job_add_bo_unchecked(job, job->tile_state);
 
-   /* This must go before the binning mode configuration. It is
-    * required for layered framebuffers to work.
-    */
-   cl_emit(&job->bcl, NUMBER_OF_LAYERS, config) {
-      config.number_of_layers = layers;
-   }
-
-   cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
-      config.width_in_pixels = tiling->width;
-      config.height_in_pixels = tiling->height;
-      config.number_of_render_targets = MAX2(tiling->render_target_count, 1);
-      config.multisample_mode_4x = tiling->msaa;
-      config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
-   }
-
-   /* There's definitely nothing in the VCD cache we want. */
-   cl_emit(&job->bcl, FLUSH_VCD_CACHE, bin);
-
-   /* "Binning mode lists must have a Start Tile Binning item (6) after
-    *  any prefix state data before the binning list proper starts."
-    */
-   cl_emit(&job->bcl, START_TILE_BINNING, bin);
+   job_emit_binning_prolog(job, tiling, layers);
 
    job->ez_state = V3D_EZ_UNDECIDED;
    job->first_ez_state = V3D_EZ_UNDECIDED;
