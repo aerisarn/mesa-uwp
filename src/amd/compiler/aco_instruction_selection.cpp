@@ -5544,7 +5544,11 @@ static MIMG_instruction *emit_mimg(Builder& bld, aco_opcode op,
                                    unsigned wqm_mask=0,
                                    Operand vdata=Operand(v1))
 {
-   if (bld.program->chip_class < GFX10) {
+   /* Limit NSA instructions to 3 dwords on GFX10 to avoid stability issues. */
+   unsigned max_nsa_size = bld.program->chip_class >= GFX10_3 ? 13 : 5;
+   bool use_nsa = bld.program->chip_class >= GFX10 && coords.size() <= max_nsa_size;
+
+   if (!use_nsa) {
       Temp coord = coords[0];
       if (coords.size() > 1) {
          coord = bld.tmp(RegType::vgpr, coords.size());

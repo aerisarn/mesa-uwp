@@ -250,3 +250,8 @@ Only `s_waitcnt_vscnt null, 0`. Needed even if the first instruction is a load.
 ### NSAClauseBug
 
 "MIMG-NSA in a hard clause has unpredictable results on GFX10.1"
+
+### NSAMaxSize5
+
+NSA MIMG instructions should be limited to 3 dwords before GFX10.3 to avoid
+stability issues: https://reviews.llvm.org/D103348
