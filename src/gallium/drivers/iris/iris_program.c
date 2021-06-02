@@ -1211,7 +1211,7 @@ iris_compile_vs(struct iris_screen *screen,
    if (program == NULL) {
       dbg_printf("Failed to compile vertex shader: %s\n", params.error_str);
       ralloc_free(mem_ctx);
-      return false;
+      return NULL;
    }
 
    iris_debug_recompile(screen, dbg, ish, &brw_key.base);
@@ -1405,7 +1405,7 @@ iris_compile_tcs(struct iris_screen *screen,
    if (program == NULL) {
       dbg_printf("Failed to compile control shader: %s\n", error_str);
       ralloc_free(mem_ctx);
-      return false;
+      return NULL;
    }
 
    iris_debug_recompile(screen, dbg, ish, &brw_key.base);
@@ -1537,7 +1537,7 @@ iris_compile_tes(struct iris_screen *screen,
    if (program == NULL) {
       dbg_printf("Failed to compile evaluation shader: %s\n", error_str);
       ralloc_free(mem_ctx);
-      return false;
+      return NULL;
    }
 
    iris_debug_recompile(screen, dbg, ish, &brw_key.base);
@@ -1664,7 +1664,7 @@ iris_compile_gs(struct iris_screen *screen,
    if (program == NULL) {
       dbg_printf("Failed to compile geometry shader: %s\n", error_str);
       ralloc_free(mem_ctx);
-      return false;
+      return NULL;
    }
 
    iris_debug_recompile(screen, dbg, ish, &brw_key.base);
@@ -1795,7 +1795,7 @@ iris_compile_fs(struct iris_screen *screen,
    if (program == NULL) {
       dbg_printf("Failed to compile fragment shader: %s\n", params.error_str);
       ralloc_free(mem_ctx);
-      return false;
+      return NULL;
    }
 
    iris_debug_recompile(screen, dbg, ish, &brw_key.base);
