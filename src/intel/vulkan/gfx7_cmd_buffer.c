@@ -356,21 +356,27 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                              cmd_buffer->state.gfx.dynamic.sample_locations.locations);
    }
 
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) {
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE ||
+       cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP) {
       const uint8_t color_writes = cmd_buffer->state.gfx.dynamic.color_writes;
       /* 3DSTATE_WM in the hope we can avoid spawning fragment shaders
        * threads.
        */
-      uint32_t dwords[GENX(3DSTATE_WM_length)];
-      struct GENX(3DSTATE_WM) wm = {
-         GENX(3DSTATE_WM_header),
+      bool dirty_color_blend =
+         cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE;
 
-         .ThreadDispatchEnable = pipeline->force_fragment_thread_dispatch ||
-                                 color_writes,
-      };
-      GENX(3DSTATE_WM_pack)(NULL, dwords, &wm);
+      if (dirty_color_blend) {
+         uint32_t dwords[GENX(3DSTATE_WM_length)];
+         struct GENX(3DSTATE_WM) wm = {
+            GENX(3DSTATE_WM_header),
 
-      anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx7.wm);
+            .ThreadDispatchEnable = pipeline->force_fragment_thread_dispatch ||
+                                    color_writes,
+         };
+         GENX(3DSTATE_WM_pack)(NULL, dwords, &wm);
+
+         anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx7.wm);
+      }
 
       /* Blend states of each RT */
       uint32_t surface_count = 0;
@@ -388,14 +394,20 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       /* Skip this part */
       dws += GENX(BLEND_STATE_length);
 
+      bool dirty_logic_op =
+         cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
+
       for (uint32_t i = 0; i < surface_count; i++) {
          struct anv_pipeline_binding *binding = &map->surface_to_descriptor[i];
-         bool write_disabled = (color_writes & (1u << binding->index)) == 0;
+         bool write_disabled =
+            dirty_color_blend && (color_writes & (1u << binding->index)) == 0;
          struct GENX(BLEND_STATE_ENTRY) entry = {
             .WriteDisableAlpha = write_disabled,
             .WriteDisableRed   = write_disabled,
             .WriteDisableGreen = write_disabled,
             .WriteDisableBlue  = write_disabled,
+            .LogicOpFunction =
+               dirty_logic_op ? genX(vk_to_intel_logic_op)[d->logic_op] : 0,
          };
          GENX(BLEND_STATE_ENTRY_pack)(NULL, dws, &entry);
          dws += GENX(BLEND_STATE_ENTRY_length);

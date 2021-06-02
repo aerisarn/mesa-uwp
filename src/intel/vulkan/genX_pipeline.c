@@ -1217,7 +1217,8 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
       GENX(BLEND_STATE_ENTRY_length) * surface_count;
    uint32_t *blend_state_start, *state_pos;
 
-   if (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) {
+   if (dynamic_states & (ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
+                         ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
       const struct intel_device_info *devinfo = &pipeline->base.device->info;
       blend_state_start = devinfo->ver >= 8 ?
          pipeline->gfx8.blend_state : pipeline->gfx7.blend_state;
@@ -1263,7 +1264,9 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          .AlphaToOneEnable = ms_info && ms_info->alphaToOneEnable,
 #endif
          .LogicOpEnable = info->logicOpEnable,
-         .LogicOpFunction = genX(vk_to_intel_logic_op)[info->logicOp],
+         .LogicOpFunction = dynamic_states & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP ?
+                            0: genX(vk_to_intel_logic_op)[info->logicOp],
+
          /* Vulkan specification 1.2.168, VkLogicOp:
           *
           *   "Logical operations are controlled by the logicOpEnable and
@@ -1370,7 +1373,8 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
    blend.AlphaTestEnable               = false;
    blend.IndependentAlphaBlendEnable   = blend_state.IndependentAlphaBlendEnable;
 
-   if (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) {
+   if (dynamic_states & (ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
+                        ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
       GENX(3DSTATE_PS_BLEND_pack)(NULL, pipeline->gfx8.ps_blend, &blend);
    } else {
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PS_BLEND), _blend)
@@ -1382,7 +1386,8 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
 
    GENX(BLEND_STATE_pack)(NULL, blend_state_start, &blend_state);
 
-   if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)) {
+   if (!(dynamic_states & (ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
+                           ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP))) {
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_BLEND_STATE_POINTERS), bsp) {
          bsp.BlendStatePointer      = pipeline->blend_state.offset;
 #if GFX_VER >= 8

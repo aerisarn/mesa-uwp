@@ -104,6 +104,7 @@ const struct anv_dynamic_state default_dynamic_state = {
    .raster_discard = 0,
    .depth_bias_enable = 0,
    .primitive_restart_enable = 0,
+   .logic_op = 0,
 };
 
 /**
@@ -195,6 +196,7 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
    ANV_CMP_COPY(raster_discard, ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
    ANV_CMP_COPY(depth_bias_enable, ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE);
    ANV_CMP_COPY(primitive_restart_enable, ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE);
+   ANV_CMP_COPY(logic_op, ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP);
 
    if (copy_mask & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS) {
       dest->sample_locations.samples = src->sample_locations.samples;
@@ -542,6 +544,17 @@ void anv_CmdSetPrimitiveRestartEnableEXT(
    cmd_buffer->state.gfx.dynamic.primitive_restart_enable = primitiveRestartEnable;
 
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
+}
+
+void anv_CmdSetLogicOpEXT(
+   VkCommandBuffer                              commandBuffer,
+    VkLogicOp                                   logicOp)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.logic_op = logicOp;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
 }
 
 void anv_CmdSetViewport(

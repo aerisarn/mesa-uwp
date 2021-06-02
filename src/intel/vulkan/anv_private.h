@@ -2679,6 +2679,7 @@ struct anv_dynamic_state {
    bool                                         raster_discard;
    bool                                         depth_bias_enable;
    bool                                         primitive_restart_enable;
+   VkLogicOp                                    logic_op;
    bool                                         dyn_vbo_stride;
    bool                                         dyn_vbo_size;
 
