@@ -163,14 +163,14 @@ Meta Instructions
 **phi**
     TODO
 
-**fanin**
+**collect**
     Groups registers which need to be assigned to consecutive scalar
     registers, for example `sam` (texture fetch) src instructions (see
     `register groups`_) or array element dereference
     (see `relative addressing`_).
 
-**fanout**
-    The counterpart to **fanin**, when an instruction such as `sam`
+**split**
+    The counterpart to **collect**, when an instruction such as `sam`
     writes multiple components, splits the result into individual
     scalar components to be consumed by other instructions.
 
@@ -202,22 +202,22 @@ Before register assignment, to group the two components of the texture src toget
 
   digraph G {
     { rank=same;
-      fanin;
+      collect;
     };
     { rank=same;
       coord_x;
       coord_y;
     };
-    sam -> fanin [label="regs[1]"];
-    fanin -> coord_x [label="regs[1]"];
-    fanin -> coord_y [label="regs[2]"];
+    sam -> collect [label="regs[1]"];
+    collect -> coord_x [label="regs[1]"];
+    collect -> coord_y [label="regs[2]"];
     coord_x -> coord_y [label="right",style=dotted];
     coord_y -> coord_x [label="left",style=dotted];
     coord_x [label="coord.x"];
     coord_y [label="coord.y"];
   }
 
-The frontend sets up the SSA ptrs from ``sam`` source register to the ``fanin`` meta instruction, which in turn points to the instructions producing the ``coord.x`` and ``coord.y`` values.  And the grouping_ pass sets up the ``left`` and ``right`` neighbor pointers to the ``fanin``\'s sources, used later by the `register assignment`_ pass to assign blocks of scalar registers.
+The frontend sets up the SSA ptrs from ``sam`` source register to the ``collect`` meta instruction, which in turn points to the instructions producing the ``coord.x`` and ``coord.y`` values.  And the grouping_ pass sets up the ``left`` and ``right`` neighbor pointers to the ``collect``\'s sources, used later by the `register assignment`_ pass to assign blocks of scalar registers.
 
 And likewise, for the consecutive scalar registers for the destination:
 
@@ -230,23 +230,23 @@ And likewise, for the consecutive scalar registers for the destination:
       C;
     };
     { rank=same;
-      fanout_0;
-      fanout_1;
-      fanout_2;
+      split_0;
+      split_1;
+      split_2;
     };
-    A -> fanout_0;
-    B -> fanout_1;
-    C -> fanout_2;
-    fanout_0 [label="fanout\noff=0"];
-    fanout_0 -> sam;
-    fanout_1 [label="fanout\noff=1"];
-    fanout_1 -> sam;
-    fanout_2 [label="fanout\noff=2"];
-    fanout_2 -> sam;
-    fanout_0 -> fanout_1 [label="right",style=dotted];
-    fanout_1 -> fanout_0 [label="left",style=dotted];
-    fanout_1 -> fanout_2 [label="right",style=dotted];
-    fanout_2 -> fanout_1 [label="left",style=dotted];
+    A -> split_0;
+    B -> split_1;
+    C -> split_2;
+    split_0 [label="split\noff=0"];
+    split_0 -> sam;
+    split_1 [label="split\noff=1"];
+    split_1 -> sam;
+    split_2 [label="split\noff=2"];
+    split_2 -> sam;
+    split_0 -> split_1 [label="right",style=dotted];
+    split_1 -> split_0 [label="left",style=dotted];
+    split_1 -> split_2 [label="right",style=dotted];
+    split_2 -> split_1 [label="left",style=dotted];
     sam;
   }
 
@@ -292,9 +292,9 @@ results in:
 
 The scheduling pass has some smarts to schedule things such that only a single ``a0.x`` value is used at any one time.
 
-To implement variable arrays, values are stored in consecutive scalar registers.  This has some overlap with `register groups`_, in that ``fanin`` and ``fanout`` are used to help group things for the `register assignment`_ pass.
+To implement variable arrays, values are stored in consecutive scalar registers.  This has some overlap with `register groups`_, in that ``collect`` and ``split`` are used to help group things for the `register assignment`_ pass.
 
-To use a variable array as a src register, a slight variation of what is done for const array src.  The instruction src is a `fanin` instruction that groups all the array members:
+To use a variable array as a src register, a slight variation of what is done for const array src.  The instruction src is a `collect` instruction that groups all the array members:
 
 ::
 
@@ -312,21 +312,21 @@ results in:
     a2 [label="r1.x"];
     a3 [label="r1.y"];
     sub;
-    fanin;
+    collect;
     mova;
     add;
     add -> sub;
-    add -> fanin [label="off=2"];
+    add -> collect [label="off=2"];
     add -> mova;
-    fanin -> a0;
-    fanin -> a1;
-    fanin -> a2;
-    fanin -> a3;
+    collect -> a0;
+    collect -> a1;
+    collect -> a2;
+    collect -> a3;
   }
 
 TODO better describe how actual deref offset is derived, i.e. based on array base register.
 
-To do an indirect write to a variable array, a ``fanout`` is used.  Say the array was assigned to registers ``r0.z`` through ``r1.y`` (hence the constant offset of 2):
+To do an indirect write to a variable array, a ``split`` is used.  Say the array was assigned to registers ``r0.z`` through ``r1.y`` (hence the constant offset of 2):
 
     Note that only cat1 (mov) can do indirect write.
 
@@ -338,7 +338,7 @@ To do an indirect write to a variable array, a ``fanout`` is used.  Say the arra
   mul r0.x, r0.z, c0.z
 
 
-In this case, the ``mov`` instruction does not write all elements of the array (compared to usage of ``fanout`` for ``sam`` instructions in grouping_).  But the ``mov`` instruction does need an additional dependency (via ``fanin``) on instructions that last wrote the array element members, to ensure that they get scheduled before the ``mov`` in scheduling_ stage (which also serves to group the array elements for the `register assignment`_ stage).
+In this case, the ``mov`` instruction does not write all elements of the array (compared to usage of ``split`` for ``sam`` instructions in grouping_).  But the ``mov`` instruction does need an additional dependency (via ``collect``) on instructions that last wrote the array element members, to ensure that they get scheduled before the ``mov`` in scheduling_ stage (which also serves to group the array elements for the `register assignment`_ stage).
 
 .. graphviz::
 
@@ -351,20 +351,20 @@ In this case, the ``mov`` instruction does not write all elements of the array (
     mova;
     mov;
     mul;
-    fanout [label="fanout\noff=0"];
-    mul -> fanout;
-    fanout -> mov;
-    fanin;
-    fanin -> a0;
-    fanin -> a1;
-    fanin -> a2;
-    fanin -> a3;
+    split [label="split\noff=0"];
+    mul -> split;
+    split -> mov;
+    collect;
+    collect -> a0;
+    collect -> a1;
+    collect -> a2;
+    collect -> a3;
     mov -> min;
     mov -> mova;
-    mov -> fanin;
+    mov -> collect;
   }
 
-Note that there would in fact be ``fanout`` nodes generated for each array element (although only the reachable ones will be scheduled, etc).
+Note that there would in fact be ``split`` nodes generated for each array element (although only the reachable ones will be scheduled, etc).
 
 
 
@@ -401,7 +401,7 @@ The eventual plan is to invert that, with the front-end inserting no ``mov``\s a
 Grouping
 ~~~~~~~~
 
-In the grouping pass, instructions which need to be grouped (for ``fanin``\s, etc) have their ``left`` / ``right`` neighbor pointers setup.  In cases where there is a conflict (i.e. one instruction cannot have two unique left or right neighbors), an additional ``mov`` instruction is inserted.  This ensures that there is some possible valid `register assignment`_ at the later stages.
+In the grouping pass, instructions which need to be grouped (for ``collect``\s, etc) have their ``left`` / ``right`` neighbor pointers setup.  In cases where there is a conflict (i.e. one instruction cannot have two unique left or right neighbors), an additional ``mov`` instruction is inserted.  This ensures that there is some possible valid `register assignment`_ at the later stages.
 
 
 .. _depth:
