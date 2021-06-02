@@ -292,81 +292,52 @@ results in:
 
 The scheduling pass has some smarts to schedule things such that only a single ``a0.x`` value is used at any one time.
 
-To implement variable arrays, values are stored in consecutive scalar registers.  This has some overlap with `register groups`_, in that ``collect`` and ``split`` are used to help group things for the `register assignment`_ pass.
-
-To use a variable array as a src register, a slight variation of what is done for const array src.  The instruction src is a `collect` instruction that groups all the array members:
+To implement variable arrays, the NIR registers are stored as an ``ir3_array``,
+which will be register allocated to consecutive hardware registers.  The array
+access uses the id field in the ``ir3_register`` to map to the array being
+accessed, and the offset field for the fixed offset within the array.  A NIR
+indirect register read such as:
 
 ::
 
-  mova a0.x, hr1.y
-  sub r1.y, r2.x, r3.x
-  add r0.x, r1.y, r<a0.x + 2>
+  decl_reg vec2 32 r0[2]
+  ...
+  vec2 32 ssa_19 = mov r0[0 + ssa_9]
+
 
 results in:
 
-.. graphviz::
+::
 
-  digraph {
-    a0 [label="r0.z"];
-    a1 [label="r0.w"];
-    a2 [label="r1.x"];
-    a3 [label="r1.y"];
-    sub;
-    collect;
-    mova;
-    add;
-    add -> sub;
-    add -> collect [label="off=2"];
-    add -> mova;
-    collect -> a0;
-    collect -> a1;
-    collect -> a2;
-    collect -> a3;
-  }
+  0000:0000:001:  shl.b hssa_19, hssa_17, himm[0.000000,1,0x1]
+  0000:0000:002:  mov.s16s16 hr61.x, hssa_19
+  0000:0000:002:  mov.u32u32 ssa_21, arr[id=1, offset=0, size=4, ssa_12], address=_[0000:0000:002:  mov.s16s16]
+  0000:0000:002:  mov.u32u32 ssa_22, arr[id=1, offset=1, size=4, ssa_12], address=_[0000:0000:002:  mov.s16s16]
 
-TODO better describe how actual deref offset is derived, i.e. based on array base register.
 
-To do an indirect write to a variable array, a ``split`` is used.  Say the array was assigned to registers ``r0.z`` through ``r1.y`` (hence the constant offset of 2):
-
-    Note that only cat1 (mov) can do indirect write.
+Array writes write to the array in ``instr->regs[0]->array.id``.  A NIR indirect
+register write such as:
 
 ::
 
-  mova a0.x, hr1.y
-  min r2.x, r2.x, c0.x
-  mov r<a0.x + 2>, r2.x
-  mul r0.x, r0.z, c0.z
+  decl_reg vec2 32 r0[2]
+  ...
+  r0[0 + ssa_12] = mov ssa_13
 
+results in:
 
-In this case, the ``mov`` instruction does not write all elements of the array (compared to usage of ``split`` for ``sam`` instructions in grouping_).  But the ``mov`` instruction does need an additional dependency (via ``collect``) on instructions that last wrote the array element members, to ensure that they get scheduled before the ``mov`` in scheduling_ stage (which also serves to group the array elements for the `register assignment`_ stage).
+::
 
-.. graphviz::
+  0000:0000:001:  shl.b hssa_29, hssa_27, himm[0.000000,1,0x1]
+  0000:0000:002:  mov.s16s16 hr61.x, hssa_29
+  0000:0000:001:  mov.u32u32 arr[id=1, offset=0, size=4, ssa_17], c2.y, address=_[0000:0000:002:  mov.s16s16]
+  0000:0000:004:  mov.u32u32 arr[id=1, offset=1, size=4, ssa_31], c2.z, address=_[0000:0000:002:  mov.s16s16]
 
-  digraph {
-    a0 [label="r0.z"];
-    a1 [label="r0.w"];
-    a2 [label="r1.x"];
-    a3 [label="r1.y"];
-    min;
-    mova;
-    mov;
-    mul;
-    split [label="split\noff=0"];
-    mul -> split;
-    split -> mov;
-    collect;
-    collect -> a0;
-    collect -> a1;
-    collect -> a2;
-    collect -> a3;
-    mov -> min;
-    mov -> mova;
-    mov -> collect;
-  }
+Note that only cat1 (mov) can do indirect write, and thus NIR register stores
+may need to introduce an extra mov.
 
-Note that there would in fact be ``split`` nodes generated for each array element (although only the reachable ones will be scheduled, etc).
-
-
+ir3 array accesses in the DAG get serialized by the ``instr->barrier_class`` and
+containing ``IR3_BARRIER_ARRAY_W`` or ``IR3_BARRIER_ARRAY_R``.
 
 Shader Passes
 -------------
