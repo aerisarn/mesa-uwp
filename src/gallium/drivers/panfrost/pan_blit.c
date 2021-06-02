@@ -91,14 +91,6 @@ static void
 panfrost_blit_add_ctx_bos(struct panfrost_batch *batch,
                           struct pan_blit_context *ctx)
 {
-        if (ctx->pool.transient_bo) {
-                panfrost_batch_add_bo(batch, ctx->pool.transient_bo,
-                                      PAN_BO_ACCESS_SHARED |
-                                      PAN_BO_ACCESS_READ |
-                                      PAN_BO_ACCESS_VERTEX_TILER |
-                                      PAN_BO_ACCESS_FRAGMENT);
-        }
-
         util_dynarray_foreach(&ctx->pool.bos, struct panfrost_bo *, bo) {
                 panfrost_batch_add_bo(batch, *bo,
                                       PAN_BO_ACCESS_SHARED |
