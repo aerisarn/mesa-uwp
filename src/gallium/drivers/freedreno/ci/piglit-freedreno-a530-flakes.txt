@@ -4,6 +4,7 @@ glx@glx_arb_sync_control@waitformsc
 glx@glx-copy-sub-buffer.*
 glx@glx-multithread-texture
 glx@glx-swap-event_async
+shaders@glsl-uniform-interstage-limits@subdivide 5
 spec@!opengl 1.0@gl-1.0-blend-func
 spec@!opengl_1.1@texsubimage
 spec@!opengl 1.1@user-clip

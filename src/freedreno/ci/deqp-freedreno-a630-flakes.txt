@@ -9,6 +9,7 @@ dEQP-EGL.functional.color_clears.multi_context.gles2.rgba8888_pbuffer
 dEQP-EGL.functional.color_clears.multi_context.gles2.rgba8888_window
 dEQP-EGL.functional.color_clears.multi_context.gles3.rgb888_pbuffer
 dEQP-EGL.functional.color_clears.multi_context.gles3.rgba8888_pbuffer
+dEQP-EGL.functional.color_clears.multi_thread.gles2.rgba8888_pbuffer
 dEQP-EGL.functional.color_clears.multi_thread.gles2.rgba8888_window
 dEQP-EGL.functional.color_clears.multi_thread.gles3.rgb888_pbuffer
 dEQP-EGL.functional.color_clears.multi_thread.gles3.rgba8888_pbuffer
@@ -41,9 +42,11 @@ dEQP-EGL.functional.render.multi_context.gles2.rgb888_pbuffer
 dEQP-EGL.functional.render.multi_context.gles2.rgb888_window
 dEQP-EGL.functional.render.multi_context.gles2.rgba8888_pbuffer
 dEQP-EGL.functional.render.multi_context.gles2.rgba8888_window
+dEQP-EGL.functional.render.multi_context.gles3.rgb888_pbuffer
 dEQP-EGL.functional.render.multi_context.gles3.rgb888_window
 dEQP-EGL.functional.render.multi_context.gles3.rgba8888_window
 dEQP-EGL.functional.render.multi_thread.gles2_gles3.rgb888_window
+dEQP-EGL.functional.render.multi_thread.gles2_gles3.rgba8888_pbuffer
 dEQP-EGL.functional.render.multi_thread.gles2_gles3.rgba8888_window
 dEQP-EGL.functional.render.multi_thread.gles2.rgb888_window
 dEQP-EGL.functional.render.multi_thread.gles2.rgba8888_pbuffer
@@ -72,6 +75,7 @@ dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 
 # Started appearing with the new deqp runner.  possibly different test order?
 dEQP-GLES3.functional.fbo.blit.conversion.rg8i_to_r16i
+dEQP-GLES3.functional.fbo.blit.conversion.rg8_to_r16f
 
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/4575
 dEQP-VK.wsi.display.get_display_plane_capabilities
