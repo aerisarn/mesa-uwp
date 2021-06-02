@@ -146,6 +146,7 @@ iris_create_shader_variant(const struct iris_screen *screen,
 struct iris_compiled_shader *
 iris_upload_shader(struct iris_screen *screen,
                    struct iris_uncompiled_shader *ish,
+                   struct iris_compiled_shader *shader,
                    struct hash_table *driver_shaders,
                    struct u_upload_mgr *uploader,
                    enum iris_program_cache_id cache_id,
@@ -161,11 +162,6 @@ iris_upload_shader(struct iris_screen *screen,
                    const struct iris_binding_table *bt)
 {
    const struct intel_device_info *devinfo = &screen->devinfo;
-
-   void *mem_ctx = ish ? NULL : (void *) driver_shaders;
-
-   struct iris_compiled_shader *shader =
-      iris_create_shader_variant(screen, mem_ctx, cache_id, key_size, key);
 
    u_upload_alloc(uploader, 0, prog_data->program_size, 64,
                   &shader->assembly.offset, &shader->assembly.res,
@@ -280,10 +276,13 @@ iris_blorp_upload_shader(struct blorp_batch *blorp_batch, uint32_t stage,
    memset(&bt, 0, sizeof(bt));
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(screen, NULL, ice->shaders.cache,
-                         ice->shaders.uploader_driver,
-                         IRIS_CACHE_BLORP, key_size, key, kernel,
-                         prog_data, NULL, NULL, 0, 0, 0, &bt);
+      iris_create_shader_variant(screen, ice->shaders.cache, IRIS_CACHE_BLORP,
+                                 key_size, key);
+
+   iris_upload_shader(screen, NULL, shader, ice->shaders.cache,
+                      ice->shaders.uploader_driver,
+                      IRIS_CACHE_BLORP, key_size, key, kernel,
+                      prog_data, NULL, NULL, 0, 0, 0, &bt);
 
    struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
    *kernel_out =

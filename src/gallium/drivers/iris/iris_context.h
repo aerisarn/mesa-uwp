@@ -949,6 +949,7 @@ struct iris_compiled_shader *iris_create_shader_variant(const struct iris_screen
 
 struct iris_compiled_shader *iris_upload_shader(struct iris_screen *screen,
                                                 struct iris_uncompiled_shader *,
+                                                struct iris_compiled_shader *,
                                                 struct hash_table *driver_ht,
                                                 struct u_upload_mgr *uploader,
                                                 enum iris_program_cache_id,

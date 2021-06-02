@@ -245,10 +245,12 @@ iris_disk_cache_retrieve(struct iris_screen *screen,
     * return it to the caller.
     */
    struct iris_compiled_shader *shader =
-      iris_upload_shader(screen, ish, NULL, uploader,
-                         cache_id, key_size, prog_key, assembly,
-                         prog_data, so_decls, system_values,
-                         num_system_values, kernel_input_size, num_cbufs, &bt);
+      iris_create_shader_variant(screen, NULL, cache_id, key_size, prog_key);
+
+   shader = iris_upload_shader(screen, ish, shader, NULL, uploader,
+                               cache_id, key_size, prog_key, assembly,
+                               prog_data, so_decls, system_values,
+                               num_system_values, kernel_input_size, num_cbufs, &bt);
 
    free(buffer);
 

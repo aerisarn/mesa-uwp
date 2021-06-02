@@ -1221,10 +1221,12 @@ iris_compile_vs(struct iris_screen *screen,
                                     &vue_prog_data->vue_map);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(screen, ish, NULL, uploader,
-                         IRIS_CACHE_VS, sizeof(*key), key, program,
-                         prog_data, so_decls, system_values, num_system_values,
-                         0, num_cbufs, &bt);
+      iris_create_shader_variant(screen, NULL, IRIS_CACHE_VS, sizeof(*key), key);
+
+   shader = iris_upload_shader(screen, ish, shader, NULL, uploader,
+                               IRIS_CACHE_VS, sizeof(*key), key, program,
+                               prog_data, so_decls, system_values, num_system_values,
+                               0, num_cbufs, &bt);
 
    iris_disk_cache_store(screen->disk_cache, ish, shader, key, sizeof(*key));
 
@@ -1410,11 +1412,16 @@ iris_compile_tcs(struct iris_screen *screen,
 
    iris_debug_recompile(screen, dbg, ish, &brw_key.base);
 
+   void *passthrough_mem_ctx = (ish != NULL) ? NULL : passthrough_ht;
+
    struct iris_compiled_shader *shader =
-      iris_upload_shader(screen, ish, passthrough_ht, uploader,
-                         IRIS_CACHE_TCS, sizeof(*key), key, program,
-                         prog_data, NULL, system_values, num_system_values,
-                         0, num_cbufs, &bt);
+      iris_create_shader_variant(screen, passthrough_mem_ctx, IRIS_CACHE_TCS,
+                                 sizeof(*key), key);
+
+   shader = iris_upload_shader(screen, ish, shader, passthrough_ht, uploader,
+                               IRIS_CACHE_TCS, sizeof(*key), key, program,
+                               prog_data, NULL, system_values, num_system_values,
+                               0, num_cbufs, &bt);
 
    if (ish)
       iris_disk_cache_store(screen->disk_cache, ish, shader, key, sizeof(*key));
@@ -1546,12 +1553,13 @@ iris_compile_tes(struct iris_screen *screen,
       screen->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
 
-
    struct iris_compiled_shader *shader =
-      iris_upload_shader(screen, ish, NULL, uploader,
-                         IRIS_CACHE_TES, sizeof(*key), key, program,
-                         prog_data, so_decls, system_values, num_system_values,
-                         0, num_cbufs, &bt);
+      iris_create_shader_variant(screen, NULL, IRIS_CACHE_TES, sizeof(*key), key);
+
+   shader = iris_upload_shader(screen, ish, shader, NULL, uploader,
+                               IRIS_CACHE_TES, sizeof(*key), key, program,
+                               prog_data, so_decls, system_values, num_system_values,
+                               0, num_cbufs, &bt);
 
    iris_disk_cache_store(screen->disk_cache, ish, shader, key, sizeof(*key));
 
@@ -1674,10 +1682,12 @@ iris_compile_gs(struct iris_screen *screen,
                                     &vue_prog_data->vue_map);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(screen, ish, NULL, uploader,
-                         IRIS_CACHE_GS, sizeof(*key), key, program,
-                         prog_data, so_decls, system_values, num_system_values,
-                         0, num_cbufs, &bt);
+      iris_create_shader_variant(screen, NULL, IRIS_CACHE_GS, sizeof(*key), key);
+
+   shader = iris_upload_shader(screen, ish, shader, NULL, uploader,
+                               IRIS_CACHE_GS, sizeof(*key), key, program,
+                               prog_data, so_decls, system_values, num_system_values,
+                               0, num_cbufs, &bt);
 
    iris_disk_cache_store(screen->disk_cache, ish, shader, key, sizeof(*key));
 
@@ -1801,10 +1811,12 @@ iris_compile_fs(struct iris_screen *screen,
    iris_debug_recompile(screen, dbg, ish, &brw_key.base);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(screen, ish, NULL, uploader,
-                         IRIS_CACHE_FS, sizeof(*key), key, program,
-                         prog_data, NULL, system_values, num_system_values,
-                         0, num_cbufs, &bt);
+      iris_create_shader_variant(screen, NULL, IRIS_CACHE_FS, sizeof(*key), key);
+
+   shader = iris_upload_shader(screen, ish, shader, NULL, uploader,
+                               IRIS_CACHE_FS, sizeof(*key), key, program,
+                               prog_data, NULL, system_values, num_system_values,
+                               0, num_cbufs, &bt);
 
    iris_disk_cache_store(screen->disk_cache, ish, shader, key, sizeof(*key));
 
@@ -2068,10 +2080,12 @@ iris_compile_cs(struct iris_screen *screen,
    iris_debug_recompile(screen, dbg, ish, &brw_key.base);
 
    struct iris_compiled_shader *shader =
-      iris_upload_shader(screen, ish, NULL, uploader,
-                         IRIS_CACHE_CS, sizeof(*key), key, program,
-                         prog_data, NULL, system_values, num_system_values,
-                         ish->kernel_input_size, num_cbufs, &bt);
+      iris_create_shader_variant(screen, NULL, IRIS_CACHE_CS, sizeof(*key), key);
+
+   shader = iris_upload_shader(screen, ish, shader, NULL, uploader,
+                               IRIS_CACHE_CS, sizeof(*key), key, program,
+                               prog_data, NULL, system_values, num_system_values,
+                               ish->kernel_input_size, num_cbufs, &bt);
 
    iris_disk_cache_store(screen->disk_cache, ish, shader, key, sizeof(*key));
 
