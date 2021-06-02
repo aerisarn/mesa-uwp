@@ -1166,7 +1166,7 @@ pan_preload_emit_pre_frame_dcd(struct pan_pool *desc_pool,
         }
 }
 #else
-static void
+static struct panfrost_ptr
 pan_preload_emit_tiler_job(struct pan_pool *desc_pool,
                            struct pan_scoreboard *scoreboard,
                            struct pan_fb_info *fb, bool zs,
@@ -1197,10 +1197,11 @@ pan_preload_emit_tiler_job(struct pan_pool *desc_pool,
 
         panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
                          false, false, 0, 0, &job, true);
+        return job;
 }
 #endif
 
-static void
+static struct panfrost_ptr
 pan_preload_fb_part(struct pan_pool *pool,
                     struct pan_scoreboard *scoreboard,
                     struct pan_fb_info *fb, bool zs,
@@ -1208,28 +1209,31 @@ pan_preload_fb_part(struct pan_pool *pool,
 {
         struct panfrost_device *dev = pool->dev;
         mali_ptr rsd = pan_preload_get_rsd(dev, fb, zs);
+        struct panfrost_ptr job = { 0 };
 
 #if PAN_ARCH >= 6
         pan_preload_emit_pre_frame_dcd(pool, fb, zs,
                                        coords, rsd, tsd);
 #else
-        pan_preload_emit_tiler_job(pool, scoreboard,
-                                   fb, zs, coords, rsd, tsd);
+        job = pan_preload_emit_tiler_job(pool, scoreboard,
+                                         fb, zs, coords, rsd, tsd);
 #endif
+        return job;
 }
 
-void
+unsigned
 GENX(pan_preload_fb)(struct pan_pool *pool,
                      struct pan_scoreboard *scoreboard,
                      struct pan_fb_info *fb,
-                     mali_ptr tsd, mali_ptr tiler)
+                     mali_ptr tsd, mali_ptr tiler,
+                     struct panfrost_ptr *jobs)
 {
         bool preload_zs = pan_preload_needed(fb, true);
         bool preload_rts = pan_preload_needed(fb, false);
         mali_ptr coords;
 
         if (!preload_zs && !preload_rts)
-                return;
+                return 0;
 
         float rect[] = {
                 0.0, 0.0, 0.0, 1.0,
@@ -1241,13 +1245,24 @@ GENX(pan_preload_fb)(struct pan_pool *pool,
         coords = pan_pool_upload_aligned(pool, rect,
                                          sizeof(rect), 64);
 
-        if (preload_zs)
-                pan_preload_fb_part(pool, scoreboard, fb, true, coords,
-                                    tsd, tiler);
+        unsigned njobs = 0;
+        if (preload_zs) {
+                struct panfrost_ptr job =
+                        pan_preload_fb_part(pool, scoreboard, fb, true,
+                                            coords, tsd, tiler);
+                if (jobs && job.cpu)
+                        jobs[njobs++] = job;
+        }
 
-        if (preload_rts)
-                pan_preload_fb_part(pool, scoreboard, fb, false, coords,
-                                    tsd, tiler);
+        if (preload_rts) {
+                struct panfrost_ptr job =
+                        pan_preload_fb_part(pool, scoreboard, fb, false,
+                                            coords, tsd, tiler);
+                if (jobs && job.cpu)
+                        jobs[njobs++] = job;
+        }
+
+        return njobs;
 }
 
 void

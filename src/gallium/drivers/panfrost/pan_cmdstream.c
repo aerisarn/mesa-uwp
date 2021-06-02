@@ -3534,7 +3534,7 @@ static void
 preload(struct panfrost_batch *batch, struct pan_fb_info *fb)
 {
         GENX(pan_preload_fb)(&batch->pool.base, &batch->scoreboard, fb, batch->tls.gpu,
-                             PAN_ARCH >= 6 ? batch->tiler_ctx.bifrost : 0);
+                             PAN_ARCH >= 6 ? batch->tiler_ctx.bifrost : 0, NULL);
 }
 
 static void

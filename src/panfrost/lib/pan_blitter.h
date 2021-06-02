@@ -89,11 +89,12 @@ GENX(pan_blitter_init)(struct panfrost_device *dev,
 void
 GENX(pan_blitter_cleanup)(struct panfrost_device *dev);
 
-void
+unsigned
 GENX(pan_preload_fb)(struct pan_pool *desc_pool,
                      struct pan_scoreboard *scoreboard,
                      struct pan_fb_info *fb,
-                     mali_ptr tsd, mali_ptr tiler);
+                     mali_ptr tsd, mali_ptr tiler,
+                     struct panfrost_ptr *jobs);
 
 void
 GENX(pan_blit_ctx_init)(struct panfrost_device *dev,
