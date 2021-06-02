@@ -960,6 +960,7 @@
     </field>
     <field name="Geometry Flags" start="62" end="63" type="uint">
       <value name="GEOMETRY_OPAQUE" value="1"/>
+      <value name="GEOMETRY_NO_DUPLICATE_ANYHIT_INVOCATION" value="2"/>
     </field>
   </struct>
 
