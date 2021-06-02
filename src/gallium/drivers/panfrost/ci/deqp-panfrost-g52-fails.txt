@@ -1,2 +1,0 @@
-dEQP-GLES31.functional.layout_binding.image.image2d.vertex_binding_max_array,Fail
-dEQP-GLES31.functional.layout_binding.image.image3d.vertex_binding_max_array,Fail
