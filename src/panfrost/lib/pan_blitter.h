@@ -57,7 +57,6 @@ struct pan_blit_info {
 };
 
 struct pan_blit_context {
-        struct pan_pool pool;
         mali_ptr rsd, vpd;
         mali_ptr textures;
         mali_ptr samplers;
@@ -95,10 +94,8 @@ pan_preload_fb(struct pan_pool *desc_pool,
 void
 pan_blit_ctx_init(struct panfrost_device *dev,
                   const struct pan_blit_info *info,
+                  struct pan_pool *blit_pool,
                   struct pan_blit_context *ctx);
-
-void
-pan_blit_ctx_cleanup(struct pan_blit_context *ctx);
 
 bool
 pan_blit_next_surface(struct pan_blit_context *ctx);
