@@ -2323,155 +2323,6 @@ iris_create_uncompiled_shader(struct iris_screen *screen,
 }
 
 static void *
-iris_create_vs_state(struct iris_context *ice,
-                     struct iris_uncompiled_shader *ish)
-{
-   struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
-
-   /* User clip planes */
-   if (ish->nir->info.clip_distance_array_size == 0)
-      ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
-
-   if (screen->precompile) {
-      struct iris_vs_prog_key key = { KEY_ID(vue.base) };
-
-      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
-         iris_compile_vs(screen, uploader, &ice->dbg, ish, &key);
-   }
-
-   return ish;
-}
-
-static void *
-iris_create_tcs_state(struct iris_context *ice,
-                      struct iris_uncompiled_shader *ish)
-{
-   struct iris_screen *screen = (void *) ice->ctx.screen;
-   const struct brw_compiler *compiler = screen->compiler;
-   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
-   struct shader_info *info = &ish->nir->info;
-
-   if (screen->precompile) {
-      const unsigned _GL_TRIANGLES = 0x0004;
-      struct iris_tcs_prog_key key = {
-         KEY_ID(vue.base),
-         // XXX: make sure the linker fills this out from the TES...
-         .tes_primitive_mode =
-            info->tess.primitive_mode ? info->tess.primitive_mode
-                                      : _GL_TRIANGLES,
-         .outputs_written = info->outputs_written,
-         .patch_outputs_written = info->patch_outputs_written,
-      };
-
-      /* 8_PATCH mode needs the key to contain the input patch dimensionality.
-       * We don't have that information, so we randomly guess that the input
-       * and output patches are the same size.  This is a bad guess, but we
-       * can't do much better.
-       */
-      if (compiler->use_tcs_8_patch)
-         key.input_vertices = info->tess.tcs_vertices_out;
-
-      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
-         iris_compile_tcs(screen, NULL, uploader, &ice->dbg, ish, &key);
-   }
-
-   return ish;
-}
-
-static void *
-iris_create_tes_state(struct iris_context *ice,
-                      struct iris_uncompiled_shader *ish)
-{
-   struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
-   struct shader_info *info = &ish->nir->info;
-
-   /* User clip planes */
-   if (ish->nir->info.clip_distance_array_size == 0)
-      ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
-
-   if (screen->precompile) {
-      struct iris_tes_prog_key key = {
-         KEY_ID(vue.base),
-         // XXX: not ideal, need TCS output/TES input unification
-         .inputs_read = info->inputs_read,
-         .patch_inputs_read = info->patch_inputs_read,
-      };
-
-      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
-         iris_compile_tes(screen, uploader, &ice->dbg, ish, &key);
-   }
-
-   return ish;
-}
-
-static void *
-iris_create_gs_state(struct iris_context *ice,
-                     struct iris_uncompiled_shader *ish)
-{
-   struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
-
-   /* User clip planes */
-   if (ish->nir->info.clip_distance_array_size == 0)
-      ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
-
-   if (screen->precompile) {
-      struct iris_gs_prog_key key = { KEY_ID(vue.base) };
-
-      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
-         iris_compile_gs(screen, uploader, &ice->dbg, ish, &key);
-   }
-
-   return ish;
-}
-
-static void *
-iris_create_fs_state(struct iris_context *ice,
-                     struct iris_uncompiled_shader *ish)
-{
-   struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
-   struct shader_info *info = &ish->nir->info;
-
-   ish->nos |= (1ull << IRIS_NOS_FRAMEBUFFER) |
-               (1ull << IRIS_NOS_DEPTH_STENCIL_ALPHA) |
-               (1ull << IRIS_NOS_RASTERIZER) |
-               (1ull << IRIS_NOS_BLEND);
-
-   /* The program key needs the VUE map if there are > 16 inputs */
-   if (util_bitcount64(ish->nir->info.inputs_read &
-                       BRW_FS_VARYING_INPUT_MASK) > 16) {
-      ish->nos |= (1ull << IRIS_NOS_LAST_VUE_MAP);
-   }
-
-   if (screen->precompile) {
-      const uint64_t color_outputs = info->outputs_written &
-         ~(BITFIELD64_BIT(FRAG_RESULT_DEPTH) |
-           BITFIELD64_BIT(FRAG_RESULT_STENCIL) |
-           BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK));
-
-      bool can_rearrange_varyings =
-         util_bitcount64(info->inputs_read & BRW_FS_VARYING_INPUT_MASK) <= 16;
-
-      const struct intel_device_info *devinfo = &screen->devinfo;
-      struct iris_fs_prog_key key = {
-         KEY_ID(base),
-         .nr_color_regions = util_bitcount(color_outputs),
-         .coherent_fb_fetch = devinfo->ver >= 9,
-         .input_slots_valid =
-            can_rearrange_varyings ? 0 : info->inputs_read | VARYING_BIT_POS,
-      };
-
-      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, sizeof(key)))
-         iris_compile_fs(screen, uploader, &ice->dbg, ish, &key, NULL);
-   }
-
-   return ish;
-}
-
-static void *
 iris_create_compute_state(struct pipe_context *ctx,
                           const struct pipe_compute_state *state)
 {
@@ -2524,6 +2375,40 @@ iris_create_compute_state(struct pipe_context *ctx,
    return ish;
 }
 
+static void
+iris_compile_shader(struct iris_screen *screen,
+                    struct u_upload_mgr *uploader,
+                    struct pipe_debug_callback *dbg,
+                    struct iris_uncompiled_shader *ish,
+                    const void *key)
+{
+   switch (ish->nir->info.stage) {
+   case MESA_SHADER_VERTEX:
+      iris_compile_vs(screen, uploader, dbg, ish,
+                      (const struct iris_vs_prog_key *) key);
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      iris_compile_tcs(screen, NULL, uploader, dbg, ish,
+                       (const struct iris_tcs_prog_key *) key);
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      iris_compile_tes(screen, uploader, dbg, ish,
+                       (const struct iris_tes_prog_key *) key);
+      break;
+   case MESA_SHADER_GEOMETRY:
+      iris_compile_gs(screen, uploader, dbg, ish,
+                      (const struct iris_gs_prog_key *) key);
+      break;
+   case MESA_SHADER_FRAGMENT:
+      iris_compile_fs(screen, uploader, dbg, ish,
+                      (const struct iris_fs_prog_key *) key, NULL);
+      break;
+
+   default:
+      unreachable("Invalid shader stage.");
+   }
+}
+
 static void *
 iris_create_shader_state(struct pipe_context *ctx,
                          const struct pipe_shader_state *state)
@@ -2531,30 +2416,124 @@ iris_create_shader_state(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
    struct nir_shader *nir;
-   struct shader_info *info = &ish->nir->info;
 
    if (state->type == PIPE_SHADER_IR_TGSI)
       nir = tgsi_to_nir(state->tokens, ctx->screen, false);
    else
       nir = state->ir.nir;
 
+   const struct shader_info *const info = &nir->info;
    struct iris_uncompiled_shader *ish =
       iris_create_uncompiled_shader(screen, nir, &state->stream_output);
 
+   union iris_any_prog_key key;
+   unsigned key_size = 0;
+
+   memset(&key, 0, sizeof(key));
+
    switch (info->stage) {
    case MESA_SHADER_VERTEX:
-      return iris_create_vs_state(ice, ish);
-   case MESA_SHADER_TESS_CTRL:
-      return iris_create_tcs_state(ice, ish);
+      /* User clip planes */
+      if (info->clip_distance_array_size == 0)
+         ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
+
+      key.vs = (struct iris_vs_prog_key) { KEY_ID(vue.base) };
+      key_size = sizeof(key.vs);
+      break;
+
+   case MESA_SHADER_TESS_CTRL: {
+      const unsigned _GL_TRIANGLES = 0x0004;
+
+      key.tcs = (struct iris_tcs_prog_key) {
+         KEY_ID(vue.base),
+         // XXX: make sure the linker fills this out from the TES...
+         .tes_primitive_mode =
+         info->tess.primitive_mode ? info->tess.primitive_mode
+                                   : _GL_TRIANGLES,
+         .outputs_written = info->outputs_written,
+         .patch_outputs_written = info->patch_outputs_written,
+      };
+
+      /* 8_PATCH mode needs the key to contain the input patch dimensionality.
+       * We don't have that information, so we randomly guess that the input
+       * and output patches are the same size.  This is a bad guess, but we
+       * can't do much better.
+       */
+      if (screen->compiler->use_tcs_8_patch)
+         key.tcs.input_vertices = info->tess.tcs_vertices_out;
+
+      key_size = sizeof(key.tcs);
+      break;
+   }
+
    case MESA_SHADER_TESS_EVAL:
-      return iris_create_tes_state(ice, ish);
+      /* User clip planes */
+      if (info->clip_distance_array_size == 0)
+         ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
+
+      key.tes = (struct iris_tes_prog_key) {
+         KEY_ID(vue.base),
+         // XXX: not ideal, need TCS output/TES input unification
+         .inputs_read = info->inputs_read,
+         .patch_inputs_read = info->patch_inputs_read,
+      };
+
+      key_size = sizeof(key.tes);
+      break;
+
    case MESA_SHADER_GEOMETRY:
-      return iris_create_gs_state(ice, ish);
+      /* User clip planes */
+      if (info->clip_distance_array_size == 0)
+         ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
+
+      key.gs = (struct iris_gs_prog_key) { KEY_ID(vue.base) };
+      key_size = sizeof(key.gs);
+      break;
+
    case MESA_SHADER_FRAGMENT:
-      return iris_create_fs_state(ice, ish);
+      ish->nos |= (1ull << IRIS_NOS_FRAMEBUFFER) |
+                  (1ull << IRIS_NOS_DEPTH_STENCIL_ALPHA) |
+                  (1ull << IRIS_NOS_RASTERIZER) |
+                  (1ull << IRIS_NOS_BLEND);
+
+      /* The program key needs the VUE map if there are > 16 inputs */
+      if (util_bitcount64(info->inputs_read & BRW_FS_VARYING_INPUT_MASK) > 16) {
+         ish->nos |= (1ull << IRIS_NOS_LAST_VUE_MAP);
+      }
+
+      const uint64_t color_outputs = info->outputs_written &
+         ~(BITFIELD64_BIT(FRAG_RESULT_DEPTH) |
+           BITFIELD64_BIT(FRAG_RESULT_STENCIL) |
+           BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK));
+
+      bool can_rearrange_varyings =
+         util_bitcount64(info->inputs_read & BRW_FS_VARYING_INPUT_MASK) <= 16;
+
+      const struct intel_device_info *devinfo = &screen->devinfo;
+
+      key.fs = (struct iris_fs_prog_key) {
+         KEY_ID(base),
+         .nr_color_regions = util_bitcount(color_outputs),
+         .coherent_fb_fetch = devinfo->ver >= 9,
+         .input_slots_valid =
+            can_rearrange_varyings ? 0 : info->inputs_read | VARYING_BIT_POS,
+      };
+
+      key_size = sizeof(key.fs);
+      break;
+
    default:
       unreachable("Invalid shader stage.");
    }
+
+   if (screen->precompile) {
+      struct u_upload_mgr *uploader = ice->shaders.uploader_unsync;
+
+      if (!iris_disk_cache_retrieve(screen, uploader, ish, &key, key_size))
+         iris_compile_shader(screen, uploader, &ice->dbg, ish, &key);
+   }
+
+   return ish;
 }
 
 /**
