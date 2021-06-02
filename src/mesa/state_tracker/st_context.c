@@ -856,7 +856,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    /* This must be done after extensions are initialized to enable persistent
     * mappings immediately.
     */
-   _vbo_CreateContext(ctx, true);
+   _vbo_CreateContext(ctx);
 
    _mesa_initialize_dispatch_tables(ctx);
    _mesa_initialize_vbo_vtxfmt(ctx);

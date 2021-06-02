@@ -184,7 +184,7 @@ struct vbo_save_context {
 };
 
 GLboolean
-_vbo_CreateContext(struct gl_context *ctx, bool use_buffer_objects);
+_vbo_CreateContext(struct gl_context *ctx);
 
 void
 _vbo_DestroyContext(struct gl_context *ctx);

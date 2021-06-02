@@ -109,11 +109,11 @@ _vbo_attribute_alias_map[VP_MODE_MAX][VERT_ATTRIB_MAX] = {
 
 
 void
-vbo_exec_init(struct gl_context *ctx, bool use_buffer_objects)
+vbo_exec_init(struct gl_context *ctx)
 {
    struct vbo_exec_context *exec = &vbo_context(ctx)->exec;
 
-   vbo_exec_vtx_init(exec, use_buffer_objects);
+   vbo_exec_vtx_init(exec);
 
    ctx->Driver.NeedFlush = 0;
    ctx->Driver.CurrentExecPrimitive = PRIM_OUTSIDE_BEGIN_END;
