@@ -940,6 +940,13 @@ struct iris_compiled_shader *iris_find_cached_shader(struct iris_context *ice,
                                                      enum iris_program_cache_id,
                                                      uint32_t key_size,
                                                      const void *key);
+
+struct iris_compiled_shader *iris_create_shader_variant(const struct iris_screen *,
+                                                        void *mem_ctx,
+                                                        enum iris_program_cache_id cache_id,
+                                                        uint32_t key_size,
+                                                        const void *key);
+
 struct iris_compiled_shader *iris_upload_shader(struct iris_screen *screen,
                                                 struct iris_uncompiled_shader *,
                                                 struct hash_table *driver_ht,
