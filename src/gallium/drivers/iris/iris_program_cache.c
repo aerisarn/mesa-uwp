@@ -103,6 +103,7 @@ void
 iris_delete_shader_variant(struct iris_compiled_shader *shader)
 {
    pipe_resource_reference(&shader->assembly.res, NULL);
+   util_queue_fence_destroy(&shader->ready);
    ralloc_free(shader);
 }
 
@@ -134,6 +135,8 @@ iris_create_shader_variant(const struct iris_screen *screen,
                    screen->vtbl.derived_program_state_size(cache_id));
 
    pipe_reference_init(&shader->ref, 1);
+   util_queue_fence_init(&shader->ready);
+   util_queue_fence_reset(&shader->ready);
 
    if (cache_id != IRIS_CACHE_BLORP) {
       assert(key_size <= sizeof(union iris_any_prog_key));
@@ -143,7 +146,7 @@ iris_create_shader_variant(const struct iris_screen *screen,
    return shader;
 }
 
-struct iris_compiled_shader *
+void
 iris_upload_shader(struct iris_screen *screen,
                    struct iris_uncompiled_shader *ish,
                    struct iris_compiled_shader *shader,
@@ -204,32 +207,12 @@ iris_upload_shader(struct iris_screen *screen,
    /* Store the 3DSTATE shader packets and other derived state. */
    screen->vtbl.store_derived_program_state(devinfo, cache_id, shader);
 
-   if (ish) {
-      simple_mtx_lock(&ish->lock);
+   util_queue_fence_signal(&shader->ready);
 
-      /* While unlikely, it's possible that another thread concurrently
-       * compiled the same variant.  Make sure no one beat us to it; if
-       * they did, return the existing one and discard our new one.
-       */
-      list_for_each_entry(struct iris_compiled_shader, existing,
-                          &ish->variants, link) {
-         if (memcmp(&existing->key, key, key_size) == 0) {
-            iris_delete_shader_variant(shader);
-            simple_mtx_unlock(&ish->lock);
-            return existing;
-         }
-      }
-
-      /* Append our new variant to the shader's variant list. */
-      list_addtail(&shader->link, &ish->variants);
-
-      simple_mtx_unlock(&ish->lock);
-   } else {
+   if (!ish) {
       struct keybox *keybox = make_keybox(shader, cache_id, key, key_size);
       _mesa_hash_table_insert(driver_shaders, keybox, shader);
    }
-
-   return shader;
 }
 
 bool
