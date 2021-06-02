@@ -318,7 +318,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return is_a4xx(screen);
 
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
-      return is_a2xx(screen) ? 64 : 32;
+      return 64;
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
