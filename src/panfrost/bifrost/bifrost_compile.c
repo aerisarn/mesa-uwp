@@ -475,6 +475,17 @@ bi_skip_atest(bi_context *ctx, bool emit_zs)
 }
 
 static void
+bi_emit_atest(bi_builder *b, bi_index alpha)
+{
+        bi_index coverage = bi_register(60);
+        bi_instr *atest = bi_atest_to(b, coverage, coverage, alpha);
+        b->shader->emitted_atest = true;
+
+        /* Pseudo-source to encode in the tuple */
+        atest->src[2] = bi_fau(BIR_FAU_ATEST_PARAM, false);
+}
+
+static void
 bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
 {
         bool combined = instr->intrinsic ==
@@ -537,12 +548,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                 if (nir_src_num_components(instr->src[0]) < 4)
                         alpha = bi_imm_f32(1.0);
 
-                bi_instr *atest = bi_atest_to(b, bi_register(60),
-                                bi_register(60), alpha);
-                b->shader->emitted_atest = true;
-
-                /* Pseudo-source to encode in the tuple */
-                atest->src[2] = bi_fau(BIR_FAU_ATEST_PARAM, false);
+                bi_emit_atest(b, alpha);
         }
 
         if (emit_zs) {
@@ -3387,6 +3393,19 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 /* Name blocks now that we're done emitting so the order is
                  * consistent */
                 block->base.name = block_source_count++;
+        }
+
+        /* If the shader doesn't write any colour or depth outputs, it may
+         * still need an ATEST at the very end! */
+        bool need_dummy_atest =
+                (ctx->stage == MESA_SHADER_FRAGMENT) &&
+                !ctx->emitted_atest &&
+                !bi_skip_atest(ctx, false);
+
+        if (need_dummy_atest) {
+                pan_block *end = list_last_entry(&ctx->blocks, pan_block, link);
+                bi_builder b = bi_init_builder(ctx, bi_after_block((bi_block *) end));
+                bi_emit_atest(&b, bi_zero());
         }
 
         /* Runs before constant folding */
