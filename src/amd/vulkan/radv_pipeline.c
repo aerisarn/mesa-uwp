@@ -5305,6 +5305,7 @@ radv_pipeline_init_vertex_input_state(struct radv_pipeline *pipeline,
 
    pipeline->use_per_attribute_vb_descs = info->vs.use_per_attribute_vb_descs;
    pipeline->vb_desc_usage_mask = info->vs.vb_desc_usage_mask;
+   pipeline->vb_desc_alloc_size = util_bitcount(pipeline->vb_desc_usage_mask) * 16;
 }
 
 static struct radv_shader_variant *

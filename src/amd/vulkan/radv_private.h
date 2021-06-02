@@ -1342,7 +1342,6 @@ enum rgp_flush_bits {
 struct radv_cmd_state {
    /* Vertex descriptors */
    uint64_t vb_va;
-   unsigned vb_size;
 
    bool predicating;
    uint64_t dirty;
@@ -1730,6 +1729,7 @@ struct radv_pipeline {
 
    bool use_per_attribute_vb_descs;
    uint32_t vb_desc_usage_mask;
+   uint32_t vb_desc_alloc_size;
 
    uint32_t user_data_0[MESA_SHADER_STAGES];
    union {
