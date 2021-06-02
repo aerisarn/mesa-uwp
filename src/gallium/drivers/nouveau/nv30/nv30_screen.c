@@ -463,6 +463,14 @@ nv30_screen_is_format_supported(struct pipe_screen *pscreen,
    /* shared is always supported */
    bindings &= ~PIPE_BIND_SHARED;
 
+   if (bindings & PIPE_BIND_INDEX_BUFFER) {
+      if (format != PIPE_FORMAT_R8_UINT &&
+          format != PIPE_FORMAT_R16_UINT &&
+          format != PIPE_FORMAT_R32_UINT)
+         return false;
+      bindings &= ~PIPE_BIND_INDEX_BUFFER;
+   }
+
    return (nv30_format_info(pscreen, format)->bindings & bindings) == bindings;
 }
 

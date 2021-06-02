@@ -88,6 +88,14 @@ nv50_screen_is_format_supported(struct pipe_screen *pscreen,
    bindings &= ~(PIPE_BIND_LINEAR |
                  PIPE_BIND_SHARED);
 
+   if (bindings & PIPE_BIND_INDEX_BUFFER) {
+      if (format != PIPE_FORMAT_R8_UINT &&
+          format != PIPE_FORMAT_R16_UINT &&
+          format != PIPE_FORMAT_R32_UINT)
+         return false;
+      bindings &= ~PIPE_BIND_INDEX_BUFFER;
+   }
+
    return (( nv50_format_table[format].usage |
             nv50_vertex_format[format].usage) & bindings) == bindings;
 }
