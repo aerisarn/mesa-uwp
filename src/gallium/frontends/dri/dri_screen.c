@@ -763,14 +763,7 @@ static int
 dri_get_param(struct st_manager *smapi,
               enum st_manager_param param)
 {
-   struct dri_screen *screen = (struct dri_screen *)smapi;
-
-   switch(param) {
-   case ST_MANAGER_BROKEN_INVALIDATE:
-      return screen->broken_invalidate;
-   default:
-      return 0;
-   }
+   return 0;
 }
 
 void

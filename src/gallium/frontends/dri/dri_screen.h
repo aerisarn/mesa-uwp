@@ -53,9 +53,6 @@ struct dri_screen
    struct st_manager base;
    struct st_api *st_api;
 
-   /* on old libGL's invalidate doesn't get called as it should */
-   boolean broken_invalidate;
-
    /* dri */
    __DRIscreen *sPriv;
    boolean throttle;

@@ -121,6 +121,9 @@ driCreateNewScreen2(int scrn, int fd,
     }
 
     setupLoaderExtensions(psp, extensions);
+    // dri2 drivers require working invalidate
+    if (fd != -1 && !psp->dri2.useInvalidate)
+       return NULL;
 
     psp->loaderPrivate = data;
 
