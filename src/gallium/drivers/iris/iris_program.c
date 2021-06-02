@@ -2207,7 +2207,7 @@ iris_get_scratch_space(struct iris_context *ice,
 
       uint32_t size = per_thread_scratch * max_threads[stage];
 
-      *bop = iris_bo_alloc(bufmgr, "scratch", size, IRIS_MEMZONE_SHADER, 0);
+      *bop = iris_bo_alloc(bufmgr, "scratch", size, 1, IRIS_MEMZONE_SHADER, 0);
    }
 
    return *bop;

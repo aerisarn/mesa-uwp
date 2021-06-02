@@ -258,6 +258,7 @@ struct iris_bo {
 struct iris_bo *iris_bo_alloc(struct iris_bufmgr *bufmgr,
                               const char *name,
                               uint64_t size,
+                              uint32_t alignment,
                               enum iris_memory_zone memzone,
                               unsigned flags);
 

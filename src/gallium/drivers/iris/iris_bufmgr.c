@@ -622,10 +622,11 @@ struct iris_bo *
 iris_bo_alloc(struct iris_bufmgr *bufmgr,
               const char *name,
               uint64_t size,
+              uint32_t alignment,
               enum iris_memory_zone memzone,
               unsigned flags)
 {
-   return bo_alloc_internal(bufmgr, name, size, 1, memzone,
+   return bo_alloc_internal(bufmgr, name, size, alignment, memzone,
                             flags, I915_TILING_NONE, 0);
 }
 
@@ -1643,8 +1644,8 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
    struct iris_bufmgr *bufmgr = (struct iris_bufmgr *)driver_ctx;
 
    struct iris_bo *bo =
-      iris_bo_alloc_tiled(bufmgr, "aux-map", size, 64 * 1024,
-                          IRIS_MEMZONE_OTHER, I915_TILING_NONE, 0, 0);
+      iris_bo_alloc(bufmgr, "aux-map", size, 64 * 1024,
+                    IRIS_MEMZONE_OTHER, 0);
 
    buf->driver_bo = bo;
    buf->gpu = bo->gtt_offset;

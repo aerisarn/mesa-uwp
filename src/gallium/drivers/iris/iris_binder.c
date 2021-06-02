@@ -85,7 +85,7 @@ binder_realloc(struct iris_context *ice)
    }
 
 
-   binder->bo = iris_bo_alloc(bufmgr, "binder", IRIS_BINDER_SIZE,
+   binder->bo = iris_bo_alloc(bufmgr, "binder", IRIS_BINDER_SIZE, 1,
                               IRIS_MEMZONE_BINDER, 0);
    binder->bo->gtt_offset = next_address;
    binder->map = iris_bo_map(NULL, binder->bo, MAP_WRITE);
