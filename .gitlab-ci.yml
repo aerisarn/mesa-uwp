@@ -738,7 +738,7 @@ meson-gallium:
       -D gallium-xa=enabled
       -D gallium-nine=true
       -D gallium-opencl=disabled
-    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,asahi"
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,asahi,crocus"
     VULKAN_DRIVERS: swrast
     EXTRA_OPTION: >
       -D osmesa=true
@@ -769,7 +769,7 @@ meson-release:
       -D gallium-nine=false
       -D gallium-opencl=disabled
       -D llvm=false
-    GALLIUM_DRIVERS: "iris,nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12"
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,crocus"
     BUILDTYPE: "release"
     EXTRA_OPTION: >
       -D osmesa=true
@@ -957,7 +957,7 @@ meson-clang:
     DRI_LOADERS: >
       -D glvnd=true
     DRI_DRIVERS: "auto"
-    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12"
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus"
     VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental
     CC: clang
     CXX: clang++
@@ -1057,7 +1057,7 @@ meson-i386:
   variables:
     CROSS: i386
     VULKAN_DRIVERS: intel,amd,swrast,virtio-experimental
-    GALLIUM_DRIVERS: "iris,nouveau,r300,r600,radeonsi,swrast,virgl,zink"
+    GALLIUM_DRIVERS: "iris,nouveau,r300,r600,radeonsi,swrast,virgl,zink,crocus"
     DRI_DRIVERS: "i915,i965,r100,r200,nouveau"
     EXTRA_OPTION: >
       -D vulkan-layers=device-select,overlay
