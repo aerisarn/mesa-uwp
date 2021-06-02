@@ -3255,7 +3255,8 @@ zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
 
 static void
 zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resource *dst,
-                                    struct pipe_resource *src, uint32_t delete_buffer_id)
+                                    struct pipe_resource *src, unsigned num_rebinds,
+                                    uint32_t rebind_mask, uint32_t delete_buffer_id)
 {
    struct zink_resource *d = zink_resource(dst);
    struct zink_resource *s = zink_resource(src);

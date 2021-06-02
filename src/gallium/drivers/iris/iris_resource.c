@@ -1481,6 +1481,8 @@ void
 iris_replace_buffer_storage(struct pipe_context *ctx,
                             struct pipe_resource *p_dst,
                             struct pipe_resource *p_src,
+                            unsigned num_rebinds,
+                            uint32_t rebind_mask,
                             uint32_t delete_buffer_id)
 {
    struct iris_screen *screen = (void *) ctx->screen;

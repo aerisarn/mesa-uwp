@@ -258,9 +258,40 @@ struct tc_unflushed_batch_token;
  */
 #define TC_MAX_SUBDATA_BYTES        320
 
+enum tc_binding_type {
+   TC_BINDING_VERTEX_BUFFER,
+   TC_BINDING_STREAMOUT_BUFFER,
+   TC_BINDING_UBO_VS,
+   TC_BINDING_UBO_FS,
+   TC_BINDING_UBO_GS,
+   TC_BINDING_UBO_TCS,
+   TC_BINDING_UBO_TES,
+   TC_BINDING_UBO_CS,
+   TC_BINDING_SAMPLERVIEW_VS,
+   TC_BINDING_SAMPLERVIEW_FS,
+   TC_BINDING_SAMPLERVIEW_GS,
+   TC_BINDING_SAMPLERVIEW_TCS,
+   TC_BINDING_SAMPLERVIEW_TES,
+   TC_BINDING_SAMPLERVIEW_CS,
+   TC_BINDING_SSBO_VS,
+   TC_BINDING_SSBO_FS,
+   TC_BINDING_SSBO_GS,
+   TC_BINDING_SSBO_TCS,
+   TC_BINDING_SSBO_TES,
+   TC_BINDING_SSBO_CS,
+   TC_BINDING_IMAGE_VS,
+   TC_BINDING_IMAGE_FS,
+   TC_BINDING_IMAGE_GS,
+   TC_BINDING_IMAGE_TCS,
+   TC_BINDING_IMAGE_TES,
+   TC_BINDING_IMAGE_CS,
+};
+
 typedef void (*tc_replace_buffer_storage_func)(struct pipe_context *ctx,
                                                struct pipe_resource *dst,
                                                struct pipe_resource *src,
+                                               unsigned num_rebinds,
+                                               uint32_t rebind_mask,
                                                uint32_t delete_buffer_id);
 typedef struct pipe_fence_handle *(*tc_create_fence_func)(struct pipe_context *ctx,
                                                           struct tc_unflushed_batch_token *token);
