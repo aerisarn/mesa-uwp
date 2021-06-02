@@ -736,7 +736,7 @@ pan_emit_mfbd(const struct panfrost_device *dev,
                          * valid for next time. */
                         cfg.crc_write_enable = valid || full;
 
-                        crc_slice->crc_valid |= full;
+                        crc_slice->crc_valid = full;
                 }
         }
 
