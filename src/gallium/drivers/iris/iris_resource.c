@@ -1279,6 +1279,50 @@ iris_resource_from_memobj(struct pipe_screen *pscreen,
    return &res->base.b;
 }
 
+/* Handle combined depth/stencil with memory objects.
+ *
+ * This function is modeled after u_transfer_helper_resource_create.
+ */
+static struct pipe_resource *
+iris_resource_from_memobj_wrapper(struct pipe_screen *pscreen,
+                                  const struct pipe_resource *templ,
+                                  struct pipe_memory_object *pmemobj,
+                                  uint64_t offset)
+{
+   enum pipe_format format = templ->format;
+
+   /* Normal case, no special handling: */
+   if (!(util_format_is_depth_and_stencil(format)))
+      return iris_resource_from_memobj(pscreen, templ, pmemobj, offset);
+
+   struct pipe_resource t = *templ;
+   t.format = util_format_get_depth_only(format);
+
+   struct pipe_resource *prsc =
+      iris_resource_from_memobj(pscreen, &t, pmemobj, offset);
+   if (!prsc)
+      return NULL;
+
+   struct iris_resource *res = (struct iris_resource *) prsc;
+
+   /* Stencil offset in the buffer without aux. */
+   uint64_t s_offset = offset +
+      ALIGN(res->surf.size_B, res->surf.alignment_B);
+
+   prsc->format = format; /* frob the format back to the "external" format */
+
+   t.format = PIPE_FORMAT_S8_UINT;
+   struct pipe_resource *stencil =
+      iris_resource_from_memobj(pscreen, &t, pmemobj, s_offset);
+   if (!stencil) {
+      iris_resource_destroy(pscreen, prsc);
+      return NULL;
+   }
+
+   iris_resource_set_separate_stencil(prsc, stencil);
+   return prsc;
+}
+
 static void
 iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 {
@@ -2380,7 +2424,7 @@ iris_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_create = u_transfer_helper_resource_create;
    pscreen->resource_from_user_memory = iris_resource_from_user_memory;
    pscreen->resource_from_handle = iris_resource_from_handle;
-   pscreen->resource_from_memobj = iris_resource_from_memobj;
+   pscreen->resource_from_memobj = iris_resource_from_memobj_wrapper;
    pscreen->resource_get_handle = iris_resource_get_handle;
    pscreen->resource_get_param = iris_resource_get_param;
    pscreen->resource_destroy = u_transfer_helper_resource_destroy;
