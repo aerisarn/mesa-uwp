@@ -220,6 +220,34 @@ vn_device_memory_import_dma_buf(struct vn_device *dev,
    return VK_SUCCESS;
 }
 
+static VkResult
+vn_device_memory_alloc(struct vn_device *dev,
+                       struct vn_device_memory *mem,
+                       const VkMemoryAllocateInfo *alloc_info,
+                       bool need_bo,
+                       VkMemoryPropertyFlags flags,
+                       VkExternalMemoryHandleTypeFlags external_handles)
+{
+   VkDevice dev_handle = vn_device_to_handle(dev);
+   VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
+   VkResult result = vn_call_vkAllocateMemory(dev->instance, dev_handle,
+                                              alloc_info, NULL, &mem_handle);
+   if (result != VK_SUCCESS || !need_bo)
+      return result;
+
+   result = vn_renderer_bo_create_from_device_memory(
+      dev->renderer, mem->size, mem->base.id, flags, external_handles,
+      &mem->base_bo);
+   if (result != VK_SUCCESS) {
+      vn_async_vkFreeMemory(dev->instance, dev_handle, mem_handle, NULL);
+      return result;
+   }
+
+   vn_instance_roundtrip(dev->instance);
+
+   return VK_SUCCESS;
+}
+
 VkResult
 vn_AllocateMemory(VkDevice device,
                   const VkMemoryAllocateInfo *pAllocateInfo,
@@ -296,24 +324,13 @@ vn_AllocateMemory(VkDevice device,
          dev, pAllocateInfo->memoryTypeIndex, mem->size, &mem->base_memory,
          &mem->base_bo, &mem->base_offset);
    } else {
-      result = vn_call_vkAllocateMemory(dev->instance, device, pAllocateInfo,
-                                        NULL, &mem_handle);
+      result = vn_device_memory_alloc(
+         dev, mem, pAllocateInfo, need_bo, mem_type->propertyFlags,
+         export_info ? export_info->handleTypes : 0);
    }
    if (result != VK_SUCCESS) {
       vk_free(alloc, mem);
       return vn_error(dev->instance, result);
-   }
-
-   if (need_bo && !mem->base_bo) {
-      result = vn_renderer_bo_create_from_device_memory(
-         dev->renderer, mem->size, mem->base.id, mem_type->propertyFlags,
-         export_info ? export_info->handleTypes : 0, &mem->base_bo);
-      if (result != VK_SUCCESS) {
-         vn_async_vkFreeMemory(dev->instance, device, mem_handle, NULL);
-         vk_free(alloc, mem);
-         return vn_error(dev->instance, result);
-      }
-      vn_instance_roundtrip(dev->instance);
    }
 
    *pMemory = mem_handle;
