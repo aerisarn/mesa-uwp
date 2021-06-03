@@ -47,27 +47,30 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
 {
    VK_FROM_HANDLE(panvk_device, device, _device);
    struct panvk_descriptor_set_layout *set_layout;
-   VkDescriptorSetLayoutBinding *bindings;
+   VkDescriptorSetLayoutBinding *bindings = NULL;
+   unsigned num_bindings = 0;
+   VkResult result;
 
-   assert(pCreateInfo->bindingCount);
+   if (pCreateInfo->bindingCount) {
+      result =
+         vk_create_sorted_bindings(pCreateInfo->pBindings,
+                                   pCreateInfo->bindingCount,
+                                   &bindings);
+      if (result != VK_SUCCESS)
+         return vk_error(device->instance, result);
 
-   VkResult result =
-      vk_create_sorted_bindings(pCreateInfo->pBindings,
-                                pCreateInfo->bindingCount,
-                                &bindings);
-   if (result != VK_SUCCESS)
-      return vk_error(device->instance, result);
+      num_bindings = bindings[pCreateInfo->bindingCount - 1].binding + 1;
+   }
 
    unsigned num_immutable_samplers = 0;
    for (unsigned i = 0; i < pCreateInfo->bindingCount; i++) {
       if (bindings[i].pImmutableSamplers)
-        num_immutable_samplers += bindings[i].descriptorCount;
+         num_immutable_samplers += bindings[i].descriptorCount;
    }
 
-   unsigned max_binding = bindings[pCreateInfo->bindingCount - 1].binding;
    size_t size = sizeof(*set_layout) +
                  (sizeof(struct panvk_descriptor_set_binding_layout) *
-                  (max_binding + 1)) +
+                  num_bindings) +
                  (sizeof(struct panvk_sampler *) * num_immutable_samplers);
    set_layout = vk_object_zalloc(&device->vk, pAllocator, size,
                                  VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
@@ -79,10 +82,10 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
    struct panvk_sampler **immutable_samplers =
       (struct panvk_sampler **)((uint8_t *)set_layout + sizeof(*set_layout) +
                                 (sizeof(struct panvk_descriptor_set_binding_layout) *
-                                 (max_binding + 1)));
+                                 num_bindings));
 
    set_layout->flags = pCreateInfo->flags;
-   set_layout->binding_count = max_binding + 1;
+   set_layout->binding_count = num_bindings;
 
    unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0, ssbo_idx = 0;
    unsigned dynoffset_idx = 0, desc_idx = 0;
