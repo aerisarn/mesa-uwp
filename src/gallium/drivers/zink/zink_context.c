@@ -430,7 +430,7 @@ get_bufferview_for_binding(struct zink_context *ctx, enum pipe_shader_type stage
    return VK_NULL_HANDLE;
 }
 
-ALWAYS_INLINE static void
+ALWAYS_INLINE static struct zink_resource *
 update_descriptor_state_ubo(struct zink_context *ctx, enum pipe_shader_type shader, unsigned slot)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -454,9 +454,10 @@ update_descriptor_state_ubo(struct zink_context *ctx, enum pipe_shader_type shad
       else
          ctx->di.push_valid &= ~BITFIELD64_BIT(shader);
    }
+   return res;
 }
 
-ALWAYS_INLINE static void
+ALWAYS_INLINE static struct zink_resource *
 update_descriptor_state_ssbo(struct zink_context *ctx, enum pipe_shader_type shader, unsigned slot)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -473,9 +474,10 @@ update_descriptor_state_ssbo(struct zink_context *ctx, enum pipe_shader_type sha
       ctx->di.ssbos[shader][slot].buffer = have_null_descriptors ? VK_NULL_HANDLE : null_buffer;
       ctx->di.ssbos[shader][slot].range = VK_WHOLE_SIZE;
    }
+   return res;
 }
 
-ALWAYS_INLINE static void
+ALWAYS_INLINE static struct zink_resource *
 update_descriptor_state_sampler(struct zink_context *ctx, enum pipe_shader_type shader, unsigned slot)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -510,9 +512,10 @@ update_descriptor_state_sampler(struct zink_context *ctx, enum pipe_shader_type 
       }
       memset(&ctx->di.sampler_surfaces[shader][slot], 0, sizeof(ctx->di.sampler_surfaces[shader][slot]));
    }
+   return res;
 }
 
-ALWAYS_INLINE static void
+ALWAYS_INLINE static struct zink_resource *
 update_descriptor_state_image(struct zink_context *ctx, enum pipe_shader_type shader, unsigned slot)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -546,6 +549,7 @@ update_descriptor_state_image(struct zink_context *ctx, enum pipe_shader_type sh
       }
       memset(&ctx->di.image_surfaces[shader][slot], 0, sizeof(ctx->di.image_surfaces[shader][slot]));
    }
+   return res;
 }
 
 static void
@@ -905,7 +909,7 @@ update_existing_vbo(struct zink_context *ctx, unsigned slot)
    update_res_bind_count(ctx, res, false, true);
 }
 
-ALWAYS_INLINE static void
+ALWAYS_INLINE static struct zink_resource *
 set_vertex_buffer_clamped(struct zink_context *ctx, unsigned slot)
 {
    const struct pipe_vertex_buffer *ctx_vb = &ctx->vertex_buffers[slot];
@@ -927,6 +931,7 @@ set_vertex_buffer_clamped(struct zink_context *ctx, unsigned slot)
       ctx->vbuf_offsets[slot] = ctx_vb->buffer_offset;
    }
    assert(ctx->vbufs[slot]);
+   return res;
 }
 
 static void
