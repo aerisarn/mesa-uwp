@@ -269,6 +269,8 @@ struct zink_context {
    struct pipe_surface *dummy_surface;
    struct zink_buffer_view *dummy_bufferview;
 
+   unsigned buffer_rebind_counter;
+
    struct {
       /* descriptor info */
       VkDescriptorBufferInfo ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
@@ -405,6 +407,9 @@ zink_pipeline_flags_from_pipe_stage(enum pipe_shader_type pstage)
       unreachable("unknown shader stage");
    }
 }
+
+void
+zink_rebind_all_buffers(struct zink_context *ctx);
 
 void
 zink_init_draw_functions(struct zink_context *ctx, struct zink_screen *screen);

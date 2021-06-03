@@ -81,6 +81,8 @@ struct zink_screen {
    VkSemaphore prev_sem;
    struct util_queue flush_queue;
 
+   unsigned buffer_rebind_counter;
+
    bool device_lost;
    struct sw_winsys *winsys;
 

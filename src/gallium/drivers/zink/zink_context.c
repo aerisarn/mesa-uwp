@@ -3359,6 +3359,41 @@ zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
       rebind_image(ctx, res);
 }
 
+void
+zink_rebind_all_buffers(struct zink_context *ctx)
+{
+   struct zink_batch *batch = &ctx->batch;
+   u_foreach_bit(slot, ctx->gfx_pipeline_state.vertex_buffers_enabled_mask)
+      set_vertex_buffer_clamped(ctx, slot);
+   ctx->vertex_buffers_dirty = ctx->gfx_pipeline_state.vertex_buffers_enabled_mask > 0;
+   ctx->dirty_so_targets = ctx->num_so_targets > 0;
+   if (ctx->num_so_targets)
+      zink_resource_buffer_barrier(ctx, NULL, zink_resource(ctx->dummy_xfb_buffer),
+                                   VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT, VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
+   for (unsigned shader = PIPE_SHADER_VERTEX; shader < PIPE_SHADER_TYPES; shader++) {
+      for (unsigned slot = 0; slot < ctx->di.num_ubos[shader]; slot++) {
+         struct zink_resource *res = rebind_ubo(ctx, shader, slot);
+         if (res)
+            zink_batch_resource_usage_set(batch, res, false);
+      }
+      for (unsigned slot = 0; slot < ctx->di.num_sampler_views[shader]; slot++) {
+         struct zink_resource *res = rebind_tbo(ctx, shader, slot);
+         if (res)
+            zink_batch_resource_usage_set(batch, res, false);
+      }
+      for (unsigned slot = 0; slot < ctx->di.num_ssbos[shader]; slot++) {
+         struct zink_resource *res = rebind_ssbo(ctx, shader, slot);
+         if (res)
+            zink_batch_resource_usage_set(batch, res, (ctx->writable_ssbos[shader] & BITFIELD64_BIT(slot)) != 0);
+      }
+      for (unsigned slot = 0; slot < ctx->di.num_images[shader]; slot++) {
+         struct zink_resource *res = rebind_ibo(ctx, shader, slot);
+         if (res)
+            zink_batch_resource_usage_set(batch, res, (ctx->image_views[shader][slot].base.access & PIPE_IMAGE_ACCESS_WRITE) != 0);
+      }
+   }
+}
+
 static void
 zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resource *dst,
                                     struct pipe_resource *src, unsigned num_rebinds,
@@ -3366,16 +3401,18 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
 {
    struct zink_resource *d = zink_resource(dst);
    struct zink_resource *s = zink_resource(src);
+   struct zink_context *ctx = zink_context(pctx);
 
    assert(d->internal_format == s->internal_format);
    util_idalloc_mt_free(&zink_screen(pctx->screen)->buffer_ids, delete_buffer_id);
    if (zink_resource_has_unflushed_usage(d))
-      zink_batch_reference_resource(&zink_context(pctx)->batch, d);
+      zink_batch_reference_resource(&ctx->batch, d);
    zink_resource_object_reference(zink_screen(pctx->screen), &d->obj, s->obj);
    d->access = s->access;
    d->access_stage = s->access_stage;
    d->unordered_barrier = s->unordered_barrier;
-   zink_resource_rebind(zink_context(pctx), d);
+   zink_resource_rebind(ctx, d);
+   ctx->buffer_rebind_counter = p_atomic_inc_return(&zink_screen(ctx->base.screen)->buffer_rebind_counter);
 }
 
 static bool
