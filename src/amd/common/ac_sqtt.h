@@ -70,6 +70,7 @@ struct ac_thread_trace_se {
 };
 
 struct ac_thread_trace {
+   struct ac_thread_trace_data *data;
    uint32_t num_traces;
    struct ac_thread_trace_se traces[4];
 };

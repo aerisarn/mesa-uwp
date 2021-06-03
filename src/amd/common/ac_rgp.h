@@ -108,8 +108,7 @@ struct rgp_pso_correlation {
 
 int
 ac_dump_rgp_capture(struct radeon_info *info,
-                    const struct ac_thread_trace *thread_trace,
-                    struct ac_thread_trace_data *thread_trace_data);
+                    struct ac_thread_trace *thread_trace);
 
 void
 ac_rgp_file_write_elf_object(FILE *output, size_t file_elf_start,

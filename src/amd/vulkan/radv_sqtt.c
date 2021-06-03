@@ -629,5 +629,6 @@ radv_get_thread_trace(struct radv_queue *queue, struct ac_thread_trace *thread_t
       thread_trace->num_traces++;
    }
 
+   thread_trace->data = &device->thread_trace;
    return true;
 }
