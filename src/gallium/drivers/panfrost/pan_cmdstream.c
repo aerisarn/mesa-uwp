@@ -1700,6 +1700,9 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 unsigned stride = buf->stride;
 
                 if (ctx->indirect_draw) {
+                        /* We allocated 2 records for each attribute buffer */
+                        assert((k & 1) == 0);
+
                         /* With indirect draws we can't guess the vertex_count.
                          * Pre-set the address, stride and size fields, the
                          * compute shader do the rest.
