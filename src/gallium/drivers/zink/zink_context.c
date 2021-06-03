@@ -2280,7 +2280,7 @@ static void
 resource_check_defer_buffer_barrier(struct zink_context *ctx, struct zink_resource *res, VkPipelineStageFlags pipeline)
 {
    assert(res->obj->is_buffer);
-   if (res->bind_count[0]) {
+   if (res->bind_count[0] - res->so_bind_count > 0) {
       if ((res->obj->is_buffer && res->vbo_bind_mask && !(pipeline & VK_PIPELINE_STAGE_VERTEX_INPUT_BIT)) ||
           ((!res->obj->is_buffer || util_bitcount(res->vbo_bind_mask) != res->bind_count[0]) && !is_shader_pipline_stage(pipeline)))
          /* gfx rebind */
@@ -3093,8 +3093,16 @@ zink_set_stream_output_targets(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
 
    if (num_targets == 0) {
-      for (unsigned i = 0; i < ctx->num_so_targets; i++)
+      for (unsigned i = 0; i < ctx->num_so_targets; i++) {
+         if (ctx->so_targets[i]) {
+            struct zink_resource *so = zink_resource(ctx->so_targets[i]->buffer);
+            if (so) {
+               so->so_bind_count--;
+               update_res_bind_count(ctx, so, false, true);
+            }
+         }
          pipe_so_target_reference(&ctx->so_targets[i], NULL);
+      }
       ctx->num_so_targets = 0;
    } else {
       for (unsigned i = 0; i < num_targets; i++) {
@@ -3111,9 +3119,22 @@ zink_set_stream_output_targets(struct pipe_context *pctx,
             ctx->xfb_barrier |= zink_resource_buffer_needs_barrier(res,
                                                                    VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
                                                                    VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
+         struct zink_resource *so = zink_resource(ctx->so_targets[i]->buffer);
+         if (so) {
+            so->so_bind_count++;
+            update_res_bind_count(ctx, so, false, false);
+         }
       }
-      for (unsigned i = num_targets; i < ctx->num_so_targets; i++)
+      for (unsigned i = num_targets; i < ctx->num_so_targets; i++) {
+         if (ctx->so_targets[i]) {
+            struct zink_resource *so = zink_resource(ctx->so_targets[i]->buffer);
+            if (so) {
+               so->so_bind_count--;
+               update_res_bind_count(ctx, so, false, true);
+            }
+         }
          pipe_so_target_reference(&ctx->so_targets[i], NULL);
+      }
       ctx->num_so_targets = num_targets;
 
       /* TODO: possibly avoid rebinding on resume if resuming from same buffers? */
