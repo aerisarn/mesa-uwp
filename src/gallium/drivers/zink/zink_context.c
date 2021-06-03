@@ -3229,6 +3229,18 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res)
    unsigned num_rebinds = 0, num_image_rebinds_remaining[2] = {res->image_bind_count[0], res->image_bind_count[1]};
    bool has_write = false;
 
+   if (res->so_bind_count && ctx->num_so_targets) {
+      for (unsigned i = 0; i < ctx->num_so_targets; i++) {
+         if (ctx->so_targets[i]) {
+            struct zink_resource *so = zink_resource(ctx->so_targets[i]->buffer);
+            if (so && so == res) {
+               ctx->dirty_so_targets = true;
+               num_rebinds++;
+            }
+         }
+      }
+   }
+
    if (res->vbo_bind_mask) {
       u_foreach_bit(slot, res->vbo_bind_mask) {
          if (ctx->vertex_buffers[slot].buffer.resource != &res->base.b) //wrong context
@@ -3337,11 +3349,8 @@ rebind_image(struct zink_context *ctx, struct zink_resource *res)
 void
 zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
 {
-   if (res->bind_history & ZINK_RESOURCE_USAGE_STREAMOUT)
-      ctx->dirty_so_targets = true;
    /* force counter buffer reset */
    res->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
-
    if (!res->bind_count[0] && !res->bind_count[1])
       return;
    if (res->base.b.target == PIPE_BUFFER)
