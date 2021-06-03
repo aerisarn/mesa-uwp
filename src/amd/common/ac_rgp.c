@@ -947,9 +947,9 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
    }
 }
 
-int ac_dump_thread_trace(struct radeon_info *info,
-                         const struct ac_thread_trace *thread_trace,
-                         struct ac_thread_trace_data *thread_trace_data)
+int ac_dump_rgp_capture(struct radeon_info *info,
+                        const struct ac_thread_trace *thread_trace,
+                        struct ac_thread_trace_data *thread_trace_data)
 {
    char filename[2048];
    struct tm now;
@@ -969,7 +969,7 @@ int ac_dump_thread_trace(struct radeon_info *info,
 
    ac_sqtt_dump_data(info, thread_trace, thread_trace_data, f);
 
-   fprintf(stderr, "Thread trace capture saved to '%s'\n", filename);
+   fprintf(stderr, "RGP capture saved to '%s'\n", filename);
 
    fclose(f);
    return 0;
