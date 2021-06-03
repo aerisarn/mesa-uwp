@@ -62,8 +62,8 @@ find_backend(const char *name, int fd)
    return dev;
 }
 
-struct gbm_device *
-_gbm_create_device(int fd)
+static struct gbm_device *
+override_backend(int fd)
 {
    struct gbm_device *dev = NULL;
    const char *b;
@@ -71,6 +71,16 @@ _gbm_create_device(int fd)
    b = getenv("GBM_BACKEND");
    if (b)
       dev = find_backend(b, fd);
+
+   return dev;
+}
+
+struct gbm_device *
+_gbm_create_device(int fd)
+{
+   struct gbm_device *dev;
+
+   dev = override_backend(fd);
 
    if (!dev)
       dev = find_backend(NULL, fd);
