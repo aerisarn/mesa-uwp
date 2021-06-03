@@ -1562,7 +1562,8 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                 pan_pack(bufs + (i * 2) + 1, ATTRIBUTE_BUFFER_CONTINUATION_3D, cfg) {
                         cfg.s_dimension = rsrc->base.width0;
                         cfg.t_dimension = rsrc->base.height0;
-                        cfg.r_dimension = is_3d ? rsrc->base.depth0 :
+                        cfg.r_dimension = is_buffer ? 1 :
+                                is_3d ? rsrc->base.depth0 :
                                 image->u.tex.last_layer - image->u.tex.first_layer + 1;
 
                         cfg.row_stride =
