@@ -390,35 +390,6 @@ iris_get_depth_stencil_resources(struct pipe_resource *res,
    }
 }
 
-enum isl_dim_layout
-iris_get_isl_dim_layout(const struct intel_device_info *devinfo,
-                        enum isl_tiling tiling,
-                        enum pipe_texture_target target)
-{
-   switch (target) {
-   case PIPE_TEXTURE_1D:
-   case PIPE_TEXTURE_1D_ARRAY:
-      return (devinfo->ver >= 9 && tiling == ISL_TILING_LINEAR ?
-              ISL_DIM_LAYOUT_GFX9_1D : ISL_DIM_LAYOUT_GFX4_2D);
-
-   case PIPE_TEXTURE_2D:
-   case PIPE_TEXTURE_2D_ARRAY:
-   case PIPE_TEXTURE_RECT:
-   case PIPE_TEXTURE_CUBE:
-   case PIPE_TEXTURE_CUBE_ARRAY:
-      return ISL_DIM_LAYOUT_GFX4_2D;
-
-   case PIPE_TEXTURE_3D:
-      return (devinfo->ver >= 9 ?
-              ISL_DIM_LAYOUT_GFX4_2D : ISL_DIM_LAYOUT_GFX4_3D);
-
-   case PIPE_MAX_TEXTURE_TYPES:
-   case PIPE_BUFFER:
-      break;
-   }
-   unreachable("invalid texture type");
-}
-
 void
 iris_resource_disable_aux(struct iris_resource *res)
 {
@@ -1666,65 +1637,6 @@ get_image_offset_el(const struct isl_surf *surf, unsigned level, unsigned z,
    } else {
       isl_surf_get_image_offset_el(surf, level, z, 0, out_x0_el, out_y0_el);
    }
-}
-
-/**
- * Compute the offset (in bytes) from the start of the BO to the given x
- * and y coordinate.  For tiled BOs, caller must ensure that x and y are
- * multiples of the tile size.
- */
-static uint32_t
-iris_resource_get_aligned_offset(const struct iris_resource *res,
-                                 uint32_t x, uint32_t y)
-{
-   const struct isl_format_layout *fmtl = isl_format_get_layout(res->surf.format);
-   unsigned cpp = fmtl->bpb / 8;
-   uint32_t pitch = res->surf.row_pitch_B;
-
-   switch (res->surf.tiling) {
-   default:
-      unreachable("not reached");
-   case ISL_TILING_LINEAR:
-      return y * pitch + x * cpp;
-   case ISL_TILING_X:
-      assert((x % (512 / cpp)) == 0);
-      assert((y % 8) == 0);
-      return y * pitch + x / (512 / cpp) * 4096;
-   case ISL_TILING_Y0:
-      assert((x % (128 / cpp)) == 0);
-      assert((y % 32) == 0);
-      return y * pitch + x / (128 / cpp) * 4096;
-   }
-}
-
-/**
- * Rendering with tiled buffers requires that the base address of the buffer
- * be aligned to a page boundary.  For renderbuffers, and sometimes with
- * textures, we may want the surface to point at a texture image level that
- * isn't at a page boundary.
- *
- * This function returns an appropriately-aligned base offset
- * according to the tiling restrictions, plus any required x/y offset
- * from there.
- */
-uint32_t
-iris_resource_get_tile_offsets(const struct iris_resource *res,
-                               uint32_t level, uint32_t z,
-                               uint32_t *tile_x, uint32_t *tile_y)
-{
-   uint32_t x, y;
-   uint32_t mask_x, mask_y;
-
-   const struct isl_format_layout *fmtl = isl_format_get_layout(res->surf.format);
-   const unsigned cpp = fmtl->bpb / 8;
-
-   isl_get_tile_masks(res->surf.tiling, cpp, &mask_x, &mask_y);
-   get_image_offset_el(&res->surf, level, z, &x, &y);
-
-   *tile_x = x & mask_x;
-   *tile_y = y & mask_y;
-
-   return iris_resource_get_aligned_offset(res, x & ~mask_x, y & ~mask_y);
 }
 
 /**
