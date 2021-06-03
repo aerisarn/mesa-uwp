@@ -47,6 +47,7 @@
 #include "util/u_inlines.h"
 #include "util/u_thread.h"
 #include "util/u_cpu_detect.h"
+#include "util/strndup.h"
 #include "nir.h"
 
 #include "util/u_memory.h"
