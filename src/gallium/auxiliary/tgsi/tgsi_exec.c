@@ -68,8 +68,6 @@
 #define DEBUG_EXECUTION 0
 
 
-#define FAST_MATH 0
-
 #define TILE_TOP_LEFT     0
 #define TILE_TOP_RIGHT    1
 #define TILE_BOTTOM_LEFT  2
@@ -415,12 +413,6 @@ static void
 micro_exp2(union tgsi_exec_channel *dst,
            const union tgsi_exec_channel *src)
 {
-#if FAST_MATH
-   dst->f[0] = util_fast_exp2(src->f[0]);
-   dst->f[1] = util_fast_exp2(src->f[1]);
-   dst->f[2] = util_fast_exp2(src->f[2]);
-   dst->f[3] = util_fast_exp2(src->f[3]);
-#else
 #if DEBUG
    /* Inf is okay for this instruction, so clamp it to silence assertions. */
    uint i;
@@ -442,7 +434,6 @@ micro_exp2(union tgsi_exec_channel *dst,
    dst->f[1] = powf(2.0f, src->f[1]);
    dst->f[2] = powf(2.0f, src->f[2]);
    dst->f[3] = powf(2.0f, src->f[3]);
-#endif /* FAST_MATH */
 }
 
 static void
@@ -509,17 +500,10 @@ static void
 micro_lg2(union tgsi_exec_channel *dst,
           const union tgsi_exec_channel *src)
 {
-#if FAST_MATH
-   dst->f[0] = util_fast_log2(src->f[0]);
-   dst->f[1] = util_fast_log2(src->f[1]);
-   dst->f[2] = util_fast_log2(src->f[2]);
-   dst->f[3] = util_fast_log2(src->f[3]);
-#else
    dst->f[0] = logf(src->f[0]) * 1.442695f;
    dst->f[1] = logf(src->f[1]) * 1.442695f;
    dst->f[2] = logf(src->f[2]) * 1.442695f;
    dst->f[3] = logf(src->f[3]) * 1.442695f;
-#endif
 }
 
 static void
@@ -1075,9 +1059,6 @@ tgsi_exec_machine_bind_shader(
    tgsi_dump(tokens, 0);
 #endif
 
-   util_init_math();
-
-
    mach->Tokens = tokens;
    mach->Sampler = sampler;
    mach->Image = image;
@@ -1402,17 +1383,10 @@ micro_pow(
    const union tgsi_exec_channel *src0,
    const union tgsi_exec_channel *src1 )
 {
-#if FAST_MATH
-   dst->f[0] = util_fast_pow( src0->f[0], src1->f[0] );
-   dst->f[1] = util_fast_pow( src0->f[1], src1->f[1] );
-   dst->f[2] = util_fast_pow( src0->f[2], src1->f[2] );
-   dst->f[3] = util_fast_pow( src0->f[3], src1->f[3] );
-#else
    dst->f[0] = powf( src0->f[0], src1->f[0] );
    dst->f[1] = powf( src0->f[1], src1->f[1] );
    dst->f[2] = powf( src0->f[2], src1->f[2] );
    dst->f[3] = powf( src0->f[3], src1->f[3] );
-#endif
 }
 
 static void
