@@ -44,6 +44,7 @@
 #include "util/format/u_format.h"
 #include "util/u_prim.h"
 #include "util/u_prim_restart.h"
+#include "util/u_draw.h"
 #include "indices/u_primconvert.h"
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_from_mesa.h"
@@ -738,6 +739,13 @@ panfrost_draw_vbo(struct pipe_context *pipe,
 
         if (!panfrost_render_condition_check(ctx))
                 return;
+
+        /* Emulate indirect draws when debugging */
+        if (dev->debug & PAN_DBG_NOINDIRECT && indirect && indirect->buffer) {
+                assert(num_draws == 1);
+                util_draw_indirect(pipe, info, indirect);
+                return;
+        }
 
         /* Do some common setup */
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
