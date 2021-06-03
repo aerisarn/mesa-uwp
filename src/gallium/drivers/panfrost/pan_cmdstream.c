@@ -1756,6 +1756,10 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                         unsigned magic_divisor =
                                 panfrost_compute_magic_divisor(hw_divisor, &shift, &extra_flags);
 
+                        /* Records with continuations must be aligned */
+                        k = ALIGN_POT(k, 2);
+                        attrib_to_buffer[i] = k;
+
                         pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
                                 cfg.type = MALI_ATTRIBUTE_TYPE_1D_NPOT_DIVISOR;
                                 cfg.pointer = addr;
