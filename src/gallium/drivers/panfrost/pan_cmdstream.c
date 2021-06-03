@@ -1724,22 +1724,23 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
                 unsigned hw_divisor = ctx->padded_count * divisor;
 
-                /* If there's a divisor(=1) but no instancing, we want every
-                 * attribute to be the same */
+                if (ctx->instance_count <= 1) {
+                        /* Per-instance would be every attribute equal */
+                        if (divisor)
+                                stride = 0;
 
-                if (divisor && ctx->instance_count == 1)
-                        stride = 0;
-
-                if (!divisor || ctx->instance_count <= 1) {
                         pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
-                                if (ctx->instance_count > 1) {
-                                        cfg.type = MALI_ATTRIBUTE_TYPE_1D_MODULUS;
-                                        cfg.divisor = ctx->padded_count;
-                                }
-
                                 cfg.pointer = addr;
                                 cfg.stride = stride;
                                 cfg.size = size;
+                        }
+                } else if (!divisor) {
+                        pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
+                                cfg.type = MALI_ATTRIBUTE_TYPE_1D_MODULUS;
+                                cfg.pointer = addr;
+                                cfg.stride = stride;
+                                cfg.size = size;
+                                cfg.divisor = ctx->padded_count;
                         }
                 } else if (util_is_power_of_two_or_zero(hw_divisor)) {
                         pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
