@@ -387,7 +387,18 @@ get_glsl_type(struct ntv_context *ctx, const struct glsl_type *type)
       if (stride)
          spirv_builder_emit_array_stride(&ctx->builder, ret, stride);
    } else if (glsl_type_is_struct_or_ifc(type)) {
-      SpvId types[glsl_get_length(type)];
+      const unsigned length = glsl_get_length(type);
+
+      /* allocate some SpvId on the stack, falling back to the heap if the array is too long */
+      SpvId *types, types_stack[16];
+
+      if (length <= ARRAY_SIZE(types_stack)) {
+         types = types_stack;
+      } else {
+         types = ralloc_array_size(ctx->mem_ctx, sizeof(SpvId), length);
+         assert(types != NULL);
+      }
+
       for (unsigned i = 0; i < glsl_get_length(type); i++)
          types[i] = get_glsl_type(ctx, glsl_get_struct_field(type, i));
       ret = spirv_builder_type_struct(&ctx->builder, types,
@@ -1406,7 +1417,7 @@ get_fvec_constant(struct ntv_context *ctx, unsigned bit_size,
       return result;
 
    assert(num_components > 1);
-   SpvId components[num_components];
+   SpvId components[NIR_MAX_VEC_COMPONENTS];
    for (int i = 0; i < num_components; i++)
       components[i] = result;
 
@@ -1426,7 +1437,7 @@ get_uvec_constant(struct ntv_context *ctx, unsigned bit_size,
       return result;
 
    assert(num_components > 1);
-   SpvId components[num_components];
+   SpvId components[NIR_MAX_VEC_COMPONENTS];
    for (int i = 0; i < num_components; i++)
       components[i] = result;
 
@@ -1446,7 +1457,7 @@ get_ivec_constant(struct ntv_context *ctx, unsigned bit_size,
       return result;
 
    assert(num_components > 1);
-   SpvId components[num_components];
+   SpvId components[NIR_MAX_VEC_COMPONENTS];
    for (int i = 0; i < num_components; i++)
       components[i] = result;
 
@@ -1551,7 +1562,7 @@ needs_derivative_control(nir_alu_instr *alu)
 static void
 emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 {
-   SpvId src[nir_op_infos[alu->op].num_inputs];
+   SpvId src[NIR_MAX_VEC_COMPONENTS];
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++)
       src[i] = get_alu_src(ctx, alu, i);
 
@@ -1859,7 +1870,7 @@ emit_load_bo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    /* we need to grab 2x32 to fill the 64bit value */
    if (bit_size == 64)
       num_components *= 2;
-   SpvId constituents[num_components];
+   SpvId constituents[NIR_MAX_VEC_COMPONENTS * 2];
    SpvId result;
 
    /* destination type for the load */
@@ -2026,7 +2037,7 @@ emit_load_shared(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                SpvStorageClassWorkgroup,
                                                uint_type);
    SpvId offset = emit_binop(ctx, SpvOpUDiv, uint_type, get_src(ctx, &intr->src[0]), emit_uint_const(ctx, 32, 4));
-   SpvId constituents[num_components];
+   SpvId constituents[NIR_MAX_VEC_COMPONENTS];
    /* need to convert array -> vec */
    for (unsigned i = 0; i < num_components; i++) {
       SpvId parts[2];
@@ -2093,7 +2104,7 @@ emit_load_push_const(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    /* we need to grab 2x32 to fill the 64bit value */
    if (bit_size == 64)
       num_components *= 2;
-   SpvId constituents[num_components];
+   SpvId constituents[NIR_MAX_VEC_COMPONENTS * 2];
    SpvId result;
 
    /* destination type for the load */
