@@ -3,7 +3,9 @@
     - .test-gl
     - .virgl-rules
   variables:
-    GALLIUM_DRIVER: "virpipe"
+    GALLIUM_DRIVER: "virgl"
+    CROSVM_GALLIUM_DRIVER: "llvmpipe"
+    CROSVM_GPU_ARGS: "gles=false,backend=virglrenderer,egl=true,surfaceless=true"
 
 virgl-gles2-on-gl:
   variables:
@@ -15,7 +17,11 @@ virgl-gles2-on-gl:
     LP_NUM_THREADS: 0
     DEQP_OPTIONS: "--deqp-log-images=disable"
     DEQP_EXPECTED_RENDERER: virgl
-    LIBGL_ALWAYS_SOFTWARE: "true"
+    CROSVM_TEST_SCRIPT: "/install/deqp-runner.sh"
+  tags:
+    - kvm
+  script:
+    - install/crosvm-runner.sh
   extends:
     - .deqp-test
     - .virgl-test
@@ -51,6 +57,7 @@ virgl-gles2-on-gles:
   variables:
     VIRGL_HOST_API: GLES
     GPU_VERSION: virgl-gles
+    CROSVM_GPU_ARGS: "gles=true,backend=virglrenderer,egl=true,surfaceless=true"
   extends:
     - virgl-gles2-on-gl
     - .test-manual
@@ -59,6 +66,7 @@ virgl-gles3-on-gles:
   variables:
     VIRGL_HOST_API: GLES
     GPU_VERSION: virgl-gles
+    CROSVM_GPU_ARGS: "gles=true,backend=virglrenderer,egl=true,surfaceless=true"
   extends:
     - virgl-gles3-on-gl
     - .test-manual
@@ -67,6 +75,7 @@ virgl-gles31-on-gles:
   variables:
     VIRGL_HOST_API: GLES
     GPU_VERSION: virgl-gles
+    CROSVM_GPU_ARGS: "gles=true,backend=virglrenderer,egl=true,surfaceless=true"
   extends:
     - virgl-gles31-on-gl
     - .test-manual
@@ -82,9 +91,7 @@ virgl-traces:
     PIGLIT_RESULTS: "virgl-replay"
     MESA_GLES_VERSION_OVERRIDE: "3.1"
     MESA_GLSL_VERSION_OVERRIDE: "310"
-    GALLIUM_DRIVER: "virgl"
     CROSVM_TEST_SCRIPT: "/install/piglit/run.sh"
-    CROSVM_GALLIUM_DRIVER: "llvmpipe"
   tags:
     - kvm
   script:
