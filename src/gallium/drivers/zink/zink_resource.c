@@ -973,7 +973,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
       // This is a known limitation of MoltenVK.
       // See https://github.com/KhronosGroup/MoltenVK/blob/master/Docs/MoltenVK_Runtime_UserGuide.md#known-moltenvk-limitations
 
-       || screen->have_moltenvk
+       || screen->instance_info.have_MVK_moltenvk
 #endif
       ) {
       VkDeviceSize size = box->width;
