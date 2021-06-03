@@ -291,7 +291,7 @@ vn_AllocateMemory(VkDevice device,
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID);
    const bool need_bo =
       (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ||
-      export_info;
+      export_info || import_ahb_info || import_fd_info;
    const bool suballocate =
       need_bo && !pAllocateInfo->pNext &&
       !(mem_type->propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT) &&
@@ -311,14 +311,11 @@ vn_AllocateMemory(VkDevice device,
    if (import_ahb_info) {
       result = vn_android_device_import_ahb(dev, mem, pAllocateInfo,
                                             import_ahb_info->buffer);
-      assert(mem->base_bo);
    } else if (export_ahb) {
       result = vn_android_device_allocate_ahb(dev, mem, pAllocateInfo);
-      assert(mem->base_bo);
    } else if (import_fd_info) {
       result = vn_device_memory_import_dma_buf(dev, mem, pAllocateInfo,
                                                import_fd_info->fd);
-      assert(mem->base_bo);
    } else if (suballocate) {
       result = vn_device_memory_pool_alloc(
          dev, pAllocateInfo->memoryTypeIndex, mem->size, &mem->base_memory,
@@ -332,6 +329,9 @@ vn_AllocateMemory(VkDevice device,
       vk_free(alloc, mem);
       return vn_error(dev->instance, result);
    }
+
+   if (need_bo)
+      assert(mem->base_bo);
 
    *pMemory = mem_handle;
 
