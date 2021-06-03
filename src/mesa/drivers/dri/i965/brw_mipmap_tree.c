@@ -1896,7 +1896,7 @@ can_texture_with_ccs(struct brw_context *brw,
    if (!format_ccs_e_compat_with_miptree(&brw->screen->devinfo,
                                          mt, view_format)) {
       perf_debug("Incompatible sampling format (%s) for rbc (%s)\n",
-                 isl_format_get_layout(view_format)->name,
+                 isl_format_get_name(view_format),
                  _mesa_get_format_name(mt->format));
       return false;
    }

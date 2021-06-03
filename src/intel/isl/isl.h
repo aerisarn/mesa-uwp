@@ -1116,7 +1116,6 @@ struct isl_channel_layout {
  */
 struct isl_format_layout {
    enum isl_format format;
-   const char *name;
 
    uint16_t bpb; /**< Bits per block */
    uint8_t bw; /**< Block width, in pixels */
@@ -1522,6 +1521,8 @@ struct isl_depth_stencil_hiz_emit_info {
 };
 
 extern const struct isl_format_layout isl_format_layouts[];
+extern const char isl_format_names[];
+extern const uint16_t isl_format_name_offsets[];
 
 void
 isl_device_init(struct isl_device *dev,
@@ -1544,7 +1545,9 @@ bool isl_format_is_valid(enum isl_format);
 static inline const char * ATTRIBUTE_CONST
 isl_format_get_name(enum isl_format fmt)
 {
-   return isl_format_get_layout(fmt)->name;
+   assert(fmt != ISL_FORMAT_UNSUPPORTED);
+   assert(fmt < ISL_NUM_FORMATS);
+   return isl_format_names + isl_format_name_offsets[fmt];
 }
 
 enum isl_format isl_format_for_pipe_format(enum pipe_format pf);
