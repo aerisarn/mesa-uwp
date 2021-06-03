@@ -826,6 +826,14 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         if (dev->debug & PAN_DBG_NO_AFBC)
                 dev->quirks |= MIDGARD_NO_AFBC;
 
+        /* XXX: AFBC is currently broken on Bifrost in a few different ways
+         *
+         *  - Preload is broken if the effective tile size is not 16x16
+         *  - Some systems lack AFBC but we need kernel changes to know that
+         */
+        if (dev->arch == 7)
+                dev->quirks |= MIDGARD_NO_AFBC;
+
         dev->ro = ro;
 
         /* Check if we're loading against a supported GPU model. */
