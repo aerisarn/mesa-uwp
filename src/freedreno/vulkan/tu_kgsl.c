@@ -647,6 +647,14 @@ tu_syncobj_to_fd(struct tu_device *device, struct tu_syncobj *sync)
    return -1;
 }
 
+VkResult
+tu_device_submit_deferred_locked(struct tu_device *dev)
+{
+   tu_finishme("tu_device_submit_deferred_locked");
+
+   return VK_SUCCESS;
+}
+
 #ifdef ANDROID
 VkResult
 tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
