@@ -334,8 +334,6 @@ iris_memobj_create_from_handle(struct pipe_screen *pscreen,
    memobj->format = whandle->format;
    memobj->stride = whandle->stride;
 
-   iris_bo_reference(memobj->bo);
-
    return &memobj->b;
 }
 
@@ -1252,6 +1250,8 @@ iris_resource_from_memobj(struct pipe_screen *pscreen,
    res->bo = memobj->bo;
    res->offset = offset;
    res->external_format = memobj->format;
+
+   iris_bo_reference(memobj->bo);
 
    return &res->base.b;
 }
