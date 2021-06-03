@@ -31,6 +31,7 @@
 #include "tgsi/tgsi_info.h"
 #include "tgsi/tgsi_ureg.h"
 #include "util/debug.h"
+#include "util/u_math.h"
 #include "util/u_memory.h"
 
 struct ntt_compile {
@@ -69,6 +70,27 @@ struct ntt_compile {
 };
 
 static void ntt_emit_cf_list(struct ntt_compile *c, struct exec_list *list);
+
+/**
+ * Interprets a nir_load_const used as a NIR src as a uint.
+ *
+ * For non-native-integers drivers, nir_load_const_instrs used by an integer ALU
+ * instruction (or in a phi-web used by an integer ALU instruction) were
+ * converted to floats and the ALU instruction swapped to the float equivalent.
+ * However, this means that integer load_consts used by intrinsics (which don't
+ * normally get that conversion) may have been reformatted to be floats.  Given
+ * that all of our intrinsic nir_src_as_uint() calls are expected to be small,
+ * we can just look and see if they look like floats and convert them back to
+ * ints.
+ */
+static uint32_t
+ntt_src_as_uint(struct ntt_compile *c, nir_src src)
+{
+   uint32_t val = nir_src_as_uint(src);
+   if (!c->native_integers && val >= fui(1.0))
+      val = (uint32_t)uif(val);
+   return val;
+}
 
 static unsigned
 ntt_64bit_write_mask(unsigned write_mask)
@@ -275,7 +297,7 @@ ntt_try_store_in_tgsi_output(struct ntt_compile *c, struct ureg_dst *dst,
 
    uint32_t frac;
    *dst = ntt_store_output_decl(c, intr, &frac);
-   dst->Index += nir_src_as_uint(intr->src[1]);
+   dst->Index += ntt_src_as_uint(c, intr->src[1]);
 
    return frac == 0;
 }
@@ -1097,7 +1119,7 @@ ntt_ureg_src_indirect(struct ntt_compile *c, struct ureg_src usrc,
                       nir_src src)
 {
    if (nir_src_is_const(src)) {
-      usrc.Index += nir_src_as_uint(src);
+      usrc.Index += ntt_src_as_uint(c, src);
       return usrc;
    } else {
       return ureg_src_indirect(usrc, ntt_reladdr(c, ntt_get_src(c, src)));
@@ -1109,7 +1131,7 @@ ntt_ureg_dst_indirect(struct ntt_compile *c, struct ureg_dst dst,
                       nir_src src)
 {
    if (nir_src_is_const(src)) {
-      dst.Index += nir_src_as_uint(src);
+      dst.Index += ntt_src_as_uint(c, src);
       return dst;
    } else {
       return ureg_dst_indirect(dst, ntt_reladdr(c, ntt_get_src(c, src)));
@@ -1121,7 +1143,7 @@ ntt_ureg_src_dimension_indirect(struct ntt_compile *c, struct ureg_src usrc,
                          nir_src src)
 {
    if (nir_src_is_const(src)) {
-      return ureg_src_dimension(usrc, nir_src_as_uint(src));
+      return ureg_src_dimension(usrc, ntt_src_as_uint(c, src));
    }
    else
    {
@@ -1136,7 +1158,7 @@ ntt_ureg_dst_dimension_indirect(struct ntt_compile *c, struct ureg_dst udst,
                                 nir_src src)
 {
    if (nir_src_is_const(src)) {
-      return ureg_dst_dimension(udst, nir_src_as_uint(src));
+      return ureg_dst_dimension(udst, ntt_src_as_uint(c, src));
    } else {
       return ureg_dst_dimension_indirect(udst,
                                          ntt_reladdr(c, ntt_get_src(c, src)),
@@ -1173,7 +1195,7 @@ ntt_emit_load_ubo(struct ntt_compile *c, nir_intrinsic_instr *instr)
        */
 
       if (nir_src_is_const(instr->src[1])) {
-         src.Index += nir_src_as_uint(instr->src[1]);
+         src.Index += ntt_src_as_uint(c, instr->src[1]);
       } else {
          src = ureg_src_indirect(src, ntt_reladdr(c, ntt_get_src(c, instr->src[1])));
       }
@@ -1549,7 +1571,7 @@ ntt_emit_load_input(struct ntt_compile *c, nir_intrinsic_instr *instr)
       case nir_intrinsic_load_barycentric_at_sample:
          ureg_INTERP_SAMPLE(c->ureg, ntt_get_dest(c, &instr->dest), input,
                             ureg_imm1u(c->ureg,
-                                       nir_src_as_uint(bary_instr->src[0])));
+                                       ntt_src_as_uint(c, bary_instr->src[0])));
          break;
 
       case nir_intrinsic_load_barycentric_at_offset:
@@ -1891,7 +1913,7 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
          int lod_src = nir_tex_instr_src_index(instr, nir_tex_src_lod);
          if (lod_src >= 0 &&
              nir_src_is_const(instr->src[lod_src].src) &&
-             nir_src_as_uint(instr->src[lod_src].src) == 0) {
+             ntt_src_as_uint(c, instr->src[lod_src].src) == 0) {
             tex_opcode = TGSI_OPCODE_TXF_LZ;
          }
       }
