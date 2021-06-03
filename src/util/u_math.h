@@ -93,7 +93,7 @@ util_get_float32_exponent(float x)
 }
 
 
-#define LOG2_TABLE_SIZE_LOG2 16
+#define LOG2_TABLE_SIZE_LOG2 8
 #define LOG2_TABLE_SCALE (1 << LOG2_TABLE_SIZE_LOG2)
 #define LOG2_TABLE_SIZE (LOG2_TABLE_SCALE + 1)
 extern float log2_table[LOG2_TABLE_SIZE];
