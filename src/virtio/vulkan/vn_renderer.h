@@ -180,12 +180,11 @@ struct vn_renderer_bo_ops {
       VkExternalMemoryHandleTypeFlags external_handles,
       struct vn_renderer_bo **out_bo);
 
-   VkResult (*create_from_dma_buf)(
-      struct vn_renderer *renderer,
-      VkDeviceSize size,
-      int fd,
-      VkMemoryPropertyFlags flags,
-      struct vn_renderer_bo **out_bo);
+   VkResult (*create_from_dma_buf)(struct vn_renderer *renderer,
+                                   VkDeviceSize size,
+                                   int fd,
+                                   VkMemoryPropertyFlags flags,
+                                   struct vn_renderer_bo **out_bo);
 
    bool (*destroy)(struct vn_renderer *renderer, struct vn_renderer_bo *bo);
 
@@ -343,12 +342,11 @@ vn_renderer_bo_create_from_device_memory(
 }
 
 static inline VkResult
-vn_renderer_bo_create_from_dma_buf(
-   struct vn_renderer *renderer,
-   VkDeviceSize size,
-   int fd,
-   VkMemoryPropertyFlags flags,
-   struct vn_renderer_bo **out_bo)
+vn_renderer_bo_create_from_dma_buf(struct vn_renderer *renderer,
+                                   VkDeviceSize size,
+                                   int fd,
+                                   VkMemoryPropertyFlags flags,
+                                   struct vn_renderer_bo **out_bo)
 {
    struct vn_renderer_bo *bo;
    VkResult result =

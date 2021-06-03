@@ -1143,12 +1143,11 @@ virtgpu_bo_blob_flags(VkMemoryPropertyFlags flags,
 }
 
 static VkResult
-virtgpu_bo_create_from_dma_buf(
-   struct vn_renderer *renderer,
-   VkDeviceSize size,
-   int fd,
-   VkMemoryPropertyFlags flags,
-   struct vn_renderer_bo **out_bo)
+virtgpu_bo_create_from_dma_buf(struct vn_renderer *renderer,
+                               VkDeviceSize size,
+                               int fd,
+                               VkMemoryPropertyFlags flags,
+                               struct vn_renderer_bo **out_bo)
 {
    struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct drm_virtgpu_resource_info info;
@@ -1175,8 +1174,11 @@ virtgpu_bo_create_from_dma_buf(
       if (info.size < size)
          goto fail;
 
-      blob_flags = virtgpu_bo_blob_flags(
-         flags, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
+      /* blob_flags is not passed to the kernel and is only for internal use
+       * on imports.  Set it to what works best for us.
+       */
+      blob_flags = virtgpu_bo_blob_flags(flags, 0);
+      blob_flags |= VIRTGPU_BLOB_FLAG_USE_SHAREABLE;
       mmap_size = size;
    } else {
       /* must be classic resource here
