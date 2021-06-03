@@ -435,7 +435,7 @@ static uint32_t ac_memory_ops_per_clock(uint32_t vram_type)
    }
 }
 
-static void ac_fill_sqtt_asic_info(struct radeon_info *rad_info,
+static void ac_sqtt_fill_asic_info(struct radeon_info *rad_info,
                                    struct sqtt_file_chunk_asic_info *chunk)
 {
    bool has_wave32 = rad_info->chip_class >= GFX10;
@@ -846,7 +846,7 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
    fwrite(&cpu_info, sizeof(cpu_info), 1, output);
 
    /* SQTT asic chunk. */
-   ac_fill_sqtt_asic_info(rad_info, &asic_info);
+   ac_sqtt_fill_asic_info(rad_info, &asic_info);
    file_offset += sizeof(asic_info);
    fwrite(&asic_info, sizeof(asic_info), 1, output);
 
