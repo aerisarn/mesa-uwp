@@ -186,8 +186,6 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
    if (!llvmpipe)
       return NULL;
 
-   util_init_math();
-
    memset(llvmpipe, 0, sizeof *llvmpipe);
 
    make_empty_list(&llvmpipe->fs_variants_list);
