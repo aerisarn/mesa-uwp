@@ -132,6 +132,12 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
        !(get_resource_features(screen, dst) & VK_FORMAT_FEATURE_BLIT_DST_BIT))
       return false;
 
+   if ((util_format_is_pure_sint(info->src.format) !=
+        util_format_is_pure_sint(info->dst.format)) ||
+       (util_format_is_pure_uint(info->src.format) !=
+        util_format_is_pure_uint(info->dst.format)))
+      return false;
+
    if (info->filter == PIPE_TEX_FILTER_LINEAR &&
        !(get_resource_features(screen, src) &
           VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
