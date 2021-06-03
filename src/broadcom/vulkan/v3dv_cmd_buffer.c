@@ -1407,7 +1407,7 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
     * to emit a new clip window to constraint it to the render area.
     */
    uint32_t min_render_x = state->render_area.offset.x;
-   uint32_t min_render_y = state->render_area.offset.x;
+   uint32_t min_render_y = state->render_area.offset.y;
    uint32_t max_render_x = min_render_x + state->render_area.extent.width - 1;
    uint32_t max_render_y = min_render_y + state->render_area.extent.height - 1;
    uint32_t min_clip_x = state->clip_window.offset.x;
