@@ -40,6 +40,16 @@
   tags:
     - mesa-ci-x86-64-lava-asus-C433TA-AJ0005-rammus
 
+.iris-kbl-test:
+  extends:
+    - .iris-test
+  variables:
+    DEVICE_TYPE: hp-x360-14-G1-sona
+    GPU_VERSION: iris-kbl
+    ENV_VARS: "DEQP_EXPECTED_RENDERER=KBL"
+  tags:
+    - mesa-ci-x86-64-lava-hp-x360-14-G1-sona
+
 iris-apl-gles2:
   extends:
     - .iris-apl-test
@@ -167,3 +177,11 @@ iris-amly-traces:
   extends:
     - .iris-amly-test
     - .iris-traces
+
+iris-kbl-traces:
+  variables:
+    GPU_VERSION: intel-kbl
+  extends:
+    - .iris-kbl-test
+    - .iris-traces
+    - .test-manual-mr
