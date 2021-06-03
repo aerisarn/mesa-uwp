@@ -1821,7 +1821,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[vbi];
 
                 /* BOs are aligned; just fixup for buffer_offset */
-                unsigned src_offset = so->pipe[i].src_offset;
+                signed src_offset = so->pipe[i].src_offset;
                 src_offset += (buf->buffer_offset & 63);
 
                 /* Base instance offset */
