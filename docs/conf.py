@@ -114,7 +114,7 @@ html_context = {
   'gitlab_host': 'gitlab.freedesktop.org',
   'gitlab_user': 'mesa',
   'gitlab_repo': 'mesa',
-  'gitlab_version': 'master',
+  'gitlab_version': 'main',
   'conf_py_path': '/docs/',
 }
 
