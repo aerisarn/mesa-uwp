@@ -1468,7 +1468,6 @@ vn_physical_device_get_native_extensions(
    exts->KHR_swapchain = true;
    exts->KHR_swapchain_mutable_format = true;
 #endif
-
 }
 
 static void

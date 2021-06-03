@@ -787,7 +787,7 @@ vn_GetSemaphoreCounterValue(VkDevice device,
 {
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_semaphore *sem = vn_semaphore_from_handle(semaphore);
-   struct vn_sync_payload *payload = sem->payload;
+   ASSERTED struct vn_sync_payload *payload = sem->payload;
 
    assert(payload->type == VN_SYNC_TYPE_DEVICE_ONLY);
    return vn_call_vkGetSemaphoreCounterValue(dev->instance, device, semaphore,
@@ -815,7 +815,7 @@ vn_find_first_signaled_semaphore(VkDevice device,
                                  uint32_t count)
 {
    for (uint32_t i = 0; i < count; i++) {
-      uint64_t val;
+      uint64_t val = 0;
       VkResult result =
          vn_GetSemaphoreCounterValue(device, semaphores[i], &val);
       if (result != VK_SUCCESS || val >= values[i])
@@ -832,7 +832,7 @@ vn_remove_signaled_semaphores(VkDevice device,
 {
    uint32_t cur = 0;
    for (uint32_t i = 0; i < *count; i++) {
-      uint64_t val;
+      uint64_t val = 0;
       VkResult result =
          vn_GetSemaphoreCounterValue(device, semaphores[i], &val);
       if (result != VK_SUCCESS)

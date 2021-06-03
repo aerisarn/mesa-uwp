@@ -371,7 +371,8 @@ vn_GetDeviceMemoryOpaqueCaptureAddress(
    VkDevice device, const VkDeviceMemoryOpaqueCaptureAddressInfo *pInfo)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   struct vn_device_memory *mem = vn_device_memory_from_handle(pInfo->memory);
+   ASSERTED struct vn_device_memory *mem =
+      vn_device_memory_from_handle(pInfo->memory);
 
    assert(!mem->base_memory);
    return vn_call_vkGetDeviceMemoryOpaqueCaptureAddress(dev->instance, device,
@@ -455,7 +456,8 @@ vn_GetDeviceMemoryCommitment(VkDevice device,
                              VkDeviceSize *pCommittedMemoryInBytes)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   struct vn_device_memory *mem = vn_device_memory_from_handle(memory);
+   ASSERTED struct vn_device_memory *mem =
+      vn_device_memory_from_handle(memory);
 
    assert(!mem->base_memory);
    vn_call_vkGetDeviceMemoryCommitment(dev->instance, device, memory,

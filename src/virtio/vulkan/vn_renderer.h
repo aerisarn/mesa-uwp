@@ -297,7 +297,7 @@ static inline struct vn_renderer_shmem *
 vn_renderer_shmem_ref(struct vn_renderer *renderer,
                       struct vn_renderer_shmem *shmem)
 {
-   const int old =
+   ASSERTED const int old =
       atomic_fetch_add_explicit(&shmem->refcount, 1, memory_order_relaxed);
    assert(old >= 1);
 
@@ -365,7 +365,7 @@ vn_renderer_bo_create_from_dma_buf(struct vn_renderer *renderer,
 static inline struct vn_renderer_bo *
 vn_renderer_bo_ref(struct vn_renderer *renderer, struct vn_renderer_bo *bo)
 {
-   const int old =
+   ASSERTED const int old =
       atomic_fetch_add_explicit(&bo->refcount, 1, memory_order_relaxed);
    assert(old >= 1);
 

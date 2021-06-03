@@ -368,7 +368,7 @@ vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
 
    /* find fb attachments */
    const VkImageView *views;
-   uint32_t view_count;
+   ASSERTED uint32_t view_count;
    if (fb->image_view_count) {
       views = fb->image_views;
       view_count = fb->image_view_count;
