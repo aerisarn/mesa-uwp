@@ -725,8 +725,8 @@ gbm_surface_has_free_buffers(struct gbm_surface *surf)
 /* The two GBM_BO_FORMAT_[XA]RGB8888 formats alias the GBM_FORMAT_*
  * formats of the same name. We want to accept them whenever someone
  * has a GBM format, but never return them to the user. */
-uint32_t
-gbm_format_canonicalize(uint32_t gbm_format)
+static uint32_t
+format_canonicalize(uint32_t gbm_format)
 {
    switch (gbm_format) {
    case GBM_BO_FORMAT_XRGB8888:
@@ -747,7 +747,7 @@ gbm_format_canonicalize(uint32_t gbm_format)
 GBM_EXPORT char *
 gbm_format_get_name(uint32_t gbm_format, struct gbm_format_name_desc *desc)
 {
-   gbm_format = gbm_format_canonicalize(gbm_format);
+   gbm_format = format_canonicalize(gbm_format);
 
    desc->name[0] = gbm_format;
    desc->name[1] = gbm_format >> 8;
@@ -757,3 +757,11 @@ gbm_format_get_name(uint32_t gbm_format, struct gbm_format_name_desc *desc)
 
    return desc->name;
 }
+
+/**
+ * A global table of functions and global variables defined in the core GBM
+ * code that need to be accessed directly by GBM backends.
+ */
+struct gbm_core gbm_core = {
+   .format_canonicalize = format_canonicalize,
+};

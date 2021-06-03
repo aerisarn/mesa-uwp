@@ -576,7 +576,7 @@ static const struct gbm_dri_visual gbm_dri_visuals_table[] = {
 static int
 gbm_format_to_dri_format(uint32_t gbm_format)
 {
-   gbm_format = gbm_format_canonicalize(gbm_format);
+   gbm_format = gbm_core.format_canonicalize(gbm_format);
    for (size_t i = 0; i < ARRAY_SIZE(gbm_dri_visuals_table); i++) {
       if (gbm_dri_visuals_table[i].gbm_format == gbm_format)
          return gbm_dri_visuals_table[i].dri_image_format;
@@ -607,7 +607,7 @@ gbm_dri_is_format_supported(struct gbm_device *gbm,
    if ((usage & GBM_BO_USE_CURSOR) && (usage & GBM_BO_USE_RENDERING))
       return 0;
 
-   format = gbm_format_canonicalize(format);
+   format = gbm_core.format_canonicalize(format);
    if (gbm_format_to_dri_format(format) == 0)
       return 0;
 
@@ -644,7 +644,7 @@ gbm_dri_get_format_modifier_plane_count(struct gbm_device *gbm,
        !dri->image->queryDmaBufFormatModifierAttribs)
       return -1;
 
-   format = gbm_format_canonicalize(format);
+   format = gbm_core.format_canonicalize(format);
    if (gbm_format_to_dri_format(format) == 0)
       return -1;
 
@@ -992,7 +992,7 @@ gbm_dri_bo_import(struct gbm_device *gbm,
       /* GBM's GBM_FORMAT_* tokens are a strict superset of the DRI FourCC
        * tokens accepted by createImageFromFds, except for not supporting
        * the sARGB format. */
-      fourcc = gbm_format_canonicalize(fd_data->format);
+      fourcc = gbm_core.format_canonicalize(fd_data->format);
 
       image = dri->image->createImageFromFds(dri->screen,
                                              fd_data->width,
@@ -1025,7 +1025,7 @@ gbm_dri_bo_import(struct gbm_device *gbm,
       /* GBM's GBM_FORMAT_* tokens are a strict superset of the DRI FourCC
        * tokens accepted by createImageFromDmaBufs2, except for not supporting
        * the sARGB format. */
-      fourcc = gbm_format_canonicalize(fd_data->format);
+      fourcc = gbm_core.format_canonicalize(fd_data->format);
 
       image = dri->image->createImageFromDmaBufs2(dri->screen, fd_data->width,
                                                   fd_data->height, fourcc,
@@ -1161,7 +1161,7 @@ gbm_dri_bo_create(struct gbm_device *gbm,
     */
    assert(!(usage && count));
 
-   format = gbm_format_canonicalize(format);
+   format = gbm_core.format_canonicalize(format);
 
    if (usage & GBM_BO_USE_WRITE || dri->image == NULL)
       return create_dumb(gbm, width, height, format, usage);
@@ -1322,7 +1322,7 @@ gbm_dri_surface_create(struct gbm_device *gbm,
    surf->base.gbm = gbm;
    surf->base.width = width;
    surf->base.height = height;
-   surf->base.format = gbm_format_canonicalize(format);
+   surf->base.format = gbm_core.format_canonicalize(format);
    surf->base.flags = flags;
    if (!modifiers) {
       assert(!count);

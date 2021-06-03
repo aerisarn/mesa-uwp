@@ -135,7 +135,10 @@ struct gbm_backend {
    struct gbm_device *(*create_device)(int fd);
 };
 
-uint32_t
-gbm_format_canonicalize(uint32_t gbm_format);
+struct gbm_core {
+   uint32_t (*format_canonicalize)(uint32_t gbm_format);
+};
+
+extern struct gbm_core gbm_core;
 
 #endif
