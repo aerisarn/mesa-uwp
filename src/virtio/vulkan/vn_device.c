@@ -1898,10 +1898,7 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    if (instance->renderer_info.vk_mesa_venus_protocol_spec_version ==
        100000) {
-      size_t size = 0;
-      vn_call_vkGetVenusExperimentalFeatureData100000MESA(instance, &size,
-                                                          NULL);
-      size = MIN2(size, sizeof(instance->experimental));
+      size_t size = sizeof(instance->experimental);
       vn_call_vkGetVenusExperimentalFeatureData100000MESA(
          instance, &size, &instance->experimental);
    }
