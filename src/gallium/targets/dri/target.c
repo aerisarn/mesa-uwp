@@ -118,7 +118,7 @@ DEFINE_LOADER_DRM_ENTRYPOINT(sun4i_drm)
 DEFINE_LOADER_DRM_ENTRYPOINT(lima)
 #endif
 
-#if defined(GALLIUM_ZINK)
+#if defined(GALLIUM_ZINK) && !defined(__APPLE__)
 DEFINE_LOADER_DRM_ENTRYPOINT(zink);
 #endif
 
