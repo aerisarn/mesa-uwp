@@ -94,13 +94,10 @@ panfrost_get_device_vendor(struct pipe_screen *screen)
 static int
 panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 {
-        /* We expose in-dev stuff for dEQP that we don't want apps to use yet */
         struct panfrost_device *dev = pan_device(screen);
-        bool is_deqp = dev->debug & PAN_DBG_DEQP;
 
         /* Our GL 3.x implementation is WIP */
-        bool is_gl3 = dev->debug & PAN_DBG_GL3;
-        is_gl3 |= is_deqp;
+        bool is_gl3 = dev->debug & (PAN_DBG_GL3 | PAN_DBG_DEQP);
 
         /* Don't expose MRT related CAPs on GPUs that don't implement them */
         bool has_mrt = !(dev->quirks & MIDGARD_SFBD);
@@ -173,6 +170,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
         case PIPE_CAP_TEXTURE_BUFFER_SAMPLER:
         case PIPE_CAP_PACKED_UNIFORMS:
+        case PIPE_CAP_IMAGE_LOAD_FORMATTED:
+        case PIPE_CAP_CUBE_MAP_ARRAY:
+        case PIPE_CAP_COMPUTE:
                 return 1;
 
         /* We need this for OES_copy_image, but currently there are some awful
@@ -198,16 +198,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
                 return is_gl3 ? 330 : 140;
         case PIPE_CAP_ESSL_FEATURE_LEVEL:
-                return (is_deqp && pan_is_bifrost(dev)) ? 320 : 310;
+                return pan_is_bifrost(dev) ? 320 : 310;
 
         case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
                 return 16;
-
-        /* For faking GLES 3.1 for dEQP-GLES31 */
-        case PIPE_CAP_IMAGE_LOAD_FORMATTED:
-        case PIPE_CAP_CUBE_MAP_ARRAY:
-        case PIPE_CAP_COMPUTE:
-                return is_deqp;
 
         case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
                 return 65536;
@@ -260,7 +254,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return PIPE_ENDIAN_NATIVE;
 
         case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
-                return is_deqp ? 4 : 0;
+                return 4;
 
         case PIPE_CAP_MIN_TEXTURE_GATHER_OFFSET:
                 return -8;
@@ -308,11 +302,11 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 0;
 
         case PIPE_CAP_DRAW_INDIRECT:
-                return has_heap && is_deqp;
+                return has_heap;
 
         case PIPE_CAP_START_INSTANCE:
         case PIPE_CAP_DRAW_PARAMETERS:
-                return pan_is_bifrost(dev) && is_deqp;
+                return pan_is_bifrost(dev);
 
         default:
                 return u_pipe_screen_get_param_defaults(screen, param);
@@ -325,13 +319,17 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                           enum pipe_shader_cap param)
 {
         struct panfrost_device *dev = pan_device(screen);
-        bool is_deqp = dev->debug & PAN_DBG_DEQP;
         bool is_nofp16 = dev->debug & PAN_DBG_NOFP16;
+        bool is_deqp = dev->debug & PAN_DBG_DEQP;
 
-        if (shader != PIPE_SHADER_VERTEX &&
-            shader != PIPE_SHADER_FRAGMENT &&
-            !(shader == PIPE_SHADER_COMPUTE && is_deqp))
+        switch (shader) {
+        case PIPE_SHADER_VERTEX:
+        case PIPE_SHADER_FRAGMENT:
+        case PIPE_SHADER_COMPUTE:
+                break;
+        default:
                 return 0;
+        }
 
         switch (param) {
         case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
@@ -421,10 +419,10 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_NIR_SERIALIZED);
 
         case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
-                return is_deqp ? 16 : 0;
+                return 16;
 
         case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
-                return (pan_is_bifrost(dev) && !is_deqp) ? 0 : PIPE_MAX_SHADER_IMAGES;
+                return PIPE_MAX_SHADER_IMAGES;
 
         case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
@@ -626,10 +624,7 @@ panfrost_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_t
                 enum pipe_compute_cap param, void *ret)
 {
         struct panfrost_device *dev = pan_device(pscreen);
-	const char * const ir = "panfrost";
-
-	if (!(dev->debug & PAN_DBG_DEQP))
-		return 0;
+        const char * const ir = "panfrost";
 
 #define RET(x) do {                  \
    if (ret)                          \
