@@ -452,7 +452,7 @@ zink_rect_from_box(const struct pipe_box *box)
    return (struct u_rect){box->x, box->x + box->width, box->y, box->y + box->height};
 }
 
-void
+bool
 zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res);
 
 void
