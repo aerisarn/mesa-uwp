@@ -134,9 +134,13 @@ M_LOAD(ld_vary_32, nir_type_uint32);
 M_LOAD(ld_ubo_32, nir_type_uint32);
 M_LOAD(ld_ubo_64, nir_type_uint32);
 M_LOAD(ld_ubo_128, nir_type_uint32);
+M_LOAD(ld_u8, nir_type_uint8);
+M_LOAD(ld_u16, nir_type_uint16);
 M_LOAD(ld_32, nir_type_uint32);
 M_LOAD(ld_64, nir_type_uint32);
 M_LOAD(ld_128, nir_type_uint32);
+M_STORE(st_u8, nir_type_uint8);
+M_STORE(st_u16, nir_type_uint16);
 M_STORE(st_32, nir_type_uint32);
 M_STORE(st_64, nir_type_uint32);
 M_STORE(st_128, nir_type_uint32);
@@ -1198,7 +1202,8 @@ mir_set_intr_mask(nir_instr *instr, midgard_instruction *ins, bool is_read)
                 dsize = nir_dest_bit_size(intr->dest);
         } else {
                 nir_mask = nir_intrinsic_write_mask(intr);
-                dsize = 32;
+                dsize = OP_IS_COMMON_STORE(ins->op) ?
+                        nir_src_bit_size(intr->src[0]) : 32;
         }
 
         /* Once we have the NIR mask, we need to normalize to work in 32-bit space */
@@ -1283,19 +1288,55 @@ emit_global(
                 unsigned bitsize = nir_dest_bit_size(intr->dest) *
                         nir_dest_num_components(intr->dest);
 
-                if (bitsize <= 32)
-                        ins = m_ld_32(srcdest, 0);
-                else if (bitsize <= 64)
-                        ins = m_ld_64(srcdest, 0);
-                else if (bitsize <= 128)
-                        ins = m_ld_128(srcdest, 0);
-                else
-                        unreachable("Invalid global read size");
+                switch (bitsize) {
+                case 8: ins = m_ld_u8(srcdest, 0); break;
+                case 16: ins = m_ld_u16(srcdest, 0); break;
+                case 32: ins = m_ld_32(srcdest, 0); break;
+                case 64: ins = m_ld_64(srcdest, 0); break;
+                case 128: ins = m_ld_128(srcdest, 0); break;
+                default: unreachable("Invalid global read size");
+                }
+
+                mir_set_intr_mask(instr, &ins, is_read);
+
+                /* For anything not aligned on 32bit, make sure we write full
+                 * 32 bits registers. */
+                if (bitsize & 31) {
+                        unsigned comps_per_32b = 32 / nir_dest_bit_size(intr->dest);
+
+                        for (unsigned c = 0; c < 4 * comps_per_32b; c += comps_per_32b) {
+                                if (!(ins.mask & BITFIELD_RANGE(c, comps_per_32b)))
+                                        continue;
+
+                                unsigned base = ~0;
+                                for (unsigned i = 0; i < comps_per_32b; i++) {
+                                        if (ins.mask & BITFIELD_BIT(c + i)) {
+                                                base = ins.swizzle[0][c + i];
+                                                break;
+                                        }
+                                }
+
+                                assert(base != ~0);
+
+                                for (unsigned i = 0; i < comps_per_32b; i++) {
+                                        if (!(ins.mask & BITFIELD_BIT(c + i))) {
+                                                ins.swizzle[0][c + i] = base + i;
+                                                ins.mask |= BITFIELD_BIT(c + i);
+                                        }
+                                        assert(ins.swizzle[0][c + i] == base + i);
+                                }
+                        }
+
+                }
         } else {
                 unsigned bitsize = nir_src_bit_size(intr->src[0]) *
                         nir_src_num_components(intr->src[0]);
 
-                if (bitsize <= 32)
+                if (bitsize == 8)
+                        ins = m_st_u8(srcdest, 0);
+                else if (bitsize == 16)
+                        ins = m_st_u16(srcdest, 0);
+                else if (bitsize <= 32)
                         ins = m_st_32(srcdest, 0);
                 else if (bitsize <= 64)
                         ins = m_st_64(srcdest, 0);
@@ -1303,10 +1344,11 @@ emit_global(
                         ins = m_st_128(srcdest, 0);
                 else
                         unreachable("Invalid global store size");
+
+                mir_set_intr_mask(instr, &ins, is_read);
         }
 
         mir_set_offset(ctx, &ins, offset, seg);
-        mir_set_intr_mask(instr, &ins, is_read);
 
         /* Set a valid swizzle for masked out components */
         assert(ins.mask);

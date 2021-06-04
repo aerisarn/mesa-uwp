@@ -781,7 +781,7 @@ install_registers_instr(
                         struct phys_reg dst = index_to_reg(ctx, l, ins->dest, dest_shift);
 
                         ins->dest = SSA_FIXED_REGISTER(dst.reg);
-                        offset_swizzle(ins->swizzle[0], 0, 2, 2, dst.offset);
+                        offset_swizzle(ins->swizzle[0], 0, 2, dest_shift, dst.offset);
                         mir_set_bytemask(ins, mir_bytemask(ins) << dst.offset);
                 }
 
