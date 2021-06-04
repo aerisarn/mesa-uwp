@@ -1281,6 +1281,9 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                                 case 2:
                                         batch->ctx->base_instance_sysval_ptr = ptr;
                                         break;
+                                case 3:
+                                        /* Spurious (Midgard doesn't pack) */
+                                        break;
                                 default:
                                         unreachable("Invalid vertex/instance offset component\n");
                                 }

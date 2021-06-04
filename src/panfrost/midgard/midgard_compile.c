@@ -2012,9 +2012,18 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 emit_global(ctx, &instr->instr, false, reg, &instr->src[1], seg);
                 break;
 
+        case nir_intrinsic_load_first_vertex:
         case nir_intrinsic_load_ssbo_address:
         case nir_intrinsic_load_work_dim:
                 emit_sysval_read(ctx, &instr->instr, 1, 0);
+                break;
+
+        case nir_intrinsic_load_base_vertex:
+                emit_sysval_read(ctx, &instr->instr, 1, 4);
+                break;
+
+        case nir_intrinsic_load_base_instance:
+                emit_sysval_read(ctx, &instr->instr, 1, 8);
                 break;
 
         case nir_intrinsic_load_sample_positions_pan:
