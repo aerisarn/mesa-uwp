@@ -63,6 +63,10 @@ virgl_get_vendor(struct pipe_screen *screen)
 static const char *
 virgl_get_name(struct pipe_screen *screen)
 {
+   struct virgl_screen *vscreen = virgl_screen(screen);
+   if (vscreen->caps.caps.v2.host_feature_check_version >= 5)
+      return vscreen->caps.caps.v2.renderer;
+
    return "virgl";
 }
 
@@ -908,6 +912,22 @@ static void virgl_disk_cache_create(struct virgl_screen *screen)
    screen->disk_cache = disk_cache_create("virgl", timestamp, 0);
 }
 
+static void
+fixup_renderer(union virgl_caps *caps)
+{
+   if (caps->v2.host_feature_check_version < 5)
+      return;
+
+   char renderer[64];
+   int renderer_len = snprintf(renderer, sizeof(renderer), "virgl (%s)",
+                               caps->v2.renderer);
+   if (renderer_len >= 64) {
+      memcpy(renderer + 59, "...)", 4);
+      renderer_len = 63;
+   }
+   memcpy(caps->v2.renderer, renderer, renderer_len + 1);
+}
+
 struct pipe_screen *
 virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *config)
 {
@@ -958,6 +978,7 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
    fixup_formats(&screen->caps.caps,
                  &screen->caps.caps.v2.supported_readback_formats);
    fixup_formats(&screen->caps.caps, &screen->caps.caps.v2.scanout);
+   fixup_renderer(&screen->caps.caps);
 
    union virgl_caps *caps = &screen->caps.caps;
    screen->tweak_gles_emulate_bgra &= !virgl_format_check_bitmask(PIPE_FORMAT_B8G8R8A8_SRGB, caps->v1.render.bitmask, false);
