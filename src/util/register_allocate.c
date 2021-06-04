@@ -804,8 +804,8 @@ ra_class_allocations_conflict(struct ra_class *c1, unsigned int r1,
    }
 }
 
-static bool
-ra_any_neighbors_conflict(struct ra_graph *g, unsigned int n, unsigned int r)
+static struct ra_node *
+ra_find_conflicting_neighbor(struct ra_graph *g, unsigned int n, unsigned int r)
 {
    util_dynarray_foreach(&g->nodes[n].adjacency_list, unsigned int, n2p) {
       unsigned int n2 = *n2p;
@@ -814,11 +814,11 @@ ra_any_neighbors_conflict(struct ra_graph *g, unsigned int n, unsigned int r)
       if (!BITSET_TEST(g->tmp.in_stack, n2) &&
           ra_class_allocations_conflict(g->regs->classes[g->nodes[n].class], r,
                                         g->regs->classes[g->nodes[n2].class], g->nodes[n2].reg)) {
-         return true;
+         return &g->nodes[n2];
       }
    }
 
-   return false;
+   return NULL;
 }
 
 /* Computes a bitfield of what regs are available for a given register
@@ -907,8 +907,21 @@ ra_select(struct ra_graph *g)
             if (!reg_belongs_to_class(r, c))
                continue;
 
-            if (!ra_any_neighbors_conflict(g, n, r))
+            struct ra_node *conflicting = ra_find_conflicting_neighbor(g, n, r);
+            if (!conflicting) {
+               /* Found a reg! */
                break;
+            }
+            if (g->regs->classes[conflicting->class]->contig_len) {
+               /* Skip to point at the last base reg of the conflicting reg
+                * allocation -- the loop will increment us to check the next reg
+                * after the conflicting allocaiton.
+                */
+               unsigned conflicting_end = (conflicting->reg +
+                                           g->regs->classes[conflicting->class]->contig_len - 1);
+               assert(conflicting_end >= r);
+               ri += conflicting_end - r;
+            }
          }
 
          if (ri >= g->regs->count)
