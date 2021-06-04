@@ -263,7 +263,8 @@ panfrost_fs_required(
                 struct panfrost_blend_state *blend,
                 struct pipe_framebuffer_state *state)
 {
-        /* If we generally have side effects */
+        /* If we generally have side effects. This inclues use of discard,
+         * which can affect the results of an occlusion query. */
         if (fs->info.fs.sidefx)
                 return true;
 
