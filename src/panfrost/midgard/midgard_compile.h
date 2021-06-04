@@ -93,6 +93,7 @@ static const nir_shader_compiler_options midgard_nir_options = {
         .vectorize_io = true,
         .use_interpolated_input_intrinsics = true,
 
+        .vertex_id_zero_based = true,
         .has_cs_global_id = true,
         .lower_cs_local_index_from_id = true,
         .max_unroll_iterations = 32,
