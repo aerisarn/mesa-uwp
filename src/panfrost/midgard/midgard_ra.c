@@ -212,6 +212,9 @@ mir_lower_special_reads(compiler_context *ctx)
                         mark_node_class(texr, ins->src[2]);
                         mark_node_class(texw, ins->dest);
                         break;
+
+                default:
+                        break;
                 }
         }
 
