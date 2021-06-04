@@ -3849,9 +3849,9 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
                           pipeline->shader_state_record, shader) {
 
       /* FIXME: we are setting this values here and during the
-       * prepacking. This is because both cl_emit_with_prepacked and v3dv_pack
+       * prepacking. This is because both cl_emit_with_prepacked and v3dvx_pack
        * asserts for minimum values of these. It would be good to get
-       * v3dv_pack to assert on the final value if possible
+       * v3dvx_pack to assert on the final value if possible
        */
       shader.min_coord_shader_input_segments_required_in_play =
          pipeline->vpm_cfg_bin.As;

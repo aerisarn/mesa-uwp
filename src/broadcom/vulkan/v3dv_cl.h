@@ -213,7 +213,7 @@ cl_pack_emit_reloc(struct v3dv_cl *cl, const struct v3dv_cl_reloc *reloc)
 #define cl_emit_prepacked(cl, packet) \
         cl_emit_prepacked_sized(cl, packet, sizeof(*(packet)))
 
-#define v3dv_pack(packed, packet, name)                          \
+#define v3dvx_pack(packed, packet, name)                         \
         for (struct cl_packet_struct(packet) name = {            \
                 cl_packet_header(packet)                         \
         },                                                       \

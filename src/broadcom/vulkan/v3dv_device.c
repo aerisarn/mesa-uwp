@@ -2578,7 +2578,7 @@ pack_sampler_state(struct v3dv_sampler *sampler,
       sampler->clamp_to_transparent_black_border = true;
    }
 
-   v3dv_pack(sampler->sampler_state, SAMPLER_STATE, s) {
+   v3dvx_pack(sampler->sampler_state, SAMPLER_STATE, s) {
       if (pCreateInfo->anisotropyEnable) {
          s.anisotropy_enable = true;
          if (pCreateInfo->maxAnisotropy > 8)

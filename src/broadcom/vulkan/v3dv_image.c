@@ -529,7 +529,7 @@ pack_texture_shader_state_helper(struct v3dv_device *device,
           image->samples == VK_SAMPLE_COUNT_4_BIT);
    const uint32_t msaa_scale = image->samples == VK_SAMPLE_COUNT_1_BIT ? 1 : 2;
 
-   v3dv_pack(image_view->texture_shader_state[index], TEXTURE_SHADER_STATE, tex) {
+   v3dvx_pack(image_view->texture_shader_state[index], TEXTURE_SHADER_STATE, tex) {
 
       tex.level_0_is_strictly_uif =
          (image->slices[0].tiling == V3D_TILING_UIF_XOR ||
@@ -778,7 +778,7 @@ pack_texture_shader_state_from_buffer_view(struct v3dv_device *device,
    assert(buffer_view->buffer);
    const struct v3dv_buffer *buffer = buffer_view->buffer;
 
-   v3dv_pack(buffer_view->texture_shader_state, TEXTURE_SHADER_STATE, tex) {
+   v3dvx_pack(buffer_view->texture_shader_state, TEXTURE_SHADER_STATE, tex) {
       tex.swizzle_r = translate_swizzle(PIPE_SWIZZLE_X);
       tex.swizzle_g = translate_swizzle(PIPE_SWIZZLE_Y);
       tex.swizzle_b = translate_swizzle(PIPE_SWIZZLE_Z);

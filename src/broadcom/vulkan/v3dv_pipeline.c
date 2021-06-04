@@ -2372,7 +2372,7 @@ pack_blend(struct v3dv_pipeline *pipeline,
       uint8_t rt_mask = 1 << i;
       pipeline->blend.enables |= rt_mask;
 
-      v3dv_pack(pipeline->blend.cfg[i], BLEND_CFG, config) {
+      v3dvx_pack(pipeline->blend.cfg[i], BLEND_CFG, config) {
          config.render_target_mask = rt_mask;
 
          config.color_blend_mode = b_state->colorBlendOp;
@@ -2410,7 +2410,7 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
    pipeline->msaa =
       ms_info && ms_info->rasterizationSamples > VK_SAMPLE_COUNT_1_BIT;
 
-   v3dv_pack(pipeline->cfg_bits, CFG_BITS, config) {
+   v3dvx_pack(pipeline->cfg_bits, CFG_BITS, config) {
       config.enable_forward_facing_primitive =
          rs_info ? !(rs_info->cullMode & VK_CULL_MODE_FRONT_BIT) : false;
 
@@ -2533,7 +2533,7 @@ pack_single_stencil_cfg(struct v3dv_pipeline *pipeline,
       pipeline->dynamic_state.mask & V3DV_DYNAMIC_STENCIL_COMPARE_MASK ?
          0 : stencil_state->reference & 0xff;
 
-   v3dv_pack(stencil_cfg, STENCIL_CFG, config) {
+   v3dvx_pack(stencil_cfg, STENCIL_CFG, config) {
       config.front_config = is_front;
       config.back_config = is_back;
       config.stencil_write_mask = write_mask;
@@ -2681,7 +2681,7 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
     * pipeline (like viewport), . Would need to be filled later, so we are
     * doing a partial prepacking.
     */
-   v3dv_pack(pipeline->shader_state_record, GL_SHADER_STATE_RECORD, shader) {
+   v3dvx_pack(pipeline->shader_state_record, GL_SHADER_STATE_RECORD, shader) {
       shader.enable_clipping = true;
 
       shader.point_size_in_shaded_vertex_data =
@@ -2812,7 +2812,7 @@ pack_vcm_cache_size(struct v3dv_pipeline *pipeline)
    assert(sizeof(pipeline->vcm_cache_size) ==
           cl_packet_length(VCM_CACHE_SIZE));
 
-   v3dv_pack(pipeline->vcm_cache_size, VCM_CACHE_SIZE, vcm) {
+   v3dvx_pack(pipeline->vcm_cache_size, VCM_CACHE_SIZE, vcm) {
       vcm.number_of_16_vertex_batches_for_binning = pipeline->vpm_cfg_bin.Vc;
       vcm.number_of_16_vertex_batches_for_rendering = pipeline->vpm_cfg.Vc;
    }
@@ -2938,7 +2938,7 @@ pack_shader_state_attribute_record(struct v3dv_pipeline *pipeline,
 
    uint32_t binding = vi_desc->binding;
 
-   v3dv_pack(&pipeline->vertex_attrs[index * packet_length],
+   v3dvx_pack(&pipeline->vertex_attrs[index * packet_length],
              GL_SHADER_STATE_ATTRIBUTE_RECORD, attr) {
 
       /* vec_size == 0 means 4 */
