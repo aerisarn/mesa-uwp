@@ -536,14 +536,16 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                                 else
                                         cfg.properties.midgard.work_register_count = fs->info.work_reg_count;
 
-                                /* Workaround a hardware errata where early-z cannot be enabled
-                                 * when discarding even when the depth buffer is read-only, by
-                                 * lying to the hardware about the discard and setting the
-                                 * reads tilebuffer? flag to compensate */
+                                /* Hardware quirks around early-zs forcing
+                                 * without a depth buffer. Note this breaks
+                                 * occlusion queries. */
+                                bool has_oq = ctx->occlusion_query && ctx->active_queries;
+                                bool force_ez_with_discard = !zsa->enabled && !has_oq;
+
                                 cfg.properties.midgard.shader_reads_tilebuffer =
-                                        !zsa->enabled && fs->info.fs.can_discard;
+                                        force_ez_with_discard && fs->info.fs.can_discard;
                                 cfg.properties.midgard.shader_contains_discard =
-                                        zsa->enabled && fs->info.fs.can_discard;
+                                        !force_ez_with_discard && fs->info.fs.can_discard;
                         }
 
                         if (dev->quirks & MIDGARD_SFBD && rt_count > 0) {
