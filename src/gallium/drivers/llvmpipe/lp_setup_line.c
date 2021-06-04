@@ -298,7 +298,7 @@ try_setup_line( struct lp_setup_context *setup,
    int nr_planes = 4;
    unsigned viewport_index = 0;
    unsigned layer = 0;
-   float pixel_offset = setup->multisample ? 0.0 : setup->pixel_offset;
+   float pixel_offset = setup->pixel_offset;
    /* linewidth should be interpreted as integer */
    int fixed_width = util_iround(width) * FIXED_ONE;
 
@@ -357,10 +357,24 @@ try_setup_line( struct lp_setup_context *setup,
    info.v2 = v2;
 
   
-   /* X-MAJOR LINE */
-   if (fabsf(dx) >= fabsf(dy)) {
+   if (setup->multisample) {
+      float scale = (setup->line_width * 0.5f) / sqrtf(area);
+      int tx = subpixel_snap(-dy * scale);
+      int ty = subpixel_snap(+dx * scale);
+
+      x[0] = subpixel_snap(v1[0][0]) - tx;
+      x[1] = subpixel_snap(v2[0][0]) - tx;
+      x[2] = subpixel_snap(v2[0][0]) + tx;
+      x[3] = subpixel_snap(v1[0][0]) + tx;
+
+      y[0] = subpixel_snap(v1[0][1]) - ty;
+      y[1] = subpixel_snap(v2[0][1]) - ty;
+      y[2] = subpixel_snap(v2[0][1]) + ty;
+      y[3] = subpixel_snap(v1[0][1]) + ty;
+   } else if (fabsf(dx) >= fabsf(dy)) {
       float dydx = dy / dx;
 
+      /* X-MAJOR LINE */
       x1diff = v1[0][0] - floorf(v1[0][0]) - 0.5f;
       y1diff = v1[0][1] - floorf(v1[0][1]) - 0.5f;
       x2diff = v2[0][0] - floorf(v2[0][0]) - 0.5f;
