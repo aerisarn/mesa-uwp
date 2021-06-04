@@ -1317,25 +1317,30 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_variants *all = ctx->shader[PIPE_SHADER_COMPUTE];
         struct panfrost_shader_state *ss = &all->variants[all->active_variant];
-        unsigned single_size = util_next_power_of_two(MAX2(ss->info.wls_size,
-                                                           128));
-
-        unsigned instances =
-                util_next_power_of_two(info->grid[0]) *
-                util_next_power_of_two(info->grid[1]) *
-                util_next_power_of_two(info->grid[2]);
-
-        unsigned shared_size = single_size * instances * dev->core_count;
-        struct panfrost_bo *bo = panfrost_batch_get_shared_memory(batch,
-                                                                  shared_size,
-                                                                  1);
         struct panfrost_ptr t =
                 panfrost_pool_alloc_desc(&batch->pool, LOCAL_STORAGE);
 
         pan_pack(t.cpu, LOCAL_STORAGE, ls) {
-                ls.wls_base_pointer = bo->ptr.gpu;
-                ls.wls_instances = instances;
-                ls.wls_size_scale = util_logbase2(single_size) + 1;
+                unsigned wls_single_size =
+                        util_next_power_of_two(MAX2(ss->info.wls_size, 128));
+
+                if (ss->info.wls_size) {
+                        ls.wls_instances =
+                                util_next_power_of_two(info->grid[0]) *
+                                util_next_power_of_two(info->grid[1]) *
+                                util_next_power_of_two(info->grid[2]);
+
+                        ls.wls_size_scale = util_logbase2(wls_single_size) + 1;
+
+                        unsigned wls_size = wls_single_size * ls.wls_instances * dev->core_count;
+
+                        ls.wls_base_pointer =
+                                (panfrost_batch_get_shared_memory(batch,
+                                                                  wls_size,
+                                                                  1))->ptr.gpu;
+                } else {
+                        ls.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
+                }
 
                 if (ss->info.tls_size) {
                         unsigned shift =
