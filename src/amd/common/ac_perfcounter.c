@@ -28,73 +28,140 @@
 #include "util/u_memory.h"
 #include "macros.h"
 
+/* cik_CB */
+static unsigned cik_CB_select0[] = {
+   R_037004_CB_PERFCOUNTER0_SELECT,
+   R_03700C_CB_PERFCOUNTER1_SELECT,
+   R_037010_CB_PERFCOUNTER2_SELECT,
+   R_037014_CB_PERFCOUNTER3_SELECT,
+};
+static unsigned cik_CB_select1[] = {
+   R_037008_CB_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base cik_CB = {
    .name = "CB",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS,
 
-   .select0 = R_037004_CB_PERFCOUNTER0_SELECT,
+   .select0 = cik_CB_select0,
+   .select1 = cik_CB_select1,
    .counter0_lo = R_035018_CB_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
-static unsigned cik_CPC_select[] = {
+/* cik_CPC */
+static unsigned cik_CPC_select0[] = {
    R_036024_CPC_PERFCOUNTER0_SELECT,
-   R_036010_CPC_PERFCOUNTER0_SELECT1,
    R_03600C_CPC_PERFCOUNTER1_SELECT,
+};
+static unsigned cik_CPC_select1[] = {
+   R_036010_CPC_PERFCOUNTER0_SELECT1,
+};
+static unsigned cik_CPC_counters[] = {
+   R_034018_CPC_PERFCOUNTER0_LO,
+   R_034010_CPC_PERFCOUNTER1_LO,
 };
 static struct ac_pc_block_base cik_CPC = {
    .name = "CPC",
    .num_counters = 2,
 
-   .select = cik_CPC_select,
-   .counter0_lo = R_034018_CPC_PERFCOUNTER0_LO,
+   .select0 = cik_CPC_select0,
+   .select1 = cik_CPC_select1,
+   .counters = cik_CPC_counters,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_CUSTOM | AC_PC_REG_REVERSE,
 };
 
+/* cik_CPF */
+static unsigned cik_CPF_select0[] = {
+   R_03601C_CPF_PERFCOUNTER0_SELECT,
+   R_036014_CPF_PERFCOUNTER1_SELECT,
+};
+static unsigned cik_CPF_select1[] = {
+   R_036018_CPF_PERFCOUNTER0_SELECT1,
+};
+static unsigned cik_CPF_counters[] = {
+   R_034028_CPF_PERFCOUNTER0_LO,
+   R_034020_CPF_PERFCOUNTER1_LO,
+};
 static struct ac_pc_block_base cik_CPF = {
    .name = "CPF",
    .num_counters = 2,
 
-   .select0 = R_03601C_CPF_PERFCOUNTER0_SELECT,
-   .counter0_lo = R_034028_CPF_PERFCOUNTER0_LO,
+   .select0 = cik_CPF_select0,
+   .select1 = cik_CPF_select1,
+   .counters = cik_CPF_counters,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE | AC_PC_REG_REVERSE,
 };
 
+/* cik_CPG */
+static unsigned cik_CPG_select0[] = {
+   R_036008_CPG_PERFCOUNTER0_SELECT,
+   R_036000_CPG_PERFCOUNTER1_SELECT,
+};
+static unsigned cik_CPG_select1[] = {
+   R_036004_CPG_PERFCOUNTER0_SELECT1
+};
+static unsigned cik_CPG_counters[] = {
+   R_034008_CPG_PERFCOUNTER0_LO,
+   R_034000_CPG_PERFCOUNTER1_LO,
+};
 static struct ac_pc_block_base cik_CPG = {
    .name = "CPG",
    .num_counters = 2,
 
-   .select0 = R_036008_CPG_PERFCOUNTER0_SELECT,
-   .counter0_lo = R_034008_CPG_PERFCOUNTER0_LO,
+   .select0 = cik_CPG_select0,
+   .select1 = cik_CPG_select1,
+   .counters = cik_CPG_counters,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE | AC_PC_REG_REVERSE,
 };
 
+/* cik_DB */
+static unsigned cik_DB_select0[] = {
+   R_037100_DB_PERFCOUNTER0_SELECT,
+   R_037108_DB_PERFCOUNTER1_SELECT,
+   R_037110_DB_PERFCOUNTER2_SELECT,
+   R_037118_DB_PERFCOUNTER3_SELECT,
+};
+static unsigned cik_DB_select1[] = {
+   R_037104_DB_PERFCOUNTER0_SELECT1,
+   R_03710C_DB_PERFCOUNTER1_SELECT1,
+};
 static struct ac_pc_block_base cik_DB = {
    .name = "DB",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS,
 
-   .select0 = R_037100_DB_PERFCOUNTER0_SELECT,
+   .select0 = cik_DB_select0,
+   .select1 = cik_DB_select1,
    .counter0_lo = R_035100_DB_PERFCOUNTER0_LO,
-   .num_multi = 3, // really only 2, but there's a gap between registers
-   .layout = AC_PC_MULTI_ALTERNATE,
+   .num_multi = 2,
 };
 
+/* cik_GDS */
+static unsigned cik_GDS_select0[] = {
+   R_036A00_GDS_PERFCOUNTER0_SELECT,
+   R_036A04_GDS_PERFCOUNTER1_SELECT,
+   R_036A08_GDS_PERFCOUNTER2_SELECT,
+   R_036A0C_GDS_PERFCOUNTER3_SELECT,
+};
+static unsigned cik_GDS_select1[] = {
+   R_036A10_GDS_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base cik_GDS = {
    .name = "GDS",
    .num_counters = 4,
 
-   .select0 = R_036A00_GDS_PERFCOUNTER0_SELECT,
+   .select0 = cik_GDS_select0,
+   .select1 = cik_GDS_select1,
    .counter0_lo = R_034A00_GDS_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_TAIL,
 };
 
+/* cik_GRBM */
+static unsigned cik_GRBM_select0[] = {
+   R_036100_GRBM_PERFCOUNTER0_SELECT,
+   R_036104_GRBM_PERFCOUNTER1_SELECT,
+};
 static unsigned cik_GRBM_counters[] = {
    R_034100_GRBM_PERFCOUNTER0_LO,
    R_03410C_GRBM_PERFCOUNTER1_LO,
@@ -103,331 +170,617 @@ static struct ac_pc_block_base cik_GRBM = {
    .name = "GRBM",
    .num_counters = 2,
 
-   .select0 = R_036100_GRBM_PERFCOUNTER0_SELECT,
+   .select0 = cik_GRBM_select0,
    .counters = cik_GRBM_counters,
 };
 
+/* cik_GRBMSE */
+static unsigned cik_GRBMSE_select0[] = {
+   R_036108_GRBM_SE0_PERFCOUNTER_SELECT,
+   R_03610C_GRBM_SE1_PERFCOUNTER_SELECT,
+   R_036110_GRBM_SE2_PERFCOUNTER_SELECT,
+   R_036114_GRBM_SE3_PERFCOUNTER_SELECT,
+};
 static struct ac_pc_block_base cik_GRBMSE = {
    .name = "GRBMSE",
    .num_counters = 4,
 
-   .select0 = R_036108_GRBM_SE0_PERFCOUNTER_SELECT,
+   .select0 = cik_GRBMSE_select0,
    .counter0_lo = R_034114_GRBM_SE0_PERFCOUNTER_LO,
 };
 
+/* cik_IA */
+static unsigned cik_IA_select0[] = {
+   R_036210_IA_PERFCOUNTER0_SELECT,
+   R_036214_IA_PERFCOUNTER1_SELECT,
+   R_036218_IA_PERFCOUNTER2_SELECT,
+   R_03621C_IA_PERFCOUNTER3_SELECT,
+};
+static unsigned cik_IA_select1[] = {
+   R_036220_IA_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base cik_IA = {
    .name = "IA",
    .num_counters = 4,
 
-   .select0 = R_036210_IA_PERFCOUNTER0_SELECT,
+   .select0 = cik_IA_select0,
+   .select1 = cik_IA_select1,
    .counter0_lo = R_034220_IA_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_TAIL,
 };
 
+/* cik_PA_SC */
+static unsigned cik_PA_SC_select0[] = {
+   R_036500_PA_SC_PERFCOUNTER0_SELECT,
+   R_036508_PA_SC_PERFCOUNTER1_SELECT,
+   R_03650C_PA_SC_PERFCOUNTER2_SELECT,
+   R_036510_PA_SC_PERFCOUNTER3_SELECT,
+   R_036514_PA_SC_PERFCOUNTER4_SELECT,
+   R_036518_PA_SC_PERFCOUNTER5_SELECT,
+   R_03651C_PA_SC_PERFCOUNTER6_SELECT,
+   R_036520_PA_SC_PERFCOUNTER7_SELECT,
+};
+static unsigned cik_PA_SC_select1[] = {
+   R_036504_PA_SC_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base cik_PA_SC = {
    .name = "PA_SC",
    .num_counters = 8,
    .flags = AC_PC_BLOCK_SE,
 
-   .select0 = R_036500_PA_SC_PERFCOUNTER0_SELECT,
+   .select0 = cik_PA_SC_select0,
+   .select1 = cik_PA_SC_select1,
    .counter0_lo = R_034500_PA_SC_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* cik_PA_SU */
+static unsigned cik_PA_SU_select0[] = {
+   R_036400_PA_SU_PERFCOUNTER0_SELECT,
+   R_036408_PA_SU_PERFCOUNTER1_SELECT,
+   R_036410_PA_SU_PERFCOUNTER2_SELECT,
+   R_036414_PA_SU_PERFCOUNTER3_SELECT,
+};
+static unsigned cik_PA_SU_select1[] = {
+   R_036404_PA_SU_PERFCOUNTER0_SELECT1,
+   R_03640C_PA_SU_PERFCOUNTER1_SELECT1,
+};
 /* According to docs, PA_SU counters are only 48 bits wide. */
 static struct ac_pc_block_base cik_PA_SU = {
    .name = "PA_SU",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE,
 
-   .select0 = R_036400_PA_SU_PERFCOUNTER0_SELECT,
+   .select0 = cik_PA_SU_select0,
+   .select1 = cik_PA_SU_select1,
    .counter0_lo = R_034400_PA_SU_PERFCOUNTER0_LO,
    .num_multi = 2,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* cik_SPI */
+static unsigned cik_SPI_select0[] = {
+   R_036600_SPI_PERFCOUNTER0_SELECT,
+   R_036604_SPI_PERFCOUNTER1_SELECT,
+   R_036608_SPI_PERFCOUNTER2_SELECT,
+   R_03660C_SPI_PERFCOUNTER3_SELECT,
+   R_036620_SPI_PERFCOUNTER4_SELECT,
+   R_036624_SPI_PERFCOUNTER5_SELECT,
+};
+static unsigned cik_SPI_select1[] = {
+   R_036610_SPI_PERFCOUNTER0_SELECT1,
+   R_036614_SPI_PERFCOUNTER1_SELECT1,
+   R_036618_SPI_PERFCOUNTER2_SELECT1,
+   R_03661C_SPI_PERFCOUNTER3_SELECT1
+};
 static struct ac_pc_block_base cik_SPI = {
    .name = "SPI",
    .num_counters = 6,
    .flags = AC_PC_BLOCK_SE,
 
-   .select0 = R_036600_SPI_PERFCOUNTER0_SELECT,
+   .select0 = cik_SPI_select0,
+   .select1 = cik_SPI_select1,
    .counter0_lo = R_034604_SPI_PERFCOUNTER0_LO,
    .num_multi = 4,
-   .layout = AC_PC_MULTI_BLOCK,
 };
 
+/* cik_SQ */
+static unsigned cik_SQ_select0[] = {
+   R_036700_SQ_PERFCOUNTER0_SELECT,
+   R_036704_SQ_PERFCOUNTER1_SELECT,
+   R_036708_SQ_PERFCOUNTER2_SELECT,
+   R_03670C_SQ_PERFCOUNTER3_SELECT,
+   R_036710_SQ_PERFCOUNTER4_SELECT,
+   R_036714_SQ_PERFCOUNTER5_SELECT,
+   R_036718_SQ_PERFCOUNTER6_SELECT,
+   R_03671C_SQ_PERFCOUNTER7_SELECT,
+   R_036720_SQ_PERFCOUNTER8_SELECT,
+   R_036724_SQ_PERFCOUNTER9_SELECT,
+   R_036728_SQ_PERFCOUNTER10_SELECT,
+   R_03672C_SQ_PERFCOUNTER11_SELECT,
+   R_036730_SQ_PERFCOUNTER12_SELECT,
+   R_036734_SQ_PERFCOUNTER13_SELECT,
+   R_036738_SQ_PERFCOUNTER14_SELECT,
+   R_03673C_SQ_PERFCOUNTER15_SELECT,
+};
 static struct ac_pc_block_base cik_SQ = {
    .name = "SQ",
    .num_counters = 16,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER,
 
-   .select0 = R_036700_SQ_PERFCOUNTER0_SELECT,
+   .select0 = cik_SQ_select0,
    .select_or = S_036700_SQC_BANK_MASK(15) | S_036700_SQC_CLIENT_MASK(15) | S_036700_SIMD_MASK(15),
    .counter0_lo = R_034700_SQ_PERFCOUNTER0_LO,
 };
 
+/* cik_SX */
+static unsigned cik_SX_select0[] = {
+   R_036900_SX_PERFCOUNTER0_SELECT,
+   R_036904_SX_PERFCOUNTER1_SELECT,
+   R_036908_SX_PERFCOUNTER2_SELECT,
+   R_03690C_SX_PERFCOUNTER3_SELECT,
+};
+static unsigned cik_SX_select1[] = {
+   R_036910_SX_PERFCOUNTER0_SELECT1,
+   R_036914_SX_PERFCOUNTER1_SELECT1,
+};
 static struct ac_pc_block_base cik_SX = {
    .name = "SX",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE,
 
-   .select0 = R_036900_SX_PERFCOUNTER0_SELECT,
+   .select0 = cik_SX_select0,
+   .select1 = cik_SX_select1,
    .counter0_lo = R_034900_SX_PERFCOUNTER0_LO,
    .num_multi = 2,
-   .layout = AC_PC_MULTI_TAIL,
 };
 
+/* cik_TA */
+static unsigned cik_TA_select0[] = {
+   R_036B00_TA_PERFCOUNTER0_SELECT,
+   R_036B08_TA_PERFCOUNTER1_SELECT,
+};
+static unsigned cik_TA_select1[] = {
+   R_036B04_TA_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base cik_TA = {
    .name = "TA",
    .num_counters = 2,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS | AC_PC_BLOCK_SHADER_WINDOWED,
 
-   .select0 = R_036B00_TA_PERFCOUNTER0_SELECT,
+   .select0 = cik_TA_select0,
+   .select1 = cik_TA_select1,
    .counter0_lo = R_034B00_TA_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* cik_TD */
+static unsigned cik_TD_select0[] = {
+   R_036C00_TD_PERFCOUNTER0_SELECT,
+   R_036C08_TD_PERFCOUNTER1_SELECT,
+};
+static unsigned cik_TD_select1[] = {
+   R_036C04_TD_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base cik_TD = {
    .name = "TD",
    .num_counters = 2,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS | AC_PC_BLOCK_SHADER_WINDOWED,
 
-   .select0 = R_036C00_TD_PERFCOUNTER0_SELECT,
+   .select0 = cik_TD_select0,
+   .select1 = cik_TD_select1,
    .counter0_lo = R_034C00_TD_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* cik_TCA */
+static unsigned cik_TCA_select0[] = {
+   R_036E40_TCA_PERFCOUNTER0_SELECT,
+   R_036E48_TCA_PERFCOUNTER1_SELECT,
+   R_036E50_TCA_PERFCOUNTER2_SELECT,
+   R_036E54_TCA_PERFCOUNTER3_SELECT,
+};
+static unsigned cik_TCA_select1[] = {
+   R_036E44_TCA_PERFCOUNTER0_SELECT1,
+   R_036E4C_TCA_PERFCOUNTER1_SELECT1,
+};
 static struct ac_pc_block_base cik_TCA = {
    .name = "TCA",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_INSTANCE_GROUPS,
 
-   .select0 = R_036E40_TCA_PERFCOUNTER0_SELECT,
+   .select0 = cik_TCA_select0,
+   .select1 = cik_TCA_select1,
    .counter0_lo = R_034E40_TCA_PERFCOUNTER0_LO,
    .num_multi = 2,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* cik_TCC */
+static unsigned cik_TCC_select0[] = {
+   R_036E00_TCC_PERFCOUNTER0_SELECT,
+   R_036E08_TCC_PERFCOUNTER1_SELECT,
+   R_036E10_TCC_PERFCOUNTER2_SELECT,
+   R_036E14_TCC_PERFCOUNTER3_SELECT,
+};
+static unsigned cik_TCC_select1[] = {
+   R_036E04_TCC_PERFCOUNTER0_SELECT1,
+   R_036E0C_TCC_PERFCOUNTER1_SELECT1,
+};
 static struct ac_pc_block_base cik_TCC = {
    .name = "TCC",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_INSTANCE_GROUPS,
 
-   .select0 = R_036E00_TCC_PERFCOUNTER0_SELECT,
+   .select0 = cik_TCC_select0,
+   .select1 = cik_TCC_select1,
    .counter0_lo = R_034E00_TCC_PERFCOUNTER0_LO,
    .num_multi = 2,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* cik_TCP */
+static unsigned cik_TCP_select0[] = {
+   R_036D00_TCP_PERFCOUNTER0_SELECT,
+   R_036D08_TCP_PERFCOUNTER1_SELECT,
+   R_036D10_TCP_PERFCOUNTER2_SELECT,
+   R_036D14_TCP_PERFCOUNTER3_SELECT,
+};
+static unsigned cik_TCP_select1[] = {
+   R_036D04_TCP_PERFCOUNTER0_SELECT1,
+   R_036D0C_TCP_PERFCOUNTER1_SELECT1,
+};
 static struct ac_pc_block_base cik_TCP = {
    .name = "TCP",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS | AC_PC_BLOCK_SHADER_WINDOWED,
 
-   .select0 = R_036D00_TCP_PERFCOUNTER0_SELECT,
+   .select0 = cik_TCP_select0,
+   .select1 = cik_TCP_select1,
    .counter0_lo = R_034D00_TCP_PERFCOUNTER0_LO,
    .num_multi = 2,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* cik_VGT */
+static unsigned cik_VGT_select0[] = {
+   R_036230_VGT_PERFCOUNTER0_SELECT,
+   R_036234_VGT_PERFCOUNTER1_SELECT,
+   R_036238_VGT_PERFCOUNTER2_SELECT,
+   R_03623C_VGT_PERFCOUNTER3_SELECT,
+};
+static unsigned cik_VGT_select1[] = {
+   R_036240_VGT_PERFCOUNTER0_SELECT1,
+   R_036244_VGT_PERFCOUNTER1_SELECT1,
+};
 static struct ac_pc_block_base cik_VGT = {
    .name = "VGT",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE,
 
-   .select0 = R_036230_VGT_PERFCOUNTER0_SELECT,
+   .select0 = cik_VGT_select0,
+   .select1 = cik_VGT_select1,
    .counter0_lo = R_034240_VGT_PERFCOUNTER0_LO,
-   .num_multi = 1,
-   .layout = AC_PC_MULTI_TAIL,
+   .num_multi = 2,
 };
 
+/* cik_WD */
+static unsigned cik_WD_select0[] = {
+   R_036200_WD_PERFCOUNTER0_SELECT,
+   R_036204_WD_PERFCOUNTER1_SELECT,
+   R_036208_WD_PERFCOUNTER2_SELECT,
+   R_03620C_WD_PERFCOUNTER3_SELECT,
+};
 static struct ac_pc_block_base cik_WD = {
    .name = "WD",
    .num_counters = 4,
 
-   .select0 = R_036200_WD_PERFCOUNTER0_SELECT,
+   .select0 = cik_WD_select0,
    .counter0_lo = R_034200_WD_PERFCOUNTER0_LO,
 };
 
+/* cik_MC */
 static struct ac_pc_block_base cik_MC = {
    .name = "MC",
    .num_counters = 4,
-
-   .layout = AC_PC_FAKE,
 };
 
+/* cik_SRBM */
 static struct ac_pc_block_base cik_SRBM = {
    .name = "SRBM",
    .num_counters = 2,
-
-   .layout = AC_PC_FAKE,
 };
 
+/* gfx10_CHA */
+static unsigned gfx10_CHA_select0[] = {
+   R_037780_CHA_PERFCOUNTER0_SELECT,
+   R_037788_CHA_PERFCOUNTER1_SELECT,
+   R_03778C_CHA_PERFCOUNTER2_SELECT,
+   R_037790_CHA_PERFCOUNTER3_SELECT,
+};
+static unsigned gfx10_CHA_select1[] = {
+   R_037784_CHA_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base gfx10_CHA = {
    .name = "CHA",
    .num_counters = 4,
 
-   .select0 = R_037780_CHA_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_CHA_select0,
+   .select1 = gfx10_CHA_select1,
    .counter0_lo = R_035800_CHA_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* gfx10_CHCG */
+static unsigned gfx10_CHCG_select0[] = {
+   R_036F18_CHCG_PERFCOUNTER0_SELECT,
+   R_036F20_CHCG_PERFCOUNTER1_SELECT,
+   R_036F24_CHCG_PERFCOUNTER2_SELECT,
+   R_036F28_CHCG_PERFCOUNTER3_SELECT,
+};
+static unsigned gfx10_CHCG_select1[] = {
+   R_036F1C_CHCG_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base gfx10_CHCG = {
    .name = "CHCG",
    .num_counters = 4,
 
-   .select0 = R_036F18_CHCG_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_CHCG_select0,
+   .select1 = gfx10_CHCG_select1,
    .counter0_lo = R_034F20_CHCG_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* gfx10_CHC */
+static unsigned gfx10_CHC_select0[] = {
+   R_036F00_CHC_PERFCOUNTER0_SELECT,
+   R_036F08_CHC_PERFCOUNTER1_SELECT,
+   R_036F0C_CHC_PERFCOUNTER2_SELECT,
+   R_036F10_CHC_PERFCOUNTER3_SELECT,
+};
+static unsigned gfx10_CHC_select1[] = {
+   R_036F04_CHC_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base gfx10_CHC = {
    .name = "CHC",
    .num_counters = 4,
 
-   .select0 = R_036F00_CHC_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_CHC_select0,
+   .select1 = gfx10_CHC_select1,
    .counter0_lo = R_034F00_CHC_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* gfx10_GCR */
+static unsigned gfx10_GCR_select0[] = {
+   R_037580_GCR_PERFCOUNTER0_SELECT,
+   R_037588_GCR_PERFCOUNTER1_SELECT,
+};
+static unsigned gfx10_GCR_select1[] = {
+   R_037584_GCR_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base gfx10_GCR = {
    .name = "GCR",
    .num_counters = 2,
 
-   .select0 = R_037580_GCR_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_GCR_select0,
+   .select1 = gfx10_GCR_select1,
    .counter0_lo = R_035480_GCR_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* gfx10_GE */
+static unsigned gfx10_GE_select0[] = {
+   R_036200_GE_PERFCOUNTER0_SELECT,
+   R_036208_GE_PERFCOUNTER1_SELECT,
+   R_036210_GE_PERFCOUNTER2_SELECT,
+   R_036218_GE_PERFCOUNTER3_SELECT,
+   R_036220_GE_PERFCOUNTER4_SELECT,
+   R_036228_GE_PERFCOUNTER5_SELECT,
+   R_036230_GE_PERFCOUNTER6_SELECT,
+   R_036238_GE_PERFCOUNTER7_SELECT,
+   R_036240_GE_PERFCOUNTER8_SELECT,
+   R_036248_GE_PERFCOUNTER9_SELECT,
+   R_036250_GE_PERFCOUNTER10_SELECT,
+   R_036258_GE_PERFCOUNTER11_SELECT,
+};
+static unsigned gfx10_GE_select1[] = {
+   R_036204_GE_PERFCOUNTER0_SELECT1,
+   R_03620C_GE_PERFCOUNTER1_SELECT1,
+   R_036214_GE_PERFCOUNTER2_SELECT1,
+   R_03621C_GE_PERFCOUNTER3_SELECT1,
+};
 static struct ac_pc_block_base gfx10_GE = {
    .name = "GE",
    .num_counters = 12,
 
-   .select0 = R_036200_GE_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_GE_select0,
+   .select1 = gfx10_GE_select1,
    .counter0_lo = R_034200_GE_PERFCOUNTER0_LO,
    .num_multi = 4,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* gfx10_GL1A */
+static unsigned gfx10_GL1A_select0[] = {
+   R_037700_GL1A_PERFCOUNTER0_SELECT,
+   R_037708_GL1A_PERFCOUNTER1_SELECT,
+   R_03770C_GL1A_PERFCOUNTER2_SELECT,
+   R_037710_GL1A_PERFCOUNTER3_SELECT,
+};
+static unsigned gfx10_GL1A_select1[] = {
+   R_037704_GL1A_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base gfx10_GL1A = {
    .name = "GL1A",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER_WINDOWED,
 
-   .select0 = R_037700_GL1A_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_GL1A_select0,
+   .select1 = gfx10_GL1A_select1,
    .counter0_lo = R_035700_GL1A_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* gfx10_GL1C */
+static unsigned gfx10_GL1C_select0[] = {
+   R_036E80_GL1C_PERFCOUNTER0_SELECT,
+   R_036E88_GL1C_PERFCOUNTER1_SELECT,
+   R_036E8C_GL1C_PERFCOUNTER2_SELECT,
+   R_036E90_GL1C_PERFCOUNTER3_SELECT,
+};
+static unsigned gfx10_GL1C_select1[] = {
+   R_036E84_GL1C_PERFCOUNTER0_SELECT1,
+};
 static struct ac_pc_block_base gfx10_GL1C = {
    .name = "GL1C",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER_WINDOWED,
 
-   .select0 = R_036E80_GL1C_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_GL1C_select0,
+   .select1 = gfx10_GL1C_select1,
    .counter0_lo = R_034E80_GL1C_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* gfx10_GL2A */
+static unsigned gfx10_GL2A_select0[] = {
+   R_036E40_GL2A_PERFCOUNTER0_SELECT,
+   R_036E48_GL2A_PERFCOUNTER1_SELECT,
+   R_036E50_GL2A_PERFCOUNTER2_SELECT,
+   R_036E54_GL2A_PERFCOUNTER3_SELECT,
+};
+static unsigned gfx10_GL2A_select1[] = {
+   R_036E44_GL2A_PERFCOUNTER0_SELECT1,
+   R_036E4C_GL2A_PERFCOUNTER1_SELECT1,
+};
 static struct ac_pc_block_base gfx10_GL2A = {
    .name = "GL2A",
    .num_counters = 4,
 
-   .select0 = R_036E40_GL2A_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_GL2A_select0,
+   .select1 = gfx10_GL2A_select1,
    .counter0_lo = R_034E40_GL2A_PERFCOUNTER0_LO,
    .num_multi = 2,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* gfx10_GL2C */
+static unsigned gfx10_GL2C_select0[] = {
+   R_036E00_GL2C_PERFCOUNTER0_SELECT,
+   R_036E08_GL2C_PERFCOUNTER1_SELECT,
+   R_036E10_GL2C_PERFCOUNTER2_SELECT,
+   R_036E14_GL2C_PERFCOUNTER3_SELECT,
+};
+static unsigned gfx10_GL2C_select1[] = {
+   R_036E04_GL2C_PERFCOUNTER0_SELECT1,
+   R_036E0C_GL2C_PERFCOUNTER1_SELECT1,
+};
 static struct ac_pc_block_base gfx10_GL2C = {
    .name = "GL2C",
    .num_counters = 4,
 
-   .select0 = R_036E00_GL2C_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_GL2C_select0,
+   .select1 = gfx10_GL2C_select1,
    .counter0_lo = R_034E00_GL2C_PERFCOUNTER0_LO,
    .num_multi = 2,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
-static unsigned gfx10_PA_PH_select[] = {
+/* gfx10_PA_PH */
+static unsigned gfx10_PA_PH_select0[] = {
    R_037600_PA_PH_PERFCOUNTER0_SELECT,
-   R_037604_PA_PH_PERFCOUNTER0_SELECT1,
    R_037608_PA_PH_PERFCOUNTER1_SELECT,
-   R_037640_PA_PH_PERFCOUNTER1_SELECT1,
    R_03760C_PA_PH_PERFCOUNTER2_SELECT,
-   R_037644_PA_PH_PERFCOUNTER2_SELECT1,
    R_037610_PA_PH_PERFCOUNTER3_SELECT,
-   R_037648_PA_PH_PERFCOUNTER3_SELECT1,
    R_037614_PA_PH_PERFCOUNTER4_SELECT,
    R_037618_PA_PH_PERFCOUNTER5_SELECT,
    R_03761C_PA_PH_PERFCOUNTER6_SELECT,
    R_037620_PA_PH_PERFCOUNTER7_SELECT,
+};
+static unsigned gfx10_PA_PH_select1[] = {
+   R_037604_PA_PH_PERFCOUNTER0_SELECT1,
+   R_037640_PA_PH_PERFCOUNTER1_SELECT1,
+   R_037644_PA_PH_PERFCOUNTER2_SELECT1,
+   R_037648_PA_PH_PERFCOUNTER3_SELECT1,
 };
 static struct ac_pc_block_base gfx10_PA_PH = {
    .name = "PA_PH",
    .num_counters = 8,
    .flags = AC_PC_BLOCK_SE,
 
-   .select = gfx10_PA_PH_select,
+   .select0 = gfx10_PA_PH_select0,
+   .select1 = gfx10_PA_PH_select1,
    .counter0_lo = R_035600_PA_PH_PERFCOUNTER0_LO,
    .num_multi = 4,
-   .layout = AC_PC_MULTI_CUSTOM,
 };
 
+/* gfx10_PA_SU */
+static unsigned gfx10_PA_SU_select0[] = {
+   R_036400_PA_SU_PERFCOUNTER0_SELECT,
+   R_036408_PA_SU_PERFCOUNTER1_SELECT,
+   R_036410_PA_SU_PERFCOUNTER2_SELECT,
+   R_036418_PA_SU_PERFCOUNTER3_SELECT,
+};
+static unsigned gfx10_PA_SU_select1[] = {
+   R_036404_PA_SU_PERFCOUNTER0_SELECT1,
+   R_03640C_PA_SU_PERFCOUNTER1_SELECT1,
+   R_036414_PA_SU_PERFCOUNTER2_SELECT1,
+   R_03641C_PA_SU_PERFCOUNTER3_SELECT1,
+};
 static struct ac_pc_block_base gfx10_PA_SU = {
    .name = "PA_SU",
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE,
 
-   .select0 = R_036400_PA_SU_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_PA_SU_select0,
+   .select1 = gfx10_PA_SU_select1,
    .counter0_lo = R_034400_PA_SU_PERFCOUNTER0_LO,
    .num_multi = 4,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* gfx10_RLC */
+static unsigned gfx10_RLC_select0[] = {
+   R_037304_RLC_PERFCOUNTER0_SELECT,
+   R_037308_RLC_PERFCOUNTER1_SELECT,
+};
 static struct ac_pc_block_base gfx10_RLC = {
    .name = "RLC",
    .num_counters = 2,
 
-   .select0 = R_037304_RLC_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_RLC_select0,
    .counter0_lo = R_035200_RLC_PERFCOUNTER0_LO,
    .num_multi = 0,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
+/* gfx10_RMI */
+static unsigned gfx10_RMI_select0[] = {
+   R_037400_RMI_PERFCOUNTER0_SELECT,
+   R_037408_RMI_PERFCOUNTER1_SELECT,
+   R_03740C_RMI_PERFCOUNTER2_SELECT,
+   R_037414_RMI_PERFCOUNTER3_SELECT,
+};
+static unsigned gfx10_RMI_select1[] = {
+   R_037404_RMI_PERFCOUNTER0_SELECT1,
+   R_037410_RMI_PERFCOUNTER2_SELECT1,
+};
 static struct ac_pc_block_base gfx10_RMI = {
    .name = "RMI",
-   /* Actually 4, but the 2nd counter is missing the secondary selector while
-    * the 3rd counter has it, which complicates the register layout. */
-   .num_counters = 2,
+   .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS,
 
-   .select0 = R_037400_RMI_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_RMI_select0,
+   .select1 = gfx10_RMI_select1,
    .counter0_lo = R_035300_RMI_PERFCOUNTER0_LO,
-   .num_multi = 1,
-   .layout = AC_PC_MULTI_ALTERNATE,
+   .num_multi = 2,
 };
 
+/* gfx10_UTCL1 */
+static unsigned gfx10_UTCL1_select0[] = {
+   R_03758C_UTCL1_PERFCOUNTER0_SELECT,
+   R_037590_UTCL1_PERFCOUNTER1_SELECT,
+};
 static struct ac_pc_block_base gfx10_UTCL1 = {
    .name = "UTCL1",
    .num_counters = 2,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER_WINDOWED,
 
-   .select0 = R_03758C_UTCL1_PERFCOUNTER0_SELECT,
+   .select0 = gfx10_UTCL1_select0,
    .counter0_lo = R_035470_UTCL1_PERFCOUNTER0_LO,
    .num_multi = 0,
-   .layout = AC_PC_MULTI_ALTERNATE,
 };
 
 /* Both the number of instances and selectors varies between chips of the same

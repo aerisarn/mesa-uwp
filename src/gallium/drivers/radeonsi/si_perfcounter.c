@@ -102,83 +102,25 @@ static void si_pc_emit_select(struct si_context *sctx, struct ac_pc_block *block
    struct ac_pc_block_base *regs = block->b->b;
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned idx;
-   unsigned layout_multi = regs->layout & AC_PC_MULTI_MASK;
 
    assert(count <= regs->num_counters);
 
-   if (regs->layout & AC_PC_FAKE)
+   /* Fake counters. */
+   if (!regs->select0)
       return;
 
    radeon_begin(cs);
 
-   if (layout_multi == AC_PC_MULTI_BLOCK) {
-      assert(!(regs->layout & AC_PC_REG_REVERSE));
-      unsigned reg_count = count;
-
-      if (count >= regs->num_multi)
-         reg_count += regs->num_multi;
-      radeon_set_uconfig_reg_seq(cs, regs->select0, reg_count, false);
-      for (idx = 0; idx < MIN2(count, regs->num_multi); ++idx)
-         radeon_emit(cs, selectors[idx] | regs->select_or);
-
-      if (count < regs->num_multi) {
-         unsigned select1 = regs->select0 + 4 * regs->num_multi;
-         radeon_set_uconfig_reg_seq(cs, select1, count, false);
-      }
-
-      for (idx = 0; idx < MIN2(count, regs->num_multi); ++idx)
-         radeon_emit(cs, 0);
-
-      if (count > regs->num_multi) {
-         for (idx = regs->num_multi; idx < count; ++idx)
-            radeon_emit(cs, selectors[idx] | regs->select_or);
-      }
-   } else if (layout_multi == AC_PC_MULTI_TAIL) {
-      unsigned select1, select1_count;
-
-      assert(!(regs->layout & AC_PC_REG_REVERSE));
-
-      radeon_set_uconfig_reg_seq(cs, regs->select0, count, false);
-      for (idx = 0; idx < count; ++idx)
-         radeon_emit(cs, selectors[idx] | regs->select_or);
-
-      select1 = regs->select0 + 4 * regs->num_counters;
-      select1_count = MIN2(count, regs->num_multi);
-      radeon_set_uconfig_reg_seq(cs, select1, select1_count, false);
-      for (idx = 0; idx < select1_count; ++idx)
-         radeon_emit(cs, 0);
-   } else if (layout_multi == AC_PC_MULTI_CUSTOM) {
-      unsigned *reg = regs->select;
-      for (idx = 0; idx < count; ++idx) {
-         radeon_set_uconfig_reg(cs, *reg++, selectors[idx] | regs->select_or);
-         if (idx < regs->num_multi)
-            radeon_set_uconfig_reg(cs, *reg++, 0);
-      }
-   } else {
-      assert(layout_multi == AC_PC_MULTI_ALTERNATE);
-
-      unsigned reg_base = regs->select0;
-      unsigned reg_count = count + MIN2(count, regs->num_multi);
-
-      if (!(regs->layout & AC_PC_REG_REVERSE)) {
-         radeon_set_uconfig_reg_seq(cs, reg_base, reg_count, false);
-
-         for (idx = 0; idx < count; ++idx) {
-            radeon_emit(cs, selectors[idx] | regs->select_or);
-            if (idx < regs->num_multi)
-               radeon_emit(cs, 0);
-         }
-      } else {
-         reg_base -= (reg_count - 1) * 4;
-         radeon_set_uconfig_reg_seq(cs, reg_base, reg_count, false);
-
-         for (idx = count; idx > 0; --idx) {
-            if (idx <= regs->num_multi)
-               radeon_emit(cs, 0);
-            radeon_emit(cs, selectors[idx - 1] | regs->select_or);
-         }
-      }
+   for (idx = 0; idx < count; ++idx) {
+      radeon_set_uconfig_reg_seq(cs, regs->select0[idx], 1, false);
+      radeon_emit(cs, selectors[idx] | regs->select_or);
    }
+
+   for (idx = 0; idx < regs->num_multi; idx++) {
+      radeon_set_uconfig_reg_seq(cs, regs->select1[idx], 1, false);
+      radeon_emit(cs, 0);
+   }
+
    radeon_end();
 }
 
@@ -231,10 +173,7 @@ static void si_pc_emit_read(struct si_context *sctx, struct ac_pc_block *block, 
 
    radeon_begin(cs);
 
-   if (!(regs->layout & AC_PC_FAKE)) {
-      if (regs->layout & AC_PC_REG_REVERSE)
-         reg_delta = -reg_delta;
-
+   if (regs->select0) {
       for (idx = 0; idx < count; ++idx) {
          if (regs->counters)
             reg = regs->counters[idx];
@@ -250,6 +189,7 @@ static void si_pc_emit_read(struct si_context *sctx, struct ac_pc_block *block, 
          reg += reg_delta;
       }
    } else {
+      /* Fake counters. */
       for (idx = 0; idx < count; ++idx) {
          radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
          radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |

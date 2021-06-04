@@ -55,70 +55,17 @@ enum ac_pc_block_flags
    AC_PC_BLOCK_SHADER_WINDOWED = (1 << 4),
 };
 
-enum ac_pc_reg_layout
-{
-   /* All secondary selector dwords follow as one block after the primary
-    * selector dwords for the counters that have secondary selectors.
-    *
-    * Example:
-    *    PERFCOUNTER0_SELECT
-    *    PERFCOUNTER1_SELECT
-    *    PERFCOUNTER0_SELECT1
-    *    PERFCOUNTER1_SELECT1
-    *    PERFCOUNTER2_SELECT
-    *    PERFCOUNTER3_SELECT
-    */
-   AC_PC_MULTI_BLOCK = 0,
-
-   /* Each secondary selector dword follows immediately after the
-    * corresponding primary.
-    *
-    * Example:
-    *    PERFCOUNTER0_SELECT
-    *    PERFCOUNTER0_SELECT1
-    *    PERFCOUNTER1_SELECT
-    *    PERFCOUNTER1_SELECT1
-    *    PERFCOUNTER2_SELECT
-    *    PERFCOUNTER3_SELECT
-    */
-   AC_PC_MULTI_ALTERNATE = 1,
-
-   /* All secondary selector dwords follow as one block after all primary
-    * selector dwords.
-    *
-    * Example:
-    *    PERFCOUNTER0_SELECT
-    *    PERFCOUNTER1_SELECT
-    *    PERFCOUNTER2_SELECT
-    *    PERFCOUNTER3_SELECT
-    *    PERFCOUNTER0_SELECT1
-    *    PERFCOUNTER1_SELECT1
-    */
-   AC_PC_MULTI_TAIL = 2,
-
-   /* Free-form arrangement of selector registers. */
-   AC_PC_MULTI_CUSTOM = 3,
-
-   AC_PC_MULTI_MASK = 3,
-
-   /* Registers are laid out in decreasing rather than increasing order. */
-   AC_PC_REG_REVERSE = 4,
-
-   AC_PC_FAKE = 8,
-};
-
 struct ac_pc_block_base {
    const char *name;
    unsigned num_counters;
    unsigned flags;
 
    unsigned select_or;
-   unsigned select0;
+   unsigned *select0;
+   unsigned *select1;
    unsigned counter0_lo;
-   unsigned *select;
    unsigned *counters;
    unsigned num_multi;
-   unsigned layout;
 };
 
 struct ac_pc_block_gfxdescr {
