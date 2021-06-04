@@ -33,10 +33,9 @@ static struct ac_pc_block_base cik_CB = {
    .num_counters = 4,
    .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS,
 
-   .select0 = R_037000_CB_PERFCOUNTER_FILTER,
+   .select0 = R_037004_CB_PERFCOUNTER0_SELECT,
    .counter0_lo = R_035018_CB_PERFCOUNTER0_LO,
    .num_multi = 1,
-   .num_prelude = 1,
    .layout = AC_PC_MULTI_ALTERNATE,
 };
 

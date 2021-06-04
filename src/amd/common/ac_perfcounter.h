@@ -118,7 +118,6 @@ struct ac_pc_block_base {
    unsigned *select;
    unsigned *counters;
    unsigned num_multi;
-   unsigned num_prelude;
    unsigned layout;
 };
 

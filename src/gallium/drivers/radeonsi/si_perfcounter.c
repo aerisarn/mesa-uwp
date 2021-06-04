@@ -103,7 +103,6 @@ static void si_pc_emit_select(struct si_context *sctx, struct ac_pc_block *block
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned idx;
    unsigned layout_multi = regs->layout & AC_PC_MULTI_MASK;
-   unsigned dw;
 
    assert(count <= regs->num_counters);
 
@@ -114,13 +113,11 @@ static void si_pc_emit_select(struct si_context *sctx, struct ac_pc_block *block
 
    if (layout_multi == AC_PC_MULTI_BLOCK) {
       assert(!(regs->layout & AC_PC_REG_REVERSE));
+      unsigned reg_count = count;
 
-      dw = count + regs->num_prelude;
       if (count >= regs->num_multi)
-         dw += regs->num_multi;
-      radeon_set_uconfig_reg_seq(cs, regs->select0, dw, false);
-      for (idx = 0; idx < regs->num_prelude; ++idx)
-         radeon_emit(cs, 0);
+         reg_count += regs->num_multi;
+      radeon_set_uconfig_reg_seq(cs, regs->select0, reg_count, false);
       for (idx = 0; idx < MIN2(count, regs->num_multi); ++idx)
          radeon_emit(cs, selectors[idx] | regs->select_or);
 
@@ -141,9 +138,7 @@ static void si_pc_emit_select(struct si_context *sctx, struct ac_pc_block *block
 
       assert(!(regs->layout & AC_PC_REG_REVERSE));
 
-      radeon_set_uconfig_reg_seq(cs, regs->select0, count + regs->num_prelude, false);
-      for (idx = 0; idx < regs->num_prelude; ++idx)
-         radeon_emit(cs, 0);
+      radeon_set_uconfig_reg_seq(cs, regs->select0, count, false);
       for (idx = 0; idx < count; ++idx)
          radeon_emit(cs, selectors[idx] | regs->select_or);
 
@@ -164,13 +159,10 @@ static void si_pc_emit_select(struct si_context *sctx, struct ac_pc_block *block
 
       unsigned reg_base = regs->select0;
       unsigned reg_count = count + MIN2(count, regs->num_multi);
-      reg_count += regs->num_prelude;
 
       if (!(regs->layout & AC_PC_REG_REVERSE)) {
          radeon_set_uconfig_reg_seq(cs, reg_base, reg_count, false);
 
-         for (idx = 0; idx < regs->num_prelude; ++idx)
-            radeon_emit(cs, 0);
          for (idx = 0; idx < count; ++idx) {
             radeon_emit(cs, selectors[idx] | regs->select_or);
             if (idx < regs->num_multi)
@@ -185,8 +177,6 @@ static void si_pc_emit_select(struct si_context *sctx, struct ac_pc_block *block
                radeon_emit(cs, 0);
             radeon_emit(cs, selectors[idx - 1] | regs->select_or);
          }
-         for (idx = 0; idx < regs->num_prelude; ++idx)
-            radeon_emit(cs, 0);
       }
    }
    radeon_end();
