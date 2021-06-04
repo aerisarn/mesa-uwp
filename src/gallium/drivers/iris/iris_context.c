@@ -44,6 +44,9 @@ iris_set_debug_callback(struct pipe_context *ctx,
                         const struct pipe_debug_callback *cb)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+
+   util_queue_finish(&screen->shader_compiler_queue);
 
    if (cb)
       ice->dbg = *cb;

@@ -220,6 +220,8 @@ struct iris_screen {
    struct iris_bo *workaround_bo;
    struct iris_address workaround_address;
 
+   struct util_queue shader_compiler_queue;
+
    struct disk_cache *disk_cache;
 
    struct intel_measure_device measure;

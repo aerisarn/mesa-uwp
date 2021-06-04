@@ -412,6 +412,9 @@ struct iris_uncompiled_shader {
 
    /** Lock for the variants list */
    simple_mtx_t lock;
+
+   /** For parallel shader compiles */
+   struct util_queue_fence ready;
 };
 
 enum iris_surface_group {
