@@ -835,6 +835,10 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         if (dev->arch == 7)
                 dev->quirks |= MIDGARD_NO_AFBC;
 
+        /* XXX: Indirect draws on Midgard need debugging, emulate for now */
+        if (dev->arch < 6)
+                dev->debug |= PAN_DBG_NOINDIRECT;
+
         dev->ro = ro;
 
         /* Check if we're loading against a supported GPU model. */
