@@ -567,6 +567,11 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         mali_ptr attribs, attrib_bufs;
         attribs = panfrost_emit_vertex_data(batch, &attrib_bufs);
 
+        panfrost_update_state_3d(batch);
+        panfrost_update_state_vs(batch);
+        panfrost_update_state_fs(batch);
+        panfrost_clean_state_3d(ctx);
+
         /* Fire off the draw itself */
         panfrost_draw_emit_vertex(batch, info, &invocation,
                                   vs_vary, varyings, attribs, attrib_bufs, vertex.cpu);
@@ -640,6 +645,11 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
         ctx->first_vertex_sysval_ptr = 0;
         ctx->base_vertex_sysval_ptr = 0;
         ctx->base_instance_sysval_ptr = 0;
+
+        panfrost_update_state_3d(batch);
+        panfrost_update_state_vs(batch);
+        panfrost_update_state_fs(batch);
+        panfrost_clean_state_3d(ctx);
 
         bool point_coord_replace = (info->mode == PIPE_PRIM_POINTS);
 
@@ -766,11 +776,6 @@ panfrost_draw_vbo(struct pipe_context *pipe,
 
         /* Conservatively assume draw parameters always change */
         ctx->dirty |= PAN_DIRTY_PARAMS | PAN_DIRTY_DRAWID;
-
-        panfrost_update_state_3d(batch);
-        panfrost_update_state_vs(batch);
-        panfrost_update_state_fs(batch);
-        panfrost_clean_state_3d(ctx);
 
         if (indirect) {
                 assert(num_draws == 1);
