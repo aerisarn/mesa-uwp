@@ -67,7 +67,9 @@ struct ac_pc_block_base {
 
    /* SPM */
    unsigned num_spm_counters;
+   unsigned num_spm_wires;
    unsigned *select1;
+   unsigned spm_block_select;
 };
 
 struct ac_pc_block_gfxdescr {

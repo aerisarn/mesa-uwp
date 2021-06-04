@@ -46,7 +46,10 @@ static struct ac_pc_block_base cik_CB = {
    .select0 = cik_CB_select0,
    .select1 = cik_CB_select1,
    .counter0_lo = R_035018_CB_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0x0,
 };
 
 /* cik_CPC */
@@ -68,7 +71,10 @@ static struct ac_pc_block_base cik_CPC = {
    .select0 = cik_CPC_select0,
    .select1 = cik_CPC_select1,
    .counters = cik_CPC_counters,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0x1,
 };
 
 /* cik_CPF */
@@ -90,7 +96,10 @@ static struct ac_pc_block_base cik_CPF = {
    .select0 = cik_CPF_select0,
    .select1 = cik_CPF_select1,
    .counters = cik_CPF_counters,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0x2,
 };
 
 /* cik_CPG */
@@ -112,7 +121,10 @@ static struct ac_pc_block_base cik_CPG = {
    .select0 = cik_CPG_select0,
    .select1 = cik_CPG_select1,
    .counters = cik_CPG_counters,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0x0,
 };
 
 /* cik_DB */
@@ -134,7 +146,10 @@ static struct ac_pc_block_base cik_DB = {
    .select0 = cik_DB_select0,
    .select1 = cik_DB_select1,
    .counter0_lo = R_035100_DB_PERFCOUNTER0_LO,
+
    .num_spm_counters = 2,
+   .num_spm_wires = 3,
+   .spm_block_select = 0x1,
 };
 
 /* cik_GDS */
@@ -154,7 +169,10 @@ static struct ac_pc_block_base cik_GDS = {
    .select0 = cik_GDS_select0,
    .select1 = cik_GDS_select1,
    .counter0_lo = R_034A00_GDS_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0x3,
 };
 
 /* cik_GRBM */
@@ -206,7 +224,10 @@ static struct ac_pc_block_base cik_IA = {
    .select0 = cik_IA_select0,
    .select1 = cik_IA_select1,
    .counter0_lo = R_034220_IA_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0x6,
 };
 
 /* cik_PA_SC */
@@ -231,7 +252,10 @@ static struct ac_pc_block_base cik_PA_SC = {
    .select0 = cik_PA_SC_select0,
    .select1 = cik_PA_SC_select1,
    .counter0_lo = R_034500_PA_SC_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0x4,
 };
 
 /* cik_PA_SU */
@@ -254,7 +278,10 @@ static struct ac_pc_block_base cik_PA_SU = {
    .select0 = cik_PA_SU_select0,
    .select1 = cik_PA_SU_select1,
    .counter0_lo = R_034400_PA_SU_PERFCOUNTER0_LO,
+
    .num_spm_counters = 2,
+   .num_spm_wires = 3,
+   .spm_block_select = 0x2,
 };
 
 /* cik_SPI */
@@ -280,7 +307,10 @@ static struct ac_pc_block_base cik_SPI = {
    .select0 = cik_SPI_select0,
    .select1 = cik_SPI_select1,
    .counter0_lo = R_034604_SPI_PERFCOUNTER0_LO,
+
    .num_spm_counters = 4,
+   .num_spm_wires = 8,
+   .spm_block_select = 0x8,
 };
 
 /* cik_SQ */
@@ -310,6 +340,9 @@ static struct ac_pc_block_base cik_SQ = {
    .select0 = cik_SQ_select0,
    .select_or = S_036700_SQC_BANK_MASK(15) | S_036700_SQC_CLIENT_MASK(15) | S_036700_SIMD_MASK(15),
    .counter0_lo = R_034700_SQ_PERFCOUNTER0_LO,
+
+   .num_spm_wires = 8,
+   .spm_block_select = 0x9,
 };
 
 /* cik_SX */
@@ -331,7 +364,10 @@ static struct ac_pc_block_base cik_SX = {
    .select0 = cik_SX_select0,
    .select1 = cik_SX_select1,
    .counter0_lo = R_034900_SX_PERFCOUNTER0_LO,
+
    .num_spm_counters = 2,
+   .num_spm_wires = 4,
+   .spm_block_select = 0x3,
 };
 
 /* cik_TA */
@@ -350,7 +386,10 @@ static struct ac_pc_block_base cik_TA = {
    .select0 = cik_TA_select0,
    .select1 = cik_TA_select1,
    .counter0_lo = R_034B00_TA_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0x5,
 };
 
 /* cik_TD */
@@ -369,7 +408,10 @@ static struct ac_pc_block_base cik_TD = {
    .select0 = cik_TD_select0,
    .select1 = cik_TD_select1,
    .counter0_lo = R_034C00_TD_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0x6,
 };
 
 /* cik_TCA */
@@ -391,7 +433,10 @@ static struct ac_pc_block_base cik_TCA = {
    .select0 = cik_TCA_select0,
    .select1 = cik_TCA_select1,
    .counter0_lo = R_034E40_TCA_PERFCOUNTER0_LO,
+
    .num_spm_counters = 2,
+   .num_spm_wires = 4,
+   .spm_block_select = 0x5,
 };
 
 /* cik_TCC */
@@ -413,7 +458,10 @@ static struct ac_pc_block_base cik_TCC = {
    .select0 = cik_TCC_select0,
    .select1 = cik_TCC_select1,
    .counter0_lo = R_034E00_TCC_PERFCOUNTER0_LO,
+
    .num_spm_counters = 2,
+   .num_spm_wires = 4,
+   .spm_block_select = 0x4,
 };
 
 /* cik_TCP */
@@ -435,7 +483,10 @@ static struct ac_pc_block_base cik_TCP = {
    .select0 = cik_TCP_select0,
    .select1 = cik_TCP_select1,
    .counter0_lo = R_034D00_TCP_PERFCOUNTER0_LO,
+
    .num_spm_counters = 2,
+   .num_spm_wires = 3,
+   .spm_block_select = 0x7,
 };
 
 /* cik_VGT */
@@ -457,7 +508,10 @@ static struct ac_pc_block_base cik_VGT = {
    .select0 = cik_VGT_select0,
    .select1 = cik_VGT_select1,
    .counter0_lo = R_034240_VGT_PERFCOUNTER0_LO,
+
    .num_spm_counters = 2,
+   .num_spm_wires = 3,
+   .spm_block_select = 0xa,
 };
 
 /* cik_WD */
@@ -504,7 +558,10 @@ static struct ac_pc_block_base gfx10_CHA = {
    .select0 = gfx10_CHA_select0,
    .select1 = gfx10_CHA_select1,
    .counter0_lo = R_035800_CHA_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0xc,
 };
 
 /* gfx10_CHCG */
@@ -524,7 +581,10 @@ static struct ac_pc_block_base gfx10_CHCG = {
    .select0 = gfx10_CHCG_select0,
    .select1 = gfx10_CHCG_select1,
    .counter0_lo = R_034F20_CHCG_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0xe,
 };
 
 /* gfx10_CHC */
@@ -544,7 +604,25 @@ static struct ac_pc_block_base gfx10_CHC = {
    .select0 = gfx10_CHC_select0,
    .select1 = gfx10_CHC_select1,
    .counter0_lo = R_034F00_CHC_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0xd,
+};
+
+/* gfx10_DB */
+static struct ac_pc_block_base gfx10_DB = {
+   .name = "DB",
+   .num_counters = 4,
+   .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS,
+
+   .select0 = cik_DB_select0,
+   .select1 = cik_DB_select1,
+   .counter0_lo = R_035100_DB_PERFCOUNTER0_LO,
+
+   .num_spm_counters = 2,
+   .num_spm_wires = 4,
+   .spm_block_select = 0x1,
 };
 
 /* gfx10_GCR */
@@ -562,7 +640,10 @@ static struct ac_pc_block_base gfx10_GCR = {
    .select0 = gfx10_GCR_select0,
    .select1 = gfx10_GCR_select1,
    .counter0_lo = R_035480_GCR_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0x4,
 };
 
 /* gfx10_GE */
@@ -593,7 +674,10 @@ static struct ac_pc_block_base gfx10_GE = {
    .select0 = gfx10_GE_select0,
    .select1 = gfx10_GE_select1,
    .counter0_lo = R_034200_GE_PERFCOUNTER0_LO,
+
    .num_spm_counters = 4,
+   .num_spm_wires = 8,
+   .spm_block_select = 0x6,
 };
 
 /* gfx10_GL1A */
@@ -614,7 +698,10 @@ static struct ac_pc_block_base gfx10_GL1A = {
    .select0 = gfx10_GL1A_select0,
    .select1 = gfx10_GL1A_select1,
    .counter0_lo = R_035700_GL1A_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0xa,
 };
 
 /* gfx10_GL1C */
@@ -635,7 +722,10 @@ static struct ac_pc_block_base gfx10_GL1C = {
    .select0 = gfx10_GL1C_select0,
    .select1 = gfx10_GL1C_select1,
    .counter0_lo = R_034E80_GL1C_PERFCOUNTER0_LO,
+
    .num_spm_counters = 1,
+   .num_spm_wires = 2,
+   .spm_block_select = 0xc
 };
 
 /* gfx10_GL2A */
@@ -656,7 +746,10 @@ static struct ac_pc_block_base gfx10_GL2A = {
    .select0 = gfx10_GL2A_select0,
    .select1 = gfx10_GL2A_select1,
    .counter0_lo = R_034E40_GL2A_PERFCOUNTER0_LO,
+
    .num_spm_counters = 2,
+   .num_spm_wires = 4,
+   .spm_block_select = 0x7,
 };
 
 /* gfx10_GL2C */
@@ -677,7 +770,10 @@ static struct ac_pc_block_base gfx10_GL2C = {
    .select0 = gfx10_GL2C_select0,
    .select1 = gfx10_GL2C_select1,
    .counter0_lo = R_034E00_GL2C_PERFCOUNTER0_LO,
+
    .num_spm_counters = 2,
+   .num_spm_wires = 4,
+   .spm_block_select = 0x8,
 };
 
 /* gfx10_PA_PH */
@@ -705,7 +801,10 @@ static struct ac_pc_block_base gfx10_PA_PH = {
    .select0 = gfx10_PA_PH_select0,
    .select1 = gfx10_PA_PH_select1,
    .counter0_lo = R_035600_PA_PH_PERFCOUNTER0_LO,
+
    .num_spm_counters = 4,
+   .num_spm_wires = 8,
+   .spm_block_select = 0x5,
 };
 
 /* gfx10_PA_SU */
@@ -729,7 +828,10 @@ static struct ac_pc_block_base gfx10_PA_SU = {
    .select0 = gfx10_PA_SU_select0,
    .select1 = gfx10_PA_SU_select1,
    .counter0_lo = R_034400_PA_SU_PERFCOUNTER0_LO,
+
    .num_spm_counters = 4,
+   .num_spm_wires = 8,
+   .spm_block_select = 0x2,
 };
 
 /* gfx10_RLC */
@@ -765,7 +867,39 @@ static struct ac_pc_block_base gfx10_RMI = {
    .select0 = gfx10_RMI_select0,
    .select1 = gfx10_RMI_select1,
    .counter0_lo = R_035300_RMI_PERFCOUNTER0_LO,
+
    .num_spm_counters = 2,
+   .num_spm_wires = 2,
+   .spm_block_select = 0xb,
+};
+
+/* gfx10_SQ */
+static struct ac_pc_block_base gfx10_SQ = {
+   .name = "SQ",
+   .num_counters = 16,
+   .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER,
+
+   .select0 = cik_SQ_select0,
+   .select_or = S_036700_SQC_BANK_MASK(15),
+   .counter0_lo = R_034700_SQ_PERFCOUNTER0_LO,
+
+   .num_spm_wires = 16,
+   .spm_block_select = 0x9,
+};
+
+/* gfx10_TCP */
+static struct ac_pc_block_base gfx10_TCP = {
+   .name = "TCP",
+   .num_counters = 4,
+   .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_INSTANCE_GROUPS | AC_PC_BLOCK_SHADER_WINDOWED,
+
+   .select0 = cik_TCP_select0,
+   .select1 = cik_TCP_select1,
+   .counter0_lo = R_034D00_TCP_PERFCOUNTER0_LO,
+
+   .num_spm_counters = 2,
+   .num_spm_wires = 4,
+   .spm_block_select = 0x7,
 };
 
 /* gfx10_UTCL1 */
@@ -825,7 +959,7 @@ static struct ac_pc_block_gfxdescr groups_gfx10[] = {
    {&cik_CPC, 47},
    {&cik_CPF, 40},
    {&cik_CPG, 82},
-   {&cik_DB, 370},
+   {&gfx10_DB, 370},
    {&gfx10_GCR, 94},
    {&cik_GDS, 123},
    {&gfx10_GE, 315},
@@ -841,10 +975,10 @@ static struct ac_pc_block_gfxdescr groups_gfx10[] = {
    {&gfx10_RLC, 7},
    {&gfx10_RMI, 258},
    {&cik_SPI, 329},
-   {&cik_SQ, 509},
+   {&gfx10_SQ, 509},
    {&cik_SX, 225},
    {&cik_TA, 226},
-   {&cik_TCP, 77},
+   {&gfx10_TCP, 77},
    {&cik_TD, 61},
    {&gfx10_UTCL1, 15},
 };
