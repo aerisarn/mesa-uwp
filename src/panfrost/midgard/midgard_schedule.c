@@ -1334,8 +1334,10 @@ mir_schedule_alu(
                         /* Rewrite to use our temp */
 
                         for (unsigned i = 0; i < ARRAY_SIZE(stages); ++i) {
-                                if (stages[i])
+                                if (stages[i]) {
                                         mir_rewrite_index_dst_single(stages[i], src, temp);
+                                        mir_rewrite_index_src_single(stages[i], src, temp);
+                                }
                         }
 
                         mir_rewrite_index_src_single(branch, src, temp);
