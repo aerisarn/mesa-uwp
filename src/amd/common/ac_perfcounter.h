@@ -62,10 +62,12 @@ struct ac_pc_block_base {
 
    unsigned select_or;
    unsigned *select0;
-   unsigned *select1;
    unsigned counter0_lo;
    unsigned *counters;
-   unsigned num_multi;
+
+   /* SPM */
+   unsigned num_spm_counters;
+   unsigned *select1;
 };
 
 struct ac_pc_block_gfxdescr {

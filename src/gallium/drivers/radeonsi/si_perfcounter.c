@@ -116,7 +116,7 @@ static void si_pc_emit_select(struct si_context *sctx, struct ac_pc_block *block
       radeon_emit(cs, selectors[idx] | regs->select_or);
    }
 
-   for (idx = 0; idx < regs->num_multi; idx++) {
+   for (idx = 0; idx < regs->num_spm_counters; idx++) {
       radeon_set_uconfig_reg_seq(cs, regs->select1[idx], 1, false);
       radeon_emit(cs, 0);
    }
