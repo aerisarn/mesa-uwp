@@ -9498,41 +9498,6 @@ void visit_phi(isel_context *ctx, nir_phi_instr *instr)
       return;
    }
 
-   /* try to scalarize vector phis */
-   if (instr->dest.ssa.bit_size != 1 && dst.size() > 1) {
-      // TODO: scalarize linear phis on divergent ifs
-      bool can_scalarize = (opcode == aco_opcode::p_phi || !(ctx->block->kind & block_kind_merge));
-      std::array<Temp, NIR_MAX_VEC_COMPONENTS> new_vec;
-      for (unsigned i = 0; can_scalarize && (i < num_operands); i++) {
-         Operand src = operands[i];
-         if (src.isTemp() && ctx->allocated_vec.find(src.tempId()) == ctx->allocated_vec.end())
-            can_scalarize = false;
-      }
-      if (can_scalarize) {
-         unsigned num_components = instr->dest.ssa.num_components;
-         assert(dst.size() % num_components == 0);
-         RegClass rc = RegClass(dst.type(), dst.size() / num_components);
-
-         aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1)};
-         for (unsigned k = 0; k < num_components; k++) {
-            phi.reset(create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, num_operands, 1));
-            for (unsigned i = 0; i < num_operands; i++) {
-               Operand src = operands[i];
-               phi->operands[i] = src.isTemp() ? Operand(ctx->allocated_vec[src.tempId()][k]) : Operand(rc);
-            }
-            Temp phi_dst = ctx->program->allocateTmp(rc);
-            phi->definitions[0] = Definition(phi_dst);
-            ctx->block->instructions.emplace(ctx->block->instructions.begin(), std::move(phi));
-            new_vec[k] = phi_dst;
-            vec->operands[k] = Operand(phi_dst);
-         }
-         vec->definitions[0] = Definition(dst);
-         ctx->block->instructions.emplace_back(std::move(vec));
-         ctx->allocated_vec.emplace(dst.id(), new_vec);
-         return;
-      }
-   }
-
    phi.reset(create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, num_operands, 1));
    for (unsigned i = 0; i < num_operands; i++)
       phi->operands[i] = operands[i];
