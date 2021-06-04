@@ -489,6 +489,8 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (!ctx->queries_disabled)
       zink_suspend_queries(ctx, batch);
 
+   tc_driver_internal_flush_notify(ctx->tc);
+
    if (vkEndCommandBuffer(batch->state->cmdbuf) != VK_SUCCESS) {
       debug_printf("vkEndCommandBuffer failed\n");
       return;
