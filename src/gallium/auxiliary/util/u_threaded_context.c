@@ -1050,6 +1050,7 @@ tc_set_constant_buffer(struct pipe_context *_pipe,
       p->shader = shader;
       p->index = index;
       p->is_null = true;
+      tc_unbind_buffer(&tc->const_buffers[shader][index]);
       return;
    }
 
