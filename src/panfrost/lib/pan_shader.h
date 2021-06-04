@@ -60,6 +60,10 @@ pan_shader_prepare_midgard_rsd(const struct pan_shader_info *info,
         } else {
                 rsd->properties.midgard.shader_reads_tilebuffer =
                         info->fs.outputs_read;
+
+                /* However, forcing early-z in the shader overrides draw-time */
+                rsd->properties.midgard.force_early_z =
+                        info->fs.early_fragment_tests;
         }
 }
 
