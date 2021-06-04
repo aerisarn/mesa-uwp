@@ -1205,12 +1205,9 @@ mir_schedule_alu(
                 predicate.no_cond = true;
         }
 
-        /* When MRT is in use, writeout loops require r1.w to be filled (with a
-         * return address? by symmetry with Bifrost, etc), at least for blend
-         * shaders to work properly. When MRT is not in use (including on SFBD
-         * GPUs), this is not needed. Blend shaders themselves don't know if
-         * they are paired with MRT or not so they always need this, at least
-         * on MFBD GPUs. */
+        /* When MRT is in use, writeout loops require r1.w to be filled with a
+         * return address for the blend shader to jump to.  We always emit the
+         * move for blend shaders themselves for ABI reasons. */
 
         if (writeout && (ctx->inputs->is_blend || ctx->writeout_branch[1])) {
                 vadd = ralloc(ctx, midgard_instruction);
