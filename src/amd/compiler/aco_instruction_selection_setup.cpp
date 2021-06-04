@@ -530,13 +530,13 @@ void init_context(isel_context *ctx, nir_shader *shader)
       ctx->ub_config.min_subgroup_size = ctx->options->key.cs.subgroup_size;
       ctx->ub_config.max_subgroup_size = ctx->options->key.cs.subgroup_size;
    }
-   ctx->ub_config.max_work_group_invocations = 2048;
-   ctx->ub_config.max_work_group_count[0] = 65535;
-   ctx->ub_config.max_work_group_count[1] = 65535;
-   ctx->ub_config.max_work_group_count[2] = 65535;
-   ctx->ub_config.max_work_group_size[0] = 2048;
-   ctx->ub_config.max_work_group_size[1] = 2048;
-   ctx->ub_config.max_work_group_size[2] = 2048;
+   ctx->ub_config.max_workgroup_invocations = 2048;
+   ctx->ub_config.max_workgroup_count[0] = 65535;
+   ctx->ub_config.max_workgroup_count[1] = 65535;
+   ctx->ub_config.max_workgroup_count[2] = 65535;
+   ctx->ub_config.max_workgroup_size[0] = 2048;
+   ctx->ub_config.max_workgroup_size[1] = 2048;
+   ctx->ub_config.max_workgroup_size[2] = 2048;
    for (unsigned i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
       unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[i];
       unsigned dfmt = attrib_format & 0xf;
@@ -719,8 +719,8 @@ void init_context(isel_context *ctx, nir_shader *shader)
                RegType type = RegType::sgpr;
                switch(intrinsic->intrinsic) {
                   case nir_intrinsic_load_push_constant:
-                  case nir_intrinsic_load_work_group_id:
-                  case nir_intrinsic_load_num_work_groups:
+                  case nir_intrinsic_load_workgroup_id:
+                  case nir_intrinsic_load_num_workgroups:
                   case nir_intrinsic_load_subgroup_id:
                   case nir_intrinsic_load_num_subgroups:
                   case nir_intrinsic_load_first_vertex:

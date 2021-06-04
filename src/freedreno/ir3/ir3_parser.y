@@ -671,7 +671,7 @@ wgid_header:       T_A_WGID '(' T_REGISTER ')' {
                        assert(($3 & 0x1) == 0);  /* half-reg not allowed */
                        unsigned reg = $3 >> 1;
                        assert(reg >= regid(48, 0)); /* must be a high reg */
-                       add_sysval(reg, 0x7, SYSTEM_VALUE_WORK_GROUP_ID);
+                       add_sysval(reg, 0x7, SYSTEM_VALUE_WORKGROUP_ID);
 }
 
 numwg_header:      T_A_NUMWG '(' T_CONSTANT ')' {

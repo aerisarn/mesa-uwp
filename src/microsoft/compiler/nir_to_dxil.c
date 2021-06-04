@@ -2264,7 +2264,7 @@ emit_load_local_invocation_id(struct ntd_context *ctx,
 }
 
 static bool
-emit_load_local_work_group_id(struct ntd_context *ctx,
+emit_load_local_workgroup_id(struct ntd_context *ctx,
                               nir_intrinsic_instr *intr)
 {
    assert(intr->dest.is_ssa);
@@ -3354,9 +3354,9 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_load_global_invocation_id(ctx, intr);
    case nir_intrinsic_load_local_invocation_id:
       return emit_load_local_invocation_id(ctx, intr);
-   case nir_intrinsic_load_work_group_id:
-   case nir_intrinsic_load_work_group_id_zero_base:
-      return emit_load_local_work_group_id(ctx, intr);
+   case nir_intrinsic_load_workgroup_id:
+   case nir_intrinsic_load_workgroup_id_zero_base:
+      return emit_load_local_workgroup_id(ctx, intr);
    case nir_intrinsic_load_ssbo:
       return emit_load_ssbo(ctx, intr);
    case nir_intrinsic_store_ssbo:
@@ -3455,7 +3455,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_vulkan_descriptor:
       return emit_load_vulkan_descriptor(ctx, intr);
 
-   case nir_intrinsic_load_num_work_groups:
+   case nir_intrinsic_load_num_workgroups:
    case nir_intrinsic_load_workgroup_size:
    default:
       NIR_INSTR_UNSUPPORTED(&intr->instr);

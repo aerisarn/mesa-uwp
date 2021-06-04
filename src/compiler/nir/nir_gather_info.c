@@ -623,8 +623,8 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_load_global_invocation_id:
    case nir_intrinsic_load_base_global_invocation_id:
    case nir_intrinsic_load_global_invocation_index:
-   case nir_intrinsic_load_work_group_id:
-   case nir_intrinsic_load_num_work_groups:
+   case nir_intrinsic_load_workgroup_id:
+   case nir_intrinsic_load_num_workgroups:
    case nir_intrinsic_load_workgroup_size:
    case nir_intrinsic_load_work_dim:
    case nir_intrinsic_load_user_data_amd:

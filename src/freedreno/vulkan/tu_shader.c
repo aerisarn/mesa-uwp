@@ -84,7 +84,7 @@ tu_spirv_to_nir(struct tu_device *dev,
    };
 
    const struct nir_lower_compute_system_values_options compute_sysval_options = {
-      .has_base_work_group_id = true,
+      .has_base_workgroup_id = true,
    };
 
    const nir_shader_compiler_options *nir_options =

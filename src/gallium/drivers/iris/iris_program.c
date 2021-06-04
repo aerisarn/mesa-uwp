@@ -852,7 +852,7 @@ iris_setup_binding_table(const struct intel_device_info *devinfo,
 
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
          switch (intrin->intrinsic) {
-         case nir_intrinsic_load_num_work_groups:
+         case nir_intrinsic_load_num_workgroups:
             bt->used_mask[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 1;
             break;
 

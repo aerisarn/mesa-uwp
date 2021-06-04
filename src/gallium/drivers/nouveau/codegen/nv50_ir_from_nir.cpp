@@ -1570,7 +1570,7 @@ Converter::convert(nir_intrinsic_op intr)
       return SV_NTID;
    case nir_intrinsic_load_local_invocation_id:
       return SV_TID;
-   case nir_intrinsic_load_num_work_groups:
+   case nir_intrinsic_load_num_workgroups:
       return SV_NCTAID;
    case nir_intrinsic_load_patch_vertices_in:
       return SV_VERTEX_COUNT;
@@ -1602,7 +1602,7 @@ Converter::convert(nir_intrinsic_op intr)
       return SV_TESS_OUTER;
    case nir_intrinsic_load_vertex_id:
       return SV_VERTEX_ID;
-   case nir_intrinsic_load_work_group_id:
+   case nir_intrinsic_load_workgroup_id:
       return SV_CTAID;
    case nir_intrinsic_load_work_dim:
       return SV_WORK_DIM;
@@ -1845,7 +1845,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_load_invocation_id:
    case nir_intrinsic_load_workgroup_size:
    case nir_intrinsic_load_local_invocation_id:
-   case nir_intrinsic_load_num_work_groups:
+   case nir_intrinsic_load_num_workgroups:
    case nir_intrinsic_load_patch_vertices_in:
    case nir_intrinsic_load_primitive_id:
    case nir_intrinsic_load_sample_id:
@@ -1861,7 +1861,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_load_tess_level_inner:
    case nir_intrinsic_load_tess_level_outer:
    case nir_intrinsic_load_vertex_id:
-   case nir_intrinsic_load_work_group_id:
+   case nir_intrinsic_load_workgroup_id:
    case nir_intrinsic_load_work_dim: {
       const DataType dType = getDType(insn);
       SVSemantic sv = convert(op);

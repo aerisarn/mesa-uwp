@@ -3026,7 +3026,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 vir_emit_thrsw(c);
                 break;
 
-        case nir_intrinsic_load_num_work_groups:
+        case nir_intrinsic_load_num_workgroups:
                 for (int i = 0; i < 3; i++) {
                         ntq_store_dest(c, &instr->dest, i,
                                        vir_uniform(c, QUNIFORM_NUM_WORK_GROUPS,
@@ -3040,7 +3040,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                                        vir_uniform_ui(c, 32 - c->local_invocation_index_bits)));
                 break;
 
-        case nir_intrinsic_load_work_group_id: {
+        case nir_intrinsic_load_workgroup_id: {
                 struct qreg x = vir_AND(c, c->cs_payload[0],
                                          vir_uniform_ui(c, 0xffff));
 

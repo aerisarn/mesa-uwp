@@ -3297,7 +3297,7 @@ typedef struct nir_shader_compiler_options {
    bool lower_cs_local_index_from_id;
    bool lower_cs_local_id_from_index;
 
-   /* Prevents lowering global_invocation_id to be in terms of work_group_id */
+   /* Prevents lowering global_invocation_id to be in terms of workgroup_id */
    bool has_cs_global_id;
 
    bool lower_device_index_to_zero;
@@ -4674,7 +4674,7 @@ bool nir_lower_system_values(nir_shader *shader);
 
 typedef struct nir_lower_compute_system_values_options {
    bool has_base_global_invocation_id:1;
-   bool has_base_work_group_id:1;
+   bool has_base_workgroup_id:1;
    bool shuffle_local_ids_for_quad_derivatives:1;
    bool lower_local_invocation_index:1;
 } nir_lower_compute_system_values_options;
@@ -5256,9 +5256,9 @@ nir_variable_is_in_block(const nir_variable *var)
 typedef struct nir_unsigned_upper_bound_config {
    unsigned min_subgroup_size;
    unsigned max_subgroup_size;
-   unsigned max_work_group_invocations;
-   unsigned max_work_group_count[3];
-   unsigned max_work_group_size[3];
+   unsigned max_workgroup_invocations;
+   unsigned max_workgroup_count[3];
+   unsigned max_workgroup_size[3];
 
    uint32_t vertex_attrib_max[32];
 } nir_unsigned_upper_bound_config;

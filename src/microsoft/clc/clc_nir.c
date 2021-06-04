@@ -84,8 +84,8 @@ lower_load_local_group_size(nir_builder *b, nir_intrinsic_instr *intr)
 }
 
 static bool
-lower_load_num_work_groups(nir_builder *b, nir_intrinsic_instr *intr,
-                           nir_variable *var)
+lower_load_num_workgroups(nir_builder *b, nir_intrinsic_instr *intr,
+                          nir_variable *var)
 {
    b->cursor = nir_after_instr(&intr->instr);
 
@@ -102,7 +102,7 @@ lower_load_num_work_groups(nir_builder *b, nir_intrinsic_instr *intr,
 }
 
 static bool
-lower_load_base_work_group_id(nir_builder *b, nir_intrinsic_instr *intr,
+lower_load_base_workgroup_id(nir_builder *b, nir_intrinsic_instr *intr,
                              nir_variable *var)
 {
    b->cursor = nir_after_instr(&intr->instr);
@@ -149,11 +149,11 @@ clc_nir_lower_system_values(nir_shader *nir, nir_variable *var)
             case nir_intrinsic_load_workgroup_size:
                lower_load_local_group_size(&b, intr);
                break;
-            case nir_intrinsic_load_num_work_groups:
-               lower_load_num_work_groups(&b, intr, var);
+            case nir_intrinsic_load_num_workgroups:
+               lower_load_num_workgroups(&b, intr, var);
                break;
-            case nir_intrinsic_load_base_work_group_id:
-               lower_load_base_work_group_id(&b, intr, var);
+            case nir_intrinsic_load_base_workgroup_id:
+               lower_load_base_workgroup_id(&b, intr, var);
                break;
             default: break;
             }

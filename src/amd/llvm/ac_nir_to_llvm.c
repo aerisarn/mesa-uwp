@@ -3400,7 +3400,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_subgroup_invocation:
       result = ac_get_thread_id(&ctx->ac);
       break;
-   case nir_intrinsic_load_work_group_id: {
+   case nir_intrinsic_load_workgroup_id: {
       LLVMValueRef values[3];
 
       for (int i = 0; i < 3; i++) {
@@ -3516,7 +3516,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_instance_id:
       result = ctx->abi->instance_id;
       break;
-   case nir_intrinsic_load_num_work_groups:
+   case nir_intrinsic_load_num_workgroups:
       result = ac_get_arg(&ctx->ac, ctx->args->num_work_groups);
       break;
    case nir_intrinsic_load_local_invocation_index:

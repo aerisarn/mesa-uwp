@@ -33,7 +33,7 @@ get_global_ids(nir_builder *b, unsigned num_components)
    unsigned mask = BITFIELD_MASK(num_components);
 
    nir_ssa_def *local_ids = nir_channels(b, nir_load_local_invocation_id(b), mask);
-   nir_ssa_def *block_ids = nir_channels(b, nir_load_work_group_id(b, 32), mask);
+   nir_ssa_def *block_ids = nir_channels(b, nir_load_workgroup_id(b, 32), mask);
    nir_ssa_def *block_size = nir_channels(
       b,
       nir_imm_ivec4(b, b->shader->info.cs.workgroup_size[0], b->shader->info.cs.workgroup_size[1],

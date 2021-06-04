@@ -578,7 +578,7 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
    uint32_t local_invocation_id =
       ir3_find_sysval_regid(v, SYSTEM_VALUE_LOCAL_INVOCATION_ID);
    uint32_t work_group_id =
-      ir3_find_sysval_regid(v, SYSTEM_VALUE_WORK_GROUP_ID);
+      ir3_find_sysval_regid(v, SYSTEM_VALUE_WORKGROUP_ID);
 
    enum a6xx_threadsize thrsz = v->info.double_threadsize ? THREAD128 : THREAD64;
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_CNTL_0, 2);

@@ -91,7 +91,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct ir3_shader_variant *v)
    uint32_t local_invocation_id, work_group_id;
    local_invocation_id =
       ir3_find_sysval_regid(v, SYSTEM_VALUE_LOCAL_INVOCATION_ID);
-   work_group_id = ir3_find_sysval_regid(v, SYSTEM_VALUE_WORK_GROUP_ID);
+   work_group_id = ir3_find_sysval_regid(v, SYSTEM_VALUE_WORKGROUP_ID);
 
    OUT_PKT4(ring, REG_A5XX_HLSQ_CS_CNTL_0, 2);
    OUT_RING(ring, A5XX_HLSQ_CS_CNTL_0_WGIDCONSTID(work_group_id) |

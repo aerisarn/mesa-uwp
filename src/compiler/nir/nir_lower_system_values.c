@@ -55,9 +55,9 @@ static nir_ssa_def*
 build_global_group_size(nir_builder *b, unsigned bit_size)
 {
    nir_ssa_def *group_size = nir_load_workgroup_size(b);
-   nir_ssa_def *num_work_groups = nir_load_num_work_groups(b, bit_size);
+   nir_ssa_def *num_workgroups = nir_load_num_workgroups(b, bit_size);
    return nir_imul(b, nir_u2u(b, group_size, bit_size),
-                      num_work_groups);
+                      num_workgroups);
 }
 
 static bool
@@ -443,10 +443,10 @@ lower_compute_system_value_instr(nir_builder *b,
       }
 
    case nir_intrinsic_load_global_invocation_id_zero_base: {
-      if ((options && options->has_base_work_group_id) ||
+      if ((options && options->has_base_workgroup_id) ||
           !b->shader->options->has_cs_global_id) {
          nir_ssa_def *group_size = nir_load_workgroup_size(b);
-         nir_ssa_def *group_id = nir_load_work_group_id(b, bit_size);
+         nir_ssa_def *group_id = nir_load_workgroup_id(b, bit_size);
          nir_ssa_def *local_id = nir_load_local_invocation_id(b);
 
          return nir_iadd(b, nir_imul(b, group_id,
@@ -461,7 +461,7 @@ lower_compute_system_value_instr(nir_builder *b,
       if (options && options->has_base_global_invocation_id)
          return nir_iadd(b, nir_load_global_invocation_id_zero_base(b, bit_size),
                             nir_load_base_global_invocation_id(b, bit_size));
-      else if ((options && options->has_base_work_group_id) ||
+      else if ((options && options->has_base_workgroup_id) ||
                !b->shader->options->has_cs_global_id)
          return nir_load_global_invocation_id_zero_base(b, bit_size);
       else
@@ -485,10 +485,10 @@ lower_compute_system_value_instr(nir_builder *b,
       return index;
    }
 
-   case nir_intrinsic_load_work_group_id: {
-      if (options && options->has_base_work_group_id)
-         return nir_iadd(b, nir_u2u(b, nir_load_work_group_id_zero_base(b), bit_size),
-                            nir_load_base_work_group_id(b, bit_size));
+   case nir_intrinsic_load_workgroup_id: {
+      if (options && options->has_base_workgroup_id)
+         return nir_iadd(b, nir_u2u(b, nir_load_workgroup_id_zero_base(b), bit_size),
+                            nir_load_base_workgroup_id(b, bit_size));
       else
          return NULL;
    }

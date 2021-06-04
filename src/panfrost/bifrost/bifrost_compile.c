@@ -1176,7 +1176,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
-        case nir_intrinsic_load_num_work_groups:
+        case nir_intrinsic_load_num_workgroups:
         case nir_intrinsic_load_workgroup_size:
                 bi_load_sysval_nir(b, instr, 3, 0);
                 break;
@@ -1238,7 +1238,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                                          bi_half(bi_register(55 + i / 2), i % 2));
                 break;
 
-        case nir_intrinsic_load_work_group_id:
+        case nir_intrinsic_load_workgroup_id:
                 for (unsigned i = 0; i < 3; ++i)
                         bi_mov_i32_to(b, bi_word(dst, i), bi_register(57 + i));
                 break;
