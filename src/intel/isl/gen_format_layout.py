@@ -105,7 +105,12 @@ isl_format_is_valid(enum isl_format format)
 {
     if (format >= sizeof(isl_format_layouts) / sizeof(isl_format_layouts[0]))
         return false;
-    return true;
+
+    /* Only ISL_FORMAT_R32G32B32A32_FLOAT == 0 but that's a valid format.
+     * For all others, if this doesn't match then the entry in the table
+     * must not exist.
+     */
+    return isl_format_layouts[format].format == format;
 }
 
 enum isl_format
