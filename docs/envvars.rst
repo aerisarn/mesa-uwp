@@ -723,6 +723,9 @@ RADV driver environment variables
    set the SQTT/RGP buffer size in bytes (default value is 32MiB, the buffer is
    automatically resized if too small)
 
+:envvar:`RADV_THREAD_TRACE_CACHE_COUNTERS`
+   enable/disable SQTT/RGP cache counters on GFX10+ (disabled by default)
+
 :envvar:`RADV_THREAD_TRACE_INSTRUCTION_TIMING`
    enable/disable SQTT/RGP instruction timing (enabled by default)
 

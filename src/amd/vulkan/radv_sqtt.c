@@ -543,8 +543,20 @@ radv_begin_thread_trace(struct radv_queue *queue)
    /* Enable SQG events that collects thread trace data. */
    radv_emit_spi_config_cntl(device, cs, true);
 
+   radv_perfcounter_emit_reset(cs);
+
+   if (device->spm_trace.bo) {
+      /* Enable all shader stages by default. */
+      radv_perfcounter_emit_shaders(cs, 0x7f);
+
+      radv_emit_spm_setup(device, cs);
+   }
+
    /* Start SQTT. */
    radv_emit_thread_trace_start(device, cs, family);
+
+   if (device->spm_trace.bo)
+      radv_perfcounter_emit_start(device, cs, family);
 
    result = ws->cs_finalize(cs);
    if (result != VK_SUCCESS) {
@@ -591,8 +603,13 @@ radv_end_thread_trace(struct radv_queue *queue)
    /* Make sure to wait-for-idle before stopping SQTT. */
    radv_emit_wait_for_idle(device, cs, family);
 
+   if (device->spm_trace.bo)
+      radv_perfcounter_emit_stop(device, cs, family);
+
    /* Stop SQTT. */
    radv_emit_thread_trace_stop(device, cs, family);
+
+   radv_perfcounter_emit_reset(cs);
 
    /* Restore previous state by disabling SQG events. */
    radv_emit_spi_config_cntl(device, cs, false);

@@ -70,6 +70,7 @@
 #include "ac_binary.h"
 #include "ac_gpu_info.h"
 #include "ac_shader_util.h"
+#include "ac_spm.h"
 #include "ac_sqtt.h"
 #include "ac_surface.h"
 #include "radv_constants.h"
@@ -833,6 +834,12 @@ struct radv_device {
 
    /* Thread trace. */
    struct ac_thread_trace_data thread_trace;
+
+   /* SPM. */
+   struct ac_spm_trace_data spm_trace;
+
+   /* Performance counters. */
+   struct ac_perfcounters perfcounters;
 
    /* Trap handler. */
    struct radv_shader *trap_handler_shader;
@@ -2927,6 +2934,11 @@ void radv_perfcounter_emit_shaders(struct radeon_cmdbuf *cs, unsigned shaders);
 void radv_perfcounter_emit_reset(struct radeon_cmdbuf *cs);
 void radv_perfcounter_emit_start(struct radv_device *device, struct radeon_cmdbuf *cs, int family);
 void radv_perfcounter_emit_stop(struct radv_device *device, struct radeon_cmdbuf *cs, int family);
+
+/* radv_spm.c */
+bool radv_spm_init(struct radv_device *device);
+void radv_spm_finish(struct radv_device *device);
+void radv_emit_spm_setup(struct radv_device *device, struct radeon_cmdbuf *cs);
 
 #define RADV_FROM_HANDLE(__radv_type, __name, __handle) \
    VK_FROM_HANDLE(__radv_type, __name, __handle)
