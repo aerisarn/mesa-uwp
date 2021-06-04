@@ -309,10 +309,10 @@ vn_AllocateMemory(VkDevice device,
    VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
    VkResult result;
    if (import_ahb_info) {
-      result = vn_android_device_import_ahb(dev, mem, pAllocateInfo,
+      result = vn_android_device_import_ahb(dev, mem, pAllocateInfo, alloc,
                                             import_ahb_info->buffer);
    } else if (export_ahb) {
-      result = vn_android_device_allocate_ahb(dev, mem, pAllocateInfo);
+      result = vn_android_device_allocate_ahb(dev, mem, pAllocateInfo, alloc);
    } else if (import_fd_info) {
       result = vn_device_memory_import_dma_buf(dev, mem, pAllocateInfo,
                                                import_fd_info->fd);
