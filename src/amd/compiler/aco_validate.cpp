@@ -368,9 +368,13 @@ bool validate_ir(Program* program)
             } else if (instr->opcode == aco_opcode::p_phi) {
                check(instr->operands.size() == block.logical_preds.size(), "Number of Operands does not match number of predecessors", instr.get());
                check(instr->definitions[0].getTemp().type() == RegType::vgpr, "Logical Phi Definition must be vgpr", instr.get());
-            } else if (instr->opcode == aco_opcode::p_linear_phi) {
                for (const Operand& op : instr->operands)
+                  check(instr->definitions[0].size() == op.size(), "Operand sizes must match Definition size", instr.get());
+            } else if (instr->opcode == aco_opcode::p_linear_phi) {
+               for (const Operand& op : instr->operands) {
                   check(!op.isTemp() || op.getTemp().is_linear(), "Wrong Operand type", instr.get());
+                  check(instr->definitions[0].size() == op.size(), "Operand sizes must match Definition size", instr.get());
+               }
                check(instr->operands.size() == block.linear_preds.size(), "Number of Operands does not match number of predecessors", instr.get());
             }
             break;

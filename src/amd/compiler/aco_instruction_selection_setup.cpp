@@ -520,8 +520,6 @@ setup_nir(isel_context *ctx, nir_shader *nir)
 void init_context(isel_context *ctx, nir_shader *shader)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
-   unsigned lane_mask_size = ctx->program->lane_mask.size();
-
    ctx->shader = shader;
 
    /* Init NIR range analysis. */
@@ -936,36 +934,23 @@ void init_context(isel_context *ctx, nir_shader *shader)
             }
             case nir_instr_type_phi: {
                nir_phi_instr* phi = nir_instr_as_phi(instr);
-               RegType type;
-               unsigned size = phi->dest.ssa.num_components;
-
-               if (phi->dest.ssa.bit_size == 1) {
-                  assert(size == 1 && "multiple components not yet supported on boolean phis.");
-                  type = RegType::sgpr;
-                  size *= lane_mask_size;
-                  regclasses[phi->dest.ssa.index] = RegClass(type, size);
-                  break;
-               }
+               RegType type = RegType::sgpr;
+               unsigned num_components = phi->dest.ssa.num_components;
+               assert((phi->dest.ssa.bit_size != 1 || num_components == 1) &&
+                      "Multiple components not supported on boolean phis.");
 
                if (nir_dest_is_divergent(phi->dest)) {
                   type = RegType::vgpr;
                } else {
-                  type = RegType::sgpr;
                   nir_foreach_phi_src (src, phi) {
                      if (regclasses[src->src.ssa->index].type() == RegType::vgpr)
                         type = RegType::vgpr;
-                     if (regclasses[src->src.ssa->index].type() == RegType::none)
-                        done = false;
                   }
                }
 
-               RegClass rc = get_reg_class(ctx, type, phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
-               if (rc != regclasses[phi->dest.ssa.index]) {
+               RegClass rc = get_reg_class(ctx, type, num_components, phi->dest.ssa.bit_size);
+               if (rc != regclasses[phi->dest.ssa.index])
                   done = false;
-               } else {
-                  nir_foreach_phi_src(src, phi)
-                     assert(regclasses[src->src.ssa->index].size() == rc.size());
-               }
                regclasses[phi->dest.ssa.index] = rc;
                break;
             }
