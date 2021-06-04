@@ -48,6 +48,7 @@ struct u_vbuf;
 
 struct cso_context *cso_create_context(struct pipe_context *pipe,
                                        unsigned flags);
+void cso_unbind_context(struct cso_context *ctx);
 void cso_destroy_context( struct cso_context *cso );
 struct pipe_context *cso_get_pipe_context(struct cso_context *cso);
 
