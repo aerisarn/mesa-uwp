@@ -364,9 +364,60 @@ vn_android_get_modifier_properties(struct vn_device *dev,
    return VK_SUCCESS;
 }
 
+struct vn_android_image_builder {
+   VkImageCreateInfo create;
+   VkSubresourceLayout layouts[4];
+   VkImageDrmFormatModifierExplicitCreateInfoEXT modifier;
+   VkExternalMemoryImageCreateInfo external;
+};
+
+static VkResult
+vn_android_get_image_builder(struct vn_device *dev,
+                             const VkImageCreateInfo *create_info,
+                             const native_handle_t *handle,
+                             const VkAllocationCallbacks *alloc,
+                             struct vn_android_image_builder *out_builder)
+{
+   VkResult result = VK_SUCCESS;
+   struct vn_android_gralloc_buffer_properties buf_props;
+   VkDrmFormatModifierPropertiesEXT mod_props;
+
+   if (!vn_android_get_gralloc_buffer_properties(handle, &buf_props))
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+   result = vn_android_get_modifier_properties(
+      dev, create_info->format, buf_props.modifier, alloc, &mod_props);
+   if (result != VK_SUCCESS)
+      return result;
+
+   memset(out_builder->layouts, 0, sizeof(out_builder->layouts));
+   for (uint32_t i = 0; i < mod_props.drmFormatModifierPlaneCount; i++) {
+      out_builder->layouts[i].offset = buf_props.offset[i];
+      out_builder->layouts[i].rowPitch = buf_props.stride[i];
+   }
+   out_builder->modifier = (VkImageDrmFormatModifierExplicitCreateInfoEXT){
+      .sType =
+         VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
+      .pNext = create_info->pNext,
+      .drmFormatModifier = buf_props.modifier,
+      .drmFormatModifierPlaneCount = mod_props.drmFormatModifierPlaneCount,
+      .pPlaneLayouts = out_builder->layouts,
+   };
+   out_builder->external = (VkExternalMemoryImageCreateInfo){
+      .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+      .pNext = &out_builder->modifier,
+      .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+   };
+   out_builder->create = *create_info;
+   out_builder->create.pNext = &out_builder->external;
+   out_builder->create.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+
+   return VK_SUCCESS;
+}
+
 VkResult
 vn_android_image_from_anb(struct vn_device *dev,
-                          const VkImageCreateInfo *image_info,
+                          const VkImageCreateInfo *create_info,
                           const VkNativeBufferANDROID *anb_info,
                           const VkAllocationCallbacks *alloc,
                           struct vn_image **out_img)
@@ -389,59 +440,20 @@ vn_android_image_from_anb(struct vn_device *dev,
    uint32_t mem_type_bits = 0;
    int dma_buf_fd = -1;
    int dup_fd = -1;
-   struct vn_android_gralloc_buffer_properties buf_props;
-   VkDrmFormatModifierPropertiesEXT mod_props;
+   struct vn_android_image_builder builder;
 
    result = vn_android_get_dma_buf_from_native_handle(anb_info->handle,
                                                       &dma_buf_fd);
    if (result != VK_SUCCESS)
       goto fail;
 
-   if (!vn_android_get_gralloc_buffer_properties(anb_info->handle,
-                                                 &buf_props)) {
-      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
-      goto fail;
-   }
-
-   result = vn_android_get_modifier_properties(
-      dev, image_info->format, buf_props.modifier, alloc, &mod_props);
+   result = vn_android_get_image_builder(dev, create_info, anb_info->handle,
+                                         alloc, &builder);
    if (result != VK_SUCCESS)
       goto fail;
 
-   /* WSI image must be single-planar */
-   if (mod_props.drmFormatModifierPlaneCount != 1) {
-      if (VN_DEBUG(WSI))
-         vn_log(dev->instance, "plane count is %d, expected 1",
-                mod_props.drmFormatModifierPlaneCount);
-      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
-      goto fail;
-   }
-
-   const VkSubresourceLayout layout = {
-      .offset = buf_props.offset[0],
-      .size = 0,
-      .rowPitch = buf_props.stride[0],
-      .arrayPitch = 0,
-      .depthPitch = 0,
-   };
-   const VkImageDrmFormatModifierExplicitCreateInfoEXT drm_mod_info = {
-      .sType =
-         VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
-      .pNext = image_info->pNext,
-      .drmFormatModifier = buf_props.modifier,
-      .drmFormatModifierPlaneCount = 1,
-      .pPlaneLayouts = &layout,
-   };
-   const VkExternalMemoryImageCreateInfo external_img_info = {
-      .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
-      .pNext = &drm_mod_info,
-      .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
-   };
-   VkImageCreateInfo local_image_info = *image_info;
-   local_image_info.pNext = &external_img_info;
-   local_image_info.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
    /* encoder will strip the Android specific pNext structs */
-   result = vn_image_create(dev, &local_image_info, alloc, &img);
+   result = vn_image_create(dev, &builder.create, alloc, &img);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -857,40 +869,14 @@ vn_android_device_import_ahb(struct vn_device *dev,
    /* If ahb is for an image, finish the deferred image creation first */
    if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
       struct vn_image *img = vn_image_from_handle(dedicated_info->image);
-      struct vn_android_gralloc_buffer_properties buf_props;
-      VkImageCreateInfo *image_info = &img->deferred_info->create;
-      VkSubresourceLayout layouts[4];
-      VkDrmFormatModifierPropertiesEXT mod_props;
+      struct vn_android_image_builder builder;
 
-      if (!vn_android_get_gralloc_buffer_properties(handle, &buf_props))
-         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-
-      result = vn_android_get_modifier_properties(
-         dev, image_info->format, buf_props.modifier, alloc, &mod_props);
+      result = vn_android_get_image_builder(dev, &img->deferred_info->create,
+                                            handle, alloc, &builder);
       if (result != VK_SUCCESS)
          return result;
 
-      memset(layouts, 0, sizeof(layouts));
-      for (uint32_t i = 0; i < mod_props.drmFormatModifierPlaneCount; i++) {
-         layouts[i].offset = buf_props.offset[i];
-         layouts[i].rowPitch = buf_props.stride[i];
-      }
-      const VkImageDrmFormatModifierExplicitCreateInfoEXT drm_mod_info = {
-         .sType =
-            VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
-         .pNext = image_info->pNext,
-         .drmFormatModifier = buf_props.modifier,
-         .drmFormatModifierPlaneCount = mod_props.drmFormatModifierPlaneCount,
-         .pPlaneLayouts = layouts,
-      };
-      const VkExternalMemoryImageCreateInfo external_img_info = {
-         .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
-         .pNext = &drm_mod_info,
-         .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
-      };
-      image_info->pNext = &external_img_info;
-      image_info->tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
-      result = vn_image_init_deferred(dev, image_info, img);
+      result = vn_image_init_deferred(dev, &builder.create, img);
       if (result != VK_SUCCESS)
          return result;
 
