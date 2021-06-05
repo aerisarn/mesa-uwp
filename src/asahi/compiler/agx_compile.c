@@ -312,6 +312,9 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
   case nir_intrinsic_load_kernel_input:
      return agx_emit_load_ubo(b, instr);
 
+  case nir_intrinsic_load_back_face_agx:
+     return agx_get_sr_to(b, dst, AGX_SR_BACKFACING);
+
   case nir_intrinsic_load_vertex_id:
      return agx_mov_to(b, dst, agx_abs(agx_register(10, AGX_SIZE_32))); /* TODO: RA */
 
