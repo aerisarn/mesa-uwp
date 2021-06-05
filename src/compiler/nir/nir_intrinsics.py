@@ -1183,6 +1183,9 @@ store("tlb_sample_color_v3d", [1], [BASE, COMPONENT, SRC_TYPE], [])
 # the target framebuffer
 intrinsic("load_fb_layers_v3d", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# Logical complement of load_front_face, mapping to an AGX system value
+system_value("back_face_agx", 1, bit_sizes=[1, 32])
+
 # Intel-specific query for loading from the brw_image_param struct passed
 # into the shader as a uniform.  The variable is a deref to the image
 # variable. The const index specifies which of the six parameters to load.
