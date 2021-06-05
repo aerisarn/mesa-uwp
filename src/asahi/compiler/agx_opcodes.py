@@ -23,6 +23,7 @@ SOFTWARE.
 
 opcodes = {}
 immediates = {}
+enums = {}
 
 class Opcode(object):
    def __init__(self, name, dests, srcs, imms, is_float, can_eliminate, encoding_16, encoding_32):
@@ -66,6 +67,10 @@ def immediate(name, ctype = "uint32_t"):
    imm = Immediate(name, ctype)
    immediates[name] = imm
    return imm
+
+def enum(name, value_dict):
+   enums[name] = value_dict
+   return immediate(name, "enum agx_" + name)
 
 L = (1 << 15)
 _ = None
