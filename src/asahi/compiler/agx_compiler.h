@@ -31,6 +31,7 @@
 #include "util/u_dynarray.h"
 #include "agx_compile.h"
 #include "agx_opcodes.h"
+#include "agx_minifloat.h"
 
 enum agx_dbg {
    AGX_DBG_MSGS        = BITFIELD_BIT(0),
@@ -90,6 +91,13 @@ agx_immediate(uint16_t imm)
       .value = imm,
       .size = AGX_SIZE_32
    };
+}
+
+static inline agx_index
+agx_immediate_f(float f)
+{
+   assert(agx_minifloat_exact(f));
+   return agx_immediate(agx_minifloat_encode(f));
 }
 
 /* in half-words, specify r0h as 1, r1 as 2... */
