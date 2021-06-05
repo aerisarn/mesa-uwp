@@ -5494,5 +5494,5 @@ VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetDeviceMask(VkCommandBuffer commandBuffer, uint32_t deviceMask)
 {
    /* Nothing to do here since we only support a single device */
-   assert(deviceMask = 0x1);
+   assert(deviceMask == 0x1);
 }
