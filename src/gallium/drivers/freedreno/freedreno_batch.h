@@ -351,7 +351,7 @@ fd_batch_unlock_submit(struct fd_batch *batch)
 }
 
 /**
- * Returns true if emit-lock was aquired, false if failed to aquire lock,
+ * Returns true if emit-lock was acquired, false if failed to acquire lock,
  * ie. batch already flushed.
  */
 static inline bool MUST_CHECK
