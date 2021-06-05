@@ -95,7 +95,29 @@ NEST = immediate("nest")
 INVERT_COND = immediate("invert_cond")
 NEST = immediate("nest")
 TARGET = immediate("target", "agx_block *")
-SR = immediate("sr", "enum agx_sr")
+SR = enum("sr", {
+   0:  'threadgroup_position_in_grid.x',
+   1:  'threadgroup_position_in_grid.y',
+   2:  'threadgroup_position_in_grid.z',
+   4:  'threads_per_threadgroup.x',
+   5:  'threads_per_threadgroup.y',
+   6:  'threads_per_threadgroup.z',
+   8:  'dispatch_threads_per_threadgroup.x',
+   9:  'dispatch_threads_per_threadgroup.y',
+   10: 'dispatch_threads_per_threadgroup.z',
+   48: 'thread_position_in_threadgroup.x',
+   49: 'thread_position_in_threadgroup.y',
+   50: 'thread_position_in_threadgroup.z',
+   51: 'thread_index_in_threadgroup',
+   52: 'thread_index_in_subgroup',
+   53: 'subgroup_index_in_threadgroup',
+   56: 'active_thread_index_in_quad',
+   58: 'active_thread_index_in_subgroup',
+   62: 'backfacing',
+   80: 'thread_position_in_grid.x',
+   81: 'thread_position_in_grid.y',
+   82: 'thread_position_in_grid.z',
+})
 
 FUNOP = lambda x: (x << 28)
 FUNOP_MASK = FUNOP((1 << 14) - 1)

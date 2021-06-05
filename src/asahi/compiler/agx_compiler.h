@@ -177,11 +177,6 @@ agx_is_equiv(agx_index left, agx_index right)
 #define AGX_MAX_DESTS 1
 #define AGX_MAX_SRCS 5
 
-enum agx_sr {
-   AGX_SR_INVOCATION,
-   /* stub */
-};
-
 enum agx_icond {
    AGX_ICOND_UEQ = 0,
    AGX_ICOND_ULT = 1,
