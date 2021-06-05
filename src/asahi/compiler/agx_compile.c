@@ -969,6 +969,26 @@ agx_lower_sincos(nir_shader *shader)
          agx_lower_sincos_filter, agx_lower_sincos_impl, NULL);
 }
 
+static bool
+agx_lower_front_face(struct nir_builder *b,
+                     nir_instr *instr, UNUSED void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_front_face)
+      return false;
+
+   assert(intr->dest.is_ssa);
+   nir_ssa_def *def = &intr->dest.ssa;
+   assert(def->bit_size == 1);
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_ssa_def_rewrite_uses(def, nir_inot(b, nir_load_back_face_agx(b, 1)));
+   return true;
+}
+
 static void
 agx_optimize_nir(nir_shader *nir)
 {
@@ -986,6 +1006,9 @@ agx_optimize_nir(nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
    NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false);
    NIR_PASS_V(nir, agx_lower_sincos);
+   NIR_PASS_V(nir, nir_shader_instructions_pass,
+         agx_lower_front_face,
+         nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    do {
       progress = false;
