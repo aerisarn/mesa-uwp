@@ -90,6 +90,7 @@ NEST = immediate("nest")
 INVERT_COND = immediate("invert_cond")
 NEST = immediate("nest")
 TARGET = immediate("target", "agx_block *")
+SR = immediate("sr", "enum agx_sr")
 
 FUNOP = lambda x: (x << 28)
 FUNOP_MASK = FUNOP((1 << 14) - 1)
@@ -175,6 +176,8 @@ op("device_load",
 
 op("wait", (0x38, 0xFF, 2, _), dests = 0,
       can_eliminate = False, imms = [SCOREBOARD])
+
+op("get_sr", (0x72, 0x7F | L, 4, _), dests = 1, imms = [SR])
 
 # Essentially same encoding
 op("ld_tile", (0x49, 0x7F, 8, _), dests = 1, srcs = 0,
