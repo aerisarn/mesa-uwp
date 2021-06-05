@@ -133,8 +133,15 @@ struct radeon_info {
    uint32_t ce_fw_feature;
 
    /* Multimedia info. */
-   bool has_hw_decode;
-   bool uvd_enc_supported;
+   struct {
+      bool uvd_decode;
+      bool vcn_decode;
+      bool jpeg_decode;
+      bool vce_encode;
+      bool uvd_encode;
+      bool vcn_encode;
+   } has_video_hw;
+
    uint32_t uvd_fw_version;
    uint32_t vce_fw_version;
    uint32_t vce_harvest_config;

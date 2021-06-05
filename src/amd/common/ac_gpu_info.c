@@ -687,11 +687,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->max_tcc_blocks = device_info.num_tcc_blocks;
    info->max_se = amdinfo->num_shader_engines;
    info->max_sa_per_se = amdinfo->num_shader_arrays_per_engine;
-   info->has_hw_decode = (uvd.available_rings != 0) || (vcn_dec.available_rings != 0) ||
-                         (vcn_jpeg.available_rings != 0);
    info->uvd_fw_version = uvd.available_rings ? uvd_version : 0;
    info->vce_fw_version = vce.available_rings ? vce_version : 0;
-   info->uvd_enc_supported = uvd_enc.available_rings ? true : false;
+   info->has_video_hw.uvd_decode = uvd.available_rings != 0;
+   info->has_video_hw.vcn_decode = vcn_dec.available_rings != 0;
+   info->has_video_hw.jpeg_decode = vcn_jpeg.available_rings != 0;
+   info->has_video_hw.vce_encode = vce.available_rings != 0;
+   info->has_video_hw.uvd_encode = uvd_enc.available_rings != 0;
+   info->has_video_hw.vcn_encode = vcn_enc.available_rings != 0;
    info->has_userptr = true;
    info->has_syncobj = has_syncobj(fd);
    info->has_timeline_syncobj = has_timeline_syncobj(fd);
@@ -1194,8 +1197,12 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    ce_fw_feature = %i\n", info->ce_fw_feature);
 
    fprintf(f, "Multimedia info:\n");
-   fprintf(f, "    has_hw_decode = %u\n", info->has_hw_decode);
-   fprintf(f, "    uvd_enc_supported = %u\n", info->uvd_enc_supported);
+   fprintf(f, "    uvd_decode = %u\n", info->has_video_hw.uvd_decode);
+   fprintf(f, "    vcn_decode = %u\n", info->has_video_hw.vcn_decode);
+   fprintf(f, "    jpeg_decode = %u\n", info->has_video_hw.jpeg_decode);
+   fprintf(f, "    vce_encode = %u\n", info->has_video_hw.vce_encode);
+   fprintf(f, "    uvd_encode = %u\n", info->has_video_hw.uvd_encode);
+   fprintf(f, "    vcn_encode = %u\n", info->has_video_hw.vcn_encode);
    fprintf(f, "    uvd_fw_version = %u\n", info->uvd_fw_version);
    fprintf(f, "    vce_fw_version = %u\n", info->vce_fw_version);
    fprintf(f, "    vce_harvest_config = %i\n", info->vce_harvest_config);

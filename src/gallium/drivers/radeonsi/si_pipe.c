@@ -603,7 +603,9 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    sctx->sample_mask = 0xffff;
 
    /* Initialize multimedia functions. */
-   if (sscreen->info.has_hw_decode) {
+   if (sscreen->info.has_video_hw.uvd_decode || sscreen->info.has_video_hw.vcn_decode ||
+       sscreen->info.has_video_hw.jpeg_decode || sscreen->info.has_video_hw.vce_encode ||
+       sscreen->info.has_video_hw.uvd_encode || sscreen->info.has_video_hw.vcn_encode) {
       sctx->b.create_video_codec = si_uvd_create_decoder;
       sctx->b.create_video_buffer = si_video_buffer_create;
       if (screen->resource_create_with_modifiers)
