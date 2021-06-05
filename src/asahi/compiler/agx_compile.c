@@ -139,7 +139,7 @@ agx_emit_load_vary(agx_builder *b, nir_intrinsic_instr *instr)
    imm_index += 1;
 
    return agx_ld_vary_to(b, agx_dest_index(&instr->dest),
-         agx_immediate(imm_index), components);
+         agx_immediate(imm_index), components, true);
 }
 
 static agx_instr *

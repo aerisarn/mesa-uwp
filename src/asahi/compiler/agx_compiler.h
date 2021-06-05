@@ -272,6 +272,9 @@ typedef struct {
       struct agx_block *target;
    };
 
+   /* For load varying */
+   bool perspective : 1;
+
    /* Invert icond/fcond */
    bool invert_cond : 1;
 
