@@ -149,10 +149,10 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
             value = VA_RT_FORMAT_YUV420;
             if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P010,
                                                    ProfileToPipe(profile),
-                                                   PIPE_VIDEO_ENTRYPOINT_BITSTREAM) ||
+                                                   PIPE_VIDEO_ENTRYPOINT_ENCODE) ||
                 pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P016,
                                                    ProfileToPipe(profile),
-                                                   PIPE_VIDEO_ENTRYPOINT_BITSTREAM))
+                                                   PIPE_VIDEO_ENTRYPOINT_ENCODE))
                value |= VA_RT_FORMAT_YUV420_10BPP;
             break;
          case VAConfigAttribRateControl:
