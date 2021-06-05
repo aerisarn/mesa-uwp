@@ -379,7 +379,7 @@ batch_flush(struct fd_batch *batch) assert_dt
    debug_assert(batch->reference.count > 0);
 
    fd_screen_lock(batch->ctx->screen);
-   /* NOTE: remove=false removes the patch from the hashtable, so future
+   /* NOTE: remove=false removes the batch from the hashtable, so future
     * lookups won't cache-hit a flushed batch, but leaves the weak reference
     * to the batch to avoid having multiple batches with same batch->idx, as
     * that causes all sorts of hilarity.
