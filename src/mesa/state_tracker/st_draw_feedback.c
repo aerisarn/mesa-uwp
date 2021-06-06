@@ -311,7 +311,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
                      st->state.num_vert_samplers);
 
    /* sampler views */
-   struct pipe_sampler_view *views[PIPE_MAX_SAMPLERS] = {0};
+   struct pipe_sampler_view *views[PIPE_MAX_SAMPLERS];
    unsigned num_views =
       st_get_sampler_views(st, PIPE_SHADER_VERTEX, prog, views);
 

@@ -114,52 +114,52 @@ st_get_sampler_views(struct st_context *st,
    if (samplers_used == 0x0 && old_max == 0)
       return 0;
 
-   unsigned num_textures = 0;
+   unsigned num_textures = util_last_bit(samplers_used);
 
    /* prog->sh.data is NULL if it's ARB_fragment_program */
    bool glsl130 = (prog->sh.data ? prog->sh.data->Version : 0) >= 130;
 
    /* loop over sampler units (aka tex image units) */
-   for (unit = 0; samplers_used || unit < old_max;
-        unit++, samplers_used >>= 1, texel_fetch_samplers >>= 1) {
-      struct pipe_sampler_view *sampler_view = NULL;
+   for (unit = 0; unit < num_textures; unit++) {
+      unsigned bit = BITFIELD_BIT(unit);
 
-      if (samplers_used & 1) {
-         const GLuint texUnit = prog->SamplerUnits[unit];
-
-         /* The EXT_texture_sRGB_decode extension says:
-          *
-          *    "The conversion of sRGB color space components to linear color
-          *     space is always performed if the texel lookup function is one
-          *     of the texelFetch builtin functions.
-          *
-          *     Otherwise, if the texel lookup function is one of the texture
-          *     builtin functions or one of the texture gather functions, the
-          *     conversion of sRGB color space components to linear color space
-          *     is controlled by the TEXTURE_SRGB_DECODE_EXT parameter.
-          *
-          *     If the TEXTURE_SRGB_DECODE_EXT parameter is DECODE_EXT, the
-          *     conversion of sRGB color space components to linear color space
-          *     is performed.
-          *
-          *     If the TEXTURE_SRGB_DECODE_EXT parameter is SKIP_DECODE_EXT,
-          *     the value is returned without decoding. However, if the texture
-          *     is also [statically] accessed with a texelFetch function, then
-          *     the result of texture builtin functions and/or texture gather
-          *     functions may be returned with decoding or without decoding."
-          *
-          * Note: the "statically" will be added to the language per
-          *       https://cvs.khronos.org/bugzilla/show_bug.cgi?id=14934
-          *
-          * So we simply ignore the setting entirely for samplers that are
-          * (statically) accessed with a texelFetch function.
-          */
-         st_update_single_texture(st, &sampler_view, texUnit, glsl130,
-                                  texel_fetch_samplers & 1);
-         num_textures = unit + 1;
+      if (!(samplers_used & bit)) {
+         sampler_views[unit] = NULL;
+         continue;
       }
 
-      pipe_sampler_view_reference(&(sampler_views[unit]), sampler_view);
+      /* The EXT_texture_sRGB_decode extension says:
+       *
+       *    "The conversion of sRGB color space components to linear color
+       *     space is always performed if the texel lookup function is one
+       *     of the texelFetch builtin functions.
+       *
+       *     Otherwise, if the texel lookup function is one of the texture
+       *     builtin functions or one of the texture gather functions, the
+       *     conversion of sRGB color space components to linear color space
+       *     is controlled by the TEXTURE_SRGB_DECODE_EXT parameter.
+       *
+       *     If the TEXTURE_SRGB_DECODE_EXT parameter is DECODE_EXT, the
+       *     conversion of sRGB color space components to linear color space
+       *     is performed.
+       *
+       *     If the TEXTURE_SRGB_DECODE_EXT parameter is SKIP_DECODE_EXT,
+       *     the value is returned without decoding. However, if the texture
+       *     is also [statically] accessed with a texelFetch function, then
+       *     the result of texture builtin functions and/or texture gather
+       *     functions may be returned with decoding or without decoding."
+       *
+       * Note: the "statically" will be added to the language per
+       *       https://cvs.khronos.org/bugzilla/show_bug.cgi?id=14934
+       *
+       * So we simply ignore the setting entirely for samplers that are
+       * (statically) accessed with a texelFetch function.
+       */
+      struct pipe_sampler_view *sampler_view;
+      st_update_single_texture(st, &sampler_view, prog->SamplerUnits[unit],
+                               glsl130, texel_fetch_samplers & bit);
+      sampler_views[unit] = NULL;
+      pipe_sampler_view_reference(&sampler_views[unit], sampler_view);
    }
 
    /* For any external samplers with multiplaner YUV, stuff the additional
@@ -279,8 +279,6 @@ update_textures(struct st_context *st, enum  pipe_shader_type shader_stage,
    unsigned old_num_textures = st->state.num_sampler_views[shader_stage];
    unsigned num_unbind = old_num_textures > num_textures ?
                             old_num_textures - num_textures : 0;
-   for (unsigned i = 0; i < num_unbind; i++)
-      pipe_sampler_view_reference(&sampler_views[num_textures + i], NULL);
 
    pipe->set_sampler_views(pipe, shader_stage, 0, num_textures, num_unbind,
                            sampler_views);
@@ -293,7 +291,7 @@ update_textures_local(struct st_context *st,
                       enum pipe_shader_type shader_stage,
                       const struct gl_program *prog)
 {
-   struct pipe_sampler_view *local_views[PIPE_MAX_SAMPLERS] = {0};
+   struct pipe_sampler_view *local_views[PIPE_MAX_SAMPLERS];
 
    update_textures(st, shader_stage, prog, local_views);
 

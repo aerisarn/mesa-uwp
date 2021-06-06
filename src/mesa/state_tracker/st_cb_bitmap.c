@@ -241,7 +241,7 @@ setup_render_state(struct gl_context *ctx,
 
    /* user textures, plus the bitmap texture */
    {
-      struct pipe_sampler_view *sampler_views[PIPE_MAX_SAMPLERS] = {};
+      struct pipe_sampler_view *sampler_views[PIPE_MAX_SAMPLERS];
       unsigned num_views =
          st_get_sampler_views(st, PIPE_SHADER_FRAGMENT,
                               ctx->FragmentProgram._Current, sampler_views);
