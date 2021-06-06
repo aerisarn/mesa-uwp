@@ -41,15 +41,35 @@
 #include "st_cb_bufferobjects.h"
 #include "st_cb_texture.h"
 
+/* Subtract remaining private references. Typically used before
+ * destruction. See the header file for explanation.
+ */
+static void
+st_remove_private_references(struct st_sampler_view *sv)
+{
+   if (sv->private_refcount) {
+      assert(sv->private_refcount > 0);
+      p_atomic_add(&sv->view->reference.count, -sv->private_refcount);
+      sv->private_refcount = 0;
+   }
+}
+
 /* Return a sampler view while incrementing the refcount by 1. */
 static struct pipe_sampler_view *
 get_sampler_view_reference(struct st_sampler_view *sv,
                            struct pipe_sampler_view *view)
 {
-   struct pipe_sampler_view *ret = NULL;
+   if (unlikely(sv->private_refcount <= 0)) {
+      assert(sv->private_refcount == 0);
 
-   pipe_sampler_view_reference(&ret, view);
-   return ret;
+      /* This is the number of atomic increments we will skip. */
+      sv->private_refcount = 100000000;
+      p_atomic_add(&view->reference.count, sv->private_refcount);
+   }
+
+   /* Return a reference while decrementing the private refcount. */
+   sv->private_refcount--;
+   return view;
 }
 
 /**
@@ -85,6 +105,7 @@ st_texture_set_sampler_view(struct st_context *st,
       if (sv->view) {
          /* check if the context matches */
          if (sv->view->context == st->pipe) {
+            st_remove_private_references(sv);
             pipe_sampler_view_reference(&sv->view, NULL);
             goto found;
          }
@@ -208,10 +229,11 @@ st_texture_release_context_sampler_view(struct st_context *st,
    simple_mtx_lock(&stObj->validate_mutex);
    struct st_sampler_views *views = stObj->sampler_views;
    for (i = 0; i < views->count; ++i) {
-      struct pipe_sampler_view **sv = &views->views[i].view;
+      struct st_sampler_view *sv = &views->views[i];
 
-      if (*sv && (*sv)->context == st->pipe) {
-         pipe_sampler_view_reference(sv, NULL);
+      if (sv->view && sv->view->context == st->pipe) {
+         st_remove_private_references(sv);
+         pipe_sampler_view_reference(&sv->view, NULL);
          break;
       }
    }
@@ -240,6 +262,8 @@ st_texture_release_all_sampler_views(struct st_context *st,
    for (unsigned i = 0; i < views->count; ++i) {
       struct st_sampler_view *stsv = &views->views[i];
       if (stsv->view) {
+         st_remove_private_references(stsv);
+
          if (stsv->st && stsv->st != st) {
             /* Transfer this reference to the zombie list.  It will
              * likely be freed when the zombie list is freed.
