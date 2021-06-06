@@ -287,7 +287,8 @@ static void si_set_buf_desc_address(struct si_resource *buf, uint64_t offset, ui
 void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture *tex,
                                     const struct legacy_surf_level *base_level_info,
                                     unsigned base_level, unsigned first_level, unsigned block_width,
-                                    bool is_stencil, uint16_t access, uint32_t *state)
+                                    /* restrict decreases overhead of si_set_sampler_view_desc ~8x. */
+                                    bool is_stencil, uint16_t access, uint32_t * restrict state)
 {
    uint64_t va, meta_va = 0;
 
@@ -441,7 +442,9 @@ static void si_set_sampler_state_desc(struct si_sampler_state *sstate,
 }
 
 static void si_set_sampler_view_desc(struct si_context *sctx, struct si_sampler_view *sview,
-                                     struct si_sampler_state *sstate, uint32_t *desc)
+                                     struct si_sampler_state *sstate,
+                                     /* restrict decreases overhead of si_set_sampler_view_desc ~8x. */
+                                     uint32_t * restrict desc)
 {
    struct pipe_sampler_view *view = &sview->base;
    struct si_texture *tex = (struct si_texture *)view->texture;
@@ -507,7 +510,8 @@ static void si_set_sampler_view(struct si_context *sctx, unsigned shader, unsign
    struct si_sampler_view *sview = (struct si_sampler_view *)view;
    struct si_descriptors *descs = si_sampler_and_image_descriptors(sctx, shader);
    unsigned desc_slot = si_get_sampler_slot(slot);
-   uint32_t *desc = descs->list + desc_slot * 16;
+   /* restrict decreases overhead of si_set_sampler_view_desc ~8x. */
+   uint32_t * restrict desc = descs->list + desc_slot * 16;
 
    if (samplers->views[slot] == view && !disallow_early_out)
       return;
