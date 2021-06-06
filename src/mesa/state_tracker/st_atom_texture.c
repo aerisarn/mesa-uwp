@@ -62,11 +62,8 @@ st_update_single_texture(struct st_context *st,
                          bool ignore_srgb_decode)
 {
    struct gl_context *ctx = st->ctx;
-   const struct gl_sampler_object *samp;
    struct gl_texture_object *texObj;
    struct st_texture_object *stObj;
-
-   samp = _mesa_get_samplerobj(ctx, texUnit);
 
    texObj = ctx->Texture.Unit[texUnit]._Current;
    assert(texObj);
@@ -90,7 +87,8 @@ st_update_single_texture(struct st_context *st,
          stObj->pt->screen->resource_changed(stObj->pt->screen, stObj->pt);
 
    *sampler_view =
-      st_get_texture_sampler_view_from_stobj(st, stObj, samp,
+      st_get_texture_sampler_view_from_stobj(st, stObj,
+                                             _mesa_get_samplerobj(ctx, texUnit),
                                              glsl130_or_later,
                                              ignore_srgb_decode);
 }
