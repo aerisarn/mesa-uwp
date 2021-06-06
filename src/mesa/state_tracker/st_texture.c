@@ -519,7 +519,7 @@ st_create_texture_handle_from_unit(struct st_context *st,
    struct pipe_sampler_state sampler = {0};
 
    /* TODO: Clarify the interaction of ARB_bindless_texture and EXT_texture_sRGB_decode */
-   st_update_single_texture(st, &view, texUnit, prog->sh.data->Version >= 130, true);
+   view = st_update_single_texture(st, texUnit, prog->sh.data->Version >= 130, true);
    if (!view)
       return 0;
 

@@ -55,9 +55,8 @@
 /**
  * Get a pipe_sampler_view object from a texture unit.
  */
-void
+struct pipe_sampler_view *
 st_update_single_texture(struct st_context *st,
-                         struct pipe_sampler_view **sampler_view,
                          GLuint texUnit, bool glsl130_or_later,
                          bool ignore_srgb_decode)
 {
@@ -71,27 +70,20 @@ st_update_single_texture(struct st_context *st,
    stObj = st_texture_object(texObj);
    GLenum target = texObj->Target;
 
-   if (unlikely(target == GL_TEXTURE_BUFFER)) {
-      *sampler_view = st_get_buffer_sampler_view_from_stobj(st, stObj);
-      return;
-   }
+   if (unlikely(target == GL_TEXTURE_BUFFER))
+      return st_get_buffer_sampler_view_from_stobj(st, stObj);
 
-   if (!st_finalize_texture(ctx, st->pipe, texObj, 0) ||
-       !stObj->pt) {
-      /* out of mem */
-      *sampler_view = NULL;
-      return;
-   }
+   if (!st_finalize_texture(ctx, st->pipe, texObj, 0) || !stObj->pt)
+      return NULL; /* out of mem */
 
    if (target == GL_TEXTURE_EXTERNAL_OES &&
        stObj->pt->screen->resource_changed)
          stObj->pt->screen->resource_changed(stObj->pt->screen, stObj->pt);
 
-   *sampler_view =
-      st_get_texture_sampler_view_from_stobj(st, stObj,
-                                             _mesa_get_samplerobj(ctx, texUnit),
-                                             glsl130_or_later,
-                                             ignore_srgb_decode);
+   return st_get_texture_sampler_view_from_stobj(st, stObj,
+                                                 _mesa_get_samplerobj(ctx, texUnit),
+                                                 glsl130_or_later,
+                                                 ignore_srgb_decode);
 }
 
 
@@ -154,9 +146,9 @@ st_get_sampler_views(struct st_context *st,
        * So we simply ignore the setting entirely for samplers that are
        * (statically) accessed with a texelFetch function.
        */
-      struct pipe_sampler_view *sampler_view;
-      st_update_single_texture(st, &sampler_view, prog->SamplerUnits[unit],
-                               glsl130, texel_fetch_samplers & bit);
+      struct pipe_sampler_view *sampler_view =
+         st_update_single_texture(st, prog->SamplerUnits[unit], glsl130,
+                                  texel_fetch_samplers & bit);
       sampler_views[unit] = NULL;
       pipe_sampler_view_reference(&sampler_views[unit], sampler_view);
    }
