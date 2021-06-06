@@ -5648,7 +5648,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
 
    isl_null_fill_state(&cmd_buffer->device->isl_dev,
                        cmd_state->null_surface_state.map,
-                       isl_extent3d(fb->width, fb->height, fb->layers));
+                       .size = isl_extent3d(fb->width, fb->height, fb->layers));
 
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
       const uint32_t att = subpass->attachments[i].attachment;

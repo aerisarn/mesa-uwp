@@ -1520,6 +1520,10 @@ struct isl_depth_stencil_hiz_emit_info {
    enum isl_aux_usage stencil_aux_usage;
 };
 
+struct isl_null_fill_state_info {
+   struct isl_extent3d size;
+};
+
 extern const struct isl_format_layout isl_format_layouts[];
 extern const char isl_format_names[];
 extern const uint16_t isl_format_name_offsets[];
@@ -2086,8 +2090,12 @@ isl_buffer_fill_state_s(const struct isl_device *dev, void *state,
                         const struct isl_buffer_fill_state_info *restrict info);
 
 void
-isl_null_fill_state(const struct isl_device *dev, void *state,
-                    struct isl_extent3d size);
+isl_null_fill_state_s(const struct isl_device *dev, void *state,
+                      const struct isl_null_fill_state_info *restrict info);
+
+#define isl_null_fill_state(dev, state, ...) \
+   isl_null_fill_state_s((dev), (state), \
+                           &(struct isl_null_fill_state_info) {  __VA_ARGS__ });
 
 #define isl_emit_depth_stencil_hiz(dev, batch, ...) \
    isl_emit_depth_stencil_hiz_s((dev), (batch), \

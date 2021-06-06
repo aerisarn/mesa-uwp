@@ -851,7 +851,7 @@ emit_null_surface_state(struct brw_context *brw,
 
    if (devinfo->ver != 6 || samples <= 1) {
       isl_null_fill_state(&brw->isl_dev, surf,
-                          isl_extent3d(width, height, 1));
+                          .size = isl_extent3d(width, height, 1));
       return;
    }
 

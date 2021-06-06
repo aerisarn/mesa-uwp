@@ -928,7 +928,8 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
 }
 
 void
-isl_genX(null_fill_state)(void *state, struct isl_extent3d size)
+isl_genX(null_fill_state)(void *state,
+                          const struct isl_null_fill_state_info *restrict info)
 {
    struct GENX(RENDER_SURFACE_STATE) s = {
       .SurfaceType = SURFTYPE_NULL,
@@ -939,7 +940,7 @@ isl_genX(null_fill_state)(void *state, struct isl_extent3d size)
        */
       .SurfaceFormat = ISL_FORMAT_R32_UINT,
 #if GFX_VER >= 7
-      .SurfaceArray = size.depth > 1,
+      .SurfaceArray = info->size.depth > 1,
 #endif
 #if GFX_VER >= 8
       .TileMode = YMAJOR,
@@ -960,10 +961,10 @@ isl_genX(null_fill_state)(void *state, struct isl_extent3d size)
        */
       .SurfaceVerticalAlignment = VALIGN_4,
 #endif
-      .Width = size.width - 1,
-      .Height = size.height - 1,
-      .Depth = size.depth - 1,
-      .RenderTargetViewExtent = size.depth - 1,
+      .Width = info->size.width - 1,
+      .Height = info->size.height - 1,
+      .Depth = info->size.depth - 1,
+      .RenderTargetViewExtent = info->size.depth - 1,
 #if GFX_VER <= 5
       .ColorBufferComponentWriteDisables = 0xf,
 #endif

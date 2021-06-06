@@ -2275,10 +2275,10 @@ isl_buffer_fill_state_s(const struct isl_device *dev, void *state,
 }
 
 void
-isl_null_fill_state(const struct isl_device *dev, void *state,
-                    struct isl_extent3d size)
+isl_null_fill_state_s(const struct isl_device *dev, void *state,
+                      const struct isl_null_fill_state_info *restrict info)
 {
-   isl_genX_call(dev, null_fill_state, state, size);
+   isl_genX_call(dev, null_fill_state, state, info);
 }
 
 void
