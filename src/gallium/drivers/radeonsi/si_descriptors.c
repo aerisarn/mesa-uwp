@@ -310,7 +310,6 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
    }
 
    state[0] = va >> 8;
-   state[1] &= C_008F14_BASE_ADDRESS_HI;
    state[1] |= S_008F14_BASE_ADDRESS_HI(va >> 40);
 
    /* Only macrotiled modes can set tile swizzle.
@@ -320,8 +319,6 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       state[0] |= tex->surface.tile_swizzle;
 
    if (sscreen->info.chip_class >= GFX8) {
-      state[6] &= C_008F28_COMPRESSION_EN;
-
       if (!(access & SI_IMAGE_ACCESS_DCC_OFF) && vi_dcc_enabled(tex, first_level)) {
          meta_va = tex->buffer.gpu_address + tex->surface.meta_offset;
 
@@ -346,16 +343,11 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       state[7] = meta_va >> 8;
 
    if (sscreen->info.chip_class >= GFX10) {
-      state[3] &= C_00A00C_SW_MODE;
-
       if (is_stencil) {
          state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.zs.stencil_swizzle_mode);
       } else {
          state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.swizzle_mode);
       }
-
-      state[6] &= C_00A018_META_DATA_ADDRESS_LO & C_00A018_META_PIPE_ALIGNED &
-                  C_00A018_WRITE_COMPRESS_ENABLE;
 
       if (meta_va) {
          struct gfx9_surf_meta_flags meta = {
@@ -373,9 +365,6 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
 
       state[7] = meta_va >> 16;
    } else if (sscreen->info.chip_class == GFX9) {
-      state[3] &= C_008F1C_SW_MODE;
-      state[4] &= C_008F20_PITCH;
-
       if (is_stencil) {
          state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.zs.stencil_swizzle_mode);
          state[4] |= S_008F20_PITCH(tex->surface.u.gfx9.zs.stencil_epitch);
@@ -414,9 +403,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       unsigned pitch = base_level_info->nblk_x * block_width;
       unsigned index = si_tile_mode_index(tex, base_level, is_stencil);
 
-      state[3] &= C_008F1C_TILING_INDEX;
       state[3] |= S_008F1C_TILING_INDEX(index);
-      state[4] &= C_008F20_PITCH;
       state[4] |= S_008F20_PITCH(pitch - 1);
    }
 
