@@ -41,6 +41,16 @@
 #include "st_cb_bufferobjects.h"
 #include "st_cb_texture.h"
 
+/* Return a sampler view while incrementing the refcount by 1. */
+static struct pipe_sampler_view *
+get_sampler_view_reference(struct st_sampler_view *sv,
+                           struct pipe_sampler_view *view)
+{
+   struct pipe_sampler_view *ret = NULL;
+
+   pipe_sampler_view_reference(&ret, view);
+   return ret;
+}
 
 /**
  * Set the given view as the current context's view for the texture.
@@ -57,7 +67,8 @@ static struct pipe_sampler_view *
 st_texture_set_sampler_view(struct st_context *st,
                             struct st_texture_object *stObj,
                             struct pipe_sampler_view *view,
-                            bool glsl130_or_later, bool srgb_skip_decode)
+                            bool glsl130_or_later, bool srgb_skip_decode,
+                            bool get_reference)
 {
    struct st_sampler_views *views;
    struct st_sampler_view *free = NULL;
@@ -151,6 +162,9 @@ found:
    sv->srgb_skip_decode = srgb_skip_decode;
    sv->view = view;
    sv->st = st;
+
+   if (get_reference)
+      view = get_sampler_view_reference(sv, view);
 
 out:
    simple_mtx_unlock(&stObj->validate_mutex);
@@ -582,13 +596,13 @@ st_create_texture_sampler_view_from_stobj(struct st_context *st,
    return st->pipe->create_sampler_view(st->pipe, stObj->pt, &templ);
 }
 
-
 struct pipe_sampler_view *
 st_get_texture_sampler_view_from_stobj(struct st_context *st,
                                        struct st_texture_object *stObj,
                                        const struct gl_sampler_object *samp,
                                        bool glsl130_or_later,
-                                       bool ignore_srgb_decode)
+                                       bool ignore_srgb_decode,
+                                       bool get_reference)
 {
    struct st_sampler_view *sv;
    bool srgb_skip_decode = false;
@@ -619,6 +633,8 @@ st_get_texture_sampler_view_from_stobj(struct st_context *st,
       assert(stObj->layer_override < 0 ||
              (stObj->layer_override == view->u.tex.first_layer &&
               stObj->layer_override == view->u.tex.last_layer));
+      if (get_reference)
+         view = get_sampler_view_reference(sv, view);
       return view;
    }
 
@@ -630,15 +646,16 @@ st_get_texture_sampler_view_from_stobj(struct st_context *st,
                                                    glsl130_or_later);
 
    view = st_texture_set_sampler_view(st, stObj, view,
-                                      glsl130_or_later, srgb_skip_decode);
-
+                                      glsl130_or_later, srgb_skip_decode,
+                                      get_reference);
    return view;
 }
 
 
 struct pipe_sampler_view *
 st_get_buffer_sampler_view_from_stobj(struct st_context *st,
-                                      struct st_texture_object *stObj)
+                                      struct st_texture_object *stObj,
+                                      bool get_reference)
 {
    struct st_sampler_view *sv;
    struct st_buffer_object *stBuf =
@@ -667,6 +684,8 @@ st_get_buffer_sampler_view_from_stobj(struct st_context *st,
                            (unsigned) stObj->base.BufferSize);
          assert(view->u.buf.offset == base);
          assert(view->u.buf.size == size);
+         if (get_reference)
+            view = get_sampler_view_reference(sv, view);
          return view;
       }
    }
@@ -699,7 +718,8 @@ st_get_buffer_sampler_view_from_stobj(struct st_context *st,
    struct pipe_sampler_view *view =
       st->pipe->create_sampler_view(st->pipe, buf, &templ);
 
-   view = st_texture_set_sampler_view(st, stObj, view, false, false);
+   view = st_texture_set_sampler_view(st, stObj, view, false, false,
+                                      get_reference);
 
    return view;
 }

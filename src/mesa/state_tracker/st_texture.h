@@ -359,7 +359,7 @@ st_convert_sampler_from_unit(const struct st_context *st,
 struct pipe_sampler_view *
 st_update_single_texture(struct st_context *st,
                          GLuint texUnit, bool glsl130_or_later,
-                         bool ignore_srgb_decode);
+                         bool ignore_srgb_decode, bool get_reference);
 
 unsigned
 st_get_sampler_views(struct st_context *st,
