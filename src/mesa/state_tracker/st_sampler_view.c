@@ -164,14 +164,14 @@ out:
  *
  * Performs no additional validation.
  */
-const struct st_sampler_view *
+struct st_sampler_view *
 st_texture_get_current_sampler_view(const struct st_context *st,
                                     const struct st_texture_object *stObj)
 {
-   const struct st_sampler_views *views = p_atomic_read(&stObj->sampler_views);
+   struct st_sampler_views *views = p_atomic_read(&stObj->sampler_views);
 
    for (unsigned i = 0; i < views->count; ++i) {
-      const struct st_sampler_view *sv = &views->views[i];
+      struct st_sampler_view *sv = &views->views[i];
       if (sv->view && sv->view->context == st->pipe)
          return sv;
    }
@@ -590,7 +590,7 @@ st_get_texture_sampler_view_from_stobj(struct st_context *st,
                                        bool glsl130_or_later,
                                        bool ignore_srgb_decode)
 {
-   const struct st_sampler_view *sv;
+   struct st_sampler_view *sv;
    bool srgb_skip_decode = false;
 
    if (!ignore_srgb_decode && samp->Attrib.sRGBDecode == GL_SKIP_DECODE_EXT)
@@ -640,7 +640,7 @@ struct pipe_sampler_view *
 st_get_buffer_sampler_view_from_stobj(struct st_context *st,
                                       struct st_texture_object *stObj)
 {
-   const struct st_sampler_view *sv;
+   struct st_sampler_view *sv;
    struct st_buffer_object *stBuf =
       st_buffer_object(stObj->base.BufferObject);
 

@@ -69,7 +69,7 @@ void
 st_delete_texture_sampler_views(struct st_context *st,
                                 struct st_texture_object *stObj);
 
-const struct st_sampler_view *
+struct st_sampler_view *
 st_texture_get_current_sampler_view(const struct st_context *st,
                                     const struct st_texture_object *stObj);
 
