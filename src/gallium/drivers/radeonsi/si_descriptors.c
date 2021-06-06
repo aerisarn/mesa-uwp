@@ -490,65 +490,95 @@ static bool depth_needs_decompression(struct si_texture *tex)
    return tex->db_compatible;
 }
 
-static void si_set_sampler_view(struct si_context *sctx, unsigned shader, unsigned slot,
-                                struct pipe_sampler_view *view, bool disallow_early_out)
+static void si_reset_sampler_view_slot(struct si_samplers *samplers, unsigned slot,
+                                       uint32_t * restrict desc)
+{
+   pipe_sampler_view_reference(&samplers->views[slot], NULL);
+   memcpy(desc, null_texture_descriptor, 8 * 4);
+   /* Only clear the lower dwords of FMASK. */
+   memcpy(desc + 8, null_texture_descriptor, 4 * 4);
+   /* Re-set the sampler state if we are transitioning from FMASK. */
+   if (samplers->sampler_states[slot])
+      si_set_sampler_state_desc(samplers->sampler_states[slot], NULL, NULL, desc + 12);
+}
+
+static void si_set_sampler_views(struct si_context *sctx, unsigned shader,
+                                unsigned start_slot, unsigned count,
+                                unsigned unbind_num_trailing_slots,
+                                struct pipe_sampler_view **views,
+                                bool disallow_early_out)
 {
    struct si_samplers *samplers = &sctx->samplers[shader];
-   struct si_sampler_view *sview = (struct si_sampler_view *)view;
    struct si_descriptors *descs = si_sampler_and_image_descriptors(sctx, shader);
-   unsigned desc_slot = si_get_sampler_slot(slot);
-   /* restrict decreases overhead of si_set_sampler_view_desc ~8x. */
-   uint32_t * restrict desc = descs->list + desc_slot * 16;
+   uint32_t unbound_mask = 0;
 
-   if (samplers->views[slot] == view && !disallow_early_out)
-      return;
+   if (views) {
+      for (unsigned i = 0; i < count; i++) {
+         unsigned slot = start_slot + i;
+         struct si_sampler_view *sview = (struct si_sampler_view *)views[i];
+         unsigned desc_slot = si_get_sampler_slot(slot);
+         /* restrict decreases overhead of si_set_sampler_view_desc ~8x. */
+         uint32_t *restrict desc = descs->list + desc_slot * 16;
 
-   if (view) {
-      struct si_texture *tex = (struct si_texture *)view->texture;
+         if (samplers->views[slot] == &sview->base && !disallow_early_out)
+            continue;
 
-      si_set_sampler_view_desc(sctx, sview, samplers->sampler_states[slot], desc);
+         if (sview) {
+            struct si_texture *tex = (struct si_texture *)sview->base.texture;
 
-      if (tex->buffer.b.b.target == PIPE_BUFFER) {
-         tex->buffer.bind_history |= PIPE_BIND_SAMPLER_VIEW;
-         samplers->needs_depth_decompress_mask &= ~(1u << slot);
-         samplers->needs_color_decompress_mask &= ~(1u << slot);
-      } else {
-         if (depth_needs_decompression(tex)) {
-            samplers->needs_depth_decompress_mask |= 1u << slot;
+            si_set_sampler_view_desc(sctx, sview, samplers->sampler_states[slot], desc);
+
+            if (tex->buffer.b.b.target == PIPE_BUFFER) {
+               tex->buffer.bind_history |= PIPE_BIND_SAMPLER_VIEW;
+               samplers->needs_depth_decompress_mask &= ~(1u << slot);
+               samplers->needs_color_decompress_mask &= ~(1u << slot);
+            } else {
+               if (depth_needs_decompression(tex)) {
+                  samplers->needs_depth_decompress_mask |= 1u << slot;
+               } else {
+                  samplers->needs_depth_decompress_mask &= ~(1u << slot);
+               }
+               if (color_needs_decompression(tex)) {
+                  samplers->needs_color_decompress_mask |= 1u << slot;
+               } else {
+                  samplers->needs_color_decompress_mask &= ~(1u << slot);
+               }
+
+               if (vi_dcc_enabled(tex, sview->base.u.tex.first_level) &&
+                   p_atomic_read(&tex->framebuffers_bound))
+                  sctx->need_check_render_feedback = true;
+            }
+
+            pipe_sampler_view_reference(&samplers->views[slot], &sview->base);
+            samplers->enabled_mask |= 1u << slot;
+
+            /* Since this can flush, it must be done after enabled_mask is
+             * updated. */
+            si_sampler_view_add_buffer(sctx, &tex->buffer.b.b, RADEON_USAGE_READ,
+                                       sview->is_stencil_sampler, true);
          } else {
-            samplers->needs_depth_decompress_mask &= ~(1u << slot);
+            si_reset_sampler_view_slot(samplers, slot, desc);
+            unbound_mask |= 1u << slot;
          }
-         if (color_needs_decompression(tex)) {
-            samplers->needs_color_decompress_mask |= 1u << slot;
-         } else {
-            samplers->needs_color_decompress_mask &= ~(1u << slot);
-         }
-
-         if (vi_dcc_enabled(tex, view->u.tex.first_level) &&
-             p_atomic_read(&tex->framebuffers_bound))
-            sctx->need_check_render_feedback = true;
       }
-
-      pipe_sampler_view_reference(&samplers->views[slot], view);
-      samplers->enabled_mask |= 1u << slot;
-
-      /* Since this can flush, it must be done after enabled_mask is
-       * updated. */
-      si_sampler_view_add_buffer(sctx, view->texture, RADEON_USAGE_READ, sview->is_stencil_sampler,
-                                 true);
    } else {
-      pipe_sampler_view_reference(&samplers->views[slot], NULL);
-      memcpy(desc, null_texture_descriptor, 8 * 4);
-      /* Only clear the lower dwords of FMASK. */
-      memcpy(desc + 8, null_texture_descriptor, 4 * 4);
-      /* Re-set the sampler state if we are transitioning from FMASK. */
-      if (samplers->sampler_states[slot])
-         si_set_sampler_state_desc(samplers->sampler_states[slot], NULL, NULL, desc + 12);
-
-      samplers->enabled_mask &= ~(1u << slot);
-      samplers->needs_depth_decompress_mask &= ~(1u << slot);
-      samplers->needs_color_decompress_mask &= ~(1u << slot);
+      unbind_num_trailing_slots += count;
+      count = 0;
    }
+
+   for (unsigned i = 0; i < unbind_num_trailing_slots; i++) {
+      unsigned slot = start_slot + count + i;
+      unsigned desc_slot = si_get_sampler_slot(slot);
+      uint32_t * restrict desc = descs->list + desc_slot * 16;
+
+      if (samplers->views[slot])
+         si_reset_sampler_view_slot(samplers, slot, desc);
+   }
+
+   unbound_mask |= BITFIELD_RANGE(start_slot + count, unbind_num_trailing_slots);
+   samplers->enabled_mask &= ~unbound_mask;
+   samplers->needs_depth_decompress_mask &= ~unbound_mask;
+   samplers->needs_color_decompress_mask &= ~unbound_mask;
 
    sctx->descriptors_dirty |= 1u << si_sampler_and_image_descriptors_idx(shader);
 }
@@ -565,28 +595,18 @@ static void si_update_shader_needs_decompress_mask(struct si_context *sctx, unsi
       sctx->shader_needs_decompress_mask &= ~shader_bit;
 }
 
-static void si_set_sampler_views(struct pipe_context *ctx, enum pipe_shader_type shader,
-                                 unsigned start, unsigned count,
-                                 unsigned unbind_num_trailing_slots,
-                                 struct pipe_sampler_view **views)
+static void si_pipe_set_sampler_views(struct pipe_context *ctx, enum pipe_shader_type shader,
+                                      unsigned start, unsigned count,
+                                      unsigned unbind_num_trailing_slots,
+                                      struct pipe_sampler_view **views)
 {
    struct si_context *sctx = (struct si_context *)ctx;
-   int i;
 
    if ((!count && !unbind_num_trailing_slots) || shader >= SI_NUM_SHADERS)
       return;
 
-   if (views) {
-      for (i = 0; i < count; i++)
-         si_set_sampler_view(sctx, shader, start + i, views[i], false);
-   } else {
-      for (i = 0; i < count; i++)
-         si_set_sampler_view(sctx, shader, start + i, NULL, false);
-   }
-
-   for (; i < count + unbind_num_trailing_slots; i++)
-      si_set_sampler_view(sctx, shader, start + i, NULL, false);
-
+   si_set_sampler_views(sctx, shader, start, count, unbind_num_trailing_slots,
+                        views, false);
    si_update_shader_needs_decompress_mask(sctx, shader);
 }
 
@@ -1862,7 +1882,7 @@ void si_update_all_texture_descriptors(struct si_context *sctx)
          if (!view || !view->texture || view->texture->target == PIPE_BUFFER)
             continue;
 
-         si_set_sampler_view(sctx, shader, i, samplers->views[i], true);
+         si_set_sampler_views(sctx, shader, i, 1, 0, &samplers->views[i], true);
       }
 
       si_update_shader_needs_decompress_mask(sctx, shader);
@@ -2560,7 +2580,7 @@ void si_init_all_descriptors(struct si_context *sctx)
    sctx->b.set_constant_buffer = si_pipe_set_constant_buffer;
    sctx->b.set_inlinable_constants = si_set_inlinable_constants;
    sctx->b.set_shader_buffers = si_set_shader_buffers;
-   sctx->b.set_sampler_views = si_set_sampler_views;
+   sctx->b.set_sampler_views = si_pipe_set_sampler_views;
    sctx->b.create_texture_handle = si_create_texture_handle;
    sctx->b.delete_texture_handle = si_delete_texture_handle;
    sctx->b.make_texture_handle_resident = si_make_texture_handle_resident;
