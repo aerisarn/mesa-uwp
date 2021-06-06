@@ -64,7 +64,8 @@ fd_pipe_new2(struct fd_device *dev, enum fd_pipe_id id, uint32_t prio)
    pipe->dev_id.chip_id = val;
 
    pipe->control_mem = fd_bo_new(dev, sizeof(*pipe->control),
-                                 0, "pipe-control");
+                                 FD_BO_CACHED_COHERENT,
+                                 "pipe-control");
    pipe->control = fd_bo_map(pipe->control_mem);
 
    /* We could be getting a bo from the bo-cache, make sure the fence value
