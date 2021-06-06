@@ -42,7 +42,6 @@
 
 struct msm_device {
    struct fd_device base;
-   struct fd_bo_cache ring_cache;
    struct util_queue submit_queue;
 };
 FD_DEFINE_CAST(fd_device, msm_device);
