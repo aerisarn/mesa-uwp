@@ -1056,7 +1056,7 @@ agx_optimize_nir(nir_shader *nir)
 
 /* ABI: position first, then user, then psiz */
 static void
-agx_remap_varyings(nir_shader *nir)
+agx_remap_varyings_vs(nir_shader *nir)
 {
    unsigned base = 0;
 
@@ -1107,7 +1107,7 @@ agx_compile_shader_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_function_temp, ~0);
 
    if (ctx->stage == MESA_SHADER_VERTEX) {
-      agx_remap_varyings(nir);
+      agx_remap_varyings_vs(nir);
 
       /* Lower from OpenGL [-1, 1] to [0, 1] if half-z is not set */
       if (!key->vs.clip_halfz)
