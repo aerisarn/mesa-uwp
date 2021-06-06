@@ -311,14 +311,16 @@ st_feedback_draw_vbo(struct gl_context *ctx,
                      st->state.num_vert_samplers);
 
    /* sampler views */
-   draw_set_sampler_views(draw, PIPE_SHADER_VERTEX,
-                          st->state.vert_sampler_views,
-                          st->state.num_sampler_views[PIPE_SHADER_VERTEX]);
+   struct pipe_sampler_view *views[PIPE_MAX_SAMPLERS] = {0};
+   unsigned num_views =
+      st_get_sampler_views(st, PIPE_SHADER_VERTEX, prog, views);
+
+   draw_set_sampler_views(draw, PIPE_SHADER_VERTEX, views, num_views);
 
    struct pipe_transfer *sv_transfer[PIPE_MAX_SAMPLERS][PIPE_MAX_TEXTURE_LEVELS];
 
-   for (unsigned i = 0; i < st->state.num_sampler_views[PIPE_SHADER_VERTEX]; i++) {
-      struct pipe_sampler_view *view = st->state.vert_sampler_views[i];
+   for (unsigned i = 0; i < num_views; i++) {
+      struct pipe_sampler_view *view = views[i];
       if (!view)
          continue;
 
@@ -472,8 +474,8 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    }
 
    /* unmap sampler views */
-   for (unsigned i = 0; i < st->state.num_sampler_views[PIPE_SHADER_VERTEX]; i++) {
-      struct pipe_sampler_view *view = st->state.vert_sampler_views[i];
+   for (unsigned i = 0; i < num_views; i++) {
+      struct pipe_sampler_view *view = views[i];
 
       if (view) {
          if (view->texture->target != PIPE_BUFFER) {
@@ -484,6 +486,8 @@ st_feedback_draw_vbo(struct gl_context *ctx,
          } else {
             pipe_buffer_unmap(pipe, sv_transfer[i][0]);
          }
+
+         pipe_sampler_view_reference(&views[i], NULL);
       }
    }
 

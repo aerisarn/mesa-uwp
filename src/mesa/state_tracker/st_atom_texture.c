@@ -97,11 +97,11 @@ st_update_single_texture(struct st_context *st,
 
 
 
-static void
-update_textures(struct st_context *st,
-                enum pipe_shader_type shader_stage,
-                const struct gl_program *prog,
-                struct pipe_sampler_view **sampler_views)
+unsigned
+st_get_sampler_views(struct st_context *st,
+                     enum pipe_shader_type shader_stage,
+                     const struct gl_program *prog,
+                     struct pipe_sampler_view **sampler_views)
 {
    struct pipe_context *pipe = st->pipe;
    const GLuint old_max = st->state.num_sampler_views[shader_stage];
@@ -112,7 +112,7 @@ update_textures(struct st_context *st,
    GLuint unit;
 
    if (samplers_used == 0x0 && old_max == 0)
-      return;
+      return 0;
 
    unsigned num_textures = 0;
 
@@ -264,7 +264,18 @@ update_textures(struct st_context *st,
       num_textures = MAX2(num_textures, extra + 1);
    }
 
-   /* Unbind old textures. */
+   return num_textures;
+}
+
+static void
+update_textures(struct st_context *st, enum  pipe_shader_type shader_stage,
+                const struct gl_program *prog,
+                struct pipe_sampler_view **sampler_views)
+{
+   struct pipe_context *pipe = st->pipe;
+   unsigned num_textures =
+      st_get_sampler_views(st, shader_stage, prog, sampler_views);
+
    unsigned old_num_textures = st->state.num_sampler_views[shader_stage];
    unsigned num_unbind = old_num_textures > num_textures ?
                             old_num_textures - num_textures : 0;
@@ -297,10 +308,8 @@ st_update_vertex_textures(struct st_context *st)
    const struct gl_context *ctx = st->ctx;
 
    if (ctx->Const.Program[MESA_SHADER_VERTEX].MaxTextureImageUnits > 0) {
-      update_textures(st,
-                      PIPE_SHADER_VERTEX,
-                      ctx->VertexProgram._Current,
-                      st->state.vert_sampler_views);
+      update_textures_local(st, PIPE_SHADER_VERTEX,
+                            ctx->VertexProgram._Current);
    }
 }
 
