@@ -298,6 +298,9 @@ dispatch_compute(GLuint num_groups_x, GLuint num_groups_y,
        return;
 
    ctx->Driver.DispatchCompute(ctx, num_groups);
+
+   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
+      _mesa_flush(ctx);
 }
 
 void GLAPIENTRY
@@ -329,6 +332,9 @@ dispatch_compute_indirect(GLintptr indirect, bool no_error)
       return;
 
    ctx->Driver.DispatchComputeIndirect(ctx, indirect);
+
+   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
+      _mesa_flush(ctx);
 }
 
 extern void GLAPIENTRY
@@ -369,6 +375,9 @@ dispatch_compute_group_size(GLuint num_groups_x, GLuint num_groups_y,
        return;
 
    ctx->Driver.DispatchComputeGroupSize(ctx, num_groups, group_size);
+
+   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
+      _mesa_flush(ctx);
 }
 
 void GLAPIENTRY
