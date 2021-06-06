@@ -129,14 +129,22 @@
     <value name="XR" value="5"/>
   </enum>
 
-  <struct name="Varying header" size="8">
+  <struct name="Varying header" size="4">
     <field name="Slots 1" size="8" start="0:0" type="uint"/>
     <field name="Slots 2" size="8" start="0:8" type="uint"/>
-    <field name="Unk 1" size="32" start="1:0" type="hex" default="12"/>
   </struct>
 
+  <enum name="Varying Type">
+    <value name="Flat (first)" value="0"/>
+    <value name="Flat (last)" value="2"/>
+    <value name="Fragcoord W" value="3"/>
+    <value name="Smooth" value="7"/>
+    <value name="Fragcoord Z" value="11"/>
+  </enum>
+
   <struct name="Varying" size="4">
-    <field name="Unk" size="8" start="0" type="hex" default="0x1F"/>
+    <field name="Components" size="2" start="0" type="uint" modifier="minus(1)"/>
+    <field name="Type" size="6" start="2" type="Varying Type" default="Smooth"/>
     <field name="Slot 1" size="8" start="8" type="uint"/>
     <field name="Slot 2" size="8" start="16" type="uint"/>
   </struct>

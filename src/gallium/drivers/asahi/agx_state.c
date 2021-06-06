@@ -831,7 +831,7 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
 
    compiled->varying_count = varying_count;
 
-   unsigned varying_desc_len = AGX_VARYING_HEADER_LENGTH + varying_count * AGX_VARYING_LENGTH;
+   unsigned varying_desc_len = AGX_VARYING_HEADER_LENGTH + (1 + varying_count) * AGX_VARYING_LENGTH;
    uint8_t *varying_desc = calloc(1, varying_desc_len);
 
    agx_pack(varying_desc, VARYING_HEADER, cfg) {
@@ -839,10 +839,18 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
       cfg.slots_2 = 1 + (4 * varying_count);
    }
 
+   agx_pack(varying_desc + AGX_VARYING_HEADER_LENGTH, VARYING, cfg) {
+      cfg.type = AGX_VARYING_TYPE_FRAGCOORD_W;
+      cfg.slot_1 = 0;
+      cfg.slot_2 = 0;
+      cfg.components = 4;
+   }
+
    for (unsigned i = 0; i < varying_count; ++i) {
-      agx_pack(varying_desc + AGX_VARYING_HEADER_LENGTH + (i * AGX_VARYING_LENGTH), VARYING, cfg) {
+      agx_pack(varying_desc + AGX_VARYING_HEADER_LENGTH + ((i + 1) * AGX_VARYING_LENGTH), VARYING, cfg) {
          cfg.slot_1 = 1 + (4 * i);
          cfg.slot_2 = 1 + (4 * i);
+         cfg.components = 4;
       }
    }
 
