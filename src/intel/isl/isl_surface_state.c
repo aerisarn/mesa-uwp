@@ -961,11 +961,13 @@ isl_genX(null_fill_state)(void *state,
        */
       .SurfaceVerticalAlignment = VALIGN_4,
 #endif
+      .MIPCountLOD = info->levels,
       .Width = info->size.width - 1,
       .Height = info->size.height - 1,
       .Depth = info->size.depth - 1,
       .RenderTargetViewExtent = info->size.depth - 1,
 #if GFX_VER <= 5
+      .MinimumArrayElement = info->minimum_array_element,
       .ColorBufferComponentWriteDisables = 0xf,
 #endif
    };

@@ -1522,6 +1522,8 @@ struct isl_depth_stencil_hiz_emit_info {
 
 struct isl_null_fill_state_info {
    struct isl_extent3d size;
+   uint32_t levels;
+   uint32_t minimum_array_element;
 };
 
 extern const struct isl_format_layout isl_format_layouts[];
