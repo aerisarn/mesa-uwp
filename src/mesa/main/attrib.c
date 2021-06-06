@@ -277,6 +277,7 @@ _mesa_PushAttrib(GLbitfield mask)
       unsigned num_tex_used = ctx->Texture.NumCurrentTexUsed;
       for (u = 0; u < num_tex_used; u++) {
          head->Texture.LodBias[u] = ctx->Texture.Unit[u].LodBias;
+         head->Texture.LodBiasQuantized[u] = ctx->Texture.Unit[u].LodBiasQuantized;
 
          for (tex = 0; tex < NUM_TEXTURE_TARGETS; tex++) {
             struct gl_texture_object *dst = &head->Texture.SavedObj[u][tex];
@@ -618,6 +619,7 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
          memcpy(destUnit, unit, sizeof(*unit));
          destUnit->_CurrentCombine = NULL;
          ctx->Texture.Unit[u].LodBias = texstate->LodBias[u];
+         ctx->Texture.Unit[u].LodBiasQuantized = texstate->LodBiasQuantized[u];
       }
    }
 

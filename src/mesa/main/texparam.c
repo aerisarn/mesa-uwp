@@ -786,7 +786,7 @@ set_tex_parameterf(struct gl_context *ctx,
       if (texObj->Sampler.Attrib.LodBias != params[0]) {
 	 flush(ctx);
 	 texObj->Sampler.Attrib.LodBias = params[0];
-         texObj->Sampler.Attrib.state.lod_bias = params[0];
+         texObj->Sampler.Attrib.state.lod_bias = util_quantize_lod_bias(params[0]);
 	 return GL_TRUE;
       }
       break;

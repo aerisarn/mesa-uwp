@@ -780,6 +780,20 @@ util_is_vbo_upload_ratio_too_large(unsigned draw_vertex_count,
 
 bool util_invert_mat4x4(float *out, const float *m);
 
+/* Quantize the lod bias value to reduce the number of sampler state
+ * variants in gallium because apps use it for smooth mipmap transitions,
+ * thrashing cso_cache and degrading performance.
+ *
+ * This quantization matches the AMD hw specification, so having more
+ * precision would have no effect anyway.
+ */
+static inline float
+util_quantize_lod_bias(float lod)
+{
+   lod = CLAMP(lod, -16, 16);
+   return roundf(lod * 256) / 256;
+}
+
 #ifdef __cplusplus
 }
 #endif

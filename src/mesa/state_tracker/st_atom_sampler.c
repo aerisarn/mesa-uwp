@@ -94,12 +94,6 @@ st_convert_sampler(const struct st_context *st,
       sampler->normalized_coords = 1;
 
    sampler->lod_bias += tex_unit_lod_bias;
-   /* Reduce the number of states by allowing only the values that AMD GCN
-    * can represent. Apps use lod_bias for smooth transitions to bigger mipmap
-    * levels.
-    */
-   sampler->lod_bias = CLAMP(sampler->lod_bias, -16, 16);
-   sampler->lod_bias = roundf(sampler->lod_bias * 256) / 256;
 
    /* Check that only wrap modes using the border color have the first bit
     * set.
@@ -184,7 +178,7 @@ st_convert_sampler_from_unit(const struct st_context *st,
 
    msamp = _mesa_get_samplerobj(ctx, texUnit);
 
-   st_convert_sampler(st, texobj, msamp, ctx->Texture.Unit[texUnit].LodBias,
+   st_convert_sampler(st, texobj, msamp, ctx->Texture.Unit[texUnit].LodBiasQuantized,
                       sampler);
 
    sampler->seamless_cube_map |= ctx->Texture.CubeMapSeamless;
