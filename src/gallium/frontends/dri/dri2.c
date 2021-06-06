@@ -719,7 +719,13 @@ dri2_flush_frontbuffer(struct dri_context *ctx,
       pipe->flush_resource(pipe, drawable->textures[statt]);
    }
 
-   pipe->flush(pipe, ctx->is_shared_buffer_bound ? &fence : NULL, 0);
+   if (ctx->is_shared_buffer_bound) {
+      /* is_shared_buffer_bound should only be true with image extension: */
+      assert(image);
+      pipe->flush(pipe, &fence, PIPE_FLUSH_FENCE_FD);
+   } else {
+      pipe->flush(pipe, NULL, 0);
+   }
 
    if (image) {
       image->flushFrontBuffer(dri_drawable, dri_drawable->loaderPrivate);
@@ -729,6 +735,8 @@ dri2_flush_frontbuffer(struct dri_context *ctx,
 
          shared_buffer_loader->displaySharedBuffer(dri_drawable, fence_fd,
                                                    dri_drawable->loaderPrivate);
+
+         pipe->screen->fence_reference(pipe->screen, &fence, NULL);
       }
    }
    else if (loader->flushFrontBuffer) {
