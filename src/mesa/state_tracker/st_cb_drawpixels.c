@@ -867,30 +867,38 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
       }
    }
 
+   unsigned tex_width = sv[0]->texture->width0;
+   unsigned tex_height = sv[0]->texture->height0;
+
    /* user textures, plus the drawpix textures */
    if (fpv) {
       /* drawing a color image */
-      struct pipe_sampler_view *sampler_views[PIPE_MAX_SAMPLERS];
-      uint num = MAX3(fpv->drawpix_sampler + 1,
-                      fpv->pixelmap_sampler + 1,
-                      st->state.num_sampler_views[PIPE_SHADER_FRAGMENT]);
+      struct pipe_sampler_view *sampler_views[PIPE_MAX_SAMPLERS] = {0};
+      unsigned num_views =
+         st_get_sampler_views(st, PIPE_SHADER_FRAGMENT,
+                              ctx->FragmentProgram._Current, sampler_views);
 
-      memcpy(sampler_views, st->state.frag_sampler_views,
-             sizeof(sampler_views));
+      num_views = MAX3(fpv->drawpix_sampler + 1, fpv->pixelmap_sampler + 1,
+                       num_views);
 
       sampler_views[fpv->drawpix_sampler] = sv[0];
       if (sv[1])
          sampler_views[fpv->pixelmap_sampler] = sv[1];
-      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num, 0,
+      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num_views, 0,
                               sampler_views);
-      st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] =
-         MAX2(st->state.num_sampler_views[PIPE_SHADER_FRAGMENT], num);
+      st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = num_views;
+
+      for (unsigned i = 0; i < num_views; i++)
+         pipe_sampler_view_reference(&sampler_views[i], NULL);
    } else {
       /* drawing a depth/stencil image */
       pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num_sampler_view,
                               0, sv);
       st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] =
          MAX2(st->state.num_sampler_views[PIPE_SHADER_FRAGMENT], num_sampler_view);
+
+      for (unsigned i = 0; i < num_sampler_view; i++)
+         pipe_sampler_view_reference(&sv[i], NULL);
    }
 
    /* viewport state: viewport matching window dims */
@@ -923,9 +931,9 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
       const float clip_x1 = x1 / (float) fb_width * 2.0f - 1.0f;
       const float clip_y1 = y1 / (float) fb_height * 2.0f - 1.0f;
       const float maxXcoord = normalized ?
-         ((float) width / sv[0]->texture->width0) : (float) width;
+         ((float) width / tex_width) : (float) width;
       const float maxYcoord = normalized
-         ? ((float) height / sv[0]->texture->height0) : (float) height;
+         ? ((float) height / tex_height) : (float) height;
       const float sLeft = 0.0f, sRight = maxXcoord;
       const float tTop = invertTex ? maxYcoord : 0.0f;
       const float tBot = invertTex ? 0.0f : maxYcoord;
@@ -1435,9 +1443,6 @@ st_DrawPixels(struct gl_context *ctx, GLint x, GLint y,
                       driver_fp, fpv,
                       ctx->Current.RasterColor,
                       GL_FALSE, write_depth, write_stencil);
-   pipe_sampler_view_reference(&sv[0], NULL);
-   if (num_sampler_view > 1)
-      pipe_sampler_view_reference(&sv[1], NULL);
 
    /* free the texture (but may persist in the cache) */
    pipe_resource_reference(&pt, NULL);
@@ -1975,7 +1980,6 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
                       invertTex, write_depth, write_stencil);
 
    pipe_resource_reference(&pt, NULL);
-   pipe_sampler_view_reference(&sv[0], NULL);
 }
 
 

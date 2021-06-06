@@ -241,16 +241,19 @@ setup_render_state(struct gl_context *ctx,
 
    /* user textures, plus the bitmap texture */
    {
-      struct pipe_sampler_view *sampler_views[PIPE_MAX_SAMPLERS];
-      uint num = MAX2(fpv->bitmap_sampler + 1,
-                      st->state.num_sampler_views[PIPE_SHADER_FRAGMENT]);
-      memcpy(sampler_views, st->state.frag_sampler_views,
-             sizeof(sampler_views));
+      struct pipe_sampler_view *sampler_views[PIPE_MAX_SAMPLERS] = {};
+      unsigned num_views =
+         st_get_sampler_views(st, PIPE_SHADER_FRAGMENT,
+                              ctx->FragmentProgram._Current, sampler_views);
+
+      num_views = MAX2(fpv->bitmap_sampler + 1, num_views);
       sampler_views[fpv->bitmap_sampler] = sv;
-      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num, 0,
+      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num_views, 0,
                               sampler_views);
-      st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] =
-         MAX2(st->state.num_sampler_views[PIPE_SHADER_FRAGMENT], num);
+      st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = num_views;
+
+      for (unsigned i = 0; i < num_views; i++)
+         pipe_sampler_view_reference(&sampler_views[i], NULL);
    }
 
    /* viewport state: viewport matching window dims */
@@ -456,8 +459,6 @@ st_flush_bitmap_cache(struct st_context *st)
                           BITMAP_CACHE_WIDTH, BITMAP_CACHE_HEIGHT,
                           sv,
                           cache->color);
-
-         pipe_sampler_view_reference(&sv, NULL);
       }
 
       /* release/free the texture */
@@ -643,8 +644,6 @@ st_Bitmap(struct gl_context *ctx, GLint x, GLint y,
       if (sv) {
          draw_bitmap_quad(ctx, x, y, ctx->Current.RasterPos[2],
                           width, height, sv, ctx->Current.RasterColor);
-
-         pipe_sampler_view_reference(&sv, NULL);
       }
 
       /* release/free the texture */
@@ -784,8 +783,6 @@ out:
    restore_render_state(ctx);
 
    pipe_resource_reference(&vb.buffer.resource, NULL);
-
-   pipe_sampler_view_reference(&sv, NULL);
 
    /* We uploaded modified constants, need to invalidate them. */
    st->dirty |= ST_NEW_FS_CONSTANTS;

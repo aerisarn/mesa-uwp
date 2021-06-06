@@ -319,10 +319,8 @@ st_update_fragment_textures(struct st_context *st)
 {
    const struct gl_context *ctx = st->ctx;
 
-   update_textures(st,
-                   PIPE_SHADER_FRAGMENT,
-                   ctx->FragmentProgram._Current,
-                   st->state.frag_sampler_views);
+   update_textures_local(st, PIPE_SHADER_FRAGMENT,
+                         ctx->FragmentProgram._Current);
 }
 
 
