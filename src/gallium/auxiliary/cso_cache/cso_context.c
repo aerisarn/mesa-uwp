@@ -1183,38 +1183,35 @@ void
 cso_single_sampler(struct cso_context *ctx, enum pipe_shader_type shader_stage,
                    unsigned idx, const struct pipe_sampler_state *templ)
 {
-   if (templ) {
-      unsigned key_size = sizeof(struct pipe_sampler_state);
-      unsigned hash_key = cso_construct_key((void*)templ, key_size);
-      struct cso_sampler *cso;
-      struct cso_hash_iter iter =
-         cso_find_state_template(&ctx->cache,
-                                 hash_key, CSO_SAMPLER,
-                                 (void *) templ, key_size);
+   unsigned key_size = sizeof(struct pipe_sampler_state);
+   unsigned hash_key = cso_construct_key((void*)templ, key_size);
+   struct cso_sampler *cso;
+   struct cso_hash_iter iter =
+      cso_find_state_template(&ctx->cache,
+                              hash_key, CSO_SAMPLER,
+                              (void *) templ, key_size);
 
+   if (cso_hash_iter_is_null(iter)) {
+      cso = MALLOC(sizeof(struct cso_sampler));
+      if (!cso)
+         return;
+
+      memcpy(&cso->state, templ, sizeof(*templ));
+      cso->data = ctx->pipe->create_sampler_state(ctx->pipe, &cso->state);
+      cso->hash_key = hash_key;
+
+      iter = cso_insert_state(&ctx->cache, hash_key, CSO_SAMPLER, cso);
       if (cso_hash_iter_is_null(iter)) {
-         cso = MALLOC(sizeof(struct cso_sampler));
-         if (!cso)
-            return;
-
-         memcpy(&cso->state, templ, sizeof(*templ));
-         cso->data = ctx->pipe->create_sampler_state(ctx->pipe, &cso->state);
-         cso->hash_key = hash_key;
-
-         iter = cso_insert_state(&ctx->cache, hash_key, CSO_SAMPLER, cso);
-         if (cso_hash_iter_is_null(iter)) {
-            FREE(cso);
-            return;
-         }
+         FREE(cso);
+         return;
       }
-      else {
-         cso = cso_hash_iter_data(iter);
-      }
-
-      ctx->samplers[shader_stage].cso_samplers[idx] = cso;
-      ctx->samplers[shader_stage].samplers[idx] = cso->data;
-      ctx->max_sampler_seen = MAX2(ctx->max_sampler_seen, (int)idx);
+   } else {
+      cso = cso_hash_iter_data(iter);
    }
+
+   ctx->samplers[shader_stage].cso_samplers[idx] = cso;
+   ctx->samplers[shader_stage].samplers[idx] = cso->data;
+   ctx->max_sampler_seen = MAX2(ctx->max_sampler_seen, (int)idx);
 }
 
 
@@ -1248,8 +1245,12 @@ cso_set_samplers(struct cso_context *ctx,
                  unsigned nr,
                  const struct pipe_sampler_state **templates)
 {
-   for (unsigned i = 0; i < nr; i++)
+   for (unsigned i = 0; i < nr; i++) {
+      if (!templates[i])
+         continue;
+
       cso_single_sampler(ctx, shader_stage, i, templates[i]);
+   }
 
    cso_single_sampler_done(ctx, shader_stage);
 }
