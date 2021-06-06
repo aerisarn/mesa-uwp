@@ -573,7 +573,7 @@ droid_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
    if (type == EGL_WINDOW_BIT) {
       int format;
       int buffer_count;
-      int min_buffer_count, max_buffer_count;
+      int min_undequeued_buffers;
 
       /* Prefer triple buffering for performance reasons. */
       const int preferred_buffer_count = 3;
@@ -591,30 +591,14 @@ droid_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
        * of undequeued buffers.
        */
       if (window->query(window, NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS,
-                        &min_buffer_count)) {
+                        &min_undequeued_buffers)) {
          _eglError(EGL_BAD_NATIVE_WINDOW, "droid_create_surface");
          goto cleanup_surface;
       }
 
-      /* Query for maximum buffer count, application can set this
-       * to limit the total amount of buffers.
-       */
-      if (window->query(window, NATIVE_WINDOW_MAX_BUFFER_COUNT,
-                        &max_buffer_count)) {
-         _eglError(EGL_BAD_NATIVE_WINDOW, "droid_create_surface");
-         goto cleanup_surface;
-      }
+      /* Required buffer caching slots. */
+      buffer_count = min_undequeued_buffers + 2;
 
-      /* Clamp preferred between minimum (min undequeued + 1 dequeued)
-       * and maximum.
-       */
-      buffer_count = CLAMP(preferred_buffer_count, min_buffer_count + 1,
-                           max_buffer_count);
-
-      if (native_window_set_buffer_count(window, buffer_count)) {
-         _eglError(EGL_BAD_NATIVE_WINDOW, "droid_create_surface");
-         goto cleanup_surface;
-      }
       dri2_surf->color_buffers = calloc(buffer_count,
                                         sizeof(*dri2_surf->color_buffers));
       if (!dri2_surf->color_buffers) {
