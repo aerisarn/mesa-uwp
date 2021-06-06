@@ -115,23 +115,38 @@ agx_emit_load_attr(agx_builder *b, nir_intrinsic_instr *instr)
 }
 
 static agx_instr *
-agx_emit_load_vary(agx_builder *b, nir_intrinsic_instr *instr)
+agx_emit_load_vary_flat(agx_builder *b, nir_intrinsic_instr *instr)
 {
    unsigned components = instr->num_components;
-   bool smooth = instr->intrinsic == nir_intrinsic_load_interpolated_input;
-
    assert(components >= 1 && components <= 4);
 
-   if (smooth) {
-      nir_intrinsic_instr *parent = nir_src_as_intrinsic(instr->src[0]);
-      assert(parent);
+   nir_src *offset = nir_get_io_offset_src(instr);
+   assert(nir_src_is_const(*offset) && "no indirects");
+   unsigned imm_index = nir_intrinsic_base(instr) + nir_src_as_uint(*offset);
 
-      /* TODO: Interpolation modes */
-      assert(parent->intrinsic ==
-             nir_intrinsic_load_barycentric_pixel);
-   } else {
-      /* TODO: flat varyings */
+   agx_index chan[4] = { agx_null() };
+
+   for (unsigned i = 0; i < components; ++i) {
+      /* vec3 for each vertex, unknown what first 2 channels are for */
+      agx_index values = agx_ld_vary_flat(b, agx_immediate(imm_index + i), 1);
+      chan[i] = agx_p_extract(b, values, 2);
    }
+
+   return agx_p_combine_to(b, agx_dest_index(&instr->dest),
+         chan[0], chan[1], chan[2], chan[3]);
+}
+
+static agx_instr *
+agx_emit_load_vary(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   ASSERTED unsigned components = instr->num_components;
+   ASSERTED nir_intrinsic_instr *parent = nir_src_as_intrinsic(instr->src[0]);
+
+   assert(components >= 1 && components <= 4);
+   assert(parent);
+
+   /* TODO: Interpolation modes */
+   assert(parent->intrinsic == nir_intrinsic_load_barycentric_pixel);
 
    nir_src *offset = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset) && "no indirects");
@@ -307,9 +322,12 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
      /* handled later via load_vary */
      return NULL;
   case nir_intrinsic_load_interpolated_input:
+     assert(stage == MESA_SHADER_FRAGMENT);
+     return agx_emit_load_vary(b, instr);
+
   case nir_intrinsic_load_input:
      if (stage == MESA_SHADER_FRAGMENT)
-        return agx_emit_load_vary(b, instr);
+        return agx_emit_load_vary_flat(b, instr);
      else if (stage == MESA_SHADER_VERTEX)
         return agx_emit_load_attr(b, instr);
      else
