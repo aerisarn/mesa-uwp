@@ -445,9 +445,17 @@ static void si_set_sampler_view_desc(struct si_context *sctx, struct si_sampler_
 {
    struct pipe_sampler_view *view = &sview->base;
    struct si_texture *tex = (struct si_texture *)view->texture;
-   bool is_buffer = tex->buffer.b.b.target == PIPE_BUFFER;
 
-   if (unlikely(!is_buffer && sview->dcc_incompatible)) {
+   assert(tex); /* views with texture == NULL aren't supported */
+
+   if (tex->buffer.b.b.target == PIPE_BUFFER) {
+      memcpy(desc, sview->state, 8 * 4);
+      memcpy(desc + 8, null_texture_descriptor, 4 * 4); /* Disable FMASK. */
+      si_set_buf_desc_address(&tex->buffer, sview->base.u.buf.offset, desc + 4);
+      return;
+   }
+
+   if (unlikely(sview->dcc_incompatible)) {
       if (vi_dcc_enabled(tex, view->u.tex.first_level))
          if (!si_texture_disable_dcc(sctx, tex))
             si_decompress_dcc(sctx, tex);
@@ -455,27 +463,21 @@ static void si_set_sampler_view_desc(struct si_context *sctx, struct si_sampler_
       sview->dcc_incompatible = false;
    }
 
-   assert(tex); /* views with texture == NULL aren't supported */
+   bool is_separate_stencil = tex->db_compatible && sview->is_stencil_sampler;
+
    memcpy(desc, sview->state, 8 * 4);
+   si_set_mutable_tex_desc_fields(sctx->screen, tex, sview->base_level_info, sview->base_level,
+                                  sview->base.u.tex.first_level, sview->block_width,
+                                  is_separate_stencil, 0, desc);
 
-   if (is_buffer) {
-      si_set_buf_desc_address(&tex->buffer, sview->base.u.buf.offset, desc + 4);
-   } else {
-      bool is_separate_stencil = tex->db_compatible && sview->is_stencil_sampler;
-
-      si_set_mutable_tex_desc_fields(sctx->screen, tex, sview->base_level_info, sview->base_level,
-                                     sview->base.u.tex.first_level, sview->block_width,
-                                     is_separate_stencil, 0, desc);
-   }
-
-   if (!is_buffer && tex->surface.fmask_size) {
+   if (tex->surface.fmask_size) {
       memcpy(desc + 8, sview->fmask_state, 8 * 4);
    } else {
       /* Disable FMASK and bind sampler state in [12:15]. */
       memcpy(desc + 8, null_texture_descriptor, 4 * 4);
 
       if (sstate)
-         si_set_sampler_state_desc(sstate, sview, is_buffer ? NULL : tex, desc + 12);
+         si_set_sampler_state_desc(sstate, sview, tex, desc + 12);
    }
 }
 
