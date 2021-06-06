@@ -264,6 +264,25 @@ agx_emit_load_ubo(agx_builder *b, nir_intrinsic_instr *instr)
 }
 
 static agx_instr *
+agx_emit_load_frag_coord(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   agx_index xy[2];
+
+   for (unsigned i = 0; i < 2; ++i) {
+      xy[i] = agx_fadd(b, agx_convert(b, agx_immediate(AGX_CONVERT_U32_TO_F),
+               agx_get_sr(b, 32, AGX_SR_THREAD_POSITION_IN_GRID_X + i),
+               AGX_ROUND_RTE), agx_immediate_f(0.5f));
+   }
+
+   /* Ordering by the ABI */
+   agx_index z = agx_ld_vary(b, agx_immediate(1), 1, false);
+   agx_index w = agx_ld_vary(b, agx_immediate(0), 1, false);
+
+   return agx_p_combine_to(b, agx_dest_index(&instr->dest),
+         xy[0], xy[1], z, w);
+}
+
+static agx_instr *
 agx_blend_const(agx_builder *b, agx_index dst, unsigned comp)
 {
      agx_index val = agx_indexed_sysval(b->shader,
@@ -311,6 +330,9 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
   case nir_intrinsic_load_ubo:
   case nir_intrinsic_load_kernel_input:
      return agx_emit_load_ubo(b, instr);
+
+  case nir_intrinsic_load_frag_coord:
+     return agx_emit_load_frag_coord(b, instr);
 
   case nir_intrinsic_load_back_face_agx:
      return agx_get_sr_to(b, dst, AGX_SR_BACKFACING);
