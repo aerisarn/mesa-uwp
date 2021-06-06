@@ -270,7 +270,7 @@ update_textures(struct st_context *st, enum  pipe_shader_type shader_stage,
                             old_num_textures - num_textures : 0;
 
    pipe->set_sampler_views(pipe, shader_stage, 0, num_textures, num_unbind,
-                           sampler_views);
+                           false, sampler_views);
    st->state.num_sampler_views[shader_stage] = num_textures;
 }
 

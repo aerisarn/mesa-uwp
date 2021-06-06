@@ -249,7 +249,7 @@ setup_render_state(struct gl_context *ctx,
       num_views = MAX2(fpv->bitmap_sampler + 1, num_views);
       sampler_views[fpv->bitmap_sampler] = sv;
       pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, num_views, 0,
-                              sampler_views);
+                              false, sampler_views);
       st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = num_views;
 
       for (unsigned i = 0; i < num_views; i++)
@@ -285,7 +285,7 @@ restore_render_state(struct gl_context *ctx)
     */
    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0,
                            st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
-                           NULL);
+                           false, NULL);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
    st->dirty |= ST_NEW_VERTEX_ARRAYS |

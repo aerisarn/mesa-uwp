@@ -1322,13 +1322,9 @@ static uint16_t
 tc_call_set_sampler_views(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_sampler_views *p = (struct tc_sampler_views *)call;
-   unsigned count = p->count;
 
    pipe->set_sampler_views(pipe, p->shader, p->start, p->count,
-                           p->unbind_num_trailing_slots, p->slot);
-   for (unsigned i = 0; i < count; i++)
-      tc_drop_sampler_view_reference(p->slot[i]);
-
+                           p->unbind_num_trailing_slots, true, p->slot);
    return p->base.num_slots;
 }
 
@@ -1336,7 +1332,7 @@ static void
 tc_set_sampler_views(struct pipe_context *_pipe,
                      enum pipe_shader_type shader,
                      unsigned start, unsigned count,
-                     unsigned unbind_num_trailing_slots,
+                     unsigned unbind_num_trailing_slots, bool take_ownership,
                      struct pipe_sampler_view **views)
 {
    if (!count && !unbind_num_trailing_slots)
@@ -1356,15 +1352,28 @@ tc_set_sampler_views(struct pipe_context *_pipe,
       p->count = count;
       p->unbind_num_trailing_slots = unbind_num_trailing_slots;
 
-      for (unsigned i = 0; i < count; i++) {
-         p->slot[i] = NULL;
-         pipe_sampler_view_reference(&p->slot[i], views[i]);
+      if (take_ownership) {
+         memcpy(p->slot, views, sizeof(*views) * count);
 
-         if (views[i] && views[i]->target == PIPE_BUFFER) {
-            tc_bind_buffer(&tc->sampler_buffers[shader][start + i], next,
-                           views[i]->texture);
-         } else {
-            tc_unbind_buffer(&tc->sampler_buffers[shader][start + i]);
+         for (unsigned i = 0; i < count; i++) {
+            if (views[i] && views[i]->target == PIPE_BUFFER) {
+               tc_bind_buffer(&tc->sampler_buffers[shader][start + i], next,
+                              views[i]->texture);
+            } else {
+               tc_unbind_buffer(&tc->sampler_buffers[shader][start + i]);
+            }
+         }
+      } else {
+         for (unsigned i = 0; i < count; i++) {
+            p->slot[i] = NULL;
+            pipe_sampler_view_reference(&p->slot[i], views[i]);
+
+            if (views[i] && views[i]->target == PIPE_BUFFER) {
+               tc_bind_buffer(&tc->sampler_buffers[shader][start + i], next,
+                              views[i]->texture);
+            } else {
+               tc_unbind_buffer(&tc->sampler_buffers[shader][start + i]);
+            }
          }
       }
 

@@ -1015,6 +1015,7 @@ static void virgl_set_sampler_views(struct pipe_context *ctx,
                                    unsigned start_slot,
                                    unsigned num_views,
                                    unsigned unbind_num_trailing_slots,
+                                   bool take_ownership,
                                    struct pipe_sampler_view **views)
 {
    struct virgl_context *vctx = virgl_context(ctx);
@@ -1028,7 +1029,12 @@ static void virgl_set_sampler_views(struct pipe_context *ctx,
          struct virgl_resource *res = virgl_resource(views[i]->texture);
          res->bind_history |= PIPE_BIND_SAMPLER_VIEW;
 
-         pipe_sampler_view_reference(&binding->views[idx], views[i]);
+         if (take_ownership) {
+            pipe_sampler_view_reference(&binding->views[idx], NULL);
+            binding->views[idx] = views[i];
+         } else {
+            pipe_sampler_view_reference(&binding->views[idx], views[i]);
+         }
          binding->view_enabled_mask |= 1 << idx;
       } else {
          pipe_sampler_view_reference(&binding->views[idx], NULL);
@@ -1041,7 +1047,7 @@ static void virgl_set_sampler_views(struct pipe_context *ctx,
 
    if (unbind_num_trailing_slots) {
       virgl_set_sampler_views(ctx, shader_type, start_slot + num_views,
-                              unbind_num_trailing_slots, 0, NULL);
+                              unbind_num_trailing_slots, 0, false, NULL);
    }
 }
 

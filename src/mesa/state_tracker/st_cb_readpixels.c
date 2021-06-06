@@ -190,7 +190,7 @@ try_pbo_readpixels(struct st_context *st, struct st_renderbuffer *strb,
          goto fail;
 
       pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, 0,
-                              &sampler_view);
+                              false, &sampler_view);
       st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] =
          MAX2(st->state.num_sampler_views[PIPE_SHADER_FRAGMENT], 1);
 
@@ -261,7 +261,7 @@ fail:
     */
    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0,
                            st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
-                           NULL);
+                           false, NULL);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
    pipe->set_shader_images(pipe, PIPE_SHADER_FRAGMENT, 0, 0, 1, NULL);
 

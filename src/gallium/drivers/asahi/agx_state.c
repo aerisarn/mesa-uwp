@@ -496,6 +496,7 @@ agx_set_sampler_views(struct pipe_context *pctx,
                       enum pipe_shader_type shader,
                       unsigned start, unsigned count,
                       unsigned unbind_num_trailing_slots,
+                      bool take_ownership,
                       struct pipe_sampler_view **views)
 {
    struct agx_context *ctx = agx_context(pctx);
@@ -511,8 +512,14 @@ agx_set_sampler_views(struct pipe_context *pctx,
       if (views[i])
          new_nr = i + 1;
 
-      pipe_sampler_view_reference((struct pipe_sampler_view **)
-                                  &ctx->stage[shader].textures[i], views[i]);
+      if (take_ownership) {
+         pipe_sampler_view_reference((struct pipe_sampler_view **)
+                                     &ctx->stage[shader].textures[i], NULL);
+         ctx->stage[shader].textures[i] = (struct agx_sampler_view *)views[i];
+      } else {
+         pipe_sampler_view_reference((struct pipe_sampler_view **)
+                                     &ctx->stage[shader].textures[i], views[i]);
+      }
    }
 
    for (; i < ctx->stage[shader].texture_count; i++) {

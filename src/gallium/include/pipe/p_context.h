@@ -446,6 +446,7 @@ struct pipe_context {
                              enum pipe_shader_type shader,
                              unsigned start_slot, unsigned num_views,
                              unsigned unbind_num_trailing_slots,
+                             bool take_ownership,
                              struct pipe_sampler_view **views);
 
    void (*set_tess_state)(struct pipe_context *,

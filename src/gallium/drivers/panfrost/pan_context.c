@@ -618,6 +618,7 @@ panfrost_set_sampler_views(
         enum pipe_shader_type shader,
         unsigned start_slot, unsigned num_views,
         unsigned unbind_num_trailing_slots,
+        bool take_ownership,
         struct pipe_sampler_view **views)
 {
         struct panfrost_context *ctx = pan_context(pctx);
@@ -634,8 +635,14 @@ panfrost_set_sampler_views(
         for (i = 0; i < num_views; ++i) {
                 if (views[i])
                         new_nr = i + 1;
-		pipe_sampler_view_reference((struct pipe_sampler_view **)&ctx->sampler_views[shader][i],
-		                            views[i]);
+                if (take_ownership) {
+                        pipe_sampler_view_reference((struct pipe_sampler_view **)&ctx->sampler_views[shader][i],
+                                                    NULL);
+                        ctx->sampler_views[shader][i] = (struct panfrost_sampler_view *)views[i];
+                } else {
+                        pipe_sampler_view_reference((struct pipe_sampler_view **)&ctx->sampler_views[shader][i],
+                                                    views[i]);
+                }
         }
 
         for (; i < ctx->sampler_view_count[shader]; i++) {

@@ -2806,6 +2806,7 @@ iris_set_sampler_views(struct pipe_context *ctx,
                        enum pipe_shader_type p_stage,
                        unsigned start, unsigned count,
                        unsigned unbind_num_trailing_slots,
+                       bool take_ownership,
                        struct pipe_sampler_view **views)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
@@ -2818,8 +2819,15 @@ iris_set_sampler_views(struct pipe_context *ctx,
 
    for (i = 0; i < count; i++) {
       struct pipe_sampler_view *pview = views ? views[i] : NULL;
-      pipe_sampler_view_reference((struct pipe_sampler_view **)
-                                  &shs->textures[start + i], pview);
+
+      if (take_ownership) {
+         pipe_sampler_view_reference((struct pipe_sampler_view **)
+                                     &shs->textures[start + i], NULL);
+         shs->textures[start + i] = (struct iris_sampler_view *)pview;
+      } else {
+         pipe_sampler_view_reference((struct pipe_sampler_view **)
+                                     &shs->textures[start + i], pview);
+      }
       struct iris_sampler_view *view = (void *) pview;
       if (view) {
          view->res->bind_history |= PIPE_BIND_SAMPLER_VIEW;

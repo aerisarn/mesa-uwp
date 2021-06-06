@@ -1618,7 +1618,7 @@ try_pbo_upload_common(struct gl_context *ctx,
          goto fail;
 
       pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, 0,
-                              &sampler_view);
+                              false, &sampler_view);
       st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] =
          MAX2(st->state.num_sampler_views[PIPE_SHADER_FRAGMENT], 1);
 
@@ -1662,7 +1662,7 @@ fail:
     */
    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0,
                            st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
-                           NULL);
+                           false, NULL);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
    st->dirty |= ST_NEW_VERTEX_ARRAYS |
@@ -1891,9 +1891,8 @@ try_pbo_download(struct st_context *st,
       if (sampler_view == NULL)
          goto fail;
 
-      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, 0, &sampler_view);
-
-      pipe_sampler_view_reference(&sampler_view, NULL);
+      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, 0, true, &sampler_view);
+      sampler_view = NULL;
 
       cso_set_samplers(cso, PIPE_SHADER_FRAGMENT, 1, samplers);
    }
@@ -1957,7 +1956,7 @@ fail:
     */
    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0,
                            st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
-                           NULL);
+                           false, NULL);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
    pipe->set_shader_images(pipe, PIPE_SHADER_FRAGMENT, 0, 0, 1, NULL);
 

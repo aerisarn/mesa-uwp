@@ -505,7 +505,7 @@ static void si_reset_sampler_view_slot(struct si_samplers *samplers, unsigned sl
 static void si_set_sampler_views(struct si_context *sctx, unsigned shader,
                                 unsigned start_slot, unsigned count,
                                 unsigned unbind_num_trailing_slots,
-                                struct pipe_sampler_view **views,
+                                bool take_ownership, struct pipe_sampler_view **views,
                                 bool disallow_early_out)
 {
    struct si_samplers *samplers = &sctx->samplers[shader];
@@ -520,8 +520,13 @@ static void si_set_sampler_views(struct si_context *sctx, unsigned shader,
          /* restrict decreases overhead of si_set_sampler_view_desc ~8x. */
          uint32_t *restrict desc = descs->list + desc_slot * 16;
 
-         if (samplers->views[slot] == &sview->base && !disallow_early_out)
+         if (samplers->views[slot] == &sview->base && !disallow_early_out) {
+            if (take_ownership) {
+               struct pipe_sampler_view *view = views[i];
+               pipe_sampler_view_reference(&view, NULL);
+            }
             continue;
+         }
 
          if (sview) {
             struct si_texture *tex = (struct si_texture *)sview->base.texture;
@@ -549,7 +554,12 @@ static void si_set_sampler_views(struct si_context *sctx, unsigned shader,
                   sctx->need_check_render_feedback = true;
             }
 
-            pipe_sampler_view_reference(&samplers->views[slot], &sview->base);
+            if (take_ownership) {
+               pipe_sampler_view_reference(&samplers->views[slot], NULL);
+               samplers->views[slot] = &sview->base;
+            } else {
+               pipe_sampler_view_reference(&samplers->views[slot], &sview->base);
+            }
             samplers->enabled_mask |= 1u << slot;
 
             /* Since this can flush, it must be done after enabled_mask is
@@ -598,7 +608,7 @@ static void si_update_shader_needs_decompress_mask(struct si_context *sctx, unsi
 static void si_pipe_set_sampler_views(struct pipe_context *ctx, enum pipe_shader_type shader,
                                       unsigned start, unsigned count,
                                       unsigned unbind_num_trailing_slots,
-                                      struct pipe_sampler_view **views)
+                                      bool take_ownership, struct pipe_sampler_view **views)
 {
    struct si_context *sctx = (struct si_context *)ctx;
 
@@ -606,7 +616,7 @@ static void si_pipe_set_sampler_views(struct pipe_context *ctx, enum pipe_shader
       return;
 
    si_set_sampler_views(sctx, shader, start, count, unbind_num_trailing_slots,
-                        views, false);
+                        take_ownership, views, false);
    si_update_shader_needs_decompress_mask(sctx, shader);
 }
 
@@ -1891,7 +1901,7 @@ void si_update_all_texture_descriptors(struct si_context *sctx)
          if (!view || !view->texture || view->texture->target == PIPE_BUFFER)
             continue;
 
-         si_set_sampler_views(sctx, shader, i, 1, 0, &samplers->views[i], true);
+         si_set_sampler_views(sctx, shader, i, 1, 0, false, &samplers->views[i], true);
       }
 
       si_update_shader_needs_decompress_mask(sctx, shader);

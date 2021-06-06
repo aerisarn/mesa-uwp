@@ -947,6 +947,7 @@ d3d12_set_sampler_views(struct pipe_context *pctx,
                         unsigned start_slot,
                         unsigned num_views,
                         unsigned unbind_num_trailing_slots,
+                        bool take_ownership,
                         struct pipe_sampler_view **views)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
@@ -962,7 +963,12 @@ d3d12_set_sampler_views(struct pipe_context *pctx,
       if (new_view)
          d3d12_increment_sampler_view_bind_count(pctx, shader_type, new_view);
 
-      pipe_sampler_view_reference(&old_view, views[i]);
+      if (take_ownership) {
+         pipe_sampler_view_reference(&old_view, NULL);
+         old_view = views[i];
+      } else {
+         pipe_sampler_view_reference(&old_view, views[i]);
+      }
 
       if (views[i]) {
          dxil_wrap_sampler_state &wss = ctx->tex_wrap_states[shader_type][start_slot + i];

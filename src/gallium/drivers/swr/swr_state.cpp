@@ -301,6 +301,7 @@ swr_set_sampler_views(struct pipe_context *pipe,
                       unsigned start,
                       unsigned num,
                       unsigned unbind_num_trailing_slots,
+                      bool take_ownership,
                       struct pipe_sampler_view **views)
 {
    struct swr_context *ctx = swr_context(pipe);
@@ -314,8 +315,14 @@ swr_set_sampler_views(struct pipe_context *pipe,
    /* set the new sampler views */
    ctx->num_sampler_views[shader] = num;
    for (i = 0; i < num; i++) {
-      pipe_sampler_view_reference(&ctx->sampler_views[shader][start + i],
-                                  views[i]);
+      if (take_ownership) {
+         pipe_sampler_view_reference(&ctx->sampler_views[shader][start + i],
+                                     NULL);
+         ctx->sampler_views[shader][start + i] = views[i];
+      } else {
+         pipe_sampler_view_reference(&ctx->sampler_views[shader][start + i],
+                                     views[i]);
+      }
    }
    for (; i < num + unbind_num_trailing_slots; i++) {
       pipe_sampler_view_reference(&ctx->sampler_views[shader][start + i],

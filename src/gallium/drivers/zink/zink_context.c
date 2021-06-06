@@ -1376,6 +1376,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
                        unsigned start_slot,
                        unsigned num_views,
                        unsigned unbind_num_trailing_slots,
+                       bool take_ownership,
                        struct pipe_sampler_view **views)
 {
    struct zink_context *ctx = zink_context(pctx);
@@ -1440,7 +1441,12 @@ zink_set_sampler_views(struct pipe_context *pctx,
          unbind_samplerview(ctx, shader_type, start_slot + i);
          update = true;
       }
-      pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], pview);
+      if (take_ownership) {
+         pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], NULL);
+         ctx->sampler_views[shader_type][start_slot + i] = pview;
+      } else {
+         pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], pview);
+      }
       update_descriptor_state_sampler(ctx, shader_type, start_slot + i);
    }
    for (; i < num_views + unbind_num_trailing_slots; ++i) {
