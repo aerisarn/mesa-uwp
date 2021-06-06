@@ -62,6 +62,7 @@
 #include "egl_dri2.h"
 #include "GL/mesa_glinterop.h"
 #include "loader/loader.h"
+#include "util/libsync.h"
 #include "util/os_file.h"
 #include "util/u_atomic.h"
 #include "util/u_vector.h"
@@ -3494,6 +3495,8 @@ dri2_dup_native_fence_fd(_EGLDisplay *disp, _EGLSync *sync)
       _eglError(EGL_BAD_PARAMETER, "eglDupNativeFenceFDANDROID");
       return EGL_NO_NATIVE_FENCE_FD_ANDROID;
    }
+
+   assert(sync_valid_fd(sync->SyncFd));
 
    return os_dupfd_cloexec(sync->SyncFd);
 }
