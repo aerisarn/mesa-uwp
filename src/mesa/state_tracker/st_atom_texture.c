@@ -69,8 +69,9 @@ st_update_single_texture(struct st_context *st,
    assert(texObj);
 
    stObj = st_texture_object(texObj);
+   GLenum target = texObj->Target;
 
-   if (unlikely(texObj->Target == GL_TEXTURE_BUFFER)) {
+   if (unlikely(target == GL_TEXTURE_BUFFER)) {
       *sampler_view = st_get_buffer_sampler_view_from_stobj(st, stObj);
       return;
    }
@@ -82,7 +83,7 @@ st_update_single_texture(struct st_context *st,
       return;
    }
 
-   if (texObj->TargetIndex == TEXTURE_EXTERNAL_INDEX &&
+   if (target == GL_TEXTURE_EXTERNAL_OES &&
        stObj->pt->screen->resource_changed)
          stObj->pt->screen->resource_changed(stObj->pt->screen, stObj->pt);
 
