@@ -2890,7 +2890,7 @@ tc_call_draw_single_drawid(struct pipe_context *pipe, void *call, uint64_t *last
 
    pipe->draw_vbo(pipe, &info->info, info_drawid->drawid_offset, NULL, &draw, 1);
    if (info->info.index_size)
-      pipe_resource_reference(&info->info.index.resource, NULL);
+      tc_drop_resource_reference(info->info.index.resource);
 
    return call_size(tc_draw_single_drawid);
 }
