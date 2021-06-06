@@ -108,12 +108,9 @@ st_convert_sampler(const struct st_context *st,
                    PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE) & 0x1) == 0);
 
    /* For non-black borders... */
-   if (/* This is true if wrap modes are using the border color: */
-       (sampler->wrap_s | sampler->wrap_t | sampler->wrap_r) & 0x1 &&
-       (msamp->Attrib.state.border_color.ui[0] ||
-        msamp->Attrib.state.border_color.ui[1] ||
-        msamp->Attrib.state.border_color.ui[2] ||
-        msamp->Attrib.state.border_color.ui[3])) {
+   if (msamp->Attrib.IsBorderColorNonZero &&
+       /* This is true if wrap modes are using the border color: */
+       (sampler->wrap_s | sampler->wrap_t | sampler->wrap_r) & 0x1) {
       const GLboolean is_integer = texobj->_IsIntegerFormat;
       GLenum texBaseFormat = _mesa_base_tex_image(texobj)->_BaseFormat;
 

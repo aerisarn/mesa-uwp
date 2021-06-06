@@ -132,6 +132,7 @@ _mesa_init_sampler_object(struct gl_sampler_object *sampObj, GLuint name)
    sampObj->Attrib.state.border_color.f[1] = 0;
    sampObj->Attrib.state.border_color.f[2] = 0;
    sampObj->Attrib.state.border_color.f[3] = 0;
+   _mesa_update_is_border_color_nonzero(sampObj);
    sampObj->Attrib.MinLod = -1000.0F;
    sampObj->Attrib.MaxLod = 1000.0F;
    sampObj->Attrib.state.min_lod = 0; /* Gallium doesn't allow negative numbers */
@@ -704,6 +705,7 @@ set_sampler_border_colorf(struct gl_context *ctx,
 {
    flush(ctx);
    memcpy(samp->Attrib.state.border_color.f, params, 4 * sizeof(float));
+   _mesa_update_is_border_color_nonzero(samp);
    return GL_TRUE;
 }
 
@@ -715,6 +717,7 @@ set_sampler_border_colori(struct gl_context *ctx,
 {
    flush(ctx);
    memcpy(samp->Attrib.state.border_color.i, params, 4 * sizeof(float));
+   _mesa_update_is_border_color_nonzero(samp);
    return GL_TRUE;
 }
 
@@ -726,6 +729,7 @@ set_sampler_border_colorui(struct gl_context *ctx,
 {
    flush(ctx);
    memcpy(samp->Attrib.state.border_color.ui, params, 4 * sizeof(float));
+   _mesa_update_is_border_color_nonzero(samp);
    return GL_TRUE;
 }
 

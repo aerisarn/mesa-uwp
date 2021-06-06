@@ -914,6 +914,7 @@ struct gl_sampler_attrib
    GLenum16 CompareMode;	/**< GL_ARB_shadow */
    GLenum16 CompareFunc;	/**< GL_ARB_shadow */
    GLboolean CubeMapSeamless;   /**< GL_AMD_seamless_cubemap_per_texture */
+   GLboolean IsBorderColorNonZero; /**< Does the border color have any effect? */
    GLenum16 ReductionMode;      /**< GL_EXT_texture_filter_minmax */
 
    struct pipe_sampler_state state;  /**< Gallium representation */

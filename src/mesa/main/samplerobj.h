@@ -218,6 +218,15 @@ func_to_gallium(GLenum func)
    return (enum pipe_compare_func)(func - GL_NEVER);
 }
 
+static inline void
+_mesa_update_is_border_color_nonzero(struct gl_sampler_object *samp)
+{
+   samp->Attrib.IsBorderColorNonZero = samp->Attrib.state.border_color.ui[0] ||
+                                       samp->Attrib.state.border_color.ui[1] ||
+                                       samp->Attrib.state.border_color.ui[2] ||
+                                       samp->Attrib.state.border_color.ui[3];
+}
+
 #ifdef __cplusplus
 }
 #endif

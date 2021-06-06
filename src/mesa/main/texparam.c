@@ -817,6 +817,7 @@ set_tex_parameterf(struct gl_context *ctx,
          texObj->Sampler.Attrib.state.border_color.f[BCOMP] = CLAMP(params[2], 0.0F, 1.0F);
          texObj->Sampler.Attrib.state.border_color.f[ACOMP] = CLAMP(params[3], 0.0F, 1.0F);
       }
+      _mesa_update_is_border_color_nonzero(&texObj->Sampler);
       return GL_TRUE;
 
    case GL_TEXTURE_TILING_EXT:
@@ -1081,6 +1082,7 @@ _mesa_texture_parameterIiv(struct gl_context *ctx,
       FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
       /* set the integer-valued border color */
       COPY_4V(texObj->Sampler.Attrib.state.border_color.i, params);
+      _mesa_update_is_border_color_nonzero(&texObj->Sampler);
       break;
    default:
       _mesa_texture_parameteriv(ctx, texObj, pname, params, dsa);
@@ -1109,6 +1111,7 @@ _mesa_texture_parameterIuiv(struct gl_context *ctx,
       FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
       /* set the unsigned integer-valued border color */
       COPY_4V(texObj->Sampler.Attrib.state.border_color.ui, params);
+      _mesa_update_is_border_color_nonzero(&texObj->Sampler);
       break;
    default:
       _mesa_texture_parameteriv(ctx, texObj, pname, (const GLint *) params,
