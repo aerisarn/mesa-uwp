@@ -149,6 +149,75 @@ _mesa_GetSamplerParameterIiv(GLuint sampler, GLenum pname, GLint *params);
 void GLAPIENTRY
 _mesa_GetSamplerParameterIuiv(GLuint sampler, GLenum pname, GLuint *params);
 
+extern const enum pipe_tex_wrap wrap_to_gallium_table[32];
+
+/**
+ * Convert GLenum texcoord wrap tokens to pipe tokens.
+ */
+static inline enum pipe_tex_wrap
+wrap_to_gallium(GLenum wrap)
+{
+   return wrap_to_gallium_table[wrap & 0x1f];
+}
+
+
+static inline enum pipe_tex_mipfilter
+mipfilter_to_gallium(GLenum filter)
+{
+   /* Take advantage of how the enums are defined. */
+   if (filter <= GL_LINEAR)
+      return PIPE_TEX_MIPFILTER_NONE;
+   if (filter <= GL_LINEAR_MIPMAP_NEAREST)
+      return PIPE_TEX_MIPFILTER_NEAREST;
+
+   return PIPE_TEX_MIPFILTER_LINEAR;
+}
+
+
+static inline enum pipe_tex_filter
+filter_to_gallium(GLenum filter)
+{
+   /* Take advantage of how the enums are defined. */
+   if (filter & 1)
+      return PIPE_TEX_FILTER_LINEAR;
+
+   return PIPE_TEX_FILTER_NEAREST;
+}
+
+static inline enum pipe_tex_reduction_mode
+reduction_to_gallium(GLenum reduction_mode)
+{
+   switch (reduction_mode) {
+   case GL_MIN:
+      return PIPE_TEX_REDUCTION_MIN;
+   case GL_MAX:
+      return PIPE_TEX_REDUCTION_MAX;
+   case GL_WEIGHTED_AVERAGE_EXT:
+   default:
+      return PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE;
+   }
+}
+
+/**
+ * Convert an OpenGL compare mode to a pipe tokens.
+ */
+static inline enum pipe_compare_func
+func_to_gallium(GLenum func)
+{
+   /* Same values, just biased */
+   STATIC_ASSERT(PIPE_FUNC_NEVER == GL_NEVER - GL_NEVER);
+   STATIC_ASSERT(PIPE_FUNC_LESS == GL_LESS - GL_NEVER);
+   STATIC_ASSERT(PIPE_FUNC_EQUAL == GL_EQUAL - GL_NEVER);
+   STATIC_ASSERT(PIPE_FUNC_LEQUAL == GL_LEQUAL - GL_NEVER);
+   STATIC_ASSERT(PIPE_FUNC_GREATER == GL_GREATER - GL_NEVER);
+   STATIC_ASSERT(PIPE_FUNC_NOTEQUAL == GL_NOTEQUAL - GL_NEVER);
+   STATIC_ASSERT(PIPE_FUNC_GEQUAL == GL_GEQUAL - GL_NEVER);
+   STATIC_ASSERT(PIPE_FUNC_ALWAYS == GL_ALWAYS - GL_NEVER);
+   assert(func >= GL_NEVER);
+   assert(func <= GL_ALWAYS);
+   return (enum pipe_compare_func)(func - GL_NEVER);
+}
+
 #ifdef __cplusplus
 }
 #endif

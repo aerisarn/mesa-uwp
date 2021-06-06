@@ -1023,6 +1023,9 @@ build_bitmap_atlas(struct gl_context *ctx, struct gl_bitmap_atlas *atlas,
 
    atlas->texObj->Sampler.Attrib.MinFilter = GL_NEAREST;
    atlas->texObj->Sampler.Attrib.MagFilter = GL_NEAREST;
+   atlas->texObj->Sampler.Attrib.state.min_img_filter = PIPE_TEX_FILTER_NEAREST;
+   atlas->texObj->Sampler.Attrib.state.min_mip_filter = PIPE_TEX_MIPFILTER_NONE;
+   atlas->texObj->Sampler.Attrib.state.mag_img_filter = PIPE_TEX_FILTER_NEAREST;
    atlas->texObj->Attrib.MaxLevel = 0;
    atlas->texObj->Immutable = GL_TRUE;
 

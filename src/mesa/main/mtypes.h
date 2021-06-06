@@ -907,7 +907,6 @@ struct gl_sampler_attrib
    GLenum16 MinFilter;		/**< minification filter */
    GLenum16 MagFilter;		/**< magnification filter */
    GLenum16 sRGBDecode;         /**< GL_DECODE_EXT or GL_SKIP_DECODE_EXT */
-   union gl_color_union BorderColor;  /**< Interpreted according to texture format */
    GLfloat MinLod;		/**< min lambda, OpenGL 1.2 */
    GLfloat MaxLod;		/**< max lambda, OpenGL 1.2 */
    GLfloat LodBias;		/**< OpenGL 1.4 */
@@ -916,6 +915,8 @@ struct gl_sampler_attrib
    GLenum16 CompareFunc;	/**< GL_ARB_shadow */
    GLboolean CubeMapSeamless;   /**< GL_AMD_seamless_cubemap_per_texture */
    GLenum16 ReductionMode;      /**< GL_EXT_texture_filter_minmax */
+
+   struct pipe_sampler_state state;  /**< Gallium representation */
 };
 
 /**

@@ -336,23 +336,41 @@ _mesa_initialize_texture_object( struct gl_context *ctx,
       obj->Sampler.Attrib.WrapT = GL_CLAMP_TO_EDGE;
       obj->Sampler.Attrib.WrapR = GL_CLAMP_TO_EDGE;
       obj->Sampler.Attrib.MinFilter = GL_LINEAR;
+      obj->Sampler.Attrib.state.wrap_s = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
+      obj->Sampler.Attrib.state.wrap_t = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
+      obj->Sampler.Attrib.state.wrap_r = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
+      obj->Sampler.Attrib.state.min_img_filter = PIPE_TEX_FILTER_LINEAR;
+      obj->Sampler.Attrib.state.min_mip_filter = PIPE_TEX_MIPFILTER_NONE;
    }
    else {
       obj->Sampler.Attrib.WrapS = GL_REPEAT;
       obj->Sampler.Attrib.WrapT = GL_REPEAT;
       obj->Sampler.Attrib.WrapR = GL_REPEAT;
       obj->Sampler.Attrib.MinFilter = GL_NEAREST_MIPMAP_LINEAR;
+      obj->Sampler.Attrib.state.wrap_s = PIPE_TEX_WRAP_REPEAT;
+      obj->Sampler.Attrib.state.wrap_t = PIPE_TEX_WRAP_REPEAT;
+      obj->Sampler.Attrib.state.wrap_r = PIPE_TEX_WRAP_REPEAT;
+      obj->Sampler.Attrib.state.min_img_filter = PIPE_TEX_FILTER_NEAREST;
+      obj->Sampler.Attrib.state.min_mip_filter = PIPE_TEX_MIPFILTER_LINEAR;
    }
    obj->Sampler.Attrib.MagFilter = GL_LINEAR;
+   obj->Sampler.Attrib.state.mag_img_filter = PIPE_TEX_FILTER_LINEAR;
    obj->Sampler.Attrib.MinLod = -1000.0;
    obj->Sampler.Attrib.MaxLod = 1000.0;
+   obj->Sampler.Attrib.state.min_lod = 0; /* no negative numbers */
+   obj->Sampler.Attrib.state.max_lod = 1000;
    obj->Sampler.Attrib.LodBias = 0.0;
+   obj->Sampler.Attrib.state.lod_bias = 0;
    obj->Sampler.Attrib.MaxAnisotropy = 1.0;
+   obj->Sampler.Attrib.state.max_anisotropy = 0; /* gallium sets 0 instead of 1 */
    obj->Sampler.Attrib.CompareMode = GL_NONE;         /* ARB_shadow */
    obj->Sampler.Attrib.CompareFunc = GL_LEQUAL;       /* ARB_shadow */
+   obj->Sampler.Attrib.state.compare_mode = PIPE_TEX_COMPARE_NONE;
+   obj->Sampler.Attrib.state.compare_func = PIPE_FUNC_LEQUAL;
    obj->Attrib.DepthMode = ctx->API == API_OPENGL_CORE ? GL_RED : GL_LUMINANCE;
    obj->StencilSampling = false;
    obj->Sampler.Attrib.CubeMapSeamless = GL_FALSE;
+   obj->Sampler.Attrib.state.seamless_cube_map = false;
    obj->Sampler.HandleAllocated = GL_FALSE;
    obj->Attrib.Swizzle[0] = GL_RED;
    obj->Attrib.Swizzle[1] = GL_GREEN;
@@ -361,6 +379,7 @@ _mesa_initialize_texture_object( struct gl_context *ctx,
    obj->Attrib._Swizzle = SWIZZLE_NOOP;
    obj->Sampler.Attrib.sRGBDecode = GL_DECODE_EXT;
    obj->Sampler.Attrib.ReductionMode = GL_WEIGHTED_AVERAGE_EXT;
+   obj->Sampler.Attrib.state.reduction_mode = PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE;
    obj->BufferObjectFormat = GL_R8;
    obj->_BufferObjectFormat = MESA_FORMAT_R_UNORM8;
    obj->Attrib.ImageFormatCompatibilityType = GL_IMAGE_FORMAT_COMPATIBILITY_BY_SIZE;
@@ -397,8 +416,14 @@ finish_texture_init(struct gl_context *ctx, GLenum target,
          obj->Sampler.Attrib.WrapS = GL_CLAMP_TO_EDGE;
          obj->Sampler.Attrib.WrapT = GL_CLAMP_TO_EDGE;
          obj->Sampler.Attrib.WrapR = GL_CLAMP_TO_EDGE;
+         obj->Sampler.Attrib.state.wrap_s = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
+         obj->Sampler.Attrib.state.wrap_t = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
+         obj->Sampler.Attrib.state.wrap_r = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
          obj->Sampler.Attrib.MinFilter = filter;
          obj->Sampler.Attrib.MagFilter = filter;
+         obj->Sampler.Attrib.state.min_img_filter = filter_to_gallium(filter);
+         obj->Sampler.Attrib.state.min_mip_filter = mipfilter_to_gallium(filter);
+         obj->Sampler.Attrib.state.mag_img_filter = filter_to_gallium(filter);
          if (ctx->Driver.TexParameter) {
             /* XXX we probably don't need to make all these calls */
             ctx->Driver.TexParameter(ctx, obj, GL_TEXTURE_WRAP_S);
@@ -973,6 +998,9 @@ _mesa_get_fallback_texture(struct gl_context *ctx, gl_texture_index tex)
       assert(texObj->RefCount == 1);
       texObj->Sampler.Attrib.MinFilter = GL_NEAREST;
       texObj->Sampler.Attrib.MagFilter = GL_NEAREST;
+      texObj->Sampler.Attrib.state.min_img_filter = PIPE_TEX_FILTER_NEAREST;
+      texObj->Sampler.Attrib.state.min_mip_filter = PIPE_TEX_MIPFILTER_NONE;
+      texObj->Sampler.Attrib.state.mag_img_filter = PIPE_TEX_FILTER_NEAREST;
 
       texFormat = ctx->Driver.ChooseTextureFormat(ctx, target,
                                                   GL_RGBA, GL_RGBA,

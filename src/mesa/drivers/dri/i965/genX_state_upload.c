@@ -4967,40 +4967,40 @@ genX(upload_default_color)(struct brw_context *brw,
        * R channel, while the hardware uses A.  Spam R into all the
        * channels for safety.
        */
-      color.ui[0] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[1] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[2] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[3] = sampler->Attrib.BorderColor.ui[0];
+      color.ui[0] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[1] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[2] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[3] = sampler->Attrib.state.border_color.ui[0];
       break;
    case GL_ALPHA:
       color.ui[0] = 0u;
       color.ui[1] = 0u;
       color.ui[2] = 0u;
-      color.ui[3] = sampler->Attrib.BorderColor.ui[3];
+      color.ui[3] = sampler->Attrib.state.border_color.ui[3];
       break;
    case GL_INTENSITY:
-      color.ui[0] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[1] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[2] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[3] = sampler->Attrib.BorderColor.ui[0];
+      color.ui[0] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[1] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[2] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[3] = sampler->Attrib.state.border_color.ui[0];
       break;
    case GL_LUMINANCE:
-      color.ui[0] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[1] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[2] = sampler->Attrib.BorderColor.ui[0];
+      color.ui[0] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[1] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[2] = sampler->Attrib.state.border_color.ui[0];
       color.ui[3] = float_as_int(1.0);
       break;
    case GL_LUMINANCE_ALPHA:
-      color.ui[0] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[1] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[2] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[3] = sampler->Attrib.BorderColor.ui[3];
+      color.ui[0] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[1] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[2] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[3] = sampler->Attrib.state.border_color.ui[3];
       break;
    default:
-      color.ui[0] = sampler->Attrib.BorderColor.ui[0];
-      color.ui[1] = sampler->Attrib.BorderColor.ui[1];
-      color.ui[2] = sampler->Attrib.BorderColor.ui[2];
-      color.ui[3] = sampler->Attrib.BorderColor.ui[3];
+      color.ui[0] = sampler->Attrib.state.border_color.ui[0];
+      color.ui[1] = sampler->Attrib.state.border_color.ui[1];
+      color.ui[2] = sampler->Attrib.state.border_color.ui[2];
+      color.ui[3] = sampler->Attrib.state.border_color.ui[3];
       break;
    }
 
