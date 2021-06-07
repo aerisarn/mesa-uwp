@@ -1597,6 +1597,45 @@ struct v3dv_sampler {
    uint8_t sampler_state[cl_packet_length(SAMPLER_STATE)];
 };
 
+struct v3dv_descriptor_template_entry {
+   /* The type of descriptor in this entry */
+   VkDescriptorType type;
+
+   /* Binding in the descriptor set */
+   uint32_t binding;
+
+   /* Offset at which to write into the descriptor set binding */
+   uint32_t array_element;
+
+   /* Number of elements to write into the descriptor set binding */
+   uint32_t array_count;
+
+   /* Offset into the user provided data */
+   size_t offset;
+
+   /* Stride between elements into the user provided data */
+   size_t stride;
+};
+
+struct v3dv_descriptor_update_template {
+   struct vk_object_base base;
+
+   VkPipelineBindPoint bind_point;
+
+   /* The descriptor set this template corresponds to. This value is only
+    * valid if the template was created with the templateType
+    * VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET.
+    */
+   uint8_t set;
+
+   /* Number of entries in this template */
+   uint32_t entry_count;
+
+   /* Entries of the template */
+   struct v3dv_descriptor_template_entry entries[0];
+};
+
+
 /* We keep two special values for the sampler idx that represents exactly when a
  * sampler is not needed/provided. The main use is that even if we don't have
  * sampler, we still need to do the output unpacking (through
@@ -2038,6 +2077,7 @@ V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, VkDeviceMemory)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_pool, VkDescriptorPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_set, VkDescriptorSet)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_set_layout, VkDescriptorSetLayout)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_update_template, VkDescriptorUpdateTemplate)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_event, VkEvent)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_fence, VkFence)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_framebuffer, VkFramebuffer)
