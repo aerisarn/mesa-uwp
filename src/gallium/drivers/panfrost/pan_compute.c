@@ -247,7 +247,9 @@ panfrost_set_global_binding(struct pipe_context *pctx,
 static void
 panfrost_memory_barrier(struct pipe_context *pctx, unsigned flags)
 {
-        /* TODO */
+        /* TODO: Be smart and only flush the minimum needed, maybe emitting a
+         * cache flush job if that would help */
+        panfrost_flush_all_batches(pan_context(pctx));
 }
 
 void
