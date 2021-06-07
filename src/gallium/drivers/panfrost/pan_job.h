@@ -76,6 +76,9 @@ struct panfrost_batch {
         unsigned minx, miny;
         unsigned maxx, maxy;
 
+        /* Acts as a rasterizer discard */
+        bool scissor_culls_everything;
+
         /* BOs referenced not in the pool */
         struct hash_table *bos;
 

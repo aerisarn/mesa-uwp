@@ -154,19 +154,6 @@ pan_draw_mode(enum pipe_prim_type mode)
 
 #undef DEFINE_CASE
 
-static bool
-panfrost_scissor_culls_everything(struct panfrost_context *ctx)
-{
-        const struct pipe_scissor_state *ss = &ctx->scissor;
-
-        /* Check if we're scissoring at all */
-
-        if (!ctx->rasterizer->base.scissor)
-                return false;
-
-        return (ss->minx == ss->maxx) || (ss->miny == ss->maxy);
-}
-
 /* Count generated primitives (when there is no geom/tess shaders) for
  * transform feedback */
 
@@ -739,13 +726,6 @@ panfrost_draw_vbo(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *dev = pan_device(pipe->screen);
-
-        /* First of all, check the scissor to see if anything is drawn at all.
-         * If it's not, we drop the draw (mostly a conformance issue;
-         * well-behaved apps shouldn't hit this) */
-
-        if (panfrost_scissor_culls_everything(ctx))
-                return;
 
         if (!panfrost_render_condition_check(ctx))
                 return;

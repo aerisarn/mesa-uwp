@@ -767,6 +767,8 @@ panfrost_emit_viewport(struct panfrost_batch *batch)
         }
 
         panfrost_batch_union_scissor(batch, minx, miny, maxx, maxy);
+        batch->scissor_culls_everything = (minx >= maxx || miny >= maxy);
+
         return T.gpu;
 }
 
@@ -2356,7 +2358,7 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                                            batch->indirect_draw_job_id : 0,
                                            0, vertex_job, false);
 
-        if (ctx->rasterizer->base.rasterizer_discard)
+        if (ctx->rasterizer->base.rasterizer_discard || batch->scissor_culls_everything)
                 return;
 
         panfrost_add_job(&batch->pool, &batch->scoreboard,
