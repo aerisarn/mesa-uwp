@@ -292,7 +292,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
         /* Always have at least one render target for depth-only passes */
         for (unsigned i = 0; i < MAX2(rt_count, 1); ++i) {
                 /* Disable blending for unbacked render targets */
-                if (rt_count == 0 || !batch->key.cbufs[i]) {
+                if (rt_count == 0 || !batch->key.cbufs[i] || so->info[i].no_colour) {
                         pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
                                 cfg.enable = false;
                                 cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OFF;
@@ -323,16 +323,10 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
 
                 /* Word 0: Flags and constant */
                 pan_pack(packed, BLEND, cfg) {
-                        if (info.no_colour) {
-                                cfg.enable = false;
-                        } else {
-                                cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
-                                cfg.load_destination = info.load_dest;
-
-                                cfg.round_to_fb_precision = !ctx->blend->base.dither;
-                                cfg.alpha_to_one = ctx->blend->base.alpha_to_one;
-                        }
-
+                        cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
+                        cfg.load_destination = info.load_dest;
+                        cfg.round_to_fb_precision = !ctx->blend->base.dither;
+                        cfg.alpha_to_one = ctx->blend->base.alpha_to_one;
                         cfg.bifrost.constant = constant;
                 }
 
@@ -394,7 +388,7 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                 struct mali_blend_packed *packed = rts + (i * MALI_BLEND_LENGTH);
 
                 /* Disable blending for unbacked render targets */
-                if (rt_count == 0 || !batch->key.cbufs[i]) {
+                if (rt_count == 0 || !batch->key.cbufs[i] || so->info[i].no_colour) {
                         pan_pack(packed, BLEND, cfg) {
                                 cfg.enable = false;
                         }
@@ -404,11 +398,6 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
 
                 pan_pack(packed, BLEND, cfg) {
                         struct pan_blend_info info = so->info[i];
-
-                        if (info.no_colour) {
-                                cfg.enable = false;
-                                continue;
-                        }
 
                         cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
                         cfg.load_destination = info.load_dest;
