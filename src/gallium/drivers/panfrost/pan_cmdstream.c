@@ -1555,20 +1555,32 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                         cfg.size = rsrc->image.data.bo->size;
                 }
 
+                if (is_buffer) {
+                        pan_pack(bufs + (i * 2) + 1, ATTRIBUTE_BUFFER_CONTINUATION_3D, cfg) {
+                                cfg.s_dimension = rsrc->base.width0 /
+                                        util_format_get_blocksize(image->format);
+                                cfg.t_dimension = cfg.r_dimension = 1;
+                        }
+
+                        continue;
+                }
+
                 pan_pack(bufs + (i * 2) + 1, ATTRIBUTE_BUFFER_CONTINUATION_3D, cfg) {
-                        cfg.s_dimension = rsrc->base.width0;
-                        cfg.t_dimension = rsrc->base.height0;
-                        cfg.r_dimension = is_buffer ? 1 :
-                                is_3d ? rsrc->base.depth0 :
+                        unsigned level = image->u.tex.level;
+
+                        cfg.s_dimension = u_minify(rsrc->base.width0, level);
+                        cfg.t_dimension = u_minify(rsrc->base.height0, level);
+                        cfg.r_dimension = is_3d ?
+                                u_minify(rsrc->base.depth0, level) :
                                 image->u.tex.last_layer - image->u.tex.first_layer + 1;
 
                         cfg.row_stride =
-                                is_buffer ? 0 : rsrc->image.layout.slices[image->u.tex.level].row_stride;
+                                rsrc->image.layout.slices[level].row_stride;
 
-                        if (rsrc->base.target != PIPE_TEXTURE_2D && !is_buffer) {
+                        if (rsrc->base.target != PIPE_TEXTURE_2D) {
                                 cfg.slice_stride =
                                         panfrost_get_layer_stride(&rsrc->image.layout,
-                                                                  image->u.tex.level);
+                                                                  level);
                         }
                 }
         }
