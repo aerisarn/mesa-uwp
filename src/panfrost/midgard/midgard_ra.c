@@ -865,8 +865,14 @@ mir_spill_register(
         /* For special reads, figure out how many bytes we need */
         unsigned read_bytemask = 0;
 
+        /* If multiple instructions write to this destination, we'll have to
+         * fill from TLS before writing */
+        unsigned write_count = 0;
+
         mir_foreach_instr_global_safe(ctx, ins) {
                 read_bytemask |= mir_bytemask_of_read_components(ins, spill_node);
+                if (ins->dest == spill_node)
+                        ++write_count;
         }
 
         /* For TLS, replace all stores to the spilled node. For
@@ -899,7 +905,15 @@ mir_spill_register(
 
                                 mir_insert_instruction_after_scheduled(ctx, block, ins, st);
                         } else {
-                                ins->dest = spill_index++;
+                                unsigned dest = spill_index++;
+
+                                if (write_count > 1 && mir_bytemask(ins) != 0xF) {
+                                        midgard_instruction read =
+                                                v_load_store_scratch(dest, spill_slot, false, 0xF);
+                                        mir_insert_instruction_before_scheduled(ctx, block, ins, read);
+                                }
+
+                                ins->dest = dest;
                                 ins->no_spill |= (1 << spill_class);
 
                                 midgard_instruction st =
