@@ -1179,9 +1179,9 @@ cso_set_vertex_buffers_and_elements(struct cso_context *ctx,
    cso_set_vertex_elements_direct(ctx, velems);
 }
 
-void
-cso_single_sampler(struct cso_context *ctx, enum pipe_shader_type shader_stage,
-                   unsigned idx, const struct pipe_sampler_state *templ)
+static bool
+cso_set_sampler(struct cso_context *ctx, enum pipe_shader_type shader_stage,
+                unsigned idx, const struct pipe_sampler_state *templ)
 {
    unsigned key_size = sizeof(struct pipe_sampler_state);
    unsigned hash_key = cso_construct_key((void*)templ, key_size);
@@ -1194,7 +1194,7 @@ cso_single_sampler(struct cso_context *ctx, enum pipe_shader_type shader_stage,
    if (cso_hash_iter_is_null(iter)) {
       cso = MALLOC(sizeof(struct cso_sampler));
       if (!cso)
-         return;
+         return false;
 
       memcpy(&cso->state, templ, sizeof(*templ));
       cso->data = ctx->pipe->create_sampler_state(ctx->pipe, &cso->state);
@@ -1203,7 +1203,7 @@ cso_single_sampler(struct cso_context *ctx, enum pipe_shader_type shader_stage,
       iter = cso_insert_state(&ctx->cache, hash_key, CSO_SAMPLER, cso);
       if (cso_hash_iter_is_null(iter)) {
          FREE(cso);
-         return;
+         return false;
       }
    } else {
       cso = cso_hash_iter_data(iter);
@@ -1211,9 +1211,16 @@ cso_single_sampler(struct cso_context *ctx, enum pipe_shader_type shader_stage,
 
    ctx->samplers[shader_stage].cso_samplers[idx] = cso;
    ctx->samplers[shader_stage].samplers[idx] = cso->data;
-   ctx->max_sampler_seen = MAX2(ctx->max_sampler_seen, (int)idx);
+   return true;
 }
 
+void
+cso_single_sampler(struct cso_context *ctx, enum pipe_shader_type shader_stage,
+                   unsigned idx, const struct pipe_sampler_state *templ)
+{
+   if (cso_set_sampler(ctx, shader_stage, idx, templ))
+      ctx->max_sampler_seen = MAX2(ctx->max_sampler_seen, (int)idx);
+}
 
 /**
  * Send staged sampler state to the driver.
@@ -1245,13 +1252,17 @@ cso_set_samplers(struct cso_context *ctx,
                  unsigned nr,
                  const struct pipe_sampler_state **templates)
 {
+   int last = -1;
+
    for (unsigned i = 0; i < nr; i++) {
       if (!templates[i])
          continue;
 
       cso_single_sampler(ctx, shader_stage, i, templates[i]);
+      last = i;
    }
 
+   ctx->max_sampler_seen = MAX2(ctx->max_sampler_seen, last);
    cso_single_sampler_done(ctx, shader_stage);
 }
 
