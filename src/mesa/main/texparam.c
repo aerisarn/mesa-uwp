@@ -287,6 +287,7 @@ set_tex_parameteri(struct gl_context *ctx,
          texObj->Sampler.Attrib.MinFilter = params[0];
          texObj->Sampler.Attrib.state.min_img_filter = filter_to_gallium(params[0]);
          texObj->Sampler.Attrib.state.min_mip_filter = mipfilter_to_gallium(params[0]);
+         _mesa_lower_gl_clamp(ctx, &texObj->Sampler);
          return GL_TRUE;
       case GL_NEAREST_MIPMAP_NEAREST:
       case GL_LINEAR_MIPMAP_NEAREST:
@@ -298,6 +299,7 @@ set_tex_parameteri(struct gl_context *ctx,
             texObj->Sampler.Attrib.MinFilter = params[0];
             texObj->Sampler.Attrib.state.min_img_filter = filter_to_gallium(params[0]);
             texObj->Sampler.Attrib.state.min_mip_filter = mipfilter_to_gallium(params[0]);
+            _mesa_lower_gl_clamp(ctx, &texObj->Sampler);
             return GL_TRUE;
          }
          FALLTHROUGH;
@@ -318,6 +320,7 @@ set_tex_parameteri(struct gl_context *ctx,
          flush(ctx); /* does not effect completeness */
          texObj->Sampler.Attrib.MagFilter = params[0];
          texObj->Sampler.Attrib.state.mag_img_filter = filter_to_gallium(params[0]);
+         _mesa_lower_gl_clamp(ctx, &texObj->Sampler);
          return GL_TRUE;
       default:
          goto invalid_param;
@@ -336,6 +339,7 @@ set_tex_parameteri(struct gl_context *ctx,
             ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
          texObj->Sampler.Attrib.WrapS = params[0];
          texObj->Sampler.Attrib.state.wrap_s = wrap_to_gallium(params[0]);
+         _mesa_lower_gl_clamp(ctx, &texObj->Sampler);
          return GL_TRUE;
       }
       return GL_FALSE;
@@ -352,6 +356,7 @@ set_tex_parameteri(struct gl_context *ctx,
             ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
          texObj->Sampler.Attrib.WrapT = params[0];
          texObj->Sampler.Attrib.state.wrap_t = wrap_to_gallium(params[0]);
+         _mesa_lower_gl_clamp(ctx, &texObj->Sampler);
          return GL_TRUE;
       }
       return GL_FALSE;
@@ -368,6 +373,7 @@ set_tex_parameteri(struct gl_context *ctx,
             ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
          texObj->Sampler.Attrib.WrapR = params[0];
          texObj->Sampler.Attrib.state.wrap_r = wrap_to_gallium(params[0]);
+         _mesa_lower_gl_clamp(ctx, &texObj->Sampler);
          return GL_TRUE;
       }
       return GL_FALSE;

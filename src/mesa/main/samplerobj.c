@@ -549,6 +549,7 @@ _mesa_set_sampler_wrap(struct gl_context *ctx, struct gl_sampler_object *samp,
    samp->Attrib.state.wrap_s = wrap_to_gallium(s);
    samp->Attrib.state.wrap_t = wrap_to_gallium(t);
    samp->Attrib.state.wrap_r = wrap_to_gallium(r);
+   _mesa_lower_gl_clamp(ctx, samp);
 }
 
 #define INVALID_PARAM 0x100
@@ -573,6 +574,7 @@ set_sampler_wrap_s(struct gl_context *ctx, struct gl_sampler_object *samp,
          ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
       samp->Attrib.WrapS = param;
       samp->Attrib.state.wrap_s = wrap_to_gallium(param);
+      _mesa_lower_gl_clamp(ctx, samp);
       return GL_TRUE;
    }
    return INVALID_PARAM;
@@ -591,6 +593,7 @@ set_sampler_wrap_t(struct gl_context *ctx, struct gl_sampler_object *samp,
          ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
       samp->Attrib.WrapT = param;
       samp->Attrib.state.wrap_t = wrap_to_gallium(param);
+      _mesa_lower_gl_clamp(ctx, samp);
       return GL_TRUE;
    }
    return INVALID_PARAM;
@@ -609,6 +612,7 @@ set_sampler_wrap_r(struct gl_context *ctx, struct gl_sampler_object *samp,
          ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
       samp->Attrib.WrapR = param;
       samp->Attrib.state.wrap_r = wrap_to_gallium(param);
+      _mesa_lower_gl_clamp(ctx, samp);
       return GL_TRUE;
    }
    return INVALID_PARAM;
@@ -637,6 +641,7 @@ _mesa_set_sampler_filters(struct gl_context *ctx,
    samp->Attrib.state.min_img_filter = filter_to_gallium(min_filter);
    samp->Attrib.state.min_mip_filter = mipfilter_to_gallium(min_filter);
    samp->Attrib.state.mag_img_filter = filter_to_gallium(mag_filter);
+   _mesa_lower_gl_clamp(ctx, samp);
 }
 
 static GLuint
@@ -657,6 +662,7 @@ set_sampler_min_filter(struct gl_context *ctx, struct gl_sampler_object *samp,
       samp->Attrib.MinFilter = param;
       samp->Attrib.state.min_img_filter = filter_to_gallium(param);
       samp->Attrib.state.min_mip_filter = mipfilter_to_gallium(param);
+      _mesa_lower_gl_clamp(ctx, samp);
       return GL_TRUE;
    default:
       return INVALID_PARAM;
@@ -677,6 +683,7 @@ set_sampler_mag_filter(struct gl_context *ctx, struct gl_sampler_object *samp,
       flush(ctx);
       samp->Attrib.MagFilter = param;
       samp->Attrib.state.mag_img_filter = filter_to_gallium(param);
+      _mesa_lower_gl_clamp(ctx, samp);
       return GL_TRUE;
    default:
       return INVALID_PARAM;

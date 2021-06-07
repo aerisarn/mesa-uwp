@@ -227,6 +227,35 @@ _mesa_update_is_border_color_nonzero(struct gl_sampler_object *samp)
                                        samp->Attrib.state.border_color.ui[3];
 }
 
+static inline enum pipe_tex_wrap
+lower_gl_clamp(enum pipe_tex_wrap old_wrap, GLenum wrap, bool clamp_to_border)
+{
+   if (wrap == GL_CLAMP)
+      return clamp_to_border ? PIPE_TEX_WRAP_CLAMP_TO_BORDER :
+                               PIPE_TEX_WRAP_CLAMP_TO_EDGE;
+   else if (wrap == GL_MIRROR_CLAMP_EXT)
+      return clamp_to_border ? PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER :
+                               PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE;
+   return old_wrap;
+}
+
+static inline void
+_mesa_lower_gl_clamp(struct gl_context *ctx, struct gl_sampler_object *samp)
+{
+   if (ctx->DriverFlags.NewSamplersWithClamp) {
+      struct pipe_sampler_state *s = &samp->Attrib.state;
+      bool clamp_to_border = s->min_img_filter != PIPE_TEX_FILTER_NEAREST &&
+                             s->mag_img_filter != PIPE_TEX_FILTER_NEAREST;
+
+      s->wrap_s = lower_gl_clamp((enum pipe_tex_wrap)s->wrap_s,
+                                 samp->Attrib.WrapS, clamp_to_border);
+      s->wrap_t = lower_gl_clamp((enum pipe_tex_wrap)s->wrap_t,
+                                 samp->Attrib.WrapT, clamp_to_border);
+      s->wrap_r = lower_gl_clamp((enum pipe_tex_wrap)s->wrap_r,
+                                 samp->Attrib.WrapR, clamp_to_border);
+   }
+}
+
 #ifdef __cplusplus
 }
 #endif
