@@ -586,7 +586,6 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
       break;
 
    case TGSI_FILE_SYSTEM_VALUE: {
-      nir_intrinsic_op op;
       nir_ssa_def *load;
 
       assert(!indirect);
@@ -594,62 +593,48 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
 
       switch (c->scan->system_value_semantic_name[index]) {
       case TGSI_SEMANTIC_VERTEXID_NOBASE:
-         op = nir_intrinsic_load_vertex_id_zero_base;
          load = nir_load_vertex_id_zero_base(b);
          break;
       case TGSI_SEMANTIC_VERTEXID:
-         op = nir_intrinsic_load_vertex_id;
          load = nir_load_vertex_id(b);
          break;
       case TGSI_SEMANTIC_BASEVERTEX:
-         op = nir_intrinsic_load_base_vertex;
          load = nir_load_base_vertex(b);
          break;
       case TGSI_SEMANTIC_INSTANCEID:
-         op = nir_intrinsic_load_instance_id;
          load = nir_load_instance_id(b);
          break;
       case TGSI_SEMANTIC_FACE:
          assert(c->cap_face_is_sysval);
-         op = nir_intrinsic_load_front_face;
          load = ttn_emulate_tgsi_front_face(c);
          break;
       case TGSI_SEMANTIC_POSITION:
          assert(c->cap_position_is_sysval);
-         op = nir_intrinsic_load_frag_coord;
          load = nir_load_frag_coord(b);
          break;
       case TGSI_SEMANTIC_PCOORD:
          assert(c->cap_point_is_sysval);
-         op = nir_intrinsic_load_point_coord;
          load = nir_load_point_coord(b);
          break;
       case TGSI_SEMANTIC_THREAD_ID:
-         op = nir_intrinsic_load_local_invocation_id;
          load = nir_load_local_invocation_id(b);
          break;
       case TGSI_SEMANTIC_BLOCK_ID:
-         op = nir_intrinsic_load_work_group_id;
          load = nir_load_work_group_id(b, 32);
          break;
       case TGSI_SEMANTIC_BLOCK_SIZE:
-         op = nir_intrinsic_load_local_group_size;
          load = nir_load_local_group_size(b);
          break;
       case TGSI_SEMANTIC_CS_USER_DATA_AMD:
-         op = nir_intrinsic_load_user_data_amd;
          load = nir_load_user_data_amd(b);
          break;
       case TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL:
-         op = nir_intrinsic_load_tess_level_inner_default;
          load = nir_load_tess_level_inner_default(b);
          break;
       case TGSI_SEMANTIC_TESS_DEFAULT_OUTER_LEVEL:
-         op = nir_intrinsic_load_tess_level_outer_default;
          load = nir_load_tess_level_outer_default(b);
          break;
       case TGSI_SEMANTIC_SAMPLEID:
-         op = nir_intrinsic_load_sample_id;
          load = nir_load_sample_id(b);
          break;
       default:
@@ -662,9 +647,6 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
          load = nir_swizzle(b, load, SWIZ(X, Y, Z, Z), 4);
 
       src = nir_src_for_ssa(load);
-      BITSET_SET(b->shader->info.system_values_read,
-                 nir_system_value_from_intrinsic(op));
-
       break;
    }
 
