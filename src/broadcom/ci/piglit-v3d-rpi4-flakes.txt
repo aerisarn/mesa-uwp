@@ -8,7 +8,9 @@ glx@glx_arb_sync_control@timing -fullscreen -msc-delta 1
 glx@glx_arb_sync_control@timing -fullscreen -msc-delta 2
 glx@glx_arb_sync_control@timing -msc-delta 1
 glx@glx_arb_sync_control@timing -msc-delta 2
+glx@glx_arb_sync_control@timing -waitformsc -divisor 1
 glx@glx_arb_sync_control@timing -waitformsc -divisor 2
+glx@glx_arb_sync_control@timing -waitformsc -msc-delta 1
 glx@glx_arb_sync_control@waitformsc
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=4
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=4
