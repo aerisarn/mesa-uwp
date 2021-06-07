@@ -492,6 +492,28 @@ intrinsic("terminate_ray")
 # src[] = { sbt_index, payload }
 intrinsic("execute_callable", src_comp=[1, -1])
 
+# Initialize a ray query
+#
+#   0. Ray Query
+#   1. Acceleration Structure
+#   2. Ray Flags
+#   3. Cull Mask
+#   4. Ray Origin
+#   5. Ray Tmin
+#   6. Ray Direction
+#   7. Ray Tmax
+intrinsic("rq_initialize", src_comp=[-1, -1, 1, 1, 3, 1, 3, 1])
+# src[] = { query }
+intrinsic("rq_terminate", src_comp=[-1])
+# src[] = { query }
+intrinsic("rq_proceed", src_comp=[-1], dest_comp=1)
+# src[] = { query, hit }
+intrinsic("rq_generate_intersection", src_comp=[-1, 1])
+# src[] = { query }
+intrinsic("rq_confirm_intersection", src_comp=[-1])
+# src[] = { query, committed } BASE=nir_ray_query_value
+intrinsic("rq_load", src_comp=[-1, 1], dest_comp=0, indices=[BASE,COLUMN])
+
 # Driver independent raytracing helpers
 
 # rt_resume is a helper that that be the first instruction accesing the
