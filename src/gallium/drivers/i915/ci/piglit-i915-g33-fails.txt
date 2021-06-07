@@ -157,7 +157,6 @@ spec@!opengl 1.1@clipflat,Fail
 spec@!opengl 1.1@depthstencil-default_fb-clear,Fail
 spec@!opengl 1.1@depthstencil-default_fb-copypixels,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort,Fail
-spec@!opengl 1.1@draw-pixel-with-texture,Fail
 spec@!opengl 1.1@draw-pixels,Fail
 spec@!opengl 1.1@drawpix-z,Fail
 spec@!opengl 1.1@getteximage-formats,Crash
@@ -671,7 +670,6 @@ spec@glsl-1.10@execution@glsl-fs-functions-5,Fail
 spec@glsl-1.10@execution@glsl-fs-functions-6,Fail
 spec@glsl-1.10@execution@glsl-fs-if-nested-loop,Fail
 spec@glsl-1.10@execution@glsl-fs-loop-while-false-03,Fail
-spec@glsl-1.10@execution@glsl-fs-texture-uniforms-share-same-unit,Fail
 spec@glsl-1.10@execution@glsl-texcoord-array-2,Fail
 spec@glsl-1.10@execution@interpolation@interpolation-none-gl_backcolor-flat-fixed,Fail
 spec@glsl-1.10@execution@interpolation@interpolation-none-gl_backcolor-flat-none,Fail

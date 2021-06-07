@@ -1110,7 +1110,6 @@ dEQP-GLES2.functional.shaders.operator.common_functions.sign.mediump_float_fragm
 dEQP-GLES2.functional.shaders.operator.common_functions.sign.mediump_vec3_fragment,Fail
 dEQP-GLES2.functional.shaders.operator.geometric.normalize.highp_float_fragment,Fail
 dEQP-GLES2.functional.shaders.operator.geometric.normalize.mediump_float_fragment,Fail
-dEQP-GLES2.functional.shaders.random.all_features.fragment.1,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.22,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.28,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.32,Fail
@@ -1130,10 +1129,6 @@ dEQP-GLES2.functional.shaders.random.all_features.fragment.89,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.93,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.95,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.97,Fail
-dEQP-GLES2.functional.shaders.random.texture.fragment.26,Fail
-dEQP-GLES2.functional.shaders.random.texture.fragment.40,Fail
-dEQP-GLES2.functional.shaders.random.texture.fragment.42,Fail
-dEQP-GLES2.functional.shaders.random.texture.fragment.59,Fail
 dEQP-GLES2.functional.shaders.random.texture.vertex.10,Fail
 dEQP-GLES2.functional.shaders.random.texture.vertex.16,Fail
 dEQP-GLES2.functional.shaders.random.texture.vertex.2,Fail
@@ -1414,7 +1409,6 @@ dEQP-GLES2.functional.uniform_api.value.initial.render.struct_in_array.float_vec
 dEQP-GLES2.functional.uniform_api.value.initial.render.struct_in_array.mat4_mat2_both,Fail
 dEQP-GLES2.functional.uniform_api.value.initial.render.struct_in_array.mat4_mat2_fragment,Fail
 dEQP-GLES2.functional.texture.vertex.cube.filtering.nearest_mipmap_nearest_nearest_mirror,Fail
-dEQP-GLES2.functional.shaders.random.texture.fragment.101,Fail
 KHR-GLES2.core.internalformat.copy_tex_image.alpha8_oes,Fail
 KHR-GLES2.core.internalformat.copy_tex_image.luminance4_alpha4_oes,Fail
 KHR-GLES2.core.internalformat.copy_tex_image.luminance8_alpha8_oes,Fail
