@@ -95,7 +95,13 @@
 #define VG_DEFINED(ptr, size) VG(VALGRIND_MAKE_MEM_DEFINED(ptr, size))
 #define VG_NOACCESS(ptr, size) VG(VALGRIND_MAKE_MEM_NOACCESS(ptr, size))
 
+/* On FreeBSD PAGE_SIZE is already defined in
+ * /usr/include/machine/param.h that is indirectly
+ * included here.
+ */
+#ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
+#endif
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
