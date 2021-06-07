@@ -7,7 +7,7 @@ traces:
       - device: vk-amd-navy_flounder
         checksum: 03f3a03ca175e8a05c4a2b6cff5c568c
       - device: vk-amd-raven
-        checksum: 1807894d1c2f836bfd7c05f498f5903f
+        checksum: 45f9a89c7eabdaee5bc52ad4f45e598f
   - path: LunarG-VulkanSamples/amd/polaris10/Hologram:-w:640:-h:480.gfxr
     expectations:
       - device: vk-amd-navy_flounder
