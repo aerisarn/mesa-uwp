@@ -916,9 +916,37 @@ mir_spill_register(
                                 ins->dest = dest;
                                 ins->no_spill |= (1 << spill_class);
 
+                                bool move = false;
+
+                                /* In the same bundle, reads of the destination
+                                 * of the spilt instruction need to be direct */
+                                midgard_instruction *it = ins;
+                                while ((it = list_first_entry(&it->link, midgard_instruction, link))
+                                       && (it->bundle_id == ins->bundle_id)) {
+
+                                        if (!mir_has_arg(it, spill_node)) continue;
+
+                                        mir_rewrite_index_src_single(it, spill_node, dest);
+
+                                        /* The spilt instruction will write to
+                                         * a work register for `it` to read but
+                                         * the spill needs an LD/ST register */
+                                        move = true;
+                                }
+
+                                if (move)
+                                        dest = spill_index++;
+
                                 midgard_instruction st =
-                                        v_load_store_scratch(ins->dest, spill_slot, true, ins->mask);
+                                        v_load_store_scratch(dest, spill_slot, true, ins->mask);
                                 mir_insert_instruction_after_scheduled(ctx, block, ins, st);
+
+                                if (move) {
+                                        midgard_instruction mv = v_mov(ins->dest, dest);
+                                        mv.no_spill |= (1 << spill_class);
+
+                                        mir_insert_instruction_after_scheduled(ctx, block, ins, mv);
+                                }
                         }
 
                         if (!is_special)
