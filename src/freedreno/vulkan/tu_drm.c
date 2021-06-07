@@ -38,6 +38,8 @@
 
 #include "tu_private.h"
 
+#include "tu_cs.h"
+
 struct tu_binary_syncobj {
    uint32_t permanent, temporary;
 };
@@ -85,6 +87,7 @@ struct tu_queue_submit
    struct   list_head link;
 
    VkCommandBuffer *cmd_buffers;
+   struct tu_u_trace_cmd_data *cmd_buffer_trace_data;
    uint32_t cmd_buffer_count;
 
    struct   tu_syncobj **wait_semaphores;
@@ -938,6 +941,9 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
       }
    }
 
+   bool u_trace_enabled = u_trace_context_tracing(&queue->device->trace_context);
+   bool has_trace_points = false;
+
    uint32_t entry_count = 0;
    for (uint32_t j = 0; j < new_submit->cmd_buffer_count; ++j) {
       TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, new_submit->cmd_buffers[j]);
@@ -946,6 +952,13 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
          entry_count++;
 
       entry_count += cmdbuf->cs.entry_count;
+
+      if (u_trace_enabled && u_trace_has_points(&cmdbuf->trace)) {
+         if (!(cmdbuf->usage_flags & VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT))
+            entry_count++;
+
+         has_trace_points = true;
+      }
    }
 
    new_submit->cmds = vk_zalloc(&queue->device->vk.alloc,
@@ -955,6 +968,39 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
    if (new_submit->cmds == NULL) {
       result = vk_error(queue->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY)
       goto fail_cmds;
+   }
+
+   if (has_trace_points) {
+      new_submit->cmd_buffer_trace_data = vk_zalloc(&queue->device->vk.alloc,
+            new_submit->cmd_buffer_count * sizeof(struct tu_u_trace_cmd_data), 8,
+            VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+      if (new_submit->cmd_buffer_trace_data == NULL) {
+         result = vk_error(queue->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY)
+         goto fail_cmd_trace_data;
+      }
+
+      for (uint32_t i = 0; i < new_submit->cmd_buffer_count; ++i) {
+         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, new_submit->cmd_buffers[i]);
+
+         if (!(cmdbuf->usage_flags & VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT) &&
+             u_trace_has_points(&cmdbuf->trace)) {
+            /* A single command buffer could be submitted several times, but we
+             * already backed timestamp iova addresses and trace points are
+             * single-use. Therefor we have to copy trace points and create
+             * a new timestamp buffer on every submit of reusable command buffer.
+             */
+            if (tu_create_copy_timestamp_cs(cmdbuf,
+                  &new_submit->cmd_buffer_trace_data[i].timestamp_copy_cs,
+                  &new_submit->cmd_buffer_trace_data[i].trace) != VK_SUCCESS) {
+               result = vk_error(queue->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY)
+               goto fail_copy_timestamp_cs;
+            }
+            assert(new_submit->cmd_buffer_trace_data[i].timestamp_copy_cs->entry_count == 1);
+         } else {
+            new_submit->cmd_buffer_trace_data[i].trace = &cmdbuf->trace;
+         }
+      }
    }
 
    /* Allocate without wait timeline semaphores */
@@ -992,6 +1038,12 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
 fail_out_syncobjs:
    vk_free(&queue->device->vk.alloc, new_submit->in_syncobjs);
 fail_in_syncobjs:
+   if (new_submit->cmd_buffer_trace_data)
+      tu_u_trace_cmd_data_finish(queue->device, new_submit->cmd_buffer_trace_data,
+                                 new_submit->cmd_buffer_count);
+fail_copy_timestamp_cs:
+   vk_free(&queue->device->vk.alloc, new_submit->cmd_buffer_trace_data);
+fail_cmd_trace_data:
    vk_free(&queue->device->vk.alloc, new_submit->cmds);
 fail_cmds:
 fail_signal_timelines:
@@ -1058,6 +1110,23 @@ tu_queue_build_msm_gem_submit_cmds(struct tu_queue *queue,
          cmds[entry_idx].pad = 0;
          cmds[entry_idx].nr_relocs = 0;
          cmds[entry_idx].relocs = 0;
+      }
+
+      if (submit->cmd_buffer_trace_data) {
+         struct tu_cs *ts_cs = submit->cmd_buffer_trace_data[j].timestamp_copy_cs;
+         if (ts_cs) {
+            cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
+            cmds[entry_idx].submit_idx =
+               queue->device->bo_idx[ts_cs->entries[0].bo->gem_handle];
+
+            assert(cmds[entry_idx].submit_idx < queue->device->bo_count);
+
+            cmds[entry_idx].submit_offset = ts_cs->entries[0].offset;
+            cmds[entry_idx].size = ts_cs->entries[0].size;
+            cmds[entry_idx].pad = 0;
+            cmds[entry_idx].nr_relocs = 0;
+            cmds[entry_idx++].relocs = 0;
+         }
       }
    }
 }
@@ -1137,32 +1206,24 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
       sem->timeline.highest_submitted = signal_value;
    }
 
-   if (u_trace_context_tracing(&queue->device->trace_context)) {
-      bool has_chunks = false;
+   if (submit->cmd_buffer_trace_data) {
+      struct tu_u_trace_flush_data *flush_data =
+         vk_alloc(&queue->device->vk.alloc, sizeof(struct tu_u_trace_flush_data),
+               8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+      flush_data->submission_id = queue->device->submit_count;
+      flush_data->syncobj =
+         vk_alloc(&queue->device->vk.alloc, sizeof(struct tu_u_trace_syncobj),
+               8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+      flush_data->syncobj->fence = req.fence;
+      flush_data->syncobj->msm_queue_id = queue->msm_queue_id;
+
+      flush_data->cmd_trace_data = submit->cmd_buffer_trace_data;
+      flush_data->trace_count = submit->cmd_buffer_count;
+      submit->cmd_buffer_trace_data = NULL;
+
       for (uint32_t i = 0; i < submit->cmd_buffer_count; i++) {
-         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->cmd_buffers[i]);
-         if (!list_is_empty(&cmdbuf->trace.trace_chunks)) {
-            has_chunks = true;
-            break;
-         }
-      }
-
-      if (has_chunks) {
-         struct tu_u_trace_flush_data *flush_data =
-            vk_alloc(&queue->device->vk.alloc, sizeof(struct tu_u_trace_flush_data),
-                  8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-         flush_data->submission_id = queue->device->submit_count;
-         flush_data->syncobj =
-            vk_alloc(&queue->device->vk.alloc, sizeof(struct tu_u_trace_syncobj),
-                  8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-         flush_data->syncobj->fence = req.fence;
-         flush_data->syncobj->msm_queue_id = queue->msm_queue_id;
-
-         for (uint32_t i = 0; i < submit->cmd_buffer_count; i++) {
-            TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->cmd_buffers[i]);
-            bool free_data = i == (submit->cmd_buffer_count - 1);
-            u_trace_flush(&cmdbuf->trace, flush_data, free_data);
-         }
+         bool free_data = i == (submit->cmd_buffer_count - 1);
+         u_trace_flush(flush_data->cmd_trace_data[i].trace, flush_data, free_data);
       }
    }
 
@@ -1319,8 +1380,6 @@ tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj
       fprintf(stderr, "wait-fence failed! %d (%s)", ret, strerror(errno));
       return VK_TIMEOUT;
    }
-
-   close(syncobj->fence);
 
    return VK_SUCCESS;
 }

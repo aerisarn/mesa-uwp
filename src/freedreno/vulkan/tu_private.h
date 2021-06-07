@@ -1728,10 +1728,35 @@ tu_signal_fences(struct tu_device *device, struct tu_syncobj *fence1, struct tu_
 int
 tu_syncobj_to_fd(struct tu_device *device, struct tu_syncobj *sync);
 
+
+void
+tu_copy_timestamp_buffer(struct u_trace_context *utctx, void *cmdstream,
+                         void *ts_from, uint32_t from_offset,
+                         void *ts_to, uint32_t to_offset,
+                         uint32_t count);
+
+
+VkResult
+tu_create_copy_timestamp_cs(struct tu_cmd_buffer *cmdbuf, struct tu_cs** cs,
+                            struct u_trace **trace_copy);
+
+struct tu_u_trace_cmd_data
+{
+   struct tu_cs *timestamp_copy_cs;
+   struct u_trace *trace;
+};
+
+void
+tu_u_trace_cmd_data_finish(struct tu_device *device,
+                           struct tu_u_trace_cmd_data *trace_data,
+                           uint32_t entry_count);
+
 struct tu_u_trace_flush_data
 {
    uint32_t submission_id;
    struct tu_u_trace_syncobj *syncobj;
+   uint32_t trace_count;
+   struct tu_u_trace_cmd_data *cmd_trace_data;
 };
 
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
