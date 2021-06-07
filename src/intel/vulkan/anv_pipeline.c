@@ -735,6 +735,18 @@ anv_pipeline_stage_get_nir(struct anv_pipeline *pipeline,
 }
 
 static void
+shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
+{
+   assert(glsl_type_is_vector_or_scalar(type));
+
+   uint32_t comp_size = glsl_type_is_boolean(type)
+      ? 4 : glsl_get_bit_size(type) / 8;
+   unsigned length = glsl_get_vector_elements(type);
+   *size = comp_size * length,
+   *align = comp_size * (length == 3 ? 4 : length);
+}
+
+static void
 anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                        void *mem_ctx,
                        struct anv_pipeline_stage *stage,
@@ -812,6 +824,31 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
    anv_nir_compute_push_layout(pdevice, pipeline->device->robust_buffer_access,
                                nir, prog_data, &stage->bind_map, mem_ctx);
+
+   if (gl_shader_stage_uses_workgroup(nir->info.stage)) {
+      if (!nir->info.shared_memory_explicit_layout) {
+         NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
+                    nir_var_mem_shared, shared_type_info);
+      }
+
+      NIR_PASS_V(nir, nir_lower_explicit_io,
+                 nir_var_mem_shared, nir_address_format_32bit_offset);
+
+      if (nir->info.zero_initialize_shared_memory &&
+          nir->info.shared_size > 0) {
+         /* The effective Shared Local Memory size is at least 1024 bytes and
+          * is always rounded to a power of two, so it is OK to align the size
+          * used by the shader to chunk_size -- which does simplify the logic.
+          */
+         const unsigned chunk_size = 16;
+         const unsigned shared_size = ALIGN(nir->info.shared_size, chunk_size);
+         assert(shared_size <=
+                intel_calculate_slm_size(compiler->devinfo->ver, nir->info.shared_size));
+
+         NIR_PASS_V(nir, nir_zero_initialize_shared_memory,
+                    shared_size, chunk_size);
+      }
+   }
 
    stage->nir = nir;
 }
@@ -1701,18 +1738,6 @@ fail:
    return result;
 }
 
-static void
-shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
-{
-   assert(glsl_type_is_vector_or_scalar(type));
-
-   uint32_t comp_size = glsl_type_is_boolean(type)
-      ? 4 : glsl_get_bit_size(type) / 8;
-   unsigned length = glsl_get_vector_elements(type);
-   *size = comp_size * length,
-   *align = comp_size * (length == 3 ? 4 : length);
-}
-
 VkResult
 anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         struct anv_pipeline_cache *cache,
@@ -1799,29 +1824,6 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       NIR_PASS_V(stage.nir, anv_nir_add_base_work_group_id);
 
       anv_pipeline_lower_nir(&pipeline->base, mem_ctx, &stage, layout);
-
-      if (!stage.nir->info.shared_memory_explicit_layout) {
-         NIR_PASS_V(stage.nir, nir_lower_vars_to_explicit_types,
-                    nir_var_mem_shared, shared_type_info);
-      }
-
-      NIR_PASS_V(stage.nir, nir_lower_explicit_io,
-                 nir_var_mem_shared, nir_address_format_32bit_offset);
-
-      if (stage.nir->info.zero_initialize_shared_memory &&
-          stage.nir->info.shared_size > 0) {
-         /* The effective Shared Local Memory size is at least 1024 bytes and
-          * is always rounded to a power of two, so it is OK to align the size
-          * used by the shader to chunk_size -- which does simplify the logic.
-          */
-         const unsigned chunk_size = 16;
-         const unsigned shared_size = ALIGN(stage.nir->info.shared_size, chunk_size);
-         assert(shared_size <=
-                intel_calculate_slm_size(compiler->devinfo->ver, stage.nir->info.shared_size));
-
-         NIR_PASS_V(stage.nir, nir_zero_initialize_shared_memory,
-                    shared_size, chunk_size);
-      }
 
       NIR_PASS_V(stage.nir, brw_nir_lower_cs_intrinsics);
 
@@ -2553,12 +2555,12 @@ VkResult anv_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = prog_data->total_scratch;
    }
 
-   if (exe->stage == MESA_SHADER_COMPUTE) {
+   if (gl_shader_stage_uses_workgroup(exe->stage)) {
       vk_outarray_append(&out, stat) {
          WRITE_STR(stat->name, "Workgroup Memory Size");
          WRITE_STR(stat->description,
                    "Number of bytes of workgroup shared memory used by this "
-                   "compute shader including any padding.");
+                   "shader including any padding.");
          stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
          stat->value.u64 = prog_data->total_shared;
       }
