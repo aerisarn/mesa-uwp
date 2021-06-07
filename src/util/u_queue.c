@@ -445,17 +445,17 @@ util_queue_init(struct util_queue *queue,
    queue->max_jobs = max_jobs;
    queue->global_data = global_data;
 
-   queue->jobs = (struct util_queue_job*)
-                 calloc(max_jobs, sizeof(struct util_queue_job));
-   if (!queue->jobs)
-      goto fail;
-
    (void) mtx_init(&queue->lock, mtx_plain);
    (void) mtx_init(&queue->finish_lock, mtx_plain);
 
    queue->num_queued = 0;
    cnd_init(&queue->has_queued_cond);
    cnd_init(&queue->has_space_cond);
+
+   queue->jobs = (struct util_queue_job*)
+                 calloc(max_jobs, sizeof(struct util_queue_job));
+   if (!queue->jobs)
+      goto fail;
 
    queue->threads = (thrd_t*) calloc(queue->max_threads, sizeof(thrd_t));
    if (!queue->threads)
@@ -534,7 +534,10 @@ void
 util_queue_destroy(struct util_queue *queue)
 {
    util_queue_kill_threads(queue, 0, false);
-   remove_from_atexit_list(queue);
+
+   /* This makes it safe to call on a queue that failedutil_queue_init. */
+   if (queue->head.next != NULL)
+      remove_from_atexit_list(queue);
 
    cnd_destroy(&queue->has_space_cond);
    cnd_destroy(&queue->has_queued_cond);
