@@ -5066,6 +5066,13 @@ void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_
    bool use_smem = dst.type() != RegType::vgpr && (!glc || ctx->options->chip_class >= GFX8) && allow_smem;
    if (use_smem)
       offset = bld.as_uniform(offset);
+   else {
+      /* GFX6-7 are affected by a hw bug that prevents address clamping to
+       * work correctly when the SGPR offset is used.
+       */
+      if (offset.type() == RegType::sgpr && ctx->options->chip_class < GFX8)
+         offset = as_vgpr(ctx, offset);
+   }
 
    LoadEmitInfo info = {Operand(offset), dst, num_components, component_size, rsrc};
    info.glc = glc;
@@ -6315,6 +6322,12 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    unsigned offsets[32];
    split_buffer_store(ctx, instr, false, RegType::vgpr,
                       data, writemask, 16, &write_count, write_datas, offsets);
+
+   /* GFX6-7 are affected by a hw bug that prevents address clamping to work
+    * correctly when the SGPR offset is used.
+    */
+   if (offset.type() == RegType::sgpr && ctx->options->chip_class < GFX8)
+      offset = as_vgpr(ctx, offset);
 
    for (unsigned i = 0; i < write_count; i++) {
       aco_opcode op = get_buffer_store_op(write_datas[i].bytes());

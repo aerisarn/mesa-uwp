@@ -160,6 +160,12 @@ finish and then write to vcc (for example, `s_mov_b64 vcc, vcc`) to correct vccz
 
 Currently, we don't do this.
 
+## SGPR offset on MUBUF prevents addr clamping on SI/CI
+
+[See this LLVM source.](https://github.com/llvm/llvm-project/blob/main/llvm/lib/Target/AMDGPU/Utils/AMDGPUBaseInfo.cpp#L1917-L1922)
+
+This leads to wrong bounds checking, using a VGPR offset fixes it.
+
 ## GCN / GFX6 hazards
 
 ### VINTRP followed by a read with `v_readfirstlane` or `v_readlane`
