@@ -4884,6 +4884,15 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
 
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       RADV_FROM_HANDLE(radv_cmd_buffer, secondary, pCmdBuffers[i]);
+      bool allow_ib2 = true;
+
+      if (secondary->device->physical_device->rad_info.chip_class == GFX7 &&
+          secondary->state.uses_draw_indirect_multi) {
+         /* Do not launch an IB2 for secondary command buffers that contain
+          * DRAW_{INDEX}_INDIRECT_MULTI on GFX7 because it's illegal and hang the GPU.
+          */
+         allow_ib2 = false;
+      }
 
       primary->scratch_size_per_wave_needed =
          MAX2(primary->scratch_size_per_wave_needed, secondary->scratch_size_per_wave_needed);
@@ -4915,7 +4924,7 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
          radv_emit_framebuffer_state(primary);
       }
 
-      primary->device->ws->cs_execute_secondary(primary->cs, secondary->cs);
+      primary->device->ws->cs_execute_secondary(primary->cs, secondary->cs, allow_ib2);
 
       /* When the secondary command buffer is compute only we don't
        * need to re-emit the current graphics pipeline.
@@ -5301,6 +5310,8 @@ radv_cs_emit_indirect_draw_packet(struct radv_cmd_buffer *cmd_buffer, bool index
       radeon_emit(cs, count_va >> 32);
       radeon_emit(cs, stride); /* stride */
       radeon_emit(cs, di_src_sel);
+
+      cmd_buffer->state.uses_draw_indirect_multi = true;
    }
 }
 
