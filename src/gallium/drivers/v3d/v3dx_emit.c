@@ -177,7 +177,8 @@ emit_one_texture(struct v3d_context *v3d, struct v3d_texture_stateobj *stage_tex
                                             MAX2(psampler->min_lod, 0),
                                             psview->u.tex.last_level),
                 .max_level_of_detail = MIN2(psview->u.tex.first_level +
-                                            psampler->max_lod,
+                                            MAX2(psampler->max_lod,
+                                                 psampler->min_lod),
                                             psview->u.tex.last_level),
 
                 .texture_base_pointer = cl_address(rsc->bo,

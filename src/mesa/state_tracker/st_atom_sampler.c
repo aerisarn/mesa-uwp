@@ -169,15 +169,6 @@ st_convert_sampler(const struct st_context *st,
 
    sampler->min_lod = MAX2(msamp->Attrib.MinLod, 0.0f);
    sampler->max_lod = msamp->Attrib.MaxLod;
-   if (sampler->max_lod < sampler->min_lod) {
-      /* The GL spec doesn't seem to specify what to do in this case.
-       * Swap the values.
-       */
-      float tmp = sampler->max_lod;
-      sampler->max_lod = sampler->min_lod;
-      sampler->min_lod = tmp;
-      assert(sampler->min_lod <= sampler->max_lod);
-   }
 
    /* Check that only wrap modes using the border color have the first bit
     * set.
