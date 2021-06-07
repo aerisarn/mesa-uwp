@@ -3559,8 +3559,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
    struct ntv_context ctx = {};
    ctx.mem_ctx = ralloc_context(NULL);
    ctx.builder.mem_ctx = ctx.mem_ctx;
-   assert(spirv_version >= 0x10000);
-   ctx.spirv_1_4_interfaces = spirv_version >= 0x10400;
+   assert(spirv_version >= SPIRV_VERSION(1, 0));
+   ctx.spirv_1_4_interfaces = spirv_version >= SPIRV_VERSION(1, 4);
 
    ctx.glsl_types = _mesa_pointer_hash_table_create(ctx.mem_ctx);
    if (!ctx.glsl_types)

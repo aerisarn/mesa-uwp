@@ -33,6 +33,7 @@
 #include "zink_instance.h"
 #include "zink_public.h"
 #include "zink_resource.h"
+#include "nir_to_spirv/nir_to_spirv.h" // for SPIRV_VERSION
 
 #include "os/os_process.h"
 #include "util/u_debug.h"
@@ -257,7 +258,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_TGSI_VOTE:
-      return screen->spirv_version >= 0x00010300;
+      return screen->spirv_version >= SPIRV_VERSION(1, 3);
 
    case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
       return screen->info.have_EXT_provoking_vertex;
@@ -1054,11 +1055,11 @@ choose_pdev(struct zink_screen *screen)
 
    /* calculate SPIR-V version based on VK version */
    if (screen->vk_version >= VK_MAKE_VERSION(1, 2, 0))
-      screen->spirv_version = 0x00010500;
+      screen->spirv_version = SPIRV_VERSION(1, 5);
    else if (screen->vk_version >= VK_MAKE_VERSION(1, 1, 0))
-      screen->spirv_version = 0x00010300;
+      screen->spirv_version = SPIRV_VERSION(1, 3);
    else
-      screen->spirv_version = 0x00010000;
+      screen->spirv_version = SPIRV_VERSION(1, 0);
 }
 
 static void

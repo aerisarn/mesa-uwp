@@ -34,6 +34,8 @@
 
 #include "zink_compiler.h"
 
+#define SPIRV_VERSION(major, minor) (((major) << 16) | ((minor) << 8))
+
 struct spirv_shader {
    uint32_t *words;
    size_t num_words;
