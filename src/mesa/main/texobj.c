@@ -1608,16 +1608,10 @@ bind_texture_object(struct gl_context *ctx, unsigned unit,
     * If so, just return. For GL_OES_image_external, rebinding the texture
     * always must invalidate cached resources.
     */
-   if (targetIndex != TEXTURE_EXTERNAL_INDEX) {
-      bool early_out;
-      simple_mtx_lock(&ctx->Shared->Mutex);
-      early_out = ((ctx->Shared->RefCount == 1)
-                   && (texObj == texUnit->CurrentTex[targetIndex]));
-      simple_mtx_unlock(&ctx->Shared->Mutex);
-      if (early_out) {
-         return;
-      }
-   }
+   if (targetIndex != TEXTURE_EXTERNAL_INDEX &&
+       ctx->Shared->RefCount == 1 &&
+       texObj == texUnit->CurrentTex[targetIndex])
+      return;
 
    /* Flush before changing binding.
     *
