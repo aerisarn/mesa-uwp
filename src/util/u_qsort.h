@@ -36,14 +36,56 @@ void util_tls_qsort_r(void *base, size_t nmemb, size_t size,
                       int (*compar)(const void *, const void *, void *),
                       void *arg);
 
+
+struct util_qsort_adapter_data {
+   int (*compar)(const void*, const void*, void*);
+   void *args;
+};
+
+/**
+ * Converts comparison function arguments
+ * from [MSVC, BSD, macOS]
+ * (void *ctx, const void *elem1, const void *elem2)
+ * to [GNU, C11]
+ * (const void *elem1, const void *elem2, void *ctx);
+ */
+int util_qsort_adapter(void *ctx, const void *elem1, const void *elem2);
+
 static inline void
 util_qsort_r(void *base, size_t nmemb, size_t size,
              int (*compar)(const void *, const void *, void *),
              void *arg)
 {
-#if HAVE_QSORT_R && !(DETECT_OS_APPLE || DETECT_OS_BSD)
+#if HAVE_QSORT_R
+#  if DETECT_OS_APPLE || DETECT_OS_BSD
+   /* BSD/macOS qsort_r takes "arg" before the comparison function and it
+    * pass the "arg" before the elements.
+    */
+   struct util_qsort_adapter_data data = {
+      compar,
+      arg
+   };
+   qsort_r(base, nmemb, size, &data, util_qsort_adapter);
+#  else
+   /* GNU extension added in glibc 2.8 */
    qsort_r(base, nmemb, size, compar, arg);
+#  endif
+#elif HAVE_QSORT_S
+#  ifdef _WIN32
+   /* MSVC/MinGW qsort_s takes "arg" after the comparison function and it
+    * pass the "arg" before the elements.
+    */
+   struct util_qsort_adapter_data data = {
+      compar,
+      arg
+   };
+   qsort_s(base, nmemb, size, util_qsort_adapter, &data);
+#  else
+   /* C11 added qsort_s */
+   qsort_s(base, nmemb, size, compar, arg);
+#  endif
 #else
+   /* Fall-back to using thread local storage */
    util_tls_qsort_r(base, nmemb, size, compar, arg);
 #endif
 }

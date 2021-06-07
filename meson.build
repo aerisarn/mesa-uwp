@@ -1310,7 +1310,7 @@ foreach h : ['xlocale.h', 'linux/futex.h', 'endian.h', 'dlfcn.h', 'execinfo.h', 
 endforeach
 
 foreach f : ['strtof', 'mkostemp', 'timespec_get', 'memfd_create', 'random_r',
-             'flock', 'strtok_r', 'getrandom', 'qsort_r']
+             'flock', 'strtok_r', 'getrandom', 'qsort_r', 'qsort_s']
   if cc.has_function(f)
     pre_args += '-DHAVE_@0@'.format(f.to_upper())
   endif
