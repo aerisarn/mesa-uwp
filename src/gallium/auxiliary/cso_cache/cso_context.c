@@ -1485,40 +1485,40 @@ cso_restore_state(struct cso_context *cso)
 
    assert(state_mask);
 
-   if (state_mask & CSO_BIT_BLEND)
-      cso_restore_blend(cso);
    if (state_mask & CSO_BIT_DEPTH_STENCIL_ALPHA)
       cso_restore_depth_stencil_alpha(cso);
-   if (state_mask & CSO_BIT_FRAGMENT_SAMPLERS)
-      cso_restore_fragment_samplers(cso);
+   if (state_mask & CSO_BIT_STENCIL_REF)
+      cso_restore_stencil_ref(cso);
    if (state_mask & CSO_BIT_FRAGMENT_SHADER)
       cso_restore_fragment_shader(cso);
-   if (state_mask & CSO_BIT_FRAMEBUFFER)
-      cso_restore_framebuffer(cso);
    if (state_mask & CSO_BIT_GEOMETRY_SHADER)
       cso_restore_geometry_shader(cso);
-   if (state_mask & CSO_BIT_MIN_SAMPLES)
-      cso_restore_min_samples(cso);
+   if (state_mask & CSO_BIT_TESSEVAL_SHADER)
+      cso_restore_tesseval_shader(cso);
+   if (state_mask & CSO_BIT_TESSCTRL_SHADER)
+      cso_restore_tessctrl_shader(cso);
+   if (state_mask & CSO_BIT_VERTEX_SHADER)
+      cso_restore_vertex_shader(cso);
+   if (state_mask & CSO_BIT_FRAGMENT_SAMPLERS)
+      cso_restore_fragment_samplers(cso);
+   if (state_mask & CSO_BIT_FRAMEBUFFER)
+      cso_restore_framebuffer(cso);
+   if (state_mask & CSO_BIT_BLEND)
+      cso_restore_blend(cso);
    if (state_mask & CSO_BIT_RASTERIZER)
       cso_restore_rasterizer(cso);
+   if (state_mask & CSO_BIT_MIN_SAMPLES)
+      cso_restore_min_samples(cso);
    if (state_mask & CSO_BIT_RENDER_CONDITION)
       cso_restore_render_condition(cso);
    if (state_mask & CSO_BIT_SAMPLE_MASK)
       cso_restore_sample_mask(cso);
-   if (state_mask & CSO_BIT_STENCIL_REF)
-      cso_restore_stencil_ref(cso);
-   if (state_mask & CSO_BIT_STREAM_OUTPUTS)
-      cso_restore_stream_outputs(cso);
-   if (state_mask & CSO_BIT_TESSCTRL_SHADER)
-      cso_restore_tessctrl_shader(cso);
-   if (state_mask & CSO_BIT_TESSEVAL_SHADER)
-      cso_restore_tesseval_shader(cso);
-   if (state_mask & CSO_BIT_VERTEX_ELEMENTS)
-      cso_restore_vertex_elements(cso);
-   if (state_mask & CSO_BIT_VERTEX_SHADER)
-      cso_restore_vertex_shader(cso);
    if (state_mask & CSO_BIT_VIEWPORT)
       cso_restore_viewport(cso);
+   if (state_mask & CSO_BIT_VERTEX_ELEMENTS)
+      cso_restore_vertex_elements(cso);
+   if (state_mask & CSO_BIT_STREAM_OUTPUTS)
+      cso_restore_stream_outputs(cso);
    if (state_mask & CSO_BIT_PAUSE_QUERIES)
       cso->pipe->set_active_query_state(cso->pipe, true);
 
