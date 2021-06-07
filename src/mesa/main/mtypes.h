@@ -947,7 +947,6 @@ struct gl_texture_object_attrib
  */
 struct gl_sampler_object
 {
-   simple_mtx_t Mutex;
    GLuint Name;
    GLchar *Label;               /**< GL_KHR_debug */
    GLint RefCount;
