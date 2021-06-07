@@ -2291,10 +2291,11 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         /* Suppress prefetch on Bifrost */
         memset(varyings + (xfb_base * ctx->streamout.num_targets), 0, sizeof(*varyings));
 
-        /* Emit the stream out buffers */
+        /* Emit the stream out buffers. We need enough room for all the
+         * vertices we emit across all instances */
 
-        unsigned out_count = u_stream_outputs_for_vertices(ctx->active_prim,
-                                                           ctx->vertex_count);
+        unsigned out_count = ctx->instance_count *
+                u_stream_outputs_for_vertices(ctx->active_prim, ctx->vertex_count);
 
         for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
                 panfrost_emit_streamout(batch, &varyings[xfb_base + i],
