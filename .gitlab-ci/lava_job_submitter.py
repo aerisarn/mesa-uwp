@@ -119,10 +119,12 @@ def get_job_results(proxy, job_id, test_suite, test_case):
 
     results_yaml = _call_proxy(proxy.results.get_testcase_results_yaml, job_id, test_suite, test_case)
     results = yaml.load(results_yaml, Loader=loader(False))
-    if results:
-        print_log("LAVA: result for test_suite '{}', test_case '{}': {}".format(test_suite, test_case, results[0]['result']))
-    else:
-        print_log("LAVA: no result for test_suite '{}', test_case '{}'".format(test_suite, test_case))
+    if not results:
+        sys.exit(log_msg("LAVA: no result for test_suite '{}', test_case '{}'".format(test_suite, test_case)))
+
+    print_log("LAVA: result for test_suite '{}', test_case '{}': {}".format(test_suite, test_case, results[0]['result']))
+    if results[0]['result'] != 'pass':
+        sys.exit(log_msg("FAIL"))
 
     return True
 
