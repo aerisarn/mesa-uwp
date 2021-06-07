@@ -912,13 +912,36 @@ descriptor_bo_copy(struct v3dv_descriptor_set *dst_set,
 }
 
 static void
-write_image_descriptor(VkDescriptorType desc_type,
+write_buffer_descriptor(struct v3dv_descriptor *descriptor,
+                        VkDescriptorType desc_type,
+                        const VkDescriptorBufferInfo *buffer_info)
+{
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, buffer_info->buffer);
+
+   descriptor->type = desc_type;
+   descriptor->buffer = buffer;
+   descriptor->offset = buffer_info->offset;
+   if (buffer_info->range == VK_WHOLE_SIZE) {
+      descriptor->range = buffer->size - buffer_info->offset;
+   } else {
+      assert(descriptor->range <= UINT32_MAX);
+      descriptor->range = buffer_info->range;
+   }
+}
+
+static void
+write_image_descriptor(struct v3dv_descriptor *descriptor,
+                       VkDescriptorType desc_type,
                        struct v3dv_descriptor_set *set,
                        const struct v3dv_descriptor_set_binding_layout *binding_layout,
                        struct v3dv_image_view *iview,
                        struct v3dv_sampler *sampler,
                        uint32_t array_index)
 {
+   descriptor->type = desc_type;
+   descriptor->sampler = sampler;
+   descriptor->image_view = iview;
+
    void *desc_map = descriptor_bo_map(set, binding_layout, array_index);
 
    if (iview) {
@@ -944,15 +967,18 @@ write_image_descriptor(VkDescriptorType desc_type,
 
 
 static void
-write_buffer_view_descriptor(VkDescriptorType desc_type,
+write_buffer_view_descriptor(struct v3dv_descriptor *descriptor,
+                             VkDescriptorType desc_type,
                              struct v3dv_descriptor_set *set,
                              const struct v3dv_descriptor_set_binding_layout *binding_layout,
                              struct v3dv_buffer_view *bview,
                              uint32_t array_index)
 {
-   void *desc_map = descriptor_bo_map(set, binding_layout, array_index);
-
    assert(bview);
+   descriptor->type = desc_type;
+   descriptor->buffer_view = bview;
+
+   void *desc_map = descriptor_bo_map(set, binding_layout, array_index);
 
    memcpy(desc_map,
           bview->texture_shader_state,
@@ -979,8 +1005,6 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
       descriptor += writeset->dstArrayElement;
 
       for (uint32_t j = 0; j < writeset->descriptorCount; ++j) {
-         descriptor->type = writeset->descriptorType;
-
          switch(writeset->descriptorType) {
 
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
@@ -988,16 +1012,8 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
             const VkDescriptorBufferInfo *buffer_info = writeset->pBufferInfo + j;
-            V3DV_FROM_HANDLE(v3dv_buffer, buffer, buffer_info->buffer);
-
-            descriptor->buffer = buffer;
-            descriptor->offset = buffer_info->offset;
-            if (buffer_info->range == VK_WHOLE_SIZE) {
-               descriptor->range = buffer->size - buffer_info->offset;
-            } else {
-               assert(descriptor->range <= UINT32_MAX);
-               descriptor->range = buffer_info->range;
-            }
+            write_buffer_descriptor(descriptor, writeset->descriptorType,
+                                    buffer_info);
             break;
          }
          case VK_DESCRIPTOR_TYPE_SAMPLER: {
@@ -1007,10 +1023,7 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
              */
             const VkDescriptorImageInfo *image_info = writeset->pImageInfo + j;
             V3DV_FROM_HANDLE(v3dv_sampler, sampler, image_info->sampler);
-
-            descriptor->sampler = sampler;
-
-            write_image_descriptor(writeset->descriptorType,
+            write_image_descriptor(descriptor, writeset->descriptorType,
                                    set, binding_layout, NULL, sampler,
                                    writeset->dstArrayElement + j);
 
@@ -1021,10 +1034,7 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
             const VkDescriptorImageInfo *image_info = writeset->pImageInfo + j;
             V3DV_FROM_HANDLE(v3dv_image_view, iview, image_info->imageView);
-
-            descriptor->image_view = iview;
-
-            write_image_descriptor(writeset->descriptorType,
+            write_image_descriptor(descriptor, writeset->descriptorType,
                                    set, binding_layout, iview, NULL,
                                    writeset->dstArrayElement + j);
 
@@ -1034,11 +1044,7 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
             const VkDescriptorImageInfo *image_info = writeset->pImageInfo + j;
             V3DV_FROM_HANDLE(v3dv_image_view, iview, image_info->imageView);
             V3DV_FROM_HANDLE(v3dv_sampler, sampler, image_info->sampler);
-
-            descriptor->image_view = iview;
-            descriptor->sampler = sampler;
-
-            write_image_descriptor(writeset->descriptorType,
+            write_image_descriptor(descriptor, writeset->descriptorType,
                                    set, binding_layout, iview, sampler,
                                    writeset->dstArrayElement + j);
 
@@ -1048,12 +1054,7 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
             V3DV_FROM_HANDLE(v3dv_buffer_view, buffer_view,
                              writeset->pTexelBufferView[j]);
-
-            assert(buffer_view);
-
-            descriptor->buffer_view = buffer_view;
-
-            write_buffer_view_descriptor(writeset->descriptorType,
+            write_buffer_view_descriptor(descriptor, writeset->descriptorType,
                                          set, binding_layout, buffer_view,
                                          writeset->dstArrayElement + j);
             break;
