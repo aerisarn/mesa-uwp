@@ -858,34 +858,45 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
    ac_nir_ngg_config out_conf = {0};
    const struct gfx10_ngg_info *ngg_info = &info->ngg_info;
    unsigned num_gs_invocations = (nir->info.stage != MESA_SHADER_GEOMETRY || ngg_info->max_vert_out_per_gs_instance) ? 1 : info->gs.invocations;
-   unsigned max_workgroup_size = MAX4(ngg_info->hw_max_esverts, /* Invocations that process an input vertex */
-                                      ngg_info->max_out_verts, /* Invocations that export an output vertex */
-                                      ngg_info->max_gsprims * num_gs_invocations, /* Invocations that process an input primitive */
-                                      ngg_info->max_gsprims * num_gs_invocations * ngg_info->prim_amp_factor /* Invocations that produce an output primitive */);
+   unsigned num_vertices_per_prim = 3;
+
+   /* Get the number of vertices per input primitive */
+   if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
+      if (nir->info.tess.point_mode)
+         num_vertices_per_prim = 1;
+      else if (nir->info.tess.primitive_mode == GL_ISOLINES)
+         num_vertices_per_prim = 2;
+   } else if (nir->info.stage == MESA_SHADER_VERTEX) {
+      /* Need to add 1, because: V_028A6C_POINTLIST=0, V_028A6C_LINESTRIP=1, V_028A6C_TRISTRIP=2, etc. */
+      num_vertices_per_prim = key->vs.outprim + 1;
+   } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+      num_vertices_per_prim = nir->info.gs.vertices_in;
+   } else {
+      unreachable("NGG needs to be VS, TES or GS.");
+   }
+
+   /* Invocations that process an input vertex */
+   unsigned max_vtx_in = MIN2(256, ngg_info->enable_vertex_grouping ? ngg_info->hw_max_esverts : num_vertices_per_prim * ngg_info->max_gsprims);
+   /* Invocations that export an output vertex */
+   unsigned max_vtx_out = ngg_info->max_out_verts;
+   /* Invocations that process an input primitive */
+   unsigned max_prm_in = ngg_info->max_gsprims * num_gs_invocations;
+   /* Invocations that produce an output primitive */
+   unsigned max_prm_out = ngg_info->max_gsprims * num_gs_invocations * ngg_info->prim_amp_factor;
+
+   unsigned max_workgroup_size = MAX4(max_vtx_in, max_vtx_out, max_prm_in, max_prm_out);
 
    /* Maximum HW limit for NGG workgroups */
-   assert(max_workgroup_size <= 256);
+   max_workgroup_size = MIN2(256, max_workgroup_size);
 
    if (nir->info.stage == MESA_SHADER_VERTEX ||
        nir->info.stage == MESA_SHADER_TESS_EVAL) {
       assert(key->vs_common_out.as_ngg);
 
-      unsigned num_vertices_per_prim = 3;
-
-      if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-         if (nir->info.tess.point_mode)
-            num_vertices_per_prim = 1;
-         else if (nir->info.tess.primitive_mode == GL_ISOLINES)
-            num_vertices_per_prim = 2;
-      } else if (nir->info.stage == MESA_SHADER_VERTEX) {
-         /* Need to add 1, because: V_028A6C_POINTLIST=0, V_028A6C_LINESTRIP=1, V_028A6C_TRISTRIP=2, etc. */
-         num_vertices_per_prim = key->vs.outprim + 1;
-      }
-
       out_conf =
          ac_nir_lower_ngg_nogs(
             nir,
-            ngg_info->hw_max_esverts,
+            max_vtx_in,
             num_vertices_per_prim,
             max_workgroup_size,
             info->wave_size,

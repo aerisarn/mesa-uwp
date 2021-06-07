@@ -235,6 +235,7 @@ struct gfx10_ngg_info {
    uint32_t vgt_esgs_ring_itemsize;
    uint32_t esgs_ring_size;
    bool max_vert_out_per_gs_instance;
+   bool enable_vertex_grouping;
 };
 
 struct radv_shader_info {

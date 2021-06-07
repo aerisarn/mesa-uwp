@@ -2183,6 +2183,7 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key, struct radv_pipeline *pi
    ngg->prim_amp_factor = prim_amp_factor;
    ngg->max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
    ngg->ngg_emit_size = max_gsprims * gsprim_lds_size;
+   ngg->enable_vertex_grouping = false;
 
    /* Don't count unusable vertices. */
    ngg->esgs_ring_size = MIN2(max_esverts, max_gsprims * max_verts_per_prim) * esvert_lds_size * 4;
@@ -4512,7 +4513,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
             pipeline->device->physical_device->rad_info.chip_class >= GFX10_3 ? 30 : 0));
 
    ge_cntl = S_03096C_PRIM_GRP_SIZE(ngg_state->max_gsprims) |
-             S_03096C_VERT_GRP_SIZE(256) | /* 256 = disable vertex grouping */
+             S_03096C_VERT_GRP_SIZE(ngg_state->enable_vertex_grouping ? ngg_state->hw_max_esverts : 256) | /* 256 = disable vertex grouping */
              S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
 
    /* Bug workaround for a possible hang with non-tessellation cases.
