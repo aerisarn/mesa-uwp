@@ -1258,7 +1258,31 @@ cso_set_samplers(struct cso_context *ctx,
       if (!templates[i])
          continue;
 
-      cso_single_sampler(ctx, shader_stage, i, templates[i]);
+      /* Reuse the same sampler state CSO if 2 consecutive sampler states
+       * are identical.
+       *
+       * The trivial case where both pointers are equal doesn't occur in
+       * frequented codepaths.
+       *
+       * Reuse rate:
+       * - Borderlands 2: 55%
+       * - Hitman: 65%
+       * - Rocket League: 75%
+       * - Tomb Raider: 50-65%
+       * - XCOM 2: 55%
+       */
+      if (last >= 0 &&
+          !memcmp(templates[i], templates[last],
+                  sizeof(struct pipe_sampler_state))) {
+         ctx->samplers[shader_stage].cso_samplers[i] =
+            ctx->samplers[shader_stage].cso_samplers[last];
+         ctx->samplers[shader_stage].samplers[i] =
+            ctx->samplers[shader_stage].samplers[last];
+      } else {
+         /* Look up the sampler state CSO. */
+         cso_set_sampler(ctx, shader_stage, i, templates[i]);
+      }
+
       last = i;
    }
 
