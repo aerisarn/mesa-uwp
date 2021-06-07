@@ -151,29 +151,29 @@ v3d-rpi4-piglit:armhf:
     PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_PROFILES: all
 
-v3dv-rpi4-vk:armhf:
+v3dv-rpi4-vk:arm64:
   extends:
-    - .baremetal-test-armhf
+    - .baremetal-test
     - .use-arm_test
     - .v3dv-rules
   parallel: 6
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
-    BM_BOOTFS: /boot/raspberrypi_armhf
+    BM_BOOTFS: /boot/raspberrypi_arm64
     BM_KERNEL_MODULES: v3d,vc4
     BM_POE_TIMEOUT: 300
-    BM_ROOTFS: /rootfs-armhf
-    CPU: arm7hlf
+    BM_ROOTFS: /rootfs-arm64
     DEQP_EXPECTED_RENDERER: "V3D 4.2"
     DEQP_FRACTION: 7
     DEQP_VER: vk
     GPU_VERSION: v3dv-rpi4
-    VK_CPU: arm7hlf
+    MINIO_ARTIFACT_NAME: mesa-arm64
     VK_DRIVER: broadcom
   script:
     - ./install/bare-metal/poe-powered.sh
   needs:
     - arm_test
-    - meson-armhf
+    - job: meson-arm64
+      artifacts: false
   tags:
     - igalia-rpi4
