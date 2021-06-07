@@ -105,16 +105,6 @@ glx@glx_ext_import_context@make current- single process,Fail
 glx@glx_ext_import_context@query context info,Fail
 glx@glx_ext_no_config_context@no fbconfig,Fail
 glx@glx_mesa_query_renderer@coverage,Fail
-object namespace pollution@program with glbitmap,Crash
-object namespace pollution@program with glblitframebuffer,Crash
-object namespace pollution@program with glclear,Crash
-object namespace pollution@program with glcopypixels,Crash
-object namespace pollution@program with glcopytexsubimage2d,Crash
-object namespace pollution@program with gldrawpixels,Crash
-object namespace pollution@program with glgeneratemipmap,Crash
-object namespace pollution@program with glgetteximage,Crash
-object namespace pollution@program with glgetteximage-compressed,Crash
-object namespace pollution@program with gltexsubimage2d,Crash
 shaders@glsl-bug-110796,Fail
 shaders@glsl-cos,Fail
 shaders@glsl-derivs,Fail
@@ -568,8 +558,6 @@ spec@arb_color_buffer_float@gl_rgba32f-render-sanity,Crash
 spec@arb_color_buffer_float@gl_rgba32f-render-sanity-fog,Crash
 spec@arb_color_buffer_float@gl_rgba8-render,Crash
 spec@arb_color_buffer_float@gl_rgba8-render-fog,Crash
-spec@arb_color_buffer_float@gl_rgba8-render-sanity,Crash
-spec@arb_color_buffer_float@gl_rgba8-render-sanity-fog,Crash
 spec@arb_color_buffer_float@gl_rgba8_snorm-render,Crash
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-fog,Crash
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity,Crash
@@ -611,17 +599,8 @@ spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT32- border 
 spec@arb_es2_compatibility@arb_es2_compatibility-drawbuffers,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor@GL_RGB565- border color only,Fail
-spec@arb_fragment_coord_conventions@fp-arb-fragment-coord-conventions-integer,Crash
-spec@arb_fragment_coord_conventions@fp-arb-fragment-coord-conventions-none,Crash
-spec@arb_fragment_program@fp-dst-aliasing-1,Crash
-spec@arb_fragment_program@fp-dst-aliasing-2,Crash
-spec@arb_fragment_program@fp-ex2-sat,Crash
-spec@arb_fragment_program@fp-fragment-position,Crash
 spec@arb_fragment_program@fp-indirections2,Fail
-spec@arb_fragment_program@fp-set-01,Crash
-spec@arb_fragment_program@kil-of-slt,Crash
 spec@arb_fragment_program@minmax,Fail
-spec@arb_fragment_program@trinity-fp1,Crash
 spec@arb_fragment_program_shadow@tex-shadow1d,Fail
 spec@arb_fragment_program_shadow@tex-shadow2d,Fail
 spec@arb_fragment_program_shadow@tex-shadow2drect,Fail
@@ -688,10 +667,6 @@ spec@arb_texture_rectangle@texwrap rect proj bordercolor,Fail
 spec@arb_texture_rectangle@texwrap rect proj bordercolor@GL_RGBA8- projected- border color only,Fail
 spec@arb_texture_storage@texture-storage,Fail
 spec@arb_texture_storage@texture-storage@2D mipmap rendering ,Fail
-spec@ati_fragment_shader@ati_fragment_shader-error09-allconst,Crash
-spec@ati_fragment_shader@ati_fragment_shader-error10-dotx,Crash
-spec@ati_fragment_shader@ati_fragment_shader-render-constants,Crash
-spec@ati_fragment_shader@ati_fragment_shader-render-fog,Crash
 spec@ati_fragment_shader@ati_fragment_shader-render-ops,Fail
 spec@ati_fragment_shader@ati_fragment_shader-render-ops@mov 8*c0,Fail
 spec@egl 1.4@eglterminate then unbind context,Fail

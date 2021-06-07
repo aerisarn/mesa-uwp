@@ -961,11 +961,12 @@ static void i915_translate_token(struct i915_fp_compile *p,
    struct i915_fragment_shader *ifs = p->shader;
    switch( token->Token.Type ) {
    case TGSI_TOKEN_TYPE_PROPERTY:
-      /*
-       * We only support one cbuf, but we still need to ignore the property
-       * correctly so we don't hit the assert at the end of the switch case.
-       */
+      /* Ignore properties where we only support one value. */
       assert(token->FullProperty.Property.PropertyName ==
+             TGSI_PROPERTY_FS_COORD_ORIGIN ||
+             token->FullProperty.Property.PropertyName ==
+             TGSI_PROPERTY_FS_COORD_PIXEL_CENTER ||
+             token->FullProperty.Property.PropertyName ==
              TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS);
       break;
 
