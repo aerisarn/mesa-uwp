@@ -342,10 +342,12 @@ static int conv_dynamic_state_idx(VkDynamicState dyn_state)
 {
    if (dyn_state <= VK_DYNAMIC_STATE_STENCIL_REFERENCE)
       return dyn_state;
-
+   if (dyn_state == VK_DYNAMIC_STATE_LINE_STIPPLE_EXT)
+      /* this one has a weird id, map after the normal dynamic state ones */
+      return VK_DYNAMIC_STATE_STENCIL_REFERENCE + 1;
    if (dyn_state >= VK_DYNAMIC_STATE_CULL_MODE_EXT &&
        dyn_state <= VK_DYNAMIC_STATE_STENCIL_OP_EXT)
-      return dyn_state - VK_DYNAMIC_STATE_CULL_MODE_EXT + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 1;
+      return dyn_state - VK_DYNAMIC_STATE_CULL_MODE_EXT + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2;
    assert(0);
    return -1;
 }
@@ -354,7 +356,7 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
                                      struct rendering_state *state)
 {
    struct lvp_pipeline *pipeline = cmd->u.pipeline.pipeline;
-   bool dynamic_states[VK_DYNAMIC_STATE_STENCIL_REFERENCE+13];
+   bool dynamic_states[VK_DYNAMIC_STATE_STENCIL_REFERENCE+32];
    unsigned fb_samples = 0;
 
    memset(dynamic_states, 0, sizeof(dynamic_states));
@@ -438,6 +440,10 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
 
       if (!dynamic_states[VK_DYNAMIC_STATE_LINE_WIDTH])
          state->rs_state.line_width = rsc->lineWidth;
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_LINE_STIPPLE_EXT)]) {
+         state->rs_state.line_stipple_factor = pipeline->line_stipple_factor;
+         state->rs_state.line_stipple_pattern = pipeline->line_stipple_pattern;
+      }
 
       if (!dynamic_states[VK_DYNAMIC_STATE_DEPTH_BIAS]) {
          state->rs_state.offset_units = rsc->depthBiasConstantFactor;

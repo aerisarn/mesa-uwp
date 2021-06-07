@@ -479,6 +479,10 @@ struct lvp_pipeline {
    void *shader_cso[PIPE_SHADER_TYPES];
    VkGraphicsPipelineCreateInfo graphics_create_info;
    VkComputePipelineCreateInfo compute_create_info;
+   uint32_t line_stipple_factor;
+   uint16_t line_stipple_pattern;
+   bool line_stipple_enable;
+   bool line_smooth;
    bool provoking_vertex_last;
 };
 
