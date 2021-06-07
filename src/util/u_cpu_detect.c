@@ -86,6 +86,9 @@
 #endif
 #endif
 
+#if defined(HAS_SCHED_H)
+#include <sched.h>
+#endif
 
 DEBUG_GET_ONCE_BOOL_OPTION(dump_cpu, "GALLIUM_DUMP_CPU", false)
 
@@ -573,12 +576,29 @@ util_cpu_detect_once(void)
       available_cpus = MAX2(1, system_info.dwNumberOfProcessors);
    }
 #elif defined(PIPE_OS_UNIX)
+#  if defined(HAS_SCHED_GETAFFINITY)
+   {
+      /* sched_setaffinity() can be used to further restrict the number of
+       * CPUs on which the process can run.  Use sched_getaffinity() to
+       * determine the true number of available CPUs.
+       *
+       * FIXME: The Linux manual page for sched_getaffinity describes how this
+       * simple implementation will fail with > 1024 CPUs, and we'll fall back
+       * to the _SC_NPROCESSORS_ONLN path.  Support for > 1024 CPUs can be
+       * added to this path once someone has such a system for testing.
+       */
+      cpu_set_t affin;
+      if (sched_getaffinity(getpid(), sizeof(affin), &affin) == 0)
+         available_cpus = CPU_COUNT(&affin);
+   }
+#  endif
+
    /* Linux, FreeBSD, DragonFly, and Mac OS X should have
     * _SC_NOPROCESSORS_ONLN.  NetBSD and OpenBSD should have HW_NCPUONLINE.
     * This is what FFmpeg uses on those platforms.
     */
 #  if defined(PIPE_OS_BSD) && defined(HW_NCPUONLINE)
-   {
+   if (available_cpus == 0) {
       const int mib[] = { CTL_HW, HW_NCPUONLINE };
       int ncpu;
       int len = sizeof(ncpu);
@@ -587,11 +607,13 @@ util_cpu_detect_once(void)
       available_cpus = ncpu;
    }
 #  elif defined(_SC_NPROCESSORS_ONLN)
-   available_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-   if (available_cpus == ~0)
-      available_cpus = 1;
+   if (available_cpus == 0) {
+      available_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+      if (available_cpus == ~0)
+         available_cpus = 1;
+   }
 #  elif defined(PIPE_OS_BSD)
-   {
+   if (available_cpus == 0) {
       const int mib[] = { CTL_HW, HW_NCPU };
       int ncpu;
       int len = sizeof(ncpu);
