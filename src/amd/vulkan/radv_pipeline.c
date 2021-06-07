@@ -1790,6 +1790,10 @@ radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
       S_028810_ZCLIP_FAR_DISABLE(depth_clip_disable ? 1 : 0) |
       S_028810_DX_RASTERIZATION_KILL(raster_info->rasterizerDiscardEnable ? 1 : 0) |
       S_028810_DX_LINEAR_ATTR_CLIP_ENA(1);
+
+   pipeline->graphics.uses_conservative_overestimate =
+      radv_get_conservative_raster_mode(pCreateInfo->pRasterizationState) ==
+         VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
 }
 
 static void
@@ -5441,6 +5445,9 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
    pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
 
    pipeline->graphics.is_ngg = radv_pipeline_has_ngg(pipeline);
+   pipeline->graphics.has_ngg_culling =
+      pipeline->graphics.is_ngg &&
+      pipeline->shaders[pipeline->graphics.last_vgt_api_stage]->info.has_ngg_culling;
 
    radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend);
 
