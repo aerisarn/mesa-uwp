@@ -942,14 +942,10 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
    }
 
    /* restore state */
-   cso_restore_state(cso);
-
    /* Unbind all because st/mesa won't do it if the current shader doesn't
     * use them.
     */
-   pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0,
-                           st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
-                           false, NULL);
+   cso_restore_state(cso, CSO_UNBIND_FS_SAMPLERVIEWS);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
    st->dirty |= ST_NEW_VERTEX_ARRAYS |

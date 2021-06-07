@@ -348,7 +348,7 @@ st_DrawTex(struct gl_context *ctx, GLfloat x, GLfloat y, GLfloat z,
    pipe_resource_reference(&vbuffer, NULL);
 
    /* restore state */
-   cso_restore_state(cso);
+   cso_restore_state(cso, 0);
    st->dirty |= ST_NEW_VERTEX_ARRAYS;
 }
 

@@ -1655,14 +1655,10 @@ try_pbo_upload_common(struct gl_context *ctx,
    success = st_pbo_draw(st, addr, surface->width, surface->height);
 
 fail:
-   cso_restore_state(cso);
-
    /* Unbind all because st/mesa won't do it if the current shader doesn't
     * use them.
     */
-   pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0,
-                           st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
-                           false, NULL);
+   cso_restore_state(cso, CSO_UNBIND_FS_SAMPLERVIEWS);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
    st->dirty |= ST_NEW_VERTEX_ARRAYS |
@@ -1949,16 +1945,11 @@ try_pbo_download(struct st_context *st,
    pipe->memory_barrier(pipe, PIPE_BARRIER_IMAGE | PIPE_BARRIER_TEXTURE | PIPE_BARRIER_FRAMEBUFFER);
 
 fail:
-   cso_restore_state(cso);
-
    /* Unbind all because st/mesa won't do it if the current shader doesn't
     * use them.
     */
-   pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0,
-                           st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
-                           false, NULL);
+   cso_restore_state(cso, CSO_UNBIND_FS_SAMPLERVIEWS | CSO_UNBIND_FS_IMAGE0);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
-   pipe->set_shader_images(pipe, PIPE_SHADER_FRAGMENT, 0, 0, 1, NULL);
 
    st->dirty |= ST_NEW_FS_CONSTANTS |
                 ST_NEW_FS_IMAGES |
