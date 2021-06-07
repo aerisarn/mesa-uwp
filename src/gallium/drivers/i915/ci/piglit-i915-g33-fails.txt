@@ -741,7 +741,6 @@ spec@glsl-1.10@execution@variable-indexing@fs-input-array-vec4-index-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat2-index-col-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat3-index-col-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat3-index-col-wr,Fail
-spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat3-index-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat3-index-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-wr,Fail
