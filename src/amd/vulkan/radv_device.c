@@ -456,6 +456,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_external_memory_dma_buf = true,
       .EXT_external_memory_host = device->rad_info.has_userptr,
       .EXT_global_priority = true,
+      .EXT_global_priority_query = true,
       .EXT_host_query_reset = true,
       .EXT_image_drm_format_modifier = device->rad_info.chip_class >= GFX9,
       .EXT_image_robustness = true,
@@ -1588,6 +1589,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->extendedDynamicState2PatchControlPoints = false;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_EXT: {
+         VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT *features =
+            (VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT *)ext;
+         features->globalPriorityQuery = true;
+         break;
+      }
       default:
          break;
       }
@@ -2331,6 +2338,13 @@ radv_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice, uin
    assert(*pCount <= 3);
 }
 
+static const VkQueueGlobalPriorityEXT radv_global_queue_priorities[] = {
+   VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT,
+   VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT,
+   VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT,
+   VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT,
+};
+
 void
 radv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice, uint32_t *pCount,
                                              VkQueueFamilyProperties2 *pQueueFamilyProperties)
@@ -2347,6 +2361,24 @@ radv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice, ui
    };
    radv_get_physical_device_queue_family_properties(pdevice, pCount, properties);
    assert(*pCount <= 3);
+
+   for (uint32_t i = 0; i < *pCount; i++) {
+      vk_foreach_struct(ext, pQueueFamilyProperties[i].pNext)
+      {
+         switch (ext->sType) {
+         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_EXT: {
+            VkQueueFamilyGlobalPriorityPropertiesEXT *prop =
+               (VkQueueFamilyGlobalPriorityPropertiesEXT *)ext;
+            STATIC_ASSERT(ARRAY_SIZE(radv_global_queue_priorities) <= VK_MAX_GLOBAL_PRIORITY_SIZE_EXT);
+            prop->priorityCount = ARRAY_SIZE(radv_global_queue_priorities);
+            memcpy(&prop->priorities, radv_global_queue_priorities, sizeof(radv_global_queue_priorities));
+            break;
+         }
+         default:
+            break;
+         }
+      }
+   }
 }
 
 void

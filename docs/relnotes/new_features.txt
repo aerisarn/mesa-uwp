@@ -1,5 +1,6 @@
 zink supports GL_ARB_texture_filter_minmax, GL_ARB_shader_clock
 VK_EXT_provoking_vertex on RADV.
 VK_EXT_extended_dynamic_state2 on RADV.
+VK_EXT_global_priority_query on RADV.
 32-bit x86 builds now default disable x87 math and use sse2.
 GL ES 3.1 on GT21x hardware.
