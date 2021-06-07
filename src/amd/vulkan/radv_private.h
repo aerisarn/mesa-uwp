@@ -1637,6 +1637,9 @@ radv_get_descriptors_state(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoi
    }
 }
 
+void
+radv_get_viewport_xform(const VkViewport *viewport, float scale[3], float translate[3]);
+
 /*
  * Takes x,y,z as exact numbers of invocations, instead of blocks.
  *

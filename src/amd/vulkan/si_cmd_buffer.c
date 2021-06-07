@@ -648,8 +648,8 @@ fail:
    device->ws->cs_destroy(cs);
 }
 
-static void
-get_viewport_xform(const VkViewport *viewport, float scale[3], float translate[3])
+void
+radv_get_viewport_xform(const VkViewport *viewport, float scale[3], float translate[3])
 {
    float x = viewport->x;
    float y = viewport->y;
@@ -678,7 +678,7 @@ si_write_viewport(struct radeon_cmdbuf *cs, int first_vp, int count, const VkVie
    for (i = 0; i < count; i++) {
       float scale[3], translate[3];
 
-      get_viewport_xform(&viewports[i], scale, translate);
+      radv_get_viewport_xform(&viewports[i], scale, translate);
       radeon_emit(cs, fui(scale[0]));
       radeon_emit(cs, fui(translate[0]));
       radeon_emit(cs, fui(scale[1]));
@@ -702,7 +702,7 @@ si_scissor_from_viewport(const VkViewport *viewport)
    float scale[3], translate[3];
    VkRect2D rect;
 
-   get_viewport_xform(viewport, scale, translate);
+   radv_get_viewport_xform(viewport, scale, translate);
 
    rect.offset.x = translate[0] - fabsf(scale[0]);
    rect.offset.y = translate[1] - fabsf(scale[1]);
@@ -740,7 +740,7 @@ si_write_scissors(struct radeon_cmdbuf *cs, int first, int count, const VkRect2D
       VkRect2D viewport_scissor = si_scissor_from_viewport(viewports + i);
       VkRect2D scissor = si_intersect_scissor(&scissors[i], &viewport_scissor);
 
-      get_viewport_xform(viewports + i, scale, translate);
+      radv_get_viewport_xform(viewports + i, scale, translate);
       scale[0] = fabsf(scale[0]);
       scale[1] = fabsf(scale[1]);
 
