@@ -313,7 +313,6 @@ _mesa_initialize_texture_object( struct gl_context *ctx,
 
    memset(obj, 0, sizeof(*obj));
    /* init the non-zero fields */
-   simple_mtx_init(&obj->Mutex, mtx_plain);
    obj->RefCount = 1;
    obj->Name = name;
    obj->Target = target;
@@ -449,10 +448,6 @@ _mesa_delete_texture_object(struct gl_context *ctx,
    _mesa_delete_texture_handles(ctx, texObj);
 
    _mesa_reference_buffer_object_shared(ctx, &texObj->BufferObject, NULL);
-
-   /* destroy the mutex -- it may have allocated memory (eg on bsd) */
-   simple_mtx_destroy(&texObj->Mutex);
-
    free(texObj->Label);
 
    /* free this object */
@@ -538,20 +533,14 @@ _mesa_reference_texobj_(struct gl_texture_object **ptr,
 
    if (*ptr) {
       /* Unreference the old texture */
-      GLboolean deleteFlag = GL_FALSE;
       struct gl_texture_object *oldTex = *ptr;
 
       assert(valid_texture_object(oldTex));
       (void) valid_texture_object; /* silence warning in release builds */
 
-      simple_mtx_lock(&oldTex->Mutex);
       assert(oldTex->RefCount > 0);
-      oldTex->RefCount--;
 
-      deleteFlag = (oldTex->RefCount == 0);
-      simple_mtx_unlock(&oldTex->Mutex);
-
-      if (deleteFlag) {
+      if (p_atomic_dec_zero(&oldTex->RefCount)) {
          /* Passing in the context drastically changes the driver code for
           * framebuffer deletion.
           */
@@ -561,21 +550,17 @@ _mesa_reference_texobj_(struct gl_texture_object **ptr,
          else
             _mesa_problem(NULL, "Unable to delete texture, no context");
       }
-
-      *ptr = NULL;
    }
-   assert(!*ptr);
 
    if (tex) {
       /* reference new texture */
       assert(valid_texture_object(tex));
-      simple_mtx_lock(&tex->Mutex);
       assert(tex->RefCount > 0);
 
-      tex->RefCount++;
-      *ptr = tex;
-      simple_mtx_unlock(&tex->Mutex);
+      p_atomic_inc(&tex->RefCount);
    }
+
+   *ptr = tex;
 }
 
 
