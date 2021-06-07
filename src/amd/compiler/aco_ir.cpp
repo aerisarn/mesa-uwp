@@ -228,10 +228,17 @@ bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr)
       }
    }
 
+   if (!instr->definitions.empty() && instr->definitions[0].bytes() > 4)
+      return false;
+
    if (!instr->operands.empty()) {
       if (instr->operands[0].isLiteral())
          return false;
       if (chip < GFX9 && !instr->operands[0].isOfType(RegType::vgpr))
+         return false;
+      if (instr->operands[0].bytes() > 4)
+         return false;
+      if (instr->operands.size() > 1 && instr->operands[1].bytes() > 4)
          return false;
    }
 
