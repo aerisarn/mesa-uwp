@@ -671,23 +671,8 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    ralloc_steal(mem_ctx, g);
 
    /* Set up the payload nodes */
-   for (int i = 0; i < payload_node_count; i++) {
-      /* Mark each payload node as being allocated to its physical register.
-       *
-       * The alternative would be to have per-physical-register classes, which
-       * would just be silly.
-       */
-      if (devinfo->ver <= 5 && fs->dispatch_width >= 16) {
-         /* We have to divide by 2 here because we only have even numbered
-          * registers.  Some of the payload registers will be odd, but
-          * that's ok because their physical register numbers have already
-          * been assigned.  The only thing this is used for is interference.
-          */
-         ra_set_node_reg(g, first_payload_node + i, i / 2);
-      } else {
-         ra_set_node_reg(g, first_payload_node + i, i);
-      }
-   }
+   for (int i = 0; i < payload_node_count; i++)
+      ra_set_node_reg(g, first_payload_node + i, i);
 
    if (first_mrf_hack_node >= 0) {
       /* Mark each MRF reg node as being allocated to its physical
