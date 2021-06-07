@@ -329,7 +329,7 @@ setup_gralloc0_usage(struct tu_device *device, VkFormat format,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_GetSwapchainGrallocUsageANDROID(VkDevice device_h,
                                    VkFormat format,
                                    VkImageUsageFlags imageUsage,
@@ -347,7 +347,7 @@ tu_GetSwapchainGrallocUsageANDROID(VkDevice device_h,
 }
 
 #if ANDROID_API_LEVEL >= 26
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_GetSwapchainGrallocUsage2ANDROID(VkDevice device_h,
                                     VkFormat format,
                                     VkImageUsageFlags imageUsage,
@@ -393,7 +393,7 @@ tu_GetSwapchainGrallocUsage2ANDROID(VkDevice device_h,
 }
 #endif
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_AcquireImageANDROID(VkDevice device,
                        VkImage image_h,
                        int nativeFenceFd,

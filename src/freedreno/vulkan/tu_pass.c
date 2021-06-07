@@ -486,7 +486,7 @@ is_depth_stencil_resolve_enabled(const VkSubpassDescriptionDepthStencilResolve *
    return false;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateRenderPass2(VkDevice _device,
                      const VkRenderPassCreateInfo2KHR *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator,
@@ -667,7 +667,7 @@ tu_CreateRenderPass2(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_DestroyRenderPass(VkDevice _device,
                      VkRenderPass _pass,
                      const VkAllocationCallbacks *pAllocator)
@@ -682,7 +682,7 @@ tu_DestroyRenderPass(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, pass);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_GetRenderAreaGranularity(VkDevice _device,
                             VkRenderPass renderPass,
                             VkExtent2D *pGranularity)

@@ -473,7 +473,7 @@ end:
    out_properties->bufferFeatures = buffer;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_GetPhysicalDeviceFormatProperties2(
    VkPhysicalDevice physicalDevice,
    VkFormat format,
@@ -722,7 +722,7 @@ tu_get_external_image_format_properties(
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_GetPhysicalDeviceImageFormatProperties2(
    VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceImageFormatInfo2 *base_info,
@@ -824,7 +824,7 @@ fail:
    return result;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_GetPhysicalDeviceSparseImageFormatProperties2(
    VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceSparseImageFormatInfo2 *pFormatInfo,
@@ -835,7 +835,7 @@ tu_GetPhysicalDeviceSparseImageFormatProperties2(
    *pPropertyCount = 0;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_GetPhysicalDeviceExternalBufferProperties(
    VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceExternalBufferInfo *pExternalBufferInfo,

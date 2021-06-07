@@ -3043,7 +3043,7 @@ tu_graphics_pipeline_create(VkDevice device,
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateGraphicsPipelines(VkDevice device,
                            VkPipelineCache pipelineCache,
                            uint32_t count,
@@ -3157,7 +3157,7 @@ fail:
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateComputePipelines(VkDevice device,
                           VkPipelineCache pipelineCache,
                           uint32_t count,
@@ -3178,7 +3178,7 @@ tu_CreateComputePipelines(VkDevice device,
    return final_result;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_DestroyPipeline(VkDevice _device,
                    VkPipeline _pipeline,
                    const VkAllocationCallbacks *pAllocator)
@@ -3208,7 +3208,7 @@ tu_pipeline_get_executable(struct tu_pipeline *pipeline, uint32_t index)
       &pipeline->executables, struct tu_pipeline_executable, index);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_GetPipelineExecutablePropertiesKHR(
       VkDevice _device,
       const VkPipelineInfoKHR* pPipelineInfo,
@@ -3239,7 +3239,7 @@ tu_GetPipelineExecutablePropertiesKHR(
    return vk_outarray_status(&out);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_GetPipelineExecutableStatisticsKHR(
       VkDevice _device,
       const VkPipelineExecutableInfoKHR* pExecutableInfo,
@@ -3374,7 +3374,7 @@ write_ir_text(VkPipelineExecutableInternalRepresentationKHR* ir,
    return true;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_GetPipelineExecutableInternalRepresentationsKHR(
     VkDevice _device,
     const VkPipelineExecutableInfoKHR* pExecutableInfo,

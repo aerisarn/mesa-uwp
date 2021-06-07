@@ -499,7 +499,7 @@ ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
    return true;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateImage(VkDevice _device,
                const VkImageCreateInfo *pCreateInfo,
                const VkAllocationCallbacks *alloc,
@@ -725,7 +725,7 @@ invalid_layout:
    return vk_error(device->instance, VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_DestroyImage(VkDevice _device,
                 VkImage _image,
                 const VkAllocationCallbacks *pAllocator)
@@ -744,7 +744,7 @@ tu_DestroyImage(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, image);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_GetImageSubresourceLayout(VkDevice _device,
                              VkImage _image,
                              const VkImageSubresource *pSubresource,
@@ -771,7 +771,8 @@ tu_GetImageSubresourceLayout(VkDevice _device,
    }
 }
 
-VkResult tu_GetImageDrmFormatModifierPropertiesEXT(
+VKAPI_ATTR VkResult VKAPI_CALL
+tu_GetImageDrmFormatModifierPropertiesEXT(
     VkDevice                                    device,
     VkImage                                     _image,
     VkImageDrmFormatModifierPropertiesEXT*      pProperties)
@@ -791,7 +792,7 @@ VkResult tu_GetImageDrmFormatModifierPropertiesEXT(
 }
 
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateImageView(VkDevice _device,
                    const VkImageViewCreateInfo *pCreateInfo,
                    const VkAllocationCallbacks *pAllocator,
@@ -812,7 +813,7 @@ tu_CreateImageView(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_DestroyImageView(VkDevice _device,
                     VkImageView _iview,
                     const VkAllocationCallbacks *pAllocator)
@@ -874,7 +875,7 @@ tu_buffer_view_init(struct tu_buffer_view *view,
    view->descriptor[5] = iova >> 32;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateBufferView(VkDevice _device,
                     const VkBufferViewCreateInfo *pCreateInfo,
                     const VkAllocationCallbacks *pAllocator,
@@ -895,7 +896,7 @@ tu_CreateBufferView(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_DestroyBufferView(VkDevice _device,
                      VkBufferView bufferView,
                      const VkAllocationCallbacks *pAllocator)

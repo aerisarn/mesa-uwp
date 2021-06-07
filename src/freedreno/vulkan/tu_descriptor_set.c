@@ -73,7 +73,7 @@ descriptor_size(VkDescriptorType type)
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateDescriptorSetLayout(
    VkDevice _device,
    const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
@@ -228,7 +228,7 @@ tu_CreateDescriptorSetLayout(
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_DestroyDescriptorSetLayout(VkDevice _device,
                               VkDescriptorSetLayout _set_layout,
                               const VkAllocationCallbacks *pAllocator)
@@ -242,7 +242,7 @@ tu_DestroyDescriptorSetLayout(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, set_layout);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_GetDescriptorSetLayoutSupport(
    VkDevice device,
    const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
@@ -308,7 +308,7 @@ tu_GetDescriptorSetLayoutSupport(
  * just multiple descriptor set layouts pasted together.
  */
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreatePipelineLayout(VkDevice _device,
                         const VkPipelineLayoutCreateInfo *pCreateInfo,
                         const VkAllocationCallbacks *pAllocator,
@@ -353,7 +353,7 @@ tu_CreatePipelineLayout(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_DestroyPipelineLayout(VkDevice _device,
                          VkPipelineLayout _pipelineLayout,
                          const VkAllocationCallbacks *pAllocator)
@@ -507,7 +507,7 @@ tu_descriptor_set_destroy(struct tu_device *device,
    vk_object_free(&device->vk, NULL, set);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateDescriptorPool(VkDevice _device,
                         const VkDescriptorPoolCreateInfo *pCreateInfo,
                         const VkAllocationCallbacks *pAllocator,
@@ -578,7 +578,7 @@ fail_alloc:
    return ret;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_DestroyDescriptorPool(VkDevice _device,
                          VkDescriptorPool _pool,
                          const VkAllocationCallbacks *pAllocator)
@@ -601,7 +601,7 @@ tu_DestroyDescriptorPool(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, pool);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_ResetDescriptorPool(VkDevice _device,
                        VkDescriptorPool descriptorPool,
                        VkDescriptorPoolResetFlags flags)
@@ -622,7 +622,7 @@ tu_ResetDescriptorPool(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_AllocateDescriptorSets(VkDevice _device,
                           const VkDescriptorSetAllocateInfo *pAllocateInfo,
                           VkDescriptorSet *pDescriptorSets)
@@ -670,7 +670,7 @@ tu_AllocateDescriptorSets(VkDevice _device,
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_FreeDescriptorSets(VkDevice _device,
                       VkDescriptorPool descriptorPool,
                       uint32_t count,
@@ -936,7 +936,7 @@ tu_update_descriptor_sets(const struct tu_device *device,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_UpdateDescriptorSets(VkDevice _device,
                         uint32_t descriptorWriteCount,
                         const VkWriteDescriptorSet *pDescriptorWrites,
@@ -949,7 +949,7 @@ tu_UpdateDescriptorSets(VkDevice _device,
                              descriptorCopyCount, pDescriptorCopies);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateDescriptorUpdateTemplate(
    VkDevice _device,
    const VkDescriptorUpdateTemplateCreateInfo *pCreateInfo,
@@ -1034,7 +1034,7 @@ tu_CreateDescriptorUpdateTemplate(
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_DestroyDescriptorUpdateTemplate(
    VkDevice _device,
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
@@ -1122,7 +1122,7 @@ tu_update_descriptor_set_with_template(
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_UpdateDescriptorSetWithTemplate(
    VkDevice _device,
    VkDescriptorSet descriptorSet,
@@ -1135,7 +1135,7 @@ tu_UpdateDescriptorSetWithTemplate(
    tu_update_descriptor_set_with_template(device, set, descriptorUpdateTemplate, pData);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateSamplerYcbcrConversion(
    VkDevice _device,
    const VkSamplerYcbcrConversionCreateInfo *pCreateInfo,
@@ -1162,7 +1162,7 @@ tu_CreateSamplerYcbcrConversion(
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_DestroySamplerYcbcrConversion(VkDevice _device,
                                  VkSamplerYcbcrConversion ycbcrConversion,
                                  const VkAllocationCallbacks *pAllocator)

@@ -1215,7 +1215,7 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
    ops->teardown(cmd, cs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdBlitImage(VkCommandBuffer commandBuffer,
                 VkImage srcImage,
                 VkImageLayout srcImageLayout,
@@ -1337,7 +1337,7 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
    ops->teardown(cmd, cs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
                         VkBuffer srcBuffer,
                         VkImage dstImage,
@@ -1409,7 +1409,7 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
    ops->teardown(cmd, cs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
                         VkImage srcImage,
                         VkImageLayout srcImageLayout,
@@ -1623,7 +1623,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
    ops->teardown(cmd, cs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdCopyImage(VkCommandBuffer commandBuffer,
                 VkImage srcImage,
                 VkImageLayout srcImageLayout,
@@ -1683,7 +1683,7 @@ copy_buffer(struct tu_cmd_buffer *cmd,
    ops->teardown(cmd, cs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdCopyBuffer(VkCommandBuffer commandBuffer,
                  VkBuffer srcBuffer,
                  VkBuffer dstBuffer,
@@ -1702,7 +1702,7 @@ tu_CmdCopyBuffer(VkCommandBuffer commandBuffer,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
                    VkBuffer dstBuffer,
                    VkDeviceSize dstOffset,
@@ -1723,7 +1723,7 @@ tu_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
    copy_buffer(cmd, tu_buffer_iova(buffer) + dstOffset, tmp.iova, dataSize, 4);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdFillBuffer(VkCommandBuffer commandBuffer,
                  VkBuffer dstBuffer,
                  VkDeviceSize dstOffset,
@@ -1759,7 +1759,7 @@ tu_CmdFillBuffer(VkCommandBuffer commandBuffer,
    ops->teardown(cmd, cs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdResolveImage(VkCommandBuffer commandBuffer,
                    VkImage srcImage,
                    VkImageLayout srcImageLayout,
@@ -1912,7 +1912,7 @@ clear_image(struct tu_cmd_buffer *cmd,
    ops->teardown(cmd, cs);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdClearColorImage(VkCommandBuffer commandBuffer,
                       VkImage image_h,
                       VkImageLayout imageLayout,
@@ -1927,7 +1927,7 @@ tu_CmdClearColorImage(VkCommandBuffer commandBuffer,
       clear_image(cmd, image, (const VkClearValue*) pColor, pRanges + i, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
                              VkImage image_h,
                              VkImageLayout imageLayout,
@@ -2279,7 +2279,7 @@ tu_clear_gmem_attachments(struct tu_cmd_buffer *cmd,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
                        uint32_t attachmentCount,
                        const VkClearAttachment *pAttachments,
