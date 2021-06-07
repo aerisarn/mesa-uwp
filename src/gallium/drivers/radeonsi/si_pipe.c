@@ -35,6 +35,7 @@
 #include "sid.h"
 #include "ac_shadowed_regs.h"
 #include "util/disk_cache.h"
+#include "util/u_cpu_detect.h"
 #include "util/u_log.h"
 #include "util/u_memory.h"
 #include "util/u_suballoc.h"
@@ -1099,7 +1100,8 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    si_disk_cache_create(sscreen);
 
    /* Determine the number of shader compiler threads. */
-   hw_threads = sysconf(_SC_NPROCESSORS_ONLN);
+   const struct util_cpu_caps_t *caps = util_get_cpu_caps();
+   hw_threads = caps->nr_cpus;
 
    if (hw_threads >= 12) {
       num_comp_hi_threads = hw_threads * 3 / 4;
