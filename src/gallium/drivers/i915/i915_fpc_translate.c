@@ -976,7 +976,6 @@ static void i915_translate_token(struct i915_fp_compile *p,
          for (i = token->FullDeclaration.Range.First;
               i <= MIN2(token->FullDeclaration.Range.Last, I915_MAX_CONSTANT - 1);
               i++) {
-            assert(ifs->constant_flags[i] == 0x0);
             ifs->constant_flags[i] = I915_CONSTFLAG_USER;
             ifs->num_constants = MAX2(ifs->num_constants, i + 1);
          }
