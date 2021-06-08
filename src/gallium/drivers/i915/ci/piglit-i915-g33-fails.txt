@@ -1432,6 +1432,3 @@ spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-lines,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-quad_strip,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-quads,Fail
-wgl@wgl-multi-context-single-window,Fail
-wgl@wgl-multi-window-single-context,Fail
-wgl@wgl-sanity,Fail

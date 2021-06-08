@@ -1688,9 +1688,6 @@ spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16F,Fai
 spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16I,Fail
 spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16UI,Fail
 spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16_SNORM,Fail
-wgl@wgl-multi-context-single-window,Fail
-wgl@wgl-multi-window-single-context,Fail
-wgl@wgl-sanity,Fail
 spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-mixed-const-non-const-uniform-index,Crash
 spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-mixed-const-non-const-uniform-index2,Crash
 spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-non-const-uniform-index,Crash

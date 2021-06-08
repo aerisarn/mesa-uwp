@@ -1205,6 +1205,3 @@ spec@khr_texture_compression_astc@miptree-gles ldr@LDR Profile,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb-fp,Fail
 spec@oes_compressed_etc1_rgb8_texture@miptree,Fail
-wgl@wgl-multi-context-single-window,Fail
-wgl@wgl-multi-window-single-context,Fail
-wgl@wgl-sanity,Fail
