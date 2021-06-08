@@ -177,20 +177,16 @@ enum vn_renderer_sync_flags {
 };
 
 struct vn_renderer_sync_ops {
-   struct vn_renderer_sync *(*create)(struct vn_renderer *renderer);
-   void (*destroy)(struct vn_renderer *renderer,
-                   struct vn_renderer_sync *sync);
+   VkResult (*create)(struct vn_renderer *renderer,
+                      uint64_t initial_val,
+                      uint32_t flags,
+                      struct vn_renderer_sync **out_sync);
 
-   /* a sync can be initialized/released multiple times */
-   VkResult (*init)(struct vn_renderer *renderer,
-                    struct vn_renderer_sync *sync,
-                    uint64_t initial_val,
-                    uint32_t flags);
-   VkResult (*init_syncobj)(struct vn_renderer *renderer,
-                            struct vn_renderer_sync *sync,
-                            int fd,
-                            bool sync_file);
-   void (*release)(struct vn_renderer *renderer,
+   VkResult (*create_from_syncobj)(struct vn_renderer *renderer,
+                                   int fd,
+                                   bool sync_file,
+                                   struct vn_renderer_sync **out_sync);
+   void (*destroy)(struct vn_renderer *renderer,
                    struct vn_renderer_sync *sync);
 
    int (*export_syncobj)(struct vn_renderer *renderer,
@@ -429,88 +425,22 @@ vn_renderer_bo_invalidate(struct vn_renderer *renderer,
 }
 
 static inline VkResult
-vn_renderer_sync_create_cpu(struct vn_renderer *renderer,
-                            struct vn_renderer_sync **_sync)
+vn_renderer_sync_create(struct vn_renderer *renderer,
+                        uint64_t initial_val,
+                        uint32_t flags,
+                        struct vn_renderer_sync **out_sync)
 {
-   struct vn_renderer_sync *sync = renderer->sync_ops.create(renderer);
-   if (!sync)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   const uint64_t initial_val = 0;
-   const uint32_t flags = 0;
-   VkResult result =
-      renderer->sync_ops.init(renderer, sync, initial_val, flags);
-   if (result != VK_SUCCESS) {
-      renderer->sync_ops.destroy(renderer, sync);
-      return result;
-   }
-
-   *_sync = sync;
-   return VK_SUCCESS;
+   return renderer->sync_ops.create(renderer, initial_val, flags, out_sync);
 }
 
 static inline VkResult
-vn_renderer_sync_create_fence(struct vn_renderer *renderer,
-                              bool signaled,
-                              VkExternalFenceHandleTypeFlags external_handles,
-                              struct vn_renderer_sync **_sync)
+vn_renderer_sync_create_from_syncobj(struct vn_renderer *renderer,
+                                     int fd,
+                                     bool sync_file,
+                                     struct vn_renderer_sync **out_sync)
 {
-   struct vn_renderer_sync *sync = renderer->sync_ops.create(renderer);
-   if (!sync)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   const uint64_t initial_val = signaled;
-   const uint32_t flags = VN_RENDERER_SYNC_BINARY |
-                          (external_handles ? VN_RENDERER_SYNC_SHAREABLE : 0);
-   VkResult result =
-      renderer->sync_ops.init(renderer, sync, initial_val, flags);
-   if (result != VK_SUCCESS) {
-      renderer->sync_ops.destroy(renderer, sync);
-      return result;
-   }
-
-   *_sync = sync;
-   return VK_SUCCESS;
-}
-
-static inline VkResult
-vn_renderer_sync_create_semaphore(
-   struct vn_renderer *renderer,
-   VkSemaphoreType type,
-   uint64_t initial_val,
-   VkExternalSemaphoreHandleTypeFlags external_handles,
-   struct vn_renderer_sync **_sync)
-{
-   struct vn_renderer_sync *sync = renderer->sync_ops.create(renderer);
-   if (!sync)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   const uint32_t flags =
-      (external_handles ? VN_RENDERER_SYNC_SHAREABLE : 0) |
-      (type == VK_SEMAPHORE_TYPE_BINARY ? VN_RENDERER_SYNC_BINARY : 0);
-   VkResult result =
-      renderer->sync_ops.init(renderer, sync, initial_val, flags);
-   if (result != VK_SUCCESS) {
-      renderer->sync_ops.destroy(renderer, sync);
-      return result;
-   }
-
-   *_sync = sync;
-   return VK_SUCCESS;
-}
-
-static inline VkResult
-vn_renderer_sync_create_empty(struct vn_renderer *renderer,
-                              struct vn_renderer_sync **_sync)
-{
-   struct vn_renderer_sync *sync = renderer->sync_ops.create(renderer);
-   if (!sync)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   /* no init */
-
-   *_sync = sync;
-   return VK_SUCCESS;
+   return renderer->sync_ops.create_from_syncobj(renderer, fd, sync_file,
+                                                 out_sync);
 }
 
 static inline void
@@ -518,31 +448,6 @@ vn_renderer_sync_destroy(struct vn_renderer *renderer,
                          struct vn_renderer_sync *sync)
 {
    renderer->sync_ops.destroy(renderer, sync);
-}
-
-static inline VkResult
-vn_renderer_sync_init_signaled(struct vn_renderer *renderer,
-                               struct vn_renderer_sync *sync)
-{
-   const uint64_t initial_val = 1;
-   const uint32_t flags = VN_RENDERER_SYNC_BINARY;
-   return renderer->sync_ops.init(renderer, sync, initial_val, flags);
-}
-
-static inline VkResult
-vn_renderer_sync_init_syncobj(struct vn_renderer *renderer,
-                              struct vn_renderer_sync *sync,
-                              int fd,
-                              bool sync_file)
-{
-   return renderer->sync_ops.init_syncobj(renderer, sync, fd, sync_file);
-}
-
-static inline void
-vn_renderer_sync_release(struct vn_renderer *renderer,
-                         struct vn_renderer_sync *sync)
-{
-   renderer->sync_ops.release(renderer, sync);
 }
 
 static inline int

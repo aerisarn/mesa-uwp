@@ -613,7 +613,7 @@ vtest_sync_reset(struct vn_renderer *renderer,
 }
 
 static void
-vtest_sync_release(struct vn_renderer *renderer,
+vtest_sync_destroy(struct vn_renderer *renderer,
                    struct vn_renderer_sync *_sync)
 {
    struct vtest *vtest = (struct vtest *)renderer;
@@ -623,45 +623,27 @@ vtest_sync_release(struct vn_renderer *renderer,
    vtest_vcmd_sync_unref(vtest, sync->base.sync_id);
    mtx_unlock(&vtest->sock_mutex);
 
-   sync->base.sync_id = 0;
+   free(sync);
 }
 
 static VkResult
-vtest_sync_init(struct vn_renderer *renderer,
-                struct vn_renderer_sync *_sync,
-                uint64_t initial_val,
-                uint32_t flags)
+vtest_sync_create(struct vn_renderer *renderer,
+                  uint64_t initial_val,
+                  uint32_t flags,
+                  struct vn_renderer_sync **out_sync)
 {
    struct vtest *vtest = (struct vtest *)renderer;
-   struct vtest_sync *sync = (struct vtest_sync *)_sync;
+
+   struct vtest_sync *sync = calloc(1, sizeof(*sync));
+   if (!sync)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    mtx_lock(&vtest->sock_mutex);
    sync->base.sync_id = vtest_vcmd_sync_create(vtest, initial_val);
    mtx_unlock(&vtest->sock_mutex);
 
+   *out_sync = &sync->base;
    return VK_SUCCESS;
-}
-
-static void
-vtest_sync_destroy(struct vn_renderer *renderer,
-                   struct vn_renderer_sync *_sync)
-{
-   struct vtest_sync *sync = (struct vtest_sync *)_sync;
-
-   if (sync->base.sync_id)
-      vtest_sync_release(renderer, &sync->base);
-
-   free(sync);
-}
-
-static struct vn_renderer_sync *
-vtest_sync_create(struct vn_renderer *renderer)
-{
-   struct vtest_sync *sync = calloc(1, sizeof(*sync));
-   if (!sync)
-      return NULL;
-
-   return &sync->base;
 }
 
 static void
@@ -1054,10 +1036,8 @@ vtest_init(struct vtest *vtest)
    vtest->base.bo_ops.invalidate = vtest_bo_invalidate;
 
    vtest->base.sync_ops.create = vtest_sync_create;
+   vtest->base.sync_ops.create_from_syncobj = NULL;
    vtest->base.sync_ops.destroy = vtest_sync_destroy;
-   vtest->base.sync_ops.init = vtest_sync_init;
-   vtest->base.sync_ops.init_syncobj = NULL;
-   vtest->base.sync_ops.release = vtest_sync_release;
    vtest->base.sync_ops.export_syncobj = NULL;
    vtest->base.sync_ops.reset = vtest_sync_reset;
    vtest->base.sync_ops.read = vtest_sync_read;
