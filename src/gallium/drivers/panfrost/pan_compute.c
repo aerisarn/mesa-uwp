@@ -101,6 +101,11 @@ panfrost_launch_grid(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *dev = pan_device(pipe->screen);
+
+        /* XXX - shouldn't be necessary with working memory barriers. Affected
+         * test: KHR-GLES31.core.compute_shader.pipeline-post-xfb */
+        panfrost_flush_all_batches(ctx);
+
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         struct panfrost_shader_state *cs =
