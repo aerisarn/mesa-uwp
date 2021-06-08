@@ -80,7 +80,9 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
                                struct anv_batch *batch)
 {
 #if GFX_VER == 11
-   assert(device->info.ppipe_subslices[2] == 0);
+   /* Gfx11 hardware has two pixel pipes at most. */
+   for (unsigned i = 2; i < ARRAY_SIZE(device->info.ppipe_subslices); i++)
+      assert(device->info.ppipe_subslices[i] == 0);
 
    if (device->info.ppipe_subslices[0] == device->info.ppipe_subslices[1])
      return;
@@ -113,12 +115,13 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
    unsigned ppipes_of[3] = {};
 
    for (unsigned n = 0; n < ARRAY_SIZE(ppipes_of); n++) {
-      for (unsigned p = 0; p < ARRAY_SIZE(device->info.ppipe_subslices); p++)
+      for (unsigned p = 0; p < 3; p++)
          ppipes_of[n] += (device->info.ppipe_subslices[p] == n);
    }
 
    /* Gfx12 has three pixel pipes. */
-   assert(ppipes_of[0] + ppipes_of[1] + ppipes_of[2] == 3);
+   for (unsigned p = 3; p < ARRAY_SIZE(device->info.ppipe_subslices); p++)
+      assert(device->info.ppipe_subslices[p] == 0);
 
    if (ppipes_of[2] == 3 || ppipes_of[0] == 2) {
       /* All three pixel pipes have the maximum number of active dual

@@ -831,7 +831,10 @@ static void
 gfx11_upload_pixel_hashing_tables(struct iris_batch *batch)
 {
    const struct intel_device_info *devinfo = &batch->screen->devinfo;
-   assert(devinfo->ppipe_subslices[2] == 0);
+
+   /* Gfx11 hardware has two pixel pipes at most. */
+   for (unsigned i = 2; i < ARRAY_SIZE(devinfo->ppipe_subslices); i++)
+      assert(devinfo->ppipe_subslices[i] == 0);
 
    if (devinfo->ppipe_subslices[0] == devinfo->ppipe_subslices[1])
       return;
@@ -873,12 +876,13 @@ gfx12_upload_pixel_hashing_tables(struct iris_batch *batch)
    unsigned ppipes_of[3] = {};
 
    for (unsigned n = 0; n < ARRAY_SIZE(ppipes_of); n++) {
-      for (unsigned p = 0; p < ARRAY_SIZE(devinfo->ppipe_subslices); p++)
+      for (unsigned p = 0; p < 3; p++)
          ppipes_of[n] += (devinfo->ppipe_subslices[p] == n);
    }
 
    /* Gfx12 has three pixel pipes. */
-   assert(ppipes_of[0] + ppipes_of[1] + ppipes_of[2] == 3);
+   for (unsigned p = 3; p < ARRAY_SIZE(devinfo->ppipe_subslices); p++)
+      assert(devinfo->ppipe_subslices[p] == 0);
 
    if (ppipes_of[2] == 3 || ppipes_of[0] == 2) {
       /* All three pixel pipes have the maximum number of active dual

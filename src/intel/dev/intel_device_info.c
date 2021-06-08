@@ -1084,8 +1084,13 @@ update_from_topology(struct intel_device_info *devinfo,
    assert(n_subslices > 0);
 
    if (devinfo->ver >= 11) {
-      /* On current ICL+ hardware we only have one slice. */
-      assert(devinfo->slice_masks == 1);
+      /* The kernel only reports one slice on all existing ICL+
+       * platforms, even if multiple slices are present.  The slice
+       * mask is allowed to have the accurate value greater than 1 on
+       * gfx12.5+ platforms though, in order to be tolerant with the
+       * behavior of our simulation environment.
+       */
+      assert(devinfo->slice_masks == 1 || devinfo->verx10 >= 125);
 
       /* Count the number of subslices on each pixel pipe. Assume that every
        * contiguous group of 4 subslices in the mask belong to the same pixel
@@ -1096,9 +1101,14 @@ update_from_topology(struct intel_device_info *devinfo,
        */
       const unsigned ppipe_bits = devinfo->ver >= 12 ? 2 : 4;
       for (unsigned p = 0; p < INTEL_DEVICE_MAX_PIXEL_PIPES; p++) {
-         const unsigned ppipe_mask = BITFIELD_RANGE(p * ppipe_bits, ppipe_bits);
-         devinfo->ppipe_subslices[p] =
-            __builtin_popcount(devinfo->subslice_masks[0] & ppipe_mask);
+         const unsigned offset = p * ppipe_bits;
+         const unsigned ppipe_mask = BITFIELD_RANGE(offset % 8, ppipe_bits);
+
+         if (offset / 8 < ARRAY_SIZE(devinfo->subslice_masks))
+            devinfo->ppipe_subslices[p] =
+               __builtin_popcount(devinfo->subslice_masks[offset / 8] & ppipe_mask);
+         else
+            devinfo->ppipe_subslices[p] = 0;
       }
    }
 
