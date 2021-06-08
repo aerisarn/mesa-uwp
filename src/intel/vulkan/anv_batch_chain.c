@@ -195,7 +195,11 @@ anv_reloc_list_add(struct anv_reloc_list *list,
    if (unwrapped_target_bo->flags & EXEC_OBJECT_PINNED) {
       assert(!target_bo->is_wrapper);
       uint32_t idx = unwrapped_target_bo->gem_handle;
-      anv_reloc_list_grow_deps(list, alloc, (idx / BITSET_WORDBITS) + 1);
+      VkResult result = anv_reloc_list_grow_deps(list, alloc,
+                                                 (idx / BITSET_WORDBITS) + 1);
+      if (unlikely(result != VK_SUCCESS))
+         return result;
+
       BITSET_SET(list->deps, unwrapped_target_bo->gem_handle);
       return VK_SUCCESS;
    }
