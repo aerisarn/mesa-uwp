@@ -597,11 +597,13 @@ spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifi
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_interface: crash
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_named_interface: crash
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_struct: crash
+spec/arb_enhanced_layouts/execution/component-layout/tcs-tes-fs-array-with-non-array-interleave: skip
 spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-load-output: skip
 spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-load-output-indirect: skip
 spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-tes-fs: skip
 spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-tes-fs-array-interleave: skip
 spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-tes-fs-double: skip
+spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-tes-fs-ifc-array-interleave: skip
 spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-tes-fs-patch: skip
 spec/arb_enhanced_layouts/execution/component-layout/vs-tcs-tes-fs-patch-array-interleave: skip
 spec/arb_enhanced_layouts/explicit-offset-bufferstorage: skip
@@ -1791,22 +1793,6 @@ spec/arb_texture_rg/texwrap formats/gl_r8, npot: fail
 spec/arb_texture_rg/texwrap formats/gl_rg16, npot: fail
 spec/arb_texture_rg/texwrap formats/gl_rg8, npot: fail
 spec/arb_texture_stencil8/fbo-clear-formats/gl_stencil_index8 (fbo incomplete): skip
-spec/arb_texture_view/rendering-formats/clear gl_r8 as gl_r8_snorm: fail
-spec/arb_texture_view/rendering-formats/clear gl_r8 as gl_r8i: fail
-spec/arb_texture_view/rendering-formats/clear gl_rg8 as gl_r16_snorm: fail
-spec/arb_texture_view/rendering-formats/clear gl_rg8 as gl_r16f: fail
-spec/arb_texture_view/rendering-formats/clear gl_rg8 as gl_r16i: fail
-spec/arb_texture_view/rendering-formats/clear gl_rg8 as gl_rg8_snorm: fail
-spec/arb_texture_view/rendering-formats/clear gl_rg8 as gl_rg8i: fail
-spec/arb_texture_view/rendering-formats/clear gl_rgb8 as gl_rgb8_snorm: fail
-spec/arb_texture_view/rendering-formats/clear gl_rgb8 as gl_rgb8i: fail
-spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_r32f: fail
-spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_r32i: fail
-spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16_snorm: fail
-spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16f: fail
-spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16i: fail
-spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8_snorm: fail
-spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8i: fail
 spec/arb_texture_view/rendering-formats/clear gl_rgba8_snorm as gl_r32f: fail
 spec/arb_transform_feedback2/change objects while paused: crash
 spec/arb_transform_feedback3/arb_transform_feedback3-ext_interleaved_two_bufs_gs: crash
@@ -3012,20 +2998,6 @@ spec/oes_texture_compression_astc/miptree-3d-gl srgb: skip
 spec/oes_texture_compression_astc/miptree-3d-gles hdr: skip
 spec/oes_texture_compression_astc/miptree-3d-gles ldr: skip
 spec/oes_texture_compression_astc/miptree-3d-gles srgb: skip
-spec/oes_texture_view/rendering-formats/clear gl_r8 as gl_r8_snorm: fail
-spec/oes_texture_view/rendering-formats/clear gl_r8 as gl_r8i: fail
-spec/oes_texture_view/rendering-formats/clear gl_rg8 as gl_r16_snorm: fail
-spec/oes_texture_view/rendering-formats/clear gl_rg8 as gl_r16f: fail
-spec/oes_texture_view/rendering-formats/clear gl_rg8 as gl_r16i: fail
-spec/oes_texture_view/rendering-formats/clear gl_rg8 as gl_rg8_snorm: fail
-spec/oes_texture_view/rendering-formats/clear gl_rg8 as gl_rg8i: fail
-spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_r32f: fail
-spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_r32i: fail
-spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16_snorm: fail
-spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16f: fail
-spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16i: fail
-spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8_snorm: fail
-spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8i: fail
 spec/oes_texture_view/rendering-formats/clear gl_rgba8_snorm as gl_r32f: fail
 spec/oes_texture_view/rendering-formats/render to gl_rgb16 as gl_rgb16i: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16 as gl_rgb16ui: skip

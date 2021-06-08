@@ -41,3 +41,6 @@ spec@arb_copy_buffer@dlist
 
 # Intermittent failure, mostly passes but sometimes fails. Was noticed on May 26th.
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420
+
+# Crashes, possibly after the final piglit report caught by new piglit runner.
+spec@ext_transform_feedback@api-errors.*
