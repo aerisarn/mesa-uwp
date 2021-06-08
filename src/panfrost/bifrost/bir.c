@@ -110,8 +110,8 @@ bi_count_write_registers(bi_instr *ins, unsigned d)
 unsigned
 bi_writemask(bi_instr *ins, unsigned d)
 {
-        unsigned mask = BITFIELD_MASK(bi_count_write_registers(ins, d) * 4);
-        unsigned shift = ins->dest[d].offset * 4; /* 32-bit words */
+        unsigned mask = BITFIELD_MASK(bi_count_write_registers(ins, d));
+        unsigned shift = ins->dest[d].offset;
         return (mask << shift);
 }
 

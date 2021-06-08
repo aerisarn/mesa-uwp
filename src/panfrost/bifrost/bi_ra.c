@@ -38,10 +38,10 @@ struct lcra_state {
          * Each element is itself a bit field denoting whether (c_j - c_i) bias
          * is present or not, including negative biases.
          *
-         * Note for Midgard, there are 16 components so the bias is in range
-         * [-15, 15] so encoded by 32-bit field. */
+         * Note for Bifrost, there are 4 components so the bias is in range
+         * [-3, 3] so encoded by 8-bit field. */
 
-        uint32_t *linear;
+        uint8_t *linear;
 
         /* Before solving, forced registers; after solving, solutions. */
         unsigned *solutions;
@@ -84,18 +84,18 @@ lcra_add_node_interference(struct lcra_state *l, unsigned i, unsigned cmask_i, u
         if (i == j)
                 return;
 
-        uint32_t constraint_fw = 0;
-        uint32_t constraint_bw = 0;
+        uint8_t constraint_fw = 0;
+        uint8_t constraint_bw = 0;
 
-        for (unsigned D = 0; D < 16; ++D) {
+        for (unsigned D = 0; D < 4; ++D) {
                 if (cmask_i & (cmask_j << D)) {
-                        constraint_bw |= (1 << (15 + D));
-                        constraint_fw |= (1 << (15 - D));
+                        constraint_bw |= (1 << (3 + D));
+                        constraint_fw |= (1 << (3 - D));
                 }
 
                 if (cmask_i & (cmask_j >> D)) {
-                        constraint_fw |= (1 << (15 + D));
-                        constraint_bw |= (1 << (15 - D));
+                        constraint_fw |= (1 << (3 + D));
+                        constraint_bw |= (1 << (3 - D));
                 }
         }
 
@@ -106,7 +106,7 @@ lcra_add_node_interference(struct lcra_state *l, unsigned i, unsigned cmask_i, u
 static bool
 lcra_test_linear(struct lcra_state *l, unsigned *solutions, unsigned i)
 {
-        unsigned *row = &l->linear[i * l->node_count];
+        uint8_t *row = &l->linear[i * l->node_count];
         signed constant = solutions[i];
 
         for (unsigned j = 0; j < l->node_count; ++j) {
@@ -114,10 +114,10 @@ lcra_test_linear(struct lcra_state *l, unsigned *solutions, unsigned i)
 
                 signed lhs = solutions[j] - constant;
 
-                if (lhs < -15 || lhs > 15)
+                if (lhs < -3 || lhs > 3)
                         continue;
 
-                if (row[j] & (1 << (lhs + 15)))
+                if (row[j] & (1 << (lhs + 3)))
                         return false;
         }
 
@@ -134,7 +134,7 @@ lcra_solve(struct lcra_state *l)
                 bool succ = false;
 
                 u_foreach_bit64(r, l->affinity[step]) {
-                        l->solutions[step] = r * 4;
+                        l->solutions[step] = r;
 
                         if (lcra_test_linear(l, l->solutions, step)) {
                                 succ = true;
@@ -157,7 +157,7 @@ static unsigned
 lcra_count_constraints(struct lcra_state *l, unsigned i)
 {
         unsigned count = 0;
-        unsigned *constraints = &l->linear[i * l->node_count];
+        uint8_t *constraints = &l->linear[i * l->node_count];
 
         for (unsigned j = 0; j < l->node_count; ++j)
                 count += util_bitcount(constraints[j]);
@@ -315,12 +315,8 @@ bi_reg_from_index(bi_context *ctx, struct lcra_state *l, bi_index index)
                 return index;
         }
 
-        assert((solution & 0x3) == 0);
-        unsigned reg = solution / 4;
-        reg += index.offset;
-
         /* todo: do we want to compose with the subword swizzle? */
-        bi_index new_index = bi_register(reg);
+        bi_index new_index = bi_register(solution + index.offset);
         new_index.swizzle = index.swizzle;
         new_index.abs = index.abs;
         new_index.neg = index.neg;
