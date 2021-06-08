@@ -176,7 +176,7 @@ flush_ring(void)
    struct fd_submit_fence fence = {};
    util_queue_fence_init(&fence.ready);
 
-   ret = fd_submit_flush(dev.submit, -1, NULL);
+   ret = fd_submit_flush(dev.submit, -1, &fence);
 
    if (ret)
       errx(1, "submit failed: %d", ret);
