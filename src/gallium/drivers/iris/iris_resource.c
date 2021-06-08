@@ -568,6 +568,28 @@ want_ccs_e_for_format(const struct intel_device_info *devinfo,
    return true;
 }
 
+static enum isl_surf_dim
+target_to_isl_surf_dim(enum pipe_texture_target target)
+{
+   switch (target) {
+   case PIPE_BUFFER:
+   case PIPE_TEXTURE_1D:
+   case PIPE_TEXTURE_1D_ARRAY:
+      return ISL_SURF_DIM_1D;
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_RECT:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+      return ISL_SURF_DIM_2D;
+   case PIPE_TEXTURE_3D:
+      return ISL_SURF_DIM_3D;
+   case PIPE_MAX_TEXTURE_TYPES:
+      break;
+   }
+   unreachable("invalid texture type");
+}
+
 static bool
 iris_resource_configure_main(const struct iris_screen *screen,
                              struct iris_resource *res,

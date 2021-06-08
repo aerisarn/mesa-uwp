@@ -469,27 +469,6 @@ enum isl_dim_layout
 iris_get_isl_dim_layout(const struct intel_device_info *devinfo,
                         enum isl_tiling tiling,
                         enum pipe_texture_target target);
-static inline enum isl_surf_dim
-target_to_isl_surf_dim(enum pipe_texture_target target)
-{
-   switch (target) {
-   case PIPE_BUFFER:
-   case PIPE_TEXTURE_1D:
-   case PIPE_TEXTURE_1D_ARRAY:
-      return ISL_SURF_DIM_1D;
-   case PIPE_TEXTURE_2D:
-   case PIPE_TEXTURE_CUBE:
-   case PIPE_TEXTURE_RECT:
-   case PIPE_TEXTURE_2D_ARRAY:
-   case PIPE_TEXTURE_CUBE_ARRAY:
-      return ISL_SURF_DIM_2D;
-   case PIPE_TEXTURE_3D:
-      return ISL_SURF_DIM_3D;
-   case PIPE_MAX_TEXTURE_TYPES:
-      break;
-   }
-   unreachable("invalid texture type");
-}
 
 enum isl_aux_usage iris_resource_texture_aux_usage(struct iris_context *ice,
                                                    const struct iris_resource *res,
