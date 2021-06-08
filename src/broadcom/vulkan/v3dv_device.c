@@ -125,6 +125,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
 #ifdef V3DV_HAS_SURFACE
       .KHR_swapchain                       = true,
 #endif
+      .KHR_variable_pointers               = true,
       .EXT_external_memory_dma_buf         = true,
       .EXT_private_data                    = true,
    };
@@ -1012,7 +1013,15 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->privateData = true;
          break;
       }
-
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
+         VkPhysicalDeviceVariablePointersFeatures *features = (void *) ext;
+         features->variablePointersStorageBuffer = true;
+         /* FIXME: for this we need to support non-constant indexing on
+          * UBO/SSBO.
+          */
+         features->variablePointers = false;
+         break;
+      }
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;

@@ -174,6 +174,7 @@ v3dv_DestroyPipeline(VkDevice _device,
 static const struct spirv_to_nir_options default_spirv_options =  {
    .caps = {
       .device_group = true,
+      .variable_pointers = true,
     },
    .ubo_addr_format = nir_address_format_32bit_index_offset,
    .ssbo_addr_format = nir_address_format_32bit_index_offset,
