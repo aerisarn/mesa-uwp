@@ -1392,13 +1392,14 @@ radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateIn
 
    /* If rasterization is disabled we do not care about any of the
     * dynamic states, since they are all rasterization related only,
-    * except primitive topology, primitive restart enable and vertex
-    * binding stride.
+    * except primitive topology, primitive restart enable, vertex
+    * binding stride and rasterization discard itself.
     */
    if (pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
-       !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT))
+       !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT)) {
       return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY | RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
-             RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
+             RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE | RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
+   }
 
    if (!pCreateInfo->pRasterizationState->depthBiasEnable &&
        !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT))
