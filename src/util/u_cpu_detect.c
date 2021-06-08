@@ -571,13 +571,10 @@ util_cpu_detect_once(void)
       util_cpu_caps.nr_cpus = 1;
 #  elif defined(PIPE_OS_BSD)
    {
-      int mib[2], ncpu;
-      int len;
+      const int mib[] = { CTL_HW, HW_NCPU };
+      int ncpu;
+      int len = sizeof(ncpu);
 
-      mib[0] = CTL_HW;
-      mib[1] = HW_NCPU;
-
-      len = sizeof (ncpu);
       sysctl(mib, 2, &ncpu, &len, NULL, 0);
       util_cpu_caps.nr_cpus = ncpu;
    }
