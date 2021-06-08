@@ -1467,38 +1467,31 @@ dxil_nir_create_bare_samplers(nir_shader *nir)
    return progress;
 }
 
-/* Sort io values so that first come normal varyings,
+
+/* Comparison function to sort io values so that first come normal varyings,
  * then system values, and then system generated values.
  */
-static void
-insert_sorted(struct exec_list* var_list, nir_variable* new_var)
+static int
+variable_location_cmp(const nir_variable* a, const nir_variable* b)
 {
-   nir_foreach_variable_in_list(var, var_list) {
-      if (var->data.driver_location > new_var->data.driver_location ||
-         (var->data.driver_location == new_var->data.driver_location &&
-            var->data.location > new_var->data.location)) {
-         exec_node_insert_node_before(&var->node, &new_var->node);
-         return;
-      }
-   }
-   exec_list_push_tail(var_list, &new_var->node);
+   // Sort by driver_location, location, then index
+   return a->data.driver_location != b->data.driver_location ?
+            a->data.driver_location - b->data.driver_location : 
+            a->data.location !=  b->data.location ?
+               a->data.location - b->data.location :
+               a->data.index - b->data.index;
 }
-
 
 /* Order varyings according to driver location */
 uint64_t
 dxil_sort_by_driver_location(nir_shader* s, nir_variable_mode modes)
 {
-   uint64_t result = 0;
-   struct exec_list new_list;
-   exec_list_make_empty(&new_list);
+   nir_sort_variables_with_modes(s, variable_location_cmp, modes);
 
-   nir_foreach_variable_with_modes_safe(var, s, modes) {
-      exec_node_remove(&var->node);
-      insert_sorted(&new_list, var);
+   uint64_t result = 0;
+   nir_foreach_variable_with_modes(var, s, modes) {
       result |= 1ull << var->data.location;
    }
-   exec_list_append(&s->variables, &new_list);
    return result;
 }
 
@@ -1506,11 +1499,7 @@ dxil_sort_by_driver_location(nir_shader* s, nir_variable_mode modes)
 void
 dxil_sort_ps_outputs(nir_shader* s)
 {
-   struct exec_list new_list;
-   exec_list_make_empty(&new_list);
-
    nir_foreach_variable_with_modes_safe(var, s, nir_var_shader_out) {
-      exec_node_remove(&var->node);
       /* We use the driver_location here to avoid introducing a new
        * struct or member variable here. The true, updated driver location
        * will be written below, after sorting */
@@ -1527,9 +1516,10 @@ dxil_sort_ps_outputs(nir_shader* s)
       default:
          var->data.driver_location = 0;
       }
-      insert_sorted(&new_list, var);
    }
-   exec_list_append(&s->variables, &new_list);
+
+   nir_sort_variables_with_modes(s, variable_location_cmp,
+                                 nir_var_shader_out);
 
    unsigned driver_loc = 0;
    nir_foreach_variable_with_modes(var, s, nir_var_shader_out) {
@@ -1544,20 +1534,16 @@ uint64_t
 dxil_reassign_driver_locations(nir_shader* s, nir_variable_mode modes,
    uint64_t other_stage_mask)
 {
-   struct exec_list new_list;
-   exec_list_make_empty(&new_list);
-
-   uint64_t result = 0;
    nir_foreach_variable_with_modes_safe(var, s, modes) {
-      exec_node_remove(&var->node);
       /* We use the driver_location here to avoid introducing a new
        * struct or member variable here. The true, updated driver location
        * will be written below, after sorting */
       var->data.driver_location = nir_var_to_dxil_sysvalue_type(var, other_stage_mask);
-      insert_sorted(&new_list, var);
    }
-   exec_list_append(&s->variables, &new_list);
 
+   nir_sort_variables_with_modes(s, variable_location_cmp, modes);
+
+   uint64_t result = 0;
    unsigned driver_loc = 0;
    nir_foreach_variable_with_modes(var, s, modes) {
       result |= 1ull << var->data.location;
