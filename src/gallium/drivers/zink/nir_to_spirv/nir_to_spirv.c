@@ -3611,9 +3611,12 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
    if (s->info.stage < MESA_SHADER_GEOMETRY) {
       if (s->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_LAYER) ||
           s->info.inputs_read & BITFIELD64_BIT(VARYING_SLOT_LAYER)) {
-         spirv_builder_emit_extension(&ctx.builder, "SPV_EXT_shader_viewport_index_layer");
-         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityShaderViewportIndexLayerEXT);
-         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityShaderLayer);
+         if (spirv_version >= SPIRV_VERSION(1, 5))
+            spirv_builder_emit_cap(&ctx.builder, SpvCapabilityShaderLayer);
+         else {
+            spirv_builder_emit_extension(&ctx.builder, "SPV_EXT_shader_viewport_index_layer");
+            spirv_builder_emit_cap(&ctx.builder, SpvCapabilityShaderViewportIndexLayerEXT);
+         }
       }
    }
 
