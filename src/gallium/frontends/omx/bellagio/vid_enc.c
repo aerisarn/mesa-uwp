@@ -737,7 +737,7 @@ static OMX_ERRORTYPE vid_enc_FreeOutBuffer(omx_base_PortType *port, OMX_U32 idx,
    if (buf->pOutputPortPrivate) {
       struct output_buf_private *outp = buf->pOutputPortPrivate;
       if (outp->transfer)
-         pipe_texture_unmap(priv->t_pipe, outp->transfer);
+         pipe_buffer_unmap(priv->t_pipe, outp->transfer);
       pipe_resource_reference(&outp->bitstream, NULL);
       FREE(outp);
       buf->pOutputPortPrivate = NULL;

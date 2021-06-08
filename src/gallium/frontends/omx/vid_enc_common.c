@@ -147,7 +147,7 @@ void vid_enc_BufferEncoded_common(vid_enc_PrivateType * priv, OMX_BUFFERHEADERTY
    /* ------------- map result buffer ----------------- */
 
    if (outp->transfer)
-      pipe_texture_unmap(priv->t_pipe, outp->transfer);
+      pipe_buffer_unmap(priv->t_pipe, outp->transfer);
 
    pipe_resource_reference(&outp->bitstream, task->bitstream);
    pipe_resource_reference(&task->bitstream, NULL);
@@ -156,7 +156,7 @@ void vid_enc_BufferEncoded_common(vid_enc_PrivateType * priv, OMX_BUFFERHEADERTY
    box.height = outp->bitstream->height0;
    box.depth = outp->bitstream->depth0;
 
-   output->pBuffer = priv->t_pipe->texture_map(priv->t_pipe, outp->bitstream, 0,
+   output->pBuffer = priv->t_pipe->buffer_map(priv->t_pipe, outp->bitstream, 0,
                                                 PIPE_MAP_READ_WRITE,
                                                 &box, &outp->transfer);
 
