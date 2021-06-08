@@ -221,6 +221,7 @@ get_device_extensions(const struct anv_physical_device *device,
          device->use_call_secondary,
       .KHR_pipeline_executable_properties    = true,
       .KHR_push_descriptor                   = true,
+      .KHR_ray_query                         = device->info.has_ray_tracing,
       .KHR_relaxed_block_layout              = true,
       .KHR_sampler_mirror_clamp_to_edge      = true,
       .KHR_sampler_ycbcr_conversion          = true,
@@ -1637,6 +1638,12 @@ void anv_GetPhysicalDeviceFeatures2(
             (VkPhysicalDeviceProvokingVertexFeaturesEXT *)ext;
          features->provokingVertexLast = true;
          features->transformFeedbackPreservesProvokingVertex = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
+         VkPhysicalDeviceRayQueryFeaturesKHR *features = (void *)ext;
+         features->rayQuery = pdevice->info.has_ray_tracing;
          break;
       }
 
@@ -3331,9 +3338,22 @@ VkResult anv_CreateDevice(
                                        device->workaround_bo->size,
                                        INTEL_DEBUG_BLOCK_TYPE_FRAME);
 
+   if (device->vk.enabled_extensions.KHR_ray_query) {
+      uint32_t ray_queries_size =
+         align_u32(brw_rt_ray_queries_hw_stacks_size(&device->info), 4096);
+
+      result = anv_device_alloc_bo(device, "ray queries",
+                                   ray_queries_size,
+                                   ANV_BO_ALLOC_LOCAL_MEM,
+                                   0 /* explicit_address */,
+                                   &device->ray_query_bo);
+      if (result != VK_SUCCESS)
+         goto fail_workaround_bo;
+   }
+
    result = anv_device_init_trivial_batch(device);
    if (result != VK_SUCCESS)
-      goto fail_workaround_bo;
+      goto fail_ray_query_bo;
 
    if (device->info.ver >= 12 &&
        device->vk.enabled_extensions.KHR_fragment_shading_rate) {
@@ -3403,6 +3423,9 @@ VkResult anv_CreateDevice(
    anv_scratch_pool_finish(device, &device->scratch_pool);
  fail_trivial_batch:
    anv_device_release_bo(device, device->trivial_batch_bo);
+ fail_ray_query_bo:
+   if (device->ray_query_bo)
+      anv_device_release_bo(device, device->ray_query_bo);
  fail_workaround_bo:
    anv_device_release_bo(device, device->workaround_bo);
  fail_surface_aux_map_pool:
@@ -3487,6 +3510,13 @@ void anv_DestroyDevice(
 
    anv_scratch_pool_finish(device, &device->scratch_pool);
 
+   if (device->vk.enabled_extensions.KHR_ray_query) {
+      for (unsigned i = 0; i < ARRAY_SIZE(device->ray_query_shadow_bos); i++) {
+         if (device->ray_query_shadow_bos[i] != NULL)
+            anv_device_release_bo(device, device->ray_query_shadow_bos[i]);
+      }
+      anv_device_release_bo(device, device->ray_query_bo);
+   }
    anv_device_release_bo(device, device->workaround_bo);
    anv_device_release_bo(device, device->trivial_batch_bo);
 

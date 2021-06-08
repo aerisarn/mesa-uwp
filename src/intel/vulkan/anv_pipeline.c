@@ -142,6 +142,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .post_depth_coverage = pdevice->info.ver >= 9,
          .runtime_descriptor_array = true,
          .float_controls = pdevice->info.ver >= 8,
+         .ray_query = pdevice->info.has_ray_tracing,
          .ray_tracing = pdevice->info.has_ray_tracing,
          .shader_clock = true,
          .shader_viewport_index_layer = true,
@@ -871,6 +872,8 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_push_const,
               nir_address_format_32bit_offset);
 
+   NIR_PASS_V(nir, brw_nir_lower_ray_queries, &pdevice->info);
+
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
    anv_nir_apply_pipeline_layout(pdevice,
                                  pipeline->device->robust_buffer_access,
@@ -1485,6 +1488,8 @@ anv_pipeline_add_executables(struct anv_pipeline *pipeline,
    } else {
       anv_pipeline_add_executable(pipeline, stage, bin->stats, 0);
    }
+
+   pipeline->ray_queries = MAX2(pipeline->ray_queries, bin->prog_data->ray_queries);
 }
 
 static uint32_t

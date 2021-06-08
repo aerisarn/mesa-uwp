@@ -5461,6 +5461,47 @@ void genX(CmdDispatchIndirect)(
    trace_intel_end_compute(&cmd_buffer->trace, cmd_buffer, 0, 0, 0);
 }
 
+struct anv_state
+genX(cmd_buffer_ray_query_globals)(struct anv_cmd_buffer *cmd_buffer)
+{
+#if GFX_VERx10 >= 125
+   struct anv_device *device = cmd_buffer->device;
+
+   struct anv_state state =
+      anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
+                                         BRW_RT_DISPATCH_GLOBALS_SIZE,
+                                         64);
+   struct brw_rt_scratch_layout layout;
+   uint32_t stack_ids_per_dss = 2048; /* TODO: can we use a lower value in
+                                       * some cases?
+                                       */
+   brw_rt_compute_scratch_layout(&layout, &device->info,
+                                 stack_ids_per_dss, 1 << 10);
+
+   struct GFX_RT_DISPATCH_GLOBALS rtdg = {
+      .MemBaseAddress = (struct anv_address) {
+         /* The ray query HW computes offsets from the top of the buffer, so
+          * let the address at the end of the buffer.
+          */
+         .bo = device->ray_query_bo,
+         .offset = device->ray_query_bo->size
+      },
+      .AsyncRTStackSize = layout.ray_stack_stride / 64,
+      .NumDSSRTStacks = layout.stack_ids_per_dss,
+      .MaxBVHLevels = BRW_RT_MAX_BVH_LEVELS,
+      .Flags = RT_DEPTH_TEST_LESS_EQUAL,
+      .ResumeShaderTable = (struct anv_address) {
+         .bo = cmd_buffer->state.ray_query_shadow_bo,
+      },
+   };
+   GFX_RT_DISPATCH_GLOBALS_pack(NULL, state.map, &rtdg);
+
+   return state;
+#else
+   unreachable("Not supported");
+#endif
+}
+
 #if GFX_VERx10 >= 125
 static void
 calc_local_trace_size(uint8_t local_shift[3], const uint32_t global[3])
