@@ -63,6 +63,7 @@ static inline boolean can_cache_resource(uint32_t bind)
           bind == VIRGL_BIND_VERTEX_BUFFER ||
           bind == VIRGL_BIND_CUSTOM ||
           bind == VIRGL_BIND_STAGING ||
+          bind == VIRGL_BIND_DEPTH_STENCIL ||
           bind == 0;
 }
 
