@@ -496,10 +496,10 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
          radeon_emit(cs, EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
       }
 
-      /* TODO: For culling, replace 128 with 256. */
+      /* When culling is enabled, this will be overwritten accordingly */
       radeon_set_uconfig_reg(cs, R_030980_GE_PC_ALLOC,
                              S_030980_OVERSUB_EN(physical_device->rad_info.use_late_alloc) |
-                                S_030980_NUM_PC_LINES(128 * physical_device->rad_info.max_se - 1));
+                             S_030980_NUM_PC_LINES(physical_device->rad_info.pc_lines / 4 - 1));
    }
 
    if (physical_device->rad_info.chip_class >= GFX9) {
