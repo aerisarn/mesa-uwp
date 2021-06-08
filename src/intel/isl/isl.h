@@ -414,7 +414,7 @@ enum isl_format {
 /**
  * Numerical base type for channels of isl_format.
  */
-enum isl_base_type {
+enum PACKED isl_base_type {
    ISL_VOID,
    ISL_RAW,
    ISL_UNORM,
