@@ -907,10 +907,44 @@ radv_lower_io_to_mem(struct radv_device *device, struct nir_shader *nir,
    return false;
 }
 
+bool
+radv_consider_culling(struct radv_device *device, struct nir_shader *nir,
+                      uint64_t ps_inputs_read)
+{
+   /* Culling doesn't make sense for meta shaders. */
+   if (!!nir->info.name)
+      return false;
+
+   /* TODO: enable by default on GFX10.3 when we're confident about performance. */
+   bool culling_enabled = device->instance->perftest_flags & RADV_PERFTEST_NGGC;
+
+   if (!culling_enabled)
+      return false;
+
+   /* Shader based culling efficiency can depend on PS throughput.
+    * Estimate an upper limit for PS input param count based on GPU info.
+    */
+   unsigned max_ps_params;
+   unsigned max_render_backends = device->physical_device->rad_info.max_render_backends;
+   unsigned max_se = device->physical_device->rad_info.max_se;
+
+   if (max_render_backends < 2)
+      return false; /* Don't use NGG culling on 1 RB chips. */
+   else if (max_render_backends / max_se == 4)
+      max_ps_params = 6; /* Sienna Cichlid and other GFX10.3 dGPUs. */
+   else
+      max_ps_params = 4; /* Navi 1x. */
+
+   /* TODO: consider other heuristics here, such as PS execution time */
+
+   return util_bitcount64(ps_inputs_read & ~VARYING_BIT_POS) <= max_ps_params;
+}
+
 void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
                     struct radv_shader_info *info,
                     const struct radv_pipeline_key *pl_key,
-                    struct radv_shader_variant_key *key)
+                    struct radv_shader_variant_key *key,
+                    bool consider_culling)
 {
    /* TODO: support the LLVM backend with the NIR lowering */
    assert(!radv_use_llvm_for_stage(device, nir->info.stage));
@@ -930,9 +964,19 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
          num_vertices_per_prim = 1;
       else if (nir->info.tess.primitive_mode == GL_ISOLINES)
          num_vertices_per_prim = 2;
+
+      /* Manually mark the primitive ID used, so the shader can repack it. */
+      if (key->vs_common_out.export_prim_id)
+         BITSET_SET(nir->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);
+
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
       /* Need to add 1, because: V_028A6C_POINTLIST=0, V_028A6C_LINESTRIP=1, V_028A6C_TRISTRIP=2, etc. */
       num_vertices_per_prim = key->vs.outprim + 1;
+
+      /* Manually mark the instance ID used, so the shader can repack it. */
+      if (key->vs.instance_rate_inputs)
+         BITSET_SET(nir->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID);
+
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       num_vertices_per_prim = nir->info.gs.vertices_in;
    } else {
@@ -964,7 +1008,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
             num_vertices_per_prim,
             max_workgroup_size,
             info->wave_size,
-            false,
+            consider_culling,
             key->vs_common_out.as_ngg_passthrough,
             key->vs_common_out.export_prim_id,
             key->vs.provoking_vtx_last);

@@ -647,6 +647,8 @@ RADV driver environment variables
       disable optimizations that get enabled when all VRAM is CPU visible.
    ``pswave32``
       enable wave32 for pixel shaders (GFX10+)
+   ``nggc``
+      enable NGG culling on GFX10+ GPUs.
    ``rt``
       enable rt extensions whose implementation is still experimental.
    ``sam``

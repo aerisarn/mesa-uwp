@@ -211,6 +211,8 @@ get_hash_flags(const struct radv_device *device, bool stats)
 
    if (device->instance->debug_flags & RADV_DEBUG_NO_NGG)
       hash_flags |= RADV_HASH_SHADER_NO_NGG;
+   if (device->instance->perftest_flags & RADV_PERFTEST_NGGC)
+      hash_flags |= RADV_HASH_SHADER_FORCE_NGG_CULLING;
    if (device->physical_device->cs_wave_size == 32)
       hash_flags |= RADV_HASH_SHADER_CS_WAVE32;
    if (device->physical_device->ps_wave_size == 32)
@@ -3451,8 +3453,11 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          bool io_to_mem = radv_lower_io_to_mem(device, nir[i], &infos[i], pipeline_key);
          bool lowered_ngg = pipeline_has_ngg && i == pipeline->graphics.last_vgt_api_stage &&
                             !radv_use_llvm_for_stage(device, i);
-         if (lowered_ngg)
-            radv_lower_ngg(device, nir[i], &infos[i], pipeline_key, &keys[i]);
+         if (lowered_ngg) {
+            uint64_t ps_inputs_read = nir[MESA_SHADER_FRAGMENT] ? nir[MESA_SHADER_FRAGMENT]->info.inputs_read : 0;
+            bool consider_culling = radv_consider_culling(device, nir[i], ps_inputs_read);
+            radv_lower_ngg(device, nir[i], &infos[i], pipeline_key, &keys[i], consider_culling);
+         }
 
          radv_optimize_nir_algebraic(nir[i], io_to_mem || lowered_ngg || i == MESA_SHADER_COMPUTE);
 
