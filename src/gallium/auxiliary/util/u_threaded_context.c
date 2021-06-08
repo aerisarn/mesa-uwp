@@ -2498,7 +2498,9 @@ tc_emit_string_marker(struct pipe_context *_pipe,
       struct pipe_context *pipe = tc->pipe;
 
       tc_sync(tc);
+      tc_set_driver_thread(tc);
       pipe->emit_string_marker(pipe, string, len);
+      tc_clear_driver_thread(tc);
    }
 }
 
