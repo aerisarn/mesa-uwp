@@ -227,11 +227,48 @@ typedef struct {
 
 """
 
+glue = """\
+/* Copyright (C) 2020 Google, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+
+#ifndef _${guard}_
+#define _${guard}_
+
+#include "${isa}"
+
+#endif /* _${guard}_ */
+
+"""
+
 xml = sys.argv[1]
-dst_c = sys.argv[2]
-dst_h = sys.argv[3]
+glue_h = sys.argv[2]
+dst_c = sys.argv[3]
+dst_h = sys.argv[4]
 
 isa = ISA(xml)
+
+with open(glue_h, 'w') as f:
+    guard = os.path.basename(glue_h).upper().replace("-", "_").replace(".", "_")
+    f.write(Template(glue).render(guard=guard, isa=os.path.basename(dst_h)))
 
 with open(dst_c, 'w') as f:
     f.write(Template(template).render(isa=isa))

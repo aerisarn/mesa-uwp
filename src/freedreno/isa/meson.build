@@ -34,7 +34,7 @@ isa_depend_files = [
 ir3_isa_c = custom_target(
   'ir3-isa.c',
   input: ['decode.py', 'ir3.xml'],
-  output: ['ir3-isa.c', 'ir3-isa.h'],
+  output: ['isaspec-isa.h', 'ir3-isa.c', 'ir3-isa.h'],
   command: [
     prog_python, '@INPUT@', '@OUTPUT@'
   ],
