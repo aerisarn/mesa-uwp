@@ -555,6 +555,9 @@ get_cpu_topology(void)
 static void
 util_cpu_detect_once(void)
 {
+   int available_cpus = 0;
+   int total_cpus = 0;
+
    memset(&util_cpu_caps, 0, sizeof util_cpu_caps);
 
    /* Count the number of CPUs in system */
@@ -562,7 +565,7 @@ util_cpu_detect_once(void)
    {
       SYSTEM_INFO system_info;
       GetSystemInfo(&system_info);
-      util_cpu_caps.nr_cpus = MAX2(1, system_info.dwNumberOfProcessors);
+      available_cpus = MAX2(1, system_info.dwNumberOfProcessors);
    }
 #elif defined(PIPE_OS_UNIX)
    /* Linux, FreeBSD, DragonFly, and Mac OS X should have
@@ -576,12 +579,12 @@ util_cpu_detect_once(void)
       int len = sizeof(ncpu);
 
       sysctl(mib, 2, &ncpu, &len, NULL, 0);
-      util_cpu_caps.nr_cpus = ncpu;
+      available_cpus = ncpu;
    }
 #  elif defined(_SC_NPROCESSORS_ONLN)
-   util_cpu_caps.nr_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-   if (util_cpu_caps.nr_cpus == ~0)
-      util_cpu_caps.nr_cpus = 1;
+   available_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+   if (available_cpus == ~0)
+      available_cpus = 1;
 #  elif defined(PIPE_OS_BSD)
    {
       const int mib[] = { CTL_HW, HW_NCPU };
@@ -589,15 +592,36 @@ util_cpu_detect_once(void)
       int len = sizeof(ncpu);
 
       sysctl(mib, 2, &ncpu, &len, NULL, 0);
-      util_cpu_caps.nr_cpus = ncpu;
+      available_cpus = ncpu;
+   }
+#  endif /* defined(PIPE_OS_BSD) */
+
+   /* Determine the maximum number of CPUs configured in the system.  This is
+    * used to properly set num_cpu_mask_bits below.  On BSDs that don't have
+    * HW_NCPUONLINE, it was not clear whether HW_NCPU is the number of
+    * configured or the number of online CPUs.  For that reason, prefer the
+    * _SC_NPROCESSORS_CONF path on all BSDs.
+    */
+#  if defined(_SC_NPROCESSORS_CONF)
+   total_cpus = sysconf(_SC_NPROCESSORS_CONF);
+   if (total_cpus == ~0)
+      total_cpus = 1;
+#  elif defined(PIPE_OS_BSD)
+   {
+      const int mib[] = { CTL_HW, HW_NCPU };
+      int ncpu;
+      int len = sizeof(ncpu);
+
+      sysctl(mib, 2, &ncpu, &len, NULL, 0);
+      total_cpus = ncpu;
    }
 #  endif /* defined(PIPE_OS_BSD) */
 #endif /* defined(PIPE_OS_UNIX) */
 
-   if (util_cpu_caps.nr_cpus == 0)
-      util_cpu_caps.nr_cpus = 1;
+   util_cpu_caps.nr_cpus = MAX2(1, available_cpus);
+   total_cpus = MAX2(total_cpus, util_cpu_caps.nr_cpus);
 
-   util_cpu_caps.num_cpu_mask_bits = align(util_cpu_caps.nr_cpus, 32);
+   util_cpu_caps.num_cpu_mask_bits = align(total_cpus, 32);
 
    /* Make the fallback cacheline size nonzero so that it can be
     * safely passed to align().
