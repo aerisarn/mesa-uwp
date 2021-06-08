@@ -77,11 +77,12 @@ lower_impl(nir_function_impl *impl)
    in->data.location = VERT_ATTRIB_EDGEFLAG;
 
    in->data.driver_location = shader->num_inputs++;
-   shader->info.inputs_read |= BITFIELD64_BIT(VERT_ATTRIB_EDGEFLAG);
+   shader->info.inputs_read |= VERT_BIT_EDGEFLAG;
 
    out = nir_variable_create(shader, nir_var_shader_out,
                              glsl_vec4_type(), "edgeflag_out");
    out->data.location = VARYING_SLOT_EDGE;
+   shader->info.outputs_written |= VARYING_BIT_EDGE;
 
    def = nir_load_var(&b, in);
    nir_store_var(&b, out, def, 0xf);
