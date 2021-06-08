@@ -2905,7 +2905,7 @@ brw_compile_vs(const struct brw_compiler *compiler,
    prog_data->inputs_read = nir->info.inputs_read;
    prog_data->double_inputs_read = nir->info.vs.double_inputs;
 
-   brw_nir_lower_vs_inputs(nir, key->gl_attrib_wa_flags);
+   brw_nir_lower_vs_inputs(nir, params->edgeflag_is_last, key->gl_attrib_wa_flags);
    brw_nir_lower_vue_outputs(nir);
    brw_postprocess_nir(nir, compiler, is_scalar, debug_enabled,
                        key->base.robust_buffer_access);

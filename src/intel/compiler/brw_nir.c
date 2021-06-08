@@ -160,6 +160,7 @@ remap_patch_urb_offsets(nir_block *block, nir_builder *b,
 
 void
 brw_nir_lower_vs_inputs(nir_shader *nir,
+                        bool edgeflag_is_last,
                         const uint8_t *vs_attrib_wa_flags)
 {
    /* Start with the location of the variable's base. */
@@ -270,8 +271,16 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                 * before it and counting the bits.
                 */
                int attr = nir_intrinsic_base(intrin);
-               int slot = util_bitcount64(nir->info.inputs_read &
-                                            BITFIELD64_MASK(attr));
+               uint64_t inputs_read = nir->info.inputs_read;
+               int slot = -1;
+               if (edgeflag_is_last) {
+                  inputs_read &= ~BITFIELD64_BIT(VERT_ATTRIB_EDGEFLAG);
+                  if (attr == VERT_ATTRIB_EDGEFLAG)
+                     slot = num_inputs - 1;
+               }
+               if (slot == -1)
+                  slot = util_bitcount64(inputs_read &
+                                         BITFIELD64_MASK(attr));
                nir_intrinsic_set_base(intrin, slot);
                break;
             }
