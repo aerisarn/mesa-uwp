@@ -43,7 +43,6 @@ struct vtest_bo {
 
 struct vtest_sync {
    struct vn_renderer_sync base;
-   struct vtest *vtest;
 };
 
 struct vtest {
@@ -575,10 +574,12 @@ vtest_vcmd_submit_cmd2(struct vtest *vtest,
 }
 
 static VkResult
-vtest_sync_write(struct vn_renderer_sync *_sync, uint64_t val)
+vtest_sync_write(struct vn_renderer *renderer,
+                 struct vn_renderer_sync *_sync,
+                 uint64_t val)
 {
+   struct vtest *vtest = (struct vtest *)renderer;
    struct vtest_sync *sync = (struct vtest_sync *)_sync;
-   struct vtest *vtest = sync->vtest;
 
    mtx_lock(&vtest->sock_mutex);
    vtest_vcmd_sync_write(vtest, sync->base.sync_id, val);
@@ -588,10 +589,12 @@ vtest_sync_write(struct vn_renderer_sync *_sync, uint64_t val)
 }
 
 static VkResult
-vtest_sync_read(struct vn_renderer_sync *_sync, uint64_t *val)
+vtest_sync_read(struct vn_renderer *renderer,
+                struct vn_renderer_sync *_sync,
+                uint64_t *val)
 {
+   struct vtest *vtest = (struct vtest *)renderer;
    struct vtest_sync *sync = (struct vtest_sync *)_sync;
-   struct vtest *vtest = sync->vtest;
 
    mtx_lock(&vtest->sock_mutex);
    *val = vtest_vcmd_sync_read(vtest, sync->base.sync_id);
@@ -601,17 +604,20 @@ vtest_sync_read(struct vn_renderer_sync *_sync, uint64_t *val)
 }
 
 static VkResult
-vtest_sync_reset(struct vn_renderer_sync *sync, uint64_t initial_val)
+vtest_sync_reset(struct vn_renderer *renderer,
+                 struct vn_renderer_sync *sync,
+                 uint64_t initial_val)
 {
    /* same as write */
-   return vtest_sync_write(sync, initial_val);
+   return vtest_sync_write(renderer, sync, initial_val);
 }
 
 static void
-vtest_sync_release(struct vn_renderer_sync *_sync)
+vtest_sync_release(struct vn_renderer *renderer,
+                   struct vn_renderer_sync *_sync)
 {
+   struct vtest *vtest = (struct vtest *)renderer;
    struct vtest_sync *sync = (struct vtest_sync *)_sync;
-   struct vtest *vtest = sync->vtest;
 
    mtx_lock(&vtest->sock_mutex);
    vtest_vcmd_sync_unref(vtest, sync->base.sync_id);
@@ -621,12 +627,13 @@ vtest_sync_release(struct vn_renderer_sync *_sync)
 }
 
 static VkResult
-vtest_sync_init(struct vn_renderer_sync *_sync,
+vtest_sync_init(struct vn_renderer *renderer,
+                struct vn_renderer_sync *_sync,
                 uint64_t initial_val,
                 uint32_t flags)
 {
+   struct vtest *vtest = (struct vtest *)renderer;
    struct vtest_sync *sync = (struct vtest_sync *)_sync;
-   struct vtest *vtest = sync->vtest;
 
    mtx_lock(&vtest->sock_mutex);
    sync->base.sync_id = vtest_vcmd_sync_create(vtest, initial_val);
@@ -636,12 +643,13 @@ vtest_sync_init(struct vn_renderer_sync *_sync,
 }
 
 static void
-vtest_sync_destroy(struct vn_renderer_sync *_sync)
+vtest_sync_destroy(struct vn_renderer *renderer,
+                   struct vn_renderer_sync *_sync)
 {
    struct vtest_sync *sync = (struct vtest_sync *)_sync;
 
    if (sync->base.sync_id)
-      vtest_sync_release(&sync->base);
+      vtest_sync_release(renderer, &sync->base);
 
    free(sync);
 }
@@ -649,22 +657,9 @@ vtest_sync_destroy(struct vn_renderer_sync *_sync)
 static struct vn_renderer_sync *
 vtest_sync_create(struct vn_renderer *renderer)
 {
-   struct vtest *vtest = (struct vtest *)renderer;
-
    struct vtest_sync *sync = calloc(1, sizeof(*sync));
    if (!sync)
       return NULL;
-
-   sync->vtest = vtest;
-
-   sync->base.ops.destroy = vtest_sync_destroy;
-   sync->base.ops.init = vtest_sync_init;
-   sync->base.ops.init_syncobj = NULL;
-   sync->base.ops.release = vtest_sync_release;
-   sync->base.ops.export_syncobj = NULL;
-   sync->base.ops.reset = vtest_sync_reset;
-   sync->base.ops.read = vtest_sync_read;
-   sync->base.ops.write = vtest_sync_write;
 
    return &sync->base;
 }
@@ -1045,7 +1040,6 @@ vtest_init(struct vtest *vtest)
    vtest->base.ops.get_info = vtest_get_info;
    vtest->base.ops.submit = vtest_submit;
    vtest->base.ops.wait = vtest_wait;
-   vtest->base.ops.sync_create = vtest_sync_create;
 
    vtest->base.shmem_ops.create = vtest_shmem_create;
    vtest->base.shmem_ops.destroy = vtest_shmem_destroy;
@@ -1058,6 +1052,16 @@ vtest_init(struct vtest *vtest)
    vtest->base.bo_ops.map = vtest_bo_map;
    vtest->base.bo_ops.flush = vtest_bo_flush;
    vtest->base.bo_ops.invalidate = vtest_bo_invalidate;
+
+   vtest->base.sync_ops.create = vtest_sync_create;
+   vtest->base.sync_ops.destroy = vtest_sync_destroy;
+   vtest->base.sync_ops.init = vtest_sync_init;
+   vtest->base.sync_ops.init_syncobj = NULL;
+   vtest->base.sync_ops.release = vtest_sync_release;
+   vtest->base.sync_ops.export_syncobj = NULL;
+   vtest->base.sync_ops.reset = vtest_sync_reset;
+   vtest->base.sync_ops.read = vtest_sync_read;
+   vtest->base.sync_ops.write = vtest_sync_write;
 
    return VK_SUCCESS;
 }

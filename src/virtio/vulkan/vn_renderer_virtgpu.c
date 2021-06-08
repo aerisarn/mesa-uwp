@@ -65,7 +65,6 @@ struct virtgpu_bo {
 
 struct virtgpu_sync {
    struct vn_renderer_sync base;
-   struct virtgpu *gpu;
 
    /*
     * drm_syncobj is in one of these states
@@ -895,10 +894,12 @@ virtgpu_ioctl_submit(struct virtgpu *gpu,
 }
 
 static VkResult
-virtgpu_sync_write(struct vn_renderer_sync *_sync, uint64_t val)
+virtgpu_sync_write(struct vn_renderer *renderer,
+                   struct vn_renderer_sync *_sync,
+                   uint64_t val)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_sync *sync = (struct virtgpu_sync *)_sync;
-   struct virtgpu *gpu = (struct virtgpu *)sync->gpu;
 
    const int ret =
       virtgpu_ioctl_syncobj_timeline_signal(gpu, sync->syncobj_handle, val);
@@ -907,10 +908,12 @@ virtgpu_sync_write(struct vn_renderer_sync *_sync, uint64_t val)
 }
 
 static VkResult
-virtgpu_sync_read(struct vn_renderer_sync *_sync, uint64_t *val)
+virtgpu_sync_read(struct vn_renderer *renderer,
+                  struct vn_renderer_sync *_sync,
+                  uint64_t *val)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_sync *sync = (struct virtgpu_sync *)_sync;
-   struct virtgpu *gpu = (struct virtgpu *)sync->gpu;
 
    const int ret =
       virtgpu_ioctl_syncobj_query(gpu, sync->syncobj_handle, val);
@@ -919,10 +922,12 @@ virtgpu_sync_read(struct vn_renderer_sync *_sync, uint64_t *val)
 }
 
 static VkResult
-virtgpu_sync_reset(struct vn_renderer_sync *_sync, uint64_t initial_val)
+virtgpu_sync_reset(struct vn_renderer *renderer,
+                   struct vn_renderer_sync *_sync,
+                   uint64_t initial_val)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_sync *sync = (struct virtgpu_sync *)_sync;
-   struct virtgpu *gpu = (struct virtgpu *)sync->gpu;
 
    int ret = virtgpu_ioctl_syncobj_reset(gpu, sync->syncobj_handle);
    if (!ret) {
@@ -934,20 +939,23 @@ virtgpu_sync_reset(struct vn_renderer_sync *_sync, uint64_t initial_val)
 }
 
 static int
-virtgpu_sync_export_syncobj(struct vn_renderer_sync *_sync, bool sync_file)
+virtgpu_sync_export_syncobj(struct vn_renderer *renderer,
+                            struct vn_renderer_sync *_sync,
+                            bool sync_file)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_sync *sync = (struct virtgpu_sync *)_sync;
-   struct virtgpu *gpu = (struct virtgpu *)sync->gpu;
 
    return virtgpu_ioctl_syncobj_handle_to_fd(gpu, sync->syncobj_handle,
                                              sync_file);
 }
 
 static void
-virtgpu_sync_release(struct vn_renderer_sync *_sync)
+virtgpu_sync_release(struct vn_renderer *renderer,
+                     struct vn_renderer_sync *_sync)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_sync *sync = (struct virtgpu_sync *)_sync;
-   struct virtgpu *gpu = (struct virtgpu *)sync->gpu;
 
    virtgpu_ioctl_syncobj_destroy(gpu, sync->syncobj_handle);
 
@@ -956,12 +964,13 @@ virtgpu_sync_release(struct vn_renderer_sync *_sync)
 }
 
 static VkResult
-virtgpu_sync_init_syncobj(struct vn_renderer_sync *_sync,
+virtgpu_sync_init_syncobj(struct vn_renderer *renderer,
+                          struct vn_renderer_sync *_sync,
                           int fd,
                           bool sync_file)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_sync *sync = (struct virtgpu_sync *)_sync;
-   struct virtgpu *gpu = (struct virtgpu *)sync->gpu;
 
    uint32_t syncobj_handle;
    if (sync_file) {
@@ -985,12 +994,13 @@ virtgpu_sync_init_syncobj(struct vn_renderer_sync *_sync,
 }
 
 static VkResult
-virtgpu_sync_init(struct vn_renderer_sync *_sync,
+virtgpu_sync_init(struct vn_renderer *renderer,
+                  struct vn_renderer_sync *_sync,
                   uint64_t initial_val,
                   uint32_t flags)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_sync *sync = (struct virtgpu_sync *)_sync;
-   struct virtgpu *gpu = (struct virtgpu *)sync->gpu;
 
    /* TODO */
    if (flags & VN_RENDERER_SYNC_SHAREABLE)
@@ -1006,7 +1016,7 @@ virtgpu_sync_init(struct vn_renderer_sync *_sync,
    const int ret = virtgpu_ioctl_syncobj_timeline_signal(
       gpu, sync->syncobj_handle, initial_val);
    if (ret) {
-      virtgpu_sync_release(&sync->base);
+      virtgpu_sync_release(&gpu->base, &sync->base);
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
    }
 
@@ -1019,12 +1029,13 @@ virtgpu_sync_init(struct vn_renderer_sync *_sync,
 }
 
 static void
-virtgpu_sync_destroy(struct vn_renderer_sync *_sync)
+virtgpu_sync_destroy(struct vn_renderer *renderer,
+                     struct vn_renderer_sync *_sync)
 {
    struct virtgpu_sync *sync = (struct virtgpu_sync *)_sync;
 
    if (sync->syncobj_handle)
-      virtgpu_sync_release(&sync->base);
+      virtgpu_sync_release(renderer, &sync->base);
 
    free(sync);
 }
@@ -1032,22 +1043,9 @@ virtgpu_sync_destroy(struct vn_renderer_sync *_sync)
 static struct vn_renderer_sync *
 virtgpu_sync_create(struct vn_renderer *renderer)
 {
-   struct virtgpu *gpu = (struct virtgpu *)renderer;
-
    struct virtgpu_sync *sync = calloc(1, sizeof(*sync));
    if (!sync)
       return NULL;
-
-   sync->gpu = gpu;
-
-   sync->base.ops.destroy = virtgpu_sync_destroy;
-   sync->base.ops.init = virtgpu_sync_init;
-   sync->base.ops.init_syncobj = virtgpu_sync_init_syncobj;
-   sync->base.ops.release = virtgpu_sync_release;
-   sync->base.ops.export_syncobj = virtgpu_sync_export_syncobj;
-   sync->base.ops.reset = virtgpu_sync_reset;
-   sync->base.ops.read = virtgpu_sync_read;
-   sync->base.ops.write = virtgpu_sync_write;
 
    return &sync->base;
 }
@@ -1555,7 +1553,6 @@ virtgpu_init(struct virtgpu *gpu)
    gpu->base.ops.get_info = virtgpu_get_info;
    gpu->base.ops.submit = virtgpu_submit;
    gpu->base.ops.wait = virtgpu_wait;
-   gpu->base.ops.sync_create = virtgpu_sync_create;
 
    gpu->base.shmem_ops.create = virtgpu_shmem_create;
    gpu->base.shmem_ops.destroy = virtgpu_shmem_destroy;
@@ -1568,6 +1565,16 @@ virtgpu_init(struct virtgpu *gpu)
    gpu->base.bo_ops.map = virtgpu_bo_map;
    gpu->base.bo_ops.flush = virtgpu_bo_flush;
    gpu->base.bo_ops.invalidate = virtgpu_bo_invalidate;
+
+   gpu->base.sync_ops.create = virtgpu_sync_create;
+   gpu->base.sync_ops.destroy = virtgpu_sync_destroy;
+   gpu->base.sync_ops.init = virtgpu_sync_init;
+   gpu->base.sync_ops.init_syncobj = virtgpu_sync_init_syncobj;
+   gpu->base.sync_ops.release = virtgpu_sync_release;
+   gpu->base.sync_ops.export_syncobj = virtgpu_sync_export_syncobj;
+   gpu->base.sync_ops.reset = virtgpu_sync_reset;
+   gpu->base.sync_ops.read = virtgpu_sync_read;
+   gpu->base.sync_ops.write = virtgpu_sync_write;
 
    return VK_SUCCESS;
 }
