@@ -37,7 +37,6 @@
         --lava-tags "${LAVA_TAGS}" \
         --ci-node-index "${CI_NODE_INDEX}" \
         --ci-node-total "${CI_NODE_TOTAL}" | tee results/lava.log
-    - cp lava.yml results/.
   artifacts:
     name: "mesa_${CI_JOB_NAME}"
     when: always

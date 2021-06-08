@@ -66,10 +66,7 @@ def generate_lava_yaml(args):
     values['env_vars'] = env_vars
     values['deqp_version'] = args.deqp_version
 
-    f = open(os.path.splitext(os.path.basename(args.template))[0], "w")
     yaml = template.render(values)
-    f.write(yaml)
-    f.close()
 
     return yaml
 
