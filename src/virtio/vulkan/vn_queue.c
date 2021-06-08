@@ -972,7 +972,27 @@ vn_ImportSemaphoreFdKHR(
    VkDevice device, const VkImportSemaphoreFdInfoKHR *pImportSemaphoreFdInfo)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   return vn_error(dev->instance, VK_ERROR_UNKNOWN);
+   struct vn_semaphore *sem =
+      vn_semaphore_from_handle(pImportSemaphoreFdInfo->semaphore);
+   ASSERTED const bool sync_file =
+      pImportSemaphoreFdInfo->handleType ==
+      VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
+   const int fd = pImportSemaphoreFdInfo->fd;
+
+   assert(dev->instance->experimental.globalFencing);
+   assert(sync_file);
+   if (fd >= 0) {
+      const int ret = sync_wait(fd, -1);
+      if (ret)
+         return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+
+      close(fd);
+   }
+
+   /* abuse VN_SYNC_TYPE_WSI_SIGNALED */
+   vn_semaphore_signal_wsi(dev, sem);
+
+   return VK_SUCCESS;
 }
 
 VkResult
@@ -981,7 +1001,29 @@ vn_GetSemaphoreFdKHR(VkDevice device,
                      int *pFd)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   return vn_error(dev->instance, VK_ERROR_UNKNOWN);
+   struct vn_semaphore *sem = vn_semaphore_from_handle(pGetFdInfo->semaphore);
+   const bool sync_file =
+      pGetFdInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
+   struct vn_sync_payload *payload = sem->payload;
+
+   assert(dev->instance->experimental.globalFencing);
+   assert(sync_file);
+   int fd = -1;
+   if (payload->type == VN_SYNC_TYPE_DEVICE_ONLY) {
+      VkResult result = vn_create_sync_file(dev, &fd);
+      if (result != VK_SUCCESS)
+         return vn_error(dev->instance, result);
+   }
+
+   if (sync_file) {
+      vn_sync_payload_release(dev, &sem->temporary);
+      sem->payload = &sem->permanent;
+
+      /* XXX implies wait operation on the host semaphore */
+   }
+
+   *pFd = fd;
+   return VK_SUCCESS;
 }
 
 /* event commands */
