@@ -858,6 +858,60 @@ dri2_wl_release_buffers(struct dri2_egl_surface *dri2_surf)
       dri2_egl_surface_free_local_buffers(dri2_surf);
 }
 
+static void
+create_dri_image_diff_gpu(struct dri2_egl_surface *dri2_surf,
+                          unsigned int linear_dri_image_format, uint32_t use_flags)
+{
+   struct dri2_egl_display *dri2_dpy =
+      dri2_egl_display(dri2_surf->base.Resource.Display);
+   uint64_t linear_mod;
+
+   /* The LINEAR modifier should be a perfect alias of the LINEAR use flag */
+   linear_mod = DRM_FORMAT_MOD_LINEAR;
+
+   dri2_surf->back->linear_copy =
+      loader_dri_create_image(dri2_dpy->dri_screen, dri2_dpy->image,
+                              dri2_surf->base.Width,
+                              dri2_surf->base.Height,
+                              linear_dri_image_format,
+                              use_flags | __DRI_IMAGE_USE_LINEAR,
+                              &linear_mod, 1, NULL);
+}
+
+static void
+create_dri_image(struct dri2_egl_surface *dri2_surf,
+                 unsigned int dri_image_format, uint32_t use_flags)
+{
+   struct dri2_egl_display *dri2_dpy =
+      dri2_egl_display(dri2_surf->base.Resource.Display);
+   int visual_idx;
+   uint64_t *modifiers;
+   unsigned int num_modifiers;
+
+   visual_idx = dri2_wl_visual_idx_from_fourcc(dri2_surf->format);
+   modifiers = u_vector_tail(&dri2_dpy->formats.modifiers[visual_idx]);
+   num_modifiers = u_vector_length(&dri2_dpy->formats.modifiers[visual_idx]);
+
+   /* For the purposes of this function, an INVALID modifier on
+    * its own means the modifiers aren't supported. */
+   if (num_modifiers == 0 ||
+       (num_modifiers == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID)) {
+      num_modifiers = 0;
+      modifiers = NULL;
+   }
+
+   /* If our DRIImage implementation does not support createImageWithModifiers,
+    * then fall back to the old createImage, and hope it allocates an image
+    * which is acceptable to the winsys. */
+   dri2_surf->back->dri_image =
+      loader_dri_create_image(dri2_dpy->dri_screen, dri2_dpy->image,
+                              dri2_surf->base.Width,
+                              dri2_surf->base.Height,
+                              dri_image_format,
+                              dri2_dpy->is_different_gpu ? 0 : use_flags,
+                              modifiers, num_modifiers, NULL);
+}
+
 static int
 get_back_bo(struct dri2_egl_surface *dri2_surf)
 {
@@ -867,22 +921,11 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
    int visual_idx;
    unsigned int dri_image_format;
    unsigned int linear_dri_image_format;
-   uint64_t *modifiers;
-   int num_modifiers;
 
    visual_idx = dri2_wl_visual_idx_from_fourcc(dri2_surf->format);
    assert(visual_idx != -1);
    dri_image_format = dri2_wl_visuals[visual_idx].dri_image_format;
    linear_dri_image_format = dri_image_format;
-   modifiers = u_vector_tail(&dri2_dpy->formats.modifiers[visual_idx]);
-   num_modifiers = u_vector_length(&dri2_dpy->formats.modifiers[visual_idx]);
-
-   if (num_modifiers == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID) {
-      /* For the purposes of this function, an INVALID modifier on its own
-       * means the modifiers aren't supported.
-       */
-      num_modifiers = 0;
-   }
 
    /* Substitute dri image format if server does not support original format */
    if (!BITSET_TEST(dri2_dpy->formats.formats_bitmap, visual_idx))
@@ -937,39 +980,17 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
       use_flags |= __DRI_IMAGE_USE_PROTECTED;
    }
 
-   if (dri2_dpy->is_different_gpu &&
-       dri2_surf->back->linear_copy == NULL) {
-      /* The LINEAR modifier should be a perfect alias of the LINEAR use
-       * flag; try the new interface first before the old, then fall back. */
-      uint64_t linear_mod = DRM_FORMAT_MOD_LINEAR;
-
-      dri2_surf->back->linear_copy =
-            loader_dri_create_image(dri2_dpy->dri_screen, dri2_dpy->image,
-                                    dri2_surf->base.Width,
-                                    dri2_surf->base.Height,
-                                    linear_dri_image_format,
-                                    use_flags | __DRI_IMAGE_USE_LINEAR,
-                                    &linear_mod, 1, NULL);
-
+   if (dri2_dpy->is_different_gpu && dri2_surf->back->linear_copy == NULL) {
+      create_dri_image_diff_gpu(dri2_surf, linear_dri_image_format, use_flags);
       if (dri2_surf->back->linear_copy == NULL)
           return -1;
    }
 
    if (dri2_surf->back->dri_image == NULL) {
-      /* If our DRIImage implementation does not support
-       * createImageWithModifiers, then fall back to the old createImage,
-       * and hope it allocates an image which is acceptable to the winsys.
-        */
-      dri2_surf->back->dri_image =
-            loader_dri_create_image(dri2_dpy->dri_screen, dri2_dpy->image,
-                                    dri2_surf->base.Width,
-                                    dri2_surf->base.Height,
-                                    dri_image_format,
-                                    dri2_dpy->is_different_gpu ? 0 : use_flags,
-                                    modifiers, num_modifiers, NULL);
-
+      create_dri_image(dri2_surf, dri_image_format, use_flags);
       dri2_surf->back->age = 0;
    }
+
    if (dri2_surf->back->dri_image == NULL)
       return -1;
 
