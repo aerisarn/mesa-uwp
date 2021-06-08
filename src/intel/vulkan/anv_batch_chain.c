@@ -292,22 +292,6 @@ anv_batch_emit_dwords(struct anv_batch *batch, int num_dwords)
    return p;
 }
 
-uint64_t
-anv_batch_emit_reloc(struct anv_batch *batch,
-                     void *location, struct anv_bo *bo, uint32_t delta)
-{
-   uint64_t address_u64 = 0;
-   VkResult result = anv_reloc_list_add(batch->relocs, batch->alloc,
-                                        location - batch->start, bo, delta,
-                                        &address_u64);
-   if (result != VK_SUCCESS) {
-      anv_batch_set_error(batch, result);
-      return 0;
-   }
-
-   return address_u64;
-}
-
 struct anv_address
 anv_batch_address(struct anv_batch *batch, void *batch_location)
 {

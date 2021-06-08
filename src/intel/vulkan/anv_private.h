@@ -1258,6 +1258,12 @@ struct anv_device {
     struct intel_debug_block_frame              *debug_frame_desc;
 };
 
+#if defined(GFX_VERx10) && GFX_VERx10 >= 90
+#define ANV_ALWAYS_SOFTPIN true
+#else
+#define ANV_ALWAYS_SOFTPIN false
+#endif
+
 static inline bool
 anv_use_softpin(const struct anv_physical_device *pdevice)
 {
@@ -1576,8 +1582,6 @@ struct anv_batch {
 
 void *anv_batch_emit_dwords(struct anv_batch *batch, int num_dwords);
 void anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other);
-uint64_t anv_batch_emit_reloc(struct anv_batch *batch,
-                              void *location, struct anv_bo *bo, uint32_t offset);
 struct anv_address anv_batch_address(struct anv_batch *batch, void *batch_location);
 
 static inline void
@@ -1603,6 +1607,30 @@ anv_batch_has_error(struct anv_batch *batch)
 {
    return batch->status != VK_SUCCESS;
 }
+
+static inline uint64_t
+anv_batch_emit_reloc(struct anv_batch *batch,
+                     void *location, struct anv_bo *bo, uint32_t delta)
+{
+   uint64_t address_u64 = 0;
+   VkResult result;
+
+   if (ANV_ALWAYS_SOFTPIN) {
+      address_u64 = bo->offset + delta;
+      result = anv_reloc_list_add_bo(batch->relocs, batch->alloc, bo);
+   } else {
+      result = anv_reloc_list_add(batch->relocs, batch->alloc,
+                                  location - batch->start, bo, delta,
+                                  &address_u64);
+   }
+   if (unlikely(result != VK_SUCCESS)) {
+      anv_batch_set_error(batch, result);
+      return 0;
+   }
+
+   return address_u64;
+}
+
 
 #define ANV_NULL_ADDRESS ((struct anv_address) { NULL, 0 })
 
