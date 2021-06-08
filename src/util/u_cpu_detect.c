@@ -564,11 +564,12 @@ util_cpu_detect_once(void)
       GetSystemInfo(&system_info);
       util_cpu_caps.nr_cpus = MAX2(1, system_info.dwNumberOfProcessors);
    }
-#elif defined(PIPE_OS_UNIX) && defined(_SC_NPROCESSORS_ONLN)
+#elif defined(PIPE_OS_UNIX)
+#  if defined(_SC_NPROCESSORS_ONLN)
    util_cpu_caps.nr_cpus = sysconf(_SC_NPROCESSORS_ONLN);
    if (util_cpu_caps.nr_cpus == ~0)
       util_cpu_caps.nr_cpus = 1;
-#elif defined(PIPE_OS_BSD)
+#  elif defined(PIPE_OS_BSD)
    {
       int mib[2], ncpu;
       int len;
@@ -580,9 +581,11 @@ util_cpu_detect_once(void)
       sysctl(mib, 2, &ncpu, &len, NULL, 0);
       util_cpu_caps.nr_cpus = ncpu;
    }
-#else
-   util_cpu_caps.nr_cpus = 1;
-#endif
+#  endif
+#endif /* defined(PIPE_OS_UNIX) */
+
+   if (util_cpu_caps.nr_cpus == 0)
+      util_cpu_caps.nr_cpus = 1;
 
    util_cpu_caps.num_cpu_mask_bits = align(util_cpu_caps.nr_cpus, 32);
 
