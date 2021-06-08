@@ -1412,6 +1412,13 @@ vn_physical_device_init_external_fence_handles(
     * and idle waiting.
     */
    physical_dev->external_fence_handles = 0;
+
+#ifdef ANDROID
+   if (physical_dev->instance->experimental.globalFencing) {
+      physical_dev->external_fence_handles =
+         VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
+   }
+#endif
 }
 
 static void
@@ -1467,6 +1474,12 @@ vn_physical_device_get_native_extensions(
       exts->EXT_external_memory_dma_buf = true;
 #endif
    }
+
+#ifdef ANDROID
+   if (instance->experimental.globalFencing) {
+      exts->KHR_external_fence_fd = true;
+   }
+#endif
 
 #ifdef VN_USE_WSI_PLATFORM
    exts->KHR_incremental_present = true;

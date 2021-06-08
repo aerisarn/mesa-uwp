@@ -10,6 +10,7 @@
 
 #include "vn_queue.h"
 
+#include "util/libsync.h"
 #include "venus-protocol/vn_protocol_driver_event.h"
 #include "venus-protocol/vn_protocol_driver_fence.h"
 #include "venus-protocol/vn_protocol_driver_queue.h"
@@ -664,12 +665,60 @@ vn_WaitForFences(VkDevice device,
    return vn_result(dev->instance, result);
 }
 
+static VkResult
+vn_create_sync_file(struct vn_device *dev, int *out_fd)
+{
+   struct vn_renderer_sync *sync;
+   VkResult result = vn_renderer_sync_create(dev->renderer, 0,
+                                             VN_RENDERER_SYNC_BINARY, &sync);
+   if (result != VK_SUCCESS)
+      return vn_error(dev->instance, result);
+
+   const struct vn_renderer_submit submit = {
+      .batches =
+         &(const struct vn_renderer_submit_batch){
+            .syncs = &sync,
+            .sync_values = &(const uint64_t){ 1 },
+            .sync_count = 1,
+         },
+      .batch_count = 1,
+   };
+   result = vn_renderer_submit(dev->renderer, &submit);
+   if (result != VK_SUCCESS) {
+      vn_renderer_sync_destroy(dev->renderer, sync);
+      return vn_error(dev->instance, result);
+   }
+
+   *out_fd = vn_renderer_sync_export_syncobj(dev->renderer, sync, true);
+   vn_renderer_sync_destroy(dev->renderer, sync);
+
+   return *out_fd >= 0 ? VK_SUCCESS : VK_ERROR_TOO_MANY_OBJECTS;
+}
+
 VkResult
 vn_ImportFenceFdKHR(VkDevice device,
                     const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   return vn_error(dev->instance, VK_ERROR_UNKNOWN);
+   struct vn_fence *fence = vn_fence_from_handle(pImportFenceFdInfo->fence);
+   ASSERTED const bool sync_file = pImportFenceFdInfo->handleType ==
+                                   VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
+   const int fd = pImportFenceFdInfo->fd;
+
+   assert(dev->instance->experimental.globalFencing);
+   assert(sync_file);
+   if (fd >= 0) {
+      const int ret = sync_wait(fd, -1);
+      if (ret)
+         return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+
+      close(fd);
+   }
+
+   /* abuse VN_SYNC_TYPE_WSI_SIGNALED */
+   vn_fence_signal_wsi(dev, fence);
+
+   return VK_SUCCESS;
 }
 
 VkResult
@@ -678,7 +727,29 @@ vn_GetFenceFdKHR(VkDevice device,
                  int *pFd)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   return vn_error(dev->instance, VK_ERROR_UNKNOWN);
+   struct vn_fence *fence = vn_fence_from_handle(pGetFdInfo->fence);
+   const bool sync_file =
+      pGetFdInfo->handleType == VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
+   struct vn_sync_payload *payload = fence->payload;
+
+   assert(dev->instance->experimental.globalFencing);
+   assert(sync_file);
+   int fd = -1;
+   if (payload->type == VN_SYNC_TYPE_DEVICE_ONLY) {
+      VkResult result = vn_create_sync_file(dev, &fd);
+      if (result != VK_SUCCESS)
+         return vn_error(dev->instance, result);
+   }
+
+   if (sync_file) {
+      vn_sync_payload_release(dev, &fence->temporary);
+      fence->payload = &fence->permanent;
+
+      /* XXX implies reset operation on the host fence */
+   }
+
+   *pFd = fd;
+   return VK_SUCCESS;
 }
 
 /* semaphore commands */
