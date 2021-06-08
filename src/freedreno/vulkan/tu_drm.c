@@ -83,6 +83,9 @@ struct tu_queue_submit
 {
    struct   list_head link;
 
+   VkCommandBuffer *cmd_buffers;
+   uint32_t cmd_buffer_count;
+
    struct   tu_syncobj **wait_semaphores;
    uint32_t wait_semaphore_count;
    struct   tu_syncobj **signal_semaphores;
@@ -106,6 +109,7 @@ struct tu_queue_submit
 
    bool     last_submit;
    uint32_t entry_count;
+   uint32_t counter_pass_index;
 };
 
 static int
@@ -837,10 +841,10 @@ tu_queue_submit_add_timeline_signal_locked(struct tu_queue_submit* submit,
 static VkResult
 tu_queue_submit_create_locked(struct tu_queue *queue,
                               const VkSubmitInfo *submit_info,
-                              const uint32_t entry_count,
                               const uint32_t nr_in_syncobjs,
                               const uint32_t nr_out_syncobjs,
                               const bool last_submit,
+                              const VkPerformanceQuerySubmitInfoKHR *perf_info,
                               struct tu_queue_submit **submit)
 {
    VkResult result;
@@ -861,6 +865,19 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
 
    struct tu_queue_submit *new_submit = vk_zalloc(&queue->device->vk.alloc,
                sizeof(*new_submit), 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   new_submit->cmd_buffer_count = submit_info->commandBufferCount;
+   new_submit->cmd_buffers = vk_zalloc(&queue->device->vk.alloc,
+         new_submit->cmd_buffer_count * sizeof(*new_submit->cmd_buffers), 8,
+         VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   if (new_submit->cmd_buffers == NULL) {
+      result = vk_error(queue->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY)
+      goto fail_cmd_buffers;
+   }
+
+   memcpy(new_submit->cmd_buffers, submit_info->pCommandBuffers,
+          new_submit->cmd_buffer_count * sizeof(*new_submit->cmd_buffers));
 
    new_submit->wait_semaphores = vk_zalloc(&queue->device->vk.alloc,
          submit_info->waitSemaphoreCount * sizeof(*new_submit->wait_semaphores),
@@ -904,6 +921,16 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
       }
    }
 
+   uint32_t entry_count = 0;
+   for (uint32_t j = 0; j < new_submit->cmd_buffer_count; ++j) {
+      TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, new_submit->cmd_buffers[j]);
+
+      if (perf_info)
+         entry_count++;
+
+      entry_count += cmdbuf->cs.entry_count;
+   }
+
    new_submit->cmds = vk_zalloc(&queue->device->vk.alloc,
          entry_count * sizeof(*new_submit->cmds), 8,
          VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
@@ -937,6 +964,8 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
    new_submit->nr_in_syncobjs = nr_in_syncobjs;
    new_submit->nr_out_syncobjs = nr_out_syncobjs;
    new_submit->last_submit = last_submit;
+   new_submit->counter_pass_index = perf_info ? perf_info->counterPassIndex : ~0;
+
    list_inithead(&new_submit->link);
 
    *submit = new_submit;
@@ -954,6 +983,8 @@ fail_wait_timelines:
 fail_signal_semaphores:
    vk_free(&queue->device->vk.alloc, new_submit->wait_semaphores);
 fail_wait_semaphores:
+   vk_free(&queue->device->vk.alloc, new_submit->cmd_buffers);
+fail_cmd_buffers:
    return result;
 }
 
@@ -971,7 +1002,47 @@ tu_queue_submit_free(struct tu_queue *queue, struct tu_queue_submit *submit)
    vk_free(&queue->device->vk.alloc, submit->cmds);
    vk_free(&queue->device->vk.alloc, submit->in_syncobjs);
    vk_free(&queue->device->vk.alloc, submit->out_syncobjs);
+   vk_free(&queue->device->vk.alloc, submit->cmd_buffers);
    vk_free(&queue->device->vk.alloc, submit);
+}
+
+static void
+tu_queue_build_msm_gem_submit_cmds(struct tu_queue *queue,
+                                   struct tu_queue_submit *submit)
+{
+   struct drm_msm_gem_submit_cmd *cmds = submit->cmds;
+
+   uint32_t entry_idx = 0;
+   for (uint32_t j = 0; j < submit->cmd_buffer_count; ++j) {
+      TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->cmd_buffers[j]);
+      struct tu_cs *cs = &cmdbuf->cs;
+      struct tu_device *dev = queue->device;
+
+      if (submit->counter_pass_index != ~0) {
+         struct tu_cs_entry *perf_cs_entry =
+            &dev->perfcntrs_pass_cs_entries[submit->counter_pass_index];
+
+         cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
+         cmds[entry_idx].submit_idx =
+            dev->bo_idx[perf_cs_entry->bo->gem_handle];
+         cmds[entry_idx].submit_offset = perf_cs_entry->offset;
+         cmds[entry_idx].size = perf_cs_entry->size;
+         cmds[entry_idx].pad = 0;
+         cmds[entry_idx].nr_relocs = 0;
+         cmds[entry_idx++].relocs = 0;
+      }
+
+      for (unsigned i = 0; i < cs->entry_count; ++i, ++entry_idx) {
+         cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
+         cmds[entry_idx].submit_idx =
+            dev->bo_idx[cs->entries[i].bo->gem_handle];
+         cmds[entry_idx].submit_offset = cs->entries[i].offset;
+         cmds[entry_idx].size = cs->entries[i].size;
+         cmds[entry_idx].pad = 0;
+         cmds[entry_idx].nr_relocs = 0;
+         cmds[entry_idx].relocs = 0;
+      }
+   }
 }
 
 static VkResult
@@ -989,6 +1060,12 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
       flags |= MSM_SUBMIT_FENCE_FD_OUT;
 
    mtx_lock(&queue->device->bo_mutex);
+
+   /* drm_msm_gem_submit_cmd requires index of bo which could change at any
+    * time when bo_mutex is not locked. So we build submit cmds here the real
+    * place to submit.
+    */
+   tu_queue_build_msm_gem_submit_cmds(queue, submit);
 
    struct drm_msm_gem_submit req = {
       .flags = flags,
@@ -1186,22 +1263,12 @@ tu_QueueSubmit(VkQueue _queue,
       if (last_submit && fence)
          out_syncobjs_size += 1;
 
-      uint32_t entry_count = 0;
-      for (uint32_t j = 0; j < submit->commandBufferCount; ++j) {
-         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
-
-         if (perf_info)
-            entry_count++;
-
-         entry_count += cmdbuf->cs.entry_count;
-      }
-
       pthread_mutex_lock(&queue->device->submit_mutex);
       struct tu_queue_submit *submit_req = NULL;
 
       VkResult ret = tu_queue_submit_create_locked(queue, submit,
-            entry_count, submit->waitSemaphoreCount, out_syncobjs_size,
-            last_submit, &submit_req);
+            submit->waitSemaphoreCount, out_syncobjs_size,
+            last_submit, perf_info, &submit_req);
 
       if (ret != VK_SUCCESS) {
          pthread_mutex_unlock(&queue->device->submit_mutex);
@@ -1244,38 +1311,6 @@ tu_QueueSubmit(VkQueue _queue,
             .handle = fence->binary.temporary ?: fence->binary.permanent,
             .flags = 0,
          };
-      }
-
-      struct drm_msm_gem_submit_cmd *cmds = submit_req->cmds;
-
-      uint32_t entry_idx = 0;
-      for (uint32_t j = 0; j < submit->commandBufferCount; ++j) {
-         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
-         struct tu_cs *cs = &cmdbuf->cs;
-
-         if (perf_info) {
-            struct tu_cs_entry *perf_cs_entry =
-               &cmdbuf->device->perfcntrs_pass_cs_entries[perf_info->counterPassIndex];
-            cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
-            cmds[entry_idx].submit_idx =
-               queue->device->bo_idx[perf_cs_entry->bo->gem_handle];
-            cmds[entry_idx].submit_offset = perf_cs_entry->offset;
-            cmds[entry_idx].size = perf_cs_entry->size;
-            cmds[entry_idx].pad = 0;
-            cmds[entry_idx].nr_relocs = 0;
-            cmds[entry_idx++].relocs = 0;
-         }
-
-         for (unsigned i = 0; i < cs->entry_count; ++i, ++entry_idx) {
-            cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
-            cmds[entry_idx].submit_idx =
-               queue->device->bo_idx[cs->entries[i].bo->gem_handle];
-            cmds[entry_idx].submit_offset = cs->entries[i].offset;
-            cmds[entry_idx].size = cs->entries[i].size;
-            cmds[entry_idx].pad = 0;
-            cmds[entry_idx].nr_relocs = 0;
-            cmds[entry_idx].relocs = 0;
-         }
       }
 
       /* Queue the current submit */
