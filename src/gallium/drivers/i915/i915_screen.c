@@ -117,10 +117,7 @@ i915_get_shader_param(struct pipe_screen *screen,
       switch (cap) {
       case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
       case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
-         if (debug_get_bool_option("DRAW_USE_LLVM", TRUE))
-            return PIPE_MAX_SAMPLERS;
-         else
-            return 0;
+         return 0;
       case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
       case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
          return 0;

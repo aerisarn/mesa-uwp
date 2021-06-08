@@ -113,9 +113,6 @@ i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    else
       draw_set_mapped_constant_buffer(draw, PIPE_SHADER_VERTEX, 0, NULL, 0);
 
-   if (i915->num_vertex_sampler_views > 0)
-      i915_prepare_vertex_sampling(i915);
-
    /*
     * Do the drawing
     */
@@ -129,9 +126,6 @@ i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    }
    if (mapped_indices)
       draw_set_indexes(draw, NULL, 0, 0);
-
-   if (i915->num_vertex_sampler_views > 0)
-      i915_cleanup_vertex_sampling(i915);
 
    /*
     * Instead of flushing on every state change, we flush once here
