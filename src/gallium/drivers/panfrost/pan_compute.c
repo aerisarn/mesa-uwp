@@ -103,6 +103,32 @@ panfrost_launch_grid(struct pipe_context *pipe,
         struct panfrost_device *dev = pan_device(pipe->screen);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
+        struct panfrost_shader_state *cs =
+                &ctx->shader[PIPE_SHADER_COMPUTE]->variants[0];
+
+        /* Indirect dispatch can't handle workgroup local storage since that
+         * would require dynamic memory allocation. Bail in this case. */
+        if (info->indirect && !cs->info.wls_size) {
+                struct pipe_transfer *transfer;
+                uint32_t *params = pipe_buffer_map_range(pipe, info->indirect,
+                                info->indirect_offset,
+                                3 * sizeof(uint32_t),
+                                PIPE_MAP_READ,
+                                &transfer);
+
+                struct pipe_grid_info direct = *info;
+                direct.indirect = NULL;
+                direct.grid[0] = params[0];
+                direct.grid[1] = params[1];
+                direct.grid[2] = params[2];
+                pipe_buffer_unmap(pipe, transfer);
+
+                if (params[0] && params[1] && params[2])
+                        panfrost_launch_grid(pipe, &direct);
+
+                return;
+        }
+
         ctx->compute_grid = info;
 
         struct panfrost_ptr t =
