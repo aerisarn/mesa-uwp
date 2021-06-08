@@ -1258,6 +1258,26 @@ struct anv_device {
     struct intel_debug_block_frame              *debug_frame_desc;
 };
 
+static inline bool
+anv_use_softpin(const struct anv_physical_device *pdevice)
+{
+#if defined(GFX_VERx10) && GFX_VERx10 >= 90
+   /* Sky Lake and later always uses softpin */
+   assert(pdevice->use_softpin);
+   return true;
+#elif defined(GFX_VERx10) && GFX_VERx10 < 80
+   /* Haswell and earlier never use softpin */
+   assert(!pdevice->use_softpin);
+   return false;
+#else
+   /* If we don't have a GFX_VERx10 #define, we need to look at the physical
+    * device.  Also, for GFX version 8, we need to look at the physical
+    * device because Broadwell softpins but Cherryview doesn't.
+    */
+   return pdevice->use_softpin;
+#endif
+}
+
 static inline struct anv_instance *
 anv_device_instance_or_null(const struct anv_device *device)
 {
@@ -1267,15 +1287,16 @@ anv_device_instance_or_null(const struct anv_device *device)
 static inline struct anv_state_pool *
 anv_binding_table_pool(struct anv_device *device)
 {
-   if (device->physical->use_softpin)
+   if (anv_use_softpin(device->physical))
       return &device->binding_table_pool;
    else
       return &device->surface_state_pool;
 }
 
 static inline struct anv_state
-anv_binding_table_pool_alloc(struct anv_device *device) {
-   if (device->physical->use_softpin)
+anv_binding_table_pool_alloc(struct anv_device *device)
+{
+   if (anv_use_softpin(device->physical))
       return anv_state_pool_alloc(&device->binding_table_pool,
                                   device->binding_table_pool.block_size, 0);
    else
@@ -3010,7 +3031,7 @@ struct anv_cmd_buffer {
 static inline bool
 anv_cmd_buffer_is_chainable(struct anv_cmd_buffer *cmd_buffer)
 {
-   return cmd_buffer->device->physical->use_softpin &&
+   return anv_use_softpin(cmd_buffer->device->physical) &&
       !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 }
 

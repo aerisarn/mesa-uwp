@@ -132,7 +132,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
        */
       sba.GeneralStateBufferSize       = 0xfffff;
       sba.IndirectObjectBufferSize     = 0xfffff;
-      if (device->physical->use_softpin) {
+      if (anv_use_softpin(device->physical)) {
          /* With softpin, we use fixed addresses so we actually know how big
           * our base addresses are.
           */
@@ -165,7 +165,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.InstructionAccessUpperBoundModifyEnable = true;
 #  endif
 #  if (GFX_VER >= 9)
-      if (cmd_buffer->device->physical->use_softpin) {
+      if (anv_use_softpin(device->physical)) {
          sba.BindlessSurfaceStateBaseAddress = (struct anv_address) {
             .bo = device->surface_state_pool.block_pool.bo,
             .offset = 0,
@@ -523,7 +523,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
          aux_entry_map = intel_aux_map_get_entry(cmd_buffer->device->aux_map_ctx,
                                                  address, &aux_entry_addr64);
 
-         assert(cmd_buffer->device->physical->use_softpin);
+         assert(anv_use_softpin(cmd_buffer->device->physical));
          struct anv_address aux_entry_address = {
             .bo = NULL,
             .offset = aux_entry_addr64,
@@ -2542,7 +2542,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
     * softpin then we always keep all user-allocated memory objects resident.
     */
    const bool need_client_mem_relocs =
-      !cmd_buffer->device->physical->use_softpin;
+      !anv_use_softpin(cmd_buffer->device->physical);
    struct anv_push_constants *push = &pipe_state->push_constants;
 
    for (uint32_t s = 0; s < map->surface_count; s++) {
@@ -5045,7 +5045,7 @@ genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_buffer
                                                uint32_t vb_size)
 {
    if (GFX_VER < 8 || GFX_VER > 9 ||
-       !cmd_buffer->device->physical->use_softpin)
+       !anv_use_softpin(cmd_buffer->device->physical))
       return;
 
    struct anv_vb_cache_range *bound, *dirty;
@@ -5093,7 +5093,7 @@ genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_b
                                                     uint64_t vb_used)
 {
    if (GFX_VER < 8 || GFX_VER > 9 ||
-       !cmd_buffer->device->physical->use_softpin)
+       !anv_use_softpin(cmd_buffer->device->physical))
       return;
 
    if (access_type == RANDOM) {

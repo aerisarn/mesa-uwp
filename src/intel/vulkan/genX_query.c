@@ -198,7 +198,7 @@ VkResult genX(CreateQueryPool)(
    if (pdevice->supports_48bit_addresses)
       bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
 
-   if (pdevice->use_softpin)
+   if (anv_use_softpin(pdevice))
       bo_flags |= EXEC_OBJECT_PINNED;
 
    if (pdevice->has_exec_async)
