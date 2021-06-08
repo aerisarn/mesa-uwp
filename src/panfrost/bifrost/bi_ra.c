@@ -361,8 +361,10 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
 
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_dest(ins, d) {
-                        if (ins->no_spill || ins->dest[d].offset)
-                                BITSET_SET(no_spill, bi_get_node(ins->dest[d]));
+                        unsigned node = bi_get_node(ins->dest[d]);
+
+                        if (node < l->node_count && ins->no_spill)
+                                BITSET_SET(no_spill, node);
                 }
         }
 
@@ -371,8 +373,7 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
         unsigned best_benefit = 0.0;
         signed best_node = -1;
 
-        /* Skip register nodes (with bit 0 set) */
-        for (unsigned i = 0; i < l->node_count; i += 2) {
+        for (unsigned i = 0; i < l->node_count; ++i) {
                 if (BITSET_TEST(no_spill, i)) continue;
 
                 unsigned benefit = lcra_count_constraints(l, i);
@@ -387,100 +388,62 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
         return best_node;
 }
 
-static void
-bi_spill_dest(bi_builder *b, bi_index index, bi_index temp, uint32_t offset,
-                bi_instr *instr, bi_block *block, unsigned channels)
-{
-        b->cursor = bi_after_instr(instr);
-        bi_store(b, channels * 32, temp, bi_imm_u32(offset), bi_zero(),
-                        BI_SEG_TL);
-
-        b->shader->spills++;
-}
-
-static void
-bi_fill_src(bi_builder *b, bi_index index, bi_index temp, uint32_t offset,
-                bi_instr *instr, bi_block *block, unsigned channels)
-{
-        b->cursor = bi_before_instr(instr);
-        bi_instr *ld = bi_load_to(b, channels * 32, temp,
-                        bi_imm_u32(offset), bi_zero(), BI_SEG_TL);
-        ld->no_spill = true;
-
-        b->shader->fills++;
-}
-
 static unsigned
-bi_instr_mark_spill(bi_context *ctx, bi_block *block,
-                bi_instr *ins, bi_index index, bi_index *temp)
+bi_count_read_index(bi_instr *I, bi_index index)
 {
-        unsigned channels = 0;
+        unsigned max = 0;
 
-        bi_foreach_dest(ins, d) {
-                if (!bi_is_equiv(ins->dest[d], index)) continue;
-                if (bi_is_null(*temp)) *temp = bi_temp_reg(ctx);
-                ins->no_spill = true;
-
-                unsigned offset = ins->dest[d].offset;
-                ins->dest[d] = bi_replace_index(ins->dest[d], *temp);
-                ins->dest[d].offset = offset;
-
-                unsigned newc = util_last_bit(bi_writemask(ins, d)) >> 2;
-                channels = MAX2(channels, newc);
+        bi_foreach_src(I, s) {
+                if (bi_is_equiv(I->src[s], index)) {
+                        unsigned count = bi_count_read_registers(I, s);
+                        max = MAX2(max, count + I->src[s].offset);
+                }
         }
 
-        return channels;
+        return max;
 }
 
-static bool
-bi_instr_mark_fill(bi_context *ctx, bi_block *block, bi_instr *ins,
-                bi_index index, bi_index *temp)
-{
-        if (!bi_has_arg(ins, index)) return false;
-        if (bi_is_null(*temp)) *temp = bi_temp_reg(ctx);
-        bi_rewrite_index_src_single(ins, index, *temp);
-        return true;
-}
-
-/* Once we've chosen a spill node, spill it. Precondition: node is a valid
- * SSA node in the non-optimized scheduled IR that was not already
- * spilled (enforced by bi_choose_spill_node). Returns bytes spilled */
+/* Once we've chosen a spill node, spill it and returns bytes spilled */
 
 static unsigned
 bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
 {
-        assert(!index.reg);
-
-        bi_builder _b = { .shader = ctx };
-        unsigned channels = 1;
+        bi_builder b = { .shader = ctx };
+        unsigned channels = 0;
 
         /* Spill after every store, fill before every load */
-        bi_foreach_block(ctx, _block) {
-                bi_block *block = (bi_block *) _block;
-                bi_foreach_instr_in_block_safe(block, instr) {
-                        bi_index tmp;
-                        unsigned local_channels = bi_instr_mark_spill(ctx,
-                                        block, instr, index, &tmp);
+        bi_foreach_instr_global_safe(ctx, I) {
+                bi_foreach_dest(I, d) {
+                        if (!bi_is_equiv(I->dest[d], index)) continue;
 
-                        channels = MAX2(channels, local_channels);
+                        unsigned extra = I->dest[d].offset;
+                        bi_index tmp = bi_temp(ctx);
 
-                        if (local_channels) {
-                                bi_spill_dest(&_b, index, tmp, offset,
-                                                instr, block, channels);
-                        }
+                        I->dest[d] = bi_replace_index(I->dest[d], tmp);
+                        I->no_spill = true;
 
-                        /* For SSA form, if we write/spill, there was no prior
-                         * contents to fill, so don't waste time reading
-                         * garbage */
+                        unsigned count = bi_count_write_registers(I, d);
+                        unsigned bits = count * 32;
 
-                        bool should_fill = !local_channels || index.reg;
-                        should_fill &= bi_instr_mark_fill(ctx, block, instr,
-                                        index, &tmp);
+                        b.cursor = bi_after_instr(I);
+                        bi_index loc = bi_imm_u32(offset + 4 * extra);
+                        bi_store(&b, bits, tmp, loc, bi_zero(), BI_SEG_TL);
 
-                        if (should_fill) {
-                                bi_fill_src(&_b, index, tmp, offset, instr,
-                                                block, channels);
-                        }
+                        ctx->spills++;
+                        channels = MAX2(channels, extra + count);
+                }
+
+                if (bi_has_arg(I, index)) {
+                        b.cursor = bi_before_instr(I);
+                        bi_index tmp = bi_temp(ctx);
+
+                        unsigned bits = bi_count_read_index(I, index) * 32;
+                        bi_rewrite_index_src_single(I, index, tmp);
+
+                        bi_instr *ld = bi_load_to(&b, bits, tmp,
+                                        bi_imm_u32(offset), bi_zero(), BI_SEG_TL);
+                        ld->no_spill = true;
+                        ctx->fills++;
                 }
         }
 
