@@ -159,3 +159,56 @@ In the guest, build and start sommelier, the special Wayland compositor,
 sommelier requires ``xdg-shell-unstable-v6`` rather than the stable
 ``xdg-shell`` from the host compositor.  One must make sure the host
 compositor still supports the older extension.
+
+Optional Requirements
+---------------------
+
+When virglrenderer is built with ``-Dminigbm_allocation=true``, the Venus
+renderer might need to import GBM BOs.  The imports will fail unless the host
+driver supports the formats, especially multi-planar ones, and the DRM format
+modifiers of the GBM BOs.
+
+In the future, if virglrenderer's ``virgl_renderer_export_fence`` is
+supported, the Venus renderer will require ``VK_KHR_external_fence_fd`` with
+``VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT`` from the host driver.
+
+A WSI image of the Venus driver is an external image to the host driver.  When
+the WSI image is transitioned from ``VK_IMAGE_LAYOUT_UNDEFINED`` after image
+acquisition, the Venus driver does not request the Venus renderer to perform
+an ownership transfer on the external image.  It is unclear if the ownership
+transfer is required or not.  A specification issue has been filed for
+clarifications.  See the comment before ``vn_cmd_fix_image_memory_barrier``
+for more details.
+
+VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+-----------------------------------
+
+The Venus renderer makes assumptions about ``VkDeviceMemory`` that has
+``VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT``.  The assumptions are illegal and rely
+on the current behaviors of the host drivers.  It should be possible to remove
+some of the assumptions and incrementally improve compatibilities with more
+host drivers by imposing platform-specific requirements.  But the long-term
+plan is to create a new Vulkan extension for the host drivers to address this
+specific use case.
+
+The Venus renderer assumes a device memory that has
+``VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT`` can be exported as a mmapable dma-buf
+(in the future, the plan is to export the device memory as an opaque fd).  It
+chains ``VkExportMemoryAllocateInfo`` to ``VkMemoryAllocateInfo`` without
+checking if the host driver can export the device memory.
+
+The dma-buf is mapped (in the future, the plan is to import the opaque fd and
+call ``vkMapMemory``) but the mapping is not accessed.  Instead, the mapping
+is passed to ``KVM_SET_USER_MEMORY_REGION``.  The hypervisor, host KVM, and
+the guest kernel work together to set up a write-back or write-combined guest
+mapping (see ``virtio_gpu_vram_mmap`` of the virtio-gpu kernel driver).  CPU
+accesses to the device memory are via the guest mapping, and are assumed to be
+coherent when the device memory also has
+``VK_MEMORY_PROPERTY_HOST_COHERENT_BIT``.
+
+When a ``VkImage`` or a ``VkBuffer`` is created, the Venus renderer does not
+know if the image or the buffer will be bound to such a device memory or not.
+As a result, the Venus renderer unconditionally chains
+``VkExternalMemoryImageCreateInfo`` to ``VkImageCreateInfo`` and chains
+``VkExternalMemoryBufferCreateInfo`` to ``VkBufferCreateInfo`` without
+checking for the host driver support.
