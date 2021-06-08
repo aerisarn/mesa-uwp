@@ -122,14 +122,14 @@ a530_gles31:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     BM_START_XORG: 1
 
-# Run 1/2 of piglit_gl since it takes a bit under 20 minutes
+# piglit_gl since it takes a bit under 20 minutes and has a lot of flakes, so
+# leave it as manual.
 a530_piglit_gl:
   extends:
     - .a530_piglit
     - .test-manual-mr
   variables:
     PIGLIT_PROFILES: quick_gl
-    PIGLIT_FRACTION: 2
 
 a530_piglit_shader:
   extends:
