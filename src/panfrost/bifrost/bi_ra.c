@@ -183,6 +183,13 @@ bi_make_affinity(uint64_t clobber, unsigned count)
         for (unsigned i = 0; i < count; ++i)
                 clobbered |= (clobber >> i);
 
+        /* Don't allocate past the end of the register file */
+        if (count > 1) {
+                unsigned excess = count - 1;
+                uint64_t mask = BITFIELD_MASK(excess);
+                clobbered |= mask << (64 - excess);
+        }
+
         /* We can use a register iff it's not clobberred */
         return ~clobbered;
 }
