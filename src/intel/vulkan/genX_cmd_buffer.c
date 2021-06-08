@@ -243,13 +243,21 @@ static void
 add_surface_reloc(struct anv_cmd_buffer *cmd_buffer,
                   struct anv_state state, struct anv_address addr)
 {
-   const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
+   VkResult result;
 
-   VkResult result =
-      anv_reloc_list_add(&cmd_buffer->surface_relocs, &cmd_buffer->pool->alloc,
-                         state.offset + isl_dev->ss.addr_offset,
-                         addr.bo, addr.offset, NULL);
-   if (result != VK_SUCCESS)
+   if (anv_use_softpin(cmd_buffer->device->physical)) {
+      result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
+                                     &cmd_buffer->pool->alloc,
+                                     addr.bo);
+   } else {
+      const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
+      result = anv_reloc_list_add(&cmd_buffer->surface_relocs,
+                                  &cmd_buffer->pool->alloc,
+                                  state.offset + isl_dev->ss.addr_offset,
+                                  addr.bo, addr.offset, NULL);
+   }
+
+   if (unlikely(result != VK_SUCCESS))
       anv_batch_set_error(&cmd_buffer->batch, result);
 }
 
