@@ -175,7 +175,7 @@ util_set_thread_affinity(thrd_t thread,
       if (pthread_getaffinity_np(thread, sizeof(cpuset), &cpuset) != 0)
          return false;
 
-      memset(old_mask, 0, num_mask_bits / 32);
+      memset(old_mask, 0, num_mask_bits / 8);
       for (unsigned i = 0; i < num_mask_bits && i < CPU_SETSIZE; i++) {
          if (CPU_ISSET(i, &cpuset))
             old_mask[i / 32] |= 1u << (i % 32);
@@ -200,7 +200,7 @@ util_set_thread_affinity(thrd_t thread,
       return false;
 
    if (old_mask) {
-      memset(old_mask, 0, num_mask_bits / 32);
+      memset(old_mask, 0, num_mask_bits / 8);
 
       old_mask[0] = m;
 #ifdef _WIN64
