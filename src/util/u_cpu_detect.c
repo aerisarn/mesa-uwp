@@ -565,7 +565,20 @@ util_cpu_detect_once(void)
       util_cpu_caps.nr_cpus = MAX2(1, system_info.dwNumberOfProcessors);
    }
 #elif defined(PIPE_OS_UNIX)
-#  if defined(_SC_NPROCESSORS_ONLN)
+   /* Linux, FreeBSD, DragonFly, and Mac OS X should have
+    * _SC_NOPROCESSORS_ONLN.  NetBSD and OpenBSD should have HW_NCPUONLINE.
+    * This is what FFmpeg uses on those platforms.
+    */
+#  if defined(PIPE_OS_BSD) && defined(HW_NCPUONLINE)
+   {
+      const int mib[] = { CTL_HW, HW_NCPUONLINE };
+      int ncpu;
+      int len = sizeof(ncpu);
+
+      sysctl(mib, 2, &ncpu, &len, NULL, 0);
+      util_cpu_caps.nr_cpus = ncpu;
+   }
+#  elif defined(_SC_NPROCESSORS_ONLN)
    util_cpu_caps.nr_cpus = sysconf(_SC_NPROCESSORS_ONLN);
    if (util_cpu_caps.nr_cpus == ~0)
       util_cpu_caps.nr_cpus = 1;
@@ -578,7 +591,7 @@ util_cpu_detect_once(void)
       sysctl(mib, 2, &ncpu, &len, NULL, 0);
       util_cpu_caps.nr_cpus = ncpu;
    }
-#  endif
+#  endif /* defined(PIPE_OS_BSD) */
 #endif /* defined(PIPE_OS_UNIX) */
 
    if (util_cpu_caps.nr_cpus == 0)
