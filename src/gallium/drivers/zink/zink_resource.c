@@ -133,9 +133,13 @@ aspect_from_format(enum pipe_format fmt)
 static VkBufferCreateInfo
 create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsigned bind)
 {
-   VkBufferCreateInfo bci = {0};
+   VkBufferCreateInfo bci;
    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+   bci.pNext = NULL;
+   bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+   bci.queueFamilyIndexCount = 0;
    bci.size = templ->width0;
+   bci.flags = 0;
    assert(bci.size > 0);
 
    bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
@@ -166,9 +170,10 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
    assert(modifier == DRM_FORMAT_MOD_INVALID ||
           (screen->vk.GetPhysicalDeviceImageFormatProperties2 && screen->info.have_EXT_image_drm_format_modifier));
    if (screen->vk.GetPhysicalDeviceImageFormatProperties2) {
-      VkImageFormatProperties2 props2 = {0};
+      VkImageFormatProperties2 props2;
       props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
-      VkPhysicalDeviceImageFormatInfo2 info = {0};
+      props2.pNext = NULL;
+      VkPhysicalDeviceImageFormatInfo2 info;
       info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
       info.format = ici->format;
       info.type = ici->imageType;
@@ -184,7 +189,9 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
          mod_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
          mod_info.queueFamilyIndexCount = 0;
          info.pNext = &mod_info;
-      }
+      } else
+         info.pNext = NULL;
+
       ret = screen->vk.GetPhysicalDeviceImageFormatProperties2(screen->pdev, &info, &props2);
       image_props = props2.imageFormatProperties;
    } else
@@ -306,7 +313,9 @@ static uint64_t
 create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe_resource *templ, unsigned bind, unsigned modifiers_count, const uint64_t *modifiers, bool *success)
 {
    ici->sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+   ici->pNext = NULL;
    ici->flags = bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+   ici->usage = 0;
 
    switch (templ->target) {
    case PIPE_TEXTURE_1D:
@@ -423,7 +432,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    if (!obj)
       return NULL;
 
-   VkMemoryRequirements reqs = {0};
+   VkMemoryRequirements reqs;
    VkMemoryPropertyFlags flags;
    bool need_dedicated = false;
    /* TODO: remove linear for wsi */
@@ -457,16 +466,17 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       const uint64_t *ici_modifiers = winsys_modifier ? &whandle->modifier : modifiers;
       unsigned ici_modifier_count = winsys_modifier ? 1 : modifiers_count;
       bool success = false;
-      VkImageCreateInfo ici = {0};
+      VkImageCreateInfo ici;
       uint64_t mod = create_ici(screen, &ici, templ, templ->bind, ici_modifier_count, ici_modifiers, &success);
-      VkExternalMemoryImageCreateInfo emici = {0};
-      VkImageDrmFormatModifierExplicitCreateInfoEXT idfmeci = {0};
+      VkExternalMemoryImageCreateInfo emici;
+      VkImageDrmFormatModifierExplicitCreateInfoEXT idfmeci;
       VkImageDrmFormatModifierListCreateInfoEXT idfmlci;
       if (!success)
          goto fail1;
 
       if (shared) {
          emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+         emici.pNext = NULL;
          emici.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
          ici.pNext = &emici;
 
@@ -563,9 +573,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             templ->usage == PIPE_USAGE_STAGING)
       flags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
-   VkMemoryAllocateInfo mai = {0};
+   VkMemoryAllocateInfo mai;
    enum zink_alloc_flag aflags = templ->flags & PIPE_RESOURCE_FLAG_SPARSE ? ZINK_ALLOC_SPARSE : 0;
    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+   mai.pNext = NULL;
    mai.allocationSize = reqs.size;
    enum zink_heap heap = zink_heap_from_domain_flags(flags, aflags);
    mai.memoryTypeIndex = screen->heap_map[heap];
@@ -602,7 +613,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       mai.pNext = &ded_alloc_info;
    }
 
-   VkExportMemoryAllocateInfo emai = {0};
+   VkExportMemoryAllocateInfo emai;
    if (templ->bind & PIPE_BIND_SHARED && shared) {
       emai.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
       emai.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
