@@ -48,7 +48,8 @@ panfrost_pack_work_groups_compute(
         unsigned size_x,
         unsigned size_y,
         unsigned size_z,
-        bool quirk_graphics)
+        bool quirk_graphics,
+        bool indirect_dispatch)
 {
         uint32_t packed = 0;
 
@@ -88,8 +89,12 @@ panfrost_pack_work_groups_compute(
                 cfg.size_y_shift = shifts[1];
                 cfg.size_z_shift = shifts[2];
                 cfg.workgroups_x_shift = shifts[3];
-                cfg.workgroups_y_shift = shifts[4];
-                cfg.workgroups_z_shift = shifts[5];
+
+                if (!indirect_dispatch) {
+                        /* Leave zero for the dispatch shader */
+                        cfg.workgroups_y_shift = shifts[4];
+                        cfg.workgroups_z_shift = shifts[5];
+                }
 
                 /* Quirk: for non-instanced graphics, the blob sets
                  * workgroups_z_shift = 32. This doesn't appear to matter to

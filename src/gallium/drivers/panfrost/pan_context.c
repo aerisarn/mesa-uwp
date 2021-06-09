@@ -528,7 +528,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         if (info->instance_count > 1) {
                 panfrost_pack_work_groups_compute(&invocation,
                                                   1, vertex_count, info->instance_count,
-                                                  1, 1, 1, true);
+                                                  1, 1, 1, true, false);
         } else {
                 pan_pack(&invocation, INVOCATION, cfg) {
                         cfg.invocations = MALI_POSITIVE(vertex_count);

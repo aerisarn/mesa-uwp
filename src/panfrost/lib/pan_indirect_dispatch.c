@@ -133,7 +133,7 @@ pan_indirect_dispatch_emit(struct pan_pool *pool,
 
         panfrost_pack_work_groups_compute(invocation,
                                           1, 1, 1, 1, 1, 1,
-                                          false);
+                                          false, false);
 
         pan_section_pack(job.cpu, COMPUTE_JOB, PARAMETERS, cfg) {
                 cfg.job_task_split = 2;

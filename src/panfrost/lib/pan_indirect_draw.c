@@ -1245,7 +1245,7 @@ panfrost_emit_index_min_max_search(struct pan_pool *pool,
                 pan_section_ptr(job.cpu, COMPUTE_JOB, INVOCATION);
         panfrost_pack_work_groups_compute(invocation,
                                           1, 1, 1, MIN_MAX_JOBS, 1, 1,
-                                          false);
+                                          false, false);
 
         pan_section_pack(job.cpu, COMPUTE_JOB, PARAMETERS, cfg) {
                 cfg.job_task_split = 7;
@@ -1337,7 +1337,7 @@ panfrost_emit_indirect_draw(struct pan_pool *pool,
                 pan_section_ptr(job.cpu, COMPUTE_JOB, INVOCATION);
         panfrost_pack_work_groups_compute(invocation,
                                           1, 1, 1, 1, 1, 1,
-                                          false);
+                                          false, false);
 
         pan_section_pack(job.cpu, COMPUTE_JOB, PARAMETERS, cfg) {
                 cfg.job_task_split = 2;

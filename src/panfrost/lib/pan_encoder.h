@@ -66,7 +66,8 @@ panfrost_pack_work_groups_compute(
         unsigned size_x,
         unsigned size_y,
         unsigned size_z,
-        bool quirk_graphics);
+        bool quirk_graphics,
+        bool indirect_dispatch);
 
 /* Tiler structure size computation */
 

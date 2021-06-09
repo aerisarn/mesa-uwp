@@ -160,7 +160,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
                                           num_wg[0], num_wg[1], num_wg[2],
                                           info->block[0], info->block[1],
                                           info->block[2],
-                                          false);
+                                          false, info->indirect != NULL);
 
         pan_section_pack(t.cpu, COMPUTE_JOB, PARAMETERS, cfg) {
                 cfg.job_task_split =
