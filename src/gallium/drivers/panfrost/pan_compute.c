@@ -236,6 +236,9 @@ panfrost_set_global_binding(struct pipe_context *pctx,
                 panfrost_batch_add_bo(batch, rsrc->image.data.bo,
                                       PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_RW);
 
+                util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
+                                0, rsrc->base.width0);
+
                 /* The handle points to uint32_t, but space is allocated for 64 bits */
                 memcpy(handles[i], &rsrc->image.data.bo->ptr.gpu, sizeof(mali_ptr));
         }

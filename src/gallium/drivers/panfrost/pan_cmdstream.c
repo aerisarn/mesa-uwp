@@ -903,11 +903,15 @@ panfrost_upload_ssbo_sysval(struct panfrost_batch *batch,
         struct pipe_shader_buffer sb = ctx->ssbo[st][ssbo_id];
 
         /* Compute address */
-        struct panfrost_bo *bo = pan_resource(sb.buffer)->image.data.bo;
+        struct panfrost_resource *rsrc = pan_resource(sb.buffer);
+        struct panfrost_bo *bo = rsrc->image.data.bo;
 
         panfrost_batch_add_bo(batch, bo,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_RW |
                               panfrost_bo_access_for_stage(st));
+
+        util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
+                        sb.buffer_offset, sb.buffer_size);
 
         /* Upload address and size as sysval */
         uniform->du[0] = bo->ptr.gpu + sb.buffer_offset;
@@ -1545,6 +1549,11 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                         flags |= PAN_BO_ACCESS_WRITE;
                         unsigned level = is_buffer ? 0 : image->u.tex.level;
                         BITSET_SET(rsrc->valid.data, level);
+
+                        if (is_buffer) {
+                                util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
+                                                0, rsrc->base.width0);
+                        }
                 }
                 panfrost_batch_add_bo(batch, rsrc->image.data.bo, flags);
 
@@ -1894,7 +1903,8 @@ panfrost_emit_streamout(struct panfrost_batch *batch,
         unsigned expected_size = stride * count;
 
         /* Grab the BO and bind it to the batch */
-        struct panfrost_bo *bo = pan_resource(target->buffer)->image.data.bo;
+        struct panfrost_resource *rsrc = pan_resource(target->buffer);
+        struct panfrost_bo *bo = rsrc->image.data.bo;
 
         /* Varyings are WRITE from the perspective of the VERTEX but READ from
          * the perspective of the TILER and FRAGMENT.
@@ -1905,12 +1915,15 @@ panfrost_emit_streamout(struct panfrost_batch *batch,
                               PAN_BO_ACCESS_VERTEX_TILER |
                               PAN_BO_ACCESS_FRAGMENT);
 
-        mali_ptr addr = bo->ptr.gpu + panfrost_xfb_offset(stride, target);
+        unsigned offset = panfrost_xfb_offset(stride, target);
 
         pan_pack(slot, ATTRIBUTE_BUFFER, cfg) {
-                cfg.pointer = (addr & ~63);
+                cfg.pointer = bo->ptr.gpu + (offset & ~63);
                 cfg.stride = stride;
-                cfg.size = MIN2(max_size, expected_size) + (addr & 63);
+                cfg.size = MIN2(max_size, expected_size) + (offset & 63);
+
+                util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
+                                offset, cfg.size);
         }
 }
 
