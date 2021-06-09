@@ -892,9 +892,12 @@ bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
    } else {
       ctx->gfx_stages[stage] = shader;
       ctx->gfx_pipeline_state.combined_dirty = true;
-      if (!shader) {
+      if (shader)
+         ctx->shader_stages |= BITFIELD_BIT(stage);
+      else {
          ctx->gfx_pipeline_state.modules[stage] = VK_NULL_HANDLE;
          ctx->curr_program = NULL;
+         ctx->shader_stages &= ~BITFIELD_BIT(stage);
       }
       ctx->dirty_shader_stages |= 1 << stage;
    }

@@ -213,6 +213,7 @@ struct zink_context {
    struct hash_table compute_program_cache;
    struct zink_compute_program *curr_compute;
 
+   unsigned shader_stages : ZINK_SHADER_COUNT; /* mask of bound gfx shader stages */
    unsigned dirty_shader_stages : 6; /* mask of changed shader stages */
    bool last_vertex_stage_dirty;
 
