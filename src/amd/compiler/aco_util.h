@@ -25,6 +25,8 @@
 #ifndef ACO_UTIL_H
 #define ACO_UTIL_H
 
+#include "util/bitscan.h"
+
 #include <cassert>
 #include <iterator>
 #include <vector>

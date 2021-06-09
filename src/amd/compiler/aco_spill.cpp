@@ -23,13 +23,15 @@
  *
  */
 
-#include "aco_ir.h"
 #include "aco_builder.h"
+#include "aco_ir.h"
 #include "sid.h"
 
 #include <map>
 #include <set>
 #include <stack>
+#include <unordered_set>
+#include <vector>
 
 /*
  * Implements the spilling algorithm on SSA-form from

@@ -22,14 +22,13 @@
  *
  */
 
-#include <algorithm>
-
-#include "aco_ir.h"
 #include "aco_builder.h"
-#include <stack>
-#include <functional>
+#include "aco_ir.h"
 
-#include <time.h>
+#include <algorithm>
+#include <bitset>
+#include <stack>
+#include <vector>
 
 namespace aco {
 namespace {

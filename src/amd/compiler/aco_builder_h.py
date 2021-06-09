@@ -29,8 +29,6 @@ template = """\
 #define _ACO_BUILDER_
 
 #include "aco_ir.h"
-#include "util/u_math.h"
-#include "util/bitscan.h"
 
 namespace aco {
 enum dpp_ctrl {
@@ -601,7 +599,8 @@ formats = [(f if len(f) == 5 else f + ('',)) for f in formats]
 % endfor
 };
 
-}
+} // namespace aco
+
 #endif /* _ACO_BUILDER_ */"""
 
 from aco_opcodes import opcodes, Format

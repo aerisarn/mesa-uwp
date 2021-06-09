@@ -22,10 +22,11 @@
  *
  */
 
-
 #include "aco_ir.h"
 
+#include <algorithm>
 #include <map>
+#include <vector>
 
 namespace aco {
 namespace {

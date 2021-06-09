@@ -1,5 +1,5 @@
-#include "aco_ir.h"
 #include "aco_builder.h"
+#include "aco_ir.h"
 
 #include "sid.h"
 #include "ac_shader_util.h"

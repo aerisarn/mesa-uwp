@@ -25,20 +25,15 @@
 #ifndef ACO_IR_H
 #define ACO_IR_H
 
-#include <algorithm>
-#include <vector>
-#include <set>
-#include <unordered_set>
-#include <bitset>
-#include <memory>
-
-#include "nir.h"
-#include "ac_binary.h"
-#include "amd_family.h"
 #include "aco_opcodes.h"
 #include "aco_util.h"
-
 #include "vulkan/radv_shader.h"
+
+#include "nir.h"
+
+#include <bitset>
+#include <memory>
+#include <vector>
 
 struct radv_shader_args;
 struct radv_shader_info;

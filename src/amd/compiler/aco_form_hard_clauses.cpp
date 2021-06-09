@@ -21,8 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#include "aco_ir.h"
 #include "aco_builder.h"
+#include "aco_ir.h"
+
+#include <vector>
 
 namespace aco {
 namespace {

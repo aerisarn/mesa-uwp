@@ -25,12 +25,12 @@
  *
  */
 
-#include <map>
-
-#include "aco_ir.h"
 #include "aco_builder.h"
-#include <algorithm>
+#include "aco_ir.h"
 
+#include <algorithm>
+#include <map>
+#include <vector>
 
 namespace aco {
 

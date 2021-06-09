@@ -1,13 +1,14 @@
-#include <vector>
+
+
+#include "aco_builder.h"
+#include "aco_ir.h"
+#include "sid.h"
+
+#include "util/memstream.h"
+
 #include <algorithm>
 #include <map>
-
-#include "aco_ir.h"
-#include "aco_builder.h"
-#include "common/sid.h"
-#include "ac_shader_util.h"
-#include "util/memstream.h"
-#include "util/u_math.h"
+#include <vector>
 
 namespace aco {
 

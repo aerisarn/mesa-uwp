@@ -23,11 +23,12 @@
  */
 
 #include "aco_ir.h"
+#include "util/memstream.h"
 
 #include <array>
 #include <map>
-
-#include "util/memstream.h"
+#include <set>
+#include <vector>
 
 namespace aco {
 

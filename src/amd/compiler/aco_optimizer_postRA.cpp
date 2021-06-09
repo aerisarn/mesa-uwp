@@ -27,10 +27,10 @@
 
 #include "aco_ir.h"
 
-#include <vector>
 #include <bitset>
 #include <algorithm>
 #include <array>
+#include <vector>
 
 namespace aco {
 namespace {
@@ -342,3 +342,4 @@ void optimize_postRA(Program* program)
 }
 
 } /* End of aco namespace */
+

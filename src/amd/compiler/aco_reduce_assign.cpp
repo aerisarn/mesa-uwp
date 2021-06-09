@@ -23,8 +23,10 @@
  *
  */
 
-#include "aco_ir.h"
 #include "aco_builder.h"
+#include "aco_ir.h"
+
+#include <vector>
 
 /*
  * Insert p_linear_start instructions right before RA to correctly allocate

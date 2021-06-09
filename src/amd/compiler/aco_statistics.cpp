@@ -21,11 +21,14 @@
  * IN THE SOFTWARE.
  *
  */
- 
-#include <deque>
 
 #include "aco_ir.h"
 #include "util/crc32.h"
+
+#include <algorithm>
+#include <deque>
+#include <set>
+#include <vector>
 
 namespace aco {
 

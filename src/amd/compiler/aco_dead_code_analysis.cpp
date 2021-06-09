@@ -25,6 +25,7 @@
 #include "aco_ir.h"
 
 #include <algorithm>
+#include <vector>
 
 /*
  * Implements an analysis pass to determine the number of uses

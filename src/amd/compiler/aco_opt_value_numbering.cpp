@@ -22,9 +22,11 @@
  *
  */
 
+#include "aco_ir.h"
+
 #include <map>
 #include <unordered_map>
-#include "aco_ir.h"
+#include <vector>
 
 /*
  * Implements the algorithm for dominator-tree value numbering

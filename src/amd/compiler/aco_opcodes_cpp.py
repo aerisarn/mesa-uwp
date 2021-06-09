@@ -28,7 +28,6 @@ template = """\
 
 namespace aco {
 
-
 <%
 opcode_names = sorted(opcodes.keys())
 can_use_input_modifiers = "".join([opcodes[name].input_mod for name in reversed(opcode_names)])

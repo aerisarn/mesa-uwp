@@ -22,10 +22,16 @@
  *
  */
 
+#ifndef ACO_INSTRUCTION_SELECTION_H
+#define ACO_INSTRUCTION_SELECTION_H
+
+#include "aco_ir.h"
+
+#include "vulkan/radv_shader_args.h"
+
 #include <array>
 #include <unordered_map>
-#include "aco_ir.h"
-#include "vulkan/radv_shader_args.h"
+#include <vector>
 
 namespace aco {
 
@@ -113,4 +119,6 @@ setup_isel_context(Program* program,
                    struct radv_shader_args *args,
                    bool is_gs_copy_shader);
 
-}
+} // namespace aco
+
+#endif /* ACO_INSTRUCTION_SELECTION_H */

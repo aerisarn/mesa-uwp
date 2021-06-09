@@ -26,14 +26,15 @@
  *
  */
 
+#include "aco_ir.h"
+
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <map>
+#include <set>
 #include <unordered_map>
-
-#include "aco_ir.h"
-#include "sid.h"
-#include "util/u_math.h"
+#include <vector>
 
 namespace aco {
 namespace {

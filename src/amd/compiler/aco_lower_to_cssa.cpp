@@ -22,10 +22,13 @@
  *
  */
 
+#include "aco_builder.h"
+#include "aco_ir.h"
+
+#include <algorithm>
 #include <map>
 #include <unordered_map>
-#include "aco_ir.h"
-#include "aco_builder.h"
+#include <vector>
 
 /*
  * Implements an algorithm to lower to Concentional SSA Form (CSSA).
