@@ -667,8 +667,6 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc,
    }
 
    fd_batch_reference(&write_batch, NULL);
-
-   assert(!rsc->track->write_batch);
 }
 
 static void
