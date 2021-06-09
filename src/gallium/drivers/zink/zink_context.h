@@ -203,7 +203,10 @@ struct zink_context {
    bool shader_reads_basevertex;
    struct zink_gfx_pipeline_state gfx_pipeline_state;
    enum pipe_prim_type gfx_prim_mode;
-   struct hash_table program_cache;
+   /* there are 5 gfx stages, but VS and FS are assumed to be always present,
+    * thus only 3 stages need to be considered, giving 2^3 = 8 program caches.
+    */
+   struct hash_table program_cache[8];
    struct zink_gfx_program *curr_program;
 
    struct zink_descriptor_data *dd;

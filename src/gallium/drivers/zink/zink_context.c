@@ -125,7 +125,8 @@ zink_context_destroy(struct pipe_context *pctx)
    u_upload_destroy(pctx->stream_uploader);
    u_upload_destroy(pctx->const_uploader);
    slab_destroy_child(&ctx->transfer_pool);
-   _mesa_hash_table_clear(&ctx->program_cache, NULL);
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->program_cache); i++)
+      _mesa_hash_table_clear(&ctx->program_cache[i], NULL);
    _mesa_hash_table_clear(&ctx->compute_program_cache, NULL);
    _mesa_hash_table_destroy(ctx->render_pass_cache, NULL);
    slab_destroy_child(&ctx->transfer_pool_unsync);
@@ -2461,18 +2462,6 @@ zink_shader_stage(enum pipe_shader_type type)
    return stages[type];
 }
 
-static uint32_t
-hash_gfx_program(const void *key)
-{
-   return _mesa_hash_data(key, sizeof(struct zink_shader *) * (ZINK_SHADER_COUNT));
-}
-
-static bool
-equals_gfx_program(const void *a, const void *b)
-{
-   return memcmp(a, b, sizeof(struct zink_shader *) * (ZINK_SHADER_COUNT)) == 0;
-}
-
 static void
 zink_flush(struct pipe_context *pctx,
            struct pipe_fence_handle **pfence,
@@ -3526,7 +3515,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->blitter)
       goto fail;
 
-   _mesa_hash_table_init(&ctx->program_cache, ctx, hash_gfx_program, equals_gfx_program);
    _mesa_hash_table_init(&ctx->compute_program_cache, ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
    ctx->render_pass_cache = _mesa_hash_table_create(NULL,
                                                     hash_render_pass_state,
