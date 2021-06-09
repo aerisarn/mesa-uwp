@@ -539,7 +539,7 @@ arm_test:
     MESA_IMAGE_TAG: "2021-04-14-radv"
     MESA_UPSTREAM_IMAGE: "$CI_REGISTRY/$FDO_UPSTREAM_REPO/$MESA_IMAGE_PATH:${MESA_IMAGE_TAG}"
 
-windows_build_vs2019:
+.windows_build_vs2019:
   extends:
     - .container
     - .windows-docker-vs2019
@@ -956,7 +956,7 @@ meson-clang:
     CC: clang
     CXX: clang++
 
-meson-windows-vs2019:
+.meson-windows-vs2019:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
@@ -968,7 +968,7 @@ meson-windows-vs2019:
     paths:
       - _install/
 
-test-d3d12-windows:
+.test-d3d12-windows:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
