@@ -1087,8 +1087,8 @@ add_all_surfaces_explicit_layout(
 {
    const struct intel_device_info *devinfo = &device->info;
    const uint32_t mod_plane_count = drm_info->drmFormatModifierPlaneCount;
-   const struct isl_drm_modifier_info *isl_mod_info =
-      isl_drm_modifier_get_info(drm_info->drmFormatModifier);
+   const bool mod_has_aux =
+      isl_drm_modifier_has_aux(drm_info->drmFormatModifier);
    VkResult result;
 
    /* About valid usage in the Vulkan spec:
@@ -1102,20 +1102,27 @@ add_all_surfaces_explicit_layout(
     * Most validation of plane layout occurs in add_surface().
     */
 
-   /* We support a restricted set of images with modifiers. */
-   assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-   assert(image->n_planes == 1);
-
-   if (isl_mod_info->aux_usage == ISL_AUX_USAGE_NONE)
-      assert(mod_plane_count == 1);
+   /* We support a restricted set of images with modifiers.
+    *
+    * With aux usage,
+    * - Format plane count must be 1.
+    * - Memory plane count must be 2.
+    * Without aux usage,
+    * - Each format plane must map to a distint memory plane.
+    *
+    * For the other cases, currently there is no way to properly map memory
+    * planes to format planes and aux planes due to the lack of defined ABI
+    * for external multi-planar images.
+    */
+   if (image->n_planes == 1)
+      assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
    else
-      assert(mod_plane_count == 2);
+      assert(!(image->aspects & ~VK_IMAGE_ASPECT_PLANES_BITS_ANV));
 
-   const uint32_t plane = anv_image_aspect_to_plane(image->aspects,
-                                                    VK_IMAGE_ASPECT_COLOR_BIT);
-   const  struct anv_format_plane format_plane =
-      anv_get_format_plane(devinfo, image->vk_format, VK_IMAGE_ASPECT_COLOR_BIT,
-                           image->tiling);
+   if (mod_has_aux)
+      assert(image->n_planes == 1 && mod_plane_count == 2);
+   else
+      assert(image->n_planes == mod_plane_count);
 
    /* Reject special values in the app-provided plane layouts. */
    for (uint32_t i = 0; i < mod_plane_count; ++i) {
@@ -1135,39 +1142,44 @@ add_all_surfaces_explicit_layout(
       }
    }
 
-   const VkSubresourceLayout *primary_layout = &drm_info->pPlaneLayouts[0];
-   result = add_primary_surface(device, image, plane,
-                                format_plane,
-                                primary_layout->offset,
-                                primary_layout->rowPitch,
-                                isl_tiling_flags,
-                                isl_extra_usage_flags);
-   if (result != VK_SUCCESS)
-      return result;
+   u_foreach_bit(b, image->aspects) {
+      const VkImageAspectFlagBits aspect = 1 << b;
+      const uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+      const struct anv_format_plane format_plane =
+         anv_get_format_plane(devinfo, image->vk_format, aspect, image->tiling);
+      const VkSubresourceLayout *primary_layout = &drm_info->pPlaneLayouts[plane];
 
-   if (isl_mod_info->aux_usage == ISL_AUX_USAGE_NONE) {
-      /* Even though the modifier does not support aux, try to create
-       * a driver-private aux to improve performance.
-       */
-      result = add_aux_surface_if_supported(device, image, plane,
-                                            format_plane,
-                                            format_list_info,
-                                            ANV_OFFSET_IMPLICIT, 0,
-                                            isl_extra_usage_flags);
+      result = add_primary_surface(device, image, plane,
+                                   format_plane,
+                                   primary_layout->offset,
+                                   primary_layout->rowPitch,
+                                   isl_tiling_flags,
+                                   isl_extra_usage_flags);
       if (result != VK_SUCCESS)
          return result;
-   } else {
-      assert(mod_plane_count == 2);
 
-      const VkSubresourceLayout *aux_layout = &drm_info->pPlaneLayouts[1];
-      result = add_aux_surface_if_supported(device, image, plane,
-                                            format_plane,
-                                            format_list_info,
-                                            aux_layout->offset,
-                                            aux_layout->rowPitch,
-                                            isl_extra_usage_flags);
-      if (result != VK_SUCCESS)
-         return result;
+      if (!mod_has_aux) {
+         /* Even though the modifier does not support aux, try to create
+          * a driver-private aux to improve performance.
+          */
+         result = add_aux_surface_if_supported(device, image, plane,
+                                               format_plane,
+                                               format_list_info,
+                                               ANV_OFFSET_IMPLICIT, 0,
+                                               isl_extra_usage_flags);
+         if (result != VK_SUCCESS)
+            return result;
+      } else {
+         const VkSubresourceLayout *aux_layout = &drm_info->pPlaneLayouts[1];
+         result = add_aux_surface_if_supported(device, image, plane,
+                                               format_plane,
+                                               format_list_info,
+                                               aux_layout->offset,
+                                               aux_layout->rowPitch,
+                                               isl_extra_usage_flags);
+         if (result != VK_SUCCESS)
+            return result;
+      }
    }
 
    return VK_SUCCESS;
