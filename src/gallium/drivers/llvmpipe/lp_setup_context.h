@@ -100,6 +100,7 @@ struct lp_setup_context
    boolean ccw_is_frontface;
    boolean scissor_test;
    boolean point_size_per_vertex;
+   boolean legacy_points;
    boolean rasterizer_discard;
    boolean multisample;
    unsigned cullmode;

@@ -126,7 +126,8 @@ llvmpipe_bind_rasterizer_state(struct pipe_context *pipe, void *handle)
                                state->lp_state.point_size,
                                state->lp_state.point_size_per_vertex,
                                state->lp_state.sprite_coord_enable,
-                               state->lp_state.sprite_coord_mode);
+                               state->lp_state.sprite_coord_mode,
+                               state->lp_state.point_quad_rasterization);
    }
    else {
       llvmpipe->rasterizer = NULL;

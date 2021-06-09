@@ -374,8 +374,7 @@ try_setup_point( struct lp_setup_context *setup,
       print_point(setup, v0, size);
 
    /* Bounding rectangle (in pixels) */
-   if (!lp_context->rasterizer ||
-       lp_context->rasterizer->point_quad_rasterization) {
+   if (!setup->legacy_points) {
       /*
        * Rasterize points as quads.
        */

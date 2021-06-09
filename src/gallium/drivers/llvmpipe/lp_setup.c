@@ -600,7 +600,8 @@ lp_setup_set_point_state( struct lp_setup_context *setup,
                           float point_size,
                           boolean point_size_per_vertex,
                           uint sprite_coord_enable,
-                          uint sprite_coord_origin)
+                          uint sprite_coord_origin,
+                          boolean point_quad_rasterization)
 {
    LP_DBG(DEBUG_SETUP, "%s\n", __FUNCTION__);
 
@@ -608,6 +609,7 @@ lp_setup_set_point_state( struct lp_setup_context *setup,
    setup->sprite_coord_enable = sprite_coord_enable;
    setup->sprite_coord_origin = sprite_coord_origin;
    setup->point_size_per_vertex = point_size_per_vertex;
+   setup->legacy_points = !point_quad_rasterization;
 }
 
 void
