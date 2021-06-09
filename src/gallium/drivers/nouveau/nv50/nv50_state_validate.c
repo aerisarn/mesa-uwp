@@ -556,7 +556,7 @@ nv50_state_validate(struct nv50_context *nv50, uint32_t mask,
          PUSH_DATA (nv50->base.pushbuf, 0);
       }
 
-      nv50_bufctx_fence(bufctx, false);
+      nv50_bufctx_fence(nv50, bufctx, false);
    }
    nouveau_pushbuf_bufctx(nv50->base.pushbuf, bufctx);
    ret = PUSH_VAL(nv50->base.pushbuf);
@@ -575,7 +575,7 @@ nv50_state_validate_3d(struct nv50_context *nv50, uint32_t mask)
 
    if (unlikely(nv50->state.flushed)) {
       nv50->state.flushed = false;
-      nv50_bufctx_fence(nv50->bufctx_3d, true);
+      nv50_bufctx_fence(nv50, nv50->bufctx_3d, true);
    }
    return ret;
 }

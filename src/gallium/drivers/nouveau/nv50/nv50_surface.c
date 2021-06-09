@@ -692,7 +692,7 @@ nv50_clear_buffer_push(struct pipe_context *pipe,
       count -= nr;
    }
 
-   nv50_resource_validate(buf, NOUVEAU_BO_WR);
+   nv50_resource_validate(nv50, buf, NOUVEAU_BO_WR);
 
    nouveau_bufctx_reset(nv50->bufctx, 0);
 }
@@ -815,7 +815,7 @@ nv50_clear_buffer(struct pipe_context *pipe,
    BEGIN_NV04(push, NV50_3D(COND_MODE), 1);
    PUSH_DATA (push, nv50->cond_condmode);
 
-   nv50_resource_validate(buf, NOUVEAU_BO_WR);
+   nv50_resource_validate(nv50, buf, NOUVEAU_BO_WR);
 
    if (width * height != elements) {
       offset += width * height * data_size;
@@ -1679,7 +1679,7 @@ nv50_blit_eng2d(struct nv50_context *nv50, const struct pipe_blit_info *info)
          PUSH_DATA (push, srcy >> 32);
       }
    }
-   nv50_bufctx_fence(nv50->bufctx, false);
+   nv50_bufctx_fence(nv50, nv50->bufctx, false);
 
    nouveau_bufctx_reset(nv50->bufctx, NV50_BIND_2D);
 

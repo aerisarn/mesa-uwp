@@ -22,6 +22,7 @@ struct nouveau_fence_work {
 struct nouveau_fence {
    struct nouveau_fence *next;
    struct nouveau_screen *screen;
+   struct nouveau_context *context;
    int state;
    int ref;
    uint32_t sequence;
@@ -32,7 +33,6 @@ struct nouveau_fence {
 struct nouveau_fence_list {
    struct nouveau_fence *head;
    struct nouveau_fence *tail;
-   struct nouveau_fence *current;
    uint32_t sequence;
    uint32_t sequence_ack;
    void (*emit)(struct pipe_screen *, uint32_t *sequence);
@@ -42,11 +42,11 @@ struct nouveau_fence_list {
 void nouveau_fence_emit(struct nouveau_fence *);
 void nouveau_fence_del(struct nouveau_fence *);
 
-bool nouveau_fence_new(struct nouveau_screen *, struct nouveau_fence **);
-void nouveau_fence_cleanup(struct nouveau_fence_list *);
+bool nouveau_fence_new(struct nouveau_context *, struct nouveau_fence **);
+void nouveau_fence_cleanup(struct nouveau_context *);
 bool nouveau_fence_work(struct nouveau_fence *, void (*)(void *), void *);
 void nouveau_fence_update(struct nouveau_screen *, bool flushed);
-void nouveau_fence_next(struct nouveau_screen *);
+void nouveau_fence_next(struct nouveau_context *);
 bool nouveau_fence_wait(struct nouveau_fence *, struct util_debug_callback *);
 bool nouveau_fence_signalled(struct nouveau_fence *);
 

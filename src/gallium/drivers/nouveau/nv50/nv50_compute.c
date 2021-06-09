@@ -518,7 +518,7 @@ nv50_state_validate_cp(struct nv50_context *nv50, uint32_t mask)
                              nv50->bufctx_cp);
 
    if (unlikely(nv50->state.flushed))
-      nv50_bufctx_fence(nv50->bufctx_cp, true);
+      nv50_bufctx_fence(nv50, nv50->bufctx_cp, true);
    return ret;
 }
 
@@ -552,7 +552,7 @@ nv50_compute_upload_input(struct nv50_context *nv50, const uint32_t *input)
       BEGIN_NV04(push, NV50_CP(USER_PARAM(1)), size / 4);
       nouveau_pushbuf_data(push, bo, offset, size);
 
-      nouveau_fence_work(screen->base.fence.current, nouveau_mm_free_work, mm);
+      nouveau_fence_work(nv50->base.fence, nouveau_mm_free_work, mm);
       nouveau_bo_ref(NULL, &bo);
       nouveau_bufctx_reset(nv50->bufctx, 0);
    }

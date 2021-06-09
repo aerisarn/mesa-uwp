@@ -393,7 +393,7 @@ nv30_miptree_transfer_unmap(struct pipe_context *pipe,
       }
 
       /* Allow the copies above to finish executing before freeing the source */
-      nouveau_fence_work(nv30->screen->base.fence.current,
+      nouveau_fence_work(nv30->base.fence,
                          nouveau_fence_unref_bo, tx->tmp.bo);
    } else {
       nouveau_bo_ref(NULL, &tx->tmp.bo);

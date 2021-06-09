@@ -81,10 +81,9 @@ nvc0_flush(struct pipe_context *pipe,
            unsigned flags)
 {
    struct nvc0_context *nvc0 = nvc0_context(pipe);
-   struct nouveau_screen *screen = &nvc0->screen->base;
 
    if (fence)
-      nouveau_fence_ref(screen->fence.current, (struct nouveau_fence **)fence);
+      nouveau_fence_ref(nvc0->base.fence, (struct nouveau_fence **)fence);
 
    PUSH_KICK(nvc0->base.pushbuf); /* fencing handled in kick_notify */
 
@@ -272,6 +271,7 @@ nvc0_destroy(struct pipe_context *pipe)
       free(pos);
    }
 
+   nouveau_fence_cleanup(&nvc0->base);
    nouveau_context_destroy(&nvc0->base);
 }
 
@@ -279,12 +279,12 @@ void
 nvc0_default_kick_notify(struct nouveau_pushbuf *push)
 {
    struct nvc0_screen *screen = push->user_priv;
+   struct nvc0_context *nvc0 = screen->cur_ctx;
 
-   if (screen) {
-      nouveau_fence_next(&screen->base);
+   if (nvc0) {
+      nouveau_fence_next(&nvc0->base);
       nouveau_fence_update(&screen->base, true);
-      if (screen->cur_ctx)
-         screen->cur_ctx->state.flushed = true;
+      nvc0->state.flushed = true;
       NOUVEAU_DRV_STAT(&screen->base, pushbuf_count, 1);
    }
 }
@@ -549,6 +549,8 @@ nvc0_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
       nvc0->dirty_cp |= NVC0_NEW_CP_SAMPLERS;
    }
 
+   nouveau_fence_new(&nvc0->base, &nvc0->base.fence);
+
    return pipe;
 
 out_err:
@@ -579,7 +581,7 @@ nvc0_bufctx_fence(struct nvc0_context *nvc0, struct nouveau_bufctx *bufctx,
       struct nouveau_bufref *ref = (struct nouveau_bufref *)it;
       struct nv04_resource *res = ref->priv;
       if (res)
-         nvc0_resource_validate(res, (unsigned)ref->priv_data);
+         nvc0_resource_validate(nvc0, res, (unsigned)ref->priv_data);
       NOUVEAU_DRV_STAT_IFD(count++);
    }
    NOUVEAU_DRV_STAT(&nvc0->screen->base, resource_validate_count, count);

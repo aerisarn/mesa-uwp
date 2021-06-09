@@ -348,7 +348,7 @@ nvc0_clear_render_target(struct pipe_context *pipe,
       IMMED_NVC0(push, NVC0_3D(MULTISAMPLE_MODE), 0);
 
       /* tiled textures don't have to be fenced, they're not mapped directly */
-      nvc0_resource_fence(res, NOUVEAU_BO_WR);
+      nvc0_resource_fence(nvc0, res, NOUVEAU_BO_WR);
    }
 
    if (!render_condition_enabled)
@@ -410,7 +410,7 @@ nvc0_clear_buffer_push_nvc0(struct pipe_context *pipe,
       size -= nr * 4;
    }
 
-   nvc0_resource_validate(buf, NOUVEAU_BO_WR);
+   nvc0_resource_validate(nvc0, buf, NOUVEAU_BO_WR);
 
    nouveau_bufctx_reset(nvc0->bufctx, 0);
 }
@@ -457,7 +457,7 @@ nvc0_clear_buffer_push_nve4(struct pipe_context *pipe,
       size -= nr * 4;
    }
 
-   nvc0_resource_validate(buf, NOUVEAU_BO_WR);
+   nvc0_resource_validate(nvc0, buf, NOUVEAU_BO_WR);
 
    nouveau_bufctx_reset(nvc0->bufctx, 0);
 }
@@ -604,7 +604,7 @@ nvc0_clear_buffer(struct pipe_context *pipe,
 
    IMMED_NVC0(push, NVC0_3D(COND_MODE), nvc0->cond_condmode);
 
-   nvc0_resource_validate(buf, NOUVEAU_BO_WR);
+   nvc0_resource_validate(nvc0, buf, NOUVEAU_BO_WR);
 
    if (width * height != elements) {
       offset += width * height * data_size;
@@ -1589,8 +1589,8 @@ nvc0_blit_eng2d(struct nvc0_context *nvc0, const struct pipe_blit_info *info)
          PUSH_DATA (push, srcy >> 32);
       }
    }
-   nvc0_resource_validate(&dst->base, NOUVEAU_BO_WR);
-   nvc0_resource_validate(&src->base, NOUVEAU_BO_RD);
+   nvc0_resource_validate(nvc0, &dst->base, NOUVEAU_BO_WR);
+   nvc0_resource_validate(nvc0, &src->base, NOUVEAU_BO_RD);
 
    nouveau_bufctx_reset(nvc0->bufctx, NVC0_BIND_2D);
 

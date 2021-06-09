@@ -45,7 +45,7 @@ nv30_context_kick_notify(struct nouveau_pushbuf *push)
    nv30 = container_of(push->user_priv, struct nv30_context, bufctx);
    screen = &nv30->screen->base;
 
-   nouveau_fence_next(screen);
+   nouveau_fence_next(&nv30->base);
    nouveau_fence_update(screen, true);
 
    if (push->bufctx) {
@@ -53,13 +53,13 @@ nv30_context_kick_notify(struct nouveau_pushbuf *push)
       LIST_FOR_EACH_ENTRY(bref, &push->bufctx->current, thead) {
          struct nv04_resource *res = bref->priv;
          if (res && res->mm) {
-            nouveau_fence_ref(screen->fence.current, &res->fence);
+            nouveau_fence_ref(nv30->base.fence, &res->fence);
 
             if (bref->flags & NOUVEAU_BO_RD)
                res->status |= NOUVEAU_BUFFER_STATUS_GPU_READING;
 
             if (bref->flags & NOUVEAU_BO_WR) {
-               nouveau_fence_ref(screen->fence.current, &res->fence_wr);
+               nouveau_fence_ref(nv30->base.fence, &res->fence_wr);
                res->status |= NOUVEAU_BUFFER_STATUS_GPU_WRITING |
                   NOUVEAU_BUFFER_STATUS_DIRTY;
             }
@@ -76,7 +76,7 @@ nv30_context_flush(struct pipe_context *pipe, struct pipe_fence_handle **fence,
    struct nouveau_pushbuf *push = nv30->base.pushbuf;
 
    if (fence)
-      nouveau_fence_ref(nv30->screen->base.fence.current,
+      nouveau_fence_ref(nv30->base.fence,
                         (struct nouveau_fence **)fence);
 
    PUSH_KICK(push);
@@ -176,6 +176,7 @@ nv30_context_destroy(struct pipe_context *pipe)
    if (nv30->screen->cur_ctx == nv30)
       nv30->screen->cur_ctx = NULL;
 
+   nouveau_fence_cleanup(&nv30->base);
    nouveau_context_destroy(&nv30->base);
 }
 
@@ -257,6 +258,7 @@ nv30_context_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    }
 
    nouveau_context_init_vdec(&nv30->base);
+   nouveau_fence_new(&nv30->base, &nv30->base.fence);
 
    return pipe;
 }

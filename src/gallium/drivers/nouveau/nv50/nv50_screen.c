@@ -624,8 +624,6 @@ nv50_screen_destroy(struct pipe_screen *pscreen)
    if (!nouveau_drm_screen_unref(&screen->base))
       return;
 
-   nouveau_fence_cleanup(&screen->base.fence);
-
    if (screen->base.pushbuf)
       screen->base.pushbuf->user_priv = NULL;
 
@@ -1214,8 +1212,6 @@ nv50_screen_create(struct nouveau_device *dev)
       NOUVEAU_ERR("Failed to init compute context: %d\n", ret);
       goto fail;
    }
-
-   nouveau_fence_new(&screen->base, &screen->base.fence.current);
 
    return &screen->base;
 

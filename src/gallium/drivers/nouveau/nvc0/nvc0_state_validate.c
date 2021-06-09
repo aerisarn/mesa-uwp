@@ -253,7 +253,7 @@ nvc0_validate_fb(struct nvc0_context *nvc0)
          PUSH_DATA(push, 0);
          PUSH_DATA(push, 0);
 
-         nvc0_resource_fence(res, NOUVEAU_BO_WR);
+         nvc0_resource_fence(nvc0, res, NOUVEAU_BO_WR);
 
          assert(!fb->zsbuf);
       }
