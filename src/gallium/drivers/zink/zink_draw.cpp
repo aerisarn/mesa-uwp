@@ -180,7 +180,7 @@ update_compute_program(struct zink_context *ctx)
    const unsigned bits = 1 << PIPE_SHADER_COMPUTE;
    if (ctx->dirty_shader_stages & bits) {
       struct zink_compute_program *comp = zink_create_compute_program(ctx, ctx->compute_stage);
-      _mesa_hash_table_insert(ctx->compute_program_cache, comp->shader, comp);
+      _mesa_hash_table_insert(&ctx->compute_program_cache, comp->shader, comp);
       ctx->compute_pipeline_state.dirty = true;
       ctx->curr_compute = comp;
       ctx->dirty_shader_stages &= bits;
@@ -203,13 +203,13 @@ update_gfx_program(struct zink_context *ctx)
    unsigned bits = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);
    if (ctx->dirty_shader_stages & bits) {
       struct zink_gfx_program *prog = NULL;
-      struct hash_entry *entry = _mesa_hash_table_search(ctx->program_cache,
+      struct hash_entry *entry = _mesa_hash_table_search(&ctx->program_cache,
                                                          ctx->gfx_stages);
       if (entry)
          zink_update_gfx_program(ctx, (struct zink_gfx_program*)entry->data);
       else {
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages);
-         entry = _mesa_hash_table_insert(ctx->program_cache, prog->shaders, prog);
+         entry = _mesa_hash_table_insert(&ctx->program_cache, prog->shaders, prog);
       }
       prog = (struct zink_gfx_program*)(entry ? entry->data : NULL);
       if (prog && prog != ctx->curr_program) {

@@ -125,8 +125,8 @@ zink_context_destroy(struct pipe_context *pctx)
    u_upload_destroy(pctx->stream_uploader);
    u_upload_destroy(pctx->const_uploader);
    slab_destroy_child(&ctx->transfer_pool);
-   _mesa_hash_table_destroy(ctx->program_cache, NULL);
-   _mesa_hash_table_destroy(ctx->compute_program_cache, NULL);
+   _mesa_hash_table_clear(&ctx->program_cache, NULL);
+   _mesa_hash_table_clear(&ctx->compute_program_cache, NULL);
    _mesa_hash_table_destroy(ctx->render_pass_cache, NULL);
    slab_destroy_child(&ctx->transfer_pool_unsync);
 
@@ -3526,16 +3526,12 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->blitter)
       goto fail;
 
-   ctx->program_cache = _mesa_hash_table_create(NULL,
-                                                hash_gfx_program,
-                                                equals_gfx_program);
-   ctx->compute_program_cache = _mesa_hash_table_create(NULL,
-                                                _mesa_hash_pointer,
-                                                _mesa_key_pointer_equal);
+   _mesa_hash_table_init(&ctx->program_cache, ctx, hash_gfx_program, equals_gfx_program);
+   _mesa_hash_table_init(&ctx->compute_program_cache, ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
    ctx->render_pass_cache = _mesa_hash_table_create(NULL,
                                                     hash_render_pass_state,
                                                     equals_render_pass_state);
-   if (!ctx->program_cache || !ctx->compute_program_cache || !ctx->render_pass_cache)
+   if (!ctx->render_pass_cache)
       goto fail;
 
    const uint8_t data[] = {0};

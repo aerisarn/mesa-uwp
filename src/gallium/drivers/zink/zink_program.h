@@ -85,6 +85,8 @@ struct zink_program {
 
    /* the shader cache stores a mapping of zink_shader_key::VkShaderModule */
    struct hash_table shader_cache[ZINK_SHADER_COUNT];
+
+   bool removed;
 };
 
 struct zink_gfx_program {

@@ -879,7 +879,7 @@ bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
 {
    if (stage == PIPE_SHADER_COMPUTE) {
       if (shader && shader != ctx->compute_stage) {
-         struct hash_entry *entry = _mesa_hash_table_search(ctx->compute_program_cache, shader);
+         struct hash_entry *entry = _mesa_hash_table_search(&ctx->compute_program_cache, shader);
          if (entry) {
             ctx->compute_pipeline_state.dirty = true;
             ctx->curr_compute = entry->data;
