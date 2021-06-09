@@ -333,6 +333,8 @@ submit_queue(void *data, void *gdata, int thread_index)
    bs->usage.unflushed = false;
    simple_mtx_unlock(&ctx->batch_mtx);
 
+   vkResetFences(screen->dev, 1, &bs->fence.fence);
+
    uint64_t batch_id = bs->fence.batch_id;
    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
    si.waitSemaphoreCount = 0;
@@ -521,7 +523,6 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
       debug_printf("vkEndCommandBuffer failed\n");
       return;
    }
-   vkResetFences(zink_screen(ctx->base.screen)->dev, 1, &batch->state->fence.fence);
 
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    while (util_dynarray_contains(&batch->state->persistent_resources, struct zink_resource_object*)) {
