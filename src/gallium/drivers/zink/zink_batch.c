@@ -91,6 +91,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
     */
    bs->fence.submitted = false;
    bs->has_barriers = false;
+   bs->scanout_flush = false;
    if (bs->fence.batch_id)
       zink_screen_update_last_finished(screen, bs->fence.batch_id);
    bs->submit_count++;
@@ -365,7 +366,8 @@ submit_queue(void *data, void *gdata, int thread_index)
    };
 
    if (bs->flush_res && screen->needs_mesa_flush_wsi) {
-      mem_signal.memory = bs->flush_res->scanout_obj ? bs->flush_res->scanout_obj->mem : bs->flush_res->obj->mem;
+      struct zink_resource *flush_res = bs->flush_res;
+      mem_signal.memory = flush_res->scanout_obj ? flush_res->scanout_obj->mem : flush_res->obj->mem;
       si.pNext = &mem_signal;
    }
 
@@ -382,8 +384,11 @@ submit_queue(void *data, void *gdata, int thread_index)
 
 /* TODO: remove for wsi */
 static void
-copy_scanout(struct zink_context *ctx, struct zink_resource *res)
+copy_scanout(struct zink_batch_state *bs, struct zink_resource *res)
 {
+   if (!bs->scanout_flush)
+      return;
+
    VkImageCopy region = {0};
    struct pipe_box box = {0, 0, 0,
                           u_minify(res->base.b.width0, 0),
@@ -392,8 +397,6 @@ copy_scanout(struct zink_context *ctx, struct zink_resource *res)
    struct pipe_box *src_box = &box;
    unsigned dstz = 0;
 
-   if (!res->scanout_dirty)
-      return;
    region.srcSubresource.aspectMask = res->aspect;
    region.srcSubresource.mipLevel = 0;
    switch (res->base.b.target) {
@@ -454,7 +457,18 @@ copy_scanout(struct zink_context *ctx, struct zink_resource *res)
    region.dstOffset.y = 0;
    region.extent.width = src_box->width;
    region.extent.height = src_box->height;
-   zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+   VkImageMemoryBarrier imb1;
+   zink_resource_image_barrier_init(&imb1, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+   vkCmdPipelineBarrier(
+      bs->cmdbuf,
+      res->access_stage ? res->access_stage : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      0,
+      0, NULL,
+      0, NULL,
+      1, &imb1
+   );
 
    VkImageSubresourceRange isr = {
       res->aspect,
@@ -474,7 +488,7 @@ copy_scanout(struct zink_context *ctx, struct zink_resource *res)
       isr
    };
    vkCmdPipelineBarrier(
-      ctx->batch.state->cmdbuf,
+      bs->cmdbuf,
       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       0,
@@ -483,7 +497,7 @@ copy_scanout(struct zink_context *ctx, struct zink_resource *res)
       1, &imb
    );
 
-   vkCmdCopyImage(ctx->batch.state->cmdbuf, res->obj->image, res->layout,
+   vkCmdCopyImage(bs->cmdbuf, res->obj->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                   res->scanout_obj->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                   1, &region);
    imb.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -491,7 +505,7 @@ copy_scanout(struct zink_context *ctx, struct zink_resource *res)
    imb.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
    imb.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
    vkCmdPipelineBarrier(
-      ctx->batch.state->cmdbuf,
+      bs->cmdbuf,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
       0,
@@ -501,15 +515,13 @@ copy_scanout(struct zink_context *ctx, struct zink_resource *res)
    );
    /* separate flag to avoid annoying validation errors for new scanout objs */
    res->scanout_obj_init = true;
-   res->scanout_dirty = false;
 }
 
 void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
    if (batch->state->flush_res)
-      copy_scanout(ctx, batch->state->flush_res);
-
+      copy_scanout(batch->state, batch->state->flush_res);
    if (!ctx->queries_disabled)
       zink_suspend_queries(ctx, batch);
 
@@ -589,7 +601,8 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
       if (stencil)
          zink_batch_usage_set(&stencil->obj->writes, batch->state);
       zink_batch_usage_set(&res->obj->writes, batch->state);
-      res->scanout_dirty = !!res->scanout_obj;
+      if (res->scanout_obj)
+         batch->state->scanout_flush = true;
    } else {
       if (stencil)
          zink_batch_usage_set(&stencil->obj->reads, batch->state);
