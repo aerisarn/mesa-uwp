@@ -1173,6 +1173,7 @@ util_make_fs_stencil_blit(struct pipe_context *pipe, bool msaa_src)
       "FRAG\n"
       "DCL IN[0], GENERIC[0], LINEAR\n"
       "DCL SAMP[0]\n"
+      "DCL SVIEW[0], 2D, UINT\n"
       "DCL CONST[0][0]\n"
       "DCL TEMP[0]\n"
 
