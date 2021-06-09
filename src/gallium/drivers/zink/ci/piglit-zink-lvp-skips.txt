@@ -20,3 +20,7 @@ spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match
 
 # This one seems to have a typo in the name, and doesn't really ever run?
 spec@egl_ext_protected_content@conformance
+
+# has a race where probes periodically return black
+# cf. https://gitlab.freedesktop.org/mesa/mesa/-/jobs/10624521
+glx@glx-multi-context-single-window
