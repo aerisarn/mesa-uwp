@@ -3474,14 +3474,6 @@ struct gl_shared_state
     * frequency changes.
     */
    bool DisjointOperation;
-
-   /**
-    * Whether at least one image has been imported or exported, excluding
-    * the default framebuffer. If this is false, glFlush can be executed
-    * asynchronously because there is no invisible dependency on external
-    * users.
-    */
-   bool HasExternallySharedImages;
 };
 
 

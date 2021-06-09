@@ -98,7 +98,7 @@ st_glFlush(struct gl_context *ctx)
     * synchronization issues.  Calling finish() here will just hide
     * problems that need to be fixed elsewhere.
     */
-   st_flush(st, NULL, ctx->Shared->HasExternallySharedImages ? 0 : PIPE_FLUSH_ASYNC);
+   st_flush(st, NULL, 0);
 
    st_manager_flush_frontbuffer(st);
 }

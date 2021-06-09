@@ -309,7 +309,6 @@ dri2_create_image_from_renderbuffer2(__DRIcontext *context,
    if (dri2_get_mapping_by_format(img->dri_format))
       p_ctx->flush_resource(p_ctx, tex);
 
-   ctx->Shared->HasExternallySharedImages = true;
    *error = __DRI_IMAGE_ERROR_SUCCESS;
    return img;
 }
@@ -408,7 +407,6 @@ dri2_create_from_texture(__DRIcontext *context, int target, unsigned texture,
    if (dri2_get_mapping_by_format(img->dri_format))
       p_ctx->flush_resource(p_ctx, tex);
 
-   ctx->Shared->HasExternallySharedImages = true;
    *error = __DRI_IMAGE_ERROR_SUCCESS;
    return img;
 }

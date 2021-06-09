@@ -192,7 +192,6 @@ st_get_egl_image(struct gl_context *ctx, GLeglImageOES image_handle,
       return false;
    }
 
-   ctx->Shared->HasExternallySharedImages = true;
    return true;
 }
 
