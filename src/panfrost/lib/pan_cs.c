@@ -331,7 +331,7 @@ pan_select_crc_rt(const struct panfrost_device *dev, const struct pan_fb_info *f
                     fb->rts[i].view->image->layout.crc_mode == PAN_IMAGE_CRC_NONE)
                         continue;
 
-                bool valid = fb->rts[i].state->crc_valid;
+                bool valid = *(fb->rts[i].crc_valid);
                 bool full = !fb->extent.minx && !fb->extent.miny &&
                             fb->extent.maxx == (fb->width - 1) &&
                             fb->extent.maxy == (fb->height - 1);
@@ -720,19 +720,19 @@ pan_emit_mfbd(const struct panfrost_device *dev,
                 cfg.has_zs_crc_extension = has_zs_crc_ext;
 
                 if (crc_rt >= 0) {
-                        bool valid = fb->rts[crc_rt].state->crc_valid;
+                        bool *valid = fb->rts[crc_rt].crc_valid;
                         bool full = !fb->extent.minx && !fb->extent.miny &&
                                     fb->extent.maxx == (fb->width - 1) &&
                                     fb->extent.maxy == (fb->height - 1);
 
-                        cfg.crc_read_enable = valid;
+                        cfg.crc_read_enable = *valid;
 
                         /* If the data is currently invalid, still write CRC
                          * data if we are doing a full write, so that it is
                          * valid for next time. */
-                        cfg.crc_write_enable = valid || full;
+                        cfg.crc_write_enable = *valid || full;
 
-                        fb->rts[crc_rt].state->crc_valid = full;
+                        *valid = full;
                 }
         }
 
@@ -760,7 +760,7 @@ pan_emit_mfbd(const struct panfrost_device *dev,
                                tile_size * fb->rts[i].view->image->layout.nr_samples;
 
                 if (i != crc_rt)
-                        fb->rts[i].state->crc_valid = false;
+                        *(fb->rts[i].crc_valid) = false;
         }
         tags |= MALI_POSITIVE(MAX2(fb->rt_count, 1)) << 2;
 

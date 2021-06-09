@@ -1248,12 +1248,12 @@ pan_preload_emit_bifrost_pre_frame_dcd(struct pan_pool *desc_pool,
         /* If CRC data is currently invalid and this batch will make it valid,
          * write even clean tiles to make sure CRC data is updated. */
         if (crc_rt >= 0) {
-                bool valid = fb->rts[crc_rt].state->crc_valid;
+                bool *valid = fb->rts[crc_rt].crc_valid;
                 bool full = !fb->extent.minx && !fb->extent.miny &&
                         fb->extent.maxx == (fb->width - 1) &&
                         fb->extent.maxy == (fb->height - 1);
 
-                if (full && !valid)
+                if (full && !(*valid))
                         always_write = true;
         }
 

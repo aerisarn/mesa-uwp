@@ -657,14 +657,14 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
                 rts[i].image = &prsrc->image;
                 rts[i].nr_samples = surf->nr_samples ? : MAX2(surf->texture->nr_samples, 1);
                 memcpy(rts[i].swizzle, id_swz, sizeof(rts[i].swizzle));
-                fb->rts[i].state = &prsrc->state;
+                fb->rts[i].crc_valid = &prsrc->state.crc_valid;
                 fb->rts[i].view = &rts[i];
 
                 /* Preload if the RT is read or updated */
                 if (!(batch->clear & mask) &&
                     ((batch->read & mask) ||
                      ((batch->draws & mask) &&
-                      fb->rts[i].state->slices[fb->rts[i].view->first_level].data_valid)))
+                      prsrc->state.slices[fb->rts[i].view->first_level].data_valid)))
                         fb->rts[i].preload = true;
 
         }
@@ -686,7 +686,6 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
                 zs->nr_samples = surf->nr_samples ? : MAX2(surf->texture->nr_samples, 1);
                 memcpy(zs->swizzle, id_swz, sizeof(zs->swizzle));
                 fb->zs.view.zs = zs;
-                fb->zs.state.zs = &prsrc->state;
                 z_view = zs;
                 z_state = &prsrc->state;
                 if (util_format_is_depth_and_stencil(zs->format)) {
@@ -704,7 +703,6 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
                         s->nr_samples = surf->nr_samples ? : MAX2(surf->texture->nr_samples, 1);
                         memcpy(s->swizzle, id_swz, sizeof(s->swizzle));
                         fb->zs.view.s = s;
-                        fb->zs.state.s = &prsrc->separate_stencil->state;
                         s_view = s;
                         s_state = &prsrc->separate_stencil->state;
                 }
