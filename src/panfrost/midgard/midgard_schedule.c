@@ -660,10 +660,7 @@ mir_choose_instruction(
 {
         /* Parse the predicate */
         unsigned tag = predicate->tag;
-        bool alu = tag == TAG_ALU_4;
-        bool ldst = tag == TAG_LOAD_STORE_4;
         unsigned unit = predicate->unit;
-        bool branch = alu && (unit == ALU_ENAB_BR_COMPACT);
         bool scalar = (unit != ~0) && (unit & UNITS_SCALAR);
         bool no_cond = predicate->no_cond;
 
@@ -696,20 +693,24 @@ mir_choose_instruction(
         }
 
         BITSET_FOREACH_SET(i, worklist, count) {
-                bool is_move = alu &&
-                        (instructions[i]->op == midgard_alu_op_imov ||
-                         instructions[i]->op == midgard_alu_op_fmov);
-
                 if ((max_active - i) >= max_distance)
                         continue;
 
                 if (tag != ~0 && instructions[i]->type != tag)
                         continue;
 
+                bool alu = (instructions[i]->type == TAG_ALU_4);
+                bool ldst = (instructions[i]->type == TAG_LOAD_STORE_4);
+
+                bool branch = alu && (unit == ALU_ENAB_BR_COMPACT);
+                bool is_move = alu &&
+                        (instructions[i]->op == midgard_alu_op_imov ||
+                         instructions[i]->op == midgard_alu_op_fmov);
+
                 if (predicate->exclude != ~0 && instructions[i]->dest == predicate->exclude)
                         continue;
 
-                if (alu && !branch && !(mir_has_unit(instructions[i], unit)))
+                if (alu && !branch && unit != ~0 && !(mir_has_unit(instructions[i], unit)))
                         continue;
 
                 /* 0: don't care, 1: no moves, 2: only moves */
@@ -722,7 +723,7 @@ mir_choose_instruction(
                 if (alu && scalar && !mir_is_scalar(instructions[i]))
                         continue;
 
-                if (alu && !mir_adjust_constants(instructions[i], predicate, false))
+                if (alu && predicate->constants && !mir_adjust_constants(instructions[i], predicate, false))
                         continue;
 
                 if (needs_dest && instructions[i]->dest != dest)
@@ -763,17 +764,18 @@ mir_choose_instruction(
 
         /* If we found something, remove it from the worklist */
         assert(best_index < count);
+        midgard_instruction *I = instructions[best_index];
 
         if (predicate->destructive) {
                 BITSET_CLEAR(worklist, best_index);
 
-                if (alu)
+                if (I->type == TAG_ALU_4)
                         mir_adjust_constants(instructions[best_index], predicate, true);
 
-                if (ldst)
+                if (I->type == TAG_LOAD_STORE_4)
                         predicate->pipeline_count += mir_pipeline_count(instructions[best_index]);
 
-                if (alu)
+                if (I->type == TAG_ALU_4)
                         mir_adjust_unit(instructions[best_index], unit);
 
                 /* Once we schedule a conditional, we can't again */
@@ -781,7 +783,7 @@ mir_choose_instruction(
                 mir_live_effect(liveness, instructions[best_index], true);
         }
 
-        return instructions[best_index];
+        return I;
 }
 
 /* Still, we don't choose instructions in a vacuum. We need a way to choose the
@@ -800,6 +802,7 @@ mir_choose_bundle(
 
         struct midgard_predicate predicate = {
                 .tag = ~0,
+                .unit = ~0,
                 .destructive = false,
                 .exclude = ~0
         };
