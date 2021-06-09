@@ -691,7 +691,7 @@ zink_batch_usage_check_completion(struct zink_context *ctx, const struct zink_ba
       return true;
    if (zink_batch_usage_is_unflushed(u))
       return false;
-   return zink_check_batch_completion(ctx, u->usage);
+   return zink_check_batch_completion(ctx, u->usage, false);
 }
 
 void

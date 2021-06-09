@@ -2631,7 +2631,7 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
 }
 
 bool
-zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id)
+zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id, bool have_lock)
 {
    assert(ctx->batch.state);
    if (!batch_id)
@@ -2649,7 +2649,8 @@ zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id)
    }
    struct zink_fence *fence;
 
-   simple_mtx_lock(&ctx->batch_mtx);
+   if (!have_lock)
+      simple_mtx_lock(&ctx->batch_mtx);
 
    if (ctx->last_fence && batch_id == zink_batch_state(ctx->last_fence)->fence.batch_id)
       fence = ctx->last_fence;
@@ -2657,13 +2658,15 @@ zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id)
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->batch_states, batch_id, (void*)(uintptr_t)batch_id);
       /* if we can't find it, it either must have finished already or is on a different context */
       if (!he) {
-         simple_mtx_unlock(&ctx->batch_mtx);
+         if (!have_lock)
+            simple_mtx_unlock(&ctx->batch_mtx);
          /* return compare against last_finished, since this has info from all contexts */
          return zink_screen_check_last_finished(zink_screen(ctx->base.screen), batch_id);
       }
       fence = he->data;
    }
-   simple_mtx_unlock(&ctx->batch_mtx);
+   if (!have_lock)
+      simple_mtx_unlock(&ctx->batch_mtx);
    assert(fence);
    if (zink_screen(ctx->base.screen)->threaded &&
        !util_queue_fence_is_signalled(&zink_batch_state(fence)->flush_completed))
