@@ -350,12 +350,12 @@ zink_blit_region_fills(struct u_rect region, unsigned width, unsigned height)
       /* is this even a thing? */
       return false;
 
-    u_rect_find_intersection(&region, &intersect);
-    if (intersect.x0 != 0 || intersect.y0 != 0 ||
-        intersect.x1 != width || intersect.y1 != height)
-       return false;
+   u_rect_find_intersection(&region, &intersect);
+   if (intersect.x0 != 0 || intersect.y0 != 0 ||
+       intersect.x1 != width || intersect.y1 != height)
+      return false;
 
-   return false;
+   return true;
 }
 
 bool
