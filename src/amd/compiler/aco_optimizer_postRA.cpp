@@ -20,9 +20,6 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- * Authors:
- *    Timur Kristóf <timur.kristof@gmail.com
- *
  */
 
 #include "aco_ir.h"

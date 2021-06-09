@@ -20,9 +20,6 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- * Authors:
- *    Rhys Perry (pendingchaos02@gmail.com)
- *
  */
 
 #include "aco_builder.h"

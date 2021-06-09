@@ -20,9 +20,6 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- * Authors:
- *    Daniel Schürmann (daniel.schuermann@campus.tu-berlin.de)
- *
  */
 
 #include "aco_builder.h"

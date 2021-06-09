@@ -20,9 +20,6 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 #
-# Authors:
-#    Daniel Schuermann (daniel.schuermann@campus.tu-berlin.de)
-
 
 # Class that represents all the information we have about the opcode
 # NOTE: this must be kept in sync with aco_op_info
