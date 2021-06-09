@@ -426,6 +426,10 @@ try_setup_line( struct lp_setup_context *setup,
       will_draw_start = sign(-x1diff) != sign(dx);
       will_draw_end = (sign(x2diff) == sign(-dx)) || x2diff==0;
 
+      /* interpolate using the preferred wide-lines formula */
+      info.dx *= 1 + dydx * dydx;
+      info.dy = 0;
+
       if (dx < 0) {
          /* if v2 is to the right of v1, swap pointers */
          const float (*temp)[4] = v1;
@@ -522,6 +526,10 @@ try_setup_line( struct lp_setup_context *setup,
        */
       will_draw_start = sign(y1diff) == sign(dy);
       will_draw_end = (sign(-y2diff) == sign(dy)) || y2diff==0;
+
+      /* interpolate using the preferred wide-lines formula */
+      info.dx = 0;
+      info.dy *= 1 + dxdy * dxdy;
 
       if (dy > 0) {
          /* if v2 is on top of v1, swap pointers */

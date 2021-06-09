@@ -179,7 +179,7 @@ traces:
   - path: gputest/plot3d.trace
     expectations:
       - device: gl-virgl
-        checksum: 0ebf993380210d9e5138f1057ddaa7ab
+        checksum: f3c0187ab2197c57e699135b7f42b8cc
 # Crash
 #  - path: gputest/tessmark.trace
 #    expectations:
@@ -192,7 +192,7 @@ traces:
   - path: humus/CelShading.trace
     expectations:
       - device: gl-virgl
-        checksum: 7d56b6ec4a1cf30406bceb9fe3e4d5c8
+        checksum: 0611c1680155a831f69a57554484c914
   - path: humus/DynamicBranching3.trace
     expectations:
       # speckling present on the ground that isn't there on other drivers.
