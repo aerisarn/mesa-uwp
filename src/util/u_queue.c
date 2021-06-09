@@ -310,11 +310,11 @@ util_queue_thread_func(void *input)
       mtx_unlock(&queue->lock);
 
       if (job.job) {
-         job.execute(job.job, thread_index);
+         job.execute(job.job, job.global_data, thread_index);
          if (job.fence)
             util_queue_fence_signal(job.fence);
          if (job.cleanup)
-            job.cleanup(job.job, thread_index);
+            job.cleanup(job.job, job.global_data, thread_index);
       }
    }
 
@@ -406,7 +406,8 @@ util_queue_init(struct util_queue *queue,
                 const char *name,
                 unsigned max_jobs,
                 unsigned num_threads,
-                unsigned flags)
+                unsigned flags,
+                void *global_data)
 {
    unsigned i;
 
@@ -442,6 +443,7 @@ util_queue_init(struct util_queue *queue,
    queue->max_threads = num_threads;
    queue->num_threads = num_threads;
    queue->max_jobs = max_jobs;
+   queue->global_data = global_data;
 
    queue->jobs = (struct util_queue_job*)
                  calloc(max_jobs, sizeof(struct util_queue_job));
@@ -597,6 +599,7 @@ util_queue_add_job(struct util_queue *queue,
    ptr = &queue->jobs[queue->write_idx];
    assert(ptr->job == NULL);
    ptr->job = job;
+   ptr->global_data = queue->global_data;
    ptr->fence = fence;
    ptr->execute = execute;
    ptr->cleanup = cleanup;
@@ -633,7 +636,7 @@ util_queue_drop_job(struct util_queue *queue, struct util_queue_fence *fence)
         i = (i + 1) % queue->max_jobs) {
       if (queue->jobs[i].fence == fence) {
          if (queue->jobs[i].cleanup)
-            queue->jobs[i].cleanup(queue->jobs[i].job, -1);
+            queue->jobs[i].cleanup(queue->jobs[i].job, queue->global_data, -1);
 
          /* Just clear it. The threads will treat as a no-op job. */
          memset(&queue->jobs[i], 0, sizeof(queue->jobs[i]));
@@ -650,7 +653,7 @@ util_queue_drop_job(struct util_queue *queue, struct util_queue_fence *fence)
 }
 
 static void
-util_queue_finish_execute(void *data, int num_thread)
+util_queue_finish_execute(void *data, void *gdata, int num_thread)
 {
    util_barrier *barrier = data;
    util_barrier_wait(barrier);

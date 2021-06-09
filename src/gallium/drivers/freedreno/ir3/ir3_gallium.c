@@ -240,7 +240,7 @@ create_initial_variants(struct ir3_shader_state *hwcso,
 }
 
 static void
-create_initial_variants_async(void *job, int thread_index)
+create_initial_variants_async(void *job, void *gdata, int thread_index)
 {
    struct ir3_shader_state *hwcso = job;
    struct pipe_debug_callback debug = {};
@@ -249,7 +249,7 @@ create_initial_variants_async(void *job, int thread_index)
 }
 
 static void
-create_initial_compute_variants_async(void *job, int thread_index)
+create_initial_compute_variants_async(void *job, void *gdata, int thread_index)
 {
    struct ir3_shader_state *hwcso = job;
    struct ir3_shader *shader = hwcso->shader;
@@ -527,7 +527,7 @@ ir3_screen_init(struct pipe_screen *pscreen)
 
    util_queue_init(&screen->compile_queue, "ir3q", 64, num_threads,
                    UTIL_QUEUE_INIT_RESIZE_IF_FULL |
-                      UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY);
+                      UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY, NULL);
 
    pscreen->finalize_nir = ir3_screen_finalize_nir;
    pscreen->set_max_shader_compiler_threads =

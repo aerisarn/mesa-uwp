@@ -403,7 +403,7 @@ flush_submit_list(struct list_head *submit_list)
 }
 
 static void
-msm_submit_sp_flush_execute(void *job, int thread_index)
+msm_submit_sp_flush_execute(void *job, void *gdata, int thread_index)
 {
    struct fd_submit *submit = job;
    struct msm_submit_sp *msm_submit = to_msm_submit_sp(submit);
@@ -414,7 +414,7 @@ msm_submit_sp_flush_execute(void *job, int thread_index)
 }
 
 static void
-msm_submit_sp_flush_cleanup(void *job, int thread_index)
+msm_submit_sp_flush_cleanup(void *job, void *gdata, int thread_index)
 {
    struct fd_submit *submit = job;
    fd_submit_del(submit);

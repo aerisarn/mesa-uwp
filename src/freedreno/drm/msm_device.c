@@ -70,7 +70,7 @@ msm_device_new(int fd, drmVersionPtr version)
        * thread's comm truncating the interesting part of the
        * process name.
        */
-      util_queue_init(&msm_dev->submit_queue, "sq", 8, 1, 0);
+      util_queue_init(&msm_dev->submit_queue, "sq", 8, 1, 0, NULL);
    }
 
    dev->bo_size = sizeof(struct msm_bo);

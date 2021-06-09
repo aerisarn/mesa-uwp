@@ -167,7 +167,7 @@ tc_drop_so_target_reference(struct pipe_stream_output_target *dst)
    offsetof(struct pipe_draw_info, min_index)
 
 static void
-tc_batch_execute(void *job, UNUSED int thread_index)
+tc_batch_execute(void *job, UNUSED void *gdata, int thread_index)
 {
    struct tc_batch *batch = job;
    struct pipe_context *pipe = batch->tc->pipe;
@@ -338,7 +338,7 @@ _tc_sync(struct threaded_context *tc, UNUSED const char *info, UNUSED const char
    if (next->num_total_slots) {
       p_atomic_add(&tc->num_direct_slots, next->num_total_slots);
       tc->bytes_mapped_estimate = 0;
-      tc_batch_execute(next, 0);
+      tc_batch_execute(next, NULL, 0);
       tc_begin_next_buffer_list(tc);
       synced = true;
    }
@@ -3976,7 +3976,7 @@ threaded_context_create(struct pipe_context *pipe,
     * from the queue before being executed, so keep one tc_batch slot for that
     * execution. Also, keep one unused slot for an unflushed batch.
     */
-   if (!util_queue_init(&tc->queue, "gdrv", TC_MAX_BATCHES - 2, 1, 0))
+   if (!util_queue_init(&tc->queue, "gdrv", TC_MAX_BATCHES - 2, 1, 0, NULL))
       goto fail;
 
    for (unsigned i = 0; i < TC_MAX_BATCHES; i++) {

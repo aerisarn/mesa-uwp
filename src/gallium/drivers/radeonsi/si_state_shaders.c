@@ -2142,7 +2142,7 @@ static void si_build_shader_variant(struct si_shader *shader, int thread_index, 
    si_shader_init_pm4_state(sscreen, shader);
 }
 
-static void si_build_shader_variant_low_priority(void *job, int thread_index)
+static void si_build_shader_variant_low_priority(void *job, void *gdata, int thread_index)
 {
    struct si_shader *shader = (struct si_shader *)job;
 
@@ -2460,7 +2460,7 @@ static void si_parse_next_shader_property(const struct si_shader_info *info, boo
  * si_shader_selector initialization. Since it can be done asynchronously,
  * there is no way to report compile failures to applications.
  */
-static void si_init_shader_selector_async(void *job, int thread_index)
+static void si_init_shader_selector_async(void *job, void *gdata, int thread_index)
 {
    struct si_shader_selector *sel = (struct si_shader_selector *)job;
    struct si_screen *sscreen = sel->screen;

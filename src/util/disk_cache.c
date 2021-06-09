@@ -174,7 +174,7 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    if (!util_queue_init(&cache->cache_queue, "disk$", 32, 4,
                         UTIL_QUEUE_INIT_RESIZE_IF_FULL |
                         UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY |
-                        UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY))
+                        UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY, NULL))
       goto fail;
 
    cache->path_init_failed = false;
@@ -310,7 +310,7 @@ fail:
 }
 
 static void
-destroy_put_job(void *job, int thread_index)
+destroy_put_job(void *job, void *gdata, int thread_index)
 {
    if (job) {
       struct disk_cache_put_job *dc_job = (struct disk_cache_put_job *) job;
@@ -320,15 +320,15 @@ destroy_put_job(void *job, int thread_index)
 }
 
 static void
-destroy_put_job_nocopy(void *job, int thread_index)
+destroy_put_job_nocopy(void *job, void *gdata, int thread_index)
 {
    struct disk_cache_put_job *dc_job = (struct disk_cache_put_job *) job;
    free(dc_job->data);
-   destroy_put_job(job, thread_index);
+   destroy_put_job(job, gdata, thread_index);
 }
 
 static void
-cache_put(void *job, int thread_index)
+cache_put(void *job, void *gdata, int thread_index)
 {
    assert(job);
 

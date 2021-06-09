@@ -1454,7 +1454,7 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_winsys *ws,
    return true;
 }
 
-static void amdgpu_cs_submit_ib(void *job, int thread_index)
+static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 {
    struct amdgpu_cs *acs = (struct amdgpu_cs*)job;
    struct amdgpu_winsys *ws = acs->ws;

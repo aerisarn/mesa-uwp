@@ -938,7 +938,7 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
    ws->info.pte_fragment_size = 64 * 1024; /* GPUVM page size */
 
    if (ws->num_cpus > 1 && debug_get_option_thread())
-      util_queue_init(&ws->cs_queue, "rcs", 8, 1, 0);
+      util_queue_init(&ws->cs_queue, "rcs", 8, 1, 0, NULL);
 
    /* Create the screen at the end. The winsys must be initialized
     * completely.

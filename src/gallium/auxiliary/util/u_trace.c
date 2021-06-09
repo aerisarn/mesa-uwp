@@ -184,7 +184,7 @@ queue_init(struct u_trace_context *utctx)
 
    bool ret = util_queue_init(&utctx->queue, "traceq", 256, 1,
                               UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY |
-                              UTIL_QUEUE_INIT_RESIZE_IF_FULL);
+                              UTIL_QUEUE_INIT_RESIZE_IF_FULL, NULL);
    assert(ret);
 
    if (!ret)
@@ -251,7 +251,7 @@ u_trace_perfetto_stop(void)
 #endif
 
 static void
-process_chunk(void *job, int thread_index)
+process_chunk(void *job, void *gdata, int thread_index)
 {
    struct u_trace_chunk *chunk = job;
    struct u_trace_context *utctx = chunk->utctx;
@@ -312,7 +312,7 @@ process_chunk(void *job, int thread_index)
 }
 
 static void
-cleanup_chunk(void *job, int thread_index)
+cleanup_chunk(void *job, void *gdata, int thread_index)
 {
    ralloc_free(job);
 }

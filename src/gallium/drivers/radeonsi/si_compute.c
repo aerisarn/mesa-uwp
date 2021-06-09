@@ -107,7 +107,7 @@ static void code_object_to_config(const amd_kernel_code_t *code_object,
 }
 
 /* Asynchronous compute shader compilation. */
-static void si_create_compute_state_async(void *job, int thread_index)
+static void si_create_compute_state_async(void *job, void *gdata, int thread_index)
 {
    struct si_compute *program = (struct si_compute *)job;
    struct si_shader_selector *sel = &program->sel;

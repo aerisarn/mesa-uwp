@@ -291,14 +291,14 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
       batch->last_batch_id = last_state->fence.batch_id;
    } else {
       if (zink_screen(ctx->base.screen)->threaded)
-         util_queue_init(&batch->flush_queue, "zfq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL);
+         util_queue_init(&batch->flush_queue, "zfq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, NULL);
    }
    if (!ctx->queries_disabled)
       zink_resume_queries(ctx, batch);
 }
 
 static void
-post_submit(void *data, int thread_index)
+post_submit(void *data, void *gdata, int thread_index)
 {
    struct zink_batch_state *bs = data;
 
@@ -310,7 +310,7 @@ post_submit(void *data, int thread_index)
 }
 
 static void
-submit_queue(void *data, int thread_index)
+submit_queue(void *data, void *gdata, int thread_index)
 {
    struct zink_batch_state *bs = data;
    VkSubmitInfo si = {0};
@@ -530,8 +530,8 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
                          submit_queue, post_submit, 0);
    } else {
       batch->state->queue = screen->queue;
-      submit_queue(batch->state, 0);
-      post_submit(batch->state, 0);
+      submit_queue(batch->state, NULL, 0);
+      post_submit(batch->state, NULL, 0);
    }
 }
 
