@@ -38,6 +38,21 @@ v3dv_GetPhysicalDeviceDisplayPropertiesKHR(VkPhysicalDevice physical_device,
       properties);
 }
 
+VkResult
+v3dv_GetPhysicalDeviceDisplayProperties2KHR(
+    VkPhysicalDevice physical_device,
+    uint32_t *pPropertyCount,
+    VkDisplayProperties2KHR *pProperties)
+{
+   V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, physical_device);
+
+   return wsi_display_get_physical_device_display_properties2(
+      physical_device,
+      &pdevice->wsi_device,
+      pPropertyCount,
+      pProperties);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_GetPhysicalDeviceDisplayPlanePropertiesKHR(
    VkPhysicalDevice physical_device,
@@ -51,6 +66,21 @@ v3dv_GetPhysicalDeviceDisplayPlanePropertiesKHR(
       &pdevice->wsi_device,
       property_count,
       properties);
+}
+
+VkResult
+v3dv_GetPhysicalDeviceDisplayPlaneProperties2KHR(
+    VkPhysicalDevice physical_device,
+    uint32_t *pPropertyCount,
+    VkDisplayPlaneProperties2KHR *pProperties)
+{
+   V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, physical_device);
+
+   return wsi_display_get_physical_device_display_plane_properties2(
+      physical_device,
+      &pdevice->wsi_device,
+      pPropertyCount,
+      pProperties);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -84,6 +114,21 @@ v3dv_GetDisplayModePropertiesKHR(VkPhysicalDevice physical_device,
                                                   properties);
 }
 
+VkResult
+v3dv_GetDisplayModeProperties2KHR(VkPhysicalDevice physical_device,
+                                  VkDisplayKHR display,
+                                  uint32_t *pPropertyCount,
+                                  VkDisplayModeProperties2KHR *pProperties)
+{
+   V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, physical_device);
+
+   return wsi_display_get_display_mode_properties2(physical_device,
+                                                   &pdevice->wsi_device,
+                                                   display,
+                                                   pPropertyCount,
+                                                   pProperties);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateDisplayModeKHR(VkPhysicalDevice physical_device,
                           VkDisplayKHR display,
@@ -114,6 +159,20 @@ v3dv_GetDisplayPlaneCapabilitiesKHR(VkPhysicalDevice physical_device,
                                              mode_khr,
                                              plane_index,
                                              capabilities);
+}
+
+VkResult
+v3dv_GetDisplayPlaneCapabilities2KHR(
+   VkPhysicalDevice physical_device,
+   const VkDisplayPlaneInfo2KHR *pDisplayPlaneInfo,
+   VkDisplayPlaneCapabilities2KHR *pCapabilities)
+{
+   V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, physical_device);
+
+   return wsi_get_display_plane_capabilities2(physical_device,
+                                              &pdevice->wsi_device,
+                                              pDisplayPlaneInfo,
+                                              pCapabilities);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
