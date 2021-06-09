@@ -24,7 +24,6 @@
 
 #include <amdgpu.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include "drm-uapi/amdgpu_drm.h"
