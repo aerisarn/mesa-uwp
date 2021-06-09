@@ -460,7 +460,9 @@ zink_create_gfx_program(struct zink_context *ctx,
    _mesa_sha1_init(&sctx);
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       if (prog->modules[i]) {
+         simple_mtx_lock(&prog->shaders[i]->lock);
          _mesa_set_add(prog->shaders[i]->programs, prog);
+         simple_mtx_unlock(&prog->shaders[i]->lock);
          zink_gfx_program_reference(screen, NULL, prog);
          _mesa_sha1_update(&sctx, prog->shaders[i]->base.sha1, sizeof(prog->shaders[i]->base.sha1));
       }

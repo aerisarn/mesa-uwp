@@ -938,6 +938,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    bool have_psiz = false;
 
    ret->programs = _mesa_pointer_set_create(NULL);
+   simple_mtx_init(&ret->lock, mtx_plain);
 
    nir_variable_mode indirect_derefs_modes = nir_var_function_temp;
    if (nir->info.stage == MESA_SHADER_TESS_CTRL ||
@@ -1140,6 +1141,7 @@ zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
    unsigned vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch;
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
    ret->programs = _mesa_pointer_set_create(NULL);
+   simple_mtx_init(&ret->lock, mtx_plain);
 
    nir_shader *nir = nir_shader_create(NULL, MESA_SHADER_TESS_CTRL, &zink_screen(ctx->base.screen)->nir_options, NULL);
    nir_function *fn = nir_function_create(nir, "main");
