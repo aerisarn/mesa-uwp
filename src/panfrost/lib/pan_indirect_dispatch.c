@@ -175,52 +175,61 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
 
         nir_ssa_def *job_hdr_ptr = get_input_field(&b, job);
         nir_ssa_def *num_wg_flat = nir_imul(&b, num_wg_x, nir_imul(&b, num_wg_y, num_wg_z));
+
         nir_push_if(&b, nir_ieq(&b, num_wg_flat, zero));
-        nir_ssa_def *job_type_ptr = nir_iadd(&b, job_hdr_ptr, nir_imm_int64(&b, 4 * 4));
-        nir_ssa_def *w4 = nir_load_global(&b, job_type_ptr, 4, 1, 32);
-        w4 = nir_iand_imm(&b, w4, ~0xfe);
-        w4 = nir_ior(&b, w4, nir_imm_int(&b, MALI_JOB_TYPE_NULL << 1));
-        nir_store_global(&b, job_type_ptr, 4, w4, 1);
+        {
+                nir_ssa_def *job_type_ptr = nir_iadd(&b, job_hdr_ptr, nir_imm_int64(&b, 4 * 4));
+                nir_ssa_def *w4 = nir_load_global(&b, job_type_ptr, 4, 1, 32);
+                w4 = nir_iand_imm(&b, w4, ~0xfe);
+                w4 = nir_ior(&b, w4, nir_imm_int(&b, MALI_JOB_TYPE_NULL << 1));
+                nir_store_global(&b, job_type_ptr, 4, w4, 1);
+        }
         nir_push_else(&b, NULL);
-        nir_ssa_def *job_dim_ptr =
-                nir_iadd(&b, job_hdr_ptr,
-                         nir_imm_int64(&b, pan_section_offset(COMPUTE_JOB, INVOCATION)));
-        num_wg_x = nir_isub(&b, num_wg_x, one);
-        num_wg_y = nir_isub(&b, num_wg_y, one);
-        num_wg_z = nir_isub(&b, num_wg_z, one);
-        nir_ssa_def *job_dim = nir_load_global(&b, job_dim_ptr, 8, 2, 32);
-        nir_ssa_def *dims = nir_channel(&b, job_dim, 0);
-        nir_ssa_def *split = nir_channel(&b, job_dim, 1);
-        nir_ssa_def *num_wg_x_split = nir_iand_imm(&b, nir_ushr_imm(&b, split, 10), 0x3f);
-        nir_ssa_def *num_wg_y_split =
-                nir_iadd(&b, num_wg_x_split,
-                         nir_bcsel(&b,
-                                   nir_ieq(&b, num_wg_x, zero),
-                                   zero,
-                                   nir_iadd(&b, nir_ufind_msb(&b, num_wg_x), one)));
-        nir_ssa_def *num_wg_z_split =
-                nir_iadd(&b, num_wg_y_split,
-                         nir_bcsel(&b,
-                                   nir_ieq(&b, num_wg_y, zero),
-                                   zero,
-                                   nir_iadd(&b, nir_ufind_msb(&b, num_wg_y), one)));
-        split = nir_ior(&b, split,
-                        nir_ior(&b,
-                                nir_ishl(&b, num_wg_y_split, nir_imm_int(&b, 16)),
-                                nir_ishl(&b, num_wg_z_split, nir_imm_int(&b, 22))));
-        dims = nir_ior(&b, dims,
-                       nir_ior(&b, nir_ishl(&b, num_wg_x, num_wg_x_split),
-                               nir_ior(&b, nir_ishl(&b, num_wg_y, num_wg_y_split),
-                                       nir_ishl(&b, num_wg_z, num_wg_z_split))));
+        {
+                nir_ssa_def *job_dim_ptr =
+                        nir_iadd(&b, job_hdr_ptr,
+                                 nir_imm_int64(&b, pan_section_offset(COMPUTE_JOB, INVOCATION)));
+                num_wg_x = nir_isub(&b, num_wg_x, one);
+                num_wg_y = nir_isub(&b, num_wg_y, one);
+                num_wg_z = nir_isub(&b, num_wg_z, one);
+                nir_ssa_def *job_dim = nir_load_global(&b, job_dim_ptr, 8, 2, 32);
+                nir_ssa_def *dims = nir_channel(&b, job_dim, 0);
+                nir_ssa_def *split = nir_channel(&b, job_dim, 1);
+                nir_ssa_def *num_wg_x_split = nir_iand_imm(&b, nir_ushr_imm(&b, split, 10), 0x3f);
+                nir_ssa_def *num_wg_y_split =
+                        nir_iadd(&b, num_wg_x_split,
+                                 nir_bcsel(&b,
+                                           nir_ieq(&b, num_wg_x, zero),
+                                           zero,
+                                           nir_iadd(&b, nir_ufind_msb(&b, num_wg_x), one)));
+                nir_ssa_def *num_wg_z_split =
+                        nir_iadd(&b, num_wg_y_split,
+                                 nir_bcsel(&b,
+                                           nir_ieq(&b, num_wg_y, zero),
+                                           zero,
+                                           nir_iadd(&b, nir_ufind_msb(&b, num_wg_y), one)));
+                split = nir_ior(&b, split,
+                                nir_ior(&b,
+                                        nir_ishl(&b, num_wg_y_split, nir_imm_int(&b, 16)),
+                                        nir_ishl(&b, num_wg_z_split, nir_imm_int(&b, 22))));
+                dims = nir_ior(&b, dims,
+                               nir_ior(&b, nir_ishl(&b, num_wg_x, num_wg_x_split),
+                                       nir_ior(&b, nir_ishl(&b, num_wg_y, num_wg_y_split),
+                                               nir_ishl(&b, num_wg_z, num_wg_z_split))));
 
-        nir_store_global(&b, job_dim_ptr, 8, nir_vec2(&b, dims, split), 3);
+                nir_store_global(&b, job_dim_ptr, 8, nir_vec2(&b, dims, split), 3);
 
-        nir_ssa_def *num_wg_x_ptr = get_input_field(&b, num_wg_sysval[0]);
-        nir_push_if(&b, nir_ine(&b, num_wg_x_ptr, nir_imm_int64(&b, 0)));
-        nir_store_global(&b, num_wg_x_ptr, 8, nir_channel(&b, num_wg, 0), 1);
-        nir_store_global(&b, get_input_field(&b, num_wg_sysval[1]), 8, nir_channel(&b, num_wg, 1), 1);
-        nir_store_global(&b, get_input_field(&b, num_wg_sysval[2]), 8, nir_channel(&b, num_wg, 2), 1);
-        nir_pop_if(&b, NULL);
+                nir_ssa_def *num_wg_x_ptr = get_input_field(&b, num_wg_sysval[0]);
+
+                nir_push_if(&b, nir_ine(&b, num_wg_x_ptr, nir_imm_int64(&b, 0)));
+                {
+                        nir_store_global(&b, num_wg_x_ptr, 8, nir_channel(&b, num_wg, 0), 1);
+                        nir_store_global(&b, get_input_field(&b, num_wg_sysval[1]), 8, nir_channel(&b, num_wg, 1), 1);
+                        nir_store_global(&b, get_input_field(&b, num_wg_sysval[2]), 8, nir_channel(&b, num_wg, 2), 1);
+                }
+                nir_pop_if(&b, NULL);
+        }
+
         nir_pop_if(&b, NULL);
 
         struct panfrost_compile_inputs inputs = { .gpu_id = dev->gpu_id };
