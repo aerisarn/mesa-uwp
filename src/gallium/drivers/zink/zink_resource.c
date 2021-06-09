@@ -779,20 +779,26 @@ zink_resource_has_usage(struct zink_resource *res, enum zink_resource_access usa
    return batch_uses & usage;
 }
 
+ALWAYS_INLINE static void
+align_offset_size(const VkDeviceSize alignment, VkDeviceSize *offset, VkDeviceSize *size, VkDeviceSize obj_size)
+{
+   VkDeviceSize align = *offset % alignment;
+   if (alignment - 1 > *offset)
+      *offset = 0;
+   else
+      *offset -= align, *size += align;
+   align = alignment - (*size % alignment);
+   if (*offset + *size + align > obj_size)
+      *size = obj_size - *offset;
+   else
+      *size += align;
+}
+
 static VkMappedMemoryRange
 init_mem_range(struct zink_screen *screen, struct zink_resource *res, VkDeviceSize offset, VkDeviceSize size)
 {
    assert(res->obj->size);
-   VkDeviceSize align = offset % screen->info.props.limits.nonCoherentAtomSize;
-   if (screen->info.props.limits.nonCoherentAtomSize - 1 > offset)
-      offset = 0;
-   else
-      offset -= align, size += align;
-   align = screen->info.props.limits.nonCoherentAtomSize - (size % screen->info.props.limits.nonCoherentAtomSize);
-   if (offset + size + align > res->obj->size)
-      size = res->obj->size - offset;
-   else
-      size += align;
+   align_offset_size(screen->info.props.limits.nonCoherentAtomSize, &offset, &size, res->obj->size);
    VkMappedMemoryRange range = {
       VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
       NULL,
