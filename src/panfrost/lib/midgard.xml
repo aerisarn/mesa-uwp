@@ -466,6 +466,21 @@
     <field name="Offset" size="32" start="32" type="int"/>
   </struct>
 
+  <struct name="Attribute Vertex ID" align="32">
+    <field name="Type" size="8" start="0" type="Attribute Special" default="Vertex ID"/>
+    <field name="Divisor R" size="5" start="56" type="uint"/>
+    <field name="Divisor P" size="3" start="61" type="uint"/>
+    <field name="Offset" size="32" start="96" type="int"/>
+  </struct>
+
+  <struct name="Attribute Instance ID" align="32">
+    <field name="Type" size="8" start="0" type="Attribute Special" default="Instance ID"/>
+    <field name="Divisor R" size="5" start="56" type="uint"/>
+    <field name="Divisor E" size="1" start="61" type="uint"/>
+    <field name="Divisor P" size="32" start="64" type="uint"/>
+    <field name="Offset" size="32" start="96" type="int"/>
+  </struct>
+
   <struct name="Attribute Buffer" align="32">
     <field name="Special" size="8" start="0" type="Attribute Special"/>
     <field name="Type" size="6" start="0" type="Attribute Type" default="1D"/>
