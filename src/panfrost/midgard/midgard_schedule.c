@@ -822,6 +822,8 @@ mir_choose_bundle(
                 predicate.tag = ~0;
 
                 chosen = mir_choose_instruction(instructions, liveness, worklist, count, &predicate);
+                assert(chosen == NULL || chosen->type != TAG_LOAD_STORE_4);
+
                 if (chosen)
                         return chosen->type;
                 else
@@ -1063,6 +1065,8 @@ mir_schedule_ldst(
 
         midgard_instruction *pair =
                 mir_choose_instruction(instructions, liveness, worklist, len, &predicate);
+
+        assert(ins != NULL);
 
         struct midgard_bundle out = {
                 .tag = TAG_LOAD_STORE_4,
