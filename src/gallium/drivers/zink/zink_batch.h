@@ -41,7 +41,6 @@ struct pipe_reference;
 struct zink_buffer_view;
 struct zink_context;
 struct zink_descriptor_set;
-struct zink_framebuffer;
 struct zink_image_view;
 struct zink_program;
 struct zink_render_pass;
@@ -77,7 +76,6 @@ struct zink_batch_state {
 
    struct pipe_resource *flush_res;
 
-   struct set *fbs;
    struct set *programs;
 
    struct set *resources;
@@ -138,9 +136,6 @@ zink_batch_state_clear_resources(struct zink_screen *screen, struct zink_batch_s
 
 void
 zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch);
-void
-zink_batch_reference_framebuffer(struct zink_batch *batch,
-                                 struct zink_framebuffer *fb);
 void
 zink_start_batch(struct zink_context *ctx, struct zink_batch *batch);
 

@@ -1728,7 +1728,6 @@ begin_render_pass(struct zink_context *ctx)
 
    assert(ctx->gfx_pipeline_state.render_pass && ctx->framebuffer);
 
-   zink_batch_reference_framebuffer(batch, ctx->framebuffer);
    for (int i = 0; i < ctx->framebuffer->state.num_attachments; i++) {
       if (ctx->framebuffer->surfaces[i]) {
          struct zink_surface *surf = zink_surface(ctx->framebuffer->surfaces[i]);
