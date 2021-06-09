@@ -1497,9 +1497,36 @@ schedule_block(compiler_context *ctx, midgard_block *block)
         free(liveness);
 }
 
+/* Insert moves to ensure we can register allocate load/store registers */
+static void
+mir_lower_ldst(compiler_context *ctx)
+{
+        mir_foreach_instr_global_safe(ctx, I) {
+                if (I->type != TAG_LOAD_STORE_4) continue;
+
+                mir_foreach_src(I, s) {
+                        if (s == 0) continue;
+                        if (I->src[s] == ~0) continue;
+                        if (I->swizzle[s][0] == 0) continue;
+
+                        unsigned temp = make_compiler_temp(ctx);
+                        midgard_instruction mov = v_mov(I->src[s], temp);
+                        mov.mask = 0x1;
+                        mov.dest_type = I->src_types[s];
+                        for (unsigned c = 0; c < NIR_MAX_VEC_COMPONENTS; ++c)
+                                mov.swizzle[1][c] = I->swizzle[s][0];
+
+                        mir_insert_instruction_before(ctx, I, mov);
+                        I->src[s] = mov.dest;
+                        I->swizzle[s][0] = 0;
+                }
+        }
+}
+
 void
 midgard_schedule_program(compiler_context *ctx)
 {
+        mir_lower_ldst(ctx);
         midgard_promote_uniforms(ctx);
 
         /* Must be lowered right before scheduling */
