@@ -664,7 +664,7 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
                 if (!(batch->clear & mask) &&
                     ((batch->read & mask) ||
                      ((batch->draws & mask) &&
-                      prsrc->state.slices[fb->rts[i].view->first_level].data_valid)))
+                      BITSET_TEST(prsrc->state.data_valid, fb->rts[i].view->first_level))))
                         fb->rts[i].preload = true;
 
         }
@@ -724,20 +724,20 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
         if (!fb->zs.clear.z &&
             ((batch->read & PIPE_CLEAR_DEPTH) ||
              ((batch->draws & PIPE_CLEAR_DEPTH) &&
-              z_state->slices[z_view->first_level].data_valid)))
+              BITSET_TEST(z_state->data_valid, z_view->first_level))))
                 fb->zs.preload.z = true;
 
         if (!fb->zs.clear.s &&
             ((batch->read & PIPE_CLEAR_STENCIL) ||
              ((batch->draws & PIPE_CLEAR_STENCIL) &&
-              s_state->slices[s_view->first_level].data_valid)))
+              BITSET_TEST(s_state->data_valid, s_view->first_level))))
                 fb->zs.preload.s = true;
 
         /* Preserve both component if we have a combined ZS view and
          * one component needs to be preserved.
          */
         if (s_view == z_view && fb->zs.discard.z != fb->zs.discard.s) {
-                bool valid = z_state->slices[z_view->first_level].data_valid;
+                bool valid = BITSET_TEST(z_state->data_valid, z_view->first_level);
 
                 fb->zs.discard.z = false;
                 fb->zs.discard.s = false;

@@ -1544,7 +1544,7 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                 if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE) {
                         flags |= PAN_BO_ACCESS_WRITE;
                         unsigned level = is_buffer ? 0 : image->u.tex.level;
-                        rsrc->state.slices[level].data_valid = true;
+                        BITSET_SET(rsrc->state.data_valid, level);
                 }
                 panfrost_batch_add_bo(batch, rsrc->image.data.bo, flags);
 
@@ -2425,13 +2425,10 @@ static void
 panfrost_initialize_surface(struct panfrost_batch *batch,
                             struct pipe_surface *surf)
 {
-        if (!surf)
-                return;
-
-        unsigned level = surf->u.tex.level;
-        struct panfrost_resource *rsrc = pan_resource(surf->texture);
-
-        rsrc->state.slices[level].data_valid = true;
+        if (surf) {
+                struct panfrost_resource *rsrc = pan_resource(surf->texture);
+                BITSET_SET(rsrc->state.data_valid, surf->u.tex.level);
+        }
 }
 
 void
