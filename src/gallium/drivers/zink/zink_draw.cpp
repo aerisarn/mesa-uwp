@@ -203,13 +203,15 @@ update_gfx_program(struct zink_context *ctx)
    unsigned bits = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);
    if (ctx->dirty_shader_stages & bits) {
       struct zink_gfx_program *prog = NULL;
-      struct hash_entry *entry = _mesa_hash_table_search(&ctx->program_cache[ctx->shader_stages >> 2],
-                                                         ctx->gfx_stages);
+
+      struct hash_table *ht = &ctx->program_cache[ctx->shader_stages >> 2];
+      uint32_t hash = ht->key_hash_function(ctx->gfx_stages);
+      struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
       if (entry)
          zink_update_gfx_program(ctx, (struct zink_gfx_program*)entry->data);
       else {
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages);
-         entry = _mesa_hash_table_insert(&ctx->program_cache[ctx->shader_stages >> 2], prog->shaders, prog);
+         entry = _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
       }
       prog = (struct zink_gfx_program*)(entry ? entry->data : NULL);
       if (prog && prog != ctx->curr_program) {
