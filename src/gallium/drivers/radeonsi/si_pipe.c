@@ -717,11 +717,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    if (!sctx->dirty_implicit_resources)
       goto fail;
 
-   sctx->sample_pos_buffer =
-      pipe_buffer_create(sctx->b.screen, 0, PIPE_USAGE_DEFAULT, sizeof(sctx->sample_positions));
-   pipe_buffer_write(&sctx->b, sctx->sample_pos_buffer, 0, sizeof(sctx->sample_positions),
-                     &sctx->sample_positions);
-
    /* The remainder of this function initializes the gfx CS and must be last. */
    assert(sctx->gfx_cs.current.cdw == 0);
 

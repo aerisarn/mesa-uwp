@@ -2947,6 +2947,11 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
       si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
       si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
 
+      if (!sctx->sample_pos_buffer) {
+         sctx->sample_pos_buffer = pipe_buffer_create_with_data(&sctx->b, 0, PIPE_USAGE_DEFAULT,
+                                                      sizeof(sctx->sample_positions),
+                                                      &sctx->sample_positions);
+      }
       constbuf.buffer = sctx->sample_pos_buffer;
 
       /* Set sample locations as fragment shader constants. */
