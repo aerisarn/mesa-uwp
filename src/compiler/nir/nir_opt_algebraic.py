@@ -223,6 +223,42 @@ optimizations = [
    (('sudot_4x8_iadd_sat', '#a', '#b', 'c(is_not_const)'), ('iadd_sat', ('sudot_4x8_iadd', a, b, 0), c), '!options->lower_add_sat'),
 ]
 
+# Shorthand for the expansion of just the dot product part of the [iu]dp4a
+# instructions.
+sdot_4x8_a_b = ('iadd', ('iadd', ('imul', ('extract_i8', a, 0), ('extract_i8', b, 0)),
+                                 ('imul', ('extract_i8', a, 1), ('extract_i8', b, 1))),
+                        ('iadd', ('imul', ('extract_i8', a, 2), ('extract_i8', b, 2)),
+                                 ('imul', ('extract_i8', a, 3), ('extract_i8', b, 3))))
+udot_4x8_a_b = ('iadd', ('iadd', ('imul', ('extract_u8', a, 0), ('extract_u8', b, 0)),
+                                 ('imul', ('extract_u8', a, 1), ('extract_u8', b, 1))),
+                        ('iadd', ('imul', ('extract_u8', a, 2), ('extract_u8', b, 2)),
+                                 ('imul', ('extract_u8', a, 3), ('extract_u8', b, 3))))
+sudot_4x8_a_b = ('iadd', ('iadd', ('imul', ('extract_i8', a, 0), ('extract_u8', b, 0)),
+                                  ('imul', ('extract_i8', a, 1), ('extract_u8', b, 1))),
+                         ('iadd', ('imul', ('extract_i8', a, 2), ('extract_u8', b, 2)),
+                                  ('imul', ('extract_i8', a, 3), ('extract_u8', b, 3))))
+
+optimizations.extend([
+   (('sdot_4x8_iadd', a, b, c), ('iadd', sdot_4x8_a_b, c), '!options->has_dot_4x8'),
+   (('udot_4x8_uadd', a, b, c), ('iadd', udot_4x8_a_b, c), '!options->has_dot_4x8'),
+   (('sudot_4x8_iadd', a, b, c), ('iadd', sudot_4x8_a_b, c), '!options->has_sudot_4x8'),
+
+   # For the unsigned dot-product, the largest possible value 4*(255*255) =
+   # 0x3f804, so we don't have to worry about that intermediate result
+   # overflowing.  0x100000000 - 0x3f804 = 0xfffc07fc.  If c is a constant
+   # that is less than 0xfffc07fc, then the result cannot overflow ever.
+   (('udot_4x8_uadd_sat', a, b, '#c(is_ult_0xfffc07fc)'), ('udot_4x8_uadd', a, b, c)),
+   (('udot_4x8_uadd_sat', a, b, c), ('uadd_sat', udot_4x8_a_b, c), '!options->has_dot_4x8'),
+
+   # For the signed dot-product, the largest positive value is 4*(-128*-128) =
+   # 0x10000, and the largest negative value is 4*(-128*127) = -0xfe00.  We
+   # don't have to worry about that intermediate result overflowing or
+   # underflowing.
+   (('sdot_4x8_iadd_sat', a, b, c), ('iadd_sat', sdot_4x8_a_b, c), '!options->has_dot_4x8'),
+
+   (('sudot_4x8_iadd_sat', a, b, c), ('iadd_sat', sudot_4x8_a_b, c), '!options->has_sudot_4x8'),
+])
+
 # Float sizes
 for s in [16, 32, 64]:
     optimizations.extend([
