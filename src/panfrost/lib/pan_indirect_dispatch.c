@@ -212,9 +212,9 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
 
                 nir_push_if(&b, nir_ine(&b, num_wg_x_ptr, nir_imm_int64(&b, 0)));
                 {
-                        nir_store_global(&b, num_wg_x_ptr, 8, nir_channel(&b, num_wg, 0), 1);
-                        nir_store_global(&b, get_input_field(&b, num_wg_sysval[1]), 8, nir_channel(&b, num_wg, 1), 1);
-                        nir_store_global(&b, get_input_field(&b, num_wg_sysval[2]), 8, nir_channel(&b, num_wg, 2), 1);
+                        nir_store_global(&b, num_wg_x_ptr, 8, num_wg_x, 1);
+                        nir_store_global(&b, get_input_field(&b, num_wg_sysval[1]), 8, num_wg_y, 1);
+                        nir_store_global(&b, get_input_field(&b, num_wg_sysval[2]), 8, num_wg_z, 1);
                 }
                 nir_pop_if(&b, NULL);
         }
