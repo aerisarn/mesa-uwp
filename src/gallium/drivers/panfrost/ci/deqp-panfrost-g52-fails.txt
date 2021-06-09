@@ -31,3 +31,12 @@ dEQP-GLES31.functional.separate_shader.random.79,Fail
 dEQP-GLES31.functional.separate_shader.random.80,Fail
 dEQP-GLES31.functional.separate_shader.random.82,Fail
 dEQP-GLES31.functional.separate_shader.random.89,Fail
+dEQP-GLES31.functional.draw_base_vertex.draw_elements_base_vertex.builtin_variable.vertex_id,Fail
+dEQP-GLES31.functional.draw_base_vertex.draw_elements_instanced_base_vertex.builtin_variable.vertex_id,Fail
+dEQP-GLES31.functional.draw_base_vertex.draw_range_elements_base_vertex.builtin_variable.vertex_id,Fail
+dEQP-GLES31.functional.separate_shader.interface.same_location_vertex_flat_fragment_flat,Fail
+dEQP-GLES31.functional.separate_shader.interface.same_location_vertex_smooth_fragment_centroid,Fail
+dEQP-GLES31.functional.separate_shader.interface.same_name_vertex_flat_fragment_flat,Fail
+dEQP-GLES31.functional.separate_shader.pipeline.different_constant_separate_programs_add_fragment,Fail
+dEQP-GLES31.functional.separate_shader.pipeline.same_constant_separate_programs_add_both,Fail
+dEQP-GLES31.functional.separate_shader.program_uniform.separate_programs_add_fragment,Fail
