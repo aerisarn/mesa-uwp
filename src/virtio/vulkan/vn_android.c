@@ -318,20 +318,9 @@ vn_android_get_modifier_properties(struct vn_device *dev,
                                          &format_prop);
 
    if (!mod_prop_list.drmFormatModifierCount) {
-      /* XXX Remove this fallback after host VK_EXT_image_drm_format_modifier
-       * can properly support VK_FORMAT_G8_B8R8_2PLANE_420_UNORM.
-       */
-      if (format != VK_FORMAT_G8_B8R8_2PLANE_420_UNORM) {
-         vn_log(dev->instance, "No compatible modifier for VkFormat(%u)",
-                format);
-         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-      }
-
-      out_props->drmFormatModifier = modifier;
-      out_props->drmFormatModifierPlaneCount = 2;
-      out_props->drmFormatModifierTilingFeatures =
-         VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
-      return VK_SUCCESS;
+      vn_log(dev->instance, "No compatible modifier for VkFormat(%u)",
+             format);
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
    }
 
    mod_props = vk_zalloc(
@@ -965,8 +954,12 @@ vn_android_device_import_ahb(struct vn_device *dev,
 
       VkMemoryRequirements mem_req;
       vn_GetImageMemoryRequirements(device, dedicated_info->image, &mem_req);
-      if (alloc_size < mem_req.size)
+      if (alloc_size < mem_req.size) {
+         vn_log(dev->instance,
+                "alloc_size(%" PRIu64 ") mem_req.size(%" PRIu64 ")",
+                alloc_size, mem_req.size);
          return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      }
 
       alloc_size = mem_req.size;
    }
@@ -975,8 +968,12 @@ vn_android_device_import_ahb(struct vn_device *dev,
       VkMemoryRequirements mem_req;
       vn_GetBufferMemoryRequirements(device, dedicated_info->buffer,
                                      &mem_req);
-      if (alloc_size < mem_req.size)
+      if (alloc_size < mem_req.size) {
+         vn_log(dev->instance,
+                "alloc_size(%" PRIu64 ") mem_req.size(%" PRIu64 ")",
+                alloc_size, mem_req.size);
          return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      }
 
       alloc_size = mem_req.size;
    }
