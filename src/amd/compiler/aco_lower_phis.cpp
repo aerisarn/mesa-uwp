@@ -44,6 +44,8 @@ struct ssa_state {
    unsigned phi_block_idx;
    unsigned loop_nest_depth;
    std::map<unsigned, unsigned> writes;
+   /* Whether there's a write in any of a block's predecessors. Indexed by the block index. */
+   std::vector<bool> any_pred_defined;
    std::vector<Operand> latest;
    std::vector<bool> visited;
 };
@@ -62,7 +64,8 @@ Operand get_ssa(Program *program, unsigned block_idx, ssa_state *state, bool bef
 
    Block& block = program->blocks[block_idx];
    size_t pred = block.linear_preds.size();
-   if (pred == 0 || block.loop_nest_depth < state->loop_nest_depth) {
+   if (pred == 0 || block.loop_nest_depth < state->loop_nest_depth ||
+       !state->any_pred_defined[block_idx]) {
       return Operand(program->lane_mask);
    } else if (block.loop_nest_depth > state->loop_nest_depth) {
       Operand op = get_ssa(program, block_idx - 1, state, false);
@@ -79,21 +82,9 @@ Operand get_ssa(Program *program, unsigned block_idx, ssa_state *state, bool bef
       Temp res = Temp(program->allocateTmp(program->lane_mask));
       state->latest[block_idx] = Operand(res);
 
-      Operand *const ops = (Operand *)alloca(pred * sizeof(Operand));
-      for (unsigned i = 0; i < pred; i++)
-         ops[i] = get_ssa(program, block.linear_preds[i], state, false);
-
-      bool all_undef = true;
-      for (unsigned i = 0; i < pred; i++)
-         all_undef = all_undef && ops[i].isUndefined();
-      if (all_undef) {
-         state->latest[block_idx] = ops[0];
-         return ops[0];
-      }
-
       aco_ptr<Pseudo_instruction> phi{create_instruction<Pseudo_instruction>(aco_opcode::p_linear_phi, Format::PSEUDO, pred, 1)};
       for (unsigned i = 0; i < pred; i++)
-         phi->operands[i] = ops[i];
+         phi->operands[i] = get_ssa(program, block.linear_preds[i], state, false);
       phi->definitions[0] = Definition(res);
       block.instructions.emplace(block.instructions.begin(), std::move(phi));
 
@@ -163,6 +154,33 @@ void build_merge_code(Program *program, Block *block, Definition dst, Operand pr
    }
 }
 
+void init_any_pred_defined(Program *program, ssa_state *state, Block *block, aco_ptr<Instruction>& phi)
+{
+   std::fill(state->any_pred_defined.begin(), state->any_pred_defined.end(), false);
+   for (unsigned i = 0; i < block->logical_preds.size(); i++) {
+      if (phi->operands[i].isUndefined())
+         continue;
+      for (unsigned succ : program->blocks[block->logical_preds[i]].linear_succs)
+         state->any_pred_defined[succ] = true;
+   }
+
+   unsigned start = block->logical_preds[0];
+
+   /* for loop exit phis, start at the loop header */
+   const bool loop_exit = block->kind & block_kind_loop_exit;
+   while (loop_exit && program->blocks[start - 1].loop_nest_depth >= state->loop_nest_depth)
+      start--;
+
+   for (unsigned i = 0; i < 1u + loop_exit; i++) {
+      for (unsigned j = start; j < block->index; j++) {
+         if (!state->any_pred_defined[j])
+            continue;
+         for (unsigned succ : program->blocks[j].linear_succs)
+            state->any_pred_defined[succ] = true;
+      }
+   }
+}
+
 void lower_divergent_bool_phi(Program *program, ssa_state *state, Block *block, aco_ptr<Instruction>& phi)
 {
    Builder bld(program);
@@ -182,6 +200,7 @@ void lower_divergent_bool_phi(Program *program, ssa_state *state, Block *block, 
 
    state->latest.resize(program->blocks.size());
    state->visited.resize(program->blocks.size());
+   state->any_pred_defined.resize(program->blocks.size());
 
    uint64_t undef_operands = 0;
    for (unsigned i = 0; i < phi->operands.size(); i++)
@@ -198,6 +217,7 @@ void lower_divergent_bool_phi(Program *program, ssa_state *state, Block *block, 
          state->loop_nest_depth += 1;
       }
       state->writes.clear();
+      init_any_pred_defined(program, state, block, phi);
       state->needs_init = false;
    }
    std::fill(state->latest.begin(), state->latest.end(), Operand(program->lane_mask));
