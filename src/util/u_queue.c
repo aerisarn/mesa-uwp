@@ -441,7 +441,7 @@ util_queue_init(struct util_queue *queue,
 
    queue->flags = flags;
    queue->max_threads = num_threads;
-   queue->num_threads = num_threads;
+   queue->num_threads = (flags & UTIL_QUEUE_INIT_SCALE_THREADS) ? 1 : num_threads;
    queue->max_jobs = max_jobs;
    queue->global_data = global_data;
 
@@ -457,12 +457,12 @@ util_queue_init(struct util_queue *queue,
    cnd_init(&queue->has_queued_cond);
    cnd_init(&queue->has_space_cond);
 
-   queue->threads = (thrd_t*) calloc(num_threads, sizeof(thrd_t));
+   queue->threads = (thrd_t*) calloc(queue->max_threads, sizeof(thrd_t));
    if (!queue->threads)
       goto fail;
 
    /* start threads */
-   for (i = 0; i < num_threads; i++) {
+   for (i = 0; i < queue->num_threads; i++) {
       if (!util_queue_create_thread(queue, i)) {
          if (i == 0) {
             /* no threads created, fail */
@@ -568,7 +568,14 @@ util_queue_add_job(struct util_queue *queue,
 
    assert(queue->num_queued >= 0 && queue->num_queued <= queue->max_jobs);
 
+
    if (queue->num_queued == queue->max_jobs) {
+      if ((queue->flags & UTIL_QUEUE_INIT_SCALE_THREADS) &&
+          execute != util_queue_finish_execute &&
+          queue->num_threads < queue->max_threads) {
+         util_queue_adjust_num_threads(queue, queue->num_threads + 1);
+      }
+
       if (queue->flags & UTIL_QUEUE_INIT_RESIZE_IF_FULL &&
           queue->total_jobs_size + job_size < S_256MB) {
          /* If the queue is full, make it larger to avoid waiting for a free
