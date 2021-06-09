@@ -184,3 +184,105 @@ BEGIN_TEST(regalloc.scratch_sgpr.create_vector_sgpr_operand)
 
    finish_ra_test(ra_test_policy(), true);
 END_TEST
+
+BEGIN_TEST(regalloc.linear_vgpr.live_range_split.fixed_def)
+   //>> p_startpgm
+   if (!setup_cs("", GFX10))
+      return;
+
+   PhysReg reg_v0{256};
+   PhysReg reg_v1{257};
+
+   //! lv1: %tmp1:v[0] = p_unit_test
+   Temp tmp = bld.pseudo(aco_opcode::p_unit_test, bld.def(v1.as_linear(), reg_v0));
+
+   //! lv1: %tmp2:v[1] = p_parallelcopy %tmp1:v[0]
+   //! v1: %_:v[0] = p_unit_test
+   bld.pseudo(aco_opcode::p_unit_test, Definition(reg_v0, v1));
+
+   //! p_unit_test %tmp2:v[1]
+   bld.pseudo(aco_opcode::p_unit_test, tmp);
+
+   finish_ra_test(ra_test_policy());
+END_TEST
+
+BEGIN_TEST(regalloc.linear_vgpr.live_range_split.get_reg_impl)
+   //>> p_startpgm
+   if (!setup_cs("", GFX10))
+      return;
+
+   program->dev.vgpr_limit = 3;
+
+   PhysReg reg_v1{257};
+
+   //! s1: %scc_tmp:scc, s1: %1:s[0] = p_unit_test
+   Temp s0_tmp = bld.tmp(s1);
+   Temp scc_tmp = bld.pseudo(aco_opcode::p_unit_test, bld.def(s1, scc), Definition(s0_tmp.id(), PhysReg{0}, s1));
+
+   //! lv1: %tmp1:v[1] = p_unit_test
+   Temp tmp = bld.pseudo(aco_opcode::p_unit_test, bld.def(v1.as_linear(), reg_v1));
+
+   //! lv1: %tmp2:v[2] = p_parallelcopy %tmp1:v[1]
+   //! v2: %_:v[0-1] = p_unit_test
+   bld.pseudo(aco_opcode::p_unit_test, bld.def(v2));
+
+   //! p_unit_test %tmp2:v[2], %scc_tmp:scc, %1:s[0]
+   bld.pseudo(aco_opcode::p_unit_test, tmp, scc_tmp, s0_tmp);
+
+   finish_ra_test(ra_test_policy());
+
+   //>> lv1: %5:v[2] = p_parallelcopy %3:v[1] scc:1 scratch:s1
+   Pseudo_instruction& parallelcopy = program->blocks[0].instructions[3]->pseudo();
+   aco_print_instr(&parallelcopy, output);
+   fprintf(output, " scc:%u scratch:s%u\n", parallelcopy.tmp_in_scc, parallelcopy.scratch_sgpr.reg());
+END_TEST
+
+BEGIN_TEST(regalloc.linear_vgpr.live_range_split.get_regs_for_copies)
+   //>> p_startpgm
+   if (!setup_cs("", GFX10))
+      return;
+
+   program->dev.vgpr_limit = 6;
+
+   PhysReg reg_v2{258};
+   PhysReg reg_v4{260};
+
+   //! lv1: %lin_tmp1:v[4] = p_unit_test
+   Temp lin_tmp = bld.pseudo(aco_opcode::p_unit_test, bld.def(v1.as_linear(), reg_v4));
+   //! v2: %log_tmp1:v[2-3] = p_unit_test
+   Temp log_tmp = bld.pseudo(aco_opcode::p_unit_test, bld.def(v2, reg_v2));
+
+   //! lv1: %lin_tmp2:v[0], v2: %log_tmp2:v[4-5] = p_parallelcopy %lin_tmp1:v[4], %log_tmp1:v[2-3]
+   //! v3: %_:v[1-3] = p_unit_test
+   bld.pseudo(aco_opcode::p_unit_test, bld.def(v3));
+
+   //! p_unit_test %log_tmp2:v[4-5], %lin_tmp2:v[0]
+   bld.pseudo(aco_opcode::p_unit_test, log_tmp, lin_tmp);
+
+   finish_ra_test(ra_test_policy());
+END_TEST
+
+BEGIN_TEST(regalloc.linear_vgpr.live_range_split.get_reg_create_vector)
+   //>> p_startpgm
+   if (!setup_cs("", GFX10))
+      return;
+
+   program->dev.vgpr_limit = 4;
+
+   PhysReg reg_v0{256};
+   PhysReg reg_v1{257};
+
+   //! lv1: %lin_tmp1:v[0] = p_unit_test
+   Temp lin_tmp = bld.pseudo(aco_opcode::p_unit_test, bld.def(v1.as_linear(), reg_v0));
+   //! v1: %log_tmp:v[1] = p_unit_test
+   Temp log_tmp = bld.pseudo(aco_opcode::p_unit_test, bld.def(v1, reg_v1));
+
+   //! lv1: %lin_tmp2:v[2] = p_parallelcopy %lin_tmp1:v[0]
+   //! v2: %_:v[0-1] = p_create_vector v1: undef, %log_tmp:v[1]
+   bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), Operand(v1), log_tmp);
+
+   //! p_unit_test %lin_tmp2:v[2]
+   bld.pseudo(aco_opcode::p_unit_test, lin_tmp);
+
+   finish_ra_test(ra_test_policy());
+END_TEST

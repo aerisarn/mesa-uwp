@@ -56,6 +56,7 @@ struct assignment {
 struct ra_ctx {
 
    Program* program;
+   Block* block = NULL;
    std::vector<assignment> assignments;
    std::vector<std::unordered_map<unsigned, Temp>> renames;
    std::vector<uint32_t> loop_header;
@@ -1074,8 +1075,9 @@ get_regs_for_copies(ra_ctx& ctx, RegisterFile& reg_file,
                n++;
                continue;
             }
-            /* we cannot split live ranges of linear vgprs */
-            if (ctx.assignments[reg_file[j]].rc.is_linear_vgpr()) {
+            /* we cannot split live ranges of linear vgprs inside control flow */
+            if (!(ctx.block->kind & block_kind_top_level) &&
+                ctx.assignments[reg_file[j]].rc.is_linear_vgpr()) {
                found = false;
                break;
             }
@@ -1221,8 +1223,10 @@ get_reg_impl(ra_ctx& ctx, RegisterFile& reg_file,
             break;
          }
 
-         /* we cannot split live ranges of linear vgprs */
-         if (ctx.assignments[reg_file[j]].rc.is_linear_vgpr()) {
+         /* we cannot split live ranges of linear vgprs inside control flow */
+         //TODO: ensure that live range splits inside control flow are never necessary
+         if (!(ctx.block->kind & block_kind_top_level) &&
+             ctx.assignments[reg_file[j]].rc.is_linear_vgpr()) {
             found = false;
             break;
          }
@@ -1627,7 +1631,7 @@ get_reg_create_vector(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
 
    PhysReg best_pos{0xFFF};
    unsigned num_moves = 0xFF;
-   bool best_war_hint = true;
+   bool best_avoid = true;
 
    /* test for each operand which definition placement causes the least shuffle instructions */
    for (unsigned i = 0, offset = 0; i < instr->operands.size();
@@ -1661,14 +1665,9 @@ get_reg_create_vector(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
           reg_file.get_id(reg_win.hi().advance(-1)) == reg_file.get_id(reg_win.hi()))
          continue;
 
-      /* count variables to be moved and check war_hint */
-      bool war_hint = false;
-      bool linear_vgpr = false;
+      /* count variables to be moved and check "avoid" */
+      bool avoid = false;
       for (PhysReg j : reg_win) {
-         if (linear_vgpr) {
-            break;
-         }
-
          if (reg_file[j] != 0) {
             if (reg_file[j] == 0xF0000000) {
                PhysReg reg;
@@ -1678,14 +1677,18 @@ get_reg_create_vector(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
                   k += reg_file.test(reg, 1);
             } else {
                k += 4;
-               /* we cannot split live ranges of linear vgprs */
-               if (ctx.assignments[reg_file[j]].rc.is_linear_vgpr())
-                  linear_vgpr = true;
+               /* we cannot split live ranges of linear vgprs inside control flow */
+               if (ctx.assignments[reg_file[j]].rc.is_linear_vgpr()) {
+                  if (ctx.block->kind & block_kind_top_level)
+                     avoid = true;
+                  else
+                     break;
+               }
             }
          }
-         war_hint |= ctx.war_hint[j];
+         avoid |= ctx.war_hint[j];
       }
-      if (linear_vgpr || (war_hint && !best_war_hint))
+      if (avoid && !best_avoid)
          continue;
 
       /* count operands in wrong positions */
@@ -1703,7 +1706,7 @@ get_reg_create_vector(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
 
       best_pos = reg_win.lo();
       num_moves = k;
-      best_war_hint = war_hint;
+      best_avoid = avoid;
    }
 
    if (num_moves >= bytes)
@@ -1775,24 +1778,22 @@ handle_pseudo(ra_ctx& ctx, const RegisterFile& reg_file, Instruction* instr)
    default: return;
    }
 
-   /* if all definitions are vgpr, no need to care for SCC */
-   bool writes_sgpr = false;
+   bool writes_linear = false;
+   /* if all definitions are logical vgpr, no need to care for SCC */
    for (Definition& def : instr->definitions) {
-      if (def.getTemp().type() == RegType::sgpr) {
-         writes_sgpr = true;
-         break;
-      }
+      if (def.getTemp().regClass().is_linear())
+         writes_linear = true;
    }
    /* if all operands are constant, no need to care either */
-   bool reads_sgpr = false;
+   bool reads_linear = false;
    bool reads_subdword = false;
    for (Operand& op : instr->operands) {
-      if (op.isTemp() && op.getTemp().type() == RegType::sgpr)
-         reads_sgpr = true;
+      if (op.isTemp() && op.getTemp().regClass().is_linear())
+         reads_linear = true;
       if (op.isTemp() && op.regClass().is_subdword())
          reads_subdword = true;
    }
-   bool needs_scratch_reg = (writes_sgpr && reads_sgpr && reg_file[scc]) ||
+   bool needs_scratch_reg = (writes_linear && reads_linear && reg_file[scc]) ||
                             (ctx.program->chip_class <= GFX7 && reads_subdword);
    if (!needs_scratch_reg)
       return;
@@ -1911,7 +1912,7 @@ Temp
 handle_live_in(ra_ctx& ctx, Temp val, Block* block)
 {
    std::vector<unsigned>& preds = val.is_linear() ? block->linear_preds : block->logical_preds;
-   if (preds.size() == 0 || val.regClass().is_linear_vgpr())
+   if (preds.size() == 0)
       return val;
 
    if (preds.size() == 1) {
@@ -1934,6 +1935,8 @@ handle_live_in(ra_ctx& ctx, Temp val, Block* block)
    }
 
    if (needs_phi) {
+      assert(!val.regClass().is_linear_vgpr());
+
       /* the variable has been renamed differently in the predecessors: we need to insert a phi */
       aco_opcode opcode = val.is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
       aco_ptr<Instruction> phi{
@@ -2243,6 +2246,8 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
    std::vector<std::bitset<128>> sgpr_live_in(program->blocks.size());
 
    for (Block& block : program->blocks) {
+      ctx.block = &block;
+
       /* initialize register file */
       RegisterFile register_file = init_reg_file(ctx, live_out_per_block, block);
       ctx.war_hint.reset();
@@ -2646,9 +2651,12 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             pc.reset(create_instruction<Pseudo_instruction>(aco_opcode::p_parallelcopy,
                                                             Format::PSEUDO, parallelcopy.size(),
                                                             parallelcopy.size()));
+            bool linear_vgpr = false;
             bool sgpr_operands_alias_defs = false;
             uint64_t sgpr_operands[4] = {0, 0, 0, 0};
             for (unsigned i = 0; i < parallelcopy.size(); i++) {
+               linear_vgpr |= parallelcopy[i].first.regClass().is_linear_vgpr();
+
                if (temp_in_scc && parallelcopy[i].first.isTemp() &&
                    parallelcopy[i].first.getTemp().type() == RegType::sgpr) {
                   if (!sgpr_operands_alias_defs) {
@@ -2676,7 +2684,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
                ctx.renames[block.index][orig.id()] = pc->definitions[i].getTemp();
             }
 
-            if (temp_in_scc && sgpr_operands_alias_defs) {
+            if (temp_in_scc && (sgpr_operands_alias_defs || linear_vgpr)) {
                /* disable definitions and re-enable operands */
                RegisterFile tmp_file(register_file);
                for (const Definition& def : instr->definitions) {
