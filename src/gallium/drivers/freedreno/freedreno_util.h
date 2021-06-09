@@ -104,10 +104,14 @@ extern bool fd_binning_enabled;
 
 #define FD_DBG(category) unlikely(fd_mesa_debug &FD_DBG_##category)
 
+#include <unistd.h>
+#include <sys/types.h>
+
 #define DBG(fmt, ...)                                                          \
    do {                                                                        \
       if (FD_DBG(MSGS))                                                        \
-         mesa_logd("%s:%d: " fmt, __FUNCTION__, __LINE__, ##__VA_ARGS__);      \
+         mesa_logd("%5d: %s:%d: " fmt, gettid(), __FUNCTION__, __LINE__,       \
+                   ##__VA_ARGS__);                                             \
    } while (0)
 
 #define perf_debug_ctx(ctx, ...)                                               \
