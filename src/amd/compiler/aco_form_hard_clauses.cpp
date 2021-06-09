@@ -31,15 +31,15 @@ namespace aco {
 namespace {
 
 /* there can also be LDS and VALU clauses, but I don't see how those are interesting */
-enum clause_type
-{
+enum clause_type {
    clause_vmem,
    clause_flat,
    clause_smem,
    clause_other,
 };
 
-void emit_clause(Builder& bld, unsigned num_instrs, aco_ptr<Instruction> *instrs)
+void
+emit_clause(Builder& bld, unsigned num_instrs, aco_ptr<Instruction>* instrs)
 {
    unsigned start = 0;
 
@@ -61,7 +61,8 @@ void emit_clause(Builder& bld, unsigned num_instrs, aco_ptr<Instruction> *instrs
 
 } /* end namespace */
 
-void form_hard_clauses(Program *program)
+void
+form_hard_clauses(Program* program)
 {
    for (Block& block : program->blocks) {
       unsigned num_instrs = 0;
@@ -77,7 +78,8 @@ void form_hard_clauses(Program *program)
 
          clause_type type = clause_other;
          if (instr->isVMEM() && !instr->operands.empty()) {
-            if (program->chip_class == GFX10 && instr->isMIMG() && get_mimg_nsa_dwords(instr.get()) > 0)
+            if (program->chip_class == GFX10 && instr->isMIMG() &&
+                get_mimg_nsa_dwords(instr.get()) > 0)
                type = clause_other;
             else
                type = clause_vmem;
@@ -109,4 +111,4 @@ void form_hard_clauses(Program *program)
       block.instructions = std::move(new_instructions);
    }
 }
-}
+} // namespace aco

@@ -24,9 +24,9 @@
 
 #include "aco_ir.h"
 
-#include <bitset>
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <vector>
 
 namespace aco {
@@ -41,15 +41,14 @@ enum {
    written_by_multiple_instrs = -4,
 };
 
-struct pr_opt_ctx
-{
-   Program *program;
-   Block *current_block;
+struct pr_opt_ctx {
+   Program* program;
+   Block* current_block;
    int current_instr_idx;
    std::vector<uint16_t> uses;
    std::array<int, max_reg_cnt * 4u> instr_idx_by_regs;
 
-   void reset_block(Block *block)
+   void reset_block(Block* block)
    {
       current_block = block;
       current_instr_idx = -1;
@@ -57,9 +56,10 @@ struct pr_opt_ctx
    }
 };
 
-void save_reg_writes(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
+void
+save_reg_writes(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
-   for (const Definition &def : instr->definitions) {
+   for (const Definition& def : instr->definitions) {
       assert(def.regClass().type() != RegType::sgpr || def.physReg().reg() <= 255);
       assert(def.regClass().type() != RegType::vgpr || def.physReg().reg() >= 256);
 
@@ -75,20 +75,21 @@ void save_reg_writes(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
    }
 }
 
-int last_writer_idx(pr_opt_ctx &ctx, PhysReg physReg, RegClass rc)
+int
+last_writer_idx(pr_opt_ctx& ctx, PhysReg physReg, RegClass rc)
 {
    /* Verify that all of the operand's registers are written by the same instruction. */
    int instr_idx = ctx.instr_idx_by_regs[physReg.reg()];
    unsigned dw_size = DIV_ROUND_UP(rc.bytes(), 4u);
    unsigned r = physReg.reg();
-   bool all_same = std::all_of(
-      &ctx.instr_idx_by_regs[r], &ctx.instr_idx_by_regs[r + dw_size],
-      [instr_idx](int i) { return i == instr_idx; });
+   bool all_same = std::all_of(&ctx.instr_idx_by_regs[r], &ctx.instr_idx_by_regs[r + dw_size],
+                               [instr_idx](int i) { return i == instr_idx; });
 
    return all_same ? instr_idx : written_by_multiple_instrs;
 }
 
-int last_writer_idx(pr_opt_ctx &ctx, const Operand &op)
+int
+last_writer_idx(pr_opt_ctx& ctx, const Operand& op)
 {
    if (op.isConstant() || op.isUndefined())
       return const_or_undef;
@@ -104,7 +105,8 @@ int last_writer_idx(pr_opt_ctx &ctx, const Operand &op)
    return instr_idx;
 }
 
-void try_apply_branch_vcc(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
+void
+try_apply_branch_vcc(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
    /* We are looking for the following pattern:
     *
@@ -123,8 +125,7 @@ void try_apply_branch_vcc(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
    if (ctx.program->chip_class < GFX8)
       return;
 
-   if (instr->format != Format::PSEUDO_BRANCH ||
-       instr->operands.size() == 0 ||
+   if (instr->format != Format::PSEUDO_BRANCH || instr->operands.size() == 0 ||
        instr->operands[0].physReg() != scc)
       return;
 
@@ -141,13 +142,12 @@ void try_apply_branch_vcc(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
        last_exec_wr_idx > last_vcc_wr_idx || last_exec_wr_idx < not_written_in_block)
       return;
 
-   aco_ptr<Instruction> &op0_instr = ctx.current_block->instructions[op0_instr_idx];
-   aco_ptr<Instruction> &last_vcc_wr = ctx.current_block->instructions[last_vcc_wr_idx];
+   aco_ptr<Instruction>& op0_instr = ctx.current_block->instructions[op0_instr_idx];
+   aco_ptr<Instruction>& last_vcc_wr = ctx.current_block->instructions[last_vcc_wr_idx];
 
    if ((op0_instr->opcode != aco_opcode::s_and_b64 /* wave64 */ &&
         op0_instr->opcode != aco_opcode::s_and_b32 /* wave32 */) ||
-       op0_instr->operands[0].physReg() != vcc ||
-       op0_instr->operands[1].physReg() != exec ||
+       op0_instr->operands[0].physReg() != vcc || op0_instr->operands[1].physReg() != exec ||
        !last_vcc_wr->isVOPC())
       return;
 
@@ -159,7 +159,8 @@ void try_apply_branch_vcc(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
    instr->operands[0] = op0_instr->operands[0];
 }
 
-void try_optimize_scc_nocompare(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
+void
+try_optimize_scc_nocompare(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
    /* We are looking for the following pattern:
     *
@@ -180,8 +181,7 @@ void try_optimize_scc_nocompare(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
    if (instr->isSOPC() &&
        (instr->opcode == aco_opcode::s_cmp_eq_u32 || instr->opcode == aco_opcode::s_cmp_eq_i32 ||
         instr->opcode == aco_opcode::s_cmp_lg_u32 || instr->opcode == aco_opcode::s_cmp_lg_i32 ||
-        instr->opcode == aco_opcode::s_cmp_eq_u64 ||
-        instr->opcode == aco_opcode::s_cmp_lg_u64) &&
+        instr->opcode == aco_opcode::s_cmp_eq_u64 || instr->opcode == aco_opcode::s_cmp_lg_u64) &&
        (instr->operands[0].constantEquals(0) || instr->operands[1].constantEquals(0)) &&
        (instr->operands[0].isTemp() || instr->operands[1].isTemp())) {
       /* Make sure the constant is always in operand 1 */
@@ -197,8 +197,9 @@ void try_optimize_scc_nocompare(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
       if (wr_idx < 0 || wr_idx != sccwr_idx)
          return;
 
-      aco_ptr<Instruction> &wr_instr = ctx.current_block->instructions[wr_idx];
-      if (!wr_instr->isSALU() || wr_instr->definitions.size() < 2 || wr_instr->definitions[1].physReg() != scc)
+      aco_ptr<Instruction>& wr_instr = ctx.current_block->instructions[wr_idx];
+      if (!wr_instr->isSALU() || wr_instr->definitions.size() < 2 ||
+          wr_instr->definitions[1].physReg() != scc)
          return;
 
       /* Look for instructions which set SCC := (D != 0) */
@@ -232,10 +233,8 @@ void try_optimize_scc_nocompare(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
       case aco_opcode::s_ashr_i32:
       case aco_opcode::s_ashr_i64:
       case aco_opcode::s_abs_i32:
-      case aco_opcode::s_absdiff_i32:
-         break;
-      default:
-         return;
+      case aco_opcode::s_absdiff_i32: break;
+      default: return;
       }
 
       /* Use the SCC def from wr_instr */
@@ -245,13 +244,12 @@ void try_optimize_scc_nocompare(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
 
       /* Set the opcode and operand to 32-bit */
       instr->operands[1] = Operand(0u);
-      instr->opcode = (instr->opcode == aco_opcode::s_cmp_eq_u32 ||
-                       instr->opcode == aco_opcode::s_cmp_eq_i32 ||
-                       instr->opcode == aco_opcode::s_cmp_eq_u64)
-                      ? aco_opcode::s_cmp_eq_u32
-                      : aco_opcode::s_cmp_lg_u32;
-   } else if ((instr->format == Format::PSEUDO_BRANCH &&
-               instr->operands.size() == 1 &&
+      instr->opcode =
+         (instr->opcode == aco_opcode::s_cmp_eq_u32 || instr->opcode == aco_opcode::s_cmp_eq_i32 ||
+          instr->opcode == aco_opcode::s_cmp_eq_u64)
+            ? aco_opcode::s_cmp_eq_u32
+            : aco_opcode::s_cmp_lg_u32;
+   } else if ((instr->format == Format::PSEUDO_BRANCH && instr->operands.size() == 1 &&
                instr->operands[0].physReg() == scc) ||
               instr->opcode == aco_opcode::s_cselect_b32) {
 
@@ -265,10 +263,11 @@ void try_optimize_scc_nocompare(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
       if (wr_idx < 0)
          return;
 
-      aco_ptr<Instruction> &wr_instr = ctx.current_block->instructions[wr_idx];
+      aco_ptr<Instruction>& wr_instr = ctx.current_block->instructions[wr_idx];
 
       /* Check if we found the pattern above. */
-      if (wr_instr->opcode != aco_opcode::s_cmp_eq_u32 && wr_instr->opcode != aco_opcode::s_cmp_lg_u32)
+      if (wr_instr->opcode != aco_opcode::s_cmp_eq_u32 &&
+          wr_instr->opcode != aco_opcode::s_cmp_lg_u32)
          return;
       if (wr_instr->operands[0].physReg() != scc)
          return;
@@ -282,11 +281,13 @@ void try_optimize_scc_nocompare(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
       if (wr_instr->opcode == aco_opcode::s_cmp_eq_u32) {
          /* Flip the meaning of the instruction to correctly use the SCC. */
          if (instr->format == Format::PSEUDO_BRANCH)
-            instr->opcode = instr->opcode == aco_opcode::p_cbranch_z ? aco_opcode::p_cbranch_nz : aco_opcode::p_cbranch_z;
+            instr->opcode = instr->opcode == aco_opcode::p_cbranch_z ? aco_opcode::p_cbranch_nz
+                                                                     : aco_opcode::p_cbranch_z;
          else if (instr->opcode == aco_opcode::s_cselect_b32)
             std::swap(instr->operands[0], instr->operands[1]);
          else
-            unreachable("scc_nocompare optimization is only implemented for p_cbranch and s_cselect");
+            unreachable(
+               "scc_nocompare optimization is only implemented for p_cbranch and s_cselect");
       }
 
       /* Use the SCC def from the original instruction, not the comparison */
@@ -295,7 +296,8 @@ void try_optimize_scc_nocompare(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
    }
 }
 
-void process_instruction(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
+void
+process_instruction(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
    ctx.current_instr_idx++;
 
@@ -307,9 +309,10 @@ void process_instruction(pr_opt_ctx &ctx, aco_ptr<Instruction> &instr)
       save_reg_writes(ctx, instr);
 }
 
-} /* End of empty namespace */
+} // namespace
 
-void optimize_postRA(Program* program)
+void
+optimize_postRA(Program* program)
 {
    pr_opt_ctx ctx;
    ctx.program = program;
@@ -319,10 +322,10 @@ void optimize_postRA(Program* program)
     * Goes through each instruction exactly once, and can transform
     * instructions or adjust the use counts of temps.
     */
-   for (auto &block : program->blocks) {
+   for (auto& block : program->blocks) {
       ctx.reset_block(&block);
 
-      for (aco_ptr<Instruction> &instr : block.instructions)
+      for (aco_ptr<Instruction>& instr : block.instructions)
          process_instruction(ctx, instr);
    }
 
@@ -330,13 +333,12 @@ void optimize_postRA(Program* program)
     * Gets rid of instructions which are manually deleted or
     * no longer have any uses.
     */
-   for (auto &block : program->blocks) {
-      auto new_end = std::remove_if(
-         block.instructions.begin(), block.instructions.end(),
-         [&ctx](const aco_ptr<Instruction> &instr) { return !instr || is_dead(ctx.uses, instr.get()); });
+   for (auto& block : program->blocks) {
+      auto new_end = std::remove_if(block.instructions.begin(), block.instructions.end(),
+                                    [&ctx](const aco_ptr<Instruction>& instr)
+                                    { return !instr || is_dead(ctx.uses, instr.get()); });
       block.instructions.resize(new_end - block.instructions.begin());
    }
 }
 
-} /* End of aco namespace */
-
+} // namespace aco

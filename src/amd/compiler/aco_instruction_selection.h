@@ -39,21 +39,22 @@ struct shader_io_state {
    uint8_t mask[VARYING_SLOT_MAX];
    Temp temps[VARYING_SLOT_MAX * 4u];
 
-   shader_io_state() {
+   shader_io_state()
+   {
       memset(mask, 0, sizeof(mask));
       std::fill_n(temps, VARYING_SLOT_MAX * 4u, Temp(0, RegClass::v1));
    }
 };
 
 struct isel_context {
-   const struct radv_nir_compiler_options *options;
-   struct radv_shader_args *args;
-   Program *program;
-   nir_shader *shader;
+   const struct radv_nir_compiler_options* options;
+   struct radv_shader_args* args;
+   Program* program;
+   nir_shader* shader;
    uint32_t constant_data_offset;
-   Block *block;
+   Block* block;
    uint32_t first_temp_id;
-   std::unordered_map<unsigned, std::array<Temp,NIR_MAX_VEC_COMPONENTS>> allocated_vec;
+   std::unordered_map<unsigned, std::array<Temp, NIR_MAX_VEC_COMPONENTS>> allocated_vec;
    Stage stage;
    struct {
       bool has_branch;
@@ -66,7 +67,8 @@ struct isel_context {
       struct {
          bool is_divergent = false;
       } parent_if;
-      bool exec_potentially_empty_discard = false; /* set to false when loop_nest_depth==0 && parent_if.is_divergent==false */
+      bool exec_potentially_empty_discard =
+         false; /* set to false when loop_nest_depth==0 && parent_if.is_divergent==false */
       uint16_t exec_potentially_empty_break_depth = UINT16_MAX;
       /* Set to false when loop_nest_depth==exec_potentially_empty_break_depth
        * and parent_if.is_divergent==false. Called _break but it's also used for
@@ -76,7 +78,7 @@ struct isel_context {
    } cf_info;
 
    /* NIR range analysis. */
-   struct hash_table *range_ht;
+   struct hash_table* range_ht;
    nir_unsigned_upper_bound_config ub_config;
 
    Temp arg_temps[AC_MAX_ARGS];
@@ -102,22 +104,19 @@ struct isel_context {
    shader_io_state outputs;
 };
 
-inline Temp get_arg(isel_context *ctx, struct ac_arg arg)
+inline Temp
+get_arg(isel_context* ctx, struct ac_arg arg)
 {
    assert(arg.used);
    return ctx->arg_temps[arg.arg_index];
 }
 
-void init_context(isel_context *ctx, nir_shader *shader);
-void cleanup_context(isel_context *ctx);
+void init_context(isel_context* ctx, nir_shader* shader);
+void cleanup_context(isel_context* ctx);
 
-isel_context
-setup_isel_context(Program* program,
-                   unsigned shader_count,
-                   struct nir_shader *const *shaders,
-                   ac_shader_config* config,
-                   struct radv_shader_args *args,
-                   bool is_gs_copy_shader);
+isel_context setup_isel_context(Program* program, unsigned shader_count,
+                                struct nir_shader* const* shaders, ac_shader_config* config,
+                                struct radv_shader_args* args, bool is_gs_copy_shader);
 
 } // namespace aco
 

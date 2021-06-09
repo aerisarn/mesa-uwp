@@ -36,7 +36,8 @@ namespace aco {
 
 namespace {
 
-unsigned get_interp_input(nir_intrinsic_op intrin, enum glsl_interp_mode interp)
+unsigned
+get_interp_input(nir_intrinsic_op intrin, enum glsl_interp_mode interp)
 {
    switch (interp) {
    case INTERP_MODE_SMOOTH:
@@ -58,13 +59,13 @@ unsigned get_interp_input(nir_intrinsic_op intrin, enum glsl_interp_mode interp)
       else if (intrin == nir_intrinsic_load_barycentric_sample)
          return S_0286CC_LINEAR_SAMPLE_ENA(1);
       break;
-   default:
-      break;
+   default: break;
    }
    return 0;
 }
 
-bool is_loop_header_block(nir_block *block)
+bool
+is_loop_header_block(nir_block* block)
 {
    return block->cf_node.parent->type == nir_cf_node_loop &&
           block == nir_loop_first_block(nir_cf_node_as_loop(block->cf_node.parent));
@@ -72,20 +73,20 @@ bool is_loop_header_block(nir_block *block)
 
 /* similar to nir_block_is_unreachable(), but does not require dominance information */
 bool
-is_block_reachable(nir_function_impl *impl, nir_block *known_reachable, nir_block *block)
+is_block_reachable(nir_function_impl* impl, nir_block* known_reachable, nir_block* block)
 {
    if (block == nir_start_block(impl) || block == known_reachable)
       return true;
 
    /* skip loop back-edges */
    if (is_loop_header_block(block)) {
-      nir_loop *loop = nir_cf_node_as_loop(block->cf_node.parent);
-      nir_block *preheader = nir_block_cf_tree_prev(nir_loop_first_block(loop));
+      nir_loop* loop = nir_cf_node_as_loop(block->cf_node.parent);
+      nir_block* preheader = nir_block_cf_tree_prev(nir_loop_first_block(loop));
       return is_block_reachable(impl, known_reachable, preheader);
    }
 
-   set_foreach(block->predecessors, entry) {
-      if (is_block_reachable(impl, known_reachable, (nir_block *)entry->key))
+   set_foreach (block->predecessors, entry) {
+      if (is_block_reachable(impl, known_reachable, (nir_block*)entry->key))
          return true;
    }
 
@@ -94,12 +95,12 @@ is_block_reachable(nir_function_impl *impl, nir_block *known_reachable, nir_bloc
 
 /* Check whether the given SSA def is only used by cross-lane instructions. */
 bool
-only_used_by_cross_lane_instrs(nir_ssa_def *ssa, bool follow_phis = true)
+only_used_by_cross_lane_instrs(nir_ssa_def* ssa, bool follow_phis = true)
 {
    nir_foreach_use (src, ssa) {
       switch (src->parent_instr->type) {
       case nir_instr_type_alu: {
-         nir_alu_instr *alu = nir_instr_as_alu(src->parent_instr);
+         nir_alu_instr* alu = nir_instr_as_alu(src->parent_instr);
          if (alu->op != nir_op_unpack_64_2x32_split_x && alu->op != nir_op_unpack_64_2x32_split_y)
             return false;
          if (!only_used_by_cross_lane_instrs(&alu->dest.dest.ssa, follow_phis))
@@ -108,7 +109,7 @@ only_used_by_cross_lane_instrs(nir_ssa_def *ssa, bool follow_phis = true)
          continue;
       }
       case nir_instr_type_intrinsic: {
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(src->parent_instr);
+         nir_intrinsic_instr* intrin = nir_instr_as_intrinsic(src->parent_instr);
          if (intrin->intrinsic != nir_intrinsic_read_invocation &&
              intrin->intrinsic != nir_intrinsic_read_first_invocation &&
              intrin->intrinsic != nir_intrinsic_lane_permute_16_amd)
@@ -121,14 +122,13 @@ only_used_by_cross_lane_instrs(nir_ssa_def *ssa, bool follow_phis = true)
          if (!follow_phis)
             return false;
 
-         nir_phi_instr *phi = nir_instr_as_phi(src->parent_instr);
+         nir_phi_instr* phi = nir_instr_as_phi(src->parent_instr);
          if (!only_used_by_cross_lane_instrs(&phi->dest.ssa, false))
             return false;
 
          continue;
       }
-      default:
-         return false;
+      default: return false;
       }
    }
 
@@ -140,12 +140,12 @@ only_used_by_cross_lane_instrs(nir_ssa_def *ssa, bool follow_phis = true)
  * block instead. This is so that we can use any SGPR live-out of the side
  * without the branch without creating a linear phi in the invert or merge block. */
 bool
-sanitize_if(nir_function_impl *impl, nir_if *nif)
+sanitize_if(nir_function_impl* impl, nir_if* nif)
 {
-   //TODO: skip this if the condition is uniform and there are no divergent breaks/continues?
+   // TODO: skip this if the condition is uniform and there are no divergent breaks/continues?
 
-   nir_block *then_block = nir_if_last_then_block(nif);
-   nir_block *else_block = nir_if_last_else_block(nif);
+   nir_block* then_block = nir_if_last_then_block(nif);
+   nir_block* else_block = nir_if_last_else_block(nif);
    bool then_jump = nir_block_ends_in_jump(then_block) ||
                     !is_block_reachable(impl, nir_if_first_then_block(nif), then_block);
    bool else_jump = nir_block_ends_in_jump(else_block) ||
@@ -167,47 +167,46 @@ sanitize_if(nir_function_impl *impl, nir_if *nif)
    nir_opt_remove_phis_block(nir_cf_node_as_block(nir_cf_node_next(&nif->cf_node)));
 
    /* Finally, move the continue from branch after the if-statement. */
-   nir_block *last_continue_from_blk = else_jump ? then_block : else_block;
-   nir_block *first_continue_from_blk = else_jump ?
-      nir_if_first_then_block(nif) : nir_if_first_else_block(nif);
+   nir_block* last_continue_from_blk = else_jump ? then_block : else_block;
+   nir_block* first_continue_from_blk =
+      else_jump ? nir_if_first_then_block(nif) : nir_if_first_else_block(nif);
 
    nir_cf_list tmp;
    nir_cf_extract(&tmp, nir_before_block(first_continue_from_blk),
-                        nir_after_block(last_continue_from_blk));
+                  nir_after_block(last_continue_from_blk));
    nir_cf_reinsert(&tmp, nir_after_cf_node(&nif->cf_node));
 
    return true;
 }
 
 bool
-sanitize_cf_list(nir_function_impl *impl, struct exec_list *cf_list)
+sanitize_cf_list(nir_function_impl* impl, struct exec_list* cf_list)
 {
    bool progress = false;
-   foreach_list_typed(nir_cf_node, cf_node, node, cf_list) {
+   foreach_list_typed (nir_cf_node, cf_node, node, cf_list) {
       switch (cf_node->type) {
-      case nir_cf_node_block:
-         break;
+      case nir_cf_node_block: break;
       case nir_cf_node_if: {
-         nir_if *nif = nir_cf_node_as_if(cf_node);
+         nir_if* nif = nir_cf_node_as_if(cf_node);
          progress |= sanitize_cf_list(impl, &nif->then_list);
          progress |= sanitize_cf_list(impl, &nif->else_list);
          progress |= sanitize_if(impl, nif);
          break;
       }
       case nir_cf_node_loop: {
-         nir_loop *loop = nir_cf_node_as_loop(cf_node);
+         nir_loop* loop = nir_cf_node_as_loop(cf_node);
          progress |= sanitize_cf_list(impl, &loop->body);
          break;
       }
-      case nir_cf_node_function:
-         unreachable("Invalid cf type");
+      case nir_cf_node_function: unreachable("Invalid cf type");
       }
    }
 
    return progress;
 }
 
-void apply_nuw_to_ssa(isel_context *ctx, nir_ssa_def *ssa)
+void
+apply_nuw_to_ssa(isel_context* ctx, nir_ssa_def* ssa)
 {
    nir_ssa_scalar scalar;
    scalar.def = ssa;
@@ -216,7 +215,7 @@ void apply_nuw_to_ssa(isel_context *ctx, nir_ssa_def *ssa)
    if (!nir_ssa_scalar_is_alu(scalar) || nir_ssa_scalar_alu_op(scalar) != nir_op_iadd)
       return;
 
-   nir_alu_instr *add = nir_instr_as_alu(ssa->parent_instr);
+   nir_alu_instr* add = nir_instr_as_alu(ssa->parent_instr);
 
    if (add->no_unsigned_wrap)
       return;
@@ -230,20 +229,19 @@ void apply_nuw_to_ssa(isel_context *ctx, nir_ssa_def *ssa)
       src1 = tmp;
    }
 
-   uint32_t src1_ub = nir_unsigned_upper_bound(ctx->shader, ctx->range_ht,
-                                               src1, &ctx->ub_config);
+   uint32_t src1_ub = nir_unsigned_upper_bound(ctx->shader, ctx->range_ht, src1, &ctx->ub_config);
    add->no_unsigned_wrap =
-      !nir_addition_might_overflow(ctx->shader, ctx->range_ht, src0, src1_ub,
-                                   &ctx->ub_config);
+      !nir_addition_might_overflow(ctx->shader, ctx->range_ht, src0, src1_ub, &ctx->ub_config);
 }
 
-void apply_nuw_to_offsets(isel_context *ctx, nir_function_impl *impl)
+void
+apply_nuw_to_offsets(isel_context* ctx, nir_function_impl* impl)
 {
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr(instr, block) {
+   nir_foreach_block (block, impl) {
+      nir_foreach_instr (instr, block) {
          if (instr->type != nir_instr_type_intrinsic)
             continue;
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         nir_intrinsic_instr* intrin = nir_instr_as_intrinsic(instr);
 
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_constant:
@@ -261,14 +259,14 @@ void apply_nuw_to_offsets(isel_context *ctx, nir_function_impl *impl)
             if (!nir_src_is_divergent(intrin->src[2]))
                apply_nuw_to_ssa(ctx, intrin->src[2].ssa);
             break;
-         default:
-            break;
+         default: break;
          }
       }
    }
 }
 
-RegClass get_reg_class(isel_context *ctx, RegType type, unsigned components, unsigned bitsize)
+RegClass
+get_reg_class(isel_context* ctx, RegType type, unsigned components, unsigned bitsize)
 {
    if (bitsize == 1)
       return RegClass(RegType::sgpr, ctx->program->lane_mask.size() * components);
@@ -277,17 +275,16 @@ RegClass get_reg_class(isel_context *ctx, RegType type, unsigned components, uns
 }
 
 void
-setup_vs_output_info(isel_context *ctx, nir_shader *nir,
-                     bool export_prim_id, bool export_clip_dists,
-                     radv_vs_output_info *outinfo)
+setup_vs_output_info(isel_context* ctx, nir_shader* nir, bool export_prim_id,
+                     bool export_clip_dists, radv_vs_output_info* outinfo)
 {
    memset(outinfo->vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
           sizeof(outinfo->vs_output_param_offset));
 
    outinfo->param_exports = 0;
    int pos_written = 0x1;
-   bool writes_primitive_shading_rate = outinfo->writes_primitive_shading_rate ||
-                                        ctx->options->force_vrs_rates;
+   bool writes_primitive_shading_rate =
+      outinfo->writes_primitive_shading_rate || ctx->options->force_vrs_rates;
    if (outinfo->writes_pointsize || outinfo->writes_viewport_index || outinfo->writes_layer ||
        writes_primitive_shading_rate)
       pos_written |= 1 << 1;
@@ -297,7 +294,8 @@ setup_vs_output_info(isel_context *ctx, nir_shader *nir,
       int idx = u_bit_scan64(&mask);
       if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER ||
           idx == VARYING_SLOT_PRIMITIVE_ID || idx == VARYING_SLOT_VIEWPORT ||
-          ((idx == VARYING_SLOT_CLIP_DIST0 || idx == VARYING_SLOT_CLIP_DIST1) && export_clip_dists)) {
+          ((idx == VARYING_SLOT_CLIP_DIST0 || idx == VARYING_SLOT_CLIP_DIST1) &&
+           export_clip_dists)) {
          if (outinfo->vs_output_param_offset[idx] == AC_EXP_PARAM_UNDEFINED)
             outinfo->vs_output_param_offset[idx] = outinfo->param_exports++;
       }
@@ -333,15 +331,14 @@ setup_vs_output_info(isel_context *ctx, nir_shader *nir,
     * as soon as it encounters a DONE pos export. When this happens, PS waves can launch
     * before the NGG (or VS) waves finish.
     */
-   ctx->program->early_rast = ctx->program->chip_class >= GFX10 &&
-                              outinfo->param_exports == 0;
+   ctx->program->early_rast = ctx->program->chip_class >= GFX10 && outinfo->param_exports == 0;
 }
 
 void
-setup_vs_variables(isel_context *ctx, nir_shader *nir)
+setup_vs_variables(isel_context* ctx, nir_shader* nir)
 {
    if (ctx->stage == vertex_vs || ctx->stage == vertex_ngg) {
-      radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
+      radv_vs_output_info* outinfo = &ctx->program->info->vs.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
 
@@ -351,21 +348,26 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
    }
 
    if (ctx->stage == vertex_ngg) {
-      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
-      assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) < (32 * 1024));
+      ctx->program->config->lds_size =
+         DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
+      assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) <
+             (32 * 1024));
    }
 }
 
-void setup_gs_variables(isel_context *ctx, nir_shader *nir)
+void
+setup_gs_variables(isel_context* ctx, nir_shader* nir)
 {
    if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
-      ctx->program->config->lds_size = ctx->program->info->gs_ring_info.lds_size; /* Already in units of the alloc granularity */
+      ctx->program->config->lds_size =
+         ctx->program->info->gs_ring_info.lds_size; /* Already in units of the alloc granularity */
    } else if (ctx->stage == vertex_geometry_ngg || ctx->stage == tess_eval_geometry_ngg) {
-      radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
-      setup_vs_output_info(ctx, nir, false,
-                           ctx->options->key.vs_common_out.export_clip_dists, outinfo);
+      radv_vs_output_info* outinfo = &ctx->program->info->vs.outinfo;
+      setup_vs_output_info(ctx, nir, false, ctx->options->key.vs_common_out.export_clip_dists,
+                           outinfo);
 
-      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
+      ctx->program->config->lds_size =
+         DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
    }
 
    if (ctx->stage.has(SWStage::VS))
@@ -375,7 +377,7 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
 }
 
 void
-setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
+setup_tcs_info(isel_context* ctx, nir_shader* nir, nir_shader* vs)
 {
    ctx->tcs_in_out_eq = ctx->args->shader_info->vs.tcs_in_out_eq;
    ctx->tcs_temp_only_inputs = ctx->args->shader_info->vs.tcs_temp_only_input_mask;
@@ -384,12 +386,12 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
 }
 
 void
-setup_tes_variables(isel_context *ctx, nir_shader *nir)
+setup_tes_variables(isel_context* ctx, nir_shader* nir)
 {
    ctx->tcs_num_patches = ctx->args->shader_info->num_tess_patches;
 
    if (ctx->stage == tess_eval_vs || ctx->stage == tess_eval_ngg) {
-      radv_vs_output_info *outinfo = &ctx->program->info->tes.outinfo;
+      radv_vs_output_info* outinfo = &ctx->program->info->tes.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
 
@@ -399,20 +401,23 @@ setup_tes_variables(isel_context *ctx, nir_shader *nir)
    }
 
    if (ctx->stage == tess_eval_ngg) {
-      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
-      assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) < (32 * 1024));
+      ctx->program->config->lds_size =
+         DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
+      assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) <
+             (32 * 1024));
    }
 }
 
 void
-setup_variables(isel_context *ctx, nir_shader *nir)
+setup_variables(isel_context* ctx, nir_shader* nir)
 {
    switch (nir->info.stage) {
    case MESA_SHADER_FRAGMENT: {
       break;
    }
    case MESA_SHADER_COMPUTE: {
-      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
+      ctx->program->config->lds_size =
+         DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
       break;
    }
    case MESA_SHADER_VERTEX: {
@@ -430,16 +435,16 @@ setup_variables(isel_context *ctx, nir_shader *nir)
       setup_tes_variables(ctx, nir);
       break;
    }
-   default:
-      unreachable("Unhandled shader stage.");
+   default: unreachable("Unhandled shader stage.");
    }
 
    /* Make sure we fit the available LDS space. */
-   assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) <= ctx->program->dev.lds_limit);
+   assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) <=
+          ctx->program->dev.lds_limit);
 }
 
 void
-setup_nir(isel_context *ctx, nir_shader *nir)
+setup_nir(isel_context* ctx, nir_shader* nir)
 {
    /* the variable setup has to be done before lower_io / CSE */
    setup_variables(ctx, nir);
@@ -447,19 +452,20 @@ setup_nir(isel_context *ctx, nir_shader *nir)
    nir_convert_to_lcssa(nir, true, false);
    nir_lower_phis_to_scalar(nir, true);
 
-   nir_function_impl *func = nir_shader_get_entrypoint(nir);
+   nir_function_impl* func = nir_shader_get_entrypoint(nir);
    nir_index_ssa_defs(func);
 }
 
 } /* end namespace */
 
-void init_context(isel_context *ctx, nir_shader *shader)
+void
+init_context(isel_context* ctx, nir_shader* shader)
 {
-   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+   nir_function_impl* impl = nir_shader_get_entrypoint(shader);
    ctx->shader = shader;
 
    /* Init NIR range analysis. */
-   ctx->range_ht =_mesa_pointer_hash_table_create(NULL);
+   ctx->range_ht = _mesa_pointer_hash_table_create(NULL);
    ctx->ub_config.min_subgroup_size = 64;
    ctx->ub_config.max_subgroup_size = 64;
    if (ctx->shader->info.stage == MESA_SHADER_COMPUTE && ctx->options->key.cs.subgroup_size) {
@@ -481,34 +487,23 @@ void init_context(isel_context *ctx, nir_shader *shader)
       uint32_t max = UINT32_MAX;
       if (nfmt == V_008F0C_BUF_NUM_FORMAT_UNORM) {
          max = 0x3f800000u;
-      } else if (nfmt == V_008F0C_BUF_NUM_FORMAT_UINT ||
-                 nfmt == V_008F0C_BUF_NUM_FORMAT_USCALED) {
+      } else if (nfmt == V_008F0C_BUF_NUM_FORMAT_UINT || nfmt == V_008F0C_BUF_NUM_FORMAT_USCALED) {
          bool uscaled = nfmt == V_008F0C_BUF_NUM_FORMAT_USCALED;
          switch (dfmt) {
          case V_008F0C_BUF_DATA_FORMAT_8:
          case V_008F0C_BUF_DATA_FORMAT_8_8:
-         case V_008F0C_BUF_DATA_FORMAT_8_8_8_8:
-            max = uscaled ? 0x437f0000u : UINT8_MAX;
-            break;
+         case V_008F0C_BUF_DATA_FORMAT_8_8_8_8: max = uscaled ? 0x437f0000u : UINT8_MAX; break;
          case V_008F0C_BUF_DATA_FORMAT_10_10_10_2:
-         case V_008F0C_BUF_DATA_FORMAT_2_10_10_10:
-            max = uscaled ? 0x447fc000u : 1023;
-            break;
+         case V_008F0C_BUF_DATA_FORMAT_2_10_10_10: max = uscaled ? 0x447fc000u : 1023; break;
          case V_008F0C_BUF_DATA_FORMAT_10_11_11:
-         case V_008F0C_BUF_DATA_FORMAT_11_11_10:
-            max = uscaled ? 0x44ffe000u : 2047;
-            break;
+         case V_008F0C_BUF_DATA_FORMAT_11_11_10: max = uscaled ? 0x44ffe000u : 2047; break;
          case V_008F0C_BUF_DATA_FORMAT_16:
          case V_008F0C_BUF_DATA_FORMAT_16_16:
-         case V_008F0C_BUF_DATA_FORMAT_16_16_16_16:
-            max = uscaled ? 0x477fff00u : UINT16_MAX;
-            break;
+         case V_008F0C_BUF_DATA_FORMAT_16_16_16_16: max = uscaled ? 0x477fff00u : UINT16_MAX; break;
          case V_008F0C_BUF_DATA_FORMAT_32:
          case V_008F0C_BUF_DATA_FORMAT_32_32:
          case V_008F0C_BUF_DATA_FORMAT_32_32_32:
-         case V_008F0C_BUF_DATA_FORMAT_32_32_32_32:
-            max = uscaled ? 0x4f800000u : UINT32_MAX;
-            break;
+         case V_008F0C_BUF_DATA_FORMAT_32_32_32_32: max = uscaled ? 0x4f800000u : UINT32_MAX; break;
          }
       }
       ctx->ub_config.vertex_attrib_max[i] = max;
@@ -533,7 +528,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
 
    ctx->first_temp_id = ctx->program->peekAllocationId();
    ctx->program->allocateRange(impl->ssa_alloc);
-   RegClass *regclasses = ctx->program->temp_rc.data() + ctx->first_temp_id;
+   RegClass* regclasses = ctx->program->temp_rc.data() + ctx->first_temp_id;
 
    unsigned spi_ps_inputs = 0;
 
@@ -543,100 +538,99 @@ void init_context(isel_context *ctx, nir_shader *shader)
    bool done = false;
    while (!done) {
       done = true;
-      nir_foreach_block(block, impl) {
-         nir_foreach_instr(instr, block) {
-            switch(instr->type) {
+      nir_foreach_block (block, impl) {
+         nir_foreach_instr (instr, block) {
+            switch (instr->type) {
             case nir_instr_type_alu: {
-               nir_alu_instr *alu_instr = nir_instr_as_alu(instr);
-               RegType type = nir_dest_is_divergent(alu_instr->dest.dest) ? RegType::vgpr : RegType::sgpr;
-               switch(alu_instr->op) {
-                  case nir_op_fmul:
-                  case nir_op_fadd:
-                  case nir_op_fsub:
-                  case nir_op_fmax:
-                  case nir_op_fmin:
-                  case nir_op_fneg:
-                  case nir_op_fabs:
-                  case nir_op_fsat:
-                  case nir_op_fsign:
-                  case nir_op_frcp:
-                  case nir_op_frsq:
-                  case nir_op_fsqrt:
-                  case nir_op_fexp2:
-                  case nir_op_flog2:
-                  case nir_op_ffract:
-                  case nir_op_ffloor:
-                  case nir_op_fceil:
-                  case nir_op_ftrunc:
-                  case nir_op_fround_even:
-                  case nir_op_fsin:
-                  case nir_op_fcos:
-                  case nir_op_f2f16:
-                  case nir_op_f2f16_rtz:
-                  case nir_op_f2f16_rtne:
-                  case nir_op_f2f32:
-                  case nir_op_f2f64:
-                  case nir_op_u2f16:
-                  case nir_op_u2f32:
-                  case nir_op_u2f64:
-                  case nir_op_i2f16:
-                  case nir_op_i2f32:
-                  case nir_op_i2f64:
-                  case nir_op_pack_half_2x16_split:
-                  case nir_op_unpack_half_2x16_split_x:
-                  case nir_op_unpack_half_2x16_split_y:
-                  case nir_op_fddx:
-                  case nir_op_fddy:
-                  case nir_op_fddx_fine:
-                  case nir_op_fddy_fine:
-                  case nir_op_fddx_coarse:
-                  case nir_op_fddy_coarse:
-                  case nir_op_fquantize2f16:
-                  case nir_op_ldexp:
-                  case nir_op_frexp_sig:
-                  case nir_op_frexp_exp:
-                  case nir_op_cube_face_index_amd:
-                  case nir_op_cube_face_coord_amd:
-                  case nir_op_sad_u8x4:
-                     type = RegType::vgpr;
-                     break;
-                  case nir_op_f2i16:
-                  case nir_op_f2u16:
-                  case nir_op_f2i32:
-                  case nir_op_f2u32:
-                  case nir_op_f2i64:
-                  case nir_op_f2u64:
-                  case nir_op_b2i8:
-                  case nir_op_b2i16:
-                  case nir_op_b2i32:
-                  case nir_op_b2i64:
-                  case nir_op_b2b32:
-                  case nir_op_b2f16:
-                  case nir_op_b2f32:
-                  case nir_op_mov:
-                     break;
-                  case nir_op_iadd:
-                  case nir_op_isub:
-                  case nir_op_imul:
-                  case nir_op_imin:
-                  case nir_op_imax:
-                  case nir_op_umin:
-                  case nir_op_umax:
-                  case nir_op_ishl:
-                  case nir_op_ishr:
-                  case nir_op_ushr:
-                     /* packed 16bit instructions have to be VGPR */
-                     type = alu_instr->dest.dest.ssa.num_components == 2 ? RegType::vgpr : type;
-                     FALLTHROUGH;
-                  default:
-                     for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
-                        if (regclasses[alu_instr->src[i].src.ssa->index].type() == RegType::vgpr)
-                           type = RegType::vgpr;
-                     }
-                     break;
+               nir_alu_instr* alu_instr = nir_instr_as_alu(instr);
+               RegType type =
+                  nir_dest_is_divergent(alu_instr->dest.dest) ? RegType::vgpr : RegType::sgpr;
+               switch (alu_instr->op) {
+               case nir_op_fmul:
+               case nir_op_fadd:
+               case nir_op_fsub:
+               case nir_op_fmax:
+               case nir_op_fmin:
+               case nir_op_fneg:
+               case nir_op_fabs:
+               case nir_op_fsat:
+               case nir_op_fsign:
+               case nir_op_frcp:
+               case nir_op_frsq:
+               case nir_op_fsqrt:
+               case nir_op_fexp2:
+               case nir_op_flog2:
+               case nir_op_ffract:
+               case nir_op_ffloor:
+               case nir_op_fceil:
+               case nir_op_ftrunc:
+               case nir_op_fround_even:
+               case nir_op_fsin:
+               case nir_op_fcos:
+               case nir_op_f2f16:
+               case nir_op_f2f16_rtz:
+               case nir_op_f2f16_rtne:
+               case nir_op_f2f32:
+               case nir_op_f2f64:
+               case nir_op_u2f16:
+               case nir_op_u2f32:
+               case nir_op_u2f64:
+               case nir_op_i2f16:
+               case nir_op_i2f32:
+               case nir_op_i2f64:
+               case nir_op_pack_half_2x16_split:
+               case nir_op_unpack_half_2x16_split_x:
+               case nir_op_unpack_half_2x16_split_y:
+               case nir_op_fddx:
+               case nir_op_fddy:
+               case nir_op_fddx_fine:
+               case nir_op_fddy_fine:
+               case nir_op_fddx_coarse:
+               case nir_op_fddy_coarse:
+               case nir_op_fquantize2f16:
+               case nir_op_ldexp:
+               case nir_op_frexp_sig:
+               case nir_op_frexp_exp:
+               case nir_op_cube_face_index_amd:
+               case nir_op_cube_face_coord_amd:
+               case nir_op_sad_u8x4: type = RegType::vgpr; break;
+               case nir_op_f2i16:
+               case nir_op_f2u16:
+               case nir_op_f2i32:
+               case nir_op_f2u32:
+               case nir_op_f2i64:
+               case nir_op_f2u64:
+               case nir_op_b2i8:
+               case nir_op_b2i16:
+               case nir_op_b2i32:
+               case nir_op_b2i64:
+               case nir_op_b2b32:
+               case nir_op_b2f16:
+               case nir_op_b2f32:
+               case nir_op_mov: break;
+               case nir_op_iadd:
+               case nir_op_isub:
+               case nir_op_imul:
+               case nir_op_imin:
+               case nir_op_imax:
+               case nir_op_umin:
+               case nir_op_umax:
+               case nir_op_ishl:
+               case nir_op_ishr:
+               case nir_op_ushr:
+                  /* packed 16bit instructions have to be VGPR */
+                  type = alu_instr->dest.dest.ssa.num_components == 2 ? RegType::vgpr : type;
+                  FALLTHROUGH;
+               default:
+                  for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
+                     if (regclasses[alu_instr->src[i].src.ssa->index].type() == RegType::vgpr)
+                        type = RegType::vgpr;
+                  }
+                  break;
                }
 
-               RegClass rc = get_reg_class(ctx, type, alu_instr->dest.dest.ssa.num_components, alu_instr->dest.dest.ssa.bit_size);
+               RegClass rc = get_reg_class(ctx, type, alu_instr->dest.dest.ssa.num_components,
+                                           alu_instr->dest.dest.ssa.bit_size);
                regclasses[alu_instr->dest.dest.ssa.index] = rc;
                break;
             }
@@ -648,207 +642,203 @@ void init_context(isel_context *ctx, nir_shader *shader)
                break;
             }
             case nir_instr_type_intrinsic: {
-               nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
+               nir_intrinsic_instr* intrinsic = nir_instr_as_intrinsic(instr);
                if (!nir_intrinsic_infos[intrinsic->intrinsic].has_dest)
                   break;
                RegType type = RegType::sgpr;
-               switch(intrinsic->intrinsic) {
-                  case nir_intrinsic_load_push_constant:
-                  case nir_intrinsic_load_workgroup_id:
-                  case nir_intrinsic_load_num_workgroups:
-                  case nir_intrinsic_load_subgroup_id:
-                  case nir_intrinsic_load_num_subgroups:
-                  case nir_intrinsic_load_first_vertex:
-                  case nir_intrinsic_load_base_instance:
-                  case nir_intrinsic_vote_all:
-                  case nir_intrinsic_vote_any:
-                  case nir_intrinsic_read_first_invocation:
-                  case nir_intrinsic_read_invocation:
-                  case nir_intrinsic_first_invocation:
-                  case nir_intrinsic_ballot:
-                  case nir_intrinsic_load_ring_tess_factors_amd:
-                  case nir_intrinsic_load_ring_tess_factors_offset_amd:
-                  case nir_intrinsic_load_ring_tess_offchip_amd:
-                  case nir_intrinsic_load_ring_tess_offchip_offset_amd:
-                  case nir_intrinsic_load_ring_esgs_amd:
-                  case nir_intrinsic_load_ring_es2gs_offset_amd:
-                  case nir_intrinsic_image_deref_samples:
-                  case nir_intrinsic_has_input_vertex_amd:
-                  case nir_intrinsic_has_input_primitive_amd:
-                  case nir_intrinsic_load_workgroup_num_input_vertices_amd:
-                  case nir_intrinsic_load_workgroup_num_input_primitives_amd:
-                  case nir_intrinsic_load_shader_query_enabled_amd:
-                     type = RegType::sgpr;
-                     break;
-                  case nir_intrinsic_load_sample_id:
-                  case nir_intrinsic_load_sample_mask_in:
-                  case nir_intrinsic_load_input:
-                  case nir_intrinsic_load_output:
-                  case nir_intrinsic_load_input_vertex:
-                  case nir_intrinsic_load_per_vertex_input:
-                  case nir_intrinsic_load_per_vertex_output:
-                  case nir_intrinsic_load_vertex_id:
-                  case nir_intrinsic_load_vertex_id_zero_base:
-                  case nir_intrinsic_load_barycentric_sample:
-                  case nir_intrinsic_load_barycentric_pixel:
-                  case nir_intrinsic_load_barycentric_model:
-                  case nir_intrinsic_load_barycentric_centroid:
-                  case nir_intrinsic_load_barycentric_at_sample:
-                  case nir_intrinsic_load_barycentric_at_offset:
-                  case nir_intrinsic_load_interpolated_input:
-                  case nir_intrinsic_load_frag_coord:
-                  case nir_intrinsic_load_frag_shading_rate:
-                  case nir_intrinsic_load_sample_pos:
-                  case nir_intrinsic_load_layer_id:
-                  case nir_intrinsic_load_local_invocation_id:
-                  case nir_intrinsic_load_local_invocation_index:
-                  case nir_intrinsic_load_subgroup_invocation:
-                  case nir_intrinsic_load_tess_coord:
-                  case nir_intrinsic_write_invocation_amd:
-                  case nir_intrinsic_mbcnt_amd:
-                  case nir_intrinsic_byte_permute_amd:
-                  case nir_intrinsic_lane_permute_16_amd:
-                  case nir_intrinsic_load_instance_id:
-                  case nir_intrinsic_ssbo_atomic_add:
-                  case nir_intrinsic_ssbo_atomic_imin:
-                  case nir_intrinsic_ssbo_atomic_umin:
-                  case nir_intrinsic_ssbo_atomic_imax:
-                  case nir_intrinsic_ssbo_atomic_umax:
-                  case nir_intrinsic_ssbo_atomic_and:
-                  case nir_intrinsic_ssbo_atomic_or:
-                  case nir_intrinsic_ssbo_atomic_xor:
-                  case nir_intrinsic_ssbo_atomic_exchange:
-                  case nir_intrinsic_ssbo_atomic_comp_swap:
-                  case nir_intrinsic_global_atomic_add:
-                  case nir_intrinsic_global_atomic_imin:
-                  case nir_intrinsic_global_atomic_umin:
-                  case nir_intrinsic_global_atomic_imax:
-                  case nir_intrinsic_global_atomic_umax:
-                  case nir_intrinsic_global_atomic_and:
-                  case nir_intrinsic_global_atomic_or:
-                  case nir_intrinsic_global_atomic_xor:
-                  case nir_intrinsic_global_atomic_exchange:
-                  case nir_intrinsic_global_atomic_comp_swap:
-                  case nir_intrinsic_image_deref_atomic_add:
-                  case nir_intrinsic_image_deref_atomic_umin:
-                  case nir_intrinsic_image_deref_atomic_imin:
-                  case nir_intrinsic_image_deref_atomic_umax:
-                  case nir_intrinsic_image_deref_atomic_imax:
-                  case nir_intrinsic_image_deref_atomic_and:
-                  case nir_intrinsic_image_deref_atomic_or:
-                  case nir_intrinsic_image_deref_atomic_xor:
-                  case nir_intrinsic_image_deref_atomic_exchange:
-                  case nir_intrinsic_image_deref_atomic_comp_swap:
-                  case nir_intrinsic_image_deref_size:
-                  case nir_intrinsic_shared_atomic_add:
-                  case nir_intrinsic_shared_atomic_imin:
-                  case nir_intrinsic_shared_atomic_umin:
-                  case nir_intrinsic_shared_atomic_imax:
-                  case nir_intrinsic_shared_atomic_umax:
-                  case nir_intrinsic_shared_atomic_and:
-                  case nir_intrinsic_shared_atomic_or:
-                  case nir_intrinsic_shared_atomic_xor:
-                  case nir_intrinsic_shared_atomic_exchange:
-                  case nir_intrinsic_shared_atomic_comp_swap:
-                  case nir_intrinsic_shared_atomic_fadd:
-                  case nir_intrinsic_load_scratch:
-                  case nir_intrinsic_load_invocation_id:
-                  case nir_intrinsic_load_primitive_id:
-                  case nir_intrinsic_load_buffer_amd:
-                  case nir_intrinsic_load_tess_rel_patch_id_amd:
-                  case nir_intrinsic_load_gs_vertex_offset_amd:
-                  case nir_intrinsic_load_initial_edgeflag_amd:
-                  case nir_intrinsic_load_packed_passthrough_primitive_amd:
-                  case nir_intrinsic_gds_atomic_add_amd:
-                  case nir_intrinsic_load_sbt_amd:
-                  case nir_intrinsic_bvh64_intersect_ray_amd:
+               switch (intrinsic->intrinsic) {
+               case nir_intrinsic_load_push_constant:
+               case nir_intrinsic_load_workgroup_id:
+               case nir_intrinsic_load_num_workgroups:
+               case nir_intrinsic_load_subgroup_id:
+               case nir_intrinsic_load_num_subgroups:
+               case nir_intrinsic_load_first_vertex:
+               case nir_intrinsic_load_base_instance:
+               case nir_intrinsic_vote_all:
+               case nir_intrinsic_vote_any:
+               case nir_intrinsic_read_first_invocation:
+               case nir_intrinsic_read_invocation:
+               case nir_intrinsic_first_invocation:
+               case nir_intrinsic_ballot:
+               case nir_intrinsic_load_ring_tess_factors_amd:
+               case nir_intrinsic_load_ring_tess_factors_offset_amd:
+               case nir_intrinsic_load_ring_tess_offchip_amd:
+               case nir_intrinsic_load_ring_tess_offchip_offset_amd:
+               case nir_intrinsic_load_ring_esgs_amd:
+               case nir_intrinsic_load_ring_es2gs_offset_amd:
+               case nir_intrinsic_image_deref_samples:
+               case nir_intrinsic_has_input_vertex_amd:
+               case nir_intrinsic_has_input_primitive_amd:
+               case nir_intrinsic_load_workgroup_num_input_vertices_amd:
+               case nir_intrinsic_load_workgroup_num_input_primitives_amd:
+               case nir_intrinsic_load_shader_query_enabled_amd: type = RegType::sgpr; break;
+               case nir_intrinsic_load_sample_id:
+               case nir_intrinsic_load_sample_mask_in:
+               case nir_intrinsic_load_input:
+               case nir_intrinsic_load_output:
+               case nir_intrinsic_load_input_vertex:
+               case nir_intrinsic_load_per_vertex_input:
+               case nir_intrinsic_load_per_vertex_output:
+               case nir_intrinsic_load_vertex_id:
+               case nir_intrinsic_load_vertex_id_zero_base:
+               case nir_intrinsic_load_barycentric_sample:
+               case nir_intrinsic_load_barycentric_pixel:
+               case nir_intrinsic_load_barycentric_model:
+               case nir_intrinsic_load_barycentric_centroid:
+               case nir_intrinsic_load_barycentric_at_sample:
+               case nir_intrinsic_load_barycentric_at_offset:
+               case nir_intrinsic_load_interpolated_input:
+               case nir_intrinsic_load_frag_coord:
+               case nir_intrinsic_load_frag_shading_rate:
+               case nir_intrinsic_load_sample_pos:
+               case nir_intrinsic_load_layer_id:
+               case nir_intrinsic_load_local_invocation_id:
+               case nir_intrinsic_load_local_invocation_index:
+               case nir_intrinsic_load_subgroup_invocation:
+               case nir_intrinsic_load_tess_coord:
+               case nir_intrinsic_write_invocation_amd:
+               case nir_intrinsic_mbcnt_amd:
+               case nir_intrinsic_byte_permute_amd:
+               case nir_intrinsic_lane_permute_16_amd:
+               case nir_intrinsic_load_instance_id:
+               case nir_intrinsic_ssbo_atomic_add:
+               case nir_intrinsic_ssbo_atomic_imin:
+               case nir_intrinsic_ssbo_atomic_umin:
+               case nir_intrinsic_ssbo_atomic_imax:
+               case nir_intrinsic_ssbo_atomic_umax:
+               case nir_intrinsic_ssbo_atomic_and:
+               case nir_intrinsic_ssbo_atomic_or:
+               case nir_intrinsic_ssbo_atomic_xor:
+               case nir_intrinsic_ssbo_atomic_exchange:
+               case nir_intrinsic_ssbo_atomic_comp_swap:
+               case nir_intrinsic_global_atomic_add:
+               case nir_intrinsic_global_atomic_imin:
+               case nir_intrinsic_global_atomic_umin:
+               case nir_intrinsic_global_atomic_imax:
+               case nir_intrinsic_global_atomic_umax:
+               case nir_intrinsic_global_atomic_and:
+               case nir_intrinsic_global_atomic_or:
+               case nir_intrinsic_global_atomic_xor:
+               case nir_intrinsic_global_atomic_exchange:
+               case nir_intrinsic_global_atomic_comp_swap:
+               case nir_intrinsic_image_deref_atomic_add:
+               case nir_intrinsic_image_deref_atomic_umin:
+               case nir_intrinsic_image_deref_atomic_imin:
+               case nir_intrinsic_image_deref_atomic_umax:
+               case nir_intrinsic_image_deref_atomic_imax:
+               case nir_intrinsic_image_deref_atomic_and:
+               case nir_intrinsic_image_deref_atomic_or:
+               case nir_intrinsic_image_deref_atomic_xor:
+               case nir_intrinsic_image_deref_atomic_exchange:
+               case nir_intrinsic_image_deref_atomic_comp_swap:
+               case nir_intrinsic_image_deref_size:
+               case nir_intrinsic_shared_atomic_add:
+               case nir_intrinsic_shared_atomic_imin:
+               case nir_intrinsic_shared_atomic_umin:
+               case nir_intrinsic_shared_atomic_imax:
+               case nir_intrinsic_shared_atomic_umax:
+               case nir_intrinsic_shared_atomic_and:
+               case nir_intrinsic_shared_atomic_or:
+               case nir_intrinsic_shared_atomic_xor:
+               case nir_intrinsic_shared_atomic_exchange:
+               case nir_intrinsic_shared_atomic_comp_swap:
+               case nir_intrinsic_shared_atomic_fadd:
+               case nir_intrinsic_load_scratch:
+               case nir_intrinsic_load_invocation_id:
+               case nir_intrinsic_load_primitive_id:
+               case nir_intrinsic_load_buffer_amd:
+               case nir_intrinsic_load_tess_rel_patch_id_amd:
+               case nir_intrinsic_load_gs_vertex_offset_amd:
+               case nir_intrinsic_load_initial_edgeflag_amd:
+               case nir_intrinsic_load_packed_passthrough_primitive_amd:
+               case nir_intrinsic_gds_atomic_add_amd:
+               case nir_intrinsic_load_sbt_amd:
+               case nir_intrinsic_bvh64_intersect_ray_amd: type = RegType::vgpr; break;
+               case nir_intrinsic_load_shared:
+                  /* When the result of these loads is only used by cross-lane instructions,
+                   * it is beneficial to use a VGPR destination. This is because this allows
+                   * to put the s_waitcnt further down, which decreases latency.
+                   */
+                  if (only_used_by_cross_lane_instrs(&intrinsic->dest.ssa)) {
                      type = RegType::vgpr;
                      break;
-                  case nir_intrinsic_load_shared:
-                     /* When the result of these loads is only used by cross-lane instructions,
-                     * it is beneficial to use a VGPR destination. This is because this allows
-                     * to put the s_waitcnt further down, which decreases latency.
-                     */
-                     if (only_used_by_cross_lane_instrs(&intrinsic->dest.ssa)) {
+                  }
+                  FALLTHROUGH;
+               case nir_intrinsic_shuffle:
+               case nir_intrinsic_quad_broadcast:
+               case nir_intrinsic_quad_swap_horizontal:
+               case nir_intrinsic_quad_swap_vertical:
+               case nir_intrinsic_quad_swap_diagonal:
+               case nir_intrinsic_quad_swizzle_amd:
+               case nir_intrinsic_masked_swizzle_amd:
+               case nir_intrinsic_inclusive_scan:
+               case nir_intrinsic_exclusive_scan:
+               case nir_intrinsic_reduce:
+               case nir_intrinsic_load_ubo:
+               case nir_intrinsic_load_ssbo:
+               case nir_intrinsic_load_global:
+               case nir_intrinsic_vulkan_resource_index:
+               case nir_intrinsic_get_ssbo_size:
+                  type = nir_dest_is_divergent(intrinsic->dest) ? RegType::vgpr : RegType::sgpr;
+                  break;
+               case nir_intrinsic_load_view_index:
+                  type = ctx->stage == fragment_fs ? RegType::vgpr : RegType::sgpr;
+                  break;
+               default:
+                  for (unsigned i = 0; i < nir_intrinsic_infos[intrinsic->intrinsic].num_srcs;
+                       i++) {
+                     if (regclasses[intrinsic->src[i].ssa->index].type() == RegType::vgpr)
                         type = RegType::vgpr;
-                        break;
-                     }
-                     FALLTHROUGH;
-                  case nir_intrinsic_shuffle:
-                  case nir_intrinsic_quad_broadcast:
-                  case nir_intrinsic_quad_swap_horizontal:
-                  case nir_intrinsic_quad_swap_vertical:
-                  case nir_intrinsic_quad_swap_diagonal:
-                  case nir_intrinsic_quad_swizzle_amd:
-                  case nir_intrinsic_masked_swizzle_amd:
-                  case nir_intrinsic_inclusive_scan:
-                  case nir_intrinsic_exclusive_scan:
-                  case nir_intrinsic_reduce:
-                  case nir_intrinsic_load_ubo:
-                  case nir_intrinsic_load_ssbo:
-                  case nir_intrinsic_load_global:
-                  case nir_intrinsic_vulkan_resource_index:
-                  case nir_intrinsic_get_ssbo_size:
-                     type = nir_dest_is_divergent(intrinsic->dest) ? RegType::vgpr : RegType::sgpr;
-                     break;
-                  case nir_intrinsic_load_view_index:
-                     type = ctx->stage == fragment_fs ? RegType::vgpr : RegType::sgpr;
-                     break;
-                  default:
-                     for (unsigned i = 0; i < nir_intrinsic_infos[intrinsic->intrinsic].num_srcs; i++) {
-                        if (regclasses[intrinsic->src[i].ssa->index].type() == RegType::vgpr)
-                           type = RegType::vgpr;
-                     }
-                     break;
+                  }
+                  break;
                }
-               RegClass rc = get_reg_class(ctx, type, intrinsic->dest.ssa.num_components, intrinsic->dest.ssa.bit_size);
+               RegClass rc = get_reg_class(ctx, type, intrinsic->dest.ssa.num_components,
+                                           intrinsic->dest.ssa.bit_size);
                regclasses[intrinsic->dest.ssa.index] = rc;
 
-               switch(intrinsic->intrinsic) {
-                  case nir_intrinsic_load_barycentric_sample:
-                  case nir_intrinsic_load_barycentric_pixel:
-                  case nir_intrinsic_load_barycentric_centroid:
-                  case nir_intrinsic_load_barycentric_at_sample:
-                  case nir_intrinsic_load_barycentric_at_offset: {
-                     glsl_interp_mode mode = (glsl_interp_mode)nir_intrinsic_interp_mode(intrinsic);
-                     spi_ps_inputs |= get_interp_input(intrinsic->intrinsic, mode);
-                     break;
+               switch (intrinsic->intrinsic) {
+               case nir_intrinsic_load_barycentric_sample:
+               case nir_intrinsic_load_barycentric_pixel:
+               case nir_intrinsic_load_barycentric_centroid:
+               case nir_intrinsic_load_barycentric_at_sample:
+               case nir_intrinsic_load_barycentric_at_offset: {
+                  glsl_interp_mode mode = (glsl_interp_mode)nir_intrinsic_interp_mode(intrinsic);
+                  spi_ps_inputs |= get_interp_input(intrinsic->intrinsic, mode);
+                  break;
+               }
+               case nir_intrinsic_load_barycentric_model:
+                  spi_ps_inputs |= S_0286CC_PERSP_PULL_MODEL_ENA(1);
+                  break;
+               case nir_intrinsic_load_front_face:
+                  spi_ps_inputs |= S_0286CC_FRONT_FACE_ENA(1);
+                  break;
+               case nir_intrinsic_load_frag_coord:
+               case nir_intrinsic_load_sample_pos: {
+                  uint8_t mask = nir_ssa_def_components_read(&intrinsic->dest.ssa);
+                  for (unsigned i = 0; i < 4; i++) {
+                     if (mask & (1 << i))
+                        spi_ps_inputs |= S_0286CC_POS_X_FLOAT_ENA(1) << i;
                   }
-                  case nir_intrinsic_load_barycentric_model:
-                     spi_ps_inputs |= S_0286CC_PERSP_PULL_MODEL_ENA(1);
-                     break;
-                  case nir_intrinsic_load_front_face:
-                     spi_ps_inputs |= S_0286CC_FRONT_FACE_ENA(1);
-                     break;
-                  case nir_intrinsic_load_frag_coord:
-                  case nir_intrinsic_load_sample_pos: {
-                     uint8_t mask = nir_ssa_def_components_read(&intrinsic->dest.ssa);
-                     for (unsigned i = 0; i < 4; i++) {
-                        if (mask & (1 << i))
-                           spi_ps_inputs |= S_0286CC_POS_X_FLOAT_ENA(1) << i;
 
-                     }
-
-                     if (ctx->options->adjust_frag_coord_z &&
-                         intrinsic->intrinsic == nir_intrinsic_load_frag_coord &&
-                         G_0286CC_POS_Z_FLOAT_ENA(spi_ps_inputs)) {
-                        /* Enable ancillary for adjusting gl_FragCoord.z for
-                         * VRS due to a hw bug on some GFX10.3 chips.
-                         */
-                        spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
-                     }
-                     break;
+                  if (ctx->options->adjust_frag_coord_z &&
+                      intrinsic->intrinsic == nir_intrinsic_load_frag_coord &&
+                      G_0286CC_POS_Z_FLOAT_ENA(spi_ps_inputs)) {
+                     /* Enable ancillary for adjusting gl_FragCoord.z for
+                      * VRS due to a hw bug on some GFX10.3 chips.
+                      */
+                     spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
                   }
-                  case nir_intrinsic_load_sample_id:
-                  case nir_intrinsic_load_frag_shading_rate:
-                     spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
-                     break;
-                  case nir_intrinsic_load_sample_mask_in:
-                     spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
-                     spi_ps_inputs |= S_0286CC_SAMPLE_COVERAGE_ENA(1);
-                     break;
-                  default:
-                     break;
+                  break;
+               }
+               case nir_intrinsic_load_sample_id:
+               case nir_intrinsic_load_frag_shading_rate:
+                  spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
+                  break;
+               case nir_intrinsic_load_sample_mask_in:
+                  spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
+                  spi_ps_inputs |= S_0286CC_SAMPLE_COVERAGE_ENA(1);
+                  break;
+               default: break;
                }
                break;
             }
@@ -860,13 +850,13 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   assert(!tex->dest.ssa.divergent);
                }
 
-               RegClass rc = get_reg_class(ctx, type, tex->dest.ssa.num_components,
-                                           tex->dest.ssa.bit_size);
+               RegClass rc =
+                  get_reg_class(ctx, type, tex->dest.ssa.num_components, tex->dest.ssa.bit_size);
                regclasses[tex->dest.ssa.index] = rc;
                break;
             }
             case nir_instr_type_parallel_copy: {
-               nir_foreach_parallel_copy_entry(entry, nir_instr_as_parallel_copy(instr)) {
+               nir_foreach_parallel_copy_entry (entry, nir_instr_as_parallel_copy(instr)) {
                   regclasses[entry->dest.ssa.index] = regclasses[entry->src.ssa->index];
                }
                break;
@@ -900,8 +890,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                regclasses[phi->dest.ssa.index] = rc;
                break;
             }
-            default:
-               break;
+            default: break;
             }
          }
       }
@@ -931,47 +920,33 @@ void init_context(isel_context *ctx, nir_shader *shader)
                                       (uint8_t*)shader->constant_data + shader->constant_data_size);
 }
 
-void cleanup_context(isel_context *ctx)
+void
+cleanup_context(isel_context* ctx)
 {
    _mesa_hash_table_destroy(ctx->range_ht, NULL);
 }
 
 isel_context
-setup_isel_context(Program* program,
-                   unsigned shader_count,
-                   struct nir_shader *const *shaders,
-                   ac_shader_config* config,
-                   struct radv_shader_args *args,
-                   bool is_gs_copy_shader)
+setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* const* shaders,
+                   ac_shader_config* config, struct radv_shader_args* args, bool is_gs_copy_shader)
 {
    SWStage sw_stage = SWStage::None;
    for (unsigned i = 0; i < shader_count; i++) {
       switch (shaders[i]->info.stage) {
-      case MESA_SHADER_VERTEX:
-         sw_stage = sw_stage | SWStage::VS;
-         break;
-      case MESA_SHADER_TESS_CTRL:
-         sw_stage = sw_stage | SWStage::TCS;
-         break;
-      case MESA_SHADER_TESS_EVAL:
-         sw_stage = sw_stage | SWStage::TES;
-         break;
+      case MESA_SHADER_VERTEX: sw_stage = sw_stage | SWStage::VS; break;
+      case MESA_SHADER_TESS_CTRL: sw_stage = sw_stage | SWStage::TCS; break;
+      case MESA_SHADER_TESS_EVAL: sw_stage = sw_stage | SWStage::TES; break;
       case MESA_SHADER_GEOMETRY:
          sw_stage = sw_stage | (is_gs_copy_shader ? SWStage::GSCopy : SWStage::GS);
          break;
-      case MESA_SHADER_FRAGMENT:
-         sw_stage = sw_stage | SWStage::FS;
-         break;
-      case MESA_SHADER_COMPUTE:
-         sw_stage = sw_stage | SWStage::CS;
-         break;
-      default:
-         unreachable("Shader stage not implemented");
+      case MESA_SHADER_FRAGMENT: sw_stage = sw_stage | SWStage::FS; break;
+      case MESA_SHADER_COMPUTE: sw_stage = sw_stage | SWStage::CS; break;
+      default: unreachable("Shader stage not implemented");
       }
    }
    bool gfx9_plus = args->options->chip_class >= GFX9;
    bool ngg = args->shader_info->is_ngg && args->options->chip_class >= GFX10;
-   HWStage hw_stage { };
+   HWStage hw_stage{};
    if (sw_stage == SWStage::VS && args->shader_info->vs.as_es && !ngg)
       hw_stage = HWStage::ES;
    else if (sw_stage == SWStage::VS && !args->shader_info->vs.as_ls && !ngg)
@@ -1009,8 +984,8 @@ setup_isel_context(Program* program,
    else
       unreachable("Shader stage not implemented");
 
-   init_program(program, Stage { hw_stage, sw_stage }, args->shader_info,
-                args->options->chip_class, args->options->family, args->options->wgp_mode, config);
+   init_program(program, Stage{hw_stage, sw_stage}, args->shader_info, args->options->chip_class,
+                args->options->family, args->options->wgp_mode, config);
 
    isel_context ctx = {};
    ctx.program = program;
@@ -1028,29 +1003,37 @@ setup_isel_context(Program* program,
                                 shaders[0]->info.workgroup_size[1] *
                                 shaders[0]->info.workgroup_size[2];
    } else if (program->stage.hw == HWStage::ES || program->stage == geometry_gs) {
-      /* Unmerged ESGS operate in workgroups if on-chip GS (LDS rings) are enabled on GFX7-8 (not implemented in Mesa)  */
+      /* Unmerged ESGS operate in workgroups if on-chip GS (LDS rings) are enabled on GFX7-8
+       * (not implemented in Mesa)  */
       program->workgroup_size = program->wave_size;
    } else if (program->stage.hw == HWStage::GS) {
       /* If on-chip GS (LDS rings) are enabled on GFX9 or later, merged GS operates in workgroups */
       assert(program->chip_class >= GFX9);
-      uint32_t es_verts_per_subgrp = G_028A44_ES_VERTS_PER_SUBGRP(program->info->gs_ring_info.vgt_gs_onchip_cntl);
-      uint32_t gs_instr_prims_in_subgrp = G_028A44_GS_INST_PRIMS_IN_SUBGRP(program->info->gs_ring_info.vgt_gs_onchip_cntl);
+      uint32_t es_verts_per_subgrp =
+         G_028A44_ES_VERTS_PER_SUBGRP(program->info->gs_ring_info.vgt_gs_onchip_cntl);
+      uint32_t gs_instr_prims_in_subgrp =
+         G_028A44_GS_INST_PRIMS_IN_SUBGRP(program->info->gs_ring_info.vgt_gs_onchip_cntl);
       uint32_t workgroup_size = MAX2(es_verts_per_subgrp, gs_instr_prims_in_subgrp);
       program->workgroup_size = MAX2(MIN2(workgroup_size, 256), 1);
    } else if (program->stage == vertex_ls) {
       /* Unmerged LS operates in workgroups */
-      program->workgroup_size = UINT_MAX; /* TODO: probably tcs_num_patches * tcs_vertices_in, but those are not plumbed to ACO for LS */
+      program->workgroup_size = UINT_MAX; /* TODO: probably tcs_num_patches * tcs_vertices_in, but
+                                             those are not plumbed to ACO for LS */
    } else if (program->stage == tess_control_hs) {
       /* Unmerged HS operates in workgroups, size is determined by the output vertices */
       setup_tcs_info(&ctx, shaders[0], NULL);
       program->workgroup_size = ctx.tcs_num_patches * shaders[0]->info.tess.tcs_vertices_out;
    } else if (program->stage == vertex_tess_control_hs) {
-      /* Merged LSHS operates in workgroups, but can still have a different number of LS and HS invocations */
+      /* Merged LSHS operates in workgroups, but can still have a different number of LS and HS
+       * invocations */
       setup_tcs_info(&ctx, shaders[1], shaders[0]);
-      program->workgroup_size = ctx.tcs_num_patches * MAX2(shaders[1]->info.tess.tcs_vertices_out, ctx.args->options->key.tcs.input_vertices);
+      program->workgroup_size =
+         ctx.tcs_num_patches *
+         MAX2(shaders[1]->info.tess.tcs_vertices_out, ctx.args->options->key.tcs.input_vertices);
    } else if (program->stage.hw == HWStage::NGG) {
-      gfx10_ngg_info &ngg_info = args->shader_info->ngg_info;
-      unsigned num_gs_invocations = (program->stage.has(SWStage::GS)) ? MAX2(shaders[1]->info.gs.invocations, 1) : 1;
+      gfx10_ngg_info& ngg_info = args->shader_info->ngg_info;
+      unsigned num_gs_invocations =
+         (program->stage.has(SWStage::GS)) ? MAX2(shaders[1]->info.gs.invocations, 1) : 1;
 
       /* Max ES (SW VS/TES) threads */
       uint32_t max_esverts = ngg_info.hw_max_esverts;
@@ -1074,7 +1057,7 @@ setup_isel_context(Program* program,
       setup_vs_output_info(&ctx, shaders[0], false, true, &args->shader_info->vs.outinfo);
    } else {
       for (unsigned i = 0; i < shader_count; i++) {
-         nir_shader *nir = shaders[i];
+         nir_shader* nir = shaders[i];
          setup_nir(&ctx, nir);
       }
 
@@ -1090,4 +1073,4 @@ setup_isel_context(Program* program,
    return ctx;
 }
 
-}
+} // namespace aco
