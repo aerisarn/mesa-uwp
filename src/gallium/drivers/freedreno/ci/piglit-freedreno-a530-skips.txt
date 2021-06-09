@@ -1,5 +1,6 @@
 # Intermittent timeouts
 spec@ext_texture_lod_bias@lodbias
+spec@!opengl 1.0@gl-1.0-blend-func
 
 # Skip over a bunch of extensions since we don't have extension fast skipping yet.
 spec@glsl-1.50

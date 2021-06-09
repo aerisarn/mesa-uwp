@@ -1,4 +1,5 @@
 # From https://github.com/marekolsak/marek-build/blob/master/run-piglit.sh#L36
+spec@!opengl 1.0@gl-1.0-blend-func
 spec@!opengl 1.2@tex3d-maxsize
 spec@ext_framebuffer_object@fbo-maxsize
 spec@!opengl 1.1@max-texture-size
