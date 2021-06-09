@@ -116,6 +116,9 @@ def get_job_results(proxy, job_id, test_suite, test_case):
         if 'error_type' in metadata and metadata['error_type'] == "Infrastructure":
             print_log("LAVA job {} failed with Infrastructure Error. Retry.".format(job_id))
             return False
+        if 'case' in metadata and metadata['case'] == "validate":
+            print_log("LAVA job {} failed validation (possible download error). Retry.".format(job_id))
+            return False
 
     results_yaml = _call_proxy(proxy.results.get_testcase_results_yaml, job_id, test_suite, test_case)
     results = yaml.load(results_yaml, Loader=loader(False))
