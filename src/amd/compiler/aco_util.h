@@ -283,7 +283,7 @@ struct IDSet {
 
    std::pair<Iterator, bool> insert(uint32_t id) {
       if (words.size() * 64u <= id)
-         words.resize(DIV_ROUND_UP(id + 1, 64u));
+         words.resize(id / 64u + 1);
 
       Iterator it;
       it.set = this;
