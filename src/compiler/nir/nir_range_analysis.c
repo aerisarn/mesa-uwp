@@ -1329,9 +1329,18 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
          break;
       case nir_intrinsic_load_subgroup_invocation:
       case nir_intrinsic_first_invocation:
-      case nir_intrinsic_mbcnt_amd:
          res = config->max_subgroup_size - 1;
          break;
+      case nir_intrinsic_mbcnt_amd: {
+         uint32_t src0 = config->max_subgroup_size - 1;
+         uint32_t src1 = nir_unsigned_upper_bound(shader, range_ht, (nir_ssa_scalar){intrin->src[1].ssa, 0}, config);
+
+         if (src0 + src1 < src0)
+            res = max; /* overflow */
+         else
+            res = src0 + src1;
+         break;
+      }
       case nir_intrinsic_load_subgroup_size:
          res = config->max_subgroup_size;
          break;

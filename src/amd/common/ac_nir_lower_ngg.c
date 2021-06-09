@@ -97,7 +97,7 @@ repack_invocations_in_workgroup(nir_builder *b, nir_ssa_def *input_bool,
    if (max_num_waves == 1) {
       wg_repack_result r = {
          .num_repacked_invocations = surviving_invocations_in_current_wave,
-         .repacked_invocation_index = nir_build_mbcnt_amd(b, input_mask),
+         .repacked_invocation_index = nir_build_mbcnt_amd(b, input_mask, nir_imm_int(b, 0)),
       };
       return r;
    }
@@ -182,10 +182,9 @@ repack_invocations_in_workgroup(nir_builder *b, nir_ssa_def *input_bool,
       unreachable("Unimplemented NGG wave count");
    }
 
-   nir_ssa_def *wave_repacked_index = nir_build_mbcnt_amd(b, input_mask);
    nir_ssa_def *wg_repacked_index_base = nir_build_read_invocation(b, sum, wave_id);
    nir_ssa_def *wg_num_repacked_invocations = nir_build_read_invocation(b, sum, num_waves);
-   nir_ssa_def *wg_repacked_index = nir_iadd_nuw(b, wg_repacked_index_base, wave_repacked_index);
+   nir_ssa_def *wg_repacked_index = nir_build_mbcnt_amd(b, input_mask, wg_repacked_index_base);
 
    wg_repack_result r = {
       .num_repacked_invocations = wg_num_repacked_invocations,

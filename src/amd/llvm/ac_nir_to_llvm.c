@@ -3924,7 +3924,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
                                   get_src(ctx, instr->src[1]), get_src(ctx, instr->src[2]));
       break;
    case nir_intrinsic_mbcnt_amd:
-      result = ac_build_mbcnt(&ctx->ac, get_src(ctx, instr->src[0]));
+      result = ac_build_mbcnt_add(&ctx->ac, get_src(ctx, instr->src[0]), get_src(ctx, instr->src[1]));
       break;
    case nir_intrinsic_load_scratch: {
       LLVMValueRef offset = get_src(ctx, instr->src[0]);

@@ -3452,7 +3452,7 @@ LLVMValueRef ac_build_writelane(struct ac_llvm_context *ctx, LLVMValueRef src, L
                              AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
 }
 
-LLVMValueRef ac_build_mbcnt(struct ac_llvm_context *ctx, LLVMValueRef mask)
+LLVMValueRef ac_build_mbcnt_add(struct ac_llvm_context *ctx, LLVMValueRef mask, LLVMValueRef add_src)
 {
    if (ctx->wave_size == 32) {
       LLVMValueRef val = ac_build_intrinsic(ctx, "llvm.amdgcn.mbcnt.lo", ctx->i32,
@@ -3465,11 +3465,16 @@ LLVMValueRef ac_build_mbcnt(struct ac_llvm_context *ctx, LLVMValueRef mask)
    LLVMValueRef mask_hi = LLVMBuildExtractElement(ctx->builder, mask_vec, ctx->i32_1, "");
    LLVMValueRef val =
       ac_build_intrinsic(ctx, "llvm.amdgcn.mbcnt.lo", ctx->i32,
-                         (LLVMValueRef[]){mask_lo, ctx->i32_0}, 2, AC_FUNC_ATTR_READNONE);
+                         (LLVMValueRef[]){mask_lo, add_src}, 2, AC_FUNC_ATTR_READNONE);
    val = ac_build_intrinsic(ctx, "llvm.amdgcn.mbcnt.hi", ctx->i32, (LLVMValueRef[]){mask_hi, val},
                             2, AC_FUNC_ATTR_READNONE);
    ac_set_range_metadata(ctx, val, 0, ctx->wave_size);
    return val;
+}
+
+LLVMValueRef ac_build_mbcnt(struct ac_llvm_context *ctx, LLVMValueRef mask)
+{
+   return ac_build_mbcnt_add(ctx, mask, ctx->i32_0);
 }
 
 enum dpp_ctrl

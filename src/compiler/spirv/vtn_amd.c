@@ -101,6 +101,11 @@ vtn_handle_amd_shader_ballot_instruction(struct vtn_builder *b, SpvOp ext_opcode
                       val->constant->values[1].u32 << 5 |
                       val->constant->values[2].u32 << 10;
       nir_intrinsic_set_swizzle_mask(intrin, mask);
+   } else if (intrin->intrinsic == nir_intrinsic_mbcnt_amd) {
+      /* The v_mbcnt instruction has an additional source that is added to the result.
+       * This is exposed by the NIR intrinsic but not by SPIR-V, so we add zero here.
+       */
+      intrin->src[1] = nir_src_for_ssa(nir_imm_int(&b->nb, 0));
    }
 
    nir_builder_instr_insert(&b->nb, &intrin->instr);
