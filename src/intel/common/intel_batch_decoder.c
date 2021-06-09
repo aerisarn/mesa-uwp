@@ -611,10 +611,10 @@ decode_single_ksp(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
 }
 
 static void
-decode_ps_kernels(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
+decode_ps_kern(struct intel_batch_decode_ctx *ctx,
+               struct intel_group *inst, const uint32_t *p)
 {
-   struct intel_group *inst = intel_ctx_find_instruction(ctx, p);
-
+   bool single_ksp = ctx->devinfo.ver == 4;
    uint64_t ksp[3] = {0, 0, 0};
    bool enabled[3] = {false, false, false};
 
@@ -633,6 +633,9 @@ decode_ps_kernels(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
          enabled[2] = strcmp(iter.value, "true") == 0;
       }
    }
+
+   if (single_ksp)
+      ksp[1] = ksp[2] = ksp[0];
 
    /* Reorder KSPs to be [8, 16, 32] instead of the hardware order. */
    if (enabled[0] + enabled[1] + enabled[2] == 1) {
@@ -658,6 +661,14 @@ decode_ps_kernels(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
 
    if (enabled[0] || enabled[1] || enabled[2])
       fprintf(ctx->fp, "\n");
+}
+
+static void
+decode_ps_kernels(struct intel_batch_decode_ctx *ctx,
+                  const uint32_t *p)
+{
+   struct intel_group *inst = intel_ctx_find_instruction(ctx, p);
+   decode_ps_kern(ctx, inst, p);
 }
 
 static void
@@ -1092,6 +1103,8 @@ decode_wm_state(struct intel_batch_decode_ctx *ctx, uint32_t offset)
    }
 
    ctx_print_group(ctx, strct, offset, bind_bo.map);
+
+   decode_ps_kern(ctx, strct, bind_bo.map);
 }
 
 static void
