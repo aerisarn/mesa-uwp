@@ -178,11 +178,9 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
 
         nir_push_if(&b, nir_ieq(&b, num_wg_flat, zero));
         {
-                nir_ssa_def *job_type_ptr = nir_iadd(&b, job_hdr_ptr, nir_imm_int64(&b, 4 * 4));
-                nir_ssa_def *w4 = nir_load_global(&b, job_type_ptr, 4, 1, 32);
-                w4 = nir_iand_imm(&b, w4, ~0xfe);
-                w4 = nir_ior(&b, w4, nir_imm_int(&b, MALI_JOB_TYPE_NULL << 1));
-                nir_store_global(&b, job_type_ptr, 4, w4, 1);
+                nir_ssa_def *type_ptr = nir_iadd(&b, job_hdr_ptr, nir_imm_int64(&b, 4 * 4));
+                nir_ssa_def *ntype = nir_imm_intN_t(&b, (MALI_JOB_TYPE_NULL << 1) | 1, 8);
+                nir_store_global(&b, type_ptr, 1, ntype, 1);
         }
         nir_push_else(&b, NULL);
         {
