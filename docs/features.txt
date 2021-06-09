@@ -487,7 +487,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_external_semaphore_win32                       not started
   VK_KHR_fragment_shading_rate                          not started
   VK_KHR_get_display_properties2                        DONE (anv, lvp, radv, tu, v3dv)
-  VK_KHR_get_surface_capabilities2                      DONE (anv, lvp, radv, tu, vn)
+  VK_KHR_get_surface_capabilities2                      DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_incremental_present                            DONE (anv, lvp, radv, tu)
   VK_KHR_performance_query                              DONE (anv/gen8+, tu)
   VK_KHR_pipeline_executable_properties                 DONE (anv, radv, tu)
@@ -520,7 +520,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_display_control                                DONE (anv, radv, tu)
   VK_EXT_extended_dynamic_state                         DONE (anv, lvp, radv, tu)
   VK_EXT_extended_dynamic_state2                        DONE (anv, radv)
-  VK_EXT_external_memory_dma_buf                        DONE (anv, radv, tu)
+  VK_EXT_external_memory_dma_buf                        DONE (anv, radv, tu, v3dv)
   VK_EXT_external_memory_host                           DONE (anv, radv)
   VK_EXT_filter_cubic                                   DONE (tu/a650)
   VK_EXT_fragment_shader_interlock                      DONE (anv/gen9+)
