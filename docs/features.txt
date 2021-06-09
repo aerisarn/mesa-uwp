@@ -488,7 +488,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_fragment_shading_rate                          not started
   VK_KHR_get_display_properties2                        DONE (anv, lvp, radv, tu, v3dv)
   VK_KHR_get_surface_capabilities2                      DONE (anv, lvp, radv, tu, v3dv, vn)
-  VK_KHR_incremental_present                            DONE (anv, lvp, radv, tu)
+  VK_KHR_incremental_present                            DONE (anv, lvp, radv, tu, v3dv)
   VK_KHR_performance_query                              DONE (anv/gen8+, tu)
   VK_KHR_pipeline_executable_properties                 DONE (anv, radv, tu)
   VK_KHR_push_descriptor                                DONE (anv, lvp, radv, tu)
