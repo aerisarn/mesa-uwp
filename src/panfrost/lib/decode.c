@@ -1077,6 +1077,16 @@ pandecode_write_value_job(const struct pandecode_mapped_memory *mem,
         pandecode_log("\n");
 }
 
+static void
+pandecode_cache_flush_job(const struct pandecode_mapped_memory *mem,
+                          mali_ptr job, int job_no)
+{
+        struct mali_cache_flush_job_packed *PANDECODE_PTR_VAR(p, mem, job);
+        pan_section_unpack(p, CACHE_FLUSH_JOB, PAYLOAD, u);
+        DUMP_SECTION(CACHE_FLUSH_JOB, PAYLOAD, p, "Cache Flush Payload:\n");
+        pandecode_log("\n");
+}
+
 /* Entrypoint to start tracing. jc_gpu_va is the GPU address for the first job
  * in the chain; later jobs are found by walking the chain. Bifrost is, well,
  * if it's bifrost or not. GPU ID is the more finegrained ID (at some point, we
@@ -1107,6 +1117,10 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
                 switch (h.type) {
                 case MALI_JOB_TYPE_WRITE_VALUE:
                         pandecode_write_value_job(mem, jc_gpu_va, job_no);
+                        break;
+
+                case MALI_JOB_TYPE_CACHE_FLUSH:
+                        pandecode_cache_flush_job(mem, jc_gpu_va, job_no);
                         break;
 
                 case MALI_JOB_TYPE_TILER:
