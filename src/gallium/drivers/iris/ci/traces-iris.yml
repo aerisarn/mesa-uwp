@@ -107,13 +107,13 @@ traces:
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 56d499105aa420e2a9977403676ebcc1
+        checksum: 9534418a99a80b31251266a987fb7c07
       - device: gl-intel-glk
-        checksum: 56d499105aa420e2a9977403676ebcc1
+        checksum: 9534418a99a80b31251266a987fb7c07
       - device: gl-intel-amly
-        checksum: 56d499105aa420e2a9977403676ebcc1
+        checksum: 9534418a99a80b31251266a987fb7c07
       - device: gl-intel-kbl
-        checksum: 56d499105aa420e2a9977403676ebcc1
+        checksum: 9534418a99a80b31251266a987fb7c07
   - path: gputest/triangle.trace
     expectations:
       - device: gl-intel-apl
