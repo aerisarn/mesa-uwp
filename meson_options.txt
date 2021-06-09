@@ -75,7 +75,7 @@ option(
   choices : [
     'auto', 'kmsro', 'radeonsi', 'r300', 'r600', 'nouveau', 'freedreno',
     'swrast', 'v3d', 'vc4', 'etnaviv', 'tegra', 'i915', 'svga', 'virgl',
-    'swr', 'panfrost', 'iris', 'lima', 'zink', 'd3d12', 'asahi', 'crocus'
+    'panfrost', 'iris', 'lima', 'zink', 'd3d12', 'asahi', 'crocus'
   ],
   description : 'List of gallium drivers to build. If this is set to auto all drivers applicable to the target OS/architecture will be built'
 )
@@ -411,19 +411,6 @@ option(
   value : '8',
   choices : ['8', '16', '32'],
   description : 'Number of channel bits for OSMesa.'
-)
-option(
-  'swr-arches',
-  type : 'array',
-  value : ['avx', 'avx2'],
-  choices : ['avx', 'avx2', 'knl', 'skx'],
-  description : 'Architectures to build SWR support for.',
-)
-option(
-  'shared-swr',
-  type : 'boolean',
-  value : true,
-  description : 'Whether to link SWR shared or statically.',
 )
 
 option(

@@ -45,11 +45,6 @@ subdir('winsys/sw/wrapper')
 if with_platform_haiku
   subdir('winsys/sw/hgl')
 endif
-if with_gallium_swr
-  subdir('drivers/swr')
-else
-  driver_swr = declare_dependency()
-endif
 if with_gallium_softpipe
   subdir('drivers/softpipe')
   if draw_with_llvm

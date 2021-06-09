@@ -257,8 +257,7 @@ ifneq ($(MESON_GEN_LLVM_STUB),)
 	mkdir -p $(dir $@)/subprojects/llvm/
 	echo -e "project('llvm', 'cpp', version : '$(MESON_LLVM_VERSION)')\n" \
 		"dep_llvm = declare_dependency()\n"                           \
-		"has_rtti = false\n"                                          \
-		"irbuilder_h = files('$(AOSP_ABSOLUTE_PATH)/$(MESON_LLVM_IRBUILDER_PATH)')" > $(dir $@)/subprojects/llvm/meson.build
+		"has_rtti = false\n" > $(dir $@)/subprojects/llvm/meson.build
 endif
 	$(MESON_GEN_NINJA)
 	$(MESON_BUILD)
