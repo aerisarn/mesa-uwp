@@ -100,14 +100,15 @@ struct pan_image_layout {
 };
 
 struct pan_image_slice_state {
-        /* Is the checksum for this slice valid? */
-        bool crc_valid;
-
         /* Has anything been written to this slice? */
         bool data_valid;
 };
 
 struct pan_image_state {
+        /* Is the checksum for this image valid? Implicitly refers to the first
+         * slice, as we only checksum non-mipmapped 2D images */
+        bool crc_valid;
+
         struct pan_image_slice_state slices[MAX_MIP_LEVELS];
 };
 

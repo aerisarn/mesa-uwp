@@ -436,6 +436,7 @@ panfrost_should_checksum(const struct panfrost_device *dev, const struct panfros
         return pres->base.bind & PIPE_BIND_RENDER_TARGET &&
                 panfrost_is_2d(pres) &&
                 bytes_per_pixel <= bytes_per_pixel_max &&
+                pres->base.last_level == 0 &&
                 !(dev->debug & PAN_DBG_NO_CRC);
 }
 
@@ -1077,7 +1078,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
         struct panfrost_device *dev = pan_device(pctx->screen);
 
         if (transfer->usage & PIPE_MAP_WRITE)
-                prsrc->state.slices[transfer->level].crc_valid = false;
+                prsrc->state.crc_valid = false;
 
         /* AFBC will use a staging resource. `initialized` will be set when the
          * fragment job is created; this is deferred to prevent useless surface

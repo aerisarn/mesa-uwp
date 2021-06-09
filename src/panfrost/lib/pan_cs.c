@@ -331,8 +331,7 @@ pan_select_crc_rt(const struct panfrost_device *dev, const struct pan_fb_info *f
                     fb->rts[i].view->image->layout.crc_mode == PAN_IMAGE_CRC_NONE)
                         continue;
 
-                unsigned level = fb->rts[i].view->first_level;
-                bool valid = fb->rts[i].state->slices[level].crc_valid;
+                bool valid = fb->rts[i].state->crc_valid;
                 bool full = !fb->extent.minx && !fb->extent.miny &&
                             fb->extent.maxx == (fb->width - 1) &&
                             fb->extent.maxy == (fb->height - 1);
@@ -693,9 +692,6 @@ pan_emit_mfbd(const struct panfrost_device *dev,
         unsigned internal_cbuf_size = pan_internal_cbuf_size(fb, &tile_size);
         int crc_rt = pan_select_crc_rt(dev, fb);
         bool has_zs_crc_ext = pan_fbd_has_zs_crc_ext(dev, fb);
-        const struct pan_image_view *crc_view = crc_rt < 0 ? NULL : fb->rts[crc_rt].view;
-        struct pan_image_slice_state *crc_slice =
-                crc_rt < 0 ? NULL : &fb->rts[crc_rt].state->slices[crc_view->first_level];
 
         pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, PARAMETERS, cfg) {
                 cfg.width = fb->width;
@@ -723,8 +719,8 @@ pan_emit_mfbd(const struct panfrost_device *dev,
                 cfg.s_write_enable = (fb->zs.view.s && !fb->zs.discard.s);
                 cfg.has_zs_crc_extension = has_zs_crc_ext;
 
-                if (crc_slice) {
-                        bool valid = crc_slice->crc_valid;
+                if (crc_rt >= 0) {
+                        bool valid = fb->rts[crc_rt].state->crc_valid;
                         bool full = !fb->extent.minx && !fb->extent.miny &&
                                     fb->extent.maxx == (fb->width - 1) &&
                                     fb->extent.maxy == (fb->height - 1);
@@ -736,7 +732,7 @@ pan_emit_mfbd(const struct panfrost_device *dev,
                          * valid for next time. */
                         cfg.crc_write_enable = valid || full;
 
-                        crc_slice->crc_valid = full;
+                        fb->rts[crc_rt].state->crc_valid = full;
                 }
         }
 
@@ -763,9 +759,8 @@ pan_emit_mfbd(const struct panfrost_device *dev,
                 cbuf_offset += pan_bytes_per_pixel_tib(fb->rts[i].view->format) *
                                tile_size * fb->rts[i].view->image->layout.nr_samples;
 
-                unsigned level = fb->rts[i].view->first_level;
-                if (crc_slice != &fb->rts[i].state->slices[level])
-                        fb->rts[i].state->slices[level].crc_valid = false;
+                if (i != crc_rt)
+                        fb->rts[i].state->crc_valid = false;
         }
         tags |= MALI_POSITIVE(MAX2(fb->rt_count, 1)) << 2;
 
