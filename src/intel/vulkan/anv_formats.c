@@ -725,16 +725,16 @@ anv_get_image_format_features(const struct intel_device_info *devinfo,
       switch (isl_layout->colorspace) {
       case ISL_COLORSPACE_LINEAR:
       case ISL_COLORSPACE_SRGB:
-         /* Each DRM_FORMAT in in the rgb/srgb space uses unorm (if the DRM
-          * format name has no type suffix) or sfloat (if it has suffix F). No
-          * format contains mixed types. (as of 2020-10-16)
+         /* Each DRM_FORMAT that we support uses unorm (if the DRM format name
+          * has no type suffix) or sfloat (if it has suffix F). No format
+          * contains mixed types. (as of 2021-06-14)
           */
          if (isl_layout->uniform_channel_type != ISL_UNORM &&
              isl_layout->uniform_channel_type != ISL_SFLOAT)
             return 0;
          break;
       case ISL_COLORSPACE_YUV:
-         anv_finishme("support YUV formats with DRM format modifiers");
+         anv_finishme("support YUV colorspace with DRM format modifiers");
          return 0;
       case ISL_COLORSPACE_NONE:
          return 0;
@@ -754,8 +754,26 @@ anv_get_image_format_features(const struct intel_device_info *devinfo,
          return 0;
 
       if (anv_format->n_planes > 1) {
-         anv_finishme("support multi-planar formats with DRM format modifiers");
-         return 0;
+         /* For simplicity, keep DISJOINT disabled for multi-planar format. */
+         flags &= ~VK_FORMAT_FEATURE_DISJOINT_BIT;
+
+         /* VK_ANDROID_external_memory_android_hardware_buffer in Virtio-GPU
+          * Venus driver layers on top of VK_EXT_image_drm_format_modifier of
+          * the host Vulkan driver, and VK_FORMAT_G8_B8R8_2PLANE_420_UNORM is
+          * required to support camera/media interop in Android.
+          */
+         if (vk_format != VK_FORMAT_G8_B8R8_2PLANE_420_UNORM) {
+            anv_finishme("support more multi-planar formats with DRM modifiers");
+            return 0;
+         }
+
+         /* Currently there is no way to properly map memory planes to format
+          * planes and aux planes due to the lack of defined ABI for external
+          * multi-planar images.
+          */
+         if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
+            return 0;
+         }
       }
 
       if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&

@@ -974,10 +974,6 @@ check_drm_format_mod(const struct anv_device *device,
    assert(image->array_size == 1);
    assert(image->samples == 1);
 
-   /* FINISHME: Support multi-planar formats with modifiers */
-   assert(image->n_planes == 1);
-   assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-
    for (int i = 0; i < image->n_planes; ++i) {
       const struct anv_image_plane *plane = &image->planes[i];
       ASSERTED const struct anv_format_plane *plane_format =
