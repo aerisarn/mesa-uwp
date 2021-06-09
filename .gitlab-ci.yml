@@ -966,6 +966,7 @@ meson-clang:
     - . .\.gitlab-ci\windows\mesa_build.ps1
   artifacts:
     paths:
+      - _build/meson-logs/*.txt
       - _install/
 
 .test-d3d12-windows:
