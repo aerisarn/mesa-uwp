@@ -193,18 +193,10 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
                 nir_ssa_def *dims = nir_channel(&b, job_dim, 0);
                 nir_ssa_def *split = nir_channel(&b, job_dim, 1);
                 nir_ssa_def *num_wg_x_split = nir_iand_imm(&b, nir_ushr_imm(&b, split, 10), 0x3f);
-                nir_ssa_def *num_wg_y_split =
-                        nir_iadd(&b, num_wg_x_split,
-                                 nir_bcsel(&b,
-                                           nir_ieq(&b, num_wg_x_m1, zero),
-                                           zero,
-                                           nir_iadd(&b, nir_ufind_msb(&b, num_wg_x_m1), one)));
-                nir_ssa_def *num_wg_z_split =
-                        nir_iadd(&b, num_wg_y_split,
-                                 nir_bcsel(&b,
-                                           nir_ieq(&b, num_wg_y_m1, zero),
-                                           zero,
-                                           nir_iadd(&b, nir_ufind_msb(&b, num_wg_y_m1), one)));
+                nir_ssa_def *num_wg_y_split = nir_iadd(&b, num_wg_x_split,
+                                nir_isub_imm(&b, 32, nir_uclz(&b, num_wg_x_m1)));
+                nir_ssa_def *num_wg_z_split = nir_iadd(&b, num_wg_y_split,
+                                nir_isub_imm(&b, 32, nir_uclz(&b, num_wg_y_m1)));
                 split = nir_ior(&b, split,
                                 nir_ior(&b,
                                         nir_ishl(&b, num_wg_y_split, nir_imm_int(&b, 16)),
