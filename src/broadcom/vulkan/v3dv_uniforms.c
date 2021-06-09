@@ -28,6 +28,12 @@
 #include "v3dv_private.h"
 #include "vk_format_info.h"
 
+/* The only version specific structure that we need is
+ * TMU_CONFIG_PARAMETER_1. This didn't seem to change significantly from
+ * previous V3D versions and we don't expect that to change, so for now let's
+ * just hardcode the V3D version here.
+ */
+#define V3D_VERSION 41
 #include "broadcom/common/v3d_macros.h"
 #include "broadcom/cle/v3dx_pack.h"
 
