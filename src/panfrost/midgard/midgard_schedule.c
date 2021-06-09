@@ -530,13 +530,21 @@ mir_pipeline_count(midgard_instruction *ins)
                 /* Skip empty source  */
                 if (ins->src[i] == ~0) continue;
 
-                unsigned bytemask = mir_bytemask_of_read_components_index(ins, i);
-
-                unsigned max = util_logbase2(bytemask) + 1;
-                bytecount += max;
+                if (i == 0) {
+                        /* First source is a vector, worst-case the mask */
+                        unsigned bytemask = mir_bytemask_of_read_components_index(ins, i);
+                        unsigned max = util_logbase2(bytemask) + 1;
+                        bytecount += max;
+                } else {
+                        /* Sources 1 on are scalars */
+                        bytecount += 4;
+                }
         }
 
-        return DIV_ROUND_UP(bytecount, 16);
+        unsigned dwords = DIV_ROUND_UP(bytecount, 16);
+        assert(dwords <= 2);
+
+        return dwords;
 }
 
 /* Matches FADD x, x with modifiers compatible. Since x + x = x * 2, for
