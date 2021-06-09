@@ -659,7 +659,7 @@ panfrost_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_t
 		RET(((uint64_t []) { 256, 256, 256 }));
 
 	case PIPE_COMPUTE_CAP_MAX_THREADS_PER_BLOCK:
-		RET((uint64_t []) { 1024 });
+		RET((uint64_t []) { 256 });
 
 	case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
 		RET((uint64_t []) { 1024*1024*512 /* Maybe get memory */ });
