@@ -468,13 +468,18 @@ get_cpu_topology(void)
        *
        * Querying the APIC ID can only be done by pinning the current thread
        * to each core. The original affinity mask is saved.
+       *
+       * Loop over all possible CPUs even though some may be offline.
        */
-      for (unsigned i = 0; i < util_cpu_caps.nr_cpus && i < UTIL_MAX_CPUS;
+      for (unsigned i = 0; i < util_cpu_caps.max_cpus && i < UTIL_MAX_CPUS;
            i++) {
          uint32_t cpu_bit = 1u << (i % 32);
 
          mask[i / 32] = cpu_bit;
 
+         /* The assumption is that trying to bind the thread to a CPU that is
+          * offline will fail.
+          */
          if (util_set_current_thread_affinity(mask,
                                               !saved ? saved_mask : NULL,
                                               util_cpu_caps.num_cpu_mask_bits)) {
@@ -535,7 +540,7 @@ get_cpu_topology(void)
             fprintf(stderr, "CPU <-> L3 cache mapping:\n");
             for (unsigned i = 0; i < util_cpu_caps.num_L3_caches; i++) {
                fprintf(stderr, "  - L3 %u mask = ", i);
-               for (int j = util_cpu_caps.nr_cpus - 1; j >= 0; j -= 32)
+               for (int j = util_cpu_caps.max_cpus - 1; j >= 0; j -= 32)
                   fprintf(stderr, "%08x ", util_cpu_caps.L3_affinity_mask[i][j / 32]);
                fprintf(stderr, "\n");
             }
@@ -621,6 +626,7 @@ util_cpu_detect_once(void)
    util_cpu_caps.nr_cpus = MAX2(1, available_cpus);
    total_cpus = MAX2(total_cpus, util_cpu_caps.nr_cpus);
 
+   util_cpu_caps.max_cpus = total_cpus;
    util_cpu_caps.num_cpu_mask_bits = align(total_cpus, 32);
 
    /* Make the fallback cacheline size nonzero so that it can be
