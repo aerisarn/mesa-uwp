@@ -125,6 +125,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_maintenance3                    = true,
       .KHR_sampler_mirror_clamp_to_edge    = true,
       .KHR_storage_buffer_storage_class    = true,
+      .KHR_uniform_buffer_standard_layout  = true,
 #ifdef V3DV_HAS_SURFACE
       .KHR_swapchain                       = true,
       .KHR_incremental_present             = true,
@@ -1011,6 +1012,13 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
    vk_foreach_struct(ext, pFeatures->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+         VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *features =
+            (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *)ext;
+         features->uniformBufferStandardLayout = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
          VkPhysicalDevicePrivateDataFeaturesEXT *features =
             (VkPhysicalDevicePrivateDataFeaturesEXT *)ext;
