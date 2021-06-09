@@ -184,12 +184,11 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
         }
         nir_push_else(&b, NULL);
         {
-                nir_ssa_def *job_dim_ptr =
-                        nir_iadd(&b, job_hdr_ptr,
-                                 nir_imm_int64(&b, pan_section_offset(COMPUTE_JOB, INVOCATION)));
-                num_wg_x = nir_isub(&b, num_wg_x, one);
-                num_wg_y = nir_isub(&b, num_wg_y, one);
-                num_wg_z = nir_isub(&b, num_wg_z, one);
+                nir_ssa_def *job_dim_ptr = nir_iadd(&b, job_hdr_ptr,
+                                nir_imm_int64(&b, pan_section_offset(COMPUTE_JOB, INVOCATION)));
+                nir_ssa_def *num_wg_x_m1 = nir_isub(&b, num_wg_x, one);
+                nir_ssa_def *num_wg_y_m1 = nir_isub(&b, num_wg_y, one);
+                nir_ssa_def *num_wg_z_m1 = nir_isub(&b, num_wg_z, one);
                 nir_ssa_def *job_dim = nir_load_global(&b, job_dim_ptr, 8, 2, 32);
                 nir_ssa_def *dims = nir_channel(&b, job_dim, 0);
                 nir_ssa_def *split = nir_channel(&b, job_dim, 1);
@@ -197,23 +196,23 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
                 nir_ssa_def *num_wg_y_split =
                         nir_iadd(&b, num_wg_x_split,
                                  nir_bcsel(&b,
-                                           nir_ieq(&b, num_wg_x, zero),
+                                           nir_ieq(&b, num_wg_x_m1, zero),
                                            zero,
-                                           nir_iadd(&b, nir_ufind_msb(&b, num_wg_x), one)));
+                                           nir_iadd(&b, nir_ufind_msb(&b, num_wg_x_m1), one)));
                 nir_ssa_def *num_wg_z_split =
                         nir_iadd(&b, num_wg_y_split,
                                  nir_bcsel(&b,
-                                           nir_ieq(&b, num_wg_y, zero),
+                                           nir_ieq(&b, num_wg_y_m1, zero),
                                            zero,
-                                           nir_iadd(&b, nir_ufind_msb(&b, num_wg_y), one)));
+                                           nir_iadd(&b, nir_ufind_msb(&b, num_wg_y_m1), one)));
                 split = nir_ior(&b, split,
                                 nir_ior(&b,
                                         nir_ishl(&b, num_wg_y_split, nir_imm_int(&b, 16)),
                                         nir_ishl(&b, num_wg_z_split, nir_imm_int(&b, 22))));
                 dims = nir_ior(&b, dims,
-                               nir_ior(&b, nir_ishl(&b, num_wg_x, num_wg_x_split),
-                                       nir_ior(&b, nir_ishl(&b, num_wg_y, num_wg_y_split),
-                                               nir_ishl(&b, num_wg_z, num_wg_z_split))));
+                               nir_ior(&b, nir_ishl(&b, num_wg_x_m1, num_wg_x_split),
+                                       nir_ior(&b, nir_ishl(&b, num_wg_y_m1, num_wg_y_split),
+                                               nir_ishl(&b, num_wg_z_m1, num_wg_z_split))));
 
                 nir_store_global(&b, job_dim_ptr, 8, nir_vec2(&b, dims, split), 3);
 
