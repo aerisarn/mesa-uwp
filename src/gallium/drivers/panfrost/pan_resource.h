@@ -57,8 +57,14 @@ struct panfrost_resource {
         /* Description of the resource layout */
         struct pan_image image;
 
-        /* Image state */
-        struct pan_image_state state;
+        struct {
+                /* Is the checksum for this image valid? Implicitly refers to
+                 * the first slice; we only checksum non-mipmapped 2D images */
+                bool crc;
+
+                /* Has anything been written to this slice? */
+                BITSET_DECLARE(data, MAX_MIP_LEVELS);
+        } valid;
 
         /* Whether the modifier can be changed */
         bool modifier_constant;

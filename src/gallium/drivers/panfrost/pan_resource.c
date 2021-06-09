@@ -115,7 +115,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
 
         rsc->modifier_constant = true;
 
-        BITSET_SET(rsc->state.data_valid, 0);
+        BITSET_SET(rsc->valid.data, 0);
         panfrost_resource_set_damage_region(pscreen, &rsc->base, 0, NULL);
 
         if (dev->ro) {
@@ -845,7 +845,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                  * from a pending batch XXX */
                 panfrost_flush_batches_accessing_bo(ctx, rsrc->image.data.bo, true);
 
-                if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->state.data_valid, level)) {
+                if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->valid.data, level)) {
                         pan_blit_to_staging(pctx, transfer);
                         panfrost_flush_batches_accessing_bo(ctx, staging->image.data.bo, true);
                         panfrost_bo_wait(staging->image.data.bo, INT64_MAX, false);
@@ -943,7 +943,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                 transfer->map = ralloc_size(transfer, transfer->base.layer_stride * box->depth);
                 assert(box->depth == 1);
 
-                if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->state.data_valid, level)) {
+                if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->valid.data, level)) {
                         panfrost_load_tiled_image(
                                         transfer->map,
                                         bo->ptr.cpu + rsrc->image.layout.slices[level].offset,
@@ -974,7 +974,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                  * initialized (maybe), so be conservative */
 
                 if (usage & PIPE_MAP_WRITE) {
-                        BITSET_SET(rsrc->state.data_valid, level);
+                        BITSET_SET(rsrc->valid.data, level);
                         panfrost_minmax_cache_invalidate(rsrc->index_cache, &transfer->base);
                 }
 
@@ -1017,7 +1017,7 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
         };
 
         for (int i = 0; i <= rsrc->base.last_level; i++) {
-                if (BITSET_TEST(rsrc->state.data_valid, i)) {
+                if (BITSET_TEST(rsrc->valid.data, i)) {
                         blit.dst.level = blit.src.level  = i;
                         panfrost_blit(&ctx->base, &blit);
                 }
@@ -1078,7 +1078,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
         struct panfrost_device *dev = pan_device(pctx->screen);
 
         if (transfer->usage & PIPE_MAP_WRITE)
-                prsrc->state.crc_valid = false;
+                prsrc->valid.crc = false;
 
         /* AFBC will use a staging resource. `initialized` will be set when the
          * fragment job is created; this is deferred to prevent useless surface
@@ -1112,7 +1112,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                 struct panfrost_bo *bo = prsrc->image.data.bo;
 
                 if (transfer->usage & PIPE_MAP_WRITE) {
-                        BITSET_SET(prsrc->state.data_valid, transfer->level);
+                        BITSET_SET(prsrc->valid.data, transfer->level);
 
                         if (prsrc->image.layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                                 assert(transfer->box.depth == 1);
@@ -1178,7 +1178,7 @@ panfrost_ptr_flush_region(struct pipe_context *pctx,
                                transfer->box.x + box->x,
                                transfer->box.x + box->x + box->width);
         } else {
-                BITSET_SET(rsc->state.data_valid, transfer->level);
+                BITSET_SET(rsc->valid.data, transfer->level);
         }
 }
 
@@ -1225,7 +1225,7 @@ panfrost_generate_mipmap(
 
         assert(rsrc->image.data.bo);
         for (unsigned l = base_level + 1; l <= last_level; ++l)
-                BITSET_CLEAR(rsrc->state.data_valid, l);
+                BITSET_CLEAR(rsrc->valid.data, l);
 
         /* Beyond that, we just delegate the hard stuff. */
 

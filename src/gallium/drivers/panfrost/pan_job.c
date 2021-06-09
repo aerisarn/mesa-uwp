@@ -657,24 +657,24 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
                 rts[i].image = &prsrc->image;
                 rts[i].nr_samples = surf->nr_samples ? : MAX2(surf->texture->nr_samples, 1);
                 memcpy(rts[i].swizzle, id_swz, sizeof(rts[i].swizzle));
-                fb->rts[i].crc_valid = &prsrc->state.crc_valid;
+                fb->rts[i].crc_valid = &prsrc->valid.crc;
                 fb->rts[i].view = &rts[i];
 
                 /* Preload if the RT is read or updated */
                 if (!(batch->clear & mask) &&
                     ((batch->read & mask) ||
                      ((batch->draws & mask) &&
-                      BITSET_TEST(prsrc->state.data_valid, fb->rts[i].view->first_level))))
+                      BITSET_TEST(prsrc->valid.data, fb->rts[i].view->first_level))))
                         fb->rts[i].preload = true;
 
         }
 
         const struct pan_image_view *s_view = NULL, *z_view = NULL;
-        const struct pan_image_state *s_state = NULL, *z_state = NULL;
+        struct panfrost_resource *z_rsrc = NULL, *s_rsrc = NULL;
 
         if (batch->key.zsbuf) {
                 struct pipe_surface *surf = batch->key.zsbuf;
-                struct panfrost_resource *prsrc = pan_resource(surf->texture);
+                z_rsrc = pan_resource(surf->texture);
 
                 zs->format = surf->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT ?
                              PIPE_FORMAT_Z32_FLOAT : surf->format;
@@ -682,29 +682,28 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
                 zs->last_level = zs->first_level = surf->u.tex.level;
                 zs->first_layer = surf->u.tex.first_layer;
                 zs->last_layer = surf->u.tex.last_layer;
-                zs->image = &prsrc->image;
+                zs->image = &z_rsrc->image;
                 zs->nr_samples = surf->nr_samples ? : MAX2(surf->texture->nr_samples, 1);
                 memcpy(zs->swizzle, id_swz, sizeof(zs->swizzle));
                 fb->zs.view.zs = zs;
                 z_view = zs;
-                z_state = &prsrc->state;
                 if (util_format_is_depth_and_stencil(zs->format)) {
                         s_view = zs;
-                        s_state = &prsrc->state;
+                        s_rsrc = z_rsrc;
                 }
 
-                if (prsrc->separate_stencil) {
+                if (z_rsrc->separate_stencil) {
+                        s_rsrc = z_rsrc->separate_stencil;
                         s->format = PIPE_FORMAT_S8_UINT;
                         s->dim = MALI_TEXTURE_DIMENSION_2D;
                         s->last_level = s->first_level = surf->u.tex.level;
                         s->first_layer = surf->u.tex.first_layer;
                         s->last_layer = surf->u.tex.last_layer;
-                        s->image = &prsrc->separate_stencil->image;
+                        s->image = &s_rsrc->image;
                         s->nr_samples = surf->nr_samples ? : MAX2(surf->texture->nr_samples, 1);
                         memcpy(s->swizzle, id_swz, sizeof(s->swizzle));
                         fb->zs.view.s = s;
                         s_view = s;
-                        s_state = &prsrc->separate_stencil->state;
                 }
         }
 
@@ -724,20 +723,20 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
         if (!fb->zs.clear.z &&
             ((batch->read & PIPE_CLEAR_DEPTH) ||
              ((batch->draws & PIPE_CLEAR_DEPTH) &&
-              BITSET_TEST(z_state->data_valid, z_view->first_level))))
+              z_rsrc && BITSET_TEST(z_rsrc->valid.data, z_view->first_level))))
                 fb->zs.preload.z = true;
 
         if (!fb->zs.clear.s &&
             ((batch->read & PIPE_CLEAR_STENCIL) ||
              ((batch->draws & PIPE_CLEAR_STENCIL) &&
-              BITSET_TEST(s_state->data_valid, s_view->first_level))))
+              s_rsrc && BITSET_TEST(s_rsrc->valid.data, s_view->first_level))))
                 fb->zs.preload.s = true;
 
         /* Preserve both component if we have a combined ZS view and
          * one component needs to be preserved.
          */
         if (s_view == z_view && fb->zs.discard.z != fb->zs.discard.s) {
-                bool valid = BITSET_TEST(z_state->data_valid, z_view->first_level);
+                bool valid = BITSET_TEST(z_rsrc->valid.data, z_view->first_level);
 
                 fb->zs.discard.z = false;
                 fb->zs.discard.s = false;

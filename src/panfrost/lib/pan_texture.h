@@ -99,15 +99,6 @@ struct pan_image_layout {
         unsigned crc_size;
 };
 
-struct pan_image_state {
-        /* Is the checksum for this image valid? Implicitly refers to the first
-         * slice, as we only checksum non-mipmapped 2D images */
-        bool crc_valid;
-
-        /* Has anything been written to this slice? */
-        BITSET_DECLARE(data_valid, MAX_MIP_LEVELS);
-};
-
 struct pan_image_mem {
         struct panfrost_bo *bo;
         unsigned offset;
