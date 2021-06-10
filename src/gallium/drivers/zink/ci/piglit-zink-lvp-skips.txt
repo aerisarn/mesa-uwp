@@ -24,6 +24,3 @@ spec@egl_ext_protected_content@conformance
 # has a race where probes periodically return black
 # cf. https://gitlab.freedesktop.org/mesa/mesa/-/jobs/10624521
 glx@glx-multi-context-single-window
-
-# periodic timeouts
-spec@!opengl 1.0@gl-1.0-blend-func
