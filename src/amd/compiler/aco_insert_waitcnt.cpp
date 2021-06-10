@@ -23,7 +23,7 @@
  */
 
 #include "aco_ir.h"
-#include "sid.h"
+#include "common/sid.h"
 
 #include <map>
 #include <stack>

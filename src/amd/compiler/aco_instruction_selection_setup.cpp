@@ -24,8 +24,8 @@
 
 #include "aco_instruction_selection.h"
 
-#include "ac_exp_param.h"
-#include "sid.h"
+#include "common/ac_exp_param.h"
+#include "common/sid.h"
 #include "vulkan/radv_descriptor_set.h"
 
 #include "nir_control_flow.h"

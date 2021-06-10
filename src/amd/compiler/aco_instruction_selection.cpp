@@ -28,8 +28,8 @@
 #include "aco_builder.h"
 #include "aco_ir.h"
 
-#include "ac_exp_param.h"
-#include "sid.h"
+#include "common/ac_exp_param.h"
+#include "common/sid.h"
 #include "vulkan/radv_descriptor_set.h"
 
 #include "util/fast_idiv_by_const.h"

@@ -23,7 +23,8 @@
  */
 
 #include "aco_ir.h"
-#include "ac_llvm_util.h"
+
+#include "llvm/ac_llvm_util.h"
 
 #include "llvm-c/Disassembler.h"
 #include <llvm/ADT/StringRef.h>

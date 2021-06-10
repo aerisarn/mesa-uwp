@@ -24,7 +24,8 @@
 
 #include "aco_builder.h"
 #include "aco_ir.h"
-#include "sid.h"
+
+#include "common/sid.h"
 
 #include "util/memstream.h"
 
