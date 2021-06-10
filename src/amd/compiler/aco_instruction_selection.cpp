@@ -8380,7 +8380,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_mbcnt_amd: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-      Temp add_src = get_ssa_temp(ctx, instr->src[1].ssa);
+      Temp add_src = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       /* Fit 64-bit mask for wave32 */
       src = emit_extract_vector(ctx, src, 0, RegClass(src.type(), bld.lm.size()));
