@@ -1071,15 +1071,20 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
    set_foreach(shader->programs, entry) {
       if (shader->nir->info.stage == MESA_SHADER_COMPUTE) {
          struct zink_compute_program *comp = (void*)entry->key;
-         _mesa_hash_table_remove_key(&ctx->compute_program_cache, comp->shader);
+         if (!comp->base.removed) {
+            _mesa_hash_table_remove_key(&ctx->compute_program_cache, comp->shader);
+            comp->base.removed = true;
+         }
          comp->shader = NULL;
          zink_compute_program_reference(screen, &comp, NULL);
       } else {
          struct zink_gfx_program *prog = (void*)entry->key;
          enum pipe_shader_type pstage = pipe_shader_type_from_mesa(shader->nir->info.stage);
          assert(pstage < ZINK_SHADER_COUNT);
-         if (shader->nir->info.stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)
+         if (!prog->base.removed && (shader->nir->info.stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)) {
             _mesa_hash_table_remove_key(&ctx->program_cache[prog->stages_present >> 2], prog->shaders);
+            prog->base.removed = true;
+         }
          prog->shaders[pstage] = NULL;
          if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL && shader->generated)
             /* automatically destroy generated tcs shaders when tes is destroyed */
