@@ -907,10 +907,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
                                         info->family == CHIP_SIENNA_CICHLID;
 
    /* Support for GFX10.3 was added with F32_ME_FEATURE_VERSION_31 but the
-    * firmware version wasn't bumped.
+    * feature version wasn't bumped.
     */
    info->has_32bit_predication = info->chip_class >= GFX10_3 &&
-                                 info->me_fw_version >= 32;
+                                 info->me_fw_feature >= 32;
 
    /* Get the number of good compute units. */
    info->num_good_compute_units = 0;
