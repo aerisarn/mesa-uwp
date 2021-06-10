@@ -280,14 +280,20 @@ var_sort_cmp(const void *_a, const void *_b, void *_cmp)
 }
 
 void
-nir_sort_variables(nir_shader *shader,
-                   int (*cmp)(const nir_variable *, const nir_variable *))
+nir_sort_variables_with_modes(nir_shader *shader,
+                              int (*cmp)(const nir_variable *,
+                                         const nir_variable *),
+                              nir_variable_mode modes)
 {
-   const unsigned num_vars = exec_list_length(&shader->variables);
+   unsigned num_vars = 0;
+   nir_foreach_variable_with_modes(var, shader, modes) {
+      ++num_vars;
+   }
    struct var_cmp *vars = ralloc_array(shader, struct var_cmp, num_vars);
    unsigned i = 0;
-   nir_foreach_variable_in_shader(var, shader) {
-      vars[i++] = (struct var_cmp) {
+   nir_foreach_variable_with_modes_safe(var, shader, modes) {
+      exec_node_remove(&var->node);
+      vars[i++] = (struct var_cmp){
          .var = var,
          .cmp = cmp,
       };
@@ -296,7 +302,6 @@ nir_sort_variables(nir_shader *shader,
 
    util_qsort_r(vars, num_vars, sizeof(*vars), var_sort_cmp, cmp);
 
-   exec_list_make_empty(&shader->variables);
    for (i = 0; i < num_vars; i++)
       exec_list_push_tail(&shader->variables, &vars[i].var->node);
 

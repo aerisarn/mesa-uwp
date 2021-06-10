@@ -3622,9 +3622,10 @@ nir_variable *nir_find_variable_with_driver_location(nir_shader *shader,
                                                      nir_variable_mode mode,
                                                      unsigned location);
 
-void nir_sort_variables(nir_shader *shader,
-                        int (*compar)(const nir_variable *,
-                                      const nir_variable *));
+void nir_sort_variables_with_modes(nir_shader *shader,
+                                   int (*compar)(const nir_variable *,
+                                                 const nir_variable *),
+                                   nir_variable_mode modes);
 
 /** creates a function and adds it to the shader's list of functions */
 nir_function *nir_function_create(nir_shader *shader, const char *name);
