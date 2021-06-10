@@ -21,8 +21,8 @@
     - rm -rf results
     - mkdir -p results
     - >
-      artifacts/lava_job_submitter.py \
-        --template artifacts/lava.yml.jinja2 \
+      artifacts/lava/lava_job_submitter.py \
+        --template artifacts/lava/lava.yml.jinja2 \
         --pipeline-info "$CI_PIPELINE_URL on $CI_COMMIT_REF_NAME ${CI_NODE_INDEX}/${CI_NODE_TOTAL}" \
         --base-artifacts-url ${ARTIFACTS_URL} \
         --mesa-url ${MESA_URL} \

@@ -45,12 +45,10 @@ find . -path \*/ci/\*.txt \
 # packed separately in the zip file.
 mkdir -p artifacts/
 tar -cf artifacts/install.tar install
+cp -Rp .gitlab-ci/lava artifacts/
 
 if [ -n "$MINIO_ARTIFACT_NAME" ]; then
     # Pass needed files to the test stage
-    cp $CI_PROJECT_DIR/.gitlab-ci/lava_job_submitter.py artifacts/.
-    cp $CI_PROJECT_DIR/.gitlab-ci/lava.yml.jinja2 artifacts/.
-
     MINIO_ARTIFACT_NAME="$MINIO_ARTIFACT_NAME.tar.gz"
     gzip -c artifacts/install.tar > ${MINIO_ARTIFACT_NAME}
     MINIO_PATH=${MINIO_HOST}/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}
