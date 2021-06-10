@@ -874,6 +874,11 @@ static inline void
 bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
            struct zink_shader *shader)
 {
+   if (shader && shader->nir->info.num_inlinable_uniforms)
+      ctx->shader_has_inlinable_uniforms_mask |= 1 << stage;
+   else
+      ctx->shader_has_inlinable_uniforms_mask &= ~(1 << stage);
+
    if (stage == PIPE_SHADER_COMPUTE) {
       if (shader && shader != ctx->compute_stage) {
          struct hash_entry *entry = _mesa_hash_table_search(&ctx->compute_program_cache, shader);
@@ -903,10 +908,6 @@ bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
          ctx->shader_stages &= ~BITFIELD_BIT(stage);
       }
    }
-   if (shader && shader->nir->info.num_inlinable_uniforms)
-      ctx->shader_has_inlinable_uniforms_mask |= 1 << stage;
-   else
-      ctx->shader_has_inlinable_uniforms_mask &= ~(1 << stage);
 }
 
 static void
