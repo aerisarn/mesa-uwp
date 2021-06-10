@@ -169,6 +169,13 @@ fd_set_shader_buffers(struct pipe_context *pctx, enum pipe_shader_type shader,
          fd_resource_set_usage(buffers[i].buffer, FD_DIRTY_SSBO);
 
          so->enabled_mask |= BIT(n);
+
+         if (writable_bitmask & BIT(i)) {
+            struct fd_resource *rsc = fd_resource(buf->buffer);
+            util_range_add(&rsc->b.b, &rsc->valid_buffer_range,
+                           buf->buffer_offset,
+                           buf->buffer_offset + buf->buffer_size);
+         }
       } else {
          pipe_resource_reference(&buf->buffer, NULL);
       }
@@ -205,6 +212,15 @@ fd_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
          if (buf->resource) {
             fd_resource_set_usage(buf->resource, FD_DIRTY_IMAGE);
             so->enabled_mask |= BIT(n);
+
+            if ((buf->access & PIPE_IMAGE_ACCESS_WRITE) &&
+                (buf->resource->target == PIPE_BUFFER)) {
+
+               struct fd_resource *rsc = fd_resource(buf->resource);
+               util_range_add(&rsc->b.b, &rsc->valid_buffer_range,
+                              buf->u.buf.offset,
+                              buf->u.buf.offset + buf->u.buf.size);
+            }
          } else {
             so->enabled_mask &= ~BIT(n);
          }
