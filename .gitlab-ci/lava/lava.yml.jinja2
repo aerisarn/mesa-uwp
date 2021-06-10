@@ -67,6 +67,8 @@ actions:
           - functional
         run:
           steps:
+          # A bunch of setup we have to do before we can pull anything
+          - cd /
           - mount -t proc none /proc
           - mount -t sysfs none /sys
           - mount -t devtmpfs none /dev || echo possibly already mounted
@@ -80,6 +82,11 @@ actions:
           - echo "$NFS_SERVER_IP caching-proxy" >> /etc/hosts
           - for i in 1 2 3; do sntp -sS pool.ntp.org && break || sleep 2; done
 
+          - wget -S --progress=dot:giga -O- {{ mesa_url }} | tar -xz
+          - mkdir -p $CI_PROJECT_DIR
+          - ln -sf /install $CI_PROJECT_DIR/install
+
+          # Set up our devices
           - modprobe amdgpu || true
 
           # Disable GPU frequency scaling
@@ -96,30 +103,21 @@ actions:
 {% if env_vars %}
           - export {{ env_vars }}
 {% endif %}
-          - export CI_JOB_JWT="{{ jwt }}"
-
-          # runner script assumes some stuff is in pwd
-          - cd /
-
-          - wget -S --progress=dot:giga -O- {{ mesa_url }} | tar -xz
-          - mkdir -p $CI_PROJECT_DIR
-          - ln -sf /install $CI_PROJECT_DIR/install
-
           - export DEQP_NO_SAVE_RESULTS=1
           - export GPU_VERSION={{ gpu_version }}
           - export DEQP_VER={{ deqp_version }}
+          - export PIGLIT_REPLAY_ARTIFACTS_BASE_URL="/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
+          - export PIGLIT_REPLAY_DESCRIPTION_FILE="/install/traces-${DRIVER_NAME}.yml"
+          - export PIGLIT_REPLAY_DEVICE_NAME=gl-{{ gpu_version }}
+          - export PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL="/mesa-tracie-results/${CI_PROJECT_PATH}"
+          - export PIGLIT_RESULTS={{ gpu_version }}-${PIGLIT_PROFILES}
 
+          - export CI_JOB_JWT="{{ jwt }}"
           # Store Mesa's disk cache under /tmp, rather than sending it out over NFS.
           - export XDG_CACHE_HOME=/tmp
 
           - export PYTHONPATH=$(python3 -c "import sys;print(\":\".join(sys.path))")
-          - export PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL="/mesa-tracie-results/${CI_PROJECT_PATH}"
-          - export PIGLIT_REPLAY_ARTIFACTS_BASE_URL="/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
           - export MINIO_ARTIFACTS_PATH="minio://${MINIO_HOST}/${PIGLIT_REPLAY_ARTIFACTS_BASE_URL}/"
-          - export PIGLIT_REPLAY_DESCRIPTION_FILE="/install/traces-${DRIVER_NAME}.yml"
-          - export PIGLIT_REPLAY_DEVICE_NAME=gl-{{ gpu_version }}
-          - export PIGLIT_RESULTS={{ gpu_version }}-${PIGLIT_PROFILES}
-
           - export LIBGL_DRIVERS_PATH=/install/lib/dri
 
           # If we want Xorg to be running for the test, then we start it up before the
