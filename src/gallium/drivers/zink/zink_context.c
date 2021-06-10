@@ -2027,9 +2027,6 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       ctx->gfx_pipeline_state.dirty = true;
    }
    ctx->gfx_pipeline_state.rast_samples = rast_samples;
-   if (ctx->gfx_pipeline_state.num_attachments != state->nr_cbufs)
-      ctx->gfx_pipeline_state.dirty = true;
-   ctx->gfx_pipeline_state.num_attachments = state->nr_cbufs;
 
    /* need to ensure we start a new rp on next draw */
    zink_batch_no_rp(ctx);

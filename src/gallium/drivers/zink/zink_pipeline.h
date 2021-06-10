@@ -41,7 +41,6 @@ struct zink_gfx_pipeline_state {
    struct zink_render_pass *render_pass;
 
    uint8_t void_alpha_attachments:PIPE_MAX_COLOR_BUFS;
-   uint32_t num_attachments;
    struct zink_blend_state *blend_state;
 
    struct zink_rasterizer_hw_state *rast_state;
