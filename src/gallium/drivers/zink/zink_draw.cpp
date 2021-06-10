@@ -187,7 +187,7 @@ update_gfx_program(struct zink_context *ctx)
       ctx->last_vertex_stage_dirty = false;
    }
    unsigned bits = BITFIELD_MASK(PIPE_SHADER_COMPUTE);
-   if (ctx->dirty_shader_stages & bits) {
+   if (ctx->gfx_dirty) {
       struct zink_gfx_program *prog = NULL;
 
       struct hash_table *ht = &ctx->program_cache[ctx->shader_stages >> 2];
@@ -205,8 +205,11 @@ update_gfx_program(struct zink_context *ctx)
          zink_batch_reference_program(&ctx->batch, &prog->base);
       }
       ctx->curr_program = prog;
-      ctx->dirty_shader_stages &= ~bits;
+      ctx->gfx_dirty = false;
+   } else if (ctx->dirty_shader_stages & bits) {
+      zink_update_gfx_program(ctx, ctx->curr_program);
    }
+   ctx->dirty_shader_stages &= ~bits;
 }
 
 static bool

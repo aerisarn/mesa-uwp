@@ -308,6 +308,8 @@ struct zink_context {
    bool first_frame_done;
    bool have_timelines;
 
+   bool gfx_dirty;
+
    bool is_device_lost;
    bool vertex_state_changed : 1;
    bool blend_state_changed : 1;
