@@ -909,7 +909,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    /* Support for GFX10.3 was added with F32_ME_FEATURE_VERSION_31 but the
     * feature version wasn't bumped.
     */
-   info->has_32bit_predication = info->chip_class >= GFX10_3 &&
+   info->has_32bit_predication = info->chip_class >= GFX10 &&
                                  info->me_fw_feature >= 32;
 
    /* Get the number of good compute units. */
