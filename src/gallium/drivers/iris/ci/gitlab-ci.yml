@@ -15,7 +15,7 @@
   variables:
     DEVICE_TYPE: asus-C523NA-A20057-coral
     GPU_VERSION: iris-apl
-    ENV_VARS: "DEQP_EXPECTED_RENDERER=APL"
+    DEQP_EXPECTED_RENDERER: APL
   tags:
     - mesa-ci-x86-64-lava-asus-C523NA-A20057-coral
 
@@ -26,7 +26,7 @@
   variables:
     DEVICE_TYPE: hp-x360-12b-n4000-octopus
     GPU_VERSION: iris-glk
-    ENV_VARS: "DEQP_EXPECTED_RENDERER=GLK"
+    DEQP_EXPECTED_RENDERER: GLK
   tags:
     - mesa-ci-x86-64-lava-hp-x360-12b-n4000-octopus
 
@@ -36,7 +36,7 @@
   variables:
     DEVICE_TYPE: asus-C433TA-AJ0005-rammus
     GPU_VERSION: iris-amly
-    ENV_VARS: "DEQP_EXPECTED_RENDERER=AML"
+    DEQP_EXPECTED_RENDERER: AML
   tags:
     - mesa-ci-x86-64-lava-asus-C433TA-AJ0005-rammus
 
@@ -46,7 +46,7 @@
   variables:
     DEVICE_TYPE: hp-x360-14-G1-sona
     GPU_VERSION: iris-kbl
-    ENV_VARS: "DEQP_EXPECTED_RENDERER=KBL"
+    DEQP_EXPECTED_RENDERER: KBL
   tags:
     - mesa-ci-x86-64-lava-hp-x360-14-G1-sona
 
@@ -54,21 +54,23 @@
   extends:
     - .iris-apl-test
   variables:
-    DEQP_VERSION: gles2
+    DEQP_VER: gles2
 
 .iris-apl-gles3:
   extends:
     - .iris-apl-test
   variables:
-    DEQP_VERSION: gles3
-    ENV_VARS: "DEQP_EXPECTED_RENDERER=APL DEQP_FRACTION=4"
+    DEQP_VER: gles3
+    DEQP_EXPECTED_RENDERER: APL
+    DEQP_FRACTION: 4
 
 .iris-apl-gles31:
   extends:
     - .iris-apl-test
   variables:
-    DEQP_VERSION: gles31
-    ENV_VARS: "DEQP_EXPECTED_RENDERER=APL DEQP_FRACTION=6"
+    DEQP_VER: gles31
+    DEQP_EXPECTED_RENDERER: APL
+    DEQP_FRACTION: 6
 
 # this appears to silently kill the board sometimes.  Leave it as a manual job for debugging.
 .iris-apl-gl:
@@ -76,33 +78,35 @@
     - .iris-apl-test
     - .test-manual-mr
   variables:
-    DEQP_VERSION: gl46
+    DEQP_VER: gl46
 
 .iris-apl-egl:
   extends:
     - .iris-apl-test
   variables:
-    DEQP_VERSION: egl
+    DEQP_VER: egl
 
 iris-glk-gles2:
   extends:
     - .iris-glk-test
   variables:
-    DEQP_VERSION: gles2
+    DEQP_VER: gles2
 
 iris-glk-gles3:
   extends:
     - .iris-glk-test
   variables:
-    DEQP_VERSION: gles3
-    ENV_VARS: "DEQP_EXPECTED_RENDERER=GLK DEQP_FRACTION=8"
+    DEQP_VER: gles3
+    DEQP_EXPECTED_RENDERER: GLK
+    DEQP_FRACTION: 8
 
 iris-glk-gles31:
   extends:
     - .iris-glk-test
   variables:
-    DEQP_VERSION: gles31
-    ENV_VARS: "DEQP_EXPECTED_RENDERER=GLK DEQP_FRACTION=8"
+    DEQP_VER: gles31
+    DEQP_EXPECTED_RENDERER: GLK
+    DEQP_FRACTION: 8
 
 # this appears to be just unusably slow, timed out at an hour.  Needs debugging,
 # so leave it as a manual job.
@@ -111,51 +115,59 @@ iris-glk-gl:
     - .iris-glk-test
     - .test-manual-mr
   variables:
-    DEQP_VERSION: gl46
+    DEQP_VER: gl46
 
 iris-glk-egl:
   extends:
     - .iris-glk-test
   variables:
-    DEQP_VERSION: egl
+    DEQP_VER: egl
 
 iris-amly-gles2:
   extends:
     - .iris-amly-test
   variables:
-    DEQP_VERSION: gles2
+    DEQP_VER: gles2
 
 iris-amly-gles3:
   extends:
     - .iris-amly-test
   variables:
-    DEQP_VERSION: gles3
-    ENV_VARS: "DEQP_EXPECTED_RENDERER=AML DEQP_FRACTION=2"
+    DEQP_VER: gles3
+    DEQP_EXPECTED_RENDERER: AML
+    DEQP_FRACTION: 2
 
 iris-amly-gles31:
   extends:
     - .iris-amly-test
   variables:
-    DEQP_VERSION: gles31
-    ENV_VARS: "DEQP_EXPECTED_RENDERER=AML DEQP_FRACTION=2"
+    DEQP_VER: gles31
+    DEQP_EXPECTED_RENDERER: AML
+    DEQP_FRACTION: 2
 
 iris-amly-gl:
   extends:
     - .iris-amly-test
   variables:
-    DEQP_VERSION: gl46
+    DEQP_VER: gl46
 
 iris-amly-egl:
   extends:
     - .iris-amly-test
   variables:
-    DEQP_VERSION: egl
+    DEQP_VER: egl
 
 .iris-traces:
   extends:
     - .lava-traces-base
   variables:
-    ENV_VARS: "EGL_PLATFORM=surfaceless PIGLIT_PROFILES=replay PIGLIT_JUNIT_RESULTS=1 PIGLIT_REPLAY_EXTRA_ARGS=--keep-image"
+    EGL_PLATFORM: surfaceless
+    PIGLIT_PROFILES: replay
+    PIGLIT_JUNIT_RESULTS: 1
+    PIGLIT_REPLAY_DEVICE_NAME: "gl-${GPU_VERSION}"
+    PIGLIT_RESULTS: "${GPU_VERSION}-${PIGLIT_PROFILES}"
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-iris.yml"
+    PIGLIT_REPLAY_EXTRA_ARGS: --keep-image
 
 .iris-apl-traces:
   variables:

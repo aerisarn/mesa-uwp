@@ -51,12 +51,11 @@ def generate_lava_yaml(args):
     env = jinja2.Environment(loader = jinja2.FileSystemLoader(os.path.dirname(args.template)), trim_blocks=True, lstrip_blocks=True)
     template = env.get_template(os.path.basename(args.template))
 
-    env_vars = "%s CI_NODE_INDEX=%s CI_NODE_TOTAL=%s" % (args.env_vars, args.ci_node_index, args.ci_node_total)
-
     values = {}
     values['pipeline_info'] = args.pipeline_info
     values['base_system_url_prefix'] = args.base_system_url_prefix
     values['mesa_build_url'] = args.mesa_build_url
+    values['job_rootfs_overlay_url'] = args.job_rootfs_overlay_url
     values['device_type'] = args.device_type
     values['dtb'] = args.dtb
     values['kernel_image_name'] = args.kernel_image_name
@@ -64,7 +63,6 @@ def generate_lava_yaml(args):
     values['gpu_version'] = args.gpu_version
     values['boot_method'] = args.boot_method
     values['tags'] = args.lava_tags
-    values['env_vars'] = env_vars
     values['deqp_version'] = args.deqp_version
 
     if args.dump_yaml:
@@ -203,6 +201,7 @@ if __name__ == '__main__':
     parser.add_argument("--pipeline-info")
     parser.add_argument("--base-system-url-prefix")
     parser.add_argument("--mesa-build-url")
+    parser.add_argument("--job-rootfs-overlay-url")
     parser.add_argument("--device-type")
     parser.add_argument("--dtb", nargs='?', default="")
     parser.add_argument("--kernel-image-name")
@@ -210,7 +209,6 @@ if __name__ == '__main__':
     parser.add_argument("--gpu-version")
     parser.add_argument("--boot-method")
     parser.add_argument("--lava-tags", nargs='?', default="")
-    parser.add_argument("--env-vars", nargs='?', default="")
     parser.add_argument("--jwt")
     parser.add_argument("--deqp-version")
     parser.add_argument("--ci-node-index")

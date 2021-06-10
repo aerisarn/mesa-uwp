@@ -45,6 +45,7 @@ find . -path \*/ci/\*.txt \
 # packed separately in the zip file.
 mkdir -p artifacts/
 tar -cf artifacts/install.tar install
+cp -Rp .gitlab-ci/common artifacts/ci-common
 cp -Rp .gitlab-ci/lava artifacts/
 
 if [ -n "$MINIO_ARTIFACT_NAME" ]; then
