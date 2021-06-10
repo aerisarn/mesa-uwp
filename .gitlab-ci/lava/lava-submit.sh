@@ -19,6 +19,8 @@ tar zcf job-rootfs-overlay.tar.gz -C results/job-rootfs-overlay/ .
 ci-fairy minio login "${CI_JOB_JWT}"
 ci-fairy minio cp job-rootfs-overlay.tar.gz "minio://${JOB_ROOTFS_OVERLAY_PATH}"
 
+touch results/lava.log
+tail -f results/lava.log &
 artifacts/lava/lava_job_submitter.py \
 	--dump-yaml \
 	--template artifacts/lava/lava.yml.jinja2 \
@@ -32,4 +34,4 @@ artifacts/lava/lava_job_submitter.py \
 	--kernel-image-name ${KERNEL_IMAGE_NAME} \
 	--kernel-image-type "${KERNEL_IMAGE_TYPE}" \
 	--boot-method ${BOOT_METHOD} \
-	--lava-tags "${LAVA_TAGS}" | tee results/lava.log
+	--lava-tags "${LAVA_TAGS}" >> results/lava.log
