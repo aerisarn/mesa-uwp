@@ -69,6 +69,9 @@ def generate_lava_yaml(args):
 
     yaml = template.render(values)
 
+    if args.dump_yaml:
+        print(yaml)
+
     return yaml
 
 
@@ -210,6 +213,7 @@ if __name__ == '__main__':
     parser.add_argument("--ci-node-total")
     parser.add_argument("--job-type")
     parser.add_argument("--validate-only", action='store_true')
+    parser.add_argument("--dump-yaml", action='store_true')
 
     parser.set_defaults(func=main)
     args = parser.parse_args()
