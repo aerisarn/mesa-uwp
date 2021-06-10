@@ -155,7 +155,7 @@ iris-amly-egl:
   extends:
     - .lava-traces-base
   variables:
-    ENV_VARS: "EGL_PLATFORM=surfaceless PIGLIT_PROFILES=replay PIGLIT_JUNIT_RESULTS=1"
+    ENV_VARS: "EGL_PLATFORM=surfaceless PIGLIT_PROFILES=replay PIGLIT_JUNIT_RESULTS=1 PIGLIT_REPLAY_EXTRA_ARGS=--keep-image"
 
 .iris-apl-traces:
   variables:

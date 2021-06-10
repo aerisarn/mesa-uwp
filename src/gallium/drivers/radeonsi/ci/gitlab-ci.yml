@@ -46,7 +46,7 @@ radeonsi-stoney-traces:amd64:
     - .lava-piglit-traces:amd64
     - .radeonsi-stoney-test:amd64
   variables:
-    ENV_VARS: "EGL_PLATFORM=surfaceless PIGLIT_PROFILES=replay PIGLIT_JUNIT_RESULTS=1"
+    ENV_VARS: "EGL_PLATFORM=surfaceless PIGLIT_PROFILES=replay PIGLIT_JUNIT_RESULTS=1 PIGLIT_REPLAY_EXTRA_ARGS=--keep-image"
   tags:
     - mesa-ci-x86-64-lava-hp-11A-G6-EE-grunt
 
