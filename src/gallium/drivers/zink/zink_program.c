@@ -110,7 +110,7 @@ shader_key_vs_gen(struct zink_context *ctx, struct zink_shader *zs,
    struct zink_vs_key *vs_key = &key->key.vs;
    key->size = sizeof(struct zink_vs_key);
 
-   vs_key->clip_halfz = ctx->rast_state->base.clip_halfz;
+   vs_key->clip_halfz = ctx->rast_state && ctx->rast_state->base.clip_halfz;
    switch (zs->nir->info.stage) {
    case MESA_SHADER_VERTEX:
       vs_key->last_vertex_stage = !shaders[PIPE_SHADER_TESS_EVAL] && !shaders[PIPE_SHADER_GEOMETRY];
@@ -142,10 +142,12 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
    if (zs->nir->info.outputs_written & (1 << FRAG_RESULT_SAMPLE_MASK))
       fs_key->samples = !!ctx->fb_state.samples;
    fs_key->force_dual_color_blend = screen->driconf.dual_color_blend_by_location &&
+                                    ctx->gfx_pipeline_state.blend_state &&
                                     ctx->gfx_pipeline_state.blend_state->dual_src_blend &&
                                     ctx->gfx_pipeline_state.blend_state->attachments[1].blendEnable;
    if (((shaders[PIPE_SHADER_GEOMETRY] && shaders[PIPE_SHADER_GEOMETRY]->nir->info.gs.output_primitive == GL_POINTS) ||
-       ctx->gfx_prim_mode == PIPE_PRIM_POINTS) && ctx->rast_state->base.point_quad_rasterization && ctx->rast_state->base.sprite_coord_enable) {
+       ctx->gfx_prim_mode == PIPE_PRIM_POINTS) &&
+       ctx->rast_state &&ctx->rast_state->base.point_quad_rasterization && ctx->rast_state->base.sprite_coord_enable) {
       fs_key->coord_replace_bits = ctx->rast_state->base.sprite_coord_enable;
       fs_key->coord_replace_yinvert = !!ctx->rast_state->base.sprite_coord_mode;
    }
