@@ -15,6 +15,10 @@ fi
 
 dest=include/android_stub
 
+# Persist the frozen Android N system/window.h for backward compatibility
+
+cp -av ${dest}/system/window.h platform-system-core/libsystem/include/system
+
 rm -rf ${dest}
 mkdir ${dest}
 

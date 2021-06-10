@@ -44,6 +44,7 @@
 
 #include "loader.h"
 #include "egl_dri2.h"
+#include "platform_android.h"
 
 #ifdef HAVE_DRM_GRALLOC
 #include <gralloc_drm_handle.h>
@@ -1334,7 +1335,7 @@ droid_display_shared_buffer(__DRIdrawable *driDrawable, int fence_fd,
    }
 
    if (ANativeWindow_queueBuffer(dri2_surf->window, dri2_surf->buffer,
-                                      fence_fd)) {
+                                 fence_fd)) {
       _eglLog(_EGL_WARNING, "%s: ANativeWindow_queueBuffer failed", __func__);
       close(fence_fd);
       return;
@@ -1343,7 +1344,7 @@ droid_display_shared_buffer(__DRIdrawable *driDrawable, int fence_fd,
    fence_fd = -1;
 
    if (ANativeWindow_dequeueBuffer(dri2_surf->window, &dri2_surf->buffer,
-                                        &fence_fd)) {
+                                   &fence_fd)) {
       /* Tear down the surface because it no longer has a back buffer. */
       struct dri2_egl_display *dri2_dpy =
          dri2_egl_display(dri2_surf->base.Resource.Display);
