@@ -185,7 +185,7 @@ void lower_divergent_bool_phi(Program *program, ssa_state *state, Block *block, 
 
    uint64_t undef_operands = 0;
    for (unsigned i = 0; i < phi->operands.size(); i++)
-      undef_operands |= phi->operands[i].isUndefined() << i;
+      undef_operands |= (uint64_t)phi->operands[i].isUndefined() << i;
 
    if (state->needs_init || undef_operands != state->cur_undef_operands ||
        block->logical_preds.size() > 64) {
