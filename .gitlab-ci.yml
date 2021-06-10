@@ -8,6 +8,8 @@ variables:
   MINIO_HOST: minio-packet.freedesktop.org
   # per-pipeline artifact storage on MinIO
   PIPELINE_ARTIFACTS_BASE: ${MINIO_HOST}/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}
+  # per-job artifact storage on MinIO
+  JOB_ARTIFACTS_BASE: ${PIPELINE_ARTIFACTS_BASE}/${CI_JOB_ID}
 
 include:
   - project: 'freedesktop/ci-templates'

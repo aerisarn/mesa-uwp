@@ -117,7 +117,6 @@ actions:
           - export XDG_CACHE_HOME=/tmp
 
           - export PYTHONPATH=$(python3 -c "import sys;print(\":\".join(sys.path))")
-          - export MINIO_ARTIFACTS_PATH="minio://${MINIO_HOST}/${PIGLIT_REPLAY_ARTIFACTS_BASE_URL}/"
           - export LIBGL_DRIVERS_PATH=/install/lib/dri
 
           # If we want Xorg to be running for the test, then we start it up before the
@@ -145,7 +144,7 @@ actions:
           - "if [ -d results ]; then
                 tar -czf results.tar.gz results/;
                 ci-fairy minio login $CI_JOB_JWT;
-                ci-fairy minio cp results.tar.gz $MINIO_ARTIFACTS_PATH/results.tar.gz;
+                ci-fairy minio cp results.tar.gz minio://${JOB_ARTIFACTS_BASE}/results.tar.gz;
              fi"
 
           - "echo mesa: $RESULT"
