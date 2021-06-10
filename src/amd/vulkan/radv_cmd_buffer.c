@@ -2501,9 +2501,8 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
    bool disable_constant_encode_ac01 = false;
 
-   for (i = 0; i < 8; ++i) {
-      if (i >= subpass->color_count ||
-          subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED) {
+   for (i = 0; i < subpass->color_count; ++i) {
+      if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED) {
          radeon_set_context_reg(cmd_buffer->cs, R_028C70_CB_COLOR0_INFO + i * 0x3C,
                                 S_028C70_FORMAT(V_028C70_COLOR_INVALID));
          continue;
@@ -2531,6 +2530,11 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
          disable_constant_encode_ac01 = true;
       }
    }
+   for (; i < cmd_buffer->state.last_subpass_color_count; i++) {
+      radeon_set_context_reg(cmd_buffer->cs, R_028C70_CB_COLOR0_INFO + i * 0x3C,
+                             S_028C70_FORMAT(V_028C70_COLOR_INVALID));
+   }
+   cmd_buffer->state.last_subpass_color_count = subpass->color_count;
 
    if (subpass->depth_stencil_attachment) {
       int idx = subpass->depth_stencil_attachment->attachment;
@@ -4623,6 +4627,7 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    cmd_buffer->state.last_vertex_offset = -1;
    cmd_buffer->state.last_first_instance = -1;
    cmd_buffer->state.last_drawid = -1;
+   cmd_buffer->state.last_subpass_color_count = MAX_RTS;
    cmd_buffer->state.predication_type = -1;
    cmd_buffer->state.last_sx_ps_downconvert = -1;
    cmd_buffer->state.last_sx_blend_opt_epsilon = -1;
@@ -5774,6 +5779,7 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
       primary->state.last_first_instance = secondary->state.last_first_instance;
       primary->state.last_num_instances = secondary->state.last_num_instances;
       primary->state.last_drawid = secondary->state.last_drawid;
+      primary->state.last_subpass_color_count = secondary->state.last_subpass_color_count;
       primary->state.last_vertex_offset = secondary->state.last_vertex_offset;
       primary->state.last_sx_ps_downconvert = secondary->state.last_sx_ps_downconvert;
       primary->state.last_sx_blend_opt_epsilon = secondary->state.last_sx_blend_opt_epsilon;
