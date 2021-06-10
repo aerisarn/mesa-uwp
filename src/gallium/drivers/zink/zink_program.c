@@ -203,7 +203,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
    uint32_t hash;
    unsigned base_size = 0;
 
-   shader_key_vtbl[stage](ctx, zs, ctx->gfx_stages, &key);
+   shader_key_vtbl[stage](ctx, zs, prog->shaders, &key);
    /* this is default variant if there is no default or it matches the default */
    if (prog->default_variant_key[pstage]) {
       const struct keybox *tmp = prog->default_variant_key[pstage];
