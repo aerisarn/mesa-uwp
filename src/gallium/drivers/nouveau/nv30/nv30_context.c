@@ -191,7 +191,6 @@ nv30_context_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
 {
    struct nv30_screen *screen = nv30_screen(pscreen);
    struct nv30_context *nv30 = CALLOC_STRUCT(nv30_context);
-   struct nouveau_pushbuf *push;
    struct pipe_context *pipe;
    int ret;
 
@@ -199,7 +198,6 @@ nv30_context_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
       return NULL;
 
    nv30->screen = screen;
-   nv30->base.screen = &screen->base;
    nv30->base.copy_data = nv30_transfer_copy_data;
 
    pipe = &nv30->base.pipe;
@@ -208,20 +206,15 @@ nv30_context_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    pipe->destroy = nv30_context_destroy;
    pipe->flush = nv30_context_flush;
 
+   nouveau_context_init(&nv30->base, &screen->base);
+   nv30->base.pushbuf->kick_notify = nv30_context_kick_notify;
+
    nv30->base.pipe.stream_uploader = u_upload_create_default(&nv30->base.pipe);
    if (!nv30->base.pipe.stream_uploader) {
       nv30_context_destroy(pipe);
       return NULL;
    }
    nv30->base.pipe.const_uploader = nv30->base.pipe.stream_uploader;
-
-   /*XXX: *cough* per-context client */
-   nv30->base.client = screen->base.client;
-
-   /*XXX: *cough* per-context pushbufs */
-   push = screen->base.pushbuf;
-   nv30->base.pushbuf = push;
-   push->kick_notify = nv30_context_kick_notify;
 
    nv30->base.invalidate_resource_storage = nv30_invalidate_resource_storage;
 
@@ -244,7 +237,6 @@ nv30_context_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    if (debug_get_bool_option("NV30_SWTNL", false))
       nv30->draw_flags |= NV30_NEW_SWTNL;
 
-   nouveau_context_init(&nv30->base);
    nv30->sample_mask = 0xffff;
    nv30_vbo_init(pipe);
    nv30_query_init(pipe);

@@ -66,7 +66,7 @@ void
 nouveau_context_init_vdec(struct nouveau_context *);
 
 void
-nouveau_context_init(struct nouveau_context *);
+nouveau_context_init(struct nouveau_context *, struct nouveau_screen *);
 
 void
 nouveau_scratch_runout_release(struct nouveau_context *);

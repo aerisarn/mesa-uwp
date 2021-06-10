@@ -425,8 +425,7 @@ nvc0_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    if (!nvc0_blitctx_create(nvc0))
       goto out_err;
 
-   nvc0->base.pushbuf = screen->base.pushbuf;
-   nvc0->base.client = screen->base.client;
+   nouveau_context_init(&nvc0->base, &screen->base);
 
    ret = nouveau_bufctx_new(nvc0->base.client, 2, &nvc0->bufctx);
    if (!ret)
@@ -439,8 +438,6 @@ nvc0_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
       goto out_err;
 
    nvc0->screen = screen;
-   nvc0->base.screen = &screen->base;
-
    pipe->screen = pscreen;
    pipe->priv = priv;
    pipe->stream_uploader = u_upload_create_default(pipe);
@@ -464,7 +461,6 @@ nvc0_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    pipe->emit_string_marker = nvc0_emit_string_marker;
    pipe->get_device_reset_status = nvc0_get_device_reset_status;
 
-   nouveau_context_init(&nvc0->base);
    nvc0_init_query_functions(nvc0);
    nvc0_init_surface_functions(nvc0);
    nvc0_init_state_functions(nvc0);

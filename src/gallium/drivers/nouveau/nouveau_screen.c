@@ -409,7 +409,11 @@ nouveau_set_debug_callback(struct pipe_context *pipe,
 }
 
 void
-nouveau_context_init(struct nouveau_context *context)
+nouveau_context_init(struct nouveau_context *context, struct nouveau_screen *screen)
 {
    context->pipe.set_debug_callback = nouveau_set_debug_callback;
+
+   context->screen = screen;
+   context->client = screen->client;
+   context->pushbuf = screen->pushbuf;
 }

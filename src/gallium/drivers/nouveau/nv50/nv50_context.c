@@ -313,8 +313,7 @@ nv50_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    if (!nv50_blitctx_create(nv50))
       goto out_err;
 
-   nv50->base.pushbuf = screen->base.pushbuf;
-   nv50->base.client = screen->base.client;
+   nouveau_context_init(&nv50->base, &screen->base);
 
    ret = nouveau_bufctx_new(nv50->base.client, 2, &nv50->bufctx);
    if (!ret)
@@ -326,7 +325,6 @@ nv50_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    if (ret)
       goto out_err;
 
-   nv50->base.screen    = &screen->base;
    nv50->base.copy_data = nv50_m2mf_copy_linear;
    nv50->base.push_data = nv50_sifc_linear_u8;
    nv50->base.push_cb   = nv50_cb_push;
@@ -361,7 +359,6 @@ nv50_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    }
    nv50->base.pushbuf->kick_notify = nv50_default_kick_notify;
 
-   nouveau_context_init(&nv50->base);
    nv50_init_query_functions(nv50);
    nv50_init_surface_functions(nv50);
    nv50_init_state_functions(nv50);
