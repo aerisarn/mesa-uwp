@@ -534,6 +534,10 @@ if with_dri
   endif
 endif
 
+if with_gallium_kmsro and (with_platform_x11 and not with_dri3)
+  error('kmsro requires dri3 for X11 support')
+endif
+
 _vdpau = get_option('gallium-vdpau')
 if _vdpau == 'true'
   _vdpau = 'enabled'
