@@ -543,7 +543,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_robustness2                                    DONE (anv, radv, tu)
   VK_EXT_sample_locations                               DONE (anv, radv/gfx9-, tu/a650)
   VK_EXT_shader_atomic_float                            DONE (anv, radv)
-  VK_EXT_shader_atomic_float2                           DONE (anv/gen9+)
+  VK_EXT_shader_atomic_float2                           DONE (anv/gen9+, radv)
   VK_EXT_shader_demote_to_helper_invocation             DONE (anv, radv, tu)
   VK_EXT_shader_image_atomic_int64                      DONE (radv)
   VK_EXT_shader_stencil_export                          DONE (anv/gen9+, lvp, radv, tu)

@@ -216,6 +216,8 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
    case nir_intrinsic_image_deref_atomic_xor:
    case nir_intrinsic_image_deref_atomic_exchange:
    case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_image_deref_atomic_fmin:
+   case nir_intrinsic_image_deref_atomic_fmax:
    case nir_intrinsic_image_deref_size: {
       nir_variable *var =
          nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
@@ -231,7 +233,9 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
           instr->intrinsic == nir_intrinsic_image_deref_atomic_or ||
           instr->intrinsic == nir_intrinsic_image_deref_atomic_xor ||
           instr->intrinsic == nir_intrinsic_image_deref_atomic_exchange ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap) {
+          instr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap ||
+          instr->intrinsic == nir_intrinsic_image_deref_atomic_fmin ||
+          instr->intrinsic == nir_intrinsic_image_deref_atomic_fmax) {
          set_writes_memory(nir, info);
       }
       break;
@@ -247,6 +251,8 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
    case nir_intrinsic_ssbo_atomic_xor:
    case nir_intrinsic_ssbo_atomic_exchange:
    case nir_intrinsic_ssbo_atomic_comp_swap:
+   case nir_intrinsic_ssbo_atomic_fmin:
+   case nir_intrinsic_ssbo_atomic_fmax:
    case nir_intrinsic_store_global:
    case nir_intrinsic_global_atomic_add:
    case nir_intrinsic_global_atomic_imin:
@@ -258,6 +264,8 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
    case nir_intrinsic_global_atomic_xor:
    case nir_intrinsic_global_atomic_exchange:
    case nir_intrinsic_global_atomic_comp_swap:
+   case nir_intrinsic_global_atomic_fmin:
+   case nir_intrinsic_global_atomic_fmax:
       set_writes_memory(nir, info);
       break;
    case nir_intrinsic_load_input:
