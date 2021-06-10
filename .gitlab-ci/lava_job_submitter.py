@@ -154,6 +154,12 @@ def show_job_data(proxy, job_id):
         print("{}\t: {}".format(field, value))
 
 
+def validate_job(proxy, job_file):
+    try:
+        return _call_proxy(proxy.scheduler.jobs.validate, job_file, True)
+    except:
+        return False
+
 def submit_job(proxy, job_file):
     return _call_proxy(proxy.scheduler.jobs.submit, job_file)
 
@@ -162,6 +168,14 @@ def main(args):
     proxy = setup_lava_proxy()
 
     yaml_file = generate_lava_yaml(args)
+
+    if args.validate_only:
+        ret = validate_job(proxy, yaml_file)
+        if not ret:
+            sys.exit(log_msg("Error in LAVA job definition"))
+        print("LAVA job definition validated successfully")
+        return
+
 
     while True:
         job_id = submit_job(proxy, yaml_file)
@@ -195,6 +209,7 @@ if __name__ == '__main__':
     parser.add_argument("--ci-node-index")
     parser.add_argument("--ci-node-total")
     parser.add_argument("--job-type")
+    parser.add_argument("--validate-only", action='store_true')
 
     parser.set_defaults(func=main)
     args = parser.parse_args()
