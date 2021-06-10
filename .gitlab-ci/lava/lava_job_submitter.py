@@ -67,10 +67,13 @@ def generate_lava_yaml(args):
     values['env_vars'] = env_vars
     values['deqp_version'] = args.deqp_version
 
-    yaml = template.render(values)
-
     if args.dump_yaml:
-        print(yaml)
+        dump_values = values
+        dump_values['jwt'] = 'xxx'
+        print(template.render(dump_values))
+
+    values['jwt'] = args.jwt
+    yaml = template.render(values)
 
     return yaml
 
@@ -208,6 +211,7 @@ if __name__ == '__main__':
     parser.add_argument("--boot-method")
     parser.add_argument("--lava-tags", nargs='?', default="")
     parser.add_argument("--env-vars", nargs='?', default="")
+    parser.add_argument("--jwt")
     parser.add_argument("--deqp-version")
     parser.add_argument("--ci-node-index")
     parser.add_argument("--ci-node-total")

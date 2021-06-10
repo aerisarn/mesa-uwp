@@ -96,6 +96,7 @@ actions:
 {% if env_vars %}
           - export {{ env_vars }}
 {% endif %}
+          - export CI_JOB_JWT="{{ jwt }}"
 
           # runner script assumes some stuff is in pwd
           - cd /
