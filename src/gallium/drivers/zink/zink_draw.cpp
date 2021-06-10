@@ -186,7 +186,7 @@ update_gfx_program(struct zink_context *ctx)
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
       ctx->last_vertex_stage_dirty = false;
    }
-   unsigned bits = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);
+   unsigned bits = BITFIELD_MASK(PIPE_SHADER_COMPUTE);
    if (ctx->dirty_shader_stages & bits) {
       struct zink_gfx_program *prog = NULL;
 
