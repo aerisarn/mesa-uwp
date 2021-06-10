@@ -785,7 +785,7 @@ bo_free(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (!bo->userptr)
+   if (!bo->userptr && bo->map)
       bo_unmap(bo);
 
    if (bo->idle) {
