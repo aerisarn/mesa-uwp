@@ -34,13 +34,6 @@ bi_is_copy(bi_instr *ins)
                                 || ins->src[0].type == BI_INDEX_CONSTANT);
 }
 
-static inline unsigned
-bi_word_node(bi_index idx)
-{
-        assert(idx.type == BI_INDEX_NORMAL && !idx.reg);
-        return (idx.value << 2) | idx.offset;
-}
-
 static bool
 bi_reads_fau(bi_instr *ins)
 {

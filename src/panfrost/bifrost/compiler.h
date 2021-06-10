@@ -989,6 +989,12 @@ bi_builder_insert(bi_cursor *cursor, bi_instr *I)
     unreachable("Invalid cursor option");
 }
 
+static inline unsigned
+bi_word_node(bi_index idx)
+{
+        assert(idx.type == BI_INDEX_NORMAL && !idx.reg);
+        return (idx.value << 2) | idx.offset;
+}
 
 /* NIR passes */
 
