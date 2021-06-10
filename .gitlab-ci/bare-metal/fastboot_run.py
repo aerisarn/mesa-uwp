@@ -57,10 +57,11 @@ class FastbootRun:
                 break
 
             if re.search("data abort", line):
-                return 1
+                self.print_error("Detected crash during boot, restarting run...")
+                return 2
 
         if not fastboot_ready:
-            self.print_error("Failed to get to fastboot prompt")
+            self.print_error("Failed to get to fastboot prompt, restarting run...")
             return 2
 
         if self.logged_system(self.fastboot) != 0:
