@@ -2365,10 +2365,13 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
 {
         struct panfrost_context *ctx = batch->ctx;
 
-        /* If rasterizer discard is enable, only submit the vertex */
+        /* If rasterizer discard is enable, only submit the vertex. XXX - set
+         * job_barrier in case buffers get ping-ponged and we need to enforce
+         * ordering, this has a perf hit! See
+         * KHR-GLES31.core.vertex_attrib_binding.advanced-iterations */
 
         unsigned vertex = panfrost_add_job(&batch->pool, &batch->scoreboard,
-                                           MALI_JOB_TYPE_VERTEX, false, false,
+                                           MALI_JOB_TYPE_VERTEX, true, false,
                                            ctx->indirect_draw ?
                                            batch->indirect_draw_job_id : 0,
                                            0, vertex_job, false);
