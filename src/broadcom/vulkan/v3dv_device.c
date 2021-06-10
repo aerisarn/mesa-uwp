@@ -1010,6 +1010,22 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 {
    v3dv_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
 
+   VkPhysicalDeviceVulkan11Features vk11 = {
+      .storageBuffer16BitAccess = false,
+      .uniformAndStorageBuffer16BitAccess = false,
+      .storagePushConstant16 = false,
+      .storageInputOutput16 = false,
+      .multiview = false,
+      .multiviewGeometryShader = false,
+      .multiviewTessellationShader = false,
+      .variablePointersStorageBuffer = true,
+      /* FIXME: this needs support for non-constant index on UBO/SSBO */
+      .variablePointers = false,
+      .protectedMemory = false,
+      .samplerYcbcrConversion = false,
+      .shaderDrawParameters = false,
+   };
+
    vk_foreach_struct(ext, pFeatures->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
@@ -1025,15 +1041,53 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->privateData = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
-         VkPhysicalDeviceVariablePointersFeatures *features = (void *) ext;
-         features->variablePointersStorageBuffer = true;
-         /* FIXME: for this we need to support non-constant indexing on
-          * UBO/SSBO.
-          */
-         features->variablePointers = false;
+
+      /* Vulkan 1.1 */
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
+         VkPhysicalDeviceVulkan11Features *features =
+            (VkPhysicalDeviceVulkan11Features *)ext;
+         memcpy(features, &vk11, sizeof(VkPhysicalDeviceVulkan11Features));
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+         VkPhysicalDevice16BitStorageFeatures *features = (void *) ext;
+         features->storageBuffer16BitAccess = vk11.storageBuffer16BitAccess;
+         features->uniformAndStorageBuffer16BitAccess =
+            vk11.uniformAndStorageBuffer16BitAccess;
+         features->storagePushConstant16 = vk11.storagePushConstant16;
+         features->storageInputOutput16 = vk11.storageInputOutput16;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
+         VkPhysicalDeviceMultiviewFeatures *features = (void *) ext;
+         features->multiview = vk11.multiview;
+         features->multiviewGeometryShader = vk11.multiviewGeometryShader;
+         features->multiviewTessellationShader = vk11.multiviewTessellationShader;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
+         VkPhysicalDeviceProtectedMemoryFeatures *features = (void *) ext;
+         features->protectedMemory = vk11.protectedMemory;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
+         VkPhysicalDeviceSamplerYcbcrConversionFeatures *features = (void *) ext;
+         features->samplerYcbcrConversion = vk11.samplerYcbcrConversion;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
+         VkPhysicalDeviceShaderDrawParametersFeatures *features = (void *) ext;
+         features->shaderDrawParameters = vk11.shaderDrawParameters;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
+         VkPhysicalDeviceVariablePointersFeatures *features = (void *) ext;
+         features->variablePointersStorageBuffer =
+            vk11.variablePointersStorageBuffer;
+         features->variablePointers = vk11.variablePointers;
+         break;
+      }
+
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
@@ -1291,18 +1345,6 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          id_props->deviceLUIDValid = false;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
-         /* Do nothing, not even logging. This is a non-PCI device, so we will
-          * never provide this extension.
-          */
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
-         VkPhysicalDevicePointClippingProperties *props =
-            (VkPhysicalDevicePointClippingProperties *)ext;
-         props->pointClippingBehavior =
-            VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
          VkPhysicalDeviceMaintenance3Properties *props =
             (VkPhysicalDeviceMaintenance3Properties *)ext;
@@ -1324,6 +1366,42 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
          /* Minimum required by the spec */
          props->maxMemoryAllocationSize = MAX_MEMORY_ALLOCATION_SIZE;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
+         VkPhysicalDeviceMultiviewProperties *props =
+            (VkPhysicalDeviceMultiviewProperties *)ext;
+         props->maxMultiviewViewCount = 1;
+         /* This assumes that the multiview implementation uses instancing */
+         props->maxMultiviewInstanceIndex =
+            (UINT32_MAX / props->maxMultiviewViewCount) - 1;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
+         /* Do nothing, not even logging. This is a non-PCI device, so we will
+          * never provide this extension.
+          */
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+         VkPhysicalDevicePointClippingProperties *props =
+            (VkPhysicalDevicePointClippingProperties *)ext;
+         props->pointClippingBehavior =
+            VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
+         VkPhysicalDeviceProtectedMemoryProperties *props =
+            (VkPhysicalDeviceProtectedMemoryProperties *)ext;
+         props->protectedNoFault = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
+         VkPhysicalDeviceSubgroupProperties *props =
+            (VkPhysicalDeviceSubgroupProperties *)ext;
+         props->subgroupSize = 1;
+         props->supportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
+         props->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
+         props->quadOperationsInAllStages = false;
          break;
       }
       default:
