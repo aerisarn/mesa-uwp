@@ -30,6 +30,7 @@ import lavacli
 import os
 import sys
 import time
+import traceback
 import urllib.parse
 import xmlrpc
 import yaml
@@ -97,11 +98,13 @@ def _call_proxy(fn, *args):
             return fn(*args)
         except xmlrpc.client.ProtocolError as err:
             if n == retries:
+                traceback.print_exc()
                 sys.exit(log_msg("A protocol error occurred (Err {} {})".format(err.errcode, err.errmsg)))
             else:
                 time.sleep(15)
                 pass
         except xmlrpc.client.Fault as err:
+            traceback.print_exc()
             sys.exit(log_msg("FATAL: Fault: {} (code: {})".format(err.faultString, err.faultCode)))
 
 
