@@ -39,13 +39,12 @@ from datetime import datetime
 from lavacli.utils import loader
 
 
-def log_msg(msg):
-    return "{}: {}".format(datetime.now(), msg)
-
-
 def print_log(msg):
-    print(log_msg(msg))
+    print("{}: {}".format(datetime.now(), msg))
 
+def fatal_err(msg):
+    print_log(msg)
+    sys.exit(1)
 
 def generate_lava_yaml(args):
     env = jinja2.Environment(loader = jinja2.FileSystemLoader(os.path.dirname(args.template)), trim_blocks=True, lstrip_blocks=True)
@@ -101,13 +100,13 @@ def _call_proxy(fn, *args):
         except xmlrpc.client.ProtocolError as err:
             if n == retries:
                 traceback.print_exc()
-                sys.exit(log_msg("A protocol error occurred (Err {} {})".format(err.errcode, err.errmsg)))
+                fatal_err("A protocol error occurred (Err {} {})".format(err.errcode, err.errmsg))
             else:
                 time.sleep(15)
                 pass
         except xmlrpc.client.Fault as err:
             traceback.print_exc()
-            sys.exit(log_msg("FATAL: Fault: {} (code: {})".format(err.faultString, err.faultCode)))
+            fatal_err("FATAL: Fault: {} (code: {})".format(err.faultString, err.faultCode))
 
 
 def get_job_results(proxy, job_id, test_suite, test_case):
@@ -128,11 +127,11 @@ def get_job_results(proxy, job_id, test_suite, test_case):
     results_yaml = _call_proxy(proxy.results.get_testcase_results_yaml, job_id, test_suite, test_case)
     results = yaml.load(results_yaml, Loader=loader(False))
     if not results:
-        sys.exit(log_msg("LAVA: no result for test_suite '{}', test_case '{}'".format(test_suite, test_case)))
+        fatal_err("LAVA: no result for test_suite '{}', test_case '{}'".format(test_suite, test_case))
 
     print_log("LAVA: result for test_suite '{}', test_case '{}': {}".format(test_suite, test_case, results[0]['result']))
     if results[0]['result'] != 'pass':
-        sys.exit(log_msg("FAIL"))
+        fatal_err("FAIL")
 
     return True
 
@@ -174,7 +173,7 @@ def main(args):
     if args.validate_only:
         ret = validate_job(proxy, yaml_file)
         if not ret:
-            sys.exit(log_msg("Error in LAVA job definition"))
+            fatal_err("Error in LAVA job definition")
         print("LAVA job definition validated successfully")
         return
 
