@@ -29,6 +29,16 @@
 #error This file is included by means other than v3dv_private.h
 #endif
 
+/* Used at v3dv_image */
+
+void
+v3dX(pack_texture_shader_state)(struct v3dv_device *device,
+                                struct v3dv_image_view *iview);
+
+void
+v3dX(pack_texture_shader_state_from_buffer_view)(struct v3dv_device *device,
+                                                 struct v3dv_buffer_view *buffer_view);
+
 /* Used at v3dv_pipeline */
 void
 v3dX(pipeline_pack_state)(struct v3dv_pipeline *pipeline,
