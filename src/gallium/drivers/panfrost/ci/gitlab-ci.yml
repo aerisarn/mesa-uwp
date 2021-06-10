@@ -205,7 +205,6 @@ panfrost-g52-gles31:arm64:
     DEVICE_TYPE: meson-gxm-khadas-vim2
     DTB: $DEVICE_TYPE
     GPU_VERSION: panfrost-t820
-    LAVA_TAGS: panfrost
     DEQP_PARALLEL: 6
     DEQP_EXPECTED_RENDERER: T820
   tags:
