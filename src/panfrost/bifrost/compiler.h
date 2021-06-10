@@ -707,6 +707,10 @@ bi_node_to_index(unsigned node, unsigned node_count)
         bi_foreach_block(ctx, v_block) \
                 bi_foreach_instr_in_block((bi_block *) v_block, v)
 
+#define bi_foreach_instr_global_rev(ctx, v) \
+        bi_foreach_block_rev(ctx, v_block) \
+                bi_foreach_instr_in_block_rev((bi_block *) v_block, v)
+
 #define bi_foreach_instr_global_safe(ctx, v) \
         bi_foreach_block(ctx, v_block) \
                 bi_foreach_instr_in_block_safe((bi_block *) v_block, v)
@@ -774,6 +778,8 @@ void bi_print_shader(bi_context *ctx, FILE *fp);
 /* BIR passes */
 
 void bi_opt_copy_prop(bi_context *ctx);
+void bi_opt_mod_prop_forward(bi_context *ctx);
+void bi_opt_mod_prop_backward(bi_context *ctx);
 void bi_opt_dead_code_eliminate(bi_context *ctx);
 void bi_opt_dce_post_ra(bi_context *ctx);
 void bi_opt_push_ubo(bi_context *ctx);
