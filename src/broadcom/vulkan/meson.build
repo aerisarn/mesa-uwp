@@ -53,6 +53,10 @@ libv3dv_files = files(
   'v3dv_wsi.c',
 )
 
+files_per_version = files(
+  'v3dvx_queue.c',
+)
+
 # The vulkan driver only supports version >= 42, which is the version present in
 # Rpi4. We need to explicitly set it as we are reusing pieces from the GL v3d
 # driver.
@@ -96,7 +100,7 @@ endif
 
 libvulkan_broadcom = shared_library(
   'vulkan_broadcom',
-  [libv3dv_files, v3dv_entrypoints, sha1_h],
+  [libv3dv_files, files_per_version, v3dv_entrypoints, sha1_h],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_broadcom, inc_compiler, inc_util, inc_vulkan_wsi,
   ],
