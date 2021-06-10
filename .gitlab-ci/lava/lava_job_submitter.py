@@ -192,6 +192,11 @@ def main(args):
 
 
 if __name__ == '__main__':
+    # given that we proxy from DUT -> LAVA dispatcher -> LAVA primary -> us ->
+    # GitLab runner -> GitLab primary -> user, safe to say we don't need any
+    # more buffering
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
     parser = argparse.ArgumentParser("LAVA job submitter")
 
     parser.add_argument("--template")
