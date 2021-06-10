@@ -2705,7 +2705,6 @@ void util_blitter_custom_color(struct blitter_context *blitter,
                                              : ctx->blend[PIPE_MASK_RGBA][0]);
    pipe->bind_depth_stencil_alpha_state(pipe, ctx->dsa_keep_depth_stencil);
    bind_fs_write_one_cbuf(ctx);
-   pipe->set_sample_mask(pipe, (1ull << MAX2(1, dstsurf->texture->nr_samples)) - 1);
 
    /* set a framebuffer state */
    fb_state.width = dstsurf->width;
@@ -2768,7 +2767,6 @@ void util_blitter_custom_shader(struct blitter_context *blitter,
    pipe->bind_blend_state(pipe, ctx->blend[PIPE_MASK_RGBA][0]);
    pipe->bind_depth_stencil_alpha_state(pipe, ctx->dsa_keep_depth_stencil);
    pipe->bind_fs_state(pipe, custom_fs);
-   pipe->set_sample_mask(pipe, (1ull << MAX2(1, dstsurf->texture->nr_samples)) - 1);
 
    /* set a framebuffer state */
    fb_state.width = dstsurf->width;
