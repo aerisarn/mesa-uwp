@@ -2904,9 +2904,6 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
                 }
         }
 
-        /* tuples = ((# of instructions) + (# of nops)) / 2 */
-        unsigned nr_nops = (2 * nr_tuples) - nr_ins;
-
         /* In the future, we'll calculate thread count for v7. For now we
          * always use fewer threads than we should (v6 style) due to missing
          * piping, TODO: fix that for a nice perf win */
@@ -2915,13 +2912,13 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
         /* Dump stats */
 
         fprintf(stderr, "%s - %s shader: "
-                        "%u inst, %u nops, %u clauses, "
+                        "%u inst, %u tuples, %u clauses, "
                         "%u quadwords, %u threads, %u loops, "
                         "%u:%u spills:fills\n",
                         ctx->nir->info.label ?: "",
                         ctx->inputs->is_blend ? "PAN_SHADER_BLEND" :
                         gl_shader_stage_name(ctx->stage),
-                        nr_ins, nr_nops, nr_clauses,
+                        nr_ins, nr_tuples, nr_clauses,
                         size / 16, nr_threads,
                         ctx->loop_count,
                         ctx->spills, ctx->fills);
