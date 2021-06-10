@@ -344,6 +344,10 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
       (var->data.location == FRAG_RESULT_COLOR) ? 0 :
       (var->data.location - FRAG_RESULT_DATA0);
 
+   /* No blend lowering requested on this RT */
+   if (options->format[rt] == PIPE_FORMAT_NONE)
+      return false;
+
    b->cursor = nir_before_instr(instr);
 
    /* Grab the input color */
