@@ -152,13 +152,13 @@ replay_minio_upload_images() {
             if [ "x$CI_PROJECT_PATH" != "x$FDO_UPSTREAM_REPO" ]; then
                 continue
             fi
-            __MINIO_PATH="$PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL"
+            __MINIO_PATH="$PIGLIT_REPLAY_REFERENCE_IMAGES_BASE"
             __DESTINATION_FILE_PATH="${line##*-}"
-            if wget -q --method=HEAD "${MINIO_HOST}${__MINIO_PATH}/${__DESTINATION_FILE_PATH}" 2>/dev/null; then
+            if wget -q --method=HEAD "https://${__MINIO_PATH}/${__DESTINATION_FILE_PATH}" 2>/dev/null; then
                 continue
             fi
         else
-            __MINIO_PATH="$PIGLIT_REPLAY_ARTIFACTS_BASE_URL"
+            __MINIO_PATH="$JOB_ARTIFACTS_BASE"
             __DESTINATION_FILE_PATH="$__MINIO_TRACES_PREFIX/${line##*-}"
             # Adding to the JUnit the direct link to the diff page in
             # the dashboard
@@ -175,7 +175,7 @@ replay_minio_upload_images() {
         fi
 
         ci-fairy minio cp $MINIO_ARGS "$RESULTS/$__PREFIX/$line" \
-            "minio://${MINIO_HOST}${__MINIO_PATH}/${__DESTINATION_FILE_PATH}"
+            "minio://${__MINIO_PATH}/${__DESTINATION_FILE_PATH}"
     done
 }
 

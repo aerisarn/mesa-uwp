@@ -106,10 +106,9 @@ actions:
           - export DEQP_NO_SAVE_RESULTS=1
           - export GPU_VERSION={{ gpu_version }}
           - export DEQP_VER={{ deqp_version }}
-          - export PIGLIT_REPLAY_ARTIFACTS_BASE_URL="/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
           - export PIGLIT_REPLAY_DESCRIPTION_FILE="/install/traces-${DRIVER_NAME}.yml"
           - export PIGLIT_REPLAY_DEVICE_NAME=gl-{{ gpu_version }}
-          - export PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL="/mesa-tracie-results/${CI_PROJECT_PATH}"
+          - export PIGLIT_REPLAY_REFERENCE_IMAGES_BASE="${MINIO_HOST}/mesa-tracie-results/${CI_PROJECT_PATH}"
           - export PIGLIT_RESULTS={{ gpu_version }}-${PIGLIT_PROFILES}
 
           - export CI_JOB_JWT="{{ jwt }}"
