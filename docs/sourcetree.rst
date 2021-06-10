@@ -121,7 +121,6 @@ each directory.
          -  **radeonsi** - Driver for AMD Southern Island and newer (GCN, RDNA).
          -  **softpipe** - Software reference driver.
          -  **svga** - Driver for VMware's SVGA virtual GPU.
-         -  **swr** - Software driver with massively parellel vertex processing.
          -  **tegra** - Driver for NVIDIA Tegra GPUs.
          -  **v3d** - Driver for Broadcom VideoCore 5 and newer.
          -  **vc4** - Driver for Broadcom VideoCore 4.

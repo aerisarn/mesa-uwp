@@ -449,8 +449,7 @@ Gallium environment variables
    files.
 :envvar:`GALLIUM_DRIVER`
    useful in combination with :envvar:`LIBGL_ALWAYS_SOFTWARE`=`true` for
-   choosing one of the software renderers ``softpipe``, ``llvmpipe`` or
-   ``swr``.
+   choosing one of the software renderers ``softpipe`` or ``llvmpipe``.
 :envvar:`GALLIUM_LOG_FILE`
    specifies a file for logging all errors, warnings, etc. rather than
    stderr.

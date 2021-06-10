@@ -296,7 +296,6 @@ The wrap file must define the following:
 It may also define:
 
 -  ``irbuilder_h``: a ``files()`` object pointing to llvm/IR/IRBuilder.h
-   (this is required for SWR)
 -  ``has_rtti``: a ``bool`` that declares whether LLVM was built with
    RTTI. Defaults to true
 
