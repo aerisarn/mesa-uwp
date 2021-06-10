@@ -1366,7 +1366,9 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		<bitfield high="1" low="1" name="CP_ME_BUSY" />
 		<bitfield high="0" low="0" name="HI_BUSY" />
 	</reg32>
-	<reg32 offset="0x0530" name="RBBM_STATUS3"/>
+	<reg32 offset="0x0530" name="RBBM_STATUS3">
+		<bitfield pos="24" name="SMMU_STALLED_ON_FAULT" type="boolean"/>
+	</reg32>
 	<reg32 offset="0x04e1" name="RBBM_INT_0_STATUS"/>
 	<reg32 offset="0x04f0" name="RBBM_AHB_ME_SPLIT_STATUS"/>
 	<reg32 offset="0x04f1" name="RBBM_AHB_PFP_SPLIT_STATUS"/>
