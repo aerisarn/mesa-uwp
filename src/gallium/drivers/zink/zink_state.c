@@ -310,12 +310,13 @@ zink_create_blend_state(struct pipe_context *pctx,
 static void
 zink_bind_blend_state(struct pipe_context *pctx, void *cso)
 {
+   struct zink_context *ctx = zink_context(pctx);
    struct zink_gfx_pipeline_state* state = &zink_context(pctx)->gfx_pipeline_state;
 
    if (state->blend_state != cso) {
       state->blend_state = cso;
       state->dirty = true;
-      zink_context(pctx)->blend_state_changed = true;
+      ctx->blend_state_changed = true;
    }
 }
 
