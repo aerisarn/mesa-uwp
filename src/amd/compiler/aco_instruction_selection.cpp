@@ -142,7 +142,8 @@ Temp emit_mbcnt(isel_context *ctx, Temp dst, Operand mask = Operand(), Operand b
    Operand mask_hi(-1u);
 
    if (mask.isTemp()) {
-      Builder::Result mask_split = bld.pseudo(aco_opcode::p_split_vector, bld.def(s1), bld.def(s1), mask);
+      RegClass rc = RegClass(mask.regClass().type(), 1);
+      Builder::Result mask_split = bld.pseudo(aco_opcode::p_split_vector, bld.def(rc), bld.def(rc), mask);
       mask_lo = Operand(mask_split.def(0).getTemp());
       mask_hi = Operand(mask_split.def(1).getTemp());
    } else if (mask.physReg() == exec) {
