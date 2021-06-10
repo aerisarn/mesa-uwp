@@ -22,16 +22,16 @@ actions:
       minutes: 10
     to: tftp
     kernel:
-      url: {{ base_artifacts_url }}/{{ kernel_image_name }}
+      url: {{ base_system_url_prefix }}/{{ kernel_image_name }}
 {% if kernel_image_type %}
       {{ kernel_image_type }}
 {% endif %}
     nfsrootfs:
-      url: {{ base_artifacts_url }}/lava-rootfs.tgz
+      url: {{ base_system_url_prefix }}/lava-rootfs.tgz
       compression: gz
 {% if dtb %}
     dtb:
-      url: {{ base_artifacts_url }}/{{ dtb }}.dtb
+      url: {{ base_system_url_prefix }}/{{ dtb }}.dtb
 {% endif %}
     os: oe
 - boot:
@@ -82,7 +82,7 @@ actions:
           - echo "$NFS_SERVER_IP caching-proxy" >> /etc/hosts
           - for i in 1 2 3; do sntp -sS pool.ntp.org && break || sleep 2; done
 
-          - wget -S --progress=dot:giga -O- {{ mesa_url }} | tar -xz
+          - wget -S --progress=dot:giga -O- {{ mesa_build_url }} | tar -xz
           - mkdir -p $CI_PROJECT_DIR
           - ln -sf /install $CI_PROJECT_DIR/install
 

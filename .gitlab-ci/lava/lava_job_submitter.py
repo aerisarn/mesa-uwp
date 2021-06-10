@@ -55,8 +55,8 @@ def generate_lava_yaml(args):
 
     values = {}
     values['pipeline_info'] = args.pipeline_info
-    values['base_artifacts_url'] = args.base_artifacts_url
-    values['mesa_url'] = args.mesa_url
+    values['base_system_url_prefix'] = args.base_system_url_prefix
+    values['mesa_build_url'] = args.mesa_build_url
     values['device_type'] = args.device_type
     values['dtb'] = args.dtb
     values['kernel_image_name'] = args.kernel_image_name
@@ -201,8 +201,8 @@ if __name__ == '__main__':
 
     parser.add_argument("--template")
     parser.add_argument("--pipeline-info")
-    parser.add_argument("--base-artifacts-url")
-    parser.add_argument("--mesa-url")
+    parser.add_argument("--base-system-url-prefix")
+    parser.add_argument("--mesa-build-url")
     parser.add_argument("--device-type")
     parser.add_argument("--dtb", nargs='?', default="")
     parser.add_argument("--kernel-image-name")
