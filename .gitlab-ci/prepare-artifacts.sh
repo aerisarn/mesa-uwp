@@ -51,7 +51,6 @@ if [ -n "$MINIO_ARTIFACT_NAME" ]; then
     # Pass needed files to the test stage
     MINIO_ARTIFACT_NAME="$MINIO_ARTIFACT_NAME.tar.gz"
     gzip -c artifacts/install.tar > ${MINIO_ARTIFACT_NAME}
-    MINIO_PATH=${MINIO_HOST}/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}
     ci-fairy minio login $CI_JOB_JWT
-    ci-fairy minio cp ${MINIO_ARTIFACT_NAME} minio://${MINIO_PATH}/${MINIO_ARTIFACT_NAME}
+    ci-fairy minio cp ${MINIO_ARTIFACT_NAME} minio://${PIPELINE_ARTIFACTS_BASE}/${MINIO_ARTIFACT_NAME}
 fi
