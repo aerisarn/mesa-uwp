@@ -175,20 +175,6 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
 }
 
 static void
-update_compute_program(struct zink_context *ctx)
-{
-   const unsigned bits = 1 << PIPE_SHADER_COMPUTE;
-   if (ctx->dirty_shader_stages & bits) {
-      struct zink_compute_program *comp = zink_create_compute_program(ctx, ctx->compute_stage);
-      _mesa_hash_table_insert(&ctx->compute_program_cache, comp->shader, comp);
-      ctx->compute_pipeline_state.dirty = true;
-      ctx->curr_compute = comp;
-      ctx->dirty_shader_stages &= bits;
-      zink_batch_reference_program(&ctx->batch, &ctx->curr_compute->base);
-   }
-}
-
-static void
 update_gfx_program(struct zink_context *ctx)
 {
    if (ctx->last_vertex_stage_dirty) {
@@ -774,8 +760,6 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    struct zink_batch *batch = &ctx->batch;
 
    update_barriers(ctx, true);
-
-   update_compute_program(ctx);
 
    if (zink_program_has_descriptors(&ctx->curr_compute->base))
       screen->descriptors_update(ctx, true);

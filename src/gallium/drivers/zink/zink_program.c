@@ -540,8 +540,6 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    assert(comp->module->shader);
    _mesa_hash_table_insert(&comp->base.shader_cache[0], shader, comp->module);
 
-   ctx->dirty_shader_stages &= ~(1 << PIPE_SHADER_COMPUTE);
-
    comp->pipelines = _mesa_hash_table_create(NULL, hash_compute_pipeline_state,
                                              equals_compute_pipeline_state);
 
@@ -883,8 +881,13 @@ bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
          if (entry) {
             ctx->compute_pipeline_state.dirty = true;
             ctx->curr_compute = entry->data;
-         } else
-            ctx->dirty_shader_stages |= 1 << stage;
+         } else {
+            struct zink_compute_program *comp = zink_create_compute_program(ctx, shader);
+            _mesa_hash_table_insert(&ctx->compute_program_cache, comp->shader, comp);
+            ctx->compute_pipeline_state.dirty = true;
+            ctx->curr_compute = comp;
+            zink_batch_reference_program(&ctx->batch, &ctx->curr_compute->base);
+         }
       } else if (!shader)
          ctx->curr_compute = NULL;
       ctx->compute_stage = shader;
