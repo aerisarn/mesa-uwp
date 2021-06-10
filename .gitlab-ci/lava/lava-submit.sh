@@ -28,9 +28,7 @@ artifacts/lava/lava_job_submitter.py \
 	--device-type ${DEVICE_TYPE} \
 	--dtb ${DTB} \
 	--jwt "${CI_JOB_JWT}" \
-	--deqp-version ${DEQP_VERSION} \
 	--kernel-image-name ${KERNEL_IMAGE_NAME} \
 	--kernel-image-type "${KERNEL_IMAGE_TYPE}" \
-	--gpu-version ${GPU_VERSION} \
 	--boot-method ${BOOT_METHOD} \
 	--lava-tags "${LAVA_TAGS}" | tee results/lava.log

@@ -60,10 +60,8 @@ def generate_lava_yaml(args):
     values['dtb'] = args.dtb
     values['kernel_image_name'] = args.kernel_image_name
     values['kernel_image_type'] = args.kernel_image_type
-    values['gpu_version'] = args.gpu_version
     values['boot_method'] = args.boot_method
     values['tags'] = args.lava_tags
-    values['deqp_version'] = args.deqp_version
 
     if args.dump_yaml:
         dump_values = values
@@ -206,14 +204,9 @@ if __name__ == '__main__':
     parser.add_argument("--dtb", nargs='?', default="")
     parser.add_argument("--kernel-image-name")
     parser.add_argument("--kernel-image-type", nargs='?', default="")
-    parser.add_argument("--gpu-version")
     parser.add_argument("--boot-method")
     parser.add_argument("--lava-tags", nargs='?', default="")
     parser.add_argument("--jwt")
-    parser.add_argument("--deqp-version")
-    parser.add_argument("--ci-node-index")
-    parser.add_argument("--ci-node-total")
-    parser.add_argument("--job-type")
     parser.add_argument("--validate-only", action='store_true')
     parser.add_argument("--dump-yaml", action='store_true')
 
