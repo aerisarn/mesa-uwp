@@ -1137,6 +1137,7 @@ lvp_queue_init(struct lvp_device *device, struct lvp_queue *queue)
 
    queue->flags = 0;
    queue->ctx = device->pscreen->context_create(device->pscreen, NULL, PIPE_CONTEXT_ROBUST_BUFFER_ACCESS);
+   queue->cso = cso_create_context(queue->ctx, CSO_NO_VBUF);
    list_inithead(&queue->workqueue);
    p_atomic_set(&queue->count, 0);
    mtx_init(&queue->m, mtx_plain);
@@ -1158,6 +1159,7 @@ lvp_queue_finish(struct lvp_queue *queue)
 
    cnd_destroy(&queue->new_work);
    mtx_destroy(&queue->m);
+   cso_destroy_context(queue->cso);
    queue->ctx->destroy(queue->ctx);
 }
 
