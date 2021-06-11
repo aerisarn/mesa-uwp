@@ -528,11 +528,12 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                         /* Track if any colour buffer is reused across draws, either
                          * from reading it directly, or from failing to write it */
                         unsigned rt_mask = ctx->fb_rt_mask;
+                        uint64_t rt_written = (fs->info.outputs_written >> FRAG_RESULT_DATA0);
                         bool blend_reads_dest = (so->load_dest_mask & rt_mask);
 
                         cfg.properties.bifrost.allow_forward_pixel_to_kill =
                                 fs->info.fs.can_fpk &&
-                                !(rt_mask & ~fs->info.outputs_written) &&
+                                !(rt_mask & ~rt_written) &&
                                 !alpha_to_coverage &&
                                 !blend_reads_dest;
                 } else if (!pan_is_bifrost(dev)) {
