@@ -156,6 +156,11 @@ typedef enum {
    ZINK_DYNAMIC_STATE,
 } zink_dynamic_state;
 
+typedef enum {
+   ZINK_NO_DYNAMIC_STATE2,
+   ZINK_DYNAMIC_STATE2,
+} zink_dynamic_state2;
+
 struct zink_context {
    struct pipe_context base;
    struct threaded_context *tc;

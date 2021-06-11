@@ -404,7 +404,8 @@ update_gfx_pipeline(struct zink_context *ctx, struct zink_batch_state *bs, enum 
    return pipeline_changed;
 }
 
-template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE, bool BATCH_CHANGED>
+template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE, zink_dynamic_state2 HAS_DYNAMIC_STATE2,
+          bool BATCH_CHANGED>
 void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo,
@@ -816,32 +817,40 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
       pctx->flush(pctx, NULL, 0);
 }
 
-template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE, bool BATCH_CHANGED>
+template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE, zink_dynamic_state2 HAS_DYNAMIC_STATE2, bool BATCH_CHANGED>
 static void
-init_batch_changed_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2])
+init_batch_changed_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2][2])
 {
-   draw_vbo_array[HAS_MULTIDRAW][HAS_DYNAMIC_STATE][BATCH_CHANGED] =
-   zink_draw_vbo<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, BATCH_CHANGED>;
+   draw_vbo_array[HAS_MULTIDRAW][HAS_DYNAMIC_STATE][HAS_DYNAMIC_STATE2][BATCH_CHANGED] =
+   zink_draw_vbo<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, HAS_DYNAMIC_STATE2, BATCH_CHANGED>;
+}
+
+template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE, zink_dynamic_state2 HAS_DYNAMIC_STATE2>
+static void
+init_dynamic_state2_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2][2])
+{
+   init_batch_changed_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, HAS_DYNAMIC_STATE2, false>(ctx, draw_vbo_array);
+   init_batch_changed_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, HAS_DYNAMIC_STATE2, true>(ctx, draw_vbo_array);
 }
 
 template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE>
 static void
-init_dynamic_state_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2])
+init_dynamic_state_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2][2])
 {
-   init_batch_changed_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, false>(ctx, draw_vbo_array);
-   init_batch_changed_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, true>(ctx, draw_vbo_array);
+   init_dynamic_state2_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, ZINK_NO_DYNAMIC_STATE2>(ctx, draw_vbo_array);
+   init_dynamic_state2_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, ZINK_DYNAMIC_STATE2>(ctx, draw_vbo_array);
 }
 
 template <zink_multidraw HAS_MULTIDRAW>
 static void
-init_multidraw_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2])
+init_multidraw_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2][2])
 {
    init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_NO_DYNAMIC_STATE>(ctx, draw_vbo_array);
    init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_DYNAMIC_STATE>(ctx, draw_vbo_array);
 }
 
 static void
-init_all_draw_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2])
+init_all_draw_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][2][2][2])
 {
    init_multidraw_functions<ZINK_NO_MULTIDRAW>(ctx, draw_vbo_array);
    init_multidraw_functions<ZINK_MULTIDRAW>(ctx, draw_vbo_array);
@@ -930,10 +939,11 @@ extern "C"
 void
 zink_init_draw_functions(struct zink_context *ctx, struct zink_screen *screen)
 {
-   pipe_draw_vbo_func draw_vbo_array[2][2][2]; //multidraw, dynamic state, batch changed
+   pipe_draw_vbo_func draw_vbo_array[2][2][2][2]; //multidraw, dynamic state, dynamic state2, batch changed
    init_all_draw_functions(ctx, draw_vbo_array);
    memcpy(ctx->draw_vbo, &draw_vbo_array[screen->info.have_EXT_multi_draw]
-                                        [screen->info.have_EXT_extended_dynamic_state],
+                                        [screen->info.have_EXT_extended_dynamic_state]
+                                        [screen->info.have_EXT_extended_dynamic_state2],
                                         sizeof(ctx->draw_vbo));
 
    /* Bind a fake draw_vbo, so that draw_vbo isn't NULL, which would skip
