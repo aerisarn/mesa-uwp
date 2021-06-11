@@ -21,6 +21,10 @@ for i in 1 2 3; do sntp -sS pool.ntp.org && break || sleep 2; done || true
 # Set up any devices required by the jobs
 [ -z "$HWCI_KERNEL_MODULES" ] || (echo -n $HWCI_KERNEL_MODULES | xargs -d, -n1 /usr/sbin/modprobe)
 
+# Fix prefix confusion: the build installs to $CI_PROJECT_DIR, but we expect
+# it in /install
+ln -sf $CI_PROJECT_DIR/install /install
+
 # Store Mesa's disk cache under /tmp, rather than sending it out over NFS.
 export XDG_CACHE_HOME=/tmp
 
