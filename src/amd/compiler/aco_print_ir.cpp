@@ -89,30 +89,14 @@ const std::array<const char*, num_reduce_ops> reduce_ops = []()
 static void
 print_reg_class(const RegClass rc, FILE* output)
 {
-   switch (rc) {
-   case RegClass::s1: fprintf(output, " s1: "); return;
-   case RegClass::s2: fprintf(output, " s2: "); return;
-   case RegClass::s3: fprintf(output, " s3: "); return;
-   case RegClass::s4: fprintf(output, " s4: "); return;
-   case RegClass::s6: fprintf(output, " s6: "); return;
-   case RegClass::s8: fprintf(output, " s8: "); return;
-   case RegClass::s16: fprintf(output, "s16: "); return;
-   case RegClass::v1: fprintf(output, " v1: "); return;
-   case RegClass::v2: fprintf(output, " v2: "); return;
-   case RegClass::v3: fprintf(output, " v3: "); return;
-   case RegClass::v4: fprintf(output, " v4: "); return;
-   case RegClass::v5: fprintf(output, " v5: "); return;
-   case RegClass::v6: fprintf(output, " v6: "); return;
-   case RegClass::v7: fprintf(output, " v7: "); return;
-   case RegClass::v8: fprintf(output, " v8: "); return;
-   case RegClass::v1b: fprintf(output, " v1b: "); return;
-   case RegClass::v2b: fprintf(output, " v2b: "); return;
-   case RegClass::v3b: fprintf(output, " v3b: "); return;
-   case RegClass::v4b: fprintf(output, " v4b: "); return;
-   case RegClass::v6b: fprintf(output, " v6b: "); return;
-   case RegClass::v8b: fprintf(output, " v8b: "); return;
-   case RegClass::v1_linear: fprintf(output, " v1: "); return;
-   case RegClass::v2_linear: fprintf(output, " v2: "); return;
+   if (rc.is_subdword()) {
+      fprintf(output, " v%ub: ", rc.bytes());
+   } else if (rc.type() == RegType::sgpr) {
+      fprintf(output, " s%u: ", rc.size());
+   } else if (rc.is_linear()) {
+      fprintf(output, " lv%u: ", rc.size());
+   } else {
+      fprintf(output, " v%u: ", rc.size());
    }
 }
 
