@@ -2,9 +2,6 @@
 # non-zero-length and not starting with '#', will regex match to
 # delete lines from the test list.  Be careful.
 
-# These are really slow on tiling architectures (including llvmpipe).
-dEQP-GLES[0-9]*.functional.flush_finish.*
-
 # Some compute jobs take more 0.5s, the maximum allowed by the
 # kernel driver
 dEQP-GLES31.functional.draw_indirect.compute_interop.large.*

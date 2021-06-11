@@ -98,9 +98,7 @@ fi
 touch $INSTALL/deqp-$GPU_VERSION-flakes.txt
 
 if [ -e "$INSTALL/deqp-$GPU_VERSION-skips.txt" ]; then
-    DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --skips $INSTALL/deqp-$GPU_VERSION-skips.txt"
-else
-    DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --skips $INSTALL/deqp-default-skips.txt"
+    DEQP_SKIPS="$INSTALL/deqp-$GPU_VERSION-skips.txt"
 fi
 
 set +e
@@ -127,6 +125,7 @@ run_cts() {
         --deqp $deqp \
         --output $RESULTS \
         --caselist $caselist \
+        --skips $INSTALL/deqp-all-skips.txt $DEQP_SKIPS \
         --flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt \
         --testlog-to-xml  /deqp/executor/testlog-to-xml \
         $JOB \

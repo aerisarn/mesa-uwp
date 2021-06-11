@@ -2,6 +2,6 @@
 # non-zero-length and not starting with '#', will regex match to
 # delete lines from the test list.  Be careful.
 
-# These are really slow on tiling architectures (including llvmpipe).
+# These are tremendously slow (pushing toward a minute), and aren't
+# reliable to be run in parallel with other tests due to CPU-side timing.
 dEQP-GLES[0-9]*.functional.flush_finish.*
-
