@@ -5,10 +5,10 @@
     - .use-arm_test
   variables:
     BM_BOOTFS: /boot/raspberrypi_armhf
-    BM_KERNEL_MODULES: vc4
     BM_ROOTFS: /rootfs-armhf
-    GPU_VERSION: vc4-rpi3
     DEQP_EXPECTED_RENDERER: VC4
+    GPU_VERSION: vc4-rpi3
+    HWCI_KERNEL_MODULES: vc4
     FLAKES_CHANNEL: "#videocore-ci"
   script:
     - ./install/bare-metal/poe-powered.sh
@@ -83,12 +83,12 @@ vc4-rpi3-piglit-quick_shader:armhf:
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_armhf
-    BM_KERNEL_MODULES: v3d,vc4
     BM_POE_TIMEOUT: 300
     BM_ROOTFS: /rootfs-armhf
     DEQP_EXPECTED_RENDERER: V3D
     FLAKES_CHANNEL: "#videocore-ci"
     GPU_VERSION: v3d-rpi4
+    HWCI_KERNEL_MODULES: v3d,vc4
   script:
     - ./install/bare-metal/poe-powered.sh
   needs:
@@ -162,7 +162,6 @@ v3dv-rpi4-vk:arm64:
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_arm64
-    BM_KERNEL_MODULES: v3d,vc4
     BM_POE_TIMEOUT: 300
     BM_ROOTFS: /rootfs-arm64
     DEQP_EXPECTED_RENDERER: "V3D 4.2"
@@ -170,6 +169,7 @@ v3dv-rpi4-vk:arm64:
     DEQP_VER: vk
     FLAKES_CHANNEL: "#videocore-ci"
     GPU_VERSION: v3dv-rpi4
+    HWCI_KERNEL_MODULES: v3d,vc4
     MINIO_ARTIFACT_NAME: mesa-arm64
     VK_DRIVER: broadcom
   script:
