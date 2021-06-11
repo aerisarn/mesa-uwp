@@ -29,6 +29,7 @@ struct bi_op_props bi_opcode_props[BI_NUM_OPCODES] = {
 % for opcode in sorted(mnemonics):
     <%
         add = instructions["+" + opcode][0][1] if "+" + opcode in instructions else None
+        size = typesize(opcode)
         message = add["message"].upper() if add else "NONE"
         sr_count = add["staging_count"].upper() if add else "0"
         sr_read = int(add["staging"] in ["r", "rw"] if add else False)
@@ -46,9 +47,10 @@ struct bi_op_props bi_opcode_props[BI_NUM_OPCODES] = {
         m_not = hasmod(mods, 'not1')
     %>
     [BI_OPCODE_${opcode.replace('.', '_').upper()}] = {
-        "${opcode}", BIFROST_MESSAGE_${message}, BI_SR_COUNT_${sr_count},
-        ${sr_read}, ${sr_write}, ${last}, ${branch}, ${table}, ${has_fma}, ${has_add},
-        ${clamp}, ${not_result}, ${abs}, ${neg}, ${m_not},
+        "${opcode}", BIFROST_MESSAGE_${message}, BI_SIZE_${size},
+        BI_SR_COUNT_${sr_count}, ${sr_read}, ${sr_write}, ${last}, ${branch},
+        ${table}, ${has_fma}, ${has_add}, ${clamp}, ${not_result}, ${abs},
+        ${neg}, ${m_not},
     },
 % endfor
 };"""
@@ -61,4 +63,4 @@ instructions = parse_instructions(sys.argv[1], include_pseudo = True)
 ir_instructions = partition_mnemonics(instructions)
 mnemonics = set(x[1:] for x in instructions.keys())
 
-print(Template(COPYRIGHT + TEMPLATE).render(ops = ir_instructions, mnemonics = mnemonics, instructions = instructions))
+print(Template(COPYRIGHT + TEMPLATE).render(ops = ir_instructions, mnemonics = mnemonics, instructions = instructions, typesize = typesize))
