@@ -123,6 +123,7 @@ static const struct v3dv_format format_table[] = {
    FORMAT(R32_UINT,                R32UI,        R32UI,         SWIZ_X001, 32, false),
 
    /* Color, packed */
+   FORMAT(R4G4B4A4_UNORM_PACK16,   ABGR4444,     RGBA4,         SWIZ_XYZW, 16, true),
    FORMAT(B4G4R4A4_UNORM_PACK16,   ABGR4444,     RGBA4,         SWIZ_ZYXW, 16, true), /* Swap RB */
    FORMAT(R5G6B5_UNORM_PACK16,     BGR565,       RGB565,        SWIZ_XYZ1, 16, true),
    FORMAT(R5G5B5A1_UNORM_PACK16,   ABGR1555,     RGB5_A1,       SWIZ_XYZW, 16, true),
