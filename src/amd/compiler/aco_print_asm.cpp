@@ -24,11 +24,13 @@
 
 #include "aco_ir.h"
 
+#ifdef LLVM_AVAILABLE
 #include "llvm/ac_llvm_util.h"
 
 #include "llvm-c/Disassembler.h"
 #include <llvm/ADT/StringRef.h>
 #include <llvm/MC/MCDisassembler/MCDisassembler.h>
+#endif
 
 #include <array>
 #include <iomanip>
@@ -142,6 +144,7 @@ fail:
 #endif
 }
 
+#ifdef LLVM_AVAILABLE
 std::pair<bool, size_t>
 disasm_instr(chip_class chip, LLVMDisasmContextRef disasm, uint32_t* binary, unsigned exec_size,
              size_t pos, char* outline, unsigned outline_size)
@@ -284,15 +287,38 @@ print_asm_llvm(Program* program, std::vector<uint32_t>& binary, unsigned exec_si
 
    return invalid;
 }
+#endif /* LLVM_AVAILABLE */
+
 } /* end namespace */
+
+bool
+check_print_asm_support(Program* program)
+{
+#ifdef LLVM_AVAILABLE
+   if (program->chip_class >= GFX8) {
+      /* LLVM disassembler only supports GFX8+ */
+      return true;
+   }
+#endif
+
+#ifndef _WIN32
+   /* Check if CLRX disassembler binary is available and can disassemble the program */
+   return to_clrx_device_name(program->chip_class, program->family) &&
+          system("clrxdisasm --version") == 0;
+#else
+   return false;
+#endif
+}
 
 /* Returns true on failure */
 bool
 print_asm(Program* program, std::vector<uint32_t>& binary, unsigned exec_size, FILE* output)
 {
+#ifdef LLVM_AVAILABLE
    if (program->chip_class >= GFX8) {
       return print_asm_llvm(program, binary, exec_size, output);
    }
+#endif
 
    return print_asm_clrx(program, binary, output);
 }

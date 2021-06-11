@@ -6095,7 +6095,7 @@ radv_GetPipelineExecutableInternalRepresentationsKHR(
    ++p;
 
    /* Disassembler */
-   if (p < end) {
+   if (p < end && shader->disasm_string) {
       p->isText = true;
       desc_copy(p->name, "Assembly");
       desc_copy(p->description, "Final Assembly");

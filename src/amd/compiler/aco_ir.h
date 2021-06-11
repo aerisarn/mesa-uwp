@@ -2168,6 +2168,11 @@ void insert_wait_states(Program* program);
 void insert_NOPs(Program* program);
 void form_hard_clauses(Program* program);
 unsigned emit_program(Program* program, std::vector<uint32_t>& code);
+/**
+ * Returns true if print_asm can disassemble the given program for the current build/runtime
+ * configuration
+ */
+bool check_print_asm_support(Program* program);
 bool print_asm(Program* program, std::vector<uint32_t>& binary, unsigned exec_size, FILE* output);
 bool validate_ir(Program* program);
 bool validate_ra(Program* program);

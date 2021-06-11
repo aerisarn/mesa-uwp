@@ -198,19 +198,27 @@ aco_compile_shader(unsigned shader_count, struct nir_shader* const* shaders,
 
    std::string disasm;
    if (get_disasm) {
-      char* data = NULL;
-      size_t disasm_size = 0;
-      struct u_memstream mem;
-      if (u_memstream_open(&mem, &data, &disasm_size)) {
-         FILE* const memf = u_memstream_get(&mem);
-         aco::print_asm(program.get(), code, exec_size / 4u, memf);
-         fputc(0, memf);
-         u_memstream_close(&mem);
-      }
+      if (check_print_asm_support(program.get())) {
+         char* data = NULL;
+         size_t disasm_size = 0;
+         struct u_memstream mem;
+         if (u_memstream_open(&mem, &data, &disasm_size)) {
+            FILE* const memf = u_memstream_get(&mem);
+            aco::print_asm(program.get(), code, exec_size / 4u, memf);
+            fputc(0, memf);
+            u_memstream_close(&mem);
+         }
 
-      disasm = std::string(data, data + disasm_size);
-      size += disasm_size;
-      free(data);
+         disasm = std::string(data, data + disasm_size);
+         size += disasm_size;
+         free(data);
+      } else {
+         fprintf(stderr, "Shader disassembly is not supported in the current configuration"
+#ifndef LLVM_AVAILABLE
+                         " (LLVM not available)"
+#endif
+                         ".\n");
+      }
    }
 
    size_t stats_size = 0;
