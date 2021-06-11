@@ -263,6 +263,27 @@ ensure_exec_obj_space(struct iris_batch *batch, uint32_t count)
    }
 }
 
+static void
+add_bo_to_batch(struct iris_batch *batch, struct iris_bo *bo, bool writable)
+{
+   assert(batch->exec_array_size > batch->exec_count);
+
+   iris_bo_reference(bo);
+
+   batch->exec_bos[batch->exec_count] = bo;
+
+   batch->validation_list[batch->exec_count] =
+      (struct drm_i915_gem_exec_object2) {
+         .handle = bo->gem_handle,
+         .offset = bo->address,
+         .flags = bo->kflags | (writable ? EXEC_OBJECT_WRITE : 0),
+      };
+
+   bo->index = batch->exec_count;
+   batch->exec_count++;
+   batch->aperture_space += bo->size;
+}
+
 /**
  * Add a buffer to the current batch's validation list.
  *
@@ -332,23 +353,8 @@ iris_use_pinned_bo(struct iris_batch *batch,
       }
    }
 
-   /* Now, take a reference and add it to the validation list. */
-   iris_bo_reference(bo);
-
    ensure_exec_obj_space(batch, 1);
-
-   batch->validation_list[batch->exec_count] =
-      (struct drm_i915_gem_exec_object2) {
-         .handle = bo->gem_handle,
-         .offset = bo->address,
-         .flags = bo->kflags | (writable ? EXEC_OBJECT_WRITE : 0),
-      };
-
-   bo->index = batch->exec_count;
-   batch->exec_bos[batch->exec_count] = bo;
-   batch->aperture_space += bo->size;
-
-   batch->exec_count++;
+   add_bo_to_batch(batch, bo, writable);
 }
 
 static void
@@ -512,16 +518,7 @@ add_aux_map_bos_to_batch(struct iris_batch *batch)
                           (void**)&batch->exec_bos[batch->exec_count], count);
    for (uint32_t i = 0; i < count; i++) {
       struct iris_bo *bo = batch->exec_bos[batch->exec_count];
-      iris_bo_reference(bo);
-      batch->validation_list[batch->exec_count] =
-         (struct drm_i915_gem_exec_object2) {
-            .handle = bo->gem_handle,
-            .offset = bo->address,
-            .flags = bo->kflags,
-         };
-      batch->aperture_space += bo->size;
-      bo->index = batch->exec_count;
-      batch->exec_count++;
+      add_bo_to_batch(batch, bo, false);
    }
 }
 
