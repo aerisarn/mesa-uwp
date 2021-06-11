@@ -29,12 +29,13 @@ touch results/lava.log
 tail -f results/lava.log &
 artifacts/lava/lava_job_submitter.py \
 	--dump-yaml \
-	--template artifacts/lava/lava.yml.jinja2 \
 	--pipeline-info "$CI_JOB_NAME: $CI_PIPELINE_URL on $CI_COMMIT_REF_NAME ${CI_NODE_INDEX}/${CI_NODE_TOTAL}" \
 	--base-system-url-prefix "https://${BASE_SYSTEM_HOST_PATH}" \
 	--mesa-build-url "${FDO_HTTP_CACHE_URI:-}https://${MESA_BUILD_PATH}" \
 	--job-rootfs-overlay-url "${FDO_HTTP_CACHE_URI:-}https://${JOB_ROOTFS_OVERLAY_PATH}" \
 	--job-artifacts-base ${JOB_ARTIFACTS_BASE} \
+	--first-stage-init artifacts/ci-common/init-stage1.sh \
+	--ci-project-dir ${CI_PROJECT_DIR} \
 	--device-type ${DEVICE_TYPE} \
 	--dtb ${DTB} \
 	--jwt "${CI_JOB_JWT}" \
