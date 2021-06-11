@@ -520,6 +520,7 @@ add_aux_map_bos_to_batch(struct iris_batch *batch)
             .flags = bo->kflags,
          };
       batch->aperture_space += bo->size;
+      bo->index = batch->exec_count;
       batch->exec_count++;
    }
 }
