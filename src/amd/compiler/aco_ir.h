@@ -361,6 +361,15 @@ struct RegClass {
       }
    }
 
+   constexpr RegClass resize(unsigned bytes) const
+   {
+      if (is_linear_vgpr()) {
+         assert(bytes % 4u == 0);
+         return get(RegType::vgpr, bytes).as_linear();
+      }
+      return get(type(), bytes);
+   }
+
 private:
    RC rc;
 };

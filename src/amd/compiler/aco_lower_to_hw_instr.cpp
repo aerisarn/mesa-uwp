@@ -994,16 +994,13 @@ split_copy(lower_context* ctx, unsigned offset, Definition* def, Operand* op,
          break;
    }
 
-   RegClass def_cls = bytes % 4 == 0 ? RegClass(src.def.regClass().type(), bytes / 4u)
-                                     : RegClass(src.def.regClass().type(), bytes).as_subdword();
-   *def = Definition(src.def.tempId(), def_reg, def_cls);
+   *def = Definition(src.def.tempId(), def_reg, src.def.regClass().resize(bytes));
    if (src.op.isConstant()) {
       assert(bytes >= 1 && bytes <= 8);
       uint64_t val = src.op.constantValue64() >> (offset * 8u);
       *op = Operand::get_const(ctx->program->chip_class, val, bytes);
    } else {
-      RegClass op_cls = bytes % 4 == 0 ? RegClass(src.op.regClass().type(), bytes / 4u)
-                                       : RegClass(src.op.regClass().type(), bytes).as_subdword();
+      RegClass op_cls = src.op.regClass().resize(bytes);
       *op = Operand(op_reg, op_cls);
       op->setTemp(Temp(src.op.tempId(), op_cls));
    }
@@ -1434,11 +1431,11 @@ try_coalesce_copies(lower_context* ctx, std::map<PhysReg, copy_operation>& copy_
    } else {
       if (other->second.op.physReg() != copy.op.physReg().advance(copy.bytes))
          return;
-      copy.op = Operand(copy.op.physReg(), RegClass::get(copy.op.regClass().type(), new_size));
+      copy.op = Operand(copy.op.physReg(), copy.op.regClass().resize(new_size));
    }
 
    copy.bytes = new_size;
-   copy.def = Definition(copy.def.physReg(), RegClass::get(copy.def.regClass().type(), copy.bytes));
+   copy.def = Definition(copy.def.physReg(), copy.def.regClass().resize(copy.bytes));
    copy_map.erase(other);
 }
 
@@ -1726,15 +1723,14 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
       PhysReg src = swap.op.physReg(), dst = swap.def.physReg();
       if (abs((int)src.reg_b - (int)dst.reg_b) < (int)swap.bytes) {
          unsigned offset = abs((int)src.reg_b - (int)dst.reg_b);
-         RegType type = swap.def.regClass().type();
 
          copy_operation remaining;
          src.reg_b += offset;
          dst.reg_b += offset;
          remaining.bytes = swap.bytes - offset;
          memcpy(remaining.uses, swap.uses + offset, remaining.bytes);
-         remaining.op = Operand(src, RegClass::get(type, remaining.bytes));
-         remaining.def = Definition(dst, RegClass::get(type, remaining.bytes));
+         remaining.op = Operand(src, swap.def.regClass().resize(remaining.bytes));
+         remaining.def = Definition(dst, swap.def.regClass().resize(remaining.bytes));
          copy_map[dst] = remaining;
 
          memset(swap.uses + offset, 0, swap.bytes - offset);
@@ -1782,7 +1778,7 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
             copy_operation copy;
             copy.bytes = after_bytes;
             memcpy(copy.uses, target->second.uses + after_offset, copy.bytes);
-            RegClass rc = RegClass::get(target->second.op.regClass().type(), after_bytes);
+            RegClass rc = target->second.op.regClass().resize(after_bytes);
             copy.op = Operand(target->second.op.physReg().advance(after_offset), rc);
             copy.def = Definition(target->second.def.physReg().advance(after_offset), rc);
             copy_map[copy.def.physReg()] = copy;
@@ -1792,7 +1788,7 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
             copy_operation copy;
             copy.bytes = middle_bytes;
             memcpy(copy.uses, target->second.uses + before_bytes, copy.bytes);
-            RegClass rc = RegClass::get(target->second.op.regClass().type(), middle_bytes);
+            RegClass rc = target->second.op.regClass().resize(middle_bytes);
             copy.op = Operand(swap.op.physReg().advance(MAX2(offset, 0)), rc);
             copy.def = Definition(target->second.def.physReg().advance(before_bytes), rc);
             copy_map[copy.def.physReg()] = copy;
@@ -1801,7 +1797,7 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
          if (before_bytes) {
             copy_operation copy;
             target->second.bytes = before_bytes;
-            RegClass rc = RegClass::get(target->second.op.regClass().type(), before_bytes);
+            RegClass rc = target->second.op.regClass().resize(before_bytes);
             target->second.op = Operand(target->second.op.physReg(), rc);
             target->second.def = Definition(target->second.def.physReg(), rc);
             memset(target->second.uses + target->second.bytes, 0, 8 - target->second.bytes);
@@ -1900,7 +1896,7 @@ lower_to_hw_instr(Program* program)
                for (const Operand& op : instr->operands) {
                   if (op.isConstant()) {
                      const Definition def = Definition(
-                        reg, RegClass(instr->definitions[0].getTemp().type(), op.size()));
+                        reg, instr->definitions[0].getTemp().regClass().resize(op.bytes()));
                      copy_operations[reg] = {op, def, op.bytes()};
                      reg.reg_b += op.bytes();
                      continue;
@@ -1914,7 +1910,7 @@ lower_to_hw_instr(Program* program)
                   RegClass rc_def =
                      op.regClass().is_subdword()
                         ? op.regClass()
-                        : RegClass(instr->definitions[0].getTemp().type(), op.size());
+                        : instr->definitions[0].getTemp().regClass().resize(op.bytes());
                   const Definition def = Definition(reg, rc_def);
                   copy_operations[def.physReg()] = {op, def, op.bytes()};
                   reg.reg_b += op.bytes();
@@ -1929,7 +1925,7 @@ lower_to_hw_instr(Program* program)
                for (const Definition& def : instr->definitions) {
                   RegClass rc_op = def.regClass().is_subdword()
                                       ? def.regClass()
-                                      : RegClass(instr->operands[0].getTemp().type(), def.size());
+                                      : instr->operands[0].getTemp().regClass().resize(def.bytes());
                   const Operand op = Operand(reg, rc_op);
                   copy_operations[def.physReg()] = {op, def, def.bytes()};
                   reg.reg_b += def.bytes();
