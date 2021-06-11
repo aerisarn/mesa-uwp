@@ -5,7 +5,8 @@ rootfs_dst=$1
 mkdir -p $rootfs_dst/results
 
 # Set up the init script that brings up the system.
-cp $CI_COMMON/init.sh $rootfs_dst/init
+cp $BM/bm-init.sh $rootfs_dst/init
+cp $CI_COMMON/init*.sh $rootfs_dst/
 
 cp $BM/capture-devcoredump.sh $rootfs_dst/
 
