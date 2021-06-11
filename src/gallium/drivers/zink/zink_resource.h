@@ -54,23 +54,6 @@ struct mem_key {
 
 struct zink_resource_object {
    struct pipe_reference reference;
-   union {
-      VkBuffer buffer;
-      VkImage image;
-   };
-
-   struct util_dynarray tmp;
-   bool storage_init; //layout was set for image
-   bool transfer_dst;
-   VkImageAspectFlags modifier_aspect;
-
-   bool dedicated;
-   struct zink_bo *bo;
-   VkDeviceMemory mem;
-   VkDeviceSize offset, size, alignment;
-
-   VkSampleLocationsInfoEXT zs_evaluate;
-   bool needs_zs_evaluate;
 
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
    struct zink_descriptor_refs desc_set_refs;
@@ -79,7 +62,27 @@ struct zink_resource_object {
    struct zink_batch_usage *writes;
    void *map;
    unsigned map_count;
+
+   struct util_dynarray tmp;
+
+   union {
+      VkBuffer buffer;
+      VkImage image;
+   };
+
+   VkSampleLocationsInfoEXT zs_evaluate;
+   bool needs_zs_evaluate;
+
+   bool storage_init; //layout was set for image
+   bool transfer_dst;
    bool is_buffer;
+   VkImageAspectFlags modifier_aspect;
+
+   struct zink_bo *bo;
+   VkDeviceMemory mem;
+   VkDeviceSize offset, size, alignment;
+
+   bool dedicated;
    bool host_visible;
    bool coherent;
 };
