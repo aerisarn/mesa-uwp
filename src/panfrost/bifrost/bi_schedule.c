@@ -362,6 +362,10 @@ bi_can_add(bi_instr *ins)
         if (ins->op == BI_OPCODE_FADD_V2F16 && ins->clamp)
                 return false;
 
+        /* +FCMP.v2f16 lacks abs modifier, use *FCMP.v2f16 instead */
+        if (ins->op == BI_OPCODE_FCMP_V2F16 && (ins->src[0].abs || ins->src[1].abs))
+                return false;
+
         /* TODO: some additional fp16 constraints */
         return bi_opcode_props[ins->op].add;
 }
