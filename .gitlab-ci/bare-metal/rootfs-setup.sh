@@ -8,7 +8,7 @@ mkdir -p $rootfs_dst/results
 cp $BM/bm-init.sh $rootfs_dst/init
 cp $CI_COMMON/init*.sh $rootfs_dst/
 
-cp $BM/capture-devcoredump.sh $rootfs_dst/
+cp $CI_COMMON/capture-devcoredump.sh $rootfs_dst/
 
 set +x
 # Pass through relevant env vars from the gitlab job to the baremetal init script
