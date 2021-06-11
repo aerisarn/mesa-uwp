@@ -1075,7 +1075,7 @@ get_regs_for_copies(ra_ctx& ctx, RegisterFile& reg_file,
                continue;
             }
             /* we cannot split live ranges of linear vgprs */
-            if (ctx.assignments[reg_file[j]].rc & (1 << 6)) {
+            if (ctx.assignments[reg_file[j]].rc.is_linear_vgpr()) {
                found = false;
                break;
             }
@@ -1222,7 +1222,7 @@ get_reg_impl(ra_ctx& ctx, RegisterFile& reg_file,
          }
 
          /* we cannot split live ranges of linear vgprs */
-         if (ctx.assignments[reg_file[j]].rc & (1 << 6)) {
+         if (ctx.assignments[reg_file[j]].rc.is_linear_vgpr()) {
             found = false;
             break;
          }
@@ -1679,7 +1679,7 @@ get_reg_create_vector(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
             } else {
                k += 4;
                /* we cannot split live ranges of linear vgprs */
-               if (ctx.assignments[reg_file[j]].rc & (1 << 6))
+               if (ctx.assignments[reg_file[j]].rc.is_linear_vgpr())
                   linear_vgpr = true;
             }
          }
@@ -1917,7 +1917,7 @@ Temp
 handle_live_in(ra_ctx& ctx, Temp val, Block* block)
 {
    std::vector<unsigned>& preds = val.is_linear() ? block->linear_preds : block->logical_preds;
-   if (preds.size() == 0 || val.regClass() == val.regClass().as_linear())
+   if (preds.size() == 0 || val.regClass().is_linear_vgpr())
       return val;
 
    if (preds.size() == 1) {

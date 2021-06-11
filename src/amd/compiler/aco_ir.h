@@ -343,11 +343,12 @@ struct RegClass {
    explicit operator bool() = delete;
 
    constexpr RegType type() const { return rc <= RC::s16 ? RegType::sgpr : RegType::vgpr; }
+   constexpr bool is_linear_vgpr() const { return rc & (1 << 6); };
    constexpr bool is_subdword() const { return rc & (1 << 7); }
    constexpr unsigned bytes() const { return ((unsigned)rc & 0x1F) * (is_subdword() ? 1 : 4); }
    // TODO: use size() less in favor of bytes()
    constexpr unsigned size() const { return (bytes() + 3) >> 2; }
-   constexpr bool is_linear() const { return rc <= RC::s16 || rc & (1 << 6); }
+   constexpr bool is_linear() const { return rc <= RC::s16 || is_linear_vgpr(); }
    constexpr RegClass as_linear() const { return RegClass((RC)(rc | (1 << 6))); }
    constexpr RegClass as_subdword() const { return RegClass((RC)(rc | 1 << 7)); }
 
