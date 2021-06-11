@@ -429,7 +429,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return PIPE_ENDIAN_NATIVE; /* unsure */
 
    case PIPE_CAP_MAX_VIEWPORTS:
-      return screen->info.props.limits.maxViewports;
+      return MIN2(screen->info.props.limits.maxViewports, PIPE_MAX_VIEWPORTS);
 
    case PIPE_CAP_IMAGE_LOAD_FORMATTED:
       return screen->info.feats.features.shaderStorageImageReadWithoutFormat;
