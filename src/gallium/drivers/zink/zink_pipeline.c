@@ -164,7 +164,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    depth_stencil_state.back = state->depth_stencil_alpha_state->stencil_back;
    depth_stencil_state.depthWriteEnable = state->depth_stencil_alpha_state->depth_write;
 
-   VkDynamicState dynamicStateEnables[24] = {
+   VkDynamicState dynamicStateEnables[30] = {
       VK_DYNAMIC_STATE_LINE_WIDTH,
       VK_DYNAMIC_STATE_DEPTH_BIAS,
       VK_DYNAMIC_STATE_BLEND_CONSTANTS,
