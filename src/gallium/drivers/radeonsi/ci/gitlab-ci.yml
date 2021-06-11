@@ -7,6 +7,7 @@
     GPU_VERSION: radeonsi-stoney
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
+    HWCI_KERNEL_MODULES: amdgpu
     DRIVER_NAME: radeonsi
     DEQP_PARALLEL: 4
     DEQP_EXPECTED_RENDERER: STONEY

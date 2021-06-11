@@ -90,7 +90,7 @@ actions:
           - ln -sf /install $CI_PROJECT_DIR/install
 
           # Set up our devices
-          - modprobe amdgpu || true
+          - '[ -z "$HWCI_KERNEL_MODULES" ] || (echo -n $HWCI_KERNEL_MODULES | xargs -d, -n1 /usr/sbin/modprobe)'
 
           # Disable GPU frequency scaling
           - DEVFREQ_GOVERNOR=`find /sys/devices -name governor | grep gpu || true`
