@@ -424,7 +424,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS];
    bool need_index_buffer_unref = false;
-   bool mode_changed = ctx->gfx_pipeline_state.mode != dinfo->mode;
+   bool mode_changed = ctx->gfx_prim_mode != dinfo->mode;
    bool reads_drawid = ctx->shader_reads_drawid;
    bool reads_basevertex = ctx->shader_reads_basevertex;
    unsigned work_count = ctx->batch.work_count;
@@ -447,8 +447,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (drawid_broken != ctx->drawid_broken)
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
    ctx->gfx_pipeline_state.vertices_per_patch = ctx->gfx_pipeline_state.patch_vertices;
-   if (ctx->rast_state->base.point_quad_rasterization &&
-       ctx->gfx_prim_mode != mode) {
+   if (ctx->rast_state->base.point_quad_rasterization && mode_changed) {
       if (ctx->gfx_prim_mode == PIPE_PRIM_POINTS || mode == PIPE_PRIM_POINTS)
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);
    }
