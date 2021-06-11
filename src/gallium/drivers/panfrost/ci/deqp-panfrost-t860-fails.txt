@@ -81,7 +81,6 @@ dEQP-GLES31.functional.shaders.builtin_functions.integer.findmsb.uvec2_lowp_comp
 dEQP-GLES31.functional.shaders.builtin_functions.integer.findmsb.uvec3_lowp_compute,Fail
 dEQP-GLES31.functional.shaders.builtin_functions.integer.imulextended.ivec3_highp_fragment,Fail
 dEQP-GLES31.functional.shaders.builtin_functions.integer.umulextended.uvec3_highp_fragment,Fail
-dEQP-GLES31.functional.shaders.framebuffer_fetch.framebuffer_format.rgb10_a2,Fail
 dEQP-GLES31.functional.shaders.opaque_type_indexing.ssbo.const_expression_vertex,Fail
 dEQP-GLES31.functional.shaders.opaque_type_indexing.ssbo.const_literal_vertex,Fail
 dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.const_expression_fragment,Fail

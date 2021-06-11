@@ -367,8 +367,6 @@ panfrost_variant_matches(
         struct panfrost_shader_state *variant,
         enum pipe_shader_type type)
 {
-        struct panfrost_device *dev = pan_device(ctx->base.screen);
-
         if (variant->info.stage == MESA_SHADER_FRAGMENT &&
             variant->info.fs.outputs_read) {
                 struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
@@ -380,10 +378,7 @@ panfrost_variant_matches(
                         if ((fb->nr_cbufs > i) && fb->cbufs[i])
                                 fmt = fb->cbufs[i]->format;
 
-                        const struct util_format_description *desc =
-                                util_format_description(fmt);
-
-                        if (pan_format_class_load(desc, dev->quirks) == PAN_FORMAT_NATIVE)
+                        if (panfrost_blendable_formats_v6[fmt].internal)
                                 fmt = PIPE_FORMAT_NONE;
 
                         if (variant->rt_formats[i] != fmt)
@@ -445,7 +440,6 @@ panfrost_bind_shader_state(
         enum pipe_shader_type type)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-        struct panfrost_device *dev = pan_device(ctx->base.screen);
         ctx->shader[type] = hwcso;
 
         ctx->dirty |= PAN_DIRTY_TLS_SIZE;
@@ -501,10 +495,7 @@ panfrost_bind_shader_state(
                                 if ((fb->nr_cbufs > i) && fb->cbufs[i])
                                         fmt = fb->cbufs[i]->format;
 
-                                const struct util_format_description *desc =
-                                        util_format_description(fmt);
-
-                                if (pan_format_class_load(desc, dev->quirks) == PAN_FORMAT_NATIVE)
+                                if (panfrost_blendable_formats_v6[fmt].internal)
                                         fmt = PIPE_FORMAT_NONE;
 
                                 v->rt_formats[i] = fmt;
