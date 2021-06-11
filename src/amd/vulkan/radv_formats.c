@@ -180,11 +180,6 @@ radv_translate_tex_dataformat(VkFormat format, const struct util_format_descript
    case UTIL_FORMAT_COLORSPACE_YUV:
       goto out_unknown; /* TODO */
 
-   case UTIL_FORMAT_COLORSPACE_SRGB:
-      if (desc->nr_channels != 4 && desc->nr_channels != 1)
-         goto out_unknown;
-      break;
-
    default:
       break;
    }
