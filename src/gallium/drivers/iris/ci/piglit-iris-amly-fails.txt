@@ -32,14 +32,6 @@ glx@glx_arb_create_context_robustness@invalid reset notification strategy,Fail
 # Version = 3.3
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
 
-# piglit: error: Test timed out.
-glx@glx_arb_sync_control@timing -divisor 1,Fail
-glx@glx_arb_sync_control@timing -fullscreen -divisor 1,Fail
-glx@glx_arb_sync_control@timing -fullscreen -divisor 2,Fail
-glx@glx_arb_sync_control@timing -fullscreen -msc-delta 1,Fail
-glx@glx_arb_sync_control@timing -msc-delta 2,Fail
-glx@glx_arb_sync_control@timing -waitformsc -msc-delta 1,Fail
-
 # Xorg has disabled indirect rendering contexts.
 glx@glx_ext_import_context@free context,Fail
 glx@glx_ext_import_context@get context id,Fail
