@@ -128,10 +128,9 @@ actions:
                export DISPLAY=:0;
              fi"
 
-          - "if sh $LAVA_TEST_SCRIPT; then
+          - "export RESULT=fail;
+	     if sh $LAVA_TEST_SCRIPT; then
                   export RESULT=pass;
-             else
-                  export RESULT=fail;
              fi"
 
           - "if [ -d results ]; then
@@ -140,9 +139,9 @@ actions:
                 ci-fairy minio cp results.tar.gz minio://${JOB_ARTIFACTS_BASE}/results.tar.gz;
              fi"
 
-          - "echo mesa: $RESULT"
+          - "echo hwci: mesa: $RESULT"
         parse:
-          pattern: '(?P<test_case_id>\S*):\s+(?P<result>(pass|fail))'
+          pattern: 'hwci: (?P<test_case_id>\S*):\s+(?P<result>(pass|fail))'
       from: inline
       name: mesa
       path: inline/mesa.yaml

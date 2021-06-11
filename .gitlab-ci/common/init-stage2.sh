@@ -45,10 +45,9 @@ if [ -n "$BM_START_XORG" ]; then
   export DISPLAY=:0
 fi
 
+RESULT=fail
 if sh $BARE_METAL_TEST_SCRIPT; then
-  OK=1
-else
-  OK=0
+  RESULT=pass
 fi
 
 # upload artifacts via webdav
@@ -57,8 +56,4 @@ if [ -n "$WEBDAV" ]; then
   find /results -type f -exec curl -T {} $WEBDAV/{} \;
 fi
 
-if [ $OK -eq 1 ]; then
-    echo "bare-metal result: pass"
-else
-    echo "bare-metal result: fail"
-fi
+echo "hwci: mesa: $RESULT"

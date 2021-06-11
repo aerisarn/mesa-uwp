@@ -83,7 +83,7 @@ class FastbootRun:
                     "Detected kernel soft lockup, restarting run...")
                 return 2
 
-            result = re.search("bare-metal result: (\S*)", line)
+            result = re.search("hwci: mesa: (\S*)", line)
             if result:
                 if result.group(1) == "pass":
                     return 0
