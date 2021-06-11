@@ -37,7 +37,7 @@
  *
  * The unpacked type depends on the format:
  *
- *      - For 32-bit float formats, 32-bit floats.
+ *      - For 32-bit float formats or >8-bit UNORM, 32-bit floats.
  *      - For other floats, 16-bit floats.
  *      - For 32-bit ints, 32-bit ints.
  *      - For 8-bit ints, 8-bit ints.
@@ -377,8 +377,8 @@ pan_unpack_unorm_565(nir_builder *b, nir_ssa_def *v)
 static nir_ssa_def *
 pan_pack_unorm_1010102(nir_builder *b, nir_ssa_def *v)
 {
-        nir_ssa_def *scale = nir_imm_vec4_16(b, 1023.0, 1023.0, 1023.0, 3.0);
-        nir_ssa_def *s = nir_f2u32(b, nir_fround_even(b, nir_f2f32(b, nir_fmul(b, nir_fsat(b, v), scale))));
+        nir_ssa_def *scale = nir_imm_vec4(b, 1023.0, 1023.0, 1023.0, 3.0);
+        nir_ssa_def *s = nir_f2u32(b, nir_fround_even(b, nir_fmul(b, nir_fsat(b, v), scale)));
 
         nir_ssa_def *top8 = nir_ushr(b, s, nir_imm_ivec4(b, 0x2, 0x2, 0x2, 0x2));
         nir_ssa_def *top8_rgb = nir_pack_32_4x8(b, nir_u2u8(b, top8));
@@ -421,7 +421,7 @@ pan_unpack_unorm_1010102(nir_builder *b, nir_ssa_def *packed)
         };
 
         nir_ssa_def *scale = nir_imm_vec4(b, 1.0 / 1023.0, 1.0 / 1023.0, 1.0 / 1023.0, 1.0 / 3.0);
-        return nir_f2fmp(b, nir_fmul(b, nir_u2f32(b, nir_vec(b, chans, 4)), scale));
+        return nir_fmul(b, nir_u2f32(b, nir_vec(b, chans, 4)), scale);
 }
 
 /* On the other hand, the pure int RGB10_A2 is identical to the spec */
