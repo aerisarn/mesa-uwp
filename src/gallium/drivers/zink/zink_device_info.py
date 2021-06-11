@@ -137,6 +137,10 @@ EXTENSIONS = [
         alias="dynamic_state",
         features=True,
         conditions=["$feats.extendedDynamicState"]),
+    Extension("VK_EXT_extended_dynamic_state2",
+        alias="dynamic_state2",
+        features=True,
+        conditions=["$feats.extendedDynamicState2"]),
     Extension("VK_EXT_pipeline_creation_cache_control",
         alias="pipeline_cache_control",
         features=True,
@@ -201,6 +205,7 @@ VERSIONS = [
 REPLACEMENTS = {
     "ROBUSTNESS2": "ROBUSTNESS_2",
     "PROPERTIES_PROPERTIES": "PROPERTIES",
+    "EXTENDED_DYNAMIC_STATE2": "EXTENDED_DYNAMIC_STATE_2",
 }
 
 
