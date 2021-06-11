@@ -103,6 +103,18 @@ idep_bi_builder_h = declare_dependency(
   include_directories : include_directories('.'),
 )
 
+bifrost_nir_algebraic_c = custom_target(
+  'bifrost_nir_algebraic.c',
+  input : 'bifrost_nir_algebraic.py',
+  output : 'bifrost_nir_algebraic.c',
+  command : [
+    prog_python, '@INPUT@',
+    '-p', join_paths(meson.source_root(), 'src/compiler/nir/'),
+  ],
+  capture : true,
+  depend_files : nir_algebraic_py,
+)
+
 libpanfrost_bifrost_disasm = static_library(
   'panfrost_bifrost_disasm',
   ['disassemble.c', 'bi_print_common.c', bifrost_gen_disasm_c],
@@ -116,7 +128,7 @@ libpanfrost_bifrost_disasm = static_library(
 
 libpanfrost_bifrost = static_library(
   'panfrost_bifrost',
-  [libpanfrost_bifrost_files, bi_opcodes_c, bi_printer_c, bi_packer_c],
+  [libpanfrost_bifrost_files, bi_opcodes_c, bi_printer_c, bi_packer_c, bifrost_nir_algebraic_c],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw],
   dependencies: [idep_nir, idep_bi_opcodes_h, idep_bi_builder_h],
   link_with: [libpanfrost_util, libpanfrost_bifrost_disasm],

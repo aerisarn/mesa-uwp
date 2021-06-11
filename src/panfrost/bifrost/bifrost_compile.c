@@ -35,6 +35,7 @@
 #include "compiler.h"
 #include "bi_quirks.h"
 #include "bi_builder.h"
+#include "bifrost_nir.h"
 
 static const struct debug_named_value bifrost_debug_options[] = {
         {"msgs",      BIFROST_DBG_MSGS,		"Print debug messages"},
@@ -3118,6 +3119,9 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         NIR_PASS(progress, nir, nir_opt_vectorize, bi_vectorize_filter, NULL);
         NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
         NIR_PASS(progress, nir, nir_opt_dce);
+
+        /* Prepass to simplify instruction selection */
+        NIR_PASS(progress, nir, bifrost_nir_lower_algebraic_late);
 
         /* Backend scheduler is purely local, so do some global optimizations
          * to reduce register pressure. */
