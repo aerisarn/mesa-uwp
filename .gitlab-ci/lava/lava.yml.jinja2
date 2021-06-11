@@ -107,6 +107,7 @@ actions:
           - export XDG_CACHE_HOME=/tmp
 
           - export PYTHONPATH=$(python3 -c "import sys;print(\":\".join(sys.path))")
+          - export LD_LIBRARY_PATH=/install/lib/
           - export LIBGL_DRIVERS_PATH=/install/lib/dri
 
           # If we want Xorg to be running for the test, then we start it up before the
@@ -115,7 +116,7 @@ actions:
           # your client's return code
           - "if [ -n $LAVA_START_XORG ]; then
                echo 'touch /xorg-started; sleep 100000' > /xorg-script;
-               env LD_LIBRARY_PATH=/install/lib/ xinit /bin/sh /xorg-script -- /usr/bin/Xorg -noreset -s 0 -dpms -logfile /Xorg.0.log &
+               env xinit /bin/sh /xorg-script -- /usr/bin/Xorg -noreset -s 0 -dpms -logfile /Xorg.0.log &
                for i in 1 2 3 4 5; do
                  if [ -e /xorg-started ]; then
                    break;

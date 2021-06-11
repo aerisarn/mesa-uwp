@@ -24,9 +24,14 @@ for i in 1 2 3; do sntp -sS pool.ntp.org && break || sleep 2; done || true
 # Fix prefix confusion: the build installs to $CI_PROJECT_DIR, but we expect
 # it in /install
 ln -sf $CI_PROJECT_DIR/install /install
+export LD_LIBRARY_PATH=/install/lib
+export LIBGL_DRIVERS_PATH=/install/lib/dri
 
 # Store Mesa's disk cache under /tmp, rather than sending it out over NFS.
 export XDG_CACHE_HOME=/tmp
+
+# Make sure Python can find all our imports
+export PYTHONPATH=$(python3 -c "import sys;print(\":\".join(sys.path))")
 
 # Start a little daemon to capture the first devcoredump we encounter.  (They
 # expire after 5 minutes, so we poll for them).
@@ -39,8 +44,6 @@ export XDG_CACHE_HOME=/tmp
 if [ -n "$BM_START_XORG" ]; then
   echo "touch /xorg-started; sleep 100000" > /xorg-script
   env \
-    LD_LIBRARY_PATH=/install/lib/ \
-    LIBGL_DRIVERS_PATH=/install/lib/dri/ \
     xinit /bin/sh /xorg-script -- /usr/bin/Xorg -noreset -s 0 -dpms -logfile /Xorg.0.log &
 
   # Wait for xorg to be ready for connections.
