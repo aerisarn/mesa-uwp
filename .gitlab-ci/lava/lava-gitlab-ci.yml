@@ -35,7 +35,7 @@
   variables:
     ARCH: armhf
     KERNEL_IMAGE_NAME: zImage
-    KERNEL_IMAGE_TYPE: "type:\ zimage"
+    KERNEL_IMAGE_TYPE: "zimage"
     BOOT_METHOD: u-boot
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
   extends:
@@ -52,7 +52,7 @@
   variables:
     ARCH: arm64
     KERNEL_IMAGE_NAME: Image
-    KERNEL_IMAGE_TYPE: "type:\ image"
+    KERNEL_IMAGE_TYPE: "image"
     BOOT_METHOD: u-boot
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
   extends:
@@ -71,7 +71,7 @@
   variables:
     ARCH: amd64
     KERNEL_IMAGE_NAME: bzImage
-    KERNEL_IMAGE_TYPE: "type:\ zimage"
+    KERNEL_IMAGE_TYPE: "zimage"
     BOOT_METHOD: u-boot
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
   extends:

@@ -24,7 +24,7 @@ actions:
     kernel:
       url: {{ base_system_url_prefix }}/{{ kernel_image_name }}
 {% if kernel_image_type %}
-      {{ kernel_image_type }}
+      type: {{ kernel_image_type }}
 {% endif %}
     nfsrootfs:
       url: {{ base_system_url_prefix }}/lava-rootfs.tgz
