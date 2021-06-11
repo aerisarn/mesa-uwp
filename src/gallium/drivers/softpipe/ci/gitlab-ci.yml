@@ -6,6 +6,7 @@ softpipe-gles2:
     GPU_VERSION: softpipe
     GALLIUM_DRIVER: "softpipe"
     DEQP_EXPECTED_RENDERER: softpipe
+    FLAKES_CHANNEL: "#mesa-swrast-ci"
 
 softpipe-gles3:
   variables:
