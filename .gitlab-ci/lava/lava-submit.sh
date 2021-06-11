@@ -17,7 +17,7 @@ mkdir -p results/job-rootfs-overlay/
 # LAVA always uploads to MinIO when necessary as we don't have direct upload
 # from the DUT
 export PIGLIT_REPLAY_UPLOAD_TO_MINIO=1
-artifacts/ci-common/generate-env.sh > results/job-rootfs-overlay/environment.sh
+artifacts/ci-common/generate-env.sh > results/job-rootfs-overlay/set-job-env-vars.sh
 
 tar zcf job-rootfs-overlay.tar.gz -C results/job-rootfs-overlay/ .
 ci-fairy minio login "${CI_JOB_JWT}"

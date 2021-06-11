@@ -83,9 +83,8 @@ actions:
           - for i in 1 2 3; do sntp -sS pool.ntp.org && break || sleep 2; done
 
           - wget -S --progress=dot:giga -O- {{ mesa_build_url }} | tar -xz
-          - mkdir -p /job-overlay
-          - wget -S --progress=dot:giga -O- {{ job_rootfs_overlay_url }} | tar -xz -C /job-overlay/
-          - . /job-overlay/environment.sh
+          - wget -S --progress=dot:giga -O- {{ job_rootfs_overlay_url }} | tar -xz -C /
+          - . /set-job-env-vars.sh
           - mkdir -p $CI_PROJECT_DIR
           - ln -sf /install $CI_PROJECT_DIR/install
 
