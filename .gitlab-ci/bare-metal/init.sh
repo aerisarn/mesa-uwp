@@ -18,8 +18,9 @@ export XDG_CACHE_HOME=/tmp
 
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
-# Not all DUTs have network
-sntp -sS pool.ntp.org || true
+# Set the time so we can validate certificates before we fetch anything;
+# however as not all DUTs have network, make this non-fatal.
+for i in 1 2 3; do sntp -sS pool.ntp.org && break || sleep 2; done || true
 
 # Start a little daemon to capture the first devcoredump we encounter.  (They
 # expire after 5 minutes, so we poll for them).
