@@ -1816,18 +1816,13 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
        */
       assert(src->cpp == dst->cpp);
 
-      uint32_t divisor_w, divisor_h;
       format = VK_FORMAT_R32G32_UINT;
       switch (src->cpp) {
       case 16:
          format = VK_FORMAT_R32G32B32A32_UINT;
-         divisor_w = 4;
-         divisor_h = 4;
          break;
       case 8:
          format = VK_FORMAT_R16G16B16A16_UINT;
-         divisor_w = 4;
-         divisor_h = 4;
          break;
       default:
          unreachable("Unsupported compressed format");
@@ -1836,10 +1831,10 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       /* Create image views of the src/dst images that we can interpret in
        * terms of the canonical format.
        */
-      src_scale_w /= divisor_w;
-      src_scale_h /= divisor_h;
-      dst_scale_w /= divisor_w;
-      dst_scale_h /= divisor_h;
+      src_scale_w /= src_block_w;
+      src_scale_h /= src_block_h;
+      dst_scale_w /= src_block_w;
+      dst_scale_h /= src_block_h;
 
       src = create_image_alias(cmd_buffer, src,
                                src_scale_w, src_scale_h, format);
