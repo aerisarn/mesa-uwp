@@ -1631,7 +1631,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!zink_verify_device_extensions(screen))
       goto fail;
 
-   if (!check_have_device_time(screen))
+   if (screen->info.have_EXT_calibrated_timestamps && !check_have_device_time(screen))
       goto fail;
 
    screen->have_triangle_fans = true;
