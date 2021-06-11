@@ -102,6 +102,8 @@ actions:
           - GPU_AUTOSUSPEND=`find /sys/devices -name autosuspend_delay_ms | grep gpu | head -1`
           - echo -1 > $GPU_AUTOSUSPEND || true
 
+	  - ./capture-devcoredump.sh &
+
           - export CI_JOB_JWT="{{ jwt }}"
           # Store Mesa's disk cache under /tmp, rather than sending it out over NFS.
           - export XDG_CACHE_HOME=/tmp
