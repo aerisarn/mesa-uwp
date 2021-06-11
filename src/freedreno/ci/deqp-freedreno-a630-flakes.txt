@@ -77,9 +77,6 @@ dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 dEQP-GLES3.functional.fbo.blit.conversion.rg8i_to_r16i
 dEQP-GLES3.functional.fbo.blit.conversion.rg8_to_r16f
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4575
-dEQP-VK.wsi.display.get_display_plane_capabilities
-
 # Undiagnosed flakes appearing more than once in the last 2 months as
 # of 2020-08-19, in descending order of frequency.
 dEQP-GLES3.functional.fragment_out.random.39
