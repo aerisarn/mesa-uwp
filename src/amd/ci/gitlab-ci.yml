@@ -70,6 +70,7 @@ radv_stoney_vkcts:amd64:
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
     HWCI_KERNEL_MODULES: amdgpu
+    HWCI_FREQ_MAX: "true"
     VK_DRIVER: radeon
   tags:
     - mesa-ci-x86-64-lava-hp-11A-G6-EE-grunt

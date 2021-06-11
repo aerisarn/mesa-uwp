@@ -11,6 +11,7 @@
     DRIVER_NAME: radeonsi
     DEQP_PARALLEL: 4
     DEQP_EXPECTED_RENDERER: STONEY
+    HWCI_FREQ_MAX: "true"
   tags:
     - mesa-ci-x86-64-lava-hp-11A-G6-EE-grunt
 

@@ -22,6 +22,19 @@ export XDG_CACHE_HOME=/tmp
 # Make sure Python can find all our imports
 export PYTHONPATH=$(python3 -c "import sys;print(\":\".join(sys.path))")
 
+if [ "$HWCI_FREQ_MAX" = "true" ]; then
+  # Disable GPU frequency scaling
+  DEVFREQ_GOVERNOR=`find /sys/devices -name governor | grep gpu || true`
+  test -z "$DEVFREQ_GOVERNOR" || echo performance > $DEVFREQ_GOVERNOR || true
+
+  # Disable CPU frequency scaling
+  echo performance | tee -a /sys/devices/system/cpu/cpufreq/policy*/scaling_governor || true
+
+  # Disable GPU runtime power management
+  GPU_AUTOSUSPEND=`find /sys/devices -name autosuspend_delay_ms | grep gpu | head -1`
+  test -z "$GPU_AUTOSUSPEND" || echo -1 > $GPU_AUTOSUSPEND || true
+fi
+
 # Start a little daemon to capture the first devcoredump we encounter.  (They
 # expire after 5 minutes, so we poll for them).
 ./capture-devcoredump.sh &

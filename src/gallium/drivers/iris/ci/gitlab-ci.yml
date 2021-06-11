@@ -8,6 +8,7 @@
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
     FLAKES_CHANNEL: "#intel-ci"
+    HWCI_FREQ_MAX: "true"
 
 .iris-apl-test:
   extends:
