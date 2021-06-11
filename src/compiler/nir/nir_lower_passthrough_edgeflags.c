@@ -35,8 +35,11 @@ lower_impl(nir_function_impl *impl)
    nir_builder_init(&b, impl);
    b.cursor = nir_before_cf_list(&impl->body);
 
-   /* The edge flag is the last input in st/mesa. */
-   assert(shader->num_inputs == util_bitcount64(shader->info.inputs_read));
+   /* The edge flag is the last input in st/mesa.  This code is also called by
+    * i965 which calls it before any input locations are assigned.
+    */
+   assert(shader->num_inputs == 0 ||
+          shader->num_inputs == util_bitcount64(shader->info.inputs_read));
 
    /* Lowered IO only uses intrinsics. It doesn't use variables. */
    if (shader->info.io_lowered) {

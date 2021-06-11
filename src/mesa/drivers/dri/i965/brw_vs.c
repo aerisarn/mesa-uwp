@@ -76,10 +76,6 @@ brw_vs_outputs_written(struct brw_context *brw, struct brw_vs_prog_key *key,
    const struct intel_device_info *devinfo = &brw->screen->devinfo;
    GLbitfield64 outputs_written = user_varyings;
 
-   if (key->copy_edgeflag) {
-      outputs_written |= BITFIELD64_BIT(VARYING_SLOT_EDGE);
-   }
-
    if (devinfo->ver < 6) {
       /* Put dummy slots into the VUE for the SF to put the replaced
        * point sprite coords in.  We shouldn't need these dummy slots,
@@ -155,6 +151,9 @@ brw_codegen_vs_prog(struct brw_context *brw,
       brw_nir_lower_legacy_clipping(nir, key->nr_userclip_plane_consts,
                                     &prog_data.base.base);
    }
+
+   if (key->copy_edgeflag)
+      nir_lower_passthrough_edgeflags(nir);
 
    uint64_t outputs_written =
       brw_vs_outputs_written(brw, key, nir->info.outputs_written);
