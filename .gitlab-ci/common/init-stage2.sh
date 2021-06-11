@@ -27,7 +27,7 @@ export PYTHONPATH=$(python3 -c "import sys;print(\":\".join(sys.path))")
 ./capture-devcoredump.sh &
 
 # If we want Xorg to be running for the test, then we start it up before the
-# BARE_METAL_TEST_SCRIPT because we need to use xinit to start X (otherwise
+# HWCI_TEST_SCRIPT because we need to use xinit to start X (otherwise
 # without using -displayfd you can race with Xorg's startup), but xinit will eat
 # your client's return code
 if [ -n "$HWCI_START_XORG" ]; then
@@ -46,7 +46,7 @@ if [ -n "$HWCI_START_XORG" ]; then
 fi
 
 RESULT=fail
-if sh $BARE_METAL_TEST_SCRIPT; then
+if sh $HWCI_TEST_SCRIPT; then
   RESULT=pass
 fi
 

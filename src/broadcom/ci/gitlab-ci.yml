@@ -23,7 +23,7 @@
   extends:
     - .vc4-rpi3-test:armhf
   variables:
-    BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
+    HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     # The vc4s are so slow that it takes about a minute to get through the
     # default 500 tests in a group, triggering the serial watchdog.
     DEQP_RUNNER_OPTIONS: "--tests-per-group 250"
@@ -54,7 +54,7 @@ vc4-rpi3-egl:armhf:
     - .vc4-rpi3-test:armhf
     - .test-manual
   variables:
-    BARE_METAL_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
+    HWCI_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     BM_POE_TIMEOUT: 180
     HWCI_START_XORG: 1
     PIGLIT_PLATFORM: mixed_glx_egl
@@ -81,7 +81,7 @@ vc4-rpi3-piglit-quick_shader:armhf:
     - .v3d-rules
     - .use-arm_test
   variables:
-    BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
+    HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_armhf
     BM_POE_TIMEOUT: 300
     BM_ROOTFS: /rootfs-armhf
@@ -148,7 +148,7 @@ v3d-rpi4-piglit:armhf:
     - .v3d-rpi4-test:armhf
   parallel: 3
   variables:
-    BARE_METAL_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
+    HWCI_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     HWCI_START_XORG: 1
     PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_PROFILES: all
@@ -160,7 +160,7 @@ v3dv-rpi4-vk:arm64:
     - .v3dv-rules
   parallel: 6
   variables:
-    BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
+    HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_arm64
     BM_POE_TIMEOUT: 300
     BM_ROOTFS: /rootfs-arm64
