@@ -455,9 +455,11 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
    ctx->gfx_prim_mode = mode;
 
-   if (ctx->gfx_pipeline_state.primitive_restart != dinfo->primitive_restart)
-      ctx->gfx_pipeline_state.dirty = true;
-   ctx->gfx_pipeline_state.primitive_restart = dinfo->primitive_restart;
+   if (!HAS_DYNAMIC_STATE2) {
+      if (ctx->gfx_pipeline_state.primitive_restart != dinfo->primitive_restart)
+         ctx->gfx_pipeline_state.dirty = true;
+      ctx->gfx_pipeline_state.primitive_restart = dinfo->primitive_restart;
+   }
 
    unsigned index_offset = 0;
    unsigned index_size = dinfo->index_size;
@@ -682,6 +684,11 @@ zink_draw_vbo(struct pipe_context *pctx,
       update_gfx_pipeline<BATCH_CHANGED>(ctx, batch->state, mode);
       if (BATCH_CHANGED || mode_changed)
          screen->vk.CmdSetPrimitiveTopologyEXT(batch->state->cmdbuf, zink_primitive_topology(mode));
+   }
+
+   if (HAS_DYNAMIC_STATE2 && (BATCH_CHANGED || ctx->primitive_restart != dinfo->primitive_restart)) {
+      screen->vk.CmdSetPrimitiveRestartEnableEXT(batch->state->cmdbuf, dinfo->primitive_restart);
+      ctx->primitive_restart = dinfo->primitive_restart;
    }
 
    if (zink_program_has_descriptors(&ctx->curr_program->base))

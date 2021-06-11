@@ -309,6 +309,8 @@ hash_gfx_pipeline_state(const void *key)
 {
    const struct zink_gfx_pipeline_state *state = key;
    uint32_t hash = _mesa_hash_data(key, offsetof(struct zink_gfx_pipeline_state, hash));
+   if (!state->have_EXT_extended_dynamic_state2)
+      hash = XXH32(&state->primitive_restart, 1, hash);
    if (state->have_EXT_extended_dynamic_state)
       return hash;
    return XXH32(&state->depth_stencil_alpha_state, sizeof(void*), hash);
@@ -335,6 +337,10 @@ equals_gfx_pipeline_state(const void *a, const void *b)
          return false;
       if (!!sa->depth_stencil_alpha_state != !!sb->depth_stencil_alpha_state ||
           memcmp(sa->depth_stencil_alpha_state, sb->depth_stencil_alpha_state, sizeof(struct zink_depth_stencil_alpha_hw_state)))
+         return false;
+   }
+   if (!sa->have_EXT_extended_dynamic_state2) {
+      if (sa->primitive_restart != sb->primitive_restart)
          return false;
    }
    return !memcmp(sa->modules, sb->modules, sizeof(sa->modules)) &&

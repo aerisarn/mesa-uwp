@@ -317,6 +317,7 @@ struct zink_context {
    bool gfx_dirty;
 
    bool is_device_lost;
+   bool primitive_restart;
    bool vertex_state_changed : 1;
    bool blend_state_changed : 1;
    bool rast_state_changed : 1;
