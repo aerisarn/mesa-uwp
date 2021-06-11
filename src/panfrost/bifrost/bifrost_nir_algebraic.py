@@ -31,6 +31,11 @@ c = 'c'
 algebraic_late = [
     # Canonical form. The scheduler will convert back if it makes sense.
     (('fmul', a, 2.0), ('fadd', a, a)),
+
+    # Fuse Mali-specific clamps
+    (('fmin', ('fmax', a, -1.0), 1.0), ('fsat_signed', a)),
+    (('fmax', ('fmin', a, 1.0), -1.0), ('fsat_signed', a)),
+    (('fmax', a, 0.0), ('fclamp_pos', a)),
 ]
 
 
