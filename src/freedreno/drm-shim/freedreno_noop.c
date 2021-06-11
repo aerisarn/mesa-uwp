@@ -292,7 +292,7 @@ drm_shim_driver_init(void)
 
    /* msm uses the DRM version to expose features, instead of getparam. */
    shim_device.version_major = 1;
-   shim_device.version_minor = 5;
+   shim_device.version_minor = 6;
    shim_device.version_patchlevel = 0;
 
    msm_driver_get_device_info();
