@@ -36,7 +36,7 @@ fi
 touch $INSTALL/piglit-$GPU_VERSION-flakes.txt
 
 if [ -e "$INSTALL/piglit-$GPU_VERSION-skips.txt" ]; then
-    PIGLIT_RUNNER_OPTIONS="$PIGLIT_RUNNER_OPTIONS --skips $INSTALL/piglit-$GPU_VERSION-skips.txt"
+    PIGLIT_SKIPS="$INSTALL/piglit-$GPU_VERSION-skips.txt"
 fi
 
 set +e
@@ -58,6 +58,7 @@ export LD_PRELOAD=$TEST_LD_PRELOAD
         run \
         --piglit-folder /piglit \
         --output $RESULTS \
+        --skips $INSTALL/piglit/piglit-all-skips.txt $PIGLIT_SKIPS \
         --flakes $INSTALL/piglit-$GPU_VERSION-flakes.txt \
         --profile $PIGLIT_PROFILES \
         --process-isolation \

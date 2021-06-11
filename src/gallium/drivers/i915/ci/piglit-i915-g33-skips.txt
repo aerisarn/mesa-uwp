@@ -1,6 +1,3 @@
 # Timeout
 spec@arb_internalformat_query2@all internalformat_.*_type
 spec@!opengl 1.0@gl-1.0-blend-func
-
-# WGL is Windows-only
-wgl@.*

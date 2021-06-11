@@ -29,6 +29,3 @@ spec@ext_external_objects_fd@semaphore-api-errors
 spec@ext_external_objects_fd@memory-object-api-errors
 spec@ext_external_objects@vk-vert-buf-reuse
 glx@glx-swap-copy
-
-# WGL is Windows-only
-wgl@.*

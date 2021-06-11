@@ -12,9 +12,6 @@ spec@glsl-1.30@execution@tex-miplevel-selection.*
 # only supported if Piglit is using GLUT
 spec@!opengl 1.1@windowoverlap
 
-# WGL is Windows-only
-wgl@.*
-
 # This test doesn't even seem to exist, but piglit adds it to a group...?
 spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match
 

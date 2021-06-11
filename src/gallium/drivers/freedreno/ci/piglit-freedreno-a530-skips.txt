@@ -33,6 +33,3 @@ spec@arb_pixel_buffer_object@texsubimage cube_map_array pbo
 # Causes faults that need the HUPCF fix to actually work to avoid killing the
 # run.
 spec@glsl-1.30@execution@texelfetch fs sampler3d 98x1x9-98x129x9
-
-# WGL is Windows-only
-wgl@.*

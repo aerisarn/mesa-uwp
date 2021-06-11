@@ -1,0 +1,2 @@
+# WGL is Windows-only
+wgl@.*
