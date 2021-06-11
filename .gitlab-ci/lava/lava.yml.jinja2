@@ -38,17 +38,7 @@ actions:
     timeout:
       minutes: 25
     method: {{ boot_method }}
-{% if boot_method == "fastboot" %}
-{#
-   For fastboot, LAVA doesn't know how to unpack the rootfs/apply overlay/repack,
-   so we transfer the overlay over the network after boot.
-#}
-    transfer_overlay:
-      download_command: wget -S --progress=dot:giga
-      unpack_command: tar -C / -xzf
-{% else %}
     commands: nfs
-{% endif %}
     prompts:
       - 'lava-shell:'
 - test:
