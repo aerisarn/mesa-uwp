@@ -71,4 +71,4 @@ radeonsi-stoney-piglit-gl:amd64:
     PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_PROFILES: quick_gl
     PIGLIT_JUNIT_RESULTS: 1
-    LAVA_START_XORG: 1
+    HWCI_START_XORG: 1

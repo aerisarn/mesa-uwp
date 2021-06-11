@@ -45,7 +45,7 @@ vc4-rpi3-egl:armhf:
   extends:
     - .vc4-rpi3-deqp:armhf
   variables:
-    BM_START_XORG: 1
+    HWCI_START_XORG: 1
     DEQP_VER: egl
 
 .vc4-rpi3-piglit:armhf:
@@ -56,7 +56,7 @@ vc4-rpi3-egl:armhf:
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     BM_POE_TIMEOUT: 180
-    BM_START_XORG: 1
+    HWCI_START_XORG: 1
     PIGLIT_PLATFORM: mixed_glx_egl
 
 vc4-rpi3-piglit-quick_gl:armhf:
@@ -139,7 +139,7 @@ v3d-rpi4-egl:armhf:
   extends:
     - .v3d-rpi4-test:armhf
   variables:
-    BM_START_XORG: 1
+    HWCI_START_XORG: 1
     DEQP_VER: egl
 
 v3d-rpi4-piglit:armhf:
@@ -149,7 +149,7 @@ v3d-rpi4-piglit:armhf:
   parallel: 3
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
-    BM_START_XORG: 1
+    HWCI_START_XORG: 1
     PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_PROFILES: all
 

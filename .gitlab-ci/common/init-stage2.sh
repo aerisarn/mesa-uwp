@@ -30,7 +30,7 @@ export PYTHONPATH=$(python3 -c "import sys;print(\":\".join(sys.path))")
 # BARE_METAL_TEST_SCRIPT because we need to use xinit to start X (otherwise
 # without using -displayfd you can race with Xorg's startup), but xinit will eat
 # your client's return code
-if [ -n "$BM_START_XORG" ]; then
+if [ -n "$HWCI_START_XORG" ]; then
   echo "touch /xorg-started; sleep 100000" > /xorg-script
   env \
     xinit /bin/sh /xorg-script -- /usr/bin/Xorg -noreset -s 0 -dpms -logfile /Xorg.0.log &

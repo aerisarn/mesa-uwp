@@ -85,7 +85,7 @@ iris-apl-egl:
     - .iris-apl-test
   variables:
     PIGLIT_NO_WINDOW: 0
-    LAVA_START_XORG: 1
+    HWCI_START_XORG: 1
     DEQP_VER: egl
 
 iris-glk-gles2:
@@ -124,7 +124,7 @@ iris-glk-egl:
     - .iris-glk-test
   variables:
     PIGLIT_NO_WINDOW: 0
-    LAVA_START_XORG: 1
+    HWCI_START_XORG: 1
     DEQP_VER: egl
 
 iris-amly-gles2:
@@ -162,7 +162,7 @@ iris-amly-egl:
     - .iris-amly-test
   variables:
     PIGLIT_NO_WINDOW: 0
-    LAVA_START_XORG: 1
+    HWCI_START_XORG: 1
     DEQP_VER: egl
 
 iris-amly-piglit:
@@ -171,11 +171,11 @@ iris-amly-piglit:
     - .lava-piglit
   parallel: 3
   variables:
+    HWCI_START_XORG: 1
     PIGLIT_NO_WINDOW: 0
     PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_PROFILES: gpu
     PIGLIT_JUNIT_RESULTS: 1
-    LAVA_START_XORG: 1
 
 .iris-traces:
   extends:
