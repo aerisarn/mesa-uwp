@@ -9,18 +9,20 @@ mkdir -p /dev/pts
 mount -t devpts devpts /dev/pts
 mount -t tmpfs tmpfs /tmp
 
-. /set-job-env-vars.sh
-
-[ -z "$HWCI_KERNEL_MODULES" ] || (echo -n $HWCI_KERNEL_MODULES | xargs -d, -n1 /usr/sbin/modprobe)
-
-# Store Mesa's disk cache under /tmp, rather than sending it out over NFS.
-export XDG_CACHE_HOME=/tmp
-
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
+[ -z "$NFS_SERVER_IP" ] || echo "$NFS_SERVER_IP caching-proxy" >> /etc/hosts
 
 # Set the time so we can validate certificates before we fetch anything;
 # however as not all DUTs have network, make this non-fatal.
 for i in 1 2 3; do sntp -sS pool.ntp.org && break || sleep 2; done || true
+
+. /set-job-env-vars.sh
+
+# Set up any devices required by the jobs
+[ -z "$HWCI_KERNEL_MODULES" ] || (echo -n $HWCI_KERNEL_MODULES | xargs -d, -n1 /usr/sbin/modprobe)
+
+# Store Mesa's disk cache under /tmp, rather than sending it out over NFS.
+export XDG_CACHE_HOME=/tmp
 
 # Start a little daemon to capture the first devcoredump we encounter.  (They
 # expire after 5 minutes, so we poll for them).
