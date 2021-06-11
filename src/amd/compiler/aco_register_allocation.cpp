@@ -1794,32 +1794,28 @@ handle_pseudo(ra_ctx& ctx, const RegisterFile& reg_file, Instruction* instr)
       if (op.isTemp() && op.regClass().is_subdword())
          reads_subdword = true;
    }
-   bool needs_scratch_reg =
-      (writes_sgpr && reads_sgpr) || (ctx.program->chip_class <= GFX7 && reads_subdword);
+   bool needs_scratch_reg = (writes_sgpr && reads_sgpr && reg_file[scc]) ||
+                            (ctx.program->chip_class <= GFX7 && reads_subdword);
    if (!needs_scratch_reg)
       return;
 
-   if (reg_file[scc]) {
-      instr->pseudo().tmp_in_scc = true;
+   instr->pseudo().tmp_in_scc = reg_file[scc];
 
-      int reg = ctx.max_used_sgpr;
-      for (; reg >= 0 && reg_file[PhysReg{(unsigned)reg}]; reg--)
+   int reg = ctx.max_used_sgpr;
+   for (; reg >= 0 && reg_file[PhysReg{(unsigned)reg}]; reg--)
+      ;
+   if (reg < 0) {
+      reg = ctx.max_used_sgpr + 1;
+      for (; reg < ctx.program->max_reg_demand.sgpr && reg_file[PhysReg{(unsigned)reg}]; reg++)
          ;
-      if (reg < 0) {
-         reg = ctx.max_used_sgpr + 1;
-         for (; reg < ctx.program->max_reg_demand.sgpr && reg_file[PhysReg{(unsigned)reg}]; reg++)
-            ;
-         if (reg == ctx.program->max_reg_demand.sgpr) {
-            assert(reads_subdword && reg_file[m0] == 0);
-            reg = m0;
-         }
+      if (reg == ctx.program->max_reg_demand.sgpr) {
+         assert(reads_subdword && reg_file[m0] == 0);
+         reg = m0;
       }
-
-      adjust_max_used_regs(ctx, s1, reg);
-      instr->pseudo().scratch_sgpr = PhysReg{(unsigned)reg};
-   } else {
-      instr->pseudo().tmp_in_scc = false;
    }
+
+   adjust_max_used_regs(ctx, s1, reg);
+   instr->pseudo().scratch_sgpr = PhysReg{(unsigned)reg};
 }
 
 bool
