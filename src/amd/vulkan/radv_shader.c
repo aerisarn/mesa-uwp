@@ -33,9 +33,9 @@
 #include "util/mesa-sha1.h"
 #include "util/u_atomic.h"
 #include "radv_debug.h"
+#include "radv_llvm_helper.h"
 #include "radv_private.h"
 #include "radv_shader_args.h"
-#include "radv_shader_helper.h"
 
 #include "util/debug.h"
 #include "ac_binary.h"
