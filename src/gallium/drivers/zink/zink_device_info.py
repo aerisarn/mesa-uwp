@@ -268,8 +268,19 @@ struct zink_device_info {
 bool
 zink_get_physical_device_info(struct zink_screen *screen);
 
-bool
+void
 zink_verify_device_extensions(struct zink_screen *screen);
+
+/* stub functions that get inserted into the dispatch table if they are not
+ * properly loaded.
+ */
+%for ext in extensions:
+%if registry.in_registry(ext.name):
+%for cmd in registry.get_registry_entry(ext.name).device_commands:
+void zink_stub_${cmd.lstrip("vk")}(void);
+%endfor
+%endif
+%endfor
 
 #endif
 """
@@ -443,7 +454,7 @@ fail:
    return false;
 }
 
-bool
+void
 zink_verify_device_extensions(struct zink_screen *screen)
 {
 %for ext in extensions:
@@ -451,16 +462,45 @@ zink_verify_device_extensions(struct zink_screen *screen)
    if (screen->info.have_${ext.name_with_vendor()}) {
 %for cmd in registry.get_registry_entry(ext.name).device_commands:
       if (!screen->vk.${cmd.lstrip("vk")}) {
-         mesa_loge("ZINK: GetDeviceProcAddr failed: ${cmd}\\n");
-         return false;
+#ifndef NDEBUG
+         screen->vk.${cmd.lstrip("vk")} = (PFN_${cmd})zink_stub_${cmd.lstrip("vk")};
+#else
+         screen->vk.${cmd.lstrip("vk")} = (PFN_${cmd})zink_stub_function_not_loaded;
+#endif
       }
 %endfor
    }
 %endif
 %endfor
-
-   return true;
 }
+
+#ifndef NDEBUG
+/* generated stub functions */
+## remember the stub functions that are already generated
+<% generated_funcs = set() %>
+
+%for ext in extensions:
+%if registry.in_registry(ext.name):
+%for cmd in registry.get_registry_entry(ext.name).device_commands:
+##
+## some functions are added by multiple extensions, which creates duplication
+## and thus redefinition of stubs (eg. vkCmdPushDescriptorSetWithTemplateKHR)
+##
+%if cmd in generated_funcs:
+   <% continue %>
+%else:
+   <% generated_funcs.add(cmd) %>
+%endif
+void
+zink_stub_${cmd.lstrip("vk")}()
+{
+   mesa_loge("ZINK: ${cmd} is not loaded properly!");
+   abort();
+}
+%endfor
+%endif
+%endfor
+#endif
 """
 
 
@@ -531,7 +571,7 @@ if __name__ == "__main__":
     lookup.put_string("helpers", include_template)
 
     with open(header_path, "w") as header_file:
-        header = Template(header_code, lookup=lookup).render(extensions=extensions, versions=versions).strip()
+        header = Template(header_code, lookup=lookup).render(extensions=extensions, versions=versions, registry=registry).strip()
         header = replace_code(header, replacement)
         print(header, file=header_file)
 

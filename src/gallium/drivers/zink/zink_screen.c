@@ -1586,8 +1586,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    vk_instance_dispatch_table_load(&screen->vk.instance, &vkGetInstanceProcAddr, screen->instance);
    vk_physical_device_dispatch_table_load(&screen->vk.physical_device, &vkGetInstanceProcAddr, screen->instance);
 
-   if (!zink_verify_instance_extensions(screen))
-      goto fail;
+   zink_verify_instance_extensions(screen);
 
    if (screen->instance_info.have_EXT_debug_utils &&
       (zink_debug & ZINK_DEBUG_VALIDATION) && !create_debug(screen))
@@ -1628,8 +1627,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    vk_device_dispatch_table_load(&screen->vk.device, &vkGetDeviceProcAddr, screen->dev);
 
-   if (!zink_verify_device_extensions(screen))
-      goto fail;
+   zink_verify_device_extensions(screen);
 
    if (screen->info.have_EXT_calibrated_timestamps && !check_have_device_time(screen))
       goto fail;
@@ -1774,4 +1772,13 @@ zink_drm_create_screen(int fd, const struct pipe_screen_config *config)
    }
 
    return &ret->base;
+}
+
+void zink_stub_function_not_loaded()
+{
+   /* this will be used by the zink_verify_*_extensions() functions on a
+    * release build
+    */
+   mesa_loge("ZINK: a Vulkan function was called without being loaded");
+   abort();
 }
