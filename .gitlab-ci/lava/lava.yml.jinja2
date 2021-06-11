@@ -1,7 +1,7 @@
 job_name: "mesa: {{ pipeline_info }}"
 device_type: {{ device_type }}
 context:
-  extra_nfsroot_args: " init=/init rootwait"
+  extra_nfsroot_args: " init=/init rootwait minio_results={{ job_artifacts_base }}"
 timeouts:
   job:
     minutes: 30
@@ -133,10 +133,11 @@ actions:
                   export RESULT=pass;
              fi"
 
-          - "if [ -d results ]; then
+          - "MINIO=$(cat /proc/cmdline | tr ' ' '\n' | grep minio_results | cut -d '=' -f 2 || true)
+	     if [ -n $MINIO ]; then
                 tar -czf results.tar.gz results/;
                 ci-fairy minio login $CI_JOB_JWT;
-                ci-fairy minio cp results.tar.gz minio://${JOB_ARTIFACTS_BASE}/results.tar.gz;
+                ci-fairy minio cp results.tar.gz minio://$MINIO/results.tar.gz;
              fi"
 
           - "echo hwci: mesa: $RESULT"

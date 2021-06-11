@@ -33,6 +33,7 @@ artifacts/lava/lava_job_submitter.py \
 	--base-system-url-prefix "https://${BASE_SYSTEM_HOST_PATH}" \
 	--mesa-build-url "${FDO_HTTP_CACHE_URI:-}https://${MESA_BUILD_PATH}" \
 	--job-rootfs-overlay-url "${FDO_HTTP_CACHE_URI:-}https://${JOB_ROOTFS_OVERLAY_PATH}" \
+	--job-artifacts-base ${JOB_ARTIFACTS_BASE} \
 	--device-type ${DEVICE_TYPE} \
 	--dtb ${DTB} \
 	--jwt "${CI_JOB_JWT}" \

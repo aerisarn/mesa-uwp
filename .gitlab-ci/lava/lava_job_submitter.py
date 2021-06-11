@@ -55,6 +55,7 @@ def generate_lava_yaml(args):
     values['base_system_url_prefix'] = args.base_system_url_prefix
     values['mesa_build_url'] = args.mesa_build_url
     values['job_rootfs_overlay_url'] = args.job_rootfs_overlay_url
+    values['job_artifacts_base'] = args.job_artifacts_base
     values['device_type'] = args.device_type
     values['dtb'] = args.dtb
     values['kernel_image_name'] = args.kernel_image_name
@@ -204,6 +205,7 @@ if __name__ == '__main__':
     parser.add_argument("--base-system-url-prefix")
     parser.add_argument("--mesa-build-url")
     parser.add_argument("--job-rootfs-overlay-url")
+    parser.add_argument("--job-artifacts-base")
     parser.add_argument("--device-type")
     parser.add_argument("--dtb", nargs='?', default="")
     parser.add_argument("--kernel-image-name")
