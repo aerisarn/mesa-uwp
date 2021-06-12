@@ -820,7 +820,7 @@ anv_AcquireImageANDROID(
          }
       } else if (semaphore_h != VK_NULL_HANDLE) {
          semaphore_fd = nativeFenceFd;
-      } else if (fence_h == VK_NULL_HANDLE) {
+      } else if (fence_h != VK_NULL_HANDLE) {
          fence_fd = nativeFenceFd;
       } else {
          /* Nothing to import into so we have to close the file */
