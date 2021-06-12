@@ -3,10 +3,6 @@
 set -e
 set -x
 
-rm -rf results
-mkdir -p results/job-rootfs-overlay/
-artifacts/ci-common/generate-env.sh > results/job-rootfs-overlay/environment.sh
-
 # Try to use the kernel and rootfs built in mainline first, so we're more
 # likely to hit cache
 if wget -q --method=HEAD "https://${BASE_SYSTEM_MAINLINE_HOST_PATH}/done"; then
@@ -14,6 +10,14 @@ if wget -q --method=HEAD "https://${BASE_SYSTEM_MAINLINE_HOST_PATH}/done"; then
 else
 	BASE_SYSTEM_HOST_PATH="${BASE_SYSTEM_FORK_HOST_PATH}"
 fi
+
+rm -rf results
+mkdir -p results/job-rootfs-overlay/
+
+# LAVA always uploads to MinIO when necessary as we don't have direct upload
+# from the DUT
+export PIGLIT_REPLAY_UPLOAD_TO_MINIO=1
+artifacts/ci-common/generate-env.sh > results/job-rootfs-overlay/environment.sh
 
 tar zcf job-rootfs-overlay.tar.gz -C results/job-rootfs-overlay/ .
 ci-fairy minio login "${CI_JOB_JWT}"
