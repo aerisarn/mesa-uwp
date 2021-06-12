@@ -247,9 +247,9 @@ fd_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
    fd_context_dirty_shader(ctx, shader, FD_DIRTY_SHADER_IMAGE);
 }
 
-static void
+void
 fd_set_framebuffer_state(struct pipe_context *pctx,
-                         const struct pipe_framebuffer_state *framebuffer) in_dt
+                         const struct pipe_framebuffer_state *framebuffer)
 {
    struct fd_context *ctx = fd_context(pctx);
    struct pipe_framebuffer_state *cso;
