@@ -286,14 +286,6 @@ emit_blit_setup(struct fd_ringbuffer *ring, enum pipe_format pfmt,
       A6XX_SP_2D_DST_FORMAT_COLOR_FORMAT(fmt) |
          COND(util_format_is_pure_sint(pfmt), A6XX_SP_2D_DST_FORMAT_SINT) |
          COND(util_format_is_pure_uint(pfmt), A6XX_SP_2D_DST_FORMAT_UINT) |
-         COND(util_format_is_snorm(pfmt),
-              A6XX_SP_2D_DST_FORMAT_SINT | A6XX_SP_2D_DST_FORMAT_NORM) |
-         COND(
-            util_format_is_unorm(pfmt),
-            // TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about
-            // that
-            //A6XX_SP_2D_DST_FORMAT_UINT |
-            A6XX_SP_2D_DST_FORMAT_NORM) |
          COND(is_srgb, A6XX_SP_2D_DST_FORMAT_SRGB) |
          A6XX_SP_2D_DST_FORMAT_MASK(0xf));
 

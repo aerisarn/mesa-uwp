@@ -11,7 +11,7 @@ traces:
       # - device: freedreno-a530
       #   checksum: b007061e6e93020ddf2aff6a0f32ed72
       - device: freedreno-a630
-        checksum: ea2b03e0768e8400c0badd46e4d26087
+        checksum: fc26f34216d456ed841114d31215cb51
   - path: behdad-glyphy/glyphy.trace
     expectations:
       - device: freedreno-a306
@@ -229,7 +229,7 @@ traces:
       - device: freedreno-a530
         checksum: bc19f0f58935fdb348f401396e6845e1
       - device: freedreno-a630
-        checksum: 19a71509dca56e09f3883634c755f4ae
+        checksum: f546f840e916ab0f11f8df0e4eee584d
   - path: glmark2/shading:shading=blinn-phong-inf.trace
     expectations:
       - device: freedreno-a306
@@ -317,16 +317,16 @@ traces:
       - device: freedreno-a530
         checksum: a8580a2a85f37600c15fb897cd874432
       - device: freedreno-a630
-        checksum: 751e0e784ba2f003cfc456fe8699f1fa
+        checksum: 66d7cfb1aedfe40048fe2cdf8032071c
 # Note: Requires GL3.3
   - path: gputest/gimark.trace
     expectations:
       - device: freedreno-a630
-        checksum: 2cf40180a1315795389d0dfc18aad988
+        checksum: 286cab0d6d6562d5dcc969d778cfa666
   - path: gputest/pixmark-julia-fp32.trace
     expectations:
       - device: freedreno-a630
-        checksum: 4a02628395948c34d95d035a9c9735cb
+        checksum: db8e339d8d04aad46189de4d28cc125d
 # Note: Requires GL4 (fp64).
 #  - path: gputest/pixmark-julia-fp64.trace
 #    expectations:
@@ -348,7 +348,7 @@ traces:
         checksum: ef9cec3c226477e908d4bb2ffe9e8eb9
       # Looks fine, but totally different shape from the rendering on i965.
       - device: freedreno-a630
-        checksum: 2d1cf314b5ef2e0a79f5f98eee8de446
+        checksum: e4da2cf366cb68833569105d37aaa50d
   - path: gputest/plot3d.trace
     expectations:
       - device: freedreno-a306
@@ -356,12 +356,12 @@ traces:
       - device: freedreno-a530
         checksum: 6a05db4e26406b5550157a835a3019d0
       - device: freedreno-a630
-        checksum: 42aba3ab943dae2fe952cae1ff91c354
+        checksum: 6f7c5493ca1cd71fa6a627bdea1e1665
 # Note: Requires GL4 for tess.
   - path: gputest/tessmark.trace
     expectations:
       - device: freedreno-a630
-        checksum: 5d04b8d71517238b9bc8a527574e884b
+        checksum: 93d7cb8c775a7b60c499695045edc07f
   - path: gputest/triangle.trace
     expectations:
       - device: freedreno-a306
@@ -369,7 +369,7 @@ traces:
       - device: freedreno-a530
         checksum: a7142cfb819f5f45863ccca75a5e26a5
       - device: freedreno-a630
-        checksum: 1dc6abfb1cfbc5b16adc6f4abf76eec8
+        checksum: 2cbd1de2e9ed281b3cd19c957858c81a
   - path: humus/AmbientAperture.trace
     expectations:
       - device: freedreno-a306
@@ -439,7 +439,7 @@ traces:
       - device: freedreno-a530
         checksum: 0054f0ba67ace5d2defe17b74b5364e9
       - device: freedreno-a630
-        checksum: b47f8151d4310d87070deea9059d001b
+        checksum: eea608db257a1caa21517f0b13807952
   - path: neverball/neverball.trace
     expectations:
       # Skipped since it's long on a530.
@@ -449,7 +449,7 @@ traces:
       # - device: freedreno-a530
       #   checksum: 2a53e6086588f4675ae3dcda9f26603b
       - device: freedreno-a630
-        checksum: 57fd57aef14d37043a7b56a16dbf50b6
+        checksum: 5a97da6dbb6c10d615f92030c03d116c
   - path: pathfinder/canvas_moire.trace
     expectations:
       # a306/a630 would need higher GL version to run
@@ -481,7 +481,7 @@ traces:
       # - device: freedreno-a530
       #   checksum: 1ae49af7017ae2a08fbb1caf377ada91
       - device: freedreno-a630
-        checksum: 5f3fff8969813a5fc5d8d95b4d4c5755
+        checksum: fede0e29fa22a625be6adbd86e70c8c6
 # 21 seconds to render.  Renders nearly completely black, logs "warning:
 # 0:29(61): warning: `var_Position' used uninitialized".  Replays fine
 # on radeonsi.  Skip for now.
@@ -510,7 +510,7 @@ traces:
       # - device: freedreno-a530
       #   checksum: 14e78caf29b6a3341081c8f2e678355f
       - device: freedreno-a630
-        checksum: 2a755a4da96e2b0ec780f877157b6752
+        checksum: c8608d54cc6298476a2b60686d152dbc
   - path: valve/counterstrike-source-v2.trace
     expectations:
       # Skipped since it's slow even on a530.

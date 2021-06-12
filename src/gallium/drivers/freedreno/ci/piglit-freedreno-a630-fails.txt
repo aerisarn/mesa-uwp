@@ -55,7 +55,6 @@ spec@arb_depth_texture@texwrap formats bordercolor-swizzled@GL_DEPTH_COMPONENT16
 spec@arb_depth_texture@texwrap formats bordercolor-swizzled@GL_DEPTH_COMPONENT24- swizzled- border color only,Fail
 spec@arb_depth_texture@texwrap formats bordercolor-swizzled@GL_DEPTH_COMPONENT32- swizzled- border color only,Fail
 spec@arb_direct_state_access@gettextureimage-formats,Crash
-spec@arb_direct_state_access@gettextureimage-formats init-by-rendering,Fail
 spec@arb_direct_state_access@transformfeedback-bufferbase,Fail
 spec@arb_direct_state_access@transformfeedback-bufferbase@general test,Fail
 spec@arb_direct_state_access@transformfeedback-bufferrange,Fail
@@ -442,78 +441,6 @@ spec@arb_texture_view@rendering-formats@render to GL_RGBA8UI as GL_RG16_SNORM,Fa
 spec@arb_texture_view@rendering-formats@render to GL_RGBA8UI as GL_RG16UI,Fail
 spec@arb_texture_view@rendering-formats@render to GL_RGBA8UI as GL_RGB10_A2,Fail
 spec@arb_texture_view@rendering-formats@render to GL_RGBA8UI as GL_RGB10_A2UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16 as GL_R16,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16 as GL_R16F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16 as GL_R16I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16 as GL_R16_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16 as GL_R16UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16 as GL_RG8,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16 as GL_RG8I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16 as GL_RG8_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16 as GL_RG8UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16_SNORM as GL_R16,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16_SNORM as GL_R16F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16_SNORM as GL_R16I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16_SNORM as GL_R16_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16_SNORM as GL_R16UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16_SNORM as GL_RG8,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16_SNORM as GL_RG8I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16_SNORM as GL_RG8_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_R16_SNORM as GL_RG8UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_R32F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_R32I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_R32UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RG16,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RG16F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RG16I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RG16_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RG16UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RGB10_A2,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RGB10_A2UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RGBA8,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RGBA8I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RGBA8_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16 as GL_RGBA8UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_R32F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_R32I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_R32UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RG16,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RG16F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RG16I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RG16_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RG16UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGB10_A2,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGB10_A2UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGBA8,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGBA8I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGBA8_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGBA8UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGB16 as GL_RGB16,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGB16 as GL_RGB16F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGB16 as GL_RGB16I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGB16 as GL_RGB16_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGB16 as GL_RGB16UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGB16_SNORM as GL_RGB16,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGB16_SNORM as GL_RGB16F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGB16_SNORM as GL_RGB16I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGB16_SNORM as GL_RGB16_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGB16_SNORM as GL_RGB16UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16 as GL_RG32F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16 as GL_RG32I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16 as GL_RG32UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16 as GL_RGBA16,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16 as GL_RGBA16F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16 as GL_RGBA16I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16 as GL_RGBA16_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16 as GL_RGBA16UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RG32F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RG32I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RG32UI,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16F,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16I,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16_SNORM,Fail
-spec@arb_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16UI,Fail
 spec@arb_texture_view@rendering-layers-image,Fail
 spec@arb_texture_view@rendering-layers-image@layers rendering of image1DArray,Fail
 spec@arb_texture_view@rendering-layers-image@layers rendering of imageCubeArray,Fail
@@ -599,8 +526,6 @@ spec@ext_framebuffer_multisample@unaligned-blit 4 stencil msaa,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor-ff,Fail
 spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
-spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Fail
-spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor@GL_DEPTH24_STENCIL8- border color only,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled,Fail
@@ -634,46 +559,13 @@ spec@ext_texture_integer@texwrap formats bordercolor-swizzled@GL_RGBA32I- swizzl
 spec@ext_texture_integer@texwrap formats bordercolor-swizzled@GL_RGBA32UI- swizzled- border color only,Fail
 spec@ext_texture_integer@texwrap formats bordercolor-swizzled@GL_RGBA8I- swizzled- border color only,Fail
 spec@ext_texture_integer@texwrap formats bordercolor-swizzled@GL_RGBA8UI- swizzled- border color only,Fail
-spec@ext_texture_norm16@render,Fail
-spec@ext_texture_norm16@render@format GL_R16_SNORM,Fail
-spec@ext_texture_norm16@render@format GL_R16_SNORM read fail,Fail
-spec@ext_texture_norm16@render@format GL_RG16_SNORM,Fail
-spec@ext_texture_norm16@render@format GL_RG16_SNORM read fail,Fail
-spec@ext_texture_norm16@render@format GL_RGB16_SNORM,Fail
-spec@ext_texture_norm16@render@format GL_RGBA16_SNORM,Fail
-spec@ext_texture_norm16@render@format GL_RGBA16_SNORM read fail,Fail
 spec@ext_texture_shared_exponent@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_shared_exponent@texwrap formats bordercolor-swizzled@GL_RGB9_E5- swizzled- border color only,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_R16_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_RG16_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_RGB16_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_RGBA16_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY8_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE8_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_R16_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_RG16_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_RGB16_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_RGBA16_SNORM,Fail
-spec@ext_texture_snorm@fbo-colormask-formats,Fail
-spec@ext_texture_snorm@fbo-colormask-formats@GL_R16_SNORM,Fail
-spec@ext_texture_snorm@fbo-colormask-formats@GL_RG16_SNORM,Fail
-spec@ext_texture_snorm@fbo-colormask-formats@GL_RGB16_SNORM,Fail
-spec@ext_texture_snorm@fbo-colormask-formats@GL_RGBA16_SNORM,Fail
-spec@ext_texture_snorm@fbo-generatemipmap-formats,Fail
-spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_R16_SNORM,Fail
-spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_R16_SNORM NPOT,Fail
-spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_RG16_SNORM,Fail
-spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_RG16_SNORM NPOT,Fail
-spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_RGB16_SNORM,Fail
-spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_RGB16_SNORM NPOT,Fail
-spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_RGBA16_SNORM,Fail
-spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_RGBA16_SNORM NPOT,Fail
-spec@ext_texture_snorm@multisample-formats 2 gl_ext_texture_snorm,Fail
-spec@ext_texture_snorm@multisample-formats 4 gl_ext_texture_snorm,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled@GL_R16_SNORM- swizzled- border color only,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled@GL_R8_SNORM- swizzled- border color only,Fail
@@ -902,6 +794,7 @@ spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_LUMINANCE_ALPHA/
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_LUMINANCE/Destination: GL_LUMINANCE,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R16/Destination: GL_R16,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R16I/Destination: GL_R16I,Fail
+spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R16_SNORM/Destination: GL_R16_SNORM,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R16UI/Destination: GL_R16UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R32F/Destination: GL_R32F,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R8/Destination: GL_R8,Fail
@@ -911,6 +804,7 @@ spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R8UI/Destination
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RED/Destination: GL_RED,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG16/Destination: GL_RG16,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG16I/Destination: GL_RG16I,Fail
+spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG16_SNORM/Destination: GL_RG16_SNORM,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG16UI/Destination: GL_RG16UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG32F/Destination: GL_RG32F,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG32I/Destination: GL_RG32I,Fail
@@ -921,6 +815,7 @@ spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG8_SNORM/Destin
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG8UI/Destination: GL_RG8UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB16/Destination: GL_RGB16,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB16I/Destination: GL_RGB16I,Fail
+spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB16_SNORM/Destination: GL_RGB16_SNORM,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB16UI/Destination: GL_RGB16UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB32F/Destination: GL_RGB32F,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB32I/Destination: GL_RGB32I,Fail
@@ -931,6 +826,7 @@ spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB8_SNORM/Desti
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB8UI/Destination: GL_RGB8UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA16/Destination: GL_RGBA16,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA16I/Destination: GL_RGBA16I,Fail
+spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16_SNORM,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA16UI/Destination: GL_RGBA16UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA32F/Destination: GL_RGBA32F,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA32I/Destination: GL_RGBA32I,Fail
@@ -951,6 +847,7 @@ spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_LUMINANCE_ALPHA/
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_LUMINANCE/Destination: GL_LUMINANCE,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R16/Destination: GL_R16,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R16I/Destination: GL_R16I,Fail
+spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R16_SNORM/Destination: GL_R16_SNORM,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R16UI/Destination: GL_R16UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R32F/Destination: GL_R32F,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R8/Destination: GL_R8,Fail
@@ -960,6 +857,7 @@ spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R8UI/Destination
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RED/Destination: GL_RED,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG16/Destination: GL_RG16,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG16I/Destination: GL_RG16I,Fail
+spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG16_SNORM/Destination: GL_RG16_SNORM,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG16UI/Destination: GL_RG16UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG32F/Destination: GL_RG32F,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG32I/Destination: GL_RG32I,Fail
@@ -970,6 +868,7 @@ spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG8_SNORM/Destin
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG8UI/Destination: GL_RG8UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB16/Destination: GL_RGB16,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB16I/Destination: GL_RGB16I,Fail
+spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB16_SNORM/Destination: GL_RGB16_SNORM,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB16UI/Destination: GL_RGB16UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB32F/Destination: GL_RGB32F,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB32I/Destination: GL_RGB32I,Fail
@@ -980,6 +879,7 @@ spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB8_SNORM/Desti
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB8UI/Destination: GL_RGB8UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA16/Destination: GL_RGBA16,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA16I/Destination: GL_RGBA16I,Fail
+spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16_SNORM,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA16UI/Destination: GL_RGBA16UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA32F/Destination: GL_RGBA32F,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA32I/Destination: GL_RGBA32I,Fail
@@ -991,24 +891,13 @@ spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA8UI/Destinat
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA/Destination: GL_RGBA,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB/Destination: GL_RGB,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG/Destination: GL_RG,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH_COMPONENT16/Destination: GL_DEPTH_COMPONENT16,Fail
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH_COMPONENT24/Destination: GL_DEPTH_COMPONENT24,Fail
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH_COMPONENT32/Destination: GL_DEPTH_COMPONENT32,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH_COMPONENT/Destination: GL_DEPTH_COMPONENT,Fail
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH_STENCIL/Destination: GL_DEPTH_STENCIL,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_R16/Destination: GL_R16,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_R16_SNORM/Destination: GL_R16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_RG16/Destination: GL_RG16,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_RG16_SNORM/Destination: GL_RG16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_RGB16/Destination: GL_RGB16,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_RGB16_SNORM/Destination: GL_RGB16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_RGBA16/Destination: GL_RGBA16,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16_SNORM,Fail
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_STENCIL_INDEX8/Destination: GL_STENCIL_INDEX8,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-polygon,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-quads,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-quad_strip,Fail
-spec@nv_read_depth@read_depth_gles3,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
 spec@oes_texture_view@rendering-formats@clear GL_R16F as GL_RG8,Fail
 spec@oes_texture_view@rendering-formats@clear GL_R16F as GL_RG8I,Fail
@@ -1200,94 +1089,12 @@ spec@oes_texture_view@rendering-formats@render to GL_RGBA8UI as GL_RG16_SNORM,Fa
 spec@oes_texture_view@rendering-formats@render to GL_RGBA8UI as GL_RG16UI,Fail
 spec@oes_texture_view@rendering-formats@render to GL_RGBA8UI as GL_RGB10_A2,Fail
 spec@oes_texture_view@rendering-formats@render to GL_RGBA8UI as GL_RGB10_A2UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16 as GL_R16,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16 as GL_R16F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16 as GL_R16I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16 as GL_R16_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16 as GL_R16UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16 as GL_RG8,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16 as GL_RG8I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16 as GL_RG8_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16 as GL_RG8UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16_SNORM as GL_R16,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16_SNORM as GL_R16F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16_SNORM as GL_R16I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16_SNORM as GL_R16_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16_SNORM as GL_R16UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16_SNORM as GL_RG8,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16_SNORM as GL_RG8I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16_SNORM as GL_RG8_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_R16_SNORM as GL_RG8UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_R32F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_R32I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_R32UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RG16,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RG16F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RG16I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RG16_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RG16UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RGB10_A2,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RGB10_A2UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RGBA8,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RGBA8I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RGBA8_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16 as GL_RGBA8UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_R32F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_R32I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_R32UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RG16,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RG16F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RG16I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RG16_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RG16UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGB10_A2,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGB10_A2UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGBA8,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGBA8I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGBA8_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RG16_SNORM as GL_RGBA8UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGB16 as GL_RGB16,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGB16 as GL_RGB16F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGB16 as GL_RGB16I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGB16 as GL_RGB16_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGB16 as GL_RGB16UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGB16_SNORM as GL_RGB16,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGB16_SNORM as GL_RGB16F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGB16_SNORM as GL_RGB16I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGB16_SNORM as GL_RGB16_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGB16_SNORM as GL_RGB16UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16 as GL_RG32F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16 as GL_RG32I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16 as GL_RG32UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16 as GL_RGBA16,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16 as GL_RGBA16F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16 as GL_RGBA16I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16 as GL_RGBA16_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16 as GL_RGBA16UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RG32F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RG32I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RG32UI,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16F,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16I,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16_SNORM,Fail
-spec@oes_texture_view@rendering-formats@sample GL_RGBA16_SNORM as GL_RGBA16UI,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag-quads,Crash
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 spec@!opengl 1.0@gl-1.0-scissor-offscreen,Fail
 spec@!opengl 1.0@gl-1.0-spot-light,Fail
 spec@!opengl 1.0@rasterpos,Crash
-spec@!opengl 1.1@draw-pixels,Fail
-spec@!opengl 1.1@getteximage-depth,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT16,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D-GL_DEPTH_COMPONENT16,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_2D_ARRAY-GL_DEPTH_COMPONENT16,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_2D-GL_DEPTH_COMPONENT16,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_CUBE_MAP_ARRAY-GL_DEPTH_COMPONENT16,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_CUBE_MAP-GL_DEPTH_COMPONENT16,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_RECTANGLE-GL_DEPTH_COMPONENT16,Fail
-spec@!opengl 1.1@getteximage-formats,Fail
 spec@!opengl 1.1@linestipple@Factor 2x,Fail
 spec@!opengl 1.1@linestipple@Factor 3x,Fail
 spec@!opengl 1.1@linestipple,Fail
@@ -1309,392 +1116,6 @@ spec@!opengl 1.1@polygon-mode-offset@config 6: Expected blue pixel in center,Fai
 spec@!opengl 1.1@polygon-mode-offset@config 6: Expected white pixel on right edge,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 6: Expected white pixel on top edge,Fail
 spec@!opengl 1.1@polygon-mode-offset,Fail
-spec@!opengl 1.1@teximage-colors gl_r16@Exact upload-download of GL_R16,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@Exact upload-download of GL_R16_SNORM,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_ABGR_EXT and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_ABGR_EXT and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_ABGR_EXT and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_ABGR_EXT and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_10_10_10_2,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_2_10_10_10_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_8_8_8_8,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_8_8_8_8_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_1_5_5_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_4_4_4_4,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_4_4_4_4_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_5_5_5_1,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGR and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGR and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGR and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGR and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGR and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGR and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_BGR and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE_ALPHA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE_ALPHA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE_ALPHA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE_ALPHA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RED and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RED and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RED and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RED and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RED and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RED and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RED and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RG and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RG and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RG and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RG and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RG and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RG and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RG and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_10_10_10_2,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_2_10_10_10_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_8_8_8_8,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_8_8_8_8_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_1_5_5_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_4_4_4_4,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_4_4_4_4_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_5_5_5_1,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE_2_3_3_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE_3_3_2,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT_5_6_5,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT_5_6_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_r16_snorm@GL_R16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16@Exact upload-download of GL_RG16,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@Exact upload-download of GL_RG16_SNORM,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_ABGR_EXT and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_ABGR_EXT and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_ABGR_EXT and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_ABGR_EXT and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_10_10_10_2,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_2_10_10_10_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_8_8_8_8,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_8_8_8_8_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_1_5_5_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_4_4_4_4,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_4_4_4_4_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_5_5_5_1,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGR and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGR and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGR and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGR and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGR and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGR and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_BGR and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_GREEN and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_GREEN and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_GREEN and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_GREEN and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_GREEN and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_GREEN and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_GREEN and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE_ALPHA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE_ALPHA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE_ALPHA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE_ALPHA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RED and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RED and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RED and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RED and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RED and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RED and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RED and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RG and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RG and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RG and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RG and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RG and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RG and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RG and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_10_10_10_2,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_2_10_10_10_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_8_8_8_8,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_8_8_8_8_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_1_5_5_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_4_4_4_4,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_4_4_4_4_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_5_5_5_1,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE_2_3_3_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE_3_3_2,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT_5_6_5,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT_5_6_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rg16_snorm@GL_RG16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16@Exact upload-download of GL_RGB16,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@Exact upload-download of GL_RGB16_SNORM,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_ABGR_EXT and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_ABGR_EXT and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_ABGR_EXT and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_ABGR_EXT and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_10_10_10_2,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_2_10_10_10_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_8_8_8_8,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_8_8_8_8_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_1_5_5_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_4_4_4_4,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_4_4_4_4_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_5_5_5_1,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGR and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGR and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGR and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGR and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGR and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGR and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BGR and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BLUE and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BLUE and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BLUE and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BLUE and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BLUE and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BLUE and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_BLUE and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_GREEN and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_GREEN and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_GREEN and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_GREEN and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_GREEN and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_GREEN and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_GREEN and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE_ALPHA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE_ALPHA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE_ALPHA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE_ALPHA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RED and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RED and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RED and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RED and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RED and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RED and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RED and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RG and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RG and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RG and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RG and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RG and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RG and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RG and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_10_10_10_2,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_2_10_10_10_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_8_8_8_8,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_8_8_8_8_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_1_5_5_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_4_4_4_4,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_4_4_4_4_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_5_5_5_1,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE_2_3_3_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE_3_3_2,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT_5_6_5,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT_5_6_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgb16_snorm@GL_RGB16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16@Exact upload-download of GL_RGBA16,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@Exact upload-download of GL_RGBA16_SNORM,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ABGR_EXT and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ABGR_EXT and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ABGR_EXT and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ABGR_EXT and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ABGR_EXT and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ALPHA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ALPHA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ALPHA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ALPHA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ALPHA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ALPHA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_ALPHA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_10_10_10_2,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_2_10_10_10_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_8_8_8_8,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT_8_8_8_8_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_1_5_5_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_4_4_4_4,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_4_4_4_4_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT_5_5_5_1,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGRA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGR and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGR and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGR and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGR and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGR and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGR and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BGR and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BLUE and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BLUE and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BLUE and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BLUE and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BLUE and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BLUE and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BLUE and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_GREEN and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_GREEN and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_GREEN and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_GREEN and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_GREEN and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_GREEN and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_GREEN and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE_ALPHA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE_ALPHA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE_ALPHA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE_ALPHA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE_ALPHA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_LUMINANCE and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RED and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RED and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RED and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RED and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RED and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RED and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RED and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RG and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RG and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RG and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RG and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RG and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RG and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RG and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_10_10_10_2,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_2_10_10_10_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_8_8_8_8,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT_8_8_8_8_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_1_5_5_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_4_4_4_4,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_4_4_4_4_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT_5_5_5_1,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGBA and GL_UNSIGNED_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_FLOAT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_SHORT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE_2_3_3_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE_3_3_2,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_UNSIGNED_BYTE,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_UNSIGNED_INT,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT_5_6_5,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT_5_6_5_REV,Fail
-spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_UNSIGNED_SHORT,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_R3_G3_B2- swizzled- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGB10_A2- swizzled- border color only,Fail
