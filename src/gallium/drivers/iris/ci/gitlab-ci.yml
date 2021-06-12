@@ -84,6 +84,7 @@ iris-apl-egl:
   extends:
     - .iris-apl-test
   variables:
+    PIGLIT_NO_WINDOW: 0
     DEQP_VER: egl
 
 iris-glk-gles2:
@@ -121,6 +122,7 @@ iris-glk-egl:
   extends:
     - .iris-glk-test
   variables:
+    PIGLIT_NO_WINDOW: 0
     DEQP_VER: egl
 
 iris-amly-gles2:
@@ -157,6 +159,7 @@ iris-amly-egl:
   extends:
     - .iris-amly-test
   variables:
+    PIGLIT_NO_WINDOW: 0
     DEQP_VER: egl
 
 iris-amly-piglit:
@@ -165,6 +168,7 @@ iris-amly-piglit:
     - .lava-piglit
   parallel: 3
   variables:
+    PIGLIT_NO_WINDOW: 0
     PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_PROFILES: gpu
     PIGLIT_JUNIT_RESULTS: 1
