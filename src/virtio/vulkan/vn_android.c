@@ -540,28 +540,86 @@ vn_AcquireImageANDROID(VkDevice device,
                        VkSemaphore semaphore,
                        VkFence fence)
 {
-   /* At this moment, out semaphore and fence are filled with already signaled
-    * payloads, and the native fence fd is waited inside until signaled.
-    */
    struct vn_device *dev = vn_device_from_handle(device);
-   struct vn_semaphore *sem = vn_semaphore_from_handle(semaphore);
-   struct vn_fence *fen = vn_fence_from_handle(fence);
+   VkResult result = VK_SUCCESS;
 
-   if (nativeFenceFd >= 0) {
-      int ret = sync_wait(nativeFenceFd, INT32_MAX);
-      /* Android loader expects the ICD to always close the fd */
-      close(nativeFenceFd);
-      if (ret)
-         return vn_error(dev->instance, VK_ERROR_SURFACE_LOST_KHR);
+   if (dev->instance->experimental.globalFencing == VK_FALSE) {
+      /* Fallback when VkVenusExperimentalFeatures100000MESA::globalFencing is
+       * VK_FALSE, out semaphore and fence are filled with already signaled
+       * payloads, and the native fence fd is waited inside until signaled.
+       */
+      if (nativeFenceFd >= 0) {
+         int ret = sync_wait(nativeFenceFd, -1);
+         /* Android loader expects the ICD to always close the fd */
+         close(nativeFenceFd);
+         if (ret)
+            return vn_error(dev->instance, VK_ERROR_SURFACE_LOST_KHR);
+      }
+
+      if (semaphore != VK_NULL_HANDLE)
+         vn_semaphore_signal_wsi(dev, vn_semaphore_from_handle(semaphore));
+
+      if (fence != VK_NULL_HANDLE)
+         vn_fence_signal_wsi(dev, vn_fence_from_handle(fence));
+
+      return VK_SUCCESS;
    }
 
-   if (sem)
-      vn_semaphore_signal_wsi(dev, sem);
+   int semaphore_fd = -1;
+   int fence_fd = -1;
+   if (nativeFenceFd >= 0) {
+      if (semaphore != VK_NULL_HANDLE && fence != VK_NULL_HANDLE) {
+         semaphore_fd = nativeFenceFd;
+         fence_fd = os_dupfd_cloexec(nativeFenceFd);
+         if (fence_fd < 0) {
+            result = (errno == EMFILE) ? VK_ERROR_TOO_MANY_OBJECTS
+                                       : VK_ERROR_OUT_OF_HOST_MEMORY;
+            close(nativeFenceFd);
+            return vn_error(dev->instance, result);
+         }
+      } else if (semaphore != VK_NULL_HANDLE) {
+         semaphore_fd = nativeFenceFd;
+      } else if (fence != VK_NULL_HANDLE) {
+         fence_fd = nativeFenceFd;
+      } else {
+         close(nativeFenceFd);
+      }
+   }
 
-   if (fen)
-      vn_fence_signal_wsi(dev, fen);
+   if (semaphore != VK_NULL_HANDLE) {
+      const VkImportSemaphoreFdInfoKHR info = {
+         .sType = VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR,
+         .pNext = NULL,
+         .semaphore = semaphore,
+         .flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT,
+         .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+         .fd = semaphore_fd,
+      };
+      result = vn_ImportSemaphoreFdKHR(device, &info);
+      if (result == VK_SUCCESS)
+         semaphore_fd = -1;
+   }
 
-   return VK_SUCCESS;
+   if (result == VK_SUCCESS && fence != VK_NULL_HANDLE) {
+      const VkImportFenceFdInfoKHR info = {
+         .sType = VK_STRUCTURE_TYPE_IMPORT_FENCE_FD_INFO_KHR,
+         .pNext = NULL,
+         .fence = fence,
+         .flags = VK_FENCE_IMPORT_TEMPORARY_BIT,
+         .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
+         .fd = fence_fd,
+      };
+      result = vn_ImportFenceFdKHR(device, &info);
+      if (result == VK_SUCCESS)
+         fence_fd = -1;
+   }
+
+   if (semaphore_fd >= 0)
+      close(semaphore_fd);
+   if (fence_fd >= 0)
+      close(fence_fd);
+
+   return vn_result(dev->instance, result);
 }
 
 VkResult

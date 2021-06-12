@@ -708,8 +708,7 @@ vn_ImportFenceFdKHR(VkDevice device,
    assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
    if (fd >= 0) {
-      const int ret = sync_wait(fd, -1);
-      if (ret)
+      if (sync_wait(fd, -1))
          return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
       close(fd);
@@ -982,8 +981,7 @@ vn_ImportSemaphoreFdKHR(
    assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
    if (fd >= 0) {
-      const int ret = sync_wait(fd, -1);
-      if (ret)
+      if (sync_wait(fd, -1))
          return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
       close(fd);
