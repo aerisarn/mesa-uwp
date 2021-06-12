@@ -302,7 +302,7 @@ brw_display_shared_buffer(struct brw_context *brw)
 }
 
 static void
-brw_glFlush(struct gl_context *ctx)
+brw_glFlush(struct gl_context *ctx, unsigned gallium_flush_flags)
 {
    struct brw_context *brw = brw_context(ctx);
 
@@ -342,7 +342,7 @@ brw_finish(struct gl_context * ctx)
 {
    struct brw_context *brw = brw_context(ctx);
 
-   brw_glFlush(ctx);
+   brw_glFlush(ctx, 0);
 
    if (brw->batch.last_bo)
       brw_bo_wait_rendering(brw->batch.last_bo);

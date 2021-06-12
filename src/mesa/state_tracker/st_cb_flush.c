@@ -87,7 +87,7 @@ st_finish(struct st_context *st)
  * Called via ctx->Driver.Flush()
  */
 static void
-st_glFlush(struct gl_context *ctx)
+st_glFlush(struct gl_context *ctx, unsigned gallium_flush_flags)
 {
    struct st_context *st = st_context(ctx);
 
@@ -96,7 +96,7 @@ st_glFlush(struct gl_context *ctx)
     * synchronization issues.  Calling finish() here will just hide
     * problems that need to be fixed elsewhere.
     */
-   st_flush(st, NULL, 0);
+   st_flush(st, NULL, gallium_flush_flags);
 
    st_manager_flush_frontbuffer(st);
 }

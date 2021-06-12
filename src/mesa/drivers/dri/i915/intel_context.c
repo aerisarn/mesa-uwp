@@ -355,7 +355,7 @@ _intel_flush(struct gl_context *ctx, const char *file, int line)
 }
 
 static void
-intel_glFlush(struct gl_context *ctx)
+intel_glFlush(struct gl_context *ctx, unsigned gallium_flush_flags)
 {
    struct intel_context *intel = intel_context(ctx);
 

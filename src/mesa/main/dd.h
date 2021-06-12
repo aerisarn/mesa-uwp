@@ -125,7 +125,7 @@ struct dd_function_table {
    /**
     * This is called whenever glFlush() is called.
     */
-   void (*Flush)( struct gl_context *ctx );
+   void (*Flush)(struct gl_context *ctx, unsigned gallium_flush_flags);
 
    /**
     * Clear the color/depth/stencil/accum buffer(s).
