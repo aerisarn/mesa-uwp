@@ -1475,9 +1475,11 @@ tc_set_shader_buffers(struct pipe_context *_pipe,
 
             tc_bind_buffer(&tc->shader_buffers[shader][start + i], next, &tres->b);
 
-            util_range_add(&tres->b, &tres->valid_buffer_range,
-                           src->buffer_offset,
-                           src->buffer_offset + src->buffer_size);
+            if (writable_bitmask & BITFIELD_BIT(i)) {
+               util_range_add(&tres->b, &tres->valid_buffer_range,
+                              src->buffer_offset,
+                              src->buffer_offset + src->buffer_size);
+            }
          } else {
             tc_unbind_buffer(&tc->shader_buffers[shader][start + i]);
          }
