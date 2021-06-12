@@ -104,6 +104,29 @@ can_do_ubwc(struct pipe_resource *prsc)
    return true;
 }
 
+static bool
+valid_format_cast(struct fd_resource *rsc, enum pipe_format format)
+{
+   /* Special case "casting" format in hw: */
+   if (format == PIPE_FORMAT_Z24_UNORM_S8_UINT_AS_R8G8B8A8)
+      return true;
+
+   /* The UBWC formats can be re-interpreted so long as the components
+    * have the same # of bits
+    */
+   for (unsigned i = 0; i < 4; i++) {
+      unsigned sb, db;
+
+      sb = util_format_get_component_bits(rsc->b.b.format, UTIL_FORMAT_COLORSPACE_RGB, i);
+      db = util_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_RGB, i);
+
+      if (sb != db)
+         return false;
+   }
+
+   return true;
+}
+
 /**
  * Ensure the rsc is in an ok state to be used with the specified format.
  * This handles the case of UBWC buffers used with non-UBWC compatible
@@ -118,7 +141,7 @@ fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
    if (!rsc->layout.ubwc)
       return;
 
-   if (ok_ubwc_format(rsc->b.b.screen, format))
+   if (ok_ubwc_format(rsc->b.b.screen, format) && valid_format_cast(rsc, format))
       return;
 
    perf_debug_ctx(ctx,
