@@ -10,6 +10,8 @@ variables:
   PIPELINE_ARTIFACTS_BASE: ${MINIO_HOST}/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}
   # per-job artifact storage on MinIO
   JOB_ARTIFACTS_BASE: ${PIPELINE_ARTIFACTS_BASE}/${CI_JOB_ID}
+  # reference images stored for traces
+  PIGLIT_REPLAY_REFERENCE_IMAGES_BASE: "${MINIO_HOST}/mesa-tracie-results/$FDO_UPSTREAM_REPO"
 
 include:
   - project: 'freedesktop/ci-templates'
@@ -1195,7 +1197,6 @@ meson-mingw32-x86_64:
     PIGLIT_PROFILES: replay
     PIGLIT_REPLAY_UPLOAD_TO_MINIO: 1
     PIGLIT_REPLAY_EXTRA_ARGS:  --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/
-    PIGLIT_REPLAY_REFERENCE_IMAGES_BASE: "${MINIO_HOST}/mesa-tracie-results/$FDO_UPSTREAM_REPO"
     PIGLIT_JUNIT_RESULTS: 1
 
 .deqp-test:
