@@ -34,7 +34,7 @@ if [ -n "$BM_START_XORG" ]; then
   env \
     LD_LIBRARY_PATH=/install/lib/ \
     LIBGL_DRIVERS_PATH=/install/lib/dri/ \
-    xinit /bin/sh /xorg-script -- /usr/bin/Xorg -noreset -dpms -logfile /Xorg.0.log &
+    xinit /bin/sh /xorg-script -- /usr/bin/Xorg -noreset -s 0 -dpms -logfile /Xorg.0.log &
 
   # Wait for xorg to be ready for connections.
   for i in 1 2 3 4 5; do

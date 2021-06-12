@@ -10,7 +10,7 @@ if [ "x$1" != "x" ]; then
     export LD_LIBRARY_PATH="${1}/lib"
     export LIBGL_DRIVERS_PATH="${1}/lib/dri"
 fi
-xinit /bin/sh "${_XORG_SCRIPT}" -- /usr/bin/Xorg vt45 -noreset -dpms -logfile /Xorg.0.log &
+xinit /bin/sh "${_XORG_SCRIPT}" -- /usr/bin/Xorg vt45 -noreset -s 0 -dpms -logfile /Xorg.0.log &
 
 # Wait for xorg to be ready for connections.
 for i in 1 2 3 4 5; do
