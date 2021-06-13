@@ -41,6 +41,8 @@ private:
 
    ESDOp get_opcode(nir_intrinsic_op opcode);
    RatInstruction::ERatOp get_rat_opcode(const nir_intrinsic_op opcode, pipe_format format) const;
+   RatInstruction::ERatOp get_rat_opcode_wo(const nir_intrinsic_op opcode, pipe_format format) const;
+
 
    GPRVector make_dest(const nir_intrinsic_instr* instr);
 
