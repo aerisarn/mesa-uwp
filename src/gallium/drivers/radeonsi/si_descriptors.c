@@ -1148,7 +1148,6 @@ static void si_set_constant_buffer(struct si_context *sctx, struct si_buffer_res
          }
       } else {
          if (take_ownership) {
-            pipe_resource_reference(&buffer, NULL);
             buffer = input->buffer;
          } else {
             pipe_resource_reference(&buffer, input->buffer);
