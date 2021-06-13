@@ -15,7 +15,6 @@ glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash
-shaders@glsl-bug-110796,Fail
 shaders@glsl-fs-fogscale,Fail
 shaders@glsl-fs-fogscale@gs-out and fs,Fail
 shaders@point-vertex-id divisor,Crash
@@ -211,6 +210,7 @@ spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG32UI- swizzled
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8I- swizzled- border color only,Fail
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8UI- swizzled- border color only,Fail
 spec@arb_texture_view@bug-layers-image,Crash
+spec@arb_texture_view@mipgen,Fail
 spec@arb_texture_view@rendering-layers-image,Fail
 spec@arb_texture_view@rendering-layers-image@layers rendering of image1DArray,Fail
 spec@arb_texture_view@rendering-layers-image@layers rendering of imageCubeArray,Fail
@@ -309,6 +309,17 @@ spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY8_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE8_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE_SNORM,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_ALPHA16_SNORM,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_ALPHA16_SNORM NPOT,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_INTENSITY16_SNORM,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_INTENSITY16_SNORM NPOT,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_LUMINANCE16_ALPHA16_SNORM,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_LUMINANCE16_ALPHA16_SNORM NPOT,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_LUMINANCE16_SNORM,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_LUMINANCE16_SNORM NPOT,Fail
+spec@ext_texture_snorm@multisample-formats 2 gl_ext_texture_snorm,Fail
+spec@ext_texture_snorm@multisample-formats 4 gl_ext_texture_snorm,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled@GL_R16_SNORM- swizzled- border color only,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled@GL_R8_SNORM- swizzled- border color only,Fail
