@@ -1640,6 +1640,23 @@ ntt_emit_load_sysval(struct ntt_compile *c, nir_intrinsic_instr *instr)
    uint32_t write_mask = BITSET_MASK(nir_dest_num_components(instr->dest));
    sv = ntt_swizzle_for_write_mask(sv, write_mask);
 
+   /* TGSI and NIR define these intrinsics as always loading ints, but they can
+    * still appear on hardware with non-native-integers fragment shaders using
+    * the draw path (i915g).  In that case, having called nir_lower_int_to_float
+    * means that we actually want floats instead.
+    */
+   if (!c->native_integers) {
+      switch (instr->intrinsic) {
+      case nir_intrinsic_load_vertex_id:
+      case nir_intrinsic_load_instance_id:
+         ureg_U2F(c->ureg, ntt_get_dest(c, &instr->dest), sv);
+         return;
+
+      default:
+         break;
+      }
+   }
+
    ntt_store(c, &instr->dest, sv);
 }
 
