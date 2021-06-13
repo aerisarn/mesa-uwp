@@ -589,6 +589,6 @@ void agx_print_shader(agx_context *ctx, FILE *fp);
 void agx_optimizer(agx_context *ctx);
 void agx_dce(agx_context *ctx);
 void agx_ra(agx_context *ctx);
-void agx_pack(agx_context *ctx, struct util_dynarray *emission);
+void agx_pack_binary(agx_context *ctx, struct util_dynarray *emission);
 
 #endif
