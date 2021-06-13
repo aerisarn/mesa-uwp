@@ -26,7 +26,7 @@
 
 #include "zink_device_info.h"
 #include "zink_instance.h"
-#include "zink_dispatch_table.h"
+#include "vk_dispatch_table.h"
 
 #include "util/u_idalloc.h"
 #include "pipe/p_screen.h"

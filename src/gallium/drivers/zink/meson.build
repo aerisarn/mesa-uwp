@@ -73,18 +73,6 @@ zink_nir_algebraic_c = custom_target(
   depend_files : nir_algebraic_py,
 )
 
-zink_dispatch_table = custom_target(
-  'zink_dispatch_table.c',
-  input : join_paths(meson.source_root(), 'src/vulkan/util/vk_dispatch_table_gen.py'),
-  output : ['zink_dispatch_table.h', 'zink_dispatch_table.c'],
-  command : [
-    prog_python, '@INPUT@',
-    '--xml', join_paths(meson.source_root(), 'src/vulkan/registry/vk.xml'),
-    '--out-h', '@OUTPUT0@',
-    '--out-c', '@OUTPUT1@',
-  ],
-)
-
 zink_c_args = []
 inc_zink_vk = []
 
@@ -101,7 +89,7 @@ endif
 
 libzink = static_library(
   'zink',
-  [files_libzink, zink_device_info, zink_instance, zink_nir_algebraic_c, zink_dispatch_table],
+  [files_libzink, zink_device_info, zink_instance, zink_nir_algebraic_c, vk_dispatch_table],
   gnu_symbol_visibility : 'hidden',
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_vulkan_wsi, inc_vulkan_util, inc_zink_vk],
   dependencies: [dep_vulkan, idep_nir_headers, idep_mesautil],
