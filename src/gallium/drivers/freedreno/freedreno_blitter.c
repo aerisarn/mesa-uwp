@@ -355,11 +355,6 @@ fd_resource_copy_region(struct pipe_context *pctx, struct pipe_resource *dst,
          return;
    }
 
-   /* TODO if we have 2d core, or other DMA engine that could be used
-    * for simple copies and reasonably easily synchronized with the 3d
-    * core, this is where we'd plug it in..
-    */
-
    /* try blit on 3d pipe: */
    if (fd_blitter_pipe_copy_region(ctx, dst, dst_level, dstx, dsty, dstz, src,
                                    src_level, src_box))
