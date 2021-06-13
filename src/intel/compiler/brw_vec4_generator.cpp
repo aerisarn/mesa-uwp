@@ -2118,6 +2118,7 @@ generate_code(struct brw_codegen *p,
 
       case VEC4_OPCODE_ZERO_OOB_PUSH_REGS:
          generate_zero_oob_push_regs(p, &prog_data->base, dst, src[0]);
+         break;
 
       case TCS_OPCODE_URB_WRITE:
          generate_tcs_urb_write(p, inst, src[0]);
