@@ -816,32 +816,13 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
 
    agx_compile_shader_nir(nir, &key->base, &binary, &compiled->info);
 
-   /* TODO: emit this properly */
-   nir_variable_mode varying_mode = (nir->info.stage == MESA_SHADER_FRAGMENT) ?
-                                    nir_var_shader_in : nir_var_shader_out;
-
    struct agx_varyings *varyings = &compiled->info.varyings;
-   unsigned varying_count = 0;
-
-   nir_foreach_variable_with_modes(var, nir, varying_mode) {
-      unsigned loc = var->data.driver_location;
-      unsigned sz = glsl_count_attribute_slots(var->type, FALSE);
-
-      varying_count = MAX2(varying_count, loc + sz);
-   }
-
-   if (nir->info.stage == MESA_SHADER_VERTEX)
-      compiled->varying_count = varying_count;
-
    unsigned packed_varying_sz = (AGX_VARYING_HEADER_LENGTH + varyings->nr_descs * AGX_VARYING_LENGTH);
    uint8_t *packed_varyings = alloca(packed_varying_sz);
 
    agx_pack(packed_varyings, VARYING_HEADER, cfg) {
       cfg.slots_1 = cfg.slots_2 = varyings->nr_slots;
    }
-
-   if (varyings->nr_slots)
-      compiled->varying_count = varyings->nr_slots;
 
    memcpy(packed_varyings + AGX_VARYING_HEADER_LENGTH, varyings->packed,
          varyings->nr_descs * AGX_VARYING_LENGTH);
@@ -1040,7 +1021,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
       agx_pack(record, SET_SHADER, cfg) {
          cfg.code = cs->bo->ptr.gpu;
          cfg.register_quadwords = 0;
-         cfg.unk_2b = (cs->varying_count * 4);
+         cfg.unk_2b = cs->info.varyings.nr_slots;
          cfg.unk_2 = 0x0d;
       }
 
@@ -1169,7 +1150,7 @@ demo_linkage(struct agx_compiled_shader *vs, struct agx_pool *pool)
    struct agx_ptr t = agx_pool_alloc_aligned(pool, AGX_LINKAGE_LENGTH, 64);
 
    agx_pack(t.cpu, LINKAGE, cfg) {
-      cfg.varying_count = 4 * vs->varying_count;
+      cfg.varying_count = vs->info.varyings.nr_slots;
       cfg.unk_1 = 0x210000; // varyings otherwise wrong
    };
 
@@ -1264,8 +1245,8 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
 {
    agx_pack(out, BIND_PIPELINE, cfg) {
       cfg.pipeline = pipeline_vertex;
-      cfg.vs_output_count_1 = (ctx->vs->varying_count * 4);
-      cfg.vs_output_count_2 = (ctx->vs->varying_count * 4);
+      cfg.vs_output_count_1 = ctx->vs->info.varyings.nr_slots;
+      cfg.vs_output_count_2 = ctx->vs->info.varyings.nr_slots;
    }
 
    /* yes, it's really 17 bytes */

@@ -60,9 +60,6 @@ struct agx_compiled_shader {
    /* Varying descriptor (TODO: is this the right place?) */
    uint64_t varyings;
 
-   /* # of varyings (currently vec4, should probably be changed) */
-   unsigned varying_count;
-
    /* Metadata returned from the compiler */
    struct agx_shader_info info;
 };

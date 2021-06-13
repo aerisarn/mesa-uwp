@@ -163,7 +163,7 @@ agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
 {
    nir_src *offset = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset) && "todo: indirects");
-   unsigned imm_index = nir_intrinsic_base(instr);
+   unsigned imm_index = b->shader->varyings[nir_intrinsic_base(instr)];
    imm_index += nir_intrinsic_component(instr);
    imm_index += nir_src_as_uint(*offset);
 
@@ -1097,13 +1097,15 @@ agx_optimize_nir(nir_shader *nir)
 
 /* ABI: position first, then user, then psiz */
 static void
-agx_remap_varyings_vs(nir_shader *nir)
+agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings *varyings,
+                      unsigned *remap)
 {
    unsigned base = 0;
 
    nir_variable *pos = nir_find_variable_with_location(nir, nir_var_shader_out, VARYING_SLOT_POS);
    if (pos) {
-      pos->data.driver_location = base;
+      assert(pos->data.driver_location < AGX_MAX_VARYINGS);
+      remap[pos->data.driver_location] = base;
       base += 4;
    }
 
@@ -1114,15 +1116,19 @@ agx_remap_varyings_vs(nir_shader *nir)
          continue;
       }
 
-      var->data.driver_location = base;
+      assert(var->data.driver_location < AGX_MAX_VARYINGS);
+      remap[var->data.driver_location] = base;
       base += 4;
    }
 
    nir_variable *psiz = nir_find_variable_with_location(nir, nir_var_shader_out, VARYING_SLOT_PSIZ);
    if (psiz) {
-      psiz->data.driver_location = base;
+      assert(psiz->data.driver_location < AGX_MAX_VARYINGS);
+      remap[psiz->data.driver_location] = base;
       base += 1;
    }
+
+   varyings->nr_slots = base;
 }
 
 static void
@@ -1193,8 +1199,6 @@ agx_compile_shader_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_function_temp, ~0);
 
    if (ctx->stage == MESA_SHADER_VERTEX) {
-      agx_remap_varyings_vs(nir);
-
       /* Lower from OpenGL [-1, 1] to [0, 1] if half-z is not set */
       if (!key->vs.clip_halfz)
          NIR_PASS_V(nir, nir_lower_clip_halfz);
@@ -1227,7 +1231,9 @@ agx_compile_shader_nir(nir_shader *nir,
    agx_optimize_nir(nir);
 
    /* Must be last since NIR passes can remap driver_location freely */
-   if (ctx->stage == MESA_SHADER_FRAGMENT) {
+   if (ctx->stage == MESA_SHADER_VERTEX) {
+      agx_remap_varyings_vs(nir, &out->varyings, ctx->varyings);
+   } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
       agx_remap_varyings_fs(nir, &out->varyings, ctx->varyings);
    }
 
