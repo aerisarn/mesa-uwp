@@ -112,12 +112,17 @@ bool EmitSSBOInstruction::do_emit(nir_instr* instr)
 
 bool EmitSSBOInstruction::emit_atomic(const nir_intrinsic_instr* instr)
 {
-   ESDOp op = get_opcode(instr->intrinsic);
+   bool read_result = !instr->dest.is_ssa || !list_is_empty(&instr->dest.ssa.uses);
+
+   ESDOp op = read_result ? get_opcode(instr->intrinsic) :
+                            get_opcode_wo(instr->intrinsic);
 
    if (DS_OP_INVALID == op)
       return false;
 
-   GPRVector dest = make_dest(instr);
+
+
+   GPRVector dest = read_result ? make_dest(instr) : GPRVector(0, {7,7,7,7});
 
    int base = remap_atomic_base(nir_intrinsic_base(instr));
 
@@ -139,12 +144,14 @@ bool EmitSSBOInstruction::emit_atomic(const nir_intrinsic_instr* instr)
 
 bool EmitSSBOInstruction::emit_unary_atomic(const nir_intrinsic_instr* instr)
 {
-   ESDOp op = get_opcode(instr->intrinsic);
+   bool read_result = !instr->dest.is_ssa || !list_is_empty(&instr->dest.ssa.uses);
+
+   ESDOp op = read_result ? get_opcode(instr->intrinsic) : get_opcode_wo(instr->intrinsic);
 
    if (DS_OP_INVALID == op)
       return false;
 
-   GPRVector dest = make_dest(instr);
+   GPRVector dest = read_result ? make_dest(instr) : GPRVector(0, {7,7,7,7});
 
    PValue uav_id = from_nir(instr->src[0], 0);
 
@@ -154,7 +161,7 @@ bool EmitSSBOInstruction::emit_unary_atomic(const nir_intrinsic_instr* instr)
    return true;
 }
 
-ESDOp EmitSSBOInstruction::get_opcode(const nir_intrinsic_op opcode)
+ESDOp EmitSSBOInstruction::get_opcode(const nir_intrinsic_op opcode) const
 {
    switch (opcode) {
    case nir_intrinsic_atomic_counter_add:
@@ -179,6 +186,35 @@ ESDOp EmitSSBOInstruction::get_opcode(const nir_intrinsic_op opcode)
       return DS_OP_DEC_RET;
    case nir_intrinsic_atomic_counter_comp_swap:
       return DS_OP_CMP_XCHG_RET;
+   case nir_intrinsic_atomic_counter_pre_dec:
+   default:
+      return DS_OP_INVALID;
+   }
+}
+
+ESDOp EmitSSBOInstruction::get_opcode_wo(const nir_intrinsic_op opcode) const
+{
+   switch (opcode) {
+   case nir_intrinsic_atomic_counter_add:
+      return DS_OP_ADD;
+   case nir_intrinsic_atomic_counter_and:
+      return DS_OP_AND;
+   case nir_intrinsic_atomic_counter_inc:
+      return DS_OP_INC;
+   case nir_intrinsic_atomic_counter_max:
+      return DS_OP_MAX_UINT;
+   case nir_intrinsic_atomic_counter_min:
+      return DS_OP_MIN_UINT;
+   case nir_intrinsic_atomic_counter_or:
+      return DS_OP_OR;
+   case nir_intrinsic_atomic_counter_xor:
+      return DS_OP_XOR;
+   case nir_intrinsic_atomic_counter_post_dec:
+      return DS_OP_DEC;
+   case nir_intrinsic_atomic_counter_comp_swap:
+      return DS_OP_CMP_XCHG_RET;
+   case nir_intrinsic_atomic_counter_exchange:
+      return DS_OP_XCHG_RET;
    case nir_intrinsic_atomic_counter_pre_dec:
    default:
       return DS_OP_INVALID;
@@ -279,9 +315,11 @@ bool EmitSSBOInstruction::load_atomic_inc_limits()
 
 bool EmitSSBOInstruction::emit_atomic_inc(const nir_intrinsic_instr* instr)
 {
+   bool read_result = !instr->dest.is_ssa || !list_is_empty(&instr->dest.ssa.uses);
    PValue uav_id = from_nir(instr->src[0], 0);
-   GPRVector dest = make_dest(instr);
-   auto ir = new GDSInstr(DS_OP_ADD_RET, dest, m_atomic_update, uav_id,
+   GPRVector dest = read_result ? make_dest(instr): GPRVector(0, {7,7,7,7});
+   auto ir = new GDSInstr(read_result ? DS_OP_ADD_RET : DS_OP_ADD, dest,
+                          m_atomic_update, uav_id,
                           remap_atomic_base(nir_intrinsic_base(instr)));
    emit_instruction(ir);
    return true;

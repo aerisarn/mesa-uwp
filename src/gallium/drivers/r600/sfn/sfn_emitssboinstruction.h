@@ -38,7 +38,9 @@ private:
 
    bool make_stores_ack_and_waitack();
 
-   ESDOp get_opcode(nir_intrinsic_op opcode);
+   ESDOp get_opcode(nir_intrinsic_op opcode) const;
+   ESDOp get_opcode_wo(const nir_intrinsic_op opcode) const;
+
    RatInstruction::ERatOp get_rat_opcode(const nir_intrinsic_op opcode, pipe_format format) const;
    RatInstruction::ERatOp get_rat_opcode_wo(const nir_intrinsic_op opcode, pipe_format format) const;
 
