@@ -1136,12 +1136,15 @@ fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info) assert_dt
 void
 fd6_blitter_init(struct pipe_context *pctx) disable_thread_safety_analysis
 {
-   fd_context(pctx)->clear_ubwc = fd6_clear_ubwc;
+   struct fd_context *ctx = fd_context(pctx);
+
+   ctx->clear_ubwc = fd6_clear_ubwc;
+   ctx->validate_format = fd6_validate_format;
 
    if (FD_DBG(NOBLIT))
       return;
 
-   fd_context(pctx)->blit = fd6_blit;
+   ctx->blit = fd6_blit;
 }
 
 unsigned

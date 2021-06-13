@@ -502,6 +502,10 @@ struct fd_context {
    bool (*blit)(struct fd_context *ctx, const struct pipe_blit_info *info) dt;
    void (*clear_ubwc)(struct fd_batch *batch, struct fd_resource *rsc) dt;
 
+   /* uncompress resource, if necessary, to use as the specified format: */
+   void (*validate_format)(struct fd_context *ctx, struct fd_resource *rsc,
+                           enum pipe_format format) dt;
+
    /* handling for barriers: */
    void (*framebuffer_barrier)(struct fd_context *ctx) dt;
 
