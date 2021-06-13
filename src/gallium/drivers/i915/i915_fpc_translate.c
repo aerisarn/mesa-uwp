@@ -1186,8 +1186,10 @@ i915_fini_compile(struct i915_context *i915, struct i915_fp_compile *p)
 static void
 i915_fixup_depth_write(struct i915_fp_compile *p)
 {
-   /* XXX assuming pos/depth is always in output[0] */
-   if (p->shader->info.num_outputs != 0 && p->shader->info.output_semantic_name[0] == TGSI_SEMANTIC_POSITION) {
+   for (int i = 0; i < p->shader->info.num_outputs; i++) {
+      if (p->shader->info.output_semantic_name[i] != TGSI_SEMANTIC_POSITION)
+         continue;
+
       const uint depth = UREG(REG_TYPE_OD, 0);
 
       i915_emit_arith(p,
