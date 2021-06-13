@@ -232,6 +232,9 @@ do_blit(struct fd_context *ctx, const struct pipe_blit_info *blit,
 {
    struct pipe_context *pctx = &ctx->base;
 
+   assert(!ctx->in_blit);
+   ctx->in_blit = true;
+
    /* TODO size threshold too?? */
    if (fallback || !fd_blit(pctx, blit)) {
       /* do blit on cpu: */
@@ -240,6 +243,8 @@ do_blit(struct fd_context *ctx, const struct pipe_blit_info *blit,
                                 blit->dst.box.z, blit->src.resource,
                                 blit->src.level, &blit->src.box);
    }
+
+   ctx->in_blit = false;
 }
 
 /**

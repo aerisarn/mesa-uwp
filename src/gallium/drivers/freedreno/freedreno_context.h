@@ -350,6 +350,9 @@ struct fd_context {
     */
    bool in_discard_blit : 1 dt;
 
+   /* For catching recursion problems with blit fallback: */
+   bool in_blit : 1 dt;
+
    /* points to either scissor or disabled_scissor depending on rast state: */
    struct pipe_scissor_state *current_scissor dt;
 
