@@ -268,21 +268,6 @@ EmitSSBOInstruction::get_rat_opcode_wo(const nir_intrinsic_op opcode, pipe_forma
    }
 }
 
-bool EmitSSBOInstruction::emit_atomic_add(const nir_intrinsic_instr* instr)
-{
-   GPRVector dest = make_dest(instr);
-
-   PValue value = from_nir_with_fetch_constant(instr->src[1], 0);
-
-   PValue uav_id = from_nir(instr->src[0], 0);
-
-   auto ir = new GDSInstr(DS_OP_ADD_RET, dest, value, uav_id,
-                          remap_atomic_base(nir_intrinsic_base(instr)));
-
-   emit_instruction(ir);
-   return true;
-}
-
 bool EmitSSBOInstruction::load_atomic_inc_limits()
 {
    m_atomic_update = get_temp_register();

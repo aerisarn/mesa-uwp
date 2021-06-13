@@ -22,7 +22,6 @@ private:
 
    bool emit_atomic(const nir_intrinsic_instr* instr);
    bool emit_unary_atomic(const nir_intrinsic_instr* instr);
-   bool emit_atomic_add(const nir_intrinsic_instr* instr);
    bool emit_atomic_inc(const nir_intrinsic_instr* instr);
    bool emit_atomic_pre_dec(const nir_intrinsic_instr* instr);
 
