@@ -531,12 +531,13 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
  * appears to the gallium frontends as if nothing changed.
  */
 void
-fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc)
+fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc, bool linear)
 {
    tc_assert_driver_thread(ctx->tc);
 
-   bool success =
-      fd_try_shadow_resource(ctx, rsc, 0, NULL, FD_FORMAT_MOD_QCOM_TILED);
+   uint64_t modifier = linear ? DRM_FORMAT_MOD_LINEAR : FD_FORMAT_MOD_QCOM_TILED;
+
+   bool success = fd_try_shadow_resource(ctx, rsc, 0, NULL, modifier);
 
    /* shadow should not fail in any cases where we need to uncompress: */
    debug_assert(success);

@@ -352,7 +352,8 @@ bool fd_resource_busy(struct pipe_screen *pscreen, struct pipe_resource *prsc,
                       unsigned usage);
 
 void fd_resource_uncompress(struct fd_context *ctx,
-                            struct fd_resource *rsc) assert_dt;
+                            struct fd_resource *rsc,
+                            bool linear) assert_dt;
 void fd_resource_dump(struct fd_resource *rsc, const char *name);
 
 bool fd_render_condition_check(struct pipe_context *pctx) assert_dt;

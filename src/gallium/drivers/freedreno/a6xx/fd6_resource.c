@@ -128,6 +128,18 @@ valid_format_cast(struct fd_resource *rsc, enum pipe_format format)
 }
 
 /**
+ * R8G8 have a different block width/height and height alignment from other
+ * formats that would normally be compatible (like R16), and so if we are
+ * trying to, for example, sample R16 as R8G8 we need to demote to linear.
+ */
+static bool
+is_r8g8(enum pipe_format format)
+{
+   return (util_format_get_blocksize(format) == 2) &&
+         (util_format_get_nr_components(format) == 2);
+}
+
+/**
  * Ensure the rsc is in an ok state to be used with the specified format.
  * This handles the case of UBWC buffers used with non-UBWC compatible
  * formats, by triggering an uncompress.
@@ -136,7 +148,21 @@ void
 fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
                     enum pipe_format format)
 {
+   enum pipe_format orig_format = rsc->b.b.format;
+
    tc_assert_driver_thread(ctx->tc);
+
+   if (orig_format == format)
+      return;
+
+   if (rsc->layout.tile_mode && (is_r8g8(orig_format) != is_r8g8(format))) {
+      perf_debug_ctx(ctx,
+                     "%" PRSC_FMT ": demoted to linear+uncompressed due to use as %s",
+                     PRSC_ARGS(&rsc->b.b), util_format_short_name(format));
+
+      fd_resource_uncompress(ctx, rsc, true);
+      return;
+   }
 
    if (!rsc->layout.ubwc)
       return;
@@ -148,7 +174,7 @@ fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
                   "%" PRSC_FMT ": demoted to uncompressed due to use as %s",
                   PRSC_ARGS(&rsc->b.b), util_format_short_name(format));
 
-   fd_resource_uncompress(ctx, rsc);
+   fd_resource_uncompress(ctx, rsc, false);
 }
 
 static void
