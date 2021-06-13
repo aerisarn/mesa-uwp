@@ -40,6 +40,7 @@
 #include "sfn_shader_tess_eval.h"
 #include "sfn_nir_lower_fs_out_to_vector.h"
 #include "sfn_ir_to_assembly.h"
+#include "sfn_nir_lower_alu.h"
 
 #include <vector>
 
@@ -337,41 +338,6 @@ bool AssemblyFromShader::lower(const std::vector<InstructionBlock>& ir)
    return do_lower(ir);
 }
 
-static nir_ssa_def *
-r600_nir_lower_pack_unpack_2x16_impl(nir_builder *b, nir_instr *instr, void *_options)
-{
-   nir_alu_instr *alu = nir_instr_as_alu(instr);
-
-   switch (alu->op) {
-   case nir_op_unpack_half_2x16: {
-      nir_ssa_def *packed = nir_ssa_for_alu_src(b, alu, 0);
-      return  nir_vec2(b, nir_unpack_half_2x16_split_x(b, packed),
-                       nir_unpack_half_2x16_split_y(b, packed));
-
-   }
-   case nir_op_pack_half_2x16: {
-      nir_ssa_def *src_vec2 = nir_ssa_for_alu_src(b, alu, 0);
-      return nir_pack_half_2x16_split(b, nir_channel(b, src_vec2, 0),
-                                      nir_channel(b, src_vec2, 1));
-   }
-   default:
-      return nullptr;
-   }
-}
-
-bool r600_nir_lower_pack_unpack_2x16_filter(const nir_instr *instr, const void *_options)
-{
-   return instr->type == nir_instr_type_alu;
-}
-
-bool r600_nir_lower_pack_unpack_2x16(nir_shader *shader)
-{
-   return nir_shader_lower_instructions(shader,
-                                        r600_nir_lower_pack_unpack_2x16_filter,
-                                        r600_nir_lower_pack_unpack_2x16_impl,
-                                        nullptr);
-};
-
 static void
 r600_nir_lower_scratch_address_impl(nir_builder *b, nir_intrinsic_instr *instr)
 {
@@ -610,7 +576,6 @@ r600_nir_lower_atomics(nir_shader *shader)
    return progress;
 }
 using r600::r600_nir_lower_int_tg4;
-using r600::r600_nir_lower_pack_unpack_2x16;
 using r600::r600_lower_scratch_addresses;
 using r600::r600_lower_fs_out_to_vector;
 using r600::r600_lower_ubo_to_align16;
@@ -876,7 +841,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    idiv_options.allow_fp16 = true;
 
    NIR_PASS_V(sel->nir, nir_lower_idiv, &idiv_options);
-   NIR_PASS_V(sel->nir, r600_lower_alu);
+   NIR_PASS_V(sel->nir, r600_nir_lower_trigen);
    NIR_PASS_V(sel->nir, nir_lower_phis_to_scalar, false);
 
    if (lower_64bit)
