@@ -1664,6 +1664,85 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
    EMIT_SQTT_END_DRAW;
 }
 
+/* Return false if not bound. */
+template<chip_class GFX_VERSION>
+static bool ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems,
+                                               struct pipe_vertex_buffer *vb,
+                                               unsigned index, /* vertex element index */
+                                               uint32_t *desc) /* where to upload descriptors */
+{
+   struct si_resource *buf = si_resource(vb->buffer.resource);
+   if (!buf) {
+      memset(desc, 0, 16);
+      return false;
+   }
+
+   int64_t offset = (int64_t)((int)vb->buffer_offset) + velems->src_offset[index];
+
+   if (offset >= buf->b.b.width0) {
+      assert(offset < buf->b.b.width0);
+      memset(desc, 0, 16);
+      return false;
+   }
+
+   uint64_t va = buf->gpu_address + offset;
+
+   int64_t num_records = (int64_t)buf->b.b.width0 - offset;
+   if (GFX_VERSION != GFX8 && vb->stride) {
+      /* Round up by rounding down and adding 1 */
+      num_records = (num_records - velems->format_size[index]) / vb->stride + 1;
+   }
+   assert(num_records >= 0 && num_records <= UINT_MAX);
+
+   uint32_t rsrc_word3 = velems->rsrc_word3[index];
+
+   /* OOB_SELECT chooses the out-of-bounds check:
+    *  - 1: index >= NUM_RECORDS (Structured)
+    *  - 3: offset >= NUM_RECORDS (Raw)
+    */
+   if (GFX_VERSION >= GFX10)
+      rsrc_word3 |= S_008F0C_OOB_SELECT(vb->stride ? V_008F0C_OOB_SELECT_STRUCTURED
+                                                   : V_008F0C_OOB_SELECT_RAW);
+
+   desc[0] = va;
+   desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(vb->stride);
+   desc[2] = num_records;
+   desc[3] = rsrc_word3;
+   return true;
+}
+
+#if GFX_VER == 6 /* declare this function only once because it supports all chips. */
+
+void si_set_vertex_buffer_descriptor(struct si_screen *sscreen, struct si_vertex_elements *velems,
+                                     struct pipe_vertex_buffer *vb, unsigned element_index,
+                                     uint32_t *out)
+{
+   switch (sscreen->info.chip_class) {
+   case GFX6:
+      si_set_vb_descriptor<GFX6>(velems, vb, element_index, out);
+      break;
+   case GFX7:
+      si_set_vb_descriptor<GFX7>(velems, vb, element_index, out);
+      break;
+   case GFX8:
+      si_set_vb_descriptor<GFX8>(velems, vb, element_index, out);
+      break;
+   case GFX9:
+      si_set_vb_descriptor<GFX9>(velems, vb, element_index, out);
+      break;
+   case GFX10:
+      si_set_vb_descriptor<GFX10>(velems, vb, element_index, out);
+      break;
+   case GFX10_3:
+      si_set_vb_descriptor<GFX10_3>(velems, vb, element_index, out);
+      break;
+   default:
+      unreachable("unhandled chip class");
+   }
+}
+
+#endif
+
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INLINE
 static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx)
 {
@@ -1707,50 +1786,13 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx)
       unsigned first_vb_use_mask = velems->first_vb_use_mask;
 
       for (unsigned i = 0; i < count; i++) {
-         struct pipe_vertex_buffer *vb;
-         struct si_resource *buf;
          unsigned vbo_index = velems->vertex_buffer_index[i];
+         struct pipe_vertex_buffer *vb = &sctx->vertex_buffer[vbo_index];
          uint32_t *desc = i < num_vbos_in_user_sgprs ? &sctx->vb_descriptor_user_sgprs[i * 4]
                                                      : &ptr[(i - num_vbos_in_user_sgprs) * 4];
 
-         vb = &sctx->vertex_buffer[vbo_index];
-         buf = si_resource(vb->buffer.resource);
-         if (!buf) {
-            memset(desc, 0, 16);
+         if (!si_set_vb_descriptor<GFX_VERSION>(velems, vb, i, desc))
             continue;
-         }
-
-         int64_t offset = (int64_t)((int)vb->buffer_offset) + velems->src_offset[i];
-
-         if (offset >= buf->b.b.width0) {
-            assert(offset < buf->b.b.width0);
-            memset(desc, 0, 16);
-            continue;
-         }
-
-         uint64_t va = buf->gpu_address + offset;
-
-         int64_t num_records = (int64_t)buf->b.b.width0 - offset;
-         if (GFX_VERSION != GFX8 && vb->stride) {
-            /* Round up by rounding down and adding 1 */
-            num_records = (num_records - velems->format_size[i]) / vb->stride + 1;
-         }
-         assert(num_records >= 0 && num_records <= UINT_MAX);
-
-         uint32_t rsrc_word3 = velems->rsrc_word3[i];
-
-         /* OOB_SELECT chooses the out-of-bounds check:
-          *  - 1: index >= NUM_RECORDS (Structured)
-          *  - 3: offset >= NUM_RECORDS (Raw)
-          */
-         if (GFX_VERSION >= GFX10)
-            rsrc_word3 |= S_008F0C_OOB_SELECT(vb->stride ? V_008F0C_OOB_SELECT_STRUCTURED
-                                                         : V_008F0C_OOB_SELECT_RAW);
-
-         desc[0] = va;
-         desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(vb->stride);
-         desc[2] = num_records;
-         desc[3] = rsrc_word3;
 
          if (first_vb_use_mask & (1 << i)) {
             radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(vb->buffer.resource),
