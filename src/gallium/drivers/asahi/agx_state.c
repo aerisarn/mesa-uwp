@@ -36,6 +36,7 @@
 #include "gallium/auxiliary/util/u_viewport.h"
 #include "gallium/auxiliary/util/u_blend.h"
 #include "gallium/auxiliary/tgsi/tgsi_from_mesa.h"
+#include "gallium/auxiliary/nir/tgsi_to_nir.h"
 #include "compiler/nir/nir.h"
 #include "asahi/compiler/agx_compile.h"
 #include "agx_state.h"
@@ -754,7 +755,7 @@ static bool asahi_shader_key_equal(const void *a, const void *b)
 }
 
 static void *
-agx_create_shader_state(struct pipe_context *ctx,
+agx_create_shader_state(struct pipe_context *pctx,
                         const struct pipe_shader_state *cso)
 {
    struct agx_uncompiled_shader *so = CALLOC_STRUCT(agx_uncompiled_shader);
@@ -762,9 +763,12 @@ agx_create_shader_state(struct pipe_context *ctx,
    if (!so)
       return NULL;
 
-   /* TGSI unsupported */
-   assert(cso->type == PIPE_SHADER_IR_NIR);
-   so->nir = cso->ir.nir;
+   if (cso->type == PIPE_SHADER_IR_NIR) {
+      so->nir = cso->ir.nir;
+   } else {
+      assert(cso->type == PIPE_SHADER_IR_TGSI);
+      so->nir = tgsi_to_nir(cso->tokens, pctx->screen, false);
+   }
 
    so->variants = _mesa_hash_table_create(NULL, asahi_shader_key_hash, asahi_shader_key_equal);
    return so;
