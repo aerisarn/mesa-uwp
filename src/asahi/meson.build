@@ -44,6 +44,7 @@ agx_compiler = executable(
   dependencies : [
     idep_nir,
     idep_mesautil,
+    idep_agx_pack,
     dep_libdrm,
   ],
   link_with : [

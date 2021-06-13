@@ -331,6 +331,9 @@ typedef struct {
    struct agx_shader_info *out;
    struct agx_shader_key *key;
 
+   /* Remapping table for varyings indexed by driver_location */
+   unsigned varyings[AGX_MAX_VARYINGS];
+
    /* Place to start pushing new values */
    unsigned push_base;
 

@@ -820,6 +820,7 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    nir_variable_mode varying_mode = (nir->info.stage == MESA_SHADER_FRAGMENT) ?
                                     nir_var_shader_in : nir_var_shader_out;
 
+   struct agx_varyings *varyings = &compiled->info.varyings;
    unsigned varying_count = 0;
 
    nir_foreach_variable_with_modes(var, nir, varying_mode) {
@@ -829,35 +830,26 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
       varying_count = MAX2(varying_count, loc + sz);
    }
 
-   compiled->varying_count = varying_count;
+   if (nir->info.stage == MESA_SHADER_VERTEX)
+      compiled->varying_count = varying_count;
 
-   unsigned varying_desc_len = AGX_VARYING_HEADER_LENGTH + (1 + varying_count) * AGX_VARYING_LENGTH;
-   uint8_t *varying_desc = calloc(1, varying_desc_len);
+   unsigned packed_varying_sz = (AGX_VARYING_HEADER_LENGTH + varyings->nr_descs * AGX_VARYING_LENGTH);
+   uint8_t *packed_varyings = alloca(packed_varying_sz);
 
-   agx_pack(varying_desc, VARYING_HEADER, cfg) {
-      cfg.slots_1 = 1 + (4 * varying_count);
-      cfg.slots_2 = 1 + (4 * varying_count);
+   agx_pack(packed_varyings, VARYING_HEADER, cfg) {
+      cfg.slots_1 = cfg.slots_2 = varyings->nr_slots;
    }
 
-   agx_pack(varying_desc + AGX_VARYING_HEADER_LENGTH, VARYING, cfg) {
-      cfg.type = AGX_VARYING_TYPE_FRAGCOORD_W;
-      cfg.slot_1 = 0;
-      cfg.slot_2 = 0;
-      cfg.components = 4;
-   }
+   if (varyings->nr_slots)
+      compiled->varying_count = varyings->nr_slots;
 
-   for (unsigned i = 0; i < varying_count; ++i) {
-      agx_pack(varying_desc + AGX_VARYING_HEADER_LENGTH + ((i + 1) * AGX_VARYING_LENGTH), VARYING, cfg) {
-         cfg.slot_1 = 1 + (4 * i);
-         cfg.slot_2 = 1 + (4 * i);
-         cfg.components = 4;
-      }
-   }
+   memcpy(packed_varyings + AGX_VARYING_HEADER_LENGTH, varyings->packed,
+         varyings->nr_descs * AGX_VARYING_LENGTH);
 
    if (binary.size) {
       struct agx_device *dev = agx_device(ctx->base.screen);
       compiled->bo = agx_bo_create(dev,
-                                   ALIGN_POT(binary.size, 256) + ((3 * (AGX_VARYING_HEADER_LENGTH + varying_count * AGX_VARYING_LENGTH)) + 20),
+                                   ALIGN_POT(binary.size, 256) + ((3 * packed_varying_sz) + 20),
                                    AGX_MEMORY_TYPE_SHADER);
       memcpy(compiled->bo->ptr.cpu, binary.data, binary.size);
 
@@ -866,8 +858,8 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
       unsigned offs = ALIGN_POT(binary.size, 256);
       unsigned unk_offs = offs + 0x40;
       for (unsigned copy = 0; copy < 3; ++copy) {
-         memcpy(((uint8_t *) compiled->bo->ptr.cpu) + offs, varying_desc, varying_desc_len);
-         offs += varying_desc_len;
+         memcpy(((uint8_t *) compiled->bo->ptr.cpu) + offs, packed_varyings, packed_varying_sz);
+         offs += packed_varying_sz;
       }
 
       uint16_t *map = (uint16_t *) (((uint8_t *) compiled->bo->ptr.cpu) + unk_offs);
@@ -1165,7 +1157,7 @@ demo_unk8(struct agx_compiled_shader *fs, struct agx_pool *pool)
    /* Varying related */
    uint32_t unk[] = {
       /* interpolated count */
-      0x100c0000, fs->varying_count * 4, 0x0, 0x0, 0x0,
+      0x100c0000, fs->info.varyings.nr_slots, 0x0, 0x0, 0x0,
    };
 
    return agx_pool_upload(pool, unk, sizeof(unk));
@@ -1178,7 +1170,7 @@ demo_linkage(struct agx_compiled_shader *vs, struct agx_pool *pool)
 
    agx_pack(t.cpu, LINKAGE, cfg) {
       cfg.varying_count = 4 * vs->varying_count;
-      cfg.unk_1 = 0x10000; // varyings otherwise wrong
+      cfg.unk_1 = 0x210000; // varyings otherwise wrong
    };
 
    return t.gpu;
@@ -1288,7 +1280,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
 
    agx_push_record(&out, 0, zero.gpu);
    agx_push_record(&out, 5, demo_unk8(ctx->fs, pool));
-   agx_push_record(&out, 5, demo_launch_fragment(pool, pipeline_fragment, varyings, ctx->fs->varying_count + 1));
+   agx_push_record(&out, 5, demo_launch_fragment(pool, pipeline_fragment, varyings, ctx->fs->info.varyings.nr_descs));
    agx_push_record(&out, 4, demo_linkage(ctx->vs, pool));
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool));
    agx_push_record(&out, 5, demo_unk11(pool, is_lines, reads_tib));

@@ -122,7 +122,8 @@ agx_emit_load_vary_flat(agx_builder *b, nir_intrinsic_instr *instr)
 
    nir_src *offset = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset) && "no indirects");
-   unsigned imm_index = nir_intrinsic_base(instr) + nir_src_as_uint(*offset);
+   unsigned imm_index = b->shader->varyings[nir_intrinsic_base(instr)];
+   imm_index += nir_src_as_uint(*offset);
 
    agx_index chan[4] = { agx_null() };
 
@@ -150,8 +151,8 @@ agx_emit_load_vary(agx_builder *b, nir_intrinsic_instr *instr)
 
    nir_src *offset = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset) && "no indirects");
-   unsigned imm_index = (4 * nir_intrinsic_base(instr)) + nir_src_as_uint(*offset);
-   imm_index += 1;
+   unsigned imm_index = b->shader->varyings[nir_intrinsic_base(instr)];
+   imm_index += nir_src_as_uint(*offset);
 
    return agx_ld_vary_to(b, agx_dest_index(&instr->dest),
          agx_immediate(imm_index), components, true);
@@ -1124,6 +1125,51 @@ agx_remap_varyings_vs(nir_shader *nir)
    }
 }
 
+static void
+agx_remap_varyings_fs(nir_shader *nir, struct agx_varyings *varyings,
+                      unsigned *remap)
+{
+   struct agx_varying_packed *packed = varyings->packed;
+   unsigned base = 0;
+
+   agx_pack(packed, VARYING, cfg) {
+      cfg.type = AGX_VARYING_TYPE_FRAGCOORD_W;
+      cfg.components = 1;
+      cfg.slot_1 = cfg.slot_2 = base;
+   }
+
+   base++;
+   packed++;
+
+   agx_pack(packed, VARYING, cfg) {
+      cfg.type = AGX_VARYING_TYPE_FRAGCOORD_Z;
+      cfg.components = 1;
+      cfg.slot_1 = cfg.slot_2 = base;
+   }
+
+   base++;
+   packed++;
+
+   nir_foreach_shader_in_variable(var, nir) {
+      assert(var->data.driver_location <= AGX_MAX_VARYINGS);
+      remap[var->data.driver_location] = base;
+
+      agx_pack(packed, VARYING, cfg) {
+         cfg.type = (var->data.interpolation == INTERP_MODE_FLAT) ?
+            AGX_VARYING_TYPE_FLAT_LAST :
+            AGX_VARYING_TYPE_SMOOTH;
+         cfg.components = 4;
+         cfg.slot_1 = cfg.slot_2 = base;
+      }
+
+      base += 4;
+      packed++;
+   }
+
+   varyings->nr_descs = (packed - varyings->packed);
+   varyings->nr_slots = base;
+}
+
 void
 agx_compile_shader_nir(nir_shader *nir,
       struct agx_shader_key *key,
@@ -1179,6 +1225,11 @@ agx_compile_shader_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
 
    agx_optimize_nir(nir);
+
+   /* Must be last since NIR passes can remap driver_location freely */
+   if (ctx->stage == MESA_SHADER_FRAGMENT) {
+      agx_remap_varyings_fs(nir, &out->varyings, ctx->varyings);
+   }
 
    bool skip_internal = nir->info.internal;
    skip_internal &= !(agx_debug & AGX_DBG_INTERNAL);
