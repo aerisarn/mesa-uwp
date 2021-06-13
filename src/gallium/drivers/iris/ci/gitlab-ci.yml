@@ -85,6 +85,7 @@ iris-apl-egl:
     - .iris-apl-test
   variables:
     PIGLIT_NO_WINDOW: 0
+    LAVA_START_XORG: 1
     DEQP_VER: egl
 
 iris-glk-gles2:
@@ -123,6 +124,7 @@ iris-glk-egl:
     - .iris-glk-test
   variables:
     PIGLIT_NO_WINDOW: 0
+    LAVA_START_XORG: 1
     DEQP_VER: egl
 
 iris-amly-gles2:
@@ -160,6 +162,7 @@ iris-amly-egl:
     - .iris-amly-test
   variables:
     PIGLIT_NO_WINDOW: 0
+    LAVA_START_XORG: 1
     DEQP_VER: egl
 
 iris-amly-piglit:
