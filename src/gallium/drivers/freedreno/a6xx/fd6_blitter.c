@@ -906,12 +906,18 @@ handle_rgba_blit(struct fd_context *ctx,
    if (!can_do_blit(info))
       return false;
 
+   struct fd_resource *src = fd_resource(info->src.resource);
+   struct fd_resource *dst = fd_resource(info->dst.resource);
+
+   fd6_validate_format(ctx, src, info->src.format);
+   fd6_validate_format(ctx, dst, info->dst.format);
+
    batch = fd_bc_alloc_batch(&ctx->screen->batch_cache, ctx, true);
 
    fd_screen_lock(ctx->screen);
 
-   fd_batch_resource_read(batch, fd_resource(info->src.resource));
-   fd_batch_resource_write(batch, fd_resource(info->dst.resource));
+   fd_batch_resource_read(batch, src);
+   fd_batch_resource_write(batch, dst);
 
    fd_screen_unlock(ctx->screen);
 
@@ -937,8 +943,8 @@ handle_rgba_blit(struct fd_context *ctx,
 
    if ((info->src.resource->target == PIPE_BUFFER) &&
        (info->dst.resource->target == PIPE_BUFFER)) {
-      assert(fd_resource(info->src.resource)->layout.tile_mode == TILE6_LINEAR);
-      assert(fd_resource(info->dst.resource)->layout.tile_mode == TILE6_LINEAR);
+      assert(src->layout.tile_mode == TILE6_LINEAR);
+      assert(dst->layout.tile_mode == TILE6_LINEAR);
       emit_blit_buffer(ctx, batch->draw, info);
    } else {
       /* I don't *think* we need to handle blits between buffer <-> !buffer */
@@ -956,7 +962,7 @@ handle_rgba_blit(struct fd_context *ctx,
 
    fd_batch_unlock_submit(batch);
 
-   fd_resource(info->dst.resource)->valid = true;
+   dst->valid = true;
 
    fd_batch_flush(batch);
    fd_batch_reference(&batch, NULL);
