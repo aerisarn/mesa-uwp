@@ -2969,9 +2969,6 @@ tc_call_draw_single(struct pipe_context *pipe, void *call, uint64_t *last_ptr)
          multi[1].count = next->info.max_index;
          multi[1].index_bias = next->index_bias;
 
-         if (next->info.index_size)
-            tc_drop_resource_reference(next->info.index.resource);
-
          /* Find how many other draws can be merged. */
          next = get_next_call(next, tc_draw_single);
          for (; next != last && is_next_call_a_mergeable_draw(first, next);
@@ -2981,15 +2978,14 @@ tc_call_draw_single(struct pipe_context *pipe, void *call, uint64_t *last_ptr)
             multi[num_draws].count = next->info.max_index;
             multi[num_draws].index_bias = next->index_bias;
             index_bias_varies |= first->index_bias != next->index_bias;
-
-            if (next->info.index_size)
-               tc_drop_resource_reference(next->info.index.resource);
          }
 
          first->info.index_bias_varies = index_bias_varies;
          pipe->draw_vbo(pipe, &first->info, 0, NULL, multi, num_draws);
+
+         /* Since all draws use the same index buffer, drop all references at once. */
          if (first->info.index_size)
-            tc_drop_resource_reference(first->info.index.resource);
+            pipe_drop_resource_references(first->info.index.resource, num_draws);
 
          return call_size(tc_draw_single) * num_draws;
       }

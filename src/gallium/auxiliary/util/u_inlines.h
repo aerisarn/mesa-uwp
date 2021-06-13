@@ -164,6 +164,20 @@ pipe_resource_reference(struct pipe_resource **dst, struct pipe_resource *src)
 }
 
 /**
+ * Subtract the given number of references.
+ */
+static inline void
+pipe_drop_resource_references(struct pipe_resource *dst, int num_refs)
+{
+   int count = p_atomic_add_return(&dst->reference.count, -num_refs);
+
+   assert(count >= 0);
+   /* Underflows shouldn't happen, but let's be safe. */
+   if (count <= 0)
+      pipe_resource_destroy(dst);
+}
+
+/**
  * Same as pipe_surface_release, but used when pipe_context doesn't exist
  * anymore.
  */
