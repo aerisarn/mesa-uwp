@@ -326,6 +326,20 @@ static void flush_resource(struct fd_context *ctx, struct fd_resource *rsc,
                            unsigned usage);
 
 /**
+ * Helper to check if the format is something that we can blit/render
+ * to.. if the format is not renderable, there is no point in trying
+ * to do a staging blit (as it will still end up being a cpu copy)
+ */
+static bool
+is_renderable(struct pipe_resource *prsc)
+{
+   struct pipe_screen *pscreen = prsc->screen;
+   return pscreen->is_format_supported(
+         pscreen, prsc->format, prsc->target, prsc->nr_samples,
+         prsc->nr_storage_samples, PIPE_BIND_RENDER_TARGET);
+}
+
+/**
  * @rsc: the resource to shadow
  * @level: the level to discard (if box != NULL, otherwise ignored)
  * @box: the box to discard (or NULL if none)
@@ -361,9 +375,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
    /* TODO: somehow munge dimensions and format to copy unsupported
     * render target format to something that is supported?
     */
-   if (!pctx->screen->is_format_supported(
-          pctx->screen, prsc->format, prsc->target, prsc->nr_samples,
-          prsc->nr_storage_samples, PIPE_BIND_RENDER_TARGET))
+   if (!is_renderable(prsc))
       fallback = true;
 
    /* do shadowing back-blits on the cpu for buffers: */
@@ -847,7 +859,7 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
             needs_flush = busy = false;
             ctx->stats.shadow_uploads++;
          } else {
-            struct fd_resource *staging_rsc;
+            struct fd_resource *staging_rsc = NULL;
 
             if (needs_flush) {
                flush_resource(ctx, rsc, usage);
@@ -859,7 +871,8 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
              * already had rendering flushed for all tiles.  So we can
              * use a staging buffer to do the upload.
              */
-            staging_rsc = fd_alloc_staging(ctx, rsc, level, box);
+            if (is_renderable(prsc))
+               staging_rsc = fd_alloc_staging(ctx, rsc, level, box);
             if (staging_rsc) {
                trans->staging_prsc = &staging_rsc->b.b;
                trans->b.b.stride = fd_resource_pitch(staging_rsc, 0);
