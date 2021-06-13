@@ -995,7 +995,8 @@ static void si_bind_sampler_states(struct pipe_context *ctx, enum pipe_shader_ty
 
 /* BUFFER RESOURCES */
 
-static void si_init_buffer_resources(struct si_buffer_resources *buffers,
+static void si_init_buffer_resources(struct si_context *sctx,
+                                     struct si_buffer_resources *buffers,
                                      struct si_descriptors *descs, unsigned num_buffers,
                                      short shader_userdata_rel_index,
                                      enum radeon_bo_priority priority,
@@ -1007,6 +1008,22 @@ static void si_init_buffer_resources(struct si_buffer_resources *buffers,
    buffers->offsets = CALLOC(num_buffers, sizeof(buffers->offsets[0]));
 
    si_init_descriptors(descs, shader_userdata_rel_index, 4, num_buffers);
+
+   /* Initialize buffer descriptors, so that we don't have to do it at bind time. */
+   for (unsigned i = 0; i < num_buffers; i++) {
+      uint32_t *desc = descs->list + i * 4;
+
+      desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+                S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
+
+      if (sctx->chip_class >= GFX10) {
+         desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
+                    S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) | S_008F0C_RESOURCE_LEVEL(1);
+      } else {
+         desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+                    S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+      }
+   }
 }
 
 static void si_release_buffer_resources(struct si_buffer_resources *buffers,
@@ -1162,16 +1179,6 @@ static void si_set_constant_buffer(struct si_context *sctx, struct si_buffer_res
       desc[0] = va;
       desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(0);
       desc[2] = input->buffer_size;
-      desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-                S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
-
-      if (sctx->chip_class >= GFX10) {
-         desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
-                    S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) | S_008F0C_RESOURCE_LEVEL(1);
-      } else {
-         desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-                    S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
-      }
 
       buffers->buffers[slot] = buffer;
       buffers->offsets[slot] = buffer_offset;
@@ -1179,8 +1186,8 @@ static void si_set_constant_buffer(struct si_context *sctx, struct si_buffer_res
                                               buffers->priority_constbuf, true);
       buffers->enabled_mask |= 1llu << slot;
    } else {
-      /* Clear the descriptor. */
-      memset(descs->list + slot * 4, 0, sizeof(uint32_t) * 4);
+      /* Clear the descriptor. Only 3 dwords are cleared. The 4th dword is immutable. */
+      memset(descs->list + slot * 4, 0, sizeof(uint32_t) * 3);
       buffers->enabled_mask &= ~(1llu << slot);
    }
 
@@ -1250,7 +1257,8 @@ static void si_set_shader_buffer(struct si_context *sctx, struct si_buffer_resou
 
    if (!sbuffer || !sbuffer->buffer) {
       pipe_resource_reference(&buffers->buffers[slot], NULL);
-      memset(desc, 0, sizeof(uint32_t) * 4);
+      /* Clear the descriptor. Only 3 dwords are cleared. The 4th dword is immutable. */
+      memset(desc, 0, sizeof(uint32_t) * 3);
       buffers->enabled_mask &= ~(1llu << slot);
       buffers->writable_mask &= ~(1llu << slot);
       sctx->descriptors_dirty |= 1u << descriptors_idx;
@@ -1263,16 +1271,6 @@ static void si_set_shader_buffer(struct si_context *sctx, struct si_buffer_resou
    desc[0] = va;
    desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(0);
    desc[2] = sbuffer->buffer_size;
-   desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-             S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
-
-   if (sctx->chip_class >= GFX10) {
-      desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
-                 S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) | S_008F0C_RESOURCE_LEVEL(1);
-   } else {
-      desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-                 S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
-   }
 
    pipe_resource_reference(&buffers->buffers[slot], &buf->b.b);
    buffers->offsets[slot] = sbuffer->buffer_offset;
@@ -2528,7 +2526,7 @@ void si_init_all_descriptors(struct si_context *sctx)
          rel_dw_offset = SI_SGPR_CONST_AND_SHADER_BUFFERS;
       }
       desc = si_const_and_shader_buffer_descriptors(sctx, i);
-      si_init_buffer_resources(&sctx->const_and_shader_buffers[i], desc, num_buffer_slots,
+      si_init_buffer_resources(sctx, &sctx->const_and_shader_buffers[i], desc, num_buffer_slots,
                                rel_dw_offset, RADEON_PRIO_SHADER_RW_BUFFER,
                                RADEON_PRIO_CONST_BUFFER);
       desc->slot_index_to_bind_directly = si_get_constbuf_slot(0);
@@ -2558,7 +2556,7 @@ void si_init_all_descriptors(struct si_context *sctx)
          memcpy(desc->list + j * 8, null_texture_descriptor, 8 * 4);
    }
 
-   si_init_buffer_resources(&sctx->internal_bindings, &sctx->descriptors[SI_DESCS_INTERNAL],
+   si_init_buffer_resources(sctx, &sctx->internal_bindings, &sctx->descriptors[SI_DESCS_INTERNAL],
                             SI_NUM_INTERNAL_BINDINGS, SI_SGPR_INTERNAL_BINDINGS,
                             /* The second priority is used by
                              * const buffers in RW buffer slots. */
