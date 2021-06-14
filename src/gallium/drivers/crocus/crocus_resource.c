@@ -71,13 +71,16 @@ static const uint64_t priority_to_modifier[] = {
 
 static bool
 modifier_is_supported(const struct intel_device_info *devinfo,
-                      enum pipe_format pfmt, uint64_t modifier)
+                      enum pipe_format pfmt, unsigned bind,
+                      uint64_t modifier)
 {
    /* XXX: do something real */
    switch (modifier) {
    case I915_FORMAT_MOD_Y_TILED_CCS:
       return false;
    case I915_FORMAT_MOD_Y_TILED:
+      if (bind & PIPE_BIND_SCANOUT)
+         return false;
       return devinfo->ver >= 6;
    case I915_FORMAT_MOD_X_TILED:
    case DRM_FORMAT_MOD_LINEAR:
@@ -89,14 +92,16 @@ modifier_is_supported(const struct intel_device_info *devinfo,
 }
 
 static uint64_t
-select_best_modifier(struct intel_device_info *devinfo, enum pipe_format pfmt,
+select_best_modifier(struct intel_device_info *devinfo,
+                     const struct pipe_resource *templ,
                      const uint64_t *modifiers,
                      int count)
 {
    enum modifier_priority prio = MODIFIER_PRIORITY_INVALID;
 
    for (int i = 0; i < count; i++) {
-      if (!modifier_is_supported(devinfo, pfmt, modifiers[i]))
+      if (!modifier_is_supported(devinfo, templ->format, templ->bind,
+                                 modifiers[i]))
          continue;
 
       switch (modifiers[i]) {
@@ -193,6 +198,9 @@ crocus_resource_configure_main(const struct crocus_screen *screen,
       if (templ->usage == PIPE_USAGE_STAGING ||
           templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR) )
          tiling_flags = ISL_TILING_LINEAR_BIT;
+      else if (templ->bind & PIPE_BIND_SCANOUT)
+         tiling_flags = screen->devinfo.has_tiling_uapi ?
+            ISL_TILING_X_BIT : ISL_TILING_LINEAR_BIT;
    }
 
    if (templ->target == PIPE_TEXTURE_CUBE ||
@@ -264,7 +272,7 @@ crocus_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    int supported_mods = 0;
 
    for (int i = 0; i < ARRAY_SIZE(all_modifiers); i++) {
-      if (!modifier_is_supported(devinfo, pfmt, all_modifiers[i]))
+      if (!modifier_is_supported(devinfo, pfmt, 0, all_modifiers[i]))
          continue;
 
       if (supported_mods < max) {
@@ -726,7 +734,7 @@ crocus_resource_create_with_modifiers(struct pipe_screen *pscreen,
       return NULL;
 
    uint64_t modifier =
-      select_best_modifier(devinfo, templ->format, modifiers, modifiers_count);
+      select_best_modifier(devinfo, templ, modifiers, modifiers_count);
 
    if (modifier == DRM_FORMAT_MOD_INVALID && modifiers_count > 0) {
       fprintf(stderr, "Unsupported modifier, resource creation failed.\n");
@@ -1040,7 +1048,7 @@ crocus_resource_get_param(struct pipe_screen *pscreen,
       return true;
    case PIPE_RESOURCE_PARAM_MODIFIER:
       *value = res->mod_info ? res->mod_info->modifier :
-               tiling_to_modifier(res->bo->tiling_mode);
+               tiling_to_modifier(isl_tiling_to_i915_tiling(res->surf.tiling));
       return true;
    case PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED:
       result = crocus_bo_flink(bo, &handle) == 0;
@@ -1899,7 +1907,7 @@ crocus_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
    struct crocus_screen *screen = (void *) pscreen;
    const struct intel_device_info *devinfo = &screen->devinfo;
 
-   if (modifier_is_supported(devinfo, pfmt, modifier)) {
+   if (modifier_is_supported(devinfo, pfmt, 0, modifier)) {
       if (external_only)
          *external_only = false;
 
