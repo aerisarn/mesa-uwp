@@ -29,6 +29,24 @@
 #error This file is included by means other than v3dv_private.h
 #endif
 
+/* Used at v3dv_format */
+const struct v3dv_format *
+v3dX(get_format)(VkFormat);
+
+void
+v3dX(get_internal_type_bpp_for_output_format)(uint32_t format,
+                                              uint32_t *type,
+                                              uint32_t *bpp);
+
+bool
+v3dX(format_supports_tlb_resolve)(const struct v3dv_format *format);
+
+bool
+v3dX(format_supports_blending)(const struct v3dv_format *format);
+
+bool
+v3dX(tfu_supports_tex_format)(uint32_t tex_format);
+
 /* Used at v3dv_image */
 
 void

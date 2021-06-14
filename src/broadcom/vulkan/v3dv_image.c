@@ -308,7 +308,7 @@ create_image(struct v3dv_device *device,
    else
       tiling = VK_IMAGE_TILING_LINEAR;
 
-   const struct v3dv_format *format = v3dv_get_format(pCreateInfo->format);
+   const struct v3dv_format *format = v3dv_X(device, get_format)(pCreateInfo->format);
    v3dv_assert(format != NULL && format->supported);
 
    image = vk_object_zalloc(&device->vk, pAllocator, sizeof(*image),
@@ -607,18 +607,17 @@ v3dv_CreateImageView(VkDevice _device,
    }
 
    iview->vk_format = format;
-   iview->format = v3dv_get_format(format);
+   iview->format = v3dv_X(device, get_format)(format);
    assert(iview->format && iview->format->supported);
 
    if (vk_format_is_depth_or_stencil(iview->vk_format)) {
       iview->internal_type = v3dv_get_internal_depth_type(iview->vk_format);
    } else {
-      v3dv_get_internal_type_bpp_for_output_format(iview->format->rt_type,
-                                                   &iview->internal_type,
-                                                   &iview->internal_bpp);
+      v3dv_X(device, get_internal_type_bpp_for_output_format)
+         (iview->format->rt_type, &iview->internal_type, &iview->internal_bpp);
    }
 
-   const uint8_t *format_swizzle = v3dv_get_format_swizzle(format);
+   const uint8_t *format_swizzle = v3dv_get_format_swizzle(device, format);
    util_format_compose_swizzles(format_swizzle, image_view_swizzle,
                                 iview->swizzle);
    iview->swap_rb = iview->swizzle[0] == PIPE_SWIZZLE_Z;
@@ -675,11 +674,10 @@ v3dv_CreateBufferView(VkDevice _device,
    view->size = view->offset + range;
    view->num_elements = num_elements;
    view->vk_format = pCreateInfo->format;
-   view->format = v3dv_get_format(view->vk_format);
+   view->format = v3dv_X(device, get_format)(view->vk_format);
 
-   v3dv_get_internal_type_bpp_for_output_format(view->format->rt_type,
-                                                &view->internal_type,
-                                                &view->internal_bpp);
+   v3dv_X(device, get_internal_type_bpp_for_output_format)
+      (view->format->rt_type, &view->internal_type, &view->internal_bpp);
 
    if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT ||
        buffer->usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)

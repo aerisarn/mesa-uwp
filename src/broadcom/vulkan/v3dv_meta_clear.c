@@ -1410,10 +1410,10 @@ emit_tlb_clear_job(struct v3dv_cmd_buffer *cmd_buffer,
 
       uint32_t internal_type, internal_bpp, internal_size;
       const struct v3dv_format *format =
-         v3dv_get_format(attachment->desc.format);
-      v3dv_get_internal_type_bpp_for_output_format(format->rt_type,
-                                                   &internal_type,
-                                                   &internal_bpp);
+         v3dv_X(cmd_buffer->device, get_format)(attachment->desc.format);
+      v3dv_X(cmd_buffer->device, get_internal_type_bpp_for_output_format)
+         (format->rt_type, &internal_type, &internal_bpp);
+
       internal_size = 4 << internal_bpp;
 
       uint32_t clear_color[4] = { 0 };

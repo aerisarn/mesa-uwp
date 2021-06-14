@@ -659,10 +659,12 @@ void v3dv_framebuffer_compute_internal_bpp_msaa(const struct v3dv_framebuffer *f
                                                 const struct v3dv_subpass *subpass,
                                                 uint8_t *max_bpp, bool *msaa);
 
-bool v3dv_subpass_area_is_tile_aligned(const VkRect2D *area,
+bool v3dv_subpass_area_is_tile_aligned(struct v3dv_device *device,
+                                       const VkRect2D *area,
                                        struct v3dv_framebuffer *fb,
                                        struct v3dv_render_pass *pass,
                                        uint32_t subpass_idx);
+
 struct v3dv_cmd_pool {
    struct vk_object_base base;
 
@@ -1889,18 +1891,14 @@ VkResult __vk_errorf(struct v3dv_instance *instance, VkResult error,
 #define v3dv_debug_ignored_stype(sType)
 #endif
 
-const struct v3dv_format *v3dv_get_format(VkFormat);
-const uint8_t *v3dv_get_format_swizzle(VkFormat f);
-void v3dv_get_internal_type_bpp_for_output_format(uint32_t format, uint32_t *type, uint32_t *bpp);
+const uint8_t *v3dv_get_format_swizzle(struct v3dv_device *device, VkFormat f);
 uint8_t v3dv_get_tex_return_size(const struct v3dv_format *vf, bool compare_enable);
-bool v3dv_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
-                                  uint32_t tex_format);
 const struct v3dv_format *
-v3dv_get_compatible_tfu_format(const struct v3d_device_info *devinfo,
+v3dv_get_compatible_tfu_format(struct v3dv_device *device,
                                uint32_t bpp, VkFormat *out_vk_format);
-bool v3dv_buffer_format_supports_features(VkFormat vk_format,
+bool v3dv_buffer_format_supports_features(struct v3dv_device *device,
+                                          VkFormat vk_format,
                                           VkFormatFeatureFlags features);
-bool v3dv_format_supports_tlb_resolve(const struct v3dv_format *format);
 
 struct v3dv_cl_reloc v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                                          struct v3dv_pipeline *pipeline,

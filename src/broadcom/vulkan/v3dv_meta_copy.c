@@ -261,7 +261,8 @@ struct framebuffer_data {
 };
 
 static void
-setup_framebuffer_data(struct framebuffer_data *fb,
+setup_framebuffer_data(struct v3dv_device *device,
+                       struct framebuffer_data *fb,
                        VkFormat vk_format,
                        uint32_t internal_type,
                        const struct v3dv_frame_tiling *tiling)
@@ -280,7 +281,7 @@ setup_framebuffer_data(struct framebuffer_data *fb,
    fb->max_y_supertile = (tiling->height - 1) / supertile_h_in_pixels;
 
    fb->vk_format = vk_format;
-   fb->format = v3dv_get_format(vk_format);
+   fb->format = v3dv_X(device, get_format)(vk_format);
 
    fb->internal_depth_type = V3D_INTERNAL_TYPE_DEPTH_32F;
    if (vk_format_is_depth_or_stencil(vk_format))
@@ -350,14 +351,15 @@ choose_tlb_format(struct framebuffer_data *framebuffer,
 }
 
 static inline bool
-format_needs_rb_swap(VkFormat format)
+format_needs_rb_swap(struct v3dv_device *device, VkFormat format)
 {
-   const uint8_t *swizzle = v3dv_get_format_swizzle(format);
+   const uint8_t *swizzle = v3dv_get_format_swizzle(device, format);
    return swizzle[0] == PIPE_SWIZZLE_Z;
 }
 
 static void
-get_internal_type_bpp_for_image_aspects(VkFormat vk_format,
+get_internal_type_bpp_for_image_aspects(struct v3dv_device *device,
+                                        VkFormat vk_format,
                                         VkImageAspectFlags aspect_mask,
                                         uint32_t *internal_type,
                                         uint32_t *internal_bpp)
@@ -394,10 +396,9 @@ get_internal_type_bpp_for_image_aspects(VkFormat vk_format,
          break;
       }
    } else {
-      const struct v3dv_format *format = v3dv_get_format(vk_format);
-      v3dv_get_internal_type_bpp_for_output_format(format->rt_type,
-                                                   internal_type,
-                                                   internal_bpp);
+      const struct v3dv_format *format = v3dv_X(device, get_format)(vk_format);
+      v3dv_X(device, get_internal_type_bpp_for_output_format)
+         (format->rt_type, internal_type, internal_bpp);
    }
 }
 
@@ -614,7 +615,8 @@ emit_linear_store(struct v3dv_cl *cl,
 }
 
 static void
-emit_image_load(struct v3dv_cl *cl,
+emit_image_load(struct v3dv_device *device,
+                struct v3dv_cl *cl,
                 struct framebuffer_data *framebuffer,
                 struct v3dv_image *image,
                 VkImageAspectFlags aspect,
@@ -674,7 +676,7 @@ emit_image_load(struct v3dv_cl *cl,
          /* This is not a raw data copy (i.e. we are clearing the image),
           * so we need to make sure we respect the format swizzle.
           */
-         needs_rb_swap = format_needs_rb_swap(framebuffer->vk_format);
+         needs_rb_swap = format_needs_rb_swap(device, framebuffer->vk_format);
       }
 
       load.r_b_swap = needs_rb_swap;
@@ -696,7 +698,8 @@ emit_image_load(struct v3dv_cl *cl,
 }
 
 static void
-emit_image_store(struct v3dv_cl *cl,
+emit_image_store(struct v3dv_device *device,
+                 struct v3dv_cl *cl,
                  struct framebuffer_data *framebuffer,
                  struct v3dv_image *image,
                  VkImageAspectFlags aspect,
@@ -730,7 +733,7 @@ emit_image_store(struct v3dv_cl *cl,
          needs_chan_reverse = true;
       } else if (!is_copy_from_buffer && !is_copy_to_buffer &&
                  (aspect & VK_IMAGE_ASPECT_COLOR_BIT)) {
-         needs_rb_swap = format_needs_rb_swap(framebuffer->vk_format);
+         needs_rb_swap = format_needs_rb_swap(device, framebuffer->vk_format);
       }
 
       store.r_b_swap = needs_rb_swap;
@@ -782,7 +785,7 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
       region->imageSubresource.baseArrayLayer + layer_offset :
       region->imageOffset.z + layer_offset;
 
-   emit_image_load(cl, framebuffer, image,
+   emit_image_load(job->device, cl, framebuffer, image,
                    region->imageSubresource.aspectMask,
                    image_layer,
                    region->imageSubresource.mipLevel,
@@ -887,7 +890,7 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       return false;
 
    uint32_t internal_type, internal_bpp;
-   get_internal_type_bpp_for_image_aspects(fb_format,
+   get_internal_type_bpp_for_image_aspects(cmd_buffer->device, fb_format,
                                            region->imageSubresource.aspectMask,
                                            &internal_type, &internal_bpp);
 
@@ -912,8 +915,8 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp, false);
 
    struct framebuffer_data framebuffer;
-   setup_framebuffer_data(&framebuffer, fb_format, internal_type,
-                          &job->frame_tiling);
+   setup_framebuffer_data(cmd_buffer->device, &framebuffer, fb_format,
+                          internal_type, &job->frame_tiling);
 
    v3dv_job_emit_binning_flush(job);
    emit_copy_image_to_buffer_rcl(job, buffer, image, &framebuffer, region);
@@ -1392,7 +1395,7 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
       region->srcSubresource.baseArrayLayer + layer_offset :
       region->srcOffset.z + layer_offset;
 
-   emit_image_load(cl, framebuffer, src,
+   emit_image_load(job->device, cl, framebuffer, src,
                    region->srcSubresource.aspectMask,
                    src_layer,
                    region->srcSubresource.mipLevel,
@@ -1410,7 +1413,7 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
       region->dstSubresource.baseArrayLayer + layer_offset :
       region->dstOffset.z + layer_offset;
 
-   emit_image_store(cl, framebuffer, dst,
+   emit_image_store(job->device, cl, framebuffer, dst,
                     region->dstSubresource.aspectMask,
                     dst_layer,
                     region->dstSubresource.mipLevel,
@@ -1643,7 +1646,7 @@ copy_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
     */
    assert(dst->cpp == src->cpp);
    const struct v3dv_format *format =
-      v3dv_get_compatible_tfu_format(&cmd_buffer->device->devinfo,
+      v3dv_get_compatible_tfu_format(cmd_buffer->device,
                                      dst->cpp, NULL);
 
    /* Emit a TFU job for each layer to blit */
@@ -1691,7 +1694,7 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    assert(region->dstSubresource.aspectMask ==
           region->srcSubresource.aspectMask);
    uint32_t internal_type, internal_bpp;
-   get_internal_type_bpp_for_image_aspects(fb_format,
+   get_internal_type_bpp_for_image_aspects(cmd_buffer->device, fb_format,
                                            region->dstSubresource.aspectMask,
                                            &internal_type, &internal_bpp);
 
@@ -1727,8 +1730,8 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                         src->samples > VK_SAMPLE_COUNT_1_BIT);
 
    struct framebuffer_data framebuffer;
-   setup_framebuffer_data(&framebuffer, fb_format, internal_type,
-                          &job->frame_tiling);
+   setup_framebuffer_data(job->device, &framebuffer, fb_format,
+                          internal_type, &job->frame_tiling);
 
    v3dv_job_emit_binning_flush(job);
    emit_copy_image_rcl(job, dst, src, &framebuffer, region);
@@ -1873,7 +1876,7 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       if (format == VK_FORMAT_UNDEFINED)
          return false;
 
-      const struct v3dv_format *f = v3dv_get_format(format);
+      const struct v3dv_format *f = v3dv_X(cmd_buffer->device, get_format)(format);
       if (!f->supported || f->tex_type == TEXTURE_DATA_FORMAT_NO)
          return false;
    }
@@ -1979,8 +1982,8 @@ emit_clear_image_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   emit_image_store(cl, framebuffer, image, aspects, layer, level,
-                    false, false, false);
+   emit_image_store(job->device, cl, framebuffer, image, aspects,
+                    layer, level, false, false, false);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -2071,7 +2074,8 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       return false;
 
    uint32_t internal_type, internal_bpp;
-   get_internal_type_bpp_for_image_aspects(fb_format, range->aspectMask,
+   get_internal_type_bpp_for_image_aspects(cmd_buffer->device, fb_format,
+                                           range->aspectMask,
                                            &internal_type, &internal_bpp);
 
    union v3dv_clear_value hw_clear_value = { 0 };
@@ -2126,8 +2130,8 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                               image->samples > VK_SAMPLE_COUNT_1_BIT);
 
          struct framebuffer_data framebuffer;
-         setup_framebuffer_data(&framebuffer, fb_format, internal_type,
-                                &job->frame_tiling);
+         setup_framebuffer_data(job->device, &framebuffer, fb_format,
+                                internal_type, &job->frame_tiling);
 
          v3dv_job_emit_binning_flush(job);
 
@@ -2357,8 +2361,8 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp, false);
 
       struct framebuffer_data framebuffer;
-      setup_framebuffer_data(&framebuffer, vk_format, internal_type,
-                             &job->frame_tiling);
+      setup_framebuffer_data(job->device, &framebuffer, vk_format,
+                             internal_type, &job->frame_tiling);
 
       v3dv_job_emit_binning_flush(job);
 
@@ -2543,8 +2547,9 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp, false);
 
       struct framebuffer_data framebuffer;
-      setup_framebuffer_data(&framebuffer, VK_FORMAT_R8G8B8A8_UINT,
-                             internal_type, &job->frame_tiling);
+      setup_framebuffer_data(cmd_buffer->device, &framebuffer,
+                             VK_FORMAT_R8G8B8A8_UINT, internal_type,
+                             &job->frame_tiling);
 
       v3dv_job_emit_binning_flush(job);
 
@@ -2644,7 +2649,7 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
     * texel size instead, which expands the list of formats we can handle here.
     */
    const struct v3dv_format *format =
-      v3dv_get_compatible_tfu_format(&cmd_buffer->device->devinfo,
+      v3dv_get_compatible_tfu_format(cmd_buffer->device,
                                      image->cpp, NULL);
 
    const uint32_t mip_level = region->imageSubresource.mipLevel;
@@ -2775,12 +2780,12 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
     */
    if (framebuffer->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
       if (imgrsc->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
-         emit_image_load(cl, framebuffer, image, VK_IMAGE_ASPECT_STENCIL_BIT,
+         emit_image_load(job->device, cl, framebuffer, image, VK_IMAGE_ASPECT_STENCIL_BIT,
                          imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                          false, false);
       } else {
          assert(imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT);
-         emit_image_load(cl, framebuffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
+         emit_image_load(job->device, cl, framebuffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
                          imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                          false, false);
       }
@@ -2791,18 +2796,20 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
    /* Store TLB to image */
-   emit_image_store(cl, framebuffer, image, imgrsc->aspectMask,
+   emit_image_store(job->device, cl, framebuffer, image, imgrsc->aspectMask,
                     imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                     false, true, false);
 
    if (framebuffer->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
       if (imgrsc->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
-         emit_image_store(cl, framebuffer, image, VK_IMAGE_ASPECT_STENCIL_BIT,
+         emit_image_store(job->device, cl, framebuffer, image,
+                          VK_IMAGE_ASPECT_STENCIL_BIT,
                           imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                           false, false, false);
       } else {
          assert(imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT);
-         emit_image_store(cl, framebuffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
+         emit_image_store(job->device, cl, framebuffer, image,
+                          VK_IMAGE_ASPECT_DEPTH_BIT,
                           imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                           false, false, false);
       }
@@ -2862,10 +2869,9 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       return false;
 
    uint32_t internal_type, internal_bpp;
-   get_internal_type_bpp_for_image_aspects(fb_format,
+   get_internal_type_bpp_for_image_aspects(cmd_buffer->device, fb_format,
                                            region->imageSubresource.aspectMask,
                                            &internal_type, &internal_bpp);
-
    uint32_t num_layers;
    if (image->type != VK_IMAGE_TYPE_3D)
       num_layers = region->imageSubresource.layerCount;
@@ -2887,8 +2893,8 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp, false);
 
    struct framebuffer_data framebuffer;
-   setup_framebuffer_data(&framebuffer, fb_format, internal_type,
-                          &job->frame_tiling);
+   setup_framebuffer_data(job->device, &framebuffer, fb_format,
+                          internal_type, &job->frame_tiling);
 
    v3dv_job_emit_binning_flush(job);
    emit_copy_buffer_to_image_rcl(job, image, buffer, &framebuffer, region);
@@ -3355,7 +3361,8 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
     */
    if (!(buffer->usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)) {
       if (v3dv_buffer_format_supports_features(
-            src_format, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) {
+             cmd_buffer->device, src_format,
+             VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) {
          buffer->usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
       } else {
          return handled;
@@ -3532,7 +3539,7 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
                v3dv_render_pass_from_handle(pipeline->pass);
             can_skip_tlb_load =
                cmask == full_cmask &&
-               v3dv_subpass_area_is_tile_aligned(&render_area,
+               v3dv_subpass_area_is_tile_aligned(cmd_buffer->device, &render_area,
                                                  v3dv_framebuffer_from_handle(fb),
                                                  pipeline_pass, 0);
          }
@@ -4184,7 +4191,7 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
     * compatible based on its texel size.
     */
    const struct v3dv_format *format =
-      v3dv_get_compatible_tfu_format(&cmd_buffer->device->devinfo,
+      v3dv_get_compatible_tfu_format(cmd_buffer->device,
                                      dst->cpp, NULL);
 
    /* Emit a TFU job for each layer to blit */
@@ -5477,8 +5484,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             v3dv_render_pass_from_handle(pipeline->pass);
          can_skip_tlb_load =
             cmask == full_cmask &&
-            v3dv_subpass_area_is_tile_aligned(&render_area, framebuffer,
-                                              pipeline_pass, 0);
+            v3dv_subpass_area_is_tile_aligned(cmd_buffer->device, &render_area,
+                                              framebuffer, pipeline_pass, 0);
       }
 
       /* Record blit */
@@ -5583,7 +5590,7 @@ emit_resolve_image_layer_per_tile_list(struct v3dv_job *job,
       region->srcSubresource.baseArrayLayer + layer_offset :
       region->srcOffset.z + layer_offset;
 
-   emit_image_load(cl, framebuffer, src,
+   emit_image_load(job->device, cl, framebuffer, src,
                    region->srcSubresource.aspectMask,
                    src_layer,
                    region->srcSubresource.mipLevel,
@@ -5601,7 +5608,7 @@ emit_resolve_image_layer_per_tile_list(struct v3dv_job *job,
       region->dstSubresource.baseArrayLayer + layer_offset :
       region->dstOffset.z + layer_offset;
 
-   emit_image_store(cl, framebuffer, dst,
+   emit_image_store(job->device, cl, framebuffer, dst,
                     region->dstSubresource.aspectMask,
                     dst_layer,
                     region->dstSubresource.mipLevel,
@@ -5657,7 +5664,7 @@ resolve_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       return false;
    }
 
-   if (!v3dv_format_supports_tlb_resolve(src->format))
+   if (!v3dv_X(cmd_buffer->device, format_supports_tlb_resolve)(src->format))
       return false;
 
    const VkFormat fb_format = src->vk_format;
@@ -5680,15 +5687,15 @@ resolve_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t height = DIV_ROUND_UP(region->extent.height, block_h);
 
    uint32_t internal_type, internal_bpp;
-   get_internal_type_bpp_for_image_aspects(fb_format,
+   get_internal_type_bpp_for_image_aspects(cmd_buffer->device, fb_format,
                                            region->srcSubresource.aspectMask,
                                            &internal_type, &internal_bpp);
 
    v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp, true);
 
    struct framebuffer_data framebuffer;
-   setup_framebuffer_data(&framebuffer, fb_format, internal_type,
-                          &job->frame_tiling);
+   setup_framebuffer_data(job->device, &framebuffer, fb_format,
+                          internal_type, &job->frame_tiling);
 
    v3dv_job_emit_binning_flush(job);
    emit_resolve_image_rcl(job, dst, src, &framebuffer, region);

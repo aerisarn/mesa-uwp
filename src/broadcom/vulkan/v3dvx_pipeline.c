@@ -110,7 +110,7 @@ pack_blend(struct v3dv_pipeline *pipeline,
 
       VkAttachmentDescription *desc =
          &pipeline->pass->attachments[attachment_idx].desc;
-      const struct v3dv_format *format = v3dv_get_format(desc->format);
+      const struct v3dv_format *format = v3dX(get_format)(desc->format);
       bool dst_alpha_one = (format->swizzle[3] == PIPE_SWIZZLE_1);
 
       uint8_t rt_mask = 1 << i;
