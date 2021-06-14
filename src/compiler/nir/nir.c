@@ -1566,6 +1566,19 @@ nir_ssa_def_rewrite_uses_after(nir_ssa_def *def, nir_ssa_def *new_ssa,
    }
 }
 
+static nir_ssa_def *
+get_store_value(nir_intrinsic_instr *intrin)
+{
+   assert(nir_intrinsic_has_write_mask(intrin));
+   /* deref stores have the deref in src[0] and the store value in src[1] */
+   if (intrin->intrinsic == nir_intrinsic_store_deref ||
+       intrin->intrinsic == nir_intrinsic_store_deref_block_intel)
+      return intrin->src[1].ssa;
+
+   /* all other stores have the store value in src[0] */
+   return intrin->src[0].ssa;
+}
+
 nir_component_mask_t
 nir_ssa_def_components_read(const nir_ssa_def *def)
 {
@@ -1577,6 +1590,13 @@ nir_ssa_def_components_read(const nir_ssa_def *def)
          int src_idx = alu_src - &alu->src[0];
          assert(src_idx >= 0 && src_idx < nir_op_infos[alu->op].num_inputs);
          read_mask |= nir_alu_instr_src_read_mask(alu, src_idx);
+      } else if (use->parent_instr->type == nir_instr_type_intrinsic) {
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(use->parent_instr);
+         if (nir_intrinsic_has_write_mask(intrin) && use->ssa == get_store_value(intrin)) {
+            read_mask |= nir_intrinsic_write_mask(intrin);
+         } else {
+            return (1 << def->num_components) - 1;
+         }
       } else {
          return (1 << def->num_components) - 1;
       }
