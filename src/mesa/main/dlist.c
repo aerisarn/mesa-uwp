@@ -795,9 +795,9 @@ vbo_destroy_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *nod
    for (gl_vertex_processing_mode vpm = VP_MODE_FF; vpm < VP_MODE_MAX; ++vpm)
       _mesa_reference_vao(ctx, &node->VAO[vpm], NULL);
 
-   if (--node->prim_store->refcount == 0) {
-      free(node->prim_store->prims);
-      free(node->prim_store);
+   if (--node->cold->prim_store->refcount == 0) {
+      free(node->cold->prim_store->prims);
+      free(node->cold->prim_store);
    }
 
    if (node->merged.mode) {
@@ -805,9 +805,11 @@ vbo_destroy_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *nod
       free(node->merged.start_counts);
    }
 
-   _mesa_reference_buffer_object(ctx, &node->merged.ib.obj, NULL);
-   free(node->current_data);
-   node->current_data = NULL;
+   _mesa_reference_buffer_object(ctx, &node->cold->ib.obj, NULL);
+   free(node->cold->current_data);
+   node->cold->current_data = NULL;
+
+   free(node->cold);
 }
 
 static void
@@ -820,11 +822,11 @@ vbo_print_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *node,
 
    fprintf(f, "VBO-VERTEX-LIST, %u vertices, %d primitives, %d vertsize, "
            "buffer %p\n",
-           node->vertex_count, node->prim_count, vertex_size,
+           node->cold->vertex_count, node->cold->prim_count, vertex_size,
            buffer);
 
-   for (i = 0; i < node->prim_count; i++) {
-      struct _mesa_prim *prim = &node->prims[i];
+   for (i = 0; i < node->cold->prim_count; i++) {
+      struct _mesa_prim *prim = &node->cold->prims[i];
       fprintf(f, "   prim %d: %s %d..%d %s %s\n",
              i,
              _mesa_lookup_prim_by_nr(prim->mode),

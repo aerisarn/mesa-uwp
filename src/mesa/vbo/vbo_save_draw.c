@@ -99,10 +99,10 @@ static void
 playback_copy_to_current(struct gl_context *ctx,
                          const struct vbo_save_vertex_list *node)
 {
-   if (!node->current_data)
+   if (!node->cold->current_data)
       return;
 
-   fi_type *data = node->current_data;
+   fi_type *data = node->cold->current_data;
    bool color0_changed = false;
 
    /* Copy conventional attribs and generics except pos */
@@ -119,8 +119,8 @@ playback_copy_to_current(struct gl_context *ctx,
 
    /* CurrentExecPrimitive
     */
-   if (node->prim_count) {
-      const struct _mesa_prim *prim = &node->prims[node->prim_count - 1];
+   if (node->cold->prim_count) {
+      const struct _mesa_prim *prim = &node->cold->prims[node->cold->prim_count - 1];
       if (prim->end)
          ctx->Driver.CurrentExecPrimitive = PRIM_OUTSIDE_BEGIN_END;
       else
@@ -185,7 +185,7 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data)
 
    FLUSH_FOR_DRAW(ctx);
 
-   if (_mesa_inside_begin_end(ctx) && node->prims[0].begin) {
+   if (_mesa_inside_begin_end(ctx) && node->cold->prims[0].begin) {
       /* Error: we're about to begin a new primitive but we're already
        * inside a glBegin/End pair.
        */
