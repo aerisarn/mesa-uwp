@@ -26,6 +26,8 @@
 #include "broadcom/common/v3d_macros.h"
 #include "broadcom/cle/v3dx_pack.h"
 #include "broadcom/compiler/v3d_compiler.h"
+#include "vk_format_info.h"
+#include "util/u_pack_color.h"
 
 static const enum V3DX(Wrap_Mode) vk_to_v3d_wrap_mode[] = {
    [VK_SAMPLER_ADDRESS_MODE_REPEAT]          = V3D_WRAP_MODE_REPEAT,
@@ -179,4 +181,57 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
    }
 
    return;
+}
+
+uint32_t
+v3dX(zs_buffer_from_aspect_bits)(VkImageAspectFlags aspects)
+{
+   const VkImageAspectFlags zs_aspects =
+      VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+   const VkImageAspectFlags filtered_aspects = aspects & zs_aspects;
+
+   if (filtered_aspects == zs_aspects)
+      return ZSTENCIL;
+   else if (filtered_aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
+      return Z;
+   else if (filtered_aspects == VK_IMAGE_ASPECT_STENCIL_BIT)
+      return STENCIL;
+   else
+      return NONE;
+}
+
+void
+v3dX(get_hw_clear_color)(const VkClearColorValue *color,
+                         uint32_t internal_type,
+                         uint32_t internal_size,
+                         uint32_t *hw_color)
+{
+   union util_color uc;
+   switch (internal_type) {
+   case V3D_INTERNAL_TYPE_8:
+      util_pack_color(color->float32, PIPE_FORMAT_R8G8B8A8_UNORM, &uc);
+      memcpy(hw_color, uc.ui, internal_size);
+   break;
+   case V3D_INTERNAL_TYPE_8I:
+   case V3D_INTERNAL_TYPE_8UI:
+      hw_color[0] = ((color->uint32[0] & 0xff) |
+                     (color->uint32[1] & 0xff) << 8 |
+                     (color->uint32[2] & 0xff) << 16 |
+                     (color->uint32[3] & 0xff) << 24);
+   break;
+   case V3D_INTERNAL_TYPE_16F:
+      util_pack_color(color->float32, PIPE_FORMAT_R16G16B16A16_FLOAT, &uc);
+      memcpy(hw_color, uc.ui, internal_size);
+   break;
+   case V3D_INTERNAL_TYPE_16I:
+   case V3D_INTERNAL_TYPE_16UI:
+      hw_color[0] = ((color->uint32[0] & 0xffff) | color->uint32[1] << 16);
+      hw_color[1] = ((color->uint32[2] & 0xffff) | color->uint32[3] << 16);
+   break;
+   case V3D_INTERNAL_TYPE_32F:
+   case V3D_INTERNAL_TYPE_32I:
+   case V3D_INTERNAL_TYPE_32UI:
+      memcpy(hw_color, color->uint32, internal_size);
+      break;
+   }
 }

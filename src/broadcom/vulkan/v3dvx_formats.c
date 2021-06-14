@@ -402,3 +402,64 @@ v3dX(tfu_supports_tex_format)(uint32_t tex_format)
       return false;
    }
 }
+
+uint8_t
+v3dX(get_internal_depth_type)(VkFormat format)
+{
+   switch (format) {
+   case VK_FORMAT_D16_UNORM:
+      return V3D_INTERNAL_TYPE_DEPTH_16;
+   case VK_FORMAT_D32_SFLOAT:
+      return V3D_INTERNAL_TYPE_DEPTH_32F;
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      return V3D_INTERNAL_TYPE_DEPTH_24;
+   default:
+      unreachable("Invalid depth format");
+      break;
+   }
+}
+
+void
+v3dX(get_internal_type_bpp_for_image_aspects)(VkFormat vk_format,
+                                              VkImageAspectFlags aspect_mask,
+                                              uint32_t *internal_type,
+                                              uint32_t *internal_bpp)
+{
+   const VkImageAspectFlags ds_aspects = VK_IMAGE_ASPECT_DEPTH_BIT |
+                                         VK_IMAGE_ASPECT_STENCIL_BIT;
+
+   /* We can't store depth/stencil pixel formats to a raster format, so
+    * so instead we load our depth/stencil aspects to a compatible color
+    * format.
+    */
+   /* FIXME: pre-compute this at image creation time? */
+   if (aspect_mask & ds_aspects) {
+      switch (vk_format) {
+      case VK_FORMAT_D16_UNORM:
+         *internal_type = V3D_INTERNAL_TYPE_16UI;
+         *internal_bpp = V3D_INTERNAL_BPP_64;
+         break;
+      case VK_FORMAT_D32_SFLOAT:
+         *internal_type = V3D_INTERNAL_TYPE_32F;
+         *internal_bpp = V3D_INTERNAL_BPP_128;
+         break;
+      case VK_FORMAT_X8_D24_UNORM_PACK32:
+      case VK_FORMAT_D24_UNORM_S8_UINT:
+         /* Use RGBA8 format so we can relocate the X/S bits in the appropriate
+          * place to match Vulkan expectations. See the comment on the tile
+          * load command for more details.
+          */
+         *internal_type = V3D_INTERNAL_TYPE_8UI;
+         *internal_bpp = V3D_INTERNAL_BPP_32;
+         break;
+      default:
+         assert(!"unsupported format");
+         break;
+      }
+   } else {
+      const struct v3dv_format *format = v3dX(get_format)(vk_format);
+      v3dX(get_internal_type_bpp_for_output_format)(format->rt_type,
+                                                    internal_type, internal_bpp);
+   }
+}
