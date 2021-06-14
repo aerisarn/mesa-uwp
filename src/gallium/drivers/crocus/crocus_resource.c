@@ -859,6 +859,8 @@ crocus_resource_from_handle(struct pipe_screen *pscreen,
                             struct winsys_handle *whandle,
                             unsigned usage)
 {
+   assert(templ->target != PIPE_BUFFER);
+
    struct crocus_screen *screen = (struct crocus_screen *)pscreen;
    struct crocus_bufmgr *bufmgr = screen->bufmgr;
    struct crocus_resource *res = crocus_alloc_resource(pscreen, templ);
@@ -884,50 +886,46 @@ crocus_resource_from_handle(struct pipe_screen *pscreen,
    res->offset = whandle->offset;
    res->external_format = whandle->format;
 
-   if (templ->target == PIPE_BUFFER) {
-      res->surf.tiling = ISL_TILING_LINEAR;
-   } else {
-      if (whandle->plane < util_format_get_num_planes(whandle->format)) {
-         const uint64_t modifier =
-            whandle->modifier != DRM_FORMAT_MOD_INVALID ?
-            whandle->modifier : tiling_to_modifier(res->bo->tiling_mode);
+   if (whandle->plane < util_format_get_num_planes(whandle->format)) {
+      const uint64_t modifier =
+         whandle->modifier != DRM_FORMAT_MOD_INVALID ?
+         whandle->modifier : tiling_to_modifier(res->bo->tiling_mode);
 
-         UNUSED const bool isl_surf_created_successfully =
-            crocus_resource_configure_main(screen, res, templ, modifier,
-                                           whandle->stride);
-         assert(isl_surf_created_successfully);
-         assert(res->bo->tiling_mode ==
-                isl_tiling_to_i915_tiling(res->surf.tiling));
+      UNUSED const bool isl_surf_created_successfully =
+         crocus_resource_configure_main(screen, res, templ, modifier,
+                                        whandle->stride);
+      assert(isl_surf_created_successfully);
+      assert(res->bo->tiling_mode ==
+             isl_tiling_to_i915_tiling(res->surf.tiling));
 
-         // XXX: create_ccs_buf_for_image?
-         if (whandle->modifier == DRM_FORMAT_MOD_INVALID) {
-            if (!crocus_resource_alloc_separate_aux(screen, res))
-               goto fail;
-         } else {
-            if (res->mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
-               uint32_t alloc_flags;
-               uint64_t size;
-               UNUSED bool ok = crocus_resource_configure_aux(screen, res, true, &size,
-                                                       &alloc_flags);
-               assert(ok);
-               /* The gallium dri layer will create a separate plane resource
-                * for the aux image. crocus_resource_finish_aux_import will
-                * merge the separate aux parameters back into a single
-                * crocus_resource.
-                */
-            }
-         }
+      // XXX: create_ccs_buf_for_image?
+      if (whandle->modifier == DRM_FORMAT_MOD_INVALID) {
+         if (!crocus_resource_alloc_separate_aux(screen, res))
+            goto fail;
       } else {
-         /* Save modifier import information to reconstruct later. After
-          * import, this will be available under a second image accessible
-          * from the main image with res->base.next. See
-          * crocus_resource_finish_aux_import.
-          */
-         res->aux.surf.row_pitch_B = whandle->stride;
-         res->aux.offset = whandle->offset;
-         res->aux.bo = res->bo;
-         res->bo = NULL;
+         if (res->mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
+            uint32_t alloc_flags;
+            uint64_t size;
+            UNUSED bool ok = crocus_resource_configure_aux(screen, res, true, &size,
+                                                           &alloc_flags);
+            assert(ok);
+            /* The gallium dri layer will create a separate plane resource
+             * for the aux image. crocus_resource_finish_aux_import will
+             * merge the separate aux parameters back into a single
+             * crocus_resource.
+             */
+         }
       }
+   } else {
+      /* Save modifier import information to reconstruct later. After
+       * import, this will be available under a second image accessible
+       * from the main image with res->base.next. See
+       * crocus_resource_finish_aux_import.
+       */
+      res->aux.surf.row_pitch_B = whandle->stride;
+      res->aux.offset = whandle->offset;
+      res->aux.bo = res->bo;
+      res->bo = NULL;
    }
 
    return &res->base;
