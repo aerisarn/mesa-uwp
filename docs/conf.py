@@ -38,7 +38,7 @@ sys.path.append(os.path.abspath('_exts'))
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.graphviz', 'formatting', 'redirects']
+extensions = ['sphinx.ext.graphviz', 'breathe', 'formatting', 'redirects']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -212,3 +212,11 @@ texinfo_documents = [
 # -- Options for Graphviz -------------------------------------------------
 
 graphviz_output_format = 'svg'
+
+# -- Options for breathe --------------------------------------------------
+breathe_projects = {
+    'mesa' : 'doxygen_xml',
+}
+breathe_default_project = 'mesa'
+breathe_show_define_initializer = True
+breathe_show_enumvalue_initializer = True
