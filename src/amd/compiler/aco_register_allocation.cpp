@@ -1353,6 +1353,8 @@ PhysReg compact_relocate_vars(ra_ctx& ctx, const std::vector<IDAndRegClass>& var
          space_reg = next_reg;
       }
 
+      adjust_max_used_regs(ctx, var.info.rc, next_reg);
+
       next_reg = next_reg.advance(var.info.rc.size() * 4);
    }
 
