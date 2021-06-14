@@ -1073,7 +1073,7 @@ _mesa_draw_gallium_multimode_fallback(struct gl_context *ctx,
 {
    unsigned i, first;
  
-   /* Find consecutive draws where mode and base_vertex don't vary. */
+   /* Find consecutive draws where mode doesn't vary. */
    for (i = 0, first = 0; i <= num_draws; i++) {
       if (i == num_draws || mode[i] != mode[first]) {
          info->mode = mode[first];

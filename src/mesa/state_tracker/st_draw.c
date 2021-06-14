@@ -204,7 +204,7 @@ st_draw_gallium_multimode(struct gl_context *ctx,
    unsigned i, first;
    struct cso_context *cso = st->cso_context;
 
-   /* Find consecutive draws where mode and base_vertex don't vary. */
+   /* Find consecutive draws where mode doesn't vary. */
    for (i = 0, first = 0; i <= num_draws; i++) {
       if (i == num_draws || mode[i] != mode[first]) {
          info->mode = mode[first];
