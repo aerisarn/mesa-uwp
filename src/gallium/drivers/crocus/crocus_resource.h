@@ -283,6 +283,14 @@ struct crocus_transfer {
 };
 
 /**
+ * Memory Object
+ */
+struct crocus_memory_object {
+   struct pipe_memory_object b;
+   struct crocus_bo *bo;
+};
+
+/**
  * Unwrap a pipe_resource to get the underlying crocus_bo (for convenience).
  */
 static inline struct crocus_bo *

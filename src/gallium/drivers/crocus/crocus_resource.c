@@ -43,6 +43,7 @@
 #include "util/u_transfer_helper.h"
 #include "util/u_upload_mgr.h"
 #include "util/ralloc.h"
+#include "util/u_memory.h"
 #include "crocus_batch.h"
 #include "crocus_context.h"
 #include "crocus_resource.h"
@@ -1889,6 +1890,66 @@ crocus_get_dmabuf_modifier_planes(struct pipe_screen *pscreen, uint64_t modifier
    return util_format_get_num_planes(format);
 }
 
+static struct pipe_memory_object *
+crocus_memobj_create_from_handle(struct pipe_screen *pscreen,
+                                 struct winsys_handle *whandle,
+                                 bool dedicated)
+{
+   struct crocus_screen *screen = (struct crocus_screen *)pscreen;
+   struct crocus_memory_object *memobj = CALLOC_STRUCT(crocus_memory_object);
+   struct crocus_bo *bo;
+   const struct isl_drm_modifier_info *mod_inf;
+
+   if (!memobj)
+      return NULL;
+
+   switch (whandle->type) {
+   case WINSYS_HANDLE_TYPE_SHARED:
+      bo = crocus_bo_gem_create_from_name(screen->bufmgr, "winsys image",
+                                        whandle->handle);
+      break;
+   case WINSYS_HANDLE_TYPE_FD:
+      mod_inf = isl_drm_modifier_get_info(whandle->modifier);
+      if (mod_inf) {
+         bo = crocus_bo_import_dmabuf(screen->bufmgr, whandle->handle,
+                                    whandle->modifier);
+      } else {
+         /* If we can't get information about the tiling from the
+          * kernel we ignore it. We are going to set it when we
+          * create the resource.
+          */
+         bo = crocus_bo_import_dmabuf_no_mods(screen->bufmgr,
+                                            whandle->handle);
+      }
+
+      break;
+   default:
+      unreachable("invalid winsys handle type");
+   }
+
+   if (!bo) {
+      free(memobj);
+      return NULL;
+   }
+
+   memobj->b.dedicated = dedicated;
+   memobj->bo = bo;
+
+   crocus_bo_reference(memobj->bo);
+
+   return &memobj->b;
+}
+
+static void
+crocus_memobj_destroy(struct pipe_screen *pscreen,
+                      struct pipe_memory_object *pmemobj)
+{
+   struct crocus_memory_object *memobj = (struct crocus_memory_object *)pmemobj;
+
+   crocus_bo_unreference(memobj->bo);
+   free(memobj);
+}
+
 void
 crocus_init_screen_resource_functions(struct pipe_screen *pscreen)
 {
@@ -1904,6 +1965,8 @@ crocus_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_get_handle = crocus_resource_get_handle;
    pscreen->resource_get_param = crocus_resource_get_param;
    pscreen->resource_destroy = u_transfer_helper_resource_destroy;
+   pscreen->memobj_create_from_handle = crocus_memobj_create_from_handle;
+   pscreen->memobj_destroy = crocus_memobj_destroy;
    pscreen->transfer_helper =
       u_transfer_helper_create(&transfer_vtbl, screen->devinfo.ver >= 6,
                                screen->devinfo.ver >= 6, false, true);
