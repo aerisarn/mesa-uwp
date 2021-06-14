@@ -141,8 +141,9 @@ fd_bc_fini(struct fd_batch_cache *cache)
    _mesa_hash_table_destroy(cache->ht, NULL);
 }
 
-static void
-bc_flush(struct fd_context *ctx, bool deferred) assert_dt
+/* Flushes all batches in the batch cache.  Used at glFlush() and similar times. */
+void
+fd_bc_flush(struct fd_context *ctx, bool deferred) assert_dt
 {
    struct fd_batch_cache *cache = &ctx->screen->batch_cache;
 
@@ -162,6 +163,11 @@ bc_flush(struct fd_context *ctx, bool deferred) assert_dt
       }
    }
 
+   /* deferred flush doesn't actually flush, but it marks every other
+    * batch associated with the context as dependent on the current
+    * batch.  So when the current batch gets flushed, all other batches
+    * that came before also get flushed.
+    */
    if (deferred) {
       struct fd_batch *current_batch = fd_context_batch(ctx);
 
@@ -186,23 +192,6 @@ bc_flush(struct fd_context *ctx, bool deferred) assert_dt
    for (unsigned i = 0; i < n; i++) {
       fd_batch_reference(&batches[i], NULL);
    }
-}
-
-void
-fd_bc_flush(struct fd_context *ctx)
-{
-   bc_flush(ctx, false);
-}
-
-/* deferred flush doesn't actually flush, but it marks every other
- * batch associated with the context as dependent on the current
- * batch.  So when the current batch gets flushed, all other batches
- * that came before also get flushed.
- */
-void
-fd_bc_flush_deferred(struct fd_context *ctx)
-{
-   bc_flush(ctx, true);
 }
 
 void

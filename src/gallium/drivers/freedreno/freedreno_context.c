@@ -129,10 +129,8 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 
    if (!ctx->screen->reorder) {
       fd_batch_flush(batch);
-   } else if (flags & PIPE_FLUSH_DEFERRED) {
-      fd_bc_flush_deferred(ctx);
    } else {
-      fd_bc_flush(ctx);
+      fd_bc_flush(ctx, flags & PIPE_FLUSH_DEFERRED);
    }
 
    fd_bc_dump(ctx, "%p: remaining:\n", ctx);
