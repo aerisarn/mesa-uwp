@@ -849,6 +849,8 @@ util_cpu_detect_once(void)
       printf("util_cpu_caps.has_avx512bw = %u\n", util_cpu_caps.has_avx512bw);
       printf("util_cpu_caps.has_avx512vl = %u\n", util_cpu_caps.has_avx512vl);
       printf("util_cpu_caps.has_avx512vbmi = %u\n", util_cpu_caps.has_avx512vbmi);
+      printf("util_cpu_caps.num_L3_caches = %u\n", util_cpu_caps.num_L3_caches);
+      printf("util_cpu_caps.num_cpu_mask_bits = %u\n", util_cpu_caps.num_cpu_mask_bits);
    }
 }
 
