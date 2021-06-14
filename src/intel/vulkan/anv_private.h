@@ -965,6 +965,7 @@ struct anv_physical_device {
       struct anv_memory_type                    types[VK_MAX_MEMORY_TYPES];
       uint32_t                                  heap_count;
       struct anv_memory_heap                    heaps[VK_MAX_MEMORY_HEAPS];
+      bool                                      need_clflush;
     } memory;
 
     struct anv_memregion                        vram;
