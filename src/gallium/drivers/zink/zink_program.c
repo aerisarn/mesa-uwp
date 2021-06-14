@@ -764,13 +764,15 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    const bool have_EXT_vertex_input_dynamic_state = screen->info.have_EXT_vertex_input_dynamic_state;
-   if (!state->dirty && !state->combined_dirty && mode == state->mode &&
-       (have_EXT_vertex_input_dynamic_state || !ctx->vertex_state_changed))
-      return state->pipeline;
+   const bool have_EXT_extended_dynamic_state = screen->info.have_EXT_extended_dynamic_state;
 
    VkPrimitiveTopology vkmode = zink_primitive_topology(mode);
    const unsigned idx = get_pipeline_idx(screen->info.have_EXT_extended_dynamic_state, mode, vkmode);
    assert(idx <= ARRAY_SIZE(prog->pipelines));
+   if (!state->dirty && !state->combined_dirty &&
+       (have_EXT_vertex_input_dynamic_state || !ctx->vertex_state_changed) &&
+       idx == state->idx)
+      return state->pipeline;
 
    struct hash_entry *entry = NULL;
 
@@ -792,7 +794,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    else
       if (ctx->vertex_state_changed) {
          uint32_t hash = state->combined_hash;
-         if (!state->have_EXT_extended_dynamic_state) {
+         if (!have_EXT_extended_dynamic_state) {
             /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
             uint32_t vertex_buffers_enabled_mask = state->vertex_buffers_enabled_mask;
             hash = XXH32(&vertex_buffers_enabled_mask, sizeof(uint32_t), hash);
@@ -828,7 +830,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
 
    struct gfx_pipeline_cache_entry *cache_entry = entry->data;
    state->pipeline = cache_entry->pipeline;
-   state->mode = mode;
+   state->idx = idx;
    return state->pipeline;
 }
 
