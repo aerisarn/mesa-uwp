@@ -129,6 +129,7 @@ _mesa_init_display_list(struct gl_context * ctx);
 
 bool
 _mesa_get_list(struct gl_context *ctx, GLuint list,
-               struct gl_display_list **dlist);
+               struct gl_display_list **dlist,
+               bool locked);
 
 #endif /* DLIST_H */
