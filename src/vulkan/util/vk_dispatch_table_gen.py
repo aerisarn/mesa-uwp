@@ -55,6 +55,7 @@ TEMPLATE_H = Template(COPYRIGHT + """\
 
 /* Windows api conflict */
 #ifdef _WIN32
+#include <windows.h>
 #ifdef CreateSemaphore
 #undef CreateSemaphore
 #endif
