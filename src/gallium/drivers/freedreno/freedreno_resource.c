@@ -357,10 +357,22 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 {
    struct pipe_context *pctx = &ctx->base;
    struct pipe_resource *prsc = &rsc->b.b;
+   struct fd_screen *screen = fd_screen(pctx->screen);
+   struct fd_batch *batch;
    bool fallback = false;
 
    if (prsc->next)
       return false;
+
+   /* Because IB1 ("gmem") cmdstream is built only when we flush the
+    * batch, we need to flush any batches that reference this rsc as
+    * a render target.  Otherwise the framebuffer state emitted in
+    * IB1 will reference the resources new state, and not the state
+    * at the point in time that the earlier draws referenced it.
+    */
+   foreach_batch (batch, &screen->batch_cache, rsc->track->bc_batch_mask) {
+      fd_batch_flush(batch);
+   }
 
    /* If you have a sequence where there is a single rsc associated
     * with the current render target, and then you end up shadowing
@@ -435,7 +447,6 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
     * transfer those references over:
     */
    debug_assert(shadow->track->batch_mask == 0);
-   struct fd_batch *batch;
    foreach_batch (batch, &ctx->screen->batch_cache, rsc->track->batch_mask) {
       struct set_entry *entry = _mesa_set_search(batch->resources, rsc);
       _mesa_set_remove(batch->resources, entry);
