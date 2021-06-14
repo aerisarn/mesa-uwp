@@ -100,7 +100,7 @@ void GLAPIENTRY
 _mesa_ListBase(GLuint base);
 
 struct gl_display_list *
-_mesa_lookup_list(struct gl_context *ctx, GLuint list);
+_mesa_lookup_list(struct gl_context *ctx, GLuint list, bool locked);
 
 void
 _mesa_compile_error(struct gl_context *ctx, GLenum error, const char *s);

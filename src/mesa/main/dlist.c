@@ -952,7 +952,7 @@ build_bitmap_atlas(struct gl_context *ctx, struct gl_bitmap_atlas *atlas,
     * bitmap in the atlas to determine the texture atlas size.
     */
    for (i = 0; i < atlas->numBitmaps; i++) {
-      const struct gl_display_list *list = _mesa_lookup_list(ctx, listBase + i);
+      const struct gl_display_list *list = _mesa_lookup_list(ctx, listBase + i, false);
       const Node *n;
       struct gl_bitmap_glyph *g = &atlas->glyphs[i];
       unsigned bitmap_width, bitmap_height;
@@ -1061,7 +1061,7 @@ build_bitmap_atlas(struct gl_context *ctx, struct gl_bitmap_atlas *atlas,
    memset(map, 0xff, map_stride * atlas->texHeight);
 
    for (i = 0; i < atlas->numBitmaps; i++) {
-      const struct gl_display_list *list = _mesa_lookup_list(ctx, listBase + i);
+      const struct gl_display_list *list = _mesa_lookup_list(ctx, listBase + i, false);
       const Node *n = list->Head;
 
       assert(n[0].opcode == OPCODE_BITMAP ||
@@ -1124,10 +1124,10 @@ make_list(GLuint name, GLuint count)
  * Lookup function to just encapsulate casting.
  */
 struct gl_display_list *
-_mesa_lookup_list(struct gl_context *ctx, GLuint list)
+_mesa_lookup_list(struct gl_context *ctx, GLuint list, bool locked)
 {
    return (struct gl_display_list *)
-      _mesa_HashLookup(ctx->Shared->DisplayList, list);
+      _mesa_HashLookupMaybeLocked(ctx->Shared->DisplayList, list, locked);
 }
 
 
@@ -1418,7 +1418,7 @@ destroy_list(struct gl_context *ctx, GLuint list)
    if (list == 0)
       return;
 
-   dlist = _mesa_lookup_list(ctx, list);
+   dlist = _mesa_lookup_list(ctx, list, false);
    if (!dlist)
       return;
 
@@ -11196,7 +11196,7 @@ _mesa_get_list(struct gl_context *ctx, GLuint list,
                struct gl_display_list **dlist)
 {
    struct gl_display_list * dl =
-      list > 0 ? _mesa_lookup_list(ctx, list) : NULL;
+      list > 0 ? _mesa_lookup_list(ctx, list, false) : NULL;
 
    if (dlist)
       *dlist = dl;
