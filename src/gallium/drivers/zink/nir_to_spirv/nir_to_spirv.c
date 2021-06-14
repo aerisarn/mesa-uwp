@@ -153,7 +153,7 @@ block_label(struct ntv_context *ctx, nir_block *block)
 static void
 emit_access_decorations(struct ntv_context *ctx, nir_variable *var, SpvId var_id)
 {
-    enum gl_access_qualifier access = var->data.access;
+    unsigned access = var->data.access;
     while (access) {
        unsigned bit = u_bit_scan(&access);
        switch (1 << bit) {
