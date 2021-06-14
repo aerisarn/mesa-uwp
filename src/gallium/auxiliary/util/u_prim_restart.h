@@ -63,14 +63,8 @@ util_draw_vbo_without_prim_restart(struct pipe_context *context,
 static inline unsigned
 util_prim_restart_index_from_size(unsigned index_size)
 {
-   if (index_size == 1)
-      return 0xff;
-   if (index_size == 2)
-      return 0xffff;
-   if (index_size == 4)
-      return 0xffffffff;
-   unreachable("unknown index size passed");
-   return 0;
+   /* 1 -> 0xff, 2 -> 0xffff, 4 -> 0xffffffff */
+   return 0xffffffffu >> 8 * (4 - index_size);
 }
 
 #ifdef __cplusplus
