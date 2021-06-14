@@ -283,6 +283,7 @@ struct brw_nir_rt_mem_hit_defs {
    nir_ssa_def *t;
    nir_ssa_def *tri_bary; /**< Only valid for triangle geometry */
    nir_ssa_def *aabb_hit_kind; /**< Only valid for AABB geometry */
+   nir_ssa_def *valid;
    nir_ssa_def *leaf_type;
    nir_ssa_def *prim_leaf_index;
    nir_ssa_def *front_face;
@@ -302,6 +303,8 @@ brw_nir_rt_load_mem_hit(nir_builder *b,
    defs->aabb_hit_kind = nir_channel(b, data, 1);
    defs->tri_bary = nir_channels(b, data, 0x6);
    nir_ssa_def *bitfield = nir_channel(b, data, 3);
+   defs->valid =
+      nir_ubitfield_extract(b, bitfield, nir_imm_int(b, 16), nir_imm_int(b, 1));
    defs->leaf_type =
       nir_ubitfield_extract(b, bitfield, nir_imm_int(b, 17), nir_imm_int(b, 3));
    defs->prim_leaf_index =
@@ -472,6 +475,8 @@ brw_nir_rt_load_mem_ray(nir_builder *b,
 }
 
 struct brw_nir_rt_bvh_instance_leaf_defs {
+   nir_ssa_def *shader_index;
+   nir_ssa_def *contribution_to_hit_group_index;
    nir_ssa_def *world_to_object[4];
    nir_ssa_def *instance_id;
    nir_ssa_def *instance_index;
@@ -483,10 +488,12 @@ brw_nir_rt_load_bvh_instance_leaf(nir_builder *b,
                                   struct brw_nir_rt_bvh_instance_leaf_defs *defs,
                                   nir_ssa_def *leaf_addr)
 {
-   /* We don't care about the first 16B of the leaf for now.  One day, we may
-    * add code to decode it but none of that data is directly required for
-    * implementing any ray-tracing built-ins.
-    */
+   defs->shader_index =
+      nir_iand_imm(b, nir_load_global(b, leaf_addr, 4, 1, 32), (1 << 24) - 1);
+   defs->contribution_to_hit_group_index =
+      nir_iand_imm(b,
+                   nir_load_global(b, nir_iadd_imm(b, leaf_addr, 4), 4, 1, 32),
+                   (1 << 24) - 1);
 
    defs->world_to_object[0] =
       nir_load_global(b, nir_iadd_imm(b, leaf_addr, 16), 4, 3, 32);
