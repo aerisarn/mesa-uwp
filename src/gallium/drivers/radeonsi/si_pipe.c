@@ -592,7 +592,28 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       sctx->discard_rasterizer_state = util_blitter_get_discard_rasterizer_state(sctx->blitter);
       sctx->queued.named.rasterizer = sctx->discard_rasterizer_state;
 
-      si_init_draw_functions(sctx);
+      switch (sctx->chip_class) {
+      case GFX6:
+         si_init_draw_functions_GFX6(sctx);
+         break;
+      case GFX7:
+         si_init_draw_functions_GFX7(sctx);
+         break;
+      case GFX8:
+         si_init_draw_functions_GFX8(sctx);
+         break;
+      case GFX9:
+         si_init_draw_functions_GFX9(sctx);
+         break;
+      case GFX10:
+         si_init_draw_functions_GFX10(sctx);
+         break;
+      case GFX10_3:
+         si_init_draw_functions_GFX10_3(sctx);
+         break;
+      default:
+         unreachable("unhandled chip class");
+      }
 
       si_initialize_prim_discard_tunables(sscreen, flags & SI_CONTEXT_FLAG_AUX,
                                           &sctx->prim_discard_vertex_count_threshold,
