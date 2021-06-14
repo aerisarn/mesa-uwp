@@ -27,7 +27,9 @@
 #include "si_pipe.h"
 #include "sid.h"
 #include "util/os_time.h"
+#include "util/u_log.h"
 #include "util/u_upload_mgr.h"
+#include "ac_debug.h"
 
 /* initialize */
 void si_need_gfx_cs_space(struct si_context *ctx, unsigned num_draws)
@@ -368,6 +370,20 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    ctx->last_gs_out_prim = 0; /* cleared by CLEAR_STATE */
 }
 
+void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper)
+{
+   if (wrapper) {
+      if (wrapper != sctx->b.draw_vbo) {
+         assert (!sctx->real_draw_vbo);
+         sctx->real_draw_vbo = sctx->b.draw_vbo;
+         sctx->b.draw_vbo = wrapper;
+      }
+   } else if (sctx->real_draw_vbo) {
+      sctx->real_draw_vbo = NULL;
+      si_select_draw_vbo(sctx);
+   }
+}
+
 static void si_draw_vbo_tmz_preamble(struct pipe_context *ctx,
                                      const struct pipe_draw_info *info,
                                      unsigned drawid_offset,
@@ -590,6 +606,47 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
     * si_make_CB_shader_coherent.
     */
    ctx->force_cb_shader_coherent = true;
+}
+
+void si_trace_emit(struct si_context *sctx)
+{
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+   uint32_t trace_id = ++sctx->current_saved_cs->trace_id;
+
+   si_cp_write_data(sctx, sctx->current_saved_cs->trace_buf, 0, 4, V_370_MEM, V_370_ME, &trace_id);
+
+   radeon_begin(cs);
+   radeon_emit(cs, PKT3(PKT3_NOP, 0, 0));
+   radeon_emit(cs, AC_ENCODE_TRACE_POINT(trace_id));
+   radeon_end();
+
+   if (sctx->log)
+      u_log_flush(sctx->log);
+}
+
+void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx)
+{
+   if (!si_compute_prim_discard_enabled(sctx))
+      return;
+
+   if (!sctx->barrier_buf) {
+      u_suballocator_alloc(&sctx->allocator_zeroed_memory, 4, 4, &sctx->barrier_buf_offset,
+                           (struct pipe_resource **)&sctx->barrier_buf);
+   }
+
+   /* Emit a placeholder to signal the next compute IB to start.
+    * See si_compute_prim_discard.c for explanation.
+    */
+   uint32_t signal = 1;
+   si_cp_write_data(sctx, sctx->barrier_buf, sctx->barrier_buf_offset, 4, V_370_MEM, V_370_ME,
+                    &signal);
+
+   sctx->last_pkt3_write_data = &sctx->gfx_cs.current.buf[sctx->gfx_cs.current.cdw - 5];
+
+   /* Only the last occurrence of WRITE_DATA will be executed.
+    * The packet will be enabled in si_flush_gfx_cs.
+    */
+   *sctx->last_pkt3_write_data = PKT3(PKT3_NOP, 3, 0);
 }
 
 void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs, unsigned cp_coher_cntl)

@@ -22,14 +22,10 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "ac_debug.h"
 #include "ac_sqtt.h"
 #include "si_build_pm4.h"
-#include "sid.h"
 #include "util/u_index_modify.h"
-#include "util/u_log.h"
 #include "util/u_prim.h"
-#include "util/u_suballoc.h"
 #include "util/u_upload_mgr.h"
 
 /* special primitive types */
@@ -1357,32 +1353,6 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
    EMIT_SQTT_END_DRAW;
 }
 
-extern "C"
-void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx)
-{
-   if (!si_compute_prim_discard_enabled(sctx))
-      return;
-
-   if (!sctx->barrier_buf) {
-      u_suballocator_alloc(&sctx->allocator_zeroed_memory, 4, 4, &sctx->barrier_buf_offset,
-                           (struct pipe_resource **)&sctx->barrier_buf);
-   }
-
-   /* Emit a placeholder to signal the next compute IB to start.
-    * See si_compute_prim_discard.c for explanation.
-    */
-   uint32_t signal = 1;
-   si_cp_write_data(sctx, sctx->barrier_buf, sctx->barrier_buf_offset, 4, V_370_MEM, V_370_ME,
-                    &signal);
-
-   sctx->last_pkt3_write_data = &sctx->gfx_cs.current.buf[sctx->gfx_cs.current.cdw - 5];
-
-   /* Only the last occurrence of WRITE_DATA will be executed.
-    * The packet will be enabled in si_flush_gfx_cs.
-    */
-   *sctx->last_pkt3_write_data = PKT3(PKT3_NOP, 3, 0);
-}
-
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INLINE
 static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx)
 {
@@ -2324,23 +2294,6 @@ static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elem
    pipe->draw_vbo(pipe, &info, 0, NULL, &draw, 1);
 }
 
-extern "C"
-void si_trace_emit(struct si_context *sctx)
-{
-   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-   uint32_t trace_id = ++sctx->current_saved_cs->trace_id;
-
-   si_cp_write_data(sctx, sctx->current_saved_cs->trace_buf, 0, 4, V_370_MEM, V_370_ME, &trace_id);
-
-   radeon_begin(cs);
-   radeon_emit(cs, PKT3(PKT3_NOP, 0, 0));
-   radeon_emit(cs, AC_ENCODE_TRACE_POINT(trace_id));
-   radeon_end();
-
-   if (sctx->log)
-      u_log_flush(sctx->log);
-}
-
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS,
           si_has_ngg NGG, si_has_prim_discard_cs ALLOW_PRIM_DISCARD_CS>
 static void si_init_draw_vbo(struct si_context *sctx)
@@ -2406,19 +2359,4 @@ void si_init_draw_functions(struct si_context *sctx)
    sctx->blitter->draw_rectangle = si_draw_rectangle;
 
    si_init_ia_multi_vgt_param_table(sctx);
-}
-
-extern "C"
-void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper)
-{
-   if (wrapper) {
-      if (wrapper != sctx->b.draw_vbo) {
-         assert (!sctx->real_draw_vbo);
-         sctx->real_draw_vbo = sctx->b.draw_vbo;
-         sctx->b.draw_vbo = wrapper;
-      }
-   } else if (sctx->real_draw_vbo) {
-      sctx->real_draw_vbo = NULL;
-      si_select_draw_vbo(sctx);
-   }
 }

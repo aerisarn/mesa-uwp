@@ -1346,11 +1346,6 @@ void si_replace_buffer_storage(struct pipe_context *ctx, struct pipe_resource *d
 void si_init_screen_buffer_functions(struct si_screen *sscreen);
 void si_init_buffer_functions(struct si_context *sctx);
 
-/* Replace the sctx->b.draw_vbo function with a wrapper. This can be use to implement
- * optimizations without affecting the normal draw_vbo functions perf.
- */
-void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper);
-
 /* si_clear.c */
 #define SI_CLEAR_TYPE_CMASK  (1 << 0)
 #define SI_CLEAR_TYPE_DCC    (1 << 1)
@@ -1485,10 +1480,16 @@ void si_allocate_gds(struct si_context *ctx);
 void si_set_tracked_regs_to_clear_state(struct si_context *ctx);
 void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs);
 void si_need_gfx_cs_space(struct si_context *ctx, unsigned num_draws);
+void si_trace_emit(struct si_context *sctx);
+void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx);
 void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs,
                           unsigned cp_coher_cntl);
 void gfx10_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
 void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
+/* Replace the sctx->b.draw_vbo function with a wrapper. This can be use to implement
+ * optimizations without affecting the normal draw_vbo functions perf.
+ */
+void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper);
 
 /* si_gpu_load.c */
 void si_gpu_load_kill_thread(struct si_screen *sscreen);
