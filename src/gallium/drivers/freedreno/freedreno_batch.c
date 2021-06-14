@@ -141,11 +141,6 @@ fd_batch_create(struct fd_context *ctx, bool nondraw)
 
    batch_init(batch);
 
-   fd_screen_assert_locked(ctx->screen);
-   if (BATCH_DEBUG) {
-      _mesa_set_add(ctx->screen->live_batches, batch);
-   }
-
    return batch;
 }
 
@@ -304,10 +299,6 @@ __fd_batch_destroy(struct fd_batch *batch)
    DBG("%p", batch);
 
    fd_screen_assert_locked(batch->ctx->screen);
-
-   if (BATCH_DEBUG) {
-      _mesa_set_remove_key(ctx->screen->live_batches, batch);
-   }
 
    fd_bc_invalidate_batch(batch, true);
 

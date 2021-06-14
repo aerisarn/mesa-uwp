@@ -204,24 +204,12 @@ fd_bc_flush_deferred(struct fd_batch_cache *cache, struct fd_context *ctx)
    bc_flush(cache, ctx, true);
 }
 
-static bool
-batch_in_cache(struct fd_batch_cache *cache, struct fd_batch *batch)
-{
-   struct fd_batch *b;
-
-   foreach_batch (b, cache, cache->batch_mask)
-      if (b == batch)
-         return true;
-
-   return false;
-}
-
 void
 fd_bc_dump(struct fd_screen *screen, const char *fmt, ...)
 {
    struct fd_batch_cache *cache = &screen->batch_cache;
 
-   if (!BATCH_DEBUG)
+   if (!FD_DBG(MSGS))
       return;
 
    fd_screen_lock(screen);
@@ -231,11 +219,12 @@ fd_bc_dump(struct fd_screen *screen, const char *fmt, ...)
    vprintf(fmt, ap);
    va_end(ap);
 
-   set_foreach (screen->live_batches, entry) {
-      struct fd_batch *batch = (struct fd_batch *)entry->key;
-      printf("  %p<%u>%s%s\n", batch, batch->seqno,
-             batch->needs_flush ? ", NEEDS FLUSH" : "",
-             batch_in_cache(cache, batch) ? "" : ", ORPHAN");
+   for (int i = 0; i < ARRAY_SIZE(cache->batches); i++) {
+      struct fd_batch *batch = cache->batches[i];
+      if (batch) {
+         printf("  %p<%u>%s\n", batch, batch->seqno,
+                batch->needs_flush ? ", NEEDS FLUSH" : "");
+      }
    }
 
    printf("----\n");

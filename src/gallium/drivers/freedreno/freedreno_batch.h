@@ -41,12 +41,6 @@
 extern "C" {
 #endif
 
-#ifdef DEBUG
-#define BATCH_DEBUG FD_DBG(MSGS)
-#else
-#define BATCH_DEBUG 0
-#endif
-
 struct fd_resource;
 struct fd_batch_key;
 struct fd_batch_result;
