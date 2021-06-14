@@ -29,6 +29,17 @@
 #error This file is included by means other than v3dv_private.h
 #endif
 
+/* Used at v3dv_device */
+
+void
+v3dX(pack_sampler_state)(struct v3dv_sampler *sampler,
+                         const VkSamplerCreateInfo *pCreateInfo);
+
+void
+v3dX(framebuffer_compute_internal_bpp_msaa)(const struct v3dv_framebuffer *framebuffer,
+                                            const struct v3dv_subpass *subpass,
+                                            uint8_t *max_bpp, bool *msaa);
+
 /* Used at v3dv_format */
 const struct v3dv_format *
 v3dX(get_format)(VkFormat);

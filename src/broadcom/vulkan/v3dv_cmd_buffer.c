@@ -2473,8 +2473,8 @@ cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
 
       uint8_t internal_bpp;
       bool msaa;
-      v3dv_framebuffer_compute_internal_bpp_msaa(framebuffer, subpass,
-                                                 &internal_bpp, &msaa);
+      v3dv_X(job->device, framebuffer_compute_internal_bpp_msaa)
+         (framebuffer, subpass, &internal_bpp, &msaa);
 
       v3dv_job_start_frame(job,
                            framebuffer->width,
