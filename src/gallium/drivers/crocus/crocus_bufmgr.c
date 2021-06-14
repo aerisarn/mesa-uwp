@@ -1219,7 +1219,7 @@ crocus_bo_get_tiling(struct crocus_bo *bo, uint32_t *tiling_mode,
 
 struct crocus_bo *
 crocus_bo_import_dmabuf(struct crocus_bufmgr *bufmgr, int prime_fd,
-                        uint32_t tiling)
+                        uint64_t modifier)
 {
    uint32_t handle;
    struct crocus_bo *bo;
@@ -1265,9 +1265,10 @@ crocus_bo_import_dmabuf(struct crocus_bufmgr *bufmgr, int prime_fd,
    bo->gem_handle = handle;
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
 
-   if (tiling != -1) {
-      /* Modifiers path */
-      bo->tiling_mode = tiling;
+   const struct isl_drm_modifier_info *mod_info =
+      isl_drm_modifier_get_info(modifier);
+   if (mod_info) {
+      bo->tiling_mode = isl_tiling_to_i915_tiling(mod_info->tiling);
    } else if (bufmgr->has_tiling_uapi) {
       struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
       if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling))
