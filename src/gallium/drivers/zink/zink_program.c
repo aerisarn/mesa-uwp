@@ -37,6 +37,7 @@
 #include "util/set.h"
 #include "util/u_debug.h"
 #include "util/u_memory.h"
+#include "util/u_prim.h"
 #include "tgsi/tgsi_from_mesa.h"
 
 /* for pipeline cache */
@@ -440,20 +441,24 @@ zink_create_gfx_program(struct zink_context *ctx,
    update_shader_modules(ctx, prog, prog->stages_present);
    prog->default_variant_hash = ctx->gfx_pipeline_state.module_hash;
 
-   for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
-      prog->pipelines[i] = _mesa_hash_table_create(NULL,
-                                                   NULL,
-                                                   equals_gfx_pipeline_state);
-      if (!prog->pipelines[i])
-         goto fail;
-   }
-
    if (stages[PIPE_SHADER_GEOMETRY])
       prog->last_vertex_stage = stages[PIPE_SHADER_GEOMETRY];
    else if (stages[PIPE_SHADER_TESS_EVAL])
       prog->last_vertex_stage = stages[PIPE_SHADER_TESS_EVAL];
    else
       prog->last_vertex_stage = stages[PIPE_SHADER_VERTEX];
+
+   for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
+      prog->pipelines[i] = _mesa_hash_table_create(NULL,
+                                                   NULL,
+                                                   equals_gfx_pipeline_state);
+      if (!prog->pipelines[i])
+         goto fail;
+      /* only need first 3/4 for point/line/tri/patch */
+      if (screen->info.have_EXT_extended_dynamic_state &&
+          i == (prog->last_vertex_stage->nir->info.stage == MESA_SHADER_TESS_EVAL ? 4 : 3))
+         break;
+   }
 
    struct mesa_sha1 sctx;
    _mesa_sha1_init(&sctx);
@@ -674,7 +679,19 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       }
    }
 
-   for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
+   unsigned max_idx = ARRAY_SIZE(prog->pipelines);
+   if (screen->info.have_EXT_extended_dynamic_state) {
+      /* only need first 3/4 for point/line/tri/patch */
+      if ((prog->stages_present &
+          (BITFIELD_BIT(PIPE_SHADER_TESS_EVAL) | BITFIELD_BIT(PIPE_SHADER_GEOMETRY))) ==
+          BITFIELD_BIT(PIPE_SHADER_TESS_EVAL))
+         max_idx = 4;
+      else
+         max_idx = 3;
+      max_idx++;
+   }
+
+   for (int i = 0; i < max_idx; ++i) {
       hash_table_foreach(prog->pipelines[i], entry) {
          struct gfx_pipeline_cache_entry *pc_entry = entry->data;
 
@@ -715,6 +732,30 @@ zink_destroy_compute_program(struct zink_screen *screen,
    ralloc_free(comp);
 }
 
+static unsigned
+get_pipeline_idx(bool have_EXT_extended_dynamic_state, enum pipe_prim_type mode, VkPrimitiveTopology vkmode)
+{
+   /* VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT specifies that the topology state in
+    * VkPipelineInputAssemblyStateCreateInfo only specifies the topology class,
+    * and the specific topology order and adjacency must be set dynamically
+    * with vkCmdSetPrimitiveTopologyEXT before any drawing commands.
+    */
+   if (have_EXT_extended_dynamic_state) {
+      if (mode == PIPE_PRIM_PATCHES)
+         return 3;
+      switch (u_reduced_prim(mode)) {
+      case PIPE_PRIM_POINTS:
+         return 0;
+      case PIPE_PRIM_LINES:
+         return 1;
+      default:
+         return 2;
+      }
+   }
+   return vkmode;
+}
+                 
+
 VkPipeline
 zink_get_gfx_pipeline(struct zink_context *ctx,
                       struct zink_gfx_program *prog,
@@ -728,7 +769,8 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       return state->pipeline;
 
    VkPrimitiveTopology vkmode = zink_primitive_topology(mode);
-   assert(vkmode <= ARRAY_SIZE(prog->pipelines));
+   const unsigned idx = get_pipeline_idx(screen->info.have_EXT_extended_dynamic_state, mode, vkmode);
+   assert(idx <= ARRAY_SIZE(prog->pipelines));
 
    struct hash_entry *entry = NULL;
 
@@ -764,7 +806,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          state->final_hash = XXH32(&state->element_state, sizeof(void*), hash);
          ctx->vertex_state_changed = false;
       }
-   entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[vkmode], state->final_hash, state);
+   entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[idx], state->final_hash, state);
 
    if (!entry) {
       util_queue_fence_wait(&prog->base.cache_fence);
@@ -780,7 +822,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       memcpy(&pc_entry->state, state, sizeof(*state));
       pc_entry->pipeline = pipeline;
 
-      entry = _mesa_hash_table_insert_pre_hashed(prog->pipelines[vkmode], state->final_hash, pc_entry, pc_entry);
+      entry = _mesa_hash_table_insert_pre_hashed(prog->pipelines[idx], state->final_hash, pc_entry, pc_entry);
       assert(entry);
    }
 
