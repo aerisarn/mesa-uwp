@@ -2321,7 +2321,7 @@ static void si_init_draw_vbo(struct si_context *sctx)
    if (NGG && GFX_VERSION < GFX10)
       return;
 
-   sctx->draw_vbo[GFX_VERSION - GFX6][HAS_TESS][HAS_GS][NGG][ALLOW_PRIM_DISCARD_CS] =
+   sctx->draw_vbo[HAS_TESS][HAS_GS][NGG][ALLOW_PRIM_DISCARD_CS] =
       si_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG, ALLOW_PRIM_DISCARD_CS>;
 }
 

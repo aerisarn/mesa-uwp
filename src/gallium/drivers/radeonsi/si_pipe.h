@@ -1285,7 +1285,7 @@ struct si_context {
     */
    struct hash_table *dirty_implicit_resources;
 
-   pipe_draw_vbo_func draw_vbo[NUM_GFX_VERSIONS - GFX6][2][2][2][2];
+   pipe_draw_vbo_func draw_vbo[2][2][2][2];
    /* When b.draw_vbo is a wrapper, real_draw_vbo is the real draw_vbo function */
    pipe_draw_vbo_func real_draw_vbo;
 
@@ -2021,8 +2021,7 @@ static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
 
 static inline void si_select_draw_vbo(struct si_context *sctx)
 {
-   pipe_draw_vbo_func draw_vbo = sctx->draw_vbo[sctx->chip_class - GFX6]
-                                               [!!sctx->shader.tes.cso]
+   pipe_draw_vbo_func draw_vbo = sctx->draw_vbo[!!sctx->shader.tes.cso]
                                                [!!sctx->shader.gs.cso]
                                                [sctx->ngg]
                                                [si_compute_prim_discard_enabled(sctx)];
