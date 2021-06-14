@@ -677,8 +677,11 @@ zink_draw_vbo(struct pipe_context *pctx,
       zink_select_draw_vbo(ctx);
    }
 
-   if (HAS_DYNAMIC_STATE)
+   if (HAS_DYNAMIC_STATE) {
       update_gfx_pipeline<BATCH_CHANGED>(ctx, batch->state, mode);
+      if (BATCH_CHANGED || mode_changed)
+         screen->vk.CmdSetPrimitiveTopologyEXT(batch->state->cmdbuf, zink_primitive_topology(mode));
+   }
 
    if (zink_program_has_descriptors(&ctx->curr_program->base))
       screen->descriptors_update(ctx, false);

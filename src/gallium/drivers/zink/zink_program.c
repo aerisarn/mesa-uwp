@@ -715,48 +715,6 @@ zink_destroy_compute_program(struct zink_screen *screen,
    ralloc_free(comp);
 }
 
-static VkPrimitiveTopology
-primitive_topology(enum pipe_prim_type mode)
-{
-   switch (mode) {
-   case PIPE_PRIM_POINTS:
-      return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-
-   case PIPE_PRIM_LINES:
-      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-
-   case PIPE_PRIM_LINE_STRIP:
-      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
-
-   case PIPE_PRIM_TRIANGLES:
-      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-   case PIPE_PRIM_TRIANGLE_STRIP:
-      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-
-   case PIPE_PRIM_TRIANGLE_FAN:
-      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
-
-   case PIPE_PRIM_LINE_STRIP_ADJACENCY:
-      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
-
-   case PIPE_PRIM_LINES_ADJACENCY:
-      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
-
-   case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
-      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
-
-   case PIPE_PRIM_TRIANGLES_ADJACENCY:
-      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
-
-   case PIPE_PRIM_PATCHES:
-      return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
-
-   default:
-      unreachable("unexpected enum pipe_prim_type");
-   }
-}
-
 VkPipeline
 zink_get_gfx_pipeline(struct zink_context *ctx,
                       struct zink_gfx_program *prog,
@@ -769,7 +727,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
        (have_EXT_vertex_input_dynamic_state || !ctx->vertex_state_changed))
       return state->pipeline;
 
-   VkPrimitiveTopology vkmode = primitive_topology(mode);
+   VkPrimitiveTopology vkmode = zink_primitive_topology(mode);
    assert(vkmode <= ARRAY_SIZE(prog->pipelines));
 
    struct hash_entry *entry = NULL;

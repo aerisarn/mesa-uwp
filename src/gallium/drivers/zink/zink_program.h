@@ -135,6 +135,48 @@ zink_desc_type_from_vktype(VkDescriptorType type)
    }
 }
 
+static inline VkPrimitiveTopology
+zink_primitive_topology(enum pipe_prim_type mode)
+{
+   switch (mode) {
+   case PIPE_PRIM_POINTS:
+      return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+
+   case PIPE_PRIM_LINES:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+
+   case PIPE_PRIM_LINE_STRIP:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+
+   case PIPE_PRIM_TRIANGLES:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+   case PIPE_PRIM_TRIANGLE_STRIP:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+
+   case PIPE_PRIM_TRIANGLE_FAN:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+
+   case PIPE_PRIM_LINE_STRIP_ADJACENCY:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
+
+   case PIPE_PRIM_LINES_ADJACENCY:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+
+   case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
+
+   case PIPE_PRIM_TRIANGLES_ADJACENCY:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
+
+   case PIPE_PRIM_PATCHES:
+      return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+
+   default:
+      unreachable("unexpected enum pipe_prim_type");
+   }
+}
+
 void
 zink_delete_shader_state(struct pipe_context *pctx, void *cso);
 void *
