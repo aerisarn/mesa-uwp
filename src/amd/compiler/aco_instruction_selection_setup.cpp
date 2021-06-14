@@ -89,29 +89,47 @@ is_block_reachable(nir_function_impl *impl, nir_block *known_reachable, nir_bloc
    return false;
 }
 
+/* Check whether the given SSA def is only used by cross-lane instructions. */
 bool
-only_used_by_readlane_or_phi(nir_dest *dest)
+only_used_by_cross_lane_instrs(nir_ssa_def *ssa, bool follow_phis = true)
 {
-   nir_src *src = list_first_entry(&dest->ssa.uses, nir_src, use_link);
+   nir_foreach_use (src, ssa) {
+      switch (src->parent_instr->type) {
+      case nir_instr_type_alu: {
+         nir_alu_instr *alu = nir_instr_as_alu(src->parent_instr);
+         if (alu->op != nir_op_unpack_64_2x32_split_x && alu->op != nir_op_unpack_64_2x32_split_y)
+            return false;
+         if (!only_used_by_cross_lane_instrs(&alu->dest.dest.ssa, follow_phis))
+            return false;
 
-   switch (src->parent_instr->type) {
-   case nir_instr_type_alu: {
-      nir_alu_instr *alu = nir_instr_as_alu(src->parent_instr);
-      if (alu->op == nir_op_unpack_64_2x32_split_x || alu->op == nir_op_unpack_64_2x32_split_y)
-         return only_used_by_readlane_or_phi(&alu->dest.dest);
-      return false;
+         continue;
+      }
+      case nir_instr_type_intrinsic: {
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(src->parent_instr);
+         if (intrin->intrinsic != nir_intrinsic_read_invocation &&
+             intrin->intrinsic != nir_intrinsic_read_first_invocation &&
+             intrin->intrinsic != nir_intrinsic_lane_permute_16_amd)
+            return false;
+
+         continue;
+      }
+      case nir_instr_type_phi: {
+         /* Don't follow more than 1 phis, this avoids infinite loops. */
+         if (!follow_phis)
+            return false;
+
+         nir_phi_instr *phi = nir_instr_as_phi(src->parent_instr);
+         if (!only_used_by_cross_lane_instrs(&phi->dest.ssa, false))
+            return false;
+
+         continue;
+      }
+      default:
+         return false;
+      }
    }
-   case nir_instr_type_intrinsic: {
-      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(src->parent_instr);
-      return intrin->intrinsic == nir_intrinsic_read_invocation ||
-             intrin->intrinsic == nir_intrinsic_read_first_invocation ||
-             intrin->intrinsic == nir_intrinsic_lane_permute_16_amd;
-   }
-   case nir_instr_type_phi:
-      return only_used_by_readlane_or_phi(&nir_instr_as_phi(src->parent_instr)->dest);
-   default:
-      return false;
-   }
+
+   return true;
 }
 
 /* If one side of a divergent IF ends in a branch and the other doesn't, we
@@ -860,7 +878,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      * it is beneficial to use a VGPR destination. This is because this allows
                      * to put the s_waitcnt further down, which decreases latency.
                      */
-                     if (only_used_by_readlane_or_phi(&intrinsic->dest)) {
+                     if (only_used_by_cross_lane_instrs(&intrinsic->dest.ssa)) {
                         type = RegType::vgpr;
                         break;
                      }
