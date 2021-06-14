@@ -936,6 +936,32 @@ fail:
    return NULL;
 }
 
+static struct pipe_resource *
+crocus_resource_from_memobj(struct pipe_screen *pscreen,
+                            const struct pipe_resource *templ,
+                            struct pipe_memory_object *pmemobj,
+                            uint64_t offset)
+{
+   struct crocus_screen *screen = (struct crocus_screen *)pscreen;
+   struct crocus_memory_object *memobj = (struct crocus_memory_object *)pmemobj;
+   struct crocus_resource *res = crocus_alloc_resource(pscreen, templ);
+
+   if (!res)
+      return NULL;
+
+   if (templ->flags & PIPE_RESOURCE_FLAG_TEXTURING_MORE_LIKELY) {
+      UNUSED const bool isl_surf_created_successfully =
+         crocus_resource_configure_main(screen, res, templ, DRM_FORMAT_MOD_INVALID, 0);
+      assert(isl_surf_created_successfully);
+   }
+
+   res->bo = memobj->bo;
+   res->offset = offset;
+   res->external_format = memobj->format;
+
+   return &res->base;
+}
+
 static void
 crocus_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 {
@@ -1934,6 +1960,8 @@ crocus_memobj_create_from_handle(struct pipe_screen *pscreen,
 
    memobj->b.dedicated = dedicated;
    memobj->bo = bo;
+   memobj->format = whandle->format;
+   memobj->stride = whandle->stride;
 
    crocus_bo_reference(memobj->bo);
 
@@ -1962,6 +1990,7 @@ crocus_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_create = u_transfer_helper_resource_create;
    pscreen->resource_from_user_memory = crocus_resource_from_user_memory;
    pscreen->resource_from_handle = crocus_resource_from_handle;
+   pscreen->resource_from_memobj = crocus_resource_from_memobj;
    pscreen->resource_get_handle = crocus_resource_get_handle;
    pscreen->resource_get_param = crocus_resource_get_param;
    pscreen->resource_destroy = u_transfer_helper_resource_destroy;

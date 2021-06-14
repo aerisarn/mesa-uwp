@@ -288,6 +288,8 @@ struct crocus_transfer {
 struct crocus_memory_object {
    struct pipe_memory_object b;
    struct crocus_bo *bo;
+   uint64_t format;
+   unsigned stride;
 };
 
 /**
