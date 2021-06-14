@@ -125,16 +125,13 @@ init_velement(const struct st_vertex_program *vp,
 /* ALWAYS_INLINE helps the compiler realize that most of the parameters are
  * on the stack.
  */
-void
-#ifndef _MSC_VER /* MSVC doesn't like inlining public functions */
-ALWAYS_INLINE
-#endif
-st_setup_arrays(struct st_context *st,
-                const struct st_vertex_program *vp,
-                const struct st_common_variant *vp_variant,
-                struct cso_velems_state *velements,
-                struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers,
-                bool *has_user_vertex_buffers)
+static void ALWAYS_INLINE
+setup_arrays(struct st_context *st,
+             const struct st_vertex_program *vp,
+             const struct st_common_variant *vp_variant,
+             struct cso_velems_state *velements,
+             struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers,
+             bool *has_user_vertex_buffers)
 {
    struct gl_context *ctx = st->ctx;
    const struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
@@ -219,6 +216,18 @@ st_setup_arrays(struct st_context *st,
                        input_to_index[attr]);
       } while (attrmask);
    }
+}
+
+void
+st_setup_arrays(struct st_context *st,
+                const struct st_vertex_program *vp,
+                const struct st_common_variant *vp_variant,
+                struct cso_velems_state *velements,
+                struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers,
+                bool *has_user_vertex_buffers)
+{
+   setup_arrays(st, vp, vp_variant, velements, vbuffer, num_vbuffers,
+                has_user_vertex_buffers);
 }
 
 /* ALWAYS_INLINE helps the compiler realize that most of the parameters are
@@ -332,8 +341,8 @@ st_update_array(struct st_context *st)
 
    /* ST_NEW_VERTEX_ARRAYS alias ctx->DriverFlags.NewArray */
    /* Setup arrays */
-   st_setup_arrays(st, vp, vp_variant, &velements, vbuffer, &num_vbuffers,
-                   &uses_user_vertex_buffers);
+   setup_arrays(st, vp, vp_variant, &velements, vbuffer, &num_vbuffers,
+                &uses_user_vertex_buffers);
 
    /* _NEW_CURRENT_ATTRIB */
    /* Setup zero-stride attribs. */
