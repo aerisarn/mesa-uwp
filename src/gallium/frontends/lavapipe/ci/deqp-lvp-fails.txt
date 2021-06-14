@@ -29,7 +29,6 @@ dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darrayshadow_fragme
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2dshadow_fragment,Fail
 dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1darray_fragment,Fail
 dEQP-VK.image.mismatched_formats.image_write.a8b8g8r8_srgb_pack32_with_rgb10a2,Crash
-dEQP-VK.image.mismatched_formats.image_write.a8b8g8r8_srgb_pack32_with_rgb10a2,Crash
 dEQP-VK.image.mismatched_formats.image_write.b8g8r8a8_srgb_with_rgba8,Crash
 dEQP-VK.image.mismatched_formats.image_write.r8g8b8a8_srgb_with_rgb10a2,Crash
 dEQP-VK.rasterization.interpolation.projected.non_strict_lines,Fail
@@ -46,7 +45,6 @@ dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_linear.nearest.mirrored_
 dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_linear.nearest.repeat.mirror_clamp_to_edge,Fail
 dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_linear.nearest.repeat.repeat,Fail
 dEQP-VK.texture.filtering.2d.combinations.nearest_mipmap_linear.linear.clamp_to_edge.mirror_clamp_to_edge,Fail
-dEQP-VK.texture.filtering.2d.combinations.nearest_mipmap_linear.linear.clamp_to_edge.repeat,Fail
 dEQP-VK.texture.filtering.2d.combinations.nearest_mipmap_linear.linear.clamp_to_edge.repeat,Fail
 dEQP-VK.texture.filtering.2d.combinations.nearest_mipmap_linear.linear.mirror_clamp_to_edge.mirror_clamp_to_edge,Fail
 dEQP-VK.texture.filtering.2d.combinations.nearest_mipmap_linear.linear.mirror_clamp_to_edge.repeat,Fail
@@ -92,7 +90,6 @@ dEQP-VK.texture.filtering.2d_array.combinations.nearest_mipmap_linear.nearest.mi
 dEQP-VK.texture.filtering.2d_array.combinations.nearest_mipmap_linear.nearest.repeat.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.2d_array.combinations.nearest_mipmap_linear.nearest.repeat.repeat,Fail
 dEQP-VK.texture.filtering.2d_array.formats.a1r5g5b5_unorm.a1r5g5b5_unorm_linear_mipmap_linear,Fail
-dEQP-VK.texture.filtering.2d_array.formats.a1r5g5b5_unorm.a1r5g5b5_unorm_linear_mipmap_linear,Fail
 dEQP-VK.texture.filtering.2d_array.formats.a8b8g8r8_srgb.a8b8g8r8_srgb_linear_mipmap_linear,Fail
 dEQP-VK.texture.filtering.2d_array.formats.b10g11r11_ufloat.b10g11r11_ufloat_linear_mipmap_linear,Fail
 dEQP-VK.texture.filtering.2d_array.formats.e5b9g9r9_ufloat.e5b9g9r9_ufloat_nearest_mipmap_linear,Fail
@@ -113,11 +110,9 @@ dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.clamp_to_
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.clamp_to_edge.mirror_clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.clamp_to_edge.repeat.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.mirror_clamp_to_edge.clamp_to_edge.mirrored_repeat,Fail
-dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.mirror_clamp_to_edge.clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.mirror_clamp_to_edge.mirror_clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.mirror_clamp_to_edge.repeat.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.mirrored_repeat.mirrored_repeat.mirrored_repeat,Fail
-dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.repeat.clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.repeat.clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.repeat.mirror_clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.linear_mipmap_linear.nearest.repeat.repeat.mirrored_repeat,Fail
@@ -136,7 +131,6 @@ dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.mirror_cl
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.mirror_clamp_to_edge.repeat.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.mirror_clamp_to_edge.repeat.repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.mirrored_repeat.clamp_to_edge.mirrored_repeat,Fail
-dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.mirrored_repeat.clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.mirrored_repeat.mirror_clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.mirrored_repeat.mirrored_repeat.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.mirrored_repeat.mirrored_repeat.repeat,Fail
@@ -148,7 +142,6 @@ dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.repeat.mi
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.repeat.mirrored_repeat.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.repeat.repeat.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.linear.repeat.repeat.repeat,Fail
-dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.nearest.clamp_to_edge.clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.nearest.clamp_to_edge.clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.nearest.clamp_to_edge.mirror_clamp_to_edge.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.3d.combinations.nearest_mipmap_linear.nearest.clamp_to_edge.mirrored_repeat.mirrored_repeat,Fail
@@ -193,7 +186,6 @@ dEQP-VK.texture.filtering.cube.combinations.linear_mipmap_linear.nearest.clamp_t
 dEQP-VK.texture.filtering.cube.combinations.linear_mipmap_linear.nearest.clamp_to_border.clamp_to_edge,Fail
 dEQP-VK.texture.filtering.cube.combinations.linear_mipmap_linear.nearest.clamp_to_border.mirrored_repeat,Fail
 dEQP-VK.texture.filtering.cube.combinations.linear_mipmap_linear.nearest.clamp_to_edge.clamp_to_border,Fail
-dEQP-VK.texture.filtering.cube.combinations.linear_mipmap_linear.nearest.mirror_clamp_to_edge.clamp_to_border,Fail
 dEQP-VK.texture.filtering.cube.combinations.linear_mipmap_linear.nearest.mirror_clamp_to_edge.clamp_to_border,Fail
 dEQP-VK.texture.filtering.cube.combinations.linear_mipmap_linear.nearest.mirrored_repeat.clamp_to_border,Fail
 dEQP-VK.texture.filtering.cube.combinations.linear_mipmap_linear.nearest.mirrored_repeat.clamp_to_edge,Fail

@@ -98,11 +98,9 @@ mkdir -p /lava-files/
 
 PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON" . .gitlab-ci/container/build-piglit.sh
 
-############### Build Rust deps (Crosvm and deqp-runner)
+############### Build Crosvm
 
 . .gitlab-ci/container/build-crosvm.sh
-. .gitlab-ci/container/build-deqp-runner.sh
-
 rm -rf /root/.cargo
 
 ############### Build dEQP GL
