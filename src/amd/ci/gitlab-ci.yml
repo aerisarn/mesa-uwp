@@ -4,6 +4,7 @@
     - .radv-rules
   variables:
     VK_DRIVER: radeon
+    DRIVER_NAME: radv
     ACO_DEBUG: validateir,validatera
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
 
@@ -73,6 +74,7 @@ radv_stoney_vkcts:amd64:
     HWCI_KERNEL_MODULES: amdgpu
     HWCI_FREQ_MAX: "true"
     VK_DRIVER: radeon
+    DRIVER_NAME: radv
   tags:
     - mesa-ci-x86-64-lava-hp-11A-G6-EE-grunt
 
