@@ -45,6 +45,10 @@ if with_gallium_iris and get_option('prefer-iris')
   loader_c_args += ['-DPREFER_IRIS']
 endif
 
+if with_gallium_crocus and get_option('prefer-crocus')
+  loader_c_args += ['-DPREFER_CROCUS']
+endif
+
 libloader = static_library(
   'loader',
   ['loader_dri_helper.c', 'loader.c', 'pci_id_driver_map.c'],

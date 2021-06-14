@@ -445,6 +445,12 @@ option(
   value : true,
   description : 'Prefer new Intel iris driver over older i965 driver'
 )
+option(
+  'prefer-crocus',
+  type : 'boolean',
+  value : false,
+  description : 'Prefer new crocus driver over older i965 driver for gen4-7'
+)
 option('egl-lib-suffix',
   type : 'string',
   value : '',
