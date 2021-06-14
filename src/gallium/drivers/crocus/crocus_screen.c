@@ -54,6 +54,7 @@
 #include "intel/compiler/brw_compiler.h"
 #include "intel/common/intel_gem.h"
 #include "intel/common/intel_l3_config.h"
+#include "intel/common/intel_uuid.h"
 #include "crocus_monitor.h"
 
 #define genX_call(devinfo, func, ...)                   \
@@ -99,6 +100,24 @@ static const char *
 crocus_get_device_vendor(struct pipe_screen *pscreen)
 {
    return "Intel";
+}
+
+static void
+crocus_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
+{
+   struct crocus_screen *screen = (struct crocus_screen *)pscreen;
+   const struct isl_device *isldev = &screen->isl_dev;
+
+   intel_uuid_compute_device_id((uint8_t *)uuid, isldev, PIPE_UUID_SIZE);
+}
+
+static void
+crocus_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
+{
+   struct crocus_screen *screen = (struct crocus_screen *)pscreen;
+   const struct intel_device_info *devinfo = &screen->devinfo;
+
+   intel_uuid_compute_driver_id((uint8_t *)uuid, devinfo, PIPE_UUID_SIZE);
 }
 
 static const char *
@@ -814,6 +833,8 @@ crocus_screen_create(int fd, const struct pipe_screen_config *config)
    pscreen->get_compute_param = crocus_get_compute_param;
    pscreen->get_paramf = crocus_get_paramf;
    pscreen->get_compiler_options = crocus_get_compiler_options;
+   pscreen->get_device_uuid = crocus_get_device_uuid;
+   pscreen->get_driver_uuid = crocus_get_driver_uuid;
    pscreen->get_disk_shader_cache = crocus_get_disk_shader_cache;
    pscreen->is_format_supported = crocus_is_format_supported;
    pscreen->context_create = crocus_create_context;
