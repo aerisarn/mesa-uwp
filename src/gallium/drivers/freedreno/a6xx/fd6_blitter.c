@@ -912,7 +912,7 @@ handle_rgba_blit(struct fd_context *ctx,
    fd6_validate_format(ctx, src, info->src.format);
    fd6_validate_format(ctx, dst, info->dst.format);
 
-   batch = fd_bc_alloc_batch(&ctx->screen->batch_cache, ctx, true);
+   batch = fd_bc_alloc_batch(ctx, true);
 
    fd_screen_lock(ctx->screen);
 

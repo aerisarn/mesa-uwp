@@ -142,9 +142,10 @@ fd_bc_fini(struct fd_batch_cache *cache)
 }
 
 static void
-bc_flush(struct fd_batch_cache *cache, struct fd_context *ctx,
-         bool deferred) assert_dt
+bc_flush(struct fd_context *ctx, bool deferred) assert_dt
 {
+   struct fd_batch_cache *cache = &ctx->screen->batch_cache;
+
    /* fd_batch_flush() (and fd_batch_add_dep() which calls it indirectly)
     * can cause batches to be unref'd and freed under our feet, so grab
     * a reference to all the batches we need up-front.
@@ -188,9 +189,9 @@ bc_flush(struct fd_batch_cache *cache, struct fd_context *ctx,
 }
 
 void
-fd_bc_flush(struct fd_batch_cache *cache, struct fd_context *ctx)
+fd_bc_flush(struct fd_context *ctx)
 {
-   bc_flush(cache, ctx, false);
+   bc_flush(ctx, false);
 }
 
 /* deferred flush doesn't actually flush, but it marks every other
@@ -199,20 +200,20 @@ fd_bc_flush(struct fd_batch_cache *cache, struct fd_context *ctx)
  * that came before also get flushed.
  */
 void
-fd_bc_flush_deferred(struct fd_batch_cache *cache, struct fd_context *ctx)
+fd_bc_flush_deferred(struct fd_context *ctx)
 {
-   bc_flush(cache, ctx, true);
+   bc_flush(ctx, true);
 }
 
 void
-fd_bc_dump(struct fd_screen *screen, const char *fmt, ...)
+fd_bc_dump(struct fd_context *ctx, const char *fmt, ...)
 {
-   struct fd_batch_cache *cache = &screen->batch_cache;
+   struct fd_batch_cache *cache = &ctx->screen->batch_cache;
 
    if (!FD_DBG(MSGS))
       return;
 
-   fd_screen_lock(screen);
+   fd_screen_lock(ctx->screen);
 
    va_list ap;
    va_start(ap, fmt);
@@ -229,7 +230,7 @@ fd_bc_dump(struct fd_screen *screen, const char *fmt, ...)
 
    printf("----\n");
 
-   fd_screen_unlock(screen);
+   fd_screen_unlock(ctx->screen);
 }
 
 void
@@ -393,9 +394,9 @@ alloc_batch_locked(struct fd_batch_cache *cache, struct fd_context *ctx,
 }
 
 struct fd_batch *
-fd_bc_alloc_batch(struct fd_batch_cache *cache, struct fd_context *ctx,
-                  bool nondraw)
+fd_bc_alloc_batch(struct fd_context *ctx, bool nondraw)
 {
+   struct fd_batch_cache *cache = &ctx->screen->batch_cache;
    struct fd_batch *batch;
 
    /* For normal draw batches, pctx->set_framebuffer_state() handles
@@ -416,9 +417,9 @@ fd_bc_alloc_batch(struct fd_batch_cache *cache, struct fd_context *ctx,
 }
 
 static struct fd_batch *
-batch_from_key(struct fd_batch_cache *cache, struct fd_batch_key *key,
-               struct fd_context *ctx) assert_dt
+batch_from_key(struct fd_context *ctx, struct fd_batch_key *key) assert_dt
 {
+   struct fd_batch_cache *cache = &ctx->screen->batch_cache;
    struct fd_batch *batch = NULL;
    uint32_t hash = fd_batch_key_hash(key);
    struct hash_entry *entry =
@@ -479,7 +480,7 @@ key_surf(struct fd_batch_key *key, unsigned idx, unsigned pos,
 }
 
 struct fd_batch *
-fd_batch_from_fb(struct fd_batch_cache *cache, struct fd_context *ctx,
+fd_batch_from_fb(struct fd_context *ctx,
                  const struct pipe_framebuffer_state *pfb)
 {
    unsigned idx = 0, n = pfb->nr_cbufs + (pfb->zsbuf ? 1 : 0);
@@ -501,7 +502,7 @@ fd_batch_from_fb(struct fd_batch_cache *cache, struct fd_context *ctx,
    key->num_surfs = idx;
 
    fd_screen_lock(ctx->screen);
-   struct fd_batch *batch = batch_from_key(cache, key, ctx);
+   struct fd_batch *batch = batch_from_key(ctx, key);
    fd_screen_unlock(ctx->screen);
 
    return batch;
