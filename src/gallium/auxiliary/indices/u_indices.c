@@ -60,9 +60,9 @@ static void translate_byte_to_ushort( const void *in,
 }
 
 enum pipe_prim_type
-u_index_prim_type_convert(unsigned hw_mask, enum pipe_prim_type prim)
+u_index_prim_type_convert(unsigned hw_mask, enum pipe_prim_type prim, bool pv_matches)
 {
-   if (hw_mask & (1<<prim))
+   if ((hw_mask & (1<<prim)) && pv_matches)
       return prim;
 
    switch (prim) {
@@ -159,7 +159,7 @@ u_index_translator(unsigned hw_mask,
       return U_TRANSLATE_MEMCPY;
    }
    *out_translate = translate[in_idx][out_idx][in_pv][out_pv][prim_restart][prim];
-   *out_prim = u_index_prim_type_convert(hw_mask, prim);
+   *out_prim = u_index_prim_type_convert(hw_mask, prim, in_pv == out_pv);
    *out_nr = u_index_count_converted_indices(hw_mask, in_pv == out_pv, prim, nr);
 
    return ret;
@@ -248,7 +248,7 @@ u_index_generator(unsigned hw_mask,
 
    *out_index_size = ((start + nr) > 0xfffe) ? 4 : 2;
    out_idx = out_size_idx(*out_index_size);
-   *out_prim = u_index_prim_type_convert(hw_mask, prim);
+   *out_prim = u_index_prim_type_convert(hw_mask, prim, in_pv == out_pv);
    *out_nr = u_index_count_converted_indices(hw_mask, in_pv == out_pv, prim, nr);
 
    if ((hw_mask & (1<<prim)) && 
