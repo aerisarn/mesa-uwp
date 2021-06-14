@@ -955,6 +955,19 @@ enum a64_logical_srcs {
    A64_LOGICAL_NUM_SRCS
 };
 
+enum rt_logical_srcs {
+   /** Address of the globals */
+   RT_LOGICAL_SRC_GLOBALS,
+   /** Level at which the tracing should start */
+   RT_LOGICAL_SRC_BVH_LEVEL,
+   /** Type of tracing operation */
+   RT_LOGICAL_SRC_TRACE_RAY_CONTROL,
+   /** Synchronous tracing (ray query) */
+   RT_LOGICAL_SRC_SYNCHRONOUS,
+
+   RT_LOGICAL_NUM_SRCS
+};
+
 #ifdef __cplusplus
 /**
  * Allow brw_urb_write_flags enums to be ORed together.

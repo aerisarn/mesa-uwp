@@ -3997,6 +3997,29 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
    }
 }
 
+static void
+emit_rt_lsc_fence(const fs_builder &bld, enum lsc_flush_type flush_type)
+{
+   const intel_device_info *devinfo = bld.shader->devinfo;
+
+   const fs_builder ubld = bld.exec_all().group(8, 0);
+   fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+   fs_inst *send = ubld.emit(SHADER_OPCODE_SEND, tmp,
+                             brw_imm_ud(0) /* desc */,
+                             brw_imm_ud(0) /* ex_desc */,
+                             brw_vec8_grf(0, 0) /* payload */);
+   send->sfid = GFX12_SFID_UGM;
+   send->desc = lsc_fence_msg_desc(devinfo, LSC_FENCE_TILE,
+                                   flush_type, true);
+   send->mlen = 1; /* g0 header */
+   send->ex_mlen = 0;
+   send->size_written = REG_SIZE; /* Temp write for scheduling */
+   send->send_has_side_effects = true;
+
+   ubld.emit(FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(), tmp);
+}
+
+
 void
 fs_visitor::nir_emit_bs_intrinsic(const fs_builder &bld,
                                   nir_intrinsic_instr *instr)
@@ -4014,27 +4037,6 @@ fs_visitor::nir_emit_bs_intrinsic(const fs_builder &bld,
 
    case nir_intrinsic_load_btd_local_arg_addr_intel:
       bld.MOV(dest, retype(brw_vec1_grf(2, 2), dest.type));
-      break;
-
-   case nir_intrinsic_trace_ray_initial_intel:
-      bld.emit(RT_OPCODE_TRACE_RAY_LOGICAL,
-               bld.null_reg_ud(),
-               brw_imm_ud(BRW_RT_BVH_LEVEL_WORLD),
-               brw_imm_ud(GEN_RT_TRACE_RAY_INITAL));
-      break;
-
-   case nir_intrinsic_trace_ray_commit_intel:
-      bld.emit(RT_OPCODE_TRACE_RAY_LOGICAL,
-               bld.null_reg_ud(),
-               brw_imm_ud(BRW_RT_BVH_LEVEL_OBJECT),
-               brw_imm_ud(GEN_RT_TRACE_RAY_COMMIT));
-      break;
-
-   case nir_intrinsic_trace_ray_continue_intel:
-      bld.emit(RT_OPCODE_TRACE_RAY_LOGICAL,
-               bld.null_reg_ud(),
-               brw_imm_ud(BRW_RT_BVH_LEVEL_OBJECT),
-               brw_imm_ud(GEN_RT_TRACE_RAY_CONTINUE));
       break;
 
    default:
@@ -5868,6 +5870,32 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       }
       bld.emit(SHADER_OPCODE_BTD_RETIRE_LOGICAL);
       break;
+
+   case nir_intrinsic_trace_ray_intel: {
+      const bool synchronous = nir_intrinsic_synchronous(instr);
+      assert(brw_shader_stage_is_bindless(stage) || synchronous);
+      if (synchronous)
+         emit_rt_lsc_fence(bld, LSC_FLUSH_TYPE_EVICT);
+      fs_reg srcs[RT_LOGICAL_NUM_SRCS];
+      srcs[RT_LOGICAL_SRC_GLOBALS] = get_nir_src(instr->src[0]);
+      srcs[RT_LOGICAL_SRC_BVH_LEVEL] = get_nir_src(instr->src[1]);
+      srcs[RT_LOGICAL_SRC_TRACE_RAY_CONTROL] = get_nir_src(instr->src[2]);
+      srcs[RT_LOGICAL_SRC_SYNCHRONOUS] = brw_imm_ud(synchronous);
+      bld.emit(RT_OPCODE_TRACE_RAY_LOGICAL, bld.null_reg_ud(),
+               srcs, RT_LOGICAL_NUM_SRCS);
+
+      /* There is no actual value to use in the destination register of the
+       * synchronous trace instruction. All of the communication with the HW
+       * unit happens through memory reads/writes. So to ensure that the
+       * operation has completed before we go read the results in memory, we
+       * need a barrier followed by an invalidate before accessing memory.
+       */
+      if (synchronous) {
+         bld.emit(BRW_OPCODE_SYNC, bld.null_reg_ud(), brw_imm_ud(TGL_SYNC_ALLWR));
+         emit_rt_lsc_fence(bld, LSC_FLUSH_TYPE_INVALIDATE);
+      }
+      break;
+   }
 
    default:
       unreachable("unknown intrinsic");

@@ -6663,31 +6663,53 @@ static void
 lower_trace_ray_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
-   const fs_reg &bvh_level = inst->src[0];
-   assert(inst->src[1].file == BRW_IMMEDIATE_VALUE);
-   const uint32_t trace_ray_control = inst->src[1].ud;
+   const fs_reg &globals_addr = inst->src[RT_LOGICAL_SRC_GLOBALS];
+   const fs_reg &bvh_level =
+      inst->src[RT_LOGICAL_SRC_BVH_LEVEL].file == BRW_IMMEDIATE_VALUE ?
+      inst->src[RT_LOGICAL_SRC_BVH_LEVEL] :
+      bld.move_to_vgrf(inst->src[RT_LOGICAL_SRC_BVH_LEVEL],
+                       inst->components_read(RT_LOGICAL_SRC_BVH_LEVEL));
+   const fs_reg &trace_ray_control =
+      inst->src[RT_LOGICAL_SRC_TRACE_RAY_CONTROL].file == BRW_IMMEDIATE_VALUE ?
+      inst->src[RT_LOGICAL_SRC_TRACE_RAY_CONTROL] :
+      bld.move_to_vgrf(inst->src[RT_LOGICAL_SRC_TRACE_RAY_CONTROL],
+                       inst->components_read(RT_LOGICAL_SRC_TRACE_RAY_CONTROL));
+   const fs_reg &synchronous_src = inst->src[RT_LOGICAL_SRC_SYNCHRONOUS];
+   assert(synchronous_src.file == BRW_IMMEDIATE_VALUE);
+   const bool synchronous = synchronous_src.ud;
 
    const unsigned mlen = 1;
    const fs_builder ubld = bld.exec_all().group(8, 0);
    fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
    ubld.MOV(header, brw_imm_ud(0));
-   ubld.group(2, 0).MOV(header,
-      retype(brw_vec2_grf(2, 0), BRW_REGISTER_TYPE_UD));
-   /* TODO: Bit 128 is ray_query */
+   ubld.group(2, 0).MOV(header, retype(globals_addr, BRW_REGISTER_TYPE_UD));
+   if (synchronous)
+      ubld.group(1, 0).MOV(byte_offset(header, 16), brw_imm_ud(synchronous));
 
    const unsigned ex_mlen = inst->exec_size / 8;
    fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD);
-   const uint32_t trc_bits = SET_BITS(trace_ray_control, 9, 8);
-   if (bvh_level.file == BRW_IMMEDIATE_VALUE) {
-      bld.MOV(payload, brw_imm_ud(trc_bits | (bvh_level.ud & 0x7)));
+   if (bvh_level.file == BRW_IMMEDIATE_VALUE &&
+       trace_ray_control.file == BRW_IMMEDIATE_VALUE) {
+      bld.MOV(payload, brw_imm_ud(SET_BITS(trace_ray_control.ud, 9, 8) |
+                                  (bvh_level.ud & 0x7)));
    } else {
-      bld.AND(payload, bvh_level, brw_imm_ud(0x7));
-      if (trc_bits != 0)
-         bld.OR(payload, payload, brw_imm_ud(trc_bits));
+      bld.SHL(payload, trace_ray_control, brw_imm_ud(8));
+      bld.OR(payload, payload, bvh_level);
    }
-   bld.AND(subscript(payload, BRW_REGISTER_TYPE_UW, 1),
-           retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW),
-           brw_imm_uw(0x7ff));
+
+   /* When doing synchronous traversal, the HW implicitly computes the
+    * stack_id using the following formula :
+    *
+    *    EUID[3:0] & THREAD_ID[2:0] & SIMD_LANE_ID[3:0]
+    *
+    * Only in the asynchronous case we need to set the stack_id given from the
+    * payload register.
+    */
+   if (!synchronous) {
+      bld.AND(subscript(payload, BRW_REGISTER_TYPE_UW, 1),
+              retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW),
+              brw_imm_uw(0x7ff));
+   }
 
    /* Update the original instruction. */
    inst->opcode = SHADER_OPCODE_SEND;

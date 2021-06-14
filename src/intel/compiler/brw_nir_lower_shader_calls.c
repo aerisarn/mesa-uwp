@@ -214,7 +214,11 @@ lower_shader_calls_instr(struct nir_builder *b, nir_instr *instr, void *data)
          .shader_index_multiplier = sbt_stride,
       };
       brw_nir_rt_store_mem_ray(b, &ray_defs, BRW_RT_BVH_LEVEL_WORLD);
-      nir_trace_ray_initial_intel(b);
+      nir_trace_ray_intel(b,
+                          nir_load_btd_global_arg_addr_intel(b),
+                          nir_imm_int(b, BRW_RT_BVH_LEVEL_WORLD),
+                          nir_imm_int(b, GEN_RT_TRACE_RAY_INITAL),
+                          .synchronous = false);
       return true;
    }
 
