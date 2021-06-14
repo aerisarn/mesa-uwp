@@ -50,13 +50,13 @@
   tags:
     - mesa-ci-x86-64-lava-hp-x360-14-G1-sona
 
-.iris-apl-gles2:
+iris-apl-gles2:
   extends:
     - .iris-apl-test
   variables:
     DEQP_VER: gles2
 
-.iris-apl-gles3:
+iris-apl-gles3:
   extends:
     - .iris-apl-test
   variables:
@@ -64,7 +64,7 @@
     DEQP_EXPECTED_RENDERER: APL
     DEQP_FRACTION: 4
 
-.iris-apl-gles31:
+iris-apl-gles31:
   extends:
     - .iris-apl-test
   variables:
@@ -73,14 +73,14 @@
     DEQP_FRACTION: 6
 
 # this appears to silently kill the board sometimes.  Leave it as a manual job for debugging.
-.iris-apl-gl:
+iris-apl-gl:
   extends:
     - .iris-apl-test
     - .test-manual-mr
   variables:
     DEQP_VER: gl46
 
-.iris-apl-egl:
+iris-apl-egl:
   extends:
     - .iris-apl-test
   variables:
@@ -182,7 +182,7 @@ iris-amly-piglit:
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-iris.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: --keep-image
 
-.iris-apl-traces:
+iris-apl-traces:
   variables:
     GPU_VERSION: intel-apl
   extends:
