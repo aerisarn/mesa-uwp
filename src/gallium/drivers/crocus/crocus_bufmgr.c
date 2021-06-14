@@ -1219,7 +1219,7 @@ crocus_bo_get_tiling(struct crocus_bo *bo, uint32_t *tiling_mode,
 
 struct crocus_bo *
 crocus_bo_import_dmabuf(struct crocus_bufmgr *bufmgr, int prime_fd,
-                        uint32_t tiling, uint32_t stride)
+                        uint32_t tiling)
 {
    uint32_t handle;
    struct crocus_bo *bo;
@@ -1265,18 +1265,17 @@ crocus_bo_import_dmabuf(struct crocus_bufmgr *bufmgr, int prime_fd,
    bo->gem_handle = handle;
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
 
-   struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
-   if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling))
-      goto err;
-
-   if (get_tiling.tiling_mode == tiling || tiling > I915_TILING_LAST) {
-      bo->tiling_mode = get_tiling.tiling_mode;
-      bo->swizzle_mode = get_tiling.swizzle_mode;
-      /* XXX stride is unknown */
-   } else {
-      if (bo_set_tiling_internal(bo, tiling, stride)) {
+   if (tiling != -1) {
+      /* Modifiers path */
+      bo->tiling_mode = tiling;
+   } else if (bufmgr->has_tiling_uapi) {
+      struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
+      if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling))
          goto err;
-      }
+
+      bo->tiling_mode = get_tiling.tiling_mode;
+   } else {
+      bo->tiling_mode = I915_TILING_NONE;
    }
 
 out:

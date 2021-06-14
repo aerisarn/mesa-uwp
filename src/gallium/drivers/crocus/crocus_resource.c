@@ -868,7 +868,7 @@ crocus_resource_from_handle(struct pipe_screen *pscreen,
       else
          tiling = I915_TILING_LAST + 1;
       res->bo = crocus_bo_import_dmabuf(bufmgr, whandle->handle,
-                                        tiling, whandle->stride);
+                                        tiling);
       break;
    case WINSYS_HANDLE_TYPE_SHARED:
       res->bo = crocus_bo_gem_create_from_name(bufmgr, "winsys image",

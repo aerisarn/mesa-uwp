@@ -306,8 +306,7 @@ void crocus_destroy_hw_context(struct crocus_bufmgr *bufmgr, uint32_t ctx_id);
 
 int crocus_bo_export_dmabuf(struct crocus_bo *bo, int *prime_fd);
 struct crocus_bo *crocus_bo_import_dmabuf(struct crocus_bufmgr *bufmgr,
-                                          int prime_fd, uint32_t tiling,
-                                          uint32_t stride);
+                                          int prime_fd, uint32_t tiling);
 
 /**
  * Exports a bo as a GEM handle into a given DRM file descriptor
