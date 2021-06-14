@@ -22,6 +22,7 @@ Cpp11BracedListStyle: true
 ForEachMacros:
   - LIST_FOR_EACH_ENTRY
   - LIST_FOR_EACH_ENTRY_SAFE
+  - LIST_FOR_EACH_ENTRY_SAFE_REV
   - list_for_each_entry
   - list_for_each_entry_safe
   - foreach_list_typed
