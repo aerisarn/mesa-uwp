@@ -1124,7 +1124,7 @@ iris_gem_get_tiling(struct iris_bo *bo, uint32_t *tiling)
 
    if (ret) {
       DBG("gem_get_tiling failed for BO %u: %s\n",
-          bo->gem_handle, strerror(ret));
+          bo->gem_handle, strerror(errno));
    }
 
    *tiling = ti.tiling_mode;
@@ -1159,7 +1159,7 @@ iris_gem_set_tiling(struct iris_bo *bo, const struct isl_surf *surf)
 
    if (ret) {
       DBG("gem_set_tiling failed for BO %u: %s\n",
-          bo->gem_handle, strerror(ret));
+          bo->gem_handle, strerror(errno));
    }
 
    return ret;
