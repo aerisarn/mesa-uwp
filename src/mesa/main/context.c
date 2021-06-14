@@ -168,27 +168,6 @@ int MESA_DEBUG_FLAGS = 0;
 GLfloat _mesa_ubyte_to_float_color_tab[256];
 
 
-
-/**
- * Swap buffers notification callback.
- *
- * \param ctx GL context.
- *
- * Called by window system just before swapping buffers.
- * We have to finish any pending rendering.
- */
-void
-_mesa_notifySwapBuffers(struct gl_context *ctx)
-{
-   if (MESA_VERBOSE & VERBOSE_SWAPBUFFERS)
-      _mesa_debug(ctx, "SwapBuffers\n");
-   FLUSH_VERTICES(ctx, 0, 0);
-   if (ctx->Driver.Flush) {
-      ctx->Driver.Flush(ctx, 0);
-   }
-}
-
-
 /**********************************************************************/
 /** \name GL Visual initialization                                    */
 /**********************************************************************/
