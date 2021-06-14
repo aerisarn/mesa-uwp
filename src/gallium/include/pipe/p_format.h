@@ -41,7 +41,11 @@ extern "C" {
 enum pipe_format {
    PIPE_FORMAT_NONE,
    /* Vertex formats must be first and must be <= 255. */
-   PIPE_FORMAT_R64_FLOAT,
+   PIPE_FORMAT_R64_UINT,    /**< raw doubles (ARB_vertex_attrib_64bit) */
+   PIPE_FORMAT_R64G64_UINT,
+   PIPE_FORMAT_R64G64B64_UINT,
+   PIPE_FORMAT_R64G64B64A64_UINT,
+   PIPE_FORMAT_R64_FLOAT,   /**< doubles converted to float */
    PIPE_FORMAT_R64G64_FLOAT,
    PIPE_FORMAT_R64G64B64_FLOAT,
    PIPE_FORMAT_R64G64B64A64_FLOAT,
@@ -293,7 +297,6 @@ enum pipe_format {
    PIPE_FORMAT_R8A8_UNORM,
    PIPE_FORMAT_A8R8_UNORM,
 
-   PIPE_FORMAT_R64_UINT,
    PIPE_FORMAT_R64_SINT,
 
    PIPE_FORMAT_A8_UINT,

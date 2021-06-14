@@ -467,6 +467,10 @@ PIPE_FORMAT_R32G32B32_SINT          , plain, 1, 1, 1, sp32, sp32, sp32, , xyz1, 
 PIPE_FORMAT_R32G32B32A32_SINT       , plain, 1, 1, 1, sp32, sp32, sp32, sp32, xyzw, rgb
 
 PIPE_FORMAT_R64_UINT                , plain, 1, 1, 1, up64, , , , x001, rgb
+PIPE_FORMAT_R64G64_UINT             , plain, 1, 1, 1, up64, up64, , , xy01, rgb
+PIPE_FORMAT_R64G64B64_UINT          , plain, 1, 1, 1, up64, up64, up64, , xyz1, rgb
+PIPE_FORMAT_R64G64B64A64_UINT       , plain, 1, 1, 1, up64, up64, up64, up64, xyzw, rgb
+
 PIPE_FORMAT_R64_SINT                , plain, 1, 1, 1, sp64, , , , x001, rgb
 
 PIPE_FORMAT_A8_UINT                 , plain, 1, 1, 1, up8, , , , 000x, rgb
