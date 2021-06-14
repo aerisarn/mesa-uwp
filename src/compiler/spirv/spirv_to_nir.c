@@ -4364,6 +4364,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityImageGatherExtended:
       case SpvCapabilityStorageImageExtendedFormats:
       case SpvCapabilityVector16:
+      case SpvCapabilityDotProductKHR:
+      case SpvCapabilityDotProductInputAllKHR:
+      case SpvCapabilityDotProductInput4x8BitKHR:
+      case SpvCapabilityDotProductInput4x8BitPackedKHR:
          break;
 
       case SpvCapabilityLinkage:
@@ -5648,6 +5652,15 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpIMul32x16INTEL:
    case SpvOpUMul32x16INTEL:
       vtn_handle_alu(b, opcode, w, count);
+      break;
+
+   case SpvOpSDotKHR:
+   case SpvOpUDotKHR:
+   case SpvOpSUDotKHR:
+   case SpvOpSDotAccSatKHR:
+   case SpvOpUDotAccSatKHR:
+   case SpvOpSUDotAccSatKHR:
+      vtn_handle_integer_dot(b, opcode, w, count);
       break;
 
    case SpvOpBitcast:
