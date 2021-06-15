@@ -61,6 +61,7 @@ fi
 RESULT=fail
 if sh $HWCI_TEST_SCRIPT; then
   RESULT=pass
+  rm -rf results/trace/$PIGLIT_REPLAY_DEVICE_NAME
 fi
 
 # upload artifacts
