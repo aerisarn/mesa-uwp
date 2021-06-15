@@ -213,7 +213,7 @@ update_gfx_program(struct zink_context *ctx)
 
 static bool
 line_width_needed(enum pipe_prim_type reduced_prim,
-                  VkPolygonMode polygon_mode)
+                  unsigned polygon_mode)
 {
    switch (reduced_prim) {
    case PIPE_PRIM_POINTS:

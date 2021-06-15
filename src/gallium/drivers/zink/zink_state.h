@@ -55,14 +55,14 @@ struct zink_vertex_elements_state {
 };
 
 struct zink_rasterizer_hw_state {
-   VkPolygonMode polygon_mode;
-   VkCullModeFlags cull_mode;
-   VkProvokingVertexModeEXT pv_mode;
-   VkLineRasterizationModeEXT line_mode;
-   unsigned depth_clamp : 1;
-   unsigned rasterizer_discard : 1;
-   unsigned force_persample_interp : 1;
-   bool line_stipple_enable;
+   unsigned polygon_mode : 2; //VkPolygonMode
+   unsigned cull_mode : 2; //VkCullModeFlags
+   unsigned line_mode : 2; //VkLineRasterizationModeEXT
+   bool depth_clamp:1;
+   bool rasterizer_discard:1;
+   bool pv_last:1;
+   bool line_stipple_enable:1;
+   bool force_persample_interp:1;
 };
 
 struct zink_rasterizer_state {

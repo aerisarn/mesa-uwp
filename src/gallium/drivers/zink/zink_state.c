@@ -473,13 +473,13 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
    state->hw_state.depth_clamp = rs_state->depth_clip_near == 0;
    state->hw_state.rasterizer_discard = rs_state->rasterizer_discard;
    state->hw_state.force_persample_interp = rs_state->force_persample_interp;
-   state->hw_state.pv_mode = rs_state->flatshade_first ? VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT : VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
+   state->hw_state.pv_last = !rs_state->flatshade_first;
 
    assert(rs_state->fill_front <= PIPE_POLYGON_MODE_POINT);
    if (rs_state->fill_back != rs_state->fill_front)
       debug_printf("BUG: vulkan doesn't support different front and back fill modes\n");
-   state->hw_state.polygon_mode = (VkPolygonMode)rs_state->fill_front; // same values
-   state->hw_state.cull_mode = (VkCullModeFlags)rs_state->cull_face; // same bits
+   state->hw_state.polygon_mode = rs_state->fill_front; // same values
+   state->hw_state.cull_mode = rs_state->cull_face; // same bits
 
    state->front_face = rs_state->front_ccw ?
                        VK_FRONT_FACE_COUNTER_CLOCKWISE :
@@ -555,7 +555,7 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
       if (ctx->gfx_pipeline_state.rast_state != &ctx->rast_state->hw_state) {
          if (screen->info.have_EXT_provoking_vertex &&
              (!ctx->gfx_pipeline_state.rast_state ||
-              ctx->gfx_pipeline_state.rast_state->pv_mode != ctx->rast_state->hw_state.pv_mode) &&
+              ctx->gfx_pipeline_state.rast_state->pv_last != ctx->rast_state->hw_state.pv_last) &&
              /* without this prop, change in pv mode requires new rp */
              !screen->info.pv_props.provokingVertexModePerPipeline)
             zink_batch_no_rp(ctx);

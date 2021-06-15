@@ -147,9 +147,10 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkPipelineRasterizationProvokingVertexStateCreateInfoEXT pv_state;
    pv_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT;
-   pv_state.provokingVertexMode = state->rast_state->pv_mode;
-   if (screen->info.have_EXT_provoking_vertex &&
-       state->rast_state->pv_mode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
+   pv_state.provokingVertexMode = state->rast_state->pv_last ?
+                                  VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT :
+                                  VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT;
+   if (screen->info.have_EXT_provoking_vertex && state->rast_state->pv_last) {
       pv_state.pNext = rast_state.pNext;
       rast_state.pNext = &pv_state;
    }
