@@ -11,7 +11,7 @@ mount -t tmpfs tmpfs /tmp
 
 . /set-job-env-vars.sh
 
-[ -z "$HWCI_KERNEL_MODULES" ] || echo -n $HWCI_KERNEL_MODULES | xargs -d, -n1 /usr/sbin/modprobe
+[ -z "$HWCI_KERNEL_MODULES" ] || (echo -n $HWCI_KERNEL_MODULES | xargs -d, -n1 /usr/sbin/modprobe)
 
 # Store Mesa's disk cache under /tmp, rather than sending it out over NFS.
 export XDG_CACHE_HOME=/tmp
