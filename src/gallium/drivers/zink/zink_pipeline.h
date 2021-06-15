@@ -39,16 +39,14 @@ struct zink_screen;
 struct zink_vertex_elements_state;
 
 struct zink_gfx_pipeline_state {
-   struct zink_render_pass *render_pass;
-
-   uint8_t void_alpha_attachments:PIPE_MAX_COLOR_BUFS;
-   struct zink_blend_state *blend_state;
-
    uint32_t rast_state : ZINK_RAST_HW_STATE_SIZE; //zink_rasterizer_hw_state
-
+   uint32_t rast_samples:7;
+   uint32_t vertices_per_patch;
+   uint32_t void_alpha_attachments:PIPE_MAX_COLOR_BUFS;
    VkSampleMask sample_mask;
-   uint8_t rast_samples:7;
-   uint8_t vertices_per_patch;
+
+   struct zink_render_pass *render_pass;
+   struct zink_blend_state *blend_state;
 
    /* Pre-hashed value for table lookup, invalid when zero.
     * Members after this point are not included in pipeline state hash key */
