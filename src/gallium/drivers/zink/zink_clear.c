@@ -103,7 +103,7 @@ clear_in_rp(struct pipe_context *pctx,
       ++num_attachments;
    }
 
-   VkClearRect cr = {};
+   VkClearRect cr = {0};
    if (scissor_state) {
       cr.rect.offset.x = scissor_state->minx;
       cr.rect.offset.y = scissor_state->miny;
@@ -123,7 +123,7 @@ static void
 clear_color_no_rp(struct zink_context *ctx, struct zink_resource *res, const union pipe_color_union *pcolor, unsigned level, unsigned layer, unsigned layerCount)
 {
    struct zink_batch *batch = zink_batch_no_rp(ctx);
-   VkImageSubresourceRange range = {};
+   VkImageSubresourceRange range = {0};
    range.baseMipLevel = level;
    range.levelCount = 1;
    range.baseArrayLayer = layer;
@@ -147,7 +147,7 @@ static void
 clear_zs_no_rp(struct zink_context *ctx, struct zink_resource *res, VkImageAspectFlags aspects, double depth, unsigned stencil, unsigned level, unsigned layer, unsigned layerCount)
 {
    struct zink_batch *batch = zink_batch_no_rp(ctx);
-   VkImageSubresourceRange range = {};
+   VkImageSubresourceRange range = {0};
    range.baseMipLevel = level;
    range.levelCount = 1;
    range.baseArrayLayer = layer;
@@ -177,7 +177,7 @@ get_clear_data(struct zink_context *ctx, struct zink_framebuffer_clear *fb_clear
          clear = last_clear;
    }
    if (!clear) {
-      struct zink_framebuffer_clear_data cd = {};
+      struct zink_framebuffer_clear_data cd = {0};
       util_dynarray_append(&fb_clear->clears, struct zink_framebuffer_clear_data, cd);
       clear = zink_fb_clear_element(fb_clear, zink_fb_clear_count(fb_clear) - 1);
    }

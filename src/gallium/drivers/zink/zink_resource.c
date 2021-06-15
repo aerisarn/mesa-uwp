@@ -215,7 +215,7 @@ aspect_from_format(enum pipe_format fmt)
 static VkBufferCreateInfo
 create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsigned bind)
 {
-   VkBufferCreateInfo bci = {};
+   VkBufferCreateInfo bci = {0};
    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
    bci.size = templ->width0;
    assert(bci.size > 0);
@@ -302,9 +302,9 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici)
    VkImageFormatProperties image_props;
    VkResult ret;
    if (screen->vk.GetPhysicalDeviceImageFormatProperties2) {
-      VkImageFormatProperties2 props2 = {};
+      VkImageFormatProperties2 props2 = {0};
       props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
-      VkPhysicalDeviceImageFormatInfo2 info = {};
+      VkPhysicalDeviceImageFormatInfo2 info = {0};
       info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
       info.format = ici->format;
       info.type = ici->imageType;
@@ -322,7 +322,7 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici)
 static VkImageCreateInfo
 create_ici(struct zink_screen *screen, const struct pipe_resource *templ, unsigned bind)
 {
-   VkImageCreateInfo ici = {};
+   VkImageCreateInfo ici = {0};
    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
    ici.flags = bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
@@ -419,7 +419,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    if (!obj)
       return NULL;
 
-   VkMemoryRequirements reqs = {};
+   VkMemoryRequirements reqs = {0};
    VkMemoryPropertyFlags flags;
    bool scanout = templ->bind & PIPE_BIND_SCANOUT;
    bool shared = templ->bind & PIPE_BIND_SHARED;
@@ -443,7 +443,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       obj->transfer_dst = true;
    } else {
       VkImageCreateInfo ici = create_ici(screen, templ, templ->bind);
-      VkExternalMemoryImageCreateInfo emici = {};
+      VkExternalMemoryImageCreateInfo emici = {0};
 
       if (templ->bind & PIPE_BIND_SHARED) {
          emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
@@ -496,7 +496,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             templ->usage == PIPE_USAGE_STAGING)
       flags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
-   VkMemoryAllocateInfo mai = {};
+   VkMemoryAllocateInfo mai = {0};
    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
    mai.allocationSize = reqs.size;
    mai.memoryTypeIndex = get_memory_type_index(screen, &reqs, flags);
@@ -514,7 +514,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          mai.allocationSize = reqs.size = align(reqs.size, screen->info.props.limits.nonCoherentAtomSize);
    }
 
-   VkExportMemoryAllocateInfo emai = {};
+   VkExportMemoryAllocateInfo emai = {0};
    if (templ->bind & PIPE_BIND_SHARED && shared) {
       emai.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
       emai.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
@@ -673,8 +673,8 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
    struct zink_resource_object *obj = res->scanout_obj ? res->scanout_obj : res->obj;
 
    if (res->base.b.target != PIPE_BUFFER) {
-      VkImageSubresource sub_res = {};
-      VkSubresourceLayout sub_res_layout = {};
+      VkImageSubresource sub_res = {0};
+      VkSubresourceLayout sub_res_layout = {0};
 
       sub_res.aspectMask = res->aspect;
 
@@ -685,7 +685,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
 
    if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
 #ifdef ZINK_USE_DMABUF
-      VkMemoryGetFdInfoKHR fd_info = {};
+      VkMemoryGetFdInfoKHR fd_info = {0};
       int fd;
       fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
       //TODO: remove for wsi

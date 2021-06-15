@@ -1363,7 +1363,7 @@ populate_format_props(struct zink_screen *screen)
       if (!format)
          continue;
       if (screen->vk.GetPhysicalDeviceFormatProperties2) {
-         VkFormatProperties2 props = {};
+         VkFormatProperties2 props = {0};
          props.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
          screen->vk.GetPhysicalDeviceFormatProperties2(screen->pdev, format, &props);
          screen->format_props[i] = props.formatProperties;
@@ -1375,8 +1375,8 @@ populate_format_props(struct zink_screen *screen)
 bool
 zink_screen_init_semaphore(struct zink_screen *screen)
 {
-   VkSemaphoreCreateInfo sci = {};
-   VkSemaphoreTypeCreateInfo tci = {};
+   VkSemaphoreCreateInfo sci = {0};
+   VkSemaphoreTypeCreateInfo tci = {0};
    VkSemaphore sem;
    sci.pNext = &tci;
    sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -1400,7 +1400,7 @@ zink_screen_init_semaphore(struct zink_screen *screen)
 bool
 zink_screen_timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_t timeout)
 {
-   VkSemaphoreWaitInfo wi = {};
+   VkSemaphoreWaitInfo wi = {0};
    wi.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
    wi.semaphoreCount = 1;
    /* handle batch_id overflow */
@@ -1443,10 +1443,10 @@ zink_query_memory_info(struct pipe_screen *pscreen, struct pipe_memory_info *inf
    struct zink_screen *screen = zink_screen(pscreen);
    memset(info, 0, sizeof(struct pipe_memory_info));
    if (screen->info.have_EXT_memory_budget && screen->vk.GetPhysicalDeviceMemoryProperties2) {
-      VkPhysicalDeviceMemoryProperties2 mem = {};
+      VkPhysicalDeviceMemoryProperties2 mem = {0};
       mem.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
 
-      VkPhysicalDeviceMemoryBudgetPropertiesEXT budget = {};
+      VkPhysicalDeviceMemoryBudgetPropertiesEXT budget = {0};
       budget.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
       mem.pNext = &budget;
       screen->vk.GetPhysicalDeviceMemoryProperties2(screen->pdev, &mem);
@@ -1485,14 +1485,14 @@ zink_create_logical_device(struct zink_screen *screen)
 {
    VkDevice dev = VK_NULL_HANDLE;
 
-   VkDeviceQueueCreateInfo qci = {};
+   VkDeviceQueueCreateInfo qci = {0};
    float dummy = 0.0f;
    qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
    qci.queueFamilyIndex = screen->gfx_queue;
    qci.queueCount = screen->threaded && screen->max_queues > 1 ? 2 : 1;
    qci.pQueuePriorities = &dummy;
 
-   VkDeviceCreateInfo dci = {};
+   VkDeviceCreateInfo dci = {0};
    dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
    dci.queueCreateInfoCount = 1;
    dci.pQueueCreateInfos = &qci;

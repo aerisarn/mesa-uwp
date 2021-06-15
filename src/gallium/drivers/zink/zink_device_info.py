@@ -384,7 +384,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
 
    // check for device properties
    if (screen->vk.GetPhysicalDeviceProperties2) {
-      VkPhysicalDeviceProperties2 props = {};
+      VkPhysicalDeviceProperties2 props = {0};
       props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 
 %for version in versions:

@@ -92,13 +92,13 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       [1] = {0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT}
    };
 
-   VkSubpassDescription subpass = {};
+   VkSubpassDescription subpass = {0};
    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
    subpass.colorAttachmentCount = state->num_cbufs;
    subpass.pColorAttachments = color_refs;
    subpass.pDepthStencilAttachment = state->have_zsbuf ? &zs_ref : NULL;
 
-   VkRenderPassCreateInfo rpci = {};
+   VkRenderPassCreateInfo rpci = {0};
    rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
    rpci.attachmentCount = num_attachments;
    rpci.pAttachments = attachments;

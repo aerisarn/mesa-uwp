@@ -232,7 +232,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
    if (!num_bindings && !push_count)
       return true;
 
-   VkDescriptorUpdateTemplateCreateInfo template[2] = {};
+   VkDescriptorUpdateTemplateCreateInfo template[2] = {0};
    VkDescriptorUpdateTemplateType types[2] = {
       VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET,
       have_push ? VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR : VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET
@@ -276,7 +276,7 @@ static VkDescriptorPool
 create_pool(struct zink_screen *screen, unsigned num_type_sizes, VkDescriptorPoolSize *sizes, unsigned flags)
 {
    VkDescriptorPool pool;
-   VkDescriptorPoolCreateInfo dpci = {};
+   VkDescriptorPoolCreateInfo dpci = {0};
    dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
    dpci.pPoolSizes = sizes;
    dpci.poolSizeCount = num_type_sizes;

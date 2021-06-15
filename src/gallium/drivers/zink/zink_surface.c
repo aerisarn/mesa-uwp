@@ -37,7 +37,7 @@ create_ivci(struct zink_screen *screen,
             const struct pipe_surface *templ,
             enum pipe_texture_target target)
 {
-   VkImageViewCreateInfo ivci = {};
+   VkImageViewCreateInfo ivci = {0};
    ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
    ivci.image = res->obj->image;
 
@@ -285,10 +285,10 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
 struct pipe_surface *
 zink_surface_create_null(struct zink_context *ctx, enum pipe_texture_target target, unsigned width, unsigned height, unsigned samples)
 {
-   struct pipe_surface surf_templ = {};
+   struct pipe_surface surf_templ = {0};
 
    struct pipe_resource *pres;
-   struct pipe_resource templ = {};
+   struct pipe_resource templ = {0};
    templ.width0 = width;
    templ.height0 = height;
    templ.depth0 = 1;

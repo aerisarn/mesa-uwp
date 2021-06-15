@@ -72,7 +72,7 @@ zink_init_framebuffer(struct zink_screen *screen, struct zink_framebuffer *fb, s
       goto out;
    }
 
-   VkFramebufferCreateInfo fci = {};
+   VkFramebufferCreateInfo fci = {0};
    fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
    fci.renderPass = rp->render_pass;
    fci.attachmentCount = fb->state.num_attachments;

@@ -41,14 +41,14 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
                          struct zink_gfx_pipeline_state *state,
                          VkPrimitiveTopology primitive_topology)
 {
-   VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
+   VkPipelineVertexInputStateCreateInfo vertex_input_state = {0};
    vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
    vertex_input_state.pVertexBindingDescriptions = state->element_state->bindings;
    vertex_input_state.vertexBindingDescriptionCount = state->element_state->num_bindings;
    vertex_input_state.pVertexAttributeDescriptions = state->element_state->attribs;
    vertex_input_state.vertexAttributeDescriptionCount = state->element_state->num_attribs;
 
-   VkPipelineVertexInputDivisorStateCreateInfoEXT vdiv_state = {};
+   VkPipelineVertexInputDivisorStateCreateInfoEXT vdiv_state = {0};
    if (state->element_state->divisors_present) {
        vertex_input_state.pNext = &vdiv_state;
        vdiv_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT;
@@ -56,7 +56,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
        vdiv_state.pVertexBindingDivisors = state->element_state->divisors;
    }
 
-   VkPipelineInputAssemblyStateCreateInfo primitive_state = {};
+   VkPipelineInputAssemblyStateCreateInfo primitive_state = {0};
    primitive_state.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
    primitive_state.topology = primitive_topology;
    switch (primitive_topology) {
@@ -74,14 +74,14 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       primitive_state.primitiveRestartEnable = state->primitive_restart ? VK_TRUE : VK_FALSE;
    }
 
-   VkPipelineColorBlendStateCreateInfo blend_state = {};
+   VkPipelineColorBlendStateCreateInfo blend_state = {0};
    blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
    blend_state.pAttachments = state->blend_state->attachments;
    blend_state.attachmentCount = state->num_attachments;
    blend_state.logicOpEnable = state->blend_state->logicop_enable;
    blend_state.logicOp = state->blend_state->logicop_func;
 
-   VkPipelineMultisampleStateCreateInfo ms_state = {};
+   VkPipelineMultisampleStateCreateInfo ms_state = {0};
    ms_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
    ms_state.rasterizationSamples = state->rast_samples;
    ms_state.alphaToCoverageEnable = state->blend_state->alpha_to_coverage;
@@ -92,14 +92,14 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       ms_state.minSampleShading = 1.0;
    }
 
-   VkPipelineViewportStateCreateInfo viewport_state = {};
+   VkPipelineViewportStateCreateInfo viewport_state = {0};
    viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
    viewport_state.viewportCount = state->num_viewports;
    viewport_state.pViewports = NULL;
    viewport_state.scissorCount = state->num_viewports;
    viewport_state.pScissors = NULL;
 
-   VkPipelineRasterizationStateCreateInfo rast_state = {};
+   VkPipelineRasterizationStateCreateInfo rast_state = {0};
    rast_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 
    rast_state.depthClampEnable = state->rast_state->depth_clamp;
@@ -123,7 +123,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       rast_state.pNext = &pv_state;
    }
 
-   VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
+   VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {0};
    depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
    depth_stencil_state.depthTestEnable = state->depth_stencil_alpha_state->depth_test;
    depth_stencil_state.depthCompareOp = state->depth_stencil_alpha_state->depth_compare_op;
@@ -163,12 +163,12 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_SCISSOR;
    }
 
-   VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {};
+   VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {0};
    pipelineDynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
    pipelineDynamicStateCreateInfo.pDynamicStates = dynamicStateEnables;
    pipelineDynamicStateCreateInfo.dynamicStateCount = state_count;
 
-   VkGraphicsPipelineCreateInfo pci = {};
+   VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
    pci.layout = prog->base.layout;
    pci.renderPass = state->render_pass->render_pass;
@@ -181,8 +181,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    pci.pDepthStencilState = &depth_stencil_state;
    pci.pDynamicState = &pipelineDynamicStateCreateInfo;
 
-   VkPipelineTessellationStateCreateInfo tci = {};
-   VkPipelineTessellationDomainOriginStateCreateInfo tdci = {};
+   VkPipelineTessellationStateCreateInfo tci = {0};
+   VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
    if (prog->shaders[PIPE_SHADER_TESS_CTRL] && prog->shaders[PIPE_SHADER_TESS_EVAL]) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       tci.patchControlPoints = state->vertices_per_patch;
@@ -198,7 +198,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       if (!prog->modules[i])
          continue;
 
-      VkPipelineShaderStageCreateInfo stage = {};
+      VkPipelineShaderStageCreateInfo stage = {0};
       stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
       stage.stage = zink_shader_stage(i);
       stage.module = prog->modules[i]->shader;
@@ -223,17 +223,17 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 VkPipeline
 zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_program *comp, struct zink_compute_pipeline_state *state)
 {
-   VkComputePipelineCreateInfo pci = {};
+   VkComputePipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
    pci.layout = comp->base.layout;
 
-   VkPipelineShaderStageCreateInfo stage = {};
+   VkPipelineShaderStageCreateInfo stage = {0};
    stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
    stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
    stage.module = comp->module->shader;
    stage.pName = "main";
 
-   VkSpecializationInfo sinfo = {};
+   VkSpecializationInfo sinfo = {0};
    VkSpecializationMapEntry me[3];
    if (state->use_local_size) {
       stage.pSpecializationInfo = &sinfo;

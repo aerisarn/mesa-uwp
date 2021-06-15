@@ -273,7 +273,7 @@ zink_create_query(struct pipe_context *pctx,
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_query *query = CALLOC_STRUCT(zink_query);
-   VkQueryPoolCreateInfo pool_create = {};
+   VkQueryPoolCreateInfo pool_create = {0};
 
    if (!query)
       return NULL;
@@ -853,7 +853,7 @@ zink_start_conditional_render(struct zink_context *ctx)
    VkConditionalRenderingFlagsEXT begin_flags = 0;
    if (ctx->render_condition.inverted)
       begin_flags = VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
-   VkConditionalRenderingBeginInfoEXT begin_info = {};
+   VkConditionalRenderingBeginInfoEXT begin_info = {0};
    begin_info.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
    begin_info.buffer = ctx->render_condition.query->predicate->obj->buffer;
    begin_info.flags = begin_flags;
@@ -1002,7 +1002,7 @@ zink_get_timestamp(struct pipe_context *pctx)
    struct zink_screen *screen = zink_screen(pctx->screen);
    uint64_t timestamp, deviation;
    assert(screen->info.have_EXT_calibrated_timestamps);
-   VkCalibratedTimestampInfoEXT cti = {};
+   VkCalibratedTimestampInfoEXT cti = {0};
    cti.sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT;
    cti.timeDomain = VK_TIME_DOMAIN_DEVICE_EXT;
    screen->vk.GetCalibratedTimestampsEXT(screen->dev, 1, &cti, &timestamp, &deviation);

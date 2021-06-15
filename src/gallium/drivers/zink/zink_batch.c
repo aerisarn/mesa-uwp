@@ -152,14 +152,14 @@ create_batch_state(struct zink_context *ctx)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch_state *bs = rzalloc(NULL, struct zink_batch_state);
    bs->have_timelines = ctx->have_timelines;
-   VkCommandPoolCreateInfo cpci = {};
+   VkCommandPoolCreateInfo cpci = {0};
    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
    cpci.queueFamilyIndex = screen->gfx_queue;
    cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
    if (vkCreateCommandPool(screen->dev, &cpci, NULL, &bs->cmdpool) != VK_SUCCESS)
       goto fail;
 
-   VkCommandBufferAllocateInfo cbai = {};
+   VkCommandBufferAllocateInfo cbai = {0};
    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
    cbai.commandPool = bs->cmdpool;
    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -191,7 +191,7 @@ create_batch_state(struct zink_context *ctx)
    if (!screen->batch_descriptor_init(screen, bs))
       goto fail;
 
-   VkFenceCreateInfo fci = {};
+   VkFenceCreateInfo fci = {0};
    fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
    if (vkCreateFence(screen->dev, &fci, NULL, &bs->fence.fence) != VK_SUCCESS)
@@ -276,7 +276,7 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
    zink_reset_batch(ctx, batch);
 
-   VkCommandBufferBeginInfo cbbi = {};
+   VkCommandBufferBeginInfo cbbi = {0};
    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
    if (vkBeginCommandBuffer(batch->state->cmdbuf, &cbbi) != VK_SUCCESS)
@@ -313,7 +313,7 @@ static void
 submit_queue(void *data, int thread_index)
 {
    struct zink_batch_state *bs = data;
-   VkSubmitInfo si = {};
+   VkSubmitInfo si = {0};
    uint64_t batch_id = bs->fence.batch_id;
    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
    si.waitSemaphoreCount = 0;
@@ -328,7 +328,7 @@ submit_queue(void *data, int thread_index)
    };
    si.pCommandBuffers = bs->has_barriers ? cmdbufs : &cmdbufs[1];
 
-   VkTimelineSemaphoreSubmitInfo tsi = {};
+   VkTimelineSemaphoreSubmitInfo tsi = {0};
    if (bs->have_timelines) {
       tsi.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
       si.pNext = &tsi;
@@ -360,7 +360,7 @@ submit_queue(void *data, int thread_index)
 static void
 copy_scanout(struct zink_context *ctx, struct zink_resource *res)
 {
-   VkImageCopy region = {};
+   VkImageCopy region = {0};
    struct pipe_box box = {0, 0, 0,
                           u_minify(res->base.b.width0, 0),
                           u_minify(res->base.b.height0, 0), res->base.b.array_size};

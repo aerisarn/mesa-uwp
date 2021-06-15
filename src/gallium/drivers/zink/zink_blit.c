@@ -58,7 +58,7 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
 
    zink_resource_setup_transfer_layouts(ctx, src, dst);
 
-   VkImageResolve region = {};
+   VkImageResolve region = {0};
 
    region.srcSubresource.aspectMask = src->aspect;
    region.srcSubresource.mipLevel = info->src.level;
@@ -164,7 +164,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    if (info->dst.resource->target == PIPE_BUFFER)
       util_range_add(info->dst.resource, &dst->valid_buffer_range,
                      info->dst.box.x, info->dst.box.x + info->dst.box.width);
-   VkImageBlit region = {};
+   VkImageBlit region = {0};
    region.srcSubresource.aspectMask = src->aspect;
    region.srcSubresource.mipLevel = info->src.level;
    region.srcOffsets[0].x = info->src.box.x;

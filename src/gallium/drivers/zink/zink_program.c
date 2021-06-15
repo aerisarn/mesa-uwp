@@ -207,7 +207,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
 {
    gl_shader_stage stage = zs->nir->info.stage;
    enum pipe_shader_type pstage = pipe_shader_type_from_mesa(stage);
-   struct zink_shader_key key = {};
+   struct zink_shader_key key = {0};
    VkShaderModule mod;
    struct zink_shader_module *zm;
    struct zink_shader_module **default_zm = NULL;
@@ -495,13 +495,13 @@ zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog)
 VkPipelineLayout
 zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg)
 {
-   VkPipelineLayoutCreateInfo plci = {};
+   VkPipelineLayoutCreateInfo plci = {0};
    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
    plci.pSetLayouts = pg->dsl;
    plci.setLayoutCount = pg->num_dsl;
 
-   VkPushConstantRange pcr[2] = {};
+   VkPushConstantRange pcr[2] = {0};
    if (pg->is_compute) {
       if (((struct zink_compute_program*)pg)->shader->nir->info.stage == MESA_SHADER_KERNEL) {
          pcr[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;

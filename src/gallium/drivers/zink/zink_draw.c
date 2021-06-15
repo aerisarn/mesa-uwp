@@ -67,9 +67,9 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_batch *batch = &ctx->batch;
-   VkBuffer buffers[PIPE_MAX_SO_OUTPUTS] = {};
-   VkDeviceSize buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
-   VkDeviceSize buffer_sizes[PIPE_MAX_SO_OUTPUTS] = {};
+   VkBuffer buffers[PIPE_MAX_SO_OUTPUTS] = {0};
+   VkDeviceSize buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {0};
+   VkDeviceSize buffer_sizes[PIPE_MAX_SO_OUTPUTS] = {0};
 
    for (unsigned i = 0; i < ctx->num_so_targets; i++) {
       struct zink_so_target *t = (struct zink_so_target *)ctx->so_targets[i];

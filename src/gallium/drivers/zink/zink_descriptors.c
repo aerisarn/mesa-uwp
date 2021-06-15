@@ -252,7 +252,7 @@ descriptor_pool_create(struct zink_screen *screen, enum zink_descriptor_type typ
 
    util_dynarray_init(&pool->alloc_desc_sets, NULL);
 
-   VkDescriptorPoolCreateInfo dpci = {};
+   VkDescriptorPoolCreateInfo dpci = {0};
    dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
    dpci.pPoolSizes = sizes;
    dpci.poolSizeCount = num_type_sizes;
@@ -273,10 +273,10 @@ static VkDescriptorSetLayout
 descriptor_layout_create(struct zink_screen *screen, enum zink_descriptor_type t, VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings)
 {
    VkDescriptorSetLayout dsl;
-   VkDescriptorSetLayoutCreateInfo dcslci = {};
+   VkDescriptorSetLayoutCreateInfo dcslci = {0};
    dcslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
    dcslci.pNext = NULL;
-   VkDescriptorSetLayoutBindingFlagsCreateInfo fci = {};
+   VkDescriptorSetLayoutBindingFlagsCreateInfo fci = {0};
    VkDescriptorBindingFlags flags[num_bindings];
    if (screen->lazy_descriptors) {
       /* FIXME */
@@ -754,9 +754,9 @@ bool
 zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
 {
    VkDescriptorSetLayoutBinding bindings[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 32];
-   unsigned num_bindings[ZINK_DESCRIPTOR_TYPES] = {};
+   unsigned num_bindings[ZINK_DESCRIPTOR_TYPES] = {0};
 
-   VkDescriptorPoolSize sizes[6] = {};
+   VkDescriptorPoolSize sizes[6] = {0};
    int type_map[12];
    unsigned num_types = 0;
    memset(type_map, -1, sizeof(type_map));
@@ -809,7 +809,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       sizes[i].descriptorCount *= ZINK_DEFAULT_MAX_DESCS;
 
    bool found_descriptors = false;
-   struct zink_descriptor_layout_key *layout_key[ZINK_DESCRIPTOR_TYPES] = {};
+   struct zink_descriptor_layout_key *layout_key[ZINK_DESCRIPTOR_TYPES] = {0};
    for (unsigned i = ZINK_DESCRIPTOR_TYPES - 1; i < ZINK_DESCRIPTOR_TYPES; i--) {
       if (!num_bindings[i]) {
          if (!found_descriptors)
@@ -835,7 +835,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       }
       found_descriptors = true;
 
-      VkDescriptorPoolSize type_sizes[2] = {};
+      VkDescriptorPoolSize type_sizes[2] = {0};
       int num_type_sizes = 0;
       switch (i) {
       case ZINK_DESCRIPTOR_TYPE_UBO:

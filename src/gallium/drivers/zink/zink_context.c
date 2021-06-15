@@ -282,8 +282,8 @@ zink_create_sampler_state(struct pipe_context *pctx,
    struct zink_screen *screen = zink_screen(pctx->screen);
    bool need_custom = false;
 
-   VkSamplerCreateInfo sci = {};
-   VkSamplerCustomBorderColorCreateInfoEXT cbci = {};
+   VkSamplerCreateInfo sci = {0};
+   VkSamplerCustomBorderColorCreateInfoEXT cbci = {0};
    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
    sci.magFilter = zink_filter(state->mag_img_filter);
    sci.minFilter = zink_filter(state->min_img_filter);
@@ -593,7 +593,7 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_f
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_buffer_view *buffer_view = NULL;
-   VkBufferViewCreateInfo bvci = {};
+   VkBufferViewCreateInfo bvci = {0};
    bvci.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
    bvci.buffer = res->obj->buffer;
    bvci.format = zink_get_format(screen, format);
@@ -675,7 +675,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
    if (state->target != PIPE_BUFFER) {
       VkImageViewCreateInfo ivci;
 
-      struct pipe_surface templ = {};
+      struct pipe_surface templ = {0};
       templ.u.tex.level = state->u.tex.first_level;
       templ.format = state->format;
       if (state->target != PIPE_TEXTURE_3D) {
@@ -1208,7 +1208,7 @@ zink_set_shader_images(struct pipe_context *pctx,
             zink_resource_buffer_barrier(ctx, NULL, res, access,
                                          zink_pipeline_flags_from_stage(zink_shader_stage(p_stage)));
          } else {
-            struct pipe_surface tmpl = {};
+            struct pipe_surface tmpl = {0};
             tmpl.format = images[i].format;
             tmpl.nr_samples = 1;
             tmpl.u.tex.level = images[i].u.tex.level;
@@ -1469,9 +1469,9 @@ static struct zink_framebuffer *
 get_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   struct pipe_surface *attachments[PIPE_MAX_COLOR_BUFS + 1] = {};
+   struct pipe_surface *attachments[PIPE_MAX_COLOR_BUFS + 1] = {0};
 
-   struct zink_framebuffer_state state = {};
+   struct zink_framebuffer_state state = {0};
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
       state.attachments[i] = psurf ? zink_surface(psurf)->image_view : VK_NULL_HANDLE;
@@ -1560,7 +1560,7 @@ begin_render_pass(struct zink_context *ctx)
    struct zink_batch *batch = &ctx->batch;
    struct pipe_framebuffer_state *fb_state = &ctx->fb_state;
 
-   VkRenderPassBeginInfo rpbi = {};
+   VkRenderPassBeginInfo rpbi = {0};
    rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
    rpbi.renderPass = ctx->gfx_pipeline_state.render_pass->render_pass;
    rpbi.renderArea.offset.x = 0;
@@ -1568,7 +1568,7 @@ begin_render_pass(struct zink_context *ctx)
    rpbi.renderArea.extent.width = fb_state->width;
    rpbi.renderArea.extent.height = fb_state->height;
 
-   VkClearValue clears[PIPE_MAX_COLOR_BUFS + 1] = {};
+   VkClearValue clears[PIPE_MAX_COLOR_BUFS + 1] = {0};
    unsigned clear_buffers = 0;
    uint32_t clear_validate = 0;
    for (int i = 0; i < fb_state->nr_cbufs; i++) {
@@ -2759,7 +2759,7 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_batch *batch, struc
       util_range_add(&dst->base.b, &dst->valid_buffer_range, dstx, dstx + src_box->width);
    }
 
-   VkBufferImageCopy region = {};
+   VkBufferImageCopy region = {0};
    region.bufferOffset = buf2img ? src_box->x : dstx;
    region.bufferRowLength = 0;
    region.bufferImageHeight = 0;
@@ -2842,7 +2842,7 @@ zink_resource_copy_region(struct pipe_context *pctx,
    struct zink_resource *src = zink_resource(psrc);
    struct zink_context *ctx = zink_context(pctx);
    if (dst->base.b.target != PIPE_BUFFER && src->base.b.target != PIPE_BUFFER) {
-      VkImageCopy region = {};
+      VkImageCopy region = {0};
       if (util_format_get_num_planes(src->base.b.format) == 1 &&
           util_format_get_num_planes(dst->base.b.format) == 1) {
       /* If neither the calling command’s srcImage nor the calling command’s dstImage
