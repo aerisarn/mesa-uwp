@@ -78,7 +78,7 @@ struct zink_shader {
       int binding;
       VkDescriptorType type;
       unsigned char size;
-   } bindings[ZINK_DESCRIPTOR_TYPES][32];
+   } bindings[ZINK_DESCRIPTOR_TYPES][ZINK_MAX_DESCRIPTORS_PER_TYPE];
    size_t num_bindings[ZINK_DESCRIPTOR_TYPES];
    unsigned num_texel_buffers;
    uint32_t ubos_used; // bitfield of which ubo indices are used
