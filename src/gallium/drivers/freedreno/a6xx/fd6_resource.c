@@ -105,11 +105,26 @@ can_do_ubwc(struct pipe_resource *prsc)
 }
 
 static bool
+is_norm(enum pipe_format format)
+{
+   const struct util_format_description *desc = util_format_description(format);
+
+   return desc->is_snorm || desc->is_unorm;
+}
+
+static bool
 valid_format_cast(struct fd_resource *rsc, enum pipe_format format)
 {
    /* Special case "casting" format in hw: */
    if (format == PIPE_FORMAT_Z24_UNORM_S8_UINT_AS_R8G8B8A8)
       return true;
+
+   /* For some color values (just "solid white") compression metadata maps to
+    * different pixel values for uint/sint vs unorm/snorm, so we can't reliably
+    * "cast" u/snorm to u/sint and visa versa:
+    */
+   if (is_norm(format) != is_norm(rsc->b.b.format))
+      return false;
 
    /* The UBWC formats can be re-interpreted so long as the components
     * have the same # of bits

@@ -246,10 +246,6 @@ spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG32UI- swizzled
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8I- swizzled- border color only,Fail
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8UI- swizzled- border color only,Fail
 spec@arb_texture_view@bug-layers-image,Crash
-spec@arb_texture_view@rendering-formats@clear GL_RGB10_A2UI as GL_RGB10_A2,Fail
-spec@arb_texture_view@rendering-formats@clear GL_RGBA8I as GL_RGBA8,Fail
-spec@arb_texture_view@rendering-formats@clear GL_RGBA8UI as GL_RGBA8,Fail
-spec@arb_texture_view@rendering-formats,Fail
 spec@arb_texture_view@rendering-layers-image,Fail
 spec@arb_texture_view@rendering-layers-image@layers rendering of image1DArray,Fail
 spec@arb_texture_view@rendering-layers-image@layers rendering of imageCubeArray,Fail
@@ -597,10 +593,6 @@ spec@nv_primitive_restart@primitive-restart-draw-mode-polygon,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-quads,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-quad_strip,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
-spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2UI as GL_RGB10_A2,Fail
-spec@oes_texture_view@rendering-formats@clear GL_RGBA8I as GL_RGBA8,Fail
-spec@oes_texture_view@rendering-formats@clear GL_RGBA8UI as GL_RGBA8,Fail
-spec@oes_texture_view@rendering-formats,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag-quads,Crash
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
