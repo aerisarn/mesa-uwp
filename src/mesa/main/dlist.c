@@ -800,8 +800,10 @@ vbo_destroy_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *nod
       free(node->prim_store);
    }
 
-   free(node->merged.mode);
-   free(node->merged.start_count);
+   if (node->merged.mode) {
+      free(node->merged.mode);
+      free(node->merged.start_counts);
+   }
 
    _mesa_reference_buffer_object(ctx, &node->merged.ib.obj, NULL);
    free(node->current_data);

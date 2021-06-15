@@ -809,20 +809,21 @@ compile_vertex_list(struct gl_context *ctx)
    node->merged.info.index_size = 4;
    node->merged.info.instance_count = 1;
    node->merged.info.index.gl_bo = node->merged.ib.obj;
-   node->merged.start_count = malloc(merged_prim_count * sizeof(struct pipe_draw_start_count_bias));
    if (merged_prim_count == 1) {
       node->merged.info.mode = merged_prims[0].mode;
+      node->merged.start_count.start = merged_prims[0].start;
+      node->merged.start_count.count = merged_prims[0].count;
+      node->merged.start_count.index_bias = 0;
       node->merged.mode = NULL;
    } else {
       node->merged.mode = malloc(merged_prim_count * sizeof(unsigned char));
-   }
-
-   for (unsigned i = 0; i < merged_prim_count; i++) {
-      node->merged.start_count[i].start = merged_prims[i].start;
-      node->merged.start_count[i].count = merged_prims[i].count;
-      node->merged.start_count[i].index_bias = 0;
-      if (merged_prim_count > 1)
+      node->merged.start_counts = malloc(merged_prim_count * sizeof(struct pipe_draw_start_count_bias));
+      for (unsigned i = 0; i < merged_prim_count; i++) {
+         node->merged.start_counts[i].start = merged_prims[i].start;
+         node->merged.start_counts[i].count = merged_prims[i].count;
+         node->merged.start_counts[i].index_bias = 0;
          node->merged.mode[i] = merged_prims[i].mode;
+      }
    }
    node->merged.num_draws = merged_prim_count;
    if (node->merged.num_draws > 1) {
