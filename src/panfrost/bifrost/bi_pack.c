@@ -36,13 +36,16 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool tdd
         unsigned dependency_wait = next_1 ? next_1->dependencies : 0;
         dependency_wait |= next_2 ? next_2->dependencies : 0;
 
+        bool staging_barrier = next_1 ? next_1->staging_barrier : false;
+        staging_barrier |= next_2 ? next_2->staging_barrier : 0;
+
         struct bifrost_header header = {
                 .flow_control =
                         (next_1 == NULL && next_2 == NULL) ?
                         BIFROST_FLOW_END :  clause->flow_control,
                 .terminate_discarded_threads = tdd,
                 .next_clause_prefetch = clause->next_clause_prefetch && next_1,
-                .staging_barrier = clause->staging_barrier,
+                .staging_barrier = staging_barrier,
                 .staging_register = clause->staging_register,
                 .dependency_wait = dependency_wait,
                 .dependency_slot = clause->scoreboard_id,
