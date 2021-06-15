@@ -178,6 +178,29 @@ vn_instance_init_ring(struct vn_instance *instance)
    return VK_SUCCESS;
 }
 
+static void
+vn_instance_init_experimental_features(struct vn_instance *instance)
+{
+   if (instance->renderer_info.vk_mesa_venus_protocol_spec_version !=
+       100000) {
+      if (VN_DEBUG(INIT))
+         vn_log(instance, "renderer supports no experimental features");
+      return;
+   }
+
+   size_t size = sizeof(instance->experimental);
+   vn_call_vkGetVenusExperimentalFeatureData100000MESA(
+      instance, &size, &instance->experimental);
+   if (VN_DEBUG(INIT)) {
+      vn_log(instance,
+             "VkVenusExperimentalFeatures100000MESA is as below:"
+             "\n\tmemoryResourceAllocationSize = %u"
+             "\n\tglobalFencing = %u",
+             instance->experimental.memoryResourceAllocationSize,
+             instance->experimental.globalFencing);
+   }
+}
+
 static VkResult
 vn_instance_init_renderer(struct vn_instance *instance)
 {
@@ -1923,12 +1946,7 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    if (result != VK_SUCCESS)
       goto fail;
 
-   if (instance->renderer_info.vk_mesa_venus_protocol_spec_version ==
-       100000) {
-      size_t size = sizeof(instance->experimental);
-      vn_call_vkGetVenusExperimentalFeatureData100000MESA(
-         instance, &size, &instance->experimental);
-   }
+   vn_instance_init_experimental_features(instance);
 
    result = vn_instance_init_renderer_versions(instance);
    if (result != VK_SUCCESS)
