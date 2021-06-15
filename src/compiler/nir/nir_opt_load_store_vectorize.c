@@ -1059,6 +1059,10 @@ check_for_robustness(struct vectorize_ctx *ctx, struct entry *low, uint64_t high
    if (!addition_wraps(max_low, high_offset, 64))
       return false;
 
+   /* We can't obtain addition_bits */
+   if (low->info->base_src < 0)
+      return true;
+
    /* Second, use information about the factors from address calculation (offset_defs_mul). These
     * are not guaranteed to be power-of-2.
     */

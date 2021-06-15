@@ -1935,6 +1935,26 @@ TEST_F(nir_load_store_vectorize_test, ssbo_offset_overflow_robust_indirect_strid
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 1);
 }
 
+TEST_F(nir_load_store_vectorize_test, shared_offset_overflow_robust_indirect_stride12)
+{
+   nir_variable *var = nir_variable_create(b->shader, nir_var_mem_shared,
+                                           glsl_array_type(glsl_uint_type(), 4, 0), "var");
+   nir_deref_instr *deref = nir_build_deref_var(b, var);
+
+   nir_ssa_def *index = nir_load_local_invocation_index(b);
+   index = nir_imul_imm(b, index, 3);
+   create_shared_load(nir_build_deref_array(b, deref, index), 0x1);
+   create_shared_load(nir_build_deref_array(b, deref, nir_iadd_imm(b, index, 1)), 0x2);
+   create_shared_load(nir_build_deref_array(b, deref, nir_iadd_imm(b, index, 2)), 0x3);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 3);
+
+   EXPECT_FALSE(run_vectorizer(nir_var_mem_shared, false, nir_var_mem_shared));
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 3);
+}
+
 TEST_F(nir_load_store_vectorize_test, ubo_alignment_16_4)
 {
    nir_ssa_def *offset = nir_load_local_invocation_index(b);
