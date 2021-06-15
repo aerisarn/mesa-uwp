@@ -557,9 +557,9 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
       memset(ctx->tracked_regs.spi_ps_input_cntl, 0xff, sizeof(uint32_t) * 32);
    }
 
-   si_mark_atom_dirty(ctx, &ctx->atoms.s.scratch_state);
    if (ctx->scratch_buffer) {
       si_context_add_resource_size(ctx, &ctx->scratch_buffer->b.b);
+      si_mark_atom_dirty(ctx, &ctx->atoms.s.scratch_state);
    }
 
    if (ctx->streamout.suspended) {
