@@ -3102,12 +3102,20 @@ vn_queue_init(struct vn_device *dev,
    queue->index = queue_index;
    queue->flags = queue_info->flags;
 
-   VkResult result =
-      vn_CreateFence(vn_device_to_handle(dev),
-                     &(const VkFenceCreateInfo){
-                        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-                     },
-                     NULL, &queue->wait_fence);
+   const VkExportFenceCreateInfo export_fence_info = {
+      .sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
+      .pNext = NULL,
+      .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
+   };
+   const VkFenceCreateInfo fence_info = {
+      .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+      .pNext = dev->instance->experimental.globalFencing == VK_TRUE
+                  ? &export_fence_info
+                  : NULL,
+      .flags = 0,
+   };
+   VkResult result = vn_CreateFence(vn_device_to_handle(dev), &fence_info,
+                                    NULL, &queue->wait_fence);
    if (result != VK_SUCCESS)
       return result;
 

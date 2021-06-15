@@ -629,28 +629,26 @@ vn_QueueSignalReleaseImageANDROID(VkQueue queue,
                                   VkImage image,
                                   int *pNativeFenceFd)
 {
-   /* At this moment, the wait semaphores are converted to a VkFence via an
-    * empty submit. The VkFence is then waited inside until signaled, and the
-    * out native fence fd is set to -1.
-    */
-   VkResult result = VK_SUCCESS;
    struct vn_queue *que = vn_queue_from_handle(queue);
-   const VkAllocationCallbacks *alloc = &que->device->base.base.alloc;
-   VkDevice device = vn_device_to_handle(que->device);
+   struct vn_device *dev = que->device;
+   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+   VkDevice device = vn_device_to_handle(dev);
    VkPipelineStageFlags local_stage_masks[8];
    VkPipelineStageFlags *stage_masks = local_stage_masks;
+   VkResult result = VK_SUCCESS;
+   int fd = -1;
 
-   if (waitSemaphoreCount == 0)
-      goto out;
+   if (waitSemaphoreCount == 0) {
+      *pNativeFenceFd = -1;
+      return VK_SUCCESS;
+   }
 
    if (waitSemaphoreCount > ARRAY_SIZE(local_stage_masks)) {
       stage_masks =
-         vk_alloc(alloc, sizeof(VkPipelineStageFlags) * waitSemaphoreCount,
+         vk_alloc(alloc, sizeof(*stage_masks) * waitSemaphoreCount,
                   VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-      if (!stage_masks) {
-         result = VK_ERROR_OUT_OF_HOST_MEMORY;
-         goto out;
-      }
+      if (!stage_masks)
+         return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    for (uint32_t i = 0; i < waitSemaphoreCount; i++)
@@ -667,17 +665,44 @@ vn_QueueSignalReleaseImageANDROID(VkQueue queue,
       .signalSemaphoreCount = 0,
       .pSignalSemaphores = NULL,
    };
-   result = vn_QueueSubmit(queue, 1, &submit_info, que->wait_fence);
+   /* XXX When globalFencing is supported, our implementation is not able to
+    * reset the fence during vn_GetFenceFdKHR currently. Thus to ensure proper
+    * host driver behavior, we pass VK_NULL_HANDLE here.
+    */
+   result = vn_QueueSubmit(
+      queue, 1, &submit_info,
+      dev->instance->experimental.globalFencing == VK_TRUE ? VK_NULL_HANDLE
+                                                           : que->wait_fence);
+
+   if (stage_masks != local_stage_masks)
+      vk_free(alloc, stage_masks);
+
    if (result != VK_SUCCESS)
-      goto out;
+      return vn_error(dev->instance, result);
 
-   result =
-      vn_WaitForFences(device, 1, &que->wait_fence, VK_TRUE, UINT64_MAX);
-   vn_ResetFences(device, 1, &que->wait_fence);
+   if (dev->instance->experimental.globalFencing == VK_TRUE) {
+      const VkFenceGetFdInfoKHR fd_info = {
+         .sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR,
+         .pNext = NULL,
+         .fence = que->wait_fence,
+         .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
+      };
+      result = vn_GetFenceFdKHR(device, &fd_info, &fd);
+   } else {
+      result =
+         vn_WaitForFences(device, 1, &que->wait_fence, VK_TRUE, UINT64_MAX);
+      if (result != VK_SUCCESS)
+         return vn_error(dev->instance, result);
 
-out:
-   *pNativeFenceFd = -1;
-   return result;
+      result = vn_ResetFences(device, 1, &que->wait_fence);
+   }
+
+   if (result != VK_SUCCESS)
+      return vn_error(dev->instance, result);
+
+   *pNativeFenceFd = fd;
+
+   return VK_SUCCESS;
 }
 
 static VkResult
