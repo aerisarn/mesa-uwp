@@ -344,7 +344,7 @@ if with_tests
     )
   endif
 
-  foreach t: ['bitset', 'register_allocate', 'u_debug_stack']
+  foreach t: ['bitset', 'register_allocate', 'u_debug_stack', 'u_qsort']
     test(
       t,
       executable(
