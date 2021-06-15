@@ -672,7 +672,7 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc,
 
    if (usage & PIPE_MAP_WRITE) {
       struct fd_batch *batch, *batches[32] = {};
-      uint32_t batch_mask;
+      uint32_t batch_count = 0;
 
       /* This is a bit awkward, probably a fd_batch_flush_locked()
        * would make things simpler.. but we need to hold the lock
@@ -680,18 +680,14 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc,
        * we must first grab references under a lock, then flush.
        */
       fd_screen_lock(ctx->screen);
-      batch_mask = rsc->track->batch_mask;
-      foreach_batch (batch, &ctx->screen->batch_cache, batch_mask)
-         fd_batch_reference_locked(&batches[batch->idx], batch);
+      foreach_batch (batch, &ctx->screen->batch_cache, rsc->track->batch_mask)
+         fd_batch_reference_locked(&batches[batch_count++], batch);
       fd_screen_unlock(ctx->screen);
 
-      foreach_batch (batch, &ctx->screen->batch_cache, batch_mask)
-         fd_batch_flush(batch);
-
-      foreach_batch (batch, &ctx->screen->batch_cache, batch_mask) {
-         fd_batch_reference(&batches[batch->idx], NULL);
+      for (int i = 0; i < batch_count; i++) {
+         fd_batch_flush(batches[i]);
+         fd_batch_reference(&batches[i], NULL);
       }
-      assert(rsc->track->batch_mask == 0);
    } else if (write_batch) {
       fd_batch_flush(write_batch);
    }
