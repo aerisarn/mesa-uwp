@@ -67,6 +67,8 @@ void fd_bc_init(struct fd_batch_cache *cache);
 void fd_bc_fini(struct fd_batch_cache *cache);
 
 void fd_bc_flush(struct fd_context *ctx, bool deferred) assert_dt;
+void fd_bc_flush_writer(struct fd_context *ctx, struct fd_resource *rsc) assert_dt;
+void fd_bc_flush_readers(struct fd_context *ctx, struct fd_resource *rsc) assert_dt;
 void fd_bc_dump(struct fd_context *ctx, const char *fmt, ...)
    _util_printf_format(2, 3);
 

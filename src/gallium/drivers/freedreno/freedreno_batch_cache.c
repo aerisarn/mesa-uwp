@@ -194,6 +194,49 @@ fd_bc_flush(struct fd_context *ctx, bool deferred) assert_dt
    }
 }
 
+/**
+ * Flushes the batch (if any) writing this resource.  Must not hold the screen
+ * lock.
+ */
+void
+fd_bc_flush_writer(struct fd_context *ctx, struct fd_resource *rsc) assert_dt
+{
+   fd_screen_lock(ctx->screen);
+   struct fd_batch *write_batch = NULL;
+   fd_batch_reference_locked(&write_batch, rsc->track->write_batch);
+   fd_screen_unlock(ctx->screen);
+
+   if (write_batch) {
+      fd_batch_flush(write_batch);
+      fd_batch_reference(&write_batch, NULL);
+   }
+}
+
+/**
+ * Flushes any batches reading this resource.  Must not hold the screen lock.
+ */
+void
+fd_bc_flush_readers(struct fd_context *ctx, struct fd_resource *rsc) assert_dt
+{
+   struct fd_batch *batch, *batches[32] = {};
+   uint32_t batch_count = 0;
+
+   /* This is a bit awkward, probably a fd_batch_flush_locked()
+    * would make things simpler.. but we need to hold the lock
+    * to iterate the batches which reference this resource.  So
+    * we must first grab references under a lock, then flush.
+    */
+   fd_screen_lock(ctx->screen);
+   foreach_batch (batch, &ctx->screen->batch_cache, rsc->track->batch_mask)
+      fd_batch_reference_locked(&batches[batch_count++], batch);
+   fd_screen_unlock(ctx->screen);
+
+   for (int i = 0; i < batch_count; i++) {
+      fd_batch_flush(batches[i]);
+      fd_batch_reference(&batches[i], NULL);
+   }
+}
+
 void
 fd_bc_dump(struct fd_context *ctx, const char *fmt, ...)
 {
