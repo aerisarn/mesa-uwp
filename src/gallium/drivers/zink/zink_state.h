@@ -65,6 +65,8 @@ struct zink_rasterizer_hw_state {
    bool force_persample_interp:1;
    bool clip_halfz:1;
 };
+#define ZINK_RAST_HW_STATE_SIZE 12
+
 
 struct zink_rasterizer_state {
    struct pipe_rasterizer_state base;

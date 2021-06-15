@@ -27,6 +27,7 @@
 #include <vulkan/vulkan.h>
 
 #include "pipe/p_state.h"
+#include "zink_state.h"
 
 struct zink_blend_state;
 struct zink_depth_stencil_alpha_state;
@@ -43,7 +44,7 @@ struct zink_gfx_pipeline_state {
    uint8_t void_alpha_attachments:PIPE_MAX_COLOR_BUFS;
    struct zink_blend_state *blend_state;
 
-   struct zink_rasterizer_hw_state *rast_state;
+   uint32_t rast_state : ZINK_RAST_HW_STATE_SIZE; //zink_rasterizer_hw_state
 
    VkSampleMask sample_mask;
    uint8_t rast_samples:7;

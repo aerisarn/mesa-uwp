@@ -51,6 +51,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
                          struct zink_gfx_pipeline_state *state,
                          VkPrimitiveTopology primitive_topology)
 {
+   struct zink_rasterizer_hw_state *hw_rast_state = (void*)state;
    VkPipelineVertexInputStateCreateInfo vertex_input_state;
    if (!screen->info.have_EXT_vertex_input_dynamic_state) {
       memset(&vertex_input_state, 0, sizeof(vertex_input_state));
@@ -118,7 +119,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    ms_state.alphaToCoverageEnable = state->blend_state->alpha_to_coverage;
    ms_state.alphaToOneEnable = state->blend_state->alpha_to_one;
    ms_state.pSampleMask = state->sample_mask ? &state->sample_mask : NULL;
-   if (state->rast_state->force_persample_interp) {
+   if (hw_rast_state->force_persample_interp) {
       ms_state.sampleShadingEnable = VK_TRUE;
       ms_state.minSampleShading = 1.0;
    }
@@ -133,10 +134,10 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkPipelineRasterizationStateCreateInfo rast_state = {0};
    rast_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 
-   rast_state.depthClampEnable = state->rast_state->depth_clamp;
-   rast_state.rasterizerDiscardEnable = state->rast_state->rasterizer_discard;
-   rast_state.polygonMode = state->rast_state->polygon_mode;
-   rast_state.cullMode = state->rast_state->cull_mode;
+   rast_state.depthClampEnable = hw_rast_state->depth_clamp;
+   rast_state.rasterizerDiscardEnable = hw_rast_state->rasterizer_discard;
+   rast_state.polygonMode = hw_rast_state->polygon_mode;
+   rast_state.cullMode = hw_rast_state->cull_mode;
    rast_state.frontFace = state->dyn_state1.front_face;
 
    rast_state.depthBiasEnable = VK_TRUE;
@@ -147,10 +148,10 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkPipelineRasterizationProvokingVertexStateCreateInfoEXT pv_state;
    pv_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT;
-   pv_state.provokingVertexMode = state->rast_state->pv_last ?
+   pv_state.provokingVertexMode = hw_rast_state->pv_last ?
                                   VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT :
                                   VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT;
-   if (screen->info.have_EXT_provoking_vertex && state->rast_state->pv_last) {
+   if (screen->info.have_EXT_provoking_vertex && hw_rast_state->pv_last) {
       pv_state.pNext = rast_state.pNext;
       rast_state.pNext = &pv_state;
    }
@@ -206,9 +207,9 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       rast_line_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT;
       rast_line_state.pNext = rast_state.pNext;
       rast_line_state.stippledLineEnable = VK_FALSE;
-      rast_line_state.lineRasterizationMode = state->rast_state->line_mode;
+      rast_line_state.lineRasterizationMode = hw_rast_state->line_mode;
 
-      if (state->rast_state->line_stipple_enable) {
+      if (hw_rast_state->line_stipple_enable) {
          dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_EXT;
          rast_line_state.stippledLineEnable = VK_TRUE;
       }

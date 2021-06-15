@@ -550,20 +550,21 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
    bool clip_halfz = ctx->rast_state ? ctx->rast_state->base.clip_halfz : false;
    bool point_quad_rasterization = ctx->rast_state ? ctx->rast_state->base.point_quad_rasterization : false;
    bool scissor = ctx->rast_state ? ctx->rast_state->base.scissor : false;
+   bool pv_last = ctx->rast_state ? ctx->rast_state->hw_state.pv_last : false;
    ctx->rast_state = cso;
 
    if (ctx->rast_state) {
-      if (ctx->gfx_pipeline_state.rast_state != &ctx->rast_state->hw_state) {
-         if (screen->info.have_EXT_provoking_vertex &&
-             (!ctx->gfx_pipeline_state.rast_state ||
-              ctx->gfx_pipeline_state.rast_state->pv_last != ctx->rast_state->hw_state.pv_last) &&
-             /* without this prop, change in pv mode requires new rp */
-             !screen->info.pv_props.provokingVertexModePerPipeline)
-            zink_batch_no_rp(ctx);
-         ctx->gfx_pipeline_state.rast_state = &ctx->rast_state->hw_state;
-         ctx->gfx_pipeline_state.dirty = true;
-         ctx->rast_state_changed = true;
-      }
+      if (screen->info.have_EXT_provoking_vertex &&
+          pv_last != ctx->rast_state->hw_state.pv_last &&
+          /* without this prop, change in pv mode requires new rp */
+          !screen->info.pv_props.provokingVertexModePerPipeline)
+         zink_batch_no_rp(ctx);
+      uint32_t rast_bits = 0;
+      memcpy(&rast_bits, &ctx->rast_state->hw_state, sizeof(struct zink_rasterizer_hw_state));
+      ctx->gfx_pipeline_state.rast_state = rast_bits & BITFIELD_MASK(ZINK_RAST_HW_STATE_SIZE);
+
+      ctx->gfx_pipeline_state.dirty = true;
+      ctx->rast_state_changed = true;
 
       if (clip_halfz != ctx->rast_state->base.clip_halfz) {
          ctx->last_vertex_stage_dirty = true;
