@@ -5530,6 +5530,44 @@ emit_push_constant_packet_all(struct iris_context *ice,
 }
 #endif
 
+void
+genX(emit_depth_state_workarounds)(struct iris_context *ice,
+                                   struct iris_batch *batch,
+                                   const struct isl_surf *surf)
+{
+#if GFX_VERx10 == 120
+   const bool fmt_is_d16 = surf->format == ISL_FORMAT_R16_UNORM;
+
+   /* We'll change some CHICKEN registers depending on the depth surface
+    * format. Do a depth flush and stall so the pipeline is not using these
+    * settings while we change the registers.
+    */
+   iris_emit_end_of_pipe_sync(batch,
+                              "Workaround: Stop pipeline for 14010455700",
+                              PIPE_CONTROL_DEPTH_STALL |
+                              PIPE_CONTROL_DEPTH_CACHE_FLUSH);
+
+   /* Wa_14010455700
+    *
+    * To avoid sporadic corruptions “Set 0x7010[9] when Depth Buffer
+    * Surface Format is D16_UNORM , surface type is not NULL & 1X_MSAA”.
+    */
+   iris_emit_reg(batch, GENX(COMMON_SLICE_CHICKEN1), reg) {
+      reg.HIZPlaneOptimizationdisablebit = fmt_is_d16 && surf->samples == 1;
+      reg.HIZPlaneOptimizationdisablebitMask = true;
+   }
+
+   /* Wa_1806527549
+    *
+    * Set HIZ_CHICKEN (7018h) bit 13 = 1 when depth buffer is D16_UNORM.
+    */
+   iris_emit_reg(batch, GENX(HIZ_CHICKEN), reg) {
+      reg.HZDepthTestLEGEOptimizationDisable = fmt_is_d16;
+      reg.HZDepthTestLEGEOptimizationDisableMask = true;
+   }
+#endif
+}
+
 static void
 iris_upload_dirty_render_state(struct iris_context *ice,
                                struct iris_batch *batch,
