@@ -266,10 +266,6 @@ isl_device_init(struct isl_device *dev,
       dev->ds.hiz_offset = 0;
    }
 
-   if (ISL_GFX_VERX10(dev) == 120) {
-      dev->ds.size += GFX12_MI_LOAD_REGISTER_IMM_length * 4 * 2;
-   }
-
    isl_device_setup_mocs(dev);
 }
 

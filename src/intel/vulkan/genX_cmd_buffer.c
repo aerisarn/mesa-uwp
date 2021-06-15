@@ -5855,6 +5855,9 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
 
    isl_emit_depth_stencil_hiz_s(&device->isl_dev, dw, &info);
 
+   if (info.depth_surf)
+      genX(cmd_buffer_emit_gfx12_depth_wa)(cmd_buffer, info.depth_surf);
+
    if (GFX_VER >= 12) {
       cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
@@ -6291,22 +6294,6 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
                              ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
                              ANV_PIPE_STALL_AT_SCOREBOARD_BIT,
                              "change RT");
-#endif
-
-#if GFX_VERx10 == 120
-   /* Wa_14010455700
-    *
-    * ISL will change some CHICKEN registers depending on the depth surface
-    * format, along with emitting the depth and stencil packets. In that case,
-    * we want to do a depth flush and stall, so the pipeline is not using these
-    * settings while we change the registers.
-    */
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
-                             ANV_PIPE_DEPTH_STALL_BIT |
-                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
-                             "change DS");
-   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 #endif
 
    cmd_buffer_emit_depth_stencil(cmd_buffer);
