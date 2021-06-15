@@ -432,6 +432,9 @@ get_query_result(struct pipe_context *pctx,
 
    if (!wait)
       flags |= PIPE_MAP_DONTBLOCK;
+   if (query->base.flushed)
+      /* this is not a context-safe operation; ensure map doesn't use slab alloc */
+      flags |= PIPE_MAP_THREAD_SAFE | PIPE_MAP_UNSYNCHRONIZED;
 
    util_query_clear_result(result, query->type);
 
