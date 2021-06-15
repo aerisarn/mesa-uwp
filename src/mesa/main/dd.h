@@ -588,21 +588,17 @@ struct dd_function_table {
    /**
     * Same as DrawGallium, but mode can also change between draws.
     *
-    * If mode != NULL, mode changes for each draw.
-    * At least one of them must be non-NULL.
-    *
     * "info" is not const and the following fields can be changed by
     * the callee in addition to the fields listed by DrawGallium:
-    * - info->mode (if mode != NULL)
+    * - info->mode
     *
     * This function exists to decrease complexity of DrawGallium.
     */
    void (*DrawGalliumMultiMode)(struct gl_context *ctx,
-                              struct pipe_draw_info *info,
-                              unsigned drawid_offset,
-                              const struct pipe_draw_start_count_bias *draws,
-                              const unsigned char *mode,
-                              unsigned num_draws);
+                                struct pipe_draw_info *info,
+                                const struct pipe_draw_start_count_bias *draws,
+                                const unsigned char *mode,
+                                unsigned num_draws);
 
    /**
     * Draw a primitive, getting the vertex count, instance count, start

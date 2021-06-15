@@ -243,7 +243,7 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
    info->vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    void *gl_bo = info->index.gl_bo;
    if (node->merged.mode) {
-      ctx->Driver.DrawGalliumMultiMode(ctx, info, 0,
+      ctx->Driver.DrawGalliumMultiMode(ctx, info,
                                        node->merged.start_counts,
                                        node->merged.mode,
                                        node->merged.num_draws);

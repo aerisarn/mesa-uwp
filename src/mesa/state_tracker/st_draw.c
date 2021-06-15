@@ -189,11 +189,10 @@ st_draw_gallium(struct gl_context *ctx,
 
 static void
 st_draw_gallium_multimode(struct gl_context *ctx,
-                        struct pipe_draw_info *info,
-                        unsigned drawid_offset,
-                        const struct pipe_draw_start_count_bias *draws,
-                        const unsigned char *mode,
-                        unsigned num_draws)
+                          struct pipe_draw_info *info,
+                          const struct pipe_draw_start_count_bias *draws,
+                          const unsigned char *mode,
+                          unsigned num_draws)
 {
    struct st_context *st = st_context(ctx);
 
@@ -209,7 +208,7 @@ st_draw_gallium_multimode(struct gl_context *ctx,
    for (i = 0, first = 0; i <= num_draws; i++) {
       if (i == num_draws || mode[i] != mode[first]) {
          info->mode = mode[first];
-         cso_multi_draw(cso, info, drawid_offset, &draws[first], i - first);
+         cso_multi_draw(cso, info, 0, &draws[first], i - first);
          first = i;
 
          /* We can pass the reference only once. st_buffer_object keeps
