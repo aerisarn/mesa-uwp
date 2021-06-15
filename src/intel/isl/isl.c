@@ -306,9 +306,12 @@ isl_device_get_sample_counts(struct isl_device *dev)
 }
 
 /**
+ * Returns an isl_tile_info representation of the given isl_tiling when
+ * combined with a format of the given size.
+ *
  * @param[out] info is written only on success
  */
-static void
+void
 isl_tiling_get_info(enum isl_tiling tiling,
                     uint32_t format_bpb,
                     struct isl_tile_info *tile_info)

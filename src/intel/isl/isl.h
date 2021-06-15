@@ -558,18 +558,22 @@ enum isl_txc {
 };
 
 /**
- * @brief Hardware tile mode
+ * Describes the memory tiling of a surface
  *
- * WARNING: These values differ from the hardware enum values, which are
- * unstable across hardware generations.
+ * This differs from the HW enum values used to represent tiling.  The bits
+ * used by hardware have varried significantly over the years from the
+ * "Tile Walk" bit on old pre-Broadwell parts to the "Tile Mode" enum on
+ * Broadwell to the combination of "Tile Mode" and "Tiled Resource Mode" on
+ * Skylake. This enum represents them all in a consistent manner and in one
+ * place.
  *
  * Note that legacy Y tiling is ISL_TILING_Y0 instead of ISL_TILING_Y, to
  * clearly distinguish it from Yf and Ys.
  */
 enum isl_tiling {
-   ISL_TILING_LINEAR = 0,
-   ISL_TILING_W,
-   ISL_TILING_X,
+   ISL_TILING_LINEAR = 0, /**< Linear, or no tiling */
+   ISL_TILING_W, /**< W tiling */
+   ISL_TILING_X, /**< X tiling */
    ISL_TILING_Y0, /**< Legacy Y tiling */
    ISL_TILING_Yf, /**< Standard 4K tiling. The 'f' means "four". */
    ISL_TILING_Ys, /**< Standard 64K tiling. The 's' means "sixty-four". */
@@ -1244,9 +1248,11 @@ struct isl_format_layout {
 };
 
 struct isl_tile_info {
+   /** Tiling represented by this isl_tile_info */
    enum isl_tiling tiling;
 
-   /* The size (in bits per block) of a single surface element
+   /**
+    * The size (in bits per block) of a single surface element
     *
     * For surfaces with power-of-two formats, this is the same as
     * isl_format_layout::bpb.  For non-power-of-two formats it may be smaller.
@@ -1265,7 +1271,8 @@ struct isl_tile_info {
     */
    uint32_t format_bpb;
 
-   /** The logical size of the tile in units of format_bpb size elements
+   /**
+    * The logical size of the tile in units of format_bpb size elements
     *
     * This field determines how a given surface is cut up into tiles.  It is
     * used to compute the size of a surface in tiles and can be used to
@@ -1275,7 +1282,8 @@ struct isl_tile_info {
     */
    struct isl_extent4d logical_extent_el;
 
-   /** The physical size of the tile in bytes and rows of bytes
+   /**
+    * The physical size of the tile in bytes and rows of bytes
     *
     * This field determines how the tiles of a surface are physically layed
     * out in memory.  The logical and physical tile extent are frequently the
@@ -1876,6 +1884,11 @@ isl_lower_storage_image_format(const struct intel_device_info *devinfo,
 bool
 isl_has_matching_typed_storage_image_format(const struct intel_device_info *devinfo,
                                             enum isl_format fmt);
+
+void
+isl_tiling_get_info(enum isl_tiling tiling,
+                    uint32_t format_bpb,
+                    struct isl_tile_info *tile_info);
 
 static inline enum isl_tiling
 isl_tiling_flag_to_enum(isl_tiling_flags_t flag)
