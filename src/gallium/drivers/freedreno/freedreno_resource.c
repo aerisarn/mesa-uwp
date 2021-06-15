@@ -664,12 +664,6 @@ static void
 flush_resource(struct fd_context *ctx, struct fd_resource *rsc,
                unsigned usage) assert_dt
 {
-   struct fd_batch *write_batch = NULL;
-
-   fd_screen_lock(ctx->screen);
-   fd_batch_reference_locked(&write_batch, rsc->track->write_batch);
-   fd_screen_unlock(ctx->screen);
-
    if (usage & PIPE_MAP_WRITE) {
       struct fd_batch *batch, *batches[32] = {};
       uint32_t batch_count = 0;
@@ -688,11 +682,16 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc,
          fd_batch_flush(batches[i]);
          fd_batch_reference(&batches[i], NULL);
       }
-   } else if (write_batch) {
-      fd_batch_flush(write_batch);
+   } else {
+      struct fd_batch *write_batch = NULL;
+      fd_screen_lock(ctx->screen);
+      fd_batch_reference_locked(&write_batch, rsc->track->write_batch);
+      fd_screen_unlock(ctx->screen);
+      if (write_batch) {
+         fd_batch_flush(write_batch);
+         fd_batch_reference(&write_batch, NULL);
+      }
    }
-
-   fd_batch_reference(&write_batch, NULL);
 }
 
 static void
