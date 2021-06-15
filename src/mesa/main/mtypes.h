@@ -48,6 +48,7 @@
 #include "compiler/shader_info.h"
 #include "main/formats.h"       /* MESA_FORMAT_COUNT */
 #include "compiler/glsl/list.h"
+#include "util/u_idalloc.h"
 #include "util/simple_mtx.h"
 #include "util/u_dynarray.h"
 #include "vbo/vbo.h"
@@ -3483,6 +3484,13 @@ struct gl_shared_state
     * users.
     */
    bool HasExternallySharedImages;
+
+   /* Small display list storage */
+   struct {
+      union gl_dlist_node *ptr;
+      struct util_idalloc free_idx;
+      unsigned size;
+   } small_dlist_store;
 };
 
 
@@ -4695,9 +4703,18 @@ union gl_dlist_node;
 struct gl_display_list
 {
    GLuint Name;
+   bool small_list;
    GLchar *Label;     /**< GL_KHR_debug */
    /** The dlist commands are in a linked list of nodes */
-   union gl_dlist_node *Head;
+   union {
+      /* Big lists allocate their own storage */
+      union gl_dlist_node *Head;
+      /* Small lists use ctx->Shared->small_dlist_store */
+      struct {
+         unsigned start;
+         unsigned count;
+      };
+   };
 };
 
 
