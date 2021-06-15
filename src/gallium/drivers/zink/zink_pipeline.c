@@ -125,9 +125,9 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkPipelineViewportStateCreateInfo viewport_state = {0};
    viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-   viewport_state.viewportCount = state->num_viewports;
+   viewport_state.viewportCount = state->dyn_state1.num_viewports;
    viewport_state.pViewports = NULL;
-   viewport_state.scissorCount = state->num_viewports;
+   viewport_state.scissorCount = state->dyn_state1.num_viewports;
    viewport_state.pScissors = NULL;
 
    VkPipelineRasterizationStateCreateInfo rast_state = {0};

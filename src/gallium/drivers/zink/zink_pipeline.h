@@ -49,8 +49,6 @@ struct zink_gfx_pipeline_state {
    uint8_t rast_samples;
    uint8_t vertices_per_patch;
 
-   unsigned num_viewports;
-
    /* Pre-hashed value for table lookup, invalid when zero.
     * Members after this point are not included in pipeline state hash key */
    uint32_t hash;
@@ -59,6 +57,7 @@ struct zink_gfx_pipeline_state {
    struct {
       struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state; //non-dynamic state
       VkFrontFace front_face;
+      unsigned num_viewports;
    } dyn_state1;
 
    bool primitive_restart; //dynamic state2
