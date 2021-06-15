@@ -339,7 +339,7 @@ descriptor_layout_create(struct zink_screen *screen, enum zink_descriptor_type t
    dcslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
    dcslci.pNext = NULL;
    VkDescriptorSetLayoutBindingFlagsCreateInfo fci = {0};
-   VkDescriptorBindingFlags flags[num_bindings];
+   VkDescriptorBindingFlags flags[ZINK_MAX_DESCRIPTORS_PER_TYPE];
    if (screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) {
       dcslci.pNext = &fci;
       if (t == ZINK_DESCRIPTOR_TYPES)
@@ -1235,9 +1235,8 @@ update_descriptors_internal(struct zink_context *ctx, struct zink_descriptor_set
       }
 
       unsigned num_resources = 0;
-      unsigned num_descriptors = zds[h]->pool->key.layout->num_descriptors;
       ASSERTED unsigned num_bindings = zds[h]->pool->num_resources;
-      VkWriteDescriptorSet wds[num_descriptors];
+      VkWriteDescriptorSet wds[ZINK_MAX_DESCRIPTORS_PER_TYPE];
       unsigned num_wds = 0;
 
       for (int i = 0; i < num_stages; i++) {
