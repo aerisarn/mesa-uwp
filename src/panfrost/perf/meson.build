@@ -55,3 +55,24 @@ dep_panfrost_perf = declare_dependency(
   link_with: libpanfrost_perf,
   include_directories: [inc_panfrost, inc_src, inc_include]
 )
+
+panfrost_quick = executable(
+  'panquick',
+  'quick.c',
+  include_directories : [
+    inc_mapi,
+    inc_mesa,
+    inc_gallium,
+    inc_gallium_aux,
+    inc_include,
+    inc_src,
+    inc_panfrost,
+    inc_panfrost_hw,
+ ],
+  dependencies : [
+    dep_libdrm,
+    libpanfrost_dep,
+    dep_panfrost_perf,
+  ],
+  build_by_default : with_tools.contains('panfrost')
+)
