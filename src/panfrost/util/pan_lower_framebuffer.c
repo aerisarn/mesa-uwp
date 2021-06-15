@@ -218,65 +218,27 @@ pan_unpack_pure_8(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
         return nir_channels(b, unpacked, (1 << num_components) - 1);
 }
 
-/* UNORM 8 is unpacked to f16 vec4. We could directly use the un/pack_unorm_4x8
- * ops provided we replicate appropriately, but for packing we'd rather stay in
- * 8/16-bit whereas the NIR op forces 32-bit, so we do it manually */
+/* For <= 8-bits per channel, UNORM formats are packed like UNORM 8, with
+ * zeroes spacing out each component as needed */
 
 static nir_ssa_def *
-pan_pack_unorm_8(nir_builder *b, nir_ssa_def *v)
+pan_pack_unorm(nir_builder *b, nir_ssa_def *v,
+               unsigned x, unsigned y, unsigned z, unsigned w)
 {
-        return pan_replicate_4(b, nir_pack_32_4x8(b,
-                nir_f2u8(b, nir_fround_even(b, nir_fmul_imm(b, nir_fsat(b,
-                        nir_pad_vec4(b, v)), 255.0)))));
-}
+        /* If a channel has N bits, 1.0 is encoded as 2^N - 1 */
+        nir_ssa_def *scales = nir_imm_vec4_16(b,
+                        (1 << x) - 1, (1 << y) - 1, 
+                        (1 << z) - 1, (1 << w) - 1);
 
-/* UNORM 4 is also unpacked to f16, which prevents us from using the shared
- * unpack which strongly assumes fp32. However, on the tilebuffer it is actually packed as:
- *      
- *      [AAAA] [0000] [BBBB] [0000] [GGGG] [0000] [RRRR] [0000] 
- *
- * In other words, spacing it out so we're aligned to bytes and on top. So
- * pack as:
- *
- *      pack_32_4x8(f2u8_rte(v * 15.0) << 4)
- */
+        /* If a channel has N bits, we pad out to the byte by (8 - N) bits */
+        nir_ssa_def *shifts = nir_imm_ivec4(b, 8 - x, 8 - y, 8 - z, 8 - w);
 
-static nir_ssa_def *
-pan_pack_unorm_small(nir_builder *b, nir_ssa_def *v,
-                nir_ssa_def *scales, nir_ssa_def *shifts)
-{
         nir_ssa_def *f = nir_fmul(b, nir_fsat(b, nir_pad_vec4(b, v)), scales);
         nir_ssa_def *u8 = nir_f2u8(b, nir_fround_even(b, f));
         nir_ssa_def *s = nir_ishl(b, u8, shifts);
         nir_ssa_def *repl = nir_pack_32_4x8(b, s);
 
         return pan_replicate_4(b, repl);
-}
-
-static nir_ssa_def *
-pan_pack_unorm_4(nir_builder *b, nir_ssa_def *v)
-{
-        return pan_pack_unorm_small(b, v,
-                nir_imm_vec4_16(b, 15.0, 15.0, 15.0, 15.0),
-                nir_imm_ivec4(b, 4, 4, 4, 4));
-}
-
-/* UNORM RGB5_A1 and RGB565 are similar */
-
-static nir_ssa_def *
-pan_pack_unorm_5551(nir_builder *b, nir_ssa_def *v)
-{
-        return pan_pack_unorm_small(b, v,
-                        nir_imm_vec4_16(b, 31.0, 31.0, 31.0, 1.0),
-                        nir_imm_ivec4(b, 3, 3, 3, 7));
-}
-
-static nir_ssa_def *
-pan_pack_unorm_565(nir_builder *b, nir_ssa_def *v)
-{
-        return pan_pack_unorm_small(b, v,
-                        nir_imm_vec4_16(b, 31.0, 63.0, 31.0, 0.0),
-                        nir_imm_ivec4(b, 3, 2, 3, 0));
 }
 
 /* RGB10_A2 is packed in the tilebuffer as the bottom 3 bytes being the top
@@ -448,10 +410,10 @@ pan_pack(nir_builder *b,
                 unpacked = pan_linear_to_srgb(b, unpacked);
 
         if (util_format_is_unorm8(desc))
-                return pan_pack_unorm_8(b, unpacked);
+                return pan_pack_unorm(b, unpacked, 8, 8, 8, 8);
 
         if (pan_is_unorm4(desc))
-                return pan_pack_unorm_4(b, unpacked);
+                return pan_pack_unorm(b, unpacked, 4, 4, 4, 4);
 
         if (desc->is_array) {
                 int c = util_format_get_first_non_void_channel(desc->format);
@@ -476,9 +438,9 @@ pan_pack(nir_builder *b,
         switch (desc->format) {
         case PIPE_FORMAT_B5G5R5A1_UNORM:
         case PIPE_FORMAT_R5G5B5A1_UNORM:
-                return pan_pack_unorm_5551(b, unpacked);
+                return pan_pack_unorm(b, unpacked, 5, 6, 5, 1);
         case PIPE_FORMAT_B5G6R5_UNORM:
-                return pan_pack_unorm_565(b, unpacked);
+                return pan_pack_unorm(b, unpacked, 5, 6, 5, 0);
         case PIPE_FORMAT_R10G10B10A2_UNORM:
                 return pan_pack_unorm_1010102(b, unpacked);
         case PIPE_FORMAT_R10G10B10A2_UINT:
