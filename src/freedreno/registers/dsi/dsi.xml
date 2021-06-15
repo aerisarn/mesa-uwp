@@ -312,6 +312,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x001f0" name="VERSION">
 		<bitfield name="MAJOR" low="24" high="31" type="uint"/>
 	</reg32>
+	<reg32 offset="0x002d4" name="CPHY_MODE_CTRL"/>
 </domain>
 
 </database>
