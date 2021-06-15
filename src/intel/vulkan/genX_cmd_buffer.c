@@ -5527,6 +5527,45 @@ genX(cmd_buffer_emit_gfx7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
    }
 }
 
+void
+genX(cmd_buffer_emit_gfx12_depth_wa)(struct anv_cmd_buffer *cmd_buffer,
+                                     const struct isl_surf *surf)
+{
+#if GFX_VERx10 == 120
+   const bool fmt_is_d16 = surf->format == ISL_FORMAT_R16_UNORM;
+
+   /* We'll change some CHICKEN registers depending on the depth surface
+    * format. Do a depth flush and stall so the pipeline is not using these
+    * settings while we change the registers.
+    */
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                             ANV_PIPE_DEPTH_STALL_BIT |
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "Workaround: Stop pipeline for 14010455700");
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
+   /* Wa_14010455700
+    *
+    * To avoid sporadic corruptions “Set 0x7010[9] when Depth Buffer
+    * Surface Format is D16_UNORM , surface type is not NULL & 1X_MSAA”.
+    */
+   anv_batch_write_reg(&cmd_buffer->batch, GENX(COMMON_SLICE_CHICKEN1), reg) {
+      reg.HIZPlaneOptimizationdisablebit = fmt_is_d16 && surf->samples == 1;
+      reg.HIZPlaneOptimizationdisablebitMask = true;
+   }
+
+   /* Wa_1806527549
+    *
+    * Set HIZ_CHICKEN (7018h) bit 13 = 1 when depth buffer is D16_UNORM.
+    */
+   anv_batch_write_reg(&cmd_buffer->batch, GENX(HIZ_CHICKEN), reg) {
+      reg.HZDepthTestLEGEOptimizationDisable = fmt_is_d16;
+      reg.HZDepthTestLEGEOptimizationDisableMask = true;
+   }
+#endif
+}
+
 /* From the Skylake PRM, 3DSTATE_VERTEX_BUFFERS:
  *
  *    "The VF cache needs to be invalidated before binding and then using
