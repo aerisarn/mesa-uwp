@@ -3047,7 +3047,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    }
 
    if (proj && coord_components > 0) {
-      SpvId constituents[coord_components + 1];
+      SpvId constituents[NIR_MAX_VEC_COMPONENTS + 1];
       if (coord_components == 1)
          constituents[0] = coord;
       else {
