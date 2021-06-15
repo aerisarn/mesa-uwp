@@ -1404,7 +1404,7 @@ get_render_pass(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    const struct pipe_framebuffer_state *fb = &ctx->fb_state;
-   struct zink_render_pass_state state = { 0 };
+   struct zink_render_pass_state state = {0};
    uint32_t clears = 0;
    state.swapchain_init = ctx->new_swapchain;
 
@@ -3461,7 +3461,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->program_cache || !ctx->compute_program_cache || !ctx->render_pass_cache)
       goto fail;
 
-   const uint8_t data[] = { 0 };
+   const uint8_t data[] = {0};
    ctx->dummy_vertex_buffer = pipe_buffer_create_with_data(&ctx->base,
       PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_SHADER_IMAGE, PIPE_USAGE_IMMUTABLE, sizeof(data), data);
    if (!ctx->dummy_vertex_buffer)
