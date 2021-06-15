@@ -1392,6 +1392,7 @@ st_QuerySamplesForFormat(struct gl_context *ctx, GLenum target,
    struct st_context *st = st_context(ctx);
    enum pipe_format format;
    unsigned i, bind, num_sample_counts = 0;
+   unsigned min_max_samples;
 
    (void) target;
 
@@ -1399,6 +1400,13 @@ st_QuerySamplesForFormat(struct gl_context *ctx, GLenum target,
       bind = PIPE_BIND_DEPTH_STENCIL;
    else
       bind = PIPE_BIND_RENDER_TARGET;
+
+   if (_mesa_is_enum_format_integer(internalFormat))
+      min_max_samples = ctx->Const.MaxIntegerSamples;
+   else if (_mesa_is_depth_or_stencil_format(internalFormat))
+      min_max_samples = ctx->Const.MaxDepthTextureSamples;
+   else
+      min_max_samples = ctx->Const.MaxColorTextureSamples;
 
    /* If an sRGB framebuffer is unsupported, sRGB formats behave like linear
     * formats.
@@ -1413,7 +1421,7 @@ st_QuerySamplesForFormat(struct gl_context *ctx, GLenum target,
                                 PIPE_TEXTURE_2D, i, i, bind,
                                 false, false);
 
-      if (format != PIPE_FORMAT_NONE) {
+      if (format != PIPE_FORMAT_NONE || i == min_max_samples) {
          samples[num_sample_counts++] = i;
       }
    }
