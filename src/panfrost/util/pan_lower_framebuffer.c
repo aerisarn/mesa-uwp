@@ -109,11 +109,6 @@ pan_format_class_load(const struct util_format_description *desc, unsigned quirk
         if (quirks & MIDGARD_MISSING_LOADS) {
                 switch (desc->format) {
                 case PIPE_FORMAT_R11G11B10_FLOAT:
-                case PIPE_FORMAT_R10G10B10A2_UNORM:
-                case PIPE_FORMAT_B10G10R10A2_UNORM:
-                case PIPE_FORMAT_R10G10B10X2_UNORM:
-                case PIPE_FORMAT_B10G10R10X2_UNORM:
-                case PIPE_FORMAT_R10G10B10A2_UINT:
                         return PAN_FORMAT_PACK;
                 default:
                         return PAN_FORMAT_NATIVE;
@@ -280,14 +275,6 @@ pan_pack_unorm_8(nir_builder *b, nir_ssa_def *v)
                         pan_fill_4(b, v, v->num_components)), nir_imm_float16(b, 255.0))))));
 }
 
-static nir_ssa_def *
-pan_unpack_unorm_8(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
-{
-        assert(num_components <= 4);
-        nir_ssa_def *unpacked = nir_unpack_unorm_4x8(b, nir_channel(b, pack, 0));
-        return nir_f2fmp(b, unpacked);
-}
-
 /* UNORM 4 is also unpacked to f16, which prevents us from using the shared
  * unpack which strongly assumes fp32. However, on the tilebuffer it is actually packed as:
  *      
@@ -312,28 +299,11 @@ pan_pack_unorm_small(nir_builder *b, nir_ssa_def *v,
 }
 
 static nir_ssa_def *
-pan_unpack_unorm_small(nir_builder *b, nir_ssa_def *pack,
-                nir_ssa_def *scales, nir_ssa_def *shifts)
-{
-        nir_ssa_def *channels = nir_unpack_32_4x8(b, nir_channel(b, pack, 0));
-        nir_ssa_def *raw = nir_ushr(b, nir_i2i16(b, channels), shifts);
-        return nir_fmul(b, nir_u2f16(b, raw), scales);
-}
-
-static nir_ssa_def *
 pan_pack_unorm_4(nir_builder *b, nir_ssa_def *v)
 {
         return pan_pack_unorm_small(b, v,
                 nir_imm_vec4_16(b, 15.0, 15.0, 15.0, 15.0),
                 nir_imm_ivec4(b, 4, 4, 4, 4));
-}
-
-static nir_ssa_def *
-pan_unpack_unorm_4(nir_builder *b, nir_ssa_def *v)
-{
-        return pan_unpack_unorm_small(b, v,
-                        nir_imm_vec4_16(b, 1.0 / 15.0, 1.0 / 15.0, 1.0 / 15.0, 1.0 / 15.0),
-                        nir_imm_ivec4(b, 4, 4, 4, 4));
 }
 
 /* UNORM RGB5_A1 and RGB565 are similar */
@@ -347,26 +317,10 @@ pan_pack_unorm_5551(nir_builder *b, nir_ssa_def *v)
 }
 
 static nir_ssa_def *
-pan_unpack_unorm_5551(nir_builder *b, nir_ssa_def *v)
-{
-        return pan_unpack_unorm_small(b, v,
-                        nir_imm_vec4_16(b, 1.0 / 31.0, 1.0 / 31.0, 1.0 / 31.0, 1.0),
-                        nir_imm_ivec4(b, 3, 3, 3, 7));
-}
-
-static nir_ssa_def *
 pan_pack_unorm_565(nir_builder *b, nir_ssa_def *v)
 {
         return pan_pack_unorm_small(b, v,
                         nir_imm_vec4_16(b, 31.0, 63.0, 31.0, 0.0),
-                        nir_imm_ivec4(b, 3, 2, 3, 0));
-}
-
-static nir_ssa_def *
-pan_unpack_unorm_565(nir_builder *b, nir_ssa_def *v)
-{
-        return pan_unpack_unorm_small(b, v,
-                        nir_imm_vec4_16(b, 1.0 / 31.0, 1.0 / 63.0, 1.0 / 31.0, 0.0),
                         nir_imm_ivec4(b, 3, 2, 3, 0));
 }
 
@@ -396,32 +350,6 @@ pan_pack_unorm_1010102(nir_builder *b, nir_ssa_def *v)
 
         nir_ssa_def *p = nir_ior(b, top, top8_rgb);
         return pan_replicate_4(b, p);
-}
-
-static nir_ssa_def *
-pan_unpack_unorm_1010102(nir_builder *b, nir_ssa_def *packed)
-{
-        nir_ssa_def *p = nir_channel(b, packed, 0);
-        nir_ssa_def *bytes = nir_unpack_32_4x8(b, p);
-        nir_ssa_def *ubytes = nir_i2i16(b, bytes);
-
-        nir_ssa_def *shifts = nir_ushr(b, pan_replicate_4(b, nir_channel(b, ubytes, 3)),
-                        nir_imm_ivec4(b, 0, 2, 4, 6));
-        nir_ssa_def *precision = nir_iand(b, shifts,
-                        nir_i2i16(b, nir_imm_ivec4(b, 0x3, 0x3, 0x3, 0x3)));
-
-        nir_ssa_def *top_rgb = nir_ishl(b, nir_channels(b, ubytes, 0x7), nir_imm_int(b, 2));
-        top_rgb = nir_ior(b, nir_channels(b, precision, 0x7), top_rgb);
-
-        nir_ssa_def *chans [4] = {
-                nir_channel(b, top_rgb, 0),
-                nir_channel(b, top_rgb, 1),
-                nir_channel(b, top_rgb, 2),
-                nir_channel(b, precision, 3)
-        };
-
-        nir_ssa_def *scale = nir_imm_vec4(b, 1.0 / 1023.0, 1.0 / 1023.0, 1.0 / 1023.0, 1.0 / 3.0);
-        return nir_fmul(b, nir_u2f32(b, nir_vec(b, chans, 4)), scale);
 }
 
 /* On the other hand, the pure int RGB10_A2 is identical to the spec */
@@ -500,27 +428,6 @@ pan_linear_to_srgb(nir_builder *b, nir_ssa_def *linear)
         return nir_vec(b, comp, 4);
 }
 
-static nir_ssa_def *
-pan_srgb_to_linear(nir_builder *b, nir_ssa_def *srgb)
-{
-        nir_ssa_def *rgb = nir_channels(b, srgb, 0x7);
-
-        /* TODO: fp16 native conversion */
-        nir_ssa_def *linear = nir_f2fmp(b,
-                        nir_format_srgb_to_linear(b, nir_f2f32(b, rgb)));
-
-        nir_ssa_def *comp[4] = {
-                nir_channel(b, linear, 0),
-                nir_channel(b, linear, 1),
-                nir_channel(b, linear, 2),
-                nir_channel(b, srgb, 3),
-        };
-
-        return nir_vec(b, comp, 4);
-}
-
-
-
 /* Generic dispatches for un/pack regardless of format */
 
 static bool
@@ -545,12 +452,6 @@ pan_unpack(nir_builder *b,
                 const struct util_format_description *desc,
                 nir_ssa_def *packed)
 {
-        if (util_format_is_unorm8(desc))
-                return pan_unpack_unorm_8(b, packed, desc->nr_channels);
-
-        if (pan_is_unorm4(desc))
-                return pan_unpack_unorm_4(b, packed);
-
         if (desc->is_array) {
                 int c = util_format_get_first_non_void_channel(desc->format);
                 assert(c >= 0);
@@ -571,13 +472,6 @@ pan_unpack(nir_builder *b,
         }
 
         switch (desc->format) {
-        case PIPE_FORMAT_B5G5R5A1_UNORM:
-        case PIPE_FORMAT_R5G5B5A1_UNORM:
-                return pan_unpack_unorm_5551(b, packed);
-        case PIPE_FORMAT_B5G6R5_UNORM:
-                return pan_unpack_unorm_565(b, packed);
-        case PIPE_FORMAT_R10G10B10A2_UNORM:
-                return pan_unpack_unorm_1010102(b, packed);
         case PIPE_FORMAT_R10G10B10A2_UINT:
                 return pan_unpack_uint_1010102(b, packed);
         case PIPE_FORMAT_R11G11B10_FLOAT:
@@ -676,9 +570,6 @@ pan_lower_fb_load(nir_shader *shader,
 
         /* Convert the raw value */
         nir_ssa_def *unpacked = pan_unpack(b, desc, packed);
-
-        if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
-                unpacked = pan_srgb_to_linear(b, unpacked);
 
         /* Convert to the size of the load intrinsic.
          *
