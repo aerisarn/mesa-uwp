@@ -438,7 +438,8 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->buffer_rebind_counter = screen->buffer_rebind_counter;
       zink_rebind_all_buffers(ctx);
    }
-   if (ctx->gfx_pipeline_state.vertices_per_patch != ctx->gfx_pipeline_state.patch_vertices)
+   uint8_t vertices_per_patch = ctx->gfx_pipeline_state.patch_vertices ? ctx->gfx_pipeline_state.patch_vertices - 1 : 0;
+   if (ctx->gfx_pipeline_state.vertices_per_patch != vertices_per_patch)
       ctx->gfx_pipeline_state.dirty = true;
    bool drawid_broken = ctx->drawid_broken;
    ctx->drawid_broken = false;
@@ -448,7 +449,7 @@ zink_draw_vbo(struct pipe_context *pctx,
                            (HAS_MULTIDRAW && num_draws > 1 && !dinfo->increment_draw_id));
    if (drawid_broken != ctx->drawid_broken)
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
-   ctx->gfx_pipeline_state.vertices_per_patch = ctx->gfx_pipeline_state.patch_vertices;
+   ctx->gfx_pipeline_state.vertices_per_patch = vertices_per_patch;
    if (ctx->rast_state->base.point_quad_rasterization && mode_changed) {
       if (ctx->gfx_prim_mode == PIPE_PRIM_POINTS || mode == PIPE_PRIM_POINTS)
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);

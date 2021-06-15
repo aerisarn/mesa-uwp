@@ -161,7 +161,7 @@ shader_key_tcs_gen(struct zink_context *ctx, struct zink_shader *zs,
    struct zink_tcs_key *tcs_key = &key->key.tcs;
    key->size = sizeof(struct zink_tcs_key);
 
-   tcs_key->vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch;
+   tcs_key->vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch + 1;
    tcs_key->vs_outputs_written = shaders[PIPE_SHADER_VERTEX]->nir->info.outputs_written;
 }
 

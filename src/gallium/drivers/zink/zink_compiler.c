@@ -1122,7 +1122,7 @@ void main()
 struct zink_shader *
 zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
 {
-   unsigned vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch;
+   unsigned vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch + 1;
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
    ret->programs = _mesa_pointer_set_create(NULL);
    simple_mtx_init(&ret->lock, mtx_plain);

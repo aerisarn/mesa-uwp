@@ -239,7 +239,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
    if (prog->shaders[PIPE_SHADER_TESS_CTRL] && prog->shaders[PIPE_SHADER_TESS_EVAL]) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-      tci.patchControlPoints = state->vertices_per_patch;
+      tci.patchControlPoints = state->vertices_per_patch + 1;
       pci.pTessellationState = &tci;
       tci.pNext = &tdci;
       tdci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO;
