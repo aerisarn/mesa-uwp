@@ -1680,8 +1680,8 @@ vn_physical_device_init_renderer_version(
       instance, vn_physical_device_to_handle(physical_dev), &props);
    if (props.apiVersion < VN_MIN_RENDERER_VERSION) {
       if (VN_DEBUG(INIT)) {
-         vn_log(instance, "unsupported renderer device version %d.%d",
-                VK_VERSION_MAJOR(props.apiVersion),
+         vn_log(instance, "%s has unsupported renderer device version %d.%d",
+                props.deviceName, VK_VERSION_MAJOR(props.apiVersion),
                 VK_VERSION_MINOR(props.apiVersion));
       }
       return VK_ERROR_INITIALIZATION_FAILED;
