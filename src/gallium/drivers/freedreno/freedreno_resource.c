@@ -833,18 +833,6 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
    if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
       invalidate_resource(rsc, usage);
    } else {
-      struct fd_batch *write_batch = NULL;
-
-      /* hold a reference, so it doesn't disappear under us: */
-      fd_screen_lock(ctx->screen);
-      fd_batch_reference_locked(&write_batch, rsc->track->write_batch);
-      fd_screen_unlock(ctx->screen);
-
-      if ((usage & PIPE_MAP_WRITE) && write_batch && write_batch->back_blit) {
-         /* if only thing pending is a back-blit, we can discard it: */
-         fd_batch_reset(write_batch);
-      }
-
       unsigned op = translate_usage(usage);
       bool needs_flush = pending(rsc, !!(usage & PIPE_MAP_WRITE));
 
@@ -896,8 +884,6 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
                trans->staging_box.z = 0;
                buf = fd_bo_map(staging_rsc->bo);
 
-               fd_batch_reference(&write_batch, NULL);
-
                ctx->stats.staging_uploads++;
 
                return buf;
@@ -909,8 +895,6 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
          flush_resource(ctx, rsc, usage);
          needs_flush = false;
       }
-
-      fd_batch_reference(&write_batch, NULL);
 
       /* The GPU keeps track of how the various bo's are being used, and
        * will wait if necessary for the proper operation to have
