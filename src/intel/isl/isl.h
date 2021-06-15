@@ -1247,10 +1247,29 @@ struct isl_surf_init_info {
 };
 
 struct isl_surf {
+   /** Dimensionality of the surface */
    enum isl_surf_dim dim;
+
+   /**
+    * Spatial layout of the surface in memory
+    *
+    * This is dependent on isl_surf::dim and hardware generation.
+    */
    enum isl_dim_layout dim_layout;
+
+   /** Spatial layout of the samples if isl_surf::samples > 1 */
    enum isl_msaa_layout msaa_layout;
+
+   /** Memory tiling used by the surface */
    enum isl_tiling tiling;
+
+   /**
+    * Base image format of the surface
+    *
+    * This need not be the same as the format specified in isl_view::format
+    * when a surface state is constructed.  It must, however, have the same
+    * number of bits per pixel or else memory calculations will go wrong.
+    */
    enum isl_format format;
 
    /**
@@ -1277,7 +1296,14 @@ struct isl_surf {
     */
    struct isl_extent4d phys_level0_sa;
 
+   /** Number of miplevels in the surface */
    uint32_t levels;
+
+   /**
+    * Number of samples in the surface
+    *
+    * @invariant samples >= 1
+    */
    uint32_t samples;
 
    /** Total size of the surface, in bytes. */
