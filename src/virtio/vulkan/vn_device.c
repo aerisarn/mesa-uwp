@@ -1467,33 +1467,35 @@ vn_physical_device_get_native_extensions(
    memset(exts, 0, sizeof(*exts));
 
    /* see vn_physical_device_init_external_memory */
-   if (renderer_exts->EXT_external_memory_dma_buf &&
-       renderer_info->has_dma_buf_import) {
-#ifdef ANDROID
-      if (renderer_exts->EXT_image_drm_format_modifier &&
-          renderer_exts->EXT_queue_family_foreign &&
-          instance->experimental.memoryResourceAllocationSize == VK_TRUE) {
-         exts->ANDROID_external_memory_android_hardware_buffer = true;
-         exts->ANDROID_native_buffer = true;
-      }
-#else
-      exts->KHR_external_memory_fd = true;
-      exts->EXT_external_memory_dma_buf = true;
-#endif
-   }
+   const bool can_external_mem = renderer_exts->EXT_external_memory_dma_buf &&
+                                 renderer_info->has_dma_buf_import;
 
 #ifdef ANDROID
+   if (can_external_mem && renderer_exts->EXT_image_drm_format_modifier &&
+       renderer_exts->EXT_queue_family_foreign &&
+       instance->experimental.memoryResourceAllocationSize == VK_TRUE) {
+      exts->ANDROID_external_memory_android_hardware_buffer = true;
+      exts->ANDROID_native_buffer = true;
+   }
+
+   /* we have a very poor implementation */
    if (instance->experimental.globalFencing) {
       exts->KHR_external_fence_fd = true;
       exts->KHR_external_semaphore_fd = true;
    }
-#endif
+#else /* ANDROID */
+   if (can_external_mem) {
+      exts->KHR_external_memory_fd = true;
+      exts->EXT_external_memory_dma_buf = true;
+   }
 
 #ifdef VN_USE_WSI_PLATFORM
+   /* XXX we should check for EXT_queue_family_foreign */
    exts->KHR_incremental_present = true;
    exts->KHR_swapchain = true;
    exts->KHR_swapchain_mutable_format = true;
 #endif
+#endif /* ANDROID */
 }
 
 static void
