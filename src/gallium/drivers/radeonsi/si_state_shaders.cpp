@@ -3933,7 +3933,7 @@ bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes)
          si_context_add_resource_size(sctx, &sctx->scratch_buffer->b.b);
       }
 
-      if (!si_update_scratch_relocs(sctx))
+      if (sctx->chip_class < GFX11 && !si_update_scratch_relocs(sctx))
          return false;
    }
 
@@ -4093,7 +4093,14 @@ static void si_emit_scratch_state(struct si_context *sctx)
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    radeon_begin(cs);
-   radeon_set_context_reg(R_0286E8_SPI_TMPRING_SIZE, sctx->spi_tmpring_size);
+   if (sctx->chip_class >= GFX11) {
+      radeon_set_context_reg_seq(R_0286E8_SPI_TMPRING_SIZE, 3);
+      radeon_emit(sctx->spi_tmpring_size);                  /* SPI_TMPRING_SIZE */
+      radeon_emit(sctx->scratch_buffer->gpu_address >> 8);  /* SPI_GFX_SCRATCH_BASE_LO */
+      radeon_emit(sctx->scratch_buffer->gpu_address >> 40); /* SPI_GFX_SCRATCH_BASE_HI */
+   } else {
+      radeon_set_context_reg(R_0286E8_SPI_TMPRING_SIZE, sctx->spi_tmpring_size);
+   }
    radeon_end();
 
    if (sctx->scratch_buffer) {
