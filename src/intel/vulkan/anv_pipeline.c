@@ -2244,7 +2244,8 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
        ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
        ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE |
        ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
-       ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP);
+       ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP |
+       ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY);
 }
 
 static void
@@ -2319,6 +2320,25 @@ anv_pipeline_setup_l3_config(struct anv_pipeline *pipeline, bool needs_slm)
       intel_get_default_l3_weights(devinfo, true, needs_slm);
 
    pipeline->l3_config = intel_get_l3_config(devinfo, w);
+}
+
+static VkLineRasterizationModeEXT
+vk_line_rasterization_mode(const VkPipelineRasterizationLineStateCreateInfoEXT *line_info,
+                           const VkPipelineMultisampleStateCreateInfo *ms_info)
+{
+   VkLineRasterizationModeEXT line_mode =
+      line_info ? line_info->lineRasterizationMode :
+                  VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
+
+   if (line_mode == VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT) {
+      if (ms_info && ms_info->rasterizationSamples > 1) {
+         return VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+      } else {
+         return VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
+      }
+   }
+
+   return line_mode;
 }
 
 VkResult
@@ -2460,6 +2480,27 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
       pipeline->topology = _3DPRIM_PATCHLIST(tess_info->patchControlPoints);
    else
       pipeline->topology = vk_to_intel_primitive_type[ia_info->topology];
+
+   /* If rasterization is not enabled, ms_info must be ignored. */
+   const bool raster_enabled =
+      !pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
+      (pipeline->dynamic_states &
+       ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
+
+   const VkPipelineMultisampleStateCreateInfo *ms_info =
+      raster_enabled ? pCreateInfo->pMultisampleState : NULL;
+
+   const VkPipelineRasterizationLineStateCreateInfoEXT *line_info =
+      vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
+                           PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
+
+   /* Store line mode, polygon mode and rasterization samples, these are used
+    * for dynamic primitive topology.
+    */
+   pipeline->line_mode = vk_line_rasterization_mode(line_info, ms_info);
+   pipeline->polygon_mode = pCreateInfo->pRasterizationState->polygonMode;
+   pipeline->rasterization_samples =
+      ms_info ? ms_info->rasterizationSamples : 1;
 
    return VK_SUCCESS;
 }
