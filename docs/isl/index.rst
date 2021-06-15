@@ -6,6 +6,11 @@ surface layout calculations for Intel graphics drivers.  It was originally
 written by Chad Versace and is now maintained by Jason Ekstrand and Nanley
 Chery.
 
+.. toctree::
+   :maxdepth: 2
+
+   units
+
 The core representation of a surface in ISL is :cpp:struct:`isl_surf`.
 
 .. doxygenstruct:: isl_surf
