@@ -1443,26 +1443,19 @@ radv_emit_culling(struct radv_cmd_buffer *cmd_buffer, uint64_t states)
    unsigned pa_su_sc_mode_cntl = cmd_buffer->state.pipeline->graphics.pa_su_sc_mode_cntl;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   if (states & RADV_CMD_DIRTY_DYNAMIC_CULL_MODE) {
-      pa_su_sc_mode_cntl &= C_028814_CULL_FRONT;
-      pa_su_sc_mode_cntl |= S_028814_CULL_FRONT(!!(d->cull_mode & VK_CULL_MODE_FRONT_BIT));
+   pa_su_sc_mode_cntl &= C_028814_CULL_FRONT &
+                         C_028814_CULL_BACK &
+                         C_028814_FACE &
+                         C_028814_POLY_OFFSET_FRONT_ENABLE &
+                         C_028814_POLY_OFFSET_BACK_ENABLE &
+                         C_028814_POLY_OFFSET_PARA_ENABLE;
 
-      pa_su_sc_mode_cntl &= C_028814_CULL_BACK;
-      pa_su_sc_mode_cntl |= S_028814_CULL_BACK(!!(d->cull_mode & VK_CULL_MODE_BACK_BIT));
-   }
-
-   if (states & RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE) {
-      pa_su_sc_mode_cntl &= C_028814_FACE;
-      pa_su_sc_mode_cntl |= S_028814_FACE(d->front_face);
-   }
-
-   if (states & RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE) {
-      pa_su_sc_mode_cntl &= C_028814_POLY_OFFSET_FRONT_ENABLE & C_028814_POLY_OFFSET_BACK_ENABLE &
-                            C_028814_POLY_OFFSET_PARA_ENABLE;
-      pa_su_sc_mode_cntl |= S_028814_POLY_OFFSET_FRONT_ENABLE(d->depth_bias_enable) |
-                            S_028814_POLY_OFFSET_BACK_ENABLE(d->depth_bias_enable) |
-                            S_028814_POLY_OFFSET_PARA_ENABLE(d->depth_bias_enable);
-   }
+   pa_su_sc_mode_cntl |= S_028814_CULL_FRONT(!!(d->cull_mode & VK_CULL_MODE_FRONT_BIT)) |
+                         S_028814_CULL_BACK(!!(d->cull_mode & VK_CULL_MODE_BACK_BIT)) |
+                         S_028814_FACE(d->front_face) |
+                         S_028814_POLY_OFFSET_FRONT_ENABLE(d->depth_bias_enable) |
+                         S_028814_POLY_OFFSET_BACK_ENABLE(d->depth_bias_enable) |
+                         S_028814_POLY_OFFSET_PARA_ENABLE(d->depth_bias_enable);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028814_PA_SU_SC_MODE_CNTL, pa_su_sc_mode_cntl);
 }
@@ -1486,41 +1479,23 @@ radv_emit_depth_control(struct radv_cmd_buffer *cmd_buffer, uint64_t states)
    unsigned db_depth_control = cmd_buffer->state.pipeline->graphics.db_depth_control;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   if (states & RADV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE) {
-      db_depth_control &= C_028800_Z_ENABLE;
-      db_depth_control |= S_028800_Z_ENABLE(d->depth_test_enable ? 1 : 0);
-   }
+   db_depth_control &= C_028800_Z_ENABLE &
+                       C_028800_Z_WRITE_ENABLE &
+                       C_028800_ZFUNC &
+                       C_028800_DEPTH_BOUNDS_ENABLE &
+                       C_028800_STENCIL_ENABLE &
+                       C_028800_BACKFACE_ENABLE &
+                       C_028800_STENCILFUNC &
+                       C_028800_STENCILFUNC_BF;
 
-   if (states & RADV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE) {
-      db_depth_control &= C_028800_Z_WRITE_ENABLE;
-      db_depth_control |= S_028800_Z_WRITE_ENABLE(d->depth_write_enable ? 1 : 0);
-   }
-
-   if (states & RADV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP) {
-      db_depth_control &= C_028800_ZFUNC;
-      db_depth_control |= S_028800_ZFUNC(d->depth_compare_op);
-   }
-
-   if (states & RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE) {
-      db_depth_control &= C_028800_DEPTH_BOUNDS_ENABLE;
-      db_depth_control |= S_028800_DEPTH_BOUNDS_ENABLE(d->depth_bounds_test_enable ? 1 : 0);
-   }
-
-   if (states & RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE) {
-      db_depth_control &= C_028800_STENCIL_ENABLE;
-      db_depth_control |= S_028800_STENCIL_ENABLE(d->stencil_test_enable ? 1 : 0);
-
-      db_depth_control &= C_028800_BACKFACE_ENABLE;
-      db_depth_control |= S_028800_BACKFACE_ENABLE(d->stencil_test_enable ? 1 : 0);
-   }
-
-   if (states & RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP) {
-      db_depth_control &= C_028800_STENCILFUNC;
-      db_depth_control |= S_028800_STENCILFUNC(d->stencil_op.front.compare_op);
-
-      db_depth_control &= C_028800_STENCILFUNC_BF;
-      db_depth_control |= S_028800_STENCILFUNC_BF(d->stencil_op.back.compare_op);
-   }
+   db_depth_control |= S_028800_Z_ENABLE(d->depth_test_enable ? 1 : 0) |
+                       S_028800_Z_WRITE_ENABLE(d->depth_write_enable ? 1 : 0) |
+                       S_028800_ZFUNC(d->depth_compare_op) |
+                       S_028800_DEPTH_BOUNDS_ENABLE(d->depth_bounds_test_enable ? 1 : 0) |
+                       S_028800_STENCIL_ENABLE(d->stencil_test_enable ? 1 : 0) |
+                       S_028800_BACKFACE_ENABLE(d->stencil_test_enable ? 1 : 0) |
+                       S_028800_STENCILFUNC(d->stencil_op.front.compare_op) |
+                       S_028800_STENCILFUNC_BF(d->stencil_op.back.compare_op);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028800_DB_DEPTH_CONTROL, db_depth_control);
 }
