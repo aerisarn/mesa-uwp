@@ -12,6 +12,7 @@ Chery.
    units
    formats
    tiling
+   ccs
 
 The core representation of a surface in ISL is :cpp:struct:`isl_surf`.
 
