@@ -350,7 +350,9 @@ fd_context_destroy(struct pipe_context *pctx)
 
    util_copy_framebuffer_state(&ctx->framebuffer, NULL);
    fd_batch_reference(&ctx->batch, NULL); /* unref current batch */
-   fd_bc_invalidate_context(ctx);
+
+   /* Make sure nothing in the batch cache references our context any more. */
+   fd_bc_flush(ctx, false);
 
    fd_prog_fini(pctx);
 
