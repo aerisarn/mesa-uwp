@@ -97,6 +97,7 @@ typedef uint32_t xcb_window_t;
  */
 #if defined(ANDROID) && ANDROID_API_LEVEL >= 26
 #define RADV_SUPPORT_ANDROID_HARDWARE_BUFFER 1
+#include <vndk/hardware_buffer.h>
 #else
 #define RADV_SUPPORT_ANDROID_HARDWARE_BUFFER 0
 #endif

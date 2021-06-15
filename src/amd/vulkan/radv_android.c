@@ -31,7 +31,6 @@
 
 #if ANDROID_API_LEVEL >= 26
 #include <hardware/gralloc1.h>
-#include <vndk/hardware_buffer.h>
 #endif
 #endif
 
