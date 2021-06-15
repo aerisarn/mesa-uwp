@@ -15,7 +15,7 @@
   needs:
     - job: debian/arm_test
       artifacts: false
-    - meson-armhf
+    - debian-armhf
   tags:
     - igalia-rpi3
 
@@ -93,7 +93,7 @@ vc4-rpi3-piglit-quick_shader:armhf:
     - ./install/bare-metal/poe-powered.sh
   needs:
     - debian/arm_test
-    - meson-armhf
+    - debian-armhf
   tags:
     - igalia-rpi4
 
@@ -176,7 +176,7 @@ v3dv-rpi4-vk:arm64:
     - ./install/bare-metal/poe-powered.sh
   needs:
     - debian/arm_test
-    - job: meson-arm64
+    - job: debian-arm64
       artifacts: false
   tags:
     - igalia-rpi4

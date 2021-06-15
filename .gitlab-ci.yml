@@ -43,7 +43,7 @@ stages:
   - container
   - container-2
   - git-archive
-  - meson-x86_64
+  - build-x86_64
   - build-misc
   - amd
   - intel
@@ -660,13 +660,13 @@ sanity:
   extends:
     - .build-linux
     - .use-debian/x86_build
-  stage: meson-x86_64
+  stage: build-x86_64
   variables:
     LLVM_VERSION: 11
   script:
     - .gitlab-ci/meson/build.sh
 
-meson-testing:
+debian-testing:
   extends:
     - .meson-build
     - .ci-deqp-artifacts
@@ -689,9 +689,9 @@ meson-testing:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
-meson-testing-asan:
+debian-testing-asan:
   extends:
-    - meson-testing
+    - debian-testing
   variables:
     C_ARGS: >
       -Wno-error=stringop-truncation
@@ -701,7 +701,7 @@ meson-testing-asan:
     MINIO_ARTIFACT_NAME: ""
     ARTIFACTS_DEBUG_SYMBOLS: 1
 
-meson-clover-testing:
+debian-clover-testing:
   extends:
     - .meson-build
     - .ci-deqp-artifacts
@@ -722,7 +722,7 @@ meson-clover-testing:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
-meson-gallium:
+debian-gallium:
   extends: .meson-build
   variables:
     UNWIND: "enabled"
@@ -752,7 +752,7 @@ meson-gallium:
     - src/freedreno/.gitlab-ci/run-fdtools.sh
 
 # Test a release build with -Werror so new warnings don't sneak in.
-meson-release:
+debian-release:
   extends: .meson-build
   variables:
     UNWIND: "enabled"
@@ -780,7 +780,7 @@ meson-release:
   script:
     - .gitlab-ci/meson/build.sh
 
-meson-android:
+debian-android:
   extends:
     - .meson-cross
     - .use-debian/android_build
@@ -864,7 +864,7 @@ meson-android:
   tags:
     - aarch64
 
-meson-armhf:
+debian-armhf:
   extends:
     - .meson-arm
     - .ci-deqp-artifacts
@@ -878,7 +878,7 @@ meson-armhf:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
-meson-arm64:
+debian-arm64:
   extends:
     - .meson-arm
     - .ci-deqp-artifacts
@@ -892,9 +892,9 @@ meson-arm64:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
-meson-arm64-asan:
+debian-arm64-asan:
   extends:
-    - meson-arm64
+    - debian-arm64
   variables:
     C_ARGS: >
       -Wno-error=stringop-truncation
@@ -906,7 +906,7 @@ meson-arm64-asan:
     MINIO_ARTIFACT_NAME: mesa-arm64-asan
     MESON_TEST_ARGS: "--no-suite mesa:compiler"
 
-meson-arm64-build-test:
+debian-arm64-build-test:
   extends:
     - .meson-arm
     - .ci-deqp-artifacts
@@ -917,7 +917,7 @@ meson-arm64-build-test:
   script:
     - .gitlab-ci/meson/build.sh
 
-meson-clang:
+debian-clang:
   extends: .meson-build
   variables:
     UNWIND: "enabled"
@@ -965,7 +965,7 @@ meson-clang:
     CC: clang
     CXX: clang++
 
-meson-windows-vs2019:
+windows-vs2019:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
@@ -985,9 +985,9 @@ test-d3d12-windows:
     - .windows-test-rules
   stage: layered-backends
   dependencies:
-    - meson-windows-vs2019
+    - windows-vs2019
   needs:
-    - meson-windows-vs2019
+    - windows-vs2019
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
     GALLIUM_DRIVER: d3d12
@@ -1001,7 +1001,7 @@ test-d3d12-windows:
     paths:
       - summary/
 
-meson-clover:
+debian-clover:
   extends: .meson-build
   variables:
     UNWIND: "enabled"
@@ -1025,7 +1025,7 @@ meson-clover:
     - LLVM_VERSION=9 GALLIUM_DRIVERS=r600,swrast .gitlab-ci/meson/build.sh
     - .gitlab-ci/meson/build.sh
 
-meson-vulkan:
+debian-vulkan:
   extends: .meson-build
   variables:
     UNWIND: "disabled"
@@ -1053,7 +1053,7 @@ meson-vulkan:
       -D vulkan-layers=device-select,overlay
       -D build-aco-tests=true
 
-meson-i386:
+debian-i386:
   extends:
     - .meson-cross
     - .use-debian/i386_build
@@ -1065,9 +1065,9 @@ meson-i386:
     EXTRA_OPTION: >
       -D vulkan-layers=device-select,overlay
 
-meson-s390x:
+debian-s390x:
   extends:
-    - meson-ppc64el
+    - debian-ppc64el
     - .use-debian/s390x_build
     - .s390x-rules
   tags:
@@ -1079,7 +1079,7 @@ meson-s390x:
     LLVM_VERSION: 9
     VULKAN_DRIVERS: "swrast"
 
-meson-ppc64el:
+debian-ppc64el:
   extends:
     - .meson-cross
     - .use-debian/ppc64el_build
@@ -1089,7 +1089,7 @@ meson-ppc64el:
     GALLIUM_DRIVERS: "nouveau,radeonsi,swrast,virgl,zink"
     VULKAN_DRIVERS: "amd,swrast"
 
-meson-mingw32-x86_64:
+debian-mingw32-x86_64:
   extends: .meson-build
   stage: build-misc
   variables:
@@ -1140,7 +1140,7 @@ meson-mingw32-x86_64:
     - .use-debian/x86_test-gl
   needs:
     - debian/x86_test-gl
-    - meson-testing
+    - debian-testing
 
 .test-vk:
   extends:
@@ -1151,7 +1151,7 @@ meson-mingw32-x86_64:
     MESA_IMAGE_PATH: "debian/x86_test-vk"
     MESA_IMAGE_TAG: *debian-x86_test-vk
   needs:
-    - meson-testing
+    - debian-testing
     - debian/x86_test-vk
 
 .test-cl:
@@ -1159,7 +1159,7 @@ meson-mingw32-x86_64:
     - .use-debian/x86_test-gl
   needs:
     - debian/x86_test-gl
-    - meson-clover-testing
+    - debian-clover-testing
 
 .vkd3d-proton-test:
   artifacts:
@@ -1289,7 +1289,7 @@ meson-mingw32-x86_64:
     MINIO_ARTIFACT_NAME: mesa-arm64-asan
   needs:
     - debian/arm_test
-    - job: meson-arm64-asan
+    - job: debian-arm64-asan
       artifacts: false
 
 .baremetal-deqp-test:

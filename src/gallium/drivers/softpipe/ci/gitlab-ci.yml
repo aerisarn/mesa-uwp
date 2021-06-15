@@ -43,7 +43,7 @@ softpipe-asan-gles31:
   extends: softpipe-gles2
   needs:
     - debian/x86_test-gl
-    - meson-testing-asan
+    - debian-testing-asan
 
 softpipe-piglit-quick:
   extends:

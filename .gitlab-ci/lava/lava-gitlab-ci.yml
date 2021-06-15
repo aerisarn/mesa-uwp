@@ -46,7 +46,7 @@
   needs:
     - kernel+rootfs_armhf
     - debian/x86_build
-    - meson-armhf
+    - debian-armhf
 
 .lava-test:arm64:
   variables:
@@ -61,11 +61,11 @@
     - .lava-test
     - .use-kernel+rootfs-arm
   dependencies:
-    - meson-arm64
+    - debian-arm64
   needs:
     - kernel+rootfs_arm64
     - debian/x86_build
-    - meson-arm64
+    - debian-arm64
 
 .lava-test:amd64:
   variables:
@@ -81,7 +81,7 @@
     - .use-kernel+rootfs-amd64
   needs:
     - kernel+rootfs_amd64
-    - meson-testing
+    - debian-testing
 
 .lava-traces-base:
   variables:

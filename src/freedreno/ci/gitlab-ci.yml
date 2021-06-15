@@ -13,7 +13,7 @@
     - ./install/bare-metal/fastboot.sh
   needs:
     - debian/arm_test
-    - job: meson-arm64
+    - job: debian-arm64
       artifacts: false
   tags:
     - google-freedreno-db410c
