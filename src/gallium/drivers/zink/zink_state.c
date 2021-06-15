@@ -251,7 +251,7 @@ zink_create_blend_state(struct pipe_context *pctx,
       if (blend_state->independent_blend_enable)
          rt = blend_state->rt + i;
 
-      VkPipelineColorBlendAttachmentState att = { };
+      VkPipelineColorBlendAttachmentState att = {0};
 
       if (rt->blend_enable) {
          att.blendEnable = VK_TRUE;

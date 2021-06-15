@@ -126,7 +126,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkDescriptorSetLayoutBinding bindings[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 32];
    VkDescriptorUpdateTemplateEntry entries[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 32];
-   unsigned num_bindings[ZINK_DESCRIPTOR_TYPES] = {};
+   unsigned num_bindings[ZINK_DESCRIPTOR_TYPES] = {0};
    uint8_t has_bindings = 0;
 
    struct zink_shader **stages;
@@ -141,7 +141,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       return false;
 
    unsigned push_count = 0;
-   unsigned entry_idx[ZINK_DESCRIPTOR_TYPES] = {};
+   unsigned entry_idx[ZINK_DESCRIPTOR_TYPES] = {0};
 
    unsigned num_shaders = pg->is_compute ? 1 : ZINK_SHADER_COUNT;
    bool have_push = screen->info.have_KHR_push_descriptor;
@@ -228,7 +228,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
    if (!screen->info.have_KHR_descriptor_update_template || screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_NOTEMPLATES)
       return true;
 
-   VkDescriptorUpdateTemplateCreateInfo template[ZINK_DESCRIPTOR_TYPES + 1] = {};
+   VkDescriptorUpdateTemplateCreateInfo template[ZINK_DESCRIPTOR_TYPES + 1] = {0};
    /* type of template */
    VkDescriptorUpdateTemplateType types[ZINK_DESCRIPTOR_TYPES + 1] = {VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET};
    if (have_push && screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY)
