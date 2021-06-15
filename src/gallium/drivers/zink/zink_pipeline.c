@@ -137,7 +137,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    rast_state.rasterizerDiscardEnable = state->rast_state->rasterizer_discard;
    rast_state.polygonMode = state->rast_state->polygon_mode;
    rast_state.cullMode = state->rast_state->cull_mode;
-   rast_state.frontFace = state->front_face;
+   rast_state.frontFace = state->dyn_state1.front_face;
 
    rast_state.depthBiasEnable = VK_TRUE;
    rast_state.depthBiasConstantFactor = 0.0;
@@ -156,15 +156,15 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {0};
    depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-   depth_stencil_state.depthTestEnable = state->depth_stencil_alpha_state->depth_test;
-   depth_stencil_state.depthCompareOp = state->depth_stencil_alpha_state->depth_compare_op;
-   depth_stencil_state.depthBoundsTestEnable = state->depth_stencil_alpha_state->depth_bounds_test;
-   depth_stencil_state.minDepthBounds = state->depth_stencil_alpha_state->min_depth_bounds;
-   depth_stencil_state.maxDepthBounds = state->depth_stencil_alpha_state->max_depth_bounds;
-   depth_stencil_state.stencilTestEnable = state->depth_stencil_alpha_state->stencil_test;
-   depth_stencil_state.front = state->depth_stencil_alpha_state->stencil_front;
-   depth_stencil_state.back = state->depth_stencil_alpha_state->stencil_back;
-   depth_stencil_state.depthWriteEnable = state->depth_stencil_alpha_state->depth_write;
+   depth_stencil_state.depthTestEnable = state->dyn_state1.depth_stencil_alpha_state->depth_test;
+   depth_stencil_state.depthCompareOp = state->dyn_state1.depth_stencil_alpha_state->depth_compare_op;
+   depth_stencil_state.depthBoundsTestEnable = state->dyn_state1.depth_stencil_alpha_state->depth_bounds_test;
+   depth_stencil_state.minDepthBounds = state->dyn_state1.depth_stencil_alpha_state->min_depth_bounds;
+   depth_stencil_state.maxDepthBounds = state->dyn_state1.depth_stencil_alpha_state->max_depth_bounds;
+   depth_stencil_state.stencilTestEnable = state->dyn_state1.depth_stencil_alpha_state->stencil_test;
+   depth_stencil_state.front = state->dyn_state1.depth_stencil_alpha_state->stencil_front;
+   depth_stencil_state.back = state->dyn_state1.depth_stencil_alpha_state->stencil_back;
+   depth_stencil_state.depthWriteEnable = state->dyn_state1.depth_stencil_alpha_state->depth_write;
 
    VkDynamicState dynamicStateEnables[30] = {
       VK_DYNAMIC_STATE_LINE_WIDTH,

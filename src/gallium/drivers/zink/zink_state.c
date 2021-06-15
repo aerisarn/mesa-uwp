@@ -418,8 +418,8 @@ zink_bind_depth_stencil_alpha_state(struct pipe_context *pctx, void *cso)
 
    if (cso) {
       struct zink_gfx_pipeline_state *state = &ctx->gfx_pipeline_state;
-      if (state->depth_stencil_alpha_state != &ctx->dsa_state->hw_state) {
-         state->depth_stencil_alpha_state = &ctx->dsa_state->hw_state;
+      if (state->dyn_state1.depth_stencil_alpha_state != &ctx->dsa_state->hw_state) {
+         state->dyn_state1.depth_stencil_alpha_state = &ctx->dsa_state->hw_state;
          state->dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
          ctx->dsa_state_changed = true;
       }
@@ -569,8 +569,8 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
          ctx->vp_state_changed = true;
       }
 
-      if (ctx->gfx_pipeline_state.front_face != ctx->rast_state->front_face) {
-         ctx->gfx_pipeline_state.front_face = ctx->rast_state->front_face;
+      if (ctx->gfx_pipeline_state.dyn_state1.front_face != ctx->rast_state->front_face) {
+         ctx->gfx_pipeline_state.dyn_state1.front_face = ctx->rast_state->front_face;
          ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
       }
       if (ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization)

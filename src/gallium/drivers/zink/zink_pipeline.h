@@ -56,9 +56,11 @@ struct zink_gfx_pipeline_state {
    uint32_t hash;
    bool dirty;
 
-   struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state; //non-dynamic state
-   VkFrontFace front_face;
-   
+   struct {
+      struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state; //non-dynamic state
+      VkFrontFace front_face;
+   } dyn_state1;
+
    bool primitive_restart; //dynamic state2
 
    VkShaderModule modules[PIPE_SHADER_TYPES - 1];
