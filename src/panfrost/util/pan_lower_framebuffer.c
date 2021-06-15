@@ -226,8 +226,8 @@ static nir_ssa_def *
 pan_pack_unorm_8(nir_builder *b, nir_ssa_def *v)
 {
         return pan_replicate_4(b, nir_pack_32_4x8(b,
-                nir_f2u8(b, nir_fround_even(b, nir_fmul(b, nir_fsat(b,
-                        nir_pad_vec4(b, v)), nir_imm_float16(b, 255.0))))));
+                nir_f2u8(b, nir_fround_even(b, nir_fmul_imm(b, nir_fsat(b,
+                        nir_pad_vec4(b, v)), 255.0)))));
 }
 
 /* UNORM 4 is also unpacked to f16, which prevents us from using the shared
