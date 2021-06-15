@@ -579,7 +579,7 @@ void
 vn_instance_submit_command(struct vn_instance *instance,
                            struct vn_instance_submit_command *submit)
 {
-   void *reply_ptr;
+   void *reply_ptr = NULL;
    submit->reply_shmem = NULL;
 
    mtx_lock(&instance->ring.mutex);
