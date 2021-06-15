@@ -10,6 +10,7 @@ Chery.
    :maxdepth: 2
 
    units
+   formats
 
 The core representation of a surface in ISL is :cpp:struct:`isl_surf`.
 

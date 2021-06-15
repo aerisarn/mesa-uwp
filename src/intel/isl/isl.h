@@ -415,17 +415,113 @@ enum isl_format {
  * Numerical base type for channels of isl_format.
  */
 enum PACKED isl_base_type {
+   /** Data which takes up space but is ignored */
    ISL_VOID,
+
+   /** Data in a "raw" form and cannot be easily interpreted */
    ISL_RAW,
+
+   /**
+    * Unsigned normalized data
+    *
+    * Though stored as an integer, the data is interpreted as a floating-point
+    * number in the range [0, 1] where the conversion from the in-memory
+    * representation to float is given by \f$\frac{x}{2^{bits} - 1}\f$.
+    */
    ISL_UNORM,
+
+   /**
+    * Signed normalized data
+    *
+    * Though stored as an integer, the data is interpreted as a floating-point
+    * number in the range [-1, 1] where the conversion from the in-memory
+    * representation to float is given by
+    * \f$max\left(\frac{x}{2^{bits - 1} - 1}, -1\right)\f$.
+    */
    ISL_SNORM,
+
+   /**
+    * Unsigned floating-point data
+    *
+    * Unlike the standard IEEE floating-point representation, unsigned
+    * floating-point data has no sign bit. This saves a bit of space which is
+    * important if more than one float is required to represent a color value.
+    * As with IEEE floats, the high bits are the exponent and the low bits are
+    * the mantissa.  The available bit sizes for unsigned floats are as
+    * follows:
+    *
+    * \rst
+    * =====  =========  =========
+    * Bits   Mantissa   Exponent
+    * =====  =========  =========
+    *  11       6          5
+    *  10       5          5
+    * =====  =========  =========
+    * \endrst
+    *
+    * In particular, both unsigned floating-point formats are identical to
+    * IEEE float16 except that the sign bit and the bottom mantissa bits are
+    * removed.
+    */
    ISL_UFLOAT,
+
+   /** Signed floating-point data
+    *
+    * Signed floating-point data is represented as standard IEEE floats with
+    * the usual number of mantissa and exponent bits
+    *
+    * \rst
+    * =====  =========  =========
+    * Bits   Mantissa   Exponent
+    * =====  =========  =========
+    *  64      52         11
+    *  32      23          8
+    *  16      10          5
+    * =====  =========  =========
+    * \endrst
+    */
    ISL_SFLOAT,
+
+   /**
+    * Unsigned fixed-point data
+    *
+    * This is a 32-bit unsigned integer that is interpreted as a 16.16
+    * fixed-point value.
+    */
    ISL_UFIXED,
+
+   /**
+    * Signed fixed-point data
+    *
+    * This is a 32-bit signed integer that is interpreted as a 16.16
+    * fixed-point value.
+    */
    ISL_SFIXED,
+
+   /** Unsigned integer data */
    ISL_UINT,
+
+   /** Signed integer data */
    ISL_SINT,
+
+   /**
+    * Unsigned scaled data
+    *
+    * This is data which is stored as an unsigned integer but interpreted as a
+    * floating-point value by the hardware.  The re-interpretation is done via
+    * a simple unsigned integer to float cast.  This is typically used as a
+    * vertex format.
+    */
    ISL_USCALED,
+
+   /**
+    * Signed scaled data
+    *
+    * This is data which is stored as a signed integer but interpreted as a
+    * floating-point value by the hardware.  The re-interpretation is done via
+    * a simple signed integer to float cast.  This is typically used as a
+    * vertex format.
+    */
    ISL_SSCALED,
 };
 
@@ -1101,21 +1197,26 @@ struct isl_extent4d {
    union { uint32_t a, array_len; };
 };
 
+/**
+ * Describes a single channel of an isl_format
+ */
 struct isl_channel_layout {
-   enum isl_base_type type;
+   enum isl_base_type type; /**< Channel data encoding */
    uint8_t start_bit; /**< Bit at which this channel starts */
    uint8_t bits; /**< Size in bits */
 };
 
 /**
+ * Describes the layout of an isl_format
+ *
  * Each format has 3D block extent (width, height, depth). The block extent of
  * compressed formats is that of the format's compression block. For example,
- * the block extent of ISL_FORMAT_ETC2_RGB8 is (w=4, h=4, d=1).  The block
- * extent of uncompressed pixel formats, such as ISL_FORMAT_R8G8B8A8_UNORM, is
- * is (w=1, h=1, d=1).
+ * the block extent of `ISL_FORMAT_ETC2_RGB8` is `(w=4, h=4, d=1)`. The block
+ * extent of uncompressed pixel formats, such as `ISL_FORMAT_R8G8B8A8_UNORM`,
+ * is `(w=1, h=1, d=1)`.
  */
 struct isl_format_layout {
-   enum isl_format format;
+   enum isl_format format; /**< Format */
 
    uint16_t bpb; /**< Bits per block */
    uint8_t bw; /**< Block width, in pixels */
@@ -1135,7 +1236,7 @@ struct isl_format_layout {
       struct isl_channel_layout channels_array[7];
    };
 
-   /** Set if all channels have the same isl_base_type. Otherwise, ISL_BASE_VOID. */
+   /** Set if all channels have the same isl_base_type. Otherwise, ISL_VOID. */
    enum isl_base_type uniform_channel_type;
 
    enum isl_colorspace colorspace;
@@ -1569,6 +1670,9 @@ isl_device_init(struct isl_device *dev,
 isl_sample_count_mask_t ATTRIBUTE_CONST
 isl_device_get_sample_counts(struct isl_device *dev);
 
+/**
+ * \return The isl_format_layout for the given isl_format
+ */
 static inline const struct isl_format_layout * ATTRIBUTE_CONST
 isl_format_get_layout(enum isl_format fmt)
 {
