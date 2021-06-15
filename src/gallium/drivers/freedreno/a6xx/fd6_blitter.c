@@ -1127,14 +1127,66 @@ handle_compressed_blit(struct fd_context *ctx,
    return do_rewritten_blit(ctx, &blit);
 }
 
+static enum pipe_format
+snorm_copy_format(enum pipe_format format)
+{
+   switch (format) {
+   case PIPE_FORMAT_R8_SNORM:           return PIPE_FORMAT_R8_UNORM;
+   case PIPE_FORMAT_R16_SNORM:          return PIPE_FORMAT_R16_UNORM;
+   case PIPE_FORMAT_A16_SNORM:          return PIPE_FORMAT_A16_UNORM;
+   case PIPE_FORMAT_L16_SNORM:          return PIPE_FORMAT_L16_UNORM;
+   case PIPE_FORMAT_I16_SNORM:          return PIPE_FORMAT_I16_UNORM;
+   case PIPE_FORMAT_R8G8_SNORM:         return PIPE_FORMAT_R8G8_UNORM;
+   case PIPE_FORMAT_R8G8B8_SNORM:       return PIPE_FORMAT_R8G8B8_UNORM;
+   case PIPE_FORMAT_R32_SNORM:          return PIPE_FORMAT_R32_UNORM;
+   case PIPE_FORMAT_R16G16_SNORM:       return PIPE_FORMAT_R16G16_UNORM;
+   case PIPE_FORMAT_L16A16_SNORM:       return PIPE_FORMAT_L16A16_UNORM;
+   case PIPE_FORMAT_R8G8B8A8_SNORM:     return PIPE_FORMAT_R8G8B8A8_UNORM;
+   case PIPE_FORMAT_R10G10B10A2_SNORM:  return PIPE_FORMAT_R10G10B10A2_UNORM;
+   case PIPE_FORMAT_B10G10R10A2_SNORM:  return PIPE_FORMAT_B10G10R10A2_UNORM;
+   case PIPE_FORMAT_R16G16B16_SNORM:    return PIPE_FORMAT_R16G16B16_UNORM;
+   case PIPE_FORMAT_R16G16B16A16_SNORM: return PIPE_FORMAT_R16G16B16A16_UNORM;
+   case PIPE_FORMAT_R16G16B16X16_SNORM: return PIPE_FORMAT_R16G16B16X16_UNORM;
+   case PIPE_FORMAT_R32G32_SNORM:       return PIPE_FORMAT_R32G32_UNORM;
+   case PIPE_FORMAT_R32G32B32_SNORM:    return PIPE_FORMAT_R32G32B32_UNORM;
+   case PIPE_FORMAT_R32G32B32A32_SNORM: return PIPE_FORMAT_R32G32B32A32_UNORM;
+   default:
+      unreachable("unhandled snorm format");
+      return format;
+   }
+}
+
+/**
+ * For SNORM formats, copy them as the equivalent UNORM format.  If we treat
+ * them as snorm then the 0x80 (-1.0 snorm8) value will get clamped to 0x81
+ * (also -1.0), when we're supposed to be memcpying the bits. See
+ * https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2917 for discussion.
+ */
+static bool
+handle_snorm_copy_blit(struct fd_context *ctx,
+                       const struct pipe_blit_info *info)
+   assert_dt
+{
+   struct pipe_blit_info blit = *info;
+
+   blit.src.format = blit.dst.format = snorm_copy_format(info->src.format);
+
+   return do_rewritten_blit(ctx, &blit);
+}
+
 static bool
 fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info) assert_dt
 {
    if (info->mask & PIPE_MASK_ZS)
       return handle_zs_blit(ctx, info);
+
    if (util_format_is_compressed(info->src.format) ||
        util_format_is_compressed(info->dst.format))
       return handle_compressed_blit(ctx, info);
+
+   if ((info->src.format == info->dst.format) &&
+       util_format_is_snorm(info->src.format))
+      return handle_snorm_copy_blit(ctx, info);
 
    return handle_rgba_blit(ctx, info);
 }
