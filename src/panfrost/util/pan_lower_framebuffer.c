@@ -487,15 +487,8 @@ pan_lower_fb_load(nir_shader *shader,
 
         unsigned bits = nir_dest_bit_size(intr->dest);
 
-        nir_alu_type src_type;
-        if (desc->channel[0].pure_integer) {
-                if (desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED)
-                        src_type = nir_type_int;
-                else
-                        src_type = nir_type_uint;
-        } else {
-                src_type = nir_type_float;
-        }
+        nir_alu_type src_type = nir_alu_type_get_base_type(
+                        pan_unpacked_type_for_format(desc));
 
         unpacked = nir_convert_to_bit_size(b, unpacked, src_type, bits);
         unpacked = nir_pad_vector(b, unpacked, nir_dest_num_components(intr->dest));
