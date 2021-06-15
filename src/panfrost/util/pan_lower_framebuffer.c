@@ -145,13 +145,10 @@ pan_format_class(const struct util_format_description *desc, unsigned quirks, bo
 /* Software packs/unpacks, by format class. Packs take in the pixel value typed
  * as `pan_unpacked_type_for_format` of the format and return an i32vec4
  * suitable for storing (with components replicated to fill). Unpacks do the
- * reverse but cannot rely on replication.
- *
- * Pure 32 formats (R32F ... RGBA32F) are 32 unpacked, so just need to
- * replicate to fill */
+ * reverse but cannot rely on replication. */
 
 static nir_ssa_def *
-pan_pack_pure_32(nir_builder *b, nir_ssa_def *v, unsigned num_components)
+pan_replicate(nir_builder *b, nir_ssa_def *v, unsigned num_components)
 {
         nir_ssa_def *replicated[4];
 
@@ -173,20 +170,12 @@ pan_unpack_pure_32(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
 static nir_ssa_def *
 pan_pack_pure_16(nir_builder *b, nir_ssa_def *v, unsigned num_components)
 {
-        nir_ssa_def *replicated[4];
+        nir_ssa_def *v4 = pan_replicate(b, v, num_components);
 
-        for (unsigned i = 0; i < 4; ++i) {
-                unsigned c = 2 * i;
+        nir_ssa_def *lo = nir_pack_32_2x16(b, nir_channels(b, v4, 0x3 << 0));
+        nir_ssa_def *hi = nir_pack_32_2x16(b, nir_channels(b, v4, 0x3 << 2));
 
-                nir_ssa_def *parts[2] = {
-                        nir_channel(b, v, (c + 0) % num_components),
-                        nir_channel(b, v, (c + 1) % num_components)
-                };
-
-                replicated[i] = nir_pack_32_2x16(b, nir_vec(b, parts, 2));
-        }
-
-        return nir_vec(b, replicated, 4);
+        return nir_vec4(b, lo, hi, lo, hi);
 }
 
 static nir_ssa_def *
@@ -210,55 +199,21 @@ pan_unpack_pure_16(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
         return nir_vec(b, unpacked, 4);
 }
 
-/* And likewise for x8. pan_fill_4 fills a 4-channel vector with a n-channel
- * vector (n <= 4), replicating as needed. pan_replicate_4 constructs a
- * 4-channel vector from a scalar via replication */
-
-static nir_ssa_def *
-pan_fill_4(nir_builder *b, nir_ssa_def *v, unsigned num_components)
-{
-        nir_ssa_def *q[4];
-        assert(v->num_components <= 4);
-
-        for (unsigned j = 0; j < 4; ++j)
-                q[j] = nir_channel(b, v, j % num_components);
-
-        return nir_vec(b, q, 4);
-}
-
-static nir_ssa_def *
-pan_extend(nir_builder *b, nir_ssa_def *v, unsigned N)
-{
-        nir_ssa_def *q[4];
-        assert(v->num_components <= 4);
-        assert(N <= 4);
-
-        for (unsigned j = 0; j < v->num_components; ++j)
-                q[j] = nir_channel(b, v, j);
-
-        for (unsigned j = v->num_components; j < N; ++j)
-                q[j] = nir_imm_intN_t(b, 0, v->bit_size);
-
-        return nir_vec(b, q, N);
-}
-
 static nir_ssa_def *
 pan_replicate_4(nir_builder *b, nir_ssa_def *v)
 {
-        nir_ssa_def *replicated[4] = { v, v, v, v };
-        return nir_vec(b, replicated, 4);
+        return nir_vec4(b, v, v, v, v);
 }
 
 static nir_ssa_def *
 pan_pack_pure_8(nir_builder *b, nir_ssa_def *v, unsigned num_components)
 {
-        return pan_replicate_4(b, nir_pack_32_4x8(b, pan_fill_4(b, v, num_components)));
+        return pan_replicate_4(b, nir_pack_32_4x8(b, pan_replicate(b, v, num_components)));
 }
 
 static nir_ssa_def *
 pan_unpack_pure_8(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
 {
-        assert(num_components <= 4);
         nir_ssa_def *unpacked = nir_unpack_32_4x8(b, nir_channel(b, pack, 0));
         return nir_channels(b, unpacked, (1 << num_components) - 1);
 }
@@ -272,7 +227,7 @@ pan_pack_unorm_8(nir_builder *b, nir_ssa_def *v)
 {
         return pan_replicate_4(b, nir_pack_32_4x8(b,
                 nir_f2u8(b, nir_fround_even(b, nir_fmul(b, nir_fsat(b,
-                        pan_fill_4(b, v, v->num_components)), nir_imm_float16(b, 255.0))))));
+                        nir_pad_vec4(b, v)), nir_imm_float16(b, 255.0))))));
 }
 
 /* UNORM 4 is also unpacked to f16, which prevents us from using the shared
@@ -290,7 +245,7 @@ static nir_ssa_def *
 pan_pack_unorm_small(nir_builder *b, nir_ssa_def *v,
                 nir_ssa_def *scales, nir_ssa_def *shifts)
 {
-        nir_ssa_def *f = nir_fmul(b, nir_fsat(b, pan_fill_4(b, v, v->num_components)), scales);
+        nir_ssa_def *f = nir_fmul(b, nir_fsat(b, nir_pad_vec4(b, v)), scales);
         nir_ssa_def *u8 = nir_f2u8(b, nir_fround_even(b, f));
         nir_ssa_def *s = nir_ishl(b, u8, shifts);
         nir_ssa_def *repl = nir_pack_32_4x8(b, s);
@@ -507,7 +462,8 @@ pan_pack(nir_builder *b,
                         assert(!d.normalized);
                         assert(d.type == UTIL_FORMAT_TYPE_FLOAT || d.pure_integer);
 
-                        return d.size == 32 ? pan_pack_pure_32(b, unpacked, desc->nr_channels) :
+                        return d.size == 32 ?
+                                pan_replicate(b, unpacked, desc->nr_channels) :
                                 pan_pack_pure_16(b, unpacked, desc->nr_channels);
                 } else if (d.size == 8) {
                         assert(d.pure_integer);
@@ -596,7 +552,7 @@ pan_lower_fb_load(nir_shader *shader,
         }
 
         unpacked = nir_convert_to_bit_size(b, unpacked, src_type, bits);
-        unpacked = pan_extend(b, unpacked, nir_dest_num_components(intr->dest));
+        unpacked = nir_pad_vector(b, unpacked, nir_dest_num_components(intr->dest));
 
         nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, unpacked, &intr->instr);
 }
