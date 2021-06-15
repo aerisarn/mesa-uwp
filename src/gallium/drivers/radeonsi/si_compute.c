@@ -472,11 +472,12 @@ static bool si_setup_compute_scratch_buffer(struct si_context *sctx, struct si_s
    }
 
    if (sctx->compute_scratch_buffer != shader->scratch_bo && scratch_needed) {
-      uint64_t scratch_va = sctx->compute_scratch_buffer->gpu_address;
+      if (sctx->chip_class < GFX11) {
+         uint64_t scratch_va = sctx->compute_scratch_buffer->gpu_address;
 
-      if (!si_shader_binary_upload(sctx->screen, shader, scratch_va))
-         return false;
-
+         if (!si_shader_binary_upload(sctx->screen, shader, scratch_va))
+            return false;
+      }
       si_resource_reference(&shader->scratch_bo, sctx->compute_scratch_buffer);
    }
 
@@ -550,7 +551,14 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
    radeon_begin(cs);
    radeon_set_sh_reg(R_00B830_COMPUTE_PGM_LO, shader_va >> 8);
 
-   radeon_set_sh_reg_seq(R_00B848_COMPUTE_PGM_RSRC1, 2);
+   if (sctx->chip_class >= GFX11 && shader->scratch_bo) {
+      radeon_set_sh_reg_seq(R_00B840_COMPUTE_DISPATCH_SCRATCH_BASE_LO, 4);
+      radeon_emit(sctx->compute_scratch_buffer->gpu_address >> 8);
+      radeon_emit(sctx->compute_scratch_buffer->gpu_address >> 40);
+   } else {
+      radeon_set_sh_reg_seq(R_00B848_COMPUTE_PGM_RSRC1, 2);
+   }
+
    radeon_emit(config->rsrc1);
    radeon_emit(config->rsrc2);
 
