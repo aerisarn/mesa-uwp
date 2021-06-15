@@ -635,8 +635,7 @@ typedef enum
    OPCODE_ERROR,                /* raise compiled-in error */
    OPCODE_CONTINUE,
    OPCODE_NOP,                  /* No-op (used for 8-byte alignment */
-   OPCODE_END_OF_LIST,
-   OPCODE_EXT_0
+   OPCODE_END_OF_LIST
 } OpCode;
 
 
@@ -1535,15 +1534,13 @@ dlist_alloc(struct gl_context *ctx, OpCode opcode, GLuint bytes, bool align8)
 
    assert(bytes <= BLOCK_SIZE * sizeof(Node));
 
-   if (opcode < OPCODE_EXT_0) {
-      if (InstSize[opcode] == 0) {
-         /* save instruction size now */
-         InstSize[opcode] = numNodes;
-      }
-      else {
-         /* make sure instruction size agrees */
-         assert(numNodes == InstSize[opcode]);
-      }
+   if (InstSize[opcode] == 0) {
+      /* save instruction size now */
+      InstSize[opcode] = numNodes;
+   }
+   else {
+      /* make sure instruction size agrees */
+      assert(numNodes == InstSize[opcode]);
    }
 
    if (sizeof(void *) > sizeof(Node) && align8
