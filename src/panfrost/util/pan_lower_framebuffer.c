@@ -193,10 +193,7 @@ pan_unpack_pure_16(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
                 unpacked[i + 1] = nir_channel(b, halves, 1);
         }
 
-        for (unsigned i = num_components; i < 4; ++i)
-                unpacked[i] = nir_imm_intN_t(b, 0, 16);
-
-        return nir_vec(b, unpacked, 4);
+        return nir_pad_vec4(b, nir_vec(b, unpacked, num_components));
 }
 
 static nir_ssa_def *
