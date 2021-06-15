@@ -916,12 +916,8 @@ handle_rgba_blit(struct fd_context *ctx,
 
    batch = fd_bc_alloc_batch(ctx, true);
 
-   fd_screen_lock(ctx->screen);
-
    fd_batch_resource_read(batch, src);
    fd_batch_resource_write(batch, dst);
-
-   fd_screen_unlock(ctx->screen);
 
    ASSERTED bool ret = fd_batch_lock_submit(batch);
    assert(ret);

@@ -30,6 +30,7 @@
 #include "util/u_string.h"
 
 #include "freedreno_batch.h"
+#include "freedreno_batch_cache.h"
 #include "freedreno_context.h"
 #include "freedreno_fence.h"
 #include "freedreno_query_hw.h"
@@ -138,6 +139,8 @@ fd_batch_create(struct fd_context *ctx, bool nondraw)
 
    batch->resources =
       _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   batch->dependents =
+      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
    batch_init(batch);
 
@@ -186,6 +189,8 @@ cleanup_submit(struct fd_batch *batch)
 
    fd_submit_del(batch->submit);
    batch->submit = NULL;
+
+   util_copy_framebuffer_state(&batch->framebuffer, NULL);
 }
 
 static void
@@ -227,46 +232,58 @@ batch_fini(struct fd_batch *batch)
    u_trace_fini(&batch->trace);
 }
 
+/* Flushes any batches that this batch depends on, recursively. */
 static void
 batch_flush_dependencies(struct fd_batch *batch) assert_dt
 {
-   struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
-   struct fd_batch *dep;
-
-   foreach_batch (dep, cache, batch->dependents_mask) {
+   set_foreach (batch->dependents, entry) {
+      struct fd_batch *dep = (void *)entry->key;
       fd_batch_flush(dep);
       fd_batch_reference(&dep, NULL);
    }
-
-   batch->dependents_mask = 0;
+   _mesa_set_clear(batch->dependents, NULL);
 }
 
 static void
 batch_reset_dependencies(struct fd_batch *batch)
 {
-   struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
-   struct fd_batch *dep;
-
-   foreach_batch (dep, cache, batch->dependents_mask) {
+   set_foreach (batch->dependents, entry) {
+      struct fd_batch *dep = (void *)entry->key;
       fd_batch_reference(&dep, NULL);
    }
-
-   batch->dependents_mask = 0;
+   _mesa_set_clear(batch->dependents, NULL);
 }
 
 static void
 batch_reset_resources(struct fd_batch *batch)
 {
-   fd_screen_assert_locked(batch->ctx->screen);
+   struct fd_batch_cache *cache = &batch->ctx->batch_cache;
 
    set_foreach (batch->resources, entry) {
       struct fd_resource *rsc = (struct fd_resource *)entry->key;
-      _mesa_set_remove(batch->resources, entry);
-      debug_assert(rsc->track->batch_mask & (1 << batch->idx));
-      rsc->track->batch_mask &= ~(1 << batch->idx);
-      if (rsc->track->write_batch == batch)
-         fd_batch_reference_locked(&rsc->track->write_batch, NULL);
+      struct hash_entry *entry =
+         _mesa_hash_table_search_pre_hashed(cache->written_resources, rsc->hash, rsc);
+      if (entry) {
+         struct fd_batch *write_batch = entry->data;
+         assert(write_batch == batch);
+
+         struct pipe_resource *table_ref = &rsc->b.b;
+         pipe_resource_reference(&table_ref, NULL);
+
+         fd_batch_reference(&write_batch, NULL);
+         _mesa_hash_table_remove(cache->written_resources, entry);
+      }
+
+      ASSERTED int32_t count = p_atomic_dec_return(&rsc->batch_references);
+      assert(count >= 0);
+
+      struct pipe_resource *table_ref = &rsc->b.b;
+      pipe_resource_reference(&table_ref, NULL);
    }
+   /* Clear at the end so if the batch is reused we get a fully empty set
+    * rather than having any deleted keys.
+    */
+   _mesa_set_clear(batch->resources, NULL);
 }
 
 static void
@@ -275,11 +292,7 @@ batch_reset(struct fd_batch *batch) assert_dt
    DBG("%p", batch);
 
    batch_reset_dependencies(batch);
-
-   fd_screen_lock(batch->ctx->screen);
    batch_reset_resources(batch);
-   fd_screen_unlock(batch->ctx->screen);
-
    batch_fini(batch);
    batch_init(batch);
 }
@@ -294,30 +307,23 @@ fd_batch_reset(struct fd_batch *batch)
 void
 __fd_batch_destroy(struct fd_batch *batch)
 {
-   struct fd_context *ctx = batch->ctx;
-
    DBG("%p", batch);
 
-   fd_screen_assert_locked(batch->ctx->screen);
-
-   fd_bc_invalidate_batch(batch, true);
+   fd_bc_free_key(batch);
 
    batch_reset_resources(batch);
-   debug_assert(batch->resources->entries == 0);
+   assert(batch->resources->entries == 0);
    _mesa_set_destroy(batch->resources, NULL);
 
-   fd_screen_unlock(ctx->screen);
    batch_reset_dependencies(batch);
-   debug_assert(batch->dependents_mask == 0);
+   assert(batch->dependents->entries == 0);
+   _mesa_set_destroy(batch->dependents, NULL);
 
-   util_copy_framebuffer_state(&batch->framebuffer, NULL);
    batch_fini(batch);
 
    simple_mtx_destroy(&batch->submit_lock);
 
-   free(batch->key);
    free(batch);
-   fd_screen_lock(ctx->screen);
 }
 
 void
@@ -353,20 +359,12 @@ batch_flush(struct fd_batch *batch) assert_dt
 
    batch_flush_dependencies(batch);
 
-   fd_screen_lock(batch->ctx->screen);
    batch_reset_resources(batch);
-   /* NOTE: remove=false removes the batch from the hashtable, so future
-    * lookups won't cache-hit a flushed batch, but leaves the weak reference
-    * to the batch to avoid having multiple batches with same batch->idx, as
-    * that causes all sorts of hilarity.
-    */
-   fd_bc_invalidate_batch(batch, false);
+   fd_bc_free_key(batch);
    batch->flushed = true;
 
    if (batch == batch->ctx->batch)
-      fd_batch_reference_locked(&batch->ctx->batch, NULL);
-
-   fd_screen_unlock(batch->ctx->screen);
+      fd_batch_reference(&batch->ctx->batch, NULL);
 
    if (batch->fence)
       fd_fence_ref(&batch->ctx->last_fence, batch->fence);
@@ -386,78 +384,61 @@ fd_batch_flush(struct fd_batch *batch)
 {
    struct fd_batch *tmp = NULL;
 
-   /* NOTE: we need to hold an extra ref across the body of flush,
-    * since the last ref to this batch could be dropped when cleaning
-    * up used_resources
+   /* NOTE: Many callers pass in a ctx->batch or fd_bc_writer() batches without
+    * refcounting, which batch_flush will reset, so we need to hold a ref across
+    * the body of the flush.
     */
    fd_batch_reference(&tmp, batch);
    batch_flush(tmp);
    fd_batch_reference(&tmp, NULL);
 }
 
-/* find a batches dependents mask, including recursive dependencies: */
-static uint32_t
-recursive_dependents_mask(struct fd_batch *batch)
+static uint32_t ASSERTED
+dependents_contains(const struct fd_batch *haystack, const struct fd_batch *needle)
 {
-   struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
-   struct fd_batch *dep;
-   uint32_t dependents_mask = batch->dependents_mask;
+   if (haystack == needle)
+      return true;
 
-   foreach_batch (dep, cache, batch->dependents_mask)
-      dependents_mask |= recursive_dependents_mask(dep);
+   set_foreach (haystack->dependents, entry) {
+      if (dependents_contains(entry->key, needle))
+         return true;
+   }
 
-   return dependents_mask;
+   return false;
 }
 
 void
 fd_batch_add_dep(struct fd_batch *batch, struct fd_batch *dep)
 {
-   fd_screen_assert_locked(batch->ctx->screen);
-
-   if (batch->dependents_mask & (1 << dep->idx))
+   if (_mesa_set_search(batch->dependents, dep))
       return;
 
    /* a loop should not be possible */
-   debug_assert(!((1 << batch->idx) & recursive_dependents_mask(dep)));
+   assert(!dependents_contains(dep, batch));
 
-   struct fd_batch *other = NULL;
-   fd_batch_reference_locked(&other, dep);
-   batch->dependents_mask |= (1 << dep->idx);
+   struct fd_batch *table_ref = NULL;
+   fd_batch_reference(&table_ref, dep);
+   _mesa_set_add(batch->dependents, dep);
    DBG("%p: added dependency on %p", batch, dep);
-}
-
-static void
-flush_write_batch(struct fd_resource *rsc) assert_dt
-{
-   struct fd_batch *b = NULL;
-   fd_batch_reference_locked(&b, rsc->track->write_batch);
-
-   fd_screen_unlock(b->ctx->screen);
-   fd_batch_flush(b);
-   fd_screen_lock(b->ctx->screen);
-
-   fd_batch_reference_locked(&b, NULL);
 }
 
 static void
 fd_batch_add_resource(struct fd_batch *batch, struct fd_resource *rsc)
 {
-
-   if (likely(fd_batch_references_resource(batch, rsc))) {
-      debug_assert(_mesa_set_search_pre_hashed(batch->resources, rsc->hash, rsc));
-      return;
+   bool found = false;
+   _mesa_set_search_or_add_pre_hashed(batch->resources, rsc->hash, rsc, &found);
+   if (!found) {
+      struct pipe_resource *table_ref = NULL;
+      pipe_resource_reference(&table_ref, &rsc->b.b);
+      p_atomic_inc(&rsc->batch_references);
    }
-
-   debug_assert(!_mesa_set_search(batch->resources, rsc));
-
-   _mesa_set_add_pre_hashed(batch->resources, rsc->hash, rsc);
-   rsc->track->batch_mask |= (1 << batch->idx);
 }
 
 void
 fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
 {
-   fd_screen_assert_locked(batch->ctx->screen);
+   struct fd_context *ctx = batch->ctx;
+   struct fd_batch_cache *cache = &ctx->batch_cache;
 
    DBG("%p: write %p", batch, rsc);
 
@@ -466,7 +447,8 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
     */
    rsc->valid = true;
 
-   if (rsc->track->write_batch == batch)
+   struct fd_batch *prev_writer = fd_bc_writer(ctx, rsc);
+   if (prev_writer == batch)
       return;
 
    fd_batch_write_prep(batch, rsc);
@@ -474,32 +456,21 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
    if (rsc->stencil)
       fd_batch_resource_write(batch, rsc->stencil);
 
-   /* note, invalidate write batch, to avoid further writes to rsc
-    * resulting in a write-after-read hazard.
+   /* Flush any other batches accessing our resource.  Similar to
+    * fd_bc_flush_readers().
     */
-   /* if we are pending read or write by any other batch: */
-   if (unlikely(rsc->track->batch_mask & ~(1 << batch->idx))) {
-      struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
-      struct fd_batch *dep;
-
-      if (rsc->track->write_batch)
-         flush_write_batch(rsc);
-
-      foreach_batch (dep, cache, rsc->track->batch_mask) {
-         struct fd_batch *b = NULL;
-         if (dep == batch)
-            continue;
-         /* note that batch_add_dep could flush and unref dep, so
-          * we need to hold a reference to keep it live for the
-          * fd_bc_invalidate_batch()
-          */
-         fd_batch_reference(&b, dep);
-         fd_batch_add_dep(batch, b);
-         fd_bc_invalidate_batch(b, false);
-         fd_batch_reference_locked(&b, NULL);
-      }
+   foreach_batch (reader, cache) {
+      if (reader == batch || !fd_batch_references(reader, rsc))
+         continue;
+      fd_batch_flush(reader);
    }
-   fd_batch_reference_locked(&rsc->track->write_batch, batch);
+
+   struct fd_batch *table_ref = NULL;
+   fd_batch_reference(&table_ref, batch);
+   struct pipe_resource *table_rsc_ref = NULL;
+   pipe_resource_reference(&table_rsc_ref, &rsc->b.b);
+   _mesa_hash_table_insert_pre_hashed(cache->written_resources, rsc->hash, rsc,
+                                      batch);
 
    fd_batch_add_resource(batch, rsc);
 }
@@ -507,19 +478,16 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
 void
 fd_batch_resource_read_slowpath(struct fd_batch *batch, struct fd_resource *rsc)
 {
-   fd_screen_assert_locked(batch->ctx->screen);
-
    if (rsc->stencil)
       fd_batch_resource_read(batch, rsc->stencil);
 
    DBG("%p: read %p", batch, rsc);
 
-   /* If reading a resource pending a write, go ahead and flush the
-    * writer.  This avoids situations where we end up having to
-    * flush the current batch in _resource_used()
-    */
-   if (unlikely(rsc->track->write_batch && rsc->track->write_batch != batch))
-      flush_write_batch(rsc);
+   struct fd_context *ctx = batch->ctx;
+
+   struct fd_batch *writer = fd_bc_writer(ctx, rsc);
+   if (writer && writer != batch)
+      fd_batch_flush(writer);
 
    fd_batch_add_resource(batch, rsc);
 }
