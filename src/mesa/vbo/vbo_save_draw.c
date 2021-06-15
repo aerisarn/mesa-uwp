@@ -220,30 +220,19 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data)
 
    assert(ctx->NewState == 0);
 
-   bool draw_using_merged_prim = (ctx->Const.AllowIncorrectPrimitiveId ||
-                                  ctx->_PrimitiveIDIsUnused) &&
-                                 node->merged.num_draws;
-   if (!draw_using_merged_prim) {
-      ctx->Driver.Draw(ctx, node->prims, node->prim_count,
-                       NULL, true,
-                       false, 0, node->min_index, node->max_index, 1, 0);
-   } else {
-      struct pipe_draw_info *info = (struct pipe_draw_info *) &node->merged.info;
-      info->vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
-      void *gl_bo = info->index.gl_bo;
-      if (node->merged.mode) {
-         assert(node->merged.mode);
-         ctx->Driver.DrawGalliumMultiMode(ctx, info, 0,
-                                          node->merged.start_counts,
-                                          node->merged.mode,
-                                          node->merged.num_draws);
-      } else if (node->merged.num_draws) {
-         /* If node->merged.mode is NULL then num_draws is 0 or 1 */
-         assert (node->merged.num_draws == 1);
-         ctx->Driver.DrawGallium(ctx, info, 0, &node->merged.start_count, 1);
-      }
-      info->index.gl_bo = gl_bo;
+   struct pipe_draw_info *info = (struct pipe_draw_info *) &node->merged.info;
+   info->vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
+   void *gl_bo = info->index.gl_bo;
+   if (node->merged.mode) {
+      ctx->Driver.DrawGalliumMultiMode(ctx, info, 0,
+                                       node->merged.start_counts,
+                                       node->merged.mode,
+                                       node->merged.num_draws);
+   } else if (node->merged.num_draws) {
+      /* If node->merged.mode is NULL then num_draws is 0 or 1 */
+      ctx->Driver.DrawGallium(ctx, info, 0, &node->merged.start_count, 1);
    }
+   info->index.gl_bo = gl_bo;
 
    /* Copy to current?
     */
