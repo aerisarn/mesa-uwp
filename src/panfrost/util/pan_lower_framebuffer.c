@@ -347,23 +347,6 @@ pan_linear_to_srgb(nir_builder *b, nir_ssa_def *linear)
 
 /* Generic dispatches for un/pack regardless of format */
 
-static bool
-pan_is_unorm4(const struct util_format_description *desc)
-{
-        switch (desc->format) {
-        case PIPE_FORMAT_B4G4R4A4_UNORM:
-        case PIPE_FORMAT_B4G4R4X4_UNORM:
-        case PIPE_FORMAT_A4R4_UNORM:
-        case PIPE_FORMAT_R4A4_UNORM:
-        case PIPE_FORMAT_A4B4G4R4_UNORM:
-        case PIPE_FORMAT_R4G4B4A4_UNORM:
-                return true;
-        default:
-                return false;
-        }
- 
-}
-
 static nir_ssa_def *
 pan_unpack(nir_builder *b,
                 const struct util_format_description *desc,
@@ -412,9 +395,6 @@ pan_pack(nir_builder *b,
         if (util_format_is_unorm8(desc))
                 return pan_pack_unorm(b, unpacked, 8, 8, 8, 8);
 
-        if (pan_is_unorm4(desc))
-                return pan_pack_unorm(b, unpacked, 4, 4, 4, 4);
-
         if (desc->is_array) {
                 int c = util_format_get_first_non_void_channel(desc->format);
                 assert(c >= 0);
@@ -436,6 +416,13 @@ pan_pack(nir_builder *b,
         }
 
         switch (desc->format) {
+        case PIPE_FORMAT_B4G4R4A4_UNORM:
+        case PIPE_FORMAT_B4G4R4X4_UNORM:
+        case PIPE_FORMAT_A4R4_UNORM:
+        case PIPE_FORMAT_R4A4_UNORM:
+        case PIPE_FORMAT_A4B4G4R4_UNORM:
+        case PIPE_FORMAT_R4G4B4A4_UNORM:
+                return pan_pack_unorm(b, unpacked, 4, 4, 4, 4);
         case PIPE_FORMAT_B5G5R5A1_UNORM:
         case PIPE_FORMAT_R5G5B5A1_UNORM:
                 return pan_pack_unorm(b, unpacked, 5, 6, 5, 1);
