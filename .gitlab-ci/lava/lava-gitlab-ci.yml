@@ -39,13 +39,13 @@
     BOOT_METHOD: u-boot
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
   extends:
-    - .use-arm_build # for same $MESA_ARTIFACTS_TAG as in kernel+rootfs_armhf
-    - .use-x86_build
+    - .use-debian/arm_build # for same $MESA_ARTIFACTS_TAG as in kernel+rootfs_armhf
+    - .use-debian/x86_build
     - .lava-test
     - .use-kernel+rootfs-arm
   needs:
     - kernel+rootfs_armhf
-    - x86_build
+    - debian/x86_build
     - meson-armhf
 
 .lava-test:arm64:
@@ -56,15 +56,15 @@
     BOOT_METHOD: u-boot
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
   extends:
-    - .use-arm_build # for same $MESA_ARTIFACTS_TAG as in kernel+rootfs_arm64
-    - .use-x86_build
+    - .use-debian/arm_build # for same $MESA_ARTIFACTS_TAG as in kernel+rootfs_arm64
+    - .use-debian/x86_build
     - .lava-test
     - .use-kernel+rootfs-arm
   dependencies:
     - meson-arm64
   needs:
     - kernel+rootfs_arm64
-    - x86_build
+    - debian/x86_build
     - meson-arm64
 
 .lava-test:amd64:
@@ -75,8 +75,8 @@
     BOOT_METHOD: u-boot
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
   extends:
-    - .use-x86_build-base # for same $MESA_ARTIFACTS_BASE_TAG as in kernel+rootfs_amd64
-    - .use-x86_build
+    - .use-debian/x86_build-base # for same $MESA_ARTIFACTS_BASE_TAG as in kernel+rootfs_amd64
+    - .use-debian/x86_build
     - .lava-test
     - .use-kernel+rootfs-amd64
   needs:

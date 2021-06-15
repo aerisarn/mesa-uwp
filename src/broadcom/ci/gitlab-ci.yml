@@ -2,7 +2,7 @@
   extends:
     - .baremetal-test-armhf
     - .vc4-rules
-    - .use-arm_test
+    - .use-debian/arm_test
   variables:
     BM_BOOTFS: /boot/raspberrypi_armhf
     BM_ROOTFS: /rootfs-armhf
@@ -13,7 +13,7 @@
   script:
     - ./install/bare-metal/poe-powered.sh
   needs:
-    - job: arm_test
+    - job: debian/arm_test
       artifacts: false
     - meson-armhf
   tags:
@@ -79,7 +79,7 @@ vc4-rpi3-piglit-quick_shader:armhf:
   extends:
     - .baremetal-test-armhf
     - .v3d-rules
-    - .use-arm_test
+    - .use-debian/arm_test
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_armhf
@@ -92,7 +92,7 @@ vc4-rpi3-piglit-quick_shader:armhf:
   script:
     - ./install/bare-metal/poe-powered.sh
   needs:
-    - arm_test
+    - debian/arm_test
     - meson-armhf
   tags:
     - igalia-rpi4
@@ -156,7 +156,7 @@ v3d-rpi4-piglit:armhf:
 v3dv-rpi4-vk:arm64:
   extends:
     - .baremetal-test
-    - .use-arm_test
+    - .use-debian/arm_test
     - .v3dv-rules
   parallel: 6
   variables:
@@ -175,7 +175,7 @@ v3dv-rpi4-vk:arm64:
   script:
     - ./install/bare-metal/poe-powered.sh
   needs:
-    - arm_test
+    - debian/arm_test
     - job: meson-arm64
       artifacts: false
   tags:

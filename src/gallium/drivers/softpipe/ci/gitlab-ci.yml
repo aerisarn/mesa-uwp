@@ -42,7 +42,7 @@ softpipe-asan-gles31:
     TEST_LD_PRELOAD: libasan.so.6
   extends: softpipe-gles2
   needs:
-    - x86_test-gl
+    - debian/x86_test-gl
     - meson-testing-asan
 
 softpipe-piglit-quick:
