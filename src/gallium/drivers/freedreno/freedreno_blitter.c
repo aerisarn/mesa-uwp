@@ -341,6 +341,17 @@ fd_resource_copy_region(struct pipe_context *pctx, struct pipe_resource *dst,
 {
    struct fd_context *ctx = fd_context(pctx);
 
+   /* The blitter path handles compressed formats only if src and dst format
+    * match, in other cases just fall back to sw:
+    */
+   if ((src->format != dst->format) &&
+       (util_format_is_compressed(src->format) ||
+        util_format_is_compressed(dst->format))) {
+      perf_debug_ctx(ctx, "copy_region falls back to sw for {%"PRSC_FMT"} to {%"PRSC_FMT"}",
+                     PRSC_ARGS(src), PRSC_ARGS(dst));
+      goto fallback;
+   }
+
    if (ctx->blit) {
       struct pipe_blit_info info;
 
@@ -374,6 +385,7 @@ fd_resource_copy_region(struct pipe_context *pctx, struct pipe_resource *dst,
       return;
 
    /* else fallback to pure sw: */
+fallback:
    util_resource_copy_region(pctx, dst, dst_level, dstx, dsty, dstz, src,
                              src_level, src_box);
 }
