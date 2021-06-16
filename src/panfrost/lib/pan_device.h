@@ -140,6 +140,16 @@ struct panfrost_format {
         unsigned bind;
 };
 
+/** Implementation-defined tiler features */
+struct panfrost_tiler_features {
+        /** Number of bytes per tiler bin */
+        unsigned bin_size;
+
+        /** Maximum number of levels that may be simultaneously enabled.
+         * Invariant: bitcount(hierarchy_mask) <= max_levels */
+        unsigned max_levels;
+};
+
 struct panfrost_device {
         /* For ralloc */
         void *memctx;
@@ -151,6 +161,7 @@ struct panfrost_device {
         unsigned gpu_id;
         unsigned core_count;
         unsigned thread_tls_alloc;
+        struct panfrost_tiler_features tiler_features;
         unsigned quirks;
 
         /* Table of formats, indexed by a PIPE format */

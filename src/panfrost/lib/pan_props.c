@@ -85,6 +85,20 @@ panfrost_query_gpu_revision(int fd)
         return panfrost_query_raw(fd, DRM_PANFROST_PARAM_GPU_REVISION, true, 0);
 }
 
+static struct panfrost_tiler_features
+panfrost_query_tiler_features(int fd)
+{
+        /* Default value (2^9 bytes and 8 levels) to match old behaviour */
+        uint32_t raw = panfrost_query_raw(fd, DRM_PANFROST_PARAM_TILER_FEATURES,
+                        false, 0x809);
+
+        /* Bin size is log2 in the first byte, max levels in the second byte */
+        return (struct panfrost_tiler_features) {
+                .bin_size = (1 << (raw & BITFIELD_MASK(5))),
+                .max_levels = (raw >> 8) & BITFIELD_MASK(4)
+        };
+}
+
 static unsigned
 panfrost_query_core_count(int fd)
 {
@@ -236,6 +250,7 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
         unsigned revision = panfrost_query_gpu_revision(fd);
         dev->quirks = panfrost_get_quirks(dev->gpu_id, revision);
         dev->compressed_formats = panfrost_query_compressed_formats(fd);
+        dev->tiler_features = panfrost_query_tiler_features(fd);
 
         if (dev->quirks & HAS_SWIZZLES)
                 dev->formats = panfrost_pipe_format_v6;
