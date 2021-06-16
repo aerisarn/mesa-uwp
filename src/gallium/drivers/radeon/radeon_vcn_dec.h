@@ -1104,6 +1104,7 @@ struct radeon_decoder {
    void *render_pic_list[32];
    bool show_frame;
    unsigned ref_idx;
+   bool tmz_ctx;
    struct {
       unsigned data0;
       unsigned data1;
