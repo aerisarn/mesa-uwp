@@ -683,8 +683,6 @@ static struct vbuf_render *
 i915_vbuf_render_create(struct i915_context *i915)
 {
    struct i915_vbuf_render *i915_render = CALLOC_STRUCT(i915_vbuf_render);
-   struct i915_winsys *iws = i915->iws;
-   int i;
 
    i915_render->i915 = i915;
 
@@ -719,19 +717,6 @@ i915_vbuf_render_create(struct i915_context *i915)
    i915_render->vbo_hw_offset = 0;
    i915_render->vbo_sw_offset = 0;
    i915_render->vbo_alloc_size = i915_render->base.max_vertex_buffer_bytes * 4;
-
-#ifdef VBUF_USE_POOL
-   i915_render->pool_used = false;
-   i915_render->pool_buffer_size = i915_render->vbo_alloc_size;
-   i915_render->pool_fifo = u_fifo_create(6);
-   for (i = 0; i < 6; i++)
-      u_fifo_add(i915_render->pool_fifo,
-                 iws->buffer_create(iws, i915_render->pool_buffer_size,
-                                    I915_NEW_VERTEX));
-#else
-   (void)i;
-   (void)iws;
-#endif
 
    return &i915_render->base;
 }
