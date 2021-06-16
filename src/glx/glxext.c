@@ -617,7 +617,7 @@ __glXInitializeVisualConfigFromTags(struct glx_config * config, int count,
          break;
       default: {
             long int tagvalue = *bp++;
-            DebugMessageF("WARNING: unknown GLX tag from server: "
+            DebugMessageF("WARNING: unknown fbconfig attribute from server: "
                           "tag 0x%lx value 0x%lx\n", tag, tagvalue);
             break;
          }
