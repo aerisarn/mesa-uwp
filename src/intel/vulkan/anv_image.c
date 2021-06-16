@@ -1121,17 +1121,17 @@ add_all_surfaces_explicit_layout(
    for (uint32_t i = 0; i < mod_plane_count; ++i) {
       if (drm_info->pPlaneLayouts[i].rowPitch == 0) {
          return vk_errorf(device, &device->vk.base,
-                           VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
-                           "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
-                           "pPlaneLayouts[%u]::rowPitch is 0", i);
+                          VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
+                          "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
+                          "pPlaneLayouts[%u]::rowPitch is 0", i);
       }
 
       if (drm_info->pPlaneLayouts[i].offset == ANV_OFFSET_IMPLICIT) {
          return vk_errorf(device, &device->vk.base,
-                           VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
-                           "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
-                           "pPlaneLayouts[%u]::offset is %"PRIu64,
-                           i, ANV_OFFSET_IMPLICIT);
+                          VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
+                          "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
+                          "pPlaneLayouts[%u]::offset is %" PRIu64,
+                          i, ANV_OFFSET_IMPLICIT);
       }
    }
 
