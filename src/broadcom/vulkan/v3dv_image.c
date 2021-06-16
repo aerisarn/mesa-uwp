@@ -575,52 +575,8 @@ pack_texture_shader_state_helper(struct v3dv_device *device,
          tex.image_depth /= 6;
       }
 
-      uint32_t image_block_w = vk_format_get_blockwidth(image->vk_format);
-      uint32_t image_block_h = vk_format_get_blockheight(image->vk_format);
-      uint32_t view_block_w = vk_format_get_blockwidth(image_view->vk_format);
-      uint32_t view_block_h = vk_format_get_blockheight(image_view->vk_format);
-      if (image_block_w != view_block_w || image_block_h != view_block_h) {
-         /* If we are creating an uncompressed view from a compressed format or
-          * viceversa, we need to be careful when programming the image size
-          * so that the miplevel dimensions computed by the hardware match the
-          * miplevel dimensions of the underlying image.
-          *
-          * For example, if we have an etc2_rgb8 image with size 22x22, then its
-          * mip level dimensions are 22x22, 11x11 and 5x5. If we now interpret
-          * these in units of an uncompressed rgba16 format, we get 6x6, 3x3 and
-          * 2x2.
-          *
-          * However, here we are only programming the size of the level 0 and
-          * the hardware will automatically compute mip level dimensions when
-          * translating texture coordinates for the mip level. This is a problem
-          * because if we program here the size of mip 0 in the uncompressed
-          * rgba16 format, we would set 6x6 (22x22 divided by 4 and rounded up).
-          * And because we set an uncompressed view format, the hardware will
-          * compute mip level sizes 6x6, 3x3 and 1x1, so miplevel 2 won't match
-          * the size of miplevel 2 in the original compressed format and the
-          * texture sampling for that miplevel will differ. To fix this, we
-          * need to compute a level 0 size that makes the hardware compute the
-          * appropriate mip level dimensions. We do this by computing the
-          * mip level dimensions in blocks and then computing level 0
-          * dimensions from that.
-          */
-         uint32_t level = image_view->base_level;
-         uint32_t mip_w_in_blocks =
-            DIV_ROUND_UP(u_minify(image->extent.width, level) * view_block_w,
-                         image_block_w);
-         uint32_t mip_h_in_blocks =
-            DIV_ROUND_UP(u_minify(image->extent.height, level) * view_block_h,
-                         image_block_h);
-
-         tex.image_width = mip_w_in_blocks << level;
-         tex.image_height = mip_h_in_blocks << level;
-      } else {
-         tex.image_width = image->extent.width;
-         tex.image_height = image->extent.height;
-      }
-
-      tex.image_height *= msaa_scale;
-      tex.image_width *= msaa_scale;
+      tex.image_height = image->extent.height * msaa_scale;
+      tex.image_width = image->extent.width * msaa_scale;
 
       /* On 4.x, the height of a 1D texture is redefined to be the
        * upper 14 bits of the width (which is only usable with txf).
@@ -730,6 +686,11 @@ v3dv_CreateImageView(VkDevice _device,
 
    iview->base_level = range->baseMipLevel;
    iview->max_level = iview->base_level + v3dv_level_count(image, range) - 1;
+   iview->extent = (VkExtent3D) {
+      .width  = u_minify(image->extent.width , iview->base_level),
+      .height = u_minify(image->extent.height, iview->base_level),
+      .depth  = u_minify(image->extent.depth , iview->base_level),
+   };
 
    iview->first_layer = range->baseArrayLayer;
    iview->last_layer = range->baseArrayLayer +
@@ -775,20 +736,6 @@ v3dv_CreateImageView(VkDevice _device,
    iview->vk_format = format;
    iview->format = v3dv_get_format(format);
    assert(iview->format && iview->format->supported);
-
-   uint32_t level = iview->base_level;
-   uint32_t width = image->extent.width;
-   uint32_t height = image->extent.height;
-   uint32_t depth = image->extent.depth;
-   uint32_t image_block_w = vk_format_get_blockwidth(image->vk_format);
-   uint32_t image_block_h = vk_format_get_blockheight(image->vk_format);
-   uint32_t view_block_w = vk_format_get_blockwidth(iview->vk_format);
-   uint32_t view_block_h = vk_format_get_blockheight(iview->vk_format);
-   iview->extent.width =
-      DIV_ROUND_UP(u_minify(width, level) * view_block_w, image_block_w);
-   iview->extent.height =
-      DIV_ROUND_UP(u_minify(height, level) * view_block_h, image_block_h);
-   iview->extent.depth = u_minify(depth, level);
 
    if (vk_format_is_depth_or_stencil(iview->vk_format)) {
       iview->internal_type = v3dv_get_internal_depth_type(iview->vk_format);
