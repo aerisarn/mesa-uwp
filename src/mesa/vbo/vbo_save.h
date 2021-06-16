@@ -178,6 +178,9 @@ void
 vbo_save_playback_vertex_list(struct gl_context *ctx, void *data);
 
 void
+vbo_save_playback_vertex_list_loopback(struct gl_context *ctx, void *data);
+
+void
 vbo_save_api_init(struct vbo_save_context *save);
 
 fi_type *

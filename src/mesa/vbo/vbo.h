@@ -169,8 +169,6 @@ struct vbo_save_context {
 
    GLboolean out_of_memory;  /**< True if last VBO allocation failed */
 
-   GLbitfield replay_flags;
-
    struct _mesa_prim *prims;
    GLuint prim_count, prim_max;
 
@@ -230,13 +228,6 @@ vbo_save_NewList(struct gl_context *ctx, GLuint list, GLenum mode);
 
 void
 vbo_save_EndList(struct gl_context *ctx);
-
-void
-vbo_save_BeginCallList(struct gl_context *ctx, struct gl_display_list *list);
-
-void
-vbo_save_EndCallList(struct gl_context *ctx);
-
 
 void
 vbo_delete_minmax_cache(struct gl_buffer_object *bufferObj);

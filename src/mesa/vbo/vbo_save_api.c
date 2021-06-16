@@ -94,12 +94,6 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #undef ERROR
 #endif
 
-/**
- * Display list flag only used by this VBO code.
- */
-#define DLIST_DANGLING_REFS     0x1
-
-
 /* An interesting VBO number/name to help with debugging */
 #define VBO_BUF_ID  12345
 
@@ -626,7 +620,7 @@ compile_vertex_list(struct gl_context *ctx)
    assert(save->attrsz[VBO_ATTRIB_POS] != 0 || node->cold->vertex_count == 0);
 
    if (save->dangling_attr_ref)
-      ctx->ListState.CurrentList->Flags |= DLIST_DANGLING_REFS;
+      ctx->ListState.Current.UseLoopback = true;
 
    save->vertex_store->used += save->vertex_size * node->cold->vertex_count;
    save->prim_store->used += node->cold->prim_count;
@@ -1931,33 +1925,6 @@ vbo_save_EndList(struct gl_context *ctx)
 
    assert(save->vertex_size == 0);
 }
-
-
-/**
- * Called from the display list code when we're about to execute a
- * display list.
- */
-void
-vbo_save_BeginCallList(struct gl_context *ctx, struct gl_display_list *dlist)
-{
-   struct vbo_save_context *save = &vbo_context(ctx)->save;
-   save->replay_flags |= dlist->Flags;
-}
-
-
-/**
- * Called from the display list code when we're finished executing a
- * display list.
- */
-void
-vbo_save_EndCallList(struct gl_context *ctx)
-{
-   struct vbo_save_context *save = &vbo_context(ctx)->save;
-
-   if (ctx->ListState.CallDepth == 1)
-      save->replay_flags = 0;
-}
-
 
 /**
  * Called during context creation/init.

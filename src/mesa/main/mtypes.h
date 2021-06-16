@@ -4695,7 +4695,6 @@ union gl_dlist_node;
 struct gl_display_list
 {
    GLuint Name;
-   GLbitfield Flags;  /**< DLIST_x flags */
    GLchar *Label;     /**< GL_KHR_debug */
    /** The dlist commands are in a linked list of nodes */
    union gl_dlist_node *Head;
@@ -4725,6 +4724,7 @@ struct gl_dlist_state
        * list.  Used to eliminate some redundant state changes.
        */
       GLenum16 ShadeModel;
+      bool UseLoopback;
    } Current;
 };
 

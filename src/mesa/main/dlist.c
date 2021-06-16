@@ -627,6 +627,7 @@ typedef enum
    OPCODE_NAMED_PROGRAM_LOCAL_PARAMETER,
 
    OPCODE_VERTEX_LIST,
+   OPCODE_VERTEX_LIST_LOOPBACK,
 
    /* The following three are meta instructions */
    OPCODE_ERROR,                /* raise compiled-in error */
@@ -813,15 +814,20 @@ vbo_destroy_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *nod
 }
 
 static void
-vbo_print_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *node, FILE *f)
+vbo_print_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *node, OpCode op, FILE *f)
 {
    GLuint i;
    struct gl_buffer_object *buffer = node->VAO[0]->BufferBinding[0].BufferObj;
    const GLuint vertex_size = _vbo_save_get_stride(node)/sizeof(GLfloat);
    (void) ctx;
 
-   fprintf(f, "VBO-VERTEX-LIST, %u vertices, %d primitives, %d vertsize, "
+   const char *label[] = {
+      "VBO-VERTEX-LIST", "VBO-VERTEX-LIST-LOOPBACK"
+   };
+
+   fprintf(f, "%s, %u vertices, %d primitives, %d vertsize, "
            "buffer %p\n",
+           label[op - OPCODE_VERTEX_LIST],
            node->cold->vertex_count, node->cold->prim_count, vertex_size,
            buffer);
 
@@ -1356,6 +1362,7 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             free(get_pointer(&n[5]));
             break;
          case OPCODE_VERTEX_LIST:
+         case OPCODE_VERTEX_LIST_LOOPBACK:
             vbo_destroy_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1]);
             break;
          case OPCODE_CONTINUE:
@@ -2056,7 +2063,10 @@ invalidate_saved_current_state(struct gl_context *ctx)
    for (i = 0; i < MAT_ATTRIB_MAX; i++)
       ctx->ListState.ActiveMaterialSize[i] = 0;
 
+   /* Loopback usage applies recursively, so remember this state */
+   bool use_loopback = ctx->ListState.Current.UseLoopback;
    memset(&ctx->ListState.Current, 0, sizeof ctx->ListState.Current);
+   ctx->ListState.Current.UseLoopback = use_loopback;
 
    ctx->Driver.CurrentSavePrimitive = PRIM_UNKNOWN;
 }
@@ -11226,8 +11236,6 @@ execute_list(struct gl_context *ctx, GLuint list)
 
    ctx->ListState.CallDepth++;
 
-   vbo_save_BeginCallList(ctx, dlist);
-
    n = dlist->Head;
 
    while (1) {
@@ -13407,6 +13415,10 @@ execute_list(struct gl_context *ctx, GLuint list)
             vbo_save_playback_vertex_list(ctx, &n[1]);
             break;
 
+         case OPCODE_VERTEX_LIST_LOOPBACK:
+            vbo_save_playback_vertex_list_loopback(ctx, &n[1]);
+            break;
+
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
             continue;
@@ -13422,7 +13434,6 @@ execute_list(struct gl_context *ctx, GLuint list)
             }
             FALLTHROUGH;
          case OPCODE_END_OF_LIST:
-            vbo_save_EndCallList(ctx);
             ctx->ListState.CallDepth--;
             return;
       }
@@ -13585,6 +13596,7 @@ _mesa_NewList(GLuint name, GLenum mode)
    ctx->ListState.CurrentList = make_list(name, BLOCK_SIZE);
    ctx->ListState.CurrentBlock = ctx->ListState.CurrentList->Head;
    ctx->ListState.CurrentPos = 0;
+   ctx->ListState.Current.UseLoopback = false;
 
    vbo_save_NewList(ctx, name, mode);
 
@@ -13592,6 +13604,110 @@ _mesa_NewList(GLuint name, GLenum mode)
    _glapi_set_dispatch(ctx->CurrentServerDispatch);
    if (ctx->MarshalExec == NULL) {
       ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
+   }
+}
+
+
+/**
+ * Walk all the opcode from a given list, recursively if OPCODE_CALL_LIST(S) is used,
+ * and replace OPCODE_VERTEX_LIST[_COPY_CURRENT] occurences by OPCODE_VERTEX_LIST_LOOPBACK.
+ */
+static void
+replace_op_vertex_list_recursively(struct gl_context *ctx, struct gl_display_list *dlist)
+{
+   Node *n = dlist->Head;
+   while (true) {
+      const OpCode opcode = n[0].opcode;
+      switch (opcode) {
+         case OPCODE_VERTEX_LIST:
+            n[0].opcode = OPCODE_VERTEX_LIST_LOOPBACK;
+            break;
+         case OPCODE_CONTINUE:
+            n = (Node *)get_pointer(&n[1]);
+            continue;
+         case OPCODE_CALL_LIST:
+            replace_op_vertex_list_recursively(ctx, _mesa_lookup_list(ctx, (int)n[1].ui, true));
+            break;
+         case OPCODE_CALL_LISTS: {
+            GLbyte *bptr;
+            GLubyte *ubptr;
+            GLshort *sptr;
+            GLushort *usptr;
+            GLint *iptr;
+            GLuint *uiptr;
+            GLfloat *fptr;
+            switch(n[2].e) {
+               case GL_BYTE:
+                  bptr = (GLbyte *) get_pointer(&n[3]);
+                  for (unsigned i = 0; i < n[1].i; i++)
+                     replace_op_vertex_list_recursively(ctx, _mesa_lookup_list(ctx, (int)bptr[i], true));
+                  break;
+               case GL_UNSIGNED_BYTE:
+                  ubptr = (GLubyte *) get_pointer(&n[3]);
+                  for (unsigned i = 0; i < n[1].i; i++)
+                     replace_op_vertex_list_recursively(ctx, _mesa_lookup_list(ctx, (int)ubptr[i], true));
+                  break;
+               case GL_SHORT:
+                  sptr = (GLshort *) get_pointer(&n[3]);
+                  for (unsigned i = 0; i < n[1].i; i++)
+                     replace_op_vertex_list_recursively(ctx, _mesa_lookup_list(ctx, (int)sptr[i], true));
+                  break;
+               case GL_UNSIGNED_SHORT:
+                  usptr = (GLushort *) get_pointer(&n[3]);
+                  for (unsigned i = 0; i < n[1].i; i++)
+                     replace_op_vertex_list_recursively(ctx, _mesa_lookup_list(ctx, (int)usptr[i], true));
+                  break;
+               case GL_INT:
+                  iptr = (GLint *) get_pointer(&n[3]);
+                  for (unsigned i = 0; i < n[1].i; i++)
+                     replace_op_vertex_list_recursively(ctx, _mesa_lookup_list(ctx, (int)iptr[i], true));
+                  break;
+               case GL_UNSIGNED_INT:
+                  uiptr = (GLuint *) get_pointer(&n[3]);
+                  for (unsigned i = 0; i < n[1].i; i++)
+                     replace_op_vertex_list_recursively(ctx, _mesa_lookup_list(ctx, (int)uiptr[i], true));
+                  break;
+               case GL_FLOAT:
+                  fptr = (GLfloat *) get_pointer(&n[3]);
+                  for (unsigned i = 0; i < n[1].i; i++)
+                     replace_op_vertex_list_recursively(ctx, _mesa_lookup_list(ctx, (int)fptr[i], true));
+                  break;
+               case GL_2_BYTES:
+                  ubptr = (GLubyte *) get_pointer(&n[3]);
+                  for (unsigned i = 0; i < n[1].i; i++) {
+                     replace_op_vertex_list_recursively(ctx,
+                                                _mesa_lookup_list(ctx, (int)ubptr[2 * i] * 256 +
+                                                                       (int)ubptr[2 * i + 1], true));
+                  }
+                  break;
+               case GL_3_BYTES:
+                  ubptr = (GLubyte *) get_pointer(&n[3]);
+                  for (unsigned i = 0; i < n[1].i; i++) {
+                     replace_op_vertex_list_recursively(ctx,
+                                                _mesa_lookup_list(ctx, (int)ubptr[3 * i] * 65536 +
+                                                                  (int)ubptr[3 * i + 1] * 256 +
+                                                                  (int)ubptr[3 * i + 2], true));
+                  }
+                  break;
+               case GL_4_BYTES:
+                  ubptr = (GLubyte *) get_pointer(&n[3]);
+                  for (unsigned i = 0; i < n[1].i; i++) {
+                     replace_op_vertex_list_recursively(ctx,
+                                                _mesa_lookup_list(ctx, (int)ubptr[4 * i] * 16777216 +
+                                                                  (int)ubptr[4 * i + 1] * 65536 +
+                                                                  (int)ubptr[4 * i + 2] * 256 +
+                                                                  (int)ubptr[4 * i + 3], true));
+                  }
+                  break;
+               }
+            break;
+         }
+         case OPCODE_END_OF_LIST:
+            return;
+         default:
+            break;
+      }
+      n += n[0].InstSize;
    }
 }
 
@@ -13626,6 +13742,12 @@ _mesa_EndList(void)
    vbo_save_EndList(ctx);
 
    (void) alloc_instruction(ctx, OPCODE_END_OF_LIST, 0);
+
+   if (ctx->ListState.Current.UseLoopback) {
+      _mesa_HashLockMutex(ctx->Shared->DisplayList);
+      replace_op_vertex_list_recursively(ctx, ctx->ListState.CurrentList);
+      _mesa_HashUnlockMutex(ctx->Shared->DisplayList);
+   }
 
    trim_list(ctx);
 
@@ -14833,7 +14955,8 @@ print_list(struct gl_context *ctx, GLuint list, const char *fname)
             fprintf(f, "NOP\n");
             break;
          case OPCODE_VERTEX_LIST:
-            vbo_print_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1], f);
+         case OPCODE_VERTEX_LIST_LOOPBACK:
+            vbo_print_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1], opcode, f);
             break;
          default:
             if (opcode < 0 || opcode > OPCODE_END_OF_LIST) {
