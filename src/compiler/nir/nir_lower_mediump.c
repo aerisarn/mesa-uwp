@@ -224,7 +224,7 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
       }
    }
 
-   if (changed)
+   if (changed && use_16bit_slots)
       nir_recompute_io_bases(impl, modes);
 
    nir_metadata_preserve(impl, nir_metadata_all);
