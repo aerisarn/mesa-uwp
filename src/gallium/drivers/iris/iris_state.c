@@ -1143,6 +1143,14 @@ struct iris_depth_buffer_state {
                     GENX(3DSTATE_CLEAR_PARAMS_length)];
 };
 
+#if GFX_VERx10 == 120
+   enum iris_depth_reg_mode {
+      IRIS_DEPTH_REG_MODE_HW_DEFAULT = 0,
+      IRIS_DEPTH_REG_MODE_D16,
+      IRIS_DEPTH_REG_MODE_UNKNOWN,
+   };
+#endif
+
 /**
  * Generation-specific context state (ice->state.genx->...).
  *
@@ -1164,6 +1172,10 @@ struct iris_genx_state {
 #if GFX_VER == 9
    /* Is object level preemption enabled? */
    bool object_preemption;
+#endif
+
+#if GFX_VERx10 == 120
+   enum iris_depth_reg_mode depth_reg_mode;
 #endif
 
    struct {
@@ -5537,6 +5549,19 @@ genX(emit_depth_state_workarounds)(struct iris_context *ice,
 #if GFX_VERx10 == 120
    const bool fmt_is_d16 = surf->format == ISL_FORMAT_R16_UNORM;
 
+   switch (ice->state.genx->depth_reg_mode) {
+   case IRIS_DEPTH_REG_MODE_HW_DEFAULT:
+      if (!fmt_is_d16)
+         return;
+      break;
+   case IRIS_DEPTH_REG_MODE_D16:
+      if (fmt_is_d16)
+         return;
+      break;
+   case IRIS_DEPTH_REG_MODE_UNKNOWN:
+      break;
+   }
+
    /* We'll change some CHICKEN registers depending on the depth surface
     * format. Do a depth flush and stall so the pipeline is not using these
     * settings while we change the registers.
@@ -5564,6 +5589,9 @@ genX(emit_depth_state_workarounds)(struct iris_context *ice,
       reg.HZDepthTestLEGEOptimizationDisable = fmt_is_d16;
       reg.HZDepthTestLEGEOptimizationDisableMask = true;
    }
+
+   ice->state.genx->depth_reg_mode =
+      fmt_is_d16 ? IRIS_DEPTH_REG_MODE_D16 : IRIS_DEPTH_REG_MODE_HW_DEFAULT;
 #endif
 }
 
@@ -7871,6 +7899,10 @@ static void
 iris_lost_genx_state(struct iris_context *ice, struct iris_batch *batch)
 {
    struct iris_genx_state *genx = ice->state.genx;
+
+#if GFX_VERx10 == 120
+   genx->depth_reg_mode = IRIS_DEPTH_REG_MODE_UNKNOWN;
+#endif
 
    memset(genx->last_index_buffer, 0, sizeof(genx->last_index_buffer));
 }
