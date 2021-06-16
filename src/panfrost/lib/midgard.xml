@@ -48,6 +48,7 @@
     <value name="Tiler" value="7"/>
     <value name="Fused" value="8"/>
     <value name="Fragment" value="9"/>
+    <value name="Indexed Vertex" value="10"/>
   </enum>
 
   <enum name="Draw Mode">
@@ -1635,5 +1636,18 @@
     <section name="Padding" offset="80" type="Bifrost Tiler Job Padding"/>
     <section name="Draw" offset="128" type="Draw"/>
     <section name="Draw Padding" offset="248" type="Draw Padding"/>
+  </aggregate>
+
+  <aggregate name="Bifrost Indexed Vertex Job" size="384" align="64">
+    <section name="Header" offset="0" type="Job Header"/>
+    <section name="Invocation" offset="32" type="Invocation"/>
+    <section name="Primitive" offset="40" type="Primitive"/>
+    <section name="Primitive Size" offset="64" type="Primitive Size"/>
+    <section name="Tiler" offset="72" type="Bifrost Tiler Pointer"/>
+    <section name="Padding" offset="80" type="Bifrost Tiler Job Padding"/>
+    <section name="Fragment Draw" offset="128" type="Draw"/>
+    <section name="Fragment Draw Padding" offset="248" type="Draw Padding"/>
+    <section name="Vertex Draw" offset="256" type="Draw"/>
+    <section name="Vertex Draw Padding" offset="376" type="Draw Padding"/>
   </aggregate>
 </panxml>
