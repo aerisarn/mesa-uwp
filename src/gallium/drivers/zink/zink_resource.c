@@ -224,21 +224,16 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
                VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
-   VkFormatProperties props = screen->format_props[templ->format];
-
    bci.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
                 VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
+                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                 VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
                 VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT |
                 VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
-   if (props.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
-      bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-   if (bind & PIPE_BIND_SHADER_IMAGE) {
-      assert(props.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT);
+   if (bind & PIPE_BIND_SHADER_IMAGE)
       bci.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-   }
 
    if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
       bci.flags |= VK_BUFFER_CREATE_SPARSE_BINDING_BIT;
