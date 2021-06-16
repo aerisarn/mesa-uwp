@@ -142,6 +142,9 @@ fd_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
       ctx->validate_format(ctx, fd_resource(src), info->src.format);
    }
 
+   if (src == dst)
+      pipe->flush(pipe, NULL, 0);
+
    if (!info->scissor_enable && !info->alpha_blend) {
       discard = util_texrange_covers_whole_level(
          info->dst.resource, info->dst.level, info->dst.box.x, info->dst.box.y,
@@ -319,6 +322,11 @@ fd_blitter_pipe_copy_region(struct fd_context *ctx, struct pipe_resource *dst,
 
    if (!util_blitter_is_copy_supported(ctx->blitter, dst, src))
       return false;
+
+   if (src == dst) {
+      struct pipe_context *pctx = &ctx->base;
+      pctx->flush(pctx, NULL, 0);
+   }
 
    /* TODO we could discard if dst box covers dst level fully.. */
    fd_blitter_pipe_begin(ctx, false, false);

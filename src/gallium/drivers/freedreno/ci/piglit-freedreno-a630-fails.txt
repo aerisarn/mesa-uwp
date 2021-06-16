@@ -1,6 +1,5 @@
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
 glx@glx_arb_create_context_robustness@invalid reset notification strategy,Fail
-glx@glx-copy-sub-buffer samples=2,Fail
 glx@glx_ext_import_context@free context,Fail
 glx@glx_ext_import_context@get context id,Fail
 glx@glx_ext_import_context@get current display,Fail
@@ -594,117 +593,6 @@ spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x76356278,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x223344ff,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x76356278,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color,Crash
-spec@nv_copy_image@nv_copy_image-formats,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_ALPHA8/Destination: GL_ALPHA8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_ALPHA/Destination: GL_ALPHA,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_LUMINANCE8_ALPHA8/Destination: GL_LUMINANCE8_ALPHA8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_LUMINANCE8/Destination: GL_LUMINANCE8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_LUMINANCE_ALPHA/Destination: GL_LUMINANCE_ALPHA,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_LUMINANCE/Destination: GL_LUMINANCE,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R16/Destination: GL_R16,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R16I/Destination: GL_R16I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R16_SNORM/Destination: GL_R16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R16UI/Destination: GL_R16UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R32F/Destination: GL_R32F,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R8/Destination: GL_R8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R8I/Destination: GL_R8I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R8_SNORM/Destination: GL_R8_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_R8UI/Destination: GL_R8UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RED/Destination: GL_RED,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG16/Destination: GL_RG16,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG16I/Destination: GL_RG16I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG16_SNORM/Destination: GL_RG16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG16UI/Destination: GL_RG16UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG32F/Destination: GL_RG32F,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG32I/Destination: GL_RG32I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG32UI/Destination: GL_RG32UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG8/Destination: GL_RG8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG8I/Destination: GL_RG8I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG8_SNORM/Destination: GL_RG8_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG8UI/Destination: GL_RG8UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB16/Destination: GL_RGB16,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB16I/Destination: GL_RGB16I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB16_SNORM/Destination: GL_RGB16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB16UI/Destination: GL_RGB16UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB32F/Destination: GL_RGB32F,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB32I/Destination: GL_RGB32I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB32UI/Destination: GL_RGB32UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB8/Destination: GL_RGB8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB8I/Destination: GL_RGB8I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB8_SNORM/Destination: GL_RGB8_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB8UI/Destination: GL_RGB8UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA16/Destination: GL_RGBA16,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA16I/Destination: GL_RGBA16I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA16UI/Destination: GL_RGBA16UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA32F/Destination: GL_RGBA32F,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA32I/Destination: GL_RGBA32I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA32UI/Destination: GL_RGBA32UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA8/Destination: GL_RGBA8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA8I/Destination: GL_RGBA8I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA8UI/Destination: GL_RGBA8UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGBA/Destination: GL_RGBA,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RGB/Destination: GL_RGB,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_RG/Destination: GL_RG,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_ALPHA8/Destination: GL_ALPHA8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_ALPHA/Destination: GL_ALPHA,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_LUMINANCE8_ALPHA8/Destination: GL_LUMINANCE8_ALPHA8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_LUMINANCE8/Destination: GL_LUMINANCE8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_LUMINANCE_ALPHA/Destination: GL_LUMINANCE_ALPHA,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_LUMINANCE/Destination: GL_LUMINANCE,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R16/Destination: GL_R16,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R16I/Destination: GL_R16I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R16_SNORM/Destination: GL_R16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R16UI/Destination: GL_R16UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R32F/Destination: GL_R32F,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R8/Destination: GL_R8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R8I/Destination: GL_R8I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R8_SNORM/Destination: GL_R8_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_R8UI/Destination: GL_R8UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RED/Destination: GL_RED,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG16/Destination: GL_RG16,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG16I/Destination: GL_RG16I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG16_SNORM/Destination: GL_RG16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG16UI/Destination: GL_RG16UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG32F/Destination: GL_RG32F,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG32I/Destination: GL_RG32I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG32UI/Destination: GL_RG32UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG8/Destination: GL_RG8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG8I/Destination: GL_RG8I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG8_SNORM/Destination: GL_RG8_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG8UI/Destination: GL_RG8UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB16/Destination: GL_RGB16,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB16I/Destination: GL_RGB16I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB16_SNORM/Destination: GL_RGB16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB16UI/Destination: GL_RGB16UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB32F/Destination: GL_RGB32F,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB32I/Destination: GL_RGB32I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB32UI/Destination: GL_RGB32UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB8/Destination: GL_RGB8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB8I/Destination: GL_RGB8I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB8_SNORM/Destination: GL_RGB8_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB8UI/Destination: GL_RGB8UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA16/Destination: GL_RGBA16,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA16I/Destination: GL_RGBA16I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA16UI/Destination: GL_RGBA16UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA32F/Destination: GL_RGBA32F,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA32I/Destination: GL_RGBA32I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA32UI/Destination: GL_RGBA32UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_RGBA8,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA8I/Destination: GL_RGBA8I,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8_SNORM,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA8UI/Destination: GL_RGBA8UI,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA/Destination: GL_RGBA,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGB/Destination: GL_RGB,Fail
-spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RG/Destination: GL_RG,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH_COMPONENT24/Destination: GL_DEPTH_COMPONENT24,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH_COMPONENT32/Destination: GL_DEPTH_COMPONENT32,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH_STENCIL/Destination: GL_DEPTH_STENCIL,Fail
-spec@nv_copy_image@nv_copy_image-formats@Source: GL_STENCIL_INDEX8/Destination: GL_STENCIL_INDEX8,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-polygon,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-quads,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-quad_strip,Fail
