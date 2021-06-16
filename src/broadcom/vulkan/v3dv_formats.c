@@ -631,6 +631,18 @@ get_image_format_properties(
    if (!format_feature_flags)
       goto unsupported;
 
+   /* This allows users to create uncompressed views of compressed images,
+    * however this is not something the hardware supports naturally and requires
+    * the driver to lie when programming the texture state to make the hardware
+    * sample with the uncompressed view correctly, and even then, there are
+    * issues when running on real hardware.
+    *
+    * See https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/11336
+    * for details.
+    */
+   if (info->flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)
+      goto unsupported;
+
    if (info->usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) {
          goto unsupported;
