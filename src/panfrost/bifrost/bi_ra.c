@@ -45,6 +45,9 @@ struct lcra_state {
 
         /* Before solving, forced registers; after solving, solutions. */
         unsigned *solutions;
+
+        /** Node which caused register allocation to fail */
+        unsigned spill_node;
 };
 
 /* This module is an implementation of "Linearly Constrained
@@ -143,8 +146,10 @@ lcra_solve(struct lcra_state *l)
                 }
 
                 /* Out of registers - prepare to spill */
-                if (!succ)
+                if (!succ) {
+                        l->spill_node = step;
                         return false;
+                }
         }
 
         return true;
@@ -382,13 +387,15 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
                 }
         }
 
-        /* If there are no constraints on a node, do not pick it to spill under
-         * any circumstance, or else we would hang rather than fail RA */
         unsigned best_benefit = 0.0;
         signed best_node = -1;
 
         for (unsigned i = 0; i < l->node_count; ++i) {
                 if (BITSET_TEST(no_spill, i)) continue;
+
+                /* Only spill nodes that interfere with the node failing
+                 * register allocation. It's pointless to spill anything else */
+                if (!l->linear[(l->spill_node * l->node_count) + i]) continue;
 
                 unsigned benefit = lcra_count_constraints(l, i);
 
