@@ -92,7 +92,7 @@ static void new_label(const char *name)
 
 static struct ir3_instruction * new_instr(opc_t opc)
 {
-	instr = ir3_instr_create(block, opc, 4, 4);
+	instr = ir3_instr_create(block, opc, 4, 6);
 	instr->flags = iflags.flags;
 	instr->repeat = iflags.repeat;
 	instr->nop = iflags.nop;
@@ -525,9 +525,11 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 
 /* category 6: */
 %token <tok> T_OP_LDG
+%token <tok> T_OP_LDG_A
 %token <tok> T_OP_LDL
 %token <tok> T_OP_LDP
 %token <tok> T_OP_STG
+%token <tok> T_OP_STG_A
 %token <tok> T_OP_STL
 %token <tok> T_OP_STP
 %token <tok> T_OP_LDIB
@@ -995,33 +997,40 @@ cat6_dim:          '.' T_1D  { instr->cat6.d = 1; }
 |                  '.' T_4D  { instr->cat6.d = 4; }
 
 cat6_type:         '.' type  { instr->cat6.type = $2; }
-cat6_offset:       offset    { new_src(0, IR3_REG_IMMED)->iim_val = $1; }
+cat6_imm_offset:   offset    { new_src(0, IR3_REG_IMMED)->iim_val = $1; }
+cat6_offset:       cat6_imm_offset
 |                  '+' src
 cat6_dst_offset:   offset    { instr->cat6.dst_offset = $1; }
 |                  '+' src   { instr->flags |= IR3_INSTR_G; }
 
 cat6_immed:        integer   { instr->cat6.iim_val = $1; }
 
-cat6_load:         T_OP_LDG  { new_instr(OPC_LDG); }  cat6_type dst_reg ',' 'g' '[' src cat6_offset ']' ',' immediate
-|                  T_OP_LDP  { new_instr(OPC_LDP); }  cat6_type dst_reg ',' 'p' '[' src cat6_offset ']' ',' immediate
-|                  T_OP_LDL  { new_instr(OPC_LDL); }  cat6_type dst_reg ',' 'l' '[' src cat6_offset ']' ',' immediate
-|                  T_OP_LDLW { new_instr(OPC_LDLW); } cat6_type dst_reg ',' 'l' '[' src cat6_offset ']' ',' immediate
-|                  T_OP_LDLV { new_instr(OPC_LDLV); } cat6_type dst_reg ',' 'l' '[' integer ']' {
+cat6_stg_ldg_a6xx_offset:
+                    '+' '(' src offset ')' '<' '<' integer {
+                        assert($8 == 2);
+                        new_src(0, IR3_REG_IMMED)->uim_val = 0;
+                        new_src(0, IR3_REG_IMMED)->uim_val = $4;
+                    }
+|                  '+' src '<' '<' integer offset '<' '<' integer {
+                        assert($9 == 2);
+                        new_src(0, IR3_REG_IMMED)->uim_val = $5 - 2;
+                        new_src(0, IR3_REG_IMMED)->uim_val = $6;
+                    }
+
+cat6_load:         T_OP_LDG   { new_instr(OPC_LDG); }   cat6_type dst_reg ',' 'g' '[' src cat6_offset ']' ',' immediate
+|                  T_OP_LDG_A { new_instr(OPC_LDG_A); } cat6_type dst_reg ',' 'g' '[' src cat6_stg_ldg_a6xx_offset ']' ',' immediate
+|                  T_OP_LDP   { new_instr(OPC_LDP); }   cat6_type dst_reg ',' 'p' '[' src cat6_offset ']' ',' immediate
+|                  T_OP_LDL   { new_instr(OPC_LDL); }   cat6_type dst_reg ',' 'l' '[' src cat6_offset ']' ',' immediate
+|                  T_OP_LDLW  { new_instr(OPC_LDLW); }  cat6_type dst_reg ',' 'l' '[' src cat6_offset ']' ',' immediate
+|                  T_OP_LDLV  { new_instr(OPC_LDLV); }  cat6_type dst_reg ',' 'l' '[' integer ']' {
                        new_src(0, IR3_REG_IMMED)->iim_val = $8;
                    } ',' immediate
 
 // TODO some of the cat6 instructions have different syntax for a6xx..
 //|                  T_OP_LDIB { new_instr(OPC_LDIB); } cat6_type dst_reg cat6_offset ',' reg ',' cat6_immed
 
-cat6_store:        T_OP_STG  { new_instr(OPC_STG); dummy_dst(); }  cat6_type 'g' '[' src cat6_dst_offset ']' ',' src ',' immediate {
-                       /* fixup src order, the offset reg is expected last currently */
-                       if (instr->flags & IR3_INSTR_G) {
-                           struct ir3_register *offset = instr->srcs[1];
-                           instr->srcs[1] = instr->srcs[2];
-                           instr->srcs[2] = instr->srcs[3];
-                           instr->srcs[3] = offset;
-                       }
-                   }
+cat6_store:        T_OP_STG   { new_instr(OPC_STG); dummy_dst(); }   cat6_type 'g' '[' src cat6_imm_offset ']' ',' src ',' immediate
+|                  T_OP_STG_A { new_instr(OPC_STG_A); dummy_dst(); } cat6_type 'g' '[' src cat6_stg_ldg_a6xx_offset ']' ',' src ',' immediate
 |                  T_OP_STP  { new_instr(OPC_STP); dummy_dst(); }  cat6_type 'p' '[' src cat6_dst_offset ']' ',' src ',' immediate
 |                  T_OP_STL  { new_instr(OPC_STL); dummy_dst(); }  cat6_type 'l' '[' src cat6_dst_offset ']' ',' src ',' immediate
 |                  T_OP_STLW { new_instr(OPC_STLW); dummy_dst(); } cat6_type 'l' '[' src cat6_dst_offset ']' ',' src ',' immediate

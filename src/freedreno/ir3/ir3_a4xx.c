@@ -357,4 +357,6 @@ const struct ir3_context_funcs ir3_a4xx_funcs = {
 		.emit_intrinsic_store_image = emit_intrinsic_store_image,
 		.emit_intrinsic_atomic_image = emit_intrinsic_atomic_image,
 		.emit_intrinsic_image_size = emit_intrinsic_image_size_tex,
+		.emit_intrinsic_load_global_ir3 = NULL,
+		.emit_intrinsic_store_global_ir3 = NULL,
 };

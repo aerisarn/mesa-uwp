@@ -296,9 +296,11 @@ static int parse_w(const char *str)
 
                                   /* category 6: */
 "ldg"                             return TOKEN(T_OP_LDG);
+"ldg.a"                           return TOKEN(T_OP_LDG_A);
 "ldl"                             return TOKEN(T_OP_LDL);
 "ldp"                             return TOKEN(T_OP_LDP);
 "stg"                             return TOKEN(T_OP_STG);
+"stg.a"                           return TOKEN(T_OP_STG_A);
 "stl"                             return TOKEN(T_OP_STL);
 "stp"                             return TOKEN(T_OP_STP);
 "ldib"                            return TOKEN(T_OP_LDIB);

@@ -291,6 +291,9 @@ typedef enum {
 	OPC_ATOMIC_B_OR       = _OPC(6, 53),
 	OPC_ATOMIC_B_XOR      = _OPC(6, 54),
 
+	OPC_LDG_A           = _OPC(6, 55),
+	OPC_STG_A           = _OPC(6, 56),
+
 	/* category 7: */
 	OPC_BAR             = _OPC(7, 0),
 	OPC_FENCE           = _OPC(7, 1),

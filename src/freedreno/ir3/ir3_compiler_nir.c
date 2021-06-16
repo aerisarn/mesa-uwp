@@ -1735,54 +1735,12 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		end->barrier_conflict = IR3_BARRIER_EVERYTHING;
 		break;
 
-	case nir_intrinsic_store_global_ir3: {
-		struct ir3_instruction *value, *addr, *offset;
-		unsigned ncomp = nir_intrinsic_src_components(intr, 0);
-
-		addr = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-				ir3_get_src(ctx, &intr->src[1])[0],
-				ir3_get_src(ctx, &intr->src[1])[1]
-		}, 2);
-
-		offset = ir3_get_src(ctx, &intr->src[2])[0];
-
-		value = ir3_create_collect(ctx, ir3_get_src(ctx, &intr->src[0]), ncomp);
-
-		struct ir3_instruction *stg =
-			ir3_STG_G(ctx->block, addr, 0, value, 0,
-					  create_immed(ctx->block, ncomp), 0, offset, 0);
-		stg->cat6.type = TYPE_U32;
-		stg->cat6.iim_val = 1;
-
-		array_insert(b, b->keeps, stg);
-
-		stg->barrier_class = IR3_BARRIER_BUFFER_W;
-		stg->barrier_conflict = IR3_BARRIER_BUFFER_R | IR3_BARRIER_BUFFER_W;
+	case nir_intrinsic_store_global_ir3:
+		ctx->funcs->emit_intrinsic_store_global_ir3(ctx, intr);
 		break;
-	}
-
-	case nir_intrinsic_load_global_ir3: {
-		struct ir3_instruction *addr, *offset;
-
-		addr = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-				ir3_get_src(ctx, &intr->src[0])[0],
-				ir3_get_src(ctx, &intr->src[0])[1]
-		}, 2);
-
-		offset = ir3_get_src(ctx, &intr->src[1])[0];
-
-		struct ir3_instruction *load =
-			ir3_LDG(b, addr, 0, offset, 0,
-					create_immed(ctx->block, dest_components), 0);
-		load->cat6.type = TYPE_U32;
-		load->dsts[0]->wrmask = MASK(dest_components);
-
-		load->barrier_class = IR3_BARRIER_BUFFER_R;
-		load->barrier_conflict = IR3_BARRIER_BUFFER_W;
-
-		ir3_split_dest(b, dst, load, 0, dest_components);
+	case nir_intrinsic_load_global_ir3:
+		ctx->funcs->emit_intrinsic_load_global_ir3(ctx, intr, dst);
 		break;
-	}
 
 	case nir_intrinsic_load_ubo:
 		emit_intrinsic_load_ubo(ctx, intr, dst);
@@ -3085,10 +3043,12 @@ emit_stream_out(struct ir3_context *ctx)
 			base = bases[strmout->output[i].output_buffer];
 			out = ctx->outputs[regid(strmout->output[i].register_index, c)];
 
-			stg = ir3_STG(ctx->block, base, 0, out, 0,
-					create_immed(ctx->block, 1), 0);
+			stg = ir3_STG(ctx->block,
+						  base, 0,
+						  create_immed(ctx->block, (strmout->output[i].dst_offset + j) * 4), 0,
+						  out, 0,
+						  create_immed(ctx->block, 1), 0);
 			stg->cat6.type = TYPE_U32;
-			stg->cat6.dst_offset = (strmout->output[i].dst_offset + j) * 4;
 
 			array_insert(ctx->block, ctx->block->keeps, stg);
 		}

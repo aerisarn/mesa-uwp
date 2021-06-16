@@ -817,7 +817,7 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 			 * but for load instructions this arg is the address (and not
 			 * really sure any good way to test a hard-coded immed addr src)
 			 */
-			if (is_store(instr) && (n == 1))
+			if (is_store(instr) && (instr->opc != OPC_STG) && (n == 1))
 				return false;
 
 			if ((instr->opc == OPC_LDL) && (n == 0))
@@ -847,7 +847,10 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 			if (is_atomic(instr->opc) && !(instr->flags & IR3_INSTR_G))
 				return false;
 
-			if (instr->opc == OPC_STG && (instr->flags & IR3_INSTR_G) && (n != 2))
+			if (instr->opc == OPC_STG && (n == 2))
+				return false;
+
+			if (instr->opc == OPC_STG_A && (n == 4))
 				return false;
 
 			/* as with atomics, these cat6 instrs can only have an immediate

@@ -303,9 +303,11 @@ static const struct opc_info {
 
 	/* category 6: */
 	OPC(6, OPC_LDG,          ldg),
+	OPC(6, OPC_LDG_A,        ldg.a),
 	OPC(6, OPC_LDL,          ldl),
 	OPC(6, OPC_LDP,          ldp),
 	OPC(6, OPC_STG,          stg),
+	OPC(6, OPC_STG_A,        stg.a),
 	OPC(6, OPC_STL,          stl),
 	OPC(6, OPC_STP,          stp),
 	OPC(6, OPC_LDIB,         ldib),
