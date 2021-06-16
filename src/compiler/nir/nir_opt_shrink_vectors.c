@@ -258,8 +258,8 @@ nir_opt_shrink_vectors(nir_shader *shader, bool shrink_image_store)
       nir_builder b;
       nir_builder_init(&b, function->impl);
 
-      nir_foreach_block(block, function->impl) {
-         nir_foreach_instr(instr, block) {
+      nir_foreach_block_reverse(block, function->impl) {
+         nir_foreach_instr_reverse(instr, block) {
             progress |= opt_shrink_vectors_instr(&b, instr, shrink_image_store);
          }
       }
