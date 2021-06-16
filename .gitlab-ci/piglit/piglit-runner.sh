@@ -35,8 +35,20 @@ fi
 # Default to an empty known flakes file if it doesn't exist.
 touch $INSTALL/piglit-$GPU_VERSION-flakes.txt
 
+if [ -n "$VK_DRIVER" ] && [ -e "$INSTALL/piglit-$VK_DRIVER-skips.txt" ]; then
+    PIGLIT_SKIPS="$PIGLIT_SKIPS $INSTALL/piglit-$VK_DRIVER-skips.txt"
+fi
+
+if [ -n "$GALLIUM_DRIVER" ] && [ -e "$INSTALL/piglit-$GALLIUM_DRIVER-skips.txt" ]; then
+    PIGLIT_SKIPS="$PIGLIT_SKIPS $INSTALL/piglit-$GALLIUM_DRIVER-skips.txt"
+fi
+
+if [ -n "$DRIVER_NAME" ] && [ -e "$INSTALL/piglit-$DRIVER_NAME-skips.txt" ]; then
+    PIGLIT_SKIPS="$PIGLIT_SKIPS $INSTALL/piglit-$DRIVER_NAME-skips.txt"
+fi
+
 if [ -e "$INSTALL/piglit-$GPU_VERSION-skips.txt" ]; then
-    PIGLIT_SKIPS="$INSTALL/piglit-$GPU_VERSION-skips.txt"
+    PIGLIT_SKIPS="$PIGLIT_SKIPS $INSTALL/piglit-$GPU_VERSION-skips.txt"
 fi
 
 set +e

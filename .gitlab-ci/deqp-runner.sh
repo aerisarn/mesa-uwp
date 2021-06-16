@@ -101,8 +101,21 @@ fi
 # Default to an empty known flakes file if it doesn't exist.
 touch $INSTALL/deqp-$GPU_VERSION-flakes.txt
 
+
+if [ -n "$VK_DRIVER" ] && [ -e "$INSTALL/deqp-$VK_DRIVER-skips.txt" ]; then
+    DEQP_SKIPS="$DEQP_SKIPS $INSTALL/deqp-$VK_DRIVER-skips.txt"
+fi
+
+if [ -n "$GALLIUM_DRIVER" ] && [ -e "$INSTALL/deqp-$GALLIUM_DRIVER-skips.txt" ]; then
+    DEQP_SKIPS="$DEQP_SKIPS $INSTALL/deqp-$GALLIUM_DRIVER-skips.txt"
+fi
+
+if [ -n "$DRIVER_NAME" ] && [ -e "$INSTALL/deqp-$DRIVER_NAME-skips.txt" ]; then
+    DEQP_SKIPS="$DEQP_SKIPS $INSTALL/deqp-$DRIVER_NAME-skips.txt"
+fi
+
 if [ -e "$INSTALL/deqp-$GPU_VERSION-skips.txt" ]; then
-    DEQP_SKIPS="$INSTALL/deqp-$GPU_VERSION-skips.txt"
+    DEQP_SKIPS="$DEQP_SKIPS $INSTALL/deqp-$GPU_VERSION-skips.txt"
 fi
 
 set +e
