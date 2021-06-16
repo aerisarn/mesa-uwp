@@ -170,8 +170,9 @@ define m-lld-flags-cleaned
   $(subst out/,$(AOSP_ABSOLUTE_PATH)/out/,             \
   $(subst -Wl$(comma)--fatal-warnings,,                \
   $(subst -Wl$(comma)--no-undefined-version,,          \
-  $(patsubst %dummy.o,,                               \
-    $(m-lld-flags))))))
+  $(subst -Wl$(comma)--gc-sections,,                   \
+  $(patsubst %dummy.o,,                                \
+    $(m-lld-flags)))))))
 endef
 
 define m-cpp-flags
