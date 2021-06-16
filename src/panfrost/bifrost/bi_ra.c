@@ -176,7 +176,7 @@ lcra_count_constraints(struct lcra_state *l, unsigned i)
  */
 
 static uint64_t
-bi_make_affinity(uint64_t clobber, unsigned count)
+bi_make_affinity(uint64_t clobber, unsigned count, bool split_file)
 {
         uint64_t clobbered = 0;
 
@@ -188,14 +188,21 @@ bi_make_affinity(uint64_t clobber, unsigned count)
                 unsigned excess = count - 1;
                 uint64_t mask = BITFIELD_MASK(excess);
                 clobbered |= mask << (64 - excess);
+
+                if (split_file)
+                        clobbered |= mask << (16 - excess);
         }
+
+        /* Don't allocate the middle if we split out the middle */
+        if (split_file)
+                clobbered |= BITFIELD64_MASK(32) << 16;
 
         /* We can use a register iff it's not clobberred */
         return ~clobbered;
 }
 
 static void
-bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, uint64_t preload_live, unsigned node_count, bool is_blend)
+bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, uint64_t preload_live, unsigned node_count, bool is_blend, bool split_file)
 {
         bi_foreach_instr_in_block_rev(block, ins) {
                 /* Mark all registers live after the instruction as
@@ -215,7 +222,7 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, uint
                          * offset, so we shift right. */
                         unsigned count = bi_count_write_registers(ins, d);
                         unsigned offset = ins->dest[d].offset;
-                        uint64_t affinity = bi_make_affinity(preload_live, count);
+                        uint64_t affinity = bi_make_affinity(preload_live, count, split_file);
                         l->affinity[node] &= (affinity >> offset);
 
                         for (unsigned i = 0; i < node_count; ++i) {
@@ -245,7 +252,7 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, uint
 }
 
 static void
-bi_compute_interference(bi_context *ctx, struct lcra_state *l)
+bi_compute_interference(bi_context *ctx, struct lcra_state *l, bool full_regs)
 {
         unsigned node_count = bi_max_temp(ctx);
 
@@ -257,22 +264,26 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
                 uint16_t *live = mem_dup(_blk->live_out, node_count * sizeof(uint16_t));
 
                 bi_mark_interference(blk, l, live, blk->reg_live_out,
-                                node_count, ctx->inputs->is_blend);
+                                node_count, ctx->inputs->is_blend, !full_regs);
 
                 free(live);
         }
 }
 
 static struct lcra_state *
-bi_allocate_registers(bi_context *ctx, bool *success)
+bi_allocate_registers(bi_context *ctx, bool *success, bool full_regs)
 {
         unsigned node_count = bi_max_temp(ctx);
         struct lcra_state *l = lcra_alloc_equations(node_count);
 
-        /* R0-R3 are reserved for the blend input in blend shaders, otherwise
-         * we can use the whole register file */
+        /* Blend shaders are restricted to R0-R15. Other shaders at full
+         * occupancy also can access R48-R63. At half occupancy they can access
+         * the whole file. */
+
         uint64_t default_affinity =
-                ctx->inputs->is_blend ? BITFIELD64_MASK(16) : ~0ull;
+                ctx->inputs->is_blend ? BITFIELD64_MASK(16) :
+                full_regs ? BITFIELD64_MASK(64) :
+                (BITFIELD64_MASK(16) | (BITFIELD64_MASK(16) << 48));
 
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_dest(ins, d) {
@@ -292,7 +303,7 @@ bi_allocate_registers(bi_context *ctx, bool *success)
 
         }
 
-        bi_compute_interference(ctx, l);
+        bi_compute_interference(ctx, l, full_regs);
 
         *success = lcra_solve(l);
 
@@ -464,8 +475,27 @@ bi_register_allocate(bi_context *ctx)
         /* Number of bytes of memory we've spilled into */
         unsigned spill_count = ctx->info->tls_size;
 
-        do {
-                if (l) {
+        /* Try with reduced register pressure to improve thread count on v7 */
+        if (ctx->arch == 7) {
+                bi_invalidate_liveness(ctx);
+                l = bi_allocate_registers(ctx, &success, false);
+
+                if (success) {
+                        ctx->info->work_reg_count = 32;
+                } else if (!success) {
+                        lcra_free(l);
+                        l = NULL;
+                }
+        }
+
+        /* Otherwise, use the register file and spill until we succeed */
+        while (!success && ((iter_count--) > 0)) {
+                bi_invalidate_liveness(ctx);
+                l = bi_allocate_registers(ctx, &success, true);
+
+                if (success) {
+                        ctx->info->work_reg_count = 64;
+                } else {
                         signed spill_node = bi_choose_spill_node(ctx, l);
                         lcra_free(l);
                         l = NULL;
@@ -477,10 +507,7 @@ bi_register_allocate(bi_context *ctx)
                                         bi_node_to_index(spill_node, bi_max_temp(ctx)),
                                         spill_count);
                 }
-
-                bi_invalidate_liveness(ctx);
-                l = bi_allocate_registers(ctx, &success);
-        } while(!success && ((iter_count--) > 0));
+        }
 
         assert(success);
 

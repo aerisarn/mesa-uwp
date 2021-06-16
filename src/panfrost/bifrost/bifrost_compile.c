@@ -2905,10 +2905,9 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
                 }
         }
 
-        /* In the future, we'll calculate thread count for v7. For now we
-         * always use fewer threads than we should (v6 style) due to missing
-         * piping, TODO: fix that for a nice perf win */
-        unsigned nr_threads = 1;
+        /* Thread count and register pressure are traded off only on v7 */
+        bool full_threads = (ctx->arch == 7 && ctx->info->work_reg_count <= 32);
+        unsigned nr_threads = full_threads ? 2 : 1;
 
         /* Dump stats */
 
