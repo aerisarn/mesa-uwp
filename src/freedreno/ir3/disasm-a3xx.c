@@ -29,6 +29,7 @@
 #include <assert.h>
 
 #include <util/u_debug.h>
+#include <util/log.h>
 
 #include "isa/isa.h"
 
@@ -551,7 +552,7 @@ void
 ir3_assert_handler(const char *expr, const char *file, int line,
 		const char *func)
 {
-	fprintf(stdout, "\n%s:%u: %s: Assertion `%s' failed.\n", file, line, func, expr);
+	mesa_loge("%s:%u: %s: Assertion `%s' failed.", file, line, func, expr);
 	if (jmp_env_valid)
 		longjmp(jmp_env, 1);
 	abort();
