@@ -96,6 +96,7 @@ struct intel_perf_query_result;
 #include "isl/isl.h"
 
 #include "dev/intel_debug.h"
+#undef MESA_LOG_TAG
 #define MESA_LOG_TAG "MESA-INTEL"
 #include "util/log.h"
 #include "wsi_common.h"

@@ -1653,14 +1653,14 @@ nir_print_shader(nir_shader *shader, FILE *fp)
 }
 
 char *
-nir_shader_as_str(nir_shader *nir, void *mem_ctx)
+nir_shader_as_str_annotated(nir_shader *nir, struct hash_table *annotations, void *mem_ctx)
 {
    char *stream_data = NULL;
    size_t stream_size = 0;
    struct u_memstream mem;
    if (u_memstream_open(&mem, &stream_data, &stream_size)) {
       FILE *const stream = u_memstream_get(&mem);
-      nir_print_shader(nir, stream);
+      nir_print_shader_annotated(nir, stream, annotations);
       u_memstream_close(&mem);
    }
 
@@ -1671,6 +1671,12 @@ nir_shader_as_str(nir_shader *nir, void *mem_ctx)
    free(stream_data);
 
    return str;
+}
+
+char *
+nir_shader_as_str(nir_shader *nir, void *mem_ctx)
+{
+   return nir_shader_as_str_annotated(nir, NULL, mem_ctx);
 }
 
 void
@@ -1695,4 +1701,12 @@ nir_print_deref(const nir_deref_instr *deref, FILE *fp)
       .fp = fp,
    };
    print_deref_link(deref, true, &state);
+}
+
+void nir_log_shader_annotated_tagged(enum mesa_log_level level, const char *tag,
+                                     nir_shader *shader, struct hash_table *annotations)
+{
+   char *str = nir_shader_as_str_annotated(shader, annotations, NULL);
+   _mesa_log_multiline(level, tag, str);
+   ralloc_free(str);
 }

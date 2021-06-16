@@ -32,6 +32,7 @@
 #include "compiler/glsl/list.h"
 #include "GL/gl.h" /* GLenum */
 #include "util/list.h"
+#include "util/log.h"
 #include "util/ralloc.h"
 #include "util/set.h"
 #include "util/bitscan.h"
@@ -4083,8 +4084,14 @@ void nir_print_shader(nir_shader *shader, FILE *fp);
 void nir_print_shader_annotated(nir_shader *shader, FILE *fp, struct hash_table *errors);
 void nir_print_instr(const nir_instr *instr, FILE *fp);
 void nir_print_deref(const nir_deref_instr *deref, FILE *fp);
+void nir_log_shader_annotated_tagged(enum mesa_log_level level, const char *tag, nir_shader *shader, struct hash_table *annotations);
+#define nir_log_shadere(s) nir_log_shader_annotated_tagged(MESA_LOG_ERROR, (MESA_LOG_TAG), (s), NULL)
+#define nir_log_shaderw(s) nir_log_shader_annotated_tagged(MESA_LOG_WARN, (MESA_LOG_TAG), (s), NULL)
+#define nir_log_shaderi(s) nir_log_shader_annotated_tagged(MESA_LOG_INFO, (MESA_LOG_TAG), (s), NULL)
+#define nir_log_shader_annotated(s, annotations) nir_log_shader_annotated_tagged(MESA_LOG_ERROR, (MESA_LOG_TAG), (s), annotations)
 
 char *nir_shader_as_str(nir_shader *nir, void *mem_ctx);
+char *nir_shader_as_str_annotated(nir_shader *nir, struct hash_table *annotations, void *mem_ctx);
 
 /** Shallow clone of a single instruction. */
 nir_instr *nir_instr_clone(nir_shader *s, const nir_instr *orig);
