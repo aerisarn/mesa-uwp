@@ -3497,9 +3497,6 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                         nir_invalidate_divergence, nir_metadata_all, NULL);
         }
 
-        /* Take us out of SSA */
-        NIR_PASS(progress, nir, nir_lower_locals_to_regs);
-        NIR_PASS(progress, nir, nir_move_vec_src_uses_to_dest);
         NIR_PASS(progress, nir, nir_convert_from_ssa, true);
 }
 
