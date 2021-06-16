@@ -111,9 +111,6 @@ spec@arb_depth_buffer_float@fbo-clear-formats@GL_DEPTH32F_STENCIL8,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats@GL_DEPTH_COMPONENT32F,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil@GL_DEPTH32F_STENCIL8,Fail
-spec@arb_depth_buffer_float@fbo-depth-gl_depth32f_stencil8-blit,Fail
-spec@arb_depth_buffer_float@fbo-depth-gl_depth32f_stencil8-copypixels,Fail
-spec@arb_depth_buffer_float@fbo-depth-gl_depth_component32f-blit,Fail
 spec@arb_depth_buffer_float@fbo-depth-gl_depth_component32f-copypixels,Fail
 spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-blit,Fail
 spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-copypixels,Fail
@@ -124,11 +121,8 @@ spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT,Fail
 spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT16,Fail
 spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT24,Fail
 spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT32,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component16-blit,Fail
 spec@arb_depth_texture@fbo-depth-gl_depth_component16-copypixels,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component24-blit,Fail
 spec@arb_depth_texture@fbo-depth-gl_depth_component24-copypixels,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component32-blit,Fail
 spec@arb_depth_texture@fbo-depth-gl_depth_component32-copypixels,Fail
 spec@arb_direct_state_access@copytexturesubimage,Fail
 spec@arb_direct_state_access@gettextureimage-formats,Crash
@@ -149,38 +143,6 @@ spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index8,Fail
 spec@arb_framebuffer_object@framebuffer-blit-levels draw stencil,Fail
 spec@arb_framebuffer_object@framebuffer-blit-levels read stencil,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear_to_srgb msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear_to_srgb msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear_to_srgb msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear_to_srgb msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb_to_linear msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb_to_linear msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb_to_linear msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb_to_linear msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit texture linear msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture linear msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit texture linear msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture linear msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit texture linear_to_srgb msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture linear_to_srgb msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit texture linear_to_srgb msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture linear_to_srgb msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit texture srgb msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture srgb msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit texture srgb msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture srgb msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit texture srgb_to_linear msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture srgb_to_linear msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit texture srgb_to_linear msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture srgb_to_linear msaa enabled render,Fail
 spec@arb_map_buffer_alignment@arb_map_buffer_alignment-map-invalidate-range,Fail
 spec@arb_map_buffer_range@copybuffersubdata offset=0,Fail
 spec@arb_multi_draw_indirect@gl-3.0-multidrawarrays-vertexid -indirect,Crash
@@ -282,8 +244,6 @@ spec@ext_packed_depth_stencil@fbo-clear-formats@GL_DEPTH24_STENCIL8,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats@GL_DEPTH_STENCIL,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil@GL_DEPTH24_STENCIL8,Fail
-spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-blit,Fail
-spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-copypixels,Fail
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-blit,Fail
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-copypixels,Fail
 spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-blit,Fail
@@ -404,8 +364,6 @@ spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb@sRGB decode,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp@sRGB decode full precision,Fail
-spec@nv_conditional_render@copyteximage,Fail
-spec@nv_conditional_render@copytexsubimage,Fail
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x223344ff,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x76356278,Crash

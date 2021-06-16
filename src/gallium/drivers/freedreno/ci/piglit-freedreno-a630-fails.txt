@@ -56,38 +56,6 @@ spec@arb_direct_state_access@transformfeedback-bufferrange,Fail
 spec@arb_direct_state_access@transformfeedback-bufferrange@general test,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled@GL_RGB565- swizzled- border color only,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear_to_srgb msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear_to_srgb msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear_to_srgb msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer linear_to_srgb msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb_to_linear msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb_to_linear msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb_to_linear msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit renderbuffer srgb_to_linear msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit texture linear msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture linear msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit texture linear msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture linear msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit texture linear_to_srgb msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture linear_to_srgb msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit texture linear_to_srgb msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture linear_to_srgb msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit texture srgb msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture srgb msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit texture srgb msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture srgb msaa enabled render,Fail
-spec@arb_framebuffer_srgb@blit texture srgb_to_linear msaa disabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture srgb_to_linear msaa disabled render,Fail
-spec@arb_framebuffer_srgb@blit texture srgb_to_linear msaa enabled clear,Fail
-spec@arb_framebuffer_srgb@blit texture srgb_to_linear msaa enabled render,Fail
 spec@arb_occlusion_query@occlusion_query_order,Fail
 spec@arb_point_sprite@arb_point_sprite-interactions 1.0,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
@@ -98,9 +66,6 @@ spec@arb_program_interface_query@arb_program_interface_query-resource-query,Fail
 spec@arb_program_interface_query@arb_program_interface_query-resource-query@GL_ATOMIC_COUNTER_BUFFER,Fail
 spec@arb_program_interface_query@arb_program_interface_query-resource-query@GL_BUFFER_VARIABLE,Fail
 spec@arb_program_interface_query@arb_program_interface_query-resource-query@GL_SHADER_STORAGE_BLOCK,Fail
-spec@arb_sample_shading@builtin-gl-sample-id 4,Fail
-spec@arb_sample_shading@builtin-gl-sample-mask 2,Fail
-spec@arb_sample_shading@builtin-gl-sample-mask 4,Fail
 spec@arb_sample_shading@samplemask 2@0.500000 mask_in_one,Fail
 spec@arb_sample_shading@samplemask 2@1.000000 mask_in_one,Fail
 spec@arb_sample_shading@samplemask 2 all@0.500000 mask_in_one,Fail
@@ -286,7 +251,6 @@ spec@ext_framebuffer_multisample@alpha-to-coverage-dual-src-blend 2,Fail
 spec@ext_framebuffer_multisample@alpha-to-coverage-dual-src-blend 4,Fail
 spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 2,Fail
 spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 4,Fail
-spec@ext_framebuffer_multisample@blit-mismatched-formats,Fail
 spec@ext_framebuffer_multisample@draw-buffers-alpha-to-coverage 2,Fail
 spec@ext_framebuffer_multisample@draw-buffers-alpha-to-coverage 4,Fail
 spec@ext_framebuffer_multisample@enable-flag,Fail
@@ -298,36 +262,10 @@ spec@ext_framebuffer_multisample@interpolation 4 centroid-deriv-disabled,Fail
 spec@ext_framebuffer_multisample@interpolation 4 centroid-disabled,Fail
 spec@ext_framebuffer_multisample@interpolation 4 non-centroid-deriv-disabled,Fail
 spec@ext_framebuffer_multisample@interpolation 4 non-centroid-disabled,Fail
-spec@ext_framebuffer_multisample@multisample-blit 2 color,Fail
-spec@ext_framebuffer_multisample@multisample-blit 2 color linear,Fail
-spec@ext_framebuffer_multisample@multisample-blit 2 depth,Fail
-spec@ext_framebuffer_multisample@multisample-blit 2 stencil,Fail
-spec@ext_framebuffer_multisample@multisample-blit 4 color,Fail
-spec@ext_framebuffer_multisample@multisample-blit 4 color linear,Fail
-spec@ext_framebuffer_multisample@multisample-blit 4 depth,Fail
-spec@ext_framebuffer_multisample@multisample-blit 4 stencil,Fail
-spec@ext_framebuffer_multisample@no-color 2 depth combined,Fail
-spec@ext_framebuffer_multisample@no-color 2 depth-computed combined,Fail
-spec@ext_framebuffer_multisample@no-color 2 depth-computed single,Fail
-spec@ext_framebuffer_multisample@no-color 2 depth single,Fail
-spec@ext_framebuffer_multisample@no-color 2 stencil combined,Fail
-spec@ext_framebuffer_multisample@no-color 2 stencil single,Fail
-spec@ext_framebuffer_multisample@no-color 4 depth combined,Fail
-spec@ext_framebuffer_multisample@no-color 4 depth-computed combined,Fail
-spec@ext_framebuffer_multisample@no-color 4 depth-computed single,Fail
-spec@ext_framebuffer_multisample@no-color 4 depth single,Fail
-spec@ext_framebuffer_multisample@no-color 4 stencil combined,Fail
-spec@ext_framebuffer_multisample@no-color 4 stencil single,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 2 color,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 2 depth,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 4 color,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 4 depth,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 2 color msaa,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 2 depth msaa,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 2 stencil msaa,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 4 color msaa,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 4 depth msaa,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 4 stencil msaa,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor-ff,Fail
 spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
