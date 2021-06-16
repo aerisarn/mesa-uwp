@@ -637,9 +637,9 @@ ir3_nir_lower_tess_ctrl(nir_shader *shader, struct ir3_shader_variant *v,
 	struct state state = { .topology = topology };
 
 	if (shader_debug_enabled(shader->info.stage)) {
-		fprintf(stderr, "NIR (before tess lowering) for %s shader:\n",
-				_mesa_shader_stage_to_string(shader->info.stage));
-		nir_print_shader(shader, stderr);
+		mesa_logi("NIR (before tess lowering) for %s shader:",
+				  _mesa_shader_stage_to_string(shader->info.stage));
+		nir_log_shaderi(shader);
 	}
 
 	build_primitive_map(shader, &state.map);
@@ -784,9 +784,9 @@ ir3_nir_lower_tess_eval(nir_shader *shader, struct ir3_shader_variant *v, unsign
 	struct state state = { .topology = topology };
 
 	if (shader_debug_enabled(shader->info.stage)) {
-		fprintf(stderr, "NIR (before tess lowering) for %s shader:\n",
-				_mesa_shader_stage_to_string(shader->info.stage));
-		nir_print_shader(shader, stderr);
+		mesa_logi("NIR (before tess lowering) for %s shader:",
+				  _mesa_shader_stage_to_string(shader->info.stage));
+		nir_log_shaderi(shader);
 	}
 
 	nir_function_impl *impl = nir_shader_get_entrypoint(shader);
@@ -871,8 +871,8 @@ ir3_nir_lower_gs(nir_shader *shader)
 	struct state state = { };
 
 	if (shader_debug_enabled(shader->info.stage)) {
-		fprintf(stderr, "NIR (before gs lowering):\n");
-		nir_print_shader(shader, stderr);
+		mesa_logi("NIR (before gs lowering):");
+		nir_log_shaderi(shader);
 	}
 
 	/* Create an output var for vertex_flags. This will be shadowed below,
@@ -973,8 +973,8 @@ ir3_nir_lower_gs(nir_shader *shader)
 	nir_fixup_deref_modes(shader);
 
 	if (shader_debug_enabled(shader->info.stage)) {
-		fprintf(stderr, "NIR (after gs lowering):\n");
-		nir_print_shader(shader, stderr);
+		mesa_logi("NIR (after gs lowering):");
+		nir_log_shaderi(shader);
 	}
 }
 

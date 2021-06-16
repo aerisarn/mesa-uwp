@@ -368,8 +368,8 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 		ir3_nir_post_finalize(shader->compiler, shader->nir);
 
 		if (ir3_shader_debug & IR3_DBG_DISASM) {
-			printf("dump nir%d: type=%d", shader->id, shader->type);
-			nir_print_shader(shader->nir, stdout);
+			mesa_logi("dump nir%d: type=%d", shader->id, shader->type);
+			nir_log_shaderi(shader->nir);
 		}
 
 		if (v->disasm_info.write_disasm) {

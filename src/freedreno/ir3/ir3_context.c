@@ -151,9 +151,9 @@ ir3_context_init(struct ir3_compiler *compiler,
 	}
 
 	if (shader_debug_enabled(so->type)) {
-		fprintf(stdout, "NIR (final form) for %s shader %s:\n",
+		mesa_logi("NIR (final form) for %s shader %s:",
 			ir3_shader_stage(so), so->shader->nir->info.name);
-		nir_print_shader(ctx->s, stdout);
+		nir_log_shaderi(ctx->s);
 	}
 
 	ir3_ibo_mapping_init(&so->image_mapping, ctx->s->info.num_textures);
@@ -403,10 +403,10 @@ ir3_context_error(struct ir3_context *ctx, const char *format, ...)
 		char *msg = ralloc_vasprintf(errors, format, ap);
 		_mesa_hash_table_insert(errors, ctx->cur_instr, msg);
 	} else {
-		_debug_vprintf(format, ap);
+		mesa_loge_v(format, ap);
 	}
 	va_end(ap);
-	nir_print_shader_annotated(ctx->s, stdout, errors);
+	nir_log_shader_annotated(ctx->s, errors);
 	ralloc_free(errors);
 	ctx->error = true;
 	unreachable("");

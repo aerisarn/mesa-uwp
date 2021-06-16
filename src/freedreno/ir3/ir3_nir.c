@@ -337,9 +337,9 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 	}
 
 	if (ir3_shader_debug & IR3_DBG_DISASM) {
-		debug_printf("----------------------\n");
-		nir_print_shader(s, stdout);
-		debug_printf("----------------------\n");
+		mesa_logi("----------------------");
+		nir_log_shaderi(s);
+		mesa_logi("----------------------");
 	}
 
 	if (s->info.stage == MESA_SHADER_GEOMETRY)
@@ -372,9 +372,9 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 	OPT_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
 	if (ir3_shader_debug & IR3_DBG_DISASM) {
-		debug_printf("----------------------\n");
-		nir_print_shader(s, stdout);
-		debug_printf("----------------------\n");
+		mesa_logi("----------------------");
+		nir_log_shaderi(s);
+		mesa_logi("----------------------");
 	}
 
 	/* st_program.c's parameter list optimization requires that future nir
@@ -488,9 +488,9 @@ void
 ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 {
 	if (ir3_shader_debug & IR3_DBG_DISASM) {
-		debug_printf("----------------------\n");
-		nir_print_shader(s, stdout);
-		debug_printf("----------------------\n");
+		mesa_logi("----------------------");
+		nir_log_shaderi(s);
+		mesa_logi("----------------------");
 	}
 
 	bool progress = false;
@@ -602,9 +602,9 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 	OPT_V(s, nir_opt_sink, nir_move_const_undef);
 
 	if (ir3_shader_debug & IR3_DBG_DISASM) {
-		debug_printf("----------------------\n");
-		nir_print_shader(s, stdout);
-		debug_printf("----------------------\n");
+		mesa_logi("----------------------");
+		nir_log_shaderi(s);
+		mesa_logi("----------------------");
 	}
 
 	nir_sweep(s);
