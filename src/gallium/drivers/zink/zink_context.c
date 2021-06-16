@@ -3283,7 +3283,7 @@ zink_context_is_resource_busy(struct pipe_screen *pscreen, struct pipe_resource 
    uint32_t last;
 
    if (reads && writes)
-      last = abs(reads - writes) > UINT32_MAX / 2 ? MIN2(reads, writes) : MAX2(reads, writes);
+      last = abs((int)reads - (int)writes) > UINT32_MAX / 2 ? MIN2(reads, writes) : MAX2(reads, writes);
    else
       last = reads ? reads : writes;
 
