@@ -216,6 +216,9 @@ swrastPutImageShm(__DRIdrawable * draw, int op,
 {
    struct drisw_drawable *pdp = loaderPrivate;
 
+   if (!pdp)
+      return;
+
    pdp->shminfo.shmaddr = shmaddr;
    swrastXPutImage(draw, op, 0, 0, x, y, w, h, stride, shmid,
                    shmaddr + offset, loaderPrivate);
@@ -230,6 +233,9 @@ swrastPutImageShm2(__DRIdrawable * draw, int op,
 {
    struct drisw_drawable *pdp = loaderPrivate;
 
+   if (!pdp)
+      return;
+
    pdp->shminfo.shmaddr = shmaddr;
    swrastXPutImage(draw, op, x, 0, x, y, w, h, stride, shmid,
                    shmaddr + offset, loaderPrivate);
@@ -240,6 +246,9 @@ swrastPutImage2(__DRIdrawable * draw, int op,
                 int x, int y, int w, int h, int stride,
                 char *data, void *loaderPrivate)
 {
+   if (!loaderPrivate)
+      return;
+
    swrastXPutImage(draw, op, 0, 0, x, y, w, h, stride, -1,
                    data, loaderPrivate);
 }
@@ -249,6 +258,9 @@ swrastPutImage(__DRIdrawable * draw, int op,
                int x, int y, int w, int h,
                char *data, void *loaderPrivate)
 {
+   if (!loaderPrivate)
+      return;
+
    swrastXPutImage(draw, op, 0, 0, x, y, w, h, 0, -1,
                    data, loaderPrivate);
 }
