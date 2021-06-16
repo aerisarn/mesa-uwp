@@ -46,7 +46,7 @@ BEGIN_TEST(regalloc.subdword_alloc.reuse_16bit_operands)
          //! v2b: %_:v[#a][0:16], v2b: %res1:v[#a][16:32] = p_split_vector %_:v[#a]
          Builder::Result tmp = bld.pseudo(aco_opcode::p_split_vector, bld.def(v2b), bld.def(v2b), inputs[0]);
 
-         //! v1: %_:v[#b] = v_cvt_f32_f16 %_:v[#a][16:32]
+         //! v1: %_:v[#b] = v_cvt_f32_f16 %_:v[#a][16:32] dst_sel:dword src0_sel:uword1
          //! v1: %_:v[#a] = v_cvt_f32_f16 %_:v[#a][0:16]
          //; success = (b != a)
          auto result1 = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), tmp.def(1).getTemp());
@@ -69,7 +69,7 @@ BEGIN_TEST(regalloc.32bit_partial_write)
    Temp hi = bld.pseudo(aco_opcode::p_split_vector, bld.def(v2b), bld.def(v2b), inputs[0]).def(1).getTemp();
 
    /* This test checks if this instruction uses SDWA. */
-   //! v2b: %_:v[0][0:16] = v_not_b32 0 dst_preserve
+   //! v2b: %_:v[0][0:16] = v_not_b32 0 dst_sel:uword0 dst_preserve src0_sel:dword
    Temp lo = bld.vop1(aco_opcode::v_not_b32, bld.def(v2b), Operand::zero());
 
    //! v1: %_:v[0] = p_create_vector %_:v[0][0:16], %_:v[0][16:32]

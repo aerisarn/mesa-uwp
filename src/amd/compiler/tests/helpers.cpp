@@ -186,8 +186,7 @@ void finish_ra_test(ra_test_policy policy)
       return;
    }
 
-   finish_program(program.get());
-   aco::optimize_postRA(program.get());
+   aco_print_program(program.get(), output);
 }
 
 void finish_optimizer_postRA_test()
