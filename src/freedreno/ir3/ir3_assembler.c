@@ -47,6 +47,10 @@ ir3_parse_asm(struct ir3_compiler *c, struct ir3_kernel_info *info, FILE *in)
 
 	info->numwg = INVALID_REG;
 
+	for (int i = 0; i < MAX_BUFS; i++) {
+		info->buf_addr_regs[i] = INVALID_REG;
+	}
+
 	/* Provide a default local_size in case the shader doesn't set it, so that
 	 * we don't crash at least.
 	 */

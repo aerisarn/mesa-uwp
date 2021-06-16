@@ -232,6 +232,18 @@ cs_const_emit(struct fd_ringbuffer *ring, struct kernel *kernel,
       const_state->immediates[idx * 4 + 2] = grid[2];
    }
 
+   for (int i = 0; i < MAX_BUFS; i++) {
+      if (kernel->buf_addr_regs[i] != INVALID_REG) {
+         assert((kernel->buf_addr_regs[i] & 0x3) == 0);
+         int idx = kernel->buf_addr_regs[i] >> 2;
+
+         uint64_t iova = fd_bo_get_iova(kernel->bufs[i]);
+
+         const_state->immediates[idx * 4 + 1] = iova >> 32;
+         const_state->immediates[idx * 4 + 0] = (iova << 32) >> 32;
+      }
+   }
+
    /* truncate size to avoid writing constants that shader
     * does not use:
     */
