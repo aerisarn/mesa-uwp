@@ -193,7 +193,6 @@ struct draw_context
       boolean rebind_parameters;
 
       struct {
-         struct draw_pt_middle_end *fetch_emit;
          struct draw_pt_middle_end *fetch_shade_emit;
          struct draw_pt_middle_end *general;
          struct draw_pt_middle_end *llvm;
