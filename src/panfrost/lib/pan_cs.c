@@ -907,8 +907,12 @@ pan_emit_bifrost_tiler(const struct panfrost_device *dev,
                        mali_ptr heap,
                        void *out)
 {
+        unsigned max_levels = dev->tiler_features.max_levels;
+        assert(max_levels >= 2);
+
         pan_pack(out, BIFROST_TILER, tiler) {
-                tiler.hierarchy_mask = 0x28;
+                /* TODO: Select hierarchy mask more effectively */
+                tiler.hierarchy_mask = (max_levels >= 8) ? 0xFF : 0x28;
                 tiler.fb_width = fb_width;
                 tiler.fb_height = fb_height;
                 tiler.heap = heap;
