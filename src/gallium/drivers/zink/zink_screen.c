@@ -1132,9 +1132,7 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
       winsys->displaytarget_unmap(winsys, res->dt);
    }
 
-   assert(res->dt);
-   if (res->dt)
-      winsys->displaytarget_display(winsys, res->dt, winsys_drawable_handle, sub_box);
+   winsys->displaytarget_display(winsys, res->dt, winsys_drawable_handle, sub_box);
 }
 
 bool
