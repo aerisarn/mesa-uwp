@@ -497,8 +497,8 @@ bool crocus_has_color_unresolved(const struct crocus_resource *res,
 
 enum isl_aux_usage crocus_resource_render_aux_usage(struct crocus_context *ice,
                                                     struct crocus_resource *res,
+                                                    uint32_t level,
                                                     enum isl_format render_fmt,
-                                                    bool blend_enabled,
                                                     bool draw_aux_disabled);
 void crocus_resource_prepare_render(struct crocus_context *ice,
                                     struct crocus_resource *res, uint32_t level,

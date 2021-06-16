@@ -279,8 +279,8 @@ crocus_predraw_resolve_framebuffer(struct crocus_context *ice,
             crocus_update_align_res(batch, surf, true);
 
          enum isl_aux_usage aux_usage =
-            crocus_resource_render_aux_usage(ice, res, surf->view.format,
-                                             ice->state.blend_enables & (1u << i),
+            crocus_resource_render_aux_usage(ice, res, surf->view.base_level,
+                                             surf->view.format,
                                              draw_aux_buffer_disabled[i]);
 
          if (ice->state.draw_aux_usage[i] != aux_usage) {
@@ -984,8 +984,8 @@ crocus_resource_prepare_texture(struct crocus_context *ice,
 enum isl_aux_usage
 crocus_resource_render_aux_usage(struct crocus_context *ice,
                                  struct crocus_resource *res,
+                                 uint32_t level,
                                  enum isl_format render_format,
-                                 bool blend_enabled,
                                  bool draw_aux_disabled)
 {
    struct crocus_screen *screen = (void *) ice->ctx.screen;
@@ -1004,6 +1004,11 @@ crocus_resource_render_aux_usage(struct crocus_context *ice,
          return ISL_AUX_USAGE_CCS_D;
 
       return ISL_AUX_USAGE_NONE;
+
+   case ISL_AUX_USAGE_HIZ:
+      assert(render_format == res->surf.format);
+      return crocus_resource_level_has_hiz(res, level) ?
+         res->aux.usage : ISL_AUX_USAGE_NONE;
 
    default:
       return ISL_AUX_USAGE_NONE;

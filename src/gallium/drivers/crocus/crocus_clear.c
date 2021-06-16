@@ -362,8 +362,7 @@ clear_color(struct crocus_context *ice,
 
    bool color_write_disable[4] = { false, false, false, false };
    enum isl_aux_usage aux_usage =
-      crocus_resource_render_aux_usage(ice, res, format,
-                                       false, false);
+      crocus_resource_render_aux_usage(ice, res, level, format, false);
 
    crocus_resource_prepare_render(ice, res, level,
                                   box->z, box->depth, aux_usage);
