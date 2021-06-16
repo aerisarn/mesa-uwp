@@ -284,8 +284,6 @@ struct draw_context
    boolean guard_band_xy;
    boolean guard_band_points_xy;
 
-   boolean force_passthrough; /**< never clip or shade */
-
    boolean dump_vs;
 
    /** Depth format and bias related settings. */

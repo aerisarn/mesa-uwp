@@ -62,33 +62,29 @@ draw_pt_arrays(struct draw_context *draw,
 {
    struct draw_pt_front_end *frontend = NULL;
    struct draw_pt_middle_end *middle = NULL;
-   unsigned opt = 0;
+   unsigned opt = PT_SHADE;
 
-   if (!draw->force_passthrough) {
-      unsigned out_prim = prim;
+   unsigned out_prim = prim;
 
-      if (draw->gs.geometry_shader)
-         out_prim = draw->gs.geometry_shader->output_primitive;
-      else if (draw->tes.tess_eval_shader)
-         out_prim = get_tes_output_prim(draw->tes.tess_eval_shader);
+   if (draw->gs.geometry_shader)
+      out_prim = draw->gs.geometry_shader->output_primitive;
+   else if (draw->tes.tess_eval_shader)
+      out_prim = get_tes_output_prim(draw->tes.tess_eval_shader);
 
-      if (!draw->render) {
-         opt |= PT_PIPELINE;
-      }
+   if (!draw->render) {
+      opt |= PT_PIPELINE;
+   }
 
-      if (draw_need_pipeline(draw,
-                             draw->rasterizer,
-                             out_prim)) {
-         opt |= PT_PIPELINE;
-      }
+   if (draw_need_pipeline(draw,
+                           draw->rasterizer,
+                           out_prim)) {
+      opt |= PT_PIPELINE;
+   }
 
-      if ((draw->clip_xy ||
-           draw->clip_z ||
-           draw->clip_user) && !draw->pt.test_fse) {
-         opt |= PT_CLIPTEST;
-      }
-
-      opt |= PT_SHADE;
+   if ((draw->clip_xy ||
+         draw->clip_z ||
+         draw->clip_user) && !draw->pt.test_fse) {
+      opt |= PT_CLIPTEST;
    }
 
    if (draw->pt.middle.llvm) {
