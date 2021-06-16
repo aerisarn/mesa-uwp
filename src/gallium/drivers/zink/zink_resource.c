@@ -234,8 +234,6 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
                 VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
    if (props.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
       bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-   if (props.bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)
-      bci.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
    if (bind & PIPE_BIND_SHADER_IMAGE) {
       assert(props.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT);
