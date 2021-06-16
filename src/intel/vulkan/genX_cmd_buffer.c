@@ -2004,6 +2004,11 @@ genX(CmdExecuteCommands)(
              secondary->perf_query_pool == primary->perf_query_pool);
       if (secondary->perf_query_pool)
          primary->perf_query_pool = secondary->perf_query_pool;
+
+#if GFX_VERx10 == 120
+      if (secondary->state.depth_reg_mode != ANV_DEPTH_REG_MODE_UNKNOWN)
+         primary->state.depth_reg_mode = secondary->state.depth_reg_mode;
+#endif
    }
 
    /* The secondary isn't counted in our VF cache tracking so we need to
@@ -5534,6 +5539,19 @@ genX(cmd_buffer_emit_gfx12_depth_wa)(struct anv_cmd_buffer *cmd_buffer,
 #if GFX_VERx10 == 120
    const bool fmt_is_d16 = surf->format == ISL_FORMAT_R16_UNORM;
 
+   switch (cmd_buffer->state.depth_reg_mode) {
+   case ANV_DEPTH_REG_MODE_HW_DEFAULT:
+      if (!fmt_is_d16)
+         return;
+      break;
+   case ANV_DEPTH_REG_MODE_D16:
+      if (fmt_is_d16)
+         return;
+      break;
+   case ANV_DEPTH_REG_MODE_UNKNOWN:
+      break;
+   }
+
    /* We'll change some CHICKEN registers depending on the depth surface
     * format. Do a depth flush and stall so the pipeline is not using these
     * settings while we change the registers.
@@ -5563,6 +5581,9 @@ genX(cmd_buffer_emit_gfx12_depth_wa)(struct anv_cmd_buffer *cmd_buffer,
       reg.HZDepthTestLEGEOptimizationDisable = fmt_is_d16;
       reg.HZDepthTestLEGEOptimizationDisableMask = true;
    }
+
+   cmd_buffer->state.depth_reg_mode =
+      fmt_is_d16 ? ANV_DEPTH_REG_MODE_D16 : ANV_DEPTH_REG_MODE_HW_DEFAULT;
 #endif
 }
 
