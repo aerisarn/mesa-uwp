@@ -1113,6 +1113,54 @@ copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
    }
 }
 
+void
+copy_linear_vgpr(Builder& bld, Definition def, Operand op, bool preserve_scc, PhysReg scratch_sgpr)
+{
+   if (preserve_scc)
+      bld.sop1(aco_opcode::s_mov_b32, Definition(scratch_sgpr, s1), Operand(scc, s1));
+
+   for (unsigned i = 0; i < 2; i++) {
+      if (def.size() == 2)
+         bld.vop3(aco_opcode::v_lshrrev_b64, def, Operand::zero(), op);
+      else
+         bld.vop1(aco_opcode::v_mov_b32, def, op);
+
+      bld.sop1(Builder::s_not, Definition(exec, bld.lm), Definition(scc, s1),
+               Operand(exec, bld.lm));
+   }
+
+   if (preserve_scc)
+      bld.sopc(aco_opcode::s_cmp_lg_i32, Definition(scc, s1), Operand(scratch_sgpr, s1),
+               Operand::zero());
+}
+
+void
+swap_linear_vgpr(Builder& bld, Definition def, Operand op, bool preserve_scc, PhysReg scratch_sgpr)
+{
+   if (preserve_scc)
+      bld.sop1(aco_opcode::s_mov_b32, Definition(scratch_sgpr, s1), Operand(scc, s1));
+
+   Operand def_as_op = Operand(def.physReg(), def.regClass());
+   Definition op_as_def = Definition(op.physReg(), op.regClass());
+
+   for (unsigned i = 0; i < 2; i++) {
+      if (bld.program->chip_class >= GFX9) {
+         bld.vop1(aco_opcode::v_swap_b32, def, op_as_def, op, def_as_op);
+      } else {
+         bld.vop2(aco_opcode::v_xor_b32, op_as_def, op, def_as_op);
+         bld.vop2(aco_opcode::v_xor_b32, def, op, def_as_op);
+         bld.vop2(aco_opcode::v_xor_b32, op_as_def, op, def_as_op);
+      }
+
+      bld.sop1(Builder::s_not, Definition(exec, bld.lm), Definition(scc, s1),
+               Operand(exec, bld.lm));
+   }
+
+   if (preserve_scc)
+      bld.sopc(aco_opcode::s_cmp_lg_i32, Definition(scc, s1), Operand(scratch_sgpr, s1),
+               Operand::zero());
+}
+
 bool
 do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool* preserve_scc,
         PhysReg scratch_sgpr)
@@ -1133,6 +1181,8 @@ do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool* pres
          *preserve_scc = true;
       } else if (op.isConstant()) {
          copy_constant(ctx, bld, def, op);
+      } else if (def.regClass().is_linear_vgpr()) {
+         copy_linear_vgpr(bld, def, op, *preserve_scc, scratch_sgpr);
       } else if (def.regClass() == v1) {
          bld.vop1(aco_opcode::v_mov_b32, def, op);
       } else if (def.regClass() == v2) {
@@ -1232,7 +1282,9 @@ do_swap(lower_context* ctx, Builder& bld, const copy_operation& copy, bool prese
       assert(op.regClass() == def.regClass());
       Operand def_as_op = Operand(def.physReg(), def.regClass());
       Definition op_as_def = Definition(op.physReg(), op.regClass());
-      if (ctx->program->chip_class >= GFX9 && def.regClass() == v1) {
+      if (def.regClass().is_linear_vgpr()) {
+         swap_linear_vgpr(bld, def, op, preserve_scc, pi->scratch_sgpr);
+      } else if (ctx->program->chip_class >= GFX9 && def.regClass() == v1) {
          bld.vop1(aco_opcode::v_swap_b32, def, op_as_def, op, def_as_op);
       } else if (def.regClass() == v1) {
          assert(def.physReg().byte() == 0 && op.physReg().byte() == 0);

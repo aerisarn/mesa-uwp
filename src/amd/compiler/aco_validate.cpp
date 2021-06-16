@@ -422,12 +422,20 @@ validate_ir(Program* program)
                for (unsigned i = 0; i < instr->operands.size(); i++) {
                   check(instr->definitions[i].bytes() == instr->operands[i].bytes(),
                         "Operand and Definition size must match", instr.get());
-                  if (instr->operands[i].isTemp())
+                  if (instr->operands[i].isTemp()) {
                      check((instr->definitions[i].getTemp().type() ==
                             instr->operands[i].regClass().type()) ||
                               (instr->definitions[i].getTemp().type() == RegType::vgpr &&
                                instr->operands[i].regClass().type() == RegType::sgpr),
                            "Operand and Definition types do not match", instr.get());
+                     check(instr->definitions[i].regClass().is_linear_vgpr() ==
+                              instr->operands[i].regClass().is_linear_vgpr(),
+                           "Operand and Definition types do not match", instr.get());
+                  } else {
+                     check(!instr->definitions[i].regClass().is_linear_vgpr(),
+                           "Can only copy linear VGPRs into linear VGPRs, not constant/undef",
+                           instr.get());
+                  }
                }
             } else if (instr->opcode == aco_opcode::p_phi) {
                check(instr->operands.size() == block.logical_preds.size(),

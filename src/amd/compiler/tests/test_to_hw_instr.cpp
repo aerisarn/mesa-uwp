@@ -668,3 +668,57 @@ BEGIN_TEST(to_hw_instr.insert)
       //! s_endpgm
    }
 END_TEST
+
+BEGIN_TEST(to_hw_instr.copy_linear_vgpr_scc)
+   if (!setup_cs(NULL, GFX10))
+      return;
+
+   PhysReg reg_s0{0};
+   PhysReg reg_s1{1};
+   PhysReg v0_lo{256};
+   PhysReg v0_b3{256};
+   v0_b3.reg_b += 3;
+   PhysReg v1_lo{257};
+
+   //>> p_unit_test 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::zero());
+
+   /* It would be better if the scc=s0 copy was done later, but handle_operands() is complex
+    * enough
+    */
+
+   //! s1: %0:scc = s_cmp_lg_i32 %0:s[0], 0
+   //! s1: %0:m0 = s_mov_b32 %0:scc
+   //! lv1: %0:v[0] = v_mov_b32 %0:v[1]
+   //! s2: %0:exec,  s1: %0:scc = s_not_b64 %0:exec
+   //! lv1: %0:v[0] = v_mov_b32 %0:v[1]
+   //! s2: %0:exec,  s1: %0:scc = s_not_b64 %0:exec
+   //! s1: %0:scc = s_cmp_lg_i32 %0:m0, 0
+   Instruction *instr = bld.pseudo(
+      aco_opcode::p_parallelcopy,
+      Definition(scc, s1), Definition(v0_lo, v1.as_linear()),
+      Operand(reg_s0, s1), Operand(v1_lo, v1.as_linear()));
+   instr->pseudo().scratch_sgpr = m0;
+
+   finish_to_hw_instr_test();
+END_TEST
+
+BEGIN_TEST(to_hw_instr.swap_linear_vgpr)
+   if (!setup_cs(NULL, GFX10))
+      return;
+
+   PhysReg reg_v0{256};
+   PhysReg reg_v1{257};
+   RegClass v1_linear = v1.as_linear();
+
+   //>> p_unit_test 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::zero());
+
+   Instruction *instr = bld.pseudo(
+      aco_opcode::p_parallelcopy,
+      Definition(reg_v0, v1_linear), Definition(reg_v1, v1_linear),
+      Operand(reg_v1, v1_linear), Operand(reg_v0, v1_linear));
+   instr->pseudo().scratch_sgpr = m0;
+
+   finish_to_hw_instr_test();
+END_TEST
