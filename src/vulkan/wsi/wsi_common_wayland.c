@@ -730,7 +730,6 @@ struct wsi_wl_swapchain {
    struct wsi_wl_display                        *display;
 
    struct wl_surface *                          surface;
-   uint32_t                                     surface_version;
 
    /* non-NULL when wl_drm should be used for wl_buffer creation; otherwise,
     * zwp_linux_dmabuf_v1 should be used.
@@ -871,7 +870,7 @@ wsi_wl_swapchain_queue_present(struct wsi_swapchain *wsi_chain,
    assert(image_index < chain->base.image_count);
    wl_surface_attach(chain->surface, chain->images[image_index].buffer, 0, 0);
 
-   if (chain->surface_version >= 4 && damage &&
+   if (wl_surface_get_version(chain->surface) >= 4 && damage &&
        damage->pRectangles && damage->rectangleCount > 0) {
       for (unsigned i = 0; i < damage->rectangleCount; i++) {
          const VkRectLayerKHR *rect = &damage->pRectangles[i];
@@ -1088,7 +1087,6 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    }
    wl_proxy_set_queue((struct wl_proxy *) chain->surface,
                       chain->display->queue);
-   chain->surface_version = wl_proxy_get_version((void *)surface->surface);
 
    chain->num_drm_modifiers = 0;
    chain->drm_modifiers = 0;
