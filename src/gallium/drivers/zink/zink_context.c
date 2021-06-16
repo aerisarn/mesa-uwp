@@ -2275,25 +2275,6 @@ zink_resource_buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flag
           (res->access & flags) != flags;
 }
 
-ALWAYS_INLINE static bool
-zink_resource_buffer_barrier_init(VkBufferMemoryBarrier *bmb, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
-{
-   if (!pipeline)
-      pipeline = pipeline_access_stage(flags);
-   *bmb = (VkBufferMemoryBarrier){
-      VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-      NULL,
-      res->access,
-      flags,
-      VK_QUEUE_FAMILY_IGNORED,
-      VK_QUEUE_FAMILY_IGNORED,
-      res->obj->buffer,
-      res->obj->offset,
-      res->base.b.width0
-   };
-   return zink_resource_buffer_needs_barrier(res, flags, pipeline);
-}
-
 void
 zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
