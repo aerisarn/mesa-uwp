@@ -198,8 +198,10 @@ static rvcn_dec_message_hevc_t get_h265_msg(struct radeon_decoder *dec,
       result.sps_info_flags |= 1 << 9;
    if (pic->UseRefPicList == true)
       result.sps_info_flags |= 1 << 10;
-   if (pic->UseStRpsBits == true)
+   if (pic->UseStRpsBits == true && pic->pps->st_rps_bits != 0) {
       result.sps_info_flags |= 1 << 11;
+      result.st_rps_bits = pic->pps->st_rps_bits;
+  }
 
    result.chroma_format = pic->pps->sps->chroma_format_idc;
    result.bit_depth_luma_minus8 = pic->pps->sps->bit_depth_luma_minus8;
@@ -259,7 +261,6 @@ static rvcn_dec_message_hevc_t get_h265_msg(struct radeon_decoder *dec,
    result.num_tile_rows_minus1 = pic->pps->num_tile_rows_minus1;
    result.log2_parallel_merge_level_minus2 = pic->pps->log2_parallel_merge_level_minus2;
    result.init_qp_minus26 = pic->pps->init_qp_minus26;
-   result.st_rps_bits = pic->pps->st_rps_bits;
 
    for (i = 0; i < 19; ++i)
       result.column_width_minus1[i] = pic->pps->column_width_minus1[i];
