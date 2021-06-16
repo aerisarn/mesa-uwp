@@ -1177,20 +1177,21 @@ insert_parallel_copy_instr(struct ra_ctx *ctx, struct ir3_instruction *instr)
 	for (unsigned i = 0; i < ctx->parallel_copies_count; i++) {
 		struct ra_parallel_copy *entry = &ctx->parallel_copies[i];
 		struct ir3_register *reg =
-			ir3_reg_create(pcopy, ra_interval_get_num(entry->interval),
+			ir3_reg_create(pcopy, INVALID_REG,
 						   entry->interval->interval.reg->flags & ~IR3_REG_SSA);
 		reg->size = entry->interval->interval.reg->size;
 		reg->wrmask = entry->interval->interval.reg->wrmask;
+		assign_reg(pcopy, reg, ra_interval_get_num(entry->interval));
 	}
 
 	for (unsigned i = 0; i < ctx->parallel_copies_count; i++) {
 		struct ra_parallel_copy *entry = &ctx->parallel_copies[i];
 		struct ir3_register *reg =
-			ir3_reg_create(pcopy,
-						   ra_physreg_to_num(entry->src, entry->interval->interval.reg->flags),
+			ir3_reg_create(pcopy, INVALID_REG,
 						   entry->interval->interval.reg->flags & ~(IR3_REG_DEST | IR3_REG_SSA));
 		reg->size = entry->interval->interval.reg->size;
 		reg->wrmask = entry->interval->interval.reg->wrmask;
+		assign_reg(pcopy, reg, ra_physreg_to_num(entry->src, reg->flags));
 	}
 
 	list_del(&pcopy->node);
@@ -1620,23 +1621,26 @@ insert_liveout_copy(struct ir3_block *block, physreg_t dst, physreg_t src,
 						 2 + old_pcopy_regs);
 
 	for (unsigned i = 0; i < old_pcopy_regs / 2; i++) {
+		old_pcopy->regs[i]->instr = pcopy;
 		pcopy->regs[pcopy->regs_count++] = old_pcopy->regs[i];
 	}
 
 	struct ir3_register *dst_reg =
-		ir3_reg_create(pcopy, ra_physreg_to_num(dst, reg->flags), reg->flags);
+		ir3_reg_create(pcopy, INVALID_REG,
+					   reg->flags & ~IR3_REG_SSA);
 	dst_reg->wrmask = reg->wrmask;
 	dst_reg->size = reg->size;
+	assign_reg(pcopy, dst_reg, ra_physreg_to_num(dst, reg->flags));
 
 	for (unsigned i = old_pcopy_regs / 2; i < old_pcopy_regs; i++) {
 		pcopy->regs[pcopy->regs_count++] = old_pcopy->regs[i];
 	}
 
 	struct ir3_register *src_reg =
-		ir3_reg_create(pcopy, ra_physreg_to_num(src, reg->flags),
-					   reg->flags & ~IR3_REG_DEST);
+		ir3_reg_create(pcopy, INVALID_REG, reg->flags & ~(IR3_REG_DEST | IR3_REG_SSA));
 	src_reg->wrmask = reg->wrmask;
 	src_reg->size = reg->size;
+	assign_reg(pcopy, src_reg, ra_physreg_to_num(src, reg->flags));
 
 	if (old_pcopy)
 		list_del(&old_pcopy->node);
