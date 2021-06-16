@@ -259,12 +259,20 @@ assemble_variant(struct ir3_shader_variant *v)
 		}
 
 		if (dbg_enabled || shader_overridden) {
-			fprintf(stdout, "Native code%s for unnamed %s shader %s with sha1 %s:\n",
+			char *stream_data = NULL;
+			size_t stream_size = 0;
+			FILE *stream = open_memstream(&stream_data, &stream_size);
+
+			fprintf(stream, "Native code%s for unnamed %s shader %s with sha1 %s:\n",
 				shader_overridden ? " (overridden)" : "",
 				ir3_shader_stage(v), v->shader->nir->info.name, sha1buf);
 			if (v->shader->type == MESA_SHADER_FRAGMENT)
-				fprintf(stdout, "SIMD0\n");
-			ir3_shader_disasm(v, v->bin, stdout);
+				fprintf(stream, "SIMD0\n");
+			ir3_shader_disasm(v, v->bin, stream);
+			fclose(stream);
+
+			mesa_log_multiline(MESA_LOG_INFO, stream_data);
+			free(stream_data);
 		}
 	}
 
