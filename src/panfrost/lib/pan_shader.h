@@ -121,8 +121,6 @@ pan_shader_prepare_bifrost_rsd(const struct panfrost_device *dev,
 
         switch (info->stage) {
         case MESA_SHADER_VERTEX:
-                rsd->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
-
                 rsd->preload.vertex.vertex_id = true;
                 rsd->preload.vertex.instance_id = true;
                 break;
