@@ -205,7 +205,7 @@ end:
  * a drawing command.
  */
 void
-vbo_save_playback_vertex_list(struct gl_context *ctx, void *data)
+vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_current)
 {
    const struct vbo_save_vertex_list *node =
       (const struct vbo_save_vertex_list *) data;
@@ -253,7 +253,6 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data)
    }
    info->index.gl_bo = gl_bo;
 
-   /* Copy to current?
-    */
-   playback_copy_to_current(ctx, node);
+   if (copy_to_current)
+      playback_copy_to_current(ctx, node);
 }

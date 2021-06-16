@@ -525,7 +525,7 @@ compile_vertex_list(struct gl_context *ctx)
     * being compiled.
     */
    node = (struct vbo_save_vertex_list *)
-      _mesa_dlist_alloc_vertex_list(ctx);
+      _mesa_dlist_alloc_vertex_list(ctx, !save->dangling_attr_ref && !save->no_current_update);
 
    if (!node)
       return;

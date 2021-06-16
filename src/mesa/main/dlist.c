@@ -628,6 +628,7 @@ typedef enum
 
    OPCODE_VERTEX_LIST,
    OPCODE_VERTEX_LIST_LOOPBACK,
+   OPCODE_VERTEX_LIST_COPY_CURRENT,
 
    /* The following three are meta instructions */
    OPCODE_ERROR,                /* raise compiled-in error */
@@ -822,7 +823,7 @@ vbo_print_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *node,
    (void) ctx;
 
    const char *label[] = {
-      "VBO-VERTEX-LIST", "VBO-VERTEX-LIST-LOOPBACK"
+      "VBO-VERTEX-LIST", "VBO-VERTEX-LIST-LOOPBACK", "VBO-VERTEX-LIST-COPY-CURRENT"
    };
 
    fprintf(f, "%s, %u vertices, %d primitives, %d vertsize, "
@@ -1363,6 +1364,7 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             break;
          case OPCODE_VERTEX_LIST:
          case OPCODE_VERTEX_LIST_LOOPBACK:
+         case OPCODE_VERTEX_LIST_COPY_CURRENT:
             vbo_destroy_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1]);
             break;
          case OPCODE_CONTINUE:
@@ -1637,9 +1639,11 @@ _mesa_dlist_alloc_aligned(struct gl_context *ctx, GLuint opcode, GLuint bytes)
 
 
 void *
-_mesa_dlist_alloc_vertex_list(struct gl_context *ctx)
+_mesa_dlist_alloc_vertex_list(struct gl_context *ctx, bool copy_to_current)
 {
-   return _mesa_dlist_alloc_aligned(ctx, OPCODE_VERTEX_LIST,
+   return _mesa_dlist_alloc_aligned(ctx,
+                                    copy_to_current ? OPCODE_VERTEX_LIST_COPY_CURRENT :
+                                                      OPCODE_VERTEX_LIST,
                                     sizeof(struct vbo_save_vertex_list));
 }
 
@@ -13412,7 +13416,11 @@ execute_list(struct gl_context *ctx, GLuint list)
             break;
 
          case OPCODE_VERTEX_LIST:
-            vbo_save_playback_vertex_list(ctx, &n[1]);
+            vbo_save_playback_vertex_list(ctx, &n[1], false);
+            break;
+
+         case OPCODE_VERTEX_LIST_COPY_CURRENT:
+            vbo_save_playback_vertex_list(ctx, &n[1], true);
             break;
 
          case OPCODE_VERTEX_LIST_LOOPBACK:
@@ -13620,6 +13628,7 @@ replace_op_vertex_list_recursively(struct gl_context *ctx, struct gl_display_lis
       const OpCode opcode = n[0].opcode;
       switch (opcode) {
          case OPCODE_VERTEX_LIST:
+         case OPCODE_VERTEX_LIST_COPY_CURRENT:
             n[0].opcode = OPCODE_VERTEX_LIST_LOOPBACK;
             break;
          case OPCODE_CONTINUE:
@@ -14956,6 +14965,7 @@ print_list(struct gl_context *ctx, GLuint list, const char *fname)
             break;
          case OPCODE_VERTEX_LIST:
          case OPCODE_VERTEX_LIST_LOOPBACK:
+         case OPCODE_VERTEX_LIST_COPY_CURRENT:
             vbo_print_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1], opcode, f);
             break;
          default:
