@@ -467,6 +467,9 @@ draw_arrays_fallback(struct vbuf_render *render, unsigned start, uint32_t nr)
       i915->vbo_flushed = 1;
 
       if (!BEGIN_BATCH(1 + (nr_indices + 1) / 2)) {
+         mesa_loge("i915: Failed to allocate space for %d indices in fresh "
+                   "batch with %d bytes left\n",
+                   nr_indices, (int)i915_winsys_batchbuffer_space(i915->batch));
          assert(0);
          goto out;
       }
@@ -625,6 +628,9 @@ i915_vbuf_render_draw_elements(struct vbuf_render *render,
       i915->vbo_flushed = 1;
 
       if (!BEGIN_BATCH(1 + (nr_indices + 1) / 2)) {
+         mesa_loge("i915: Failed to allocate space for %d indices in fresh "
+                   "batch with %d bytes left\n",
+                   nr_indices, (int)i915_winsys_batchbuffer_space(i915->batch));
          assert(0);
          goto out;
       }

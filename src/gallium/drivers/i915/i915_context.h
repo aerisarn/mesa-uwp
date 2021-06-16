@@ -36,6 +36,7 @@
 
 #include "tgsi/tgsi_scan.h"
 
+#include "util/log.h"
 #include "util/slab.h"
 #include "util/u_blitter.h"
 #include "i915_reg.h"
