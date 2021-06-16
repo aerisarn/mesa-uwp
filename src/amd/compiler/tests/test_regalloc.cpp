@@ -147,3 +147,40 @@ BEGIN_TEST(regalloc.precolor.vector.collect)
 
    finish_ra_test(ra_test_policy());
 END_TEST
+
+BEGIN_TEST(regalloc.scratch_sgpr.create_vector)
+   if (!setup_cs("v1 s1", GFX7))
+      return;
+
+   Temp tmp = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v1b), inputs[0], Operand::zero());
+
+   //>> v3b: %0:v[0][0:24] = v_and_b32 0xffffff, %0:v[0][0:24]
+   //! s1: %0:s[1] = s_mov_b32 0x1000001
+   //! v1: %0:v[0] = v_mul_lo_u32 %0:s[1], %_:v[0][0:8]
+   bld.pseudo(aco_opcode::p_create_vector, bld.def(v1), Operand(v3b), Operand(tmp));
+
+   //! p_unit_test %_:s[0]
+   //! s_endpgm
+   bld.pseudo(aco_opcode::p_unit_test, inputs[1]);
+
+   finish_ra_test(ra_test_policy(), true);
+END_TEST
+
+BEGIN_TEST(regalloc.scratch_sgpr.create_vector_sgpr_operand)
+   if (!setup_cs("v2 s1", GFX7))
+      return;
+
+   Temp tmp = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v1b), inputs[0], Operand::c32(4u));
+
+   //>> v1: %0:v[0] = v_mov_b32 %_:s[0]
+   //! v3b: %0:v[1][0:24] = v_and_b32 0xffffff, %0:v[1][0:24]
+   //! s1: %0:s[1] = s_mov_b32 0x1000001
+   //! v1: %0:v[1] = v_mul_lo_u32 %0:s[1], %_:v[1][0:8]
+   bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), inputs[1], Operand(v3b), Operand(tmp));
+
+   //! p_unit_test %_:s[0]
+   //! s_endpgm
+   bld.pseudo(aco_opcode::p_unit_test, inputs[1]);
+
+   finish_ra_test(ra_test_policy(), true);
+END_TEST
