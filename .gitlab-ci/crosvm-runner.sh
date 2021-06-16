@@ -31,7 +31,7 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 syslogd > /dev/null
 
 crosvm run \
-  --gpu gles=false,backend=3d,egl=true,surfaceless=true \
+  --gpu gles=false,backend=virglrenderer,egl=true,surfaceless=true \
   -m 4096 \
   -c 4 \
   --disable-sandbox \
