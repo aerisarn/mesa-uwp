@@ -57,6 +57,8 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
    if (fencep && !batch) {
       batch = fd_context_batch(ctx);
    } else if (!batch) {
+      if (ctx->screen->reorder)
+         fd_bc_flush(ctx, flags & PIPE_FLUSH_DEFERRED);
       fd_bc_dump(ctx, "%p: NULL batch, remaining:\n", ctx);
       return;
    }
