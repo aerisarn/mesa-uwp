@@ -592,6 +592,7 @@ ir3_create_array_load(struct ir3_context *ctx, struct ir3_array *arr, int n,
 	src->size  = arr->length;
 	src->array.id = arr->id;
 	src->array.offset = n;
+	src->array.base = INVALID_REG;
 
 	if (address)
 		ir3_instr_set_address(mov, address);
@@ -626,6 +627,7 @@ ir3_create_array_store(struct ir3_context *ctx, struct ir3_array *arr, int n,
 		dst->size = arr->length;
 		dst->array.id = arr->id;
 		dst->array.offset = n;
+		dst->array.base = INVALID_REG;
 
 		arr->last_write = dst;
 
@@ -653,6 +655,7 @@ ir3_create_array_store(struct ir3_context *ctx, struct ir3_array *arr, int n,
 	dst->size  = arr->length;
 	dst->array.id = arr->id;
 	dst->array.offset = n;
+	dst->array.base = INVALID_REG;
 	ir3_reg_create(mov, 0, IR3_REG_SSA | flags)->def = src->regs[0];
 
 	if (address)

@@ -180,8 +180,8 @@ static void print_ssa_name(struct ir3_register *reg, bool dst)
 		print_ssa_def_name(reg);
 	}
 
-	if (reg->num != INVALID_REG)
-			printf("("SYN_REG("r%u.%c")")", reg_num(reg), "xyzw"[reg_comp(reg)]);
+	if (reg->num != INVALID_REG && !(reg->flags & IR3_REG_ARRAY))
+		printf("("SYN_REG("r%u.%c")")", reg_num(reg), "xyzw"[reg_comp(reg)]);
 }
 
 static void print_reg_name(struct ir3_instruction *instr, struct ir3_register *reg)
@@ -221,6 +221,9 @@ static void print_reg_name(struct ir3_instruction *instr, struct ir3_register *r
 			print_ssa_name(reg, false);
 		}
 		printf(SYN_ARRAY("]"));
+		if (reg->array.base != INVALID_REG)
+			printf("("SYN_REG("r%u.%c")")", reg->array.base >> 2,
+				   "xyzw"[reg->array.base & 0x3]);
 	} else if (reg->flags & IR3_REG_SSA) {
 		print_ssa_name(reg, reg->flags & IR3_REG_DEST);
 	} else if (reg->flags & IR3_REG_RELATIV) {
