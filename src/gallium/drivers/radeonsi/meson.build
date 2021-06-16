@@ -97,7 +97,6 @@ files_libradeonsi = files(
 
 radeonsi_include_dirs = [inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_amd_common,
                          inc_amd_common_llvm, inc_gallium_drivers]
-radeonsi_c_args = ['-Wstrict-overflow=0']
 radeonsi_deps = [dep_llvm, dep_clock, dep_libdrm_radeon, idep_nir_headers, idep_amdgfxregs_h, idep_mesautil]
 
 radeonsi_gfx_libs = []
@@ -106,7 +105,6 @@ foreach ver : ['6', '7', '8', '9', '10', '103']
     'radeonsi_gfx@0@'.format(ver),
     ['si_state_draw.cpp'],
     include_directories : radeonsi_include_dirs,
-    c_args : radeonsi_c_args,
     cpp_args : ['-DGFX_VER=@0@'.format(ver)],
     gnu_symbol_visibility : 'hidden',
     dependencies : radeonsi_deps,
@@ -117,7 +115,6 @@ libradeonsi = static_library(
   'radeonsi',
   [files_libradeonsi, sid_tables_h],
   include_directories : radeonsi_include_dirs,
-  c_args : radeonsi_c_args,
   gnu_symbol_visibility : 'hidden',
   dependencies : radeonsi_deps,
 )
