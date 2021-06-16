@@ -27,6 +27,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include "util/log.h"
 #include "ir3.h"
 
 #define PTRID(x) ((unsigned long)(x))
@@ -63,80 +64,80 @@ type_name(type_t type)
 	return type_names[type];
 }
 
-static void print_instr_name(struct ir3_instruction *instr, bool flags)
+static void print_instr_name(struct log_stream *stream, struct ir3_instruction *instr, bool flags)
 {
 	if (!instr)
 		return;
 #ifdef DEBUG
-	printf("%04u:", instr->serialno);
+	mesa_log_stream_printf(stream, "%04u:", instr->serialno);
 #endif
-	printf("%04u:", instr->name);
-	printf("%04u:", instr->ip);
+	mesa_log_stream_printf(stream, "%04u:", instr->name);
+	mesa_log_stream_printf(stream, "%04u:", instr->ip);
 	if (instr->flags & IR3_INSTR_UNUSED) {
-		printf("XXX: ");
+		mesa_log_stream_printf(stream, "XXX: ");
 	} else {
-		printf("%03u: ", instr->use_count);
+		mesa_log_stream_printf(stream, "%03u: ", instr->use_count);
 	}
 
 	if (flags) {
-		printf("\t");
+		mesa_log_stream_printf(stream, "\t");
 		if (instr->flags & IR3_INSTR_SY)
-			printf("(sy)");
+			mesa_log_stream_printf(stream, "(sy)");
 		if (instr->flags & IR3_INSTR_SS)
-			printf("(ss)");
+			mesa_log_stream_printf(stream, "(ss)");
 		if (instr->flags & IR3_INSTR_JP)
-			printf("(jp)");
+			mesa_log_stream_printf(stream, "(jp)");
 		if (instr->repeat)
-			printf("(rpt%d)", instr->repeat);
+			mesa_log_stream_printf(stream, "(rpt%d)", instr->repeat);
 		if (instr->nop)
-			printf("(nop%d)", instr->nop);
+			mesa_log_stream_printf(stream, "(nop%d)", instr->nop);
 		if (instr->flags & IR3_INSTR_UL)
-			printf("(ul)");
+			mesa_log_stream_printf(stream, "(ul)");
 	} else {
-		printf(" ");
+		mesa_log_stream_printf(stream, " ");
 	}
 
 	if (is_meta(instr)) {
 		switch (instr->opc) {
-		case OPC_META_INPUT:  printf("_meta:in");   break;
-		case OPC_META_SPLIT:			printf("_meta:split");        break;
-		case OPC_META_COLLECT:			printf("_meta:collect");      break;
-		case OPC_META_TEX_PREFETCH:		printf("_meta:tex_prefetch"); break;
-		case OPC_META_PARALLEL_COPY:	printf("_meta:parallel_copy"); break;
-		case OPC_META_PHI:				printf("_meta:phi");          break;
+		case OPC_META_INPUT:  mesa_log_stream_printf(stream, "_meta:in");   break;
+		case OPC_META_SPLIT:			mesa_log_stream_printf(stream, "_meta:split");        break;
+		case OPC_META_COLLECT:			mesa_log_stream_printf(stream, "_meta:collect");      break;
+		case OPC_META_TEX_PREFETCH:		mesa_log_stream_printf(stream, "_meta:tex_prefetch"); break;
+		case OPC_META_PARALLEL_COPY:	mesa_log_stream_printf(stream, "_meta:parallel_copy"); break;
+		case OPC_META_PHI:				mesa_log_stream_printf(stream, "_meta:phi");          break;
 
 		/* shouldn't hit here.. just for debugging: */
-		default: printf("_meta:%d", instr->opc);    break;
+		default: mesa_log_stream_printf(stream, "_meta:%d", instr->opc);    break;
 		}
 	} else if (instr->opc == OPC_MOV) {
 		if (instr->cat1.src_type == instr->cat1.dst_type)
-			printf("mov");
+			mesa_log_stream_printf(stream, "mov");
 		else
-			printf("cov");
-		printf(".%s%s", type_name(instr->cat1.src_type),
+			mesa_log_stream_printf(stream, "cov");
+		mesa_log_stream_printf(stream, ".%s%s", type_name(instr->cat1.src_type),
 				type_name(instr->cat1.dst_type));
 	} else {
-		printf("%s", disasm_a3xx_instr_name(instr->opc));
+		mesa_log_stream_printf(stream, "%s", disasm_a3xx_instr_name(instr->opc));
 		if (instr->flags & IR3_INSTR_3D)
-			printf(".3d");
+			mesa_log_stream_printf(stream, ".3d");
 		if (instr->flags & IR3_INSTR_A)
-			printf(".a");
+			mesa_log_stream_printf(stream, ".a");
 		if (instr->flags & IR3_INSTR_O)
-			printf(".o");
+			mesa_log_stream_printf(stream, ".o");
 		if (instr->flags & IR3_INSTR_P)
-			printf(".p");
+			mesa_log_stream_printf(stream, ".p");
 		if (instr->flags & IR3_INSTR_S)
-			printf(".s");
+			mesa_log_stream_printf(stream, ".s");
 		if (instr->flags & IR3_INSTR_A1EN)
-			printf(".a1en");
+			mesa_log_stream_printf(stream, ".a1en");
 		if (instr->opc == OPC_LDC)
-			printf(".offset%d", instr->cat6.d);
+			mesa_log_stream_printf(stream, ".offset%d", instr->cat6.d);
 		if (instr->flags & IR3_INSTR_B) {
-			printf(".base%d",
+			mesa_log_stream_printf(stream, ".base%d",
 				   is_tex(instr) ? instr->cat5.tex_base : instr->cat6.base);
 		}
 		if (instr->flags & IR3_INSTR_S2EN)
-			printf(".s2en");
+			mesa_log_stream_printf(stream, ".s2en");
 
 		static const char *cond[0x7] = {
 				"lt",
@@ -154,7 +155,7 @@ static void print_instr_name(struct ir3_instruction *instr, bool flags)
 		case OPC_CMPV_F:
 		case OPC_CMPV_U:
 		case OPC_CMPV_S:
-			printf(".%s", cond[instr->cat2.condition & 0x7]);
+			mesa_log_stream_printf(stream, ".%s", cond[instr->cat2.condition & 0x7]);
 			break;
 		default:
 			break;
@@ -162,111 +163,111 @@ static void print_instr_name(struct ir3_instruction *instr, bool flags)
 	}
 }
 
-static void print_ssa_def_name(struct ir3_register *reg)
+static void print_ssa_def_name(struct log_stream *stream, struct ir3_register *reg)
 {
-	printf(SYN_SSA("ssa_%u"), reg->instr->serialno);
+	mesa_log_stream_printf(stream, SYN_SSA("ssa_%u"), reg->instr->serialno);
 		if (reg->name != 0)
-			printf(":%u", reg->name);
+			mesa_log_stream_printf(stream, ":%u", reg->name);
 }
 
-static void print_ssa_name(struct ir3_register *reg, bool dst)
+static void print_ssa_name(struct log_stream *stream, struct ir3_register *reg, bool dst)
 {
 	if (!dst) {
 		if (!reg->def)
-			printf(SYN_SSA("undef"));
+			mesa_log_stream_printf(stream, SYN_SSA("undef"));
 		else
-			print_ssa_def_name(reg->def);
+			print_ssa_def_name(stream, reg->def);
 	} else {
-		print_ssa_def_name(reg);
+		print_ssa_def_name(stream, reg);
 	}
 
 	if (reg->num != INVALID_REG && !(reg->flags & IR3_REG_ARRAY))
-		printf("("SYN_REG("r%u.%c")")", reg_num(reg), "xyzw"[reg_comp(reg)]);
+		mesa_log_stream_printf(stream, "("SYN_REG("r%u.%c")")", reg_num(reg), "xyzw"[reg_comp(reg)]);
 }
 
-static void print_reg_name(struct ir3_instruction *instr, struct ir3_register *reg)
+static void print_reg_name(struct log_stream *stream, struct ir3_instruction *instr, struct ir3_register *reg)
 {
 	if ((reg->flags & (IR3_REG_FABS | IR3_REG_SABS)) &&
 			(reg->flags & (IR3_REG_FNEG | IR3_REG_SNEG | IR3_REG_BNOT)))
-		printf("(absneg)");
+		mesa_log_stream_printf(stream, "(absneg)");
 	else if (reg->flags & (IR3_REG_FNEG | IR3_REG_SNEG | IR3_REG_BNOT))
-		printf("(neg)");
+		mesa_log_stream_printf(stream, "(neg)");
 	else if (reg->flags & (IR3_REG_FABS | IR3_REG_SABS))
-		printf("(abs)");
+		mesa_log_stream_printf(stream, "(abs)");
 
 	if (reg->flags & IR3_REG_FIRST_KILL)
-		printf("(kill)");
+		mesa_log_stream_printf(stream, "(kill)");
 	if (reg->flags & IR3_REG_UNUSED)
-		printf("(unused)");
+		mesa_log_stream_printf(stream, "(unused)");
 
 	if (reg->flags & IR3_REG_R)
-		printf("(r)");
+		mesa_log_stream_printf(stream, "(r)");
 
 	if (reg->flags & IR3_REG_SHARED)
-		printf("s");
+		mesa_log_stream_printf(stream, "s");
 	if (reg->flags & IR3_REG_HALF)
-		printf("h");
+		mesa_log_stream_printf(stream, "h");
 
 	if (reg->flags & IR3_REG_IMMED) {
-		printf(SYN_IMMED("imm[%f,%d,0x%x]"), reg->fim_val, reg->iim_val, reg->iim_val);
+		mesa_log_stream_printf(stream, SYN_IMMED("imm[%f,%d,0x%x]"), reg->fim_val, reg->iim_val, reg->iim_val);
 	} else if (reg->flags & IR3_REG_ARRAY) {
 		if (reg->flags & IR3_REG_SSA) {
-			print_ssa_name(reg, reg->flags & IR3_REG_DEST);
-			printf(":");
+			print_ssa_name(stream, reg, reg->flags & IR3_REG_DEST);
+			mesa_log_stream_printf(stream, ":");
 		}
-		printf(SYN_ARRAY("arr[id=%u, offset=%d, size=%u"), reg->array.id,
+		mesa_log_stream_printf(stream, SYN_ARRAY("arr[id=%u, offset=%d, size=%u"), reg->array.id,
 				reg->array.offset, reg->size);
 		if (reg->flags & IR3_REG_DEST) {
-			printf(SYN_ARRAY(", "));
-			print_ssa_name(reg, false);
+			mesa_log_stream_printf(stream, SYN_ARRAY(", "));
+			print_ssa_name(stream, reg, false);
 		}
-		printf(SYN_ARRAY("]"));
+		mesa_log_stream_printf(stream, SYN_ARRAY("]"));
 		if (reg->array.base != INVALID_REG)
-			printf("("SYN_REG("r%u.%c")")", reg->array.base >> 2,
+			mesa_log_stream_printf(stream, "("SYN_REG("r%u.%c")")", reg->array.base >> 2,
 				   "xyzw"[reg->array.base & 0x3]);
 	} else if (reg->flags & IR3_REG_SSA) {
-		print_ssa_name(reg, reg->flags & IR3_REG_DEST);
+		print_ssa_name(stream, reg, reg->flags & IR3_REG_DEST);
 	} else if (reg->flags & IR3_REG_RELATIV) {
 		if (reg->flags & IR3_REG_CONST)
-			printf(SYN_CONST("c<a0.x + %d>"), reg->array.offset);
+			mesa_log_stream_printf(stream, SYN_CONST("c<a0.x + %d>"), reg->array.offset);
 		else
-			printf(SYN_REG("r<a0.x + %d>")" (%u)", reg->array.offset, reg->size);
+			mesa_log_stream_printf(stream, SYN_REG("r<a0.x + %d>")" (%u)", reg->array.offset, reg->size);
 	} else {
 		if (reg->flags & IR3_REG_CONST)
-			printf(SYN_CONST("c%u.%c"), reg_num(reg), "xyzw"[reg_comp(reg)]);
+			mesa_log_stream_printf(stream, SYN_CONST("c%u.%c"), reg_num(reg), "xyzw"[reg_comp(reg)]);
 		else
-			printf(SYN_REG("r%u.%c"), reg_num(reg), "xyzw"[reg_comp(reg)]);
+			mesa_log_stream_printf(stream, SYN_REG("r%u.%c"), reg_num(reg), "xyzw"[reg_comp(reg)]);
 	}
 
 	if (reg->wrmask > 0x1)
-		printf(" (wrmask=0x%x)", reg->wrmask);
+		mesa_log_stream_printf(stream, " (wrmask=0x%x)", reg->wrmask);
 }
 
 static void
-tab(int lvl)
+tab(struct log_stream *stream, int lvl)
 {
 	for (int i = 0; i < lvl; i++)
-		printf("\t");
+		mesa_log_stream_printf(stream, "\t");
 }
 
 static void
-print_instr(struct ir3_instruction *instr, int lvl)
+print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
 {
-	tab(lvl);
+	tab(stream, lvl);
 
-	print_instr_name(instr, true);
+	print_instr_name(stream, instr, true);
 
 	if (is_tex(instr)) {
-		printf(" (%s)(", type_name(instr->cat5.type));
+		mesa_log_stream_printf(stream, " (%s)(", type_name(instr->cat5.type));
 		for (unsigned i = 0; i < 4; i++)
 			if (instr->regs[0]->wrmask & (1 << i))
-				printf("%c", "xyzw"[i]);
-		printf(")");
+				mesa_log_stream_printf(stream, "%c", "xyzw"[i]);
+		mesa_log_stream_printf(stream, ")");
 	} else if ((instr->regs_count > 0) && (instr->opc != OPC_B)) {
 		/* NOTE the b(ranch) instruction has a suffix, which is
 		 * handled below
 		 */
-		printf(" ");
+		mesa_log_stream_printf(stream, " ");
 	}
 
 	if (!is_flow(instr) || instr->opc == OPC_END || instr->opc == OPC_CHMASK) {
@@ -276,35 +277,35 @@ print_instr(struct ir3_instruction *instr, int lvl)
 			if ((i == 0) && (dest_regs(instr) == 0))
 				continue;
 
-			printf(n++ ? ", " : "");
-			print_reg_name(instr, reg);
+			mesa_log_stream_printf(stream,n++ ? ", " : "");
+			print_reg_name(stream, instr, reg);
 		}
 	}
 
 	if (is_tex(instr) && !(instr->flags & IR3_INSTR_S2EN)) {
 		if (!!(instr->flags & IR3_INSTR_B)) {
 			if (!!(instr->flags & IR3_INSTR_A1EN)) {
-				printf(", s#%d", instr->cat5.samp);
+				mesa_log_stream_printf(stream, ", s#%d", instr->cat5.samp);
 			} else {
-				printf(", s#%d, t#%d", instr->cat5.samp & 0xf,
+				mesa_log_stream_printf(stream, ", s#%d, t#%d", instr->cat5.samp & 0xf,
 					   instr->cat5.samp >> 4);
 			}
 		} else {
-			printf(", s#%d, t#%d", instr->cat5.samp, instr->cat5.tex);
+			mesa_log_stream_printf(stream, ", s#%d, t#%d", instr->cat5.samp, instr->cat5.tex);
 		}
 	}
 
 	if (instr->address) {
-		printf(", address=_");
-		printf("[");
-		print_instr_name(instr->address, false);
-		printf("]");
+		mesa_log_stream_printf(stream, ", address=_");
+		mesa_log_stream_printf(stream, "[");
+		print_instr_name(stream, instr->address, false);
+		mesa_log_stream_printf(stream, "]");
 	}
 
 	if (instr->opc == OPC_META_SPLIT) {
-		printf(", off=%d", instr->split.off);
+		mesa_log_stream_printf(stream, ", off=%d", instr->split.off);
 	} else if (instr->opc == OPC_META_TEX_PREFETCH) {
-		printf(", tex=%d, samp=%d, input_offset=%d", instr->prefetch.tex,
+		mesa_log_stream_printf(stream, ", tex=%d, samp=%d, input_offset=%d", instr->prefetch.tex,
 				instr->prefetch.samp, instr->prefetch.input_offset);
 	}
 
@@ -325,88 +326,92 @@ print_instr(struct ir3_instruction *instr, int lvl)
 				[BRANCH_X]     = { "rax", 0, false },
 			};
 
-			printf("%s", brinfo[instr->cat0.brtype].suffix);
+			mesa_log_stream_printf(stream, "%s", brinfo[instr->cat0.brtype].suffix);
 			if (brinfo[instr->cat0.brtype].idx) {
-				printf(".%u", instr->cat0.idx);
+				mesa_log_stream_printf(stream, ".%u", instr->cat0.idx);
 			}
 			if (brinfo[instr->cat0.brtype].nsrc >= 1) {
-				printf(" %sp0.%c (",
+				mesa_log_stream_printf(stream, " %sp0.%c (",
 						instr->cat0.inv1 ? "!" : "",
 						"xyzw"[instr->cat0.comp1 & 0x3]);
-				print_reg_name(instr, instr->regs[1]);
-				printf("), ");
+				print_reg_name(stream, instr, instr->regs[1]);
+				mesa_log_stream_printf(stream, "), ");
 			}
 			if (brinfo[instr->cat0.brtype].nsrc >= 2) {
-				printf(" %sp0.%c (",
+				mesa_log_stream_printf(stream, " %sp0.%c (",
 						instr->cat0.inv2 ? "!" : "",
 						"xyzw"[instr->cat0.comp2 & 0x3]);
-				print_reg_name(instr, instr->regs[2]);
-				printf("), ");
+				print_reg_name(stream, instr, instr->regs[2]);
+				mesa_log_stream_printf(stream, "), ");
 			}
 		}
-		printf(" target=block%u", block_id(instr->cat0.target));
+		mesa_log_stream_printf(stream, " target=block%u", block_id(instr->cat0.target));
 	}
 
 	if (instr->deps_count) {
-		printf(", false-deps:");
+		mesa_log_stream_printf(stream, ", false-deps:");
 		unsigned n = 0;
 		for (unsigned i = 0; i < instr->deps_count; i++) {
 			if (!instr->deps[i])
 				continue;
 			if (n++ > 0)
-				printf(", ");
-			printf(SYN_SSA("ssa_%u"), instr->deps[i]->serialno);
+				mesa_log_stream_printf(stream, ", ");
+			mesa_log_stream_printf(stream, SYN_SSA("ssa_%u"), instr->deps[i]->serialno);
 		}
 	}
 
-	printf("\n");
+	mesa_log_stream_printf(stream, "\n");
 }
 
 void ir3_print_instr(struct ir3_instruction *instr)
 {
-	print_instr(instr, 0);
+	struct log_stream *stream = mesa_log_streami();
+	print_instr(stream, instr, 0);
+	mesa_log_stream_destroy(stream);
 }
 
 static void
 print_block(struct ir3_block *block, int lvl)
 {
-	tab(lvl); printf("block%u {\n", block_id(block));
+	struct log_stream *stream = mesa_log_streami();
+
+	tab(stream, lvl); mesa_log_stream_printf(stream, "block%u {\n", block_id(block));
 
 	if (block->predecessors_count > 0) {
-		tab(lvl+1);
-		printf("pred: ");
+		tab(stream, lvl+1);
+		mesa_log_stream_printf(stream, "pred: ");
 		for (unsigned i = 0; i < block->predecessors_count; i++) {
 			struct ir3_block *pred = block->predecessors[i];
 			if (i != 0)
-				printf(", ");
-			printf("block%u", block_id(pred));
+				mesa_log_stream_printf(stream, ", ");
+			mesa_log_stream_printf(stream, "block%u", block_id(pred));
 		}
-		printf("\n");
+		mesa_log_stream_printf(stream, "\n");
 	}
 
 	foreach_instr (instr, &block->instr_list) {
-		print_instr(instr, lvl+1);
+		print_instr(stream, instr, lvl+1);
 	}
 
-	tab(lvl+1); printf("/* keeps:\n");
+	tab(stream, lvl+1); mesa_log_stream_printf(stream, "/* keeps:\n");
 	for (unsigned i = 0; i < block->keeps_count; i++) {
-		print_instr(block->keeps[i], lvl+2);
+		print_instr(stream, block->keeps[i], lvl+2);
 	}
-	tab(lvl+1); printf(" */\n");
+	tab(stream, lvl+1); mesa_log_stream_printf(stream, " */\n");
 
 	if (block->successors[1]) {
 		/* leading into if/else: */
-		tab(lvl+1);
-		printf("/* succs: if "SYN_SSA("ssa_%u")" block%u; else block%u */\n",
+		tab(stream, lvl+1);
+		mesa_log_stream_printf(stream, "/* succs: if "SYN_SSA("ssa_%u")" block%u; else block%u */\n",
 				block->condition->serialno,
 				block_id(block->successors[0]),
 				block_id(block->successors[1]));
 	} else if (block->successors[0]) {
-		tab(lvl+1);
-		printf("/* succs: block%u; */\n",
+		tab(stream, lvl+1);
+		mesa_log_stream_printf(stream, "/* succs: block%u; */\n",
 				block_id(block->successors[0]));
 	}
-	tab(lvl); printf("}\n");
+	tab(stream, lvl); mesa_log_stream_printf(stream, "}\n");
 }
 
 void
