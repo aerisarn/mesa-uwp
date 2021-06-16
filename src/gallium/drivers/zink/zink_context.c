@@ -2374,7 +2374,7 @@ equals_gfx_program(const void *a, const void *b)
 static void
 zink_flush(struct pipe_context *pctx,
            struct pipe_fence_handle **pfence,
-           enum pipe_flush_flags flags)
+           unsigned flags)
 {
    struct zink_context *ctx = zink_context(pctx);
    bool deferred = flags & PIPE_FLUSH_DEFERRED;
