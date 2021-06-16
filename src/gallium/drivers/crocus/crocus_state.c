@@ -1568,6 +1568,8 @@ crocus_bind_zsa_state(struct pipe_context *ctx, void *state)
       if (cso_changed(cso.alpha_ref_value))
          ice->state.dirty |= CROCUS_DIRTY_COLOR_CALC_STATE;
 
+      if (cso_changed(cso.alpha_enabled))
+	 ice->state.dirty |= CROCUS_DIRTY_WM;
 #if GFX_VER >= 6
       if (cso_changed(cso.alpha_enabled))
          ice->state.dirty |= CROCUS_DIRTY_GEN6_BLEND_STATE;
@@ -1766,6 +1768,8 @@ crocus_bind_rasterizer_state(struct pipe_context *ctx, void *state)
          ice->state.dirty |= CROCUS_DIRTY_GEN6_MULTISAMPLE;
       if (cso_changed(cso.scissor))
          ice->state.dirty |= CROCUS_DIRTY_GEN6_SCISSOR_RECT;
+      if (cso_changed(cso.multisample))
+	 ice->state.dirty |= CROCUS_DIRTY_WM;
 #else
       if (cso_changed(cso.scissor))
          ice->state.dirty |= CROCUS_DIRTY_SF_CL_VIEWPORT;
