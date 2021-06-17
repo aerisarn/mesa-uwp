@@ -1039,7 +1039,8 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
       struct v3dv_image_view *src_iview = fb->attachments[src_attachment_idx];
       struct v3dv_image_view *dst_iview = fb->attachments[dst_attachment_idx];
 
-      VkImageResolve region = {
+      VkImageResolve2KHR region = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR,
          .srcSubresource = {
             VK_IMAGE_ASPECT_COLOR_BIT,
             src_iview->base_level,
@@ -1057,16 +1058,16 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
          .extent = src_iview->image->extent,
       };
 
-      VkImage src_image_handle =
-         v3dv_image_to_handle((struct v3dv_image *) src_iview->image);
-      VkImage dst_image_handle =
-         v3dv_image_to_handle((struct v3dv_image *) dst_iview->image);
-      v3dv_CmdResolveImage(cmd_buffer_handle,
-                           src_image_handle,
-                           VK_IMAGE_LAYOUT_GENERAL,
-                           dst_image_handle,
-                           VK_IMAGE_LAYOUT_GENERAL,
-                           1, &region);
+      VkResolveImageInfo2KHR resolve_info = {
+         .sType = VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2_KHR,
+         .srcImage = v3dv_image_to_handle((struct v3dv_image *) src_iview->image),
+         .srcImageLayout = VK_IMAGE_LAYOUT_GENERAL,
+         .dstImage = v3dv_image_to_handle((struct v3dv_image *) dst_iview->image),
+         .dstImageLayout = VK_IMAGE_LAYOUT_GENERAL,
+         .regionCount = 1,
+         .pRegions = &region,
+      };
+      v3dv_CmdResolveImage2KHR(cmd_buffer_handle, &resolve_info);
    }
 
    cmd_buffer->state.framebuffer = restore_fb;

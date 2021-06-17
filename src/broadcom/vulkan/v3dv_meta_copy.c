@@ -5565,7 +5565,7 @@ emit_resolve_image_layer_per_tile_list(struct v3dv_job *job,
                                        struct v3dv_image *dst,
                                        struct v3dv_image *src,
                                        uint32_t layer_offset,
-                                       const VkImageResolve *region)
+                                       const VkImageResolve2KHR *region)
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
@@ -5623,7 +5623,7 @@ emit_resolve_image_layer(struct v3dv_job *job,
                          struct v3dv_image *src,
                          struct framebuffer_data *framebuffer,
                          uint32_t layer,
-                         const VkImageResolve *region)
+                         const VkImageResolve2KHR *region)
 {
    emit_frame_setup(job, layer, NULL);
    emit_resolve_image_layer_per_tile_list(job, framebuffer,
@@ -5636,7 +5636,7 @@ emit_resolve_image_rcl(struct v3dv_job *job,
                        struct v3dv_image *dst,
                        struct v3dv_image *src,
                        struct framebuffer_data *framebuffer,
-                       const VkImageResolve *region)
+                       const VkImageResolve2KHR *region)
 {
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
@@ -5650,7 +5650,7 @@ static bool
 resolve_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                   struct v3dv_image *dst,
                   struct v3dv_image *src,
-                  const VkImageResolve *region)
+                  const VkImageResolve2KHR *region)
 {
    if (!can_use_tlb(src, &region->srcOffset, NULL) ||
        !can_use_tlb(dst, &region->dstOffset, NULL)) {
@@ -5701,7 +5701,7 @@ static bool
 resolve_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                    struct v3dv_image *dst,
                    struct v3dv_image *src,
-                   const VkImageResolve *region)
+                   const VkImageResolve2KHR *region)
 {
    const VkImageBlit2KHR blit_region = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2_KHR,
@@ -5730,17 +5730,13 @@ resolve_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdResolveImage(VkCommandBuffer commandBuffer,
-                     VkImage srcImage,
-                     VkImageLayout srcImageLayout,
-                     VkImage dstImage,
-                     VkImageLayout dstImageLayout,
-                     uint32_t regionCount,
-                     const VkImageResolve *pRegions)
+v3dv_CmdResolveImage2KHR(VkCommandBuffer commandBuffer,
+                         const VkResolveImageInfo2KHR *info)
+
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
-   V3DV_FROM_HANDLE(v3dv_image, src, srcImage);
-   V3DV_FROM_HANDLE(v3dv_image, dst, dstImage);
+   V3DV_FROM_HANDLE(v3dv_image, src, info->srcImage);
+   V3DV_FROM_HANDLE(v3dv_image, dst, info->dstImage);
 
     /* This command can only happen outside a render pass */
    assert(cmd_buffer->state.pass == NULL);
@@ -5749,10 +5745,10 @@ v3dv_CmdResolveImage(VkCommandBuffer commandBuffer,
    assert(src->samples == VK_SAMPLE_COUNT_4_BIT);
    assert(dst->samples == VK_SAMPLE_COUNT_1_BIT);
 
-   for (uint32_t i = 0; i < regionCount; i++) {
-      if (resolve_image_tlb(cmd_buffer, dst, src, &pRegions[i]))
+   for (uint32_t i = 0; i < info->regionCount; i++) {
+      if (resolve_image_tlb(cmd_buffer, dst, src, &info->pRegions[i]))
          continue;
-      if (resolve_image_blit(cmd_buffer, dst, src, &pRegions[i]))
+      if (resolve_image_blit(cmd_buffer, dst, src, &info->pRegions[i]))
          continue;
       unreachable("Unsupported multismaple resolve operation");
    }
