@@ -243,6 +243,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
          ralloc_free(keybox);
          return NULL;
       }
+      zm->hash = hash;
       mod = zink_shader_compile(zink_screen(ctx->base.screen), zs, prog->nir[stage], &key);
       if (!mod) {
          ralloc_free(keybox);
@@ -284,13 +285,18 @@ update_shader_modules(struct zink_context *ctx, struct zink_gfx_program *prog, u
    bool hash_changed = false;
    bool default_variants = true;
    bool first = !prog->modules[PIPE_SHADER_VERTEX];
+   uint32_t variant_hash = prog->last_variant_hash;
    u_foreach_bit(pstage, mask) {
       assert(prog->shaders[pstage]);
       struct zink_shader_module *zm = get_shader_module_for_stage(ctx, prog->shaders[pstage], prog);
-      if (prog->modules[pstage] != zm)
+      if (prog->modules[pstage] != zm) {
+         if (prog->modules[pstage])
+            variant_hash ^= prog->modules[pstage]->hash;
          hash_changed = true;
+      }
       default_variants &= zm->default_variant;
       prog->modules[pstage] = zm;
+      variant_hash ^= prog->modules[pstage]->hash;
       ctx->gfx_pipeline_state.modules[pstage] = zm->shader;
    }
 
@@ -298,7 +304,7 @@ update_shader_modules(struct zink_context *ctx, struct zink_gfx_program *prog, u
       if (default_variants && !first)
          prog->last_variant_hash = prog->default_variant_hash;
       else
-         prog->last_variant_hash = _mesa_hash_data(ctx->gfx_pipeline_state.modules, sizeof(ctx->gfx_pipeline_state.modules));
+         prog->last_variant_hash = variant_hash;
       ctx->gfx_pipeline_state.combined_dirty = true;
    }
    ctx->gfx_pipeline_state.module_hash = prog->last_variant_hash;
