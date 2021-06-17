@@ -6231,24 +6231,25 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       struct iris_depth_buffer_state *cso_z = &ice->state.genx->depth_buffer;
 
       /* Do not emit the cso yet. We may need to update clear params first. */
-      uint32_t clear_length = GENX(3DSTATE_CLEAR_PARAMS_length) * 4;
-      uint32_t cso_z_size = batch->screen->isl_dev.ds.size - clear_length;;
-
-      union isl_color_value clear_value = { .f32 = { 0, } };
-
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+      struct iris_resource *zres = NULL, *sres = NULL;
       if (cso_fb->zsbuf) {
-         struct iris_resource *zres, *sres;
          iris_get_depth_stencil_resources(cso_fb->zsbuf->texture,
                                           &zres, &sres);
-         if (zres && zres->aux.bo)
-            clear_value = iris_resource_get_clear_color(zres, NULL, NULL);
       }
 
-      uint32_t *clear_params = cso_z->packets + cso_z_size / 4;
-      iris_pack_command(GENX(3DSTATE_CLEAR_PARAMS), clear_params, clear) {
-         clear.DepthClearValueValid = true;
-         clear.DepthClearValue = clear_value.f32[0];
+      if (zres && ice->state.hiz_usage != ISL_AUX_USAGE_NONE) {
+         union isl_color_value clear_value =
+            iris_resource_get_clear_color(zres, NULL, NULL);
+
+         uint32_t clear_length = GENX(3DSTATE_CLEAR_PARAMS_length) * 4;
+         uint32_t cso_z_size = batch->screen->isl_dev.ds.size - clear_length;
+         uint32_t *clear_params = cso_z->packets + cso_z_size / 4;
+
+         iris_pack_command(GENX(3DSTATE_CLEAR_PARAMS), clear_params, clear) {
+            clear.DepthClearValueValid = true;
+            clear.DepthClearValue = clear_value.f32[0];
+         }
       }
 
 #if GFX_VERx10 == 120
