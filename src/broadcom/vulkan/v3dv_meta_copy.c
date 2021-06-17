@@ -931,7 +931,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             VkFormat src_format,
             VkColorComponentFlags cmask,
             VkComponentMapping *cswizzle,
-            const VkImageBlit *region,
+            const VkImageBlit2KHR *region,
             VkFilter filter,
             bool dst_is_padded_image);
 
@@ -1175,7 +1175,8 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
        * image, but that we need to blit to a S8D24 destination (the only
        * stencil format we support).
        */
-      const VkImageBlit blit_region = {
+      const VkImageBlit2KHR blit_region = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2_KHR,
          .srcSubresource = {
             .aspectMask = copy_aspect,
             .mipLevel = region->imageSubresource.mipLevel,
@@ -1921,7 +1922,8 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       dst_start.z + region->extent.depth,
    };
 
-   const VkImageBlit blit_region = {
+   const VkImageBlit2KHR blit_region = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2_KHR,
       .srcSubresource = region->srcSubresource,
       .srcOffsets = { src_start, src_end },
       .dstSubresource = region->dstSubresource,
@@ -3808,7 +3810,8 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
           * image, but that we need to blit to a S8D24 destination (the only
           * stencil format we support).
           */
-         const VkImageBlit blit_region = {
+         const VkImageBlit2KHR blit_region = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2_KHR,
             .srcSubresource = {
                .aspectMask = aspect,
                .mipLevel = 0,
@@ -4140,7 +4143,7 @@ static bool
 blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
          struct v3dv_image *dst,
          struct v3dv_image *src,
-         const VkImageBlit *region)
+         const VkImageBlit2KHR *region)
 {
    assert(dst->samples == VK_SAMPLE_COUNT_1_BIT);
    assert(src->samples == VK_SAMPLE_COUNT_1_BIT);
@@ -5123,7 +5126,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             VkFormat src_format,
             VkColorComponentFlags cmask,
             VkComponentMapping *cswizzle,
-            const VkImageBlit *_region,
+            const VkImageBlit2KHR *_region,
             VkFilter filter,
             bool dst_is_padded_image)
 {
@@ -5141,7 +5144,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    if (src->tiling == VK_IMAGE_TILING_LINEAR && src->type != VK_IMAGE_TYPE_1D)
       return false;
 
-   VkImageBlit region = *_region;
+   VkImageBlit2KHR region = *_region;
    /* Rewrite combined D/S blits to compatible color blits */
    if (vk_format_is_depth_or_stencil(dst_format)) {
       assert(src_format == dst_format);
@@ -5533,18 +5536,12 @@ fail:
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
-                  VkImage srcImage,
-                  VkImageLayout srcImageLayout,
-                  VkImage dstImage,
-                  VkImageLayout dstImageLayout,
-                  uint32_t regionCount,
-                  const VkImageBlit* pRegions,
-                  VkFilter filter)
+v3dv_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
+                      const VkBlitImageInfo2KHR *pBlitImageInfo)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
-   V3DV_FROM_HANDLE(v3dv_image, src, srcImage);
-   V3DV_FROM_HANDLE(v3dv_image, dst, dstImage);
+   V3DV_FROM_HANDLE(v3dv_image, src, pBlitImageInfo->srcImage);
+   V3DV_FROM_HANDLE(v3dv_image, dst, pBlitImageInfo->dstImage);
 
     /* This command can only happen outside a render pass */
    assert(cmd_buffer->state.pass == NULL);
@@ -5557,14 +5554,15 @@ v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
    /* We don't export VK_FORMAT_FEATURE_BLIT_DST_BIT on compressed formats */
    assert(!vk_format_is_compressed(dst->vk_format));
 
-   for (uint32_t i = 0; i < regionCount; i++) {
-      if (blit_tfu(cmd_buffer, dst, src, &pRegions[i]))
+   for (uint32_t i = 0; i < pBlitImageInfo->regionCount; i++) {
+      if (blit_tfu(cmd_buffer, dst, src, &pBlitImageInfo->pRegions[i]))
          continue;
       if (blit_shader(cmd_buffer,
                       dst, dst->vk_format,
                       src, src->vk_format,
                       0, NULL,
-                      &pRegions[i], filter, true)) {
+                      &pBlitImageInfo->pRegions[i],
+                      pBlitImageInfo->filter, true)) {
          continue;
       }
       unreachable("Unsupported blit operation");
@@ -5715,7 +5713,8 @@ resolve_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                    struct v3dv_image *src,
                    const VkImageResolve *region)
 {
-   const VkImageBlit blit_region = {
+   const VkImageBlit2KHR blit_region = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2_KHR,
       .srcSubresource = region->srcSubresource,
       .srcOffsets = {
          region->srcOffset,
