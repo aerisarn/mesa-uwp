@@ -6276,7 +6276,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             clear_value = iris_resource_get_clear_color(zres, NULL, NULL);
       }
 
-      uint32_t clear_params[GENX(3DSTATE_CLEAR_PARAMS_length)];
+      uint32_t *clear_params = cso_z->packets + cso_z_size / 4;
       iris_pack_command(GENX(3DSTATE_CLEAR_PARAMS), clear_params, clear) {
          clear.DepthClearValueValid = true;
          clear.DepthClearValue = clear_value.f32[0];
