@@ -467,11 +467,7 @@ zink_create_gfx_program(struct zink_context *ctx,
       prog->last_vertex_stage = stages[PIPE_SHADER_VERTEX];
 
    for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
-      prog->pipelines[i] = _mesa_hash_table_create(NULL,
-                                                   NULL,
-                                                   equals_gfx_pipeline_state);
-      if (!prog->pipelines[i])
-         goto fail;
+      _mesa_hash_table_init(&prog->pipelines[i], prog, NULL, equals_gfx_pipeline_state);
       /* only need first 3/4 for point/line/tri/patch */
       if (screen->info.have_EXT_extended_dynamic_state &&
           i == (prog->last_vertex_stage->nir->info.stage == MESA_SHADER_TESS_EVAL ? 4 : 3))
@@ -711,13 +707,12 @@ zink_destroy_gfx_program(struct zink_screen *screen,
    }
 
    for (int i = 0; i < max_idx; ++i) {
-      hash_table_foreach(prog->pipelines[i], entry) {
+      hash_table_foreach(&prog->pipelines[i], entry) {
          struct gfx_pipeline_cache_entry *pc_entry = entry->data;
 
          vkDestroyPipeline(screen->dev, pc_entry->pipeline, NULL);
          free(pc_entry);
       }
-      _mesa_hash_table_destroy(prog->pipelines[i], NULL);
    }
    if (prog->base.pipeline_cache)
       vkDestroyPipelineCache(screen->dev, prog->base.pipeline_cache, NULL);
@@ -824,7 +819,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    state->modules_changed = false;
    ctx->vertex_state_changed = false;
 
-   entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[idx], state->final_hash, state);
+   entry = _mesa_hash_table_search_pre_hashed(&prog->pipelines[idx], state->final_hash, state);
 
    if (!entry) {
       util_queue_fence_wait(&prog->base.cache_fence);
@@ -840,7 +835,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       memcpy(&pc_entry->state, state, sizeof(*state));
       pc_entry->pipeline = pipeline;
 
-      entry = _mesa_hash_table_insert_pre_hashed(prog->pipelines[idx], state->final_hash, pc_entry, pc_entry);
+      entry = _mesa_hash_table_insert_pre_hashed(&prog->pipelines[idx], state->final_hash, pc_entry, pc_entry);
       assert(entry);
    }
 
