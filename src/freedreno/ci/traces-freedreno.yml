@@ -1,7 +1,73 @@
 traces-db:
   download-url: "http://10.42.0.1:8888/cache/?uri=https://minio-packet.freedesktop.org/mesa-tracie-public/"
 
+# NOTE for faster runtime, try to sort tests so the longer running traces
+# appear first (and therefore are started first).
+#
+# Current approx durations for the longer traces (17 Jun 2021):
+#
+#   half-life-2:          37.83s
+#   portal:               16.29s
+#   counterstrike-source: 14.24s
+#   xonotic:              13.46s
+#   stk:                  11.15s
+#   0ad:                  10.93s
+#   counterstrike:         9.87s
+#   minetest:              8.24s
+#   neverball:             8.53s
+
 traces:
+  - path: valve/half-life-2-v2.trace
+    expectations:
+      # Skipped since it's slow even on a530.
+      # - device: freedreno-a306
+      #   checksum: 8f5929c82e7d990e8c3d2bea14688224
+      # 2 minutes
+      - device: freedreno-a530
+        checksum: 5def334bb574b024198ddddb1a069529
+      - device: freedreno-a630
+        checksum: b6ac60027699d49618cc9f2dde1c308c
+  - path: valve/portal-2-v2.trace
+    expectations:
+      # Skipped since it's slow even on a530.
+      # - device: freedreno-a306
+      #   checksum: a3a9e158ccf7fa5ba978e045505a060e
+      # 2 minutes
+      - device: freedreno-a530
+        checksum: 102a09ce76092436173fd09a6a2bd941
+      # Floor splatter rendering failure, probably the same alpha test issue.
+      - device: freedreno-a630
+        checksum: a3a9e158ccf7fa5ba978e045505a060e
+  - path: valve/counterstrike-source-v2.trace
+    expectations:
+      # Skipped since it's slow even on a530.
+      # - device: freedreno-a306
+      #   checksum: 4b707f385256b380c936186db8c251cb
+      # 1 minute
+      - device: freedreno-a530
+        checksum: bbe74b2171d62fc6738086740e1aa0d8
+      - device: freedreno-a630
+        checksum: e7b57988348b2ce98b964d71b18c1771
+  - path: xonotic/xonotic-keybench-high.trace
+    expectations:
+      # Skipped since it's long on a530.
+      # - device: freedreno-a306
+      #   checksum: 0efd30250af93d0b5f03eeabd079e8ee
+      # 3 minute runtime, skip.
+      # - device: freedreno-a530
+      #   checksum: 0fcb5afdad37f08b3f5bf26fbba752c1
+      - device: freedreno-a630
+        checksum: 0efd30250af93d0b5f03eeabd079e8ee
+  - path: supertuxkart/supertuxkart-mansion-egl-gles.trace
+    expectations:
+      # Skipped since it's long on a530.
+      # - device: freedreno-a306
+      #   checksum: 1ae49af7017ae2a08fbb1caf377ada91
+      # 50 second runtime, skip
+      # - device: freedreno-a530
+      #   checksum: 1ae49af7017ae2a08fbb1caf377ada91
+      - device: freedreno-a630
+        checksum: fede0e29fa22a625be6adbd86e70c8c6
   - path: 0ad/0ad.trace
     expectations:
       # triggers hangcheck on db410c
@@ -12,6 +78,36 @@ traces:
       #   checksum: b007061e6e93020ddf2aff6a0f32ed72
       - device: freedreno-a630
         checksum: fc26f34216d456ed841114d31215cb51
+  - path: valve/counterstrike-v2.trace
+    expectations:
+# With the addition of userspace fences we start feeding the GPU fast
+# enough to hit bad behavior on kernel side with ringbuffer-full
+# situations.  Kernel side fix is WIP, disable for now.
+#      - device: freedreno-a306
+#        checksum: b4af9243e34f3de0153b6855dc9c66b6
+      # Flaky rendering (slight pixel differences around the tree alpha tests)
+      # - device: freedreno-a530
+      #   checksum: 14e78caf29b6a3341081c8f2e678355f
+      - device: freedreno-a630
+        checksum: c8608d54cc6298476a2b60686d152dbc
+  - path: minetest/minetest.trace
+    expectations:
+      - device: freedreno-a306
+        checksum: daedbc987cc1b1f934364ce6b633bc54
+      - device: freedreno-a530
+        checksum: 0054f0ba67ace5d2defe17b74b5364e9
+      - device: freedreno-a630
+        checksum: eea608db257a1caa21517f0b13807952
+  - path: neverball/neverball.trace
+    expectations:
+      # Skipped since it's long on a530.
+      # - device: freedreno-a306
+      #  checksum: 57fd57aef14d37043a7b56a16dbf50b6
+      # 2 minute runtime, skip it.
+      # - device: freedreno-a530
+      #   checksum: 2a53e6086588f4675ae3dcda9f26603b
+      - device: freedreno-a630
+        checksum: 5a97da6dbb6c10d615f92030c03d116c
   - path: behdad-glyphy/glyphy.trace
     expectations:
       - device: freedreno-a306
@@ -432,24 +528,6 @@ traces:
 #    expectations:
 #      - device: freedreno-a630
 #        checksum: 9571117bf4eab6fe29b12f6c3d42d865
-  - path: minetest/minetest.trace
-    expectations:
-      - device: freedreno-a306
-        checksum: daedbc987cc1b1f934364ce6b633bc54
-      - device: freedreno-a530
-        checksum: 0054f0ba67ace5d2defe17b74b5364e9
-      - device: freedreno-a630
-        checksum: eea608db257a1caa21517f0b13807952
-  - path: neverball/neverball.trace
-    expectations:
-      # Skipped since it's long on a530.
-      # - device: freedreno-a306
-      #  checksum: 57fd57aef14d37043a7b56a16dbf50b6
-      # 2 minute runtime, skip it.
-      # - device: freedreno-a530
-      #   checksum: 2a53e6086588f4675ae3dcda9f26603b
-      - device: freedreno-a630
-        checksum: 5a97da6dbb6c10d615f92030c03d116c
   - path: pathfinder/canvas_moire.trace
     expectations:
       # a306/a630 would need higher GL version to run
@@ -472,16 +550,6 @@ traces:
 #    expectations:
 #      - device: freedreno-a630
 #        checksum: a0000000000000000000000000000000
-  - path: supertuxkart/supertuxkart-mansion-egl-gles.trace
-    expectations:
-      # Skipped since it's long on a530.
-      # - device: freedreno-a306
-      #   checksum: 1ae49af7017ae2a08fbb1caf377ada91
-      # 50 second runtime, skip
-      # - device: freedreno-a530
-      #   checksum: 1ae49af7017ae2a08fbb1caf377ada91
-      - device: freedreno-a630
-        checksum: fede0e29fa22a625be6adbd86e70c8c6
 # 21 seconds to render.  Renders nearly completely black, logs "warning:
 # 0:29(61): warning: `var_Position' used uninitialized".  Replays fine
 # on radeonsi.  Skip for now.
@@ -489,59 +557,6 @@ traces:
 #    expectations:
 #      #- device: freedreno-a630
 #      #  checksum: a0000000000000000000000000000000
-  - path: xonotic/xonotic-keybench-high.trace
-    expectations:
-      # Skipped since it's long on a530.
-      # - device: freedreno-a306
-      #   checksum: 0efd30250af93d0b5f03eeabd079e8ee
-      # 3 minute runtime, skip.
-      # - device: freedreno-a530
-      #   checksum: 0fcb5afdad37f08b3f5bf26fbba752c1
-      - device: freedreno-a630
-        checksum: 0efd30250af93d0b5f03eeabd079e8ee
-  - path: valve/counterstrike-v2.trace
-    expectations:
-# With the addition of userspace fences we start feeding the GPU fast
-# enough to hit bad behavior on kernel side with ringbuffer-full
-# situations.  Kernel side fix is WIP, disable for now.
-#      - device: freedreno-a306
-#        checksum: b4af9243e34f3de0153b6855dc9c66b6
-      # Flaky rendering (slight pixel differences around the tree alpha tests)
-      # - device: freedreno-a530
-      #   checksum: 14e78caf29b6a3341081c8f2e678355f
-      - device: freedreno-a630
-        checksum: c8608d54cc6298476a2b60686d152dbc
-  - path: valve/counterstrike-source-v2.trace
-    expectations:
-      # Skipped since it's slow even on a530.
-      # - device: freedreno-a306
-      #   checksum: 4b707f385256b380c936186db8c251cb
-      # 1 minute
-      - device: freedreno-a530
-        checksum: bbe74b2171d62fc6738086740e1aa0d8
-      - device: freedreno-a630
-        checksum: e7b57988348b2ce98b964d71b18c1771
-  - path: valve/half-life-2-v2.trace
-    expectations:
-      # Skipped since it's slow even on a530.
-      # - device: freedreno-a306
-      #   checksum: 8f5929c82e7d990e8c3d2bea14688224
-      # 2 minutes
-      - device: freedreno-a530
-        checksum: 5def334bb574b024198ddddb1a069529
-      - device: freedreno-a630
-        checksum: b6ac60027699d49618cc9f2dde1c308c
-  - path: valve/portal-2-v2.trace
-    expectations:
-      # Skipped since it's slow even on a530.
-      # - device: freedreno-a306
-      #   checksum: a3a9e158ccf7fa5ba978e045505a060e
-      # 2 minutes
-      - device: freedreno-a530
-        checksum: 102a09ce76092436173fd09a6a2bd941
-      # Floor splatter rendering failure, probably the same alpha test issue.
-      - device: freedreno-a630
-        checksum: a3a9e158ccf7fa5ba978e045505a060e
 # Throws errors on freedreno
 #  - path: supertuxkart/supertuxkart-antediluvian-abyss.rdc
 #    expectations:
