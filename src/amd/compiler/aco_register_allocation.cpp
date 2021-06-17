@@ -1787,10 +1787,8 @@ handle_pseudo(ra_ctx& ctx, const RegisterFile& reg_file, Instruction* instr)
    bool reads_sgpr = false;
    bool reads_subdword = false;
    for (Operand& op : instr->operands) {
-      if (op.isTemp() && op.getTemp().type() == RegType::sgpr) {
+      if (op.isTemp() && op.getTemp().type() == RegType::sgpr)
          reads_sgpr = true;
-         break;
-      }
       if (op.isTemp() && op.regClass().is_subdword())
          reads_subdword = true;
    }
