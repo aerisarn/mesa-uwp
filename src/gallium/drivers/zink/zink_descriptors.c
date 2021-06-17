@@ -60,7 +60,7 @@ struct zink_descriptor_set {
    bool punted;
    bool recycled;
    struct zink_descriptor_state_key key;
-   struct zink_batch_usage batch_uses;
+   struct zink_batch_usage *batch_uses;
 #ifndef NDEBUG
    /* for extra debug asserts */
    unsigned num_resources;
@@ -622,7 +622,7 @@ allocate_desc_set(struct zink_context *ctx, struct zink_program *pg, enum zink_d
       pipe_reference_init(&zds->reference, 1);
       zds->pool = pool;
       zds->hash = 0;
-      zds->batch_uses.usage = 0;
+      zds->batch_uses = NULL;
       zds->invalid = true;
       zds->punted = zds->recycled = false;
 #ifndef NDEBUG
@@ -731,7 +731,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
          zds->recycled = false;
       }
       if (zds->invalid) {
-          if (zink_batch_usage_exists(&zds->batch_uses))
+          if (zink_batch_usage_exists(zds->batch_uses))
              punt_invalid_set(zds, NULL);
           else
              /* this set is guaranteed to be in pool->alloc_desc_sets */
@@ -746,7 +746,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
    bool recycled = false, punted = false;
    if (he) {
        zds = (void*)he->data;
-       if (zds->invalid && zink_batch_usage_exists(&zds->batch_uses)) {
+       if (zds->invalid && zink_batch_usage_exists(zds->batch_uses)) {
           punt_invalid_set(zds, he);
           zds = NULL;
           punted = true;

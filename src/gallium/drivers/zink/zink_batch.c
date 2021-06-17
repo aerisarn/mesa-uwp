@@ -95,6 +95,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       zink_screen_update_last_finished(screen, bs->fence.batch_id);
    bs->submit_count++;
    bs->fence.batch_id = 0;
+   bs->usage.usage = 0;
    bs->draw_count = bs->compute_count = 0;
 }
 
@@ -278,6 +279,8 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
    zink_reset_batch(ctx, batch);
 
+   batch->state->usage.unflushed = true;
+
    VkCommandBufferBeginInfo cbbi = {0};
    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -290,7 +293,7 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    batch->state->fence.completed = false;
    if (ctx->last_fence) {
       struct zink_batch_state *last_state = zink_batch_state(ctx->last_fence);
-      batch->last_batch_id = last_state->fence.batch_id;
+      batch->last_batch_usage = &last_state->usage;
    } else {
       if (zink_screen(ctx->base.screen)->threaded)
          util_queue_init(&batch->flush_queue, "zfq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, NULL);
@@ -315,7 +318,18 @@ static void
 submit_queue(void *data, void *gdata, int thread_index)
 {
    struct zink_batch_state *bs = data;
+   struct zink_context *ctx = bs->ctx;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkSubmitInfo si = {0};
+
+   simple_mtx_lock(&ctx->batch_mtx);
+   while (!bs->fence.batch_id)
+      bs->fence.batch_id = p_atomic_inc_return(&screen->curr_batch);
+   _mesa_hash_table_insert_pre_hashed(&ctx->batch_states, bs->fence.batch_id, (void*)(uintptr_t)bs->fence.batch_id, bs);
+   bs->usage.usage = bs->fence.batch_id;
+   bs->usage.unflushed = false;
+   simple_mtx_unlock(&ctx->batch_mtx);
+
    uint64_t batch_id = bs->fence.batch_id;
    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
    si.waitSemaphoreCount = 0;
@@ -337,7 +351,7 @@ submit_queue(void *data, void *gdata, int thread_index)
       tsi.signalSemaphoreValueCount = 1;
       tsi.pSignalSemaphoreValues = &batch_id;
       si.signalSemaphoreCount = 1;
-      si.pSignalSemaphores = &zink_screen(bs->ctx->base.screen)->sem;
+      si.pSignalSemaphores = &screen->sem;
    }
 
    struct wsi_memory_signal_submit_info mem_signal = {
@@ -345,7 +359,7 @@ submit_queue(void *data, void *gdata, int thread_index)
       .pNext = si.pNext,
    };
 
-   if (bs->flush_res && zink_screen(bs->ctx->base.screen)->needs_mesa_flush_wsi) {
+   if (bs->flush_res && screen->needs_mesa_flush_wsi) {
       mem_signal.memory = bs->flush_res->scanout_obj ? bs->flush_res->scanout_obj->mem : bs->flush_res->obj->mem;
       si.pNext = &mem_signal;
    }
@@ -518,11 +532,8 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
        vkFlushMappedMemoryRanges(screen->dev, 1, &range);
    }
 
-   simple_mtx_lock(&ctx->batch_mtx);
-   ctx->last_fence = &batch->state->fence;
-   _mesa_hash_table_insert_pre_hashed(&ctx->batch_states, batch->state->fence.batch_id, (void*)(uintptr_t)batch->state->fence.batch_id, batch->state);
-   simple_mtx_unlock(&ctx->batch_mtx);
    ctx->resource_size += batch->state->resource_size;
+   ctx->last_fence = &batch->state->fence;
 
    if (screen->device_lost)
       return;
@@ -550,20 +561,20 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
       zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
 
    /* if the resource already has usage of any sort set for this batch, we can skip hashing */
-   if (!zink_batch_usage_matches(&res->obj->reads, batch->state) &&
-       !zink_batch_usage_matches(&res->obj->writes, batch->state)) {
+   if (!zink_batch_usage_matches(res->obj->reads, batch->state) &&
+       !zink_batch_usage_matches(res->obj->writes, batch->state)) {
       bool found = false;
       _mesa_set_search_and_add(batch->state->fence.resources, res->obj, &found);
       if (!found) {
          pipe_reference(NULL, &res->obj->reference);
-         if (!batch->last_batch_id || res->obj->reads.usage != batch->last_batch_id)
+         if (!batch->last_batch_usage || res->obj->reads != batch->last_batch_usage)
             /* only add resource usage if it's "new" usage, though this only checks the most recent usage
              * and not all pending usages
              */
             batch->state->resource_size += res->obj->size;
          if (stencil) {
             pipe_reference(NULL, &stencil->obj->reference);
-            if (!batch->last_batch_id || stencil->obj->reads.usage != batch->last_batch_id)
+            if (!batch->last_batch_usage || stencil->obj->reads != batch->last_batch_usage)
                batch->state->resource_size += stencil->obj->size;
          }
       }
@@ -586,10 +597,10 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
 }
 
 bool
-batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_batch_usage *u)
+batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr, struct zink_batch_usage **u)
 {
    bool found = false;
-   if (u->usage == batch->state->fence.batch_id)
+   if (*u == &batch->state->usage)
       return false;
    _mesa_set_search_and_add(s, ptr, &found);
    assert(!found);
@@ -661,11 +672,13 @@ zink_batch_usage_check_completion(struct zink_context *ctx, const struct zink_ba
 {
    if (!zink_batch_usage_exists(u))
       return true;
+   if (zink_batch_usage_is_unflushed(u))
+      return false;
    return zink_check_batch_completion(ctx, u->usage);
 }
 
 void
-zink_batch_usage_wait(struct zink_context *ctx, const struct zink_batch_usage *u)
+zink_batch_usage_wait(struct zink_context *ctx, struct zink_batch_usage *u)
 {
    if (!zink_batch_usage_exists(u))
       return;

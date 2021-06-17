@@ -46,7 +46,7 @@ struct zink_query {
    bool have_gs[NUM_QUERIES]; /* geometry shaders use GEOMETRY_SHADER_PRIMITIVES_BIT */
    bool have_xfb[NUM_QUERIES]; /* xfb was active during this query */
 
-   struct zink_batch_usage batch_id; //batch that the query was started in
+   struct zink_batch_usage *batch_id; //batch that the query was started in
 
    struct list_head buffers;
    struct zink_query_buffer *curr_qbo;
@@ -780,7 +780,7 @@ zink_get_query_result(struct pipe_context *pctx,
    if (query->needs_update)
       update_qbo(ctx, query);
 
-   if (query->batch_id.usage == ctx->curr_batch) {
+   if (zink_batch_usage_is_unflushed(query->batch_id)) {
       if (!threaded_query(q)->flushed)
          pctx->flush(pctx, NULL, 0);
       if (!wait)

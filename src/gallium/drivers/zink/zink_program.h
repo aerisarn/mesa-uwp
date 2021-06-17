@@ -73,7 +73,7 @@ struct zink_shader_cache {
 
 struct zink_program {
    struct pipe_reference reference;
-   struct zink_batch_usage batch_uses;
+   struct zink_batch_usage *batch_uses;
    bool is_compute;
 
    struct zink_program_descriptor_data *dd;

@@ -57,15 +57,6 @@
 #include "util/xxhash.h"
 
 static void
-incr_curr_batch(struct zink_context *ctx)
-{
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   ctx->curr_batch = p_atomic_inc_return(&screen->curr_batch);
-   if (!ctx->curr_batch) //never use batchid 0
-      incr_curr_batch(ctx);
-}
-
-static void
 calc_descriptor_hash_sampler_state(struct zink_sampler_state *sampler_state)
 {
    void *hash_data = &sampler_state->sampler;
@@ -1804,8 +1795,6 @@ flush_batch(struct zink_context *ctx, bool sync)
    if (ctx->batch.state->is_device_lost) {
       check_device_lost(ctx);
    } else {
-      incr_curr_batch(ctx);
-
       zink_start_batch(ctx, batch);
       if (zink_screen(ctx->base.screen)->info.have_EXT_transform_feedback && ctx->num_so_targets)
          ctx->dirty_so_targets = true;
@@ -2539,10 +2528,8 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
 bool
 zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id)
 {
-   assert(batch_id);
-   struct zink_batch_state *bs = ctx->batch.state;
-   assert(bs);
-   if (bs->fence.batch_id == batch_id)
+   assert(ctx->batch.state);
+   if (!batch_id)
       /* not submitted yet */
       return false;
 
@@ -3161,8 +3148,8 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
    struct zink_screen *screen = zink_screen(pctx->screen);
 
    /* if any current usage exists, flush the queue */
-   if (res->obj->reads.usage == ctx->curr_batch ||
-       res->obj->writes.usage == ctx->curr_batch)
+   if (zink_batch_usage_is_unflushed(res->obj->reads) ||
+       zink_batch_usage_is_unflushed(res->obj->writes))
       zink_flush_queue(ctx);
 
    VkBindSparseInfo sparse;
@@ -3264,45 +3251,38 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    zink_resource_rebind(zink_context(pctx), d);
 }
 
+ALWAYS_INLINE static bool
+is_usage_completed(struct zink_screen *screen, const struct zink_batch_usage *u)
+{
+   if (!zink_batch_usage_exists(u))
+      return true;
+   if (zink_batch_usage_is_unflushed(u))
+      return false;
+   /* check fastpath first */
+   if (zink_screen_check_last_finished(screen, u->usage))
+      return true;
+   /* if we have timelines, do a quick check */
+   if (screen->info.have_KHR_timeline_semaphore)
+      return zink_screen_timeline_wait(screen, u->usage, 0);
+
+   /* otherwise assume busy */
+   return false;
+}
+
 static bool
 zink_context_is_resource_busy(struct pipe_screen *pscreen, struct pipe_resource *pres, unsigned usage)
 {
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_resource *res = zink_resource(pres);
-   uint32_t reads = 0, writes = 0;
+   const struct zink_batch_usage *reads = NULL, *writes = NULL;
    if (((usage & (PIPE_MAP_READ | PIPE_MAP_WRITE)) == (PIPE_MAP_READ | PIPE_MAP_WRITE)) ||
        usage & PIPE_MAP_WRITE) {
-      reads = p_atomic_read(&res->obj->reads.usage);
-      writes = p_atomic_read(&res->obj->writes.usage);
+      reads = res->obj->reads;
+      writes = res->obj->writes;
    } else if (usage & PIPE_MAP_READ)
-      writes = p_atomic_read(&res->obj->writes.usage);
+      writes = res->obj->writes;
 
-   /* get latest usage accounting for 32bit int rollover:
-    * a rollover is detected if there are reads and writes,
-    * but one of the values is over UINT32_MAX/2 while the other is under,
-    * as it is impossible for this many unflushed batch states to ever
-    * exist at any given time
-    */
-   uint32_t last;
-
-   if (reads && writes)
-      last = abs((int)reads - (int)writes) > UINT32_MAX / 2 ? MIN2(reads, writes) : MAX2(reads, writes);
-   else
-      last = reads ? reads : writes;
-
-   if (!last)
-      return false;
-
-   /* check fastpath first */
-   if (zink_screen_check_last_finished(screen, last))
-      return false;
-
-   /* if we have timelines, do a quick check */
-   if (screen->info.have_KHR_timeline_semaphore)
-      return !zink_screen_timeline_wait(screen, last, 0);
-
-   /* otherwise assume busy */
-   return true;
+   return !is_usage_completed(screen, reads) || !is_usage_completed(screen, writes);
 }
 
 static void
@@ -3484,7 +3464,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->have_timelines = screen->info.have_KHR_timeline_semaphore;
    simple_mtx_init(&ctx->batch_mtx, mtx_plain);
-   incr_curr_batch(ctx);
    zink_start_batch(ctx, &ctx->batch);
    if (!ctx->batch.state)
       goto fail;

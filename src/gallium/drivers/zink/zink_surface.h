@@ -37,7 +37,7 @@ struct zink_surface {
    VkImageView simage_view;//old iview after storage replacement/rebind
    void *obj; //backing resource object
    uint32_t hash;
-   struct zink_batch_usage batch_uses;
+   struct zink_batch_usage *batch_uses;
    struct util_dynarray framebuffer_refs;
    struct zink_descriptor_refs desc_set_refs;
 };

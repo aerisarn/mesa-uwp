@@ -75,8 +75,8 @@ struct zink_resource_object {
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
    struct zink_descriptor_refs desc_set_refs;
 
-   struct zink_batch_usage reads;
-   struct zink_batch_usage writes;
+   struct zink_batch_usage *reads;
+   struct zink_batch_usage *writes;
    void *map;
    bool is_buffer;
    bool host_visible;

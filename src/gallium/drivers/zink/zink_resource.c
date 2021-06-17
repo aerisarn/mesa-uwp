@@ -77,8 +77,8 @@ debug_describe_zink_resource_object(char *buf, const struct zink_resource_object
 static uint32_t
 get_resource_usage(struct zink_resource *res)
 {
-   bool reads = zink_batch_usage_exists(&res->obj->reads);
-   bool writes = zink_batch_usage_exists(&res->obj->writes);
+   bool reads = zink_batch_usage_exists(res->obj->reads);
+   bool writes = zink_batch_usage_exists(res->obj->writes);
    uint32_t batch_uses = 0;
    if (reads)
       batch_uses |= ZINK_RESOURCE_ACCESS_READ;
@@ -867,8 +867,8 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
        */
 
       if (!res->obj->host_visible ||
-          !zink_batch_usage_check_completion(ctx, &res->obj->reads) ||
-          !zink_batch_usage_check_completion(ctx, &res->obj->writes)) {
+          !zink_batch_usage_check_completion(ctx, res->obj->reads) ||
+          !zink_batch_usage_check_completion(ctx, res->obj->writes)) {
          /* Do a wait-free write-only transfer using a temporary buffer. */
          unsigned offset;
 
@@ -896,7 +896,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
          /* sparse/device-local will always need to wait since it has to copy */
          if (!res->obj->host_visible)
             return NULL;
-         if (!zink_batch_usage_check_completion(ctx, &res->obj->writes))
+         if (!zink_batch_usage_check_completion(ctx, res->obj->writes))
             return NULL;
       } else if (!res->obj->host_visible) {
          zink_fence_wait(&ctx->base);
@@ -909,7 +909,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
          res = staging_res;
          zink_fence_wait(&ctx->base);
       } else
-         zink_batch_usage_wait(ctx, &res->obj->writes);
+         zink_batch_usage_wait(ctx, res->obj->writes);
    }
 
    if (!ptr) {
@@ -1036,7 +1036,7 @@ zink_transfer_map(struct pipe_context *pctx,
             if (usage & PIPE_MAP_WRITE)
                zink_fence_wait(pctx);
             else
-               zink_batch_usage_wait(ctx, &res->obj->writes);
+               zink_batch_usage_wait(ctx, res->obj->writes);
          }
          VkImageSubresource isr = {
             res->aspect,
