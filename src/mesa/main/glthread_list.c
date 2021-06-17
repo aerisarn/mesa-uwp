@@ -30,6 +30,44 @@ uint32_t
 _mesa_unmarshal_CallList(struct gl_context *ctx, const struct marshal_cmd_CallList *cmd, const uint64_t *last)
 {
    const GLuint list = cmd->list;
+   uint64_t *ptr = (uint64_t *) cmd;
+   ptr += cmd->cmd_base.cmd_size;
+
+   if (ptr < last) {
+      const struct marshal_cmd_base *next =
+         (const struct marshal_cmd_base *)ptr;
+
+      /* If the 'next' is also a DISPATCH_CMD_CallList, we transform 'cmd' and 'next' in a CALL_CallLists.
+       * If the following commands are also CallList they're including in the CallLists we're building.
+       */
+      if (next->cmd_id == DISPATCH_CMD_CallList) {
+         const int max_list_count = 2048;
+         struct marshal_cmd_CallList *next_callist = (struct marshal_cmd_CallList *) next;
+         uint32_t *lists = alloca(max_list_count * sizeof(uint32_t));
+
+         lists[0] = cmd->list;
+         lists[1] = next_callist->list;
+
+         int count = 2;
+
+         ptr += next->cmd_size;
+         while (ptr < last && count < max_list_count) {
+            next = (const struct marshal_cmd_base *)ptr;
+            if (next->cmd_id == DISPATCH_CMD_CallList) {
+               next_callist = (struct marshal_cmd_CallList *) next;
+               lists[count++] = next_callist->list;
+               ptr += next->cmd_size;
+            } else {
+               break;
+            }
+         }
+
+         CALL_CallLists(ctx->CurrentServerDispatch, (count, GL_UNSIGNED_INT, lists));
+
+         return (uint32_t) (ptr - (uint64_t*)cmd);
+      }
+   }
+
    CALL_CallList(ctx->CurrentServerDispatch, (list));
    return cmd->cmd_base.cmd_size;
 }
