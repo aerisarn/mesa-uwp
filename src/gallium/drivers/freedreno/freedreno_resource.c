@@ -1395,6 +1395,8 @@ fd_render_condition_check(struct pipe_context *pctx)
    if (!ctx->cond_query)
       return true;
 
+   perf_debug("Implementing conditional rendering using a CPU read instaed of HW conditional rendering.");
+
    union pipe_query_result res = {0};
    bool wait = ctx->cond_mode != PIPE_RENDER_COND_NO_WAIT &&
                ctx->cond_mode != PIPE_RENDER_COND_BY_REGION_NO_WAIT;
