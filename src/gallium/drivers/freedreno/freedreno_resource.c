@@ -797,6 +797,13 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
 
    tc_assert_driver_thread(ctx->tc);
 
+   /* Strip the read flag if the buffer has been invalidated (or is freshly
+    * created). Avoids extra staging blits of undefined data on glTexSubImage of
+    * a fresh DEPTH_COMPONENT or STENCIL_INDEX texture being stored as z24s8.
+    */
+   if (!rsc->valid)
+      usage &= ~PIPE_MAP_READ;
+
    /* we always need a staging texture for tiled buffers:
     *
     * TODO we might sometimes want to *also* shadow the resource to avoid
