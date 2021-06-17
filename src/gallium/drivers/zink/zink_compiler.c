@@ -985,6 +985,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
    bool have_psiz = false;
 
+   ret->hash = _mesa_hash_pointer(ret);
+
    ret->programs = _mesa_pointer_set_create(NULL);
    simple_mtx_init(&ret->lock, mtx_plain);
 
@@ -1183,6 +1185,7 @@ zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
 {
    unsigned vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch + 1;
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
+   ret->hash = _mesa_hash_pointer(ret);
    ret->programs = _mesa_pointer_set_create(NULL);
    simple_mtx_init(&ret->lock, mtx_plain);
 

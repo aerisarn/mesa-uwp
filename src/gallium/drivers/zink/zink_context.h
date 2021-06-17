@@ -218,6 +218,7 @@ struct zink_context {
     * thus only 3 stages need to be considered, giving 2^3 = 8 program caches.
     */
    struct hash_table program_cache[8];
+   uint32_t gfx_hash;
    struct zink_gfx_program *curr_program;
 
    struct zink_descriptor_data *dd;

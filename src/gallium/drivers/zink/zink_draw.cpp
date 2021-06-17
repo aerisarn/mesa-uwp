@@ -190,7 +190,7 @@ update_gfx_program(struct zink_context *ctx)
       struct zink_gfx_program *prog = NULL;
 
       struct hash_table *ht = &ctx->program_cache[ctx->shader_stages >> 2];
-      uint32_t hash = ht->key_hash_function(ctx->gfx_stages);
+      const uint32_t hash = ctx->gfx_hash;
       struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
       if (entry) {
          prog = (struct zink_gfx_program*)entry->data;
@@ -913,24 +913,23 @@ template <unsigned STAGE_MASK>
 static uint32_t
 hash_gfx_program(const void *key)
 {
-   const void **shaders = (const void**)key;
-   uint32_t base_hash = _mesa_hash_data(key, sizeof(void*) * 2);
-   uint32_t gs_hash = _mesa_hash_data(key, sizeof(void*) * 3);
+   const struct zink_shader **shaders = (const struct zink_shader**)key;
+   uint32_t base_hash = shaders[PIPE_SHADER_VERTEX]->hash ^ shaders[PIPE_SHADER_FRAGMENT]->hash;
    if (STAGE_MASK == 0) //VS+FS
       return base_hash;
    if (STAGE_MASK == 1) //VS+GS+FS
-      return gs_hash;
+      return base_hash ^ shaders[PIPE_SHADER_GEOMETRY]->hash;
    /*VS+TCS+FS isn't a thing */
    /*VS+TCS+GS+FS isn't a thing */
    if (STAGE_MASK == 4) //VS+TES+FS
-      return XXH32(&shaders[PIPE_SHADER_TESS_EVAL], sizeof(void*), base_hash);
+      return base_hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
    if (STAGE_MASK == 5) //VS+TES+GS+FS
-      return XXH32(&shaders[PIPE_SHADER_TESS_EVAL], sizeof(void*), gs_hash);
+      return base_hash ^ shaders[PIPE_SHADER_GEOMETRY]->hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
    if (STAGE_MASK == 6) //VS+TCS+TES+FS
-      return XXH32(&shaders[PIPE_SHADER_TESS_CTRL], sizeof(void*) * 2, base_hash);
+      return base_hash ^ shaders[PIPE_SHADER_TESS_CTRL]->hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
 
    /* all stages */
-   return _mesa_hash_data(key, sizeof(void*) * ZINK_SHADER_COUNT);
+   return base_hash ^ shaders[PIPE_SHADER_GEOMETRY]->hash ^ shaders[PIPE_SHADER_TESS_CTRL]->hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
 }
 
 template <unsigned STAGE_MASK>

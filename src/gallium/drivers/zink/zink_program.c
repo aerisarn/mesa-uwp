@@ -908,12 +908,15 @@ bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
       ctx->compute_stage = shader;
       zink_select_launch_grid(ctx);
    } else {
+      if (ctx->gfx_stages[stage])
+         ctx->gfx_hash ^= ctx->gfx_stages[stage]->hash;
       ctx->gfx_stages[stage] = shader;
       ctx->gfx_dirty = ctx->gfx_stages[PIPE_SHADER_FRAGMENT] && ctx->gfx_stages[PIPE_SHADER_VERTEX];
       ctx->gfx_pipeline_state.combined_dirty = true;
-      if (shader)
+      if (shader) {
          ctx->shader_stages |= BITFIELD_BIT(stage);
-      else {
+         ctx->gfx_hash ^= ctx->gfx_stages[stage]->hash;
+      } else {
          ctx->gfx_pipeline_state.modules[stage] = VK_NULL_HANDLE;
          ctx->curr_program = NULL;
          ctx->shader_stages &= ~BITFIELD_BIT(stage);
