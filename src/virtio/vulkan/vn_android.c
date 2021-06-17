@@ -11,12 +11,12 @@
 #include "vn_android.h"
 
 #include <dlfcn.h>
-#include <drm/drm_fourcc.h>
 #include <hardware/gralloc.h>
 #include <hardware/hwvulkan.h>
 #include <vndk/hardware_buffer.h>
 #include <vulkan/vk_icd.h>
 
+#include "drm-uapi/drm_fourcc.h"
 #include "util/libsync.h"
 #include "util/os_file.h"
 
