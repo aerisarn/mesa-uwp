@@ -1600,11 +1600,15 @@ get_render_pass(struct zink_context *ctx)
          return NULL;
       bool found = false;
       struct set_entry *entry = _mesa_set_search_or_add(&ctx->render_pass_state_cache, &pstate, &found);
+      struct zink_render_pass_pipeline_state *ppstate;
       if (!found) {
          entry->key = ralloc(ctx, struct zink_render_pass_pipeline_state);
-         memcpy((void*)entry->key, &pstate, rp_state_size(&pstate));
+         ppstate = (void*)entry->key;
+         memcpy(ppstate, &pstate, rp_state_size(&pstate));
+         ppstate->id = ctx->render_pass_state_cache.entries;
       }
-      rp->pipeline_state = (void*)entry->key;
+      ppstate = (void*)entry->key;
+      rp->pipeline_state = ppstate->id;
    }
    return rp;
 }
@@ -1684,9 +1688,11 @@ setup_framebuffer(struct zink_context *ctx)
    if (ctx->rp_changed)
       rp = get_render_pass(ctx);
 
-   if (rp != ctx->gfx_pipeline_state.render_pass)
-      ctx->gfx_pipeline_state.dirty =
-      ctx->fb_changed = true;
+   ctx->fb_changed |= rp != ctx->gfx_pipeline_state.render_pass;
+   if (rp->pipeline_state != ctx->gfx_pipeline_state.rp_state) {
+      ctx->gfx_pipeline_state.rp_state = rp->pipeline_state;
+      ctx->gfx_pipeline_state.dirty = true;
+   }
 
    ctx->rp_changed = false;
 

@@ -60,12 +60,13 @@ struct zink_pipeline_rt {
 struct zink_render_pass_pipeline_state {
    uint32_t num_attachments;
    struct zink_pipeline_rt attachments[PIPE_MAX_COLOR_BUFS + 1];
+   unsigned id;
 };
 
 struct zink_render_pass {
    VkRenderPass render_pass;
    struct zink_render_pass_state state;
-   struct zink_render_pass_pipeline_state *pipeline_state;
+   unsigned pipeline_state;
 };
 
 struct zink_render_pass *
