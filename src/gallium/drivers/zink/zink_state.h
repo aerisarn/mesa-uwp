@@ -79,6 +79,7 @@ struct zink_rasterizer_state {
 };
 
 struct zink_blend_state {
+   uint32_t hash;
    VkPipelineColorBlendAttachmentState attachments[PIPE_MAX_COLOR_BUFS];
 
    VkBool32 logicop_enable;

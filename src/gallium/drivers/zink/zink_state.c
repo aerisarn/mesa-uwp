@@ -251,6 +251,7 @@ zink_create_blend_state(struct pipe_context *pctx,
    struct zink_blend_state *cso = CALLOC_STRUCT(zink_blend_state);
    if (!cso)
       return NULL;
+   cso->hash = _mesa_hash_pointer(cso);
 
    if (blend_state->logicop_enable) {
       cso->logicop_enable = VK_TRUE;
@@ -313,9 +314,11 @@ zink_bind_blend_state(struct pipe_context *pctx, void *cso)
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_gfx_pipeline_state* state = &zink_context(pctx)->gfx_pipeline_state;
+   struct zink_blend_state *blend = cso;
 
    if (state->blend_state != cso) {
       state->blend_state = cso;
+      state->blend_id = blend ? blend->hash : 0;
       state->dirty = true;
       ctx->blend_state_changed = true;
    }
