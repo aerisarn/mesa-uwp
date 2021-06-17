@@ -128,6 +128,9 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
 
    util_queue_fence_destroy(&bs->flush_completed);
 
+   cnd_destroy(&bs->usage.flush);
+   mtx_destroy(&bs->usage.mtx);
+
    if (bs->fence.fence)
       vkDestroyFence(screen->dev, bs->fence.fence, NULL);
 
@@ -190,6 +193,9 @@ create_batch_state(struct zink_context *ctx)
    SET_CREATE_OR_FAIL(bs->active_queries);
    util_dynarray_init(&bs->zombie_samplers, NULL);
    util_dynarray_init(&bs->persistent_resources, NULL);
+
+   cnd_init(&bs->usage.flush);
+   mtx_init(&bs->usage.mtx, mtx_plain);
 
    if (!screen->batch_descriptor_init(screen, bs))
       goto fail;
@@ -369,6 +375,8 @@ submit_queue(void *data, void *gdata, int thread_index)
       bs->is_device_lost = true;
    }
    bs->submit_count++;
+   cnd_broadcast(&bs->usage.flush);
+
    p_atomic_set(&bs->fence.submitted, true);
 }
 
@@ -682,5 +690,14 @@ zink_batch_usage_wait(struct zink_context *ctx, struct zink_batch_usage *u)
 {
    if (!zink_batch_usage_exists(u))
       return;
+   if (zink_batch_usage_is_unflushed(u)) {
+      if (likely(u == &ctx->batch.state->usage))
+         ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
+      else { //multi-context
+         mtx_lock(&u->mtx);
+         cnd_wait(&u->flush, &u->mtx);
+         mtx_unlock(&u->mtx);
+      }
+   }
    zink_wait_on_batch(ctx, u->usage);
 }

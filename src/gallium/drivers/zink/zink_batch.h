@@ -46,6 +46,8 @@ struct zink_surface;
 
 struct zink_batch_usage {
    uint32_t usage;
+   cnd_t flush;
+   mtx_t mtx;
    bool unflushed;
 };
 

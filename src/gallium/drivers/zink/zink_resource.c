@@ -1025,6 +1025,9 @@ zink_transfer_map(struct pipe_context *pctx,
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
          if (usage & PIPE_MAP_READ) {
+            /* force multi-context sync */
+            if (zink_batch_usage_is_unflushed(res->obj->writes))
+               zink_batch_usage_wait(ctx, res->obj->writes);
             zink_transfer_copy_bufimage(ctx, staging_res, res, trans);
             /* need to wait for rendering to finish */
             zink_fence_wait(pctx);
