@@ -240,7 +240,7 @@ class PrintCode(gl_XML.gl_print_base):
 
         out('void')
         out(('_mesa_unmarshal_{0}(struct gl_context *ctx, '
-             'const struct marshal_cmd_{0} *cmd)').format(func.name))
+             'const struct marshal_cmd_{0} *cmd, const uint64_t *last)').format(func.name))
         out('{')
         with indent():
             for p in fixed_params:

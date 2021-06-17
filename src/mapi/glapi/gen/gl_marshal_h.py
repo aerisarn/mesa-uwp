@@ -72,7 +72,7 @@ class PrintCode(gl_XML.gl_print_base):
             if flavor in ('custom', 'async'):
                 print('struct marshal_cmd_{0};'.format(func.name))
                 print(('void _mesa_unmarshal_{0}(struct gl_context *ctx, '
-                       'const struct marshal_cmd_{0} *cmd);').format(func.name))
+                       'const struct marshal_cmd_{0} *cmd, const uint64_t *last);').format(func.name))
                 print('{0} GLAPIENTRY _mesa_marshal_{1}({2});'.format(func.return_type, func.name, func.get_parameter_string()))
             elif flavor == 'sync':
                 print('{0} GLAPIENTRY _mesa_marshal_{1}({2});'.format(func.return_type, func.name, func.get_parameter_string()))

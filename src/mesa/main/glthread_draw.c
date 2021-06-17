@@ -266,7 +266,8 @@ struct marshal_cmd_DrawArrays
 
 void
 _mesa_unmarshal_DrawArrays(struct gl_context *ctx,
-                           const struct marshal_cmd_DrawArrays *cmd)
+                           const struct marshal_cmd_DrawArrays *cmd,
+                           const uint64_t *last)
 {
    /* Ignore the function name. We use DISPATCH_CMD_DrawArrays
     * for all DrawArrays variants without user buffers, and
@@ -313,7 +314,8 @@ struct marshal_cmd_DrawArraysInstancedBaseInstance
 
 void
 _mesa_unmarshal_DrawArraysInstancedBaseInstance(struct gl_context *ctx,
-                                                const struct marshal_cmd_DrawArraysInstancedBaseInstance *cmd)
+                                                const struct marshal_cmd_DrawArraysInstancedBaseInstance *cmd,
+                                                const uint64_t *last)
 {
    /* Ignore the function name. We use DISPATCH_CMD_DrawArrays
     * for all DrawArrays variants without user buffers, and
@@ -423,7 +425,8 @@ struct marshal_cmd_MultiDrawArrays
 
 void
 _mesa_unmarshal_MultiDrawArrays(struct gl_context *ctx,
-                                const struct marshal_cmd_MultiDrawArrays *cmd)
+                                const struct marshal_cmd_MultiDrawArrays *cmd,
+                                const uint64_t *last)
 {
    const GLenum mode = cmd->mode;
    const GLsizei draw_count = cmd->draw_count;
@@ -564,7 +567,8 @@ struct marshal_cmd_DrawElementsInstancedARB
 
 void
 _mesa_unmarshal_DrawElementsInstancedARB(struct gl_context *ctx,
-                                         const struct marshal_cmd_DrawElementsInstancedARB *cmd)
+                                         const struct marshal_cmd_DrawElementsInstancedARB *cmd,
+                                         const uint64_t *last)
 {
    /* Ignore the function name. We use DISPATCH_CMD_DrawElementsInstanced-
     * BaseVertexBaseInstance for all DrawElements variants with user buffers,
@@ -600,7 +604,8 @@ struct marshal_cmd_DrawRangeElementsBaseVertex
 
 void
 _mesa_unmarshal_DrawRangeElementsBaseVertex(struct gl_context *ctx,
-                                            const struct marshal_cmd_DrawRangeElementsBaseVertex *cmd)
+                                            const struct marshal_cmd_DrawRangeElementsBaseVertex *cmd,
+                                            const uint64_t *last)
 {
    const GLenum mode = cmd->mode;
    const GLsizei count = cmd->count;
@@ -667,7 +672,8 @@ struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance
 
 void
 _mesa_unmarshal_DrawElementsInstancedBaseVertexBaseInstance(struct gl_context *ctx,
-                                                            const struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance *cmd)
+                                                            const struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance *cmd,
+                                                            const uint64_t *last)
 {
    /* Ignore the function name. We use DISPATCH_CMD_DrawElementsInstanced-
     * BaseVertexBaseInstance for all DrawElements variants with user buffers,
@@ -873,7 +879,8 @@ struct marshal_cmd_MultiDrawElementsBaseVertex
 
 void
 _mesa_unmarshal_MultiDrawElementsBaseVertex(struct gl_context *ctx,
-                                            const struct marshal_cmd_MultiDrawElementsBaseVertex *cmd)
+                                            const struct marshal_cmd_MultiDrawElementsBaseVertex *cmd,
+                                            const uint64_t *last)
 {
    const GLenum mode = cmd->mode;
    const GLenum type = cmd->type;
@@ -1208,43 +1215,43 @@ _mesa_marshal_MultiDrawElementsEXT(GLenum mode, const GLsizei *count,
 }
 
 void
-_mesa_unmarshal_DrawArraysInstancedARB(struct gl_context *ctx, const struct marshal_cmd_DrawArraysInstancedARB *cmd)
+_mesa_unmarshal_DrawArraysInstancedARB(struct gl_context *ctx, const struct marshal_cmd_DrawArraysInstancedARB *cmd, const uint64_t *last)
 {
    unreachable("never used - DrawArraysInstancedBaseInstance is used instead");
 }
 
 void
-_mesa_unmarshal_DrawElements(struct gl_context *ctx, const struct marshal_cmd_DrawElements *cmd)
+_mesa_unmarshal_DrawElements(struct gl_context *ctx, const struct marshal_cmd_DrawElements *cmd, const uint64_t *last)
 {
    unreachable("never used - DrawElementsInstancedBaseVertexBaseInstance is used instead");
 }
 
 void
-_mesa_unmarshal_DrawRangeElements(struct gl_context *ctx, const struct marshal_cmd_DrawRangeElements *cmd)
+_mesa_unmarshal_DrawRangeElements(struct gl_context *ctx, const struct marshal_cmd_DrawRangeElements *cmd, const uint64_t *last)
 {
    unreachable("never used - DrawElementsInstancedBaseVertexBaseInstance is used instead");
 }
 
 void
-_mesa_unmarshal_DrawElementsBaseVertex(struct gl_context *ctx, const struct marshal_cmd_DrawElementsBaseVertex *cmd)
+_mesa_unmarshal_DrawElementsBaseVertex(struct gl_context *ctx, const struct marshal_cmd_DrawElementsBaseVertex *cmd, const uint64_t *last)
 {
    unreachable("never used - DrawElementsInstancedBaseVertexBaseInstance is used instead");
 }
 
 void
-_mesa_unmarshal_DrawElementsInstancedBaseVertex(struct gl_context *ctx, const struct marshal_cmd_DrawElementsInstancedBaseVertex *cmd)
+_mesa_unmarshal_DrawElementsInstancedBaseVertex(struct gl_context *ctx, const struct marshal_cmd_DrawElementsInstancedBaseVertex *cmd, const uint64_t *last)
 {
    unreachable("never used - DrawElementsInstancedBaseVertexBaseInstance is used instead");
 }
 
 void
-_mesa_unmarshal_DrawElementsInstancedBaseInstance(struct gl_context *ctx, const struct marshal_cmd_DrawElementsInstancedBaseInstance *cmd)
+_mesa_unmarshal_DrawElementsInstancedBaseInstance(struct gl_context *ctx, const struct marshal_cmd_DrawElementsInstancedBaseInstance *cmd, const uint64_t *last)
 {
    unreachable("never used - DrawElementsInstancedBaseVertexBaseInstance is used instead");
 }
 
 void
-_mesa_unmarshal_MultiDrawElementsEXT(struct gl_context *ctx, const struct marshal_cmd_MultiDrawElementsEXT *cmd)
+_mesa_unmarshal_MultiDrawElementsEXT(struct gl_context *ctx, const struct marshal_cmd_MultiDrawElementsEXT *cmd, const uint64_t *last)
 {
    unreachable("never used - MultiDrawElementsBaseVertex is used instead");
 }

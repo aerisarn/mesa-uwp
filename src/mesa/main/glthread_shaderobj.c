@@ -38,7 +38,8 @@ struct marshal_cmd_ShaderSource
 
 void
 _mesa_unmarshal_ShaderSource(struct gl_context *ctx,
-                             const struct marshal_cmd_ShaderSource *cmd)
+                             const struct marshal_cmd_ShaderSource *cmd,
+                             const uint64_t *last)
 {
    const GLint *cmd_length = (const GLint *) (cmd + 1);
    const GLchar *cmd_strings = (const GLchar *) (cmd_length + cmd->count);
@@ -127,7 +128,8 @@ _mesa_glthread_ProgramChanged(struct gl_context *ctx)
 
 void
 _mesa_unmarshal_GetActiveUniform(struct gl_context *ctx,
-                                 const struct marshal_cmd_GetActiveUniform *cmd)
+                                 const struct marshal_cmd_GetActiveUniform *cmd,
+                                 const uint64_t *last)
 {
    unreachable("never executed");
 }

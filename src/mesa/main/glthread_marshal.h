@@ -48,7 +48,7 @@ struct marshal_cmd_base
    uint16_t cmd_size;
 };
 
-typedef void (*_mesa_unmarshal_func)(struct gl_context *ctx, const void *cmd);
+typedef void (*_mesa_unmarshal_func)(struct gl_context *ctx, const void *cmd, const uint64_t *last);
 extern const _mesa_unmarshal_func _mesa_unmarshal_dispatch[NUM_DISPATCH_CMD];
 
 static inline void *
