@@ -1878,9 +1878,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 
    ac_build_wg_scan(&ctx->ac, &vertlive_scan);
 
-   /* Skip all exports (including index exports) when possible. At least on
-    * early gfx10 revisions this is also to avoid hangs.
-    */
+   /* Skip all exports (including index exports) when possible. */
    LLVMValueRef have_exports =
       LLVMBuildICmp(builder, LLVMIntNE, vertlive_scan.result_reduce, ctx->ac.i32_0, "");
    num_emit_threads = LLVMBuildSelect(builder, have_exports, num_emit_threads, ctx->ac.i32_0, "");
