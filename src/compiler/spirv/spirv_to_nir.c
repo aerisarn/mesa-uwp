@@ -34,8 +34,35 @@
 
 #include "util/format/u_format.h"
 #include "util/u_math.h"
+#include "util/u_string.h"
 
 #include <stdio.h>
+
+#ifndef NDEBUG
+static enum nir_spirv_debug_level
+vtn_default_log_level(void)
+{
+   enum nir_spirv_debug_level level = NIR_SPIRV_DEBUG_LEVEL_WARNING;
+   const char *vtn_log_level_strings[] = {
+      [NIR_SPIRV_DEBUG_LEVEL_WARNING] = "warning",
+      [NIR_SPIRV_DEBUG_LEVEL_INFO]  = "info",
+      [NIR_SPIRV_DEBUG_LEVEL_ERROR] = "error",
+   };
+   const char *str = getenv("MESA_SPIRV_LOG_LEVEL");
+
+   if (str == NULL)
+      return NIR_SPIRV_DEBUG_LEVEL_WARNING;
+
+   for (int i = 0; i < ARRAY_SIZE(vtn_log_level_strings); i++) {
+      if (strcasecmp(str, vtn_log_level_strings[i]) == 0) {
+         level = i;
+         break;
+      }
+   }
+
+   return level;
+}
+#endif
 
 void
 vtn_log(struct vtn_builder *b, enum nir_spirv_debug_level level,
@@ -47,7 +74,13 @@ vtn_log(struct vtn_builder *b, enum nir_spirv_debug_level level,
    }
 
 #ifndef NDEBUG
-   if (level >= NIR_SPIRV_DEBUG_LEVEL_WARNING)
+   static enum nir_spirv_debug_level default_level =
+      NIR_SPIRV_DEBUG_LEVEL_INVALID;
+
+   if (default_level == NIR_SPIRV_DEBUG_LEVEL_INVALID)
+      default_level = vtn_default_log_level();
+
+   if (level >= default_level)
       fprintf(stderr, "%s\n", message);
 #endif
 }
