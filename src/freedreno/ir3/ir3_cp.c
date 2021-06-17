@@ -531,12 +531,6 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 		}
 	} while (progress);
 
-	if (instr->regs[0]->flags & IR3_REG_ARRAY) {
-		struct ir3_instruction *src = ssa(instr->regs[0]);
-		if (src)
-			instr_cp(ctx, src);
-	}
-
 	if (instr->address) {
 		instr_cp(ctx, instr->address);
 		ir3_instr_set_address(instr, eliminate_output_mov(ctx, instr->address));

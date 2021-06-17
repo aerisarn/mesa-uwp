@@ -387,8 +387,12 @@ unsigned ir3_block_get_pred_index(struct ir3_block *block, struct ir3_block *pre
 	unreachable("ir3_block_get_pred_index() invalid predecessor");
 }
 
-static struct ir3_instruction *instr_create(struct ir3_block *block, int nreg)
+static struct ir3_instruction *instr_create(struct ir3_block *block,
+		opc_t opc, int nreg)
 {
+	/* Add an extra source for array destinations */
+	if (1 <= opc_cat(opc))
+		nreg++;
 	struct ir3_instruction *instr;
 	unsigned sz = sizeof(*instr) + (nreg * sizeof(instr->regs[0]));
 	char *ptr = ir3_alloc(block->shader, sz);
@@ -407,7 +411,7 @@ static struct ir3_instruction *instr_create(struct ir3_block *block, int nreg)
 struct ir3_instruction * ir3_instr_create(struct ir3_block *block,
 		opc_t opc, int nreg)
 {
-	struct ir3_instruction *instr = instr_create(block, nreg);
+	struct ir3_instruction *instr = instr_create(block, opc, nreg);
 	instr->block = block;
 	instr->opc = opc;
 	insert_instr(block, instr);
@@ -416,7 +420,7 @@ struct ir3_instruction * ir3_instr_create(struct ir3_block *block,
 
 struct ir3_instruction * ir3_instr_clone(struct ir3_instruction *instr)
 {
-	struct ir3_instruction *new_instr = instr_create(instr->block,
+	struct ir3_instruction *new_instr = instr_create(instr->block, instr->opc,
 			instr->regs_count);
 	struct ir3_register **regs;
 	unsigned i;
@@ -468,6 +472,20 @@ struct ir3_register * ir3_reg_clone(struct ir3 *shader,
 	struct ir3_register *new_reg = reg_create(shader, 0, 0);
 	*new_reg = *reg;
 	return new_reg;
+}
+
+
+void ir3_reg_set_last_array(struct ir3_instruction *instr,
+							struct ir3_register *reg,
+							struct ir3_register *last_write)
+{
+	assert(reg->flags & IR3_REG_ARRAY);
+	assert(reg->flags & IR3_REG_DEST);
+	struct ir3_register *new_reg = ir3_reg_create(instr, 0, 0);
+	*new_reg = *reg;
+	new_reg->flags &= ~IR3_REG_DEST;
+	new_reg->def = last_write;
+	ir3_reg_tie(reg, new_reg);
 }
 
 void

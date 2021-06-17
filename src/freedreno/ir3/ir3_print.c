@@ -222,13 +222,8 @@ static void print_reg_name(struct log_stream *stream, struct ir3_instruction *in
 			print_ssa_name(stream, reg, reg->flags & IR3_REG_DEST);
 			mesa_log_stream_printf(stream, ":");
 		}
-		mesa_log_stream_printf(stream, SYN_ARRAY("arr[id=%u, offset=%d, size=%u"), reg->array.id,
+		mesa_log_stream_printf(stream, SYN_ARRAY("arr[id=%u, offset=%d, size=%u]"), reg->array.id,
 				reg->array.offset, reg->size);
-		if (reg->flags & IR3_REG_DEST) {
-			mesa_log_stream_printf(stream, SYN_ARRAY(", "));
-			print_ssa_name(stream, reg, false);
-		}
-		mesa_log_stream_printf(stream, SYN_ARRAY("]"));
 		if (reg->array.base != INVALID_REG)
 			mesa_log_stream_printf(stream, "("SYN_REG("r%u.%c")")", reg->array.base >> 2,
 				   "xyzw"[reg->array.base & 0x3]);

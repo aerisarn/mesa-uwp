@@ -611,9 +611,14 @@ struct ir3_register * ir3_reg_clone(struct ir3 *shader,
 
 static inline void ir3_reg_tie(struct ir3_register *dst, struct ir3_register *src)
 {
+	assert(!dst->tied && !src->tied);
 	dst->tied = src;
 	src->tied = dst;
 }
+
+void ir3_reg_set_last_array(struct ir3_instruction *instr,
+							struct ir3_register *reg,
+							struct ir3_register *last_write);
 
 void ir3_instr_set_address(struct ir3_instruction *instr,
 		struct ir3_instruction *addr);

@@ -1136,8 +1136,6 @@ assign_src(struct ra_ctx *ctx, struct ir3_instruction *instr, struct ir3_registe
 	struct ra_interval *interval = &ctx->intervals[src->def->name];
 	struct ra_file *file = ra_get_file(ctx, src);
 
-	bool array_rmw = ra_reg_is_array_rmw(src);
-
 	struct ir3_register *tied = src->tied;
 	physreg_t physreg;
 	if (tied) {
@@ -1151,15 +1149,6 @@ assign_src(struct ra_ctx *ctx, struct ir3_instruction *instr, struct ir3_registe
 
 	if (src->flags & IR3_REG_FIRST_KILL)
 		ra_file_remove(file, interval);
-
-	/* This source is also a destination. */
-	if (array_rmw) {
-		struct ra_interval *dst_interval = &ctx->intervals[src->name];
-		ra_interval_init(dst_interval, src);
-		dst_interval->physreg_start = physreg;
-		dst_interval->physreg_end = physreg + src->size * reg_elem_size(src);
-		ra_file_insert(file, dst_interval);
-	}
 }
 
 /* Insert a parallel copy instruction before the instruction with the parallel
@@ -1209,8 +1198,6 @@ handle_normal_instr(struct ra_ctx *ctx, struct ir3_instruction *instr)
 
 	/* Allocate the destination. */
 	ra_foreach_dst(dst, instr) {
-		if (ra_reg_is_array_rmw(dst))
-			continue;
 		allocate_dst(ctx, dst);
 	}
 
@@ -1224,8 +1211,6 @@ handle_normal_instr(struct ra_ctx *ctx, struct ir3_instruction *instr)
 
 	/* Now finally insert the destination into the map. */
 	ra_foreach_dst(dst, instr) {
-		if (ra_reg_is_array_rmw(dst))
-			continue;
 		insert_dst(ctx, dst);
 	}
 

@@ -588,7 +588,8 @@ ir3_create_array_load(struct ir3_context *ctx, struct ir3_array *arr, int n,
 	__ssa_dst(mov)->flags |= flags;
 	src = ir3_reg_create(mov, 0, IR3_REG_ARRAY |
 			COND(address, IR3_REG_RELATIV) | flags);
-	src->def = arr->last_write;
+	src->def = (arr->last_write && arr->last_write->instr->block == block) ?
+		arr->last_write : NULL;
 	src->size  = arr->length;
 	src->array.id = arr->id;
 	src->array.offset = n;
@@ -623,11 +624,13 @@ ir3_create_array_store(struct ir3_context *ctx, struct ir3_array *arr, int n,
 		src->barrier_conflict |= IR3_BARRIER_ARRAY_R | IR3_BARRIER_ARRAY_W;
 
 		dst->flags |= IR3_REG_ARRAY;
-		dst->def = arr->last_write;
 		dst->size = arr->length;
 		dst->array.id = arr->id;
 		dst->array.offset = n;
 		dst->array.base = INVALID_REG;
+
+		if (arr->last_write && arr->last_write->instr->block == src->block)
+			ir3_reg_set_last_array(src, dst, arr->last_write);
 
 		arr->last_write = dst;
 
@@ -650,13 +653,15 @@ ir3_create_array_store(struct ir3_context *ctx, struct ir3_array *arr, int n,
 	dst = ir3_reg_create(mov, 0, IR3_REG_DEST | IR3_REG_SSA | IR3_REG_ARRAY |
 			flags |
 			COND(address, IR3_REG_RELATIV));
-	dst->def = arr->last_write;
 	dst->instr = mov;
 	dst->size  = arr->length;
 	dst->array.id = arr->id;
 	dst->array.offset = n;
 	dst->array.base = INVALID_REG;
 	ir3_reg_create(mov, 0, IR3_REG_SSA | flags)->def = src->regs[0];
+
+	if (arr->last_write && arr->last_write->instr->block == block)
+		ir3_reg_set_last_array(mov, dst, arr->last_write);
 
 	if (address)
 		ir3_instr_set_address(mov, address);

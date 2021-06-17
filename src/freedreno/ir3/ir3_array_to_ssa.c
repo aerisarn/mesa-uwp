@@ -240,8 +240,8 @@ ir3_array_to_ssa(struct ir3 *ir)
 			for (unsigned i = 0; i < instr->regs_count; i++) {
 				struct ir3_register *reg = instr->regs[i];
 				if ((reg->flags & IR3_REG_ARRAY) &&
-					 (!reg->def || reg->def->instr->block != block)) {
-					reg->def = NULL;
+					(((reg->flags & IR3_REG_DEST) && !reg->tied) ||
+					 (!(reg->flags & IR3_REG_DEST) && !reg->def))) {
 					struct ir3_array *arr = ir3_lookup_array(ir, reg->array.id);
 
 					/* Construct any phi nodes necessary to read this value */
@@ -276,15 +276,18 @@ ir3_array_to_ssa(struct ir3 *ir)
 				for (unsigned i = 0; i < instr->regs_count; i++) {
 					struct ir3_register *reg = instr->regs[i];
 					if ((reg->flags & IR3_REG_ARRAY)) {
-						if (!reg->def) {
-							/* It is assumed that before calling
-							 * ir3_array_to_ssa(), reg->def was set to the
-							 * previous writer of the array within the current
-							 * block (if any).  The reg->def of the first write
-							 * to an array within a block was cleared in the
-							 * loop calling read_value_beginning() above.
-							 */
+						/* It is assumed that before calling
+						 * ir3_array_to_ssa(), reg->def was set to the
+						 * previous writer of the array within the current
+						 * block or NULL if none.
+						 */
+						if (!(reg->flags & IR3_REG_DEST) && !reg->def) {
 							reg->def = lookup_live_in(&ctx, block, reg->array.id);
+						} else if ((reg->flags & IR3_REG_DEST) && !reg->tied) {
+							struct ir3_register *def =
+								lookup_live_in(&ctx, block, reg->array.id);
+							if (def)
+								ir3_reg_set_last_array(instr, reg, def);
 						}
 						reg->flags |= IR3_REG_SSA;
 					}

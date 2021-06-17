@@ -91,16 +91,6 @@ ra_reg_is_src(const struct ir3_register *reg)
 		def_is_gpr(reg->def);
 }
 
-/* Array destinations can act as a source, reading the previous array and then
- * modifying it. Return true when the register is an array destination that
- * acts like a source.
- */
-static inline bool
-ra_reg_is_array_rmw(const struct ir3_register *reg)
-{
-	return ((reg->flags & IR3_REG_ARRAY) && (reg->flags & IR3_REG_DEST) && reg->def);
-}
-
 static inline bool
 ra_reg_is_dst(const struct ir3_register *reg)
 {
