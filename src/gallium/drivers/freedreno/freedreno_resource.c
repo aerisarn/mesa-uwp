@@ -610,6 +610,7 @@ static void
 fd_blit_from_staging(struct fd_context *ctx,
                      struct fd_transfer *trans) assert_dt
 {
+   DBG("");
    struct pipe_resource *dst = trans->b.b.resource;
    struct pipe_blit_info blit = {};
 
@@ -630,6 +631,7 @@ fd_blit_from_staging(struct fd_context *ctx,
 static void
 fd_blit_to_staging(struct fd_context *ctx, struct fd_transfer *trans) assert_dt
 {
+   DBG("");
    struct pipe_resource *src = trans->b.b.resource;
    struct pipe_blit_info blit = {};
 

@@ -322,6 +322,12 @@ fd_resource_tile_mode(struct pipe_resource *prsc, int level)
    return fdl_tile_mode(&fd_resource(prsc)->layout, level);
 }
 
+static inline const char *
+fd_resource_tile_mode_desc(const struct fd_resource *rsc, int level)
+{
+   return fdl_tile_mode_desc(&rsc->layout, level);
+}
+
 static inline bool
 fd_resource_ubwc_enabled(struct fd_resource *rsc, int level)
 {

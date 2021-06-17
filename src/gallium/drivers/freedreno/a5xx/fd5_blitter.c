@@ -443,6 +443,8 @@ fd5_blitter_blit(struct fd_context *ctx,
 
    batch = fd_bc_alloc_batch(ctx, true);
 
+   DBG_BLIT(info, batch);
+
    fd_batch_update_queries(batch);
 
    emit_setup(batch->draw);

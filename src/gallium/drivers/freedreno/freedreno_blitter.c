@@ -152,6 +152,8 @@ fd_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
          info->dst.box.depth);
    }
 
+   DBG_BLIT(info, NULL);
+
    fd_blitter_pipe_begin(ctx, info->render_condition_enable, discard);
 
    /* Initialize the surface. */
