@@ -1374,7 +1374,7 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
                                     struct v3dv_image *dst,
                                     struct v3dv_image *src,
                                     uint32_t layer_offset,
-                                    const VkImageCopy *region)
+                                    const VkImageCopy2KHR *region)
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
@@ -1432,7 +1432,7 @@ emit_copy_image_layer(struct v3dv_job *job,
                       struct v3dv_image *src,
                       struct framebuffer_data *framebuffer,
                       uint32_t layer,
-                      const VkImageCopy *region)
+                      const VkImageCopy2KHR *region)
 {
    emit_frame_setup(job, layer, NULL);
    emit_copy_image_layer_per_tile_list(job, framebuffer, dst, src, layer, region);
@@ -1444,7 +1444,7 @@ emit_copy_image_rcl(struct v3dv_job *job,
                     struct v3dv_image *dst,
                     struct v3dv_image *src,
                     struct framebuffer_data *framebuffer,
-                    const VkImageCopy *region)
+                    const VkImageCopy2KHR *region)
 {
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
@@ -1565,7 +1565,7 @@ static bool
 copy_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
                struct v3dv_image *dst,
                struct v3dv_image *src,
-               const VkImageCopy *region)
+               const VkImageCopy2KHR *region)
 {
    /* Destination can't be raster format */
    if (dst->tiling == VK_IMAGE_TILING_LINEAR)
@@ -1674,7 +1674,7 @@ static bool
 copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                struct v3dv_image *dst,
                struct v3dv_image *src,
-               const VkImageCopy *region)
+               const VkImageCopy2KHR *region)
 {
    VkFormat fb_format;
    if (!can_use_tlb(src, &region->srcOffset, &fb_format) ||
@@ -1799,7 +1799,7 @@ static bool
 copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_image *dst,
                 struct v3dv_image *src,
-                const VkImageCopy *region)
+                const VkImageCopy2KHR *region)
 {
    const uint32_t src_block_w = vk_format_get_blockwidth(src->vk_format);
    const uint32_t src_block_h = vk_format_get_blockheight(src->vk_format);
@@ -1938,26 +1938,22 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdCopyImage(VkCommandBuffer commandBuffer,
-                  VkImage srcImage,
-                  VkImageLayout srcImageLayout,
-                  VkImage dstImage,
-                  VkImageLayout dstImageLayout,
-                  uint32_t regionCount,
-                  const VkImageCopy *pRegions)
+v3dv_CmdCopyImage2KHR(VkCommandBuffer commandBuffer,
+                      const VkCopyImageInfo2KHR *info)
+
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
-   V3DV_FROM_HANDLE(v3dv_image, src, srcImage);
-   V3DV_FROM_HANDLE(v3dv_image, dst, dstImage);
+   V3DV_FROM_HANDLE(v3dv_image, src, info->srcImage);
+   V3DV_FROM_HANDLE(v3dv_image, dst, info->dstImage);
 
    assert(src->samples == dst->samples);
 
-   for (uint32_t i = 0; i < regionCount; i++) {
-      if (copy_image_tfu(cmd_buffer, dst, src, &pRegions[i]))
+   for (uint32_t i = 0; i < info->regionCount; i++) {
+      if (copy_image_tfu(cmd_buffer, dst, src, &info->pRegions[i]))
          continue;
-      if (copy_image_tlb(cmd_buffer, dst, src, &pRegions[i]))
+      if (copy_image_tlb(cmd_buffer, dst, src, &info->pRegions[i]))
          continue;
-      if (copy_image_blit(cmd_buffer, dst, src, &pRegions[i]))
+      if (copy_image_blit(cmd_buffer, dst, src, &info->pRegions[i]))
          continue;
       unreachable("Image copy not supported");
    }
