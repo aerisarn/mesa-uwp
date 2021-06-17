@@ -77,8 +77,7 @@ default_src_texture(struct pipe_sampler_view *src_templ,
 }
 
 static void
-fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond,
-                      bool discard) assert_dt
+fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond) assert_dt
 {
    util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->vtx.vertexbuf.vb);
    util_blitter_save_vertex_elements(ctx->blitter, ctx->vtx.vtx);
@@ -109,25 +108,29 @@ fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond,
 
    if (ctx->batch)
       fd_batch_update_queries(ctx->batch);
-
-   ctx->in_discard_blit = discard;
 }
 
 static void
 fd_blitter_pipe_end(struct fd_context *ctx) assert_dt
 {
-   ctx->in_discard_blit = false;
 }
 
 bool
 fd_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 {
+   struct pipe_context *pctx = &ctx->base;
    struct pipe_resource *dst = info->dst.resource;
    struct pipe_resource *src = info->src.resource;
    struct pipe_context *pipe = &ctx->base;
    struct pipe_surface *dst_view, dst_templ;
    struct pipe_sampler_view src_templ, *src_view;
-   bool discard = false;
+
+   /* If the blit is updating the whole contents of the resource,
+    * invalidate it so we don't trigger any unnecessary tile loads in the 3D
+    * path.
+    */
+   if (util_blit_covers_whole_resource(info))
+      pctx->invalidate_resource(pctx, info->dst.resource);
 
    /* The blit format may not match the resource format in this path, so
     * we need to validate that we can use the src/dst resource with the
@@ -145,16 +148,9 @@ fd_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
    if (src == dst)
       pipe->flush(pipe, NULL, 0);
 
-   if (!info->scissor_enable && !info->alpha_blend) {
-      discard = util_texrange_covers_whole_level(
-         info->dst.resource, info->dst.level, info->dst.box.x, info->dst.box.y,
-         info->dst.box.z, info->dst.box.width, info->dst.box.height,
-         info->dst.box.depth);
-   }
-
    DBG_BLIT(info, NULL);
 
-   fd_blitter_pipe_begin(ctx, info->render_condition_enable, discard);
+   fd_blitter_pipe_begin(ctx, info->render_condition_enable);
 
    /* Initialize the surface. */
    default_dst_texture(&dst_templ, dst, info->dst.level, info->dst.box.z);
@@ -177,6 +173,12 @@ fd_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
    fd_blitter_pipe_end(ctx);
 
+   /* While this shouldn't technically be necessary, it is required for
+    * dEQP-GLES31.functional.stencil_texturing.format.stencil_index8_cube and
+    * 2d_array to pass.
+    */
+   fd_bc_flush_writer(ctx, fd_resource(info->dst.resource));
+
    /* The fallback blitter must never fail: */
    return true;
 }
@@ -194,7 +196,7 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
    /* Note: don't use discard=true, if there was something to
     * discard, that would have been already handled in fd_clear().
     */
-   fd_blitter_pipe_begin(ctx, false, false);
+   fd_blitter_pipe_begin(ctx, false);
 
    util_blitter_save_fragment_constant_buffer_slot(
       ctx->blitter, ctx->constbuf[PIPE_SHADER_FRAGMENT].cb);
@@ -330,8 +332,8 @@ fd_blitter_pipe_copy_region(struct fd_context *ctx, struct pipe_resource *dst,
       pctx->flush(pctx, NULL, 0);
    }
 
-   /* TODO we could discard if dst box covers dst level fully.. */
-   fd_blitter_pipe_begin(ctx, false, false);
+   /* TODO we could invalidate if dst box covers dst level fully. */
+   fd_blitter_pipe_begin(ctx, false);
    util_blitter_copy_texture(ctx->blitter, dst, dst_level, dstx, dsty, dstz,
                              src, src_level, src_box);
    fd_blitter_pipe_end(ctx);

@@ -287,15 +287,6 @@ fd_set_framebuffer_state(struct pipe_context *pctx,
       fd_context_all_dirty(ctx);
       ctx->update_active_queries = true;
 
-      if (old_batch && old_batch->blit && !old_batch->back_blit) {
-         /* for blits, there is not really much point in hanging on
-          * to the uncommitted batch (ie. you probably don't blit
-          * multiple times to the same surface), so we might as
-          * well go ahead and flush this one:
-          */
-         fd_batch_flush(old_batch);
-      }
-
       fd_batch_reference(&old_batch, NULL);
    } else if (ctx->batch) {
       DBG("%d: cbufs[0]=%p, zsbuf=%p", ctx->batch->needs_flush,
