@@ -232,6 +232,7 @@ struct zink_context {
    unsigned dirty_shader_stages : 6; /* mask of changed shader stages */
    bool last_vertex_stage_dirty;
 
+   struct set render_pass_state_cache;
    struct hash_table *render_pass_cache;
    bool new_swapchain;
    bool fb_changed;

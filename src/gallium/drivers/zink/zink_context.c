@@ -1496,6 +1496,26 @@ zink_update_fbfetch(struct zink_context *ctx)
       zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, PIPE_SHADER_FRAGMENT, ZINK_DESCRIPTOR_TYPE_UBO, 0, 1);
 }
 
+static size_t
+rp_state_size(const struct zink_render_pass_pipeline_state *pstate)
+{
+   return offsetof(struct zink_render_pass_pipeline_state, attachments) +
+                   sizeof(pstate->attachments[0]) * pstate->num_attachments;
+}
+
+static uint32_t
+hash_rp_state(const void *key)
+{
+   const struct zink_render_pass_pipeline_state *s = key;
+   return _mesa_hash_data(key, rp_state_size(s));
+}
+
+static bool
+equals_rp_state(const void *a, const void *b)
+{
+   return !memcmp(a, b, rp_state_size(a));
+}
+
 static uint32_t
 hash_render_pass_state(const void *key)
 {
@@ -1574,9 +1594,17 @@ get_render_pass(struct zink_context *ctx)
       rp = entry->data;
       assert(rp->state.clears == clears);
    } else {
-      rp = zink_create_render_pass(screen, &state);
+      struct zink_render_pass_pipeline_state pstate;
+      rp = zink_create_render_pass(screen, &state, &pstate);
       if (!_mesa_hash_table_insert_pre_hashed(ctx->render_pass_cache, hash, &rp->state, rp))
          return NULL;
+      bool found = false;
+      struct set_entry *entry = _mesa_set_search_or_add(&ctx->render_pass_state_cache, &pstate, &found);
+      if (!found) {
+         entry->key = ralloc(ctx, struct zink_render_pass_pipeline_state);
+         memcpy((void*)entry->key, &pstate, rp_state_size(&pstate));
+      }
+      rp->pipeline_state = (void*)entry->key;
    }
    return rp;
 }
@@ -3589,6 +3617,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       goto fail;
 
    _mesa_hash_table_init(&ctx->compute_program_cache, ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   _mesa_set_init(&ctx->render_pass_state_cache, ctx, hash_rp_state, equals_rp_state);
    ctx->render_pass_cache = _mesa_hash_table_create(NULL,
                                                     hash_render_pass_state,
                                                     equals_render_pass_state);

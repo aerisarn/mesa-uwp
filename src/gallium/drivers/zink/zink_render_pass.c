@@ -29,7 +29,7 @@
 #include "util/u_string.h"
 
 static VkRenderPass
-create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
+create_render_pass(VkDevice dev, struct zink_render_pass_state *state, struct zink_render_pass_pipeline_state *pstate)
 {
 
    VkAttachmentReference color_refs[PIPE_MAX_COLOR_BUFS], zs_ref;
@@ -39,11 +39,12 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
    VkAccessFlags dep_access = 0;
    unsigned input_count = 0;
 
+   pstate->num_attachments = state->num_cbufs;
    for (int i = 0; i < state->num_cbufs; i++) {
       struct zink_rt_attrib *rt = state->rts + i;
       attachments[i].flags = 0;
-      attachments[i].format = rt->format;
-      attachments[i].samples = rt->samples;
+      pstate->attachments[i].format = attachments[i].format = rt->format;
+      pstate->attachments[i].samples = attachments[i].samples = rt->samples;
       attachments[i].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR :
                                                 state->swapchain_init && rt->swapchain ?
                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE :
@@ -72,8 +73,8 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       VkImageLayout write_layout = rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
       VkImageLayout layout = rt->needs_write || has_clear ? write_layout : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
       attachments[num_attachments].flags = 0;
-      attachments[num_attachments].format = rt->format;
-      attachments[num_attachments].samples = rt->samples;
+      pstate->attachments[num_attachments].format = attachments[num_attachments].format = rt->format;
+      pstate->attachments[num_attachments].samples = attachments[num_attachments].samples = rt->samples;
       attachments[num_attachments].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[num_attachments].stencilLoadOp = rt->clear_stencil ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -91,6 +92,7 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
 
       zs_ref.attachment = num_attachments++;
       zs_ref.layout = layout;
+      pstate->num_attachments++;
    }
 
    VkSubpassDependency deps[] = {
@@ -126,13 +128,14 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
 
 struct zink_render_pass *
 zink_create_render_pass(struct zink_screen *screen,
-                        struct zink_render_pass_state *state)
+                        struct zink_render_pass_state *state,
+                        struct zink_render_pass_pipeline_state *pstate)
 {
    struct zink_render_pass *rp = CALLOC_STRUCT(zink_render_pass);
    if (!rp)
       goto fail;
 
-   rp->render_pass = create_render_pass(screen->dev, state);
+   rp->render_pass = create_render_pass(screen->dev, state, pstate);
    if (!rp->render_pass)
       goto fail;
    memcpy(&rp->state, state, sizeof(struct zink_render_pass_state));
