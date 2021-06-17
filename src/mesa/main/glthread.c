@@ -62,8 +62,7 @@ glthread_unmarshal_batch(void *job, void *gdata, int thread_index)
       const struct marshal_cmd_base *cmd =
          (const struct marshal_cmd_base *)&buffer[pos];
 
-      _mesa_unmarshal_dispatch[cmd->cmd_id](ctx, cmd, last);
-      pos += cmd->cmd_size;
+      pos += _mesa_unmarshal_dispatch[cmd->cmd_id](ctx, cmd, last);
    }
 
    ctx->TexturesLocked = false;

@@ -36,7 +36,7 @@ struct marshal_cmd_ShaderSource
 };
 
 
-void
+uint32_t
 _mesa_unmarshal_ShaderSource(struct gl_context *ctx,
                              const struct marshal_cmd_ShaderSource *cmd,
                              const uint64_t *last)
@@ -54,6 +54,7 @@ _mesa_unmarshal_ShaderSource(struct gl_context *ctx,
    CALL_ShaderSource(ctx->CurrentServerDispatch,
                      (cmd->shader, cmd->count, string, cmd_length));
    free((void *)string);
+   return cmd->cmd_base.cmd_size;
 }
 
 
@@ -126,12 +127,13 @@ _mesa_glthread_ProgramChanged(struct gl_context *ctx)
    _mesa_glthread_flush_batch(ctx);
 }
 
-void
+uint32_t
 _mesa_unmarshal_GetActiveUniform(struct gl_context *ctx,
                                  const struct marshal_cmd_GetActiveUniform *cmd,
                                  const uint64_t *last)
 {
    unreachable("never executed");
+   return 0;
 }
 
 void GLAPIENTRY
