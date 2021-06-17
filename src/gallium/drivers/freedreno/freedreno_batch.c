@@ -315,6 +315,7 @@ __fd_batch_destroy(struct fd_batch *batch)
 
    simple_mtx_destroy(&batch->submit_lock);
 
+   free(batch->key);
    free(batch);
    fd_screen_lock(ctx->screen);
 }

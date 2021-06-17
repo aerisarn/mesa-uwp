@@ -239,7 +239,7 @@ fd_bc_invalidate_batch(struct fd_batch *batch, bool remove)
       return;
 
    struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
-   struct fd_batch_key *key = (struct fd_batch_key *)batch->key;
+   struct fd_batch_key *key = batch->key;
 
    fd_screen_assert_locked(batch->ctx->screen);
 
@@ -260,9 +260,6 @@ fd_bc_invalidate_batch(struct fd_batch *batch, bool remove)
    struct hash_entry *entry =
       _mesa_hash_table_search_pre_hashed(cache->ht, batch->hash, key);
    _mesa_hash_table_remove(cache->ht, entry);
-
-   batch->key = NULL;
-   free(key);
 }
 
 void

@@ -252,7 +252,7 @@ struct fd_batch {
    struct set *resources;
 
    /** key in batch-cache (if not null): */
-   const struct fd_batch_key *key;
+   struct fd_batch_key *key;
    uint32_t hash;
 
    /** set of dependent batches.. holds refs to dependent batches: */
