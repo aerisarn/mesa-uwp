@@ -371,11 +371,29 @@ submit_queue(void *data, void *gdata, int thread_index)
       si.pNext = &mem_signal;
    }
 
+   if (vkEndCommandBuffer(bs->cmdbuf) != VK_SUCCESS) {
+      debug_printf("vkEndCommandBuffer failed\n");
+      bs->is_device_lost = true;
+      goto end;
+   }
+   if (vkEndCommandBuffer(bs->barrier_cmdbuf) != VK_SUCCESS) {
+      debug_printf("vkEndCommandBuffer failed\n");
+      bs->is_device_lost = true;
+      goto end;
+   }
+
+   while (util_dynarray_contains(&bs->persistent_resources, struct zink_resource_object*)) {
+      struct zink_resource_object *obj = util_dynarray_pop(&bs->persistent_resources, struct zink_resource_object*);
+       VkMappedMemoryRange range = zink_resource_init_mem_range(screen, obj, 0, obj->size);
+       vkFlushMappedMemoryRanges(screen->dev, 1, &range);
+   }
+
    if (vkQueueSubmit(bs->queue, 1, &si, bs->fence.fence) != VK_SUCCESS) {
       debug_printf("ZINK: vkQueueSubmit() failed\n");
       bs->is_device_lost = true;
    }
    bs->submit_count++;
+end:
    cnd_broadcast(&bs->usage.flush);
 
    p_atomic_set(&bs->fence.submitted, true);
@@ -527,28 +545,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 
    tc_driver_internal_flush_notify(ctx->tc);
 
-   if (vkEndCommandBuffer(batch->state->cmdbuf) != VK_SUCCESS) {
-      debug_printf("vkEndCommandBuffer failed\n");
-      return;
-   }
-   if (vkEndCommandBuffer(batch->state->barrier_cmdbuf) != VK_SUCCESS) {
-      debug_printf("vkEndCommandBuffer failed\n");
-      return;
-   }
-
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   while (util_dynarray_contains(&batch->state->persistent_resources, struct zink_resource_object*)) {
-      struct zink_resource_object *obj = util_dynarray_pop(&batch->state->persistent_resources, struct zink_resource_object*);
-       assert(!obj->offset);
-       VkMappedMemoryRange range = {
-          VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-          NULL,
-          obj->mem,
-          obj->offset,
-          VK_WHOLE_SIZE,
-       };
-       vkFlushMappedMemoryRanges(screen->dev, 1, &range);
-   }
 
    ctx->resource_size += batch->state->resource_size;
    ctx->last_fence = &batch->state->fence;
