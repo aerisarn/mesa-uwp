@@ -763,7 +763,7 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
                                         struct v3dv_buffer *buffer,
                                         struct v3dv_image *image,
                                         uint32_t layer_offset,
-                                        const VkBufferImageCopy *region)
+                                        const VkBufferImageCopy2KHR *region)
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
@@ -843,7 +843,7 @@ emit_copy_layer_to_buffer(struct v3dv_job *job,
                           struct v3dv_image *image,
                           struct framebuffer_data *framebuffer,
                           uint32_t layer,
-                          const VkBufferImageCopy *region)
+                          const VkBufferImageCopy2KHR *region)
 {
    emit_frame_setup(job, layer, NULL);
    emit_copy_layer_to_buffer_per_tile_list(job, framebuffer, buffer,
@@ -856,7 +856,7 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
                               struct v3dv_buffer *buffer,
                               struct v3dv_image *image,
                               struct framebuffer_data *framebuffer,
-                              const VkBufferImageCopy *region)
+                              const VkBufferImageCopy2KHR *region)
 {
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
@@ -880,7 +880,7 @@ static bool
 copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_buffer *buffer,
                          struct v3dv_image *image,
-                         const VkBufferImageCopy *region)
+                         const VkBufferImageCopy2KHR *region)
 {
    VkFormat fb_format;
    if (!can_use_tlb(image, &region->imageOffset, &fb_format))
@@ -943,7 +943,7 @@ static bool
 copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
                           struct v3dv_buffer *buffer,
                           struct v3dv_image *image,
-                          const VkBufferImageCopy *region)
+                          const VkBufferImageCopy2KHR *region)
 {
    bool handled = false;
 
@@ -1349,23 +1349,20 @@ can_use_tlb(struct v3dv_image *image,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
-                          VkImage srcImage,
-                          VkImageLayout srcImageLayout,
-                          VkBuffer destBuffer,
-                          uint32_t regionCount,
-                          const VkBufferImageCopy *pRegions)
+v3dv_CmdCopyImageToBuffer2KHR(VkCommandBuffer commandBuffer,
+                              const VkCopyImageToBufferInfo2KHR *info)
+
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
-   V3DV_FROM_HANDLE(v3dv_image, image, srcImage);
-   V3DV_FROM_HANDLE(v3dv_buffer, buffer, destBuffer);
+   V3DV_FROM_HANDLE(v3dv_image, image, info->srcImage);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, info->dstBuffer);
 
    assert(image->samples == VK_SAMPLE_COUNT_1_BIT);
 
-   for (uint32_t i = 0; i < regionCount; i++) {
-      if (copy_image_to_buffer_tlb(cmd_buffer, buffer, image, &pRegions[i]))
+   for (uint32_t i = 0; i < info->regionCount; i++) {
+      if (copy_image_to_buffer_tlb(cmd_buffer, buffer, image, &info->pRegions[i]))
          continue;
-      if (copy_image_to_buffer_blit(cmd_buffer, buffer, image, &pRegions[i]))
+      if (copy_image_to_buffer_blit(cmd_buffer, buffer, image, &info->pRegions[i]))
          continue;
       unreachable("Unsupported image to buffer copy.");
    }
@@ -2599,7 +2596,7 @@ static bool
 copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_image *image,
                          struct v3dv_buffer *buffer,
-                         const VkBufferImageCopy *region)
+                         const VkBufferImageCopy2KHR *region)
 {
    assert(image->samples == VK_SAMPLE_COUNT_1_BIT);
 
@@ -2726,7 +2723,7 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
                                         struct v3dv_image *image,
                                         struct v3dv_buffer *buffer,
                                         uint32_t layer,
-                                        const VkBufferImageCopy *region)
+                                        const VkBufferImageCopy2KHR *region)
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
@@ -2831,7 +2828,7 @@ emit_copy_buffer_to_layer(struct v3dv_job *job,
                           struct v3dv_buffer *buffer,
                           struct framebuffer_data *framebuffer,
                           uint32_t layer,
-                          const VkBufferImageCopy *region)
+                          const VkBufferImageCopy2KHR *region)
 {
    emit_frame_setup(job, layer, NULL);
    emit_copy_buffer_to_layer_per_tile_list(job, framebuffer, image, buffer,
@@ -2844,7 +2841,7 @@ emit_copy_buffer_to_image_rcl(struct v3dv_job *job,
                               struct v3dv_image *image,
                               struct v3dv_buffer *buffer,
                               struct framebuffer_data *framebuffer,
-                              const VkBufferImageCopy *region)
+                              const VkBufferImageCopy2KHR *region)
 {
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
@@ -2862,7 +2859,7 @@ static bool
 copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_image *image,
                          struct v3dv_buffer *buffer,
-                         const VkBufferImageCopy *region)
+                         const VkBufferImageCopy2KHR *region)
 {
    VkFormat fb_format;
    if (!can_use_tlb(image, &region->imageOffset, &fb_format))
@@ -2909,7 +2906,7 @@ static bool
 create_tiled_image_from_buffer(struct v3dv_cmd_buffer *cmd_buffer,
                                struct v3dv_image *image,
                                struct v3dv_buffer *buffer,
-                               const VkBufferImageCopy *region)
+                               const VkBufferImageCopy2KHR *region)
 {
    if (copy_buffer_to_image_tfu(cmd_buffer, image, buffer, region))
       return true;
@@ -3323,7 +3320,7 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
                          VkColorComponentFlags cmask,
                          VkComponentMapping *cswizzle,
                          uint32_t region_count,
-                         const VkBufferImageCopy *regions)
+                         const VkBufferImageCopy2KHR *regions)
 {
    VkResult result;
    bool handled = false;
@@ -3567,7 +3564,7 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
       /* For each region */
       dirty_dynamic_state = V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
       for (uint32_t r = 0; r < region_count; r++) {
-         const VkBufferImageCopy *region = &regions[r];
+         const VkBufferImageCopy2KHR *region = &regions[r];
 
          /* Obtain the 2D buffer region spec */
          uint32_t buf_width, buf_height;
@@ -3638,7 +3635,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                           VkColorComponentFlags cmask,
                           VkComponentMapping *cswizzle,
                           uint32_t region_count,
-                          const VkBufferImageCopy *regions)
+                          const VkBufferImageCopy2KHR *regions)
 {
    /* Since we can't sample linear images we need to upload the linear
     * buffer to a tiled image that we can use as a blit source, which
@@ -3720,7 +3717,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
     * the memory we have just allocated as storage.
     */
    for (uint32_t r = 0; r < region_count; r++) {
-      const VkBufferImageCopy *region = &regions[r];
+      const VkBufferImageCopy2KHR *region = &regions[r];
 
       /* Obtain the 2D buffer region spec */
       uint32_t buf_width, buf_height;
@@ -3774,7 +3771,8 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          /* Upload buffer contents for the selected layer */
          const VkDeviceSize buf_offset_bytes =
             region->bufferOffset + i * buf_height * buf_width * buffer_bpp;
-         const VkBufferImageCopy buffer_image_copy = {
+         const VkBufferImageCopy2KHR buffer_image_copy = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2_KHR,
             .bufferOffset = buf_offset_bytes,
             .bufferRowLength = region->bufferRowLength / block_width,
             .bufferImageHeight = region->bufferImageHeight / block_height,
@@ -3867,7 +3865,7 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
                             struct v3dv_image *image,
                             struct v3dv_buffer *buffer,
                             uint32_t region_count,
-                            const VkBufferImageCopy *regions,
+                            const VkBufferImageCopy2KHR *regions,
                             bool use_texel_buffer)
 {
    /* We can only call this with region_count > 1 if we can batch the regions
@@ -3997,7 +3995,7 @@ static bool
 copy_buffer_to_image_cpu(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_image *image,
                          struct v3dv_buffer *buffer,
-                         const VkBufferImageCopy *region)
+                         const VkBufferImageCopy2KHR *region)
 {
    /* FIXME */
    if (vk_format_is_depth_or_stencil(image->vk_format))
@@ -4056,30 +4054,26 @@ copy_buffer_to_image_cpu(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
-                          VkBuffer srcBuffer,
-                          VkImage dstImage,
-                          VkImageLayout dstImageLayout,
-                          uint32_t regionCount,
-                          const VkBufferImageCopy *pRegions)
+v3dv_CmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer,
+                              const VkCopyBufferToImageInfo2KHR *info)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
-   V3DV_FROM_HANDLE(v3dv_buffer, buffer, srcBuffer);
-   V3DV_FROM_HANDLE(v3dv_image, image, dstImage);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, info->srcBuffer);
+   V3DV_FROM_HANDLE(v3dv_image, image, info->dstImage);
 
    assert(image->samples == VK_SAMPLE_COUNT_1_BIT);
 
    uint32_t r = 0;
-   while (r < regionCount) {
+   while (r < info->regionCount) {
       /* The TFU and TLB paths can only copy one region at a time and the region
        * needs to start at the origin. We try these first for the common case
        * where we are copying full images, since they should be the fastest.
        */
       uint32_t batch_size = 1;
-      if (copy_buffer_to_image_tfu(cmd_buffer, image, buffer, &pRegions[r]))
+      if (copy_buffer_to_image_tfu(cmd_buffer, image, buffer, &info->pRegions[r]))
          goto handled;
 
-      if (copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[r]))
+      if (copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &info->pRegions[r]))
          goto handled;
 
       /* Otherwise, we are copying subrects, so we fallback to copying
@@ -4087,10 +4081,11 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
        * if possible. We can only batch copies if they target the same
        * image subresource (so they have the same framebuffer spec).
        */
-      const VkImageSubresourceLayers *rsc = &pRegions[r].imageSubresource;
+      const VkImageSubresourceLayers *rsc = &info->pRegions[r].imageSubresource;
       if (image->type != VK_IMAGE_TYPE_3D) {
-         for (uint32_t s = r + 1; s < regionCount; s++) {
-            const VkImageSubresourceLayers *rsc_s = &pRegions[s].imageSubresource;
+         for (uint32_t s = r + 1; s < info->regionCount; s++) {
+            const VkImageSubresourceLayers *rsc_s =
+               &info->pRegions[s].imageSubresource;
             if (memcmp(rsc, rsc_s, sizeof(VkImageSubresourceLayers)) != 0)
                break;
             batch_size++;
@@ -4098,7 +4093,7 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
       }
 
       if (copy_buffer_to_image_shader(cmd_buffer, image, buffer,
-                                      batch_size, &pRegions[r], true)) {
+                                      batch_size, &info->pRegions[r], true)) {
          goto handled;
       }
 
@@ -4108,13 +4103,14 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
        * slow it might not be worth it and we should instead put more effort
        * in handling more cases with the other paths.
        */
-      if (copy_buffer_to_image_cpu(cmd_buffer, image, buffer, &pRegions[r])) {
+      if (copy_buffer_to_image_cpu(cmd_buffer, image, buffer,
+                                   &info->pRegions[r])) {
          batch_size = 1;
          goto handled;
       }
 
       if (copy_buffer_to_image_shader(cmd_buffer, image, buffer,
-                                      batch_size, &pRegions[r], false)) {
+                                      batch_size, &info->pRegions[r], false)) {
          goto handled;
       }
 
