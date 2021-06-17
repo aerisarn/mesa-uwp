@@ -71,6 +71,7 @@ struct nvc0_screen {
 
    struct nvc0_context *cur_ctx;
    struct nvc0_graph_state save_state;
+   simple_mtx_t state_lock;
 
    int num_occlusion_queries_active;
 

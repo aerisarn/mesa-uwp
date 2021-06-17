@@ -243,11 +243,13 @@ nvc0_destroy(struct pipe_context *pipe)
 {
    struct nvc0_context *nvc0 = nvc0_context(pipe);
 
+   simple_mtx_lock(&nvc0->screen->state_lock);
    if (nvc0->screen->cur_ctx == nvc0) {
       nvc0->screen->cur_ctx = NULL;
       nvc0->screen->save_state = nvc0->state;
       nvc0->screen->save_state.tfb = NULL;
    }
+   simple_mtx_unlock(&nvc0->screen->state_lock);
 
    if (nvc0->base.pipe.stream_uploader)
       u_upload_destroy(nvc0->base.pipe.stream_uploader);
@@ -493,10 +495,13 @@ nvc0_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    /* now that there are no more opportunities for errors, set the current
     * context if there isn't already one.
     */
+   simple_mtx_lock(&screen->state_lock);
    if (!screen->cur_ctx) {
       nvc0->state = screen->save_state;
       screen->cur_ctx = nvc0;
    }
+   simple_mtx_unlock(&screen->state_lock);
+
    nouveau_pushbuf_bufctx(nvc0->base.pushbuf, nvc0->bufctx);
    PUSH_SPACE(nvc0->base.pushbuf, 8);
 

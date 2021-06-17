@@ -700,9 +700,11 @@ nvc0_clear(struct pipe_context *pipe, unsigned buffers,
    unsigned i, j, k;
    uint32_t mode = 0;
 
+   simple_mtx_lock(&nvc0->screen->state_lock);
+
    /* don't need NEW_BLEND, COLOR_MASK doesn't affect CLEAR_BUFFERS */
    if (!nvc0_state_validate_3d(nvc0, NVC0_NEW_3D_FRAMEBUFFER))
-      return;
+      goto out;
 
    if (scissor_state) {
       uint32_t minx = scissor_state->minx;
@@ -710,7 +712,7 @@ nvc0_clear(struct pipe_context *pipe, unsigned buffers,
       uint32_t miny = scissor_state->miny;
       uint32_t maxy = MIN2(fb->height, scissor_state->maxy);
       if (maxx <= minx || maxy <= miny)
-         return;
+         goto out;
 
       BEGIN_NVC0(push, NVC0_3D(SCREEN_SCISSOR_HORIZ), 2);
       PUSH_DATA (push, minx | (maxx - minx) << 16);
@@ -781,6 +783,10 @@ nvc0_clear(struct pipe_context *pipe, unsigned buffers,
       PUSH_DATA (push, fb->width << 16);
       PUSH_DATA (push, fb->height << 16);
    }
+
+out:
+   PUSH_KICK(push);
+   simple_mtx_unlock(&nvc0->screen->state_lock);
 }
 
 static void
@@ -789,8 +795,11 @@ gm200_evaluate_depth_buffer(struct pipe_context *pipe)
    struct nvc0_context *nvc0 = nvc0_context(pipe);
    struct nouveau_pushbuf *push = nvc0->base.pushbuf;
 
+   simple_mtx_lock(&nvc0->screen->state_lock);
    nvc0_state_validate_3d(nvc0, NVC0_NEW_3D_FRAMEBUFFER);
    IMMED_NVC0(push, SUBC_3D(0x11fc), 1);
+   PUSH_KICK(push);
+   simple_mtx_unlock(&nvc0->screen->state_lock);
 }
 
 
@@ -1684,6 +1693,7 @@ nvc0_blit(struct pipe_context *pipe, const struct pipe_blit_info *info)
    if (info->num_window_rectangles > 0 || info->window_rectangle_include)
       eng3d = true;
 
+   simple_mtx_lock(&nvc0->screen->state_lock);
    if (nvc0->screen->num_occlusion_queries_active)
       IMMED_NVC0(push, NVC0_3D(SAMPLECNT_ENABLE), 0);
 
@@ -1694,6 +1704,8 @@ nvc0_blit(struct pipe_context *pipe, const struct pipe_blit_info *info)
 
    if (nvc0->screen->num_occlusion_queries_active)
       IMMED_NVC0(push, NVC0_3D(SAMPLECNT_ENABLE), 1);
+   PUSH_KICK(push);
+   simple_mtx_unlock(&nvc0->screen->state_lock);
 
    NOUVEAU_DRV_STAT(&nvc0->screen->base, tex_blit_count, 1);
 }

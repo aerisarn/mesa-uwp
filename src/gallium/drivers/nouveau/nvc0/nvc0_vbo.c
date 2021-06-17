@@ -462,6 +462,7 @@ nvc0_vertex_arrays_validate(struct nvc0_context *nvc0)
    if (update_vertex) {
       const unsigned n = MAX2(vertex->num_elements, nvc0->state.num_vtxelts);
 
+      simple_mtx_assert_locked(&nvc0->screen->state_lock);
       nvc0->state.constant_vbos = const_vbos;
       nvc0->state.constant_elts = 0;
       nvc0->state.num_vtxelts = vertex->num_elements;
@@ -1020,6 +1021,8 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    BCTX_REFN_bo(nvc0->bufctx_3d, 3D_TEXT, vram_domain | NOUVEAU_BO_RD,
                 screen->text);
 
+   simple_mtx_lock(&nvc0->screen->state_lock);
+
    nvc0_state_validate_3d(nvc0, ~0);
 
    if (nvc0->vertprog->vp.need_draw_parameters && (!indirect || indirect->count_from_stream_output)) {
@@ -1127,6 +1130,9 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    }
 
 cleanup:
+   PUSH_KICK(push);
+   simple_mtx_unlock(&nvc0->screen->state_lock);
+
    nvc0->base.kick_notify = nvc0_default_kick_notify;
 
    nvc0_release_user_vbufs(nvc0);

@@ -867,9 +867,10 @@ nve4_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
                         resident->flags);
    }
 
+   simple_mtx_lock(&screen->state_lock);
    ret = !nve4_state_validate_cp(nvc0, ~0);
    if (ret)
-      goto out;
+      goto out_unlock;
 
    if (nvc0->screen->compute->oclass >= GV100_COMPUTE_CLASS)
       gv100_compute_setup_launch_desc(nvc0, desc, info);
@@ -933,6 +934,10 @@ nve4_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    PUSH_DATA (push, 0);
 
    nvc0_update_compute_invocations_counter(nvc0, info);
+
+out_unlock:
+   PUSH_KICK(push);
+   simple_mtx_unlock(&screen->state_lock);
 
 out:
    if (ret)

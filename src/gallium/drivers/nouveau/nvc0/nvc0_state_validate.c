@@ -872,6 +872,7 @@ nvc0_switch_pipe_context(struct nvc0_context *ctx_to)
    struct nvc0_context *ctx_from = ctx_to->screen->cur_ctx;
    unsigned s;
 
+   simple_mtx_assert_locked(&ctx_to->screen->state_lock);
    if (ctx_from)
       ctx_to->state = ctx_from->state;
    else
@@ -967,6 +968,8 @@ nvc0_state_validate(struct nvc0_context *nvc0, uint32_t mask,
    uint32_t state_mask;
    int ret;
    unsigned i;
+
+   simple_mtx_assert_locked(&nvc0->screen->state_lock);
 
    if (nvc0->screen->cur_ctx != nvc0)
       nvc0_switch_pipe_context(nvc0);

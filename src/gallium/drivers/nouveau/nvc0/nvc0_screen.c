@@ -742,6 +742,7 @@ nvc0_screen_destroy(struct pipe_screen *pscreen)
    nouveau_object_del(&screen->nvsw);
 
    nouveau_screen_fini(&screen->base);
+   simple_mtx_destroy(&screen->state_lock);
 
    FREE(screen);
 }
@@ -1067,6 +1068,8 @@ nvc0_screen_create(struct nouveau_device *dev)
       return NULL;
    pscreen = &screen->base.base;
    pscreen->destroy = nvc0_screen_destroy;
+
+   simple_mtx_init(&screen->state_lock, mtx_plain);
 
    ret = nouveau_screen_init(&screen->base, dev);
    if (ret)

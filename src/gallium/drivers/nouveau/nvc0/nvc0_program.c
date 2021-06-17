@@ -884,6 +884,7 @@ nvc0_program_upload(struct nvc0_context *nvc0, struct nvc0_program *prog)
          size += TU102_SHADER_HEADER_SIZE;
    }
 
+   simple_mtx_assert_locked(&nvc0->screen->state_lock);
    ret = nvc0_program_alloc_code(nvc0, prog);
    if (ret) {
       struct nouveau_heap *heap = screen->text_heap;
@@ -990,8 +991,11 @@ nvc0_program_destroy(struct nvc0_context *nvc0, struct nvc0_program *prog)
    const struct pipe_shader_state pipe = prog->pipe;
    const ubyte type = prog->type;
 
-   if (prog->mem)
+   if (prog->mem) {
+      if (nvc0)
+         simple_mtx_assert_locked(&nvc0->screen->state_lock);
       nouveau_heap_free(&prog->mem);
+   }
    FREE(prog->code); /* may be 0 for hardcoded shaders */
    FREE(prog->relocs);
    FREE(prog->fixups);
