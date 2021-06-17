@@ -452,9 +452,9 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
     */
    debug_assert(shadow->track->batch_mask == 0);
    foreach_batch (batch, &ctx->screen->batch_cache, rsc->track->batch_mask) {
-      struct set_entry *entry = _mesa_set_search(batch->resources, rsc);
+      struct set_entry *entry = _mesa_set_search_pre_hashed(batch->resources, rsc->hash, rsc);
       _mesa_set_remove(batch->resources, entry);
-      _mesa_set_add(batch->resources, shadow);
+      _mesa_set_add_pre_hashed(batch->resources, shadow->hash, shadow);
    }
    swap(rsc->track, shadow->track);
 
@@ -1092,6 +1092,7 @@ alloc_resource_struct(struct pipe_screen *pscreen,
 
    pipe_reference_init(&prsc->reference, 1);
    prsc->screen = pscreen;
+   rsc->hash = _mesa_hash_pointer(rsc);
 
    util_range_init(&rsc->valid_buffer_range);
    simple_mtx_init(&rsc->lock, mtx_plain);

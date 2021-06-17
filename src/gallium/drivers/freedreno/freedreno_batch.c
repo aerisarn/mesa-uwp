@@ -444,13 +444,13 @@ fd_batch_add_resource(struct fd_batch *batch, struct fd_resource *rsc)
 {
 
    if (likely(fd_batch_references_resource(batch, rsc))) {
-      debug_assert(_mesa_set_search(batch->resources, rsc));
+      debug_assert(_mesa_set_search_pre_hashed(batch->resources, rsc->hash, rsc));
       return;
    }
 
    debug_assert(!_mesa_set_search(batch->resources, rsc));
 
-   _mesa_set_add(batch->resources, rsc);
+   _mesa_set_add_pre_hashed(batch->resources, rsc->hash, rsc);
    rsc->track->batch_mask |= (1 << batch->idx);
 }
 
