@@ -184,6 +184,10 @@ Core Mesa environment variables
       instance version as advertised by ``vkEnumerateInstanceVersion``
    -  This can be very useful for debugging but some features may not be
       implemented correctly. (For developers only)
+:envvar:`MESA_VK_WSI_PRESENT_MODE`
+   overrides the WSI present mode clients specify in
+   ``VkSwapchainCreateInfoKHR::presentMode``. Values can be ``fifo``,
+   ``relaxed``, ``mailbox`` or ``immediate``.
 :envvar:`MESA_LOADER_DRIVER_OVERRIDE`
    chooses a different driver binary such as ``etnaviv`` or ``zink``.
 
