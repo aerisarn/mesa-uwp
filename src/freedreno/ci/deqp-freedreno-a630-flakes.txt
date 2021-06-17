@@ -45,6 +45,7 @@ dEQP-EGL.functional.render.multi_context.gles2.rgba8888_window
 dEQP-EGL.functional.render.multi_context.gles3.rgb888_pbuffer
 dEQP-EGL.functional.render.multi_context.gles3.rgb888_window
 dEQP-EGL.functional.render.multi_context.gles3.rgba8888_window
+dEQP-EGL.functional.render.multi_thread.gles2_gles3.rgb888_pbuffer
 dEQP-EGL.functional.render.multi_thread.gles2_gles3.rgb888_window
 dEQP-EGL.functional.render.multi_thread.gles2_gles3.rgba8888_pbuffer
 dEQP-EGL.functional.render.multi_thread.gles2_gles3.rgba8888_window
@@ -70,6 +71,9 @@ dEQP-EGL.functional.wide_color.pbuffer_888_colorspace_srgb
 dEQP-EGL.functional.wide_color.window_8888_colorspace_default
 dEQP-EGL.functional.wide_color.window_8888_colorspace_srgb
 
+dEQP-VK.pipeline.multisample.alpha_to_coverage_unused_attachment.samples_2.alpha_opaque
+dEQP-VK.pipeline.multisample.alpha_to_coverage_unused_attachment.samples_4.alpha_opaque
+
 # Started at least by Jan 2020, current as of May 2021
 dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 
@@ -91,3 +95,6 @@ dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_stencil_only
 # Could trip hangcheck timeout
 dEQP-VK.api.command_buffers.record_many_draws_primary_2
 dEQP-VK.api.command_buffers.record_many_draws_secondary_2
+
+# First noticed Jun 1 2020 on an innocent branch.
+KHR-GL33.packed_depth_stencil.verify_copy_tex_image.depth32f_stencil8
