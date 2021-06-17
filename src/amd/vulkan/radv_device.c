@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "util/debug.h"
 #include "util/disk_cache.h"
 #include "radv_cs.h"
 #include "radv_debug.h"
@@ -520,6 +521,15 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
    };
 }
 
+static void
+warn_non_conformant_implementation()
+{
+   if (env_var_as_boolean("RADV_IGNORE_CONFORMANCE_WARNING", false))
+      return;
+   fprintf(stderr,
+	   "WARNING: radv is not a conformant vulkan implementation, testing use only.\n");
+}
+
 static VkResult
 radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm_device,
                                 struct radv_physical_device **device_out)
@@ -649,8 +659,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 #endif
 
    if (device->rad_info.chip_class < GFX8 || device->rad_info.chip_class > GFX10)
-      fprintf(stderr,
-              "WARNING: radv is not a conformant vulkan implementation, testing use only.\n");
+      warn_non_conformant_implementation();
 
    radv_get_driver_uuid(&device->driver_uuid);
    radv_get_device_uuid(&device->rad_info, &device->device_uuid);
