@@ -42,6 +42,7 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
    struct zink_vertex_elements_state *ves = CALLOC_STRUCT(zink_vertex_elements_state);
    if (!ves)
       return NULL;
+   ves->hw_state.hash = _mesa_hash_pointer(ves);
 
    int buffer_map[PIPE_MAX_ATTRIBS];
    for (int i = 0; i < ARRAY_SIZE(buffer_map); ++i)

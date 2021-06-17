@@ -799,30 +799,33 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       state->dirty = false;
    }
    if (state->combined_dirty) {
-      if (!have_EXT_vertex_input_dynamic_state)
-         ctx->vertex_state_changed = true;
       state->combined_hash = XXH32(&state->module_hash, sizeof(uint32_t), state->hash);
       state->combined_dirty = false;
+      if (have_EXT_vertex_input_dynamic_state)
+         state->final_hash = state->combined_hash;
+      else
+         ctx->vertex_state_changed = true;
    }
-   if (have_EXT_vertex_input_dynamic_state)
-      state->final_hash = state->combined_hash;
-   else
-      if (ctx->vertex_state_changed) {
-         uint32_t hash = state->combined_hash;
-         if (!have_EXT_extended_dynamic_state) {
-            /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
-            uint32_t vertex_buffers_enabled_mask = state->vertex_buffers_enabled_mask;
-            hash = XXH32(&vertex_buffers_enabled_mask, sizeof(uint32_t), hash);
+   if (!have_EXT_vertex_input_dynamic_state && ctx->vertex_state_changed) {
+      if (state->pipeline)
+         state->final_hash ^= state->vertex_hash;
+      if (!have_EXT_extended_dynamic_state) {
+         uint32_t hash = 0;
+         /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
+         uint32_t vertex_buffers_enabled_mask = state->vertex_buffers_enabled_mask;
+         hash = XXH32(&vertex_buffers_enabled_mask, sizeof(uint32_t), hash);
 
-            for (unsigned i = 0; i < state->element_state->num_bindings; i++) {
-               struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ctx->element_state->binding_map[i];
-               state->vertex_strides[i] = vb->buffer.resource ? vb->stride : 0;
-               hash = XXH32(&state->vertex_strides[i], sizeof(uint32_t), hash);
-            }
+         for (unsigned i = 0; i < state->element_state->num_bindings; i++) {
+            struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ctx->element_state->binding_map[i];
+            state->vertex_strides[i] = vb->buffer.resource ? vb->stride : 0;
+            hash = XXH32(&state->vertex_strides[i], sizeof(uint32_t), hash);
          }
-         state->final_hash = XXH32(&state->element_state, sizeof(void*), hash);
-         ctx->vertex_state_changed = false;
-      }
+         state->vertex_hash = hash ^ state->element_state->hash;
+      } else
+         state->vertex_hash = state->element_state->hash;
+      state->final_hash = state->combined_hash ^ state->vertex_hash;
+   }
+   ctx->vertex_state_changed = false;
    entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[idx], state->final_hash, state);
 
    if (!entry) {

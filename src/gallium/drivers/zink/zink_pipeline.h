@@ -68,6 +68,7 @@ struct zink_gfx_pipeline_state {
    bool combined_dirty;
 
    struct zink_vertex_elements_hw_state *element_state;
+   uint32_t vertex_hash;
 
    uint32_t final_hash;
 

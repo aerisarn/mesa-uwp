@@ -29,6 +29,7 @@
 #include "pipe/p_state.h"
 
 struct zink_vertex_elements_hw_state {
+   uint32_t hash;
    union {
       VkVertexInputAttributeDescription attribs[PIPE_MAX_ATTRIBS];
       VkVertexInputAttributeDescription2EXT dynattribs[PIPE_MAX_ATTRIBS];
