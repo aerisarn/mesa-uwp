@@ -133,6 +133,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
 #endif
       .KHR_variable_pointers               = true,
       .EXT_external_memory_dma_buf         = true,
+      .EXT_index_type_uint8                = true,
       .EXT_private_data                    = true,
    };
 }
@@ -1040,6 +1041,13 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDevicePrivateDataFeaturesEXT *features =
             (VkPhysicalDevicePrivateDataFeaturesEXT *)ext;
          features->privateData = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: {
+         VkPhysicalDeviceIndexTypeUint8FeaturesEXT *features =
+            (VkPhysicalDeviceIndexTypeUint8FeaturesEXT *)ext;
+         features->indexTypeUint8 = true;
          break;
       }
 

@@ -4671,6 +4671,9 @@ static uint32_t
 get_index_size(VkIndexType index_type)
 {
    switch (index_type) {
+   case VK_INDEX_TYPE_UINT8_EXT:
+      return 1;
+      break;
    case VK_INDEX_TYPE_UINT16:
       return 2;
       break;
