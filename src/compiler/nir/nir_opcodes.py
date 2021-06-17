@@ -78,6 +78,8 @@ class Opcode(object):
       assert 0 <= output_size <= 5 or (output_size == 8) or (output_size == 16)
       for size in input_sizes:
          assert 0 <= size <= 5 or (size == 8) or (size == 16)
+         if output_size == 0:
+            assert size == 0
          if output_size != 0:
             assert size != 0
       self.name = name
