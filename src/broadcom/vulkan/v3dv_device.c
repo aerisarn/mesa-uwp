@@ -108,6 +108,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
 {
    *ext = (struct vk_device_extension_table) {
       .KHR_bind_memory2                    = true,
+      .KHR_copy_commands2                  = true,
       .KHR_dedicated_allocation            = true,
       .KHR_device_group                    = true,
       .KHR_descriptor_update_template      = true,
