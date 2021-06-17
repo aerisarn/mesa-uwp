@@ -110,7 +110,7 @@ extern bool fd_binning_enabled;
 #define DBG(fmt, ...)                                                          \
    do {                                                                        \
       if (FD_DBG(MSGS))                                                        \
-         mesa_logd("%5d: %s:%d: " fmt, gettid(), __FUNCTION__, __LINE__,       \
+         mesa_logi("%5d: %s:%d: " fmt, gettid(), __FUNCTION__, __LINE__,       \
                    ##__VA_ARGS__);                                             \
    } while (0)
 
