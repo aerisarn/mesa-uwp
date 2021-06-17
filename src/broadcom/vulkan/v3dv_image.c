@@ -821,7 +821,7 @@ v3dv_CreateBufferView(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
 
-   const struct v3dv_buffer *buffer =
+   struct v3dv_buffer *buffer =
       v3dv_buffer_from_handle(pCreateInfo->buffer);
 
    struct v3dv_buffer_view *view =

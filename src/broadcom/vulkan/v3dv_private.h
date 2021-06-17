@@ -503,7 +503,7 @@ VkImageViewType v3dv_image_type_to_view_type(VkImageType type);
 struct v3dv_image_view {
    struct vk_object_base base;
 
-   const struct v3dv_image *image;
+   struct v3dv_image *image;
    VkImageAspectFlags aspects;
    VkExtent3D extent;
    VkImageViewType type;
@@ -555,7 +555,7 @@ struct v3dv_buffer {
 struct v3dv_buffer_view {
    struct vk_object_base base;
 
-   const struct v3dv_buffer *buffer;
+   struct v3dv_buffer *buffer;
 
    VkFormat vk_format;
    const struct v3dv_format *format;

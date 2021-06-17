@@ -1060,9 +1060,9 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
 
       VkResolveImageInfo2KHR resolve_info = {
          .sType = VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2_KHR,
-         .srcImage = v3dv_image_to_handle((struct v3dv_image *) src_iview->image),
+         .srcImage = v3dv_image_to_handle(src_iview->image),
          .srcImageLayout = VK_IMAGE_LAYOUT_GENERAL,
-         .dstImage = v3dv_image_to_handle((struct v3dv_image *) dst_iview->image),
+         .dstImage = v3dv_image_to_handle(dst_iview->image),
          .dstImageLayout = VK_IMAGE_LAYOUT_GENERAL,
          .regionCount = 1,
          .pRegions = &region,
