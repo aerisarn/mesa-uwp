@@ -301,13 +301,17 @@ update_shader_modules(struct zink_context *ctx, struct zink_gfx_program *prog, u
    }
 
    if (hash_changed) {
+      if (!first && likely(ctx->gfx_pipeline_state.pipeline)) //avoid on first hash
+         ctx->gfx_pipeline_state.final_hash ^= prog->last_variant_hash;
+
       if (default_variants && !first)
          prog->last_variant_hash = prog->default_variant_hash;
       else
          prog->last_variant_hash = variant_hash;
-      ctx->gfx_pipeline_state.combined_dirty = true;
+
+      ctx->gfx_pipeline_state.final_hash ^= prog->last_variant_hash;
+      ctx->gfx_pipeline_state.modules_changed = true;
    }
-   ctx->gfx_pipeline_state.module_hash = prog->last_variant_hash;
 }
 
 static uint32_t
@@ -453,7 +457,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    assign_io(prog, prog->shaders);
 
    update_shader_modules(ctx, prog, prog->stages_present);
-   prog->default_variant_hash = ctx->gfx_pipeline_state.module_hash;
+   prog->default_variant_hash = prog->last_variant_hash;
 
    if (stages[PIPE_SHADER_GEOMETRY])
       prog->last_vertex_stage = stages[PIPE_SHADER_GEOMETRY];
@@ -784,7 +788,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    VkPrimitiveTopology vkmode = zink_primitive_topology(mode);
    const unsigned idx = get_pipeline_idx(screen->info.have_EXT_extended_dynamic_state, mode, vkmode);
    assert(idx <= ARRAY_SIZE(prog->pipelines));
-   if (!state->dirty && !state->combined_dirty &&
+   if (!state->dirty && !state->modules_changed &&
        (have_EXT_vertex_input_dynamic_state || !ctx->vertex_state_changed) &&
        idx == state->idx)
       return state->pipeline;
@@ -792,19 +796,11 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    struct hash_entry *entry = NULL;
 
    if (state->dirty) {
-      if (!have_EXT_vertex_input_dynamic_state)
-         ctx->vertex_state_changed = true;
-      state->combined_dirty = true;
+      if (state->pipeline) //avoid on first hash
+         state->final_hash ^= state->hash;
       state->hash = hash_gfx_pipeline_state(state);
+      state->final_hash ^= state->hash;
       state->dirty = false;
-   }
-   if (state->combined_dirty) {
-      state->combined_hash = XXH32(&state->module_hash, sizeof(uint32_t), state->hash);
-      state->combined_dirty = false;
-      if (have_EXT_vertex_input_dynamic_state)
-         state->final_hash = state->combined_hash;
-      else
-         ctx->vertex_state_changed = true;
    }
    if (!have_EXT_vertex_input_dynamic_state && ctx->vertex_state_changed) {
       if (state->pipeline)
@@ -823,9 +819,11 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          state->vertex_hash = hash ^ state->element_state->hash;
       } else
          state->vertex_hash = state->element_state->hash;
-      state->final_hash = state->combined_hash ^ state->vertex_hash;
+      state->final_hash ^= state->vertex_hash;
    }
+   state->modules_changed = false;
    ctx->vertex_state_changed = false;
+
    entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[idx], state->final_hash, state);
 
    if (!entry) {
@@ -921,12 +919,14 @@ bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
          ctx->gfx_hash ^= ctx->gfx_stages[stage]->hash;
       ctx->gfx_stages[stage] = shader;
       ctx->gfx_dirty = ctx->gfx_stages[PIPE_SHADER_FRAGMENT] && ctx->gfx_stages[PIPE_SHADER_VERTEX];
-      ctx->gfx_pipeline_state.combined_dirty = true;
+      ctx->gfx_pipeline_state.modules_changed = true;
       if (shader) {
          ctx->shader_stages |= BITFIELD_BIT(stage);
          ctx->gfx_hash ^= ctx->gfx_stages[stage]->hash;
       } else {
          ctx->gfx_pipeline_state.modules[stage] = VK_NULL_HANDLE;
+         if (ctx->curr_program)
+            ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
          ctx->curr_program = NULL;
          ctx->shader_stages &= ~BITFIELD_BIT(stage);
       }

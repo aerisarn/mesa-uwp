@@ -62,10 +62,7 @@ struct zink_gfx_pipeline_state {
    bool primitive_restart; //dynamic state2
 
    VkShaderModule modules[PIPE_SHADER_TYPES - 1];
-   uint32_t module_hash;
-
-   uint32_t combined_hash;
-   bool combined_dirty;
+   bool modules_changed;
 
    struct zink_vertex_elements_hw_state *element_state;
    uint32_t vertex_hash;

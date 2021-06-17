@@ -202,11 +202,12 @@ update_gfx_program(struct zink_context *ctx)
          entry = _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
       }
       prog = (struct zink_gfx_program*)(entry ? entry->data : NULL);
-      if (prog && prog != ctx->curr_program) {
-         ctx->gfx_pipeline_state.combined_dirty = true;
+      if (prog && prog != ctx->curr_program)
          zink_batch_reference_program(&ctx->batch, &prog->base);
-      }
+      if (ctx->curr_program)
+         ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
       ctx->curr_program = prog;
+      ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
       ctx->gfx_dirty = false;
    } else if (ctx->dirty_shader_stages & bits) {
       zink_update_gfx_program(ctx, ctx->curr_program);
