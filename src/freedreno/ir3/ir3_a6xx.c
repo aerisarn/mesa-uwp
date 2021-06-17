@@ -194,6 +194,7 @@ emit_intrinsic_atomic_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	array_insert(b, b->keeps, atomic);
 
 	atomic->regs[0]->wrmask = src1->regs[0]->wrmask;
+	ir3_reg_tie(atomic->regs[0], atomic->regs[3]);
 	struct ir3_instruction *split;
 	ir3_split_dest(b, &split, atomic, 0, 1);
 	return split;
@@ -345,6 +346,7 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	array_insert(b, b->keeps, atomic);
 
 	atomic->regs[0]->wrmask = src1->regs[0]->wrmask;
+	ir3_reg_tie(atomic->regs[0], atomic->regs[3]);
 	struct ir3_instruction *split;
 	ir3_split_dest(b, &split, atomic, 0, 1);
 	return split;

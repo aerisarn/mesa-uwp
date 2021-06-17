@@ -139,6 +139,8 @@ validate_simple(struct ra_val_ctx *ctx, struct ir3_instruction *instr)
 	ra_foreach_dst (dst, instr) {
 		unsigned dst_max = ra_reg_get_physreg(dst) + reg_size(dst);
 		validate_assert(ctx, dst_max <= get_file_size(ctx, dst));
+		if (dst->tied)
+			validate_assert(ctx, ra_reg_get_num(dst) == ra_reg_get_num(dst->tied));
 	}
 
 	ra_foreach_src (src, instr) {

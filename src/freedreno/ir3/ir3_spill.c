@@ -251,8 +251,7 @@ handle_instr(struct ra_spill_ctx *ctx, struct ir3_instruction *instr)
 
 	ra_foreach_dst(dst, instr) {
 		if (!ra_reg_is_array_rmw(dst)) {
-			struct ir3_register *tied_src =
-				ra_dst_get_tied_src(ctx->compiler, dst);
+			struct ir3_register *tied_src = dst->tied;
 			if (tied_src && !(tied_src->flags & IR3_REG_FIRST_KILL))
 				insert_dst(ctx, dst);
 		}

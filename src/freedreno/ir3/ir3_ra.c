@@ -1097,7 +1097,7 @@ allocate_dst(struct ra_ctx *ctx, struct ir3_register *dst)
 {
 	struct ra_file *file = ra_get_file(ctx, dst);
 
-	struct ir3_register *tied = ra_dst_get_tied_src(ctx->compiler, dst);
+	struct ir3_register *tied = dst->tied;
 	if (tied) {
 		struct ra_interval *tied_interval = &ctx->intervals[tied->def->name];
 		struct ra_interval *dst_interval = &ctx->intervals[dst->name];
@@ -1138,7 +1138,7 @@ assign_src(struct ra_ctx *ctx, struct ir3_instruction *instr, struct ir3_registe
 
 	bool array_rmw = ra_reg_is_array_rmw(src);
 
-	struct ir3_register *tied = ra_src_get_tied_dst(ctx->compiler, instr, src);
+	struct ir3_register *tied = src->tied;
 	physreg_t physreg;
 	if (tied) {
 		struct ra_interval *tied_interval = &ctx->intervals[tied->name];

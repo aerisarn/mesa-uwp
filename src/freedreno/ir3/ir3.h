@@ -185,6 +185,12 @@ struct ir3_register {
 	 */
 	struct ir3_register *def;
 
+	/* Pointer to another register in the instruction that must share the same
+	 * physical register. Each destination can be tied with one source, and
+	 * they must have "tied" pointing to each other.
+	 */
+	struct ir3_register *tied;
+
 	unsigned merge_set_offset;
 	struct ir3_merge_set *merge_set;
 	unsigned interval_start, interval_end;
@@ -602,6 +608,12 @@ struct ir3_register * ir3_reg_create(struct ir3_instruction *instr,
 		int num, int flags);
 struct ir3_register * ir3_reg_clone(struct ir3 *shader,
 		struct ir3_register *reg);
+
+static inline void ir3_reg_tie(struct ir3_register *dst, struct ir3_register *src)
+{
+	dst->tied = src;
+	src->tied = dst;
+}
 
 void ir3_instr_set_address(struct ir3_instruction *instr,
 		struct ir3_instruction *addr);

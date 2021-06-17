@@ -98,6 +98,31 @@ validate_phi(struct ir3_validate_ctx *ctx, struct ir3_instruction *phi)
 	validate_assert(ctx, writes_gpr(phi));
 }
 
+static void
+validate_reg(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
+			 struct ir3_register *reg)
+{
+	if (reg->tied) {
+		validate_assert(ctx, reg->tied->tied == reg);
+		validate_assert(ctx, (reg->tied->flags & IR3_REG_DEST) !=
+						(reg->flags & IR3_REG_DEST));
+		validate_assert(ctx, reg_class_flags(reg->tied) == reg_class_flags(reg));
+		validate_assert(ctx, reg->tied->wrmask == reg->wrmask);
+		if (reg->flags & IR3_REG_ARRAY) {
+			validate_assert(ctx, reg->tied->array.base == reg->array.base);
+			validate_assert(ctx, reg->tied->size == reg->size);
+		}
+		bool found = false;
+		for (unsigned i = 0; i < instr->regs_count; i++) {
+			if (instr->regs[i] == reg->tied) {
+				found = true;
+				break;
+			}
+		}
+		validate_assert(ctx, found && "tied register not in the same instruction");
+	}
+}
+
 #define validate_reg_size(ctx, reg, type) \
 	validate_assert(ctx, type_size(type) == (((reg)->flags & IR3_REG_HALF) ? 16 : 32))
 
@@ -141,6 +166,12 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
 		}
 
 		last_reg = reg;
+	}
+	
+	for (unsigned i = 0; i < instr->regs_count; i++) {
+		struct ir3_register *reg = instr->regs[i];
+
+		validate_reg(ctx, instr, reg);
 	}
 
 	_mesa_set_add(ctx->defs, instr);

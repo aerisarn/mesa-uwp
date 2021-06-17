@@ -109,20 +109,6 @@ ra_reg_is_dst(const struct ir3_register *reg)
 		((reg->flags & IR3_REG_ARRAY) || reg->wrmask);
 }
 
-static inline struct ir3_register *
-ra_dst_get_tied_src(const struct ir3_compiler *compiler, struct ir3_register *dst)
-{
-	/* With the a6xx new cat6 encoding, the same register is used for the
-	 * value and destination of atomic operations.
-	 */
-	if (compiler->gpu_id >= 600 && is_atomic(dst->instr->opc) &&
-		(dst->instr->flags & IR3_INSTR_G)) {
-		return dst->instr->regs[3];
-	}
-
-	return NULL;
-}
-
 /* Iterators for sources and destinations which:
  * - Don't include fake sources (irrelevant for RA)
  * - Don't include non-SSA sources (immediates and constants, also irrelevant)
@@ -143,19 +129,6 @@ ra_dst_get_tied_src(const struct ir3_compiler *compiler, struct ir3_register *ds
 	for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
 		for (unsigned __cnt = (__instr)->regs_count, __i = 0; __i < __cnt; __i++) \
 			if (ra_reg_is_dst((__srcreg = (__instr)->regs[__i])))
-
-static inline struct ir3_register *
-ra_src_get_tied_dst(const struct ir3_compiler *compiler,
-					struct ir3_instruction *instr,
-				    struct ir3_register *src)
-{
-	if (compiler->gpu_id >= 600 && is_atomic(instr->opc) &&
-		(instr->flags & IR3_INSTR_G) && src == instr->regs[3]) {
-		return instr->regs[0];
-	}
-
-	return NULL;
-}
 
 
 #define RA_HALF_SIZE (4 * 48)
