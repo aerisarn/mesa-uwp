@@ -2312,7 +2312,7 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
             uint32_t dst_offset,
             struct v3dv_bo *src,
             uint32_t src_offset,
-            const VkBufferCopy *region)
+            const VkBufferCopy2KHR *region)
 {
    const uint32_t internal_bpp = V3D_INTERNAL_BPP_32;
    const uint32_t internal_type = V3D_INTERNAL_TYPE_8UI;
@@ -2385,21 +2385,18 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdCopyBuffer(VkCommandBuffer commandBuffer,
-                   VkBuffer srcBuffer,
-                   VkBuffer dstBuffer,
-                   uint32_t regionCount,
-                   const VkBufferCopy *pRegions)
+v3dv_CmdCopyBuffer2KHR(VkCommandBuffer commandBuffer,
+                       const VkCopyBufferInfo2KHR *pCopyBufferInfo)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
-   V3DV_FROM_HANDLE(v3dv_buffer, src_buffer, srcBuffer);
-   V3DV_FROM_HANDLE(v3dv_buffer, dst_buffer, dstBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, src_buffer, pCopyBufferInfo->srcBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, dst_buffer, pCopyBufferInfo->dstBuffer);
 
-   for (uint32_t i = 0; i < regionCount; i++) {
+   for (uint32_t i = 0; i < pCopyBufferInfo->regionCount; i++) {
      copy_buffer(cmd_buffer,
                  dst_buffer->mem->bo, dst_buffer->mem_offset,
                  src_buffer->mem->bo, src_buffer->mem_offset,
-                 &pRegions[i]);
+                 &pCopyBufferInfo->pRegions[i]);
    }
 }
 
@@ -2440,7 +2437,8 @@ v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
 
    v3dv_bo_unmap(cmd_buffer->device, src_bo);
 
-   VkBufferCopy region = {
+   VkBufferCopy2KHR region = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2_KHR,
       .srcOffset = 0,
       .dstOffset = dstOffset,
       .size = dataSize,
