@@ -29,6 +29,7 @@ import subprocess
 import tempfile
 
 INPUT_PATHS = [
+    'src/compiler/nir/nir.h',
     'src/intel/isl',
 ]
 
