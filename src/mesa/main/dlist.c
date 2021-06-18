@@ -1619,27 +1619,6 @@ dlist_alloc(struct gl_context *ctx, OpCode opcode, GLuint bytes, bool align8)
 }
 
 
-
-/**
- * Allocate space for a display list instruction.  Used by callers outside
- * this file for things like VBO vertex data.
- *
- * \param opcode  the instruction opcode (OPCODE_* value)
- * \param bytes   instruction size in bytes, not counting opcode.
- * \return pointer to the usable data area (not including the internal
- *         opcode).
- */
-void *
-_mesa_dlist_alloc(struct gl_context *ctx, GLuint opcode, GLuint bytes)
-{
-   Node *n = dlist_alloc(ctx, (OpCode) opcode, bytes, false);
-   if (n)
-      return n + 1;  /* return pointer to payload area, after opcode */
-   else
-      return NULL;
-}
-
-
 void *
 _mesa_dlist_alloc_vertex_list(struct gl_context *ctx, bool copy_to_current)
 {

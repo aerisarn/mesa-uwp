@@ -106,9 +106,6 @@ void
 _mesa_compile_error(struct gl_context *ctx, GLenum error, const char *s);
 
 void *
-_mesa_dlist_alloc(struct gl_context *ctx, GLuint opcode, GLuint sz);
-
-void *
 _mesa_dlist_alloc_vertex_list(struct gl_context *ctx,
                               bool copy_to_current);
 
