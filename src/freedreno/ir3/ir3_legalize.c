@@ -147,7 +147,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			continue;
 
 		if (is_input(n)) {
-			struct ir3_register *inloc = n->regs[1];
+			struct ir3_register *inloc = n->srcs[0];
 			assert(inloc->flags & IR3_REG_IMMED);
 			ctx->max_bary = MAX2(ctx->max_bary, inloc->iim_val);
 		}
@@ -172,8 +172,12 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		 * that writes the same register can race w/ the sam instr
 		 * resulting in undefined results:
 		 */
-		for (i = 0; i < n->regs_count; i++) {
-			struct ir3_register *reg = n->regs[i];
+		for (i = 0; i < n->dsts_count + n->srcs_count; i++) {
+			struct ir3_register *reg;
+			if (i < n->dsts_count)
+				reg = n->dsts[i];
+			else
+				reg = n->srcs[i - n->dsts_count];
 
 			if (reg_gpr(reg)) {
 
@@ -202,8 +206,8 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 				last_rel = n;
 		}
 
-		if (n->regs_count > 0) {
-			struct ir3_register *reg = n->regs[0];
+		if (n->dsts_count > 0) {
+			struct ir3_register *reg = n->dsts[0];
 			if (regmask_get(&state->needs_ss_war, reg)) {
 				n->flags |= IR3_INSTR_SS;
 				last_input_needs_ss = false;
@@ -251,14 +255,14 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		}
 
 		if (is_sfu(n))
-			regmask_set(&state->needs_ss, n->regs[0]);
+			regmask_set(&state->needs_ss, n->dsts[0]);
 
 		if (is_tex_or_prefetch(n)) {
-			regmask_set(&state->needs_sy, n->regs[0]);
+			regmask_set(&state->needs_sy, n->dsts[0]);
 			if (n->opc == OPC_META_TEX_PREFETCH)
 				has_tex_prefetch = true;
 		} else if (n->opc == OPC_RESINFO) {
-			regmask_set(&state->needs_ss, n->regs[0]);
+			regmask_set(&state->needs_ss, n->dsts[0]);
 			ir3_NOP(block)->flags |= IR3_INSTR_SS;
 			last_input_needs_ss = false;
 		} else if (is_load(n)) {
@@ -266,19 +270,19 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			 * makes a bunch of flat-varying tests start working on a4xx.
 			 */
 			if ((n->opc == OPC_LDLV) || (n->opc == OPC_LDL) || (n->opc == OPC_LDLW))
-				regmask_set(&state->needs_ss, n->regs[0]);
+				regmask_set(&state->needs_ss, n->dsts[0]);
 			else
-				regmask_set(&state->needs_sy, n->regs[0]);
+				regmask_set(&state->needs_sy, n->dsts[0]);
 		} else if (is_atomic(n->opc)) {
 			if (n->flags & IR3_INSTR_G) {
 				if (ctx->compiler->gpu_id >= 600) {
 					/* New encoding, returns  result via second src: */
-					regmask_set(&state->needs_sy, n->regs[3]);
+					regmask_set(&state->needs_sy, n->srcs[2]);
 				} else {
-					regmask_set(&state->needs_sy, n->regs[0]);
+					regmask_set(&state->needs_sy, n->dsts[0]);
 				}
 			} else {
-				regmask_set(&state->needs_ss, n->regs[0]);
+				regmask_set(&state->needs_ss, n->dsts[0]);
 			}
 		}
 
@@ -321,7 +325,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 					last_input = baryf;
 				}
 
-				last_input->regs[0]->flags |= IR3_REG_EI;
+				last_input->dsts[0]->flags |= IR3_REG_EI;
 				if (last_input_needs_ss) {
 					last_input->flags |= IR3_INSTR_SS;
 					regmask_init(&state->needs_ss_war, mergedregs);
@@ -629,14 +633,14 @@ block_sched(struct ir3 *ir)
 			 */
 			br = ir3_instr_create(block, OPC_B, 1, 1);
 			ir3_dst_create(br, INVALID_REG, 0);
-			ir3_src_create(br, regid(REG_P0, 0), 0)->def = block->condition->regs[0];
+			ir3_src_create(br, regid(REG_P0, 0), 0)->def = block->condition->dsts[0];
 			br->cat0.inv1 = true;
 			br->cat0.target = block->successors[1];
 
 			/* "then" branch: */
 			br = ir3_instr_create(block, OPC_B, 1, 1);
 			ir3_dst_create(br, INVALID_REG, 0);
-			ir3_src_create(br, regid(REG_P0, 0), 0)->def = block->condition->regs[0];
+			ir3_src_create(br, regid(REG_P0, 0), 0)->def = block->condition->dsts[0];
 			br->cat0.target = block->successors[0];
 
 		} else if (block->successors[0]) {
@@ -692,7 +696,7 @@ kill_sched(struct ir3 *ir, struct ir3_shader_variant *so)
 
 			struct ir3_instruction *br = ir3_instr_create(block, OPC_B, 1, 1);
 			ir3_dst_create(br, INVALID_REG, 0);
-			ir3_src_create(br, instr->regs[1]->num, instr->regs[1]->flags)->wrmask = 1;
+			ir3_src_create(br, instr->srcs[0]->num, instr->srcs[0]->flags)->wrmask = 1;
 			br->cat0.target =
 				list_last_entry(&ir->block_list, struct ir3_block, node);
 
