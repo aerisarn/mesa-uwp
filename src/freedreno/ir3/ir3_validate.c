@@ -60,7 +60,8 @@ reg_class_flags(struct ir3_register *reg)
 }
 
 static void
-validate_src(struct ir3_validate_ctx *ctx, struct ir3_register *reg)
+validate_src(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
+			 struct ir3_register *reg)
 {
 	struct ir3_instruction *src = ssa(reg);
 
@@ -68,8 +69,20 @@ validate_src(struct ir3_validate_ctx *ctx, struct ir3_register *reg)
 		return;
 
 	validate_assert(ctx, _mesa_set_search(ctx->defs, src));
-	validate_assert(ctx, src->regs[0]->wrmask == reg->wrmask);
-	validate_assert(ctx, reg_class_flags(src->regs[0]) == reg_class_flags(reg));
+	validate_assert(ctx, src->dsts[0]->wrmask == reg->wrmask);
+	validate_assert(ctx, reg_class_flags(src->dsts[0]) == reg_class_flags(reg));
+
+	if (reg->tied) {
+		validate_assert(ctx, reg->tied->tied == reg);
+		bool found = false;
+		for (unsigned i = 0; i < instr->dsts_count; i++) {
+			if (instr->dsts[i] == reg->tied) {
+				found = true;
+				break;
+			}
+		}
+		validate_assert(ctx, found && "tied register not in the same instruction");
+	}
 }
 
 /* phi sources are logically read at the end of the predecessor basic block,
@@ -86,8 +99,8 @@ validate_phi_src(struct ir3_validate_ctx *ctx, struct ir3_block *block, struct i
 			break;
 
 		ctx->current_instr = phi;
-		validate_assert(ctx, phi->regs_count == block->predecessors_count + 1);
-		validate_src(ctx, phi->regs[1 + pred_idx]);
+		validate_assert(ctx, phi->srcs_count == block->predecessors_count);
+		validate_src(ctx, phi, phi->srcs[pred_idx]);
 	}
 }
 
@@ -99,13 +112,11 @@ validate_phi(struct ir3_validate_ctx *ctx, struct ir3_instruction *phi)
 }
 
 static void
-validate_reg(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
+validate_dst(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
 			 struct ir3_register *reg)
 {
 	if (reg->tied) {
 		validate_assert(ctx, reg->tied->tied == reg);
-		validate_assert(ctx, (reg->tied->flags & IR3_REG_DEST) !=
-						(reg->flags & IR3_REG_DEST));
 		validate_assert(ctx, reg_class_flags(reg->tied) == reg_class_flags(reg));
 		validate_assert(ctx, reg->tied->wrmask == reg->wrmask);
 		if (reg->flags & IR3_REG_ARRAY) {
@@ -113,8 +124,8 @@ validate_reg(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
 			validate_assert(ctx, reg->tied->size == reg->size);
 		}
 		bool found = false;
-		for (unsigned i = 0; i < instr->regs_count; i++) {
-			if (instr->regs[i] == reg->tied) {
+		for (unsigned i = 0; i < instr->srcs_count; i++) {
+			if (instr->srcs[i] == reg->tied) {
 				found = true;
 				break;
 			}
@@ -122,7 +133,7 @@ validate_reg(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
 		validate_assert(ctx, found && "tied register not in the same instruction");
 	}
 
-	if ((reg->flags & IR3_REG_DEST) && (reg->flags & IR3_REG_SSA))
+	if (reg->flags & IR3_REG_SSA)
 		validate_assert(ctx, reg->instr == instr);
 }
 
@@ -135,7 +146,7 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
 	struct ir3_register *last_reg = NULL;
 
 	if (writes_gpr(instr)) {
-		if (instr->regs[0]->flags & IR3_REG_RELATIV) {
+		if (instr->dsts[0]->flags & IR3_REG_RELATIV) {
 			validate_assert(ctx, instr->address);
 		}
 	}
@@ -144,7 +155,7 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
 		if (reg->flags & IR3_REG_RELATIV)
 			validate_assert(ctx, instr->address);
 
-		validate_src(ctx, reg);
+		validate_src(ctx, instr, reg);
 
 		/* Validate that all src's are either half of full.
 		 *
@@ -177,10 +188,10 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
 		last_reg = reg;
 	}
 	
-	for (unsigned i = 0; i < instr->regs_count; i++) {
-		struct ir3_register *reg = instr->regs[i];
+	for (unsigned i = 0; i < instr->dsts_count; i++) {
+		struct ir3_register *reg = instr->dsts[i];
 
-		validate_reg(ctx, instr, reg);
+		validate_dst(ctx, instr, reg);
 	}
 
 	_mesa_set_add(ctx->defs, instr);
@@ -192,20 +203,21 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
 	switch (opc_cat(instr->opc)) {
 	case 1: /* move instructions */
 		if (instr->opc == OPC_MOVMSK) {
-			validate_assert(ctx, instr->regs_count == 1);
-			validate_assert(ctx, instr->regs[0]->flags & IR3_REG_SHARED);
-			validate_assert(ctx, !(instr->regs[0]->flags & IR3_REG_HALF));
-			validate_assert(ctx, util_is_power_of_two_or_zero(instr->regs[0]->wrmask + 1));
+			validate_assert(ctx, instr->dsts_count == 1);
+			validate_assert(ctx, instr->srcs_count == 0);
+			validate_assert(ctx, instr->dsts[0]->flags & IR3_REG_SHARED);
+			validate_assert(ctx, !(instr->dsts[0]->flags & IR3_REG_HALF));
+			validate_assert(ctx, util_is_power_of_two_or_zero(instr->dsts[0]->wrmask + 1));
 		} else {
-			validate_reg_size(ctx, instr->regs[0], instr->cat1.dst_type);
-			validate_reg_size(ctx, instr->regs[1], instr->cat1.src_type);
+			validate_reg_size(ctx, instr->dsts[0], instr->cat1.dst_type);
+			validate_reg_size(ctx, instr->srcs[0], instr->cat1.src_type);
 		}
 		break;
 	case 3:
 		/* Validate that cat3 opc matches the src type.  We've already checked that all
 		 * the src regs are same type
 		 */
-		if (instr->regs[1]->flags & IR3_REG_HALF) {
+		if (instr->srcs[0]->flags & IR3_REG_HALF) {
 			validate_assert(ctx, instr->opc == cat3_half_opc(instr->opc));
 		} else {
 			validate_assert(ctx, instr->opc == cat3_full_opc(instr->opc));
@@ -213,51 +225,51 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
 		break;
 	case 4:
 		/* Validate that cat4 opc matches the dst type: */
-		if (instr->regs[0]->flags & IR3_REG_HALF) {
+		if (instr->dsts[0]->flags & IR3_REG_HALF) {
 			validate_assert(ctx, instr->opc == cat4_half_opc(instr->opc));
 		} else {
 			validate_assert(ctx, instr->opc == cat4_full_opc(instr->opc));
 		}
 		break;
 	case 5:
-		validate_reg_size(ctx, instr->regs[0], instr->cat5.type);
+		validate_reg_size(ctx, instr->dsts[0], instr->cat5.type);
 		break;
 	case 6:
 		switch (instr->opc) {
 		case OPC_RESINFO:
 		case OPC_RESFMT:
-			validate_reg_size(ctx, instr->regs[0], instr->cat6.type);
-			validate_reg_size(ctx, instr->regs[1], instr->cat6.type);
+			validate_reg_size(ctx, instr->dsts[0], instr->cat6.type);
+			validate_reg_size(ctx, instr->srcs[0], instr->cat6.type);
 			break;
 		case OPC_L2G:
 		case OPC_G2L:
-			validate_assert(ctx, !(instr->regs[0]->flags & IR3_REG_HALF));
-			validate_assert(ctx, !(instr->regs[1]->flags & IR3_REG_HALF));
+			validate_assert(ctx, !(instr->dsts[0]->flags & IR3_REG_HALF));
+			validate_assert(ctx, !(instr->srcs[0]->flags & IR3_REG_HALF));
 			break;
 		case OPC_STG:
 		case OPC_STL:
 		case OPC_STP:
 		case OPC_STLW:
-			validate_assert(ctx, !(instr->regs[1]->flags & IR3_REG_HALF));
-			validate_reg_size(ctx, instr->regs[2], instr->cat6.type);
-			validate_assert(ctx, !(instr->regs[3]->flags & IR3_REG_HALF));
+			validate_assert(ctx, !(instr->srcs[0]->flags & IR3_REG_HALF));
+			validate_reg_size(ctx, instr->srcs[1], instr->cat6.type);
+			validate_assert(ctx, !(instr->srcs[2]->flags & IR3_REG_HALF));
 			break;
 		case OPC_STIB:
 			if (instr->flags & IR3_INSTR_B) {
-				validate_assert(ctx, !(instr->regs[1]->flags & IR3_REG_HALF));
-				validate_assert(ctx, !(instr->regs[2]->flags & IR3_REG_HALF));
-				validate_reg_size(ctx, instr->regs[3], instr->cat6.type);
+				validate_assert(ctx, !(instr->srcs[0]->flags & IR3_REG_HALF));
+				validate_assert(ctx, !(instr->srcs[1]->flags & IR3_REG_HALF));
+				validate_reg_size(ctx, instr->srcs[2], instr->cat6.type);
 			} else {
-				validate_assert(ctx, !(instr->regs[1]->flags & IR3_REG_HALF));
-				validate_reg_size(ctx, instr->regs[2], instr->cat6.type);
-				validate_assert(ctx, !(instr->regs[3]->flags & IR3_REG_HALF));
+				validate_assert(ctx, !(instr->srcs[0]->flags & IR3_REG_HALF));
+				validate_reg_size(ctx, instr->srcs[1], instr->cat6.type);
+				validate_assert(ctx, !(instr->srcs[2]->flags & IR3_REG_HALF));
 			}
 			break;
 		default:
-			validate_reg_size(ctx, instr->regs[0], instr->cat6.type);
-			validate_assert(ctx, !(instr->regs[1]->flags & IR3_REG_HALF));
-			if (instr->regs_count > 2)
-				validate_assert(ctx, !(instr->regs[2]->flags & IR3_REG_HALF));
+			validate_reg_size(ctx, instr->dsts[0], instr->cat6.type);
+			validate_assert(ctx, !(instr->srcs[0]->flags & IR3_REG_HALF));
+			if (instr->srcs_count > 1)
+				validate_assert(ctx, !(instr->srcs[1]->flags & IR3_REG_HALF));
 			break;
 		}
 	}
