@@ -156,6 +156,16 @@ struct decode_state {
 	char *errors[4];
 };
 
+static void
+print(struct decode_state *state, const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	vfprintf(state->out, fmt, args);
+	va_end(args);
+}
+
 static void display(struct decode_scope *scope);
 static void decode_error(struct decode_state *state, const char *fmt, ...) _util_printf_format(2,3);
 
@@ -182,9 +192,9 @@ flush_errors(struct decode_state *state)
 {
 	unsigned num_errors = state->num_errors;
 	if (num_errors > 0)
-		fprintf(state->out, "\t; ");
+		print(state, "\t; ");
 	for (unsigned i = 0; i < num_errors; i++) {
-		fprintf(state->out, "%s%s", (i > 0) ? ", " : "", state->errors[i]);
+		print(state, "%s%s", (i > 0) ? ", " : "", state->errors[i]);
 		free(state->errors[i]);
 	}
 	state->num_errors = 0;
@@ -441,19 +451,17 @@ display_bitset_field(struct decode_scope *scope, const struct isa_field *field, 
 static void
 display_enum_field(struct decode_scope *scope, const struct isa_field *field, bitmask_t val)
 {
-	FILE *out = scope->state->out;
-
 	const struct isa_enum *e = field->enums;
 	const uint64_t ui = bitmask_to_uint64_t(val);
 
 	for (unsigned i = 0; i < e->num_values; i++) {
 		if (e->values[i].val == ui) {
-			fprintf(out, "%s", e->values[i].display);
+			print(scope->state, "%s", e->values[i].display);
 			return;
 		}
 	}
 
-	fprintf(out, "%u", (unsigned)ui);
+	print(scope->state, "%u", (unsigned)ui);
 }
 
 static const struct isa_field *
@@ -519,7 +527,7 @@ display_field(struct decode_scope *scope, const char *field_name)
 			});
 		}
 
-		fprintf(scope->state->out, "%s", scope->bitset->name);
+		print(scope->state, "%s", scope->bitset->name);
 
 		return;
 	}
@@ -540,7 +548,6 @@ display_field(struct decode_scope *scope, const char *field_name)
 	}
 
 	unsigned width = 1 + field->high - field->low;
-	FILE *out = scope->state->out;
 
 	switch (field->type) {
 	/* Basic types: */
@@ -548,47 +555,47 @@ display_field(struct decode_scope *scope, const char *field_name)
 		if (scope->state->options->branch_labels) {
 			int offset = util_sign_extend(val, width) + scope->state->n;
 			if (offset < scope->state->num_instr) {
-				fprintf(out, "l%d", offset);
+				print(scope->state, "l%d", offset);
 				BITSET_SET(scope->state->branch_targets, offset);
 				break;
 			}
 		}
 		FALLTHROUGH;
 	case TYPE_INT:
-		fprintf(out, "%"PRId64, util_sign_extend(val, width));
+		print(scope->state, "%"PRId64, util_sign_extend(val, width));
 		break;
 	case TYPE_UINT:
-		fprintf(out, "%"PRIu64, val);
+		print(scope->state, "%"PRIu64, val);
 		break;
 	case TYPE_HEX:
 		// TODO format # of digits based on field width?
-		fprintf(out, "%"PRIx64, val);
+		print(scope->state, "%"PRIx64, val);
 		break;
 	case TYPE_OFFSET:
 		if (val != 0) {
-			fprintf(out, "%+"PRId64, util_sign_extend(val, width));
+			print(scope->state, "%+"PRId64, util_sign_extend(val, width));
 		}
 		break;
 	case TYPE_UOFFSET:
 		if (val != 0) {
-			fprintf(out, "+%"PRIu64, val);
+			print(scope->state, "+%"PRIu64, val);
 		}
 		break;
 	case TYPE_FLOAT:
 		if (width == 16) {
-			fprintf(out, "%f", _mesa_half_to_float(val));
+			print(scope->state, "%f", _mesa_half_to_float(val));
 		} else {
 			assert(width == 32);
-			fprintf(out, "%f", uif(val));
+			print(scope->state, "%f", uif(val));
 		}
 		break;
 	case TYPE_BOOL:
 		if (field->display) {
 			if (val) {
-				fprintf(out, "%s", field->display);
+				print(scope->state, "%s", field->display);
 			}
 		} else {
-			fprintf(out, "%u", (unsigned)val);
+			print(scope->state, "%u", (unsigned)val);
 		}
 		break;
 	case TYPE_ENUM:
@@ -665,7 +672,7 @@ decode(struct decode_state *state, void *bin, int sz)
 				state->options->instr_cb(state->options->cbdata,
 						state->n, instr.bitset);
 			}
-			fprintf(state->out, "l%d:\n", state->n);
+			print(state, "l%d:\n", state->n);
 		}
 
 		if (state->options->instr_cb) {
@@ -674,7 +681,7 @@ decode(struct decode_state *state, void *bin, int sz)
 
 		const struct isa_bitset *b = find_bitset(state, __instruction, instr);
 		if (!b) {
-			fprintf(state->out, "no match: %"BITSET_FORMAT"\n", BITSET_VALUE(instr.bitset));
+			print(state, "no match: %"BITSET_FORMAT"\n", BITSET_VALUE(instr.bitset));
 			errors++;
 			continue;
 		}
@@ -687,7 +694,7 @@ decode(struct decode_state *state, void *bin, int sz)
 		} else {
 			errors = 0;
 		}
-		fprintf(state->out, "\n");
+		print(state, "\n");
 
 		pop_scope(scope);
 
