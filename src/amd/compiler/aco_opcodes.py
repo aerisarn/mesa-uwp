@@ -319,6 +319,9 @@ opcode("p_exit_early_if")
 # simulates proper bpermute behavior when it's unsupported, eg. GFX10 wave64
 opcode("p_bpermute")
 
+# creates a lane mask where only the first active lane is selected
+opcode("p_elect")
+
 opcode("p_constaddr")
 
 # These don't have to be pseudo-ops, but it makes optimization easier to only

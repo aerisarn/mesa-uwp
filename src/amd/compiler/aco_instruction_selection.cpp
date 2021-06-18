@@ -8722,10 +8722,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_elect: {
-      Temp first = bld.sop1(Builder::s_ff1_i32, bld.def(s1), Operand(exec, bld.lm));
-      emit_wqm(
-         bld, bld.sop2(Builder::s_lshl, bld.def(bld.lm), bld.def(s1, scc), Operand::c32(1u), first),
-         get_ssa_temp(ctx, &instr->dest.ssa));
+      Temp elected = bld.pseudo(aco_opcode::p_elect, bld.def(bld.lm));
+      emit_wqm(bld, elected, get_ssa_temp(ctx, &instr->dest.ssa));
+      ctx->block->kind |= block_kind_needs_lowering;
       break;
    }
    case nir_intrinsic_shader_clock: {
