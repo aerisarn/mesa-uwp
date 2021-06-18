@@ -109,9 +109,6 @@ void *
 _mesa_dlist_alloc(struct gl_context *ctx, GLuint opcode, GLuint sz);
 
 void *
-_mesa_dlist_alloc_aligned(struct gl_context *ctx, GLuint opcode, GLuint bytes);
-
-void *
 _mesa_dlist_alloc_vertex_list(struct gl_context *ctx,
                               bool copy_to_current);
 

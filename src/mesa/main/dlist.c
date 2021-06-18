@@ -1640,28 +1640,18 @@ _mesa_dlist_alloc(struct gl_context *ctx, GLuint opcode, GLuint bytes)
 }
 
 
-/**
- * Same as _mesa_dlist_alloc(), but return a pointer which is 8-byte
- * aligned in 64-bit environments, 4-byte aligned otherwise.
- */
 void *
-_mesa_dlist_alloc_aligned(struct gl_context *ctx, GLuint opcode, GLuint bytes)
+_mesa_dlist_alloc_vertex_list(struct gl_context *ctx, bool copy_to_current)
 {
-   Node *n = dlist_alloc(ctx, (OpCode) opcode, bytes, true);
+   Node *n =  dlist_alloc(ctx,
+                          copy_to_current ? OPCODE_VERTEX_LIST_COPY_CURRENT :
+                                            OPCODE_VERTEX_LIST,
+                          sizeof(struct vbo_save_vertex_list),
+                          true);
    if (n)
       return n + 1;  /* return pointer to payload area, after opcode */
    else
       return NULL;
-}
-
-
-void *
-_mesa_dlist_alloc_vertex_list(struct gl_context *ctx, bool copy_to_current)
-{
-   return _mesa_dlist_alloc_aligned(ctx,
-                                    copy_to_current ? OPCODE_VERTEX_LIST_COPY_CURRENT :
-                                                      OPCODE_VERTEX_LIST,
-                                    sizeof(struct vbo_save_vertex_list));
 }
 
 
