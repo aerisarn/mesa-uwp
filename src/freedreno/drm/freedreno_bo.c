@@ -445,6 +445,12 @@ fd_bo_size(struct fd_bo *bo)
    return bo->size;
 }
 
+bool
+fd_bo_is_cached(struct fd_bo *bo)
+{
+   return !!(bo->alloc_flags & FD_BO_CACHED_COHERENT);
+}
+
 void *
 fd_bo_map(struct fd_bo *bo)
 {

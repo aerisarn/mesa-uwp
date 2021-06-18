@@ -824,6 +824,9 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
 
          return buf;
       }
+   } else if ((usage & PIPE_MAP_READ) && !fd_bo_is_cached(rsc->bo)) {
+      perf_debug_ctx(ctx, "wc readback: prsc=%p, level=%u, usage=%x, box=%dx%d+%d,%d",
+                     prsc, level, usage, box->width, box->height, box->x, box->y);
    }
 
    if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
