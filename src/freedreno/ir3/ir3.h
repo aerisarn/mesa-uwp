@@ -729,7 +729,7 @@ static inline bool is_same_type_mov(struct ir3_instruction *instr)
 		/* If the type of dest reg and src reg are different,
 		 * it shouldn't be considered as same type mov
 		 */
-		if (!is_same_type_reg(instr->regs[0], instr->regs[1]))
+		if (!is_same_type_reg(instr->dsts[0], instr->srcs[0]))
 			return false;
 		break;
 	case OPC_ABSNEG_F:
@@ -739,14 +739,14 @@ static inline bool is_same_type_mov(struct ir3_instruction *instr)
 		/* If the type of dest reg and src reg are different,
 		 * it shouldn't be considered as same type mov
 		 */
-		if (!is_same_type_reg(instr->regs[0], instr->regs[1]))
+		if (!is_same_type_reg(instr->dsts[0], instr->srcs[0]))
 			return false;
 		break;
 	default:
 		return false;
 	}
 
-	dst = instr->regs[0];
+	dst = instr->dsts[0];
 
 	/* mov's that write to a0 or p0.x are special: */
 	if (dst->num == regid(REG_P0, 0))
@@ -768,7 +768,7 @@ static inline bool is_const_mov(struct ir3_instruction *instr)
 	if (instr->opc != OPC_MOV)
 		return false;
 
-	if (!(instr->regs[1]->flags & IR3_REG_CONST))
+	if (!(instr->srcs[0]->flags & IR3_REG_CONST))
 		return false;
 
 	type_t src_type = instr->cat1.src_type;
@@ -812,13 +812,13 @@ static inline bool is_barrier(struct ir3_instruction *instr)
 static inline bool
 is_half(struct ir3_instruction *instr)
 {
-	return !!(instr->regs[0]->flags & IR3_REG_HALF);
+	return !!(instr->dsts[0]->flags & IR3_REG_HALF);
 }
 
 static inline bool
 is_shared(struct ir3_instruction *instr)
 {
-	return !!(instr->regs[0]->flags & IR3_REG_SHARED);
+	return !!(instr->dsts[0]->flags & IR3_REG_SHARED);
 }
 
 static inline bool
@@ -963,10 +963,10 @@ reg_size(const struct ir3_register *reg)
 
 static inline unsigned dest_regs(struct ir3_instruction *instr)
 {
-	if ((instr->regs_count == 0) || is_store(instr) || is_flow(instr))
+	if ((instr->dsts_count == 0) || is_store(instr) || is_flow(instr))
 		return 0;
 
-	return util_last_bit(instr->regs[0]->wrmask);
+	return util_last_bit(instr->dsts[0]->wrmask);
 }
 
 static inline bool
@@ -975,7 +975,7 @@ writes_gpr(struct ir3_instruction *instr)
 	if (dest_regs(instr) == 0)
 		return false;
 	/* is dest a normal temp register: */
-	struct ir3_register *reg = instr->regs[0];
+	struct ir3_register *reg = instr->dsts[0];
 	debug_assert(!(reg->flags & (IR3_REG_CONST | IR3_REG_IMMED)));
 	if ((reg_num(reg) == REG_A0) ||
 			(reg->num == regid(REG_P0, 0)))
@@ -985,8 +985,8 @@ writes_gpr(struct ir3_instruction *instr)
 
 static inline bool writes_addr0(struct ir3_instruction *instr)
 {
-	if (instr->regs_count > 0) {
-		struct ir3_register *dst = instr->regs[0];
+	if (instr->dsts_count > 0) {
+		struct ir3_register *dst = instr->dsts[0];
 		return dst->num == regid(REG_A0, 0);
 	}
 	return false;
@@ -994,8 +994,8 @@ static inline bool writes_addr0(struct ir3_instruction *instr)
 
 static inline bool writes_addr1(struct ir3_instruction *instr)
 {
-	if (instr->regs_count > 0) {
-		struct ir3_register *dst = instr->regs[0];
+	if (instr->dsts_count > 0) {
+		struct ir3_register *dst = instr->dsts[0];
 		return dst->num == regid(REG_A0, 1);
 	}
 	return false;
@@ -1003,8 +1003,8 @@ static inline bool writes_addr1(struct ir3_instruction *instr)
 
 static inline bool writes_pred(struct ir3_instruction *instr)
 {
-	if (instr->regs_count > 0) {
-		struct ir3_register *dst = instr->regs[0];
+	if (instr->dsts_count > 0) {
+		struct ir3_register *dst = instr->dsts[0];
 		return reg_num(dst) == REG_P0;
 	}
 	return false;
@@ -1288,7 +1288,7 @@ ir3_output_conv_src_type(struct ir3_instruction *instr, type_t base_type)
 		 * is irrelevant, never consider them as having an output conversion
 		 * by returning a type with the dest size here:
 		 */
-		return (instr->regs[0]->flags & IR3_REG_HALF) ? half_type(base_type) :
+		return (instr->dsts[0]->flags & IR3_REG_HALF) ? half_type(base_type) :
 			full_type(base_type);
 
 	case OPC_BARY_F:
@@ -1302,7 +1302,7 @@ ir3_output_conv_src_type(struct ir3_instruction *instr, type_t base_type)
 		return TYPE_F32;
 
 	default:
-		return (instr->regs[1]->flags & IR3_REG_HALF) ? half_type(base_type) :
+		return (instr->dsts[1]->flags & IR3_REG_HALF) ? half_type(base_type) :
 			full_type(base_type);
 	}
 }
@@ -1310,7 +1310,7 @@ ir3_output_conv_src_type(struct ir3_instruction *instr, type_t base_type)
 static inline type_t
 ir3_output_conv_dst_type(struct ir3_instruction *instr, type_t base_type)
 {
-	return (instr->regs[0]->flags & IR3_REG_HALF) ? half_type(base_type) :
+	return (instr->dsts[0]->flags & IR3_REG_HALF) ? half_type(base_type) :
 		full_type(base_type);
 }
 
@@ -1345,10 +1345,10 @@ ir3_try_swap_signedness(opc_t opc, bool *can_swap)
 
 /* iterator for an instructions's sources (reg), also returns src #: */
 #define foreach_src_n(__srcreg, __n, __instr) \
-	if ((__instr)->regs_count) \
+	if ((__instr)->srcs_count) \
 		for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
-			for (unsigned __cnt = (__instr)->regs_count - 1, __n = 0; __n < __cnt; __n++) \
-				if ((__srcreg = (__instr)->regs[__n + 1]) && !(__srcreg->flags & IR3_REG_DEST))
+			for (unsigned __cnt = (__instr)->srcs_count, __n = 0; __n < __cnt; __n++) \
+				if ((__srcreg = (__instr)->srcs[__n]))
 
 /* iterator for an instructions's sources (reg): */
 #define foreach_src(__srcreg, __instr) \
@@ -1519,11 +1519,11 @@ static inline struct ir3_register * __ssa_src(struct ir3_instruction *instr,
 		struct ir3_instruction *src, unsigned flags)
 {
 	struct ir3_register *reg;
-	if (src->regs[0]->flags & IR3_REG_HALF)
+	if (src->dsts[0]->flags & IR3_REG_HALF)
 		flags |= IR3_REG_HALF;
 	reg = ir3_src_create(instr, INVALID_REG, IR3_REG_SSA | flags);
-	reg->def = src->regs[0];
-	reg->wrmask = src->regs[0]->wrmask;
+	reg->def = src->dsts[0];
+	reg->wrmask = src->dsts[0]->wrmask;
 	return reg;
 }
 
@@ -1600,13 +1600,13 @@ ir3_MOV(struct ir3_block *block, struct ir3_instruction *src, type_t type)
 	unsigned flags = (type_size(type) < 32) ? IR3_REG_HALF : 0;
 
 	__ssa_dst(instr)->flags |= flags;
-	if (src->regs[0]->flags & IR3_REG_ARRAY) {
+	if (src->dsts[0]->flags & IR3_REG_ARRAY) {
 		struct ir3_register *src_reg = __ssa_src(instr, src, IR3_REG_ARRAY);
-		src_reg->array = src->regs[0]->array;
+		src_reg->array = src->dsts[0]->array;
 	} else {
-		__ssa_src(instr, src, src->regs[0]->flags & IR3_REG_SHARED);
+		__ssa_src(instr, src, src->dsts[0]->flags & IR3_REG_SHARED);
 	}
-	debug_assert(!(src->regs[0]->flags & IR3_REG_RELATIV));
+	debug_assert(!(src->dsts[0]->flags & IR3_REG_RELATIV));
 	instr->cat1.src_type = type;
 	instr->cat1.dst_type = type;
 	return instr;
@@ -1620,13 +1620,13 @@ ir3_COV(struct ir3_block *block, struct ir3_instruction *src,
 	unsigned dst_flags = (type_size(dst_type) < 32) ? IR3_REG_HALF : 0;
 	unsigned src_flags = (type_size(src_type) < 32) ? IR3_REG_HALF : 0;
 
-	debug_assert((src->regs[0]->flags & IR3_REG_HALF) == src_flags);
+	debug_assert((src->dsts[0]->flags & IR3_REG_HALF) == src_flags);
 
 	__ssa_dst(instr)->flags |= dst_flags;
 	__ssa_src(instr, src, 0);
 	instr->cat1.src_type = src_type;
 	instr->cat1.dst_type = dst_type;
-	debug_assert(!(src->regs[0]->flags & IR3_REG_ARRAY));
+	debug_assert(!(src->dsts[0]->flags & IR3_REG_ARRAY));
 	return instr;
 }
 

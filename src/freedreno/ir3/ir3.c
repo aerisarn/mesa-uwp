@@ -250,18 +250,18 @@ ir3_collect_info(struct ir3_shader_variant *v)
 			}
 
 			if (writes_gpr(instr)) {
-				collect_reg_info(instr, instr->regs[0], info);
+				collect_reg_info(instr, instr->dsts[0], info);
 			}
 
 			if ((instr->opc == OPC_STP || instr->opc == OPC_LDP)) {
 				struct ir3_register *base = (instr->opc == OPC_STP) ?
-						instr->regs[3] : instr->regs[2];
+						instr->srcs[2] : instr->srcs[1];
 				if (base->iim_val * type_size(instr->cat6.type) > 32) {
 					info->multi_dword_ldp_stp = true;
 				}
 			}
 
-			if ((instr->opc == OPC_BARY_F) && (instr->regs[0]->flags & IR3_REG_EI))
+			if ((instr->opc == OPC_BARY_F) && (instr->dsts[0]->flags & IR3_REG_EI))
 				info->last_baryf = info->instrs_count;
 
 			unsigned instrs_count = 1 + instr->repeat + instr->nop;
@@ -536,11 +536,11 @@ ir3_instr_set_address(struct ir3_instruction *instr,
 
 		debug_assert(instr->block == addr->block);
 
-		instr->address = ir3_src_create(instr, addr->regs[0]->num,
-										addr->regs[0]->flags & ~IR3_REG_DEST);
-		instr->address->def = addr->regs[0];
-		debug_assert(reg_num(addr->regs[0]) == REG_A0);
-		unsigned comp = reg_comp(addr->regs[0]);
+		instr->address = ir3_src_create(instr, addr->dsts[0]->num,
+										addr->dsts[0]->flags & ~IR3_REG_DEST);
+		instr->address->def = addr->dsts[0];
+		debug_assert(reg_num(addr->dsts[0]) == REG_A0);
+		unsigned comp = reg_comp(addr->dsts[0]);
 		if (comp == 0) {
 			array_insert(ir, ir->a0_users, instr);
 		} else {
@@ -646,9 +646,9 @@ void
 ir3_set_dst_type(struct ir3_instruction *instr, bool half)
 {
 	if (half) {
-		instr->regs[0]->flags |= IR3_REG_HALF;
+		instr->dsts[0]->flags |= IR3_REG_HALF;
 	} else {
-		instr->regs[0]->flags &= ~IR3_REG_HALF;
+		instr->dsts[0]->flags &= ~IR3_REG_HALF;
 	}
 
 	switch (opc_cat(instr->opc)) {
@@ -685,14 +685,14 @@ ir3_fixup_src_type(struct ir3_instruction *instr)
 {
 	switch (opc_cat(instr->opc)) {
 	case 1: /* move instructions */
-		if (instr->regs[1]->flags & IR3_REG_HALF) {
+		if (instr->srcs[0]->flags & IR3_REG_HALF) {
 			instr->cat1.src_type = half_type(instr->cat1.src_type);
 		} else {
 			instr->cat1.src_type = full_type(instr->cat1.src_type);
 		}
 		break;
 	case 3:
-		if (instr->regs[1]->flags & IR3_REG_HALF) {
+		if (instr->srcs[0]->flags & IR3_REG_HALF) {
 			instr->opc = cat3_half_opc(instr->opc);
 		} else {
 			instr->opc = cat3_full_opc(instr->opc);
@@ -728,7 +728,7 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 	/* If destination is indirect, then source cannot be.. at least
 	 * I don't think so..
 	 */
-	if ((instr->regs[0]->flags & IR3_REG_RELATIV) &&
+	if ((instr->dsts[0]->flags & IR3_REG_RELATIV) &&
 			(flags & IR3_REG_RELATIV))
 		return false;
 
@@ -745,8 +745,8 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 		 * called on a src that has already had an indirect load folded
 		 * in, in which case ssa() returns NULL
 		 */
-		if (instr->regs[n+1]->flags & IR3_REG_SSA) {
-			struct ir3_instruction *src = ssa(instr->regs[n+1]);
+		if (instr->srcs[n]->flags & IR3_REG_SSA) {
+			struct ir3_instruction *src = ssa(instr->srcs[n]);
 			if (src->address->def->instr->block != instr->block)
 				return false;
 		}
@@ -781,12 +781,12 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 			return false;
 
 		if (flags & (IR3_REG_CONST | IR3_REG_IMMED)) {
-			unsigned m = (n ^ 1) + 1;
+			unsigned m = n ^ 1;
 			/* cannot deal w/ const in both srcs:
 			 * (note that some cat2 actually only have a single src)
 			 */
-			if (m < instr->regs_count) {
-				struct ir3_register *reg = instr->regs[m];
+			if (m < instr->srcs_count) {
+				struct ir3_register *reg = instr->srcs[m];
 				if ((flags & IR3_REG_CONST) && (reg->flags & IR3_REG_CONST))
 					return false;
 				if ((flags & IR3_REG_IMMED) && (reg->flags & IR3_REG_IMMED))
