@@ -129,10 +129,9 @@ struct ir3_register {
 		IR3_REG_SSA    = 0x4000,   /* 'instr' is ptr to assigning instr */
 		IR3_REG_ARRAY  = 0x8000,
 
-		IR3_REG_DEST   = 0x10000,
-		IR3_REG_KILL = 0x20000,
-		IR3_REG_FIRST_KILL = 0x40000,
-		IR3_REG_UNUSED = 0x80000,
+		IR3_REG_KILL = 0x10000,
+		IR3_REG_FIRST_KILL = 0x20000,
+		IR3_REG_UNUSED = 0x40000,
 	} flags;
 
 	/* used for cat5 instructions, but also for internal/IR level

@@ -469,7 +469,6 @@ void ir3_instr_add_dep(struct ir3_instruction *instr, struct ir3_instruction *de
 struct ir3_register * ir3_src_create(struct ir3_instruction *instr,
 		int num, int flags)
 {
-	assert(!(flags & IR3_REG_DEST));
 	struct ir3 *shader = instr->block->shader;
 #ifdef DEBUG
 	debug_assert(instr->srcs_count < instr->srcs_max);
@@ -486,7 +485,7 @@ struct ir3_register * ir3_dst_create(struct ir3_instruction *instr,
 #ifdef DEBUG
 	debug_assert(instr->dsts_count < instr->dsts_max);
 #endif
-	struct ir3_register *reg = reg_create(shader, num, flags | IR3_REG_DEST);
+	struct ir3_register *reg = reg_create(shader, num, flags);
 	instr->dsts[instr->dsts_count++] = reg;
 	return reg;
 }
@@ -505,10 +504,8 @@ void ir3_reg_set_last_array(struct ir3_instruction *instr,
 							struct ir3_register *last_write)
 {
 	assert(reg->flags & IR3_REG_ARRAY);
-	assert(reg->flags & IR3_REG_DEST);
 	struct ir3_register *new_reg = ir3_src_create(instr, 0, 0);
 	*new_reg = *reg;
-	new_reg->flags &= ~IR3_REG_DEST;
 	new_reg->def = last_write;
 	ir3_reg_tie(reg, new_reg);
 }
@@ -523,7 +520,7 @@ ir3_instr_set_address(struct ir3_instruction *instr,
 		debug_assert(instr->block == addr->block);
 
 		instr->address = ir3_src_create(instr, addr->dsts[0]->num,
-										addr->dsts[0]->flags & ~IR3_REG_DEST);
+										addr->dsts[0]->flags);
 		instr->address->def = addr->dsts[0];
 		debug_assert(reg_num(addr->dsts[0]) == REG_A0);
 		unsigned comp = reg_comp(addr->dsts[0]);
