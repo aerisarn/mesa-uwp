@@ -99,6 +99,7 @@ if with_xlib_lease
 endif
 
 if with_freedreno_kgsl
+  tu_flags += '-DTU_USE_KGSL'
   libtu_files += files('tu_kgsl.c')
 else
   libtu_files += files('tu_drm.c')

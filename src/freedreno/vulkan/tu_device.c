@@ -149,7 +149,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_swapchain = TU_HAS_SURFACE,
       .KHR_variable_pointers = true,
       .KHR_vulkan_memory_model = true,
-#ifndef ANDROID
+#ifndef TU_USE_KGSL
       .KHR_timeline_semaphore = true,
 #endif
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
