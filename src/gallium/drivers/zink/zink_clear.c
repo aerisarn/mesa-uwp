@@ -22,6 +22,7 @@
  */
 
 #include "zink_context.h"
+#include "zink_query.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
 
@@ -466,6 +467,32 @@ zink_clear_buffer(struct pipe_context *pctx,
    if (rem)
       memcpy(map + size - rem, clear_value, rem);
    pipe_buffer_unmap(pctx, xfer);
+}
+
+void
+zink_clear_render_target(struct pipe_context *pctx, struct pipe_surface *dst,
+                         const union pipe_color_union *color, unsigned dstx,
+                         unsigned dsty, unsigned width, unsigned height,
+                         bool render_condition_enabled)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | (render_condition_enabled ? 0 : ZINK_BLIT_NO_COND_RENDER));
+   util_blitter_clear_render_target(ctx->blitter, dst, color, dstx, dsty, width, height);
+   if (!render_condition_enabled && ctx->render_condition_active)
+      zink_start_conditional_render(ctx);
+}
+
+void
+zink_clear_depth_stencil(struct pipe_context *pctx, struct pipe_surface *dst,
+                         unsigned clear_flags, double depth, unsigned stencil,
+                         unsigned dstx, unsigned dsty, unsigned width, unsigned height,
+                         bool render_condition_enabled)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | (render_condition_enabled ? 0 : ZINK_BLIT_NO_COND_RENDER));
+   util_blitter_clear_depth_stencil(ctx->blitter, dst, clear_flags, depth, stencil, dstx, dsty, width, height);
+   if (!render_condition_enabled && ctx->render_condition_active)
+      zink_start_conditional_render(ctx);
 }
 
 bool
