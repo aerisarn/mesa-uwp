@@ -150,6 +150,7 @@ a530-traces:
   extends:
     - .freedreno-test
   variables:
+    DEQP_PARALLEL: 10
     BM_KERNEL: /baremetal-files/cheza-kernel
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
     GPU_VERSION: freedreno-a630
