@@ -357,7 +357,7 @@ namespace {
       case TCS_OPCODE_SRC0_010_IS_ZERO:
       case TCS_OPCODE_GET_PRIMITIVE_ID:
       case TES_OPCODE_GET_PRIMITIVE_ID:
-      case SHADER_OPCODE_GET_DSS_ID:
+      case SHADER_OPCODE_READ_SR_REG:
          if (devinfo->ver >= 11) {
             return calculate_desc(info, EU_UNIT_FPU, 0, 2, 0, 0, 2,
                                   0, 10, 6 /* XXX */, 14, 0, 0);

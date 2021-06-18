@@ -5727,11 +5727,35 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
-   case nir_intrinsic_load_topology_id_intel:
-      assert(nir_intrinsic_base(instr) == BRW_TOPOLOGY_ID_DSS);
-      bld.emit(SHADER_OPCODE_GET_DSS_ID,
-               retype(dest, BRW_REGISTER_TYPE_UD));
+   case nir_intrinsic_load_topology_id_intel: {
+       /* These move around basically every hardware generation, so don'
+        * do any >= checks and fail if the platform hasn't explicitly
+        * been enabled here.
+        */
+      assert(devinfo->ver == 12);
+
+      /* Here is what the layout of SR0 looks like on Gfx12 :
+       *   [13:11] : Slice ID.
+       *   [10:9]  : Dual-SubSlice ID
+       *   [8]     : SubSlice ID
+       *   [7]     : EUID[2] (aka EU Row ID)
+       *   [6]     : Reserved
+       *   [5:4]   : EUID[1:0]
+       *   [2:0]   : Thread ID
+       */
+      fs_reg raw_id = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      bld.emit(SHADER_OPCODE_READ_SR_REG, raw_id, brw_imm_ud(0));
+      switch (nir_intrinsic_base(instr)) {
+      case BRW_TOPOLOGY_ID_DSS:
+         bld.AND(raw_id, raw_id, brw_imm_ud(0x3fff));
+         /* Get rid of anything below dualsubslice */
+         bld.SHR(retype(dest, BRW_REGISTER_TYPE_UD), raw_id, brw_imm_ud(9));
+         break;
+      default:
+         unreachable("Invalid topology id type");
+      }
       break;
+   }
 
    case nir_intrinsic_load_btd_stack_id_intel:
       if (stage == MESA_SHADER_COMPUTE) {

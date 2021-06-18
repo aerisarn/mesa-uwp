@@ -557,12 +557,12 @@ brw_instruction_name(const struct intel_device_info *devinfo, enum opcode op)
       return "rnd_mode";
    case SHADER_OPCODE_FLOAT_CONTROL_MODE:
       return "float_control_mode";
-   case SHADER_OPCODE_GET_DSS_ID:
-      return "get_dss_id";
    case SHADER_OPCODE_BTD_SPAWN_LOGICAL:
       return "btd_spawn_logical";
    case SHADER_OPCODE_BTD_RETIRE_LOGICAL:
       return "btd_retire_logical";
+   case SHADER_OPCODE_READ_SR_REG:
+      return "read_sr_reg";
    }
 
    unreachable("not reached");
