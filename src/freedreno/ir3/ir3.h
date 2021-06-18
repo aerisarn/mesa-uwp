@@ -283,6 +283,8 @@ struct ir3_instruction {
 #endif
 	unsigned regs_count, srcs_count, dsts_count;
 	struct ir3_register **regs;
+	struct ir3_register **dsts;
+	struct ir3_register **srcs;
 	union {
 		struct {
 			char inv1, inv2;
