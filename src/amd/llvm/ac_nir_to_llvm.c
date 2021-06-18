@@ -578,8 +578,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_unpack_half_2x16:
       src_components = 1;
       break;
-   case nir_op_cube_face_coord:
-   case nir_op_cube_face_index:
+   case nir_op_cube_face_coord_amd:
+   case nir_op_cube_face_index_amd:
       src_components = 3;
       break;
    case nir_op_pack_64_4x16:
@@ -1180,7 +1180,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    }
 
-   case nir_op_cube_face_coord: {
+   case nir_op_cube_face_coord_amd: {
       src[0] = ac_to_float(&ctx->ac, src[0]);
       LLVMValueRef results[2];
       LLVMValueRef in[3];
@@ -1201,7 +1201,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    }
 
-   case nir_op_cube_face_index: {
+   case nir_op_cube_face_index_amd: {
       src[0] = ac_to_float(&ctx->ac, src[0]);
       LLVMValueRef in[3];
       for (unsigned chan = 0; chan < 3; chan++)

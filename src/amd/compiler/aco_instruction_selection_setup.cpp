@@ -704,8 +704,8 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_op_ldexp:
                   case nir_op_frexp_sig:
                   case nir_op_frexp_exp:
-                  case nir_op_cube_face_index:
-                  case nir_op_cube_face_coord:
+                  case nir_op_cube_face_index_amd:
+                  case nir_op_cube_face_coord_amd:
                   case nir_op_sad_u8x4:
                      type = RegType::vgpr;
                      break;

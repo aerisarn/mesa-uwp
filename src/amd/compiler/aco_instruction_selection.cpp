@@ -2031,7 +2031,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       }
       break;
    }
-   case nir_op_cube_face_coord: {
+   case nir_op_cube_face_coord_amd: {
       Temp in = get_alu_src(ctx, instr->src[0], 3);
       Temp src[3] = { emit_extract_vector(ctx, in, 0, v1),
                       emit_extract_vector(ctx, in, 1, v1),
@@ -2049,7 +2049,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       bld.pseudo(aco_opcode::p_create_vector, Definition(dst), sc, tc);
       break;
    }
-   case nir_op_cube_face_index: {
+   case nir_op_cube_face_index_amd: {
       Temp in = get_alu_src(ctx, instr->src[0], 3);
       Temp src[3] = { emit_extract_vector(ctx, in, 0, v1),
                       emit_extract_vector(ctx, in, 1, v1),

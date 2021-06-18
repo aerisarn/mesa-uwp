@@ -514,7 +514,7 @@ for (unsigned bit = 0; bit < bit_size; bit++) {
 """)
 
 # AMD_gcn_shader extended instructions
-unop_horiz("cube_face_coord", 2, tfloat32, 3, tfloat32, """
+unop_horiz("cube_face_coord_amd", 2, tfloat32, 3, tfloat32, """
 dst.x = dst.y = 0.0;
 float absX = fabsf(src0.x);
 float absY = fabsf(src0.y);
@@ -536,7 +536,7 @@ dst.x = dst.x * (1.0f / ma) + 0.5f;
 dst.y = dst.y * (1.0f / ma) + 0.5f;
 """)
 
-unop_horiz("cube_face_index", 1, tfloat32, 3, tfloat32, """
+unop_horiz("cube_face_index_amd", 1, tfloat32, 3, tfloat32, """
 float absX = fabsf(src0.x);
 float absY = fabsf(src0.y);
 float absZ = fabsf(src0.z);
