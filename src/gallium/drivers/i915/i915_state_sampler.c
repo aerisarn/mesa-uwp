@@ -89,6 +89,14 @@ update_sampler(struct i915_context *i915, uint32_t unit,
       state[0] |= SS2_REVERSE_GAMMA_ENABLE;
    }
 
+   /* There is no HW support for 1D textures, so we just make them 2D textures
+    * with h=1, but that means we need to make the Y coordinate not contribute
+    * to bringing any border color in.  Clearing it sets it to WRAP.
+    */
+   if (pt->target == PIPE_TEXTURE_1D) {
+      state[1] &= ~SS3_TCY_ADDR_MODE_MASK;
+   }
+
    /* The GLES2 spec says textures are incomplete (return 0,0,0,1) if:
     *
     * "A cube map sampler is called, any of the corresponding texture images are
