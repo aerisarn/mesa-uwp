@@ -269,21 +269,23 @@ handle_instr(struct ra_spill_ctx *ctx, struct ir3_instruction *instr)
 
 	update_max_pressure(ctx);
 
-	for (unsigned i = 0; i < instr->regs_count; i++) {
-		if (ra_reg_is_src(instr->regs[i]) && 
-			(instr->regs[i]->flags & IR3_REG_FIRST_KILL))
-			remove_src(ctx, instr, instr->regs[i]);
-		else if (ra_reg_is_dst(instr->regs[i]) &&
-				 (instr->regs[i]->flags & IR3_REG_UNUSED))
-			remove_dst(ctx, instr->regs[i]);
+	for (unsigned i = 0; i < instr->srcs_count; i++) {
+		if (ra_reg_is_src(instr->srcs[i]) && 
+			(instr->srcs[i]->flags & IR3_REG_FIRST_KILL))
+			remove_src(ctx, instr, instr->srcs[i]);
+	}
+	for (unsigned i = 0; i < instr->dsts_count; i++) {
+		if (ra_reg_is_dst(instr->dsts[i]) &&
+				 (instr->dsts[i]->flags & IR3_REG_UNUSED))
+			remove_dst(ctx, instr->dsts[i]);
 	}
 }
 
 static void
 handle_input_phi(struct ra_spill_ctx *ctx, struct ir3_instruction *instr)
 {
-	init_dst(ctx, instr->regs[0]);
-	insert_dst(ctx, instr->regs[0]);
+	init_dst(ctx, instr->dsts[0]);
+	insert_dst(ctx, instr->dsts[0]);
 }
 
 static void
@@ -291,8 +293,8 @@ remove_input_phi(struct ra_spill_ctx *ctx, struct ir3_instruction *instr)
 {
 	ra_foreach_src(src, instr)
 		remove_src(ctx, instr, src);
-	if (instr->regs[0]->flags & IR3_REG_UNUSED)
-		remove_dst(ctx, instr->regs[0]);
+	if (instr->dsts[0]->flags & IR3_REG_UNUSED)
+		remove_dst(ctx, instr->dsts[0]);
 }
 
 static void

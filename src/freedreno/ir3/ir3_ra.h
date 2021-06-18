@@ -94,7 +94,7 @@ ra_reg_is_src(const struct ir3_register *reg)
 static inline bool
 ra_reg_is_dst(const struct ir3_register *reg)
 {
-	return (reg->flags & IR3_REG_SSA) && (reg->flags & IR3_REG_DEST) &&
+	return (reg->flags & IR3_REG_SSA) &&
 		def_is_gpr(reg) &&
 		((reg->flags & IR3_REG_ARRAY) || reg->wrmask);
 }
@@ -107,18 +107,18 @@ ra_reg_is_dst(const struct ir3_register *reg)
 
 #define ra_foreach_src(__srcreg, __instr) \
 	for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
-		for (unsigned __cnt = (__instr)->regs_count, __i = 0; __i < __cnt; __i++) \
-			if (ra_reg_is_src((__srcreg = (__instr)->regs[__i])))
+		for (unsigned __cnt = (__instr)->srcs_count, __i = 0; __i < __cnt; __i++) \
+			if (ra_reg_is_src((__srcreg = (__instr)->srcs[__i])))
 
 #define ra_foreach_src_rev(__srcreg, __instr) \
 	for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
-		for (int __cnt = (__instr)->regs_count, __i = __cnt - 1; __i >= 0; __i--) \
-			if (ra_reg_is_src((__srcreg = (__instr)->regs[__i])))
+		for (int __cnt = (__instr)->srcs_count, __i = __cnt - 1; __i >= 0; __i--) \
+			if (ra_reg_is_src((__srcreg = (__instr)->srcs[__i])))
 
-#define ra_foreach_dst(__srcreg, __instr) \
-	for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
-		for (unsigned __cnt = (__instr)->regs_count, __i = 0; __i < __cnt; __i++) \
-			if (ra_reg_is_dst((__srcreg = (__instr)->regs[__i])))
+#define ra_foreach_dst(__dstreg, __instr) \
+	for (struct ir3_register *__dstreg = (void *)~0; __dstreg; __dstreg = NULL) \
+		for (unsigned __cnt = (__instr)->dsts_count, __i = 0; __i < __cnt; __i++) \
+			if (ra_reg_is_dst((__dstreg = (__instr)->dsts[__i])))
 
 
 #define RA_HALF_SIZE (4 * 48)

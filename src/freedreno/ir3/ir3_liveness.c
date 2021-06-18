@@ -87,9 +87,9 @@ compute_block_liveness(struct ir3_liveness *live, struct ir3_block *block,
 		foreach_instr (phi, &block->instr_list) {
 			if (phi->opc != OPC_META_PHI)
 				break;
-			if (!phi->regs[1 + i]->def)
+			if (!phi->srcs[i]->def)
 				continue;
-			unsigned name = phi->regs[1 + i]->def->name;
+			unsigned name = phi->srcs[i]->def->name;
 			if (!BITSET_TEST(live->live_out[pred->index], name)) {
 				progress = true;
 				BITSET_SET(live->live_out[pred->index], name);
@@ -171,10 +171,8 @@ ir3_def_live_after(struct ir3_liveness *live, struct ir3_register *def,
 		if (test_instr == instr)
 			break;
 
-		for (unsigned i = 0; i < test_instr->regs_count; i++) {
-			if (test_instr->regs[i]->flags & IR3_REG_DEST)
-				continue;
-			if (test_instr->regs[i]->def == def)
+		for (unsigned i = 0; i < test_instr->srcs_count; i++) {
+			if (test_instr->srcs[i]->def == def)
 				return true;
 		}
 	}

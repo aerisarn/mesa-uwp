@@ -118,13 +118,13 @@ chase_copies(struct def_value value)
 		struct ir3_instruction *instr = value.reg->instr;
 		if (instr->opc == OPC_META_SPLIT) {
 			value.offset += instr->split.off * reg_elem_size(value.reg);
-			value.reg = instr->regs[1]->def;
+			value.reg = instr->srcs[0]->def;
 		} else if (instr->opc == OPC_META_COLLECT) {
 			if (value.offset % reg_elem_size(value.reg) != 0 ||
 				value.size > reg_elem_size(value.reg) ||
 				value.offset + value.size > reg_size(value.reg))
 				break;
-			struct ir3_register *src = instr->regs[1 + value.offset / reg_elem_size(value.reg)];
+			struct ir3_register *src = instr->srcs[value.offset / reg_elem_size(value.reg)];
 			if (!src->def)
 				break;
 			value.offset = 0;
@@ -347,9 +347,9 @@ static void
 coalesce_phi(struct ir3_liveness *live,
 			 struct ir3_instruction *phi)
 {
-	for (unsigned i = 1; i < phi->regs_count; i++) {
-		if (phi->regs[i]->def)
-			try_merge_defs(live, phi->regs[0], phi->regs[i]->def, 0);
+	for (unsigned i = 0; i < phi->srcs_count; i++) {
+		if (phi->srcs[i]->def)
+			try_merge_defs(live, phi->dsts[0], phi->srcs[i]->def, 0);
 	}
 }
 
@@ -357,11 +357,10 @@ static void
 aggressive_coalesce_parallel_copy(struct ir3_liveness *live,
 								  struct ir3_instruction *pcopy)
 {
-	unsigned copies = pcopy->regs_count / 2;
-	for (unsigned i = 0; i < copies; i++) {
-		if (!(pcopy->regs[copies + i]->flags & IR3_REG_SSA))
+	for (unsigned i = 0; i < pcopy->dsts_count; i++) {
+		if (!(pcopy->srcs[i]->flags & IR3_REG_SSA))
 			continue;
-		try_merge_defs(live, pcopy->regs[i], pcopy->regs[copies + i]->def, 0);
+		try_merge_defs(live, pcopy->dsts[i], pcopy->srcs[i]->def, 0);
 	}
 }
 
@@ -369,19 +368,19 @@ static void
 aggressive_coalesce_split(struct ir3_liveness *live,
 						 struct ir3_instruction *split)
 {
-	try_merge_defs(live, split->regs[1]->def, split->regs[0],
-				   split->split.off * reg_elem_size(split->regs[0]));
+	try_merge_defs(live, split->srcs[0]->def, split->dsts[0],
+				   split->split.off * reg_elem_size(split->dsts[0]));
 }
 
 static void
 aggressive_coalesce_collect(struct ir3_liveness *live,
 						   struct ir3_instruction *collect)
 {
-	for (unsigned i = 1, offset = 0; i < collect->regs_count;
-		 offset += reg_elem_size(collect->regs[i]), i++) {
-		if (!(collect->regs[i]->flags & IR3_REG_SSA))
+	for (unsigned i = 0, offset = 0; i < collect->srcs_count;
+		 offset += reg_elem_size(collect->srcs[i]), i++) {
+		if (!(collect->srcs[i]->flags & IR3_REG_SSA))
 			continue;
-		try_merge_defs(live, collect->regs[0], collect->regs[i]->def, offset);
+		try_merge_defs(live, collect->dsts[0], collect->srcs[i]->def, offset);
 	}
 }
 
@@ -402,8 +401,8 @@ create_parallel_copy(struct ir3_block *block)
 				break;
 
 			/* Avoid undef */
-			if ((phi->regs[1 + pred_idx]->flags & IR3_REG_SSA) &&
-				 !phi->regs[1 + pred_idx]->def)
+			if ((phi->srcs[pred_idx]->flags & IR3_REG_SSA) &&
+				 !phi->srcs[pred_idx]->def)
 				continue;
 
 			/* We don't support critical edges. If we were to support them,
@@ -422,10 +421,10 @@ create_parallel_copy(struct ir3_block *block)
 		foreach_instr (phi, &succ->instr_list) {
 			if (phi->opc != OPC_META_PHI)
 				break;
-			if ((phi->regs[1 + pred_idx]->flags & IR3_REG_SSA) &&
-				 !phi->regs[1 + pred_idx]->def)
+			if ((phi->srcs[pred_idx]->flags & IR3_REG_SSA) &&
+				 !phi->srcs[pred_idx]->def)
 				continue;
-			src[j++] = phi->regs[pred_idx + 1];
+			src[j++] = phi->srcs[pred_idx];
 		}
 		assert(j == phi_count);
 
@@ -439,18 +438,18 @@ create_parallel_copy(struct ir3_block *block)
 		}
 
 		for (j = 0; j < phi_count; j++) {
-			pcopy->regs[pcopy->regs_count++] = ir3_reg_clone(block->shader, src[j]);
+			pcopy->srcs[pcopy->srcs_count++] = ir3_reg_clone(block->shader, src[j]);
 		}
 
 		j = 0;
 		foreach_instr (phi, &succ->instr_list) {
 			if (phi->opc != OPC_META_PHI)
 				break;
-			if ((phi->regs[1 + pred_idx]->flags & IR3_REG_SSA) &&
-				 !phi->regs[1 + pred_idx]->def)
+			if ((phi->srcs[pred_idx]->flags & IR3_REG_SSA) &&
+				 !phi->srcs[pred_idx]->def)
 				continue;
-			phi->regs[1 + pred_idx]->def = pcopy->regs[j];
-			phi->regs[1 + pred_idx]->flags = pcopy->regs[j]->flags & ~IR3_REG_DEST;
+			phi->srcs[pred_idx]->def = pcopy->dsts[j];
+			phi->srcs[pred_idx]->flags = pcopy->dsts[j]->flags & ~IR3_REG_DEST;
 			j++;
 		}
 		assert(j == phi_count);
@@ -471,10 +470,8 @@ index_merge_sets(struct ir3 *ir)
 	unsigned offset = 0;
 	foreach_block (block, &ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
-			for (unsigned i = 0; i < instr->regs_count; i++) {
-				struct ir3_register *dst = instr->regs[i];
-				if (!(dst->flags & IR3_REG_DEST))
-					continue;
+			for (unsigned i = 0; i < instr->dsts_count; i++) {
+				struct ir3_register *dst = instr->dsts[i];
 
 				unsigned dst_offset;
 				struct ir3_merge_set *merge_set = dst->merge_set;
@@ -508,10 +505,8 @@ dump_merge_sets(struct ir3 *ir)
 	struct set *merge_sets = _mesa_pointer_set_create(NULL);
 	foreach_block (block, &ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
-			for (unsigned i = 0; i < instr->regs_count; i++) {
-				struct ir3_register *dst = instr->regs[i];
-				if (!(dst->flags & IR3_REG_DEST))
-					continue;
+			for (unsigned i = 0; i < instr->dsts_count; i++) {
+				struct ir3_register *dst = instr->dsts[i];
 
 				struct ir3_merge_set *merge_set = dst->merge_set;
 				if (!merge_set || _mesa_set_search(merge_sets, merge_set))

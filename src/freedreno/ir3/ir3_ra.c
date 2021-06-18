@@ -993,8 +993,8 @@ get_reg(struct ra_ctx *ctx, struct ra_file *file, struct ir3_register *reg,
 	 * SFU instructions:
 	 */
 	if (is_sfu(reg->instr) || is_alu(reg->instr)) {
-		for (unsigned i = 1; i < reg->instr->regs_count; i++) {
-			struct ir3_register *src = reg->instr->regs[i];
+		for (unsigned i = 0; i < reg->instr->srcs_count; i++) {
+			struct ir3_register *src = reg->instr->srcs[i];
 			if (!ra_reg_is_src(src))
 				continue;
 			if (ra_get_file(ctx, src) == file && reg_size(src) >= size) {
@@ -1222,8 +1222,8 @@ handle_normal_instr(struct ra_ctx *ctx, struct ir3_instruction *instr)
 static void
 handle_split(struct ra_ctx *ctx, struct ir3_instruction *instr)
 {
-	struct ir3_register *dst = instr->regs[0];
-	struct ir3_register *src = instr->regs[1];
+	struct ir3_register *dst = instr->dsts[0];
+	struct ir3_register *src = instr->srcs[0];
 
 	if (dst->merge_set == NULL || src->def->merge_set != dst->merge_set) {
 		handle_normal_instr(ctx, instr);
@@ -1242,8 +1242,8 @@ handle_split(struct ra_ctx *ctx, struct ir3_instruction *instr)
 static void
 handle_collect(struct ra_ctx *ctx, struct ir3_instruction *instr)
 {
-	struct ir3_merge_set *dst_set = instr->regs[0]->merge_set;
-	unsigned dst_offset = instr->regs[0]->merge_set_offset;
+	struct ir3_merge_set *dst_set = instr->dsts[0]->merge_set;
+	unsigned dst_offset = instr->dsts[0]->merge_set_offset;
 	
 	if (!dst_set || dst_set->regs_count == 1) {
 		handle_normal_instr(ctx, instr);
@@ -1267,15 +1267,15 @@ handle_collect(struct ra_ctx *ctx, struct ir3_instruction *instr)
 	 */
 	physreg_t dst_fixed = (physreg_t) ~0u;
 
-	for (unsigned i = 1; i < instr->regs_count; i++) {
-		if (!ra_reg_is_src(instr->regs[i]))
+	for (unsigned i = 0; i < instr->srcs_count; i++) {
+		if (!ra_reg_is_src(instr->srcs[i]))
 			continue;
 
-		if (instr->regs[i]->flags & IR3_REG_FIRST_KILL) {
-			mark_src_killed(ctx, instr->regs[i]);
+		if (instr->srcs[i]->flags & IR3_REG_FIRST_KILL) {
+			mark_src_killed(ctx, instr->srcs[i]);
 		}
 
-		struct ir3_register *src = instr->regs[i];
+		struct ir3_register *src = instr->srcs[i];
 		struct ra_interval *interval = &ctx->intervals[src->def->name];
 
 		if (src->def->merge_set != dst_set || interval->is_killed)
@@ -1283,7 +1283,7 @@ handle_collect(struct ra_ctx *ctx, struct ir3_instruction *instr)
 		while (interval->interval.parent != NULL) {
 			interval = ir3_reg_interval_to_ra_interval(interval->interval.parent);
 		}
-		if (reg_size(interval->interval.reg) >= reg_size(instr->regs[0])) {
+		if (reg_size(interval->interval.reg) >= reg_size(instr->dsts[0])) {
 			dst_fixed = interval->physreg_start - interval->interval.reg->merge_set_offset + dst_offset;
 		} else {
 			/* For sources whose root interval is smaller than the
@@ -1297,16 +1297,16 @@ handle_collect(struct ra_ctx *ctx, struct ir3_instruction *instr)
 	}
 
 	if (dst_fixed != (physreg_t) ~0u)
-		allocate_dst_fixed(ctx, instr->regs[0], dst_fixed);
+		allocate_dst_fixed(ctx, instr->dsts[0], dst_fixed);
 	else
-		allocate_dst(ctx, instr->regs[0]);
+		allocate_dst(ctx, instr->dsts[0]);
 
 	/* Remove the temporary is_killed we added */
-	for (unsigned i = 1; i < instr->regs_count; i++) {
-		if (!ra_reg_is_src(instr->regs[i]))
+	for (unsigned i = 0; i < instr->srcs_count; i++) {
+		if (!ra_reg_is_src(instr->srcs[i]))
 			continue;
 
-		struct ir3_register *src = instr->regs[i];
+		struct ir3_register *src = instr->srcs[i];
 		struct ra_interval *interval = &ctx->intervals[src->def->name];
 		while (interval->interval.parent != NULL) {
 			interval = ir3_reg_interval_to_ra_interval(interval->interval.parent);
@@ -1327,7 +1327,7 @@ handle_collect(struct ra_ctx *ctx, struct ir3_instruction *instr)
 	 * are a child of the collect by making them children of the collect.
 	 */
 
-	insert_dst(ctx, instr->regs[0]);
+	insert_dst(ctx, instr->dsts[0]);
 
 	insert_parallel_copy_instr(ctx, instr);
 }
@@ -1353,42 +1353,42 @@ handle_pcopy(struct ra_ctx *ctx, struct ir3_instruction *instr)
 static void
 handle_precolored_input(struct ra_ctx *ctx, struct ir3_instruction *instr)
 {
-	if (instr->regs[0]->num == INVALID_REG)
+	if (instr->dsts[0]->num == INVALID_REG)
 		return;
 
-	struct ra_interval *interval = &ctx->intervals[instr->regs[0]->name];
-	physreg_t physreg = ra_reg_get_physreg(instr->regs[0]);
-	allocate_dst_fixed(ctx, instr->regs[0], physreg);
-	insert_dst(ctx, instr->regs[0]);
+	struct ra_interval *interval = &ctx->intervals[instr->dsts[0]->name];
+	physreg_t physreg = ra_reg_get_physreg(instr->dsts[0]);
+	allocate_dst_fixed(ctx, instr->dsts[0], physreg);
+	insert_dst(ctx, instr->dsts[0]);
 	interval->frozen = true;
 }
 
 static void
 handle_input(struct ra_ctx *ctx, struct ir3_instruction *instr)
 {
-	if (instr->regs[0]->num != INVALID_REG)
+	if (instr->dsts[0]->num != INVALID_REG)
 		return;
 
-	allocate_dst(ctx, instr->regs[0]);
+	allocate_dst(ctx, instr->dsts[0]);
 
-	struct ra_file *file = ra_get_file(ctx, instr->regs[0]);
-	struct ra_interval *interval = &ctx->intervals[instr->regs[0]->name];
+	struct ra_file *file = ra_get_file(ctx, instr->dsts[0]);
+	struct ra_interval *interval = &ctx->intervals[instr->dsts[0]->name];
 	ra_file_insert(file, interval);
 }
 
 static void
 assign_input(struct ra_ctx *ctx, struct ir3_instruction *instr)
 {
-	struct ra_interval *interval = &ctx->intervals[instr->regs[0]->name];
-	struct ra_file *file = ra_get_file(ctx, instr->regs[0]);
+	struct ra_interval *interval = &ctx->intervals[instr->dsts[0]->name];
+	struct ra_file *file = ra_get_file(ctx, instr->dsts[0]);
 
-	if (instr->regs[0]->num == INVALID_REG) {
-		assign_reg(instr, instr->regs[0], ra_interval_get_num(interval));
+	if (instr->dsts[0]->num == INVALID_REG) {
+		assign_reg(instr, instr->dsts[0], ra_interval_get_num(interval));
 	} else {
 		interval->frozen = false;
 	}
 
-	if (instr->regs[0]->flags & IR3_REG_UNUSED)
+	if (instr->dsts[0]->flags & IR3_REG_UNUSED)
 		ra_file_remove(file, interval);
 
 	ra_foreach_src_rev(src, instr)
@@ -1457,7 +1457,7 @@ handle_chmask(struct ra_ctx *ctx, struct ir3_instruction *instr)
 	}
 
 	/* add dummy destination for validation */
-	assign_reg(instr, instr->regs[0], 0);
+	assign_reg(instr, instr->dsts[0], 0);
 
 	insert_parallel_copy_instr(ctx, instr);
 }
@@ -1550,21 +1550,21 @@ handle_phi(struct ra_ctx *ctx, struct ir3_register *def)
 static void
 assign_phi(struct ra_ctx *ctx, struct ir3_instruction *phi)
 {
-	struct ra_file *file = ra_get_file(ctx, phi->regs[0]);
-	struct ra_interval *interval = &ctx->intervals[phi->regs[0]->name];
+	struct ra_file *file = ra_get_file(ctx, phi->dsts[0]);
+	struct ra_interval *interval = &ctx->intervals[phi->dsts[0]->name];
 	assert(!interval->interval.parent);
 	unsigned num = ra_interval_get_num(interval);
-	assign_reg(phi, phi->regs[0], num);
+	assign_reg(phi, phi->dsts[0], num);
 
 	/* Assign the parallelcopy sources of this phi */
-	for (unsigned i = 1; i < phi->regs_count; i++) {
-		if (phi->regs[i]->def) {
-			assign_reg(phi, phi->regs[i], num);
-			assign_reg(phi, phi->regs[i]->def, num);
+	for (unsigned i = 0; i < phi->srcs_count; i++) {
+		if (phi->srcs[i]->def) {
+			assign_reg(phi, phi->srcs[i], num);
+			assign_reg(phi, phi->srcs[i]->def, num);
 		}
 	}
 
-	if (phi->regs[0]->flags & IR3_REG_UNUSED)
+	if (phi->dsts[0]->flags & IR3_REG_UNUSED)
 		ra_file_remove(file, interval);
 }
 
@@ -1608,8 +1608,8 @@ insert_liveout_copy(struct ir3_block *block, physreg_t dst, physreg_t src,
 						 old_pcopy_srcs + 1, old_pcopy_srcs + 1);
 
 	for (unsigned i = 0; i < old_pcopy_srcs; i++) {
-		old_pcopy->regs[i]->instr = pcopy;
-		pcopy->regs[pcopy->regs_count++] = old_pcopy->regs[i];
+		old_pcopy->dsts[i]->instr = pcopy;
+		pcopy->dsts[pcopy->dsts_count++] = old_pcopy->dsts[i];
 	}
 
 	struct ir3_register *dst_reg =
@@ -1619,8 +1619,10 @@ insert_liveout_copy(struct ir3_block *block, physreg_t dst, physreg_t src,
 	dst_reg->size = reg->size;
 	assign_reg(pcopy, dst_reg, ra_physreg_to_num(dst, reg->flags));
 
-	for (unsigned i = old_pcopy_srcs; i < old_pcopy_srcs * 2; i++) {
-		pcopy->regs[pcopy->regs_count++] = old_pcopy->regs[i];
+	pcopy->srcs = pcopy->regs + pcopy->dsts_count;
+
+	for (unsigned i = 0; i < old_pcopy_srcs; i++) {
+		pcopy->srcs[pcopy->srcs_count++] = old_pcopy->srcs[i];
 	}
 
 	struct ir3_register *src_reg =
@@ -1784,7 +1786,7 @@ handle_block(struct ra_ctx *ctx, struct ir3_block *block)
 
 	foreach_instr (instr, &block->instr_list) {
 		if (instr->opc == OPC_META_PHI)
-			handle_phi(ctx, instr->regs[0]);
+			handle_phi(ctx, instr->dsts[0]);
 		else if (instr->opc == OPC_META_INPUT || instr->opc == OPC_META_TEX_PREFETCH)
 			handle_input(ctx, instr);
 		else
@@ -1936,8 +1938,8 @@ ir3_ra(struct ir3_shader_variant *v)
 	 */
 	foreach_block (block, &v->ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
-			for (unsigned i = 0; i < instr->regs_count; i++) {
-				instr->regs[i]->flags &= ~IR3_REG_SSA;
+			for (unsigned i = 0; i < instr->dsts_count; i++) {
+				instr->dsts[i]->flags &= ~IR3_REG_SSA;
 
 				/* Parallel copies of array registers copy the whole register,
 				 * and we need some way to let the parallel copy code know
@@ -1945,7 +1947,14 @@ ir3_ra(struct ir3_shader_variant *v)
 				 * reg->size. So keep the array flag on those.
 				 */
 				if (!is_meta(instr))
-					instr->regs[i]->flags &= ~IR3_REG_ARRAY;
+					instr->dsts[i]->flags &= ~IR3_REG_ARRAY;
+			}
+
+			for (unsigned i = 0; i < instr->srcs_count; i++) {
+				instr->srcs[i]->flags &= ~IR3_REG_SSA;
+
+				if (!is_meta(instr))
+					instr->srcs[i]->flags &= ~IR3_REG_ARRAY;
 			}
 		}
 	}

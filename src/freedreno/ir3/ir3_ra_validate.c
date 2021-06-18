@@ -225,8 +225,8 @@ propagate_normal_instr(struct ra_val_ctx *ctx, struct ir3_instruction *instr)
 static void
 propagate_split(struct ra_val_ctx *ctx, struct ir3_instruction *split)
 {
-	struct ir3_register *dst = split->regs[0];
-	struct ir3_register *src = split->regs[1];
+	struct ir3_register *dst = split->dsts[0];
+	struct ir3_register *src = split->srcs[0];
 	physreg_t dst_physreg = ra_reg_get_physreg(dst);
 	physreg_t src_physreg = ra_reg_get_physreg(src);
 	struct file_state *file = ra_val_get_file(ctx, dst);
@@ -240,16 +240,16 @@ propagate_split(struct ra_val_ctx *ctx, struct ir3_instruction *split)
 static void
 propagate_collect(struct ra_val_ctx *ctx, struct ir3_instruction *collect)
 {
-	struct ir3_register *dst = collect->regs[0];
+	struct ir3_register *dst = collect->dsts[0];
 	physreg_t dst_physreg = ra_reg_get_physreg(dst);
 	struct file_state *file = ra_val_get_file(ctx, dst);
 
 	unsigned size = reg_size(dst);
 	struct reg_state srcs[size];
 
-	for (unsigned i = 1; i < collect->regs_count; i++) {
-		struct ir3_register *src = collect->regs[i];
-		unsigned dst_offset = (i - 1) * reg_elem_size(dst);
+	for (unsigned i = 0; i < collect->srcs_count; i++) {
+		struct ir3_register *src = collect->srcs[i];
+		unsigned dst_offset = i * reg_elem_size(dst);
 		for (unsigned j = 0; j < reg_elem_size(dst); j++) {
 			if (!ra_reg_is_src(src)) {
 				srcs[dst_offset + j] = (struct reg_state) {
@@ -271,16 +271,16 @@ static void
 propagate_parallelcopy(struct ra_val_ctx *ctx, struct ir3_instruction *pcopy)
 {
 	unsigned size = 0;
-	for (unsigned i = 0; i < pcopy->regs_count / 2; i++) {
-		size += reg_size(pcopy->regs[i]);
+	for (unsigned i = 0; i < pcopy->dsts_count; i++) {
+		size += reg_size(pcopy->srcs[i]);
 	}
 
 	struct reg_state srcs[size];
 
 	unsigned offset = 0;
-	for (unsigned i = 0; i < pcopy->regs_count / 2; i++) {
-		struct ir3_register *dst = pcopy->regs[i];
-		struct ir3_register *src = pcopy->regs[i + pcopy->regs_count / 2];
+	for (unsigned i = 0; i < pcopy->srcs_count; i++) {
+		struct ir3_register *dst = pcopy->dsts[i];
+		struct ir3_register *src = pcopy->srcs[i];
 		struct file_state *file = ra_val_get_file(ctx, dst);
 
 		for (unsigned j = 0; j < reg_size(dst); j++) {
@@ -300,8 +300,8 @@ propagate_parallelcopy(struct ra_val_ctx *ctx, struct ir3_instruction *pcopy)
 	assert(offset == size);
 
 	offset = 0;
-	for (unsigned i = 0; i < pcopy->regs_count / 2; i++) {
-		struct ir3_register *dst = pcopy->regs[i];
+	for (unsigned i = 0; i < pcopy->dsts_count; i++) {
+		struct ir3_register *dst = pcopy->dsts[i];
 		physreg_t dst_physreg = ra_reg_get_physreg(dst);
 		struct file_state *file = ra_val_get_file(ctx, dst);
 
@@ -353,7 +353,7 @@ chase_definition(struct reg_state *state)
 		struct ir3_instruction *instr = state->def->instr;
 		switch (instr->opc) {
 		case OPC_META_SPLIT: {
-			struct ir3_register *new_def = instr->regs[1]->def;
+			struct ir3_register *new_def = instr->srcs[0]->def;
 			unsigned offset = instr->split.off * reg_elem_size(new_def);
 			*state = (struct reg_state) {
 				.def = new_def,
@@ -364,7 +364,7 @@ chase_definition(struct reg_state *state)
 		case OPC_META_COLLECT: {
 			unsigned src_idx = state->offset / reg_elem_size(state->def);
 			unsigned src_offset = state->offset % reg_elem_size(state->def);
-			struct ir3_register *new_def = instr->regs[src_idx + 1]->def;
+			struct ir3_register *new_def = instr->srcs[src_idx]->def;
 			if (new_def) {
 				*state = (struct reg_state) {
 					.def = new_def,
@@ -378,16 +378,15 @@ chase_definition(struct reg_state *state)
 		}
 		case OPC_META_PARALLEL_COPY: {
 			unsigned dst_idx = ~0;
-			for (unsigned i = 0; i < instr->regs_count; i++) {
-				if (instr->regs[i] == state->def) {
+			for (unsigned i = 0; i < instr->dsts_count; i++) {
+				if (instr->dsts[i] == state->def) {
 					dst_idx = i;
 					break;
 				}
 			}
 			assert(dst_idx != ~0);
 
-			struct ir3_register *new_def =
-				instr->regs[dst_idx + instr->regs_count / 2]->def;
+			struct ir3_register *new_def = instr->srcs[dst_idx]->def;
 			if (new_def) {
 				state->def = new_def;
 			} else {
@@ -487,8 +486,8 @@ check_reaching_block(struct ra_val_ctx *ctx, struct ir3_block *block)
 		foreach_instr (instr, &succ->instr_list) {
 			if (instr->opc != OPC_META_PHI)
 				break;
-			if (instr->regs[1 + pred_idx]->def)
-				check_reaching_src(ctx, instr, instr->regs[1 + pred_idx]);
+			if (instr->srcs[pred_idx]->def)
+				check_reaching_src(ctx, instr, instr->srcs[pred_idx]);
 		}
 	}
 }
