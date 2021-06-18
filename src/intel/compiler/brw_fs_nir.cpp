@@ -5727,7 +5727,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
-   case nir_intrinsic_load_btd_dss_id_intel:
+   case nir_intrinsic_load_topology_id_intel:
+      assert(nir_intrinsic_base(instr) == BRW_TOPOLOGY_ID_DSS);
       bld.emit(SHADER_OPCODE_GET_DSS_ID,
                retype(dest, BRW_REGISTER_TYPE_UD));
       break;

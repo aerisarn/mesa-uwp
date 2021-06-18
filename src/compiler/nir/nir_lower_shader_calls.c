@@ -163,7 +163,7 @@ can_remat_instr(nir_instr *instr, struct brw_bitset *remat)
 
       case nir_intrinsic_load_scratch_base_ptr:
       case nir_intrinsic_load_ray_launch_id:
-      case nir_intrinsic_load_btd_dss_id_intel:
+      case nir_intrinsic_load_topology_id_intel:
       case nir_intrinsic_load_btd_global_arg_addr_intel:
       case nir_intrinsic_load_btd_resume_sbt_addr_intel:
       case nir_intrinsic_load_ray_base_mem_addr_intel:

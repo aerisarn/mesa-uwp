@@ -27,6 +27,12 @@
 #include "brw_rt.h"
 #include "nir_builder.h"
 
+static inline nir_ssa_def *
+brw_load_btd_dss_id(nir_builder *b)
+{
+   return nir_build_load_topology_id_intel(b, .base = BRW_TOPOLOGY_ID_DSS);
+}
+
 /* We have our own load/store scratch helpers because they emit a global
  * memory read or write based on the scratch_base_ptr system value rather
  * than a load/store_scratch intrinsic.
@@ -97,7 +103,7 @@ static inline nir_ssa_def *
 brw_nir_rt_stack_id(nir_builder *b)
 {
    return nir_iadd(b, nir_umul_32x16(b, nir_load_ray_num_dss_rt_stacks_intel(b),
-                                     nir_load_btd_dss_id_intel(b)),
+                                        brw_load_btd_dss_id(b)),
                       nir_load_btd_stack_id_intel(b));
 }
 
