@@ -442,16 +442,17 @@ struct ir3_instruction * ir3_instr_clone(struct ir3_instruction *instr)
 	new_instr->regs_count = 0;
 	new_instr->dsts_count = 0;
 	new_instr->srcs_count = 0;
-	for (i = 0; i < instr->regs_count; i++) {
-		struct ir3_register *reg = instr->regs[i];
-		struct ir3_register *new_reg;
-		if (reg->flags & IR3_REG_DEST)
-			new_reg = ir3_dst_create(new_instr, reg->num, reg->flags);
-		else
-			new_reg = ir3_src_create(new_instr, reg->num, reg->flags);
+	for (i = 0; i < instr->dsts_count; i++) {
+		struct ir3_register *reg = instr->dsts[i];
+		struct ir3_register *new_reg = ir3_dst_create(new_instr, reg->num, reg->flags);
 		*new_reg = *reg;
-		if ((new_reg->flags & IR3_REG_DEST) && new_reg->instr)
+		if (new_reg->instr)
 			new_reg->instr = new_instr;
+	}
+	for (i = 0; i < instr->srcs_count; i++) {
+		struct ir3_register *reg = instr->srcs[i];
+		struct ir3_register *new_reg = ir3_src_create(new_instr, reg->num, reg->flags);
+		*new_reg = *reg;
 	}
 
 	return new_instr;

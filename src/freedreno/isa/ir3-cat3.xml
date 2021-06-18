@@ -132,16 +132,16 @@ SOFTWARE.
 	<derived name="HALF" expr="#multisrc-half" type="bool" display="h"/>
 	<derived name="DST_HALF" expr="#dest-half" type="bool" display="h"/>
 	<encode>
-		<map name="SRC1_NEG">!!(src->regs[1]->flags &amp; (IR3_REG_FNEG | IR3_REG_SNEG | IR3_REG_BNOT))</map>
+		<map name="SRC1_NEG">!!(src->srcs[0]->flags &amp; (IR3_REG_FNEG | IR3_REG_SNEG | IR3_REG_BNOT))</map>
 		<map name="SRC1_R">extract_SRC1_R(src)</map>
 		<map name="SRC2_R">extract_SRC2_R(src)</map>
-		<map name="SRC3_R">!!(src->regs[3]->flags &amp; IR3_REG_R)</map>
-		<map name="SRC2_NEG">!!(src->regs[2]->flags &amp; (IR3_REG_FNEG | IR3_REG_SNEG | IR3_REG_BNOT))</map>
-		<map name="SRC3_NEG">!!(src->regs[3]->flags &amp; (IR3_REG_FNEG | IR3_REG_SNEG | IR3_REG_BNOT))</map>
-		<map name="SRC1">src->regs[1]</map>
+		<map name="SRC3_R">!!(src->srcs[2]->flags &amp; IR3_REG_R)</map>
+		<map name="SRC2_NEG">!!(src->srcs[1]->flags &amp; (IR3_REG_FNEG | IR3_REG_SNEG | IR3_REG_BNOT))</map>
+		<map name="SRC3_NEG">!!(src->srcs[2]->flags &amp; (IR3_REG_FNEG | IR3_REG_SNEG | IR3_REG_BNOT))</map>
+		<map name="SRC1">src->srcs[0]</map>
 		<map name="DST_CONV">
-			((src->regs[0]->num >> 2) == 62) ? 0 :
-			!!((src->regs[1]->flags ^ src->regs[0]->flags) &amp; IR3_REG_HALF)
+			((src->dsts[0]->num >> 2) == 62) ? 0 :
+			!!((src->srcs[0]->flags ^ src->dsts[0]->flags) &amp; IR3_REG_HALF)
 		</map>
 	</encode>
 </bitset>

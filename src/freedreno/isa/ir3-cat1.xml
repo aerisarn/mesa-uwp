@@ -76,10 +76,10 @@ SOFTWARE.
 	<field name="SY" pos="60" type="bool" display="(sy)"/>
 	<pattern low="61" high="63">001</pattern>  <!-- cat1 -->
 	<encode>
-		<map name="SRC">src->regs[1]</map>
-		<map name="SRC_R">!!(src->regs[1]->flags &amp; IR3_REG_R)</map>
+		<map name="SRC">src->srcs[0]</map>
+		<map name="SRC_R">!!(src->srcs[0]->flags &amp; IR3_REG_R)</map>
 		<map name="UL">!!(src->flags &amp; IR3_INSTR_UL)</map>
-		<map name="DST_REL">!!(src->regs[0]->flags &amp; IR3_REG_RELATIV)</map>
+		<map name="DST_REL">!!(src->dsts[0]->flags &amp; IR3_REG_RELATIV)</map>
 		<map name="ROUND">src->cat1.round</map>
 	</encode>
 </bitset>
@@ -354,7 +354,7 @@ SOFTWARE.
 	<pattern low="57" high="58">10</pattern>  <!-- OPC -->
 
 	<encode>
-		<map name="DST0">src->regs[0]</map>
+		<map name="DST0">src->dsts[0]</map>
 	</encode>
 </bitset>
 
@@ -377,9 +377,9 @@ SOFTWARE.
 	<pattern low="40" high="41">00</pattern> <!-- SUB_OPC -->
 
 	<encode>
-		<map name="SRC0">src->regs[2]</map>
-		<map name="SRC1">src->regs[3]</map>
-		<map name="DST1">src->regs[1]</map>
+		<map name="SRC0">src->srcs[0]</map>
+		<map name="SRC1">src->srcs[1]</map>
+		<map name="DST1">src->dsts[1]</map>
 	</encode>
 </bitset>
 
@@ -402,10 +402,10 @@ SOFTWARE.
 	<pattern low="40" high="41">01</pattern> <!-- SUB_OPC -->
 
 	<encode>
-		<map name="SRC0">src->regs[1]</map>
-		<map name="SRC1">src->regs[2]</map>
-		<map name="SRC2">src->regs[3]</map>
-		<map name="SRC3">src->regs[4]</map>
+		<map name="SRC0">src->srcs[0]</map>
+		<map name="SRC1">src->srcs[1]</map>
+		<map name="SRC2">src->srcs[2]</map>
+		<map name="SRC3">src->srcs[3]</map>
 	</encode>
 </bitset>
 
@@ -428,10 +428,10 @@ SOFTWARE.
 	<pattern low="40" high="41">10</pattern> <!-- SUB_OPC -->
 
 	<encode>
-		<map name="SRC0">src->regs[4]</map>
-		<map name="DST1">src->regs[1]</map>
-		<map name="DST2">src->regs[2]</map>
-		<map name="DST3">src->regs[3]</map>
+		<map name="SRC0">src->srcs[0]</map>
+		<map name="DST1">src->dsts[1]</map>
+		<map name="DST2">src->dsts[2]</map>
+		<map name="DST3">src->dsts[3]</map>
 	</encode>
 </bitset>
 
@@ -463,7 +463,7 @@ SOFTWARE.
 		the existing stuff:
 	 -->
 	<encode>
-		<map name="REPEAT">util_last_bit(src->regs[0]->wrmask) - 1</map>
+		<map name="REPEAT">util_last_bit(src->dsts[0]->wrmask) - 1</map>
 	</encode>
 </bitset>
 
