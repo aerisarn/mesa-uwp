@@ -165,8 +165,8 @@ Visual Studio integration or you just like msbuild, passing
 Installation Location
 ^^^^^^^^^^^^^^^^^^^^^
 
-Meson default to installing libGL.so in your system's main lib/
-directory and DRI drivers to a dri/ subdirectory.
+Meson default to installing :file:`libGL.so` in your system's main
+:file:`lib/` directory and DRI drivers to a :file:`dri/` subdirectory.
 
 Developers will often want to install Mesa to a testing directory rather
 than the system library directory. This can be done with the --prefix
@@ -230,8 +230,9 @@ dependency interface.
 
 Meson can use CMake to find LLVM. But due to the way LLVM implements its
 CMake finder it will only find static libraries, it will never find
-libllvm.so. There is also a ``-Dcmake_module_path`` option, which points
-to the root of an alternative installation (the prefix). For example:
+:file:`libllvm.so`. There is also a ``-Dcmake_module_path`` option,
+which points to the root of an alternative installation (the prefix).
+For example:
 
 .. code-block:: console
 
@@ -287,7 +288,7 @@ this case a "binary wrap". Follow the steps below:
 
 -  Install the binaries and headers into the
    ``$mesa_src/subprojects/llvm``
--  Add a meson.build file to that directory (more on that later)
+-  Add a :file:`meson.build` file to that directory (more on that later)
 
 The wrap file must define the following:
 
@@ -301,7 +302,7 @@ It may also define:
 -  ``has_rtti``: a ``bool`` that declares whether LLVM was built with
    RTTI. Defaults to true
 
-such a meson.build file might look like:
+such a :file:`meson.build` file might look like:
 
 ::
 
@@ -400,8 +401,8 @@ this file to ``meson`` or ``meson configure`` with the ``--cross-file``
 parameter.
 
 This file can live at any location, but you can use the bare filename
-(without the folder path) if you put it in $XDG_DATA_HOME/meson/cross or
-~/.local/share/meson/cross
+(without the folder path) if you put it in
+:file:`$XDG_DATA_HOME/meson/cross` or :file:`~/.local/share/meson/cross`
 
 Below are a few example of cross files, but keep in mind that you will
 likely have to alter them for your system.
