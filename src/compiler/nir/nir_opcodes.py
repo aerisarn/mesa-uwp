@@ -217,8 +217,6 @@ unop("isign", tint, "(src0 == 0) ? 0 : ((src0 > 0) ? 1 : -1)")
 unop("iabs", tint, "(src0 < 0) ? -src0 : src0")
 unop("fabs", tfloat, "fabs(src0)")
 unop("fsat", tfloat, ("fmin(fmax(src0, 0.0), 1.0)"))
-unop("fsat_signed", tfloat, ("fmin(fmax(src0, -1.0), 1.0)"))
-unop("fclamp_pos", tfloat, ("fmax(src0, 0.0)"))
 unop("frcp", tfloat, "bit_size == 64 ? 1.0 / src0 : 1.0f / src0")
 unop("frsq", tfloat, "bit_size == 64 ? 1.0 / sqrt(src0) : 1.0f / sqrtf(src0)")
 unop("fsqrt", tfloat, "bit_size == 64 ? sqrt(src0) : sqrtf(src0)")
@@ -1287,6 +1285,10 @@ binop("umul24_relaxed", tuint32, _2src_commutative + associative, "src0 * src1")
 
 unop_convert("fisnormal", tbool1, tfloat, "isnormal(src0)")
 unop_convert("fisfinite", tbool1, tfloat, "isfinite(src0)")
+
+# Mali-specific opcodes
+unop("fsat_signed_mali", tfloat, ("fmin(fmax(src0, -1.0), 1.0)"))
+unop("fclamp_pos_mali", tfloat, ("fmax(src0, 0.0)"))
 
 # DXIL specific double [un]pack
 # DXIL doesn't support generic [un]pack instructions, so we want those

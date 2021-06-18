@@ -33,9 +33,9 @@ algebraic_late = [
     (('fmul', a, 2.0), ('fadd', a, a)),
 
     # Fuse Mali-specific clamps
-    (('fmin', ('fmax', a, -1.0), 1.0), ('fsat_signed', a)),
-    (('fmax', ('fmin', a, 1.0), -1.0), ('fsat_signed', a)),
-    (('fmax', a, 0.0), ('fclamp_pos', a)),
+    (('fmin', ('fmax', a, -1.0), 1.0), ('fsat_signed_mali', a)),
+    (('fmax', ('fmin', a, 1.0), -1.0), ('fsat_signed_mali', a)),
+    (('fmax', a, 0.0), ('fclamp_pos_mali', a)),
 ]
 
 

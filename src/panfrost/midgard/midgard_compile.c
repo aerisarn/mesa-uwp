@@ -585,9 +585,9 @@ mir_accept_dest_mod(compiler_context *ctx, nir_dest **dest, nir_op op)
 static unsigned
 mir_determine_float_outmod(compiler_context *ctx, nir_dest **dest, unsigned prior_outmod)
 {
-        bool clamp_0_inf = mir_accept_dest_mod(ctx, dest, nir_op_fclamp_pos);
+        bool clamp_0_inf = mir_accept_dest_mod(ctx, dest, nir_op_fclamp_pos_mali);
         bool clamp_0_1 = mir_accept_dest_mod(ctx, dest, nir_op_fsat);
-        bool clamp_m1_1 = mir_accept_dest_mod(ctx, dest, nir_op_fsat_signed);
+        bool clamp_m1_1 = mir_accept_dest_mod(ctx, dest, nir_op_fsat_signed_mali);
         bool prior = (prior_outmod != midgard_outmod_none);
         int count = (int) prior + (int) clamp_0_inf + (int) clamp_0_1 + (int) clamp_m1_1;
 
@@ -659,7 +659,7 @@ mir_is_bcsel_float(nir_alu_instr *instr)
         };
 
         nir_op floatdestmods[] = {
-                nir_op_fsat, nir_op_fsat_signed, nir_op_fclamp_pos,
+                nir_op_fsat, nir_op_fsat_signed_mali, nir_op_fclamp_pos_mali,
                 nir_op_f2f16, nir_op_f2f32
         };
 
@@ -847,8 +847,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(fabs, fmov);
                 ALU_CASE(fneg, fmov);
                 ALU_CASE(fsat, fmov);
-                ALU_CASE(fsat_signed, fmov);
-                ALU_CASE(fclamp_pos, fmov);
+                ALU_CASE(fsat_signed_mali, fmov);
+                ALU_CASE(fclamp_pos_mali, fmov);
 
         /* For size conversion, we use a move. Ideally though we would squash
          * these ops together; maybe that has to happen after in NIR as part of
@@ -939,9 +939,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 outmod = midgard_outmod_keeplo;
         } else if (instr->op == nir_op_fsat) {
                 outmod = midgard_outmod_clamp_0_1;
-        } else if (instr->op == nir_op_fsat_signed) {
+        } else if (instr->op == nir_op_fsat_signed_mali) {
                 outmod = midgard_outmod_clamp_m1_1;
-        } else if (instr->op == nir_op_fclamp_pos) {
+        } else if (instr->op == nir_op_fclamp_pos_mali) {
                 outmod = midgard_outmod_clamp_0_inf;
         }
 
