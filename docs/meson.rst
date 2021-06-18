@@ -228,12 +228,10 @@ LLVM
 Meson includes upstream logic to wrap llvm-config using its standard
 dependency interface.
 
-As of Meson 0.51.0 Meson can use CMake to find LLVM (the CMake finder
-was added in Meson 0.49.0, but LLVM cannot be found until 0.51) Due to
-the way LLVM implements its CMake finder it will only find static
-libraries, it will never find libllvm.so. There is also a
-``-Dcmake_module_path`` option in this Meson version, which points to
-the root of an alternative installation (the prefix). For example:
+Meson can use CMake to find LLVM. But due to the way LLVM implements its
+CMake finder it will only find static libraries, it will never find
+libllvm.so. There is also a ``-Dcmake_module_path`` option, which points
+to the root of an alternative installation (the prefix). For example:
 
 .. code-block:: console
 
