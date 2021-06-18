@@ -438,6 +438,8 @@ struct ir3_instruction * ir3_instr_clone(struct ir3_instruction *instr)
 		struct ir3_register *new_reg =
 				ir3_reg_create(new_instr, reg->num, reg->flags);
 		*new_reg = *reg;
+		if ((new_reg->flags & IR3_REG_DEST) && new_reg->instr)
+			new_reg->instr = new_instr;
 	}
 
 	return new_instr;
