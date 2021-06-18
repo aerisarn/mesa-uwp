@@ -56,7 +56,7 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 
 	ldgb = ir3_LDGB(b, ssbo, 0,
 			src0, 0, src1, 0);
-	ldgb->regs[0]->wrmask = MASK(intr->num_components);
+	ldgb->dsts[0]->wrmask = MASK(intr->num_components);
 	ldgb->cat6.iim_val = intr->num_components;
 	ldgb->cat6.d = 4;
 	ldgb->cat6.type = TYPE_U32;

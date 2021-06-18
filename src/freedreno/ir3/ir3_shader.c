@@ -651,7 +651,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	unsigned i;
 
 	foreach_input_n (instr, i, ir) {
-		reg = instr->regs[0];
+		reg = instr->dsts[0];
 		regid = reg->num;
 		fprintf(out, "@in(%sr%d.%c)\tin%d",
 				(reg->flags & IR3_REG_HALF) ? "h" : "",
