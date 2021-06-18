@@ -63,6 +63,7 @@ struct zink_rasterizer_hw_state {
    bool pv_last:1;
    bool line_stipple_enable:1;
    bool force_persample_interp:1;
+   bool clip_halfz:1;
 };
 
 struct zink_rasterizer_state {
