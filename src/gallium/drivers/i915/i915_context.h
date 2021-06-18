@@ -197,6 +197,7 @@ struct i915_rasterizer_state {
    unsigned st;
 
    unsigned LIS4;
+   unsigned LIS6;
    unsigned LIS7;
    unsigned sc[1];
 

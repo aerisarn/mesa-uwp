@@ -159,7 +159,7 @@ const struct i915_tracked_state i915_upload_S5 = {
  */
 static void upload_S6(struct i915_context *i915)
 {
-   unsigned LIS6 = (2 << S6_TRISTRIP_PV_SHIFT);
+   unsigned LIS6 = 0;
 
    /* I915_NEW_FRAMEBUFFER
     */
@@ -176,13 +176,16 @@ static void upload_S6(struct i915_context *i915)
    if (i915->depth_stencil)
       LIS6 |= i915->depth_stencil->depth_LIS6;
 
+   if (i915->rasterizer)
+      LIS6 |= i915->rasterizer->LIS6;
+
    set_immediate(i915, I915_IMMEDIATE_S6, LIS6);
 }
 
 const struct i915_tracked_state i915_upload_S6 = {
    "imm S6",
    upload_S6,
-   I915_NEW_BLEND | I915_NEW_DEPTH_STENCIL | I915_NEW_FRAMEBUFFER
+   I915_NEW_BLEND | I915_NEW_DEPTH_STENCIL | I915_NEW_FRAMEBUFFER | I915_NEW_RASTERIZER
 };
 
 
