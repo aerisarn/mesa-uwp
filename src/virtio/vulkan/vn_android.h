@@ -67,7 +67,7 @@ void
 vn_android_release_ahb(struct AHardwareBuffer *ahb);
 
 VkFormat
-vn_android_ahb_format_to_vk_format(uint32_t format);
+vn_android_drm_format_to_vk_format(uint32_t format);
 
 #else
 
@@ -137,7 +137,7 @@ vn_android_release_ahb(UNUSED struct AHardwareBuffer *ahb)
 }
 
 static inline VkFormat
-vn_android_ahb_format_to_vk_format(UNUSED uint32_t format)
+vn_android_drm_format_to_vk_format(UNUSED uint32_t format)
 {
    return VK_FORMAT_UNDEFINED;
 }
