@@ -192,17 +192,17 @@ static void fixup_cat5_s2en(void)
 	 * is first, rather than last.  So we have to detect this case and
 	 * fix things up.
 	 */
-	struct ir3_register *s2en_src = instr->regs[instr->regs_count - 1];
+	struct ir3_register *s2en_src = instr->srcs[instr->srcs_count - 1];
 
 	if (instr->flags & IR3_INSTR_B)
 		assert(!(s2en_src->flags & IR3_REG_HALF));
 	else
 		assert(s2en_src->flags & IR3_REG_HALF);
 
-	for (int i = 1; i < instr->regs_count - 1; i++) {
-		instr->regs[i+1] = instr->regs[i];
+	for (int i = 0; i < instr->srcs_count - 1; i++) {
+		instr->srcs[i+1] = instr->srcs[i];
 	}
-	instr->regs[1] = s2en_src;
+	instr->srcs[0] = s2en_src;
 }
 
 static void add_const(unsigned reg, unsigned c0, unsigned c1, unsigned c2, unsigned c3)
@@ -789,7 +789,7 @@ cat1_movmsk:       T_OP_MOVMSK '.' T_W {
                        instr->cat1.src_type = TYPE_U32;
                        instr->cat1.dst_type = TYPE_U32;
                    } dst_reg {
-                       instr->regs[0]->wrmask = (1 << $3) - 1;
+                       instr->dsts[0]->wrmask = (1 << $3) - 1;
                    }
 
 cat1_mova1:        T_OP_MOVA1 T_A1 ',' {
@@ -1006,10 +1006,10 @@ cat6_load:         T_OP_LDG  { new_instr(OPC_LDG); }  cat6_type dst_reg ',' 'g' 
 cat6_store:        T_OP_STG  { new_instr(OPC_STG); dummy_dst(); }  cat6_type 'g' '[' src cat6_dst_offset ']' ',' src ',' immediate {
                        /* fixup src order, the offset reg is expected last currently */
                        if (instr->flags & IR3_INSTR_G) {
-                           struct ir3_register *offset = instr->regs[2];
-                           instr->regs[2] = instr->regs[3];
-                           instr->regs[3] = instr->regs[4];
-                           instr->regs[4] = offset;
+                           struct ir3_register *offset = instr->srcs[1];
+                           instr->srcs[1] = instr->srcs[2];
+                           instr->srcs[2] = instr->srcs[3];
+                           instr->srcs[3] = offset;
                        }
                    }
 |                  T_OP_STP  { new_instr(OPC_STP); dummy_dst(); }  cat6_type 'p' '[' src cat6_dst_offset ']' ',' src ',' immediate
@@ -1079,20 +1079,13 @@ cat6_bindless_ibo_opc_2src: T_OP_ATOMIC_B_ADD        { new_instr(OPC_ATOMIC_ADD)
 |                  T_OP_ATOMIC_B_AND        { new_instr(OPC_ATOMIC_AND)->flags  |= IR3_INSTR_G; dummy_dst(); }
 |                  T_OP_ATOMIC_B_OR         { new_instr(OPC_ATOMIC_OR)->flags   |= IR3_INSTR_G; dummy_dst(); }
 |                  T_OP_ATOMIC_B_XOR        { new_instr(OPC_ATOMIC_XOR)->flags  |= IR3_INSTR_G; dummy_dst(); }
-|                  T_OP_LDIB_B              { new_instr(OPC_LDIB); }
 |                  T_OP_STIB_B              { new_instr(OPC_STIB); dummy_dst(); }
 
+cat6_bindless_ibo_opc_2src_dst: T_OP_LDIB_B              { new_instr(OPC_LDIB); }
+
 cat6_bindless_ibo: cat6_bindless_ibo_opc_1src cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed
-|                  cat6_bindless_ibo_opc_2src cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed ',' cat6_reg_or_immed {
-                       /* TODO cleanup ir3 src order: */
-                       if (is_atomic(instr->opc)) {
-                           swap(instr->regs[1], instr->regs[3]);
-                       } else if (instr->opc == OPC_LDIB) {
-                           swap(instr->regs[1], instr->regs[2]);
-                       } else if (instr->opc == OPC_STIB) {
-                           swap(instr->regs[1], instr->regs[3]);
-                       }
-                   }
+|                  cat6_bindless_ibo_opc_2src cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode src_reg ',' cat6_reg_or_immed ',' cat6_reg_or_immed { swap(instr->srcs[0], instr->srcs[2]); }
+|                  cat6_bindless_ibo_opc_2src_dst cat6_typed cat6_dim cat6_type '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed ',' cat6_reg_or_immed { swap(instr->srcs[0], instr->srcs[1]); }
 
 cat6_bindless_ldc_opc: T_OP_LDC  { new_instr(OPC_LDC); }
 
@@ -1100,7 +1093,7 @@ cat6_bindless_ldc: cat6_bindless_ldc_opc '.' T_OFFSET '.' cat6_immed '.' cat6_bi
                       instr->cat6.d = $3;
                       instr->cat6.type = TYPE_U32;
                       /* TODO cleanup ir3 src order: */
-                      swap(instr->regs[1], instr->regs[2]);
+                      swap(instr->srcs[0], instr->srcs[1]);
                    }
 
 cat6_todo:         T_OP_G2L                 { new_instr(OPC_G2L); }
