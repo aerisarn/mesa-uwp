@@ -5751,6 +5751,52 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          /* Get rid of anything below dualsubslice */
          bld.SHR(retype(dest, BRW_REGISTER_TYPE_UD), raw_id, brw_imm_ud(9));
          break;
+      case BRW_TOPOLOGY_ID_EU_THREAD_SIMD: {
+         limit_dispatch_width(16, "Topology helper for Ray queries, "
+                              "not supported in SIMD32 mode.");
+         fs_reg dst = retype(dest, BRW_REGISTER_TYPE_UD);
+
+         /* EU[3:0] << 7
+          *
+          * The 4bit EU[3:0] we need to build for ray query memory addresses
+          * computations is a bit odd :
+          *
+          *   EU[1:0] = raw_id[5:4] (identified as EUID[1:0])
+          *   EU[2]   = raw_id[8]   (identified as SubSlice ID)
+          *   EU[3]   = raw_id[7]   (identified as EUID[2] or Row ID)
+          */
+         {
+            fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UD);
+            bld.AND(tmp, raw_id, brw_imm_ud(INTEL_MASK(7, 7)));
+            bld.SHL(dst, tmp, brw_imm_ud(3));
+            bld.AND(tmp, raw_id, brw_imm_ud(INTEL_MASK(8, 8)));
+            bld.SHL(tmp, tmp, brw_imm_ud(1));
+            bld.OR(dst, dst, tmp);
+            bld.AND(tmp, raw_id, brw_imm_ud(INTEL_MASK(5, 4)));
+            bld.SHL(tmp, tmp, brw_imm_ud(3));
+            bld.OR(dst, dst, tmp);
+         }
+
+         /* ThreadID[2:0] << 4 (ThreadID comes from raw_id[2:0]) */
+         {
+            bld.AND(raw_id, raw_id, brw_imm_ud(INTEL_MASK(2, 0)));
+            bld.SHL(raw_id, raw_id, brw_imm_ud(4));
+            bld.OR(dst, dst, raw_id);
+         }
+
+         /* LaneID[0:3] << 0 (We build up LaneID by putting the right number
+          *                   in each lane)
+          */
+         fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UW);
+         const fs_builder ubld8 = bld.exec_all().group(8, 0);
+         ubld8.MOV(quarter(tmp, 0), brw_imm_v(0x76543210));
+         if (bld.dispatch_width() == 16) {
+            /* Sets 0xfedcba98 to the upper part of the register. */
+            ubld8.ADD(quarter(tmp, 1), quarter(tmp, 0), brw_imm_ud(8));
+         }
+         bld.ADD(dst, dst, tmp);
+         break;
+      }
       default:
          unreachable("Invalid topology id type");
       }

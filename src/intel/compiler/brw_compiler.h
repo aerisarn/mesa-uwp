@@ -2020,6 +2020,9 @@ enum brw_topology_id
     * parts.
     */
    BRW_TOPOLOGY_ID_DSS,
+
+   /* A value composed of EU ID, thread ID & SIMD lane ID. */
+   BRW_TOPOLOGY_ID_EU_THREAD_SIMD,
 };
 
 #ifdef __cplusplus
