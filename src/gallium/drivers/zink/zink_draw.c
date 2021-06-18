@@ -166,7 +166,6 @@ update_compute_program(struct zink_context *ctx)
 {
    unsigned bits = 1 << PIPE_SHADER_COMPUTE;
    ctx->dirty_shader_stages |= ctx->inlinable_uniforms_dirty_mask &
-                               ctx->inlinable_uniforms_valid_mask &
                                ctx->shader_has_inlinable_uniforms_mask & bits;
    if (ctx->dirty_shader_stages & bits) {
       struct zink_compute_program *comp = NULL;
@@ -201,7 +200,6 @@ update_gfx_program(struct zink_context *ctx)
    }
    unsigned bits = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);
    ctx->dirty_shader_stages |= ctx->inlinable_uniforms_dirty_mask &
-                               ctx->inlinable_uniforms_valid_mask &
                                ctx->shader_has_inlinable_uniforms_mask & bits;
    if (ctx->dirty_shader_stages & bits) {
       struct zink_gfx_program *prog = NULL;
