@@ -1006,19 +1006,28 @@ find_vars(ra_ctx& ctx, RegisterFile& reg_file, const PhysRegInterval reg_interva
    return vars;
 }
 
-/* collect variables from a register area and clear reg_file */
-std::set<std::pair<unsigned, unsigned>>
+/* collect variables from a register area and clear reg_file
+ * variables are sorted in decreasing size and
+ * increasing assigned register
+ */
+std::vector<unsigned>
 collect_vars(ra_ctx& ctx, RegisterFile& reg_file, const PhysRegInterval reg_interval)
 {
    std::vector<unsigned> ids = find_vars(ctx, reg_file, reg_interval);
-   std::set<std::pair<unsigned, unsigned>> vars;
+   std::sort(ids.begin(), ids.end(),
+             [&](unsigned a, unsigned b)
+             {
+                assignment& var_a = ctx.assignments[a];
+                assignment& var_b = ctx.assignments[b];
+                return var_a.rc.bytes() > var_b.rc.bytes() ||
+                       (var_a.rc.bytes() == var_b.rc.bytes() && var_a.reg < var_b.reg);
+             });
 
    for (unsigned id : ids) {
       assignment& var = ctx.assignments[id];
       reg_file.clear(var.reg, var.rc);
-      vars.emplace(var.rc.bytes(), id);
    }
-   return vars;
+   return ids;
 }
 
 std::pair<PhysReg, bool>
@@ -1073,17 +1082,11 @@ get_reg_for_create_vector_copy(ra_ctx& ctx, RegisterFile& reg_file,
 bool
 get_regs_for_copies(ra_ctx& ctx, RegisterFile& reg_file,
                     std::vector<std::pair<Operand, Definition>>& parallelcopies,
-                    const std::set<std::pair<unsigned, unsigned>>& vars,
-                    const PhysRegInterval bounds, aco_ptr<Instruction>& instr,
-                    const PhysRegInterval def_reg)
+                    const std::vector<unsigned>& vars, const PhysRegInterval bounds,
+                    aco_ptr<Instruction>& instr, const PhysRegInterval def_reg)
 {
-   /* variables are sorted from small sized to large */
-   /* NOTE: variables are also sorted by ID. this only affects a very small number of shaders
-    * slightly though. */
-   // TODO: sort by register instead of id
-   for (std::set<std::pair<unsigned, unsigned>>::const_reverse_iterator it = vars.rbegin();
-        it != vars.rend(); ++it) {
-      unsigned id = it->second;
+   /* Variables are sorted from large to small and with increasing assigned register */
+   for (unsigned id : vars) {
       assignment& var = ctx.assignments[id];
       DefInfo info = DefInfo(ctx, ctx.pseudo_dummy, var.rc, -1);
       uint32_t size = info.size;
@@ -1203,7 +1206,7 @@ get_regs_for_copies(ra_ctx& ctx, RegisterFile& reg_file,
       PhysRegInterval reg_win{best_pos, size};
 
       /* collect variables and block reg file */
-      std::set<std::pair<unsigned, unsigned>> new_vars = collect_vars(ctx, reg_file, reg_win);
+      std::vector<unsigned> new_vars = collect_vars(ctx, reg_file, reg_win);
 
       /* mark the area as blocked */
       reg_file.block(reg_win.lo(), var.rc);
@@ -1351,7 +1354,7 @@ get_reg_impl(ra_ctx& ctx, RegisterFile& reg_file,
       }
    }
 
-   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, tmp_file, best_win);
+   std::vector<unsigned> vars = collect_vars(ctx, tmp_file, best_win);
 
    /* re-enable killed operands */
    if (!is_phi(instr) && instr->opcode != aco_opcode::p_create_vector) {
@@ -1820,8 +1823,7 @@ get_reg_create_vector(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
    }
 
    /* collect variables to be moved */
-   std::set<std::pair<unsigned, unsigned>> vars =
-      collect_vars(ctx, tmp_file, PhysRegInterval{best_pos, size});
+   std::vector<unsigned> vars = collect_vars(ctx, tmp_file, PhysRegInterval{best_pos, size});
 
    bool success = false;
    std::vector<std::pair<Operand, Definition>> pc;
@@ -1952,8 +1954,7 @@ get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
 
          RegisterFile tmp_file(register_file);
 
-         std::set<std::pair<unsigned, unsigned>> blocking_vars =
-            collect_vars(ctx, tmp_file, target);
+         std::vector<unsigned> blocking_vars = collect_vars(ctx, tmp_file, target);
 
          tmp_file.clear(src, operand.regClass()); // TODO: try to avoid moving block vars to src
          tmp_file.block(operand.physReg(), operand.regClass());
@@ -2734,8 +2735,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
                const PhysRegInterval def_regs{definition.physReg(), definition.size()};
 
                /* create parallelcopy pair to move blocking vars */
-               std::set<std::pair<unsigned, unsigned>> vars =
-                  collect_vars(ctx, register_file, def_regs);
+               std::vector<unsigned> vars = collect_vars(ctx, register_file, def_regs);
 
                RegisterFile tmp_file(register_file);
                /* re-enable the killed operands, so that we don't move the blocking vars there */
