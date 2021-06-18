@@ -260,15 +260,6 @@ Then configure Meson:
 
    meson builddir/ --native-file custom-llvm.ini
 
-Meson < 0.49 doesn't support native files, so to specify a custom
-``llvm-config`` you need to modify your ``$PATH`` (or ``%PATH%`` on
-Windows), which will be searched for ``llvm-config``,
-``llvm-config$version``, and ``llvm-config-$version``:
-
-.. code-block:: console
-
-   PATH=/path/to/folder/with/llvm-config:$PATH meson build
-
 For selecting llvm-config for cross compiling a `"cross
 file" <https://mesonbuild.com/Cross-compilation.html#defining-the-environment>`__
 should be used. It uses the same format as the native file above:
