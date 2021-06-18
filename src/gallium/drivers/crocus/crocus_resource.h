@@ -136,13 +136,6 @@ struct crocus_resource {
       /** Offset into 'bo' where the auxiliary surface starts. */
       uint32_t offset;
 
-      struct {
-         struct isl_surf surf;
-
-         /** Offset into 'bo' where the auxiliary surface starts. */
-         uint32_t offset;
-      } extra_aux;
-
       /**
        * Fast clear color for this surface.  For depth surfaces, the clear
        * value is stored as a float32 in the red component.
