@@ -568,12 +568,18 @@ use_blorp:
       //      crocus_emit_buffer_barrier_for(batch, src_res->bo,
       //                                   CROCUS_DOMAIN_OTHER_READ);
 
+      bool dst_aux_disable = false;
+      /* on SNB blorp will use render target instead of depth
+       * so disable HiZ.
+       */
+      if (devinfo->ver <= 6 && util_format_is_depth_or_stencil(dst_pfmt))
+         dst_aux_disable = true;
       struct crocus_format_info dst_fmt =
          crocus_format_for_usage(devinfo, dst_pfmt,
                                  ISL_SURF_USAGE_RENDER_TARGET_BIT);
       enum isl_aux_usage dst_aux_usage =
          crocus_resource_render_aux_usage(ice, dst_res, info->dst.level,
-                                          dst_fmt.fmt, false);
+                                          dst_fmt.fmt, dst_aux_disable);
 
       struct blorp_surf src_surf, dst_surf;
       crocus_blorp_surf_for_resource(&screen->vtbl, &screen->isl_dev, &src_surf,
