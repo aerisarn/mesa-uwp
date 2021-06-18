@@ -381,7 +381,7 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 			struct ir3_instruction *indirect = ir->a0_users[i];
 			if (!indirect)
 				continue;
-			if (indirect->address != instr)
+			if (indirect->address->def != instr->regs[0])
 				continue;
 			ready = could_sched(indirect, instr);
 		}
@@ -398,7 +398,7 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 			struct ir3_instruction *indirect = ir->a1_users[i];
 			if (!indirect)
 				continue;
-			if (indirect->address != instr)
+			if (indirect->address->def != instr->regs[0])
 				continue;
 			ready = could_sched(indirect, instr);
 		}
@@ -870,13 +870,13 @@ split_addr(struct ir3_sched_ctx *ctx, struct ir3_instruction **addr,
 		/* remap remaining instructions using current addr
 		 * to new addr:
 		 */
-		if (indirect->address == *addr) {
+		if (indirect->address->def == (*addr)->regs[0]) {
 			if (!new_addr) {
 				new_addr = split_instr(ctx, *addr);
 				/* original addr is scheduled, but new one isn't: */
 				new_addr->flags &= ~IR3_INSTR_MARK;
 			}
-			indirect->address = new_addr;
+			indirect->address->def = new_addr->regs[0];
 			/* don't need to remove old dag edge since old addr is
 			 * already scheduled:
 			 */
@@ -984,8 +984,6 @@ sched_node_add_dep(struct ir3_instruction *instr, struct ir3_instruction *src, i
 	unsigned d = 0;
 	if (i < instr->regs_count)
 		d = ir3_delayslots(src, instr, i + 1, true);
-	else if (src == instr->address)
-		d = ir3_delayslots(src, instr, 0, true);
 
 	n->delay = MAX2(n->delay, d);
 }

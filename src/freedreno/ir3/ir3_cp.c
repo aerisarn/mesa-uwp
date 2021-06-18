@@ -99,7 +99,7 @@ static bool is_foldable_double_cmp(struct ir3_instruction *cmp)
 				(cmp->regs[2]->flags & IR3_REG_IMMED) &&
 				(cmp->regs[2]->iim_val == 0) &&
 				(cmp->cat2.condition == IR3_COND_NE) &&
-				(!cond->address || (cmp->block == cond->address->block));
+				(!cond->address || cond->address->def->instr->block == cmp->block);
 }
 
 /* propagate register flags from src to dst.. negates need special
@@ -419,7 +419,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			instr->regs[n+1] = src_reg;
 
 			if (src_reg->flags & IR3_REG_RELATIV)
-				ir3_instr_set_address(instr, reg->def->instr->address);
+				ir3_instr_set_address(instr, reg->def->instr->address->def->instr);
 
 			return true;
 		}
@@ -526,15 +526,14 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 			if (is_meta(instr) && (src->opc != OPC_MOV))
 				continue;
 
+			/* Don't CP mova and mova1 into their users */
+			if (writes_addr0(src) || writes_addr1(src))
+				continue;
+
 			progress |= reg_cp(ctx, instr, reg, n);
 			ctx->progress |= progress;
 		}
 	} while (progress);
-
-	if (instr->address) {
-		instr_cp(ctx, instr->address);
-		ir3_instr_set_address(instr, eliminate_output_mov(ctx, instr->address));
-	}
 
 	/* After folding a mov's source we may wind up with a type-converting mov
 	 * of an immediate. This happens e.g. with texture descriptors, since we
@@ -574,7 +573,8 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 			instr->opc   = cond->opc;
 			instr->flags = cond->flags;
 			instr->cat2  = cond->cat2;
-			ir3_instr_set_address(instr, cond->address);
+			if (cond->address)
+				ir3_instr_set_address(instr, cond->address->def->instr);
 			instr->regs[1] = ir3_reg_clone(ctx->shader, cond->regs[1]);
 			instr->regs[2] = ir3_reg_clone(ctx->shader, cond->regs[2]);
 			instr->barrier_class |= cond->barrier_class;

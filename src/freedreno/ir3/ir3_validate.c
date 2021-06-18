@@ -157,6 +157,8 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
 			/* must have the same size as the destination, handled in
 			 * validate_reg().
 			 */
+		} else if (reg == instr->address) {
+			validate_assert(ctx, reg->flags & IR3_REG_HALF);
 		} else if ((instr->flags & IR3_INSTR_S2EN) && (n < 2)) {
 			if (n == 0) {
 				if (instr->flags & IR3_INSTR_B)

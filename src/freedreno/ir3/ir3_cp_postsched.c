@@ -188,7 +188,7 @@ instr_cp_postsched(struct ir3_instruction *mov)
 		 */
 		if (removed) {
 			if (src->flags & IR3_REG_RELATIV)
-				ir3_instr_set_address(use, mov->address);
+				ir3_instr_set_address(use, mov->address->def->instr);
 
 			util_dynarray_append(&newdeps, struct ir3_instruction *, use);
 

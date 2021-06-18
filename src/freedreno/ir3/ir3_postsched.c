@@ -408,9 +408,8 @@ add_single_reg_dep(struct ir3_postsched_deps_state *state,
  * 
  * If non-negative, then this adds a dependency on a source register, and
  * src_n is the index passed into ir3_delayslots() for calculating the delay:
- * 0 means this is for an address source, non-0 corresponds to
- * node->instr->regs[src_n]. If negative, then this is for a destination
- * register.
+ * If positive, corresponds to node->instr->regs[src_n]. If negative, then
+ * this is for a destination register.
  */
 static void
 add_reg_dep(struct ir3_postsched_deps_state *state,
@@ -459,11 +458,6 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 				add_reg_dep(state, node, reg, reg->num + b, i + 1);
 			}
 		}
-	}
-
-	if (node->instr->address) {
-		add_reg_dep(state, node, node->instr->address->regs[0],
-				node->instr->address->regs[0]->num, 0);
 	}
 
 	if (dest_regs(node->instr) == 0)

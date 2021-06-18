@@ -297,13 +297,6 @@ print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
 		}
 	}
 
-	if (instr->address) {
-		mesa_log_stream_printf(stream, ", address=_");
-		mesa_log_stream_printf(stream, "[");
-		print_instr_name(stream, instr->address, false);
-		mesa_log_stream_printf(stream, "]");
-	}
-
 	if (instr->opc == OPC_META_SPLIT) {
 		mesa_log_stream_printf(stream, ", off=%d", instr->split.off);
 	} else if (instr->opc == OPC_META_TEX_PREFETCH) {

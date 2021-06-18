@@ -390,7 +390,7 @@ struct ir3_instruction {
 	 *
 	 * NOTE: do not write this directly, use ir3_instr_set_address()
 	 */
-	struct ir3_instruction *address;
+	struct ir3_register *address;
 
 	/* Tracking for additional dependent instructions.  Used to handle
 	 * barriers, WAR hazards for arrays/SSBOs/etc.
@@ -1026,10 +1026,10 @@ static inline struct ir3_instruction *ssa(struct ir3_register *reg)
 	return NULL;
 }
 
-static inline bool conflicts(struct ir3_instruction *a,
-		struct ir3_instruction *b)
+static inline bool conflicts(struct ir3_register *a,
+		struct ir3_register *b)
 {
-	return (a && b) && (a != b);
+	return (a && b) && (a->def != b->def);
 }
 
 static inline bool reg_gpr(struct ir3_register *r)
@@ -1352,31 +1352,24 @@ ir3_try_swap_signedness(opc_t opc, bool *can_swap)
 
 static inline unsigned __ssa_src_cnt(struct ir3_instruction *instr)
 {
-	unsigned cnt = instr->regs_count + instr->deps_count;
-	if (instr->address)
-		cnt++;
-	return cnt;
+	return instr->regs_count + instr->deps_count;
+}
+
+static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
+{
+	if (n >= instr->regs_count)
+		return true;
+	return false;
 }
 
 static inline struct ir3_instruction **
 __ssa_srcp_n(struct ir3_instruction *instr, unsigned n)
 {
-	if (n == (instr->regs_count + instr->deps_count))
-		return &instr->address;
-	if (n >= instr->regs_count)
+	if (__is_false_dep(instr, n))
 		return &instr->deps[n - instr->regs_count];
 	if (ssa(instr->regs[n]))
 		return &instr->regs[n]->def->instr;
 	return NULL;
-}
-
-static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
-{
-	if (n == (instr->regs_count + instr->deps_count))
-		return false;
-	if (n >= instr->regs_count)
-		return true;
-	return false;
 }
 
 #define foreach_ssa_srcp_n(__srcp, __n, __instr) \
