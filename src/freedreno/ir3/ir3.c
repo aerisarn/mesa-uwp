@@ -394,16 +394,16 @@ static struct ir3_instruction *instr_create(struct ir3_block *block,
 	if (1 <= opc_cat(opc))
 		nsrc += 2;
 	struct ir3_instruction *instr;
-	unsigned sz = sizeof(*instr) + ((ndst + nsrc) * sizeof(instr->regs[0]));
+	unsigned sz = sizeof(*instr) + (ndst * sizeof(instr->dsts[0])) +
+		(nsrc * sizeof(instr->srcs[0]));
 	char *ptr = ir3_alloc(block->shader, sz);
 
 	instr = (struct ir3_instruction *)ptr;
 	ptr  += sizeof(*instr);
-	instr->regs = (struct ir3_register **)ptr;
 	instr->dsts = (struct ir3_register **)ptr;
+	instr->srcs = instr->dsts + ndst;
 
 #ifdef DEBUG
-	instr->regs_max = ndst + nsrc;
 	instr->dsts_max = ndst;
 	instr->srcs_max = nsrc;
 #endif
@@ -425,21 +425,18 @@ struct ir3_instruction * ir3_instr_clone(struct ir3_instruction *instr)
 {
 	struct ir3_instruction *new_instr = instr_create(instr->block, instr->opc,
 			instr->dsts_count, instr->srcs_count);
-	struct ir3_register **regs, **dsts, **srcs;
+	struct ir3_register **dsts, **srcs;
 	unsigned i;
 
-	regs = new_instr->regs;
 	dsts = new_instr->dsts;
 	srcs = new_instr->srcs;
 	*new_instr = *instr;
-	new_instr->regs = regs;
 	new_instr->dsts = dsts;
 	new_instr->srcs = srcs;
 
 	insert_instr(instr->block, new_instr);
 
 	/* clone registers: */
-	new_instr->regs_count = 0;
 	new_instr->dsts_count = 0;
 	new_instr->srcs_count = 0;
 	for (i = 0; i < instr->dsts_count; i++) {
@@ -469,40 +466,29 @@ void ir3_instr_add_dep(struct ir3_instruction *instr, struct ir3_instruction *de
 	array_insert(instr, instr->deps, dep);
 }
 
-static struct ir3_register * ir3_reg_create(struct ir3_instruction *instr,
-		int num, int flags)
-{
-	struct ir3 *shader = instr->block->shader;
-	struct ir3_register *reg = reg_create(shader, num, flags);
-#ifdef DEBUG
-	debug_assert(instr->regs_count < instr->regs_max);
-#endif
-	instr->regs[instr->regs_count++] = reg;
-	return reg;
-}
-
 struct ir3_register * ir3_src_create(struct ir3_instruction *instr,
 		int num, int flags)
 {
 	assert(!(flags & IR3_REG_DEST));
+	struct ir3 *shader = instr->block->shader;
 #ifdef DEBUG
 	debug_assert(instr->srcs_count < instr->srcs_max);
 #endif
-	if (instr->srcs_count == 0)
-		instr->srcs = instr->regs + instr->dsts_count;
-	instr->srcs_count++;
-	return ir3_reg_create(instr, num, flags);
+	struct ir3_register *reg = reg_create(shader, num, flags);
+	instr->srcs[instr->srcs_count++] = reg;
+	return reg;
 }
 
 struct ir3_register * ir3_dst_create(struct ir3_instruction *instr,
 		int num, int flags)
 {
-	assert(instr->srcs_count == 0);
+	struct ir3 *shader = instr->block->shader;
 #ifdef DEBUG
 	debug_assert(instr->dsts_count < instr->dsts_max);
 #endif
-	instr->dsts_count++;
-	return ir3_reg_create(instr, num, flags | IR3_REG_DEST);
+	struct ir3_register *reg = reg_create(shader, num, flags | IR3_REG_DEST);
+	instr->dsts[instr->dsts_count++] = reg;
+	return reg;
 }
 
 struct ir3_register * ir3_reg_clone(struct ir3 *shader,

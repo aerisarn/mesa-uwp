@@ -279,10 +279,9 @@ struct ir3_instruction {
 	uint8_t repeat;
 	uint8_t nop;
 #ifdef DEBUG
-	unsigned regs_max, srcs_max, dsts_max;
+	unsigned srcs_max, dsts_max;
 #endif
-	unsigned regs_count, srcs_count, dsts_count;
-	struct ir3_register **regs;
+	unsigned srcs_count, dsts_count;
 	struct ir3_register **dsts;
 	struct ir3_register **srcs;
 	union {

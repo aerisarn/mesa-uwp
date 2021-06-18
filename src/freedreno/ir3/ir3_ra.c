@@ -1619,8 +1619,6 @@ insert_liveout_copy(struct ir3_block *block, physreg_t dst, physreg_t src,
 	dst_reg->size = reg->size;
 	assign_reg(pcopy, dst_reg, ra_physreg_to_num(dst, reg->flags));
 
-	pcopy->srcs = pcopy->regs + pcopy->dsts_count;
-
 	for (unsigned i = 0; i < old_pcopy_srcs; i++) {
 		pcopy->srcs[pcopy->srcs_count++] = old_pcopy->srcs[i];
 	}
