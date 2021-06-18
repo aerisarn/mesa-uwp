@@ -133,8 +133,8 @@ optimizations = [
    (('fadd(is_only_used_as_float)', 'a@16', 0.0), a, '!'+signed_zero_inf_nan_preserve_16),
    (('fadd(is_only_used_as_float)', 'a@32', 0.0), a, '!'+signed_zero_inf_nan_preserve_32),
    (('iadd', a, 0), a),
-   (('usadd_4x8', a, 0), a),
-   (('usadd_4x8', a, ~0), ~0),
+   (('usadd_4x8_vc4', a, 0), a),
+   (('usadd_4x8_vc4', a, ~0), ~0),
    (('~fadd', ('fmul', a, b), ('fmul', a, c)), ('fmul', a, ('fadd', b, c))),
    (('iadd', ('imul', a, b), ('imul', a, c)), ('imul', a, ('iadd', b, c))),
    (('iand', ('ior', a, b), ('ior', a, c)), ('ior', a, ('iand', b, c))),
@@ -151,8 +151,8 @@ optimizations = [
    (('fmul', 'a@16', 0.0), 0.0, '!'+signed_zero_inf_nan_preserve_16),
    (('fmul', 'a@32', 0.0), 0.0, '!'+signed_zero_inf_nan_preserve_32),
    (('imul', a, 0), 0),
-   (('umul_unorm_4x8', a, 0), 0),
-   (('umul_unorm_4x8', a, ~0), a),
+   (('umul_unorm_4x8_vc4', a, 0), 0),
+   (('umul_unorm_4x8_vc4', a, ~0), a),
    (('~fmul', a, 1.0), a),
    # The only effect a*1.0 can have is flushing denormals. If it's only used by
    # a floating point instruction, they should flush any input denormals and
@@ -1333,8 +1333,8 @@ for op in ('extract_u8', 'extract_i8'):
 
 optimizations.extend([
    # Subtracts
-   (('ussub_4x8', a, 0), a),
-   (('ussub_4x8', a, ~0), 0),
+   (('ussub_4x8_vc4', a, 0), a),
+   (('ussub_4x8_vc4', a, ~0), 0),
    # Lower all Subtractions first - they can get recombined later
    (('fsub', a, b), ('fadd', a, ('fneg', b))),
    (('isub', a, b), ('iadd', a, ('ineg', b))),

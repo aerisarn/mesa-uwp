@@ -883,51 +883,6 @@ binop("fmax", tfloat, _2src_commutative + associative, "fmax(src0, src1)")
 binop("imax", tint, _2src_commutative + associative, "src1 > src0 ? src1 : src0")
 binop("umax", tuint, _2src_commutative + associative, "src1 > src0 ? src1 : src0")
 
-# Saturated vector add for 4 8bit ints.
-binop("usadd_4x8", tint32, _2src_commutative + associative, """
-dst = 0;
-for (int i = 0; i < 32; i += 8) {
-   dst |= MIN2(((src0 >> i) & 0xff) + ((src1 >> i) & 0xff), 0xff) << i;
-}
-""")
-
-# Saturated vector subtract for 4 8bit ints.
-binop("ussub_4x8", tint32, "", """
-dst = 0;
-for (int i = 0; i < 32; i += 8) {
-   int src0_chan = (src0 >> i) & 0xff;
-   int src1_chan = (src1 >> i) & 0xff;
-   if (src0_chan > src1_chan)
-      dst |= (src0_chan - src1_chan) << i;
-}
-""")
-
-# vector min for 4 8bit ints.
-binop("umin_4x8", tint32, _2src_commutative + associative, """
-dst = 0;
-for (int i = 0; i < 32; i += 8) {
-   dst |= MIN2((src0 >> i) & 0xff, (src1 >> i) & 0xff) << i;
-}
-""")
-
-# vector max for 4 8bit ints.
-binop("umax_4x8", tint32, _2src_commutative + associative, """
-dst = 0;
-for (int i = 0; i < 32; i += 8) {
-   dst |= MAX2((src0 >> i) & 0xff, (src1 >> i) & 0xff) << i;
-}
-""")
-
-# unorm multiply: (a * b) / 255.
-binop("umul_unorm_4x8", tint32, _2src_commutative + associative, """
-dst = 0;
-for (int i = 0; i < 32; i += 8) {
-   int src0_chan = (src0 >> i) & 0xff;
-   int src1_chan = (src1 >> i) & 0xff;
-   dst |= ((src0_chan * src1_chan) / 255) << i;
-}
-""")
-
 binop("fpow", tfloat, "", "bit_size == 64 ? powf(src0, src1) : pow(src0, src1)")
 
 binop_horiz("pack_half_2x16_split", 1, tuint32, 1, tfloat32, 1, tfloat32,
@@ -1285,6 +1240,53 @@ binop("umul24_relaxed", tuint32, _2src_commutative + associative, "src0 * src1")
 
 unop_convert("fisnormal", tbool1, tfloat, "isnormal(src0)")
 unop_convert("fisfinite", tbool1, tfloat, "isfinite(src0)")
+
+# vc4-specific opcodes
+
+# Saturated vector add for 4 8bit ints.
+binop("usadd_4x8_vc4", tint32, _2src_commutative + associative, """
+dst = 0;
+for (int i = 0; i < 32; i += 8) {
+   dst |= MIN2(((src0 >> i) & 0xff) + ((src1 >> i) & 0xff), 0xff) << i;
+}
+""")
+
+# Saturated vector subtract for 4 8bit ints.
+binop("ussub_4x8_vc4", tint32, "", """
+dst = 0;
+for (int i = 0; i < 32; i += 8) {
+   int src0_chan = (src0 >> i) & 0xff;
+   int src1_chan = (src1 >> i) & 0xff;
+   if (src0_chan > src1_chan)
+      dst |= (src0_chan - src1_chan) << i;
+}
+""")
+
+# vector min for 4 8bit ints.
+binop("umin_4x8_vc4", tint32, _2src_commutative + associative, """
+dst = 0;
+for (int i = 0; i < 32; i += 8) {
+   dst |= MIN2((src0 >> i) & 0xff, (src1 >> i) & 0xff) << i;
+}
+""")
+
+# vector max for 4 8bit ints.
+binop("umax_4x8_vc4", tint32, _2src_commutative + associative, """
+dst = 0;
+for (int i = 0; i < 32; i += 8) {
+   dst |= MAX2((src0 >> i) & 0xff, (src1 >> i) & 0xff) << i;
+}
+""")
+
+# unorm multiply: (a * b) / 255.
+binop("umul_unorm_4x8_vc4", tint32, _2src_commutative + associative, """
+dst = 0;
+for (int i = 0; i < 32; i += 8) {
+   int src0_chan = (src0 >> i) & 0xff;
+   int src1_chan = (src1 >> i) & 0xff;
+   dst |= ((src0_chan * src1_chan) / 255) << i;
+}
+""")
 
 # Mali-specific opcodes
 unop("fsat_signed_mali", tfloat, ("fmin(fmax(src0, -1.0), 1.0)"))
