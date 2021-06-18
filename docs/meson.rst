@@ -244,9 +244,8 @@ provide information about the native build environment (as opposed to a
 cross build environment). They are ini formatted and can override where
 to find llvm-config:
 
-custom-llvm.ini
-
 .. code-block:: ini
+   :caption: custom-llvm.ini
 
    [binaries]
    llvm-config = '/usr/local/bin/llvm/llvm-config'
@@ -261,9 +260,8 @@ For selecting llvm-config for cross compiling a `"cross
 file" <https://mesonbuild.com/Cross-compilation.html#defining-the-environment>`__
 should be used. It uses the same format as the native file above:
 
-cross-llvm.ini
-
 .. code-block:: ini
+   :caption: cross-llvm.ini
 
    [binaries]
    ...
