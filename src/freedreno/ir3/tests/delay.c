@@ -123,7 +123,7 @@ fixup_wrmask(struct ir3 *ir)
 	struct ir3_block *block = ir3_start_block(ir);
 
 	foreach_instr_safe (instr, &block->instr_list) {
-		instr->regs[0]->wrmask = MASK(instr->repeat + 1);
+		instr->dsts[0]->wrmask = MASK(instr->repeat + 1);
 		foreach_src (reg, instr) {
 			if (reg->flags & (IR3_REG_CONST | IR3_REG_IMMED))
 				continue;
