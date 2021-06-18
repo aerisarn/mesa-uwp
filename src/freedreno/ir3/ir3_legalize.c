@@ -691,7 +691,8 @@ kill_sched(struct ir3 *ir, struct ir3_shader_variant *so)
 				continue;
 
 			struct ir3_instruction *br = ir3_instr_create(block, OPC_B, 1, 1);
-			br->regs[1] = instr->regs[1];
+			ir3_dst_create(br, INVALID_REG, 0);
+			ir3_src_create(br, instr->regs[1]->num, instr->regs[1]->flags)->wrmask = 1;
 			br->cat0.target =
 				list_last_entry(&ir->block_list, struct ir3_block, node);
 
