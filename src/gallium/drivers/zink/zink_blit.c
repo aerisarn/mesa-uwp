@@ -1,5 +1,6 @@
 #include "zink_context.h"
 #include "zink_helpers.h"
+#include "zink_query.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
 
@@ -339,6 +340,9 @@ zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags)
                                                ctx->di.num_sampler_views[PIPE_SHADER_FRAGMENT],
                                                ctx->sampler_views[PIPE_SHADER_FRAGMENT]);
    }
+
+   if (flags & ZINK_BLIT_NO_COND_RENDER && ctx->render_condition_active)
+      zink_stop_conditional_render(ctx);
 }
 
 bool
