@@ -121,6 +121,9 @@ validate_reg(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
 		}
 		validate_assert(ctx, found && "tied register not in the same instruction");
 	}
+
+	if ((reg->flags & IR3_REG_DEST) && (reg->flags & IR3_REG_SSA))
+		validate_assert(ctx, reg->instr == instr);
 }
 
 #define validate_reg_size(ctx, reg, type) \
