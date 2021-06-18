@@ -8248,7 +8248,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       /* Make sure that all inactive lanes return zero.
        * Value-numbering might remove the comparison above */
-      src = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src);
+      src = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
       if (dst.size() != bld.lm.size()) {
          /* Wave32 with ballot size set to 64 */
          src =
