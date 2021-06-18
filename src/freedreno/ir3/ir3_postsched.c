@@ -450,12 +450,12 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 		if (reg->flags & IR3_REG_RELATIV) {
 			/* mark entire array as read: */
 			for (unsigned j = 0; j < reg->size; j++) {
-				add_reg_dep(state, node, reg, reg->array.base + j, i + 1);
+				add_reg_dep(state, node, reg, reg->array.base + j, i);
 			}
 		} else {
 			assert(reg->wrmask >= 1);
 			u_foreach_bit (b, reg->wrmask) {
-				add_reg_dep(state, node, reg, reg->num + b, i + 1);
+				add_reg_dep(state, node, reg, reg->num + b, i);
 			}
 		}
 	}
@@ -466,7 +466,7 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 	/* And then after we update the state for what this instruction
 	 * wrote:
 	 */
-	struct ir3_register *reg = node->instr->regs[0];
+	struct ir3_register *reg = node->instr->dsts[0];
 	if (reg->flags & IR3_REG_RELATIV) {
 		/* mark the entire array as written: */
 		for (unsigned i = 0; i < reg->size; i++) {
@@ -694,16 +694,16 @@ is_self_mov(struct ir3_instruction *instr)
 	if (!is_same_type_mov(instr))
 		return false;
 
-	if (instr->regs[0]->num != instr->regs[1]->num)
+	if (instr->dsts[0]->num != instr->srcs[0]->num)
 		return false;
 
-	if (instr->regs[0]->flags & IR3_REG_RELATIV)
+	if (instr->dsts[0]->flags & IR3_REG_RELATIV)
 		return false;
 
 	if (instr->cat1.round != ROUND_ZERO)
 		return false;
 
-	if (instr->regs[1]->flags & (IR3_REG_CONST | IR3_REG_IMMED |
+	if (instr->srcs[0]->flags & (IR3_REG_CONST | IR3_REG_IMMED |
 			IR3_REG_RELATIV | IR3_REG_FNEG | IR3_REG_FABS |
 			IR3_REG_SNEG | IR3_REG_SABS | IR3_REG_BNOT))
 		return false;

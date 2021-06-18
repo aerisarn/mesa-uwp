@@ -381,7 +381,7 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 			struct ir3_instruction *indirect = ir->a0_users[i];
 			if (!indirect)
 				continue;
-			if (indirect->address->def != instr->regs[0])
+			if (indirect->address->def != instr->dsts[0])
 				continue;
 			ready = could_sched(indirect, instr);
 		}
@@ -398,7 +398,7 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 			struct ir3_instruction *indirect = ir->a1_users[i];
 			if (!indirect)
 				continue;
-			if (indirect->address->def != instr->regs[0])
+			if (indirect->address->def != instr->dsts[0])
 				continue;
 			ready = could_sched(indirect, instr);
 		}
@@ -436,7 +436,7 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 	 *
 	 * We could do this by adding each bary.f instruction as
 	 * virtual ssa src for the kill instruction.  But we have
-	 * fixed length instr->regs[].
+	 * fixed length instr->srcs[].
 	 *
 	 * TODO we could handle this by false-deps now, probably.
 	 */
@@ -508,7 +508,7 @@ live_effect(struct ir3_instruction *instr)
 	 * then count all it's other components too:
 	 */
 	if (n->collect)
-		new_live *= n->collect->regs_count - 1;
+		new_live *= n->collect->srcs_count;
 
 	foreach_ssa_src_n (src, n, instr) {
 		if (__is_false_dep(instr, n))
@@ -870,13 +870,13 @@ split_addr(struct ir3_sched_ctx *ctx, struct ir3_instruction **addr,
 		/* remap remaining instructions using current addr
 		 * to new addr:
 		 */
-		if (indirect->address->def == (*addr)->regs[0]) {
+		if (indirect->address->def == (*addr)->dsts[0]) {
 			if (!new_addr) {
 				new_addr = split_instr(ctx, *addr);
 				/* original addr is scheduled, but new one isn't: */
 				new_addr->flags &= ~IR3_INSTR_MARK;
 			}
-			indirect->address->def = new_addr->regs[0];
+			indirect->address->def = new_addr->dsts[0];
 			/* don't need to remove old dag edge since old addr is
 			 * already scheduled:
 			 */
@@ -919,13 +919,13 @@ split_pred(struct ir3_sched_ctx *ctx)
 		 * TODO is there ever a case when pred isn't first
 		 * (and only) src?
 		 */
-		if (ssa(predicated->regs[1]) == ctx->pred) {
+		if (ssa(predicated->srcs[0]) == ctx->pred) {
 			if (!new_pred) {
 				new_pred = split_instr(ctx, ctx->pred);
 				/* original pred is scheduled, but new one isn't: */
 				new_pred->flags &= ~IR3_INSTR_MARK;
 			}
-			predicated->regs[1]->instr = new_pred;
+			predicated->srcs[0]->instr = new_pred;
 			/* don't need to remove old dag edge since old pred is
 			 * already scheduled:
 			 */
@@ -977,13 +977,7 @@ sched_node_add_dep(struct ir3_instruction *instr, struct ir3_instruction *src, i
 	dag_add_edge(&sn->dag, &n->dag, NULL);
 
 
-	/* There's a mismatch between the indices foreach_ssa_src_n uses and the
-	 * indices that ir3_delayslots expects, and additionally we don't want to
-	 * call it and get bogus answers on false dependencies.
-	 */
-	unsigned d = 0;
-	if (i < instr->regs_count)
-		d = ir3_delayslots(src, instr, i + 1, true);
+	unsigned d = ir3_delayslots(src, instr, i, true);
 
 	n->delay = MAX2(n->delay, d);
 }
@@ -1028,7 +1022,7 @@ is_output_only(struct ir3_instruction *instr)
 	if (!writes_gpr(instr))
 		return false;
 
-	if (!(instr->regs[0]->flags & IR3_REG_SSA))
+	if (!(instr->dsts[0]->flags & IR3_REG_SSA))
 		return false;
 
 	foreach_ssa_use (use, instr)
@@ -1240,9 +1234,12 @@ get_array_id(struct ir3_instruction *instr)
 	 * src or dst, ir3_cp should enforce this.
 	 */
 
-	for (unsigned i = 0; i < instr->regs_count; i++)
-		if (instr->regs[i]->flags & IR3_REG_ARRAY)
-			return instr->regs[i]->array.id;
+	for (unsigned i = 0; i < instr->dsts_count; i++)
+		if (instr->dsts[i]->flags & IR3_REG_ARRAY)
+			return instr->dsts[i]->array.id;
+	for (unsigned i = 0; i < instr->srcs_count; i++)
+		if (instr->srcs[i]->flags & IR3_REG_ARRAY)
+			return instr->srcs[i]->array.id;
 
 	unreachable("this was unexpected");
 }

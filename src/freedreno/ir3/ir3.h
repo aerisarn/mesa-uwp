@@ -1356,12 +1356,12 @@ ir3_try_swap_signedness(opc_t opc, bool *can_swap)
 
 static inline unsigned __ssa_src_cnt(struct ir3_instruction *instr)
 {
-	return instr->regs_count + instr->deps_count;
+	return instr->srcs_count + instr->deps_count;
 }
 
 static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 {
-	if (n >= instr->regs_count)
+	if (n >= instr->srcs_count)
 		return true;
 	return false;
 }
@@ -1370,9 +1370,9 @@ static inline struct ir3_instruction **
 __ssa_srcp_n(struct ir3_instruction *instr, unsigned n)
 {
 	if (__is_false_dep(instr, n))
-		return &instr->deps[n - instr->regs_count];
-	if (ssa(instr->regs[n]))
-		return &instr->regs[n]->def->instr;
+		return &instr->deps[n - instr->srcs_count];
+	if (ssa(instr->srcs[n]))
+		return &instr->srcs[n]->def->instr;
 	return NULL;
 }
 
