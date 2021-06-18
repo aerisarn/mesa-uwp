@@ -4704,6 +4704,11 @@ struct gl_display_list
 {
    GLuint Name;
    bool small_list;
+   /* If small_list and begins_with_a_nop are true, this means
+    * the 'start' has been incremented to skip a NOP at the
+    * beginning.
+    */
+   bool begins_with_a_nop;
    GLchar *Label;     /**< GL_KHR_debug */
    /** The dlist commands are in a linked list of nodes */
    union {

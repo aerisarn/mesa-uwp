@@ -1384,9 +1384,11 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             continue;
          case OPCODE_END_OF_LIST:
             if (dlist->small_list) {
+               unsigned start = dlist->begins_with_a_nop ? dlist->start - 1 :
+                                                           dlist->start;
                for (int i = 0; i < dlist->count; i++) {
                   util_idalloc_free(&ctx->Shared->small_dlist_store.free_idx,
-                                    dlist->start + i);
+                                    start + i);
                }
             } else {
                free(block);
@@ -13739,10 +13741,21 @@ _mesa_EndList(void)
              list->CurrentBlock,
              list->CurrentList->count * sizeof(Node));
 
+      assert (ctx->Shared->small_dlist_store.ptr[start + list->CurrentList->count - 1].opcode == OPCODE_END_OF_LIST);
+
+      /* If the first opcode is a NOP, adjust start */
+      if (ctx->Shared->small_dlist_store.ptr[start].opcode == OPCODE_NOP) {
+         list->CurrentList->start++;
+         list->CurrentList->begins_with_a_nop = true;
+      } else {
+         list->CurrentList->begins_with_a_nop = false;
+      }
+
       free(list->CurrentBlock);
    } else {
       /* Keep the mallocated storage */
       list->CurrentList->small_list = false;
+      list->CurrentList->begins_with_a_nop = false;
    }
 
    _mesa_HashUnlockMutex(ctx->Shared->DisplayList);
