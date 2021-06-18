@@ -1799,6 +1799,14 @@ isl_format_has_bc_compression(enum isl_format fmt)
 }
 
 static inline bool
+isl_format_is_mcs(enum isl_format fmt)
+{
+   const struct isl_format_layout *fmtl = isl_format_get_layout(fmt);
+
+   return fmtl->txc == ISL_TXC_MCS;
+}
+
+static inline bool
 isl_format_is_planar(enum isl_format fmt)
 {
    return fmt == ISL_FORMAT_PLANAR_420_8 ||
@@ -2204,7 +2212,8 @@ isl_surf_get_tile_info(const struct isl_surf *surf,
 
 bool
 isl_surf_supports_ccs(const struct isl_device *dev,
-                      const struct isl_surf *surf);
+                      const struct isl_surf *surf,
+                      const struct isl_surf *hiz_or_mcs_surf);
 
 bool
 isl_surf_get_hiz_surf(const struct isl_device *dev,
