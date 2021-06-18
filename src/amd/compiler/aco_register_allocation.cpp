@@ -366,8 +366,8 @@ private:
    }
 };
 
-std::set<std::pair<unsigned, unsigned>> find_vars(ra_ctx& ctx, RegisterFile& reg_file,
-                                                  const PhysRegInterval reg_interval);
+std::vector<unsigned> find_vars(ra_ctx& ctx, RegisterFile& reg_file,
+                                const PhysRegInterval reg_interval);
 
 /* helper function for debugging */
 UNUSED void
@@ -453,9 +453,10 @@ print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
    /* print assignments ordered by registers */
    std::map<PhysReg, std::pair<unsigned, unsigned>>
       regs_to_vars; /* maps to byte size and temp id */
-   for (const auto& size_id : find_vars(ctx, reg_file, regs)) {
-      auto reg = ctx.assignments[size_id.second].reg;
-      ASSERTED auto inserted = regs_to_vars.emplace(reg, size_id);
+   for (unsigned id : find_vars(ctx, reg_file, regs)) {
+      const assignment& var = ctx.assignments[id];
+      PhysReg reg = var.reg;
+      ASSERTED auto inserted = regs_to_vars.emplace(reg, std::make_pair(var.rc.bytes(), id));
       assert(inserted.second);
    }
 
@@ -982,26 +983,24 @@ get_reg_simple(ra_ctx& ctx, RegisterFile& reg_file, DefInfo info)
    return {{}, false};
 }
 
-/* collect variables from a register area and clear reg_file */
-std::set<std::pair<unsigned, unsigned>>
+/* collect variables from a register area */
+std::vector<unsigned>
 find_vars(ra_ctx& ctx, RegisterFile& reg_file, const PhysRegInterval reg_interval)
 {
-   std::set<std::pair<unsigned, unsigned>> vars;
+   std::vector<unsigned> vars;
    for (PhysReg j : reg_interval) {
       if (reg_file.is_blocked(j))
          continue;
       if (reg_file[j] == 0xF0000000) {
          for (unsigned k = 0; k < 4; k++) {
             unsigned id = reg_file.subdword_regs[j][k];
-            if (id) {
-               assignment& var = ctx.assignments[id];
-               vars.emplace(var.rc.bytes(), id);
-            }
+            if (id && (vars.empty() || id != vars.back()))
+               vars.emplace_back(id);
          }
-      } else if (reg_file[j] != 0) {
+      } else {
          unsigned id = reg_file[j];
-         assignment& var = ctx.assignments[id];
-         vars.emplace(var.rc.bytes(), id);
+         if (id && (vars.empty() || id != vars.back()))
+            vars.emplace_back(id);
       }
    }
    return vars;
@@ -1011,10 +1010,13 @@ find_vars(ra_ctx& ctx, RegisterFile& reg_file, const PhysRegInterval reg_interva
 std::set<std::pair<unsigned, unsigned>>
 collect_vars(ra_ctx& ctx, RegisterFile& reg_file, const PhysRegInterval reg_interval)
 {
-   std::set<std::pair<unsigned, unsigned>> vars = find_vars(ctx, reg_file, reg_interval);
-   for (std::pair<unsigned, unsigned> size_id : vars) {
-      assignment& var = ctx.assignments[size_id.second];
+   std::vector<unsigned> ids = find_vars(ctx, reg_file, reg_interval);
+   std::set<std::pair<unsigned, unsigned>> vars;
+
+   for (unsigned id : ids) {
+      assignment& var = ctx.assignments[id];
       reg_file.clear(var.reg, var.rc);
+      vars.emplace(var.rc.bytes(), id);
    }
    return vars;
 }
@@ -1668,8 +1670,8 @@ get_reg(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
 
       /* reallocate passthrough variables and non-killed operands */
       std::vector<IDAndRegClass> vars;
-      for (const std::pair<unsigned, unsigned>& var : find_vars(ctx, reg_file, regs))
-         vars.emplace_back(var.second, ctx.assignments[var.second].rc);
+      for (unsigned id : find_vars(ctx, reg_file, regs))
+         vars.emplace_back(id, ctx.assignments[id].rc);
       vars.emplace_back(0xffffffff, RegClass(info.rc.type(), MAX2(def_size, killed_op_size)));
 
       PhysReg space = compact_relocate_vars(ctx, vars, parallelcopies, regs.lo());
