@@ -118,7 +118,7 @@ read_value_beginning(struct array_ctx *ctx, struct ir3_block *block, struct ir3_
 		if (src) {
 			src_reg = __ssa_src(phi, src->instr, flags);
 		} else {
-			src_reg = ir3_reg_create(phi, INVALID_REG, flags | IR3_REG_SSA);
+			src_reg = ir3_src_create(phi, INVALID_REG, flags | IR3_REG_SSA);
 		}
 		src_reg->array.id = arr->id;
 		src_reg->size = arr->length;

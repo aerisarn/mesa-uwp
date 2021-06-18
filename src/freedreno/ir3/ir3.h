@@ -604,7 +604,9 @@ struct ir3_instruction * ir3_instr_clone(struct ir3_instruction *instr);
 void ir3_instr_add_dep(struct ir3_instruction *instr, struct ir3_instruction *dep);
 const char *ir3_instr_name(struct ir3_instruction *instr);
 
-struct ir3_register * ir3_reg_create(struct ir3_instruction *instr,
+struct ir3_register * ir3_src_create(struct ir3_instruction *instr,
+		int num, int flags);
+struct ir3_register * ir3_dst_create(struct ir3_instruction *instr,
 		int num, int flags);
 struct ir3_register * ir3_reg_clone(struct ir3 *shader,
 		struct ir3_register *reg);
@@ -1517,7 +1519,7 @@ static inline struct ir3_register * __ssa_src(struct ir3_instruction *instr,
 	struct ir3_register *reg;
 	if (src->regs[0]->flags & IR3_REG_HALF)
 		flags |= IR3_REG_HALF;
-	reg = ir3_reg_create(instr, INVALID_REG, IR3_REG_SSA | flags);
+	reg = ir3_src_create(instr, INVALID_REG, IR3_REG_SSA | flags);
 	reg->def = src->regs[0];
 	reg->wrmask = src->regs[0]->wrmask;
 	return reg;
@@ -1525,8 +1527,7 @@ static inline struct ir3_register * __ssa_src(struct ir3_instruction *instr,
 
 static inline struct ir3_register * __ssa_dst(struct ir3_instruction *instr)
 {
-	struct ir3_register *reg = ir3_reg_create(instr, INVALID_REG, 0);
-	reg->flags |= IR3_REG_SSA | IR3_REG_DEST;
+	struct ir3_register *reg = ir3_dst_create(instr, INVALID_REG, IR3_REG_SSA);
 	reg->instr = instr;
 	return reg;
 }
@@ -1541,7 +1542,7 @@ create_immed_typed(struct ir3_block *block, uint32_t val, type_t type)
 	mov->cat1.src_type = type;
 	mov->cat1.dst_type = type;
 	__ssa_dst(mov)->flags |= flags;
-	ir3_reg_create(mov, 0, IR3_REG_IMMED | flags)->uim_val = val;
+	ir3_src_create(mov, 0, IR3_REG_IMMED | flags)->uim_val = val;
 
 	return mov;
 }
@@ -1562,7 +1563,7 @@ create_uniform_typed(struct ir3_block *block, unsigned n, type_t type)
 	mov->cat1.src_type = type;
 	mov->cat1.dst_type = type;
 	__ssa_dst(mov)->flags |= flags;
-	ir3_reg_create(mov, n, IR3_REG_CONST | flags);
+	ir3_src_create(mov, n, IR3_REG_CONST | flags);
 
 	return mov;
 }
@@ -1583,7 +1584,7 @@ create_uniform_indirect(struct ir3_block *block, int n, type_t type,
 	mov->cat1.src_type = type;
 	mov->cat1.dst_type = type;
 	__ssa_dst(mov);
-	ir3_reg_create(mov, 0, IR3_REG_CONST | IR3_REG_RELATIV)->array.offset = n;
+	ir3_src_create(mov, 0, IR3_REG_CONST | IR3_REG_RELATIV)->array.offset = n;
 
 	ir3_instr_set_address(mov, address);
 

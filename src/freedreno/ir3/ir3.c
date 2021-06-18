@@ -435,8 +435,11 @@ struct ir3_instruction * ir3_instr_clone(struct ir3_instruction *instr)
 	new_instr->regs_count = 0;
 	for (i = 0; i < instr->regs_count; i++) {
 		struct ir3_register *reg = instr->regs[i];
-		struct ir3_register *new_reg =
-				ir3_reg_create(new_instr, reg->num, reg->flags);
+		struct ir3_register *new_reg;
+		if (reg->flags & IR3_REG_DEST)
+			new_reg = ir3_dst_create(new_instr, reg->num, reg->flags);
+		else
+			new_reg = ir3_src_create(new_instr, reg->num, reg->flags);
 		*new_reg = *reg;
 		if ((new_reg->flags & IR3_REG_DEST) && new_reg->instr)
 			new_reg->instr = new_instr;
@@ -456,7 +459,7 @@ void ir3_instr_add_dep(struct ir3_instruction *instr, struct ir3_instruction *de
 	array_insert(instr, instr->deps, dep);
 }
 
-struct ir3_register * ir3_reg_create(struct ir3_instruction *instr,
+static struct ir3_register * ir3_reg_create(struct ir3_instruction *instr,
 		int num, int flags)
 {
 	struct ir3 *shader = instr->block->shader;
@@ -466,6 +469,19 @@ struct ir3_register * ir3_reg_create(struct ir3_instruction *instr,
 #endif
 	instr->regs[instr->regs_count++] = reg;
 	return reg;
+}
+
+struct ir3_register * ir3_src_create(struct ir3_instruction *instr,
+		int num, int flags)
+{
+	assert(!(flags & IR3_REG_DEST));
+	return ir3_reg_create(instr, num, flags);
+}
+
+struct ir3_register * ir3_dst_create(struct ir3_instruction *instr,
+		int num, int flags)
+{
+	return ir3_reg_create(instr, num, flags | IR3_REG_DEST);
 }
 
 struct ir3_register * ir3_reg_clone(struct ir3 *shader,
@@ -483,7 +499,7 @@ void ir3_reg_set_last_array(struct ir3_instruction *instr,
 {
 	assert(reg->flags & IR3_REG_ARRAY);
 	assert(reg->flags & IR3_REG_DEST);
-	struct ir3_register *new_reg = ir3_reg_create(instr, 0, 0);
+	struct ir3_register *new_reg = ir3_src_create(instr, 0, 0);
 	*new_reg = *reg;
 	new_reg->flags &= ~IR3_REG_DEST;
 	new_reg->def = last_write;
@@ -499,7 +515,7 @@ ir3_instr_set_address(struct ir3_instruction *instr,
 
 		debug_assert(instr->block == addr->block);
 
-		instr->address = ir3_reg_create(instr, addr->regs[0]->num,
+		instr->address = ir3_src_create(instr, addr->regs[0]->num,
 										addr->regs[0]->flags & ~IR3_REG_DEST);
 		instr->address->def = addr->regs[0];
 		debug_assert(reg_num(addr->regs[0]) == REG_A0);
