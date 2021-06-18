@@ -313,7 +313,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 					struct ir3_instruction *baryf;
 
 					/* (ss)bary.f (ei)r63.x, 0, r0.x */
-					baryf = ir3_instr_create(block, OPC_BARY_F, 3);
+					baryf = ir3_instr_create(block, OPC_BARY_F, 1, 2);
 					ir3_dst_create(baryf, regid(63, 0), 0);
 					ir3_src_create(baryf, 0, IR3_REG_IMMED)->iim_val = 0;
 					ir3_src_create(baryf, regid(0, 0), 0);
@@ -343,7 +343,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		struct ir3_instruction *baryf;
 
 		/* (ss)bary.f (ei)r63.x, 0, r0.x */
-		baryf = ir3_instr_create(block, OPC_BARY_F, 3);
+		baryf = ir3_instr_create(block, OPC_BARY_F, 1, 2);
 		ir3_dst_create(baryf, regid(63, 0), 0)->flags |= IR3_REG_EI;
 		ir3_src_create(baryf, 0, IR3_REG_IMMED)->iim_val = 0;
 		ir3_src_create(baryf, regid(0, 0), 0);
@@ -627,14 +627,14 @@ block_sched(struct ir3 *ir)
 			/* create "else" branch first (since "then" block should
 			 * frequently/always end up being a fall-thru):
 			 */
-			br = ir3_instr_create(block, OPC_B, 2);
+			br = ir3_instr_create(block, OPC_B, 1, 1);
 			ir3_dst_create(br, INVALID_REG, 0);
 			ir3_src_create(br, regid(REG_P0, 0), 0)->def = block->condition->regs[0];
 			br->cat0.inv1 = true;
 			br->cat0.target = block->successors[1];
 
 			/* "then" branch: */
-			br = ir3_instr_create(block, OPC_B, 2);
+			br = ir3_instr_create(block, OPC_B, 1, 1);
 			ir3_dst_create(br, INVALID_REG, 0);
 			ir3_src_create(br, regid(REG_P0, 0), 0)->def = block->condition->regs[0];
 			br->cat0.target = block->successors[0];
@@ -690,7 +690,7 @@ kill_sched(struct ir3 *ir, struct ir3_shader_variant *so)
 			if (instr->opc != OPC_KILL)
 				continue;
 
-			struct ir3_instruction *br = ir3_instr_create(block, OPC_B, 2);
+			struct ir3_instruction *br = ir3_instr_create(block, OPC_B, 1, 1);
 			br->regs[1] = instr->regs[1];
 			br->cat0.target =
 				list_last_entry(&ir->block_list, struct ir3_block, node);

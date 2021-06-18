@@ -64,7 +64,7 @@ create_input(struct ir3_context *ctx, unsigned compmask)
 {
 	struct ir3_instruction *in;
 
-	in = ir3_instr_create(ctx->in_block, OPC_META_INPUT, 1);
+	in = ir3_instr_create(ctx->in_block, OPC_META_INPUT, 1, 0);
 	in->input.sysval = ~0;
 	__ssa_dst(in)->wrmask = compmask;
 
@@ -2765,7 +2765,7 @@ emit_phi(struct ir3_context *ctx, nir_phi_instr *nphi)
 	dst = ir3_get_dst(ctx, &nphi->dest, 1);
 
 	phi = ir3_instr_create(ctx->block, OPC_META_PHI,
-			1 + exec_list_length(&nphi->srcs));
+			1, exec_list_length(&nphi->srcs));
 	__ssa_dst(phi);
 	phi->phi.nphi = nphi;
 
@@ -3859,7 +3859,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		}
 
 		struct ir3_instruction *chmask =
-			ir3_instr_create(ctx->block, OPC_CHMASK, outputs_count + 1);
+			ir3_instr_create(ctx->block, OPC_CHMASK, 1, outputs_count);
 		chmask->barrier_class = IR3_BARRIER_EVERYTHING;
 		chmask->barrier_conflict = IR3_BARRIER_EVERYTHING;
 
@@ -3955,7 +3955,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ctx->block = old_block;
 
 		struct ir3_instruction *end = ir3_instr_create(ctx->block, OPC_END,
-				outputs_count + 1);
+				1, outputs_count);
 
 		__ssa_dst(end);
 		for (unsigned i = 0; i < outputs_count; i++) {

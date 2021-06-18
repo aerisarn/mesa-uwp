@@ -92,7 +92,7 @@ static void new_label(const char *name)
 
 static struct ir3_instruction * new_instr(opc_t opc)
 {
-	instr = ir3_instr_create(block, opc, 5);
+	instr = ir3_instr_create(block, opc, 4, 4);
 	instr->flags = iflags.flags;
 	instr->repeat = iflags.repeat;
 	instr->nop = iflags.nop;

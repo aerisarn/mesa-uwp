@@ -100,7 +100,7 @@ read_value_beginning(struct array_ctx *ctx, struct ir3_block *block, struct ir3_
 
 	unsigned flags = IR3_REG_ARRAY | (arr->half ? IR3_REG_HALF : 0);
 	struct ir3_instruction *phi =
-		ir3_instr_create(block, OPC_META_PHI, block->predecessors_count + 1);
+		ir3_instr_create(block, OPC_META_PHI, 1, block->predecessors_count);
 	list_del(&phi->node);
 	list_add(&phi->node, &block->instr_list);
 
