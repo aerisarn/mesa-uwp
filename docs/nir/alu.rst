@@ -67,3 +67,8 @@ use in other instruction types like intrinsics or texture ops.
 
 .. doxygenstruct:: nir_alu_dest
     :members:
+
+NIR ALU Opcode Reference:
+-------------------------
+
+.. nir:alu-opcodes::
