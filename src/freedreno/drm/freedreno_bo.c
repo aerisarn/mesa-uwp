@@ -106,6 +106,7 @@ bo_new(struct fd_device *dev, uint32_t size, uint32_t flags,
    bo = bo_from_handle(dev, size, handle);
    simple_mtx_unlock(&table_lock);
 
+   bo->alloc_flags = flags;
    bo->max_fences = 1;
    bo->fences = &bo->_inline_fence;
 
