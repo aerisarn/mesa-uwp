@@ -39,8 +39,8 @@ is_safe_conv(struct ir3_instruction *instr, type_t src_type,
 		full_type(instr->cat1.src_type) != full_type(instr->cat1.dst_type))
 		return false;
 
-	struct ir3_register *dst = instr->regs[0];
-	struct ir3_register *src = instr->regs[1];
+	struct ir3_register *dst = instr->dsts[0];
+	struct ir3_register *src = instr->srcs[0];
 
 	/* disallow conversions that cannot be folded into
 	 * alu instructions:
@@ -109,9 +109,9 @@ rewrite_src_uses(struct ir3_instruction *src)
 		assert(use->opc == OPC_MOV);
 
 		if (is_half(src)) {
-			use->regs[1]->flags |= IR3_REG_HALF;
+			use->srcs[0]->flags |= IR3_REG_HALF;
 		} else {
-			use->regs[1]->flags &= ~IR3_REG_HALF;
+			use->srcs[0]->flags &= ~IR3_REG_HALF;
 		}
 
 		use->cat1.src_type = use->cat1.dst_type;
@@ -127,7 +127,7 @@ try_conversion_folding(struct ir3_instruction *conv)
 		return false;
 
 	/* NOTE: we can have non-ssa srcs after copy propagation: */
-	src = ssa(conv->regs[1]);
+	src = ssa(conv->srcs[0]);
 	if (!src)
 		return false;
 

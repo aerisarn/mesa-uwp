@@ -54,7 +54,7 @@ instr_dce(struct ir3_instruction *instr, bool falsedep)
 		return;
 
 	if (writes_gpr(instr))
-		mark_array_use(instr, instr->regs[0]);   /* dst */
+		mark_array_use(instr, instr->dsts[0]);   /* dst */
 
 	foreach_src (reg, instr)
 		mark_array_use(instr, reg);              /* src */
@@ -73,12 +73,12 @@ remove_unused_by_block(struct ir3_block *block)
 			continue;
 		if (instr->flags & IR3_INSTR_UNUSED) {
 			if (instr->opc == OPC_META_SPLIT) {
-				struct ir3_instruction *src = ssa(instr->regs[1]);
+				struct ir3_instruction *src = ssa(instr->srcs[0]);
 				/* tex (cat5) instructions have a writemask, so we can
 				 * mask off unused components.  Other instructions do not.
 				 */
-				if (src && is_tex_or_prefetch(src) && (src->regs[0]->wrmask > 1)) {
-					src->regs[0]->wrmask &= ~(1 << instr->split.off);
+				if (src && is_tex_or_prefetch(src) && (src->dsts[0]->wrmask > 1)) {
+					src->dsts[0]->wrmask &= ~(1 << instr->split.off);
 				}
 			}
 
@@ -150,11 +150,11 @@ find_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 			if (instr->opc != OPC_META_SPLIT)
 				continue;
 
-			struct ir3_instruction *src = ssa(instr->regs[1]);
+			struct ir3_instruction *src = ssa(instr->srcs[0]);
 			if (!is_tex_or_prefetch(src))
 				continue;
 
-			instr->regs[1]->wrmask = src->regs[0]->wrmask;
+			instr->srcs[0]->wrmask = src->dsts[0]->wrmask;
 		}
 	}
 

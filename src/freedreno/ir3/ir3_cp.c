@@ -57,8 +57,8 @@ static bool is_eligible_mov(struct ir3_instruction *instr,
 		struct ir3_instruction *dst_instr, bool allow_flags)
 {
 	if (is_same_type_mov(instr)) {
-		struct ir3_register *dst = instr->regs[0];
-		struct ir3_register *src = instr->regs[1];
+		struct ir3_register *dst = instr->dsts[0];
+		struct ir3_register *src = instr->srcs[0];
 		struct ir3_instruction *src_instr = ssa(src);
 
 		/* only if mov src is SSA (not const/immed): */
@@ -93,11 +93,11 @@ static bool is_eligible_mov(struct ir3_instruction *instr,
  */
 static bool is_foldable_double_cmp(struct ir3_instruction *cmp)
 {
-	struct ir3_instruction *cond = ssa(cmp->regs[1]);
-	return (cmp->regs[0]->num == regid(REG_P0, 0)) &&
+	struct ir3_instruction *cond = ssa(cmp->srcs[0]);
+	return (cmp->dsts[0]->num == regid(REG_P0, 0)) &&
 				cond &&
-				(cmp->regs[2]->flags & IR3_REG_IMMED) &&
-				(cmp->regs[2]->iim_val == 0) &&
+				(cmp->srcs[1]->flags & IR3_REG_IMMED) &&
+				(cmp->srcs[1]->iim_val == 0) &&
 				(cmp->cat2.condition == IR3_COND_NE) &&
 				(!cond->address || cond->address->def->instr->block == cmp->block);
 }
@@ -107,7 +107,7 @@ static bool is_foldable_double_cmp(struct ir3_instruction *cmp)
  */
 static void combine_flags(unsigned *dstflags, struct ir3_instruction *src)
 {
-	unsigned srcflags = src->regs[1]->flags;
+	unsigned srcflags = src->srcs[0]->flags;
 
 	/* if what we are combining into already has (abs) flags,
 	 * we can drop (neg) from src:
@@ -141,7 +141,7 @@ static void combine_flags(unsigned *dstflags, struct ir3_instruction *src)
 	 * up the absnegs that get inserted when converting between nir and
 	 * native boolean (see ir3_b2n/n2b)
 	 */
-	struct ir3_instruction *srcsrc = ssa(src->regs[1]);
+	struct ir3_instruction *srcsrc = ssa(src->srcs[0]);
 	if (srcsrc && is_bool(srcsrc))
 		*dstflags &= ~IR3_REG_SABS;
 }
@@ -234,7 +234,7 @@ lower_immed(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr, unsigned n,
 	reg->flags = new_flags;
 	reg->num = i + (4 * const_state->offsets.immediate);
 
-	instr->regs[n + 1] = reg;
+	instr->srcs[n] = reg;
 
 	return true;
 }
@@ -273,7 +273,7 @@ try_swap_mad_two_srcs(struct ir3_instruction *instr, unsigned new_flags)
 	/* NOTE: pre-swap first two src's before valid_flags(),
 	 * which might try to dereference the n'th src:
 	 */
-	swap(instr->regs[0 + 1], instr->regs[1 + 1]);
+	swap(instr->srcs[0], instr->srcs[1]);
 
 	/* cat3 doesn't encode immediate, but we can lower immediate
 	 * to const if that helps:
@@ -287,11 +287,11 @@ try_swap_mad_two_srcs(struct ir3_instruction *instr, unsigned new_flags)
 		/* can we propagate mov if we move 2nd src to first? */
 		ir3_valid_flags(instr, 0, new_flags) &&
 		/* and does first src fit in second slot? */
-		ir3_valid_flags(instr, 1, instr->regs[1 + 1]->flags);
+		ir3_valid_flags(instr, 1, instr->srcs[1]->flags);
 
 	if (!valid_swap) {
 		/* put things back the way they were: */
-		swap(instr->regs[0 + 1], instr->regs[1 + 1]);
+		swap(instr->srcs[0], instr->srcs[1]);
 	}   /* otherwise leave things swapped */
 
 	return valid_swap;
@@ -312,7 +312,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 
 	if (is_eligible_mov(src, instr, true)) {
 		/* simple case, no immed/const/relativ, only mov's w/ ssa src: */
-		struct ir3_register *src_reg = src->regs[1];
+		struct ir3_register *src_reg = src->srcs[0];
 		unsigned new_flags = reg->flags;
 
 		combine_flags(&new_flags, src);
@@ -337,7 +337,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			/* cannot collapse const/immed/etc into control flow: */
 			opc_cat(instr->opc) != 0) {
 		/* immed/const/etc cases, which require some special handling: */
-		struct ir3_register *src_reg = src->regs[1];
+		struct ir3_register *src_reg = src->srcs[0];
 		unsigned new_flags = reg->flags;
 
 		if (src_reg->flags & IR3_REG_ARRAY)
@@ -416,7 +416,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 
 			src_reg = ir3_reg_clone(instr->block->shader, src_reg);
 			src_reg->flags = new_flags;
-			instr->regs[n+1] = src_reg;
+			instr->srcs[n] = src_reg;
 
 			if (src_reg->flags & IR3_REG_RELATIV)
 				ir3_instr_set_address(instr, reg->def->instr->address->def->instr);
@@ -458,7 +458,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 				src_reg = ir3_reg_clone(instr->block->shader, src_reg);
 				src_reg->flags = new_flags;
 				src_reg->iim_val = iim_val;
-				instr->regs[n+1] = src_reg;
+				instr->srcs[n] = src_reg;
 
 				return true;
 			} else if (lower_immed(ctx, instr, n, src_reg, new_flags)) {
@@ -480,7 +480,7 @@ static struct ir3_instruction *
 eliminate_output_mov(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 {
 	if (is_eligible_mov(instr, NULL, false)) {
-		struct ir3_register *reg = instr->regs[1];
+		struct ir3_register *reg = instr->srcs[0];
 		if (!(reg->flags & IR3_REG_ARRAY)) {
 			struct ir3_instruction *src_instr = ssa(reg);
 			debug_assert(src_instr);
@@ -498,7 +498,7 @@ eliminate_output_mov(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 static void
 instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 {
-	if (instr->regs_count == 0)
+	if (instr->srcs_count == 0)
 		return;
 
 	if (ir3_instr_check_mark(instr))
@@ -542,21 +542,21 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 	 * turn the mov into a same-type mov so that it can be further propagated.
 	 */
 	if (instr->opc == OPC_MOV &&
-			(instr->regs[1]->flags & IR3_REG_IMMED) &&
+			(instr->srcs[0]->flags & IR3_REG_IMMED) &&
 			instr->cat1.src_type != instr->cat1.dst_type &&
 			/* Only do uint types for now, until we generate other types of
 			 * mov's during instruction selection.
 			 */
 			full_type(instr->cat1.src_type) == TYPE_U32 &&
 			full_type(instr->cat1.dst_type) == TYPE_U32) {
-		uint32_t uimm = instr->regs[1]->uim_val;
+		uint32_t uimm = instr->srcs[0]->uim_val;
 		if (instr->cat1.dst_type == TYPE_U16)
 			uimm &= 0xffff;
-		instr->regs[1]->uim_val = uimm;
-		if (instr->regs[0]->flags & IR3_REG_HALF)
-			instr->regs[1]->flags |= IR3_REG_HALF;
+		instr->srcs[0]->uim_val = uimm;
+		if (instr->dsts[0]->flags & IR3_REG_HALF)
+			instr->srcs[0]->flags |= IR3_REG_HALF;
 		else
-			instr->regs[1]->flags &= ~IR3_REG_HALF;
+			instr->srcs[0]->flags &= ~IR3_REG_HALF;
 		instr->cat1.src_type = instr->cat1.dst_type;
 		ctx->progress = true;
 	}
@@ -565,7 +565,7 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 	 * of the double cmps.
 	 */
 	if ((instr->opc == OPC_CMPS_S) && is_foldable_double_cmp(instr)) {
-		struct ir3_instruction *cond = ssa(instr->regs[1]);
+		struct ir3_instruction *cond = ssa(instr->srcs[0]);
 		switch (cond->opc) {
 		case OPC_CMPS_S:
 		case OPC_CMPS_F:
@@ -575,8 +575,8 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 			instr->cat2  = cond->cat2;
 			if (cond->address)
 				ir3_instr_set_address(instr, cond->address->def->instr);
-			instr->regs[1] = ir3_reg_clone(ctx->shader, cond->regs[1]);
-			instr->regs[2] = ir3_reg_clone(ctx->shader, cond->regs[2]);
+			instr->srcs[0] = ir3_reg_clone(ctx->shader, cond->srcs[0]);
+			instr->srcs[1] = ir3_reg_clone(ctx->shader, cond->srcs[1]);
 			instr->barrier_class |= cond->barrier_class;
 			instr->barrier_conflict |= cond->barrier_conflict;
 			unuse(cond);
@@ -599,12 +599,12 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 		/* The first src will be a collect, if both of it's
 		 * two sources are mov from imm, then we can
 		 */
-		struct ir3_instruction *samp_tex = ssa(instr->regs[1]);
+		struct ir3_instruction *samp_tex = ssa(instr->srcs[0]);
 
 		debug_assert(samp_tex->opc == OPC_META_COLLECT);
 
-		struct ir3_register *samp = samp_tex->regs[1];
-		struct ir3_register *tex  = samp_tex->regs[2];
+		struct ir3_register *samp = samp_tex->srcs[0];
+		struct ir3_register *tex  = samp_tex->srcs[1];
 
 		if ((samp->flags & IR3_REG_IMMED) &&
 			(tex->flags & IR3_REG_IMMED)) {
@@ -613,9 +613,9 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 			instr->cat5.tex  = tex->iim_val;
 
 			/* shuffle around the regs to remove the first src: */
-			instr->regs_count--;
-			for (unsigned i = 1; i < instr->regs_count; i++) {
-				instr->regs[i] = instr->regs[i + 1];
+			instr->srcs_count--;
+			for (unsigned i = 0; i < instr->srcs_count; i++) {
+				instr->srcs[i] = instr->srcs[i + 1];
 			}
 
 			ctx->progress = true;

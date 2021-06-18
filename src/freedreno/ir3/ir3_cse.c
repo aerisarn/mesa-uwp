@@ -41,7 +41,7 @@ hash_instr(const void *data)
 	uint32_t hash = 0;
 
 	hash = HASH(hash, instr->opc);
-	hash = HASH(hash, instr->regs[0]->flags);
+	hash = HASH(hash, instr->dsts[0]->flags);
 	foreach_src (src, (struct ir3_instruction *) instr) {
 		if (src->flags & IR3_REG_CONST)
 			hash = HASH(hash, src->num);
@@ -60,14 +60,17 @@ instrs_equal(const struct ir3_instruction *i1, const struct ir3_instruction *i2)
 	if (i1->opc != i2->opc)
 		return false;
 
-	if (i1->regs_count != i2->regs_count)
+	if (i1->dsts_count != i2->dsts_count)
 		return false;
 
-	if (i1->regs[0]->flags != i2->regs[0]->flags)
+	if (i1->srcs_count != i2->srcs_count)
 		return false;
 
-	for (unsigned i = 1; i < i1->regs_count; i++) {
-		const struct ir3_register *i1_reg = i1->regs[i], *i2_reg = i2->regs[i];
+	if (i1->dsts[0]->flags != i2->dsts[0]->flags)
+		return false;
+
+	for (unsigned i = 0; i < i1->srcs_count; i++) {
+		const struct ir3_register *i1_reg = i1->srcs[i], *i2_reg = i2->srcs[i];
 
 		if (i1_reg->flags != i2_reg->flags)
 			return false;
@@ -133,7 +136,7 @@ ir3_cse(struct ir3 *ir)
 					src->def->instr->data) {
 					progress = true;
 					struct ir3_instruction *instr = src->def->instr->data;
-					src->def = instr->regs[0];
+					src->def = instr->dsts[0];
 				}
 			}
 		}

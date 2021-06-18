@@ -67,13 +67,13 @@ has_conflicting_write(struct ir3_instruction *src,
 		 * it past an a0.x write:
 		 */
 		if ((offset < 0) && (dest_regs(instr) > 0) &&
-				(instr->regs[0]->num == regid(REG_A0, 0)))
+				(instr->dsts[0]->num == regid(REG_A0, 0)))
 			return true;
 
 		if (!writes_gpr(instr))
 			continue;
 
-		struct ir3_register *dst = instr->regs[0];
+		struct ir3_register *dst = instr->dsts[0];
 		if (!(dst->flags & IR3_REG_ARRAY))
 			continue;
 
@@ -111,7 +111,7 @@ has_conflicting_write(struct ir3_instruction *src,
 static bool
 valid_flags(struct ir3_instruction *use, struct ir3_instruction *mov)
 {
-	struct ir3_register *src = mov->regs[1];
+	struct ir3_register *src = mov->srcs[0];
 
 	foreach_src_n (reg, n, use) {
 		if (ssa(reg) != mov)
@@ -127,7 +127,7 @@ valid_flags(struct ir3_instruction *use, struct ir3_instruction *mov)
 static bool
 instr_cp_postsched(struct ir3_instruction *mov)
 {
-	struct ir3_register *src = mov->regs[1];
+	struct ir3_register *src = mov->srcs[0];
 
 	/* only consider mov's from "arrays", other cases we have
 	 * already considered already:
@@ -169,15 +169,15 @@ instr_cp_postsched(struct ir3_instruction *mov)
 			if (ssa(reg) != mov)
 				continue;
 
-			use->regs[n + 1] = ir3_reg_clone(mov->block->shader, src);
+			use->srcs[n] = ir3_reg_clone(mov->block->shader, src);
 
 			/* preserve (abs)/etc modifiers: */
-			use->regs[n + 1]-> flags |= reg->flags;
+			use->srcs[n]-> flags |= reg->flags;
 
 			/* If we're sinking the array read past any writes, make
 			 * sure to update it to point to the new previous write:
 			 */
-			use->regs[n + 1]->def = def;
+			use->srcs[n]->def = def;
 
 			removed = true;
 		}
