@@ -262,10 +262,10 @@ print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
 	if (is_tex(instr)) {
 		mesa_log_stream_printf(stream, " (%s)(", type_name(instr->cat5.type));
 		for (unsigned i = 0; i < 4; i++)
-			if (instr->regs[0]->wrmask & (1 << i))
+			if (instr->dsts[0]->wrmask & (1 << i))
 				mesa_log_stream_printf(stream, "%c", "xyzw"[i]);
 		mesa_log_stream_printf(stream, ")");
-	} else if ((instr->regs_count > 0) && (instr->opc != OPC_B)) {
+	} else if ((instr->srcs_count > 0 || instr->dsts_count > 0) && (instr->opc != OPC_B)) {
 		/* NOTE the b(ranch) instruction has a suffix, which is
 		 * handled below
 		 */
@@ -273,14 +273,22 @@ print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
 	}
 
 	if (!is_flow(instr) || instr->opc == OPC_END || instr->opc == OPC_CHMASK) {
-		for (unsigned i = 0, n = 0; i < instr->regs_count; i++) {
-			struct ir3_register *reg = instr->regs[i];
-
-			if ((i == 0) && (dest_regs(instr) == 0))
+		bool first = true;
+		for (unsigned i = 0; i < instr->dsts_count; i++) {
+			struct ir3_register *reg = instr->dsts[i];
+			if (dest_regs(instr) == 0)
 				continue;
-
-			mesa_log_stream_printf(stream,n++ ? ", " : "");
+			if (!first)
+				mesa_log_stream_printf(stream, ", ");
 			print_reg_name(stream, instr, reg);
+			first = false;
+		}
+		for (unsigned i = 0; i < instr->srcs_count; i++) {
+			struct ir3_register *reg = instr->srcs[i];
+			if (!first)
+				mesa_log_stream_printf(stream, ", ");
+			print_reg_name(stream, instr, reg);
+			first = false;
 		}
 	}
 
@@ -329,14 +337,14 @@ print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
 				mesa_log_stream_printf(stream, " %sp0.%c (",
 						instr->cat0.inv1 ? "!" : "",
 						"xyzw"[instr->cat0.comp1 & 0x3]);
-				print_reg_name(stream, instr, instr->regs[1]);
+				print_reg_name(stream, instr, instr->srcs[0]);
 				mesa_log_stream_printf(stream, "), ");
 			}
 			if (brinfo[instr->cat0.brtype].nsrc >= 2) {
 				mesa_log_stream_printf(stream, " %sp0.%c (",
 						instr->cat0.inv2 ? "!" : "",
 						"xyzw"[instr->cat0.comp2 & 0x3]);
-				print_reg_name(stream, instr, instr->regs[2]);
+				print_reg_name(stream, instr, instr->srcs[1]);
 				mesa_log_stream_printf(stream, "), ");
 			}
 		}
