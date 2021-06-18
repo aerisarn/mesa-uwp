@@ -174,7 +174,7 @@ retry:
             goto retry;
          }
          p_atomic_set(&bo->refcnt, 1);
-         bo->flags = FD_RELOC_FLAGS_INIT;
+         bo->reloc_flags = FD_RELOC_FLAGS_INIT;
          return bo;
       }
    }

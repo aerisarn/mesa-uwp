@@ -366,7 +366,7 @@ flush_submit_list(struct list_head *submit_list)
    }
 
    for (unsigned i = 0; i < msm_submit->nr_bos; i++) {
-      submit_bos[i].flags = msm_submit->bos[i]->flags;
+      submit_bos[i].flags = msm_submit->bos[i]->reloc_flags;
       submit_bos[i].handle = msm_submit->bos[i]->handle;
       submit_bos[i].presumed = 0;
    }

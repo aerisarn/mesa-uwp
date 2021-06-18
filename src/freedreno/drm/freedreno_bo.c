@@ -77,7 +77,7 @@ bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
    bo->size = size;
    bo->handle = handle;
    bo->iova = bo->funcs->iova(bo);
-   bo->flags = FD_RELOC_FLAGS_INIT;
+   bo->reloc_flags = FD_RELOC_FLAGS_INIT;
 
    p_atomic_set(&bo->refcnt, 1);
    list_inithead(&bo->list);
@@ -141,7 +141,7 @@ fd_bo_new_ring(struct fd_device *dev, uint32_t size)
    struct fd_bo *bo = bo_new(dev, size, flags, &dev->ring_cache);
    if (bo) {
       bo->bo_reuse = RING_CACHE;
-      bo->flags |= FD_RELOC_DUMP;
+      bo->reloc_flags |= FD_RELOC_DUMP;
       fd_bo_set_name(bo, "cmdstream");
    }
    return bo;
@@ -239,7 +239,7 @@ out_unlock:
 void
 fd_bo_mark_for_dump(struct fd_bo *bo)
 {
-   bo->flags |= FD_RELOC_DUMP;
+   bo->reloc_flags |= FD_RELOC_DUMP;
 }
 
 uint64_t
