@@ -651,195 +651,197 @@ compile_vertex_list(struct gl_context *ctx)
 
    /* Create an index buffer. */
    node->min_index = node->max_index = 0;
-   if (save->vert_count && node->prim_count) {
-      /* We won't modify node->prims, so use a const alias to avoid unintended
-       * writes to it. */
-      const struct _mesa_prim *original_prims = node->prims;
+   if (save->vert_count == 0 || save->prim_count == 0)
+      goto end;
 
-      int end = original_prims[node->prim_count - 1].start +
-                original_prims[node->prim_count - 1].count;
-      int total_vert_count = end - original_prims[0].start;
+   /* We won't modify node->prims, so use a const alias to avoid unintended
+    * writes to it. */
+   const struct _mesa_prim *original_prims = node->prims;
 
-      node->min_index = node->prims[0].start;
-      node->max_index = end - 1;
+   int end = original_prims[node->prim_count - 1].start +
+             original_prims[node->prim_count - 1].count;
+   int total_vert_count = end - original_prims[0].start;
 
-      /* Estimate for the worst case: all prims are line strips (the +1 is because
-       * wrap_buffers may call use but the last primitive may not be complete) */
-      int max_indices_count = MAX2(total_vert_count * 2 - (node->prim_count * 2) + 1,
-                                   total_vert_count);
+   node->min_index = node->prims[0].start;
+   node->max_index = end - 1;
 
-      int indices_offset = 0;
-      int available = save->previous_ib ? (save->previous_ib->Size / 4 - save->ib_first_free_index) : 0;
-      if (available >= max_indices_count) {
-         indices_offset = save->ib_first_free_index;
+   /* Estimate for the worst case: all prims are line strips (the +1 is because
+    * wrap_buffers may call use but the last primitive may not be complete) */
+   int max_indices_count = MAX2(total_vert_count * 2 - (node->prim_count * 2) + 1,
+                                total_vert_count);
+
+   int indices_offset = 0;
+   int available = save->previous_ib ? (save->previous_ib->Size / 4 - save->ib_first_free_index) : 0;
+   if (available >= max_indices_count) {
+      indices_offset = save->ib_first_free_index;
+   }
+   int size = max_indices_count * sizeof(uint32_t);
+   uint32_t* indices = (uint32_t*) malloc(size);
+   struct _mesa_prim *merged_prims = NULL;
+
+   int idx = 0;
+
+   int last_valid_prim = -1;
+   /* Construct indices array. */
+   for (unsigned i = 0; i < node->prim_count; i++) {
+      assert(original_prims[i].basevertex == 0);
+      GLubyte mode = original_prims[i].mode;
+
+      int vertex_count = original_prims[i].count;
+      if (!vertex_count) {
+         continue;
       }
-      int size = max_indices_count * sizeof(uint32_t);
-      uint32_t* indices = (uint32_t*) malloc(size);
-      struct _mesa_prim *merged_prims = NULL;
 
-      int idx = 0;
+      /* Line strips may get converted to lines */
+      if (mode == GL_LINE_STRIP)
+         mode = GL_LINES;
 
-      int last_valid_prim = -1;
-      /* Construct indices array. */
-      for (unsigned i = 0; i < node->prim_count; i++) {
-         assert(original_prims[i].basevertex == 0);
-         GLubyte mode = original_prims[i].mode;
+      /* If 2 consecutive prims use the same mode => merge them. */
+      bool merge_prims = last_valid_prim >= 0 &&
+                         mode == merged_prims[last_valid_prim].mode &&
+                         mode != GL_LINE_LOOP && mode != GL_TRIANGLE_FAN &&
+                         mode != GL_QUAD_STRIP && mode != GL_POLYGON &&
+                         mode != GL_PATCHES;
 
-         int vertex_count = original_prims[i].count;
-         if (!vertex_count) {
-            continue;
+      /* To be able to merge consecutive triangle strips we need to insert
+       * a degenerate triangle.
+       */
+      if (merge_prims &&
+          mode == GL_TRIANGLE_STRIP) {
+         /* Insert a degenerate triangle */
+         assert(merged_prims[last_valid_prim].mode == GL_TRIANGLE_STRIP);
+         unsigned tri_count = merged_prims[last_valid_prim].count - 2;
+
+         indices[idx] = indices[idx - 1];
+         indices[idx + 1] = original_prims[i].start;
+         idx += 2;
+         merged_prims[last_valid_prim].count += 2;
+
+         if (tri_count % 2) {
+            /* Add another index to preserve winding order */
+            indices[idx++] = original_prims[i].start;
+            merged_prims[last_valid_prim].count++;
          }
+      }
 
-         /* Line strips may get converted to lines */
-         if (mode == GL_LINE_STRIP)
-            mode = GL_LINES;
+      int start = idx;
 
-         /* If 2 consecutive prims use the same mode => merge them. */
-         bool merge_prims = last_valid_prim >= 0 &&
-                            mode == merged_prims[last_valid_prim].mode &&
-                            mode != GL_LINE_LOOP && mode != GL_TRIANGLE_FAN &&
-                            mode != GL_QUAD_STRIP && mode != GL_POLYGON &&
-                            mode != GL_PATCHES;
-
-         /* To be able to merge consecutive triangle strips we need to insert
-          * a degenerate triangle.
-          */
-         if (merge_prims &&
-             mode == GL_TRIANGLE_STRIP) {
-            /* Insert a degenerate triangle */
-            assert(merged_prims[last_valid_prim].mode == GL_TRIANGLE_STRIP);
-            unsigned tri_count = merged_prims[last_valid_prim].count - 2;
-
-            indices[idx] = indices[idx - 1];
-            indices[idx + 1] = original_prims[i].start;
-            idx += 2;
-            merged_prims[last_valid_prim].count += 2;
-
-            if (tri_count % 2) {
-               /* Add another index to preserve winding order */
-               indices[idx++] = original_prims[i].start;
-               merged_prims[last_valid_prim].count++;
-            }
-         }
-
-         int start = idx;
-
-         /* Convert line strips to lines if it'll allow if the previous
-          * prim mode is GL_LINES (so merge_prims is true) or if the next
-          * primitive mode is GL_LINES or GL_LINE_LOOP.
-          */
-         if (original_prims[i].mode == GL_LINE_STRIP &&
-             (merge_prims ||
-              (i < node->prim_count - 1 &&
-               (original_prims[i + 1].mode == GL_LINE_STRIP ||
-                original_prims[i + 1].mode == GL_LINES)))) {
-            for (unsigned j = 0; j < vertex_count; j++) {
-               indices[idx++] = original_prims[i].start + j;
-               /* Repeat all but the first/last indices. */
-               if (j && j != vertex_count - 1) {
-                  indices[idx++] = original_prims[i].start + j;
-               }
-            }
-         } else {
-            /* We didn't convert to LINES, so restore the original mode */
-            mode = original_prims[i].mode;
-
-            for (unsigned j = 0; j < vertex_count; j++) {
+      /* Convert line strips to lines if it'll allow if the previous
+       * prim mode is GL_LINES (so merge_prims is true) or if the next
+       * primitive mode is GL_LINES or GL_LINE_LOOP.
+       */
+      if (original_prims[i].mode == GL_LINE_STRIP &&
+          (merge_prims ||
+           (i < node->prim_count - 1 &&
+            (original_prims[i + 1].mode == GL_LINE_STRIP ||
+             original_prims[i + 1].mode == GL_LINES)))) {
+         for (unsigned j = 0; j < vertex_count; j++) {
+            indices[idx++] = original_prims[i].start + j;
+            /* Repeat all but the first/last indices. */
+            if (j && j != vertex_count - 1) {
                indices[idx++] = original_prims[i].start + j;
             }
          }
-
-         if (merge_prims) {
-            /* Update vertex count. */
-            merged_prims[last_valid_prim].count += idx - start;
-         } else {
-            /* Keep this primitive */
-            last_valid_prim += 1;
-            assert(last_valid_prim <= i);
-            merged_prims = realloc(merged_prims, (1 + last_valid_prim) * sizeof(struct _mesa_prim));
-            merged_prims[last_valid_prim] = original_prims[i];
-            merged_prims[last_valid_prim].start = indices_offset + start;
-            merged_prims[last_valid_prim].count = idx - start;
-         }
-         merged_prims[last_valid_prim].mode = mode;
-      }
-
-      assert(idx > 0 && idx <= max_indices_count);
-
-      unsigned merged_prim_count = last_valid_prim + 1;
-      node->merged.ib.ptr = NULL;
-      node->merged.ib.count = idx;
-      node->merged.ib.index_size_shift = (GL_UNSIGNED_INT - GL_UNSIGNED_BYTE) >> 1;
-
-      if (!indices_offset) {
-         /* Allocate a new index buffer */
-         _mesa_reference_buffer_object(ctx, &save->previous_ib, NULL);
-         save->previous_ib = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
-         bool success = ctx->Driver.BufferData(ctx,
-                                            GL_ELEMENT_ARRAY_BUFFER_ARB,
-                                            MAX2(VBO_SAVE_INDEX_SIZE, idx) * sizeof(uint32_t),
-                                            NULL,
-                                            GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
-                                            save->previous_ib);
-         if (!success) {
-            _mesa_reference_buffer_object(ctx, &save->previous_ib, NULL);
-            _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
-         }
-      }
-
-      _mesa_reference_buffer_object(ctx, &node->merged.ib.obj, save->previous_ib);
-
-      if (node->merged.ib.obj) {
-         ctx->Driver.BufferSubData(ctx,
-                                   indices_offset * sizeof(uint32_t),
-                                   idx * sizeof(uint32_t),
-                                   indices,
-                                   node->merged.ib.obj);
-         save->ib_first_free_index = indices_offset + idx;
       } else {
-         node->vertex_count = 0;
-         node->prim_count = 0;
+         /* We didn't convert to LINES, so restore the original mode */
+         mode = original_prims[i].mode;
+
+         for (unsigned j = 0; j < vertex_count; j++) {
+            indices[idx++] = original_prims[i].start + j;
+         }
       }
 
-      /* Prepare for DrawGallium */
-      memset(&node->merged.info, 0, sizeof(struct pipe_draw_info));
-      /* The other info fields will be updated in vbo_save_playback_vertex_list */
-      node->merged.info.index_size = 4;
-      node->merged.info.instance_count = 1;
-      node->merged.info.index.gl_bo = node->merged.ib.obj;
-      node->merged.start_count = malloc(merged_prim_count * sizeof(struct pipe_draw_start_count_bias));
-      if (merged_prim_count == 1) {
-         node->merged.info.mode = merged_prims[0].mode;
-         node->merged.mode = NULL;
+      if (merge_prims) {
+         /* Update vertex count. */
+         merged_prims[last_valid_prim].count += idx - start;
       } else {
-         node->merged.mode = malloc(merged_prim_count * sizeof(unsigned char));
+         /* Keep this primitive */
+         last_valid_prim += 1;
+         assert(last_valid_prim <= i);
+         merged_prims = realloc(merged_prims, (1 + last_valid_prim) * sizeof(struct _mesa_prim));
+         merged_prims[last_valid_prim] = original_prims[i];
+         merged_prims[last_valid_prim].start = indices_offset + start;
+         merged_prims[last_valid_prim].count = idx - start;
       }
-
-      for (unsigned i = 0; i < merged_prim_count; i++) {
-         node->merged.start_count[i].start = merged_prims[i].start;
-         node->merged.start_count[i].count = merged_prims[i].count;
-         node->merged.start_count[i].index_bias = 0;
-         if (merged_prim_count > 1)
-            node->merged.mode[i] = merged_prims[i].mode;
-      }
-      node->merged.num_draws = merged_prim_count;
-      if (node->merged.num_draws > 1) {
-         bool same_mode = true;
-         for (unsigned i = 1; i < node->merged.num_draws && same_mode; i++) {
-            same_mode = node->merged.mode[i] == node->merged.mode[0];
-         }
-         if (same_mode) {
-            /* All primitives use the same mode, so we can simplify a bit */
-            node->merged.info.mode = node->merged.mode[0];
-            free(node->merged.mode);
-            node->merged.mode = NULL;
-         }
-      }
-
-      free(indices);
-      free(merged_prims);
+      merged_prims[last_valid_prim].mode = mode;
    }
 
+   assert(idx > 0 && idx <= max_indices_count);
+
+   unsigned merged_prim_count = last_valid_prim + 1;
+   node->merged.ib.ptr = NULL;
+   node->merged.ib.count = idx;
+   node->merged.ib.index_size_shift = (GL_UNSIGNED_INT - GL_UNSIGNED_BYTE) >> 1;
+
+   if (!indices_offset) {
+      /* Allocate a new index buffer */
+      _mesa_reference_buffer_object(ctx, &save->previous_ib, NULL);
+      save->previous_ib = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
+      bool success = ctx->Driver.BufferData(ctx,
+                                         GL_ELEMENT_ARRAY_BUFFER_ARB,
+                                         MAX2(VBO_SAVE_INDEX_SIZE, idx) * sizeof(uint32_t),
+                                         NULL,
+                                         GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
+                                         save->previous_ib);
+      if (!success) {
+         _mesa_reference_buffer_object(ctx, &save->previous_ib, NULL);
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
+      }
+   }
+
+   _mesa_reference_buffer_object(ctx, &node->merged.ib.obj, save->previous_ib);
+
+   if (node->merged.ib.obj) {
+      ctx->Driver.BufferSubData(ctx,
+                                indices_offset * sizeof(uint32_t),
+                                idx * sizeof(uint32_t),
+                                indices,
+                                node->merged.ib.obj);
+      save->ib_first_free_index = indices_offset + idx;
+   } else {
+      node->vertex_count = 0;
+      node->prim_count = 0;
+   }
+
+   /* Prepare for DrawGallium */
+   memset(&node->merged.info, 0, sizeof(struct pipe_draw_info));
+   /* The other info fields will be updated in vbo_save_playback_vertex_list */
+   node->merged.info.index_size = 4;
+   node->merged.info.instance_count = 1;
+   node->merged.info.index.gl_bo = node->merged.ib.obj;
+   node->merged.start_count = malloc(merged_prim_count * sizeof(struct pipe_draw_start_count_bias));
+   if (merged_prim_count == 1) {
+      node->merged.info.mode = merged_prims[0].mode;
+      node->merged.mode = NULL;
+   } else {
+      node->merged.mode = malloc(merged_prim_count * sizeof(unsigned char));
+   }
+
+   for (unsigned i = 0; i < merged_prim_count; i++) {
+      node->merged.start_count[i].start = merged_prims[i].start;
+      node->merged.start_count[i].count = merged_prims[i].count;
+      node->merged.start_count[i].index_bias = 0;
+      if (merged_prim_count > 1)
+         node->merged.mode[i] = merged_prims[i].mode;
+   }
+   node->merged.num_draws = merged_prim_count;
+   if (node->merged.num_draws > 1) {
+      bool same_mode = true;
+      for (unsigned i = 1; i < node->merged.num_draws && same_mode; i++) {
+         same_mode = node->merged.mode[i] == node->merged.mode[0];
+      }
+      if (same_mode) {
+         /* All primitives use the same mode, so we can simplify a bit */
+         node->merged.info.mode = node->merged.mode[0];
+         free(node->merged.mode);
+         node->merged.mode = NULL;
+      }
+   }
+
+   free(indices);
+   free(merged_prims);
+
+end:
    /* Deal with GL_COMPILE_AND_EXECUTE:
     */
    if (ctx->ExecuteFlag) {

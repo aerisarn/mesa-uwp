@@ -185,68 +185,63 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data)
 
    FLUSH_FOR_DRAW(ctx);
 
-   if (node->prim_count > 0) {
+   if (_mesa_inside_begin_end(ctx) && node->prims[0].begin) {
+      /* Error: we're about to begin a new primitive but we're already
+       * inside a glBegin/End pair.
+       */
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "draw operation inside glBegin/End");
+      goto end;
+   }
+   else if (save->replay_flags) {
+      /* Various degenerate cases: translate into immediate mode
+       * calls rather than trying to execute in place.
+       */
+      loopback_vertex_list(ctx, node);
 
-      if (_mesa_inside_begin_end(ctx) && node->prims[0].begin) {
-         /* Error: we're about to begin a new primitive but we're already
-          * inside a glBegin/End pair.
-          */
-         _mesa_error(ctx, GL_INVALID_OPERATION,
-                     "draw operation inside glBegin/End");
-         goto end;
+      goto end;
+   }
+
+   bind_vertex_list(ctx, node);
+
+   /* Need that at least one time. */
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   /* XXX also need to check if shader enabled, but invalid */
+   if ((ctx->VertexProgram.Enabled &&
+        !_mesa_arb_vertex_program_enabled(ctx)) ||
+       (ctx->FragmentProgram.Enabled &&
+        !_mesa_arb_fragment_program_enabled(ctx))) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "glBegin (invalid vertex/fragment program)");
+      return;
+   }
+
+   assert(ctx->NewState == 0);
+
+   bool draw_using_merged_prim = (ctx->Const.AllowIncorrectPrimitiveId ||
+                                  ctx->_PrimitiveIDIsUnused) &&
+                                 node->merged.num_draws;
+   if (!draw_using_merged_prim) {
+      ctx->Driver.Draw(ctx, node->prims, node->prim_count,
+                       NULL, true,
+                       false, 0, node->min_index, node->max_index, 1, 0);
+   } else {
+      struct pipe_draw_info *info = (struct pipe_draw_info *) &node->merged.info;
+      info->vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
+      void *gl_bo = info->index.gl_bo;
+      if (node->merged.mode) {
+         ctx->Driver.DrawGalliumMultiMode(ctx, info, 0,
+                                        node->merged.start_count,
+                                        node->merged.mode,
+                                        node->merged.num_draws);
+      } else if (node->merged.num_draws) {
+         ctx->Driver.DrawGallium(ctx, info, 0,
+                                 node->merged.start_count,
+                                 node->merged.num_draws);
       }
-      else if (save->replay_flags) {
-         /* Various degenerate cases: translate into immediate mode
-          * calls rather than trying to execute in place.
-          */
-         loopback_vertex_list(ctx, node);
-
-         goto end;
-      }
-
-      bind_vertex_list(ctx, node);
-
-      /* Need that at least one time. */
-      if (ctx->NewState)
-         _mesa_update_state(ctx);
-
-      /* XXX also need to check if shader enabled, but invalid */
-      if ((ctx->VertexProgram.Enabled &&
-           !_mesa_arb_vertex_program_enabled(ctx)) ||
-          (ctx->FragmentProgram.Enabled &&
-           !_mesa_arb_fragment_program_enabled(ctx))) {
-         _mesa_error(ctx, GL_INVALID_OPERATION,
-                     "glBegin (invalid vertex/fragment program)");
-         return;
-      }
-
-      assert(ctx->NewState == 0);
-
-      if (node->vertex_count > 0) {
-         bool draw_using_merged_prim = (ctx->Const.AllowIncorrectPrimitiveId ||
-                                        ctx->_PrimitiveIDIsUnused) &&
-                                       node->merged.num_draws;
-         if (!draw_using_merged_prim) {
-            ctx->Driver.Draw(ctx, node->prims, node->prim_count,
-                             NULL, true,
-                             false, 0, node->min_index, node->max_index, 1, 0);
-         } else {
-            struct pipe_draw_info *info = (struct pipe_draw_info *) &node->merged.info;
-            info->vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
-            void *gl_bo = info->index.gl_bo;
-            if (node->merged.mode) {
-               ctx->Driver.DrawGalliumMultiMode(ctx, info, 0,
-                                              node->merged.start_count,
-                                              node->merged.mode,
-                                              node->merged.num_draws);
-            } else {
-               ctx->Driver.DrawGallium(ctx, info, 0,
-                                       node->merged.start_count,
-                                       node->merged.num_draws);
-            }
-            info->index.gl_bo = gl_bo;
-         }
-      }
+      info->index.gl_bo = gl_bo;
    }
 
    /* Copy to current?
