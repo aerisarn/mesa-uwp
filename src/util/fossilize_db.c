@@ -362,13 +362,13 @@ foz_read_entry(struct foz_db *foz_db, const uint8_t *cache_key_160bit,
          goto fail;
    }
 
+   /* Reset file offset to the end of the file ready for writing */
+   fseek(foz_db->file[file_idx], offset, SEEK_SET);
+
    simple_mtx_unlock(&foz_db->mtx);
 
    if (size)
       *size = data_sz;
-
-   /* Reset file offset to the end of the file ready for writing */
-   fseek(foz_db->file[file_idx], offset, SEEK_SET);
 
    return data;
 
