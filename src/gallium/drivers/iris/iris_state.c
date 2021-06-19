@@ -449,12 +449,20 @@ flush_after_state_base_change(struct iris_batch *batch)
     * sufficient.  The theory here is that all of the sampling/rendering
     * units cache the binding table in the texture cache.  However, we have
     * yet to be able to actually confirm this.
+    *
+    * Wa_14013910100:
+    *
+    *  "DG2 128/256/512-A/B: S/W must program STATE_BASE_ADDRESS command twice
+    *   or program pipe control with Instruction cache invalidate post
+    *   STATE_BASE_ADDRESS command"
     */
    iris_emit_end_of_pipe_sync(batch,
                               "change STATE_BASE_ADDRESS (invalidates)",
                               PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
                               PIPE_CONTROL_CONST_CACHE_INVALIDATE |
-                              PIPE_CONTROL_STATE_CACHE_INVALIDATE);
+                              PIPE_CONTROL_STATE_CACHE_INVALIDATE |
+                              (GFX_VERx10 != 125 ? 0 :
+                               PIPE_CONTROL_INSTRUCTION_INVALIDATE));
 }
 
 static void

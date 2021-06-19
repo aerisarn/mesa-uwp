@@ -263,11 +263,20 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
     * sufficient.  The theory here is that all of the sampling/rendering
     * units cache the binding table in the texture cache.  However, we have
     * yet to be able to actually confirm this.
+    *
+    * Wa_14013910100:
+    *
+    *  "DG2 128/256/512-A/B: S/W must program STATE_BASE_ADDRESS command twice
+    *   or program pipe control with Instruction cache invalidate post
+    *   STATE_BASE_ADDRESS command"
     */
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
       pc.TextureCacheInvalidationEnable = true;
       pc.ConstantCacheInvalidationEnable = true;
       pc.StateCacheInvalidationEnable = true;
+#if GFX_VERx10 == 125
+      pc.InstructionCacheInvalidateEnable = true;
+#endif
       anv_debug_dump_pc(pc);
    }
 }
