@@ -30,6 +30,20 @@
  * TODO: Handle phi nodes.
  */
 
+/** Returns number of registers read by an instruction. TODO: 16-bit */
+static unsigned
+agx_read_registers(agx_instr *I, unsigned s)
+{
+   unsigned size = I->src[s].size == AGX_SIZE_32 ? 2 : 1;
+
+   switch (I->op) {
+   case AGX_OPCODE_DEVICE_LOAD:
+      return 8;
+   default:
+      return size;
+   }
+}
+
 /** Returns number of registers written by an instruction */
 static unsigned
 agx_write_registers(agx_instr *I, unsigned d)
