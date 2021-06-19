@@ -322,6 +322,9 @@ typedef struct agx_block {
 
    /* Offset of the block in the emitted binary */
    off_t offset;
+
+   /** Available for passes to use for metadata */
+   uint8_t pass_flags;
 } agx_block;
 
 typedef struct {
@@ -345,6 +348,9 @@ typedef struct {
 
    /* Has r0l been zeroed yet due to control flow? */
    bool any_cf;
+
+   /** Computed metadata */
+   bool has_liveness;
 
    /* Number of nested control flow structures within the innermost loop. Since
     * NIR is just loop and if-else, this is the number of nested if-else
@@ -601,5 +607,8 @@ void agx_optimizer(agx_context *ctx);
 void agx_dce(agx_context *ctx);
 void agx_ra(agx_context *ctx);
 void agx_pack_binary(agx_context *ctx, struct util_dynarray *emission);
+
+void agx_compute_liveness(agx_context *ctx);
+void agx_liveness_ins_update(BITSET_WORD *live, agx_instr *I);
 
 #endif
