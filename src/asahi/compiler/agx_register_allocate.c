@@ -30,20 +30,22 @@
  * TODO: Handle phi nodes.
  */
 
-/** Returns number of components written by an instruction */
+/** Returns number of registers written by an instruction */
 static unsigned
-agx_write_components(agx_instr *I)
+agx_write_registers(agx_instr *I, unsigned d)
 {
+   unsigned size = I->dest[d].size == AGX_SIZE_32 ? 2 : 1;
+
    switch (I->op) {
    case AGX_OPCODE_LD_VARY:
    case AGX_OPCODE_DEVICE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
    case AGX_OPCODE_LD_TILE:
-      return 4;
+      return 8;
    case AGX_OPCODE_LD_VARY_FLAT:
-      return 3;
+      return 6;
    default:
-      return 1;
+      return size;
    }
 }
 
@@ -107,7 +109,7 @@ agx_ra(agx_context *ctx)
             unsigned size = ins->dest[d].size == AGX_SIZE_32 ? 2 : 1;
             if (size == 2 && usage & 1) usage++;
             unsigned v = usage;
-            usage += agx_write_components(ins) * size;
+            usage += agx_write_registers(ins, d);
             alloc[ins->dest[d].value] = v;
             ins->dest[d] = agx_replace_index(ins->dest[d], agx_register(v, ins->dest[d].size));
          }
