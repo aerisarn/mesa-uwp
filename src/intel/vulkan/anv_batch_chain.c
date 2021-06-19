@@ -341,6 +341,7 @@ anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other)
 
 static VkResult
 anv_batch_bo_create(struct anv_cmd_buffer *cmd_buffer,
+                    uint32_t size,
                     struct anv_batch_bo **bbo_out)
 {
    VkResult result;
@@ -351,7 +352,7 @@ anv_batch_bo_create(struct anv_cmd_buffer *cmd_buffer,
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = anv_bo_pool_alloc(&cmd_buffer->device->batch_bo_pool,
-                              ANV_CMD_BUFFER_BATCH_SIZE, &bbo->bo);
+                              size, &bbo->bo);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
@@ -662,10 +663,15 @@ anv_cmd_buffer_chain_batch(struct anv_batch *batch, void *_data)
 {
    struct anv_cmd_buffer *cmd_buffer = _data;
    struct anv_batch_bo *new_bbo;
+   /* Cap reallocation to chunk. */
+   uint32_t alloc_size = MIN2(cmd_buffer->total_batch_size,
+                              ANV_MAX_CMD_BUFFER_BATCH_SIZE);
 
-   VkResult result = anv_batch_bo_create(cmd_buffer, &new_bbo);
+   VkResult result = anv_batch_bo_create(cmd_buffer, alloc_size, &new_bbo);
    if (result != VK_SUCCESS)
       return result;
+
+   cmd_buffer->total_batch_size += alloc_size;
 
    struct anv_batch_bo **seen_bbo = u_vector_add(&cmd_buffer->seen_bbos);
    if (seen_bbo == NULL) {
@@ -833,7 +839,11 @@ anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
 
    list_inithead(&cmd_buffer->batch_bos);
 
-   result = anv_batch_bo_create(cmd_buffer, &batch_bo);
+   cmd_buffer->total_batch_size = ANV_MIN_CMD_BUFFER_BATCH_SIZE;
+
+   result = anv_batch_bo_create(cmd_buffer,
+                                cmd_buffer->total_batch_size,
+                                &batch_bo);
    if (result != VK_SUCCESS)
       return result;
 
@@ -939,8 +949,14 @@ anv_cmd_buffer_reset_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->seen_bbos.head = 0;
    cmd_buffer->seen_bbos.tail = 0;
 
-   *(struct anv_batch_bo **)u_vector_add(&cmd_buffer->seen_bbos) =
-      anv_cmd_buffer_current_batch_bo(cmd_buffer);
+   struct anv_batch_bo *first_bbo = anv_cmd_buffer_current_batch_bo(cmd_buffer);
+
+   *(struct anv_batch_bo **)u_vector_add(&cmd_buffer->seen_bbos) = first_bbo;
+
+
+   assert(!cmd_buffer->device->can_chain_batches ||
+          first_bbo->bo->size == ANV_MIN_CMD_BUFFER_BATCH_SIZE);
+   cmd_buffer->total_batch_size = first_bbo->bo->size;
 }
 
 void
@@ -1018,7 +1034,7 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
           */
          batch_bo = anv_cmd_buffer_current_batch_bo(cmd_buffer);
       } else if ((cmd_buffer->batch_bos.next == cmd_buffer->batch_bos.prev) &&
-                 (length < ANV_CMD_BUFFER_BATCH_SIZE / 2)) {
+                 (length < ANV_MIN_CMD_BUFFER_BATCH_SIZE / 2)) {
          /* If the secondary has exactly one batch buffer in its list *and*
           * that batch buffer is less than half of the maximum size, we're
           * probably better of simply copying it into our batch.
@@ -1793,7 +1809,11 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
       .buffers_ptr = (uintptr_t) execbuf->objects,
       .buffer_count = execbuf->bo_count,
       .batch_start_offset = 0,
-      .batch_len = batch->next - batch->start,
+      /* On platforms that cannot chain batch buffers because of the i915
+       * command parser, we have to provide the batch length. Everywhere else
+       * we'll chain batches so no point in passing a length.
+       */
+      .batch_len = device->can_chain_batches ? 0 : batch->next - batch->start,
       .cliprects_ptr = 0,
       .num_cliprects = 0,
       .DR1 = 0,
@@ -1913,7 +1933,8 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
       submit->perf_query_pool;
 
    if (INTEL_DEBUG & DEBUG_SUBMIT) {
-      fprintf(stderr, "Batch on queue 0\n");
+      fprintf(stderr, "Batch offset=0x%x len=0x%x on queue 0\n",
+              execbuf.execbuf.batch_start_offset, execbuf.execbuf.batch_len);
       for (uint32_t i = 0; i < execbuf.bo_count; i++) {
          const struct anv_bo *bo = execbuf.bos[i];
 
