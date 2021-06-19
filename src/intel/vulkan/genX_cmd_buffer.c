@@ -5902,6 +5902,8 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
        * post-sync = store dword operation would be required.( w/a is to
        * have an additional pipe control after the stencil state whenever
        * the surface state bits of this state is changing).
+       *
+       * This also seems sufficient to handle Wa_14014148106.
        */
       anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
          pc.PostSyncOperation = WriteImmediateData;

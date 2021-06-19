@@ -1754,6 +1754,8 @@ blorp_emit_depth_stencil_config(struct blorp_batch *batch,
     * post-sync = store dword operation would be required.( w/a is to
     * have an additional pipe control after the stencil state whenever
     * the surface state bits of this state is changing).
+    *
+    * This also seems sufficient to handle Wa_14014148106.
     */
    blorp_emit(batch, GENX(PIPE_CONTROL), pc) {
       pc.PostSyncOperation = WriteImmediateData;

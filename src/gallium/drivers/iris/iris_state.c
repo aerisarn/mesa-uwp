@@ -6375,6 +6375,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
           * post-sync = store dword operation would be required.( w/a is to
           * have an additional pipe control after the stencil state whenever
           * the surface state bits of this state is changing).
+          *
+          * This also seems sufficient to handle Wa_14014148106.
           */
          iris_emit_pipe_control_write(batch, "WA for stencil state",
                                       PIPE_CONTROL_WRITE_IMMEDIATE,
