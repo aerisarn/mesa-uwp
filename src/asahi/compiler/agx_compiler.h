@@ -43,6 +43,9 @@ enum agx_dbg {
 
 extern int agx_debug;
 
+/* r0-r127 inclusive, as pairs of 16-bits, gives 256 registers */
+#define AGX_NUM_REGS (256)
+
 enum agx_index_type {
    AGX_INDEX_NULL = 0,
    AGX_INDEX_NORMAL = 1,
@@ -324,6 +327,9 @@ typedef struct agx_block {
    /* Liveness analysis results */
    BITSET_WORD *live_in;
    BITSET_WORD *live_out;
+
+   /* Register allocation */
+   BITSET_DECLARE(regs_out, AGX_NUM_REGS);
 
    /* Offset of the block in the emitted binary */
    off_t offset;
