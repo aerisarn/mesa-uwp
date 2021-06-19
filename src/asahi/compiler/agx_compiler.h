@@ -491,6 +491,14 @@ agx_next_block(agx_block *block)
    return list_first_entry(&(block->link), agx_block, link);
 }
 
+static inline agx_block *
+agx_exit_block(agx_context *ctx)
+{
+   agx_block *last = list_last_entry(&ctx->blocks, agx_block, link);
+   assert(!last->successors[0] && !last->successors[1]);
+   return last;
+}
+
 /* Like in NIR, for use with the builder */
 
 enum agx_cursor_option {
