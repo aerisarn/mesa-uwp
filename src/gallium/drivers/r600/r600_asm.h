@@ -355,6 +355,8 @@ void eg_bytecode_export_read(struct r600_bytecode *bc,
 void r600_vertex_data_type(enum pipe_format pformat, unsigned *format,
 			   unsigned *num_format, unsigned *format_comp, unsigned *endian);
 
+int r600_load_ar(struct r600_bytecode *bc);
+
 static inline int fp64_switch(int i)
 {
 	switch (i) {

@@ -1,0 +1,89 @@
+#ifndef ALUGROUP_H
+#define ALUGROUP_H
+
+#include "sfn_instr_alu.h"
+#include "sfn_alu_readport_validation.h"
+
+namespace r600 {
+
+class AluGroup : public Instr
+{
+public:
+   using Slots = std::array<AluInstr *, 5>;
+
+   AluGroup();
+
+   using iterator = Slots::iterator;
+   using const_iterator = Slots::const_iterator;
+
+   bool add_instruction(AluInstr *instr);
+   bool add_trans_instructions(AluInstr *instr);
+   bool add_vec_instructions(AluInstr *instr);
+
+   bool is_equal_to(const AluGroup& other) const;
+
+   void accept(ConstInstrVisitor& visitor) const override;
+   void accept(InstrVisitor& visitor) override;
+
+   auto begin() {return m_slots.begin(); }
+   auto end() {return m_slots.begin() + s_max_slots; }
+   auto begin() const {return m_slots.begin(); }
+   auto end() const {return m_slots.begin() + s_max_slots; }
+
+   bool end_group() const override { return true; }
+
+   void set_scheduled() override;
+
+   void set_nesting_depth(int depth) {m_nesting_depth = depth;}
+
+   void fix_last_flag();
+
+   static void set_chipclass(r600_chip_class chip_class);
+
+   int free_slots() const;
+
+   auto addr() const {return std::make_pair(m_addr_used, m_addr_is_index);}
+
+   uint32_t slots() const override;
+
+   AluInstr::SrcValues get_kconsts() const;
+
+   bool has_lds_group_start() const { return m_slots[0] ?
+            m_slots[0]->has_alu_flag(alu_lds_group_start) : false;}
+
+   bool has_lds_group_end() const;
+
+   const auto& readport_reserer() const { return m_readports_evaluator; }
+   void set_readport_reserer(const AluReadportReservation& rr) {
+       m_readports_evaluator = rr;
+   };
+
+   static bool has_t() { return s_max_slots == 5;}
+
+private:
+   void forward_set_blockid(int id, int index) override;
+   bool do_ready() const override;
+   void do_print(std::ostream& os) const override;
+
+   bool update_indirect_access(AluInstr *instr);
+   bool try_readport(AluInstr *instr, AluBankSwizzle cycle);
+
+   Slots m_slots;
+
+   AluReadportReservation m_readports_evaluator;
+
+   static int s_max_slots;
+
+   PRegister m_addr_used{nullptr};
+
+   int m_param_used{-1};
+
+   int m_nesting_depth{0};
+   bool m_has_lds_op{false};
+   bool m_addr_is_index{false};
+};
+
+
+}
+
+#endif // ALUGROUP_H

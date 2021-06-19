@@ -95,13 +95,14 @@ emil_lsd_in_addr(nir_builder *b, nir_ssa_def *base, nir_ssa_def *patch_id, nir_i
 
    auto idx2 = nir_src_as_const_value(op->src[1]);
    if (!idx2 || idx2->u32 != 0)
-      offset = nir_iadd(b, offset, nir_ishl(b, op->src[1].ssa, nir_imm_int(b, 4)));
+      offset = nir_iadd(b, nir_ishl(b, op->src[1].ssa, nir_imm_int(b, 4)), offset);
 
    return nir_iadd(b, addr, offset);
 }
 
 static nir_ssa_def *
-emil_lsd_out_addr(nir_builder *b, nir_ssa_def *base, nir_ssa_def *patch_id, nir_intrinsic_instr *op, nir_variable_mode mode, int src_offset)
+emil_lsd_out_addr(nir_builder *b, nir_ssa_def *base, nir_ssa_def *patch_id, nir_intrinsic_instr *op,
+                  UNUSED nir_variable_mode mode, int src_offset)
 {
 
    nir_ssa_def *addr1 = r600_umad_24(b, nir_channel(b, base, 0),
@@ -552,7 +553,7 @@ r600_lower_tess_coord_filter(const nir_instr *instr, UNUSED const void *_options
 }
 
 static nir_ssa_def *
-r600_lower_tess_coord_impl(nir_builder *b, nir_instr *instr, void *_options)
+r600_lower_tess_coord_impl(nir_builder *b, UNUSED nir_instr *instr, void *_options)
 {
    pipe_prim_type prim_type = *(pipe_prim_type *)_options;
 

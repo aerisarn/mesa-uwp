@@ -407,8 +407,8 @@ static int assign_alu_units(struct r600_bytecode *bc, struct r600_bytecode_alu *
 			}
 			assignment[4] = alu;
 		} else {
-			if (assignment[chan]) {                           
-				assert(0); /* ALU.chan has already been allocated. */
+                        if (assignment[chan]) {
+			 	assert(0); /* ALU.chan has already been allocated. */
 				return -1;
 			}
 			assignment[chan] = alu;
