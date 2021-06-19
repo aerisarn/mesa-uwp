@@ -870,7 +870,7 @@ print_vector_field(disassemble_context *ctx, FILE *fp, const char *name,
         /* Mask out unused components based on the writemask, but don't mask out
          * components that are used for interlane instructions like fdot3. */
         uint8_t src_mask =
-                rep ? expand_writemask(mask_of(rep), log2(128 / bits_for_mode(mode))) : mask;
+                rep ? expand_writemask(mask_of(rep), util_logbase2(128 / bits_for_mode(mode))) : mask;
 
         fprintf(fp, ", ");
 
