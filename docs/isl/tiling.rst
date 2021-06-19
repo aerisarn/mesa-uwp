@@ -50,17 +50,24 @@ the tile in elements depends on the size of the element in bytes.
 Bit-6 Swizzling
 ^^^^^^^^^^^^^^^
 
-On some hardware, there is an additional address swizzle that is applied on top
-of the tiling format. Whether or not swizzling is enabled depends on the memory
-configuration of the system.  In general, systems with dual-channel RAM have
-swizzling enabled and single-channel do not.  Supposedly, this swizzling allows
-for better balancing between the two memory channels and increases performance.
-Because it depends on the memory configuration which may change from one boot
-to the next, it requires a run-time check.
+On some older hardware, there is an additional address swizzle that is applied
+on top of the tiling format.  This has been removed starting with Broadwell
+because, as it says in the Broadwell PRM Vol 5 "Tiling Algorithm" (p. 17):
+
+   Address Swizzling for Tiled-Surfaces is no longer used because the main
+   memory controller has a more effective address swizzling algorithm.
+
+Whether or not swizzling is enabled depends on the memory configuration of the
+system.  Generally, systems with dual-channel RAM have swizzling enabled and
+single-channel do not.  Supposedly, this swizzling allows for better balancing
+between the two memory channels and increases performance. Because it depends
+on the memory configuration which may change from one boot to the next, it
+requires a run-time check.
 
 The best documentation for bit-6 swizzling can be found in the Haswell PRM Vol.
 5 "Memory Views" in the section entitled "Address Swizzling for Tiled-Y
-Surfaces".
+Surfaces".  It exists on older platforms but the docs get progressively worse
+the further you go back.
 
 ISL Representation
 ------------------
