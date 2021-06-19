@@ -59,7 +59,12 @@ enum agx_size {
 
 typedef struct {
    /* Sufficient for as many SSA values as we need. Immediates and uniforms fit in 16-bits */
-   unsigned value : 23;
+   unsigned value : 22;
+
+   /* Indicates that this source kills the referenced value (because it is the
+    * last use in a block and the source is not live after the block). Set by
+    * liveness analysis. */
+   bool kill : 1;
 
    /* Cache hints */
    bool cache : 1;

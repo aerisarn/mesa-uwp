@@ -60,6 +60,9 @@ agx_print_index(agx_index index, FILE *fp)
       if (index.discard)
          fprintf(fp, "`");
 
+      if (index.kill)
+         fprintf(fp, "*");
+
       fprintf(fp, "%u", index.value);
       break;
 
