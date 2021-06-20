@@ -81,12 +81,6 @@ dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 dEQP-GLES3.functional.fbo.blit.conversion.rg8i_to_r16i
 dEQP-GLES3.functional.fbo.blit.conversion.rg8_to_r16f
 
-# Undiagnosed flakes appearing more than once in the last 2 months as
-# of 2020-08-19, in descending order of frequency.
-dEQP-GLES3.functional.fragment_out.random.39
-dEQP-VK.image.texel_view_compatible.graphic.extended.2d_image.texture_read.astc_10x6_unorm_block.r32g32b32a32_uint
-dEQP-GLES31.functional.tessellation.invariance.primitive_set.quads_equal_spacing_cw
-
 # Started appearing after disabling cpufreq, devfreq and disabling runtime PM
 dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_basic
 dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_scale
