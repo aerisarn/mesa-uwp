@@ -213,6 +213,7 @@ struct i915_sampler_state {
 
 struct i915_surface {
    struct pipe_surface templ;
+   uint32_t buf_info; /* _3DSTATE_BUF_INFO_CMD flags */
 };
 
 struct i915_velems_state {

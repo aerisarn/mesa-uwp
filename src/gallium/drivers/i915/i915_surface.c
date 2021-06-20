@@ -357,6 +357,7 @@ i915_create_surface_custom(struct pipe_context *ctx,
                            unsigned width0,
                            unsigned height0)
 {
+   struct i915_texture *tex = i915_texture(pt);
    struct i915_surface *surf;
 
    assert(surf_tmpl->u.tex.first_layer == surf_tmpl->u.tex.last_layer);
@@ -379,6 +380,25 @@ i915_create_surface_custom(struct pipe_context *ctx,
    ps->u.tex.first_layer = surf_tmpl->u.tex.first_layer;
    ps->u.tex.last_layer = surf_tmpl->u.tex.last_layer;
    ps->context = ctx;
+
+   if (util_format_is_depth_or_stencil(ps->format)) {
+      surf->buf_info = BUF_3D_ID_DEPTH;
+   } else {
+      surf->buf_info = BUF_3D_ID_COLOR_BACK;
+   }
+
+   surf->buf_info |= BUF_3D_PITCH(tex->stride); /* pitch in bytes */
+
+   switch (tex->tiling) {
+   case I915_TILE_Y:
+      surf->buf_info |= BUF_3D_TILED_SURFACE | BUF_3D_TILE_WALK_Y;
+      break;
+   case I915_TILE_X:
+      surf->buf_info |= BUF_3D_TILED_SURFACE;
+      break;
+   case I915_TILE_NONE:
+      break;
+   }
 
    return ps;
 }
