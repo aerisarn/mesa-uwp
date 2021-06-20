@@ -357,26 +357,29 @@ i915_create_surface_custom(struct pipe_context *ctx,
                            unsigned width0,
                            unsigned height0)
 {
-   struct pipe_surface *ps;
+   struct i915_surface *surf;
 
    assert(surf_tmpl->u.tex.first_layer == surf_tmpl->u.tex.last_layer);
    if (pt->target != PIPE_TEXTURE_CUBE &&
        pt->target != PIPE_TEXTURE_3D)
       assert(surf_tmpl->u.tex.first_layer == 0);
 
-   ps = CALLOC_STRUCT(pipe_surface);
-   if (ps) {
-      /* could subclass pipe_surface and store offset as it used to do */
-      pipe_reference_init(&ps->reference, 1);
-      pipe_resource_reference(&ps->texture, pt);
-      ps->format = surf_tmpl->format;
-      ps->width = u_minify(width0, surf_tmpl->u.tex.level);
-      ps->height = u_minify(height0, surf_tmpl->u.tex.level);
-      ps->u.tex.level = surf_tmpl->u.tex.level;
-      ps->u.tex.first_layer = surf_tmpl->u.tex.first_layer;
-      ps->u.tex.last_layer = surf_tmpl->u.tex.last_layer;
-      ps->context = ctx;
-   }
+   surf = CALLOC_STRUCT(i915_surface);
+   if (!surf)
+      return NULL;
+
+   struct pipe_surface *ps = &surf->templ;
+
+   pipe_reference_init(&ps->reference, 1);
+   pipe_resource_reference(&ps->texture, pt);
+   ps->format = surf_tmpl->format;
+   ps->width = u_minify(width0, surf_tmpl->u.tex.level);
+   ps->height = u_minify(height0, surf_tmpl->u.tex.level);
+   ps->u.tex.level = surf_tmpl->u.tex.level;
+   ps->u.tex.first_layer = surf_tmpl->u.tex.first_layer;
+   ps->u.tex.last_layer = surf_tmpl->u.tex.last_layer;
+   ps->context = ctx;
+
    return ps;
 }
 

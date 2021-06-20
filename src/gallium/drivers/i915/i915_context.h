@@ -211,6 +211,10 @@ struct i915_sampler_state {
    unsigned maxlod;
 };
 
+struct i915_surface {
+   struct pipe_surface templ;
+};
+
 struct i915_velems_state {
    unsigned count;
    struct pipe_vertex_element velem[PIPE_MAX_ATTRIBS];
@@ -401,5 +405,10 @@ i915_context( struct pipe_context *pipe )
    return (struct i915_context *)pipe;
 }
 
+static inline struct i915_surface *
+i915_surface(struct pipe_surface *pipe)
+{
+   return (struct i915_surface *)pipe;
+}
 
 #endif
