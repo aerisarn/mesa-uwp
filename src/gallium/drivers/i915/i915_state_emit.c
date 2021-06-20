@@ -179,7 +179,8 @@ static void emit_immediate_s6(struct i915_context *i915, uint imm)
     * and therefore we need to use the color factor for alphas. */
    uint srcRGB;
 
-   if (i915->current.target_fixup_format == PIPE_FORMAT_A8_UNORM) {
+   if (i915->framebuffer.cbufs[0] &&
+       i915->framebuffer.cbufs[0]->format == PIPE_FORMAT_A8_UNORM) {
       srcRGB = (imm >> S6_CBUF_SRC_BLEND_FACT_SHIFT) & BLENDFACT_MASK;
       if (srcRGB == BLENDFACT_DST_ALPHA)
          srcRGB = BLENDFACT_DST_COLR;
@@ -425,7 +426,7 @@ validate_program(struct i915_context *i915, unsigned *batch_space)
 {
    uint additional_size = 0;
 
-   additional_size += i915->current.target_fixup_format ? 3 : 0;
+   additional_size += i915->current.fixup_swizzle ? 3 : 0;
 
    /* we need more batch space if we want to emulate rgba framebuffers */
    *batch_space = i915->fs->decl_len + i915->fs->program_len + additional_size;
@@ -464,7 +465,7 @@ emit_program(struct i915_context *i915)
    }
 
    /* we emit an additional mov with swizzle to fake RGBA framebuffers */
-   if (i915->current.target_fixup_format) {
+   if (i915->current.fixup_swizzle) {
       /* mov out_color, out_color.zyxw */
       OUT_BATCH(A0_MOV |
                 (REG_TYPE_OC << A0_DEST_TYPE_SHIFT) |

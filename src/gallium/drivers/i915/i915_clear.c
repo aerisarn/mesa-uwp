@@ -73,7 +73,7 @@ i915_clear_emit(struct pipe_context *pipe, unsigned buffers,
       }
 
       /* correctly swizzle clear value */
-      if (i915->current.target_fixup_format)
+      if (i915->current.fixup_swizzle)
          util_pack_color(color->f, cbuf->format, &u_color);
       else
          util_pack_color(color->f, PIPE_FORMAT_B8G8R8A8_UNORM, &u_color);

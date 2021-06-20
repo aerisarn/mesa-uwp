@@ -170,7 +170,8 @@ struct i915_state
    unsigned dst_buf_vars;
    uint32_t draw_offset;
    uint32_t draw_size;
-   uint32_t target_fixup_format;
+
+   /* Reswizzle for OC writes in PIXEL_SHADER_PROGRAM, or 0 if unnecessary. */
    uint32_t fixup_swizzle;
 
    unsigned id;			/* track lost context events */
@@ -214,6 +215,11 @@ struct i915_sampler_state {
 struct i915_surface {
    struct pipe_surface templ;
    uint32_t buf_info; /* _3DSTATE_BUF_INFO_CMD flags */
+
+   /* PIXEL_SHADER_PROGRAM swizzle for OC buffer to handle the cbuf format (or 0 if none). */
+   uint32_t oc_swizzle;
+   /* cbuf swizzle from dst r/g/b/a channels in memory to channels of gallium API. */
+   uint8_t color_swizzle[4];
 };
 
 struct i915_velems_state {

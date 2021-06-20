@@ -349,6 +349,31 @@ i915_clear_depth_stencil_blitter(struct pipe_context *pipe,
  * Screen surface functions
  */
 
+static void i915_set_color_surface_swizzle(struct i915_surface *surf)
+{
+   const struct {
+      enum pipe_format format;
+      uint8_t color_swizzle[4];
+      uint32_t oc_swizzle;
+   } fixup_formats[] = {
+      { PIPE_FORMAT_R8G8B8A8_UNORM, {2, 1, 0, 3 }, 0x21030000 /* BGRA */},
+      { PIPE_FORMAT_R8G8B8X8_UNORM, {2, 1, 0, 3 }, 0x21030000 /* BGRX */},
+      { PIPE_FORMAT_L8_UNORM,       {0, 0, 0, 0 }, 0x00030000 /* RRRA */},
+      { PIPE_FORMAT_I8_UNORM,       {0, 0, 0, 0 }, 0x00030000 /* RRRA */},
+      { PIPE_FORMAT_A8_UNORM,       {3, 3, 3, 3 }, 0x33330000 /* AAAA */},
+   };
+
+   for (int i = 0; i < ARRAY_SIZE(fixup_formats); i++) {
+      if (fixup_formats[i].format == surf->templ.format) {
+         memcpy(surf->color_swizzle, fixup_formats[i].color_swizzle, sizeof(surf->color_swizzle));
+         surf->oc_swizzle = fixup_formats[i].oc_swizzle;
+         return;
+      }
+   }
+
+   for (int i = 0; i < 4; i++)
+      surf->color_swizzle[i] = i;
+}
 
 static struct pipe_surface *
 i915_create_surface_custom(struct pipe_context *ctx,
@@ -385,6 +410,8 @@ i915_create_surface_custom(struct pipe_context *ctx,
       surf->buf_info = BUF_3D_ID_DEPTH;
    } else {
       surf->buf_info = BUF_3D_ID_COLOR_BACK;
+
+      i915_set_color_surface_swizzle(surf);
    }
 
    surf->buf_info |= BUF_3D_PITCH(tex->stride); /* pitch in bytes */
