@@ -90,32 +90,6 @@ spec@arb_sample_shading@samplemask 4@sample mask_in_one,Fail
 spec@arb_shader_image_load_store@indexing,Crash
 spec@arb_shader_storage_buffer_object@array-ssbo-auto-binding,Fail
 spec@arb_shader_storage_buffer_object@linker@instance-matching-shader-storage-blocks-member-array-size-mismatch,Fail
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb 1d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb 1dshadow,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb 2d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb 2dshadow,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb 3d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb cube,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *lod 1d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *lod 1dshadow,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *lod 2d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *lod 2dshadow,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *lod 3d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *lod cube,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 1d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 1d_projvec4,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 1dshadow,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 2d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 2d_projvec4,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 2dshadow,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 3d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projlod 1d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projlod 1d_projvec4,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projlod 1dshadow,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projlod 2d,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projlod 2d_projvec4,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projlod 2dshadow,Crash
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projlod 3d,Crash
 spec@arb_tessellation_shader@execution@fs-primitiveid-instanced,Fail
 spec@arb_tessellation_shader@execution@gs-primitiveid-instanced,Fail
 spec@arb_tessellation_shader@execution@invocation-counting-even,Fail
@@ -349,78 +323,9 @@ spec@ext_transform_feedback@structs struct-array-elem run,Fail
 spec@ext_transform_feedback@structs struct-array-elem run interface,Fail
 spec@ext_transform_feedback@tessellation triangle_fan flat_first,Fail
 spec@ext_transform_feedback@tessellation triangle_strip flat_first,Fail
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1d,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1dshadow,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 2d,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 2dshadow,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 3d,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() cube,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 1d,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 1d_projvec4,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 1dshadow,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 2d,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 2d_projvec4,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 2dshadow,Crash
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 3d,Crash
 spec@glsl-1.30@execution@texelfetch fs sampler3d 1x129x9-98x129x9,Fail
 spec@glsl-1.30@execution@texelfetch fs sampler3d 98x129x1-98x129x9,Fail
 spec@glsl-1.30@execution@texelfetch fs sampler3d 98x1x9-98x129x9,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darray,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darrayshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 1d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 1dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 2darray,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 2darrayshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 2d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 2dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 3d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() cubearray,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() cubearrayshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() cube,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture() cubeshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darray,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darrayshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 2darray,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 2darrayshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 2d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 2dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 3d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cubearray,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cube,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cubeshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1darray,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1darrayshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 2darray,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 2d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 2dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 3d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod cubearray,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod cube,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureproj 1d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureproj 1d_projvec4,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureproj 1dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureproj 2d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureproj 2d_projvec4,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureproj 2dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureproj 3d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojgrad 1d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojgrad 1d_projvec4,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojgrad 1dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojgrad 2d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojgrad 2d_projvec4,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojgrad 2dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojgrad 3d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojlod 1d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojlod 1d_projvec4,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojlod 1dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojlod 2d,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojlod 2d_projvec4,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojlod 2dshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojlod 3d,Crash
 spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-const-accept,Fail
 spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-different-from-position,Fail
 spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-enables,Fail
@@ -586,7 +491,6 @@ spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA4- swizzled- border
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA8- swizzled- border color only,Fail
 spec@!opengl 1.1@windowoverlap,Fail
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
-spec@!opengl 1.4@tex-miplevel-selection-lod-bias,Crash
 spec@!opengl 2.0@gl-2.0-edgeflag,Crash
 spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Crash
 spec@!opengl 2.0@vertex-program-two-side back2,Crash

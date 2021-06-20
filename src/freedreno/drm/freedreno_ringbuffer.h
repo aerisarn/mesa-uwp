@@ -130,6 +130,7 @@ struct fd_ringbuffer_funcs {
    uint32_t (*emit_reloc_ring)(struct fd_ringbuffer *ring,
                                struct fd_ringbuffer *target, uint32_t cmd_idx);
    uint32_t (*cmd_count)(struct fd_ringbuffer *ring);
+   bool (*check_size)(struct fd_ringbuffer *ring);
    void (*destroy)(struct fd_ringbuffer *ring);
 };
 
@@ -178,6 +179,12 @@ fd_ringbuffer_grow(struct fd_ringbuffer *ring, uint32_t ndwords)
    ring->size = MIN2(ring->size << 1, 0x0fffff);
 
    ring->funcs->grow(ring, ring->size);
+}
+
+static inline bool
+fd_ringbuffer_check_size(struct fd_ringbuffer *ring)
+{
+   return ring->funcs->check_size(ring);
 }
 
 static inline void

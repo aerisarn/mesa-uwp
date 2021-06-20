@@ -597,6 +597,26 @@ msm_ringbuffer_cmd_count(struct fd_ringbuffer *ring)
    return 1;
 }
 
+static bool
+msm_ringbuffer_check_size(struct fd_ringbuffer *ring)
+{
+   assert(!(ring->flags & _FD_RINGBUFFER_OBJECT));
+   struct msm_ringbuffer *msm_ring = to_msm_ringbuffer(ring);
+   struct fd_submit *submit = msm_ring->u.submit;
+   struct fd_pipe *pipe = submit->pipe;
+
+   if ((fd_device_version(pipe->dev) < FD_VERSION_UNLIMITED_CMDS) &&
+       ((ring->cur - ring->start) > (ring->size / 4 - 0x1000))) {
+      return false;
+   }
+
+   if (to_msm_submit(submit)->nr_bos > MAX_ARRAY_SIZE/2) {
+      return false;
+   }
+
+   return true;
+}
+
 static void
 msm_ringbuffer_destroy(struct fd_ringbuffer *ring)
 {
@@ -632,6 +652,7 @@ static const struct fd_ringbuffer_funcs ring_funcs = {
    .emit_reloc = msm_ringbuffer_emit_reloc,
    .emit_reloc_ring = msm_ringbuffer_emit_reloc_ring,
    .cmd_count = msm_ringbuffer_cmd_count,
+   .check_size = msm_ringbuffer_check_size,
    .destroy = msm_ringbuffer_destroy,
 };
 

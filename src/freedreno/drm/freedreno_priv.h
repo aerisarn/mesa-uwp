@@ -55,11 +55,16 @@ extern simple_mtx_t table_lock;
  * Stupid/simple growable array implementation:
  */
 
+#define MAX_ARRAY_SIZE ((unsigned short)~0)
+
 static inline void
 grow(void **ptr, uint16_t nr, uint16_t *max, uint16_t sz)
 {
+   assert((nr + 1) < MAX_ARRAY_SIZE);
    if ((nr + 1) > *max) {
-      if ((*max * 2) < (nr + 1))
+      if (*max > MAX_ARRAY_SIZE/2)
+         *max = MAX_ARRAY_SIZE;
+      else if ((*max * 2) < (nr + 1))
          *max = nr + 5;
       else
          *max = *max * 2;
