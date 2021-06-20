@@ -1037,19 +1037,21 @@ vn_android_device_allocate_ahb(struct vn_device *dev,
       height = image_info->extent.height;
       layers = image_info->arrayLayers;
       format = vn_android_ahb_format_from_vk_format(image_info->format);
-      /* TODO Need to further resolve the gralloc usage bits for image format
-       * list info, which might involve disabling compression if there exists
-       * no universally applied compression strategy across the formats.
-       */
       usage = vn_android_get_ahb_usage(image_info->usage, image_info->flags);
    } else {
+      const VkPhysicalDeviceMemoryProperties *mem_props =
+         &dev->physical_device->memory_properties.memoryProperties;
+
+      assert(alloc_info->memoryTypeIndex < mem_props->memoryTypeCount);
+
       width = alloc_info->allocationSize;
       format = AHARDWAREBUFFER_FORMAT_BLOB;
-      /* TODO AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER is not supported by cros
-       * gralloc. So here we work around with CPU usage bits for VkBuffer.
-       */
-      usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
-              AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+      usage = AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER;
+      if (mem_props->memoryTypes[alloc_info->memoryTypeIndex].propertyFlags &
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+         usage |= AHARDWAREBUFFER_USAGE_CPU_READ_RARELY |
+                  AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY;
+      }
    }
 
    ahb = vn_android_ahb_allocate(width, height, layers, format, usage);
