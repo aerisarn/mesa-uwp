@@ -243,15 +243,89 @@ use_hw_binning(struct fd_batch *batch)
 }
 
 static void
-patch_fb_read(struct fd_batch *batch)
+patch_fb_read_gmem(struct fd_batch *batch)
 {
-   const struct fd_gmem_stateobj *gmem = batch->gmem_state;
+   unsigned num_patches = fd_patch_num_elements(&batch->fb_read_patches);
+   if (!num_patches)
+      return;
 
-   for (unsigned i = 0; i < fd_patch_num_elements(&batch->fb_read_patches);
-        i++) {
+   struct fd_screen *screen = batch->ctx->screen;
+   const struct fd_gmem_stateobj *gmem = batch->gmem_state;
+   struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+   struct pipe_surface *psurf = pfb->cbufs[0];
+   uint32_t texconst0 = fd6_tex_const_0(
+      psurf->texture, psurf->u.tex.level, psurf->format, PIPE_SWIZZLE_X,
+      PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W);
+
+   /* always TILE6_2 mode in GMEM.. which also means no swap: */
+   texconst0 &=
+      ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
+   texconst0 |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
+
+   for (unsigned i = 0; i < num_patches; i++) {
       struct fd_cs_patch *patch = fd_patch_element(&batch->fb_read_patches, i);
-      *patch->cs =
-         patch->val | A6XX_TEX_CONST_2_PITCH(gmem->bin_w * gmem->cbuf_cpp[0]);
+      patch->cs[0] = texconst0;
+      patch->cs[2] = A6XX_TEX_CONST_2_PITCH(gmem->bin_w * gmem->cbuf_cpp[0]) |
+                     A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D);
+      patch->cs[4] = A6XX_TEX_CONST_4_BASE_LO(screen->gmem_base);
+      patch->cs[5] = A6XX_TEX_CONST_5_BASE_HI(screen->gmem_base >> 32) |
+                     A6XX_TEX_CONST_5_DEPTH(1);
+   }
+   util_dynarray_clear(&batch->fb_read_patches);
+}
+
+static void
+patch_fb_read_sysmem(struct fd_batch *batch)
+{
+   unsigned num_patches = fd_patch_num_elements(&batch->fb_read_patches);
+   if (!num_patches)
+      return;
+
+   struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+   struct pipe_surface *psurf = pfb->cbufs[0];
+   if (!psurf)
+      return;
+
+   struct fd_resource *rsc = fd_resource(psurf->texture);
+   unsigned lvl = psurf->u.tex.level;
+   unsigned layer = psurf->u.tex.first_layer;
+   bool ubwc_enabled = fd_resource_ubwc_enabled(rsc, lvl);
+   uint64_t iova = fd_bo_get_iova(rsc->bo) + fd_resource_offset(rsc, lvl, layer);
+   uint64_t ubwc_iova = fd_bo_get_iova(rsc->bo) + fd_resource_ubwc_offset(rsc, lvl, layer);
+   uint32_t texconst0 = fd6_tex_const_0(
+      psurf->texture, psurf->u.tex.level, psurf->format, PIPE_SWIZZLE_X,
+      PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W);
+   uint32_t block_width, block_height;
+   fdl6_get_ubwc_blockwidth(&rsc->layout, &block_width, &block_height);
+
+   for (unsigned i = 0; i < num_patches; i++) {
+      struct fd_cs_patch *patch = fd_patch_element(&batch->fb_read_patches, i);
+      patch->cs[0] = texconst0;
+      patch->cs[2] = A6XX_TEX_CONST_2_PITCH(fd_resource_pitch(rsc, lvl)) |
+                     A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D);
+      /* This is cheating a bit, since we can't use OUT_RELOC() here.. but
+       * the render target will already have a reloc emitted for RB_MRT state,
+       * so we can get away with manually patching in the address here:
+       */
+      patch->cs[4] = A6XX_TEX_CONST_4_BASE_LO(iova);
+      patch->cs[5] = A6XX_TEX_CONST_5_BASE_HI(iova >> 32) |
+                     A6XX_TEX_CONST_5_DEPTH(1);
+
+      if (!ubwc_enabled)
+         continue;
+
+      patch->cs[3] |= A6XX_TEX_CONST_3_FLAG;
+      patch->cs[7] = A6XX_TEX_CONST_7_FLAG_LO(ubwc_iova);
+      patch->cs[8] = A6XX_TEX_CONST_8_FLAG_HI(ubwc_iova >> 32);
+      patch->cs[9] = A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(
+            rsc->layout.ubwc_layer_size >> 2);
+      patch->cs[10] =
+            A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(
+               fdl_ubwc_pitch(&rsc->layout, lvl)) |
+            A6XX_TEX_CONST_10_FLAG_BUFFER_LOGW(util_logbase2_ceil(
+               DIV_ROUND_UP(u_minify(psurf->texture->width0, lvl), block_width))) |
+            A6XX_TEX_CONST_10_FLAG_BUFFER_LOGH(util_logbase2_ceil(
+               DIV_ROUND_UP(u_minify(psurf->texture->height0, lvl), block_height)));
    }
    util_dynarray_clear(&batch->fb_read_patches);
 }
@@ -741,7 +815,7 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
    emit_zs(ring, pfb->zsbuf, batch->gmem_state);
    emit_mrt(ring, pfb, batch->gmem_state);
    emit_msaa(ring, pfb->samples);
-   patch_fb_read(batch);
+   patch_fb_read_gmem(batch);
 
    if (use_hw_binning(batch)) {
       /* enable stream-out during binning pass: */
@@ -1523,6 +1597,7 @@ fd6_emit_sysmem_prep(struct fd_batch *batch) assert_dt
    emit_zs(ring, pfb->zsbuf, NULL);
    emit_mrt(ring, pfb, NULL);
    emit_msaa(ring, pfb->samples);
+   patch_fb_read_sysmem(batch);
 
    update_render_cntl(batch, pfb, false);
 
