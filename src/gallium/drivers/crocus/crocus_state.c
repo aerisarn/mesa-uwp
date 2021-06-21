@@ -4475,13 +4475,18 @@ calculate_attr_overrides(
 }
 #endif
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
 static void
 crocus_emit_sbe(struct crocus_batch *batch, const struct crocus_context *ice)
 {
    const struct crocus_rasterizer_state *cso_rast = ice->state.cso_rast;
    const struct brw_wm_prog_data *wm_prog_data = (void *)
       ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
+#if GFX_VER >= 8
+   struct GENX(SF_OUTPUT_ATTRIBUTE_DETAIL) attr_overrides[16] = { { 0 } };
+#else
+#define attr_overrides sbe.Attribute
+#endif
 
    uint32_t urb_entry_read_length;
    uint32_t urb_entry_read_offset;
@@ -4493,7 +4498,7 @@ crocus_emit_sbe(struct crocus_batch *batch, const struct crocus_context *ice)
       sbe.PointSpriteTextureCoordinateOrigin = cso_rast->cso.sprite_coord_mode;
 
       calculate_attr_overrides(ice,
-                               sbe.Attribute,
+                               attr_overrides,
                                &point_sprite_enables,
                                &urb_entry_read_length,
                                &urb_entry_read_offset);
@@ -4501,7 +4506,17 @@ crocus_emit_sbe(struct crocus_batch *batch, const struct crocus_context *ice)
       sbe.VertexURBEntryReadLength = urb_entry_read_length;
       sbe.ConstantInterpolationEnable = wm_prog_data->flat_inputs;
       sbe.PointSpriteTextureCoordinateEnable = point_sprite_enables;
+#if GFX_VER >= 8
+      sbe.ForceVertexURBEntryReadLength = true;
+      sbe.ForceVertexURBEntryReadOffset = true;
+#endif
    }
+#if GFX_VER >= 8
+   crocus_emit_cmd(batch, GENX(3DSTATE_SBE_SWIZ), sbes) {
+      for (int i = 0; i < 16; i++)
+         sbes.Attribute[i] = attr_overrides[i];
+   }
+#endif
 }
 #endif
 
