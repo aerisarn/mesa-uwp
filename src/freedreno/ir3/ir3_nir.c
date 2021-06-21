@@ -223,6 +223,20 @@ ir3_optimize_loop(struct ir3_compiler *compiler, nir_shader *s)
 			progress |= OPT(s, nir_opt_gcm, false);
 		progress |= OPT(s, nir_opt_peephole_select, 16, true, true);
 		progress |= OPT(s, nir_opt_intrinsics);
+		/* NOTE: GS lowering inserts an output var with varying slot that
+		 * is larger than VARYING_SLOT_MAX (ie. GS_VERTEX_FLAGS_IR3),
+		 * which triggers asserts in nir_shader_gather_info().  To work
+		 * around that skip lowering phi precision for GS.
+		 *
+		 * Calling nir_shader_gather_info() late also seems to cause
+		 * problems for tess lowering, for now since we only enable
+		 * fp16/int16 for frag and compute, skip phi precision lowering
+		 * for other stages.
+		 */
+		if ((s->info.stage == MESA_SHADER_FRAGMENT) ||
+				(s->info.stage == MESA_SHADER_COMPUTE)) {
+			progress |= OPT(s, nir_opt_phi_precision);
+		}
 		progress |= OPT(s, nir_opt_algebraic);
 		progress |= OPT(s, nir_lower_alu);
 		progress |= OPT(s, nir_lower_pack);

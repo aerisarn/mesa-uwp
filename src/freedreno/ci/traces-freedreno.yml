@@ -67,7 +67,7 @@ traces:
       # - device: freedreno-a530
       #   checksum: 1ae49af7017ae2a08fbb1caf377ada91
       - device: freedreno-a630
-        checksum: fede0e29fa22a625be6adbd86e70c8c6
+        checksum: eb89b63087f6f252923f567228035b4b
   - path: 0ad/0ad.trace
     expectations:
       # triggers hangcheck on db410c
@@ -268,7 +268,7 @@ traces:
       - device: freedreno-a306
         checksum: c31e4b18d29e87751e4c30760ddfef18
       - device: freedreno-a530
-        checksum: a68a23264fb802d59c92b3a58753e6a4
+        checksum: 3272ac6018600da9cc61636416ed387e
       - device: freedreno-a630
         checksum: 2570e22fbb4ad1a68b45e4caf682d77d
   - path: glmark2/jellyfish.trace
