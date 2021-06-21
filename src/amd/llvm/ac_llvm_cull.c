@@ -125,8 +125,11 @@ static LLVMValueRef cull_bbox(struct ac_llvm_context *ctx, LLVMValueRef pos[3][4
 {
    LLVMBuilderRef builder = ctx->builder;
 
-   if (!cull_view_xy && !cull_view_near_z && !cull_view_far_z && !cull_small_prims)
+   if (!cull_view_xy && !cull_view_near_z && !cull_view_far_z && !cull_small_prims) {
+      if (accept_func)
+         accept_func(ctx, initially_accepted, userdata);
       return initially_accepted;
+   }
 
    /* Skip the culling if the primitive has already been rejected or
     * if any W is negative. The bounding box culling doesn't work when
@@ -205,6 +208,11 @@ static LLVMValueRef cull_bbox(struct ac_llvm_context *ctx, LLVMValueRef pos[3][4
          accept_func(ctx, accepted, userdata);
 
       LLVMBuildStore(builder, accepted, accepted_var);
+   }
+   if (accept_func) {
+      /* If the caller provided a accept_func, call it in the else branch */
+      ac_build_else(ctx, 10000000);
+      accept_func(ctx, initially_accepted, userdata);
    }
    ac_build_endif(ctx, 10000000);
 
