@@ -1569,7 +1569,7 @@ crocus_bind_zsa_state(struct pipe_context *ctx, void *state)
          ice->state.dirty |= CROCUS_DIRTY_COLOR_CALC_STATE;
 
       if (cso_changed(cso.alpha_enabled))
-	 ice->state.dirty |= CROCUS_DIRTY_WM;
+         ice->state.dirty |= CROCUS_DIRTY_WM;
 #if GFX_VER >= 6
       if (cso_changed(cso.alpha_enabled))
          ice->state.dirty |= CROCUS_DIRTY_GEN6_BLEND_STATE;
