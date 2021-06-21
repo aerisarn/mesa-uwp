@@ -6961,6 +6961,15 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
       crocus_batch_emit(batch, cso->line_stipple, sizeof(cso->line_stipple));
    }
 
+#if GFX_VER >= 8
+   if (dirty & CROCUS_DIRTY_GEN8_VF_TOPOLOGY) {
+      crocus_emit_cmd(batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
+         topo.PrimitiveTopologyType =
+            translate_prim_type(draw->mode, draw->vertices_per_patch);
+      }
+   }
+#endif
+
 #if GFX_VER <= 5
    if (dirty & CROCUS_DIRTY_GEN5_PIPELINED_POINTERS) {
       upload_pipelined_state_pointers(batch, ice->shaders.ff_gs_prog ? true : false, ice->shaders.gs_offset,

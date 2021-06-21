@@ -139,6 +139,9 @@ crocus_update_draw_info(struct crocus_context *ice,
    if (ice->state.prim_mode != mode) {
       ice->state.prim_mode = mode;
 
+      if (screen->devinfo.ver == 8)
+         ice->state.dirty |= CROCUS_DIRTY_GEN8_VF_TOPOLOGY;
+
       if (screen->devinfo.ver < 6)
          ice->state.dirty |= CROCUS_DIRTY_GEN4_CLIP_PROG | CROCUS_DIRTY_GEN4_SF_PROG;
       if (screen->devinfo.ver <= 6)
@@ -159,6 +162,8 @@ crocus_update_draw_info(struct crocus_context *ice,
        ice->state.vertices_per_patch != info->vertices_per_patch) {
       ice->state.vertices_per_patch = info->vertices_per_patch;
 
+      if (screen->devinfo.ver == 8)
+         ice->state.dirty |= CROCUS_DIRTY_GEN8_VF_TOPOLOGY;
       /* This is needed for key->input_vertices */
       ice->state.stage_dirty |= CROCUS_STAGE_DIRTY_UNCOMPILED_TCS;
 
