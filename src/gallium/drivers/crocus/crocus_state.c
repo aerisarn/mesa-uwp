@@ -3309,7 +3309,7 @@ crocus_set_vertex_buffers(struct pipe_context *ctx,
    struct crocus_context *ice = (struct crocus_context *) ctx;
    struct crocus_screen *screen = (struct crocus_screen *) ctx->screen;
    const unsigned padding =
-      (!(GFX_VERx10 == 75) && !screen->devinfo.is_baytrail) * 2;
+      (GFX_VERx10 < 75 && !screen->devinfo.is_baytrail) * 2;
    ice->state.bound_vertex_buffers &=
       ~u_bit_consecutive64(start_slot, count + unbind_num_trailing_slots);
 
@@ -3334,7 +3334,7 @@ crocus_set_vertex_buffers(struct pipe_context *ctx,
    ice->state.dirty |= CROCUS_DIRTY_VERTEX_BUFFERS;
 }
 
-#if !(GFX_VERx10 == 75)
+#if GFX_VERx10 < 75
 static uint8_t get_wa_flags(enum isl_format format)
 {
    uint8_t wa_flags = 0;
@@ -3439,7 +3439,7 @@ crocus_create_vertex_elements(struct pipe_context *ctx,
                            VFCOMP_STORE_SRC, VFCOMP_STORE_SRC };
       enum isl_format actual_fmt = fmt.fmt;
 
-#if !(GFX_VERx10 == 75)
+#if GFX_VERx10 < 75
       cso->wa_flags[i] = get_wa_flags(fmt.fmt);
 
       if (fmt.fmt == ISL_FORMAT_R10G10B10A2_USCALED ||
@@ -4272,7 +4272,7 @@ crocus_populate_vs_key(const struct crocus_context *ice,
 
    key->clamp_vertex_color = cso_rast->cso.clamp_vertex_color;
 
-#if !(GFX_VERx10 == 75)
+#if GFX_VERx10 < 75
    uint64_t inputs_read = info->inputs_read;
    int ve_idx = 0;
    while (inputs_read) {
