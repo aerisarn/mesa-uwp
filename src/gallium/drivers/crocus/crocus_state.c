@@ -1211,6 +1211,20 @@ gen7_emit_cs_stall_flush(struct crocus_batch *batch)
 static void
 emit_pipeline_select(struct crocus_batch *batch, uint32_t pipeline)
 {
+#if GFX_VER == 8
+   /* From the Broadwell PRM, Volume 2a: Instructions, PIPELINE_SELECT:
+    *
+    *   Software must clear the COLOR_CALC_STATE Valid field in
+    *   3DSTATE_CC_STATE_POINTERS command prior to send a PIPELINE_SELECT
+    *   with Pipeline Select set to GPGPU.
+    *
+    * The internal hardware docs recommend the same workaround for Gfx9
+    * hardware too.
+    */
+   if (pipeline == GPGPU)
+      crocus_emit_cmd(batch, GENX(3DSTATE_CC_STATE_POINTERS), t);
+#endif
+
 #if GFX_VER >= 6
    /* From "BXML » GT » MI » vol1a GPU Overview » [Instruction]
     * PIPELINE_SELECT [DevBWR+]":
@@ -1371,6 +1385,22 @@ crocus_init_render_context(struct crocus_batch *batch)
 
 #if GFX_VER >= 7
    crocus_alloc_push_constants(batch);
+#endif
+
+#if GFX_VER == 8
+   /* Set the initial MSAA sample positions. */
+   crocus_emit_cmd(batch, GENX(3DSTATE_SAMPLE_PATTERN), pat) {
+      INTEL_SAMPLE_POS_1X(pat._1xSample);
+      INTEL_SAMPLE_POS_2X(pat._2xSample);
+      INTEL_SAMPLE_POS_4X(pat._4xSample);
+      INTEL_SAMPLE_POS_8X(pat._8xSample);
+   }
+
+   /* Disable chromakeying (it's for media) */
+   crocus_emit_cmd(batch, GENX(3DSTATE_WM_CHROMAKEY), foo);
+
+   /* We want regular rendering, not special HiZ operations. */
+   crocus_emit_cmd(batch, GENX(3DSTATE_WM_HZ_OP), foo);
 #endif
 }
 
@@ -5122,8 +5152,10 @@ crocus_update_surface_base_address(struct crocus_batch *batch)
       sba.InstructionBaseAddressModifyEnable    = true;
 #endif
 
+#if GFX_VER < 8
       sba.GeneralStateAccessUpperBoundModifyEnable = true;
-#if GFX_VER >= 5
+#endif
+#if GFX_VER >= 5 && GFX_VER < 8
       sba.IndirectObjectAccessUpperBoundModifyEnable = true;
       sba.InstructionAccessUpperBoundModifyEnable = true;
 #endif
@@ -5136,6 +5168,21 @@ crocus_update_surface_base_address(struct crocus_batch *batch)
        */
       sba.GeneralStateMOCS            = mocs;
       sba.StatelessDataPortAccessMOCS = mocs;
+#if GFX_VER == 8
+      sba.DynamicStateMOCS            = mocs;
+      sba.IndirectObjectMOCS          = mocs;
+      sba.InstructionMOCS             = mocs;
+      sba.SurfaceStateMOCS            = mocs;
+      sba.GeneralStateBufferSize   = 0xfffff;
+      sba.IndirectObjectBufferSize = 0xfffff;
+      sba.InstructionBufferSize    = 0xfffff;
+      sba.DynamicStateBufferSize   = MAX_STATE_SIZE;
+
+      sba.GeneralStateBufferSizeModifyEnable    = true;
+      sba.DynamicStateBufferSizeModifyEnable    = true;
+      sba.IndirectObjectBufferSizeModifyEnable  = true;
+      sba.InstructionBuffersizeModifyEnable     = true;
+#endif
 
       sba.DynamicStateBaseAddressModifyEnable   = true;
 
@@ -5146,8 +5193,11 @@ crocus_update_surface_base_address(struct crocus_batch *batch)
        * If this isn't programmed to a real bound, the sampler border color
        * pointer is rejected, causing border color to mysteriously fail.
        */
+#if GFX_VER < 8
       sba.DynamicStateAccessUpperBoundModifyEnable = true;
       sba.DynamicStateAccessUpperBound = ro_bo(NULL, 0xfffff000);
+#endif
+
 #endif
    }
 
