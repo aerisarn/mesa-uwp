@@ -5816,7 +5816,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
                                            ice->shaders.prog[stage]->surf_offset,
                                            ice->shaders.prog[stage]->bt.size_bytes);
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
             crocus_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), ptr) {
                ptr._3DCommandSubOpcode = 38 + stage;
                ptr.PointertoVSBindingTable = ice->shaders.prog[stage]->bind_bo_offset;
