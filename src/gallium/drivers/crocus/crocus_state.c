@@ -488,7 +488,7 @@ crocus_store_register_mem32(struct crocus_batch *batch, uint32_t reg,
    crocus_emit_cmd(batch, GENX(MI_STORE_REGISTER_MEM), srm) {
       srm.RegisterAddress = reg;
       srm.MemoryAddress = ggtt_bo(bo, offset);
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
       srm.PredicateEnable = predicated;
 #else
       if (predicated)
@@ -518,7 +518,7 @@ _crocus_emit_lri(struct crocus_batch *batch, uint32_t reg, uint32_t val)
 }
 #define crocus_emit_lri(b, r, v) _crocus_emit_lri(b, GENX(r##_num), v)
 
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
 static void
 _crocus_emit_lrr(struct crocus_batch *batch, uint32_t dst, uint32_t src)
 {
@@ -584,7 +584,7 @@ crocus_load_register_mem64(struct crocus_batch *batch, uint32_t reg,
    crocus_load_register_mem32(batch, reg + 4, bo, offset + 4);
 }
 
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
 static void
 crocus_store_data_imm32(struct crocus_batch *batch,
                         struct crocus_bo *bo, uint32_t offset,
@@ -1362,7 +1362,7 @@ crocus_init_render_context(struct crocus_batch *batch)
 #endif
 }
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
 static void
 crocus_init_compute_context(struct crocus_batch *batch)
 {
@@ -7260,7 +7260,7 @@ crocus_upload_render_state(struct crocus_context *ice,
    }
 }
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
 
 static void
 crocus_upload_compute_state(struct crocus_context *ice,
@@ -7477,7 +7477,7 @@ crocus_upload_compute_state(struct crocus_context *ice,
    batch->contains_draw = true;
 }
 
-#endif /* GFX_VER == 7 */
+#endif /* GFX_VER >= 7 */
 
 /**
  * State module teardown.
@@ -8301,14 +8301,14 @@ genX(crocus_init_screen_state)(struct crocus_screen *screen)
    screen->vtbl.destroy_state = crocus_destroy_state;
    screen->vtbl.init_render_context = crocus_init_render_context;
    screen->vtbl.upload_render_state = crocus_upload_render_state;
-#if GFX_VER == 7
+#if GFX_VER >= 7
    screen->vtbl.init_compute_context = crocus_init_compute_context;
    screen->vtbl.upload_compute_state = crocus_upload_compute_state;
 #endif
    screen->vtbl.emit_raw_pipe_control = crocus_emit_raw_pipe_control;
    screen->vtbl.emit_mi_report_perf_count = crocus_emit_mi_report_perf_count;
    screen->vtbl.rebind_buffer = crocus_rebind_buffer;
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
    screen->vtbl.load_register_reg32 = crocus_load_register_reg32;
    screen->vtbl.load_register_reg64 = crocus_load_register_reg64;
    screen->vtbl.load_register_imm32 = crocus_load_register_imm32;
