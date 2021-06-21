@@ -807,7 +807,7 @@ crocus_screen_create(int fd, const struct pipe_screen_config *config)
    screen->compiler->compact_params = false;
    screen->compiler->constant_buffer_0_is_relative = true;
 
-   if (screen->devinfo.ver == 7) {
+   if (screen->devinfo.ver >= 7) {
       screen->l3_config_3d = crocus_get_default_l3_config(&screen->devinfo, false);
       screen->l3_config_cs = crocus_get_default_l3_config(&screen->devinfo, true);
    }
