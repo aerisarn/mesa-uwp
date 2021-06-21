@@ -5698,7 +5698,9 @@ emit_push_constant_packets(struct crocus_context *ice,
 
 #endif
 
-#if GFX_VER >= 6
+#if GFX_VER == 8
+typedef struct GENX(3DSTATE_WM_DEPTH_STENCIL) DEPTH_STENCIL_GENXML;
+#elif GFX_VER >= 6
 typedef struct GENX(DEPTH_STENCIL_STATE)      DEPTH_STENCIL_GENXML;
 #else
 typedef struct GENX(COLOR_CALC_STATE)         DEPTH_STENCIL_GENXML;
@@ -7196,6 +7198,12 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
 
 #if GFX_VER >= 6
    if (dirty & CROCUS_DIRTY_GEN6_WM_DEPTH_STENCIL) {
+
+#if GFX_VER >= 8
+      crocus_emit_cmd(batch, GENX(3DSTATE_WM_DEPTH_STENCIL), wmds) {
+         set_depth_stencil_bits(ice, &wmds);
+      }
+#else
       uint32_t ds_offset;
       void *ds_map = stream_state(batch,
                                   sizeof(uint32_t) * GENX(DEPTH_STENCIL_STATE_length),
@@ -7213,6 +7221,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
       crocus_emit_cmd(batch, GENX(3DSTATE_DEPTH_STENCIL_STATE_POINTERS), ptr) {
          ptr.PointertoDEPTH_STENCIL_STATE = ds_offset;
       }
+#endif
 #endif
    }
 
