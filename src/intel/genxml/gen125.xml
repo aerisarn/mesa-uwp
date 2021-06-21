@@ -3327,35 +3327,6 @@
     </group>
   </instruction>
 
-  <instruction name="GPGPU_WALKER" bias="2" length="15" engine="render">
-    <field name="DWord Length" start="0" end="7" type="uint" default="13"/>
-    <field name="Predicate Enable" start="8" end="8" type="bool"/>
-    <field name="Indirect Parameter Enable" start="10" end="10" type="bool"/>
-    <field name="SubOpcode" start="16" end="23" type="uint" default="5"/>
-    <field name="Media Command Opcode" start="24" end="26" type="uint" default="1"/>
-    <field name="Pipeline" start="27" end="28" type="uint" default="2"/>
-    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Interface Descriptor Offset" start="32" end="37" type="uint"/>
-    <field name="Indirect Data Length" start="64" end="80" type="uint"/>
-    <field name="Indirect Data Start Address" start="102" end="127" type="offset"/>
-    <field name="Thread Width Counter Maximum" start="128" end="133" type="uint"/>
-    <field name="Thread Height Counter Maximum" start="136" end="141" type="uint"/>
-    <field name="Thread Depth Counter Maximum" start="144" end="149" type="uint"/>
-    <field name="SIMD Size" start="158" end="159" type="uint">
-      <value name="SIMD8" value="0"/>
-      <value name="SIMD16" value="1"/>
-      <value name="SIMD32" value="2"/>
-    </field>
-    <field name="Thread Group ID Starting X" start="160" end="191" type="uint"/>
-    <field name="Thread Group ID X Dimension" start="224" end="255" type="uint"/>
-    <field name="Thread Group ID Starting Y" start="256" end="287" type="uint"/>
-    <field name="Thread Group ID Y Dimension" start="320" end="351" type="uint"/>
-    <field name="Thread Group ID Starting/Resume Z" start="352" end="383" type="uint"/>
-    <field name="Thread Group ID Z Dimension" start="384" end="415" type="uint"/>
-    <field name="Right Execution Mask" start="416" end="447" type="uint"/>
-    <field name="Bottom Execution Mask" start="448" end="479" type="uint"/>
-  </instruction>
-
   <instruction name="HCP_BSD_OBJECT" bias="2" length="3" engine="video">
     <field name="DWord Length" start="0" end="11" type="uint"/>
     <field name="SubOpcode" start="16" end="22" type="uint" default="32"/>
