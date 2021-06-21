@@ -215,6 +215,7 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_INT64_DIVMOD:
    case PIPE_CAP_TGSI_BALLOT:
    case PIPE_CAP_PACKED_UNIFORMS:
+      return devinfo->ver == 8;
    case PIPE_CAP_GL_CLAMP:
       return false;
    case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
@@ -761,8 +762,15 @@ crocus_screen_create(int fd, const struct pipe_screen_config *config)
    screen->pci_id = screen->devinfo.chipset_id;
    screen->no_hw = screen->devinfo.no_hw;
 
-   if (screen->devinfo.ver >= 8)
+   if (screen->devinfo.ver > 8)
       return NULL;
+
+   if (screen->devinfo.ver == 8) {
+      /* bind to cherryview or bdw if forced */
+      if (!screen->devinfo.is_cherryview &&
+          !getenv("CROCUS_GEN8"))
+         return NULL;
+   }
 
    p_atomic_set(&screen->refcount, 1);
 
