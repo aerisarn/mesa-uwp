@@ -578,7 +578,7 @@ fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, i
 void
 zink_fb_clear_reset(struct zink_context *ctx, unsigned i)
 {
-   util_dynarray_fini(&ctx->fb_clears[i].clears);
+   util_dynarray_clear(&ctx->fb_clears[i].clears);
    if (i == PIPE_MAX_COLOR_BUFS) {
       ctx->clears_enabled &= ~PIPE_CLEAR_DEPTHSTENCIL;
       ctx->rp_clears_enabled &= ~PIPE_CLEAR_DEPTHSTENCIL;
