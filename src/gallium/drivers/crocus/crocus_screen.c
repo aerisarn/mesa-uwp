@@ -845,7 +845,7 @@ crocus_screen_create(int fd, const struct pipe_screen_config *config)
    pscreen->get_driver_query_group_info = crocus_get_monitor_group_info;
    pscreen->get_driver_query_info = crocus_get_monitor_info;
 
-   genX_call(&screen->devinfo, init_screen_state, screen);
-   genX_call(&screen->devinfo, init_screen_query, screen);
+   genX_call(&screen->devinfo, crocus_init_screen_state, screen);
+   genX_call(&screen->devinfo, crocus_init_screen_query, screen);
    return pscreen;
 }

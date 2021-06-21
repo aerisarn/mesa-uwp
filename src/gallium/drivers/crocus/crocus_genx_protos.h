@@ -28,19 +28,19 @@
  */
 
 /* crocus_state.c */
-void genX(init_state)(struct crocus_context *ice);
-void genX(init_screen_state)(struct crocus_screen *screen);
-void genX(upload_urb)(struct crocus_batch *batch,
+void genX(crocus_init_state)(struct crocus_context *ice);
+void genX(crocus_init_screen_state)(struct crocus_screen *screen);
+void genX(crocus_upload_urb)(struct crocus_batch *batch,
                       unsigned vs_size,
                       bool gs_present,
                       unsigned gs_size);
 
 /* crocus_blorp.c */
-void genX(init_blorp)(struct crocus_context *ice);
+void genX(crocus_init_blorp)(struct crocus_context *ice);
 
 /* crocus_query.c */
-void genX(init_query)(struct crocus_context *ice);
-void genX(init_screen_query)(struct crocus_screen *screen);
+void genX(crocus_init_query)(struct crocus_context *ice);
+void genX(crocus_init_screen_query)(struct crocus_screen *screen);
 
 /* crocus_blt.c */
-void genX(init_blt)(struct crocus_screen *screen);
+void genX(crocus_init_blt)(struct crocus_screen *screen);

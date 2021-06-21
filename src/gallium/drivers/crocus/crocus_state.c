@@ -5478,7 +5478,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          gs_size = gs_vue_prog_data->urb_entry_size;
       }
 
-      genX(upload_urb)(batch, vs_size, gs_present, gs_size);
+      genX(crocus_upload_urb)(batch, vs_size, gs_present, gs_size);
 #endif
 #if GFX_VER == 7
       const struct intel_device_info *devinfo = &batch->screen->devinfo;
@@ -8010,10 +8010,10 @@ crocus_emit_raw_pipe_control(struct crocus_batch *batch,
 
 #if GFX_VER == 6
 void
-genX(upload_urb)(struct crocus_batch *batch,
-                 unsigned vs_size,
-                 bool gs_present,
-                 unsigned gs_size)
+genX(crocus_upload_urb)(struct crocus_batch *batch,
+                        unsigned vs_size,
+                        bool gs_present,
+                        unsigned gs_size)
 {
    struct crocus_context *ice = batch->ice;
    int nr_vs_entries, nr_gs_entries;
@@ -8261,7 +8261,7 @@ crocus_set_frontend_noop(struct pipe_context *ctx, bool enable)
 }
 
 void
-genX(init_screen_state)(struct crocus_screen *screen)
+genX(crocus_init_screen_state)(struct crocus_screen *screen)
 {
    assert(screen->devinfo.verx10 == GFX_VERx10);
    screen->vtbl.destroy_state = crocus_destroy_state;
@@ -8314,11 +8314,11 @@ genX(init_screen_state)(struct crocus_screen *screen)
    screen->vtbl.get_so_offset = crocus_get_so_offset;
 #endif
 
-   genX(init_blt)(screen);
+   genX(crocus_init_blt)(screen);
 }
 
 void
-genX(init_state)(struct crocus_context *ice)
+genX(crocus_init_state)(struct crocus_context *ice)
 {
    struct pipe_context *ctx = &ice->ctx;
 

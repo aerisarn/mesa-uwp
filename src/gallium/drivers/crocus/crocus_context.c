@@ -290,9 +290,9 @@ crocus_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!crocus_init_identifier_bo(ice))
       return NULL;
 
-   genX_call(devinfo, init_state, ice);
-   genX_call(devinfo, init_blorp, ice);
-   genX_call(devinfo, init_query, ice);
+   genX_call(devinfo, crocus_init_state, ice);
+   genX_call(devinfo, crocus_init_blorp, ice);
+   genX_call(devinfo, crocus_init_query, ice);
 
    ice->blitter = util_blitter_create(&ice->ctx);
    if (ice->blitter == NULL)

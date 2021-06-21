@@ -252,7 +252,7 @@ blorp_emit_urb_config(struct blorp_batch *blorp_batch,
 #if GFX_VER <= 5
    batch->screen->vtbl.calculate_urb_fence(batch, 0, vs_entry_size, sf_entry_size);
 #else
-   genX(upload_urb)(batch, vs_entry_size, false, vs_entry_size);
+   genX(crocus_upload_urb)(batch, vs_entry_size, false, vs_entry_size);
 #endif
 }
 #endif
@@ -387,7 +387,7 @@ blorp_measure_start(struct blorp_batch *blorp_batch,
 }
 
 void
-genX(init_blorp)(struct crocus_context *ice)
+genX(crocus_init_blorp)(struct crocus_context *ice)
 {
    struct crocus_screen *screen = (struct crocus_screen *)ice->ctx.screen;
 

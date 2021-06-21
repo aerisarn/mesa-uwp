@@ -968,7 +968,7 @@ crocus_emit_compute_predicate(struct crocus_batch *batch)
 #endif
 
 void
-genX(init_screen_query)(struct crocus_screen *screen)
+genX(crocus_init_screen_query)(struct crocus_screen *screen)
 {
    screen->vtbl.resolve_conditional_render = crocus_resolve_conditional_render;
 #if GFX_VER >= 7
@@ -977,7 +977,7 @@ genX(init_screen_query)(struct crocus_screen *screen)
 }
 
 void
-genX(init_query)(struct crocus_context *ice)
+genX(crocus_init_query)(struct crocus_context *ice)
 {
    struct pipe_context *ctx = &ice->ctx;
 

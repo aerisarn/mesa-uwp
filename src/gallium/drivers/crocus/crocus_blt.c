@@ -325,7 +325,7 @@ static bool crocus_copy_region_blt(struct crocus_batch *batch,
 #endif
 
 void
-genX(init_blt)(struct crocus_screen *screen)
+genX(crocus_init_blt)(struct crocus_screen *screen)
 {
 #if GFX_VER <= 5
    screen->vtbl.blit_blt = crocus_blit_blt;
