@@ -68,7 +68,7 @@
 #define GFX6_CS_INVOCATION_COUNT_num        0x2290
 #define GFX6_PS_DEPTH_COUNT_num             0x2350
 
-#elif GFX_VER == 7
+#elif GFX_VER >= 7
 #define SO_PRIM_STORAGE_NEEDED(n) (GENX(SO_PRIM_STORAGE_NEEDED0_num) + (n) * 8)
 #define SO_NUM_PRIMS_WRITTEN(n)   (GENX(SO_NUM_PRIMS_WRITTEN0_num) + (n) * 8)
 #endif
@@ -117,7 +117,7 @@ struct crocus_query_so_overflow {
    } stream[4];
 };
 
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
 static struct mi_value
 query_mem64(struct crocus_query *q, uint32_t offset)
 {
@@ -149,7 +149,7 @@ crocus_is_query_pipelined(struct crocus_query *q)
 static void
 mark_available(struct crocus_context *ice, struct crocus_query *q)
 {
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
    struct crocus_batch *batch = &ice->batches[q->batch_idx];
    struct crocus_screen *screen = batch->screen;
    unsigned flags = PIPE_CONTROL_WRITE_IMMEDIATE;
@@ -343,7 +343,7 @@ calculate_result_on_cpu(const struct intel_device_info *devinfo,
       q->result = q->map->end - q->map->start;
 
       /* WaDividePSInvocationCountBy4:HSW,BDW */
-      if (GFX_VER == 7 && devinfo->is_haswell && q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
+      if (GFX_VERx10 >= 75 && q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
          q->result /= 4;
       break;
    case PIPE_QUERY_OCCLUSION_COUNTER:
@@ -357,7 +357,7 @@ calculate_result_on_cpu(const struct intel_device_info *devinfo,
    q->ready = true;
 }
 
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
 /**
  * Calculate the streamout overflow for stream \p idx:
  *
@@ -451,7 +451,7 @@ calculate_result_on_gpu(const struct intel_device_info *devinfo,
       break;
    }
    /* WaDividePSInvocationCountBy4:HSW,BDW */
-   if (GFX_VER == 7 && devinfo->is_haswell &&
+   if (GFX_VERx10 >= 75 &&
        q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE &&
        q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
       result = mi_ushr32_imm(b, result, 2);
@@ -667,7 +667,7 @@ crocus_get_query_result(struct pipe_context *ctx,
       if (q->syncobj == crocus_batch_get_signal_syncobj(batch))
          crocus_batch_flush(batch);
 
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
       while (!READ_ONCE(q->map->snapshots_landed)) {
          if (wait)
             crocus_wait_syncobj(ctx->screen, q->syncobj, INT64_MAX);
@@ -689,7 +689,7 @@ crocus_get_query_result(struct pipe_context *ctx,
    return true;
 }
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
 static void
 crocus_get_query_result_resource(struct pipe_context *ctx,
                                  struct pipe_query *query,
@@ -752,7 +752,7 @@ crocus_get_query_result_resource(struct pipe_context *ctx,
       return;
    }
 
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
    bool predicated = !wait && !q->stalled;
 
    struct mi_builder b;
@@ -804,7 +804,7 @@ set_predicate_enable(struct crocus_context *ice, bool value)
       ice->state.predicate = CROCUS_PREDICATE_STATE_DONT_RENDER;
 }
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
 static void
 set_predicate_for_result(struct crocus_context *ice,
                          struct crocus_query *q,
@@ -813,7 +813,7 @@ set_predicate_for_result(struct crocus_context *ice,
    struct crocus_batch *batch = &ice->batches[CROCUS_BATCH_RENDER];
    struct crocus_bo *bo = crocus_resource_bo(q->query_state_ref.res);
 
-#if GFX_VERx10 != 75
+#if GFX_VERx10 < 75
    /* IVB doesn't have enough MI for this */
    if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
        q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
@@ -831,7 +831,7 @@ set_predicate_for_result(struct crocus_context *ice,
                                   PIPE_CONTROL_FLUSH_ENABLE);
    q->stalled = true;
 
-#if GFX_VERx10 != 75
+#if GFX_VERx10 < 75
    struct crocus_screen *screen = batch->screen;
    screen->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC0, bo,
                                     q->query_state_ref.offset + offsetof(struct crocus_query_snapshots, start));
@@ -925,7 +925,7 @@ crocus_render_condition(struct pipe_context *ctx,
          perf_debug(&ice->dbg, "Conditional rendering demoted from "
                     "\"no wait\" to \"wait\".");
       }
-#if GFX_VER == 7
+#if GFX_VER >= 7
       set_predicate_for_result(ice, q, condition);
 #else
       ice->state.predicate = CROCUS_PREDICATE_STATE_STALL_FOR_QUERY;
@@ -987,7 +987,7 @@ genX(crocus_init_query)(struct crocus_context *ice)
    ctx->begin_query = crocus_begin_query;
    ctx->end_query = crocus_end_query;
    ctx->get_query_result = crocus_get_query_result;
-#if GFX_VER == 7
+#if GFX_VER >= 7
    ctx->get_query_result_resource = crocus_get_query_result_resource;
 #endif
    ctx->set_active_query_state = crocus_set_active_query_state;
