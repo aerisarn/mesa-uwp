@@ -6371,6 +6371,13 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
       struct brw_wm_prog_data *wm_prog_data = (void *) shader->prog_data;
 
       crocus_emit_cmd(batch, GENX(3DSTATE_PS), ps) {
+
+         /* Initialize the execution mask with VMask.  Otherwise, derivatives are
+          * incorrect for subspans where some of the pixels are unlit.  We believe
+          * the bit just didn't take effect in previous generations.
+          */
+         ps.VectorMaskEnable = GFX_VER >= 8;
+
          ps._8PixelDispatchEnable = wm_prog_data->dispatch_8;
          ps._16PixelDispatchEnable = wm_prog_data->dispatch_16;
          ps._32PixelDispatchEnable = wm_prog_data->dispatch_32;
@@ -6395,13 +6402,19 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          // XXX: WABTPPrefetchDisable, see above, drop at C0
          ps.BindingTableEntryCount = shader->bt.size_bytes / 4;
          ps.FloatingPointMode = prog_data->use_alt_mode;
+#if GFX_VER >= 8
+         ps.MaximumNumberofThreadsPerPSD = 64 - 2;
+#else
          ps.MaximumNumberofThreads = batch->screen->devinfo.max_wm_threads - 1;
+#endif
 
          ps.PushConstantEnable = prog_data->ubo_ranges[0].length > 0;
 
+#if GFX_VER < 8
          ps.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
          ps.DualSourceBlendEnable = wm_prog_data->dual_src_blend && ice->state.cso_blend->dual_color_blending;
          ps.AttributeEnable = (wm_prog_data->num_varying_inputs != 0);
+#endif
          /* From the documentation for this packet:
           * "If the PS kernel does not need the Position XY Offsets to
           *  compute a Position Value, then this field should be programmed
@@ -6424,6 +6437,57 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             ps.ScratchSpaceBasePointer = rw_bo(bo, 0);
          }
       }
+#if GFX_VER == 8
+      const struct shader_info *fs_info =
+         crocus_get_shader_info(ice, MESA_SHADER_FRAGMENT);
+      crocus_emit_cmd(batch, GENX(3DSTATE_PS_EXTRA), psx) {
+         psx.PixelShaderValid = true;
+         psx.PixelShaderComputedDepthMode = wm_prog_data->computed_depth_mode;
+         psx.PixelShaderKillsPixel = wm_prog_data->uses_kill;
+         psx.AttributeEnable = wm_prog_data->num_varying_inputs != 0;
+         psx.PixelShaderUsesSourceDepth = wm_prog_data->uses_src_depth;
+         psx.PixelShaderUsesSourceW = wm_prog_data->uses_src_w;
+         psx.PixelShaderIsPerSample = wm_prog_data->persample_dispatch;
+
+         /* _NEW_MULTISAMPLE | BRW_NEW_CONSERVATIVE_RASTERIZATION */
+         if (wm_prog_data->uses_sample_mask)
+            psx.PixelShaderUsesInputCoverageMask = true;
+
+         psx.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
+
+         /* The stricter cross-primitive coherency guarantees that the hardware
+          * gives us with the "Accesses UAV" bit set for at least one shader stage
+          * and the "UAV coherency required" bit set on the 3DPRIMITIVE command
+          * are redundant within the current image, atomic counter and SSBO GL
+          * APIs, which all have very loose ordering and coherency requirements
+          * and generally rely on the application to insert explicit barriers when
+          * a shader invocation is expected to see the memory writes performed by
+          * the invocations of some previous primitive.  Regardless of the value
+          * of "UAV coherency required", the "Accesses UAV" bits will implicitly
+          * cause an in most cases useless DC flush when the lowermost stage with
+          * the bit set finishes execution.
+          *
+          * It would be nice to disable it, but in some cases we can't because on
+          * Gfx8+ it also has an influence on rasterization via the PS UAV-only
+          * signal (which could be set independently from the coherency mechanism
+          * in the 3DSTATE_WM command on Gfx7), and because in some cases it will
+          * determine whether the hardware skips execution of the fragment shader
+          * or not via the ThreadDispatchEnable signal.  However if we know that
+          * GFX8_PS_BLEND_HAS_WRITEABLE_RT is going to be set and
+          * GFX8_PSX_PIXEL_SHADER_NO_RT_WRITE is not set it shouldn't make any
+          * difference so we may just disable it here.
+          *
+          * Gfx8 hardware tries to compute ThreadDispatchEnable for us but doesn't
+          * take into account KillPixels when no depth or stencil writes are
+          * enabled.  In order for occlusion queries to work correctly with no
+          * attachments, we need to force-enable here.
+          *
+          */
+         if ((wm_prog_data->has_side_effects || wm_prog_data->uses_kill) &&
+             !(has_writeable_rt(ice->state.cso_blend, fs_info)))
+            psx.PixelShaderHasUAV = true;
+      }
+#endif
    }
 #endif
 
@@ -6967,7 +7031,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          sf.NumberofSFOutputAttributes = wm_prog_data->num_varying_inputs;
 #endif
 
-#if GFX_VER >= 6
+#if GFX_VER >= 6 && GFX_VER < 8
          if (ice->state.framebuffer.samples > 1 && ice->state.cso_rast->cso.multisample)
             sf.MultisampleRasterizationMode = MSRASTMODE_ON_PATTERN;
 #endif
@@ -7126,6 +7190,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          wm.MaximumNumberofThreads = batch->screen->devinfo.max_wm_threads - 1;
 #endif
 
+#if GFX_VER < 8
 #if GFX_VER >= 6
          wm.PixelShaderUsesSourceW = wm_prog_data->uses_src_w;
 
@@ -7187,13 +7252,18 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
              wm_prog_data->has_side_effects)
             wm.PSUAVonly = ON;
 #endif
-
+#endif
 #if GFX_VER >= 7
       /* BRW_NEW_FS_PROG_DATA */
          if (wm_prog_data->early_fragment_tests)
            wm.EarlyDepthStencilControl = EDSC_PREPS;
          else if (wm_prog_data->has_side_effects)
            wm.EarlyDepthStencilControl = EDSC_PSEXEC;
+#endif
+#if GFX_VER == 8
+         /* We could skip this bit if color writes are enabled. */
+         if (wm_prog_data->has_side_effects || wm_prog_data->uses_kill)
+            wm.ForceThreadDispatchEnable = ForceON;
 #endif
       };
 
