@@ -2603,3 +2603,56 @@ wsi_get_swapchain_counter(VkDevice device,
    return VK_SUCCESS;
 }
 
+VkResult
+wsi_acquire_drm_display(VkPhysicalDevice     pDevice,
+                        struct wsi_device    *wsi_device,
+                        int                  drm_fd,
+                        VkDisplayKHR         display)
+{
+   if (!wsi_device_matches_drm_fd(wsi_device, drm_fd))
+      return VK_ERROR_UNKNOWN;
+
+   struct wsi_display *wsi =
+      (struct wsi_display *) wsi_device->wsi[VK_ICD_WSI_PLATFORM_DISPLAY];
+
+   /* XXX no support for mulitple leases yet */
+   if (wsi->fd >= 0 || !local_drmIsMaster(drm_fd))
+      return VK_ERROR_INITIALIZATION_FAILED;
+
+   struct wsi_display_connector *connector =
+         wsi_display_connector_from_handle(display);
+
+   drmModeConnectorPtr drm_connector =
+         drmModeGetConnectorCurrent(drm_fd, connector->id);
+
+   if (!drm_connector)
+      return VK_ERROR_INITIALIZATION_FAILED;
+
+   drmModeFreeConnector(drm_connector);
+
+   wsi->fd = drm_fd;
+   return VK_SUCCESS;
+}
+
+VkResult
+wsi_get_drm_display(VkPhysicalDevice      pDevice,
+                    struct wsi_device     *wsi_device,
+                    int                   drm_fd,
+                    int                   connector_id,
+                    VkDisplayKHR          *display)
+{
+   if (!wsi_device_matches_drm_fd(wsi_device, drm_fd))
+      return VK_ERROR_UNKNOWN;
+
+   struct wsi_display_connector *connector =
+      wsi_display_get_connector(wsi_device, drm_fd, connector_id);
+
+   if (!connector) {
+      *display = VK_NULL_HANDLE;
+      return VK_ERROR_UNKNOWN;
+   }
+
+   *display = wsi_display_connector_to_handle(connector);
+   return VK_SUCCESS;
+}
+
