@@ -7744,7 +7744,25 @@ crocus_emit_raw_pipe_control(struct crocus_batch *batch,
       crocus_emit_post_sync_nonzero_flush(batch);
    }
 
-   if (!(GFX_VERx10 == 75) && (flags & PIPE_CONTROL_DEPTH_STALL)) {
+#if GFX_VER == 8
+   if (flags & PIPE_CONTROL_VF_CACHE_INVALIDATE) {
+      /* Project: BDW, SKL+ (stopping at CNL) / Argument: VF Invalidate
+       *
+       * "'Post Sync Operation' must be enabled to 'Write Immediate Data' or
+       *  'Write PS Depth Count' or 'Write Timestamp'."
+       */
+      if (!bo) {
+         flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
+         post_sync_flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
+         non_lri_post_sync_flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
+         bo = batch->ice->workaround_bo;
+         offset = batch->ice->workaround_offset;
+      }
+   }
+#endif
+
+#if GFX_VERx10 < 75
+   if (flags & PIPE_CONTROL_DEPTH_STALL) {
       /* Project: PRE-HSW / Argument: Depth Stall
        *
        * "The following bits must be clear:
@@ -7754,7 +7772,7 @@ crocus_emit_raw_pipe_control(struct crocus_batch *batch,
       assert(!(flags & (PIPE_CONTROL_RENDER_TARGET_FLUSH |
                         PIPE_CONTROL_DEPTH_CACHE_FLUSH)));
    }
-
+#endif
    if (GFX_VER >= 6 && (flags & PIPE_CONTROL_DEPTH_STALL)) {
       /* From the PIPE_CONTROL instruction table, bit 13 (Depth Stall Enable):
        *
@@ -7771,7 +7789,7 @@ crocus_emit_raw_pipe_control(struct crocus_batch *batch,
        */
    }
 
-   if (!(GFX_VERx10 == 75) && (flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH)) {
+   if (GFX_VERx10 < 75 && (flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH)) {
       /* Project: PRE-HSW / Argument: Depth Cache Flush
        *
        * "Depth Stall must be clear ([13] of DW1)."
@@ -7812,7 +7830,7 @@ crocus_emit_raw_pipe_control(struct crocus_batch *batch,
 
    /* PIPE_CONTROL page workarounds ------------------------------------- */
 
-   if (GFX_VER == 7 && (flags & PIPE_CONTROL_STATE_CACHE_INVALIDATE)) {
+   if (GFX_VER >= 7 && (flags & PIPE_CONTROL_STATE_CACHE_INVALIDATE)) {
       /* From the PIPE_CONTROL page itself:
        *
        *    "IVB, HSW, BDW
@@ -7905,7 +7923,7 @@ crocus_emit_raw_pipe_control(struct crocus_batch *batch,
       assert(non_lri_post_sync_flags != 0);
    }
 
-   if (GFX_VER >= 6 && (flags & PIPE_CONTROL_TLB_INVALIDATE)) {
+   if (GFX_VER >= 6 && GFX_VER < 8 && (flags & PIPE_CONTROL_TLB_INVALIDATE)) {
       /* Project: SNB, IVB, HSW / Argument: TLB inv
        *
        * "{All SKUs}{All Steppings}: Post-Sync Operation ([15:14] of DW1)
@@ -7932,7 +7950,51 @@ crocus_emit_raw_pipe_control(struct crocus_batch *batch,
        */
       flags |= PIPE_CONTROL_CS_STALL;
    }
+#if GFX_VER == 8
+   if (IS_COMPUTE_PIPELINE(batch)) {
+      if (post_sync_flags ||
+          (flags & (PIPE_CONTROL_NOTIFY_ENABLE |
+                    PIPE_CONTROL_DEPTH_STALL |
+                    PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                    PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                    PIPE_CONTROL_DATA_CACHE_FLUSH))) {
+         /* Project: BDW / Arguments:
+          *
+          * - LRI Post Sync Operation   [23]
+          * - Post Sync Op              [15:14]
+          * - Notify En                 [8]
+          * - Depth Stall               [13]
+          * - Render Target Cache Flush [12]
+          * - Depth Cache Flush         [0]
+          * - DC Flush Enable           [5]
+          *
+          *    "Requires stall bit ([20] of DW) set for all GPGPU and Media
+          *     Workloads."
+          *
+          * (The docs have separate table rows for each bit, with essentially
+          * the same workaround text.  We've combined them here.)
+          */
+         flags |= PIPE_CONTROL_CS_STALL;
 
+         /* Also, from the PIPE_CONTROL instruction table, bit 20:
+          *
+          *    "Project: BDW
+          *     This bit must be always set when PIPE_CONTROL command is
+          *     programmed by GPGPU and MEDIA workloads, except for the cases
+          *     when only Read Only Cache Invalidation bits are set (State
+          *     Cache Invalidation Enable, Instruction cache Invalidation
+          *     Enable, Texture Cache Invalidation Enable, Constant Cache
+          *     Invalidation Enable). This is to WA FFDOP CG issue, this WA
+          *     need not implemented when FF_DOP_CG is disable via "Fixed
+          *     Function DOP Clock Gate Disable" bit in RC_PSMI_CTRL register."
+          *
+          * It sounds like we could avoid CS stalls in some cases, but we
+          * don't currently bother.  This list isn't exactly the list above,
+          * either...
+          */
+      }
+   }
+#endif
    /* Implement the WaCsStallAtEveryFourthPipecontrol workaround on IVB, BYT:
     *
     * "Every 4th PIPE_CONTROL command, not counting the PIPE_CONTROL with
