@@ -115,6 +115,7 @@ enum {
 #define CROCUS_DIRTY_GEN8_VF_TOPOLOGY         (1ull << 37)
 #define CROCUS_DIRTY_GEN8_PMA_FIX             (1ull << 38)
 #define CROCUS_DIRTY_GEN8_VF_SGVS             (1ull << 39)
+#define CROCUS_DIRTY_GEN8_PS_BLEND            (1ull << 40)
 
 #define CROCUS_ALL_DIRTY_FOR_COMPUTE (CROCUS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES)
 

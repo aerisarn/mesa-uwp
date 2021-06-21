@@ -3137,8 +3137,12 @@ crocus_bind_fs_state(struct pipe_context *ctx, void *state)
    /* Fragment shader outputs influence HasWriteableRT */
    if (!old_ish || !new_ish ||
        (old_ish->nir->info.outputs_written & color_bits) !=
-       (new_ish->nir->info.outputs_written & color_bits))
-      ice->state.dirty |= CROCUS_DIRTY_WM;
+       (new_ish->nir->info.outputs_written & color_bits)) {
+      if (devinfo->ver == 8)
+         ice->state.dirty |= CROCUS_DIRTY_GEN8_PS_BLEND;
+      else
+         ice->state.dirty |= CROCUS_DIRTY_WM;
+   }
 
    if (devinfo->ver == 8)
       ice->state.dirty |= CROCUS_DIRTY_GEN8_PMA_FIX;

@@ -1460,6 +1460,11 @@ crocus_set_blend_color(struct pipe_context *ctx,
  * Gallium CSO for blend state (see pipe_blend_state).
  */
 struct crocus_blend_state {
+#if GFX_VER == 8
+   /** Partial 3DSTATE_PS_BLEND */
+   uint32_t ps_blend[GENX(3DSTATE_PS_BLEND_length)];
+#endif
+
    /** copy of BLEND_STATE */
    struct pipe_blend_state cso;
 
@@ -1571,6 +1576,10 @@ crocus_create_blend_state(struct pipe_context *ctx,
 
    cso->cso = *state;
    cso->dual_color_blending = util_blend_state_is_dual(state, 0);
+
+#if GFX_VER == 8
+   bool indep_alpha_blend = false;
+#endif
    for (int i = 0; i < BRW_MAX_DRAW_BUFFERS; i++) {
       const struct pipe_rt_blend_state *rt =
          &state->rt[state->independent_blend_enable ? i : 0];
@@ -1578,7 +1587,45 @@ crocus_create_blend_state(struct pipe_context *ctx,
          cso->blend_enables |= 1u << i;
       if (rt->colormask)
          cso->color_write_enables |= 1u << i;
+#if GFX_VER == 8
+      enum pipe_blendfactor src_rgb =
+         fix_blendfactor(rt->rgb_src_factor, state->alpha_to_one);
+      enum pipe_blendfactor src_alpha =
+         fix_blendfactor(rt->alpha_src_factor, state->alpha_to_one);
+      enum pipe_blendfactor dst_rgb =
+         fix_blendfactor(rt->rgb_dst_factor, state->alpha_to_one);
+      enum pipe_blendfactor dst_alpha =
+         fix_blendfactor(rt->alpha_dst_factor, state->alpha_to_one);
+
+      if (rt->rgb_func != rt->alpha_func ||
+          src_rgb != src_alpha || dst_rgb != dst_alpha)
+         indep_alpha_blend = true;
+#endif
    }
+
+#if GFX_VER == 8
+   crocus_pack_command(GENX(3DSTATE_PS_BLEND), cso->ps_blend, pb) {
+      /* pb.HasWriteableRT is filled in at draw time.
+       * pb.AlphaTestEnable is filled in at draw time.
+       *
+       * pb.ColorBufferBlendEnable is filled in at draw time so we can avoid
+       * setting it when dual color blending without an appropriate shader.
+       */
+
+      pb.AlphaToCoverageEnable = state->alpha_to_coverage;
+      pb.IndependentAlphaBlendEnable = indep_alpha_blend;
+
+      /* The casts prevent warnings about implicit enum type conversions. */
+      pb.SourceBlendFactor =
+         (int) fix_blendfactor(state->rt[0].rgb_src_factor, state->alpha_to_one);
+      pb.SourceAlphaBlendFactor =
+         (int) fix_blendfactor(state->rt[0].alpha_src_factor, state->alpha_to_one);
+      pb.DestinationBlendFactor =
+         (int) fix_blendfactor(state->rt[0].rgb_dst_factor, state->alpha_to_one);
+      pb.DestinationAlphaBlendFactor =
+         (int) fix_blendfactor(state->rt[0].alpha_dst_factor, state->alpha_to_one);
+   }
+#endif
    return cso;
 }
 
@@ -1606,6 +1653,7 @@ crocus_bind_blend_state(struct pipe_context *ctx, void *state)
 #endif
 #if GFX_VER == 8
    ice->state.dirty |= CROCUS_DIRTY_GEN8_PMA_FIX;
+   ice->state.dirty |= CROCUS_DIRTY_GEN8_PS_BLEND;
 #endif
    ice->state.dirty |= CROCUS_DIRTY_COLOR_CALC_STATE;
    ice->state.dirty |= CROCUS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
@@ -1692,6 +1740,10 @@ crocus_bind_zsa_state(struct pipe_context *ctx, void *state)
 
       if (cso_changed(cso.alpha_func))
          ice->state.dirty |= CROCUS_DIRTY_GEN6_BLEND_STATE;
+#endif
+#if GFX_VER == 8
+      if (cso_changed(cso.alpha_enabled))
+         ice->state.dirty |= CROCUS_DIRTY_GEN8_PS_BLEND;
 #endif
 
       if (cso_changed(depth_writes_enabled))
@@ -7048,6 +7100,26 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
 #if GFX_VER >= 7
    if (dirty & CROCUS_DIRTY_GEN7_SBE) {
       crocus_emit_sbe(batch, ice);
+   }
+#endif
+
+#if GFX_VER >= 8
+   if (dirty & CROCUS_DIRTY_GEN8_PS_BLEND) {
+      struct crocus_compiled_shader *shader = ice->shaders.prog[MESA_SHADER_FRAGMENT];
+      struct crocus_blend_state *cso_blend = ice->state.cso_blend;
+      struct crocus_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
+      struct brw_wm_prog_data *wm_prog_data = (void *) shader->prog_data;
+      const struct shader_info *fs_info =
+         crocus_get_shader_info(ice, MESA_SHADER_FRAGMENT);
+      uint32_t dynamic_pb[GENX(3DSTATE_PS_BLEND_length)];
+      crocus_pack_command(GENX(3DSTATE_PS_BLEND), &dynamic_pb, pb) {
+         pb.HasWriteableRT = has_writeable_rt(cso_blend, fs_info);
+         pb.AlphaTestEnable = cso_zsa->cso.alpha_enabled;
+         pb.ColorBufferBlendEnable = (cso_blend->blend_enables & 1) &&
+            (!cso_blend->dual_color_blending || wm_prog_data->dual_src_blend);
+      }
+      crocus_emit_merge(batch, cso_blend->ps_blend, dynamic_pb,
+                        ARRAY_SIZE(cso_blend->ps_blend));
    }
 #endif
 
