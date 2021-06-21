@@ -1044,7 +1044,7 @@ emit:
 }
 #endif
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
 
 #define IVB_L3SQCREG1_SQGHPCI_DEFAULT     0x00730000
 #define VLV_L3SQCREG1_SQGHPCI_DEFAULT     0x00d30000
@@ -1053,6 +1053,7 @@ emit:
 static void
 setup_l3_config(struct crocus_batch *batch, const struct intel_l3_config *cfg)
 {
+#if GFX_VER == 7
    const struct intel_device_info *devinfo = &batch->screen->devinfo;
    const bool has_dc = cfg->n[INTEL_L3P_DC] || cfg->n[INTEL_L3P_ALL];
    const bool has_is = cfg->n[INTEL_L3P_IS] || cfg->n[INTEL_L3P_RO] ||
@@ -1062,6 +1063,7 @@ setup_l3_config(struct crocus_batch *batch, const struct intel_l3_config *cfg)
    const bool has_t = cfg->n[INTEL_L3P_T] || cfg->n[INTEL_L3P_RO] ||
                       cfg->n[INTEL_L3P_ALL];
    const bool has_slm = cfg->n[INTEL_L3P_SLM];
+#endif
 
    /* According to the hardware docs, the L3 partitioning can only be changed
     * while the pipeline is completely drained and the caches are flushed,
@@ -1098,7 +1100,16 @@ setup_l3_config(struct crocus_batch *batch, const struct intel_l3_config *cfg)
                                   PIPE_CONTROL_DATA_CACHE_FLUSH |
                                   PIPE_CONTROL_CS_STALL);
 
-
+#if GFX_VER == 8
+   assert(!cfg->n[INTEL_L3P_IS] && !cfg->n[INTEL_L3P_C] && !cfg->n[INTEL_L3P_T]);
+   crocus_emit_reg(batch, GENX(L3CNTLREG), reg) {
+      reg.SLMEnable = cfg->n[INTEL_L3P_SLM] > 0;
+      reg.URBAllocation = cfg->n[INTEL_L3P_URB];
+      reg.ROAllocation = cfg->n[INTEL_L3P_RO];
+      reg.DCAllocation = cfg->n[INTEL_L3P_DC];
+      reg.AllAllocation = cfg->n[INTEL_L3P_ALL];
+   }
+#else
    assert(!cfg->n[INTEL_L3P_ALL]);
 
    /* When enabled SLM only uses a portion of the L3 on half of the banks,
@@ -1166,6 +1177,7 @@ setup_l3_config(struct crocus_batch *batch, const struct intel_l3_config *cfg)
    }
    crocus_emit_lri(batch, SCRATCH1, scratch1);
    crocus_emit_lri(batch, CHICKEN3, chicken3);
+#endif
 #endif
 }
 
@@ -1339,7 +1351,7 @@ crocus_init_render_context(struct crocus_batch *batch)
 
    crocus_emit_cmd(batch, GENX(STATE_SIP), foo);
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
    emit_l3_state(batch, false);
 #endif
 #if (GFX_VERx10 == 70 || GFX_VERx10 == 80)
@@ -1370,7 +1382,7 @@ crocus_init_compute_context(struct crocus_batch *batch)
 
    emit_pipeline_select(batch, GPGPU);
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
    emit_l3_state(batch, true);
 #endif
 }
