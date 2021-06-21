@@ -446,26 +446,20 @@ tu_drm_device_init(struct tu_physical_device *device,
    device->local_fd = fd;
 
    if (tu_drm_get_gpu_id(device, &device->gpu_id)) {
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         mesa_logi("Could not query the GPU ID");
-      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                         "could not get GPU ID");
+      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                                 "could not get GPU ID");
       goto fail;
    }
 
    if (tu_drm_get_gmem_size(device, &device->gmem_size)) {
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         mesa_logi("Could not query the GMEM size");
-      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                         "could not get GMEM size");
+      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                                "could not get GMEM size");
       goto fail;
    }
 
    if (tu_drm_get_gmem_base(device, &device->gmem_base)) {
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         mesa_logi("Could not query the GMEM size");
-      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                         "could not get GMEM size");
+      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                                 "could not get GMEM size");
       goto fail;
    }
 

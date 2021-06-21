@@ -1438,17 +1438,23 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    /* Initialize a condition variable for timeline semaphore */
    pthread_condattr_t condattr;
    if (pthread_condattr_init(&condattr) != 0) {
-      result = VK_ERROR_INITIALIZATION_FAILED;
+      result = vk_startup_errorf(physical_device->instance,
+                                 VK_ERROR_INITIALIZATION_FAILED,
+                                 "pthread condattr init");
       goto fail_timeline_cond;
    }
    if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0) {
       pthread_condattr_destroy(&condattr);
-      result = VK_ERROR_INITIALIZATION_FAILED;
+      result = vk_startup_errorf(physical_device->instance,
+                                 VK_ERROR_INITIALIZATION_FAILED,
+                                 "pthread condattr clock setup");
       goto fail_timeline_cond;
    }
    if (pthread_cond_init(&device->timeline_cond, &condattr) != 0) {
       pthread_condattr_destroy(&condattr);
-      result = VK_ERROR_INITIALIZATION_FAILED;
+      result = vk_startup_errorf(physical_device->instance,
+                                 VK_ERROR_INITIALIZATION_FAILED,
+                                 "pthread cond init");
       goto fail_timeline_cond;
    }
    pthread_condattr_destroy(&condattr);
