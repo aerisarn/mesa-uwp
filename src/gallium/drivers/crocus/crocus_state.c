@@ -646,6 +646,9 @@ struct crocus_rasterizer_state {
    uint32_t sf[GENX(3DSTATE_SF_length)];
    uint32_t clip[GENX(3DSTATE_CLIP_length)];
 #endif
+#if GFX_VER >= 8
+   uint32_t raster[GENX(3DSTATE_RASTER_length)];
+#endif
    uint32_t line_stipple[GENX(3DSTATE_LINE_STIPPLE_length)];
 
    uint8_t num_clip_plane_consts;
@@ -2000,7 +2003,15 @@ crocus_create_rasterizer_state(struct pipe_context *ctx,
       sf.LineEndCapAntialiasingRegionWidth =
          state->line_smooth ? _10pixels : _05pixels;
       sf.LastPixelEnable = state->line_last_pixel;
+#if GFX_VER == 8
+      struct crocus_screen *screen = (struct crocus_screen *)ctx->screen;
+      if (screen->devinfo.is_cherryview)
+         sf.CHVLineWidth = line_width;
+      else
+         sf.LineWidth = line_width;
+#else
       sf.LineWidth = line_width;
+#endif
       sf.PointWidthSource = state->point_size_per_vertex ? Vertex : State;
       sf.PointWidth = state->point_size;
 
@@ -2012,11 +2023,6 @@ crocus_create_rasterizer_state(struct pipe_context *ctx,
          sf.LineStripListProvokingVertexSelect = 1;
       }
 
-      sf.FrontWinding = state->front_ccw ? 1 : 0; // Or the other way...
-      sf.CullMode = translate_cull_mode(state->cull_face);
-
-      sf.ScissorRectangleEnable = true;
-
 #if GFX_VER == 6
       sf.AttributeSwizzleEnable = true;
       if (state->sprite_coord_mode == PIPE_SPRITE_COORD_LOWER_LEFT)
@@ -2024,6 +2030,9 @@ crocus_create_rasterizer_state(struct pipe_context *ctx,
       else
          sf.PointSpriteTextureCoordinateOrigin = UPPERLEFT;
 #endif
+
+#if GFX_VER <= 7
+      sf.FrontWinding = state->front_ccw ? 1 : 0; // Or the other way...
 
 #if GFX_VER >= 6
       sf.GlobalDepthOffsetEnableSolid = state->offset_tri;
@@ -2037,9 +2046,33 @@ crocus_create_rasterizer_state(struct pipe_context *ctx,
       sf.BackFaceFillMode = translate_fill_mode(state->fill_back);
 #endif
 
+      sf.CullMode = translate_cull_mode(state->cull_face);
+      sf.ScissorRectangleEnable = true;
+
 #if GFX_VERx10 == 75
       sf.LineStippleEnable = state->line_stipple_enable;
 #endif
+#endif
+   }
+#endif
+
+#if GFX_VER == 8
+   crocus_pack_command(GENX(3DSTATE_RASTER), cso->raster, rr) {
+      rr.FrontWinding = state->front_ccw ? CounterClockwise : Clockwise;
+      rr.CullMode = translate_cull_mode(state->cull_face);
+      rr.FrontFaceFillMode = translate_fill_mode(state->fill_front);
+      rr.BackFaceFillMode = translate_fill_mode(state->fill_back);
+      rr.DXMultisampleRasterizationEnable = state->multisample;
+      rr.GlobalDepthOffsetEnableSolid = state->offset_tri;
+      rr.GlobalDepthOffsetEnableWireframe = state->offset_line;
+      rr.GlobalDepthOffsetEnablePoint = state->offset_point;
+      rr.GlobalDepthOffsetConstant = state->offset_units * 2;
+      rr.GlobalDepthOffsetScale = state->offset_scale;
+      rr.GlobalDepthOffsetClamp = state->offset_clamp;
+      rr.SmoothPointEnable = state->point_smooth;
+      rr.AntialiasingEnable = state->line_smooth;
+      rr.ScissorRectangleEnable = state->scissor;
+      rr.ViewportZClipTestEnable = (state->depth_clip_near || state->depth_clip_far);
    }
 #endif
 
@@ -2057,12 +2090,18 @@ crocus_create_rasterizer_state(struct pipe_context *ctx,
       cl.CullMode = translate_cull_mode(state->cull_face);
 #endif
       cl.UserClipDistanceClipTestEnableBitmask = state->clip_plane_enable;
+#if GFX_VER < 8
+      cl.ViewportZClipTestEnable = (state->depth_clip_near || state->depth_clip_far);
+#endif
       cl.APIMode = state->clip_halfz ? APIMODE_D3D : APIMODE_OGL;
       cl.GuardbandClipTestEnable = true;
       cl.ClipEnable = true;
       cl.MinimumPointWidth = 0.125;
       cl.MaximumPointWidth = 255.875;
-      cl.ViewportZClipTestEnable = (state->depth_clip_near || state->depth_clip_far);
+
+#if GFX_VER == 8
+      cl.ForceUserClipDistanceClipTestEnableBitmask = true;
+#endif
 
       if (state->flatshade_first) {
          cl.TriangleFanProvokingVertexSelect = 1;
@@ -6888,6 +6927,9 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
       }
       crocus_emit_merge(batch, cso->sf, dynamic_sf,
                       ARRAY_SIZE(dynamic_sf));
+#if GFX_VER == 8
+      crocus_batch_emit(batch, cso->raster, sizeof(cso->raster));
+#endif
 #endif
    }
 
