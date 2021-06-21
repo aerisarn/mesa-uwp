@@ -1344,6 +1344,8 @@ crocus_update_compiled_vs(struct crocus_context *ice)
 
    if (old != shader) {
       ice->shaders.prog[CROCUS_CACHE_VS] = shader;
+      if (devinfo->ver == 8)
+         ice->state.dirty |= CROCUS_DIRTY_GEN8_VF_SGVS;
       ice->state.stage_dirty |= CROCUS_STAGE_DIRTY_VS |
                                 CROCUS_STAGE_DIRTY_BINDINGS_VS |
                                 CROCUS_STAGE_DIRTY_CONSTANTS_VS;

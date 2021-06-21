@@ -248,8 +248,11 @@ crocus_update_draw_parameters(struct crocus_context *ice,
    }
 
    if (changed) {
+      struct crocus_screen *screen = (struct crocus_screen *)ice->ctx.screen;
       ice->state.dirty |= CROCUS_DIRTY_VERTEX_BUFFERS |
                           CROCUS_DIRTY_VERTEX_ELEMENTS;
+      if (screen->devinfo.ver == 8)
+         ice->state.dirty |= CROCUS_DIRTY_GEN8_VF_SGVS;
    }
 }
 

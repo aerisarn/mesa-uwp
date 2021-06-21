@@ -3769,7 +3769,13 @@ static void
 crocus_bind_vertex_elements_state(struct pipe_context *ctx, void *state)
 {
    struct crocus_context *ice = (struct crocus_context *) ctx;
+#if GFX_VER == 8
+   struct crocus_vertex_element_state *old_cso = ice->state.cso_vertex_elements;
+   struct crocus_vertex_element_state *new_cso = state;
 
+   if (new_cso && cso_changed(count))
+      ice->state.dirty |= CROCUS_DIRTY_GEN8_VF_SGVS;
+#endif
    ice->state.cso_vertex_elements = state;
    ice->state.dirty |= CROCUS_DIRTY_VERTEX_ELEMENTS | CROCUS_DIRTY_VERTEX_BUFFERS;
    ice->state.stage_dirty |= ice->state.stage_dirty_for_nos[CROCUS_NOS_VERTEX_ELEMENTS];
@@ -7377,6 +7383,29 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
 #endif
    }
 
+#if GFX_VER == 8
+   if (dirty & CROCUS_DIRTY_GEN8_VF_SGVS) {
+      const struct brw_vs_prog_data *vs_prog_data = (void *)
+         ice->shaders.prog[MESA_SHADER_VERTEX]->prog_data;
+      struct crocus_vertex_element_state *cso = ice->state.cso_vertex_elements;
+
+      crocus_emit_cmd(batch, GENX(3DSTATE_VF_SGVS), sgv) {
+         if (vs_prog_data->uses_vertexid) {
+            sgv.VertexIDEnable = true;
+            sgv.VertexIDComponentNumber = 2;
+            sgv.VertexIDElementOffset =
+               cso->count - ice->state.vs_needs_edge_flag;
+         }
+
+         if (vs_prog_data->uses_instanceid) {
+            sgv.InstanceIDEnable = true;
+            sgv.InstanceIDComponentNumber = 3;
+            sgv.InstanceIDElementOffset =
+               cso->count - ice->state.vs_needs_edge_flag;
+         }
+      }
+   }
+#endif
 #if GFX_VERx10 >= 75
    if (dirty & CROCUS_DIRTY_GEN75_VF) {
       crocus_emit_cmd(batch, GENX(3DSTATE_VF), vf) {
