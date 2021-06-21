@@ -2076,7 +2076,11 @@ crocus_upload_sampler_state(struct crocus_batch *batch,
 
       const float hw_max_lod = GFX_VER >= 7 ? 14 : 13;
 
+#if GFX_VER == 8
+      samp.LODPreClampMode = CLAMP_MODE_OGL;
+#else
       samp.LODPreClampEnable = true;
+#endif
       samp.MinLOD = CLAMP(cso->min_lod, 0, hw_max_lod);
       samp.MaxLOD = CLAMP(state->max_lod, 0, hw_max_lod);
       samp.TextureLODBias = CLAMP(state->lod_bias, -16, 15);
@@ -2132,7 +2136,7 @@ crocus_upload_border_color(struct crocus_batch *batch,
    }
    bool is_integer_format = util_format_is_pure_integer(internal_format);
    unsigned sbc_size = GENX(SAMPLER_BORDER_COLOR_STATE_length) * 4;
-   const int sbc_align = (GFX_VERx10 == 75 && is_integer_format) ? 512 : 32;
+   const int sbc_align = (GFX_VER == 8 ? 64 : ((GFX_VERx10 == 75 && is_integer_format) ? 512 : 32));
    uint32_t *sbc = stream_state(batch, sbc_size, sbc_align, bc_offset);
 
    struct GENX(SAMPLER_BORDER_COLOR_STATE) state = { 0 };
@@ -2158,7 +2162,14 @@ crocus_upload_border_color(struct crocus_batch *batch,
    macro(state.BorderColor ## _color_type ## Blue, src[2]);     \
    macro(state.BorderColor ## _color_type ## Alpha, src[3]);
 
-#if GFX_VERx10 == 75
+#if GFX_VER >= 8
+   /* On Broadwell, the border color is represented as four 32-bit floats,
+    * integers, or unsigned values, interpreted according to the surface
+    * format.  This matches the sampler->BorderColor union exactly; just
+    * memcpy the values.
+    */
+   BORDER_COLOR_ATTR(ASSIGN, 32bit, color->ui);
+#elif GFX_VERx10 == 75
    if (is_integer_format) {
       const struct util_format_description *format_desc =
          util_format_description(internal_format);
