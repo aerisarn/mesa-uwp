@@ -163,7 +163,7 @@ crocus_populate_sampler_prog_key_data(struct crocus_context *ice,
          continue;
       if (texture->base.target == PIPE_BUFFER)
          continue;
-      if (!devinfo->is_haswell) {
+      if (devinfo->verx10 < 75) {
          key->swizzles[s] = crocus_get_texture_swizzle(ice, texture);
       }
 
@@ -196,7 +196,7 @@ crocus_populate_sampler_prog_key_data(struct crocus_context *ice,
              * request blue.  Haswell can use SCS for this, but Ivybridge
              * needs a shader workaround.
              */
-            if (!devinfo->is_haswell)
+            if (devinfo->verx10 < 75)
                key->gather_channel_quirk_mask |= 1 << s;
             break;
          default:
@@ -1009,7 +1009,7 @@ crocus_setup_binding_table(const struct intel_device_info *devinfo,
 
             /* rewrite the tg4 component from green to blue before replacing the
                texture index */
-            if (devinfo->ver == 7 && !devinfo->is_haswell) {
+            if (devinfo->verx10 == 70) {
                if (tex->component == 1)
                   if (key->gather_channel_quirk_mask & (1 << tex->texture_index))
                      tex->component = 2;
@@ -2793,7 +2793,7 @@ crocus_create_vs_state(struct pipe_context *ctx,
        screen->devinfo.ver <= 5)
       ish->nos |= (1ull << CROCUS_NOS_RASTERIZER);
 
-   if (!screen->devinfo.is_haswell)
+   if (screen->devinfo.verx10 < 75)
       ish->nos |= (1ull << CROCUS_NOS_VERTEX_ELEMENTS);
 
    if (screen->precompile) {

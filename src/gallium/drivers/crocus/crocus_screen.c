@@ -239,7 +239,7 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return devinfo->ver >= 7;
    case PIPE_CAP_QUERY_BUFFER_OBJECT:
    case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
-      return devinfo->is_haswell;
+      return devinfo->verx10 >= 75;
    case PIPE_CAP_CULL_DISTANCE:
    case PIPE_CAP_QUERY_PIPELINE_STATISTICS_SINGLE:
    case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
@@ -283,7 +283,7 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
       return BRW_MAX_SOL_BINDINGS;
    case PIPE_CAP_GLSL_FEATURE_LEVEL: {
-      if (devinfo->is_haswell)
+      if (devinfo->verx10 >= 75)
          return 460;
       else if (devinfo->ver >= 7)
          return 420;
@@ -507,7 +507,7 @@ crocus_get_shader_param(struct pipe_screen *pscreen,
       return 0;
    case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
    case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
-      return devinfo->is_haswell ? CROCUS_MAX_TEXTURE_SAMPLERS : 16;
+      return (devinfo->verx10 >= 75) ? CROCUS_MAX_TEXTURE_SAMPLERS : 16;
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
       if (devinfo->ver >= 7 &&
           (p_stage == PIPE_SHADER_FRAGMENT ||

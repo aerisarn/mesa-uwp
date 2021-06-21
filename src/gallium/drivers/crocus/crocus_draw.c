@@ -82,7 +82,7 @@ can_cut_index_handle_prim(struct crocus_context *ice,
    const struct intel_device_info *devinfo = &screen->devinfo;
 
    /* Haswell can do it all. */
-   if (devinfo->is_haswell)
+   if (devinfo->verx10 >= 75)
       return true;
 
    if (!can_cut_index_handle_restart_index(ice, draw))
@@ -176,7 +176,7 @@ crocus_update_draw_info(struct crocus_context *ice,
                                                         ice->state.cut_index;
    if (ice->state.primitive_restart != info->primitive_restart ||
        ice->state.cut_index != cut_index) {
-      if (screen->devinfo.is_haswell)
+      if (screen->devinfo.verx10 >= 75)
          ice->state.dirty |= CROCUS_DIRTY_GEN75_VF;
       ice->state.primitive_restart = info->primitive_restart;
       ice->state.cut_index = info->restart_index;
@@ -261,7 +261,7 @@ crocus_indirect_draw_vbo(struct crocus_context *ice,
    struct pipe_draw_indirect_info indirect = *dindirect;
    const struct intel_device_info *devinfo = &batch->screen->devinfo;
 
-   if (devinfo->is_haswell && indirect.indirect_draw_count &&
+   if (devinfo->verx10 >= 75 && indirect.indirect_draw_count &&
        ice->state.predicate == CROCUS_PREDICATE_STATE_USE_BIT) {
       /* Upload MI_PREDICATE_RESULT to GPR15.*/
       screen->vtbl.load_register_reg64(batch, CS_GPR(15), MI_PREDICATE_RESULT);
@@ -284,7 +284,7 @@ crocus_indirect_draw_vbo(struct crocus_context *ice,
       indirect.offset += indirect.stride;
    }
 
-   if (devinfo->is_haswell && indirect.indirect_draw_count &&
+   if (devinfo->verx10 >= 75 && indirect.indirect_draw_count &&
        ice->state.predicate == CROCUS_PREDICATE_STATE_USE_BIT) {
       /* Restore MI_PREDICATE_RESULT. */
       screen->vtbl.load_register_reg64(batch, MI_PREDICATE_RESULT, CS_GPR(15));
@@ -363,7 +363,7 @@ crocus_draw_vbo(struct pipe_context *ctx,
    }
 
    if (indirect && indirect->count_from_stream_output &&
-       !screen->devinfo.is_haswell) {
+       screen->devinfo.verx10 < 75) {
       crocus_draw_vbo_get_vertex_count(ctx, info, drawid_offset, indirect);
       return;
    }

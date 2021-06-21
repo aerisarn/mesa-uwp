@@ -564,7 +564,7 @@ crocus_resource_configure_aux(struct crocus_screen *screen,
          /* Disable HiZ for LOD > 0 unless the width/height are 8x4 aligned.
           * For LOD == 0, we can grow the dimensions to make it work.
           */
-         if (!devinfo->is_haswell ||
+         if (devinfo->verx10 < 75 ||
              (level == 0 || ((width & 7) == 0 && (height & 3) == 0)))
             res->aux.has_hiz |= 1 << level;
       }

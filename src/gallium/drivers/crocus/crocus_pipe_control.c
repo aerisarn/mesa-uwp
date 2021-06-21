@@ -348,7 +348,7 @@ crocus_memory_barrier(struct pipe_context *ctx, unsigned flags)
    /* Typed surface messages are handled by the render cache on IVB, so we
     * need to flush it too.
     */
-   if (!devinfo->is_haswell)
+   if (devinfo->verx10 < 75)
       bits |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
 
    for (int i = 0; i < ice->batch_count; i++) {

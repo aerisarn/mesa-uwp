@@ -451,7 +451,7 @@ crocus_is_format_supported(struct pipe_screen *pscreen,
       return false;
 
    /* no stencil texturing prior to haswell */
-   if (!devinfo->is_haswell) {
+   if (devinfo->verx10 < 75) {
       if (pformat == PIPE_FORMAT_S8_UINT ||
           pformat == PIPE_FORMAT_X24S8_UINT ||
           pformat == PIPE_FORMAT_S8X24_UINT ||
@@ -543,7 +543,7 @@ crocus_is_format_supported(struct pipe_screen *pscreen,
    if (usage & PIPE_BIND_VERTEX_BUFFER) {
       supported &= isl_format_supports_vertex_fetch(devinfo, format);
 
-      if (!devinfo->is_haswell) {
+      if (devinfo->verx10 < 75) {
          /* W/A: Pre-Haswell, the hardware doesn't really support the formats
           * we'd like to use here, so upload everything as UINT and fix it in
           * the shader
