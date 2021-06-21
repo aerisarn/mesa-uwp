@@ -557,6 +557,14 @@ void anv_CmdSetLogicOpEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
 }
 
+void anv_CmdSetPatchControlPointsEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    patchControlPoints)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+   anv_batch_set_error(&cmd_buffer->batch, VK_ERROR_FEATURE_NOT_PRESENT);
+}
+
 void anv_CmdSetViewport(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    firstViewport,
