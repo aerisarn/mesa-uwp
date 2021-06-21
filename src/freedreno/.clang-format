@@ -67,6 +67,8 @@ ForEachMacros:
   - foreach_sched_node
   - foreach_src
   - foreach_src_n
+  - foreach_dst
+  - foreach_dst_n
   - foreach_ssa_use
   - foreach_ssa_srcp_n
   - foreach_ssa_srcp

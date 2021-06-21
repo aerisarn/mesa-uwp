@@ -1235,12 +1235,12 @@ get_array_id(struct ir3_instruction *instr)
 	 * src or dst, ir3_cp should enforce this.
 	 */
 
-	for (unsigned i = 0; i < instr->dsts_count; i++)
-		if (instr->dsts[i]->flags & IR3_REG_ARRAY)
-			return instr->dsts[i]->array.id;
-	for (unsigned i = 0; i < instr->srcs_count; i++)
-		if (instr->srcs[i]->flags & IR3_REG_ARRAY)
-			return instr->srcs[i]->array.id;
+	foreach_dst (dst, instr)
+		if (dst->flags & IR3_REG_ARRAY)
+			return dst->array.id;
+	foreach_src (src, instr)
+		if (src->flags & IR3_REG_ARRAY)
+			return src->array.id;
 
 	unreachable("this was unexpected");
 }

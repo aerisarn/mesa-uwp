@@ -75,8 +75,8 @@ validate_src(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
 	if (reg->tied) {
 		validate_assert(ctx, reg->tied->tied == reg);
 		bool found = false;
-		for (unsigned i = 0; i < instr->dsts_count; i++) {
-			if (instr->dsts[i] == reg->tied) {
+		foreach_dst (dst, instr) {
+			if (dst == reg->tied) {
 				found = true;
 				break;
 			}
@@ -124,8 +124,8 @@ validate_dst(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
 			validate_assert(ctx, reg->tied->size == reg->size);
 		}
 		bool found = false;
-		for (unsigned i = 0; i < instr->srcs_count; i++) {
-			if (instr->srcs[i] == reg->tied) {
+		foreach_src (src, instr) {
+			if (src == reg->tied) {
 				found = true;
 				break;
 			}

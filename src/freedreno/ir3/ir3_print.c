@@ -275,8 +275,7 @@ print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
 
 	if (!is_flow(instr) || instr->opc == OPC_END || instr->opc == OPC_CHMASK) {
 		bool first = true;
-		for (unsigned i = 0; i < instr->dsts_count; i++) {
-			struct ir3_register *reg = instr->dsts[i];
+		foreach_dst (reg, instr) {
 			if (dest_regs(instr) == 0)
 				continue;
 			if (!first)
@@ -284,8 +283,7 @@ print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
 			print_reg_name(stream, instr, reg, true);
 			first = false;
 		}
-		for (unsigned i = 0; i < instr->srcs_count; i++) {
-			struct ir3_register *reg = instr->srcs[i];
+		foreach_src (reg, instr) {
 			if (!first)
 				mesa_log_stream_printf(stream, ", ");
 			print_reg_name(stream, instr, reg, false);

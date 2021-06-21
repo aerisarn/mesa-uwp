@@ -221,11 +221,11 @@ ir3_array_to_ssa(struct ir3 *ir)
 
 	foreach_block (block, &ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
-			for (unsigned i = 0; i < instr->dsts_count; i++) {
-				if (instr->dsts[i]->flags & IR3_REG_ARRAY) {
+			foreach_dst (dst, instr) {
+				if (dst->flags & IR3_REG_ARRAY) {
 					struct array_state *state =
-						get_state(&ctx, block, instr->dsts[i]->array.id);
-					state->live_out_definition = instr->dsts[i];
+						get_state(&ctx, block, dst->array.id);
+					state->live_out_definition = dst;
 				}
 			}
 		}
@@ -236,8 +236,7 @@ ir3_array_to_ssa(struct ir3 *ir)
 			if (instr->opc == OPC_META_PHI)
 				continue;
 
-			for (unsigned i = 0; i < instr->dsts_count; i++) {
-				struct ir3_register *reg = instr->dsts[i];
+			foreach_dst (reg, instr) {
 				if ((reg->flags & IR3_REG_ARRAY) && !reg->tied) {
 					struct ir3_array *arr = ir3_lookup_array(ir, reg->array.id);
 
@@ -245,8 +244,7 @@ ir3_array_to_ssa(struct ir3 *ir)
 					read_value_beginning(&ctx, block, arr);
 				}
 			}
-			for (unsigned i = 0; i < instr->srcs_count; i++) {
-				struct ir3_register *reg = instr->srcs[i];
+			foreach_src (reg, instr) {
 				if ((reg->flags & IR3_REG_ARRAY) && !reg->def) {
 					struct ir3_array *arr = ir3_lookup_array(ir, reg->array.id);
 
@@ -279,8 +277,7 @@ ir3_array_to_ssa(struct ir3 *ir)
 					instr->srcs[i] = lookup_value(instr->srcs[i]);
 				}
 			} else {
-				for (unsigned i = 0; i < instr->dsts_count; i++) {
-					struct ir3_register *reg = instr->dsts[i];
+				foreach_dst (reg, instr) {
 					if ((reg->flags & IR3_REG_ARRAY)) {
 						if (!reg->tied) {
 							struct ir3_register *def =
@@ -291,8 +288,7 @@ ir3_array_to_ssa(struct ir3 *ir)
 						reg->flags |= IR3_REG_SSA;
 					}
 				}
-				for (unsigned i = 0; i < instr->srcs_count; i++) {
-					struct ir3_register *reg = instr->srcs[i];
+				foreach_src (reg, instr) {
 					if ((reg->flags & IR3_REG_ARRAY)) {
 						/* It is assumed that before calling
 						 * ir3_array_to_ssa(), reg->def was set to the

@@ -426,7 +426,6 @@ struct ir3_instruction * ir3_instr_clone(struct ir3_instruction *instr)
 	struct ir3_instruction *new_instr = instr_create(instr->block, instr->opc,
 			instr->dsts_count, instr->srcs_count);
 	struct ir3_register **dsts, **srcs;
-	unsigned i;
 
 	dsts = new_instr->dsts;
 	srcs = new_instr->srcs;
@@ -439,15 +438,13 @@ struct ir3_instruction * ir3_instr_clone(struct ir3_instruction *instr)
 	/* clone registers: */
 	new_instr->dsts_count = 0;
 	new_instr->srcs_count = 0;
-	for (i = 0; i < instr->dsts_count; i++) {
-		struct ir3_register *reg = instr->dsts[i];
+	foreach_dst (reg, instr) {
 		struct ir3_register *new_reg = ir3_dst_create(new_instr, reg->num, reg->flags);
 		*new_reg = *reg;
 		if (new_reg->instr)
 			new_reg->instr = new_instr;
 	}
-	for (i = 0; i < instr->srcs_count; i++) {
-		struct ir3_register *reg = instr->srcs[i];
+	foreach_src (reg, instr) {
 		struct ir3_register *new_reg = ir3_src_create(new_instr, reg->num, reg->flags);
 		*new_reg = *reg;
 	}
