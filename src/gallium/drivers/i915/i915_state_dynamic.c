@@ -143,10 +143,10 @@ static void upload_BLENDCOLOR(struct i915_context *i915)
       const float *color = i915->blend_color.color;
 
       bc[0] = _3DSTATE_CONST_BLEND_COLOR_CMD;
-      bc[1] = pack_ui32_float4(color[0],
-                               color[1],
-                               color[2],
-                               color[3]);
+      bc[1] = pack_ui32_float4(color[i915->current.color_swizzle[2]],
+                               color[i915->current.color_swizzle[1]],
+                               color[i915->current.color_swizzle[0]],
+                               color[i915->current.color_swizzle[3]]);
    }
 
    set_dynamic_array(i915, I915_DYNAMIC_BC_0, bc, 2);
@@ -155,7 +155,7 @@ static void upload_BLENDCOLOR(struct i915_context *i915)
 const struct i915_tracked_state i915_upload_BLENDCOLOR = {
    "BLENDCOLOR",
    upload_BLENDCOLOR,
-   I915_NEW_BLEND
+   I915_NEW_BLEND | I915_NEW_COLOR_SWIZZLE
 };
 
 

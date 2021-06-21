@@ -55,5 +55,5 @@ static void update_fs(struct i915_context *i915)
 struct i915_tracked_state i915_hw_fs = {
    "fs",
    update_fs,
-   I915_NEW_FS
+   I915_NEW_FS | I915_NEW_COLOR_SWIZZLE
 };

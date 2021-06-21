@@ -82,7 +82,6 @@ static void update_framebuffer(struct i915_context *i915)
    unsigned x, y;
    int layer;
    uint32_t draw_offset, draw_size;
-   uint32_t oc_swizzle = 0;
 
    if (cbuf_surface) {
       struct i915_surface *surf = i915_surface(cbuf_surface);
@@ -96,8 +95,6 @@ static void update_framebuffer(struct i915_context *i915)
 
       x = tex->image_offset[cbuf_surface->u.tex.level][layer].nblocksx;
       y = tex->image_offset[cbuf_surface->u.tex.level][layer].nblocksy;
-
-      oc_swizzle = surf->oc_swizzle;
    } else {
       i915->current.cbuf_bo = NULL;
       x = y = 0;
@@ -136,11 +133,6 @@ static void update_framebuffer(struct i915_context *i915)
    }
 
    i915->hardware_dirty |= I915_HW_STATIC;
-
-   if (i915->current.fixup_swizzle != oc_swizzle) {
-      i915->current.fixup_swizzle = oc_swizzle;
-      i915->hardware_dirty |= I915_HW_PROGRAM;
-   }
 
    /* flush the cache in case we sample from the old renderbuffers */
    i915_set_flush_dirty(i915, I915_FLUSH_CACHE);

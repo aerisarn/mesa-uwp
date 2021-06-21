@@ -173,6 +173,8 @@ struct i915_state
 
    /* Reswizzle for OC writes in PIXEL_SHADER_PROGRAM, or 0 if unnecessary. */
    uint32_t fixup_swizzle;
+   /* Mapping from color buffer dst channels in HW to gallium API src channels. */
+   uint8_t color_swizzle[4];
 
    unsigned id;			/* track lost context events */
 };
@@ -314,6 +316,7 @@ struct i915_context {
 #define I915_NEW_GS_CONSTANTS  0x4000
 #define I915_NEW_VBO           0x8000
 #define I915_NEW_VS            0x10000
+#define I915_NEW_COLOR_SWIZZLE 0x20000
 
 
 /* Driver's internally generated state flags:

@@ -239,5 +239,7 @@ i915_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    i915->static_dirty = ~0;
    i915->flush_dirty = 0;
 
+   i915->current.fixup_swizzle = ~0;
+
    return &i915->base;
 }
