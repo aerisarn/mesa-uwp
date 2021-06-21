@@ -7997,7 +7997,12 @@ crocus_upload_compute_state(struct crocus_context *ice,
             struct crocus_bo *bo =
                crocus_get_scratch_space(ice, prog_data->total_scratch,
                                         MESA_SHADER_COMPUTE);
-#if GFX_VERx10 == 75
+#if GFX_VER == 8
+            /* Broadwell's Per Thread Scratch Space is in the range [0, 11]
+             * where 0 = 1k, 1 = 2k, 2 = 4k, ..., 11 = 2M.
+             */
+            vfe.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
+#elif GFX_VERx10 == 75
             /* Haswell's Per Thread Scratch Space is in the range [0, 10]
              * where 0 = 2k, 1 = 4k, 2 = 8k, ..., 10 = 2M.
              */
@@ -8016,9 +8021,14 @@ crocus_upload_compute_state(struct crocus_context *ice,
          vfe.ResetGatewayTimer =
             Resettingrelativetimerandlatchingtheglobaltimestamp;
          vfe.BypassGatewayControl = true;
+#if GFX_VER == 7
          vfe.GPGPUMode = 1;
-         vfe.NumberofURBEntries = 0;
-         vfe.URBEntryAllocationSize = 0;
+#endif
+#if GFX_VER == 8
+         vfe.BypassGatewayControl = true;
+#endif
+         vfe.NumberofURBEntries = GFX_VER == 8 ? 2 : 0;
+         vfe.URBEntryAllocationSize = GFX_VER == 8 ? 2 : 0;
 
          vfe.CURBEAllocationSize =
             ALIGN(cs_prog_data->push.per_thread.regs * dispatch.threads +
