@@ -1384,7 +1384,7 @@ crocus_init_compute_context(struct crocus_batch *batch)
  */
 struct crocus_genx_state {
    struct {
-#if GFX_VER == 7
+#if GFX_VER >= 7
       struct brw_image_param image_param[PIPE_MAX_SHADER_IMAGES];
 #endif
    } shaders[MESA_SHADER_STAGES];
@@ -2658,7 +2658,7 @@ crocus_create_surface(struct pipe_context *ctx,
    return psurf;
 }
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
 static void
 fill_default_image_param(struct brw_image_param *param)
 {
@@ -2695,7 +2695,7 @@ crocus_set_shader_images(struct pipe_context *ctx,
                          unsigned unbind_num_trailing_slots,
                          const struct pipe_image_view *p_images)
 {
-#if GFX_VER == 7
+#if GFX_VER >= 7
    struct crocus_context *ice = (struct crocus_context *) ctx;
    struct crocus_screen *screen = (struct crocus_screen *)ctx->screen;
    const struct intel_device_info *devinfo = &screen->devinfo;
@@ -3168,7 +3168,7 @@ upload_sysvals(struct crocus_context *ice,
       uint32_t value = 0;
 
       if (BRW_PARAM_DOMAIN(sysval) == BRW_PARAM_DOMAIN_IMAGE) {
-#if GFX_VER == 7
+#if GFX_VER >= 7
          unsigned img = BRW_PARAM_IMAGE_IDX(sysval);
          unsigned offset = BRW_PARAM_IMAGE_OFFSET(sysval);
          struct brw_image_param *param =
