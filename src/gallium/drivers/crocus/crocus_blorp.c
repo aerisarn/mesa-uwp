@@ -286,6 +286,11 @@ crocus_blorp_exec(struct blorp_batch *blorp_batch,
    crocus_require_command_space(batch, 1400);
    crocus_require_statebuffer_space(batch, 600);
    batch->no_wrap = true;
+
+#if GFX_VER == 8
+   genX(crocus_update_pma_fix)(ice, batch, false);
+#endif
+
 #if GFX_VER == 6
    /* Emit workaround flushes when we switch from drawing to blorping. */
    crocus_emit_post_sync_nonzero_flush(batch);

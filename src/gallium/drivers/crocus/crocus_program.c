@@ -3122,6 +3122,8 @@ static void
 crocus_bind_fs_state(struct pipe_context *ctx, void *state)
 {
    struct crocus_context *ice = (struct crocus_context *) ctx;
+   struct crocus_screen *screen = (struct crocus_screen *) ctx->screen;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct crocus_uncompiled_shader *old_ish =
       ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
    struct crocus_uncompiled_shader *new_ish = state;
@@ -3136,6 +3138,8 @@ crocus_bind_fs_state(struct pipe_context *ctx, void *state)
        (new_ish->nir->info.outputs_written & color_bits))
       ice->state.dirty |= CROCUS_DIRTY_WM;
 
+   if (devinfo->ver == 8)
+      ice->state.dirty |= CROCUS_DIRTY_GEN8_PMA_FIX;
    bind_shader_state((void *) ctx, state, MESA_SHADER_FRAGMENT);
 }
 

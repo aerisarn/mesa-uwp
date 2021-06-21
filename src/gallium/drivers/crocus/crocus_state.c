@@ -1430,6 +1430,10 @@ struct crocus_genx_state {
       struct brw_image_param image_param[PIPE_MAX_SHADER_IMAGES];
 #endif
    } shaders[MESA_SHADER_STAGES];
+
+#if GFX_VER == 8
+   bool pma_fix_enabled;
+#endif
 };
 
 /**
@@ -1600,6 +1604,9 @@ crocus_bind_blend_state(struct pipe_context *ctx, void *state)
 #if GFX_VER >= 7
    ice->state.stage_dirty |= CROCUS_STAGE_DIRTY_FS;
 #endif
+#if GFX_VER == 8
+   ice->state.dirty |= CROCUS_DIRTY_GEN8_PMA_FIX;
+#endif
    ice->state.dirty |= CROCUS_DIRTY_COLOR_CALC_STATE;
    ice->state.dirty |= CROCUS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
    ice->state.stage_dirty |= ice->state.stage_dirty_for_nos[CROCUS_NOS_BLEND];
@@ -1703,7 +1710,180 @@ crocus_bind_zsa_state(struct pipe_context *ctx, void *state)
 #if GFX_VER >= 6
    ice->state.dirty |= CROCUS_DIRTY_GEN6_WM_DEPTH_STENCIL;
 #endif
+#if GFX_VER == 8
+   ice->state.dirty |= CROCUS_DIRTY_GEN8_PMA_FIX;
+#endif
    ice->state.stage_dirty |= ice->state.stage_dirty_for_nos[CROCUS_NOS_DEPTH_STENCIL_ALPHA];
+}
+
+#if GFX_VER == 8
+static bool
+want_pma_fix(struct crocus_context *ice)
+{
+   UNUSED struct crocus_screen *screen = (void *) ice->ctx.screen;
+   UNUSED const struct intel_device_info *devinfo = &screen->devinfo;
+   const struct brw_wm_prog_data *wm_prog_data = (void *)
+      ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
+   const struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+   const struct crocus_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
+   const struct crocus_blend_state *cso_blend = ice->state.cso_blend;
+
+   /* In very specific combinations of state, we can instruct Gfx8-9 hardware
+    * to avoid stalling at the pixel mask array.  The state equations are
+    * documented in these places:
+    *
+    * - Gfx8 Depth PMA Fix:   CACHE_MODE_1::NP_PMA_FIX_ENABLE
+    * - Gfx9 Stencil PMA Fix: CACHE_MODE_0::STC PMA Optimization Enable
+    *
+    * Both equations share some common elements:
+    *
+    *    no_hiz_op =
+    *       !(3DSTATE_WM_HZ_OP::DepthBufferClear ||
+    *         3DSTATE_WM_HZ_OP::DepthBufferResolve ||
+    *         3DSTATE_WM_HZ_OP::Hierarchical Depth Buffer Resolve Enable ||
+    *         3DSTATE_WM_HZ_OP::StencilBufferClear) &&
+    *
+    *    killpixels =
+    *       3DSTATE_WM::ForceKillPix != ForceOff &&
+    *       (3DSTATE_PS_EXTRA::PixelShaderKillsPixels ||
+    *        3DSTATE_PS_EXTRA::oMask Present to RenderTarget ||
+    *        3DSTATE_PS_BLEND::AlphaToCoverageEnable ||
+    *        3DSTATE_PS_BLEND::AlphaTestEnable ||
+    *        3DSTATE_WM_CHROMAKEY::ChromaKeyKillEnable)
+    *
+    *    (Technically the stencil PMA treats ForceKillPix differently,
+    *     but I think this is a documentation oversight, and we don't
+    *     ever use it in this way, so it doesn't matter).
+    *
+    *    common_pma_fix =
+    *       3DSTATE_WM::ForceThreadDispatch != 1 &&
+    *       3DSTATE_RASTER::ForceSampleCount == NUMRASTSAMPLES_0 &&
+    *       3DSTATE_DEPTH_BUFFER::SURFACE_TYPE != NULL &&
+    *       3DSTATE_DEPTH_BUFFER::HIZ Enable &&
+    *       3DSTATE_WM::EDSC_Mode != EDSC_PREPS &&
+    *       3DSTATE_PS_EXTRA::PixelShaderValid &&
+    *       no_hiz_op
+    *
+    * These are always true:
+    *
+    *    3DSTATE_RASTER::ForceSampleCount == NUMRASTSAMPLES_0
+    *    3DSTATE_PS_EXTRA::PixelShaderValid
+    *
+    * Also, we never use the normal drawing path for HiZ ops; these are true:
+    *
+    *    !(3DSTATE_WM_HZ_OP::DepthBufferClear ||
+    *      3DSTATE_WM_HZ_OP::DepthBufferResolve ||
+    *      3DSTATE_WM_HZ_OP::Hierarchical Depth Buffer Resolve Enable ||
+    *      3DSTATE_WM_HZ_OP::StencilBufferClear)
+    *
+    * This happens sometimes:
+    *
+    *    3DSTATE_WM::ForceThreadDispatch != 1
+    *
+    * However, we choose to ignore it as it either agrees with the signal
+    * (dispatch was already enabled, so nothing out of the ordinary), or
+    * there are no framebuffer attachments (so no depth or HiZ anyway,
+    * meaning the PMA signal will already be disabled).
+    */
+
+   if (!cso_fb->zsbuf)
+      return false;
+
+   struct crocus_resource *zres, *sres;
+   crocus_get_depth_stencil_resources(devinfo,
+                                      cso_fb->zsbuf->texture, &zres, &sres);
+
+   /* 3DSTATE_DEPTH_BUFFER::SURFACE_TYPE != NULL &&
+    * 3DSTATE_DEPTH_BUFFER::HIZ Enable &&
+    */
+   if (!zres || !crocus_resource_level_has_hiz(zres, cso_fb->zsbuf->u.tex.level))
+      return false;
+
+   /* 3DSTATE_WM::EDSC_Mode != EDSC_PREPS */
+   if (wm_prog_data->early_fragment_tests)
+      return false;
+
+   /* 3DSTATE_WM::ForceKillPix != ForceOff &&
+    * (3DSTATE_PS_EXTRA::PixelShaderKillsPixels ||
+    *  3DSTATE_PS_EXTRA::oMask Present to RenderTarget ||
+    *  3DSTATE_PS_BLEND::AlphaToCoverageEnable ||
+    *  3DSTATE_PS_BLEND::AlphaTestEnable ||
+    *  3DSTATE_WM_CHROMAKEY::ChromaKeyKillEnable)
+    */
+   bool killpixels = wm_prog_data->uses_kill || wm_prog_data->uses_omask ||
+                     cso_blend->cso.alpha_to_coverage || cso_zsa->cso.alpha_enabled;
+
+   /* The Gfx8 depth PMA equation becomes:
+    *
+    *    depth_writes =
+    *       3DSTATE_WM_DEPTH_STENCIL::DepthWriteEnable &&
+    *       3DSTATE_DEPTH_BUFFER::DEPTH_WRITE_ENABLE
+    *
+    *    stencil_writes =
+    *       3DSTATE_WM_DEPTH_STENCIL::Stencil Buffer Write Enable &&
+    *       3DSTATE_DEPTH_BUFFER::STENCIL_WRITE_ENABLE &&
+    *       3DSTATE_STENCIL_BUFFER::STENCIL_BUFFER_ENABLE
+    *
+    *    Z_PMA_OPT =
+    *       common_pma_fix &&
+    *       3DSTATE_WM_DEPTH_STENCIL::DepthTestEnable &&
+    *       ((killpixels && (depth_writes || stencil_writes)) ||
+    *        3DSTATE_PS_EXTRA::PixelShaderComputedDepthMode != PSCDEPTH_OFF)
+    *
+    */
+   if (!cso_zsa->cso.depth_enabled)
+      return false;
+
+   return wm_prog_data->computed_depth_mode != PSCDEPTH_OFF ||
+          (killpixels && (cso_zsa->depth_writes_enabled ||
+                          (sres && cso_zsa->stencil_writes_enabled)));
+}
+#endif
+void
+genX(crocus_update_pma_fix)(struct crocus_context *ice,
+                            struct crocus_batch *batch,
+                            bool enable)
+{
+#if GFX_VER == 8
+   struct crocus_genx_state *genx = ice->state.genx;
+
+   if (genx->pma_fix_enabled == enable)
+      return;
+
+   genx->pma_fix_enabled = enable;
+
+   /* According to the Broadwell PIPE_CONTROL documentation, software should
+    * emit a PIPE_CONTROL with the CS Stall and Depth Cache Flush bits set
+    * prior to the LRI.  If stencil buffer writes are enabled, then a Render        * Cache Flush is also necessary.
+    *
+    * The Gfx9 docs say to use a depth stall rather than a command streamer
+    * stall.  However, the hardware seems to violently disagree.  A full
+    * command streamer stall seems to be needed in both cases.
+    */
+   crocus_emit_pipe_control_flush(batch, "PMA fix change (1/2)",
+                                  PIPE_CONTROL_CS_STALL |
+                                  PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                                  PIPE_CONTROL_RENDER_TARGET_FLUSH);
+
+   crocus_emit_reg(batch, GENX(CACHE_MODE_1), reg) {
+      reg.NPPMAFixEnable = enable;
+      reg.NPEarlyZFailsDisable = enable;
+      reg.NPPMAFixEnableMask = true;
+      reg.NPEarlyZFailsDisableMask = true;
+   }
+
+   /* After the LRI, a PIPE_CONTROL with both the Depth Stall and Depth Cache
+    * Flush bits is often necessary.  We do it regardless because it's easier.
+    * The render cache flush is also necessary if stencil writes are enabled.
+    *
+    * Again, the Gfx9 docs give a different set of flushes but the Broadwell
+    * flushes seem to work just as well.
+    */
+   crocus_emit_pipe_control_flush(batch, "PMA fix change (1/2)",
+                                  PIPE_CONTROL_DEPTH_STALL |
+                                  PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                                  PIPE_CONTROL_RENDER_TARGET_FLUSH);
+#endif
 }
 
 static float
@@ -7155,6 +7335,13 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             vf.CutIndex = draw->restart_index;
          }
       }
+   }
+#endif
+
+#if GFX_VER == 8
+   if (dirty & CROCUS_DIRTY_GEN8_PMA_FIX) {
+      bool enable = want_pma_fix(ice);
+      genX(crocus_update_pma_fix)(ice, batch, enable);
    }
 #endif
 

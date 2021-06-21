@@ -34,7 +34,9 @@ void genX(crocus_upload_urb)(struct crocus_batch *batch,
                       unsigned vs_size,
                       bool gs_present,
                       unsigned gs_size);
-
+void genX(crocus_update_pma_fix)(struct crocus_context *ice,
+                                 struct crocus_batch *batch,
+                                 bool enable);
 /* crocus_blorp.c */
 void genX(crocus_init_blorp)(struct crocus_context *ice);
 
