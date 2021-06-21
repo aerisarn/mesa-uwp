@@ -6997,7 +6997,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
       }
    }
 
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
    if (dirty & CROCUS_DIRTY_GEN75_VF) {
       crocus_emit_cmd(batch, GENX(3DSTATE_VF), vf) {
          if (draw->primitive_restart) {
@@ -7074,7 +7074,7 @@ crocus_upload_render_state(struct crocus_context *ice,
          struct crocus_bo *bo = crocus_resource_bo(ice->state.index_buffer.res);
 
          crocus_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
-#if !(GFX_VERx10 == 75)
+#if GFX_VERx10 < 75
             ib.CutIndexEnable = draw->primitive_restart;
 #endif
             ib.IndexFormat = draw->index_size >> 1;
