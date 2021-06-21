@@ -119,6 +119,14 @@ crocus_emit_depth_stall_flushes(struct crocus_batch *batch)
 
    assert(devinfo->ver >= 6);
 
+   /* Starting on BDW, these pipe controls are unnecessary.
+    *
+    *   WM HW will internally manage the draining pipe and flushing of the caches
+    *   when this command is issued. The PIPE_CONTROL restrictions are removed.
+    */
+   if (devinfo->ver >= 8)
+      return;
+
    crocus_emit_pipe_control_flush(batch, "depth stall", PIPE_CONTROL_DEPTH_STALL);
    crocus_emit_pipe_control_flush(batch, "depth stall", PIPE_CONTROL_DEPTH_CACHE_FLUSH);
    crocus_emit_pipe_control_flush(batch, "depth stall", PIPE_CONTROL_DEPTH_STALL);
@@ -327,7 +335,7 @@ crocus_memory_barrier(struct pipe_context *ctx, unsigned flags)
    unsigned bits = PIPE_CONTROL_DATA_CACHE_FLUSH | PIPE_CONTROL_CS_STALL;
    const struct intel_device_info *devinfo = &ice->batches[0].screen->devinfo;
 
-   assert(devinfo->ver == 7);
+   assert(devinfo->ver >= 7);
 
    if (flags & (PIPE_BARRIER_VERTEX_BUFFER |
                 PIPE_BARRIER_INDEX_BUFFER |
