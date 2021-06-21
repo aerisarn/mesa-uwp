@@ -1536,7 +1536,7 @@ set_blend_entry_bits(struct crocus_batch *batch, BLEND_ENTRY_GENXML *entry,
        src_rgb != src_alpha || dst_rgb != dst_alpha)
       independent_alpha_blend = true;
    if (cso_blend->cso.logicop_enable) {
-      if (can_emit_logic_op(ice)) {
+      if (GFX_VER >= 8 || can_emit_logic_op(ice)) {
          entry->LogicOpEnable = cso_blend->cso.logicop_enable;
          entry->LogicOpFunction = cso_blend->cso.logicop_func;
       }
@@ -5987,62 +5987,68 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
       struct crocus_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
 
       STATIC_ASSERT(GENX(BLEND_STATE_ENTRY_length) == 2);
-
-      const int rt_dwords =
+      int rt_dwords =
          MAX2(cso_fb->nr_cbufs, 1) * GENX(BLEND_STATE_ENTRY_length);
-
+#if GFX_VER >= 8
+      rt_dwords += GENX(BLEND_STATE_length);
+#endif
       uint32_t blend_offset;
       uint32_t *blend_map =
          stream_state(batch,
                       4 * rt_dwords, 64, &blend_offset);
 
-      bool indep_alpha_blend = false;
+#if GFX_VER >= 8
+   struct GENX(BLEND_STATE) be = { 0 };
+   {
+#else
+   for (int i = 0; i < BRW_MAX_DRAW_BUFFERS; i++) {
+      struct GENX(BLEND_STATE_ENTRY) entry = { 0 };
+#define be entry
+#endif
+
+      be.AlphaTestEnable = cso_zsa->cso.alpha_enabled;
+      be.AlphaTestFunction = translate_compare_func(cso_zsa->cso.alpha_func);
+      be.AlphaToCoverageEnable = cso_blend->cso.alpha_to_coverage;
+      be.AlphaToOneEnable = cso_blend->cso.alpha_to_one;
+      be.AlphaToCoverageDitherEnable = GFX_VER >= 7 && cso_blend->cso.alpha_to_coverage;
+      be.ColorDitherEnable = cso_blend->cso.dither;
+
+#if GFX_VER >= 8
       for (int i = 0; i < BRW_MAX_DRAW_BUFFERS; i++) {
+         struct GENX(BLEND_STATE_ENTRY) entry = { 0 };
+#else
+      {
+#endif
          const struct pipe_rt_blend_state *rt =
             &cso_blend->cso.rt[cso_blend->cso.independent_blend_enable ? i : 0];
 
-         crocus_pack_state(GENX(BLEND_STATE_ENTRY), blend_map, be) {
-            if (can_emit_logic_op(ice)) {
-               be.LogicOpEnable = cso_blend->cso.logicop_enable;
-               be.LogicOpFunction = cso_blend->cso.logicop_func;
-            }
+         be.IndependentAlphaBlendEnable = set_blend_entry_bits(batch, &entry, cso_blend, i) ||
+            be.IndependentAlphaBlendEnable;
 
-            indep_alpha_blend = set_blend_entry_bits(batch, &be, cso_blend, i) ||
-               indep_alpha_blend;
-
-            be.IndependentAlphaBlendEnable = indep_alpha_blend;
-
-            be.ColorClampRange = COLORCLAMP_RTFORMAT;
-            be.PreBlendColorClampEnable = true;
-            be.PostBlendColorClampEnable = true;
-
-            if (i == 0) {
-               struct crocus_compiled_shader *shader = ice->shaders.prog[MESA_SHADER_FRAGMENT];
-               struct brw_wm_prog_data *wm_prog_data = (void *) shader->prog_data;
-               be.ColorBufferBlendEnable = rt->blend_enable &&
-                  (!cso_blend->dual_color_blending || wm_prog_data->dual_src_blend);
-            } else
-               be.ColorBufferBlendEnable = rt->blend_enable;
-
-            be.WriteDisableRed   = !(rt->colormask & PIPE_MASK_R);
-            be.WriteDisableGreen = !(rt->colormask & PIPE_MASK_G);
-            be.WriteDisableBlue  = !(rt->colormask & PIPE_MASK_B);
-            be.WriteDisableAlpha = !(rt->colormask & PIPE_MASK_A);
-
-            be.AlphaToCoverageEnable = cso_blend->cso.alpha_to_coverage;
-            be.AlphaToOneEnable = cso_blend->cso.alpha_to_one;
-            be.AlphaToCoverageDitherEnable = GFX_VER >= 7 && cso_blend->cso.alpha_to_coverage;
-            be.ColorDitherEnable = cso_blend->cso.dither;
-
-            /* bl.AlphaTestEnable and bs.AlphaTestFunction are filled in later. */
-            // Except they're not... fix that. Can't be done here since it needs
-            // to be conditional on non-integer RT's
-            be.AlphaTestEnable = cso_zsa->cso.alpha_enabled;
-            be.AlphaTestFunction = translate_compare_func(cso_zsa->cso.alpha_func);
+         if (GFX_VER >= 8 || can_emit_logic_op(ice)) {
+            entry.LogicOpEnable = cso_blend->cso.logicop_enable;
+            entry.LogicOpFunction = cso_blend->cso.logicop_func;
          }
-         blend_map += GENX(BLEND_STATE_ENTRY_length);
-      }
 
+         entry.ColorClampRange = COLORCLAMP_RTFORMAT;
+         entry.PreBlendColorClampEnable = true;
+         entry.PostBlendColorClampEnable = true;
+
+         entry.WriteDisableRed   = !(rt->colormask & PIPE_MASK_R);
+         entry.WriteDisableGreen = !(rt->colormask & PIPE_MASK_G);
+         entry.WriteDisableBlue  = !(rt->colormask & PIPE_MASK_B);
+         entry.WriteDisableAlpha = !(rt->colormask & PIPE_MASK_A);
+
+#if GFX_VER >= 8
+         GENX(BLEND_STATE_ENTRY_pack)(NULL, &blend_map[1 + i * 2], &entry);
+#else
+         GENX(BLEND_STATE_ENTRY_pack)(NULL, &blend_map[i * 2], &entry);
+#endif
+      }
+   }
+#if GFX_VER >= 8
+   GENX(BLEND_STATE_pack)(NULL, blend_map, &be);
+#endif
 #if GFX_VER < 7
       crocus_emit_cmd(batch, GENX(3DSTATE_CC_STATE_POINTERS), ptr) {
          ptr.PointertoBLEND_STATE = blend_offset;
@@ -6051,6 +6057,9 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
 #else
       crocus_emit_cmd(batch, GENX(3DSTATE_BLEND_STATE_POINTERS), ptr) {
          ptr.BlendStatePointer = blend_offset;
+#if GFX_VER >= 8
+         ptr.BlendStatePointerValid = true;
+#endif
       }
 #endif
    }
