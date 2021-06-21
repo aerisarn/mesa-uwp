@@ -1323,13 +1323,24 @@ handle_collect(struct ra_ctx *ctx, struct ir3_instruction *instr)
 		assign_src(ctx, instr, src);
 	}
 
+	/* We need to do this before insert_dst(), so that children of the
+	 * destination which got marked as killed and then shuffled around to make
+	 * space for the destination have the correct pcopy destination that
+	 * matches what we assign the source of the collect to in assign_src().
+	 *
+	 * TODO: In this case we'll wind up copying the value in the pcopy and
+	 * then again in the collect. We could avoid one of those by updating the
+	 * pcopy destination to match up with the final location of the source
+	 * after the collect and making the collect a no-op. However this doesn't
+	 * seem to happen often.
+	 */
+	insert_parallel_copy_instr(ctx, instr);
+
 	/* Note: insert_dst will automatically shuffle around any intervals that
 	 * are a child of the collect by making them children of the collect.
 	 */
 
 	insert_dst(ctx, instr->dsts[0]);
-
-	insert_parallel_copy_instr(ctx, instr);
 }
 
 /* Parallel copies before RA should only be at the end of the block, for
