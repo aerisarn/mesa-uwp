@@ -1153,7 +1153,7 @@ panfrost_batch_clear(struct panfrost_batch *batch,
         struct panfrost_context *ctx = batch->ctx;
 
         if (buffers & PIPE_CLEAR_COLOR) {
-                for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i) {
+                for (unsigned i = 0; i < ctx->pipe_framebuffer.nr_cbufs; ++i) {
                         if (!(buffers & (PIPE_CLEAR_COLOR0 << i)))
                                 continue;
 
