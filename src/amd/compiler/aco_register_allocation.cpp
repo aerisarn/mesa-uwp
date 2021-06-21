@@ -153,7 +153,7 @@ struct PhysRegInterval {
 bool
 intersects(const PhysRegInterval& a, const PhysRegInterval& b)
 {
-   return ((a.lo() >= b.lo() && a.lo() < b.hi()) || (a.hi() > b.lo() && a.hi() <= b.hi()));
+   return a.hi() > b.lo() && b.hi() > a.lo();
 }
 
 /* Gets the stride for full (non-subdword) registers */
