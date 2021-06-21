@@ -2401,7 +2401,7 @@ crocus_create_sampler_view(struct pipe_context *ctx,
    /* just create a second view struct for texture gather just in case */
    isv->gather_view = isv->view;
 
-#if GFX_VER >= 7
+#if GFX_VER == 7
    if (fmt.fmt == ISL_FORMAT_R32G32_FLOAT ||
        fmt.fmt == ISL_FORMAT_R32G32_SINT ||
        fmt.fmt == ISL_FORMAT_R32G32_UINT) {
@@ -4908,7 +4908,9 @@ crocus_populate_binding_table(struct crocus_context *ice,
    int s = 0;
    uint32_t *surf_offsets = shader->surf_offset;
 
+#if GFX_VER < 8
    const struct shader_info *info = crocus_get_shader_info(ice, stage);
+#endif
 
    if (stage == MESA_SHADER_FRAGMENT) {
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
@@ -4983,6 +4985,7 @@ crocus_populate_binding_table(struct crocus_context *ice,
       s++;
    }
 
+#if GFX_VER < 8
    if (info && info->uses_texture_gather) {
       foreach_surface_used(i, CROCUS_SURFACE_GROUP_TEXTURE_GATHER) {
          struct crocus_sampler_view *view = shs->textures[i];
@@ -4993,6 +4996,7 @@ crocus_populate_binding_table(struct crocus_context *ice,
          s++;
       }
    }
+#endif
 
    foreach_surface_used(i, CROCUS_SURFACE_GROUP_IMAGE) {
       struct crocus_image_view *view = &shs->image[i];

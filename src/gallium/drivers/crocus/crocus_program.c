@@ -878,7 +878,7 @@ crocus_setup_binding_table(const struct intel_device_info *devinfo,
    bt->sizes[CROCUS_SURFACE_GROUP_TEXTURE] = BITSET_LAST_BIT(info->textures_used);
    bt->used_mask[CROCUS_SURFACE_GROUP_TEXTURE] = info->textures_used[0];
 
-   if (info->uses_texture_gather) {
+   if (info->uses_texture_gather && devinfo->ver < 8) {
       bt->sizes[CROCUS_SURFACE_GROUP_TEXTURE_GATHER] = BITSET_LAST_BIT(info->textures_used);
       bt->used_mask[CROCUS_SURFACE_GROUP_TEXTURE_GATHER] = info->textures_used[0];
    }
@@ -1005,7 +1005,7 @@ crocus_setup_binding_table(const struct intel_device_info *devinfo,
       nir_foreach_instr (instr, block) {
          if (instr->type == nir_instr_type_tex) {
             nir_tex_instr *tex = nir_instr_as_tex(instr);
-            bool is_gather = tex->op == nir_texop_tg4;
+            bool is_gather = devinfo->ver < 8 && tex->op == nir_texop_tg4;
 
             /* rewrite the tg4 component from green to blue before replacing the
                texture index */
