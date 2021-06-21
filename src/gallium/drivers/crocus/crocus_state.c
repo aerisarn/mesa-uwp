@@ -3803,6 +3803,10 @@ struct crocus_stream_output_target {
    struct crocus_streamout_counter prev_count;
    struct crocus_streamout_counter count;
 #endif
+#if GFX_VER == 8
+   /** Does the next 3DSTATE_SO_BUFFER need to zero the offsets? */
+   bool zero_offset;
+#endif
 };
 
 #if GFX_VER >= 7
@@ -4064,8 +4068,13 @@ crocus_set_stream_output_targets(struct pipe_context *ctx,
          struct crocus_stream_output_target *tgt =
             (void *) ice->state.so_target[i];
 
-         if (offsets[i] == 0)
+         if (offsets[i] == 0) {
+#if GFX_VER == 8
+            if (tgt)
+               tgt->zero_offset = true;
+#endif
             crocus_load_register_imm32(batch, GEN7_SO_WRITE_OFFSET(i), 0);
+         }
          else if (tgt)
             crocus_load_register_mem32(batch, GEN7_SO_WRITE_OFFSET(i),
                                        tgt->offset_res->bo,
@@ -4193,10 +4202,18 @@ crocus_create_so_decl_list(const struct pipe_stream_output_info *info,
       // TODO: Double-check that stride == 0 means no buffer. Probably this
       // needs to go elsewhere, where the buffer enable stuff is actually
       // known.
+#if GFX_VER < 8
       sol.SOBufferEnable0 = !!info->stride[0];
       sol.SOBufferEnable1 = !!info->stride[1];
       sol.SOBufferEnable2 = !!info->stride[2];
       sol.SOBufferEnable3 = !!info->stride[3];
+#else
+      /* Set buffer pitches; 0 means unbound. */
+      sol.Buffer0SurfacePitch = 4 * info->stride[0];
+      sol.Buffer1SurfacePitch = 4 * info->stride[1];
+      sol.Buffer2SurfacePitch = 4 * info->stride[2];
+      sol.Buffer3SurfacePitch = 4 * info->stride[3];
+#endif
    }
 
    crocus_pack_command(GENX(3DSTATE_SO_DECL_LIST), so_decl_map, list) {
@@ -6282,13 +6299,31 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             }
             struct crocus_resource *res = (void *) tgt->base.buffer;
             uint32_t start = tgt->base.buffer_offset;
+#if GFX_VER < 8
             uint32_t end = ALIGN(start + tgt->base.buffer_size, 4);
+#endif
             crocus_emit_cmd(batch, GENX(3DSTATE_SO_BUFFER), sob) {
                sob.SOBufferIndex = i;
 
                sob.SurfaceBaseAddress = rw_bo(res->bo, start);
+#if GFX_VER < 8
                sob.SurfacePitch = tgt->stride;
                sob.SurfaceEndAddress = rw_bo(res->bo, end);
+#else
+               sob.SOBufferEnable = true;
+               sob.StreamOffsetWriteEnable = true;
+               sob.StreamOutputBufferOffsetAddressEnable = true;
+               sob.MOCS = crocus_mocs(res->bo, &batch->screen->isl_dev);
+
+               sob.SurfaceSize = MAX2(tgt->base.buffer_size / 4, 1) - 1;
+               sob.StreamOutputBufferOffsetAddress =
+                  rw_bo(crocus_resource_bo(&tgt->offset_res->base), tgt->offset_offset);
+               if (tgt->zero_offset) {
+                  sob.StreamOffset = 0;
+                  tgt->zero_offset = false;
+               } else
+                  sob.StreamOffset = 0xFFFFFFFF; /* not offset, see above */
+#endif
             }
          }
       }
