@@ -234,6 +234,7 @@ files_libnir = files(
   'nir_opt_move_discards_to_top.c',
   'nir_opt_offsets.c',
   'nir_opt_peephole_select.c',
+  'nir_opt_phi_precision.c',
   'nir_opt_rematerialize_compares.c',
   'nir_opt_remove_phis.c',
   'nir_opt_shrink_vectors.c',
