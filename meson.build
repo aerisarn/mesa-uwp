@@ -746,7 +746,7 @@ endif
 with_gallium_va = false
 dep_va = null_dep
 if _va != 'disabled'
-  dep_va = dependency('libva', version : '>= 0.38.0', required : _va == 'enabled')
+  dep_va = dependency('libva', version : '>= 1.1.0', required : _va == 'enabled')
   if dep_va.found()
     dep_va_headers = dep_va.partial_dependency(compile_args : true)
     with_gallium_va = true
