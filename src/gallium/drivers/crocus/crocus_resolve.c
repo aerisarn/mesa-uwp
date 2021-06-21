@@ -113,7 +113,7 @@ resolve_sampler_views(struct crocus_context *ice,
 
       crocus_cache_flush_for_read(batch, isv->res->bo);
 
-      if (batch->screen->devinfo.ver >= 7 &&
+      if (batch->screen->devinfo.ver == 7 &&
           (isv->base.format == PIPE_FORMAT_X24S8_UINT ||
            isv->base.format == PIPE_FORMAT_X32_S8X24_UINT ||
            isv->base.format == PIPE_FORMAT_S8_UINT)) {
@@ -1042,7 +1042,7 @@ crocus_update_stencil_shadow(struct crocus_context *ice,
 {
    struct crocus_screen *screen = (struct crocus_screen *)ice->ctx.screen;
    UNUSED const struct intel_device_info *devinfo = &screen->devinfo;
-   assert(devinfo->ver >= 7);
+   assert(devinfo->ver == 7);
 
    if (!res->shadow_needs_update)
       return;
