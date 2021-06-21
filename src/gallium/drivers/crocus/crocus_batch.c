@@ -299,9 +299,6 @@ crocus_use_bo(struct crocus_batch *batch, struct crocus_bo *bo, bool writable)
 {
    assert(bo->bufmgr == batch->command.bo->bufmgr);
 
-   if (bo == batch->ice->workaround_bo)
-      writable = false;
-
    struct drm_i915_gem_exec_object2 *existing_entry =
       find_validation_entry(batch, bo);
 
@@ -375,6 +372,9 @@ emit_reloc(struct crocus_batch *batch,
            unsigned int reloc_flags)
 {
    assert(target != NULL);
+
+   if (target == batch->ice->workaround_bo)
+      reloc_flags &= ~RELOC_WRITE;
 
    bool writable = reloc_flags & RELOC_WRITE;
 
@@ -472,6 +472,11 @@ create_batch(struct crocus_batch *batch)
                            BATCH_SZ + BATCH_RESERVED(&screen->devinfo));
 
    crocus_use_bo(batch, batch->command.bo, false);
+
+   /* Always add workaround_bo which contains a driver identifier to be
+    * recorded in error states.
+    */
+   crocus_use_bo(batch, batch->ice->workaround_bo, false);
 
    recreate_growing_buffer(batch, &batch->state,
                            "state buffer",
