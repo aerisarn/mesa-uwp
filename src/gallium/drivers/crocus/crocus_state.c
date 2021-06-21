@@ -7023,7 +7023,7 @@ crocus_upload_render_state(struct crocus_context *ice,
                            const struct pipe_draw_indirect_info *indirect,
                            const struct pipe_draw_start_count_bias *sc)
 {
-#if GFX_VER == 7
+#if GFX_VER >= 7
    bool use_predicate = ice->state.predicate == CROCUS_PREDICATE_STATE_USE_BIT;
 #endif
    bool emit_index = false;
@@ -7095,7 +7095,7 @@ crocus_upload_render_state(struct crocus_context *ice,
 #define _3DPRIM_START_INSTANCE      0x243C
 #define _3DPRIM_BASE_VERTEX         0x2440
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
    if (indirect && !indirect->count_from_stream_output) {
       if (indirect->indirect_draw_count) {
          use_predicate = true;
@@ -7109,7 +7109,7 @@ crocus_upload_render_state(struct crocus_context *ice,
                                         "ensure indirect draw buffer is flushed",
                                         PIPE_CONTROL_FLUSH_ENABLE);
          if (ice->state.predicate == CROCUS_PREDICATE_STATE_USE_BIT) {
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
             struct mi_builder b;
             mi_builder_init(&b, &batch->screen->devinfo, batch);
 
@@ -7118,7 +7118,11 @@ crocus_upload_render_state(struct crocus_context *ice,
                mi_ult(&b, mi_imm(drawid_offset),
                       mi_mem32(ro_bo(draw_count_bo,
                                      draw_count_offset)));
-
+#if GFX_VER == 8
+            /* predicate = comparison & conditional rendering predicate */
+            mi_store(&b, mi_reg32(MI_PREDICATE_RESULT),
+                         mi_iand(&b, comparison, mi_reg32(CS_GPR(15))));
+#else
             /* predicate = comparison & conditional rendering predicate */
             struct mi_value pred = mi_iand(&b, comparison,
                                            mi_reg32(CS_GPR(15)));
@@ -7131,6 +7135,7 @@ crocus_upload_render_state(struct crocus_context *ice,
                MI_PREDICATE_COMPAREOP_SRCS_EQUAL;
 
             crocus_batch_emit(batch, &mi_predicate, sizeof(uint32_t));
+#endif
 #endif
          } else {
             uint32_t mi_predicate;
@@ -7202,7 +7207,7 @@ crocus_upload_render_state(struct crocus_context *ice,
       }
 #endif
    } else if (indirect && indirect->count_from_stream_output) {
-#if GFX_VERx10 == 75
+#if GFX_VERx10 >= 75
       struct crocus_stream_output_target *so =
          (void *) indirect->count_from_stream_output;
 
@@ -7234,14 +7239,14 @@ crocus_upload_render_state(struct crocus_context *ice,
 
    crocus_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
       prim.VertexAccessType = draw->index_size > 0 ? RANDOM : SEQUENTIAL;
-#if GFX_VER == 7
+#if GFX_VER >= 7
       prim.PredicateEnable = use_predicate;
 #endif
 
       prim.PrimitiveTopologyType = translate_prim_type(ice->state.prim_mode, draw->vertices_per_patch);
       if (indirect) {
          // XXX Probably have to do something for gen6 here?
-#if GFX_VER == 7
+#if GFX_VER >= 7
          prim.IndirectParameterEnable = true;
 #endif
       } else {
@@ -7414,6 +7419,7 @@ crocus_upload_compute_state(struct crocus_context *ice,
          lrm.MemoryAddress = ro_bo(bo, grid_size->offset + 8);
       }
 
+#if GFX_VER == 7
       /* Clear upper 32-bits of SRC0 and all 64-bits of SRC1 */
       _crocus_emit_lri(batch, MI_PREDICATE_SRC0 + 4, 0);
       crocus_load_register_imm64(batch, MI_PREDICATE_SRC1, 0);
@@ -7455,12 +7461,12 @@ crocus_upload_compute_state(struct crocus_context *ice,
          mip.CombineOperation = COMBINE_OR;
          mip.CompareOperation = COMPARE_FALSE;
       }
-
+#endif
    }
 
    crocus_emit_cmd(batch, GENX(GPGPU_WALKER), ggw) {
       ggw.IndirectParameterEnable    = grid->indirect != NULL;
-      ggw.PredicateEnable            = grid->indirect != NULL;
+      ggw.PredicateEnable            = GFX_VER <= 7 && grid->indirect != NULL;
       ggw.SIMDSize                   = dispatch.simd_size / 16;
       ggw.ThreadDepthCounterMaximum  = 0;
       ggw.ThreadHeightCounterMaximum = 0;
