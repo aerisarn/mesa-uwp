@@ -4991,11 +4991,19 @@ emit_surface_state(struct crocus_batch *batch,
        *
        * FIXME: move to the point of assignment.
        */
-      uint32_t *aux_addr = surf_state + (isl_dev->ss.aux_addr_offset / 4);
-      *aux_addr = crocus_state_reloc(batch,
-                                     addr_offset + isl_dev->ss.aux_addr_offset,
-                                     aux_bo, *aux_addr,
-                                     reloc);
+      if (devinfo->ver == 8) {
+         uint64_t *aux_addr = (uint64_t *)(surf_state + (isl_dev->ss.aux_addr_offset / 4));
+         *aux_addr = crocus_state_reloc(batch,
+                                        addr_offset + isl_dev->ss.aux_addr_offset,
+                                        aux_bo, *aux_addr,
+                                        reloc);
+      } else {
+         uint32_t *aux_addr = surf_state + (isl_dev->ss.aux_addr_offset / 4);
+         *aux_addr = crocus_state_reloc(batch,
+                                        addr_offset + isl_dev->ss.aux_addr_offset,
+                                        aux_bo, *aux_addr,
+                                        reloc);
+      }
    }
 
 }
