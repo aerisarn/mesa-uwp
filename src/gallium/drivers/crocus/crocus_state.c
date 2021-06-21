@@ -3385,7 +3385,13 @@ static uint8_t get_wa_flags(enum isl_format format)
  */
 struct crocus_vertex_element_state {
    uint32_t vertex_elements[1 + 33 * GENX(VERTEX_ELEMENT_STATE_length)];
+#if GFX_VER == 8
+   uint32_t vf_instancing[33 * GENX(3DSTATE_VF_INSTANCING_length)];
+#endif
    uint32_t edgeflag_ve[GENX(VERTEX_ELEMENT_STATE_length)];
+#if GFX_VER == 8
+   uint32_t edgeflag_vfi[GENX(3DSTATE_VF_INSTANCING_length)];
+#endif
    uint32_t step_rate[16];
    uint8_t wa_flags[33];
    unsigned count;
@@ -3420,6 +3426,9 @@ crocus_create_vertex_elements(struct pipe_context *ctx,
    }
 
    uint32_t *ve_pack_dest = &cso->vertex_elements[1];
+#if GFX_VER == 8
+   uint32_t *vfi_pack_dest = cso->vf_instancing;
+#endif
 
    if (count == 0) {
       crocus_pack_state(GENX(VERTEX_ELEMENT_STATE), ve_pack_dest, ve) {
@@ -3430,6 +3439,10 @@ crocus_create_vertex_elements(struct pipe_context *ctx,
          ve.Component2Control = VFCOMP_STORE_0;
          ve.Component3Control = VFCOMP_STORE_1_FP;
       }
+#if GFX_VER == 8
+      crocus_pack_command(GENX(3DSTATE_VF_INSTANCING), vfi_pack_dest, vi) {
+      }
+#endif
    }
 
    for (int i = 0; i < count; i++) {
@@ -3492,7 +3505,17 @@ crocus_create_vertex_elements(struct pipe_context *ctx,
 #endif
       }
 
+#if GFX_VER == 8
+      crocus_pack_command(GENX(3DSTATE_VF_INSTANCING), vfi_pack_dest, vi) {
+         vi.VertexElementIndex = i;
+         vi.InstancingEnable = state[i].instance_divisor > 0;
+         vi.InstanceDataStepRate = state[i].instance_divisor;
+      }
+#endif
       ve_pack_dest += GENX(VERTEX_ELEMENT_STATE_length);
+#if GFX_VER == 8
+      vfi_pack_dest += GENX(3DSTATE_VF_INSTANCING_length);
+#endif
    }
 
    /* An alternative version of the last VE and VFI is stored so it
@@ -3515,6 +3538,15 @@ crocus_create_vertex_elements(struct pipe_context *ctx,
          ve.Component2Control = VFCOMP_STORE_0;
          ve.Component3Control = VFCOMP_STORE_0;
       }
+#if GFX_VER == 8
+      crocus_pack_command(GENX(3DSTATE_VF_INSTANCING), cso->edgeflag_vfi, vi) {
+         /* The vi.VertexElementIndex of the EdgeFlag Vertex Element is filled
+          * at draw time, as it should change if SGVs are emitted.
+          */
+         vi.InstancingEnable = state[edgeflag_index].instance_divisor > 0;
+         vi.InstanceDataStepRate = state[edgeflag_index].instance_divisor;
+      }
+#endif
    }
 
    return cso;
@@ -5348,18 +5380,23 @@ emit_vertex_buffer_state(struct crocus_batch *batch,
    const unsigned vb_dwords = GENX(VERTEX_BUFFER_STATE_length);
    _crocus_pack_state(batch, GENX(VERTEX_BUFFER_STATE), *map, vb) {
       vb.BufferStartingAddress = ro_bo(bo, start_offset);
+#if GFX_VER >= 8
+      vb.BufferSize = end_offset - start_offset;
+#endif
       vb.VertexBufferIndex = buffer_id;
       vb.BufferPitch = stride;
-#if GFX_VER == 7
+#if GFX_VER >= 7
       vb.AddressModifyEnable = true;
 #endif
 #if GFX_VER >= 6
       vb.MOCS = crocus_mocs(bo, &batch->screen->isl_dev);
 #endif
+#if GFX_VER < 8
       vb.BufferAccessType = step_rate ? INSTANCEDATA : VERTEXDATA;
       vb.InstanceDataStepRate = step_rate;
 #if GFX_VER >= 5
       vb.EndAddress = ro_bo(bo, end_offset - 1);
+#endif
 #endif
    }
    *map += vb_dwords;
@@ -6985,8 +7022,13 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
                ve.SourceElementFormat = ISL_FORMAT_R32G32_UINT;
                ve.Component0Control = base_ctrl;
                ve.Component1Control = base_ctrl;
+#if GFX_VER < 8
                ve.Component2Control = ice->state.vs_uses_vertexid ? VFCOMP_STORE_VID : VFCOMP_STORE_0;
                ve.Component3Control = ice->state.vs_uses_instanceid ? VFCOMP_STORE_IID : VFCOMP_STORE_0;
+#else
+               ve.Component2Control = VFCOMP_STORE_0;
+               ve.Component3Control = VFCOMP_STORE_0;
+#endif
 #if GFX_VER < 5
                ve.DestinationElementOffset = cso->count * 4;
 #endif
@@ -7018,6 +7060,32 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          crocus_batch_emit(batch, &dynamic_ves, sizeof(uint32_t) *
                          (1 + dyn_count * GENX(VERTEX_ELEMENT_STATE_length)));
       }
+
+#if GFX_VER == 8
+      if (!ice->state.vs_needs_edge_flag) {
+         crocus_batch_emit(batch, cso->vf_instancing, sizeof(uint32_t) *
+                         entries * GENX(3DSTATE_VF_INSTANCING_length));
+      } else {
+         assert(cso->count > 0);
+         const unsigned edgeflag_index = cso->count - 1;
+         uint32_t dynamic_vfi[33 * GENX(3DSTATE_VF_INSTANCING_length)];
+         memcpy(&dynamic_vfi[0], cso->vf_instancing, edgeflag_index *
+                GENX(3DSTATE_VF_INSTANCING_length) * sizeof(uint32_t));
+
+         uint32_t *vfi_pack_dest = &dynamic_vfi[0] +
+            edgeflag_index * GENX(3DSTATE_VF_INSTANCING_length);
+         crocus_pack_command(GENX(3DSTATE_VF_INSTANCING), vfi_pack_dest, vi) {
+            vi.VertexElementIndex = edgeflag_index +
+               ice->state.vs_needs_sgvs_element +
+               ice->state.vs_uses_derived_draw_params;
+         }
+         for (int i = 0; i < GENX(3DSTATE_VF_INSTANCING_length);  i++)
+            vfi_pack_dest[i] |= cso->edgeflag_vfi[i];
+
+         crocus_batch_emit(batch, &dynamic_vfi[0], sizeof(uint32_t) *
+                         entries * GENX(3DSTATE_VF_INSTANCING_length));
+      }
+#endif
    }
 
 #if GFX_VERx10 >= 75
@@ -7102,7 +7170,12 @@ crocus_upload_render_state(struct crocus_context *ice,
 #endif
             ib.IndexFormat = draw->index_size >> 1;
             ib.BufferStartingAddress = ro_bo(bo, offset);
+#if GFX_VER >= 8
+            ib.MOCS = crocus_mocs(bo, &batch->screen->isl_dev);
+            ib.BufferSize = bo->size - offset;
+#else
             ib.BufferEndingAddress = ro_bo(bo, offset + size - 1);
+#endif
          }
          ice->state.index_buffer.size = size;
          ice->state.index_buffer.offset = offset;
