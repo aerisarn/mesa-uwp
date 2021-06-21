@@ -22,6 +22,7 @@
  */
 
 #include "brw_nir.h"
+#include "brw_nir_rt.h"
 #include "brw_shader.h"
 #include "dev/intel_debug.h"
 #include "compiler/glsl_types.h"
@@ -546,6 +547,8 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_opt_copy_prop_vars);
       OPT(nir_opt_dead_write_vars);
       OPT(nir_opt_combine_stores, nir_var_all);
+
+      OPT(nir_opt_ray_queries);
 
       if (is_scalar) {
          OPT(nir_lower_alu_to_scalar, NULL, NULL);

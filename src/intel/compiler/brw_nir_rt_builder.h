@@ -907,4 +907,32 @@ brw_nir_rt_load_primitive_id_from_hit(nir_builder *b,
                              4, /* align */ 1, 32);
 }
 
+static inline nir_ssa_def *
+brw_nir_rt_acceleration_structure_to_root_node(nir_builder *b,
+                                               nir_ssa_def *as_addr)
+{
+   /* The HW memory structure in which we specify what acceleration structure
+    * to traverse, takes the address to the root node in the acceleration
+    * structure, not the acceleration structure itself. To find that, we have
+    * to read the root node offset from the acceleration structure which is
+    * the first QWord.
+    *
+    * But if the acceleration structure pointer is NULL, then we should return
+    * NULL as root node pointer.
+    */
+   nir_ssa_def *root_node_ptr, *null_node_ptr;
+   nir_push_if(b, nir_ieq(b, as_addr, nir_imm_int64(b, 0)));
+   {
+      null_node_ptr = nir_imm_int64(b, 0);
+   }
+   nir_push_else(b, NULL);
+   {
+      root_node_ptr =
+         nir_iadd(b, as_addr, brw_nir_rt_load(b, as_addr, 256, 1, 64));
+   }
+   nir_pop_if(b, NULL);
+
+   return nir_if_phi(b, null_node_ptr, root_node_ptr);
+}
+
 #endif /* BRW_NIR_RT_BUILDER_H */

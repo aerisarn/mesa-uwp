@@ -177,6 +177,7 @@ can_remat_instr(nir_instr *instr, struct brw_bitset *remat)
       case nir_intrinsic_load_callable_sbt_addr_intel:
       case nir_intrinsic_load_callable_sbt_stride_intel:
       case nir_intrinsic_load_reloc_const_intel:
+      case nir_intrinsic_load_ray_query_global_intel:
          /* Notably missing from the above list is btd_local_arg_addr_intel.
           * This is because the resume shader will have a different local
           * argument pointer because it has a different BSR.  Any access of

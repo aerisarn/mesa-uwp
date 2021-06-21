@@ -163,13 +163,8 @@ lower_shader_calls_instr(struct nir_builder *b, nir_instr *instr, void *data)
       nir_ssa_def *ray_dir = call->src[8].ssa;
       nir_ssa_def *ray_t_max = call->src[9].ssa;
 
-      /* The hardware packet takes the address to the root node in the
-       * acceleration structure, not the acceleration structure itself. To
-       * find that, we have to read the root node offset from the acceleration
-       * structure which is the first QWord.
-       */
       nir_ssa_def *root_node_ptr =
-         nir_iadd(b, as_addr, nir_load_global(b, as_addr, 256, 1, 64));
+         brw_nir_rt_acceleration_structure_to_root_node(b, as_addr);
 
       /* The hardware packet requires an address to the first element of the
        * hit SBT.
