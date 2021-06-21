@@ -1282,12 +1282,14 @@ emit_pipeline_select(struct crocus_batch *batch, uint32_t pipeline)
  * See "Volume 2a: 3D Pipeline," section 1.8, "Volume 1b: Configurations",
  * and the documentation for 3DSTATE_PUSH_CONSTANT_ALLOC_xS.
  */
-#if GFX_VER == 7
+#if GFX_VER >= 7
 static void
 crocus_alloc_push_constants(struct crocus_batch *batch)
 {
 #if GFX_VERx10 == 75
    const unsigned push_constant_kb = batch->screen->devinfo.gt == 3 ? 32 : 16;
+#elif GFX_VER == 8
+   const unsigned push_constant_kb = 32;
 #else
    const unsigned push_constant_kb = 16;
 #endif
@@ -1340,7 +1342,7 @@ crocus_init_render_context(struct crocus_batch *batch)
 #if GFX_VER == 7
    emit_l3_state(batch, false);
 #endif
-#if GFX_VER == 7 && GFX_VERx10 != 75
+#if (GFX_VERx10 == 70 || GFX_VERx10 == 80)
    crocus_emit_reg(batch, GENX(INSTPM), reg) {
       reg.CONSTANT_BUFFERAddressOffsetDisable = true;
       reg.CONSTANT_BUFFERAddressOffsetDisableMask = true;
@@ -1355,7 +1357,7 @@ crocus_init_render_context(struct crocus_batch *batch)
    /* TODO: may need to set an offset for origin-UL framebuffers */
    crocus_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_OFFSET), foo);
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
    crocus_alloc_push_constants(batch);
 #endif
 }
@@ -5232,7 +5234,7 @@ emit_push_constant_packets(struct crocus_context *ice,
 #endif
    crocus_emit_cmd(batch, GENX(3DSTATE_CONSTANT_VS), pkt) {
       pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
-#if GFX_VER == 7
+#if GFX_VER >= 7
       if (prog_data) {
          /* The Skylake PRM contains the following restriction:
           *
@@ -5535,7 +5537,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
 
       genX(crocus_upload_urb)(batch, vs_size, gs_present, gs_size);
 #endif
-#if GFX_VER == 7
+#if GFX_VER >= 7
       const struct intel_device_info *devinfo = &batch->screen->devinfo;
       bool gs_present = ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL;
       bool tess_present = ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL;
@@ -5583,8 +5585,10 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
                               entry_size,
                               entries, start, NULL, &constrained);
 
-         if (!(GFX_VERx10 == 75) && !devinfo->is_baytrail)
+#if GFX_VER == 7
+         if (GFX_VERx10 < 75 && !devinfo->is_baytrail)
             gen7_emit_vs_workaround_flush(batch);
+#endif
          for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
             crocus_emit_cmd(batch, GENX(3DSTATE_URB_VS), urb) {
                urb._3DCommandSubOpcode += i;
