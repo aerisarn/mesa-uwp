@@ -3299,6 +3299,14 @@ crocus_set_stencil_ref(struct pipe_context *ctx,
    ice->state.dirty |= CROCUS_DIRTY_COLOR_CALC_STATE;
 }
 
+#if GFX_VER == 8
+static float
+viewport_extent(const struct pipe_viewport_state *state, int axis, float sign)
+{
+   return copysignf(state->scale[axis], sign) + state->translate[axis];
+}
+#endif
+
 /**
  * The pipe->set_viewport_states() driver hook.
  *
@@ -5856,7 +5864,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
 
    if (dirty & CROCUS_DIRTY_SF_CL_VIEWPORT) {
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
-#if GFX_VER == 7
+#if GFX_VER >= 7
       uint32_t sf_cl_vp_address;
       uint32_t *vp_map =
          stream_state(batch,
@@ -5877,11 +5885,17 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          const struct pipe_viewport_state *state = &ice->state.viewports[i];
          float gb_xmin, gb_xmax, gb_ymin, gb_ymax;
 
+#if GFX_VER == 8
+         float vp_xmin = viewport_extent(state, 0, -1.0f);
+         float vp_xmax = viewport_extent(state, 0,  1.0f);
+         float vp_ymin = viewport_extent(state, 1, -1.0f);
+         float vp_ymax = viewport_extent(state, 1,  1.0f);
+#endif
          intel_calculate_guardband_size(cso_fb->width, cso_fb->height,
                                         state->scale[0], state->scale[1],
                                         state->translate[0], state->translate[1],
                                         &gb_xmin, &gb_xmax, &gb_ymin, &gb_ymax);
-#if GFX_VER == 7
+#if GFX_VER >= 7
          crocus_pack_state(GENX(SF_CLIP_VIEWPORT), vp_map, vp)
 #else
          crocus_pack_state(GENX(SF_VIEWPORT), vp_map, vp)
@@ -5902,11 +5916,17 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             vp.ScissorRectangle.ScissorRectangleYMax = scissor.maxy;
 #endif
 
-#if GFX_VER == 7
+#if GFX_VER >= 7
             vp.XMinClipGuardband = gb_xmin;
             vp.XMaxClipGuardband = gb_xmax;
             vp.YMinClipGuardband = gb_ymin;
             vp.YMaxClipGuardband = gb_ymax;
+#endif
+#if GFX_VER == 8
+            vp.XMinViewPort = MAX2(vp_xmin, 0);
+            vp.XMaxViewPort = MIN2(vp_xmax, cso_fb->width) - 1;
+            vp.YMinViewPort = MAX2(vp_ymin, 0);
+            vp.YMaxViewPort = MIN2(vp_ymax, cso_fb->height) - 1;
 #endif
          }
 #if GFX_VER < 7
@@ -5917,14 +5937,14 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             clip.YMaxClipGuardband = gb_ymax;
          }
 #endif
-#if GFX_VER == 7
+#if GFX_VER >= 7
          vp_map += GENX(SF_CLIP_VIEWPORT_length);
 #else
          vp_map += GENX(SF_VIEWPORT_length);
          clip_map += GENX(CLIP_VIEWPORT_length);
 #endif
       }
-#if GFX_VER == 7
+#if GFX_VER >= 7
       crocus_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP), ptr) {
          ptr.SFClipViewportPointer = sf_cl_vp_address;
       }
