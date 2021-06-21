@@ -6667,6 +6667,13 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          vs.SamplerCount = 0; /* hardware requirement */
 
 #endif
+#if GFX_VER >= 8
+         vs.SIMD8DispatchEnable =
+            vue_prog_data->dispatch_mode == DISPATCH_MODE_SIMD8;
+
+         vs.UserClipDistanceCullTestEnableBitmask =
+            vue_prog_data->cull_distance_mask;
+#endif
       }
 
 #if GFX_VER == 6
@@ -6745,8 +6752,9 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
              * Bridge this will get the order close to correct but not perfect.
              */
             gs.ReorderMode = TRAILING;
-            gs.MaximumNumberofThreads = (batch->screen->devinfo.max_gs_threads - 1);
-
+            gs.MaximumNumberofThreads =
+               GFX_VER == 8 ? (batch->screen->devinfo.max_gs_threads / 2 - 1) :
+               (batch->screen->devinfo.max_gs_threads - 1);
 #if GFX_VER < 7
             gs.SOStatisticsEnable = true;
             if (gs_prog_data->num_transform_feedback_bindings)
@@ -6760,6 +6768,26 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
              */
             gs.SingleProgramFlow = true;
             gs.VectorMaskEnable = true;
+#endif
+#if GFX_VER >= 8
+            gs.ExpectedVertexCount = gs_prog_data->vertices_in;
+
+            if (gs_prog_data->static_vertex_count != -1) {
+               gs.StaticOutput = true;
+               gs.StaticOutputVertexCount = gs_prog_data->static_vertex_count;
+            }
+            gs.IncludeVertexHandles = vue_prog_data->include_vue_handles;
+
+            gs.UserClipDistanceCullTestEnableBitmask =
+               vue_prog_data->cull_distance_mask;
+
+            const int urb_entry_write_offset = 1;
+            const uint32_t urb_entry_output_length =
+               DIV_ROUND_UP(vue_prog_data->vue_map.num_slots, 2) -
+               urb_entry_write_offset;
+
+            gs.VertexURBEntryOutputReadOffset = urb_entry_write_offset;
+            gs.VertexURBEntryOutputLength = MAX2(urb_entry_output_length, 1);
 #endif
          }
 #endif
@@ -6795,9 +6823,11 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          }
 #endif
          if (!active && !ice->shaders.ff_gs_prog) {
+#if GFX_VER < 8
             gs.DispatchGRFStartRegisterForURBData = 1;
 #if GFX_VER >= 7
             gs.IncludeVertexHandles = true;
+#endif
 #endif
          }
 #if GFX_VER >= 6
@@ -6854,6 +6884,13 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             ds.MaximumNumberofThreads = batch->screen->devinfo.max_tes_threads - 1;
             ds.ComputeWCoordinateEnable =
                tes_prog_data->domain == BRW_TESS_DOMAIN_TRI;
+
+#if GFX_VER >= 8
+            if (vue_prog_data->dispatch_mode == DISPATCH_MODE_SIMD8)
+               ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
+            ds.UserClipDistanceCullTestEnableBitmask =
+               vue_prog_data->cull_distance_mask;
+#endif
          };
       } else {
          crocus_emit_cmd(batch, GENX(3DSTATE_TE), te);
