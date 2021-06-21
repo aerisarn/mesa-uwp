@@ -51,7 +51,7 @@ files_libcrocus = files(
 )
 
 crocus_per_hw_ver_libs = []
-foreach v : ['40', '45', '50', '60', '70', '75']
+foreach v : ['40', '45', '50', '60', '70', '75', '80']
   crocus_per_hw_ver_libs += static_library(
     'crocus_per_hw_ver@0@'.format(v),
     ['crocus_blorp.c', 'crocus_query.c', 'crocus_state.c', 'crocus_blt.c', gen_xml_pack],

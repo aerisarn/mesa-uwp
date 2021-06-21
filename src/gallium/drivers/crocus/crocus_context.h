@@ -954,6 +954,9 @@ static inline bool crocus_check_conditional_render(struct crocus_context *ice)
 #  define genX(x) gfx75_##x
 #  include "crocus_genx_protos.h"
 #  undef genX
+#  define genX(x) gfx8_##x
+#  include "crocus_genx_protos.h"
+#  undef genX
 #endif
 
 #endif

@@ -59,6 +59,9 @@
 
 #define genX_call(devinfo, func, ...)                   \
    switch ((devinfo)->verx10) {                         \
+   case 80:                                             \
+      gfx8_##func(__VA_ARGS__);                         \
+      break;                                            \
    case 75:                                             \
       gfx75_##func(__VA_ARGS__);                        \
       break;                                            \
