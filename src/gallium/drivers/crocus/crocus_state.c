@@ -298,7 +298,11 @@ translate_wrap(unsigned pipe_wrap, bool either_nearest)
 {
    static const unsigned map[] = {
       [PIPE_TEX_WRAP_REPEAT]                 = TCM_WRAP,
+#if GFX_VER == 8
+      [PIPE_TEX_WRAP_CLAMP]                  = TCM_HALF_BORDER,
+#else
       [PIPE_TEX_WRAP_CLAMP]                  = TCM_CLAMP_BORDER,
+#endif
       [PIPE_TEX_WRAP_CLAMP_TO_EDGE]          = TCM_CLAMP,
       [PIPE_TEX_WRAP_CLAMP_TO_BORDER]        = TCM_CLAMP_BORDER,
       [PIPE_TEX_WRAP_MIRROR_REPEAT]          = TCM_MIRROR,
@@ -308,8 +312,10 @@ translate_wrap(unsigned pipe_wrap, bool either_nearest)
       [PIPE_TEX_WRAP_MIRROR_CLAMP]           = -1,
       [PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER] = -1,
    };
+#if GFX_VER < 8
    if (pipe_wrap == PIPE_TEX_WRAP_CLAMP && either_nearest)
       return TCM_CLAMP;
+#endif
    return map[pipe_wrap];
 }
 
