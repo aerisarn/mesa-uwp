@@ -699,8 +699,9 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD = BIT(6),
    TU_CMD_DIRTY_SHADER_CONSTS = BIT(7),
    TU_CMD_DIRTY_LRZ = BIT(8),
+   TU_CMD_DIRTY_VS_PARAMS = BIT(9),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = BIT(9)
+   TU_CMD_DIRTY_DRAW_STATE = BIT(10)
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
@@ -882,6 +883,12 @@ struct tu_lrz_state
    enum tu_lrz_direction prev_direction;
 };
 
+struct tu_vs_params {
+   uint32_t params_offset;
+   uint32_t vertex_offset;
+   uint32_t first_instance;
+};
+
 struct tu_cmd_state
 {
    uint32_t dirty;
@@ -955,6 +962,8 @@ struct tu_cmd_state
    struct tu_lrz_state lrz;
 
    struct tu_draw_state depth_plane_state;
+
+   struct tu_vs_params last_vs_params;
 };
 
 struct tu_cmd_pool
