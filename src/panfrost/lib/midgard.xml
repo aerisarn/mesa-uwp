@@ -983,6 +983,9 @@
     <field name="SFBD Blend Shader" size="64" start="14:0" type="address"/>
     <field name="SFBD Blend Equation" size="32" start="14:0" type="Blend Equation"/>
     <field name="SFBD Blend Constant" size="32" start="15:0" type="float"/>
+    <!-- New in v6, only without message preloading -->
+    <field name="Secondary preload" size="32" start="13:0" type="Preload"/>
+    <field name="Secondary shader" size="64" start="13:0" type="address"/>
     <!-- New in v7, only with a single shader (XXX: type Message Preload) -->
     <field name="Message Preload 1" size="16" start="15:0" type="uint"/>
     <field name="Message Preload 2" size="16" start="15:16" type="uint"/>
