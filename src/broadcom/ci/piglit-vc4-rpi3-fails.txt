@@ -695,6 +695,7 @@ spec@!opengl 1.1@depthstencil-default_fb-readpixels-24_8 samples=2,Crash
 spec@!opengl 1.1@depthstencil-default_fb-readpixels-24_8 samples=4,Crash
 spec@!opengl 1.1@depthstencil-default_fb-readpixels-float-and-ushort samples=2,Crash
 spec@!opengl 1.1@depthstencil-default_fb-readpixels-float-and-ushort samples=4,Crash
+spec@!opengl 1.1@draw-pixels,Fail
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_line_loop,Fail
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_polygon,Crash
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_quad_strip,Crash
@@ -934,36 +935,36 @@ spec@ext_direct_state_access@multi-texture,Crash
 spec@ext_direct_state_access@multi-texture@MultiTexImage3DEXT,Fail
 spec@ext_direct_state_access@multi-texture@MultiTexSubImage1DEXT,Fail
 spec@ext_direct_state_access@textures,Fail
-spec@ext_direct_state_access@textures@CopyTextureSubImage3DEXT,Fail
 spec@ext_direct_state_access@textures@CopyTextureSubImage3DEXT + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@CopyTextureSubImage3DEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@GL_PROXY_TEXTURE_1D + glTex*,Fail
+spec@ext_direct_state_access@textures@CopyTextureSubImage3DEXT,Fail
 spec@ext_direct_state_access@textures@GL_PROXY_TEXTURE_1D + glTex* + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@GL_PROXY_TEXTURE_1D + glTex* + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@GL_PROXY_TEXTURE_3D + glTex*,Fail
+spec@ext_direct_state_access@textures@GL_PROXY_TEXTURE_1D + glTex*,Fail
 spec@ext_direct_state_access@textures@GL_PROXY_TEXTURE_3D + glTex* + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@GL_PROXY_TEXTURE_3D + glTex* + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@TextureImage2DEXT,Fail
+spec@ext_direct_state_access@textures@GL_PROXY_TEXTURE_3D + glTex*,Fail
 spec@ext_direct_state_access@textures@TextureImage2DEXT + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@TextureImage2DEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@TextureImage3DEXT,Fail
+spec@ext_direct_state_access@textures@TextureImage2DEXT,Fail
 spec@ext_direct_state_access@textures@TextureImage3DEXT + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@TextureImage3DEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@TextureParameterfEXT,Fail
+spec@ext_direct_state_access@textures@TextureImage3DEXT,Fail
 spec@ext_direct_state_access@textures@TextureParameterfEXT + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@TextureParameterfEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@TextureParameteriEXT,Fail
+spec@ext_direct_state_access@textures@TextureParameterfEXT,Fail
 spec@ext_direct_state_access@textures@TextureParameteriEXT + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@TextureParameteriEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@TextureParameterivEXT,Fail
+spec@ext_direct_state_access@textures@TextureParameteriEXT,Fail
 spec@ext_direct_state_access@textures@TextureParameterivEXT + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@TextureParameterivEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@TextureSubImage2DEXT,Fail
+spec@ext_direct_state_access@textures@TextureParameterivEXT,Fail
 spec@ext_direct_state_access@textures@TextureSubImage2DEXT + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@TextureSubImage2DEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@TextureSubImage3DEXT,Fail
+spec@ext_direct_state_access@textures@TextureSubImage2DEXT,Fail
 spec@ext_direct_state_access@textures@TextureSubImage3DEXT + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@TextureSubImage3DEXT + display list GL_COMPILE_AND_EXECUTE,Fail
+spec@ext_direct_state_access@textures@TextureSubImage3DEXT,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
 spec@ext_framebuffer_multisample@blit-flipped 2 x,Crash
 spec@ext_framebuffer_multisample@blit-flipped 2 y,Crash
@@ -1062,15 +1063,15 @@ spec@ext_packed_depth_stencil@texwrap formats@GL_DEPTH24_STENCIL8- swizzled,Fail
 spec@ext_provoking_vertex@provoking-vertex,Fail
 spec@ext_texture_format_bgra8888@api-errors,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor,Fail
-spec@ext_texture_srgb@texwrap formats bordercolor@GL_SLUMINANCE8- border color only,Fail
-spec@ext_texture_srgb@texwrap formats bordercolor@GL_SLUMINANCE8_ALPHA8- border color only,Fail
-spec@ext_texture_srgb@texwrap formats bordercolor@GL_SRGB8- border color only,Fail
-spec@ext_texture_srgb@texwrap formats bordercolor@GL_SRGB8_ALPHA8- border color only,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor-swizzled@GL_SLUMINANCE8- swizzled- border color only,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor-swizzled@GL_SLUMINANCE8_ALPHA8- swizzled- border color only,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor-swizzled@GL_SRGB8- swizzled- border color only,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor-swizzled@GL_SRGB8_ALPHA8- swizzled- border color only,Fail
+spec@ext_texture_srgb@texwrap formats bordercolor@GL_SLUMINANCE8- border color only,Fail
+spec@ext_texture_srgb@texwrap formats bordercolor@GL_SLUMINANCE8_ALPHA8- border color only,Fail
+spec@ext_texture_srgb@texwrap formats bordercolor@GL_SRGB8- border color only,Fail
+spec@ext_texture_srgb@texwrap formats bordercolor@GL_SRGB8_ALPHA8- border color only,Fail
 spec@ext_texture_srgb@texwrap formats,Fail
 spec@ext_texture_srgb@texwrap formats@GL_SLUMINANCE8,Fail
 spec@ext_texture_srgb@texwrap formats@GL_SLUMINANCE8- NPOT,Fail
@@ -1195,11 +1196,11 @@ spec@khr_texture_compression_astc@basic-gles,Fail
 spec@khr_texture_compression_astc@miptree-gl ldr,Fail
 spec@khr_texture_compression_astc@miptree-gl ldr@LDR Profile,Fail
 spec@khr_texture_compression_astc@miptree-gl srgb,Fail
-spec@khr_texture_compression_astc@miptree-gl srgb@sRGB decode,Fail
 spec@khr_texture_compression_astc@miptree-gl srgb-fp,Fail
 spec@khr_texture_compression_astc@miptree-gl srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@miptree-gl srgb-sd,Fail
 spec@khr_texture_compression_astc@miptree-gl srgb-sd@sRGB skip decode,Fail
+spec@khr_texture_compression_astc@miptree-gl srgb@sRGB decode,Fail
 spec@khr_texture_compression_astc@miptree-gles ldr,Fail
 spec@khr_texture_compression_astc@miptree-gles ldr@LDR Profile,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb,Fail
