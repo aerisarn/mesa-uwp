@@ -154,27 +154,6 @@ static void emit_immediate_s5(struct i915_context *i915, uint imm)
    OUT_BATCH(imm);
 }
 
-static void emit_immediate_s6(struct i915_context *i915, uint imm)
-{
-   /* Fixup blend function for A8 dst buffers.
-    * When we blend to an A8 buffer, the GPU thinks it's a G8 buffer,
-    * and therefore we need to use the color factor for alphas. */
-   uint srcRGB;
-
-   if (i915->framebuffer.cbufs[0] &&
-       i915->framebuffer.cbufs[0]->format == PIPE_FORMAT_A8_UNORM) {
-      srcRGB = (imm >> S6_CBUF_SRC_BLEND_FACT_SHIFT) & BLENDFACT_MASK;
-      if (srcRGB == BLENDFACT_DST_ALPHA)
-         srcRGB = BLENDFACT_DST_COLR;
-      else if (srcRGB == BLENDFACT_INV_DST_ALPHA)
-         srcRGB = BLENDFACT_INV_DST_COLR;
-      imm &= ~SRC_BLND_FACT(BLENDFACT_MASK);
-      imm |= SRC_BLND_FACT(srcRGB);
-   }
-
-   OUT_BATCH(imm);
-}
-
 static void
 emit_immediate(struct i915_context *i915)
 {
@@ -202,8 +181,6 @@ emit_immediate(struct i915_context *i915)
       if (dirty & (1 << i)) {
          if (i == I915_IMMEDIATE_S5)
             emit_immediate_s5(i915, i915->current.immediate[i]);
-         else if (i == I915_IMMEDIATE_S6)
-            emit_immediate_s6(i915, i915->current.immediate[i]);
          else
             OUT_BATCH(i915->current.immediate[i]);
       }

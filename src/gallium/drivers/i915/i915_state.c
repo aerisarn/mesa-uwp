@@ -97,6 +97,50 @@ static unsigned translate_mip_filter( unsigned filter )
    }
 }
 
+static uint32_t
+i915_remap_lis6_blend_dst_alpha(uint32_t lis6, uint32_t normal, uint32_t inv)
+{
+   uint32_t src = (lis6 >> S6_CBUF_SRC_BLEND_FACT_SHIFT) & BLENDFACT_MASK;
+   lis6 &= ~SRC_BLND_FACT(BLENDFACT_MASK);
+   if (src == BLENDFACT_DST_ALPHA)
+      src = normal;
+   else if (src == BLENDFACT_INV_DST_ALPHA)
+      src = inv;
+   lis6 |= SRC_BLND_FACT(src);
+
+   uint32_t dst = (lis6 >> S6_CBUF_DST_BLEND_FACT_SHIFT) & BLENDFACT_MASK;
+   lis6 &= ~DST_BLND_FACT(BLENDFACT_MASK);
+   if (dst == BLENDFACT_DST_ALPHA)
+      dst = normal;
+   else if (dst == BLENDFACT_INV_DST_ALPHA)
+      dst = inv;
+   lis6 |= DST_BLND_FACT(dst);
+
+   return lis6;
+}
+
+static uint32_t
+i915_remap_iab_blend_dst_alpha(uint32_t iab, uint32_t normal, uint32_t inv)
+{
+   uint32_t src = (iab >> IAB_SRC_FACTOR_SHIFT) & BLENDFACT_MASK;
+   iab &= ~SRC_BLND_FACT(BLENDFACT_MASK);
+   if (src == BLENDFACT_DST_ALPHA)
+      src = normal;
+   else if (src == BLENDFACT_INV_DST_ALPHA)
+      src = inv;
+   iab |= SRC_ABLND_FACT(src);
+
+   uint32_t dst = (iab >> IAB_DST_FACTOR_SHIFT) & BLENDFACT_MASK;
+   iab &= ~DST_BLND_FACT(BLENDFACT_MASK);
+   if (dst == BLENDFACT_DST_ALPHA)
+      dst = normal;
+   else if (dst == BLENDFACT_INV_DST_ALPHA)
+      dst = inv;
+   iab |= DST_ABLND_FACT(dst);
+
+   return iab;
+}
+
 /* None of this state is actually used for anything yet.
  */
 static void *
@@ -172,6 +216,16 @@ i915_create_blend_state(struct pipe_context *pipe,
                          DST_BLND_FACT(i915_translate_blend_factor(dstRGB)) |
                          (i915_translate_blend_func(funcRGB) << S6_CBUF_BLEND_FUNC_SHIFT));
    }
+
+   cso_data->LIS6_alpha_in_g =
+      i915_remap_lis6_blend_dst_alpha(cso_data->LIS6, BLENDFACT_DST_COLR, BLENDFACT_INV_DST_COLR);
+   cso_data->LIS6_alpha_is_x =
+      i915_remap_lis6_blend_dst_alpha(cso_data->LIS6, BLENDFACT_ONE, BLENDFACT_ZERO);
+
+   cso_data->iab_alpha_in_g =
+      i915_remap_iab_blend_dst_alpha(cso_data->iab, BLENDFACT_DST_COLR, BLENDFACT_INV_DST_COLR);
+   cso_data->iab_alpha_is_x =
+      i915_remap_iab_blend_dst_alpha(cso_data->iab, BLENDFACT_ONE, BLENDFACT_ZERO);
 
    return cso_data;
 }

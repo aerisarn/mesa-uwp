@@ -351,6 +351,8 @@ i915_clear_depth_stencil_blitter(struct pipe_context *pipe,
 
 static void i915_set_color_surface_swizzle(struct i915_surface *surf)
 {
+   enum pipe_format format = surf->templ.format;
+
    const struct {
       enum pipe_format format;
       uint8_t color_swizzle[4];
@@ -358,13 +360,22 @@ static void i915_set_color_surface_swizzle(struct i915_surface *surf)
    } fixup_formats[] = {
       { PIPE_FORMAT_R8G8B8A8_UNORM, {2, 1, 0, 3 }, 0x21030000 /* BGRA */},
       { PIPE_FORMAT_R8G8B8X8_UNORM, {2, 1, 0, 3 }, 0x21030000 /* BGRX */},
+
+      /* These are rendered to using COLORBUF_8BIT, where the G channel written
+       * by shader (and output by blending) is used.
+       */
       { PIPE_FORMAT_L8_UNORM,       {0, 0, 0, 0 }, 0x00030000 /* RRRA */},
       { PIPE_FORMAT_I8_UNORM,       {0, 0, 0, 0 }, 0x00030000 /* RRRA */},
       { PIPE_FORMAT_A8_UNORM,       {3, 3, 3, 3 }, 0x33330000 /* AAAA */},
    };
 
+   if (format == PIPE_FORMAT_A8_UNORM)
+      surf->alpha_in_g = true;
+   else if (util_format_is_rgbx_or_bgrx(format))
+      surf->alpha_is_x = true;
+
    for (int i = 0; i < ARRAY_SIZE(fixup_formats); i++) {
-      if (fixup_formats[i].format == surf->templ.format) {
+      if (fixup_formats[i].format == format) {
          memcpy(surf->color_swizzle, fixup_formats[i].color_swizzle, sizeof(surf->color_swizzle));
          surf->oc_swizzle = fixup_formats[i].oc_swizzle;
          return;

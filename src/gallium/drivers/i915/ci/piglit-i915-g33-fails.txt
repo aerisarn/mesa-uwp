@@ -158,10 +158,6 @@ spec@!opengl 1.1@clipflat@glDrawElements(GL_QUADS)- glFrontFace(GL_CW)- glPolygo
 spec@!opengl 1.1@clipflat@glDrawElements(GL_QUAD_STRIP)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
 spec@!opengl 1.1@clipflat@glDrawElements(GL_QUAD_STRIP)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
 spec@!opengl 1.1@depthstencil-default_fb-clear,Fail
-spec@!opengl 1.1@depthstencil-default_fb-copypixels,Fail
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort,Fail
-spec@!opengl 1.1@draw-pixels,Fail
-spec@!opengl 1.1@drawpix-z,Fail
 spec@!opengl 1.1@getteximage-formats,Crash
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_quad_strip,Crash
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 vbo gl_quad_strip,Crash
@@ -251,7 +247,6 @@ spec@!opengl 1.2@texwrap 3d proj,Fail
 spec@!opengl 1.2@texwrap 3d proj@GL_RGBA8- NPOT- projected,Fail
 spec@!opengl 1.2@texwrap 3d proj bordercolor,Fail
 spec@!opengl 1.2@texwrap 3d proj bordercolor@GL_RGBA8- projected- border color only,Fail
-spec@!opengl 1.4@copy-pixels,Fail
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
 
 # 1D textures are treated as 2D, but we don't force
@@ -335,12 +330,6 @@ spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT,Fail
 spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT16,Fail
 spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT24,Fail
 spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT32,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component16-copypixels,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component16-drawpixels,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component24-copypixels,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component24-drawpixels,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component32-copypixels,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component32-drawpixels,Fail
 spec@arb_depth_texture@fbo-generatemipmap-formats,Fail
 spec@arb_depth_texture@fbo-generatemipmap-formats@GL_DEPTH_COMPONENT,Fail
 spec@arb_depth_texture@fbo-generatemipmap-formats@GL_DEPTH_COMPONENT NPOT,Fail
@@ -366,7 +355,6 @@ spec@arb_fragment_program_shadow@tex-shadow2drect,Fail
 spec@arb_fragment_program_shadow@txp-shadow1d,Fail
 spec@arb_fragment_program_shadow@txp-shadow2d,Fail
 spec@arb_fragment_program_shadow@txp-shadow2drect,Fail
-spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit depth gl_depth24_stencil8,Fail
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_depth24_stencil8,Fail
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index1,Fail
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index16,Fail
@@ -410,7 +398,6 @@ spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_RGB- bord
 spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_RGBA- border color only,Fail
 spec@arb_texture_cube_map@copyteximage cube,Fail
 spec@arb_texture_cube_map@cubemap npot,Fail
-spec@arb_texture_rectangle@copyteximage rect,Fail
 spec@arb_texture_rectangle@glsl-fs-shadow2drect,Fail
 spec@arb_texture_rectangle@glsl-fs-shadow2drect-01,Fail
 spec@arb_texture_rectangle@glsl-fs-shadow2drect-03,Fail
@@ -491,12 +478,6 @@ spec@ext_framebuffer_multisample@accuracy all_samples stencil_resolve depthstenc
 spec@ext_framebuffer_multisample@accuracy all_samples stencil_resolve small depthstencil,Fail
 spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 spec@ext_framebuffer_object@fbo-blending-formats,Fail
-spec@ext_framebuffer_object@fbo-blending-formats@3,Fail
-spec@ext_framebuffer_object@fbo-blending-formats@GL_ALPHA,Fail
-spec@ext_framebuffer_object@fbo-blending-formats@GL_ALPHA12,Fail
-spec@ext_framebuffer_object@fbo-blending-formats@GL_ALPHA16,Fail
-spec@ext_framebuffer_object@fbo-blending-formats@GL_ALPHA4,Fail
-spec@ext_framebuffer_object@fbo-blending-formats@GL_ALPHA8,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY12,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY16,Fail
@@ -507,13 +488,9 @@ spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE12,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE16,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE4,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE8,Fail
-spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB10,Fail
-spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB12,Fail
-spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB16,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB4,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB5,Fail
-spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB8,Fail
 spec@ext_framebuffer_object@fbo-clear-formats,Fail
 spec@ext_framebuffer_object@fbo-clear-formats@GL_INTENSITY,Fail
 spec@ext_framebuffer_object@fbo-clear-formats@GL_INTENSITY12,Fail
@@ -581,19 +558,13 @@ spec@ext_image_dma_buf_import@ext_image_dma_buf_import-transcode-nv12-as-r8-gr88
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-unsupported_format,Fail
 spec@ext_occlusion_query_boolean@any-samples,Fail
 spec@ext_packed_depth_stencil@depth_stencil texture,Fail
-spec@ext_packed_depth_stencil@fbo-blit-d24s8,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats@GL_DEPTH24_STENCIL8,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats@GL_DEPTH_STENCIL,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil@GL_DEPTH24_STENCIL8,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil@GL_DEPTH_STENCIL,Fail
-spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-blit,Fail
-spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-copypixels,Fail
-spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-drawpixels,Fail
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-clear,Fail
-spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-copypixels,Fail
-spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-drawpixels-float-and-ushort,Fail
 spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-blit,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor@GL_DEPTH24_STENCIL8- border color only,Fail

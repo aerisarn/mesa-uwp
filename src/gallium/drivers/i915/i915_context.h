@@ -181,9 +181,15 @@ struct i915_state
 
 struct i915_blend_state {
    unsigned iab;
+   unsigned iab_alpha_in_g;
+   unsigned iab_alpha_is_x;
+
    unsigned modes4;
    unsigned LIS5;
+
    unsigned LIS6;
+   unsigned LIS6_alpha_in_g;
+   unsigned LIS6_alpha_is_x;
 };
 
 struct i915_depth_stencil_state {
@@ -222,6 +228,9 @@ struct i915_surface {
    uint32_t oc_swizzle;
    /* cbuf swizzle from dst r/g/b/a channels in memory to channels of gallium API. */
    uint8_t color_swizzle[4];
+
+   bool alpha_in_g : 1;
+   bool alpha_is_x : 1;
 };
 
 struct i915_velems_state {

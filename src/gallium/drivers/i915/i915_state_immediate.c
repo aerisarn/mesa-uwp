@@ -168,8 +168,15 @@ static void upload_S6(struct i915_context *i915)
 
    /* I915_NEW_BLEND
     */
-   if (i915->blend)
-      LIS6 |= i915->blend->LIS6;
+   if (i915->blend) {
+      struct i915_surface *cbuf = i915_surface(i915->framebuffer.cbufs[0]);
+      if (cbuf && cbuf->alpha_in_g)
+         LIS6 |= i915->blend->LIS6_alpha_in_g;
+      else if (cbuf && cbuf->alpha_is_x)
+         LIS6 |= i915->blend->LIS6_alpha_is_x;
+      else
+         LIS6 |= i915->blend->LIS6;
+   }
 
    /* I915_NEW_DEPTH
     */
