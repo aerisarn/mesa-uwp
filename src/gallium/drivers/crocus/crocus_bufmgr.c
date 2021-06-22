@@ -512,9 +512,6 @@ crocus_bo_create_userptr(struct crocus_bufmgr *bufmgr, const char *name,
    bo->bufmgr = bufmgr;
    bo->kflags = 0;
 
-   if (bo->gtt_offset == 0ull)
-      goto err_close;
-
    p_atomic_set(&bo->refcount, 1);
    bo->userptr = true;
    bo->cache_coherent = true;
