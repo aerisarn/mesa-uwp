@@ -24,7 +24,12 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <string.h>
+#ifdef MAJOR_IN_MKDEV
+#include <sys/mkdev.h>
+#endif
+#ifdef MAJOR_IN_SYSMACROS
 #include <sys/sysmacros.h>
+#endif
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
