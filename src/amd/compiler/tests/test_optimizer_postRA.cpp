@@ -198,7 +198,7 @@ BEGIN_TEST(optimizer_postRA.scc_nocmp_opt)
         //! s2: %f:vcc = p_cbranch_z %e:scc
         //! p_unit_test 4, %f:vcc
         auto salu = bld.sop2(aco_opcode::s_and_b64, bld.def(s2, reg_s2), bld.def(s1, scc), op_in_1, Operand(0x12345u));
-        auto scmp = bld.sopc(aco_opcode::s_cmp_eq_u64, bld.def(s1, scc), Operand(salu, reg_s2), Operand(0UL));
+        auto scmp = bld.sopc(aco_opcode::s_cmp_eq_u64, bld.def(s1, scc), Operand(salu, reg_s2), Operand(UINT64_C(0)));
         auto br = bld.branch(aco_opcode::p_cbranch_nz, bld.def(s2, vcc), bld.scc(scmp));
         writeout(4, Operand(br, vcc));
     }
