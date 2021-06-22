@@ -2773,6 +2773,13 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
         }
 }
 
+static inline struct qreg
+emit_load_local_invocation_index(struct v3d_compile *c)
+{
+        return vir_SHR(c, c->cs_payload[1],
+                       vir_uniform_ui(c, 32 - c->local_invocation_index_bits));
+}
+
 static void
 ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
@@ -3034,12 +3041,6 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 }
                 break;
 
-        case nir_intrinsic_load_local_invocation_index:
-                ntq_store_dest(c, &instr->dest, 0,
-                               vir_SHR(c, c->cs_payload[1],
-                                       vir_uniform_ui(c, 32 - c->local_invocation_index_bits)));
-                break;
-
         case nir_intrinsic_load_workgroup_id: {
                 struct qreg x = vir_AND(c, c->cs_payload[0],
                                          vir_uniform_ui(c, 0xffff));
@@ -3066,9 +3067,23 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
         }
 
-        case nir_intrinsic_load_subgroup_id:
-                ntq_store_dest(c, &instr->dest, 0, vir_EIDX(c));
+        case nir_intrinsic_load_local_invocation_index:
+                ntq_store_dest(c, &instr->dest, 0,
+                               emit_load_local_invocation_index(c));
                 break;
+
+        case nir_intrinsic_load_subgroup_id: {
+                /* This is basically the batch index, which is the Local
+                 * Invocation Index divided by the SIMD width).
+                 */
+                STATIC_ASSERT(util_is_power_of_two_nonzero(V3D_CHANNELS));
+                const uint32_t divide_shift = ffs(V3D_CHANNELS) - 1;
+                struct qreg lii = emit_load_local_invocation_index(c);
+                ntq_store_dest(c, &instr->dest, 0,
+                               vir_SHR(c, lii,
+                                       vir_uniform_ui(c, divide_shift)));
+                break;
+        }
 
         case nir_intrinsic_load_per_vertex_input: {
                 /* The vertex shader writes all its used outputs into
