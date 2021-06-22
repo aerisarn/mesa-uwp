@@ -649,8 +649,7 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
 
    /* Getting into the pass-through state for Depth is tricky and involves
     * both a resolve and an ambiguate.  We don't handle that state right now
-    * as anv_layout_to_aux_state never returns it. Resolve/ambiguate will
-    * trigger depth clears which require tile cache flushes.
+    * as anv_layout_to_aux_state never returns it.
     */
    assert(final_state != ISL_AUX_STATE_PASS_THROUGH);
 
@@ -658,16 +657,10 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
       assert(initial_hiz_valid);
       anv_image_hiz_op(cmd_buffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
                        0, base_layer, layer_count, ISL_AUX_OP_FULL_RESOLVE);
-      anv_add_pending_pipe_bits(cmd_buffer,
-                                ANV_PIPE_TILE_CACHE_FLUSH_BIT,
-                                "after depth resolve");
    } else if (final_needs_hiz && !initial_hiz_valid) {
       assert(initial_depth_valid);
       anv_image_hiz_op(cmd_buffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
                        0, base_layer, layer_count, ISL_AUX_OP_AMBIGUATE);
-      anv_add_pending_pipe_bits(cmd_buffer,
-                                ANV_PIPE_TILE_CACHE_FLUSH_BIT,
-                                "after hiz resolve");
    }
 }
 
