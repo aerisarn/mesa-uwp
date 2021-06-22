@@ -442,6 +442,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
        rsc->track, shadow, shadow->b.b.reference.count, shadow->track);
 
    swap(rsc->bo, shadow->bo);
+   swap(rsc->valid, shadow->valid);
    swap(rsc->layout, shadow->layout);
    rsc->seqno = p_atomic_inc_return(&ctx->screen->rsc_seqno);
 
