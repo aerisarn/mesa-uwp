@@ -48,9 +48,16 @@ void add_subdword_definition(Program* program, aco_ptr<Instruction>& instr, Phys
 struct assignment {
    PhysReg reg;
    RegClass rc;
-   uint8_t assigned = 0;
+   bool assigned = false;
+   uint32_t affinity = 0;
    assignment() = default;
    assignment(PhysReg reg_, RegClass rc_) : reg(reg_), rc(rc_), assigned(-1) {}
+   void set(const Definition& def)
+   {
+      assigned = true;
+      reg = def.physReg();
+      rc = def.regClass();
+   }
 };
 
 struct ra_ctx {
@@ -61,7 +68,6 @@ struct ra_ctx {
    std::vector<std::unordered_map<unsigned, Temp>> renames;
    std::vector<uint32_t> loop_header;
    std::unordered_map<unsigned, Temp> orig_names;
-   std::unordered_map<unsigned, unsigned> affinities;
    std::unordered_map<unsigned, Instruction*> vectors;
    std::unordered_map<unsigned, Instruction*> split_vectors;
    aco_ptr<Instruction> pseudo_dummy;
@@ -1522,22 +1528,25 @@ get_reg(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
    if (split_vec != ctx.split_vectors.end()) {
       unsigned offset = 0;
       for (Definition def : split_vec->second->definitions) {
-         auto affinity_it = ctx.affinities.find(def.tempId());
-         if (affinity_it != ctx.affinities.end() && ctx.assignments[affinity_it->second].assigned) {
-            PhysReg reg = ctx.assignments[affinity_it->second].reg;
-            reg.reg_b -= offset;
-            if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
-               return reg;
+         if (ctx.assignments[def.tempId()].affinity) {
+            assignment& affinity = ctx.assignments[ctx.assignments[def.tempId()].affinity];
+            if (affinity.assigned) {
+               PhysReg reg = affinity.reg;
+               reg.reg_b -= offset;
+               if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
+                  return reg;
+            }
          }
          offset += def.bytes();
       }
    }
 
-   if (ctx.affinities.find(temp.id()) != ctx.affinities.end() &&
-       ctx.assignments[ctx.affinities[temp.id()]].assigned) {
-      PhysReg reg = ctx.assignments[ctx.affinities[temp.id()]].reg;
-      if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
-         return reg;
+   if (ctx.assignments[temp.id()].affinity) {
+      assignment& affinity = ctx.assignments[ctx.assignments[temp.id()].affinity];
+      if (affinity.assigned) {
+         if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, affinity.reg))
+            return affinity.reg;
+      }
    }
 
    std::pair<PhysReg, bool> res;
@@ -1947,16 +1956,16 @@ handle_live_in(ra_ctx& ctx, Temp val, Block* block)
          create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
       new_val = ctx.program->allocateTmp(val.regClass());
       phi->definitions[0] = Definition(new_val);
+      ctx.assignments.emplace_back();
+      assert(ctx.assignments.size() == ctx.program->peekAllocationId());
       for (unsigned i = 0; i < preds.size(); i++) {
          /* update the operands so that it uses the new affinity */
          phi->operands[i] = Operand(ops[i]);
          assert(ctx.assignments[ops[i].id()].assigned);
+         assert(ops[i].regClass() == new_val.regClass());
          phi->operands[i].setFixed(ctx.assignments[ops[i].id()].reg);
-         if (ops[i].regClass() == new_val.regClass())
-            ctx.affinities[new_val.id()] = ops[i].id();
+         ctx.assignments.back().affinity = ops[i].id();
       }
-      ctx.assignments.emplace_back();
-      assert(ctx.assignments.size() == ctx.program->peekAllocationId());
       block->instructions.insert(block->instructions.begin(), std::move(phi));
    }
 
@@ -2234,7 +2243,7 @@ get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
       assert(vec.size() > 1);
       for (unsigned i = 1; i < vec.size(); i++)
          if (vec[i].id() != vec[0].id())
-            ctx.affinities[vec[i].id()] = vec[0].id();
+            ctx.assignments[vec[i].id()].affinity = vec[0].id();
    }
 }
 
@@ -2272,11 +2281,11 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
          if (definition.isKill() || definition.isFixed())
             continue;
 
-         if (ctx.affinities.find(definition.tempId()) != ctx.affinities.end() &&
-             ctx.assignments[ctx.affinities[definition.tempId()]].assigned) {
-            assert(ctx.assignments[ctx.affinities[definition.tempId()]].rc ==
-                   definition.regClass());
-            PhysReg reg = ctx.assignments[ctx.affinities[definition.tempId()]].reg;
+         if (ctx.assignments[definition.tempId()].affinity &&
+             ctx.assignments[ctx.assignments[definition.tempId()].affinity].assigned) {
+            assignment& affinity = ctx.assignments[ctx.assignments[definition.tempId()].affinity];
+            assert(affinity.rc == definition.regClass());
+            PhysReg reg = affinity.reg;
             if (reg == scc) {
                /* only use scc if all operands are already placed there */
                bool use_scc =
@@ -2291,7 +2300,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             if (!register_file.test(reg, definition.bytes())) {
                definition.setFixed(reg);
                register_file.fill(definition);
-               ctx.assignments[definition.tempId()] = {definition.physReg(), definition.regClass()};
+               ctx.assignments[definition.tempId()].set(definition);
             }
          }
       }
@@ -2351,8 +2360,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
                   /* if so, just update that phi's register */
                   register_file.clear(prev_phi->definitions[0]);
                   prev_phi->definitions[0].setFixed(pc.second.physReg());
-                  ctx.assignments[prev_phi->definitions[0].tempId()] = {pc.second.physReg(),
-                                                                        pc.second.regClass()};
+                  ctx.assignments[prev_phi->definitions[0].tempId()].set(pc.second);
                   register_file.fill(prev_phi->definitions[0]);
                   continue;
                }
@@ -2387,13 +2395,13 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             }
 
             register_file.fill(definition);
-            ctx.assignments[definition.tempId()] = {definition.physReg(), definition.regClass()};
+            ctx.assignments[definition.tempId()].set(definition);
          }
 
          /* update phi affinities */
          for (const Operand& op : phi->operands) {
             if (op.isTemp() && op.regClass() == phi->definitions[0].regClass())
-               ctx.affinities[op.tempId()] = definition.tempId();
+               ctx.assignments[op.tempId()].affinity = definition.tempId();
          }
 
          instructions.emplace_back(std::move(*instr_it));
@@ -2490,10 +2498,14 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
              instr->operands[0].physReg().byte() == 0 && instr->operands[1].physReg().byte() == 0 &&
              instr->operands[2].physReg().byte() == 0) {
             unsigned def_id = instr->definitions[0].tempId();
-            auto it = ctx.affinities.find(def_id);
-            if (it == ctx.affinities.end() || !ctx.assignments[it->second].assigned ||
-                instr->operands[2].physReg() == ctx.assignments[it->second].reg ||
-                register_file.test(ctx.assignments[it->second].reg, instr->operands[2].bytes())) {
+            bool use_vop2 = true;
+            if (ctx.assignments[def_id].affinity) {
+               assignment& affinity = ctx.assignments[ctx.assignments[def_id].affinity];
+               if (affinity.assigned && affinity.reg != instr->operands[2].physReg() &&
+                   !register_file.test(affinity.reg, instr->operands[2].bytes()))
+                  use_vop2 = false;
+            }
+            if (use_vop2) {
                instr->format = Format::VOP2;
                switch (instr->opcode) {
                case aco_opcode::v_mad_f32: instr->opcode = aco_opcode::v_mac_f32; break;
@@ -2565,7 +2577,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             if (!definition.isTemp())
                continue;
 
-            ctx.assignments[definition.tempId()] = {definition.physReg(), definition.regClass()};
+            ctx.assignments[definition.tempId()].set(definition);
             register_file.fill(definition);
          }
 
@@ -2629,7 +2641,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
                ((definition->getTemp().type() == RegType::vgpr && definition->physReg() >= 256) ||
                 (definition->getTemp().type() != RegType::vgpr && definition->physReg() < 256)));
             ctx.defs_done.set(i);
-            ctx.assignments[definition->tempId()] = {definition->physReg(), definition->regClass()};
+            ctx.assignments[definition->tempId()].set(*definition);
             register_file.fill(*definition);
          }
 
