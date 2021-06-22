@@ -3257,6 +3257,7 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t wgs_per_sg =
       v3d_csd_choose_workgroups_per_supergroup(
          &cmd_buffer->device->devinfo,
+         cs_variant->prog_data.cs->has_subgroups,
          cs_variant->prog_data.cs->base.has_control_barrier,
          cs_variant->prog_data.cs->base.threads,
          num_wgs, wg_size);
