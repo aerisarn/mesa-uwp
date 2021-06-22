@@ -252,7 +252,7 @@ static uint translate_texture_format(enum pipe_format pipeFormat,
               view->swizzle_g == PIPE_SWIZZLE_X &&
               view->swizzle_b == PIPE_SWIZZLE_X &&
               view->swizzle_a == PIPE_SWIZZLE_1)
-            return (MAPSURF_32BIT | MT_32BIT_xA824);
+            return (MAPSURF_32BIT | MT_32BIT_xL824);
          if ( view->swizzle_r == PIPE_SWIZZLE_X &&
               view->swizzle_g == PIPE_SWIZZLE_X &&
               view->swizzle_b == PIPE_SWIZZLE_X &&
@@ -262,7 +262,7 @@ static uint translate_texture_format(enum pipe_format pipeFormat,
               view->swizzle_g == PIPE_SWIZZLE_0 &&
               view->swizzle_b == PIPE_SWIZZLE_0 &&
               view->swizzle_a == PIPE_SWIZZLE_X)
-            return (MAPSURF_32BIT | MT_32BIT_xL824);
+            return (MAPSURF_32BIT | MT_32BIT_xA824);
          debug_printf("i915: unsupported depth swizzle %d %d %d %d\n",
                       view->swizzle_r,
                       view->swizzle_g,
