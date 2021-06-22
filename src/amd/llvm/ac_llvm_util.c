@@ -68,7 +68,10 @@ static void ac_init_llvm_target(void)
       "-simplifycfg-sink-common=false",
       "-global-isel-abort=2",
       "-amdgpu-atomic-optimizations=true",
+#if LLVM_VERSION_MAJOR == 11
+      /* This fixes variable indexing on LLVM 11. It also breaks atomic.cmpswap on LLVM >= 12. */
       "-structurizecfg-skip-uniform-regions",
+#endif
    };
    LLVMParseCommandLineOptions(ARRAY_SIZE(argv), argv, NULL);
 }
