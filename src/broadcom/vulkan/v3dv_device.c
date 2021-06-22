@@ -1406,7 +1406,7 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
          VkPhysicalDeviceSubgroupProperties *props =
             (VkPhysicalDeviceSubgroupProperties *)ext;
-         props->subgroupSize = 1;
+         props->subgroupSize = V3D_CHANNELS;
          props->supportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
          props->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
          props->quadOperationsInAllStages = false;
