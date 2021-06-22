@@ -4333,6 +4333,8 @@ anv_bind_buffer_memory(const VkBindBufferMemoryInfo *pBindInfo)
    assert(pBindInfo->sType == VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO);
 
    if (mem) {
+      assert(pBindInfo->memoryOffset < mem->bo->size);
+      assert(mem->bo->size - pBindInfo->memoryOffset >= buffer->size);
       buffer->address = (struct anv_address) {
          .bo = mem->bo,
          .offset = pBindInfo->memoryOffset,
