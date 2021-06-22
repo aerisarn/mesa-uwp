@@ -1,5 +1,3 @@
-fast_color_clear@fcc-read-after-clear copy rb,Fail
-fast_color_clear@fcc-read-after-clear copy tex,Fail
 glx@glx-make-current,Crash
 glx@glx-multi-window-single-context,Fail
 glx@glx-query-drawable-glx_fbconfig_id-window,Fail
@@ -20,8 +18,6 @@ glx@glx_ext_import_context@make current- multi process,Fail
 glx@glx_ext_import_context@make current- single process,Fail
 glx@glx_ext_import_context@query context info,Fail
 shaders@glsl-bug-110796,Fail
-shaders@glsl-kwin-blur-1,Fail
-shaders@glsl-kwin-blur-2,Fail
 shaders@point-vertex-id divisor,Crash
 shaders@point-vertex-id gl_instanceid,Crash
 shaders@point-vertex-id gl_instanceid divisor,Crash
@@ -32,19 +28,14 @@ shaders@point-vertex-id gl_vertexid gl_instanceid divisor,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag-quads,Crash
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
-spec@!opengl 1.0@gl-1.0-scissor-copypixels,Fail
 spec@!opengl 1.0@gl-1.0-scissor-offscreen,Fail
 spec@!opengl 1.0@gl-1.0-spot-light,Fail
 spec@!opengl 1.0@rasterpos,Crash
-spec@!opengl 1.1@copypixels-sync,Fail
 spec@!opengl 1.1@copyteximage 1d,Fail
 spec@!opengl 1.1@copyteximage 2d,Fail
-spec@!opengl 1.1@copyteximage-border,Fail
-spec@!opengl 1.1@copytexsubimage,Fail
 spec@!opengl 1.1@depthstencil-default_fb-blit,Fail
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=4,Fail
-spec@!opengl 1.1@depthstencil-default_fb-copypixels,Fail
 spec@!opengl 1.1@depthstencil-default_fb-copypixels samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-copypixels samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=2,Fail
@@ -59,8 +50,6 @@ spec@!opengl 1.1@depthstencil-default_fb-readpixels-32f_24_8_rev samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-readpixels-32f_24_8_rev samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-readpixels-float-and-ushort samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-readpixels-float-and-ushort samples=4,Fail
-spec@!opengl 1.1@draw-copypixels-sync,Fail
-spec@!opengl 1.1@gl-1.1-xor-copypixels,Fail
 spec@!opengl 1.1@linestipple,Fail
 spec@!opengl 1.1@linestipple@Factor 2x,Fail
 spec@!opengl 1.1@linestipple@Factor 3x,Fail
@@ -106,27 +95,13 @@ spec@arb_color_buffer_float@gl_rgba8_snorm-render,Fail
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-fog,Fail
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity,Fail
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity-fog,Fail
-spec@arb_depth_buffer_float@fbo-clear-formats,Fail
-spec@arb_depth_buffer_float@fbo-clear-formats@GL_DEPTH32F_STENCIL8,Fail
-spec@arb_depth_buffer_float@fbo-clear-formats@GL_DEPTH_COMPONENT32F,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil@GL_DEPTH32F_STENCIL8,Fail
-spec@arb_depth_buffer_float@fbo-depth-gl_depth_component32f-copypixels,Fail
 spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-blit,Fail
 spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-copypixels,Fail
 spec@arb_depth_buffer_float@fbo-stencil-gl_depth32f_stencil8-blit,Fail
 spec@arb_depth_buffer_float@fbo-stencil-gl_depth32f_stencil8-copypixels,Fail
-spec@arb_depth_texture@fbo-clear-formats,Fail
-spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT,Fail
-spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT16,Fail
-spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT24,Fail
-spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT32,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component16-copypixels,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component24-copypixels,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component32-copypixels,Fail
-spec@arb_direct_state_access@copytexturesubimage,Fail
 spec@arb_direct_state_access@gettextureimage-formats,Crash
-spec@arb_direct_state_access@gettextureimage-formats init-by-rendering,Fail
 spec@arb_draw_indirect@gl_vertexid used with gldrawarraysindirect,Crash
 spec@arb_draw_indirect@gl_vertexid used with gldrawelementsindirect,Crash
 spec@arb_framebuffer_no_attachments@arb_framebuffer_no_attachments-atomic,Fail
@@ -144,7 +119,6 @@ spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl
 spec@arb_framebuffer_object@framebuffer-blit-levels draw stencil,Fail
 spec@arb_framebuffer_object@framebuffer-blit-levels read stencil,Fail
 spec@arb_map_buffer_alignment@arb_map_buffer_alignment-map-invalidate-range,Fail
-spec@arb_map_buffer_range@copybuffersubdata offset=0,Fail
 spec@arb_multi_draw_indirect@gl-3.0-multidrawarrays-vertexid -indirect,Crash
 spec@arb_occlusion_query@occlusion_query_order,Fail
 spec@arb_point_sprite@arb_point_sprite-interactions 1.0,Fail
@@ -195,28 +169,13 @@ spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_rgba,Fail
 spec@egl_khr_surfaceless_context@viewport,Fail
 spec@egl_mesa_configless_context@basic,Fail
-spec@ext_direct_state_access@multi-texture,Fail
-spec@ext_direct_state_access@multi-texture@CopyMultiTexImage1DEXT,Fail
-spec@ext_direct_state_access@textures,Fail
-spec@ext_direct_state_access@textures@CopyTextureImage1DEXT,Fail
 spec@ext_direct_state_access@vao@VertexArrayVertexOffsetEXT,Fail
 spec@ext_external_objects@semaphore-api-errors@gen-semaphores-bad-value,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
-spec@ext_framebuffer_object@ext_framebuffer_object-mipmap,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor-ff,Fail
 spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 spec@ext_framebuffer_object@fbo-blending-snorm,Fail
-spec@ext_framebuffer_object@fbo-clearmipmap,Fail
-spec@ext_framebuffer_object@fbo-copyteximage,Fail
-spec@ext_framebuffer_object@fbo-copyteximage-simple,Fail
-spec@ext_framebuffer_object@fbo-cubemap,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-nonsquare,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-npot,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-scissor,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-swizzle,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-viewport,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index1-blit,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index1-copypixels,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index16-blit,Fail
@@ -225,8 +184,6 @@ spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index4-blit,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index4-copypixels,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index8-blit,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index8-copypixels,Fail
-spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Fail
-spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p010,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p012,Fail
@@ -238,23 +195,15 @@ spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y412,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y416,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_uyvy,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
-spec@ext_packed_depth_stencil@fbo-clear-formats,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil@GL_DEPTH_STENCIL,Fail
-spec@ext_packed_depth_stencil@fbo-clear-formats@GL_DEPTH24_STENCIL8,Fail
-spec@ext_packed_depth_stencil@fbo-clear-formats@GL_DEPTH_STENCIL,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil@GL_DEPTH24_STENCIL8,Fail
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-blit,Fail
-spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-copypixels,Fail
 spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-blit,Fail
 spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-copypixels,Fail
 spec@ext_packed_float@query-rgba-signed-components,Fail
-spec@ext_render_snorm@render,Fail
-spec@ext_render_snorm@render@format 0x8f94,Fail
 spec@ext_render_snorm@render@format 0x8f94 read fail,Fail
-spec@ext_render_snorm@render@format 0x8f95,Fail
 spec@ext_render_snorm@render@format 0x8f95 read fail,Fail
-spec@ext_render_snorm@render@format 0x8f97,Fail
 spec@ext_render_snorm@render@format 0x8f97 read fail,Fail
 spec@ext_texture_integer@fbo-integer,Fail
 spec@ext_texture_snorm@fbo-blending-formats,Fail
@@ -267,7 +216,6 @@ spec@ext_transform_feedback@api-errors bind_pipeline,Fail
 spec@ext_transform_feedback@api-errors bind_range_active,Fail
 spec@ext_transform_feedback@api-errors useprogstage_active,Crash
 spec@ext_transform_feedback2@draw-auto,Fail
-spec@ext_transform_feedback@discard-copypixels,Fail
 spec@ext_transform_feedback@generatemipmap prims_generated,Fail
 spec@ext_transform_feedback@immediate-reuse,Fail
 spec@ext_transform_feedback@immediate-reuse-index-buffer,Fail
@@ -371,9 +319,6 @@ spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x223344ff,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x76356278,Crash
 spec@nv_copy_image@nv_copy_image-formats,Fail
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH32F_STENCIL8/Destination: GL_DEPTH32F_STENCIL8,Fail
-spec@nv_copy_image@nv_copy_image-simple --rb-to-rb,Fail
-spec@nv_copy_image@nv_copy_image-simple --rb-to-tex,Fail
-spec@nv_copy_image@nv_copy_image-simple --tex-to-tex,Fail
 spec@nv_image_formats@nv_image_formats-gles3,Crash
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageLoad,Fail
