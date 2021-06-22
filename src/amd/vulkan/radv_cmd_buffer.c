@@ -5385,6 +5385,7 @@ radv_emit_draw_packets_indexed(struct radv_cmd_buffer *cmd_buffer,
    const int index_size = radv_get_vgt_index_size(state->index_type);
    unsigned i = 0;
    const bool uses_drawid = state->pipeline->graphics.uses_drawid;
+   const bool can_eop = !uses_drawid && cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10;
 
    if (vertexOffset) {
       radv_emit_userdata_vertex(cmd_buffer, info, *vertexOffset);
@@ -5402,7 +5403,7 @@ radv_emit_draw_packets_indexed(struct radv_cmd_buffer *cmd_buffer,
          const uint64_t index_va = state->index_va + draw->firstIndex * index_size;
 
          if (!state->subpass->view_mask) {
-            radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, !uses_drawid && i < drawCount - 1);
+            radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, can_eop && i < drawCount - 1);
          } else {
             u_foreach_bit(view, state->subpass->view_mask) {
                radv_emit_view_index(cmd_buffer, view);
@@ -5434,7 +5435,7 @@ radv_emit_draw_packets_indexed(struct radv_cmd_buffer *cmd_buffer,
          const uint64_t index_va = state->index_va + draw->firstIndex * index_size;
 
          if (!state->subpass->view_mask) {
-            radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, !offset_changes && !uses_drawid && i < drawCount - 1);
+            radv_cs_emit_draw_indexed_packet(cmd_buffer, index_va, remaining_indexes, draw->indexCount, can_eop && !offset_changes && i < drawCount - 1);
          } else {
             u_foreach_bit(view, state->subpass->view_mask) {
                radv_emit_view_index(cmd_buffer, view);
