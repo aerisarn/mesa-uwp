@@ -55,18 +55,18 @@ instructions are often used (and required) for packing/unpacking vectors for
 use in other instruction types like intrinsics or texture ops.
 
 .. doxygenstruct:: nir_op_info
-    :members:
+   :members:
 
 .. doxygenvariable:: nir_op_infos
 
 .. doxygenstruct:: nir_alu_instr
-    :members:
+   :members:
 
 .. doxygenstruct:: nir_alu_src
-    :members:
+   :members:
 
 .. doxygenstruct:: nir_alu_dest
-    :members:
+   :members:
 
 NIR ALU Opcode Reference:
 -------------------------
