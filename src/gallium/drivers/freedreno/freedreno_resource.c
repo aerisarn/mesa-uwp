@@ -364,30 +364,24 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
    if (prsc->next)
       return false;
 
+   /* Flush any pending batches writing the resource before we go mucking around
+    * in its insides.  The blit would immediately cause the batch to be flushed,
+    * anyway.
+    */
+   fd_bc_flush_writer(ctx, rsc);
+
    /* Because IB1 ("gmem") cmdstream is built only when we flush the
     * batch, we need to flush any batches that reference this rsc as
     * a render target.  Otherwise the framebuffer state emitted in
     * IB1 will reference the resources new state, and not the state
     * at the point in time that the earlier draws referenced it.
+    *
+    * Note that being in the gmem key doesn't necessarily mean the
+    * batch was considered a writer!
     */
    foreach_batch (batch, &screen->batch_cache, rsc->track->bc_batch_mask) {
       fd_batch_flush(batch);
    }
-
-   /* If you have a sequence where there is a single rsc associated
-    * with the current render target, and then you end up shadowing
-    * that same rsc on the 3d pipe (u_blitter), because of how we
-    * swap the new shadow and rsc before the back-blit, you could end
-    * up confusing things into thinking that u_blitter's framebuffer
-    * state is the same as the current framebuffer state, which has
-    * the result of blitting to rsc rather than shadow.
-    *
-    * Normally we wouldn't want to unconditionally trigger a flush,
-    * since that defeats the purpose of shadowing, but this is a
-    * case where we'd have to flush anyways.
-    */
-   if (rsc->track->write_batch == ctx->batch)
-      flush_resource(ctx, rsc, 0);
 
    /* TODO: somehow munge dimensions and format to copy unsupported
     * render target format to something that is supported?
