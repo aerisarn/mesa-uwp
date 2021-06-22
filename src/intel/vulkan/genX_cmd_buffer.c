@@ -3884,6 +3884,31 @@ update_dirty_vbs_for_gfx8_vb_flush(struct anv_cmd_buffer *cmd_buffer,
                                                        vb_used);
 }
 
+ALWAYS_INLINE static void
+cmd_buffer_emit_vertex_constants_and_flush(struct anv_cmd_buffer *cmd_buffer,
+                                           const struct brw_vs_prog_data *vs_prog_data,
+                                           uint32_t base_vertex,
+                                           uint32_t base_instance,
+                                           uint32_t draw_id,
+                                           bool force_flush)
+{
+   bool emitted = false;
+   if (vs_prog_data->uses_firstvertex ||
+       vs_prog_data->uses_baseinstance) {
+      emit_base_vertex_instance(cmd_buffer, base_vertex, base_instance);
+      emitted = true;
+   }
+   if (vs_prog_data->uses_drawid) {
+      emit_draw_index(cmd_buffer, draw_id);
+      emitted = true;
+   }
+   /* Emitting draw index or vertex index BOs may result in needing
+    * additional VF cache flushes.
+    */
+   if (emitted || force_flush)
+      genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+}
+
 void genX(CmdDraw)(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    vertexCount,
@@ -3911,16 +3936,7 @@ void genX(CmdDraw)(
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 
-   if (vs_prog_data->uses_firstvertex ||
-       vs_prog_data->uses_baseinstance)
-      emit_base_vertex_instance(cmd_buffer, firstVertex, firstInstance);
-   if (vs_prog_data->uses_drawid)
-      emit_draw_index(cmd_buffer, 0);
-
-   /* Emitting draw index or vertex index BOs may result in needing
-    * additional VF cache flushes.
-    */
-   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+   cmd_buffer_emit_vertex_constants_and_flush(cmd_buffer, vs_prog_data, firstVertex, firstInstance, 0, true);
 
    /* Our implementation of VK_KHR_multiview uses instancing to draw the
     * different views.  We need to multiply instanceCount by the view count.
@@ -3971,16 +3987,7 @@ void genX(CmdDrawIndexed)(
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 
-   if (vs_prog_data->uses_firstvertex ||
-       vs_prog_data->uses_baseinstance)
-      emit_base_vertex_instance(cmd_buffer, vertexOffset, firstInstance);
-   if (vs_prog_data->uses_drawid)
-      emit_draw_index(cmd_buffer, 0);
-
-   /* Emitting draw index or vertex index BOs may result in needing
-    * additional VF cache flushes.
-    */
-   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+   cmd_buffer_emit_vertex_constants_and_flush(cmd_buffer, vs_prog_data, vertexOffset, firstInstance, 0, true);
 
    /* Our implementation of VK_KHR_multiview uses instancing to draw the
     * different views.  We need to multiply instanceCount by the view count.
