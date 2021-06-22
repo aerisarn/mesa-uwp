@@ -108,7 +108,7 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
             break;
 
          case nir_intrinsic_btd_stack_push_intel: {
-            int32_t stack_size = nir_intrinsic_range(intrin);
+            int32_t stack_size = nir_intrinsic_stack_size(intrin);
             if (stack_size > 0) {
                nir_ssa_def *child_stack_offset =
                   nir_iadd_imm(b, stack_base_offset, stack_size);

@@ -1280,7 +1280,7 @@ system_value("btd_resume_sbt_addr_intel", 1, bit_sizes=[64])
 # src[] = { global_arg_addr, btd_record }
 intrinsic("btd_spawn_intel", src_comp=[1, 1])
 # RANGE=stack_size
-intrinsic("btd_stack_push_intel", indices=[RANGE])
+intrinsic("btd_stack_push_intel", indices=[STACK_SIZE])
 # src[] = { }
 intrinsic("btd_retire_intel")
 
