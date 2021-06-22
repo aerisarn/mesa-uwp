@@ -243,12 +243,6 @@ brw_nir_lower_shader_calls(nir_shader *shader)
             break;
          }
 
-         case nir_intrinsic_rt_resume:
-            brw_nir_btd_resume(b,
-                               nir_intrinsic_call_idx(call),
-                               nir_intrinsic_stack_size(call) /* offset */);
-            break;
-
          default:
             unreachable("Invalid intrinsic");
          }

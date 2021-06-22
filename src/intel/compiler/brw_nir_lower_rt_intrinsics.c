@@ -118,13 +118,13 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
             break;
          }
 
-         case nir_intrinsic_btd_resume_intel:
+         case nir_intrinsic_rt_resume:
             /* This is the first "interesting" instruction */
             assert(block == nir_start_block(impl));
             assert(!seen_scratch_base_ptr_load);
             found_resume = true;
 
-            int32_t stack_size = nir_intrinsic_range(intrin);
+            int32_t stack_size = nir_intrinsic_stack_size(intrin);
             if (stack_size > 0) {
                stack_base_offset =
                   nir_iadd_imm(b, stack_base_offset, -stack_size);

@@ -63,12 +63,6 @@ brw_nir_btd_retire(nir_builder *b)
    nir_btd_retire_intel(b);
 }
 
-static inline void
-brw_nir_btd_resume(nir_builder *b, uint32_t call_idx, unsigned stack_size)
-{
-   nir_btd_resume_intel(b, .base = call_idx, .range = stack_size);
-}
-
 /** This is a pseudo-op which does a bindless return
  *
  * It loads the return address from the stack and calls btd_spawn to spawn the
