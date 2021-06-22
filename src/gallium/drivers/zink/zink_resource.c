@@ -323,6 +323,18 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats
    return usage;
 }
 
+static VkFormatFeatureFlags
+find_modifier_feats(const struct zink_modifier_prop *prop, uint64_t modifier, uint64_t *mod)
+{
+   for (unsigned j = 0; j < prop->drmFormatModifierCount; j++) {
+      if (prop->pDrmFormatModifierProperties[j].drmFormatModifier == modifier) {
+         *mod = modifier;
+         return prop->pDrmFormatModifierProperties[j].drmFormatModifierTilingFeatures;
+      }
+   }
+   return 0;
+}
+
 static VkImageUsageFlags
 get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe_resource *templ, unsigned bind, unsigned modifiers_count, const uint64_t *modifiers, uint64_t *mod)
 {
@@ -330,19 +342,27 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
 #ifdef ZINK_USE_DMABUF
    *mod = DRM_FORMAT_MOD_INVALID;
    if (modifiers_count) {
+      bool have_linear = false;
+      const struct zink_modifier_prop *prop = &screen->modifier_props[templ->format];
       assert(tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
       for (unsigned i = 0; i < modifiers_count; i++) {
-         if (modifiers[i] == DRM_FORMAT_MOD_LINEAR)
+         if (modifiers[i] == DRM_FORMAT_MOD_LINEAR) {
+            have_linear = true;
             continue;
-         VkFormatFeatureFlags feats = 0;
-         struct zink_modifier_prop *prop = &screen->modifier_props[templ->format];
-         for (unsigned j = 0; j < prop->drmFormatModifierCount; j++) {
-            if (prop->pDrmFormatModifierProperties[j].drmFormatModifier == modifiers[i]) {
-               feats = prop->pDrmFormatModifierProperties[j].drmFormatModifierTilingFeatures;
-               *mod = modifiers[i];
-               break;
+         }
+         VkFormatFeatureFlags feats = find_modifier_feats(prop, modifiers[i], mod);
+         if (feats) {
+            VkImageUsageFlags usage = get_image_usage_for_feats(screen, feats, templ, bind);
+            if (usage) {
+               ici->usage = usage;
+               if (check_ici(screen, ici, *mod))
+                  return usage;
             }
          }
+      }
+      /* only try linear if no other options available */
+      if (have_linear) {
+         VkFormatFeatureFlags feats = find_modifier_feats(prop, DRM_FORMAT_MOD_LINEAR, mod);
          if (feats) {
             VkImageUsageFlags usage = get_image_usage_for_feats(screen, feats, templ, bind);
             if (usage) {
