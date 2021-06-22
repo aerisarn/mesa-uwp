@@ -9916,10 +9916,28 @@ static Operand create_continue_phis(isel_context *ctx, unsigned first, unsigned 
    return vals[last - first];
 }
 
+static void begin_uniform_if_then(isel_context *ctx, if_context *ic, Temp cond);
+static void begin_uniform_if_else(isel_context *ctx, if_context *ic);
+static void end_uniform_if(isel_context *ctx, if_context *ic);
+
 static void visit_loop(isel_context *ctx, nir_loop *loop)
 {
    loop_context lc;
    begin_loop(ctx, &lc);
+
+   /* NIR seems to allow this, and even though the loop exit has no predecessors, SSA defs from the
+    * loop header are live. Handle this without complicating the ACO IR by creating a dummy break.
+    */
+   if (nir_cf_node_cf_tree_next(&loop->cf_node)->predecessors->entries == 0) {
+      Builder bld(ctx->program, ctx->block);
+      Temp cond = bld.copy(bld.def(s1, scc), Operand(0u));
+      if_context ic;
+      begin_uniform_if_then(ctx, &ic, cond);
+      emit_loop_break(ctx);
+      begin_uniform_if_else(ctx, &ic);
+      end_uniform_if(ctx, &ic);
+   }
+
    bool unreachable = visit_cf_list(ctx, &loop->body);
 
    unsigned loop_header_idx = ctx->cf_info.parent_loop.header_idx;
