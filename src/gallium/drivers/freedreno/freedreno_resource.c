@@ -395,7 +395,11 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
    if (!is_renderable(prsc))
       fallback = true;
 
-   /* do shadowing back-blits on the cpu for buffers: */
+   /* do shadowing back-blits on the cpu for buffers -- requires about a page of
+    * DMA to make GPU copies worth it according to robclark.  Note, if you
+    * decide to do it on the GPU then you'll need to update valid_buffer_range
+    * in the swap()s below.
+    */
    if (prsc->target == PIPE_BUFFER)
       fallback = true;
 
@@ -437,7 +441,6 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
    DBG("shadow: %p (%d, %p) -> %p (%d, %p)", rsc, rsc->b.b.reference.count,
        rsc->track, shadow, shadow->b.b.reference.count, shadow->track);
 
-   /* TODO valid_buffer_range?? */
    swap(rsc->bo, shadow->bo);
    swap(rsc->layout, shadow->layout);
    rsc->seqno = p_atomic_inc_return(&ctx->screen->rsc_seqno);
