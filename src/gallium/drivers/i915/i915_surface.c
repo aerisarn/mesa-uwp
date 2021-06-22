@@ -207,18 +207,18 @@ i915_surface_copy_blitter(struct pipe_context *pipe,
                           struct pipe_resource *src, unsigned src_level,
                           const struct pipe_box *src_box)
 {
-   struct i915_texture *dst_tex = i915_texture(dst);
-   struct i915_texture *src_tex = i915_texture(src);
-   struct pipe_resource *dpt = &dst_tex->b;
-   struct pipe_resource *spt = &src_tex->b;
-   unsigned dst_offset, src_offset;  /* in bytes */
-
    /* Fallback for buffers. */
    if (dst->target == PIPE_BUFFER && src->target == PIPE_BUFFER) {
       util_resource_copy_region(pipe, dst, dst_level, dstx, dsty, dstz,
                                 src, src_level, src_box);
       return;
    }
+
+   struct i915_texture *dst_tex = i915_texture(dst);
+   struct i915_texture *src_tex = i915_texture(src);
+   struct pipe_resource *dpt = &dst_tex->b;
+   struct pipe_resource *spt = &src_tex->b;
+   unsigned dst_offset, src_offset;  /* in bytes */
 
    /* XXX cannot copy 3d regions at this time */
    assert(src_box->depth == 1);

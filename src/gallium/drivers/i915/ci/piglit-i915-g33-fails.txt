@@ -329,14 +329,6 @@ spec@arb_color_buffer_float@gl_rgba8_snorm-render,Crash
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-fog,Crash
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity,Crash
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity-fog,Crash
-spec@arb_copy_buffer@copy_buffer_coherency,Crash
-spec@arb_copy_buffer@copybuffersubdata,Crash
-spec@arb_copy_buffer@data-sync,Crash
-spec@arb_copy_buffer@dlist,Crash
-spec@arb_copy_buffer@intra-buffer-copy,Crash
-spec@arb_copy_buffer@overlap,Crash
-spec@arb_copy_buffer@subdata-sync,Crash
-spec@arb_copy_buffer@targets,Crash
 spec@arb_depth_texture@depth-level-clamp,Fail
 spec@arb_depth_texture@fbo-clear-formats,Fail
 spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT,Fail
@@ -388,10 +380,6 @@ spec@arb_framebuffer_object@framebuffer-blit-levels draw stencil,Fail
 spec@arb_framebuffer_object@framebuffer-blit-levels read stencil,Fail
 spec@arb_framebuffer_object@same-attachment-glframebuffertexture2d-gl_depth_stencil_attachment,Fail
 spec@arb_internalformat_query2@all internalformat_<x>_type pname checks,Timeout
-spec@arb_map_buffer_range@copybuffersubdata decrement-offset,Crash
-spec@arb_map_buffer_range@copybuffersubdata increment-offset,Crash
-spec@arb_map_buffer_range@copybuffersubdata offset=0,Crash
-spec@arb_map_buffer_range@map_buffer_range_test,Crash
 spec@arb_occlusion_query2@render,Fail
 spec@arb_occlusion_query@occlusion_query,Fail
 spec@arb_occlusion_query@occlusion_query_conform,Fail
