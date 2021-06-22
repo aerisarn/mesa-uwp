@@ -2351,17 +2351,10 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
                   if ((*phi_it)->definitions[0].tempId() == pc.first.tempId())
                      prev_phi = phi_it->get();
                }
-               phi_it = instr_it;
-               while (!prev_phi && is_phi(*++phi_it)) {
-                  if ((*phi_it)->definitions[0].tempId() == pc.first.tempId())
-                     prev_phi = phi_it->get();
-               }
                if (prev_phi) {
                   /* if so, just update that phi's register */
-                  register_file.clear(prev_phi->definitions[0]);
                   prev_phi->definitions[0].setFixed(pc.second.physReg());
                   ctx.assignments[prev_phi->definitions[0].tempId()].set(pc.second);
-                  register_file.fill(prev_phi->definitions[0]);
                   continue;
                }
 
