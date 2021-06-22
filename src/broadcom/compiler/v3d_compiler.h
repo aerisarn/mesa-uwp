@@ -728,6 +728,9 @@ struct v3d_compile {
         struct qreg cs_shared_offset;
         int local_invocation_index_bits;
 
+        /* If the shader uses subgroup functionality */
+        bool has_subgroups;
+
         uint8_t vattr_sizes[V3D_MAX_VS_INPUTS / 4];
         uint32_t vpm_output_size;
 
@@ -947,6 +950,8 @@ struct v3d_compute_prog_data {
         /* Size in bytes of the workgroup's shared space. */
         uint32_t shared_size;
         uint16_t local_size[3];
+        /* If the shader uses subgroup functionality */
+        bool has_subgroups;
 };
 
 static inline bool
