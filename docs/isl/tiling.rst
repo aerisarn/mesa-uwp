@@ -83,11 +83,11 @@ image in bytes given a width and height in elements is as follows:
 
 .. code-block:: c
 
-    uint32_t width_tl = DIV_ROUND_UP(width_el * (format_bpb / tile_info.format_bpb),
-                                     tile_info.logical_extent_el.w);
-    uint32_t height_tl = DIV_ROUND_UP(height_el, tile_info.logical_extent_el.h);
-    uint32_t row_pitch = width_tl * tile_info.phys_extent_el.w;
-    uint32_t size = height_tl * tile_info.phys_extent_el.h * row_pitch;
+   uint32_t width_tl = DIV_ROUND_UP(width_el * (format_bpb / tile_info.format_bpb),
+                                    tile_info.logical_extent_el.w);
+   uint32_t height_tl = DIV_ROUND_UP(height_el, tile_info.logical_extent_el.h);
+   uint32_t row_pitch = width_tl * tile_info.phys_extent_el.w;
+   uint32_t size = height_tl * tile_info.phys_extent_el.h * row_pitch;
 
 It is very important to note that there is no direct conversion between
 :cpp:member:`isl_tile_info::logical_extent_el` and
@@ -100,9 +100,9 @@ heights that differ and so no such calculation will work in general.  The
 easiest case study for this is W-tiling. From the Sky Lake PRM Vol. 2d,
 "RENDER_SURFACE_STATE" (p. 427):
 
-    If the surface is a stencil buffer (and thus has Tile Mode set to
-    TILEMODE_WMAJOR), the pitch must be set to 2x the value computed based on
-    width, as the stencil buffer is stored with two rows interleaved.
+   If the surface is a stencil buffer (and thus has Tile Mode set to
+   TILEMODE_WMAJOR), the pitch must be set to 2x the value computed based on
+   width, as the stencil buffer is stored with two rows interleaved.
 
 What does this mean?  Why are we multiplying the pitch by two?  What does it
 mean that "the stencil buffer is stored with two rows interleaved"?  The
@@ -156,7 +156,7 @@ tiled address:
 
 .. code-block:: c
 
-    addr[6] ^= addr[9] ^ addr[10];
+   addr[6] ^= addr[9] ^ addr[10];
 
 Y-tiling
 --------
@@ -199,7 +199,7 @@ address:
 
 .. code-block:: c
 
-    addr[6] ^= addr[9];
+   addr[6] ^= addr[9];
 
 W-tiling
 --------
@@ -228,9 +228,9 @@ as a sort of modified Y-tiling.  One example of this is the somewhat odd
 requirement that W-tiled buffers have their pitch multiplied by 2.  From the
 Sky Lake PRM Vol. 2d, "RENDER_SURFACE_STATE" (p. 427):
 
-    If the surface is a stencil buffer (and thus has Tile Mode set to
-    TILEMODE_WMAJOR), the pitch must be set to 2x the value computed based on
-    width, as the stencil buffer is stored with two rows interleaved.
+   If the surface is a stencil buffer (and thus has Tile Mode set to
+   TILEMODE_WMAJOR), the pitch must be set to 2x the value computed based on
+   width, as the stencil buffer is stored with two rows interleaved.
 
 The last phrase holds the key here: "the stencil buffer is stored with two rows
 interleaved".  More accurately, a W-tiled buffer can be viewed as a Y-tiled

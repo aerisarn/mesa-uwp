@@ -10,10 +10,10 @@ Properly enabling HiZ on Sandy Bridge requires certain special considerations.
 From the Sandy Bridge PRM Vol. 2, Pt. 1, 7.5.3 "Hierarchical Depth Buffer" (p.
 312):
 
-    The hierarchical depth buffer does not support the LOD field, it is assumed
-    by hardware to be zero. A separate hierarachical depth buffer is required
-    for each LOD used, and the corresponding buffer’s state delivered to
-    hardware each time a new depth buffer state with modified LOD is delivered.
+   The hierarchical depth buffer does not support the LOD field, it is assumed
+   by hardware to be zero. A separate hierarachical depth buffer is required
+   for each LOD used, and the corresponding buffer’s state delivered to
+   hardware each time a new depth buffer state with modified LOD is delivered.
 
 The ``3DSTATE_STENCIL_BUFFER`` packet for separate stencil (required for HiZ)
 on sandy bridge also lacks an LOD field.  Empirically, the hardware doesn't
@@ -55,20 +55,20 @@ do this as an example:
 
 .. code-block:: c
 
-    struct blorp_address hiz_address = params->depth.aux_addr;
-    #if GFX_VER == 6
-    /* Sandy bridge hardware does not technically support mipmapped HiZ.
-     * However, we have a special layout that allows us to make it work
-     * anyway by manually offsetting to the specified miplevel.
-     */
-    assert(info.hiz_surf->dim_layout == ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ);
-    uint32_t offset_B;
-    isl_surf_get_image_offset_B_tile_sa(info.hiz_surf,
-                                        info.view->base_level, 0, 0,
-                                        &offset_B, NULL, NULL);
-    hiz_address.offset += offset_B;
-    #endif
+   struct blorp_address hiz_address = params->depth.aux_addr;
+   #if GFX_VER == 6
+   /* Sandy bridge hardware does not technically support mipmapped HiZ.
+    * However, we have a special layout that allows us to make it work
+    * anyway by manually offsetting to the specified miplevel.
+    */
+   assert(info.hiz_surf->dim_layout == ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ);
+   uint32_t offset_B;
+   isl_surf_get_image_offset_B_tile_sa(info.hiz_surf,
+                                       info.view->base_level, 0, 0,
+                                       &offset_B, NULL, NULL);
+   hiz_address.offset += offset_B;
+   #endif
 
-    info.hiz_address =
-       blorp_emit_reloc(batch, dw + isl_dev->ds.hiz_offset / 4,
-                        hiz_address, 0);
+   info.hiz_address =
+      blorp_emit_reloc(batch, dw + isl_dev->ds.hiz_offset / 4,
+                       hiz_address, 0);

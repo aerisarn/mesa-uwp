@@ -38,11 +38,11 @@ about the contents of the CCS is gleaned from reverse-engineering of the
 hardware.  The best bit of documentation we have ever had comes from the
 display section of the Sky Lake PRM Vol 12 section on planes (p. 159):
 
-    The Color Control Surface (CCS) contains the compression status of the
-    cache-line pairs. The compression state of the cache-line pair is
-    specified by 2 bits in the CCS.  Each CCS cache-line represents an area
-    on the main surface of 16x16 sets of 128 byte Y-tiled cache-line-pairs.
-    CCS is always Y tiled.
+   The Color Control Surface (CCS) contains the compression status of the
+   cache-line pairs. The compression state of the cache-line pair is
+   specified by 2 bits in the CCS.  Each CCS cache-line represents an area
+   on the main surface of 16x16 sets of 128 byte Y-tiled cache-line-pairs.
+   CCS is always Y tiled.
 
 While this is technically for color compression and not fast-clears, it
 provides a good bit of insight into how color compression and fast-clears
@@ -96,29 +96,29 @@ this as follows:
 
 Broadwell PRM Vol 7, "MCS Buffer for Render Target(s)" (p. 676):
 
-    Mip-mapped and arrayed surfaces are supported with MCS buffer layout with
-    these alignments in the RT space: Horizontal Alignment = 256 and Vertical
-    Alignment = 128.
+   Mip-mapped and arrayed surfaces are supported with MCS buffer layout with
+   these alignments in the RT space: Horizontal Alignment = 256 and Vertical
+   Alignment = 128.
 
 Broadwell PRM Vol 2d, "RENDER_SURFACE_STATE" (p. 279):
 
-    For non-multisampled render target's auxiliary surface, MCS, QPitch must be
-    computed with Horizontal Alignment = 256 and Surface Vertical Alignment =
-    128. These alignments are only for MCS buffer and not for associated render
-    target.
+   For non-multisampled render target's auxiliary surface, MCS, QPitch must be
+   computed with Horizontal Alignment = 256 and Surface Vertical Alignment =
+   128. These alignments are only for MCS buffer and not for associated render
+   target.
 
 Sky Lake PRM Vol 7, "MCS Buffer for Render Target(s)" (p. 632):
 
-    Mip-mapped and arrayed surfaces are supported with MCS buffer layout with
-    these alignments in the RT space: Horizontal Alignment = 128 and Vertical
-    Alignment = 64.
+   Mip-mapped and arrayed surfaces are supported with MCS buffer layout with
+   these alignments in the RT space: Horizontal Alignment = 128 and Vertical
+   Alignment = 64.
 
 Sky Lake PRM Vol. 2d, "RENDER_SURFACE_STATE" (p. 435):
 
-    For non-multisampled render target's CCS auxiliary surface, QPitch must be
-    computed with Horizontal Alignment = 128 and Surface Vertical Alignment
-    = 256. These alignments are only for CCS buffer and not for associated
-    render target.
+   For non-multisampled render target's CCS auxiliary surface, QPitch must be
+   computed with Horizontal Alignment = 128 and Surface Vertical Alignment
+   = 256. These alignments are only for CCS buffer and not for associated
+   render target.
 
 Empirical evidence seems to confirm this.  On Sky Lake, the vertical alignment
 is always one cache line.  The horizontal alignment, however, varies by main
