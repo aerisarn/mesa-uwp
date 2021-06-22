@@ -790,6 +790,8 @@ pandecode_dcd(const struct MALI_DRAW *p,
 {
         struct pandecode_mapped_memory *attr_mem;
 
+        bool idvs = (job_type == MALI_JOB_TYPE_INDEXED_VERTEX);
+
         struct pandecode_fbd fbd_info = {
                 /* Default for Bifrost */
                 .rt_count = 1
@@ -815,6 +817,8 @@ pandecode_dcd(const struct MALI_DRAW *p,
                 if (state.shader.shader & ~0xF)
                         pandecode_shader_disassemble(state.shader.shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
 
+                if (idvs && state.secondary_shader)
+                        pandecode_shader_disassemble(state.secondary_shader, job_no, job_type, is_bifrost, gpu_id);
                 DUMP_UNPACKED(RENDERER_STATE, state, "State:\n");
                 pandecode_indent++;
 
@@ -970,6 +974,41 @@ pandecode_vertex_compute_geometry_job(const struct MALI_JOB_HEADER *h,
         DUMP_UNPACKED(DRAW, draw, "Draw:\n");
         pandecode_indent--;
         pandecode_log("\n");
+}
+
+static void
+pandecode_indexed_vertex_job(const struct MALI_JOB_HEADER *h,
+                             const struct pandecode_mapped_memory *mem,
+                             mali_ptr job, int job_no, bool is_bifrost,
+                             unsigned gpu_id)
+{
+        struct mali_bifrost_indexed_vertex_job_packed *PANDECODE_PTR_VAR(p, mem, job);
+
+        pandecode_log("Vertex:\n");
+        pan_section_unpack(p, BIFROST_INDEXED_VERTEX_JOB, VERTEX_DRAW, vert_draw);
+        pandecode_dcd(&vert_draw, job_no, h->type, "", is_bifrost, gpu_id);
+        DUMP_UNPACKED(DRAW, vert_draw, "Vertex Draw:\n");
+
+        pandecode_log("Fragment:\n");
+        pan_section_unpack(p, BIFROST_INDEXED_VERTEX_JOB, FRAGMENT_DRAW, frag_draw);
+        pandecode_dcd(&frag_draw, job_no, MALI_JOB_TYPE_FRAGMENT, "", is_bifrost, gpu_id);
+        DUMP_UNPACKED(DRAW, frag_draw, "Fragment Draw:\n");
+
+        pan_section_unpack(p, BIFROST_INDEXED_VERTEX_JOB, TILER, tiler_ptr);
+        pandecode_log("Tiler Job Payload:\n");
+        pandecode_indent++;
+        pandecode_bifrost_tiler(tiler_ptr.address, job_no);
+        pandecode_indent--;
+
+        pandecode_invocation(pan_section_ptr(p, BIFROST_INDEXED_VERTEX_JOB, INVOCATION));
+        pandecode_primitive(pan_section_ptr(p, BIFROST_INDEXED_VERTEX_JOB, PRIMITIVE));
+
+        /* TODO: gl_PointSize on Bifrost */
+        pandecode_primitive_size(pan_section_ptr(p, BIFROST_INDEXED_VERTEX_JOB, PRIMITIVE_SIZE), true);
+
+        pan_section_unpack(p, BIFROST_INDEXED_VERTEX_JOB, PADDING, padding);
+        pan_section_unpack(p, BIFROST_INDEXED_VERTEX_JOB, FRAGMENT_DRAW_PADDING, f_padding);
+        pan_section_unpack(p, BIFROST_INDEXED_VERTEX_JOB, VERTEX_DRAW_PADDING, v_padding);
 }
 
 static void
@@ -1133,6 +1172,11 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id)
                 case MALI_JOB_TYPE_VERTEX:
                 case MALI_JOB_TYPE_COMPUTE:
                         pandecode_vertex_compute_geometry_job(&h, mem, jc_gpu_va, job_no,
+                                                              bifrost, gpu_id);
+                        break;
+
+                case MALI_JOB_TYPE_INDEXED_VERTEX:
+                        pandecode_indexed_vertex_job(&h, mem, jc_gpu_va, job_no,
                                                               bifrost, gpu_id);
                         break;
 
