@@ -128,48 +128,30 @@ validate_immediate(struct i915_context *i915, unsigned *batch_space)
    *batch_space = 1 + util_bitcount(dirty);
 }
 
-static uint target_fixup(struct pipe_surface *p, int component)
-{
-   const struct
-   {
-      enum pipe_format format;
-      uint hw_mask[4];
-   } fixup_mask[] = {
-      { PIPE_FORMAT_R8G8B8A8_UNORM, { S5_WRITEDISABLE_BLUE, S5_WRITEDISABLE_GREEN, S5_WRITEDISABLE_RED, S5_WRITEDISABLE_ALPHA}},
-      { PIPE_FORMAT_R8G8B8X8_UNORM, { S5_WRITEDISABLE_BLUE, S5_WRITEDISABLE_GREEN, S5_WRITEDISABLE_RED, S5_WRITEDISABLE_ALPHA}},
-      { PIPE_FORMAT_L8_UNORM,       { S5_WRITEDISABLE_RED | S5_WRITEDISABLE_GREEN | S5_WRITEDISABLE_BLUE, 0, 0, S5_WRITEDISABLE_ALPHA}},
-      { PIPE_FORMAT_I8_UNORM,       { S5_WRITEDISABLE_RED | S5_WRITEDISABLE_GREEN | S5_WRITEDISABLE_BLUE, 0, 0, S5_WRITEDISABLE_ALPHA}},
-      { PIPE_FORMAT_A8_UNORM,       { 0, 0, 0, S5_WRITEDISABLE_RED | S5_WRITEDISABLE_GREEN | S5_WRITEDISABLE_BLUE | S5_WRITEDISABLE_ALPHA}},
-      { 0,                          { S5_WRITEDISABLE_RED, S5_WRITEDISABLE_GREEN, S5_WRITEDISABLE_BLUE, S5_WRITEDISABLE_ALPHA}}
-   };
-   int i = sizeof(fixup_mask) / sizeof(*fixup_mask) - 1;
-
-   if (p)
-      for(i = 0; fixup_mask[i].format != 0; i++)
-         if (p->format == fixup_mask[i].format)
-            return fixup_mask[i].hw_mask[component];
-
-   /* Just return default masks */
-   return fixup_mask[i].hw_mask[component];
-}
 
 static void emit_immediate_s5(struct i915_context *i915, uint imm)
 {
-   /* Fixup write mask for non-BGRA render targets */
-   uint fixup_imm = imm & ~( S5_WRITEDISABLE_RED | S5_WRITEDISABLE_GREEN |
-                             S5_WRITEDISABLE_BLUE | S5_WRITEDISABLE_ALPHA );
-   struct pipe_surface *surf = i915->framebuffer.cbufs[0];
+   struct i915_surface *surf = i915_surface(i915->framebuffer.cbufs[0]);
 
-   if (imm & S5_WRITEDISABLE_RED)
-      fixup_imm |= target_fixup(surf, 0);
-   if (imm & S5_WRITEDISABLE_GREEN)
-      fixup_imm |= target_fixup(surf, 1);
-   if (imm & S5_WRITEDISABLE_BLUE)
-      fixup_imm |= target_fixup(surf, 2);
-   if (imm & S5_WRITEDISABLE_ALPHA)
-      fixup_imm |= target_fixup(surf, 3);
+   if (surf) {
+      uint32_t writemask = imm & S5_WRITEDISABLE_MASK;
+      imm &= ~S5_WRITEDISABLE_MASK;
 
-   OUT_BATCH(fixup_imm);
+      /* The register bits are not in order. */
+      static const uint32_t writedisables[4] = {
+         S5_WRITEDISABLE_RED,
+         S5_WRITEDISABLE_GREEN,
+         S5_WRITEDISABLE_BLUE,
+         S5_WRITEDISABLE_ALPHA,
+      };
+
+      for (int i = 0; i < 4; i++) {
+         if (writemask & writedisables[surf->color_swizzle[i]])
+            imm |= writedisables[i];
+      }
+   }
+
+   OUT_BATCH(imm);
 }
 
 static void emit_immediate_s6(struct i915_context *i915, uint imm)
