@@ -203,7 +203,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
     * the clear_ .. bbox maybe */
    EMIT32(cmdbuf, 0);
    EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, width * 2); // can increase up to 16384
+   EMIT32(cmdbuf, width); // can increase up to 16384
    EMIT32(cmdbuf, height);
 
    EMIT32(cmdbuf, 1);
