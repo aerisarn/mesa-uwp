@@ -3241,6 +3241,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
         }
 
+        case nir_intrinsic_load_num_subgroups:
+                unreachable("Should have been lowered");
+                break;
+
         default:
                 fprintf(stderr, "Unknown intrinsic: ");
                 nir_print_instr(&instr->instr, stderr);
