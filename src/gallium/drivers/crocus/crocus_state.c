@@ -2694,8 +2694,9 @@ crocus_create_sampler_view(struct pipe_context *ctx,
    crocus_combine_swizzle(isv->swizzle, fmt.swizzles, vswz);
 
    /* hardcode stencil swizzles - hw returns 0G01, we want GGGG */
-   if (tmpl->format == PIPE_FORMAT_X32_S8X24_UINT ||
-       tmpl->format == PIPE_FORMAT_X24S8_UINT) {
+   if (devinfo->ver < 6 &&
+       (tmpl->format == PIPE_FORMAT_X32_S8X24_UINT ||
+        tmpl->format == PIPE_FORMAT_X24S8_UINT)) {
       isv->swizzle[0] = tmpl->swizzle_g;
       isv->swizzle[1] = tmpl->swizzle_g;
       isv->swizzle[2] = tmpl->swizzle_g;
