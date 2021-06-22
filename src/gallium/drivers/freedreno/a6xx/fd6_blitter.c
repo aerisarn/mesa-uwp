@@ -960,8 +960,6 @@ handle_rgba_blit(struct fd_context *ctx,
 
    fd_batch_unlock_submit(batch);
 
-   dst->valid = true;
-
    fd_batch_flush(batch);
    fd_batch_reference(&batch, NULL);
 

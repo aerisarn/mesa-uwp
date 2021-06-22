@@ -471,7 +471,6 @@ fd5_blitter_blit(struct fd_context *ctx,
       emit_blit(batch->draw, info);
    }
 
-   fd_resource(info->dst.resource)->valid = true;
    fd_batch_needs_flush(batch);
 
    fd_batch_flush(batch);
