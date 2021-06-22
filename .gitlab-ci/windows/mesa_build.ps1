@@ -2,6 +2,8 @@
 Write-Host "Refreshing Windows TLS CA cache"
 (New-Object System.Net.WebClient).DownloadString("https://github.com") >$null
 
+$env:PYTHONUTF8=1
+
 Get-Date
 Write-Host "Compiling Mesa"
 $builddir = New-Item -ItemType Directory -Name "_build"
