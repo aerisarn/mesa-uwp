@@ -40,11 +40,6 @@
 
 #include <vulkan/vulkan.h>
 
-#if defined(__APPLE__)
-// Source of MVK_VERSION
-#include "MoltenVK/vk_mvk_moltenvk.h"
-#endif
-
 extern uint32_t zink_debug;
 struct hash_table;
 
@@ -144,12 +139,6 @@ struct zink_screen {
    void (*descriptors_deinit)(struct zink_context *ctx);
    enum zink_descriptor_mode descriptor_mode;
 
-#if defined(MVK_VERSION)
-   PFN_vkGetMoltenVKConfigurationMVK vk_GetMoltenVKConfigurationMVK;
-   PFN_vkSetMoltenVKConfigurationMVK vk_SetMoltenVKConfigurationMVK;
-   PFN_vkGetVersionStringsMVK vk_GetVersionStringsMVK;
-#endif
-
    struct {
       bool dual_color_blend_by_location;
       bool inline_uniforms;
@@ -240,14 +229,6 @@ zink_screen_timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_
 
 bool
 zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);
-
-#define GET_PROC_ADDR_INSTANCE(x) do {                                          \
-      screen->vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(screen->instance, "vk"#x); \
-      if (!screen->vk_##x) {                                                \
-         mesa_loge("ZINK: GetInstanceProcAddr failed: vk"#x"\n");           \
-         return false;                                                      \
-      } \
-   } while (0)
 
 #define GET_PROC_ADDR_INSTANCE_LOCAL(instance, x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(instance, "vk"#x)
 

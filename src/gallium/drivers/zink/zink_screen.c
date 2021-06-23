@@ -51,6 +51,11 @@
 
 #include "frontend/sw_winsys.h"
 
+#if defined(__APPLE__)
+// Source of MVK_VERSION
+#include "MoltenVK/vk_mvk_moltenvk.h"
+#endif
+
 static const struct debug_named_value
 zink_debug_options[] = {
    { "nir", ZINK_DEBUG_NIR, "Dump NIR during program compile" },
@@ -1354,29 +1359,29 @@ zink_internal_setup_moltenvk(struct zink_screen *screen)
    if (!screen->instance_info.have_MVK_moltenvk)
       return true;
 
-   GET_PROC_ADDR_INSTANCE(GetMoltenVKConfigurationMVK);
-   GET_PROC_ADDR_INSTANCE(SetMoltenVKConfigurationMVK);
-   GET_PROC_ADDR_INSTANCE(GetVersionStringsMVK);
+   GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetMoltenVKConfigurationMVK);
+   GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, SetMoltenVKConfigurationMVK);
+   GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, GetVersionStringsMVK);
 
-   if (screen->vk_GetVersionStringsMVK) {
+   if (vk_GetVersionStringsMVK) {
       char molten_version[64] = {0};
       char vulkan_version[64] = {0};
 
-      (*screen->vk_GetVersionStringsMVK)(molten_version, sizeof(molten_version) - 1, vulkan_version, sizeof(vulkan_version) - 1);
+      vk_GetVersionStringsMVK(molten_version, sizeof(molten_version) - 1, vulkan_version, sizeof(vulkan_version) - 1);
 
       printf("zink: MoltenVK %s Vulkan %s \n", molten_version, vulkan_version);
    }
 
-   if (screen->vk_GetMoltenVKConfigurationMVK && screen->vk_SetMoltenVKConfigurationMVK) {
+   if (vk_GetMoltenVKConfigurationMVK && vk_SetMoltenVKConfigurationMVK) {
       MVKConfiguration molten_config = {0};
       size_t molten_config_size = sizeof(molten_config);
 
-      VkResult res = (*screen->vk_GetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
+      VkResult res = vk_GetMoltenVKConfigurationMVK(screen->instance, &molten_config, &molten_config_size);
       if (res == VK_SUCCESS || res == VK_INCOMPLETE) {
          // Needed to allow MoltenVK to accept VkImageView swizzles.
          // Encountered when using VK_FORMAT_R8G8_UNORM
          molten_config.fullImageViewSwizzle = VK_TRUE;
-         (*screen->vk_SetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
+         vk_SetMoltenVKConfigurationMVK(screen->instance, &molten_config, &molten_config_size);
       }
    }
 #endif // MVK_VERSION
