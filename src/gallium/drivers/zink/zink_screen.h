@@ -247,22 +247,6 @@ zink_screen_timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_
 bool
 zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);
 
-#define GET_PROC_ADDR(x) do {                                               \
-      screen->vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x); \
-      if (!screen->vk_##x) {                                                \
-         mesa_loge("ZINK: vkGetDeviceProcAddr failed: vk"#x"\n");           \
-         return false;                                                      \
-      } \
-   } while (0)
-
-#define GET_PROC_ADDR_KHR(x) do {                                               \
-      screen->vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x"KHR"); \
-      if (!screen->vk_##x) {                                                \
-         mesa_loge("ZINK: vkGetDeviceProcAddr failed: vk"#x"KHR\n");           \
-         return false;                                                      \
-      } \
-   } while (0)
-
 #define GET_PROC_ADDR_INSTANCE(x) do {                                          \
       screen->vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(screen->instance, "vk"#x); \
       if (!screen->vk_##x) {                                                \
