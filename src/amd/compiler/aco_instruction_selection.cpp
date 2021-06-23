@@ -1421,13 +1421,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    }
    case nir_op_inot: {
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (instr->dest.dest.ssa.bit_size == 1) {
-         assert(src.regClass() == bld.lm);
-         assert(dst.regClass() == bld.lm);
-         /* Don't use s_andn2 here, this allows the optimizer to make a better decision */
-         Temp tmp = bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), src);
-         bld.sop2(Builder::s_and, Definition(dst), bld.def(s1, scc), tmp, Operand(exec, bld.lm));
-      } else if (dst.regClass() == v1 || dst.regClass() == v2b || dst.regClass() == v1b) {
+      if (dst.regClass() == v1 || dst.regClass() == v2b || dst.regClass() == v1b) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_not_b32, dst);
       } else if (dst.regClass() == v2) {
          Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
