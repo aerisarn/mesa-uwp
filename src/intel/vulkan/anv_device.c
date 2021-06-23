@@ -248,6 +248,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_shader_float_controls             = device->info.ver >= 8,
       .KHR_shader_non_semantic_info          = true,
       .KHR_shader_subgroup_extended_types    = device->info.ver >= 8,
+      .KHR_shader_subgroup_uniform_control_flow = true,
       .KHR_shader_terminate_invocation       = true,
       .KHR_spirv_1_4                         = true,
       .KHR_storage_buffer_storage_class      = true,
@@ -1715,6 +1716,13 @@ void anv_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR *features =
             (VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR *)ext;
          CORE_FEATURE(1, 2, shaderSubgroupExtendedTypes);
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
+         VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR *features =
+            (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR *)ext;
+         features->shaderSubgroupUniformControlFlow = true;
          break;
       }
 
