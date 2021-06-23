@@ -142,9 +142,6 @@ etna_context_destroy(struct pipe_context *pctx)
 
    util_copy_framebuffer_state(&ctx->framebuffer_s, NULL);
 
-   if (ctx->primconvert)
-      util_primconvert_destroy(ctx->primconvert);
-
    if (ctx->blitter)
       util_blitter_destroy(ctx->blitter);
 
@@ -640,27 +637,6 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->blitter = util_blitter_create(pctx);
    if (!ctx->blitter)
-      goto fail;
-
-   /* Generate the bitmask of supported draw primitives. */
-   ctx->prim_hwsupport = 1 << PIPE_PRIM_POINTS |
-                         1 << PIPE_PRIM_LINES |
-                         1 << PIPE_PRIM_LINE_STRIP |
-                         1 << PIPE_PRIM_TRIANGLES |
-                         1 << PIPE_PRIM_TRIANGLE_FAN;
-
-   /* TODO: The bug relates only to indexed draws, but here we signal
-    * that there is no support for triangle strips at all. This should
-    * be refined.
-    */
-   if (VIV_FEATURE(ctx->screen, chipMinorFeatures2, BUG_FIXES8))
-      ctx->prim_hwsupport |= 1 << PIPE_PRIM_TRIANGLE_STRIP;
-
-   if (VIV_FEATURE(ctx->screen, chipMinorFeatures2, LINE_LOOP))
-      ctx->prim_hwsupport |= 1 << PIPE_PRIM_LINE_LOOP;
-
-   ctx->primconvert = util_primconvert_create(pctx, ctx->prim_hwsupport);
-   if (!ctx->primconvert)
       goto fail;
 
    slab_create_child(&ctx->transfer_pool, &screen->transfer_pool);
