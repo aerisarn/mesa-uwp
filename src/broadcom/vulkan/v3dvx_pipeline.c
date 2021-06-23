@@ -223,10 +223,6 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
          config.depth_test_function = VK_COMPARE_OP_ALWAYS;
       }
 
-      /* EZ state will be updated at draw time based on bound pipeline state */
-      config.early_z_updates_enable = false;
-      config.early_z_enable = false;
-
       config.stencil_enable =
          ds_info ? ds_info->stencilTestEnable && has_ds_attachment: false;
 
