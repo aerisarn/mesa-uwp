@@ -1362,25 +1362,25 @@ zink_internal_setup_moltenvk(struct zink_screen *screen)
    GET_PROC_ADDR_INSTANCE(UseIOSurfaceMVK);
    GET_PROC_ADDR_INSTANCE(GetIOSurfaceMVK);
 
-   if (screen->vk.GetVersionStringsMVK) {
+   if (screen->vk_GetVersionStringsMVK) {
       char molten_version[64] = {0};
       char vulkan_version[64] = {0};
 
-      (*screen->vk.GetVersionStringsMVK)(molten_version, sizeof(molten_version) - 1, vulkan_version, sizeof(vulkan_version) - 1);
+      (*screen->vk_GetVersionStringsMVK)(molten_version, sizeof(molten_version) - 1, vulkan_version, sizeof(vulkan_version) - 1);
 
       printf("zink: MoltenVK %s Vulkan %s \n", molten_version, vulkan_version);
    }
 
-   if (screen->vk.GetMoltenVKConfigurationMVK && screen->vk.SetMoltenVKConfigurationMVK) {
+   if (screen->vk_GetMoltenVKConfigurationMVK && screen->vk_SetMoltenVKConfigurationMVK) {
       MVKConfiguration molten_config = {0};
       size_t molten_config_size = sizeof(molten_config);
 
-      VkResult res = (*screen->vk.GetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
+      VkResult res = (*screen->vk_GetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
       if (res == VK_SUCCESS || res == VK_INCOMPLETE) {
          // Needed to allow MoltenVK to accept VkImageView swizzles.
          // Encountered when using VK_FORMAT_R8G8_UNORM
          molten_config.fullImageViewSwizzle = VK_TRUE;
-         (*screen->vk.SetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
+         (*screen->vk_SetMoltenVKConfigurationMVK)(screen->instance, &molten_config, &molten_config_size);
       }
    }
 #endif // MVK_VERSION
