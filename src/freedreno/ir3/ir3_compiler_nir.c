@@ -4066,7 +4066,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	ret = ir3_ra(so);
 
 	if (ret) {
-		DBG("RA failed!");
+		mesa_loge("ir3_ra() failed!");
 		goto out;
 	}
 
