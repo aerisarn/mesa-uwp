@@ -8227,6 +8227,8 @@ crocus_destroy_state(struct crocus_context *ice)
       }
    }
 
+   for (int i = 0; i < 16; i++)
+      pipe_resource_reference(&ice->state.vertex_buffers[i].buffer.resource, NULL);
    pipe_resource_reference(&ice->state.grid_size.res, NULL);
 
    pipe_resource_reference(&ice->state.index_buffer.res, NULL);
