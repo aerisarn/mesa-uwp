@@ -499,22 +499,6 @@ spec@ext_texture_snorm@fbo-blending-formats@GL_RGB16_SNORM,Fail
 spec@ext_texture_swizzle@depth_texture_mode_and_swizzle,Fail
 spec@ext_transform_feedback2@counting with pause,Fail
 spec@ext_transform_feedback@generatemipmap prims_generated,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_line_loop ffs,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_line_loop other,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_line_strip_adjacency ffs,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_line_strip_adjacency other,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_lines ffs,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_lines other,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_lines_adjacency ffs,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_lines_adjacency other,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_points ffs,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_points other,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_triangle_strip_adjacency ffs,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_triangle_strip_adjacency other,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_triangles ffs,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_triangles other,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_triangles_adjacency ffs,Fail
-spec@glsl-1.50@execution@geometry@primitive-id-restart gl_triangles_adjacency other,Fail
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 spec@khr_texture_compression_astc@array-gl,Fail
 spec@khr_texture_compression_astc@array-gl@12x12 Block Dim,Fail
