@@ -49,12 +49,26 @@ static const struct gbm_backend_desc builtin_backends[] = {
 };
 
 static struct gbm_device *
+backend_create_device(const struct gbm_backend_desc *bd, int fd)
+{
+   const uint32_t abi_ver = VER_MIN(GBM_BACKEND_ABI_VERSION,
+                                    bd->backend->v0.backend_version);
+   struct gbm_device *dev = bd->backend->v0.create_device(fd, abi_ver);
+
+   if (dev) {
+      assert(abi_ver == dev->v0.backend_version);
+      dev->v0.backend_desc = bd;
+   }
+
+   return dev;
+}
+
+static struct gbm_device *
 find_backend(const char *name, int fd)
 {
    struct gbm_device *dev = NULL;
    const struct gbm_backend_desc *bd;
    unsigned i;
-   uint32_t abi_ver;
 
    for (i = 0; i < ARRAY_SIZE(builtin_backends); ++i) {
       bd = &builtin_backends[i];
@@ -62,15 +76,10 @@ find_backend(const char *name, int fd)
       if (name && strcmp(bd->name, name))
          continue;
 
-      abi_ver = VER_MIN(GBM_BACKEND_ABI_VERSION,
-                        bd->backend->v0.backend_version);
-      dev = bd->backend->v0.create_device(fd, abi-ver);
+      dev = backend_create_device(bd, fd);
 
-      if (dev) {
-         assert(abi_ver == dev->v0.backend_version);
-         dev->v0.backend_desc = bd;
+      if (dev)
          break;
-      }
    }
 
    return dev;
