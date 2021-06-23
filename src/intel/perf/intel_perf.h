@@ -326,6 +326,18 @@ struct intel_perf_config {
    /* Version of the i915-perf subsystem, refer to i915_drm.h. */
    int i915_perf_version;
 
+   /* Number of bits to shift the OA timestamp values by to match the ring
+    * timestamp.
+    */
+   int oa_timestamp_shift;
+
+   /* Mask of bits valid from the OA report (for instance you might have the
+    * lower 31 bits [30:0] of timestamp value). This is useful if you want to
+    * recombine a full timestamp value captured from the CPU with OA
+    * timestamps captured on the device but that only include 31bits of data.
+    */
+   uint64_t oa_timestamp_mask;
+
    /* Powergating configuration for the running the query. */
    struct drm_i915_gem_context_param_sseu sseu;
 

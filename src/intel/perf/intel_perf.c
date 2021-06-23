@@ -714,6 +714,13 @@ oa_metrics_available(struct intel_perf_config *perf, int fd,
    perf->i915_query_supported = i915_query_perf_config_supported(perf, fd);
    perf->i915_perf_version = i915_perf_version(fd);
 
+   /* TODO: We should query this from i915 */
+   if (intel_device_info_is_dg2(devinfo))
+      perf->oa_timestamp_shift = 1;
+
+   perf->oa_timestamp_mask =
+      0xffffffffffffffffull >> (32 + perf->oa_timestamp_shift);
+
    /* Record the default SSEU configuration. */
    i915_get_sseu(fd, &perf->sseu);
 
@@ -1042,7 +1049,7 @@ uint64_t
 intel_perf_report_timestamp(const struct intel_perf_query_info *query,
                             const uint32_t *report)
 {
-   return report[1];
+   return report[1] >> query->perf->oa_timestamp_shift;
 }
 
 void
