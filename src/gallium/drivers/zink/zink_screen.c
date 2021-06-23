@@ -2056,9 +2056,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->instance_info.disable_xcb_surface = driQueryOptionb(config->options, "disable_xcb_surface");
    }
 #endif
-   screen->instance = zink_create_instance(&screen->instance_info);
 
-   if (!screen->instance)
+   if (!zink_create_instance(screen))
       goto fail;
 
    vk_instance_dispatch_table_load(&screen->vk.instance, &vkGetInstanceProcAddr, screen->instance);
