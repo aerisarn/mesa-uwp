@@ -726,18 +726,33 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
       if (is_def)
          continue;
 
-      std::pair<Operand, Definition>& copy = *it;
-
       /* check if we moved another parallelcopy definition */
       for (std::pair<Operand, Definition>& other : parallelcopies) {
          if (!other.second.isTemp())
             continue;
-         if (copy.first.getTemp() == other.second.getTemp()) {
-            copy.first.setTemp(other.first.getTemp());
-            copy.first.setFixed(other.first.physReg());
+         if (it->first.getTemp() == other.second.getTemp()) {
+            other.second.setFixed(it->second.physReg());
+            ctx.assignments[other.second.tempId()].reg = other.second.physReg();
+            it = parallelcopies.erase(it);
+            is_def = true;
+            /* check if we moved an operand, again */
+            bool fill = true;
+            for (Operand& op : instr->operands) {
+               if (op.isTemp() && op.tempId() == other.second.tempId()) {
+                  // FIXME: ensure that the operand can use this reg
+                  op.setFixed(other.second.physReg());
+                  fill = (flags & fill_killed_ops) || !op.isKillBeforeDef();
+               }
+            }
+            if (fill)
+               reg_file.fill(other.second);
+            break;
          }
       }
+      if (is_def)
+         continue;
 
+      std::pair<Operand, Definition>& copy = *it;
       copy.second.setTemp(ctx.program->allocateTmp(copy.second.regClass()));
       ctx.assignments.emplace_back(copy.second.physReg(), copy.second.regClass());
       assert(ctx.assignments.size() == ctx.program->peekAllocationId());
