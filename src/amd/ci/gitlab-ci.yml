@@ -5,6 +5,7 @@
   variables:
     VK_DRIVER: radeon
     ACO_DEBUG: validateir,validatera
+    MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
 
 radv-navy_flounder-vkd3d-proton:
   extends:
