@@ -250,7 +250,10 @@ zink_create_instance(struct zink_screen *screen)
    ici.ppEnabledLayerNames = layers;
    ici.enabledLayerCount = num_layers;
 
-   VkResult err = vkCreateInstance(&ici, NULL, &screen->instance);
+   GET_PROC_ADDR_INSTANCE_LOCAL(screen, NULL, CreateInstance);
+   assert(vk_CreateInstance);
+
+   VkResult err = vk_CreateInstance(&ici, NULL, &screen->instance);
    if (err != VK_SUCCESS) {
       mesa_loge("ZINK: vkCreateInstance failed");
       return false;

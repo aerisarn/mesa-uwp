@@ -45,6 +45,7 @@
 
 extern uint32_t zink_debug;
 struct hash_table;
+struct util_dl_library;
 
 struct zink_batch_state;
 struct zink_context;
@@ -80,6 +81,11 @@ struct zink_modifier_prop {
 
 struct zink_screen {
    struct pipe_screen base;
+
+   struct util_dl_library *loader_lib;
+   PFN_vkGetInstanceProcAddr vk_GetInstanceProcAddr;
+   PFN_vkGetDeviceProcAddr vk_GetDeviceProcAddr;
+
    bool threaded;
    bool is_cpu;
    uint32_t curr_batch; //the current batch id
@@ -265,7 +271,7 @@ zink_screen_timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_
 bool
 zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);
 
-#define GET_PROC_ADDR_INSTANCE_LOCAL(screen, instance, x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(instance, "vk"#x)
+#define GET_PROC_ADDR_INSTANCE_LOCAL(screen, instance, x) PFN_vk##x vk_##x = (PFN_vk##x)(screen)->vk_GetInstanceProcAddr(instance, "vk"#x)
 
 void
 zink_screen_update_pipeline_cache(struct zink_screen *screen, struct zink_program *pg);
