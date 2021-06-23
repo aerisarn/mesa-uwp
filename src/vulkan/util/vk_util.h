@@ -223,6 +223,8 @@ uint32_t vk_get_driver_version(void);
 
 uint32_t vk_get_version_override(void);
 
+void vk_warn_non_conformant_implementation(const char *driver_name);
+
 struct vk_pipeline_cache_header {
    uint32_t header_size;
    uint32_t header_version;
