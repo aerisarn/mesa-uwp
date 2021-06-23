@@ -227,6 +227,7 @@ a630_vk:
     # features.  However, we end up with flaky results in
     # dEQP-VK.binding_model.*.geometry and dEQP-VK.glsl.*_vertex.
     TU_DEBUG: forcebin
+    TU_IGNORE_CONFORMANCE_WARNING: 1
 
 # Disabled by default until we can sort out what looks like timeouts before
 # getting to the first test (or is it at cleanup after tests completed?).
@@ -241,6 +242,7 @@ a630_vk_asan:
     DEQP_FRACTION: 100
     DEQP_PARALLEL: 4 # We get OOMkills if we go too wide with asan enabled
     TU_DEBUG: forcebin
+    TU_IGNORE_CONFORMANCE_WARNING: 1
     # Disable the leak checks, since the library gets dlclose()d and thus get
     # totally useless leak reports.  We can still catch buffer overflows.
     ASAN_OPTIONS: "detect_leaks=0"
@@ -257,6 +259,7 @@ a630_vk_sysmem:
     DEQP_CASELIST_FILTER: "dEQP-VK.renderpass.*"
     GPU_VERSION: freedreno-a630-bypass
     TU_DEBUG: sysmem
+    TU_IGNORE_CONFORMANCE_WARNING: 1
 
 a630_piglit:
   extends:

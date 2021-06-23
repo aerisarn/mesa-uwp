@@ -74,6 +74,7 @@ for var in \
     PIPELINE_ARTIFACTS_BASE \
     TEST_LD_PRELOAD \
     TU_DEBUG \
+    TU_IGNORE_CONFORMANCE_WARNING \
     VK_CPU \
     VK_DRIVER \
     ; do
