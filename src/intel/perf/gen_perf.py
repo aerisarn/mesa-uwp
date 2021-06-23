@@ -212,16 +212,16 @@ hw_vars = {}
 hw_vars["$EuCoresTotalCount"] = "perf->sys_vars.n_eus"
 hw_vars["$EuSlicesTotalCount"] = "perf->sys_vars.n_eu_slices"
 hw_vars["$EuSubslicesTotalCount"] = "perf->sys_vars.n_eu_sub_slices"
-hw_vars["$EuThreadsCount"] = "perf->sys_vars.eu_threads_count"
+hw_vars["$EuThreadsCount"] = "perf->devinfo.num_thread_per_eu"
 hw_vars["$SliceMask"] = "perf->sys_vars.slice_mask"
 # subslice_mask is interchangeable with subslice/dual-subslice since Gfx12+
 # only has dual subslices which can be assimilated with 16EUs subslices.
 hw_vars["$SubsliceMask"] = "perf->sys_vars.subslice_mask"
 hw_vars["$DualSubsliceMask"] = "perf->sys_vars.subslice_mask"
-hw_vars["$GpuTimestampFrequency"] = "perf->sys_vars.timestamp_frequency"
+hw_vars["$GpuTimestampFrequency"] = "perf->devinfo.timestamp_frequency"
 hw_vars["$GpuMinFrequency"] = "perf->sys_vars.gt_min_freq"
 hw_vars["$GpuMaxFrequency"] = "perf->sys_vars.gt_max_freq"
-hw_vars["$SkuRevisionId"] = "perf->sys_vars.revision"
+hw_vars["$SkuRevisionId"] = "perf->devinfo.revision"
 hw_vars["$QueryMode"] = "perf->sys_vars.query_mode"
 
 def output_rpn_equation_code(set, counter, equation):

@@ -35,8 +35,9 @@
 #include <sys/mkdev.h>
 #endif
 
-#include "util/hash_table.h"
 #include "compiler/glsl/list.h"
+#include "dev/intel_device_info.h"
+#include "util/hash_table.h"
 #include "util/ralloc.h"
 
 #include "drm-uapi/i915_drm.h"
@@ -44,8 +45,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct intel_device_info;
 
 struct intel_perf_config;
 struct intel_perf_query_info;
@@ -334,18 +333,17 @@ struct intel_perf_config {
     * All uint64_t for consistent operand types in generated code
     */
    struct {
-      uint64_t timestamp_frequency; /** $GpuTimestampFrequency */
       uint64_t n_eus;               /** $EuCoresTotalCount */
       uint64_t n_eu_slices;         /** $EuSlicesTotalCount */
       uint64_t n_eu_sub_slices;     /** $EuSubslicesTotalCount */
-      uint64_t eu_threads_count;    /** $EuThreadsCount */
       uint64_t slice_mask;          /** $SliceMask */
       uint64_t subslice_mask;       /** $SubsliceMask */
       uint64_t gt_min_freq;         /** $GpuMinFrequency */
       uint64_t gt_max_freq;         /** $GpuMaxFrequency */
-      uint64_t revision;            /** $SkuRevisionId */
       bool     query_mode;          /** $QueryMode */
    } sys_vars;
+
+   struct intel_device_info devinfo;
 
    /* OA metric sets, indexed by GUID, as know by Mesa at build time, to
     * cross-reference with the GUIDs of configs advertised by the kernel at
@@ -455,7 +453,6 @@ void intel_perf_query_result_read_perfcnts(struct intel_perf_query_result *resul
  */
 void intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
                                         const struct intel_perf_query_info *query,
-                                        const struct intel_device_info *devinfo,
                                         const uint32_t *start,
                                         const uint32_t *end);
 
@@ -469,7 +466,6 @@ uint64_t intel_perf_report_timestamp(const struct intel_perf_query_info *query,
  */
 void intel_perf_query_result_accumulate_fields(struct intel_perf_query_result *result,
                                                const struct intel_perf_query_info *query,
-                                               const struct intel_device_info *devinfo,
                                                const void *start,
                                                const void *end,
                                                bool no_oa_accumulate);
@@ -479,7 +475,6 @@ void intel_perf_query_result_clear(struct intel_perf_query_result *result);
 /** Debug helper printing out query data.
  */
 void intel_perf_query_result_print_fields(const struct intel_perf_query_info *query,
-                                          const struct intel_device_info *devinfo,
                                           const void *data);
 
 static inline size_t

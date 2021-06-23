@@ -347,9 +347,10 @@ init_oa_configs(struct intel_perf_config *perf, int fd,
 }
 
 static void
-compute_topology_builtins(struct intel_perf_config *perf,
-                          const struct intel_device_info *devinfo)
+compute_topology_builtins(struct intel_perf_config *perf)
 {
+   const struct intel_device_info *devinfo = &perf->devinfo;
+
    perf->sys_vars.slice_mask = devinfo->slice_masks;
    perf->sys_vars.n_eu_slices = devinfo->num_slices;
 
@@ -360,8 +361,6 @@ compute_topology_builtins(struct intel_perf_config *perf,
 
    for (int i = 0; i < sizeof(devinfo->eu_masks); i++)
       perf->sys_vars.n_eus += util_bitcount(devinfo->eu_masks[i]);
-
-   perf->sys_vars.eu_threads_count = devinfo->num_thread_per_eu;
 
    /* The subslice mask builtin contains bits for all slices. Prior to Gfx11
     * it had groups of 3bits for each slice, on Gfx11 and above it's 8bits for
@@ -384,7 +383,6 @@ compute_topology_builtins(struct intel_perf_config *perf,
 
 static bool
 init_oa_sys_vars(struct intel_perf_config *perf,
-                 const struct intel_device_info *devinfo,
                  bool use_register_snapshots)
 {
    uint64_t min_freq_mhz = 0, max_freq_mhz = 0;
@@ -403,10 +401,8 @@ init_oa_sys_vars(struct intel_perf_config *perf,
    memset(&perf->sys_vars, 0, sizeof(perf->sys_vars));
    perf->sys_vars.gt_min_freq = min_freq_mhz * 1000000;
    perf->sys_vars.gt_max_freq = max_freq_mhz * 1000000;
-   perf->sys_vars.timestamp_frequency = devinfo->timestamp_frequency;
-   perf->sys_vars.revision = devinfo->revision;
    perf->sys_vars.query_mode = use_register_snapshots;
-   compute_topology_builtins(perf, devinfo);
+   compute_topology_builtins(perf);
 
    return true;
 }
@@ -700,6 +696,7 @@ oa_metrics_available(struct intel_perf_config *perf, int fd,
    bool i915_perf_oa_available = false;
    struct stat sb;
 
+   perf->devinfo = *devinfo;
    perf->i915_query_supported = i915_query_perf_config_supported(perf, fd);
    perf->i915_perf_version = i915_perf_version(fd);
 
@@ -731,7 +728,7 @@ oa_metrics_available(struct intel_perf_config *perf, int fd,
    return i915_perf_oa_available &&
           oa_register &&
           get_sysfs_dev_dir(perf, fd) &&
-          init_oa_sys_vars(perf, devinfo, use_register_snapshots);
+          init_oa_sys_vars(perf, use_register_snapshots);
 }
 
 static void
@@ -1037,7 +1034,6 @@ intel_perf_report_timestamp(const struct intel_perf_query_info *query,
 void
 intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
                                    const struct intel_perf_query_info *query,
-                                   const struct intel_device_info *devinfo,
                                    const uint32_t *start,
                                    const uint32_t *end)
 {
@@ -1072,7 +1068,7 @@ intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
                            result->accumulator + query->a_offset + 32 + i);
       }
 
-      if (can_use_mi_rpc_bc_counters(devinfo)) {
+      if (can_use_mi_rpc_bc_counters(&query->perf->devinfo)) {
          /* 8x 32bit B counters */
          for (i = 0; i < 8; i++) {
             accumulate_uint32(start + 48 + i, end + 48 + i,
@@ -1170,15 +1166,15 @@ query_accumulator_offset(const struct intel_perf_query_info *query,
 void
 intel_perf_query_result_accumulate_fields(struct intel_perf_query_result *result,
                                           const struct intel_perf_query_info *query,
-                                          const struct intel_device_info *devinfo,
                                           const void *start,
                                           const void *end,
                                           bool no_oa_accumulate)
 {
-   struct intel_perf_query_field_layout *layout = &query->perf->query_layout;
+   const struct intel_perf_query_field_layout *layout = &query->perf->query_layout;
+   const struct intel_device_info *devinfo = &query->perf->devinfo;
 
    for (uint32_t r = 0; r < layout->n_fields; r++) {
-      struct intel_perf_query_field *field = &layout->fields[r];
+      const struct intel_perf_query_field *field = &layout->fields[r];
 
       if (field->type == INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC) {
          intel_perf_query_result_read_frequencies(result, devinfo,
@@ -1189,7 +1185,7 @@ intel_perf_query_result_accumulate_fields(struct intel_perf_query_result *result
           * unrelated deltas, so don't accumulate the begin/end reports here.
           */
          if (!no_oa_accumulate) {
-            intel_perf_query_result_accumulate(result, query, devinfo,
+            intel_perf_query_result_accumulate(result, query,
                                                start + field->location,
                                                end + field->location);
          }
@@ -1230,7 +1226,6 @@ intel_perf_query_result_clear(struct intel_perf_query_result *result)
 
 void
 intel_perf_query_result_print_fields(const struct intel_perf_query_info *query,
-                                     const struct intel_device_info *devinfo,
                                      const void *data)
 {
    const struct intel_perf_query_field_layout *layout = &query->perf->query_layout;

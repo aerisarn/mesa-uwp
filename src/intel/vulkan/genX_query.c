@@ -562,7 +562,7 @@ VkResult genX(GetQueryPoolResults)(
             const struct intel_perf_query_info *query = pool->pass_query[p];
             struct intel_perf_query_result result;
             intel_perf_query_result_clear(&result);
-            intel_perf_query_result_accumulate_fields(&result, query, &device->info,
+            intel_perf_query_result_accumulate_fields(&result, query,
                                                       pool->bo->map + khr_perf_query_data_offset(pool, firstQuery + i, p, false),
                                                       pool->bo->map + khr_perf_query_data_offset(pool, firstQuery + i, p, true),
                                                       false /* no_oa_accumulate */);
@@ -579,7 +579,7 @@ VkResult genX(GetQueryPoolResults)(
          const struct intel_perf_query_info *query = &device->physical->perf->queries[0];
          struct intel_perf_query_result result;
          intel_perf_query_result_clear(&result);
-         intel_perf_query_result_accumulate_fields(&result, query, &device->info,
+         intel_perf_query_result_accumulate_fields(&result, query,
                                                    query_data + intel_perf_query_data_offset(pool, false),
                                                    query_data + intel_perf_query_data_offset(pool, true),
                                                    false /* no_oa_accumulate */);
