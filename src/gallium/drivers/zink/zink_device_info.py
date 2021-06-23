@@ -363,16 +363,16 @@ zink_get_physical_device_info(struct zink_screen *screen)
    uint32_t num_extensions = 0;
 
    // get device memory properties
-   vkGetPhysicalDeviceMemoryProperties(screen->pdev, &info->mem_props);
+   screen->vk.GetPhysicalDeviceMemoryProperties(screen->pdev, &info->mem_props);
 
    // enumerate device supported extensions
-   if (vkEnumerateDeviceExtensionProperties(screen->pdev, NULL, &num_extensions, NULL) != VK_SUCCESS) {
+   if (screen->vk.EnumerateDeviceExtensionProperties(screen->pdev, NULL, &num_extensions, NULL) != VK_SUCCESS) {
       mesa_loge("ZINK: vkEnumerateDeviceExtensionProperties failed");
    } else {
       if (num_extensions > 0) {
          VkExtensionProperties *extensions = MALLOC(sizeof(VkExtensionProperties) * num_extensions);
          if (!extensions) goto fail;
-         if (vkEnumerateDeviceExtensionProperties(screen->pdev, NULL, &num_extensions, extensions) != VK_SUCCESS) {
+         if (screen->vk.EnumerateDeviceExtensionProperties(screen->pdev, NULL, &num_extensions, extensions) != VK_SUCCESS) {
             mesa_loge("ZINK: vkEnumerateDeviceExtensionProperties failed");
          }
 
@@ -427,7 +427,7 @@ zink_get_physical_device_info(struct zink_screen *screen)
 
       screen->vk.GetPhysicalDeviceFeatures2(screen->pdev, &info->feats);
    } else {
-      vkGetPhysicalDeviceFeatures(screen->pdev, &info->feats.features);
+      screen->vk.GetPhysicalDeviceFeatures(screen->pdev, &info->feats.features);
    }
 
    // check for device properties

@@ -1224,7 +1224,7 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 
    simple_mtx_destroy(&screen->queue_lock);
    VKSCR(DestroyDevice)(screen->dev, NULL);
-   vkDestroyInstance(screen->instance, NULL);
+   VKSCR(DestroyInstance)(screen->instance, NULL);
    util_idalloc_mt_fini(&screen->buffer_ids);
 
    slab_destroy_parent(&screen->transfer_pool);
@@ -1238,7 +1238,7 @@ choose_pdev(struct zink_screen *screen)
    uint32_t i, pdev_count;
    VkPhysicalDevice *pdevs;
    bool is_cpu = false;
-   VkResult result = vkEnumeratePhysicalDevices(screen->instance, &pdev_count, NULL);
+   VkResult result = VKSCR(EnumeratePhysicalDevices)(screen->instance, &pdev_count, NULL);
    if (result != VK_SUCCESS) {
       mesa_loge("ZINK: vkEnumeratePhysicalDevices failed");
       return is_cpu;
@@ -1247,7 +1247,7 @@ choose_pdev(struct zink_screen *screen)
    assert(pdev_count > 0);
 
    pdevs = malloc(sizeof(*pdevs) * pdev_count);
-   result = vkEnumeratePhysicalDevices(screen->instance, &pdev_count, pdevs);
+   result = VKSCR(EnumeratePhysicalDevices)(screen->instance, &pdev_count, pdevs);
    assert(result == VK_SUCCESS);
    assert(pdev_count > 0);
 
@@ -1273,7 +1273,7 @@ choose_pdev(struct zink_screen *screen)
    unsigned idx = 0;
    int cur_prio = 0;
    for (i = 0; i < pdev_count; ++i) {
-      vkGetPhysicalDeviceProperties(pdevs[i], &props);
+      VKSCR(GetPhysicalDeviceProperties)(pdevs[i], &props);
 
       if (cpu) {
          /* if user wants cpu, only give them cpu */
@@ -1295,7 +1295,7 @@ choose_pdev(struct zink_screen *screen)
       goto out;
 
    screen->pdev = pdevs[idx];
-   vkGetPhysicalDeviceProperties(screen->pdev, &screen->info.props);
+   VKSCR(GetPhysicalDeviceProperties)(screen->pdev, &screen->info.props);
    screen->info.device_version = screen->info.props.apiVersion;
 
    /* runtime version is the lesser of the instance version and device version */
@@ -1317,11 +1317,11 @@ static void
 update_queue_props(struct zink_screen *screen)
 {
    uint32_t num_queues;
-   vkGetPhysicalDeviceQueueFamilyProperties(screen->pdev, &num_queues, NULL);
+   VKSCR(GetPhysicalDeviceQueueFamilyProperties)(screen->pdev, &num_queues, NULL);
    assert(num_queues > 0);
 
    VkQueueFamilyProperties *props = malloc(sizeof(*props) * num_queues);
-   vkGetPhysicalDeviceQueueFamilyProperties(screen->pdev, &num_queues, props);
+   VKSCR(GetPhysicalDeviceQueueFamilyProperties)(screen->pdev, &num_queues, props);
 
    for (uint32_t i = 0; i < num_queues; i++) {
       if (props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
@@ -1338,9 +1338,9 @@ static void
 init_queue(struct zink_screen *screen)
 {
    simple_mtx_init(&screen->queue_lock, mtx_plain);
-   vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &screen->queue);
+   VKSCR(GetDeviceQueue)(screen->dev, screen->gfx_queue, 0, &screen->queue);
    if (screen->threaded && screen->max_queues > 1)
-      vkGetDeviceQueue(screen->dev, screen->gfx_queue, 1, &screen->thread_queue);
+      VKSCR(GetDeviceQueue)(screen->dev, screen->gfx_queue, 1, &screen->thread_queue);
    else
       screen->thread_queue = screen->queue;
 }
@@ -1951,7 +1951,7 @@ zink_create_logical_device(struct zink_screen *screen)
    dci.ppEnabledExtensionNames = screen->info.extensions;
    dci.enabledExtensionCount = screen->info.num_extensions;
 
-   if (vkCreateDevice(screen->pdev, &dci, NULL, &dev) != VK_SUCCESS) {
+   if (VKSCR(CreateDevice)(screen->pdev, &dci, NULL, &dev) != VK_SUCCESS) {
       mesa_loge("ZINK: vkCreateDevice failed");
    }
    return dev;
