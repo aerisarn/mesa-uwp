@@ -635,24 +635,10 @@ convert_int(isel_context* ctx, Builder& bld, Temp src, unsigned src_bits, unsign
       assert(src_bits < 32);
       bld.pseudo(aco_opcode::p_extract, Definition(tmp), bld.def(s1, scc), src, Operand::zero(),
                  Operand::c32(src_bits), Operand::c32((unsigned)sign_extend));
-   } else if (ctx->options->chip_class >= GFX8) {
-      assert(src_bits < 32);
-      assert(src_bits != 8 || src.regClass() == v1b);
-      assert(src_bits != 16 || src.regClass() == v2b);
-      assert(dst_bits >= 16);
-      aco_ptr<SDWA_instruction> sdwa{
-         create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
-      sdwa->operands[0] = Operand(src);
-      sdwa->definitions[0] = Definition(tmp);
-      sdwa->sel[0] = SubdwordSel(src_bits / 8, 0, sign_extend);
-      sdwa->dst_sel = tmp.bytes() == 2 ? SubdwordSel::uword : SubdwordSel::dword;
-      bld.insert(std::move(sdwa));
    } else {
       assert(src_bits < 32);
-      assert(ctx->options->chip_class == GFX6 || ctx->options->chip_class == GFX7);
-      aco_opcode opcode = sign_extend ? aco_opcode::v_bfe_i32 : aco_opcode::v_bfe_u32;
-      bld.vop3(opcode, Definition(tmp), src, Operand::zero(),
-               Operand::c32(src_bits == 8 ? 8u : 16u));
+      bld.pseudo(aco_opcode::p_extract, Definition(tmp), src, Operand::zero(), Operand::c32(src_bits),
+                 Operand::c32((unsigned)sign_extend));
    }
 
    if (dst_bits == 64) {
