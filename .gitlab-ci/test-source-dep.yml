@@ -410,25 +410,6 @@
       when: on_success
     - when: never
 
-.windows-test-rules:
-  rules:
-    - *ignore_scheduled_pipelines
-    - changes: 
-        *mesa_core_file_list
-      when: on_success
-    - changes:
-        *gallium_core_file_list
-      when: on_success
-    - changes:
-        *lavapipe_file_list
-      when: on_success
-    - changes:
-        *vulkan_file_list
-      when: on_success
-    - changes: *d3d12_file_list
-      when: on_success
-    - when: never
-
 .zink-rules:
   stage: layered-backends
   rules:
@@ -444,6 +425,28 @@
       when: on_success
     - changes: &zink_file_list
       - src/gallium/drivers/zink/**/*
+      when: on_success
+    - when: never
+
+.windows-test-rules:
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+        *lavapipe_file_list
+      when: on_success
+    - changes:
+        *vulkan_file_list
+      when: on_success
+    - changes: *d3d12_file_list
+      when: on_success
+    - changes:
+        *zink_file_list
       when: on_success
     - when: never
 
