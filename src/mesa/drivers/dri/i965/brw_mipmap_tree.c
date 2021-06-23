@@ -728,8 +728,8 @@ create_ccs_buf_for_image(struct brw_context *brw,
    /* We shouldn't already have a CCS */
    assert(!mt->aux_buf);
 
-   if (!isl_surf_get_ccs_surf(&brw->isl_dev, &mt->surf, &temp_ccs_surf, NULL,
-                              image->aux_pitch))
+   if (!isl_surf_get_ccs_surf(&brw->isl_dev, &mt->surf, NULL,
+                              &temp_ccs_surf, image->aux_pitch))
       return false;
 
    assert(image->aux_offset < image->bo->size);
@@ -1576,7 +1576,7 @@ brw_miptree_alloc_aux(struct brw_context *brw, struct brw_mipmap_tree *mt)
       initial_state = ISL_AUX_STATE_PASS_THROUGH;
       memset_value = 0;
       aux_surf_ok =
-         isl_surf_get_ccs_surf(&brw->isl_dev, &mt->surf, &aux_surf, NULL, 0);
+         isl_surf_get_ccs_surf(&brw->isl_dev, &mt->surf, NULL, &aux_surf, 0);
       break;
 
    default:

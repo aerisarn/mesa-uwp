@@ -2228,8 +2228,8 @@ isl_surf_get_mcs_surf(const struct isl_device *dev,
 bool
 isl_surf_get_ccs_surf(const struct isl_device *dev,
                       const struct isl_surf *surf,
-                      struct isl_surf *aux_surf,
-                      struct isl_surf *extra_aux_surf,
+                      const struct isl_surf *hiz_or_mcs_surf,
+                      struct isl_surf *ccs_surf,
                       uint32_t row_pitch_B /**< Ignored if 0 */);
 
 #define isl_surf_fill_state(dev, state, ...) \

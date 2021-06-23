@@ -2176,20 +2176,10 @@ isl_surf_supports_ccs(const struct isl_device *dev,
 bool
 isl_surf_get_ccs_surf(const struct isl_device *dev,
                       const struct isl_surf *surf,
-                      struct isl_surf *aux_surf,
-                      struct isl_surf *extra_aux_surf,
+                      const struct isl_surf *hiz_or_mcs_surf,
+                      struct isl_surf *ccs_surf,
                       uint32_t row_pitch_B)
 {
-   assert(aux_surf);
-   if (aux_surf->size_B > 0)
-      assert(extra_aux_surf);
-   assert(!(aux_surf->usage & ISL_SURF_USAGE_CCS_BIT));
-
-   const struct isl_surf *hiz_or_mcs_surf =
-      aux_surf->size_B > 0 ? aux_surf : NULL;
-   struct isl_surf *ccs_surf =
-      aux_surf->size_B > 0 ? extra_aux_surf : aux_surf;
-
    if (!isl_surf_supports_ccs(dev, surf, hiz_or_mcs_surf))
       return false;
 

@@ -792,7 +792,7 @@ brw_create_image_common(__DRIscreen *dri_screen,
 
    struct isl_surf aux_surf = {0,};
    if (mod_info->aux_usage == ISL_AUX_USAGE_CCS_E) {
-      ok = isl_surf_get_ccs_surf(&screen->isl_dev, &surf, &aux_surf, NULL, 0);
+      ok = isl_surf_get_ccs_surf(&screen->isl_dev, &surf, NULL, &aux_surf, 0);
       if (!ok) {
          free(image);
          return NULL;
@@ -1233,7 +1233,7 @@ brw_create_image_from_fds_common(__DRIscreen *dri_screen,
       }
 
       struct isl_surf aux_surf = {0,};
-      ok = isl_surf_get_ccs_surf(&screen->isl_dev, &surf, &aux_surf, NULL,
+      ok = isl_surf_get_ccs_surf(&screen->isl_dev, &surf, NULL, &aux_surf,
                                  image->aux_pitch);
       if (!ok) {
          brw_bo_unreference(image->bo);
