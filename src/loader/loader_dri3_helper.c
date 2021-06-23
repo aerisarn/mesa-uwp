@@ -360,6 +360,9 @@ loader_dri3_drawable_fini(struct loader_dri3_drawable *draw)
       xcb_unregister_for_special_event(draw->conn, draw->special_event);
    }
 
+   if (draw->region)
+      xcb_xfixes_destroy_region(draw->conn, draw->region);
+
    cnd_destroy(&draw->event_cnd);
    mtx_destroy(&draw->mtx);
 }
@@ -385,6 +388,7 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
    draw->ext = ext;
    draw->vtable = vtable;
    draw->drawable = drawable;
+   draw->region = 0;
    draw->dri_screen = dri_screen;
    draw->is_different_gpu = is_different_gpu;
    draw->multiplanes_available = multiplanes_available;
@@ -1058,6 +1062,11 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
       back->busy = 1;
       back->last_swap = draw->send_sbc;
 
+      if (!draw->region) {
+         draw->region = xcb_generate_id(draw->conn);
+         xcb_xfixes_create_region(draw->conn, draw->region, 0, NULL);
+      }
+
       xcb_xfixes_region_t region = 0;
       xcb_rectangle_t xcb_rects[64];
 
@@ -1070,8 +1079,8 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
             xcb_rects[i].height = rect[3];
          }
 
-         region = xcb_generate_id(draw->conn);
-         xcb_xfixes_create_region(draw->conn, region, n_rects, xcb_rects);
+         region = draw->region;
+         xcb_xfixes_set_region(draw->conn, region, n_rects, xcb_rects);
       }
 
       xcb_present_pixmap(draw->conn,
@@ -1090,9 +1099,6 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
                          divisor,
                          remainder, 0, NULL);
       ret = (int64_t) draw->send_sbc;
-
-      if (region)
-         xcb_xfixes_destroy_region(draw->conn, region);
 
       /* Schedule a server-side back-preserving blit if necessary.
        * This happens iff all conditions below are satisfied:
