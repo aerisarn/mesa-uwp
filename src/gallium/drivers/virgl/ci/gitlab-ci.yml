@@ -30,7 +30,6 @@ virgl-gles31-on-gl:
   parallel: 2
   variables:
     DEQP_VER: gles31
-    MESA_EXTENSION_OVERRIDE: "-GL_OES_tessellation_shader"
   extends: virgl-gles3-on-gl
 
 virgl-gl30-on-gl:
