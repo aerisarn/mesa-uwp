@@ -250,9 +250,13 @@ st_update_vp( struct st_context *st )
       if (!st->ctx->GeometryProgram._Current &&
           !st->ctx->TessEvalProgram._Current) {
          /* _NEW_POINT */
-         key.lower_point_size = st->lower_point_size &&
-                                !st_point_size_per_vertex(st->ctx);
-
+         if (st->lower_point_size) {
+            if (st->ctx->API != API_OPENGLES2)
+               key.export_point_size = !st->ctx->VertexProgram.PointSizeEnabled;
+            else
+               /* PointSizeEnabled is always set in ES2 contexts */
+               key.export_point_size = true;
+         }
          /* _NEW_TRANSFORM */
          if (st->lower_ucp && st_user_clip_planes_enabled(st->ctx))
             key.lower_ucp = st->ctx->Transform.ClipPlanesEnabled;
@@ -320,9 +324,13 @@ st_update_common_program(struct st_context *st, struct gl_program *prog,
           pipe_shader == PIPE_SHADER_GEOMETRY)
          key.lower_ucp = st->ctx->Transform.ClipPlanesEnabled;
 
-      key.lower_point_size = st->lower_point_size &&
-                             !st_point_size_per_vertex(st->ctx);
-
+      if (st->lower_point_size) {
+         if (st->ctx->API != API_OPENGLES2)
+            key.export_point_size = !st->ctx->VertexProgram.PointSizeEnabled;
+         else
+            /* PointSizeEnabled is always set in ES2 contexts */
+            key.export_point_size = true;
+      }
    }
 
    update_gl_clamp(st, prog, key.gl_clamp);

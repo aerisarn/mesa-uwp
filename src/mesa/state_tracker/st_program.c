@@ -792,26 +792,31 @@ st_create_common_variant(struct st_context *st,
          finalize = true;
       }
 
-      if (key->lower_point_size) {
-         _mesa_add_state_reference(params, point_size_state);
-         NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
-                    point_size_state);
+      if (key->export_point_size) {
+         /* if flag is set, shader must export psiz */
+         nir_shader *nir = state.ir.nir;
+         /* avoid clobbering existing psiz output */
+         if (!(nir->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PSIZ))) {
+            _mesa_add_state_reference(params, point_size_state);
+            NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
+                       point_size_state);
 
-         switch (stp->Base.info.stage) {
-         case MESA_SHADER_VERTEX:
-            stp->affected_states |= ST_NEW_VS_CONSTANTS;
-            break;
-         case MESA_SHADER_TESS_EVAL:
-            stp->affected_states |= ST_NEW_TES_CONSTANTS;
-            break;
-         case MESA_SHADER_GEOMETRY:
-            stp->affected_states |= ST_NEW_GS_CONSTANTS;
-            break;
-         default:
-            unreachable("bad shader stage");
+            switch (stp->Base.info.stage) {
+            case MESA_SHADER_VERTEX:
+               stp->affected_states |= ST_NEW_VS_CONSTANTS;
+               break;
+            case MESA_SHADER_TESS_EVAL:
+               stp->affected_states |= ST_NEW_TES_CONSTANTS;
+               break;
+            case MESA_SHADER_GEOMETRY:
+               stp->affected_states |= ST_NEW_GS_CONSTANTS;
+               break;
+            default:
+               unreachable("bad shader stage");
+            }
+
+            finalize = true;
          }
-
-         finalize = true;
       }
 
       if (key->lower_ucp) {
@@ -976,7 +981,7 @@ st_get_common_variant(struct st_context *st,
                           key->clamp_color ? "clamp_color," : "",
                           key->lower_depth_clamp ? "depth_clamp," : "",
                           key->clip_negative_one_to_one ? "clip_negative_one," : "",
-                          key->lower_point_size ? "point_size," : "",
+                          key->export_point_size ? "point_size," : "",
                           key->lower_ucp ? "ucp," : "",
                           key->is_draw_shader ? "draw," : "",
                           key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2] ? "GL_CLAMP," : "");

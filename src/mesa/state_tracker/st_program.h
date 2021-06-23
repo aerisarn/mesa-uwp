@@ -226,7 +226,7 @@ struct st_common_variant_key
    bool clip_negative_one_to_one;
 
    /** lower glPointSize to gl_PointSize */
-   boolean lower_point_size;
+   boolean export_point_size;
 
    /* for user-defined clip-planes */
    uint8_t lower_ucp;
