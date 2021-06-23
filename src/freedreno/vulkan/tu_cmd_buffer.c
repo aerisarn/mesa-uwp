@@ -110,6 +110,8 @@ void
 tu_emit_cache_flush_renderpass(struct tu_cmd_buffer *cmd_buffer,
                                struct tu_cs *cs)
 {
+   if (!cmd_buffer->state.renderpass_cache.flush_bits)
+      return;
    tu6_emit_flushes(cmd_buffer, cs, cmd_buffer->state.renderpass_cache.flush_bits);
    cmd_buffer->state.renderpass_cache.flush_bits = 0;
 }
@@ -3624,17 +3626,8 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
 {
    const struct tu_pipeline *pipeline = cmd->state.pipeline;
    VkResult result;
-   bool dirty_lrz = cmd->state.dirty & (TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_RB_DEPTH_CNTL | TU_CMD_DIRTY_RB_STENCIL_CNTL);
-
-   struct tu_descriptor_state *descriptors_state =
-      &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
 
    tu_emit_cache_flush_renderpass(cmd, cs);
-
-   if (dirty_lrz) {
-      cmd->state.lrz.state = tu6_build_lrz(cmd);
-      cmd->state.depth_plane_state = tu6_build_depth_plane_z_mode(cmd);
-   }
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0(
          .primitive_restart =
@@ -3642,6 +3635,24 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          .provoking_vtx_last = pipeline->provoking_vertex_last,
          .tess_upper_left_domain_origin =
                pipeline->tess.upper_left_domain_origin));
+
+   bool has_tess =
+         pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+
+   /* Early exit if there is nothing to emit, saves CPU cycles */
+   if (!(cmd->state.dirty & ~TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD) &&
+       !has_tess)
+      return VK_SUCCESS;
+
+   bool dirty_lrz = cmd->state.dirty & (TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_RB_DEPTH_CNTL | TU_CMD_DIRTY_RB_STENCIL_CNTL);
+
+   struct tu_descriptor_state *descriptors_state =
+      &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
+
+   if (dirty_lrz) {
+      cmd->state.lrz.state = tu6_build_lrz(cmd);
+      cmd->state.depth_plane_state = tu6_build_depth_plane_z_mode(cmd);
+   }
 
    if (cmd->state.dirty & TU_CMD_DIRTY_GRAS_SU_CNTL) {
       struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_GRAS_SU_CNTL, 2);
@@ -3674,8 +3685,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT);
    }
 
-   bool has_tess =
-         pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
    struct tu_draw_state tess_consts = {};
    if (has_tess) {
       uint64_t tess_factor_iova = 0;
