@@ -165,8 +165,6 @@ struct zink_screen {
       uint32_t buffer_view;
    } null_descriptor_hashes;
 
-   PFN_vkGetPhysicalDeviceMultisamplePropertiesEXT vk_GetPhysicalDeviceMultisamplePropertiesEXT;
-   PFN_vkCmdSetSampleLocationsEXT vk_CmdSetSampleLocationsEXT;
    VkExtent2D maxSampleLocationGridSize[5];
 };
 
