@@ -1356,11 +1356,7 @@ zink_internal_setup_moltenvk(struct zink_screen *screen)
 
    GET_PROC_ADDR_INSTANCE(GetMoltenVKConfigurationMVK);
    GET_PROC_ADDR_INSTANCE(SetMoltenVKConfigurationMVK);
-
-   GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceMetalFeaturesMVK);
    GET_PROC_ADDR_INSTANCE(GetVersionStringsMVK);
-   GET_PROC_ADDR_INSTANCE(UseIOSurfaceMVK);
-   GET_PROC_ADDR_INSTANCE(GetIOSurfaceMVK);
 
    if (screen->vk_GetVersionStringsMVK) {
       char molten_version[64] = {0};
