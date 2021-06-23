@@ -23,6 +23,7 @@ import argparse
 import builtins
 import collections
 import os
+import re
 import sys
 import textwrap
 
@@ -225,6 +226,19 @@ hw_vars["$GpuMaxFrequency"] = "perf->sys_vars.gt_max_freq"
 hw_vars["$SkuRevisionId"] = "perf->devinfo.revision"
 hw_vars["$QueryMode"] = "perf->sys_vars.query_mode"
 
+def resolve_variable(name, set, allow_counters):
+    if name in hw_vars:
+        return hw_vars[name]
+    m = re.search('\$GtSlice([0-9]+)$', name)
+    if m:
+        return 'intel_device_info_slice_available(&perf->devinfo, {0})'.format(m.group(1))
+    m = re.search('\$GtSlice([0-9]+)DualSubslice([0-9]+)$', name)
+    if m:
+        return 'intel_device_info_subslice_available(&perf->devinfo, {0}, {1})'.format(m.group(1), m.group(2))
+    if allow_counters and name in set.counter_vars:
+        return set.read_funcs[name[1:]] + "(perf, query, results)"
+    return None
+
 def output_rpn_equation_code(set, counter, equation):
     c("/* RPN equation: " + equation + " */")
     tokens = equation.split()
@@ -241,13 +255,10 @@ def output_rpn_equation_code(set, counter, equation):
             for i in range(0, argc):
                 operand = stack.pop()
                 if operand[0] == "$":
-                    if operand in hw_vars:
-                        operand = hw_vars[operand]
-                    elif operand in set.counter_vars:
-                        reference = set.counter_vars[operand]
-                        operand = set.read_funcs[operand[1:]] + "(perf, query, results)"
-                    else:
+                    resolved_variable = resolve_variable(operand, set, True)
+                    if resolved_variable == None:
                         raise Exception("Failed to resolve variable " + operand + " in equation " + equation + " for " + set.name + " :: " + counter.get('name'));
+                    operand = resolved_variable
                 args.append(operand)
 
             tmp_id = callback(tmp_id, args)
@@ -262,10 +273,11 @@ def output_rpn_equation_code(set, counter, equation):
 
     value = stack[-1]
 
-    if value in hw_vars:
-        value = hw_vars[value]
-    if value in set.counter_vars:
-        value = set.read_funcs[value[1:]] + "(perf, query, results)"
+    if value[0] == "$":
+        resolved_variable = resolve_variable(value, set, True)
+        if resolved_variable == None:
+            raise Exception("Failed to resolve variable " + operand + " in equation " + equation + " for " + set.name + " :: " + counter.get('name'));
+        value = resolved_variable
 
     c("\nreturn " + value + ";")
 
@@ -282,10 +294,10 @@ def splice_rpn_expression(set, counter, expression):
             for i in range(0, argc):
                 operand = stack.pop()
                 if operand[0] == "$":
-                    if operand in hw_vars:
-                        operand = hw_vars[operand]
-                    else:
-                        raise Exception("Failed to resolve variable " + operand + " in expression " + expression + " for " + set.name + " :: " + counter.get('name'));
+                    resolved_variable = resolve_variable(operand, set, False)
+                    if resolved_variable == None:
+                        raise Exception("Failed to resolve variable " + operand + " in expression " + expression + " for " + set.name + " :: " + counter.get('name'))
+                    operand = resolved_variable
                 args.append(operand)
 
             subexp = callback(args)
@@ -297,7 +309,15 @@ def splice_rpn_expression(set, counter, expression):
                 counter.get('name') + ".\nThis is probably due to some unhandled RPN operation, in the expression \"" +
                 expression + "\"")
 
-    return stack[-1]
+    value = stack[-1]
+
+    if value[0] == "$":
+        resolved_variable = resolve_variable(value, set, False)
+        if resolved_variable == None:
+            raise Exception("Failed to resolve variable " + operand + " in expression " + expression + " for " + set.name + " :: " + counter.get('name'))
+        value = resolved_variable
+
+    return value
 
 def output_counter_read(gen, set, counter):
     c("\n")
@@ -623,7 +643,7 @@ class Counter:
             pass
 
         for token in max_eq.split():
-            if token[0] == '$' and token not in hw_vars:
+            if token[0] == '$' and resolve_variable(token, self.set, False) == None:
                 return False
         return True
 
@@ -644,7 +664,7 @@ class Counter:
             pass
 
         for token in max_eq.split():
-            if token[0] == '$' and token not in hw_vars:
+            if token[0] == '$' and resolve_variable(token, self.set, False) == None:
                 return "0 /* unsupported (varies over time) */"
 
         return "{0}__{1}__{2}__max(perf)".format(self.set.gen.chipset,
@@ -666,7 +686,7 @@ class Set:
         for xml_counter in xml_counters:
             counter = Counter(self, xml_counter)
             self.counters.append(counter)
-            self.counter_vars["$" + counter.get('symbol_name')] = counter
+            self.counter_vars['$' + counter.get('symbol_name')] = counter
             self.read_funcs[counter.get('symbol_name')] = counter.read_sym
             self.max_values[counter.get('symbol_name')] = counter.max_value()
 
