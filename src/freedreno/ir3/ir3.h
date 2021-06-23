@@ -1006,6 +1006,17 @@ static inline bool writes_pred(struct ir3_instruction *instr)
 	return false;
 }
 
+/* Is it something other than a normal register. Shared regs, p0, and a0/a1
+ * are considered special here. Special registers are always accessed with one
+ * size and never alias normal registers, even though a naive calculation
+ * would sometimes make it seem like e.g. r30.z aliases a0.x.
+ */
+static inline bool is_reg_special(const struct ir3_register *reg)
+{
+	return (reg->flags & IR3_REG_SHARED) ||
+		(reg_num(reg) == REG_A0) || (reg_num(reg) == REG_P0);
+}
+
 /* returns defining instruction for reg */
 /* TODO better name */
 static inline struct ir3_instruction *ssa(struct ir3_register *reg)
