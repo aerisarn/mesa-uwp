@@ -223,12 +223,6 @@ header_code = """
 
 #include <vulkan/vulkan.h>
 
-#if defined(__APPLE__)
-// Source of MVK_VERSION
-// Source of VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME
-#include "MoltenVK/vk_mvk_moltenvk.h"
-#endif
-
 struct zink_screen;
 
 struct zink_device_info {
