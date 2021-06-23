@@ -778,8 +778,8 @@
     </field>
   </instruction>
 
-  <instruction name="3DSTATE_GS_SVB_INDEX" bias="2" length="7" engine="render">
-    <field name="DWord Length" start="0" end="7" type="uint" default="5"/>
+  <instruction name="3DSTATE_GS_SVB_INDEX" bias="2" length="4" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="2"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="11"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="1"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
