@@ -1150,6 +1150,8 @@ loader_dri3_open(xcb_connection_t *conn,
 {
    xcb_dri3_open_cookie_t       cookie;
    xcb_dri3_open_reply_t        *reply;
+   xcb_xfixes_query_version_cookie_t fixes_cookie;
+   xcb_xfixes_query_version_reply_t *fixes_reply;
    int                          fd;
 
    cookie = xcb_dri3_open(conn,
@@ -1168,6 +1170,13 @@ loader_dri3_open(xcb_connection_t *conn,
    fd = xcb_dri3_open_reply_fds(conn, reply)[0];
    free(reply);
    fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+
+   /* let the server know our xfixes level */
+   fixes_cookie = xcb_xfixes_query_version(conn,
+                                           XCB_XFIXES_MAJOR_VERSION,
+                                           XCB_XFIXES_MINOR_VERSION);
+   fixes_reply = xcb_xfixes_query_version_reply(conn, fixes_cookie, NULL);
+   free(fixes_reply);
 
    return fd;
 }
