@@ -562,6 +562,7 @@ crocus_batch_free(struct crocus_batch *batch)
       u_upload_destroy(batch->fine_fences.uploader);
 
    crocus_bo_unreference(batch->command.bo);
+   crocus_bo_unreference(batch->state.bo);
    batch->command.bo = NULL;
    batch->command.map = NULL;
    batch->command.map_next = NULL;
