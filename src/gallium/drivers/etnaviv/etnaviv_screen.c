@@ -260,6 +260,28 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_VARYINGS:
       return screen->specs.max_varyings;
 
+   case PIPE_CAP_SUPPORTED_PRIM_MODES:
+   case PIPE_CAP_SUPPORTED_PRIM_MODES_WITH_RESTART: {
+      /* Generate the bitmask of supported draw primitives. */
+      uint32_t modes = 1 << PIPE_PRIM_POINTS |
+                       1 << PIPE_PRIM_LINES |
+                       1 << PIPE_PRIM_LINE_STRIP |
+                       1 << PIPE_PRIM_TRIANGLES |
+                       1 << PIPE_PRIM_TRIANGLE_FAN;
+
+      /* TODO: The bug relates only to indexed draws, but here we signal
+       * that there is no support for triangle strips at all. This should
+       * be refined.
+       */
+      if (VIV_FEATURE(screen, chipMinorFeatures2, BUG_FIXES8))
+         modes |= 1 << PIPE_PRIM_TRIANGLE_STRIP;
+
+      if (VIV_FEATURE(screen, chipMinorFeatures2, LINE_LOOP))
+         modes |= 1 << PIPE_PRIM_LINE_LOOP;
+
+      return modes;
+   }
+
    case PIPE_CAP_PCI_GROUP:
    case PIPE_CAP_PCI_BUS:
    case PIPE_CAP_PCI_DEVICE:

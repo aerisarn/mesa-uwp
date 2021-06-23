@@ -255,13 +255,6 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (ctx->vertex_elements == NULL || ctx->vertex_elements->num_elements == 0)
       return; /* Nothing to do */
 
-   if (!(ctx->prim_hwsupport & (1 << info->mode))) {
-      struct primconvert_context *primconvert = ctx->primconvert;
-      util_primconvert_save_rasterizer_state(primconvert, ctx->rasterizer);
-      util_primconvert_draw_vbo(primconvert, info, drawid_offset, indirect, draws, num_draws);
-      return;
-   }
-
    int prims = u_decomposed_prims_for_vertices(info->mode, draws[0].count);
    if (unlikely(prims <= 0)) {
       DBG("Invalid draw primitive mode=%i or no primitives to be drawn", info->mode);
