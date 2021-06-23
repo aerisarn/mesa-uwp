@@ -2099,14 +2099,14 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!screen->dev)
       goto fail;
 
+   vk_device_dispatch_table_load(&screen->vk.device, &vkGetDeviceProcAddr, screen->dev);
+
    init_queue(screen);
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_RADV ||
        screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE ||
        screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
       /* this has bad perf on AMD */
       screen->info.have_KHR_push_descriptor = false;
-
-   vk_device_dispatch_table_load(&screen->vk.device, &vkGetDeviceProcAddr, screen->dev);
 
    zink_verify_device_extensions(screen);
 
