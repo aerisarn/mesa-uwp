@@ -703,12 +703,32 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
    }
 
    /* allocate id's and rename operands: this is done transparently here */
-   for (std::pair<Operand, Definition>& copy : parallelcopies) {
-      /* the definitions with id are not from this function and already handled */
-      if (copy.second.isTemp())
+   auto it = parallelcopies.begin();
+   while (it != parallelcopies.end()) {
+      if (it->second.isTemp()) {
+         ++it;
+         continue;
+      }
+
+      /* check if we moved a definition: change the register and remove copy */
+      bool is_def = false;
+      for (Definition& def : instr->definitions) {
+         if (def.isTemp() && def.getTemp() == it->first.getTemp()) {
+            // FIXME: ensure that the definition can use this reg
+            def.setFixed(it->second.physReg());
+            reg_file.fill(def);
+            ctx.assignments[def.tempId()].reg = def.physReg();
+            it = parallelcopies.erase(it);
+            is_def = true;
+            break;
+         }
+      }
+      if (is_def)
          continue;
 
-      /* check if we we moved another parallelcopy definition */
+      std::pair<Operand, Definition>& copy = *it;
+
+      /* check if we moved another parallelcopy definition */
       for (std::pair<Operand, Definition>& other : parallelcopies) {
          if (!other.second.isTemp())
             continue;
@@ -717,7 +737,7 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
             copy.first.setFixed(other.first.physReg());
          }
       }
-      // FIXME: if a definition got moved, change the target location and remove the parallelcopy
+
       copy.second.setTemp(ctx.program->allocateTmp(copy.second.regClass()));
       ctx.assignments.emplace_back(copy.second.physReg(), copy.second.regClass());
       assert(ctx.assignments.size() == ctx.program->peekAllocationId());
@@ -754,6 +774,8 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
 
       if (fill)
          reg_file.fill(copy.second);
+
+      ++it;
    }
 }
 
