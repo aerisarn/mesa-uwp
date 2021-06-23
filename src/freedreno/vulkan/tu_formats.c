@@ -450,15 +450,24 @@ tu_physical_device_get_format_properties(
    if (tu6_pipe2depth(format) != (enum a6xx_depth_format)~0)
       optimal |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-   /* no tiling for special UBWC formats
-    * TODO: NV12 can be UBWC but has a special UBWC format for accessing the Y plane aspect
-    * for 3plane, tiling/UBWC might be supported, but the blob doesn't use tiling
-    */
    if (format == VK_FORMAT_G8B8G8R8_422_UNORM ||
        format == VK_FORMAT_B8G8R8G8_422_UNORM ||
        format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
        format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
+      /* no tiling for special UBWC formats
+       * TODO: NV12 can be UBWC but has a special UBWC format for accessing the Y plane aspect
+       * for 3plane, tiling/UBWC might be supported, but the blob doesn't use tiling
+       */
       optimal = 0;
+
+      /* Disable buffer texturing of subsampled (422) and planar YUV textures.
+       * The subsampling requirement comes from "If format is a block-compressed
+       * format, then bufferFeatures must not support any features for the
+       * format" plus the specification of subsampled as 2x1 compressed block
+       * format.  I couldn't find the citation for planar, but 1D access of
+       * planar YUV would be really silly.
+       */
+      buffer = 0;
    }
 
    /* D32_SFLOAT_S8_UINT is tiled as two images, so no linear format
