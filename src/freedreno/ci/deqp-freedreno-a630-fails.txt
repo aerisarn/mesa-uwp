@@ -11,7 +11,12 @@ KHR-GL33.transform_feedback.query_vertex_separate_test,Fail
 # "Intermediate verification failed for coordinates (0, 0) sample 2 (Fail)"
 dEQP-VK.api.copy_and_blit.core.resolve_image.whole_array_image_one_region.4_bit,Fail
 dEQP-VK.api.copy_and_blit.core.resolve_image.whole_copy_before_resolving.4_bit,Fail
+
+# "Fail (createInstance returned VK_ERROR_INITIALIZATION_FAILED)"
+# happens inside the loader on anholt's debian system, and there are various
+# likely-looking fixes in later versions of the loader.
 dEQP-VK.api.device_init.create_instance_device_intentional_alloc_fail,Fail
+
 dEQP-VK.api.info.format_properties.g8b8g8r8_422_unorm,Fail
 
 # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/9409
