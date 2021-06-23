@@ -386,6 +386,14 @@ struct intel_device_info
 #endif
 
 static inline bool
+intel_device_info_slice_available(const struct intel_device_info *devinfo,
+                                  int slice)
+{
+   assert(slice < INTEL_DEVICE_MAX_SLICES);
+   return (devinfo->slice_masks & (1U << slice)) != 0;
+}
+
+static inline bool
 intel_device_info_subslice_available(const struct intel_device_info *devinfo,
                                      int slice, int subslice)
 {
