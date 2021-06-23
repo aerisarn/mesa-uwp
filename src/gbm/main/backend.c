@@ -45,7 +45,7 @@ struct gbm_backend_desc {
 };
 
 static const struct gbm_backend_desc builtin_backends[] = {
-   { "gbm_dri.so", &gbm_dri_backend },
+   { "dri", &gbm_dri_backend },
 };
 
 static struct gbm_device *
