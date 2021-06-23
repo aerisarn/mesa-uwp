@@ -352,6 +352,22 @@ compute_topology_builtins(struct intel_perf_config *perf)
    perf->sys_vars.slice_mask = devinfo->slice_masks;
    perf->sys_vars.n_eu_slices = devinfo->num_slices;
 
+   perf->sys_vars.n_eu_slice0123 = 0;
+   for (int s = 0; s < MIN2(4, devinfo->max_slices); s++) {
+      if (!intel_device_info_slice_available(devinfo, s))
+         continue;
+
+      for (int ss = 0; ss < devinfo->max_subslices_per_slice; ss++) {
+         if (!intel_device_info_subslice_available(devinfo, s, ss))
+            continue;
+
+         for (int eu = 0; eu < devinfo->max_eus_per_subslice; eu++) {
+            if (intel_device_info_eu_available(devinfo, s, ss, eu))
+               perf->sys_vars.n_eu_slice0123++;
+         }
+      }
+   }
+
    for (int i = 0; i < sizeof(devinfo->subslice_masks[i]); i++) {
       perf->sys_vars.n_eu_sub_slices +=
          util_bitcount(devinfo->subslice_masks[i]);
