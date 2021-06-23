@@ -138,6 +138,22 @@ def emit_and(tmp_id, args):
     c("uint64_t tmp{0} = {1} & {2};".format(tmp_id, args[1], args[0]))
     return tmp_id + 1
 
+def emit_ulte(tmp_id, args):
+    c("uint64_t tmp{0} = {1} <= {2};".format(tmp_id, args[1], args[0]))
+    return tmp_id + 1
+
+def emit_ult(tmp_id, args):
+    c("uint64_t tmp{0} = {1} < {2};".format(tmp_id, args[1], args[0]))
+    return tmp_id + 1
+
+def emit_ugte(tmp_id, args):
+    c("uint64_t tmp{0} = {1} >= {2};".format(tmp_id, args[1], args[0]))
+    return tmp_id + 1
+
+def emit_ugt(tmp_id, args):
+    c("uint64_t tmp{0} = {1} > {2};".format(tmp_id, args[1], args[0]))
+    return tmp_id + 1
+
 ops = {}
 #             (n operands, emitter)
 ops["FADD"] = (2, emit_fadd)
@@ -154,6 +170,11 @@ ops["UMIN"] = (2, emit_umin)
 ops["<<"]   = (2, emit_lshft)
 ops[">>"]   = (2, emit_rshft)
 ops["AND"]  = (2, emit_and)
+ops["UGTE"] = (2, emit_ugte)
+ops["UGT"]  = (2, emit_ugt)
+ops["ULTE"] = (2, emit_ulte)
+ops["ULT"]  = (2, emit_ult)
+
 
 def brkt(subexp):
     if " " in subexp:
@@ -172,6 +193,12 @@ def splice_ult(args):
 
 def splice_ugte(args):
     return brkt(args[1]) + " >= " + brkt(args[0])
+
+def splice_ulte(args):
+    return brkt(args[1]) + " <= " + brkt(args[0])
+
+def splice_ugt(args):
+    return brkt(args[1]) + " > " + brkt(args[0])
 
 exp_ops = {}
 #                 (n operands, splicer)
