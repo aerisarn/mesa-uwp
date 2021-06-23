@@ -145,14 +145,20 @@ zink_create_instance(struct zink_screen *screen)
    bool have_moltenvk_layer = false;
 #endif
 
+   GET_PROC_ADDR_INSTANCE_LOCAL(screen, NULL, EnumerateInstanceExtensionProperties);
+   GET_PROC_ADDR_INSTANCE_LOCAL(screen, NULL, EnumerateInstanceLayerProperties);
+   if (!vk_EnumerateInstanceExtensionProperties ||
+       !vk_EnumerateInstanceLayerProperties)
+      return false;
+
    // Build up the extensions from the reported ones but only for the unnamed layer
    uint32_t extension_count = 0;
-   if (vkEnumerateInstanceExtensionProperties(NULL, &extension_count, NULL) != VK_SUCCESS) {
+   if (vk_EnumerateInstanceExtensionProperties(NULL, &extension_count, NULL) != VK_SUCCESS) {
        mesa_loge("ZINK: vkEnumerateInstanceExtensionProperties failed");
    } else {
        VkExtensionProperties *extension_props = malloc(extension_count * sizeof(VkExtensionProperties));
        if (extension_props) {
-           if (vkEnumerateInstanceExtensionProperties(NULL, &extension_count, extension_props) != VK_SUCCESS) {
+           if (vk_EnumerateInstanceExtensionProperties(NULL, &extension_count, extension_props) != VK_SUCCESS) {
               mesa_loge("ZINK: vkEnumerateInstanceExtensionProperties failed");
            } else {
               for (uint32_t i = 0; i < extension_count; i++) {
@@ -170,12 +176,12 @@ zink_create_instance(struct zink_screen *screen)
     // Build up the layers from the reported ones
     uint32_t layer_count = 0;
 
-    if (vkEnumerateInstanceLayerProperties(&layer_count, NULL) != VK_SUCCESS) {
+    if (vk_EnumerateInstanceLayerProperties(&layer_count, NULL) != VK_SUCCESS) {
         mesa_loge("ZINK: vkEnumerateInstanceLayerProperties failed");
     } else {
         VkLayerProperties *layer_props = malloc(layer_count * sizeof(VkLayerProperties));
         if (layer_props) {
-            if (vkEnumerateInstanceLayerProperties(&layer_count, layer_props) != VK_SUCCESS) {
+            if (vk_EnumerateInstanceLayerProperties(&layer_count, layer_props) != VK_SUCCESS) {
                 mesa_loge("ZINK: vkEnumerateInstanceLayerProperties failed");
             } else {
                for (uint32_t i = 0; i < layer_count; i++) {
