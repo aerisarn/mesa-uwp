@@ -8196,9 +8196,10 @@ crocus_upload_compute_state(struct crocus_context *ice,
 static void
 crocus_destroy_state(struct crocus_context *ice)
 {
-
    pipe_resource_reference(&ice->draw.draw_params.res, NULL);
    pipe_resource_reference(&ice->draw.derived_draw_params.res, NULL);
+
+   free(ice->state.genx);
 
    for (int i = 0; i < 4; i++) {
       pipe_so_target_reference(&ice->state.so_target[i], NULL);
