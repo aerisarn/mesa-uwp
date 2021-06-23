@@ -2148,16 +2148,9 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
                       uint32_t row_pitch_B)
 {
    assert(aux_surf);
-
-   /* An uninitialized surface is needed to get a CCS surface. */
-   if (aux_surf->size_B > 0 &&
-       (extra_aux_surf == NULL || extra_aux_surf->size_B > 0)) {
-      return false;
-   }
-
-   /* A surface can't have two CCS surfaces. */
-   if (aux_surf->usage & ISL_SURF_USAGE_CCS_BIT)
-      return false;
+   if (aux_surf->size_B > 0)
+      assert(extra_aux_surf);
+   assert(!(aux_surf->usage & ISL_SURF_USAGE_CCS_BIT));
 
    if (!isl_surf_supports_ccs(dev, surf))
       return false;
