@@ -467,7 +467,9 @@ tu_drm_device_init(struct tu_physical_device *device,
    device->heap.used = 0u;
    device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
 
-   return tu_physical_device_init(device, instance);
+   result = tu_physical_device_init(device, instance);
+   if (result == VK_SUCCESS)
+       return result;
 
 fail:
    close(fd);
