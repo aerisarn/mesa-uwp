@@ -60,8 +60,6 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
       if (ctx->screen->reorder)
          fd_bc_flush(ctx, flags & PIPE_FLUSH_DEFERRED);
       fd_bc_dump(ctx, "%p: NULL batch, remaining:\n", ctx);
-      if (!(flags & PIPE_FLUSH_DEFERRED))
-         tc_driver_internal_flush_notify(ctx->tc);
       return;
    }
 
@@ -140,12 +138,6 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
    fd_bc_dump(ctx, "%p: remaining:\n", ctx);
 
 out:
-   /* If we just flushed all rendering out of the batch cache, then inform TC
-    * that it can use the resource_busy callback to check if they're still busy.
-    */
-   if (!(flags & PIPE_FLUSH_DEFERRED))
-      tc_driver_internal_flush_notify(ctx->tc);
-
    if (fencep)
       fd_fence_ref(fencep, fence);
 
@@ -711,7 +703,7 @@ fd_context_init_tc(struct pipe_context *pctx, unsigned flags)
       fd_replace_buffer_storage,
       fd_fence_create_unflushed,
       fd_resource_busy,
-      true,
+      false,
       &ctx->tc);
 
    uint64_t total_ram;

@@ -312,19 +312,14 @@ translate_usage(unsigned usage)
    return op;
 }
 
-/* This is called by TC to check if a buffer is idle on the GPU so it can do
- * unsynchronized mappings from the frontend.
- *
- * Note that TC tracks what buffers are outstanding in its queue in between
- * pctx->flush() calls (which we inform it of through
- * tc_driver_internal_flush_notify()) so we don't need to go digging in our
- * batch cache to check for usages.
- */
 bool
 fd_resource_busy(struct pipe_screen *pscreen, struct pipe_resource *prsc,
                  unsigned usage)
 {
    struct fd_resource *rsc = fd_resource(prsc);
+
+   if (pending(rsc, !!(usage & PIPE_MAP_WRITE)))
+      return true;
 
    if (resource_busy(rsc, translate_usage(usage)))
       return true;
