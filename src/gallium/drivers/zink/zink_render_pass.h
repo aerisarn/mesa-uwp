@@ -46,6 +46,7 @@ struct zink_rt_attrib {
 struct zink_render_pass_state {
    uint8_t num_cbufs : 4; /* PIPE_MAX_COLOR_BUFS = 8 */
    uint8_t have_zsbuf : 1;
+   bool samples; //for fs samplemask
    bool swapchain_init;
    struct zink_rt_attrib rts[PIPE_MAX_COLOR_BUFS + 1];
    unsigned num_rts;
@@ -58,7 +59,8 @@ struct zink_pipeline_rt {
 };
 
 struct zink_render_pass_pipeline_state {
-   uint32_t num_attachments;
+   uint32_t num_attachments:31;
+   bool samples:1; //for fs samplemask
    struct zink_pipeline_rt attachments[PIPE_MAX_COLOR_BUFS + 1];
    unsigned id;
 };

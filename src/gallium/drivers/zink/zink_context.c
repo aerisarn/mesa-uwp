@@ -1543,6 +1543,7 @@ get_render_pass(struct zink_context *ctx)
    struct zink_render_pass_state state = {0};
    uint32_t clears = 0;
    state.swapchain_init = ctx->new_swapchain;
+   state.samples = fb->samples > 0;
 
    u_foreach_bit(i, ctx->fbfetch_outputs)
       state.rts[i].fbfetch = true;
@@ -1598,6 +1599,7 @@ get_render_pass(struct zink_context *ctx)
       assert(rp->state.clears == clears);
    } else {
       struct zink_render_pass_pipeline_state pstate;
+      pstate.samples = state.samples;
       rp = zink_create_render_pass(screen, &state, &pstate);
       if (!_mesa_hash_table_insert_pre_hashed(ctx->render_pass_cache, hash, &rp->state, rp))
          return NULL;

@@ -141,7 +141,7 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
     * in VK, gl_SampleMask[] is never ignored
     */
    if (zs->nir->info.outputs_written & (1 << FRAG_RESULT_SAMPLE_MASK))
-      fs_key->samples = !!ctx->fb_state.samples;
+      fs_key->samples = ctx->gfx_pipeline_state.render_pass->state.samples;
    fs_key->force_dual_color_blend = screen->driconf.dual_color_blend_by_location &&
                                     ctx->gfx_pipeline_state.blend_state &&
                                     ctx->gfx_pipeline_state.blend_state->dual_src_blend &&
