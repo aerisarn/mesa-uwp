@@ -189,7 +189,7 @@ zink_batch_usage_is_unflushed(const struct zink_batch_usage *u)
 static inline void
 zink_batch_usage_unset(struct zink_batch_usage **u, struct zink_batch_state *bs)
 {
-   (void)p_atomic_cmpxchg(u, &bs->usage, NULL);
+   (void)p_atomic_cmpxchg((uintptr_t *)u, (uintptr_t)&bs->usage, (uintptr_t)NULL);
 }
 
 static inline void
