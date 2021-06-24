@@ -1093,6 +1093,14 @@ namespace {
                abort();
             }
 
+         case GFX12_SFID_UGM:
+         case GFX12_SFID_TGM:
+         case GFX12_SFID_SLM:
+            switch (lsc_msg_desc_opcode(devinfo, info.desc)) {
+            default:
+               abort();
+            }
+
          case GEN_RT_SFID_BINDLESS_THREAD_DISPATCH:
          case GEN_RT_SFID_RAY_TRACE_ACCELERATOR:
             return calculate_desc(info, unit_spawner, 2, 0, 0, 0 /* XXX */, 0,
