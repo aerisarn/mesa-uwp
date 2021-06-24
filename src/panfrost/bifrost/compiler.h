@@ -316,6 +316,9 @@ typedef struct {
          * useless double fills */
         bool no_spill;
 
+        /* Should we terminate discarded threads after executing this instruction? */
+        bool tdd;
+
         /* Override table, inducing a DTSEL_IMM pair if nonzero */
         enum bi_table table;
 
@@ -524,6 +527,9 @@ typedef struct bi_block {
 
         /* Post-RA liveness */
         uint64_t reg_live_in, reg_live_out;
+
+        /* Flags available for pass-internal use */
+        uint8_t pass_flags;
 } bi_block;
 
 typedef struct {
@@ -782,6 +788,8 @@ void bi_print_shader(bi_context *ctx, FILE *fp);
 
 /* BIR passes */
 
+void bi_analyze_helper_terminate(bi_context *ctx);
+void bi_analyze_helper_requirements(bi_context *ctx);
 void bi_opt_copy_prop(bi_context *ctx);
 void bi_opt_mod_prop_forward(bi_context *ctx);
 void bi_opt_mod_prop_backward(bi_context *ctx);

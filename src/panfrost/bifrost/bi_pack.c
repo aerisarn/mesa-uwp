@@ -687,20 +687,6 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
         }
 }
 
-/* We should terminate discarded threads if there may be discarded threads (a
- * fragment shader) and helper invocations are not used. Further logic may be
- * required for future discard/demote differentiation
- */
-
-static bool
-bi_terminate_discarded_threads(bi_context *ctx)
-{
-        if (ctx->stage == MESA_SHADER_FRAGMENT)
-                return !ctx->nir->info.fs.needs_quad_helper_invocations;
-        else
-                return false;
-}
-
 static void
 bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
                           const bi_clause *clause)
@@ -727,8 +713,6 @@ bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
 unsigned
 bi_pack(bi_context *ctx, struct util_dynarray *emission)
 {
-        bool tdd = bi_terminate_discarded_threads(ctx);
-
         unsigned previous_size = emission->size;
 
         bi_foreach_block(ctx, _block) {
@@ -752,7 +736,18 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
                                 next = bi_next_clause(ctx, _block, clause);
                         }
 
+
                         previous_size = emission->size;
+
+                        /* Terminate discarded threads after the clause if any
+                         * instruction needs threads terminated. Note that this
+                         * may be set for CLPER.i32 which is not
+                         * message-passing, so we need to check all
+                         * instructions */
+                        bool tdd = false;
+
+                        bi_foreach_instr_in_clause(block, clause, I)
+                                tdd |= I->tdd;
 
                         bi_pack_clause(ctx, clause, next, next_2, emission, ctx->stage, tdd);
 

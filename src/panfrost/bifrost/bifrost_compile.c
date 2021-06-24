@@ -3525,6 +3525,11 @@ bifrost_compile_shader_nir(nir_shader *nir,
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
         bi_lower_fau(ctx);
+
+        /* Analyze as late as possible before RA/scheduling */
+        bi_analyze_helper_terminate(ctx);
+        bi_analyze_helper_requirements(ctx);
+
         bi_register_allocate(ctx);
         bi_opt_post_ra(ctx);
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)

@@ -168,6 +168,9 @@ bi_print_instr(bi_instr *I, FILE *fp)
     if (I->table)
         fprintf(fp, ".%s", bi_table_as_str(I->table));
 
+    if (I->tdd)
+        fprintf(fp, ".tdd");
+
     switch (I->op) {
 % for opcode in ops:
 <%
