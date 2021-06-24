@@ -86,6 +86,7 @@ struct intel_device_info
    bool has_tiling_uapi;
    bool has_ray_tracing;
    bool has_local_mem;
+   bool has_lsc;
 
    /**
     * \name Intel hardware quirks
