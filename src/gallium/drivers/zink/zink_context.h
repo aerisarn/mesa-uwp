@@ -265,8 +265,6 @@ struct zink_context {
    VkSampleLocationEXT vk_sample_locations[PIPE_MAX_SAMPLE_LOCATION_GRID_SIZE * PIPE_MAX_SAMPLE_LOCATION_GRID_SIZE];
    uint8_t sample_locations[2 * 4 * 8 * 16];
 
-   bool drawid_broken;
-
    struct pipe_stencil_ref stencil_ref;
 
    union {

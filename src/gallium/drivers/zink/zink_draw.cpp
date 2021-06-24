@@ -445,13 +445,13 @@ zink_draw_vbo(struct pipe_context *pctx,
    uint8_t vertices_per_patch = ctx->gfx_pipeline_state.patch_vertices ? ctx->gfx_pipeline_state.patch_vertices - 1 : 0;
    if (ctx->gfx_pipeline_state.vertices_per_patch != vertices_per_patch)
       ctx->gfx_pipeline_state.dirty = true;
-   bool drawid_broken = ctx->drawid_broken;
-   ctx->drawid_broken = false;
+   bool drawid_broken = ctx->gfx_pipeline_state.drawid_broken;
+   ctx->gfx_pipeline_state.drawid_broken = false;
    if (reads_drawid && (!dindirect || !dindirect->buffer))
-      ctx->drawid_broken = (drawid_offset != 0 ||
+      ctx->gfx_pipeline_state.drawid_broken = (drawid_offset != 0 ||
                            (!HAS_MULTIDRAW && num_draws > 1) ||
                            (HAS_MULTIDRAW && num_draws > 1 && !dinfo->increment_draw_id));
-   if (drawid_broken != ctx->drawid_broken)
+   if (drawid_broken != ctx->gfx_pipeline_state.drawid_broken)
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
    ctx->gfx_pipeline_state.vertices_per_patch = vertices_per_patch;
    if (mode_changed) {
@@ -718,7 +718,7 @@ zink_draw_vbo(struct pipe_context *pctx,
                          offsetof(struct zink_gfx_push_constant, default_inner_level), sizeof(float) * 6,
                          &ctx->tess_levels[0]);
 
-   bool needs_drawid = reads_drawid && ctx->drawid_broken;
+   bool needs_drawid = reads_drawid && ctx->gfx_pipeline_state.drawid_broken;
    work_count += num_draws;
    if (index_size > 0) {
       if (dindirect && dindirect->buffer) {

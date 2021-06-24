@@ -77,6 +77,7 @@ struct zink_gfx_pipeline_state {
    uint8_t has_points; //either gs outputs points or prim type is points
    uint8_t coord_replace_bits;
    bool coord_replace_yinvert;
+   bool drawid_broken;
    struct zink_blend_state *blend_state;
    struct zink_render_pass *render_pass;
    VkPipeline pipeline;
