@@ -158,11 +158,7 @@ static void
 shader_key_tcs_gen(struct zink_context *ctx, struct zink_shader *zs,
                    struct zink_shader *shaders[ZINK_SHADER_COUNT], struct zink_shader_key *key)
 {
-   struct zink_tcs_key *tcs_key = &key->key.tcs;
-   key->size = sizeof(struct zink_tcs_key);
-
-   tcs_key->vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch + 1;
-   tcs_key->vs_outputs_written = shaders[PIPE_SHADER_VERTEX]->nir->info.outputs_written;
+   key->size = 0;
 }
 
 typedef void (*zink_shader_key_gen)(struct zink_context *ctx, struct zink_shader *zs,
@@ -206,7 +202,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
 
    shader_key_vtbl[stage](ctx, zs, prog->shaders, &key);
    /* this is default variant if there is no default or it matches the default */
-   if (prog->default_variant_key[pstage]) {
+   if (pstage != PIPE_SHADER_TESS_CTRL && prog->default_variant_key[pstage]) {
       const struct keybox *tmp = prog->default_variant_key[pstage];
       /* if comparing against the existing default, use the base variant key size since
        * we're only checking the stage-specific data

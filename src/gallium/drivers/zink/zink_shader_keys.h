@@ -39,11 +39,6 @@ struct zink_fs_key {
    bool force_dual_color_blend;
 };
 
-struct zink_tcs_key {
-   unsigned vertices_per_patch;
-   uint64_t vs_outputs_written;
-};
-
 struct zink_shader_key_base {
    uint32_t inlined_uniform_values[MAX_INLINABLE_UNIFORMS];
 };
@@ -58,7 +53,6 @@ struct zink_shader_key {
       /* reuse vs key for now with tes/gs since we only use clip_halfz */
       struct zink_vs_key vs;
       struct zink_fs_key fs;
-      struct zink_tcs_key tcs;
    } key;
    struct zink_shader_key_base base;
    unsigned inline_uniforms:1;
