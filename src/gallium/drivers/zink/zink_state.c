@@ -603,8 +603,11 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
          ctx->gfx_pipeline_state.dyn_state1.front_face = ctx->rast_state->front_face;
          ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
       }
-      if (ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization)
+      if (ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization) {
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);
+         ctx->gfx_pipeline_state.coord_replace_bits = ctx->rast_state->base.sprite_coord_enable;
+         ctx->gfx_pipeline_state.coord_replace_yinvert = !!ctx->rast_state->base.sprite_coord_mode;
+      }
       if (ctx->rast_state->base.scissor != scissor)
          ctx->scissor_changed = true;
    }

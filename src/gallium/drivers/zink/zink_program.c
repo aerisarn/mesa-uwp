@@ -146,10 +146,9 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
                                     ctx->gfx_pipeline_state.blend_state &&
                                     ctx->gfx_pipeline_state.blend_state->dual_src_blend &&
                                     ctx->gfx_pipeline_state.blend_state->attachments[1].blendEnable;
-   if (ctx->gfx_pipeline_state.has_points &&
-       ctx->rast_state &&ctx->rast_state->base.point_quad_rasterization && ctx->rast_state->base.sprite_coord_enable) {
-      fs_key->coord_replace_bits = ctx->rast_state->base.sprite_coord_enable;
-      fs_key->coord_replace_yinvert = !!ctx->rast_state->base.sprite_coord_mode;
+   if (ctx->gfx_pipeline_state.has_points && ctx->gfx_pipeline_state.coord_replace_bits) {
+      fs_key->coord_replace_bits = ctx->gfx_pipeline_state.coord_replace_bits;
+      fs_key->coord_replace_yinvert = ctx->gfx_pipeline_state.coord_replace_yinvert;
    }
 }
 

@@ -455,13 +455,15 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
    ctx->gfx_pipeline_state.vertices_per_patch = vertices_per_patch;
    if (mode_changed) {
-      if (mode == PIPE_PRIM_POINTS)
+      bool points_changed = false;
+      if (mode == PIPE_PRIM_POINTS) {
          ctx->gfx_pipeline_state.has_points++;
-      else if (ctx->gfx_prim_mode == PIPE_PRIM_POINTS)
+         points_changed = true;
+      } else if (ctx->gfx_prim_mode == PIPE_PRIM_POINTS) {
          ctx->gfx_pipeline_state.has_points--;
-   }
-   if (ctx->rast_state->base.point_quad_rasterization && mode_changed) {
-      if (ctx->gfx_prim_mode == PIPE_PRIM_POINTS || mode == PIPE_PRIM_POINTS)
+         points_changed = true;
+      }
+      if (points_changed && ctx->rast_state->base.point_quad_rasterization)
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);
    }
    ctx->gfx_prim_mode = mode;
