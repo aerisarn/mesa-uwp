@@ -1331,30 +1331,7 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
       }
 
       if (outinfo->writes_primitive_shading_rate) {
-         LLVMValueRef v = ac_to_integer(&ctx->ac, primitive_shading_rate);
-         LLVMValueRef cond;
-
-         /* xRate = (shadingRate & (Horizontal2Pixels | Horizontal4Pixels)) ? 0x1 : 0x0; */
-         LLVMValueRef x_rate =
-            LLVMBuildAnd(ctx->ac.builder, v, LLVMConstInt(ctx->ac.i32, 4 | 8, false), "");
-         cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntNE, x_rate, ctx->ac.i32_0, "");
-         x_rate = LLVMBuildSelect(ctx->ac.builder, cond, ctx->ac.i32_1, ctx->ac.i32_0, "");
-
-         /* yRate = (shadingRate & (Vertical2Pixels | Vertical4Pixels)) ? 0x1 : 0x0; */
-         LLVMValueRef y_rate =
-            LLVMBuildAnd(ctx->ac.builder, v, LLVMConstInt(ctx->ac.i32, 1 | 2, false), "");
-         cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntNE, y_rate, ctx->ac.i32_0, "");
-         y_rate = LLVMBuildSelect(ctx->ac.builder, cond, ctx->ac.i32_1, ctx->ac.i32_0, "");
-
-         /* Bits [2:3] = VRS rate X
-          * Bits [4:5] = VRS rate Y
-          * HW shading rate = (xRate << 2) | (yRate << 4)
-          */
-         v = LLVMBuildOr(
-            ctx->ac.builder,
-            LLVMBuildShl(ctx->ac.builder, x_rate, LLVMConstInt(ctx->ac.i32, 2, false), ""),
-            LLVMBuildShl(ctx->ac.builder, y_rate, LLVMConstInt(ctx->ac.i32, 4, false), ""), "");
-         pos_args[1].out[1] = ac_to_float(&ctx->ac, v);
+         pos_args[1].out[1] = primitive_shading_rate;
       } else if (ctx->args->options->force_vrs_rates) {
          /* Bits [2:3] = VRS rate X
           * Bits [4:5] = VRS rate Y

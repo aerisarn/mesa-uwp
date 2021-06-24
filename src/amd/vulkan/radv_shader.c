@@ -369,6 +369,62 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
    return progress;
 }
 
+static bool
+radv_lower_primitive_shading_rate(nir_shader *nir)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   bool progress = false;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   /* Iterate in reverse order since there should be only one deref store to PRIMITIVE_SHADING_RATE
+    * after lower_io_to_temporaries for vertex shaders.
+    */
+   nir_foreach_block_reverse(block, impl) {
+      nir_foreach_instr_reverse(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic != nir_intrinsic_store_deref)
+            continue;
+
+         nir_variable *var = nir_intrinsic_get_var(intr, 0);
+         if (var->data.mode != nir_var_shader_out ||
+             var->data.location != VARYING_SLOT_PRIMITIVE_SHADING_RATE)
+            continue;
+
+         b.cursor = nir_before_instr(instr);
+
+         nir_ssa_def *val = nir_ssa_for_src(&b, intr->src[1], 1);
+
+         /* x_rate = (shadingRate & (Horizontal2Pixels | Horizontal4Pixels)) ? 0x1 : 0x0; */
+         nir_ssa_def *x_rate = nir_iand(&b, val, nir_imm_int(&b, 12));
+         x_rate = nir_b2i32(&b, nir_ine(&b, x_rate, nir_imm_int(&b, 0)));
+
+         /* y_rate = (shadingRate & (Vertical2Pixels | Vertical4Pixels)) ? 0x1 : 0x0; */
+         nir_ssa_def *y_rate = nir_iand(&b, val, nir_imm_int(&b, 3));
+         y_rate = nir_b2i32(&b, nir_ine(&b, y_rate, nir_imm_int(&b, 0)));
+
+         /* Bits [2:3] = VRS rate X
+          * Bits [4:5] = VRS rate Y
+          * HW shading rate = (xRate << 2) | (yRate << 4)
+          */
+         nir_ssa_def *out = nir_ior(&b, nir_ishl(&b, x_rate, nir_imm_int(&b, 2)),
+                                        nir_ishl(&b, y_rate, nir_imm_int(&b, 4)));
+
+         nir_instr_rewrite_src(&intr->instr, &intr->src[1], nir_src_for_ssa(out));
+
+         progress = true;
+         if (nir->info.stage == MESA_SHADER_VERTEX)
+            return progress;
+      }
+   }
+
+   return progress;
+}
+
 nir_shader *
 radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *module,
                            const char *entrypoint_name, gl_shader_stage stage,
@@ -698,6 +754,13 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
     * section next to the shader.
     */
    NIR_PASS_V(nir, nir_opt_large_constants, glsl_get_natural_size_align_bytes, 16);
+
+   /* Lower primitive shading rate to match HW requirements. */
+   if ((nir->info.stage == MESA_SHADER_VERTEX ||
+        nir->info.stage == MESA_SHADER_GEOMETRY) &&
+       nir->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE)) {
+      NIR_PASS_V(nir, radv_lower_primitive_shading_rate);
+   }
 
    /* Indirect lowering must be called after the radv_optimize_nir() loop
     * has been called at least once. Otherwise indirect lowering can

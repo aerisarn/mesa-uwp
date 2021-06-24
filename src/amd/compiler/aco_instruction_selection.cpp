@@ -10355,33 +10355,7 @@ static void export_vs_psiz_layer_viewport_vrs(isel_context *ctx, int *next_pos)
       }
    }
    if (ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_SHADING_RATE]) {
-      Builder bld(ctx->program, ctx->block);
-      Temp cond;
-
-      /* xRate = (shadingRate & (Horizontal2Pixels | Horizontal4Pixels)) ? 0x1 : 0x0; */
-      Temp x_rate = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(12u),
-                             Operand(ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_SHADING_RATE * 4u]));
-      cond = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), Operand(x_rate));
-      x_rate = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
-                        bld.copy(bld.def(v1), Operand(0u)),
-                        bld.copy(bld.def(v1), Operand(1u)), cond);
-
-      /* yRate = (shadingRate & (Vertical2Pixels | Vertical4Pixels)) ? 0x1 : 0x0; */
-      Temp y_rate = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(3u),
-                             Operand(ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_SHADING_RATE * 4u]));
-      cond = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), Operand(y_rate));
-      y_rate = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
-                        bld.copy(bld.def(v1), Operand(0u)),
-                        bld.copy(bld.def(v1), Operand(1u)), cond);
-
-      /* Bits [2:3] = VRS rate X
-       * Bits [4:5] = VRS rate Y
-       * HW shading rate = (xRate << 2) | (yRate << 4)
-       */
-      y_rate = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(4u), Operand(y_rate));
-      Temp out = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), Operand(x_rate), Operand(2u), Operand(y_rate));
-
-      exp->operands[1] = Operand(out);
+      exp->operands[1] = Operand(ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_SHADING_RATE * 4u]);
       exp->enabled_mask |= 0x2;
    } else if (ctx->options->force_vrs_rates) {
       /* Bits [2:3] = VRS rate X
