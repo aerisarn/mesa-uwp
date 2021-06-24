@@ -57,7 +57,7 @@
 #define SUBOPCODE_MEM_WRITE 0x06
 #define SUBOPCODE_VERSION   0x0e
 
-static void
+static PRINTFLIKE(3, 4) void
 parse_error(struct aub_read *read, const uint32_t *p, const char *fmt, ...)
 {
    if (!read->error)
@@ -316,7 +316,7 @@ aub_read_command(struct aub_read *read, const void *data, uint32_t data_len)
 
    if (next > end) {
       parse_error(read, data,
-            "input ends unexpectedly (command length: %d, remaining bytes: %d)\n",
+            "input ends unexpectedly (command length: %zu, remaining bytes: %zu)\n",
             (uintptr_t)next - (uintptr_t)data,
             (uintptr_t)end  - (uintptr_t)data);
       return -1;
