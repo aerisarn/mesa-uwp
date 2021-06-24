@@ -251,11 +251,11 @@ populate_ppgtt_table(struct aub_file *aub, struct aub_ppgtt_table *table,
          dirty_end = max(dirty_end, i);
          if (level == 1) {
             table->subtables[i] =
-               (void *)(aub->phys_addrs_allocator++ << 12);
+               (void *)(uintptr_t)(aub->phys_addrs_allocator++ << 12);
             if (aub->verbose_log_file) {
                fprintf(aub->verbose_log_file,
                        "   Adding entry: %x, phys_addr: 0x%016" PRIx64 "\n",
-                       i, (uint64_t)table->subtables[i]);
+                       i, (uint64_t)(uintptr_t)table->subtables[i]);
             }
          } else {
             table->subtables[i] =
@@ -270,7 +270,7 @@ populate_ppgtt_table(struct aub_file *aub, struct aub_ppgtt_table *table,
          }
       }
       entries[i] = 3 /* read/write | present */ |
-         (level == 1 ? (uint64_t)table->subtables[i] :
+         (level == 1 ? (uint64_t)(uintptr_t)table->subtables[i] :
           table->subtables[i]->phys_addr);
    }
 
@@ -343,7 +343,7 @@ aub_map_ppgtt(struct aub_file *aub, uint64_t start, uint64_t size)
 static uint64_t
 ppgtt_lookup(struct aub_file *aub, uint64_t ppgtt_addr)
 {
-   return (uint64_t)L1_table(ppgtt_addr)->subtables[L1_index(ppgtt_addr)];
+   return (uint64_t)(uintptr_t)L1_table(ppgtt_addr)->subtables[L1_index(ppgtt_addr)];
 }
 
 static const struct engine {

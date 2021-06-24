@@ -96,7 +96,7 @@ bo_size(int fd, uint32_t handle)
    if (!t)
       return UINT64_MAX;
    struct hash_entry *e = _mesa_hash_table_search(t, (void*)(uintptr_t)handle);
-   return e ? (uint64_t)e->data : UINT64_MAX;
+   return e ? (uint64_t)(uintptr_t)e->data : UINT64_MAX;
 }
 
 static inline bool
