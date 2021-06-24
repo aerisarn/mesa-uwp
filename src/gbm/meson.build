@@ -56,6 +56,11 @@ libgbm = shared_library(
   install : true,
 )
 
+if with_tests
+  abi_check = executable('gbm_abi_check', 'main/gbm_abi_check.c')
+  test('gbm-abi-check', abi_check, suite : ['gbm'])
+endif
+
 install_headers('main/gbm.h')
 
 pkg.generate(
