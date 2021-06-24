@@ -4174,7 +4174,7 @@ crocus_set_stream_output_targets(struct pipe_context *ctx,
       }
       pipe_so_target_reference(&old_tgt[i], NULL);
    }
-
+   ice->state.stage_dirty |= CROCUS_STAGE_DIRTY_BINDINGS_GS;
 #else
    for (int i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
       if (num_targets) {
@@ -4210,7 +4210,6 @@ crocus_set_stream_output_targets(struct pipe_context *ctx,
    ice->state.dirty |= CROCUS_DIRTY_GEN7_SO_BUFFERS;
 #elif GFX_VER == 6
    ice->state.dirty |= CROCUS_DIRTY_GEN6_SVBI;
-   ice->state.stage_dirty |= CROCUS_STAGE_DIRTY_BINDINGS_GS;
 #endif
 }
 
