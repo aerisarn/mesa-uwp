@@ -391,7 +391,7 @@ aub_map_ggtt(struct aub_file *aub, uint64_t virt_addr, uint64_t size)
     * receive from error2aub are page aligned.
     */
    assert(virt_addr % 4096 == 0);
-   assert((aub->phys_addrs_allocator + size) < (1UL << 32));
+   assert((aub->phys_addrs_allocator + size) < (1ULL << 32));
 
    /* GGTT PT */
    uint32_t ggtt_ptes = DIV_ROUND_UP(size, 4096);
