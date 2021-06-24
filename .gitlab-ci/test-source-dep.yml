@@ -383,6 +383,24 @@
       when: on_success
     - when: never
 
+.zink-rules:
+  stage: layered-backends
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+        *lavapipe_file_list
+      when: on_success
+    - changes: &zink_file_list
+      - src/gallium/drivers/zink/**/*
+      when: on_success
+    - when: never
+
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
 .windows-build-rules:
@@ -408,23 +426,8 @@
       - src/gallium/targets/libgl-gdi/*
       - src/gallium/targets/libgl-d3d12/*
       when: on_success
-    - when: never
-
-.zink-rules:
-  stage: layered-backends
-  rules:
-    - *ignore_scheduled_pipelines
     - changes:
-        *mesa_core_file_list
-      when: on_success
-    - changes:
-        *gallium_core_file_list
-      when: on_success
-    - changes:
-        *lavapipe_file_list
-      when: on_success
-    - changes: &zink_file_list
-      - src/gallium/drivers/zink/**/*
+        *zink_file_list
       when: on_success
     - when: never
 
@@ -444,9 +447,6 @@
         *vulkan_file_list
       when: on_success
     - changes: *d3d12_file_list
-      when: on_success
-    - changes:
-        *zink_file_list
       when: on_success
     - when: never
 
