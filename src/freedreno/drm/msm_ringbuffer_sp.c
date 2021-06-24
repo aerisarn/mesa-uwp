@@ -675,6 +675,18 @@ msm_ringbuffer_sp_grow(struct fd_ringbuffer *ring, uint32_t size)
    ring->size = size;
 }
 
+static inline bool
+msm_ringbuffer_references_bo(struct fd_ringbuffer *ring, struct fd_bo *bo)
+{
+   struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
+
+   for (int i = 0; i < msm_ring->u.nr_reloc_bos; i++) {
+      if (msm_ring->u.reloc_bos[i] == bo)
+         return true;
+   }
+   return false;
+}
+
 #define PTRSZ 64
 #include "msm_ringbuffer_sp.h"
 #undef PTRSZ
