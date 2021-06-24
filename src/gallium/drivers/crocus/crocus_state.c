@@ -3142,7 +3142,10 @@ crocus_set_sampler_views(struct pipe_context *ctx,
          shs->bound_sampler_views |= 1 << (start + i);
       }
    }
-
+#if GFX_VER == 6
+   /* first level parameters to crocus_upload_sampler_state is gfx6 only */
+   ice->state.stage_dirty |= CROCUS_STAGE_DIRTY_SAMPLER_STATES_VS << stage;
+#endif
    ice->state.stage_dirty |= (CROCUS_STAGE_DIRTY_BINDINGS_VS << stage);
    ice->state.dirty |=
       stage == MESA_SHADER_COMPUTE ? CROCUS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES
