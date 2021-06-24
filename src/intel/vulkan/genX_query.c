@@ -204,7 +204,7 @@ VkResult genX(CreateQueryPool)(
    if (pdevice->has_exec_async)
       bo_flags |= EXEC_OBJECT_ASYNC;
 
-   uint64_t size = pool->slots * pool->stride;
+   uint64_t size = pool->slots * (uint64_t)pool->stride;
    result = anv_device_alloc_bo(device, "query-pool", size,
                                 ANV_BO_ALLOC_MAPPED |
                                 ANV_BO_ALLOC_SNOOPED,
@@ -225,7 +225,7 @@ VkResult genX(CreateQueryPool)(
 
          mi_builder_init(&b, &device->info, &batch);
          mi_store(&b, mi_reg64(ANV_PERF_QUERY_OFFSET_REG),
-                      mi_imm(p * pool->pass_size));
+                      mi_imm(p * (uint64_t)pool->pass_size));
          anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
       }
    }
@@ -304,13 +304,13 @@ void genX(DestroyQueryPool)(
 static uint64_t
 khr_perf_query_availability_offset(struct anv_query_pool *pool, uint32_t query, uint32_t pass)
 {
-   return query * (pool->stride) + pass * pool->pass_size;
+   return query * (uint64_t)pool->stride + pass * (uint64_t)pool->pass_size;
 }
 
 static uint64_t
 khr_perf_query_data_offset(struct anv_query_pool *pool, uint32_t query, uint32_t pass, bool end)
 {
-   return query * (pool->stride) + pass * pool->pass_size +
+   return query * (uint64_t)pool->stride + pass * (uint64_t)pool->pass_size +
       pool->data_offset + (end ? pool->snapshot_size : 0);
 }
 
