@@ -315,7 +315,7 @@ agx_close_device(struct agx_device *dev)
 uint64_t
 agx_cmdbuf_global_ids(struct agx_device *dev)
 {
-#if __APPLE
+#if __APPLE__
    uint32_t out[4] = {};
    size_t out_sz = sizeof(out);
 

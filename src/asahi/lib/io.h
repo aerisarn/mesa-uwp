@@ -168,7 +168,7 @@ agx_memory_type_name(uint32_t type)
 }
 
 struct agx_notification_queue {
-#ifdef __APPLE
+#ifdef __APPLE__
    mach_port_t port;
    IODataQueueMemory *queue;
 #else
