@@ -1977,7 +1977,7 @@ crocus_update_compiled_fs(struct crocus_context *ice)
       if (devinfo->ver < 6)
          ice->state.dirty |= CROCUS_DIRTY_GEN4_CLIP_PROG | CROCUS_DIRTY_GEN4_SF_PROG;
       else
-         ice->state.dirty |= CROCUS_DIRTY_CLIP;
+         ice->state.dirty |= CROCUS_DIRTY_CLIP | CROCUS_DIRTY_GEN6_BLEND_STATE;
       if (devinfo->ver == 6)
          ice->state.dirty |= CROCUS_DIRTY_RASTER;
       if (devinfo->ver >= 7)

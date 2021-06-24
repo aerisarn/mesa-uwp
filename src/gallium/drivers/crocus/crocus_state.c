@@ -3379,10 +3379,8 @@ crocus_set_framebuffer_state(struct pipe_context *ctx,
    }
 #endif
 
-#if GFX_VER >= 6
-   if (cso->nr_cbufs != state->nr_cbufs) {
-      ice->state.dirty |= CROCUS_DIRTY_GEN6_BLEND_STATE;
-   }
+#if GFX_VER >= 6 && GFX_VER < 8
+   ice->state.dirty |= CROCUS_DIRTY_GEN6_BLEND_STATE;
 #endif
 
    if ((cso->layers == 0) != (layers == 0)) {
