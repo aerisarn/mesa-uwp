@@ -49,32 +49,39 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    uint32_t first_exec_offset = 0;
    uint32_t instrlen = 0;
+   uint32_t hw_stack_offset = 0;
 
    switch (so->type) {
    case MESA_SHADER_VERTEX:
       first_exec_offset = REG_A6XX_SP_VS_OBJ_FIRST_EXEC_OFFSET;
       instrlen = REG_A6XX_SP_VS_INSTRLEN;
+      hw_stack_offset = REG_A6XX_SP_VS_PVT_MEM_HW_STACK_OFFSET;
       break;
    case MESA_SHADER_TESS_CTRL:
       first_exec_offset = REG_A6XX_SP_HS_OBJ_FIRST_EXEC_OFFSET;
       instrlen = REG_A6XX_SP_HS_INSTRLEN;
+      hw_stack_offset = REG_A6XX_SP_HS_PVT_MEM_HW_STACK_OFFSET;
       break;
    case MESA_SHADER_TESS_EVAL:
       first_exec_offset = REG_A6XX_SP_DS_OBJ_FIRST_EXEC_OFFSET;
       instrlen = REG_A6XX_SP_DS_INSTRLEN;
+      hw_stack_offset = REG_A6XX_SP_DS_PVT_MEM_HW_STACK_OFFSET;
       break;
    case MESA_SHADER_GEOMETRY:
       first_exec_offset = REG_A6XX_SP_GS_OBJ_FIRST_EXEC_OFFSET;
       instrlen = REG_A6XX_SP_GS_INSTRLEN;
+      hw_stack_offset = REG_A6XX_SP_GS_PVT_MEM_HW_STACK_OFFSET;
       break;
    case MESA_SHADER_FRAGMENT:
       first_exec_offset = REG_A6XX_SP_FS_OBJ_FIRST_EXEC_OFFSET;
       instrlen = REG_A6XX_SP_FS_INSTRLEN;
+      hw_stack_offset = REG_A6XX_SP_FS_PVT_MEM_HW_STACK_OFFSET;
       break;
    case MESA_SHADER_COMPUTE:
    case MESA_SHADER_KERNEL:
       first_exec_offset = REG_A6XX_SP_CS_OBJ_FIRST_EXEC_OFFSET;
       instrlen = REG_A6XX_SP_CS_INSTRLEN;
+      hw_stack_offset = REG_A6XX_SP_CS_PVT_MEM_HW_STACK_OFFSET;
       break;
    case MESA_SHADER_TASK:
    case MESA_SHADER_MESH:
@@ -132,6 +139,9 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
    OUT_RING(ring, A6XX_SP_VS_PVT_MEM_SIZE_TOTALPVTMEMSIZE(per_sp_size) |
                      COND(so->pvtmem_per_wave,
                           A6XX_SP_VS_PVT_MEM_SIZE_PERWAVEMEMLAYOUT));
+
+   OUT_PKT4(ring, hw_stack_offset, 1);
+   OUT_RING(ring, A6XX_SP_VS_PVT_MEM_HW_STACK_OFFSET_OFFSET(per_sp_size));
 
    OUT_PKT7(ring, fd6_stage2opcode(so->type), 3);
    OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
