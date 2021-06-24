@@ -382,7 +382,7 @@ build_aabbs(struct radv_bvh_build_ctx *ctx, const VkAccelerationStructureGeometr
    for (uint32_t p = 0; p < range->primitiveCount; ++p, ctx->curr_ptr += 64) {
       struct radv_bvh_aabb_node *node = (void*)ctx->curr_ptr;
       uint32_t node_offset = ctx->curr_ptr - ctx->base;
-      uint32_t node_id = (node_offset >> 3) | 6;
+      uint32_t node_id = (node_offset >> 3) | 7;
       *ctx->write_scratch++ = node_id;
 
       const VkAabbPositionsKHR *aabb =
