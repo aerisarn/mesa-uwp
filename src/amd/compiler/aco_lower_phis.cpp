@@ -88,6 +88,10 @@ get_ssa(Program* program, unsigned block_idx, ssa_state* state, bool input)
       for (unsigned i = 0; i < pred; i++)
          ops[i] = get_ssa(program, block.linear_preds[i], state, false);
 
+      /* check triviality */
+      if (std::all_of(ops.begin() + 1, ops.end(), [&](Operand same) { return same == ops[0]; }))
+         return ops[0];
+
       /* Return if this was handled in a recursive call by a loop header phi */
       if (!previously_visited && state->visited[block_idx])
          return state->outputs[block_idx];
