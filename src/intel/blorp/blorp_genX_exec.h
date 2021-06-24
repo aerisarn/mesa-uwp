@@ -1079,8 +1079,7 @@ static uint32_t
 blorp_emit_blend_state(struct blorp_batch *batch,
                        const struct blorp_params *params)
 {
-   struct GENX(BLEND_STATE) blend;
-   memset(&blend, 0, sizeof(blend));
+   struct GENX(BLEND_STATE) blend = { };
 
    uint32_t offset;
    int size = GENX(BLEND_STATE_length) * 4;
