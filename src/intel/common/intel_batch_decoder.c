@@ -927,6 +927,8 @@ handle_gt_mode(struct intel_batch_decode_ctx *ctx,
 {
    struct intel_group *reg = intel_spec_find_register(ctx->spec, reg_addr);
 
+   assert(intel_group_get_length(reg, &val) == 1);
+
    struct intel_field_iterator iter;
    intel_field_iterator_init(&iter, reg, &val, 0, false);
 
