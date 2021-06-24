@@ -3512,9 +3512,12 @@ bifrost_compile_shader_nir(nir_shader *nir,
         /* Runs before copy prop */
         bi_opt_push_ubo(ctx);
         bi_opt_constant_fold(ctx);
+
         bi_opt_copy_prop(ctx);
         bi_opt_mod_prop_forward(ctx);
         bi_opt_mod_prop_backward(ctx);
+        bi_opt_dead_code_eliminate(ctx);
+        bi_opt_cse(ctx);
         bi_opt_dead_code_eliminate(ctx);
 
         bi_foreach_block(ctx, _block) {

@@ -330,6 +330,7 @@ typedef struct {
                 enum bi_clamp clamp;
                 bool saturate;
                 bool not_result;
+                unsigned dest_mod;
         };
 
         /* Immediates. All seen alone in an instruction, except for varying/texture
@@ -394,6 +395,9 @@ typedef struct {
                         bool skip; /* VAR_TEX, TEXS, TEXC */
                         bool lod_mode; /* VAR_TEX, TEXS, implicitly for TEXC */
                 };
+
+                /* Maximum size, for hashing */
+                unsigned flags[5];
 
                 struct {
                         enum bi_subgroup subgroup; /* WMASK, CLPER */
@@ -791,6 +795,7 @@ void bi_print_shader(bi_context *ctx, FILE *fp);
 void bi_analyze_helper_terminate(bi_context *ctx);
 void bi_analyze_helper_requirements(bi_context *ctx);
 void bi_opt_copy_prop(bi_context *ctx);
+void bi_opt_cse(bi_context *ctx);
 void bi_opt_mod_prop_forward(bi_context *ctx);
 void bi_opt_mod_prop_backward(bi_context *ctx);
 void bi_opt_dead_code_eliminate(bi_context *ctx);
