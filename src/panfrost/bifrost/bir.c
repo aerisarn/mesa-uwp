@@ -44,7 +44,7 @@ bi_has_arg(bi_instr *ins, bi_index arg)
  * 32-bit. Note auto reads to 32-bit registers even if the memory format is
  * 16-bit, so is considered as such here */
 
-static bool
+bool
 bi_is_regfmt_16(enum bi_register_format fmt)
 {
         switch  (fmt) {

@@ -2882,28 +2882,99 @@ emit_cf_list(bi_context *ctx, struct exec_list *list)
 
 /* shader-db stuff */
 
+struct bi_stats {
+        unsigned nr_clauses, nr_tuples, nr_ins;
+        unsigned nr_arith, nr_texture, nr_varying, nr_ldst;
+};
+
+static void
+bi_count_tuple_stats(bi_clause *clause, bi_tuple *tuple, struct bi_stats *stats)
+{
+        /* Count instructions */
+        stats->nr_ins += (tuple->fma ? 1 : 0) + (tuple->add ? 1 : 0);
+
+        /* Non-message passing tuples are always arithmetic */
+        if (tuple->add != clause->message) {
+                stats->nr_arith++;
+                return;
+        }
+
+        /* Message + FMA we'll count as arithmetic _and_ message */
+        if (tuple->fma)
+                stats->nr_arith++;
+
+        switch (clause->message_type) {
+        case BIFROST_MESSAGE_VARYING:
+                /* Check components interpolated */
+                stats->nr_varying += (clause->message->vecsize + 1) *
+                        (bi_is_regfmt_16(clause->message->register_format) ? 1 : 2);
+                break;
+
+        case BIFROST_MESSAGE_VARTEX:
+                /* 2 coordinates, fp32 each */
+                stats->nr_varying += (2 * 2);
+                FALLTHROUGH;
+        case BIFROST_MESSAGE_TEX:
+                stats->nr_texture++;
+                break;
+
+        case BIFROST_MESSAGE_ATTRIBUTE:
+        case BIFROST_MESSAGE_LOAD:
+        case BIFROST_MESSAGE_STORE:
+        case BIFROST_MESSAGE_ATOMIC:
+                stats->nr_ldst++;
+                break;
+
+        case BIFROST_MESSAGE_NONE:
+        case BIFROST_MESSAGE_BARRIER:
+        case BIFROST_MESSAGE_BLEND:
+        case BIFROST_MESSAGE_TILE:
+        case BIFROST_MESSAGE_Z_STENCIL:
+        case BIFROST_MESSAGE_ATEST:
+        case BIFROST_MESSAGE_JOB:
+        case BIFROST_MESSAGE_64BIT:
+                /* Nothing to do */
+                break;
+        };
+
+}
+
 static void
 bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
 {
-        unsigned nr_clauses = 0, nr_tuples = 0, nr_ins = 0;
+        struct bi_stats stats = { 0 };
 
-        /* Count instructions, clauses, and tuples */
+        /* Count instructions, clauses, and tuples. Also attempt to construct
+         * normalized execution engine cycle counts, using the following ratio:
+         *
+         * 24 arith tuples/cycle
+         * 2 texture messages/cycle
+         * 16 x 16-bit varying channels interpolated/cycle
+         * 1 load store message/cycle
+         *
+         * These numbers seem to match Arm Mobile Studio's heuristic. The real
+         * cycle counts are surely more complicated.
+         */
+
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
 
                 bi_foreach_clause_in_block(block, clause) {
-                        nr_clauses++;
-                        nr_tuples += clause->tuple_count;
+                        stats.nr_clauses++;
+                        stats.nr_tuples += clause->tuple_count;
 
-                        for (unsigned i = 0; i < clause->tuple_count; ++i) {
-                                if (clause->tuples[i].fma)
-                                        nr_ins++;
-
-                                if (clause->tuples[i].add)
-                                        nr_ins++;
-                        }
+                        for (unsigned i = 0; i < clause->tuple_count; ++i)
+                                bi_count_tuple_stats(clause, &clause->tuples[i], &stats);
                 }
         }
+
+        float cycles_arith = ((float) stats.nr_arith) / 24.0;
+        float cycles_texture = ((float) stats.nr_texture) / 2.0;
+        float cycles_varying = ((float) stats.nr_varying) / 16.0;
+        float cycles_ldst = ((float) stats.nr_ldst) / 1.0;
+
+        float cycles_message = MAX3(cycles_texture, cycles_varying, cycles_ldst);
+        float cycles_bound = MAX2(cycles_arith, cycles_message);
 
         /* Thread count and register pressure are traded off only on v7 */
         bool full_threads = (ctx->arch == 7 && ctx->info->work_reg_count <= 32);
@@ -2913,12 +2984,15 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
 
         fprintf(stderr, "%s - %s shader: "
                         "%u inst, %u tuples, %u clauses, "
+                        "%f cycles, %f arith, %f texture, %f vary, %f ldst, "
                         "%u quadwords, %u threads, %u loops, "
                         "%u:%u spills:fills\n",
                         ctx->nir->info.label ?: "",
                         ctx->inputs->is_blend ? "PAN_SHADER_BLEND" :
                         gl_shader_stage_name(ctx->stage),
-                        nr_ins, nr_tuples, nr_clauses,
+                        stats.nr_ins, stats.nr_tuples, stats.nr_clauses,
+                        cycles_bound, cycles_arith, cycles_texture,
+                        cycles_varying, cycles_ldst,
                         size / 16, nr_threads,
                         ctx->loop_count,
                         ctx->spills, ctx->fills);
