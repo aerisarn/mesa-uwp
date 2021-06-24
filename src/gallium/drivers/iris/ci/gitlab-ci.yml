@@ -128,13 +128,13 @@ iris-glk-egl:
     HWCI_START_XORG: 1
     DEQP_VER: egl
 
-iris-amly-gles2:
+.iris-amly-gles2:
   extends:
     - .iris-amly-test
   variables:
     DEQP_VER: gles2
 
-iris-amly-gles3:
+.iris-amly-gles3:
   extends:
     - .iris-amly-test
     - .test-manual-mr
@@ -143,7 +143,7 @@ iris-amly-gles3:
     DEQP_EXPECTED_RENDERER: AML
     DEQP_FRACTION: 2
 
-iris-amly-gles31:
+.iris-amly-gles31:
   extends:
     - .iris-amly-test
     - .test-manual-mr
@@ -152,13 +152,13 @@ iris-amly-gles31:
     DEQP_EXPECTED_RENDERER: AML
     DEQP_FRACTION: 2
 
-iris-amly-gl:
+.iris-amly-gl:
   extends:
     - .iris-amly-test
   variables:
     DEQP_VER: gl46
 
-iris-amly-egl:
+.iris-amly-egl:
   extends:
     - .iris-amly-test
   variables:
@@ -166,7 +166,7 @@ iris-amly-egl:
     HWCI_START_XORG: 1
     DEQP_VER: egl
 
-iris-amly-piglit:
+.iris-amly-piglit:
   extends:
     - .iris-amly-test
     - .lava-piglit
@@ -204,7 +204,7 @@ iris-glk-traces:
     - .iris-glk-test
     - .iris-traces
 
-iris-amly-traces:
+.iris-amly-traces:
   variables:
     GPU_VERSION: intel-amly
   extends:
