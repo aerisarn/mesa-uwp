@@ -526,7 +526,7 @@ tu_timeline_finish(struct tu_device *device,
    list_for_each_entry_safe(struct tu_timeline_point, point,
                             &timeline->free_points, link) {
       list_del(&point->link);
-      ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+      drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
             &(struct drm_syncobj_destroy) { .handle = point->syncobj });
 
       vk_free(&device->vk.alloc, point);
@@ -534,7 +534,7 @@ tu_timeline_finish(struct tu_device *device,
    list_for_each_entry_safe(struct tu_timeline_point, point,
                             &timeline->points, link) {
       list_del(&point->link);
-      ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+      drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
             &(struct drm_syncobj_destroy) { .handle = point->syncobj });
       vk_free(&device->vk.alloc, point);
    }
@@ -562,7 +562,7 @@ sync_create(VkDevice _device,
       if (signaled)
          create.flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
 
-      int ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
+      int ret = drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
       if (ret) {
          vk_free2(&device->vk.alloc, pAllocator, sync);
          return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -588,7 +588,7 @@ static void
 sync_set_temporary(struct tu_device *device, struct tu_syncobj *sync, uint32_t syncobj)
 {
    if (sync->binary.temporary) {
-      ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+      drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
             &(struct drm_syncobj_destroy) { .handle = sync->binary.temporary });
    }
    sync->binary.temporary = syncobj;
@@ -604,7 +604,7 @@ sync_destroy(VkDevice _device, struct tu_syncobj *sync, const VkAllocationCallba
 
    if (sync->type == TU_SEMAPHORE_BINARY) {
       sync_set_temporary(device, sync, 0);
-      ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+      drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
             &(struct drm_syncobj_destroy) { .handle = sync->binary.permanent });
    } else {
       tu_timeline_finish(device, &sync->timeline);
@@ -623,12 +623,12 @@ sync_import(VkDevice _device, struct tu_syncobj *sync, bool temporary, bool sync
       uint32_t *dst = temporary ? &sync->binary.temporary : &sync->binary.permanent;
 
       struct drm_syncobj_handle handle = { .fd = fd };
-      ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &handle);
+      ret = drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &handle);
       if (ret)
          return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
       if (*dst) {
-         ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+         drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
                &(struct drm_syncobj_destroy) { .handle = *dst });
       }
       *dst = handle.handle;
@@ -641,18 +641,18 @@ sync_import(VkDevice _device, struct tu_syncobj *sync, bool temporary, bool sync
       if (fd == -1)
          create.flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
 
-      ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
+      ret = drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
       if (ret)
          return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
       if (fd != -1) {
-         ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &(struct drm_syncobj_handle) {
+         ret = drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &(struct drm_syncobj_handle) {
             .fd = fd,
             .handle = create.handle,
             .flags = DRM_SYNCOBJ_FD_TO_HANDLE_FLAGS_IMPORT_SYNC_FILE,
          });
          if (ret) {
-            ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+            drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
                   &(struct drm_syncobj_destroy) { .handle = create.handle });
             return VK_ERROR_INVALID_EXTERNAL_HANDLE;
          }
@@ -675,7 +675,7 @@ sync_export(VkDevice _device, struct tu_syncobj *sync, bool sync_fd, int *p_fd)
       .flags = COND(sync_fd, DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE),
       .fd = -1,
    };
-   int ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
+   int ret = drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
    if (ret)
       return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
@@ -1145,7 +1145,7 @@ tu_timeline_add_point_locked(struct tu_device *device,
 
       struct drm_syncobj_create create = {};
 
-      int ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
+      int ret = drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
       if (ret) {
          vk_free(&device->vk.alloc, *point);
          return vk_error(device->instance, VK_ERROR_DEVICE_LOST);
@@ -1320,7 +1320,7 @@ tu_QueueSubmit(VkQueue _queue,
 
    if (!submitCount && fence) {
       /* signal fence imemediately since we don't have a submit to do it */
-      ioctl(queue->device->fd, DRM_IOCTL_SYNCOBJ_SIGNAL, &(struct drm_syncobj_array) {
+      drmIoctl(queue->device->fd, DRM_IOCTL_SYNCOBJ_SIGNAL, &(struct drm_syncobj_array) {
          .handles = (uintptr_t) (uint32_t[]) { fence->binary.temporary ?: fence->binary.permanent },
          .count_handles = 1,
       });
@@ -1367,7 +1367,7 @@ drm_syncobj_wait(struct tu_device *device,
                  const uint32_t *handles, uint32_t count_handles,
                  int64_t timeout_nsec, bool wait_all)
 {
-   int ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &(struct drm_syncobj_wait) {
+   int ret = drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &(struct drm_syncobj_wait) {
       .handles = (uint64_t) (uintptr_t) handles,
       .count_handles = count_handles,
       .timeout_nsec = timeout_nsec,
@@ -1440,7 +1440,7 @@ tu_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
       handles[i] = fence->binary.permanent;
    }
 
-   ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_RESET, &(struct drm_syncobj_array) {
+   ret = drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_RESET, &(struct drm_syncobj_array) {
       .handles = (uint64_t) (uintptr_t) handles,
       .count_handles = fenceCount,
    });
@@ -1478,7 +1478,7 @@ tu_signal_fences(struct tu_device *device, struct tu_syncobj *fence1, struct tu_
    if (!count)
       return 0;
 
-   return ioctl(device->fd, DRM_IOCTL_SYNCOBJ_SIGNAL, &(struct drm_syncobj_array) {
+   return drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_SIGNAL, &(struct drm_syncobj_array) {
       .handles = (uintptr_t) handles,
       .count_handles = count
    });
@@ -1490,7 +1490,7 @@ tu_syncobj_to_fd(struct tu_device *device, struct tu_syncobj *sync)
    struct drm_syncobj_handle handle = { .handle = sync->binary.permanent };
    int ret;
 
-   ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
+   ret = drmIoctl(device->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
 
    return ret ? -1 : handle.fd;
 }
