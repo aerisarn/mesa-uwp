@@ -432,6 +432,7 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
                     struct bo_cache_bucket *bucket,
                     uint32_t alignment,
                     enum iris_memory_zone memzone,
+                    enum iris_mmap_mode mmap_mode,
                     unsigned flags,
                     bool match_zone)
 {
@@ -441,6 +442,12 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
    struct iris_bo *bo = NULL;
 
    list_for_each_entry_safe(struct iris_bo, cur, &bucket->head, head) {
+      /* Find one that's got the right mapping type.  We used to swap maps
+       * around but the kernel doesn't allow this on discrete GPUs.
+       */
+      if (mmap_mode != cur->mmap_mode)
+         continue;
+
       /* Try a little harder to find one that's already in the right memzone */
       if (match_zone && memzone != iris_memzone_for_address(cur->gtt_offset))
          continue;
@@ -607,7 +614,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
       bucket ? bucket->size : MAX2(ALIGN(size, page_size), page_size);
 
    bool is_coherent = bufmgr->has_llc || (flags & BO_ALLOC_COHERENT);
-   enum iris_mmap_mode desired_mmap_mode =
+   enum iris_mmap_mode mmap_mode =
       !local && is_coherent ? IRIS_MMAP_WB : IRIS_MMAP_WC;
 
    mtx_lock(&bufmgr->lock);
@@ -615,12 +622,13 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    /* Get a buffer out of the cache if available.  First, we try to find
     * one with a matching memory zone so we can avoid reallocating VMA.
     */
-   bo = alloc_bo_from_cache(bufmgr, bucket, alignment, memzone, flags, true);
+   bo = alloc_bo_from_cache(bufmgr, bucket, alignment, memzone, mmap_mode,
+                            flags, true);
 
    /* If that fails, we try for any cached BO, without matching memzone. */
    if (!bo) {
-      bo = alloc_bo_from_cache(bufmgr, bucket, alignment, memzone, flags,
-                               false);
+      bo = alloc_bo_from_cache(bufmgr, bucket, alignment, memzone, mmap_mode,
+                               flags, false);
    }
 
    mtx_unlock(&bufmgr->lock);
@@ -653,10 +661,8 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    if (memzone < IRIS_MEMZONE_OTHER)
       bo->kflags |= EXEC_OBJECT_CAPTURE;
 
-   if (bo->mmap_mode != desired_mmap_mode && bo->map)
-      bo_unmap(bo);
-
-   bo->mmap_mode = desired_mmap_mode;
+   assert(bo->map == NULL || bo->mmap_mode == mmap_mode);
+   bo->mmap_mode = mmap_mode;
 
    if ((flags & BO_ALLOC_COHERENT) && !bo->cache_coherent) {
       struct drm_i915_gem_caching arg = {
