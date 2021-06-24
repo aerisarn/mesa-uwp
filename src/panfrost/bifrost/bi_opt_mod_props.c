@@ -23,6 +23,7 @@
  */
 
 #include "compiler.h"
+#include "bi_builder.h"
 
 static bool
 bi_takes_fabs(bi_instr *I, bi_index repl, unsigned s)
@@ -182,12 +183,45 @@ bi_is_fclamp(bi_instr *I)
 static bool
 bi_optimizer_clamp(bi_instr *I, bi_instr *use)
 {
+        if (bi_opcode_props[use->op].size != bi_opcode_props[I->op].size) return false;
         if (!bi_is_fclamp(use)) return false;
         if (!bi_takes_clamp(I)) return false;
         if (use->src[0].neg || use->src[0].abs) return false;
 
         I->clamp = bi_compose_clamp(I->clamp, use->clamp);
         I->dest[0] = use->dest[0];
+        return true;
+}
+
+static bool
+bi_is_var_tex(bi_instr *var, bi_instr *tex)
+{
+        return (var->op == BI_OPCODE_LD_VAR_IMM) &&
+                (tex->op == BI_OPCODE_TEXS_2D_F16 || tex->op == BI_OPCODE_TEXS_2D_F32) &&
+                (var->register_format == BI_REGISTER_FORMAT_F32) &&
+                ((var->sample == BI_SAMPLE_CENTER && var->update == BI_UPDATE_STORE) ||
+                 (var->sample == BI_SAMPLE_NONE && var->update == BI_UPDATE_RETRIEVE)) &&
+                (tex->texture_index == tex->sampler_index) &&
+                (tex->texture_index < 4) &&
+                (var->index < 8);
+}
+
+static bool
+bi_optimizer_var_tex(bi_context *ctx, bi_instr *var, bi_instr *tex)
+{
+        if (!bi_is_var_tex(var, tex)) return false;
+
+        /* Construct the corresponding VAR_TEX intruction */
+        bi_builder b = bi_init_builder(ctx, bi_after_instr(var));
+
+        bi_instr *I = bi_var_tex_f32_to(&b, tex->dest[0], tex->lod_mode,
+                        var->sample, var->update, tex->texture_index, var->index);
+        I->skip = tex->skip;
+
+        if (tex->op == BI_OPCODE_TEXS_2D_F16)
+                I->op = BI_OPCODE_VAR_TEX_F16;
+
+        /* Dead code elimination will clean up for us */
         return true;
 }
 
@@ -203,7 +237,7 @@ bi_opt_mod_prop_backward(bi_context *ctx)
                         if (bi_is_ssa(I->src[s])) {
                                 unsigned v = bi_word_node(I->src[s]);
 
-                                if (uses[v])
+                                if (uses[v] && uses[v] != I)
                                         BITSET_SET(multiple, v);
                                 else
                                         uses[v] = I;
@@ -218,11 +252,12 @@ bi_opt_mod_prop_backward(bi_context *ctx)
                 if (!use || BITSET_TEST(multiple, bi_word_node(I->dest[0])))
                         continue;
 
-                if (bi_opcode_props[use->op].size != bi_opcode_props[I->op].size)
-                        continue;
-
                 /* Destination has a single use, try to propagate */
-                if (bi_optimizer_clamp(I, use)) {
+                bool propagated =
+                        bi_optimizer_clamp(I, use) ||
+                        bi_optimizer_var_tex(ctx, I, use);
+
+                if (propagated) {
                         bi_remove_instruction(use);
                         continue;
                 }
