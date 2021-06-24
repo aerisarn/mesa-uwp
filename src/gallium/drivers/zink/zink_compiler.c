@@ -690,7 +690,10 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
    }
 
    /* TODO: use a separate mem ctx here for ralloc */
-   if (zs->nir->info.stage < MESA_SHADER_FRAGMENT) {
+   switch (zs->nir->info.stage) {
+   case MESA_SHADER_VERTEX:
+   case MESA_SHADER_TESS_EVAL:
+   case MESA_SHADER_GEOMETRY:
       if (zink_vs_key(key)->last_vertex_stage) {
          if (zs->streamout.have_xfb)
             streamout = &zs->streamout;
@@ -702,7 +705,8 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             NIR_PASS_V(nir, lower_drawid);
          }
       }
-   } else if (zs->nir->info.stage == MESA_SHADER_FRAGMENT) {
+      break;
+   case MESA_SHADER_FRAGMENT:
       if (!zink_fs_key(key)->samples &&
           nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
          /* VK will always use gl_SampleMask[] values even if sample count is 0,
@@ -723,6 +727,8 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
          NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key(key)->coord_replace_bits,
                     false, zink_fs_key(key)->coord_replace_yinvert);
       }
+      break;
+   default: break;
    }
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
