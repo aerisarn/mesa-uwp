@@ -459,6 +459,9 @@ maybe_init(int fd)
          fail_if(device == -1, "Unknown platform '%s'\n", value);
          device_override = true;
       } else if (!strcmp(key, "file")) {
+         free(output_filename);
+         if (output_file)
+            fclose(output_file);
          output_filename = strdup(value);
          output_file = fopen(output_filename, "w+");
          fail_if(output_file == NULL,
