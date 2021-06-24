@@ -104,7 +104,7 @@ endif
 if with_gallium_virgl or with_virtio_vk
   subdir('virtio')
 endif
-if with_microsoft_clc or with_gallium_d3d12 or with_spirv_to_dxil
+if with_microsoft_clc or with_gallium_d3d12 or with_spirv_to_dxil or with_microsoft_vk
   subdir('microsoft')
 endif
 if with_gallium_nouveau
