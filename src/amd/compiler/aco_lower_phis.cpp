@@ -166,20 +166,33 @@ init_any_pred_defined(Program* program, ssa_state* state, Block* block, aco_ptr<
    }
 
    unsigned start = block->logical_preds[0];
+   unsigned end = block->index;
 
    /* for loop exit phis, start at the loop header */
-   const bool loop_exit = block->kind & block_kind_loop_exit;
-   while (loop_exit && program->blocks[start - 1].loop_nest_depth >= state->loop_nest_depth)
-      start--;
-
-   for (unsigned i = 0; i < 1u + loop_exit; i++) {
-      for (unsigned j = start; j < block->index; j++) {
-         if (!state->any_pred_defined[j])
-            continue;
-         for (unsigned succ : program->blocks[j].linear_succs)
-            state->any_pred_defined[succ] = true;
-      }
+   if (block->kind & block_kind_loop_exit) {
+      while (program->blocks[start - 1].loop_nest_depth >= state->loop_nest_depth)
+         start--;
+      /* If the loop-header has a back-edge, we need to insert a phi.
+       * This will contain a defined value */
+      if (program->blocks[start].linear_preds.size() > 1)
+         state->any_pred_defined[start] = true;
    }
+   /* for loop header phis, end at the loop exit */
+   if (block->kind & block_kind_loop_header) {
+      while (program->blocks[end].loop_nest_depth >= state->loop_nest_depth)
+         end++;
+      /* don't propagate the incoming value */
+      state->any_pred_defined[block->index] = false;
+   }
+
+   for (unsigned j = start; j < end; j++) {
+      if (!state->any_pred_defined[j])
+         continue;
+      for (unsigned succ : program->blocks[j].linear_succs)
+         state->any_pred_defined[succ] = true;
+   }
+
+   state->any_pred_defined[block->index] = false;
 }
 
 void
