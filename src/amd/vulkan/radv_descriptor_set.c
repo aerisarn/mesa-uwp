@@ -578,7 +578,6 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
    set->header.buffer_count = buffer_count;
    uint32_t layout_size = layout->size;
    if (variable_count) {
-      assert(layout->has_variable_descriptors);
       uint32_t stride = layout->binding[layout->binding_count - 1].size;
       if (layout->binding[layout->binding_count - 1].type ==
           VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT)
@@ -885,7 +884,7 @@ radv_AllocateDescriptorSets(VkDevice _device, const VkDescriptorSetAllocateInfo 
       RADV_FROM_HANDLE(radv_descriptor_set_layout, layout, pAllocateInfo->pSetLayouts[i]);
 
       const uint32_t *variable_count = NULL;
-      if (variable_counts) {
+      if (layout->has_variable_descriptors && variable_counts) {
          if (i < variable_counts->descriptorSetCount)
             variable_count = variable_counts->pDescriptorCounts + i;
          else
