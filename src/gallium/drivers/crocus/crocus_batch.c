@@ -893,9 +893,9 @@ submit_batch(struct crocus_batch *batch)
 
       /* Update brw_bo::gtt_offset */
       if (batch->validation_list[i].offset != bo->gtt_offset) {
-         DBG("BO %d migrated: 0x%" PRIx64 " -> 0x%llx\n",
+         DBG("BO %d migrated: 0x%" PRIx64 " -> 0x%" PRIx64 "\n",
              bo->gem_handle, bo->gtt_offset,
-             batch->validation_list[i].offset);
+             (uint64_t)batch->validation_list[i].offset);
          assert(!(bo->kflags & EXEC_OBJECT_PINNED));
          bo->gtt_offset = batch->validation_list[i].offset;
       }
