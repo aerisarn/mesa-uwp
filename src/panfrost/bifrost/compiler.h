@@ -364,11 +364,6 @@ typedef struct {
                 bool format; /* LEA_TEX */
 
                 struct {
-                        bool skip; /* VAR_TEX, TEXS, TEXC */
-                        bool lod_mode; /* TEXS */
-                };
-
-                struct {
                         enum bi_special special; /* FADD_RSCALE, FMA_RSCALE */
                         enum bi_round round; /* FMA, converts, FADD, _RSCALE, etc */
                 };
@@ -390,9 +385,11 @@ typedef struct {
                 };
 
                 struct {
-                        enum bi_sample sample; /* LD_VAR */
-                        enum bi_update update; /* LD_VAR */
+                        enum bi_sample sample; /* VAR_TEX, LD_VAR */
+                        enum bi_update update; /* VAR_TEX, LD_VAR */
                         enum bi_varying_name varying_name; /* LD_VAR_SPECIAL */
+                        bool skip; /* VAR_TEX, TEXS, TEXC */
+                        bool lod_mode; /* VAR_TEX, TEXS */
                 };
 
                 struct {
