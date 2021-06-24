@@ -954,6 +954,8 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
    if (display->dmabuf.wl_dmabuf) {
       struct zwp_linux_buffer_params_v1 *params =
          zwp_linux_dmabuf_v1_create_params(display->dmabuf.wl_dmabuf);
+      if (!params)
+         goto fail_image;
 
       for (int i = 0; i < image->base.num_planes; i++) {
          zwp_linux_buffer_params_v1_add(params,
