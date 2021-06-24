@@ -146,8 +146,7 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
                                     ctx->gfx_pipeline_state.blend_state &&
                                     ctx->gfx_pipeline_state.blend_state->dual_src_blend &&
                                     ctx->gfx_pipeline_state.blend_state->attachments[1].blendEnable;
-   if (((shaders[PIPE_SHADER_GEOMETRY] && shaders[PIPE_SHADER_GEOMETRY]->nir->info.gs.output_primitive == GL_POINTS) ||
-       ctx->gfx_prim_mode == PIPE_PRIM_POINTS) &&
+   if (ctx->gfx_pipeline_state.has_points &&
        ctx->rast_state &&ctx->rast_state->base.point_quad_rasterization && ctx->rast_state->base.sprite_coord_enable) {
       fs_key->coord_replace_bits = ctx->rast_state->base.sprite_coord_enable;
       fs_key->coord_replace_yinvert = !!ctx->rast_state->base.sprite_coord_mode;
@@ -968,17 +967,22 @@ zink_bind_gs_state(struct pipe_context *pctx,
                    void *cso)
 {
    struct zink_context *ctx = zink_context(pctx);
+   bool had_points = ctx->gfx_stages[PIPE_SHADER_GEOMETRY] ? ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->nir->info.gs.output_primitive == GL_POINTS : false;
    if (!!ctx->gfx_stages[PIPE_SHADER_GEOMETRY] != !!cso)
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX) |
                                   BITFIELD_BIT(PIPE_SHADER_TESS_EVAL);
    bind_stage(ctx, PIPE_SHADER_GEOMETRY, cso);
-   if (cso)
+   if (cso) {
       ctx->last_vertex_stage = cso;
-   else {
+      if (!had_points && ctx->last_vertex_stage->nir->info.gs.output_primitive == GL_POINTS)
+         ctx->gfx_pipeline_state.has_points++;
+   } else {
       if (ctx->gfx_stages[PIPE_SHADER_TESS_EVAL])
          ctx->last_vertex_stage = ctx->gfx_stages[PIPE_SHADER_TESS_EVAL];
       else
          ctx->last_vertex_stage = ctx->gfx_stages[PIPE_SHADER_VERTEX];
+      if (had_points)
+         ctx->gfx_pipeline_state.has_points--;
    }
 }
 
