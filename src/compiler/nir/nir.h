@@ -3951,6 +3951,8 @@ nir_instr_remove(nir_instr *instr)
    return cursor;
 }
 
+nir_cursor nir_instr_remove_and_dce(nir_instr *instr);
+
 /** @} */
 
 nir_ssa_def *nir_instr_ssa_def(nir_instr *instr);

@@ -28,6 +28,7 @@
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_control_flow_private.h"
+#include "nir_worklist.h"
 #include "util/half_float.h"
 #include <limits.h>
 #include <assert.h>
@@ -1067,6 +1068,75 @@ void nir_instr_remove_v(nir_instr *instr)
       nir_jump_instr *jump_instr = nir_instr_as_jump(instr);
       nir_handle_remove_jump(instr->block, jump_instr->type);
    }
+}
+
+static bool nir_instr_remove_and_dce_live_cb(nir_ssa_def *def, void *state)
+{
+   bool *live = state;
+
+   if (!nir_ssa_def_is_unused(def)) {
+      *live = true;
+      return false;
+   } else {
+      return true;
+   }
+}
+
+static bool nir_instr_remove_and_dce_is_live(nir_instr *instr)
+{
+   /* Note: don't have to worry about jumps because they don't have dests to
+    * become unused.
+    */
+   if (instr->type == nir_instr_type_intrinsic) {
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+      const nir_intrinsic_info *info = &nir_intrinsic_infos[intr->intrinsic];
+      if (!(info->flags & NIR_INTRINSIC_CAN_ELIMINATE))
+         return true;
+   }
+
+   bool live = false;
+   nir_foreach_ssa_def(instr, nir_instr_remove_and_dce_live_cb, &live);
+   return live;
+}
+
+/**
+ * Removes an instruction and any SSA defs that it used that are now dead, returning a nir_cursor
+ * where the instruction previously was.
+ */
+nir_cursor
+nir_instr_remove_and_dce(nir_instr *instr)
+{
+   nir_instr_worklist *worklist = nir_instr_worklist_create();
+
+   nir_instr_worklist_add_ssa_srcs(worklist, instr);
+   nir_cursor c = nir_instr_remove(instr);
+
+   nir_instr *dce_instr;
+   while ((dce_instr = nir_instr_worklist_pop_head(worklist))) {
+      /* Instrs can be in the worklist multiple times, so check
+       * that we haven't already removed this one.
+       */
+      if (exec_node_is_tail_sentinel(&dce_instr->node))
+         continue;
+
+      if (!nir_instr_remove_and_dce_is_live(dce_instr)) {
+         nir_instr_worklist_add_ssa_srcs(worklist, dce_instr);
+
+         /* If we're removing the instr where our cursor is, then we have to
+          * point the cursor elsewhere.
+          */
+         if ((c.option == nir_cursor_before_instr ||
+              c.option == nir_cursor_after_instr) &&
+             c.instr == dce_instr)
+            c = nir_instr_remove(dce_instr);
+         else
+            nir_instr_remove(dce_instr);
+      }
+   }
+
+   nir_instr_worklist_destroy(worklist);
+
+   return c;
 }
 
 /*@}*/
