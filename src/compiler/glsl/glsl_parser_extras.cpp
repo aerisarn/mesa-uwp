@@ -329,6 +329,10 @@ _mesa_glsl_parse_state::_mesa_glsl_parse_state(struct gl_context *_ctx,
    this->bindless_image_specified = false;
    this->bound_sampler_specified = false;
    this->bound_image_specified = false;
+
+   this->language_version = this->forced_language_version ?
+      this->forced_language_version : this->language_version;
+   set_valid_gl_and_glsl_versions(NULL);
 }
 
 /**
@@ -380,6 +384,51 @@ _mesa_glsl_parse_state::check_version(unsigned required_glsl_version,
                     requirement_string);
 
    return false;
+}
+
+/**
+ * This makes sure any GLSL versions defined or overridden are valid. If not it
+ * sets a valid value.
+ */
+void
+_mesa_glsl_parse_state::set_valid_gl_and_glsl_versions(YYLTYPE *locp)
+{
+   bool supported = false;
+   for (unsigned i = 0; i < this->num_supported_versions; i++) {
+      if (this->supported_versions[i].ver == this->language_version
+          && this->supported_versions[i].es == this->es_shader) {
+         this->gl_version = this->supported_versions[i].gl_ver;
+         supported = true;
+         break;
+      }
+   }
+
+   if (!supported) {
+      if (locp) {
+         _mesa_glsl_error(locp, this, "%s is not supported. "
+                          "Supported versions are: %s",
+                          this->get_version_string(),
+                          this->supported_version_string);
+      }
+
+      /* On exit, the language_version must be set to a valid value.
+       * Later calls to _mesa_glsl_initialize_types will misbehave if
+       * the version is invalid.
+       */
+      switch (this->ctx->API) {
+      case API_OPENGL_COMPAT:
+      case API_OPENGL_CORE:
+	 this->language_version = this->ctx->Const.GLSLVersion;
+	 break;
+
+      case API_OPENGLES:
+	 FALLTHROUGH;
+
+      case API_OPENGLES2:
+	 this->language_version = 100;
+	 break;
+      }
+   }
 }
 
 /**
@@ -447,41 +496,7 @@ _mesa_glsl_parse_state::process_version_directive(YYLTYPE *locp, int version,
                           this->language_version == 140) ||
                          (!this->es_shader && this->language_version < 140);
 
-   bool supported = false;
-   for (unsigned i = 0; i < this->num_supported_versions; i++) {
-      if (this->supported_versions[i].ver == this->language_version
-          && this->supported_versions[i].es == this->es_shader) {
-         this->gl_version = this->supported_versions[i].gl_ver;
-         supported = true;
-         break;
-      }
-   }
-
-   if (!supported) {
-      _mesa_glsl_error(locp, this, "%s is not supported. "
-                       "Supported versions are: %s",
-                       this->get_version_string(),
-                       this->supported_version_string);
-
-      /* On exit, the language_version must be set to a valid value.
-       * Later calls to _mesa_glsl_initialize_types will misbehave if
-       * the version is invalid.
-       */
-      switch (this->ctx->API) {
-      case API_OPENGL_COMPAT:
-      case API_OPENGL_CORE:
-	 this->language_version = this->ctx->Const.GLSLVersion;
-	 break;
-
-      case API_OPENGLES:
-	 assert(!"Should not get here.");
-	 FALLTHROUGH;
-
-      case API_OPENGLES2:
-	 this->language_version = 100;
-	 break;
-      }
-   }
+   set_valid_gl_and_glsl_versions(locp);
 }
 
 

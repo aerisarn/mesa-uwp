@@ -368,6 +368,8 @@ struct _mesa_glsl_parse_state {
              is_version(400, 0);
    }
 
+   void set_valid_gl_and_glsl_versions(YYLTYPE *locp);
+
    void process_version_directive(YYLTYPE *locp, int version,
                                   const char *ident);
 
