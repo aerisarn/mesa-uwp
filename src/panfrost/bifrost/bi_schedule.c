@@ -355,6 +355,17 @@ bi_can_fma(bi_instr *ins)
         return bi_opcode_props[ins->op].fma;
 }
 
+static bool
+bi_impacted_fadd_widens(bi_instr *I)
+{
+        enum bi_swizzle swz0 = I->src[0].swizzle;
+        enum bi_swizzle swz1 = I->src[1].swizzle;
+
+        return (swz0 == BI_SWIZZLE_H00 && swz1 == BI_SWIZZLE_H11) ||
+                (swz0 == BI_SWIZZLE_H11 && swz1 == BI_SWIZZLE_H11) ||
+                (swz0 == BI_SWIZZLE_H11 && swz1 == BI_SWIZZLE_H00);
+}
+
 ASSERTED static bool
 bi_can_add(bi_instr *ins)
 {
@@ -365,6 +376,10 @@ bi_can_add(bi_instr *ins)
         /* +FCMP.v2f16 lacks abs modifier, use *FCMP.v2f16 instead */
         if (ins->op == BI_OPCODE_FCMP_V2F16 && (ins->src[0].abs || ins->src[1].abs))
                 return false;
+
+        /* +FADD.f32 has restricted widens, use +FADD.f32 for the full set */
+        if (ins->op == BI_OPCODE_FADD_F32 && bi_impacted_fadd_widens(ins))
+               return false;
 
         /* TODO: some additional fp16 constraints */
         return bi_opcode_props[ins->op].add;
