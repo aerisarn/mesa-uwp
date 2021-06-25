@@ -1145,7 +1145,7 @@ update_from_masks(struct intel_device_info *devinfo, uint32_t slice_mask,
 
    topology->max_eus_per_subslice = num_eu_per_subslice;
    topology->eu_offset = topology->subslice_offset +
-      DIV_ROUND_UP(topology->max_subslices, 8);
+      topology->max_slices * DIV_ROUND_UP(topology->max_subslices, 8);
    topology->eu_stride = DIV_ROUND_UP(num_eu_per_subslice, 8);
 
    /* Set slice mask in topology */
