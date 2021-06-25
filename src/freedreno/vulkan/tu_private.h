@@ -407,6 +407,15 @@ struct tu_device
     * new submit is executed. */
    pthread_cond_t timeline_cond;
    pthread_mutex_t submit_mutex;
+
+#ifdef ANDROID
+   const void *gralloc;
+   enum {
+      TU_GRALLOC_UNKNOWN,
+      TU_GRALLOC_CROS,
+      TU_GRALLOC_OTHER,
+   } gralloc_type;
+#endif
 };
 
 VkResult _tu_device_set_lost(struct tu_device *device,
