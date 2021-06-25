@@ -1586,12 +1586,8 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       }
    }
 
-   nir_foreach_uniform_variable(var, shader) {
+   nir_foreach_image_variable(var, shader) {
       const struct glsl_type *glsl_type = glsl_without_array(var->type);
-
-      if (!glsl_type_is_image(glsl_type))
-         continue;
-
       enum glsl_sampler_dim dim = glsl_get_sampler_dim(glsl_type);
 
       const uint32_t set = var->data.descriptor_set;
