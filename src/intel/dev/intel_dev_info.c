@@ -87,7 +87,7 @@ main(int argc, char *argv[])
             fprintf(stdout, "   slice%u.%s%u: ", s, subslice_name, ss);
             if (intel_device_info_subslice_available(&devinfo, s, ss)) {
                n_ss++;
-               for (unsigned eu = 0; eu < devinfo.max_eu_per_subslice; eu++) {
+               for (unsigned eu = 0; eu < devinfo.max_eus_per_subslice; eu++) {
                   n_eus += intel_device_info_eu_available(&devinfo, s, ss, eu) ? 1 : 0;
                   fprintf(stdout, "%s", intel_device_info_eu_available(&devinfo, s, ss, eu) ? "1" : "0");
                }
@@ -104,7 +104,6 @@ main(int argc, char *argv[])
 
       fprintf(stdout, "   slices: %u\n", n_s);
       fprintf(stdout, "   %s: %u\n", subslice_name, n_ss);
-      fprintf(stdout, "   EU per %s: %u\n", subslice_name, devinfo.num_eu_per_subslice);
       fprintf(stdout, "   EUs: %u\n", n_eus);
       fprintf(stdout, "   EU threads: %u\n", n_eus * devinfo.num_thread_per_eu);
 

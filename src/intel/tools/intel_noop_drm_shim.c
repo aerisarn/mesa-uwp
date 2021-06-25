@@ -242,7 +242,7 @@ i915_ioctl_get_param(int fd, unsigned long request, void *arg)
    case I915_PARAM_EU_TOTAL:
       *gp->value = 0;
       for (uint32_t s = 0; s < i915.devinfo.num_slices; s++)
-         *gp->value += i915.devinfo.num_subslices[s] * i915.devinfo.num_eu_per_subslice;
+         *gp->value += i915.devinfo.num_subslices[s] * i915.devinfo.max_eus_per_subslice;
       return 0;
    case I915_PARAM_PERF_REVISION:
       *gp->value = 3;
@@ -268,7 +268,7 @@ query_write_topology(struct drm_i915_query_item *item)
       DIV_ROUND_UP(i915.devinfo.num_slices, 8) +
       i915.devinfo.num_slices * DIV_ROUND_UP(i915.devinfo.num_subslices[0], 8) +
       i915.devinfo.num_slices * i915.devinfo.num_subslices[0] *
-      DIV_ROUND_UP(i915.devinfo.num_eu_per_subslice, 8);
+      DIV_ROUND_UP(i915.devinfo.max_eus_per_subslice, 8);
 
    if (item->length == 0) {
       item->length = length;
@@ -287,7 +287,7 @@ query_write_topology(struct drm_i915_query_item *item)
 
    info->max_slices = i915.devinfo.num_slices;
    info->max_subslices = i915.devinfo.num_subslices[0];
-   info->max_eus_per_subslice = i915.devinfo.num_eu_per_subslice;
+   info->max_eus_per_subslice = i915.devinfo.max_eus_per_subslice;
 
    info->subslice_offset = DIV_ROUND_UP(i915.devinfo.num_slices, 8);
    info->subslice_stride = DIV_ROUND_UP(i915.devinfo.num_subslices[0], 8);

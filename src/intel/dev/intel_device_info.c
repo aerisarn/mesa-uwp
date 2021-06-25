@@ -90,7 +90,7 @@ static const struct intel_device_info intel_device_info_gfx3 = {
    .simulator_id = -1,
    .num_slices = 1,
    .num_subslices = { 1, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .num_thread_per_eu = 4,
    .timestamp_frequency = 12500000,
    .cs_prefetch_size = 512,
@@ -102,7 +102,7 @@ static const struct intel_device_info intel_device_info_i965 = {
    .has_negative_rhw_bug = true,
    .num_slices = 1,
    .num_subslices = { 1, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .num_thread_per_eu = 4,
    .max_vs_threads = 16,
    .max_gs_threads = 2,
@@ -124,7 +124,7 @@ static const struct intel_device_info intel_device_info_g4x = {
    .platform = INTEL_PLATFORM_G4X,
    .num_slices = 1,
    .num_subslices = { 1, },
-   .num_eu_per_subslice = 10,
+   .max_eus_per_subslice = 10,
    .num_thread_per_eu = 5,
    .max_vs_threads = 32,
    .max_gs_threads = 2,
@@ -145,7 +145,7 @@ static const struct intel_device_info intel_device_info_ilk = {
    .has_surface_tile_offset = true,
    .num_slices = 1,
    .num_subslices = { 1, },
-   .num_eu_per_subslice = 12,
+   .max_eus_per_subslice = 12,
    .num_thread_per_eu = 6,
    .max_vs_threads = 72,
    .max_gs_threads = 32,
@@ -169,7 +169,7 @@ static const struct intel_device_info intel_device_info_snb_gt1 = {
    .needs_unlit_centroid_workaround = true,
    .num_slices = 1,
    .num_subslices = { 1, },
-   .num_eu_per_subslice = 6,
+   .max_eus_per_subslice = 6,
    .num_thread_per_eu = 6, /* Not confirmed */
    .max_vs_threads = 24,
    .max_gs_threads = 21, /* conservative; 24 if rendering disabled. */
@@ -200,7 +200,7 @@ static const struct intel_device_info intel_device_info_snb_gt2 = {
    .needs_unlit_centroid_workaround = true,
    .num_slices = 1,
    .num_subslices = { 1, },
-   .num_eu_per_subslice = 12,
+   .max_eus_per_subslice = 12,
    .num_thread_per_eu = 6, /* Not confirmed */
    .max_vs_threads = 60,
    .max_gs_threads = 60,
@@ -236,7 +236,7 @@ static const struct intel_device_info intel_device_info_ivb_gt1 = {
    GFX7_FEATURES, .platform = INTEL_PLATFORM_IVB, .gt = 1,
    .num_slices = 1,
    .num_subslices = { 1, },
-   .num_eu_per_subslice = 6,
+   .max_eus_per_subslice = 6,
    .num_thread_per_eu = 6,
    .l3_banks = 2,
    .max_vs_threads = 36,
@@ -264,7 +264,7 @@ static const struct intel_device_info intel_device_info_ivb_gt2 = {
    GFX7_FEATURES, .platform = INTEL_PLATFORM_IVB, .gt = 2,
    .num_slices = 1,
    .num_subslices = { 1, },
-   .num_eu_per_subslice = 12,
+   .max_eus_per_subslice = 12,
    .num_thread_per_eu = 8, /* Not sure why this isn't a multiple of
                             * @max_wm_threads ... */
    .l3_banks = 4,
@@ -293,7 +293,7 @@ static const struct intel_device_info intel_device_info_byt = {
    GFX7_FEATURES, .platform = INTEL_PLATFORM_BYT, .gt = 1,
    .num_slices = 1,
    .num_subslices = { 1, },
-   .num_eu_per_subslice = 4,
+   .max_eus_per_subslice = 4,
    .num_thread_per_eu = 8,
    .l3_banks = 1,
    .has_llc = false,
@@ -328,7 +328,7 @@ static const struct intel_device_info intel_device_info_hsw_gt1 = {
    HSW_FEATURES, .gt = 1,
    .num_slices = 1,
    .num_subslices = { 1, },
-   .num_eu_per_subslice = 10,
+   .max_eus_per_subslice = 10,
    .num_thread_per_eu = 7,
    .l3_banks = 2,
    .max_vs_threads = 70,
@@ -356,7 +356,7 @@ static const struct intel_device_info intel_device_info_hsw_gt2 = {
    HSW_FEATURES, .gt = 2,
    .num_slices = 1,
    .num_subslices = { 2, },
-   .num_eu_per_subslice = 10,
+   .max_eus_per_subslice = 10,
    .num_thread_per_eu = 7,
    .l3_banks = 4,
    .max_vs_threads = 280,
@@ -384,7 +384,7 @@ static const struct intel_device_info intel_device_info_hsw_gt3 = {
    HSW_FEATURES, .gt = 3,
    .num_slices = 2,
    .num_subslices = { 2, 2, },
-   .num_eu_per_subslice = 10,
+   .max_eus_per_subslice = 10,
    .num_thread_per_eu = 7,
    .l3_banks = 8,
    .max_vs_threads = 280,
@@ -439,7 +439,7 @@ static const struct intel_device_info intel_device_info_bdw_gt1 = {
    .platform = INTEL_PLATFORM_BDW,
    .num_slices = 1,
    .num_subslices = { 2, },
-   .num_eu_per_subslice = 6,
+   .max_eus_per_subslice = 6,
    .l3_banks = 2,
    .max_cs_threads = 42,
    .urb = {
@@ -463,7 +463,7 @@ static const struct intel_device_info intel_device_info_bdw_gt2 = {
    .platform = INTEL_PLATFORM_BDW,
    .num_slices = 1,
    .num_subslices = { 3, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 4,
    .max_cs_threads = 56,
    .urb = {
@@ -486,7 +486,7 @@ static const struct intel_device_info intel_device_info_bdw_gt3 = {
    .platform = INTEL_PLATFORM_BDW,
    .num_slices = 2,
    .num_subslices = { 3, 3, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 8,
    .max_cs_threads = 56,
    .urb = {
@@ -510,7 +510,7 @@ static const struct intel_device_info intel_device_info_chv = {
    .has_integer_dword_mul = false,
    .num_slices = 1,
    .num_subslices = { 2, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 2,
    .max_vs_threads = 80,
    .max_tcs_threads = 80,
@@ -586,12 +586,12 @@ static const struct intel_device_info intel_device_info_chv = {
 #define GFX9_LP_FEATURES_3X6                       \
    GFX9_LP_FEATURES,                               \
    .num_subslices = { 3, },                        \
-   .num_eu_per_subslice = 6
+   .max_eus_per_subslice = 6
 
 #define GFX9_LP_FEATURES_2X6                       \
    GFX9_LP_FEATURES,                               \
    .num_subslices = { 2, },                        \
-   .num_eu_per_subslice = 6,                       \
+   .max_eus_per_subslice = 6,                       \
    .max_vs_threads = 56,                           \
    .max_tcs_threads = 56,                          \
    .max_tes_threads = 56,                          \
@@ -620,7 +620,7 @@ static const struct intel_device_info intel_device_info_skl_gt1 = {
    .platform = INTEL_PLATFORM_SKL,
    .num_slices = 1,
    .num_subslices = { 2, },
-   .num_eu_per_subslice = 6,
+   .max_eus_per_subslice = 6,
    .l3_banks = 2,
    /* GT1 seems to have a bug in the top of the pipe (VF/VS?) fixed functions
     * leading to some vertices to go missing if we use too much URB.
@@ -634,7 +634,7 @@ static const struct intel_device_info intel_device_info_skl_gt2 = {
    .platform = INTEL_PLATFORM_SKL,
    .num_slices = 1,
    .num_subslices = { 3, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 4,
    .simulator_id = 12,
 };
@@ -644,7 +644,7 @@ static const struct intel_device_info intel_device_info_skl_gt3 = {
    .platform = INTEL_PLATFORM_SKL,
    .num_slices = 2,
    .num_subslices = { 3, 3, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 8,
    .simulator_id = 12,
 };
@@ -654,7 +654,7 @@ static const struct intel_device_info intel_device_info_skl_gt4 = {
    .platform = INTEL_PLATFORM_SKL,
    .num_slices = 3,
    .num_subslices = { 3, 3, 3, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 12,
    /* From the "L3 Allocation and Programming" documentation:
     *
@@ -693,7 +693,7 @@ static const struct intel_device_info intel_device_info_kbl_gt1 = {
    .max_cs_threads = 7 * 6,
    .num_slices = 1,
    .num_subslices = { 2, },
-   .num_eu_per_subslice = 6,
+   .max_eus_per_subslice = 6,
    .l3_banks = 2,
    /* GT1 seems to have a bug in the top of the pipe (VF/VS?) fixed functions
     * leading to some vertices to go missing if we use too much URB.
@@ -711,7 +711,7 @@ static const struct intel_device_info intel_device_info_kbl_gt1_5 = {
    .max_cs_threads = 7 * 6,
    .num_slices = 1,
    .num_subslices = { 3, },
-   .num_eu_per_subslice = 6,
+   .max_eus_per_subslice = 6,
    .l3_banks = 4,
    .simulator_id = 16,
 };
@@ -723,7 +723,7 @@ static const struct intel_device_info intel_device_info_kbl_gt2 = {
 
    .num_slices = 1,
    .num_subslices = { 3, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 4,
    .simulator_id = 16,
 };
@@ -735,7 +735,7 @@ static const struct intel_device_info intel_device_info_kbl_gt3 = {
 
    .num_slices = 2,
    .num_subslices = { 3, 3, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 8,
    .simulator_id = 16,
 };
@@ -757,7 +757,7 @@ static const struct intel_device_info intel_device_info_kbl_gt4 = {
     */
    .num_slices = 3,
    .num_subslices = { 3, 3, 3, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 12,
    .simulator_id = 16,
 };
@@ -783,7 +783,7 @@ static const struct intel_device_info intel_device_info_cfl_gt1 = {
 
    .num_slices = 1,
    .num_subslices = { 2, },
-   .num_eu_per_subslice = 6,
+   .max_eus_per_subslice = 6,
    .l3_banks = 2,
    /* GT1 seems to have a bug in the top of the pipe (VF/VS?) fixed functions
     * leading to some vertices to go missing if we use too much URB.
@@ -799,7 +799,7 @@ static const struct intel_device_info intel_device_info_cfl_gt2 = {
 
    .num_slices = 1,
    .num_subslices = { 3, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 4,
    .simulator_id = 24,
 };
@@ -811,7 +811,7 @@ static const struct intel_device_info intel_device_info_cfl_gt3 = {
 
    .num_slices = 2,
    .num_subslices = { 3, 3, },
-   .num_eu_per_subslice = 8,
+   .max_eus_per_subslice = 8,
    .l3_banks = 8,
    .simulator_id = 24,
 };
@@ -838,7 +838,7 @@ static const struct intel_device_info intel_device_info_cfl_gt3 = {
    .has_sample_with_hiz = false,                      \
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3, \
    .num_subslices = _subslices,                       \
-   .num_eu_per_subslice = 8
+   .max_eus_per_subslice = 8
 
 #define GFX11_URB_MIN_MAX_ENTRIES                     \
    .min_entries = {                                   \
@@ -899,19 +899,19 @@ static const struct intel_device_info intel_device_info_ehl_4x8 = {
 static const struct intel_device_info intel_device_info_ehl_4x6 = {
    GFX11_FEATURES(1, 1, subslices(4), 4, INTEL_PLATFORM_EHL),
    GFX11_LP_FEATURES,
-   .num_eu_per_subslice = 6,
+   .max_eus_per_subslice = 6,
 };
 
 static const struct intel_device_info intel_device_info_ehl_4x5 = {
    GFX11_FEATURES(1, 1, subslices(4), 4, INTEL_PLATFORM_EHL),
    GFX11_LP_FEATURES,
-   .num_eu_per_subslice = 5,
+   .max_eus_per_subslice = 5,
 };
 
 static const struct intel_device_info intel_device_info_ehl_4x4 = {
    GFX11_FEATURES(1, 1, subslices(4), 4, INTEL_PLATFORM_EHL),
    GFX11_LP_FEATURES,
-   .num_eu_per_subslice = 4,
+   .max_eus_per_subslice = 4,
 };
 
 static const struct intel_device_info intel_device_info_ehl_2x8 = {
@@ -922,7 +922,7 @@ static const struct intel_device_info intel_device_info_ehl_2x8 = {
 static const struct intel_device_info intel_device_info_ehl_2x4 = {
    GFX11_FEATURES(1, 1, subslices(2), 4, INTEL_PLATFORM_EHL),
    GFX11_LP_FEATURES,
-   .num_eu_per_subslice =4,
+   .max_eus_per_subslice = 4,
 };
 
 #define GFX12_URB_MIN_MAX_ENTRIES                   \
@@ -960,7 +960,7 @@ static const struct intel_device_info intel_device_info_ehl_2x4 = {
    .has_integer_dword_mul = false,                              \
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3,           \
    .simulator_id = 22,                                          \
-   .num_eu_per_subslice = 16,                                   \
+   .max_eus_per_subslice = 16,                                   \
    .cs_prefetch_size = 512
 
 #define dual_subslices(args...) { args, }
@@ -1033,7 +1033,6 @@ reset_masks(struct intel_device_info *devinfo)
    devinfo->eu_slice_stride = 0;
 
    devinfo->num_slices = 0;
-   devinfo->num_eu_per_subslice = 0;
    memset(devinfo->num_subslices, 0, sizeof(devinfo->num_subslices));
 
    memset(&devinfo->slice_masks, 0, sizeof(devinfo->slice_masks));
@@ -1062,7 +1061,7 @@ update_from_topology(struct intel_device_info *devinfo,
    devinfo->num_slices = __builtin_popcount(devinfo->slice_masks);
    devinfo->max_slices = topology->max_slices;
    devinfo->max_subslices_per_slice = topology->max_subslices;
-   devinfo->max_eu_per_subslice = topology->max_eus_per_subslice;
+   devinfo->max_eus_per_subslice = topology->max_eus_per_subslice;
 
    uint32_t subslice_mask_len =
       topology->max_slices * topology->subslice_stride;
@@ -1150,8 +1149,6 @@ update_from_topology(struct intel_device_info *devinfo,
    uint32_t n_eus = 0;
    for (int b = 0; b < eu_mask_len; b++)
       n_eus += __builtin_popcount(devinfo->eu_masks[b]);
-
-   devinfo->num_eu_per_subslice = DIV_ROUND_UP(n_eus, n_subslices);
 }
 
 /* Generate detailed mask from the I915_PARAM_SLICE_MASK,
@@ -1179,13 +1176,13 @@ update_from_masks(struct intel_device_info *devinfo, uint32_t slice_mask,
 
    uint32_t n_subslices = __builtin_popcount(slice_mask) *
       __builtin_popcount(subslice_mask);
-   uint32_t num_eu_per_subslice = DIV_ROUND_UP(n_eus, n_subslices);
-   uint32_t eu_mask = (1U << num_eu_per_subslice) - 1;
+   uint32_t max_eus_per_subslice = DIV_ROUND_UP(n_eus, n_subslices);
+   uint32_t eu_mask = (1U << max_eus_per_subslice) - 1;
 
-   topology->max_eus_per_subslice = num_eu_per_subslice;
+   topology->max_eus_per_subslice = max_eus_per_subslice;
    topology->eu_offset = topology->subslice_offset +
       topology->max_slices * DIV_ROUND_UP(topology->max_subslices, 8);
-   topology->eu_stride = DIV_ROUND_UP(num_eu_per_subslice, 8);
+   topology->eu_stride = DIV_ROUND_UP(max_eus_per_subslice, 8);
 
    /* Set slice mask in topology */
    for (int b = 0; b < topology->subslice_offset; b++)
@@ -1232,7 +1229,7 @@ fill_masks(struct intel_device_info *devinfo)
                      (1U << devinfo->num_slices) - 1,
                      (1U << devinfo->num_subslices[0]) - 1,
                      devinfo->num_slices * devinfo->num_subslices[0] *
-                     devinfo->num_eu_per_subslice);
+                     devinfo->max_eus_per_subslice);
 }
 
 static bool
