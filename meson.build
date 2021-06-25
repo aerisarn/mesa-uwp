@@ -2142,15 +2142,9 @@ if with_perfetto
   pre_args += '-DHAVE_PERFETTO'
 endif
 
-foreach a : pre_args
-  add_project_arguments(a, language : ['c', 'cpp'])
-endforeach
-foreach a : c_args
-  add_project_arguments(a, language : ['c'])
-endforeach
-foreach a : cpp_args
-  add_project_arguments(a, language : ['cpp'])
-endforeach
+add_project_arguments(pre_args, language : ['c', 'cpp'])
+add_project_arguments(c_args,   language : ['c'])
+add_project_arguments(cpp_args, language : ['cpp'])
 
 gl_priv_reqs = []
 
