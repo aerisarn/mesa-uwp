@@ -2333,29 +2333,33 @@ bi_emit_cube_coord(bi_builder *b, bi_index coord,
         S->clamp = BI_CLAMP_CLAMP_0_1;
         T->clamp = BI_CLAMP_CLAMP_0_1;
 
-        /* Cube face is stored in bit[29:31], we don't apply the shift here
-         * because the TEXS_CUBE and TEXC instructions expect the face index to
-         * be at this position.
-         */
+        /* Face index at bit[29:31], matching the cube map descriptor */
         *face = cubeface->dest[1];
 }
 
 /* Emits a cube map descriptor, returning lower 32-bits and putting upper
- * 32-bits in passed pointer t */
+ * 32-bits in passed pointer t. The packing of the face with the S coordinate
+ * exploits the redundancy of floating points with the range restriction of
+ * CUBEFACE output.
+ *
+ *     struct cube_map_descriptor {
+ *         float s : 29;
+ *         unsigned face : 3;
+ *         float t : 32;
+ *     }
+ *
+ * Since the cube face index is preshifted, this is easy to pack with a bitwise
+ * MUX.i32 and a fixed mask, selecting the lower bits 29 from s and the upper 3
+ * bits from face.
+ */
 
 static bi_index
 bi_emit_texc_cube_coord(bi_builder *b, bi_index coord, bi_index *t)
 {
         bi_index face, s;
         bi_emit_cube_coord(b, coord, &face, &s, t);
-
-        bi_index and1 = bi_lshift_and_i32(b, face, bi_imm_u32(0xe0000000),
-                        bi_imm_u8(0));
-
-        bi_index and2 = bi_lshift_and_i32(b, s, bi_imm_u32(0x1fffffff),
-                        bi_imm_u8(0));
-
-        return bi_lshift_or_i32(b, and1, and2, bi_imm_u8(0));
+        bi_index mask = bi_imm_u32(BITFIELD_MASK(29));
+        return bi_mux_i32(b, s, face, mask, BI_MUX_BIT);
 }
 
 /* Map to the main texture op used. Some of these (txd in particular) will
