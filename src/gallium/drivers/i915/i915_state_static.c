@@ -23,18 +23,17 @@
  *
  **************************************************************************/
 
-
-#include "i915_reg.h"
 #include "i915_context.h"
-#include "i915_state.h"
+#include "i915_reg.h"
 #include "i915_resource.h"
 #include "i915_screen.h"
-
+#include "i915_state.h"
 
 /***********************************************************************
  * Update framebuffer state
  */
-static unsigned translate_format(enum pipe_format format)
+static unsigned
+translate_format(enum pipe_format format)
 {
    switch (format) {
    case PIPE_FORMAT_B8G8R8A8_UNORM:
@@ -61,7 +60,8 @@ static unsigned translate_format(enum pipe_format format)
    }
 }
 
-static unsigned translate_depth_format(enum pipe_format zformat)
+static unsigned
+translate_depth_format(enum pipe_format zformat)
 {
    switch (zformat) {
    case PIPE_FORMAT_Z24X8_UNORM:
@@ -75,7 +75,8 @@ static unsigned translate_depth_format(enum pipe_format zformat)
    }
 }
 
-static void update_framebuffer(struct i915_context *i915)
+static void
+update_framebuffer(struct i915_context *i915)
 {
    struct pipe_surface *cbuf_surface = i915->framebuffer.cbufs[0];
    struct pipe_surface *depth_surface = i915->framebuffer.zsbuf;
@@ -110,7 +111,7 @@ static void update_framebuffer(struct i915_context *i915)
                                             depth_surface->u.tex.first_layer);
       assert(tex);
       if (offset != 0)
-         debug_printf("Depth offset is %d\n",offset);
+         debug_printf("Depth offset is %d\n", offset);
 
       i915->current.depth_bo = tex->buffer;
       i915->current.depth_flags = surf->buf_info;
@@ -139,12 +140,10 @@ static void update_framebuffer(struct i915_context *i915)
 }
 
 struct i915_tracked_state i915_hw_framebuffer = {
-   "framebuffer",
-   update_framebuffer,
-   I915_NEW_FRAMEBUFFER
-};
+   "framebuffer", update_framebuffer, I915_NEW_FRAMEBUFFER};
 
-static void update_dst_buf_vars(struct i915_context *i915)
+static void
+update_dst_buf_vars(struct i915_context *i915)
 {
    struct pipe_surface *cbuf_surface = i915->framebuffer.cbufs[0];
    struct pipe_surface *depth_surface = i915->framebuffer.zsbuf;
@@ -163,18 +162,15 @@ static void update_dst_buf_vars(struct i915_context *i915)
 
       zformat = translate_depth_format(depth_surface->format);
 
-      if (is->is_i945 && tex->tiling != I915_TILE_NONE
-          && (i915->fs && !i915->fs->info.writes_z))
+      if (is->is_i945 && tex->tiling != I915_TILE_NONE &&
+          (i915->fs && !i915->fs->info.writes_z))
          early_z = CLASSIC_EARLY_DEPTH;
    } else
       zformat = 0;
 
    dst_buf_vars = DSTORG_HORT_BIAS(0x8) | /* .5 */
                   DSTORG_VERT_BIAS(0x8) | /* .5 */
-                  LOD_PRECLAMP_OGL |
-                  TEX_DEFAULT_COLOR_OGL |
-                  cformat |
-                  zformat |
+                  LOD_PRECLAMP_OGL | TEX_DEFAULT_COLOR_OGL | cformat | zformat |
                   early_z;
 
    if (i915->current.dst_buf_vars != dst_buf_vars) {
@@ -185,11 +181,7 @@ static void update_dst_buf_vars(struct i915_context *i915)
       i915->static_dirty |= I915_DST_VARS;
       i915->hardware_dirty |= I915_HW_STATIC;
    }
-
 }
 
 struct i915_tracked_state i915_hw_dst_buf_vars = {
-   "dst buf vars",
-   update_dst_buf_vars,
-   I915_NEW_FRAMEBUFFER | I915_NEW_FS
-};
+   "dst buf vars", update_dst_buf_vars, I915_NEW_FRAMEBUFFER | I915_NEW_FS};

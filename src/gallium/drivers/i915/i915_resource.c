@@ -1,9 +1,8 @@
 #include "util/u_debug.h"
 
-#include "i915_resource.h"
 #include "i915_context.h"
+#include "i915_resource.h"
 #include "i915_screen.h"
-
 
 static struct pipe_resource *
 i915_resource_create(struct pipe_screen *screen,
@@ -11,8 +10,7 @@ i915_resource_create(struct pipe_screen *screen,
 {
    if (template->target == PIPE_BUFFER)
       return i915_buffer_create(screen, template);
-   else
-   {
+   else {
       if (!(template->bind & PIPE_BIND_LINEAR))
          return i915_texture_create(screen, template, FALSE);
       else
@@ -21,10 +19,9 @@ i915_resource_create(struct pipe_screen *screen,
 }
 
 static struct pipe_resource *
-i915_resource_from_handle(struct pipe_screen * screen,
-			 const struct pipe_resource *template,
-			 struct winsys_handle *whandle,
-                          unsigned usage)
+i915_resource_from_handle(struct pipe_screen *screen,
+                          const struct pipe_resource *template,
+                          struct winsys_handle *whandle, unsigned usage)
 {
    if (template->target == PIPE_BUFFER)
       return NULL;
@@ -32,9 +29,8 @@ i915_resource_from_handle(struct pipe_screen * screen,
       return i915_texture_from_handle(screen, template, whandle);
 }
 
-
 void
-i915_init_resource_functions(struct i915_context *i915 )
+i915_init_resource_functions(struct i915_context *i915)
 {
    i915->base.buffer_map = i915_buffer_transfer_map;
    i915->base.texture_map = i915_texture_transfer_map;

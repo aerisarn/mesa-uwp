@@ -1,8 +1,8 @@
 /**************************************************************************
- * 
+ *
  * Copyright 2008 VMware, Inc.
  * All Rights Reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -10,11 +10,11 @@
  * distribute, sub license, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice (including the
  * next paragraph) shall be included in all copies or substantial portions
  * of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
@@ -22,33 +22,30 @@
  * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  **************************************************************************/
-
 
 #include "compiler/nir/nir.h"
 #include "draw/draw_context.h"
-#include "util/os_misc.h"
 #include "util/format/u_format.h"
 #include "util/format/u_format_s3tc.h"
+#include "util/os_misc.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/u_screen.h"
 #include "util/u_string.h"
 
-#include "i915_reg.h"
-#include "i915_debug.h"
 #include "i915_context.h"
-#include "i915_screen.h"
-#include "i915_resource.h"
-#include "i915_winsys.h"
+#include "i915_debug.h"
 #include "i915_public.h"
-
+#include "i915_reg.h"
+#include "i915_resource.h"
+#include "i915_screen.h"
+#include "i915_winsys.h"
 
 /*
  * Probe functions
  */
-
 
 static const char *
 i915_get_vendor(struct pipe_screen *screen)
@@ -167,9 +164,8 @@ static const struct nir_shader_compiler_options gallivm_nir_options = {
 };
 
 static const void *
-i915_get_compiler_options(struct pipe_screen *pscreen,
-                              enum pipe_shader_ir ir,
-                              enum pipe_shader_type shader)
+i915_get_compiler_options(struct pipe_screen *pscreen, enum pipe_shader_ir ir,
+                          enum pipe_shader_type shader)
 {
    assert(ir == PIPE_SHADER_IR_NIR);
    if (shader == PIPE_SHADER_FRAGMENT)
@@ -179,37 +175,36 @@ i915_get_compiler_options(struct pipe_screen *pscreen,
 }
 
 static int
-i915_get_shader_param(struct pipe_screen *screen,
-                      enum pipe_shader_type shader,
+i915_get_shader_param(struct pipe_screen *screen, enum pipe_shader_type shader,
                       enum pipe_shader_cap cap)
 {
    switch (cap) {
-      case PIPE_SHADER_CAP_PREFERRED_IR:
-         return PIPE_SHADER_IR_NIR;
-      case PIPE_SHADER_CAP_SUPPORTED_IRS:
-         return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
+   case PIPE_SHADER_CAP_PREFERRED_IR:
+      return PIPE_SHADER_IR_NIR;
+   case PIPE_SHADER_CAP_SUPPORTED_IRS:
+      return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
 
-      case PIPE_SHADER_CAP_INTEGERS:
-         /* mesa/st requires that this cap is the same across stages, and the FS
-          * can't do ints.
-          */
-         return 0;
+   case PIPE_SHADER_CAP_INTEGERS:
+      /* mesa/st requires that this cap is the same across stages, and the FS
+       * can't do ints.
+       */
+      return 0;
 
-      case PIPE_SHADER_CAP_INT16:
-         return 0;
+   case PIPE_SHADER_CAP_INT16:
+      return 0;
 
-      case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
-         /* While draw could normally handle this for the VS, the NIR lowering
-          * to regs can't handle our non-native-integers, so we have to lower to
-          * if ladders.
-          */
-         return 0;
+   case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
+      /* While draw could normally handle this for the VS, the NIR lowering
+       * to regs can't handle our non-native-integers, so we have to lower to
+       * if ladders.
+       */
+      return 0;
 
-      default:
-         break;
+   default:
+      break;
    }
 
-   switch(shader) {
+   switch (shader) {
    case PIPE_SHADER_VERTEX:
       switch (cap) {
       case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
@@ -218,12 +213,12 @@ i915_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
       case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
          return 0;
-       default:
+      default:
          return draw_get_shader_param(shader, cap);
       }
    case PIPE_SHADER_FRAGMENT:
       /* XXX: some of these are just shader model 2.0 values, fix this! */
-      switch(cap) {
+      switch (cap) {
       case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
          return I915_MAX_ALU_INSN + I915_MAX_TEX_INSN;
       case PIPE_SHADER_CAP_MAX_ALU_INSTRUCTIONS:
@@ -286,7 +281,6 @@ i915_get_shader_param(struct pipe_screen *screen,
    default:
       return 0;
    }
-
 }
 
 static int
@@ -388,7 +382,8 @@ i915_get_param(struct pipe_screen *screen, enum pipe_cap cap)
        * assume that there's some fragmentation, and we start doing extra
        * flushing, etc.  That's the big cliff apps will care about.
        */
-      const int gpu_mappable_megabytes = is->iws->aperture_size(is->iws) * 3 / 4;
+      const int gpu_mappable_megabytes =
+         is->iws->aperture_size(is->iws) * 3 / 4;
       uint64_t system_memory;
 
       if (!os_get_total_physical_memory(&system_memory))
@@ -407,7 +402,7 @@ i915_get_param(struct pipe_screen *screen, enum pipe_cap cap)
 static float
 i915_get_paramf(struct pipe_screen *screen, enum pipe_capf cap)
 {
-   switch(cap) {
+   switch (cap) {
    case PIPE_CAPF_MAX_LINE_WIDTH:
       FALLTHROUGH;
    case PIPE_CAPF_MAX_LINE_WIDTH_AA:
@@ -438,59 +433,37 @@ i915_get_paramf(struct pipe_screen *screen, enum pipe_capf cap)
 }
 
 bool
-i915_is_format_supported(struct pipe_screen *screen,
-                         enum pipe_format format,
-                         enum pipe_texture_target target,
-                         unsigned sample_count,
-                         unsigned storage_sample_count,
-                         unsigned tex_usage)
+i915_is_format_supported(struct pipe_screen *screen, enum pipe_format format,
+                         enum pipe_texture_target target, unsigned sample_count,
+                         unsigned storage_sample_count, unsigned tex_usage)
 {
    static const enum pipe_format tex_supported[] = {
-      PIPE_FORMAT_B8G8R8A8_UNORM,
-      PIPE_FORMAT_B8G8R8A8_SRGB,
-      PIPE_FORMAT_B8G8R8X8_UNORM,
-      PIPE_FORMAT_R8G8B8A8_UNORM,
-      PIPE_FORMAT_R8G8B8X8_UNORM,
-      PIPE_FORMAT_B4G4R4A4_UNORM,
-      PIPE_FORMAT_B5G6R5_UNORM,
-      PIPE_FORMAT_B5G5R5A1_UNORM,
-      PIPE_FORMAT_B10G10R10A2_UNORM,
-      PIPE_FORMAT_L8_UNORM,
-      PIPE_FORMAT_A8_UNORM,
-      PIPE_FORMAT_I8_UNORM,
-      PIPE_FORMAT_L8A8_UNORM,
-      PIPE_FORMAT_UYVY,
+      PIPE_FORMAT_B8G8R8A8_UNORM, PIPE_FORMAT_B8G8R8A8_SRGB,
+      PIPE_FORMAT_B8G8R8X8_UNORM, PIPE_FORMAT_R8G8B8A8_UNORM,
+      PIPE_FORMAT_R8G8B8X8_UNORM, PIPE_FORMAT_B4G4R4A4_UNORM,
+      PIPE_FORMAT_B5G6R5_UNORM, PIPE_FORMAT_B5G5R5A1_UNORM,
+      PIPE_FORMAT_B10G10R10A2_UNORM, PIPE_FORMAT_L8_UNORM, PIPE_FORMAT_A8_UNORM,
+      PIPE_FORMAT_I8_UNORM, PIPE_FORMAT_L8A8_UNORM, PIPE_FORMAT_UYVY,
       PIPE_FORMAT_YUYV,
       /* XXX why not?
       PIPE_FORMAT_Z16_UNORM, */
-      PIPE_FORMAT_DXT1_RGB,
-      PIPE_FORMAT_DXT1_RGBA,
-      PIPE_FORMAT_DXT3_RGBA,
-      PIPE_FORMAT_DXT5_RGBA,
-      PIPE_FORMAT_Z24X8_UNORM,
-      PIPE_FORMAT_Z24_UNORM_S8_UINT,
-      PIPE_FORMAT_NONE  /* list terminator */
+      PIPE_FORMAT_DXT1_RGB, PIPE_FORMAT_DXT1_RGBA, PIPE_FORMAT_DXT3_RGBA,
+      PIPE_FORMAT_DXT5_RGBA, PIPE_FORMAT_Z24X8_UNORM,
+      PIPE_FORMAT_Z24_UNORM_S8_UINT, PIPE_FORMAT_NONE /* list terminator */
    };
    static const enum pipe_format render_supported[] = {
-      PIPE_FORMAT_B8G8R8A8_UNORM,
-      PIPE_FORMAT_B8G8R8X8_UNORM,
-      PIPE_FORMAT_R8G8B8A8_UNORM,
-      PIPE_FORMAT_R8G8B8X8_UNORM,
-      PIPE_FORMAT_B5G6R5_UNORM,
-      PIPE_FORMAT_B5G5R5A1_UNORM,
-      PIPE_FORMAT_B4G4R4A4_UNORM,
-      PIPE_FORMAT_B10G10R10A2_UNORM,
-      PIPE_FORMAT_L8_UNORM,
-      PIPE_FORMAT_A8_UNORM,
-      PIPE_FORMAT_I8_UNORM,
-      PIPE_FORMAT_NONE  /* list terminator */
+      PIPE_FORMAT_B8G8R8A8_UNORM, PIPE_FORMAT_B8G8R8X8_UNORM,
+      PIPE_FORMAT_R8G8B8A8_UNORM, PIPE_FORMAT_R8G8B8X8_UNORM,
+      PIPE_FORMAT_B5G6R5_UNORM,   PIPE_FORMAT_B5G5R5A1_UNORM,
+      PIPE_FORMAT_B4G4R4A4_UNORM, PIPE_FORMAT_B10G10R10A2_UNORM,
+      PIPE_FORMAT_L8_UNORM,       PIPE_FORMAT_A8_UNORM,
+      PIPE_FORMAT_I8_UNORM,       PIPE_FORMAT_NONE /* list terminator */
    };
    static const enum pipe_format depth_supported[] = {
       /* XXX why not?
       PIPE_FORMAT_Z16_UNORM, */
-      PIPE_FORMAT_Z24X8_UNORM,
-      PIPE_FORMAT_Z24_UNORM_S8_UINT,
-      PIPE_FORMAT_NONE  /* list terminator */
+      PIPE_FORMAT_Z24X8_UNORM, PIPE_FORMAT_Z24_UNORM_S8_UINT,
+      PIPE_FORMAT_NONE /* list terminator */
    };
    const enum pipe_format *list;
    uint i;
@@ -501,7 +474,7 @@ i915_is_format_supported(struct pipe_screen *screen,
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;
 
-   if(tex_usage & PIPE_BIND_DEPTH_STENCIL)
+   if (tex_usage & PIPE_BIND_DEPTH_STENCIL)
       list = depth_supported;
    else if (tex_usage & PIPE_BIND_RENDER_TARGET)
       list = render_supported;
@@ -518,15 +491,12 @@ i915_is_format_supported(struct pipe_screen *screen,
    return false;
 }
 
-
 /*
  * Fence functions
  */
 
-
 static void
-i915_fence_reference(struct pipe_screen *screen,
-                     struct pipe_fence_handle **ptr,
+i915_fence_reference(struct pipe_screen *screen, struct pipe_fence_handle **ptr,
                      struct pipe_fence_handle *fence)
 {
    struct i915_screen *is = i915_screen(screen);
@@ -535,10 +505,8 @@ i915_fence_reference(struct pipe_screen *screen,
 }
 
 static bool
-i915_fence_finish(struct pipe_screen *screen,
-                  struct pipe_context *ctx,
-                  struct pipe_fence_handle *fence,
-                  uint64_t timeout)
+i915_fence_finish(struct pipe_screen *screen, struct pipe_context *ctx,
+                  struct pipe_fence_handle *fence, uint64_t timeout)
 {
    struct i915_screen *is = i915_screen(screen);
 
@@ -548,18 +516,14 @@ i915_fence_finish(struct pipe_screen *screen,
    return is->iws->fence_finish(is->iws, fence) == 1;
 }
 
-
 /*
  * Generic functions
  */
 
-
 static void
-i915_flush_frontbuffer(struct pipe_screen *screen,
-                       struct pipe_context *pipe,
-                       struct pipe_resource *resource,
-                       unsigned level, unsigned layer,
-                       void *winsys_drawable_handle,
+i915_flush_frontbuffer(struct pipe_screen *screen, struct pipe_context *pipe,
+                       struct pipe_resource *resource, unsigned level,
+                       unsigned layer, void *winsys_drawable_handle,
                        struct pipe_box *sub_box)
 {
    /* XXX: Dummy right now. */
@@ -612,7 +576,7 @@ i915_screen_create(struct i915_winsys *iws)
       break;
 
    default:
-      debug_printf("%s: unknown pci id 0x%x, cannot create screen\n", 
+      debug_printf("%s: unknown pci id 0x%x, cannot create screen\n",
                    __FUNCTION__, iws->pci_id);
       FREE(is);
       return NULL;

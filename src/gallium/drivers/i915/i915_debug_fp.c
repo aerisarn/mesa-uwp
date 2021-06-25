@@ -1,8 +1,8 @@
 /**************************************************************************
- * 
+ *
  * Copyright 2003 VMware, Inc.
  * All Rights Reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -10,11 +10,11 @@
  * distribute, sub license, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice (including the
  * next paragraph) shall be included in all copies or substantial portions
  * of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
@@ -22,100 +22,52 @@
  * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  **************************************************************************/
 
-
-#include "i915_reg.h"
+#include "util/log.h"
+#include "util/ralloc.h"
+#include "util/u_debug.h"
 #include "i915_debug.h"
 #include "i915_debug_private.h"
-#include "util/log.h"
-#include "util/u_debug.h"
-#include "util/ralloc.h"
+#include "i915_reg.h"
 
 #define PRINTF ralloc_asprintf_append
 
 static const char *opcodes[0x20] = {
-   "NOP",
-   "ADD",
-   "MOV",
-   "MUL",
-   "MAD",
-   "DP2ADD",
-   "DP3",
-   "DP4",
-   "FRC",
-   "RCP",
-   "RSQ",
-   "EXP",
-   "LOG",
-   "CMP",
-   "MIN",
-   "MAX",
-   "FLR",
-   "MOD",
-   "TRC",
-   "SGE",
-   "SLT",
-   "TEXLD",
-   "TEXLDP",
-   "TEXLDB",
-   "TEXKILL",
-   "DCL",
-   "0x1a",
-   "0x1b",
-   "0x1c",
-   "0x1d",
-   "0x1e",
-   "0x1f",
+   "NOP",     "ADD", "MOV",  "MUL",  "MAD",  "DP2ADD", "DP3",    "DP4",
+   "FRC",     "RCP", "RSQ",  "EXP",  "LOG",  "CMP",    "MIN",    "MAX",
+   "FLR",     "MOD", "TRC",  "SGE",  "SLT",  "TEXLD",  "TEXLDP", "TEXLDB",
+   "TEXKILL", "DCL", "0x1a", "0x1b", "0x1c", "0x1d",   "0x1e",   "0x1f",
 };
-
 
 static const int args[0x20] = {
-   0,                           /* 0 nop */
-   2,                           /* 1 add */
-   1,                           /* 2 mov */
-   2,                           /* 3 m ul */
-   3,                           /* 4 mad */
-   3,                           /* 5 dp2add */
-   2,                           /* 6 dp3 */
-   2,                           /* 7 dp4 */
-   1,                           /* 8 frc */
-   1,                           /* 9 rcp */
-   1,                           /* a rsq */
-   1,                           /* b exp */
-   1,                           /* c log */
-   3,                           /* d cmp */
-   2,                           /* e min */
-   2,                           /* f max */
-   1,                           /* 10 flr */
-   1,                           /* 11 mod */
-   1,                           /* 12 trc */
-   2,                           /* 13 sge */
-   2,                           /* 14 slt */
-   1,
-   1,
-   1,
-   1,
-   0,
-   0,
-   0,
-   0,
-   0,
-   0,
-   0,
+   0, /* 0 nop */
+   2, /* 1 add */
+   1, /* 2 mov */
+   2, /* 3 m ul */
+   3, /* 4 mad */
+   3, /* 5 dp2add */
+   2, /* 6 dp3 */
+   2, /* 7 dp4 */
+   1, /* 8 frc */
+   1, /* 9 rcp */
+   1, /* a rsq */
+   1, /* b exp */
+   1, /* c log */
+   3, /* d cmp */
+   2, /* e min */
+   2, /* f max */
+   1, /* 10 flr */
+   1, /* 11 mod */
+   1, /* 12 trc */
+   2, /* 13 sge */
+   2, /* 14 slt */
+   1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0,
 };
 
-
 static const char *regname[0x8] = {
-   "R",
-   "T",
-   "CONST",
-   "S",
-   "OC",
-   "OD",
-   "U",
-   "UNKNOWN",
+   "R", "T", "CONST", "S", "OC", "OD", "U", "UNKNOWN",
 };
 
 static void
@@ -157,13 +109,11 @@ print_reg_type_nr(char **stream, unsigned type, unsigned nr)
 }
 
 #define REG_SWIZZLE_MASK 0x7777
-#define REG_NEGATE_MASK 0x8888
+#define REG_NEGATE_MASK  0x8888
 
-#define REG_SWIZZLE_XYZW ((SRC_X << A2_SRC2_CHANNEL_X_SHIFT) |	\
-		      (SRC_Y << A2_SRC2_CHANNEL_Y_SHIFT) |	\
-		      (SRC_Z << A2_SRC2_CHANNEL_Z_SHIFT) |	\
-		      (SRC_W << A2_SRC2_CHANNEL_W_SHIFT))
-
+#define REG_SWIZZLE_XYZW                                                       \
+   ((SRC_X << A2_SRC2_CHANNEL_X_SHIFT) | (SRC_Y << A2_SRC2_CHANNEL_Y_SHIFT) |  \
+    (SRC_Z << A2_SRC2_CHANNEL_Z_SHIFT) | (SRC_W << A2_SRC2_CHANNEL_W_SHIFT))
 
 static void
 print_reg_neg_swizzle(char **stream, unsigned reg)
@@ -206,7 +156,6 @@ print_reg_neg_swizzle(char **stream, unsigned reg)
    }
 }
 
-
 static void
 print_src_reg(char **stream, unsigned dword)
 {
@@ -215,7 +164,6 @@ print_src_reg(char **stream, unsigned dword)
    print_reg_type_nr(stream, type, nr);
    print_reg_neg_swizzle(stream, dword);
 }
-
 
 static void
 print_dest_reg(char **stream, unsigned dword)
@@ -236,15 +184,12 @@ print_dest_reg(char **stream, unsigned dword)
       PRINTF(stream, "w");
 }
 
-
-#define GET_SRC0_REG(r0, r1) ((r0<<14)|(r1>>A1_SRC0_CHANNEL_W_SHIFT))
-#define GET_SRC1_REG(r0, r1) ((r0<<8)|(r1>>A2_SRC1_CHANNEL_W_SHIFT))
+#define GET_SRC0_REG(r0, r1) ((r0 << 14) | (r1 >> A1_SRC0_CHANNEL_W_SHIFT))
+#define GET_SRC1_REG(r0, r1) ((r0 << 8) | (r1 >> A2_SRC1_CHANNEL_W_SHIFT))
 #define GET_SRC2_REG(r)      (r)
 
-
 static void
-print_arith_op(char **stream,
-	       unsigned opcode, const unsigned * program)
+print_arith_op(char **stream, unsigned opcode, const unsigned *program)
 {
    if (opcode != A0_NOP) {
       print_dest_reg(stream, program[0]);
@@ -270,10 +215,8 @@ print_arith_op(char **stream,
    return;
 }
 
-
 static void
-print_tex_op(char **stream,
-	     unsigned opcode, const unsigned * program)
+print_tex_op(char **stream, unsigned opcode, const unsigned *program)
 {
    print_dest_reg(stream, program[0] | A0_DEST_CHANNEL_ALL);
    PRINTF(stream, " = ");
@@ -282,36 +225,30 @@ print_tex_op(char **stream,
 
    PRINTF(stream, "S[%d],", program[0] & T0_SAMPLER_NR_MASK);
 
-   print_reg_type_nr(stream, 
-		     (program[1] >> T1_ADDRESS_REG_TYPE_SHIFT) &
-                     REG_TYPE_MASK,
+   print_reg_type_nr(stream,
+                     (program[1] >> T1_ADDRESS_REG_TYPE_SHIFT) & REG_TYPE_MASK,
                      (program[1] >> T1_ADDRESS_REG_NR_SHIFT) & REG_NR_MASK);
 }
 
 static void
-print_texkil_op(char **stream,
-                unsigned opcode, const unsigned * program)
+print_texkil_op(char **stream, unsigned opcode, const unsigned *program)
 {
    PRINTF(stream, "TEXKIL ");
 
-   print_reg_type_nr(stream, 
-		     (program[1] >> T1_ADDRESS_REG_TYPE_SHIFT) &
-                     REG_TYPE_MASK,
+   print_reg_type_nr(stream,
+                     (program[1] >> T1_ADDRESS_REG_TYPE_SHIFT) & REG_TYPE_MASK,
                      (program[1] >> T1_ADDRESS_REG_NR_SHIFT) & REG_NR_MASK);
 }
 
 static void
-print_dcl_op(char **stream,
-	     unsigned opcode, const unsigned * program)
+print_dcl_op(char **stream, unsigned opcode, const unsigned *program)
 {
    PRINTF(stream, "%s ", opcodes[opcode]);
-   print_dest_reg(stream, 
-		  program[0] | A0_DEST_CHANNEL_ALL);
+   print_dest_reg(stream, program[0] | A0_DEST_CHANNEL_ALL);
 }
 
-
 void
-i915_disassemble_program(const unsigned * program, unsigned sz)
+i915_disassemble_program(const unsigned *program, unsigned sz)
 {
    unsigned i;
 
@@ -342,5 +279,3 @@ i915_disassemble_program(const unsigned * program, unsigned sz)
    mesa_logi("\t\tEND");
    mesa_logi("\t\t");
 }
-
-

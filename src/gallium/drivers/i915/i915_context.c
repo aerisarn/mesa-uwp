@@ -1,8 +1,8 @@
 /**************************************************************************
- * 
+ *
  * Copyright 2003 VMware, Inc.
  * All Rights Reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -10,11 +10,11 @@
  * distribute, sub license, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice (including the
  * next paragraph) shall be included in all copies or substantial portions
  * of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
@@ -22,34 +22,31 @@
  * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  **************************************************************************/
 
 #include "i915_context.h"
-#include "i915_state.h"
-#include "i915_screen.h"
-#include "i915_surface.h"
-#include "i915_query.h"
 #include "i915_batch.h"
+#include "i915_query.h"
 #include "i915_resource.h"
+#include "i915_screen.h"
+#include "i915_state.h"
+#include "i915_surface.h"
 
 #include "draw/draw_context.h"
 #include "pipe/p_defines.h"
+#include "pipe/p_screen.h"
 #include "util/u_draw.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/u_prim.h"
 #include "util/u_upload_mgr.h"
-#include "pipe/p_screen.h"
-
 
 DEBUG_GET_ONCE_BOOL_OPTION(i915_no_vbuf, "I915_NO_VBUF", FALSE)
-
 
 /*
  * Draw functions
  */
-
 
 static void
 i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
@@ -68,7 +65,7 @@ i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    const void *mapped_indices = NULL;
    unsigned i;
 
-   if (!u_trim_pipe_prim(info->mode, (unsigned*)&draws[0].count))
+   if (!u_trim_pipe_prim(info->mode, (unsigned *)&draws[0].count))
       return;
 
    /*
@@ -83,8 +80,9 @@ i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
     * Map vertex buffers
     */
    for (i = 0; i < i915->nr_vertex_buffers; i++) {
-      const void *buf = i915->vertex_buffers[i].is_user_buffer ?
-                           i915->vertex_buffers[i].buffer.user : NULL;
+      const void *buf = i915->vertex_buffers[i].is_user_buffer
+                           ? i915->vertex_buffers[i].buffer.user
+                           : NULL;
       if (!buf) {
          if (!i915->vertex_buffers[i].buffer.resource)
             continue;
@@ -100,16 +98,15 @@ i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       mapped_indices = info->has_user_indices ? info->index.user : NULL;
       if (!mapped_indices)
          mapped_indices = i915_buffer(info->index.resource)->data;
-      draw_set_indexes(draw,
-                       (ubyte *) mapped_indices,
-                       info->index_size, ~0);
+      draw_set_indexes(draw, (ubyte *)mapped_indices, info->index_size, ~0);
    }
 
    if (i915->constants[PIPE_SHADER_VERTEX])
-      draw_set_mapped_constant_buffer(draw, PIPE_SHADER_VERTEX, 0,
-                                      i915_buffer(i915->constants[PIPE_SHADER_VERTEX])->data,
-                                      (i915->current.num_user_constants[PIPE_SHADER_VERTEX] * 
-                                      4 * sizeof(float)));
+      draw_set_mapped_constant_buffer(
+         draw, PIPE_SHADER_VERTEX, 0,
+         i915_buffer(i915->constants[PIPE_SHADER_VERTEX])->data,
+         (i915->current.num_user_constants[PIPE_SHADER_VERTEX] * 4 *
+          sizeof(float)));
    else
       draw_set_mapped_constant_buffer(draw, PIPE_SHADER_VERTEX, 0, NULL, 0);
 
@@ -134,13 +131,12 @@ i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    draw_flush(i915->draw);
 }
 
-
 /*
  * Generic context functions
  */
 
-
-static void i915_destroy(struct pipe_context *pipe)
+static void
+i915_destroy(struct pipe_context *pipe)
 {
    struct i915_context *i915 = i915_context(pipe);
    int i;
@@ -153,7 +149,7 @@ static void i915_destroy(struct pipe_context *pipe)
    if (i915->base.stream_uploader)
       u_upload_destroy(i915->base.stream_uploader);
 
-   if(i915->batch)
+   if (i915->batch)
       i915->iws->batchbuffer_destroy(i915->batch);
 
    /* unbind framebuffer */
@@ -195,10 +191,8 @@ i915_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    i915->base.draw_vbo = i915_draw_vbo;
 
    /* init this before draw */
-   slab_create(&i915->transfer_pool, sizeof(struct pipe_transfer),
-                    16);
-   slab_create(&i915->texture_transfer_pool, sizeof(struct i915_transfer),
-                    16);
+   slab_create(&i915->transfer_pool, sizeof(struct pipe_transfer), 16);
+   slab_create(&i915->texture_transfer_pool, sizeof(struct i915_transfer), 16);
 
    /* Batch stream debugging is a bit hacked up at the moment:
     */

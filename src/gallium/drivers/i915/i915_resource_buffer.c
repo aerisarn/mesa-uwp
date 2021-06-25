@@ -1,8 +1,8 @@
 /**************************************************************************
- * 
+ *
  * Copyright 2006 VMware, Inc.
  * All Rights Reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -10,11 +10,11 @@
  * distribute, sub license, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice (including the
  * next paragraph) shall be included in all copies or substantial portions
  * of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
@@ -22,13 +22,13 @@
  * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  **************************************************************************/
- /*
-  * Authors:
-  *   Keith Whitwell <keithw@vmware.com>
-  *   Michel Dänzer <daenzer@vmware.com>
-  */
+/*
+ * Authors:
+ *   Keith Whitwell <keithw@vmware.com>
+ *   Michel Dänzer <daenzer@vmware.com>
+ */
 
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
@@ -39,7 +39,6 @@
 #include "i915_context.h"
 #include "i915_resource.h"
 #include "i915_screen.h"
-
 
 void
 i915_resource_destroy(struct pipe_screen *screen,
@@ -65,13 +64,10 @@ i915_resource_destroy(struct pipe_screen *screen,
    }
 }
 
-
 void *
 i915_buffer_transfer_map(struct pipe_context *pipe,
-                         struct pipe_resource *resource,
-                         unsigned level,
-                         unsigned usage,
-                         const struct pipe_box *box,
+                         struct pipe_resource *resource, unsigned level,
+                         unsigned usage, const struct pipe_box *box,
                          struct pipe_transfer **ptransfer)
 {
    struct i915_context *i915 = i915_context(pipe);
@@ -99,10 +95,9 @@ i915_buffer_transfer_unmap(struct pipe_context *pipe,
 }
 
 void
-i915_buffer_subdata(struct pipe_context *rm_ctx,
-                    struct pipe_resource *resource,
-                    unsigned usage, unsigned offset,
-                    unsigned size, const void *data)
+i915_buffer_subdata(struct pipe_context *rm_ctx, struct pipe_resource *resource,
+                    unsigned usage, unsigned offset, unsigned size,
+                    const void *data)
 {
    struct i915_buffer *buffer = i915_buffer(resource);
 
@@ -111,7 +106,7 @@ i915_buffer_subdata(struct pipe_context *rm_ctx,
 
 struct pipe_resource *
 i915_buffer_create(struct pipe_screen *screen,
-                    const struct pipe_resource *template)
+                   const struct pipe_resource *template)
 {
    struct i915_buffer *buf = CALLOC_STRUCT(i915_buffer);
 
@@ -134,12 +129,8 @@ err:
    return NULL;
 }
 
-
-
 struct pipe_resource *
-i915_user_buffer_create(struct pipe_screen *screen,
-                        void *ptr,
-                        unsigned bytes,
+i915_user_buffer_create(struct pipe_screen *screen, void *ptr, unsigned bytes,
                         unsigned bind)
 {
    struct i915_buffer *buf = CALLOC_STRUCT(i915_buffer);
