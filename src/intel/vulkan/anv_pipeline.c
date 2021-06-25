@@ -2180,6 +2180,7 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
    }
 
    const VkPipelineMultisampleStateCreateInfo *ms_info =
+      pCreateInfo->pRasterizationState->rasterizerDiscardEnable ? NULL :
       pCreateInfo->pMultisampleState;
    if (states & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS) {
       const VkPipelineSampleLocationsStateCreateInfoEXT *sl_info = ms_info ?
