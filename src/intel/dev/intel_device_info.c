@@ -1089,6 +1089,84 @@ update_slice_subslice_counts(struct intel_device_info *devinfo)
 }
 
 static void
+update_pixel_pipes(struct intel_device_info *devinfo)
+{
+   if (devinfo->ver < 11)
+      return;
+
+   /* The kernel only reports one slice on all existing ICL+ platforms, even
+    * if multiple slices are present. The slice mask is allowed to have the
+    * accurate value greater than 1 on gfx12.5+ platforms though, in order to
+    * be tolerant with the behavior of our simulation environment.
+    */
+   assert(devinfo->slice_masks == 1 || devinfo->verx10 >= 125);
+
+   /* Count the number of subslices on each pixel pipe. Assume that every
+    * contiguous group of 4 subslices in the mask belong to the same pixel
+    * pipe. However note that on TGL the kernel returns a mask of enabled
+    * *dual* subslices instead of actual subslices somewhat confusingly, so
+    * each pixel pipe only takes 2 bits in the mask even though it's still 4
+    * subslices.
+    */
+   const unsigned ppipe_bits = devinfo->ver >= 12 ? 2 : 4;
+   for (unsigned p = 0; p < INTEL_DEVICE_MAX_PIXEL_PIPES; p++) {
+      const unsigned offset = p * ppipe_bits;
+      const unsigned ppipe_mask = BITFIELD_RANGE(offset % 8, ppipe_bits);
+
+      if (offset / 8 < ARRAY_SIZE(devinfo->subslice_masks))
+         devinfo->ppipe_subslices[p] =
+            __builtin_popcount(devinfo->subslice_masks[offset / 8] & ppipe_mask);
+      else
+         devinfo->ppipe_subslices[p] = 0;
+   }
+
+   /* From the "Fusing information" BSpec page regarding DG2 configurations
+    * where at least a slice has a single pixel pipe fused off:
+    *
+    * "Fault disable any 2 DSS in a Gslice and disable that Gslice (incl.
+    *  geom/color/Z)"
+    *
+    * XXX - Query geometry topology from hardware once kernel interface is
+    *       available instead of trying to do guesswork here.
+    */
+   if (intel_device_info_is_dg2(devinfo)) {
+      for (unsigned p = 0; p < INTEL_DEVICE_MAX_PIXEL_PIPES; p++) {
+         if (devinfo->ppipe_subslices[p] < 2 ||
+             devinfo->ppipe_subslices[p ^ 1] < 2)
+            devinfo->ppipe_subslices[p] = 0;
+      }
+   }
+}
+
+static void
+update_l3_banks(struct intel_device_info *devinfo)
+{
+   if (devinfo->ver != 12 || devinfo->num_slices != 1)
+      return;
+
+   if (devinfo->verx10 >= 125) {
+      if (devinfo->subslice_total > 16) {
+         assert(devinfo->subslice_total <= 32);
+         devinfo->l3_banks = 32;
+      } else if (devinfo->subslice_total > 8) {
+         devinfo->l3_banks = 16;
+      } else {
+         devinfo->l3_banks = 8;
+      }
+   } else {
+      assert(devinfo->num_slices == 1);
+      if (devinfo->subslice_total >= 6) {
+         assert(devinfo->subslice_total == 6);
+         devinfo->l3_banks = 8;
+      } else if (devinfo->subslice_total > 2) {
+         devinfo->l3_banks = 6;
+      } else {
+         devinfo->l3_banks = 4;
+      }
+   }
+}
+
+static void
 update_from_topology(struct intel_device_info *devinfo,
                      const struct drm_i915_query_topology_info *topology)
 {
@@ -1122,75 +1200,8 @@ update_from_topology(struct intel_device_info *devinfo,
 
    /* Now that all the masks are in place, update the counts. */
    update_slice_subslice_counts(devinfo);
-
-   if (devinfo->ver >= 11) {
-      /* The kernel only reports one slice on all existing ICL+
-       * platforms, even if multiple slices are present.  The slice
-       * mask is allowed to have the accurate value greater than 1 on
-       * gfx12.5+ platforms though, in order to be tolerant with the
-       * behavior of our simulation environment.
-       */
-      assert(devinfo->slice_masks == 1 || devinfo->verx10 >= 125);
-
-      /* Count the number of subslices on each pixel pipe. Assume that every
-       * contiguous group of 4 subslices in the mask belong to the same pixel
-       * pipe.  However note that on TGL the kernel returns a mask of enabled
-       * *dual* subslices instead of actual subslices somewhat confusingly, so
-       * each pixel pipe only takes 2 bits in the mask even though it's still
-       * 4 subslices.
-       */
-      const unsigned ppipe_bits = devinfo->ver >= 12 ? 2 : 4;
-      for (unsigned p = 0; p < INTEL_DEVICE_MAX_PIXEL_PIPES; p++) {
-         const unsigned offset = p * ppipe_bits;
-         const unsigned ppipe_mask = BITFIELD_RANGE(offset % 8, ppipe_bits);
-
-         if (offset / 8 < ARRAY_SIZE(devinfo->subslice_masks))
-            devinfo->ppipe_subslices[p] =
-               __builtin_popcount(devinfo->subslice_masks[offset / 8] & ppipe_mask);
-         else
-            devinfo->ppipe_subslices[p] = 0;
-      }
-
-      /* From the "Fusing information" BSpec page regarding DG2
-       * configurations where at least a slice has a single pixel pipe
-       * fused off:
-       *
-       * "Fault disable any 2 DSS in a Gslice and disable that Gslice
-       *  (incl. geom/color/Z)"
-       *
-       * XXX - Query geometry topology from hardware once kernel
-       *       interface is available instead of trying to do
-       *       guesswork here.
-       */
-      if (intel_device_info_is_dg2(devinfo)) {
-         for (unsigned p = 0; p < INTEL_DEVICE_MAX_PIXEL_PIPES; p++) {
-            if (devinfo->ppipe_subslices[p] < 2 ||
-                devinfo->ppipe_subslices[p ^ 1] < 2)
-               devinfo->ppipe_subslices[p] = 0;
-         }
-      }
-   }
-
-   if (devinfo->verx10 >= 125) {
-      if (devinfo->subslice_total > 16) {
-         assert(devinfo->subslice_total <= 32);
-         devinfo->l3_banks = 32;
-      } else if (devinfo->subslice_total > 8) {
-         devinfo->l3_banks = 16;
-      } else {
-         devinfo->l3_banks = 8;
-      }
-   } else {
-      assert(devinfo->num_slices == 1);
-      if (devinfo->subslice_total >= 6) {
-         assert(devinfo->subslice_total == 6);
-         devinfo->l3_banks = 8;
-      } else if (devinfo->subslice_total > 2) {
-         devinfo->l3_banks = 6;
-      } else {
-         devinfo->l3_banks = 4;
-      }
-   }
+   update_pixel_pipes(devinfo);
+   update_l3_banks(devinfo);
 }
 
 /* Generate detailed mask from the I915_PARAM_SLICE_MASK,
