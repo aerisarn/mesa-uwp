@@ -966,7 +966,19 @@ static inline unsigned dest_regs(struct ir3_instruction *instr)
 	if (instr->dsts_count == 0)
 		return 0;
 
+	debug_assert(instr->dsts_count == 1);
 	return util_last_bit(instr->dsts[0]->wrmask);
+}
+
+/* is dst a normal temp register: */
+static inline bool is_dest_gpr(struct ir3_register *dst)
+{
+	if (dst->wrmask == 0)
+		return false;
+	if ((reg_num(dst) == REG_A0) ||
+			(dst->num == regid(REG_P0, 0)))
+		return false;
+	return true;
 }
 
 static inline bool
@@ -974,17 +986,12 @@ writes_gpr(struct ir3_instruction *instr)
 {
 	if (dest_regs(instr) == 0)
 		return false;
-	/* is dest a normal temp register: */
-	struct ir3_register *reg = instr->dsts[0];
-	debug_assert(!(reg->flags & (IR3_REG_CONST | IR3_REG_IMMED)));
-	if ((reg_num(reg) == REG_A0) ||
-			(reg->num == regid(REG_P0, 0)))
-		return false;
-	return true;
+	return is_dest_gpr(instr->dsts[0]);
 }
 
 static inline bool writes_addr0(struct ir3_instruction *instr)
 {
+	/* Note: only the first dest can write to a0.x */
 	if (instr->dsts_count > 0) {
 		struct ir3_register *dst = instr->dsts[0];
 		return dst->num == regid(REG_A0, 0);
@@ -994,6 +1001,7 @@ static inline bool writes_addr0(struct ir3_instruction *instr)
 
 static inline bool writes_addr1(struct ir3_instruction *instr)
 {
+	/* Note: only the first dest can write to a1.x */
 	if (instr->dsts_count > 0) {
 		struct ir3_register *dst = instr->dsts[0];
 		return dst->num == regid(REG_A0, 1);
@@ -1003,6 +1011,7 @@ static inline bool writes_addr1(struct ir3_instruction *instr)
 
 static inline bool writes_pred(struct ir3_instruction *instr)
 {
+	/* Note: only the first dest can write to p0.x */
 	if (instr->dsts_count > 0) {
 		struct ir3_register *dst = instr->dsts[0];
 		return reg_num(dst) == REG_P0;
