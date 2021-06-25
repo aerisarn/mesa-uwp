@@ -373,11 +373,11 @@ compute_topology_builtins(struct intel_perf_config *perf,
 
    for (int i = 0; i < sizeof(devinfo->subslice_masks[i]); i++) {
       perf->sys_vars.n_eu_sub_slices +=
-         __builtin_popcount(devinfo->subslice_masks[i]);
+         util_bitcount(devinfo->subslice_masks[i]);
    }
 
    for (int i = 0; i < sizeof(devinfo->eu_masks); i++)
-      perf->sys_vars.n_eus += __builtin_popcount(devinfo->eu_masks[i]);
+      perf->sys_vars.n_eus += util_bitcount(devinfo->eu_masks[i]);
 
    perf->sys_vars.eu_threads_count = devinfo->num_thread_per_eu;
 
@@ -896,7 +896,7 @@ get_passes_mask(struct intel_perf_config *perf,
          assert(counter_indices[i] < perf->n_counters);
 
          uint32_t idx = counter_indices[i];
-         if (__builtin_popcount(perf->counter_infos[idx].query_mask) != (q + 1))
+         if (util_bitcount64(perf->counter_infos[idx].query_mask) != (q + 1))
             continue;
 
          if (queries_mask & perf->counter_infos[idx].query_mask)
@@ -925,7 +925,7 @@ intel_perf_get_n_passes(struct intel_perf_config *perf,
       }
    }
 
-   return __builtin_popcount(queries_mask);
+   return util_bitcount64(queries_mask);
 }
 
 void
@@ -935,7 +935,7 @@ intel_perf_get_counters_passes(struct intel_perf_config *perf,
                                struct intel_perf_counter_pass *counter_pass)
 {
    uint64_t queries_mask = get_passes_mask(perf, counter_indices, counter_indices_count);
-   ASSERTED uint32_t n_passes = __builtin_popcount(queries_mask);
+   ASSERTED uint32_t n_passes = util_bitcount64(queries_mask);
 
    for (uint32_t i = 0; i < counter_indices_count; i++) {
       assert(counter_indices[i] < perf->n_counters);
@@ -947,7 +947,7 @@ intel_perf_get_counters_passes(struct intel_perf_config *perf,
       counter_pass[i].query = &perf->queries[query_idx];
 
       uint32_t clear_bits = 63 - query_idx;
-      counter_pass[i].pass = __builtin_popcount((queries_mask << clear_bits) >> clear_bits) - 1;
+      counter_pass[i].pass = util_bitcount64((queries_mask << clear_bits) >> clear_bits) - 1;
       assert(counter_pass[i].pass < n_passes);
    }
 }
