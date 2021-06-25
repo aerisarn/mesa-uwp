@@ -1457,6 +1457,8 @@ void nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src,
 void nir_alu_dest_copy(nir_alu_dest *dest, const nir_alu_dest *src,
                        nir_alu_instr *instr);
 
+bool nir_alu_instr_is_copy(nir_alu_instr *instr);
+
 /* is this source channel used? */
 static inline bool
 nir_alu_instr_channel_used(const nir_alu_instr *instr, unsigned src,
@@ -2612,6 +2614,16 @@ nir_ssa_scalar_chase_alu_src(nir_ssa_scalar s, unsigned alu_src_idx)
    assert(out.comp < out.def->num_components);
 
    return out;
+}
+
+nir_ssa_scalar nir_ssa_scalar_chase_movs(nir_ssa_scalar s);
+
+/** Returns a nir_ssa_scalar where we've followed the bit-exact mov/vec use chain to the original definition */
+static inline nir_ssa_scalar
+nir_ssa_scalar_resolved(nir_ssa_def *def, unsigned channel)
+{
+   nir_ssa_scalar s = { def, channel };
+   return nir_ssa_scalar_chase_movs(s);
 }
 
 
