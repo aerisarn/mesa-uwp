@@ -249,8 +249,10 @@ ir3_collect_info(struct ir3_shader_variant *v)
 				collect_reg_info(instr, reg, info);
 			}
 
-			if (writes_gpr(instr)) {
-				collect_reg_info(instr, instr->dsts[0], info);
+			foreach_dst (reg, instr) {
+				if (is_dest_gpr(reg)) {
+					collect_reg_info(instr, reg, info);
+				}
 			}
 
 			if ((instr->opc == OPC_STP || instr->opc == OPC_LDP)) {
