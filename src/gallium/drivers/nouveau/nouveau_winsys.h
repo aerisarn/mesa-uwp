@@ -75,6 +75,12 @@ BO_MAP(struct nouveau_screen *screen, struct nouveau_bo *bo, uint32_t access, st
    return nouveau_bo_map(bo, access, client);
 }
 
+static inline int
+BO_WAIT(struct nouveau_screen *screen, struct nouveau_bo *bo, uint32_t access, struct nouveau_client *client)
+{
+   return nouveau_bo_wait(bo, access, client);
+}
+
 #define NOUVEAU_RESOURCE_FLAG_LINEAR   (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
 #define NOUVEAU_RESOURCE_FLAG_DRV_PRIV (PIPE_RESOURCE_FLAG_DRV_PRIV << 1)
 

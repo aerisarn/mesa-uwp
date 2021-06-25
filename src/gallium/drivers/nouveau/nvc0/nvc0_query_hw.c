@@ -330,7 +330,7 @@ nvc0_hw_get_query_result(struct nvc0_context *nvc0, struct nvc0_query *q,
          }
          return false;
       }
-      if (nouveau_bo_wait(hq->bo, NOUVEAU_BO_RD, nvc0->base.client))
+      if (BO_WAIT(&nvc0->screen->base, hq->bo, NOUVEAU_BO_RD, nvc0->base.client))
          return false;
       NOUVEAU_DRV_STAT(&nvc0->screen->base, query_sync_count, 1);
    }

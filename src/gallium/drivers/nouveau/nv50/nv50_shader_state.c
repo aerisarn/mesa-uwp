@@ -717,7 +717,7 @@ nv50_stream_output_validate(struct nv50_context *nv50)
          PUSH_DATA(push, targ->pipe.buffer_size);
          if (!targ->clean) {
             assert(targ->pq);
-            nv50_hw_query_pushbuf_submit(push, NVA0_3D_STRMOUT_OFFSET(i),
+            nv50_hw_query_pushbuf_submit(nv50, NVA0_3D_STRMOUT_OFFSET(i),
                                          nv50_query(targ->pq), 0x4);
          } else {
             BEGIN_NV04(push, NVA0_3D(STRMOUT_OFFSET(i)), 1);

@@ -191,7 +191,7 @@ nouveau_transfer_read(struct nouveau_context *nv, struct nouveau_transfer *tx)
    nv->copy_data(nv, tx->bo, tx->offset, NOUVEAU_BO_GART,
                  buf->bo, buf->offset + base, buf->domain, size);
 
-   if (nouveau_bo_wait(tx->bo, NOUVEAU_BO_RD, nv->client))
+   if (BO_WAIT(nv->screen, tx->bo, NOUVEAU_BO_RD, nv->client))
       return false;
 
    if (buf->data)

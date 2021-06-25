@@ -362,7 +362,7 @@ nvc0_mt_sync(struct nvc0_context *nvc0, struct nv50_miptree *mt, unsigned usage)
    if (!mt->base.mm) {
       uint32_t access = (usage & PIPE_MAP_WRITE) ?
          NOUVEAU_BO_WR : NOUVEAU_BO_RD;
-      return !nouveau_bo_wait(mt->base.bo, access, nvc0->base.client);
+      return !BO_WAIT(&nvc0->screen->base, mt->base.bo, access, nvc0->base.client);
    }
    if (usage & PIPE_MAP_WRITE)
       return !mt->base.fence || nouveau_fence_wait(mt->base.fence, &nvc0->base.debug);

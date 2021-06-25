@@ -184,11 +184,12 @@ nv84_decoder_begin_frame_mpeg12(struct pipe_video_codec *decoder,
                               struct pipe_video_buffer *target,
                               struct pipe_picture_desc *picture)
 {
+   struct nouveau_screen *screen = nouveau_screen(decoder->context->screen);
    struct nv84_decoder *dec = (struct nv84_decoder *)decoder;
    struct pipe_mpeg12_picture_desc *desc = (struct pipe_mpeg12_picture_desc *)picture;
    int i;
 
-   nouveau_bo_wait(dec->mpeg12_bo, NOUVEAU_BO_RDWR, dec->client);
+   BO_WAIT(screen, dec->mpeg12_bo, NOUVEAU_BO_RDWR, dec->client);
    dec->mpeg12_mb_info = dec->mpeg12_bo->map + 0x100;
    dec->mpeg12_data = dec->mpeg12_bo->map + 0x100 +
       align(0x20 * mb(dec->base.width) * mb(dec->base.height), 0x100);
