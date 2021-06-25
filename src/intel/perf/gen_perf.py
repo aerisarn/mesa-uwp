@@ -964,6 +964,8 @@ def main():
 
             if gen.chipset == "hsw":
                 c("struct intel_perf_query_info *query = hsw_query_alloc(perf, %u);\n" % len(counters))
+            elif gen.chipset.startswith("acm"):
+                c("struct intel_perf_query_info *query = xehp_query_alloc(perf, %u);\n" % len(counters))
             else:
                 c("struct intel_perf_query_info *query = bdw_query_alloc(perf, %u);\n" % len(counters))
             c("\n")

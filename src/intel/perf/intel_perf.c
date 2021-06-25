@@ -1108,6 +1108,66 @@ intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
    result->reports_accumulated++;
 
    switch (query->oa_format) {
+   case I915_OA_FORMAT_A24u40_A14u32_B8_C8:
+      result->accumulator[query->gpu_time_offset] =
+         intel_perf_report_timestamp(query, end) -
+         intel_perf_report_timestamp(query, start);
+
+      accumulate_uint32(start + 3, end + 3,
+                        result->accumulator + query->gpu_clock_offset); /* clock */
+
+      /* A0-A3 counters are 32bits */
+      for (i = 0; i < 4; i++) {
+         accumulate_uint32(start + 4 + i, end + 4 + i,
+                           result->accumulator + query->a_offset + i);
+      }
+
+      /* A4-A23 counters are 40bits */
+      for (i = 4; i < 24; i++) {
+         accumulate_uint40(i, start, end,
+                           result->accumulator + query->a_offset + i);
+      }
+
+      /* A24-27 counters are 32bits */
+      for (i = 0; i < 4; i++) {
+         accumulate_uint32(start + 28 + i, end + 28 + i,
+                           result->accumulator + query->a_offset + 24 + i);
+      }
+
+      /* A28-31 counters are 40bits */
+      for (i = 28; i < 32; i++) {
+         accumulate_uint40(i, start, end,
+                           result->accumulator + query->a_offset + i);
+      }
+
+      /* A32-35 counters are 32bits */
+      for (i = 0; i < 4; i++) {
+         accumulate_uint32(start + 36 + i, end + 36 + i,
+                           result->accumulator + query->a_offset + 32 + i);
+      }
+
+      if (can_use_mi_rpc_bc_counters(&query->perf->devinfo) ||
+          !query->perf->sys_vars.query_mode) {
+         /* A36-37 counters are 32bits */
+         accumulate_uint32(start + 40, end + 40,
+                           result->accumulator + query->a_offset + 36);
+         accumulate_uint32(start + 46, end + 46,
+                           result->accumulator + query->a_offset + 37);
+
+         /* 8x 32bit B counters */
+         for (i = 0; i < 8; i++) {
+            accumulate_uint32(start + 48 + i, end + 48 + i,
+                              result->accumulator + query->b_offset + i);
+         }
+
+         /* 8x 32bit C counters... */
+         for (i = 0; i < 8; i++) {
+            accumulate_uint32(start + 56 + i, end + 56 + i,
+                              result->accumulator + query->c_offset + i);
+         }
+      }
+      break;
+
    case I915_OA_FORMAT_A32u40_A4u32_B8_C8:
       result->accumulator[query->gpu_time_offset] =
          intel_perf_report_timestamp(query, end) -
