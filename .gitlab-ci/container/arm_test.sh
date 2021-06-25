@@ -13,7 +13,6 @@ apt-get install -y --no-remove \
         cpio \
         fastboot \
         netcat \
-        nginx-full \
         procps \
         python-is-python3 \
         python3-distutils \
@@ -22,10 +21,6 @@ apt-get install -y --no-remove \
         rsync \
         snmp \
         wget
-
-# setup nginx
-sed -i '/gzip_/ s/#\ //g' /etc/nginx/nginx.conf
-cp .gitlab-ci/bare-metal/nginx-default-site  /etc/nginx/sites-enabled/default
 
 # setup SNMPv2 SMI MIB
 wget https://raw.githubusercontent.com/net-snmp/net-snmp/master/mibs/SNMPv2-SMI.txt \

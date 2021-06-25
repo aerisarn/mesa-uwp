@@ -22,7 +22,6 @@ apt-get -y install --no-install-recommends \
     $ARCH_PACKAGES \
     $INSTALL_CI_FAIRY_PACKAGES \
     ca-certificates \
-    curl \
     firmware-realtek \
     initramfs-tools \
     libasan6 \

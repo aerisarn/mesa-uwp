@@ -64,11 +64,6 @@ if sh $HWCI_TEST_SCRIPT; then
 fi
 
 # upload artifacts
-WEBDAV=$(cat /proc/cmdline | tr " " "\n" | grep webdav | cut -d '=' -f 2 || true)
-if [ -n "$WEBDAV" ]; then
-  find /results -type f -exec curl -T {} $WEBDAV/{} \;
-fi
-
 MINIO=$(cat /proc/cmdline | tr ' ' '\n' | grep minio_results | cut -d '=' -f 2 || true)
 if [ -n "$MINIO" ]; then
   tar -czf results.tar.gz results/;
