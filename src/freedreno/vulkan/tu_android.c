@@ -409,6 +409,7 @@ tu_AcquireImageANDROID(VkDevice device,
          device, &(VkImportSemaphoreFdInfoKHR) {
                     .sType = VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR,
                     .flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT,
+                    .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
                     .fd = semaphore_fd,
                     .semaphore = semaphore,
                  });
