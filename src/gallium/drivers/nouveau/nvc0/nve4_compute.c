@@ -1031,7 +1031,7 @@ nve4_compute_trap_info(struct nvc0_context *nvc0)
    volatile struct nve4_mp_trap_info *info;
    uint8_t *map;
 
-   ret = nouveau_bo_map(bo, NOUVEAU_BO_RDWR, nvc0->base.client);
+   ret = BO_MAP(&screen->base, bo, NOUVEAU_BO_RDWR, nvc0->base.client);
    if (ret)
       return;
    map = (uint8_t *)bo->map;

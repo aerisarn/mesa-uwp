@@ -293,7 +293,7 @@ nvc0_create_decoder(struct pipe_context *context,
    if (ret)
       goto fail;
 
-   nouveau_bo_map(dec->fence_bo, NOUVEAU_BO_RDWR, screen->client);
+   BO_MAP(screen, dec->fence_bo, NOUVEAU_BO_RDWR, screen->client);
    dec->fence_map = dec->fence_bo->map;
    dec->fence_map[0] = dec->fence_map[4] = dec->fence_map[8] = 0;
    dec->comm = (struct comm *)(dec->fence_map + (COMM_OFFSET/sizeof(*dec->fence_map)));

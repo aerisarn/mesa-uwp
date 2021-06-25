@@ -1072,7 +1072,7 @@ nv50_screen_create(struct nouveau_device *dev)
       goto fail;
    }
 
-   nouveau_bo_map(screen->fence.bo, 0, NULL);
+   BO_MAP(&screen->base, screen->fence.bo, 0, NULL);
    screen->fence.map = screen->fence.bo->map;
    screen->base.fence.emit = nv50_screen_fence_emit;
    screen->base.fence.update = nv50_screen_fence_update;

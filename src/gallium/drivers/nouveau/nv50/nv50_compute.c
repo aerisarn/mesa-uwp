@@ -540,7 +540,7 @@ nv50_compute_upload_input(struct nv50_context *nv50, const uint32_t *input)
       mm = nouveau_mm_allocate(screen->base.mm_GART, size, &bo, &offset);
       assert(mm);
 
-      nouveau_bo_map(bo, 0, nv50->base.client);
+      BO_MAP(&screen->base, bo, 0, nv50->base.client);
       memcpy(bo->map + offset, input, size);
 
       nouveau_bufctx_refn(nv50->bufctx, 0, bo, NOUVEAU_BO_GART | NOUVEAU_BO_RD);

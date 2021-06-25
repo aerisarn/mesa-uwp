@@ -10,6 +10,8 @@
 #include "drm-uapi/drm.h"
 #include <nouveau.h>
 
+#include "nouveau_screen.h"
+
 #ifndef NV04_PFIFO_MAX_PACKET_LEN
 #define NV04_PFIFO_MAX_PACKET_LEN 2047
 #endif
@@ -67,6 +69,11 @@ PUSH_KICK(struct nouveau_pushbuf *push)
    nouveau_pushbuf_kick(push, push->channel);
 }
 
+static inline int
+BO_MAP(struct nouveau_screen *screen, struct nouveau_bo *bo, uint32_t access, struct nouveau_client *client)
+{
+   return nouveau_bo_map(bo, access, client);
+}
 
 #define NOUVEAU_RESOURCE_FLAG_LINEAR   (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
 #define NOUVEAU_RESOURCE_FLAG_DRV_PRIV (PIPE_RESOURCE_FLAG_DRV_PRIV << 1)

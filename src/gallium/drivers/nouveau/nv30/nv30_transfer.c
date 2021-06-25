@@ -635,8 +635,8 @@ nv30_transfer_rect_cpu(XFER_ARGS)
    char *srcmap, *dstmap;
    int x, y;
 
-   nouveau_bo_map(src->bo, NOUVEAU_BO_RD, nv30->base.client);
-   nouveau_bo_map(dst->bo, NOUVEAU_BO_WR, nv30->base.client);
+   BO_MAP(nv30->base.screen, src->bo, NOUVEAU_BO_RD, nv30->base.client);
+   BO_MAP(nv30->base.screen, dst->bo, NOUVEAU_BO_WR, nv30->base.client);
    srcmap = src->bo->map + src->offset;
    dstmap = dst->bo->map + dst->offset;
 

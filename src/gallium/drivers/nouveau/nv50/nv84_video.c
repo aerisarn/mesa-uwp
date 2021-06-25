@@ -69,6 +69,7 @@ nv84_load_firmwares(struct nouveau_device *dev, struct nv84_decoder *dec,
 {
    int ret, size1, size2 = 0;
    struct nouveau_bo *fw;
+   struct nouveau_screen *screen = nouveau_screen(dec->base.context->screen);
 
    size1 = filesize(fw1);
    if (fw2)
@@ -81,7 +82,7 @@ nv84_load_firmwares(struct nouveau_device *dev, struct nv84_decoder *dec,
    ret = nouveau_bo_new(dev, NOUVEAU_BO_VRAM, 0, dec->vp_fw2_offset + size2, NULL, &fw);
    if (ret)
       return NULL;
-   ret = nouveau_bo_map(fw, NOUVEAU_BO_WR, dec->client);
+   ret = BO_MAP(screen, fw, NOUVEAU_BO_WR, dec->client);
    if (ret)
       goto error;
 
@@ -406,14 +407,14 @@ nv84_create_decoder(struct pipe_context *context,
                            NULL, &dec->bitstream);
       if (ret)
          goto fail;
-      ret = nouveau_bo_map(dec->bitstream, NOUVEAU_BO_WR, dec->client);
+      ret = BO_MAP(screen, dec->bitstream, NOUVEAU_BO_WR, dec->client);
       if (ret)
          goto fail;
       ret = nouveau_bo_new(screen->device, NOUVEAU_BO_GART,
                            0, 0x2000, NULL, &dec->vp_params);
       if (ret)
          goto fail;
-      ret = nouveau_bo_map(dec->vp_params, NOUVEAU_BO_WR, dec->client);
+      ret = BO_MAP(screen, dec->vp_params, NOUVEAU_BO_WR, dec->client);
       if (ret)
          goto fail;
    }
@@ -425,7 +426,7 @@ nv84_create_decoder(struct pipe_context *context,
                            NULL, &dec->mpeg12_bo);
       if (ret)
          goto fail;
-      ret = nouveau_bo_map(dec->mpeg12_bo, NOUVEAU_BO_WR, dec->client);
+      ret = BO_MAP(screen, dec->mpeg12_bo, NOUVEAU_BO_WR, dec->client);
       if (ret)
          goto fail;
    }
@@ -434,7 +435,7 @@ nv84_create_decoder(struct pipe_context *context,
                         0, 0x1000, NULL, &dec->fence);
    if (ret)
       goto fail;
-   ret = nouveau_bo_map(dec->fence, NOUVEAU_BO_WR, dec->client);
+   ret = BO_MAP(screen, dec->fence, NOUVEAU_BO_WR, dec->client);
    if (ret)
       goto fail;
    *(uint32_t *)dec->fence->map = 0;

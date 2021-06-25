@@ -1124,7 +1124,7 @@ nvc0_screen_create(struct nouveau_device *dev)
    ret = nouveau_bo_new(dev, flags, 0, 4096, NULL, &screen->fence.bo);
    if (ret)
       FAIL_SCREEN_INIT("Error allocating fence BO: %d\n", ret);
-   nouveau_bo_map(screen->fence.bo, 0, NULL);
+   BO_MAP(&screen->base, screen->fence.bo, 0, NULL);
    screen->fence.map = screen->fence.bo->map;
    screen->base.fence.emit = nvc0_screen_fence_emit;
    screen->base.fence.update = nvc0_screen_fence_update;

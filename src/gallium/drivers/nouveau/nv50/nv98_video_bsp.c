@@ -39,6 +39,7 @@ nv98_decoder_bsp(struct nouveau_vp3_decoder *dec, union pipe_desc desc,
                  unsigned *vp_caps, unsigned *is_ref,
                  struct nouveau_vp3_video_buffer *refs[16])
 {
+   struct nouveau_screen *screen = nouveau_screen(dec->base.context->screen);
    struct nouveau_pushbuf *push = dec->pushbuf[0];
    enum pipe_video_format codec = u_reduce_video_profile(dec->base.profile);
    uint32_t bsp_addr, comm_addr, inter_addr;
@@ -95,7 +96,7 @@ nv98_decoder_bsp(struct nouveau_vp3_decoder *dec, union pipe_desc desc,
       bo_refs[1].bo = dec->inter_bo[comm_seq & 1] = inter_bo = tmp_bo;
    }
 
-   ret = nouveau_bo_map(bsp_bo, NOUVEAU_BO_WR, dec->client);
+   ret = BO_MAP(screen, bsp_bo, NOUVEAU_BO_WR, dec->client);
    if (ret) {
       debug_printf("map failed: %i %s\n", ret, strerror(-ret));
       return -1;

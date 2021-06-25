@@ -359,7 +359,7 @@ nv30_miptree_transfer_map(struct pipe_context *pipe, struct pipe_resource *pt,
    if (usage & PIPE_MAP_WRITE)
       access |= NOUVEAU_BO_WR;
 
-   ret = nouveau_bo_map(tx->tmp.bo, access, nv30->base.client);
+   ret = BO_MAP(nv30->base.screen, tx->tmp.bo, access, nv30->base.client);
    if (ret) {
       pipe_resource_reference(&tx->base.resource, NULL);
       FREE(tx);

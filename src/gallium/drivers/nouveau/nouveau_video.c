@@ -37,12 +37,12 @@ nouveau_vpe_init(struct nouveau_decoder *dec) {
    int ret;
    if (dec->cmds)
       return 0;
-   ret = nouveau_bo_map(dec->cmd_bo, NOUVEAU_BO_RDWR, dec->client);
+   ret = BO_MAP(dec->screen, dec->cmd_bo, NOUVEAU_BO_RDWR, dec->client);
    if (ret) {
       debug_printf("Mapping cmd bo: %s\n", strerror(-ret));
       return ret;
    }
-   ret = nouveau_bo_map(dec->data_bo, NOUVEAU_BO_RDWR, dec->client);
+   ret = BO_MAP(dec->screen, dec->data_bo, NOUVEAU_BO_RDWR, dec->client);
    if (ret) {
       debug_printf("Mapping data bo: %s\n", strerror(-ret));
       return ret;
@@ -582,7 +582,7 @@ nouveau_create_decoder(struct pipe_context *context,
                         0, 4096, NULL, &dec->fence_bo);
    if (ret)
       goto fail;
-   nouveau_bo_map(dec->fence_bo, NOUVEAU_BO_RDWR, NULL);
+   BO_MAP(screen, dec->fence_bo, NOUVEAU_BO_RDWR, NULL);
    dec->fence_map = dec->fence_bo->map;
    dec->fence_map[0] = 0;
 #endif
