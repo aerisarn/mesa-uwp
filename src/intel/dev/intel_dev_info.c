@@ -70,6 +70,8 @@ main(int argc, char *argv[])
       if (!success)
          continue;
 
+      fprintf(stdout, "devinfo struct size = %zu\n", sizeof(devinfo));
+
       fprintf(stdout, "%s:\n", path);
 
       fprintf(stdout, "   name: %s\n", devinfo.name);
