@@ -711,7 +711,7 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 	/* If destination is indirect, then source cannot be.. at least
 	 * I don't think so..
 	 */
-	if ((instr->dsts[0]->flags & IR3_REG_RELATIV) &&
+	if (instr->dsts_count > 0 && (instr->dsts[0]->flags & IR3_REG_RELATIV) &&
 			(flags & IR3_REG_RELATIV))
 		return false;
 

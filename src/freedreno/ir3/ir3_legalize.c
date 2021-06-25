@@ -631,15 +631,13 @@ block_sched(struct ir3 *ir)
 			/* create "else" branch first (since "then" block should
 			 * frequently/always end up being a fall-thru):
 			 */
-			br = ir3_instr_create(block, OPC_B, 1, 1);
-			ir3_dst_create(br, INVALID_REG, 0);
+			br = ir3_instr_create(block, OPC_B, 0, 1);
 			ir3_src_create(br, regid(REG_P0, 0), 0)->def = block->condition->dsts[0];
 			br->cat0.inv1 = true;
 			br->cat0.target = block->successors[1];
 
 			/* "then" branch: */
-			br = ir3_instr_create(block, OPC_B, 1, 1);
-			ir3_dst_create(br, INVALID_REG, 0);
+			br = ir3_instr_create(block, OPC_B, 0, 1);
 			ir3_src_create(br, regid(REG_P0, 0), 0)->def = block->condition->dsts[0];
 			br->cat0.target = block->successors[0];
 
@@ -694,8 +692,7 @@ kill_sched(struct ir3 *ir, struct ir3_shader_variant *so)
 			if (instr->opc != OPC_KILL)
 				continue;
 
-			struct ir3_instruction *br = ir3_instr_create(block, OPC_B, 1, 1);
-			ir3_dst_create(br, INVALID_REG, 0);
+			struct ir3_instruction *br = ir3_instr_create(block, OPC_B, 0, 1);
 			ir3_src_create(br, instr->srcs[0]->num, instr->srcs[0]->flags)->wrmask = 1;
 			br->cat0.target =
 				list_last_entry(&ir->block_list, struct ir3_block, node);

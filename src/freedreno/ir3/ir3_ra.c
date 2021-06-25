@@ -1467,9 +1467,6 @@ handle_chmask(struct ra_ctx *ctx, struct ir3_instruction *instr)
 			ra_file_remove(file, interval);
 	}
 
-	/* add dummy destination for validation */
-	assign_reg(instr, instr->dsts[0], 0);
-
 	insert_parallel_copy_instr(ctx, instr);
 }
 
