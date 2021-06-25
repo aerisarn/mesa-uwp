@@ -95,6 +95,11 @@ main(int argc, char *argv[])
             fprintf(stdout, "\n");
          }
       }
+      for (uint32_t pp = 0; pp < ARRAY_SIZE(devinfo.ppipe_subslices); pp++) {
+         fprintf(stdout, "   pixel pipe %02u: %u\n",
+                 pp, devinfo.ppipe_subslices[pp]);
+      }
+
       fprintf(stdout, "   slices: %u\n", n_s);
       fprintf(stdout, "   %s: %u\n", subslice_name, n_ss);
       fprintf(stdout, "   EU per %s: %u\n", subslice_name, devinfo.num_eu_per_subslice);
