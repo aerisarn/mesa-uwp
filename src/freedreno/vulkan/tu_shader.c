@@ -279,7 +279,7 @@ lower_ssbo_ubo_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
    /* The bindless base is part of the instruction, which means that part of
     * the "pointer" has to be constant. We solve this in the same way the blob
     * does, by generating a bunch of if-statements. In the usual case where
-    * the descriptor set is constant this will get optimized out.
+    * the descriptor set is constant we can skip that, though).
     */
 
    unsigned buffer_src;
@@ -290,11 +290,19 @@ lower_ssbo_ubo_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
       buffer_src = 0;
    }
 
-   nir_ssa_def *base_idx = nir_channel(b, intrin->src[buffer_src].ssa, 0);
+   nir_ssa_scalar scalar_idx = nir_ssa_scalar_resolved(intrin->src[buffer_src].ssa, 0);
    nir_ssa_def *descriptor_idx = nir_channel(b, intrin->src[buffer_src].ssa, 1);
 
    nir_ssa_def *results[MAX_SETS + 1] = { NULL };
 
+   if (nir_ssa_scalar_is_const(scalar_idx)) {
+      nir_ssa_def *bindless =
+         nir_bindless_resource_ir3(b, 32, descriptor_idx, .desc_set = nir_ssa_scalar_as_uint(scalar_idx));
+      nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[buffer_src], bindless);
+      return;
+   }
+
+   nir_ssa_def *base_idx = nir_channel(b, scalar_idx.def, scalar_idx.comp);
    for (unsigned i = 0; i < MAX_SETS + 1; i++) {
       /* if (base_idx == i) { ... */
       nir_if *nif = nir_push_if(b, nir_ieq_imm(b, base_idx, i));
