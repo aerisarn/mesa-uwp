@@ -41,7 +41,7 @@ namespace {
  * for GFX6-GFX7 if found on the system, this is better than nothing.
  */
 bool
-print_asm_gfx6_gfx7(Program* program, std::vector<uint32_t>& binary, FILE* output)
+print_asm_clrx(Program* program, std::vector<uint32_t>& binary, FILE* output)
 {
 #ifdef _WIN32
    return true;
@@ -152,17 +152,10 @@ disasm_instr(chip_class chip, LLVMDisasmContextRef disasm, uint32_t* binary, uns
 
    return std::make_pair(invalid, size);
 }
-} /* end namespace */
 
 bool
-print_asm(Program* program, std::vector<uint32_t>& binary, unsigned exec_size, FILE* output)
+print_asm_llvm(Program* program, std::vector<uint32_t>& binary, unsigned exec_size, FILE* output)
 {
-   if (program->chip_class <= GFX7) {
-      /* Do not abort if clrxdisasm isn't found. */
-      print_asm_gfx6_gfx7(program, binary, output);
-      return false;
-   }
-
    std::vector<bool> referenced_blocks(program->blocks.size());
    referenced_blocks[0] = true;
    for (Block& block : program->blocks) {
@@ -254,6 +247,20 @@ print_asm(Program* program, std::vector<uint32_t>& binary, unsigned exec_size, F
    }
 
    return invalid;
+}
+} /* end namespace */
+
+/* Returns true on failure */
+bool
+print_asm(Program* program, std::vector<uint32_t>& binary, unsigned exec_size, FILE* output)
+{
+   if (program->chip_class <= GFX7) {
+      /* Do not abort if clrxdisasm isn't found. */
+      print_asm_clrx(program, binary, output);
+      return false;
+   } else {
+      return print_asm_llvm(program, binary, exec_size, output);
+   }
 }
 
 } // namespace aco
