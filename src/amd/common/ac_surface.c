@@ -2817,7 +2817,7 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                  surf->meta_offset, surf->meta_size, 1 << surf->meta_alignment_log2,
                  surf->u.gfx9.color.display_dcc_pitch_max, surf->num_meta_levels);
 
-      if (surf->u.gfx9.zs.stencil_offset)
+      if (surf->has_stencil)
          fprintf(out,
                  "    Stencil: offset=%" PRIu64 ", swmode=%u, epitch=%u\n",
                  surf->u.gfx9.zs.stencil_offset,
