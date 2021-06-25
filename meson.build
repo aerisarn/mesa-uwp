@@ -1118,35 +1118,31 @@ c_msvc_compat_args = []
 no_override_init_args = []
 cpp_msvc_compat_args = []
 if cc.get_id() == 'msvc'
-  foreach a : ['/wd4018',  # signed/unsigned mismatch
-               '/wd4056',  # overflow in floating-point constant arithmetic
-               '/wd4244',  # conversion from 'type1' to 'type2', possible loss of data
-               '/wd4267',  # 'var' : conversion from 'size_t' to 'type', possible loss of data
-               '/wd4305',  # trancation from 'type1' to 'type2'
-               '/wd4351',  # new behavior: elements of array 'array' will be default initialized
-               '/wd4756',  # overflow in constant arithmetic
-               '/wd4800',  # forcing value to bool 'true' or 'false' (performance warning)
-               '/wd4996',  # disabled deprecated POSIX name warnings
-               '/wd4291',  # no matching operator delete found
-               '/wd4146',  # unary minus operator applied to unsigned type, result still unsigned
-               '/wd4200',  # nonstandard extension used: zero-sized array in struct/union
-               '/wd4624',  # destructor was implicitly defined as deleted [from LLVM]
-               '/wd4309',  # 'initializing': truncation of constant value
-               '/wd4838',  # conversion from 'int' to 'const char' requires a narrowing conversion
-               '/wd5105',  # macro expansion producing 'defined' has undefined behavior (winbase.h, need Windows SDK upgrade)
-               '/we4020',  # Error when passing the wrong number of parameters
-               '/we4024',  # Error when passing different type of parameter
-               '/Zc:__cplusplus', #Set __cplusplus macro to match the /std:c++<version> on the command line
-              ]
-    if cc.has_argument(a)
-      c_args += a
-    endif
-    if cpp.has_argument(a)
-      cpp_args += a
-    endif
-  endforeach
-else
   _trial = [
+    '/wd4018',  # signed/unsigned mismatch
+    '/wd4056',  # overflow in floating-point constant arithmetic
+    '/wd4244',  # conversion from 'type1' to 'type2', possible loss of data
+    '/wd4267',  # 'var' : conversion from 'size_t' to 'type', possible loss of data
+    '/wd4305',  # trancation from 'type1' to 'type2'
+    '/wd4351',  # new behavior: elements of array 'array' will be default initialized
+    '/wd4756',  # overflow in constant arithmetic
+    '/wd4800',  # forcing value to bool 'true' or 'false' (performance warning)
+    '/wd4996',  # disabled deprecated POSIX name warnings
+    '/wd4291',  # no matching operator delete found
+    '/wd4146',  # unary minus operator applied to unsigned type, result still unsigned
+    '/wd4200',  # nonstandard extension used: zero-sized array in struct/union
+    '/wd4624',  # destructor was implicitly defined as deleted [from LLVM]
+    '/wd4309',  # 'initializing': truncation of constant value
+    '/wd4838',  # conversion from 'int' to 'const char' requires a narrowing conversion
+    '/wd5105',  # macro expansion producing 'defined' has undefined behavior (winbase.h, need Windows SDK upgrade)
+    '/we4020',  # Error when passing the wrong number of parameters
+    '/we4024',  # Error when passing different type of parameter
+    '/Zc:__cplusplus', #Set __cplusplus macro to match the /std:c++<version> on the command line
+  ]
+  c_args += cc.get_supported_arguments(_trial)
+  cpp_args += cpp.get_supported_arguments(_trial)
+else
+  _trial_c = [
     '-Werror=implicit-function-declaration',
     '-Werror=missing-prototypes',
     '-Werror=return-type',
@@ -1160,22 +1156,10 @@ else
     '-fno-trapping-math',
     '-Qunused-arguments',
     '-fno-common',
+    # Clang
+    '-Wno-microsoft-enum-value',
   ]
-  # MinGW chokes on format specifiers and I can't get it all working
-  if not (cc.get_id() == 'gcc' and host_machine.system() == 'windows')
-    _trial += ['-Werror=format', '-Wformat-security']
-  endif
-  # FreeBSD annotated <pthread.h> but Mesa isn't ready
-  if not (cc.get_id() == 'clang' and host_machine.system() == 'freebsd')
-    _trial += ['-Werror=thread-safety']
-  endif
-  foreach a : _trial
-    if cc.has_argument(a)
-      c_args += a
-    endif
-  endforeach
-
-  _trial = [
+  _trial_cpp = [
     '-Werror=return-type',
     '-Werror=empty-body',
     '-Wno-non-virtual-dtor',
@@ -1189,39 +1173,43 @@ else
     # to the memory before the constructor as "dead stores".
     # For now we disable this optimization.
     '-flifetime-dse=1',
+    # Clang
+    '-Wno-microsoft-enum-value',
   ]
+
   # MinGW chokes on format specifiers and I can't get it all working
   if not (cc.get_id() == 'gcc' and host_machine.system() == 'windows')
-    _trial += ['-Werror=format', '-Wformat-security']
+    _trial_c += ['-Werror=format', '-Wformat-security']
+    _trial_cpp += ['-Werror=format', '-Wformat-security']
   endif
-  foreach a : _trial
-    if cpp.has_argument(a)
-      cpp_args += a
-    endif
-  endforeach
 
-  foreach a : ['-Wno-override-init', '-Wno-initializer-overrides']
-    if cc.has_argument(a)
-      no_override_init_args += a
-    endif
-  endforeach
+  # FreeBSD annotated <pthread.h> but Mesa isn't ready
+  if not (cc.get_id() == 'clang' and host_machine.system() == 'freebsd')
+    _trial_c += ['-Werror=thread-safety']
+  endif
+
+  # If the compiler supports it, put function and data symbols in their
+  # own sections and GC the sections after linking.  This lets drivers
+  # drop shared code unused by that specific driver (particularly
+  # relevant for Vulkan drivers).
+  if cc.has_link_argument('-Wl,--gc-sections')
+    _trial_c += ['-ffunction-sections', '-fdata-sections']
+    _trial_cpp += ['-ffunction-sections', '-fdata-sections']
+  endif
+
+  c_args += cc.get_supported_arguments(_trial_c)
+  cpp_args += cpp.get_supported_arguments(_trial_cpp)
+
+  no_override_init_args += cc.get_supported_arguments(
+    ['-Wno-override-init', '-Wno-initializer-overrides']
+  )
 
   # Check for C and C++ arguments for MSVC compatibility. These are only used
   # in parts of the mesa code base that need to compile with MSVC, mainly
   # common code
-  foreach a : ['-Werror=pointer-arith', '-Werror=gnu-empty-initializer']
-    if cc.has_argument(a)
-      c_msvc_compat_args += a
-    endif
-    if cpp.has_argument(a)
-      cpp_msvc_compat_args += a
-    endif
-  endforeach
-
-  if cc.has_argument('-Wmicrosoft-enum-value')  # Clang
-    c_args += '-Wno-microsoft-enum-value'
-    cpp_args += '-Wno-microsoft-enum-value'
-  endif
+  _trial_msvc = ['-Werror=pointer-arith', '-Werror=gnu-empty-initializer']
+  c_msvc_compat_args += cc.get_supported_arguments(_trial_msvc)
+  cpp_msvc_compat_args += cpp.get_supported_arguments(_trial_msvc)
 endif
 
 # set linker arguments
@@ -2152,18 +2140,6 @@ with_any_datasource = with_datasources.length() != 0
 if with_perfetto
   dep_perfetto = dependency('perfetto', fallback: ['perfetto', 'dep_perfetto'])
   pre_args += '-DHAVE_PERFETTO'
-endif
-
-# If the compiler supports it, put function and data symbols in their
-# own sections and GC the sections after linking.  This lets drivers
-# drop shared code unused by that specific driver (particularly
-# relevant for Vulkan drivers).
-if cc.has_link_argument('-Wl,--gc-sections')
-  foreach a: ['-ffunction-sections', '-fdata-sections']
-    if cc.has_argument(a)
-      add_project_arguments(a, language : ['c', 'cpp'])
-    endif
-  endforeach
 endif
 
 foreach a : pre_args
