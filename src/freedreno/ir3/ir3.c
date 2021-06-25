@@ -695,7 +695,8 @@ cp_flags(unsigned flags)
 	flags &= (IR3_REG_CONST | IR3_REG_IMMED |
 			IR3_REG_FNEG | IR3_REG_FABS |
 			IR3_REG_SNEG | IR3_REG_SABS |
-			IR3_REG_BNOT | IR3_REG_RELATIV);
+			IR3_REG_BNOT | IR3_REG_RELATIV |
+			IR3_REG_SHARED);
 	return flags;
 }
 
@@ -743,7 +744,10 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 		/* collect and phi nodes support const/immed sources, which will be
 		 * turned into move instructions, but not anything else.
 		 */
-		if (flags & ~(IR3_REG_IMMED | IR3_REG_CONST))
+		if (flags & ~(IR3_REG_IMMED | IR3_REG_CONST | IR3_REG_SHARED))
+			return false;
+
+		if ((flags & IR3_REG_SHARED) && !(instr->dsts[0]->flags & IR3_REG_SHARED))
 			return false;
 
 		return true;
@@ -758,17 +762,19 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 			case OPC_SWZ:
 			case OPC_SCT:
 			case OPC_GAT:
-				valid_flags = 0;
+				valid_flags = IR3_REG_SHARED;
 				break;
 			default:
-				valid_flags = IR3_REG_IMMED | IR3_REG_CONST | IR3_REG_RELATIV;
+				valid_flags =
+					IR3_REG_IMMED | IR3_REG_CONST | IR3_REG_RELATIV |
+					IR3_REG_SHARED;
 		}
 		if (flags & ~valid_flags)
 			return false;
 		break;
 	case 2:
 		valid_flags = ir3_cat2_absneg(instr->opc) |
-				IR3_REG_CONST | IR3_REG_RELATIV;
+				IR3_REG_CONST | IR3_REG_RELATIV | IR3_REG_SHARED;
 
 		if (ir3_cat2_int(instr->opc))
 			valid_flags |= IR3_REG_IMMED;
@@ -776,29 +782,30 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 		if (flags & ~valid_flags)
 			return false;
 
-		if (flags & (IR3_REG_CONST | IR3_REG_IMMED)) {
+		if (flags & (IR3_REG_CONST | IR3_REG_IMMED | IR3_REG_SHARED)) {
 			unsigned m = n ^ 1;
-			/* cannot deal w/ const in both srcs:
+			/* cannot deal w/ const or shared in both srcs:
 			 * (note that some cat2 actually only have a single src)
 			 */
 			if (m < instr->srcs_count) {
 				struct ir3_register *reg = instr->srcs[m];
-				if ((flags & IR3_REG_CONST) && (reg->flags & IR3_REG_CONST))
+				if ((flags & (IR3_REG_CONST | IR3_REG_SHARED)) &&
+					(reg->flags & (IR3_REG_CONST | IR3_REG_SHARED)))
 					return false;
-				if ((flags & IR3_REG_IMMED) && (reg->flags & IR3_REG_IMMED))
+				if ((flags & IR3_REG_IMMED) && reg->flags & (IR3_REG_IMMED))
 					return false;
 			}
 		}
 		break;
 	case 3:
 		valid_flags = ir3_cat3_absneg(instr->opc) |
-				IR3_REG_CONST | IR3_REG_RELATIV;
+				IR3_REG_CONST | IR3_REG_RELATIV | IR3_REG_SHARED;
 
 		if (flags & ~valid_flags)
 			return false;
 
-		if (flags & (IR3_REG_CONST | IR3_REG_RELATIV)) {
-			/* cannot deal w/ const/relativ in 2nd src: */
+		if (flags & (IR3_REG_CONST | IR3_REG_SHARED | IR3_REG_RELATIV)) {
+			/* cannot deal w/ const/shared/relativ in 2nd src: */
 			if (n == 1)
 				return false;
 		}
