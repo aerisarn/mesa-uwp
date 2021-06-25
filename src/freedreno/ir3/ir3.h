@@ -715,13 +715,17 @@ static inline bool is_nop(struct ir3_instruction *instr)
 	return instr->opc == OPC_NOP;
 }
 
-static inline bool is_same_type_reg(struct ir3_register *reg1,
-		struct ir3_register *reg2)
+static inline bool is_same_type_reg(struct ir3_register *dst,
+		struct ir3_register *src)
 {
-	unsigned type_reg1 = (reg1->flags & (IR3_REG_SHARED | IR3_REG_HALF));
-	unsigned type_reg2 = (reg2->flags & (IR3_REG_SHARED | IR3_REG_HALF));
+	unsigned dst_type = (dst->flags & IR3_REG_HALF);
+	unsigned src_type = (src->flags & IR3_REG_HALF);
 
-	if (type_reg1 ^ type_reg2)
+	/* Treat shared->normal copies as same-type, because they can generally be
+	 * folded, but not normal->shared copies.
+	 */
+	if (dst_type != src_type ||
+		((dst->flags & IR3_REG_SHARED) && !(src->flags & IR3_REG_SHARED)))
 		return false;
 	else
 		return true;
