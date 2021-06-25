@@ -2858,6 +2858,17 @@ to upconvert to 32b float internally?
 		</bitfield>
 	</bitset>
 
+	<bitset name="a6xx_sp_xs_pvt_mem_hw_stack_offset" inline="yes">
+		<doc>
+			This seems to be be the equivalent of HWSTACKOFFSET in
+			a3xx. The ldp/stp offset formula above isn't affected by
+			HWSTACKSIZEPERTHREAD at all, so the HW return address
+			stack seems to be after all the normal per-SP private
+			memory.
+		</doc>
+		<bitfield name="OFFSET" low="0" high="18" shr="11"/>
+	</bitset>
+
 	<reg32 offset="0xa81b" name="SP_VS_OBJ_FIRST_EXEC_OFFSET" type="uint"/>
 	<reg64 offset="0xa81c" name="SP_VS_OBJ_START" type="address" align="32"/>
 	<reg32 offset="0xa81e" name="SP_VS_PVT_MEM_PARAM" type="a6xx_sp_xs_pvt_mem_param"/>
@@ -2866,7 +2877,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa822" name="SP_VS_TEX_COUNT" low="0" high="7" type="uint"/>
 	<reg32 offset="0xa823" name="SP_VS_CONFIG" type="a6xx_sp_xs_config"/>
 	<reg32 offset="0xa824" name="SP_VS_INSTRLEN" low="0" high="27" type="uint"/>
-	<reg32 offset="0xa825" name="SP_VS_PVT_MEM_HW_STACK_OFFSET" low="0" high="18" shr="11"/>
+	<reg32 offset="0xa825" name="SP_VS_PVT_MEM_HW_STACK_OFFSET" type="a6xx_sp_xs_pvt_mem_hw_stack_offset"/>
 
 	<reg32 offset="0xa830" name="SP_HS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0">
 		<!--
@@ -2893,7 +2904,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa83a" name="SP_HS_TEX_COUNT" low="0" high="7" type="uint"/>
 	<reg32 offset="0xa83b" name="SP_HS_CONFIG" type="a6xx_sp_xs_config"/>
 	<reg32 offset="0xa83c" name="SP_HS_INSTRLEN" low="0" high="27" type="uint"/>
-	<reg32 offset="0xa83d" name="SP_HS_PVT_MEM_HW_STACK_OFFSET" low="0" high="18" shr="11"/>
+	<reg32 offset="0xa83d" name="SP_HS_PVT_MEM_HW_STACK_OFFSET" type="a6xx_sp_xs_pvt_mem_hw_stack_offset"/>
 
 	<reg32 offset="0xa840" name="SP_DS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0">
 		<bitfield name="MERGEDREGS" pos="20" type="boolean"/>
@@ -2928,7 +2939,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa862" name="SP_DS_TEX_COUNT" low="0" high="7" type="uint"/>
 	<reg32 offset="0xa863" name="SP_DS_CONFIG" type="a6xx_sp_xs_config"/>
 	<reg32 offset="0xa864" name="SP_DS_INSTRLEN" low="0" high="27" type="uint"/>
-	<reg32 offset="0xa865" name="SP_DS_PVT_MEM_HW_STACK_OFFSET" low="0" high="18" shr="11"/>
+	<reg32 offset="0xa865" name="SP_DS_PVT_MEM_HW_STACK_OFFSET" type="a6xx_sp_xs_pvt_mem_hw_stack_offset"/>
 
 	<reg32 offset="0xa870" name="SP_GS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0">
 		<!--
@@ -2982,7 +2993,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa893" name="SP_GS_TEX_COUNT" low="0" high="7" type="uint"/>
 	<reg32 offset="0xa894" name="SP_GS_CONFIG" type="a6xx_sp_xs_config"/>
 	<reg32 offset="0xa895" name="SP_GS_INSTRLEN" low="0" high="27" type="uint"/>
-	<reg32 offset="0xa896" name="SP_GS_PVT_MEM_HW_STACK_OFFSET" low="0" high="18" shr="11"/>
+	<reg32 offset="0xa896" name="SP_GS_PVT_MEM_HW_STACK_OFFSET" type="a6xx_sp_xs_pvt_mem_hw_stack_offset"/>
 
 	<reg64 offset="0xa8a0" name="SP_VS_TEX_SAMP" type="address" align="16"/>
 	<reg64 offset="0xa8a2" name="SP_HS_TEX_SAMP" type="address" align="16"/>
@@ -3103,7 +3114,7 @@ to upconvert to 32b float internally?
 	</array>
 	<reg32 offset="0xa9a7" name="SP_FS_TEX_COUNT" low="0" high="7" type="uint"/>
 	<reg32 offset="0xa9a8" name="SP_UNKNOWN_A9A8" low="0" high="16" /> <!-- always 0x0 ? -->
-	<reg32 offset="0xa9a9" name="SP_FS_PVT_MEM_HW_STACK_OFFSET" low="0" high="18" shr="11"/>
+	<reg32 offset="0xa9a9" name="SP_FS_PVT_MEM_HW_STACK_OFFSET" type="a6xx_sp_xs_pvt_mem_hw_stack_offset"/>
 
 	<!-- TODO: unknown bool register at 0xa9aa, likely same as 0xa8c0-0xa8c3 but for FS -->
 
@@ -3146,15 +3157,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa9ba" name="SP_CS_TEX_COUNT" low="0" high="7" type="uint"/>
 	<reg32 offset="0xa9bb" name="SP_CS_CONFIG" type="a6xx_sp_xs_config"/>
 	<reg32 offset="0xa9bc" name="SP_CS_INSTRLEN" low="0" high="27" type="uint"/>
-	<reg32 offset="0xa9bd" name="SP_CS_PVT_MEM_HW_STACK_OFFSET" low="0" high="18" shr="11">
-		<doc>
-			This seems to be be the equivalent of HWSTACKOFFSET in
-			a3xx. The offset formula isn't affected by
-			HWSTACKOFFSETPERTHREAD at all, so the HW return address
-			stack seems to be after all the normal per-SP private
-			memory.
-		</doc>
-	</reg32>
+	<reg32 offset="0xa9bd" name="SP_CS_PVT_MEM_HW_STACK_OFFSET" type="a6xx_sp_xs_pvt_mem_hw_stack_offset"/>
 
 	<!-- TODO: two 64kb aligned addresses at a9d0/a9d2 -->
 
