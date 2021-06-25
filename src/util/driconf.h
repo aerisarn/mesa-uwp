@@ -204,6 +204,10 @@
    DRI_CONF_OPT_B(glsl_correct_derivatives_after_discard, def, \
                   "Implicit and explicit derivatives after a discard behave as if the discard didn't happen")
 
+#define DRI_CONF_GLSL_IGNORE_WRITE_TO_READONLY_VAR(def) \
+   DRI_CONF_OPT_B(glsl_ignore_write_to_readonly_var, def, \
+                  "Forces the GLSL compiler to ignore writes to readonly vars rather than throwing an error")
+
 #define DRI_CONF_ALLOW_GLSL_CROSS_STAGE_INTERPOLATION_MISMATCH(def) \
    DRI_CONF_OPT_B(allow_glsl_cross_stage_interpolation_mismatch, def,   \
                   "Allow interpolation qualifier mismatch across shader stages")

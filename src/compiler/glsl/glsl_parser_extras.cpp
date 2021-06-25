@@ -321,6 +321,8 @@ _mesa_glsl_parse_state::_mesa_glsl_parse_state(struct gl_context *_ctx,
       ctx->Const.AllowGLSL120SubsetIn110;
    this->allow_builtin_variable_redeclaration =
       ctx->Const.AllowGLSLBuiltinVariableRedeclaration;
+   this->ignore_write_to_readonly_var =
+      ctx->Const.GLSLIgnoreWriteToReadonlyVar;
 
    this->cs_input_local_size_variable_specified = false;
 

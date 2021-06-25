@@ -945,6 +945,7 @@ struct _mesa_glsl_parse_state {
    bool allow_extension_directive_midshader;
    bool allow_glsl_120_subset_in_110;
    bool allow_builtin_variable_redeclaration;
+   bool ignore_write_to_readonly_var;
 
    /**
     * Known subroutine type declarations.
