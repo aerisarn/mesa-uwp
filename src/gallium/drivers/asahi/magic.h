@@ -7,7 +7,8 @@ demo_cmdbuf(uint64_t *buf, size_t size,
             uint32_t pipeline_null,
             uint32_t pipeline_clear,
             uint32_t pipeline_store,
-            uint64_t rt0);
+            uint64_t rt0,
+            bool clear_pipeline_textures);
 
 void
 demo_mem_map(void *map, size_t size, unsigned *handles,

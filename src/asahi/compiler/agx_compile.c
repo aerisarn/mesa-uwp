@@ -214,7 +214,9 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
    unsigned rt = (loc - FRAG_RESULT_DATA0);
 
    /* TODO: Reverse-engineer interactions with MRT */
-   if (b->shader->did_writeout) {
+   if (b->shader->nir->info.internal) {
+      /* clear */
+   } else if (b->shader->did_writeout) {
 	   agx_writeout(b, 0x0004);
    } else {
 	   agx_writeout(b, 0xC200);

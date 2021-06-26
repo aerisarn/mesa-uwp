@@ -263,6 +263,9 @@ uint64_t
 agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
                          uint64_t render_target);
 
+uint64_t
+agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_surface *surf);
+
 /* Add a BO to a batch. This needs to be amortized O(1) since it's called in
  * hot paths. To achieve this we model BO lists by bit sets */
 
@@ -274,5 +277,8 @@ agx_batch_add_bo(struct agx_batch *batch, struct agx_bo *bo)
 
    BITSET_SET(batch->bo_list, bo->handle);
 }
+
+/* Blit shaders */
+void agx_build_reload_shader(struct agx_device *dev);
 
 #endif

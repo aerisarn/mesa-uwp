@@ -19,6 +19,7 @@
 # SOFTWARE.
 
 files_asahi = files(
+  'agx_blit.c',
   'agx_pipe.c',
   'agx_state.c',
   'agx_uniforms.c',

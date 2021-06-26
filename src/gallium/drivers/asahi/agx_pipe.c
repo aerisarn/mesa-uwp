@@ -421,19 +421,33 @@ agx_flush(struct pipe_context *pctx,
    memcpy(ctx->batch->encoder_current, stop, sizeof(stop));
 
    /* Emit the commandbuffer */
-
-   uint16_t clear_colour[4] = {
-      _mesa_float_to_half(ctx->batch->clear_color[0]),
-      _mesa_float_to_half(ctx->batch->clear_color[1]),
-      _mesa_float_to_half(ctx->batch->clear_color[2]),
-      _mesa_float_to_half(ctx->batch->clear_color[3])
-   };
+   uint64_t pipeline_clear = 0;
+   bool clear_pipeline_textures = false;
 
    struct agx_device *dev = agx_device(pctx->screen);
-   uint64_t pipeline_clear =
-      agx_build_clear_pipeline(ctx,
+
+   if (ctx->batch->clear & PIPE_CLEAR_COLOR0) {
+      uint16_t clear_colour[4] = {
+         _mesa_float_to_half(ctx->batch->clear_color[0]),
+         _mesa_float_to_half(ctx->batch->clear_color[1]),
+         _mesa_float_to_half(ctx->batch->clear_color[2]),
+         _mesa_float_to_half(ctx->batch->clear_color[3])
+      };
+
+
+      pipeline_clear = agx_build_clear_pipeline(ctx,
                                dev->internal.clear,
                                agx_pool_upload(&ctx->batch->pool, clear_colour, sizeof(clear_colour)));
+   } else {
+      enum pipe_format fmt = ctx->batch->cbufs[0]->format;
+      enum agx_format internal = agx_pixel_format[fmt].internal;
+      uint32_t shader = dev->reload.format[internal];
+
+      pipeline_clear = agx_build_reload_pipeline(ctx, shader,
+                               ctx->batch->cbufs[0]);
+
+      clear_pipeline_textures = true;
+   }
 
    uint64_t pipeline_store =
       agx_build_store_pipeline(ctx,
@@ -460,6 +474,7 @@ agx_flush(struct pipe_context *pctx,
    agx_batch_add_bo(batch, batch->encoder);
    agx_batch_add_bo(batch, batch->scissor.bo);
    agx_batch_add_bo(batch, dev->internal.bo);
+   agx_batch_add_bo(batch, dev->reload.bo);
 
    for (unsigned i = 0; i < batch->nr_cbufs; ++i) {
       struct pipe_surface *surf = batch->cbufs[i];
@@ -511,7 +526,8 @@ agx_flush(struct pipe_context *pctx,
                pipeline_null.gpu,
                pipeline_clear,
                pipeline_store,
-               rt0->bo->ptr.gpu);
+               rt0->bo->ptr.gpu,
+               clear_pipeline_textures);
 
    agx_submit_cmdbuf(dev, dev->cmdbuf.handle, dev->memmap.handle, dev->queue.id);
 

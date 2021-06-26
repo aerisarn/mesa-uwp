@@ -1087,6 +1087,90 @@ agx_build_clear_pipeline(struct agx_context *ctx, uint32_t code, uint64_t clear_
 }
 
 uint64_t
+agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_surface *surf)
+{
+   struct agx_ptr ptr = agx_pool_alloc_aligned(&ctx->batch->pipeline_pool,
+                        (1 * AGX_BIND_TEXTURE_LENGTH) +
+                        (1 * AGX_BIND_SAMPLER_LENGTH) +
+                        AGX_SET_SHADER_EXTENDED_LENGTH + 8,
+                        64);
+
+   uint8_t *record = ptr.cpu;
+   struct agx_ptr sampler = agx_pool_alloc_aligned(&ctx->batch->pool, AGX_SAMPLER_LENGTH, 64);
+   struct agx_ptr texture = agx_pool_alloc_aligned(&ctx->batch->pool, AGX_TEXTURE_LENGTH, 64);
+
+   agx_pack(sampler.cpu, SAMPLER, cfg) {
+      cfg.magnify_linear = true;
+      cfg.minify_linear = false;
+      cfg.mip_filter = AGX_MIP_FILTER_NONE;
+      cfg.wrap_s = AGX_WRAP_CLAMP_TO_EDGE;
+      cfg.wrap_t = AGX_WRAP_CLAMP_TO_EDGE;
+      cfg.wrap_r = AGX_WRAP_CLAMP_TO_EDGE;
+      cfg.pixel_coordinates = true;
+      cfg.compare_func = AGX_COMPARE_FUNC_ALWAYS;
+      cfg.unk_2 = 0;
+      cfg.unk_3 = 0;
+   }
+
+   agx_pack(texture.cpu, TEXTURE, cfg) {
+      struct agx_resource *rsrc = agx_resource(surf->texture);
+      const struct util_format_description *desc =
+         util_format_description(surf->format);
+
+      cfg.layout = agx_translate_layout(rsrc->modifier);
+      cfg.format = agx_pixel_format[surf->format].hw;
+      cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]);
+      cfg.swizzle_g = agx_channel_from_pipe(desc->swizzle[1]);
+      cfg.swizzle_b = agx_channel_from_pipe(desc->swizzle[2]);
+      cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]);
+      cfg.width = surf->width;
+      cfg.height = surf->height;
+      cfg.levels = 1;
+      cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
+      cfg.unk_1 = rsrc->bo->ptr.gpu;
+      cfg.unk_2 = false;
+
+      cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
+         (rsrc->slices[0].line_stride - 16) :
+         AGX_RT_STRIDE_TILED;
+   }
+
+   agx_pack(record, BIND_TEXTURE, cfg) {
+      cfg.start = 0;
+      cfg.count = 1;
+      cfg.buffer = texture.gpu;
+   }
+
+   record += AGX_BIND_TEXTURE_LENGTH;
+
+   agx_pack(record, BIND_SAMPLER, cfg) {
+      cfg.start = 0;
+      cfg.count = 1;
+      cfg.buffer = sampler.gpu;
+   }
+
+   record += AGX_BIND_SAMPLER_LENGTH;
+
+   /* TODO: Can we prepack this? */
+   agx_pack(record, SET_SHADER_EXTENDED, cfg) {
+      cfg.code = code;
+      cfg.register_quadwords = 0;
+      cfg.unk_3 = 0x8d;
+      cfg.unk_2 = 0x0d;
+      cfg.unk_2b = 4;
+      cfg.unk_4 = 0;
+      cfg.frag_unk = 0x880100;
+      cfg.preshader_mode = 0; // XXX
+   }
+
+   record += AGX_SET_SHADER_EXTENDED_LENGTH;
+
+   /* End pipeline */
+   memset(record, 0, 8);
+   return ptr.gpu;
+}
+
+uint64_t
 agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
                          uint64_t render_target)
 {

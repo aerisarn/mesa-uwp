@@ -60,7 +60,8 @@ demo_cmdbuf(uint64_t *buf, size_t size,
             uint32_t pipeline_null,
             uint32_t pipeline_clear,
             uint32_t pipeline_store,
-            uint64_t rt0)
+            uint64_t rt0,
+            bool clear_pipeline_textures)
 {
    struct cmdbuf _cmdbuf = {
       .map = (uint32_t *) buf,
@@ -128,7 +129,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 
    EMIT_ZERO_WORDS(cmdbuf, 40);
 
-   EMIT32(cmdbuf, 0xffff8002); // 0x270
+   EMIT32(cmdbuf, 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0)); // 0x270
    EMIT32(cmdbuf, 0);
    EMIT64(cmdbuf, pipeline_clear | 0x4);
    EMIT32(cmdbuf, 0);
@@ -326,4 +327,6 @@ agx_internal_shaders(struct agx_device *dev)
    dev->internal.bo = bo;
    dev->internal.clear = bo->ptr.gpu + clear_offset;
    dev->internal.store = bo->ptr.gpu + store_offset;
+
+   agx_build_reload_shader(dev);
 }

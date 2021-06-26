@@ -26,6 +26,7 @@
 
 #include "util/sparse_array.h"
 #include "io.h"
+#include "agx_formats.h"
 
 #if __APPLE__
 #include <mach/mach.h>
@@ -61,6 +62,11 @@ struct agx_device {
       uint32_t clear;
       uint32_t store;
    } internal;
+
+   struct {
+      struct agx_bo *bo;
+      uint32_t format[AGX_NUM_FORMATS];
+   } reload;
 };
 
 bool
