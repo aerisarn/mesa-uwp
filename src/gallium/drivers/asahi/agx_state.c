@@ -623,6 +623,9 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    if (!state)
       return;
 
+   /* XXX: eliminate this flush with batch tracking logic */
+   pctx->flush(pctx, NULL, 0);
+
    ctx->batch->width = state->width;
    ctx->batch->height = state->height;
    ctx->batch->nr_cbufs = state->nr_cbufs;
