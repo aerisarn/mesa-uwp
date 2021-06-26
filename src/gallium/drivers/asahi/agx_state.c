@@ -630,6 +630,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    ctx->batch->height = state->height;
    ctx->batch->nr_cbufs = state->nr_cbufs;
    ctx->batch->cbufs[0] = state->cbufs[0];
+   ctx->batch->zsbuf = state->zsbuf;
    ctx->dirty = ~0;
 
    for (unsigned i = 0; i < state->nr_cbufs; ++i) {
