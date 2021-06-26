@@ -364,6 +364,9 @@ typedef struct {
 
    /* During instruction selection, for inserting control flow */
    agx_block *current_block;
+   agx_block *continue_block;
+   agx_block *break_block;
+   agx_block *after_block;
 
    /* Stats for shader-db */
    unsigned loop_count;

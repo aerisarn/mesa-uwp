@@ -770,20 +770,26 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 static void
 agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
 {
+   agx_context *ctx = b->shader;
    assert (instr->type == nir_jump_break || instr->type == nir_jump_continue);
 
    /* Break out of either one or two loops */
    unsigned nestings = b->shader->loop_nesting;
 
-   if (instr->type == nir_jump_continue)
+   if (instr->type == nir_jump_continue) {
       nestings += 1;
-   else if (instr->type == nir_jump_break)
+      agx_block_add_successor(ctx->current_block, ctx->continue_block);
+   } else if (instr->type == nir_jump_break) {
       nestings += 2;
+      agx_block_add_successor(ctx->current_block, ctx->break_block);
+   }
 
    /* Update the counter and flush */
    agx_index r0l = agx_register(0, false);
    agx_mov_to(b, r0l, agx_immediate(nestings));
    agx_pop_exec(b, 0);
+
+   ctx->current_block->unconditional_jumps = true;
 }
 
 static void
@@ -829,10 +835,16 @@ agx_create_block(agx_context *ctx)
 static agx_block *
 emit_block(agx_context *ctx, nir_block *block)
 {
-   agx_block *blk = agx_create_block(ctx);
+   if (ctx->after_block) {
+      ctx->current_block = ctx->after_block;
+      ctx->after_block = NULL;
+   } else {
+      ctx->current_block = agx_create_block(ctx);
+   }
+
+   agx_block *blk = ctx->current_block;
    list_addtail(&blk->link, &ctx->blocks);
    list_inithead(&blk->instructions);
-   ctx->current_block = blk;
 
    agx_builder _b = agx_init_builder(ctx, agx_after_block(blk));
 
@@ -866,27 +878,35 @@ emit_if(agx_context *ctx, nir_if *nif)
       (nir_else_block == nir_if_last_else_block(nif) &&
        exec_list_is_empty(&nir_else_block->instr_list));
 
-   agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
+   agx_block *first_block = ctx->current_block;
+   agx_builder _b = agx_init_builder(ctx, agx_after_block(first_block));
    agx_index cond = agx_src_index(&nif->condition);
 
    agx_if_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, true);
    ctx->loop_nesting++;
 
    /* Emit the two subblocks. */
-   emit_cf_list(ctx, &nif->then_list);
+   agx_block *if_block = emit_cf_list(ctx, &nif->then_list);
+   agx_block *end_then = ctx->current_block;
 
    if (!empty_else_block) {
       _b.cursor = agx_after_block(ctx->current_block);
       agx_else_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, false);
-
-      emit_cf_list(ctx, &nif->else_list);
    }
+
+   agx_block *else_block = emit_cf_list(ctx, &nif->else_list);
+   agx_block *end_else = ctx->current_block;
+
+   ctx->after_block = agx_create_block(ctx);
+
+   agx_block_add_successor(first_block, if_block);
+   agx_block_add_successor(first_block, else_block);
+   agx_block_add_successor(end_then, ctx->after_block);
+   agx_block_add_successor(end_else, ctx->after_block);
 
    _b.cursor = agx_after_block(ctx->current_block);
    agx_pop_exec(&_b, 1);
    ctx->loop_nesting--;
-
-   /* TODO: control flow graph(s) */
 }
 
 static void
@@ -895,11 +915,21 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    /* We only track nesting within the innermost loop, so reset */
    ctx->loop_nesting = 0;
 
+   agx_block *popped_break = ctx->break_block;
+   agx_block *popped_continue = ctx->continue_block;
+
+   ctx->break_block = agx_create_block(ctx);
+   ctx->continue_block = agx_create_block(ctx);
+
    /* Make room for break/continue nesting (TODO: skip if no divergent CF) */
    agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
    agx_push_exec(&_b, 2);
 
+   /* Fallthrough to body */
+   agx_block_add_successor(ctx->current_block, ctx->continue_block);
+
    /* Emit the body */
+   ctx->after_block = ctx->continue_block;
    agx_block *start_block = emit_cf_list(ctx, &nloop->body);
 
    /* Fix up the nesting counter via an always true while_icmp, and branch back
@@ -908,6 +938,12 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    agx_while_icmp(&_b, agx_zero(), agx_zero(), 2, AGX_ICOND_UEQ, false);
    agx_jmp_exec_any(&_b, start_block);
    agx_pop_exec(&_b, 2);
+   agx_block_add_successor(ctx->current_block, ctx->continue_block);
+
+   /* Pop off */
+   ctx->after_block = ctx->break_block;
+   ctx->break_block = popped_break;
+   ctx->continue_block = popped_continue;
 
    /* Update shader-db stats */
    ++ctx->loop_count;
