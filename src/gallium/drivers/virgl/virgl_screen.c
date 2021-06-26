@@ -802,6 +802,10 @@ static bool virgl_fence_finish(struct pipe_screen *screen,
 {
    struct virgl_screen *vscreen = virgl_screen(screen);
    struct virgl_winsys *vws = vscreen->vws;
+   struct virgl_context *vctx = virgl_context(ctx);
+
+   if (vctx && timeout)
+      virgl_flush_eq(vctx, NULL, NULL);
 
    return vws->fence_wait(vws, fence, timeout);
 }
