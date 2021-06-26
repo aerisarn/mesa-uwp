@@ -148,7 +148,7 @@ nv30_clear_render_target(struct pipe_context *pipe, struct pipe_surface *ps,
 
    refn.bo = mt->base.bo;
    refn.flags = NOUVEAU_BO_VRAM | NOUVEAU_BO_WR;
-   if (nouveau_pushbuf_space(push, 32, 1, 0) ||
+   if (!PUSH_SPACE_EX(push, 32, 1, 0) ||
        nouveau_pushbuf_refn (push, &refn, 1))
       return;
 
@@ -214,7 +214,7 @@ nv30_clear_depth_stencil(struct pipe_context *pipe, struct pipe_surface *ps,
 
    refn.bo = mt->base.bo;
    refn.flags = NOUVEAU_BO_VRAM | NOUVEAU_BO_WR;
-   if (nouveau_pushbuf_space(push, 32, 1, 0) ||
+   if (!PUSH_SPACE_EX(push, 32, 1, 0) ||
        nouveau_pushbuf_refn (push, &refn, 1))
       return;
 

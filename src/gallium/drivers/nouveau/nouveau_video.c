@@ -73,7 +73,7 @@ nouveau_vpe_fini(struct nouveau_decoder *dec) {
    if (!dec->cmds)
       return;
 
-   nouveau_pushbuf_space(push, 16, 2, 0);
+   PUSH_SPACE_EX(push, 16, 2, 0);
    nouveau_bufctx_reset(dec->bufctx, NV31_VIDEO_BIND_CMD);
 
 #define BCTX_ARGS dec->bufctx, NV31_VIDEO_BIND_CMD, NOUVEAU_BO_RD
@@ -588,7 +588,7 @@ nouveau_create_decoder(struct pipe_context *context,
 #endif
 
    nouveau_pushbuf_bufctx(dec->push, dec->bufctx);
-   nouveau_pushbuf_space(push, 32, 4, 0);
+   PUSH_SPACE_EX(push, 32, 4, 0);
 
    BEGIN_NV04(push, SUBC_MPEG(NV01_SUBCHAN_OBJECT), 1);
    PUSH_DATA (push, dec->mpeg->handle);

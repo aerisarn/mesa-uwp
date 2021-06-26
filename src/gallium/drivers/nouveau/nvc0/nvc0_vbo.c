@@ -788,7 +788,7 @@ nvc0_draw_stream_output(struct nvc0_context *nvc0,
    }
 
    while (num_instances--) {
-      nouveau_pushbuf_space(push, 16, 0, 1);
+      PUSH_SPACE_EX(push, 16, 0, 1);
       BEGIN_NVC0(push, NVC0_3D(VERTEX_BEGIN_GL), 1);
       PUSH_DATA (push, mode);
       BEGIN_NVC0(push, NVC0_3D(DRAW_TFB_BASE), 1);
@@ -869,7 +869,7 @@ nvc0_draw_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *info,
          pushes = draws;
       }
 
-      nouveau_pushbuf_space(push, 16, 0, pushes + !!buf_count);
+      PUSH_SPACE_EX(push, 16, 0, pushes + !!buf_count);
       PUSH_REFN(push, buf->bo, NOUVEAU_BO_RD | buf->domain);
       if (buf_count)
          PUSH_REFN(push, buf_count->bo, NOUVEAU_BO_RD | buf_count->domain);

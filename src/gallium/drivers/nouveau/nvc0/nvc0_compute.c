@@ -464,7 +464,7 @@ nvc0_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    PUSH_DATA (push, (info->block[1] << 16) | info->block[0]);
    PUSH_DATA (push, info->block[2]);
 
-   nouveau_pushbuf_space(push, 32, 2, 1);
+   PUSH_SPACE_EX(push, 32, 2, 1);
    PUSH_REFN(push, screen->text, NV_VRAM_DOMAIN(&screen->base) | NOUVEAU_BO_RD);
 
    if (unlikely(info->indirect)) {
@@ -511,7 +511,7 @@ nvc0_compute_update_indirect_invocations(struct nvc0_context *nvc0,
    struct nv04_resource *res = nv04_resource(info->indirect);
    uint32_t offset = res->offset + info->indirect_offset;
 
-   nouveau_pushbuf_space(push, 16, 0, 8);
+   PUSH_SPACE_EX(push, 16, 0, 8);
    PUSH_REFN(push, res->bo, NOUVEAU_BO_RD | res->domain);
    BEGIN_1IC0(push, NVC0_3D(MACRO_COMPUTE_COUNTER), 7);
    PUSH_DATA(push, 6);

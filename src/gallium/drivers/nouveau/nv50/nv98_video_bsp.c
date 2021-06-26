@@ -108,7 +108,7 @@ nv98_decoder_bsp(struct nouveau_vp3_decoder *dec, union pipe_desc desc,
 
    nouveau_vp3_vp_caps(dec, desc, target, comm_seq, vp_caps, is_ref, refs);
 
-   nouveau_pushbuf_space(push, 32, num_refs, 0);
+   PUSH_SPACE_EX(push, 32, num_refs, 0);
    nouveau_pushbuf_refn(push, bo_refs, num_refs);
 
    bsp_addr = bsp_bo->offset >> 8;

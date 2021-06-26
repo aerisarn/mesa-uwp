@@ -94,7 +94,7 @@ nvc0_decoder_ppp(struct nouveau_vp3_decoder *dec, union pipe_desc desc, struct n
    struct nouveau_pushbuf *push = dec->pushbuf[2];
    unsigned ppp_caps = 0x10;
 
-   nouveau_pushbuf_space(push, 32, 4, 0);
+   PUSH_SPACE_EX(push, 32, 4, 0);
 
    switch (codec) {
    case PIPE_VIDEO_FORMAT_MPEG12: {

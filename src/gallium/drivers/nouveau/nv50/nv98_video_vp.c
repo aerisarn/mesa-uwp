@@ -112,7 +112,7 @@ nv98_decoder_vp(struct nouveau_vp3_decoder *dec, union pipe_desc desc,
    if (!is_ref && (dec->refs[target->valid_ref].decoded_top && dec->refs[target->valid_ref].decoded_bottom))
       nv98_decoder_kick_ref(dec, target);
 
-   nouveau_pushbuf_space(push, 32 + codec_extra, num_refs, 0);
+   PUSH_SPACE_EX(push, 32 + codec_extra, num_refs, 0);
 
    nouveau_pushbuf_refn(push, bo_refs, num_refs);
 

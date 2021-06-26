@@ -129,7 +129,7 @@ nvc0_hw_query_write_compute_invocations(struct nvc0_context *nvc0,
 {
    struct nouveau_pushbuf *push = nvc0->base.pushbuf;
 
-   nouveau_pushbuf_space(push, 16, 0, 8);
+   PUSH_SPACE_EX(push, 16, 0, 8);
    PUSH_REFN(push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_WR);
    BEGIN_1IC0(push, NVC0_3D(MACRO_COMPUTE_COUNTER_TO_QUERY), 4);
    PUSH_DATA (push, nvc0->compute_invocations);
@@ -435,7 +435,7 @@ nvc0_hw_get_query_result_resource(struct nvc0_context *nvc0,
    if ((flags & PIPE_QUERY_WAIT) && hq->state != NVC0_HW_QUERY_STATE_READY)
       nvc0_hw_query_fifo_wait(nvc0, q);
 
-   nouveau_pushbuf_space(push, 32, 2, 3);
+   PUSH_SPACE_EX(push, 32, 2, 3);
    PUSH_REFN (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_RD);
    PUSH_REFN (push, buf->bo, buf->domain | NOUVEAU_BO_WR);
    BEGIN_1IC0(push, NVC0_3D(MACRO_QUERY_BUFFER_WRITE), 9);
