@@ -955,12 +955,17 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
    /* There is a maximum number of half words we may push with a single
     * BIND_UNIFORM record, so split up the range to fit. We only need to call
     * agx_push_location once, however, which reduces the cost. */
+   unsigned unif_records = 0;
 
    for (unsigned i = 0; i < cs->info.push_ranges; ++i) {
       struct agx_push push = cs->info.push[i];
       uint64_t buffer = agx_push_location(ctx, push, stage);
       unsigned halfs_per_record = 14;
       unsigned records = DIV_ROUND_UP(push.length, halfs_per_record);
+
+      /* Ensure we don't overflow */
+      unif_records += records;
+      assert(unif_records < 16);
 
       for (unsigned j = 0; j < records; ++j) {
          agx_pack(record, BIND_UNIFORM, cfg) {
