@@ -468,8 +468,11 @@ agx_flush(struct pipe_context *pctx,
       agx_batch_add_bo(batch, rsrc->bo);
    }
 
-   if (batch->zsbuf)
-      unreachable("todo: zsbuf");
+   if (batch->zsbuf) {
+      struct pipe_surface *surf = batch->zsbuf;
+      struct agx_resource *rsrc = agx_resource(surf->texture);
+      agx_batch_add_bo(batch, rsrc->bo);
+   }
 
    unsigned handle_count =
       BITSET_COUNT(batch->bo_list) +
