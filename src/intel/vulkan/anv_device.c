@@ -991,6 +991,28 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    *device_out = device;
 
+   struct stat st;
+
+   if (stat(primary_path, &st) == 0) {
+      device->has_master = true;
+      device->master_major = major(st.st_rdev);
+      device->master_minor = minor(st.st_rdev);
+   } else {
+      device->has_master = false;
+      device->master_major = 0;
+      device->master_minor = 0;
+   }
+
+   if (stat(path, &st) == 0) {
+      device->has_local = true;
+      device->local_major = major(st.st_rdev);
+      device->local_minor = minor(st.st_rdev);
+   } else {
+      device->has_local = false;
+      device->local_major = 0;
+      device->local_minor = 0;
+   }
+
    return VK_SUCCESS;
 
 fail_engine_info:
@@ -2351,25 +2373,15 @@ void anv_GetPhysicalDeviceProperties2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: {
          VkPhysicalDeviceDrmPropertiesEXT *props =
             (VkPhysicalDeviceDrmPropertiesEXT *)ext;
-         struct stat st;
 
-         props->hasPrimary = fstat(pdevice->master_fd, &st) == 0;
-         if (props->hasPrimary) {
-            props->primaryMajor = (int64_t) major(st.st_rdev);
-            props->primaryMinor = (int64_t) minor(st.st_rdev);
-         } else {
-            props->primaryMajor = 0;
-            props->primaryMinor = 0;
-         }
+         props->hasPrimary = pdevice->has_master;
+         props->primaryMajor = pdevice->master_major;
+         props->primaryMinor = pdevice->master_minor;
 
-         props->hasRender = fstat(pdevice->local_fd, &st) == 0;
-         if (props->hasRender) {
-            props->renderMajor = (int64_t) major(st.st_rdev);
-            props->renderMinor = (int64_t) minor(st.st_rdev);
-         } else {
-            props->renderMajor = 0;
-            props->renderMinor = 0;
-         }
+         props->hasRender = pdevice->has_local;
+         props->renderMajor = pdevice->local_major;
+         props->renderMinor = pdevice->local_minor;
+
          break;
       }
 

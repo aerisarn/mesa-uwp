@@ -988,7 +988,13 @@ struct anv_physical_device {
 
     struct wsi_device                       wsi_device;
     int                                         local_fd;
+    bool                                        has_local;
+    int64_t                                     local_major;
+    int64_t                                     local_minor;
     int                                         master_fd;
+    bool                                        has_master;
+    int64_t                                     master_major;
+    int64_t                                     master_minor;
     struct drm_i915_query_engine_info *         engine_info;
 
     void (*cmd_emit_timestamp)(struct anv_batch *, struct anv_bo *, uint32_t );
