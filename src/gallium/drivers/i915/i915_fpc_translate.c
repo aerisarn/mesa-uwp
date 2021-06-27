@@ -985,6 +985,13 @@ i915_fini_compile(struct i915_context *i915, struct i915_fp_compile *p)
    if (p->nr_decl_insn > I915_MAX_DECL_INSN)
       i915_program_error(p, "Exceeded max DECL instructions");
 
+   /* hw doesn't seem to like empty frag programs (num_instructions == 1 is just
+    * TGSI_END), even when the depth write fixup gets emitted below - maybe that
+    * one is fishy, too?
+    */
+   if (ifs->info.num_instructions == 1)
+      i915_program_error(p, "Empty fragment shader");
+
    if (p->error) {
       p->NumNativeInstructions = 0;
       p->NumNativeAluInstructions = 0;
@@ -1051,14 +1058,6 @@ i915_translate_fragment_program(struct i915_context *i915,
    if (I915_DBG_ON(DBG_FS)) {
       mesa_logi("TGSI fragment shader:");
       tgsi_dump(tokens, 0);
-   }
-
-   /* hw doesn't seem to like empty frag programs, even when the depth write
-    * fixup gets emitted below - may that one is fishy, too? */
-   if (fs->info.num_instructions == 1) {
-      i915_use_passthrough_shader(fs);
-
-      return;
    }
 
    p = i915_init_compile(i915, fs);
