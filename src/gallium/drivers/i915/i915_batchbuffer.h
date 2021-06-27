@@ -39,7 +39,7 @@ i915_winsys_batchbuffer_space(struct i915_winsys_batchbuffer *batch)
    return batch->size - (batch->ptr - batch->map);
 }
 
-static inline boolean
+static inline bool
 i915_winsys_batchbuffer_check(struct i915_winsys_batchbuffer *batch,
                               size_t dwords)
 {
@@ -84,7 +84,7 @@ i915_winsys_batchbuffer_write(struct i915_winsys_batchbuffer *batch, void *data,
    batch->ptr += size;
 }
 
-static inline boolean
+static inline bool
 i915_winsys_validate_buffers(struct i915_winsys_batchbuffer *batch,
                              struct i915_winsys_buffer **buffers,
                              int num_of_buffers)
@@ -96,7 +96,7 @@ static inline int
 i915_winsys_batchbuffer_reloc(struct i915_winsys_batchbuffer *batch,
                               struct i915_winsys_buffer *buffer,
                               enum i915_winsys_buffer_usage usage,
-                              size_t offset, boolean fenced)
+                              size_t offset, bool fenced)
 {
    return batch->iws->batchbuffer_reloc(batch, buffer, usage, offset, fenced);
 }

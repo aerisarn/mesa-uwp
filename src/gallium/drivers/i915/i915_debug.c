@@ -48,9 +48,9 @@ static const struct debug_named_value i915_debug_options[] = {
 unsigned i915_debug = 0;
 
 DEBUG_GET_ONCE_FLAGS_OPTION(i915_debug, "I915_DEBUG", i915_debug_options, 0)
-DEBUG_GET_ONCE_BOOL_OPTION(i915_no_tiling, "I915_NO_TILING", FALSE)
-DEBUG_GET_ONCE_BOOL_OPTION(i915_lie, "I915_LIE", TRUE)
-DEBUG_GET_ONCE_BOOL_OPTION(i915_use_blitter, "I915_USE_BLITTER", TRUE)
+DEBUG_GET_ONCE_BOOL_OPTION(i915_no_tiling, "I915_NO_TILING", false)
+DEBUG_GET_ONCE_BOOL_OPTION(i915_lie, "I915_LIE", true)
+DEBUG_GET_ONCE_BOOL_OPTION(i915_use_blitter, "I915_USE_BLITTER", true)
 
 void
 i915_debug_init(struct i915_screen *is)
@@ -65,7 +65,7 @@ i915_debug_init(struct i915_screen *is)
  * Batchbuffer dumping
  */
 
-static boolean
+static bool
 debug(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned i;
@@ -74,7 +74,7 @@ debug(struct debug_stream *stream, const char *name, unsigned len)
    if (len == 0) {
       mesa_logi("Error - zero length packet (0x%08x)", stream->ptr[0]);
       assert(0);
-      return FALSE;
+      return false;
    }
 
    if (stream->print_addresses)
@@ -87,7 +87,7 @@ debug(struct debug_stream *stream, const char *name, unsigned len)
 
    stream->offset += len * sizeof(unsigned);
 
-   return TRUE;
+   return true;
 }
 
 static const char *
@@ -136,8 +136,8 @@ get_prim_name(unsigned val)
    }
 }
 
-static boolean
-debug_prim(struct debug_stream *stream, const char *name, boolean dump_floats,
+static bool
+debug_prim(struct debug_stream *stream, const char *name, bool dump_floats,
            unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -157,10 +157,10 @@ debug_prim(struct debug_stream *stream, const char *name, boolean dump_floats,
 
    stream->offset += len * sizeof(unsigned);
 
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 debug_program(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -168,7 +168,7 @@ debug_program(struct debug_stream *stream, const char *name, unsigned len)
    if (len == 0) {
       mesa_logi("Error - zero length packet (0x%08x)", stream->ptr[0]);
       assert(0);
-      return FALSE;
+      return false;
    }
 
    if (stream->print_addresses)
@@ -178,10 +178,10 @@ debug_program(struct debug_stream *stream, const char *name, unsigned len)
    i915_disassemble_program(ptr, len);
 
    stream->offset += len * sizeof(unsigned);
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 debug_chain(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -201,10 +201,10 @@ debug_chain(struct debug_stream *stream, const char *name, unsigned len)
       mesa_logi("... skipping from 0x%x --> 0x%x ...", old_offset,
                 stream->offset);
 
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 debug_variable_length_prim(struct debug_stream *stream)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -224,7 +224,7 @@ debug_variable_length_prim(struct debug_stream *stream)
    mesa_logi("%s", "");
 
    stream->offset += len * sizeof(unsigned);
-   return TRUE;
+   return true;
 }
 
 static void
@@ -268,7 +268,7 @@ FLAG(struct debug_stream *stream, unsigned dw, unsigned bit, const char *fmt,
    }
 }
 
-static boolean
+static bool
 debug_load_immediate(struct debug_stream *stream, const char *name,
                      unsigned len)
 {
@@ -369,10 +369,10 @@ debug_load_immediate(struct debug_stream *stream, const char *name,
 
    stream->offset += len * sizeof(unsigned);
 
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 debug_load_indirect(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -431,7 +431,7 @@ debug_load_indirect(struct debug_stream *stream, const char *name, unsigned len)
 
    stream->offset += len * sizeof(unsigned);
 
-   return TRUE;
+   return true;
 }
 
 static void
@@ -493,7 +493,7 @@ BR16(struct debug_stream *stream, unsigned val)
    mesa_logi("\t0x%08x -- color", val);
 }
 
-static boolean
+static bool
 debug_copy_blit(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -512,10 +512,10 @@ debug_copy_blit(struct debug_stream *stream, const char *name, unsigned len)
 
    stream->offset += len * sizeof(unsigned);
    assert(j == len);
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 debug_color_blit(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -532,10 +532,10 @@ debug_color_blit(struct debug_stream *stream, const char *name, unsigned len)
 
    stream->offset += len * sizeof(unsigned);
    assert(j == len);
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 debug_modes4(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -552,10 +552,10 @@ debug_modes4(struct debug_stream *stream, const char *name, unsigned len)
 
    stream->offset += len * sizeof(unsigned);
    assert(j == len);
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 debug_map_state(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -603,10 +603,10 @@ debug_map_state(struct debug_stream *stream, const char *name, unsigned len)
 
    stream->offset += len * sizeof(unsigned);
    assert(j == len);
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 debug_sampler_state(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -662,10 +662,10 @@ debug_sampler_state(struct debug_stream *stream, const char *name, unsigned len)
 
    stream->offset += len * sizeof(unsigned);
    assert(j == len);
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 debug_dest_vars(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -696,10 +696,10 @@ debug_dest_vars(struct debug_stream *stream, const char *name, unsigned len)
 
    stream->offset += len * sizeof(unsigned);
    assert(j == len);
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 debug_buf_info(struct debug_stream *stream, const char *name, unsigned len)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -725,10 +725,10 @@ debug_buf_info(struct debug_stream *stream, const char *name, unsigned len)
 
    stream->offset += len * sizeof(unsigned);
    assert(j == len);
-   return TRUE;
+   return true;
 }
 
-static boolean
+static bool
 i915_debug_packet(struct debug_stream *stream)
 {
    unsigned *ptr = (unsigned *)(stream->ptr + stream->offset);
@@ -745,7 +745,7 @@ i915_debug_packet(struct debug_stream *stream)
          return debug(stream, "MI_FLUSH", 1);
       case 0xA:
          debug(stream, "MI_BATCH_BUFFER_END", 1);
-         return FALSE;
+         return false;
       case 0x22:
          return debug(stream, "MI_LOAD_REGISTER_IMM", 3);
       case 0x31:
@@ -900,7 +900,7 @@ i915_dump_batchbuffer(struct i915_winsys_batchbuffer *batch)
    unsigned *start = (unsigned *)batch->map;
    unsigned *end = (unsigned *)batch->ptr;
    unsigned long bytes = (unsigned long)(end - start) * 4;
-   boolean done = FALSE;
+   bool done = false;
 
    stream.offset = 0;
    stream.ptr = (char *)start;

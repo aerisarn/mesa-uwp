@@ -107,7 +107,7 @@ get_tiling_string(enum i915_winsys_buffer_tile tile)
    case I915_TILE_Y:
       return "y";
    default:
-      assert(FALSE);
+      assert(false);
       return "?";
    }
 }
@@ -185,13 +185,13 @@ i915_texture_tiling(struct i915_screen *is, struct i915_texture *tex)
 /**
  * Special case to deal with scanout textures.
  */
-static boolean
+static bool
 i9x5_scanout_layout(struct i915_texture *tex)
 {
    struct pipe_resource *pt = &tex->b;
 
    if (pt->last_level > 0 || util_format_get_blocksize(pt->format) != 4)
-      return FALSE;
+      return false;
 
    i915_texture_set_level_info(tex, 0, 1);
    i915_texture_set_image_offset(tex, 0, 0, 0, 0);
@@ -205,7 +205,7 @@ i9x5_scanout_layout(struct i915_texture *tex)
       tex->stride = get_pot_stride(pt->format, pt->width0);
       tex->total_nblocksy = align_nblocksy(pt->format, pt->height0, 8);
    } else {
-      return FALSE;
+      return false;
    }
 
 #if DEBUG_TEXTURE
@@ -215,23 +215,23 @@ i9x5_scanout_layout(struct i915_texture *tex)
                 tex->stride * tex->total_nblocksy);
 #endif
 
-   return TRUE;
+   return true;
 }
 
 /**
  * Special case to deal with shared textures.
  */
-static boolean
+static bool
 i9x5_display_target_layout(struct i915_texture *tex)
 {
    struct pipe_resource *pt = &tex->b;
 
    if (pt->last_level > 0 || util_format_get_blocksize(pt->format) != 4)
-      return FALSE;
+      return false;
 
    /* fallback to normal textures for small textures */
    if (pt->width0 < 240)
-      return FALSE;
+      return false;
 
    i915_texture_set_level_info(tex, 0, 1);
    i915_texture_set_image_offset(tex, 0, 0, 0, 0);
@@ -247,13 +247,13 @@ i9x5_display_target_layout(struct i915_texture *tex)
                 tex->stride * tex->total_nblocksy);
 #endif
 
-   return TRUE;
+   return true;
 }
 
 /**
  * Helper function for special layouts
  */
-static boolean
+static bool
 i9x5_special_layout(struct i915_texture *tex)
 {
    struct pipe_resource *pt = &tex->b;
@@ -261,7 +261,7 @@ i9x5_special_layout(struct i915_texture *tex)
    /* Scanouts needs special care */
    if (pt->bind & PIPE_BIND_SCANOUT)
       if (i9x5_scanout_layout(tex))
-         return TRUE;
+         return true;
 
    /* Shared buffers needs to be compatible with X servers
     *
@@ -271,9 +271,9 @@ i9x5_special_layout(struct i915_texture *tex)
     */
    if (pt->bind & (PIPE_BIND_SHARED | PIPE_BIND_DISPLAY_TARGET))
       if (i9x5_display_target_layout(tex))
-         return TRUE;
+         return true;
 
-   return FALSE;
+   return false;
 }
 
 /**
@@ -388,7 +388,7 @@ i915_texture_layout_3d(struct i915_texture *tex)
    tex->total_nblocksy = stack_nblocksy * util_next_power_of_two(pt->depth0);
 }
 
-static boolean
+static bool
 i915_texture_layout(struct i915_texture *tex)
 {
    switch (tex->b.target) {
@@ -406,10 +406,10 @@ i915_texture_layout(struct i915_texture *tex)
       break;
    default:
       assert(0);
-      return FALSE;
+      return false;
    }
 
-   return TRUE;
+   return true;
 }
 
 /*
@@ -633,7 +633,7 @@ i945_texture_layout_cube(struct i915_texture *tex)
    }
 }
 
-static boolean
+static bool
 i945_texture_layout(struct i915_texture *tex)
 {
    switch (tex->b.target) {
@@ -654,10 +654,10 @@ i945_texture_layout(struct i915_texture *tex)
       break;
    default:
       assert(0);
-      return FALSE;
+      return false;
    }
 
-   return TRUE;
+   return true;
 }
 
 /*
@@ -689,7 +689,7 @@ i915_texture_transfer_map(struct pipe_context *pipe,
    struct i915_context *i915 = i915_context(pipe);
    struct i915_texture *tex = i915_texture(resource);
    struct i915_transfer *transfer = slab_alloc_st(&i915->texture_transfer_pool);
-   boolean use_staging_texture = FALSE;
+   bool use_staging_texture = false;
    struct i915_winsys *iws = i915_screen(pipe->screen)->iws;
    enum pipe_format format = resource->format;
    unsigned offset;
@@ -714,9 +714,9 @@ i915_texture_transfer_map(struct pipe_context *pipe,
        (usage & PIPE_MAP_WRITE) &&
        !(usage &
          (PIPE_MAP_READ | PIPE_MAP_DONTBLOCK | PIPE_MAP_UNSYNCHRONIZED)))
-      use_staging_texture = TRUE;
+      use_staging_texture = true;
 
-   use_staging_texture = FALSE;
+   use_staging_texture = false;
 
    if (use_staging_texture) {
       /*
@@ -725,7 +725,7 @@ i915_texture_transfer_map(struct pipe_context *pipe,
        * to a map()
        */
       transfer->staging_texture =
-         i915_texture_create(pipe->screen, resource, TRUE);
+         i915_texture_create(pipe->screen, resource, true);
    }
 
    if (resource->target != PIPE_TEXTURE_3D &&
@@ -743,7 +743,7 @@ i915_texture_transfer_map(struct pipe_context *pipe,
    offset = i915_texture_offset(tex, transfer->b.level, box->z);
 
    map = iws->buffer_map(iws, tex->buffer,
-                         (transfer->b.usage & PIPE_MAP_WRITE) ? TRUE : FALSE);
+                         (transfer->b.usage & PIPE_MAP_WRITE) ? true : false);
    if (!map) {
       pipe_resource_reference(&transfer->staging_texture, NULL);
       FREE(transfer);
@@ -878,7 +878,7 @@ out:
 
 struct pipe_resource *
 i915_texture_create(struct pipe_screen *screen,
-                    const struct pipe_resource *template, boolean force_untiled)
+                    const struct pipe_resource *template, bool force_untiled)
 {
    struct i915_screen *is = i915_screen(screen);
    struct i915_winsys *iws = is->iws;

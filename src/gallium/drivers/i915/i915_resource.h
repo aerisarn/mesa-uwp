@@ -40,7 +40,7 @@ struct i915_screen;
 struct i915_buffer {
    struct pipe_resource b;
    uint8_t *data;
-   boolean free_on_destroy;
+   bool free_on_destroy;
 };
 
 /* Texture transfer. */
@@ -104,7 +104,7 @@ i915_buffer(struct pipe_resource *resource)
 
 struct pipe_resource *i915_texture_create(struct pipe_screen *screen,
                                           const struct pipe_resource *template,
-                                          boolean force_untiled);
+                                          bool force_untiled);
 
 bool i915_resource_get_handle(struct pipe_screen *screen,
                               struct pipe_context *context,

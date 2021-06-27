@@ -42,7 +42,7 @@
 #include "util/u_prim.h"
 #include "util/u_upload_mgr.h"
 
-DEBUG_GET_ONCE_BOOL_OPTION(i915_no_vbuf, "I915_NO_VBUF", FALSE)
+DEBUG_GET_ONCE_BOOL_OPTION(i915_no_vbuf, "I915_NO_VBUF", false)
 
 /*
  * Draw functions
@@ -226,7 +226,7 @@ i915_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
    draw_install_aaline_stage(i915->draw, &i915->base);
    draw_install_aapoint_stage(i915->draw, &i915->base);
-   draw_enable_point_sprites(i915->draw, TRUE);
+   draw_enable_point_sprites(i915->draw, true);
 
    i915->dirty = ~0;
    i915->hardware_dirty = ~0;

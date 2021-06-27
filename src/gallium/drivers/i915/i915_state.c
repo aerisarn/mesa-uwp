@@ -620,7 +620,7 @@ i915_set_constant_buffer(struct pipe_context *pipe,
    struct i915_context *i915 = i915_context(pipe);
    struct pipe_resource *buf = cb ? cb->buffer : NULL;
    unsigned new_num = 0;
-   boolean diff = TRUE;
+   bool diff = true;
 
    /* XXX don't support geom shaders now */
    if (shader == PIPE_SHADER_GEOMETRY)
@@ -642,7 +642,7 @@ i915_set_constant_buffer(struct pipe_context *pipe,
 
       if (old_num == new_num) {
          if (old_num == 0)
-            diff = FALSE;
+            diff = false;
 #if 0
          /* XXX no point in running this code since st/mesa only uses user buffers */
          /* Can't compare the buffer data since they are userbuffers */

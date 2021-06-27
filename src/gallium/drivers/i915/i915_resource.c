@@ -12,9 +12,9 @@ i915_resource_create(struct pipe_screen *screen,
       return i915_buffer_create(screen, template);
    else {
       if (!(template->bind & PIPE_BIND_LINEAR))
-         return i915_texture_create(screen, template, FALSE);
+         return i915_texture_create(screen, template, false);
       else
-         return i915_texture_create(screen, template, TRUE);
+         return i915_texture_create(screen, template, true);
    }
 }
 

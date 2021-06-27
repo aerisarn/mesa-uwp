@@ -896,7 +896,7 @@ i915_translate_token(struct i915_fp_compile *p,
             }
          }
 
-         p->first_instruction = FALSE;
+         p->first_instruction = false;
       }
 
       i915_translate_instruction(p, &token->FullInstruction, fs);
@@ -947,7 +947,7 @@ i915_init_compile(struct i915_context *i915, struct i915_fragment_shader *ifs)
 
    p->log_program_errors = !i915->no_log_program_errors;
 
-   p->first_instruction = TRUE;
+   p->first_instruction = true;
 
    p->nr_tex_indirect = 1; /* correct? */
    p->nr_tex_insn = 0;

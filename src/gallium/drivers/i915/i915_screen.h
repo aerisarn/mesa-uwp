@@ -41,12 +41,12 @@ struct i915_screen {
 
    struct i915_winsys *iws;
 
-   boolean is_i945;
+   bool is_i945;
 
    struct {
-      boolean tiling;
-      boolean lie;
-      boolean use_blitter;
+      bool tiling;
+      bool lie;
+      bool use_blitter;
    } debug;
 };
 

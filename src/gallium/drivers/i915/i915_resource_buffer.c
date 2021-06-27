@@ -117,7 +117,7 @@ i915_buffer_create(struct pipe_screen *screen,
    pipe_reference_init(&buf->b.reference, 1);
    buf->b.screen = screen;
    buf->data = align_malloc(template->width0, 64);
-   buf->free_on_destroy = TRUE;
+   buf->free_on_destroy = true;
 
    if (!buf->data)
       goto err;
@@ -150,7 +150,7 @@ i915_user_buffer_create(struct pipe_screen *screen, void *ptr, unsigned bytes,
    buf->b.array_size = 1;
 
    buf->data = ptr;
-   buf->free_on_destroy = FALSE;
+   buf->free_on_destroy = false;
 
    return &buf->b;
 }

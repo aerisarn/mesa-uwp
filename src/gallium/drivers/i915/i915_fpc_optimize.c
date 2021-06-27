@@ -42,7 +42,7 @@ struct i915_optimize_context {
    int last_read[TGSI_EXEC_NUM_TEMPS];
 };
 
-static boolean
+static bool
 same_src_dst_reg(struct i915_full_src_register *s1,
                  struct i915_full_dst_register *d1)
 {
@@ -52,7 +52,7 @@ same_src_dst_reg(struct i915_full_src_register *s1,
            s1->Register.Index == d1->Register.Index);
 }
 
-static boolean
+static bool
 same_dst_reg(struct i915_full_dst_register *d1,
              struct i915_full_dst_register *d2)
 {
@@ -62,7 +62,7 @@ same_dst_reg(struct i915_full_dst_register *d1,
            d1->Register.Index == d2->Register.Index);
 }
 
-static boolean
+static bool
 same_src_reg(struct i915_full_src_register *d1,
              struct i915_full_src_register *d2)
 {
@@ -75,8 +75,8 @@ same_src_reg(struct i915_full_src_register *d1,
 }
 
 static const struct {
-   boolean is_texture;
-   boolean commutes;
+   bool is_texture;
+   bool commutes;
    unsigned neutral_element;
    unsigned num_dst;
    unsigned num_src;
@@ -124,7 +124,7 @@ static const struct {
    [TGSI_OPCODE_TXP] = {true, false, 0, 1, 2},
 };
 
-static boolean
+static bool
 op_has_dst(unsigned opcode)
 {
    return (op_table[opcode].num_dst > 0);
@@ -142,7 +142,7 @@ op_num_src(unsigned opcode)
    return op_table[opcode].num_src;
 }
 
-static boolean
+static bool
 op_commutes(unsigned opcode)
 {
    return op_table[opcode].commutes;
@@ -168,21 +168,21 @@ mask_for_unswizzled(int num_components)
    return mask;
 }
 
-static boolean
+static bool
 is_unswizzled(struct i915_full_src_register *r, unsigned write_mask)
 {
    if (write_mask & TGSI_WRITEMASK_X && r->Register.SwizzleX != TGSI_SWIZZLE_X)
-      return FALSE;
+      return false;
    if (write_mask & TGSI_WRITEMASK_Y && r->Register.SwizzleY != TGSI_SWIZZLE_Y)
-      return FALSE;
+      return false;
    if (write_mask & TGSI_WRITEMASK_Z && r->Register.SwizzleZ != TGSI_SWIZZLE_Z)
-      return FALSE;
+      return false;
    if (write_mask & TGSI_WRITEMASK_W && r->Register.SwizzleW != TGSI_SWIZZLE_W)
-      return FALSE;
-   return TRUE;
+      return false;
+   return true;
 }
 
-static boolean
+static bool
 op_is_texture(unsigned opcode)
 {
    return op_table[opcode].is_texture;
@@ -398,7 +398,7 @@ i915_tex_mask(union i915_full_token *instr)
    return mask;
 }
 
-static boolean
+static bool
 target_is_texture2d(uint32_t tex)
 {
    switch (tex) {
@@ -585,7 +585,7 @@ i915_fpc_optimize_mov_after_alu(union i915_full_token *current,
  * into:
  *    NOP
  */
-static boolean
+static bool
 i915_fpc_useless_mov(union tgsi_full_token *tgsi_current)
 {
    union i915_full_token current;
@@ -600,9 +600,9 @@ i915_fpc_useless_mov(union tgsi_full_token *tgsi_current)
                      current.FullInstruction.Dst[0].Register.WriteMask) &&
        same_src_dst_reg(&current.FullInstruction.Src[0],
                         &current.FullInstruction.Dst[0])) {
-      return TRUE;
+      return true;
    }
-   return FALSE;
+   return false;
 }
 
 /*

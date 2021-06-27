@@ -561,7 +561,7 @@ i915_screen_create(struct i915_winsys *iws)
    switch (iws->pci_id) {
    case PCI_CHIP_I915_G:
    case PCI_CHIP_I915_GM:
-      is->is_i945 = FALSE;
+      is->is_i945 = false;
       break;
 
    case PCI_CHIP_I945_G:
@@ -572,7 +572,7 @@ i915_screen_create(struct i915_winsys *iws)
    case PCI_CHIP_Q35_G:
    case PCI_CHIP_PINEVIEW_G:
    case PCI_CHIP_PINEVIEW_M:
-      is->is_i945 = TRUE;
+      is->is_i945 = true;
       break;
 
    default:

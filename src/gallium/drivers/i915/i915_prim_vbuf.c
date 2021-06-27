@@ -149,18 +149,18 @@ i915_vbuf_render_get_vertex_info(struct vbuf_render *render)
  * Side effects:
  *    None.
  */
-static boolean
+static bool
 i915_vbuf_render_reserve(struct i915_vbuf_render *i915_render, size_t size)
 {
    struct i915_context *i915 = i915_render->i915;
 
    if (i915_render->vbo_size < size + i915_render->vbo_sw_offset)
-      return FALSE;
+      return false;
 
    if (i915->vbo_flushed)
-      return FALSE;
+      return false;
 
-   return TRUE;
+   return true;
 }
 
 /**
@@ -206,7 +206,7 @@ i915_vbuf_render_new_buf(struct i915_vbuf_render *i915_render, size_t size)
 
    i915_render->vbo =
       iws->buffer_create(iws, i915_render->vbo_size, I915_NEW_VERTEX);
-   i915_render->vbo_ptr = iws->buffer_map(iws, i915_render->vbo, TRUE);
+   i915_render->vbo_ptr = iws->buffer_map(iws, i915_render->vbo, true);
 }
 
 /**
@@ -715,7 +715,7 @@ i915_vbuf_render_create(struct i915_context *i915)
    i915_render->vbo_alloc_size = i915_render->base.max_vertex_buffer_bytes * 4;
 
 #ifdef VBUF_USE_POOL
-   i915_render->pool_used = FALSE;
+   i915_render->pool_used = false;
    i915_render->pool_buffer_size = i915_render->vbo_alloc_size;
    i915_render->pool_fifo = u_fifo_create(6);
    for (i = 0; i < 6; i++)

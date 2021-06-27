@@ -415,7 +415,7 @@ emit_draw_rect(struct i915_context *i915)
    }
 }
 
-static boolean
+static bool
 i915_validate_state(struct i915_context *i915, unsigned *batch_space)
 {
    unsigned tmp;
@@ -456,13 +456,13 @@ static int counter_total = 0;
 #undef VALIDATE_ATOM
 
    if (i915->num_validation_buffers == 0)
-      return TRUE;
+      return true;
 
    if (!i915_winsys_validate_buffers(i915->batch, i915->validation_buffers,
                                      i915->num_validation_buffers))
-      return FALSE;
+      return false;
 
-   return TRUE;
+   return true;
 }
 
 /* Push the state into the sarea and/or texture memory.

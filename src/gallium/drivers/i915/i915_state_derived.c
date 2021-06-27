@@ -56,12 +56,12 @@ calculate_vertex_layout(struct i915_context *i915)
 {
    const struct i915_fragment_shader *fs = i915->fs;
    struct vertex_info vinfo;
-   boolean texCoords[I915_TEX_UNITS], colors[2], fog, needW, face;
+   bool texCoords[I915_TEX_UNITS], colors[2], fog, needW, face;
    uint32_t i;
    int src;
 
    memset(texCoords, 0, sizeof(texCoords));
-   colors[0] = colors[1] = fog = needW = face = FALSE;
+   colors[0] = colors[1] = fog = needW = face = false;
    memset(&vinfo, 0, sizeof(vinfo));
 
    /* Determine which fragment program inputs are needed.  Setup HW vertex
@@ -71,24 +71,24 @@ calculate_vertex_layout(struct i915_context *i915)
       switch (fs->info.input_semantic_name[i]) {
       case TGSI_SEMANTIC_POSITION: {
          uint32_t unit = I915_SEMANTIC_POS;
-         texCoords[find_mapping(fs, unit)] = TRUE;
+         texCoords[find_mapping(fs, unit)] = true;
       } break;
       case TGSI_SEMANTIC_COLOR:
          assert(fs->info.input_semantic_index[i] < 2);
-         colors[fs->info.input_semantic_index[i]] = TRUE;
+         colors[fs->info.input_semantic_index[i]] = true;
          break;
       case TGSI_SEMANTIC_GENERIC: {
          /* texcoords/varyings/other generic */
          uint32_t unit = fs->info.input_semantic_index[i];
 
-         texCoords[find_mapping(fs, unit)] = TRUE;
-         needW = TRUE;
+         texCoords[find_mapping(fs, unit)] = true;
+         needW = true;
       } break;
       case TGSI_SEMANTIC_FOG:
-         fog = TRUE;
+         fog = true;
          break;
       case TGSI_SEMANTIC_FACE:
-         face = TRUE;
+         face = true;
          break;
       default:
          debug_printf("Unknown input type %d\n",

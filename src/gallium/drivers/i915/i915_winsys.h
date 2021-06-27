@@ -99,9 +99,9 @@ struct i915_winsys {
     * @buffers array to buffers to validate
     * @num_of_buffers size of the passed array
     */
-   boolean (*validate_buffers)(struct i915_winsys_batchbuffer *batch,
-                               struct i915_winsys_buffer **buffers,
-                               int num_of_buffers);
+   bool (*validate_buffers)(struct i915_winsys_batchbuffer *batch,
+                            struct i915_winsys_buffer **buffers,
+                            int num_of_buffers);
 
    /**
     * Emit a relocation to a buffer.
@@ -117,7 +117,7 @@ struct i915_winsys {
    int (*batchbuffer_reloc)(struct i915_winsys_batchbuffer *batch,
                             struct i915_winsys_buffer *reloc,
                             enum i915_winsys_buffer_usage usage,
-                            unsigned offset, boolean fenced);
+                            unsigned offset, bool fenced);
 
    /**
     * Flush a bufferbatch.
@@ -169,15 +169,15 @@ struct i915_winsys {
     * Used to implement pipe_screen::resource_get_handle.
     * The winsys might need the stride information.
     */
-   boolean (*buffer_get_handle)(struct i915_winsys *iws,
-                                struct i915_winsys_buffer *buffer,
-                                struct winsys_handle *whandle, unsigned stride);
+   bool (*buffer_get_handle)(struct i915_winsys *iws,
+                             struct i915_winsys_buffer *buffer,
+                             struct winsys_handle *whandle, unsigned stride);
 
    /**
     * Map a buffer.
     */
    void *(*buffer_map)(struct i915_winsys *iws,
-                       struct i915_winsys_buffer *buffer, boolean write);
+                       struct i915_winsys_buffer *buffer, bool write);
 
    /**
     * Unmap a buffer.
@@ -199,8 +199,8 @@ struct i915_winsys {
    /**
     * Check if a buffer is busy.
     */
-   boolean (*buffer_is_busy)(struct i915_winsys *iws,
-                             struct i915_winsys_buffer *buffer);
+   bool (*buffer_is_busy)(struct i915_winsys *iws,
+                          struct i915_winsys_buffer *buffer);
    /*@}*/
 
    /**

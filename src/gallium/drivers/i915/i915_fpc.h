@@ -47,14 +47,14 @@
 struct i915_fp_compile {
    struct i915_fragment_shader *shader; /* the shader we're compiling */
 
-   boolean used_constants[I915_MAX_CONSTANT];
+   bool used_constants[I915_MAX_CONSTANT];
 
    /** maps TGSI immediate index to constant slot */
    uint32_t num_immediates;
    uint32_t immediates_map[I915_MAX_CONSTANT];
    float immediates[I915_MAX_CONSTANT][4];
 
-   boolean first_instruction;
+   bool first_instruction;
 
    uint32_t declarations[I915_PROGRAM_SIZE];
    uint32_t program[I915_PROGRAM_SIZE];
@@ -76,7 +76,7 @@ struct i915_fp_compile {
    uint32_t nr_decl_insn;
 
    bool log_program_errors;
-   boolean error; /**< Set if i915_program_error() is called */
+   bool error; /**< Set if i915_program_error() is called */
    uint32_t NumNativeInstructions;
    uint32_t NumNativeAluInstructions;
    uint32_t NumNativeTexInstructions;

@@ -207,10 +207,10 @@ i915_translate_logic_op(unsigned opcode)
    }
 }
 
-static inline boolean
+static inline bool
 i915_validate_vertices(unsigned hw_prim, unsigned nr)
 {
-   boolean ok;
+   bool ok;
 
    switch (hw_prim) {
    case PRIM3D_POINTLIST:
