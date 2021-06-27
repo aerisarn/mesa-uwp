@@ -44,6 +44,7 @@ struct i915_winsys_batchbuffer;
 #define DBG_FLUSH     0x8
 #define DBG_TEXTURE   0x10
 #define DBG_CONSTANTS 0x20
+#define DBG_FS        0x40
 
 extern unsigned i915_debug;
 

@@ -277,5 +277,4 @@ i915_disassemble_program(const unsigned *program, unsigned sz)
    }
 
    mesa_logi("\t\tEND");
-   mesa_logi("\t\t");
 }

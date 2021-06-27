@@ -42,6 +42,7 @@ static const struct debug_named_value i915_debug_options[] = {
    {"flush", DBG_FLUSH, "Flushing information"},
    {"texture", DBG_TEXTURE, "Texture information"},
    {"constants", DBG_CONSTANTS, "Constant buffers"},
+   {"fs", DBG_FS, "Dump fragment shaders"},
    DEBUG_NAMED_VALUE_END};
 
 unsigned i915_debug = 0;

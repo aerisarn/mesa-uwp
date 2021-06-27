@@ -28,6 +28,7 @@
 #include <stdarg.h>
 
 #include "i915_context.h"
+#include "i915_debug.h"
 #include "i915_debug_private.h"
 #include "i915_fpc.h"
 #include "i915_reg.h"
@@ -35,6 +36,7 @@
 #include "pipe/p_shader_tokens.h"
 #include "tgsi/tgsi_dump.h"
 #include "tgsi/tgsi_parse.h"
+#include "util/log.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_string.h"
@@ -1046,9 +1048,10 @@ i915_translate_fragment_program(struct i915_context *i915,
    const struct tgsi_token *tokens = fs->state.tokens;
    struct i915_token_list *i_tokens;
 
-#if 0
-   tgsi_dump(tokens, 0);
-#endif
+   if (I915_DBG_ON(DBG_FS)) {
+      mesa_logi("TGSI fragment shader:");
+      tgsi_dump(tokens, 0);
+   }
 
    /* hw doesn't seem to like empty frag programs, even when the depth write
     * fixup gets emitted below - may that one is fishy, too? */
@@ -1067,8 +1070,18 @@ i915_translate_fragment_program(struct i915_context *i915,
    i915_fini_compile(i915, p);
    i915_optimize_free(i_tokens);
 
-#if 0
-   /* XXX: The disasm wants the concatenation of the decl and program. */
-   i915_disassemble_program(fs->program, fs->program_len);
-#endif
+   if (I915_DBG_ON(DBG_FS)) {
+      mesa_logi("i915 fragment shader with %d constants%s", fs->num_constants,
+                fs->num_constants ? ":" : "");
+
+      for (int i = 0; i < I915_MAX_CONSTANT; i++) {
+         if (fs->constant_flags[i] &&
+             fs->constant_flags[i] != I915_CONSTFLAG_USER) {
+            mesa_logi("\t\tC[%d] = { %f, %f, %f, %f }", i, fs->constants[i][0],
+                      fs->constants[i][1], fs->constants[i][2],
+                      fs->constants[i][3]);
+         }
+      }
+      i915_disassemble_program(fs->program, fs->program_len);
+   }
 }
