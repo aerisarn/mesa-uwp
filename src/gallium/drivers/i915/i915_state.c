@@ -613,7 +613,7 @@ i915_delete_vs_state(struct pipe_context *pipe, void *shader)
 
 static void
 i915_set_constant_buffer(struct pipe_context *pipe,
-                         enum pipe_shader_type shader, uint index,
+                         enum pipe_shader_type shader, uint32_t index,
                          bool take_ownership,
                          const struct pipe_constant_buffer *cb)
 {
@@ -688,7 +688,7 @@ i915_set_sampler_views(struct pipe_context *pipe, enum pipe_shader_type shader,
       return;
    }
    struct i915_context *i915 = i915_context(pipe);
-   uint i;
+   uint32_t i;
 
    assert(num <= PIPE_MAX_SAMPLERS);
 

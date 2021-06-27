@@ -97,8 +97,8 @@ struct i915_fragment_shader {
 
    struct draw_fragment_shader *draw_data;
 
-   uint *program;
-   uint program_len;
+   uint32_t *program;
+   uint32_t program_len;
 
    /**
     * constants introduced during translation.
@@ -109,7 +109,7 @@ struct i915_fragment_shader {
     * and doesn't require regenerating/changing the fragment program to
     * shuffle constants around.
     */
-   uint num_constants;
+   uint32_t num_constants;
    float constants[I915_MAX_CONSTANT][4];
 
    /**
@@ -137,7 +137,7 @@ struct i915_state {
    unsigned dynamic[I915_MAX_DYNAMIC];
 
    /** number of constants passed in through a constant buffer */
-   uint num_user_constants[PIPE_SHADER_TYPES];
+   uint32_t num_user_constants[PIPE_SHADER_TYPES];
 
    /* texture sampler state */
    unsigned sampler[I915_TEX_UNITS][3];

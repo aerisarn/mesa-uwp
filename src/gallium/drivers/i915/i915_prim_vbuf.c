@@ -377,7 +377,7 @@ i915_vbuf_render_set_primitive(struct vbuf_render *render,
  */
 static void
 draw_arrays_generate_indices(struct vbuf_render *render, unsigned start,
-                             uint nr, unsigned type)
+                             uint32_t nr, unsigned type)
 {
    struct i915_vbuf_render *i915_render = i915_vbuf_render(render);
    struct i915_context *i915 = i915_render->i915;
@@ -419,7 +419,7 @@ draw_arrays_generate_indices(struct vbuf_render *render, unsigned start,
 }
 
 static unsigned
-draw_arrays_calc_nr_indices(uint nr, unsigned type)
+draw_arrays_calc_nr_indices(uint32_t nr, unsigned type)
 {
    switch (type) {
    case 0:
@@ -440,7 +440,7 @@ draw_arrays_calc_nr_indices(uint nr, unsigned type)
 }
 
 static void
-draw_arrays_fallback(struct vbuf_render *render, unsigned start, uint nr)
+draw_arrays_fallback(struct vbuf_render *render, unsigned start, uint32_t nr)
 {
    struct i915_vbuf_render *i915_render = i915_vbuf_render(render);
    struct i915_context *i915 = i915_render->i915;
@@ -483,7 +483,7 @@ out:
 
 static void
 i915_vbuf_render_draw_arrays(struct vbuf_render *render, unsigned start,
-                             uint nr)
+                             uint32_t nr)
 {
    struct i915_vbuf_render *i915_render = i915_vbuf_render(render);
    struct i915_context *i915 = i915_render->i915;
@@ -530,7 +530,7 @@ out:
  */
 static void
 draw_generate_indices(struct vbuf_render *render, const ushort *indices,
-                      uint nr_indices, unsigned type)
+                      uint32_t nr_indices, unsigned type)
 {
    struct i915_vbuf_render *i915_render = i915_vbuf_render(render);
    struct i915_context *i915 = i915_render->i915;
@@ -574,7 +574,7 @@ draw_generate_indices(struct vbuf_render *render, const ushort *indices,
 }
 
 static unsigned
-draw_calc_nr_indices(uint nr_indices, unsigned type)
+draw_calc_nr_indices(uint32_t nr_indices, unsigned type)
 {
    switch (type) {
    case 0:
@@ -596,7 +596,7 @@ draw_calc_nr_indices(uint nr_indices, unsigned type)
 
 static void
 i915_vbuf_render_draw_elements(struct vbuf_render *render,
-                               const ushort *indices, uint nr_indices)
+                               const ushort *indices, uint32_t nr_indices)
 {
    struct i915_vbuf_render *i915_render = i915_vbuf_render(render);
    struct i915_context *i915 = i915_render->i915;

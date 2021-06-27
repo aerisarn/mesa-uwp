@@ -97,7 +97,7 @@ negate(int reg, int x, int y, int z, int w)
 static void
 i915_use_passthrough_shader(struct i915_fragment_shader *fs)
 {
-   fs->program = (uint *)MALLOC(sizeof(passthrough_program));
+   fs->program = (uint32_t *)MALLOC(sizeof(passthrough_program));
    if (fs->program) {
       memcpy(fs->program, passthrough_program, sizeof(passthrough_program));
       fs->program_len = ARRAY_SIZE(passthrough_program);
@@ -144,8 +144,8 @@ src_vector(struct i915_fp_compile *p,
            const struct i915_full_src_register *source,
            struct i915_fragment_shader *fs)
 {
-   uint index = source->Register.Index;
-   uint src = 0, sem_name, sem_ind;
+   uint32_t index = source->Register.Index;
+   uint32_t src = 0, sem_name, sem_ind;
 
    switch (source->Register.File) {
    case TGSI_FILE_TEMPORARY:
@@ -228,7 +228,7 @@ src_vector(struct i915_fp_compile *p,
 
    /* No HW abs flag, so we have to max with the negation. */
    if (source->Register.Absolute) {
-      uint tmp = i915_get_utemp(p);
+      uint32_t tmp = i915_get_utemp(p);
       i915_emit_arith(p, A0_MAX, tmp, A0_DEST_CHANNEL_ALL, 0, src,
                       negate(src, 1, 1, 1, 1), 0);
       src = tmp;
@@ -254,7 +254,7 @@ get_result_vector(struct i915_fp_compile *p,
 {
    switch (dest->Register.File) {
    case TGSI_FILE_OUTPUT: {
-      uint sem_name =
+      uint32_t sem_name =
          p->shader->info.output_semantic_name[dest->Register.Index];
       switch (sem_name) {
       case TGSI_SEMANTIC_POSITION:
@@ -280,8 +280,8 @@ get_result_vector(struct i915_fp_compile *p,
 static uint
 get_result_flags(const struct i915_full_instruction *inst)
 {
-   const uint writeMask = inst->Dst[0].Register.WriteMask;
-   uint flags = 0x0;
+   const uint32_t writeMask = inst->Dst[0].Register.WriteMask;
+   uint32_t flags = 0x0;
 
    if (inst->Instruction.Saturate)
       flags |= A0_DEST_SATURATE;
@@ -302,7 +302,7 @@ get_result_flags(const struct i915_full_instruction *inst)
  * Convert TGSI_TEXTURE_x token to DO_SAMPLE_TYPE_x token
  */
 static uint
-translate_tex_src_target(struct i915_fp_compile *p, uint tex)
+translate_tex_src_target(struct i915_fp_compile *p, uint32_t tex)
 {
    switch (tex) {
    case TGSI_TEXTURE_SHADOW1D:
@@ -336,7 +336,7 @@ translate_tex_src_target(struct i915_fp_compile *p, uint tex)
  * Return the number of coords needed to access a given TGSI_TEXTURE_*
  */
 uint
-i915_num_coords(uint tex)
+i915_num_coords(uint32_t tex)
 {
    switch (tex) {
    case TGSI_TEXTURE_SHADOW1D:
@@ -364,13 +364,13 @@ i915_num_coords(uint tex)
  */
 static void
 emit_tex(struct i915_fp_compile *p, const struct i915_full_instruction *inst,
-         uint opcode, struct i915_fragment_shader *fs)
+         uint32_t opcode, struct i915_fragment_shader *fs)
 {
-   uint texture = inst->Texture.Texture;
-   uint unit = inst->Src[1].Register.Index;
-   uint tex = translate_tex_src_target(p, texture);
-   uint sampler = i915_emit_decl(p, REG_TYPE_S, unit, tex);
-   uint coord = src_vector(p, &inst->Src[0], fs);
+   uint32_t texture = inst->Texture.Texture;
+   uint32_t unit = inst->Src[1].Register.Index;
+   uint32_t tex = translate_tex_src_target(p, texture);
+   uint32_t sampler = i915_emit_decl(p, REG_TYPE_S, unit, tex);
+   uint32_t coord = src_vector(p, &inst->Src[0], fs);
 
    i915_emit_texld(p, get_result_vector(p, &inst->Dst[0]),
                    get_result_flags(inst), sampler, coord, opcode,
@@ -384,10 +384,10 @@ emit_tex(struct i915_fp_compile *p, const struct i915_full_instruction *inst,
  */
 static void
 emit_simple_arith(struct i915_fp_compile *p,
-                  const struct i915_full_instruction *inst, uint opcode,
-                  uint numArgs, struct i915_fragment_shader *fs)
+                  const struct i915_full_instruction *inst, uint32_t opcode,
+                  uint32_t numArgs, struct i915_fragment_shader *fs)
 {
-   uint arg1, arg2, arg3;
+   uint32_t arg1, arg2, arg3;
 
    assert(numArgs <= 3);
 
@@ -402,8 +402,9 @@ emit_simple_arith(struct i915_fp_compile *p,
 /** As above, but swap the first two src regs */
 static void
 emit_simple_arith_swap2(struct i915_fp_compile *p,
-                        const struct i915_full_instruction *inst, uint opcode,
-                        uint numArgs, struct i915_fragment_shader *fs)
+                        const struct i915_full_instruction *inst,
+                        uint32_t opcode, uint32_t numArgs,
+                        struct i915_fragment_shader *fs)
 {
    struct i915_full_instruction inst2;
 
@@ -432,8 +433,8 @@ i915_translate_instruction(struct i915_fp_compile *p,
                            const struct i915_full_instruction *inst,
                            struct i915_fragment_shader *fs)
 {
-   uint src0, src1, src2, flags;
-   uint tmp = 0;
+   uint32_t src0, src1, src2, flags;
+   uint32_t tmp = 0;
 
    switch (inst->Instruction.Opcode) {
    case TGSI_OPCODE_ADD:
@@ -844,7 +845,7 @@ i915_translate_token(struct i915_fp_compile *p,
 
    case TGSI_TOKEN_TYPE_DECLARATION:
       if (token->FullDeclaration.Declaration.File == TGSI_FILE_CONSTANT) {
-         uint i;
+         uint32_t i;
          for (i = token->FullDeclaration.Range.First;
               i <=
               MIN2(token->FullDeclaration.Range.Last, I915_MAX_CONSTANT - 1);
@@ -854,7 +855,7 @@ i915_translate_token(struct i915_fp_compile *p,
          }
       } else if (token->FullDeclaration.Declaration.File ==
                  TGSI_FILE_TEMPORARY) {
-         uint i;
+         uint32_t i;
          for (i = token->FullDeclaration.Range.First;
               i <= token->FullDeclaration.Range.Last; i++) {
             if (i >= I915_MAX_TEMPORARY)
@@ -868,8 +869,8 @@ i915_translate_token(struct i915_fp_compile *p,
 
    case TGSI_TOKEN_TYPE_IMMEDIATE: {
       const struct tgsi_full_immediate *imm = &token->FullImmediate;
-      const uint pos = p->num_immediates++;
-      uint j;
+      const uint32_t pos = p->num_immediates++;
+      uint32_t j;
       assert(imm->Immediate.NrTokens <= 4 + 1);
       for (j = 0; j < imm->Immediate.NrTokens - 1; j++) {
          p->immediates[pos][j] = imm->u[j].Float;
@@ -879,7 +880,7 @@ i915_translate_token(struct i915_fp_compile *p,
    case TGSI_TOKEN_TYPE_INSTRUCTION:
       if (p->first_instruction) {
          /* resolve location of immediates */
-         uint i, j;
+         uint32_t i, j;
          for (i = 0; i < p->num_immediates; i++) {
             /* find constant slot for this immediate */
             for (j = 0; j < I915_MAX_CONSTANT; j++) {
@@ -1017,7 +1018,7 @@ i915_fini_compile(struct i915_context *i915, struct i915_fp_compile *p)
       assert(!ifs->program);
 
       ifs->program_len = decl_size + program_size;
-      ifs->program = (uint *)MALLOC(ifs->program_len * sizeof(uint));
+      ifs->program = (uint32_t *)MALLOC(ifs->program_len * sizeof(uint));
       memcpy(ifs->program, p->declarations, decl_size * sizeof(uint));
       memcpy(&ifs->program[decl_size], p->program, program_size * sizeof(uint));
    }
@@ -1039,7 +1040,7 @@ i915_fixup_depth_write(struct i915_fp_compile *p)
       if (p->shader->info.output_semantic_name[i] != TGSI_SEMANTIC_POSITION)
          continue;
 
-      const uint depth = UREG(REG_TYPE_OD, 0);
+      const uint32_t depth = UREG(REG_TYPE_OD, 0);
 
       i915_emit_arith(p, A0_MOV,                  /* opcode */
                       depth,                      /* dest reg */

@@ -117,7 +117,7 @@ validate_immediate(struct i915_context *i915, unsigned *batch_space)
 }
 
 static void
-emit_immediate_s5(struct i915_context *i915, uint imm)
+emit_immediate_s5(struct i915_context *i915, uint32_t imm)
 {
    struct i915_surface *surf = i915_surface(i915->framebuffer.cbufs[0]);
 
@@ -241,8 +241,8 @@ emit_static(struct i915_context *i915)
 static void
 validate_map(struct i915_context *i915, unsigned *batch_space)
 {
-   const uint enabled = i915->current.sampler_enable_flags;
-   uint unit;
+   const uint32_t enabled = i915->current.sampler_enable_flags;
+   uint32_t unit;
    struct i915_texture *tex;
 
    *batch_space = i915->current.sampler_enable_nr
@@ -260,11 +260,11 @@ validate_map(struct i915_context *i915, unsigned *batch_space)
 static void
 emit_map(struct i915_context *i915)
 {
-   const uint nr = i915->current.sampler_enable_nr;
+   const uint32_t nr = i915->current.sampler_enable_nr;
    if (nr) {
-      const uint enabled = i915->current.sampler_enable_flags;
-      uint unit;
-      uint count = 0;
+      const uint32_t enabled = i915->current.sampler_enable_flags;
+      uint32_t unit;
+      uint32_t count = 0;
       OUT_BATCH(_3DSTATE_MAP_STATE | (3 * nr));
       OUT_BATCH(enabled);
       for (unit = 0; unit < I915_TEX_UNITS; unit++) {
@@ -329,25 +329,25 @@ emit_constants(struct i915_context *i915)
    /* Collate the user-defined constants with the fragment shader's
     * immediates according to the constant_flags[] array.
     */
-   const uint nr = i915->fs->num_constants;
+   const uint32_t nr = i915->fs->num_constants;
 
    assert(nr < I915_MAX_CONSTANT);
    if (nr) {
-      uint i;
+      uint32_t i;
 
       OUT_BATCH(_3DSTATE_PIXEL_SHADER_CONSTANTS | (nr * 4));
       OUT_BATCH((1 << nr) - 1);
 
       for (i = 0; i < nr; i++) {
-         const uint *c;
+         const uint32_t *c;
          if (i915->fs->constant_flags[i] == I915_CONSTFLAG_USER) {
             /* grab user-defined constant */
-            c =
-               (uint *)i915_buffer(i915->constants[PIPE_SHADER_FRAGMENT])->data;
+            c = (uint32_t *)i915_buffer(i915->constants[PIPE_SHADER_FRAGMENT])
+                   ->data;
             c += 4 * i;
          } else {
             /* emit program constant */
-            c = (uint *)i915->fs->constants[i];
+            c = (uint32_t *)i915->fs->constants[i];
          }
 #if 0 /* debug */
          {

@@ -57,10 +57,10 @@
  * changes.
  */
 
-static void update_map(struct i915_context *i915, uint unit,
+static void update_map(struct i915_context *i915, uint32_t unit,
                        const struct i915_texture *tex,
                        const struct i915_sampler_state *sampler,
-                       const struct pipe_sampler_view *view, uint state[3]);
+                       const struct pipe_sampler_view *view, uint32_t state[3]);
 
 /***********************************************************************
  * Samplers
@@ -75,7 +75,7 @@ static void update_map(struct i915_context *i915, uint unit,
  * \param state  returns the 3 words of compute state
  */
 static void
-update_sampler(struct i915_context *i915, uint unit,
+update_sampler(struct i915_context *i915, uint32_t unit,
                const struct i915_sampler_state *sampler,
                const struct i915_texture *tex, unsigned state[3])
 {
@@ -141,7 +141,7 @@ update_sampler(struct i915_context *i915, uint unit,
 static void
 update_samplers(struct i915_context *i915)
 {
-   uint unit;
+   uint32_t unit;
 
    i915->current.sampler_enable_nr = 0;
    i915->current.sampler_enable_flags = 0x0;
@@ -286,18 +286,19 @@ ms3_tiling_bits(enum i915_winsys_buffer_tile tiling)
 }
 
 static void
-update_map(struct i915_context *i915, uint unit, const struct i915_texture *tex,
+update_map(struct i915_context *i915, uint32_t unit,
+           const struct i915_texture *tex,
            const struct i915_sampler_state *sampler,
-           const struct pipe_sampler_view *view, uint state[3])
+           const struct pipe_sampler_view *view, uint32_t state[3])
 {
    const struct pipe_resource *pt = &tex->b;
-   uint width = pt->width0, height = pt->height0, depth = pt->depth0;
+   uint32_t width = pt->width0, height = pt->height0, depth = pt->depth0;
    int first_level = view->u.tex.first_level;
-   const uint num_levels = pt->last_level - first_level;
+   const uint32_t num_levels = pt->last_level - first_level;
    unsigned max_lod = num_levels * 4;
    bool is_npot = (!util_is_power_of_two_or_zero(pt->width0) ||
                    !util_is_power_of_two_or_zero(pt->height0));
-   uint format, pitch;
+   uint32_t format, pitch;
 
    /*
     * This is a bit messy. i915 doesn't support NPOT with mipmaps, but we can
@@ -348,7 +349,7 @@ update_map(struct i915_context *i915, uint unit, const struct i915_texture *tex,
 static void
 update_maps(struct i915_context *i915)
 {
-   uint unit;
+   uint32_t unit;
 
    for (unit = 0;
         unit < i915->num_fragment_sampler_views && unit < i915->num_samplers;

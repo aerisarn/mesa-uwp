@@ -64,13 +64,13 @@ static inline void
 emit_hw_vertex(struct i915_context *i915, const struct vertex_header *vertex)
 {
    const struct vertex_info *vinfo = &i915->current.vertex_info;
-   uint i;
-   uint count = 0; /* for debug/sanity */
+   uint32_t i;
+   uint32_t count = 0; /* for debug/sanity */
 
    assert(!i915->dirty);
 
    for (i = 0; i < vinfo->num_attribs; i++) {
-      const uint j = vinfo->attrib[i].src_index;
+      const uint32_t j = vinfo->attrib[i].src_index;
       const float *attrib = vertex->data[j];
       switch (vinfo->attrib[i].emit) {
       case EMIT_1F:

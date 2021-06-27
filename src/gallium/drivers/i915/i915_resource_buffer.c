@@ -52,7 +52,7 @@ i915_resource_destroy(struct pipe_screen *screen,
    } else {
       struct i915_texture *tex = i915_texture(resource);
       struct i915_winsys *iws = i915_screen(screen)->iws;
-      uint i;
+      uint32_t i;
 
       if (tex->buffer)
          iws->buffer_destroy(iws, tex->buffer);

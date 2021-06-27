@@ -73,9 +73,10 @@ i915_release_utemps(struct i915_fp_compile *p)
 }
 
 uint
-i915_emit_decl(struct i915_fp_compile *p, uint type, uint nr, uint d0_flags)
+i915_emit_decl(struct i915_fp_compile *p, uint32_t type, uint32_t nr,
+               uint32_t d0_flags)
 {
-   uint reg = UREG(type, nr);
+   uint32_t reg = UREG(type, nr);
 
    if (type == REG_TYPE_T) {
       if (p->decl_t & (1 << nr))
@@ -102,11 +103,12 @@ i915_emit_decl(struct i915_fp_compile *p, uint type, uint nr, uint d0_flags)
 }
 
 uint
-i915_emit_arith(struct i915_fp_compile *p, uint op, uint dest, uint mask,
-                uint saturate, uint src0, uint src1, uint src2)
+i915_emit_arith(struct i915_fp_compile *p, uint32_t op, uint32_t dest,
+                uint32_t mask, uint32_t saturate, uint32_t src0, uint32_t src1,
+                uint32_t src2)
 {
-   uint c[3];
-   uint nr_const = 0;
+   uint32_t c[3];
+   uint32_t nr_const = 0;
 
    assert(GET_UREG_TYPE(dest) != REG_TYPE_CONST);
    dest = UREG(GET_UREG_TYPE(dest), GET_UREG_NR(dest));
@@ -125,7 +127,7 @@ i915_emit_arith(struct i915_fp_compile *p, uint op, uint dest, uint mask,
     * this.
     */
    if (nr_const > 1) {
-      uint s[3], first, i, old_utemp_flag;
+      uint32_t s[3], first, i, old_utemp_flag;
 
       s[0] = src0;
       s[1] = src1;
@@ -135,7 +137,7 @@ i915_emit_arith(struct i915_fp_compile *p, uint op, uint dest, uint mask,
       first = GET_UREG_NR(s[c[0]]);
       for (i = 1; i < nr_const; i++) {
          if (GET_UREG_NR(s[c[i]]) != first) {
-            uint tmp = i915_get_utemp(p);
+            uint32_t tmp = i915_get_utemp(p);
 
             i915_emit_arith(p, A0_MOV, tmp, A0_DEST_CHANNEL_ALL, 0, s[c[i]], 0,
                             0);
@@ -172,13 +174,14 @@ i915_emit_arith(struct i915_fp_compile *p, uint op, uint dest, uint mask,
  * \param opcode  the instruction opcode
  */
 uint
-i915_emit_texld(struct i915_fp_compile *p, uint dest, uint destmask,
-                uint sampler, uint coord, uint opcode, uint num_coord)
+i915_emit_texld(struct i915_fp_compile *p, uint32_t dest, uint32_t destmask,
+                uint32_t sampler, uint32_t coord, uint32_t opcode,
+                uint32_t num_coord)
 {
-   const uint k = UREG(GET_UREG_TYPE(coord), GET_UREG_NR(coord));
+   const uint32_t k = UREG(GET_UREG_TYPE(coord), GET_UREG_NR(coord));
 
    int temp = -1;
-   uint ignore = 0;
+   uint32_t ignore = 0;
 
    /* Eliminate the useless texture coordinates. Otherwise we end up generating
     * a swizzle for no reason below. */
@@ -201,7 +204,7 @@ i915_emit_texld(struct i915_fp_compile *p, uint dest, uint destmask,
       /* texcoord is swizzled or negated.  Need to allocate a new temporary
        * register (a utemp / unpreserved temp) won't do.
        */
-      uint tempReg;
+      uint32_t tempReg;
 
       temp = i915_get_temp(p);          /* get temp reg index */
       tempReg = UREG(REG_TYPE_R, temp); /* make i915 register */
@@ -219,7 +222,7 @@ i915_emit_texld(struct i915_fp_compile *p, uint dest, uint destmask,
     */
    if (destmask != A0_DEST_CHANNEL_ALL) {
       /* if not writing to XYZW... */
-      uint tmp = i915_get_utemp(p);
+      uint32_t tmp = i915_get_utemp(p);
       i915_emit_texld(p, tmp, A0_DEST_CHANNEL_ALL, sampler, coord, opcode,
                       num_coord);
       i915_emit_arith(p, A0_MOV, dest, destmask, 0, tmp, 0, 0);

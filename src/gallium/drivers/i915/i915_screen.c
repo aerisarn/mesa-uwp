@@ -466,7 +466,7 @@ i915_is_format_supported(struct pipe_screen *screen, enum pipe_format format,
       PIPE_FORMAT_NONE /* list terminator */
    };
    const enum pipe_format *list;
-   uint i;
+   uint32_t i;
 
    if (sample_count > 1)
       return false;

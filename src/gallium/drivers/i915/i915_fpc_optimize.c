@@ -399,7 +399,7 @@ i915_tex_mask(union i915_full_token *instr)
 }
 
 static boolean
-target_is_texture2d(uint tex)
+target_is_texture2d(uint32_t tex)
 {
    switch (tex) {
    case TGSI_TEXTURE_2D:

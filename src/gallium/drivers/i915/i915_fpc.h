@@ -50,37 +50,37 @@ struct i915_fp_compile {
    boolean used_constants[I915_MAX_CONSTANT];
 
    /** maps TGSI immediate index to constant slot */
-   uint num_immediates;
-   uint immediates_map[I915_MAX_CONSTANT];
+   uint32_t num_immediates;
+   uint32_t immediates_map[I915_MAX_CONSTANT];
    float immediates[I915_MAX_CONSTANT][4];
 
    boolean first_instruction;
 
-   uint declarations[I915_PROGRAM_SIZE];
-   uint program[I915_PROGRAM_SIZE];
+   uint32_t declarations[I915_PROGRAM_SIZE];
+   uint32_t program[I915_PROGRAM_SIZE];
 
-   uint *csr; /**< Cursor, points into program. */
+   uint32_t *csr; /**< Cursor, points into program. */
 
-   uint *decl; /**< Cursor, points into declarations. */
+   uint32_t *decl; /**< Cursor, points into declarations. */
 
-   uint decl_s; /**< flags for which s regs need to be decl'd */
-   uint decl_t; /**< flags for which t regs need to be decl'd */
+   uint32_t decl_s; /**< flags for which s regs need to be decl'd */
+   uint32_t decl_t; /**< flags for which t regs need to be decl'd */
 
-   uint temp_flag;  /**< Tracks temporary regs which are in use */
-   uint utemp_flag; /**< Tracks TYPE_U temporary regs which are in use */
+   uint32_t temp_flag;  /**< Tracks temporary regs which are in use */
+   uint32_t utemp_flag; /**< Tracks TYPE_U temporary regs which are in use */
 
-   uint register_phases[I915_MAX_TEMPORARY];
-   uint nr_tex_indirect;
-   uint nr_tex_insn;
-   uint nr_alu_insn;
-   uint nr_decl_insn;
+   uint32_t register_phases[I915_MAX_TEMPORARY];
+   uint32_t nr_tex_indirect;
+   uint32_t nr_tex_insn;
+   uint32_t nr_alu_insn;
+   uint32_t nr_decl_insn;
 
    bool log_program_errors;
    boolean error; /**< Set if i915_program_error() is called */
-   uint NumNativeInstructions;
-   uint NumNativeAluInstructions;
-   uint NumNativeTexInstructions;
-   uint NumNativeTexIndirections;
+   uint32_t NumNativeInstructions;
+   uint32_t NumNativeAluInstructions;
+   uint32_t NumNativeTexInstructions;
+   uint32_t NumNativeTexIndirections;
 };
 
 /* Having zero and one in here makes the definition of swizzle a lot
@@ -129,7 +129,7 @@ struct i915_fp_compile {
 /* One neat thing about the UREG representation:
  */
 static inline int
-swizzle(int reg, uint x, uint y, uint z, uint w)
+swizzle(int reg, uint32_t x, uint32_t y, uint32_t z, uint32_t w)
 {
    assert(x <= SRC_ONE);
    assert(y <= SRC_ONE);
@@ -180,28 +180,31 @@ swizzle(int reg, uint x, uint y, uint z, uint w)
 extern void i915_translate_fragment_program(struct i915_context *i915,
                                             struct i915_fragment_shader *fs);
 
-extern uint i915_get_temp(struct i915_fp_compile *p);
-extern uint i915_get_utemp(struct i915_fp_compile *p);
+extern uint32_t i915_get_temp(struct i915_fp_compile *p);
+extern uint32_t i915_get_utemp(struct i915_fp_compile *p);
 extern void i915_release_utemps(struct i915_fp_compile *p);
 
-extern uint i915_emit_texld(struct i915_fp_compile *p, uint dest, uint destmask,
-                            uint sampler, uint coord, uint op, uint num_coord);
+extern uint32_t i915_emit_texld(struct i915_fp_compile *p, uint32_t dest,
+                                uint32_t destmask, uint32_t sampler,
+                                uint32_t coord, uint32_t op,
+                                uint32_t num_coord);
 
-extern uint i915_emit_arith(struct i915_fp_compile *p, uint op, uint dest,
-                            uint mask, uint saturate, uint src0, uint src1,
-                            uint src2);
+extern uint32_t i915_emit_arith(struct i915_fp_compile *p, uint32_t op,
+                                uint32_t dest, uint32_t mask, uint32_t saturate,
+                                uint32_t src0, uint32_t src1, uint32_t src2);
 
-extern uint i915_emit_decl(struct i915_fp_compile *p, uint type, uint nr,
-                           uint d0_flags);
+extern uint32_t i915_emit_decl(struct i915_fp_compile *p, uint32_t type,
+                               uint32_t nr, uint32_t d0_flags);
 
-extern uint i915_emit_const1f(struct i915_fp_compile *p, float c0);
+extern uint32_t i915_emit_const1f(struct i915_fp_compile *p, float c0);
 
-extern uint i915_emit_const2f(struct i915_fp_compile *p, float c0, float c1);
+extern uint32_t i915_emit_const2f(struct i915_fp_compile *p, float c0,
+                                  float c1);
 
-extern uint i915_emit_const4fv(struct i915_fp_compile *p, const float *c);
+extern uint32_t i915_emit_const4fv(struct i915_fp_compile *p, const float *c);
 
-extern uint i915_emit_const4f(struct i915_fp_compile *p, float c0, float c1,
-                              float c2, float c3);
+extern uint32_t i915_emit_const4f(struct i915_fp_compile *p, float c0, float c1,
+                                  float c2, float c3);
 
 /*======================================================================
  * i915_fpc_translate.c
@@ -284,6 +287,6 @@ extern struct i915_token_list *i915_optimize(const struct tgsi_token *tokens);
 
 extern void i915_optimize_free(struct i915_token_list *tokens);
 
-extern uint i915_num_coords(uint tex);
+extern uint32_t i915_num_coords(uint32_t tex);
 
 #endif
