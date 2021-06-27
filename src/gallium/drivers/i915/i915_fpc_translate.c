@@ -844,24 +844,29 @@ i915_translate_token(struct i915_fp_compile *p,
 
    case TGSI_TOKEN_TYPE_DECLARATION:
       if (token->FullDeclaration.Declaration.File == TGSI_FILE_CONSTANT) {
-         uint32_t i;
-         for (i = token->FullDeclaration.Range.First;
-              i <=
-              MIN2(token->FullDeclaration.Range.Last, I915_MAX_CONSTANT - 1);
-              i++) {
-            ifs->constant_flags[i] = I915_CONSTFLAG_USER;
-            ifs->num_constants = MAX2(ifs->num_constants, i + 1);
+         if (token->FullDeclaration.Range.Last >= I915_MAX_CONSTANT) {
+            i915_program_error(p, "Exceeded %d max uniforms",
+                               I915_MAX_CONSTANT);
+         } else {
+            uint32_t i;
+            for (i = token->FullDeclaration.Range.First;
+                 i <= token->FullDeclaration.Range.Last; i++) {
+               ifs->constant_flags[i] = I915_CONSTFLAG_USER;
+               ifs->num_constants = MAX2(ifs->num_constants, i + 1);
+            }
          }
       } else if (token->FullDeclaration.Declaration.File ==
                  TGSI_FILE_TEMPORARY) {
-         uint32_t i;
-         for (i = token->FullDeclaration.Range.First;
-              i <= token->FullDeclaration.Range.Last; i++) {
-            if (i >= I915_MAX_TEMPORARY)
-               debug_printf("Too many temps (%d)\n", i);
-            else
+         if (token->FullDeclaration.Range.Last >= I915_MAX_TEMPORARY) {
+            i915_program_error(p, "Exceeded %d max TGSI temps",
+                               I915_MAX_TEMPORARY);
+         } else {
+            uint32_t i;
+            for (i = token->FullDeclaration.Range.First;
+                 i <= token->FullDeclaration.Range.Last; i++) {
                /* XXX just use shader->info->file_mask[TGSI_FILE_TEMPORARY] */
                p->temp_flag |= (1 << i); /* mark temp as used */
+            }
          }
       }
       break;
@@ -892,6 +897,10 @@ i915_translate_token(struct i915_fp_compile *p,
                   ifs->num_constants = MAX2(ifs->num_constants, j + 1);
                   break;
                }
+            }
+            if (j == I915_MAX_CONSTANT) {
+               i915_program_error(p, "Exceeded %d max uniforms and immediates.",
+                                  I915_MAX_CONSTANT);
             }
          }
 

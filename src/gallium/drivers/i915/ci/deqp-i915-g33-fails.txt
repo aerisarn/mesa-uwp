@@ -928,7 +928,7 @@ dEQP-GLES2.functional.uniform_api.random.21,Fail
 dEQP-GLES2.functional.uniform_api.random.24,Fail
 dEQP-GLES2.functional.uniform_api.random.54,Fail
 dEQP-GLES2.functional.uniform_api.random.71,Fail
-dEQP-GLES2.functional.uniform_api.random.74,Crash
+dEQP-GLES2.functional.uniform_api.random.74,Fail
 dEQP-GLES2.functional.uniform_api.random.80,Fail
 dEQP-GLES2.functional.uniform_api.random.81,Fail
 dEQP-GLES2.functional.uniform_api.value.assigned.by_pointer.render.array_in_struct.int_ivec4_both,Fail

@@ -688,14 +688,14 @@ spec@glsl-1.10@execution@fs-frontfacing-ternary-0.0-neg-1.0,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-1-neg-1,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-1.0-neg-1.0,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-neg-1.0-1.0,Fail
-spec@glsl-1.10@execution@fs-loop-bounds-unrolled,Crash
+spec@glsl-1.10@execution@fs-loop-bounds-unrolled,Fail
 spec@glsl-1.10@execution@fs-notequal-of-expression,Fail
 spec@glsl-1.10@execution@fs-sign-times-abs,Fail
 spec@glsl-1.10@execution@fs-sign-times-neg,Fail
 spec@glsl-1.10@execution@fs-sign-times-neg-abs,Fail
 spec@glsl-1.10@execution@fs-sign-times-sign,Fail
 spec@glsl-1.10@execution@gl_lightsource_indirect,Fail
-spec@glsl-1.10@execution@glsl-1.10-built-in-matrix-state,Crash
+spec@glsl-1.10@execution@glsl-1.10-built-in-matrix-state,Fail
 spec@glsl-1.10@execution@glsl-1.10-built-in-uniform-state,Crash
 spec@glsl-1.10@execution@glsl-clamp-vertex-color,Fail
 spec@glsl-1.10@execution@glsl-fs-convolution-1,Fail
