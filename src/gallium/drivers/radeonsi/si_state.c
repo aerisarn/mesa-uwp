@@ -4321,7 +4321,7 @@ struct pipe_sampler_view *si_create_sampler_view_custom(struct pipe_context *ctx
                                                         unsigned force_level)
 {
    struct si_context *sctx = (struct si_context *)ctx;
-   struct si_sampler_view *view = CALLOC_STRUCT(si_sampler_view);
+   struct si_sampler_view *view = CALLOC_STRUCT_CL(si_sampler_view);
    struct si_texture *tex = (struct si_texture *)texture;
    unsigned base_level, first_level, last_level;
    unsigned char state_swizzle[4];
@@ -4455,7 +4455,7 @@ static void si_sampler_view_destroy(struct pipe_context *ctx, struct pipe_sample
    struct si_sampler_view *view = (struct si_sampler_view *)state;
 
    pipe_resource_reference(&state->texture, NULL);
-   FREE(view);
+   FREE_CL(view);
 }
 
 static bool wrap_mode_uses_border_color(unsigned wrap, bool linear_filter)
