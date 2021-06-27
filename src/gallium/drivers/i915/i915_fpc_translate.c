@@ -107,15 +107,13 @@ i915_use_passthrough_shader(struct i915_fragment_shader *fs)
 void
 i915_program_error(struct i915_fp_compile *p, const char *msg, ...)
 {
-   va_list args;
-   char buffer[1024];
+   if (p->log_program_errors) {
+      va_list args;
 
-   debug_printf("i915_program_error: ");
-   va_start(args, msg);
-   vsnprintf(buffer, sizeof(buffer), msg, args);
-   va_end(args);
-   debug_printf("%s", buffer);
-   debug_printf("\n");
+      va_start(args, msg);
+      mesa_loge_v(msg, args);
+      va_end(args);
+   }
 
    p->error = 1;
 }
@@ -942,6 +940,8 @@ i915_init_compile(struct i915_context *i915, struct i915_fragment_shader *ifs)
 
    for (i = 0; i < I915_TEX_UNITS; i++)
       ifs->generic_mapping[i] = -1;
+
+   p->log_program_errors = !i915->no_log_program_errors;
 
    p->first_instruction = TRUE;
 

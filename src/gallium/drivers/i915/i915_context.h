@@ -295,6 +295,8 @@ struct i915_context {
    int fired_vertices;
    int queued_vertices;
 
+   bool no_log_program_errors;
+
    /** blitter/hw-clear */
    struct blitter_context *blitter;
 };

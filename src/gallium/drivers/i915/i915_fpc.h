@@ -75,6 +75,7 @@ struct i915_fp_compile {
    uint nr_alu_insn;
    uint nr_decl_insn;
 
+   bool log_program_errors;
    boolean error; /**< Set if i915_program_error() is called */
    uint NumNativeInstructions;
    uint NumNativeAluInstructions;

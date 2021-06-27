@@ -220,7 +220,9 @@ i915_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    assert(i915->blitter);
 
    /* must be done before installing Draw stages */
+   i915->no_log_program_errors = true;
    util_blitter_cache_all_shaders(i915->blitter);
+   i915->no_log_program_errors = false;
 
    draw_install_aaline_stage(i915->draw, &i915->base);
    draw_install_aapoint_stage(i915->draw, &i915->base);
