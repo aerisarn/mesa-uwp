@@ -368,45 +368,29 @@ emit_constants(struct i915_context *i915)
 static void
 validate_program(struct i915_context *i915, unsigned *batch_space)
 {
-   uint additional_size = 0;
-
-   additional_size += i915->current.fixup_swizzle ? 3 : 0;
-
    /* we need more batch space if we want to emulate rgba framebuffers */
-   *batch_space = i915->fs->decl_len + i915->fs->program_len + additional_size;
+   *batch_space = i915->fs->program_len + (i915->current.fixup_swizzle ? 3 : 0);
 }
 
 static void
 emit_program(struct i915_context *i915)
 {
-   uint additional_size = 0;
-   uint i;
-
-   /* count how much additional space we'll need */
-   validate_program(i915, &additional_size);
-   additional_size -= i915->fs->decl_len + i915->fs->program_len;
-
    /* we should always have, at least, a pass-through program */
    assert(i915->fs->program_len > 0);
 
-   /* output the declarations */
-   {
-      /* first word has the size, we have to adjust that */
-      uint size = (i915->fs->decl[0]);
-      size += additional_size;
-      OUT_BATCH(size);
-   }
+   /* If we're doing a fixup swizzle, that's 3 more dwords to add. */
+   uint32_t additional_size = 0;
+   if (i915->current.fixup_swizzle)
+      additional_size = 3;
 
-   for (i = 1; i < i915->fs->decl_len; i++)
-      OUT_BATCH(i915->fs->decl[i]);
+   /* output the program: 1 dword of header, then 3 dwords per decl/instruction */
+   assert(i915->fs->program_len % 3 == 1);
 
-   /* output the program */
-   assert(i915->fs->program_len % 3 == 0);
-   for (i = 0; i < i915->fs->program_len; i += 3) {
+   /* first word has the size, adjust it for fixup swizzle */
+   OUT_BATCH(i915->fs->program[0] + additional_size);
+
+   for (int i = 1; i < i915->fs->program_len; i++)
       OUT_BATCH(i915->fs->program[i]);
-      OUT_BATCH(i915->fs->program[i + 1]);
-      OUT_BATCH(i915->fs->program[i + 2]);
-   }
 
    /* we emit an additional mov with swizzle to fake RGBA framebuffers */
    if (i915->current.fixup_swizzle) {

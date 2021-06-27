@@ -49,11 +49,8 @@
  * Simple pass-through fragment shader to use when we don't have
  * a real shader (or it fails to compile for some reason).
  */
-static unsigned passthrough_decl[] = {
-   _3DSTATE_PIXEL_SHADER_PROGRAM | ((1 * 3) - 1),
-};
-
 static unsigned passthrough_program[] = {
+   _3DSTATE_PIXEL_SHADER_PROGRAM | ((1 * 3) - 1),
    /* move to output color:
     */
    (A0_MOV | (REG_TYPE_OC << A0_DEST_TYPE_SHIFT) | A0_DEST_CHANNEL_ALL |
@@ -98,12 +95,9 @@ static void
 i915_use_passthrough_shader(struct i915_fragment_shader *fs)
 {
    fs->program = (uint *)MALLOC(sizeof(passthrough_program));
-   fs->decl = (uint *)MALLOC(sizeof(passthrough_decl));
    if (fs->program) {
       memcpy(fs->program, passthrough_program, sizeof(passthrough_program));
-      memcpy(fs->decl, passthrough_decl, sizeof(passthrough_decl));
       fs->program_len = ARRAY_SIZE(passthrough_program);
-      fs->decl_len = ARRAY_SIZE(passthrough_decl);
    }
    fs->num_constants = 0;
 }
@@ -1008,23 +1002,12 @@ i915_fini_compile(struct i915_context *i915, struct i915_fp_compile *p)
 
       /* Copy compilation results to fragment program struct:
        */
-      assert(!ifs->decl);
       assert(!ifs->program);
 
-      ifs->decl = (uint *)MALLOC(decl_size * sizeof(uint));
-      ifs->program = (uint *)MALLOC(program_size * sizeof(uint));
-
-      if (ifs->decl) {
-         ifs->decl_len = decl_size;
-
-         memcpy(ifs->decl, p->declarations, decl_size * sizeof(uint));
-      }
-
-      if (ifs->program) {
-         ifs->program_len = program_size;
-
-         memcpy(ifs->program, p->program, program_size * sizeof(uint));
-      }
+      ifs->program_len = decl_size + program_size;
+      ifs->program = (uint *)MALLOC(ifs->program_len * sizeof(uint));
+      memcpy(ifs->program, p->declarations, decl_size * sizeof(uint));
+      memcpy(&ifs->program[decl_size], p->program, program_size * sizeof(uint));
    }
 
    /* Release the compilation struct:

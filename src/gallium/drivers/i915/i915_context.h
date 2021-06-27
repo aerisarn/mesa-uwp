@@ -97,9 +97,6 @@ struct i915_fragment_shader {
 
    struct draw_fragment_shader *draw_data;
 
-   uint *decl;
-   uint decl_len;
-
    uint *program;
    uint program_len;
 
