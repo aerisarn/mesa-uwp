@@ -819,7 +819,6 @@ i915_translate_instruction(struct i915_fp_compile *p,
       i915_program_error(p, "bad opcode %s (%d)",
                          tgsi_get_opcode_name(inst->Instruction.Opcode),
                          inst->Instruction.Opcode);
-      p->error = 1;
       return;
    }
 
