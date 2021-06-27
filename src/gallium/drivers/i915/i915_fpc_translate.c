@@ -914,7 +914,7 @@ i915_translate_instructions(struct i915_fp_compile *p,
                             struct i915_fragment_shader *fs)
 {
    int i;
-   for (i = 0; i < tokens->NumTokens; i++) {
+   for (i = 0; i < tokens->NumTokens && !p->error; i++) {
       i915_translate_token(p, &tokens->Tokens[i], fs);
    }
 }
