@@ -35,6 +35,7 @@
 
 #include "pipe/p_shader_tokens.h"
 #include "tgsi/tgsi_dump.h"
+#include "tgsi/tgsi_info.h"
 #include "tgsi/tgsi_parse.h"
 #include "util/log.h"
 #include "util/u_math.h"
@@ -814,7 +815,9 @@ i915_translate_instruction(struct i915_fp_compile *p,
       break;
 
    default:
-      i915_program_error(p, "bad opcode %d", inst->Instruction.Opcode);
+      i915_program_error(p, "bad opcode %s (%d)",
+                         tgsi_get_opcode_name(inst->Instruction.Opcode),
+                         inst->Instruction.Opcode);
       p->error = 1;
       return;
    }
