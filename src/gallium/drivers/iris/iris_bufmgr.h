@@ -230,11 +230,6 @@ struct iris_bo {
    bool exported;
 
    /**
-    * Boolean of whether this buffer is cache coherent
-    */
-   bool cache_coherent;
-
-   /**
     * Boolean of whether this buffer points into user memory
     */
    bool userptr;

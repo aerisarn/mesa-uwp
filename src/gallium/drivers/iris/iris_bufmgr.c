@@ -651,7 +651,6 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    bo->name = name;
    p_atomic_set(&bo->refcount, 1);
    bo->reusable = bucket && bufmgr->bo_reuse;
-   bo->cache_coherent = bufmgr->has_llc;
    bo->index = -1;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
@@ -667,8 +666,8 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    /* On integrated GPUs, enable snooping to ensure coherency if needed.
     * For discrete, we instead use SMEM and avoid WB maps for coherency.
     */
-   if (bufmgr->vram.size == 0 &&
-       (flags & BO_ALLOC_COHERENT) && !bo->cache_coherent) {
+   if ((flags & BO_ALLOC_COHERENT) &&
+       !bufmgr->has_llc && bufmgr->vram.size == 0) {
       struct drm_i915_gem_caching arg = {
          .handle = bo->gem_handle,
          .caching = 1,
@@ -676,7 +675,6 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
       if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_CACHING, &arg) != 0)
          goto err_free;
 
-      bo->cache_coherent = true;
       bo->reusable = false;
    }
 
@@ -735,7 +733,6 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
 
    p_atomic_set(&bo->refcount, 1);
    bo->userptr = true;
-   bo->cache_coherent = true;
    bo->index = -1;
    bo->idle = true;
    bo->mmap_mode = IRIS_MMAP_WB;
@@ -1338,7 +1335,6 @@ iris_bo_mark_exported_locked(struct iris_bo *bo)
        * display HW. So make sure our CPU mappings don't assume cache
        * coherency since display is outside that cache.
        */
-      bo->cache_coherent = false;
       bo->exported = true;
       bo->reusable = false;
    }
