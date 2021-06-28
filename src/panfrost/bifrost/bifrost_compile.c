@@ -1821,12 +1821,16 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                         break;
                 }
 
-                /* multiply by 1.0 * 2*24 */
+                /* Multiply by 1.0 * 2*24 and convert to integer to get a 8:24
+                 * fixed-point input */
                 bi_index scale = bi_fma_rscale_f32(b, s0, bi_imm_f32(1.0f),
                                 bi_negzero(), bi_imm_u32(24), BI_ROUND_NONE,
                                 BI_SPECIAL_NONE);
+                bi_index fixed_pt = bi_f32_to_s32(b, scale, BI_ROUND_NONE);
 
-                bi_fexp_f32_to(b, dst, bi_f32_to_s32(b, scale, BI_ROUND_NONE), s0);
+                /* Compute the result for the fixed-point input, but pass along
+                 * the original input for correct NaN propagation */
+                bi_fexp_f32_to(b, dst, fixed_pt, s0);
                 break;
         }
 
