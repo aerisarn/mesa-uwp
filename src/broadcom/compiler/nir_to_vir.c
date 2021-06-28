@@ -2784,6 +2784,34 @@ emit_load_local_invocation_index(struct v3d_compile *c)
                        vir_uniform_ui(c, 32 - c->local_invocation_index_bits));
 }
 
+/* Various subgroup operations rely on the A flags, so this helper ensures that
+ * A flags represents currently active lanes in the subgroup.
+ */
+static void
+set_a_flags_for_subgroup(struct v3d_compile *c)
+{
+        /* MSF returns 0 for disabled lanes in compute shaders so
+         * PUSHZ will set A=1 for disabled lanes. We want the inverse
+         * of this but we don't have any means to negate the A flags
+         * directly, but we can do it by repeating the same operation
+         * with NORZ (A = ~A & ~Z).
+         */
+        assert(c->s->info.stage == MESA_SHADER_COMPUTE);
+        vir_set_pf(c, vir_MSF_dest(c, vir_nop_reg()), V3D_QPU_PF_PUSHZ);
+        vir_set_uf(c, vir_MSF_dest(c, vir_nop_reg()), V3D_QPU_UF_NORZ);
+
+        /* If we are under non-uniform control flow we also need to
+         * AND the A flags with the current execute mask.
+         */
+        if (vir_in_nonuniform_control_flow(c)) {
+                const uint32_t bidx = c->cur_block->index;
+                vir_set_uf(c, vir_XOR_dest(c, vir_nop_reg(),
+                                           c->execute,
+                                           vir_uniform_ui(c, bidx)),
+                           V3D_QPU_UF_ANDZ);
+        }
+}
+
 static void
 ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
@@ -3251,30 +3279,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_elect: {
-                /* Flafirst reads A flags so we need to make sure it reflects
-                 * currently active lanes.
-                 *
-                 * MSF returns 0 for disabled lanes in compute shaders so
-                 * PUSHZ will set A=1 for disabled lanes. We want the inverse
-                 * of this but we don't have any means to negate the A flags
-                 * directly, but we can do it by repeating the same operation
-                 * with NORZ (A = ~A & ~Z).
-                 */
-                assert(c->s->info.stage == MESA_SHADER_COMPUTE);
-                vir_set_pf(c, vir_MSF_dest(c, vir_nop_reg()), V3D_QPU_PF_PUSHZ);
-                vir_set_uf(c, vir_MSF_dest(c, vir_nop_reg()), V3D_QPU_UF_NORZ);
-
-                /* If we are under non-uniform control flow we also need to
-                 * AND the A flags with the current execute mask.
-                 */
-                if (vir_in_nonuniform_control_flow(c)) {
-                        const uint32_t bidx = c->cur_block->index;
-                        vir_set_uf(c, vir_XOR_dest(c, vir_nop_reg(),
-                                                    c->execute,
-                                                    vir_uniform_ui(c, bidx)),
-                                   V3D_QPU_UF_ANDZ);
-                }
-
+                set_a_flags_for_subgroup(c);
                 struct qreg first = vir_FLAFIRST(c);
 
                 /* Produce a boolean result from Flafirst */
