@@ -141,6 +141,11 @@ struct ir3_context {
 	 */
 	struct hash_table *block_ht;
 
+	/* maps nir_block at the top of a loop to ir3_block collecting continue
+	 * edges.
+	 */
+	struct hash_table *continue_block_ht;
+
 	/* on a4xx, bitmask of samplers which need astc+srgb workaround: */
 	unsigned astc_srgb;
 

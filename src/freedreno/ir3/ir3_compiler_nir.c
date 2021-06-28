@@ -2799,6 +2799,43 @@ emit_phi(struct ir3_context *ctx, nir_phi_instr *nphi)
 
 static struct ir3_block *get_block(struct ir3_context *ctx, const nir_block *nblock);
 
+static struct ir3_instruction *read_phi_src(struct ir3_context *ctx,
+											struct ir3_block *blk,
+											struct ir3_instruction *phi,
+											nir_phi_instr *nphi)
+{
+	if (!blk->nblock) {
+		struct ir3_instruction *continue_phi =
+			ir3_instr_create(blk, OPC_META_PHI, 1, blk->predecessors_count);
+		__ssa_dst(continue_phi)->flags = phi->dsts[0]->flags;
+
+		for (unsigned i = 0; i < blk->predecessors_count; i++) {
+			struct ir3_instruction *src =
+				read_phi_src(ctx, blk->predecessors[i], phi, nphi);
+			if (src)
+				__ssa_src(continue_phi, src, 0);
+			else
+				ir3_src_create(continue_phi, INVALID_REG, phi->dsts[0]->flags);
+		}
+
+		return continue_phi;
+	}
+
+	nir_foreach_phi_src(nsrc, nphi) {
+		if (blk->nblock == nsrc->pred) {
+			if (nsrc->src.ssa->parent_instr->type == nir_instr_type_ssa_undef) {
+				/* Create an ir3 undef */
+				return NULL;
+			} else {
+				return ir3_get_src(ctx, &nsrc->src)[0];
+			}
+		}
+	}
+
+	unreachable("couldn't find phi node ir3 block");
+	return NULL;
+}
+
 static void
 resolve_phis(struct ir3_context *ctx, struct ir3_block *block)
 {
@@ -2808,19 +2845,17 @@ resolve_phis(struct ir3_context *ctx, struct ir3_block *block)
 
 		nir_phi_instr *nphi = phi->phi.nphi;
 
+		if (!nphi) /* skip continue phis created above */
+			continue;
+
 		for (unsigned i = 0; i < block->predecessors_count; i++) {
 			struct ir3_block *pred = block->predecessors[i];
-			nir_foreach_phi_src(nsrc, nphi) {
-				if (get_block(ctx, nsrc->pred) == pred) {
-					if (nsrc->src.ssa->parent_instr->type == nir_instr_type_ssa_undef) {
-						/* Create an ir3 undef */
-						ir3_src_create(phi, INVALID_REG, phi->dsts[0]->flags);
-					} else {
-						struct ir3_instruction *src = ir3_get_src(ctx, &nsrc->src)[0];
-						__ssa_src(phi, src, 0);
-					}
-					break;
-				}
+			struct ir3_instruction *src = read_phi_src(ctx, pred, phi, nphi);
+			if (src) {
+				__ssa_src(phi, src, 0);
+			} else {
+				/* Create an ir3 undef */
+				ir3_src_create(phi, INVALID_REG, phi->dsts[0]->flags);
 			}
 		}
 	}
@@ -2913,6 +2948,27 @@ get_block(struct ir3_context *ctx, const nir_block *nblock)
 	return block;
 }
 
+static struct ir3_block *
+get_block_or_continue(struct ir3_context *ctx, const nir_block *nblock)
+{
+	struct hash_entry *hentry;
+
+	hentry = _mesa_hash_table_search(ctx->continue_block_ht, nblock);
+	if (hentry)
+		return hentry->data;
+
+	return get_block(ctx, nblock);
+}
+
+static struct ir3_block *
+create_continue_block(struct ir3_context *ctx, const nir_block *nblock)
+{
+	struct ir3_block *block = ir3_block_create(ctx->ir);
+	block->nblock = NULL;
+	_mesa_hash_table_insert(ctx->continue_block_ht, nblock, block);
+	return block;
+}
+
 static void
 emit_block(struct ir3_context *ctx, nir_block *nblock)
 {
@@ -2942,7 +2998,7 @@ emit_block(struct ir3_context *ctx, nir_block *nblock)
 	for (int i = 0; i < ARRAY_SIZE(ctx->block->successors); i++) {
 		if (nblock->successors[i]) {
 			ctx->block->successors[i] =
-				get_block(ctx, nblock->successors[i]);
+				get_block_or_continue(ctx, nblock->successors[i]);
 			ctx->block->physical_successors[i] = ctx->block->successors[i];
 		}
 	}
@@ -2990,7 +3046,28 @@ emit_loop(struct ir3_context *ctx, nir_loop *nloop)
 {
 	unsigned old_loop_id = ctx->loop_id;
 	ctx->loop_id = ctx->so->loops + 1;
+
+	struct nir_block *nstart = nir_loop_first_block(nloop);
+	struct ir3_block *continue_blk = NULL;
+
+	/* There's always one incoming edge from outside the loop, and if there
+	 * are more than two backedges from inside the loop (so more than 2 total
+	 * edges) then we need to create a continue block after the loop to ensure
+	 * that control reconverges at the end of each loop iteration.
+	 */
+	if (nstart->predecessors->entries > 2) {
+		continue_blk = create_continue_block(ctx, nstart);
+	}
+
 	emit_cf_list(ctx, &nloop->body);
+
+	if (continue_blk) {
+		struct ir3_block *start = get_block(ctx, nstart);
+		continue_blk->successors[0] = start;
+		continue_blk->physical_successors[0] = start;
+		list_addtail(&continue_blk->node, &ctx->ir->block_list);
+	}
+
 	ctx->so->loops++;
 	ctx->loop_id = old_loop_id;
 }
