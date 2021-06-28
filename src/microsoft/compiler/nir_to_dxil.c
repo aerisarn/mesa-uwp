@@ -3148,6 +3148,36 @@ emit_image_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
+emit_get_ssbo_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   const struct dxil_value* handle = NULL;
+   if (ctx->opts->vulkan_environment) {
+      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
+   } else {
+      int binding = nir_src_as_int(intr->src[0]);
+      handle = ctx->uav_handles[binding];
+   }
+   
+   if (!handle)
+     return false;
+
+   struct texop_parameters params = {
+      .tex = handle,
+      .lod_or_sample = dxil_module_get_undef(
+                        &ctx->mod, dxil_module_get_int_type(&ctx->mod, 32))
+   };
+
+   const struct dxil_value *dimensions = emit_texture_size(ctx, &params);
+   if (!dimensions)
+      return false;
+
+   const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, dimensions, 0);
+   store_dest(ctx, &intr->dest, 0, retval, nir_type_uint);
+
+   return true;
+}
+
+static bool
 emit_ssbo_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
                    enum dxil_atomic_op op, nir_alu_type type)
 {
@@ -3452,6 +3482,8 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_image_deref_size:
    case nir_intrinsic_image_size:
       return emit_image_size(ctx, intr);
+   case nir_intrinsic_get_ssbo_size:
+      return emit_get_ssbo_size(ctx, intr);
 
    case nir_intrinsic_vulkan_resource_index:
       return emit_vulkan_resource_index(ctx, intr);

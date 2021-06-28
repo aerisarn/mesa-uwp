@@ -37,9 +37,15 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    if (stage == MESA_SHADER_NONE || stage == MESA_SHADER_KERNEL)
       return false;
 
-   struct spirv_to_nir_options spirv_opts = {0};
-   spirv_opts.ubo_addr_format = nir_address_format_32bit_index_offset;
-   spirv_opts.ssbo_addr_format = nir_address_format_32bit_index_offset;
+   struct spirv_to_nir_options spirv_opts = {
+      .ubo_addr_format = nir_address_format_32bit_index_offset,
+      .ssbo_addr_format = nir_address_format_32bit_index_offset,
+      // use_deref_buffer_array_length + nir_lower_explicit_io force
+      //  get_ssbo_size to take in the return from load_vulkan_descriptor
+      //  instead of vulkan_resource_index. This makes it much easier to
+      //  get the DXIL handle for the SSBO.
+      .use_deref_buffer_array_length = true
+   };
 
    glsl_type_singleton_init_or_ref();
 
