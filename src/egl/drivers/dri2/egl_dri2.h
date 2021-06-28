@@ -89,7 +89,7 @@ struct zwp_linux_dmabuf_v1;
 #include "util/u_vector.h"
 #include "util/bitset.h"
 
-#define EGL_DRI2_MAX_FORMATS 11
+#define EGL_DRI2_NUM_FORMATS 11
 
 struct wl_buffer;
 
@@ -246,7 +246,7 @@ struct dri2_egl_display
    struct zwp_linux_dmabuf_v1 *wl_dmabuf;
    struct u_vector *wl_modifiers;
    bool authenticated;
-   BITSET_DECLARE(formats, EGL_DRI2_MAX_FORMATS);
+   BITSET_DECLARE(formats, EGL_DRI2_NUM_FORMATS);
    uint32_t capabilities;
    char *device_name;
 #endif

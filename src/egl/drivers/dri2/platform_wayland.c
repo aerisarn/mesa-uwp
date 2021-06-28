@@ -151,9 +151,10 @@ static const struct dri2_wl_visual {
    },
 };
 
-static_assert(ARRAY_SIZE(dri2_wl_visuals) <= EGL_DRI2_MAX_FORMATS,
-              "dri2_egl_display::formats is not large enough for "
-              "the formats in dri2_wl_visuals");
+static_assert(ARRAY_SIZE(dri2_wl_visuals) == EGL_DRI2_NUM_FORMATS,
+              "dri2_egl_display::formats and dri2_wl_visuals must "
+              "have the same size. If you are adding a new format "
+              "to dri2_wl_visuals, increment EGL_DRI2_NUM_FORMATS");
 
 static int
 dri2_wl_visual_idx_from_config(struct dri2_egl_display *dri2_dpy,
@@ -2112,7 +2113,7 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
       goto cleanup;
 
    if (roundtrip(dri2_dpy) < 0 || !BITSET_TEST_RANGE(dri2_dpy->formats,
-                                                     0, EGL_DRI2_MAX_FORMATS))
+                                                     0, EGL_DRI2_NUM_FORMATS))
       goto cleanup;
 
    dri2_dpy->driver_name = strdup("swrast");
