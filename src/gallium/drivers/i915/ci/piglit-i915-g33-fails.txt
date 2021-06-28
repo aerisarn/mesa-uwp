@@ -696,7 +696,7 @@ spec@glsl-1.10@execution@fs-sign-times-neg-abs,Fail
 spec@glsl-1.10@execution@fs-sign-times-sign,Fail
 spec@glsl-1.10@execution@gl_lightsource_indirect,Fail
 spec@glsl-1.10@execution@glsl-1.10-built-in-matrix-state,Fail
-spec@glsl-1.10@execution@glsl-1.10-built-in-uniform-state,Crash
+spec@glsl-1.10@execution@glsl-1.10-built-in-uniform-state,Fail
 spec@glsl-1.10@execution@glsl-clamp-vertex-color,Fail
 spec@glsl-1.10@execution@glsl-fs-convolution-1,Fail
 spec@glsl-1.10@execution@glsl-fs-convolution-2,Fail

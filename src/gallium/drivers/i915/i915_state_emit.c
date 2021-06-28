@@ -331,7 +331,7 @@ emit_constants(struct i915_context *i915)
     */
    const uint32_t nr = i915->fs->num_constants;
 
-   assert(nr < I915_MAX_CONSTANT);
+   assert(nr <= I915_MAX_CONSTANT);
    if (nr) {
       uint32_t i;
 
