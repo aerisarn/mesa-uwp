@@ -155,26 +155,19 @@ iris_upload_shader(struct iris_screen *screen,
                    enum iris_program_cache_id cache_id,
                    uint32_t key_size,
                    const void *key,
-                   const void *assembly,
-                   struct brw_stage_prog_data *prog_data,
-                   uint32_t *streamout,
-                   enum brw_param_builtin *system_values,
-                   unsigned num_system_values,
-                   unsigned kernel_input_size,
-                   unsigned num_cbufs,
-                   const struct iris_binding_table *bt)
+                   const void *assembly)
 {
    const struct intel_device_info *devinfo = &screen->devinfo;
 
-   u_upload_alloc(uploader, 0, prog_data->program_size, 64,
+   u_upload_alloc(uploader, 0, shader->prog_data->program_size, 64,
                   &shader->assembly.offset, &shader->assembly.res,
                   &shader->map);
-   memcpy(shader->map, assembly, prog_data->program_size);
+   memcpy(shader->map, assembly, shader->prog_data->program_size);
 
    struct iris_resource *res = (void *) shader->assembly.res;
    uint64_t shader_data_addr = res->bo->gtt_offset +
                                shader->assembly.offset +
-                               prog_data->const_data_offset;
+                               shader->prog_data->const_data_offset;
 
    struct brw_shader_reloc_value reloc_values[] = {
       {
@@ -186,23 +179,9 @@ iris_upload_shader(struct iris_screen *screen,
          .value = shader_data_addr >> 32,
       },
    };
-   brw_write_shader_relocs(&screen->devinfo, shader->map, prog_data,
-                           reloc_values, ARRAY_SIZE(reloc_values));
-
-   shader->prog_data = prog_data;
-   shader->streamout = streamout;
-   shader->system_values = system_values;
-   shader->num_system_values = num_system_values;
-   shader->kernel_input_size = kernel_input_size;
-   shader->num_cbufs = num_cbufs;
-   shader->bt = *bt;
-
-   ralloc_steal(shader, shader->prog_data);
-   ralloc_steal(shader->prog_data, (void *)prog_data->relocs);
-   ralloc_steal(shader->prog_data, prog_data->param);
-   ralloc_steal(shader->prog_data, prog_data->pull_param);
-   ralloc_steal(shader, shader->streamout);
-   ralloc_steal(shader, shader->system_values);
+   brw_write_shader_relocs(&screen->devinfo, shader->map,
+                           shader->prog_data, reloc_values,
+                           ARRAY_SIZE(reloc_values));
 
    /* Store the 3DSTATE shader packets and other derived state. */
    screen->vtbl.store_derived_program_state(devinfo, cache_id, shader);
@@ -262,10 +241,11 @@ iris_blorp_upload_shader(struct blorp_batch *blorp_batch, uint32_t stage,
       iris_create_shader_variant(screen, ice->shaders.cache, IRIS_CACHE_BLORP,
                                  key_size, key);
 
+   iris_finalize_program(shader, prog_data, NULL, NULL, 0, 0, 0, &bt);
+
    iris_upload_shader(screen, NULL, shader, ice->shaders.cache,
                       ice->shaders.uploader_driver,
-                      IRIS_CACHE_BLORP, key_size, key, kernel,
-                      prog_data, NULL, NULL, 0, 0, 0, &bt);
+                      IRIS_CACHE_BLORP, key_size, key, kernel);
 
    struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
    *kernel_out =

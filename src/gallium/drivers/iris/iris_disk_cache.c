@@ -239,14 +239,16 @@ iris_disk_cache_retrieve(struct iris_screen *screen,
    if (num_system_values || kernel_input_size)
       num_cbufs++;
 
+   iris_finalize_program(shader, prog_data, so_decls, system_values,
+                         num_system_values, kernel_input_size, num_cbufs,
+                         &bt);
+
    assert(stage < ARRAY_SIZE(cache_id_for_stage));
    enum iris_program_cache_id cache_id = cache_id_for_stage[stage];
 
    /* Upload our newly read shader to the in-memory program cache. */
    iris_upload_shader(screen, ish, shader, NULL, uploader,
-                      cache_id, key_size, prog_key, assembly,
-                      prog_data, so_decls, system_values,
-                      num_system_values, kernel_input_size, num_cbufs, &bt);
+                      cache_id, key_size, prog_key, assembly);
 
    free(buffer);
 

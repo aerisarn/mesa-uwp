@@ -963,6 +963,15 @@ struct iris_compiled_shader *iris_create_shader_variant(const struct iris_screen
                                                         uint32_t key_size,
                                                         const void *key);
 
+void iris_finalize_program(struct iris_compiled_shader *shader,
+                           struct brw_stage_prog_data *prog_data,
+                           uint32_t *streamout,
+                           enum brw_param_builtin *system_values,
+                           unsigned num_system_values,
+                           unsigned kernel_input_size,
+                           unsigned num_cbufs,
+                           const struct iris_binding_table *bt);
+
 void iris_upload_shader(struct iris_screen *screen,
                         struct iris_uncompiled_shader *,
                         struct iris_compiled_shader *,
@@ -971,14 +980,7 @@ void iris_upload_shader(struct iris_screen *screen,
                         enum iris_program_cache_id,
                         uint32_t key_size,
                         const void *key,
-                        const void *assembly,
-                        struct brw_stage_prog_data *,
-                        uint32_t *streamout,
-                        enum brw_param_builtin *sysv,
-                        unsigned num_system_values,
-                        unsigned kernel_input_size,
-                        unsigned num_cbufs,
-                        const struct iris_binding_table *bt);
+                        const void *assembly);
 void iris_delete_shader_variant(struct iris_compiled_shader *shader);
 
 void iris_destroy_shader_state(struct pipe_context *ctx, void *state);
