@@ -2623,56 +2623,14 @@ iris_create_surface(struct pipe_context *ctx,
    assert(view->levels == 1);
 
    struct isl_surf isl_surf;
-   uint32_t offset_B = 0, tile_x_sa = 0, tile_y_sa = 0;
-
-   if (view->base_level > 0) {
-      /* We can't rely on the hardware's miplevel selection with such
-       * a substantial lie about the format, so we select a single image
-       * using the Tile X/Y Offset fields.  In this case, we can't handle
-       * multiple array slices.
-       *
-       * On Broadwell, HALIGN and VALIGN are specified in pixels and are
-       * hard-coded to align to exactly the block size of the compressed
-       * texture.  This means that, when reinterpreted as a non-compressed
-       * texture, the tile offsets may be anything and we can't rely on
-       * X/Y Offset.
-       *
-       * Return NULL to force gallium frontends to take fallback paths.
-       */
-      if (view->array_len > 1 || GFX_VER == 8) {
-         free(surf);
-         return NULL;
-      }
-
-      const bool is_3d = res->surf.dim == ISL_SURF_DIM_3D;
-      isl_surf_get_image_surf(&screen->isl_dev, &res->surf,
-                              view->base_level,
-                              is_3d ? 0 : view->base_array_layer,
-                              is_3d ? view->base_array_layer : 0,
-                              &isl_surf,
-                              &offset_B, &tile_x_sa, &tile_y_sa);
-
-      /* We use address and tile offsets to access a single level/layer
-       * as a subimage, so reset level/layer so it doesn't offset again.
-       */
-      view->base_array_layer = 0;
-      view->base_level = 0;
-   } else {
-      /* Level 0 doesn't require tile offsets, and the hardware can find
-       * array slices using QPitch even with the format override, so we
-       * can allow layers in this case.  Copy the original ISL surface.
-       */
-      memcpy(&isl_surf, &res->surf, sizeof(isl_surf));
+   uint32_t offset_B = 0, tile_x_el = 0, tile_y_el = 0;
+   bool ok = isl_surf_get_uncompressed_surf(&screen->isl_dev, &res->surf,
+                                            view, &isl_surf, view,
+                                            &offset_B, &tile_x_el, &tile_y_el);
+   if (!ok) {
+      free(surf);
+      return NULL;
    }
-
-   /* Scale down the image dimensions by the block size. */
-   const struct isl_format_layout *fmtl =
-      isl_format_get_layout(res->surf.format);
-   isl_surf.format = fmt.fmt;
-   isl_surf.logical_level0_px = isl_surf_get_logical_level0_el(&isl_surf);
-   isl_surf.phys_level0_sa = isl_surf_get_phys_level0_el(&isl_surf);
-   tile_x_sa /= fmtl->bw;
-   tile_y_sa /= fmtl->bh;
 
    psurf->width = isl_surf.logical_level0_px.width;
    psurf->height = isl_surf.logical_level0_px.height;
@@ -2683,8 +2641,8 @@ iris_create_surface(struct pipe_context *ctx,
       .mocs = iris_mocs(res->bo, &screen->isl_dev,
                         ISL_SURF_USAGE_RENDER_TARGET_BIT),
       .address = res->bo->gtt_offset + offset_B,
-      .x_offset_sa = tile_x_sa,
-      .y_offset_sa = tile_y_sa,
+      .x_offset_sa = tile_x_el, /* Single-sampled, so el == sa */
+      .y_offset_sa = tile_y_el, /* Single-sampled, so el == sa */
    };
 
    isl_surf_fill_state_s(&screen->isl_dev, surf->surface_state.cpu, &f);
