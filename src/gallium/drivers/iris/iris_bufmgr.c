@@ -664,7 +664,11 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    assert(bo->map == NULL || bo->mmap_mode == mmap_mode);
    bo->mmap_mode = mmap_mode;
 
-   if ((flags & BO_ALLOC_COHERENT) && !bo->cache_coherent) {
+   /* On integrated GPUs, enable snooping to ensure coherency if needed.
+    * For discrete, we instead use SMEM and avoid WB maps for coherency.
+    */
+   if (bufmgr->vram.size == 0 &&
+       (flags & BO_ALLOC_COHERENT) && !bo->cache_coherent) {
       struct drm_i915_gem_caching arg = {
          .handle = bo->gem_handle,
          .caching = 1,
