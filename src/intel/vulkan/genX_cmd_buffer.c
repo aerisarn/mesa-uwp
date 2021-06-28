@@ -2547,22 +2547,6 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_ALL_GRAPHICS;
 }
 
-static struct anv_address
-anv_descriptor_set_address(struct anv_cmd_buffer *cmd_buffer,
-                           struct anv_descriptor_set *set)
-{
-   if (set->pool == NULL) {
-      /* This is a push descriptor set.  We have to flag it as used on the GPU
-       * so that the next time we push descriptors, we grab a new memory.
-       */
-      struct anv_push_descriptor_set *push_set =
-         (struct anv_push_descriptor_set *)set;
-      push_set->set_used_on_gpu = true;
-   }
-
-   return set->desc_addr;
-}
-
 static VkResult
 emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                    struct anv_cmd_pipeline_state *pipe_state,

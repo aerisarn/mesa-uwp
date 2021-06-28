@@ -2060,6 +2060,12 @@ struct anv_descriptor_set {
    struct anv_descriptor descriptors[0];
 };
 
+static inline bool
+anv_descriptor_set_is_push(struct anv_descriptor_set *set)
+{
+   return set->pool == NULL;
+}
+
 struct anv_buffer_view {
    struct vk_object_base base;
 
@@ -2089,6 +2095,22 @@ struct anv_push_descriptor_set {
 
    struct anv_buffer_view buffer_views[MAX_PUSH_DESCRIPTORS];
 };
+
+static inline struct anv_address
+anv_descriptor_set_address(struct anv_cmd_buffer *cmd_buffer,
+                           struct anv_descriptor_set *set)
+{
+   if (anv_descriptor_set_is_push(set)) {
+      /* We have to flag push descriptor set as used on the GPU
+       * so that the next time we push descriptors, we grab a new memory.
+       */
+      struct anv_push_descriptor_set *push_set =
+         (struct anv_push_descriptor_set *)set;
+      push_set->set_used_on_gpu = true;
+   }
+
+   return set->desc_addr;
+}
 
 struct anv_descriptor_pool {
    struct vk_object_base base;
