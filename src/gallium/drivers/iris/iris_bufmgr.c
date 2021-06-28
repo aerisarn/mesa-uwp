@@ -673,10 +673,11 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
          .handle = bo->gem_handle,
          .caching = 1,
       };
-      if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_CACHING, &arg) == 0) {
-         bo->cache_coherent = true;
-         bo->reusable = false;
-      }
+      if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_CACHING, &arg) != 0)
+         goto err_free;
+
+      bo->cache_coherent = true;
+      bo->reusable = false;
    }
 
    DBG("bo_create: buf %d (%s) (%s memzone) (%s) %llub\n", bo->gem_handle,
