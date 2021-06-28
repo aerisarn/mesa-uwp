@@ -53,7 +53,8 @@
 
 /*
  * The index of entries in this table is used as a bitmask in
- * dri2_dpy->formats, which tracks the formats supported by our server.
+ * dri2_dpy->formats.formats_bitmap, which tracks the formats supported
+ * by our server.
  */
 static const struct dri2_wl_visual {
    const char *format_name;
@@ -268,6 +269,59 @@ wl_buffer_release(void *data, struct wl_buffer *buffer)
 static const struct wl_buffer_listener wl_buffer_listener = {
    .release = wl_buffer_release
 };
+
+static void
+dri2_wl_formats_fini(struct dri2_wl_formats *formats)
+{
+   unsigned int i;
+
+   for (i = 0; i < formats->num_formats; i++)
+      u_vector_finish(&formats->modifiers[i]);
+
+   free(formats->modifiers);
+   free(formats->formats_bitmap);
+}
+
+static int
+dri2_wl_formats_init(struct dri2_wl_formats *formats)
+{
+   unsigned int i, j;
+
+   /* formats->formats_bitmap tells us if a format in dri2_wl_visuals is present
+    * or not. So we must compute the amount of unsigned int's needed to
+    * represent all the formats of dri2_wl_visuals. We use BITSET_WORDS for
+    * this task. */
+   formats->num_formats = ARRAY_SIZE(dri2_wl_visuals);
+   formats->formats_bitmap = calloc(BITSET_WORDS(formats->num_formats),
+                                    sizeof(*formats->formats_bitmap));
+   if (!formats->formats_bitmap)
+      goto err;
+
+   /* Here we have an array of u_vector's to store the modifiers supported by
+    * each format in the bitmask. */
+   formats->modifiers = calloc(formats->num_formats,
+                               sizeof(*formats->modifiers));
+   if (!formats->modifiers)
+      goto err_modifier;
+
+   for (i = 0; i < formats->num_formats; i++)
+      if (!u_vector_init_pow2(&formats->modifiers[i], 4, sizeof(uint64_t))) {
+         j = i;
+         goto err_vector_init;
+      }
+
+   return 0;
+
+err_vector_init:
+   for (i = 0; i < j; i++)
+      u_vector_finish(&formats->modifiers[i]);
+   free(formats->modifiers);
+err_modifier:
+   free(formats->formats_bitmap);
+err:
+   _eglError(EGL_BAD_ALLOC, "dri2_wl_formats_init");
+   return -1;
+}
 
 static void
 resize_callback(struct wl_egl_window *wl_win, void *data)
@@ -576,8 +630,8 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
    assert(visual_idx != -1);
    dri_image_format = dri2_wl_visuals[visual_idx].dri_image_format;
    linear_dri_image_format = dri_image_format;
-   modifiers = u_vector_tail(&dri2_dpy->wl_modifiers[visual_idx]);
-   num_modifiers = u_vector_length(&dri2_dpy->wl_modifiers[visual_idx]);
+   modifiers = u_vector_tail(&dri2_dpy->formats.modifiers[visual_idx]);
+   num_modifiers = u_vector_length(&dri2_dpy->formats.modifiers[visual_idx]);
 
    if (num_modifiers == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID) {
       /* For the purposes of this function, an INVALID modifier on its own
@@ -587,7 +641,7 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
    }
 
    /* Substitute dri image format if server does not support original format */
-   if (!BITSET_TEST(dri2_dpy->formats, visual_idx))
+   if (!BITSET_TEST(dri2_dpy->formats.formats_bitmap, visual_idx))
       linear_dri_image_format = dri2_wl_visuals[visual_idx].alt_dri_image_format;
 
    /* These asserts hold, as long as dri2_wl_visuals[] is self-consistent and
@@ -595,7 +649,7 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
     * of bugs.
     */
    assert(linear_dri_image_format != __DRI_IMAGE_FORMAT_NONE);
-   assert(BITSET_TEST(dri2_dpy->formats,
+   assert(BITSET_TEST(dri2_dpy->formats.formats_bitmap,
           dri2_wl_visual_idx_from_dri_image_format(linear_dri_image_format)));
 
    /* There might be a buffer release already queued that wasn't processed */
@@ -972,7 +1026,7 @@ create_wl_buffer(struct dri2_egl_display *dri2_dpy,
    assert(visual_idx != -1);
 
    uint64_t *mod;
-   u_vector_foreach(mod, &dri2_dpy->wl_modifiers[visual_idx]) {
+   u_vector_foreach(mod, &dri2_dpy->formats.modifiers[visual_idx]) {
       if (*mod == DRM_FORMAT_MOD_INVALID) {
          mod_invalid_supported = true;
       }
@@ -1206,7 +1260,7 @@ dri2_wl_create_wayland_buffer_from_image(_EGLDisplay *disp, _EGLImage *img)
    if (visual_idx == -1)
       goto bad_format;
 
-   if (!BITSET_TEST(dri2_dpy->formats, visual_idx))
+   if (!BITSET_TEST(dri2_dpy->formats.formats_bitmap, visual_idx))
       goto bad_format;
 
    buffer = create_wl_buffer(dri2_dpy, NULL, image);
@@ -1336,9 +1390,9 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
    if (visual_idx == -1)
       return;
 
-   BITSET_SET(dri2_dpy->formats, visual_idx);
+   BITSET_SET(dri2_dpy->formats.formats_bitmap, visual_idx);
 
-   mod = u_vector_add(&dri2_dpy->wl_modifiers[visual_idx]);
+   mod = u_vector_add(&dri2_dpy->formats.modifiers[visual_idx]);
    if (mod)
       *mod = combine_u32_into_u64(modifier_hi, modifier_lo);
 }
@@ -1432,7 +1486,7 @@ dri2_wl_add_configs_for_visuals(_EGLDisplay *disp)
       for (unsigned j = 0; j < ARRAY_SIZE(dri2_wl_visuals); j++) {
          struct dri2_egl_config *dri2_conf;
 
-         if (!BITSET_TEST(dri2_dpy->formats, j))
+         if (!BITSET_TEST(dri2_dpy->formats.formats_bitmap, j))
             continue;
 
          dri2_conf = dri2_add_config(disp, dri2_dpy->driver_configs[i],
@@ -1461,7 +1515,7 @@ dri2_wl_add_configs_for_visuals(_EGLDisplay *disp)
          alt_dri_image_format = dri2_wl_visuals[c].alt_dri_image_format;
          s = dri2_wl_visual_idx_from_dri_image_format(alt_dri_image_format);
 
-         if (s == -1 || !BITSET_TEST(dri2_dpy->formats, s))
+         if (s == -1 || !BITSET_TEST(dri2_dpy->formats.formats_bitmap, s))
             continue;
 
          /* Visual s works for the Wayland server, and c can be converted into s
@@ -1504,6 +1558,9 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
    if (!dri2_dpy)
       return _eglError(EGL_BAD_ALLOC, "eglInitialize");
 
+   if (dri2_wl_formats_init(&dri2_dpy->formats) < 0)
+      goto cleanup;
+
    dri2_dpy->fd = -1;
    disp->DriverData = (void *) dri2_dpy;
    if (disp->PlatformDisplay == NULL) {
@@ -1513,15 +1570,6 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
       dri2_dpy->own_device = true;
    } else {
       dri2_dpy->wl_dpy = disp->PlatformDisplay;
-   }
-
-   dri2_dpy->wl_modifiers =
-      calloc(ARRAY_SIZE(dri2_wl_visuals), sizeof(*dri2_dpy->wl_modifiers));
-   if (!dri2_dpy->wl_modifiers)
-      goto cleanup;
-   for (int i = 0; i < ARRAY_SIZE(dri2_wl_visuals); i++) {
-      if (!u_vector_init_pow2(&dri2_dpy->wl_modifiers[i], 4, sizeof(uint64_t)))
-         goto cleanup;
    }
 
    dri2_dpy->wl_queue = wl_display_create_queue(dri2_dpy->wl_dpy);
@@ -1973,7 +2021,7 @@ shm_handle_format(void *data, struct wl_shm *shm, uint32_t format)
    if (visual_idx == -1)
       return;
 
-   BITSET_SET(dri2_dpy->formats, visual_idx);
+   BITSET_SET(dri2_dpy->formats.formats_bitmap, visual_idx);
 }
 
 static const struct wl_shm_listener shm_listener = {
@@ -2034,6 +2082,9 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
    if (!dri2_dpy)
       return _eglError(EGL_BAD_ALLOC, "eglInitialize");
 
+   if (dri2_wl_formats_init(&dri2_dpy->formats) < 0)
+      goto cleanup;
+
    dri2_dpy->fd = -1;
    disp->DriverData = (void *) dri2_dpy;
    if (disp->PlatformDisplay == NULL) {
@@ -2072,8 +2123,8 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
    if (roundtrip(dri2_dpy) < 0 || dri2_dpy->wl_shm == NULL)
       goto cleanup;
 
-   if (roundtrip(dri2_dpy) < 0 || !BITSET_TEST_RANGE(dri2_dpy->formats,
-                                                     0, EGL_DRI2_NUM_FORMATS))
+   if (roundtrip(dri2_dpy) < 0 || !BITSET_TEST_RANGE(dri2_dpy->formats.formats_bitmap,
+                                                     0, dri2_dpy->formats.num_formats))
       goto cleanup;
 
    dri2_dpy->driver_name = strdup("swrast");
@@ -2121,6 +2172,7 @@ dri2_initialize_wayland(_EGLDisplay *disp)
 void
 dri2_teardown_wayland(struct dri2_egl_display *dri2_dpy)
 {
+   dri2_wl_formats_fini(&dri2_dpy->formats);
    if (dri2_dpy->wl_drm)
       wl_drm_destroy(dri2_dpy->wl_drm);
    if (dri2_dpy->wl_dmabuf)
@@ -2133,10 +2185,6 @@ dri2_teardown_wayland(struct dri2_egl_display *dri2_dpy)
       wl_event_queue_destroy(dri2_dpy->wl_queue);
    if (dri2_dpy->wl_dpy_wrapper)
       wl_proxy_wrapper_destroy(dri2_dpy->wl_dpy_wrapper);
-
-   for (int i = 0; dri2_dpy->wl_modifiers && i < ARRAY_SIZE(dri2_wl_visuals); i++)
-      u_vector_finish(&dri2_dpy->wl_modifiers[i]);
-   free(dri2_dpy->wl_modifiers);
 
    if (dri2_dpy->own_device)
       wl_display_disconnect(dri2_dpy->wl_dpy);

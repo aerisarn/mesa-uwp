@@ -173,6 +173,18 @@ struct dri2_egl_display_vtbl {
                                   bool mode);
 };
 
+#ifdef HAVE_WAYLAND_PLATFORM
+struct dri2_wl_formats {
+   unsigned int num_formats;
+
+   /* Bitmap referencing dri2_wl_visuals */
+   unsigned int *formats_bitmap;
+
+   /* Array of vectors. Contains one modifier vector per format */
+   struct u_vector *modifiers;
+};
+#endif
+
 struct dri2_egl_display
 {
    const struct dri2_egl_display_vtbl *vtbl;
@@ -244,9 +256,8 @@ struct dri2_egl_display
    struct wl_shm *wl_shm;
    struct wl_event_queue *wl_queue;
    struct zwp_linux_dmabuf_v1 *wl_dmabuf;
-   struct u_vector *wl_modifiers;
+   struct dri2_wl_formats formats;
    bool authenticated;
-   BITSET_DECLARE(formats, EGL_DRI2_NUM_FORMATS);
    char *device_name;
 #endif
 
