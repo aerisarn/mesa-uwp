@@ -946,7 +946,7 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       if (bind_point == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR) {
          struct anv_push_constants *push = &pipe_state->push_constants;
 
-         struct anv_address addr = anv_descriptor_set_address(cmd_buffer, set);
+         struct anv_address addr = anv_descriptor_set_address(set);
          push->desc_sets[set_index] = anv_address_physical(addr);
 
          if (addr.bo) {

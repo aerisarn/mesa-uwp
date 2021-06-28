@@ -2097,8 +2097,7 @@ struct anv_push_descriptor_set {
 };
 
 static inline struct anv_address
-anv_descriptor_set_address(struct anv_cmd_buffer *cmd_buffer,
-                           struct anv_descriptor_set *set)
+anv_descriptor_set_address(struct anv_descriptor_set *set)
 {
    if (anv_descriptor_set_is_push(set)) {
       /* We have to flag push descriptor set as used on the GPU

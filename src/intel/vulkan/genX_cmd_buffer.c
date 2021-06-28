@@ -2673,7 +2673,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          assert(set->desc_surface_state.alloc_size);
          bt_map[s] = set->desc_surface_state.offset + state_offset;
          add_surface_reloc(cmd_buffer, set->desc_surface_state,
-                           anv_descriptor_set_address(cmd_buffer, set));
+                           anv_descriptor_set_address(set));
          break;
       }
 
@@ -3036,7 +3036,7 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
        */
       struct anv_descriptor_set *set =
          gfx_state->base.descriptors[range->index];
-      return anv_descriptor_set_address(cmd_buffer, set);
+      return anv_descriptor_set_address(set);
    }
 
    case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS: {
