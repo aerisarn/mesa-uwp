@@ -499,7 +499,7 @@ nv30_state_validate(struct nv30_context *nv30, uint32_t mask, bool hwtnl)
    }
 
    nouveau_pushbuf_bufctx(push, bctx);
-   if (nouveau_pushbuf_validate(push)) {
+   if (PUSH_VAL(push)) {
       nouveau_pushbuf_bufctx(push, NULL);
       return false;
    }

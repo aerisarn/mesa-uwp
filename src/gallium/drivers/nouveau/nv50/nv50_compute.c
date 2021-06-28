@@ -545,7 +545,7 @@ nv50_compute_upload_input(struct nv50_context *nv50, const uint32_t *input)
 
       nouveau_bufctx_refn(nv50->bufctx, 0, bo, NOUVEAU_BO_GART | NOUVEAU_BO_RD);
       nouveau_pushbuf_bufctx(push, nv50->bufctx);
-      nouveau_pushbuf_validate(push);
+      PUSH_VAL(push);
 
       PUSH_SPACE_EX(push, 0, 0, 1);
 

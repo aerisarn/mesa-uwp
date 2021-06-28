@@ -267,7 +267,7 @@ nvc0_resource_copy_region(struct pipe_context *pipe,
    BCTX_REFN(nvc0->bufctx, 2D, nv04_resource(src), RD);
    BCTX_REFN(nvc0->bufctx, 2D, nv04_resource(dst), WR);
    nouveau_pushbuf_bufctx(nvc0->base.pushbuf, nvc0->bufctx);
-   nouveau_pushbuf_validate(nvc0->base.pushbuf);
+   PUSH_VAL(nvc0->base.pushbuf);
 
    for (; dst_layer < dstz + src_box->depth; ++dst_layer, ++src_layer) {
       ret = nvc0_2d_texture_do_copy(nvc0->base.pushbuf,
@@ -379,7 +379,7 @@ nvc0_clear_buffer_push_nvc0(struct pipe_context *pipe,
 
    nouveau_bufctx_refn(nvc0->bufctx, 0, buf->bo, buf->domain | NOUVEAU_BO_WR);
    nouveau_pushbuf_bufctx(push, nvc0->bufctx);
-   nouveau_pushbuf_validate(push);
+   PUSH_VAL(push);
 
    unsigned count = (size + 3) / 4;
    unsigned data_words = data_size / 4;
@@ -428,7 +428,7 @@ nvc0_clear_buffer_push_nve4(struct pipe_context *pipe,
 
    nouveau_bufctx_refn(nvc0->bufctx, 0, buf->bo, buf->domain | NOUVEAU_BO_WR);
    nouveau_pushbuf_bufctx(push, nvc0->bufctx);
-   nouveau_pushbuf_validate(push);
+   PUSH_VAL(push);
 
    unsigned count = (size + 3) / 4;
    unsigned data_words = data_size / 4;
@@ -1327,7 +1327,7 @@ nvc0_blit_3d(struct nvc0_context *nvc0, const struct pipe_blit_info *info)
                 NOUVEAU_BO_GART | NOUVEAU_BO_RD, vtxbuf_bo);
    BCTX_REFN_bo(nvc0->bufctx_3d, 3D_TEXT,
                 NV_VRAM_DOMAIN(&screen->base) | NOUVEAU_BO_RD, screen->text);
-   nouveau_pushbuf_validate(push);
+   PUSH_VAL(push);
 
    BEGIN_NVC0(push, NVC0_3D(VERTEX_ARRAY_FETCH(0)), 4);
    PUSH_DATA (push, NVC0_3D_VERTEX_ARRAY_FETCH_ENABLE | stride <<
@@ -1549,7 +1549,7 @@ nvc0_blit_eng2d(struct nvc0_context *nvc0, const struct pipe_blit_info *info)
    BCTX_REFN(nvc0->bufctx, 2D, &dst->base, WR);
    BCTX_REFN(nvc0->bufctx, 2D, &src->base, RD);
    nouveau_pushbuf_bufctx(nvc0->base.pushbuf, nvc0->bufctx);
-   if (nouveau_pushbuf_validate(nvc0->base.pushbuf))
+   if (PUSH_VAL(nvc0->base.pushbuf))
       return;
 
    for (i = 0; i < info->dst.box.depth; ++i) {

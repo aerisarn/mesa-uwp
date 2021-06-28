@@ -88,7 +88,7 @@ nouveau_vpe_fini(struct nouveau_decoder *dec) {
 
 #undef BCTX_ARGS
 
-   if (unlikely(nouveau_pushbuf_validate(dec->push)))
+   if (unlikely(PUSH_VAL(dec->push)))
       return;
 
    BEGIN_NV04(push, NV31_MPEG(EXEC), 1);

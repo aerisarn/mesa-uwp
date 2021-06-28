@@ -32,7 +32,7 @@ nvc0_m2mf_transfer_rect(struct nvc0_context *nvc0,
    nouveau_bufctx_refn(bctx, 0, src->bo, src->domain | NOUVEAU_BO_RD);
    nouveau_bufctx_refn(bctx, 0, dst->bo, dst->domain | NOUVEAU_BO_WR);
    nouveau_pushbuf_bufctx(push, bctx);
-   nouveau_pushbuf_validate(push);
+   PUSH_VAL(push);
 
    if (nouveau_bo_memtype(src->bo)) {
       BEGIN_NVC0(push, NVC0_M2MF(TILING_MODE_IN), 5);
@@ -138,7 +138,7 @@ nve4_m2mf_transfer_rect(struct nvc0_context *nvc0,
    nouveau_bufctx_refn(bctx, 0, dst->bo, dst->domain | NOUVEAU_BO_WR);
    nouveau_bufctx_refn(bctx, 0, src->bo, src->domain | NOUVEAU_BO_RD);
    nouveau_pushbuf_bufctx(push, bctx);
-   nouveau_pushbuf_validate(push);
+   PUSH_VAL(push);
 
    exec = NVE4_COPY_EXEC_SWIZZLE_ENABLE | NVE4_COPY_EXEC_2D_ENABLE | NVE4_COPY_EXEC_FLUSH | NVE4_COPY_EXEC_COPY_MODE_NON_PIPELINED;
 
@@ -207,7 +207,7 @@ nvc0_m2mf_push_linear(struct nouveau_context *nv,
 
    nouveau_bufctx_refn(nvc0->bufctx, 0, dst, domain | NOUVEAU_BO_WR);
    nouveau_pushbuf_bufctx(push, nvc0->bufctx);
-   nouveau_pushbuf_validate(push);
+   PUSH_VAL(push);
 
    while (count) {
       unsigned nr = MIN2(count, NV04_PFIFO_MAX_PACKET_LEN);
@@ -249,7 +249,7 @@ nve4_p2mf_push_linear(struct nouveau_context *nv,
 
    nouveau_bufctx_refn(nvc0->bufctx, 0, dst, domain | NOUVEAU_BO_WR);
    nouveau_pushbuf_bufctx(push, nvc0->bufctx);
-   nouveau_pushbuf_validate(push);
+   PUSH_VAL(push);
 
    while (count) {
       unsigned nr = MIN2(count, (NV04_PFIFO_MAX_PACKET_LEN - 1));
@@ -289,7 +289,7 @@ nvc0_m2mf_copy_linear(struct nouveau_context *nv,
    nouveau_bufctx_refn(bctx, 0, src, srcdom | NOUVEAU_BO_RD);
    nouveau_bufctx_refn(bctx, 0, dst, dstdom | NOUVEAU_BO_WR);
    nouveau_pushbuf_bufctx(push, bctx);
-   nouveau_pushbuf_validate(push);
+   PUSH_VAL(push);
 
    while (size) {
       unsigned bytes = MIN2(size, 1 << 17);
@@ -327,7 +327,7 @@ nve4_m2mf_copy_linear(struct nouveau_context *nv,
    nouveau_bufctx_refn(bctx, 0, src, srcdom | NOUVEAU_BO_RD);
    nouveau_bufctx_refn(bctx, 0, dst, dstdom | NOUVEAU_BO_WR);
    nouveau_pushbuf_bufctx(push, bctx);
-   nouveau_pushbuf_validate(push);
+   PUSH_VAL(push);
 
    BEGIN_NVC0(push, NVE4_COPY(SRC_ADDRESS_HIGH), 4);
    PUSH_DATAh(push, src->offset + srcoff);

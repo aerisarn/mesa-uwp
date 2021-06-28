@@ -76,6 +76,12 @@ PUSH_KICK(struct nouveau_pushbuf *push)
 }
 
 static inline int
+PUSH_VAL(struct nouveau_pushbuf *push)
+{
+   return nouveau_pushbuf_validate(push);
+}
+
+static inline int
 BO_MAP(struct nouveau_screen *screen, struct nouveau_bo *bo, uint32_t access, struct nouveau_client *client)
 {
    return nouveau_bo_map(bo, access, client);

@@ -985,7 +985,7 @@ nvc0_state_validate(struct nvc0_context *nvc0, uint32_t mask,
    }
 
    nouveau_pushbuf_bufctx(nvc0->base.pushbuf, bufctx);
-   ret = nouveau_pushbuf_validate(nvc0->base.pushbuf);
+   ret = PUSH_VAL(nvc0->base.pushbuf);
 
    return !ret;
 }
