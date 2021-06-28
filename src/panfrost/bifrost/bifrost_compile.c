@@ -1535,6 +1535,36 @@ bi_flog2_32(bi_builder *b, bi_index dst, bi_index s0)
                         BI_ROUND_NONE);
 }
 
+static void
+bi_lower_fpow_32(bi_builder *b, bi_index dst, bi_index base, bi_index exp)
+{
+        bi_index log2_base = bi_null();
+
+        if (base.type == BI_INDEX_CONSTANT) {
+                log2_base = bi_imm_f32(log2f(uif(base.value)));
+        } else {
+                log2_base = bi_temp(b->shader);
+                bi_lower_flog2_32(b, log2_base, base);
+        }
+
+        return bi_lower_fexp2_32(b, dst, bi_fmul_f32(b, exp, log2_base));
+}
+
+static void
+bi_fpow_32(bi_builder *b, bi_index dst, bi_index base, bi_index exp)
+{
+        bi_index log2_base = bi_null();
+
+        if (base.type == BI_INDEX_CONSTANT) {
+                log2_base = bi_imm_f32(log2f(uif(base.value)));
+        } else {
+                log2_base = bi_temp(b->shader);
+                bi_flog2_32(b, log2_base, base);
+        }
+
+        return bi_fexp_32(b, dst, exp, log2_base);
+}
+
 /* Bifrost has extremely coarse tables for approximating sin/cos, accessible as
  * FSIN/COS_TABLE.u6, which multiplies the bottom 6-bits by pi/32 and
  * calculates the results. We use them to calculate sin/cos via a Taylor
@@ -1837,27 +1867,35 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_lower_fsincos_32(b, dst, s0, true);
                 break;
 
-        case nir_op_fexp2: {
+        case nir_op_fexp2:
                 assert(sz == 32); /* should've been lowered */
 
                 if (b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS)
                         bi_lower_fexp2_32(b, dst, s0);
                 else
-                        bi_fexp2_32(b, dst, s0, bi_imm_f32(1.0f));
+                        bi_fexp_32(b, dst, s0, bi_imm_f32(1.0f));
 
                 break;
-        }
 
-        case nir_op_flog2: {
+        case nir_op_flog2:
                 assert(sz == 32); /* should've been lowered */
 
                 if (b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS)
                         bi_lower_flog2_32(b, dst, s0);
                 else
-                        bi_flog2_32_to(b, dst, s0);
+                        bi_flog2_32(b, dst, s0);
 
                 break;
-        }
+
+        case nir_op_fpow:
+                assert(sz == 32); /* should've been lowered */
+
+                if (b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS)
+                        bi_lower_fpow_32(b, dst, s0, s1);
+                else
+                        bi_fpow_32(b, dst, s0, s1);
+
+                break;
 
         case nir_op_bcsel:
                 if (src1_sz == 8)
@@ -3059,6 +3097,7 @@ bi_lower_bit_size(const nir_instr *instr, UNUSED void *data)
         switch (alu->op) {
         case nir_op_fexp2:
         case nir_op_flog2:
+        case nir_op_fpow:
         case nir_op_fsin:
         case nir_op_fcos:
                 return (nir_dest_bit_size(alu->dest.dest) == 32) ? 0 : 32;
