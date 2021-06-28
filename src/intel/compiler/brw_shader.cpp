@@ -1173,13 +1173,11 @@ backend_instruction::is_volatile() const
 static bool
 inst_is_in_block(const bblock_t *block, const backend_instruction *inst)
 {
-   bool found = false;
    foreach_inst_in_block (backend_instruction, i, block) {
-      if (inst == i) {
-         found = true;
-      }
+      if (inst == i)
+         return true;
    }
-   return found;
+   return false;
 }
 #endif
 
