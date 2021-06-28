@@ -2882,7 +2882,7 @@ ray_tracing_pipeline_create(
    pipeline->group_count = pCreateInfo->groupCount;
    pipeline->groups = groups;
 
-   const VkShaderStageFlags ray_tracing_stages =
+   ASSERTED const VkShaderStageFlags ray_tracing_stages =
       VK_SHADER_STAGE_RAYGEN_BIT_KHR |
       VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
       VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
