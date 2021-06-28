@@ -1894,15 +1894,11 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
 }
 
 static int
-driver_location_compare(const void *in_a, const void *in_b)
+driver_location_compare(const nir_variable *a, const nir_variable *b)
 {
-        const nir_variable *const *a = in_a;
-        const nir_variable *const *b = in_b;
-
-        if ((*a)->data.driver_location == (*b)->data.driver_location)
-                return (*a)->data.location_frac - (*b)->data.location_frac;
-
-        return (*a)->data.driver_location - (*b)->data.driver_location;
+        return a->data.driver_location == b->data.driver_location ?
+               a->data.location_frac - b->data.location_frac :
+               a->data.driver_location - b->data.driver_location;
 }
 
 static struct qreg
@@ -2042,38 +2038,12 @@ program_reads_point_coord(struct v3d_compile *c)
 }
 
 static void
-get_sorted_input_variables(struct v3d_compile *c,
-                           unsigned *num_entries,
-                           nir_variable ***vars)
-{
-        *num_entries = 0;
-        nir_foreach_shader_in_variable(var, c->s)
-                (*num_entries)++;
-
-        *vars = ralloc_array(c, nir_variable *, *num_entries);
-
-        unsigned i = 0;
-        nir_foreach_shader_in_variable(var, c->s)
-                (*vars)[i++] = var;
-
-        /* Sort the variables so that we emit the input setup in
-         * driver_location order.  This is required for VPM reads, whose data
-         * is fetched into the VPM in driver_location (TGSI register index)
-         * order.
-         */
-        qsort(*vars, *num_entries, sizeof(**vars), driver_location_compare);
-}
-
-static void
 ntq_setup_gs_inputs(struct v3d_compile *c)
 {
-        nir_variable **vars;
-        unsigned num_entries;
-        get_sorted_input_variables(c, &num_entries, &vars);
+        nir_sort_variables_with_modes(c->s, driver_location_compare,
+                                      nir_var_shader_in);
 
-        for (unsigned i = 0; i < num_entries; i++) {
-                nir_variable *var = vars[i];
-
+        nir_foreach_shader_in_variable(var, c->s) {
                 /* All GS inputs are arrays with as many entries as vertices
                  * in the input primitive, but here we only care about the
                  * per-vertex input type.
@@ -2102,12 +2072,10 @@ ntq_setup_gs_inputs(struct v3d_compile *c)
 static void
 ntq_setup_fs_inputs(struct v3d_compile *c)
 {
-        nir_variable **vars;
-        unsigned num_entries;
-        get_sorted_input_variables(c, &num_entries, &vars);
+        nir_sort_variables_with_modes(c->s, driver_location_compare,
+                                      nir_var_shader_in);
 
-        for (unsigned i = 0; i < num_entries; i++) {
-                nir_variable *var = vars[i];
+        nir_foreach_shader_in_variable(var, c->s) {
                 unsigned var_len = glsl_count_vec4_slots(var->type, false, false);
                 unsigned loc = var->data.driver_location;
 
