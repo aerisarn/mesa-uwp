@@ -467,8 +467,17 @@ resolve_dest_block(struct ir3_block *block)
 		} else if (list_length(&block->instr_list) == 1) {
 			struct ir3_instruction *instr = list_first_entry(
 					&block->instr_list, struct ir3_instruction, node);
-			if (instr->opc == OPC_JUMP)
+			if (instr->opc == OPC_JUMP) {
+				/* If this jump is backwards, then we will probably convert
+				 * the jump being resolved to a backwards jump, which will
+				 * change a loop-with-continue or loop-with-if into a
+				 * doubly-nested loop and change the convergence behavior.
+				 * Disallow this here.
+				 */
+				if (block->successors[0]->index <= block->index)
+					return block;
 				return block->successors[0];
+			}
 		}
 	}
 	return block;
@@ -522,6 +531,10 @@ static bool
 opt_jump(struct ir3 *ir)
 {
 	bool progress = false;
+
+	unsigned index = 0;
+	foreach_block (block, &ir->block_list)
+		block->index = index++;
 
 	foreach_block (block, &ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
