@@ -1478,6 +1478,20 @@ bi_lower_fexp2_32(bi_builder *b, bi_index dst, bi_index s0)
 }
 
 static void
+bi_fexp_32(bi_builder *b, bi_index dst, bi_index s0, bi_index log2_base)
+{
+        /* Scale by base, Multiply by 2*24 and convert to integer to get a 8:24
+         * fixed-point input */
+        bi_index scale = bi_fma_rscale_f32(b, s0, log2_base, bi_negzero(),
+                        bi_imm_u32(24), BI_ROUND_NONE, BI_SPECIAL_NONE);
+        bi_index fixed_pt = bi_f32_to_s32(b, scale, BI_ROUND_NONE);
+
+        /* Compute the result for the fixed-point input, but pass along
+         * the original input for correct NaN propagation */
+        bi_fexp_f32_to(b, dst, fixed_pt, s0);
+}
+
+static void
 bi_lower_flog2_32(bi_builder *b, bi_index dst, bi_index s0)
 {
         /* s0 = a1 * 2^e, with a1 in [0.75, 1.5) */
@@ -1509,6 +1523,16 @@ bi_lower_flog2_32(bi_builder *b, bi_index dst, bi_index s0)
 
         /* log(s0) = x1 + x2 */
         bi_fadd_f32_to(b, dst, x1, x2, BI_ROUND_NONE);
+}
+
+static void
+bi_flog2_32(bi_builder *b, bi_index dst, bi_index s0)
+{
+        bi_index frexp = bi_frexpe_f32(b, s0, true, false);
+        bi_index frexpi = bi_s32_to_f32(b, frexp, BI_ROUND_RTZ);
+        bi_index add = bi_fadd_lscale_f32(b, bi_imm_f32(-1.0f), s0);
+        bi_fma_f32_to(b, dst, bi_flogd_f32(b, s0), add, frexpi,
+                        BI_ROUND_NONE);
 }
 
 /* Bifrost has extremely coarse tables for approximating sin/cos, accessible as
@@ -1816,37 +1840,22 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         case nir_op_fexp2: {
                 assert(sz == 32); /* should've been lowered */
 
-                if (b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS) {
+                if (b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS)
                         bi_lower_fexp2_32(b, dst, s0);
-                        break;
-                }
+                else
+                        bi_fexp2_32(b, dst, s0, bi_imm_f32(1.0f));
 
-                /* Multiply by 1.0 * 2*24 and convert to integer to get a 8:24
-                 * fixed-point input */
-                bi_index scale = bi_fma_rscale_f32(b, s0, bi_imm_f32(1.0f),
-                                bi_negzero(), bi_imm_u32(24), BI_ROUND_NONE,
-                                BI_SPECIAL_NONE);
-                bi_index fixed_pt = bi_f32_to_s32(b, scale, BI_ROUND_NONE);
-
-                /* Compute the result for the fixed-point input, but pass along
-                 * the original input for correct NaN propagation */
-                bi_fexp_f32_to(b, dst, fixed_pt, s0);
                 break;
         }
 
         case nir_op_flog2: {
                 assert(sz == 32); /* should've been lowered */
 
-                if (b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS) {
+                if (b->shader->quirks & BIFROST_NO_FP32_TRANSCENDENTALS)
                         bi_lower_flog2_32(b, dst, s0);
-                        break;
-                }
+                else
+                        bi_flog2_32_to(b, dst, s0);
 
-                bi_index frexp = bi_frexpe_f32(b, s0, true, false);
-                bi_index frexpi = bi_s32_to_f32(b, frexp, BI_ROUND_RTZ);
-                bi_index add = bi_fadd_lscale_f32(b, bi_imm_f32(-1.0f), s0);
-                bi_fma_f32_to(b, dst, bi_flogd_f32(b, s0), add, frexpi,
-                                BI_ROUND_NONE);
                 break;
         }
 
