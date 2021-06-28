@@ -2003,7 +2003,7 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
             nir_if_rewrite_condition(use_src->parent_if, new_src);
 
          if (nir_ssa_def_is_unused(old_def)) {
-            iter = nir_instr_remove(instr);
+            iter = nir_instr_remove_and_dce(instr);
          } else {
             iter = nir_after_instr(instr);
          }
@@ -2017,7 +2017,7 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
          if (new_def == NIR_LOWER_INSTR_PROGRESS_REPLACE) {
             /* Only instructions without a return value can be removed like this */
             assert(!old_def);
-            iter = nir_instr_remove(instr);
+            iter = nir_instr_remove_and_dce(instr);
             progress = true;
          } else
             iter = nir_after_instr(instr);

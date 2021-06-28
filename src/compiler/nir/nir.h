@@ -4314,6 +4314,10 @@ typedef nir_ssa_def *(*nir_lower_instr_cb)(struct nir_builder *,
  * will be removed.  If new instructions are added, the lowering callback will
  * also be called on them in case multiple lowerings are required.
  *
+ * If the callback indicates that the original instruction is replaced (either
+ * through a new SSA def or NIR_LOWER_INSTR_PROGRESS_REPLACE), then the
+ * instruction is removed along with any now-dead SSA defs it used.
+ *
  * The metadata for the nir_function_impl will also be updated.  If any blocks
  * are added (they cannot be removed), dominance and block indices will be
  * invalidated.
