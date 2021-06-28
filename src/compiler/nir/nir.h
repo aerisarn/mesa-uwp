@@ -3951,7 +3951,7 @@ nir_instr_remove(nir_instr *instr)
    return cursor;
 }
 
-nir_cursor nir_instr_remove_and_dce(nir_instr *instr);
+nir_cursor nir_instr_free_and_dce(nir_instr *instr);
 
 /** @} */
 

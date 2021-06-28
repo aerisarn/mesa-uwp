@@ -1070,7 +1070,7 @@ void nir_instr_remove_v(nir_instr *instr)
    }
 }
 
-static bool nir_instr_remove_and_dce_live_cb(nir_ssa_def *def, void *state)
+static bool nir_instr_free_and_dce_live_cb(nir_ssa_def *def, void *state)
 {
    bool *live = state;
 
@@ -1082,7 +1082,7 @@ static bool nir_instr_remove_and_dce_live_cb(nir_ssa_def *def, void *state)
    }
 }
 
-static bool nir_instr_remove_and_dce_is_live(nir_instr *instr)
+static bool nir_instr_free_and_dce_is_live(nir_instr *instr)
 {
    /* Note: don't have to worry about jumps because they don't have dests to
     * become unused.
@@ -1095,31 +1095,28 @@ static bool nir_instr_remove_and_dce_is_live(nir_instr *instr)
    }
 
    bool live = false;
-   nir_foreach_ssa_def(instr, nir_instr_remove_and_dce_live_cb, &live);
+   nir_foreach_ssa_def(instr, nir_instr_free_and_dce_live_cb, &live);
    return live;
 }
 
 /**
- * Removes an instruction and any SSA defs that it used that are now dead, returning a nir_cursor
- * where the instruction previously was.
+ * Frees an instruction and any SSA defs that it used that are now dead,
+ * returning a nir_cursor where the instruction previously was.
  */
 nir_cursor
-nir_instr_remove_and_dce(nir_instr *instr)
+nir_instr_free_and_dce(nir_instr *instr)
 {
    nir_instr_worklist *worklist = nir_instr_worklist_create();
 
    nir_instr_worklist_add_ssa_srcs(worklist, instr);
    nir_cursor c = nir_instr_remove(instr);
 
+   struct exec_list to_free;
+   exec_list_make_empty(&to_free);
+
    nir_instr *dce_instr;
    while ((dce_instr = nir_instr_worklist_pop_head(worklist))) {
-      /* Instrs can be in the worklist multiple times, so check
-       * that we haven't already removed this one.
-       */
-      if (exec_node_is_tail_sentinel(&dce_instr->node))
-         continue;
-
-      if (!nir_instr_remove_and_dce_is_live(dce_instr)) {
+      if (!nir_instr_free_and_dce_is_live(dce_instr)) {
          nir_instr_worklist_add_ssa_srcs(worklist, dce_instr);
 
          /* If we're removing the instr where our cursor is, then we have to
@@ -1131,7 +1128,14 @@ nir_instr_remove_and_dce(nir_instr *instr)
             c = nir_instr_remove(dce_instr);
          else
             nir_instr_remove(dce_instr);
+         exec_list_push_tail(&to_free, &dce_instr->node);
       }
+   }
+
+   struct exec_node *node;
+   while ((node = exec_list_pop_head(&to_free))) {
+      nir_instr *removed_instr = exec_node_data(nir_instr, node, node);
+      ralloc_free(removed_instr);
    }
 
    nir_instr_worklist_destroy(worklist);
@@ -2003,7 +2007,7 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
             nir_if_rewrite_condition(use_src->parent_if, new_src);
 
          if (nir_ssa_def_is_unused(old_def)) {
-            iter = nir_instr_remove_and_dce(instr);
+            iter = nir_instr_free_and_dce(instr);
          } else {
             iter = nir_after_instr(instr);
          }
@@ -2017,7 +2021,7 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
          if (new_def == NIR_LOWER_INSTR_PROGRESS_REPLACE) {
             /* Only instructions without a return value can be removed like this */
             assert(!old_def);
-            iter = nir_instr_remove_and_dce(instr);
+            iter = nir_instr_free_and_dce(instr);
             progress = true;
          } else
             iter = nir_after_instr(instr);

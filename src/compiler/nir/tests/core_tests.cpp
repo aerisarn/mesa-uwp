@@ -91,14 +91,14 @@ nir_core_test::shader_contains_def(nir_ssa_def *def)
    return false;
 }
 
-TEST_F(nir_core_test, nir_instr_remove_and_dce_test)
+TEST_F(nir_core_test, nir_instr_free_and_dce_test)
 {
    nir_ssa_def *zero = nir_imm_int(b, 0);
    nir_ssa_def *one = nir_imm_int(b, 1);
    nir_ssa_def *add01 = nir_iadd(b, zero, one);
    nir_ssa_def *add11 = nir_iadd(b, one, one);
 
-   nir_cursor c = nir_instr_remove_and_dce(add01->parent_instr);
+   nir_cursor c = nir_instr_free_and_dce(add01->parent_instr);
    ASSERT_FALSE(shader_contains_def(add01));
    ASSERT_TRUE(shader_contains_def(add11));
    ASSERT_FALSE(shader_contains_def(zero));
@@ -109,12 +109,12 @@ TEST_F(nir_core_test, nir_instr_remove_and_dce_test)
    nir_validate_shader(b->shader, "after remove_and_dce");
 }
 
-TEST_F(nir_core_test, nir_instr_remove_and_dce_all_test)
+TEST_F(nir_core_test, nir_instr_free_and_dce_all_test)
 {
    nir_ssa_def *one = nir_imm_int(b, 1);
    nir_ssa_def *add = nir_iadd(b, one, one);
 
-   nir_cursor c = nir_instr_remove_and_dce(add->parent_instr);
+   nir_cursor c = nir_instr_free_and_dce(add->parent_instr);
    ASSERT_FALSE(shader_contains_def(add));
    ASSERT_FALSE(shader_contains_def(one));
 
