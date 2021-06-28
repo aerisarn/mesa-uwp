@@ -744,9 +744,9 @@
       <value name="HALIGN_128" value="3"/>
     </field>
     <field name="Surface Vertical Alignment" start="16" end="17" type="uint">
-      <value name="VALIGN 4" value="1"/>
-      <value name="VALIGN 8" value="2"/>
-      <value name="VALIGN 16" value="3"/>
+      <value name="VALIGN_4" value="1"/>
+      <value name="VALIGN_8" value="2"/>
+      <value name="VALIGN_16" value="3"/>
     </field>
     <field name="Surface Format" start="18" end="27" type="uint"/>
     <field name="Surface Array" start="28" end="28" type="bool"/>

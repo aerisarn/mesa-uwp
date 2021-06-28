@@ -49,9 +49,9 @@ static const uint8_t isl_encode_halign(uint8_t halign)
    case  64: return HALIGN_64;
    case 128: return HALIGN_128;
 #elif GFX_VER >= 8
-   case   4: return HALIGN4;
-   case   8: return HALIGN8;
-   case  16: return HALIGN16;
+   case   4: return HALIGN_4;
+   case   8: return HALIGN_8;
+   case  16: return HALIGN_16;
 #else
    case   4: return HALIGN_4;
    case   8: return HALIGN_8;
@@ -66,9 +66,9 @@ static const uint8_t isl_encode_valign(uint8_t valign)
 {
    switch (valign) {
 #if GFX_VER >= 8
-   case   4: return VALIGN4;
-   case   8: return VALIGN8;
-   case  16: return VALIGN16;
+   case   4: return VALIGN_4;
+   case   8: return VALIGN_8;
+   case  16: return VALIGN_16;
 #else
    case   2: return VALIGN_2;
    case   4: return VALIGN_4;
