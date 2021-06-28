@@ -1230,6 +1230,18 @@ out:
         return V3D_QPU_COND_IFNA;
 }
 
+static struct qreg
+ntq_emit_cond_to_bool(struct v3d_compile *c, enum v3d_qpu_cond cond)
+{
+        struct qreg result =
+                vir_MOV(c, vir_SEL(c, cond,
+                                   vir_uniform_ui(c, ~0),
+                                   vir_uniform_ui(c, 0)));
+        c->flags_temp = result.index;
+        c->flags_cond = cond;
+        return result;
+}
+
 static void
 ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
 {
@@ -1393,11 +1405,7 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 enum v3d_qpu_cond cond;
                 ASSERTED bool ok = ntq_emit_comparison(c, instr, &cond);
                 assert(ok);
-                result = vir_MOV(c, vir_SEL(c, cond,
-                                            vir_uniform_ui(c, ~0),
-                                            vir_uniform_ui(c, 0)));
-                c->flags_temp = result.index;
-                c->flags_cond = cond;
+                result = ntq_emit_cond_to_bool(c, cond);
                 break;
         }
 
@@ -1477,11 +1485,7 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         case nir_op_uadd_carry:
                 vir_set_pf(c, vir_ADD_dest(c, vir_nop_reg(), src[0], src[1]),
                            V3D_QPU_PF_PUSHC);
-                result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFA,
-                                            vir_uniform_ui(c, ~0),
-                                            vir_uniform_ui(c, 0)));
-                c->flags_temp = result.index;
-                c->flags_cond = V3D_QPU_COND_IFA;
+                result = ntq_emit_cond_to_bool(c, V3D_QPU_COND_IFA);
                 break;
 
         case nir_op_pack_half_2x16_split:
@@ -2903,11 +2907,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_helper_invocation:
                 vir_set_pf(c, vir_MSF_dest(c, vir_nop_reg()), V3D_QPU_PF_PUSHZ);
-                struct qreg qdest = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFA,
-                                                       vir_uniform_ui(c, ~0),
-                                                       vir_uniform_ui(c, 0)));
-                c->flags_temp = qdest.index;
-                c->flags_cond = V3D_QPU_COND_IFA;
+                struct qreg qdest = ntq_emit_cond_to_bool(c, V3D_QPU_COND_IFA);
                 ntq_store_dest(c, &instr->dest, 0, qdest);
                 break;
 
@@ -3281,13 +3281,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 vir_set_pf(c, vir_XOR_dest(c, vir_nop_reg(),
                                            first, vir_uniform_ui(c, 1)),
                                            V3D_QPU_PF_PUSHZ);
-                struct qreg result =
-                        vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFA,
-                                           vir_uniform_ui(c, ~0),
-                                           vir_uniform_ui(c, 0)));
-                c->flags_temp = result.index;
-                c->flags_cond = V3D_QPU_COND_IFA;
-
+                struct qreg result = ntq_emit_cond_to_bool(c, V3D_QPU_COND_IFA);
                 ntq_store_dest(c, &instr->dest, 0, result);
                 break;
         }
