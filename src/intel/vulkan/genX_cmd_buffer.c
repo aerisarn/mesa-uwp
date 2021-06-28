@@ -2551,25 +2551,16 @@ static struct anv_address
 anv_descriptor_set_address(struct anv_cmd_buffer *cmd_buffer,
                            struct anv_descriptor_set *set)
 {
-   if (set->pool) {
-      /* This is a normal descriptor set */
-      return (struct anv_address) {
-         .bo = set->pool->bo,
-         .offset = set->desc_mem.offset,
-      };
-   } else {
+   if (set->pool == NULL) {
       /* This is a push descriptor set.  We have to flag it as used on the GPU
        * so that the next time we push descriptors, we grab a new memory.
        */
       struct anv_push_descriptor_set *push_set =
          (struct anv_push_descriptor_set *)set;
       push_set->set_used_on_gpu = true;
-
-      return (struct anv_address) {
-         .bo = cmd_buffer->dynamic_state_stream.state_pool->block_pool.bo,
-         .offset = set->desc_mem.offset,
-      };
    }
+
+   return set->desc_addr;
 }
 
 static VkResult

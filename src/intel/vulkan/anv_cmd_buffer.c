@@ -941,11 +941,7 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       if (bind_point == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR) {
          struct anv_push_constants *push = &pipe_state->push_constants;
 
-         struct anv_address set_addr = {
-            .bo = set->pool->bo,
-            .offset = set->desc_mem.offset,
-         };
-         push->desc_sets[set_index] = anv_address_physical(set_addr);
+         push->desc_sets[set_index] = anv_address_physical(set->desc_addr);
 
          anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
                                cmd_buffer->batch.alloc,
@@ -1409,7 +1405,7 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       }
       set->desc_mem = desc_mem;
 
-      struct anv_address addr = {
+      set->desc_addr = (struct anv_address) {
          .bo = cmd_buffer->dynamic_state_stream.state_pool->block_pool.bo,
          .offset = set->desc_mem.offset,
       };
@@ -1425,7 +1421,8 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       anv_fill_buffer_surface_state(cmd_buffer->device,
                                     set->desc_surface_state, format,
                                     ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
-                                    addr, layout->descriptor_buffer_size, 1);
+                                    set->desc_addr,
+                                    layout->descriptor_buffer_size, 1);
    }
 
    return set;
