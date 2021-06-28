@@ -1039,33 +1039,11 @@ create_wl_buffer(struct dri2_egl_display *dri2_dpy,
       ret = zwp_linux_buffer_params_v1_create_immed(params, width, height,
                                                     fourcc, 0);
       zwp_linux_buffer_params_v1_destroy(params);
-   } else if (dri2_dpy->capabilities & WL_DRM_CAPABILITY_PRIME) {
-      struct wl_drm *wl_drm =
-         dri2_surf ? dri2_surf->wl_drm_wrapper : dri2_dpy->wl_drm;
-      int fd, stride;
 
-      if (num_planes > 1)
-         return NULL;
-
-      dri2_dpy->image->queryImage(image, __DRI_IMAGE_ATTRIB_FD, &fd);
-      dri2_dpy->image->queryImage(image, __DRI_IMAGE_ATTRIB_STRIDE, &stride);
-      ret = wl_drm_create_prime_buffer(wl_drm, fd, width, height, fourcc, 0,
-                                       stride, 0, 0, 0, 0);
-      close(fd);
-   } else {
-      struct wl_drm *wl_drm =
-         dri2_surf ? dri2_surf->wl_drm_wrapper : dri2_dpy->wl_drm;
-      int name, stride;
-
-      if (num_planes > 1)
-         return NULL;
-
-      dri2_dpy->image->queryImage(image, __DRI_IMAGE_ATTRIB_NAME, &name);
-      dri2_dpy->image->queryImage(image, __DRI_IMAGE_ATTRIB_STRIDE, &stride);
-      ret = wl_drm_create_buffer(wl_drm, name, width, height, stride, fourcc);
+      return ret;
    }
 
-   return ret;
+   return NULL;
 }
 
 static EGLBoolean
@@ -1312,21 +1290,16 @@ drm_handle_device(void *data, struct wl_drm *drm, const char *device)
 static void
 drm_handle_format(void *data, struct wl_drm *drm, uint32_t format)
 {
-   struct dri2_egl_display *dri2_dpy = data;
-   int visual_idx = dri2_wl_visual_idx_from_fourcc(format);
-
-   if (visual_idx == -1)
-      return;
-
-   BITSET_SET(dri2_dpy->formats, visual_idx);
+   /* deprecated, as compositors already support the dma-buf protocol extension
+    * and so we can rely on dmabuf_handle_modifier() to receive formats and
+    * modifiers */
 }
 
 static void
 drm_handle_capabilities(void *data, struct wl_drm *drm, uint32_t value)
 {
-   struct dri2_egl_display *dri2_dpy = data;
-
-   dri2_dpy->capabilities = value;
+   /* deprecated, as compositors already support the dma-buf protocol extension
+    * and so we can rely on it to create wl_buffer's */
 }
 
 static void
@@ -1565,7 +1538,10 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
    dri2_dpy->wl_registry = wl_display_get_registry(dri2_dpy->wl_dpy_wrapper);
    wl_registry_add_listener(dri2_dpy->wl_registry,
                             &registry_listener_drm, dri2_dpy);
-   if (roundtrip(dri2_dpy) < 0 || dri2_dpy->wl_drm == NULL)
+   if (roundtrip(dri2_dpy) < 0)
+      goto cleanup;
+
+   if (dri2_dpy->wl_drm == NULL || dri2_dpy->wl_dmabuf == NULL)
       goto cleanup;
 
    if (roundtrip(dri2_dpy) < 0 || dri2_dpy->fd == -1)
@@ -1632,23 +1608,6 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
    dri2_setup_screen(disp);
 
    dri2_wl_setup_swap_interval(disp);
-
-   /* To use Prime, we must have _DRI_IMAGE v7 at least.
-    * createImageFromFds support indicates that Prime export/import
-    * is supported by the driver. Fall back to
-    * gem names if we don't have Prime support. */
-
-   if (dri2_dpy->image->base.version < 7 ||
-       dri2_dpy->image->createImageFromFds == NULL)
-      dri2_dpy->capabilities &= ~WL_DRM_CAPABILITY_PRIME;
-
-   /* We cannot use Gem names with render-nodes, only prime fds (dma-buf).
-    * The server needs to accept them */
-   if (dri2_dpy->is_render_node &&
-       !(dri2_dpy->capabilities & WL_DRM_CAPABILITY_PRIME)) {
-      _eglLog(_EGL_WARNING, "wayland-egl: display is not render-node capable");
-      goto cleanup;
-   }
 
    if (dri2_dpy->is_different_gpu &&
        (dri2_dpy->image->base.version < 9 ||

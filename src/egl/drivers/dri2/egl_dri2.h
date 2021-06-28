@@ -247,7 +247,6 @@ struct dri2_egl_display
    struct u_vector *wl_modifiers;
    bool authenticated;
    BITSET_DECLARE(formats, EGL_DRI2_NUM_FORMATS);
-   uint32_t capabilities;
    char *device_name;
 #endif
 
