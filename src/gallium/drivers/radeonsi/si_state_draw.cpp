@@ -1381,9 +1381,8 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx)
       uint32_t *ptr;
 
       if (alloc_size) {
-         /* Vertex buffer descriptors are the only ones which are uploaded
-          * directly through a staging buffer and don't go through
-          * the fine-grained upload path.
+         /* Vertex buffer descriptors are the only ones which are uploaded directly
+          * and don't go through si_upload_graphics_shader_descriptors.
           */
          u_upload_alloc(sctx->b.const_uploader, 0, alloc_size,
                         si_optimal_tcc_alignment(sctx, alloc_size), &sctx->vb_descriptors_offset,
