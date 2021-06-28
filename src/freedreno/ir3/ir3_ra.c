@@ -293,6 +293,12 @@ struct ra_block_state {
 	/* True if the block has been visited and "renames" is complete.
 	 */
 	bool visited;
+
+	/* True if the block is unreachable via the logical CFG. This happens for
+	 * blocks after an if where both sides end in a break/continue. We ignore
+	 * it for everything but shared registers.
+	 */
+	bool logical_unreachable;
 };
 
 struct ra_parallel_copy {
@@ -313,6 +319,8 @@ struct ra_ctx {
 
 	/* Shared regs. */
 	struct ra_file shared;
+
+	struct ir3 *ir;
 
 	struct ir3_liveness *live;
 
@@ -1492,7 +1500,8 @@ handle_live_in(struct ra_ctx *ctx, struct ir3_register *def)
 		struct ir3_block *pred = ctx->block->predecessors[i];
 		struct ra_block_state *pred_state = &ctx->blocks[pred->index];
 
-		if (!pred_state->visited)
+		if (!pred_state->visited ||
+			(pred_state->logical_unreachable && !(def->flags & IR3_REG_SHARED)))
 			continue;
 
 		physreg = read_register(ctx, pred, def);
@@ -1790,6 +1799,21 @@ handle_block(struct ra_ctx *ctx, struct ir3_block *block)
 	ra_file_init(&ctx->half);
 	ra_file_init(&ctx->shared);
 
+	bool unreachable = false;
+	if (block != ir3_start_block(ctx->ir)) {
+		unreachable = true;
+		for (unsigned i = 0; i < block->predecessors_count; i++) {
+			struct ra_block_state *pred_state =
+				&ctx->blocks[block->predecessors[i]->index];
+			if (!pred_state->logical_unreachable) {
+				unreachable = false;
+				break;
+			}
+		}
+	}
+
+	ctx->blocks[block->index].logical_unreachable = unreachable;
+
 	/* Handle live-ins, phis, and input meta-instructions. These all appear
 	 * live at the beginning of the block, and interfere with each other
 	 * therefore need to be allocated "in parallel". This means that we
@@ -1814,6 +1838,8 @@ handle_block(struct ra_ctx *ctx, struct ir3_block *block)
 	BITSET_FOREACH_SET(name, ctx->live->live_in[block->index],
 					   ctx->live->definitions_count) {
 		struct ir3_register *reg = ctx->live->definitions[name];
+		if (unreachable && !(reg->flags & IR3_REG_SHARED))
+			continue;
 		handle_live_in(ctx, reg);
 	}
 
@@ -1941,6 +1967,7 @@ ir3_ra(struct ir3_shader_variant *v)
 
 	struct ra_ctx *ctx = rzalloc(NULL, struct ra_ctx);
 
+	ctx->ir = v->ir;
 	ctx->merged_regs = v->mergedregs;
 	ctx->compiler = v->shader->compiler;
 	ctx->stage = v->type;
