@@ -33,6 +33,10 @@
 #include "util/macros.h"
 #include "util/u_printf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 const VkAllocationCallbacks *
 vk_default_allocator(void);
 
@@ -292,5 +296,9 @@ vk_multialloc_zalloc2(struct vk_multialloc *ma,
 {
    return vk_multialloc_zalloc(ma, alloc ? alloc : parent_alloc, scope);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
