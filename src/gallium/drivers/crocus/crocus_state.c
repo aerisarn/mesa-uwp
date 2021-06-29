@@ -8092,7 +8092,7 @@ crocus_upload_compute_state(struct crocus_context *ice,
             Resettingrelativetimerandlatchingtheglobaltimestamp;
          vfe.BypassGatewayControl = true;
 #if GFX_VER == 7
-         vfe.GPGPUMode = 1;
+         vfe.GPGPUMode = true;
 #endif
 #if GFX_VER == 8
          vfe.BypassGatewayControl = true;

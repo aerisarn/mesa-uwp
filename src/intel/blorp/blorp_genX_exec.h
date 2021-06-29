@@ -2169,7 +2169,7 @@ blorp_exec_compute(struct blorp_batch *batch, const struct blorp_params *params)
       vfe.BypassGatewayControl = BypassingOpenGatewayCloseGatewayprotocol;
 #endif
 #if GFX_VER == 7
-      vfe.GPGPUMode = 1;
+      vfe.GPGPUMode = true;
 #endif
       vfe.URBEntryAllocationSize = GFX_VER >= 8 ? 2 : 0;
 
