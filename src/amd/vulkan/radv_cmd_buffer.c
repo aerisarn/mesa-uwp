@@ -2911,7 +2911,10 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
             else
                num_records = (num_records - attrib_end) / stride + 1;
 
-            if ((chip == GFX8 && num_records) || (chip >= GFX10 && !stride))
+            /* GFX10 uses OOB_SELECT_RAW if stride==0, so convert num_records from elements into
+             * into bytes in that case. GFX8 always uses bytes.
+             */
+            if (num_records && (chip == GFX8 || (chip >= GFX10 && !stride)))
                num_records = (num_records - 1) * stride + attrib_end;
          } else {
             if (chip != GFX8 && stride)
