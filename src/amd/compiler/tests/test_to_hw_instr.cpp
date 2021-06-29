@@ -510,9 +510,9 @@ BEGIN_TEST(to_hw_instr.extract)
       if (!setup_cs(NULL, (chip_class)i, CHIP_UNKNOWN, is_signed ? "_signed" : "_unsigned"))
          continue;
 
-      #define EXT(idx, size) \
-         bld.pseudo(aco_opcode::p_extract, Definition(v0_lo, v1), Operand(v1_lo, v1),\
-                    Operand((uint32_t)idx), Operand((uint32_t)size), Operand(is_signed));
+#define EXT(idx, size)                                                                             \
+   bld.pseudo(aco_opcode::p_extract, Definition(v0_lo, v1), Operand(v1_lo, v1), Operand::c32(idx), \
+              Operand::c32(size), Operand::c32(is_signed));
 
       //; funcs['v_bfe'] = lambda _: 'v_bfe_i32' if variant.endswith('_signed') else 'v_bfe_u32'
       //; funcs['v_shr'] = lambda _: 'v_ashrrev_i32' if variant.endswith('_signed') else 'v_lshrrev_b32'
@@ -537,9 +537,9 @@ BEGIN_TEST(to_hw_instr.extract)
 
       #undef EXT
 
-      #define EXT(idx, size) \
-         bld.pseudo(aco_opcode::p_extract, Definition(s0_lo, s1), Definition(scc, s1), \
-                    Operand(s1_lo, s1), Operand((uint32_t)idx), Operand((uint32_t)size), Operand(is_signed));
+#define EXT(idx, size)                                                                             \
+   bld.pseudo(aco_opcode::p_extract, Definition(s0_lo, s1), Definition(scc, s1),                   \
+              Operand(s1_lo, s1), Operand::c32(idx), Operand::c32(size), Operand::c32(is_signed));
 
       //>> p_unit_test 2
       bld.pseudo(aco_opcode::p_unit_test, Operand(2u));
@@ -560,9 +560,9 @@ BEGIN_TEST(to_hw_instr.extract)
 
       #undef EXT
 
-      #define EXT(idx, src_b) \
-         bld.pseudo(aco_opcode::p_extract, Definition(v0_lo, v2b), Operand(v1_lo.advance(src_b), v2b),\
-                    Operand((uint32_t)idx), Operand(8u), Operand(is_signed));
+#define EXT(idx, src_b)                                                                            \
+   bld.pseudo(aco_opcode::p_extract, Definition(v0_lo, v2b), Operand(v1_lo.advance(src_b), v2b),   \
+              Operand::c32(idx), Operand::c32(8u), Operand::c32(is_signed));
 
       //>> p_unit_test 4
       bld.pseudo(aco_opcode::p_unit_test, Operand(4u));
@@ -598,9 +598,9 @@ BEGIN_TEST(to_hw_instr.insert)
       if (!setup_cs(NULL, (chip_class)i))
          continue;
 
-      #define INS(idx, size) \
-         bld.pseudo(aco_opcode::p_insert, Definition(v0_lo, v1), Operand(v1_lo, v1),\
-                    Operand((uint32_t)idx), Operand((uint32_t)size));
+#define INS(idx, size)                                                                             \
+   bld.pseudo(aco_opcode::p_insert, Definition(v0_lo, v1), Operand(v1_lo, v1), Operand::c32(idx),  \
+              Operand::c32(size));
 
       //>> p_unit_test 0
       bld.pseudo(aco_opcode::p_unit_test, Operand(0u));
@@ -623,9 +623,9 @@ BEGIN_TEST(to_hw_instr.insert)
 
       #undef INS
 
-      #define INS(idx, size) \
-         bld.pseudo(aco_opcode::p_insert, Definition(s0_lo, s1), Definition(scc, s1),\
-                    Operand(s1_lo, s1), Operand((uint32_t)idx), Operand((uint32_t)size));
+#define INS(idx, size)                                                                             \
+   bld.pseudo(aco_opcode::p_insert, Definition(s0_lo, s1), Definition(scc, s1),                    \
+              Operand(s1_lo, s1), Operand::c32(idx), Operand::c32(size));
 
       //>> p_unit_test 1
       bld.pseudo(aco_opcode::p_unit_test, Operand(1u));
@@ -646,9 +646,9 @@ BEGIN_TEST(to_hw_instr.insert)
 
       #undef INS
 
-      #define INS(idx, def_b) \
-         bld.pseudo(aco_opcode::p_insert, Definition(v0_lo.advance(def_b), v2b),\
-                    Operand(v1_lo, v2b), Operand((uint32_t)idx), Operand(8u));
+#define INS(idx, def_b)                                                                            \
+   bld.pseudo(aco_opcode::p_insert, Definition(v0_lo.advance(def_b), v2b), Operand(v1_lo, v2b),    \
+              Operand::c32(idx), Operand::c32(8u));
 
       //>> p_unit_test 2
       bld.pseudo(aco_opcode::p_unit_test, Operand(2u));
