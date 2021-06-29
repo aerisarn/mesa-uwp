@@ -652,7 +652,7 @@ RADV driver environment variables
    ``sam``
       enable optimizations to move more driver internal objects to VRAM.
 
-:envvar`RADV_TEX_ANISO`
+:envvar:`RADV_TEX_ANISO`
    force anisotropy filter (up to 16)
 
 :envvar:`ACO_DEBUG`
