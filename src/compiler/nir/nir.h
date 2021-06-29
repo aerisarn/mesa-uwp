@@ -3433,6 +3433,9 @@ typedef struct nir_shader_compiler_options {
    /* Lowers when rotate instruction is not supported */
    bool lower_rotate;
 
+   /** Backend supports ternary addition */
+   bool has_iadd3;
+
    /**
     * Backend supports imul24, and would like to use it (when possible)
     * for address/offset calculation.  If true, driver should call

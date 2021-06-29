@@ -2269,6 +2269,10 @@ late_optimizations = [
    (('~fadd@32', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma32'),
    (('~fadd@64', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma64'),
 
+   (('iadd', ('iadd(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), 'c(is_not_const)'), ('iadd3', a, b, c), 'options->has_iadd3'),
+   (('iadd', ('isub(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), 'c(is_not_const)'), ('iadd3', a, ('ineg', b), c), 'options->has_iadd3'),
+   (('isub', ('isub(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), 'c(is_not_const)'), ('iadd3', a, ('ineg', b), ('ineg', c)), 'options->has_iadd3'),
+
    # These are duplicated from the main optimizations table.  The late
    # patterns that rearrange expressions like x - .5 < 0 to x < .5 can create
    # new patterns like these.  The patterns that compare with zero are removed
