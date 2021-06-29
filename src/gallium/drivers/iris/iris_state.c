@@ -2639,8 +2639,10 @@ iris_create_surface(struct pipe_context *ctx,
        *
        * Return NULL to force gallium frontends to take fallback paths.
        */
-      if (view->array_len > 1 || GFX_VER == 8)
+      if (view->array_len > 1 || GFX_VER == 8) {
+         free(surf);
          return NULL;
+      }
 
       const bool is_3d = res->surf.dim == ISL_SURF_DIM_3D;
       isl_surf_get_image_surf(&screen->isl_dev, &res->surf,
