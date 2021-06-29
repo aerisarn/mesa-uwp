@@ -377,19 +377,19 @@ public:
       bool has_lshl_add = program->chip_class >= GFX9;
       /* v_mul_lo_u32 has 1.6x the latency of most VALU on GFX10 (8 vs 5 cycles),
        * compared to 4x the latency on <GFX10. */
-      unsigned mul_cost = program->chip_class >= GFX10 ? 1 : (4 + Operand(imm).isLiteral());
+      unsigned mul_cost = program->chip_class >= GFX10 ? 1 : (4 + Operand::c32(imm).isLiteral());
       if (imm == 0) {
-         return copy(dst, Operand(0u));
+         return copy(dst, Operand::zero());
       } else if (imm == 1) {
          return copy(dst, Operand(tmp));
       } else if (util_is_power_of_two_or_zero(imm)) {
-         return vop2(aco_opcode::v_lshlrev_b32, dst, Operand((uint32_t)ffs(imm) - 1u), tmp);
+         return vop2(aco_opcode::v_lshlrev_b32, dst, Operand::c32(ffs(imm) - 1u), tmp);
       } else if (bits24) {
-        return vop2(aco_opcode::v_mul_u32_u24, dst, Operand(imm), tmp);
+        return vop2(aco_opcode::v_mul_u32_u24, dst, Operand::c32(imm), tmp);
       } else if (util_is_power_of_two_nonzero(imm - 1u)) {
-         return vadd32(dst, vop2(aco_opcode::v_lshlrev_b32, def(v1), Operand((uint32_t)ffs(imm - 1u) - 1u), tmp), tmp);
+         return vadd32(dst, vop2(aco_opcode::v_lshlrev_b32, def(v1), Operand::c32(ffs(imm - 1u) - 1u), tmp), tmp);
       } else if (mul_cost > 2 && util_is_power_of_two_nonzero(imm + 1u)) {
-         return vsub32(dst, vop2(aco_opcode::v_lshlrev_b32, def(v1), Operand((uint32_t)ffs(imm + 1u) - 1u), tmp), tmp);
+         return vsub32(dst, vop2(aco_opcode::v_lshlrev_b32, def(v1), Operand::c32(ffs(imm + 1u) - 1u), tmp), tmp);
       }
 
       unsigned instrs_required = util_bitcount(imm);
@@ -405,9 +405,9 @@ public:
             Definition tmp_dst = imm ? def(v1) : dst;
 
             if (shift && cur.id())
-               res = vadd32(Definition(tmp_dst), vop2(aco_opcode::v_lshlrev_b32, def(v1), Operand(shift), tmp), cur);
+               res = vadd32(Definition(tmp_dst), vop2(aco_opcode::v_lshlrev_b32, def(v1), Operand::c32(shift), tmp), cur);
             else if (shift)
-               res = vop2(aco_opcode::v_lshlrev_b32, Definition(tmp_dst), Operand(shift), tmp);
+               res = vop2(aco_opcode::v_lshlrev_b32, Definition(tmp_dst), Operand::c32(shift), tmp);
             else if (cur.id())
                res = vadd32(Definition(tmp_dst), tmp, cur);
             else
@@ -418,7 +418,7 @@ public:
          return res;
       }
 
-      Temp imm_tmp = copy(def(s1), Operand(imm));
+      Temp imm_tmp = copy(def(s1), Operand::c32(imm));
       return vop3(aco_opcode::v_mul_lo_u32, dst, imm_tmp, tmp);
    }
 
