@@ -5316,6 +5316,9 @@ radv_pipeline_init_vertex_input_state(struct radv_pipeline *pipeline,
 
       uint32_t end = desc->offset + vk_format_get_blocksize(desc->format);
       pipeline->attrib_ends[desc->location] = end;
+      if (pipeline->binding_stride[desc->binding])
+         pipeline->attrib_index_offset[desc->location] =
+            desc->offset / pipeline->binding_stride[desc->binding];
       pipeline->attrib_bindings[desc->location] = desc->binding;
    }
 

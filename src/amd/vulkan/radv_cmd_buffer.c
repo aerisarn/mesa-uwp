@@ -2904,12 +2904,18 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
          if (pipeline->use_per_attribute_vb_descs) {
             uint32_t attrib_end = pipeline->attrib_ends[i];
 
-            if (num_records < attrib_end)
+            if (num_records < attrib_end) {
                num_records = 0; /* not enough space for one vertex */
-            else if (stride == 0)
+            } else if (stride == 0) {
                num_records = 1; /* only one vertex */
-            else
+            } else {
                num_records = (num_records - attrib_end) / stride + 1;
+               /* If attrib_offset>stride, then the compiler will increase the vertex index by
+                * attrib_offset/stride and decrease the offset by attrib_offset%stride. This is
+                * only allowed with static strides.
+                */
+               num_records += pipeline->attrib_index_offset[i];
+            }
 
             /* GFX10 uses OOB_SELECT_RAW if stride==0, so convert num_records from elements into
              * into bytes in that case. GFX8 always uses bytes.
