@@ -115,6 +115,11 @@ struct bblock_t {
    int start_ip;
    int end_ip;
 
+   /**
+    * Change in end_ip since the last time IPs of later blocks were updated.
+    */
+   int end_ip_delta;
+
    struct exec_list instructions;
    struct exec_list parents;
    struct exec_list children;

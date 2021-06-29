@@ -1196,6 +1196,7 @@ void
 backend_instruction::insert_after(bblock_t *block, backend_instruction *inst)
 {
    assert(this != inst);
+   assert(block->end_ip_delta == 0);
 
    if (!this->is_head_sentinel())
       assert(inst_is_in_block(block, this) || !"Instruction not in block");
@@ -1211,6 +1212,7 @@ void
 backend_instruction::insert_before(bblock_t *block, backend_instruction *inst)
 {
    assert(this != inst);
+   assert(block->end_ip_delta == 0);
 
    if (!this->is_tail_sentinel())
       assert(inst_is_in_block(block, this) || !"Instruction not in block");
@@ -1226,6 +1228,7 @@ void
 backend_instruction::insert_before(bblock_t *block, exec_list *list)
 {
    assert(inst_is_in_block(block, this) || !"Instruction not in block");
+   assert(block->end_ip_delta == 0);
 
    unsigned num_inst = list->length();
 
@@ -1237,13 +1240,23 @@ backend_instruction::insert_before(bblock_t *block, exec_list *list)
 }
 
 void
-backend_instruction::remove(bblock_t *block)
+backend_instruction::remove(bblock_t *block, bool defer_later_block_ip_updates)
 {
    assert(inst_is_in_block(block, this) || !"Instruction not in block");
 
-   adjust_later_block_ips(block, -1);
+   if (defer_later_block_ip_updates) {
+      block->end_ip_delta--;
+   } else {
+      assert(block->end_ip_delta == 0);
+      adjust_later_block_ips(block, -1);
+   }
 
    if (block->start_ip == block->end_ip) {
+      if (block->end_ip_delta != 0) {
+         adjust_later_block_ips(block, block->end_ip_delta);
+         block->end_ip_delta = 0;
+      }
+
       block->cfg->remove_block(block);
    } else {
       block->end_ip--;

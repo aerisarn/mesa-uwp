@@ -107,7 +107,7 @@ struct backend_instruction : public exec_node {
     */
    bool uses_indirect_addressing() const;
 
-   void remove(bblock_t *block);
+   void remove(bblock_t *block, bool defer_later_block_ip_updates = false);
    void insert_after(bblock_t *block, backend_instruction *inst);
    void insert_before(bblock_t *block, backend_instruction *inst);
    void insert_before(bblock_t *block, exec_list *list);
