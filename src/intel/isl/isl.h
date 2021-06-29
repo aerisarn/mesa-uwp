@@ -2664,7 +2664,7 @@ isl_surf_get_image_surf(const struct isl_device *dev,
  * It is safe to call this function with surf == uncompressed_surf and
  * view == uncompressed_view.
  */
-void
+bool MUST_CHECK
 isl_surf_get_uncompressed_surf(const struct isl_device *dev,
                                const struct isl_surf *surf,
                                const struct isl_view *view,

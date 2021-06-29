@@ -2621,14 +2621,18 @@ blorp_surf_convert_to_uncompressed(const struct isl_device *isl_dev,
    }
 
    uint32_t offset_B;
-   isl_surf_get_uncompressed_surf(isl_dev, &info->surf, &info->view,
-                                  &info->surf, &info->view, &offset_B,
-                                  &info->tile_x_sa, &info->tile_y_sa);
+   ASSERTED bool ok =
+      isl_surf_get_uncompressed_surf(isl_dev, &info->surf, &info->view,
+                                     &info->surf, &info->view, &offset_B,
+                                     &info->tile_x_sa, &info->tile_y_sa);
+   assert(ok);
    info->addr.offset += offset_B;
 
    /* BLORP doesn't use the actual intratile offsets.  Instead, it needs the
     * surface to be a bit bigger and we offset the vertices instead.
     */
+   assert(info->surf.dim == ISL_SURF_DIM_2D);
+   assert(info->surf.logical_level0_px.array_len == 1);
    info->surf.logical_level0_px.w += info->tile_x_sa;
    info->surf.logical_level0_px.h += info->tile_y_sa;
    info->surf.phys_level0_sa.w += info->tile_x_sa;
