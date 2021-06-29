@@ -626,14 +626,6 @@ public:
       return op;
    }
 
-   [[deprecated]] explicit Operand(uint8_t v) noexcept { *this = c8(v); };
-   [[deprecated]] explicit Operand(uint16_t v) noexcept { *this = c16(v); };
-   [[deprecated]] explicit Operand(uint32_t v, bool is64bit = false) noexcept
-   {
-      *this = c32_or_c64(v, is64bit);
-   };
-   [[deprecated]] explicit Operand(uint64_t v) noexcept { *this = c64(v); };
-
    explicit Operand(RegClass type) noexcept
    {
       isUndef_ = true;
