@@ -490,118 +490,150 @@ public:
       isTemp_ = true;
       setFixed(reg);
    };
-   explicit Operand(uint8_t v) noexcept
+
+   /* 8-bit constant */
+   static Operand c8(uint8_t v) noexcept
    {
       /* 8-bit constants are only used for copies and copies from any 8-bit
        * constant can be implemented with a SDWA v_mul_u32_u24. So consider all
        * to be inline constants. */
-      data_.i = v;
-      isConstant_ = true;
-      constSize = 0;
-      setFixed(PhysReg{0u});
+      Operand op;
+      op.control_ = 0;
+      op.data_.i = v;
+      op.isConstant_ = true;
+      op.constSize = 0;
+      op.setFixed(PhysReg{0u});
+      return op;
    };
-   explicit Operand(uint16_t v) noexcept
+
+   /* 16-bit constant */
+   static Operand c16(uint16_t v) noexcept
    {
-      data_.i = v;
-      isConstant_ = true;
-      constSize = 1;
+      Operand op;
+      op.control_ = 0;
+      op.data_.i = v;
+      op.isConstant_ = true;
+      op.constSize = 1;
       if (v <= 64)
-         setFixed(PhysReg{128u + v});
+         op.setFixed(PhysReg{128u + v});
       else if (v >= 0xFFF0) /* [-16 .. -1] */
-         setFixed(PhysReg{(unsigned)(192 - (int16_t)v)});
+         op.setFixed(PhysReg{(unsigned)(192 - (int16_t)v)});
       else if (v == 0x3800) /* 0.5 */
-         setFixed(PhysReg{240});
+         op.setFixed(PhysReg{240});
       else if (v == 0xB800) /* -0.5 */
-         setFixed(PhysReg{241});
+         op.setFixed(PhysReg{241});
       else if (v == 0x3C00) /* 1.0 */
-         setFixed(PhysReg{242});
+         op.setFixed(PhysReg{242});
       else if (v == 0xBC00) /* -1.0 */
-         setFixed(PhysReg{243});
+         op.setFixed(PhysReg{243});
       else if (v == 0x4000) /* 2.0 */
-         setFixed(PhysReg{244});
+         op.setFixed(PhysReg{244});
       else if (v == 0xC000) /* -2.0 */
-         setFixed(PhysReg{245});
+         op.setFixed(PhysReg{245});
       else if (v == 0x4400) /* 4.0 */
-         setFixed(PhysReg{246});
+         op.setFixed(PhysReg{246});
       else if (v == 0xC400) /* -4.0 */
-         setFixed(PhysReg{247});
+         op.setFixed(PhysReg{247});
       else if (v == 0x3118) /* 1/2 PI */
-         setFixed(PhysReg{248});
+         op.setFixed(PhysReg{248});
       else /* Literal Constant */
-         setFixed(PhysReg{255});
-   };
-   explicit Operand(uint32_t v, bool is64bit = false) noexcept
+         op.setFixed(PhysReg{255});
+      return op;
+   }
+
+   /* 32-bit constant */
+   static Operand c32(uint32_t v) noexcept { return c32_or_c64(v, false); }
+
+   /* 64-bit constant */
+   static Operand c64(uint64_t v) noexcept
    {
-      data_.i = v;
-      isConstant_ = true;
-      constSize = is64bit ? 3 : 2;
-      if (v <= 64)
-         setFixed(PhysReg{128 + v});
-      else if (v >= 0xFFFFFFF0) /* [-16 .. -1] */
-         setFixed(PhysReg{192 - v});
-      else if (v == 0x3f000000) /* 0.5 */
-         setFixed(PhysReg{240});
-      else if (v == 0xbf000000) /* -0.5 */
-         setFixed(PhysReg{241});
-      else if (v == 0x3f800000) /* 1.0 */
-         setFixed(PhysReg{242});
-      else if (v == 0xbf800000) /* -1.0 */
-         setFixed(PhysReg{243});
-      else if (v == 0x40000000) /* 2.0 */
-         setFixed(PhysReg{244});
-      else if (v == 0xc0000000) /* -2.0 */
-         setFixed(PhysReg{245});
-      else if (v == 0x40800000) /* 4.0 */
-         setFixed(PhysReg{246});
-      else if (v == 0xc0800000) /* -4.0 */
-         setFixed(PhysReg{247});
-      else { /* Literal Constant */
-         assert(!is64bit && "attempt to create a 64-bit literal constant");
-         setFixed(PhysReg{255});
-      }
-   };
-   explicit Operand(uint64_t v) noexcept
-   {
-      isConstant_ = true;
-      constSize = 3;
+      Operand op;
+      op.control_ = 0;
+      op.isConstant_ = true;
+      op.constSize = 3;
       if (v <= 64) {
-         data_.i = (uint32_t)v;
-         setFixed(PhysReg{128 + (uint32_t)v});
+         op.data_.i = (uint32_t)v;
+         op.setFixed(PhysReg{128 + (uint32_t)v});
       } else if (v >= 0xFFFFFFFFFFFFFFF0) { /* [-16 .. -1] */
-         data_.i = (uint32_t)v;
-         setFixed(PhysReg{192 - (uint32_t)v});
+         op.data_.i = (uint32_t)v;
+         op.setFixed(PhysReg{192 - (uint32_t)v});
       } else if (v == 0x3FE0000000000000) { /* 0.5 */
-         data_.i = 0x3f000000;
-         setFixed(PhysReg{240});
+         op.data_.i = 0x3f000000;
+         op.setFixed(PhysReg{240});
       } else if (v == 0xBFE0000000000000) { /* -0.5 */
-         data_.i = 0xbf000000;
-         setFixed(PhysReg{241});
+         op.data_.i = 0xbf000000;
+         op.setFixed(PhysReg{241});
       } else if (v == 0x3FF0000000000000) { /* 1.0 */
-         data_.i = 0x3f800000;
-         setFixed(PhysReg{242});
+         op.data_.i = 0x3f800000;
+         op.setFixed(PhysReg{242});
       } else if (v == 0xBFF0000000000000) { /* -1.0 */
-         data_.i = 0xbf800000;
-         setFixed(PhysReg{243});
+         op.data_.i = 0xbf800000;
+         op.setFixed(PhysReg{243});
       } else if (v == 0x4000000000000000) { /* 2.0 */
-         data_.i = 0x40000000;
-         setFixed(PhysReg{244});
+         op.data_.i = 0x40000000;
+         op.setFixed(PhysReg{244});
       } else if (v == 0xC000000000000000) { /* -2.0 */
-         data_.i = 0xc0000000;
-         setFixed(PhysReg{245});
+         op.data_.i = 0xc0000000;
+         op.setFixed(PhysReg{245});
       } else if (v == 0x4010000000000000) { /* 4.0 */
-         data_.i = 0x40800000;
-         setFixed(PhysReg{246});
+         op.data_.i = 0x40800000;
+         op.setFixed(PhysReg{246});
       } else if (v == 0xC010000000000000) { /* -4.0 */
-         data_.i = 0xc0800000;
-         setFixed(PhysReg{247});
+         op.data_.i = 0xc0800000;
+         op.setFixed(PhysReg{247});
       } else { /* Literal Constant: we don't know if it is a long or double.*/
-         signext = v >> 63;
-         data_.i = v & 0xffffffffu;
-         setFixed(PhysReg{255});
-         assert(constantValue64() == v &&
+         op.signext = v >> 63;
+         op.data_.i = v & 0xffffffffu;
+         op.setFixed(PhysReg{255});
+         assert(op.constantValue64() == v &&
                 "attempt to create a unrepresentable 64-bit literal constant");
       }
+      return op;
+   }
+
+   /* 32-bit constant stored as a 32-bit or 64-bit operand */
+   static Operand c32_or_c64(uint32_t v, bool is64bit) noexcept
+   {
+      Operand op;
+      op.control_ = 0;
+      op.data_.i = v;
+      op.isConstant_ = true;
+      op.constSize = is64bit ? 3 : 2;
+      if (v <= 64)
+         op.setFixed(PhysReg{128 + v});
+      else if (v >= 0xFFFFFFF0) /* [-16 .. -1] */
+         op.setFixed(PhysReg{192 - v});
+      else if (v == 0x3f000000) /* 0.5 */
+         op.setFixed(PhysReg{240});
+      else if (v == 0xbf000000) /* -0.5 */
+         op.setFixed(PhysReg{241});
+      else if (v == 0x3f800000) /* 1.0 */
+         op.setFixed(PhysReg{242});
+      else if (v == 0xbf800000) /* -1.0 */
+         op.setFixed(PhysReg{243});
+      else if (v == 0x40000000) /* 2.0 */
+         op.setFixed(PhysReg{244});
+      else if (v == 0xc0000000) /* -2.0 */
+         op.setFixed(PhysReg{245});
+      else if (v == 0x40800000) /* 4.0 */
+         op.setFixed(PhysReg{246});
+      else if (v == 0xc0800000) /* -4.0 */
+         op.setFixed(PhysReg{247});
+      else { /* Literal Constant */
+         assert(!is64bit && "attempt to create a 64-bit literal constant");
+         op.setFixed(PhysReg{255});
+      }
+      return op;
+   }
+
+   [[deprecated]] explicit Operand(uint8_t v) noexcept { *this = c8(v); };
+   [[deprecated]] explicit Operand(uint16_t v) noexcept { *this = c16(v); };
+   [[deprecated]] explicit Operand(uint32_t v, bool is64bit = false) noexcept
+   {
+      *this = c32_or_c64(v, is64bit);
    };
+   [[deprecated]] explicit Operand(uint64_t v) noexcept { *this = c64(v); };
+
    explicit Operand(RegClass type) noexcept
    {
       isUndef_ = true;
@@ -612,6 +644,18 @@ public:
    {
       data_.temp = Temp(0, type);
       setFixed(reg);
+   }
+
+   static Operand zero(unsigned bytes = 4) noexcept
+   {
+      if (bytes == 8)
+         return Operand::c64(0);
+      else if (bytes == 4)
+         return Operand::c32(0);
+      else if (bytes == 2)
+         return Operand::c16(0);
+      assert(bytes == 1);
+      return Operand::c8(0);
    }
 
    /* This is useful over the constructors when you want to take a chip class
