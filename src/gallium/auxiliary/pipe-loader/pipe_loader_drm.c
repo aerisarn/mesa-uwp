@@ -262,7 +262,7 @@ pipe_loader_drm_get_driconf(struct pipe_loader_device *dev, unsigned *count)
 
 static struct pipe_screen *
 pipe_loader_drm_create_screen(struct pipe_loader_device *dev,
-                              const struct pipe_screen_config *config)
+                              const struct pipe_screen_config *config, bool sw_vk)
 {
    struct pipe_loader_drm_device *ddev = pipe_loader_drm_device(dev);
 

@@ -162,7 +162,7 @@ lvp_physical_device_init(struct lvp_physical_device *device,
    }
    device->pld = pld;
 
-   device->pscreen = pipe_loader_create_screen(device->pld);
+   device->pscreen = pipe_loader_create_screen_vk(device->pld, true);
    if (!device->pscreen)
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
