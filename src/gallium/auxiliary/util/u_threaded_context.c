@@ -1467,7 +1467,7 @@ tc_set_shader_images(struct pipe_context *_pipe,
    }
 
    tc->image_buffers_writeable_mask[shader] &= ~BITFIELD_RANGE(start, count);
-   tc->image_buffers_writeable_mask[shader] |= writable_buffers << start;
+   tc->image_buffers_writeable_mask[shader] |= writable_buffers;
 }
 
 struct tc_shader_buffers {
