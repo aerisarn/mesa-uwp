@@ -2279,11 +2279,12 @@ st_CompressedTexSubImage(struct gl_context *ctx, GLuint dims,
    struct pipe_context *pipe = st->pipe;
    struct pipe_screen *screen = st->screen;
    struct pipe_resource *dst = stImage->pt;
-   struct pipe_surface *surface = NULL;
+   struct pipe_surface templ, *surface = NULL;
    struct compressed_pixelstore store;
    struct st_pbo_addresses addr;
    enum pipe_format copy_format;
-   unsigned bw, bh;
+   unsigned bw, bh, level, max_layer;
+   int layer;
    intptr_t buf_offset;
    bool success = false;
 
@@ -2363,24 +2364,20 @@ st_CompressedTexSubImage(struct gl_context *ctx, GLuint dims,
       goto fallback;
 
    /* Set up the surface. */
-   {
-      unsigned level = stObj->pt != stImage->pt
-         ? 0 : texImage->TexObject->Attrib.MinLevel + texImage->Level;
-      unsigned max_layer = util_max_layer(texture, level);
+   level = stObj->pt != stImage->pt
+      ? 0 : texImage->TexObject->Attrib.MinLevel + texImage->Level;
+   max_layer = util_max_layer(texture, level);
+   layer = z + texImage->Face + texImage->TexObject->Attrib.MinLayer;
 
-      GLint layer = z + texImage->Face + texImage->TexObject->Attrib.MinLayer;
+   memset(&templ, 0, sizeof(templ));
+   templ.format = copy_format;
+   templ.u.tex.level = level;
+   templ.u.tex.first_layer = MIN2(layer, max_layer);
+   templ.u.tex.last_layer = MIN2(layer + d - 1, max_layer);
 
-      struct pipe_surface templ;
-      memset(&templ, 0, sizeof(templ));
-      templ.format = copy_format;
-      templ.u.tex.level = level;
-      templ.u.tex.first_layer = MIN2(layer, max_layer);
-      templ.u.tex.last_layer = MIN2(layer + d - 1, max_layer);
-
-      surface = pipe->create_surface(pipe, texture, &templ);
-      if (!surface)
-         goto fallback;
-   }
+   surface = pipe->create_surface(pipe, texture, &templ);
+   if (!surface)
+      goto fallback;
 
    success = try_pbo_upload_common(ctx, surface, &addr, copy_format);
 
