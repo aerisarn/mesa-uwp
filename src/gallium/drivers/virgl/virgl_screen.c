@@ -683,7 +683,6 @@ virgl_is_format_supported( struct pipe_screen *screen,
 
    if ((format_desc->layout == UTIL_FORMAT_LAYOUT_RGTC ||
         format_desc->layout == UTIL_FORMAT_LAYOUT_ETC ||
-        format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC ||
         format_desc->layout == UTIL_FORMAT_LAYOUT_S3TC) &&
        target == PIPE_TEXTURE_3D)
       return false;
