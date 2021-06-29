@@ -89,8 +89,6 @@ struct zwp_linux_dmabuf_v1;
 #include "util/u_vector.h"
 #include "util/bitset.h"
 
-#define EGL_DRI2_NUM_FORMATS 11
-
 struct wl_buffer;
 
 struct dri2_egl_display_vtbl {

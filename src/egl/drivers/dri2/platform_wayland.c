@@ -152,11 +152,6 @@ static const struct dri2_wl_visual {
    },
 };
 
-static_assert(ARRAY_SIZE(dri2_wl_visuals) == EGL_DRI2_NUM_FORMATS,
-              "dri2_egl_display::formats and dri2_wl_visuals must "
-              "have the same size. If you are adding a new format "
-              "to dri2_wl_visuals, increment EGL_DRI2_NUM_FORMATS");
-
 static int
 dri2_wl_visual_idx_from_config(struct dri2_egl_display *dri2_dpy,
                                const __DRIconfig *config,
