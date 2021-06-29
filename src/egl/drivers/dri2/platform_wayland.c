@@ -1339,7 +1339,8 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
    BITSET_SET(dri2_dpy->formats, visual_idx);
 
    mod = u_vector_add(&dri2_dpy->wl_modifiers[visual_idx]);
-   *mod = combine_u32_into_u64(modifier_hi, modifier_lo);
+   if (mod)
+      *mod = combine_u32_into_u64(modifier_hi, modifier_lo);
 }
 
 static const struct zwp_linux_dmabuf_v1_listener dmabuf_listener = {
