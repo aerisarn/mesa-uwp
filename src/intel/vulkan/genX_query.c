@@ -194,16 +194,6 @@ VkResult genX(CreateQueryPool)(
    }
 #endif
 
-   uint32_t bo_flags = 0;
-   if (pdevice->supports_48bit_addresses)
-      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
-
-   if (anv_use_softpin(pdevice))
-      bo_flags |= EXEC_OBJECT_PINNED;
-
-   if (pdevice->has_exec_async)
-      bo_flags |= EXEC_OBJECT_ASYNC;
-
    uint64_t size = pool->slots * (uint64_t)pool->stride;
    result = anv_device_alloc_bo(device, "query-pool", size,
                                 ANV_BO_ALLOC_MAPPED |
