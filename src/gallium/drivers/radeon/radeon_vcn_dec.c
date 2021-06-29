@@ -2421,6 +2421,14 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       }
    }
 
+   if (sctx->family >= CHIP_SIENNA_CICHLID &&
+       (stream_type == RDECODE_CODEC_VP9 || stream_type == RDECODE_CODEC_AV1))
+      dec->dpb_type = DPB_DYNAMIC_TIER_2;
+   else if (sctx->family <= CHIP_NAVI14 && stream_type == RDECODE_CODEC_VP9)
+      dec->dpb_type = DPB_DYNAMIC_TIER_1;
+   else
+      dec->dpb_type = DPB_MAX_RES;
+
    dec->db_alignment = (((struct si_screen *)dec->screen)->info.family >= CHIP_RENOIR &&
                    dec->base.width > 32 && (dec->stream_type == RDECODE_CODEC_VP9 ||
                    dec->stream_type == RDECODE_CODEC_AV1 ||
@@ -2487,13 +2495,6 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    else
       dec->send_cmd = send_cmd_dec;
 
-   if (sctx->family >= CHIP_SIENNA_CICHLID &&
-       (stream_type == RDECODE_CODEC_VP9 || stream_type == RDECODE_CODEC_AV1))
-      dec->dpb_type = DPB_DYNAMIC_TIER_2;
-   else if (sctx->family <= CHIP_NAVI14 && stream_type == RDECODE_CODEC_VP9)
-      dec->dpb_type = DPB_DYNAMIC_TIER_1;
-   else
-      dec->dpb_type = DPB_MAX_RES;
 
    if (dec->dpb_type == DPB_DYNAMIC_TIER_2) {
       list_inithead(&dec->dpb_ref_list);
