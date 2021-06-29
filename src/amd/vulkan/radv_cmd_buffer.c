@@ -2920,8 +2920,16 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
             /* GFX10 uses OOB_SELECT_RAW if stride==0, so convert num_records from elements into
              * into bytes in that case. GFX8 always uses bytes.
              */
-            if (num_records && (chip == GFX8 || (chip >= GFX10 && !stride)))
+            if (num_records && (chip == GFX8 || (chip >= GFX10 && !stride))) {
                num_records = (num_records - 1) * stride + attrib_end;
+            } else if (!num_records) {
+               /* On GFX9 (GFX6/7 untested), it seems bounds checking is disabled if both
+                * num_records and stride are zero. This doesn't seem necessary on GFX8, GFX10 and
+                * GFX10.3 but it doesn't hurt.
+                */
+               memset(desc, 0, 16);
+               continue;
+            }
          } else {
             if (chip != GFX8 && stride)
                num_records = DIV_ROUND_UP(num_records, stride);
