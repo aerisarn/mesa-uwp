@@ -928,8 +928,7 @@ emit_vop3a_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, T
       if (dst.size() == 1)
          bld.vop2(aco_opcode::v_mul_f32, Definition(dst), Operand::c32(0x3f800000u), tmp);
       else
-         bld.vop3(aco_opcode::v_mul_f64, Definition(dst),
-                  Operand::c64(UINT64_C(0x3FF0000000000000)), tmp);
+         bld.vop3(aco_opcode::v_mul_f64, Definition(dst), Operand::c64(0x3FF0000000000000), tmp);
    } else if (num_sources == 3) {
       bld.vop3(op, Definition(dst), src[0], src[1], src[2]);
    } else {
@@ -2161,7 +2160,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    case nir_op_fneg: {
       if (dst.regClass() == v1 && instr->dest.dest.ssa.bit_size == 16) {
          Temp src = get_alu_src_vop3p(ctx, instr->src[0]);
-         bld.vop3p(aco_opcode::v_pk_mul_f16, Definition(dst), src, Operand::c16(uint16_t(0xBC00)),
+         bld.vop3p(aco_opcode::v_pk_mul_f16, Definition(dst), src, Operand::c16(0xBC00),
                    instr->src[0].swizzle[0] & 1, instr->src[0].swizzle[1] & 1);
          emit_split_vector(ctx, dst, 2);
          break;
@@ -2174,8 +2173,8 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
                   as_vgpr(ctx, src));
       } else if (dst.regClass() == v2) {
          if (ctx->block->fp_mode.must_flush_denorms16_64)
-            src = bld.vop3(aco_opcode::v_mul_f64, bld.def(v2),
-                           Operand::c64(UINT64_C(0x3FF0000000000000)), as_vgpr(ctx, src));
+            src = bld.vop3(aco_opcode::v_mul_f64, bld.def(v2), Operand::c64(0x3FF0000000000000),
+                           as_vgpr(ctx, src));
          Temp upper = bld.tmp(v1), lower = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(lower), Definition(upper), src);
          upper = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), Operand::c32(0x80000000u), upper);
@@ -2199,8 +2198,8 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          mul->vop3().abs[1] = true;
       } else if (dst.regClass() == v2) {
          if (ctx->block->fp_mode.must_flush_denorms16_64)
-            src = bld.vop3(aco_opcode::v_mul_f64, bld.def(v2),
-                           Operand::c64(UINT64_C(0x3FF0000000000000)), as_vgpr(ctx, src));
+            src = bld.vop3(aco_opcode::v_mul_f64, bld.def(v2), Operand::c64(0x3FF0000000000000),
+                           as_vgpr(ctx, src));
          Temp upper = bld.tmp(v1), lower = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(lower), Definition(upper), src);
          upper = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(0x7FFFFFFFu), upper);
@@ -2213,9 +2212,9 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    case nir_op_fsat: {
       if (dst.regClass() == v1 && instr->dest.dest.ssa.bit_size == 16) {
          Temp src = get_alu_src_vop3p(ctx, instr->src[0]);
-         Instruction* vop3p = bld.vop3p(aco_opcode::v_pk_mul_f16, Definition(dst), src,
-                                        Operand::c16(uint16_t(0x3C00)),
-                                        instr->src[0].swizzle[0] & 1, instr->src[0].swizzle[1] & 1);
+         Instruction* vop3p =
+            bld.vop3p(aco_opcode::v_pk_mul_f16, Definition(dst), src, Operand::c16(0x3C00),
+                      instr->src[0].swizzle[0] & 1, instr->src[0].swizzle[1] & 1);
          vop3p->vop3p().clamp = true;
          emit_split_vector(ctx, dst, 2);
          break;
