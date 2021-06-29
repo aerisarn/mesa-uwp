@@ -58,7 +58,12 @@ emit_rcl_prologue(struct v3dv_job *job,
       config.number_of_render_targets = 1;
       config.multisample_mode_4x = tiling->msaa;
       config.double_buffer_in_non_ms_mode = tiling->double_buffer;
+#if V3D_VERSION == 42
       config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
+#endif
+#if V3D_VERSION >= 71
+      unreachable("Hardware generation 71 not supported yet.");
+#endif
       config.internal_depth_type = fb->internal_depth_type;
    }
 
@@ -88,14 +93,20 @@ emit_rcl_prologue(struct v3dv_job *job,
          }
       }
 
+#if V3D_VERSION == 42
       const uint32_t *color = &clear_info->clear_value->color[0];
       cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1, clear) {
          clear.clear_color_low_32_bits = color[0];
          clear.clear_color_next_24_bits = color[1] & 0x00ffffff;
          clear.render_target_number = 0;
       };
+#endif
+#if V3D_VERSION >= 71
+   unreachable("Hardware generation 71 not supported yet.");
+#endif
 
       if (tiling->internal_bpp >= V3D_INTERNAL_BPP_64) {
+#if V3D_VERSION == 42
          cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART2, clear) {
             clear.clear_color_mid_low_32_bits =
               ((color[1] >> 24) | (color[2] << 8));
@@ -103,22 +114,37 @@ emit_rcl_prologue(struct v3dv_job *job,
               ((color[2] >> 24) | ((color[3] & 0xffff) << 8));
             clear.render_target_number = 0;
          };
+#endif
+#if V3D_VERSION >= 71
+   unreachable("Hardware generation 71 not supported yet.");
+#endif
+
       }
 
       if (tiling->internal_bpp >= V3D_INTERNAL_BPP_128 || clear_pad) {
+#if V3D_VERSION == 42
          cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART3, clear) {
             clear.uif_padded_height_in_uif_blocks = clear_pad;
             clear.clear_color_high_16_bits = color[3] >> 16;
             clear.render_target_number = 0;
          };
+#endif
+#if V3D_VERSION >= 71
+   unreachable("Hardware generation 71 not supported yet.");
+#endif
       }
    }
 
+#if V3D_VERSION == 42
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
       rt.render_target_0_internal_bpp = tiling->internal_bpp;
       rt.render_target_0_internal_type = fb->internal_type;
       rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
    }
+#endif
+#if V3D_VERSION >= 71
+   unreachable("Hardware generation 71 not supported yet.");
+#endif
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
       clear.z_clear_value = clear_info ? clear_info->clear_value->z : 1.0f;
@@ -179,10 +205,16 @@ emit_frame_setup(struct v3dv_job *job,
        */
       if (clear_value &&
           (i == 0 || v3dv_do_double_initial_tile_clear(tiling))) {
+#if V3D_VERSION == 42
          cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
             clear.clear_z_stencil_buffer = true;
             clear.clear_all_render_targets = true;
          }
+#endif
+#if V3D_VERSION >= 71
+      unreachable("Hardware generation 71 not supported yet.");
+#endif
+
       }
       cl_emit(rcl, END_OF_TILE_MARKER, end);
    }

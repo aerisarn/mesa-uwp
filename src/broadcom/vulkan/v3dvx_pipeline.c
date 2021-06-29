@@ -447,10 +447,15 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
       /* FIXME: Use combined input/output size flag in the common case (also
        * on v3d, see v3dx_draw).
        */
+#if V3D_VERSION == 42
       shader.coordinate_shader_has_separate_input_and_output_vpm_blocks =
          prog_data_vs_bin->separate_segments;
       shader.vertex_shader_has_separate_input_and_output_vpm_blocks =
          prog_data_vs->separate_segments;
+#endif
+#if V3D_VERSION >= 71
+      unreachable("HW generation 71 not supported yet.");
+#endif
 
       shader.coordinate_shader_input_vpm_segment_size =
          prog_data_vs_bin->separate_segments ?

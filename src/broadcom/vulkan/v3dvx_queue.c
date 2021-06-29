@@ -42,14 +42,25 @@ v3dX(job_emit_noop)(struct v3dv_job *job)
       config.image_height_pixels = 1;
       config.number_of_render_targets = 1;
       config.multisample_mode_4x = false;
+#if V3D_VERSION == 42
       config.maximum_bpp_of_all_render_targets = V3D_INTERNAL_BPP_32;
+#endif
+#if V3D_VERSION >= 71
+      unreachable("HW generation 71 not supported yet.");
+#endif
    }
 
+#if V3D_VERSION == 42
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
       rt.render_target_0_internal_bpp = V3D_INTERNAL_BPP_32;
       rt.render_target_0_internal_type = V3D_INTERNAL_TYPE_8;
       rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
    }
+#endif
+#if V3D_VERSION >= 71
+   unreachable("Hardware generation 71 not supported yet.");
+#endif
+
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
       clear.z_clear_value = 1.0f;

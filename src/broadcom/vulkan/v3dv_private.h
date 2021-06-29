@@ -2586,6 +2586,9 @@ u64_compare(const void *key1, const void *key2)
    case 42:                                           \
       v3d_X_thing = &v3d42_##thing;                   \
       break;                                          \
+   case 71:                                           \
+      v3d_X_thing = &v3d71_##thing;                   \
+      break;                                          \
    default:                                           \
       unreachable("Unsupported hardware generation"); \
    }                                                  \
@@ -2602,6 +2605,10 @@ u64_compare(const void *key1, const void *key2)
 #  include "v3dvx_private.h"
 #else
 #  define v3dX(x) v3d42_##x
+#  include "v3dvx_private.h"
+#  undef v3dX
+
+#  define v3dX(x) v3d71_##x
 #  include "v3dvx_private.h"
 #  undef v3dX
 #endif

@@ -56,10 +56,15 @@ v3dX(job_emit_enable_double_buffer)(struct v3dv_job *job)
    };
    config.width_in_pixels = tiling->width;
    config.height_in_pixels = tiling->height;
+#if V3D_VERSION == 42
    config.number_of_render_targets = MAX2(tiling->render_target_count, 1);
    config.multisample_mode_4x = tiling->msaa;
    config.double_buffer_in_non_ms_mode = tiling->double_buffer;
    config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
+#endif
+#if V3D_VERSION >= 71
+      unreachable("HW generation 71 not supported yet.");
+#endif
 
    uint8_t *rewrite_addr = (uint8_t *)job->bcl_tile_binning_mode_ptr;
    cl_packet_pack(TILE_BINNING_MODE_CFG)(NULL, rewrite_addr, &config);
@@ -82,10 +87,15 @@ v3dX(job_emit_binning_prolog)(struct v3dv_job *job,
    cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
       config.width_in_pixels = tiling->width;
       config.height_in_pixels = tiling->height;
+#if V3D_VERSION == 42
       config.number_of_render_targets = MAX2(tiling->render_target_count, 1);
       config.multisample_mode_4x = tiling->msaa;
       config.double_buffer_in_non_ms_mode = tiling->double_buffer;
       config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
+#endif
+#if V3D_VERSION >= 71
+      unreachable("HW generation 71 not supported yet.");
+#endif
    }
 
    /* There's definitely nothing in the VCD cache we want. */
@@ -649,10 +659,15 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
     * bit and instead we have to emit a single clear of all tile buffers.
     */
    if (use_global_zs_clear || use_global_rt_clear) {
+#if V3D_VERSION == 42
       cl_emit(cl, CLEAR_TILE_BUFFERS, clear) {
          clear.clear_z_stencil_buffer = use_global_zs_clear;
          clear.clear_all_render_targets = use_global_rt_clear;
       }
+#endif
+#if V3D_VERSION >= 71
+      unreachable("Hardware generation 71 not supported yet.");
+#endif
    }
 }
 
@@ -824,7 +839,12 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
       config.number_of_render_targets = MAX2(subpass->color_count, 1);
       config.multisample_mode_4x = tiling->msaa;
       config.double_buffer_in_non_ms_mode = tiling->double_buffer;
+#if V3D_VERSION == 42
       config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
+#endif
+#if V3D_VERSION >= 71
+      unreachable("HW generation 71 not supported yet.");
+#endif
 
       if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
          const struct v3dv_image_view *iview =
@@ -920,7 +940,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
       const struct v3d_resource_slice *slice =
          &image->planes[plane].slices[iview->vk.base_mip_level];
 
-      const uint32_t *clear_color =
+      UNUSED const uint32_t *clear_color =
          &state->attachments[attachment_idx].clear_value.color[0];
 
       uint32_t clear_pad = 0;
@@ -937,13 +957,19 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
          }
       }
 
+#if V3D_VERSION == 42
       cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1, clear) {
          clear.clear_color_low_32_bits = clear_color[0];
          clear.clear_color_next_24_bits = clear_color[1] & 0xffffff;
          clear.render_target_number = i;
       };
+#endif
+#if V3D_VERSION >= 71
+         unreachable("HW generation 71 not supported yet.");
+#endif
 
       if (iview->planes[0].internal_bpp >= V3D_INTERNAL_BPP_64) {
+#if V3D_VERSION == 42
          cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART2, clear) {
             clear.clear_color_mid_low_32_bits =
                ((clear_color[1] >> 24) | (clear_color[2] << 8));
@@ -951,17 +977,28 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
                ((clear_color[2] >> 24) | ((clear_color[3] & 0xffff) << 8));
             clear.render_target_number = i;
          };
+#endif
+#if V3D_VERSION >= 71
+         unreachable("HW generation 71 not supported yet.");
+#endif
+
       }
 
       if (iview->planes[0].internal_bpp >= V3D_INTERNAL_BPP_128 || clear_pad) {
+#if V3D_VERSION == 42
          cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART3, clear) {
             clear.uif_padded_height_in_uif_blocks = clear_pad;
             clear.clear_color_high_16_bits = clear_color[3] >> 16;
             clear.render_target_number = i;
          };
+#endif
+#if V3D_VERSION >= 71
+         unreachable("HW generation 71 not supported yet.");
+#endif
       }
    }
 
+#if V3D_VERSION == 42
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
       v3dX(cmd_buffer_render_pass_setup_render_target)
          (cmd_buffer, 0, &rt.render_target_0_internal_bpp,
@@ -976,6 +1013,10 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
          (cmd_buffer, 3, &rt.render_target_3_internal_bpp,
           &rt.render_target_3_internal_type, &rt.render_target_3_clamp);
    }
+#endif
+#if V3D_VERSION >= 71
+   unreachable("Hardware generation 71 not supported yet.");
+#endif
 
    /* Ends rendering mode config. */
    if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
@@ -1036,10 +1077,15 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
       }
       if (cmd_buffer->state.tile_aligned_render_area &&
           (i == 0 || v3dv_do_double_initial_tile_clear(tiling))) {
+#if V3D_VERSION == 42
          cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
             clear.clear_z_stencil_buffer = !job->early_zs_clear;
             clear.clear_all_render_targets = true;
          }
+#endif
+#if V3D_VERSION >= 71
+         unreachable("HW generation 71 not supported yet.");
+#endif
       }
       cl_emit(rcl, END_OF_TILE_MARKER, end);
    }
@@ -1065,7 +1111,9 @@ v3dX(cmd_buffer_emit_viewport)(struct v3dv_cmd_buffer *cmd_buffer)
     * now, would need to change if we allow multiple viewports
     */
    float *vptranslate = dynamic->viewport.translate[0];
+#if V3D_VERSION == 42
    float *vpscale = dynamic->viewport.scale[0];
+#endif
 
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
@@ -1078,10 +1126,15 @@ v3dX(cmd_buffer_emit_viewport)(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_cl_ensure_space_with_branch(&job->bcl, required_cl_size);
    v3dv_return_if_oom(cmd_buffer, NULL);
 
+#if V3D_VERSION == 42
    cl_emit(&job->bcl, CLIPPER_XY_SCALING, clip) {
       clip.viewport_half_width_in_1_256th_of_pixel = vpscale[0] * 256.0f;
       clip.viewport_half_height_in_1_256th_of_pixel = vpscale[1] * 256.0f;
    }
+#endif
+#if V3D_VERSION >= 71
+   unreachable("HW generation 71 not supported yet.");
+#endif
 
    float translate_z, scale_z;
    v3dv_cmd_buffer_state_get_viewport_z_xform(&cmd_buffer->state, 0,
@@ -1591,16 +1644,20 @@ v3dX(cmd_buffer_emit_configuration_bits)(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    assert(pipeline);
 
-   bool enable_ez = job_update_ez_state(job, pipeline, cmd_buffer);
-
    v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(CFG_BITS));
    v3dv_return_if_oom(cmd_buffer, NULL);
 
+#if V3D_VERSION == 42
+   bool enable_ez = job_update_ez_state(job, pipeline, cmd_buffer);
    cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
       config.early_z_enable = enable_ez;
       config.early_z_updates_enable = config.early_z_enable &&
          pipeline->z_updates_enable;
    }
+#endif
+#if V3D_VERSION >= 71
+   unreachable("HW generation 71 not supported yet.");
+#endif
 }
 
 void
@@ -2031,10 +2088,12 @@ v3dX(cmd_buffer_emit_gl_shader_state)(struct v3dv_cmd_buffer *cmd_buffer)
                                 pipeline->vpm_cfg.Gv);
    }
 
+#if V3D_VERSION == 42
    struct v3dv_bo *default_attribute_values =
       pipeline->default_attribute_values != NULL ?
       pipeline->default_attribute_values :
       pipeline->device->default_attribute_float;
+#endif
 
    cl_emit_with_prepacked(&job->indirect, GL_SHADER_STATE_RECORD,
                           pipeline->shader_state_record, shader) {
@@ -2060,8 +2119,10 @@ v3dX(cmd_buffer_emit_gl_shader_state)(struct v3dv_cmd_buffer *cmd_buffer)
       shader.vertex_shader_uniforms_address = cmd_buffer->state.uniforms.vs;
       shader.fragment_shader_uniforms_address = cmd_buffer->state.uniforms.fs;
 
+#if V3D_VERSION == 42
       shader.address_of_default_attribute_values =
          v3dv_cl_address(default_attribute_values, 0);
+#endif
 
       shader.any_shader_reads_hardware_written_primitive_id =
          (pipeline->has_gs && prog_data_gs->uses_pid) || prog_data_fs->uses_pid;
@@ -2399,11 +2460,17 @@ v3dX(cmd_buffer_render_pass_setup_render_target)(struct v3dv_cmd_buffer *cmd_buf
 
    assert(iview->plane_count == 1);
    *rt_bpp = iview->planes[0].internal_bpp;
-   *rt_type = iview->planes[0].internal_type;
    if (vk_format_is_int(iview->vk.view_format))
+#if V3D_VERSION == 42
+   *rt_type = iview->planes[0].internal_type;
+   if (vk_format_is_int(iview->vk.format))
       *rt_clamp = V3D_RENDER_TARGET_CLAMP_INT;
    else if (vk_format_is_srgb(iview->vk.view_format))
       *rt_clamp = V3D_RENDER_TARGET_CLAMP_NORM;
    else
       *rt_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
+#endif
+#if V3D_VERSION >= 71
+   unreachable("HW generation 71 not supported yet.");
+#endif
 }
