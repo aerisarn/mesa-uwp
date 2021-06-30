@@ -1133,8 +1133,50 @@ vn_android_buffer_from_ahb(struct vn_device *dev,
                            const VkAllocationCallbacks *alloc,
                            struct vn_buffer **out_buf)
 {
+   const uint32_t format = AHARDWAREBUFFER_FORMAT_BLOB;
+   /* ensure dma_buf_memory_type_bits covers host visible usage */
+   const uint64_t usage = AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER |
+                          AHARDWAREBUFFER_USAGE_CPU_READ_RARELY |
+                          AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY;
+   AHardwareBuffer *ahb = NULL;
+   int dma_buf_fd = -1;
+   uint64_t alloc_size = 0;
+   uint32_t mem_type_bits = 0;
    struct vn_android_buffer_create_info local_info;
+   VkResult result;
+
+   ahb = vn_android_ahb_allocate(4096, 1, 1, format, usage);
+   if (!ahb)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   result = vn_android_get_dma_buf_from_native_handle(
+      AHardwareBuffer_getNativeHandle(ahb), &dma_buf_fd);
+   if (result != VK_SUCCESS) {
+      AHardwareBuffer_release(ahb);
+      return result;
+   }
+
+   result = vn_get_memory_dma_buf_properties(dev, dma_buf_fd, &alloc_size,
+                                             &mem_type_bits);
+
+   AHardwareBuffer_release(ahb);
+
+   if (result != VK_SUCCESS)
+      return result;
 
    create_info = vn_android_fix_buffer_create_info(create_info, &local_info);
-   return vn_buffer_create(dev, create_info, alloc, out_buf);
+   result = vn_buffer_create(dev, create_info, alloc, out_buf);
+   if (result != VK_SUCCESS)
+      return result;
+
+   /* AHB backed buffer layers on top of dma_buf, so here we must comine the
+    * queried type bits from both buffer memory requirement and dma_buf fd
+    * properties.
+    */
+   (*out_buf)->memory_requirements.memoryRequirements.memoryTypeBits &=
+      mem_type_bits;
+
+   assert((*out_buf)->memory_requirements.memoryRequirements.memoryTypeBits);
+
+   return VK_SUCCESS;
 }
