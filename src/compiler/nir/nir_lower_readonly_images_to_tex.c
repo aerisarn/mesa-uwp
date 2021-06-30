@@ -51,8 +51,10 @@ replace_image_type_with_sampler(nir_deref_instr *deref)
    deref->type = get_sampler_type_for_image(type);
    if (deref->deref_type == nir_deref_type_var) {
       type = deref->var->type;
-      if (!glsl_type_is_sampler(glsl_without_array(type)))
+      if (!glsl_type_is_sampler(glsl_without_array(type))) {
          deref->var->type = get_sampler_type_for_image(type);
+         memset(&deref->var->data.sampler, 0, sizeof(deref->var->data.sampler));
+      }
    } else {
       nir_deref_instr *parent = nir_deref_instr_parent(deref);
       if (parent)
