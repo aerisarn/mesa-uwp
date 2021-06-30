@@ -1277,16 +1277,16 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
    }
 }
 
-/*
- * Creates the pipeline_stage for the coordinate shader. Initially a clone of
- * the vs pipeline_stage, with is_coord to true
+/**
+ * Creates the initial form of the pipeline stage for a binning shader by
+ * cloning the render shader and flagging it as a coordinate shader.
  *
  * Returns NULL if it was not able to allocate the object, so it should be
  * handled as a VK_ERROR_OUT_OF_HOST_MEMORY error.
  */
-static struct v3dv_pipeline_stage*
-pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
-                             const VkAllocationCallbacks *pAllocator)
+static struct v3dv_pipeline_stage *
+pipeline_stage_create_binning(const struct v3dv_pipeline_stage *src,
+                              const VkAllocationCallbacks *pAllocator)
 {
    struct v3dv_device *device = src->pipeline->device;
 
@@ -1297,9 +1297,16 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
    if (p_stage == NULL)
       return NULL;
 
+   assert(src->stage == BROADCOM_SHADER_VERTEX ||
+          src->stage == BROADCOM_SHADER_GEOMETRY);
+
+   enum broadcom_shader_stage bin_stage =
+      src->stage == BROADCOM_SHADER_VERTEX ?
+         BROADCOM_SHADER_VERTEX_BIN :
+         BROADCOM_SHADER_GEOMETRY_BIN;
+
    p_stage->pipeline = src->pipeline;
-   assert(src->stage == BROADCOM_SHADER_VERTEX);
-   p_stage->stage = BROADCOM_SHADER_VERTEX_BIN;
+   p_stage->stage = bin_stage;
    p_stage->entrypoint = src->entrypoint;
    p_stage->module = src->module;
    p_stage->nir = src->nir ? nir_shader_clone(NULL, src->nir) : NULL;
@@ -2043,7 +2050,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       case MESA_SHADER_VERTEX:
          pipeline->vs = p_stage;
          pipeline->vs_bin =
-            pipeline_stage_create_vs_bin(pipeline->vs, pAllocator);
+            pipeline_stage_create_binning(pipeline->vs, pAllocator);
          if (pipeline->vs_bin == NULL)
             return VK_ERROR_OUT_OF_HOST_MEMORY;
 
