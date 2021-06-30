@@ -28,7 +28,11 @@ PUSH_AVAIL(struct nouveau_pushbuf *push)
 static inline bool
 PUSH_SPACE_EX(struct nouveau_pushbuf *push, uint32_t size, uint32_t relocs, uint32_t pushes)
 {
-   return nouveau_pushbuf_space(push, size, relocs, pushes) == 0;
+   struct nouveau_pushbuf_priv *ppush = push->user_priv;
+   simple_mtx_lock(&ppush->screen->fence.lock);
+   bool res = nouveau_pushbuf_space(push, size, relocs, pushes) == 0;
+   simple_mtx_unlock(&ppush->screen->fence.lock);
+   return res;
 }
 
 static inline bool
@@ -72,7 +76,11 @@ PUSH_DATAf(struct nouveau_pushbuf *push, float f)
 static inline int
 PUSH_REFN(struct nouveau_pushbuf *push, struct nouveau_pushbuf_refn *refs, int nr)
 {
-   return nouveau_pushbuf_refn(push, refs, nr);
+   struct nouveau_pushbuf_priv *ppush = push->user_priv;
+   simple_mtx_lock(&ppush->screen->fence.lock);
+   int ret = nouveau_pushbuf_refn(push, refs, nr);
+   simple_mtx_unlock(&ppush->screen->fence.lock);
+   return ret;
 }
 
 static inline int
@@ -85,25 +93,40 @@ PUSH_REF1(struct nouveau_pushbuf *push, struct nouveau_bo *bo, uint32_t flags)
 static inline void
 PUSH_KICK(struct nouveau_pushbuf *push)
 {
+   struct nouveau_pushbuf_priv *ppush = push->user_priv;
+   simple_mtx_lock(&ppush->screen->fence.lock);
    nouveau_pushbuf_kick(push, push->channel);
+   simple_mtx_unlock(&ppush->screen->fence.lock);
 }
 
 static inline int
 PUSH_VAL(struct nouveau_pushbuf *push)
 {
-   return nouveau_pushbuf_validate(push);
+   struct nouveau_pushbuf_priv *ppush = push->user_priv;
+   simple_mtx_lock(&ppush->screen->fence.lock);
+   int res = nouveau_pushbuf_validate(push);
+   simple_mtx_unlock(&ppush->screen->fence.lock);
+   return res;
 }
 
 static inline int
 BO_MAP(struct nouveau_screen *screen, struct nouveau_bo *bo, uint32_t access, struct nouveau_client *client)
 {
-   return nouveau_bo_map(bo, access, client);
+   int res;
+   simple_mtx_lock(&screen->fence.lock);
+   res = nouveau_bo_map(bo, access, client);
+   simple_mtx_unlock(&screen->fence.lock);
+   return res;
 }
 
 static inline int
 BO_WAIT(struct nouveau_screen *screen, struct nouveau_bo *bo, uint32_t access, struct nouveau_client *client)
 {
-   return nouveau_bo_wait(bo, access, client);
+   int res;
+   simple_mtx_lock(&screen->fence.lock);
+   res = nouveau_bo_wait(bo, access, client);
+   simple_mtx_unlock(&screen->fence.lock);
+   return res;
 }
 
 #define NOUVEAU_RESOURCE_FLAG_LINEAR   (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)

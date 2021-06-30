@@ -209,7 +209,7 @@ nouveau_pushbuf_cb(struct nouveau_pushbuf *push)
    if (p->context)
       p->context->kick_notify(p->context);
    else
-      nouveau_fence_update(p->screen, true);
+      _nouveau_fence_update(p->screen, true);
 
    NOUVEAU_DRV_STAT(p->screen, pushbuf_count, 1);
 }
@@ -400,6 +400,7 @@ nouveau_screen_init(struct nouveau_screen *screen, struct nouveau_device *dev)
       PIPE_BIND_COMMAND_ARGS_BUFFER;
 
    memset(&mm_config, 0, sizeof(mm_config));
+   nouveau_fence_list_init(&screen->fence);
 
    screen->mm_GART = nouveau_mm_create(dev,
                                        NOUVEAU_BO_GART | NOUVEAU_BO_MAP,
@@ -436,6 +437,7 @@ nouveau_screen_fini(struct nouveau_screen *screen)
    close(fd);
 
    disk_cache_destroy(screen->disk_shader_cache);
+   nouveau_fence_list_destroy(&screen->fence);
 }
 
 static void

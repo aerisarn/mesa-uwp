@@ -136,8 +136,8 @@ nv50_default_kick_notify(struct nouveau_context *context)
 {
    struct nv50_context *nv50 = nv50_context(&context->pipe);
 
-   nouveau_fence_next(context);
-   nouveau_fence_update(context->screen, true);
+   _nouveau_fence_next(context);
+   _nouveau_fence_update(context->screen, true);
    nv50->state.flushed = true;
 }
 

@@ -749,7 +749,7 @@ nva0_draw_stream_output(struct nv50_context *nv50,
 static void
 nv50_draw_vbo_kick_notify(struct nouveau_context *context)
 {
-   nouveau_fence_update(context->screen, true);
+   _nouveau_fence_update(context->screen, true);
 }
 
 void

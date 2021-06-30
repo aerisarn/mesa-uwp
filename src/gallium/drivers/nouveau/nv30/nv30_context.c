@@ -41,21 +41,21 @@ nv30_context_kick_notify(struct nouveau_pushbuf *push)
    struct nouveau_pushbuf_priv *p = push->user_priv;
    struct nouveau_screen *screen = p->screen;
 
-   nouveau_fence_next(p->context);
-   nouveau_fence_update(screen, true);
+   _nouveau_fence_next(p->context);
+   _nouveau_fence_update(screen, true);
 
    if (push->bufctx) {
       struct nouveau_bufref *bref;
       LIST_FOR_EACH_ENTRY(bref, &push->bufctx->current, thead) {
          struct nv04_resource *res = bref->priv;
          if (res && res->mm) {
-            nouveau_fence_ref(p->context->fence, &res->fence);
+            _nouveau_fence_ref(p->context->fence, &res->fence);
 
             if (bref->flags & NOUVEAU_BO_RD)
                res->status |= NOUVEAU_BUFFER_STATUS_GPU_READING;
 
             if (bref->flags & NOUVEAU_BO_WR) {
-               nouveau_fence_ref(p->context->fence, &res->fence_wr);
+               _nouveau_fence_ref(p->context->fence, &res->fence_wr);
                res->status |= NOUVEAU_BUFFER_STATUS_GPU_WRITING |
                   NOUVEAU_BUFFER_STATUS_DIRTY;
             }
