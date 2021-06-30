@@ -166,6 +166,16 @@ llvmpipe_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       }
    }
 
+   llvmpipe_cleanup_stage_sampling(lp, PIPE_SHADER_VERTEX);
+   llvmpipe_cleanup_stage_sampling(lp, PIPE_SHADER_GEOMETRY);
+   llvmpipe_cleanup_stage_sampling(lp, PIPE_SHADER_TESS_CTRL);
+   llvmpipe_cleanup_stage_sampling(lp, PIPE_SHADER_TESS_EVAL);
+
+   llvmpipe_cleanup_stage_images(lp, PIPE_SHADER_VERTEX);
+   llvmpipe_cleanup_stage_images(lp, PIPE_SHADER_GEOMETRY);
+   llvmpipe_cleanup_stage_images(lp, PIPE_SHADER_TESS_CTRL);
+   llvmpipe_cleanup_stage_images(lp, PIPE_SHADER_TESS_EVAL);
+
    /*
     * TODO: Flush only when a user vertex/index buffer is present
     * (or even better, modify draw module to do this
