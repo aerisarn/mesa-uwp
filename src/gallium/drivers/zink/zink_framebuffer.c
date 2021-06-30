@@ -28,6 +28,7 @@
 #include "zink_screen.h"
 #include "zink_surface.h"
 
+#include "util/u_framebuffer.h"
 #include "util/u_memory.h"
 #include "util/u_string.h"
 
@@ -141,4 +142,50 @@ void
 debug_describe_zink_framebuffer(char* buf, const struct zink_framebuffer *ptr)
 {
    sprintf(buf, "zink_framebuffer");
+}
+
+struct zink_framebuffer *
+zink_get_framebuffer(struct zink_context *ctx)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct pipe_surface *attachments[PIPE_MAX_COLOR_BUFS + 1] = {0};
+
+   struct zink_framebuffer_state state = {0};
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
+      state.attachments[i] = psurf ? zink_surface(psurf)->image_view : VK_NULL_HANDLE;
+      attachments[i] = psurf;
+   }
+
+   state.num_attachments = ctx->fb_state.nr_cbufs;
+   if (ctx->fb_state.zsbuf) {
+      struct pipe_surface *psurf = ctx->fb_state.zsbuf;
+      state.attachments[state.num_attachments] = psurf ? zink_surface(psurf)->image_view : VK_NULL_HANDLE;
+      attachments[state.num_attachments++] = psurf;
+   }
+
+   state.width = MAX2(ctx->fb_state.width, 1);
+   state.height = MAX2(ctx->fb_state.height, 1);
+   state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1);
+   state.samples = ctx->fb_state.samples;
+
+   struct zink_framebuffer *fb;
+   simple_mtx_lock(&screen->framebuffer_mtx);
+   struct hash_entry *entry = _mesa_hash_table_search(&screen->framebuffer_cache, &state);
+   if (entry) {
+      fb = (void*)entry->data;
+      struct zink_framebuffer *fb_ref = NULL;
+      /* this gains 1 ref every time we reuse it */
+      zink_framebuffer_reference(screen, &fb_ref, fb);
+   } else {
+      /* this adds 1 extra ref on creation because all newly-created framebuffers are
+       * going to be bound; necessary to handle framebuffers which have no "real" attachments
+       * and are only using null surfaces since the only ref they get is the extra one here
+       */
+      fb = zink_create_framebuffer(ctx, &state, attachments);
+      _mesa_hash_table_insert(&screen->framebuffer_cache, &fb->state, fb);
+   }
+   simple_mtx_unlock(&screen->framebuffer_mtx);
+
+   return fb;
 }

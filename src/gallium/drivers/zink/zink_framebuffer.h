@@ -87,4 +87,6 @@ zink_framebuffer_reference(struct zink_screen *screen,
    return ret;
 }
 
+struct zink_framebuffer *
+zink_get_framebuffer(struct zink_context *ctx);
 #endif

@@ -43,7 +43,6 @@
 #include "util/u_debug.h"
 #include "util/format_srgb.h"
 #include "util/format/u_format.h"
-#include "util/u_framebuffer.h"
 #include "util/u_helpers.h"
 #include "util/u_inlines.h"
 #include "util/u_thread.h"
@@ -1613,52 +1612,6 @@ get_render_pass(struct zink_context *ctx)
    return rp;
 }
 
-static struct zink_framebuffer *
-get_framebuffer(struct zink_context *ctx)
-{
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   struct pipe_surface *attachments[PIPE_MAX_COLOR_BUFS + 1] = {0};
-
-   struct zink_framebuffer_state state = {0};
-   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
-      struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
-      state.attachments[i] = psurf ? zink_surface(psurf)->image_view : VK_NULL_HANDLE;
-      attachments[i] = psurf;
-   }
-
-   state.num_attachments = ctx->fb_state.nr_cbufs;
-   if (ctx->fb_state.zsbuf) {
-      struct pipe_surface *psurf = ctx->fb_state.zsbuf;
-      state.attachments[state.num_attachments] = psurf ? zink_surface(psurf)->image_view : VK_NULL_HANDLE;
-      attachments[state.num_attachments++] = psurf;
-   }
-
-   state.width = MAX2(ctx->fb_state.width, 1);
-   state.height = MAX2(ctx->fb_state.height, 1);
-   state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1);
-   state.samples = ctx->fb_state.samples;
-
-   struct zink_framebuffer *fb;
-   simple_mtx_lock(&screen->framebuffer_mtx);
-   struct hash_entry *entry = _mesa_hash_table_search(&screen->framebuffer_cache, &state);
-   if (entry) {
-      fb = (void*)entry->data;
-      struct zink_framebuffer *fb_ref = NULL;
-      /* this gains 1 ref every time we reuse it */
-      zink_framebuffer_reference(screen, &fb_ref, fb);
-   } else {
-      /* this adds 1 extra ref on creation because all newly-created framebuffers are
-       * going to be bound; necessary to handle framebuffers which have no "real" attachments
-       * and are only using null surfaces since the only ref they get is the extra one here
-       */
-      fb = zink_create_framebuffer(ctx, &state, attachments);
-      _mesa_hash_table_insert(&screen->framebuffer_cache, &fb->state, fb);
-   }
-   simple_mtx_unlock(&screen->framebuffer_mtx);
-
-   return fb;
-}
-
 static void
 setup_framebuffer(struct zink_context *ctx)
 {
@@ -2068,11 +2021,11 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    if (ctx->fb_state.width != w || ctx->fb_state.height != h)
       ctx->scissor_changed = true;
    rebind_fb_state(ctx, NULL, true);
-   /* get_framebuffer adds a ref if the fb is reused or created;
+   /* zink_get_framebuffer adds a ref if the fb is reused or created;
     * always do get_framebuffer first to avoid deleting the same fb
     * we're about to use
     */
-   struct zink_framebuffer *fb = get_framebuffer(ctx);
+   struct zink_framebuffer *fb = zink_get_framebuffer(ctx);
    if (ctx->framebuffer) {
       struct zink_screen *screen = zink_screen(pctx->screen);
       simple_mtx_lock(&screen->framebuffer_mtx);
@@ -2087,7 +2040,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       }
       /* a framebuffer loses 1 ref every time we unset it;
        * we do NOT add refs here, as the ref has already been added in
-       * get_framebuffer()
+       * zink_get_framebuffer()
        */
       if (zink_framebuffer_reference(screen, &ctx->framebuffer, NULL) && he)
          _mesa_hash_table_remove(&screen->framebuffer_cache, he);
