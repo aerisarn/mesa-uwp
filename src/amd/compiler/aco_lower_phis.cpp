@@ -31,17 +31,20 @@
 
 namespace aco {
 
+enum class pred_defined : uint8_t {
+   undef = 0,
+   const_1 = 1,
+   const_0 = 2,
+   temp = 3,
+};
+MESA_DEFINE_CPP_ENUM_BITFIELD_OPERATORS(pred_defined);
+
 struct ssa_state {
    bool checked_preds_for_uniform;
    bool all_preds_uniform;
-
-   bool needs_init;
-   uint64_t cur_undef_operands;
-
-   unsigned phi_block_idx;
    unsigned loop_nest_depth;
 
-   std::vector<bool> any_pred_defined;
+   std::vector<pred_defined> any_pred_defined;
    std::vector<bool> visited;
    std::vector<Operand> outputs; /* the output per block */
 };
@@ -61,7 +64,7 @@ get_ssa(Program* program, unsigned block_idx, ssa_state* state, bool input)
    }
 
    /* retrieve the Operand by checking the predecessors */
-   if (!state->any_pred_defined[block_idx])
+   if (state->any_pred_defined[block_idx] == pred_defined::undef)
       return Operand(program->lane_mask);
 
    Block& block = program->blocks[block_idx];
@@ -130,62 +133,59 @@ insert_before_logical_end(Block* block, aco_ptr<Instruction> instr)
 }
 
 void
-build_merge_code(Program* program, Block* block, Definition dst, Operand prev, Operand cur)
+build_merge_code(Program* program, ssa_state* state, Block* block, Operand cur)
 {
-   Builder bld(program);
+   unsigned block_idx = block->index;
+   Definition dst = Definition(state->outputs[block_idx].getTemp());
+   Operand prev = get_ssa(program, block_idx, state, true);
+   if (cur.isUndefined())
+      cur = Operand::zero(program->lane_mask.bytes());
 
+   Builder bld(program);
    auto IsLogicalEnd = [](const aco_ptr<Instruction>& instr) -> bool
    { return instr->opcode == aco_opcode::p_logical_end; };
    auto it = std::find_if(block->instructions.rbegin(), block->instructions.rend(), IsLogicalEnd);
    assert(it != block->instructions.rend());
    bld.reset(&block->instructions, std::prev(it.base()));
 
-   if (prev.isUndefined()) {
-      bld.copy(dst, cur);
+   pred_defined defined = state->any_pred_defined[block_idx];
+   if (defined == pred_defined::undef) {
+      return;
+   } else if (defined == pred_defined::const_0) {
+      bld.sop2(Builder::s_and, dst, bld.def(s1, scc), cur, Operand(exec, bld.lm));
+      return;
+   } else if (defined == pred_defined::const_1) {
+      bld.sop2(Builder::s_orn2, dst, bld.def(s1, scc), cur, Operand(exec, bld.lm));
       return;
    }
 
-   bool prev_is_constant = prev.isConstant() && prev.constantValue() + 1u < 2u;
-   bool cur_is_constant = cur.isConstant() && cur.constantValue() + 1u < 2u;
-
-   if (!prev_is_constant) {
-      if (!cur_is_constant) {
-         Temp tmp1 = bld.tmp(bld.lm), tmp2 = bld.tmp(bld.lm);
-         bld.sop2(Builder::s_andn2, Definition(tmp1), bld.def(s1, scc), prev,
-                  Operand(exec, bld.lm));
-         bld.sop2(Builder::s_and, Definition(tmp2), bld.def(s1, scc), cur, Operand(exec, bld.lm));
-         bld.sop2(Builder::s_or, dst, bld.def(s1, scc), tmp1, tmp2);
-      } else if (cur.constantValue()) {
+   assert(prev.isTemp());
+   if (cur.isConstant()) {
+      if (cur.constantValue())
          bld.sop2(Builder::s_or, dst, bld.def(s1, scc), prev, Operand(exec, bld.lm));
-      } else {
+      else
          bld.sop2(Builder::s_andn2, dst, bld.def(s1, scc), prev, Operand(exec, bld.lm));
-      }
-   } else if (prev.constantValue()) {
-      if (!cur_is_constant)
-         bld.sop2(Builder::s_orn2, dst, bld.def(s1, scc), cur, Operand(exec, bld.lm));
-      else if (cur.constantValue())
-         bld.copy(dst, Operand::c32_or_c64(UINT32_MAX, bld.lm == s2));
-      else
-         bld.sop1(Builder::s_not, dst, bld.def(s1, scc), Operand(exec, bld.lm));
-   } else {
-      if (!cur_is_constant)
-         bld.sop2(Builder::s_and, dst, bld.def(s1, scc), cur, Operand(exec, bld.lm));
-      else if (cur.constantValue())
-         bld.copy(dst, Operand(exec, bld.lm));
-      else
-         bld.copy(dst, Operand::zero(bld.lm.bytes()));
+      return;
    }
+   prev =
+      bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), prev, Operand(exec, bld.lm));
+   cur = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), cur, Operand(exec, bld.lm));
+   bld.sop2(Builder::s_or, dst, bld.def(s1, scc), prev, cur);
+   return;
 }
 
 void
 init_any_pred_defined(Program* program, ssa_state* state, Block* block, aco_ptr<Instruction>& phi)
 {
-   std::fill(state->any_pred_defined.begin(), state->any_pred_defined.end(), false);
+   std::fill(state->any_pred_defined.begin(), state->any_pred_defined.end(), pred_defined::undef);
    for (unsigned i = 0; i < block->logical_preds.size(); i++) {
       if (phi->operands[i].isUndefined())
          continue;
+      pred_defined defined = pred_defined::temp;
+      if (phi->operands[i].isConstant())
+         defined = phi->operands[i].constantValue() ? pred_defined::const_1 : pred_defined::const_0;
       for (unsigned succ : program->blocks[block->logical_preds[i]].linear_succs)
-         state->any_pred_defined[succ] = true;
+         state->any_pred_defined[succ] |= defined;
    }
 
    unsigned start = block->logical_preds[0];
@@ -198,24 +198,24 @@ init_any_pred_defined(Program* program, ssa_state* state, Block* block, aco_ptr<
       /* If the loop-header has a back-edge, we need to insert a phi.
        * This will contain a defined value */
       if (program->blocks[start].linear_preds.size() > 1)
-         state->any_pred_defined[start] = true;
+         state->any_pred_defined[start] = pred_defined::temp;
    }
    /* for loop header phis, end at the loop exit */
    if (block->kind & block_kind_loop_header) {
       while (program->blocks[end].loop_nest_depth >= state->loop_nest_depth)
          end++;
       /* don't propagate the incoming value */
-      state->any_pred_defined[block->index] = false;
+      state->any_pred_defined[block->index] = pred_defined::undef;
    }
 
    for (unsigned j = start; j < end; j++) {
-      if (!state->any_pred_defined[j])
+      if (state->any_pred_defined[j] == pred_defined::undef)
          continue;
       for (unsigned succ : program->blocks[j].linear_succs)
-         state->any_pred_defined[succ] = true;
+         state->any_pred_defined[succ] |= state->any_pred_defined[j];
    }
 
-   state->any_pred_defined[block->index] = false;
+   state->any_pred_defined[block->index] = pred_defined::undef;
 }
 
 void
@@ -242,48 +242,24 @@ lower_divergent_bool_phi(Program* program, ssa_state* state, Block* block,
    state->visited.resize(program->blocks.size());
    state->outputs.resize(program->blocks.size());
    state->any_pred_defined.resize(program->blocks.size());
-
-   uint64_t undef_operands = 0;
-   for (unsigned i = 0; i < phi->operands.size(); i++)
-      undef_operands |= (uint64_t)phi->operands[i].isUndefined() << i;
-
-   if (state->needs_init || undef_operands != state->cur_undef_operands ||
-       block->logical_preds.size() > 64) {
-      /* this only has to be done once per block unless the set of predecessors
-       * which are undefined changes */
-      state->cur_undef_operands = undef_operands;
-      state->phi_block_idx = block->index;
-      state->loop_nest_depth = block->loop_nest_depth;
-      if (block->kind & block_kind_loop_exit) {
-         state->loop_nest_depth += 1;
-      }
-      init_any_pred_defined(program, state, block, phi);
-      state->needs_init = false;
-   }
+   state->loop_nest_depth = block->loop_nest_depth;
+   if (block->kind & block_kind_loop_exit)
+      state->loop_nest_depth += 1;
    std::fill(state->visited.begin(), state->visited.end(), false);
+   init_any_pred_defined(program, state, block, phi);
 
    for (unsigned i = 0; i < phi->operands.size(); i++) {
       unsigned pred = block->logical_preds[i];
-      if (state->any_pred_defined[pred]) {
+      if (state->any_pred_defined[pred] != pred_defined::undef)
          state->outputs[pred] = Operand(bld.tmp(bld.lm));
-      } else {
+      else
          state->outputs[pred] = phi->operands[i];
-      }
       assert(state->outputs[pred].size() == bld.lm.size());
       state->visited[pred] = true;
    }
 
-   for (unsigned i = 0; i < phi->operands.size(); i++) {
-      unsigned pred = block->logical_preds[i];
-      if (!state->any_pred_defined[pred])
-         continue;
-      Operand input = get_ssa(program, pred, state, true);
-      if (i == 1 && (block->kind & block_kind_merge) && phi->operands[0].isConstant())
-         input = phi->operands[0];
-      assert(state->outputs[pred].isTemp() && state->outputs[pred].regClass() == bld.lm);
-      Definition dst = Definition(state->outputs[pred].getTemp());
-      build_merge_code(program, &program->blocks[pred], dst, input, phi->operands[i]);
-   }
+   for (unsigned i = 0; i < phi->operands.size(); i++)
+      build_merge_code(program, state, &program->blocks[block->logical_preds[i]], phi->operands[i]);
 
    unsigned num_preds = block->linear_preds.size();
    if (phi->operands.size() != num_preds) {
@@ -336,7 +312,6 @@ lower_phis(Program* program)
 
    for (Block& block : program->blocks) {
       state.checked_preds_for_uniform = false;
-      state.needs_init = true;
       for (aco_ptr<Instruction>& phi : block.instructions) {
          if (phi->opcode == aco_opcode::p_phi) {
             assert(program->wave_size == 64 ? phi->definitions[0].regClass() != s1
