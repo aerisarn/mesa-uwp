@@ -85,19 +85,20 @@ update_sampler(struct i915_context *i915, uint32_t unit,
       state[0] |= SS2_COLORSPACE_CONVERSION;
 
    if (pt->format == PIPE_FORMAT_B8G8R8A8_SRGB ||
-       pt->format == PIPE_FORMAT_L8_SRGB)
+       pt->format == PIPE_FORMAT_L8_SRGB) {
       state[0] |= SS2_REVERSE_GAMMA_ENABLE;
+   }
 
-      /* 3D textures don't seem to respect the border color.
-       * Fallback if there's ever a danger that they might refer to
-       * it.
-       *
-       * Effectively this means fallback on 3D clamp or
-       * clamp_to_border.
-       *
-       * XXX: Check if this is true on i945.
-       * XXX: Check if this bug got fixed in release silicon.
-       */
+   /* 3D textures don't seem to respect the border color.
+    * Fallback if there's ever a danger that they might refer to
+    * it.
+    *
+    * Effectively this means fallback on 3D clamp or
+    * clamp_to_border.
+    *
+    * XXX: Check if this is true on i945.
+    * XXX: Check if this bug got fixed in release silicon.
+    */
 #if 0
    {
       const unsigned ws = sampler->templ->wrap_s;
