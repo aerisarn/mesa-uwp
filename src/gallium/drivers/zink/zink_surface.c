@@ -108,6 +108,7 @@ create_surface(struct pipe_context *pctx,
                VkImageViewCreateInfo *ivci)
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
+   struct zink_resource *res = zink_resource(pres);
    unsigned int level = templ->u.tex.level;
 
    struct zink_surface *surface = CALLOC_STRUCT(zink_surface);
@@ -127,6 +128,14 @@ create_surface(struct pipe_context *pctx,
    surface->obj = zink_resource(pres)->obj;
    util_dynarray_init(&surface->framebuffer_refs, NULL);
    util_dynarray_init(&surface->desc_set_refs.refs, NULL);
+
+   surface->info.flags = res->obj->vkflags;
+   surface->info.usage = res->obj->vkusage;
+   surface->info.width = surface->base.width;
+   surface->info.height = surface->base.height;
+   surface->info.layerCount = ivci->subresourceRange.layerCount;
+   surface->info.format = ivci->format;
+   surface->info_hash = _mesa_hash_data(&surface->info, sizeof(surface->info));
 
    if (vkCreateImageView(screen->dev, ivci, NULL,
                          &surface->image_view) != VK_SUCCESS) {

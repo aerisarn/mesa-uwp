@@ -30,9 +30,20 @@
 
 struct pipe_context;
 
+struct zink_surface_info {
+   VkImageCreateFlags flags;
+   VkImageUsageFlags usage;
+   uint32_t width;
+   uint32_t height;
+   uint32_t layerCount;
+   VkFormat format;
+};
+
 struct zink_surface {
    struct pipe_surface base;
    VkImageViewCreateInfo ivci;
+   struct zink_surface_info info; //TODO: union with fb refs
+   uint32_t info_hash;
    VkImageView image_view;
    VkImageView simage_view;//old iview after storage replacement/rebind
    void *obj; //backing resource object
