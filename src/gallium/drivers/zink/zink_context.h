@@ -200,6 +200,9 @@ struct zink_context {
    struct zink_image_view image_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
 
    struct pipe_framebuffer_state fb_state;
+   struct zink_framebuffer *(*get_framebuffer)(struct zink_context*);
+   void (*init_framebuffer)(struct zink_screen *screen, struct zink_framebuffer *fb, struct zink_render_pass *rp);
+   struct hash_table framebuffer_cache;
 
    struct zink_vertex_elements_state *element_state;
    struct zink_rasterizer_state *rast_state;
@@ -284,7 +287,7 @@ struct zink_context {
 
    struct pipe_resource *dummy_vertex_buffer;
    struct pipe_resource *dummy_xfb_buffer;
-   struct pipe_surface *dummy_surface;
+   struct pipe_surface *dummy_surface[7];
    struct zink_buffer_view *dummy_bufferview;
 
    unsigned buffer_rebind_counter;

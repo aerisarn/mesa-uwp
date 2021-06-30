@@ -222,11 +222,6 @@ surface_clear_fb_refs(struct zink_screen *screen, struct pipe_surface *psurface)
             simple_mtx_unlock(&screen->framebuffer_mtx);
             break;
          }
-         /* null surface doesn't get a ref but it will double-free
-          * if the pointer isn't unset
-          */
-         if (fb->null_surface == psurface)
-            fb->null_surface = NULL;
       }
    }
    util_dynarray_fini(&surface->framebuffer_refs);
@@ -242,7 +237,8 @@ zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
    assert(he->data == surface);
    _mesa_hash_table_remove(&screen->surface_cache, he);
    simple_mtx_unlock(&screen->surface_mtx);
-   surface_clear_fb_refs(screen, psurface);
+   if (!screen->info.have_KHR_imageless_framebuffer)
+      surface_clear_fb_refs(screen, psurface);
    zink_descriptor_set_refs_clear(&surface->desc_set_refs, surface);
    util_dynarray_fini(&surface->framebuffer_refs);
    pipe_resource_reference(&psurface->texture, NULL);

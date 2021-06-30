@@ -45,11 +45,132 @@ zink_destroy_framebuffer(struct zink_screen *screen,
 #endif
    }
 
-   if (fb->null_surface)
-      pipe_resource_reference(&fb->null_surface->texture, NULL);
-   zink_surface_reference(screen, (struct zink_surface**)&fb->null_surface, NULL);
-
    ralloc_free(fb);
+}
+
+void
+zink_init_framebuffer_imageless(struct zink_screen *screen, struct zink_framebuffer *fb, struct zink_render_pass *rp)
+{
+   VkFramebuffer ret;
+
+   if (fb->rp == rp)
+      return;
+
+   uint32_t hash = _mesa_hash_pointer(rp);
+
+   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&fb->objects, hash, rp);
+   if (he) {
+#if defined(_WIN64) || defined(__x86_64__)
+      ret = (VkFramebuffer)he->data;
+#else
+      VkFramebuffer *ptr = he->data;
+      ret = *ptr;
+#endif
+      goto out;
+   }
+
+   VkFramebufferCreateInfo fci;
+   fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+   fci.flags = VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT;
+   fci.renderPass = rp->render_pass;
+   fci.attachmentCount = fb->state.num_attachments;
+   fci.pAttachments = NULL;
+   fci.width = fb->state.width;
+   fci.height = fb->state.height;
+   fci.layers = fb->state.layers + 1;
+
+   VkFramebufferAttachmentsCreateInfo attachments;
+   attachments.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO;
+   attachments.pNext = NULL;
+   attachments.attachmentImageInfoCount = fb->state.num_attachments;
+   attachments.pAttachmentImageInfos = fb->infos;
+   fci.pNext = &attachments;
+
+   if (vkCreateFramebuffer(screen->dev, &fci, NULL, &ret) != VK_SUCCESS)
+      return;
+#if defined(_WIN64) || defined(__x86_64__)
+   _mesa_hash_table_insert_pre_hashed(&fb->objects, hash, rp, ret);
+#else
+   VkFramebuffer *ptr = ralloc(fb, VkFramebuffer);
+   if (!ptr) {
+      vkDestroyFramebuffer(screen->dev, ret, NULL);
+      return;
+   }
+   *ptr = ret;
+   _mesa_hash_table_insert_pre_hashed(&fb->objects, hash, rp, ptr);
+#endif
+out:
+   fb->rp = rp;
+   fb->fb = ret;
+}
+
+static void
+populate_attachment_info(VkFramebufferAttachmentImageInfo *att, struct zink_surface_info *info)
+{
+   att->sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO;
+   att->pNext = NULL;
+   memcpy(&att->flags, &info->flags, offsetof(struct zink_surface_info, format));
+   att->viewFormatCount = 1;
+   att->pViewFormats = &info->format;
+}
+
+static struct zink_framebuffer *
+create_framebuffer_imageless(struct zink_context *ctx, struct zink_framebuffer_state *state)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct zink_framebuffer *fb = rzalloc(ctx, struct zink_framebuffer);
+   if (!fb)
+      return NULL;
+   pipe_reference_init(&fb->reference, 1);
+
+   if (!_mesa_hash_table_init(&fb->objects, fb, _mesa_hash_pointer, _mesa_key_pointer_equal))
+      goto fail;
+   memcpy(&fb->state, state, sizeof(struct zink_framebuffer_state));
+   for (int i = 0; i < state->num_attachments; i++)
+      populate_attachment_info(&fb->infos[i], &fb->state.infos[i]);
+
+   return fb;
+fail:
+   zink_destroy_framebuffer(screen, fb);
+   return NULL;
+}
+
+struct zink_framebuffer *
+zink_get_framebuffer_imageless(struct zink_context *ctx)
+{
+   assert(zink_screen(ctx->base.screen)->info.have_KHR_imageless_framebuffer);
+
+   struct zink_framebuffer_state state;
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
+      if (!psurf)
+         psurf = ctx->dummy_surface[util_logbase2_ceil(ctx->gfx_pipeline_state.rast_samples+1)];
+      struct zink_surface *surface = zink_surface(psurf);
+      memcpy(&state.infos[i], &surface->info, sizeof(surface->info));
+   }
+
+   state.num_attachments = ctx->fb_state.nr_cbufs;
+   if (ctx->fb_state.zsbuf) {
+      struct pipe_surface *psurf = ctx->fb_state.zsbuf;
+      struct zink_surface *surface = zink_surface(psurf);
+      memcpy(&state.infos[state.num_attachments], &surface->info, sizeof(surface->info));
+      state.num_attachments++;
+   }
+
+   state.width = MAX2(ctx->fb_state.width, 1);
+   state.height = MAX2(ctx->fb_state.height, 1);
+   state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1) - 1;
+   state.samples = ctx->gfx_pipeline_state.rast_samples;
+
+   struct zink_framebuffer *fb;
+   struct hash_entry *entry = _mesa_hash_table_search(&ctx->framebuffer_cache, &state);
+   if (entry)
+      return entry->data;
+
+   fb = create_framebuffer_imageless(ctx, &state);
+   _mesa_hash_table_insert(&ctx->framebuffer_cache, &fb->state, fb);
+
+   return fb;
 }
 
 void
@@ -80,7 +201,7 @@ zink_init_framebuffer(struct zink_screen *screen, struct zink_framebuffer *fb, s
    fci.pAttachments = fb->state.attachments;
    fci.width = fb->state.width;
    fci.height = fb->state.height;
-   fci.layers = fb->state.layers;
+   fci.layers = fb->state.layers + 1;
 
    if (vkCreateFramebuffer(screen->dev, &fci, NULL, &ret) != VK_SUCCESS)
       return;
@@ -100,10 +221,10 @@ out:
    fb->fb = ret;
 }
 
-struct zink_framebuffer *
-zink_create_framebuffer(struct zink_context *ctx,
-                        struct zink_framebuffer_state *state,
-                        struct pipe_surface **attachments)
+static struct zink_framebuffer *
+create_framebuffer(struct zink_context *ctx,
+                   struct zink_framebuffer_state *state,
+                   struct pipe_surface **attachments)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_framebuffer *fb = rzalloc(NULL, struct zink_framebuffer);
@@ -118,13 +239,11 @@ zink_create_framebuffer(struct zink_context *ctx,
          /* no ref! */
          fb->surfaces[i] = attachments[i];
          num_attachments++;
+         util_dynarray_append(&surf->framebuffer_refs, struct zink_framebuffer*, fb);
       } else {
-         if (!fb->null_surface)
-            fb->null_surface = zink_surface_create_null(ctx, PIPE_TEXTURE_2D, state->width, state->height, state->samples);
-         surf = zink_surface(fb->null_surface);
-         state->attachments[i] = zink_surface(fb->null_surface)->image_view;
+         surf = zink_surface(ctx->dummy_surface[util_logbase2_ceil(state->samples+1)]);
+         state->attachments[i] = surf->image_view;
       }
-      util_dynarray_append(&surf->framebuffer_refs, struct zink_framebuffer*, fb);
    }
    pipe_reference_init(&fb->reference, 1 + num_attachments);
 
@@ -148,6 +267,9 @@ struct zink_framebuffer *
 zink_get_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+
+   assert(!screen->info.have_KHR_imageless_framebuffer);
+
    struct pipe_surface *attachments[PIPE_MAX_COLOR_BUFS + 1] = {0};
 
    struct zink_framebuffer_state state = {0};
@@ -166,8 +288,8 @@ zink_get_framebuffer(struct zink_context *ctx)
 
    state.width = MAX2(ctx->fb_state.width, 1);
    state.height = MAX2(ctx->fb_state.height, 1);
-   state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1);
-   state.samples = ctx->fb_state.samples;
+   state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1) - 1;
+   state.samples = ctx->gfx_pipeline_state.rast_samples;
 
    struct zink_framebuffer *fb;
    simple_mtx_lock(&screen->framebuffer_mtx);
@@ -182,7 +304,7 @@ zink_get_framebuffer(struct zink_context *ctx)
        * going to be bound; necessary to handle framebuffers which have no "real" attachments
        * and are only using null surfaces since the only ref they get is the extra one here
        */
-      fb = zink_create_framebuffer(ctx, &state, attachments);
+      fb = create_framebuffer(ctx, &state, attachments);
       _mesa_hash_table_insert(&screen->framebuffer_cache, &fb->state, fb);
    }
    simple_mtx_unlock(&screen->framebuffer_mtx);

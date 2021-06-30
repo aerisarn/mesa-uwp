@@ -1059,14 +1059,16 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       zink_buffer_view_reference(screen, &bv, NULL);
    }
 
-   hash_table_foreach(&screen->framebuffer_cache, entry) {
-      struct zink_framebuffer* fb = (struct zink_framebuffer*)entry->data;
-      zink_destroy_framebuffer(screen, fb);
+   if (!screen->info.have_KHR_imageless_framebuffer) {
+      hash_table_foreach(&screen->framebuffer_cache, entry) {
+         struct zink_framebuffer* fb = (struct zink_framebuffer*)entry->data;
+         zink_destroy_framebuffer(screen, fb);
+      }
+      simple_mtx_destroy(&screen->framebuffer_mtx);
    }
 
    simple_mtx_destroy(&screen->surface_mtx);
    simple_mtx_destroy(&screen->bufferview_mtx);
-   simple_mtx_destroy(&screen->framebuffer_mtx);
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
 #ifdef ENABLE_SHADER_CACHE
@@ -1919,9 +1921,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    simple_mtx_init(&screen->surface_mtx, mtx_plain);
    simple_mtx_init(&screen->bufferview_mtx, mtx_plain);
-   simple_mtx_init(&screen->framebuffer_mtx, mtx_plain);
 
-   _mesa_hash_table_init(&screen->framebuffer_cache, screen, hash_framebuffer_state, equals_framebuffer_state);
+   if (!screen->info.have_KHR_imageless_framebuffer) {
+      simple_mtx_init(&screen->framebuffer_mtx, mtx_plain);
+      _mesa_hash_table_init(&screen->framebuffer_cache, screen, hash_framebuffer_state, equals_framebuffer_state);
+   }
    _mesa_hash_table_init(&screen->surface_cache, screen, NULL, equals_ivci);
    _mesa_hash_table_init(&screen->bufferview_cache, screen, NULL, equals_bvci);
 
