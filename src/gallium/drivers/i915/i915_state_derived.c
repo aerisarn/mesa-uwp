@@ -186,11 +186,9 @@ struct i915_tracked_state i915_update_vertex_layout = {
 /***********************************************************************
  */
 static struct i915_tracked_state *atoms[] = {
-   &i915_update_vertex_layout, &i915_hw_samplers,
-   &i915_hw_sampler_views,     &i915_hw_immediate,
-   &i915_hw_dynamic,           &i915_hw_fs,
-   &i915_hw_framebuffer,       &i915_hw_dst_buf_vars,
-   &i915_hw_constants,         NULL,
+   &i915_update_vertex_layout, &i915_hw_samplers,  &i915_hw_immediate,
+   &i915_hw_dynamic,           &i915_hw_fs,        &i915_hw_framebuffer,
+   &i915_hw_dst_buf_vars,      &i915_hw_constants, NULL,
 };
 
 void

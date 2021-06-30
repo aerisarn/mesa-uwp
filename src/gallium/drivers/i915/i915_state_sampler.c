@@ -57,11 +57,6 @@
  * changes.
  */
 
-static void update_map(struct i915_context *i915, uint32_t unit,
-                       const struct i915_texture *tex,
-                       const struct i915_sampler_state *sampler,
-                       const struct pipe_sampler_view *view, uint32_t state[3]);
-
 /***********************************************************************
  * Samplers
  */
@@ -137,43 +132,6 @@ update_sampler(struct i915_context *i915, uint32_t unit,
    state[1] |= (sampler->minlod << SS3_MIN_LOD_SHIFT);
    state[1] |= (unit << SS3_TEXTUREMAP_INDEX_SHIFT);
 }
-
-static void
-update_samplers(struct i915_context *i915)
-{
-   uint32_t unit;
-
-   i915->current.sampler_enable_nr = 0;
-   i915->current.sampler_enable_flags = 0x0;
-
-   for (unit = 0;
-        unit < i915->num_fragment_sampler_views && unit < i915->num_samplers;
-        unit++) {
-      /* determine unit enable/disable by looking for a bound texture */
-      /* could also examine the fragment program? */
-      if (i915->fragment_sampler_views[unit]) {
-         struct i915_texture *texture =
-            i915_texture(i915->fragment_sampler_views[unit]->texture);
-
-         update_sampler(i915, unit,
-                        i915->fragment_sampler[unit],   /* sampler state */
-                        texture,                        /* texture */
-                        i915->current.sampler[unit]);   /* the result */
-         update_map(i915, unit, texture,                /* texture */
-                    i915->fragment_sampler[unit],       /* sampler state */
-                    i915->fragment_sampler_views[unit], /* sampler view */
-                    i915->current.texbuffer[unit]);     /* the result */
-
-         i915->current.sampler_enable_nr++;
-         i915->current.sampler_enable_flags |= (1 << unit);
-      }
-   }
-
-   i915->hardware_dirty |= I915_HW_SAMPLER | I915_HW_MAP;
-}
-
-struct i915_tracked_state i915_hw_samplers = {
-   "samplers", update_samplers, I915_NEW_SAMPLER | I915_NEW_SAMPLER_VIEW};
 
 /***********************************************************************
  * Sampler views
@@ -347,9 +305,12 @@ update_map(struct i915_context *i915, uint32_t unit,
 }
 
 static void
-update_maps(struct i915_context *i915)
+update_samplers(struct i915_context *i915)
 {
    uint32_t unit;
+
+   i915->current.sampler_enable_nr = 0;
+   i915->current.sampler_enable_flags = 0x0;
 
    for (unit = 0;
         unit < i915->num_fragment_sampler_views && unit < i915->num_samplers;
@@ -360,15 +321,22 @@ update_maps(struct i915_context *i915)
          struct i915_texture *texture =
             i915_texture(i915->fragment_sampler_views[unit]->texture);
 
+         update_sampler(i915, unit,
+                        i915->fragment_sampler[unit],   /* sampler state */
+                        texture,                        /* texture */
+                        i915->current.sampler[unit]);   /* the result */
          update_map(i915, unit, texture,                /* texture */
                     i915->fragment_sampler[unit],       /* sampler state */
                     i915->fragment_sampler_views[unit], /* sampler view */
-                    i915->current.texbuffer[unit]);
+                    i915->current.texbuffer[unit]);     /* the result */
+
+         i915->current.sampler_enable_nr++;
+         i915->current.sampler_enable_flags |= (1 << unit);
       }
    }
 
-   i915->hardware_dirty |= I915_HW_MAP;
+   i915->hardware_dirty |= I915_HW_SAMPLER | I915_HW_MAP;
 }
 
-struct i915_tracked_state i915_hw_sampler_views = {"sampler_views", update_maps,
-                                                   I915_NEW_SAMPLER_VIEW};
+struct i915_tracked_state i915_hw_samplers = {
+   "samplers", update_samplers, I915_NEW_SAMPLER | I915_NEW_SAMPLER_VIEW};
