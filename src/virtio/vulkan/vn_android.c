@@ -20,6 +20,7 @@
 #include "util/libsync.h"
 #include "util/os_file.h"
 
+#include "vn_buffer.h"
 #include "vn_device.h"
 #include "vn_device_memory.h"
 #include "vn_image.h"
@@ -1082,4 +1083,58 @@ vn_GetMemoryAndroidHardwareBufferANDROID(
    *pBuffer = mem->ahb;
 
    return VK_SUCCESS;
+}
+
+struct vn_android_buffer_create_info {
+   VkBufferCreateInfo create;
+   VkExternalMemoryBufferCreateInfo external;
+   VkBufferOpaqueCaptureAddressCreateInfo address;
+};
+
+static const VkBufferCreateInfo *
+vn_android_fix_buffer_create_info(
+   const VkBufferCreateInfo *create_info,
+   struct vn_android_buffer_create_info *local_info)
+{
+   local_info->create = *create_info;
+   VkBaseOutStructure *dst = (void *)&local_info->create;
+
+   vk_foreach_struct_const(src, create_info->pNext) {
+      void *pnext = NULL;
+      switch (src->sType) {
+      case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO:
+         memcpy(&local_info->external, src, sizeof(local_info->external));
+         local_info->external.handleTypes =
+            VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+         pnext = &local_info->external;
+         break;
+      case VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO:
+         memcpy(&local_info->address, src, sizeof(local_info->address));
+         pnext = &local_info->address;
+         break;
+      default:
+         break;
+      }
+
+      if (pnext) {
+         dst->pNext = pnext;
+         dst = pnext;
+      }
+   }
+
+   dst->pNext = NULL;
+
+   return &local_info->create;
+}
+
+VkResult
+vn_android_buffer_from_ahb(struct vn_device *dev,
+                           const VkBufferCreateInfo *create_info,
+                           const VkAllocationCallbacks *alloc,
+                           struct vn_buffer **out_buf)
+{
+   struct vn_android_buffer_create_info local_info;
+
+   create_info = vn_android_fix_buffer_create_info(create_info, &local_info);
+   return vn_buffer_create(dev, create_info, alloc, out_buf);
 }
