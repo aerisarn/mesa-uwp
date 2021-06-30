@@ -109,8 +109,14 @@ calculate_vertex_layout(struct i915_context *i915)
       vinfo.attrib[0].emit = EMIT_3F;
    }
 
-   /* hardware point size */
-   /* XXX todo */
+   /* point size.  if not emitted here, then point size comes from LIS4. */
+   if (i915->rasterizer->templ.point_size_per_vertex) {
+      src = draw_find_shader_output(i915->draw, TGSI_SEMANTIC_PSIZE, 0);
+      if (src != -1) {
+         draw_emit_vertex_attr(&vinfo, EMIT_1F, src);
+         vinfo.hwfmt[0] |= S4_VFMT_POINT_WIDTH;
+      }
+   }
 
    /* primary color */
    if (colors[0]) {

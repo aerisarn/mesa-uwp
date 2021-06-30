@@ -28,6 +28,7 @@
 /* Authors:  Keith Whitwell <keithw@vmware.com>
  */
 
+#include "compiler/nir/nir_builder.h"
 #include "draw/draw_context.h"
 #include "nir/nir_to_tgsi.h"
 #include "tgsi/tgsi_parse.h"
@@ -573,13 +574,17 @@ i915_create_vs_state(struct pipe_context *pipe,
 
    struct pipe_shader_state from_nir;
    if (templ->type == PIPE_SHADER_IR_NIR) {
+      nir_shader *s = templ->ir.nir;
+
+      NIR_PASS_V(s, nir_lower_point_size, 1.0, 255.0);
+
       /* The gallivm draw path doesn't support non-native-integers NIR shaders,
        * st/mesa does native-integers for the screen as a whole rather than
        * per-stage, and i915 FS can't do native integers.  So, convert to TGSI,
        * where the draw path *does* support non-native-integers.
        */
       from_nir.type = PIPE_SHADER_IR_TGSI;
-      from_nir.tokens = nir_to_tgsi(templ->ir.nir, pipe->screen);
+      from_nir.tokens = nir_to_tgsi(s, pipe->screen);
       templ = &from_nir;
    }
 

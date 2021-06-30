@@ -15,9 +15,6 @@ dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_corner,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_corner,Fail
-dEQP-GLES2.functional.clipping.point.wide_point_z_clip,Fail
-dEQP-GLES2.functional.clipping.point.wide_point_z_clip_viewport_center,Fail
-dEQP-GLES2.functional.clipping.point.wide_point_z_clip_viewport_corner,Fail
 dEQP-GLES2.functional.clipping.triangle_vertex.clip_two.clip_neg_y_neg_z_and_neg_x_neg_y_pos_z,Fail
 dEQP-GLES2.functional.clipping.triangle_vertex.clip_two.clip_pos_y_pos_z_and_neg_x_neg_y_neg_z,Fail
 dEQP-GLES2.functional.fbo.completeness.renderable.texture.color0.rgb10_a2,Fail
@@ -328,7 +325,6 @@ dEQP-GLES2.functional.rasterization.interpolation.projected.lines_wide,Fail
 dEQP-GLES2.functional.rasterization.primitives.line_loop_wide,Fail
 dEQP-GLES2.functional.rasterization.primitives.line_strip_wide,Fail
 dEQP-GLES2.functional.rasterization.primitives.lines_wide,Fail
-dEQP-GLES2.functional.rasterization.primitives.points,Fail
 dEQP-GLES2.functional.shaders.builtin_variable.frontfacing,Fail
 dEQP-GLES2.functional.shaders.discard.dynamic_loop_always,Fail
 dEQP-GLES2.functional.shaders.discard.dynamic_loop_dynamic,Fail
