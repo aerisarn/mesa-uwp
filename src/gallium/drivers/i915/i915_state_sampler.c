@@ -89,6 +89,30 @@ update_sampler(struct i915_context *i915, uint32_t unit,
       state[0] |= SS2_REVERSE_GAMMA_ENABLE;
    }
 
+   /* The GLES2 spec says textures are incomplete (return 0,0,0,1) if:
+    *
+    * "A cube map sampler is called, any of the corresponding texture images are
+    * non-power-of-two images, and either the texture wrap mode is not
+    * CLAMP_TO_EDGE, or the minification filter is neither NEAREST nor LINEAR."
+    *
+    * while the i915 spec says:
+    *
+    * "When using cube map texture coordinates, only TEXCOORDMODE_CLAMP and *
+    *  TEXCOORDMODE_CUBE settings are valid, and each TC component must have the
+    *  same Address Control mode. TEXCOORDMODE_CUBE is not valid unless the
+    *  width and height of the cube map are power-of-2."
+    *
+    * We don't expose support for the seamless cube map extension, so always use
+    * edge clamping.
+    */
+   if (pt->target == PIPE_TEXTURE_CUBE) {
+      state[1] &= ~(SS3_TCX_ADDR_MODE_MASK | SS3_TCY_ADDR_MODE_MASK |
+                     SS3_TCZ_ADDR_MODE_MASK);
+      state[1] |= (TEXCOORDMODE_CLAMP_EDGE << SS3_TCX_ADDR_MODE_SHIFT);
+      state[1] |= (TEXCOORDMODE_CLAMP_EDGE << SS3_TCY_ADDR_MODE_SHIFT);
+      state[1] |= (TEXCOORDMODE_CLAMP_EDGE << SS3_TCZ_ADDR_MODE_SHIFT);
+   }
+
    /* 3D textures don't seem to respect the border color.
     * Fallback if there's ever a danger that they might refer to
     * it.
