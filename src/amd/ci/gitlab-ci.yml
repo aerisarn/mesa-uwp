@@ -55,7 +55,7 @@ radv_polaris10_vkcts:
     - polaris10
 
 # Run three jobs in parallel each running 1/30th of the test suite
-radv_stoney_vkcts:amd64:
+.radv_stoney_vkcts:amd64:
   extends:
     - .lava-test:amd64
     - .radv-rules
