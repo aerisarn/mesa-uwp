@@ -859,6 +859,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_LOWER_DISCARD_TO_DEMOTE(false)
       DRI_CONF_RADV_INVARIANT_GEOM(false)
       DRI_CONF_RADV_DISABLE_TC_COMPAT_HTILE_GENERAL(false)
+      DRI_CONF_RADV_DISABLE_DCC(false)
    DRI_CONF_SECTION_END
 };
 // clang-format on
@@ -895,6 +896,9 @@ radv_init_dri_options(struct radv_instance *instance)
 
    if (driQueryOptionb(&instance->dri_options, "radv_invariant_geom"))
       instance->debug_flags |= RADV_DEBUG_INVARIANT_GEOM;
+
+   if (driQueryOptionb(&instance->dri_options, "radv_disable_dcc"))
+      instance->debug_flags |= RADV_DEBUG_NO_DCC;
 }
 
 VkResult

@@ -509,4 +509,8 @@
    DRI_CONF_OPT_B(radv_disable_tc_compat_htile_general, def, \
                   "Disable TC-compat HTILE in GENERAL layout")
 
+#define DRI_CONF_RADV_DISABLE_DCC(def) \
+   DRI_CONF_OPT_B(radv_disable_dcc, def, \
+                  "Disable DCC for color images")
+
 #endif
