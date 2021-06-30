@@ -107,7 +107,7 @@ update_sampler(struct i915_context *i915, uint32_t unit,
     */
    if (pt->target == PIPE_TEXTURE_CUBE) {
       state[1] &= ~(SS3_TCX_ADDR_MODE_MASK | SS3_TCY_ADDR_MODE_MASK |
-                     SS3_TCZ_ADDR_MODE_MASK);
+                    SS3_TCZ_ADDR_MODE_MASK);
       state[1] |= (TEXCOORDMODE_CLAMP_EDGE << SS3_TCX_ADDR_MODE_SHIFT);
       state[1] |= (TEXCOORDMODE_CLAMP_EDGE << SS3_TCY_ADDR_MODE_SHIFT);
       state[1] |= (TEXCOORDMODE_CLAMP_EDGE << SS3_TCZ_ADDR_MODE_SHIFT);
