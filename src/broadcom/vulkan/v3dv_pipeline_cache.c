@@ -325,11 +325,11 @@ v3dv_pipeline_shared_data_destroy(struct v3dv_device *device,
       if (shared_data->variants[stage] != NULL)
          v3dv_shader_variant_destroy(device, shared_data->variants[stage]);
 
-      /* We don't free the vertex_bin descriptor maps as we are sharing them
-       * with the vertex shader.
+      /* We don't free binning descriptor maps as we are sharing them
+       * with the render shaders.
        */
       if (shared_data->maps[stage] != NULL &&
-          stage != BROADCOM_SHADER_VERTEX_BIN) {
+          !broadcom_shader_stage_is_binning(stage)) {
          vk_free(&device->vk.alloc, shared_data->maps[stage]);
       }
    }
@@ -563,8 +563,11 @@ v3dv_pipeline_shared_data_create_from_blob(struct v3dv_pipeline_cache *cache,
          return NULL;
 
       memcpy(maps[stage], current_maps, sizeof(struct v3dv_descriptor_maps));
-      if (stage == BROADCOM_SHADER_VERTEX)
-         maps[BROADCOM_SHADER_VERTEX_BIN] = maps[stage];
+      if (broadcom_shader_stage_is_render_with_binning(stage)) {
+         enum broadcom_shader_stage bin_stage =
+            broadcom_binning_shader_stage_for_render_stage(stage);
+            maps[bin_stage] = maps[stage];
+      }
    }
 
    uint8_t variant_count = blob_read_uint8(blob);
@@ -835,25 +838,25 @@ v3dv_pipeline_shared_data_write_to_blob(const struct v3dv_pipeline_shared_data *
 
    uint8_t descriptor_maps_count = 0;
    for (uint8_t stage = 0; stage < BROADCOM_SHADER_STAGES; stage++) {
-      if (stage == BROADCOM_SHADER_VERTEX_BIN)
+      if (broadcom_shader_stage_is_binning(stage))
          continue;
       if (cache_entry->maps[stage] == NULL)
          continue;
       descriptor_maps_count++;
    }
 
-   /* Right now we only support compute pipeline, or graphics pipeline with
-    * vertex, vertex bin, and fragment shader, but vertex and vertex bin
-    * descriptor maps are shared.
+   /* Compute pipelines only have one descriptor map,
+    * graphics pipelines may have 2 (VS+FS) or 3 (VS+GS+FS), since the binning
+    * stages take the descriptor map from the render stage.
     */
-   assert(descriptor_maps_count == 2 ||
+   assert((descriptor_maps_count >= 2 && descriptor_maps_count <= 3) ||
           (descriptor_maps_count == 1 && cache_entry->variants[BROADCOM_SHADER_COMPUTE]));
    blob_write_uint8(blob, descriptor_maps_count);
 
    for (uint8_t stage = 0; stage < BROADCOM_SHADER_STAGES; stage++) {
       if (cache_entry->maps[stage] == NULL)
          continue;
-      if (stage == BROADCOM_SHADER_VERTEX_BIN)
+      if (broadcom_shader_stage_is_binning(stage))
          continue;
 
       blob_write_uint8(blob, stage);
@@ -868,10 +871,10 @@ v3dv_pipeline_shared_data_write_to_blob(const struct v3dv_pipeline_shared_data *
       variant_count++;
    }
 
-   /* Right now we only support compute pipeline, or graphics pipeline with
-    * vertex, vertex bin, and fragment shader.
+   /* Graphics pipelines with VS+FS have 3 variants, VS+GS+FS will have 5 and
+    * compute pipelines only have 1.
     */
-   assert(variant_count == 3 ||
+   assert((variant_count == 5  || variant_count == 3) ||
           (variant_count == 1 && cache_entry->variants[BROADCOM_SHADER_COMPUTE]));
    blob_write_uint8(blob, variant_count);
 

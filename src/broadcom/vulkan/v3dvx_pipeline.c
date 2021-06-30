@@ -368,8 +368,14 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
    v3dvx_pack(pipeline->shader_state_record, GL_SHADER_STATE_RECORD, shader) {
       shader.enable_clipping = true;
 
-      shader.point_size_in_shaded_vertex_data =
-         pipeline->topology == PIPE_PRIM_POINTS;
+      if (!pipeline->has_gs) {
+         shader.point_size_in_shaded_vertex_data =
+            pipeline->topology == PIPE_PRIM_POINTS;
+      } else {
+         struct v3d_gs_prog_data *prog_data_gs =
+            pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY]->prog_data.gs;
+         shader.point_size_in_shaded_vertex_data = prog_data_gs->writes_psiz;
+      }
 
       /* Must be set if the shader modifies Z, discards, or modifies
        * the sample mask.  For any of these cases, the fragment
