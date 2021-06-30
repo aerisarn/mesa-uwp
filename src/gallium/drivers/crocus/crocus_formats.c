@@ -467,11 +467,15 @@ crocus_is_format_supported(struct pipe_screen *pscreen,
       supported &= isl_format_supports_multisampling(devinfo, format);
 
    if (usage & PIPE_BIND_DEPTH_STENCIL) {
-      supported &= format == ISL_FORMAT_R32_FLOAT_X8X24_TYPELESS ||
-                   format == ISL_FORMAT_R32_FLOAT ||
-                   format == ISL_FORMAT_R24_UNORM_X8_TYPELESS ||
-                   format == ISL_FORMAT_R8_UINT;
+      bool depth_fmts = format == ISL_FORMAT_R32_FLOAT_X8X24_TYPELESS ||
+         format == ISL_FORMAT_R32_FLOAT ||
+         format == ISL_FORMAT_R24_UNORM_X8_TYPELESS ||
+         format == ISL_FORMAT_R8_UINT;
+
       /* Z16 is disabled here as on pre-GEN8 it's slower. */
+      if (devinfo->ver == 8)
+         depth_fmts |= format == ISL_FORMAT_R16_UNORM;
+      supported &= depth_fmts;
    }
 
    if (usage & PIPE_BIND_RENDER_TARGET) {
