@@ -2,7 +2,7 @@
 dEQP-VK.draw.inverted_depth_ranges.nodepthclamp_deltazero
 dEQP-VK.rasterization.depth_bias.d32_sfloat
 
-# This test causes GPU hangs (vk-gl-cts 1.4.6.1)
+# This test causes GPU hangs (vk-gl-cts 1.2.6.2)
 dEQP-VK.graphicsfuzz.stable-binarysearch-tree-nested-if-and-conditional
 
 # Timeout tests (> 1 minute to run)
@@ -14,8 +14,6 @@ dEQP-VK.memory.mapping.suballocation.full.variable.implicit_unmap
 dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_vert
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_linear_clamp
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_linear_repeat
-dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_nearest_clamp
-dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_nearest_repeat
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_clamp
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_repeat
 dEQP-VK.ubo.random.all_out_of_order_offsets.45
