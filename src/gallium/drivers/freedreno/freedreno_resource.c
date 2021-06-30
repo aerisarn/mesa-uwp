@@ -432,17 +432,6 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
    DBG("shadow: %p (%d) -> %p (%d)", rsc, rsc->b.b.reference.count,
        shadow, shadow->b.b.reference.count);
 
-   swap(rsc->bo, shadow->bo);
-   swap(rsc->valid, shadow->valid);
-
-   /* swap() doesn't work because you can't typeof() the bitfield. */
-   bool temp = shadow->needs_ubwc_clear;
-   shadow->needs_ubwc_clear = rsc->needs_ubwc_clear;
-   rsc->needs_ubwc_clear = temp;
-
-   swap(rsc->layout, shadow->layout);
-   rsc->seqno = p_atomic_inc_return(&ctx->screen->rsc_seqno);
-
    /* At this point, the newly created shadow buffer is not referenced by any
     * batches, but the existing rsc may be as a reader (we flushed writers
     * above).  We want to remove the old reader references to rsc so that we
@@ -464,6 +453,17 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
          _mesa_set_remove(batch->resources, entry);
       }
    }
+
+   swap(rsc->bo, shadow->bo);
+   swap(rsc->valid, shadow->valid);
+
+   /* swap() doesn't work because you can't typeof() the bitfield. */
+   bool temp = shadow->needs_ubwc_clear;
+   shadow->needs_ubwc_clear = rsc->needs_ubwc_clear;
+   rsc->needs_ubwc_clear = temp;
+
+   swap(rsc->layout, shadow->layout);
+   rsc->seqno = p_atomic_inc_return(&ctx->screen->rsc_seqno);
 
    struct pipe_blit_info blit = {};
    blit.dst.resource = prsc;

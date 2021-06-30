@@ -403,6 +403,19 @@ fd_bo_handle(struct fd_bo *bo)
    return bo->handle;
 }
 
+/**
+ * Returns a small integer ID for the BO valid for the lifetime of the fd_bo.
+ *
+ * It happens to be the GEM handle, but don't use it as one since this getter
+ * doesn't do any flushing or marking the BO as uncacheable like you would need
+ * for most cases of using a GEM handle.
+ */
+uint32_t
+fd_bo_id(struct fd_bo *bo)
+{
+   return bo->handle;
+}
+
 int
 fd_bo_dmabuf(struct fd_bo *bo)
 {

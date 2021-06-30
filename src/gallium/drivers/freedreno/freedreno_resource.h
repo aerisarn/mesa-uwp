@@ -27,6 +27,7 @@
 #ifndef FREEDRENO_RESOURCE_H_
 #define FREEDRENO_RESOURCE_H_
 
+#include "util/bitset.h"
 #include "util/list.h"
 #include "util/set.h"
 #include "util/simple_mtx.h"
@@ -143,7 +144,11 @@ fd_memory_object(struct pipe_memory_object *pmemobj)
 static inline bool
 fd_batch_references(struct fd_batch *batch, struct fd_resource *rsc)
 {
-   return _mesa_set_search_pre_hashed(batch->resources, rsc->hash, rsc) != NULL;
+   /* Currently each rsc has an individual BO, so we can use the bo handle as a
+    * unique index for the resource.
+    */
+   uint32_t handle = fd_bo_id(rsc->bo);
+   return handle < batch->bos_size && BITSET_TEST(batch->bos, handle);
 }
 
 static inline struct fd_batch *

@@ -282,6 +282,9 @@ batch_reset_resources(struct fd_batch *batch)
     * rather than having any deleted keys.
     */
    _mesa_set_clear(batch->resources, NULL);
+
+   free(batch->bos);
+   batch->bos = NULL;
 }
 
 static void
@@ -421,13 +424,27 @@ fd_batch_add_dep(struct fd_batch *batch, struct fd_batch *dep)
 static void
 fd_batch_add_resource(struct fd_batch *batch, struct fd_resource *rsc)
 {
-   bool found = false;
+   if (fd_batch_references(batch, rsc))
+      return;
+
+   ASSERTED bool found = false;
    _mesa_set_search_or_add_pre_hashed(batch->resources, rsc->hash, rsc, &found);
-   if (!found) {
-      struct pipe_resource *table_ref = NULL;
-      pipe_resource_reference(&table_ref, &rsc->b.b);
-      p_atomic_inc(&rsc->batch_references);
+   assert(!found);
+
+   struct pipe_resource *table_ref = NULL;
+   pipe_resource_reference(&table_ref, &rsc->b.b);
+   p_atomic_inc(&rsc->batch_references);
+
+   uint32_t handle = fd_bo_id(rsc->bo);
+   if (batch->bos_size <= handle) {
+      uint32_t new_size = MAX2(BITSET_WORDBITS,
+                               util_next_power_of_two(handle + 1));
+      batch->bos = realloc(batch->bos, new_size / 8);
+      memset(&batch->bos[batch->bos_size / BITSET_WORDBITS], 0,
+             (new_size - batch->bos_size) / 8);
+      batch->bos_size = new_size;
    }
+   BITSET_SET(batch->bos, handle);
 }
 
 void
@@ -442,6 +459,13 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
     * invalidate (which may have left the write_batch state in place).
     */
    rsc->valid = true;
+
+   /* This has to happen before the early out, because
+    * fd_bc_invalidate_resource() may not have been called on our context to
+    * clear our writer when reallocating the BO, and otherwise we could end up
+    * with our batch writing the BO but returning !fd_batch_references(rsc).
+    */
+   fd_batch_add_resource(batch, rsc);
 
    struct fd_batch *prev_writer = fd_bc_writer(ctx, rsc);
    if (prev_writer == batch)
@@ -467,8 +491,6 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
    pipe_resource_reference(&table_rsc_ref, &rsc->b.b);
    _mesa_hash_table_insert_pre_hashed(cache->written_resources, rsc->hash, rsc,
                                       batch);
-
-   fd_batch_add_resource(batch, rsc);
 }
 
 void
