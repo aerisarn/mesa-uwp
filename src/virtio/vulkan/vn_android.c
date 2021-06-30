@@ -236,8 +236,10 @@ vn_android_get_dma_buf_from_native_handle(const native_handle_t *handle,
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
    }
 
-   if (handle->data[0] < 0)
+   if (handle->data[0] < 0) {
+      vn_log(NULL, "handle->data[0] < 0");
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   }
 
    *out_dma_buf = handle->data[0];
    return VK_SUCCESS;
@@ -251,11 +253,15 @@ vn_android_get_gralloc_buffer_properties(
    static const int32_t CROS_GRALLOC_DRM_GET_BUFFER_INFO = 4;
    struct cros_gralloc0_buffer_info info;
    if (gralloc->perform(gralloc, CROS_GRALLOC_DRM_GET_BUFFER_INFO, handle,
-                        &info) != 0)
+                        &info) != 0) {
+      vn_log(NULL, "CROS_GRALLOC_DRM_GET_BUFFER_INFO failed");
       return false;
+   }
 
-   if (info.modifier == DRM_FORMAT_MOD_INVALID)
+   if (info.modifier == DRM_FORMAT_MOD_INVALID) {
+      vn_log(NULL, "Unexpected DRM_FORMAT_MOD_INVALID");
       return false;
+   }
 
    out_props->drm_fourcc = info.drm_fourcc;
    for (uint32_t i = 0; i < 4; i++) {
@@ -418,13 +424,18 @@ vn_android_image_from_anb(struct vn_device *dev,
 
    /* encoder will strip the Android specific pNext structs */
    result = vn_image_create(dev, &builder.create, alloc, &img);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS) {
+      if (VN_DEBUG(WSI))
+         vn_log(dev->instance, "vn_image_create failed");
       goto fail;
+   }
 
    image = vn_image_to_handle(img);
    VkMemoryRequirements mem_req;
    vn_GetImageMemoryRequirements(device, image, &mem_req);
    if (!mem_req.memoryTypeBits) {
+      if (VN_DEBUG(WSI))
+         vn_log(dev->instance, "mem_req.memoryTypeBits cannot be zero");
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
    }
@@ -442,6 +453,11 @@ vn_android_image_from_anb(struct vn_device *dev,
    }
 
    if (alloc_size < mem_req.size) {
+      if (VN_DEBUG(WSI)) {
+         vn_log(dev->instance,
+                "alloc_size(%" PRIu64 ") mem_req.size(%" PRIu64 ")",
+                alloc_size, mem_req.size);
+      }
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
    }
@@ -911,8 +927,11 @@ vn_android_device_import_ahb(struct vn_device *dev,
    if (result != VK_SUCCESS)
       return result;
 
-   if (((1 << alloc_info->memoryTypeIndex) & mem_type_bits) == 0)
+   if (((1 << alloc_info->memoryTypeIndex) & mem_type_bits) == 0) {
+      vn_log(dev->instance, "memoryTypeIndex(%u) mem_type_bits(0x%X)",
+             alloc_info->memoryTypeIndex, mem_type_bits);
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   }
 
    /* If ahb is for an image, finish the deferred image creation first */
    if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
