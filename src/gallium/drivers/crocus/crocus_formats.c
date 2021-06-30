@@ -517,6 +517,11 @@ crocus_is_format_supported(struct pipe_screen *pscreen,
 
    if (usage & PIPE_BIND_SAMPLER_VIEW) {
       supported &= isl_format_supports_sampling(devinfo, format);
+
+      /* disable Z16 unorm depth textures pre gen8 */
+      if (devinfo->ver < 8 && pformat == PIPE_FORMAT_Z16_UNORM)
+         supported = false;
+
       bool ignore_filtering = false;
 
       if (is_integer)
