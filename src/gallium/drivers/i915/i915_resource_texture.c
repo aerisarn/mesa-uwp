@@ -278,6 +278,47 @@ i9x5_special_layout(struct i915_texture *tex)
 
 /**
  * Cube layout used on i915 and for non-compressed textures on i945.
+ *
+ * Hardware layout looks like:
+ *
+ * +-------+-------+
+ * |       |       |
+ * |       |       |
+ * |       |       |
+ * |  +x   |  +y   |
+ * |       |       |
+ * |       |       |
+ * |       |       |
+ * |       |       |
+ * +---+---+-------+
+ * |   |   |       |
+ * | +x| +y|       |
+ * |   |   |       |
+ * |   |   |       |
+ * +-+-+---+  +z   |
+ * | | |   |       |
+ * +-+-+ +z|       |
+ *   | |   |       |
+ * +-+-+---+-------+
+ * |       |       |
+ * |       |       |
+ * |       |       |
+ * |  -x   |  -y   |
+ * |       |       |
+ * |       |       |
+ * |       |       |
+ * |       |       |
+ * +---+---+-------+
+ * |   |   |       |
+ * | -x| -y|       |
+ * |   |   |       |
+ * |   |   |       |
+ * +-+-+---+  -z   |
+ * | | |   |       |
+ * +-+-+ -z|       |
+ *   | |   |       |
+ *   +-+---+-------+
+ *
  */
 static void
 i9x5_texture_layout_cube(struct i915_texture *tex)
@@ -537,6 +578,65 @@ i945_texture_layout_3d(struct i915_texture *tex)
    }
 }
 
+/**
+ * Compressed cube texture map layout for i945 and later.
+ *
+ * The hardware layout looks like the 830-915 layout, except for the small
+ * sizes.  A zoomed in view of the layout for 945 is:
+ *
+ * +-------+-------+
+ * |  8x8  |  8x8  |
+ * |       |       |
+ * |       |       |
+ * |  +x   |  +y   |
+ * |       |       |
+ * |       |       |
+ * |       |       |
+ * |       |       |
+ * +---+---+-------+
+ * |4x4|   |  8x8  |
+ * | +x|   |       |
+ * |   |   |       |
+ * |   |   |       |
+ * +---+   |  +z   |
+ * |4x4|   |       |
+ * | +y|   |       |
+ * |   |   |       |
+ * +---+   +-------+
+ *
+ * ...
+ *
+ * +-------+-------+
+ * |  8x8  |  8x8  |
+ * |       |       |
+ * |       |       |
+ * |  -x   |  -y   |
+ * |       |       |
+ * |       |       |
+ * |       |       |
+ * |       |       |
+ * +---+---+-------+
+ * |4x4|   |  8x8  |
+ * | -x|   |       |
+ * |   |   |       |
+ * |   |   |       |
+ * +---+   |  -z   |
+ * |4x4|   |       |
+ * | -y|   |       |
+ * |   |   |       |
+ * +---+   +---+---+---+---+---+---+---+---+---+
+ * |4x4|   |4x4|   |2x2|   |2x2|   |2x2|   |2x2|
+ * | +z|   | -z|   | +x|   | +y|   | +z|   | -x| ...
+ * |   |   |   |   |   |   |   |   |   |   |   |
+ * +---+   +---+   +---+   +---+   +---+   +---+
+ *
+ * The bottom row continues with the remaining 2x2 then the 1x1 mip contents
+ * in order, with each of them aligned to a 8x8 block boundary.  Thus, for
+ * 32x32 cube maps and smaller, the bottom row layout is going to dictate the
+ * pitch of the tree.  For a tree with 4x4 images, the pitch is at least
+ * 14 * 8 = 112 texels, for 2x2 it is at least 12 * 8 texels, and for 1x1
+ * it is 6 * 8 texels.
+ */
 static void
 i945_texture_layout_cube(struct i915_texture *tex)
 {
