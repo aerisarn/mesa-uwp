@@ -78,6 +78,8 @@ struct zink_resource_object {
 
    struct zink_bo *bo;
    VkDeviceSize offset, size, alignment;
+   VkImageCreateFlags vkflags;
+   VkImageUsageFlags vkusage;
 
    bool host_visible;
    bool coherent;

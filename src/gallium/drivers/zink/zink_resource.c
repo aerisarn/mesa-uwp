@@ -554,6 +554,9 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
       else
         flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+      obj->vkflags = ici.flags;
+      obj->vkusage = ici.usage;
    }
    obj->alignment = reqs.alignment;
 
