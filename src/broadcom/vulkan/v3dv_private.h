@@ -276,6 +276,8 @@ struct v3dv_pipeline_cache_stats {
 enum broadcom_shader_stage {
    BROADCOM_SHADER_VERTEX,
    BROADCOM_SHADER_VERTEX_BIN,
+   BROADCOM_SHADER_GEOMETRY,
+   BROADCOM_SHADER_GEOMETRY_BIN,
    BROADCOM_SHADER_FRAGMENT,
    BROADCOM_SHADER_COMPUTE,
 };
@@ -289,6 +291,8 @@ gl_shader_stage_to_broadcom(gl_shader_stage stage)
    switch (stage) {
    case MESA_SHADER_VERTEX:
       return BROADCOM_SHADER_VERTEX;
+   case MESA_SHADER_GEOMETRY:
+      return BROADCOM_SHADER_GEOMETRY;
    case MESA_SHADER_FRAGMENT:
       return BROADCOM_SHADER_FRAGMENT;
    case MESA_SHADER_COMPUTE:
@@ -305,6 +309,9 @@ broadcom_shader_stage_to_gl(enum broadcom_shader_stage stage)
    case BROADCOM_SHADER_VERTEX:
    case BROADCOM_SHADER_VERTEX_BIN:
       return MESA_SHADER_VERTEX;
+   case BROADCOM_SHADER_GEOMETRY:
+   case BROADCOM_SHADER_GEOMETRY_BIN:
+      return MESA_SHADER_GEOMETRY;
    case BROADCOM_SHADER_FRAGMENT:
       return MESA_SHADER_FRAGMENT;
    case BROADCOM_SHADER_COMPUTE:
@@ -320,6 +327,8 @@ broadcom_shader_stage_name(enum broadcom_shader_stage stage)
    switch(stage) {
    case BROADCOM_SHADER_VERTEX_BIN:
       return "MESA_SHADER_VERTEX_BIN";
+   case BROADCOM_SHADER_GEOMETRY_BIN:
+      return "MESA_SHADER_GEOMETRY_BIN";
    default:
       return gl_shader_stage_name(broadcom_shader_stage_to_gl(stage));
    }
