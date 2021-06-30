@@ -41,11 +41,11 @@ loader_c_args = [
   '-DDEFAULT_DRIVER_DIR="@0@"'.format(dri_search_path),
 ]
 
-if with_gallium_iris and get_option('prefer-iris')
+if get_option('prefer-iris')
   loader_c_args += ['-DPREFER_IRIS']
 endif
 
-if with_gallium_crocus and get_option('prefer-crocus')
+if get_option('prefer-crocus')
   loader_c_args += ['-DPREFER_CROCUS']
 endif
 
