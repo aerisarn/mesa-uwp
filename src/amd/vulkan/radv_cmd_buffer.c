@@ -5804,6 +5804,29 @@ radv_CmdDraw(VkCommandBuffer commandBuffer, uint32_t vertexCount, uint32_t insta
 }
 
 void
+radv_CmdDrawMultiEXT(VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawInfoEXT *pVertexInfo,
+                          uint32_t instanceCount, uint32_t firstInstance, uint32_t stride)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_draw_info info;
+
+   if (!drawCount)
+      return;
+
+   info.count = pVertexInfo->vertexCount;
+   info.instance_count = instanceCount;
+   info.first_instance = firstInstance;
+   info.strmout_buffer = NULL;
+   info.indirect = NULL;
+   info.indexed = false;
+
+   if (!radv_before_draw(cmd_buffer, &info, drawCount))
+      return;
+   radv_emit_direct_draw_packets(cmd_buffer, &info, drawCount, pVertexInfo, 0, stride);
+   radv_after_draw(cmd_buffer);
+}
+
+void
 radv_CmdDrawIndexed(VkCommandBuffer commandBuffer, uint32_t indexCount, uint32_t instanceCount,
                     uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
 {
@@ -5821,6 +5844,29 @@ radv_CmdDrawIndexed(VkCommandBuffer commandBuffer, uint32_t indexCount, uint32_t
       return;
    const VkMultiDrawIndexedInfoEXT minfo = { firstIndex, indexCount, vertexOffset };
    radv_emit_draw_packets_indexed(cmd_buffer, &info, 1, &minfo, 0, NULL);
+   radv_after_draw(cmd_buffer);
+}
+
+void radv_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawIndexedInfoEXT *pIndexInfo,
+                                  uint32_t instanceCount, uint32_t firstInstance, uint32_t stride, const int32_t *pVertexOffset)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_draw_info info;
+
+   if (!drawCount)
+      return;
+
+   const VkMultiDrawIndexedInfoEXT *minfo = pIndexInfo;
+   info.indexed = true;
+   info.count = minfo->indexCount;
+   info.instance_count = instanceCount;
+   info.first_instance = firstInstance;
+   info.strmout_buffer = NULL;
+   info.indirect = NULL;
+
+   if (!radv_before_draw(cmd_buffer, &info, drawCount))
+      return;
+   radv_emit_draw_packets_indexed(cmd_buffer, &info, drawCount, pIndexInfo, stride, pVertexOffset);
    radv_after_draw(cmd_buffer);
 }
 
