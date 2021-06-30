@@ -243,8 +243,31 @@ print_texkil_op(char **stream, unsigned opcode, const unsigned *program)
 static void
 print_dcl_op(char **stream, unsigned opcode, const unsigned *program)
 {
+   unsigned type = (program[0] >> D0_TYPE_SHIFT) & REG_TYPE_MASK;
+
    PRINTF(stream, "%s ", opcodes[opcode]);
-   print_dest_reg(stream, program[0] | A0_DEST_CHANNEL_ALL);
+
+   unsigned dest_dword = program[0];
+   if (type == REG_TYPE_S)
+      dest_dword |= A0_DEST_CHANNEL_ALL;
+   print_dest_reg(stream, dest_dword);
+
+   if (type == REG_TYPE_S) {
+      switch (program[0] & D0_SAMPLE_TYPE_MASK) {
+      case D0_SAMPLE_TYPE_2D:
+         PRINTF(stream, " 2D");
+         break;
+      case D0_SAMPLE_TYPE_VOLUME:
+         PRINTF(stream, " 3D");
+         break;
+      case D0_SAMPLE_TYPE_CUBE:
+         PRINTF(stream, " CUBE");
+         break;
+      default:
+         PRINTF(stream, " XXX bad type");
+         break;
+      }
+   }
 }
 
 void
