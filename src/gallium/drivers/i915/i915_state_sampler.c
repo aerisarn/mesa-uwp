@@ -179,7 +179,7 @@ struct i915_tracked_state i915_hw_samplers = {
  * Sampler views
  */
 
-static uint
+static uint32_t
 translate_texture_format(enum pipe_format pipeFormat,
                          const struct pipe_sampler_view *view)
 {
