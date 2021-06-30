@@ -321,6 +321,43 @@ broadcom_shader_stage_to_gl(enum broadcom_shader_stage stage)
    }
 }
 
+static inline bool
+broadcom_shader_stage_is_binning(enum broadcom_shader_stage stage)
+{
+   switch (stage) {
+   case BROADCOM_SHADER_VERTEX_BIN:
+   case BROADCOM_SHADER_GEOMETRY_BIN:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static inline bool
+broadcom_shader_stage_is_render_with_binning(enum broadcom_shader_stage stage)
+{
+   switch (stage) {
+   case BROADCOM_SHADER_VERTEX:
+   case BROADCOM_SHADER_GEOMETRY:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static inline enum broadcom_shader_stage
+broadcom_binning_shader_stage_for_render_stage(enum broadcom_shader_stage stage)
+{
+   switch (stage) {
+   case BROADCOM_SHADER_VERTEX:
+      return BROADCOM_SHADER_VERTEX_BIN;
+   case BROADCOM_SHADER_GEOMETRY:
+      return BROADCOM_SHADER_GEOMETRY_BIN;
+   default:
+      unreachable("Invalid shader stage");
+   }
+}
+
 static inline const char *
 broadcom_shader_stage_name(enum broadcom_shader_stage stage)
 {
