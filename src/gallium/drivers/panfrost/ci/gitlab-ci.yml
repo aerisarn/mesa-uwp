@@ -4,7 +4,7 @@
     PAN_MESA_DEBUG: sync
     HWCI_FREQ_MAX: "true"
 
-.panfrost-t720-gles2:arm64:
+panfrost-t720-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-midgard-rules
@@ -18,7 +18,7 @@
   tags:
     - mesa-ci-x86-64-lava-sun50i-h6-pine-h64
 
-.panfrost-t760-gles2:armhf:
+panfrost-t760-gles2:armhf:
   extends:
     - .lava-test:armhf
     - .panfrost-midgard-rules
@@ -34,7 +34,7 @@
   tags:
     - mesa-ci-x86-64-lava-rk3288-veyron-jaq
 
-.panfrost-t760-traces:armhf:
+panfrost-t760-traces:armhf:
   extends:
     - .lava-piglit-traces:armhf
     - .panfrost-midgard-rules
@@ -80,7 +80,7 @@
     DEQP_PARALLEL: 6
     DEQP_EXPECTED_RENDERER: T860
 
-.panfrost-t860-gles3:arm64:
+panfrost-t860-gles3:arm64:
   parallel: 2
   extends:
     - .lava-test:arm64
@@ -90,7 +90,7 @@
     DEQP_PARALLEL: 6
     DEQP_EXPECTED_RENDERER: T860
 
-.panfrost-t860-gles31:arm64:
+panfrost-t860-gles31:arm64:
   extends:
     - .lava-test:arm64
     - .lava-rk3399-gru-kevin
@@ -103,7 +103,7 @@
     DEQP_PARALLEL: 1
     DEQP_EXPECTED_RENDERER: T860
 
-.panfrost-t860-traces:arm64:
+panfrost-t860-traces:arm64:
   extends:
     - .lava-piglit-traces:arm64
     - .lava-rk3399-gru-kevin
@@ -137,7 +137,7 @@
     DEQP_PARALLEL: 6
     DEQP_EXPECTED_RENDERER: G52
 
-.panfrost-g52-gles3:arm64:
+panfrost-g52-gles3:arm64:
   parallel: 2
   extends:
     - .lava-test:arm64
@@ -148,7 +148,7 @@
     DEQP_PARALLEL: 6
     DEQP_EXPECTED_RENDERER: G52
 
-.panfrost-g52-gles31:arm64:
+panfrost-g52-gles31:arm64:
   extends:
     - .lava-test:arm64
     - .lava-meson-g12b-a311d-khadas-vim3
