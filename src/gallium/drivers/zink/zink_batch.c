@@ -804,8 +804,8 @@ zink_batch_usage_check_completion(struct zink_context *ctx, const struct zink_ba
    return zink_check_batch_completion(ctx, u->usage);
 }
 
-void
-zink_batch_usage_wait(struct zink_context *ctx, struct zink_batch_usage *u)
+static void
+batch_usage_wait(struct zink_context *ctx, struct zink_batch_usage *u, bool trywait)
 {
    if (!zink_batch_usage_exists(u))
       return;
@@ -814,9 +814,25 @@ zink_batch_usage_wait(struct zink_context *ctx, struct zink_batch_usage *u)
          ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
       else { //multi-context
          mtx_lock(&u->mtx);
-         cnd_wait(&u->flush, &u->mtx);
+         if (trywait) {
+            struct timespec ts = {0, 10000};
+            cnd_timedwait(&u->flush, &u->mtx, &ts);
+         } else
+            cnd_wait(&u->flush, &u->mtx);
          mtx_unlock(&u->mtx);
       }
    }
    zink_wait_on_batch(ctx, u->usage);
+}
+
+void
+zink_batch_usage_wait(struct zink_context *ctx, struct zink_batch_usage *u)
+{
+   batch_usage_wait(ctx, u, false);
+}
+
+void
+zink_batch_usage_try_wait(struct zink_context *ctx, struct zink_batch_usage *u)
+{
+   batch_usage_wait(ctx, u, true);
 }

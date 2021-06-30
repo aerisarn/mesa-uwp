@@ -183,6 +183,15 @@ zink_bo_usage_wait(struct zink_context *ctx, struct zink_bo *bo, enum zink_resou
 }
 
 static inline void
+zink_bo_usage_try_wait(struct zink_context *ctx, struct zink_bo *bo, enum zink_resource_access access)
+{
+   if (access & ZINK_RESOURCE_ACCESS_READ)
+      zink_batch_usage_try_wait(ctx, bo->reads);
+   if (access & ZINK_RESOURCE_ACCESS_WRITE)
+      zink_batch_usage_try_wait(ctx, bo->writes);
+}
+
+static inline void
 zink_bo_usage_set(struct zink_bo *bo, struct zink_batch_state *bs, bool write)
 {
    if (write)

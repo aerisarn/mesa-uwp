@@ -1859,6 +1859,7 @@ zink_buffer_map(struct pipe_context *pctx,
               !res->obj->host_visible)) {
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_THREAD_SAFE)));
       if (!res->obj->host_visible || !(usage & PIPE_MAP_ONCE)) {
+overwrite:
          trans->offset = box->x % screen->info.props.limits.minMemoryMapAlignment;
          trans->staging_res = pipe_buffer_create(&screen->base, PIPE_BIND_LINEAR, PIPE_USAGE_STAGING, box->width + trans->offset);
          if (!trans->staging_res)
@@ -1880,9 +1881,14 @@ zink_buffer_map(struct pipe_context *pctx,
    }
 
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
-      if (usage & PIPE_MAP_WRITE)
+      if (usage & PIPE_MAP_WRITE) {
+         if (!(usage & PIPE_MAP_READ)) {
+            zink_resource_usage_try_wait(ctx, res, ZINK_RESOURCE_ACCESS_RW);
+            if (zink_resource_has_unflushed_usage(res))
+               goto overwrite;
+         }
          zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_RW);
-      else
+      } else
          zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_WRITE);
       res->obj->access = 0;
       res->obj->access_stage = 0;
