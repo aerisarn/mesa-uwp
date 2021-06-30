@@ -2028,6 +2028,44 @@ instruction_restrictions(const struct intel_device_info *devinfo,
    return error_msg;
 }
 
+static struct string
+send_descriptor_restrictions(const struct intel_device_info *devinfo,
+                             const brw_inst *inst)
+{
+   struct string error_msg = { .str = NULL, .len = 0 };
+
+   if (inst_is_split_send(devinfo, inst)) {
+      /* We can only validate immediate descriptors */
+      if (brw_inst_send_sel_reg32_desc(devinfo, inst))
+         return error_msg;
+   } else if (inst_is_send(devinfo, inst)) {
+      /* We can only validate immediate descriptors */
+      if (brw_inst_src1_reg_file(devinfo, inst) != BRW_IMMEDIATE_VALUE)
+         return error_msg;
+   } else {
+      return error_msg;
+   }
+
+   const uint32_t desc = brw_inst_send_desc(devinfo, inst);
+
+   switch (brw_inst_sfid(devinfo, inst)) {
+   case GFX12_SFID_TGM:
+   case GFX12_SFID_SLM:
+   case GFX12_SFID_UGM:
+      ERROR_IF(!devinfo->has_lsc, "Platform does not support LSC");
+
+      ERROR_IF(lsc_msg_desc_transpose(devinfo, desc) &&
+               brw_inst_exec_size(devinfo, inst) != BRW_EXECUTE_1,
+               "Transposed vectors are restricted to Exec_Mask = 1.");
+      break;
+
+   default:
+      break;
+   }
+
+   return error_msg;
+}
+
 bool
 brw_validate_instruction(const struct intel_device_info *devinfo,
                          const brw_inst *inst, int offset,
@@ -2051,6 +2089,7 @@ brw_validate_instruction(const struct intel_device_info *devinfo,
          CHECK(vector_immediate_restrictions);
          CHECK(special_requirements_for_handling_double_precision_data_types);
          CHECK(instruction_restrictions);
+         CHECK(send_descriptor_restrictions);
       }
    }
 
