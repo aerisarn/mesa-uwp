@@ -194,7 +194,7 @@ nv50_destroy(struct pipe_context *pipe)
       u_upload_destroy(nv50->base.pipe.stream_uploader);
 
    nouveau_pushbuf_bufctx(nv50->base.pushbuf, NULL);
-   nouveau_pushbuf_kick(nv50->base.pushbuf, nv50->base.pushbuf->channel);
+   PUSH_KICK(nv50->base.pushbuf);
 
    nv50_context_unreference_resources(nv50);
 
