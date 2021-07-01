@@ -906,6 +906,18 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_vgt_flush_ngg_legacy_bug = info->chip_class == GFX10 ||
                                         info->family == CHIP_SIENNA_CICHLID;
 
+   /* HW bug workaround when CS threadgroups > 256 threads and async compute
+    * isn't used, i.e. only one compute job can run at a time.  If async
+    * compute is possible, the threadgroup size must be limited to 256 threads
+    * on all queues to avoid the bug.
+    * Only GFX6 and certain GFX7 chips are affected.
+    *
+    * FIXME: RADV doesn't limit the number of threads for async compute.
+    */
+   info->has_cs_regalloc_hang_bug = info->chip_class == GFX6 ||
+                                    info->family == CHIP_BONAIRE ||
+                                    info->family == CHIP_KABINI;
+
    /* Support for GFX10.3 was added with F32_ME_FEATURE_VERSION_31 but the
     * feature version wasn't bumped.
     */
