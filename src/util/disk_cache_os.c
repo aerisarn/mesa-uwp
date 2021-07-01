@@ -242,6 +242,7 @@ choose_lru_file_matching(const char *dir_path,
 
    if (list_is_empty(lru_file_list)) {
       closedir(dir);
+      free(lru_file_list);
       return NULL;
    }
 
