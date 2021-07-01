@@ -5115,7 +5115,7 @@ nir_shader * nir_create_passthrough_gs(const nir_shader_compiler_options *option
 
 bool nir_lower_fragcolor(nir_shader *shader, unsigned max_cbufs);
 bool nir_lower_fragcoord_wtrans(nir_shader *shader);
-void nir_lower_viewport_transform(nir_shader *shader);
+bool nir_lower_viewport_transform(nir_shader *shader);
 bool nir_lower_uniforms_to_ubo(nir_shader *shader, bool dword_packed, bool load_vec4);
 
 bool nir_lower_is_helper_invocation(nir_shader *shader);
