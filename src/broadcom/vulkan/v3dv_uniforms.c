@@ -487,6 +487,45 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
                                          data));
          break;
 
+      /* We generate this from geometry shaders to cap the generated gl_Layer
+       * to be within the number of layers of the framebuffer so we prevent the
+       * binner from trying to access tile state memory out of bounds (for
+       * layers that don't exist).
+       *
+       * Unfortunately, for secondary command buffers we may not know the
+       * number of layers in the framebuffer at this stage. Since we are
+       * only using this to sanitize the shader and it should not have any
+       * impact on correct shaders that emit valid values for gl_Layer,
+       * we just work around it by using the largest number of layers we
+       * support.
+       *
+       * FIXME: we could do better than this by recording in the job that
+       * the value at this uniform offset is not correct, and patch it when
+       * we execute the secondary command buffer into a primary, since we do
+       * have the correct number of layers at that point, but again, since this
+       * is only for sanityzing the shader and it only affects the specific case
+       * of secondary command buffers without framebuffer info available it
+       * might not be worth the trouble.
+       */
+      case QUNIFORM_FB_LAYERS: {
+         uint32_t num_layers;
+         if (job->frame_tiling.layers != 0) {
+            num_layers = job->frame_tiling.layers;
+         } else if (job->cmd_buffer &&
+                  job->cmd_buffer->state.framebuffer) {
+            num_layers = job->cmd_buffer->state.framebuffer->layers;
+         } else {
+            assert(job->cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+            num_layers = 2048;
+#if DEBUG
+            fprintf(stderr, "Skipping gl_LayerID shader sanity check for "
+                            "secondary command buffer\n");
+#endif
+         }
+         cl_aligned_u32(&uniforms, num_layers);
+         break;
+      }
+
       case QUNIFORM_NUM_WORK_GROUPS:
          assert(job->type == V3DV_JOB_TYPE_GPU_CSD);
          assert(job->csd.wg_count[data] > 0);
