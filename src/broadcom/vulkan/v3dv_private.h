@@ -1132,6 +1132,8 @@ struct v3dv_cmd_buffer_state {
    struct {
       struct v3dv_cl_reloc vs_bin;
       struct v3dv_cl_reloc vs;
+      struct v3dv_cl_reloc gs_bin;
+      struct v3dv_cl_reloc gs;
       struct v3dv_cl_reloc fs;
    } uniforms;
 

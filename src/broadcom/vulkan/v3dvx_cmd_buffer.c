@@ -1648,6 +1648,117 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
    }
 }
 
+static void
+emit_gs_shader_state_record(struct v3dv_job *job,
+                            struct v3dv_bo *assembly_bo,
+                            struct v3dv_shader_variant *gs_bin,
+                            struct v3dv_cl_reloc gs_bin_uniforms,
+                            struct v3dv_shader_variant *gs,
+                            struct v3dv_cl_reloc gs_render_uniforms)
+{
+   cl_emit(&job->indirect, GEOMETRY_SHADER_STATE_RECORD, shader) {
+      shader.geometry_bin_mode_shader_code_address =
+         v3dv_cl_address(assembly_bo, gs_bin->assembly_offset);
+      shader.geometry_bin_mode_shader_4_way_threadable =
+         gs_bin->prog_data.gs->base.threads == 4;
+      shader.geometry_bin_mode_shader_start_in_final_thread_section =
+         gs_bin->prog_data.gs->base.single_seg;
+      shader.geometry_bin_mode_shader_propagate_nans = true;
+      shader.geometry_bin_mode_shader_uniforms_address =
+         gs_bin_uniforms;
+
+      shader.geometry_render_mode_shader_code_address =
+         v3dv_cl_address(assembly_bo, gs->assembly_offset);
+      shader.geometry_render_mode_shader_4_way_threadable =
+         gs->prog_data.gs->base.threads == 4;
+      shader.geometry_render_mode_shader_start_in_final_thread_section =
+         gs->prog_data.gs->base.single_seg;
+      shader.geometry_render_mode_shader_propagate_nans = true;
+      shader.geometry_render_mode_shader_uniforms_address =
+         gs_render_uniforms;
+   }
+}
+
+static uint8_t
+v3d_gs_output_primitive(uint32_t prim_type)
+{
+    switch (prim_type) {
+    case GL_POINTS:
+        return GEOMETRY_SHADER_POINTS;
+    case GL_LINE_STRIP:
+        return GEOMETRY_SHADER_LINE_STRIP;
+    case GL_TRIANGLE_STRIP:
+        return GEOMETRY_SHADER_TRI_STRIP;
+    default:
+        unreachable("Unsupported primitive type");
+    }
+}
+
+static void
+emit_tes_gs_common_params(struct v3dv_job *job,
+                          uint8_t gs_out_prim_type,
+                          uint8_t gs_num_invocations)
+{
+   cl_emit(&job->indirect, TESSELLATION_GEOMETRY_COMMON_PARAMS, shader) {
+      shader.tessellation_type = TESSELLATION_TYPE_TRIANGLE;
+      shader.tessellation_point_mode = false;
+      shader.tessellation_edge_spacing = TESSELLATION_EDGE_SPACING_EVEN;
+      shader.tessellation_clockwise = true;
+      shader.tessellation_invocations = 1;
+
+      shader.geometry_shader_output_format =
+         v3d_gs_output_primitive(gs_out_prim_type);
+      shader.geometry_shader_instances = gs_num_invocations & 0x1F;
+   }
+}
+
+static uint8_t
+simd_width_to_gs_pack_mode(uint32_t width)
+{
+   switch (width) {
+   case 16:
+      return V3D_PACK_MODE_16_WAY;
+   case 8:
+      return V3D_PACK_MODE_8_WAY;
+   case 4:
+      return V3D_PACK_MODE_4_WAY;
+   case 1:
+      return V3D_PACK_MODE_1_WAY;
+   default:
+      unreachable("Invalid SIMD width");
+   };
+}
+
+static void
+emit_tes_gs_shader_params(struct v3dv_job *job,
+                          uint32_t gs_simd,
+                          uint32_t gs_vpm_output_size,
+                          uint32_t gs_max_vpm_input_size_per_batch)
+{
+   cl_emit(&job->indirect, TESSELLATION_GEOMETRY_SHADER_PARAMS, shader) {
+      shader.tcs_batch_flush_mode = V3D_TCS_FLUSH_MODE_FULLY_PACKED;
+      shader.per_patch_data_column_depth = 1;
+      shader.tcs_output_segment_size_in_sectors = 1;
+      shader.tcs_output_segment_pack_mode = V3D_PACK_MODE_16_WAY;
+      shader.tes_output_segment_size_in_sectors = 1;
+      shader.tes_output_segment_pack_mode = V3D_PACK_MODE_16_WAY;
+      shader.gs_output_segment_size_in_sectors = gs_vpm_output_size;
+      shader.gs_output_segment_pack_mode =
+         simd_width_to_gs_pack_mode(gs_simd);
+      shader.tbg_max_patches_per_tcs_batch = 1;
+      shader.tbg_max_extra_vertex_segs_for_patches_after_first = 0;
+      shader.tbg_min_tcs_output_segments_required_in_play = 1;
+      shader.tbg_min_per_patch_data_segments_required_in_play = 1;
+      shader.tpg_max_patches_per_tes_batch = 1;
+      shader.tpg_max_vertex_segments_per_tes_batch = 0;
+      shader.tpg_max_tcs_output_segments_per_tes_batch = 1;
+      shader.tpg_min_tes_output_segments_required_in_play = 1;
+      shader.gbg_max_tes_output_vertex_segments_per_gs_batch =
+         gs_max_vpm_input_size_per_batch;
+      shader.gbg_min_gs_output_segments_required_in_play = 1;
+   }
+}
+
 void
 v3dX(cmd_buffer_emit_gl_shader_state)(struct v3dv_cmd_buffer *cmd_buffer)
 {
@@ -1658,36 +1769,85 @@ v3dX(cmd_buffer_emit_gl_shader_state)(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_pipeline *pipeline = state->gfx.pipeline;
    assert(pipeline);
 
-   struct v3d_vs_prog_data *prog_data_vs =
-      pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX]->prog_data.vs;
-   struct v3d_vs_prog_data *prog_data_vs_bin =
-      pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX_BIN]->prog_data.vs;
-   struct v3d_fs_prog_data *prog_data_fs =
-      pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT]->prog_data.fs;
+   struct v3dv_shader_variant *vs_variant =
+      pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX];
+   struct v3d_vs_prog_data *prog_data_vs = vs_variant->prog_data.vs;
+
+   struct v3dv_shader_variant *vs_bin_variant =
+      pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX_BIN];
+   struct v3d_vs_prog_data *prog_data_vs_bin = vs_bin_variant->prog_data.vs;
+
+   struct v3dv_shader_variant *fs_variant =
+      pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT];
+   struct v3d_fs_prog_data *prog_data_fs = fs_variant->prog_data.fs;
+
+   struct v3dv_shader_variant *gs_variant = NULL;
+   struct v3dv_shader_variant *gs_bin_variant = NULL;
+   struct v3d_gs_prog_data *prog_data_gs = NULL;
+   struct v3d_gs_prog_data *prog_data_gs_bin = NULL;
+   if (pipeline->has_gs) {
+      gs_variant =
+         pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY];
+      prog_data_gs = gs_variant->prog_data.gs;
+
+      gs_bin_variant =
+         pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY_BIN];
+      prog_data_gs_bin = gs_bin_variant->prog_data.gs;
+   }
 
    /* Update the cache dirty flag based on the shader progs data */
    job->tmu_dirty_rcl |= prog_data_vs_bin->base.tmu_dirty_rcl;
    job->tmu_dirty_rcl |= prog_data_vs->base.tmu_dirty_rcl;
    job->tmu_dirty_rcl |= prog_data_fs->base.tmu_dirty_rcl;
+   if (pipeline->has_gs) {
+      job->tmu_dirty_rcl |= prog_data_gs_bin->base.tmu_dirty_rcl;
+      job->tmu_dirty_rcl |= prog_data_gs->base.tmu_dirty_rcl;
+   }
 
    /* See GFXH-930 workaround below */
    uint32_t num_elements_to_emit = MAX2(pipeline->va_count, 1);
 
+   uint32_t shader_state_record_length =
+      cl_packet_length(GL_SHADER_STATE_RECORD);
+   if (pipeline->has_gs) {
+      shader_state_record_length +=
+         cl_packet_length(GEOMETRY_SHADER_STATE_RECORD) +
+         cl_packet_length(TESSELLATION_GEOMETRY_COMMON_PARAMS) +
+         2 * cl_packet_length(TESSELLATION_GEOMETRY_SHADER_PARAMS);
+   }
+
    uint32_t shader_rec_offset =
       v3dv_cl_ensure_space(&job->indirect,
-                           cl_packet_length(GL_SHADER_STATE_RECORD) +
+                           shader_state_record_length +
                            num_elements_to_emit *
                            cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD),
                            32);
    v3dv_return_if_oom(cmd_buffer, NULL);
 
-   struct v3dv_shader_variant *vs_variant =
-      pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX];
-   struct v3dv_shader_variant *vs_bin_variant =
-      pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX_BIN];
-   struct v3dv_shader_variant *fs_variant =
-      pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT];
    struct v3dv_bo *assembly_bo = pipeline->shared_data->assembly_bo;
+
+   if (pipeline->has_gs) {
+      emit_gs_shader_state_record(job,
+                                  assembly_bo,
+                                  gs_bin_variant,
+                                  cmd_buffer->state.uniforms.gs_bin,
+                                  gs_variant,
+                                  cmd_buffer->state.uniforms.gs);
+
+      emit_tes_gs_common_params(job,
+                                prog_data_gs->out_prim_type,
+                                prog_data_gs->num_invocations);
+
+      emit_tes_gs_shader_params(job,
+                                pipeline->vpm_cfg_bin.gs_width,
+                                pipeline->vpm_cfg_bin.Gd,
+                                pipeline->vpm_cfg_bin.Gv);
+
+      emit_tes_gs_shader_params(job,
+                                pipeline->vpm_cfg.gs_width,
+                                pipeline->vpm_cfg.Gd,
+                                pipeline->vpm_cfg.Gv);
+   }
 
    struct v3dv_bo *default_attribute_values =
       pipeline->default_attribute_values != NULL ?
@@ -1720,6 +1880,9 @@ v3dX(cmd_buffer_emit_gl_shader_state)(struct v3dv_cmd_buffer *cmd_buffer)
 
       shader.address_of_default_attribute_values =
          v3dv_cl_address(default_attribute_values, 0);
+
+      shader.any_shader_reads_hardware_written_primitive_id =
+         pipeline->has_gs ? prog_data_gs->uses_pid : false;
    }
 
    /* Upload vertex element attributes (SHADER_STATE_ATTRIBUTE_RECORD) */
@@ -1815,10 +1978,16 @@ v3dX(cmd_buffer_emit_gl_shader_state)(struct v3dv_cmd_buffer *cmd_buffer)
                                     cl_packet_length(GL_SHADER_STATE));
    v3dv_return_if_oom(cmd_buffer, NULL);
 
-   cl_emit(&job->bcl, GL_SHADER_STATE, state) {
-      state.address = v3dv_cl_address(job->indirect.bo,
-                                      shader_rec_offset);
-      state.number_of_attribute_arrays = num_elements_to_emit;
+   if (pipeline->has_gs) {
+      cl_emit(&job->bcl, GL_SHADER_STATE_INCLUDING_GS, state) {
+         state.address = v3dv_cl_address(job->indirect.bo, shader_rec_offset);
+         state.number_of_attribute_arrays = num_elements_to_emit;
+      }
+   } else {
+      cl_emit(&job->bcl, GL_SHADER_STATE, state) {
+         state.address = v3dv_cl_address(job->indirect.bo, shader_rec_offset);
+         state.number_of_attribute_arrays = num_elements_to_emit;
+      }
    }
 
    cmd_buffer->state.dirty &= ~(V3DV_CMD_DIRTY_VERTEX_BUFFER |
