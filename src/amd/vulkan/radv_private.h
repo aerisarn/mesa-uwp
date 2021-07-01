@@ -1431,6 +1431,7 @@ struct radv_cmd_state {
    struct radv_shader_prolog *emitted_vs_prolog;
    uint32_t *emitted_vs_prolog_key;
    uint32_t emitted_vs_prolog_key_hash;
+   uint32_t vbo_misaligned_mask;
 };
 
 struct radv_cmd_pool {

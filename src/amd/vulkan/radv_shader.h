@@ -360,20 +360,21 @@ struct radv_shader_info {
 
 struct radv_vs_input_state {
    uint32_t attribute_mask;
-   uint8_t bindings[MAX_VERTEX_ATTRIBS];
+   uint32_t misaligned_mask;
+   uint32_t possibly_misaligned_mask;
 
    uint32_t instance_rate_inputs;
    uint32_t nontrivial_divisors;
-   uint32_t divisors[MAX_VERTEX_ATTRIBS];
-
-   uint32_t offsets[MAX_VERTEX_ATTRIBS];
-
    uint32_t post_shuffle;
    /* Having two separate fields instead of a single uint64_t makes it easier to remove attributes
     * using bitwise arithmetic.
     */
    uint32_t alpha_adjust_lo;
    uint32_t alpha_adjust_hi;
+
+   uint8_t bindings[MAX_VERTEX_ATTRIBS];
+   uint32_t divisors[MAX_VERTEX_ATTRIBS];
+   uint32_t offsets[MAX_VERTEX_ATTRIBS];
    uint8_t formats[MAX_VERTEX_ATTRIBS];
    uint8_t format_align_req_minus_1[MAX_VERTEX_ATTRIBS];
    uint8_t format_sizes[MAX_VERTEX_ATTRIBS];
