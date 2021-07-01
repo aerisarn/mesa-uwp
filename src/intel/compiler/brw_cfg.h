@@ -324,6 +324,12 @@ struct cfg_t {
 
    void dump();
    void dump_cfg();
+
+   /**
+    * Propagate bblock_t::end_ip_delta data through the CFG.
+    */
+   inline void adjust_block_ips();
+
 #endif
    const struct backend_shader *s;
    void *mem_ctx;
@@ -437,6 +443,21 @@ cfg_t::last_block() const
         __scan_inst = (__type *)__scan_inst->prev)
 
 #ifdef __cplusplus
+inline void
+cfg_t::adjust_block_ips()
+{
+   int delta = 0;
+
+   foreach_block(block, this) {
+      block->start_ip += delta;
+      block->end_ip += delta;
+
+      delta += block->end_ip_delta;
+
+      block->end_ip_delta = 0;
+   }
+}
+
 namespace brw {
    /**
     * Immediate dominator tree analysis of a shader.
