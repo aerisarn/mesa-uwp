@@ -3149,6 +3149,14 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (!op.isTemp())
             continue;
          ssa_info& info = ctx.info[op.tempId()];
+         if (!info.is_extract())
+            continue;
+         /* if there are that many uses, there are likely better combinations */
+         // TODO: delay applying extract to a point where we know better
+         if (ctx.uses[op.tempId()] > 4) {
+            info.label &= ~label_extract;
+            continue;
+         }
          if (info.is_extract() &&
              (info.instr->operands[0].getTemp().type() == RegType::vgpr ||
               instr->operands[i].getTemp().type() == RegType::sgpr) &&
