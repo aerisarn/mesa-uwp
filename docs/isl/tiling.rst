@@ -278,7 +278,7 @@ the tile are given by the table below:
 =========================================== =========== =========== =========== =========== =========== =========== =========== =========== =========== =========== =========== ===========
  Tiling                                          11          10          9           8           7           6           5           4           3           2           1           0
 =========================================== =========== =========== =========== =========== =========== =========== =========== =========== =========== =========== =========== ===========
-:cpp:enumerator:`isl_tiling::ISL_TILING_X`  :math:`v_3` :math:`v_2` :math:`v_1` :math:`v_0` :math:`u_7` :math:`u_6` :math:`u_5` :math:`u_4` :math:`u_3` :math:`u_2` :math:`u_1` :math:`u_0`
+:cpp:enumerator:`isl_tiling::ISL_TILING_X`  :math:`v_2` :math:`v_1` :math:`v_0` :math:`u_8` :math:`u_7` :math:`u_6` :math:`u_5` :math:`u_4` :math:`u_3` :math:`u_2` :math:`u_1` :math:`u_0`
 :cpp:enumerator:`isl_tiling::ISL_TILING_Y0` :math:`u_6` :math:`u_5` :math:`u_4` :math:`v_4` :math:`v_3` :math:`v_2` :math:`v_1` :math:`v_0` :math:`u_3` :math:`u_2` :math:`u_1` :math:`u_0`
 :cpp:enumerator:`isl_tiling::ISL_TILING_W`  :math:`u_5` :math:`u_4` :math:`u_3` :math:`v_5` :math:`v_4` :math:`v_3` :math:`v_2` :math:`u_2` :math:`v_1` :math:`u_1` :math:`v_0` :math:`u_0`
 =========================================== =========== =========== =========== =========== =========== =========== =========== =========== =========== =========== =========== ===========
