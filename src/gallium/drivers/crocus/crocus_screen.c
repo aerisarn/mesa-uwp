@@ -294,10 +294,10 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
          return 420;
       else if (devinfo->ver >= 6)
          return 330;
-      return 120;
+      return 140;
    }
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return devinfo->ver < 6 ? 120 : 130;
+      return 140;
 
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       /* 3DSTATE_CONSTANT_XS requires the start of UBOs to be 32B aligned */
