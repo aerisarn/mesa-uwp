@@ -1945,29 +1945,13 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       } else if (dst.regClass() == v1 && instr->dest.dest.ssa.bit_size == 16) {
          emit_vop3p_instruction(ctx, instr, aco_opcode::v_pk_mul_lo_u16, dst);
       } else if (dst.type() == RegType::vgpr) {
-         Temp src0 = get_alu_src(ctx, instr->src[0]);
-         Temp src1 = get_alu_src(ctx, instr->src[1]);
          uint32_t src0_ub = get_alu_src_ub(ctx, instr, 0);
          uint32_t src1_ub = get_alu_src_ub(ctx, instr, 1);
 
-         if (src0_ub <= 0xffff && src1_ub <= 0xffff && src0_ub * src1_ub <= 0xffff &&
-             (ctx->options->chip_class == GFX8 || ctx->options->chip_class == GFX9)) {
-            /* If the 16-bit multiplication can't overflow, emit v_mul_lo_u16
-             * but only on GFX8-9 because GFX10 doesn't zero the upper 16
-             * bits.
-             */
-            emit_vop2_instruction(ctx, instr, aco_opcode::v_mul_lo_u16, dst, true /* commutative */,
-                                  false, false, true /* nuw */);
-         } else if (src0_ub <= 0xffff && src1_ub <= 0xffff && ctx->options->chip_class >= GFX9) {
-            /* Initialize the accumulator to 0 to allow further combinations
-             * in the optimizer.
-             */
-            Operand op0(src0);
-            Operand op1(src1);
-            bld.vop3(aco_opcode::v_mad_u32_u16, Definition(dst), bld.set16bit(op0),
-                     bld.set16bit(op1), Operand::zero());
-         } else if (src0_ub <= 0xffffff && src1_ub <= 0xffffff) {
-            emit_vop2_instruction(ctx, instr, aco_opcode::v_mul_u32_u24, dst, true);
+         if (src0_ub <= 0xffffff && src1_ub <= 0xffffff) {
+            bool nuw_16bit = src0_ub <= 0xffff && src1_ub <= 0xffff && src0_ub * src1_ub <= 0xffff;
+            emit_vop2_instruction(ctx, instr, aco_opcode::v_mul_u32_u24, dst,
+                                  true /* commutative */, false, false, nuw_16bit);
          } else if (nir_src_is_const(instr->src[0].src)) {
             bld.v_mul_imm(Definition(dst), get_alu_src(ctx, instr->src[1]),
                           nir_src_as_uint(instr->src[0].src), false);

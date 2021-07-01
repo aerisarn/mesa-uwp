@@ -3397,8 +3397,6 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                                           "012", 1 | 2)) {
          } else if (combine_three_valu_op(ctx, instr, aco_opcode::v_add_u32, aco_opcode::v_add3_u32,
                                           "012", 1 | 2)) {
-         } else if (combine_three_valu_op(ctx, instr, aco_opcode::v_mul_lo_u16,
-                                          aco_opcode::v_mad_u32_u16, "120", 1 | 2)) {
          } else if (combine_add_or_then_and_lshl(ctx, instr)) {
          }
       }
@@ -3504,52 +3502,6 @@ to_uniform_bool_instr(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    assert(instr->operands[0].regClass() == s1);
    assert(instr->operands[1].regClass() == s1);
    return true;
-}
-
-void
-select_mul_u32_u24(opt_ctx& ctx, aco_ptr<Instruction>& instr)
-{
-   if (instr->usesModifiers())
-      return;
-
-   /* Only valid if the accumulator is zero (this is selected by isel to
-    * combine more v_add_u32+v_mad_u32_u16 together), but the optimizer
-    * fallbacks here when not possible.
-    */
-   if (!instr->operands[2].constantEquals(0))
-      return;
-
-   /* Only valid if the upper 16-bits of both operands are zero (because
-    * v_mul_u32_u24 doesn't mask them).
-    */
-   for (unsigned i = 0; i < 2; i++) {
-      if (instr->operands[i].isTemp() && !instr->operands[i].is16bit())
-         return;
-   }
-
-   bool swap = false;
-
-   /* VOP2 instructions can only take constants/sgprs in operand 0. */
-   if ((instr->operands[1].isConstant() ||
-        (instr->operands[1].hasRegClass() &&
-         instr->operands[1].regClass().type() == RegType::sgpr))) {
-      swap = true;
-      if ((instr->operands[0].isConstant() ||
-           (instr->operands[0].hasRegClass() &&
-            instr->operands[0].regClass().type() == RegType::sgpr))) {
-         /* VOP2 can't take both constants/sgprs, keep v_mad_u32_u16 because
-          * v_mul_u32_u24 has no advantages.
-          */
-         return;
-      }
-   }
-
-   VOP2_instruction* new_instr =
-      create_instruction<VOP2_instruction>(aco_opcode::v_mul_u32_u24, Format::VOP2, 2, 1);
-   new_instr->operands[0] = instr->operands[swap];
-   new_instr->operands[1] = instr->operands[!swap];
-   new_instr->definitions[0] = instr->definitions[0];
-   instr.reset(new_instr);
 }
 
 void
@@ -3731,9 +3683,6 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
       return;
    }
-
-   if (instr->opcode == aco_opcode::v_mad_u32_u16)
-      select_mul_u32_u24(ctx, instr);
 
    /* Combine DPP copies into VALU. This should be done after creating MAD/FMA. */
    if (instr->isVALU()) {
