@@ -1782,6 +1782,9 @@ struct radv_pipeline {
    uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
 
    bool use_per_attribute_vb_descs;
+   bool can_use_simple_input;
+   uint8_t last_vertex_attrib_bit;
+   uint8_t next_vertex_stage : 8;
    uint32_t vb_desc_usage_mask;
    uint32_t vb_desc_alloc_size;
 

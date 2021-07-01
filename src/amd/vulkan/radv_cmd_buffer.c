@@ -2727,11 +2727,11 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant 
    STATIC_ASSERT(sizeof(union vs_prolog_key_header) == 4);
    assert(vs_shader->info.vs.dynamic_inputs);
 
-   struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
-   struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   const struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
+   const struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
    struct radv_device *device = cmd_buffer->device;
 
-   unsigned num_attributes = util_last_bit(vs_shader->info.vs.vb_desc_usage_mask);
+   unsigned num_attributes = pipeline->last_vertex_attrib_bit;
    uint32_t attribute_mask = BITFIELD_MASK(num_attributes);
 
    uint32_t instance_rate_inputs = state->instance_rate_inputs & attribute_mask;
@@ -2739,26 +2739,11 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant 
    enum chip_class chip = device->physical_device->rad_info.chip_class;
    const uint32_t misaligned_mask = chip == GFX6 || chip >= GFX10 ? cmd_buffer->state.vbo_misaligned_mask : 0;
 
-   struct radv_vs_prolog_key key;
-   key.state = state;
-   key.num_attributes = num_attributes;
-   key.misaligned_mask = misaligned_mask;
-   /* The instance ID input VGPR is placed differently when as_ls=true. */
-   key.as_ls = vs_shader->info.vs.as_ls && instance_rate_inputs;
-   key.is_ngg = vs_shader->info.is_ngg;
-   key.wave32 = vs_shader->info.wave_size == 32;
-   key.next_stage = MESA_SHADER_VERTEX;
-   if (pipeline->shaders[MESA_SHADER_TESS_CTRL] == vs_shader)
-      key.next_stage = MESA_SHADER_TESS_CTRL;
-   else if (pipeline->shaders[MESA_SHADER_GEOMETRY] == vs_shader)
-      key.next_stage = MESA_SHADER_GEOMETRY;
-
    /* try to use a pre-compiled prolog first */
    struct radv_shader_prolog *prolog = NULL;
-   if (!key.as_ls && key.next_stage == MESA_SHADER_VERTEX &&
-       key.is_ngg == device->physical_device->use_ngg && !misaligned_mask &&
-       !state->alpha_adjust_lo && !state->alpha_adjust_hi &&
-       vs_shader->info.wave_size == device->physical_device->ge_wave_size) {
+   if (pipeline->can_use_simple_input &&
+       (!vs_shader->info.vs.as_ls || !instance_rate_inputs) &&
+       !misaligned_mask && !state->alpha_adjust_lo && !state->alpha_adjust_hi) {
       if (!instance_rate_inputs) {
          prolog = device->simple_vs_prologs[num_attributes - 1];
       } else if (num_attributes <= 16 && !*nontrivial_divisors &&
@@ -2774,6 +2759,16 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant 
    /* if we couldn't use a pre-compiled prolog, find one in the cache or create one */
    uint32_t key_words[16];
    unsigned key_size = 1;
+
+   struct radv_vs_prolog_key key;
+   key.state = state;
+   key.num_attributes = num_attributes;
+   key.misaligned_mask = misaligned_mask;
+   /* The instance ID input VGPR is placed differently when as_ls=true. */
+   key.as_ls = vs_shader->info.vs.as_ls && instance_rate_inputs;
+   key.is_ngg = vs_shader->info.is_ngg;
+   key.wave32 = vs_shader->info.wave_size == 32;
+   key.next_stage = pipeline->next_vertex_stage;
 
    union vs_prolog_key_header header;
    header.v = 0;

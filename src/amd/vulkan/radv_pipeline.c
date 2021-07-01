@@ -5400,8 +5400,22 @@ radv_pipeline_init_vertex_input_state(struct radv_pipeline *pipeline,
    }
 
    pipeline->use_per_attribute_vb_descs = info->vs.use_per_attribute_vb_descs;
+   pipeline->last_vertex_attrib_bit = util_last_bit(info->vs.vb_desc_usage_mask);
+   if (pipeline->shaders[MESA_SHADER_VERTEX])
+      pipeline->next_vertex_stage = MESA_SHADER_VERTEX;
+   else if (pipeline->shaders[MESA_SHADER_TESS_CTRL])
+      pipeline->next_vertex_stage = MESA_SHADER_TESS_CTRL;
+   else
+      pipeline->next_vertex_stage = MESA_SHADER_GEOMETRY;
+   if (pipeline->next_vertex_stage == MESA_SHADER_VERTEX) {
+      const struct radv_shader_variant *vs_shader = pipeline->shaders[MESA_SHADER_VERTEX];
+      pipeline->can_use_simple_input = vs_shader->info.is_ngg == pipeline->device->physical_device->use_ngg &&
+                                       vs_shader->info.wave_size == pipeline->device->physical_device->ge_wave_size;
+   } else {
+      pipeline->can_use_simple_input = false;
+   }
    if (info->vs.dynamic_inputs)
-      pipeline->vb_desc_usage_mask = BITFIELD_MASK(util_last_bit(info->vs.vb_desc_usage_mask));
+      pipeline->vb_desc_usage_mask = BITFIELD_MASK(pipeline->last_vertex_attrib_bit);
    else
       pipeline->vb_desc_usage_mask = info->vs.vb_desc_usage_mask;
    pipeline->vb_desc_alloc_size = util_bitcount(pipeline->vb_desc_usage_mask) * 16;

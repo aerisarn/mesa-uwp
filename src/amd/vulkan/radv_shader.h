@@ -381,7 +381,7 @@ struct radv_vs_input_state {
 };
 
 struct radv_vs_prolog_key {
-   struct radv_vs_input_state *state;
+   const struct radv_vs_input_state *state;
    unsigned num_attributes;
    uint32_t misaligned_mask;
    bool as_ls;
