@@ -39,17 +39,16 @@
 
 /* Our Vulkan resource indices represent indices in descriptor maps which
  * include all shader stages, so we need to size the arrays below
- * accordingly. For now we only support a maximum of 2 stages for VS and
- * FS.
+ * accordingly. For now we only support a maximum of 3 stages: VS, GS, FS.
  */
-#define MAX_STAGES 2
+#define MAX_STAGES 3
 
 #define MAX_TOTAL_TEXTURE_SAMPLERS (V3D_MAX_TEXTURE_SAMPLERS * MAX_STAGES)
 struct texture_bo_list {
    struct v3dv_bo *tex[MAX_TOTAL_TEXTURE_SAMPLERS];
 };
 
-/* This tracks state BOs forboth textures and samplers, so we
+/* This tracks state BOs for both textures and samplers, so we
  * multiply by 2.
  */
 #define MAX_TOTAL_STATES (2 * V3D_MAX_TEXTURE_SAMPLERS * MAX_STAGES)
