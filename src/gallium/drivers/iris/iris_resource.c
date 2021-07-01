@@ -409,6 +409,9 @@ static uint32_t
 iris_resource_alloc_flags(const struct iris_screen *screen,
                           const struct pipe_resource *templ)
 {
+   if (templ->flags & IRIS_RESOURCE_FLAG_DEVICE_MEM)
+      return 0;
+
    uint32_t flags = 0;
 
    switch (templ->usage) {

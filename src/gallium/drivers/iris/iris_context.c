@@ -295,7 +295,8 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    }
    ctx->const_uploader = u_upload_create(ctx, 1024 * 1024,
                                          PIPE_BIND_CONSTANT_BUFFER,
-                                         PIPE_USAGE_IMMUTABLE, 0);
+                                         PIPE_USAGE_IMMUTABLE,
+                                         IRIS_RESOURCE_FLAG_DEVICE_MEM);
    if (!ctx->const_uploader) {
       u_upload_destroy(ctx->stream_uploader);
       free(ctx);
@@ -330,13 +331,16 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ice->state.surface_uploader =
       u_upload_create(ctx, 64 * 1024, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
-                      IRIS_RESOURCE_FLAG_SURFACE_MEMZONE);
+                      IRIS_RESOURCE_FLAG_SURFACE_MEMZONE |
+                      IRIS_RESOURCE_FLAG_DEVICE_MEM);
    ice->state.bindless_uploader =
       u_upload_create(ctx, 64 * 1024, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
-                      IRIS_RESOURCE_FLAG_BINDLESS_MEMZONE);
+                      IRIS_RESOURCE_FLAG_BINDLESS_MEMZONE |
+                      IRIS_RESOURCE_FLAG_DEVICE_MEM);
    ice->state.dynamic_uploader =
       u_upload_create(ctx, 64 * 1024, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
-                      IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE);
+                      IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE |
+                      IRIS_RESOURCE_FLAG_DEVICE_MEM);
 
    ice->query_buffer_uploader =
       u_upload_create(ctx, 16 * 1024, PIPE_BIND_CUSTOM, PIPE_USAGE_STAGING,
