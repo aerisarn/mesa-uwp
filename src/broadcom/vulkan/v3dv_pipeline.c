@@ -2139,12 +2139,12 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
    v3dv_pipeline_cache_upload_pipeline(pipeline, cache);
 
+ success:
    /* As we got the variants in pipeline->shared_data, after compiling we
     * don't need the pipeline_stages
     */
    pipeline_free_stages(device, pipeline, pAllocator);
 
- success:
    pipeline_check_spill_size(pipeline);
 
    /* FIXME: values below are default when non-GS is available. Would need to
