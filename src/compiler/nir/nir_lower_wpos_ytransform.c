@@ -297,55 +297,46 @@ lower_load_sample_pos(lower_wpos_ytransform_state *state,
                                   flipped_pos->parent_instr);
 }
 
-static void
-lower_wpos_ytransform_block(lower_wpos_ytransform_state *state, nir_block *block)
+static bool
+lower_wpos_ytransform_instr(nir_builder *b, nir_instr *instr,
+                            void *data)
 {
-   nir_foreach_instr_safe(instr, block) {
-      if (instr->type == nir_instr_type_intrinsic) {
-         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-         if (intr->intrinsic == nir_intrinsic_load_deref) {
-            nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
-            nir_variable *var = nir_deref_instr_get_variable(deref);
+   lower_wpos_ytransform_state *state = data;
+   state->b = *b;
 
-            if ((var->data.mode == nir_var_shader_in &&
-                 var->data.location == VARYING_SLOT_POS) ||
-                (var->data.mode == nir_var_system_value &&
-                 var->data.location == SYSTEM_VALUE_FRAG_COORD)) {
-               /* gl_FragCoord should not have array/struct derefs: */
-               lower_fragcoord(state, intr);
-            } else if (var->data.mode == nir_var_system_value &&
-                       var->data.location == SYSTEM_VALUE_SAMPLE_POS) {
-               lower_load_sample_pos(state, intr);
-            }
-         } else if (intr->intrinsic == nir_intrinsic_load_frag_coord) {
+   if (instr->type == nir_instr_type_intrinsic) {
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+      if (intr->intrinsic == nir_intrinsic_load_deref) {
+         nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+         nir_variable *var = nir_deref_instr_get_variable(deref);
+         if ((var->data.mode == nir_var_shader_in &&
+              var->data.location == VARYING_SLOT_POS) ||
+             (var->data.mode == nir_var_system_value &&
+              var->data.location == SYSTEM_VALUE_FRAG_COORD)) {
+            /* gl_FragCoord should not have array/struct derefs: */
             lower_fragcoord(state, intr);
-         } else if (intr->intrinsic == nir_intrinsic_load_sample_pos) {
+         } else if (var->data.mode == nir_var_system_value &&
+                    var->data.location == SYSTEM_VALUE_SAMPLE_POS) {
             lower_load_sample_pos(state, intr);
-         } else if (intr->intrinsic == nir_intrinsic_interp_deref_at_offset) {
-            lower_interp_deref_or_load_baryc_at_offset(state, intr, 1);
-         } else if (intr->intrinsic == nir_intrinsic_load_barycentric_at_offset) {
-            lower_interp_deref_or_load_baryc_at_offset(state, intr, 0);
          }
-      } else if (instr->type == nir_instr_type_alu) {
-         nir_alu_instr *alu = nir_instr_as_alu(instr);
-         if (alu->op == nir_op_fddy ||
-             alu->op == nir_op_fddy_fine ||
-             alu->op == nir_op_fddy_coarse)
-            lower_fddy(state, alu);
+      } else if (intr->intrinsic == nir_intrinsic_load_frag_coord) {
+         lower_fragcoord(state, intr);
+      } else if (intr->intrinsic == nir_intrinsic_load_sample_pos) {
+         lower_load_sample_pos(state, intr);
+      } else if (intr->intrinsic == nir_intrinsic_interp_deref_at_offset) {
+         lower_interp_deref_or_load_baryc_at_offset(state, intr, 1);
+      } else if (intr->intrinsic == nir_intrinsic_load_barycentric_at_offset) {
+         lower_interp_deref_or_load_baryc_at_offset(state, intr, 0);
       }
+   } else if (instr->type == nir_instr_type_alu) {
+      nir_alu_instr *alu = nir_instr_as_alu(instr);
+      if (alu->op == nir_op_fddy ||
+          alu->op == nir_op_fddy_fine ||
+          alu->op == nir_op_fddy_coarse)
+         lower_fddy(state, alu);
    }
-}
 
-static void
-lower_wpos_ytransform_impl(lower_wpos_ytransform_state *state, nir_function_impl *impl)
-{
-   nir_builder_init(&state->b, impl);
-
-   nir_foreach_block(block, impl) {
-      lower_wpos_ytransform_block(state, block);
-   }
-   nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+   return state->transform != NULL;
 }
 
 bool
@@ -359,10 +350,9 @@ nir_lower_wpos_ytransform(nir_shader *shader,
 
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         lower_wpos_ytransform_impl(&state, function->impl);
-   }
-
-   return state.transform != NULL;
+   return nir_shader_instructions_pass(shader,
+                                       lower_wpos_ytransform_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                       &state);
 }
