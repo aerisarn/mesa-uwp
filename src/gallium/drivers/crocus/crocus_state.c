@@ -1565,6 +1565,23 @@ set_blend_entry_bits(struct crocus_batch *batch, BLEND_ENTRY_GENXML *entry,
       entry->DestinationBlendFactor      = (int) dst_rgb;
       entry->DestinationAlphaBlendFactor = (int) dst_alpha;
    }
+#if GFX_VER <= 5
+   /*
+    * Gen4/GM45/ILK can't handle have ColorBufferBlendEnable == 0
+    * when a dual src blend shader is in use. Setup dummy blending.
+    */
+   struct crocus_compiled_shader *shader = ice->shaders.prog[MESA_SHADER_FRAGMENT];
+   struct brw_wm_prog_data *wm_prog_data = (void *) shader->prog_data;
+   if (idx == 0 && !blend_enabled && wm_prog_data->dual_src_blend) {
+      entry->ColorBufferBlendEnable = 1;
+      entry->ColorBlendFunction = PIPE_BLEND_ADD;
+      entry->AlphaBlendFunction = PIPE_BLEND_ADD;
+      entry->SourceBlendFactor = PIPE_BLENDFACTOR_ONE;
+      entry->SourceAlphaBlendFactor = PIPE_BLENDFACTOR_ONE;
+      entry->DestinationBlendFactor = PIPE_BLENDFACTOR_ZERO;
+      entry->DestinationAlphaBlendFactor = PIPE_BLENDFACTOR_ZERO;
+   }
+#endif
    return independent_alpha_blend;
 }
 
@@ -5341,11 +5358,14 @@ crocus_populate_binding_table(struct crocus_context *ice,
 #if GFX_VER <= 5
             const struct pipe_rt_blend_state *rt =
                &ice->state.cso_blend->cso.rt[ice->state.cso_blend->cso.independent_blend_enable ? i : 0];
+            struct crocus_compiled_shader *shader = ice->shaders.prog[MESA_SHADER_FRAGMENT];
+            struct brw_wm_prog_data *wm_prog_data = (void *) shader->prog_data;
             write_disables |= (rt->colormask & PIPE_MASK_A) ? 0x0 : 0x8;
             write_disables |= (rt->colormask & PIPE_MASK_R) ? 0x0 : 0x4;
             write_disables |= (rt->colormask & PIPE_MASK_G) ? 0x0 : 0x2;
             write_disables |= (rt->colormask & PIPE_MASK_B) ? 0x0 : 0x1;
-            blend_enable = rt->blend_enable;
+            /* Gen4/5 can't handle blending off when a dual src blend wm is enabled. */
+            blend_enable = rt->blend_enable || wm_prog_data->dual_src_blend;
 #endif
             if (cso_fb->cbufs[i]) {
                surf_offsets[s] = emit_surface(batch,

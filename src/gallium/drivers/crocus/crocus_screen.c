@@ -263,7 +263,8 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FBFETCH:
       return devinfo->verx10 >= 45 ? BRW_MAX_DRAW_BUFFERS : 0;
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
-      return devinfo->ver >= 6 ? 1 : 0;
+      /* in theory CL (965gm) can do this */
+      return devinfo->verx10 >= 45 ? 1 : 0;
    case PIPE_CAP_MAX_RENDER_TARGETS:
       return BRW_MAX_DRAW_BUFFERS;
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
