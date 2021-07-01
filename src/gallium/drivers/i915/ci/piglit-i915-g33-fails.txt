@@ -735,6 +735,7 @@ spec@glsl-1.10@execution@loops@glsl-fs-unroll-side-effect,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-01,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-03,Fail
+spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-04,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-07,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-08,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-bias,Fail

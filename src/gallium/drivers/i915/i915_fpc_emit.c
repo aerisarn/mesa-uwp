@@ -186,11 +186,13 @@ i915_emit_texld(struct i915_fp_compile *p, uint32_t dest, uint32_t destmask,
    /* Eliminate the useless texture coordinates. Otherwise we end up generating
     * a swizzle for no reason below. */
    switch (num_coord) {
-   case 0:
-      ignore |= (0xf << UREG_CHANNEL_X_SHIFT);
-      FALLTHROUGH;
    case 1:
-      ignore |= (0xf << UREG_CHANNEL_Y_SHIFT);
+      /* For 1D textures, make sure that the Y coordinate is actually
+       * initialized. It seems that if the channel is never written during the
+       * program, texturing returns undefined results (even if the Y wrap is
+       * REPEAT).
+       */
+      coord = swizzle(coord, X, X, Y, Z);
       FALLTHROUGH;
    case 2:
       ignore |= (0xf << UREG_CHANNEL_Z_SHIFT);

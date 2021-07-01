@@ -23,14 +23,11 @@ traces:
   #  expectations:
   #    - device: i915-g33
   #      checksum: 8d4c52f0af9c09710d358f24c73fae3c
-  #- path: humus/CelShading.trace
-  #  # The cel shading is pretty chunky, but maybe that's just precision stuff.
-  #  # Since the NIR change, 1D textures are getting undefined .y channels that
-  #  # could trigger the known bad 1D texture wrap behavior, and the rendering looks
-  #  # like undefined data.
-  #  expectations:
-  #    - device: i915-g33
-  #      checksum: 4605ceed2b5c3a03f9262c546d75a8d8
+  - path: humus/CelShading.trace
+    # The cel shading is pretty chunky, but maybe that's just precision stuff.
+    expectations:
+      - device: i915-g33
+        checksum: 86094ef6a40bfe48d4b7d66871af97a5
   # Requires GLSL 1.30
   #- path: humus/DynamicBranching3.trace
   #  expectations:
