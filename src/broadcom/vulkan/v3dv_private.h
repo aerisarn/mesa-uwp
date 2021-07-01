@@ -1447,20 +1447,6 @@ struct v3dv_pipeline_stage {
    uint32_t program_id;
 };
 
-/* FIXME: although the full vpm_config is not required at this point, as we
- * don't plan to initially support GS, it is more readable and serves as a
- * placeholder, to have the struct and fill it with default values.
- */
-struct vpm_config {
-   uint32_t As;
-   uint32_t Vc;
-   uint32_t Gs;
-   uint32_t Gd;
-   uint32_t Gv;
-   uint32_t Ve;
-   uint32_t gs_width;
-};
-
 /* We are using the descriptor pool entry for two things:
  * * Track the allocated sets, so we can properly free it if needed
  * * Track the suballocated pool bo regions, so if some descriptor set is

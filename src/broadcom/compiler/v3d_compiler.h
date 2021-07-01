@@ -956,6 +956,25 @@ struct v3d_compute_prog_data {
         bool has_subgroups;
 };
 
+struct vpm_config {
+   uint32_t As;
+   uint32_t Vc;
+   uint32_t Gs;
+   uint32_t Gd;
+   uint32_t Gv;
+   uint32_t Ve;
+   uint32_t gs_width;
+};
+
+bool
+v3d_compute_vpm_config(struct v3d_device_info *devinfo,
+                       struct v3d_vs_prog_data *vs_bin,
+                       struct v3d_vs_prog_data *vs,
+                       struct v3d_gs_prog_data *gs_bin,
+                       struct v3d_gs_prog_data *gs,
+                       struct vpm_config *vpm_cfg_bin,
+                       struct vpm_config *vpm_cfg);
+
 static inline bool
 vir_has_uniform(struct qinst *inst)
 {

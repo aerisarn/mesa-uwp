@@ -2355,148 +2355,6 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
    return compute_vpm_config(pipeline);
 }
 
-static inline uint32_t
-compute_vpm_size_in_sectors(const struct v3d_device_info *devinfo)
-{
-   assert(devinfo->vpm_size > 0);
-   const uint32_t sector_size = V3D_CHANNELS * sizeof(uint32_t) * 8;
-   return devinfo->vpm_size / sector_size;
-}
-
-/* Computes various parameters affecting VPM memory configuration for programs
- * involving geometry shaders to ensure the program fits in memory and honors
- * requirements described in section "VPM usage" of the programming manual.
- *
- * FIXME: put this code in common and share with v3d.
- */
-static bool
-compute_vpm_config_gs(struct v3d_device_info *devinfo,
-                      struct v3d_vs_prog_data *vs,
-                      struct v3d_gs_prog_data *gs,
-                      struct vpm_config *vpm_cfg_out)
-{
-   const uint32_t A = vs->separate_segments ? 1 : 0;
-   const uint32_t Ad = vs->vpm_input_size;
-   const uint32_t Vd = vs->vpm_output_size;
-
-   const uint32_t vpm_size = compute_vpm_size_in_sectors(devinfo);
-
-   /* Try to fit program into our VPM memory budget by adjusting
-    * configurable parameters iteratively. We do this in two phases:
-    * the first phase tries to fit the program into the total available
-    * VPM memory. If we succeed at that, then the second phase attempts
-    * to fit the program into half of that budget so we can run bin and
-    * render programs in parallel.
-    */
-   struct vpm_config vpm_cfg[2];
-   struct vpm_config *final_vpm_cfg = NULL;
-   uint32_t phase = 0;
-
-   vpm_cfg[phase].As = 1;
-   vpm_cfg[phase].Gs = 1;
-   vpm_cfg[phase].Gd = gs->vpm_output_size;
-   vpm_cfg[phase].gs_width = gs->simd_width;
-
-   /* While there is a requirement that Vc >= [Vn / 16], this is
-    * always the case when tessellation is not present because in that
-    * case Vn can only be 6 at most (when input primitive is triangles
-    * with adjacency).
-    *
-    * We always choose Vc=2. We can't go lower than this due to GFXH-1744,
-    * and Broadcom has not found it worth it to increase it beyond this
-    * in general. Increasing Vc also increases VPM memory pressure which
-    * can turn up being detrimental for performance in some scenarios.
-    */
-   vpm_cfg[phase].Vc = 2;
-
-   /* Gv is a constraint on the hardware to not exceed the
-    * specified number of vertex segments per GS batch. If adding a
-    * new primitive to a GS batch would result in a range of more
-    * than Gv vertex segments being referenced by the batch, then
-    * the hardware will flush the batch and start a new one. This
-    * means that we can choose any value we want, we just need to
-    * be aware that larger values improve GS batch utilization
-    * at the expense of more VPM memory pressure (which can affect
-    * other performance aspects, such as GS dispatch width).
-    * We start with the largest value, and will reduce it if we
-    * find that total memory pressure is too high.
-    */
-   vpm_cfg[phase].Gv = 3;
-   do {
-      /* When GS is present in absence of TES, then we need to satisfy
-       * that Ve >= Gv. We go with the smallest value of Ve to avoid
-       * increasing memory pressure.
-       */
-      vpm_cfg[phase].Ve = vpm_cfg[phase].Gv;
-
-      uint32_t vpm_sectors =
-         A * vpm_cfg[phase].As * Ad +
-         (vpm_cfg[phase].Vc + vpm_cfg[phase].Ve) * Vd +
-         vpm_cfg[phase].Gs * vpm_cfg[phase].Gd;
-
-      /* Ideally we want to use no more than half of the available
-       * memory so we can execute a bin and render program in parallel
-       * without stalls. If we achieved that then we are done.
-       */
-      if (vpm_sectors <= vpm_size / 2) {
-         final_vpm_cfg = &vpm_cfg[phase];
-         break;
-      }
-
-      /* At the very least, we should not allocate more than the
-       * total available VPM memory. If we have a configuration that
-       * succeeds at this we save it and continue to see if we can
-       * meet the half-memory-use criteria too.
-       */
-      if (phase == 0 && vpm_sectors <= vpm_size) {
-         vpm_cfg[1] = vpm_cfg[0];
-         phase = 1;
-      }
-
-      /* Try lowering Gv */
-      if (vpm_cfg[phase].Gv > 0) {
-         vpm_cfg[phase].Gv--;
-         continue;
-      }
-
-      /* Try lowering GS dispatch width */
-      if (vpm_cfg[phase].gs_width > 1) {
-         do {
-            vpm_cfg[phase].gs_width >>= 1;
-            vpm_cfg[phase].Gd = align(vpm_cfg[phase].Gd, 2) / 2;
-         } while (vpm_cfg[phase].gs_width == 2);
-
-         /* Reset Gv to max after dropping dispatch width */
-         vpm_cfg[phase].Gv = 3;
-         continue;
-      }
-
-      /* We ran out of options to reduce memory pressure. If we
-       * are at phase 1 we have at least a valid configuration, so we
-       * we use that.
-       */
-      if (phase == 1)
-         final_vpm_cfg = &vpm_cfg[0];
-      break;
-   } while (true);
-
-   if (!final_vpm_cfg)
-      return false;
-
-   assert(final_vpm_cfg);
-   assert(final_vpm_cfg->Gd <= 16);
-   assert(final_vpm_cfg->Gv < 4);
-   assert(final_vpm_cfg->Ve < 4);
-   assert(final_vpm_cfg->Vc >= 2 && final_vpm_cfg->Vc <= 4);
-   assert(final_vpm_cfg->gs_width == 1 ||
-          final_vpm_cfg->gs_width == 4 ||
-          final_vpm_cfg->gs_width == 8 ||
-          final_vpm_cfg->gs_width == 16);
-
-   *vpm_cfg_out = *final_vpm_cfg;
-   return true;
-}
-
 static VkResult
 compute_vpm_config(struct v3dv_pipeline *pipeline)
 {
@@ -2507,31 +2365,22 @@ compute_vpm_config(struct v3dv_pipeline *pipeline)
    struct v3d_vs_prog_data *vs = vs_variant->prog_data.vs;
    struct v3d_vs_prog_data *vs_bin =vs_bin_variant->prog_data.vs;
 
-   if (!pipeline->has_gs) {
-      pipeline->vpm_cfg_bin.As = 1;
-      pipeline->vpm_cfg_bin.Ve = 0;
-      pipeline->vpm_cfg_bin.Vc = vs_bin->vcm_cache_size;
-
-      pipeline->vpm_cfg.As = 1;
-      pipeline->vpm_cfg.Ve = 0;
-      pipeline->vpm_cfg.Vc = vs->vcm_cache_size;
-   } else {
+   struct v3d_gs_prog_data *gs = NULL;
+   struct v3d_gs_prog_data *gs_bin = NULL;
+   if (pipeline->has_gs) {
       struct v3dv_shader_variant *gs_variant =
          pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY];
       struct v3dv_shader_variant *gs_bin_variant =
          pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY_BIN];
-      struct v3d_gs_prog_data *gs = gs_variant->prog_data.gs;
-      struct v3d_gs_prog_data *gs_bin = gs_bin_variant->prog_data.gs;
+      gs = gs_variant->prog_data.gs;
+      gs_bin = gs_bin_variant->prog_data.gs;
+   }
 
-      if (!compute_vpm_config_gs(&pipeline->device->devinfo,
-                                 vs_bin, gs_bin, &pipeline->vpm_cfg_bin)) {
-         return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-      }
-
-      if (!compute_vpm_config_gs(&pipeline->device->devinfo,
-                                 vs, gs, &pipeline->vpm_cfg)) {
-         return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-      }
+   if (!v3d_compute_vpm_config(&pipeline->device->devinfo,
+                               vs_bin, vs, gs_bin, gs,
+                               &pipeline->vpm_cfg_bin,
+                               &pipeline->vpm_cfg)) {
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
    }
 
    return VK_SUCCESS;
