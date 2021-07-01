@@ -29,7 +29,6 @@
 #include "panvk_private.h"
 
 #include "panfrost-quirks.h"
-#include "pan_blitter.h"
 #include "pan_bo.h"
 #include "pan_encoder.h"
 #include "pan_util.h"
@@ -201,7 +200,6 @@ panvk_physical_device_finish(struct panvk_physical_device *device)
    panvk_wsi_finish(device);
 
    panvk_meta_cleanup(device);
-   pan_blitter_cleanup(&device->pdev);
    panfrost_close_device(&device->pdev);
    close(device->local_fd);
    if (device->master_fd != -1)
@@ -310,7 +308,6 @@ panvk_physical_device_init(struct panvk_physical_device *device,
       goto fail;
    }
 
-   pan_blitter_init(&device->pdev);
    panvk_meta_init(device);
 
    memset(device->name, 0, sizeof(device->name));

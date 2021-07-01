@@ -53,7 +53,8 @@ panfrost_emit_indirect_draw(struct pan_pool *pool,
                             struct panfrost_ptr *ctx);
 
 void
-panfrost_init_indirect_draw_shaders(struct panfrost_device *dev);
+panfrost_init_indirect_draw_shaders(struct panfrost_device *dev,
+                                    struct pan_pool *bin_pool);
 
 void
 panfrost_cleanup_indirect_draw_shaders(struct panfrost_device *dev);

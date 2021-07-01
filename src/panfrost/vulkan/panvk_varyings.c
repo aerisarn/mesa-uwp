@@ -49,7 +49,7 @@ panvk_varyings_alloc(struct panvk_varyings_info *varyings,
          continue;
 
       struct panfrost_ptr ptr =
-         panfrost_pool_alloc_aligned(varying_mem_pool, size, 64);
+         pan_pool_alloc_aligned(varying_mem_pool, size, 64);
 
       varyings->buf[buf_idx].size = size;
       varyings->buf[buf_idx].address = ptr.gpu;

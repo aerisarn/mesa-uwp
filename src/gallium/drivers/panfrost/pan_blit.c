@@ -89,7 +89,7 @@ panfrost_u_blitter_blit(struct pipe_context *pipe,
 
 static void
 panfrost_blit_add_ctx_bos(struct panfrost_batch *batch,
-                          struct pan_pool *blit_pool)
+                          struct panfrost_pool *blit_pool)
 {
         util_dynarray_foreach(&blit_pool->bos, struct panfrost_bo *, bo) {
                 panfrost_batch_add_bo(batch, *bo,
@@ -241,11 +241,12 @@ panfrost_blit(struct pipe_context *pipe,
         }
 
         struct pan_blit_context bctx;
-        struct pan_pool blit_pool;
+        struct panfrost_pool blit_pool;
 
         panfrost_pool_init(&blit_pool, NULL, dev, 0, 4096, "Blitter pool",
                            false, true);
-        pan_blit_ctx_init(dev, &pinfo, &blit_pool, &bctx);
+
+        pan_blit_ctx_init(dev, &pinfo, &blit_pool.base, &bctx);
         do {
                 if (bctx.dst.cur_layer < 0)
                         continue;
@@ -292,7 +293,7 @@ panfrost_blit(struct pipe_context *pipe,
 
                 mali_ptr tiler = pan_is_bifrost(dev) ?
                                  panfrost_batch_get_bifrost_tiler(batch, ~0) : 0;
-                pan_blit(&bctx, &batch->pool, &batch->scoreboard,
+                pan_blit(&bctx, &batch->pool.base, &batch->scoreboard,
                                 batch->tls.gpu, tiler);
 
                 /* We don't want this batch to interfere with subsequent draw

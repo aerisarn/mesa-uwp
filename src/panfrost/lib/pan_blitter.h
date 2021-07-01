@@ -80,7 +80,9 @@ struct pan_blit_context {
 };
 
 void
-pan_blitter_init(struct panfrost_device *dev);
+pan_blitter_init(struct panfrost_device *dev,
+                 struct pan_pool *bin_pool,
+                 struct pan_pool *desc_pool);
 
 void
 pan_blitter_cleanup(struct panfrost_device *dev);

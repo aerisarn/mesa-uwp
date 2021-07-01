@@ -61,13 +61,13 @@ extern "C" {
 
 struct pan_blitter {
         struct {
-                struct pan_pool pool;
+                struct pan_pool *pool;
                 struct hash_table *blit;
                 struct hash_table *blend;
                 pthread_mutex_t lock;
         } shaders;
         struct {
-                struct pan_pool pool;
+                struct pan_pool *pool;
                 struct hash_table *rsds;
                 pthread_mutex_t lock;
         } rsds;
@@ -113,7 +113,7 @@ struct pan_indirect_draw_shaders {
          * is not trivial, and changes to the compiler might influence this
          * estimation.
          */
-        struct pan_pool bin_pool;
+        struct pan_pool *bin_pool;
 
         /* BO containing all renderer states attached to the compute shaders.
          * Those are built at shader compilation time and re-used every time

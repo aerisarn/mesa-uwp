@@ -22,6 +22,7 @@
  */
 
 #include "nir/nir_builder.h"
+#include "pan_blitter.h"
 #include "pan_encoder.h"
 
 #include "panvk_private.h"
@@ -157,11 +158,22 @@ panvk_meta_init(struct panvk_physical_device *dev)
                       16 * 1024, "panvk_meta binary pool", false, true);
    panfrost_pool_init(&dev->meta.desc_pool, NULL, &dev->pdev, 0,
                       16 * 1024, "panvk_meta descriptor pool", false, true);
+   panfrost_pool_init(&dev->meta.blitter.bin_pool, NULL, &dev->pdev,
+                      PAN_BO_EXECUTE, 16 * 1024,
+                      "panvk_meta blitter binary pool", false, true);
+   panfrost_pool_init(&dev->meta.blitter.desc_pool, NULL, &dev->pdev,
+                      0, 16 * 1024, "panvk_meta blitter descriptor pool",
+                      false, true);
+   pan_blitter_init(&dev->pdev, &dev->meta.blitter.bin_pool.base,
+                    &dev->meta.blitter.desc_pool.base);
 }
 
 void
 panvk_meta_cleanup(struct panvk_physical_device *dev)
 {
+   pan_blitter_cleanup(&dev->pdev);
+   panfrost_pool_cleanup(&dev->meta.blitter.desc_pool);
+   panfrost_pool_cleanup(&dev->meta.blitter.bin_pool);
    panfrost_pool_cleanup(&dev->meta.desc_pool);
    panfrost_pool_cleanup(&dev->meta.bin_pool);
 }

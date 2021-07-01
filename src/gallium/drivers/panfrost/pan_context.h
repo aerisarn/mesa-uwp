@@ -132,7 +132,7 @@ struct panfrost_context {
         enum pan_dirty_shader dirty_shader[PIPE_SHADER_TYPES];
 
         /* Unowned pools, so manage yourself. */
-        struct pan_pool descs, shaders;
+        struct panfrost_pool descs, shaders;
 
         /* Sync obj used to keep track of in-flight jobs. */
         uint32_t syncobj;
@@ -263,7 +263,7 @@ struct panfrost_shader_state {
         bool compiled;
 
         /* Respectively, shader binary and Renderer State Descriptor */
-        struct pan_pool_ref bin, state;
+        struct panfrost_pool_ref bin, state;
 
         /* For fragment shaders, a prepared (but not uploaded RSD) */
         struct mali_renderer_state_packed partial_rsd;
@@ -347,7 +347,7 @@ struct panfrost_sampler_state {
 
 struct panfrost_sampler_view {
         struct pipe_sampler_view base;
-        struct pan_pool_ref state;
+        struct panfrost_pool_ref state;
         struct mali_bifrost_texture_packed bifrost_descriptor;
         mali_ptr texture_bo;
         uint64_t modifier;
@@ -397,8 +397,8 @@ panfrost_render_condition_check(struct panfrost_context *ctx);
 
 void
 panfrost_shader_compile(struct pipe_screen *pscreen,
-                        struct pan_pool *shader_pool,
-                        struct pan_pool *desc_pool,
+                        struct panfrost_pool *shader_pool,
+                        struct panfrost_pool *desc_pool,
                         enum pipe_shader_ir ir_type,
                         const void *ir,
                         gl_shader_stage stage,

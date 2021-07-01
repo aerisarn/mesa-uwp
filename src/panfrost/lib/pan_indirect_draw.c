@@ -1096,9 +1096,9 @@ create_indirect_draw_shader(struct panfrost_device *dev,
         pthread_mutex_lock(&dev->indirect_draw_shaders.lock);
         if (!draw_shader->rsd) {
                 mali_ptr address =
-                        panfrost_pool_upload_aligned(&dev->indirect_draw_shaders.bin_pool,
-                                                     binary.data, binary.size,
-                                                     pan_is_bifrost(dev) ? 128 : 64);
+                        pan_pool_upload_aligned(dev->indirect_draw_shaders.bin_pool,
+                                                binary.data, binary.size,
+                                                pan_is_bifrost(dev) ? 128 : 64);
                 if (!pan_is_bifrost(dev))
                         address |= shader_info.midgard.first_tag;
 
@@ -1147,12 +1147,12 @@ get_ubos(struct pan_pool *pool,
          const struct indirect_draw_inputs *inputs)
 {
         struct panfrost_ptr inputs_buf =
-                panfrost_pool_alloc_aligned(pool, sizeof(inputs), 16);
+                pan_pool_alloc_aligned(pool, sizeof(inputs), 16);
 
         memcpy(inputs_buf.cpu, &inputs, sizeof(inputs));
 
         struct panfrost_ptr ubos_buf =
-                panfrost_pool_alloc_desc(pool, UNIFORM_BUFFER);
+                pan_pool_alloc_desc(pool, UNIFORM_BUFFER);
 
         pan_pack(ubos_buf.cpu, UNIFORM_BUFFER, cfg) {
                 cfg.entries = DIV_ROUND_UP(sizeof(inputs), 16);
@@ -1171,7 +1171,7 @@ get_push_uniforms(struct pan_pool *pool,
                 return 0;
 
         struct panfrost_ptr push_consts_buf =
-                panfrost_pool_alloc_aligned(pool, shader->push.count * 4, 16);
+                pan_pool_alloc_aligned(pool, shader->push.count * 4, 16);
         uint32_t *out = push_consts_buf.cpu;
         uint8_t *in = (uint8_t *)inputs;
 
@@ -1240,7 +1240,7 @@ panfrost_emit_index_min_max_search(struct pan_pool *pool,
         const struct pan_indirect_draw_shader *shader =
                 &dev->indirect_draw_shaders.shaders[shader_id];
         struct panfrost_ptr job =
-                panfrost_pool_alloc_desc(pool, COMPUTE_JOB);
+                pan_pool_alloc_desc(pool, COMPUTE_JOB);
         void *invocation =
                 pan_section_ptr(job.cpu, COMPUTE_JOB, INVOCATION);
         panfrost_pack_work_groups_compute(invocation,
@@ -1282,7 +1282,7 @@ panfrost_emit_indirect_draw(struct pan_pool *pool,
         panfrost_indirect_draw_alloc_deps(dev);
 
         struct panfrost_ptr job =
-                panfrost_pool_alloc_desc(pool, COMPUTE_JOB);
+                pan_pool_alloc_desc(pool, COMPUTE_JOB);
         mali_ptr rsd =
                 get_renderer_state(dev, draw_info->flags,
                                    draw_info->index_size, false);
@@ -1293,9 +1293,9 @@ panfrost_emit_indirect_draw(struct pan_pool *pool,
 
         struct panfrost_ptr draw_ctx_ptr = *ctx;
         if (!draw_ctx_ptr.cpu) {
-                draw_ctx_ptr = panfrost_pool_alloc_aligned(pool,
-                                                           sizeof(draw_ctx),
-                                                           sizeof(mali_ptr));
+                draw_ctx_ptr = pan_pool_alloc_aligned(pool,
+                                                      sizeof(draw_ctx),
+                                                      sizeof(mali_ptr));
         }
 
         struct indirect_draw_inputs inputs = {
@@ -1317,9 +1317,9 @@ panfrost_emit_indirect_draw(struct pan_pool *pool,
                 inputs.restart_index = draw_info->restart_index;
 
                 struct panfrost_ptr min_max_ctx_ptr =
-                        panfrost_pool_alloc_aligned(pool,
-                                                    sizeof(struct min_max_context),
-                                                    4);
+                        pan_pool_alloc_aligned(pool,
+                                               sizeof(struct min_max_context),
+                                               4);
                 struct min_max_context *ctx = min_max_ctx_ptr.cpu;
 
                 ctx->min = UINT32_MAX;
@@ -1370,20 +1370,19 @@ panfrost_emit_indirect_draw(struct pan_pool *pool,
 }
 
 void
-panfrost_init_indirect_draw_shaders(struct panfrost_device *dev)
+panfrost_init_indirect_draw_shaders(struct panfrost_device *dev,
+                                    struct pan_pool *bin_pool)
 {
         /* We allocate the states and varying_heap BO lazily to avoid
          * reserving memory when indirect draws are not used.
          */
         pthread_mutex_init(&dev->indirect_draw_shaders.lock, NULL);
-        panfrost_pool_init(&dev->indirect_draw_shaders.bin_pool, NULL, dev,
-                           PAN_BO_EXECUTE, 65536, "Indirect draw shaders", false, true);
+        dev->indirect_draw_shaders.bin_pool = bin_pool;
 }
 
 void
 panfrost_cleanup_indirect_draw_shaders(struct panfrost_device *dev)
 {
-        panfrost_pool_cleanup(&dev->indirect_draw_shaders.bin_pool);
         panfrost_bo_unreference(dev->indirect_draw_shaders.states);
         panfrost_bo_unreference(dev->indirect_draw_shaders.varying_heap);
         pthread_mutex_destroy(&dev->indirect_draw_shaders.lock);

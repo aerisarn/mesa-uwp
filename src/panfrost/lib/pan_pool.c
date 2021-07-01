@@ -42,7 +42,7 @@
  */
 
 static struct panfrost_bo *
-panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
+panfrost_pool_alloc_backing(struct panfrost_pool *pool, size_t bo_sz)
 {
         /* We don't know what the BO will be used for, so let's flag it
          * RW and attach it to both the fragment and vertex/tiler jobs.
@@ -50,8 +50,8 @@ panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
          * flags to this function and keep the read/write,
          * fragment/vertex+tiler pools separate.
          */
-        struct panfrost_bo *bo = panfrost_bo_create(pool->dev, bo_sz,
-                        pool->create_flags, pool->label);
+        struct panfrost_bo *bo = panfrost_bo_create(pool->base.dev, bo_sz,
+                        pool->base.create_flags, pool->base.label);
 
         if (pool->owned)
                 util_dynarray_append(&pool->bos, struct panfrost_bo *, bo);
@@ -65,27 +65,24 @@ panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
 }
 
 void
-panfrost_pool_init(struct pan_pool *pool, void *memctx,
+panfrost_pool_init(struct panfrost_pool *pool, void *memctx,
                    struct panfrost_device *dev,
                    unsigned create_flags, size_t slab_size, const char *label,
                    bool prealloc, bool owned)
 {
         memset(pool, 0, sizeof(*pool));
-        pool->dev = dev;
-        pool->create_flags = create_flags;
+        pan_pool_init(&pool->base, dev, create_flags, slab_size, label);
         pool->owned = owned;
-        pool->label = label;
-        pool->slab_size = slab_size;
 
         if (owned)
                 util_dynarray_init(&pool->bos, memctx);
 
         if (prealloc)
-                panfrost_pool_alloc_backing(pool, pool->slab_size);
+                panfrost_pool_alloc_backing(pool, pool->base.slab_size);
 }
 
 void
-panfrost_pool_cleanup(struct pan_pool *pool)
+panfrost_pool_cleanup(struct panfrost_pool *pool)
 {
         if (!pool->owned) {
                 panfrost_bo_unreference(pool->transient_bo);
@@ -99,7 +96,7 @@ panfrost_pool_cleanup(struct pan_pool *pool)
 }
 
 void
-panfrost_pool_get_bo_handles(struct pan_pool *pool, uint32_t *handles)
+panfrost_pool_get_bo_handles(struct panfrost_pool *pool, uint32_t *handles)
 {
         assert(pool->owned && "pool does not track BOs in unowned mode");
 
@@ -119,8 +116,8 @@ panfrost_pool_get_bo_handles(struct pan_pool *pool, uint32_t *handles)
         }
 }
 
-struct panfrost_ptr
-panfrost_pool_alloc_aligned(struct pan_pool *pool, size_t sz, unsigned alignment)
+static struct panfrost_ptr
+panfrost_pool_alloc_aligned(struct panfrost_pool *pool, size_t sz, unsigned alignment)
 {
         assert(alignment == util_next_power_of_two(alignment));
 
@@ -129,9 +126,9 @@ panfrost_pool_alloc_aligned(struct pan_pool *pool, size_t sz, unsigned alignment
         unsigned offset = ALIGN_POT(pool->transient_offset, alignment);
 
         /* If we don't fit, allocate a new backing */
-        if (unlikely(bo == NULL || (offset + sz) >= pool->slab_size)) {
+        if (unlikely(bo == NULL || (offset + sz) >= pool->base.slab_size)) {
                 bo = panfrost_pool_alloc_backing(pool,
-                                ALIGN_POT(MAX2(pool->slab_size, sz), 4096));
+                                ALIGN_POT(MAX2(pool->base.slab_size, sz), 4096));
                 offset = 0;
         }
 
@@ -144,17 +141,18 @@ panfrost_pool_alloc_aligned(struct pan_pool *pool, size_t sz, unsigned alignment
 
         return ret;
 }
+PAN_POOL_ALLOCATOR(struct panfrost_pool, panfrost_pool_alloc_aligned)
 
 mali_ptr
-panfrost_pool_upload(struct pan_pool *pool, const void *data, size_t sz)
+pan_pool_upload(struct pan_pool *pool, const void *data, size_t sz)
 {
-        return panfrost_pool_upload_aligned(pool, data, sz, sz);
+        return pan_pool_upload_aligned(pool, data, sz, sz);
 }
 
 mali_ptr
-panfrost_pool_upload_aligned(struct pan_pool *pool, const void *data, size_t sz, unsigned alignment)
+pan_pool_upload_aligned(struct pan_pool *pool, const void *data, size_t sz, unsigned alignment)
 {
-        struct panfrost_ptr transfer = panfrost_pool_alloc_aligned(pool, sz, alignment);
+        struct panfrost_ptr transfer = pan_pool_alloc_aligned(pool, sz, alignment);
         memcpy(transfer.cpu, data, sz);
         return transfer.gpu;
 }

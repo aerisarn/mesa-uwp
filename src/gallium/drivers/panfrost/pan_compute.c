@@ -137,7 +137,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         ctx->compute_grid = info;
 
         struct panfrost_ptr t =
-                panfrost_pool_alloc_desc(&batch->pool, COMPUTE_JOB);
+                pan_pool_alloc_desc(&batch->pool.base, COMPUTE_JOB);
 
         /* We implement OpenCL inputs as uniforms (or a UBO -- same thing), so
          * reuse the graphics path for this by lowering to Gallium */
@@ -204,12 +204,12 @@ panfrost_launch_grid(struct pipe_context *pipe,
                         },
                 };
 
-                indirect_dep = pan_indirect_dispatch_emit(&batch->pool,
+                indirect_dep = pan_indirect_dispatch_emit(&batch->pool.base,
                                                           &batch->scoreboard,
                                                           &indirect);
         }
 
-        panfrost_add_job(&batch->pool, &batch->scoreboard,
+        panfrost_add_job(&batch->pool.base, &batch->scoreboard,
                          MALI_JOB_TYPE_COMPUTE, true, false,
                          indirect_dep, 0, &t, false);
         panfrost_flush_all_batches(ctx);

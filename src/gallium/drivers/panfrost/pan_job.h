@@ -83,12 +83,12 @@ struct panfrost_batch {
         struct hash_table *bos;
 
         /* Pool owned by this batch (released when the batch is released) used for temporary descriptors */
-        struct pan_pool pool;
+        struct panfrost_pool pool;
 
         /* Pool also owned by this batch that is not CPU mapped (created as
          * INVISIBLE) used for private GPU-internal structures, particularly
          * varyings */
-        struct pan_pool invisible_pool;
+        struct panfrost_pool invisible_pool;
 
         /* Job scoreboarding state */
         struct pan_scoreboard scoreboard;

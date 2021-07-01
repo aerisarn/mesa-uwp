@@ -133,8 +133,17 @@ panvk_logi_v(const char *format, va_list va);
 #define panvk_stub() assert(!"stub")
 
 struct panvk_meta {
-   struct pan_pool bin_pool;
-   struct pan_pool desc_pool;
+   struct panfrost_pool bin_pool;
+   struct panfrost_pool desc_pool;
+
+   /* Access to the blitter pools are protected by the blitter
+    * shader/rsd locks. They can't be merged with other binary/desc
+    * pools unless we patch pan_blitter.c to external pool locks.
+    */
+   struct {
+      struct panfrost_pool bin_pool;
+      struct panfrost_pool desc_pool;
+   } blitter;
 };
 
 struct panvk_physical_device {
@@ -609,9 +618,9 @@ struct panvk_cmd_buffer {
    struct panvk_device *device;
 
    struct panvk_cmd_pool *pool;
-   struct pan_pool desc_pool;
-   struct pan_pool varying_pool;
-   struct pan_pool tls_pool;
+   struct panfrost_pool desc_pool;
+   struct panfrost_pool varying_pool;
+   struct panfrost_pool tls_pool;
    struct list_head batches;
 
    VkCommandBufferUsageFlags usage_flags;

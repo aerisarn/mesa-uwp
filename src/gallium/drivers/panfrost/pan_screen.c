@@ -692,10 +692,14 @@ static void
 panfrost_destroy_screen(struct pipe_screen *pscreen)
 {
         struct panfrost_device *dev = pan_device(pscreen);
+        struct panfrost_screen *screen = pan_screen(pscreen);
 
         pan_indirect_dispatch_cleanup(dev);
         panfrost_cleanup_indirect_draw_shaders(dev);
+        panfrost_pool_cleanup(&screen->indirect_draw.bin_pool);
         pan_blitter_cleanup(dev);
+        panfrost_pool_cleanup(&screen->blitter.bin_pool);
+        panfrost_pool_cleanup(&screen->blitter.desc_pool);
         pan_blend_shaders_cleanup(dev);
 
         if (dev->ro)
@@ -880,9 +884,17 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         panfrost_resource_screen_init(&screen->base);
         pan_blend_shaders_init(dev);
-        panfrost_init_indirect_draw_shaders(dev);
+        panfrost_pool_init(&screen->indirect_draw.bin_pool, NULL, dev,
+                           PAN_BO_EXECUTE, 65536, "Indirect draw shaders",
+                           false, true);
+        panfrost_init_indirect_draw_shaders(dev, &screen->indirect_draw.bin_pool.base);
         pan_indirect_dispatch_init(dev);
-        pan_blitter_init(dev);
+        panfrost_pool_init(&screen->blitter.bin_pool, NULL, dev, PAN_BO_EXECUTE,
+                           4096, "Blitter shaders", false, true);
+        panfrost_pool_init(&screen->blitter.desc_pool, NULL, dev, 0, 65536,
+                           "Blitter RSDs", false, true);
+        pan_blitter_init(dev, &screen->blitter.bin_pool.base,
+                         &screen->blitter.desc_pool.base);
 
         return &screen->base;
 }

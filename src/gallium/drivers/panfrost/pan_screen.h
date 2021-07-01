@@ -47,6 +47,13 @@ struct panfrost_resource;
 struct panfrost_screen {
         struct pipe_screen base;
         struct panfrost_device dev;
+        struct {
+                struct panfrost_pool bin_pool;
+                struct panfrost_pool desc_pool;
+        } blitter;
+        struct {
+                struct panfrost_pool bin_pool;
+        } indirect_draw;
 };
 
 static inline struct panfrost_screen *

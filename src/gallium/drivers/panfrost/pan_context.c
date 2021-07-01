@@ -495,10 +495,10 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 
         struct panfrost_ptr tiler =
                 pan_is_bifrost(device) ?
-                panfrost_pool_alloc_desc(&batch->pool, BIFROST_TILER_JOB) :
-                panfrost_pool_alloc_desc(&batch->pool, MIDGARD_TILER_JOB);
+                pan_pool_alloc_desc(&batch->pool.base, BIFROST_TILER_JOB) :
+                pan_pool_alloc_desc(&batch->pool.base, MIDGARD_TILER_JOB);
         struct panfrost_ptr vertex =
-                panfrost_pool_alloc_desc(&batch->pool, COMPUTE_JOB);
+                pan_pool_alloc_desc(&batch->pool.base, COMPUTE_JOB);
 
         unsigned vertex_count = ctx->vertex_count;
 
@@ -593,15 +593,15 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
         ctx->indirect_draw = true;
 
         struct panfrost_ptr tiler =
-                panfrost_pool_alloc_aligned(&batch->pool,
-                                            pan_is_bifrost(dev) ?
-                                            MALI_BIFROST_TILER_JOB_LENGTH :
-                                            MALI_MIDGARD_TILER_JOB_LENGTH,
-                                            64);
+                pan_pool_alloc_aligned(&batch->pool.base,
+                                       pan_is_bifrost(dev) ?
+                                       MALI_BIFROST_TILER_JOB_LENGTH :
+                                       MALI_MIDGARD_TILER_JOB_LENGTH,
+                                       64);
         struct panfrost_ptr vertex =
-                panfrost_pool_alloc_aligned(&batch->pool,
-                                            MALI_COMPUTE_JOB_LENGTH,
-                                            64);
+                pan_pool_alloc_aligned(&batch->pool.base,
+                                       MALI_COMPUTE_JOB_LENGTH,
+                                       64);
 
         struct panfrost_shader_state *vs =
                 panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
@@ -708,7 +708,7 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
         }
 
         batch->indirect_draw_job_id =
-                panfrost_emit_indirect_draw(&batch->pool,
+                panfrost_emit_indirect_draw(&batch->pool.base,
                                             &batch->scoreboard,
                                             &draw_info,
                                             &batch->indirect_draw_ctx);
@@ -1381,8 +1381,8 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 (pan_is_bifrost(device) ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
                 panfrost_estimate_texture_payload_size(device, &iview);
 
-        struct panfrost_ptr payload = panfrost_pool_alloc_aligned(&ctx->descs, size, 64);
-        so->state = pan_take_ref(&ctx->descs, payload.gpu);
+        struct panfrost_ptr payload = pan_pool_alloc_aligned(&ctx->descs.base, size, 64);
+        so->state = panfrost_pool_take_ref(&ctx->descs, payload.gpu);
 
         void *tex = pan_is_bifrost(device) ?
                     &so->bifrost_descriptor : payload.cpu;

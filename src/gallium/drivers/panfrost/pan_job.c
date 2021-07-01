@@ -98,11 +98,11 @@ panfrost_batch_init(struct panfrost_context *ctx,
         /* Reserve the framebuffer and local storage descriptors */
         batch->framebuffer =
                 (dev->quirks & MIDGARD_SFBD) ?
-                panfrost_pool_alloc_desc(&batch->pool, SINGLE_TARGET_FRAMEBUFFER) :
-                panfrost_pool_alloc_desc_aggregate(&batch->pool,
-                                                   PAN_DESC(MULTI_TARGET_FRAMEBUFFER),
-                                                   PAN_DESC(ZS_CRC_EXTENSION),
-                                                   PAN_DESC_ARRAY(MAX2(key->nr_cbufs, 1), RENDER_TARGET));
+                pan_pool_alloc_desc(&batch->pool.base, SINGLE_TARGET_FRAMEBUFFER) :
+                pan_pool_alloc_desc_aggregate(&batch->pool.base,
+                                              PAN_DESC(MULTI_TARGET_FRAMEBUFFER),
+                                              PAN_DESC(ZS_CRC_EXTENSION),
+                                              PAN_DESC_ARRAY(MAX2(key->nr_cbufs, 1), RENDER_TARGET));
 
         /* Add the MFBD tag now, other tags will be added at submit-time */
         if (!(dev->quirks & MIDGARD_SFBD))
@@ -110,7 +110,7 @@ panfrost_batch_init(struct panfrost_context *ctx,
 
         /* On Midgard, the TLS is embedded in the FB descriptor */
         if (pan_is_bifrost(dev))
-                batch->tls = panfrost_pool_alloc_desc(&batch->pool, LOCAL_STORAGE);
+                batch->tls = pan_pool_alloc_desc(&batch->pool.base, LOCAL_STORAGE);
         else
                 batch->tls = batch->framebuffer;
 }
@@ -591,13 +591,13 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_c
                 return batch->tiler_ctx.bifrost;
 
         struct panfrost_ptr t =
-                panfrost_pool_alloc_desc(&batch->pool, BIFROST_TILER_HEAP);
+                pan_pool_alloc_desc(&batch->pool.base, BIFROST_TILER_HEAP);
 
         pan_emit_bifrost_tiler_heap(dev, t.cpu);
 
         mali_ptr heap = t.gpu;
 
-        t = panfrost_pool_alloc_desc(&batch->pool, BIFROST_TILER);
+        t = pan_pool_alloc_desc(&batch->pool.base, BIFROST_TILER);
         pan_emit_bifrost_tiler(dev, batch->key.width, batch->key.height,
                                util_framebuffer_get_num_samples(&batch->key),
                                heap, t.cpu);
@@ -751,7 +751,7 @@ panfrost_batch_draw_wallpaper(struct panfrost_batch *batch,
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
-        pan_preload_fb(&batch->pool, &batch->scoreboard, fb, batch->tls.gpu,
+        pan_preload_fb(&batch->pool.base, &batch->scoreboard, fb, batch->tls.gpu,
                        pan_is_bifrost(dev) ? batch->tiler_ctx.bifrost : 0);
 }
 
@@ -929,7 +929,9 @@ panfrost_batch_submit(struct panfrost_batch *batch,
         if (!pan_is_bifrost(dev)) {
                 mali_ptr polygon_list = panfrost_batch_get_polygon_list(batch);
 
-                panfrost_scoreboard_initialize_tiler(&batch->pool, &batch->scoreboard, polygon_list);
+                panfrost_scoreboard_initialize_tiler(&batch->pool.base,
+                                                     &batch->scoreboard,
+                                                     polygon_list);
         }
 
         /* Now that all draws are in, we can finally prepare the

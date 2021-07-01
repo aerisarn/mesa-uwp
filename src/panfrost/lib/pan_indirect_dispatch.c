@@ -78,12 +78,12 @@ get_ubos(struct pan_pool *pool,
          const struct indirect_dispatch_inputs *inputs)
 {
         struct panfrost_ptr inputs_buf =
-                panfrost_pool_alloc_aligned(pool, ALIGN_POT(sizeof(*inputs), 16), 16);
+                pan_pool_alloc_aligned(pool, ALIGN_POT(sizeof(*inputs), 16), 16);
 
         memcpy(inputs_buf.cpu, inputs, sizeof(*inputs));
 
         struct panfrost_ptr ubos_buf =
-                panfrost_pool_alloc_desc(pool, UNIFORM_BUFFER);
+                pan_pool_alloc_desc(pool, UNIFORM_BUFFER);
 
         pan_pack(ubos_buf.cpu, UNIFORM_BUFFER, cfg) {
                 cfg.entries = DIV_ROUND_UP(sizeof(*inputs), 16);
@@ -99,9 +99,9 @@ get_push_uniforms(struct pan_pool *pool,
 {
         const struct panfrost_device *dev = pool->dev;
         struct panfrost_ptr push_consts_buf =
-                panfrost_pool_alloc_aligned(pool,
-                                            ALIGN(dev->indirect_dispatch.push.count * 4, 16),
-                                            16);
+                pan_pool_alloc_aligned(pool,
+                                       ALIGN(dev->indirect_dispatch.push.count * 4, 16),
+                                       16);
         uint32_t *out = push_consts_buf.cpu;
         uint8_t *in = (uint8_t *)inputs;
 
@@ -118,7 +118,7 @@ pan_indirect_dispatch_emit(struct pan_pool *pool,
 {
         struct panfrost_device *dev = pool->dev;
         struct panfrost_ptr job =
-                panfrost_pool_alloc_desc(pool, COMPUTE_JOB);
+                pan_pool_alloc_desc(pool, COMPUTE_JOB);
         void *invocation =
                 pan_section_ptr(job.cpu, COMPUTE_JOB, INVOCATION);
         struct indirect_dispatch_inputs inputs = {

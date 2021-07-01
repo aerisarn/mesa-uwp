@@ -41,8 +41,8 @@
 
 void
 panfrost_shader_compile(struct pipe_screen *pscreen,
-                        struct pan_pool *shader_pool,
-                        struct pan_pool *desc_pool,
+                        struct panfrost_pool *shader_pool,
+                        struct panfrost_pool *desc_pool,
                         enum pipe_shader_ir ir_type,
                         const void *ir,
                         gl_shader_stage stage,
@@ -79,8 +79,8 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
         pan_shader_compile(dev, s, &inputs, &binary, &state->info);
 
         if (binary.size) {
-                state->bin = pan_take_ref(shader_pool,
-                        panfrost_pool_upload_aligned(shader_pool,
+                state->bin = panfrost_pool_take_ref(shader_pool,
+                        pan_pool_upload_aligned(&shader_pool->base,
                                 binary.data, binary.size, 128));
         }
 
@@ -90,9 +90,9 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
          * time finalization based on the renderer state. */
         if (stage != MESA_SHADER_FRAGMENT) {
                 struct panfrost_ptr ptr =
-                        panfrost_pool_alloc_desc(desc_pool, RENDERER_STATE);
+                        pan_pool_alloc_desc(&desc_pool->base, RENDERER_STATE);
 
-                state->state = pan_take_ref(desc_pool, ptr.gpu);
+                state->state = panfrost_pool_take_ref(desc_pool, ptr.gpu);
                 out = ptr.cpu;
         }
 

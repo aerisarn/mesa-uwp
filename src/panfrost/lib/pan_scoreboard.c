@@ -203,7 +203,7 @@ panfrost_scoreboard_initialize_tiler(struct pan_pool *pool,
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
          * regardless of size. */
 
-        transfer = panfrost_pool_alloc_desc(pool, WRITE_VALUE_JOB);
+        transfer = pan_pool_alloc_desc(pool, WRITE_VALUE_JOB);
 
         pan_section_pack(transfer.cpu, WRITE_VALUE_JOB, HEADER, header) {
                 header.type = MALI_JOB_TYPE_WRITE_VALUE;
