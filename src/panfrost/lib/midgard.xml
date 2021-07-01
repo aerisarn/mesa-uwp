@@ -1587,12 +1587,12 @@
     <field name="L2 Invalidate" size="1" start="1:1" type="bool"/>
   </struct>
 
-  <aggregate name="Write Value Job">
+  <aggregate name="Write Value Job" align="64">
     <section name="Header" offset="0" type="Job Header"/>
     <section name="Payload" offset="32" type="Write Value Job Payload"/>
   </aggregate>
 
-  <aggregate name="Cache Flush Job">
+  <aggregate name="Cache Flush Job" align="64">
     <section name="Header" offset="0" type="Job Header"/>
     <section name="Payload" offset="32" type="Cache Flush Job Payload"/>
   </aggregate>
