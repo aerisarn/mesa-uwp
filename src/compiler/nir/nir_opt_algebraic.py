@@ -652,6 +652,11 @@ optimizations.extend([
    # fmin(0.0, b)) while the right one is "b", so this optimization is inexact.
    (('~fmin', ('fsat', a), '#b(is_zero_to_one)'), ('fsat', ('fmin', a, b))),
 
+   # max(-min(b, a), b) -> max(b, -a)
+   # min(-max(b, a), b) -> min(-b, -a)
+   (('fmax', ('fneg', ('fmin', b, a)), b), ('fmax', b, ('fneg', a))),
+   (('fmin', ('fneg', ('fmax', b, a)), b), ('fmin', ('fneg', b), ('fneg', a))),
+
    # If a in [0,b] then b-a is also in [0,b].  Since b in [0,1], max(b-a, 0) =
    # fsat(b-a).
    #
