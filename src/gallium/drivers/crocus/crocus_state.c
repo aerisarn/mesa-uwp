@@ -1553,10 +1553,10 @@ set_blend_entry_bits(struct crocus_batch *batch, BLEND_ENTRY_GENXML *entry,
       if (idx == 0) {
          struct crocus_compiled_shader *shader = ice->shaders.prog[MESA_SHADER_FRAGMENT];
          struct brw_wm_prog_data *wm_prog_data = (void *) shader->prog_data;
-         entry->ColorBufferBlendEnable = rt->blend_enable &&
+         entry->ColorBufferBlendEnable =
             (!cso_blend->dual_color_blending || wm_prog_data->dual_src_blend);
       } else
-         entry->ColorBufferBlendEnable = rt->blend_enable;
+         entry->ColorBufferBlendEnable = 1;
 
       entry->ColorBlendFunction          = rt->rgb_func;
       entry->AlphaBlendFunction          = rt->alpha_func;
@@ -6152,17 +6152,6 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
                       64, &cc_offset);
 #if GFX_VER <= 5
       dirty |= CROCUS_DIRTY_GEN5_PIPELINED_POINTERS;
-      int blend_idx = 0;
-
-      if (cso_blend->cso.independent_blend_enable) {
-         for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; i++) {
-            if (cso_blend->cso.rt[i].blend_enable) {
-               blend_idx = i;
-               break;
-            }
-         }
-      }
-      const struct pipe_rt_blend_state *rt = &cso_blend->cso.rt[blend_idx];
 #endif
       _crocus_pack_state(batch, GENX(COLOR_CALC_STATE), cc_map, cc) {
          cc.AlphaTestFormat = ALPHATEST_FLOAT32;
@@ -6171,8 +6160,6 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
 #if GFX_VER <= 5
 
          set_depth_stencil_bits(ice, &cc);
-
-         cc.ColorBufferBlendEnable = rt->blend_enable;
 
          if (cso_blend->cso.logicop_enable) {
             if (can_emit_logic_op(ice)) {
