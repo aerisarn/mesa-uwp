@@ -1881,6 +1881,10 @@ uint32_t radv_translate_buffer_dataformat(const struct util_format_description *
 uint32_t radv_translate_buffer_numformat(const struct util_format_description *desc,
                                          int first_non_void);
 bool radv_is_buffer_format_supported(VkFormat format, bool *scaled);
+void radv_translate_vertex_format(const struct radv_physical_device *pdevice, VkFormat format,
+                                  const struct util_format_description *desc, unsigned *dfmt,
+                                  unsigned *nfmt, bool *post_shuffle,
+                                  enum radv_vs_input_alpha_adjust *alpha_adjust);
 uint32_t radv_translate_colorformat(VkFormat format);
 uint32_t radv_translate_color_numformat(VkFormat format, const struct util_format_description *desc,
                                         int first_non_void);

@@ -147,6 +147,58 @@ radv_translate_buffer_numformat(const struct util_format_description *desc, int 
    }
 }
 
+void
+radv_translate_vertex_format(const struct radv_physical_device *pdevice, VkFormat format,
+                             const struct util_format_description *desc, unsigned *dfmt,
+                             unsigned *nfmt, bool *post_shuffle,
+                             enum radv_vs_input_alpha_adjust *alpha_adjust)
+{
+   assert(desc->channel[0].type != UTIL_FORMAT_TYPE_VOID);
+   *nfmt = radv_translate_buffer_numformat(desc, 0);
+   *dfmt = radv_translate_buffer_dataformat(desc, 0);
+
+   *alpha_adjust = ALPHA_ADJUST_NONE;
+   if (pdevice->rad_info.chip_class <= GFX8 && pdevice->rad_info.family != CHIP_STONEY) {
+      switch (format) {
+      case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+      case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+         *alpha_adjust = ALPHA_ADJUST_SNORM;
+         break;
+      case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
+      case VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
+         *alpha_adjust = ALPHA_ADJUST_SSCALED;
+         break;
+      case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+      case VK_FORMAT_A2B10G10R10_SINT_PACK32:
+         *alpha_adjust = ALPHA_ADJUST_SINT;
+         break;
+      default:
+         break;
+      }
+   }
+
+   switch (format) {
+   case VK_FORMAT_B8G8R8A8_UNORM:
+   case VK_FORMAT_B8G8R8A8_SNORM:
+   case VK_FORMAT_B8G8R8A8_USCALED:
+   case VK_FORMAT_B8G8R8A8_SSCALED:
+   case VK_FORMAT_B8G8R8A8_UINT:
+   case VK_FORMAT_B8G8R8A8_SINT:
+   case VK_FORMAT_B8G8R8A8_SRGB:
+   case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+   case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+   case VK_FORMAT_A2R10G10B10_USCALED_PACK32:
+   case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
+   case VK_FORMAT_A2R10G10B10_UINT_PACK32:
+   case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+      *post_shuffle = true;
+      break;
+   default:
+      *post_shuffle = false;
+      break;
+   }
+}
+
 uint32_t
 radv_translate_tex_dataformat(VkFormat format, const struct util_format_description *desc,
                               int first_non_void)

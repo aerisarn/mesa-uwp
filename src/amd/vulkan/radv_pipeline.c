@@ -2591,7 +2591,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       unsigned location = desc->location;
       unsigned binding = desc->binding;
       unsigned num_format, data_format;
-      int first_non_void;
+      bool post_shuffle;
 
       if (binding_input_rate & (1u << binding)) {
          key.vs.instance_rate_inputs |= 1u << location;
@@ -2599,10 +2599,9 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       }
 
       format_desc = vk_format_description(desc->format);
-      first_non_void = vk_format_get_first_non_void_channel(desc->format);
-
-      num_format = radv_translate_buffer_numformat(format_desc, first_non_void);
-      data_format = radv_translate_buffer_dataformat(format_desc, first_non_void);
+      radv_translate_vertex_format(pipeline->device->physical_device, desc->format, format_desc,
+                                   &data_format, &num_format, &post_shuffle,
+                                   &key.vs.vertex_alpha_adjust[location]);
 
       key.vs.vertex_attribute_formats[location] = data_format | (num_format << 4);
       key.vs.vertex_attribute_bindings[location] = desc->binding;
@@ -2639,48 +2638,8 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
             radv_get_attrib_stride(input_state, desc->binding);
       }
 
-      enum radv_vs_input_alpha_adjust adjust = ALPHA_ADJUST_NONE;
-      if (pipeline->device->physical_device->rad_info.chip_class <= GFX8 &&
-          pipeline->device->physical_device->rad_info.family != CHIP_STONEY) {
-         VkFormat format = input_state->pVertexAttributeDescriptions[i].format;
-         switch (format) {
-         case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
-         case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
-            adjust = ALPHA_ADJUST_SNORM;
-            break;
-         case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
-         case VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
-            adjust = ALPHA_ADJUST_SSCALED;
-            break;
-         case VK_FORMAT_A2R10G10B10_SINT_PACK32:
-         case VK_FORMAT_A2B10G10R10_SINT_PACK32:
-            adjust = ALPHA_ADJUST_SINT;
-            break;
-         default:
-            break;
-         }
-      }
-      key.vs.vertex_alpha_adjust[location] = adjust;
-
-      switch (desc->format) {
-      case VK_FORMAT_B8G8R8A8_UNORM:
-      case VK_FORMAT_B8G8R8A8_SNORM:
-      case VK_FORMAT_B8G8R8A8_USCALED:
-      case VK_FORMAT_B8G8R8A8_SSCALED:
-      case VK_FORMAT_B8G8R8A8_UINT:
-      case VK_FORMAT_B8G8R8A8_SINT:
-      case VK_FORMAT_B8G8R8A8_SRGB:
-      case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
-      case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
-      case VK_FORMAT_A2R10G10B10_USCALED_PACK32:
-      case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
-      case VK_FORMAT_A2R10G10B10_UINT_PACK32:
-      case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+      if (post_shuffle)
          key.vs.vertex_post_shuffle |= 1 << location;
-         break;
-      default:
-         break;
-      }
    }
 
    const VkPipelineTessellationStateCreateInfo *tess =
