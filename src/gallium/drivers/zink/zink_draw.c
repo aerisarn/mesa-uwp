@@ -172,7 +172,7 @@ update_compute_program(struct zink_context *ctx)
          comp = zink_create_compute_program(ctx, ctx->compute_stage);
          entry = _mesa_hash_table_insert(ctx->compute_program_cache, &comp->shader->shader_id, comp);
       }
-      comp = entry ? entry->data : NULL;
+      comp = (struct zink_compute_program*)(entry ? entry->data : NULL);
       if (comp && comp != ctx->curr_compute) {
          ctx->compute_pipeline_state.dirty = true;
          zink_batch_reference_program(&ctx->batch, &comp->base);
@@ -200,12 +200,12 @@ update_gfx_program(struct zink_context *ctx)
       struct hash_entry *entry = _mesa_hash_table_search(ctx->program_cache,
                                                          ctx->gfx_stages);
       if (entry)
-         zink_update_gfx_program(ctx, entry->data);
+         zink_update_gfx_program(ctx, (struct zink_gfx_program*)entry->data);
       else {
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages);
          entry = _mesa_hash_table_insert(ctx->program_cache, prog->shaders, prog);
       }
-      prog = entry ? entry->data : NULL;
+      prog = (struct zink_gfx_program*)(entry ? entry->data : NULL);
       if (prog && prog != ctx->curr_program) {
          ctx->gfx_pipeline_state.combined_dirty = true;
          zink_batch_reference_program(&ctx->batch, &prog->base);
@@ -291,7 +291,7 @@ draw_indexed(struct zink_context *ctx,
       if (needs_drawid)
          update_drawid(ctx, draw_id);
       if (zink_screen(ctx->base.screen)->info.have_EXT_multi_draw)
-         zink_screen(ctx->base.screen)->vk.CmdDrawMultiIndexedEXT(cmdbuf, num_draws, (VkMultiDrawIndexedInfoEXT*)draws,
+         zink_screen(ctx->base.screen)->vk.CmdDrawMultiIndexedEXT(cmdbuf, num_draws, (const VkMultiDrawIndexedInfoEXT*)draws,
                                                                    dinfo->instance_count,
                                                                    dinfo->start_instance, sizeof(struct pipe_draw_start_count_bias),
                                                                    dinfo->index_bias_varies ? NULL : &draws[0].index_bias);
@@ -323,7 +323,7 @@ draw(struct zink_context *ctx,
       if (needs_drawid)
          update_drawid(ctx, draw_id);
       if (zink_screen(ctx->base.screen)->info.have_EXT_multi_draw)
-         zink_screen(ctx->base.screen)->vk.CmdDrawMultiEXT(cmdbuf, num_draws, (VkMultiDrawInfoEXT*)draws,
+         zink_screen(ctx->base.screen)->vk.CmdDrawMultiEXT(cmdbuf, num_draws, (const VkMultiDrawInfoEXT*)draws,
                                                             dinfo->instance_count, dinfo->start_instance,
                                                             sizeof(struct pipe_draw_start_count_bias));
       else {
@@ -343,7 +343,7 @@ update_barriers(struct zink_context *ctx, bool is_compute)
    ctx->barrier_set_idx[is_compute] = !ctx->barrier_set_idx[is_compute];
    ctx->need_barriers[is_compute] = &ctx->update_barriers[is_compute][ctx->barrier_set_idx[is_compute]];
    set_foreach(need_barriers, he) {
-      struct zink_resource *res = (void*)he->key;
+      struct zink_resource *res = (struct zink_resource *)he->key;
       VkPipelineStageFlags pipeline = 0;
       VkAccessFlags access = 0;
       if (res->bind_count[is_compute]) {
@@ -370,7 +370,7 @@ update_barriers(struct zink_context *ctx, bool is_compute)
          else {
             u_foreach_bit(stage, res->bind_history) {
                if ((1 << stage) != ZINK_RESOURCE_USAGE_STREAMOUT)
-                  pipeline |= zink_pipeline_flags_from_pipe_stage(stage);
+                  pipeline |= zink_pipeline_flags_from_pipe_stage((enum pipe_shader_type)stage);
             }
          }
          if (res->base.b.target == PIPE_BUFFER)
