@@ -45,6 +45,12 @@
 
 #define DOUBLE_EQ(a, b) (fabs((a) - (b)) < DBL_EPSILON)
 
+enum gs_output {
+  GS_OUTPUT_NONE,
+  GS_OUTPUT_NOT_LINES,
+  GS_OUTPUT_LINES,
+};
+
 struct rendering_state {
    struct pipe_context *pctx;
    struct cso_context *cso;
@@ -110,6 +116,7 @@ struct rendering_state {
    int num_shader_buffers[PIPE_SHADER_TYPES];
    bool iv_dirty[PIPE_SHADER_TYPES];
    bool sb_dirty[PIPE_SHADER_TYPES];
+   enum gs_output gs_output_lines : 2;
    void *ss_cso[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    void *velems_cso;
 
@@ -381,6 +388,7 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
       state->pctx->bind_tcs_state(state->pctx, NULL);
    if (state->pctx->bind_tes_state)
       state->pctx->bind_tes_state(state->pctx, NULL);
+   state->gs_output_lines = GS_OUTPUT_NONE;
    {
       int i;
       for (i = 0; i < pipeline->graphics_create_info.stageCount; i++) {
@@ -396,6 +404,7 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
             break;
          case VK_SHADER_STAGE_GEOMETRY_BIT:
             state->pctx->bind_gs_state(state->pctx, pipeline->shader_cso[PIPE_SHADER_GEOMETRY]);
+            state->gs_output_lines = pipeline->gs_output_lines ? GS_OUTPUT_LINES : GS_OUTPUT_NOT_LINES;
             has_stage[PIPE_SHADER_GEOMETRY] = true;
             break;
          case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
