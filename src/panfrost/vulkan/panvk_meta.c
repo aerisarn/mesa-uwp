@@ -154,14 +154,14 @@ panvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
 void
 panvk_meta_init(struct panvk_physical_device *dev)
 {
-   panvk_pool_init(&dev->meta.bin_pool, &dev->pdev, PAN_BO_EXECUTE,
+   panvk_pool_init(&dev->meta.bin_pool, &dev->pdev, NULL, PAN_BO_EXECUTE,
                    16 * 1024, "panvk_meta binary pool", false);
-   panvk_pool_init(&dev->meta.desc_pool, &dev->pdev, 0,
+   panvk_pool_init(&dev->meta.desc_pool, &dev->pdev, NULL, 0,
                    16 * 1024, "panvk_meta descriptor pool", false);
-   panvk_pool_init(&dev->meta.blitter.bin_pool, &dev->pdev,
+   panvk_pool_init(&dev->meta.blitter.bin_pool, &dev->pdev, NULL,
                    PAN_BO_EXECUTE, 16 * 1024,
                    "panvk_meta blitter binary pool", false);
-   panvk_pool_init(&dev->meta.blitter.desc_pool, &dev->pdev,
+   panvk_pool_init(&dev->meta.blitter.desc_pool, &dev->pdev, NULL,
                    0, 16 * 1024, "panvk_meta blitter descriptor pool",
                    false);
    pan_blitter_init(&dev->pdev, &dev->meta.blitter.bin_pool.base,

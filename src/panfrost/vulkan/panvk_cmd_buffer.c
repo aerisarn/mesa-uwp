@@ -57,12 +57,14 @@ panvk_reset_cmdbuf(struct panvk_cmd_buffer *cmdbuf)
    panvk_pool_cleanup(&cmdbuf->tls_pool);
    panvk_pool_cleanup(&cmdbuf->varying_pool);
    panvk_pool_init(&cmdbuf->desc_pool, &device->physical_device->pdev,
-                   0, 64 * 1024, "Command buffer descriptor pool",
-                   true);
+                   NULL, 0, 64 * 1024,
+                   "Command buffer descriptor pool", true);
    panvk_pool_init(&cmdbuf->tls_pool, &device->physical_device->pdev,
-                   PAN_BO_INVISIBLE, 64 * 1024, "TLS pool", false);
+                   NULL, PAN_BO_INVISIBLE, 64 * 1024,
+                   "TLS pool", false);
    panvk_pool_init(&cmdbuf->varying_pool, &device->physical_device->pdev,
-                   PAN_BO_INVISIBLE, 64 * 1024, "Varyings pool", false);
+                   NULL, PAN_BO_INVISIBLE, 64 * 1024,
+                   "Varyings pool", false);
    cmdbuf->status = PANVK_CMD_BUFFER_STATUS_INITIAL;
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
@@ -88,12 +90,14 @@ panvk_create_cmdbuf(struct panvk_device *device,
    cmdbuf->level = level;
    cmdbuf->pool = pool;
    panvk_pool_init(&cmdbuf->desc_pool, &device->physical_device->pdev,
-                   0, 64 * 1024, "Command buffer descriptor pool",
-                   true);
+                   NULL, 0, 64 * 1024,
+                   "Command buffer descriptor pool", true);
    panvk_pool_init(&cmdbuf->tls_pool, &device->physical_device->pdev,
-                   PAN_BO_INVISIBLE, 64 * 1024, "TLS pool", false);
+                   NULL, PAN_BO_INVISIBLE, 64 * 1024,
+                   "TLS pool", false);
    panvk_pool_init(&cmdbuf->varying_pool, &device->physical_device->pdev,
-                   PAN_BO_INVISIBLE, 64 * 1024, "Varyings pool", false);
+                   NULL, PAN_BO_INVISIBLE, 64 * 1024,
+                   "Varyings pool", false);
    list_inithead(&cmdbuf->batches);
    cmdbuf->status = PANVK_CMD_BUFFER_STATUS_INITIAL;
    *cmdbuf_out = cmdbuf;

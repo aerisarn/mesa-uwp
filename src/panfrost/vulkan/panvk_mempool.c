@@ -43,6 +43,11 @@
 static struct panfrost_bo *
 panvk_pool_alloc_backing(struct panvk_pool *pool, size_t bo_sz)
 {
+   /* If there's a free BO in our BO pool, let's pick it. */
+   if (pool->bo_pool &&
+       util_dynarray_num_elements(&pool->bo_pool->free_bos, struct panfrost_bo *))
+      return util_dynarray_pop(&pool->bo_pool->free_bos, struct panfrost_bo *);
+
    /* We don't know what the BO will be used for, so let's flag it
     * RW and attach it to both the fragment and vertex/tiler jobs.
     * TODO: if we want fine grained BO assignment we should pass
@@ -89,12 +94,14 @@ panvk_pool_alloc_aligned(struct panvk_pool *pool, size_t sz, unsigned alignment)
 PAN_POOL_ALLOCATOR(struct panvk_pool, panvk_pool_alloc_aligned)
 
 void
-panvk_pool_init(struct panvk_pool *pool, struct panfrost_device *dev,
+panvk_pool_init(struct panvk_pool *pool,
+                struct panfrost_device *dev, struct panvk_bo_pool *bo_pool,
                 unsigned create_flags, size_t slab_size, const char *label,
                 bool prealloc)
 {
    memset(pool, 0, sizeof(*pool));
    pan_pool_init(&pool->base, dev, create_flags, slab_size, label);
+   pool->bo_pool = bo_pool;
 
    util_dynarray_init(&pool->bos, NULL);
 
@@ -103,11 +110,26 @@ panvk_pool_init(struct panvk_pool *pool, struct panfrost_device *dev,
 }
 
 void
+panvk_pool_reset(struct panvk_pool *pool)
+{
+   if (pool->bo_pool) {
+      unsigned num_bos = panvk_pool_num_bos(pool);
+      void *ptr = util_dynarray_grow(&pool->bo_pool->free_bos,
+                                     struct panfrost_bo *, num_bos);
+      memcpy(ptr, util_dynarray_begin(&pool->bos),
+             num_bos * sizeof(struct panfrost_bo *));
+   } else {
+      util_dynarray_foreach(&pool->bos, struct panfrost_bo *, bo)
+         panfrost_bo_unreference(*bo);
+   }
+
+   util_dynarray_clear(&pool->bos);
+}
+
+void
 panvk_pool_cleanup(struct panvk_pool *pool)
 {
-   util_dynarray_foreach(&pool->bos, struct panfrost_bo *, bo)
-      panfrost_bo_unreference(*bo);
-
+   panvk_pool_reset(pool);
    util_dynarray_fini(&pool->bos);
 }
 

@@ -27,12 +27,33 @@
 
 #include "pan_pool.h"
 
+struct panvk_bo_pool {
+   struct util_dynarray free_bos;
+};
+
+static inline void panvk_bo_pool_init(struct panvk_bo_pool *bo_pool)
+{
+   util_dynarray_init(&bo_pool->free_bos, NULL);
+}
+
+static inline void panvk_bo_pool_cleanup(struct panvk_bo_pool *bo_pool)
+{
+   util_dynarray_foreach(&bo_pool->free_bos, struct panfrost_bo *, bo)
+      panfrost_bo_unreference(*bo);
+   util_dynarray_fini(&bo_pool->free_bos);
+}
+
 /* Represents grow-only memory. It may be owned by the batch (OpenGL), or may
    be unowned for persistent uploads. */
 
 struct panvk_pool {
    /* Inherit from pan_pool */
    struct pan_pool base;
+
+   /* Before allocating a new BO, check if the BO pool has free BOs.
+    * When returning BOs, if bo_pool != NULL, return them to this bo_pool.
+    */
+   struct panvk_bo_pool *bo_pool;
 
    /* BOs allocated by this pool */
    struct util_dynarray bos;
@@ -42,7 +63,6 @@ struct panvk_pool {
 
    /* Within the topmost transient BO, how much has been used? */
    unsigned transient_offset;
-
 };
 
 static inline struct panvk_pool *
@@ -53,8 +73,11 @@ to_panvk_pool(struct pan_pool *pool)
 
 void
 panvk_pool_init(struct panvk_pool *pool, struct panfrost_device *dev,
-                unsigned create_flags, size_t slab_size, const char *label,
-                bool prealloc);
+                struct panvk_bo_pool *bo_pool, unsigned create_flags,
+                size_t slab_size, const char *label, bool prealloc);
+
+void
+panvk_pool_reset(struct panvk_pool *pool);
 
 void
 panvk_pool_cleanup(struct panvk_pool *pool);
