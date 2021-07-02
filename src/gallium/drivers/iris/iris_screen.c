@@ -300,14 +300,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
       return IRIS_MAP_BUFFER_ALIGNMENT;
    case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
-      /* Choose a cacheline (64 bytes) so that we can safely have the CPU and
-       * GPU writing the same SSBO on non-coherent systems (Atom CPUs).  With
-       * UBOs, the GPU never writes, so there's no problem.  For an SSBO, the
-       * GPU and the CPU can be updating disjoint regions of the buffer
-       * simultaneously and that will break if the regions overlap the same
-       * cacheline.
-       */
-      return 64;
+      return 4;
    case PIPE_CAP_MAX_SHADER_BUFFER_SIZE:
       return 1 << 27;
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
