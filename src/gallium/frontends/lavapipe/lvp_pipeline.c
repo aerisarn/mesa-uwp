@@ -835,6 +835,9 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
          pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info.tess.ccw = !pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info.tess.ccw;
    }
 
+   pipeline->gs_output_lines = pipeline->pipeline_nir[MESA_SHADER_GEOMETRY] &&
+                               pipeline->pipeline_nir[MESA_SHADER_GEOMETRY]->info.gs.output_primitive == GL_LINES;
+
 
    bool has_fragment_shader = false;
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {

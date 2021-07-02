@@ -483,6 +483,7 @@ struct lvp_pipeline {
    uint16_t line_stipple_pattern;
    bool line_stipple_enable;
    bool line_smooth;
+   bool gs_output_lines;
    bool provoking_vertex_last;
 };
 
