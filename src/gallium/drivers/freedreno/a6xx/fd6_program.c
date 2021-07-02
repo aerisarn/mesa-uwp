@@ -230,9 +230,10 @@ setup_stream_out(struct fd6_program_state *state,
 }
 
 static void
-setup_config_stateobj(struct fd_ringbuffer *ring,
-                      struct fd6_program_state *state)
+setup_config_stateobj(struct fd_context *ctx, struct fd6_program_state *state)
 {
+   struct fd_ringbuffer *ring = fd_ringbuffer_new_object(ctx->pipe, 100 * 4);
+
    OUT_REG(ring, A6XX_HLSQ_INVALIDATE_CMD(.vs_state = true, .hs_state = true,
                                           .ds_state = true, .gs_state = true,
                                           .fs_state = true, .cs_state = true,
@@ -291,6 +292,8 @@ setup_config_stateobj(struct fd_ringbuffer *ring,
 
    OUT_PKT4(ring, REG_A6XX_SP_IBO_COUNT, 1);
    OUT_RING(ring, ir3_shader_nibo(state->fs));
+
+   state->config_stateobj = ring;
 }
 
 static inline uint32_t
@@ -1115,7 +1118,6 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
    state->ds = ds;
    state->gs = gs;
    state->fs = fs;
-   state->config_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
    state->binning_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
    state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
    state->streamout_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
@@ -1130,7 +1132,7 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
    }
 #endif
 
-   setup_config_stateobj(state->config_stateobj, state);
+   setup_config_stateobj(ctx, state);
    setup_stateobj(state->binning_stateobj, ctx, state, key, true);
    setup_stateobj(state->stateobj, ctx, state, key, false);
    state->interp_stateobj = create_interp_stateobj(ctx, state);
