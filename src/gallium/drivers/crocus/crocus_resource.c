@@ -289,17 +289,10 @@ crocus_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    *count = supported_mods;
 }
 
-struct pipe_resource *
+static struct pipe_resource *
 crocus_resource_get_separate_stencil(struct pipe_resource *p_res)
 {
-   /* For packed depth-stencil, we treat depth as the primary resource
-    * and store S8 as the "second plane" resource.
-    */
-   if (p_res->next && p_res->next->format == PIPE_FORMAT_S8_UINT)
-      return p_res->next;
-
-   return NULL;
-
+   return _crocus_resource_get_separate_stencil(p_res);
 }
 
 static void
@@ -308,34 +301,6 @@ crocus_resource_set_separate_stencil(struct pipe_resource *p_res,
 {
    assert(util_format_has_depth(util_format_description(p_res->format)));
    pipe_resource_reference(&p_res->next, stencil);
-}
-
-void
-crocus_get_depth_stencil_resources(const struct intel_device_info *devinfo,
-                                   struct pipe_resource *res,
-                                   struct crocus_resource **out_z,
-                                   struct crocus_resource **out_s)
-{
-   if (!res) {
-      *out_z = NULL;
-      *out_s = NULL;
-      return;
-   }
-
-   /* gen4/5 only supports packed ds */
-   if (devinfo->ver < 6) {
-      *out_z = (void *)res;
-      *out_s = (void *)res;
-      return;
-   }
-
-   if (res->format != PIPE_FORMAT_S8_UINT) {
-      *out_z = (void *) res;
-      *out_s = (void *) crocus_resource_get_separate_stencil(res);
-   } else {
-      *out_z = NULL;
-      *out_s = (void *) res;
-   }
 }
 
 void

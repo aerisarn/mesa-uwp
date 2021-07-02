@@ -27,7 +27,7 @@
 #include "util/u_inlines.h"
 #include "util/u_range.h"
 #include "intel/isl/isl.h"
-
+#include "intel/dev/intel_device_info.h"
 #include "crocus_bufmgr.h"
 
 struct crocus_batch;
@@ -306,12 +306,41 @@ struct crocus_format_info crocus_format_for_usage(const struct intel_device_info
                                                   enum pipe_format pf,
                                                   isl_surf_usage_flags_t usage);
 
-struct pipe_resource *crocus_resource_get_separate_stencil(struct pipe_resource *);
+static inline struct pipe_resource *
+_crocus_resource_get_separate_stencil(struct pipe_resource *p_res)
+{
+   /* For packed depth-stencil, we treat depth as the primary resource
+    * and store S8 as the "second plane" resource.
+    */
+   if (p_res->next && p_res->next->format == PIPE_FORMAT_S8_UINT)
+      return p_res->next;
 
-void crocus_get_depth_stencil_resources(const struct intel_device_info *devinfo,
-                                        struct pipe_resource *res,
-                                        struct crocus_resource **out_z,
-                                        struct crocus_resource **out_s);
+   return NULL;
+
+}
+static inline void
+crocus_get_depth_stencil_resources(const struct intel_device_info *devinfo,
+                                   struct pipe_resource *res,
+                                   struct crocus_resource **out_z,
+                                   struct crocus_resource **out_s)
+{
+   /* gen4/5 only supports packed ds */
+   if (devinfo->ver < 6) {
+      *out_z = (void *)res;
+      *out_s = (void *)res;
+      return;
+   }
+
+   if (res && res->format != PIPE_FORMAT_S8_UINT) {
+      *out_z = (void *) res;
+      *out_s = (void *) _crocus_resource_get_separate_stencil(res);
+   } else {
+      *out_z = NULL;
+      *out_s = (void *) res;
+   }
+}
+
+
 bool crocus_resource_set_clear_color(struct crocus_context *ice,
                                      struct crocus_resource *res,
                                      union isl_color_value color);
