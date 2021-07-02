@@ -31,8 +31,7 @@
 
 #include "util/u_dynarray.h"
 
-/* Represents grow-only memory. It may be owned by the batch (OpenGL) or
- * command pool (Vulkan), or may be unowned for persistent uploads. */
+/* Represents grow-only memory. */
 
 struct pan_pool {
         /* Parent device for allocation */
@@ -48,55 +47,6 @@ struct pan_pool {
         size_t slab_size;
 };
 
-struct panfrost_pool {
-        /* Inherit from pan_pool */
-        struct pan_pool base;
-
-        /* BOs allocated by this pool */
-        struct util_dynarray bos;
-
-        /* Current transient BO */
-        struct panfrost_bo *transient_bo;
-
-        /* Within the topmost transient BO, how much has been used? */
-        unsigned transient_offset;
-
-        /* Mode of the pool. BO management is in the pool for owned mode, but
-         * the consumed for unowned mode. */
-        bool owned;
-};
-
-static inline struct panfrost_pool *
-to_panfrost_pool(struct pan_pool *pool)
-{
-        return container_of(pool, struct panfrost_pool, base);
-}
-
-/* Reference to pool allocated memory for an unowned pool */
-
-struct panfrost_pool_ref {
-        /* Owning BO */
-        struct panfrost_bo *bo;
-
-        /* Mapped GPU VA */
-        mali_ptr gpu;
-};
-
-/* Take a reference to an allocation pool. Call directly after allocating from
- * an unowned pool for correct operation. */
-
-static inline struct panfrost_pool_ref
-panfrost_pool_take_ref(struct panfrost_pool *pool, mali_ptr ptr)
-{
-        if (!pool->owned)
-                panfrost_bo_reference(pool->transient_bo);
-
-        return (struct panfrost_pool_ref) {
-                .bo = pool->transient_bo,
-                .gpu = ptr
-        };
-}
-
 static inline void
 pan_pool_init(struct pan_pool *pool, struct panfrost_device *dev,
               unsigned create_flags, size_t slab_size, const char *label)
@@ -106,25 +56,6 @@ pan_pool_init(struct pan_pool *pool, struct panfrost_device *dev,
         pool->slab_size = slab_size;
         pool->label = label;
 }
-
-void
-panfrost_pool_init(struct panfrost_pool *pool, void *memctx,
-                   struct panfrost_device *dev, unsigned create_flags,
-                   size_t slab_size, const char *label, bool prealloc, bool
-                   owned);
-
-void
-panfrost_pool_cleanup(struct panfrost_pool *pool);
-
-static inline unsigned
-panfrost_pool_num_bos(struct panfrost_pool *pool)
-{
-        assert(pool->owned && "pool does not track BOs in unowned mode");
-        return util_dynarray_num_elements(&pool->bos, struct panfrost_bo *);
-}
-
-void
-panfrost_pool_get_bo_handles(struct panfrost_pool *pool, uint32_t *handles);
 
 /* Represents a fat pointer for GPU-mapped memory, returned from the transient
  * allocator and not used for much else */

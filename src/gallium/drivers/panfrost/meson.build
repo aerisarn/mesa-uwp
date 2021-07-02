@@ -32,6 +32,8 @@ files_panfrost = files(
   'pan_blend_cso.c',
   'pan_cmdstream.c',
   'pan_compute.c',
+  'pan_mempool.c',
+  'pan_mempool.h',
 )
 
 panfrost_includes = [

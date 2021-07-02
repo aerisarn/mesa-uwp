@@ -28,7 +28,6 @@
 
 #include <midgard_pack.h>
 #include "pan_screen.h"
-#include "pan_pool.h"
 #include "pan_minmax_cache.h"
 #include "pan_texture.h"
 #include "drm-uapi/drm.h"

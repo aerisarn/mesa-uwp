@@ -10,6 +10,8 @@ C_SOURCES := \
 	pan_context.h \
 	pan_job.c \
 	pan_job.h \
+	pan_mempool.c \
+	pan_mempool.h \
 	pan_public.h \
 	pan_resource.c \
 	pan_resource.h \

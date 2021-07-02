@@ -29,7 +29,7 @@
 #include "util/u_dynarray.h"
 #include "pipe/p_state.h"
 #include "pan_cs.h"
-#include "pan_pool.h"
+#include "pan_mempool.h"
 #include "pan_resource.h"
 #include "pan_scoreboard.h"
 

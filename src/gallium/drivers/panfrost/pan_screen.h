@@ -38,7 +38,7 @@
 #include "util/set.h"
 
 #include "pan_device.h"
-#include "pan_pool.h"
+#include "pan_mempool.h"
 
 struct panfrost_batch;
 struct panfrost_context;

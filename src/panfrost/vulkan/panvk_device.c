@@ -1215,9 +1215,9 @@ panvk_QueueSubmit(VkQueue _queue,
          list_for_each_entry(struct panvk_batch, batch, &cmdbuf->batches, node) {
             /* FIXME: should be done at the batch level */
             unsigned nr_bos =
-               util_dynarray_num_elements(&cmdbuf->desc_pool.bos, struct panfrost_bo *) +
-               util_dynarray_num_elements(&cmdbuf->varying_pool.bos, struct panfrost_bo *) +
-               util_dynarray_num_elements(&cmdbuf->tls_pool.bos, struct panfrost_bo *) +
+               panvk_pool_num_bos(&cmdbuf->desc_pool) +
+               panvk_pool_num_bos(&cmdbuf->varying_pool) +
+               panvk_pool_num_bos(&cmdbuf->tls_pool) +
                (batch->fb.info ? batch->fb.info->attachment_count : 0) +
                (batch->blit.src ? 1 : 0) +
                (batch->blit.dst ? 1 : 0) +
@@ -1225,17 +1225,14 @@ panvk_QueueSubmit(VkQueue _queue,
             unsigned bo_idx = 0;
             uint32_t bos[nr_bos];
 
-            util_dynarray_foreach(&cmdbuf->desc_pool.bos, struct panfrost_bo *, bo) {
-               bos[bo_idx++] = (*bo)->gem_handle;
-            }
+            panvk_pool_get_bo_handles(&cmdbuf->desc_pool, &bos[bo_idx]);
+            bo_idx += panvk_pool_num_bos(&cmdbuf->desc_pool);
 
-            util_dynarray_foreach(&cmdbuf->varying_pool.bos, struct panfrost_bo *, bo) {
-               bos[bo_idx++] = (*bo)->gem_handle;
-            }
+            panvk_pool_get_bo_handles(&cmdbuf->varying_pool, &bos[bo_idx]);
+            bo_idx += panvk_pool_num_bos(&cmdbuf->varying_pool);
 
-            util_dynarray_foreach(&cmdbuf->tls_pool.bos, struct panfrost_bo *, bo) {
-               bos[bo_idx++] = (*bo)->gem_handle;
-            }
+            panvk_pool_get_bo_handles(&cmdbuf->tls_pool, &bos[bo_idx]);
+            bo_idx += panvk_pool_num_bos(&cmdbuf->tls_pool);
 
             if (batch->fb.info) {
                for (unsigned i = 0; i < batch->fb.info->attachment_count; i++) {

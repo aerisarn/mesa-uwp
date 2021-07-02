@@ -1,6 +1,5 @@
 /*
- * © Copyright 2018 Alyssa Rosenzweig
- * Copyright (C) 2019 Collabora, Ltd.
+ * © Copyright 2017-2018 Alyssa Rosenzweig
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,24 +22,50 @@
  *
  */
 
-#include "pan_bo.h"
-#include "pan_device.h"
+#ifndef __PANVK_POOL_H__
+#define __PANVK_POOL_H__
+
 #include "pan_pool.h"
 
-/* Knockoff u_upload_mgr. Uploads whereever we left off, allocating new entries
- * when needed.
- */
+/* Represents grow-only memory. It may be owned by the batch (OpenGL), or may
+   be unowned for persistent uploads. */
 
-mali_ptr
-pan_pool_upload(struct pan_pool *pool, const void *data, size_t sz)
+struct panvk_pool {
+   /* Inherit from pan_pool */
+   struct pan_pool base;
+
+   /* BOs allocated by this pool */
+   struct util_dynarray bos;
+
+   /* Current transient BO */
+   struct panfrost_bo *transient_bo;
+
+   /* Within the topmost transient BO, how much has been used? */
+   unsigned transient_offset;
+
+};
+
+static inline struct panvk_pool *
+to_panvk_pool(struct pan_pool *pool)
 {
-        return pan_pool_upload_aligned(pool, data, sz, sz);
+   return container_of(pool, struct panvk_pool, base);
 }
 
-mali_ptr
-pan_pool_upload_aligned(struct pan_pool *pool, const void *data, size_t sz, unsigned alignment)
+void
+panvk_pool_init(struct panvk_pool *pool, struct panfrost_device *dev,
+                unsigned create_flags, size_t slab_size, const char *label,
+                bool prealloc);
+
+void
+panvk_pool_cleanup(struct panvk_pool *pool);
+
+static inline unsigned
+panvk_pool_num_bos(struct panvk_pool *pool)
 {
-        struct panfrost_ptr transfer = pan_pool_alloc_aligned(pool, sz, alignment);
-        memcpy(transfer.cpu, data, sz);
-        return transfer.gpu;
+   return util_dynarray_num_elements(&pool->bos, struct panfrost_bo *);
 }
+
+void
+panvk_pool_get_bo_handles(struct panvk_pool *pool, uint32_t *handles);
+
+#endif
