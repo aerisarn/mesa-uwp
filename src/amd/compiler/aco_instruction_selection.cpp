@@ -4969,11 +4969,11 @@ get_fetch_data_format(isel_context* ctx, const ac_data_format_info* vtx_info, un
 /* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
  * so we may need to fix it up. */
 Temp
-adjust_vertex_fetch_alpha(isel_context* ctx, unsigned adjustment, Temp alpha)
+adjust_vertex_fetch_alpha(isel_context* ctx, enum radv_vs_input_alpha_adjust adjustment, Temp alpha)
 {
    Builder bld(ctx->program, ctx->block);
 
-   if (adjustment == AC_FETCH_FORMAT_SSCALED)
+   if (adjustment == ALPHA_ADJUST_SSCALED)
       alpha = bld.vop1(aco_opcode::v_cvt_u32_f32, bld.def(v1), alpha);
 
    /* For the integer-like cases, do a natural sign extension.
@@ -4982,15 +4982,15 @@ adjust_vertex_fetch_alpha(isel_context* ctx, unsigned adjustment, Temp alpha)
     * and happen to contain 0, 1, 2, 3 as the two LSBs of the
     * exponent.
     */
-   unsigned offset = adjustment == AC_FETCH_FORMAT_SNORM ? 23u : 0u;
+   unsigned offset = adjustment == ALPHA_ADJUST_SNORM ? 23u : 0u;
    alpha =
       bld.vop3(aco_opcode::v_bfe_i32, bld.def(v1), alpha, Operand::c32(offset), Operand::c32(2u));
 
    /* Convert back to the right type. */
-   if (adjustment == AC_FETCH_FORMAT_SNORM) {
+   if (adjustment == ALPHA_ADJUST_SNORM) {
       alpha = bld.vop1(aco_opcode::v_cvt_f32_i32, bld.def(v1), alpha);
       alpha = bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand::c32(0xbf800000u), alpha);
-   } else if (adjustment == AC_FETCH_FORMAT_SSCALED) {
+   } else if (adjustment == ALPHA_ADJUST_SSCALED) {
       alpha = bld.vop1(aco_opcode::v_cvt_f32_i32, bld.def(v1), alpha);
    }
 
@@ -5021,7 +5021,8 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
       uint32_t attrib_stride = ctx->options->key.vs.vertex_attribute_strides[location];
       unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[location];
       unsigned binding_align = ctx->options->key.vs.vertex_binding_align[attrib_binding];
-      enum ac_fetch_format alpha_adjust = ctx->options->key.vs.vertex_alpha_adjust[location];
+      enum radv_vs_input_alpha_adjust alpha_adjust =
+         ctx->options->key.vs.vertex_alpha_adjust[location];
 
       unsigned dfmt = attrib_format & 0xf;
       unsigned nfmt = (attrib_format >> 4) & 0x7;
@@ -5157,7 +5158,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
 
          Temp fetch_dst;
          if (channel_start == 0 && fetch_bytes == dst.bytes() && !post_shuffle && !expanded &&
-             (alpha_adjust == AC_FETCH_FORMAT_NONE || num_channels <= 3)) {
+             (alpha_adjust == ALPHA_ADJUST_NONE || num_channels <= 3)) {
             direct_fetch = true;
             fetch_dst = dst;
          } else {
@@ -5206,7 +5207,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
             unsigned idx = i + component;
             if (swizzle[idx] < num_channels && channels[swizzle[idx]].id()) {
                Temp channel = channels[swizzle[idx]];
-               if (idx == 3 && alpha_adjust != AC_FETCH_FORMAT_NONE)
+               if (idx == 3 && alpha_adjust != ALPHA_ADJUST_NONE)
                   channel = adjust_vertex_fetch_alpha(ctx, alpha_adjust, channel);
                vec->operands[i] = Operand(channel);
 

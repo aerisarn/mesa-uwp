@@ -606,14 +606,14 @@ radv_get_sampler_desc(struct ac_shader_abi *abi, unsigned descriptor_set, unsign
 static LLVMValueRef
 adjust_vertex_fetch_alpha(struct radv_shader_context *ctx, unsigned adjustment, LLVMValueRef alpha)
 {
-   if (adjustment == AC_FETCH_FORMAT_NONE)
+   if (adjustment == ALPHA_ADJUST_NONE)
       return alpha;
 
    LLVMValueRef c30 = LLVMConstInt(ctx->ac.i32, 30, 0);
 
    alpha = LLVMBuildBitCast(ctx->ac.builder, alpha, ctx->ac.f32, "");
 
-   if (adjustment == AC_FETCH_FORMAT_SSCALED)
+   if (adjustment == ALPHA_ADJUST_SSCALED)
       alpha = LLVMBuildFPToUI(ctx->ac.builder, alpha, ctx->ac.i32, "");
    else
       alpha = ac_to_integer(&ctx->ac, alpha);
@@ -626,17 +626,17 @@ adjust_vertex_fetch_alpha(struct radv_shader_context *ctx, unsigned adjustment, 
     */
    alpha =
       LLVMBuildShl(ctx->ac.builder, alpha,
-                   adjustment == AC_FETCH_FORMAT_SNORM ? LLVMConstInt(ctx->ac.i32, 7, 0) : c30, "");
+                   adjustment == ALPHA_ADJUST_SNORM ? LLVMConstInt(ctx->ac.i32, 7, 0) : c30, "");
    alpha = LLVMBuildAShr(ctx->ac.builder, alpha, c30, "");
 
    /* Convert back to the right type. */
-   if (adjustment == AC_FETCH_FORMAT_SNORM) {
+   if (adjustment == ALPHA_ADJUST_SNORM) {
       LLVMValueRef clamp;
       LLVMValueRef neg_one = LLVMConstReal(ctx->ac.f32, -1.0);
       alpha = LLVMBuildSIToFP(ctx->ac.builder, alpha, ctx->ac.f32, "");
       clamp = LLVMBuildFCmp(ctx->ac.builder, LLVMRealULT, alpha, neg_one, "");
       alpha = LLVMBuildSelect(ctx->ac.builder, clamp, neg_one, alpha, "");
-   } else if (adjustment == AC_FETCH_FORMAT_SSCALED) {
+   } else if (adjustment == ALPHA_ADJUST_SSCALED) {
       alpha = LLVMBuildSIToFP(ctx->ac.builder, alpha, ctx->ac.f32, "");
    }
 

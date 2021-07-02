@@ -2639,22 +2639,22 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
             radv_get_attrib_stride(input_state, desc->binding);
       }
 
-      enum ac_fetch_format adjust = AC_FETCH_FORMAT_NONE;
+      enum radv_vs_input_alpha_adjust adjust = ALPHA_ADJUST_NONE;
       if (pipeline->device->physical_device->rad_info.chip_class <= GFX8 &&
           pipeline->device->physical_device->rad_info.family != CHIP_STONEY) {
          VkFormat format = input_state->pVertexAttributeDescriptions[i].format;
          switch (format) {
          case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
          case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
-            adjust = AC_FETCH_FORMAT_SNORM;
+            adjust = ALPHA_ADJUST_SNORM;
             break;
          case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
          case VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
-            adjust = AC_FETCH_FORMAT_SSCALED;
+            adjust = ALPHA_ADJUST_SSCALED;
             break;
          case VK_FORMAT_A2R10G10B10_SINT_PACK32:
          case VK_FORMAT_A2B10G10R10_SINT_PACK32:
-            adjust = AC_FETCH_FORMAT_SINT;
+            adjust = ALPHA_ADJUST_SINT;
             break;
          default:
             break;

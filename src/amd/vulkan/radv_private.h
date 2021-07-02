@@ -74,6 +74,7 @@
 #include "radv_constants.h"
 #include "radv_descriptor_set.h"
 #include "radv_radeon_winsys.h"
+#include "radv_shader.h"
 #include "sid.h"
 
 /* Pre-declarations needed for WSI entrypoints */

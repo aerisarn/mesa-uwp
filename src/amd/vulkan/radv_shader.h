@@ -47,6 +47,13 @@ struct radv_pipeline;
 struct radv_pipeline_cache;
 struct radv_pipeline_key;
 
+enum radv_vs_input_alpha_adjust {
+   ALPHA_ADJUST_NONE = 0,
+   ALPHA_ADJUST_SNORM = 1,
+   ALPHA_ADJUST_SSCALED = 2,
+   ALPHA_ADJUST_SINT = 3,
+};
+
 struct radv_pipeline_key {
    uint32_t has_multiview_view_index : 1;
    uint32_t optimisations_disabled : 1;
@@ -61,7 +68,7 @@ struct radv_pipeline_key {
       uint32_t vertex_attribute_offsets[MAX_VERTEX_ATTRIBS];
       uint32_t vertex_attribute_strides[MAX_VERTEX_ATTRIBS];
       uint8_t vertex_binding_align[MAX_VBS];
-      enum ac_fetch_format vertex_alpha_adjust[MAX_VERTEX_ATTRIBS];
+      enum radv_vs_input_alpha_adjust vertex_alpha_adjust[MAX_VERTEX_ATTRIBS];
       uint32_t vertex_post_shuffle;
       uint32_t provoking_vtx_last : 1;
       uint8_t topology;
