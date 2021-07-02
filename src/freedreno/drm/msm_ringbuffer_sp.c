@@ -42,6 +42,8 @@
 
 #define INIT_SIZE 0x1000
 
+#define SUBALLOC_SIZE (32 * 1024)
+
 /* In the pipe->flush() path, we don't have a util_queue_fence we can wait on,
  * instead use a condition-variable.  Note that pipe->flush() is not expected
  * to be a common/hot path.
@@ -180,7 +182,7 @@ msm_submit_suballoc_ring_bo(struct fd_submit *submit,
 
    if (!suballoc_bo) {
       // TODO possibly larger size for streaming bo?
-      msm_ring->ring_bo = fd_bo_new_ring(submit->pipe->dev, 0x8000);
+      msm_ring->ring_bo = fd_bo_new_ring(submit->pipe->dev, SUBALLOC_SIZE);
       msm_ring->offset = 0;
    } else {
       msm_ring->ring_bo = fd_bo_ref(suballoc_bo);
@@ -811,12 +813,25 @@ msm_ringbuffer_sp_init(struct msm_ringbuffer_sp *msm_ring, uint32_t size,
 struct fd_ringbuffer *
 msm_ringbuffer_sp_new_object(struct fd_pipe *pipe, uint32_t size)
 {
+   struct msm_pipe *msm_pipe = to_msm_pipe(pipe);
    struct msm_ringbuffer_sp *msm_ring = malloc(sizeof(*msm_ring));
 
+   /* Maximum known alignment requirement is a6xx's TEX_CONST at 16 dwords */
+   msm_ring->offset = align(msm_pipe->suballoc_offset, 64);
+   if (!msm_pipe->suballoc_bo ||
+       msm_ring->offset + size > fd_bo_size(msm_pipe->suballoc_bo)) {
+      if (msm_pipe->suballoc_bo)
+         fd_bo_del(msm_pipe->suballoc_bo);
+      msm_pipe->suballoc_bo =
+         fd_bo_new_ring(pipe->dev, MAX2(SUBALLOC_SIZE, align(size, 4096)));
+      msm_ring->offset = 0;
+   }
+
    msm_ring->u.pipe = pipe;
-   msm_ring->offset = 0;
-   msm_ring->ring_bo = fd_bo_new_ring(pipe->dev, size);
+   msm_ring->ring_bo = fd_bo_ref(msm_pipe->suballoc_bo);
    msm_ring->base.refcnt = 1;
+
+   msm_pipe->suballoc_offset = msm_ring->offset + size;
 
    return msm_ringbuffer_sp_init(msm_ring, size, _FD_RINGBUFFER_OBJECT);
 }
