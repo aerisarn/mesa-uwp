@@ -33,6 +33,9 @@
 #include "zink_context.h"
 #include "zink_compiler.h"
 #include "zink_shader_keys.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct zink_screen;
 struct zink_shader;
@@ -229,5 +232,8 @@ zink_program_has_descriptors(const struct zink_program *pg)
 {
    return pg->num_dsl > 0;
 }
+#ifdef __cplusplus
+}
+#endif
 
 #endif

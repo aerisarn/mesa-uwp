@@ -32,6 +32,10 @@
 
 #include "zink_fence.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct pipe_reference;
 
 struct zink_buffer_view;
@@ -215,5 +219,9 @@ zink_batch_usage_check_completion(struct zink_context *ctx, const struct zink_ba
 
 void
 zink_batch_usage_wait(struct zink_context *ctx, struct zink_batch_usage *u);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
