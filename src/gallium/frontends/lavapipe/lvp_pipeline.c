@@ -806,6 +806,20 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                            PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
    pipeline->provoking_vertex_last = pv_state && pv_state->provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
 
+   const VkPipelineRasterizationLineStateCreateInfoEXT *line_state =
+      vk_find_struct_const(pCreateInfo->pRasterizationState,
+                           PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
+   if (line_state) {
+      /* always draw bresenham if !smooth */
+      pipeline->line_stipple_enable = line_state->stippledLineEnable;
+      pipeline->line_smooth = line_state->lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+      pipeline->disable_multisample = line_state->lineRasterizationMode != VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+      if (!dynamic_state_contains(pipeline->graphics_create_info.pDynamicState, VK_DYNAMIC_STATE_LINE_STIPPLE_EXT)) {
+         pipeline->line_stipple_factor = line_state->lineStippleFactor - 1;
+         pipeline->line_stipple_pattern = line_state->lineStipplePattern;
+      }
+   }
+
 
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       VK_FROM_HANDLE(vk_shader_module, module,

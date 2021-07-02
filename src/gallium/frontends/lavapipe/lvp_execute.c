@@ -38,6 +38,7 @@
 #include "util/u_sampler.h"
 #include "util/u_box.h"
 #include "util/u_inlines.h"
+#include "util/u_prim.h"
 #include "util/u_prim_restart.h"
 #include "util/format/u_format_zs.h"
 
@@ -116,6 +117,7 @@ struct rendering_state {
    int num_shader_buffers[PIPE_SHADER_TYPES];
    bool iv_dirty[PIPE_SHADER_TYPES];
    bool sb_dirty[PIPE_SHADER_TYPES];
+   bool disable_multisample;
    enum gs_output gs_output_lines : 2;
    void *ss_cso[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    void *velems_cso;
@@ -214,8 +216,14 @@ static void emit_state(struct rendering_state *state)
    }
 
    if (state->rs_dirty) {
+      bool ms = state->rs_state.multisample;
+      if (state->disable_multisample &&
+          (state->gs_output_lines == GS_OUTPUT_LINES ||
+           (state->gs_output_lines == GS_OUTPUT_NONE && u_reduced_prim(state->info.mode) == PIPE_PRIM_LINES)))
+         state->rs_state.multisample = false;
       cso_set_rasterizer(state->cso, &state->rs_state);
       state->rs_dirty = false;
+      state->rs_state.multisample = ms;
    }
 
    if (state->dsa_dirty) {
@@ -438,7 +446,8 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
       state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = !rsc->depthClampEnable;
       state->rs_state.rasterizer_discard = rsc->rasterizerDiscardEnable;
 
-
+      state->rs_state.line_smooth = pipeline->line_smooth;
+      state->rs_state.line_stipple_enable = pipeline->line_stipple_enable;
       state->rs_state.fill_front = vk_polygon_mode_to_pipe(rsc->polygonMode);
       state->rs_state.fill_back = vk_polygon_mode_to_pipe(rsc->polygonMode);
       state->rs_state.point_size_per_vertex = true;
@@ -470,6 +479,7 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
       state->rs_dirty = true;
    }
 
+   state->disable_multisample = pipeline->disable_multisample;
    if (pipeline->graphics_create_info.pMultisampleState) {
       const VkPipelineMultisampleStateCreateInfo *ms = pipeline->graphics_create_info.pMultisampleState;
       state->rs_state.multisample = ms->rasterizationSamples > 1;
@@ -658,8 +668,10 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
    {
       const VkPipelineInputAssemblyStateCreateInfo *ia = pipeline->graphics_create_info.pInputAssemblyState;
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT)])
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT)]) {
          state->info.mode = vk_conv_topology(ia->topology);
+         state->rs_dirty = true;
+      }
       state->info.primitive_restart = ia->primitiveRestartEnable;
    }
 
@@ -2886,6 +2898,7 @@ static void handle_set_primitive_topology(struct lvp_cmd_buffer_entry *cmd,
                                           struct rendering_state *state)
 {
    state->info.mode = vk_conv_topology(cmd->u.set_primitive_topology.prim);
+   state->rs_dirty = true;
 }
 
 
@@ -2943,6 +2956,14 @@ static void handle_set_stencil_op(struct lvp_cmd_buffer_entry *cmd,
       state->dsa_state.stencil[1].zfail_op = vk_conv_stencil_op(cmd->u.set_stencil_op.depth_fail_op);
    }
    state->dsa_dirty = true;
+}
+
+static void handle_set_line_stipple(struct lvp_cmd_buffer_entry *cmd,
+                                    struct rendering_state *state)
+{
+   state->rs_state.line_stipple_factor = cmd->u.set_line_stipple.line_stipple_factor - 1;
+   state->rs_state.line_stipple_pattern = cmd->u.set_line_stipple.line_stipple_pattern;
+   state->rs_dirty = true;
 }
 
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
@@ -3156,6 +3177,9 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          break;
       case LVP_CMD_SET_STENCIL_OP:
          handle_set_stencil_op(cmd, state);
+         break;
+      case LVP_CMD_SET_LINE_STIPPLE:
+         handle_set_line_stipple(cmd, state);
          break;
       }
       first = false;

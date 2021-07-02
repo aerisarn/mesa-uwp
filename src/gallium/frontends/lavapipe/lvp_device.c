@@ -140,6 +140,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_vertex_input_dynamic_state        = true,
    .EXT_custom_border_color               = true,
    .EXT_provoking_vertex                  = true,
+   .EXT_line_rasterization                = true,
    .GOOGLE_decorate_string                = true,
    .GOOGLE_hlsl_functionality1            = true,
 };
@@ -510,6 +511,17 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDevicePrivateDataFeaturesEXT *features =
             (VkPhysicalDevicePrivateDataFeaturesEXT *)ext;
          features->privateData = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
+         VkPhysicalDeviceLineRasterizationFeaturesEXT *features =
+            (VkPhysicalDeviceLineRasterizationFeaturesEXT *)ext;
+         features->rectangularLines = false;
+         features->bresenhamLines = true;
+         features->smoothLines = true;
+         features->stippledRectangularLines = false;
+         features->stippledBresenhamLines = true;
+         features->stippledSmoothLines = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
@@ -925,6 +937,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
             (VkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT *)ext;
          properties->filterMinmaxImageComponentMapping = true;
          properties->filterMinmaxSingleComponentFormats = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
+         VkPhysicalDeviceLineRasterizationPropertiesEXT *properties =
+            (VkPhysicalDeviceLineRasterizationPropertiesEXT *)ext;
+         properties->lineSubPixelPrecisionBits = 4;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {

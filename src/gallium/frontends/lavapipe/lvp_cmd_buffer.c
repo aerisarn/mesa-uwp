@@ -1963,6 +1963,23 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdSetFrontFaceEXT(
    cmd_buf_queue(cmd_buffer, cmd);
 }
 
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetLineStippleEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    lineStippleFactor,
+    uint16_t                                    lineStipplePattern)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_LINE_STIPPLE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_line_stipple.line_stipple_factor = lineStippleFactor;
+   cmd->u.set_line_stipple.line_stipple_pattern = lineStipplePattern;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
 VKAPI_ATTR void VKAPI_CALL lvp_CmdSetPrimitiveTopologyEXT(
     VkCommandBuffer                             commandBuffer,
     VkPrimitiveTopology                         primitiveTopology)
