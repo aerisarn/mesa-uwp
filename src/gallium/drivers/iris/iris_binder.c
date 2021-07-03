@@ -144,7 +144,7 @@ iris_binder_reserve_3d(struct iris_context *ice)
 
    /* If nothing is dirty, skip all this. */
    if (!(ice->state.dirty & IRIS_DIRTY_RENDER_BUFFER) &&
-       !(ice->state.stage_dirty & IRIS_ALL_STAGE_DIRTY_BINDINGS))
+       !(ice->state.stage_dirty & IRIS_ALL_STAGE_DIRTY_BINDINGS_FOR_RENDER))
       return;
 
    /* Get the binding table sizes for each stage */

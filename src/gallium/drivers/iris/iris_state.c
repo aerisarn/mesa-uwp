@@ -5763,7 +5763,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
     */
    const bool emit_const_wa = GFX_VER >= 11 &&
       ((dirty & IRIS_DIRTY_RENDER_BUFFER) ||
-       (stage_dirty & IRIS_ALL_STAGE_DIRTY_BINDINGS));
+       (stage_dirty & IRIS_ALL_STAGE_DIRTY_BINDINGS_FOR_RENDER));
 
 #if GFX_VER >= 12
    uint32_t nobuffer_stages = 0;

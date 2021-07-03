@@ -165,11 +165,13 @@ enum {
 
 #define IRIS_ALL_STAGE_DIRTY_FOR_RENDER (~IRIS_ALL_STAGE_DIRTY_FOR_COMPUTE)
 
-#define IRIS_ALL_STAGE_DIRTY_BINDINGS (IRIS_STAGE_DIRTY_BINDINGS_VS  | \
-                                       IRIS_STAGE_DIRTY_BINDINGS_TCS | \
-                                       IRIS_STAGE_DIRTY_BINDINGS_TES | \
-                                       IRIS_STAGE_DIRTY_BINDINGS_GS  | \
-                                       IRIS_STAGE_DIRTY_BINDINGS_FS  | \
+#define IRIS_ALL_STAGE_DIRTY_BINDINGS_FOR_RENDER (IRIS_STAGE_DIRTY_BINDINGS_VS  | \
+                                                  IRIS_STAGE_DIRTY_BINDINGS_TCS | \
+                                                  IRIS_STAGE_DIRTY_BINDINGS_TES | \
+                                                  IRIS_STAGE_DIRTY_BINDINGS_GS  | \
+                                                  IRIS_STAGE_DIRTY_BINDINGS_FS)
+
+#define IRIS_ALL_STAGE_DIRTY_BINDINGS (IRIS_ALL_STAGE_DIRTY_BINDINGS_FOR_RENDER | \
                                        IRIS_STAGE_DIRTY_BINDINGS_CS)
 
 /**
