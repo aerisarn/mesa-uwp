@@ -1282,12 +1282,10 @@ panfrost_set_constant_buffer(
 
         if (unlikely(!buf)) {
                 pbuf->enabled_mask &= ~mask;
-                pbuf->dirty_mask &= ~mask;
                 return;
         }
 
         pbuf->enabled_mask |= mask;
-        pbuf->dirty_mask |= mask;
         ctx->dirty_shader[shader] |= PAN_DIRTY_STAGE_CONST;
 }
 

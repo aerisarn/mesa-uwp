@@ -1242,8 +1242,6 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                 }
         }
 
-        buf->dirty_mask = 0;
-
         if (ss->info.push.count == 0)
                 return ubos.gpu;
 
