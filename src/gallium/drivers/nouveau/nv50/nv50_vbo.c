@@ -752,8 +752,6 @@ nv50_draw_vbo_kick_notify(struct nouveau_pushbuf *chan)
    struct nv50_screen *screen = chan->user_priv;
 
    nouveau_fence_update(&screen->base, true);
-
-   nv50_bufctx_fence(screen->cur_ctx->bufctx_3d, true);
 }
 
 void
