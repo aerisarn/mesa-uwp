@@ -186,11 +186,33 @@ crocus_bo_reference(struct crocus_bo *bo)
    p_atomic_inc(&bo->refcount);
 }
 
+static inline int
+atomic_add_unless(int *v, int add, int unless)
+{
+   int c, old;
+   c = p_atomic_read(v);
+   while (c != unless && (old = p_atomic_cmpxchg(v, c, c + add)) != c)
+      c = old;
+   return c == unless;
+}
+
+void __crocus_bo_unreference(struct crocus_bo *bo);
+
 /**
  * Releases a reference on a buffer object, freeing the data if
  * no references remain.
  */
-void crocus_bo_unreference(struct crocus_bo *bo);
+static inline void crocus_bo_unreference(struct crocus_bo *bo)
+{
+   if (bo == NULL)
+      return;
+
+   assert(p_atomic_read(&bo->refcount) > 0);
+
+   if (atomic_add_unless(&bo->refcount, -1, 1)) {
+      __crocus_bo_unreference(bo);
+   }
+}
 
 #define MAP_READ          PIPE_MAP_READ
 #define MAP_WRITE         PIPE_MAP_WRITE

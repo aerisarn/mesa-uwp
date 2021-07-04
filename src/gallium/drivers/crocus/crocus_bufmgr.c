@@ -115,16 +115,6 @@ get_time(void)
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
-static inline int
-atomic_add_unless(int *v, int add, int unless)
-{
-   int c, old;
-   c = p_atomic_read(v);
-   while (c != unless && (old = p_atomic_cmpxchg(v, c, c + add)) != c)
-      c = old;
-   return c == unless;
-}
-
 struct bo_cache_bucket {
    /** List of cached BOs. */
    struct list_head head;
@@ -720,28 +710,21 @@ bo_unreference_final(struct crocus_bo *bo, time_t time)
 }
 
 void
-crocus_bo_unreference(struct crocus_bo *bo)
+__crocus_bo_unreference(struct crocus_bo *bo)
 {
-   if (bo == NULL)
-      return;
+   struct crocus_bufmgr *bufmgr = bo->bufmgr;
+   struct timespec time;
 
-   assert(p_atomic_read(&bo->refcount) > 0);
+   clock_gettime(CLOCK_MONOTONIC, &time);
 
-   if (atomic_add_unless(&bo->refcount, -1, 1)) {
-      struct crocus_bufmgr *bufmgr = bo->bufmgr;
-      struct timespec time;
+   mtx_lock(&bufmgr->lock);
 
-      clock_gettime(CLOCK_MONOTONIC, &time);
-
-      mtx_lock(&bufmgr->lock);
-
-      if (p_atomic_dec_zero(&bo->refcount)) {
-         bo_unreference_final(bo, time.tv_sec);
-         cleanup_bo_cache(bufmgr, time.tv_sec);
-      }
-
-      mtx_unlock(&bufmgr->lock);
+   if (p_atomic_dec_zero(&bo->refcount)) {
+      bo_unreference_final(bo, time.tv_sec);
+      cleanup_bo_cache(bufmgr, time.tv_sec);
    }
+
+   mtx_unlock(&bufmgr->lock);
 }
 
 static void
