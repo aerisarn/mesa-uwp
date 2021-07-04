@@ -835,23 +835,17 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    if (binary.size) {
       struct agx_device *dev = agx_device(ctx->base.screen);
       compiled->bo = agx_bo_create(dev,
-                                   ALIGN_POT(binary.size, 256) + ((3 * packed_varying_sz) + 20),
+                                   ALIGN_POT(binary.size, 256) + (3 * packed_varying_sz),
                                    AGX_MEMORY_TYPE_SHADER);
       memcpy(compiled->bo->ptr.cpu, binary.data, binary.size);
 
 
       /* TODO: Why is the varying descriptor duplicated 3x? */
       unsigned offs = ALIGN_POT(binary.size, 256);
-      unsigned unk_offs = offs + 0x40;
       for (unsigned copy = 0; copy < 3; ++copy) {
          memcpy(((uint8_t *) compiled->bo->ptr.cpu) + offs, packed_varyings, packed_varying_sz);
          offs += packed_varying_sz;
       }
-
-      uint16_t *map = (uint16_t *) (((uint8_t *) compiled->bo->ptr.cpu) + unk_offs);
-      *map = 0x140; // 0x0100 with one varying
-
-
 
       compiled->varyings = compiled->bo->ptr.gpu + ALIGN_POT(binary.size, 256);
    }
