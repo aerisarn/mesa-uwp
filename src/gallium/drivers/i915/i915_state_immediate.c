@@ -113,13 +113,17 @@ static void
 upload_S5(struct i915_context *i915)
 {
    unsigned LIS5 = 0;
+   bool stencil_ccw = i915_stencil_ccw(i915);
 
    /* I915_NEW_DEPTH_STENCIL
     */
-   LIS5 |= i915->depth_stencil->stencil_LIS5;
+   if (stencil_ccw)
+      LIS5 |= i915->depth_stencil->stencil_LIS5_ccw;
+   else
+      LIS5 |= i915->depth_stencil->stencil_LIS5_cw;
    /* hope it's safe to set stencil ref value even if stencil test is disabled?
     */
-   LIS5 |= i915->stencil_ref.ref_value[0] << S5_STENCIL_REF_SHIFT;
+   LIS5 |= i915->stencil_ref.ref_value[stencil_ccw] << S5_STENCIL_REF_SHIFT;
 
    /* I915_NEW_BLEND
     */

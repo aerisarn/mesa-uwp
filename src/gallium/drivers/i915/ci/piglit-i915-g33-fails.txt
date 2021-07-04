@@ -144,7 +144,6 @@ spec@!opengl 1.4@tex-miplevel-selection,Fail
 spec@!opengl 1.4@tex-miplevel-selection-lod,Fail
 spec@!opengl 1.4@tex-miplevel-selection-lod-bias,Fail
 spec@!opengl 1.5@depth-tex-compare,Fail
-spec@!opengl 2.0@gl-2.0-two-sided-stencil,Fail
 spec@!opengl 2.0@max-samplers,Fail
 spec@!opengl 2.0@max-samplers border,Fail
 spec@!opengl 2.0@occlusion-query-discard,Fail

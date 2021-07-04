@@ -38,6 +38,7 @@
 
 #include "util/slab.h"
 #include "util/u_blitter.h"
+#include "i915_reg.h"
 
 struct i915_winsys;
 struct i915_winsys_buffer;
@@ -182,9 +183,12 @@ struct i915_blend_state {
 };
 
 struct i915_depth_stencil_state {
-   unsigned stencil_modes4;
-   unsigned bfo[2];
-   unsigned stencil_LIS5;
+   unsigned stencil_modes4_cw;
+   unsigned stencil_modes4_ccw;
+   unsigned bfo_cw[2];
+   unsigned bfo_ccw[2];
+   unsigned stencil_LIS5_cw;
+   unsigned stencil_LIS5_ccw;
    unsigned depth_LIS6;
 };
 
@@ -355,6 +359,15 @@ i915_set_flush_dirty(struct i915_context *i915, unsigned flush)
    i915->flush_dirty |= flush;
 }
 
+static inline uint32_t
+i915_stencil_ccw(struct i915_context *i915)
+{
+   /* If we're doing two sided stencil, then front_ccw means we need to reverse
+    * the state for the sides.
+    */
+   return i915->rasterizer->templ.front_ccw &&
+          (i915->depth_stencil->bfo_cw[0] & BFO_STENCIL_TWO_SIDE);
+}
 /***********************************************************************
  * i915_prim_emit.c:
  */

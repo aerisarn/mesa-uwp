@@ -79,11 +79,16 @@ set_dynamic_array(struct i915_context *i915, unsigned offset,
 static void
 upload_MODES4(struct i915_context *i915)
 {
+   bool stencil_ccw = i915_stencil_ccw(i915);
+
    unsigned modes4 = 0;
 
    /* I915_NEW_STENCIL
     */
-   modes4 |= i915->depth_stencil->stencil_modes4;
+   if (stencil_ccw)
+      modes4 |= i915->depth_stencil->stencil_modes4_ccw;
+   else
+      modes4 |= i915->depth_stencil->stencil_modes4_cw;
 
    /* I915_NEW_BLEND
     */
@@ -93,27 +98,36 @@ upload_MODES4(struct i915_context *i915)
 }
 
 const struct i915_tracked_state i915_upload_MODES4 = {
-   "MODES4", upload_MODES4, I915_NEW_BLEND | I915_NEW_DEPTH_STENCIL};
+   "MODES4", upload_MODES4,
+   I915_NEW_BLEND | I915_NEW_DEPTH_STENCIL | I915_NEW_RASTERIZER};
 
 /***********************************************************************
  */
 static void
 upload_BFO(struct i915_context *i915)
 {
+   bool stencil_ccw = i915_stencil_ccw(i915);
+
    unsigned bfo[2];
-   bfo[0] = i915->depth_stencil->bfo[0];
-   bfo[1] = i915->depth_stencil->bfo[1];
+   if (stencil_ccw) {
+      bfo[0] = i915->depth_stencil->bfo_ccw[0];
+      bfo[1] = i915->depth_stencil->bfo_ccw[1];
+   } else {
+      bfo[0] = i915->depth_stencil->bfo_cw[0];
+      bfo[1] = i915->depth_stencil->bfo_cw[1];
+   }
    /* I don't get it only allowed to set a ref mask when the enable bit is set?
     */
    if (bfo[0] & BFO_ENABLE_STENCIL_REF) {
-      bfo[0] |= i915->stencil_ref.ref_value[1] << BFO_STENCIL_REF_SHIFT;
+      bfo[0] |= i915->stencil_ref.ref_value[!stencil_ccw]
+                << BFO_STENCIL_REF_SHIFT;
    }
 
    set_dynamic_array(i915, I915_DYNAMIC_BFO_0, bfo, 2);
 }
 
-const struct i915_tracked_state i915_upload_BFO = {"BFO", upload_BFO,
-                                                   I915_NEW_DEPTH_STENCIL};
+const struct i915_tracked_state i915_upload_BFO = {
+   "BFO", upload_BFO, I915_NEW_DEPTH_STENCIL | I915_NEW_RASTERIZER};
 
 /***********************************************************************
  */

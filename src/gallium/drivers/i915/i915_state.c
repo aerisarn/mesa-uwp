@@ -386,6 +386,57 @@ i915_delete_sampler_state(struct pipe_context *pipe, void *sampler)
  * into one file.
  */
 
+static uint32_t
+i915_get_modes4_stencil(const struct pipe_stencil_state *stencil)
+{
+   int testmask = stencil->valuemask & 0xff;
+   int writemask = stencil->writemask & 0xff;
+
+   return (_3DSTATE_MODES_4_CMD | ENABLE_STENCIL_TEST_MASK |
+           STENCIL_TEST_MASK(testmask) | ENABLE_STENCIL_WRITE_MASK |
+           STENCIL_WRITE_MASK(writemask));
+}
+
+static uint32_t
+i915_get_lis5_stencil(const struct pipe_stencil_state *stencil)
+{
+   int test = i915_translate_compare_func(stencil->func);
+   int fop = i915_translate_stencil_op(stencil->fail_op);
+   int dfop = i915_translate_stencil_op(stencil->zfail_op);
+   int dpop = i915_translate_stencil_op(stencil->zpass_op);
+
+   return (S5_STENCIL_TEST_ENABLE | S5_STENCIL_WRITE_ENABLE |
+           (test << S5_STENCIL_TEST_FUNC_SHIFT) |
+           (fop << S5_STENCIL_FAIL_SHIFT) |
+           (dfop << S5_STENCIL_PASS_Z_FAIL_SHIFT) |
+           (dpop << S5_STENCIL_PASS_Z_PASS_SHIFT));
+}
+
+static uint32_t
+i915_get_bfo(const struct pipe_stencil_state *stencil)
+{
+   int test = i915_translate_compare_func(stencil->func);
+   int fop = i915_translate_stencil_op(stencil->fail_op);
+   int dfop = i915_translate_stencil_op(stencil->zfail_op);
+   int dpop = i915_translate_stencil_op(stencil->zpass_op);
+
+   return (_3DSTATE_BACKFACE_STENCIL_OPS | BFO_ENABLE_STENCIL_FUNCS |
+           BFO_ENABLE_STENCIL_TWO_SIDE | BFO_ENABLE_STENCIL_REF |
+           BFO_STENCIL_TWO_SIDE | (test << BFO_STENCIL_TEST_SHIFT) |
+           (fop << BFO_STENCIL_FAIL_SHIFT) |
+           (dfop << BFO_STENCIL_PASS_Z_FAIL_SHIFT) |
+           (dpop << BFO_STENCIL_PASS_Z_PASS_SHIFT));
+}
+
+static uint32_t
+i915_get_bfm(const struct pipe_stencil_state *stencil)
+{
+   return (_3DSTATE_BACKFACE_STENCIL_MASKS | BFM_ENABLE_STENCIL_TEST_MASK |
+           BFM_ENABLE_STENCIL_WRITE_MASK |
+           ((stencil->valuemask & 0xff) << BFM_STENCIL_TEST_MASK_SHIFT) |
+           ((stencil->writemask & 0xff) << BFM_STENCIL_WRITE_MASK_SHIFT));
+}
+
 static void *
 i915_create_depth_stencil_state(
    struct pipe_context *pipe,
@@ -394,58 +445,35 @@ i915_create_depth_stencil_state(
    struct i915_depth_stencil_state *cso =
       CALLOC_STRUCT(i915_depth_stencil_state);
 
-   {
-      int testmask = depth_stencil->stencil[0].valuemask & 0xff;
-      int writemask = depth_stencil->stencil[0].writemask & 0xff;
-
-      cso->stencil_modes4 |=
-         (_3DSTATE_MODES_4_CMD | ENABLE_STENCIL_TEST_MASK |
-          STENCIL_TEST_MASK(testmask) | ENABLE_STENCIL_WRITE_MASK |
-          STENCIL_WRITE_MASK(writemask));
-   }
+   cso->stencil_modes4_cw = i915_get_modes4_stencil(&depth_stencil->stencil[0]);
+   cso->stencil_modes4_ccw =
+      i915_get_modes4_stencil(&depth_stencil->stencil[1]);
 
    if (depth_stencil->stencil[0].enabled) {
-      int test = i915_translate_compare_func(depth_stencil->stencil[0].func);
-      int fop = i915_translate_stencil_op(depth_stencil->stencil[0].fail_op);
-      int dfop = i915_translate_stencil_op(depth_stencil->stencil[0].zfail_op);
-      int dpop = i915_translate_stencil_op(depth_stencil->stencil[0].zpass_op);
-
-      cso->stencil_LIS5 |= (S5_STENCIL_TEST_ENABLE | S5_STENCIL_WRITE_ENABLE |
-                            (test << S5_STENCIL_TEST_FUNC_SHIFT) |
-                            (fop << S5_STENCIL_FAIL_SHIFT) |
-                            (dfop << S5_STENCIL_PASS_Z_FAIL_SHIFT) |
-                            (dpop << S5_STENCIL_PASS_Z_PASS_SHIFT));
+      cso->stencil_LIS5_cw = i915_get_lis5_stencil(&depth_stencil->stencil[0]);
    }
 
    if (depth_stencil->stencil[1].enabled) {
-      int test = i915_translate_compare_func(depth_stencil->stencil[1].func);
-      int fop = i915_translate_stencil_op(depth_stencil->stencil[1].fail_op);
-      int dfop = i915_translate_stencil_op(depth_stencil->stencil[1].zfail_op);
-      int dpop = i915_translate_stencil_op(depth_stencil->stencil[1].zpass_op);
-      int tmask = depth_stencil->stencil[1].valuemask & 0xff;
-      int wmask = depth_stencil->stencil[1].writemask & 0xff;
+      cso->bfo_cw[0] = i915_get_bfo(&depth_stencil->stencil[1]);
+      cso->bfo_cw[1] = i915_get_bfm(&depth_stencil->stencil[1]);
 
-      cso->bfo[0] = (_3DSTATE_BACKFACE_STENCIL_OPS | BFO_ENABLE_STENCIL_FUNCS |
-                     BFO_ENABLE_STENCIL_TWO_SIDE | BFO_ENABLE_STENCIL_REF |
-                     BFO_STENCIL_TWO_SIDE | (test << BFO_STENCIL_TEST_SHIFT) |
-                     (fop << BFO_STENCIL_FAIL_SHIFT) |
-                     (dfop << BFO_STENCIL_PASS_Z_FAIL_SHIFT) |
-                     (dpop << BFO_STENCIL_PASS_Z_PASS_SHIFT));
-
-      cso->bfo[1] =
-         (_3DSTATE_BACKFACE_STENCIL_MASKS | BFM_ENABLE_STENCIL_TEST_MASK |
-          BFM_ENABLE_STENCIL_WRITE_MASK |
-          (tmask << BFM_STENCIL_TEST_MASK_SHIFT) |
-          (wmask << BFM_STENCIL_WRITE_MASK_SHIFT));
+      /* Precompute the backface stencil settings if front winding order is
+       * reversed -- HW doesn't have a bit to flip it for us.
+       */
+      cso->stencil_LIS5_ccw = i915_get_lis5_stencil(&depth_stencil->stencil[1]);
+      cso->bfo_ccw[0] = i915_get_bfo(&depth_stencil->stencil[0]);
+      cso->bfo_ccw[1] = i915_get_bfm(&depth_stencil->stencil[0]);
    } else {
       /* This actually disables two-side stencil: The bit set is a
        * modify-enable bit to indicate we are changing the two-side
        * setting.  Then there is a symbolic zero to show that we are
        * setting the flag to zero/off.
        */
-      cso->bfo[0] =
+      cso->bfo_cw[0] = cso->bfo_ccw[0] =
          (_3DSTATE_BACKFACE_STENCIL_OPS | BFO_ENABLE_STENCIL_TWO_SIDE | 0);
-      cso->bfo[1] = 0;
+      cso->bfo_cw[1] = cso->bfo_ccw[1] = 0;
+
+      cso->stencil_LIS5_ccw = cso->stencil_LIS5_cw;
    }
 
    if (depth_stencil->depth_enabled) {
