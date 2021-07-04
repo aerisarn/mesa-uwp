@@ -282,7 +282,9 @@ crocus_indirect_draw_vbo(struct crocus_context *ice,
       crocus_batch_maybe_flush(batch, 1500);
       crocus_require_statebuffer_space(batch, 2400);
 
-      crocus_update_draw_parameters(ice, &info, drawid_offset + i, &indirect, draws);
+      if (ice->state.vs_uses_draw_params ||
+	  ice->state.vs_uses_derived_draw_params)
+         crocus_update_draw_parameters(ice, &info, drawid_offset + i, &indirect, draws);
 
       screen->vtbl.upload_render_state(ice, batch, &info, drawid_offset + i, &indirect, draws);
 
@@ -316,7 +318,9 @@ crocus_simple_draw_vbo(struct crocus_context *ice,
    crocus_batch_maybe_flush(batch, 1500);
    crocus_require_statebuffer_space(batch, 2400);
 
-   crocus_update_draw_parameters(ice, draw, drawid_offset, indirect, sc);
+   if (ice->state.vs_uses_draw_params ||
+       ice->state.vs_uses_derived_draw_params)
+      crocus_update_draw_parameters(ice, draw, drawid_offset, indirect, sc);
 
    screen->vtbl.upload_render_state(ice, batch, draw, drawid_offset, indirect, sc);
 }
