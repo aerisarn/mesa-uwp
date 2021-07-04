@@ -299,9 +299,6 @@ agx_create_sampler_state(struct pipe_context *pctx,
       cfg.compare_func = agx_compare_funcs[state->compare_func];
    }
 
-   uint64_t *m = (uint64_t *) ((uint8_t *) bo->ptr.cpu + AGX_SAMPLER_LENGTH);
-   m[3] = 0x40; // XXX - what is this? maybe spurious?
-
    return bo;
 }
 
