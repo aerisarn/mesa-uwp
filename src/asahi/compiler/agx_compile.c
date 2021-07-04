@@ -177,7 +177,7 @@ agx_emit_load_vary(agx_builder *b, nir_intrinsic_instr *instr)
    nir_src *offset = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset) && "no indirects");
    unsigned imm_index = b->shader->varyings[nir_intrinsic_base(instr)];
-   imm_index += nir_src_as_uint(*offset);
+   imm_index += nir_src_as_uint(*offset) * 4;
 
    return agx_ld_vary_to(b, agx_dest_index(&instr->dest),
          agx_immediate(imm_index), components, true);
@@ -1219,20 +1219,43 @@ agx_remap_varyings_fs(nir_shader *nir, struct agx_varyings *varyings,
    base++;
    packed++;
 
+   unsigned comps[MAX_VARYING] = { 0 };
+
    nir_foreach_shader_in_variable(var, nir) {
-      assert(var->data.driver_location <= AGX_MAX_VARYINGS);
-      remap[var->data.driver_location] = base;
+     unsigned loc = var->data.driver_location;
+     const struct glsl_type *column =
+        glsl_without_array_or_matrix(var->type);
+     unsigned chan = glsl_get_components(column);
 
-      agx_pack(packed, VARYING, cfg) {
-         cfg.type = (var->data.interpolation == INTERP_MODE_FLAT) ?
-            AGX_VARYING_TYPE_FLAT_LAST :
-            AGX_VARYING_TYPE_SMOOTH;
-         cfg.components = 4;
-         cfg.slot_1 = cfg.slot_2 = base;
-      }
+     /* If we have a fractional location added, we need to increase the size
+      * so it will fit, i.e. a vec3 in YZW requires us to allocate a vec4.
+      * We could do better but this is an edge case as it is, normally
+      * packed varyings will be aligned.
+      */
+     chan += var->data.location_frac;
+     comps[loc] = MAX2(comps[loc], chan);
+   }
 
-      base += 4;
-      packed++;
+   nir_foreach_shader_in_variable(var, nir) {
+     unsigned loc = var->data.driver_location;
+     unsigned sz = glsl_count_attribute_slots(var->type, FALSE);
+     unsigned channels = comps[loc];
+
+     assert(var->data.driver_location <= AGX_MAX_VARYINGS);
+     remap[var->data.driver_location] = base;
+
+     for (int c = 0; c < sz; ++c) {
+        agx_pack(packed, VARYING, cfg) {
+           cfg.type = (var->data.interpolation == INTERP_MODE_FLAT) ?
+              AGX_VARYING_TYPE_FLAT_LAST :
+              AGX_VARYING_TYPE_SMOOTH;
+           cfg.components = channels;
+           cfg.slot_1 = cfg.slot_2 = base;
+        }
+
+        base += channels;
+        packed++;
+     }
    }
 
    varyings->nr_descs = (packed - varyings->packed);
