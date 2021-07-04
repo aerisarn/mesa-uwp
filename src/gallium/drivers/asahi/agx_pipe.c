@@ -48,6 +48,7 @@
 static const struct debug_named_value agx_debug_options[] = {
    {"trace",     AGX_DBG_TRACE,    "Trace the command stream"},
    {"deqp",      AGX_DBG_DEQP,     "Hacks for dEQP"},
+   {"no16",      AGX_DBG_NO16,     "Disable 16-bit support"},
    DEBUG_NAMED_VALUE_END
 };
 
@@ -846,6 +847,7 @@ agx_get_shader_param(struct pipe_screen* pscreen,
                      enum pipe_shader_cap param)
 {
    bool is_deqp = agx_device(pscreen)->debug & AGX_DBG_DEQP;
+   bool is_no16 = agx_device(pscreen)->debug & AGX_DBG_NO16;
 
    if (shader != PIPE_SHADER_VERTEX &&
        shader != PIPE_SHADER_FRAGMENT)
@@ -890,13 +892,15 @@ agx_get_shader_param(struct pipe_screen* pscreen,
    case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
       return is_deqp;
 
-   case PIPE_SHADER_CAP_FP16:
    case PIPE_SHADER_CAP_INTEGERS:
+      return true;
+
+   case PIPE_SHADER_CAP_FP16:
    case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
    case PIPE_SHADER_CAP_FP16_DERIVATIVES:
    case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
    case PIPE_SHADER_CAP_INT16:
-      return 1;
+      return !is_no16;
 
    case PIPE_SHADER_CAP_INT64_ATOMICS:
    case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
