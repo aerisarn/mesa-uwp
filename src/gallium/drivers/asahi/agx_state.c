@@ -893,18 +893,20 @@ agx_update_vs(struct agx_context *ctx)
 static bool
 agx_update_fs(struct agx_context *ctx)
 {
-   struct agx_fs_shader_key base_key = {
-      .tib_formats = { AGX_FORMAT_U8NORM }
-   };
-
    struct asahi_shader_key key = {
-      .base.fs = base_key,
       .nr_cbufs = ctx->batch->nr_cbufs,
    };
 
    for (unsigned i = 0; i < key.nr_cbufs; ++i) {
-      key.rt_formats[i] = ctx->batch->cbufs[i] ?
-         ctx->batch->cbufs[i]->format : PIPE_FORMAT_NONE;
+      struct pipe_surface *surf = ctx->batch->cbufs[i];
+
+      if (surf) {
+         enum pipe_format fmt = surf->format;
+         key.rt_formats[i] = fmt;
+         key.base.fs.tib_formats[i] = agx_pixel_format[fmt].internal;
+      } else {
+         key.rt_formats[i] = PIPE_FORMAT_NONE;
+      }
    }
 
    memcpy(&key.blend, ctx->blend, sizeof(key.blend));
