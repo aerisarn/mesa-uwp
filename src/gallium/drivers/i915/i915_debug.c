@@ -777,7 +777,7 @@ i915_debug_packet(struct debug_stream *stream)
       case 0x7:
          return debug(stream, "3DSTATE_RASTERIZATION_RULES", 1);
       case 0x8:
-         return debug(stream, "3DSTATE_BACKFACE_STENCIL_OPS", 2);
+         return debug(stream, "3DSTATE_BACKFACE_STENCIL_OPS", 1);
       case 0x9:
          return debug(stream, "3DSTATE_BACKFACE_STENCIL_MASKS", 1);
       case 0xb:
