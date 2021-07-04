@@ -31,6 +31,7 @@
 struct agx_pixel_format_entry {
    uint16_t hw;
    bool renderable : 1;
+   enum agx_format internal : 4;
 };
 
 extern const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT];

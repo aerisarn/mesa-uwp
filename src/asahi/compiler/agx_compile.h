@@ -110,6 +110,9 @@ enum agx_format {
    AGX_FORMAT_SRGBA8 = 10,
    AGX_FORMAT_RG11B10F = 12,
    AGX_FORMAT_RGB9E5 = 13,
+
+   /* Keep last */
+   AGX_NUM_FORMATS,
 };
 
 struct agx_attribute {
