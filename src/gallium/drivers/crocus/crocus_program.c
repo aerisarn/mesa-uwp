@@ -740,48 +740,6 @@ enum {
    SURFACE_GROUP_MAX_ELEMENTS = 64,
 };
 
-/**
- * Map a <group, index> pair to a binding table index.
- *
- * For example: <UBO, 5> => binding table index 12
- */
-uint32_t
-crocus_group_index_to_bti(const struct crocus_binding_table *bt,
-                          enum crocus_surface_group group, uint32_t index)
-{
-   assert(index < bt->sizes[group]);
-   uint64_t mask = bt->used_mask[group];
-   uint64_t bit = 1ull << index;
-   if (bit & mask) {
-      return bt->offsets[group] + util_bitcount64((bit - 1) & mask);
-   } else {
-      return CROCUS_SURFACE_NOT_USED;
-   }
-}
-
-/**
- * Map a binding table index back to a <group, index> pair.
- *
- * For example: binding table index 12 => <UBO, 5>
- */
-uint32_t
-crocus_bti_to_group_index(const struct crocus_binding_table *bt,
-                          enum crocus_surface_group group, uint32_t bti)
-{
-   uint64_t used_mask = bt->used_mask[group];
-   assert(bti >= bt->offsets[group]);
-
-   uint32_t c = bti - bt->offsets[group];
-   while (used_mask) {
-      int i = u_bit_scan64(&used_mask);
-      if (c == 0)
-         return i;
-      c--;
-   }
-
-   return CROCUS_SURFACE_NOT_USED;
-}
-
 static void
 rewrite_src_with_bti(nir_builder *b, struct crocus_binding_table *bt,
                      nir_instr *instr, nir_src *src,
