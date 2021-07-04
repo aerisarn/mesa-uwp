@@ -374,8 +374,8 @@ crocus_draw_vbo(struct pipe_context *ctx,
       return;
    }
 
-   if (indirect && indirect->count_from_stream_output &&
-       screen->devinfo.verx10 < 75) {
+   if (screen->devinfo.verx10 < 75 &&
+       indirect && indirect->count_from_stream_output) {
       crocus_draw_vbo_get_vertex_count(ctx, info, drawid_offset, indirect);
       return;
    }
