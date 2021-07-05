@@ -117,8 +117,7 @@ struct agx_batch {
 
 struct agx_zsa {
    struct pipe_depth_stencil_alpha_state base;
-   enum agx_zs_func z_func;
-   bool disable_z_write;
+   struct agx_rasterizer_face_packed front, back;
 };
 
 struct agx_blend {

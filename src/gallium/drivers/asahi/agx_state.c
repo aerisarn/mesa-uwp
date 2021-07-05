@@ -170,6 +170,17 @@ agx_bind_blend_state(struct pipe_context *pctx, void *cso)
    ctx->blend = cso;
 }
 
+static void
+agx_pack_rasterizer_face(struct agx_rasterizer_face_packed *out,
+                         enum agx_zs_func z_func,
+                         bool disable_z_write)
+{
+   agx_pack(out, RASTERIZER_FACE, cfg) {
+      cfg.depth_function = z_func;
+      cfg.disable_depth_write = disable_z_write;
+   }
+}
+
 static void *
 agx_create_zsa_state(struct pipe_context *ctx,
                      const struct pipe_depth_stencil_alpha_state *state)
@@ -178,7 +189,6 @@ agx_create_zsa_state(struct pipe_context *ctx,
    assert(!state->depth_bounds_test && "todo");
 
    so->base = *state;
-   so->disable_z_write = !state->depth_writemask;
 
    /* Z func can be used as-is */
    STATIC_ASSERT((enum agx_zs_func) PIPE_FUNC_NEVER    == AGX_ZS_FUNC_NEVER);
@@ -190,8 +200,19 @@ agx_create_zsa_state(struct pipe_context *ctx,
    STATIC_ASSERT((enum agx_zs_func) PIPE_FUNC_GEQUAL   == AGX_ZS_FUNC_GEQUAL);
    STATIC_ASSERT((enum agx_zs_func) PIPE_FUNC_ALWAYS   == AGX_ZS_FUNC_ALWAYS);
 
-   so->z_func = state->depth_enabled ?
+   enum agx_zs_func z_func = state->depth_enabled ?
                 ((enum agx_zs_func) state->depth_func) : AGX_ZS_FUNC_ALWAYS;
+
+   agx_pack_rasterizer_face(&so->front,
+         z_func, !state->depth_writemask);
+
+   if (state->stencil[1].enabled) {
+      agx_pack_rasterizer_face(&so->back,
+            z_func, !state->depth_writemask);
+   } else {
+      /* One sided stencil */
+      so->back = so->front;
+   }
 
    return so;
 }
@@ -1270,17 +1291,13 @@ demo_linkage(struct agx_compiled_shader *vs, struct agx_pool *pool)
 static uint64_t
 demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool)
 {
-   struct agx_ptr t = agx_pool_alloc_aligned(pool, AGX_RASTERIZER_LENGTH, 64);
    struct agx_rasterizer *rast = ctx->rast;
+   struct agx_rasterizer_packed out;
 
-   agx_pack(t.cpu, RASTERIZER, cfg) {
-      cfg.front.depth_function = ctx->zs.z_func;
-      cfg.back.depth_function = ctx->zs.z_func;
+   agx_pack(&out, RASTERIZER, cfg) {
 
       cfg.front.line_width = cfg.back.line_width = rast->line_width;
-
-      cfg.front.disable_depth_write = ctx->zs.disable_z_write;
-      cfg.back.disable_depth_write = ctx->zs.disable_z_write;
+      cfg.front.polygon_mode = cfg.back.polygon_mode = AGX_POLYGON_MODE_FILL;
 
       /* Always enable scissoring so we may scissor to the viewport (TODO:
        * optimize this out if the viewport is the default and the app does not
@@ -1288,7 +1305,15 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool)
       cfg.scissor_enable = true;
    };
 
-   return t.gpu;
+   /* Words 2-3: front */
+   out.opaque[2] |= ctx->zs.front.opaque[0];
+   out.opaque[3] |= ctx->zs.front.opaque[1];
+
+   /* Words 4-5: back */
+   out.opaque[4] |= ctx->zs.back.opaque[0];
+   out.opaque[5] |= ctx->zs.back.opaque[1];
+
+   return agx_pool_upload_aligned(pool, &out, sizeof(out), 64);
 }
 
 static uint64_t
