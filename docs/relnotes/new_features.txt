@@ -9,3 +9,4 @@ VK_EXT_color_write_enable on RADV.
 GL ES 3.1 on GT21x hardware.
 VK_EXT_acquire_drm_display on RADV.
 VK_EXT_vertex_input_dynamic_state on lavapipe
+VK_EXT_line_rasterization and wideLines on lavapipe
