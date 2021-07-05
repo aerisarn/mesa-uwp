@@ -71,6 +71,21 @@ agx_pack_sample_offset(agx_index index, bool *flag)
    return 0;
 }
 
+static unsigned
+agx_pack_lod(agx_index index)
+{
+   /* Immediate zero */
+   if (index.type == AGX_INDEX_IMMEDIATE && index.value == 0)
+      return 0;
+
+   /* Otherwise must be a 16-bit float immediate */
+   assert(index.type == AGX_INDEX_REGISTER);
+   assert(index.size == AGX_SIZE_16);
+   assert(index.value < 0x100);
+
+   return index.value;
+}
+
 /* Load/stores have their own operands */
 
 static unsigned
@@ -505,13 +520,9 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
       unsigned T = agx_pack_texture(I->src[2], &Tt);
       unsigned S = agx_pack_sampler(I->src[3], &St);
       unsigned O = agx_pack_sample_offset(I->src[4], &Ot);
+      unsigned D = agx_pack_lod(I->src[1]);
 
       unsigned U = 0; // TODO: what is sampler ureg?
-
-      unsigned D = 0; // TODO: LOD
-      assert(I->src[1].type == AGX_INDEX_IMMEDIATE &&
-             I->src[1].value == 0);
-
       unsigned q1 = 0; // XXX
       unsigned q2 = 0; // XXX
       unsigned q3 = 12; // XXX
