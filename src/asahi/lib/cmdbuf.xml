@@ -271,18 +271,18 @@
   </struct>
 
   <struct name="Rasterizer face" size="8">
-    <field name="Stencil reference" size="8" start="0:0" type="hex" default="0x00"/>
+    <field name="Stencil reference" size="8" start="0:0" type="hex"/>
     <!-- line width is 4:4 fixed point with off-by-one applied -->
     <field name="Line width" size="8" start="0:8" type="hex"/>
     <field name="Polygon mode" size="2" start="0:18" type="Polygon Mode"/>
     <field name="Disable depth write" size="1" start="0:21" type="bool"/>
     <field name="Depth function" size="3" start="0:24" type="ZS Func"/>
-    <field name="Stencil write mask" size="8" start="1:0" type="hex" default="0xFF"/>
-    <field name="Stencil read mask" size="8" start="1:8" type="hex" default="0xFF"/>
+    <field name="Stencil write mask" size="8" start="1:0" type="hex"/>
+    <field name="Stencil read mask" size="8" start="1:8" type="hex"/>
     <field name="Depth pass" size="3" start="1:16" type="Stencil Op"/>
     <field name="Depth fail" size="3" start="1:19" type="Stencil Op"/>
     <field name="Stencil fail" size="3" start="1:22" type="Stencil Op"/>
-    <field name="Stencil compare" size="3" start="1:25" type="ZS Func" default="Always"/>
+    <field name="Stencil compare" size="3" start="1:25" type="ZS Func"/>
   </struct>
 
   <struct name="Rasterizer" size="28">

@@ -170,14 +170,46 @@ agx_bind_blend_state(struct pipe_context *pctx, void *cso)
    ctx->blend = cso;
 }
 
+static const enum agx_stencil_op agx_stencil_ops[PIPE_STENCIL_OP_INVERT + 1] = {
+   [PIPE_STENCIL_OP_KEEP] = AGX_STENCIL_OP_KEEP,
+   [PIPE_STENCIL_OP_ZERO] = AGX_STENCIL_OP_ZERO,
+   [PIPE_STENCIL_OP_REPLACE] = AGX_STENCIL_OP_REPLACE,
+   [PIPE_STENCIL_OP_INCR] = AGX_STENCIL_OP_INCR_SAT,
+   [PIPE_STENCIL_OP_DECR] = AGX_STENCIL_OP_DECR_SAT,
+   [PIPE_STENCIL_OP_INCR_WRAP] = AGX_STENCIL_OP_INCR_WRAP,
+   [PIPE_STENCIL_OP_DECR_WRAP] = AGX_STENCIL_OP_DECR_WRAP,
+   [PIPE_STENCIL_OP_INVERT] = AGX_STENCIL_OP_INVERT,
+};
+
 static void
 agx_pack_rasterizer_face(struct agx_rasterizer_face_packed *out,
+                         struct pipe_stencil_state st,
                          enum agx_zs_func z_func,
                          bool disable_z_write)
 {
    agx_pack(out, RASTERIZER_FACE, cfg) {
       cfg.depth_function = z_func;
       cfg.disable_depth_write = disable_z_write;
+
+      if (st.enabled) {
+         cfg.stencil_write_mask = st.writemask;
+         cfg.stencil_read_mask = st.valuemask;
+
+         cfg.depth_pass   = agx_stencil_ops[st.zpass_op];
+         cfg.depth_fail   = agx_stencil_ops[st.zfail_op];
+         cfg.stencil_fail = agx_stencil_ops[st.fail_op];
+
+         cfg.stencil_compare = (enum agx_zs_func) st.func;
+      } else {
+         cfg.stencil_write_mask = 0xFF;
+         cfg.stencil_read_mask = 0xFF;
+
+         cfg.depth_pass = AGX_STENCIL_OP_KEEP;
+         cfg.depth_fail = AGX_STENCIL_OP_KEEP;
+         cfg.stencil_fail = AGX_STENCIL_OP_KEEP;
+
+         cfg.stencil_compare = AGX_ZS_FUNC_ALWAYS;
+      }
    }
 }
 
@@ -204,11 +236,11 @@ agx_create_zsa_state(struct pipe_context *ctx,
                 ((enum agx_zs_func) state->depth_func) : AGX_ZS_FUNC_ALWAYS;
 
    agx_pack_rasterizer_face(&so->front,
-         z_func, !state->depth_writemask);
+         state->stencil[0], z_func, !state->depth_writemask);
 
    if (state->stencil[1].enabled) {
       agx_pack_rasterizer_face(&so->back,
-            z_func, !state->depth_writemask);
+            state->stencil[1], z_func, !state->depth_writemask);
    } else {
       /* One sided stencil */
       so->back = so->front;
@@ -1295,6 +1327,11 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool)
    struct agx_rasterizer_packed out;
 
    agx_pack(&out, RASTERIZER, cfg) {
+      bool back_stencil = ctx->zs.base.stencil[1].enabled;
+      cfg.front.stencil_reference = ctx->stencil_ref.ref_value[0];
+      cfg.back.stencil_reference = back_stencil ?
+         ctx->stencil_ref.ref_value[1] :
+         cfg.front.stencil_reference;
 
       cfg.front.line_width = cfg.back.line_width = rast->line_width;
       cfg.front.polygon_mode = cfg.back.polygon_mode = AGX_POLYGON_MODE_FILL;
