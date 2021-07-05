@@ -1164,8 +1164,7 @@ panvk_queue_submit_batch(struct panvk_queue *queue,
 }
 
 static void
-panvk_queue_transfer_sync(struct panvk_queue *queue,
-                          struct panvk_syncobj *dst)
+panvk_queue_transfer_sync(struct panvk_queue *queue, uint32_t syncobj)
 {
    const struct panfrost_device *pdev = &queue->device->physical_device->pdev;
    int ret;
@@ -1180,7 +1179,7 @@ panvk_queue_transfer_sync(struct panvk_queue *queue,
    assert(!ret);
    assert(handle.fd >= 0);
 
-   handle.handle = dst->temporary ? : dst->permanent;
+   handle.handle = syncobj;
    ret = drmIoctl(pdev->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &handle);
    assert(!ret);
 
@@ -1258,13 +1257,13 @@ panvk_QueueSubmit(VkQueue _queue,
       /* Transfer the out fence to signal semaphores */
       for (unsigned i = 0; i < submit->signalSemaphoreCount; i++) {
          VK_FROM_HANDLE(panvk_semaphore, sem, submit->pSignalSemaphores[i]);
-         panvk_queue_transfer_sync(queue, &sem->syncobj);
+         panvk_queue_transfer_sync(queue, sem->syncobj.temporary ? : sem->syncobj.permanent);
       }
    }
 
    if (fence) {
       /* Transfer the last out fence to the fence object */
-      panvk_queue_transfer_sync(queue, &fence->syncobj);
+      panvk_queue_transfer_sync(queue, fence->syncobj.temporary ? : fence->syncobj.permanent);
    }
 
    return VK_SUCCESS;
