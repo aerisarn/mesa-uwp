@@ -239,6 +239,7 @@
       - src/gallium/winsys/panfrost/**/*
       when: on_success
     - changes: &panfrost_common_file_list
+      - src/panfrost/ci/*
       - src/panfrost/include/*
       - src/panfrost/lib/*
       - src/panfrost/shared/*
