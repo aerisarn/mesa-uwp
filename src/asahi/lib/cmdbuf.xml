@@ -458,4 +458,23 @@
     <field name="Local size Z" size="32" start="7:0" type="uint"/>
     <field name="Unk" size="32" start="8:0" type="hex" default="0x60000160"/>
   </struct>
+
+  <!--- The rest of this file is likely software defined by macOS kernel -->
+  <enum name="IOGPU Attachment Type">
+    <value name="Colour" value="0xA"/>
+    <value name="Depth" value="0xC"/>
+  </enum>
+
+  <struct name="IOGPU Attachment" size="24">
+    <field name="Unk 0" start="0:0" size="16" default="0x100" type="hex"/>
+    <field name="Address" start="0:16" size="48" type="address"/>
+    <field name="Type" start="2:16" size="16" type="IOGPU Attachment Type"/>
+    <field name="Unk 1" start="3:0" size="32" type="hex"/>
+    <field name="Unk 2" start="4:0" size="3" type="hex"/>
+    <field name="Bytes per pixel" start="4:3" size="5" type="uint"/>
+    <field name="Unk 3" start="4:16" size="4" type="hex" default="0xC"/>
+    <!-- Percent of total attachment space used for this attachment, expressed
+         in a decimal percentage [0, 100] <field name="Percent" start="5:16" -->
+    <field name="Percent" start="5:16" size="16" type="uint"/>
+  </struct>
 </agxml>

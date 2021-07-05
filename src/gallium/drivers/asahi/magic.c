@@ -2,7 +2,8 @@
 #include "agx_state.h"
 #include "magic.h"
 
-/* magic code lifted from ./demo ... a lot more reveng needed */
+/* The structures managed in this file appear to be software defined (either in
+ * the macOS kernel driver or in the AGX firmware) */
 
 struct cmdbuf {
    uint32_t *map;
@@ -229,13 +230,16 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    EMIT32(cmdbuf, 0x1); // number of attachments (includes depth/stencil) stored to
 
    /* A single attachment follows, depth/stencil have their own attachments */
-   {
-      EMIT64(cmdbuf, 0x100 | (rt0 << 16));
-      EMIT32(cmdbuf, 0xa0000);
-      EMIT32(cmdbuf, 0x4c000000); // 80000000 also observed, and 8c000 and.. offset into the tilebuffer I imagine
-      EMIT32(cmdbuf, 0x0c001d); // C0020  also observed
-      EMIT32(cmdbuf, 0x640000);
+   agx_pack((cmdbuf->map + cmdbuf->offset), IOGPU_ATTACHMENT, cfg) {
+      cfg.address = rt0;
+      cfg.type = AGX_IOGPU_ATTACHMENT_TYPE_COLOUR;
+      cfg.unk_1 = 0x4c000000;
+      cfg.unk_2 = 0x5;
+      cfg.bytes_per_pixel = 3;
+      cfg.percent = 100;
    }
+
+   cmdbuf->offset += (AGX_IOGPU_ATTACHMENT_LENGTH / 4);
 }
 
 static struct agx_map_header
