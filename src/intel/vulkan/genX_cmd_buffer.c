@@ -4857,12 +4857,15 @@ genX(CmdDrawMeshTasksNV)(
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 
-   /* TODO(mesh): Support non-zero firstTask. */
-   assert(firstTask == 0);
+   /* BSpec 54016 says: "The values passed for Starting ThreadGroup ID X
+    * and ThreadGroup Count X shall not cause TGIDs to exceed (2^32)-1."
+    */
+   assert((int64_t)firstTask + taskCount - 1 <= UINT32_MAX);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DMESH_1D), m) {
       m.PredicateEnable = cmd_buffer->state.conditional_render_enabled;
       m.ThreadGroupCountX = taskCount;
+      m.StartingThreadGroupIDX = firstTask;
    }
 }
 
