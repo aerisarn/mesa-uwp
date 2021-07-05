@@ -1212,10 +1212,10 @@ agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
 }
 
 static uint64_t
-demo_launch_fragment(struct agx_pool *pool, uint32_t pipeline, uint32_t varyings, unsigned input_count)
+demo_launch_fragment(struct agx_context *ctx, struct agx_pool *pool, uint32_t pipeline, uint32_t varyings, unsigned input_count)
 {
-   unsigned sampler_count = 1;
-   unsigned texture_count = 1;
+   unsigned sampler_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
+   unsigned texture_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
 
    uint32_t unk[] = {
       0x800000,
@@ -1343,6 +1343,8 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       cfg.pipeline = pipeline_vertex;
       cfg.vs_output_count_1 = ctx->vs->info.varyings.nr_slots;
       cfg.vs_output_count_2 = ctx->vs->info.varyings.nr_slots;
+      cfg.sampler_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
+      cfg.texture_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
    }
 
    /* yes, it's really 17 bytes */
@@ -1357,7 +1359,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
 
    agx_push_record(&out, 0, zero.gpu);
    agx_push_record(&out, 5, demo_unk8(ctx->fs, pool));
-   agx_push_record(&out, 5, demo_launch_fragment(pool, pipeline_fragment, varyings, ctx->fs->info.varyings.nr_descs));
+   agx_push_record(&out, 5, demo_launch_fragment(ctx, pool, pipeline_fragment, varyings, ctx->fs->info.varyings.nr_descs));
    agx_push_record(&out, 4, demo_linkage(ctx->vs, pool));
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool));
    agx_push_record(&out, 5, demo_unk11(pool, is_lines, reads_tib));
