@@ -1281,18 +1281,18 @@ agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
 static uint64_t
 demo_launch_fragment(struct agx_context *ctx, struct agx_pool *pool, uint32_t pipeline, uint32_t varyings, unsigned input_count)
 {
-   unsigned sampler_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
-   unsigned texture_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
+   struct agx_ptr t = agx_pool_alloc_aligned(pool, AGX_BIND_PIPELINE_LENGTH, 64);
 
-   uint32_t unk[] = {
-      0x800000,
-      0x1002 | (texture_count << 9) | (sampler_count << 4) | (input_count << 16), // TODO: xmlify
-      pipeline,
-      varyings,
-      0x0,
+   agx_pack(t.cpu, BIND_PIPELINE, cfg) {
+      cfg.tag = AGX_BIND_PIPELINE_FRAGMENT;
+      cfg.sampler_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
+      cfg.texture_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
+      cfg.input_count = input_count;
+      cfg.pipeline = pipeline;
+      cfg.fs_varyings = varyings;
    };
 
-   return agx_pool_upload(pool, unk, sizeof(unk));
+   return t.gpu;
 }
 
 static uint64_t
@@ -1416,6 +1416,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
                  bool is_lines)
 {
    agx_pack(out, BIND_PIPELINE, cfg) {
+      cfg.tag = AGX_BIND_PIPELINE_VERTEX;
       cfg.pipeline = pipeline_vertex;
       cfg.vs_output_count_1 = ctx->vs->info.varyings.nr_slots;
       cfg.vs_output_count_2 = ctx->vs->info.varyings.nr_slots;
