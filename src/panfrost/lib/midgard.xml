@@ -1525,7 +1525,7 @@
     <section name="Bifrost Padding" offset="64" type="Bifrost Framebuffer Padding"/>
   </aggregate>
 
-  <struct name="Job Header">
+  <struct name="Job Header" align="64">
     <field name="Exception Status" size="32" start="0:0" type="uint"/>
     <field name="First Incomplete Task" size="32" start="1:0" type="uint"/>
     <field name="Fault Pointer" size="64" start="2:0" type="address"/>
