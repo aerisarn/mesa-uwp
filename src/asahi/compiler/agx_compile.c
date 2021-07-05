@@ -711,10 +711,14 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 {
    switch (instr->op) {
    case nir_texop_tex:
+   case nir_texop_txl:
       break;
    default:
       unreachable("Unhandled texture op");
    }
+
+   enum agx_lod_mode lod_mode = (instr->op == nir_texop_tex) ?
+      AGX_LOD_MODE_AUTO_LOD : AGX_LOD_MODE_LOD_MIN;
 
    agx_index coords = agx_null(),
              texture = agx_immediate(instr->texture_index),
@@ -731,6 +735,9 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          break;
 
       case nir_tex_src_lod:
+         lod = index;
+         break;
+
       case nir_tex_src_bias:
       case nir_tex_src_ms_index:
       case nir_tex_src_offset:
@@ -745,7 +752,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    agx_texture_sample_to(b, agx_dest_index(&instr->dest),
          coords, lod, texture, sampler, offset,
          agx_tex_dim(instr->sampler_dim, instr->is_array),
-         AGX_LOD_MODE_AUTO_LOD, /* TODO */
+         lod_mode,
          0xF, /* TODO: wrmask */
          0);
 
