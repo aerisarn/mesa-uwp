@@ -121,6 +121,18 @@ panfrost-g52-gl:arm64:
     DEQP_EXPECTED_RENDERER: G52
     PAN_MESA_DEBUG: "deqp,sync,indirect"
 
+panfrost-g52-vk:arm64:
+  extends:
+    - .lava-test:arm64
+    - .lava-meson-g12b-a311d-khadas-vim3
+  variables:
+    DEQP_VER: vk
+    DEQP_EXPECTED_RENDERER: G52
+    VK_DRIVER: panfrost
+    MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
+    PAN_I_WANT_A_BROKEN_VULKAN_DRIVER: 1
+    DEQP_SUITE: panfrost-g52-vk
+
 .lava-mt8183-kukui-jacuzzi-juniper-sku16:
   extends:
     - .panfrost-bifrost-rules
