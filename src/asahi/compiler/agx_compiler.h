@@ -232,7 +232,7 @@ enum agx_convert {
 
 enum agx_lod_mode {
    AGX_LOD_MODE_AUTO_LOD = 0,
-   AGX_LOD_MODE_LOD_MIN = 3,
+   AGX_LOD_MODE_LOD_MIN = 6,
    AGX_LOD_GRAD = 8,
    AGX_LOD_GRAD_MIN = 12
 };
