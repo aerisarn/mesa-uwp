@@ -898,6 +898,12 @@ lp_setup_set_fragment_sampler_views(struct lp_setup_context *setup,
    for (i = 0; i < max_tex_num; i++) {
       struct pipe_sampler_view *view = i < num ? views[i] : NULL;
 
+      /* We are going to overwrite/unref the current texture further below. If
+       * set, make sure to unmap its resource to avoid leaking previous
+       * mapping.  */
+      if (setup->fs.current_tex[i])
+         llvmpipe_resource_unmap(setup->fs.current_tex[i], 0, 0);
+
       if (view) {
          struct pipe_resource *res = view->texture;
          struct llvmpipe_resource *lp_tex = llvmpipe_resource(res);
@@ -1002,13 +1008,7 @@ lp_setup_set_fragment_sampler_views(struct lp_setup_context *setup,
          }
          else {
             /* display target texture/surface */
-            /*
-             * XXX: Where should this be unmapped?
-             */
-            struct llvmpipe_screen *screen = llvmpipe_screen(res->screen);
-            struct sw_winsys *winsys = screen->winsys;
-            jit_tex->base = winsys->displaytarget_map(winsys, lp_tex->dt,
-                                                         PIPE_MAP_READ);
+            jit_tex->base = llvmpipe_resource_map(res, 0, 0, LP_TEX_USAGE_READ);
             jit_tex->row_stride[0] = lp_tex->row_stride[0];
             jit_tex->img_stride[0] = lp_tex->img_stride[0];
             jit_tex->mip_offsets[0] = 0;
@@ -1419,7 +1419,10 @@ lp_setup_destroy( struct lp_setup_context *setup )
    util_unreference_framebuffer_state(&setup->fb);
 
    for (i = 0; i < ARRAY_SIZE(setup->fs.current_tex); i++) {
-      pipe_resource_reference(&setup->fs.current_tex[i], NULL);
+      struct pipe_resource **res_ptr = &setup->fs.current_tex[i];
+      if (*res_ptr)
+         llvmpipe_resource_unmap(*res_ptr, 0, 0);
+      pipe_resource_reference(res_ptr, NULL);
    }
 
    for (i = 0; i < ARRAY_SIZE(setup->constants); i++) {

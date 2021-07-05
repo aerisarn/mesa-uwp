@@ -278,6 +278,7 @@ lp_scene_end_rasterization(struct lp_scene *scene )
                             ref->resource[i]->height0,
                             llvmpipe_resource_size(ref->resource[i]));
             j++;
+            llvmpipe_resource_unmap(ref->resource[i], 0, 0);
             pipe_resource_reference(&ref->resource[i], NULL);
          }
       }
@@ -438,6 +439,12 @@ lp_scene_add_resource_reference(struct lp_scene *scene,
       ref = *last;
       memset(ref, 0, sizeof *ref);
    }
+
+   /* Map resource again to increment the map count. We likely use the
+    * already-mapped pointer in a texture of the jit context, and that pointer
+    * needs to stay mapped during rasterization. This map is unmap'ed when
+    * finalizing scene rasterization. */
+   llvmpipe_resource_map(resource, 0, 0, LP_TEX_USAGE_READ);
 
    /* Append the reference to the reference block.
     */
