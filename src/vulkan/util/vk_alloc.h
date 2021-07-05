@@ -184,11 +184,8 @@ struct vk_multialloc {
     void **ptrs[8];
 };
 
-#define VK_MULTIALLOC_INIT \
-   ((struct vk_multialloc) { 0, })
-
 #define VK_MULTIALLOC(_name) \
-   struct vk_multialloc _name = VK_MULTIALLOC_INIT
+   struct vk_multialloc _name = { 0, }
 
 static ALWAYS_INLINE void
 vk_multialloc_add_size_align(struct vk_multialloc *ma,
