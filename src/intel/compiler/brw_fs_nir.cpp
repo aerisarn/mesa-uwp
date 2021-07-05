@@ -757,7 +757,7 @@ fs_visitor::resolve_inot_sources(const fs_builder &bld, nir_alu_instr *instr,
          assert(!op[i].negate);
          op[i].negate = true;
       } else {
-         op[i] = resolve_source_modifiers(op[i]);
+         op[i] = resolve_source_modifiers(bld, op[i]);
       }
    }
 }
@@ -1273,8 +1273,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       fs_reg tmp = bld.vgrf(result.type);
 
       if (devinfo->ver >= 8) {
-         op[0] = resolve_source_modifiers(op[0]);
-         op[1] = resolve_source_modifiers(op[1]);
+         op[0] = resolve_source_modifiers(bld, op[0]);
+         op[1] = resolve_source_modifiers(bld, op[1]);
       }
 
       /* AVG(x, y) - ((x ^ y) & 1) */
@@ -1522,7 +1522,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
                unreachable("impossible opcode");
             }
          }
-         op[0] = resolve_source_modifiers(op[0]);
+         op[0] = resolve_source_modifiers(bld, op[0]);
       }
       bld.NOT(result, op[0]);
       break;

@@ -1500,7 +1500,7 @@ fs_visitor::emit_shading_rate_setup()
 }
 
 fs_reg
-fs_visitor::resolve_source_modifiers(const fs_reg &src)
+fs_visitor::resolve_source_modifiers(const fs_builder &bld, const fs_reg &src)
 {
    if (!src.abs && !src.negate)
       return src;
