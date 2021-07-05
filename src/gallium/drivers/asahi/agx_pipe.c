@@ -286,6 +286,8 @@ agx_transfer_map(struct pipe_context *pctx,
 
    if (ctx->batch->cbufs[0] && resource == ctx->batch->cbufs[0]->texture)
       pctx->flush(pctx, NULL, 0);
+   if (ctx->batch->zsbuf && resource == ctx->batch->zsbuf->texture)
+      pctx->flush(pctx, NULL, 0);
 
    struct agx_transfer *transfer = CALLOC_STRUCT(agx_transfer);
    transfer->base.level = level;
