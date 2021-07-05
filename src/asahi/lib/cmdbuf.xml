@@ -465,7 +465,7 @@
     <value name="Depth" value="0xC"/>
   </enum>
 
-  <struct name="IOGPU Header" size="48">
+  <struct name="IOGPU Header" size="64">
     <field name="Unk 0" start="0:0" size="32" default="0x10000" type="hex"/>
     <field name="Total size" start="1:0" size="32" type="uint"/>
     <field name="Unk 2" start="2:0" size="32" default="0x7" type="hex"/>
@@ -473,6 +473,9 @@
     <field name="Unk 3" start="9:0" size="32" default="0x18" type="hex"/>
     <field name="Attachment offset 2" start="10:0" size="32" type="uint"/>
     <field name="Unknown offset" start="11:0" size="32" type="uint"/>
+    <field name="Unk 4" start="12:0" size="32" default="0x30" type="hex"/>
+    <field name="Unk 5" start="13:0" size="32" default="0x01" type="hex"/>
+    <field name="Encoder" start="14:0" size="64" type="address"/>
   </struct>
 
   <struct name="IOGPU Attachment" size="24">

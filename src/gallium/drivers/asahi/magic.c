@@ -71,28 +71,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 
    struct cmdbuf *cmdbuf = &_cmdbuf;
 
-   /* Vertex stuff */
-   EMIT_ZERO_WORDS(cmdbuf, 12);
-
-   EMIT32(cmdbuf, 0x30); /* 0x30 */
-   EMIT32(cmdbuf, 0x01); /* 0x34. Compute: 0x03 */
-
-   EMIT64(cmdbuf, encoder_ptr);
-
-   EMIT_ZERO_WORDS(cmdbuf, 20);
-
-   EMIT64(cmdbuf, 0); /* 0x90, compute blob - some zero */
-   EMIT64(cmdbuf, 0); // blob - 0x540 bytes of zero, compute blob - null
-   EMIT64(cmdbuf, 0); // blob - 0x280 bytes of zero
-   EMIT64(cmdbuf, 0); // a8, compute blob - zero pointer
-
-   EMIT64(cmdbuf, 0); // compute blob - zero pointer
-   EMIT64(cmdbuf, 0); // compute blob - zero pointer
-   EMIT64(cmdbuf, 0); // compute blob - zero pointer
-
-   // while zero for vertex, used to include the odd unk6 pattern for compute
-   EMIT64(cmdbuf, 0); // compute blob - 0x1
-   EMIT64(cmdbuf, 0); // d0,  ompute blob - pointer to odd pattern, compare how it's done later for frag
+   EMIT_ZERO_WORDS(cmdbuf, 54);
 
    // compute 8 bytes of zero, then reconverge at *
 
@@ -247,6 +226,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.attachment_offset_1 = offset_attachments;
       cfg.attachment_offset_2 = offset_attachments;
       cfg.unknown_offset = offset_unk;
+      cfg.encoder = encoder_ptr;
    }
 
    return total_size;
