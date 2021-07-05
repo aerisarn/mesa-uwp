@@ -395,8 +395,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
 
    util_format_compose_swizzles(desc->swizzle, view_swizzle, out_swizzle);
 
-   if (state->u.tex.first_level != 0)
-      unreachable("todo: nonzero first level");
+   unsigned level = state->u.tex.first_level;
 
    /* Pack the descriptor into GPU memory */
    agx_pack(so->desc->ptr.cpu, TEXTURE, cfg) {
@@ -406,15 +405,15 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.swizzle_g = agx_channel_from_pipe(out_swizzle[1]);
       cfg.swizzle_b = agx_channel_from_pipe(out_swizzle[2]);
       cfg.swizzle_a = agx_channel_from_pipe(out_swizzle[3]);
-      cfg.width = texture->width0;
-      cfg.height = texture->height0;
-      cfg.levels = state->u.tex.last_level + 1;
+      cfg.width = u_minify(texture->width0, level);
+      cfg.height = u_minify(texture->height0, level);
+      cfg.levels = state->u.tex.last_level - level + 1;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.unk_1 = rsrc->bo->ptr.gpu;
+      cfg.unk_1 = rsrc->bo->ptr.gpu + rsrc->slices[level].offset;
       cfg.unk_2 = false;
 
       cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
-         (rsrc->slices[0].line_stride - 16) :
+         (rsrc->slices[level].line_stride - 16) :
          AGX_RT_STRIDE_TILED;
    }
 
