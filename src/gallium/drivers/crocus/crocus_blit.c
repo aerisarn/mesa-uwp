@@ -583,10 +583,10 @@ use_blorp:
 
       struct blorp_surf src_surf, dst_surf;
       crocus_blorp_surf_for_resource(&screen->vtbl, &screen->isl_dev, &src_surf,
-                                     &src_res->base, src_aux_usage,
+                                     &src_res->base.b, src_aux_usage,
                                      info->src.level, false);
       crocus_blorp_surf_for_resource(&screen->vtbl, &screen->isl_dev, &dst_surf,
-                                     &dst_res->base, dst_aux_usage,
+                                     &dst_res->base.b, dst_aux_usage,
                                      info->dst.level, true);
 
       crocus_resource_prepare_render(ice, dst_res, info->dst.level,
@@ -598,8 +598,8 @@ use_blorp:
       if (crocus_batch_references(batch, src_res->bo))
          tex_cache_flush_hack(batch, src_fmt.fmt, src_res->surf.format);
 
-      if (dst_res->base.target == PIPE_BUFFER) {
-         util_range_add(&dst_res->base, &dst_res->valid_buffer_range,
+      if (dst_res->base.b.target == PIPE_BUFFER) {
+         util_range_add(&dst_res->base.b, &dst_res->valid_buffer_range,
                         dst_x0, dst_x1);
       }
 
@@ -703,7 +703,7 @@ crocus_copy_region(struct blorp_context *blorp,
       tex_cache_flush_hack(batch, ISL_FORMAT_UNSUPPORTED, src_res->surf.format);
 
    if (dst->target == PIPE_BUFFER)
-      util_range_add(&dst_res->base, &dst_res->valid_buffer_range, dstx, dstx + src_box->width);
+      util_range_add(&dst_res->base.b, &dst_res->valid_buffer_range, dstx, dstx + src_box->width);
 
    if (dst->target == PIPE_BUFFER && src->target == PIPE_BUFFER) {
       struct blorp_address src_addr = {
@@ -825,8 +825,8 @@ crocus_resource_copy_region(struct pipe_context *ctx,
       crocus_get_depth_stencil_resources(devinfo, p_src, &junk, &s_src_res);
       crocus_get_depth_stencil_resources(devinfo, p_dst, &junk, &s_dst_res);
 
-      crocus_copy_region(&ice->blorp, batch, &s_dst_res->base, dst_level, dstx,
-                         dsty, dstz, &s_src_res->base, src_level, src_box);
+      crocus_copy_region(&ice->blorp, batch, &s_dst_res->base.b, dst_level, dstx,
+                         dsty, dstz, &s_src_res->base.b, src_level, src_box);
    }
 
    crocus_flush_and_dirty_for_history(ice, batch, dst,

@@ -191,9 +191,9 @@ static bool crocus_emit_blt(struct crocus_batch *batch,
 
    crocus_resource_get_image_offset(src, src_level, src_box->z, &src_image_x,
                                     &src_image_y);
-   if (util_format_is_compressed(src->base.format)) {
-      int bw = util_format_get_blockwidth(src->base.format);
-      int bh = util_format_get_blockheight(src->base.format);
+   if (util_format_is_compressed(src->base.b.format)) {
+      int bw = util_format_get_blockwidth(src->base.b.format);
+      int bh = util_format_get_blockheight(src->base.b.format);
       assert(src_x % bw == 0);
       assert(src_y % bh == 0);
       src_x /= (int)bw;
@@ -204,9 +204,9 @@ static bool crocus_emit_blt(struct crocus_batch *batch,
 
    crocus_resource_get_image_offset(dst, dst_level, dst_z, &dst_image_x,
                                     &dst_image_y);
-   if (util_format_is_compressed(dst->base.format)) {
-      int bw = util_format_get_blockwidth(dst->base.format);
-      int bh = util_format_get_blockheight(dst->base.format);
+   if (util_format_is_compressed(dst->base.b.format)) {
+      int bw = util_format_get_blockwidth(dst->base.b.format);
+      int bh = util_format_get_blockheight(dst->base.b.format);
       assert(dst_x % bw == 0);
       assert(dst_y % bh == 0);
       dst_x /= (int)bw;
@@ -312,7 +312,7 @@ static bool crocus_copy_region_blt(struct crocus_batch *batch,
                                    unsigned src_level,
                                    const struct pipe_box *src_box)
 {
-   if (dst->base.target == PIPE_BUFFER || src->base.target == PIPE_BUFFER)
+   if (dst->base.b.target == PIPE_BUFFER || src->base.b.target == PIPE_BUFFER)
       return false;
    return crocus_emit_blt(batch,
                           src,

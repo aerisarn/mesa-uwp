@@ -347,7 +347,7 @@ clear_color(struct crocus_context *ice,
    }
 
    if (p_res->target == PIPE_BUFFER)
-      util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
+      util_range_add(&res->base.b, &res->valid_buffer_range, box->x, box->x + box->width);
 
    crocus_batch_maybe_flush(batch, 1500);
 
@@ -430,7 +430,7 @@ can_fast_clear_depth(struct crocus_context *ice,
    if (!crocus_resource_level_has_hiz(res, level))
       return false;
 
-   if (res->base.format == PIPE_FORMAT_Z16_UNORM) {
+   if (res->base.b.format == PIPE_FORMAT_Z16_UNORM) {
       /* From the Sandy Bridge PRM, volume 2 part 1, page 314:
        *
        *     "[DevSNB+]: Several cases exist where Depth Buffer Clear cannot be
@@ -592,7 +592,7 @@ clear_depth_stencil(struct crocus_context *ice,
       crocus_resource_prepare_render(ice, z_res, level, box->z, box->depth,
                                      aux_usage);
       crocus_blorp_surf_for_resource(&screen->vtbl, &batch->screen->isl_dev,
-                                     &z_surf, &z_res->base, aux_usage,
+                                     &z_surf, &z_res->base.b, aux_usage,
                                      level, true);
    }
 
@@ -604,7 +604,7 @@ clear_depth_stencil(struct crocus_context *ice,
       crocus_resource_prepare_access(ice, stencil_res, level, 1, box->z,
                                      box->depth, stencil_res->aux.usage, false);
       crocus_blorp_surf_for_resource(&screen->vtbl, &batch->screen->isl_dev,
-                                     &stencil_surf, &stencil_res->base,
+                                     &stencil_surf, &stencil_res->base.b,
                                      stencil_res->aux.usage, level, true);
    }
 

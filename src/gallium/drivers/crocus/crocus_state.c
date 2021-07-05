@@ -2689,11 +2689,11 @@ crocus_create_sampler_view(struct pipe_context *ctx,
 
       crocus_get_depth_stencil_resources(devinfo, tex, &zres, &sres);
 
-      tex = util_format_has_depth(desc) ? &zres->base : &sres->base;
+      tex = util_format_has_depth(desc) ? &zres->base.b : &sres->base.b;
 
       if (tex->format == PIPE_FORMAT_S8_UINT)
          if (devinfo->ver == 7 && sres->shadow)
-            tex = &sres->shadow->base;
+            tex = &sres->shadow->base.b;
    }
 
    isv->res = (struct crocus_resource *) tex;
@@ -2907,8 +2907,8 @@ crocus_create_surface(struct pipe_context *ctx,
       uint32_t temp_offset, temp_x, temp_y;
 
       isl_surf_get_image_offset_B_tile_sa(&res->surf, tmpl->u.tex.level,
-                                          res->base.target == PIPE_TEXTURE_3D ? 0 : tmpl->u.tex.first_layer,
-                                          res->base.target == PIPE_TEXTURE_3D ? tmpl->u.tex.first_layer : 0,
+                                          res->base.b.target == PIPE_TEXTURE_3D ? 0 : tmpl->u.tex.first_layer,
+                                          res->base.b.target == PIPE_TEXTURE_3D ? tmpl->u.tex.first_layer : 0,
                                           &temp_offset, &temp_x, &temp_y);
       if (!devinfo->has_surface_tile_offset &&
           (temp_x || temp_y)) {
@@ -2917,11 +2917,11 @@ crocus_create_surface(struct pipe_context *ctx,
           */
          /* move to temp */
          struct pipe_resource wa_templ = (struct pipe_resource) {
-            .width0 = u_minify(res->base.width0, tmpl->u.tex.level),
-            .height0 = u_minify(res->base.height0, tmpl->u.tex.level),
+            .width0 = u_minify(res->base.b.width0, tmpl->u.tex.level),
+            .height0 = u_minify(res->base.b.height0, tmpl->u.tex.level),
             .depth0 = 1,
             .array_size = 1,
-            .format = res->base.format,
+            .format = res->base.b.format,
             .target = PIPE_TEXTURE_2D,
             .bind = (usage & ISL_SURF_USAGE_DEPTH_BIT ? PIPE_BIND_DEPTH_STENCIL : PIPE_BIND_RENDER_TARGET) | PIPE_BIND_SAMPLER_VIEW,
          };
@@ -3084,7 +3084,7 @@ crocus_set_shader_images(struct pipe_context *ctx,
                fmt.fmt = isl_lower_storage_image_format(devinfo, fmt.fmt);
          }
 
-         if (res->base.target != PIPE_BUFFER) {
+         if (res->base.b.target != PIPE_BUFFER) {
             struct isl_view view = {
                .format = fmt.fmt,
                .base_level = img->u.tex.level,
@@ -3108,7 +3108,7 @@ crocus_set_shader_images(struct pipe_context *ctx,
             };
             iv->view = view;
 
-            util_range_add(&res->base, &res->valid_buffer_range, img->u.buf.offset,
+            util_range_add(&res->base.b, &res->valid_buffer_range, img->u.buf.offset,
                            img->u.buf.offset + img->u.buf.size);
             fill_buffer_image_param(&image_params[start_slot + i],
                                     img->format, img->u.buf.size);
@@ -3602,7 +3602,7 @@ crocus_set_shader_buffers(struct pipe_context *ctx,
       if (buffers && buffers[i].buffer) {
          struct crocus_resource *res = (void *) buffers[i].buffer;
          struct pipe_shader_buffer *ssbo = &shs->ssbo[start_slot + i];
-         pipe_resource_reference(&ssbo->buffer, &res->base);
+         pipe_resource_reference(&ssbo->buffer, &res->base.b);
          ssbo->buffer_offset = buffers[i].buffer_offset;
          ssbo->buffer_size =
             MIN2(buffers[i].buffer_size, res->bo->size - ssbo->buffer_offset);
@@ -3612,7 +3612,7 @@ crocus_set_shader_buffers(struct pipe_context *ctx,
          res->bind_history |= PIPE_BIND_SHADER_BUFFER;
          res->bind_stages |= 1 << stage;
 
-         util_range_add(&res->base, &res->valid_buffer_range, ssbo->buffer_offset,
+         util_range_add(&res->base.b, &res->valid_buffer_range, ssbo->buffer_offset,
                         ssbo->buffer_offset + ssbo->buffer_size);
       } else {
          pipe_resource_reference(&shs->ssbo[start_slot + i].buffer, NULL);
@@ -3948,7 +3948,7 @@ crocus_get_so_offset(struct pipe_stream_output_target *so)
    struct pipe_box box;
    uint32_t result;
    u_box_1d(tgt->offset_offset, 4, &box);
-   void *val = so->context->buffer_map(so->context, &tgt->offset_res->base,
+   void *val = so->context->buffer_map(so->context, &tgt->offset_res->base.b,
                                        0, PIPE_MAP_DIRECTLY,
                                        &box, &transfer);
    assert(val);
@@ -4005,7 +4005,7 @@ crocus_create_stream_output_target(struct pipe_context *ctx,
    cso->base.buffer_size = buffer_size;
    cso->base.context = ctx;
 
-   util_range_add(&res->base, &res->valid_buffer_range, buffer_offset,
+   util_range_add(&res->base.b, &res->valid_buffer_range, buffer_offset,
                   buffer_offset + buffer_size);
 #if GFX_VER >= 7
    struct crocus_context *ice = (struct crocus_context *) ctx;
@@ -4953,7 +4953,7 @@ emit_surface_state(struct crocus_batch *batch,
 
    struct isl_surf surf = *in_surf;
    if (adjust_surf) {
-      if (res->base.target == PIPE_TEXTURE_3D && view->array_len == 1) {
+      if (res->base.b.target == PIPE_TEXTURE_3D && view->array_len == 1) {
          isl_surf_get_image_surf(isl_dev, in_surf,
                                  view->base_level, 0,
                                  view->base_array_layer,
@@ -4961,7 +4961,7 @@ emit_surface_state(struct crocus_batch *batch,
                                  &tile_x_sa, &tile_y_sa);
          view->base_array_layer = 0;
          view->base_level = 0;
-      } else if (res->base.target == PIPE_TEXTURE_CUBE && devinfo->ver == 4) {
+      } else if (res->base.b.target == PIPE_TEXTURE_CUBE && devinfo->ver == 4) {
          isl_surf_get_image_surf(isl_dev, in_surf,
                                  view->base_level, view->base_array_layer,
                                  0,
@@ -4969,7 +4969,7 @@ emit_surface_state(struct crocus_batch *batch,
                                  &tile_x_sa, &tile_y_sa);
          view->base_array_layer = 0;
          view->base_level = 0;
-      } else if (res->base.target == PIPE_TEXTURE_1D_ARRAY)
+      } else if (res->base.b.target == PIPE_TEXTURE_1D_ARRAY)
          surf.dim = ISL_SURF_DIM_2D;
    }
 
@@ -5044,7 +5044,7 @@ emit_surface(struct crocus_batch *batch,
    struct crocus_resource *res = (struct crocus_resource *)surf->base.texture;
    struct isl_view *view = &surf->view;
    uint32_t offset = 0;
-   enum pipe_texture_target target = res->base.target;
+   enum pipe_texture_target target = res->base.b.target;
    bool adjust_surf = false;
 
    if (devinfo->ver == 4 && target == PIPE_TEXTURE_CUBE)
@@ -5204,7 +5204,7 @@ emit_image_view(struct crocus_context *ice,
                                        isl_dev->ss.align, &offset);
    bool write = iv->base.shader_access & PIPE_IMAGE_ACCESS_WRITE;
    uint32_t reloc = RELOC_32BIT | (write ? RELOC_WRITE : 0);
-   if (res->base.target == PIPE_BUFFER) {
+   if (res->base.b.target == PIPE_BUFFER) {
       const struct isl_format_layout *fmtl = isl_format_get_layout(iv->view.format);
       const unsigned cpp = iv->view.format == ISL_FORMAT_RAW ? 1 : fmtl->bpb / 8;
       unsigned final_size =
@@ -5315,7 +5315,7 @@ emit_sol_surface(struct crocus_batch *batch,
                                        isl_dev->ss.align, &offset);
    isl_buffer_fill_state(isl_dev, surf_state,
                          .address = crocus_state_reloc(batch, offset + isl_dev->ss.addr_offset,
-                                                       crocus_resource_bo(&buf->base),
+                                                       crocus_resource_bo(&buf->base.b),
                                                        offset_dwords * 4, RELOC_32BIT|RELOC_WRITE),
                          .size_B = num_elements * 4,
                          .stride_B = stride_dwords * 4,
@@ -6546,7 +6546,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
 
                sob.SurfaceSize = MAX2(tgt->base.buffer_size / 4, 1) - 1;
                sob.StreamOutputBufferOffsetAddress =
-                  rw_bo(crocus_resource_bo(&tgt->offset_res->base), tgt->offset_offset);
+                  rw_bo(crocus_resource_bo(&tgt->offset_res->base.b), tgt->offset_offset);
                if (tgt->zero_offset) {
                   sob.StreamOffset = 0;
                   tgt->zero_offset = false;
@@ -7926,7 +7926,7 @@ crocus_upload_render_state(struct crocus_context *ice,
       mi_builder_init(&b, &batch->screen->devinfo, batch);
 
       struct crocus_address addr =
-         ro_bo(crocus_resource_bo(&so->offset_res->base), so->offset_offset);
+         ro_bo(crocus_resource_bo(&so->offset_res->base.b), so->offset_offset);
       struct mi_value offset =
          mi_iadd_imm(&b, mi_mem32(addr), -so->base.buffer_offset);
 
@@ -8253,7 +8253,7 @@ crocus_rebind_buffer(struct crocus_context *ice,
 {
    struct pipe_context *ctx = &ice->ctx;
 
-   assert(res->base.target == PIPE_BUFFER);
+   assert(res->base.b.target == PIPE_BUFFER);
 
    /* Buffers can't be framebuffer attachments, nor display related,
     * and we don't have upstream Clover support.
@@ -8272,7 +8272,7 @@ crocus_rebind_buffer(struct crocus_context *ice,
          const int i = u_bit_scan64(&bound_vbs);
          struct pipe_vertex_buffer *buffer = &ice->state.vertex_buffers[i];
 
-         if (!buffer->is_user_buffer && &res->base == buffer->buffer.resource)
+         if (!buffer->is_user_buffer && &res->base.b == buffer->buffer.resource)
             ice->state.dirty |= CROCUS_DIRTY_VERTEX_BUFFERS;
       }
    }
@@ -8329,7 +8329,7 @@ crocus_rebind_buffer(struct crocus_context *ice,
 
             if (res->bo == crocus_resource_bo(ssbo->buffer)) {
                struct pipe_shader_buffer buf = {
-                  .buffer = &res->base,
+                  .buffer = &res->base.b,
                   .buffer_offset = ssbo->buffer_offset,
                   .buffer_size = ssbo->buffer_size,
                };

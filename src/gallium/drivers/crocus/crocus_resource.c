@@ -343,10 +343,10 @@ crocus_alloc_resource(struct pipe_screen *pscreen,
    if (!res)
       return NULL;
 
-   res->base = *templ;
-   res->base.screen = pscreen;
+   res->base.b = *templ;
+   res->base.b.screen = pscreen;
    res->orig_screen = crocus_pscreen_ref(pscreen);
-   pipe_reference_init(&res->base.reference, 1);
+   pipe_reference_init(&res->base.b.reference, 1);
 
    if (templ->target == PIPE_BUFFER)
       util_range_init(&res->valid_buffer_range);
@@ -608,7 +608,7 @@ crocus_resource_finish_aux_import(struct pipe_screen *pscreen,
    assert(crocus_resource_unfinished_aux_import(res));
    assert(!res->mod_info->supports_clear_color);
 
-   struct crocus_resource *aux_res = (void *) res->base.next;
+   struct crocus_resource *aux_res = (void *) res->base.b.next;
    assert(aux_res->aux.surf.row_pitch_B && aux_res->aux.offset &&
           aux_res->aux.bo);
 
@@ -621,8 +621,8 @@ crocus_resource_finish_aux_import(struct pipe_screen *pscreen,
    assert(res->bo->size >= (res->aux.offset + res->aux.surf.size_B));
    assert(aux_res->aux.surf.row_pitch_B == res->aux.surf.row_pitch_B);
 
-   crocus_resource_destroy(&screen->base, res->base.next);
-   res->base.next = NULL;
+   crocus_resource_destroy(&screen->base, res->base.b.next);
+   res->base.b.next = NULL;
 }
 
 static struct pipe_resource *
@@ -645,11 +645,11 @@ crocus_resource_create_for_buffer(struct pipe_screen *pscreen,
 
    res->bo = crocus_bo_alloc(screen->bufmgr, name, templ->width0);
    if (!res->bo) {
-      crocus_resource_destroy(pscreen, &res->base);
+      crocus_resource_destroy(pscreen, &res->base.b);
       return NULL;
    }
 
-   return &res->base;
+   return &res->base.b;
 }
 
 static struct pipe_resource *
@@ -721,25 +721,25 @@ crocus_resource_create_with_modifiers(struct pipe_screen *pscreen,
       struct pipe_resource templ_shadow = (struct pipe_resource) {
          .usage = 0,
          .bind = PIPE_BIND_SAMPLER_VIEW,
-         .width0 = res->base.width0,
-         .height0 = res->base.height0,
-         .depth0 = res->base.depth0,
-         .last_level = res->base.last_level,
-         .nr_samples = res->base.nr_samples,
-         .nr_storage_samples = res->base.nr_storage_samples,
-         .array_size = res->base.array_size,
+         .width0 = res->base.b.width0,
+         .height0 = res->base.b.height0,
+         .depth0 = res->base.b.depth0,
+         .last_level = res->base.b.last_level,
+         .nr_samples = res->base.b.nr_samples,
+         .nr_storage_samples = res->base.b.nr_storage_samples,
+         .array_size = res->base.b.array_size,
          .format = PIPE_FORMAT_R8_UINT,
-         .target = res->base.target,
+         .target = res->base.b.target,
       };
       res->shadow = (struct crocus_resource *)screen->base.resource_create(&screen->base, &templ_shadow);
       assert(res->shadow);
    }
 
-   return &res->base;
+   return &res->base.b;
 
 fail:
    fprintf(stderr, "XXX: resource creation failed\n");
-   crocus_resource_destroy(pscreen, &res->base);
+   crocus_resource_destroy(pscreen, &res->base.b);
    return NULL;
 
 }
@@ -789,9 +789,9 @@ crocus_resource_from_user_memory(struct pipe_screen *pscreen,
       return NULL;
    }
 
-   util_range_add(&res->base, &res->valid_buffer_range, 0, templ->width0);
+   util_range_add(&res->base.b, &res->valid_buffer_range, 0, templ->width0);
 
-   return &res->base;
+   return &res->base.b;
 }
 
 static struct pipe_resource *
@@ -869,10 +869,10 @@ crocus_resource_from_handle(struct pipe_screen *pscreen,
       res->bo = NULL;
    }
 
-   return &res->base;
+   return &res->base.b;
 
 fail:
-   crocus_resource_destroy(pscreen, &res->base);
+   crocus_resource_destroy(pscreen, &res->base.b);
    return NULL;
 }
 
@@ -899,7 +899,7 @@ crocus_resource_from_memobj(struct pipe_screen *pscreen,
    res->offset = offset;
    res->external_format = memobj->format;
 
-   return &res->base;
+   return &res->base.b;
 }
 
 static void
@@ -1174,7 +1174,7 @@ static void
 crocus_map_copy_region(struct crocus_transfer *map)
 {
    struct pipe_screen *pscreen = &map->batch->screen->base;
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    struct pipe_box *box = &xfer->box;
    struct crocus_resource *res = (void *) xfer->resource;
 
@@ -1311,7 +1311,7 @@ s8_offset(uint32_t stride, uint32_t x, uint32_t y, bool swizzled)
 static void
 crocus_unmap_s8(struct crocus_transfer *map)
 {
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    const struct pipe_box *box = &xfer->box;
    struct crocus_resource *res = (struct crocus_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
@@ -1344,7 +1344,7 @@ crocus_unmap_s8(struct crocus_transfer *map)
 static void
 crocus_map_s8(struct crocus_transfer *map)
 {
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    const struct pipe_box *box = &xfer->box;
    struct crocus_resource *res = (struct crocus_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
@@ -1417,7 +1417,7 @@ tile_extents(const struct isl_surf *surf,
 static void
 crocus_unmap_tiled_memcpy(struct crocus_transfer *map)
 {
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    const struct pipe_box *box = &xfer->box;
    struct crocus_resource *res = (struct crocus_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
@@ -1445,7 +1445,7 @@ crocus_unmap_tiled_memcpy(struct crocus_transfer *map)
 static void
 crocus_map_tiled_memcpy(struct crocus_transfer *map)
 {
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    const struct pipe_box *box = &xfer->box;
    struct crocus_resource *res = (struct crocus_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
@@ -1493,13 +1493,13 @@ crocus_map_tiled_memcpy(struct crocus_transfer *map)
 static void
 crocus_map_direct(struct crocus_transfer *map)
 {
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
    struct pipe_box *box = &xfer->box;
    struct crocus_resource *res = (struct crocus_resource *) xfer->resource;
 
    void *ptr = crocus_bo_map(map->dbg, res->bo, xfer->usage & MAP_FLAGS);
 
-   if (res->base.target == PIPE_BUFFER) {
+   if (res->base.b.target == PIPE_BUFFER) {
       xfer->stride = 0;
       xfer->layer_stride = 0;
 
@@ -1529,7 +1529,7 @@ can_promote_to_async(const struct crocus_resource *res,
     * initialized with useful data, then we can safely promote this write
     * to be unsynchronized.  This helps the common pattern of appending data.
     */
-   return res->base.target == PIPE_BUFFER && (usage & PIPE_MAP_WRITE) &&
+   return res->base.b.target == PIPE_BUFFER && (usage & PIPE_MAP_WRITE) &&
           !(usage & TC_TRANSFER_MAP_NO_INFER_UNSYNCHRONIZED) &&
           !util_ranges_intersect(&res->valid_buffer_range, box->x,
                                  box->x + box->width);
@@ -1579,7 +1579,7 @@ crocus_transfer_map(struct pipe_context *ctx,
       return NULL;
 
    struct crocus_transfer *map = slab_alloc(&ice->transfer_pool);
-   struct pipe_transfer *xfer = &map->base;
+   struct pipe_transfer *xfer = &map->base.b;
 
    if (!map)
       return NULL;
@@ -1599,7 +1599,7 @@ crocus_transfer_map(struct pipe_context *ctx,
                             box->x + box->width);
 
    if (usage & PIPE_MAP_WRITE)
-      util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
+      util_range_add(&res->base.b, &res->valid_buffer_range, box->x, box->x + box->width);
 
    /* Avoid using GPU copies for persistent/coherent buffers, as the idea
     * there is to access them simultaneously on the CPU & GPU.  This also
@@ -1678,14 +1678,14 @@ crocus_transfer_flush_region(struct pipe_context *ctx,
 
    uint32_t history_flush = 0;
 
-   if (res->base.target == PIPE_BUFFER) {
+   if (res->base.b.target == PIPE_BUFFER) {
       if (map->staging)
          history_flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
 
       if (map->dest_had_defined_contents)
          history_flush |= crocus_flush_bits_for_history(res);
 
-      util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
+      util_range_add(&res->base.b, &res->valid_buffer_range, box->x, box->x + box->width);
    }
 
    if (history_flush & ~PIPE_CONTROL_CS_STALL) {
@@ -1730,6 +1730,10 @@ crocus_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
       map->unmap(map);
 
    pipe_resource_reference(&xfer->resource, NULL);
+   /* transfer_unmap is always called from the driver thread, so we have to
+    * use transfer_pool, not transfer_pool_unsync.  Freeing an object into a
+    * different pool is allowed, however.
+    */
    slab_free(&ice->transfer_pool, map);
 }
 
@@ -1782,7 +1786,7 @@ crocus_flush_and_dirty_for_history(struct crocus_context *ice,
                                    uint32_t extra_flags,
                                    const char *reason)
 {
-   if (res->base.target != PIPE_BUFFER)
+   if (res->base.b.target != PIPE_BUFFER)
       return;
 
    uint32_t flush = crocus_flush_bits_for_history(res) | extra_flags;

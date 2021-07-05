@@ -74,6 +74,8 @@
 #endif
 
 struct crocus_query {
+   struct threaded_query b;
+
    enum pipe_query_type type;
    int index;
 

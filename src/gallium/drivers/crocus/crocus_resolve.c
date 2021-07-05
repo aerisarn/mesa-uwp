@@ -98,7 +98,7 @@ resolve_sampler_views(struct crocus_context *ice,
       const int i = u_bit_scan(&views);
       struct crocus_sampler_view *isv = shs->textures[i];
 
-      if (isv->res->base.target != PIPE_BUFFER) {
+      if (isv->res->base.b.target != PIPE_BUFFER) {
          if (consider_framebuffer) {
             disable_rb_aux_buffer(ice, draw_aux_buffer_disabled, isv->res,
                                   isv->view.base_level, isv->view.levels,
@@ -140,7 +140,7 @@ resolve_image_views(struct crocus_context *ice,
       struct pipe_image_view *pview = &shs->image[i].base;
       struct crocus_resource *res = (void *) pview->resource;
 
-      if (res->base.target != PIPE_BUFFER) {
+      if (res->base.b.target != PIPE_BUFFER) {
          if (consider_framebuffer) {
             disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
                                   res, pview->u.tex.level, 1,
@@ -533,7 +533,7 @@ crocus_resolve_color(struct crocus_context *ice,
 
    struct blorp_surf surf;
    crocus_blorp_surf_for_resource(&screen->vtbl, &batch->screen->isl_dev, &surf,
-                                  &res->base, res->aux.usage, level, true);
+                                  &res->base.b, res->aux.usage, level, true);
 
    crocus_batch_maybe_flush(batch, 1500);
 
@@ -580,7 +580,7 @@ crocus_mcs_partial_resolve(struct crocus_context *ice,
 
    struct blorp_surf surf;
    crocus_blorp_surf_for_resource(&screen->vtbl, &batch->screen->isl_dev, &surf,
-                                  &res->base, res->aux.usage, 0, true);
+                                  &res->base.b, res->aux.usage, 0, true);
 
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
@@ -683,7 +683,7 @@ crocus_hiz_exec(struct crocus_context *ice,
 
    struct blorp_surf surf;
    crocus_blorp_surf_for_resource(&screen->vtbl, &batch->screen->isl_dev, &surf,
-                                  &res->base, res->aux.usage, level, true);
+                                  &res->base.b, res->aux.usage, level, true);
 
    struct blorp_batch blorp_batch;
    enum blorp_batch_flags flags = 0;
@@ -751,7 +751,7 @@ crocus_resource_check_level_layer(UNUSED const struct crocus_resource *res,
                                   UNUSED uint32_t level, UNUSED uint32_t layer)
 {
    assert(level < res->surf.levels);
-   assert(layer < util_num_layers(&res->base, level));
+   assert(layer < util_num_layers(&res->base.b, level));
 }
 
 static inline uint32_t
@@ -774,7 +774,7 @@ static inline uint32_t
 miptree_layer_range_length(const struct crocus_resource *res, uint32_t level,
                            uint32_t start_layer, uint32_t num_layers)
 {
-   assert(level <= res->base.last_level);
+   assert(level <= res->base.b.last_level);
 
    const uint32_t total_num_layers = crocus_get_num_logical_layers(res, level);
    assert(start_layer < total_num_layers);
@@ -881,7 +881,7 @@ crocus_resource_finish_write(struct crocus_context *ice,
                              uint32_t start_layer, uint32_t num_layers,
                              enum isl_aux_usage aux_usage)
 {
-   if (res->base.format == PIPE_FORMAT_S8_UINT)
+   if (res->base.b.format == PIPE_FORMAT_S8_UINT)
       res->shadow_needs_update = true;
 
    if (!crocus_resource_level_has_aux(res, level))
@@ -1048,18 +1048,18 @@ crocus_update_stencil_shadow(struct crocus_context *ice,
       return;
 
    struct pipe_box box;
-   for (unsigned level = 0; level <= res->base.last_level; level++) {
+   for (unsigned level = 0; level <= res->base.b.last_level; level++) {
       u_box_2d(0, 0,
-               u_minify(res->base.width0, level),
-               u_minify(res->base.height0, level), &box);
-      const unsigned depth = res->base.target == PIPE_TEXTURE_3D ?
-         u_minify(res->base.depth0, level) : res->base.array_size;
+               u_minify(res->base.b.width0, level),
+               u_minify(res->base.b.height0, level), &box);
+      const unsigned depth = res->base.b.target == PIPE_TEXTURE_3D ?
+         u_minify(res->base.b.depth0, level) : res->base.b.array_size;
 
       for (unsigned layer = 0; layer < depth; layer++) {
          box.z = layer;
          ice->ctx.resource_copy_region(&ice->ctx,
-                                       &res->shadow->base, level, 0, 0, layer,
-                                       &res->base, level, &box);
+                                       &res->shadow->base.b, level, 0, 0, layer,
+                                       &res->base.b, level, &box);
       }
    }
    res->shadow_needs_update = false;
