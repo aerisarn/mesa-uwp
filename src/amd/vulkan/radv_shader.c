@@ -189,6 +189,39 @@ radv_optimize_nir(const struct radv_device *device, struct nir_shader *shader,
    NIR_PASS(progress, shader, nir_opt_move, nir_move_load_ubo);
 }
 
+void
+radv_optimize_nir_algebraic(nir_shader *nir, bool opt_offsets)
+{
+   bool more_algebraic = true;
+   while (more_algebraic) {
+      more_algebraic = false;
+      NIR_PASS_V(nir, nir_copy_prop);
+      NIR_PASS_V(nir, nir_opt_dce);
+      NIR_PASS_V(nir, nir_opt_constant_folding);
+      NIR_PASS_V(nir, nir_opt_cse);
+      NIR_PASS(more_algebraic, nir, nir_opt_algebraic);
+   }
+
+   if (opt_offsets)
+      NIR_PASS_V(nir, nir_opt_offsets);
+
+   /* Do late algebraic optimization to turn add(a,
+    * neg(b)) back into subs, then the mandatory cleanup
+    * after algebraic.  Note that it may produce fnegs,
+    * and if so then we need to keep running to squash
+    * fneg(fneg(a)).
+    */
+   bool more_late_algebraic = true;
+   while (more_late_algebraic) {
+      more_late_algebraic = false;
+      NIR_PASS(more_late_algebraic, nir, nir_opt_algebraic_late);
+      NIR_PASS_V(nir, nir_opt_constant_folding);
+      NIR_PASS_V(nir, nir_copy_prop);
+      NIR_PASS_V(nir, nir_opt_dce);
+      NIR_PASS_V(nir, nir_opt_cse);
+   }
+}
+
 static void
 shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 {

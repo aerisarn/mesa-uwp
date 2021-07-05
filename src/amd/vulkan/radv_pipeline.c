@@ -3449,35 +3449,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          if (lowered_ngg)
             radv_lower_ngg(device, nir[i], &infos[i], pipeline_key, &keys[i]);
 
-         /* optimize the lowered ALU operations */
-         bool more_algebraic = true;
-         while (more_algebraic) {
-            more_algebraic = false;
-            NIR_PASS_V(nir[i], nir_copy_prop);
-            NIR_PASS_V(nir[i], nir_opt_dce);
-            NIR_PASS_V(nir[i], nir_opt_constant_folding);
-            NIR_PASS_V(nir[i], nir_opt_cse);
-            NIR_PASS(more_algebraic, nir[i], nir_opt_algebraic);
-         }
-
-         if (io_to_mem || lowered_ngg || i == MESA_SHADER_COMPUTE)
-            NIR_PASS_V(nir[i], nir_opt_offsets);
-
-         /* Do late algebraic optimization to turn add(a,
-          * neg(b)) back into subs, then the mandatory cleanup
-          * after algebraic.  Note that it may produce fnegs,
-          * and if so then we need to keep running to squash
-          * fneg(fneg(a)).
-          */
-         bool more_late_algebraic = true;
-         while (more_late_algebraic) {
-            more_late_algebraic = false;
-            NIR_PASS(more_late_algebraic, nir[i], nir_opt_algebraic_late);
-            NIR_PASS_V(nir[i], nir_opt_constant_folding);
-            NIR_PASS_V(nir[i], nir_copy_prop);
-            NIR_PASS_V(nir[i], nir_opt_dce);
-            NIR_PASS_V(nir[i], nir_opt_cse);
-         }
+         radv_optimize_nir_algebraic(nir[i], io_to_mem || lowered_ngg || i == MESA_SHADER_COMPUTE);
 
          if (nir[i]->info.bit_sizes_int & (8 | 16)) {
             if (device->physical_device->rad_info.chip_class >= GFX8) {
