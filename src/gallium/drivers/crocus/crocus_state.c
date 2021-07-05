@@ -7723,13 +7723,10 @@ crocus_upload_render_state(struct crocus_context *ice,
 #if GFX_VER >= 7
    bool use_predicate = ice->state.predicate == CROCUS_PREDICATE_STATE_USE_BIT;
 #endif
-   bool emit_index = false;
-   batch->no_wrap = true;
 
-   if (!batch->contains_draw) {
-      emit_index = true;
-      batch->contains_draw = true;
-   }
+   batch->no_wrap = true;
+   batch->contains_draw = true;
+
    crocus_update_surface_base_address(batch);
 
    crocus_upload_dirty_render_state(ice, batch, draw);
@@ -7738,6 +7735,7 @@ crocus_upload_render_state(struct crocus_context *ice,
    if (draw->index_size > 0) {
       unsigned offset;
       unsigned size;
+      bool emit_index = false;
 
       if (draw->has_user_indices) {
          unsigned start_offset = draw->index_size * sc->start;
@@ -7750,9 +7748,9 @@ crocus_upload_render_state(struct crocus_context *ice,
          emit_index = true;
       } else {
          struct crocus_resource *res = (void *) draw->index.resource;
-         res->bind_history |= PIPE_BIND_INDEX_BUFFER;
 
          if (ice->state.index_buffer.res != draw->index.resource) {
+            res->bind_history |= PIPE_BIND_INDEX_BUFFER;
             pipe_resource_reference(&ice->state.index_buffer.res,
                                     draw->index.resource);
             emit_index = true;
@@ -8990,6 +8988,9 @@ crocus_state_finish_batch(struct crocus_batch *batch)
 static void
 crocus_batch_reset_dirty(struct crocus_batch *batch)
 {
+   /* unreference any index buffer so it get reemitted. */
+   pipe_resource_reference(&batch->ice->state.index_buffer.res, NULL);
+
    /* for GEN4/5 need to reemit anything that ends up in the state batch that points to anything in the state batch
     * as the old state batch won't still be available.
     */
