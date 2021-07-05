@@ -7761,8 +7761,12 @@ crocus_upload_render_state(struct crocus_context *ice,
 
       if (!emit_index &&
           (ice->state.index_buffer.size != size ||
-           ice->state.index_buffer.index_size != draw->index_size ||
-           ice->state.index_buffer.prim_restart != draw->primitive_restart))
+           ice->state.index_buffer.index_size != draw->index_size
+#if GFX_VERx10 < 75
+           || ice->state.index_buffer.prim_restart != draw->primitive_restart
+#endif
+	   )
+	  )
          emit_index = true;
 
       if (emit_index) {
@@ -7784,7 +7788,9 @@ crocus_upload_render_state(struct crocus_context *ice,
          ice->state.index_buffer.size = size;
          ice->state.index_buffer.offset = offset;
          ice->state.index_buffer.index_size = draw->index_size;
+#if GFX_VERx10 < 75
          ice->state.index_buffer.prim_restart = draw->primitive_restart;
+#endif
       }
    }
 
