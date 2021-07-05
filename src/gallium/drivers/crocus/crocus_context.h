@@ -26,6 +26,7 @@
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
 #include "util/u_debug.h"
+#include "util/u_threaded_context.h"
 #include "intel/blorp/blorp.h"
 #include "intel/dev/intel_debug.h"
 #include "intel/compiler/brw_compiler.h"
@@ -450,6 +451,9 @@ struct crocus_context {
 
    /** Slab allocator for crocus_transfer_map objects. */
    struct slab_child_pool transfer_pool;
+
+   /** Slab allocator for threaded_context's crocus_transfer_map objects */
+   struct slab_child_pool transfer_pool_unsync;
 
    struct blorp_context blorp;
 

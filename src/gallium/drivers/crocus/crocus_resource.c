@@ -1580,7 +1580,12 @@ crocus_transfer_map(struct pipe_context *ctx,
        (usage & PIPE_MAP_DIRECTLY))
       return NULL;
 
-   struct crocus_transfer *map = slab_alloc(&ice->transfer_pool);
+   struct crocus_transfer *map;
+   if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
+      map = slab_alloc(&ice->transfer_pool_unsync);
+   else
+      map = slab_alloc(&ice->transfer_pool);
+
    struct pipe_transfer *xfer = &map->base.b;
 
    if (!map)

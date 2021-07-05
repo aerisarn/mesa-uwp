@@ -200,6 +200,7 @@ crocus_destroy_context(struct pipe_context *ctx)
    crocus_bo_unreference(ice->workaround_bo);
 
    slab_destroy_child(&ice->transfer_pool);
+   slab_destroy_child(&ice->transfer_pool_unsync);
 
    crocus_batch_free(&ice->batches[CROCUS_BATCH_RENDER]);
    if (ice->batches[CROCUS_BATCH_COMPUTE].ice)
@@ -280,6 +281,7 @@ crocus_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    crocus_init_program_cache(ice);
 
    slab_create_child(&ice->transfer_pool, &screen->transfer_pool);
+   slab_create_child(&ice->transfer_pool_unsync, &screen->transfer_pool);
 
    ice->query_buffer_uploader =
       u_upload_create(ctx, 4096, PIPE_BIND_CUSTOM, PIPE_USAGE_STAGING,
