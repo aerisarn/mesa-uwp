@@ -45,6 +45,7 @@
 #include "drm-uapi/panfrost_drm.h"
 
 #include "util/debug.h"
+#include "util/disk_cache.h"
 #include "util/strtod.h"
 #include "vk_format.h"
 #include "vk_util.h"
@@ -84,6 +85,11 @@ panvk_device_get_cache_uuid(uint16_t family, void *uuid)
 {
    uint32_t mesa_timestamp;
    uint16_t f = family;
+
+   if (!disk_cache_get_function_timestamp(panvk_device_get_cache_uuid,
+                                          &mesa_timestamp))
+      return -1;
+
    memset(uuid, 0, VK_UUID_SIZE);
    memcpy(uuid, &mesa_timestamp, 4);
    memcpy((char *) uuid + 4, &f, 2);
