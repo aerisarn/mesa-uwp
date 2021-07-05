@@ -739,7 +739,7 @@ static void handle_vertex_buffers(struct lvp_cmd_buffer_entry *cmd,
       int idx = i + vcb->first;
 
       state->vb[idx].buffer_offset = vcb->offsets[i];
-      state->vb[idx].buffer.resource = vcb->buffers[i]->bo;
+      state->vb[idx].buffer.resource = vcb->buffers[i] ? vcb->buffers[i]->bo : NULL;
 
       if (vcb->strides) {
          state->vb[idx].stride = vcb->strides[i];
