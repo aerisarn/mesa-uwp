@@ -1766,6 +1766,9 @@ struct radv_pipeline {
 
          /* Whether the pipeline uses NGG (GFX10+). */
          bool is_ngg;
+
+         /* Last pre-PS API stage */
+         gl_shader_stage last_vgt_api_stage;
       } graphics;
    };
 

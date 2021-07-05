@@ -560,7 +560,7 @@ void radv_lower_io(struct radv_device *device, nir_shader *nir);
 bool radv_lower_io_to_mem(struct radv_device *device, struct nir_shader *nir,
                           struct radv_shader_info *info, const struct radv_pipeline_key *pl_key);
 
-bool radv_lower_ngg(struct radv_device *device, struct nir_shader *nir, bool has_gs,
+void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
                     struct radv_shader_info *info,
                     const struct radv_pipeline_key *pl_key,
                     struct radv_shader_variant_key *key);

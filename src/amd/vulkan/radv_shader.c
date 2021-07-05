@@ -810,14 +810,17 @@ radv_lower_io_to_mem(struct radv_device *device, struct nir_shader *nir,
    return false;
 }
 
-bool radv_lower_ngg(struct radv_device *device, struct nir_shader *nir, bool has_gs,
+void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
                     struct radv_shader_info *info,
                     const struct radv_pipeline_key *pl_key,
                     struct radv_shader_variant_key *key)
 {
    /* TODO: support the LLVM backend with the NIR lowering */
-   if (radv_use_llvm_for_stage(device, nir->info.stage))
-      return false;
+   assert(!radv_use_llvm_for_stage(device, nir->info.stage));
+
+   assert(nir->info.stage == MESA_SHADER_VERTEX ||
+          nir->info.stage == MESA_SHADER_TESS_EVAL ||
+          nir->info.stage == MESA_SHADER_GEOMETRY);
 
    ac_nir_ngg_config out_conf = {0};
    const struct gfx10_ngg_info *ngg_info = &info->ngg_info;
@@ -832,8 +835,7 @@ bool radv_lower_ngg(struct radv_device *device, struct nir_shader *nir, bool has
 
    if (nir->info.stage == MESA_SHADER_VERTEX ||
        nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      if (has_gs || !key->vs_common_out.as_ngg)
-         return false;
+      assert(key->vs_common_out.as_ngg);
 
       unsigned num_vertices_per_prim = 3;
 
@@ -862,21 +864,16 @@ bool radv_lower_ngg(struct radv_device *device, struct nir_shader *nir, bool has
       info->is_ngg_passthrough = out_conf.passthrough;
       key->vs_common_out.as_ngg_passthrough = out_conf.passthrough;
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
-      if (!info->is_ngg)
-         return false;
-
+      assert(info->is_ngg);
       ac_nir_lower_ngg_gs(
          nir, info->wave_size, max_workgroup_size,
          info->ngg_info.esgs_ring_size,
          info->gs.gsvs_vertex_size,
          info->ngg_info.ngg_emit_size * 4u,
          key->vs.provoking_vtx_last);
-      return true;
    } else {
-      return false;
+      unreachable("invalid SW stage passed to radv_lower_ngg");
    }
-
-   return true;
 }
 
 static void *
