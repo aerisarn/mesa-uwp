@@ -264,6 +264,7 @@ struct radv_shader_info {
    bool is_ngg;
    bool is_ngg_passthrough;
    bool has_ngg_culling;
+   bool has_ngg_early_prim_export;
    uint32_t num_lds_blocks_when_not_culling;
    uint32_t num_tess_patches;
    struct {

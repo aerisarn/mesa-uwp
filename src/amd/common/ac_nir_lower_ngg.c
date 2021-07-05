@@ -1290,6 +1290,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       .lds_bytes_if_culling_off = lds_bytes_if_culling_off,
       .can_cull = can_cull,
       .passthrough = passthrough,
+      .early_prim_export = state.early_prim_export,
       .nggc_inputs_read_by_pos = state.inputs_needed_by_pos,
       .nggc_inputs_read_by_others = state.inputs_needed_by_others,
    };

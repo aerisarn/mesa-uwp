@@ -126,6 +126,8 @@ struct sched_ctx {
    int16_t last_SMEM_stall;
    int last_SMEM_dep_idx;
    MoveState mv;
+   bool schedule_pos_exports = true;
+   unsigned schedule_pos_export_div = 1;
 };
 
 /* This scheduler is a simple bottom-up pass based on ideas from
@@ -928,8 +930,8 @@ schedule_position_export(sched_ctx& ctx, Block* block, std::vector<RegisterDeman
                          Instruction* current, int idx)
 {
    assert(idx != 0);
-   int window_size = POS_EXP_WINDOW_SIZE;
-   int max_moves = POS_EXP_MAX_MOVES;
+   int window_size = POS_EXP_WINDOW_SIZE / ctx.schedule_pos_export_div;
+   int max_moves = POS_EXP_MAX_MOVES / ctx.schedule_pos_export_div;
    int16_t k = 0;
 
    DownwardsCursor cursor = ctx.mv.downwards_init(idx, true, false);
@@ -982,7 +984,7 @@ schedule_block(sched_ctx& ctx, Program* program, Block* block, live& live_vars)
    for (unsigned idx = 0; idx < block->instructions.size(); idx++) {
       Instruction* current = block->instructions[idx].get();
 
-      if (block->kind & block_kind_export_end && current->isEXP()) {
+      if (block->kind & block_kind_export_end && current->isEXP() && ctx.schedule_pos_exports) {
          unsigned target = current->exp().dest;
          if (target >= V_008DFC_SQ_EXP_POS && target < V_008DFC_SQ_EXP_PRIM) {
             ctx.mv.current = current;
@@ -1047,6 +1049,17 @@ schedule_program(Program* program, live& live_vars)
    assert(ctx.num_waves > 0);
    ctx.mv.max_registers = {int16_t(get_addr_vgpr_from_waves(program, ctx.num_waves * wave_fac) - 2),
                            int16_t(get_addr_sgpr_from_waves(program, ctx.num_waves * wave_fac))};
+
+   /* NGG culling shaders are very sensitive to position export scheduling.
+    * Schedule less aggressively when early primitive export is used, and
+    * keep the position export at the very bottom when late primitive export is used.
+    */
+   if (program->info->has_ngg_culling && program->stage.num_sw_stages() == 1) {
+      if (!program->info->has_ngg_early_prim_export)
+         ctx.schedule_pos_exports = false;
+      else
+         ctx.schedule_pos_export_div = 4;
+   }
 
    for (Block& block : program->blocks)
       schedule_block(ctx, program, &block, live_vars);
