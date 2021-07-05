@@ -348,6 +348,14 @@ bool crocus_resource_set_clear_color(struct crocus_context *ice,
 union isl_color_value
 crocus_resource_get_clear_color(const struct crocus_resource *res);
 
+void
+crocus_replace_buffer_storage(struct pipe_context *ctx,
+                              struct pipe_resource *p_dst,
+                              struct pipe_resource *p_src,
+                              unsigned num_rebinds,
+                              uint32_t rebind_mask,
+                              uint32_t delete_buffer_id);
+
 void crocus_init_screen_resource_functions(struct pipe_screen *pscreen);
 
 void crocus_dirty_for_history(struct crocus_context *ice,

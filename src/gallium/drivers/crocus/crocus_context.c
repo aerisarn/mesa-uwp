@@ -319,7 +319,15 @@ crocus_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (ice->batch_count > 1)
       screen->vtbl.init_compute_context(&ice->batches[CROCUS_BATCH_COMPUTE]);
 
-   return ctx;
+   if (!(flags & PIPE_CONTEXT_PREFER_THREADED))
+     return ctx;
+
+   return threaded_context_create(ctx, &screen->transfer_pool,
+                                  crocus_replace_buffer_storage,
+                                  NULL, /* TODO: asynchronous flushes? */
+                                  NULL,
+                                  false,
+                                  &ice->thrctx);
 }
 
 bool

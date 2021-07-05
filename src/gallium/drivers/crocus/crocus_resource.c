@@ -1086,6 +1086,35 @@ resource_is_busy(struct crocus_context *ice,
    return busy;
 }
 
+void
+crocus_replace_buffer_storage(struct pipe_context *ctx,
+                              struct pipe_resource *p_dst,
+                              struct pipe_resource *p_src,
+                              unsigned num_rebinds,
+                              uint32_t rebind_mask,
+                              uint32_t delete_buffer_id)
+{
+   struct crocus_screen *screen = (void *) ctx->screen;
+   struct crocus_context *ice = (void *) ctx;
+   struct crocus_resource *dst = (void *) p_dst;
+   struct crocus_resource *src = (void *) p_src;
+
+   assert(memcmp(&dst->surf, &src->surf, sizeof(dst->surf)) == 0);
+
+   struct crocus_bo *old_bo = dst->bo;
+
+   /* Swap out the backing storage */
+   crocus_bo_reference(src->bo);
+   dst->bo = src->bo;
+
+   /* Rebind the buffer, replacing any state referring to the old BO's
+    * address, and marking state dirty so it's reemitted.
+    */
+   screen->vtbl.rebind_buffer(ice, dst);
+
+   crocus_bo_unreference(old_bo);
+}
+
 static void
 crocus_invalidate_resource(struct pipe_context *ctx,
                            struct pipe_resource *resource)

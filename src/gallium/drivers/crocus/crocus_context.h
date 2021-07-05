@@ -442,6 +442,7 @@ struct crocus_shader_state {
  */
 struct crocus_context {
    struct pipe_context ctx;
+   struct threaded_context *thrctx;
 
    /** A debug callback for KHR_debug output. */
    struct pipe_debug_callback dbg;
