@@ -191,7 +191,7 @@ struct agx_map_header {
 	uint32_t unk3; // 28 05 00 80
 	uint64_t encoder_id; // GUID
 	uint32_t unk6; // 00 00 00 00
-	uint32_t unk7; // 80 07 00 00
+	uint32_t cmdbuf_size;
 	uint32_t nr_entries_1;
 	uint32_t nr_entries_2;
 	uint32_t unka; // 0b 00 00 00

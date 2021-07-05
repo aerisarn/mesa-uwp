@@ -262,7 +262,7 @@ demo_map_header(uint64_t cmdbuf_id, uint64_t encoder_id, unsigned cmdbuf_size, u
       .unk3 = 0x528, // 1320
       .encoder_id = encoder_id,
       .unk6 = 0x0,
-      .unk7 = cmdbuf_size,
+      .cmdbuf_size = cmdbuf_size,
 
       /* +1 for the sentinel ending */
       .nr_entries_1 = count + 1,
