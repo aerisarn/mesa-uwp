@@ -8273,7 +8273,8 @@ crocus_rebind_buffer(struct crocus_context *ice,
       }
    }
 
-   if (res->bind_history & PIPE_BIND_INDEX_BUFFER) {
+   if ((res->bind_history & PIPE_BIND_INDEX_BUFFER) &&
+       ice->state.index_buffer.res) {
       if (res->bo == crocus_resource_bo(ice->state.index_buffer.res))
          pipe_resource_reference(&ice->state.index_buffer.res, NULL);
    }
