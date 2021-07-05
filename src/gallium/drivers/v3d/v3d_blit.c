@@ -521,6 +521,8 @@ v3d_tlb_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
         job->draw_min_y = info->dst.box.y;
         job->draw_max_x = info->dst.box.x + info->dst.box.width;
         job->draw_max_y = info->dst.box.y + info->dst.box.height;
+        job->scissor.disabled = false;
+
         /* The simulator complains if we do a TLB load from a source with a
          * stride that is smaller than the destination's, so we program the
          * 'frame region' to match the smallest dimensions of the two surfaces.

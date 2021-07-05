@@ -1613,6 +1613,7 @@ v3d_tlb_clear(struct v3d_job *job, unsigned buffers,
         job->draw_max_y = v3d->framebuffer.height;
         job->clear |= buffers;
         job->store |= buffers;
+        job->scissor.disabled = true;
 
         v3d_start_draw(v3d);
 

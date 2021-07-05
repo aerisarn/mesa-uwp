@@ -99,6 +99,8 @@ void v3d_job_add_bo(struct v3d_job *job, struct v3d_bo *bo);
 
 #define V3D_MAX_FS_INPUTS 64
 
+#define MAX_JOB_SCISSORS 16
+
 enum v3d_sampler_state_variant {
         V3D_SAMPLER_STATE_BORDER_0,
         V3D_SAMPLER_STATE_F16,
@@ -356,11 +358,31 @@ struct v3d_job {
         uint32_t draw_min_y;
         uint32_t draw_max_x;
         uint32_t draw_max_y;
+
+        /** @} */
+        /** @{
+         * List of scissor rects used for all queued drawing. All scissor
+         * rects will be contained in the draw_{min/max}_{x/y} bounding box.
+         *
+         * This is used as an optimization when all drawing is scissored to
+         * limit tile flushing only to tiles that intersect a scissor rect.
+         * If scissor is used together with non-scissored drawing, then
+         * the optimization is disabled.
+         */
+        struct {
+                bool disabled;
+                uint32_t count;
+                struct {
+                        uint32_t min_x, min_y;
+                        uint32_t max_x, max_y;
+                } rects[MAX_JOB_SCISSORS];
+        } scissor;
+
         /** @} */
         /** @{
          * Width/height of the color framebuffer being rendered to,
          * for V3D_TILE_RENDERING_MODE_CONFIG.
-        */
+         */
         uint32_t draw_width;
         uint32_t draw_height;
         uint32_t num_layers;
