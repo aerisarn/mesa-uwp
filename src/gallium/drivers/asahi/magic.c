@@ -233,9 +233,9 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    agx_pack((cmdbuf->map + cmdbuf->offset), IOGPU_ATTACHMENT, cfg) {
       cfg.address = rt0;
       cfg.type = AGX_IOGPU_ATTACHMENT_TYPE_COLOUR;
-      cfg.unk_1 = 0x4c000000;
+      cfg.unk_1 = 0x80000000;
       cfg.unk_2 = 0x5;
-      cfg.bytes_per_pixel = 3;
+      cfg.bytes_per_pixel = 4;
       cfg.percent = 100;
    }
 
