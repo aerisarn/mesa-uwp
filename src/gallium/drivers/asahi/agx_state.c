@@ -1214,9 +1214,12 @@ agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
 static uint64_t
 demo_launch_fragment(struct agx_pool *pool, uint32_t pipeline, uint32_t varyings, unsigned input_count)
 {
+   unsigned sampler_count = 1;
+   unsigned texture_count = 1;
+
    uint32_t unk[] = {
       0x800000,
-      0x1212 | (input_count << 16), // upper nibble is input count TODO: xmlify
+      0x1002 | (texture_count << 9) | (sampler_count << 4) | (input_count << 16), // TODO: xmlify
       pipeline,
       varyings,
       0x0,
