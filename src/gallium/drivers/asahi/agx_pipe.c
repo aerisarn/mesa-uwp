@@ -380,13 +380,6 @@ agx_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor
    memcpy(ctx->batch->clear_color, color->f, sizeof(color->f));
 }
 
-static void
-agx_blit(struct pipe_context *ctx,
-         const struct pipe_blit_info *info)
-{
-   unreachable("todo: blits");
-}
-
 
 static void
 agx_flush_resource(struct pipe_context *ctx,
@@ -560,6 +553,9 @@ agx_destroy_context(struct pipe_context *pctx)
    if (pctx->stream_uploader)
       u_upload_destroy(pctx->stream_uploader);
 
+   if (ctx->blitter)
+      util_blitter_destroy(ctx->blitter);
+
    util_unreference_framebuffer_state(&ctx->framebuffer);
 
    FREE(ctx);
@@ -623,6 +619,9 @@ agx_create_context(struct pipe_screen *screen,
    pctx->texture_subdata = u_default_texture_subdata;
    pctx->invalidate_resource = agx_invalidate_resource;
    agx_init_state_functions(pctx);
+
+
+   ctx->blitter = util_blitter_create(pctx);
 
    return pctx;
 }

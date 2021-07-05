@@ -28,6 +28,7 @@
 #include "gallium/include/pipe/p_context.h"
 #include "gallium/include/pipe/p_state.h"
 #include "gallium/include/pipe/p_screen.h"
+#include "gallium/auxiliary/util/u_blitter.h"
 #include "asahi/lib/agx_pack.h"
 #include "asahi/lib/agx_bo.h"
 #include "asahi/lib/agx_device.h"
@@ -172,6 +173,8 @@ struct agx_context {
    bool is_noop;
 
    uint8_t render_target[8][AGX_RENDER_TARGET_LENGTH];
+
+   struct blitter_context *blitter;
 };
 
 static inline struct agx_context *
@@ -296,5 +299,8 @@ agx_batch_add_bo(struct agx_batch *batch, struct agx_bo *bo)
 
 /* Blit shaders */
 void agx_build_reload_shader(struct agx_device *dev);
+
+void agx_blit(struct pipe_context *pipe,
+              const struct pipe_blit_info *info);
 
 #endif
