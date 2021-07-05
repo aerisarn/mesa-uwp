@@ -1,4 +1,4 @@
-void
+unsigned
 demo_cmdbuf(uint64_t *buf, size_t size,
             struct agx_pool *pool,
             uint64_t encoder_ptr,
@@ -13,7 +13,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 void
 demo_mem_map(void *map, size_t size, unsigned *handles,
              unsigned count, uint64_t cmdbuf_id, uint64_t
-             encoder_id);
+             encoder_id, unsigned cmdbuf_size);
 
 void
 agx_internal_shaders(struct agx_device *dev);

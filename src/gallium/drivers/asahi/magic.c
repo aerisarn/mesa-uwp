@@ -52,7 +52,7 @@ demo_zero(struct agx_pool *pool, unsigned count)
    return ptr.gpu;
 }
 
-void
+unsigned
 demo_cmdbuf(uint64_t *buf, size_t size,
             struct agx_pool *pool,
             uint64_t encoder_ptr,
@@ -72,14 +72,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    struct cmdbuf *cmdbuf = &_cmdbuf;
 
    /* Vertex stuff */
-   EMIT32(cmdbuf, 0x10000);
-   EMIT32(cmdbuf, 0x780); // Compute: 0x188
-   EMIT32(cmdbuf, 0x7);
-   EMIT_ZERO_WORDS(cmdbuf, 5);
-   EMIT32(cmdbuf, 0x758); // Compute: 0x180
-   EMIT32(cmdbuf, 0x18);  // Compute: 0x0
-   EMIT32(cmdbuf, 0x758); // Compute: 0x0
-   EMIT32(cmdbuf, 0x728); // Compute: 0x150
+   EMIT_ZERO_WORDS(cmdbuf, 12);
 
    EMIT32(cmdbuf, 0x30); /* 0x30 */
    EMIT32(cmdbuf, 0x01); /* 0x34. Compute: 0x03 */
@@ -224,9 +217,15 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    EMIT32(cmdbuf, 0);
    EMIT64(cmdbuf, 0);
 
-   EMIT_ZERO_WORDS(cmdbuf, 72);
+   EMIT_ZERO_WORDS(cmdbuf, 58);
 
-   EMIT32(cmdbuf, 0); // 0x760
+   unsigned offset_unk = (cmdbuf->offset * 4);
+   EMIT_ZERO_WORDS(cmdbuf, 12);
+
+   unsigned offset_attachments = (cmdbuf->offset * 4);
+   EMIT32(cmdbuf, 0); // 0x758
+   EMIT32(cmdbuf, 0);
+   EMIT32(cmdbuf, 0);
    EMIT32(cmdbuf, 0x1); // number of attachments (includes depth/stencil) stored to
 
    /* A single attachment follows, depth/stencil have their own attachments */
@@ -240,10 +239,22 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    }
 
    cmdbuf->offset += (AGX_IOGPU_ATTACHMENT_LENGTH / 4);
+
+   unsigned total_size = (cmdbuf->offset * 4);
+
+   cmdbuf->map[0] = 0x10000;
+   cmdbuf->map[1] = total_size;
+   cmdbuf->map[2] = 7;
+   cmdbuf->map[8] = offset_attachments;
+   cmdbuf->map[9] = 0x18;
+   cmdbuf->map[10] = offset_attachments;
+   cmdbuf->map[11] = offset_unk;
+
+   return total_size;
 }
 
 static struct agx_map_header
-demo_map_header(uint64_t cmdbuf_id, uint64_t encoder_id, unsigned count)
+demo_map_header(uint64_t cmdbuf_id, uint64_t encoder_id, unsigned cmdbuf_size, unsigned count)
 {
    return (struct agx_map_header) {
       .cmdbuf_id = cmdbuf_id,
@@ -251,7 +262,7 @@ demo_map_header(uint64_t cmdbuf_id, uint64_t encoder_id, unsigned count)
       .unk3 = 0x528, // 1320
       .encoder_id = encoder_id,
       .unk6 = 0x0,
-      .unk7 = 0x780, // 1920 -- same as above..
+      .unk7 = cmdbuf_size,
 
       /* +1 for the sentinel ending */
       .nr_entries_1 = count + 1,
@@ -262,14 +273,14 @@ demo_map_header(uint64_t cmdbuf_id, uint64_t encoder_id, unsigned count)
 
 void
 demo_mem_map(void *map, size_t size, unsigned *handles, unsigned count,
-             uint64_t cmdbuf_id, uint64_t encoder_id)
+             uint64_t cmdbuf_id, uint64_t encoder_id, unsigned cmdbuf_size)
 {
    struct agx_map_header *header = map;
    struct agx_map_entry *entries = (struct agx_map_entry *) (((uint8_t *) map) + 0x40);
    struct agx_map_entry *end = (struct agx_map_entry *) (((uint8_t *) map) + size);
 
    /* Header precedes the entry */
-   *header = demo_map_header(cmdbuf_id, encoder_id, count);
+   *header = demo_map_header(cmdbuf_id, encoder_id, cmdbuf_size, count);
 
    /* Add an entry for each BO mapped */
    for (unsigned i = 0; i < count; ++i) {

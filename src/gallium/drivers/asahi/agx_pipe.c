@@ -507,13 +507,7 @@ agx_flush(struct pipe_context *pctx,
    /* Size calculation should've been exact */
    assert(handle_i == handle_count);
 
-   /* Generate the mapping table from the BO list */
-   demo_mem_map(dev->memmap.ptr.cpu, dev->memmap.size, handles, handle_count,
-                0xDEADBEEF, 0xCAFECAFE);
-
-   free(handles);
-
-   demo_cmdbuf(dev->cmdbuf.ptr.cpu,
+   unsigned cmdbuf_size = demo_cmdbuf(dev->cmdbuf.ptr.cpu,
                dev->cmdbuf.size,
                &ctx->batch->pool,
                ctx->batch->encoder->ptr.gpu,
@@ -525,6 +519,12 @@ agx_flush(struct pipe_context *pctx,
                pipeline_store,
                rt0->bo->ptr.gpu,
                clear_pipeline_textures);
+
+   /* Generate the mapping table from the BO list */
+   demo_mem_map(dev->memmap.ptr.cpu, dev->memmap.size, handles, handle_count,
+                0xDEADBEEF, 0xCAFECAFE, cmdbuf_size);
+
+   free(handles);
 
    agx_submit_cmdbuf(dev, dev->cmdbuf.handle, dev->memmap.handle, dev->queue.id);
 
