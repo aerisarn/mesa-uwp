@@ -96,6 +96,8 @@ typedef struct
    unsigned lds_bytes_if_culling_off;
    bool can_cull;
    bool passthrough;
+   uint64_t nggc_inputs_read_by_pos;
+   uint64_t nggc_inputs_read_by_others;
 } ac_nir_ngg_config;
 
 ac_nir_ngg_config

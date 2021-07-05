@@ -26,6 +26,12 @@
 #include "nir_builder.h"
 #include "u_math.h"
 
+enum {
+   nggc_passflag_used_by_pos = 1,
+   nggc_passflag_used_by_other = 2,
+   nggc_passflag_used_by_both = nggc_passflag_used_by_pos | nggc_passflag_used_by_other,
+};
+
 typedef struct
 {
    nir_variable *position_value_var;
@@ -42,6 +48,9 @@ typedef struct
    unsigned provoking_vtx_idx;
    unsigned max_es_num_vertices;
    unsigned total_lds_bytes;
+
+   uint64_t inputs_needed_by_pos;
+   uint64_t inputs_needed_by_others;
 } lower_ngg_nogs_state;
 
 typedef struct
@@ -629,6 +638,86 @@ compact_vertices_after_culling(nir_builder *b,
 }
 
 static void
+analyze_shader_before_culling_walk(nir_ssa_def *ssa,
+                                   uint8_t flag,
+                                   lower_ngg_nogs_state *nogs_state)
+{
+   nir_instr *instr = ssa->parent_instr;
+   uint8_t old_pass_flags = instr->pass_flags;
+   instr->pass_flags |= flag;
+
+   if (instr->pass_flags == old_pass_flags)
+      return; /* Already visited. */
+
+   switch (instr->type) {
+   case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+      /* VS input loads and SSBO loads are actually VRAM reads on AMD HW. */
+      switch (intrin->intrinsic) {
+      case nir_intrinsic_load_input: {
+         nir_io_semantics in_io_sem = nir_intrinsic_io_semantics(intrin);
+         uint64_t in_mask = UINT64_C(1) << (uint64_t) in_io_sem.location;
+         if (instr->pass_flags & nggc_passflag_used_by_pos)
+            nogs_state->inputs_needed_by_pos |= in_mask;
+         else if (instr->pass_flags & nggc_passflag_used_by_other)
+            nogs_state->inputs_needed_by_others |= in_mask;
+         break;
+      }
+      default:
+         break;
+      }
+
+      break;
+   }
+   case nir_instr_type_alu: {
+      nir_alu_instr *alu = nir_instr_as_alu(instr);
+      unsigned num_srcs = nir_op_infos[alu->op].num_inputs;
+
+      for (unsigned i = 0; i < num_srcs; ++i) {
+         analyze_shader_before_culling_walk(alu->src[i].src.ssa, flag, nogs_state);
+      }
+
+      break;
+   }
+   case nir_instr_type_phi: {
+      nir_phi_instr *phi = nir_instr_as_phi(instr);
+      nir_foreach_phi_src_safe(phi_src, phi) {
+         analyze_shader_before_culling_walk(phi_src->src.ssa, flag, nogs_state);
+      }
+
+      break;
+   }
+   default:
+      break;
+   }
+}
+
+static void
+analyze_shader_before_culling(nir_shader *shader, lower_ngg_nogs_state *nogs_state)
+{
+   nir_foreach_function(func, shader) {
+      nir_foreach_block(block, func->impl) {
+         nir_foreach_instr(instr, block) {
+            instr->pass_flags = 0;
+
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+
+            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+            if (intrin->intrinsic != nir_intrinsic_store_output)
+               continue;
+
+            nir_io_semantics io_sem = nir_intrinsic_io_semantics(intrin);
+            nir_ssa_def *store_val = intrin->src[0].ssa;
+            uint8_t flag = io_sem.location == VARYING_SLOT_POS ? nggc_passflag_used_by_pos : nggc_passflag_used_by_other;
+            analyze_shader_before_culling_walk(store_val, flag, nogs_state);
+         }
+      }
+   }
+}
+
+static void
 add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_cf, lower_ngg_nogs_state *nogs_state)
 {
    assert(b->shader->info.outputs_written & (1 << VARYING_SLOT_POS));
@@ -932,6 +1021,12 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    nir_builder *b = &builder; /* This is to avoid the & */
    nir_builder_init(b, impl);
 
+   if (can_cull) {
+      /* We need divergence info for culling shaders. */
+      nir_divergence_analysis(shader);
+      analyze_shader_before_culling(shader, &state);
+   }
+
    nir_cf_list extracted;
    nir_cf_extract(&extracted, nir_before_cf_list(&impl->body), nir_after_cf_list(&impl->body));
    b->cursor = nir_before_cf_list(&impl->body);
@@ -1032,6 +1127,8 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       .lds_bytes_if_culling_off = lds_bytes_if_culling_off,
       .can_cull = can_cull,
       .passthrough = passthrough,
+      .nggc_inputs_read_by_pos = state.inputs_needed_by_pos,
+      .nggc_inputs_read_by_others = state.inputs_needed_by_others,
    };
 
    return ret;
