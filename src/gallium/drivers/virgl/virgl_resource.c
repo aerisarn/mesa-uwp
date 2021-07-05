@@ -402,6 +402,7 @@ virgl_resource_realloc(struct virgl_context *vctx, struct virgl_resource *res)
    vflags = pipe_to_virgl_flags(vs, templ->flags);
    hw_res = vs->vws->resource_create(vs->vws,
                                      templ->target,
+                                     NULL,
                                      templ->format,
                                      vbind,
                                      templ->width0,
@@ -567,8 +568,9 @@ static void virgl_resource_layout(struct pipe_resource *pt,
       metadata->total_size = 0;
 }
 
-static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
-                                                   const struct pipe_resource *templ)
+static struct pipe_resource *virgl_resource_create_front(struct pipe_screen *screen,
+                                                         const struct pipe_resource *templ,
+                                                         const void *map_front_private)
 {
    unsigned vbind, vflags;
    struct virgl_screen *vs = virgl_screen(screen);
@@ -600,6 +602,7 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
       alloc_size = res->metadata.total_size;
    
    res->hw_res = vs->vws->resource_create(vs->vws, templ->target,
+                                          map_front_private,
                                           templ->format, vbind,
                                           templ->width0,
                                           templ->height0,
@@ -625,6 +628,12 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
 
    return &res->b;
 
+}
+
+static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
+                                                   const struct pipe_resource *templ)
+{
+   return virgl_resource_create_front(screen, templ, NULL);
 }
 
 static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *screen,
@@ -715,6 +724,7 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
 
 void virgl_init_screen_resource_functions(struct pipe_screen *screen)
 {
+    screen->resource_create_front = virgl_resource_create_front;
     screen->resource_create = virgl_resource_create;
     screen->resource_from_handle = virgl_resource_from_handle;
     screen->resource_get_handle = virgl_resource_get_handle;

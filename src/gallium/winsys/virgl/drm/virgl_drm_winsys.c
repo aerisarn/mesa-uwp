@@ -402,6 +402,7 @@ virgl_bo_transfer_get(struct virgl_winsys *vws,
 static struct virgl_hw_res *
 virgl_drm_winsys_resource_cache_create(struct virgl_winsys *qws,
                                        enum pipe_texture_target target,
+                                       const void *map_front_private,
                                        uint32_t format,
                                        uint32_t bind,
                                        uint32_t width,

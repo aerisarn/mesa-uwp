@@ -65,12 +65,13 @@ struct virgl_winsys {
                        uint32_t buf_offset, uint32_t level);
 
    struct virgl_hw_res *(*resource_create)(struct virgl_winsys *vws,
-                               enum pipe_texture_target target,
-                               uint32_t format, uint32_t bind,
-                               uint32_t width, uint32_t height,
-                               uint32_t depth, uint32_t array_size,
-                               uint32_t last_level, uint32_t nr_samples,
-                               uint32_t flags, uint32_t size);
+                                           enum pipe_texture_target target,
+                                           const void *map_front_private,
+                                           uint32_t format, uint32_t bind,
+                                           uint32_t width, uint32_t height,
+                                           uint32_t depth, uint32_t array_size,
+                                           uint32_t last_level, uint32_t nr_samples,
+                                           uint32_t flags, uint32_t size);
 
    void (*resource_reference)(struct virgl_winsys *qws,
                               struct virgl_hw_res **dres,
