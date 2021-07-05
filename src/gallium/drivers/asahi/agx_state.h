@@ -65,6 +65,7 @@ struct agx_compiled_shader {
 };
 
 struct agx_uncompiled_shader {
+   struct pipe_shader_state base;
    struct nir_shader *nir;
    struct hash_table *variants;
 
@@ -79,13 +80,11 @@ struct agx_stage {
    struct pipe_constant_buffer cb[PIPE_MAX_CONSTANT_BUFFERS];
    uint32_t cb_mask;
 
-   /* BOs for bound samplers. This is all the information we need at
-    * draw time to assemble the pipeline */
-   struct agx_bo *samplers[PIPE_MAX_SAMPLERS];
-
-   /* Sampler views need the full CSO due to Gallium state management */
+   /* Need full CSOs for u_blitter */
+   struct agx_sampler_state *samplers[PIPE_MAX_SAMPLERS];
    struct agx_sampler_view *textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   unsigned texture_count;
+
+   unsigned sampler_count, texture_count;
 };
 
 /* Uploaded scissor descriptors */
@@ -116,6 +115,7 @@ struct agx_batch {
 };
 
 struct agx_zsa {
+   struct pipe_depth_stencil_alpha_state base;
    enum agx_zs_func z_func;
    bool disable_z_write;
 };
@@ -160,7 +160,16 @@ struct agx_context {
    struct pipe_blend_color blend_color;
    struct pipe_viewport_state viewport;
    struct pipe_scissor_state scissor;
+   struct pipe_stencil_ref stencil_ref;
    struct agx_streamout streamout;
+   uint16_t sample_mask;
+   struct pipe_framebuffer_state framebuffer;
+
+   struct pipe_query *cond_query;
+   bool cond_cond;
+   enum pipe_render_cond_flag cond_mode;
+
+   bool is_noop;
 
    uint8_t render_target[8][AGX_RENDER_TARGET_LENGTH];
 };
@@ -179,6 +188,13 @@ struct agx_rasterizer {
 
 struct agx_query {
    unsigned	query;
+};
+
+struct agx_sampler_state {
+   struct pipe_sampler_state base;
+
+   /* Prepared descriptor */
+   struct agx_bo *desc;
 };
 
 struct agx_sampler_view {

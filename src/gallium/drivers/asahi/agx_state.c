@@ -35,6 +35,7 @@
 #include "gallium/auxiliary/util/u_helpers.h"
 #include "gallium/auxiliary/util/u_viewport.h"
 #include "gallium/auxiliary/util/u_blend.h"
+#include "gallium/auxiliary/util/u_framebuffer.h"
 #include "gallium/auxiliary/tgsi/tgsi_from_mesa.h"
 #include "gallium/auxiliary/nir/tgsi_to_nir.h"
 #include "compiler/nir/nir.h"
@@ -176,6 +177,7 @@ agx_create_zsa_state(struct pipe_context *ctx,
    struct agx_zsa *so = CALLOC_STRUCT(agx_zsa);
    assert(!state->depth_bounds_test && "todo");
 
+   so->base = *state;
    so->disable_z_write = !state->depth_writemask;
 
    /* Z func can be used as-is */
@@ -302,7 +304,11 @@ agx_create_sampler_state(struct pipe_context *pctx,
       cfg.compare_func = agx_compare_funcs[state->compare_func];
    }
 
-   return bo;
+   struct agx_sampler_state *so = CALLOC_STRUCT(agx_sampler_state);
+   so->base = *state;
+   so->desc = bo;
+
+   return so;
 }
 
 static void
@@ -320,8 +326,10 @@ agx_bind_sampler_states(struct pipe_context *pctx,
 {
    struct agx_context *ctx = agx_context(pctx);
 
+   ctx->stage[shader].sampler_count = states ? count : 0;
+
    memcpy(&ctx->stage[shader].samplers[start], states,
-          sizeof(struct agx_bo *) * count);
+          sizeof(struct agx_sampler_state *) * count);
 }
 
 /* Channels agree for RGBA but are weird for force 0/1 */
@@ -498,6 +506,8 @@ agx_set_polygon_stipple(struct pipe_context *ctx,
 static void
 agx_set_sample_mask(struct pipe_context *pipe, unsigned sample_mask)
 {
+   struct agx_context *ctx = agx_context(pipe);
+   ctx->sample_mask = sample_mask;
 }
 
 static void
@@ -516,9 +526,11 @@ agx_set_scissor_states(struct pipe_context *pctx,
 }
 
 static void
-agx_set_stencil_ref(struct pipe_context *ctx,
+agx_set_stencil_ref(struct pipe_context *pctx,
                     const struct pipe_stencil_ref state)
 {
+   struct agx_context *ctx = agx_context(pctx);
+   ctx->stencil_ref = state;
 }
 
 static void
@@ -626,6 +638,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    /* XXX: eliminate this flush with batch tracking logic */
    pctx->flush(pctx, NULL, 0);
 
+   util_copy_framebuffer_state(&ctx->framebuffer, state);
    ctx->batch->width = state->width;
    ctx->batch->height = state->height;
    ctx->batch->nr_cbufs = state->nr_cbufs;
@@ -763,6 +776,7 @@ agx_create_shader_state(struct pipe_context *pctx,
                         const struct pipe_shader_state *cso)
 {
    struct agx_uncompiled_shader *so = CALLOC_STRUCT(agx_uncompiled_shader);
+   so->base = *cso;
 
    if (!so)
       return NULL;
@@ -994,11 +1008,12 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
    }
 
    for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; ++i) {
-      struct agx_bo *bo = ctx->stage[stage].samplers[i];
+      struct agx_sampler_state *sampler = ctx->stage[stage].samplers[i];
 
-      if (!bo)
+      if (!sampler)
          continue;
 
+      struct agx_bo *bo = sampler->desc;
       agx_batch_add_bo(ctx->batch, bo);
 
       agx_pack(record, BIND_SAMPLER, cfg) {

@@ -37,6 +37,7 @@
 #include "frontend/sw_winsys.h"
 #include "gallium/auxiliary/util/u_transfer.h"
 #include "gallium/auxiliary/util/u_surface.h"
+#include "gallium/auxiliary/util/u_framebuffer.h"
 #include "agx_public.h"
 #include "agx_state.h"
 #include "magic.h"
@@ -552,10 +553,14 @@ agx_flush(struct pipe_context *pctx,
 }
 
 static void
-agx_destroy_context(struct pipe_context *ctx)
+agx_destroy_context(struct pipe_context *pctx)
 {
-   if (ctx->stream_uploader)
-      u_upload_destroy(ctx->stream_uploader);
+   struct agx_context *ctx = agx_context(pctx);
+
+   if (pctx->stream_uploader)
+      u_upload_destroy(pctx->stream_uploader);
+
+   util_unreference_framebuffer_state(&ctx->framebuffer);
 
    FREE(ctx);
 }
