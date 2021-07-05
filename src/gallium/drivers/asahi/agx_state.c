@@ -288,6 +288,9 @@ agx_create_sampler_state(struct pipe_context *pctx,
    struct agx_bo *bo = agx_bo_create(dev, AGX_SAMPLER_LENGTH,
                                      AGX_MEMORY_TYPE_FRAMEBUFFER);
 
+   assert(state->min_lod == 0 && "todo: lod clamps");
+   assert(state->lod_bias == 0 && "todo: lod bias");
+
    agx_pack(bo->ptr.cpu, SAMPLER, cfg) {
       cfg.magnify_linear = (state->mag_img_filter == PIPE_TEX_FILTER_LINEAR);
       cfg.minify_linear = (state->min_img_filter == PIPE_TEX_FILTER_LINEAR);
