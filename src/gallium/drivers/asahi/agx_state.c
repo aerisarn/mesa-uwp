@@ -938,9 +938,9 @@ agx_update_vs(struct agx_context *ctx)
    memcpy(key.attributes, ctx->attributes,
           sizeof(key.attributes[0]) * AGX_MAX_ATTRIBS);
 
-   for (unsigned i = 0; i < key.num_vbufs; ++i) {
+   u_foreach_bit(i, ctx->vb_mask) {
       assert((ctx->vertex_buffers[i].stride & 0x3) == 0);
-      key.vbuf_strides[i] = ctx->vertex_buffers[i].stride / 4; // TODO: alignment
+      key.vbuf_strides[i] = ctx->vertex_buffers[i].stride / 4;
    }
 
    struct asahi_shader_key akey = {
