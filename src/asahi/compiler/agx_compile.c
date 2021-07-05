@@ -1312,7 +1312,12 @@ agx_compile_shader_nir(nir_shader *nir,
       .lower_txp = ~0,
    };
 
+   nir_tex_src_type_constraints tex_constraints = {
+      [nir_tex_src_lod] = { true, 16 }
+   };
+
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
+   NIR_PASS_V(nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
    agx_optimize_nir(nir);
 
