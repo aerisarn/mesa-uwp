@@ -242,13 +242,12 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 
    unsigned total_size = (cmdbuf->offset * 4);
 
-   cmdbuf->map[0] = 0x10000;
-   cmdbuf->map[1] = total_size;
-   cmdbuf->map[2] = 7;
-   cmdbuf->map[8] = offset_attachments;
-   cmdbuf->map[9] = 0x18;
-   cmdbuf->map[10] = offset_attachments;
-   cmdbuf->map[11] = offset_unk;
+   agx_pack(cmdbuf->map, IOGPU_HEADER, cfg) {
+      cfg.total_size = total_size;
+      cfg.attachment_offset_1 = offset_attachments;
+      cfg.attachment_offset_2 = offset_attachments;
+      cfg.unknown_offset = offset_unk;
+   }
 
    return total_size;
 }
