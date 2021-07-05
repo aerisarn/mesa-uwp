@@ -129,6 +129,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 
    EMIT_ZERO_WORDS(cmdbuf, 40);
 
+   // This is a pipeline bind
    EMIT32(cmdbuf, 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0)); // 0x270
    EMIT32(cmdbuf, 0);
    EMIT64(cmdbuf, pipeline_clear | 0x4);
