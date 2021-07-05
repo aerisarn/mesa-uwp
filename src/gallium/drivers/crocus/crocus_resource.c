@@ -330,6 +330,7 @@ crocus_resource_destroy(struct pipe_screen *screen,
       pipe_resource_reference((struct pipe_resource **)&res->shadow, NULL);
    crocus_resource_disable_aux(res);
 
+   threaded_resource_deinit(resource);
    crocus_bo_unreference(res->bo);
    crocus_pscreen_unref(res->orig_screen);
    free(res);
@@ -347,6 +348,7 @@ crocus_alloc_resource(struct pipe_screen *pscreen,
    res->base.b.screen = pscreen;
    res->orig_screen = crocus_pscreen_ref(pscreen);
    pipe_reference_init(&res->base.b.reference, 1);
+   threaded_resource_init(&res->base.b);
 
    if (templ->target == PIPE_BUFFER)
       util_range_init(&res->valid_buffer_range);
