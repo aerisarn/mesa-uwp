@@ -397,7 +397,7 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    unsigned srcs = nir_op_infos[instr->op].num_inputs;
    unsigned sz = nir_dest_bit_size(instr->dest.dest);
    unsigned src_sz = srcs ? nir_src_bit_size(instr->src[0].src) : 0;
-   unsigned comps = nir_dest_num_components(instr->dest.dest);
+   ASSERTED unsigned comps = nir_dest_num_components(instr->dest.dest);
 
    assert(comps == 1 || nir_op_is_vec(instr->op));
    assert(sz == 1 || sz == 16 || sz == 32 || sz == 64);
