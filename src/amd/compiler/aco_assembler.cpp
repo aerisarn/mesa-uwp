@@ -459,7 +459,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          encoding |= (0x1F & (instr->operands[1].physReg() >> 2)) << 21; /* sampler */
 
       assert(!mimg.d16 || ctx.chip_class >= GFX9);
-      encoding |= mimg.d16 ? 1 << 15 : 0;
+      encoding |= mimg.d16 ? 1 << 31 : 0;
       if (ctx.chip_class >= GFX10) {
          encoding |= mimg.a16 ? 1 << 14 : 0; /* GFX10: A16 still exists, but is in a different place */
       }
