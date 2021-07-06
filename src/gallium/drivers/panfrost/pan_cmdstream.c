@@ -2349,8 +2349,8 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                          vertex, 0, tiler_job, false);
 }
 
-void
-panfrost_emit_tls(struct panfrost_batch *batch)
+static void
+emit_tls(struct panfrost_batch *batch)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
@@ -2376,9 +2376,8 @@ panfrost_emit_tls(struct panfrost_batch *batch)
         pan_emit_tls(dev, &tls, batch->tls.cpu);
 }
 
-void
-panfrost_emit_fbd(struct panfrost_batch *batch,
-                  const struct pan_fb_info *fb)
+static void
+emit_fbd(struct panfrost_batch *batch, const struct pan_fb_info *fb)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
         struct panfrost_bo *tls_bo =
@@ -2415,9 +2414,8 @@ panfrost_initialize_surface(struct panfrost_batch *batch,
 /* Generate a fragment job. This should be called once per frame. (According to
  * presentations, this is supposed to correspond to eglSwapBuffers) */
 
-mali_ptr
-panfrost_emit_fragment_job(struct panfrost_batch *batch,
-                           const struct pan_fb_info *pfb)
+static mali_ptr
+emit_fragment_job(struct panfrost_batch *batch, const struct pan_fb_info *pfb)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
@@ -3652,6 +3650,9 @@ void
 panfrost_cmdstream_screen_init(struct panfrost_screen *screen)
 {
         screen->vtbl.prepare_rsd = prepare_rsd;
+        screen->vtbl.emit_tls    = emit_tls;
+        screen->vtbl.emit_fbd    = emit_fbd;
+        screen->vtbl.emit_fragment_job = emit_fragment_job;
 }
 
 void

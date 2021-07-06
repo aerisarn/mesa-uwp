@@ -782,7 +782,9 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
                            const struct pan_fb_info *fb,
                            uint32_t in_sync, uint32_t out_sync)
 {
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+        struct pipe_screen *pscreen = batch->ctx->base.screen;
+        struct panfrost_screen *screen = pan_screen(pscreen);
+        struct panfrost_device *dev = pan_device(pscreen);
         bool has_draws = batch->scoreboard.first_job;
         bool has_tiler = batch->scoreboard.first_tiler;
         bool has_frag = has_tiler || batch->clear;
@@ -811,7 +813,7 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
                  * *only* clears, since otherwise the tiler structures will be
                  * uninitialized leading to faults (or state leaks) */
 
-                mali_ptr fragjob = panfrost_emit_fragment_job(batch, fb);
+                mali_ptr fragjob = screen->vtbl.emit_fragment_job(batch, fb);
                 ret = panfrost_batch_submit_ioctl(batch, fragjob,
                                                   PANFROST_JD_REQ_FS, 0,
                                                   out_sync);
@@ -849,7 +851,9 @@ static void
 panfrost_batch_submit(struct panfrost_batch *batch,
                       uint32_t in_sync, uint32_t out_sync)
 {
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+        struct pipe_screen *pscreen = batch->ctx->base.screen;
+        struct panfrost_screen *screen = pan_screen(pscreen);
+        struct panfrost_device *dev = pan_device(pscreen);
         int ret;
 
         /* Nothing to do! */
@@ -875,11 +879,11 @@ panfrost_batch_submit(struct panfrost_batch *batch,
         /* Now that all draws are in, we can finally prepare the
          * FBD for the batch (if there is one). */
 
-        panfrost_emit_tls(batch);
+        screen->vtbl.emit_tls(batch);
         panfrost_emit_tile_map(batch, &fb);
 
         if (batch->scoreboard.first_tiler || batch->clear)
-                panfrost_emit_fbd(batch, &fb);
+                screen->vtbl.emit_fbd(batch, &fb);
 
         ret = panfrost_batch_submit_jobs(batch, &fb, in_sync, out_sync);
 

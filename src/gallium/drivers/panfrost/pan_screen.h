@@ -44,6 +44,7 @@ struct panfrost_batch;
 struct panfrost_context;
 struct panfrost_resource;
 struct panfrost_shader_state;
+struct pan_fb_info;
 
 /* Virtual table of per-generation (GenXML) functions */
 
@@ -53,6 +54,15 @@ struct panfrost_vtable {
         void (*prepare_rsd)(struct panfrost_device *,
                             struct panfrost_shader_state *,
                             struct panfrost_pool *, bool);
+
+        /* Emits a thread local storage descriptor */
+        void (*emit_tls)(struct panfrost_batch *);
+
+        /* Emits a framebuffer descriptor */
+        void (*emit_fbd)(struct panfrost_batch *, const struct pan_fb_info *);
+
+        /* Emits a fragment job */
+        mali_ptr (*emit_fragment_job)(struct panfrost_batch *, const struct pan_fb_info *);
 };
 
 struct panfrost_screen {
