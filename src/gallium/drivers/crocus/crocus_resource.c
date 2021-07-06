@@ -1113,10 +1113,6 @@ crocus_invalidate_resource(struct pipe_context *ctx,
    if (res->bo->userptr)
       return;
 
-   // XXX: We should support this.
-   if (res->bind_history & PIPE_BIND_STREAM_OUTPUT)
-      return;
-
    struct crocus_bo *old_bo = res->bo;
    struct crocus_bo *new_bo =
       crocus_bo_alloc(screen->bufmgr, res->bo->name, resource->width0);

@@ -8289,7 +8289,16 @@ crocus_rebind_buffer(struct crocus_context *ice,
 
    if (res->bind_history & PIPE_BIND_STREAM_OUTPUT) {
       /* XXX: be careful about resetting vs appending... */
-      assert(false);
+      for (int i = 0; i < 4; i++) {
+         if (ice->state.so_target[i] &&
+             (ice->state.so_target[i]->buffer == &res->base.b)) {
+#if GFX_VER == 6
+            ice->state.stage_dirty |= CROCUS_STAGE_DIRTY_BINDINGS_GS;
+#else
+            ice->state.dirty |= CROCUS_DIRTY_GEN7_SO_BUFFERS;
+#endif
+         }
+      }
    }
 
    for (int s = MESA_SHADER_VERTEX; s < MESA_SHADER_STAGES; s++) {
