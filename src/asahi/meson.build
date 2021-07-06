@@ -23,8 +23,8 @@ inc_asahi = include_directories([
    '.', 'lib', 'compiler'
 ])
 
-subdir('compiler')
 subdir('lib')
+subdir('compiler')
 
 files_agx = files(
   'compiler/cmdline.c',
