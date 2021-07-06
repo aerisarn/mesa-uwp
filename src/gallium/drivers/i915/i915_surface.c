@@ -208,7 +208,7 @@ i915_surface_copy_blitter(struct pipe_context *pipe, struct pipe_resource *dst,
    struct i915_texture *dst_tex = i915_texture(dst);
    struct i915_texture *src_tex = i915_texture(src);
    struct pipe_resource *dpt = &dst_tex->b;
-   struct pipe_resource *spt = &src_tex->b;
+   ASSERTED struct pipe_resource *spt = &src_tex->b;
    unsigned dst_offset, src_offset; /* in bytes */
 
    /* XXX cannot copy 3d regions at this time */

@@ -245,9 +245,9 @@ BITS(struct debug_stream *stream, unsigned dw, unsigned hi, unsigned lo,
 
 #define MBZ(dw, hi, lo)                                                        \
    do {                                                                        \
-      unsigned x = (dw) >> (lo);                                               \
-      unsigned lomask = (1 << (lo)) - 1;                                       \
-      unsigned himask;                                                         \
+      ASSERTED unsigned x = (dw) >> (lo);                                      \
+      ASSERTED unsigned lomask = (1 << (lo)) - 1;                              \
+      ASSERTED unsigned himask;                                                \
       himask = (1UL << (hi)) - 1;                                              \
       assert((x & himask & ~lomask) == 0);                                     \
    } while (0)
