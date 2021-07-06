@@ -299,7 +299,8 @@ deep_copy_graphics_create_info(void *mem_ctx,
    }
 
    /* pViewportState */
-   bool rasterization_disabled = src->pRasterizationState->rasterizerDiscardEnable;
+   bool rasterization_disabled = !dynamic_state_contains(src->pDynamicState, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT) &&
+                                 src->pRasterizationState->rasterizerDiscardEnable;
    if (src->pViewportState && !rasterization_disabled) {
       VkPipelineViewportStateCreateInfo *viewport_state;
       viewport_state = ralloc(mem_ctx, VkPipelineViewportStateCreateInfo);

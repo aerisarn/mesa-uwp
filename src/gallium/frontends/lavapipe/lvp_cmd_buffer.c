@@ -2183,3 +2183,78 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdSetStencilOpEXT(
    cmd->u.set_stencil_op.compare_op = compareOp;
    cmd_buf_queue(cmd_buffer, cmd);
 }
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetDepthBiasEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthBiasEnable)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_DEPTH_BIAS_ENABLE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_depth_bias_enable.enable = depthBiasEnable == VK_TRUE;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetLogicOpEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkLogicOp                                   logicOp)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_LOGIC_OP);
+   if (!cmd)
+      return;
+
+   cmd->u.set_logic_op.op = logicOp;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetPatchControlPointsEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    patchControlPoints)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_PATCH_CONTROL_POINTS);
+   if (!cmd)
+      return;
+
+   cmd->u.set_patch_control_points.vertices_per_patch = patchControlPoints;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetPrimitiveRestartEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    primitiveRestartEnable)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_PRIMITIVE_RESTART_ENABLE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_primitive_restart_enable.enable = primitiveRestartEnable == VK_TRUE;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetRasterizerDiscardEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    rasterizerDiscardEnable)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_RASTERIZER_DISCARD_ENABLE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_rasterizer_discard_enable.enable = rasterizerDiscardEnable == VK_TRUE;
+   cmd_buf_queue(cmd_buffer, cmd);
+}

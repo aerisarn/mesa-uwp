@@ -683,6 +683,11 @@ enum lvp_cmds {
    LVP_CMD_SET_STENCIL_TEST_ENABLE,
    LVP_CMD_SET_STENCIL_OP,
    LVP_CMD_SET_LINE_STIPPLE,
+   LVP_CMD_SET_DEPTH_BIAS_ENABLE,
+   LVP_CMD_SET_LOGIC_OP,
+   LVP_CMD_SET_PATCH_CONTROL_POINTS,
+   LVP_CMD_SET_PRIMITIVE_RESTART_ENABLE,
+   LVP_CMD_SET_RASTERIZER_DISCARD_ENABLE,
 };
 
 struct lvp_cmd_bind_pipeline {
@@ -1069,6 +1074,26 @@ struct lvp_cmd_set_line_stipple {
    uint16_t line_stipple_pattern;
 };
 
+struct lvp_cmd_set_depth_bias_enable {
+   bool enable;
+};
+
+struct lvp_cmd_set_logic_op {
+   VkLogicOp op;
+};
+
+struct lvp_cmd_set_patch_control_points {
+   uint32_t vertices_per_patch;
+};
+
+struct lvp_cmd_set_primitive_restart_enable {
+   bool enable;
+};
+
+struct lvp_cmd_set_rasterizer_discard_enable {
+   bool enable;
+};
+
 struct lvp_cmd_buffer_entry {
    struct list_head cmd_link;
    uint32_t cmd_type;
@@ -1127,6 +1152,11 @@ struct lvp_cmd_buffer_entry {
       struct lvp_cmd_set_stencil_test_enable set_stencil_test_enable;
       struct lvp_cmd_set_stencil_op set_stencil_op;
       struct lvp_cmd_set_line_stipple set_line_stipple;
+      struct lvp_cmd_set_depth_bias_enable set_depth_bias_enable;
+      struct lvp_cmd_set_logic_op set_logic_op;
+      struct lvp_cmd_set_patch_control_points set_patch_control_points;
+      struct lvp_cmd_set_primitive_restart_enable set_primitive_restart_enable;
+      struct lvp_cmd_set_rasterizer_discard_enable set_rasterizer_discard_enable;
    } u;
 };
 
