@@ -1557,7 +1557,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       assert((idx_size == 1) || (idx_size == 2) || (idx_size == 4));
 
       agx_pack(out, INDEXED_DRAW, cfg) {
-         cfg.restart_index = 0xFFFF;//info->restart_index;
+         cfg.restart_index = info->restart_index;
          cfg.unk_2a = (ib >> 32);
          cfg.primitive = prim;
          cfg.restart_enable = info->primitive_restart;
