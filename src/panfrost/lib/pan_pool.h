@@ -71,11 +71,19 @@ pan_pool_alloc_aligned(struct pan_pool *p, size_t sz, unsigned alignment) \
         return alloc_func(pool, sz, alignment); \
 }
 
-mali_ptr
-pan_pool_upload(struct pan_pool *pool, const void *data, size_t sz);
+static inline mali_ptr
+pan_pool_upload_aligned(struct pan_pool *pool, const void *data, size_t sz, unsigned alignment)
+{
+        struct panfrost_ptr transfer = pan_pool_alloc_aligned(pool, sz, alignment);
+        memcpy(transfer.cpu, data, sz);
+        return transfer.gpu;
+}
 
-mali_ptr
-pan_pool_upload_aligned(struct pan_pool *pool, const void *data, size_t sz, unsigned alignment);
+static inline mali_ptr
+pan_pool_upload(struct pan_pool *pool, const void *data, size_t sz)
+{
+        return pan_pool_upload_aligned(pool, data, sz, sz);
+}
 
 struct pan_desc_alloc_info {
         unsigned size;
