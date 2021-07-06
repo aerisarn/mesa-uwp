@@ -2584,6 +2584,7 @@ anv_CreateImageView(VkDevice _device,
          .levels = iview->vk.level_count,
          .base_array_layer = iview->vk.base_array_layer,
          .array_len = iview->vk.layer_count,
+         .min_lod_clamp = iview->vk.min_lod,
          .swizzle = {
             .r = remap_swizzle(iview->vk.swizzle.r, format.swizzle),
             .g = remap_swizzle(iview->vk.swizzle.g, format.swizzle),
