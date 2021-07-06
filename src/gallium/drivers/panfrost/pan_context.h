@@ -34,7 +34,6 @@
 #include "pan_blend_cso.h"
 #include "pan_encoder.h"
 #include "pan_texture.h"
-#include "midgard_pack.h"
 
 #include "pipe/p_compiler.h"
 #include "pipe/p_config.h"

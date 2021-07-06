@@ -26,7 +26,6 @@
 #ifndef PAN_RESOURCE_H
 #define PAN_RESOURCE_H
 
-#include <midgard_pack.h>
 #include "pan_screen.h"
 #include "pan_minmax_cache.h"
 #include "pan_texture.h"
