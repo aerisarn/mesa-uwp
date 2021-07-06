@@ -70,7 +70,7 @@ pan_pipe_asserts()
  * these operations together because there are natural optimizations which
  * require them to be together. */
 
-mali_ptr
+static mali_ptr
 panfrost_get_index_buffer_bounded(struct panfrost_batch *batch,
                                   const struct pipe_draw_info *info,
                                   const struct pipe_draw_start_count_bias *draw,
@@ -172,8 +172,9 @@ pan_pipe_to_mipmode(enum pipe_tex_mipfilter f)
         }
 }
 
-void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
-                                struct mali_midgard_sampler_packed *hw)
+static void
+panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
+                           struct mali_midgard_sampler_packed *hw)
 {
         bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
 
@@ -211,8 +212,9 @@ void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
         }
 }
 
-void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
-                                        struct mali_bifrost_sampler_packed *hw)
+static void
+panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
+                                   struct mali_bifrost_sampler_packed *hw)
 {
         bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
 
@@ -639,7 +641,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         memcpy(fragmeta, &rsd, sizeof(rsd));
 }
 
-mali_ptr
+static mali_ptr
 panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader_type stage)
 {
         struct panfrost_shader_state *ss = panfrost_get_shader_state(batch->ctx, stage);
@@ -650,7 +652,7 @@ panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader
         return ss->state.gpu;
 }
 
-mali_ptr
+static mali_ptr
 panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
@@ -699,7 +701,7 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
         return xfer.gpu;
 }
 
-mali_ptr
+static mali_ptr
 panfrost_emit_viewport(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
@@ -1167,7 +1169,7 @@ panfrost_map_constant_buffer_cpu(struct panfrost_context *ctx,
                 unreachable("No constant buffer");
 }
 
-mali_ptr
+static mali_ptr
 panfrost_emit_const_buf(struct panfrost_batch *batch,
                         enum pipe_shader_type stage,
                         mali_ptr *push_constants)
@@ -1294,7 +1296,7 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         return ubos.gpu;
 }
 
-mali_ptr
+static mali_ptr
 panfrost_emit_shared_memory(struct panfrost_batch *batch,
                             const struct pipe_grid_info *info)
 {
@@ -1373,7 +1375,7 @@ panfrost_update_sampler_view(struct panfrost_sampler_view *view,
         }
 }
 
-mali_ptr
+static mali_ptr
 panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                                   enum pipe_shader_type stage)
 {
@@ -1423,7 +1425,7 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
         }
 }
 
-mali_ptr
+static mali_ptr
 panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
                                   enum pipe_shader_type stage)
 {
@@ -1568,7 +1570,7 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
         }
 }
 
-mali_ptr
+static mali_ptr
 panfrost_emit_image_attribs(struct panfrost_batch *batch,
                             mali_ptr *buffers,
                             enum pipe_shader_type type)
@@ -1607,7 +1609,7 @@ panfrost_emit_image_attribs(struct panfrost_batch *batch,
         return attribs.gpu;
 }
 
-mali_ptr
+static mali_ptr
 panfrost_emit_vertex_data(struct panfrost_batch *batch,
                           mali_ptr *buffers)
 {
@@ -2220,7 +2222,7 @@ pan_emit_special_input(struct mali_attribute_buffer_packed *out,
         }
 }
 
-void
+static void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
                                  mali_ptr *vs_attribs,
@@ -2323,7 +2325,7 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         *fs_attribs = linkage->consumer;
 }
 
-void
+static void
 panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                                 const struct panfrost_ptr *vertex_job,
                                 const struct panfrost_ptr *tiler_job)
