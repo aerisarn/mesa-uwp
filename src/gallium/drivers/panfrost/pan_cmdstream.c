@@ -30,6 +30,7 @@
 #include "util/u_draw.h"
 #include "util/u_memory.h"
 #include "indices/u_primconvert.h"
+#include "gallium/auxiliary/util/u_blend.h"
 
 #include "panfrost-quirks.h"
 
@@ -3423,6 +3424,104 @@ panfrost_create_sampler_view(
         return (struct pipe_sampler_view *) so;
 }
 
+/* A given Gallium blend state can be encoded to the hardware in numerous,
+ * dramatically divergent ways due to the interactions of blending with
+ * framebuffer formats. Conceptually, there are two modes:
+ *
+ * - Fixed-function blending (for suitable framebuffer formats, suitable blend
+ *   state, and suitable blend constant)
+ *
+ * - Blend shaders (for everything else)
+ *
+ * A given Gallium blend configuration will compile to exactly one
+ * fixed-function blend state, if it compiles to any, although the constant
+ * will vary across runs as that is tracked outside of the Gallium CSO.
+ *
+ * However, that same blend configuration will compile to many different blend
+ * shaders, depending on the framebuffer formats active. The rationale is that
+ * blend shaders override not just fixed-function blending but also
+ * fixed-function format conversion, so blend shaders are keyed to a particular
+ * framebuffer format. As an example, the tilebuffer format is identical for
+ * RG16F and RG16UI -- both are simply 32-bit raw pixels -- so both require
+ * blend shaders.
+ *
+ * All of this state is encapsulated in the panfrost_blend_state struct
+ * (our subclass of pipe_blend_state).
+ */
+
+/* Create a blend CSO. Essentially, try to compile a fixed-function
+ * expression and initialize blend shaders */
+
+static void *
+panfrost_create_blend_state(struct pipe_context *pipe,
+                            const struct pipe_blend_state *blend)
+{
+        struct panfrost_context *ctx = pan_context(pipe);
+        struct panfrost_device *dev = pan_device(pipe->screen);
+        struct panfrost_blend_state *so = rzalloc(ctx, struct panfrost_blend_state);
+        so->base = *blend;
+
+        so->pan.logicop_enable = blend->logicop_enable;
+        so->pan.logicop_func = blend->logicop_func;
+        so->pan.rt_count = blend->max_rt + 1;
+
+        for (unsigned c = 0; c < so->pan.rt_count; ++c) {
+                unsigned g = blend->independent_blend_enable ? c : 0;
+                const struct pipe_rt_blend_state pipe = blend->rt[g];
+                struct pan_blend_equation equation;
+
+                equation.color_mask = pipe.colormask;
+                equation.blend_enable = pipe.blend_enable;
+
+                if (pipe.blend_enable) {
+                        equation.rgb_func = util_blend_func_to_shader(pipe.rgb_func);
+                        equation.rgb_src_factor = util_blend_factor_to_shader(pipe.rgb_src_factor);
+                        equation.rgb_invert_src_factor = util_blend_factor_is_inverted(pipe.rgb_src_factor);
+                        equation.rgb_dst_factor = util_blend_factor_to_shader(pipe.rgb_dst_factor);
+                        equation.rgb_invert_dst_factor = util_blend_factor_is_inverted(pipe.rgb_dst_factor);
+                        equation.alpha_func = util_blend_func_to_shader(pipe.alpha_func);
+                        equation.alpha_src_factor = util_blend_factor_to_shader(pipe.alpha_src_factor);
+                        equation.alpha_invert_src_factor = util_blend_factor_is_inverted(pipe.alpha_src_factor);
+                        equation.alpha_dst_factor = util_blend_factor_to_shader(pipe.alpha_dst_factor);
+                        equation.alpha_invert_dst_factor = util_blend_factor_is_inverted(pipe.alpha_dst_factor);
+                }
+
+                /* Determine some common properties */
+                unsigned constant_mask = pan_blend_constant_mask(equation);
+                so->info[c] = (struct pan_blend_info) {
+                        .no_colour = (equation.color_mask == 0),
+                        .opaque = pan_blend_is_opaque(equation),
+                        .constant_mask = constant_mask,
+
+                        /* TODO: check the dest for the logicop */
+                        .load_dest = blend->logicop_enable ||
+                                pan_blend_reads_dest(equation),
+
+                        /* Could this possibly be fixed-function? */
+                        .fixed_function = !blend->logicop_enable &&
+                                pan_blend_can_fixed_function(equation) &&
+                                (!constant_mask ||
+                                 pan_blend_supports_constant(dev->arch, c))
+                };
+
+                so->pan.rts[c].equation = equation;
+
+                /* Bifrost needs to know if any render target loads its
+                 * destination in the hot draw path, so precompute this */
+                if (so->info[c].load_dest)
+                        so->load_dest_mask |= BITFIELD_BIT(c);
+
+                /* Converting equations to Mali style is expensive, do it at
+                 * CSO create time instead of draw-time */
+                if (so->info[c].fixed_function) {
+                        pan_pack(&so->equation[c], BLEND_EQUATION, cfg)
+                                pan_blend_to_fixed_function_equation(equation, &cfg);
+                }
+        }
+
+        return so;
+}
+
 static void
 prepare_rsd(struct panfrost_device *dev,
             struct panfrost_shader_state *state,
@@ -3459,4 +3558,5 @@ panfrost_cmdstream_context_init(struct pipe_context *pipe)
         pipe->create_depth_stencil_alpha_state = panfrost_create_depth_stencil_state;
         pipe->create_sampler_view = panfrost_create_sampler_view;
         pipe->create_sampler_state = panfrost_create_sampler_state;
+        pipe->create_blend_state = panfrost_create_blend_state;
 }

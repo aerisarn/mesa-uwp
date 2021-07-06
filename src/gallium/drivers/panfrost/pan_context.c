@@ -135,6 +135,93 @@ panfrost_generic_cso_delete(struct pipe_context *pctx, void *hwcso)
 }
 
 static void
+panfrost_bind_blend_state(struct pipe_context *pipe, void *cso)
+{
+        struct panfrost_context *ctx = pan_context(pipe);
+        ctx->blend = cso;
+        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+}
+
+static void
+panfrost_delete_blend_state(struct pipe_context *pipe, void *cso)
+{
+        ralloc_free(cso);
+}
+
+static void
+panfrost_set_blend_color(struct pipe_context *pipe,
+                         const struct pipe_blend_color *blend_color)
+{
+        struct panfrost_context *ctx = pan_context(pipe);
+        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+
+        if (blend_color)
+                ctx->blend_color = *blend_color;
+}
+
+/* Create a final blend given the context */
+
+mali_ptr
+panfrost_get_blend(struct panfrost_batch *batch, unsigned rti, struct panfrost_bo **bo, unsigned *shader_offset)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
+        struct panfrost_blend_state *blend = ctx->blend;
+        struct pan_blend_info info = blend->info[rti];
+        struct pipe_surface *surf = batch->key.cbufs[rti];
+        enum pipe_format fmt = surf->format;
+
+        /* Use fixed-function if the equation permits, the format is blendable,
+         * and no more than one unique constant is accessed */
+        if (info.fixed_function && panfrost_blendable_formats[fmt].internal &&
+                        pan_blend_is_homogenous_constant(info.constant_mask,
+                                ctx->blend_color.color)) {
+                return 0;
+        }
+
+        /* Otherwise, we need to grab a shader */
+        struct pan_blend_state pan_blend = blend->pan;
+        unsigned nr_samples = surf->nr_samples ? : surf->texture->nr_samples;
+
+        pan_blend.rts[rti].format = fmt;
+        pan_blend.rts[rti].nr_samples = nr_samples;
+        memcpy(pan_blend.constants, ctx->blend_color.color,
+               sizeof(pan_blend.constants));
+
+        /* Upload the shader, sharing a BO */
+        if (!(*bo)) {
+                *bo = panfrost_batch_create_bo(batch, 4096, PAN_BO_EXECUTE,
+                                PIPE_SHADER_FRAGMENT, "Blend shader");
+        }
+
+        struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
+
+        /* Default for Midgard */
+        nir_alu_type col0_type = nir_type_float32;
+        nir_alu_type col1_type = nir_type_float32;
+
+        /* Bifrost has per-output types, respect them */
+        if (pan_is_bifrost(dev)) {
+                col0_type = ss->info.bifrost.blend[rti].type;
+                col1_type = ss->info.bifrost.blend_src1_type;
+        }
+
+        pthread_mutex_lock(&dev->blend_shaders.lock);
+        struct pan_blend_shader_variant *shader =
+                pan_blend_get_shader_locked(dev, &pan_blend,
+                                col0_type, col1_type, rti);
+
+        /* Size check and upload */
+        unsigned offset = *shader_offset;
+        assert((offset + shader->binary.size) < 4096);
+        memcpy((*bo)->ptr.cpu + offset, shader->binary.data, shader->binary.size);
+        *shader_offset += shader->binary.size;
+        pthread_mutex_unlock(&dev->blend_shaders.lock);
+
+        return ((*bo)->ptr.gpu + offset) | shader->first_tag;
+}
+
+static void
 panfrost_bind_rasterizer_state(
         struct pipe_context *pctx,
         void *hwcso)
@@ -1031,9 +1118,13 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->stream_output_target_destroy = panfrost_stream_output_target_destroy;
         gallium->set_stream_output_targets = panfrost_set_stream_output_targets;
 
+        gallium->bind_blend_state   = panfrost_bind_blend_state;
+        gallium->delete_blend_state = panfrost_delete_blend_state;
+
+        gallium->set_blend_color = panfrost_set_blend_color;
+
         panfrost_cmdstream_context_init(gallium);
         panfrost_resource_context_init(gallium);
-        panfrost_blend_context_init(gallium);
         panfrost_compute_context_init(gallium);
 
         gallium->stream_uploader = u_upload_create_default(gallium);
