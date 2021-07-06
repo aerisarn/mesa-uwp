@@ -708,10 +708,10 @@ i915_translate_instruction(struct i915_fp_compile *p,
       i915_emit_arith(p, A0_SGE, tmp, A0_DEST_CHANNEL_ALL, 0, src0, src1, 0);
 
       i915_emit_arith(p, A0_SGE, get_result_vector(p, &inst->Dst[0]),
-                      A0_DEST_CHANNEL_ALL, 0, src1, src0, 0);
+                      get_result_flags(inst), 0, src1, src0, 0);
 
       i915_emit_arith(p, A0_MUL, get_result_vector(p, &inst->Dst[0]),
-                      A0_DEST_CHANNEL_ALL, 0,
+                      get_result_flags(inst), 0,
                       get_result_vector(p, &inst->Dst[0]), tmp, 0);
 
       break;
@@ -775,10 +775,10 @@ i915_translate_instruction(struct i915_fp_compile *p,
       i915_emit_arith(p, A0_SLT, tmp, A0_DEST_CHANNEL_ALL, 0, src0, src1, 0);
 
       i915_emit_arith(p, A0_SLT, get_result_vector(p, &inst->Dst[0]),
-                      A0_DEST_CHANNEL_ALL, 0, src1, src0, 0);
+                      get_result_flags(inst), 0, src1, src0, 0);
 
       i915_emit_arith(p, A0_ADD, get_result_vector(p, &inst->Dst[0]),
-                      A0_DEST_CHANNEL_ALL, 0,
+                      get_result_flags(inst), 0,
                       get_result_vector(p, &inst->Dst[0]), tmp, 0);
       break;
 
@@ -791,11 +791,11 @@ i915_translate_instruction(struct i915_fp_compile *p,
                       swizzle(src0, ZERO, ZERO, ZERO, ZERO), 0);
 
       i915_emit_arith(p, A0_SLT, get_result_vector(p, &inst->Dst[0]),
-                      A0_DEST_CHANNEL_ALL, 0,
+                      get_result_flags(inst), 0,
                       swizzle(src0, ZERO, ZERO, ZERO, ZERO), src0, 0);
 
       i915_emit_arith(
-         p, A0_ADD, get_result_vector(p, &inst->Dst[0]), A0_DEST_CHANNEL_ALL, 0,
+         p, A0_ADD, get_result_vector(p, &inst->Dst[0]), get_result_flags(inst), 0,
          get_result_vector(p, &inst->Dst[0]), negate(tmp, 1, 1, 1, 1), 0);
       break;
 
