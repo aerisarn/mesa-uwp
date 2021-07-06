@@ -1609,6 +1609,14 @@ struct isl_view {
     */
    uint32_t array_len;
 
+   /**
+    * Minimum LOD
+    *
+    * Similar to sampler minimum LOD, the computed LOD is clamped to be at
+    * least min_lod_clamp.
+    */
+   float min_lod_clamp;
+
    struct isl_swizzle swizzle;
 };
 

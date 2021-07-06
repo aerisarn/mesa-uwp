@@ -446,6 +446,12 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 #endif
 #endif
 
+#if GFX_VER >= 7
+   s.ResourceMinLOD = info->view->min_lod_clamp;
+#else
+   assert(info->view->min_lod_clamp == 0);
+#endif
+
 #if (GFX_VERx10 >= 75)
    if (info->view->usage & ISL_SURF_USAGE_RENDER_TARGET_BIT)
       assert(isl_swizzle_supports_rendering(dev->info, info->view->swizzle));
