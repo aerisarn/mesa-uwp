@@ -466,9 +466,13 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
       }
 
       if (!dynamic_states[VK_DYNAMIC_STATE_DEPTH_BIAS]) {
-         state->rs_state.offset_units = rsc->depthBiasConstantFactor;
-         state->rs_state.offset_scale = rsc->depthBiasSlopeFactor;
-         state->rs_state.offset_clamp = rsc->depthBiasClamp;
+         if (pipeline->graphics_create_info.pRasterizationState->depthBiasEnable) {
+            state->rs_state.offset_units = rsc->depthBiasConstantFactor;
+            state->rs_state.offset_scale = rsc->depthBiasSlopeFactor;
+            state->rs_state.offset_clamp = rsc->depthBiasClamp;
+         } else {
+            state->rs_state.offset_clamp = state->rs_state.offset_scale = state->rs_state.offset_units = 0.0;
+         }
       }
 
       if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_CULL_MODE_EXT)])
