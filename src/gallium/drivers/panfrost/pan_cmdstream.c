@@ -28,6 +28,7 @@
 #include "util/u_vbuf.h"
 #include "util/u_helpers.h"
 #include "util/u_draw.h"
+#include "util/u_memory.h"
 #include "indices/u_primconvert.h"
 
 #include "panfrost-quirks.h"
@@ -240,6 +241,24 @@ void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
                 cfg.border_color_b = cso->border_color.ui[2];
                 cfg.border_color_a = cso->border_color.ui[3];
         }
+}
+
+static void *
+panfrost_create_sampler_state(
+        struct pipe_context *pctx,
+        const struct pipe_sampler_state *cso)
+{
+        struct panfrost_sampler_state *so = CALLOC_STRUCT(panfrost_sampler_state);
+        struct panfrost_device *device = pan_device(pctx->screen);
+
+        so->base = *cso;
+
+        if (pan_is_bifrost(device))
+                panfrost_sampler_desc_init_bifrost(cso, (struct mali_bifrost_sampler_packed *) &so->hw);
+        else
+                panfrost_sampler_desc_init(cso, &so->hw);
+
+        return so;
 }
 
 static bool
@@ -3113,8 +3132,304 @@ panfrost_draw_vbo(struct pipe_context *pipe,
 
 }
 
+static void *
+panfrost_create_rasterizer_state(
+        struct pipe_context *pctx,
+        const struct pipe_rasterizer_state *cso)
+{
+        struct panfrost_rasterizer *so = CALLOC_STRUCT(panfrost_rasterizer);
+
+        so->base = *cso;
+
+        /* Gauranteed with the core GL call, so don't expose ARB_polygon_offset */
+        assert(cso->offset_clamp == 0.0);
+
+        pan_pack(&so->multisample, MULTISAMPLE_MISC, cfg) {
+                cfg.multisample_enable = cso->multisample;
+                cfg.fixed_function_near_discard = cso->depth_clip_near;
+                cfg.fixed_function_far_discard = cso->depth_clip_far;
+                cfg.shader_depth_range_fixed = true;
+        }
+
+        pan_pack(&so->stencil_misc, STENCIL_MASK_MISC, cfg) {
+                cfg.depth_range_1 = cso->offset_tri;
+                cfg.depth_range_2 = cso->offset_tri;
+                cfg.single_sampled_lines = !cso->multisample;
+        }
+
+        return so;
+}
+
+/* Assigns a vertex buffer for a given (index, divisor) tuple */
+
+static unsigned
+pan_assign_vertex_buffer(struct pan_vertex_buffer *buffers,
+                         unsigned *nr_bufs,
+                         unsigned vbi,
+                         unsigned divisor)
+{
+        /* Look up the buffer */
+        for (unsigned i = 0; i < (*nr_bufs); ++i) {
+                if (buffers[i].vbi == vbi && buffers[i].divisor == divisor)
+                        return i;
+        }
+
+        /* Else, create a new buffer */
+        unsigned idx = (*nr_bufs)++;
+
+        buffers[idx] = (struct pan_vertex_buffer) {
+                .vbi = vbi,
+                .divisor = divisor
+        };
+
+        return idx;
+}
+
+static void *
+panfrost_create_vertex_elements_state(
+        struct pipe_context *pctx,
+        unsigned num_elements,
+        const struct pipe_vertex_element *elements)
+{
+        struct panfrost_vertex_state *so = CALLOC_STRUCT(panfrost_vertex_state);
+        struct panfrost_device *dev = pan_device(pctx->screen);
+
+        so->num_elements = num_elements;
+        memcpy(so->pipe, elements, sizeof(*elements) * num_elements);
+
+        /* Assign attribute buffers corresponding to the vertex buffers, keyed
+         * for a particular divisor since that's how instancing works on Mali */
+        for (unsigned i = 0; i < num_elements; ++i) {
+                so->element_buffer[i] = pan_assign_vertex_buffer(
+                                so->buffers, &so->nr_bufs,
+                                elements[i].vertex_buffer_index,
+                                elements[i].instance_divisor);
+        }
+
+        for (int i = 0; i < num_elements; ++i) {
+                enum pipe_format fmt = elements[i].src_format;
+                const struct util_format_description *desc = util_format_description(fmt);
+                so->formats[i] = dev->formats[desc->format].hw;
+                assert(so->formats[i]);
+        }
+
+        /* Let's also prepare vertex builtins */
+        so->formats[PAN_VERTEX_ID] = dev->formats[PIPE_FORMAT_R32_UINT].hw;
+        so->formats[PAN_INSTANCE_ID] = dev->formats[PIPE_FORMAT_R32_UINT].hw;
+
+        return so;
+}
+
+static inline unsigned
+pan_pipe_to_stencil_op(enum pipe_stencil_op in)
+{
+        switch (in) {
+        case PIPE_STENCIL_OP_KEEP: return MALI_STENCIL_OP_KEEP;
+        case PIPE_STENCIL_OP_ZERO: return MALI_STENCIL_OP_ZERO;
+        case PIPE_STENCIL_OP_REPLACE: return MALI_STENCIL_OP_REPLACE;
+        case PIPE_STENCIL_OP_INCR: return MALI_STENCIL_OP_INCR_SAT;
+        case PIPE_STENCIL_OP_DECR: return MALI_STENCIL_OP_DECR_SAT;
+        case PIPE_STENCIL_OP_INCR_WRAP: return MALI_STENCIL_OP_INCR_WRAP;
+        case PIPE_STENCIL_OP_DECR_WRAP: return MALI_STENCIL_OP_DECR_WRAP;
+        case PIPE_STENCIL_OP_INVERT: return MALI_STENCIL_OP_INVERT;
+        default: unreachable("Invalid stencil op");
+        }
+}
+
+static inline void
+pan_pipe_to_stencil(const struct pipe_stencil_state *in,
+                    struct mali_stencil_packed *out)
+{
+        pan_pack(out, STENCIL, s) {
+                s.mask = in->valuemask;
+                s.compare_function = (enum mali_func) in->func;
+                s.stencil_fail = pan_pipe_to_stencil_op(in->fail_op);
+                s.depth_fail = pan_pipe_to_stencil_op(in->zfail_op);
+                s.depth_pass = pan_pipe_to_stencil_op(in->zpass_op);
+        }
+}
+
+static void *
+panfrost_create_depth_stencil_state(struct pipe_context *pipe,
+                                    const struct pipe_depth_stencil_alpha_state *zsa)
+{
+        struct panfrost_device *dev = pan_device(pipe->screen);
+        struct panfrost_zsa_state *so = CALLOC_STRUCT(panfrost_zsa_state);
+        so->base = *zsa;
+
+        /* Normalize (there's no separate enable) */
+        if (!zsa->alpha_enabled)
+                so->base.alpha_func = MALI_FUNC_ALWAYS;
+
+        /* Prepack relevant parts of the Renderer State Descriptor. They will
+         * be ORed in at draw-time */
+        pan_pack(&so->rsd_depth, MULTISAMPLE_MISC, cfg) {
+                cfg.depth_function = zsa->depth_enabled ?
+                        (enum mali_func) zsa->depth_func : MALI_FUNC_ALWAYS;
+
+                cfg.depth_write_mask = zsa->depth_writemask;
+        }
+
+        pan_pack(&so->rsd_stencil, STENCIL_MASK_MISC, cfg) {
+                cfg.stencil_enable = zsa->stencil[0].enabled;
+
+                cfg.stencil_mask_front = zsa->stencil[0].writemask;
+                cfg.stencil_mask_back = zsa->stencil[1].enabled ?
+                        zsa->stencil[1].writemask : zsa->stencil[0].writemask;
+
+                if (dev->arch < 6) {
+                        cfg.alpha_test_compare_function =
+                                (enum mali_func) so->base.alpha_func;
+                }
+        }
+
+        /* Stencil tests have their own words in the RSD */
+        pan_pipe_to_stencil(&zsa->stencil[0], &so->stencil_front);
+
+        if (zsa->stencil[1].enabled)
+                pan_pipe_to_stencil(&zsa->stencil[1], &so->stencil_back);
+	else
+                so->stencil_back = so->stencil_front;
+
+        so->enabled = zsa->stencil[0].enabled ||
+                (zsa->depth_enabled && zsa->depth_func != PIPE_FUNC_ALWAYS);
+
+        /* Write masks need tracking together */
+        if (zsa->depth_writemask)
+                so->draws |= PIPE_CLEAR_DEPTH;
+
+        if (zsa->stencil[0].enabled)
+                so->draws |= PIPE_CLEAR_STENCIL;
+
+        /* TODO: Bounds test should be easy */
+        assert(!zsa->depth_bounds_test);
+
+        return so;
+}
+
+void
+panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
+                                struct pipe_context *pctx,
+                                struct pipe_resource *texture)
+{
+        struct panfrost_device *device = pan_device(pctx->screen);
+        struct panfrost_context *ctx = pan_context(pctx);
+        struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
+        enum pipe_format format = so->base.format;
+        assert(prsrc->image.data.bo);
+
+        /* Format to access the stencil portion of a Z32_S8 texture */
+        if (format == PIPE_FORMAT_X32_S8X24_UINT) {
+                assert(prsrc->separate_stencil);
+                texture = &prsrc->separate_stencil->base;
+                prsrc = (struct panfrost_resource *)texture;
+                format = texture->format;
+        }
+
+        const struct util_format_description *desc = util_format_description(format);
+
+        bool fake_rgtc = !panfrost_supports_compressed_format(device, MALI_BC4_UNORM);
+
+        if (desc->layout == UTIL_FORMAT_LAYOUT_RGTC && fake_rgtc) {
+                if (desc->is_snorm)
+                        format = PIPE_FORMAT_R8G8B8A8_SNORM;
+                else
+                        format = PIPE_FORMAT_R8G8B8A8_UNORM;
+                desc = util_format_description(format);
+        }
+
+        so->texture_bo = prsrc->image.data.bo->ptr.gpu;
+        so->modifier = prsrc->image.layout.modifier;
+
+        /* MSAA only supported for 2D textures */
+
+        assert(texture->nr_samples <= 1 ||
+               so->base.target == PIPE_TEXTURE_2D ||
+               so->base.target == PIPE_TEXTURE_2D_ARRAY);
+
+        enum mali_texture_dimension type =
+                panfrost_translate_texture_dimension(so->base.target);
+
+        bool is_buffer = (so->base.target == PIPE_BUFFER);
+
+        unsigned first_level = is_buffer ? 0 : so->base.u.tex.first_level;
+        unsigned last_level = is_buffer ? 0 : so->base.u.tex.last_level;
+        unsigned first_layer = is_buffer ? 0 : so->base.u.tex.first_layer;
+        unsigned last_layer = is_buffer ? 0 : so->base.u.tex.last_layer;
+        unsigned buf_offset = is_buffer ? so->base.u.buf.offset : 0;
+        unsigned buf_size = (is_buffer ? so->base.u.buf.size : 0) /
+                            util_format_get_blocksize(format);
+
+        if (so->base.target == PIPE_TEXTURE_3D) {
+                first_layer /= prsrc->image.layout.depth;
+                last_layer /= prsrc->image.layout.depth;
+                assert(!first_layer && !last_layer);
+        }
+
+        struct pan_image_view iview = {
+                .format = format,
+                .dim = type,
+                .first_level = first_level,
+                .last_level = last_level,
+                .first_layer = first_layer,
+                .last_layer = last_layer,
+                .swizzle = {
+                        so->base.swizzle_r,
+                        so->base.swizzle_g,
+                        so->base.swizzle_b,
+                        so->base.swizzle_a,
+                },
+                .image = &prsrc->image,
+
+                .buf.offset = buf_offset,
+                .buf.size = buf_size,
+        };
+
+        unsigned size =
+                (pan_is_bifrost(device) ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
+                panfrost_estimate_texture_payload_size(device, &iview);
+
+        struct panfrost_ptr payload = pan_pool_alloc_aligned(&ctx->descs.base, size, 64);
+        so->state = panfrost_pool_take_ref(&ctx->descs, payload.gpu);
+
+        void *tex = pan_is_bifrost(device) ?
+                    &so->bifrost_descriptor : payload.cpu;
+
+        if (!pan_is_bifrost(device)) {
+                payload.cpu += MALI_MIDGARD_TEXTURE_LENGTH;
+                payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
+        }
+
+        panfrost_new_texture(device, &iview, tex, &payload);
+}
+
+static struct pipe_sampler_view *
+panfrost_create_sampler_view(
+        struct pipe_context *pctx,
+        struct pipe_resource *texture,
+        const struct pipe_sampler_view *template)
+{
+        struct panfrost_sampler_view *so = rzalloc(pctx, struct panfrost_sampler_view);
+
+        pipe_reference(NULL, &texture->reference);
+
+        so->base = *template;
+        so->base.texture = texture;
+        so->base.reference.count = 1;
+        so->base.context = pctx;
+
+        panfrost_create_sampler_view_bo(so, pctx, texture);
+
+        return (struct pipe_sampler_view *) so;
+}
+
 void
 panfrost_cmdstream_context_init(struct pipe_context *pipe)
 {
         pipe->draw_vbo           = panfrost_draw_vbo;
+        pipe->create_vertex_elements_state = panfrost_create_vertex_elements_state;
+        pipe->create_rasterizer_state = panfrost_create_rasterizer_state;
+        pipe->create_depth_stencil_alpha_state = panfrost_create_depth_stencil_state;
+        pipe->create_sampler_view = panfrost_create_sampler_view;
+        pipe->create_sampler_state = panfrost_create_sampler_state;
 }
