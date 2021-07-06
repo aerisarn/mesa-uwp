@@ -1485,7 +1485,11 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    /* Emit a TFU job per layer to copy */
    const uint32_t buffer_stride = width * image->cpp;
    for (int i = 0; i < num_layers; i++) {
-      uint32_t layer = region->imageSubresource.baseArrayLayer + i;
+      uint32_t layer;
+      if (image->type != VK_IMAGE_TYPE_3D)
+         layer = region->imageSubresource.baseArrayLayer + i;
+      else
+         layer = region->imageOffset.z + i;
 
       struct drm_v3d_submit_tfu tfu = {
          .ios = (height << 16) | width,
