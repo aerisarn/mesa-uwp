@@ -902,8 +902,8 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
                               bool is_storage_image, VkImageViewType view_type, VkFormat vk_format,
                               const VkComponentMapping *mapping, unsigned first_level,
                               unsigned last_level, unsigned first_layer, unsigned last_layer,
-                              unsigned width, unsigned height, unsigned depth, uint32_t *state,
-                              uint32_t *fmask_state)
+                              unsigned width, unsigned height, unsigned depth, float min_lod,
+                              uint32_t *state, uint32_t *fmask_state)
 {
    const struct util_format_description *desc;
    enum pipe_swizzle swizzle[4];
@@ -927,7 +927,9 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
       depth = image->info.array_size / 6;
 
    state[0] = 0;
-   state[1] = S_00A004_FORMAT(img_format) | S_00A004_WIDTH_LO(width - 1);
+   state[1] = S_00A004_MIN_LOD(radv_float_to_ufixed(CLAMP(min_lod, 0, 15), 8)) |
+              S_00A004_FORMAT(img_format) |
+              S_00A004_WIDTH_LO(width - 1);
    state[2] = S_00A008_WIDTH_HI((width - 1) >> 2) | S_00A008_HEIGHT(height - 1) |
               S_00A008_RESOURCE_LEVEL(1);
    state[3] = S_00A00C_DST_SEL_X(radv_map_swizzle(swizzle[0])) |
@@ -1022,8 +1024,8 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
                            bool is_storage_image, VkImageViewType view_type, VkFormat vk_format,
                            const VkComponentMapping *mapping, unsigned first_level,
                            unsigned last_level, unsigned first_layer, unsigned last_layer,
-                           unsigned width, unsigned height, unsigned depth, uint32_t *state,
-                           uint32_t *fmask_state)
+                           unsigned width, unsigned height, unsigned depth, float min_lod,
+                           uint32_t *state, uint32_t *fmask_state)
 {
    const struct util_format_description *desc;
    enum pipe_swizzle swizzle[4];
@@ -1066,7 +1068,9 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
       depth = image->info.array_size / 6;
 
    state[0] = 0;
-   state[1] = (S_008F14_DATA_FORMAT(data_format) | S_008F14_NUM_FORMAT(num_format));
+   state[1] = (S_008F14_MIN_LOD(radv_float_to_ufixed(CLAMP(min_lod, 0, 15), 8)) |
+               S_008F14_DATA_FORMAT(data_format) |
+               S_008F14_NUM_FORMAT(num_format));
    state[2] = (S_008F18_WIDTH(width - 1) | S_008F18_HEIGHT(height - 1) | S_008F18_PERF_MOD(4));
    state[3] = (S_008F1C_DST_SEL_X(radv_map_swizzle(swizzle[0])) |
                S_008F1C_DST_SEL_Y(radv_map_swizzle(swizzle[1])) |
@@ -1212,17 +1216,17 @@ radv_make_texture_descriptor(struct radv_device *device, struct radv_image *imag
                              bool is_storage_image, VkImageViewType view_type, VkFormat vk_format,
                              const VkComponentMapping *mapping, unsigned first_level,
                              unsigned last_level, unsigned first_layer, unsigned last_layer,
-                             unsigned width, unsigned height, unsigned depth, uint32_t *state,
+                             unsigned width, unsigned height, unsigned depth, float min_lod, uint32_t *state,
                              uint32_t *fmask_state)
 {
    if (device->physical_device->rad_info.chip_class >= GFX10) {
       gfx10_make_texture_descriptor(device, image, is_storage_image, view_type, vk_format, mapping,
                                     first_level, last_level, first_layer, last_layer, width, height,
-                                    depth, state, fmask_state);
+                                    depth, min_lod, state, fmask_state);
    } else {
       si_make_texture_descriptor(device, image, is_storage_image, view_type, vk_format, mapping,
                                  first_level, last_level, first_layer, last_layer, width, height,
-                                 depth, state, fmask_state);
+                                 depth, min_lod, state, fmask_state);
    }
 }
 
@@ -1238,7 +1242,7 @@ radv_query_opaque_metadata(struct radv_device *device, struct radv_image *image,
    radv_make_texture_descriptor(device, image, false, (VkImageViewType)image->type,
                                 image->vk_format, &fixedmapping, 0, image->info.levels - 1, 0,
                                 image->info.array_size - 1, image->info.width, image->info.height,
-                                image->info.depth, desc, NULL);
+                                image->info.depth, 0.0f, desc, NULL);
 
    si_set_mutable_tex_desc_fields(device, image, &image->planes[0].surface.u.legacy.level[0], 0, 0,
                                   0, image->planes[0].surface.blk_w, false, false, false, false,
@@ -1805,6 +1809,7 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
 static void
 radv_image_view_make_descriptor(struct radv_image_view *iview, struct radv_device *device,
                                 VkFormat vk_format, const VkComponentMapping *components,
+                                float min_lod,
                                 bool is_storage_image, bool disable_compression,
                                 bool enable_compression, unsigned plane_id,
                                 unsigned descriptor_plane_id)
@@ -1835,7 +1840,7 @@ radv_image_view_make_descriptor(struct radv_image_view *iview, struct radv_devic
       iview->base_layer + iview->layer_count - 1,
       vk_format_get_plane_width(image->vk_format, plane_id, iview->extent.width),
       vk_format_get_plane_height(image->vk_format, plane_id, iview->extent.height),
-      iview->extent.depth, descriptor->plane_descriptors[descriptor_plane_id],
+      iview->extent.depth, min_lod, descriptor->plane_descriptors[descriptor_plane_id],
       descriptor_plane_id || is_storage_image ? NULL : descriptor->fmask_descriptor);
 
    const struct legacy_surf_level *base_level_info = NULL;
@@ -2058,10 +2063,10 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    bool enable_compression = extra_create_info ? extra_create_info->enable_compression : false;
    for (unsigned i = 0; i < plane_count; ++i) {
       VkFormat format = vk_format_get_plane_format(iview->vk_format, i);
-      radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, false,
+      radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, 0.0f, false,
                                       disable_compression, enable_compression, iview->plane_id + i,
                                       i);
-      radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, true,
+      radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, 0.0f, true,
                                       disable_compression, enable_compression, iview->plane_id + i,
                                       i);
    }
