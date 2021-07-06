@@ -202,10 +202,11 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    EMIT_ZERO_WORDS(cmdbuf, 12);
 
    unsigned offset_attachments = (cmdbuf->offset * 4);
+   unsigned nr_attachments = 1;
    EMIT32(cmdbuf, 0); // 0x758
    EMIT32(cmdbuf, 0);
    EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, 0x1); // number of attachments (includes depth/stencil) stored to
+   EMIT32(cmdbuf, nr_attachments);
 
    /* A single attachment follows, depth/stencil have their own attachments */
    agx_pack((cmdbuf->map + cmdbuf->offset), IOGPU_ATTACHMENT, cfg) {
@@ -225,6 +226,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.total_size = total_size;
       cfg.attachment_offset_1 = offset_attachments;
       cfg.attachment_offset_2 = offset_attachments;
+      cfg.attachment_length = nr_attachments * AGX_IOGPU_ATTACHMENT_LENGTH;
       cfg.unknown_offset = offset_unk;
       cfg.encoder = encoder_ptr;
    }
