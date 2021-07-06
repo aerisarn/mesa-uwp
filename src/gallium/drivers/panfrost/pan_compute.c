@@ -30,7 +30,6 @@
 #include "pan_cmdstream.h"
 #include "panfrost-quirks.h"
 #include "pan_bo.h"
-#include "pan_indirect_dispatch.h"
 #include "pan_shader.h"
 #include "util/u_memory.h"
 #include "nir_serialize.h"
@@ -91,130 +90,6 @@ panfrost_delete_compute_state(struct pipe_context *pipe, void *cso)
         free(cso);
 }
 
-/* Launch grid is the compute equivalent of draw_vbo, so in this routine, we
- * construct the COMPUTE job and some of its payload.
- */
-
-static void
-panfrost_launch_grid(struct pipe_context *pipe,
-                const struct pipe_grid_info *info)
-{
-        struct panfrost_context *ctx = pan_context(pipe);
-        struct panfrost_device *dev = pan_device(pipe->screen);
-
-        /* XXX - shouldn't be necessary with working memory barriers. Affected
-         * test: KHR-GLES31.core.compute_shader.pipeline-post-xfb */
-        panfrost_flush_all_batches(ctx);
-
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        struct panfrost_shader_state *cs =
-                &ctx->shader[PIPE_SHADER_COMPUTE]->variants[0];
-
-        /* Indirect dispatch can't handle workgroup local storage since that
-         * would require dynamic memory allocation. Bail in this case. */
-        if (info->indirect && !cs->info.wls_size) {
-                struct pipe_transfer *transfer;
-                uint32_t *params = pipe_buffer_map_range(pipe, info->indirect,
-                                info->indirect_offset,
-                                3 * sizeof(uint32_t),
-                                PIPE_MAP_READ,
-                                &transfer);
-
-                struct pipe_grid_info direct = *info;
-                direct.indirect = NULL;
-                direct.grid[0] = params[0];
-                direct.grid[1] = params[1];
-                direct.grid[2] = params[2];
-                pipe_buffer_unmap(pipe, transfer);
-
-                if (params[0] && params[1] && params[2])
-                        panfrost_launch_grid(pipe, &direct);
-
-                return;
-        }
-
-        ctx->compute_grid = info;
-
-        struct panfrost_ptr t =
-                pan_pool_alloc_desc(&batch->pool.base, COMPUTE_JOB);
-
-        /* We implement OpenCL inputs as uniforms (or a UBO -- same thing), so
-         * reuse the graphics path for this by lowering to Gallium */
-
-        struct pipe_constant_buffer ubuf = {
-                .buffer = NULL,
-                .buffer_offset = 0,
-                .buffer_size = ctx->shader[PIPE_SHADER_COMPUTE]->cbase.req_input_mem,
-                .user_buffer = info->input
-        };
-
-        if (info->input)
-                pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, false, &ubuf);
-
-        /* Invoke according to the grid info */
-
-        void *invocation =
-                pan_section_ptr(t.cpu, COMPUTE_JOB, INVOCATION);
-        unsigned num_wg[3] = { info->grid[0], info->grid[1], info->grid[2] };
-
-        if (info->indirect)
-                num_wg[0] = num_wg[1] = num_wg[2] = 1;
-
-        panfrost_pack_work_groups_compute(invocation,
-                                          num_wg[0], num_wg[1], num_wg[2],
-                                          info->block[0], info->block[1],
-                                          info->block[2],
-                                          false, info->indirect != NULL);
-
-        pan_section_pack(t.cpu, COMPUTE_JOB, PARAMETERS, cfg) {
-                cfg.job_task_split =
-                        util_logbase2_ceil(info->block[0] + 1) +
-                        util_logbase2_ceil(info->block[1] + 1) +
-                        util_logbase2_ceil(info->block[2] + 1);
-        }
-
-        pan_section_pack(t.cpu, COMPUTE_JOB, DRAW, cfg) {
-                cfg.draw_descriptor_is_64b = true;
-                if (!pan_is_bifrost(dev))
-                        cfg.texture_descriptor_is_64b = true;
-                cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_COMPUTE);
-                cfg.attributes = panfrost_emit_image_attribs(batch, &cfg.attribute_buffers, PIPE_SHADER_COMPUTE);
-                cfg.thread_storage = panfrost_emit_shared_memory(batch, info);
-                cfg.uniform_buffers = panfrost_emit_const_buf(batch,
-                                PIPE_SHADER_COMPUTE, &cfg.push_uniforms);
-                cfg.textures = panfrost_emit_texture_descriptors(batch,
-                                PIPE_SHADER_COMPUTE);
-                cfg.samplers = panfrost_emit_sampler_descriptors(batch,
-                                PIPE_SHADER_COMPUTE);
-        }
-
-        pan_section_pack(t.cpu, COMPUTE_JOB, DRAW_PADDING, cfg);
-
-        unsigned indirect_dep = 0;
-        if (info->indirect) {
-                struct pan_indirect_dispatch_info indirect = {
-                        .job = t.gpu,
-                        .indirect_dim = pan_resource(info->indirect)->image.data.bo->ptr.gpu +
-                                        info->indirect_offset,
-                        .num_wg_sysval = {
-                                batch->num_wg_sysval[0],
-                                batch->num_wg_sysval[1],
-                                batch->num_wg_sysval[2],
-                        },
-                };
-
-                indirect_dep = pan_indirect_dispatch_emit(&batch->pool.base,
-                                                          &batch->scoreboard,
-                                                          &indirect);
-        }
-
-        panfrost_add_job(&batch->pool.base, &batch->scoreboard,
-                         MALI_JOB_TYPE_COMPUTE, true, false,
-                         indirect_dep, 0, &t, false);
-        panfrost_flush_all_batches(ctx);
-}
-
 static void
 panfrost_set_compute_resources(struct pipe_context *pctx,
                          unsigned start, unsigned count,
@@ -261,8 +136,6 @@ panfrost_compute_context_init(struct pipe_context *pctx)
         pctx->create_compute_state = panfrost_create_compute_state;
         pctx->bind_compute_state = panfrost_bind_compute_state;
         pctx->delete_compute_state = panfrost_delete_compute_state;
-
-        pctx->launch_grid = panfrost_launch_grid;
 
         pctx->set_compute_resources = panfrost_set_compute_resources;
         pctx->set_global_binding = panfrost_set_global_binding;
