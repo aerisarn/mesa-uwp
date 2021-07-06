@@ -29,6 +29,8 @@
 #include "util/u_helpers.h"
 #include "util/u_draw.h"
 #include "util/u_memory.h"
+#include "pipe/p_defines.h"
+#include "pipe/p_state.h"
 #include "indices/u_primconvert.h"
 #include "gallium/auxiliary/util/u_blend.h"
 
@@ -36,7 +38,6 @@
 
 #include "pan_pool.h"
 #include "pan_bo.h"
-#include "pan_cmdstream.h"
 #include "pan_context.h"
 #include "pan_job.h"
 #include "pan_shader.h"
@@ -44,6 +45,8 @@
 #include "pan_util.h"
 #include "pan_indirect_draw.h"
 #include "pan_indirect_dispatch.h"
+
+#include "midgard_pack.h"
 
 /* Statically assert that PIPE_* enums match the hardware enums.
  * (As long as they match, we don't need to translate them.)

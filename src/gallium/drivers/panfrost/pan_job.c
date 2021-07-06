@@ -38,7 +38,6 @@
 #include "util/rounding.h"
 #include "util/u_framebuffer.h"
 #include "pan_util.h"
-#include "pan_cmdstream.h"
 #include "decode.h"
 #include "panfrost-quirks.h"
 

@@ -50,7 +50,6 @@
 #include "util/u_math.h"
 
 #include "pan_screen.h"
-#include "pan_cmdstream.h"
 #include "pan_util.h"
 #include "decode.h"
 #include "util/pan_lower_framebuffer.h"
