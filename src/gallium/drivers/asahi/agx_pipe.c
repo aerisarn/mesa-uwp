@@ -459,6 +459,12 @@ agx_flush(struct pipe_context *pctx,
    struct agx_resource *rt0 = agx_resource(ctx->batch->cbufs[0]->texture);
    BITSET_SET(rt0->data_valid, 0);
 
+   struct agx_resource *zbuf = ctx->batch->zsbuf ?
+      agx_resource(ctx->batch->zsbuf->texture) : NULL;
+
+   if (zbuf)
+      BITSET_SET(zbuf->data_valid, 0);
+
    /* BO list for a given batch consists of:
     *  - BOs for the batch's framebuffer surfaces
     *  - BOs for the batch's pools
