@@ -307,6 +307,11 @@
     <field name="Front face CCW" size="1" start="1:16" type="bool"/>
   </struct>
 
+  <struct name="Interpolation" size="20">
+    <field name="Tag" size="32" start="0:0" type="hex" default="0x100C0000"/>
+    <field name="Varying count" size="32" start="1:0" type="uint"/>
+  </struct>
+
   <struct name="Linkage" size="16">
     <field name="Tag" size="32" start="0:0" type="hex" default="0xC020000"/>
     <field name="Unk 1" size="32" start="1:0" type="hex" default="0x100"/>

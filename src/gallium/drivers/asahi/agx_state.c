@@ -1296,15 +1296,15 @@ demo_launch_fragment(struct agx_context *ctx, struct agx_pool *pool, uint32_t pi
 }
 
 static uint64_t
-demo_unk8(struct agx_compiled_shader *fs, struct agx_pool *pool)
+demo_interpolation(struct agx_compiled_shader *fs, struct agx_pool *pool)
 {
-   /* Varying related */
-   uint32_t unk[] = {
-      /* interpolated count */
-      0x100c0000, fs->info.varyings.nr_slots, 0x0, 0x0, 0x0,
+   struct agx_ptr t = agx_pool_alloc_aligned(pool, AGX_INTERPOLATION_LENGTH, 64);
+
+   agx_pack(t.cpu, INTERPOLATION, cfg) {
+      cfg.varying_count = fs->info.varyings.nr_slots;
    };
 
-   return agx_pool_upload(pool, unk, sizeof(unk));
+   return t.gpu;
 }
 
 static uint64_t
@@ -1435,7 +1435,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    bool reads_tib = ctx->fs->info.reads_tib;
 
    agx_push_record(&out, 0, zero.gpu);
-   agx_push_record(&out, 5, demo_unk8(ctx->fs, pool));
+   agx_push_record(&out, 5, demo_interpolation(ctx->fs, pool));
    agx_push_record(&out, 5, demo_launch_fragment(ctx, pool, pipeline_fragment, varyings, ctx->fs->info.varyings.nr_descs));
    agx_push_record(&out, 4, demo_linkage(ctx->vs, pool));
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool));
