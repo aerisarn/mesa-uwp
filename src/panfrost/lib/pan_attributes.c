@@ -23,7 +23,6 @@
  */
 
 #include "util/u_math.h"
-#include "midgard_pack.h"
 #include "pan_encoder.h"
 
 /* This file handles attribute descriptors. The
@@ -128,48 +127,3 @@ panfrost_compute_magic_divisor(unsigned hw_divisor, unsigned *o_shift, unsigned 
 
         return magic_divisor;
 }
-
-/* Records for gl_VertexID and gl_InstanceID use a slightly special encoding,
- * but the idea is the same */
-
-void
-panfrost_vertex_id(
-        unsigned padded_count,
-        struct mali_attribute_buffer_packed *attr,
-        bool instanced)
-{
-        pan_pack(attr, ATTRIBUTE_VERTEX_ID, cfg) {
-                if (instanced) {
-                        cfg.divisor_r = __builtin_ctz(padded_count);
-                        cfg.divisor_p = padded_count >> (cfg.divisor_r + 1);
-                } else {
-                        /* Large values so the modulo is a no-op */
-                        cfg.divisor_r = 0x1F;
-                        cfg.divisor_p = 0x4;
-                }
-        }
-}
-
-void
-panfrost_instance_id(
-        unsigned padded_count,
-        struct mali_attribute_buffer_packed *attr,
-        bool instanced)
-{
-        pan_pack(attr, ATTRIBUTE_INSTANCE_ID, cfg) {
-                if (!instanced || padded_count <= 1) {
-                        /* Divide by large number to force to 0 */
-                        cfg.divisor_p = ((1u << 31) - 1);
-                        cfg.divisor_r = 0x1F;
-                        cfg.divisor_e = 0x1;
-                } else if(util_is_power_of_two_or_zero(padded_count)) {
-                        /* Can't underflow since padded_count >= 2 */
-                        cfg.divisor_r = __builtin_ctz(padded_count) - 1;
-                } else {
-                        cfg.divisor_p =
-                                panfrost_compute_magic_divisor(padded_count,
-                                        &cfg.divisor_r, &cfg.divisor_e);
-                }
-        }
-}
- 

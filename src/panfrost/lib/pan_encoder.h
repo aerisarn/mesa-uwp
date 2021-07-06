@@ -110,8 +110,46 @@ panfrost_padded_vertex_count(unsigned vertex_count);
 unsigned
 panfrost_compute_magic_divisor(unsigned hw_divisor, unsigned *o_shift, unsigned *extra_flags);
 
-void panfrost_vertex_id(unsigned padded_count, struct mali_attribute_buffer_packed *attr, bool instanced);
-void panfrost_instance_id(unsigned padded_count, struct mali_attribute_buffer_packed *attr, bool instanced);
+/* Records for gl_VertexID and gl_InstanceID use special encodings on Midgard */
+
+static inline void
+panfrost_vertex_id(unsigned padded_count,
+                   struct mali_attribute_buffer_packed *attr,
+                   bool instanced)
+{
+        pan_pack(attr, ATTRIBUTE_VERTEX_ID, cfg) {
+                if (instanced) {
+                        cfg.divisor_r = __builtin_ctz(padded_count);
+                        cfg.divisor_p = padded_count >> (cfg.divisor_r + 1);
+                } else {
+                        /* Large values so the modulo is a no-op */
+                        cfg.divisor_r = 0x1F;
+                        cfg.divisor_p = 0x4;
+                }
+        }
+}
+
+static inline void
+panfrost_instance_id(unsigned padded_count,
+                     struct mali_attribute_buffer_packed *attr,
+                     bool instanced)
+{
+        pan_pack(attr, ATTRIBUTE_INSTANCE_ID, cfg) {
+                if (!instanced || padded_count <= 1) {
+                        /* Divide by large number to force to 0 */
+                        cfg.divisor_p = ((1u << 31) - 1);
+                        cfg.divisor_r = 0x1F;
+                        cfg.divisor_e = 0x1;
+                } else if(util_is_power_of_two_or_zero(padded_count)) {
+                        /* Can't underflow since padded_count >= 2 */
+                        cfg.divisor_r = __builtin_ctz(padded_count) - 1;
+                } else {
+                        cfg.divisor_p =
+                                panfrost_compute_magic_divisor(padded_count,
+                                        &cfg.divisor_r, &cfg.divisor_e);
+                }
+        }
+}
 
 /* Sampler comparison functions are flipped in OpenGL from the hardware, so we
  * need to be able to flip accordingly */
