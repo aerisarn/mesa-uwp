@@ -896,5 +896,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         pan_blitter_init(dev, &screen->blitter.bin_pool.base,
                          &screen->blitter.desc_pool.base);
 
+        panfrost_cmdstream_screen_init(screen);
+
         return &screen->base;
 }

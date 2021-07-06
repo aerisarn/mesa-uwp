@@ -48,6 +48,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                         gl_shader_stage stage,
                         struct panfrost_shader_state *state)
 {
+        struct panfrost_screen *screen = pan_screen(pscreen);
         struct panfrost_device *dev = pan_device(pscreen);
 
         nir_shader *s;
@@ -84,22 +85,11 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                                 binary.data, binary.size, 128));
         }
 
-        struct mali_renderer_state_packed *out = &state->partial_rsd;
 
-        /* Upload RSDs for non-fragment shaders. Fragment shaders need draw
-         * time finalization based on the renderer state. */
-        if (stage != MESA_SHADER_FRAGMENT) {
-                struct panfrost_ptr ptr =
-                        pan_pool_alloc_desc(&desc_pool->base, RENDERER_STATE);
-
-                state->state = panfrost_pool_take_ref(desc_pool, ptr.gpu);
-                out = ptr.cpu;
-        }
-
-        pan_pack(out, RENDERER_STATE, cfg) {
-                pan_shader_prepare_rsd(dev, &state->info, state->bin.gpu,
-                                       &cfg);
-        }
+        /* Don't upload RSD for fragment shaders since they need draw-time
+         * merging for e.g. depth/stencil/alpha */
+        bool upload = stage != MESA_SHADER_FRAGMENT;
+        screen->vtbl.prepare_rsd(dev, state, desc_pool, upload);
 
         panfrost_analyze_sysvals(state);
 

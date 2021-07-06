@@ -3423,6 +3423,33 @@ panfrost_create_sampler_view(
         return (struct pipe_sampler_view *) so;
 }
 
+static void
+prepare_rsd(struct panfrost_device *dev,
+            struct panfrost_shader_state *state,
+            struct panfrost_pool *pool, bool upload)
+{
+        struct mali_renderer_state_packed *out = &state->partial_rsd;
+
+        if (upload) {
+                struct panfrost_ptr ptr =
+                        pan_pool_alloc_desc(&pool->base, RENDERER_STATE);
+
+                state->state = panfrost_pool_take_ref(pool, ptr.gpu);
+                out = ptr.cpu;
+        }
+
+        pan_pack(out, RENDERER_STATE, cfg) {
+                pan_shader_prepare_rsd(dev, &state->info, state->bin.gpu,
+                                       &cfg);
+        }
+}
+
+void
+panfrost_cmdstream_screen_init(struct panfrost_screen *screen)
+{
+        screen->vtbl.prepare_rsd = prepare_rsd;
+}
+
 void
 panfrost_cmdstream_context_init(struct pipe_context *pipe)
 {
