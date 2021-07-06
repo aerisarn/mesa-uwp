@@ -2412,25 +2412,6 @@ panfrost_initialize_surface(struct panfrost_batch *batch,
         }
 }
 
-void
-panfrost_emit_tile_map(struct panfrost_batch *batch, struct pan_fb_info *fb)
-{
-        if (batch->key.nr_cbufs < 1 || !batch->key.cbufs[0])
-                return;
-
-        struct pipe_surface *surf = batch->key.cbufs[0];
-        struct panfrost_resource *pres = surf ? pan_resource(surf->texture) : NULL;
-
-        if (pres && pres->damage.tile_map.enable) {
-                fb->tile_map.base =
-                        pan_pool_upload_aligned(&batch->pool.base,
-                                                pres->damage.tile_map.data,
-                                                pres->damage.tile_map.size,
-                                                64);
-                fb->tile_map.stride = pres->damage.tile_map.stride;
-        }
-}
-
 /* Generate a fragment job. This should be called once per frame. (According to
  * presentations, this is supposed to correspond to eglSwapBuffers) */
 

@@ -827,6 +827,25 @@ done:
 }
 
 static void
+panfrost_emit_tile_map(struct panfrost_batch *batch, struct pan_fb_info *fb)
+{
+        if (batch->key.nr_cbufs < 1 || !batch->key.cbufs[0])
+                return;
+
+        struct pipe_surface *surf = batch->key.cbufs[0];
+        struct panfrost_resource *pres = surf ? pan_resource(surf->texture) : NULL;
+
+        if (pres && pres->damage.tile_map.enable) {
+                fb->tile_map.base =
+                        pan_pool_upload_aligned(&batch->pool.base,
+                                                pres->damage.tile_map.data,
+                                                pres->damage.tile_map.size,
+                                                64);
+                fb->tile_map.stride = pres->damage.tile_map.stride;
+        }
+}
+
+static void
 panfrost_batch_submit(struct panfrost_batch *batch,
                       uint32_t in_sync, uint32_t out_sync)
 {
