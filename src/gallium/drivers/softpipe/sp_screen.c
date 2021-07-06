@@ -55,6 +55,7 @@ static const struct debug_named_value sp_debug_options[] = {
    {"no_rast",   SP_DBG_NO_RAST,    "no-ops rasterization, for profiling purposes"},
    {"use_llvm",  SP_DBG_USE_LLVM,   "Use LLVM if available for shaders"},
    {"use_tgsi",  SP_DBG_USE_TGSI,   "Request TGSI from the API instead of NIR"},
+   DEBUG_NAMED_VALUE_END
 };
 
 int sp_debug;
