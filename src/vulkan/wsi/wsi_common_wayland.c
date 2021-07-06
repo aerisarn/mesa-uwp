@@ -1132,8 +1132,7 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    int num_images = pCreateInfo->minImageCount;
 
    size_t size = sizeof(*chain) + num_images * sizeof(chain->images[0]);
-   chain = vk_alloc(pAllocator, size, 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   chain = vk_zalloc(pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (chain == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -1143,16 +1142,6 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       vk_free(pAllocator, chain);
       return result;
    }
-
-   /* Mark a bunch of stuff as NULL.  This way we can just call
-    * destroy_swapchain for cleanup.
-    */
-   for (uint32_t i = 0; i < num_images; i++) {
-      chain->images[i].buffer = NULL;
-      chain->images[i].data_ptr = NULL;
-   }
-   chain->surface = NULL;
-   chain->frame = NULL;
 
    bool alpha = pCreateInfo->compositeAlpha ==
                       VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
