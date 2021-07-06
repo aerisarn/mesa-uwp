@@ -103,6 +103,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_external_fence                    = true,
    .KHR_external_memory                   = true,
    .KHR_external_semaphore                = true,
+   .KHR_shader_float_controls             = true,
    .KHR_get_memory_requirements2          = true,
 #ifdef LVP_USE_WSI_PLATFORM
    .KHR_incremental_present               = true,
@@ -1063,6 +1064,29 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          properties->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
          properties->independentResolveNone = false;
          properties->independentResolve = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR : {
+         VkPhysicalDeviceFloatControlsPropertiesKHR *properties = (VkPhysicalDeviceFloatControlsPropertiesKHR *)ext;
+         properties->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
+         properties->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
+         properties->shaderDenormFlushToZeroFloat16 = false;
+         properties->shaderDenormPreserveFloat16 = false;
+         properties->shaderRoundingModeRTEFloat16 = true;
+         properties->shaderRoundingModeRTZFloat16 = false;
+         properties->shaderSignedZeroInfNanPreserveFloat16 = true;
+
+         properties->shaderDenormFlushToZeroFloat32 = false;
+         properties->shaderDenormPreserveFloat32 = false;
+         properties->shaderRoundingModeRTEFloat32 = true;
+         properties->shaderRoundingModeRTZFloat32 = false;
+         properties->shaderSignedZeroInfNanPreserveFloat32 = true;
+
+         properties->shaderDenormFlushToZeroFloat64 = false;
+         properties->shaderDenormPreserveFloat64 = false;
+         properties->shaderRoundingModeRTEFloat64 = true;
+         properties->shaderRoundingModeRTZFloat64 = false;
+         properties->shaderSignedZeroInfNanPreserveFloat64 = true;
          break;
       }
       default:
