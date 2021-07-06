@@ -145,18 +145,18 @@ panfrost_add_job(
         }
 
         if (inject) {
-                if (type == MALI_JOB_TYPE_TILER) {
-                        if (scoreboard->first_tiler) {
-                                /* Manual update of the dep2 field. This is bad,
-                                 * don't copy this pattern.
-                                 */
-                                scoreboard->first_tiler->opaque[5] =
-                                        scoreboard->first_tiler_dep1 | (index << 16);
-                        }
+                assert(type == MALI_JOB_TYPE_TILER && "only for blit shaders");
 
-                        scoreboard->first_tiler = (void *)job->cpu;
-                        scoreboard->first_tiler_dep1 = local_dep;
+                if (scoreboard->first_tiler) {
+                        /* Manual update of the dep2 field. This is bad,
+                         * don't copy this pattern.
+                         */
+                        scoreboard->first_tiler->opaque[5] =
+                                scoreboard->first_tiler_dep1 | (index << 16);
                 }
+
+                scoreboard->first_tiler = (void *)job->cpu;
+                scoreboard->first_tiler_dep1 = local_dep;
                 scoreboard->first_job = job->gpu;
                 return index;
         }
