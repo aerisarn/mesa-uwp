@@ -1340,6 +1340,15 @@ panvk_CmdDraw(VkCommandBuffer commandBuffer,
 
    struct panvk_batch *batch = cmdbuf->state.batch;
 
+   /* There are only 16 bits in the descriptor for the job ID, make sure all
+    * the 3 (2 in Bifrost) jobs in this draw are in the same batch.
+    */
+   if (batch->scoreboard.job_index >= (UINT16_MAX - 3)) {
+      panvk_cmd_close_batch(cmdbuf);
+      panvk_cmd_open_batch(cmdbuf);
+      batch = cmdbuf->state.batch;
+   }
+
    panvk_cmd_alloc_fb_desc(cmdbuf);
    panvk_cmd_alloc_tls_desc(cmdbuf);
    panvk_cmd_prepare_ubos(cmdbuf);
