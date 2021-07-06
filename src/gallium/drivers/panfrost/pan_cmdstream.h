@@ -32,16 +32,4 @@
 
 #include "pan_job.h"
 
-static inline enum mali_sample_pattern
-panfrost_sample_pattern(unsigned samples)
-{
-        switch (samples) {
-        case 1:  return MALI_SAMPLE_PATTERN_SINGLE_SAMPLED;
-        case 4:  return MALI_SAMPLE_PATTERN_ROTATED_4X_GRID;
-        case 8:  return MALI_SAMPLE_PATTERN_D3D_8X_GRID;
-        case 16: return MALI_SAMPLE_PATTERN_D3D_16X_GRID;
-        default: unreachable("Unsupported sample count");
-        }
-}
-
 #endif /* __PAN_CMDSTREAM_H__ */

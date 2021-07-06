@@ -64,6 +64,18 @@ pan_pipe_asserts()
         PIPE_ASSERT(PIPE_FUNC_ALWAYS   == MALI_FUNC_ALWAYS);
 }
 
+static inline enum mali_sample_pattern
+panfrost_sample_pattern(unsigned samples)
+{
+        switch (samples) {
+        case 1:  return MALI_SAMPLE_PATTERN_SINGLE_SAMPLED;
+        case 4:  return MALI_SAMPLE_PATTERN_ROTATED_4X_GRID;
+        case 8:  return MALI_SAMPLE_PATTERN_D3D_8X_GRID;
+        case 16: return MALI_SAMPLE_PATTERN_D3D_16X_GRID;
+        default: unreachable("Unsupported sample count");
+        }
+}
+
 /* Gets a GPU address for the associated index buffer. Only gauranteed to be
  * good for the duration of the draw (transient), could last longer. Also get
  * the bounds on the index buffer for the range accessed by the draw. We do
@@ -3648,6 +3660,18 @@ prepare_rsd(struct panfrost_device *dev,
         }
 }
 
+static void
+panfrost_get_sample_position(struct pipe_context *context,
+                             unsigned sample_count,
+                             unsigned sample_index,
+                             float *out_value)
+{
+        panfrost_query_sample_position(
+                        panfrost_sample_pattern(sample_count),
+                        sample_index,
+                        out_value);
+}
+
 void
 panfrost_cmdstream_screen_init(struct panfrost_screen *screen)
 {
@@ -3669,4 +3693,6 @@ panfrost_cmdstream_context_init(struct pipe_context *pipe)
         pipe->create_sampler_view = panfrost_create_sampler_view;
         pipe->create_sampler_state = panfrost_create_sampler_state;
         pipe->create_blend_state = panfrost_create_blend_state;
+
+        pipe->get_sample_position = panfrost_get_sample_position;
 }
