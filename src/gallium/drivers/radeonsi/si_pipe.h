@@ -55,7 +55,7 @@ extern "C" {
 #define SI_DRAW_ID_UNKNOWN        ((unsigned)INT_MIN)
 #define SI_RESTART_INDEX_UNKNOWN  ((unsigned)INT_MIN)
 #define SI_INSTANCE_COUNT_UNKNOWN ((unsigned)INT_MIN)
-#define SI_NUM_SMOOTH_AA_SAMPLES  8
+#define SI_NUM_SMOOTH_AA_SAMPLES  4
 #define SI_MAX_POINT_SIZE         2048
 #define SI_GS_PER_ES              128
 /* Alignment for optimal CP DMA performance. */
