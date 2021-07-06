@@ -2797,6 +2797,9 @@ nir_to_tgsi(struct nir_shader *s,
    } else {
       NIR_PASS_V(s, nir_lower_int_to_float);
       NIR_PASS_V(s, nir_lower_bool_to_float);
+      /* bool_to_float generates MOVs for b2f32 that we want to clean up. */
+      NIR_PASS_V(s, nir_copy_prop);
+      NIR_PASS_V(s, nir_opt_dce);
    }
 
    /* Only lower 32-bit floats.  The only other modifier type officially
