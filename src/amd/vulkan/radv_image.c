@@ -1934,6 +1934,13 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    RADV_FROM_HANDLE(radv_image, image, pCreateInfo->image);
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
    uint32_t plane_count = 1;
+   float min_lod = 0.0f;
+
+   const struct VkImageViewMinLodCreateInfoEXT *min_lod_info =
+      vk_find_struct_const(pCreateInfo->pNext, IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT);
+
+   if (min_lod_info)
+      min_lod = min_lod_info->minLod;
 
    vk_object_base_init(&device->vk, &iview->base, VK_OBJECT_TYPE_IMAGE_VIEW);
 
@@ -2063,10 +2070,10 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    bool enable_compression = extra_create_info ? extra_create_info->enable_compression : false;
    for (unsigned i = 0; i < plane_count; ++i) {
       VkFormat format = vk_format_get_plane_format(iview->vk_format, i);
-      radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, 0.0f, false,
+      radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, min_lod, false,
                                       disable_compression, enable_compression, iview->plane_id + i,
                                       i);
-      radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, 0.0f, true,
+      radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, min_lod, true,
                                       disable_compression, enable_compression, iview->plane_id + i,
                                       i);
    }

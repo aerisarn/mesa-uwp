@@ -531,6 +531,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_global_priority_query                          DONE (radv)
   VK_EXT_image_drm_format_modifier                      DONE (anv, radv/gfx9+, tu, vn)
   VK_EXT_image_robustness                               DONE (anv, radv)
+  VK_EXT_image_view_min_lod                             DONE (radv)
   VK_EXT_index_type_uint8                               DONE (anv, lvp, radv/gfx8+, v3dv, tu)
   VK_EXT_inline_uniform_block                           DONE (anv, radv)
   VK_EXT_line_rasterization                             DONE (anv, lvp, radv, tu)
