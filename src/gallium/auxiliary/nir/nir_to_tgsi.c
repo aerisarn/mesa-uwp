@@ -460,22 +460,32 @@ ntt_setup_registers(struct ntt_compile *c, struct exec_list *list)
 static struct ureg_src
 ntt_get_load_const_src(struct ntt_compile *c, nir_load_const_instr *instr)
 {
-   uint32_t values[4];
    int num_components = instr->def.num_components;
 
-   if (instr->def.bit_size == 32) {
+   if (!c->native_integers) {
+      float values[4];
+      assert(instr->def.bit_size == 32);
       for (int i = 0; i < num_components; i++)
-         values[i] = instr->value[i].u32;
-   } else {
-      assert(num_components <= 2);
-      for (int i = 0; i < num_components; i++) {
-         values[i * 2 + 0] = instr->value[i].u64 & 0xffffffff;
-         values[i * 2 + 1] = instr->value[i].u64 >> 32;
-      }
-      num_components *= 2;
-   }
+         values[i] = uif(instr->value[i].u32);
 
-   return ureg_DECL_immediate_uint(c->ureg, values, num_components);
+      return ureg_DECL_immediate(c->ureg, values, num_components);
+   } else {
+      uint32_t values[4];
+
+      if (instr->def.bit_size == 32) {
+         for (int i = 0; i < num_components; i++)
+            values[i] = instr->value[i].u32;
+      } else {
+         assert(num_components <= 2);
+         for (int i = 0; i < num_components; i++) {
+            values[i * 2 + 0] = instr->value[i].u64 & 0xffffffff;
+            values[i * 2 + 1] = instr->value[i].u64 >> 32;
+         }
+         num_components *= 2;
+      }
+
+      return ureg_DECL_immediate_uint(c->ureg, values, num_components);
+   }
 }
 
 static struct ureg_src
