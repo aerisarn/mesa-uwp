@@ -37,7 +37,7 @@ TEST(bitset, sizes)
    EXPECT_EQ(sizeof(mask128), 16);
 }
 
-TEST(bitset, testsetclear)
+TEST(bitset, test_set_clear)
 {
    BITSET_DECLARE(mask128, 128);
    BITSET_ZERO(mask128);
@@ -51,7 +51,7 @@ TEST(bitset, testsetclear)
    }
 }
 
-TEST(bitset, testsetones)
+TEST(bitset, test_set_ones)
 {
    BITSET_DECLARE(mask128, 128);
    BITSET_ONES(mask128);
@@ -67,7 +67,7 @@ TEST(bitset, testsetones)
    }
 }
 
-TEST(bitset, testbasicrange)
+TEST(bitset, test_basic_range)
 {
    BITSET_DECLARE(mask128, 128);
    BITSET_ZERO(mask128);
@@ -89,7 +89,7 @@ TEST(bitset, testbasicrange)
    }
 }
 
-TEST(bitset, testbitsetffs)
+TEST(bitset, test_bitset_ffs)
 {
    BITSET_DECLARE(mask128, 128);
    BITSET_ZERO(mask128);
@@ -109,7 +109,7 @@ TEST(bitset, testbitsetffs)
    EXPECT_EQ(BITSET_FFS(mask128), 15);
 }
 
-TEST(bitset, testrangebits)
+TEST(bitset, test_range_bits)
 {
    BITSET_DECLARE(mask128, 128);
    BITSET_ZERO(mask128);
