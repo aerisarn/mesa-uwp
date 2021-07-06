@@ -437,4 +437,7 @@ panfrost_clean_state_3d(struct panfrost_context *ctx)
         }
 }
 
+void
+panfrost_cmdstream_context_init(struct pipe_context *pipe);
+
 #endif
