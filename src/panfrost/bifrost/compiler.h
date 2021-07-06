@@ -389,7 +389,7 @@ typedef struct {
                         enum bi_update update; /* VAR_TEX, LD_VAR */
                         enum bi_varying_name varying_name; /* LD_VAR_SPECIAL */
                         bool skip; /* VAR_TEX, TEXS, TEXC */
-                        bool lod_mode; /* VAR_TEX, TEXS */
+                        bool lod_mode; /* VAR_TEX, TEXS, implicitly for TEXC */
                 };
 
                 struct {

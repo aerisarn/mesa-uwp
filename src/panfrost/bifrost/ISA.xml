@@ -7696,6 +7696,10 @@
     <mod name="skip" start="9" size="1" opt="skip"/>
     <!-- not actually encoded, but used for IR -->
     <immediate name="sr_count" size="4" pseudo="true"/>
+    <mod name="lod_mode" start="13" size="1" default="zero_lod" pseudo="true">
+      <opt>computed_lod</opt>
+      <opt>zero_lod</opt>
+    </mod>
   </ins>
 
   <ins name="+TEXS_2D.f16" staging="w=2" mask="0xfc000" exact="0xd8000" message="tex">
