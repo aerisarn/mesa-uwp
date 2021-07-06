@@ -133,6 +133,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_private_data                      = true,
    .EXT_sampler_filter_minmax             = true,
    .EXT_scalar_block_layout               = true,
+   .EXT_separate_stencil_usage            = true,
    .EXT_shader_stencil_export             = true,
    .EXT_shader_viewport_index_layer       = true,
    .EXT_transform_feedback                = true,
