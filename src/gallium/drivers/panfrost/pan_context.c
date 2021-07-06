@@ -143,12 +143,6 @@ panfrost_bind_blend_state(struct pipe_context *pipe, void *cso)
 }
 
 static void
-panfrost_delete_blend_state(struct pipe_context *pipe, void *cso)
-{
-        ralloc_free(cso);
-}
-
-static void
 panfrost_set_blend_color(struct pipe_context *pipe,
                          const struct pipe_blend_color *blend_color)
 {
@@ -1119,7 +1113,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->set_stream_output_targets = panfrost_set_stream_output_targets;
 
         gallium->bind_blend_state   = panfrost_bind_blend_state;
-        gallium->delete_blend_state = panfrost_delete_blend_state;
+        gallium->delete_blend_state = panfrost_generic_cso_delete;
 
         gallium->set_blend_color = panfrost_set_blend_color;
 

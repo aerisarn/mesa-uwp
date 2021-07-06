@@ -3456,9 +3456,8 @@ static void *
 panfrost_create_blend_state(struct pipe_context *pipe,
                             const struct pipe_blend_state *blend)
 {
-        struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *dev = pan_device(pipe->screen);
-        struct panfrost_blend_state *so = rzalloc(ctx, struct panfrost_blend_state);
+        struct panfrost_blend_state *so = CALLOC_STRUCT(panfrost_blend_state);
         so->base = *blend;
 
         so->pan.logicop_enable = blend->logicop_enable;
