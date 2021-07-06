@@ -115,6 +115,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_push_descriptor                   = true,
    .KHR_relaxed_block_layout              = true,
    .KHR_sampler_mirror_clamp_to_edge      = true,
+   .KHR_separate_depth_stencil_layouts    = true,
    .KHR_shader_atomic_int64               = true,
    .KHR_shader_draw_parameters            = true,
    .KHR_storage_buffer_storage_class      = true,
