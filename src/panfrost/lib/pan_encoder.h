@@ -113,11 +113,20 @@ panfrost_compute_magic_divisor(unsigned hw_divisor, unsigned *o_shift, unsigned 
 void panfrost_vertex_id(unsigned padded_count, struct mali_attribute_buffer_packed *attr, bool instanced);
 void panfrost_instance_id(unsigned padded_count, struct mali_attribute_buffer_packed *attr, bool instanced);
 
-/* Samplers */
+/* Sampler comparison functions are flipped in OpenGL from the hardware, so we
+ * need to be able to flip accordingly */
 
-enum mali_func
-panfrost_flip_compare_func(enum mali_func f);
+static inline enum mali_func
+panfrost_flip_compare_func(enum mali_func f)
+{
+        switch (f) {
+        case MALI_FUNC_LESS: return MALI_FUNC_GREATER;
+        case MALI_FUNC_GREATER: return MALI_FUNC_LESS;
+        case MALI_FUNC_LEQUAL: return MALI_FUNC_GEQUAL;
+        case MALI_FUNC_GEQUAL: return MALI_FUNC_LEQUAL;
+        default: return f;
+        }
 
-
+}
 
 #endif
