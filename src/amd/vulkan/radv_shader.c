@@ -1001,6 +1001,9 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
        nir->info.stage == MESA_SHADER_TESS_EVAL) {
       assert(key->vs_common_out.as_ngg);
 
+      if (consider_culling)
+         radv_optimize_nir_algebraic(nir, false);
+
       out_conf =
          ac_nir_lower_ngg_nogs(
             nir,
