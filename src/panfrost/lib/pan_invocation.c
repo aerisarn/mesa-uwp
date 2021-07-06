@@ -30,55 +30,33 @@
 #include "pan_encoder.h"
 
 /* Compute shaders are invoked with a gl_NumWorkGroups X/Y/Z triplet. Vertex
- * shaders, it turns out, are invoked with the same mechanism, with the triplet
- * (1, vertex_count, instance_count).
- *
- * Alongside this triplet is the gl_WorkGroupSize X/Y/Z triplet.
- *
- * Unfortunately, the packing for these triplet into the
- * mali_vertex_tiler_prefix is a little funky, using a dynamic bitfield. The
- * routines here exist to pack this */
+ * shaders are invoked as (1, vertex_count, instance_count). Compute shaders
+ * also have a gl_WorkGroupSize X/Y/Z triplet. These 6 values are packed
+ * together in a dynamic bitfield, packed by this routine. */
 
 void
 panfrost_pack_work_groups_compute(
         struct mali_invocation_packed *out,
-        unsigned num_x,
-        unsigned num_y,
-        unsigned num_z,
-        unsigned size_x,
-        unsigned size_y,
-        unsigned size_z,
-        bool quirk_graphics,
-        bool indirect_dispatch)
+        unsigned num_x, unsigned num_y, unsigned num_z,
+        unsigned size_x, unsigned size_y, unsigned size_z,
+        bool quirk_graphics, bool indirect_dispatch)
 {
-        uint32_t packed = 0;
-
         /* The values needing packing, in order, and the corresponding shifts.
          * Indicies into shift are off-by-one to make the logic easier */
 
+        unsigned values[6] = { size_x, size_y, size_z, num_x, num_y, num_z };
         unsigned shifts[7] = { 0 };
-
-        /* Make sure size_{x,y,z} and num_{x,y,z} are positive, otherwise we
-         * end up with an integer underflow.
-         */
-        assert(size_x && size_y && size_z);
-        assert(num_x && num_y && num_z);
-
-        unsigned values[6] = {
-                MALI_POSITIVE(size_x),
-                MALI_POSITIVE(size_y),
-                MALI_POSITIVE(size_z),
-                MALI_POSITIVE(num_x),
-                MALI_POSITIVE(num_y),
-                MALI_POSITIVE(num_z),
-        };
+        uint32_t packed = 0;
 
         for (unsigned i = 0; i < 6; ++i) {
+                /* Must be positive, otherwise we underflow */
+                assert(values[i] >= 1);
+
                 /* OR it in, shifting as required */
-                packed |= (values[i] << shifts[i]);
+                packed |= ((values[i] - 1) << shifts[i]);
 
                 /* How many bits did we use? */
-                unsigned bit_count = util_logbase2_ceil(values[i] + 1);
+                unsigned bit_count = util_logbase2_ceil(values[i]);
 
                 /* Set the next shift accordingly */
                 shifts[i + 1] = shifts[i] + bit_count;
