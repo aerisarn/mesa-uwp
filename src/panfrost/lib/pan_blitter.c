@@ -87,6 +87,7 @@ struct pan_blit_blend_shader_key {
         nir_alu_type type;
         unsigned rt : 3;
         unsigned nr_samples : 5;
+        unsigned pad : 24;
 };
 
 struct pan_blit_blend_shader_data {
