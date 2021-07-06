@@ -203,6 +203,18 @@ radv_clear_mask(uint32_t *inout_mask, uint32_t clear_mask)
    }
 }
 
+static inline int
+radv_float_to_sfixed(float value, unsigned frac_bits)
+{
+   return value * (1 << frac_bits);
+}
+
+static inline unsigned int
+radv_float_to_ufixed(float value, unsigned frac_bits)
+{
+   return value * (1 << frac_bits);
+}
+
 /* Whenever we generate an error, pass it through this function. Useful for
  * debugging, where we can break on it. Only call at error site, not when
  * propagating errors. Might be useful to plug in a stack trace here.
