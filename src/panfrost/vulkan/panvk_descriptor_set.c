@@ -666,9 +666,11 @@ panvk_write_descriptor_set(struct panvk_device *dev,
 
             if (pDescriptorWrite->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER ||
                 pDescriptorWrite->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
-               unsigned sampler = binding_layout->sampler_idx + dest_offset + i;
 
-               panvk_set_sampler_desc(&set->samplers[sampler], info);
+               if (binding_layout->immutable_samplers == NULL) {
+                  unsigned sampler = binding_layout->sampler_idx + dest_offset + i;
+                  panvk_set_sampler_desc(&set->samplers[sampler], info);
+               }
             }
 
             if (pDescriptorWrite->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
