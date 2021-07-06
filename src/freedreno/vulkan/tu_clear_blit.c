@@ -1713,7 +1713,7 @@ tu_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_buffer, buffer, dstBuffer);
 
    struct tu_cs_memory tmp;
-   VkResult result = tu_cs_alloc(&cmd->sub_cs, DIV_ROUND_UP(dataSize, 64), 64, &tmp);
+   VkResult result = tu_cs_alloc(&cmd->sub_cs, DIV_ROUND_UP(dataSize, 64), 64 / 4, &tmp);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
