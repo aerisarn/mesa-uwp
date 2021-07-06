@@ -918,6 +918,8 @@ struct v3d_gs_prog_data {
 
         /* Number of GS invocations */
         uint8_t num_invocations;
+
+        bool writes_psiz;
 };
 
 struct v3d_fs_prog_data {

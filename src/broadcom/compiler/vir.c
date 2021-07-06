@@ -760,6 +760,9 @@ v3d_gs_set_prog_data(struct v3d_compile *c,
 
         prog_data->out_prim_type = c->s->info.gs.output_primitive;
         prog_data->num_invocations = c->s->info.gs.invocations;
+
+        prog_data->writes_psiz =
+            c->s->info.outputs_written & (1 << VARYING_SLOT_PSIZ);
 }
 
 static void
