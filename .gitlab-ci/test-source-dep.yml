@@ -429,6 +429,9 @@
     - changes:
         *zink_file_list
       when: on_success
+    - changes:
+        *radv_file_list
+      when: on_success
     - when: never
 
 .windows-test-rules:
