@@ -4055,6 +4055,11 @@ opt_vectorize_callback(const nir_instr *instr, const void *_)
    if (instr->type != nir_instr_type_alu)
       return 0;
 
+   const struct radv_device *device = _;
+   enum amd_gfx_level chip = device->physical_device->rad_info.gfx_level;
+   if (chip < GFX9)
+      return 1;
+
    const nir_alu_instr *alu = nir_instr_as_alu(instr);
    const unsigned bit_size = alu->dest.dest.ssa.bit_size;
    if (bit_size != 16)
@@ -4901,7 +4906,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
          NIR_PASS(_, stages[i].nir, nir_opt_shrink_vectors);
 
-         NIR_PASS(_, stages[i].nir, nir_lower_alu_to_scalar, NULL, NULL);
+         NIR_PASS(_, stages[i].nir, nir_lower_alu_width, opt_vectorize_callback, device);
 
          /* lower ALU operations */
          NIR_PASS(_, stages[i].nir, nir_lower_int64);
@@ -4967,7 +4972,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                NIR_PASS(_, stages[i].nir, nir_opt_dce);
             }
 
-            NIR_PASS(_, stages[i].nir, nir_opt_vectorize, opt_vectorize_callback, NULL);
+            NIR_PASS(_, stages[i].nir, nir_opt_vectorize, opt_vectorize_callback, device);
          }
 
          /* cleanup passes */

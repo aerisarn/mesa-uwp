@@ -121,6 +121,20 @@ radv_get_nir_options(struct radv_physical_device *device)
       get_nir_options_for_stage(device, stage);
 }
 
+static uint8_t
+vectorize_vec2_16bit(const nir_instr *instr, const void *_)
+{
+   if (instr->type != nir_instr_type_alu)
+      return 0;
+
+   const nir_alu_instr *alu = nir_instr_as_alu(instr);
+   const unsigned bit_size = alu->dest.dest.ssa.bit_size;
+   if (bit_size == 16)
+      return 2;
+   else
+      return 1;
+}
+
 static bool
 is_meta_shader(nir_shader *nir)
 {
@@ -171,7 +185,7 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively, bool 
       NIR_PASS(progress, shader, nir_opt_dead_write_vars);
       NIR_PASS(_, shader, nir_lower_vars_to_ssa);
 
-      NIR_PASS(_, shader, nir_lower_alu_to_scalar, NULL, NULL);
+      NIR_PASS(_, shader, nir_lower_alu_width, vectorize_vec2_16bit, NULL);
       NIR_PASS(_, shader, nir_lower_phis_to_scalar, true);
 
       NIR_PASS(progress, shader, nir_copy_prop);
