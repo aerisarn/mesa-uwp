@@ -884,6 +884,7 @@ emit_perf_intel_query(struct anv_cmd_buffer *cmd_buffer,
 
       case INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
       case INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_A:
       case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
       case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C: {
          struct anv_address addr = anv_address_add(data_addr, field->location);
@@ -1042,6 +1043,7 @@ void genX(CmdBeginQueryIndexedEXT)(
 
          case INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
          case INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+         case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_A:
          case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
          case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
             dws =
@@ -1193,6 +1195,7 @@ void genX(CmdEndQueryIndexedEXT)(
 
          case INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
          case INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+         case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_A:
          case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
          case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
             dws =

@@ -1151,6 +1151,8 @@ query_accumulator_offset(const struct intel_perf_query_info *query,
    switch (type) {
    case INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
       return query->perfcnt_offset + index;
+   case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_A:
+      return query->a_offset + index;
    case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
       return query->b_offset + index;
    case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
@@ -1237,6 +1239,9 @@ intel_perf_query_result_print_fields(const struct intel_perf_query_info *query,
          fprintf(stderr, "MI_RPC:\n");
          fprintf(stderr, "  TS: 0x%08x\n", *(value32 + 1));
          fprintf(stderr, "  CLK: 0x%08x\n", *(value32 + 3));
+         break;
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_A:
+         fprintf(stderr, "A%u: 0x%08x\n", field->index, *value32);
          break;
       case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
          fprintf(stderr, "B%u: 0x%08x\n", field->index, *value32);

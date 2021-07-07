@@ -89,10 +89,13 @@ anv_physical_device_init_perf(struct anv_physical_device *device, int fd)
          break;
       case INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
       case INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_A:
       case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
       case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
          device->n_perf_query_commands += field->size / 4;
          break;
+      default:
+         unreachable("Unhandled register type");
       }
    }
    device->n_perf_query_commands *= 2; /* Begin & End */
