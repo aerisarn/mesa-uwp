@@ -540,7 +540,7 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
        * remove it.
        */
       nir_instr_remove_v(&alu->instr);
-      ralloc_free(alu);
+      nir_instr_free(&alu->instr);
 
       progress = true;
    }
@@ -705,7 +705,7 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
        * just remove it.
        */
       nir_instr_remove_v(&bcsel->instr);
-      ralloc_free(bcsel);
+      nir_instr_free(&bcsel->instr);
 
       progress = true;
    }

@@ -107,7 +107,7 @@ insert_mov(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
    if (mov->dest.write_mask) {
       nir_instr_insert_before(&vec->instr, &mov->instr);
    } else {
-      ralloc_free(mov);
+      nir_instr_free(&mov->instr);
    }
 
    return channels_handled;
@@ -296,7 +296,7 @@ nir_lower_vec_to_movs_instr(nir_builder *b, nir_instr *instr, void *data)
    }
 
    nir_instr_remove(&vec->instr);
-   ralloc_free(vec);
+   nir_instr_free(&vec->instr);
 
    return true;
 }
