@@ -180,8 +180,6 @@ register_oa_config(struct intel_perf_config *perf,
       intel_perf_append_query_info(perf, 0);
 
    *registered_query = *query;
-   registered_query->oa_format = devinfo->ver >= 8 ?
-      I915_OA_FORMAT_A32u40_A4u32_B8_C8 : I915_OA_FORMAT_A45_B8_C8;
    registered_query->oa_metrics_set_id = config_id;
    DBG("metric set registered: id = %" PRIu64", guid = %s\n",
        registered_query->oa_metrics_set_id, query->guid);
