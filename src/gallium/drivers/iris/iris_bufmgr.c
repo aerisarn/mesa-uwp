@@ -1674,10 +1674,14 @@ gem_param(int fd, int name)
    return v;
 }
 
-static void
-iris_bufmgr_update_meminfo(struct iris_bufmgr *bufmgr,
-                           const struct drm_i915_query_memory_regions *meminfo)
+static bool
+iris_bufmgr_query_meminfo(struct iris_bufmgr *bufmgr)
 {
+   struct drm_i915_query_memory_regions *meminfo =
+      intel_i915_query_alloc(bufmgr->fd, DRM_I915_QUERY_MEMORY_REGIONS);
+   if (meminfo == NULL)
+      return false;
+
    for (int i = 0; i < meminfo->num_regions; i++) {
       const struct drm_i915_memory_region_info *mem = &meminfo->regions[i];
       switch (mem->region.memory_class) {
@@ -1692,34 +1696,7 @@ iris_bufmgr_update_meminfo(struct iris_bufmgr *bufmgr,
       default:
          break;
       }
-   };
-}
-
-static bool
-iris_bufmgr_query_meminfo(struct iris_bufmgr *bufmgr)
-{
-   struct drm_i915_query_item item = {
-      .query_id = DRM_I915_QUERY_MEMORY_REGIONS,
-   };
-
-   struct drm_i915_query query = {
-      .num_items = 1,
-      .items_ptr = (uintptr_t) &item,
-   };
-
-   if (drmIoctl(bufmgr->fd, DRM_IOCTL_I915_QUERY, &query))
-      return false;
-
-   struct drm_i915_query_memory_regions *meminfo = calloc(1, item.length);
-   item.data_ptr = (uintptr_t)meminfo;
-
-   if (drmIoctl(bufmgr->fd, DRM_IOCTL_I915_QUERY, &query) ||
-       item.length <= 0) {
-      free(meminfo);
-      return false;
    }
-
-   iris_bufmgr_update_meminfo(bufmgr, meminfo);
 
    free(meminfo);
 
