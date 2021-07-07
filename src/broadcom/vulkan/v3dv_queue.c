@@ -223,11 +223,13 @@ handle_copy_query_results_cpu_job(struct v3dv_job *job)
     * sync wait on the CPU for the corresponding GPU jobs to finish. We might
     * want to use a submission thread to avoid blocking on the main thread.
     */
+   uint8_t *offset = ((uint8_t *) bo->map) +
+                     info->offset + info->dst->mem_offset;
    v3dv_get_query_pool_results_cpu(job->device,
                                    info->pool,
                                    info->first,
                                    info->count,
-                                   bo->map + info->dst->mem_offset,
+                                   offset,
                                    info->stride,
                                    info->flags);
 
