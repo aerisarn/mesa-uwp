@@ -104,6 +104,9 @@ mapper_metadata_get_buffer_info(struct ANativeWindowBuffer *buf,
    if (!buf->handle)
       return -EINVAL;
 
+   buf_info.width = buf->width;
+   buf_info.height = buf->height;
+
    hidl_vec<uint8_t> encoded_format;
    auto err = GetMetadata(mapper, buf->handle, android::gralloc4::MetadataType_PixelFormatFourCC, &encoded_format);
    if (err != Error::NONE)

@@ -122,6 +122,8 @@ ANativeWindow_query(const struct ANativeWindow *window,
 #endif // ANDROID_API_LEVEL < 26
 
 struct buffer_info {
+   int width;
+   int height;
    uint32_t drm_fourcc;
    int num_planes;
    int fds[4];

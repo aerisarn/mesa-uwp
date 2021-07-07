@@ -188,11 +188,10 @@ get_native_buffer_name(struct ANativeWindowBuffer *buf)
 #endif /* HAVE_DRM_GRALLOC */
 
 static int
-get_yuv_buffer_info(_EGLDisplay *disp,
+get_yuv_buffer_info(struct dri2_egl_display *dri2_dpy,
                     struct ANativeWindowBuffer *buf,
                     struct buffer_info *out_buf_info)
 {
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct android_ycbcr ycbcr;
    enum chroma_order chroma_order;
    int drm_fourcc = 0;
@@ -234,6 +233,19 @@ get_yuv_buffer_info(_EGLDisplay *disp,
       return -EINVAL;
    }
 
+   *out_buf_info = (struct buffer_info){
+      .width = buf->width,
+      .height = buf->height,
+      .drm_fourcc = drm_fourcc,
+      .num_planes = ycbcr.chroma_step == 2 ? 2 : 3,
+      .fds = { -1, -1, -1, -1 },
+      .modifier = DRM_FORMAT_MOD_INVALID,
+      .yuv_color_space = EGL_ITU_REC601_EXT,
+      .sample_range = EGL_YUV_NARROW_RANGE_EXT,
+      .horizontal_siting = EGL_YUV_CHROMA_SITING_0_EXT,
+      .vertical_siting = EGL_YUV_CHROMA_SITING_0_EXT,
+   };
+
    /* When lock_ycbcr's usage argument contains no SW_READ/WRITE flags
     * it will return the .y/.cb/.cr pointers based on a NULL pointer,
     * so they can be interpreted as offsets. */
@@ -259,7 +271,6 @@ get_yuv_buffer_info(_EGLDisplay *disp,
     * the single-fd case cannot happen.  So handle eithe single
     * fd or fd-per-plane case:
     */
-   out_buf_info->num_planes = (ycbcr.chroma_step == 2) ? 2 : 3;
    if (num_fds == 1) {
       out_buf_info->fds[1] = out_buf_info->fds[0] = fds[0];
       if (out_buf_info->num_planes == 3)
@@ -271,13 +282,11 @@ get_yuv_buffer_info(_EGLDisplay *disp,
       out_buf_info->fds[2] = fds[2];
    }
 
-   out_buf_info->drm_fourcc = drm_fourcc;
-
    return 0;
 }
 
 static int
-native_window_buffer_get_buffer_info(_EGLDisplay *disp,
+native_window_buffer_get_buffer_info(struct dri2_egl_display *dri2_dpy,
                                      struct ANativeWindowBuffer *buf,
                                      struct buffer_info *out_buf_info)
 {
@@ -287,7 +296,7 @@ native_window_buffer_get_buffer_info(_EGLDisplay *disp,
    int fds[3];
 
    if (is_yuv(buf->format)) {
-      int ret = get_yuv_buffer_info(disp, buf, out_buf_info);
+      int ret = get_yuv_buffer_info(dri2_dpy, buf, out_buf_info);
       /*
        * HACK: https://issuetracker.google.com/32077885
        * There is no API available to properly query the IMPLEMENTATION_DEFINED
@@ -322,10 +331,20 @@ native_window_buffer_get_buffer_info(_EGLDisplay *disp,
       return -EINVAL;
    }
 
-   out_buf_info->num_planes = num_planes;
-   out_buf_info->drm_fourcc = drm_fourcc;
-   out_buf_info->pitches[0] = pitch;
-   out_buf_info->fds[0] = fds[0];
+   *out_buf_info = (struct buffer_info){
+      .width = buf->width,
+      .height = buf->height,
+      .drm_fourcc = drm_fourcc,
+      .num_planes = num_planes,
+      .fds = { fds[0], -1, -1, -1 },
+      .modifier = DRM_FORMAT_MOD_INVALID,
+      .offsets = { 0, 0, 0, 0 },
+      .pitches = { pitch, 0, 0, 0 },
+      .yuv_color_space = EGL_ITU_REC601_EXT,
+      .sample_range = EGL_YUV_NARROW_RANGE_EXT,
+      .horizontal_siting = EGL_YUV_CHROMA_SITING_0_EXT,
+      .vertical_siting = EGL_YUV_CHROMA_SITING_0_EXT,
+   };
 
    return 0;
 }
@@ -354,11 +373,10 @@ struct cros_gralloc0_buffer_info {
 };
 
 static int
-cros_get_buffer_info(_EGLDisplay *disp,
+cros_get_buffer_info(struct dri2_egl_display *dri2_dpy,
                      struct ANativeWindowBuffer *buf,
                      struct buffer_info *out_buf_info)
 {
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct cros_gralloc0_buffer_info info;
 
    if (strcmp(dri2_dpy->gralloc->common.name, cros_gralloc_module_name) == 0 &&
@@ -366,9 +384,18 @@ cros_get_buffer_info(_EGLDisplay *disp,
        dri2_dpy->gralloc->perform(dri2_dpy->gralloc,
                                   CROS_GRALLOC_DRM_GET_BUFFER_INFO,
                                   buf->handle, &info) == 0) {
-      out_buf_info->drm_fourcc = info.drm_fourcc;
-      out_buf_info->modifier = info.modifier;
-      out_buf_info->num_planes = info.num_fds;
+      *out_buf_info = (struct buffer_info){
+         .width = buf->width,
+         .height = buf->height,
+         .drm_fourcc = info.drm_fourcc,
+         .num_planes = info.num_fds,
+         .fds = { -1, -1, -1, -1 },
+         .modifier = info.modifier,
+         .yuv_color_space = EGL_ITU_REC601_EXT,
+         .sample_range = EGL_YUV_NARROW_RANGE_EXT,
+         .horizontal_siting = EGL_YUV_CHROMA_SITING_0_EXT,
+         .vertical_siting = EGL_YUV_CHROMA_SITING_0_EXT,
+      };
       for (int i = 0; i < out_buf_info->num_planes; i++) {
          out_buf_info->fds[i] = info.fds[i];
          out_buf_info->offsets[i] = info.offset[i];
@@ -382,47 +409,56 @@ cros_get_buffer_info(_EGLDisplay *disp,
 }
 
 static __DRIimage *
+droid_create_image_from_buffer_info(struct dri2_egl_display *dri2_dpy,
+                                    struct buffer_info *buf_info,
+                                    void *priv)
+{
+   unsigned error;
+
+   if (dri2_dpy->image->base.version >= 15 &&
+       dri2_dpy->image->createImageFromDmaBufs2 != NULL) {
+      return dri2_dpy->image->createImageFromDmaBufs2(
+         dri2_dpy->dri_screen, buf_info->width, buf_info->height,
+         buf_info->drm_fourcc, buf_info->modifier, buf_info->fds,
+         buf_info->num_planes, buf_info->pitches, buf_info->offsets,
+         buf_info->yuv_color_space, buf_info->sample_range,
+         buf_info->horizontal_siting, buf_info->vertical_siting, &error,
+         priv);
+   }
+
+   return dri2_dpy->image->createImageFromDmaBufs(
+      dri2_dpy->dri_screen, buf_info->width, buf_info->height,
+      buf_info->drm_fourcc, buf_info->fds, buf_info->num_planes,
+      buf_info->pitches, buf_info->offsets, buf_info->yuv_color_space,
+      buf_info->sample_range, buf_info->horizontal_siting,
+      buf_info->vertical_siting, &error, priv);
+}
+
+static __DRIimage *
 droid_create_image_from_native_buffer(_EGLDisplay *disp,
                                       struct ANativeWindowBuffer *buf,
                                       void *priv)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   struct buffer_info buf_info = {.modifier = DRM_FORMAT_MOD_INVALID};
-   unsigned error;
+   struct buffer_info buf_info;
+   __DRIimage *img = NULL;
 
-   do {
-      if (!mapper_metadata_get_buffer_info(buf, &buf_info))
-         break;
+   /* If dri driver is gallium virgl, real modifier info queried back from
+    * CrOS info (and potentially mapper metadata if integrated later) cannot
+    * get resolved and the buffer import will fail. Thus the fallback behavior
+    * is preserved down to native_window_buffer_get_buffer_info() so that the
+    * buffer can be imported without modifier info as a last resort.
+    */
+   if (!img && !mapper_metadata_get_buffer_info(buf, &buf_info))
+      img = droid_create_image_from_buffer_info(dri2_dpy, &buf_info, priv);
 
-      if (!cros_get_buffer_info(disp, buf, &buf_info))
-         break;
+   if (!img && !cros_get_buffer_info(dri2_dpy, buf, &buf_info))
+      img = droid_create_image_from_buffer_info(dri2_dpy, &buf_info, priv);
 
-      if (!native_window_buffer_get_buffer_info(disp, buf, &buf_info))
-         break;
+   if (!img && !native_window_buffer_get_buffer_info(dri2_dpy, buf, &buf_info))
+      img = droid_create_image_from_buffer_info(dri2_dpy, &buf_info, priv);
 
-      return NULL;
-   } while (0);
-
-   if (dri2_dpy->image->base.version >= 15 &&
-       dri2_dpy->image->createImageFromDmaBufs2 != NULL) {
-      return dri2_dpy->image->createImageFromDmaBufs2(dri2_dpy->dri_screen,
-         buf->width, buf->height, buf_info.drm_fourcc, buf_info.modifier,
-         buf_info.fds, buf_info.num_planes,
-         buf_info.pitches, buf_info.offsets,
-         buf_info.yuv_color_space, buf_info.sample_range,
-         buf_info.horizontal_siting, buf_info.vertical_siting,
-         &error,
-         priv);
-   } else {
-      return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
-         buf->width, buf->height, buf_info.drm_fourcc,
-         buf_info.fds, buf_info.num_planes,
-         buf_info.pitches, buf_info.offsets,
-         buf_info.yuv_color_space, buf_info.sample_range,
-         buf_info.horizontal_siting, buf_info.vertical_siting,
-         &error,
-         priv);
-   }
+   return img;
 }
 
 static EGLBoolean
