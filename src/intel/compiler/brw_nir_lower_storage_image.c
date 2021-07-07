@@ -367,6 +367,10 @@ lower_image_load_instr(nir_builder *b,
 {
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
    nir_variable *var = nir_deref_instr_get_variable(deref);
+
+   if (var->data.image.format == PIPE_FORMAT_NONE)
+      return false;
+
    const enum isl_format image_fmt =
       isl_format_for_pipe_format(var->data.image.format);
 
@@ -524,6 +528,9 @@ lower_image_store_instr(nir_builder *b,
     * conversion for us.
     */
    if (var->data.access & ACCESS_NON_READABLE)
+      return false;
+
+   if (var->data.image.format == PIPE_FORMAT_NONE)
       return false;
 
    const enum isl_format image_fmt =
