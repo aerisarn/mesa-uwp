@@ -47,7 +47,7 @@ struct ac_position_w_info {
     */
    LLVMValueRef w_accepted;
 
-   LLVMValueRef all_w_positive;
+   /* The bounding box culling doesn't work and should be skipped when this is true. */
    LLVMValueRef any_w_negative;
 };
 
@@ -69,7 +69,6 @@ static void ac_analyze_position_w(struct ac_llvm_context *ctx, LLVMValueRef pos[
       w->any_w_negative = LLVMBuildOr(builder, w->any_w_negative, neg_w, "");
       all_w_negative = LLVMBuildAnd(builder, all_w_negative, neg_w, "");
    }
-   w->all_w_positive = LLVMBuildNot(builder, w->any_w_negative, "");
    w->w_accepted = LLVMBuildNot(builder, all_w_negative, "");
 }
 
@@ -131,16 +130,10 @@ static void cull_bbox(struct ac_llvm_context *ctx, LLVMValueRef pos[3][4],
       return;
    }
 
-   /* Skip the culling if the primitive has already been rejected or
-    * if any W is negative. The bounding box culling doesn't work when
-    * W is negative.
-    */
-   LLVMValueRef cond = LLVMBuildAnd(builder, initially_accepted, w->all_w_positive, "");
-
-   ac_build_ifcc(ctx, cond, 10000000 /* does this matter? */);
+   ac_build_ifcc(ctx, initially_accepted, 10000000);
    {
       LLVMValueRef bbox_min[3], bbox_max[3];
-      LLVMValueRef accepted = initially_accepted;
+      LLVMValueRef accepted = ctx->i1true;
 
       /* Compute the primitive bounding box for easy culling. */
       for (unsigned chan = 0; chan < (cull_view_near_z || cull_view_far_z ? 3 : 2); chan++) {
@@ -203,13 +196,13 @@ static void cull_bbox(struct ac_llvm_context *ctx, LLVMValueRef pos[3][4],
          accepted = LLVMBuildAnd(builder, accepted, visible, "");
       }
 
+      /* Disregard the bounding box culling if any W is negative because the code
+       * doesn't work with that.
+       */
+      accepted = LLVMBuildOr(builder, accepted, w->any_w_negative, "");
+
       if (accept_func)
          accept_func(ctx, accepted, userdata);
-   }
-   if (accept_func) {
-      /* If the caller provided a accept_func, call it in the else branch */
-      ac_build_else(ctx, 10000000);
-      accept_func(ctx, initially_accepted, userdata);
    }
    ac_build_endif(ctx, 10000000);
 }
