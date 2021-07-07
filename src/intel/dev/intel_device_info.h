@@ -92,6 +92,7 @@ struct intel_device_info
    bool has_ray_tracing;
    bool has_local_mem;
    bool has_lsc;
+   bool has_mesh_shading;
 
    /**
     * \name Intel hardware quirks
