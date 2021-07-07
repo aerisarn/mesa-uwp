@@ -823,7 +823,7 @@ ttn_get_dest(struct ttn_compile *c, struct tgsi_full_dst_register *tgsi_fdst)
    dest.saturate = false;
 
    if (tgsi_dst->Indirect && (tgsi_dst->File != TGSI_FILE_TEMPORARY)) {
-      nir_src *indirect = ralloc(c->build.shader, nir_src);
+      nir_src *indirect = malloc(sizeof(nir_src));
       *indirect = nir_src_for_ssa(ttn_src_for_indirect(c, &tgsi_fdst->Indirect));
       dest.dest.reg.indirect = indirect;
    }

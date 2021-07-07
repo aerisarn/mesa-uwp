@@ -76,8 +76,6 @@ sweep_block(nir_shader *nir, nir_block *block)
       list_del(&instr->gc_node);
       list_add(&instr->gc_node, &nir->gc_list);
 
-      ralloc_steal(nir, instr);
-
       nir_foreach_src(instr, sweep_src_indirect, nir);
       nir_foreach_dest(instr, sweep_dest_indirect, nir);
    }
@@ -179,11 +177,7 @@ nir_sweep(nir_shader *nir)
       sweep_function(nir, func);
    }
 
-   /* Manually GCed instrs now before ralloc_free()ing the other rubbish, to
-    * ensure that the shader's GC list was maintained without ralloc_freeing any
-    * instrs behind our back.  Note that the instr free routine will remove it
-    * from the list.
-    */
+   /* Sweep instrs not found while walking the shader. */
    list_for_each_entry_safe(nir_instr, instr, &instr_gc_list, gc_node) {
       nir_instr_free(instr);
    }

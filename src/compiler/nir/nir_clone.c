@@ -243,7 +243,7 @@ __clone_src(clone_state *state, void *ninstr_or_if,
    } else {
       nsrc->reg.reg = remap_reg(state, src->reg.reg);
       if (src->reg.indirect) {
-         nsrc->reg.indirect = ralloc(ninstr_or_if, nir_src);
+         nsrc->reg.indirect = malloc(sizeof(nir_src));
          __clone_src(state, ninstr_or_if, nsrc->reg.indirect, src->reg.indirect);
       }
       nsrc->reg.base_offset = src->reg.base_offset;
@@ -263,7 +263,7 @@ __clone_dst(clone_state *state, nir_instr *ninstr,
    } else {
       ndst->reg.reg = remap_reg(state, dst->reg.reg);
       if (dst->reg.indirect) {
-         ndst->reg.indirect = ralloc(ninstr, nir_src);
+         ndst->reg.indirect = malloc(sizeof(nir_src));
          __clone_src(state, ninstr, ndst->reg.indirect, dst->reg.indirect);
       }
       ndst->reg.base_offset = dst->reg.base_offset;
@@ -789,6 +789,10 @@ nir_shader_replace(nir_shader *dst, nir_shader *src)
    void *dead_ctx = ralloc_context(NULL);
    ralloc_adopt(dead_ctx, dst);
    ralloc_free(dead_ctx);
+
+   list_for_each_entry_safe(nir_instr, instr, &dst->gc_list, gc_node) {
+      nir_instr_free(instr);
+   }
 
    /* Re-parent all of src's ralloc children to dst */
    ralloc_adopt(dst, src);

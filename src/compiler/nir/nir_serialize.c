@@ -550,7 +550,7 @@ read_src(read_ctx *ctx, nir_src *src, void *mem_ctx)
       src->reg.reg = read_lookup_object(ctx, header.any.object_idx);
       src->reg.base_offset = blob_read_uint32(ctx->blob);
       if (header.any.is_indirect) {
-         src->reg.indirect = ralloc(mem_ctx, nir_src);
+         src->reg.indirect = malloc(sizeof(nir_src));
          read_src(ctx, src->reg.indirect, mem_ctx);
       } else {
          src->reg.indirect = NULL;
@@ -770,7 +770,7 @@ read_dest(read_ctx *ctx, nir_dest *dst, nir_instr *instr,
       dst->reg.reg = read_object(ctx);
       dst->reg.base_offset = blob_read_uint32(ctx->blob);
       if (dest.reg.is_indirect) {
-         dst->reg.indirect = ralloc(instr, nir_src);
+         dst->reg.indirect = malloc(sizeof(nir_src));
          read_src(ctx, dst->reg.indirect, instr);
       }
    }

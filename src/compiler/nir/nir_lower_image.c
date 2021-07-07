@@ -58,7 +58,7 @@ lower_cube_size(nir_builder *b, nir_intrinsic_instr *intrin)
    nir_ssa_def *vec = nir_vec(b, comps, intrin->dest.ssa.num_components);
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, vec);
    nir_instr_remove(&intrin->instr);
-   ralloc_free(&intrin->instr);
+   nir_instr_free(&intrin->instr);
 }
 
 static bool
