@@ -1716,23 +1716,14 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
          unsigned offset = abs((int)src.reg_b - (int)dst.reg_b);
          RegType type = swap.def.regClass().type();
 
-         copy_operation middle;
+         copy_operation remaining;
          src.reg_b += offset;
          dst.reg_b += offset;
-         middle.bytes = swap.bytes - offset * 2;
-         memcpy(middle.uses, swap.uses + offset, middle.bytes);
-         middle.op = Operand(src, RegClass::get(type, middle.bytes));
-         middle.def = Definition(dst, RegClass::get(type, middle.bytes));
-         copy_map[dst] = middle;
-
-         copy_operation end;
-         src.reg_b += middle.bytes;
-         dst.reg_b += middle.bytes;
-         end.bytes = swap.bytes - (offset + middle.bytes);
-         memcpy(end.uses, swap.uses + offset + middle.bytes, end.bytes);
-         end.op = Operand(src, RegClass::get(type, end.bytes));
-         end.def = Definition(dst, RegClass::get(type, end.bytes));
-         copy_map[dst] = end;
+         remaining.bytes = swap.bytes - offset;
+         memcpy(remaining.uses, swap.uses + offset, remaining.bytes);
+         remaining.op = Operand(src, RegClass::get(type, remaining.bytes));
+         remaining.def = Definition(dst, RegClass::get(type, remaining.bytes));
+         copy_map[dst] = remaining;
 
          memset(swap.uses + offset, 0, swap.bytes - offset);
          swap.bytes = offset;
