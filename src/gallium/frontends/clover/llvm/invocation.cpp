@@ -242,6 +242,17 @@ namespace {
       c->getTargetOpts().Triple = target.triple;
       c->getLangOpts().NoBuiltin = true;
 
+#if LLVM_VERSION_MAJOR >= 13
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-__opencl_c_generic_address_space");
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-__opencl_c_pipes");
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-__opencl_c_device_enqueue");
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-__opencl_c_program_scope_global_variables");
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-__opencl_c_subgroups");
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-__opencl_c_work_group_collective_functions");
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-__opencl_c_atomic_scope_device");
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-__opencl_c_atomic_order_seq_cst");
+#endif
+
       // This is a workaround for a Clang bug which causes the number
       // of warnings and errors to be printed to stderr.
       // http://www.llvm.org/bugs/show_bug.cgi?id=19735
