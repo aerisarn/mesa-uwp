@@ -52,10 +52,10 @@ struct ac_cull_options {
 typedef void (*ac_cull_accept_func)(struct ac_llvm_context *ctx, LLVMValueRef accepted,
                                     void *userdata);
 
-LLVMValueRef ac_cull_triangle(struct ac_llvm_context *ctx, LLVMValueRef pos[3][4],
-                              LLVMValueRef initially_accepted, LLVMValueRef vp_scale[2],
-                              LLVMValueRef vp_translate[2], LLVMValueRef small_prim_precision,
-                              struct ac_cull_options *options, ac_cull_accept_func accept_func,
-                              void *userdata);
+void ac_cull_triangle(struct ac_llvm_context *ctx, LLVMValueRef pos[3][4],
+                      LLVMValueRef initially_accepted, LLVMValueRef vp_scale[2],
+                      LLVMValueRef vp_translate[2], LLVMValueRef small_prim_precision,
+                      struct ac_cull_options *options, ac_cull_accept_func accept_func,
+                      void *userdata);
 
 #endif
