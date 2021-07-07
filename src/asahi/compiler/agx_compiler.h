@@ -52,6 +52,7 @@ enum agx_index_type {
    AGX_INDEX_IMMEDIATE = 2,
    AGX_INDEX_UNIFORM = 3,
    AGX_INDEX_REGISTER = 4,
+   AGX_INDEX_NIR_REGISTER = 5,
 };
 
 enum agx_size {
@@ -114,6 +115,16 @@ agx_register(uint8_t imm, enum agx_size size)
 {
    return (agx_index) {
       .type = AGX_INDEX_REGISTER,
+      .value = imm,
+      .size = size
+   };
+}
+
+static inline agx_index
+agx_nir_register(unsigned imm, enum agx_size size)
+{
+   return (agx_index) {
+      .type = AGX_INDEX_NIR_REGISTER,
       .value = imm,
       .size = size
    };
@@ -348,6 +359,10 @@ typedef struct {
    /* Remapping table for varyings indexed by driver_location */
    unsigned varyings[AGX_MAX_VARYINGS];
 
+   /* Handling phi nodes is still TODO while we bring up other parts of the
+    * driver. YOLO the mapping of nir_register to fixed hardware registers */
+   unsigned *nir_regalloc;
+
    /* Place to start pushing new values */
    unsigned push_base;
 
@@ -407,7 +422,11 @@ agx_size_for_bits(unsigned bits)
 static inline agx_index
 agx_src_index(nir_src *src)
 {
-   assert(src->is_ssa);
+   if (!src->is_ssa) {
+      return agx_nir_register(src->reg.reg->index,
+            agx_size_for_bits(nir_src_bit_size(*src)));
+   }
+
    return agx_get_index(src->ssa->index,
          agx_size_for_bits(nir_src_bit_size(*src)));
 }
@@ -415,7 +434,11 @@ agx_src_index(nir_src *src)
 static inline agx_index
 agx_dest_index(nir_dest *dst)
 {
-   assert(dst->is_ssa);
+   if (!dst->is_ssa) {
+      return agx_nir_register(dst->reg.reg->index,
+            agx_size_for_bits(nir_dest_bit_size(*dst)));
+   }
+
    return agx_get_index(dst->ssa.index,
          agx_size_for_bits(nir_dest_bit_size(*dst)));
 }

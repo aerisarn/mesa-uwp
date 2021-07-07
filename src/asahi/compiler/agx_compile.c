@@ -1163,6 +1163,7 @@ agx_optimize_nir(nir_shader *nir)
 
    NIR_PASS_V(nir, nir_opt_sink, move_all);
    NIR_PASS_V(nir, nir_opt_move, move_all);
+   NIR_PASS_V(nir, nir_convert_from_ssa, true);
 }
 
 /* ABI: position first, then user, then psiz */
@@ -1346,9 +1347,45 @@ agx_compile_shader_nir(nir_shader *nir,
       if (!func->impl)
          continue;
 
+      /* TODO: Handle phi nodes instead of just convert_from_ssa and yolo'ing
+       * the mapping of nir_register to hardware registers and guaranteeing bad
+       * performance and breaking spilling... */
+      ctx->nir_regalloc = rzalloc_array(ctx, unsigned, func->impl->reg_alloc);
+
+      /* Leave the last 4 registers for hacky p-copy lowering */
+      unsigned nir_regalloc = AGX_NUM_REGS - (4 * 2);
+
+      /* Assign backwards so we don't need to guess a size */
+      nir_foreach_register(reg, &func->impl->registers) {
+         /* Ensure alignment */
+         if (reg->bit_size >= 32 && (nir_regalloc & 1))
+            nir_regalloc--;
+
+         unsigned size = DIV_ROUND_UP(reg->bit_size * reg->num_components, 16);
+         nir_regalloc -= size;
+         ctx->nir_regalloc[reg->index] = nir_regalloc;
+      }
+
       ctx->alloc += func->impl->ssa_alloc;
       emit_cf_list(ctx, &func->impl->body);
       break; /* TODO: Multi-function shaders */
+   }
+
+   /* TODO: Actual RA... this way passes don't need to deal nir_register */
+   agx_foreach_instr_global(ctx, I) {
+      agx_foreach_dest(I, d) {
+         if (I->dest[d].type == AGX_INDEX_NIR_REGISTER) {
+            I->dest[d].type = AGX_INDEX_REGISTER;
+            I->dest[d].value = ctx->nir_regalloc[I->dest[d].value];
+         }
+      }
+
+      agx_foreach_src(I, s) {
+         if (I->src[s].type == AGX_INDEX_NIR_REGISTER) {
+            I->src[s].type = AGX_INDEX_REGISTER;
+            I->src[s].value = ctx->nir_regalloc[I->src[s].value];
+         }
+      }
    }
 
    /* Terminate the shader after the exit block */
