@@ -2010,40 +2010,135 @@ nir_intrinsic_can_reorder(nir_intrinsic_instr *instr)
 
 bool nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr);
 
-/**
- * \group texture information
- *
- * This gives semantic information about textures which is useful to the
- * frontend, the backend, and lowering passes, but not the optimizer.
- */
-
+/** Texture instruction source type */
 typedef enum {
+   /** Texture coordinate
+    *
+    * Must have nir_tex_instr::coord_components components.
+    */
    nir_tex_src_coord,
+
+   /** Projector
+    *
+    * The texture coordinate (except for the array component, if any) is
+    * divided by this value before LOD computation and sampling.
+    *
+    * Must be a float scalar.
+    */
    nir_tex_src_projector,
-   nir_tex_src_comparator, /* shadow comparator */
+
+   /** Shadow comparator
+    *
+    * For shadow sampling, the fetched texel values are compared against the
+    * shadow comparator using the compare op specified by the sampler object
+    * and converted to 1.0 if the comparison succeeds and 0.0 if it fails.
+    * Interpolation happens after this conversion so the actual result may be
+    * anywhere in the range [0.0, 1.0].
+    *
+    * Only valid if nir_tex_instr::is_shadow and must be a float scalar.
+    */
+   nir_tex_src_comparator,
+
+   /** Coordinate offset
+    *
+    * An integer value that is added to the texel address before sampling.
+    * This is only allowed with operations that take an explicit LOD as it is
+    * applied in integer texel space after LOD selection and not normalized
+    * coordinate space.
+    */
    nir_tex_src_offset,
+
+   /** LOD bias
+    *
+    * This value is added to the computed LOD before mip-mapping.
+    */
    nir_tex_src_bias,
+
+   /** Explicit LOD */
    nir_tex_src_lod,
+
+   /** Min LOD
+    *
+    * The computed LOD is clamped to be at least as large as min_lod before
+    * mip-mapping.
+    */
    nir_tex_src_min_lod,
-   nir_tex_src_ms_index, /* MSAA sample index */
-   nir_tex_src_ms_mcs_intel, /* MSAA compression value */
+
+   /** MSAA sample index */
+   nir_tex_src_ms_index,
+
+   /** Intel-specific MSAA compression data */
+   nir_tex_src_ms_mcs_intel,
+
+   /** Explicit horizontal (X-major) coordinate derivative */
    nir_tex_src_ddx,
+
+   /** Explicit vertical (Y-major) coordinate derivative */
    nir_tex_src_ddy,
-   nir_tex_src_texture_deref, /* < deref pointing to the texture */
-   nir_tex_src_sampler_deref, /* < deref pointing to the sampler */
-   nir_tex_src_texture_offset, /* < dynamically uniform indirect offset */
-   nir_tex_src_sampler_offset, /* < dynamically uniform indirect offset */
-   nir_tex_src_texture_handle, /* < bindless texture handle */
-   nir_tex_src_sampler_handle, /* < bindless sampler handle */
-   nir_tex_src_plane,          /* < selects plane for planar textures */
+
+   /** Texture variable dereference */
+   nir_tex_src_texture_deref,
+
+   /** Sampler variable dereference */
+   nir_tex_src_sampler_deref,
+
+   /** Texture index offset
+    *
+    * This is added to nir_tex_instr::texture_index.  Unless
+    * nir_tex_instr::texture_non_uniform is set, this is guaranteed to be
+    * dynamically uniform.
+    */
+   nir_tex_src_texture_offset,
+
+   /** Dynamically uniform sampler index offset
+    *
+    * This is added to nir_tex_instr::sampler_index.  Unless
+    * nir_tex_instr::sampler_non_uniform is set, this is guaranteed to be
+    * dynamically uniform.
+    */
+   nir_tex_src_sampler_offset,
+
+   /** Bindless texture handle
+    *
+    * This is, unfortunately, a bit overloaded at the moment.  There are
+    * generally two types of bindless handles:
+    *
+    *  1. For GL_ARB_bindless bindless handles. These are part of the
+    *     GL/Gallium-level API and are always a 64-bit integer.
+    *
+    *  2. HW-specific handles.  GL_ARB_bindless handles may be lowered to
+    *     these.  Also, these are used by many Vulkan drivers to implement
+    *     descriptor sets, especially for UPDATE_AFTER_BIND descriptors.
+    *     The details of hardware handles (bit size, format, etc.) is
+    *     HW-specific.
+    *
+    * Because of this overloading and the resulting ambiguity, we currently
+    * don't validate anything for these.
+    */
+   nir_tex_src_texture_handle,
+
+   /** Bindless sampler handle
+    *
+    * See nir_tex_src_texture_handle,
+    */
+   nir_tex_src_sampler_handle,
+
+   /** Plane index for multi-plane YCbCr textures */
+   nir_tex_src_plane,
+
    nir_num_tex_src_types
 } nir_tex_src_type;
 
+/** A texture instruction source */
 typedef struct {
+   /** Base source */
    nir_src src;
+
+   /** Type of this source */
    nir_tex_src_type src_type;
 } nir_tex_src;
 
+/** Texture instruction opcode */
 typedef enum {
    nir_texop_tex,                /**< Regular texture look-up */
    nir_texop_txb,                /**< Texture look-up with LOD bias */
@@ -2066,43 +2161,88 @@ typedef enum {
    nir_texop_fragment_mask_fetch,/**< Multisample fragment mask texture fetch */
 } nir_texop;
 
+/** Represents a texture instruction */
 typedef struct {
+   /** Base instruction */
    nir_instr instr;
 
+   /** Dimensionality of the texture operation
+    *
+    * This will typically match the dimensionality of the texture deref type
+    * if a nir_tex_src_texture_deref is present.  However, it may not if
+    * texture lowering has occurred.
+    */
    enum glsl_sampler_dim sampler_dim;
+
+   /** ALU type of the destination
+    *
+    * This is the canonical sampled type for this texture operation and may
+    * not exactly match the sampled type of the deref type when a
+    * nir_tex_src_texture_deref is present.  For OpenCL, the sampled type of
+    * the texture deref will be GLSL_TYPE_VOID and this is allowed to be
+    * anything.  With SPIR-V, the signedness of integer types is allowed to
+    * differ.  For all APIs, the bit size may differ if the driver has done
+    * any sort of mediump or similar lowering since texture types always have
+    * 32-bit sampled types.
+    */
    nir_alu_type dest_type;
 
+   /** Texture opcode */
    nir_texop op;
+
+   /** Destination */
    nir_dest dest;
+
+   /** Array of sources
+    *
+    * This array has nir_tex_instr::num_srcs elements
+    */
    nir_tex_src *src;
-   unsigned num_srcs, coord_components;
-   bool is_array, is_shadow;
+
+   /** Number of sources */
+   unsigned num_srcs;
+
+   /** Number of components in the coordinate, if any */
+   unsigned coord_components;
+
+   /** True if the texture instruction acts on an array texture */
+   bool is_array;
+
+   /** True if the texture instruction performs a shadow comparison
+    *
+    * If this is true, the texture instruction must have a
+    * nir_tex_src_comparator.
+    */
+   bool is_shadow;
 
    /**
-    * If is_shadow is true, whether this is the old-style shadow that outputs 4
-    * components or the new-style shadow that outputs 1 component.
+    * If is_shadow is true, whether this is the old-style shadow that outputs
+    * 4 components or the new-style shadow that outputs 1 component.
     */
    bool is_new_style_shadow;
 
    /**
-    * If this texture instruction should return a sparse residency code. The
-    * code is in the last component of the result.
+    * True if this texture instruction should return a sparse residency code.
+    * The code is in the last component of the result.
     */
    bool is_sparse;
 
-   /* gather component selector */
+   /** nir_texop_tg4 component selector
+    *
+    * This determines which RGBA component is gathered.
+    */
    unsigned component : 2;
 
-   /* Validation needs to know this for gradient component count */
+   /** Validation needs to know this for gradient component count */
    unsigned array_is_lowered_cube : 1;
 
-   /* gather offsets */
+   /** Gather offsets */
    int8_t tg4_offsets[4][2];
 
-   /* True if the texture index or handle is not dynamically uniform */
+   /** True if the texture index or handle is not dynamically uniform */
    bool texture_non_uniform;
 
-   /* True if the sampler index or handle is not dynamically uniform */
+   /** True if the sampler index or handle is not dynamically uniform */
    bool sampler_non_uniform;
 
    /** The texture index
@@ -2129,12 +2269,13 @@ typedef struct {
    unsigned sampler_index;
 } nir_tex_instr;
 
-/*
- * Returns true if the texture operation requires a sampler as a general rule,
- * see the documentation of sampler_index.
+/**
+ * Returns true if the texture operation requires a sampler as a general rule
  *
  * Note that the specific hw/driver backend could require to a sampler
  * object/configuration packet in any case, for some other reason.
+ *
+ * @see nir_tex_instr::sampler_index.
  */
 static inline bool
 nir_tex_instr_need_sampler(const nir_tex_instr *instr)
@@ -2152,6 +2293,12 @@ nir_tex_instr_need_sampler(const nir_tex_instr *instr)
    }
 }
 
+/** Returns the number of components returned by this nir_tex_instr
+ *
+ * Useful for code building texture instructions when you don't want to think
+ * about how many components a particular texture op returns.  This does not
+ * include the sparse residency code.
+ */
 static inline unsigned
 nir_tex_instr_result_size(const nir_tex_instr *instr)
 {
@@ -2199,6 +2346,10 @@ nir_tex_instr_result_size(const nir_tex_instr *instr)
    }
 }
 
+/**
+ * Returns the destination size of this nir_tex_instr including the sparse
+ * residency code, if any.
+ */
 static inline unsigned
 nir_tex_instr_dest_size(const nir_tex_instr *instr)
 {
@@ -2206,7 +2357,8 @@ nir_tex_instr_dest_size(const nir_tex_instr *instr)
    return nir_tex_instr_result_size(instr) + instr->is_sparse;
 }
 
-/* Returns true if this texture operation queries something about the texture
+/**
+ * Returns true if this texture operation queries something about the texture
  * rather than actually sampling it.
  */
 static inline bool
@@ -2233,6 +2385,11 @@ nir_tex_instr_is_query(const nir_tex_instr *instr)
    }
 }
 
+/** Returns true if this texture instruction does implicit derivatives
+ *
+ * This is important as there are extra control-flow rules around derivatives
+ * and texture instructions which perform them implicitly.
+ */
 static inline bool
 nir_tex_instr_has_implicit_derivative(const nir_tex_instr *instr)
 {
@@ -2246,6 +2403,7 @@ nir_tex_instr_has_implicit_derivative(const nir_tex_instr *instr)
    }
 }
 
+/** Returns the ALU type of the given texture instruction source */
 static inline nir_alu_type
 nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
 {
@@ -2303,6 +2461,10 @@ nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
    unreachable("Invalid texture source type");
 }
 
+/**
+ * Returns the number of components required by the given texture instruction
+ * source
+ */
 static inline unsigned
 nir_tex_instr_src_size(const nir_tex_instr *instr, unsigned src)
 {
@@ -2337,6 +2499,10 @@ nir_tex_instr_src_size(const nir_tex_instr *instr, unsigned src)
    return 1;
 }
 
+/**
+ * Returns the index of the texture instruction source with the given
+ * nir_tex_src_type or -1 if no such source exists.
+ */
 static inline int
 nir_tex_instr_src_index(const nir_tex_instr *instr, nir_tex_src_type type)
 {
@@ -2347,10 +2513,12 @@ nir_tex_instr_src_index(const nir_tex_instr *instr, nir_tex_src_type type)
    return -1;
 }
 
+/** Adds a source to a texture instruction */
 void nir_tex_instr_add_src(nir_tex_instr *tex,
                            nir_tex_src_type src_type,
                            nir_src src);
 
+/** Removes a source from a texture instruction */
 void nir_tex_instr_remove_src(nir_tex_instr *tex, unsigned src_idx);
 
 bool nir_tex_instr_has_explicit_tg4_offsets(nir_tex_instr *tex);
@@ -3674,6 +3842,7 @@ nir_intrinsic_instr *nir_intrinsic_instr_create(nir_shader *shader,
 nir_call_instr *nir_call_instr_create(nir_shader *shader,
                                       nir_function *callee);
 
+/** Creates a NIR texture instruction */
 nir_tex_instr *nir_tex_instr_create(nir_shader *shader, unsigned num_srcs);
 
 nir_phi_instr *nir_phi_instr_create(nir_shader *shader);
@@ -4753,12 +4922,14 @@ bool nir_lower_compute_system_values(nir_shader *shader,
                                      const nir_lower_compute_system_values_options *options);
 
 enum PACKED nir_lower_tex_packing {
+   /** No packing */
    nir_lower_tex_packing_none = 0,
-   /* The sampler returns up to 2 32-bit words of half floats or 16-bit signed
+   /**
+    * The sampler returns up to 2 32-bit words of half floats or 16-bit signed
     * or unsigned ints based on the sampler type
     */
    nir_lower_tex_packing_16,
-   /* The sampler returns 1 32-bit word of 4x8 unorm */
+   /** The sampler returns 1 32-bit word of 4x8 unorm */
    nir_lower_tex_packing_8,
 };
 
@@ -4938,6 +5109,7 @@ typedef struct nir_lower_tex_options {
    enum nir_lower_tex_packing lower_tex_packing[32];
 } nir_lower_tex_options;
 
+/** Lowers complex texture instructions to simpler ones */
 bool nir_lower_tex(nir_shader *shader,
                    const nir_lower_tex_options *options);
 
