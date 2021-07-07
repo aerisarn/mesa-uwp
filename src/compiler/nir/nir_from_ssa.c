@@ -38,6 +38,7 @@
 struct from_ssa_state {
    nir_builder builder;
    void *dead_ctx;
+   struct exec_list dead_instrs;
    bool phi_webs_only;
    struct hash_table *merge_node_table;
    nir_instr *instr;
@@ -300,7 +301,7 @@ merge_sets_interfere(merge_set *a, merge_set *b)
 }
 
 static bool
-add_parallel_copy_to_end_of_block(nir_block *block, void *dead_ctx)
+add_parallel_copy_to_end_of_block(nir_shader *shader, nir_block *block, void *dead_ctx)
 {
 
    bool need_end_copy = false;
@@ -322,7 +323,7 @@ add_parallel_copy_to_end_of_block(nir_block *block, void *dead_ctx)
        * (if there is one).
        */
       nir_parallel_copy_instr *pcopy =
-         nir_parallel_copy_instr_create(dead_ctx);
+         nir_parallel_copy_instr_create(shader);
 
       nir_instr_insert(nir_after_block_before_jump(block), &pcopy->instr);
    }
@@ -378,7 +379,7 @@ get_parallel_copy_at_end_of_block(nir_block *block)
  * time because of potential back-edges in the CFG.
  */
 static bool
-isolate_phi_nodes_block(nir_block *block, void *dead_ctx)
+isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
 {
    nir_instr *last_phi_instr = NULL;
    nir_foreach_instr(instr, block) {
@@ -397,7 +398,7 @@ isolate_phi_nodes_block(nir_block *block, void *dead_ctx)
     * start of this block but after the phi nodes.
     */
    nir_parallel_copy_instr *block_pcopy =
-      nir_parallel_copy_instr_create(dead_ctx);
+      nir_parallel_copy_instr_create(shader);
    nir_instr_insert_after(last_phi_instr, &block_pcopy->instr);
 
    nir_foreach_instr(instr, block) {
@@ -587,7 +588,7 @@ rewrite_ssa_def(nir_ssa_def *def, void *void_state)
        */
       nir_instr *parent_instr = def->parent_instr;
       nir_instr_remove(parent_instr);
-      ralloc_steal(state->dead_ctx, parent_instr);
+      exec_list_push_tail(&state->dead_instrs, &parent_instr->node);
       state->progress = true;
       return true;
    }
@@ -616,7 +617,7 @@ resolve_registers_block(nir_block *block, struct from_ssa_state *state)
 
       if (instr->type == nir_instr_type_phi) {
          nir_instr_remove(instr);
-         ralloc_steal(state->dead_ctx, instr);
+         exec_list_push_tail(&state->dead_instrs, &instr->node);
          state->progress = true;
       }
    }
@@ -683,6 +684,7 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
    if (num_copies == 0) {
       /* Hooray, we don't need any copies! */
       nir_instr_remove(&pcopy->instr);
+      exec_list_push_tail(&state->dead_instrs, &pcopy->instr.node);
       return;
    }
 
@@ -825,6 +827,7 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
    }
 
    nir_instr_remove(&pcopy->instr);
+   exec_list_push_tail(&state->dead_instrs, &pcopy->instr.node);
 }
 
 /* Resolves the parallel copies in a block.  Each block can have at most
@@ -864,6 +867,8 @@ resolve_parallel_copies_block(nir_block *block, struct from_ssa_state *state)
 static bool
 nir_convert_from_ssa_impl(nir_function_impl *impl, bool phi_webs_only)
 {
+   nir_shader *shader = impl->function->shader;
+
    struct from_ssa_state state;
 
    nir_builder_init(&state.builder, impl);
@@ -871,13 +876,14 @@ nir_convert_from_ssa_impl(nir_function_impl *impl, bool phi_webs_only)
    state.phi_webs_only = phi_webs_only;
    state.merge_node_table = _mesa_pointer_hash_table_create(NULL);
    state.progress = false;
+   exec_list_make_empty(&state.dead_instrs);
 
    nir_foreach_block(block, impl) {
-      add_parallel_copy_to_end_of_block(block, state.dead_ctx);
+      add_parallel_copy_to_end_of_block(shader, block, state.dead_ctx);
    }
 
    nir_foreach_block(block, impl) {
-      isolate_phi_nodes_block(block, state.dead_ctx);
+      isolate_phi_nodes_block(shader, block, state.dead_ctx);
    }
 
    /* Mark metadata as dirty before we ask for liveness analysis */
@@ -908,6 +914,7 @@ nir_convert_from_ssa_impl(nir_function_impl *impl, bool phi_webs_only)
                                nir_metadata_dominance);
 
    /* Clean up dead instructions and the hash tables */
+   nir_instr_free_list(&state.dead_instrs);
    _mesa_hash_table_destroy(state.merge_node_table, NULL);
    ralloc_free(state.dead_ctx);
    return state.progress;
