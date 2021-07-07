@@ -770,50 +770,10 @@ anv_gem_syncobj_timeline_query(struct anv_device *device,
    return intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_QUERY, &args);
 }
 
-int
-anv_i915_query(int fd, uint64_t query_id, void *buffer,
-               int32_t *buffer_len)
-{
-   struct drm_i915_query_item item = {
-      .query_id = query_id,
-      .length = *buffer_len,
-      .data_ptr = (uintptr_t)buffer,
-   };
-
-   struct drm_i915_query args = {
-      .num_items = 1,
-      .flags = 0,
-      .items_ptr = (uintptr_t)&item,
-   };
-
-   int ret = intel_ioctl(fd, DRM_IOCTL_I915_QUERY, &args);
-   if (ret != 0)
-      return -errno;
-   else if (item.length < 0)
-      return item.length;
-
-   *buffer_len = item.length;
-   return 0;
-}
-
 struct drm_i915_query_engine_info *
 anv_gem_get_engine_info(int fd)
 {
-   int32_t length = 0;
-   int ret = anv_i915_query(fd, DRM_I915_QUERY_ENGINE_INFO, NULL, &length);
-   if (ret < 0)
-      return NULL;
-
-   struct drm_i915_query_engine_info *info = calloc(1, length);
-   ret = anv_i915_query(fd, DRM_I915_QUERY_ENGINE_INFO, info, &length);
-   assert(ret == 0);
-
-   if (ret < 0) {
-      free(info);
-      return NULL;
-   }
-
-   return info;
+   return intel_i915_query_alloc(fd, DRM_I915_QUERY_ENGINE_INFO);
 }
 
 int
