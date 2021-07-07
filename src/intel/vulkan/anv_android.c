@@ -167,6 +167,12 @@ android_format_from_vk(unsigned vk_format)
    }
 }
 
+static VkFormatFeatureFlags
+features2_to_features(VkFormatFeatureFlags2KHR features2)
+{
+   return features2 & VK_ALL_FORMAT_FEATURE_FLAG_BITS;
+}
+
 static VkResult
 get_ahw_buffer_format_properties(
    VkDevice device_h,
@@ -207,9 +213,10 @@ get_ahw_buffer_format_properties(
    if (desc.usage & AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER)
       tiling = VK_IMAGE_TILING_LINEAR;
 
-   p->formatFeatures =
-      anv_get_image_format_features(&device->info, p->format, anv_format,
-                                    tiling, NULL);
+   VkFormatFeatureFlags2KHR features2 =
+      anv_get_image_format_features2(&device->info, p->format, anv_format,
+                                     tiling, NULL);
+   p->formatFeatures = features2_to_features(features2);
 
    /* "Images can be created with an external format even if the Android hardware
     *  buffer has a format which has an equivalent Vulkan format to enable
