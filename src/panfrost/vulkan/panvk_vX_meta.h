@@ -21,38 +21,16 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "panvk_private.h"
-#include "panvk_varyings.h"
+#ifndef PANVK_PRIVATE_H
+#error "Must be included from panvk_private.h"
+#endif
 
-#include "pan_pool.h"
-
-unsigned
-panvk_varyings_buf_count(const struct panvk_device *dev,
-                         struct panvk_varyings_info *varyings)
-{
-   const struct panfrost_device *pdev = &dev->physical_device->pdev;
-
-   return util_bitcount(varyings->buf_mask) + (pan_is_bifrost(pdev) ? 1 : 0);
-}
+#ifndef PAN_ARCH
+#error "no arch"
+#endif
 
 void
-panvk_varyings_alloc(struct panvk_varyings_info *varyings,
-                     struct pan_pool *varying_mem_pool,
-                     unsigned vertex_count)
-{
-   for (unsigned i = 0; i < PANVK_VARY_BUF_MAX; i++) {
-      if (!(varyings->buf_mask & (1 << i))) continue;
+panvk_per_arch(meta_init)(struct panvk_physical_device *dev);
 
-      unsigned buf_idx = panvk_varying_buf_index(varyings, i);
-      unsigned size = varyings->buf[buf_idx].stride * vertex_count;
-      if (!size)
-         continue;
-
-      struct panfrost_ptr ptr =
-         pan_pool_alloc_aligned(varying_mem_pool, size, 64);
-
-      varyings->buf[buf_idx].size = size;
-      varyings->buf[buf_idx].address = ptr.gpu;
-      varyings->buf[buf_idx].cpu = ptr.cpu;
-   }
-}
+void
+panvk_per_arch(meta_cleanup)(struct panvk_physical_device *dev);

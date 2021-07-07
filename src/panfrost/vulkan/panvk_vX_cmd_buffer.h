@@ -21,30 +21,34 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "util/macros.h"
+#ifndef PANVK_PRIVATE_H
+#error "Must be included from panvk_private.h"
+#endif
+
+#ifndef PAN_ARCH
+#error "no arch"
+#endif
+
+#include <vulkan/vulkan.h>
 #include "compiler/shader_enums.h"
 
-#include "panfrost-quirks.h"
-#include "pan_cs.h"
-#include "pan_pool.h"
+void
+panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf);
 
-#include "panvk_cs.h"
-#include "panvk_private.h"
+
+#if PAN_ARCH <= 5
+void
+panvk_per_arch(cmd_get_polygon_list)(struct panvk_cmd_buffer *cmdbuf,
+                                     unsigned width, unsigned height,
+                                     bool has_draws);
+#else
+void
+panvk_per_arch(cmd_get_tiler_context)(struct panvk_cmd_buffer *cmdbuf,
+                                      unsigned width, unsigned height);
+#endif
 
 void
-panvk_sysval_upload_viewport_scale(const VkViewport *viewport,
-                                   union panvk_sysval_data *data)
-{
-   data->f32[0] = 0.5f * viewport->width;
-   data->f32[1] = 0.5f * viewport->height;
-   data->f32[2] = 0.5f * (viewport->maxDepth - viewport->minDepth);
-}
+panvk_per_arch(cmd_alloc_fb_desc)(struct panvk_cmd_buffer *cmdbuf);
 
 void
-panvk_sysval_upload_viewport_offset(const VkViewport *viewport,
-                                    union panvk_sysval_data *data)
-{
-   data->f32[0] = (0.5f * viewport->width) + viewport->x;
-   data->f32[1] = (0.5f * viewport->height) + viewport->y;
-   data->f32[2] = (0.5f * (viewport->maxDepth - viewport->minDepth)) + viewport->minDepth;
-}
+panvk_per_arch(cmd_alloc_tls_desc)(struct panvk_cmd_buffer *cmdbuf);

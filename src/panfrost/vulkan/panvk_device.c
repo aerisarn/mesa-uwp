@@ -32,7 +32,6 @@
 #include "pan_bo.h"
 #include "pan_encoder.h"
 #include "pan_util.h"
-#include "decode.h"
 
 #include <fcntl.h>
 #include <libsync.h>
@@ -199,7 +198,7 @@ panvk_physical_device_finish(struct panvk_physical_device *device)
 {
    panvk_wsi_finish(device);
 
-   panvk_meta_cleanup(device);
+   panvk_arch_dispatch(device->pdev.arch, meta_cleanup, device);
    panfrost_close_device(&device->pdev);
    if (device->master_fd != -1)
       close(device->master_fd);
@@ -306,7 +305,7 @@ panvk_physical_device_init(struct panvk_physical_device *device,
       goto fail;
    }
 
-   panvk_meta_init(device);
+   panvk_arch_dispatch(device->pdev.arch, meta_init, device);
 
    memset(device->name, 0, sizeof(device->name));
    sprintf(device->name, "%s", panfrost_model_name(device->pdev.gpu_id));
@@ -955,10 +954,29 @@ panvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (!device)
       return vk_error(physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   const struct vk_device_entrypoint_table *dev_entrypoints;
    struct vk_device_dispatch_table dispatch_table;
+
+   switch (physical_device->pdev.arch) {
+   case 5:
+      dev_entrypoints = &panvk_v5_device_entrypoints;
+      break;
+   case 6:
+      dev_entrypoints = &panvk_v6_device_entrypoints;
+      break;
+   case 7:
+      dev_entrypoints = &panvk_v7_device_entrypoints;
+      break;
+   default:
+      unreachable("Unsupported architecture");
+   }
+
+   vk_device_dispatch_table_from_entrypoints(&dispatch_table,
+                                             dev_entrypoints,
+                                             true);
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
                                              &panvk_device_entrypoints,
-                                             true);
+                                             false);
    result = vk_device_init(&device->vk, &physical_device->vk, &dispatch_table,
                            pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
@@ -1074,262 +1092,6 @@ panvk_GetDeviceQueue(VkDevice _device,
    };
 
    panvk_GetDeviceQueue2(_device, &info, pQueue);
-}
-
-static void
-panvk_queue_submit_batch(struct panvk_queue *queue,
-                         struct panvk_batch *batch,
-                         uint32_t *bos, unsigned nr_bos,
-                         uint32_t *in_fences,
-                         unsigned nr_in_fences)
-{
-   const struct panvk_device *dev = queue->device;
-   unsigned debug = dev->physical_device->instance->debug_flags;
-   const struct panfrost_device *pdev = &dev->physical_device->pdev;
-   int ret;
-
-   /* Reset the batch if it's already been issued */
-   if (batch->issued) {
-      util_dynarray_foreach(&batch->jobs, void *, job)
-         memset((*job), 0, 4 * 4);
-
-      /* Reset the tiler before re-issuing the batch */
-      if (pan_is_bifrost(pdev) && batch->tiler.bifrost_descs.cpu) {
-         memcpy(batch->tiler.bifrost_descs.cpu, &batch->tiler.templ.bifrost,
-                sizeof(batch->tiler.templ.bifrost));
-      } else if (!pan_is_bifrost(pdev) && batch->fb.desc.cpu) {
-         void *tiler = pan_section_ptr(batch->fb.desc.cpu, MULTI_TARGET_FRAMEBUFFER, TILER);
-         memcpy(tiler, &batch->tiler.templ.midgard, sizeof(batch->tiler.templ.midgard));
-         /* All weights set to 0, nothing to do here */
-         pan_section_pack(batch->fb.desc.cpu, MULTI_TARGET_FRAMEBUFFER, TILER_WEIGHTS, w);
-      }
-   }
-
-   if (batch->scoreboard.first_job) {
-      struct drm_panfrost_submit submit = {
-         .bo_handles = (uintptr_t)bos,
-         .bo_handle_count = nr_bos,
-         .in_syncs = (uintptr_t)in_fences,
-         .in_sync_count = nr_in_fences,
-         .out_sync = queue->sync,
-         .jc = batch->scoreboard.first_job,
-      };
-
-      ret = drmIoctl(pdev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
-      assert(!ret);
-
-      if (debug & (PANVK_DEBUG_TRACE | PANVK_DEBUG_SYNC)) {
-         ret = drmSyncobjWait(pdev->fd, &submit.out_sync, 1, INT64_MAX, 0, NULL);
-         assert(!ret);
-      }
-
-      if (debug & PANVK_DEBUG_TRACE)
-         pandecode_jc(batch->scoreboard.first_job, pan_is_bifrost(pdev), pdev->gpu_id);
-   }
-
-   if (batch->fragment_job) {
-      struct drm_panfrost_submit submit = {
-         .bo_handles = (uintptr_t)bos,
-         .bo_handle_count = nr_bos,
-         .out_sync = queue->sync,
-         .jc = batch->fragment_job,
-         .requirements = PANFROST_JD_REQ_FS,
-      };
-
-      if (batch->scoreboard.first_job) {
-         submit.in_syncs = (uintptr_t)(&queue->sync);
-         submit.in_sync_count = 1;
-      } else {
-         submit.in_syncs = (uintptr_t)in_fences;
-         submit.in_sync_count = nr_in_fences;
-      }
-
-      ret = drmIoctl(pdev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
-      assert(!ret);
-      if (debug & (PANVK_DEBUG_TRACE | PANVK_DEBUG_SYNC)) {
-         ret = drmSyncobjWait(pdev->fd, &submit.out_sync, 1, INT64_MAX, 0, NULL);
-         assert(!ret);
-      }
-
-      if (debug & PANVK_DEBUG_TRACE)
-         pandecode_jc(batch->fragment_job, pan_is_bifrost(pdev), pdev->gpu_id);
-   }
-
-   if (debug & PANVK_DEBUG_TRACE)
-      pandecode_next_frame();
-
-   batch->issued = true;
-}
-
-static void
-panvk_queue_transfer_sync(struct panvk_queue *queue, uint32_t syncobj)
-{
-   const struct panfrost_device *pdev = &queue->device->physical_device->pdev;
-   int ret;
-
-   struct drm_syncobj_handle handle = {
-      .handle = queue->sync,
-      .flags = DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE,
-      .fd = -1,
-   };
-
-   ret = drmIoctl(pdev->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
-   assert(!ret);
-   assert(handle.fd >= 0);
-
-   handle.handle = syncobj;
-   ret = drmIoctl(pdev->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &handle);
-   assert(!ret);
-
-   close(handle.fd);
-}
-
-static void
-panvk_add_wait_event_syncobjs(struct panvk_batch *batch, uint32_t *in_fences, unsigned *nr_in_fences)
-{
-   util_dynarray_foreach(&batch->event_ops, struct panvk_event_op, op) {
-      switch (op->type) {
-      case PANVK_EVENT_OP_SET:
-         /* Nothing to do yet */
-         break;
-      case PANVK_EVENT_OP_RESET:
-         /* Nothing to do yet */
-         break;
-      case PANVK_EVENT_OP_WAIT:
-         in_fences[*nr_in_fences++] = op->event->syncobj;
-         break;
-      default:
-         unreachable("bad panvk_event_op type\n");
-      }
-   }
-}
-
-static void
-panvk_signal_event_syncobjs(struct panvk_queue *queue, struct panvk_batch *batch)
-{
-   const struct panfrost_device *pdev = &queue->device->physical_device->pdev;
-
-   util_dynarray_foreach(&batch->event_ops, struct panvk_event_op, op) {
-      switch (op->type) {
-      case PANVK_EVENT_OP_SET: {
-         panvk_queue_transfer_sync(queue, op->event->syncobj);
-         break;
-      }
-      case PANVK_EVENT_OP_RESET: {
-         struct panvk_event *event = op->event;
-
-         struct drm_syncobj_array objs = {
-            .handles = (uint64_t) (uintptr_t) &event->syncobj,
-            .count_handles = 1
-         };
-
-         int ret = drmIoctl(pdev->fd, DRM_IOCTL_SYNCOBJ_RESET, &objs);
-         assert(!ret);
-         break;
-      }
-      case PANVK_EVENT_OP_WAIT:
-         /* Nothing left to do */
-         break;
-      default:
-         unreachable("bad panvk_event_op type\n");
-      }
-   }
-}
-
-VkResult
-panvk_QueueSubmit(VkQueue _queue,
-                  uint32_t submitCount,
-                  const VkSubmitInfo *pSubmits,
-                  VkFence _fence)
-{
-   VK_FROM_HANDLE(panvk_queue, queue, _queue);
-   VK_FROM_HANDLE(panvk_fence, fence, _fence);
-   const struct panfrost_device *pdev = &queue->device->physical_device->pdev;
-
-   for (uint32_t i = 0; i < submitCount; ++i) {
-      const VkSubmitInfo *submit = pSubmits + i;
-      unsigned nr_semaphores = submit->waitSemaphoreCount + 1;
-      uint32_t semaphores[nr_semaphores];
-      
-      semaphores[0] = queue->sync;
-      for (unsigned i = 0; i < submit->waitSemaphoreCount; i++) {
-         VK_FROM_HANDLE(panvk_semaphore, sem, submit->pWaitSemaphores[i]);
-
-         semaphores[i + 1] = sem->syncobj.temporary ? : sem->syncobj.permanent;
-      }
-
-      for (uint32_t j = 0; j < submit->commandBufferCount; ++j) {
-         VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, (submit->pCommandBuffers[j]));
-
-         list_for_each_entry(struct panvk_batch, batch, &cmdbuf->batches, node) {
-            /* FIXME: should be done at the batch level */
-            unsigned nr_bos =
-               panvk_pool_num_bos(&cmdbuf->desc_pool) +
-               panvk_pool_num_bos(&cmdbuf->varying_pool) +
-               panvk_pool_num_bos(&cmdbuf->tls_pool) +
-               (batch->fb.info ? batch->fb.info->attachment_count : 0) +
-               (batch->blit.src ? 1 : 0) +
-               (batch->blit.dst ? 1 : 0) +
-               (batch->scoreboard.first_tiler ? 1 : 0) + 1;
-            unsigned bo_idx = 0;
-            uint32_t bos[nr_bos];
-
-            panvk_pool_get_bo_handles(&cmdbuf->desc_pool, &bos[bo_idx]);
-            bo_idx += panvk_pool_num_bos(&cmdbuf->desc_pool);
-
-            panvk_pool_get_bo_handles(&cmdbuf->varying_pool, &bos[bo_idx]);
-            bo_idx += panvk_pool_num_bos(&cmdbuf->varying_pool);
-
-            panvk_pool_get_bo_handles(&cmdbuf->tls_pool, &bos[bo_idx]);
-            bo_idx += panvk_pool_num_bos(&cmdbuf->tls_pool);
-
-            if (batch->fb.info) {
-               for (unsigned i = 0; i < batch->fb.info->attachment_count; i++) {
-                  bos[bo_idx++] = batch->fb.info->attachments[i].iview->pview.image->data.bo->gem_handle;
-               }
-            }
-
-            if (batch->blit.src)
-               bos[bo_idx++] = batch->blit.src->gem_handle;
-
-            if (batch->blit.dst)
-               bos[bo_idx++] = batch->blit.dst->gem_handle;
-
-            if (batch->scoreboard.first_tiler)
-               bos[bo_idx++] = pdev->tiler_heap->gem_handle;
-
-            bos[bo_idx++] = pdev->sample_positions->gem_handle;
-            assert(bo_idx == nr_bos);
-
-            unsigned nr_in_fences = 0;
-            unsigned max_wait_event_syncobjs =
-               util_dynarray_num_elements(&batch->event_ops,
-                                          struct panvk_event_op);
-            uint32_t in_fences[nr_semaphores + max_wait_event_syncobjs];
-            memcpy(in_fences, semaphores, nr_semaphores * sizeof(*in_fences));
-            nr_in_fences += nr_semaphores;
-
-            panvk_add_wait_event_syncobjs(batch, in_fences, &nr_in_fences);
-
-            panvk_queue_submit_batch(queue, batch, bos, nr_bos, in_fences, nr_in_fences);
-
-            panvk_signal_event_syncobjs(queue, batch);
-         }
-      }
-
-      /* Transfer the out fence to signal semaphores */
-      for (unsigned i = 0; i < submit->signalSemaphoreCount; i++) {
-         VK_FROM_HANDLE(panvk_semaphore, sem, submit->pSignalSemaphores[i]);
-         panvk_queue_transfer_sync(queue, sem->syncobj.temporary ? : sem->syncobj.permanent);
-      }
-   }
-
-   if (fence) {
-      /* Transfer the last out fence to the fence object */
-      panvk_queue_transfer_sync(queue, fence->syncobj.temporary ? : fence->syncobj.permanent);
-   }
-
-   return VK_SUCCESS;
 }
 
 VkResult
@@ -1889,202 +1651,6 @@ panvk_DestroyFramebuffer(VkDevice _device,
 
    if (fb)
       vk_object_free(&device->vk, pAllocator, fb);
-}
-
-static enum mali_mipmap_mode
-panvk_translate_sampler_mipmap_mode(VkSamplerMipmapMode mode)
-{
-   switch (mode) {
-   case VK_SAMPLER_MIPMAP_MODE_NEAREST: return MALI_MIPMAP_MODE_NEAREST;
-   case VK_SAMPLER_MIPMAP_MODE_LINEAR: return MALI_MIPMAP_MODE_TRILINEAR;
-   default: unreachable("Invalid mipmap mode");
-   }
-}
-
-static unsigned
-panvk_translate_sampler_address_mode(VkSamplerAddressMode mode)
-{
-   switch (mode) {
-   case VK_SAMPLER_ADDRESS_MODE_REPEAT: return MALI_WRAP_MODE_REPEAT;
-   case VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT: return MALI_WRAP_MODE_MIRRORED_REPEAT;
-   case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE: return MALI_WRAP_MODE_CLAMP_TO_EDGE;
-   case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER: return MALI_WRAP_MODE_CLAMP_TO_BORDER;
-   case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE: return MALI_WRAP_MODE_MIRRORED_CLAMP_TO_EDGE;
-   default: unreachable("Invalid wrap");
-   }
-}
-
-static enum mali_func
-panvk_translate_sampler_compare_func(const VkSamplerCreateInfo *pCreateInfo)
-{
-   if (!pCreateInfo->compareEnable)
-      return MALI_FUNC_NEVER;
-
-   enum mali_func f = panvk_translate_compare_func(pCreateInfo->compareOp);
-   return panfrost_flip_compare_func(f);
-}
-
-static void
-panvk_init_midgard_sampler(struct panvk_sampler *sampler,
-                           const VkSamplerCreateInfo *pCreateInfo)
-{
-   const VkSamplerCustomBorderColorCreateInfoEXT *pBorderColor =
-      vk_find_struct_const(pCreateInfo->pNext, SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT);
-
-   pan_pack(&sampler->desc, MIDGARD_SAMPLER, cfg) {
-      cfg.magnify_nearest = pCreateInfo->magFilter == VK_FILTER_NEAREST;
-      cfg.minify_nearest = pCreateInfo->minFilter == VK_FILTER_NEAREST;
-      cfg.mipmap_mode = panvk_translate_sampler_mipmap_mode(pCreateInfo->mipmapMode);
-      cfg.normalized_coordinates = !pCreateInfo->unnormalizedCoordinates;
-      cfg.lod_bias = FIXED_16(pCreateInfo->mipLodBias, true);
-      cfg.minimum_lod = FIXED_16(pCreateInfo->minLod, false);
-      cfg.maximum_lod = FIXED_16(pCreateInfo->maxLod, false);
-
-      cfg.wrap_mode_s = panvk_translate_sampler_address_mode(pCreateInfo->addressModeU);
-      cfg.wrap_mode_t = panvk_translate_sampler_address_mode(pCreateInfo->addressModeV);
-      cfg.wrap_mode_r = panvk_translate_sampler_address_mode(pCreateInfo->addressModeW);
-      cfg.compare_function = panvk_translate_sampler_compare_func(pCreateInfo);
-
-      switch (pCreateInfo->borderColor) {
-      case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
-      case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
-         cfg.border_color_r = fui(0.0);
-         cfg.border_color_g = fui(0.0);
-         cfg.border_color_b = fui(0.0);
-         cfg.border_color_a =
-            pCreateInfo->borderColor == VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK ?
-            fui(1.0) : fui(0.0);
-         break;
-      case VK_BORDER_COLOR_INT_OPAQUE_BLACK:
-      case VK_BORDER_COLOR_INT_TRANSPARENT_BLACK:
-         cfg.border_color_r = 0;
-         cfg.border_color_g = 0;
-         cfg.border_color_b = 0;
-         cfg.border_color_a =
-            pCreateInfo->borderColor == VK_BORDER_COLOR_INT_OPAQUE_BLACK ?
-            UINT_MAX : 0;
-         break;
-      case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
-         cfg.border_color_r = fui(1.0);
-         cfg.border_color_g = fui(1.0);
-         cfg.border_color_b = fui(1.0);
-         cfg.border_color_a = fui(1.0);
-         break;
-      case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
-         cfg.border_color_r = UINT_MAX;
-         cfg.border_color_g = UINT_MAX;
-         cfg.border_color_b = UINT_MAX;
-         cfg.border_color_a = UINT_MAX;
-         break;
-      case VK_BORDER_COLOR_FLOAT_CUSTOM_EXT:
-      case VK_BORDER_COLOR_INT_CUSTOM_EXT:
-         cfg.border_color_r = pBorderColor->customBorderColor.int32[0];
-         cfg.border_color_g = pBorderColor->customBorderColor.int32[1];
-         cfg.border_color_b = pBorderColor->customBorderColor.int32[2];
-         cfg.border_color_a = pBorderColor->customBorderColor.int32[3];
-         break;
-      default:
-         unreachable("Invalid border color");
-      }
-   }
-}
-
-static void
-panvk_init_bifrost_sampler(struct panvk_sampler *sampler,
-                           const VkSamplerCreateInfo *pCreateInfo)
-{
-   const VkSamplerCustomBorderColorCreateInfoEXT *pBorderColor =
-      vk_find_struct_const(pCreateInfo->pNext, SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT);
-
-   pan_pack(&sampler->desc, BIFROST_SAMPLER, cfg) {
-      cfg.magnify_nearest = pCreateInfo->magFilter == VK_FILTER_NEAREST;
-      cfg.minify_nearest = pCreateInfo->minFilter == VK_FILTER_NEAREST;
-      cfg.mipmap_mode = panvk_translate_sampler_mipmap_mode(pCreateInfo->mipmapMode);
-      cfg.normalized_coordinates = !pCreateInfo->unnormalizedCoordinates;
-
-      cfg.lod_bias = FIXED_16(pCreateInfo->mipLodBias, true);
-      cfg.minimum_lod = FIXED_16(pCreateInfo->minLod, false);
-      cfg.maximum_lod = FIXED_16(pCreateInfo->maxLod, false);
-      cfg.wrap_mode_s = panvk_translate_sampler_address_mode(pCreateInfo->addressModeU);
-      cfg.wrap_mode_t = panvk_translate_sampler_address_mode(pCreateInfo->addressModeV);
-      cfg.wrap_mode_r = panvk_translate_sampler_address_mode(pCreateInfo->addressModeW);
-      cfg.compare_function = panvk_translate_sampler_compare_func(pCreateInfo);
-
-      switch (pCreateInfo->borderColor) {
-      case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
-      case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
-         cfg.border_color_r = fui(0.0);
-         cfg.border_color_g = fui(0.0);
-         cfg.border_color_b = fui(0.0);
-         cfg.border_color_a =
-            pCreateInfo->borderColor == VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK ?
-            fui(1.0) : fui(0.0);
-         break;
-      case VK_BORDER_COLOR_INT_OPAQUE_BLACK:
-      case VK_BORDER_COLOR_INT_TRANSPARENT_BLACK:
-         cfg.border_color_r = 0;
-         cfg.border_color_g = 0;
-         cfg.border_color_b = 0;
-         cfg.border_color_a =
-            pCreateInfo->borderColor == VK_BORDER_COLOR_INT_OPAQUE_BLACK ?
-            UINT_MAX : 0;
-         break;
-      case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
-         cfg.border_color_r = fui(1.0);
-         cfg.border_color_g = fui(1.0);
-         cfg.border_color_b = fui(1.0);
-         cfg.border_color_a = fui(1.0);
-         break;
-      case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
-         cfg.border_color_r = UINT_MAX;
-         cfg.border_color_g = UINT_MAX;
-         cfg.border_color_b = UINT_MAX;
-         cfg.border_color_a = UINT_MAX;
-         break;
-      case VK_BORDER_COLOR_FLOAT_CUSTOM_EXT:
-      case VK_BORDER_COLOR_INT_CUSTOM_EXT:
-         cfg.border_color_r = pBorderColor->customBorderColor.int32[0];
-         cfg.border_color_g = pBorderColor->customBorderColor.int32[1];
-         cfg.border_color_b = pBorderColor->customBorderColor.int32[2];
-         cfg.border_color_a = pBorderColor->customBorderColor.int32[3];
-         break;
-      default:
-         unreachable("Invalid border color");
-      }
-   }
-}
-
-static void
-panvk_init_sampler(struct panvk_device *device,
-                   struct panvk_sampler *sampler,
-                   const VkSamplerCreateInfo *pCreateInfo)
-{
-   if (pan_is_bifrost(&device->physical_device->pdev))
-      panvk_init_bifrost_sampler(sampler, pCreateInfo);
-   else
-      panvk_init_midgard_sampler(sampler, pCreateInfo);
-}
-
-VkResult
-panvk_CreateSampler(VkDevice _device,
-                    const VkSamplerCreateInfo *pCreateInfo,
-                    const VkAllocationCallbacks *pAllocator,
-                    VkSampler *pSampler)
-{
-   VK_FROM_HANDLE(panvk_device, device, _device);
-   struct panvk_sampler *sampler;
-
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
-
-   sampler = vk_object_alloc(&device->vk, pAllocator, sizeof(*sampler),
-                             VK_OBJECT_TYPE_SAMPLER);
-   if (!sampler)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   panvk_init_sampler(device, sampler, pCreateInfo);
-   *pSampler = panvk_sampler_to_handle(sampler);
-
-   return VK_SUCCESS;
 }
 
 void

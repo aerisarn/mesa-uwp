@@ -21,122 +21,125 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "gen_macros.h"
+
 #include "nir/nir_builder.h"
 #include "pan_blitter.h"
 #include "pan_encoder.h"
+#include "pan_shader.h"
 
 #include "panvk_private.h"
 
 #include "vk_format.h"
 
 void
-panvk_CmdBlitImage(VkCommandBuffer commandBuffer,
-                   VkImage srcImage,
-                   VkImageLayout srcImageLayout,
-                   VkImage destImage,
-                   VkImageLayout destImageLayout,
-                   uint32_t regionCount,
-                   const VkImageBlit *pRegions,
-                   VkFilter filter)
+panvk_per_arch(CmdBlitImage)(VkCommandBuffer commandBuffer,
+                             VkImage srcImage,
+                             VkImageLayout srcImageLayout,
+                             VkImage destImage,
+                             VkImageLayout destImageLayout,
+                             uint32_t regionCount,
+                             const VkImageBlit *pRegions,
+                             VkFilter filter)
 
 {
    panvk_stub();
 }
 
 void
-panvk_CmdCopyImage(VkCommandBuffer commandBuffer,
-                   VkImage srcImage,
-                   VkImageLayout srcImageLayout,
-                   VkImage destImage,
-                   VkImageLayout destImageLayout,
-                   uint32_t regionCount,
-                   const VkImageCopy *pRegions)
+panvk_per_arch(CmdCopyImage)(VkCommandBuffer commandBuffer,
+                             VkImage srcImage,
+                             VkImageLayout srcImageLayout,
+                             VkImage destImage,
+                             VkImageLayout destImageLayout,
+                             uint32_t regionCount,
+                             const VkImageCopy *pRegions)
 {
    panvk_stub();
 }
 
 void
-panvk_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
-                           VkBuffer srcBuffer,
-                           VkImage destImage,
-                           VkImageLayout destImageLayout,
-                           uint32_t regionCount,
-                           const VkBufferImageCopy *pRegions)
+panvk_per_arch(CmdCopyBufferToImage)(VkCommandBuffer commandBuffer,
+                                     VkBuffer srcBuffer,
+                                     VkImage destImage,
+                                     VkImageLayout destImageLayout,
+                                     uint32_t regionCount,
+                                     const VkBufferImageCopy *pRegions)
 {
    panvk_stub();
 }
 
 void
-panvk_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
-                           VkImage srcImage,
-                           VkImageLayout srcImageLayout,
-                           VkBuffer destBuffer,
-                           uint32_t regionCount,
-                           const VkBufferImageCopy *pRegions)
+panvk_per_arch(CmdCopyImageToBuffer)(VkCommandBuffer commandBuffer,
+                                     VkImage srcImage,
+                                     VkImageLayout srcImageLayout,
+                                     VkBuffer destBuffer,
+                                     uint32_t regionCount,
+                                     const VkBufferImageCopy *pRegions)
 {
    panvk_stub();
 }
 
 void
-panvk_CmdCopyBuffer(VkCommandBuffer commandBuffer,
-                    VkBuffer srcBuffer,
-                    VkBuffer destBuffer,
-                    uint32_t regionCount,
-                    const VkBufferCopy *pRegions)
+panvk_per_arch(CmdCopyBuffer)(VkCommandBuffer commandBuffer,
+                              VkBuffer srcBuffer,
+                              VkBuffer destBuffer,
+                              uint32_t regionCount,
+                              const VkBufferCopy *pRegions)
 {
    panvk_stub();
 }
 
 void
-panvk_CmdResolveImage(VkCommandBuffer cmd_buffer_h,
-                      VkImage src_image_h,
-                      VkImageLayout src_image_layout,
-                      VkImage dest_image_h,
-                      VkImageLayout dest_image_layout,
-                      uint32_t region_count,
-                      const VkImageResolve *regions)
+panvk_per_arch(CmdResolveImage)(VkCommandBuffer cmd_buffer_h,
+                                VkImage src_image_h,
+                                VkImageLayout src_image_layout,
+                                VkImage dest_image_h,
+                                VkImageLayout dest_image_layout,
+                                uint32_t region_count,
+                                const VkImageResolve *regions)
 {
    panvk_stub();
 }
 
 void
-panvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
-                    VkBuffer dstBuffer,
-                    VkDeviceSize dstOffset,
-                    VkDeviceSize fillSize,
-                    uint32_t data)
+panvk_per_arch(CmdFillBuffer)(VkCommandBuffer commandBuffer,
+                              VkBuffer dstBuffer,
+                              VkDeviceSize dstOffset,
+                              VkDeviceSize fillSize,
+                              uint32_t data)
 {
    panvk_stub();
 }
 
 void
-panvk_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
-                      VkBuffer dstBuffer,
-                      VkDeviceSize dstOffset,
-                      VkDeviceSize dataSize,
-                      const void *pData)
+panvk_per_arch(CmdUpdateBuffer)(VkCommandBuffer commandBuffer,
+                                VkBuffer dstBuffer,
+                                VkDeviceSize dstOffset,
+                                VkDeviceSize dataSize,
+                                const void *pData)
 {
    panvk_stub();
 }
 
 void
-panvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
-                         VkImage image,
-                         VkImageLayout imageLayout,
-                         const VkClearColorValue *pColor,
-                         uint32_t rangeCount,
-                         const VkImageSubresourceRange *pRanges)
+panvk_per_arch(CmdClearColorImage)(VkCommandBuffer commandBuffer,
+                                   VkImage image,
+                                   VkImageLayout imageLayout,
+                                   const VkClearColorValue *pColor,
+                                   uint32_t rangeCount,
+                                   const VkImageSubresourceRange *pRanges)
 {
    panvk_stub();
 }
 
 void
-panvk_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
-                                VkImage image_h,
-                                VkImageLayout imageLayout,
-                                const VkClearDepthStencilValue *pDepthStencil,
-                                uint32_t rangeCount,
-                                const VkImageSubresourceRange *pRanges)
+panvk_per_arch(CmdClearDepthStencilImage)(VkCommandBuffer commandBuffer,
+                                          VkImage image_h,
+                                          VkImageLayout imageLayout,
+                                          const VkClearDepthStencilValue *pDepthStencil,
+                                          uint32_t rangeCount,
+                                          const VkImageSubresourceRange *pRanges)
 {
    panvk_stub();
 }
@@ -203,7 +206,7 @@ panvk_meta_clear_attachments_shader(struct panfrost_device *pdev,
 
    mali_ptr shader =
       pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
-                              pan_is_bifrost(pdev) ? 128 : 64);
+                              PAN_ARCH >= 6 ? 128 : 64);
 
    util_dynarray_fini(&binary);
    ralloc_free(b.shader);
@@ -224,8 +227,6 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
                                     PAN_DESC(RENDERER_STATE),
                                     PAN_DESC(BLEND));
 
-   unsigned fullmask = (1 << util_format_get_nr_components(format)) - 1;
-
    /* TODO: Support multiple render targets */
    assert(rt == 0);
 
@@ -243,47 +244,48 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
       cfg.stencil_front.mask = 0xFF;
       cfg.stencil_back = cfg.stencil_front;
 
-      if (pan_is_bifrost(pdev)) {
-         cfg.properties.bifrost.allow_forward_pixel_to_be_killed = true;
-         cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
-         cfg.properties.bifrost.zs_update_operation =
-            MALI_PIXEL_KILL_STRONG_EARLY;
-         cfg.properties.bifrost.pixel_kill_operation =
-            MALI_PIXEL_KILL_FORCE_EARLY;
-      } else {
-         cfg.properties.midgard.shader_reads_tilebuffer = false;
-         cfg.properties.midgard.work_register_count = shader_info->work_reg_count;
-         cfg.properties.midgard.force_early_z = true;
-         cfg.stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
-      }
+#if PAN_ARCH >= 6
+      cfg.properties.bifrost.allow_forward_pixel_to_be_killed = true;
+      cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
+      cfg.properties.bifrost.zs_update_operation =
+         MALI_PIXEL_KILL_STRONG_EARLY;
+      cfg.properties.bifrost.pixel_kill_operation =
+         MALI_PIXEL_KILL_FORCE_EARLY;
+#else
+      cfg.properties.midgard.shader_reads_tilebuffer = false;
+      cfg.properties.midgard.work_register_count = shader_info->work_reg_count;
+      cfg.properties.midgard.force_early_z = true;
+      cfg.stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
+#endif
    }
 
    pan_pack(rsd_ptr.cpu + pan_size(RENDERER_STATE), BLEND, cfg) {
       cfg.round_to_fb_precision = true;
       cfg.load_destination = false;
-      if (pan_is_bifrost(pdev)) {
-         cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OPAQUE;
-         cfg.bifrost.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-         cfg.bifrost.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-         cfg.bifrost.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-         cfg.bifrost.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-         cfg.bifrost.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-         cfg.bifrost.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-         cfg.bifrost.equation.color_mask = 0xf;
-         cfg.bifrost.internal.fixed_function.num_comps = 4;
-         cfg.bifrost.internal.fixed_function.conversion.memory_format =
-            panfrost_format_to_bifrost_blend(pdev, format, false);
-         cfg.bifrost.internal.fixed_function.conversion.register_format =
-            shader_info->bifrost.blend[rt].format;
-      } else {
-         cfg.midgard.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-         cfg.midgard.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-         cfg.midgard.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-         cfg.midgard.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-         cfg.midgard.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-         cfg.midgard.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-         cfg.midgard.equation.color_mask = fullmask;
-      }
+#if PAN_ARCH >= 6
+      cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OPAQUE;
+      cfg.bifrost.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+      cfg.bifrost.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+      cfg.bifrost.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+      cfg.bifrost.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+      cfg.bifrost.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+      cfg.bifrost.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+      cfg.bifrost.equation.color_mask = 0xf;
+      cfg.bifrost.internal.fixed_function.num_comps = 4;
+      cfg.bifrost.internal.fixed_function.conversion.memory_format =
+         panfrost_format_to_bifrost_blend(pdev, format, false);
+      cfg.bifrost.internal.fixed_function.conversion.register_format =
+         shader_info->bifrost.blend[rt].format;
+#else
+      cfg.midgard.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+      cfg.midgard.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+      cfg.midgard.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+      cfg.midgard.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+      cfg.midgard.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+      cfg.midgard.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+      cfg.midgard.equation.color_mask =
+         (1 << util_format_get_nr_components(format)) - 1;
+#endif
    }
 
    return rsd_ptr.gpu;
@@ -342,85 +344,49 @@ panvk_meta_clear_attachment_emit_dcd(struct pan_pool *pool,
       cfg.push_uniforms = push_constants;
       cfg.position = coords;
       cfg.viewport = vpd;
-      cfg.texture_descriptor_is_64b = !pan_is_bifrost(pool->dev);
+      cfg.texture_descriptor_is_64b = PAN_ARCH <= 5;
    }
 }
 
 static struct panfrost_ptr
-panvk_meta_clear_attachment_emit_bifrost_tiler_job(struct pan_pool *desc_pool,
-                                                   struct pan_scoreboard *scoreboard,
-                                                   mali_ptr coords,
-                                                   mali_ptr ubo, mali_ptr push_constants,
-                                                   mali_ptr vpd, mali_ptr rsd,
-                                                   mali_ptr tsd, mali_ptr tiler)
+panvk_meta_clear_attachment_emit_tiler_job(struct pan_pool *desc_pool,
+                                           struct pan_scoreboard *scoreboard,
+                                           mali_ptr coords,
+                                           mali_ptr ubo, mali_ptr push_constants,
+                                           mali_ptr vpd, mali_ptr rsd,
+                                           mali_ptr tsd, mali_ptr tiler)
 {
    struct panfrost_ptr job =
-      pan_pool_alloc_desc(desc_pool, BIFROST_TILER_JOB);
+      pan_pool_alloc_desc(desc_pool, TILER_JOB);
 
    panvk_meta_clear_attachment_emit_dcd(desc_pool,
                                         coords,
                                         ubo, push_constants,
                                         vpd, tsd, rsd,
-                                        pan_section_ptr(job.cpu, BIFROST_TILER_JOB, DRAW));
+                                        pan_section_ptr(job.cpu, TILER_JOB, DRAW));
 
-   pan_section_pack(job.cpu, BIFROST_TILER_JOB, PRIMITIVE, cfg) {
+   pan_section_pack(job.cpu, TILER_JOB, PRIMITIVE, cfg) {
       cfg.draw_mode = MALI_DRAW_MODE_TRIANGLE_STRIP;
       cfg.index_count = 4;
       cfg.job_task_split = 6;
    }
 
-   pan_section_pack(job.cpu, BIFROST_TILER_JOB, PRIMITIVE_SIZE, cfg) {
+   pan_section_pack(job.cpu, TILER_JOB, PRIMITIVE_SIZE, cfg) {
       cfg.constant = 1.0f;
    }
 
    void *invoc = pan_section_ptr(job.cpu,
-                                 BIFROST_TILER_JOB,
+                                 TILER_JOB,
                                  INVOCATION);
    panfrost_pack_work_groups_compute(invoc, 1, 4,
                                      1, 1, 1, 1, true, false);
 
-   pan_section_pack(job.cpu, BIFROST_TILER_JOB, PADDING, cfg);
-   pan_section_pack(job.cpu, BIFROST_TILER_JOB, TILER, cfg) {
+#if PAN_ARCH >= 6
+   pan_section_pack(job.cpu, TILER_JOB, PADDING, cfg);
+   pan_section_pack(job.cpu, TILER_JOB, TILER, cfg) {
       cfg.address = tiler;
    }
-
-   panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
-                    false, false, 0, 0, &job, false);
-   return job;
-}
-
-static struct panfrost_ptr
-panvk_meta_clear_attachment_emit_midgard_tiler_job(struct pan_pool *desc_pool,
-                                                   struct pan_scoreboard *scoreboard,
-                                                   mali_ptr coords,
-                                                   mali_ptr ubo, mali_ptr push_constants,
-                                                   mali_ptr vpd, mali_ptr rsd,
-                                                   mali_ptr tsd)
-{
-   struct panfrost_ptr job =
-      pan_pool_alloc_desc(desc_pool, MIDGARD_TILER_JOB);
-
-   panvk_meta_clear_attachment_emit_dcd(desc_pool,
-                                        coords,
-                                        ubo, push_constants,
-                                        vpd, tsd, rsd,
-                                        pan_section_ptr(job.cpu, MIDGARD_TILER_JOB, DRAW));
-
-   pan_section_pack(job.cpu, MIDGARD_TILER_JOB, PRIMITIVE, cfg) {
-      cfg.draw_mode = MALI_DRAW_MODE_TRIANGLE_STRIP;
-      cfg.index_count = 4;
-      cfg.job_task_split = 6;
-   }
-
-   pan_section_pack(job.cpu, MIDGARD_TILER_JOB, PRIMITIVE_SIZE, cfg) {
-      cfg.constant = 1.0f;
-   }
-
-   void *invoc = pan_section_ptr(job.cpu,
-                                 MIDGARD_TILER_JOB,
-                                 INVOCATION);
-   panfrost_pack_work_groups_compute(invoc, 1, 4,
-                                     1, 1, 1, 1, true, false);
+#endif
 
    panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
                     false, false, 0, 0, &job, false);
@@ -477,19 +443,19 @@ panvk_meta_clear_attachment(struct panvk_cmd_buffer *cmdbuf,
    /* TODO: Support depth/stencil */
    assert(mask == VK_IMAGE_ASPECT_COLOR_BIT);
 
-   panvk_cmd_alloc_fb_desc(cmdbuf);
-   panvk_cmd_alloc_tls_desc(cmdbuf);
+   panvk_per_arch(cmd_alloc_fb_desc)(cmdbuf);
+   panvk_per_arch(cmd_alloc_tls_desc)(cmdbuf);
 
-   if (pan_is_bifrost(pdev)) {
-      panvk_cmd_get_bifrost_tiler_context(cmdbuf,
-                                          batch->fb.info->width,
-                                          batch->fb.info->height);
-   } else {
-      panvk_cmd_get_midgard_polygon_list(cmdbuf,
+#if PAN_ARCH <= 5
+   panvk_per_arch(cmd_get_polygon_list)(cmdbuf,
+                                        batch->fb.info->width,
+                                        batch->fb.info->height,
+                                        true);
+#else
+   panvk_per_arch(cmd_get_tiler_context)(cmdbuf,
                                          batch->fb.info->width,
-                                         batch->fb.info->height,
-                                         true);
-   }
+                                         batch->fb.info->height);
+#endif
 
    mali_ptr vpd = panvk_meta_emit_viewport(&cmdbuf->desc_pool.base,
                                            minx, miny, maxx, maxy);
@@ -525,31 +491,16 @@ panvk_meta_clear_attachment(struct panvk_cmd_buffer *cmdbuf,
                                            &cmdbuf->desc_pool.base,
                                            clear_value);
 
-   mali_ptr tsd, tiler;
-
-   if (pan_is_bifrost(pdev)) {
-      tsd = batch->tls.gpu;
-      tiler = batch->tiler.bifrost_descs.gpu;
-   } else {
-      tsd = batch->fb.desc.gpu;
-      tiler = 0;
-   }
+   mali_ptr tsd = PAN_ARCH >= 6 ? batch->tls.gpu : batch->fb.desc.gpu;
+   mali_ptr tiler = PAN_ARCH >= 6 ? batch->tiler.descs.gpu : 0;
 
    struct panfrost_ptr job;
 
-   if (pan_is_bifrost(pdev)) {
-      job = panvk_meta_clear_attachment_emit_bifrost_tiler_job(&cmdbuf->desc_pool.base,
-                                                               &batch->scoreboard,
-                                                               coordinates,
-                                                               ubo, pushconsts,
-                                                               vpd, rsd, tsd, tiler);
-   } else {
-      job = panvk_meta_clear_attachment_emit_midgard_tiler_job(&cmdbuf->desc_pool.base,
-                                                               &batch->scoreboard,
-                                                               coordinates,
-                                                               ubo, pushconsts,
-                                                               vpd, rsd, tsd);
-   }
+   job = panvk_meta_clear_attachment_emit_tiler_job(&cmdbuf->desc_pool.base,
+                                                    &batch->scoreboard,
+                                                    coordinates,
+                                                    ubo, pushconsts,
+                                                    vpd, rsd, tsd, tiler);
 
    util_dynarray_append(&batch->jobs, void *, job.cpu);
 }
@@ -585,11 +536,11 @@ panvk_meta_clear_attachment_init(struct panvk_physical_device *dev)
 }
 
 void
-panvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
-                          uint32_t attachmentCount,
-                          const VkClearAttachment *pAttachments,
-                          uint32_t rectCount,
-                          const VkClearRect *pRects)
+panvk_per_arch(CmdClearAttachments)(VkCommandBuffer commandBuffer,
+                                    uint32_t attachmentCount,
+                                    const VkClearAttachment *pAttachments,
+                                    uint32_t rectCount,
+                                    const VkClearRect *pRects)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
    const struct panvk_subpass *subpass = cmdbuf->state.subpass;
@@ -617,7 +568,7 @@ panvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
 }
 
 void
-panvk_meta_init(struct panvk_physical_device *dev)
+panvk_per_arch(meta_init)(struct panvk_physical_device *dev)
 {
    panvk_pool_init(&dev->meta.bin_pool, &dev->pdev, NULL, PAN_BO_EXECUTE,
                    16 * 1024, "panvk_meta binary pool", false);
@@ -635,7 +586,7 @@ panvk_meta_init(struct panvk_physical_device *dev)
 }
 
 void
-panvk_meta_cleanup(struct panvk_physical_device *dev)
+panvk_per_arch(meta_cleanup)(struct panvk_physical_device *dev)
 {
    pan_blitter_cleanup(&dev->pdev);
    panvk_pool_cleanup(&dev->meta.blitter.desc_pool);

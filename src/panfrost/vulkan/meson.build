@@ -28,7 +28,9 @@ panvk_entrypoints = custom_target(
   command : [
     prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
     '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'panvk',
+    '--device-prefix', 'panvk_v5', '--device-prefix', 'panvk_v6', '--device-prefix', 'panvk_v7',
   ],
+  depend_files : vk_entrypoints_gen_depend_files,
 )
 
 libpanvk_files = files(
@@ -39,7 +41,6 @@ libpanvk_files = files(
   'panvk_formats.c',
   'panvk_image.c',
   'panvk_mempool.c',
-  'panvk_meta.c',
   'panvk_pass.c',
   'panvk_pipeline.c',
   'panvk_pipeline_cache.c',
@@ -48,13 +49,46 @@ libpanvk_files = files(
   'panvk_shader.c',
   'panvk_sync.c',
   'panvk_util.c',
-  'panvk_varyings.c',
   'panvk_wsi.c',
   'panvk_wsi_display.c',
 )
 
 panvk_deps = []
 panvk_flags = []
+panvk_per_arch_libs = []
+
+foreach arch : ['5', '6', '7']
+  panvk_per_arch_libs += static_library(
+    'panvk_v@0@'.format(arch),
+    [
+      'panvk_vX_cmd_buffer.c',
+      'panvk_vX_cs.c',
+      'panvk_vX_descriptor_set.c',
+      'panvk_vX_device.c',
+      'panvk_vX_image.c',
+      'panvk_vX_meta.c',
+      'panvk_vX_pipeline.c',
+      'panvk_vX_shader.c',
+    ],
+    include_directories : [
+      inc_include,
+      inc_src,
+      inc_compiler,
+      inc_gallium, # XXX: pipe/p_format.h
+      inc_gallium_aux, # XXX: renderonly
+      inc_vulkan_wsi,
+      inc_panfrost,
+    ],
+    dependencies : [
+      idep_nir_headers,
+      idep_pan_packers,
+      idep_vulkan_util_headers,
+      dep_libdrm,
+      dep_valgrind,
+    ],
+    c_args : [no_override_init_args, panvk_flags, '-DPAN_ARCH=@0@'.format(arch)],
+  )
+endforeach
 
 if system_has_kms_drm
   panvk_flags += '-DVK_USE_PLATFORM_DISPLAY_KHR'
@@ -80,6 +114,7 @@ libvulkan_panfrost = shared_library(
     inc_vulkan_wsi,
     inc_panfrost,
   ],
+  link_whole : [panvk_per_arch_libs],
   link_with : [
     libvulkan_wsi,
     libpanfrost_shared,
