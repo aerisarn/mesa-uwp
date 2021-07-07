@@ -584,13 +584,9 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 void
 zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *res, bool write)
 {
-   if (write) {
-      zink_batch_usage_set(&res->obj->writes, batch->state);
-      if (res->scanout_obj)
-         batch->state->scanout_flush = true;
-   } else {
-      zink_batch_usage_set(&res->obj->reads, batch->state);
-   }
+   zink_resource_usage_set(res, batch->state, write);
+   if (write && res->scanout_obj)
+      batch->state->scanout_flush = true;
    /* multiple array entries are fine */
    if (!res->obj->coherent && res->obj->persistent_maps)
       util_dynarray_append(&batch->state->persistent_resources, struct zink_resource_object*, res->obj);
