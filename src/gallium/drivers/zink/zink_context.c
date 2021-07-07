@@ -3349,38 +3349,17 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    zink_resource_rebind(zink_context(pctx), d);
 }
 
-ALWAYS_INLINE static bool
-is_usage_completed(struct zink_screen *screen, const struct zink_batch_usage *u)
-{
-   if (!zink_batch_usage_exists(u))
-      return true;
-   if (zink_batch_usage_is_unflushed(u))
-      return false;
-   /* check fastpath first */
-   if (zink_screen_check_last_finished(screen, u->usage))
-      return true;
-   /* if we have timelines, do a quick check */
-   if (screen->info.have_KHR_timeline_semaphore)
-      return zink_screen_timeline_wait(screen, u->usage, 0);
-
-   /* otherwise assume busy */
-   return false;
-}
-
 static bool
 zink_context_is_resource_busy(struct pipe_screen *pscreen, struct pipe_resource *pres, unsigned usage)
 {
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_resource *res = zink_resource(pres);
-   const struct zink_batch_usage *reads = NULL, *writes = NULL;
-   if (((usage & (PIPE_MAP_READ | PIPE_MAP_WRITE)) == (PIPE_MAP_READ | PIPE_MAP_WRITE)) ||
-       usage & PIPE_MAP_WRITE) {
-      reads = res->obj->reads;
-      writes = res->obj->writes;
-   } else if (usage & PIPE_MAP_READ)
-      writes = res->obj->writes;
-
-   return !is_usage_completed(screen, reads) || !is_usage_completed(screen, writes);
+   uint32_t check_usage = 0;
+   if (usage & PIPE_MAP_READ)
+      check_usage |= ZINK_RESOURCE_ACCESS_WRITE;
+   if (usage & PIPE_MAP_WRITE)
+      check_usage |= ZINK_RESOURCE_ACCESS_RW;
+   return !zink_resource_usage_check_completion(screen, res, check_usage);
 }
 
 static void
