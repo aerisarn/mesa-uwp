@@ -520,7 +520,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_discard_rectangles                             DONE (radv)
   VK_EXT_display_control                                DONE (anv, radv, tu)
   VK_EXT_extended_dynamic_state                         DONE (anv, lvp, radv, tu)
-  VK_EXT_extended_dynamic_state2                        DONE (anv, radv)
+  VK_EXT_extended_dynamic_state2                        DONE (anv, lvp, radv)
   VK_EXT_external_memory_dma_buf                        DONE (anv, radv, tu, v3dv)
   VK_EXT_external_memory_host                           DONE (anv, radv)
   VK_EXT_filter_cubic                                   DONE (tu/a650)
