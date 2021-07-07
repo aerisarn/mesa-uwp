@@ -68,12 +68,22 @@ select_memory_type(const struct wsi_device *wsi,
                    bool want_device_local,
                    uint32_t type_bits)
 {
+   assert(type_bits);
+
+   bool all_local = true;
    for (uint32_t i = 0; i < wsi->memory_props.memoryTypeCount; i++) {
        const VkMemoryType type = wsi->memory_props.memoryTypes[i];
        bool local = type.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
        if ((type_bits & (1 << i)) && local == want_device_local)
          return i;
+       all_local &= local;
+   }
+
+   /* ignore want_device_local when all memory types are device-local */
+   if (all_local) {
+      assert(!want_device_local);
+      return ffs(type_bits) - 1;
    }
 
    unreachable("No memory type found");
