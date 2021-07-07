@@ -124,6 +124,11 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .fragment_shader_sample_interlock = pdevice->info.ver >= 9,
          .fragment_shader_pixel_interlock = pdevice->info.ver >= 9,
          .geometry_streams = true,
+         /* When KHR_format_feature_flags2 is enabled, the read/write without
+          * format is per format, so just report true. It's up to the
+          * application to check.
+          */
+         .image_read_without_format = device->vk.enabled_extensions.KHR_format_feature_flags2,
          .image_write_without_format = true,
          .int8 = pdevice->info.ver >= 8,
          .int16 = pdevice->info.ver >= 8,
