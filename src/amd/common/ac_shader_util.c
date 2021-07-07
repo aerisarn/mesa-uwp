@@ -22,6 +22,7 @@
  */
 
 #include "ac_shader_util.h"
+#include "ac_gpu_info.h"
 
 #include "sid.h"
 
@@ -443,4 +444,70 @@ void ac_choose_spi_color_formats(unsigned format, unsigned swap, unsigned ntype,
    formats->alpha = alpha;
    formats->blend = blend;
    formats->blend_alpha = blend_alpha;
+}
+
+void ac_compute_late_alloc(const struct radeon_info *info, bool ngg, bool ngg_culling,
+                           bool uses_scratch, unsigned *late_alloc_wave64, unsigned *cu_mask)
+{
+   *late_alloc_wave64 = 0; /* The limit is per SA. */
+   *cu_mask = 0xffff;
+
+   /* CU masking can decrease performance and cause a hang with <= 2 CUs per SA. */
+   if (info->min_good_cu_per_sa <= 2)
+      return;
+
+   /* If scratch is used with late alloc, the GPU could deadlock if PS uses scratch too. A more
+    * complicated computation is needed to enable late alloc with scratch (see PAL).
+    */
+   if (uses_scratch)
+      return;
+
+   /* Late alloc is not used for NGG on Navi14 due to a hw bug. */
+   if (ngg && info->family == CHIP_NAVI14)
+      return;
+
+   if (info->chip_class >= GFX10) {
+      /* For Wave32, the hw will launch twice the number of late alloc waves, so 1 == 2x wave32.
+       * These limits are estimated because they are all safe but they vary in performance.
+       */
+      if (ngg_culling)
+         *late_alloc_wave64 = info->min_good_cu_per_sa * 10;
+      else
+         *late_alloc_wave64 = info->min_good_cu_per_sa * 4;
+
+      /* Limit LATE_ALLOC_GS to prevent a hang (hw bug) on gfx10. */
+      if (info->chip_class == GFX10 && ngg)
+         *late_alloc_wave64 = MIN2(*late_alloc_wave64, 64);
+
+      /* Gfx10: CU2 & CU3 must be disabled to prevent a hw deadlock.
+       * Others: CU1 must be disabled to prevent a hw deadlock.
+       *
+       * The deadlock is caused by late alloc, which usually increases performance.
+       */
+      *cu_mask &= info->chip_class == GFX10 ? ~BITFIELD_RANGE(2, 2) :
+                                              ~BITFIELD_RANGE(1, 1);
+   } else {
+      if (info->min_good_cu_per_sa <= 4) {
+         /* Too few available compute units per SA. Disallowing VS to run on one CU could hurt us
+          * more than late VS allocation would help.
+          *
+          * 2 is the highest safe number that allows us to keep all CUs enabled.
+          */
+         *late_alloc_wave64 = 2;
+      } else {
+         /* This is a good initial value, allowing 1 late_alloc wave per SIMD on num_cu - 2.
+          */
+         *late_alloc_wave64 = (info->min_good_cu_per_sa - 2) * 4;
+      }
+
+      /* VS can't execute on one CU if the limit is > 2. */
+      if (*late_alloc_wave64 > 2)
+         *cu_mask = 0xfffe; /* 1 CU disabled */
+   }
+
+   /* Max number that fits into the register field. */
+   if (ngg) /* GS */
+      *late_alloc_wave64 = MIN2(*late_alloc_wave64, G_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(~0u));
+   else /* VS */
+      *late_alloc_wave64 = MIN2(*late_alloc_wave64, G_00B11C_LIMIT(~0u));
 }

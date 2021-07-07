@@ -206,7 +206,7 @@ struct radeon_info {
    uint32_t min_wave64_vgpr_alloc;
    uint32_t max_vgpr_alloc;
    uint32_t wave64_vgpr_alloc_granularity;
-   bool use_late_alloc; /* VS and GS: late pos/param allocation */
+   bool use_late_alloc; /* deprecated: remove this after radv switches to ac_compute_late_alloc */
 
    /* Render backends (color + depth blocks). */
    uint32_t r300_num_gb_pipes;

@@ -936,6 +936,8 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
       si_pm4_set_reg(pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS, rsrc1);
       si_pm4_set_reg(pm4, R_00B22C_SPI_SHADER_PGM_RSRC2_GS, rsrc2);
+      si_pm4_set_reg(pm4, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                     S_00B21C_CU_EN(0xffff) | S_00B21C_WAVE_LIMIT(0x3F));
 
       if (sscreen->info.chip_class >= GFX10) {
          si_pm4_set_reg(pm4, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
@@ -955,6 +957,10 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
       polaris_set_vgt_vertex_reuse(sscreen, shader->key.part.gs.es, NULL, pm4);
    } else {
+      if (sscreen->info.chip_class >= GFX7) {
+         si_pm4_set_reg(pm4, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                        S_00B21C_CU_EN(0xffff) | S_00B21C_WAVE_LIMIT(0x3F));
+      }
       si_pm4_set_reg(pm4, R_00B220_SPI_SHADER_PGM_LO_GS, va >> 8);
       si_pm4_set_reg(pm4, R_00B224_SPI_SHADER_PGM_HI_GS, S_00B224_MEM_BASE(va >> 40));
 
@@ -1193,6 +1199,11 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
 
    unsigned wave_size = si_get_shader_wave_size(shader);
+   unsigned late_alloc_wave64, cu_mask;
+
+   ac_compute_late_alloc(&sscreen->info, true, shader->key.opt.ngg_culling,
+                         shader->config.scratch_bytes_per_wave > 0,
+                         &late_alloc_wave64, &cu_mask);
 
    si_pm4_set_reg(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
    si_pm4_set_reg(pm4, R_00B324_SPI_SHADER_PGM_HI_ES, S_00B324_MEM_BASE(va >> 40));
@@ -1212,29 +1223,8 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                      S_00B22C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5) |
                      S_00B22C_OC_LDS_EN(es_stage == MESA_SHADER_TESS_EVAL) |
                      S_00B22C_LDS_SIZE(shader->config.lds_size));
-
-   /* Determine LATE_ALLOC_GS. */
-   unsigned num_cu_per_sh = sscreen->info.min_good_cu_per_sa;
-   unsigned late_alloc_wave64; /* The limit is per SA. */
-
-   /* For Wave32, the hw will launch twice the number of late
-    * alloc waves, so 1 == 2x wave32.
-    *
-    * Don't use late alloc for NGG on Navi14 due to a hw bug.
-    */
-   if (sscreen->info.family == CHIP_NAVI14 || !sscreen->info.use_late_alloc)
-      late_alloc_wave64 = 0;
-   else if (shader->key.opt.ngg_culling)
-      late_alloc_wave64 = num_cu_per_sh * 10;
-   else
-      late_alloc_wave64 = num_cu_per_sh * 4;
-
-   /* Limit LATE_ALLOC_GS for prevent a hang (hw bug). */
-   if (sscreen->info.chip_class == GFX10)
-      late_alloc_wave64 = MIN2(late_alloc_wave64, 64);
-
-   /* Max number that fits into the register field. */
-   late_alloc_wave64 = MIN2(late_alloc_wave64, 127);
+   si_pm4_set_reg(pm4, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                  S_00B21C_CU_EN(cu_mask) | S_00B21C_WAVE_LIMIT(0x3F));
 
    si_pm4_set_reg(
       pm4, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
@@ -1307,8 +1297,8 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
          oversub_pc_factor = 0.5;
    }
 
-   unsigned oversub_pc_lines = sscreen->info.pc_lines * oversub_pc_factor;
-   shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(sscreen->info.use_late_alloc) |
+   unsigned oversub_pc_lines = late_alloc_wave64 ? sscreen->info.pc_lines * oversub_pc_factor : 0;
+   shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(oversub_pc_lines > 0) |
                                      S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
 
    if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST ||
@@ -1495,11 +1485,22 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
                                                                   : V_02870C_SPI_SHADER_NONE) |
       S_02870C_POS3_EXPORT_FORMAT(shader->info.nr_pos_exports > 3 ? V_02870C_SPI_SHADER_4COMP
                                                                   : V_02870C_SPI_SHADER_NONE);
-   shader->ctx_reg.vs.ge_pc_alloc = S_030980_OVERSUB_EN(sscreen->info.use_late_alloc) |
+   unsigned late_alloc_wave64, cu_mask;
+   ac_compute_late_alloc(&sscreen->info, false, false,
+                         shader->config.scratch_bytes_per_wave > 0,
+                         &late_alloc_wave64, &cu_mask);
+
+   shader->ctx_reg.vs.ge_pc_alloc = S_030980_OVERSUB_EN(late_alloc_wave64 > 0) |
                                     S_030980_NUM_PC_LINES(sscreen->info.pc_lines / 4 - 1);
    shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, shader, false);
 
    oc_lds_en = shader->selector->info.stage == MESA_SHADER_TESS_EVAL ? 1 : 0;
+
+   if (sscreen->info.chip_class >= GFX7) {
+      si_pm4_set_reg(pm4, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
+                     S_00B118_CU_EN(cu_mask) | S_00B118_WAVE_LIMIT(0x3F));
+      si_pm4_set_reg(pm4, R_00B11C_SPI_SHADER_LATE_ALLOC_VS, S_00B11C_LIMIT(late_alloc_wave64));
+   }
 
    si_pm4_set_reg(pm4, R_00B120_SPI_SHADER_PGM_LO_VS, va >> 8);
    si_pm4_set_reg(pm4, R_00B124_SPI_SHADER_PGM_HI_VS, S_00B124_MEM_BASE(va >> 40));
