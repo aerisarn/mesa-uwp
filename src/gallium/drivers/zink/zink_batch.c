@@ -36,8 +36,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    /* unref all used resources */
    set_foreach_remove(bs->resources, entry) {
       struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
-      zink_batch_usage_unset(&obj->reads, bs);
-      zink_batch_usage_unset(&obj->writes, bs);
+      zink_resource_object_usage_unset(obj, bs);
       zink_resource_object_reference(screen, &obj, NULL);
    }
 

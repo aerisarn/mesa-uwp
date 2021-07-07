@@ -1174,13 +1174,11 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
    if ((usage & PIPE_MAP_WRITE) &&
        (usage & PIPE_MAP_DISCARD_RANGE || (!(usage & PIPE_MAP_READ) && zink_resource_has_usage(res))) &&
        ((!res->obj->host_visible) || !(usage & (PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT)))) {
-
       /* Check if mapping this buffer would cause waiting for the GPU.
        */
 
       if (!res->obj->host_visible ||
-          !zink_batch_usage_check_completion(ctx, res->obj->reads) ||
-          !zink_batch_usage_check_completion(ctx, res->obj->writes)) {
+          !zink_resource_usage_check_completion(screen, res, ZINK_RESOURCE_ACCESS_RW)) {
          /* Do a wait-free write-only transfer using a temporary buffer. */
          unsigned offset;
 
@@ -1208,7 +1206,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
          /* sparse/device-local will always need to wait since it has to copy */
          if (!res->obj->host_visible)
             return NULL;
-         if (!zink_batch_usage_check_completion(ctx, res->obj->writes))
+         if (!zink_resource_usage_check_completion(screen, res, ZINK_RESOURCE_ACCESS_WRITE))
             return NULL;
       } else if (!res->obj->host_visible) {
          trans->staging_res = pipe_buffer_create(&screen->base, PIPE_BIND_LINEAR, PIPE_USAGE_STAGING, box->x + box->width);
@@ -1219,7 +1217,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
          res = staging_res;
          zink_fence_wait(&ctx->base);
       } else
-         zink_batch_usage_wait(ctx, res->obj->writes);
+         zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_WRITE);
    }
 
    if (!ptr) {
@@ -1330,8 +1328,8 @@ zink_transfer_map(struct pipe_context *pctx,
 
          if (usage & PIPE_MAP_READ) {
             /* force multi-context sync */
-            if (zink_batch_usage_is_unflushed(res->obj->writes))
-               zink_batch_usage_wait(ctx, res->obj->writes);
+            if (zink_resource_usage_is_unflushed_write(res))
+               zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_WRITE);
             zink_transfer_copy_bufimage(ctx, staging_res, res, trans);
             /* need to wait for rendering to finish */
             zink_fence_wait(pctx);
@@ -1349,7 +1347,7 @@ zink_transfer_map(struct pipe_context *pctx,
             if (usage & PIPE_MAP_WRITE)
                zink_fence_wait(pctx);
             else
-               zink_batch_usage_wait(ctx, res->obj->writes);
+               zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_WRITE);
          }
          VkImageSubresource isr = {
             res->obj->modifier_aspect ? res->obj->modifier_aspect : res->aspect,
@@ -1551,7 +1549,7 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
       struct zink_resource staging = *res;
       staging.obj = old_obj;
       bool needs_unref = true;
-      if (get_resource_usage(res)) {
+      if (zink_resource_has_usage(res)) {
          zink_batch_reference_resource_move(&ctx->batch, res);
          needs_unref = false;
       }

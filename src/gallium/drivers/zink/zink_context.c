@@ -3232,8 +3232,7 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
    struct zink_screen *screen = zink_screen(pctx->screen);
 
    /* if any current usage exists, flush the queue */
-   if (zink_batch_usage_is_unflushed(res->obj->reads) ||
-       zink_batch_usage_is_unflushed(res->obj->writes))
+   if (zink_resource_has_unflushed_usage(res))
       zink_flush_queue(ctx);
 
    uint8_t *mem = malloc(sizeof(VkBindSparseInfo) + sizeof(VkSparseBufferMemoryBindInfo) + sizeof(VkSparseMemoryBind) + sizeof(void*));
@@ -3339,8 +3338,7 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
 
    assert(d->internal_format == s->internal_format);
    util_idalloc_mt_free(&zink_screen(pctx->screen)->buffer_ids, delete_buffer_id);
-   if (zink_batch_usage_is_unflushed(d->obj->reads) ||
-       zink_batch_usage_is_unflushed(d->obj->writes))
+   if (zink_resource_has_unflushed_usage(d))
       zink_batch_reference_resource(&zink_context(pctx)->batch, d);
    zink_resource_object_reference(zink_screen(pctx->screen), &d->obj, s->obj);
    d->access = s->access;
