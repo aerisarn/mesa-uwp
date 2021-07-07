@@ -813,7 +813,8 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
       /* always draw bresenham if !smooth */
       pipeline->line_stipple_enable = line_state->stippledLineEnable;
       pipeline->line_smooth = line_state->lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
-      pipeline->disable_multisample = line_state->lineRasterizationMode != VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+      pipeline->disable_multisample = (line_state->lineRasterizationMode != VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT) &&
+         line_state->lineRasterizationMode != VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
       if (!dynamic_state_contains(pipeline->graphics_create_info.pDynamicState, VK_DYNAMIC_STATE_LINE_STIPPLE_EXT)) {
          pipeline->line_stipple_factor = line_state->lineStippleFactor - 1;
          pipeline->line_stipple_pattern = line_state->lineStipplePattern;
