@@ -143,7 +143,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_vertex_input_dynamic_state        = true,
    .EXT_custom_border_color               = true,
    .EXT_provoking_vertex                  = true,
-   .EXT_line_rasterization                = false,
+   .EXT_line_rasterization                = true,
    .GOOGLE_decorate_string                = true,
    .GOOGLE_hlsl_functionality1            = true,
 };
@@ -518,10 +518,10 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
          VkPhysicalDeviceLineRasterizationFeaturesEXT *features =
             (VkPhysicalDeviceLineRasterizationFeaturesEXT *)ext;
-         features->rectangularLines = false;
+         features->rectangularLines = true;
          features->bresenhamLines = true;
          features->smoothLines = true;
-         features->stippledRectangularLines = false;
+         features->stippledRectangularLines = true;
          features->stippledBresenhamLines = true;
          features->stippledSmoothLines = true;
          break;
