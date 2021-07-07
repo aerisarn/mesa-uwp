@@ -121,7 +121,8 @@ llvmpipe_bind_rasterizer_state(struct pipe_context *pipe, void *handle)
       lp_setup_set_flatshade_first( llvmpipe->setup,
 				    state->lp_state.flatshade_first);
       lp_setup_set_line_state( llvmpipe->setup,
-                              state->lp_state.line_width);
+                              state->lp_state.line_width,
+                              state->lp_state.line_rectangular);
       lp_setup_set_point_state( llvmpipe->setup,
                                state->lp_state.point_size,
                                state->lp_state.point_size_per_vertex,

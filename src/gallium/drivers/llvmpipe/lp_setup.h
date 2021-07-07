@@ -83,7 +83,8 @@ lp_setup_set_triangle_state( struct lp_setup_context *setup,
 
 void 
 lp_setup_set_line_state( struct lp_setup_context *setup,
-                         float line_width);
+                         float line_width,
+                         boolean line_rectangular);
 
 void 
 lp_setup_set_point_state( struct lp_setup_context *setup,

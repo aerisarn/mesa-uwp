@@ -103,6 +103,7 @@ struct lp_setup_context
    boolean legacy_points;
    boolean rasterizer_discard;
    boolean multisample;
+   boolean rectangular_lines;
    unsigned cullmode;
    unsigned bottom_edge_rule;
    float pixel_offset;
