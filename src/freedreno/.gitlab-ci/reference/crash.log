@@ -4118,7 +4118,7 @@ shader-blocks:
 	:1:0002:0002[200a00c1x_094864d2x] no match: 200a00c1094864d2
 	:2:0003:0003[44109084x_4a201507x] no match: 441090844a201507
 	:4:0004:0004[882fadabx_14a391b1x] (jp)(sat)(rpt1)(ul)rsq hr42.w, (abs)(r)hc108.y	; dontcare bits in rsq: f800014a30000
-	:3:0005:0006[6060f068x_7106601ax] (ss)(ul)mad.u16 r26.x, (neg)hr6.z, (neg)hr48.y, (r)hc65.z	; dontcare bits in mad.u16: 2000
+	:3:0005:0006[6060f068x_7106601ax] no match: 6060f0687106601a
 	-----------------------------------------------
 	8192 (0x2000) bytes
 	000000: d81251c5 40846422 520c369a 938a16e2	|.Q.."d.@.6.R....|

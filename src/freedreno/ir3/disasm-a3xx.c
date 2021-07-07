@@ -264,6 +264,7 @@ static const struct opc_info {
 	OPC(3, OPC_SEL_F32,      sel.f32),
 	OPC(3, OPC_SAD_S16,      sad.s16),
 	OPC(3, OPC_SAD_S32,      sad.s32),
+	OPC(3, OPC_SHLG_B16,     shlg.b16),
 
 	/* category 4: */
 	OPC(4, OPC_RCP,          rcp),

@@ -1243,6 +1243,8 @@ static inline unsigned ir3_cat3_absneg(opc_t opc)
 	case OPC_SEL_B16:
 	case OPC_SEL_B32:
 
+	case OPC_SHLG_B16:
+
 	default:
 		return 0;
 	}

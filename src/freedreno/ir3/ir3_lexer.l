@@ -251,6 +251,7 @@ static int parse_w(const char *str)
 "sel.f32"                         return TOKEN(T_OP_SEL_F32);
 "sad.s16"                         return TOKEN(T_OP_SAD_S16);
 "sad.s32"                         return TOKEN(T_OP_SAD_S32);
+"shlg.b16"                        return TOKEN(T_OP_SHLG_B16);
 
                                   /* category 4: */
 "rcp"                             return TOKEN(T_OP_RCP);

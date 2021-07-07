@@ -118,6 +118,9 @@ static const struct test {
 	INSTR_6XX(63820005_10315030, "mad.f32 r1.y, (neg)c12.x, r1.x, c12.y"),
 	INSTR_6XX(62050009_00091000, "mad.u24 r2.y, c0.x, r2.z, r2.y"),
 	INSTR_6XX(61828008_00081033, "madsh.m16 r2.x, c12.w, r1.y, r2.x"),
+	INSTR_6XX(65900820_100cb008, "(nop3) shlg.b16 hr8.x, 8, hr8.x, 12"), /* (nop3) shlg.b16 hr8.x, (r)8, (r)hr8.x, 12; */
+	INSTR_6XX(65ae085c_0002a001, "(nop3) shlg.b16 hr23.x, hr0.y, hr23.x, hr0.z"), /* not seen in blob */
+	INSTR_6XX(65900820_0c0aac05, "(nop3) shlg.b16 hr8.x, hc<a0.x + 5>, hr8.x, hc<a0.x + 10>"), /* not seen in blob */
 
 	/* cat4 */
 	INSTR_6XX(8010000a_00000003, "rcp r2.z, r0.w"),

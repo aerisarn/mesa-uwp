@@ -480,6 +480,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_SEL_F32
 %token <tok> T_OP_SAD_S16
 %token <tok> T_OP_SAD_S32
+%token <tok> T_OP_SHLG_B16
 
 /* category 4: */
 %token <tok> T_OP_RCP
@@ -913,6 +914,7 @@ cat3_opc:          T_OP_MAD_U16   { new_instr(OPC_MAD_U16); }
 |                  T_OP_SAD_S32   { new_instr(OPC_SAD_S32); }
 
 cat3_instr:        cat3_opc dst_reg ',' src_reg_or_const_or_rel ',' src_reg_or_const ',' src_reg_or_const_or_rel
+|                  T_OP_SHLG_B16 { new_instr(OPC_SHLG_B16); } dst_reg ',' src_reg_or_rel_or_imm ',' src_reg_or_const ',' src_reg_or_rel_or_imm
 
 cat4_opc:          T_OP_RCP       { new_instr(OPC_RCP); }
 |                  T_OP_RSQ       { new_instr(OPC_RSQ); }
@@ -1192,6 +1194,10 @@ src_reg_or_const_or_rel: src_reg_or_const
 
 src_reg_or_const_or_rel_or_imm: src_reg_or_const_or_rel
 |                  src_reg_flags immediate
+|                  immediate
+
+src_reg_or_rel_or_imm: src_reg
+|                  relative
 |                  immediate
 
 offset:            { $$ = 0; }

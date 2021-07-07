@@ -799,7 +799,16 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 		break;
 	case 3:
 		valid_flags = ir3_cat3_absneg(instr->opc) |
-				IR3_REG_CONST | IR3_REG_RELATIV | IR3_REG_SHARED;
+				IR3_REG_RELATIV | IR3_REG_SHARED;
+
+		if (instr->opc == OPC_SHLG_B16) {
+			valid_flags |= IR3_REG_IMMED;
+			/* shlg.b16 can be RELATIV+CONST but not CONST: */
+			if (flags & IR3_REG_RELATIV)
+				valid_flags |= IR3_REG_CONST;
+		} else {
+			valid_flags |= IR3_REG_CONST;
+		}
 
 		if (flags & ~valid_flags)
 			return false;
