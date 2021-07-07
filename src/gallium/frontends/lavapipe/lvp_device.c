@@ -788,7 +788,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties(VkPhysicalDevice phys
       .lineWidthRange                           = { 1.0, pdevice->pscreen->get_paramf(pdevice->pscreen, PIPE_CAPF_MAX_LINE_WIDTH) },
       .pointSizeGranularity                     = (1.0 / 8.0),
       .lineWidthGranularity                     = 1.0 / 128.0,
-      .strictLines                              = false, /* FINISHME */
+      .strictLines                              = true,
       .standardSampleLocations                  = true,
       .optimalBufferCopyOffsetAlignment         = 128,
       .optimalBufferCopyRowPitchAlignment       = 128,

@@ -31,7 +31,8 @@ dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1darray_fragment,Fa
 dEQP-VK.image.mismatched_formats.image_write.a8b8g8r8_srgb_pack32_with_rgb10a2,Crash
 dEQP-VK.image.mismatched_formats.image_write.b8g8r8a8_srgb_with_rgba8,Crash
 dEQP-VK.image.mismatched_formats.image_write.r8g8b8a8_srgb_with_rgb10a2,Crash
-dEQP-VK.rasterization.interpolation.projected.non_strict_lines,Fail
+dEQP-VK.rasterization.primitives.static_stipple.rectangular_line_strip_wide,Fail
+dEQP-VK.rasterization.primitives_multisample_4_bit.dynamic_stipple.line_strip_wide,Fail
 dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_linear.linear.clamp_to_edge.repeat,Fail
 dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_linear.linear.mirror_clamp_to_edge.repeat,Fail
 dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_linear.linear.mirrored_repeat.mirror_clamp_to_edge,Fail
