@@ -363,6 +363,9 @@ typedef struct {
     * driver. YOLO the mapping of nir_register to fixed hardware registers */
    unsigned *nir_regalloc;
 
+   /* We reserve the top (XXX: that hurts thread count) */
+   unsigned max_register;
+
    /* Place to start pushing new values */
    unsigned push_base;
 

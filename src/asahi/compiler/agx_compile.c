@@ -1366,6 +1366,7 @@ agx_compile_shader_nir(nir_shader *nir,
          ctx->nir_regalloc[reg->index] = nir_regalloc;
       }
 
+      ctx->max_register = nir_regalloc;
       ctx->alloc += func->impl->ssa_alloc;
       emit_cf_list(ctx, &func->impl->body);
       break; /* TODO: Multi-function shaders */
