@@ -5338,11 +5338,11 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
             late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
          }
 
+         /* VS can't execute on one CU if the limit is > 2. */
          if (late_alloc_wave64 > 2)
             cu_mask_vs = 0xfffe; /* 1 CU disabled */
       }
 
-      /* VS can't execute on one CU if the limit is > 2. */
       si_pm4_set_reg(pm4, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
                      S_00B118_CU_EN(cu_mask_vs) | S_00B118_WAVE_LIMIT(0x3F));
       si_pm4_set_reg(pm4, R_00B11C_SPI_SHADER_LATE_ALLOC_VS, S_00B11C_LIMIT(late_alloc_wave64));
