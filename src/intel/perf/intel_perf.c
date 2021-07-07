@@ -1360,7 +1360,20 @@ intel_perf_init_query_fields(struct intel_perf_config *perf_cfg,
                add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
                                   GFX8_OA_PERF_C32(i), 4, i);
             }
-         } else if (devinfo->ver == 12) {
+         } else if (devinfo->verx10 == 120) {
+            for (uint32_t i = 0; i < GFX12_N_OAG_PERF_B32; i++) {
+               add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
+                                  GFX12_OAG_PERF_B32(i), 4, i);
+            }
+            for (uint32_t i = 0; i < GFX12_N_OAG_PERF_C32; i++) {
+               add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
+                                  GFX12_OAG_PERF_C32(i), 4, i);
+            }
+         } else if (devinfo->verx10 == 125) {
+            add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_A,
+                               GFX125_OAG_PERF_A36, 4, 36);
+            add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_A,
+                               GFX125_OAG_PERF_A37, 4, 37);
             for (uint32_t i = 0; i < GFX12_N_OAG_PERF_B32; i++) {
                add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
                                   GFX12_OAG_PERF_B32(i), 4, i);
