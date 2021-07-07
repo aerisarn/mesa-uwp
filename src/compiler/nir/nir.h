@@ -4226,6 +4226,7 @@ nir_instr_insert_after_cf_list(struct exec_list *list, nir_instr *after)
 
 void nir_instr_remove_v(nir_instr *instr);
 void nir_instr_free(nir_instr *instr);
+void nir_instr_free_list(struct exec_list *list);
 
 static inline nir_cursor
 nir_instr_remove(nir_instr *instr)
