@@ -2026,7 +2026,7 @@ typedef enum {
    nir_tex_src_lod,
    nir_tex_src_min_lod,
    nir_tex_src_ms_index, /* MSAA sample index */
-   nir_tex_src_ms_mcs, /* MSAA compression value */
+   nir_tex_src_ms_mcs_intel, /* MSAA compression value */
    nir_tex_src_ddx,
    nir_tex_src_ddy,
    nir_tex_src_texture_deref, /* < deref pointing to the texture */
@@ -2052,7 +2052,7 @@ typedef enum {
    nir_texop_txf,                /**< Texel fetch with explicit LOD */
    nir_texop_txf_ms,             /**< Multisample texture fetch */
    nir_texop_txf_ms_fb,          /**< Multisample texture fetch from framebuffer */
-   nir_texop_txf_ms_mcs,         /**< Multisample compression value fetch */
+   nir_texop_txf_ms_mcs_intel,   /**< Multisample compression value fetch */
    nir_texop_txs,                /**< Texture size */
    nir_texop_lod,                /**< Texture lod query */
    nir_texop_tg4,                /**< Texture gather */
@@ -2225,7 +2225,7 @@ nir_tex_instr_is_query(const nir_tex_instr *instr)
    case nir_texop_txf:
    case nir_texop_txf_ms:
    case nir_texop_txf_ms_fb:
-   case nir_texop_txf_ms_mcs:
+   case nir_texop_txf_ms_mcs_intel:
    case nir_texop_tg4:
       return false;
    default:
@@ -2255,7 +2255,7 @@ nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
       case nir_texop_txf:
       case nir_texop_txf_ms:
       case nir_texop_txf_ms_fb:
-      case nir_texop_txf_ms_mcs:
+      case nir_texop_txf_ms_mcs_intel:
       case nir_texop_samples_identical:
          return nir_type_int;
 
@@ -2287,7 +2287,7 @@ nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
    case nir_tex_src_plane:
       return nir_type_int;
 
-   case nir_tex_src_ms_mcs:
+   case nir_tex_src_ms_mcs_intel:
    case nir_tex_src_texture_deref:
    case nir_tex_src_sampler_deref:
    case nir_tex_src_texture_offset:
@@ -2309,8 +2309,8 @@ nir_tex_instr_src_size(const nir_tex_instr *instr, unsigned src)
    if (instr->src[src].src_type == nir_tex_src_coord)
       return instr->coord_components;
 
-   /* The MCS value is expected to be a vec4 returned by a txf_ms_mcs */
-   if (instr->src[src].src_type == nir_tex_src_ms_mcs)
+   /* The MCS value is expected to be a vec4 returned by a txf_ms_mcs_intel */
+   if (instr->src[src].src_type == nir_tex_src_ms_mcs_intel)
       return 4;
 
    if (instr->src[src].src_type == nir_tex_src_ddx ||

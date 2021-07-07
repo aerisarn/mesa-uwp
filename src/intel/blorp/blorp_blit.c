@@ -150,7 +150,8 @@ blorp_create_nir_tex_instr(nir_builder *b, struct brw_blorp_blit_vars *v,
     * more explicit in the future.
     */
    assert(pos->num_components >= 2);
-   if (op == nir_texop_txf || op == nir_texop_txf_ms || op == nir_texop_txf_ms_mcs) {
+   if (op == nir_texop_txf || op == nir_texop_txf_ms ||
+       op == nir_texop_txf_ms_mcs_intel) {
       pos = nir_vec3(b, nir_channel(b, pos, 0), nir_channel(b, pos, 1),
                         nir_f2i32(b, nir_load_var(b, v->v_src_z)));
    } else {
@@ -227,7 +228,7 @@ blorp_nir_txf_ms(nir_builder *b, struct brw_blorp_blit_vars *v,
    }
 
    if (mcs) {
-      tex->src[2].src_type = nir_tex_src_ms_mcs;
+      tex->src[2].src_type = nir_tex_src_ms_mcs_intel;
       tex->src[2].src = nir_src_for_ssa(mcs);
    }
 
@@ -241,7 +242,7 @@ blorp_blit_txf_ms_mcs(nir_builder *b, struct brw_blorp_blit_vars *v,
                       nir_ssa_def *pos)
 {
    nir_tex_instr *tex =
-      blorp_create_nir_tex_instr(b, v, nir_texop_txf_ms_mcs,
+      blorp_create_nir_tex_instr(b, v, nir_texop_txf_ms_mcs_intel,
                                  pos, 1, nir_type_int);
 
    tex->sampler_dim = GLSL_SAMPLER_DIM_MS;

@@ -39,7 +39,7 @@ static inline nir_ssa_def *
 blorp_nir_txf_ms_mcs(nir_builder *b, nir_ssa_def *xy_pos, nir_ssa_def *layer)
 {
    nir_tex_instr *tex = nir_tex_instr_create(b->shader, 1);
-   tex->op = nir_texop_txf_ms_mcs;
+   tex->op = nir_texop_txf_ms_mcs_intel;
    tex->sampler_dim = GLSL_SAMPLER_DIM_MS;
    tex->dest_type = nir_type_int32;
 
