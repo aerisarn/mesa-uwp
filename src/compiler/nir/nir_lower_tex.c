@@ -289,7 +289,7 @@ sample_plane(nir_builder *b, nir_tex_instr *tex, int plane,
    nir_tex_instr *plane_tex =
       nir_tex_instr_create(b->shader, tex->num_srcs + 1);
    for (unsigned i = 0; i < tex->num_srcs; i++) {
-      nir_src_copy(&plane_tex->src[i].src, &tex->src[i].src, plane_tex);
+      nir_src_copy(&plane_tex->src[i].src, &tex->src[i].src);
       plane_tex->src[i].src_type = tex->src[i].src_type;
    }
    plane_tex->src[tex->num_srcs].src = nir_src_for_ssa(nir_imm_int(b, plane));
@@ -770,7 +770,7 @@ lower_tex_to_txd(nir_builder *b, nir_tex_instr *tex)
 
    /* reuse existing srcs */
    for (unsigned i = 0; i < tex->num_srcs; i++) {
-      nir_src_copy(&txd->src[i].src, &tex->src[i].src, txd);
+      nir_src_copy(&txd->src[i].src, &tex->src[i].src);
       txd->src[i].src_type = tex->src[i].src_type;
    }
    int coord = nir_tex_instr_src_index(tex, nir_tex_src_coord);
@@ -807,7 +807,7 @@ lower_txb_to_txl(nir_builder *b, nir_tex_instr *tex)
    /* reuse all but bias src */
    for (int i = 0; i < 2; i++) {
       if (tex->src[i].src_type != nir_tex_src_bias) {
-         nir_src_copy(&txl->src[i].src, &tex->src[i].src, txl);
+         nir_src_copy(&txl->src[i].src, &tex->src[i].src);
          txl->src[i].src_type = tex->src[i].src_type;
       }
    }
@@ -1097,7 +1097,7 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
       tex_copy->dest_type = tex->dest_type;
 
       for (unsigned j = 0; j < tex->num_srcs; ++j) {
-         nir_src_copy(&tex_copy->src[j].src, &tex->src[j].src, tex_copy);
+         nir_src_copy(&tex_copy->src[j].src, &tex->src[j].src);
          tex_copy->src[j].src_type = tex->src[j].src_type;
       }
 

@@ -244,7 +244,7 @@ brw_nir_opt_peephole_ffma_block(nir_builder *b, nir_block *block)
          for (unsigned j = 0; j < add->dest.dest.ssa.num_components; j++)
             ffma->src[i].swizzle[j] = mul->src[i].swizzle[swizzle[j]];
       }
-      nir_alu_src_copy(&ffma->src[2], &add->src[1 - add_mul_src], ffma);
+      nir_alu_src_copy(&ffma->src[2], &add->src[1 - add_mul_src]);
 
       assert(add->dest.dest.is_ssa);
 

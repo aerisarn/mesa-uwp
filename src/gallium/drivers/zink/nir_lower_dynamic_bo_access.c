@@ -49,7 +49,7 @@ recursive_generate_bo_ssa_def(nir_builder *b, nir_intrinsic_instr *instr, nir_ss
       new_instr->src[0] = nir_src_for_ssa(nir_imm_int(b, start));
       for (unsigned i = 0; i < nir_intrinsic_infos[instr->intrinsic].num_srcs; i++) {
          if (i)
-            nir_src_copy(&new_instr->src[i], &instr->src[i], &new_instr->instr);
+            nir_src_copy(&new_instr->src[i], &instr->src[i]);
       }
       if (instr->intrinsic != nir_intrinsic_load_ubo_vec4) {
          nir_intrinsic_set_align(new_instr, nir_intrinsic_align_mul(instr), nir_intrinsic_align_offset(instr));
