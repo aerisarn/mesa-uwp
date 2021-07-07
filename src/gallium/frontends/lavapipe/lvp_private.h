@@ -484,6 +484,7 @@ struct lvp_pipeline {
    bool line_stipple_enable;
    bool line_smooth;
    bool disable_multisample;
+   bool line_rectangular;
    bool gs_output_lines;
    bool provoking_vertex_last;
 };

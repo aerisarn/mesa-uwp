@@ -510,6 +510,7 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
       state->rs_state.half_pixel_center = true;
       state->rs_state.scissor = true;
       state->rs_state.no_ms_sample_mask_out = true;
+      state->rs_state.line_rectangular = pipeline->line_rectangular;
 
       if (!dynamic_states[VK_DYNAMIC_STATE_LINE_WIDTH])
          state->rs_state.line_width = rsc->lineWidth;

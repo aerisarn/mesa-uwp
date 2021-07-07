@@ -232,6 +232,7 @@ CreateRasterizerState(
    state.point_tri_clip = 1;
 
    state.line_width = 1.0f;
+   state.line_rectangular = 0;
 
    pRasterizerState->handle = pipe->create_rasterizer_state(pipe, &state);
 }
