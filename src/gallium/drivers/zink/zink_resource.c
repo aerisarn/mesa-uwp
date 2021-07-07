@@ -1090,13 +1090,6 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
                                 0, &box);
 }
 
-bool
-zink_resource_has_usage(struct zink_resource *res, enum zink_resource_access usage)
-{
-   uint32_t batch_uses = get_resource_usage(res);
-   return batch_uses & usage;
-}
-
 ALWAYS_INLINE static void
 align_offset_size(const VkDeviceSize alignment, VkDeviceSize *offset, VkDeviceSize *size, VkDeviceSize obj_size)
 {
@@ -1186,7 +1179,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
    }
 
    if ((usage & PIPE_MAP_WRITE) &&
-       (usage & PIPE_MAP_DISCARD_RANGE || (!(usage & PIPE_MAP_READ) && zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_RW))) &&
+       (usage & PIPE_MAP_DISCARD_RANGE || (!(usage & PIPE_MAP_READ) && zink_resource_has_usage(res))) &&
        ((!res->obj->host_visible) || !(usage & (PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT)))) {
 
       /* Check if mapping this buffer would cause waiting for the GPU.
@@ -1359,7 +1352,7 @@ zink_transfer_map(struct pipe_context *pctx,
          base = map_resource(screen, res);
          if (!base)
             return NULL;
-         if (zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_RW)) {
+         if (zink_resource_has_usage(res)) {
             if (usage & PIPE_MAP_WRITE)
                zink_fence_wait(pctx);
             else
