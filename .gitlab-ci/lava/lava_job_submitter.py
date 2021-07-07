@@ -50,7 +50,7 @@ def generate_lava_yaml(args):
     values = {
         'job_name': 'mesa: {}'.format(args.pipeline_info),
         'device_type': args.device_type,
-        'visibility': { 'group': [ 'Collabora+fdo'] },
+        'visibility': { 'group': [ args.visibility_group ] },
         'priority': 75,
         'context': {
             'extra_nfsroot_args': ' init=/init rootwait minio_results={}'.format(args.job_artifacts_base)
@@ -295,6 +295,7 @@ if __name__ == '__main__':
     parser.add_argument("--jwt")
     parser.add_argument("--validate-only", action='store_true')
     parser.add_argument("--dump-yaml", action='store_true')
+    parser.add_argument("--visibility-group")
 
     parser.set_defaults(func=main)
     args = parser.parse_args()

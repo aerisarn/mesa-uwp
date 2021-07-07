@@ -460,7 +460,7 @@ fedora/x86_build:
   variables:
     GIT_STRATEGY: fetch
     KERNEL_URL: *kernel-rootfs-url
-    MESA_ROOTFS_TAG: &kernel-rootfs "2021-08-03-piglit"
+    MESA_ROOTFS_TAG: &kernel-rootfs "2021-08-07-enable-lima"
     DISTRIBUTION_TAG: &distribution-tag-arm "${MESA_ROOTFS_TAG}--${MESA_ARTIFACTS_TAG}--${MESA_TEMPLATES_COMMIT}"
   script:
     - .gitlab-ci/container/lava_build.sh

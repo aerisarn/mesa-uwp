@@ -42,4 +42,5 @@ artifacts/lava/lava_job_submitter.py \
 	--kernel-image-name ${KERNEL_IMAGE_NAME} \
 	--kernel-image-type "${KERNEL_IMAGE_TYPE}" \
 	--boot-method ${BOOT_METHOD} \
+	--visibility-group ${VISIBILITY_GROUP} \
 	--lava-tags "${LAVA_TAGS}" >> results/lava.log
