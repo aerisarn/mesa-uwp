@@ -160,8 +160,8 @@ agx_optimizer_forward(agx_context *ctx)
       struct agx_opcode_info info = agx_opcodes_info[I->op];
 
       for (unsigned d = 0; d < info.nr_dests; ++d) {
-         assert(I->dest[d].type == AGX_INDEX_NORMAL);
-         defs[I->dest[d].value] = I;
+         if (I->dest[d].type == AGX_INDEX_NORMAL)
+            defs[I->dest[d].value] = I;
       }
 
       /* Propagate fmov down */
@@ -199,7 +199,9 @@ agx_optimizer_backward(agx_context *ctx)
       if (info.nr_dests != 1)
          continue;
 
-      assert(I->dest[0].type == AGX_INDEX_NORMAL);
+      if (I->dest[0].type != AGX_INDEX_NORMAL)
+         continue;
+
       agx_instr *use = uses[I->dest[0].value];
 
       if (!use || BITSET_TEST(multiple, I->dest[0].value))
