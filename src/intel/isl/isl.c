@@ -3197,100 +3197,102 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
    /* If we ever enable 3D block formats, we'll need to re-think this */
    assert(fmtl->bd == 1);
 
-   if (view->array_len > 1) {
-      /* The Skylake PRM Vol. 2d, "RENDER_SURFACE_STATE::X Offset" says:
-       *
-       *    "If Surface Array is enabled, this field must be zero."
-       *
-       * The PRMs for other hardware have similar text.  This is also tricky
-       * to handle with things like BLORP's SW offsetting because the
-       * increased surface size required for the offset may result in an image
-       * height greater than qpitch.
-       */
-      if (view->base_level > 0)
-         return false;
+   {
+      if (view->array_len > 1) {
+         /* The Skylake PRM Vol. 2d, "RENDER_SURFACE_STATE::X Offset" says:
+          *
+          *    "If Surface Array is enabled, this field must be zero."
+          *
+          * The PRMs for other hardware have similar text. This is also tricky
+          * to handle with things like BLORP's SW offsetting because the
+          * increased surface size required for the offset may result in an
+          * image height greater than qpitch.
+          */
+         if (view->base_level > 0)
+            return false;
 
-      /* On Haswell and earlier, RENDER_SURFACE_STATE doesn't have a QPitch
-       * field; it only has "array pitch span" which means the QPitch is
-       * automatically calculated.  Since we're smashing the surface format
-       * (block formats are subtly different) and the number of miplevels,
-       * that calculation will get thrown off.  This means we can't do arrays
-       * even at LOD0
-       *
-       * On Broadwell, we do have a QPitch field which we can control.
-       * However, HALIGN and VALIGN are specified in pixels and are
-       * hard-coded to align to exactly the block size of the compressed
-       * texture.  This means that, when reinterpreted as a non-compressed
-       * the QPitch may be anything but the HW requires it to be properly
-       * aligned.
-       */
-      if (ISL_GFX_VER(dev) < 9)
-         return false;
+         /* On Haswell and earlier, RENDER_SURFACE_STATE doesn't have a QPitch
+          * field; it only has "array pitch span" which means the QPitch is
+          * automatically calculated. Since we're smashing the surface format
+          * (block formats are subtly different) and the number of miplevels,
+          * that calculation will get thrown off. This means we can't do
+          * arrays even at LOD0
+          *
+          * On Broadwell, we do have a QPitch field which we can control.
+          * However, HALIGN and VALIGN are specified in pixels and are
+          * hard-coded to align to exactly the block size of the compressed
+          * texture. This means that, when reinterpreted as a non-compressed
+          * the QPitch may be anything but the HW requires it to be properly
+          * aligned.
+          */
+         if (ISL_GFX_VER(dev) < 9)
+            return false;
 
-      *ucompr_surf = *surf;
-      ucompr_surf->levels = 1;
-      ucompr_surf->format = view_format;
+         *ucompr_surf = *surf;
+         ucompr_surf->levels = 1;
+         ucompr_surf->format = view_format;
 
-      /* We're making an uncompressed view here.  The image dimensions
-       * need to be scaled down by the block size.
-       */
-      assert(ucompr_surf->logical_level0_px.width == view_width_px);
-      assert(ucompr_surf->logical_level0_px.height == view_height_px);
-      ucompr_surf->logical_level0_px.width = view_width_el;
-      ucompr_surf->logical_level0_px.height = view_height_el;
-      ucompr_surf->phys_level0_sa = isl_surf_get_phys_level0_el(surf);
+         /* We're making an uncompressed view here. The image dimensions need
+          * to be scaled down by the block size.
+          */
+         assert(ucompr_surf->logical_level0_px.width == view_width_px);
+         assert(ucompr_surf->logical_level0_px.height == view_height_px);
+         ucompr_surf->logical_level0_px.width = view_width_el;
+         ucompr_surf->logical_level0_px.height = view_height_el;
+         ucompr_surf->phys_level0_sa = isl_surf_get_phys_level0_el(surf);
 
-      /* The surface mostly stays as-is; there is no offset */
-      *offset_B = 0;
-      *x_offset_el = 0;
-      *y_offset_el = 0;
+         /* The surface mostly stays as-is; there is no offset */
+         *offset_B = 0;
+         *x_offset_el = 0;
+         *y_offset_el = 0;
 
-      /* The view remains the same */
-      *ucompr_view = *view;
-   } else {
-      /* If only one array slice is requested, directly offset to that slice.
-       * We could, in theory, still use arrays in some cases but BLORP isn't
-       * prepared for this and everyone who calls this function should be
-       * prepared to handle an X/Y offset.
-       */
-      isl_surf_get_image_offset_B_tile_el(surf,
-                                          view->base_level,
-                                          surf->dim == ISL_SURF_DIM_3D ?
+         /* The view remains the same */
+         *ucompr_view = *view;
+      } else {
+         /* If only one array slice is requested, directly offset to that
+          * slice. We could, in theory, still use arrays in some cases but
+          * BLORP isn't prepared for this and everyone who calls this function
+          * should be prepared to handle an X/Y offset.
+          */
+         isl_surf_get_image_offset_B_tile_el(surf,
+                                             view->base_level,
+                                             surf->dim == ISL_SURF_DIM_3D ?
                                              0 : view->base_array_layer,
-                                          surf->dim == ISL_SURF_DIM_3D ?
+                                             surf->dim == ISL_SURF_DIM_3D ?
                                              view->base_array_layer : 0,
-                                          offset_B,
-                                          x_offset_el,
-                                          y_offset_el);
+                                             offset_B,
+                                             x_offset_el,
+                                             y_offset_el);
 
-      /* Even for cube maps there will be only single face, therefore drop the
-       * corresponding flag if present.
-       */
-      const isl_surf_usage_flags_t usage =
-         surf->usage & (~ISL_SURF_USAGE_CUBE_BIT);
+         /* Even for cube maps there will be only single face, therefore drop
+          * the corresponding flag if present.
+          */
+         const isl_surf_usage_flags_t usage =
+            surf->usage & (~ISL_SURF_USAGE_CUBE_BIT);
 
-      bool ok UNUSED;
-      ok = isl_surf_init(dev, ucompr_surf,
-                         .dim = ISL_SURF_DIM_2D,
-                         .format = view_format,
-                         .width = view_width_el,
-                         .height = view_height_el,
-                         .depth = 1,
-                         .levels = 1,
-                         .array_len = 1,
-                         .samples = 1,
-                         .row_pitch_B = surf->row_pitch_B,
-                         .usage = usage,
-                         .tiling_flags = (1 << surf->tiling));
-      assert(ok);
+         bool ok UNUSED;
+         ok = isl_surf_init(dev, ucompr_surf,
+                            .dim = ISL_SURF_DIM_2D,
+                            .format = view_format,
+                            .width = view_width_el,
+                            .height = view_height_el,
+                            .depth = 1,
+                            .levels = 1,
+                            .array_len = 1,
+                            .samples = 1,
+                            .row_pitch_B = surf->row_pitch_B,
+                            .usage = usage,
+                            .tiling_flags = (1 << surf->tiling));
+         assert(ok);
 
-      /* The newly created image represents the one subimage we're
-       * referencing with this view so it only has one array slice and
-       * miplevel.
-       */
-      *ucompr_view = *view;
-      ucompr_view->base_array_layer = 0;
-      ucompr_view->base_level = 0;
+         /* The newly created image represents the one subimage we're
+          * referencing with this view so it only has one array slice and
+          * miplevel.
+          */
+         *ucompr_view = *view;
+         ucompr_view->base_array_layer = 0;
+         ucompr_view->base_level = 0;
+      }
    }
 
    return true;
