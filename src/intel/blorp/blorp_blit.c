@@ -1589,12 +1589,12 @@ blorp_surf_convert_to_single_slice(const struct isl_device *isl_dev,
    else
       layer = info->view.base_array_layer;
 
-   uint32_t byte_offset;
+   uint64_t offset_B;
    isl_surf_get_image_surf(isl_dev, &info->surf,
                            info->view.base_level, layer, z,
                            &info->surf,
-                           &byte_offset, &info->tile_x_sa, &info->tile_y_sa);
-   info->addr.offset += byte_offset;
+                           &offset_B, &info->tile_x_sa, &info->tile_y_sa);
+   info->addr.offset += offset_B;
 
    uint32_t tile_x_px, tile_y_px;
    surf_get_intratile_offset_px(info, &tile_x_px, &tile_y_px);
@@ -2182,7 +2182,8 @@ shrink_surface_params(const struct isl_device *dev,
                       struct brw_blorp_surface_info *info,
                       double *x0, double *x1, double *y0, double *y1)
 {
-   uint32_t byte_offset, x_offset_sa, y_offset_sa, size;
+   uint64_t offset_B;
+   uint32_t x_offset_sa, y_offset_sa, size;
    struct isl_extent2d px_size_sa;
    int adjust;
 
@@ -2201,12 +2202,12 @@ shrink_surface_params(const struct isl_device *dev,
                                       info->surf.format, info->surf.row_pitch_B,
                                       info->surf.array_pitch_el_rows,
                                       x_offset_sa, y_offset_sa, 0, 0,
-                                      &byte_offset,
+                                      &offset_B,
                                       &info->tile_x_sa, &info->tile_y_sa,
                                       &tile_z_sa, &tile_a);
    assert(tile_z_sa == 0 && tile_a == 0);
 
-   info->addr.offset += byte_offset;
+   info->addr.offset += offset_B;
 
    adjust = (int)info->tile_x_sa / px_size_sa.w - (int)*x0;
    *x0 += adjust;
@@ -2621,7 +2622,7 @@ blorp_surf_convert_to_uncompressed(const struct isl_device *isl_dev,
       info->z_offset = 0;
    }
 
-   uint32_t offset_B;
+   uint64_t offset_B;
    ASSERTED bool ok =
       isl_surf_get_uncompressed_surf(isl_dev, &info->surf, &info->view,
                                      &info->surf, &info->view, &offset_B,

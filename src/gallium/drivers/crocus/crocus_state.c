@@ -2908,7 +2908,8 @@ crocus_create_surface(struct pipe_context *ctx,
          crocus_resource_finish_aux_import(&screen->base, res);
 
       memcpy(&surf->surf, &res->surf, sizeof(surf->surf));
-      uint32_t temp_offset, temp_x, temp_y;
+      uint64_t temp_offset;
+      uint32_t temp_x, temp_y;
 
       isl_surf_get_image_offset_B_tile_sa(&res->surf, tmpl->u.tex.level,
                                           res->base.b.target == PIPE_TEXTURE_3D ? 0 : tmpl->u.tex.first_layer,
@@ -2954,7 +2955,8 @@ crocus_create_surface(struct pipe_context *ctx,
    /* TODO: compressed pbo uploads aren't working here */
    return NULL;
 
-   uint32_t offset_B = 0, tile_x_sa = 0, tile_y_sa = 0;
+   uint64_t offset_B = 0;
+   uint32_t tile_x_sa = 0, tile_y_sa = 0;
 
    if (view->base_level > 0) {
       /* We can't rely on the hardware's miplevel selection with such
@@ -4950,7 +4952,8 @@ emit_surface_state(struct crocus_batch *batch,
    const struct intel_device_info *devinfo = &batch->screen->devinfo;
    struct isl_device *isl_dev = &batch->screen->isl_dev;
    uint32_t reloc = RELOC_32BIT;
-   uint32_t offset = res->offset, tile_x_sa = 0, tile_y_sa = 0;
+   uint64_t offset_B = res->offset;
+   uint32_t tile_x_sa = 0, tile_y_sa = 0;
 
    if (writeable)
       reloc |= RELOC_WRITE;
@@ -4961,7 +4964,7 @@ emit_surface_state(struct crocus_batch *batch,
          isl_surf_get_image_surf(isl_dev, in_surf,
                                  view->base_level, 0,
                                  view->base_array_layer,
-                                 &surf, &offset,
+                                 &surf, &offset_B,
                                  &tile_x_sa, &tile_y_sa);
          view->base_array_layer = 0;
          view->base_level = 0;
@@ -4969,7 +4972,7 @@ emit_surface_state(struct crocus_batch *batch,
          isl_surf_get_image_surf(isl_dev, in_surf,
                                  view->base_level, view->base_array_layer,
                                  0,
-                                 &surf, &offset,
+                                 &surf, &offset_B,
                                  &tile_x_sa, &tile_y_sa);
          view->base_array_layer = 0;
          view->base_level = 0;
@@ -4994,7 +4997,7 @@ emit_surface_state(struct crocus_batch *batch,
                        .view = view,
                        .address = crocus_state_reloc(batch,
                                                      addr_offset + isl_dev->ss.addr_offset,
-                                                     res->bo, offset, reloc),
+                                                     res->bo, offset_B, reloc),
                        .aux_surf = aux_surf,
                        .aux_usage = aux_usage,
                        .aux_address = aux_offset,
@@ -7419,7 +7422,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             if (crocus_resource_level_has_hiz(zres, view.base_level)) {
                info.hiz_usage = zres->aux.usage;
                info.hiz_surf = &zres->aux.surf;
-               uint32_t hiz_offset = 0;
+               uint64_t hiz_offset = 0;
 
 #if GFX_VER == 6
                /* HiZ surfaces on Sandy Bridge technically don't support
@@ -7444,7 +7447,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             info.stencil_aux_usage = sres->aux.usage;
             info.stencil_surf = &sres->surf;
 
-            uint32_t stencil_offset = 0;
+            uint64_t stencil_offset = 0;
 #if GFX_VER == 6
             /* Stencil surfaces on Sandy Bridge technically don't support
              * mip-mapping.  However, we can fake it by offsetting to the

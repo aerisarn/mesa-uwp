@@ -2531,7 +2531,7 @@ iris_create_surface(struct pipe_context *ctx,
    };
 
    struct isl_surf read_surf = res->surf;
-   uint32_t read_surf_offset_B = 0;
+   uint64_t read_surf_offset_B = 0;
    uint32_t read_surf_tile_x_sa = 0, read_surf_tile_y_sa = 0;
    if (tex->target == PIPE_TEXTURE_3D && array_len == 1) {
       /* The minimum array element field of the surface state structure is
@@ -2623,7 +2623,8 @@ iris_create_surface(struct pipe_context *ctx,
    assert(view->levels == 1);
 
    struct isl_surf isl_surf;
-   uint32_t offset_B = 0, tile_x_el = 0, tile_y_el = 0;
+   uint64_t offset_B = 0;
+   uint32_t tile_x_el = 0, tile_y_el = 0;
    bool ok = isl_surf_get_uncompressed_surf(&screen->isl_dev, &res->surf,
                                             view, &isl_surf, view,
                                             &offset_B, &tile_x_el, &tile_y_el);

@@ -541,7 +541,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
             logical_z_offset_px = 0;
          }
 
-         uint32_t slice_start_offset_B, slice_end_offset_B;
+         uint64_t slice_start_offset_B, slice_end_offset_B;
          isl_surf_get_image_range_B_tile(isl_surf, level,
                                          logical_array_layer,
                                          logical_z_offset_px,

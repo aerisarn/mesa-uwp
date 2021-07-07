@@ -1309,7 +1309,8 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
       layer = 0;
    }
 
-   uint32_t offset_B, x_offset_el, y_offset_el;
+   uint64_t offset_B;
+   uint32_t x_offset_el, y_offset_el;
    isl_surf_get_image_offset_B_tile_el(surf->aux_surf, level, layer, z,
                                        &offset_B, &x_offset_el, &y_offset_el);
    params.dst.addr.offset += offset_B;

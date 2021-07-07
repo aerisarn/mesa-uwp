@@ -2577,7 +2577,7 @@ isl_surf_get_image_offset_B_tile_sa(const struct isl_surf *surf,
                                     uint32_t level,
                                     uint32_t logical_array_layer,
                                     uint32_t logical_z_offset_px,
-                                    uint32_t *offset_B,
+                                    uint64_t *offset_B,
                                     uint32_t *x_offset_sa,
                                     uint32_t *y_offset_sa);
 
@@ -2597,7 +2597,7 @@ isl_surf_get_image_offset_B_tile_el(const struct isl_surf *surf,
                                     uint32_t level,
                                     uint32_t logical_array_layer,
                                     uint32_t logical_z_offset_px,
-                                    uint32_t *offset_B,
+                                    uint64_t *offset_B,
                                     uint32_t *x_offset_el,
                                     uint32_t *y_offset_el);
 
@@ -2619,8 +2619,8 @@ isl_surf_get_image_range_B_tile(const struct isl_surf *surf,
                                 uint32_t level,
                                 uint32_t logical_array_layer,
                                 uint32_t logical_z_offset_px,
-                                uint32_t *start_tile_B,
-                                uint32_t *end_tile_B);
+                                uint64_t *start_tile_B,
+                                uint64_t *end_tile_B);
 
 /**
  * Create an isl_surf that represents a particular subimage in the surface.
@@ -2641,7 +2641,7 @@ isl_surf_get_image_surf(const struct isl_device *dev,
                         uint32_t logical_array_layer,
                         uint32_t logical_z_offset_px,
                         struct isl_surf *image_surf,
-                        uint32_t *offset_B,
+                        uint64_t *offset_B,
                         uint32_t *x_offset_sa,
                         uint32_t *y_offset_sa);
 
@@ -2670,7 +2670,7 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
                                const struct isl_view *view,
                                struct isl_surf *uncompressed_surf,
                                struct isl_view *uncompressed_view,
-                               uint32_t *offset_B,
+                               uint64_t *offset_B,
                                uint32_t *x_offset_el,
                                uint32_t *y_offset_el);
 
@@ -2706,7 +2706,7 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
                                    uint32_t total_y_offset_el,
                                    uint32_t total_z_offset_el,
                                    uint32_t total_array_offset,
-                                   uint32_t *tile_offset_B,
+                                   uint64_t *tile_offset_B,
                                    uint32_t *x_offset_el,
                                    uint32_t *y_offset_el,
                                    uint32_t *z_offset_el,
@@ -2744,7 +2744,7 @@ isl_tiling_get_intratile_offset_sa(enum isl_tiling tiling,
                                    uint32_t total_y_offset_sa,
                                    uint32_t total_z_offset_sa,
                                    uint32_t total_array_offset,
-                                   uint32_t *tile_offset_B,
+                                   uint64_t *tile_offset_B,
                                    uint32_t *x_offset_sa,
                                    uint32_t *y_offset_sa,
                                    uint32_t *z_offset_sa,

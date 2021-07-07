@@ -1921,7 +1921,7 @@ void anv_GetImageSubresourceLayout(
    if (subresource->mipLevel > 0 || subresource->arrayLayer > 0) {
       assert(surface->isl.tiling == ISL_TILING_LINEAR);
 
-      uint32_t offset_B;
+      uint64_t offset_B;
       isl_surf_get_image_offset_B_tile_sa(&surface->isl,
                                           subresource->mipLevel,
                                           subresource->arrayLayer,
@@ -2586,7 +2586,8 @@ anv_image_fill_surface_state(struct anv_device *device,
       const struct isl_surf *isl_surf = &surface->isl;
 
       struct isl_surf tmp_surf;
-      uint32_t offset_B = 0, tile_x_sa = 0, tile_y_sa = 0;
+      uint64_t offset_B = 0;
+      uint32_t tile_x_sa = 0, tile_y_sa = 0;
       if (isl_format_is_compressed(surface->isl.format) &&
           !isl_format_is_compressed(view.format)) {
          /* We're creating an uncompressed view of a compressed surface.  This

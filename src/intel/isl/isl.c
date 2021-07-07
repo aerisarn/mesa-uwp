@@ -2655,7 +2655,7 @@ isl_surf_get_image_offset_B_tile_sa(const struct isl_surf *surf,
                                     uint32_t level,
                                     uint32_t logical_array_layer,
                                     uint32_t logical_z_offset_px,
-                                    uint32_t *offset_B,
+                                    uint64_t *offset_B,
                                     uint32_t *x_offset_sa,
                                     uint32_t *y_offset_sa)
 {
@@ -2687,7 +2687,7 @@ isl_surf_get_image_offset_B_tile_el(const struct isl_surf *surf,
                                     uint32_t level,
                                     uint32_t logical_array_layer,
                                     uint32_t logical_z_offset_px,
-                                    uint32_t *offset_B,
+                                    uint64_t *offset_B,
                                     uint32_t *x_offset_el,
                                     uint32_t *y_offset_el)
 {
@@ -2724,8 +2724,8 @@ isl_surf_get_image_range_B_tile(const struct isl_surf *surf,
                                 uint32_t level,
                                 uint32_t logical_array_layer,
                                 uint32_t logical_z_offset_px,
-                                uint32_t *start_tile_B,
-                                uint32_t *end_tile_B)
+                                uint64_t *start_tile_B,
+                                uint64_t *end_tile_B)
 {
    uint32_t start_x_offset_el, start_y_offset_el;
    uint32_t start_z_offset_el, start_array_slice;
@@ -2793,7 +2793,7 @@ isl_surf_get_image_surf(const struct isl_device *dev,
                         uint32_t logical_array_layer,
                         uint32_t logical_z_offset_px,
                         struct isl_surf *image_surf,
-                        uint32_t *offset_B,
+                        uint64_t *offset_B,
                         uint32_t *x_offset_sa,
                         uint32_t *y_offset_sa)
 {
@@ -2833,7 +2833,7 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
                                const struct isl_view *view,
                                struct isl_surf *ucompr_surf,
                                struct isl_view *ucompr_view,
-                               uint32_t *offset_B,
+                               uint64_t *offset_B,
                                uint32_t *x_offset_el,
                                uint32_t *y_offset_el)
 {
@@ -2948,7 +2948,7 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
                                    uint32_t total_y_offset_el,
                                    uint32_t total_z_offset_el,
                                    uint32_t total_array_offset,
-                                   uint32_t *tile_offset_B,
+                                   uint64_t *tile_offset_B,
                                    uint32_t *x_offset_el,
                                    uint32_t *y_offset_el,
                                    uint32_t *z_offset_el,
@@ -2957,8 +2957,8 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
    if (tiling == ISL_TILING_LINEAR) {
       assert(bpb % 8 == 0);
       assert(total_z_offset_el == 0 && total_array_offset == 0);
-      *tile_offset_B = total_y_offset_el * row_pitch_B +
-                       total_x_offset_el * (bpb / 8);
+      *tile_offset_B = (uint64_t)total_y_offset_el * row_pitch_B +
+                       (uint64_t)total_x_offset_el * (bpb / 8);
       *x_offset_el = 0;
       *y_offset_el = 0;
       *z_offset_el = 0;
@@ -3006,8 +3006,8 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
    y_offset_tl += (z_offset_tl + a_offset_tl) * array_pitch_tl_rows;
 
    *tile_offset_B =
-      y_offset_tl * tile_info.phys_extent_B.h * row_pitch_B +
-      x_offset_tl * tile_info.phys_extent_B.h * tile_info.phys_extent_B.w;
+      (uint64_t)y_offset_tl * tile_info.phys_extent_B.h * row_pitch_B +
+      (uint64_t)x_offset_tl * tile_info.phys_extent_B.h * tile_info.phys_extent_B.w;
 }
 
 uint32_t
