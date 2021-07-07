@@ -248,11 +248,7 @@ lower_phis_to_scalar_block(nir_block *block,
             else
                nir_instr_insert_after_block(src->pred, &mov->instr);
 
-            nir_phi_src *new_src = ralloc(new_phi, nir_phi_src);
-            new_src->pred = src->pred;
-            new_src->src = nir_src_for_ssa(&mov->dest.dest.ssa);
-
-            exec_list_push_tail(&new_phi->srcs, &new_src->node);
+            nir_phi_instr_add_src(new_phi, src->pred, nir_src_for_ssa(&mov->dest.dest.ssa));
          }
 
          nir_instr_insert_before(&phi->instr, &new_phi->instr);

@@ -1069,11 +1069,7 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
       b->cursor = nir_after_instr_and_phis(src->src.ssa->parent_instr);
 
       nir_ssa_def *cast = nir_build_alu(b, upcast_op, src->src.ssa, NULL, NULL, NULL);
-
-      nir_phi_src *new_src = rzalloc(lowered, nir_phi_src);
-      new_src->pred = src->pred;
-      new_src->src = nir_src_for_ssa(cast);
-      exec_list_push_tail(&lowered->srcs, &new_src->node);
+      nir_phi_instr_add_src(lowered, src->pred, nir_src_for_ssa(cast));
    }
 
    nir_ssa_dest_init(&lowered->instr, &lowered->dest,

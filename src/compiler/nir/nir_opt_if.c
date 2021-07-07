@@ -521,17 +521,8 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
        * result of the new instruction from continue_block.
        */
       nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
-      nir_phi_src *phi_src;
-
-      phi_src = ralloc(phi, nir_phi_src);
-      phi_src->pred = prev_block;
-      phi_src->src = nir_src_for_ssa(prev_value);
-      exec_list_push_tail(&phi->srcs, &phi_src->node);
-
-      phi_src = ralloc(phi, nir_phi_src);
-      phi_src->pred = continue_block;
-      phi_src->src = nir_src_for_ssa(alu_copy);
-      exec_list_push_tail(&phi->srcs, &phi_src->node);
+      nir_phi_instr_add_src(phi, prev_block, nir_src_for_ssa(prev_value));
+      nir_phi_instr_add_src(phi, continue_block, nir_src_for_ssa(alu_copy));
 
       nir_ssa_dest_init(&phi->instr, &phi->dest,
                         alu_copy->num_components, alu_copy->bit_size, NULL);
@@ -687,21 +678,13 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
        */
       nir_block *continue_block = find_continue_block(loop);
       nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
-      nir_phi_src *phi_src;
+      nir_phi_instr_add_src(phi, prev_block,
+                            nir_phi_get_src_from_block(nir_instr_as_phi(bcsel->src[entry_src].src.ssa->parent_instr),
+                                                       prev_block)->src);
 
-      phi_src = ralloc(phi, nir_phi_src);
-      phi_src->pred = prev_block;
-      phi_src->src =
-         nir_phi_get_src_from_block(nir_instr_as_phi(bcsel->src[entry_src].src.ssa->parent_instr),
-                                    prev_block)->src;
-      exec_list_push_tail(&phi->srcs, &phi_src->node);
-
-      phi_src = ralloc(phi, nir_phi_src);
-      phi_src->pred = continue_block;
-      phi_src->src =
-         nir_phi_get_src_from_block(nir_instr_as_phi(bcsel->src[continue_src].src.ssa->parent_instr),
-                                    continue_block)->src;
-      exec_list_push_tail(&phi->srcs, &phi_src->node);
+      nir_phi_instr_add_src(phi, continue_block,
+                            nir_phi_get_src_from_block(nir_instr_as_phi(bcsel->src[continue_src].src.ssa->parent_instr),
+                                    continue_block)->src);
 
       nir_ssa_dest_init(&phi->instr,
                         &phi->dest,

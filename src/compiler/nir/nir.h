@@ -3887,6 +3887,7 @@ nir_call_instr *nir_call_instr_create(nir_shader *shader,
 nir_tex_instr *nir_tex_instr_create(nir_shader *shader, unsigned num_srcs);
 
 nir_phi_instr *nir_phi_instr_create(nir_shader *shader);
+nir_phi_src *nir_phi_instr_add_src(nir_phi_instr *instr, nir_block *pred, nir_src src);
 
 nir_parallel_copy_instr *nir_parallel_copy_instr_create(nir_shader *shader);
 

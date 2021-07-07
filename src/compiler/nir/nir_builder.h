@@ -208,16 +208,8 @@ nir_if_phi(nir_builder *build, nir_ssa_def *then_def, nir_ssa_def *else_def)
    nir_if *nif = nir_cf_node_as_if(nir_cf_node_prev(&block->cf_node));
 
    nir_phi_instr *phi = nir_phi_instr_create(build->shader);
-
-   nir_phi_src *src = ralloc(phi, nir_phi_src);
-   src->pred = nir_if_last_then_block(nif);
-   src->src = nir_src_for_ssa(then_def);
-   exec_list_push_tail(&phi->srcs, &src->node);
-
-   src = ralloc(phi, nir_phi_src);
-   src->pred = nir_if_last_else_block(nif);
-   src->src = nir_src_for_ssa(else_def);
-   exec_list_push_tail(&phi->srcs, &src->node);
+   nir_phi_instr_add_src(phi, nir_if_last_then_block(nif), nir_src_for_ssa(then_def));
+   nir_phi_instr_add_src(phi, nir_if_last_else_block(nif), nir_src_for_ssa(else_def));
 
    assert(then_def->num_components == else_def->num_components);
    assert(then_def->bit_size == else_def->bit_size);

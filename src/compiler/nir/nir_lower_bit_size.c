@@ -292,15 +292,8 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
       nir_ssa_def *x = nir_unpack_64_2x32_split_x(b, src->src.ssa);
       nir_ssa_def *y = nir_unpack_64_2x32_split_y(b, src->src.ssa);
 
-      nir_phi_src *xsrc = rzalloc(lowered[0], nir_phi_src);
-      xsrc->pred = src->pred;
-      xsrc->src = nir_src_for_ssa(x);
-      exec_list_push_tail(&lowered[0]->srcs, &xsrc->node);
-
-      nir_phi_src *ysrc = rzalloc(lowered[1], nir_phi_src);
-      ysrc->pred = src->pred;
-      ysrc->src = nir_src_for_ssa(y);
-      exec_list_push_tail(&lowered[1]->srcs, &ysrc->node);
+      nir_phi_instr_add_src(lowered[0], src->pred, nir_src_for_ssa(x));
+      nir_phi_instr_add_src(lowered[1], src->pred, nir_src_for_ssa(y));
    }
 
    nir_ssa_dest_init(&lowered[0]->instr, &lowered[0]->dest,
