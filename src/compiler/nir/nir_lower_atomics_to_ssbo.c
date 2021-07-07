@@ -89,7 +89,7 @@ lower_instr(nir_intrinsic_instr *instr, unsigned ssbo_offset, nir_builder *b)
    nir_ssa_def *buffer = nir_imm_int(b, ssbo_offset + nir_intrinsic_base(instr));
    nir_ssa_def *temp = NULL;
    nir_intrinsic_instr *new_instr =
-         nir_intrinsic_instr_create(ralloc_parent(instr), op);
+         nir_intrinsic_instr_create(b->shader, op);
 
    /* a couple instructions need special handling since they don't map
     * 1:1 with ssbo atomics

@@ -303,7 +303,6 @@ merge_sets_interfere(merge_set *a, merge_set *b)
 static bool
 add_parallel_copy_to_end_of_block(nir_shader *shader, nir_block *block, void *dead_ctx)
 {
-
    bool need_end_copy = false;
    if (block->successors[0]) {
       nir_instr *instr = nir_block_first_instr(block->successors[0]);
