@@ -273,7 +273,7 @@ validate_ir(Program* program)
                if (instr->isSDWA())
                   scalar_mask = program->chip_class >= GFX9 ? 0x7 : 0x4;
                else if (instr->isDPP())
-                  scalar_mask = 0x0;
+                  scalar_mask = 0x4;
 
                if (instr->isVOPC() || instr->opcode == aco_opcode::v_readfirstlane_b32 ||
                    instr->opcode == aco_opcode::v_readlane_b32 ||
