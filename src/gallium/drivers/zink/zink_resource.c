@@ -1031,18 +1031,18 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
    res->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
 
    util_range_set_empty(&res->valid_buffer_range);
-   if (!get_resource_usage(res))
+   if (!zink_resource_has_usage(res))
       return false;
 
    struct zink_resource_object *old_obj = res->obj;
+   bool has_usage = zink_resource_has_usage(res);
    struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, NULL, NULL, 0);
    if (!new_obj) {
       debug_printf("new backing resource alloc failed!");
       return false;
    }
    bool needs_unref = true;
-   if (zink_batch_usage_exists(old_obj->reads) ||
-       zink_batch_usage_exists(old_obj->writes)) {
+   if (has_usage) {
       zink_batch_reference_resource_move(&ctx->batch, res);
       needs_unref = false;
    }
