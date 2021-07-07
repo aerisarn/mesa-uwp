@@ -35,7 +35,7 @@
 struct lower_phis_to_scalar_state {
    nir_shader *shader;
    void *mem_ctx;
-   void *dead_ctx;
+   struct exec_list dead_instrs;
 
    bool lower_all;
 
@@ -260,8 +260,8 @@ lower_phis_to_scalar_block(nir_block *block,
       nir_ssa_def_rewrite_uses(&phi->dest.ssa,
                                &vec->dest.dest.ssa);
 
-      ralloc_steal(state->dead_ctx, phi);
       nir_instr_remove(&phi->instr);
+      exec_list_push_tail(&state->dead_instrs, &phi->instr.node);
 
       progress = true;
 
@@ -286,8 +286,8 @@ lower_phis_to_scalar_impl(nir_function_impl *impl, bool lower_all)
 
    state.shader = impl->function->shader;
    state.mem_ctx = ralloc_parent(impl);
-   state.dead_ctx = ralloc_context(NULL);
-   state.phi_table = _mesa_pointer_hash_table_create(state.dead_ctx);
+   exec_list_make_empty(&state.dead_instrs);
+   state.phi_table = _mesa_pointer_hash_table_create(NULL);
    state.lower_all = lower_all;
 
    nir_foreach_block(block, impl) {
@@ -297,7 +297,10 @@ lower_phis_to_scalar_impl(nir_function_impl *impl, bool lower_all)
    nir_metadata_preserve(impl, nir_metadata_block_index |
                                nir_metadata_dominance);
 
-   ralloc_free(state.dead_ctx);
+   nir_instr_free_list(&state.dead_instrs);
+
+   ralloc_free(state.phi_table);
+
    return progress;
 }
 
