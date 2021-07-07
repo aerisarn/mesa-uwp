@@ -434,6 +434,9 @@ zink_draw_vbo(struct pipe_context *pctx,
    ctx->gfx_prim_mode = dinfo->mode;
    update_gfx_program(ctx);
 
+   if (zink_program_has_descriptors(&ctx->curr_program->base))
+      screen->descriptors_update(ctx, false);
+
    if (ctx->gfx_pipeline_state.primitive_restart != dinfo->primitive_restart)
       ctx->gfx_pipeline_state.dirty = true;
    ctx->gfx_pipeline_state.primitive_restart = dinfo->primitive_restart;
@@ -462,9 +465,6 @@ zink_draw_vbo(struct pipe_context *pctx,
       zink_emit_xfb_vertex_input_barrier(ctx, zink_resource(so_target->base.buffer));
 
    barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
-
-   if (zink_program_has_descriptors(&ctx->curr_program->base))
-      screen->descriptors_update(ctx, false);
 
    if (ctx->descriptor_refs_dirty[0])
       zink_update_descriptor_refs(ctx, false);
