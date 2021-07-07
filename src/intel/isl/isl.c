@@ -2948,7 +2948,7 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
                                    uint32_t total_y_offset_el,
                                    uint32_t total_z_offset_el,
                                    uint32_t total_array_offset,
-                                   uint32_t *base_address_offset,
+                                   uint32_t *tile_offset_B,
                                    uint32_t *x_offset_el,
                                    uint32_t *y_offset_el,
                                    uint32_t *z_offset_el,
@@ -2957,8 +2957,8 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
    if (tiling == ISL_TILING_LINEAR) {
       assert(bpb % 8 == 0);
       assert(total_z_offset_el == 0 && total_array_offset == 0);
-      *base_address_offset = total_y_offset_el * row_pitch_B +
-                             total_x_offset_el * (bpb / 8);
+      *tile_offset_B = total_y_offset_el * row_pitch_B +
+                       total_x_offset_el * (bpb / 8);
       *x_offset_el = 0;
       *y_offset_el = 0;
       *z_offset_el = 0;
@@ -3005,7 +3005,7 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
    /* Add the Z and array offset to the Y offset to get a 2D offset */
    y_offset_tl += (z_offset_tl + a_offset_tl) * array_pitch_tl_rows;
 
-   *base_address_offset =
+   *tile_offset_B =
       y_offset_tl * tile_info.phys_extent_B.h * row_pitch_B +
       x_offset_tl * tile_info.phys_extent_B.h * tile_info.phys_extent_B.w;
 }

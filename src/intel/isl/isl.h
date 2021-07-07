@@ -2675,14 +2675,27 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
                                uint32_t *y_offset_el);
 
 /**
- * @brief Calculate the intratile offsets to a surface.
+ * Calculate the intratile offsets to a surface coordinate, in elements.
  *
- * In @a base_address_offset return the offset from the base of the surface to
- * the base address of the first tile of the subimage. In @a x_offset_B and
- * @a y_offset_rows, return the offset, in units of bytes and rows, from the
- * tile's base to the subimage's first surface element. The x and y offsets
- * are intratile offsets; that is, they do not exceed the boundary of the
- * surface's tiling format.
+ * This function takes a coordinate in global tile space and returns the byte
+ * offset to the specific tile as well as the offset within that tile to the
+ * given coordinate in tile space.  The returned x/y/z/array offsets are
+ * guaranteed to lie within the tile.
+ *
+ * @param[in]  tiling               The tiling of the surface
+ * @param[in]  bpb                  The size of the surface format in bits per
+ *                                  block
+ * @param[in]  array_pitch_el_rows  The array pitch of the surface for flat 2D
+ *                                  tilings such as ISL_TILING_Y0
+ * @param[in]  total_x_offset_el    The X offset in tile space, in elements
+ * @param[in]  total_y_offset_el    The Y offset in tile space, in elements
+ * @param[in]  total_z_offset_el    The Z offset in tile space, in elements
+ * @param[in]  total_array_offset   The array offset in tile space
+ * @param[out] tile_offset_B        The returned byte offset to the tile
+ * @param[out] x_offset_el          The X offset within the tile, in elements
+ * @param[out] y_offset_el          The Y offset within the tile, in elements
+ * @param[out] z_offset_el          The Z offset within the tile, in elements
+ * @param[out] array_offset         The array offset within the tile
  */
 void
 isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
@@ -2693,12 +2706,35 @@ isl_tiling_get_intratile_offset_el(enum isl_tiling tiling,
                                    uint32_t total_y_offset_el,
                                    uint32_t total_z_offset_el,
                                    uint32_t total_array_offset,
-                                   uint32_t *base_address_offset,
+                                   uint32_t *tile_offset_B,
                                    uint32_t *x_offset_el,
                                    uint32_t *y_offset_el,
                                    uint32_t *z_offset_el,
                                    uint32_t *array_offset);
 
+/**
+ * Calculate the intratile offsets to a surface coordinate, in samples.
+ *
+ * This function takes a coordinate in global tile space and returns the byte
+ * offset to the specific tile as well as the offset within that tile to the
+ * given coordinate in tile space.  The returned x/y/z/array offsets are
+ * guaranteed to lie within the tile.
+ *
+ * @param[in]  tiling               The tiling of the surface
+ * @param[in]  bpb                  The size of the surface format in bits per
+ *                                  block
+ * @param[in]  array_pitch_el_rows  The array pitch of the surface for flat 2D
+ *                                  tilings such as ISL_TILING_Y0
+ * @param[in]  total_x_offset_sa    The X offset in tile space, in samples
+ * @param[in]  total_y_offset_sa    The Y offset in tile space, in samples
+ * @param[in]  total_z_offset_sa    The Z offset in tile space, in samples
+ * @param[in]  total_array_offset   The array offset in tile space
+ * @param[out] tile_offset_B        The returned byte offset to the tile
+ * @param[out] x_offset_sa          The X offset within the tile, in samples
+ * @param[out] y_offset_sa          The Y offset within the tile, in samples
+ * @param[out] z_offset_sa          The Z offset within the tile, in samples
+ * @param[out] array_offset         The array offset within the tile
+ */
 static inline void
 isl_tiling_get_intratile_offset_sa(enum isl_tiling tiling,
                                    enum isl_format format,
@@ -2708,7 +2744,7 @@ isl_tiling_get_intratile_offset_sa(enum isl_tiling tiling,
                                    uint32_t total_y_offset_sa,
                                    uint32_t total_z_offset_sa,
                                    uint32_t total_array_offset,
-                                   uint32_t *base_address_offset,
+                                   uint32_t *tile_offset_B,
                                    uint32_t *x_offset_sa,
                                    uint32_t *y_offset_sa,
                                    uint32_t *z_offset_sa,
@@ -2732,7 +2768,7 @@ isl_tiling_get_intratile_offset_sa(enum isl_tiling tiling,
                                       total_y_offset_el,
                                       total_z_offset_el,
                                       total_array_offset,
-                                      base_address_offset,
+                                      tile_offset_B,
                                       x_offset_sa, y_offset_sa,
                                       z_offset_sa, array_offset);
    *x_offset_sa *= fmtl->bw;
