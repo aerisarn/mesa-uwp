@@ -121,6 +121,8 @@ nir_shader_create(void *mem_ctx,
 
    exec_list_make_empty(&shader->functions);
 
+   list_inithead(&shader->gc_list);
+
    shader->num_inputs = 0;
    shader->num_outputs = 0;
    shader->num_uniforms = 0;
@@ -576,6 +578,8 @@ nir_alu_instr_create(nir_shader *shader, nir_op op)
    for (unsigned i = 0; i < num_srcs; i++)
       alu_src_init(&instr->src[i]);
 
+   list_add(&instr->instr.gc_node, &shader->gc_list);
+
    return instr;
 }
 
@@ -597,6 +601,8 @@ nir_deref_instr_create(nir_shader *shader, nir_deref_type deref_type)
 
    dest_init(&instr->dest);
 
+   list_add(&instr->instr.gc_node, &shader->gc_list);
+
    return instr;
 }
 
@@ -609,6 +615,9 @@ nir_jump_instr_create(nir_shader *shader, nir_jump_type type)
    instr->type = type;
    instr->target = NULL;
    instr->else_target = NULL;
+
+   list_add(&instr->instr.gc_node, &shader->gc_list);
+
    return instr;
 }
 
@@ -621,6 +630,8 @@ nir_load_const_instr_create(nir_shader *shader, unsigned num_components,
    instr_init(&instr->instr, nir_instr_type_load_const);
 
    nir_ssa_def_init(&instr->instr, &instr->def, num_components, bit_size);
+
+   list_add(&instr->instr.gc_node, &shader->gc_list);
 
    return instr;
 }
@@ -643,6 +654,8 @@ nir_intrinsic_instr_create(nir_shader *shader, nir_intrinsic_op op)
    for (unsigned i = 0; i < num_srcs; i++)
       src_init(&instr->src[i]);
 
+   list_add(&instr->instr.gc_node, &shader->gc_list);
+
    return instr;
 }
 
@@ -659,6 +672,8 @@ nir_call_instr_create(nir_shader *shader, nir_function *callee)
    instr->num_params = num_params;
    for (unsigned i = 0; i < num_params; i++)
       src_init(&instr->params[i]);
+
+   list_add(&instr->instr.gc_node, &shader->gc_list);
 
    return instr;
 }
@@ -687,6 +702,8 @@ nir_tex_instr_create(nir_shader *shader, unsigned num_srcs)
    instr->texture_index = 0;
    instr->sampler_index = 0;
    memcpy(instr->tg4_offsets, default_tg4_offsets, sizeof(instr->tg4_offsets));
+
+   list_add(&instr->instr.gc_node, &shader->gc_list);
 
    return instr;
 }
@@ -746,6 +763,9 @@ nir_phi_instr_create(nir_shader *shader)
 
    dest_init(&instr->dest);
    exec_list_make_empty(&instr->srcs);
+
+   list_add(&instr->instr.gc_node, &shader->gc_list);
+
    return instr;
 }
 
@@ -779,6 +799,8 @@ nir_parallel_copy_instr_create(nir_shader *shader)
 
    exec_list_make_empty(&instr->entries);
 
+   list_add(&instr->instr.gc_node, &shader->gc_list);
+
    return instr;
 }
 
@@ -791,6 +813,8 @@ nir_ssa_undef_instr_create(nir_shader *shader,
    instr_init(&instr->instr, nir_instr_type_ssa_undef);
 
    nir_ssa_def_init(&instr->instr, &instr->def, num_components, bit_size);
+
+   list_add(&instr->instr.gc_node, &shader->gc_list);
 
    return instr;
 }
@@ -1093,6 +1117,7 @@ void nir_instr_remove_v(nir_instr *instr)
 
 void nir_instr_free(nir_instr *instr)
 {
+   list_del(&instr->gc_node);
    ralloc_free(instr);
 }
 

@@ -768,6 +768,7 @@ typedef enum PACKED {
 
 typedef struct nir_instr {
    struct exec_node node;
+   struct list_head gc_node;
    struct nir_block *block;
    nir_instr_type type;
 
@@ -3811,6 +3812,8 @@ typedef struct nir_shader {
    struct shader_info info;
 
    struct exec_list functions; /** < list of nir_function */
+
+   struct list_head gc_list; /** < list of all nir_instrs allocated on the shader but not yet freed. */
 
    /**
     * The size of the variable space for load_input_*, load_uniform_*, etc.

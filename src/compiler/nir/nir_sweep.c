@@ -73,6 +73,9 @@ sweep_block(nir_shader *nir, nir_block *block)
    block->live_out = NULL;
 
    nir_foreach_instr(instr, block) {
+      list_del(&instr->gc_node);
+      list_add(&instr->gc_node, &nir->gc_list);
+
       ralloc_steal(nir, instr);
 
       nir_foreach_src(instr, sweep_src_indirect, nir);
@@ -155,6 +158,12 @@ nir_sweep(nir_shader *nir)
 {
    void *rubbish = ralloc_context(NULL);
 
+   struct list_head instr_gc_list;
+   list_inithead(&instr_gc_list);
+
+   list_replace(&nir->gc_list, &instr_gc_list);
+   list_inithead(&nir->gc_list);
+
    /* First, move ownership of all the memory to a temporary context; assume dead. */
    ralloc_adopt(rubbish, nir);
 
@@ -169,6 +178,16 @@ nir_sweep(nir_shader *nir)
    foreach_list_typed(nir_function, func, node, &nir->functions) {
       sweep_function(nir, func);
    }
+
+   /* Manually GCed instrs now before ralloc_free()ing the other rubbish, to
+    * ensure that the shader's GC list was maintained without ralloc_freeing any
+    * instrs behind our back.  Note that the instr free routine will remove it
+    * from the list.
+    */
+   list_for_each_entry_safe(nir_instr, instr, &instr_gc_list, gc_node) {
+      nir_instr_free(instr);
+   }
+   assert(list_is_empty(&instr_gc_list));
 
    ralloc_steal(nir, nir->constant_data);
 

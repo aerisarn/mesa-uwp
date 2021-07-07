@@ -798,6 +798,8 @@ nir_shader_replace(nir_shader *dst, nir_shader *src)
    /* We have to move all the linked lists over separately because we need the
     * pointers in the list elements to point to the lists in dst and not src.
     */
+   list_replace(&src->gc_list, &dst->gc_list);
+   list_inithead(&src->gc_list);
    exec_list_move_nodes_to(&src->variables, &dst->variables);
 
    /* Now move the functions over.  This takes a tiny bit more work */
