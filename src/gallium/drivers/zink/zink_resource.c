@@ -79,19 +79,6 @@ debug_describe_zink_resource_object(char *buf, const struct zink_resource_object
 }
 
 static uint32_t
-get_resource_usage(struct zink_resource *res)
-{
-   bool reads = zink_batch_usage_exists(res->obj->reads);
-   bool writes = zink_batch_usage_exists(res->obj->writes);
-   uint32_t batch_uses = 0;
-   if (reads)
-      batch_uses |= ZINK_RESOURCE_ACCESS_READ;
-   if (writes)
-      batch_uses |= ZINK_RESOURCE_ACCESS_WRITE;
-   return batch_uses;
-}
-
-static uint32_t
 mem_hash(const void *key)
 {
    const struct mem_key *mkey = key;
