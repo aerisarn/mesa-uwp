@@ -252,26 +252,13 @@ kernel_has_dynamic_config_support(struct intel_perf_config *perf, int fd)
                     &invalid_config_id) < 0 && errno == ENOENT;
 }
 
-static int
-i915_query_items(struct intel_perf_config *perf, int fd,
-                 struct drm_i915_query_item *items, uint32_t n_items)
-{
-   struct drm_i915_query q = {
-      .num_items = n_items,
-      .items_ptr = to_user_pointer(items),
-   };
-   return intel_ioctl(fd, DRM_IOCTL_I915_QUERY, &q);
-}
-
 static bool
 i915_query_perf_config_supported(struct intel_perf_config *perf, int fd)
 {
-   struct drm_i915_query_item item = {
-      .query_id = DRM_I915_QUERY_PERF_CONFIG,
-      .flags = DRM_I915_QUERY_PERF_CONFIG_LIST,
-   };
-
-   return i915_query_items(perf, fd, &item, 1) == 0 && item.length > 0;
+   int32_t length = 0;
+   return !intel_i915_query_flags(fd, DRM_I915_QUERY_PERF_CONFIG,
+                                  DRM_I915_QUERY_PERF_CONFIG_LIST,
+                                  NULL, &length);
 }
 
 static bool
@@ -283,18 +270,15 @@ i915_query_perf_config_data(struct intel_perf_config *perf,
       struct drm_i915_query_perf_config query;
       struct drm_i915_perf_oa_config config;
    } item_data;
-   struct drm_i915_query_item item = {
-      .query_id = DRM_I915_QUERY_PERF_CONFIG,
-      .flags = DRM_I915_QUERY_PERF_CONFIG_DATA_FOR_UUID,
-      .data_ptr = to_user_pointer(&item_data),
-      .length = sizeof(item_data),
-   };
 
    memset(&item_data, 0, sizeof(item_data));
    memcpy(item_data.query.uuid, guid, sizeof(item_data.query.uuid));
    memcpy(&item_data.config, config, sizeof(item_data.config));
 
-   if (!(i915_query_items(perf, fd, &item, 1) == 0 && item.length > 0))
+   int32_t item_length = sizeof(item_data);
+   if (intel_i915_query_flags(fd, DRM_I915_QUERY_PERF_CONFIG,
+                              DRM_I915_QUERY_PERF_CONFIG_DATA_FOR_UUID,
+                              &item_data, &item_length))
       return false;
 
    memcpy(config, &item_data.config, sizeof(item_data.config));
