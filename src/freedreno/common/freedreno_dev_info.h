@@ -51,11 +51,12 @@ struct fd_dev_info {
       uint32_t num_sp_cores;
       uint32_t num_ccu;
    };
-   /* Information for private memory calculations */
-   uint32_t fibers_per_sp;
 
    union {
       struct {
+         /* Information for private memory calculations */
+         uint32_t fibers_per_sp;
+
          /* Whether the PC_MULTIVIEW_MASK register exists. */
          bool supports_multiview_mask;
 
@@ -72,6 +73,11 @@ struct fd_dev_info {
    };
 };
 
+struct fd_dev_id {
+   uint32_t gpu_id;
+   const struct fd_dev_info *info;
+};
+
 /* per CCU GMEM amount reserved for depth cache for direct rendering */
 #define A6XX_CCU_DEPTH_SIZE (64 * 1024)
 /* per CCU GMEM amount reserved for color cache used by GMEM resolves
@@ -83,7 +89,7 @@ struct fd_dev_info {
  */
 #define A6XX_CCU_GMEM_COLOR_SIZE (16 * 1024)
 
-void fd_dev_info_init(struct fd_dev_info *info, uint32_t gpu_id);
+const struct fd_dev_info * fd_dev_info(uint32_t gpu_id);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

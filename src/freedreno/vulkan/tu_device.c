@@ -195,13 +195,16 @@ tu_physical_device_init(struct tu_physical_device *device,
    memset(device->name, 0, sizeof(device->name));
    sprintf(device->name, "FD%d", device->gpu_id);
 
-   switch (device->gpu_id) {
-   case 615:
-   case 618:
-   case 630:
-   case 640:
-   case 650:
-      fd_dev_info_init(&device->info, device->gpu_id);
+   const struct fd_dev_info *info = fd_dev_info(device->gpu_id);
+   if (!info) {
+      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                                 "device %s is unsupported", device->name);
+      return result;
+   }
+   switch (device->gpu_id / 100) {
+   case 6:
+      // TODO convert to pointer:
+      device->info = *info;
       device->ccu_offset_bypass = device->info.num_ccu * A6XX_CCU_DEPTH_SIZE;
       device->ccu_offset_gmem = (device->gmem_size -
          device->info.num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);

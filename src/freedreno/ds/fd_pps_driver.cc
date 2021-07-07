@@ -78,7 +78,7 @@ FreedrenoDriver::setup_a6xx_counters()
    );
 
    counter("Shader Core Utilization", Counter::Units::Percent, [=]() {
-         return 100.0 * (PERF_SP_BUSY_CYCLES / time) / (max_freq * info.num_sp_cores);
+         return 100.0 * (PERF_SP_BUSY_CYCLES / time) / (max_freq * info->num_sp_cores);
       }
    );
 
@@ -177,7 +177,7 @@ FreedrenoDriver::init_perfcnt()
    for (auto countable : countables)
       countable.resolve();
 
-   fd_dev_info_init(&info, gpu_id);
+   info = fd_dev_info(gpu_id);
 
    io = fd_dt_find_io();
    if (!io) {

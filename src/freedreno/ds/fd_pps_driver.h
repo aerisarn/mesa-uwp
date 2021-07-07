@@ -42,7 +42,7 @@ private:
    bool has_suspend_count;
    uint32_t suspend_count;
 
-   struct fd_dev_info info;
+   const struct fd_dev_info *info;
 
    /**
     * The memory mapped i/o space for counter readback:

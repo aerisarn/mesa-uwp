@@ -1020,6 +1020,12 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
    DBG(" Chip-id:         0x%08x", screen->chip_id);
    DBG(" GMEM size:       0x%08x", screen->gmemsize_bytes);
 
+   const struct fd_dev_info *info = fd_dev_info(screen->gpu_id);
+   if (!info) {
+      mesa_loge("unsupported GPU: a%03d", screen->gpu_id);
+      goto fail;
+   }
+
    /* explicitly checking for GPU revisions that are known to work.  This
     * may be overly conservative for a3xx, where spoofing the gpu_id with
     * the blob driver seems to generate identical cmdstream dumps.  But
@@ -1031,33 +1037,20 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
     * of the cases below and see what happens.  And if it works, please
     * send a patch ;-)
     */
-   switch (screen->gpu_id) {
-   case 200:
-   case 201:
-   case 205:
-   case 220:
+   switch (screen->gpu_id / 100) {
+   case 2:
       fd2_screen_init(pscreen);
       break;
-   case 305:
-   case 307:
-   case 320:
-   case 330:
+   case 3:
       fd3_screen_init(pscreen);
       break;
-   case 405:
-   case 420:
-   case 430:
+   case 4:
       fd4_screen_init(pscreen);
       break;
-   case 510:
-   case 530:
-   case 540:
+   case 5:
       fd5_screen_init(pscreen);
       break;
-   case 618:
-   case 630:
-   case 640:
-   case 650:
+   case 6:
       fd6_screen_init(pscreen);
       break;
    default:
@@ -1065,7 +1058,8 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
       goto fail;
    }
 
-   fd_dev_info_init(&screen->info, screen->gpu_id);
+   // TODO change to pointer:
+   screen->info = *info;
 
    if (is_a6xx(screen)) {
       screen->ccu_offset_bypass = screen->info.num_ccu * A6XX_CCU_DEPTH_SIZE;

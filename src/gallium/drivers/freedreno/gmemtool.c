@@ -167,7 +167,8 @@ main(int argc, char **argv)
       .gmemsize_bytes = gpu_info->gmemsize_bytes,
    };
 
-   fd_dev_info_init(&screen.info, gpu_info->gpu_id);
+   // TODO change to pointer:
+   screen.info = *fd_dev_info(gpu_info->gpu_id);
 
    /* And finally run thru all the GMEM keys: */
    for (int i = 0; i < ARRAY_SIZE(keys); i++) {
