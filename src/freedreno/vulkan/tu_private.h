@@ -210,7 +210,7 @@ struct tu_physical_device
    uint32_t ccu_offset_gmem;
    uint32_t ccu_offset_bypass;
 
-   struct freedreno_dev_info info;
+   struct fd_dev_info info;
 
    int msm_major_version;
    int msm_minor_version;

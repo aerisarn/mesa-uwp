@@ -177,7 +177,7 @@ FreedrenoDriver::init_perfcnt()
    for (auto countable : countables)
       countable.resolve();
 
-   freedreno_dev_info_init(&info, gpu_id);
+   fd_dev_info_init(&info, gpu_id);
 
    io = fd_dt_find_io();
    if (!io) {

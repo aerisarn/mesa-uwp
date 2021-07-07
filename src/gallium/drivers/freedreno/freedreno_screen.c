@@ -1065,7 +1065,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
       goto fail;
    }
 
-   freedreno_dev_info_init(&screen->info, screen->gpu_id);
+   fd_dev_info_init(&screen->info, screen->gpu_id);
 
    if (is_a6xx(screen)) {
       screen->ccu_offset_bypass = screen->info.num_ccu * A6XX_CCU_DEPTH_SIZE;

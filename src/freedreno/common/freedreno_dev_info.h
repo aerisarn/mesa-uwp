@@ -36,7 +36,7 @@ extern "C" {
  * Freedreno hardware description and quirks
  */
 
-struct freedreno_dev_info {
+struct fd_dev_info {
    /* alignment for size of tiles */
    uint32_t tile_align_w, tile_align_h;
    /* gmem load/store granularity */
@@ -83,7 +83,7 @@ struct freedreno_dev_info {
  */
 #define A6XX_CCU_GMEM_COLOR_SIZE (16 * 1024)
 
-void freedreno_dev_info_init(struct freedreno_dev_info *info, uint32_t gpu_id);
+void fd_dev_info_init(struct fd_dev_info *info, uint32_t gpu_id);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

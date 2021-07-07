@@ -201,7 +201,7 @@ tu_physical_device_init(struct tu_physical_device *device,
    case 630:
    case 640:
    case 650:
-      freedreno_dev_info_init(&device->info, device->gpu_id);
+      fd_dev_info_init(&device->info, device->gpu_id);
       device->ccu_offset_bypass = device->info.num_ccu * A6XX_CCU_DEPTH_SIZE;
       device->ccu_offset_gmem = (device->gmem_size -
          device->info.num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);

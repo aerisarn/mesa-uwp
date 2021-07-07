@@ -32,7 +32,7 @@ max_bitfield_val(unsigned high, unsigned low, unsigned shift)
 }
 
 void
-freedreno_dev_info_init(struct freedreno_dev_info *info, uint32_t gpu_id)
+fd_dev_info_init(struct fd_dev_info *info, uint32_t gpu_id)
 {
    if (gpu_id >= 600) {
       info->gmem_align_w = 16;
