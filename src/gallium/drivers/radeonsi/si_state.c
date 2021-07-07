@@ -5303,8 +5303,6 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
           */
          if (!sscreen->info.use_late_alloc) {
             late_alloc_wave64 = 0;
-         } else if (num_cu_per_sh <= 6) {
-            late_alloc_wave64 = num_cu_per_sh - 2;
          } else {
             late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
 
