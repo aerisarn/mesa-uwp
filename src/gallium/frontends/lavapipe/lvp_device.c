@@ -143,7 +143,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_vertex_input_dynamic_state        = true,
    .EXT_custom_border_color               = true,
    .EXT_provoking_vertex                  = true,
-   .EXT_line_rasterization                = true,
+   .EXT_line_rasterization                = false,
    .GOOGLE_decorate_string                = true,
    .GOOGLE_hlsl_functionality1            = true,
 };
