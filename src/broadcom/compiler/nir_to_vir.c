@@ -3106,11 +3106,17 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                  *
                  * col: vertex index, row = varying index
                  */
+                assert(nir_src_is_const(instr->src[1]));
+                uint32_t location =
+                        nir_intrinsic_io_semantics(instr).location +
+                        nir_src_as_uint(instr->src[1]);
+                uint32_t component = nir_intrinsic_component(instr);
+
                 int32_t row_idx = -1;
                 for (int i = 0; i < c->num_inputs; i++) {
                         struct v3d_varying_slot slot = c->input_slots[i];
-                        if (v3d_slot_get_slot(slot) == nir_intrinsic_io_semantics(instr).location &&
-                            v3d_slot_get_component(slot) == nir_intrinsic_component(instr)) {
+                        if (v3d_slot_get_slot(slot) == location &&
+                            v3d_slot_get_component(slot) == component) {
                                 row_idx = i;
                                 break;
                         }
