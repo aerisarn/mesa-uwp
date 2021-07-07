@@ -1360,26 +1360,9 @@ getparam_topology(struct intel_device_info *devinfo, int fd)
 static bool
 query_topology(struct intel_device_info *devinfo, int fd)
 {
-   struct drm_i915_query_item item = {
-      .query_id = DRM_I915_QUERY_TOPOLOGY_INFO,
-   };
-   struct drm_i915_query query = {
-      .num_items = 1,
-      .items_ptr = (uintptr_t) &item,
-   };
-
-   if (intel_ioctl(fd, DRM_IOCTL_I915_QUERY, &query))
-      return false;
-
-   if (item.length < 0)
-      return false;
-
    struct drm_i915_query_topology_info *topo_info =
-      (struct drm_i915_query_topology_info *) calloc(1, item.length);
-   item.data_ptr = (uintptr_t) topo_info;
-
-   if (intel_ioctl(fd, DRM_IOCTL_I915_QUERY, &query) ||
-       item.length <= 0)
+      intel_i915_query_alloc(fd, DRM_I915_QUERY_TOPOLOGY_INFO);
+   if (topo_info == NULL)
       return false;
 
    update_from_topology(devinfo, topo_info);
