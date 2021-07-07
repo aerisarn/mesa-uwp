@@ -197,7 +197,7 @@ can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr, bool pre_ra)
       VOP3_instruction& vop3 = instr->vop3();
       if (instr->format == Format::VOP3)
          return false;
-      if (vop3.clamp && instr->format == asVOP3(Format::VOPC) && chip != GFX8)
+      if (vop3.clamp && instr->isVOPC() && chip != GFX8)
          return false;
       if (vop3.omod && chip < GFX9)
          return false;
@@ -214,7 +214,7 @@ can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr, bool pre_ra)
       }
    }
 
-   if (!instr->definitions.empty() && instr->definitions[0].bytes() > 4)
+   if (!instr->definitions.empty() && instr->definitions[0].bytes() > 4 && !instr->isVOPC())
       return false;
 
    if (!instr->operands.empty()) {
@@ -235,7 +235,7 @@ can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr, bool pre_ra)
       return false;
 
    // TODO: return true if we know we will use vcc
-   if (!pre_ra && instr->isVOPC())
+   if (!pre_ra && instr->isVOPC() && chip == GFX8)
       return false;
    if (!pre_ra && instr->operands.size() >= 3 && !is_mac)
       return false;
