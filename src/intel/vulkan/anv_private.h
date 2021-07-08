@@ -3697,6 +3697,12 @@ anv_pipeline_has_stage(const struct anv_graphics_pipeline *pipeline,
    return (pipeline->active_stages & mesa_to_vk_shader_stage(stage)) != 0;
 }
 
+static inline bool
+anv_pipeline_is_primitive(const struct anv_graphics_pipeline *pipeline)
+{
+   return anv_pipeline_has_stage(pipeline, MESA_SHADER_VERTEX);
+}
+
 #define ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(prefix, stage)             \
 static inline const struct brw_##prefix##_prog_data *                   \
 get_##prefix##_prog_data(const struct anv_graphics_pipeline *pipeline)  \

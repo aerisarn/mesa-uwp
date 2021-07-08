@@ -2494,6 +2494,8 @@ void genX(CmdPipelineBarrier)(
 static void
 cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
 {
+   assert(anv_pipeline_is_primitive(cmd_buffer->state.gfx.pipeline));
+
    VkShaderStageFlags stages =
       cmd_buffer->state.gfx.pipeline->active_stages;
 
@@ -3487,12 +3489,14 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
    uint32_t dwords[GENX(3DSTATE_CLIP_length)];
 
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
-   const struct brw_vue_prog_data *last =
-      anv_pipeline_get_last_vue_prog_data(pipeline);
-   if (last->vue_map.slots_valid & VARYING_BIT_VIEWPORT) {
-      clip.MaximumVPIndex =
-         cmd_buffer->state.gfx.dynamic.viewport.count > 0 ?
-         cmd_buffer->state.gfx.dynamic.viewport.count - 1 : 0;
+   if (anv_pipeline_is_primitive(pipeline)) {
+      const struct brw_vue_prog_data *last =
+         anv_pipeline_get_last_vue_prog_data(pipeline);
+      if (last->vue_map.slots_valid & VARYING_BIT_VIEWPORT) {
+         clip.MaximumVPIndex =
+            cmd_buffer->state.gfx.dynamic.viewport.count > 0 ?
+            cmd_buffer->state.gfx.dynamic.viewport.count - 1 : 0;
+      }
    }
 
    GENX(3DSTATE_CLIP_pack)(NULL, dwords, &clip);
