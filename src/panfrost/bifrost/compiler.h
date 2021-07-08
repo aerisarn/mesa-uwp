@@ -918,13 +918,17 @@ bi_after_instr(bi_instr *instr)
  * in which case there must exist a nonempty penultimate tuple */
 
 ATTRIBUTE_RETURNS_NONNULL static inline bi_instr *
-bi_first_instr_in_clause(bi_clause *clause)
+bi_first_instr_in_tuple(bi_tuple *tuple)
 {
-        bi_tuple tuple = clause->tuples[0];
-        bi_instr *instr = tuple.fma ?: tuple.add;
-
+        bi_instr *instr = tuple->fma ?: tuple->add;
         assert(instr != NULL);
         return instr;
+}
+
+ATTRIBUTE_RETURNS_NONNULL static inline bi_instr *
+bi_first_instr_in_clause(bi_clause *clause)
+{
+        return bi_first_instr_in_tuple(&clause->tuples[0]);
 }
 
 ATTRIBUTE_RETURNS_NONNULL static inline bi_instr *
@@ -962,6 +966,12 @@ static inline bi_cursor
 bi_before_clause(bi_clause *clause)
 {
     return bi_before_instr(bi_first_instr_in_clause(clause));
+}
+
+static inline bi_cursor
+bi_before_tuple(bi_tuple *tuple)
+{
+    return bi_before_instr(bi_first_instr_in_tuple(tuple));
 }
 
 static inline bi_cursor
