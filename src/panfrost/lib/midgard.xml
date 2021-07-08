@@ -1012,7 +1012,7 @@
   <struct name="Local Storage" size="8" align="64">
     <field name="TLS Size" size="5" start="0:0" type="uint"/>
     <field name="TLS Initial Stack Pointer Offset" size="27" start="0:5" type="uint"/>
-    <field name="WLS Instances" size="5" start="1:0" type="uint" modifier="log2" prefix="MALI_LOCAL_STORAGE">
+    <field name="WLS Instances" size="5" start="1:0" type="uint" modifier="log2" prefix="MALI_LOCAL_STORAGE" default="MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM">
       <value name="No Workgroup Mem" value="0x80000000"/>
     </field>
     <field name="WLS Size Base" size="2" start="1:5" type="uint"/>
