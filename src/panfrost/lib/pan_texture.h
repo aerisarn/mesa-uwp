@@ -187,12 +187,6 @@ extern const struct pan_blendable_format panfrost_blendable_formats[PIPE_FORMAT_
 extern const struct panfrost_format panfrost_pipe_format_v6[PIPE_FORMAT_COUNT];
 extern const struct panfrost_format panfrost_pipe_format_v7[PIPE_FORMAT_COUNT];
 
-unsigned
-panfrost_translate_swizzle_4(const unsigned char swizzle[4]);
-
-void
-panfrost_invert_swizzle(const unsigned char *in, unsigned char *out);
-
 /* Helpers to construct swizzles */
 
 #define PAN_V6_SWIZZLE(R, G, B, A) ( \
@@ -224,10 +218,6 @@ panfrost_bifrost_swizzle(unsigned components)
         /* Set all components to 0 and force w if needed */
         return components < 4 ? 0x10 : 0x00;
 }
-
-unsigned
-panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
-                                 enum pipe_format format);
 
 struct pan_pool;
 struct pan_scoreboard;

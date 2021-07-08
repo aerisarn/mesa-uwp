@@ -42,4 +42,14 @@
 #define PAN_DBG_PANBLIT         0x0800
 #define PAN_DBG_NOINDIRECT      0x1000
 
+unsigned
+panfrost_translate_swizzle_4(const unsigned char swizzle[4]);
+
+void
+panfrost_invert_swizzle(const unsigned char *in, unsigned char *out);
+
+unsigned
+panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
+                                 enum pipe_format format);
+
 #endif /* PAN_UTIL_H */
