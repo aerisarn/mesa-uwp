@@ -22,3 +22,4 @@ GL_ARB_sample_locations on zink
 GL_ARB_sparse_buffer on zink
 GL_ARB_shader_group_vote on zink
 DRM format modifiers on zink
+freedreno+turnip: Initial support for a6xx gen4 (a660, a635)

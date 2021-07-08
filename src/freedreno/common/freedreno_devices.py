@@ -212,6 +212,20 @@ a6xx_gen3 = dict(
         has_sample_locations = True,
     )
 
+# a635, a650:
+a6xx_gen4 = dict(
+        fibers_per_sp = 128 * 2 * 16,
+        reg_size_vec4 = 64,
+        supports_multiview_mask = True,
+        has_z24uint_s8uint = True,
+        tess_use_shared = True,
+        storage_16bit = True,
+        has_tex_filter_cubic = True,
+        has_sample_locations = True,
+        has_cp_reg_write = False,
+        has_8bpp_ubwc = False,
+    )
+
 add_gpus([
         GPUId(615),
         GPUId(618),
@@ -250,6 +264,28 @@ add_gpus([
         GPUId(650),
     ], A6xxGPUInfo(
         a6xx_gen3,
+        num_sp_cores = 3,
+        num_ccu = 3,
+        RB_UNKNOWN_8E04_blit = 0x04100000,
+        PC_UNKNOWN_9805 = 2,
+        SP_UNKNOWN_A0F8 = 2,
+    ))
+
+add_gpus([
+        GPUId(635, "Adreno 7c Gen 3"),
+    ], A6xxGPUInfo(
+        a6xx_gen4,
+        num_sp_cores = 2,
+        num_ccu = 2,
+        RB_UNKNOWN_8E04_blit = 0x00100000,
+        PC_UNKNOWN_9805 = 1,
+        SP_UNKNOWN_A0F8 = 1,
+    ))
+
+add_gpus([
+        GPUId(660),
+    ], A6xxGPUInfo(
+        a6xx_gen4,
         num_sp_cores = 3,
         num_ccu = 3,
         RB_UNKNOWN_8E04_blit = 0x04100000,
