@@ -107,6 +107,7 @@ struct fd_dev_info {
 
 struct fd_dev_id {
    uint32_t gpu_id;
+   const char *name;
    const struct fd_dev_info *info;
 };
 
@@ -122,6 +123,7 @@ struct fd_dev_id {
 #define A6XX_CCU_GMEM_COLOR_SIZE (16 * 1024)
 
 const struct fd_dev_info * fd_dev_info(uint32_t gpu_id);
+const char * fd_dev_name(uint32_t gpu_id);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

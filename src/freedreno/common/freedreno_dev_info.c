@@ -38,3 +38,14 @@ fd_dev_info(uint32_t gpu_id)
    }
    return NULL;
 }
+
+const char *
+fd_dev_name(uint32_t gpu_id)
+{
+   for (int i = 0; i < fd_dev_ids_count; i++) {
+      if (gpu_id == fd_dev_ids[i].gpu_id) {
+         return fd_dev_ids[i].name;
+      }
+   }
+   return NULL;
+}

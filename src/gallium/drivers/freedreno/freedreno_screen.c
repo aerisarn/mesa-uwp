@@ -107,9 +107,7 @@ bool fd_binning_enabled = true;
 static const char *
 fd_screen_get_name(struct pipe_screen *pscreen)
 {
-   static char buffer[128];
-   snprintf(buffer, sizeof(buffer), "FD%03d", fd_screen(pscreen)->device_id);
-   return buffer;
+   return fd_dev_name(fd_screen(pscreen)->gpu_id);
 }
 
 static const char *

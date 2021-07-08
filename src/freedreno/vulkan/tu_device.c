@@ -192,8 +192,7 @@ tu_physical_device_init(struct tu_physical_device *device,
 {
    VkResult result = VK_SUCCESS;
 
-   memset(device->name, 0, sizeof(device->name));
-   sprintf(device->name, "FD%d", device->gpu_id);
+   device->name = fd_dev_name(device->gpu_id);
 
    const struct fd_dev_info *info = fd_dev_info(device->gpu_id);
    if (!info) {
