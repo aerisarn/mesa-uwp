@@ -2513,8 +2513,6 @@ genX(graphics_pipeline_create)(
    enum intel_urb_deref_block_size urb_deref_block_size;
    emit_urb_setup(pipeline, &urb_deref_block_size);
 
-   assert(pCreateInfo->pVertexInputState);
-   emit_vertex_input(pipeline, pCreateInfo->pVertexInputState);
    assert(pCreateInfo->pRasterizationState);
    emit_rs_state(pipeline, pCreateInfo->pInputAssemblyState,
                            pCreateInfo->pRasterizationState,
@@ -2530,8 +2528,6 @@ genX(graphics_pipeline_create)(
                      vp_info,
                      pCreateInfo->pRasterizationState,
                      dynamic_states);
-   emit_3dstate_streamout(pipeline, pCreateInfo->pRasterizationState,
-                          dynamic_states);
 
 #if GFX_VER == 12
    emit_3dstate_primitive_replication(pipeline);
@@ -2556,9 +2552,23 @@ genX(graphics_pipeline_create)(
       gfx7_emit_vs_workaround_flush(brw);
 #endif
 
+   assert(pCreateInfo->pVertexInputState);
+   emit_vertex_input(pipeline, pCreateInfo->pVertexInputState);
+
    emit_3dstate_vs(pipeline);
    emit_3dstate_hs_te_ds(pipeline, pCreateInfo->pTessellationState);
    emit_3dstate_gs(pipeline);
+
+#if GFX_VER >= 8
+   if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY))
+      emit_3dstate_vf_topology(pipeline);
+#endif
+
+   emit_3dstate_vf_statistics(pipeline);
+
+   emit_3dstate_streamout(pipeline, pCreateInfo->pRasterizationState,
+                          dynamic_states);
+
    emit_3dstate_sbe(pipeline);
    emit_3dstate_wm(pipeline, subpass,
                    pCreateInfo->pInputAssemblyState,
@@ -2568,11 +2578,7 @@ genX(graphics_pipeline_create)(
 #if GFX_VER >= 8
    emit_3dstate_ps_extra(pipeline, subpass,
                          pCreateInfo->pRasterizationState);
-
-   if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY))
-      emit_3dstate_vf_topology(pipeline);
 #endif
-   emit_3dstate_vf_statistics(pipeline);
 
    *pPipeline = anv_pipeline_to_handle(&pipeline->base);
 
