@@ -196,6 +196,7 @@ a6xx_gen3 = dict(
         has_z24uint_s8uint = True,
         tess_use_shared = True,
         storage_16bit = True,
+        has_tex_filter_cubic = True,
     )
 
 add_gpus([

@@ -85,6 +85,8 @@ struct fd_dev_info {
           */
          bool indirect_draw_wfm_quirk;
 
+         bool has_tex_filter_cubic;
+
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
             uint32_t PC_UNKNOWN_9805;
