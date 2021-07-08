@@ -807,10 +807,11 @@ panvk_cmd_close_batch(struct panvk_cmd_buffer *cmdbuf)
 
    list_addtail(&cmdbuf->state.batch->node, &cmdbuf->batches);
 
-   struct pan_tls_info tlsinfo = {
-      .tls.size = cmdbuf->state.pipeline->tls_size,
-      .wls.size = cmdbuf->state.pipeline->wls_size,
-   };
+   struct pan_tls_info tlsinfo = {};
+   if (cmdbuf->state.pipeline) {
+      tlsinfo.tls.size = cmdbuf->state.pipeline->tls_size;
+      tlsinfo.wls.size = cmdbuf->state.pipeline->wls_size;
+   }
 
    if (tlsinfo.tls.size) {
       tlsinfo.tls.ptr =
@@ -850,7 +851,6 @@ panvk_cmd_close_batch(struct panvk_cmd_buffer *cmdbuf)
          panvk_emit_fb(cmdbuf->device,
                        cmdbuf->state.batch,
                        cmdbuf->state.subpass,
-                       cmdbuf->state.pipeline,
                        cmdbuf->state.framebuffer,
                        cmdbuf->state.clear,
                        &tlsinfo, &cmdbuf->state.batch->tiler.ctx,

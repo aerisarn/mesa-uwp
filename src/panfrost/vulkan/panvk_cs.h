@@ -139,7 +139,6 @@ unsigned
 panvk_emit_fb(const struct panvk_device *dev,
               const struct panvk_batch *batch,
               const struct panvk_subpass *subpass,
-              const struct panvk_pipeline *pipeline,
               const struct panvk_framebuffer *fb,
               const struct panvk_clear_value *clears,
               const struct pan_tls_info *tlsinfo,
