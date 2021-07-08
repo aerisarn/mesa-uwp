@@ -41,8 +41,8 @@ struct panfrost_format {
 };
 
 struct pan_blendable_format {
-        enum mali_color_buffer_internal_format internal;
-        enum mali_mfbd_color_format writeback;
+        enum mali_color_buffer_internal_format internal : 16;
+        enum mali_mfbd_color_format writeback : 16;
         mali_pixel_format bifrost;
 };
 
