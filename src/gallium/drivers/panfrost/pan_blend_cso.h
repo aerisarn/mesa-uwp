@@ -46,7 +46,7 @@ struct panfrost_blend_state {
         struct pipe_blend_state base;
         struct pan_blend_state pan;
         struct pan_blend_info info[PIPE_MAX_COLOR_BUFS];
-        struct mali_blend_equation_packed equation[PIPE_MAX_COLOR_BUFS];
+        uint32_t equation[PIPE_MAX_COLOR_BUFS];
 
         /* info.load presented as a bitfield for draw call hot paths */
         unsigned load_dest_mask : PIPE_MAX_COLOR_BUFS;

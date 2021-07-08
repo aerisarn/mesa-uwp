@@ -362,7 +362,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                 if (!blend_shaders[i]) {
                         /* Word 1: Blend Equation */
                         STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
-                        packed->opaque[1] = so->equation[i].opaque[0];
+                        packed->opaque[1] = so->equation[i];
                 }
 
                 /* Words 2 and 3: Internal blend */
@@ -445,7 +445,7 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                 if (!blend_shaders[i]) {
                         /* Word 2: Blend Equation */
                         STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
-                        packed->opaque[2] = so->equation[i].opaque[0];
+                        packed->opaque[2] = so->equation[i];
                 }
         }
 }
@@ -640,7 +640,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
                 /* Word 14: SFBD Blend Equation */
                 STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
-                rsd.opaque[14] = ctx->blend->equation[0].opaque[0];
+                rsd.opaque[14] = ctx->blend->equation[0];
         }
 
         /* Merge with CSO state and upload */
