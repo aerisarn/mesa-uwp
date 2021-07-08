@@ -550,7 +550,7 @@ panvk_blend_needs_lowering(const struct panfrost_device *dev,
       return true;
 
    /* Not all formats can be blended by fixed-function hardware */
-   if (!panfrost_blendable_formats[state->rts[rt].format].internal)
+   if (!panfrost_blendable_formats_v7[state->rts[rt].format].internal)
       return true;
 
    unsigned constant_mask = pan_blend_constant_mask(state->rts[rt].equation);
