@@ -2597,9 +2597,9 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       y2 != iview->extent.height || iview->need_y2_align;
 
    bool unaligned =
-      x1 % phys_dev->info.gmem_align_w ||
-      (x2 % phys_dev->info.gmem_align_w && x2 != iview->extent.width) ||
-      y1 % phys_dev->info.gmem_align_h || (y2 % phys_dev->info.gmem_align_h && need_y2_align);
+      x1 % phys_dev->info->gmem_align_w ||
+      (x2 % phys_dev->info->gmem_align_w && x2 != iview->extent.width) ||
+      y1 % phys_dev->info->gmem_align_h || (y2 % phys_dev->info->gmem_align_h && need_y2_align);
 
    /* D32_SFLOAT_S8_UINT is quite special format: it has two planes,
     * one for depth and other for stencil. When resolving a MSAA

@@ -389,10 +389,10 @@ tu6_emit_blit_scissor(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool align)
    uint32_t y2 = y1 + render_area->extent.height - 1;
 
    if (align) {
-      x1 = x1 & ~(phys_dev->info.gmem_align_w - 1);
-      y1 = y1 & ~(phys_dev->info.gmem_align_h - 1);
-      x2 = ALIGN_POT(x2 + 1, phys_dev->info.gmem_align_w) - 1;
-      y2 = ALIGN_POT(y2 + 1, phys_dev->info.gmem_align_h) - 1;
+      x1 = x1 & ~(phys_dev->info->gmem_align_w - 1);
+      y1 = y1 & ~(phys_dev->info->gmem_align_h - 1);
+      x2 = ALIGN_POT(x2 + 1, phys_dev->info->gmem_align_w) - 1;
+      y2 = ALIGN_POT(y2 + 1, phys_dev->info->gmem_align_h) - 1;
    }
 
    tu_cs_emit_regs(cs,
@@ -910,10 +910,10 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    update_vsc_pipe(cmd, cs);
 
    tu_cs_emit_regs(cs,
-                   A6XX_PC_UNKNOWN_9805(.unknown = phys_dev->info.a6xx.magic.PC_UNKNOWN_9805));
+                   A6XX_PC_UNKNOWN_9805(.unknown = phys_dev->info->a6xx.magic.PC_UNKNOWN_9805));
 
    tu_cs_emit_regs(cs,
-                   A6XX_SP_UNKNOWN_A0F8(.unknown = phys_dev->info.a6xx.magic.SP_UNKNOWN_A0F8));
+                   A6XX_SP_UNKNOWN_A0F8(.unknown = phys_dev->info->a6xx.magic.SP_UNKNOWN_A0F8));
 
    tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
    tu_cs_emit(cs, UNK_2C);
@@ -1015,7 +1015,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
          dst[0] &= ~(A6XX_TEX_CONST_0_FMT__MASK |
             A6XX_TEX_CONST_0_SWIZ_X__MASK | A6XX_TEX_CONST_0_SWIZ_Y__MASK |
             A6XX_TEX_CONST_0_SWIZ_Z__MASK | A6XX_TEX_CONST_0_SWIZ_W__MASK);
-         if (!cmd->device->physical_device->info.a6xx.has_z24uint_s8uint) {
+         if (!cmd->device->physical_device->info->a6xx.has_z24uint_s8uint) {
             dst[0] |= A6XX_TEX_CONST_0_FMT(FMT6_8_8_8_8_UINT) |
                A6XX_TEX_CONST_0_SWIZ_X(A6XX_TEX_W) |
                A6XX_TEX_CONST_0_SWIZ_Y(A6XX_TEX_ZERO) |
@@ -1203,9 +1203,9 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit_regs(cs,
                       A6XX_VFD_MODE_CNTL(0));
 
-      tu_cs_emit_regs(cs, A6XX_PC_UNKNOWN_9805(.unknown = phys_dev->info.a6xx.magic.PC_UNKNOWN_9805));
+      tu_cs_emit_regs(cs, A6XX_PC_UNKNOWN_9805(.unknown = phys_dev->info->a6xx.magic.PC_UNKNOWN_9805));
 
-      tu_cs_emit_regs(cs, A6XX_SP_UNKNOWN_A0F8(.unknown = phys_dev->info.a6xx.magic.SP_UNKNOWN_A0F8));
+      tu_cs_emit_regs(cs, A6XX_SP_UNKNOWN_A0F8(.unknown = phys_dev->info->a6xx.magic.SP_UNKNOWN_A0F8));
 
       tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
       tu_cs_emit(cs, 0x1);

@@ -203,11 +203,10 @@ tu_physical_device_init(struct tu_physical_device *device,
    }
    switch (device->gpu_id / 100) {
    case 6:
-      // TODO convert to pointer:
-      device->info = *info;
-      device->ccu_offset_bypass = device->info.num_ccu * A6XX_CCU_DEPTH_SIZE;
+      device->info = info;
+      device->ccu_offset_bypass = device->info->num_ccu * A6XX_CCU_DEPTH_SIZE;
       device->ccu_offset_gmem = (device->gmem_size -
-         device->info.num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);
+         device->info->num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);
       break;
    default:
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,

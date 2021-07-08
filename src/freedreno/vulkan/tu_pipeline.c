@@ -1622,7 +1622,7 @@ tu6_emit_program(struct tu_cs *cs,
    tu_cs_emit(cs, multiview_cntl);
 
    if (multiview_cntl &&
-       builder->device->physical_device->info.a6xx.supports_multiview_mask) {
+       builder->device->physical_device->info->a6xx.supports_multiview_mask) {
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_MULTIVIEW_MASK, 1);
       tu_cs_emit(cs, builder->multiview_mask);
    }
@@ -2064,14 +2064,14 @@ calc_pvtmem_size(struct tu_device *dev, struct tu_pvtmem_config *config,
 {
    uint32_t per_fiber_size = ALIGN(pvtmem_bytes, 512);
    uint32_t per_sp_size =
-      ALIGN(per_fiber_size * dev->physical_device->info.a6xx.fibers_per_sp, 1 << 12);
+      ALIGN(per_fiber_size * dev->physical_device->info->a6xx.fibers_per_sp, 1 << 12);
 
    if (config) {
       config->per_fiber_size = per_fiber_size;
       config->per_sp_size = per_sp_size;
    }
 
-   return dev->physical_device->info.num_sp_cores * per_sp_size;
+   return dev->physical_device->info->num_sp_cores * per_sp_size;
 }
 
 static VkResult
