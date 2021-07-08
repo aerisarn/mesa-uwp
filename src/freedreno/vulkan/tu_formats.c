@@ -508,7 +508,7 @@ tu_GetPhysicalDeviceFormatProperties2(
 
       /* note: ubwc_possible() argument values to be ignored except for format */
       if (pFormatProperties->formatProperties.optimalTilingFeatures &&
-          ubwc_possible(format, VK_IMAGE_TYPE_2D, 0, 0, false, VK_SAMPLE_COUNT_1_BIT)) {
+          ubwc_possible(format, VK_IMAGE_TYPE_2D, 0, 0, physical_device->info, VK_SAMPLE_COUNT_1_BIT)) {
          vk_outarray_append(&out, mod_props) {
             mod_props->drmFormatModifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
             mod_props->drmFormatModifierPlaneCount = 1;
@@ -556,7 +556,7 @@ tu_get_image_format_properties(
             return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
 
-         if (!ubwc_possible(info->format, info->type, info->usage, info->usage, physical_device->info->a6xx.has_z24uint_s8uint, sampleCounts))
+         if (!ubwc_possible(info->format, info->type, info->usage, info->usage, physical_device->info, sampleCounts))
             return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
          format_feature_flags = format_props.optimalTilingFeatures;

@@ -94,6 +94,8 @@ struct fd_dev_info {
           */
          bool has_cp_reg_write;
 
+         bool has_8bpp_ubwc;
+
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
             uint32_t PC_UNKNOWN_9805;

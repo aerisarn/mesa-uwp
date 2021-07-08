@@ -115,6 +115,7 @@ class A6xxGPUInfo(GPUInfo):
         # Things that earlier gens have and later gens remove, provide
         # defaults here and let them be overridden by sub-gen template:
         self.a6xx.has_cp_reg_write = True
+        self.a6xx.has_8bpp_ubwc = True
 
         for name, val in template.items():
             setattr(self.a6xx, name, val)

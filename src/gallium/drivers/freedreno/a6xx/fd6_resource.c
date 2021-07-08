@@ -39,6 +39,8 @@
 static bool
 ok_ubwc_format(struct pipe_screen *pscreen, enum pipe_format pfmt)
 {
+   const struct fd_dev_info *info = fd_screen(pscreen)->info;
+
    switch (pfmt) {
    case PIPE_FORMAT_X24S8_UINT:
    case PIPE_FORMAT_Z24_UNORM_S8_UINT:
@@ -47,7 +49,7 @@ ok_ubwc_format(struct pipe_screen *pscreen, enum pipe_format pfmt)
        * fd_resource_uncompress() at the point of stencil sampling because
        * that itself uses stencil sampling in the fd_blitter_blit path.
        */
-      return fd_screen(pscreen)->info->a6xx.has_z24uint_s8uint;
+      return info->a6xx.has_z24uint_s8uint;
 
    case PIPE_FORMAT_R8_G8B8_420_UNORM:
       return true;
@@ -81,10 +83,11 @@ ok_ubwc_format(struct pipe_screen *pscreen, enum pipe_format pfmt)
    case FMT6_8_8_SINT:
    case FMT6_8_8_UINT:
    case FMT6_8_8_UNORM:
-   case FMT6_8_UNORM:
    case FMT6_Z24_UNORM_S8_UINT:
    case FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8:
       return true;
+   case FMT6_8_UNORM:
+      return info->a6xx.has_8bpp_ubwc;
    default:
       return false;
    }

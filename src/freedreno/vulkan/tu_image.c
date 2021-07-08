@@ -449,7 +449,7 @@ tu_image_view_init(struct tu_image_view *iview,
 
 bool
 ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
-              VkImageUsageFlags stencil_usage, bool has_z24uint_s8uint,
+              VkImageUsageFlags stencil_usage, const struct fd_dev_info *info,
               VkSampleCountFlagBits samples)
 {
    /* no UBWC with compressed formats, E5B9G9R9, S8_UINT
@@ -458,6 +458,14 @@ ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
    if (vk_format_is_compressed(format) ||
        format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 ||
        format == VK_FORMAT_S8_UINT)
+      return false;
+
+   if (!info->a6xx.has_8bpp_ubwc &&
+       (format == VK_FORMAT_R8_UNORM ||
+        format == VK_FORMAT_R8_SNORM ||
+        format == VK_FORMAT_R8_UINT ||
+        format == VK_FORMAT_R8_SINT ||
+        format == VK_FORMAT_R8_SRGB))
       return false;
 
    if (type == VK_IMAGE_TYPE_3D) {
@@ -488,12 +496,12 @@ ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
     * Additionally, the special AS_R8G8B8A8 format is broken without UBWC,
     * so we have to fallback to 8_8_8_8_UNORM when UBWC is disabled
     */
-   if (!has_z24uint_s8uint &&
+   if (!info->a6xx.has_z24uint_s8uint &&
        format == VK_FORMAT_D24_UNORM_S8_UINT &&
        (stencil_usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)))
       return false;
 
-   if (!has_z24uint_s8uint && samples > VK_SAMPLE_COUNT_1_BIT)
+   if (!info->a6xx.has_z24uint_s8uint && samples > VK_SAMPLE_COUNT_1_BIT)
       return false;
 
    return true;
@@ -609,7 +617,7 @@ tu_CreateImage(VkDevice _device,
 
    if (!ubwc_possible(image->vk_format, pCreateInfo->imageType, pCreateInfo->usage,
                       stencil_usage_info ? stencil_usage_info->stencilUsage : pCreateInfo->usage,
-                      device->physical_device->info->a6xx.has_z24uint_s8uint, pCreateInfo->samples))
+                      device->physical_device->info, pCreateInfo->samples))
       ubwc_enabled = false;
 
    /* expect UBWC enabled if we asked for it */
