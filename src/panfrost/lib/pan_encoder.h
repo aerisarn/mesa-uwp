@@ -28,6 +28,7 @@
 #define __PAN_ENCODER_H
 
 #include <stdbool.h>
+#include "util/format/u_format.h"
 #include "pan_bo.h"
 #include "midgard_pack.h"
 
@@ -212,6 +213,25 @@ panfrost_pack_work_groups_compute(
                 cfg.thread_group_split = quirk_graphics ?
                         MALI_SPLIT_MIN_EFFICIENT : cfg.workgroups_x_shift;
         }
+}
+
+/* Format conversion */
+static inline enum mali_z_internal_format
+panfrost_get_z_internal_format(enum pipe_format fmt)
+{
+         switch (fmt) {
+         case PIPE_FORMAT_Z16_UNORM:
+         case PIPE_FORMAT_Z16_UNORM_S8_UINT:
+                return MALI_Z_INTERNAL_FORMAT_D16;
+         case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+         case PIPE_FORMAT_Z24X8_UNORM:
+                return MALI_Z_INTERNAL_FORMAT_D24;
+         case PIPE_FORMAT_Z32_FLOAT:
+         case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+                return MALI_Z_INTERNAL_FORMAT_D32;
+         default:
+                unreachable("Unsupported depth/stencil format.");
+         }
 }
 
 #endif

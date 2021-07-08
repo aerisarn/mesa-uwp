@@ -35,6 +35,7 @@
 #include "midgard_pack.h"
 #include "pan_bo.h"
 #include "pan_device.h"
+#include "pan_util.h"
 
 #define PAN_MODIFIER_COUNT 4
 extern uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT];
@@ -185,9 +186,6 @@ struct pan_blendable_format {
 extern const struct pan_blendable_format panfrost_blendable_formats[PIPE_FORMAT_COUNT];
 extern const struct panfrost_format panfrost_pipe_format_v6[PIPE_FORMAT_COUNT];
 extern const struct panfrost_format panfrost_pipe_format_v7[PIPE_FORMAT_COUNT];
-
-enum mali_z_internal_format
-panfrost_get_z_internal_format(enum pipe_format fmt);
 
 unsigned
 panfrost_translate_swizzle_4(const unsigned char swizzle[4]);
