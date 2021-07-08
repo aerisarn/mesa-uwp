@@ -1597,19 +1597,6 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
             }
 
             primary_job->tmu_dirty_rcl |= secondary_job->tmu_dirty_rcl;
-         } else if (secondary_job->type == V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS) {
-            if (pending_barrier) {
-               cmd_buffer_subpass_split_for_barrier(primary, pending_bcl_barrier);
-               v3dv_return_if_oom(primary, NULL);
-            }
-
-            const struct v3dv_clear_attachments_cpu_job_info *info =
-               &secondary_job->cpu.clear_attachments;
-            v3dv_CmdClearAttachments(v3dv_cmd_buffer_to_handle(primary),
-                                     info->attachment_count,
-                                     info->attachments,
-                                     info->rect_count,
-                                     info->rects);
          } else {
             /* This is a regular job (CPU or GPU), so just finish the current
              * primary job (if any) and then add the secondary job to the

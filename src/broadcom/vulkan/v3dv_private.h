@@ -850,7 +850,6 @@ enum v3dv_job_type {
    V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS,
    V3DV_JOB_TYPE_CPU_SET_EVENT,
    V3DV_JOB_TYPE_CPU_WAIT_EVENTS,
-   V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS,
    V3DV_JOB_TYPE_CPU_COPY_BUFFER_TO_IMAGE,
    V3DV_JOB_TYPE_CPU_CSD_INDIRECT,
    V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY,
@@ -889,13 +888,6 @@ struct v3dv_event_wait_cpu_job_info {
 
    /* Whether any postponed jobs after the wait should wait on semaphores */
    bool sem_wait;
-};
-
-struct v3dv_clear_attachments_cpu_job_info {
-   uint32_t attachment_count;
-   VkClearAttachment attachments[V3D_MAX_DRAW_BUFFERS + 1]; /* 4 color + D/S */
-   uint32_t rect_count;
-   VkClearRect *rects;
 };
 
 struct v3dv_copy_buffer_to_image_cpu_job_info {
@@ -1002,7 +994,6 @@ struct v3dv_job {
       struct v3dv_copy_query_results_cpu_job_info   query_copy_results;
       struct v3dv_event_set_cpu_job_info            event_set;
       struct v3dv_event_wait_cpu_job_info           event_wait;
-      struct v3dv_clear_attachments_cpu_job_info    clear_attachments;
       struct v3dv_copy_buffer_to_image_cpu_job_info copy_buffer_to_image;
       struct v3dv_csd_indirect_cpu_job_info         csd_indirect;
       struct v3dv_timestamp_query_cpu_job_info      query_timestamp;

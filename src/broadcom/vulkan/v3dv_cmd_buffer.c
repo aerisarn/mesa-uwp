@@ -1705,7 +1705,6 @@ cmd_buffer_execute_outside_pass(struct v3dv_cmd_buffer *primary,
       list_for_each_entry(struct v3dv_job, secondary_job,
                           &secondary->jobs, list_link) {
          /* These can only happen inside a render pass */
-         assert(secondary_job->type != V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS);
          assert(secondary_job->type != V3DV_JOB_TYPE_GPU_CL_SECONDARY);
          struct v3dv_job *job = v3dv_job_clone_in_cmd_buffer(secondary_job, primary);
          if (!job)
