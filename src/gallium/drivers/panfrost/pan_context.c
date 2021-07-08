@@ -704,12 +704,6 @@ panfrost_bind_depth_stencil_state(struct pipe_context *pipe,
 }
 
 static void
-panfrost_delete_depth_stencil_state(struct pipe_context *pipe, void *depth)
-{
-        free( depth );
-}
-
-static void
 panfrost_set_sample_mask(struct pipe_context *pipe,
                          unsigned sample_mask)
 {
@@ -1076,7 +1070,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->bind_sampler_states = panfrost_bind_sampler_states;
 
         gallium->bind_depth_stencil_alpha_state   = panfrost_bind_depth_stencil_state;
-        gallium->delete_depth_stencil_alpha_state = panfrost_delete_depth_stencil_state;
+        gallium->delete_depth_stencil_alpha_state = panfrost_generic_cso_delete;
 
         gallium->set_sample_mask = panfrost_set_sample_mask;
         gallium->set_min_samples = panfrost_set_min_samples;
