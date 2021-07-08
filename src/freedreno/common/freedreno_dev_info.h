@@ -68,6 +68,11 @@ struct fd_dev_info {
 
          bool tess_use_shared;
 
+         /* newer a6xx allows using 16-bit descriptor for both 16-bit
+          * and 32-bit access
+          */
+         bool storage_16bit;
+
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
             uint32_t PC_UNKNOWN_9805;

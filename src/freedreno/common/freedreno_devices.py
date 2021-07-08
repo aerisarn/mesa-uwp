@@ -193,6 +193,7 @@ a6xx_gen3 = dict(
         supports_multiview_mask = True,
         has_z24uint_s8uint = True,
         tess_use_shared = True,
+        storage_16bit = True,
     )
 
 add_gpus([

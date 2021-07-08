@@ -726,7 +726,7 @@ write_buffer_descriptor(const struct tu_device *device,
    uint64_t va = tu_buffer_iova(buffer) + buffer_info->offset;
    uint32_t range = get_range(buffer, buffer_info->offset, buffer_info->range);
    /* newer a6xx allows using 16-bit descriptor for both 16-bit and 32-bit access */
-   if (device->physical_device->gpu_id >= 650) {
+   if (device->physical_device->info->a6xx.storage_16bit) {
       dst[0] = A6XX_IBO_0_TILE_MODE(TILE6_LINEAR) | A6XX_IBO_0_FMT(FMT6_16_UINT);
       dst[1] = DIV_ROUND_UP(range, 2);
    } else {
