@@ -346,6 +346,7 @@ struct dri2_egl_surface
       struct ANativeWindowBuffer *buffer;
       int age;
    } *color_buffers, *back;
+   uint32_t gralloc_usage;
 #endif
 
    /* surfaceless and device */

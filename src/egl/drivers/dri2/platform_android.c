@@ -549,6 +549,7 @@ static bool
 droid_set_shared_buffer_mode(_EGLDisplay *disp, _EGLSurface *surf, bool mode)
 {
 #if ANDROID_API_LEVEL >= 24
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
    struct ANativeWindow *window = dri2_surf->window;
 
@@ -560,6 +561,18 @@ droid_set_shared_buffer_mode(_EGLDisplay *disp, _EGLSurface *surf, bool mode)
    if (ANativeWindow_setSharedBufferMode(window, mode)) {
       _eglLog(_EGL_WARNING, "failed ANativeWindow_setSharedBufferMode"
               "(window=%p, mode=%d)", window, mode);
+      return false;
+   }
+
+   if (mode)
+      dri2_surf->gralloc_usage |= dri2_dpy->front_rendering_usage;
+   else
+      dri2_surf->gralloc_usage &= ~dri2_dpy->front_rendering_usage;
+
+   if (ANativeWindow_setUsage(window, dri2_surf->gralloc_usage)) {
+      _eglLog(_EGL_WARNING,
+              "failed ANativeWindow_setUsage(window=%p, usage=%u)", window,
+              dri2_surf->gralloc_usage);
       return false;
    }
 
@@ -632,14 +645,18 @@ droid_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
       ANativeWindow_query(window, ANATIVEWINDOW_QUERY_DEFAULT_HEIGHT,
                           &dri2_surf->base.Height);
 
-      uint32_t usage = strcmp(dri2_dpy->driver_name, "kms_swrast") == 0
+      dri2_surf->gralloc_usage =
+         strcmp(dri2_dpy->driver_name, "kms_swrast") == 0
             ? GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN
             : GRALLOC_USAGE_HW_RENDER;
 
-      if (conf->SurfaceType & EGL_MUTABLE_RENDER_BUFFER_BIT_KHR)
-         usage |= dri2_dpy->front_rendering_usage;
+      if (dri2_surf->base.ActiveRenderBuffer == EGL_SINGLE_BUFFER)
+         dri2_surf->gralloc_usage |= dri2_dpy->front_rendering_usage;
 
-      ANativeWindow_setUsage(window, usage);
+      if (ANativeWindow_setUsage(window, dri2_surf->gralloc_usage)) {
+         _eglError(EGL_BAD_NATIVE_WINDOW, "droid_create_surface");
+         goto cleanup_surface;
+      }
    }
 
    config = dri2_get_dri_config(dri2_conf, type,
