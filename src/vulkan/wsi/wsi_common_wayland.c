@@ -183,12 +183,23 @@ wsi_wl_display_add_wl_format(struct wsi_wl_display *display,
 
    /* Non-packed 8-bit formats have an inverted channel order compared to the
     * little endian DRM formats, because the DRM channel ordering is high->low
-    * but the vulkan channel ordering is in memory byte order */
+    * but the vulkan channel ordering is in memory byte order
+    *
+    * For all UNORM formats which have a SRGB variant, we must support both if
+    * we can. SRGB in this context means that rendering to it will result in a
+    * linear -> nonlinear SRGB colorspace conversion before the data is stored.
+    * The inverse function is applied when sampling from SRGB images.
+    * From Wayland's perspective nothing changes, the difference is just how
+    * Vulkan interprets the pixel data. */
    case WL_DRM_FORMAT_XBGR8888:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_R8G8B8_SRGB);
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_R8G8B8_UNORM);
       FALLTHROUGH;
    case WL_DRM_FORMAT_ABGR8888:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_R8G8B8A8_SRGB);
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_R8G8B8A8_UNORM);
       break;
@@ -243,8 +254,10 @@ wl_drm_format_for_vk_format(VkFormat vk_format, bool alpha)
       return alpha ? WL_DRM_FORMAT_ABGR2101010 : WL_DRM_FORMAT_XBGR2101010;
 #endif
    case VK_FORMAT_R8G8B8_UNORM:
+   case VK_FORMAT_R8G8B8_SRGB:
       return WL_DRM_FORMAT_XBGR8888;
    case VK_FORMAT_R8G8B8A8_UNORM:
+   case VK_FORMAT_R8G8B8A8_SRGB:
       return alpha ? WL_DRM_FORMAT_ABGR8888 : WL_DRM_FORMAT_XBGR8888;
    case VK_FORMAT_B8G8R8_UNORM:
    case VK_FORMAT_B8G8R8_SRGB:
