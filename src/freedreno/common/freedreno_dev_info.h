@@ -64,6 +64,8 @@ struct fd_dev_info {
          bool ccu_cntl_gmem_unk2;
          bool has_z24uint_s8uint;
 
+         bool tess_use_shared;
+
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
             uint32_t PC_UNKNOWN_9805;
