@@ -833,8 +833,12 @@ bi_instr_schedulable(bi_instr *instr,
 
         unsigned total_srcs = tuple->reg.nr_reads + unique_new_srcs;
 
-        /* TODO: spill to moves */
-        if (total_srcs > 3)
+        bool can_spill_to_moves = (!tuple->add);
+        can_spill_to_moves &= (bi_nconstants(clause) < 13 - (clause->tuple_count + 2));
+        can_spill_to_moves &= (clause->tuple_count < 7);
+
+        /* However, we can get an extra 1 or 2 sources by inserting moves */
+        if (total_srcs > (can_spill_to_moves ? 4 : 3))
                 return false;
 
         /* Count effective reads for the successor */
@@ -923,6 +927,21 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
                 return bi_lower_seg_add(ctx, clause, tuple);
         else if (tuple->add && tuple->add->table)
                 return bi_lower_dtsel(ctx, clause, tuple);
+
+        /* TODO: Optimize these moves */
+        if (!fma && tuple->nr_prev_reads > 3) {
+                /* Only spill by one source for now */
+                assert(tuple->nr_prev_reads == 4);
+
+                /* Pick a source to spill */
+                bi_index src = tuple->prev_reads[0];
+
+                /* Schedule the spill */
+                bi_builder b = bi_init_builder(ctx, bi_before_tuple(tuple->prev));
+                bi_instr *mov = bi_mov_i32_to(&b, src, src);
+                bi_pop_instr(clause, tuple, mov, live_after_temp, fma);
+                return mov;
+        }
 
 #ifndef NDEBUG
         /* Don't pair instructions if debugging */
