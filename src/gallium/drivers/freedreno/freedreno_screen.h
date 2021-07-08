@@ -91,7 +91,7 @@ struct fd_screen {
    bool has_robustness;
    bool has_syncobj;
 
-   struct fd_dev_info info;
+   const struct fd_dev_info *info;
    uint32_t ccu_offset_gmem;
    uint32_t ccu_offset_bypass;
 

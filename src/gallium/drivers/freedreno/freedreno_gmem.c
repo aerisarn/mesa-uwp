@@ -178,13 +178,13 @@ layout_gmem(struct gmem_key *key, uint32_t nbins_x, uint32_t nbins_y,
       return false;
 
    uint32_t bin_w, bin_h;
-   bin_w = div_align(key->width, nbins_x, screen->info.tile_align_w);
-   bin_h = div_align(key->height, nbins_y, screen->info.tile_align_h);
+   bin_w = div_align(key->width, nbins_x, screen->info->tile_align_w);
+   bin_h = div_align(key->height, nbins_y, screen->info->tile_align_h);
 
-   if (bin_w > screen->info.tile_max_w)
+   if (bin_w > screen->info->tile_max_w)
       return false;
 
-   if (bin_h > screen->info.tile_max_h)
+   if (bin_h > screen->info->tile_max_h)
       return false;
 
    gmem->bin_w = bin_w;
@@ -221,8 +221,8 @@ calc_nbins(struct gmem_key *key, struct fd_gmem_stateobj *gmem)
 {
    struct fd_screen *screen = gmem->screen;
    uint32_t nbins_x = 1, nbins_y = 1;
-   uint32_t max_width = screen->info.tile_max_w;
-   uint32_t max_height = screen->info.tile_max_h;
+   uint32_t max_width = screen->info->tile_max_w;
+   uint32_t max_height = screen->info->tile_max_h;
 
    if (FD_DBG(MSGS)) {
       debug_printf("binning input: cbuf cpp:");
@@ -235,12 +235,12 @@ calc_nbins(struct gmem_key *key, struct fd_gmem_stateobj *gmem)
    /* first, find a bin size that satisfies the maximum width/
     * height restrictions:
     */
-   while (div_align(key->width, nbins_x, screen->info.tile_align_w) >
+   while (div_align(key->width, nbins_x, screen->info->tile_align_w) >
           max_width) {
       nbins_x++;
    }
 
-   while (div_align(key->height, nbins_y, screen->info.tile_align_h) >
+   while (div_align(key->height, nbins_y, screen->info->tile_align_h) >
           max_height) {
       nbins_y++;
    }
@@ -282,7 +282,7 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
    gmem->key = key;
    list_inithead(&gmem->node);
 
-   const unsigned npipes = screen->info.num_vsc_pipes;
+   const unsigned npipes = screen->info->num_vsc_pipes;
    uint32_t i, j, t, xoff, yoff;
    uint32_t tpp_x, tpp_y;
    int tile_n[npipes];
@@ -504,8 +504,8 @@ gmem_key_init(struct fd_batch *batch, bool assume_zs, bool no_scis_opt)
       }
 
       /* round down to multiple of alignment: */
-      key->minx = scissor->minx & ~(screen->info.gmem_align_w - 1);
-      key->miny = scissor->miny & ~(screen->info.gmem_align_h - 1);
+      key->minx = scissor->minx & ~(screen->info->gmem_align_w - 1);
+      key->miny = scissor->miny & ~(screen->info->gmem_align_h - 1);
       key->width = scissor->maxx - key->minx;
       key->height = scissor->maxy - key->miny;
    }
@@ -516,7 +516,7 @@ gmem_key_init(struct fd_batch *batch, bool assume_zs, bool no_scis_opt)
        */
       key->gmem_page_align = 8;
    } else if (is_a6xx(screen)) {
-      key->gmem_page_align = (screen->info.tile_align_w == 96) ? 3 : 1;
+      key->gmem_page_align = (screen->info->tile_align_w == 96) ? 3 : 1;
    } else {
       // TODO re-check this across gens.. maybe it should only
       // be a single page in some cases:

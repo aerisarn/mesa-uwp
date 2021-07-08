@@ -1058,13 +1058,12 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
       goto fail;
    }
 
-   // TODO change to pointer:
-   screen->info = *info;
+   screen->info = info;
 
    if (is_a6xx(screen)) {
-      screen->ccu_offset_bypass = screen->info.num_ccu * A6XX_CCU_DEPTH_SIZE;
+      screen->ccu_offset_bypass = screen->info->num_ccu * A6XX_CCU_DEPTH_SIZE;
       screen->ccu_offset_gmem = (screen->gmemsize_bytes -
-         screen->info.num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);
+         screen->info->num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);
    }
 
    if (FD_DBG(PERFC)) {

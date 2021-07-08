@@ -412,7 +412,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
       OUT_WFI5(ring);
 
       OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
-      OUT_RING(ring, ctx->screen->info.a6xx.magic.RB_UNKNOWN_8E04_blit);
+      OUT_RING(ring, ctx->screen->info->a6xx.magic.RB_UNKNOWN_8E04_blit);
 
       OUT_PKT7(ring, CP_BLIT, 1);
       OUT_RING(ring, CP_BLIT_0_OP(BLIT_OP_SCALE));
@@ -507,7 +507,7 @@ fd6_clear_ubwc(struct fd_batch *batch, struct fd_resource *rsc) assert_dt
       OUT_WFI5(ring);
 
       OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
-      OUT_RING(ring, batch->ctx->screen->info.a6xx.magic.RB_UNKNOWN_8E04_blit);
+      OUT_RING(ring, batch->ctx->screen->info->a6xx.magic.RB_UNKNOWN_8E04_blit);
 
       OUT_PKT7(ring, CP_BLIT, 1);
       OUT_RING(ring, CP_BLIT_0_OP(BLIT_OP_SCALE));
@@ -684,7 +684,7 @@ emit_blit_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
       OUT_WFI5(ring);
 
       OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
-      OUT_RING(ring, ctx->screen->info.a6xx.magic.RB_UNKNOWN_8E04_blit);
+      OUT_RING(ring, ctx->screen->info->a6xx.magic.RB_UNKNOWN_8E04_blit);
 
       OUT_PKT7(ring, CP_BLIT, 1);
       OUT_RING(ring, CP_BLIT_0_OP(BLIT_OP_SCALE));
@@ -812,7 +812,7 @@ fd6_clear_surface(struct fd_context *ctx, struct fd_ringbuffer *ring,
       OUT_WFI5(ring);
 
       OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
-      OUT_RING(ring, ctx->screen->info.a6xx.magic.RB_UNKNOWN_8E04_blit);
+      OUT_RING(ring, ctx->screen->info->a6xx.magic.RB_UNKNOWN_8E04_blit);
 
       OUT_PKT7(ring, CP_BLIT, 1);
       OUT_RING(ring, CP_BLIT_0_OP(BLIT_OP_SCALE));
@@ -1062,7 +1062,7 @@ handle_zs_blit(struct fd_context *ctx,
       /* non-UBWC Z24_UNORM_S8_UINT_AS_R8G8B8A8 is broken on a630, fall back to
        * 8888_unorm.
        */
-      if (!ctx->screen->info.a6xx.has_z24uint_s8uint) {
+      if (!ctx->screen->info->a6xx.has_z24uint_s8uint) {
          if (!src->layout.ubwc)
             blit.src.format = PIPE_FORMAT_RGBA8888_UNORM;
          if (!dst->layout.ubwc)

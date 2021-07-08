@@ -47,7 +47,7 @@ ok_ubwc_format(struct pipe_screen *pscreen, enum pipe_format pfmt)
        * fd_resource_uncompress() at the point of stencil sampling because
        * that itself uses stencil sampling in the fd_blitter_blit path.
        */
-      return fd_screen(pscreen)->info.a6xx.has_z24uint_s8uint;
+      return fd_screen(pscreen)->info->a6xx.has_z24uint_s8uint;
 
    case PIPE_FORMAT_R8_G8B8_420_UNORM:
       return true;

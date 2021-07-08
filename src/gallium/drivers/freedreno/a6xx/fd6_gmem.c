@@ -689,10 +689,10 @@ emit_binning_pass(struct fd_batch *batch) assert_dt
    update_vsc_pipe(batch);
 
    OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9805, 1);
-   OUT_RING(ring, screen->info.a6xx.magic.PC_UNKNOWN_9805);
+   OUT_RING(ring, screen->info->a6xx.magic.PC_UNKNOWN_9805);
 
    OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A0F8, 1);
-   OUT_RING(ring, screen->info.a6xx.magic.SP_UNKNOWN_A0F8);
+   OUT_RING(ring, screen->info->a6xx.magic.SP_UNKNOWN_A0F8);
 
    OUT_PKT7(ring, CP_EVENT_WRITE, 1);
    OUT_RING(ring, UNK_2C);
@@ -742,7 +742,7 @@ emit_binning_pass(struct fd_batch *batch) assert_dt
    OUT_REG(ring,
            A6XX_RB_CCU_CNTL(.color_offset = screen->ccu_offset_gmem,
                             .gmem = true,
-                            .unk2 = screen->info.a6xx.ccu_cntl_gmem_unk2));
+                            .unk2 = screen->info->a6xx.ccu_cntl_gmem_unk2));
 }
 
 static void
@@ -810,7 +810,7 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
    OUT_REG(ring,
            A6XX_RB_CCU_CNTL(.color_offset = screen->ccu_offset_gmem,
                             .gmem = true,
-                            .unk2 = screen->info.a6xx.ccu_cntl_gmem_unk2));
+                            .unk2 = screen->info->a6xx.ccu_cntl_gmem_unk2));
 
    emit_zs(ring, pfb->zsbuf, batch->gmem_state);
    emit_mrt(ring, pfb, batch->gmem_state);
@@ -845,10 +845,10 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
       OUT_RING(ring, 0x0);
 
       OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9805, 1);
-      OUT_RING(ring, screen->info.a6xx.magic.PC_UNKNOWN_9805);
+      OUT_RING(ring, screen->info->a6xx.magic.PC_UNKNOWN_9805);
 
       OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A0F8, 1);
-      OUT_RING(ring, screen->info.a6xx.magic.SP_UNKNOWN_A0F8);
+      OUT_RING(ring, screen->info->a6xx.magic.SP_UNKNOWN_A0F8);
 
       OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
       OUT_RING(ring, 0x1);
