@@ -3960,14 +3960,7 @@ tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
 
    tu6_emit_empty_vs_params(cmd);
 
-   /* The latest known a630_sqe.fw fails to wait for WFI before reading the
-    * indirect buffer when using CP_DRAW_INDIRECT_MULTI, so we have to fall
-    * back to CP_WAIT_FOR_ME except for a650 which has a fixed firmware.
-    *
-    * TODO: There may be newer a630_sqe.fw released in the future which fixes
-    * this, if so we should detect it and avoid this workaround.
-    */
-   if (cmd->device->physical_device->gpu_id != 650)
+   if (cmd->device->physical_device->info->a6xx.indirect_draw_wfm_quirk)
       draw_wfm(cmd);
 
    tu6_draw_common(cmd, cs, false, 0);
@@ -3994,7 +3987,7 @@ tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
 
    tu6_emit_empty_vs_params(cmd);
 
-   if (cmd->device->physical_device->gpu_id != 650)
+   if (cmd->device->physical_device->info->a6xx.indirect_draw_wfm_quirk)
       draw_wfm(cmd);
 
    tu6_draw_common(cmd, cs, true, 0);

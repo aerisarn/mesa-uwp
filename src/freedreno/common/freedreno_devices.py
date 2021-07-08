@@ -176,6 +176,7 @@ a6xx_gen1 = dict(
         fibers_per_sp = 128 * 16,
         reg_size_vec4 = 96,
         ccu_cntl_gmem_unk2 = True,
+        indirect_draw_wfm_quirk = True,
     )
 
 # a640, a680:
@@ -184,6 +185,7 @@ a6xx_gen2 = dict(
         reg_size_vec4 = 96,
         supports_multiview_mask = True,
         has_z24uint_s8uint = True,
+        indirect_draw_wfm_quirk = True,
     )
 
 # a650:

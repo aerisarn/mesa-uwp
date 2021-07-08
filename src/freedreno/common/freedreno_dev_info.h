@@ -73,6 +73,18 @@ struct fd_dev_info {
           */
          bool storage_16bit;
 
+         /* The latest known a630_sqe.fw fails to wait for WFI before
+          * reading the indirect buffer when using CP_DRAW_INDIRECT_MULTI,
+          * so we have to fall back to CP_WAIT_FOR_ME except for a650
+          * which has a fixed firmware.
+          *
+          * TODO: There may be newer a630_sqe.fw released in the future
+          * which fixes this, if so we should detect it and avoid this
+          * workaround.  Once we have uapi to query fw version, we can
+          * replace this with minimum fw version.
+          */
+         bool indirect_draw_wfm_quirk;
+
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
             uint32_t PC_UNKNOWN_9805;
