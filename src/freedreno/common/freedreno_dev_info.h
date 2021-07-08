@@ -57,6 +57,8 @@ struct fd_dev_info {
          /* Information for private memory calculations */
          uint32_t fibers_per_sp;
 
+         uint32_t reg_size_vec4;
+
          /* Whether the PC_MULTIVIEW_MASK register exists. */
          bool supports_multiview_mask;
 

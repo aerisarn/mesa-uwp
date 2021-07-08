@@ -174,12 +174,14 @@ add_gpus([
 # a615, a618, a630:
 a6xx_gen1 = dict(
         fibers_per_sp = 128 * 16,
+        reg_size_vec4 = 96,
         ccu_cntl_gmem_unk2 = True,
     )
 
 # a640, a680:
 a6xx_gen2 = dict(
         fibers_per_sp = 128 * 4 * 16,
+        reg_size_vec4 = 96,
         supports_multiview_mask = True,
         has_z24uint_s8uint = True,
     )
@@ -187,6 +189,7 @@ a6xx_gen2 = dict(
 # a650:
 a6xx_gen3 = dict(
         fibers_per_sp = 128 * 2 * 16,
+        reg_size_vec4 = 64,
         supports_multiview_mask = True,
         has_z24uint_s8uint = True,
         tess_use_shared = True,

@@ -136,13 +136,9 @@ ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id,
       compiler->max_const_safe = 256;
    }
 
-   if (compiler->gpu_id == 650) {
-      /* This changed mid-generation for a650, so that using r32.x and above
-       * requires using the smallest threadsize.
-       */
-      compiler->reg_size_vec4 = 64;
-   } else if (compiler->gpu_id >= 600) {
-      compiler->reg_size_vec4 = 96;
+   if (compiler->gpu_id >= 600) {
+      compiler->reg_size_vec4 =
+            fd_dev_info(compiler->gpu_id)->a6xx.reg_size_vec4;
    } else if (compiler->gpu_id >= 400) {
       /* On a4xx-a5xx, using r24.x and above requires using the smallest
        * threadsize.
