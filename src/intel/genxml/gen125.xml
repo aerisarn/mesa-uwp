@@ -2828,6 +2828,7 @@
       <value name="Block Deref Size 32" value="0"/>
       <value name="Per Poly Deref Mode" value="1"/>
       <value name="Block Deref Size 8" value="2"/>
+      <value name="Mesh Shader EODB" value="3"/>
     </field>
     <field name="Point Width" start="96" end="106" type="u8.3"/>
     <field name="Point Width Source" start="107" end="107" type="uint">

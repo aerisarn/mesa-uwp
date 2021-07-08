@@ -96,6 +96,7 @@ enum intel_urb_deref_block_size {
    INTEL_URB_DEREF_BLOCK_SIZE_32         = 0,
    INTEL_URB_DEREF_BLOCK_SIZE_PER_POLY   = 1,
    INTEL_URB_DEREF_BLOCK_SIZE_8          = 2,
+   INTEL_URB_DEREF_BLOCK_SIZE_MESH       = 3,
 };
 
 void intel_get_urb_config(const struct intel_device_info *devinfo,
