@@ -112,6 +112,10 @@ class A6xxGPUInfo(GPUInfo):
         self.a6xx.magic.PC_UNKNOWN_9805 = PC_UNKNOWN_9805
         self.a6xx.magic.SP_UNKNOWN_A0F8 = SP_UNKNOWN_A0F8
 
+        # Things that earlier gens have and later gens remove, provide
+        # defaults here and let them be overridden by sub-gen template:
+        self.a6xx.has_cp_reg_write = True
+
         for name, val in template.items():
             setattr(self.a6xx, name, val)
 

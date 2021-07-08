@@ -89,6 +89,11 @@ struct fd_dev_info {
 
          bool has_sample_locations;
 
+         /* The firmware on newer a6xx drops CP_REG_WRITE support as we
+          * can now use direct register writes for these regs.
+          */
+         bool has_cp_reg_write;
+
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
             uint32_t PC_UNKNOWN_9805;

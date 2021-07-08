@@ -335,6 +335,7 @@ update_render_cntl(struct fd_batch *batch, struct pipe_framebuffer_state *pfb,
                    bool binning)
 {
    struct fd_ringbuffer *ring = batch->gmem;
+   struct fd_screen *screen = batch->ctx->screen;
    uint32_t cntl = 0;
    bool depth_ubwc_enable = false;
    uint32_t mrts_ubwc_enable = 0;
@@ -363,9 +364,13 @@ update_render_cntl(struct fd_batch *batch, struct pipe_framebuffer_state *pfb,
    if (binning)
       cntl |= A6XX_RB_RENDER_CNTL_BINNING;
 
-   OUT_PKT7(ring, CP_REG_WRITE, 3);
-   OUT_RING(ring, CP_REG_WRITE_0_TRACKER(TRACK_RENDER_CNTL));
-   OUT_RING(ring, REG_A6XX_RB_RENDER_CNTL);
+   if (screen->info->a6xx.has_cp_reg_write) {
+      OUT_PKT7(ring, CP_REG_WRITE, 3);
+      OUT_RING(ring, CP_REG_WRITE_0_TRACKER(TRACK_RENDER_CNTL));
+      OUT_RING(ring, REG_A6XX_RB_RENDER_CNTL);
+   } else {
+      OUT_PKT4(ring, REG_A6XX_RB_RENDER_CNTL, 1);
+   }
    OUT_RING(ring, cntl |
                      COND(depth_ubwc_enable, A6XX_RB_RENDER_CNTL_FLAG_DEPTH) |
                      A6XX_RB_RENDER_CNTL_FLAG_MRTS(mrts_ubwc_enable));

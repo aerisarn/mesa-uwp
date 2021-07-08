@@ -324,9 +324,13 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
                      bool binning)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
+   /* doesn't RB_RENDER_CNTL set differently for binning pass: */
+   bool no_track = !cmd->device->physical_device->info->a6xx.has_cp_reg_write;
    uint32_t cntl = 0;
    cntl |= A6XX_RB_RENDER_CNTL_UNK4;
    if (binning) {
+      if (no_track)
+         return;
       cntl |= A6XX_RB_RENDER_CNTL_BINNING;
    } else {
       uint32_t mrts_ubwc_enable = 0;
@@ -347,6 +351,12 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
          const struct tu_image_view *iview = fb->attachments[a].attachment;
          if (iview->ubwc_enabled)
             cntl |= A6XX_RB_RENDER_CNTL_FLAG_DEPTH;
+      }
+
+      if (no_track) {
+         tu_cs_emit_pkt4(cs, REG_A6XX_RB_RENDER_CNTL, 1);
+         tu_cs_emit(cs, cntl);
+         return;
       }
 
       /* In the !binning case, we need to set RB_RENDER_CNTL in the draw_cs
