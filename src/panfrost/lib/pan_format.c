@@ -44,12 +44,22 @@
 #define MALI_BLEND_AU_R5G5B5A1    (MALI_RGB5_A1_AU  << 12)
 #define MALI_BLEND_PU_R5G5B5A1    (MALI_RGB5_A1_PU  << 12)
 
+#if PAN_ARCH <= 6
 #define BFMT2(pipe, internal, writeback, srgb) \
         [PIPE_FORMAT_##pipe] = { \
                 MALI_COLOR_BUFFER_INTERNAL_FORMAT_## internal, \
                 MALI_MFBD_COLOR_FORMAT_## writeback, \
-                MALI_BLEND_AU_ ## internal | (srgb ? (1 << 20) : 0), \
+                MALI_BLEND_AU_ ## internal | (srgb ? (1 << 20) : 0) | \
+                PAN_V6_SWIZZLE(R, G, B, A) \
         }
+#else
+#define BFMT2(pipe, internal, writeback, srgb) \
+        [PIPE_FORMAT_##pipe] = { \
+                MALI_COLOR_BUFFER_INTERNAL_FORMAT_## internal, \
+                MALI_MFBD_COLOR_FORMAT_## writeback, \
+                MALI_BLEND_AU_ ## internal | (srgb ? (1 << 20) : 0) \
+        }
+#endif
 
 #define BFMT(pipe, internal_and_writeback) \
         BFMT2(pipe, internal_and_writeback, internal_and_writeback, 0)
