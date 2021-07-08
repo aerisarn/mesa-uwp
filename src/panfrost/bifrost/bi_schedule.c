@@ -107,7 +107,7 @@ struct bi_clause_state {
         /* Indices already accessed, this needs to be tracked to avoid hazards
          * around message-passing instructions */
         unsigned access_count;
-        bi_index accesses[(BI_MAX_SRCS + 1) * 16];
+        bi_index accesses[(BI_MAX_SRCS + 2) * 16];
 
         unsigned tuple_count;
         struct bi_const_state consts[8];
@@ -716,17 +716,27 @@ bi_has_cross_passthrough_hazard(bi_tuple *succ, bi_instr *ins)
  * gets read. This depends on liveness analysis, as a register is not needed
  * for a write that will be discarded after one tuple. */
 
-static bool
-bi_writes_reg(bi_instr *instr, uint64_t live_after_temp)
+static unsigned
+bi_write_count(bi_instr *instr, uint64_t live_after_temp)
 {
         if (instr->op == BI_OPCODE_ATEST || instr->op == BI_OPCODE_BLEND)
-                return true;
+                return 1;
 
-        if (bi_is_null(instr->dest[0]) || bi_opcode_props[instr->op].sr_write)
-                return false;
+        unsigned count = 0;
 
-        assert(instr->dest[0].type == BI_INDEX_REGISTER);
-        return (live_after_temp & BITFIELD64_BIT(instr->dest[0].value)) != 0;
+        bi_foreach_dest(instr, d) {
+                if (d == 0 && bi_opcode_props[instr->op].sr_write)
+                        continue;
+
+                if (bi_is_null(instr->dest[d]))
+                        continue;
+
+                assert(instr->dest[0].type == BI_INDEX_REGISTER);
+                if (live_after_temp & BITFIELD64_BIT(instr->dest[0].value))
+                        count++;
+        }
+
+        return count;
 }
 
 /* Instruction placement entails two questions: what subset of instructions in
@@ -806,9 +816,7 @@ bi_instr_schedulable(bi_instr *instr,
 
         /* Register file writes are limited */
         unsigned total_writes = tuple->reg.nr_writes;
-
-        if (bi_writes_reg(instr, live_after_temp))
-                total_writes++;
+        total_writes += bi_write_count(instr, live_after_temp);
 
         /* Last tuple in a clause can only write a single value */
         if (tuple->last && total_writes > 1)
@@ -882,13 +890,12 @@ bi_pop_instr(struct bi_clause_state *clause, struct bi_tuple_state *tuple,
         bi_update_fau(clause, tuple, instr, fma, true);
 
         /* TODO: maybe opt a bit? or maybe doesn't matter */
-        assert(clause->access_count + BI_MAX_SRCS <= ARRAY_SIZE(clause->accesses));
+        assert(clause->access_count + BI_MAX_SRCS + BI_MAX_DESTS <= ARRAY_SIZE(clause->accesses));
         memcpy(clause->accesses + clause->access_count, instr->src, sizeof(instr->src));
         clause->access_count += BI_MAX_SRCS;
-        clause->accesses[clause->access_count++] = instr->dest[0];
-
-        if (bi_writes_reg(instr, live_after_temp))
-                tuple->reg.nr_writes++;
+        memcpy(clause->accesses + clause->access_count, instr->dest, sizeof(instr->dest));
+        clause->access_count += BI_MAX_DESTS;
+        tuple->reg.nr_writes += bi_write_count(instr, live_after_temp);
 
         bi_foreach_src(instr, s) {
                 if (bi_tuple_is_new_src(instr, &tuple->reg, s))
