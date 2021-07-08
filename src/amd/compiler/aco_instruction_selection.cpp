@@ -1329,9 +1329,8 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          RegClass elem_rc = RegClass::get(RegType::vgpr, instr->dest.dest.ssa.bit_size / 8u);
          for (unsigned i = 0; i < num; ++i) {
             if (elems[i].type() == RegType::sgpr && elem_rc.is_subdword())
-               vec->operands[i] = Operand(emit_extract_vector(ctx, elems[i], 0, elem_rc));
-            else
-               vec->operands[i] = Operand{elems[i]};
+               elems[i] = emit_extract_vector(ctx, elems[i], 0, elem_rc);
+            vec->operands[i] = Operand{elems[i]};
          }
          vec->definitions[0] = Definition(dst);
          ctx->block->instructions.emplace_back(std::move(vec));
