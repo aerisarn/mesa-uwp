@@ -83,6 +83,17 @@ enum pan_image_crc_mode {
       PAN_IMAGE_CRC_OOB,
 };
 
+#ifndef PAN_PACK_H
+/* Avoid the GenXML dependence */
+
+enum mali_texture_dimension {
+        MALI_TEXTURE_DIMENSION_CUBE = 0,
+        MALI_TEXTURE_DIMENSION_1D   = 1,
+        MALI_TEXTURE_DIMENSION_2D   = 2,
+        MALI_TEXTURE_DIMENSION_3D   = 3,
+};
+#endif
+
 struct pan_image_layout {
         uint64_t modifier;
         enum pipe_format format;
