@@ -87,6 +87,8 @@ struct fd_dev_info {
 
          bool has_tex_filter_cubic;
 
+         bool has_sample_locations;
+
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
             uint32_t PC_UNKNOWN_9805;

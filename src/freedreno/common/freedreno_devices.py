@@ -197,6 +197,7 @@ a6xx_gen3 = dict(
         tess_use_shared = True,
         storage_16bit = True,
         has_tex_filter_cubic = True,
+        has_sample_locations = True,
     )
 
 add_gpus([

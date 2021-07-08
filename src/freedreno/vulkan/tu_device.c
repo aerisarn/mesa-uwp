@@ -157,7 +157,7 @@ get_device_extensions(const struct tu_physical_device *device,
 #endif
       .EXT_external_memory_dma_buf = true,
       .EXT_image_drm_format_modifier = true,
-      .EXT_sample_locations = device->gpu_id == 650,
+      .EXT_sample_locations = device->info->a6xx.has_sample_locations,
       .EXT_sampler_filter_minmax = true,
       .EXT_transform_feedback = true,
       .EXT_4444_formats = true,
