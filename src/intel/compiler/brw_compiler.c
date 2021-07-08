@@ -38,7 +38,6 @@
    .lower_bitfield_insert = true,                                             \
    .lower_uadd_carry = true,                                                  \
    .lower_usub_borrow = true,                                                 \
-   .lower_fdiv = true,                                                        \
    .lower_flrp64 = true,                                                      \
    .lower_isign = true,                                                       \
    .lower_ldexp = true,                                                       \
