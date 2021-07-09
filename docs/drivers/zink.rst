@@ -39,6 +39,14 @@ Here's a list of those requirements:
   * `VK_KHR_maintenance1`_
   * `VK_EXT_custom_border_color`_
   * `VK_EXT_provoking_vertex`_
+  * `VK_EXT_line_rasterization`_, with the following ``VkPhysicalDeviceLineRasterizationFeaturesEXT``:
+
+    * ``rectangularLines``
+    * ``bresenhamLines``
+    * ``smoothLines``
+    * ``stippledRectangularLines``
+    * ``stippledBresenhamLines``
+    * ``stippledSmoothLines``
 
 In addition to this, `VK_KHR_external_memory`_ is required to support the
 DRI code-path.
@@ -270,3 +278,4 @@ questions, don't hesitate to visit `#zink on OFTC
 .. _VK_KHR_sampler_mirror_clamp_to_edge: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_sampler_mirror_clamp_to_edge.html
 .. _VK_EXT_custom_border_color: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_custom_border_color.html
 .. _VK_EXT_provoking_vertex: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_provoking_vertex.html
+.. _VK_EXT_line_rasterization: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_line_rasterization.html
