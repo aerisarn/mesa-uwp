@@ -121,6 +121,21 @@ __bitset_rotate_right(BITSET_WORD *x, unsigned amount, unsigned n)
 }
 
 static inline void
+__bitset_rotate_left(BITSET_WORD *x, unsigned amount, unsigned n)
+{
+   assert(amount < BITSET_WORDBITS);
+
+   if (amount == 0)
+      return;
+
+   for (int i = n - 1; i > 0; i--) {
+      x[i] = (x[i] << amount) | (x[i - 1] >> (BITSET_WORDBITS - amount));
+   }
+
+   x[0] = x[0] << amount;
+}
+
+static inline void
 __bitset_shr(BITSET_WORD *x, unsigned amount, unsigned n)
 {
    const unsigned int words = amount / BITSET_WORDBITS;
@@ -143,8 +158,37 @@ __bitset_shr(BITSET_WORD *x, unsigned amount, unsigned n)
    __bitset_rotate_right(x, amount, n);
 }
 
+
+static inline void
+__bitset_shl(BITSET_WORD *x, unsigned amount, unsigned n)
+{
+   const int words = amount / BITSET_WORDBITS;
+
+   if (amount == 0)
+      return;
+
+   if (words) {
+      int i;
+
+      for (i = n - 1; i >= words; i--) {
+         x[i] = x[i - words];
+      }
+
+      while (i >= 0) {
+         x[i--] = 0;
+      }
+
+      amount %= BITSET_WORDBITS;
+   }
+
+   __bitset_rotate_left(x, amount, n);
+}
+
 #define BITSET_SHR(x, n)   \
    __bitset_shr(x, n, ARRAY_SIZE(x));
+
+#define BITSET_SHL(x, n)   \
+   __bitset_shl(x, n, ARRAY_SIZE(x));
 
 /* bit range operations
  */
