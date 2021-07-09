@@ -180,7 +180,7 @@ blorp_nir_tex(nir_builder *b, struct brw_blorp_blit_vars *v,
       pos = nir_fmul(b, pos, nir_load_var(b, v->v_src_inv_size));
 
    nir_tex_instr *tex =
-      blorp_create_nir_tex_instr(b, v, nir_texop_tex, pos, 2,
+      blorp_create_nir_tex_instr(b, v, nir_texop_txl, pos, 2,
                                  key->texture_data_type);
 
    assert(pos->num_components == 2);
