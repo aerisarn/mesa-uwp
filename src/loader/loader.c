@@ -612,6 +612,9 @@ loader_open_driver(const char *driver_name,
    void *driver = loader_open_driver_lib(driver_name, "_dri", search_path_vars,
                                          DEFAULT_DRIVER_DIR, true);
 
+   if (!driver)
+      goto failed;
+
    get_extensions_name = loader_get_extensions_name(driver_name);
    if (get_extensions_name) {
       get_extensions = dlsym(driver, get_extensions_name);
@@ -630,8 +633,10 @@ loader_open_driver(const char *driver_name,
       log_(_LOADER_WARNING,
            "MESA-LOADER: driver exports no extensions (%s)\n", dlerror());
       dlclose(driver);
+      driver = NULL;
    }
 
+failed:
    *out_driver_handle = driver;
    return extensions;
 }
