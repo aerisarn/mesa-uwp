@@ -727,9 +727,15 @@ void aco_print_instr(const Instruction *instr, FILE *output, unsigned flags)
       bool *const neg = (bool *)alloca(instr->operands.size() * sizeof(bool));
       bool *const opsel = (bool *)alloca(instr->operands.size() * sizeof(bool));
       uint8_t *const sel = (uint8_t *)alloca(instr->operands.size() * sizeof(uint8_t));
+      for (unsigned i = 0; i < instr->operands.size(); ++i) {
+         abs[i] = false;
+         neg[i] = false;
+         opsel[i] = false;
+         sel[i] = sdwa_udword;
+      }
       if (instr->isVOP3()) {
          const VOP3_instruction& vop3 = instr->vop3();
-         for (unsigned i = 0; i < instr->operands.size(); ++i) {
+         for (unsigned i = 0; i < 3; ++i) {
             abs[i] = vop3.abs[i];
             neg[i] = vop3.neg[i];
             opsel[i] = vop3.opsel & (1 << i);
@@ -737,26 +743,19 @@ void aco_print_instr(const Instruction *instr, FILE *output, unsigned flags)
          }
       } else if (instr->isDPP()) {
          const DPP_instruction& dpp = instr->dpp();
-         for (unsigned i = 0; i < instr->operands.size(); ++i) {
-            abs[i] = i < 2 ? dpp.abs[i] : false;
-            neg[i] = i < 2 ? dpp.neg[i] : false;
+         for (unsigned i = 0; i < 2; ++i) {
+            abs[i] = dpp.abs[i];
+            neg[i] = dpp.neg[i];
             opsel[i] = false;
             sel[i] = sdwa_udword;
          }
       } else if (instr->isSDWA()) {
          const SDWA_instruction& sdwa = instr->sdwa();
-         for (unsigned i = 0; i < instr->operands.size(); ++i) {
-            abs[i] = i < 2 ? sdwa.abs[i] : false;
-            neg[i] = i < 2 ? sdwa.neg[i] : false;
+         for (unsigned i = 0; i < 2; ++i) {
+            abs[i] = sdwa.abs[i];
+            neg[i] = sdwa.neg[i];
             opsel[i] = false;
-            sel[i] = i < 2 ? sdwa.sel[i] : sdwa_udword;
-         }
-      } else {
-         for (unsigned i = 0; i < instr->operands.size(); ++i) {
-            abs[i] = false;
-            neg[i] = false;
-            opsel[i] = false;
-            sel[i] = sdwa_udword;
+            sel[i] = sdwa.sel[i];
          }
       }
       for (unsigned i = 0; i < instr->operands.size(); ++i) {
