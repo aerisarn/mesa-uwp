@@ -138,6 +138,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
       if (memcmp(&dest->viewport.viewports, &src->viewport.viewports,
                  src->viewport.count * sizeof(VkViewport))) {
          typed_memcpy(dest->viewport.viewports, src->viewport.viewports, src->viewport.count);
+         typed_memcpy(dest->viewport.xform, src->viewport.xform, src->viewport.count);
          dest_mask |= RADV_DYNAMIC_VIEWPORT;
       }
    }
@@ -1376,27 +1377,23 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
    int i;
    const unsigned count = viewport->count;
    const unsigned first_vp = 0;
-   const VkViewport *viewports = viewport->viewports;
 
    assert(count);
    radeon_set_context_reg_seq(cmd_buffer->cs, R_02843C_PA_CL_VPORT_XSCALE + first_vp * 4 * 6, count * 6);
 
    for (i = 0; i < count; i++) {
-      float scale[3], translate[3];
-
-      radv_get_viewport_xform(&viewports[i], scale, translate);
-      radeon_emit(cmd_buffer->cs, fui(scale[0]));
-      radeon_emit(cmd_buffer->cs, fui(translate[0]));
-      radeon_emit(cmd_buffer->cs, fui(scale[1]));
-      radeon_emit(cmd_buffer->cs, fui(translate[1]));
-      radeon_emit(cmd_buffer->cs, fui(scale[2]));
-      radeon_emit(cmd_buffer->cs, fui(translate[2]));
+      radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].scale[0]));
+      radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].translate[0]));
+      radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].scale[1]));
+      radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].translate[1]));
+      radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].scale[2]));
+      radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].translate[2]));
    }
 
-   radeon_set_context_reg_seq(cmd_buffer->cs, R_0282D0_PA_SC_VPORT_ZMIN_0 + first_vp * 4 * 2, count * 2);
+   radeon_set_context_reg_seq(cmd_buffer->cmd_buffer->cs, R_0282D0_PA_SC_VPORT_ZMIN_0 + first_vp * 4 * 2, count * 2);
    for (i = 0; i < count; i++) {
-      float zmin = MIN2(viewports[i].minDepth, viewports[i].maxDepth);
-      float zmax = MAX2(viewports[i].minDepth, viewports[i].maxDepth);
+      float zmin = MIN2(viewport->viewports[i].minDepth, viewport->viewports[i].maxDepth);
+      float zmax = MAX2(viewport->viewports[i].minDepth, viewport->viewports[i].maxDepth);
       radeon_emit(cmd_buffer->cs, fui(zmin));
       radeon_emit(cmd_buffer->cs, fui(zmax));
    }
@@ -4416,6 +4413,8 @@ radv_CmdSetViewport(VkCommandBuffer commandBuffer, uint32_t firstViewport, uint3
 
    memcpy(state->dynamic.viewport.viewports + firstViewport, pViewports,
           viewportCount * sizeof(*pViewports));
+   for (unsigned i = firstViewport; i < firstViewport + viewportCount; i++)
+      radv_get_viewport_xform(&pViewports[i], state->dynamic.viewport.xform[i].scale, state->dynamic.viewport.xform[i].translate);
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT;
 }
