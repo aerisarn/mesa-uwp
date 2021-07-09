@@ -2457,7 +2457,6 @@ bi_tex_op(nir_texop op)
         case nir_texop_txf:
         case nir_texop_txf_ms:
         case nir_texop_txf_ms_fb:
-        case nir_texop_txf_ms_mcs:
         case nir_texop_tg4:
                 return BIFROST_TEX_OP_FETCH;
         case nir_texop_txs:
