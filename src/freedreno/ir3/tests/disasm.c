@@ -48,15 +48,16 @@
 /* clang-format on */
 
 static const struct test {
-	int gpu_id;
-	const char *instr;
-	const char *expected;
-	/**
-	 * Do we expect asm parse fail (ie. for things not (yet) supported by ir3_parser.y)
-	 */
-	bool parse_fail;
+   int gpu_id;
+   const char *instr;
+   const char *expected;
+   /**
+    * Do we expect asm parse fail (ie. for things not (yet) supported by
+    * ir3_parser.y)
+    */
+   bool parse_fail;
 } tests[] = {
-/* clang-format off */
+   /* clang-format off */
 	/* cat0 */
 	INSTR_6XX(00000000_00000000, "nop"),
 	INSTR_6XX(00000200_00000000, "(rpt2)nop"),
@@ -351,128 +352,132 @@ static const struct test {
    INSTR_6XX(e0fa0000_00000000, "fence.g.l.r.w"),
    INSTR_6XX(e09a0000_00000000, "fence.r.w"),
    INSTR_6XX(f0420000_00000000, "(sy)bar.g"),
-/* clang-format on */
+   /* clang-format on */
 };
 
 static void
 trim(char *string)
 {
-	for (int len = strlen(string); len > 0 && string[len - 1] == '\n'; len--)
-		string[len - 1] = 0;
+   for (int len = strlen(string); len > 0 && string[len - 1] == '\n'; len--)
+      string[len - 1] = 0;
 }
 
 int
 main(int argc, char **argv)
 {
-	int retval = 0;
-	int decode_fails = 0, asm_fails = 0, encode_fails = 0;
-	const int output_size = 4096;
-	char *disasm_output = malloc(output_size);
-	FILE *fdisasm = fmemopen(disasm_output, output_size, "w+");
-	if (!fdisasm) {
-		fprintf(stderr, "failed to fmemopen\n");
-		return 1;
-	}
+   int retval = 0;
+   int decode_fails = 0, asm_fails = 0, encode_fails = 0;
+   const int output_size = 4096;
+   char *disasm_output = malloc(output_size);
+   FILE *fdisasm = fmemopen(disasm_output, output_size, "w+");
+   if (!fdisasm) {
+      fprintf(stderr, "failed to fmemopen\n");
+      return 1;
+   }
 
-	struct ir3_compiler *compilers[10] = {};
+   struct ir3_compiler *compilers[10] = {};
 
-	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
-		const struct test *test = &tests[i];
-		printf("Testing a%d %s: \"%s\"...\n",
-				test->gpu_id, test->instr, test->expected);
+   for (int i = 0; i < ARRAY_SIZE(tests); i++) {
+      const struct test *test = &tests[i];
+      printf("Testing a%d %s: \"%s\"...\n", test->gpu_id, test->instr,
+             test->expected);
 
-		rewind(fdisasm);
-		memset(disasm_output, 0, output_size);
+      rewind(fdisasm);
+      memset(disasm_output, 0, output_size);
 
-		/*
-		 * Test disassembly:
-		 */
+      /*
+       * Test disassembly:
+       */
 
-		uint32_t code[2] = {
-			strtoll(&test->instr[9], NULL, 16),
-			strtoll(&test->instr[0], NULL, 16),
-		};
-		isa_decode(code, 8, fdisasm, &(struct isa_decode_options){
-			.gpu_id = test->gpu_id,
-			.show_errors = true,
-		});
-		fflush(fdisasm);
+      uint32_t code[2] = {
+         strtoll(&test->instr[9], NULL, 16),
+         strtoll(&test->instr[0], NULL, 16),
+      };
+      isa_decode(code, 8, fdisasm,
+                 &(struct isa_decode_options){
+                    .gpu_id = test->gpu_id,
+                    .show_errors = true,
+                 });
+      fflush(fdisasm);
 
-		trim(disasm_output);
+      trim(disasm_output);
 
-		if (strcmp(disasm_output, test->expected) != 0) {
-			printf("FAIL: disasm\n");
-			printf("  Expected: \"%s\"\n", test->expected);
-			printf("  Got:      \"%s\"\n", disasm_output);
-			retval = 1;
-			decode_fails++;
-			continue;
-		}
+      if (strcmp(disasm_output, test->expected) != 0) {
+         printf("FAIL: disasm\n");
+         printf("  Expected: \"%s\"\n", test->expected);
+         printf("  Got:      \"%s\"\n", disasm_output);
+         retval = 1;
+         decode_fails++;
+         continue;
+      }
 
-		/*
-		 * Test assembly, which should result in the identical binary:
-		 */
+      /*
+       * Test assembly, which should result in the identical binary:
+       */
 
-		unsigned gen = test->gpu_id / 100;
-		if (!compilers[gen]) {
-			compilers[gen] = ir3_compiler_create(NULL, test->gpu_id, false);
-		}
+      unsigned gen = test->gpu_id / 100;
+      if (!compilers[gen]) {
+         compilers[gen] = ir3_compiler_create(NULL, test->gpu_id, false);
+      }
 
-		FILE *fasm = fmemopen((void *)test->expected, strlen(test->expected), "r");
+      FILE *fasm =
+         fmemopen((void *)test->expected, strlen(test->expected), "r");
 
-		struct ir3_kernel_info info = {};
-		struct ir3_shader *shader = ir3_parse_asm(compilers[gen], &info, fasm);
-		fclose(fasm);
-		if (!shader) {
-			printf("FAIL: %sexpected assembler fail\n", test->parse_fail ? "" : "un");
-			asm_fails++;
-			/* If this is an instruction that the asm parser is not expected
-			 * to handle, don't count it as a fail.
-			 */
-			if (!test->parse_fail)
-				retval = 1;
-			continue;
-		} else if (test->parse_fail) {
-			/* If asm parse starts passing, and we don't expect that, flag
-			 * it as a fail so we don't forget to update the test vector:
-			 */
-			printf("FAIL: unexpected parse success, please remove '.parse_fail=true'\n");
-			retval = 1;
-		}
+      struct ir3_kernel_info info = {};
+      struct ir3_shader *shader = ir3_parse_asm(compilers[gen], &info, fasm);
+      fclose(fasm);
+      if (!shader) {
+         printf("FAIL: %sexpected assembler fail\n",
+                test->parse_fail ? "" : "un");
+         asm_fails++;
+         /* If this is an instruction that the asm parser is not expected
+          * to handle, don't count it as a fail.
+          */
+         if (!test->parse_fail)
+            retval = 1;
+         continue;
+      } else if (test->parse_fail) {
+         /* If asm parse starts passing, and we don't expect that, flag
+          * it as a fail so we don't forget to update the test vector:
+          */
+         printf(
+            "FAIL: unexpected parse success, please remove '.parse_fail=true'\n");
+         retval = 1;
+      }
 
-		struct ir3_shader_variant *v = shader->variants;
-		if (memcmp(v->bin, code, sizeof(code))) {
-			printf("FAIL: assembler\n");
-			printf("  Expected: %08x_%08x\n", code[1], code[0]);
-			printf("  Got:      %08x_%08x\n", v->bin[1], v->bin[0]);
-			retval = 1;
-			encode_fails++;
-		}
+      struct ir3_shader_variant *v = shader->variants;
+      if (memcmp(v->bin, code, sizeof(code))) {
+         printf("FAIL: assembler\n");
+         printf("  Expected: %08x_%08x\n", code[1], code[0]);
+         printf("  Got:      %08x_%08x\n", v->bin[1], v->bin[0]);
+         retval = 1;
+         encode_fails++;
+      }
 
-		ir3_shader_destroy(shader);
-	}
+      ir3_shader_destroy(shader);
+   }
 
-	if (decode_fails)
-		printf("%d/%d decode fails\n", decode_fails, (int)ARRAY_SIZE(tests));
-	if (asm_fails)
-		printf("%d/%d assembler fails\n", asm_fails, (int)ARRAY_SIZE(tests));
-	if (encode_fails)
-		printf("%d/%d encode fails\n", encode_fails, (int)ARRAY_SIZE(tests));
+   if (decode_fails)
+      printf("%d/%d decode fails\n", decode_fails, (int)ARRAY_SIZE(tests));
+   if (asm_fails)
+      printf("%d/%d assembler fails\n", asm_fails, (int)ARRAY_SIZE(tests));
+   if (encode_fails)
+      printf("%d/%d encode fails\n", encode_fails, (int)ARRAY_SIZE(tests));
 
-	if (retval) {
-		printf("FAILED!\n");
-	} else {
-		printf("PASSED!\n");
-	}
+   if (retval) {
+      printf("FAILED!\n");
+   } else {
+      printf("PASSED!\n");
+   }
 
-	for (unsigned i = 0; i < ARRAY_SIZE(compilers); i++) {
-		if (!compilers[i])
-			continue;
-		ir3_compiler_destroy(compilers[i]);
-	}
+   for (unsigned i = 0; i < ARRAY_SIZE(compilers); i++) {
+      if (!compilers[i])
+         continue;
+      ir3_compiler_destroy(compilers[i]);
+   }
 
-	fclose(fdisasm);
-	free(disasm_output);
+   fclose(fdisasm);
+   free(disasm_output);
 
-	return retval;
+   return retval;
 }
