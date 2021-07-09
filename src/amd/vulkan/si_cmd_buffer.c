@@ -667,35 +667,6 @@ radv_get_viewport_xform(const VkViewport *viewport, float scale[3], float transl
    translate[2] = n;
 }
 
-void
-si_write_viewport(struct radeon_cmdbuf *cs, int first_vp, int count, const VkViewport *viewports)
-{
-   int i;
-
-   assert(count);
-   radeon_set_context_reg_seq(cs, R_02843C_PA_CL_VPORT_XSCALE + first_vp * 4 * 6, count * 6);
-
-   for (i = 0; i < count; i++) {
-      float scale[3], translate[3];
-
-      radv_get_viewport_xform(&viewports[i], scale, translate);
-      radeon_emit(cs, fui(scale[0]));
-      radeon_emit(cs, fui(translate[0]));
-      radeon_emit(cs, fui(scale[1]));
-      radeon_emit(cs, fui(translate[1]));
-      radeon_emit(cs, fui(scale[2]));
-      radeon_emit(cs, fui(translate[2]));
-   }
-
-   radeon_set_context_reg_seq(cs, R_0282D0_PA_SC_VPORT_ZMIN_0 + first_vp * 4 * 2, count * 2);
-   for (i = 0; i < count; i++) {
-      float zmin = MIN2(viewports[i].minDepth, viewports[i].maxDepth);
-      float zmax = MAX2(viewports[i].minDepth, viewports[i].maxDepth);
-      radeon_emit(cs, fui(zmin));
-      radeon_emit(cs, fui(zmax));
-   }
-}
-
 static VkRect2D
 si_scissor_from_viewport(const VkViewport *viewport)
 {
