@@ -801,10 +801,13 @@ static void virgl_flush_frontbuffer(struct pipe_screen *screen,
    struct virgl_screen *vscreen = virgl_screen(screen);
    struct virgl_winsys *vws = vscreen->vws;
    struct virgl_resource *vres = virgl_resource(res);
+   struct virgl_context *vctx = virgl_context(ctx);
 
-   if (vws->flush_frontbuffer)
+   if (vws->flush_frontbuffer) {
+      virgl_flush_eq(vctx, vctx, NULL);
       vws->flush_frontbuffer(vws, vres->hw_res, level, layer, winsys_drawable_handle,
                              sub_box);
+   }
 }
 
 static void virgl_fence_reference(struct pipe_screen *screen,

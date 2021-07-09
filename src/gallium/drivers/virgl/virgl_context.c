@@ -946,7 +946,7 @@ static void virgl_submit_cmd(struct virgl_winsys *vws,
 }
 
 void virgl_flush_eq(struct virgl_context *ctx, void *closure,
-		    struct pipe_fence_handle **fence)
+                    struct pipe_fence_handle **fence)
 {
    struct virgl_screen *rs = virgl_screen(ctx->base.screen);
 
