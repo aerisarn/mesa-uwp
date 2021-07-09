@@ -47,12 +47,12 @@ struct zink_vertex_elements_state {
 };
 
 struct zink_rasterizer_hw_state {
-   VkBool32 depth_clamp;
-   VkBool32 rasterizer_discard;
    VkPolygonMode polygon_mode;
    VkCullModeFlags cull_mode;
    VkProvokingVertexModeEXT pv_mode;
-   bool force_persample_interp;
+   unsigned depth_clamp : 1;
+   unsigned rasterizer_discard : 1;
+   unsigned force_persample_interp : 1;
 };
 
 struct zink_rasterizer_state {
