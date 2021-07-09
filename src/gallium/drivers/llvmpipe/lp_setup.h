@@ -73,27 +73,8 @@ lp_setup_bind_framebuffer( struct lp_setup_context *setup,
                            const struct pipe_framebuffer_state *fb );
 
 void 
-lp_setup_set_triangle_state( struct lp_setup_context *setup,
-                             unsigned cullmode,
-                             boolean front_is_ccw,
-                             boolean scissor,
-                             boolean half_pixel_center,
-                             boolean bottom_edge_rule,
-                             boolean multisample);
-
-void 
-lp_setup_set_line_state( struct lp_setup_context *setup,
-                         float line_width,
-                         boolean line_rectangular);
-
-void 
-lp_setup_set_point_state( struct lp_setup_context *setup,
-                          float point_size,
-                          boolean point_tri_clip,
-                          boolean point_size_per_vertex,
-                          uint sprite_coord_enable,
-                          uint sprite_coord_origin,
-                          boolean point_quad_rasterization);
+lp_setup_bind_rasterizer( struct lp_setup_context *setup,
+                          const struct pipe_rasterizer_state *rast);
 
 void
 lp_setup_set_setup_variant( struct lp_setup_context *setup,

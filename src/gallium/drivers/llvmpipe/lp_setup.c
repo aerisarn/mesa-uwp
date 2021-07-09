@@ -595,60 +595,34 @@ lp_setup_clear(struct lp_setup_context *setup,
 
 
 void
-lp_setup_set_triangle_state(struct lp_setup_context *setup,
-                            unsigned cull_mode,
-                            boolean ccw_is_frontface,
-                            boolean scissor,
-                            boolean half_pixel_center,
-                            boolean bottom_edge_rule,
-                            boolean multisample)
+lp_setup_bind_rasterizer( struct lp_setup_context *setup,
+                          const struct pipe_rasterizer_state *rast)
 {
    LP_DBG(DEBUG_SETUP, "%s\n", __FUNCTION__);
 
-   setup->ccw_is_frontface = ccw_is_frontface;
-   setup->cullmode = cull_mode;
+   setup->ccw_is_frontface = rast->front_ccw;
+   setup->cullmode = rast->cull_face;
    setup->triangle = first_triangle;
    setup->rect = first_rectangle;
-   setup->multisample = multisample;
-   setup->pixel_offset = half_pixel_center ? 0.5f : 0.0f;
-   setup->bottom_edge_rule = bottom_edge_rule;
+   setup->multisample = rast->multisample;
+   setup->pixel_offset = rast->half_pixel_center ? 0.5f : 0.0f;
+   setup->bottom_edge_rule = rast->bottom_edge_rule;
 
-   if (setup->scissor_test != scissor) {
+   if (setup->scissor_test != rast->scissor) {
       setup->dirty |= LP_SETUP_NEW_SCISSOR;
-      setup->scissor_test = scissor;
+      setup->scissor_test = rast->scissor;
    }
-}
 
+   setup->flatshade_first = rast->flatshade_first;
+   setup->line_width = rast->line_width;
+   setup->rectangular_lines = rast->line_rectangular;
 
-void
-lp_setup_set_line_state(struct lp_setup_context *setup,
-                        float line_width,
-                        boolean line_rectangular)
-{
-   LP_DBG(DEBUG_SETUP, "%s\n", __FUNCTION__);
-
-   setup->line_width = line_width;
-   setup->rectangular_lines = line_rectangular;
-}
-
-
-void
-lp_setup_set_point_state(struct lp_setup_context *setup,
-                         float point_size,
-                         boolean point_tri_clip,
-                         boolean point_size_per_vertex,
-                         uint sprite_coord_enable,
-                         uint sprite_coord_origin,
-                         boolean point_quad_rasterization)
-{
-   LP_DBG(DEBUG_SETUP, "%s\n", __FUNCTION__);
-
-   setup->point_size = point_size;
-   setup->sprite_coord_enable = sprite_coord_enable;
-   setup->sprite_coord_origin = sprite_coord_origin;
-   setup->point_tri_clip = point_tri_clip;
-   setup->point_size_per_vertex = point_size_per_vertex;
-   setup->legacy_points = !point_quad_rasterization;
+   setup->point_size = rast->point_size;
+   setup->sprite_coord_enable = rast->sprite_coord_enable;
+   setup->sprite_coord_origin = rast->sprite_coord_mode;
+   setup->point_tri_clip = rast->point_size_per_vertex;
+   setup->point_size_per_vertex = rast->point_size_per_vertex;
+   setup->legacy_points = !rast->point_quad_rasterization;
 }
 
 
@@ -657,6 +631,7 @@ lp_setup_set_setup_variant(struct lp_setup_context *setup,
                            const struct lp_setup_variant *variant)
 {
    LP_DBG(DEBUG_SETUP, "%s\n", __FUNCTION__);
+
    setup->setup.variant = variant;
 }
 
