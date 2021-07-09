@@ -12,7 +12,6 @@ STABLE_EPHEMERAL=" \
       bc \
       bison \
       bzip2 \
-      cargo \
       ccache \
       clang-11 \
       cmake \
@@ -101,6 +100,7 @@ PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON -DPIGLIT_BUILD_DMA_BUF_TESTS=ON" . .gitl
 
 ############### Build Crosvm
 
+. .gitlab-ci/container/build-rust.sh
 . .gitlab-ci/container/build-crosvm.sh
 rm -rf /root/.cargo
 
