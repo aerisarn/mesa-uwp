@@ -4331,8 +4331,6 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       case nir_tex_src_ms_index:
          sample_index = get_src(ctx, instr->src[i].src);
          break;
-      case nir_tex_src_ms_mcs:
-         break;
       case nir_tex_src_ddx:
          ddx = get_src(ctx, instr->src[i].src);
          args.g16 = instr->src[i].src.ssa->bit_size == 16;
