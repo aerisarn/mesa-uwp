@@ -628,7 +628,8 @@ static void virgl_vtest_flush_frontbuffer(struct virgl_winsys *vws,
 
    if (sub_box) {
       box = *sub_box;
-      offset = box.y / util_format_get_blockheight(res->format) * res->stride +
+      uint32_t shm_stride = util_format_get_stride(res->format, res->width);
+      offset = box.y / util_format_get_blockheight(res->format) * shm_stride +
                box.x / util_format_get_blockwidth(res->format) * util_format_get_blocksize(res->format);
    } else {
       box.z = layer;
