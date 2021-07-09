@@ -674,6 +674,12 @@ panvk_cmd_get_bifrost_tiler_context(struct panvk_cmd_buffer *cmdbuf,
                                     unsigned width, unsigned height);
 
 void
+panvk_cmd_alloc_fb_desc(struct panvk_cmd_buffer *cmdbuf);
+
+void
+panvk_cmd_alloc_tls_desc(struct panvk_cmd_buffer *cmdbuf);
+
+void
 panvk_pack_color(struct panvk_clear_value *out,
                  const VkClearColorValue *in,
                  enum pipe_format format);
