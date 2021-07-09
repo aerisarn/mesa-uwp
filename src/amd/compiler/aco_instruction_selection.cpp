@@ -6045,17 +6045,7 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
 
 void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
 {
-   /* return the previous value if dest is ever used */
-   bool return_previous = false;
-   nir_foreach_use_safe(use_src, &instr->dest.ssa) {
-      return_previous = true;
-      break;
-   }
-   nir_foreach_if_use_safe(use_src, &instr->dest.ssa) {
-      return_previous = true;
-      break;
-   }
-
+   bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
    const nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
    const struct glsl_type *type = glsl_without_array(var->type);
    const enum glsl_sampler_dim dim = glsl_get_sampler_dim(type);
@@ -6349,18 +6339,8 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
 
 void visit_atomic_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
 {
-   /* return the previous value if dest is ever used */
-   bool return_previous = false;
-   nir_foreach_use_safe(use_src, &instr->dest.ssa) {
-      return_previous = true;
-      break;
-   }
-   nir_foreach_if_use_safe(use_src, &instr->dest.ssa) {
-      return_previous = true;
-      break;
-   }
-
    Builder bld(ctx->program, ctx->block);
+   bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[2].ssa));
 
    if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap)
@@ -6584,18 +6564,8 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
 
 void visit_global_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
 {
-   /* return the previous value if dest is ever used */
-   bool return_previous = false;
-   nir_foreach_use_safe(use_src, &instr->dest.ssa) {
-      return_previous = true;
-      break;
-   }
-   nir_foreach_if_use_safe(use_src, &instr->dest.ssa) {
-      return_previous = true;
-      break;
-   }
-
    Builder bld(ctx->program, ctx->block);
+   bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
    Temp addr = get_ssa_temp(ctx, instr->src[0].ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
 
@@ -6956,16 +6926,7 @@ void visit_shared_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
          unreachable("Unhandled shared atomic intrinsic");
    }
 
-   /* return the previous value if dest is ever used */
-   bool return_previous = false;
-   nir_foreach_use_safe(use_src, &instr->dest.ssa) {
-      return_previous = true;
-      break;
-   }
-   nir_foreach_if_use_safe(use_src, &instr->dest.ssa) {
-      return_previous = true;
-      break;
-   }
+   bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
 
    aco_opcode op;
    if (data.size() == 1) {
