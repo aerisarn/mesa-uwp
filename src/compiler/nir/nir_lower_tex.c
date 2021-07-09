@@ -230,16 +230,12 @@ lower_rect_tex_scale(nir_builder *b, nir_tex_instr *tex)
 }
 
 static void
-lower_implicit_lod(nir_builder *b, nir_tex_instr *tex)
+lower_lod(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *lod)
 {
    assert(tex->op == nir_texop_tex || tex->op == nir_texop_txb);
    assert(nir_tex_instr_src_index(tex, nir_tex_src_lod) < 0);
    assert(nir_tex_instr_src_index(tex, nir_tex_src_ddx) < 0);
    assert(nir_tex_instr_src_index(tex, nir_tex_src_ddy) < 0);
-
-   b->cursor = nir_before_instr(&tex->instr);
-
-   nir_ssa_def *lod = nir_get_texture_lod(b, tex);
 
    int bias_idx = nir_tex_instr_src_index(tex, nir_tex_src_bias);
    if (bias_idx >= 0) {
@@ -257,6 +253,27 @@ lower_implicit_lod(nir_builder *b, nir_tex_instr *tex)
 
    nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(lod));
    tex->op = nir_texop_txl;
+}
+
+static void
+lower_implicit_lod(nir_builder *b, nir_tex_instr *tex)
+{
+   b->cursor = nir_before_instr(&tex->instr);
+   lower_lod(b, tex, nir_get_texture_lod(b, tex));
+}
+
+static void
+lower_zero_lod(nir_builder *b, nir_tex_instr *tex)
+{
+   b->cursor = nir_before_instr(&tex->instr);
+
+   if (tex->op == nir_texop_lod) {
+      nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_imm_int(b, 0));
+      nir_instr_remove(&tex->instr);
+      return;
+   }
+
+   lower_lod(b, tex, nir_imm_int(b, 0));
 }
 
 static nir_ssa_def *
@@ -1340,24 +1357,31 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
          continue;
       }
 
-      bool shader_supports_implicit_lod =
-         b->shader->info.stage == MESA_SHADER_FRAGMENT ||
-         (b->shader->info.stage == MESA_SHADER_COMPUTE &&
-          b->shader->info.cs.derivative_group != DERIVATIVE_GROUP_NONE);
-
       /* TXF, TXS and TXL require a LOD but not everything we implement using those
        * three opcodes provides one.  Provide a default LOD of 0.
        */
       if ((nir_tex_instr_src_index(tex, nir_tex_src_lod) == -1) &&
           (tex->op == nir_texop_txf || tex->op == nir_texop_txs ||
-           tex->op == nir_texop_txl || tex->op == nir_texop_query_levels ||
-           (tex->op == nir_texop_tex && !shader_supports_implicit_lod))) {
+           tex->op == nir_texop_txl || tex->op == nir_texop_query_levels)) {
          b->cursor = nir_before_instr(&tex->instr);
          nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(nir_imm_int(b, 0)));
-         if (tex->op == nir_texop_tex && options->lower_tex_without_implicit_lod)
-            tex->op = nir_texop_txl;
          progress = true;
          continue;
+      }
+
+      /* Only fragment and compute (in some cases) support implicit
+       * derivatives.  Lower those opcodes which use implicit derivatives to
+       * use an explicit LOD of 0.
+       */
+      bool shader_supports_implicit_lod =
+         b->shader->info.stage == MESA_SHADER_FRAGMENT ||
+         (b->shader->info.stage == MESA_SHADER_COMPUTE &&
+          b->shader->info.cs.derivative_group != DERIVATIVE_GROUP_NONE);
+
+      if (nir_tex_instr_has_implicit_derivative(tex) &&
+          !shader_supports_implicit_lod) {
+         lower_zero_lod(b, tex);
+         progress = true;
       }
 
       if (options->lower_txs_lod && tex->op == nir_texop_txs) {
