@@ -37,61 +37,65 @@
  * instruction are not counted.
  */
 
+/* clang-format off */
 #define TEST(n, ...) { # __VA_ARGS__, n }
+/* clang-format on */
 
 static const struct test {
 	const char *asmstr;
 	unsigned expected_delay;
 } tests[] = {
-	TEST(6,
-		add.f r0.x, r2.x, r2.y
-		rsq r0.x, r0.x
-	),
-	TEST(3,
-		mov.f32f32 r0.x, c0.x
-		mov.f32f32 r0.y, c0.y
-		add.f r0.x, r0.x, r0.y
-	),
-	TEST(2,
-		mov.f32f32 r0.x, c0.x
-		mov.f32f32 r0.y, c0.y
-		mov.f32f32 r0.z, c0.z
-		mad.f32 r0.x, r0.x, r0.y, r0.z
-	),
-	TEST(2,
-		mov.f32f32 r0.x, c0.x
-		mov.f32f32 r0.y, c0.y
-		(rpt1)add.f r0.x, (r)r0.x, (r)c0.x
-	),
-	TEST(2,
-		(rpt1)mov.f32f32 r0.x, c0.x
-		(rpt1)add.f r0.x, (r)r0.x, (r)c0.x
-	),
-	TEST(3,
-		mov.f32f32 r0.y, c0.y
-		mov.f32f32 r0.x, c0.x
-		(rpt1)add.f r0.x, (r)r0.x, (r)c0.x
-	),
-	TEST(1,
-		(rpt2)mov.f32f32 r0.x, (r)c0.x
-		add.f r0.x, r0.x, c0.x
-	),
-	TEST(2,
-		(rpt2)mov.f32f32 r0.x, (r)c0.x
-		add.f r0.x, r0.x, r0.y
-	),
-	TEST(2,
-		(rpt1)mov.f32f32 r0.x, (r)c0.x
-		(rpt1)add.f r0.x, (r)r0.x, c0.x
-	),
-	TEST(1,
-		(rpt1)mov.f32f32 r0.y, (r)c0.x
-		(rpt1)add.f r0.x, (r)r0.x, c0.x
-	),
-	TEST(3,
-		(rpt1)mov.f32f32 r0.x, (r)c0.x
-		(rpt1)add.f r0.x, (r)r0.y, c0.x
-	),
+   /* clang-format off */
+   TEST(6,
+      add.f r0.x, r2.x, r2.y
+      rsq r0.x, r0.x
+   ),
+   TEST(3,
+      mov.f32f32 r0.x, c0.x
+      mov.f32f32 r0.y, c0.y
+      add.f r0.x, r0.x, r0.y
+   ),
+   TEST(2,
+      mov.f32f32 r0.x, c0.x
+      mov.f32f32 r0.y, c0.y
+      mov.f32f32 r0.z, c0.z
+      mad.f32 r0.x, r0.x, r0.y, r0.z
+   ),
+   TEST(2,
+      mov.f32f32 r0.x, c0.x
+      mov.f32f32 r0.y, c0.y
+      (rpt1)add.f r0.x, (r)r0.x, (r)c0.x
+   ),
+   TEST(2,
+      (rpt1)mov.f32f32 r0.x, c0.x
+      (rpt1)add.f r0.x, (r)r0.x, (r)c0.x
+   ),
+   TEST(3,
+      mov.f32f32 r0.y, c0.y
+      mov.f32f32 r0.x, c0.x
+      (rpt1)add.f r0.x, (r)r0.x, (r)c0.x
+   ),
+   TEST(1,
+      (rpt2)mov.f32f32 r0.x, (r)c0.x
+      add.f r0.x, r0.x, c0.x
+   ),
+   TEST(2,
+      (rpt2)mov.f32f32 r0.x, (r)c0.x
+      add.f r0.x, r0.x, r0.y
+   ),
+   TEST(2,
+      (rpt1)mov.f32f32 r0.x, (r)c0.x
+      (rpt1)add.f r0.x, (r)r0.x, c0.x
+   ),
+   TEST(1,
+      (rpt1)mov.f32f32 r0.y, (r)c0.x
+      (rpt1)add.f r0.x, (r)r0.x, c0.x
+   ),
+   TEST(3,
+      (rpt1)mov.f32f32 r0.x, (r)c0.x
+      (rpt1)add.f r0.x, (r)r0.y, c0.x
+   ),
+   /* clang-format on */
 };
 
 static struct ir3_shader *

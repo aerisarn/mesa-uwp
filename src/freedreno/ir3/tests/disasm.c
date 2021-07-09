@@ -42,8 +42,10 @@
 
 #include "isa/isa.h"
 
+/* clang-format off */
 #define INSTR_5XX(i, d, ...) { .gpu_id = 540, .instr = #i, .expected = d, __VA_ARGS__ }
 #define INSTR_6XX(i, d, ...) { .gpu_id = 630, .instr = #i, .expected = d, __VA_ARGS__ }
+/* clang-format on */
 
 static const struct test {
 	int gpu_id;
@@ -54,6 +56,7 @@ static const struct test {
 	 */
 	bool parse_fail;
 } tests[] = {
+/* clang-format off */
 	/* cat0 */
 	INSTR_6XX(00000000_00000000, "nop"),
 	INSTR_6XX(00000200_00000000, "(rpt2)nop"),
@@ -191,163 +194,164 @@ static const struct test {
 	/* dEQP-VK.image.image_size.cube_array.readonly_writeonly_1x1x12 */
 	INSTR_6XX(c0260200_03676100, "stib.b.untyped.1d.u32.3.imm.base0 r0.x, r0.w, 1"), /* stib.untyped.u32.1d.3.mode4.base0 r0.x, r0.w, 1 */
 #if 0
-	/* TODO blob sometimes/frequently sets b0, although there does not seem
-	 * to be an obvious pattern and our encoding never sets it.  AFAICT it
-	 * is a dontcare bit
-	 */
-	/* dEQP-VK.texture.filtering.cube.formats.a8b8g8r8_srgb_nearest_mipmap_nearest.txt */
-	INSTR_6XX(c0220200_0361b801, "ldib.b.typed.1d.f32.4.imm r0.x, r0.w, 1"), /* ldib.f32.1d.4.mode0.base0 r0.x, r0.w, 1 */
+   /* TODO blob sometimes/frequently sets b0, although there does not seem
+    * to be an obvious pattern and our encoding never sets it.  AFAICT it
+    * is a dontcare bit
+    */
+   /* dEQP-VK.texture.filtering.cube.formats.a8b8g8r8_srgb_nearest_mipmap_nearest.txt */
+   INSTR_6XX(c0220200_0361b801, "ldib.b.typed.1d.f32.4.imm r0.x, r0.w, 1"), /* ldib.f32.1d.4.mode0.base0 r0.x, r0.w, 1 */
 #else
-	/* dEQP-VK.texture.filtering.cube.formats.a8b8g8r8_srgb_nearest_mipmap_nearest.txt */
-	INSTR_6XX(c0220200_0361b800, "ldib.b.typed.1d.f32.4.imm r0.x, r0.w, 1"), /* ldib.f32.1d.4.mode0.base0 r0.x, r0.w, 1 */
+   /* dEQP-VK.texture.filtering.cube.formats.a8b8g8r8_srgb_nearest_mipmap_nearest.txt */
+   INSTR_6XX(c0220200_0361b800, "ldib.b.typed.1d.f32.4.imm r0.x, r0.w, 1"), /* ldib.f32.1d.4.mode0.base0 r0.x, r0.w, 1 */
 #endif
 
-	/* dEQP-GLES31.functional.tessellation.invariance.outer_edge_symmetry.isolines_equal_spacing_ccw */
-	INSTR_6XX(c2c21100_04800006, "stlw.f32 l[r2.x], r0.w, 4"),
-	INSTR_6XX(c2c20f00_01800004, "stlw.f32 l[r1.w], r0.z, 1"),
-	INSTR_6XX(c2860003_02808011, "ldlw.u32 r0.w, l[r0.z+8], 2"),
+   /* dEQP-GLES31.functional.tessellation.invariance.outer_edge_symmetry.isolines_equal_spacing_ccw */
+   INSTR_6XX(c2c21100_04800006, "stlw.f32 l[r2.x], r0.w, 4"),
+   INSTR_6XX(c2c20f00_01800004, "stlw.f32 l[r1.w], r0.z, 1"),
+   INSTR_6XX(c2860003_02808011, "ldlw.u32 r0.w, l[r0.z+8], 2"),
 
-	/* dEQP-VK.compute.basic.shared_var_single_group */
-	INSTR_6XX(c1060500_01800008, "stl.u32 l[r0.z], r1.x, 1"),
-	INSTR_6XX(c0460001_01804001, "ldl.u32 r0.y, l[r0.y], 1"),
+   /* dEQP-VK.compute.basic.shared_var_single_group */
+   INSTR_6XX(c1060500_01800008, "stl.u32 l[r0.z], r1.x, 1"),
+   INSTR_6XX(c0460001_01804001, "ldl.u32 r0.y, l[r0.y], 1"),
 
-	INSTR_6XX(c0860018_03820001, "ldp.u32 r6.x, p[r2.x], 3"),
-	INSTR_6XX(c0420002_01808019, "ldl.f32 r0.z, l[r0.z+12], 1"),
-	INSTR_6XX(c1021710_04800000, "stl.f32 l[r2.w+16], r0.x, 4"),
-	INSTR_6XX(d7c60011_03c00000, "(sy)ldlv.u32 r4.y, l[0], 3"),
+   INSTR_6XX(c0860018_03820001, "ldp.u32 r6.x, p[r2.x], 3"),
+   INSTR_6XX(c0420002_01808019, "ldl.f32 r0.z, l[r0.z+12], 1"),
+   INSTR_6XX(c1021710_04800000, "stl.f32 l[r2.w+16], r0.x, 4"),
+   INSTR_6XX(d7c60011_03c00000, "(sy)ldlv.u32 r4.y, l[0], 3"),
 
-	/* resinfo */
-	INSTR_6XX(c0260000_0063c200, "resinfo.b.untyped.2d.u32.1.imm r0.x, 0"), /* resinfo.u32.2d.mode0.base0 r0.x, 0 */
-	/* dEQP-GLES31.functional.image_load_store.buffer.image_size.writeonly_7.txt */
-	INSTR_6XX(c0260000_0063c000, "resinfo.b.untyped.1d.u32.1.imm r0.x, 0"), /* resinfo.u32.1d.mode0.base0 r0.x, 0 */
-	/* dEQP-VK.image.image_size.2d.readonly_12x34.txt */
-	INSTR_6XX(c0260000_0063c300, "resinfo.b.untyped.2d.u32.1.imm.base0 r0.x, 0"), /* resinfo.u32.2d.mode4.base0 r0.x, 0 */
+   /* resinfo */
+   INSTR_6XX(c0260000_0063c200, "resinfo.b.untyped.2d.u32.1.imm r0.x, 0"), /* resinfo.u32.2d.mode0.base0 r0.x, 0 */
+   /* dEQP-GLES31.functional.image_load_store.buffer.image_size.writeonly_7.txt */
+   INSTR_6XX(c0260000_0063c000, "resinfo.b.untyped.1d.u32.1.imm r0.x, 0"), /* resinfo.u32.1d.mode0.base0 r0.x, 0 */
+   /* dEQP-VK.image.image_size.2d.readonly_12x34.txt */
+   INSTR_6XX(c0260000_0063c300, "resinfo.b.untyped.2d.u32.1.imm.base0 r0.x, 0"), /* resinfo.u32.2d.mode4.base0 r0.x, 0 */
 
-	/* dEQP-GLES31.functional.image_load_store.2d.image_size.readonly_writeonly_32x32.txt */
-	INSTR_5XX(c3e60000_00000200, "resinfo.u32.2d r0.x, g[0]"), /* resinfo.u32.2d r0.x, 0 */
+   /* dEQP-GLES31.functional.image_load_store.2d.image_size.readonly_writeonly_32x32.txt */
+   INSTR_5XX(c3e60000_00000200, "resinfo.u32.2d r0.x, g[0]"), /* resinfo.u32.2d r0.x, 0 */
 #if 0
-	/* TODO our encoding differs in b11 ('typed'), which seems to be a dontcare bit */
-	/* dEQP-GLES31.functional.image_load_store.buffer.image_size.readonly_writeonly_7 */
-	INSTR_5XX(c3e60000_00000e00, "resinfo.u32.4d r0.x, g[0]"), /* resinfo.u32.1dtype r0.x, 0 */
-	/* dEQP-GLES31.functional.image_load_store.3d.image_size.readonly_writeonly_12x34x56 */
-	INSTR_5XX(c3e60000_00000c00, "resinfo.u32.3d r0.x, g[0]"), /* resinfo.u32.3d r0.x, 0 */
+   /* TODO our encoding differs in b11 ('typed'), which seems to be a dontcare bit */
+   /* dEQP-GLES31.functional.image_load_store.buffer.image_size.readonly_writeonly_7 */
+   INSTR_5XX(c3e60000_00000e00, "resinfo.u32.4d r0.x, g[0]"), /* resinfo.u32.1dtype r0.x, 0 */
+   /* dEQP-GLES31.functional.image_load_store.3d.image_size.readonly_writeonly_12x34x56 */
+   INSTR_5XX(c3e60000_00000c00, "resinfo.u32.3d r0.x, g[0]"), /* resinfo.u32.3d r0.x, 0 */
 #else
-	/* dEQP-GLES31.functional.image_load_store.buffer.image_size.readonly_writeonly_7 */
-	INSTR_5XX(c3e60000_00000600, "resinfo.u32.4d r0.x, g[0]"), /* resinfo.u32.1dtype r0.x, 0 */
-	/* dEQP-GLES31.functional.image_load_store.2d.image_size.readonly_writeonly_32x32.txt */
-	INSTR_5XX(c3e60000_00000400, "resinfo.u32.3d r0.x, g[0]"), /* resinfo.u32.3d r0.x, 0 */
+   /* dEQP-GLES31.functional.image_load_store.buffer.image_size.readonly_writeonly_7 */
+   INSTR_5XX(c3e60000_00000600, "resinfo.u32.4d r0.x, g[0]"), /* resinfo.u32.1dtype r0.x, 0 */
+   /* dEQP-GLES31.functional.image_load_store.2d.image_size.readonly_writeonly_32x32.txt */
+   INSTR_5XX(c3e60000_00000400, "resinfo.u32.3d r0.x, g[0]"), /* resinfo.u32.3d r0.x, 0 */
 #endif
 
-	/* ldgb */
-	/* dEQP-GLES31.functional.ssbo.layout.single_basic_type.packed.mediump_vec4 */
-	INSTR_5XX(c6e20000_06003600, "ldgb.untyped.4d.f32.4 r0.x, g[0], r0.x, r1.z"), /* ldgb.a.untyped.1dtype.f32.4 r0.x, g[r0.x], r1.z, 0 */
-	/* dEQP-GLES31.functional.ssbo.layout.single_basic_type.packed.mediump_ivec4 */
-	INSTR_5XX(c6ea0000_06003600, "ldgb.untyped.4d.s32.4 r0.x, g[0], r0.x, r1.z"), /* ldgb.a.untyped.1dtype.s32.4 r0.x, g[r0.x], r1.z, 0 */
-	/* dEQP-GLES31.functional.ssbo.layout.single_basic_type.packed.mediump_float */
-	INSTR_5XX(c6e20000_02000600, "ldgb.untyped.4d.f32.1 r0.x, g[0], r0.x, r0.z"), /* ldgb.a.untyped.1dtype.f32.1 r0.x, g[r0.x], r0.z, 0 */
-	/* dEQP-GLES31.functional.ssbo.layout.random.vector_types.0 */
-	INSTR_5XX(c6ea0008_14002600, "ldgb.untyped.4d.s32.3 r2.x, g[0], r0.x, r5.x"), /* ldgb.a.untyped.1dtype.s32.3 r2.x, g[r0.x], r5.x, 0 */
-	INSTR_5XX(c6ea0204_1401a600, "ldgb.untyped.4d.s32.3 r1.x, g[1], r1.z, r5.x"), /* ldgb.a.untyped.1dtype.s32.3 r1.x, g[r1.z], r5.x, 1 */
+   /* ldgb */
+   /* dEQP-GLES31.functional.ssbo.layout.single_basic_type.packed.mediump_vec4 */
+   INSTR_5XX(c6e20000_06003600, "ldgb.untyped.4d.f32.4 r0.x, g[0], r0.x, r1.z"), /* ldgb.a.untyped.1dtype.f32.4 r0.x, g[r0.x], r1.z, 0 */
+   /* dEQP-GLES31.functional.ssbo.layout.single_basic_type.packed.mediump_ivec4 */
+   INSTR_5XX(c6ea0000_06003600, "ldgb.untyped.4d.s32.4 r0.x, g[0], r0.x, r1.z"), /* ldgb.a.untyped.1dtype.s32.4 r0.x, g[r0.x], r1.z, 0 */
+   /* dEQP-GLES31.functional.ssbo.layout.single_basic_type.packed.mediump_float */
+   INSTR_5XX(c6e20000_02000600, "ldgb.untyped.4d.f32.1 r0.x, g[0], r0.x, r0.z"), /* ldgb.a.untyped.1dtype.f32.1 r0.x, g[r0.x], r0.z, 0 */
+   /* dEQP-GLES31.functional.ssbo.layout.random.vector_types.0 */
+   INSTR_5XX(c6ea0008_14002600, "ldgb.untyped.4d.s32.3 r2.x, g[0], r0.x, r5.x"), /* ldgb.a.untyped.1dtype.s32.3 r2.x, g[r0.x], r5.x, 0 */
+   INSTR_5XX(c6ea0204_1401a600, "ldgb.untyped.4d.s32.3 r1.x, g[1], r1.z, r5.x"), /* ldgb.a.untyped.1dtype.s32.3 r1.x, g[r1.z], r5.x, 1 */
 
-	/* stgb */
-	INSTR_5XX(c7220028_0480000d, "stgb.untyped.1d.f32.1 g[0], r1.z, 4, r10.x"), /* stgb.untyped.1d.1 g[r10.x], r1.z, 4, r0.x */
-	INSTR_5XX(c7260023_02800009, "stgb.untyped.1d.u32.1 g[0], r1.x, 2, r8.w"),  /* stgb.untyped.1d.1 g[r8.w], r1.x, 2, r0.x */
+   /* stgb */
+   INSTR_5XX(c7220028_0480000d, "stgb.untyped.1d.f32.1 g[0], r1.z, 4, r10.x"), /* stgb.untyped.1d.1 g[r10.x], r1.z, 4, r0.x */
+   INSTR_5XX(c7260023_02800009, "stgb.untyped.1d.u32.1 g[0], r1.x, 2, r8.w"),  /* stgb.untyped.1d.1 g[r8.w], r1.x, 2, r0.x */
 
-	/* discard stuff */
-	INSTR_6XX(42b400f8_20010004, "cmps.s.eq p0.x, r1.x, 1"),
-	INSTR_6XX(02800000_00000000, "kill p0.x"),
+   /* discard stuff */
+   INSTR_6XX(42b400f8_20010004, "cmps.s.eq p0.x, r1.x, 1"),
+   INSTR_6XX(02800000_00000000, "kill p0.x"),
 
-	/* Immediates */
-	INSTR_6XX(40100007_68000008, "add.f r1.w, r2.x, (neg)(0.0)"),
-	INSTR_6XX(40100007_68010008, "add.f r1.w, r2.x, (neg)(0.5)"),
-	INSTR_6XX(40100007_68020008, "add.f r1.w, r2.x, (neg)(1.0)"),
-	INSTR_6XX(40100007_68030008, "add.f r1.w, r2.x, (neg)(2.0)"),
-	INSTR_6XX(40100007_68040008, "add.f r1.w, r2.x, (neg)(e)"),
-	INSTR_6XX(40100007_68050008, "add.f r1.w, r2.x, (neg)(pi)"),
-	INSTR_6XX(40100007_68060008, "add.f r1.w, r2.x, (neg)(1/pi)"),
-	INSTR_6XX(40100007_68070008, "add.f r1.w, r2.x, (neg)(1/log2(e))"),
-	INSTR_6XX(40100007_68080008, "add.f r1.w, r2.x, (neg)(log2(e))"),
-	INSTR_6XX(40100007_68090008, "add.f r1.w, r2.x, (neg)(1/log2(10))"),
-	INSTR_6XX(40100007_680a0008, "add.f r1.w, r2.x, (neg)(log2(10))"),
-	INSTR_6XX(40100007_680b0008, "add.f r1.w, r2.x, (neg)(4.0)"),
+   /* Immediates */
+   INSTR_6XX(40100007_68000008, "add.f r1.w, r2.x, (neg)(0.0)"),
+   INSTR_6XX(40100007_68010008, "add.f r1.w, r2.x, (neg)(0.5)"),
+   INSTR_6XX(40100007_68020008, "add.f r1.w, r2.x, (neg)(1.0)"),
+   INSTR_6XX(40100007_68030008, "add.f r1.w, r2.x, (neg)(2.0)"),
+   INSTR_6XX(40100007_68040008, "add.f r1.w, r2.x, (neg)(e)"),
+   INSTR_6XX(40100007_68050008, "add.f r1.w, r2.x, (neg)(pi)"),
+   INSTR_6XX(40100007_68060008, "add.f r1.w, r2.x, (neg)(1/pi)"),
+   INSTR_6XX(40100007_68070008, "add.f r1.w, r2.x, (neg)(1/log2(e))"),
+   INSTR_6XX(40100007_68080008, "add.f r1.w, r2.x, (neg)(log2(e))"),
+   INSTR_6XX(40100007_68090008, "add.f r1.w, r2.x, (neg)(1/log2(10))"),
+   INSTR_6XX(40100007_680a0008, "add.f r1.w, r2.x, (neg)(log2(10))"),
+   INSTR_6XX(40100007_680b0008, "add.f r1.w, r2.x, (neg)(4.0)"),
 
-	/* LDC.  Our disasm differs greatly from qcom here, and we've got some
-	 * important info they lack(?!), but same goes the other way.
-	 */
+   /* LDC.  Our disasm differs greatly from qcom here, and we've got some
+    * important info they lack(?!), but same goes the other way.
+    */
 #if 0
-	/* TODO our encoding differs in b23 for these four.. unsure if that is dontcare bit */
-	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.uniform_fragment */
-	INSTR_6XX(c0260000_00c78040, "ldc.offset0.1.uniform r0.x, r0.x, r0.x"), /* ldc.1.mode1.base0 r0.x, 0, r0.x */
-	INSTR_6XX(c0260201_00c78040, "ldc.offset0.1.uniform r0.y, r0.x, r0.y"), /* ldc.1.mode1.base0 r0.y, 0, r0.y */
-	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.dynamically_uniform_fragment  */
-	INSTR_6XX(c0260000_00c78080, "ldc.offset0.1.nonuniform r0.x, r0.x, r0.x"), /* ldc.1.mode2.base0 r0.x, 0, r0.x */
-	INSTR_6XX(c0260201_00c78080, "ldc.offset0.1.nonuniform r0.y, r0.x, r0.y"), /* ldc.1.mode2.base0 r0.y, 0, r0.y */
+   /* TODO our encoding differs in b23 for these four.. unsure if that is dontcare bit */
+   /* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.uniform_fragment */
+   INSTR_6XX(c0260000_00c78040, "ldc.offset0.1.uniform r0.x, r0.x, r0.x"), /* ldc.1.mode1.base0 r0.x, 0, r0.x */
+   INSTR_6XX(c0260201_00c78040, "ldc.offset0.1.uniform r0.y, r0.x, r0.y"), /* ldc.1.mode1.base0 r0.y, 0, r0.y */
+   /* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.dynamically_uniform_fragment  */
+   INSTR_6XX(c0260000_00c78080, "ldc.offset0.1.nonuniform r0.x, r0.x, r0.x"), /* ldc.1.mode2.base0 r0.x, 0, r0.x */
+   INSTR_6XX(c0260201_00c78080, "ldc.offset0.1.nonuniform r0.y, r0.x, r0.y"), /* ldc.1.mode2.base0 r0.y, 0, r0.y */
 #else
-	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.uniform_fragment */
-	INSTR_6XX(c0260000_00478040, "ldc.offset0.1.uniform r0.x, r0.x, r0.x"), /* ldc.1.mode1.base0 r0.x, 0, r0.x */
-	INSTR_6XX(c0260201_00478040, "ldc.offset0.1.uniform r0.y, r0.x, r0.y"), /* ldc.1.mode1.base0 r0.y, 0, r0.y */
-	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.dynamically_uniform_fragment  */
-	INSTR_6XX(c0260000_00478080, "ldc.offset0.1.nonuniform r0.x, r0.x, r0.x"), /* ldc.1.mode2.base0 r0.x, 0, r0.x */
-	INSTR_6XX(c0260201_00478080, "ldc.offset0.1.nonuniform r0.y, r0.x, r0.y"), /* ldc.1.mode2.base0 r0.y, 0, r0.y */
+   /* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.uniform_fragment */
+   INSTR_6XX(c0260000_00478040, "ldc.offset0.1.uniform r0.x, r0.x, r0.x"), /* ldc.1.mode1.base0 r0.x, 0, r0.x */
+   INSTR_6XX(c0260201_00478040, "ldc.offset0.1.uniform r0.y, r0.x, r0.y"), /* ldc.1.mode1.base0 r0.y, 0, r0.y */
+   /* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.dynamically_uniform_fragment  */
+   INSTR_6XX(c0260000_00478080, "ldc.offset0.1.nonuniform r0.x, r0.x, r0.x"), /* ldc.1.mode2.base0 r0.x, 0, r0.x */
+   INSTR_6XX(c0260201_00478080, "ldc.offset0.1.nonuniform r0.y, r0.x, r0.y"), /* ldc.1.mode2.base0 r0.y, 0, r0.y */
 #endif
-	/* custom shaders, loading .x, .y, .z, .w from an array of vec4 in block 0 */
-	INSTR_6XX(c0260000_00478000, "ldc.offset0.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
-	INSTR_6XX(c0260000_00478200, "ldc.offset1.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
-	INSTR_6XX(c0260000_00478400, "ldc.offset2.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
-	INSTR_6XX(c0260000_00478600, "ldc.offset3.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
+   /* custom shaders, loading .x, .y, .z, .w from an array of vec4 in block 0 */
+   INSTR_6XX(c0260000_00478000, "ldc.offset0.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
+   INSTR_6XX(c0260000_00478200, "ldc.offset1.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
+   INSTR_6XX(c0260000_00478400, "ldc.offset2.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
+   INSTR_6XX(c0260000_00478600, "ldc.offset3.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
 
-	/* dEQP-VK.glsl.struct.local.nested_struct_array_dynamic_index_fragment */
-	INSTR_6XX(c1425b50_01803e02, "stp.f32 p[r11.y-176], r0.y, 1"),
-	INSTR_6XX(c1425b98_02803e14, "stp.f32 p[r11.y-104], r2.z, 2"),
-	INSTR_6XX(c1465ba0_01803e2a, "stp.u32 p[r11.y-96], r5.y, 1"),
-	INSTR_6XX(c0860008_01860001, "ldp.u32 r2.x, p[r6.x], 1"),
-	/* Custom stp based on above to catch a disasm bug. */
-	INSTR_6XX(c1465b00_0180022a, "stp.u32 p[r11.y+256], r5.y, 1"),
+   /* dEQP-VK.glsl.struct.local.nested_struct_array_dynamic_index_fragment */
+   INSTR_6XX(c1425b50_01803e02, "stp.f32 p[r11.y-176], r0.y, 1"),
+   INSTR_6XX(c1425b98_02803e14, "stp.f32 p[r11.y-104], r2.z, 2"),
+   INSTR_6XX(c1465ba0_01803e2a, "stp.u32 p[r11.y-96], r5.y, 1"),
+   INSTR_6XX(c0860008_01860001, "ldp.u32 r2.x, p[r6.x], 1"),
+   /* Custom stp based on above to catch a disasm bug. */
+   INSTR_6XX(c1465b00_0180022a, "stp.u32 p[r11.y+256], r5.y, 1"),
 
-	/* Atomic: */
+   /* Atomic: */
 #if 0
-	/* TODO our encoding differs in b53 for these two */
-	INSTR_5XX(c4d60002_00008001, "atomic.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
-	INSTR_5XX(c4160205_03000001, "atomic.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
+   /* TODO our encoding differs in b53 for these two */
+   INSTR_5XX(c4d60002_00008001, "atomic.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
+   INSTR_5XX(c4160205_03000001, "atomic.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
 #else
-	INSTR_5XX(c4f60002_00008001, "atomic.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
-	INSTR_5XX(c4360205_03000001, "atomic.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
+   INSTR_5XX(c4f60002_00008001, "atomic.inc.untyped.1d.u32.1.g r0.z, g[0], r0.z, r0.x, r0.x"),
+   INSTR_5XX(c4360205_03000001, "atomic.add.untyped.1d.u32.1.g r1.y, g[1], r0.x, r0.w, r0.x"),
 #endif
-	INSTR_6XX(d5c60003_03008001, "(sy)atomic.max.untyped.1d.u32.1.l r0.w, l[r0.z], r0.w"),
+   INSTR_6XX(d5c60003_03008001, "(sy)atomic.max.untyped.1d.u32.1.l r0.w, l[r0.z], r0.w"),
 
-	/* Bindless atomic: */
-	INSTR_6XX(c03a0003_01640000, "atomic.b.add.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.add.g.s32.1d.mode0.base0 r0.w,r0.y,0 */
-	INSTR_6XX(c03a0003_01660000, "atomic.b.and.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.and.g.s32.1d.mode0.base0 r0.w,r0.y,0 */
-	INSTR_6XX(c0360000_0365c800, "atomic.b.max.typed.1d.u32.1.imm r0.x, r0.w, 0"),   /* atomic.b.max.g.u32.1d.mode0.base0 r0.x,r0.w,0 */
+   /* Bindless atomic: */
+   INSTR_6XX(c03a0003_01640000, "atomic.b.add.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.add.g.s32.1d.mode0.base0 r0.w,r0.y,0 */
+   INSTR_6XX(c03a0003_01660000, "atomic.b.and.untyped.1d.s32.1.imm r0.w, r0.y, 0"), /* atomic.b.and.g.s32.1d.mode0.base0 r0.w,r0.y,0 */
+   INSTR_6XX(c0360000_0365c800, "atomic.b.max.typed.1d.u32.1.imm r0.x, r0.w, 0"),   /* atomic.b.max.g.u32.1d.mode0.base0 r0.x,r0.w,0 */
 
-	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.fragment.sampler2d */
-	INSTR_6XX(a0c01f04_0cc00005, "sam (f32)(xyzw)r1.x, r0.z, s#6, t#6"),
-	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.uniform.fragment.sampler2d (looks like maybe the compiler didn't figure out */
-	INSTR_6XX(a0c81f07_0100000b, "sam.s2en (f32)(xyzw)r1.w, r1.y, hr2.x"), /* sam.s2en.mode0 (f32)(xyzw)r1.w, r1.y, hr2.x */
-	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.dynamically_uniform.fragment.sampler2d */
-	INSTR_6XX(a0c81f07_8100000b, "sam.s2en.uniform (f32)(xyzw)r1.w, r1.y, hr2.x", .parse_fail=true), /* sam.s2en.mode4 (f32)(xyzw)r1.w, r1.y, hr2.x */
+   /* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.fragment.sampler2d */
+   INSTR_6XX(a0c01f04_0cc00005, "sam (f32)(xyzw)r1.x, r0.z, s#6, t#6"),
+   /* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.uniform.fragment.sampler2d (looks like maybe the compiler didn't figure out */
+   INSTR_6XX(a0c81f07_0100000b, "sam.s2en (f32)(xyzw)r1.w, r1.y, hr2.x"), /* sam.s2en.mode0 (f32)(xyzw)r1.w, r1.y, hr2.x */
+   /* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.dynamically_uniform.fragment.sampler2d */
+   INSTR_6XX(a0c81f07_8100000b, "sam.s2en.uniform (f32)(xyzw)r1.w, r1.y, hr2.x", .parse_fail=true), /* sam.s2en.mode4 (f32)(xyzw)r1.w, r1.y, hr2.x */
 
-	/* NonUniform: */
-	/* dEQP-VK.descriptor_indexing.storage_buffer */
-	INSTR_6XX(c0260c0a_0a61b180, "ldib.b.untyped.1d.u32.4.nonuniform.base0 r2.z, r2.z, r1.z"),
-	INSTR_6XX(d0260e0a_09677180, "(sy)stib.b.untyped.1d.u32.4.nonuniform.base0 r2.z, r2.y, r1.w"),
-	/* dEQP-VK.descriptor_indexing.uniform_texel_buffer */
-	INSTR_6XX(a0481f00_40000405, "isaml.s2en.nonuniform.base0 (f32)(xyzw)r0.x, r0.z, r0.z, r0.x"),
-	/* dEQP-VK.descriptor_indexing.storage_image */
-	INSTR_6XX(d0360c04_02640b80, "(sy)atomic.b.add.typed.2d.u32.1.nonuniform.base0 r1.x, r0.z, r1.z"),
-	/* dEQP-VK.descriptor_indexing.sampler */
-	INSTR_6XX(a0c81f00_40000005, "sam.s2en.nonuniform.base0 (f32)(xyzw)r0.x, r0.z, r0.x"),
+   /* NonUniform: */
+   /* dEQP-VK.descriptor_indexing.storage_buffer */
+   INSTR_6XX(c0260c0a_0a61b180, "ldib.b.untyped.1d.u32.4.nonuniform.base0 r2.z, r2.z, r1.z"),
+   INSTR_6XX(d0260e0a_09677180, "(sy)stib.b.untyped.1d.u32.4.nonuniform.base0 r2.z, r2.y, r1.w"),
+   /* dEQP-VK.descriptor_indexing.uniform_texel_buffer */
+   INSTR_6XX(a0481f00_40000405, "isaml.s2en.nonuniform.base0 (f32)(xyzw)r0.x, r0.z, r0.z, r0.x"),
+   /* dEQP-VK.descriptor_indexing.storage_image */
+   INSTR_6XX(d0360c04_02640b80, "(sy)atomic.b.add.typed.2d.u32.1.nonuniform.base0 r1.x, r0.z, r1.z"),
+   /* dEQP-VK.descriptor_indexing.sampler */
+   INSTR_6XX(a0c81f00_40000005, "sam.s2en.nonuniform.base0 (f32)(xyzw)r0.x, r0.z, r0.x"),
 
-	/* Custom test since we've never seen the blob emit these. */
-	INSTR_6XX(c0260004_00490000, "getspid.u32 r1.x"),
-	INSTR_6XX(c0260005_00494000, "getwid.u32 r1.y"),
+   /* Custom test since we've never seen the blob emit these. */
+   INSTR_6XX(c0260004_00490000, "getspid.u32 r1.x"),
+   INSTR_6XX(c0260005_00494000, "getwid.u32 r1.y"),
 
-	/* cat7 */
+   /* cat7 */
 
-	/* dEQP-VK.compute.basic.ssbo_local_barrier_single_invocation */
-	INSTR_6XX(e0fa0000_00000000, "fence.g.l.r.w"),
-	INSTR_6XX(e09a0000_00000000, "fence.r.w"),
-	INSTR_6XX(f0420000_00000000, "(sy)bar.g"),
+   /* dEQP-VK.compute.basic.ssbo_local_barrier_single_invocation */
+   INSTR_6XX(e0fa0000_00000000, "fence.g.l.r.w"),
+   INSTR_6XX(e09a0000_00000000, "fence.r.w"),
+   INSTR_6XX(f0420000_00000000, "(sy)bar.g"),
+/* clang-format on */
 };
 
 static void

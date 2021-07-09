@@ -31,8 +31,10 @@
 #include <stdbool.h>
 #include <assert.h>
 
+/* clang-format off */
 void ir3_assert_handler(const char *expr, const char *file, int line,
-		const char *func) __attribute__((weak)) __attribute__ ((__noreturn__));
+                        const char *func) __attribute__((weak)) __attribute__((__noreturn__));
+/* clang-format on */
 
 /* A wrapper for assert() that allows overriding handling of a failed
  * assert.  This is needed for tools like crashdec which can want to
@@ -52,290 +54,292 @@ void ir3_assert_handler(const char *expr, const char *file, int line,
 
 #define _OPC(cat, opc)   (((cat) << NOPC_BITS) | opc)
 
+/* clang-format off */
 typedef enum {
-	/* category 0: */
-	OPC_NOP             = _OPC(0, 0),
-	OPC_B               = _OPC(0, 1),
-	OPC_JUMP            = _OPC(0, 2),
-	OPC_CALL            = _OPC(0, 3),
-	OPC_RET             = _OPC(0, 4),
-	OPC_KILL            = _OPC(0, 5),
-	OPC_END             = _OPC(0, 6),
-	OPC_EMIT            = _OPC(0, 7),
-	OPC_CUT             = _OPC(0, 8),
-	OPC_CHMASK          = _OPC(0, 9),
-	OPC_CHSH            = _OPC(0, 10),
-	OPC_FLOW_REV        = _OPC(0, 11),
+   /* category 0: */
+   OPC_NOP             = _OPC(0, 0),
+   OPC_B               = _OPC(0, 1),
+   OPC_JUMP            = _OPC(0, 2),
+   OPC_CALL            = _OPC(0, 3),
+   OPC_RET             = _OPC(0, 4),
+   OPC_KILL            = _OPC(0, 5),
+   OPC_END             = _OPC(0, 6),
+   OPC_EMIT            = _OPC(0, 7),
+   OPC_CUT             = _OPC(0, 8),
+   OPC_CHMASK          = _OPC(0, 9),
+   OPC_CHSH            = _OPC(0, 10),
+   OPC_FLOW_REV        = _OPC(0, 11),
 
-	OPC_BKT             = _OPC(0, 16),
-	OPC_STKS            = _OPC(0, 17),
-	OPC_STKR            = _OPC(0, 18),
-	OPC_XSET            = _OPC(0, 19),
-	OPC_XCLR            = _OPC(0, 20),
-	OPC_GETONE          = _OPC(0, 21),
-	OPC_DBG             = _OPC(0, 22),
-	OPC_SHPS            = _OPC(0, 23),   /* shader prologue start */
-	OPC_SHPE            = _OPC(0, 24),   /* shader prologue end */
+   OPC_BKT             = _OPC(0, 16),
+   OPC_STKS            = _OPC(0, 17),
+   OPC_STKR            = _OPC(0, 18),
+   OPC_XSET            = _OPC(0, 19),
+   OPC_XCLR            = _OPC(0, 20),
+   OPC_GETONE          = _OPC(0, 21),
+   OPC_DBG             = _OPC(0, 22),
+   OPC_SHPS            = _OPC(0, 23),   /* shader prologue start */
+   OPC_SHPE            = _OPC(0, 24),   /* shader prologue end */
 
-	OPC_PREDT           = _OPC(0, 29),   /* predicated true */
-	OPC_PREDF           = _OPC(0, 30),   /* predicated false */
-	OPC_PREDE           = _OPC(0, 31),   /* predicated end */
+   OPC_PREDT           = _OPC(0, 29),   /* predicated true */
+   OPC_PREDF           = _OPC(0, 30),   /* predicated false */
+   OPC_PREDE           = _OPC(0, 31),   /* predicated end */
 
-	/* Logical opcodes for different branch instruction variations: */
-	OPC_BR              = _OPC(0, 40),
-	OPC_BRAO            = _OPC(0, 41),
-	OPC_BRAA            = _OPC(0, 42),
-	OPC_BRAC            = _OPC(0, 43),
-	OPC_BANY            = _OPC(0, 44),
-	OPC_BALL            = _OPC(0, 45),
-	OPC_BRAX            = _OPC(0, 46),
+   /* Logical opcodes for different branch instruction variations: */
+   OPC_BR              = _OPC(0, 40),
+   OPC_BRAO            = _OPC(0, 41),
+   OPC_BRAA            = _OPC(0, 42),
+   OPC_BRAC            = _OPC(0, 43),
+   OPC_BANY            = _OPC(0, 44),
+   OPC_BALL            = _OPC(0, 45),
+   OPC_BRAX            = _OPC(0, 46),
 
-	/* Logical opcode to distinguish kill and demote */
-	OPC_DEMOTE          = _OPC(0, 47),
+   /* Logical opcode to distinguish kill and demote */
+   OPC_DEMOTE          = _OPC(0, 47),
 
-	/* category 1: */
-	OPC_MOV             = _OPC(1, 0),
-	OPC_MOVP            = _OPC(1, 1),
-	/* swz, gat, sct */
-	OPC_MOVMSK          = _OPC(1, 3),
+   /* category 1: */
+   OPC_MOV             = _OPC(1, 0),
+   OPC_MOVP            = _OPC(1, 1),
+   /* swz, gat, sct */
+   OPC_MOVMSK          = _OPC(1, 3),
 
-	/* Virtual opcodes for instructions differentiated via a "sub-opcode" that
-	 * replaces the repeat field:
-	 */
-	OPC_SWZ            = _OPC(1, 4),
-	OPC_GAT            = _OPC(1, 5),
-	OPC_SCT            = _OPC(1, 6),
+   /* Virtual opcodes for instructions differentiated via a "sub-opcode" that
+    * replaces the repeat field:
+    */
+   OPC_SWZ            = _OPC(1, 4),
+   OPC_GAT            = _OPC(1, 5),
+   OPC_SCT            = _OPC(1, 6),
 
-	/* Logical opcodes for different variants of mov: */
-	OPC_MOV_IMMED       = _OPC(1, 40),
-	OPC_MOV_CONST       = _OPC(1, 41),
-	OPC_MOV_GPR         = _OPC(1, 42),
-	OPC_MOV_RELGPR      = _OPC(1, 43),
-	OPC_MOV_RELCONST    = _OPC(1, 44),
+   /* Logical opcodes for different variants of mov: */
+   OPC_MOV_IMMED       = _OPC(1, 40),
+   OPC_MOV_CONST       = _OPC(1, 41),
+   OPC_MOV_GPR         = _OPC(1, 42),
+   OPC_MOV_RELGPR      = _OPC(1, 43),
+   OPC_MOV_RELCONST    = _OPC(1, 44),
 
-	/* Macros that expand to an if statement + move */
-	OPC_BALLOT_MACRO    = _OPC(1, 50),
-	OPC_ANY_MACRO       = _OPC(1, 51),
-	OPC_ALL_MACRO       = _OPC(1, 52),
-	OPC_ELECT_MACRO     = _OPC(1, 53),
-	OPC_READ_COND_MACRO = _OPC(1, 54),
-	OPC_READ_FIRST_MACRO = _OPC(1, 55),
-	OPC_SWZ_SHARED_MACRO = _OPC(1, 56),
+   /* Macros that expand to an if statement + move */
+   OPC_BALLOT_MACRO    = _OPC(1, 50),
+   OPC_ANY_MACRO       = _OPC(1, 51),
+   OPC_ALL_MACRO       = _OPC(1, 52),
+   OPC_ELECT_MACRO     = _OPC(1, 53),
+   OPC_READ_COND_MACRO = _OPC(1, 54),
+   OPC_READ_FIRST_MACRO = _OPC(1, 55),
+   OPC_SWZ_SHARED_MACRO = _OPC(1, 56),
 
-	/* category 2: */
-	OPC_ADD_F           = _OPC(2, 0),
-	OPC_MIN_F           = _OPC(2, 1),
-	OPC_MAX_F           = _OPC(2, 2),
-	OPC_MUL_F           = _OPC(2, 3),
-	OPC_SIGN_F          = _OPC(2, 4),
-	OPC_CMPS_F          = _OPC(2, 5),
-	OPC_ABSNEG_F        = _OPC(2, 6),
-	OPC_CMPV_F          = _OPC(2, 7),
-	/* 8 - invalid */
-	OPC_FLOOR_F         = _OPC(2, 9),
-	OPC_CEIL_F          = _OPC(2, 10),
-	OPC_RNDNE_F         = _OPC(2, 11),
-	OPC_RNDAZ_F         = _OPC(2, 12),
-	OPC_TRUNC_F         = _OPC(2, 13),
-	/* 14-15 - invalid */
-	OPC_ADD_U           = _OPC(2, 16),
-	OPC_ADD_S           = _OPC(2, 17),
-	OPC_SUB_U           = _OPC(2, 18),
-	OPC_SUB_S           = _OPC(2, 19),
-	OPC_CMPS_U          = _OPC(2, 20),
-	OPC_CMPS_S          = _OPC(2, 21),
-	OPC_MIN_U           = _OPC(2, 22),
-	OPC_MIN_S           = _OPC(2, 23),
-	OPC_MAX_U           = _OPC(2, 24),
-	OPC_MAX_S           = _OPC(2, 25),
-	OPC_ABSNEG_S        = _OPC(2, 26),
-	/* 27 - invalid */
-	OPC_AND_B           = _OPC(2, 28),
-	OPC_OR_B            = _OPC(2, 29),
-	OPC_NOT_B           = _OPC(2, 30),
-	OPC_XOR_B           = _OPC(2, 31),
-	/* 32 - invalid */
-	OPC_CMPV_U          = _OPC(2, 33),
-	OPC_CMPV_S          = _OPC(2, 34),
-	/* 35-47 - invalid */
-	OPC_MUL_U24         = _OPC(2, 48), /* 24b mul into 32b result */
-	OPC_MUL_S24         = _OPC(2, 49), /* 24b mul into 32b result with sign extension */
-	OPC_MULL_U          = _OPC(2, 50),
-	OPC_BFREV_B         = _OPC(2, 51),
-	OPC_CLZ_S           = _OPC(2, 52),
-	OPC_CLZ_B           = _OPC(2, 53),
-	OPC_SHL_B           = _OPC(2, 54),
-	OPC_SHR_B           = _OPC(2, 55),
-	OPC_ASHR_B          = _OPC(2, 56),
-	OPC_BARY_F          = _OPC(2, 57),
-	OPC_MGEN_B          = _OPC(2, 58),
-	OPC_GETBIT_B        = _OPC(2, 59),
-	OPC_SETRM           = _OPC(2, 60),
-	OPC_CBITS_B         = _OPC(2, 61),
-	OPC_SHB             = _OPC(2, 62),
-	OPC_MSAD            = _OPC(2, 63),
+   /* category 2: */
+   OPC_ADD_F           = _OPC(2, 0),
+   OPC_MIN_F           = _OPC(2, 1),
+   OPC_MAX_F           = _OPC(2, 2),
+   OPC_MUL_F           = _OPC(2, 3),
+   OPC_SIGN_F          = _OPC(2, 4),
+   OPC_CMPS_F          = _OPC(2, 5),
+   OPC_ABSNEG_F        = _OPC(2, 6),
+   OPC_CMPV_F          = _OPC(2, 7),
+   /* 8 - invalid */
+   OPC_FLOOR_F         = _OPC(2, 9),
+   OPC_CEIL_F          = _OPC(2, 10),
+   OPC_RNDNE_F         = _OPC(2, 11),
+   OPC_RNDAZ_F         = _OPC(2, 12),
+   OPC_TRUNC_F         = _OPC(2, 13),
+   /* 14-15 - invalid */
+   OPC_ADD_U           = _OPC(2, 16),
+   OPC_ADD_S           = _OPC(2, 17),
+   OPC_SUB_U           = _OPC(2, 18),
+   OPC_SUB_S           = _OPC(2, 19),
+   OPC_CMPS_U          = _OPC(2, 20),
+   OPC_CMPS_S          = _OPC(2, 21),
+   OPC_MIN_U           = _OPC(2, 22),
+   OPC_MIN_S           = _OPC(2, 23),
+   OPC_MAX_U           = _OPC(2, 24),
+   OPC_MAX_S           = _OPC(2, 25),
+   OPC_ABSNEG_S        = _OPC(2, 26),
+   /* 27 - invalid */
+   OPC_AND_B           = _OPC(2, 28),
+   OPC_OR_B            = _OPC(2, 29),
+   OPC_NOT_B           = _OPC(2, 30),
+   OPC_XOR_B           = _OPC(2, 31),
+   /* 32 - invalid */
+   OPC_CMPV_U          = _OPC(2, 33),
+   OPC_CMPV_S          = _OPC(2, 34),
+   /* 35-47 - invalid */
+   OPC_MUL_U24         = _OPC(2, 48), /* 24b mul into 32b result */
+   OPC_MUL_S24         = _OPC(2, 49), /* 24b mul into 32b result with sign extension */
+   OPC_MULL_U          = _OPC(2, 50),
+   OPC_BFREV_B         = _OPC(2, 51),
+   OPC_CLZ_S           = _OPC(2, 52),
+   OPC_CLZ_B           = _OPC(2, 53),
+   OPC_SHL_B           = _OPC(2, 54),
+   OPC_SHR_B           = _OPC(2, 55),
+   OPC_ASHR_B          = _OPC(2, 56),
+   OPC_BARY_F          = _OPC(2, 57),
+   OPC_MGEN_B          = _OPC(2, 58),
+   OPC_GETBIT_B        = _OPC(2, 59),
+   OPC_SETRM           = _OPC(2, 60),
+   OPC_CBITS_B         = _OPC(2, 61),
+   OPC_SHB             = _OPC(2, 62),
+   OPC_MSAD            = _OPC(2, 63),
 
-	/* category 3: */
-	OPC_MAD_U16         = _OPC(3, 0),
-	OPC_MADSH_U16       = _OPC(3, 1),
-	OPC_MAD_S16         = _OPC(3, 2),
-	OPC_MADSH_M16       = _OPC(3, 3),   /* should this be .s16? */
-	OPC_MAD_U24         = _OPC(3, 4),
-	OPC_MAD_S24         = _OPC(3, 5),
-	OPC_MAD_F16         = _OPC(3, 6),
-	OPC_MAD_F32         = _OPC(3, 7),
-	OPC_SEL_B16         = _OPC(3, 8),
-	OPC_SEL_B32         = _OPC(3, 9),
-	OPC_SEL_S16         = _OPC(3, 10),
-	OPC_SEL_S32         = _OPC(3, 11),
-	OPC_SEL_F16         = _OPC(3, 12),
-	OPC_SEL_F32         = _OPC(3, 13),
-	OPC_SAD_S16         = _OPC(3, 14),
-	OPC_SAD_S32         = _OPC(3, 15),
-	OPC_SHLG_B16        = _OPC(3, 16),
+   /* category 3: */
+   OPC_MAD_U16         = _OPC(3, 0),
+   OPC_MADSH_U16       = _OPC(3, 1),
+   OPC_MAD_S16         = _OPC(3, 2),
+   OPC_MADSH_M16       = _OPC(3, 3),   /* should this be .s16? */
+   OPC_MAD_U24         = _OPC(3, 4),
+   OPC_MAD_S24         = _OPC(3, 5),
+   OPC_MAD_F16         = _OPC(3, 6),
+   OPC_MAD_F32         = _OPC(3, 7),
+   OPC_SEL_B16         = _OPC(3, 8),
+   OPC_SEL_B32         = _OPC(3, 9),
+   OPC_SEL_S16         = _OPC(3, 10),
+   OPC_SEL_S32         = _OPC(3, 11),
+   OPC_SEL_F16         = _OPC(3, 12),
+   OPC_SEL_F32         = _OPC(3, 13),
+   OPC_SAD_S16         = _OPC(3, 14),
+   OPC_SAD_S32         = _OPC(3, 15),
+   OPC_SHLG_B16        = _OPC(3, 16),
 
-	/* category 4: */
-	OPC_RCP             = _OPC(4, 0),
-	OPC_RSQ             = _OPC(4, 1),
-	OPC_LOG2            = _OPC(4, 2),
-	OPC_EXP2            = _OPC(4, 3),
-	OPC_SIN             = _OPC(4, 4),
-	OPC_COS             = _OPC(4, 5),
-	OPC_SQRT            = _OPC(4, 6),
-	/* NOTE that these are 8+opc from their highp equivs, so it's possible
-	 * that the high order bit in the opc field has been repurposed for
-	 * half-precision use?  But note that other ops (rcp/lsin/cos/sqrt)
-	 * still use the same opc as highp
-	 */
-	OPC_HRSQ            = _OPC(4, 9),
-	OPC_HLOG2           = _OPC(4, 10),
-	OPC_HEXP2           = _OPC(4, 11),
+   /* category 4: */
+   OPC_RCP             = _OPC(4, 0),
+   OPC_RSQ             = _OPC(4, 1),
+   OPC_LOG2            = _OPC(4, 2),
+   OPC_EXP2            = _OPC(4, 3),
+   OPC_SIN             = _OPC(4, 4),
+   OPC_COS             = _OPC(4, 5),
+   OPC_SQRT            = _OPC(4, 6),
+   /* NOTE that these are 8+opc from their highp equivs, so it's possible
+    * that the high order bit in the opc field has been repurposed for
+    * half-precision use?  But note that other ops (rcp/lsin/cos/sqrt)
+    * still use the same opc as highp
+    */
+   OPC_HRSQ            = _OPC(4, 9),
+   OPC_HLOG2           = _OPC(4, 10),
+   OPC_HEXP2           = _OPC(4, 11),
 
-	/* category 5: */
-	OPC_ISAM            = _OPC(5, 0),
-	OPC_ISAML           = _OPC(5, 1),
-	OPC_ISAMM           = _OPC(5, 2),
-	OPC_SAM             = _OPC(5, 3),
-	OPC_SAMB            = _OPC(5, 4),
-	OPC_SAML            = _OPC(5, 5),
-	OPC_SAMGQ           = _OPC(5, 6),
-	OPC_GETLOD          = _OPC(5, 7),
-	OPC_CONV            = _OPC(5, 8),
-	OPC_CONVM           = _OPC(5, 9),
-	OPC_GETSIZE         = _OPC(5, 10),
-	OPC_GETBUF          = _OPC(5, 11),
-	OPC_GETPOS          = _OPC(5, 12),
-	OPC_GETINFO         = _OPC(5, 13),
-	OPC_DSX             = _OPC(5, 14),
-	OPC_DSY             = _OPC(5, 15),
-	OPC_GATHER4R        = _OPC(5, 16),
-	OPC_GATHER4G        = _OPC(5, 17),
-	OPC_GATHER4B        = _OPC(5, 18),
-	OPC_GATHER4A        = _OPC(5, 19),
-	OPC_SAMGP0          = _OPC(5, 20),
-	OPC_SAMGP1          = _OPC(5, 21),
-	OPC_SAMGP2          = _OPC(5, 22),
-	OPC_SAMGP3          = _OPC(5, 23),
-	OPC_DSXPP_1         = _OPC(5, 24),
-	OPC_DSYPP_1         = _OPC(5, 25),
-	OPC_RGETPOS         = _OPC(5, 26),
-	OPC_RGETINFO        = _OPC(5, 27),
-	/* cat5 meta instructions, placed above the cat5 opc field's size */
-	OPC_DSXPP_MACRO     = _OPC(5, 32),
-	OPC_DSYPP_MACRO     = _OPC(5, 33),
+   /* category 5: */
+   OPC_ISAM            = _OPC(5, 0),
+   OPC_ISAML           = _OPC(5, 1),
+   OPC_ISAMM           = _OPC(5, 2),
+   OPC_SAM             = _OPC(5, 3),
+   OPC_SAMB            = _OPC(5, 4),
+   OPC_SAML            = _OPC(5, 5),
+   OPC_SAMGQ           = _OPC(5, 6),
+   OPC_GETLOD          = _OPC(5, 7),
+   OPC_CONV            = _OPC(5, 8),
+   OPC_CONVM           = _OPC(5, 9),
+   OPC_GETSIZE         = _OPC(5, 10),
+   OPC_GETBUF          = _OPC(5, 11),
+   OPC_GETPOS          = _OPC(5, 12),
+   OPC_GETINFO         = _OPC(5, 13),
+   OPC_DSX             = _OPC(5, 14),
+   OPC_DSY             = _OPC(5, 15),
+   OPC_GATHER4R        = _OPC(5, 16),
+   OPC_GATHER4G        = _OPC(5, 17),
+   OPC_GATHER4B        = _OPC(5, 18),
+   OPC_GATHER4A        = _OPC(5, 19),
+   OPC_SAMGP0          = _OPC(5, 20),
+   OPC_SAMGP1          = _OPC(5, 21),
+   OPC_SAMGP2          = _OPC(5, 22),
+   OPC_SAMGP3          = _OPC(5, 23),
+   OPC_DSXPP_1         = _OPC(5, 24),
+   OPC_DSYPP_1         = _OPC(5, 25),
+   OPC_RGETPOS         = _OPC(5, 26),
+   OPC_RGETINFO        = _OPC(5, 27),
+   /* cat5 meta instructions, placed above the cat5 opc field's size */
+   OPC_DSXPP_MACRO     = _OPC(5, 32),
+   OPC_DSYPP_MACRO     = _OPC(5, 33),
 
-	/* category 6: */
-	OPC_LDG             = _OPC(6, 0),        /* load-global */
-	OPC_LDL             = _OPC(6, 1),
-	OPC_LDP             = _OPC(6, 2),
-	OPC_STG             = _OPC(6, 3),        /* store-global */
-	OPC_STL             = _OPC(6, 4),
-	OPC_STP             = _OPC(6, 5),
-	OPC_LDIB            = _OPC(6, 6),
-	OPC_G2L             = _OPC(6, 7),
-	OPC_L2G             = _OPC(6, 8),
-	OPC_PREFETCH        = _OPC(6, 9),
-	OPC_LDLW            = _OPC(6, 10),
-	OPC_STLW            = _OPC(6, 11),
-	OPC_RESFMT          = _OPC(6, 14),
-	OPC_RESINFO         = _OPC(6, 15),
-	OPC_ATOMIC_ADD      = _OPC(6, 16),
-	OPC_ATOMIC_SUB      = _OPC(6, 17),
-	OPC_ATOMIC_XCHG     = _OPC(6, 18),
-	OPC_ATOMIC_INC      = _OPC(6, 19),
-	OPC_ATOMIC_DEC      = _OPC(6, 20),
-	OPC_ATOMIC_CMPXCHG  = _OPC(6, 21),
-	OPC_ATOMIC_MIN      = _OPC(6, 22),
-	OPC_ATOMIC_MAX      = _OPC(6, 23),
-	OPC_ATOMIC_AND      = _OPC(6, 24),
-	OPC_ATOMIC_OR       = _OPC(6, 25),
-	OPC_ATOMIC_XOR      = _OPC(6, 26),
-	OPC_LDGB            = _OPC(6, 27),
-	OPC_STGB            = _OPC(6, 28),
-	OPC_STIB            = _OPC(6, 29),
-	OPC_LDC             = _OPC(6, 30),
-	OPC_LDLV            = _OPC(6, 31),
-	OPC_PIPR            = _OPC(6, 32), /* ??? */
-	OPC_PIPC            = _OPC(6, 33), /* ??? */
-	OPC_EMIT2           = _OPC(6, 34), /* ??? */
-	OPC_ENDLS           = _OPC(6, 35), /* ??? */
-	OPC_GETSPID         = _OPC(6, 36), /* SP ID */
-	OPC_GETWID          = _OPC(6, 37), /* wavefront ID */
+   /* category 6: */
+   OPC_LDG             = _OPC(6, 0),        /* load-global */
+   OPC_LDL             = _OPC(6, 1),
+   OPC_LDP             = _OPC(6, 2),
+   OPC_STG             = _OPC(6, 3),        /* store-global */
+   OPC_STL             = _OPC(6, 4),
+   OPC_STP             = _OPC(6, 5),
+   OPC_LDIB            = _OPC(6, 6),
+   OPC_G2L             = _OPC(6, 7),
+   OPC_L2G             = _OPC(6, 8),
+   OPC_PREFETCH        = _OPC(6, 9),
+   OPC_LDLW            = _OPC(6, 10),
+   OPC_STLW            = _OPC(6, 11),
+   OPC_RESFMT          = _OPC(6, 14),
+   OPC_RESINFO         = _OPC(6, 15),
+   OPC_ATOMIC_ADD      = _OPC(6, 16),
+   OPC_ATOMIC_SUB      = _OPC(6, 17),
+   OPC_ATOMIC_XCHG     = _OPC(6, 18),
+   OPC_ATOMIC_INC      = _OPC(6, 19),
+   OPC_ATOMIC_DEC      = _OPC(6, 20),
+   OPC_ATOMIC_CMPXCHG  = _OPC(6, 21),
+   OPC_ATOMIC_MIN      = _OPC(6, 22),
+   OPC_ATOMIC_MAX      = _OPC(6, 23),
+   OPC_ATOMIC_AND      = _OPC(6, 24),
+   OPC_ATOMIC_OR       = _OPC(6, 25),
+   OPC_ATOMIC_XOR      = _OPC(6, 26),
+   OPC_LDGB            = _OPC(6, 27),
+   OPC_STGB            = _OPC(6, 28),
+   OPC_STIB            = _OPC(6, 29),
+   OPC_LDC             = _OPC(6, 30),
+   OPC_LDLV            = _OPC(6, 31),
+   OPC_PIPR            = _OPC(6, 32), /* ??? */
+   OPC_PIPC            = _OPC(6, 33), /* ??? */
+   OPC_EMIT2           = _OPC(6, 34), /* ??? */
+   OPC_ENDLS           = _OPC(6, 35), /* ??? */
+   OPC_GETSPID         = _OPC(6, 36), /* SP ID */
+   OPC_GETWID          = _OPC(6, 37), /* wavefront ID */
 
-	/* Logical opcodes for things that differ in a6xx+ */
-	OPC_STC             = _OPC(6, 40),
-	OPC_RESINFO_B       = _OPC(6, 41),
-	OPC_LDIB_B          = _OPC(6, 42),
-	OPC_STIB_B          = _OPC(6, 43),
+   /* Logical opcodes for things that differ in a6xx+ */
+   OPC_STC             = _OPC(6, 40),
+   OPC_RESINFO_B       = _OPC(6, 41),
+   OPC_LDIB_B          = _OPC(6, 42),
+   OPC_STIB_B          = _OPC(6, 43),
 
-	/* Logical opcodes for different atomic instruction variations: */
-	OPC_ATOMIC_B_ADD      = _OPC(6, 44),
-	OPC_ATOMIC_B_SUB      = _OPC(6, 45),
-	OPC_ATOMIC_B_XCHG     = _OPC(6, 46),
-	OPC_ATOMIC_B_INC      = _OPC(6, 47),
-	OPC_ATOMIC_B_DEC      = _OPC(6, 48),
-	OPC_ATOMIC_B_CMPXCHG  = _OPC(6, 49),
-	OPC_ATOMIC_B_MIN      = _OPC(6, 50),
-	OPC_ATOMIC_B_MAX      = _OPC(6, 51),
-	OPC_ATOMIC_B_AND      = _OPC(6, 52),
-	OPC_ATOMIC_B_OR       = _OPC(6, 53),
-	OPC_ATOMIC_B_XOR      = _OPC(6, 54),
+   /* Logical opcodes for different atomic instruction variations: */
+   OPC_ATOMIC_B_ADD      = _OPC(6, 44),
+   OPC_ATOMIC_B_SUB      = _OPC(6, 45),
+   OPC_ATOMIC_B_XCHG     = _OPC(6, 46),
+   OPC_ATOMIC_B_INC      = _OPC(6, 47),
+   OPC_ATOMIC_B_DEC      = _OPC(6, 48),
+   OPC_ATOMIC_B_CMPXCHG  = _OPC(6, 49),
+   OPC_ATOMIC_B_MIN      = _OPC(6, 50),
+   OPC_ATOMIC_B_MAX      = _OPC(6, 51),
+   OPC_ATOMIC_B_AND      = _OPC(6, 52),
+   OPC_ATOMIC_B_OR       = _OPC(6, 53),
+   OPC_ATOMIC_B_XOR      = _OPC(6, 54),
 
-	OPC_LDG_A           = _OPC(6, 55),
-	OPC_STG_A           = _OPC(6, 56),
+   OPC_LDG_A           = _OPC(6, 55),
+   OPC_STG_A           = _OPC(6, 56),
 
-	/* category 7: */
-	OPC_BAR             = _OPC(7, 0),
-	OPC_FENCE           = _OPC(7, 1),
+   /* category 7: */
+   OPC_BAR             = _OPC(7, 0),
+   OPC_FENCE           = _OPC(7, 1),
 
-	/* meta instructions (category -1): */
-	/* placeholder instr to mark shader inputs: */
-	OPC_META_INPUT      = _OPC(-1, 0),
-	/* The "collect" and "split" instructions are used for keeping
-	 * track of instructions that write to multiple dst registers
-	 * (split) like texture sample instructions, or read multiple
-	 * consecutive scalar registers (collect) (bary.f, texture samp)
-	 *
-	 * A "split" extracts a scalar component from a vecN, and a
-	 * "collect" gathers multiple scalar components into a vecN
-	 */
-	OPC_META_SPLIT      = _OPC(-1, 2),
-	OPC_META_COLLECT    = _OPC(-1, 3),
+   /* meta instructions (category -1): */
+   /* placeholder instr to mark shader inputs: */
+   OPC_META_INPUT      = _OPC(-1, 0),
+   /* The "collect" and "split" instructions are used for keeping
+    * track of instructions that write to multiple dst registers
+    * (split) like texture sample instructions, or read multiple
+    * consecutive scalar registers (collect) (bary.f, texture samp)
+    *
+    * A "split" extracts a scalar component from a vecN, and a
+    * "collect" gathers multiple scalar components into a vecN
+    */
+   OPC_META_SPLIT      = _OPC(-1, 2),
+   OPC_META_COLLECT    = _OPC(-1, 3),
 
-	/* placeholder for texture fetches that run before FS invocation
-	 * starts:
-	 */
-	OPC_META_TEX_PREFETCH = _OPC(-1, 4),
+   /* placeholder for texture fetches that run before FS invocation
+    * starts:
+    */
+   OPC_META_TEX_PREFETCH = _OPC(-1, 4),
 
-	/* Parallel copies have multiple destinations, and copy each destination
-	 * to its corresponding source. This happens "in parallel," meaning that
-	 * it happens as-if every source is read first and then every destination
-	 * is stored. These are produced in RA when register shuffling is
-	 * required, and then lowered away immediately afterwards.
-	 */
-	OPC_META_PARALLEL_COPY = _OPC(-1, 5),
-	OPC_META_PHI = _OPC(-1, 6),
+   /* Parallel copies have multiple destinations, and copy each destination
+    * to its corresponding source. This happens "in parallel," meaning that
+    * it happens as-if every source is read first and then every destination
+    * is stored. These are produced in RA when register shuffling is
+    * required, and then lowered away immediately afterwards.
+    */
+   OPC_META_PARALLEL_COPY = _OPC(-1, 5),
+   OPC_META_PHI = _OPC(-1, 6),
 } opc_t;
+/* clang-format on */
 
 #define opc_cat(opc) ((int)((opc) >> NOPC_BITS))
 #define opc_op(opc)  ((unsigned)((opc) & ((1 << NOPC_BITS) - 1)))

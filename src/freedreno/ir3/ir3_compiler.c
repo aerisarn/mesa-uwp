@@ -29,24 +29,26 @@
 #include "ir3_compiler.h"
 
 static const struct debug_named_value shader_debug_options[] = {
-	{"vs",         IR3_DBG_SHADER_VS,  "Print shader disasm for vertex shaders"},
-	{"tcs",        IR3_DBG_SHADER_TCS, "Print shader disasm for tess ctrl shaders"},
-	{"tes",        IR3_DBG_SHADER_TES, "Print shader disasm for tess eval shaders"},
-	{"gs",         IR3_DBG_SHADER_GS,  "Print shader disasm for geometry shaders"},
-	{"fs",         IR3_DBG_SHADER_FS,  "Print shader disasm for fragment shaders"},
-	{"cs",         IR3_DBG_SHADER_CS,  "Print shader disasm for compute shaders"},
-	{"disasm",     IR3_DBG_DISASM,     "Dump NIR and adreno shader disassembly"},
-	{"optmsgs",    IR3_DBG_OPTMSGS,    "Enable optimizer debug messages"},
-	{"forces2en",  IR3_DBG_FORCES2EN,  "Force s2en mode for tex sampler instructions"},
-	{"nouboopt",   IR3_DBG_NOUBOOPT,   "Disable lowering UBO to uniform"},
-	{"nofp16",     IR3_DBG_NOFP16,     "Don't lower mediump to fp16"},
-	{"nocache",    IR3_DBG_NOCACHE,    "Disable shader cache"},
+   /* clang-format off */
+   {"vs",         IR3_DBG_SHADER_VS,  "Print shader disasm for vertex shaders"},
+   {"tcs",        IR3_DBG_SHADER_TCS, "Print shader disasm for tess ctrl shaders"},
+   {"tes",        IR3_DBG_SHADER_TES, "Print shader disasm for tess eval shaders"},
+   {"gs",         IR3_DBG_SHADER_GS,  "Print shader disasm for geometry shaders"},
+   {"fs",         IR3_DBG_SHADER_FS,  "Print shader disasm for fragment shaders"},
+   {"cs",         IR3_DBG_SHADER_CS,  "Print shader disasm for compute shaders"},
+   {"disasm",     IR3_DBG_DISASM,     "Dump NIR and adreno shader disassembly"},
+   {"optmsgs",    IR3_DBG_OPTMSGS,    "Enable optimizer debug messages"},
+   {"forces2en",  IR3_DBG_FORCES2EN,  "Force s2en mode for tex sampler instructions"},
+   {"nouboopt",   IR3_DBG_NOUBOOPT,   "Disable lowering UBO to uniform"},
+   {"nofp16",     IR3_DBG_NOFP16,     "Don't lower mediump to fp16"},
+   {"nocache",    IR3_DBG_NOCACHE,    "Disable shader cache"},
 #ifdef DEBUG
-	/* DEBUG-only options: */
-	{"schedmsgs",  IR3_DBG_SCHEDMSGS,  "Enable scheduler debug messages"},
-	{"ramsgs",     IR3_DBG_RAMSGS,     "Enable register-allocation debug messages"},
+   /* DEBUG-only options: */
+   {"schedmsgs",  IR3_DBG_SCHEDMSGS,  "Enable scheduler debug messages"},
+   {"ramsgs",     IR3_DBG_RAMSGS,     "Enable register-allocation debug messages"},
 #endif
-	DEBUG_NAMED_VALUE_END
+   DEBUG_NAMED_VALUE_END
+   /* clang-format on */
 };
 
 DEBUG_GET_ONCE_FLAGS_OPTION(ir3_shader_debug, "IR3_SHADER_DEBUG", shader_debug_options, 0)

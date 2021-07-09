@@ -1720,145 +1720,145 @@ ir3_NOP(struct ir3_block *block)
 
 #define IR3_INSTR_0 0
 
-#define __INSTR0(flag, name, opc)                                        \
-static inline struct ir3_instruction *                                   \
-ir3_##name(struct ir3_block *block)                                      \
-{                                                                        \
-	struct ir3_instruction *instr =                                      \
-		ir3_instr_create(block, opc, 1, 0);                              \
-	instr->flags |= flag;                                                \
-	return instr;                                                        \
+/* clang-format off */
+#define __INSTR0(flag, name, opc)                                              \
+static inline struct ir3_instruction *ir3_##name(struct ir3_block *block)      \
+{                                                                              \
+   struct ir3_instruction *instr = ir3_instr_create(block, opc, 1, 0);         \
+   instr->flags |= flag;                                                       \
+   return instr;                                                               \
 }
-#define INSTR0F(f, name)    __INSTR0(IR3_INSTR_##f, name##_##f, OPC_##name)
-#define INSTR0(name)        __INSTR0(0, name, OPC_##name)
+/* clang-format on */
+#define INSTR0F(f, name) __INSTR0(IR3_INSTR_##f, name##_##f, OPC_##name)
+#define INSTR0(name)     __INSTR0(0, name, OPC_##name)
 
-#define __INSTR1(flag, dst_count, name, opc)                             \
-static inline struct ir3_instruction *                                   \
-ir3_##name(struct ir3_block *block,                                      \
-		struct ir3_instruction *a, unsigned aflags)                      \
-{                                                                        \
-	struct ir3_instruction *instr =                                      \
-		ir3_instr_create(block, opc, dst_count, 1);                      \
-	for (unsigned i = 0; i < dst_count; i++)							 \
-		__ssa_dst(instr);												 \
-	__ssa_src(instr, a, aflags);                                         \
-	instr->flags |= flag;                                                \
-	return instr;                                                        \
+/* clang-format off */
+#define __INSTR1(flag, dst_count, name, opc)                                   \
+static inline struct ir3_instruction *ir3_##name(                              \
+   struct ir3_block *block, struct ir3_instruction *a, unsigned aflags)        \
+{                                                                              \
+   struct ir3_instruction *instr =                                             \
+      ir3_instr_create(block, opc, dst_count, 1);                              \
+   for (unsigned i = 0; i < dst_count; i++)                                    \
+      __ssa_dst(instr);                                                        \
+   __ssa_src(instr, a, aflags);                                                \
+   instr->flags |= flag;                                                       \
+   return instr;                                                               \
 }
-#define INSTR1F(f, name)    __INSTR1(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
-#define INSTR1(name)        __INSTR1(0, 1, name, OPC_##name)
-#define INSTR1NODST(name)   __INSTR1(0, 0, name, OPC_##name)
+/* clang-format on */
+#define INSTR1F(f, name)  __INSTR1(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
+#define INSTR1(name)      __INSTR1(0, 1, name, OPC_##name)
+#define INSTR1NODST(name) __INSTR1(0, 0, name, OPC_##name)
 
-#define __INSTR2(flag, name, opc)                                        \
-static inline struct ir3_instruction *                                   \
-ir3_##name(struct ir3_block *block,                                      \
-		struct ir3_instruction *a, unsigned aflags,                      \
-		struct ir3_instruction *b, unsigned bflags)                      \
-{                                                                        \
-	struct ir3_instruction *instr =                                      \
-		ir3_instr_create(block, opc, 1, 2);                              \
-	__ssa_dst(instr);													 \
-	__ssa_src(instr, a, aflags);                                         \
-	__ssa_src(instr, b, bflags);                                         \
-	instr->flags |= flag;                                                \
-	return instr;                                                        \
+/* clang-format off */
+#define __INSTR2(flag, name, opc)                                              \
+static inline struct ir3_instruction *ir3_##name(                              \
+   struct ir3_block *block, struct ir3_instruction *a, unsigned aflags,        \
+   struct ir3_instruction *b, unsigned bflags)                                 \
+{                                                                              \
+   struct ir3_instruction *instr = ir3_instr_create(block, opc, 1, 2);         \
+   __ssa_dst(instr);                                                           \
+   __ssa_src(instr, a, aflags);                                                \
+   __ssa_src(instr, b, bflags);                                                \
+   instr->flags |= flag;                                                       \
+   return instr;                                                               \
 }
-#define INSTR2F(f, name)    __INSTR2(IR3_INSTR_##f, name##_##f, OPC_##name)
-#define INSTR2(name)        __INSTR2(0, name, OPC_##name)
+/* clang-format on */
+#define INSTR2F(f, name) __INSTR2(IR3_INSTR_##f, name##_##f, OPC_##name)
+#define INSTR2(name)     __INSTR2(0, name, OPC_##name)
 
-#define __INSTR3(flag, dst_count, name, opc)							 \
-static inline struct ir3_instruction *                                   \
-ir3_##name(struct ir3_block *block,                                      \
-		struct ir3_instruction *a, unsigned aflags,                      \
-		struct ir3_instruction *b, unsigned bflags,                      \
-		struct ir3_instruction *c, unsigned cflags)                      \
-{                                                                        \
-	struct ir3_instruction *instr =                                      \
-		ir3_instr_create(block, opc, dst_count, 3);						 \
-	for (unsigned i = 0; i < dst_count; i++)							 \
-		__ssa_dst(instr);												 \
-	__ssa_src(instr, a, aflags);                                         \
-	__ssa_src(instr, b, bflags);                                         \
-	__ssa_src(instr, c, cflags);                                         \
-	instr->flags |= flag;                                                \
-	return instr;                                                        \
+/* clang-format off */
+#define __INSTR3(flag, dst_count, name, opc)                                   \
+static inline struct ir3_instruction *ir3_##name(                              \
+   struct ir3_block *block, struct ir3_instruction *a, unsigned aflags,        \
+   struct ir3_instruction *b, unsigned bflags, struct ir3_instruction *c,      \
+   unsigned cflags)                                                            \
+{                                                                              \
+   struct ir3_instruction *instr =                                             \
+      ir3_instr_create(block, opc, dst_count, 3);                              \
+   for (unsigned i = 0; i < dst_count; i++)                                    \
+      __ssa_dst(instr);                                                        \
+   __ssa_src(instr, a, aflags);                                                \
+   __ssa_src(instr, b, bflags);                                                \
+   __ssa_src(instr, c, cflags);                                                \
+   instr->flags |= flag;                                                       \
+   return instr;                                                               \
 }
-#define INSTR3F(f, name)    __INSTR3(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
-#define INSTR3(name)        __INSTR3(0, 1, name, OPC_##name)
-#define INSTR3NODST(name)   __INSTR3(0, 0, name, OPC_##name)
+/* clang-format on */
+#define INSTR3F(f, name)  __INSTR3(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
+#define INSTR3(name)      __INSTR3(0, 1, name, OPC_##name)
+#define INSTR3NODST(name) __INSTR3(0, 0, name, OPC_##name)
 
-#define __INSTR4(flag, dst_count, name, opc)							 \
-static inline struct ir3_instruction *                                   \
-ir3_##name(struct ir3_block *block,                                      \
-		struct ir3_instruction *a, unsigned aflags,                      \
-		struct ir3_instruction *b, unsigned bflags,                      \
-		struct ir3_instruction *c, unsigned cflags,                      \
-		struct ir3_instruction *d, unsigned dflags)                      \
-{                                                                        \
-	struct ir3_instruction *instr =                                      \
-		ir3_instr_create(block, opc, dst_count, 4);                      \
-	for (unsigned i = 0; i < dst_count; i++)							 \
-		__ssa_dst(instr);												 \
-	__ssa_src(instr, a, aflags);                                         \
-	__ssa_src(instr, b, bflags);                                         \
-	__ssa_src(instr, c, cflags);                                         \
-	__ssa_src(instr, d, dflags);                                         \
-	instr->flags |= flag;                                                \
-	return instr;                                                        \
+/* clang-format off */
+#define __INSTR4(flag, dst_count, name, opc)                                   \
+static inline struct ir3_instruction *ir3_##name(                              \
+   struct ir3_block *block, struct ir3_instruction *a, unsigned aflags,        \
+   struct ir3_instruction *b, unsigned bflags, struct ir3_instruction *c,      \
+   unsigned cflags, struct ir3_instruction *d, unsigned dflags)                \
+{                                                                              \
+   struct ir3_instruction *instr =                                             \
+      ir3_instr_create(block, opc, dst_count, 4);                              \
+   for (unsigned i = 0; i < dst_count; i++)                                    \
+      __ssa_dst(instr);                                                        \
+   __ssa_src(instr, a, aflags);                                                \
+   __ssa_src(instr, b, bflags);                                                \
+   __ssa_src(instr, c, cflags);                                                \
+   __ssa_src(instr, d, dflags);                                                \
+   instr->flags |= flag;                                                       \
+   return instr;                                                               \
 }
-#define INSTR4F(f, name)    __INSTR4(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
-#define INSTR4(name)        __INSTR4(0, 1, name, OPC_##name)
-#define INSTR4NODST(name)   __INSTR4(0, 0, name, OPC_##name)
+/* clang-format on */
+#define INSTR4F(f, name)  __INSTR4(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
+#define INSTR4(name)      __INSTR4(0, 1, name, OPC_##name)
+#define INSTR4NODST(name) __INSTR4(0, 0, name, OPC_##name)
 
-#define __INSTR5(flag, name, opc)                                        \
-static inline struct ir3_instruction *                                   \
-ir3_##name(struct ir3_block *block,                                      \
-		struct ir3_instruction *a, unsigned aflags,                      \
-		struct ir3_instruction *b, unsigned bflags,                      \
-		struct ir3_instruction *c, unsigned cflags,                      \
-		struct ir3_instruction *d, unsigned dflags,                      \
-		struct ir3_instruction *e, unsigned eflags)                      \
-{                                                                        \
-	struct ir3_instruction *instr =                                      \
-		ir3_instr_create(block, opc, 1, 5);                              \
-	__ssa_dst(instr);                                                    \
-	__ssa_src(instr, a, aflags);                                         \
-	__ssa_src(instr, b, bflags);                                         \
-	__ssa_src(instr, c, cflags);                                         \
-	__ssa_src(instr, d, dflags);                                         \
-	__ssa_src(instr, e, eflags);                                         \
-	instr->flags |= flag;                                                \
-	return instr;                                                        \
+/* clang-format off */
+#define __INSTR5(flag, name, opc)                                              \
+static inline struct ir3_instruction *ir3_##name(                              \
+   struct ir3_block *block, struct ir3_instruction *a, unsigned aflags,        \
+   struct ir3_instruction *b, unsigned bflags, struct ir3_instruction *c,      \
+   unsigned cflags, struct ir3_instruction *d, unsigned dflags,                \
+   struct ir3_instruction *e, unsigned eflags)                                 \
+{                                                                              \
+   struct ir3_instruction *instr = ir3_instr_create(block, opc, 1, 5);         \
+   __ssa_dst(instr);                                                           \
+   __ssa_src(instr, a, aflags);                                                \
+   __ssa_src(instr, b, bflags);                                                \
+   __ssa_src(instr, c, cflags);                                                \
+   __ssa_src(instr, d, dflags);                                                \
+   __ssa_src(instr, e, eflags);                                                \
+   instr->flags |= flag;                                                       \
+   return instr;                                                               \
 }
-#define INSTR5F(f, name)    __INSTR5(IR3_INSTR_##f, name##_##f, OPC_##name)
-#define INSTR5(name)        __INSTR5(0, name, OPC_##name)
+/* clang-format on */
+#define INSTR5F(f, name) __INSTR5(IR3_INSTR_##f, name##_##f, OPC_##name)
+#define INSTR5(name)     __INSTR5(0, name, OPC_##name)
 
-#define __INSTR6(flag, dst_count, name, opc)                             \
-static inline struct ir3_instruction *                                   \
-ir3_##name(struct ir3_block *block,                                      \
-		struct ir3_instruction *a, unsigned aflags,                      \
-		struct ir3_instruction *b, unsigned bflags,                      \
-		struct ir3_instruction *c, unsigned cflags,                      \
-		struct ir3_instruction *d, unsigned dflags,                      \
-		struct ir3_instruction *e, unsigned eflags,                      \
-		struct ir3_instruction *f, unsigned fflags)                      \
-{                                                                        \
-	struct ir3_instruction *instr =                                      \
-		ir3_instr_create(block, opc, 1, 6);                              \
-	for (unsigned i = 0; i < dst_count; i++)							 \
-		__ssa_dst(instr);												 \
-	__ssa_src(instr, a, aflags);                                         \
-	__ssa_src(instr, b, bflags);                                         \
-	__ssa_src(instr, c, cflags);                                         \
-	__ssa_src(instr, d, dflags);                                         \
-	__ssa_src(instr, e, eflags);                                         \
-	__ssa_src(instr, f, fflags);                                         \
-	instr->flags |= flag;                                                \
-	return instr;                                                        \
+/* clang-format off */
+#define __INSTR6(flag, dst_count, name, opc)                                   \
+static inline struct ir3_instruction *ir3_##name(                              \
+   struct ir3_block *block, struct ir3_instruction *a, unsigned aflags,        \
+   struct ir3_instruction *b, unsigned bflags, struct ir3_instruction *c,      \
+   unsigned cflags, struct ir3_instruction *d, unsigned dflags,                \
+   struct ir3_instruction *e, unsigned eflags, struct ir3_instruction *f,      \
+   unsigned fflags)                                                            \
+{                                                                              \
+   struct ir3_instruction *instr = ir3_instr_create(block, opc, 1, 6);         \
+   for (unsigned i = 0; i < dst_count; i++)                                    \
+      __ssa_dst(instr);                                                        \
+   __ssa_src(instr, a, aflags);                                                \
+   __ssa_src(instr, b, bflags);                                                \
+   __ssa_src(instr, c, cflags);                                                \
+   __ssa_src(instr, d, dflags);                                                \
+   __ssa_src(instr, e, eflags);                                                \
+   __ssa_src(instr, f, fflags);                                                \
+   instr->flags |= flag;                                                       \
+   return instr;                                                               \
 }
-#define INSTR6F(f, name)    __INSTR6(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
-#define INSTR6(name)        __INSTR6(0, 1, name, OPC_##name)
-#define INSTR6NODST(name)   __INSTR6(0, 0, name, OPC_##name)
+/* clang-format on */
+#define INSTR6F(f, name)  __INSTR6(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
+#define INSTR6(name)      __INSTR6(0, 1, name, OPC_##name)
+#define INSTR6NODST(name) __INSTR6(0, 0, name, OPC_##name)
 
 /* cat0 instructions: */
 INSTR1NODST(B)

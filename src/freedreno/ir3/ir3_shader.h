@@ -443,8 +443,10 @@ struct ir3_ibo_mapping {
 #define IBO_SSBO    0x80
 	uint8_t tex_to_image[32];
 
-	uint8_t num_tex;    /* including real textures */
-	uint8_t tex_base;   /* the number of real textures, ie. image/ssbo start here */
+	/* including real textures */
+	uint8_t num_tex;
+	/* the number of real textures, ie. image/ssbo start here */
+	uint8_t tex_base;
 };
 
 struct ir3_disasm_info {

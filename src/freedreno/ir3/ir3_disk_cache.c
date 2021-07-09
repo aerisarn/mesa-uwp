@@ -36,9 +36,9 @@
  *
  *    No guarantees are made as to whether a given key/value pair is present in
  *    the cache after the set call.  If a different value has been associated
- *    with the given key in the past then it is undefined which value, if any, is
- *    associated with the key after the set call.  Note that while there are no
- *    guarantees, the cache implementation should attempt to cache the most
+ *    with the given key in the past then it is undefined which value, if any,
+ *    is associated with the key after the set call.  Note that while there are
+ *    no guarantees, the cache implementation should attempt to cache the most
  *    recently set value for a given key.
  *
  * for this reason, because binning pass variants share const_state with
