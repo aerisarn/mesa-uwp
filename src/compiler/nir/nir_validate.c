@@ -835,16 +835,87 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
                    0, nir_tex_instr_src_size(instr, i));
 
       switch (instr->src[i].src_type) {
-      case nir_tex_src_texture_deref:
-      case nir_tex_src_sampler_deref:
-         validate_assert(state, instr->src[i].src.is_ssa);
-         validate_assert(state,
-                         instr->src[i].src.ssa->parent_instr->type == nir_instr_type_deref);
+      case nir_tex_src_coord:
+         validate_assert(state, nir_src_num_components(instr->src[i].src) ==
+                                instr->coord_components);
          break;
+
+      case nir_tex_src_projector:
+         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
+         break;
+
+      case nir_tex_src_comparator:
+         validate_assert(state, instr->is_shadow);
+         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
+         break;
+
+      case nir_tex_src_offset:
+         validate_assert(state, nir_src_num_components(instr->src[i].src) ==
+                                instr->coord_components - instr->is_array);
+         break;
+
+      case nir_tex_src_bias:
+         validate_assert(state, instr->op == nir_texop_txb ||
+                                instr->op == nir_texop_tg4);
+         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
+         break;
+
+      case nir_tex_src_lod:
+         validate_assert(state, instr->op != nir_texop_tex &&
+                                instr->op != nir_texop_txb &&
+                                instr->op != nir_texop_txd &&
+                                instr->op != nir_texop_lod);
+         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
+         break;
+
+      case nir_tex_src_min_lod:
+      case nir_tex_src_ms_index:
+         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
+         break;
+
+      case nir_tex_src_ddx:
+      case nir_tex_src_ddy:
+         validate_assert(state, instr->op == nir_texop_txd);
+         validate_assert(state, nir_src_num_components(instr->src[i].src) ==
+                                instr->coord_components - instr->is_array);
+         break;
+
+      case nir_tex_src_texture_deref: {
+         nir_deref_instr *deref = nir_src_as_deref(instr->src[i].src);
+         if (!validate_assert(state, deref))
+            break;
+
+         validate_assert(state, glsl_type_is_image(deref->type) ||
+                                glsl_type_is_sampler(deref->type));
+         break;
+      }
+
+      case nir_tex_src_sampler_deref: {
+         nir_deref_instr *deref = nir_src_as_deref(instr->src[i].src);
+         if (!validate_assert(state, deref))
+            break;
+
+         validate_assert(state, glsl_type_is_sampler(deref->type));
+         break;
+      }
+
+      case nir_tex_src_texture_offset:
+      case nir_tex_src_sampler_offset:
+      case nir_tex_src_plane:
+         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
+         break;
+
+      case nir_tex_src_texture_handle:
+      case nir_tex_src_sampler_handle:
+         break;
+
       default:
          break;
       }
    }
+
+   if (instr->op != nir_texop_tg4)
+      validate_assert(state, instr->component == 0);
 
    if (nir_tex_instr_has_explicit_tg4_offsets(instr)) {
       validate_assert(state, instr->op == nir_texop_tg4);
