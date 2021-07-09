@@ -145,6 +145,11 @@ struct panvk_meta {
       struct panvk_pool bin_pool;
       struct panvk_pool desc_pool;
    } blitter;
+
+   struct {
+      mali_ptr shader;
+      struct pan_shader_info shader_info;
+   } clear_attachment[MAX_RTS][3]; /* 3 base types */
 };
 
 struct panvk_physical_device {
