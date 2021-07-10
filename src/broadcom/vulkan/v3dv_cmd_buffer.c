@@ -55,6 +55,7 @@ const struct v3dv_dynamic_state default_dynamic_state = {
       .slope_factor = 0.0f,
    },
    .line_width = 1.0f,
+   .color_write_enable = (1ull << (4 * V3D_MAX_DRAW_BUFFERS)) - 1,
 };
 
 void
@@ -1870,6 +1871,13 @@ cmd_buffer_bind_pipeline_static_state(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
+   if (!(dynamic_mask & V3DV_DYNAMIC_COLOR_WRITE_ENABLE)) {
+      if (dest->color_write_enable != src->color_write_enable) {
+         dest->color_write_enable = src->color_write_enable;
+         dirty |= V3DV_CMD_DIRTY_COLOR_WRITE_ENABLE;
+      }
+   }
+
    cmd_buffer->state.dynamic.mask = dynamic_mask;
    cmd_buffer->state.dirty |= dirty;
 }
@@ -2541,6 +2549,9 @@ v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
    if (*dirty & V3DV_CMD_DIRTY_PIPELINE)
       v3dv_X(device, cmd_buffer_emit_sample_state)(cmd_buffer);
 
+   if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_COLOR_WRITE_ENABLE))
+      v3dv_X(device, cmd_buffer_emit_color_write_mask)(cmd_buffer);
+
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PIPELINE;
 }
 
@@ -2963,6 +2974,26 @@ v3dv_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
           sizeof(state->dynamic.blend_constants));
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_BLEND_CONSTANTS;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+v3dv_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer,
+                               uint32_t attachmentCount,
+                               const VkBool32 *pColorWriteEnables)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   uint32_t color_write_enable = 0;
+
+   for (uint32_t i = 0; i < attachmentCount; i++)
+      color_write_enable |= pColorWriteEnables[i] ? (0xfu << (i * 4)) : 0;
+
+   if (state->dynamic.color_write_enable == color_write_enable)
+      return;
+
+   state->dynamic.color_write_enable = color_write_enable;
+
+   state->dirty |= V3DV_CMD_DIRTY_COLOR_WRITE_ENABLE;
 }
 
 void

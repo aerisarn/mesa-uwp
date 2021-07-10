@@ -2548,6 +2548,8 @@ v3dv_dynamic_state_mask(VkDynamicState state)
       return V3DV_DYNAMIC_DEPTH_BIAS;
    case VK_DYNAMIC_STATE_LINE_WIDTH:
       return V3DV_DYNAMIC_LINE_WIDTH;
+   case VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT:
+      return V3DV_DYNAMIC_COLOR_WRITE_ENABLE;
 
    /* Depth bounds testing is not available in in V3D 4.2 so here we are just
     * ignoring this dynamic state. We are already asserting at pipeline creation
@@ -2568,7 +2570,8 @@ pipeline_init_dynamic_state(
    const VkPipelineViewportStateCreateInfo *pViewportState,
    const VkPipelineDepthStencilStateCreateInfo *pDepthStencilState,
    const VkPipelineColorBlendStateCreateInfo *pColorBlendState,
-   const VkPipelineRasterizationStateCreateInfo *pRasterizationState)
+   const VkPipelineRasterizationStateCreateInfo *pRasterizationState,
+   const VkPipelineColorWriteCreateInfoEXT *pColorWriteState)
 {
    pipeline->dynamic_state = default_dynamic_state;
    struct v3dv_dynamic_state *dynamic = &pipeline->dynamic_state;
@@ -2642,6 +2645,12 @@ pipeline_init_dynamic_state(
       }
       if (!(dynamic_states & V3DV_DYNAMIC_LINE_WIDTH))
          dynamic->line_width = pRasterizationState->lineWidth;
+   }
+
+   if (pColorWriteState && !(dynamic_states & V3DV_DYNAMIC_COLOR_WRITE_ENABLE)) {
+      dynamic->color_write_enable = 0;
+      for (uint32_t i = 0; i < pColorWriteState->attachmentCount; i++)
+         dynamic->color_write_enable |= pColorWriteState->pColorWriteEnables[i] ? (0xfu << (i * 4)) : 0;
    }
 
    pipeline->dynamic_state.mask = dynamic_states;
@@ -2843,9 +2852,14 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    const VkPipelineMultisampleStateCreateInfo *ms_info =
       raster_enabled ? pCreateInfo->pMultisampleState : NULL;
 
+   const VkPipelineColorWriteCreateInfoEXT *cw_info =
+      cb_info ? vk_find_struct_const(cb_info->pNext,
+                                     PIPELINE_COLOR_WRITE_CREATE_INFO_EXT) :
+                NULL;
+
    pipeline_init_dynamic_state(pipeline,
                                pCreateInfo->pDynamicState,
-                               vp_info, ds_info, cb_info, rs_info);
+                               vp_info, ds_info, cb_info, rs_info, cw_info);
 
    /* V3D 4.2 doesn't support depth bounds testing so we don't advertise that
     * feature and it shouldn't be used by any pipeline.

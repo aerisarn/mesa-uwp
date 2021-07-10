@@ -34,6 +34,9 @@ void
 v3dX(job_emit_binning_flush)(struct v3dv_job *job);
 
 void
+v3dX(cmd_buffer_emit_color_write_mask)(struct v3dv_cmd_buffer *cmd_buffer);
+
+void
 v3dX(cmd_buffer_end_render_pass_secondary)(struct v3dv_cmd_buffer *cmd_buffer);
 
 void

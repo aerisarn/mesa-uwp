@@ -1161,8 +1161,7 @@ v3dX(cmd_buffer_emit_blend)(struct v3dv_cmd_buffer *cmd_buffer)
    const uint32_t blend_packets_size =
       cl_packet_length(BLEND_ENABLES) +
       cl_packet_length(BLEND_CONSTANT_COLOR) +
-      cl_packet_length(BLEND_CFG) * V3D_MAX_DRAW_BUFFERS +
-      cl_packet_length(COLOR_WRITE_MASKS);
+      cl_packet_length(BLEND_CFG) * V3D_MAX_DRAW_BUFFERS;
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, blend_packets_size);
    v3dv_return_if_oom(cmd_buffer, NULL);
@@ -1178,10 +1177,6 @@ v3dX(cmd_buffer_emit_blend)(struct v3dv_cmd_buffer *cmd_buffer)
          if (pipeline->blend.enables & (1 << i))
             cl_emit_prepacked(&job->bcl, &pipeline->blend.cfg[i]);
       }
-
-      cl_emit(&job->bcl, COLOR_WRITE_MASKS, mask) {
-         mask.mask = pipeline->blend.color_write_masks;
-      }
    }
 
    if (pipeline->blend.needs_color_constants &&
@@ -1195,6 +1190,22 @@ v3dX(cmd_buffer_emit_blend)(struct v3dv_cmd_buffer *cmd_buffer)
       }
       cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_BLEND_CONSTANTS;
    }
+}
+
+void
+v3dX(cmd_buffer_emit_color_write_mask)(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(COLOR_WRITE_MASKS));
+
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
+   cl_emit(&job->bcl, COLOR_WRITE_MASKS, mask) {
+      mask.mask = (~dynamic->color_write_enable |
+                   pipeline->blend.color_write_masks) & 0xffff;
+   }
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_COLOR_WRITE_ENABLE;
 }
 
 static void
