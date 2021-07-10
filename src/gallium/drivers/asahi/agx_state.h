@@ -297,9 +297,9 @@ agx_batch_add_bo(struct agx_batch *batch, struct agx_bo *bo)
 }
 
 /* Blit shaders */
-void agx_build_reload_shader(struct agx_device *dev);
-
 void agx_blit(struct pipe_context *pipe,
               const struct pipe_blit_info *info);
+
+void agx_internal_shaders(struct agx_device *dev);
 
 #endif

@@ -28,7 +28,7 @@
 #include "asahi/compiler/agx_compile.h"
 #include "gallium/auxiliary/util/u_blitter.h"
 
-void
+static void
 agx_build_reload_shader(struct agx_device *dev)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
@@ -131,4 +131,52 @@ agx_blit(struct pipe_context *pipe,
 
    agx_blitter_save(ctx, ctx->blitter, info->render_condition_enable);
    util_blitter_blit(ctx->blitter, info);
+}
+
+/* We need some fixed shaders for common rendering tasks. When colour buffer
+ * reload is not in use, a shader is used to clear a particular colour. At the
+ * end of rendering a tile, a shader is used to write it out. These shaders are
+ * too trivial to go through the compiler at this stage. */
+#define AGX_STOP \
+	0x88, 0x00, 0x08, 0x00, 0x08, 0x00, 0x08, 0x00, 0x08, \
+	0x00, 0x08, 0x00, 0x08, 0x00, 0x08, 0x00, 0x08, 0x00 \
+
+#define AGX_BLEND \
+	0x09, 0x00, 0x00, 0x04, 0xf0, 0xfc, 0x80, 0x03
+
+/* Clears the tilebuffer, where u6-u7 are preloaded with the FP16 clear colour
+
+   0: 7e018c098040         bitop_mov        r0, u6
+   6: 7e058e098000         bitop_mov        r1, u7
+   c: 09000004f0fc8003     TODO.blend
+   */
+
+static uint8_t shader_clear[] = {
+   0x7e, 0x01, 0x8c, 0x09, 0x80, 0x40,
+   0x7e, 0x05, 0x8e, 0x09, 0x80, 0x00,
+   AGX_BLEND,
+   AGX_STOP
+};
+
+static uint8_t shader_store[] = {
+   0x7e, 0x00, 0x04, 0x09, 0x80, 0x00,
+   0xb1, 0x80, 0x00, 0x80, 0x00, 0x4a, 0x00, 0x00, 0x0a, 0x00,
+   AGX_STOP
+};
+
+void
+agx_internal_shaders(struct agx_device *dev)
+{
+   unsigned clear_offset = 0;
+   unsigned store_offset = 1024;
+
+   struct agx_bo *bo = agx_bo_create(dev, 4096, AGX_MEMORY_TYPE_SHADER);
+   memcpy(((uint8_t *) bo->ptr.cpu) + clear_offset, shader_clear, sizeof(shader_clear));
+   memcpy(((uint8_t *) bo->ptr.cpu) + store_offset, shader_store, sizeof(shader_store));
+
+   dev->internal.bo = bo;
+   dev->internal.clear = bo->ptr.gpu + clear_offset;
+   dev->internal.store = bo->ptr.gpu + store_offset;
+
+   agx_build_reload_shader(dev);
 }
