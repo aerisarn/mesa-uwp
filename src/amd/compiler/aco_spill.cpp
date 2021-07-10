@@ -1128,7 +1128,7 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
       aco_ptr<Instruction>& instr = block->instructions[idx];
 
       std::map<Temp, std::pair<Temp, uint32_t>> reloads;
-      std::map<Temp, uint32_t> spills;
+
       /* rename and reload operands */
       for (Operand& op : instr->operands) {
          if (!op.isTemp())
