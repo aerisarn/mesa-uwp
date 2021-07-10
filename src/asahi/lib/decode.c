@@ -217,6 +217,7 @@ agxdecode_map_read_write(void)
 #define agxdecode_msg(str) fprintf(agxdecode_dump_stream, "// %s", str)
 
 unsigned agxdecode_indent = 0;
+uint64_t pipeline_base = 0;
 
 static void
 agxdecode_dump_bo(struct agx_bo *bo, const char *name)
@@ -376,6 +377,8 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
       }
 
       DUMP_UNPACKED(BIND_PIPELINE, cmd, "Bind fragment pipeline\n");
+   } else if (size == 0) {
+      pipeline_base = va;
    } else {
       fprintf(agxdecode_dump_stream, "Record %" PRIx64 "\n", va);
       hexdump(agxdecode_dump_stream, map, size, false);
@@ -408,6 +411,12 @@ agxdecode_cmd(const uint8_t *map, bool verbose)
    } else if (map[1] == 0x00 && map[2] == 0x00) {
       /* No need to explicitly dump the record */
       agx_unpack(agxdecode_dump_stream, map, RECORD, cmd);
+
+      /* XXX: Why? */
+      if (pipeline_base && ((cmd.data >> 32) == 0)) {
+         cmd.data |= pipeline_base & 0xFF00000000ull;
+      }
+
       struct agx_bo *mem = agxdecode_find_mapped_gpu_mem_containing(cmd.data);
 
       if (mem)
