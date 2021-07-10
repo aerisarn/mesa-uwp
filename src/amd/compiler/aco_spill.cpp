@@ -359,10 +359,11 @@ local_next_uses(spill_ctx& ctx, Block* block)
 {
    std::vector<std::map<Temp, uint32_t>> local_next_uses(block->instructions.size());
 
-   std::map<Temp, uint32_t> next_uses;
    for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair :
-        ctx.next_use_distances_end[block->index])
-      next_uses.insert({pair.first, pair.second.second + block->instructions.size()});
+        ctx.next_use_distances_end[block->index]) {
+      local_next_uses[block->instructions.size() - 1].insert(
+         {pair.first, pair.second.second + block->instructions.size()});
+   }
 
    for (int idx = block->instructions.size() - 1; idx >= 0; idx--) {
       aco_ptr<Instruction>& instr = block->instructions[idx];
@@ -371,19 +372,24 @@ local_next_uses(spill_ctx& ctx, Block* block)
       if (instr->opcode == aco_opcode::p_phi || instr->opcode == aco_opcode::p_linear_phi)
          break;
 
+      if (idx != (int)block->instructions.size() - 1) {
+         local_next_uses[idx] = local_next_uses[idx + 1];
+      }
+
       for (const Operand& op : instr->operands) {
          if (op.isFixed() && op.physReg() == exec)
             continue;
          if (op.regClass().type() == RegType::vgpr && op.regClass().is_linear())
             continue;
-         if (op.isTemp())
-            next_uses[op.getTemp()] = idx;
+         if (op.isTemp()) {
+            local_next_uses[idx][op.getTemp()] = idx;
+         }
       }
       for (const Definition& def : instr->definitions) {
-         if (def.isTemp())
-            next_uses.erase(def.getTemp());
+         if (def.isTemp()) {
+            local_next_uses[idx].erase(def.getTemp());
+         }
       }
-      local_next_uses[idx] = next_uses;
    }
    return local_next_uses;
 }
