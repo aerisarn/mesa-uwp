@@ -392,7 +392,7 @@ agxdecode_cmd(const uint8_t *map, bool verbose)
 
       return AGX_RECORD_LENGTH;
    } else if (map[0] == 0 && map[1] == 0 && map[2] == 0xC0 && map[3] == 0x00) {
-      ASSERTED unsigned zero[16] = { 0 };
+      ASSERTED unsigned zero[4] = { 0 };
       assert(memcmp(map + 4, zero, sizeof(zero)) == 0);
       return STATE_DONE;
    } else {
