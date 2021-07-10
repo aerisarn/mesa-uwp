@@ -847,7 +847,7 @@ void
 mitigate_hazards(Program* program)
 {
    std::vector<Ctx> all_ctx(program->blocks.size());
-   std::stack<unsigned> loop_header_indices;
+   std::stack<unsigned, std::vector<unsigned>> loop_header_indices;
 
    for (unsigned i = 0; i < program->blocks.size(); i++) {
       Block& block = program->blocks[i];

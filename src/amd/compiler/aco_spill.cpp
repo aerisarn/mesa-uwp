@@ -56,7 +56,7 @@ struct spill_ctx {
    std::vector<std::map<Temp, uint32_t>> spills_entry;
    std::vector<std::map<Temp, uint32_t>> spills_exit;
    std::vector<bool> processed;
-   std::stack<Block*> loop_header;
+   std::stack<Block*, std::vector<Block*>> loop_header;
    std::vector<std::map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_start;
    std::vector<std::map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_end;
    std::vector<std::pair<RegClass, std::unordered_set<uint32_t>>> interferences;

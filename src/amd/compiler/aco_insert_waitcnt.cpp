@@ -767,7 +767,7 @@ insert_wait_states(Program* program)
    std::vector<wait_ctx> in_ctx(program->blocks.size(), wait_ctx(program));
    std::vector<wait_ctx> out_ctx(program->blocks.size(), wait_ctx(program));
 
-   std::stack<unsigned> loop_header_indices;
+   std::stack<unsigned, std::vector<unsigned>> loop_header_indices;
    unsigned loop_progress = 0;
 
    for (unsigned i = 0; i < program->blocks.size();) {

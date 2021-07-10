@@ -11811,7 +11811,7 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
    Temp vtx_offset = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand::c32(2u),
                               get_arg(&ctx, ctx.args->ac.vertex_id));
 
-   std::stack<if_context> if_contexts;
+   std::stack<if_context, std::vector<if_context>> if_contexts;
 
    for (unsigned stream = 0; stream < 4; stream++) {
       if (stream_id.isConstant() && stream != stream_id.constantValue())
