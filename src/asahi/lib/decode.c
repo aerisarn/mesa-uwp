@@ -426,12 +426,16 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
 }
 
 void
-agxdecode_dump_mappings(void)
+agxdecode_dump_mappings(unsigned map_handle)
 {
    agxdecode_dump_file_open();
 
+   struct agx_bo *map = agxdecode_find_handle(map_handle, AGX_ALLOC_MEMMAP);
+   assert(map != NULL && "nonexistant mapping");
+   agxdecode_validate_map(map->ptr.cpu);
+
    for (unsigned i = 0; i < mmap_count; ++i) {
-      if (!mmap_array[i].ptr.cpu || !mmap_array[i].size)
+      if (!mmap_array[i].ptr.cpu || !mmap_array[i].size || !mmap_array[i].mapped)
          continue;
 
       assert(mmap_array[i].type < AGX_NUM_ALLOC);
