@@ -217,7 +217,7 @@ next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>& work
    }
 
    /* all remaining live vars must be live-out at the predecessors */
-   for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : next_uses) {
+   for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair : next_uses) {
       Temp temp = pair.first;
       uint32_t distance = pair.second.second;
       uint32_t dom = pair.second.first;
@@ -360,7 +360,7 @@ local_next_uses(spill_ctx& ctx, Block* block)
    std::vector<std::map<Temp, uint32_t>> local_next_uses(block->instructions.size());
 
    std::map<Temp, uint32_t> next_uses;
-   for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair :
+   for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair :
         ctx.next_use_distances_end[block->index])
       next_uses[pair.first] = pair.second.second + block->instructions.size();
 
@@ -489,7 +489,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
 
          unsigned distance = 0;
          Temp to_spill;
-         for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : next_use_distances) {
+         for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair : next_use_distances) {
             if (pair.first.type() == type &&
                 (pair.second.first >= loop_end ||
                  (ctx.remat.count(pair.first) && type == RegType::sgpr)) &&
@@ -533,7 +533,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
          Temp to_spill;
          type = reg_pressure.vgpr > ctx.target_pressure.vgpr ? RegType::vgpr : RegType::sgpr;
 
-         for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : next_use_distances) {
+         for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair : next_use_distances) {
             if (pair.first.type() == type && pair.second.second > distance &&
                 ctx.spills_entry[block_idx].find(pair.first) == ctx.spills_entry[block_idx].end()) {
                to_spill = pair.first;
@@ -604,7 +604,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
    std::set<Temp> partial_spills;
 
    /* keep variables spilled on all incoming paths */
-   for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : next_use_distances) {
+   for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair : next_use_distances) {
       std::vector<unsigned>& preds =
          pair.first.is_linear() ? block->linear_preds : block->logical_preds;
       /* If it can be rematerialized, keep the variable spilled if all predecessors do not reload
@@ -722,7 +722,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
       unsigned insert_idx = 0;
       RegisterDemand demand_before = get_demand_before(ctx, block_idx, 0);
 
-      for (std::pair<Temp, std::pair<uint32_t, uint32_t>> live :
+      for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& live :
            ctx.next_use_distances_start[block_idx]) {
          const unsigned pred_idx = block->linear_preds[0];
 
@@ -758,7 +758,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          } while (instructions.back()->opcode != aco_opcode::p_logical_start);
 
          unsigned pred_idx = block->logical_preds[0];
-         for (std::pair<Temp, std::pair<uint32_t, uint32_t>> live :
+         for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& live :
               ctx.next_use_distances_start[block_idx]) {
             if (live.first.is_linear())
                continue;
@@ -993,7 +993,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
 
    /* iterate live variables for which to reload */
    // TODO: reload at current block if variable is spilled on all predecessors
-   for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair :
+   for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair :
         ctx.next_use_distances_start[block_idx]) {
       /* skip spilled variables */
       if (ctx.spills_entry[block_idx].find(pair.first) != ctx.spills_entry[block_idx].end())
@@ -1189,7 +1189,7 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
             /* add interferences with currently spilled variables */
             for (std::pair<Temp, uint32_t> pair : current_spills)
                ctx.add_interference(spill_id, pair.second);
-            for (std::pair<Temp, std::pair<Temp, uint32_t>> pair : reloads)
+            for (std::pair<const Temp, std::pair<Temp, uint32_t>>& pair : reloads)
                ctx.add_interference(spill_id, pair.second.second);
 
             current_spills[to_spill] = spill_id;
@@ -1210,7 +1210,7 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
       }
 
       /* add reloads and instruction to new instructions */
-      for (std::pair<Temp, std::pair<Temp, uint32_t>> pair : reloads) {
+      for (std::pair<const Temp, std::pair<Temp, uint32_t>>& pair : reloads) {
          aco_ptr<Instruction> reload =
             do_reload(ctx, pair.second.first, pair.first, pair.second.second);
          instructions.emplace_back(std::move(reload));
