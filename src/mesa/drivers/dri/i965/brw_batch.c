@@ -862,7 +862,7 @@ submit_batch(struct brw_context *brw, int in_fence_fd, int *out_fence_fd)
    if (ret != 0) {
       fprintf(stderr, "i965: Failed to submit batchbuffer: %s\n",
               strerror(-ret));
-      exit(1);
+      abort();
    }
 
    return ret;
