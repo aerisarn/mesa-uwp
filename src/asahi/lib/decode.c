@@ -364,6 +364,9 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
    } else if (tag == 0x10000b5) {
       assert(size == AGX_RASTERIZER_LENGTH);
       DUMP_CL(RASTERIZER, map, "Rasterizer");
+   } else if (tag == 0x200000) {
+      assert(size == AGX_CULL_LENGTH);
+      DUMP_CL(CULL, map, "Cull");
    } else if (tag == 0x800000) {
       assert(size == (AGX_BIND_PIPELINE_LENGTH + 4));
 
