@@ -411,10 +411,7 @@ agx_flush(struct pipe_context *pctx,
       return;
 
    /* Finalize the encoder */
-   uint8_t stop[] = {
-      0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, // Stop
-   };
-
+   uint8_t stop[5 + 64] = { 0x00, 0x00, 0x00, 0xc0, 0x00 };
    memcpy(ctx->batch->encoder_current, stop, sizeof(stop));
 
    /* Emit the commandbuffer */
