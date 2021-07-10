@@ -101,42 +101,67 @@ agxdecode_find_handle(unsigned handle, unsigned type)
 }
 
 static void
+agxdecode_mark_mapped(unsigned handle)
+{
+   struct agx_bo *bo = agxdecode_find_handle(handle, AGX_ALLOC_REGULAR);
+
+   if (!bo) {
+      fprintf(stderr, "ERROR - unknown BO mapped with handle %u\n", handle);
+      return;
+   }
+
+   /* Mark mapped for future consumption */
+   bo->mapped = true;
+}
+
+static void
 agxdecode_validate_map(void *map)
 {
+   unsigned nr_handles = 0;
+
    /* First, mark everything unmapped */
    for (unsigned i = 0; i < mmap_count; ++i)
       mmap_array[i].mapped = false;
 
    /* Check the header */
    struct agx_map_header *hdr = map;
-   if (hdr->nr_entries_1 == 0) {
+   if (hdr->nr_entries == 0) {
       fprintf(stderr, "ERROR - empty map\n");
       return;
    }
 
-   if (hdr->nr_entries_1 != hdr->nr_entries_2) {
-      fprintf(stderr, "WARN - mismatched map %u vs %u\n", hdr->nr_entries_1, hdr->nr_entries_2);
+   for (unsigned i = 0; i < 6; ++i) {
+      unsigned handle = hdr->indices[i];
+      if (handle) {
+         agxdecode_mark_mapped(handle);
+         nr_handles++;
+      }
    }
 
    /* Check the entries */
    struct agx_map_entry *entries = (struct agx_map_entry *) (&hdr[1]);
-   for (unsigned i = 0; i < hdr->nr_entries_1 - 1; ++i) {
+   for (unsigned i = 0; i < hdr->nr_entries - 1; ++i) {
       struct agx_map_entry entry = entries[i];
-      struct agx_bo *bo = agxdecode_find_handle(entry.index, AGX_ALLOC_REGULAR);
-
-      if (!bo) {
-         fprintf(stderr, "ERROR - unknown BO mapped with handle %u\n", entry.index);
-         continue;
+      
+      for (unsigned j = 0; j < 6; ++j) {
+         unsigned handle = entry.indices[j];
+         if (handle) {
+            agxdecode_mark_mapped(handle);
+            nr_handles++;
+         }
       }
-
-      /* Mark mapped for future consumption */
-      bo->mapped = true;
    }
 
    /* Check the sentinel */
-   if (entries[hdr->nr_entries_1 - 1].index) {
-      fprintf(stderr, "ERROR - last entry nonzero %u\n", entries[hdr->nr_entries_1 - 1].index);
+   if (entries[hdr->nr_entries - 1].indices[0]) {
+      fprintf(stderr, "ERROR - last entry nonzero %u\n", entries[hdr->nr_entries - 1].indices[0]);
       return;
+   }
+
+   /* Check the handle count */
+   if (nr_handles != hdr->nr_handles) {
+      fprintf(stderr, "ERROR - wrong handle count, got %u, expected %u\n",
+            nr_handles, hdr->nr_handles);
    }
 }
 

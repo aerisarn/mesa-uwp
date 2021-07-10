@@ -269,9 +269,9 @@ demo_map_header(uint64_t cmdbuf_id, uint64_t encoder_id, unsigned cmdbuf_size, u
       .cmdbuf_size = cmdbuf_size,
 
       /* +1 for the sentinel ending */
-      .nr_entries_1 = count + 1,
-      .nr_entries_2 = count + 1,
-      .unka = 0x0b,
+      .nr_entries = count + 1,
+      .nr_handles = count + 1,
+      .indices = {0x0b},
    };
 }
 
@@ -293,7 +293,7 @@ demo_mem_map(void *map, size_t size, unsigned *handles, unsigned count,
          .unkAAA = 0x20,
          .unkBBB = 0x1,
          .unka = 0x1ffff,
-         .index = handles[i]
+         .indices = {handles[i]}
       };
    }
 
@@ -303,6 +303,5 @@ demo_mem_map(void *map, size_t size, unsigned *handles, unsigned count,
       .unkAAA = 0x40,
       .unkBBB = 0x1,
       .unka = 0x1ffff,
-      .index = 0
    };
 }
