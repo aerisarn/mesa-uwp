@@ -453,20 +453,31 @@ void
 agxdecode_track_alloc(struct agx_bo *alloc)
 {
    assert((mmap_count + 1) < MAX_MAPPINGS);
+
+   for (unsigned i = 0; i < mmap_count; ++i) {
+      struct agx_bo *bo = &mmap_array[i];
+      bool match = (bo->handle == alloc->handle && bo->type == alloc->type);
+      assert(!match && "tried to alloc already allocated BO");
+   }
+
    mmap_array[mmap_count++] = *alloc;
 }
 
 void
 agxdecode_track_free(struct agx_bo *bo)
 {
+   bool found = false;
+
    for (unsigned i = 0; i < mmap_count; ++i) {
       if (mmap_array[i].handle == bo->handle && mmap_array[i].type == bo->type) {
-         mmap_array[i].ptr.cpu = 0;
-         mmap_array[i].ptr.gpu = 0;
-         mmap_array[i].size = 0;
-         break;
+         assert(!found && "mapped multiple times!");
+         found = true;
+
+         memset(&mmap_array[i], 0, sizeof(mmap_array[i]));
       }
    }
+
+   assert(found && "freed unmapped memory");
 }
 
 static int agxdecode_dump_frame_count = 0;
