@@ -91,6 +91,9 @@ struct agx_shader_info {
 
    /* Does the shader read the tilebuffer? */
    bool reads_tib;
+
+   /* Does the shader write point size? */
+   bool writes_psiz;
 };
 
 #define AGX_MAX_RTS (8)
