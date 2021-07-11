@@ -30,27 +30,13 @@
 
 struct cmdbuf {
    uint32_t *map;
-   unsigned offset;
 };
 
-static void
-EMIT32(struct cmdbuf *cmdbuf, uint32_t val)
-{
-   cmdbuf->map[cmdbuf->offset++] = val;
-}
-
-static void
-EMIT64(struct cmdbuf *cmdbuf, uint64_t val)
-{
-   EMIT32(cmdbuf, (val & 0xFFFFFFFF));
-   EMIT32(cmdbuf, (val >> 32));
-}
 
 static void
 EMIT_ZERO_WORDS(struct cmdbuf *cmdbuf, size_t words)
 {
-   memset(cmdbuf->map + cmdbuf->offset, 0, words * 4);
-   cmdbuf->offset += words;
+   memset(cmdbuf->map, 0, words * 4);
 }
 
 /* Odd pattern */
@@ -90,150 +76,85 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 {
    struct cmdbuf _cmdbuf = {
       .map = (uint32_t *) buf,
-      .offset = 0
    };
 
    struct cmdbuf *cmdbuf = &_cmdbuf;
 
-   EMIT_ZERO_WORDS(cmdbuf, 54);
+   EMIT_ZERO_WORDS(cmdbuf, 474);
 
-   // compute 8 bytes of zero, then reconverge at *
+   cmdbuf->map[54] = 0x6b0003;
+   cmdbuf->map[55] = 0x3a0012;
+   cmdbuf->map[56] = 1;
 
-   EMIT32(cmdbuf, 0x6b0003); // d8
-   EMIT32(cmdbuf, 0x3a0012); // dc
+   cmdbuf->map[106] = 1;
+   cmdbuf->map[108] = 0x1c;
+   cmdbuf->map[112] = 0xffffffff;
+   cmdbuf->map[113] = 0xffffffff;
+   cmdbuf->map[114] = 0xffffffff;
 
-   /* Possibly the funny pattern but not actually pointed to for vertex */
-   EMIT64(cmdbuf, 1); // e0
-   EMIT64(cmdbuf, 0); // e8
-
-   EMIT_ZERO_WORDS(cmdbuf, 44);
-
-   EMIT64(cmdbuf, 0); // blob - 0x20 bytes of zero
-   EMIT64(cmdbuf, 1); // 1a8
-
-   // * compute reconverges here at 0xe0 in my trace
-   EMIT32(cmdbuf, 0x1c); // 1b0
-
-   // compute 0xe4: [encoder ID -- from selector6 + 2 with blob], 0, 0, 0xffffffff, done for a while
-   // compute 0x120: 0x9 | 0x128: 0x40
-
-   EMIT32(cmdbuf, 0); // 1b0 - compute: 0x10000
-   EMIT64(cmdbuf, 0x0); // 1b8 -- compute 0x10000
-   EMIT32(cmdbuf, 0xffffffff); // note we can zero!
-   EMIT32(cmdbuf, 0xffffffff); // note we can zero! compute 0
-   EMIT32(cmdbuf, 0xffffffff); // note we can zero! compute 0
-   EMIT32(cmdbuf, 0);
-
-   EMIT_ZERO_WORDS(cmdbuf, 40);
+   uint64_t unk_buffer = demo_zero(pool, 0x1000);
+   uint64_t unk_buffer_2 = demo_zero(pool, 0x8000);
 
    // This is a pipeline bind
-   EMIT32(cmdbuf, 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0)); // 0x270
-   EMIT32(cmdbuf, 0);
-   EMIT64(cmdbuf, pipeline_clear | 0x4);
-   EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, 0x12);
-   EMIT64(cmdbuf, pipeline_store | 0x4);
-   EMIT64(cmdbuf, scissor_ptr);
-   EMIT64(cmdbuf, demo_zero(pool, 0x1000));
-   EMIT64(cmdbuf, 0);
+   cmdbuf->map[156] = 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0);
+   cmdbuf->map[158] = pipeline_clear | 0x4;
+   cmdbuf->map[163] = 0x12;
+   cmdbuf->map[164] = pipeline_store | 0x4;
+   cmdbuf->map[166] = scissor_ptr & 0xFFFFFFFF;
+   cmdbuf->map[167] = scissor_ptr >> 32;
+   cmdbuf->map[168] = unk_buffer & 0xFFFFFFFF;
+   cmdbuf->map[169] = unk_buffer >> 32;
 
-   EMIT_ZERO_WORDS(cmdbuf, 48);
-
-   EMIT64(cmdbuf, 4);
-   EMIT64(cmdbuf, 0xc000);
-
-   /* Note: making these smallers scissors polygons but not clear colour */
-   EMIT32(cmdbuf, width);
-   EMIT32(cmdbuf, height);
-   EMIT64(cmdbuf, demo_zero(pool, 0x8000));
-
-   EMIT_ZERO_WORDS(cmdbuf, 48);
+   cmdbuf->map[220] = 4;
+   cmdbuf->map[222] = 0xc000;
+   cmdbuf->map[224] = width;
+   cmdbuf->map[225] = height;
+   cmdbuf->map[226] = unk_buffer_2 & 0xFFFFFFFF;
+   cmdbuf->map[227] = unk_buffer_2 >> 32;
 
    float depth_clear = 1.0;
    uint8_t stencil_clear = 0;
 
-   EMIT64(cmdbuf, 0); // 0x450
-   EMIT32(cmdbuf, fui(depth_clear));
-   EMIT32(cmdbuf, (0x3 << 8) | stencil_clear);
-   EMIT64(cmdbuf, 0);
-   EMIT64(cmdbuf, 0x1000000);
-   EMIT32(cmdbuf, 0xffffffff);
-   EMIT32(cmdbuf, 0xffffffff);
-   EMIT32(cmdbuf, 0xffffffff);
-   EMIT32(cmdbuf, 0);
+   cmdbuf->map[278] = fui(depth_clear);
+   cmdbuf->map[279] = (0x3 << 8) | stencil_clear;
+   cmdbuf->map[282] = 0x1000000;
+   cmdbuf->map[284] = 0xffffffff;
+   cmdbuf->map[285] = 0xffffffff;
+   cmdbuf->map[286] = 0xffffffff;
 
-   EMIT_ZERO_WORDS(cmdbuf, 8);
+   cmdbuf->map[298] = 0xffff8212;
+   cmdbuf->map[300] = pipeline_null | 0x4;
+   cmdbuf->map[305] = 0x12;
+   cmdbuf->map[306] = pipeline_store | 0x4;
+   cmdbuf->map[352] = 1;
+   cmdbuf->map[360] = 0x1c;
+   cmdbuf->map[362] = encoder_id;
+   cmdbuf->map[365] = 0xffffffff;
+   cmdbuf->map[366] = 1;
 
-   EMIT64(cmdbuf, 0); // 0x4a0
-   EMIT32(cmdbuf, 0xffff8212);
-   EMIT32(cmdbuf, 0);
+   uint64_t unk6 = demo_unk6(pool);
+   cmdbuf->map[370] = unk6 & 0xFFFFFFFF;
+   cmdbuf->map[371] = unk6 >> 32;
 
-   EMIT64(cmdbuf, pipeline_null | 0x4);
-   EMIT64(cmdbuf, 0);
+   cmdbuf->map[374] = width;
+   cmdbuf->map[375] = height;
+   cmdbuf->map[376] = 1;
+   cmdbuf->map[377] = 8;
+   cmdbuf->map[378] = 8;
 
-   EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, 0x12);
-   EMIT32(cmdbuf, pipeline_store | 0x4);
-   EMIT32(cmdbuf, 0);
+   cmdbuf->map[393] = 8;
+   cmdbuf->map[394] = 32;
+   cmdbuf->map[395] = 32;
+   cmdbuf->map[396] = 1;
 
-   EMIT_ZERO_WORDS(cmdbuf, 44);
-
-   EMIT64(cmdbuf, 1); // 0x580
-   EMIT64(cmdbuf, 0);
-   EMIT_ZERO_WORDS(cmdbuf, 4);
-
-   /* Compare compute case ,which has a bit of reordering, but we can swap */
-   EMIT32(cmdbuf, 0x1c); // 0x5a0
-   EMIT32(cmdbuf, 0);
-   EMIT64(cmdbuf, encoder_id);
-   EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, 0xffffffff);
-
-   // remark: opposite order for compute, but we can swap the orders
-   EMIT32(cmdbuf, 1);
-   EMIT32(cmdbuf, 0);
-   EMIT64(cmdbuf, 0);
-   EMIT64(cmdbuf, demo_unk6(pool));
-
-   /* note: width/height act like scissor, but changing the 0s doesn't
-    * seem to affect (maybe scissor enable bit missing), _and this affects
-    * the clear_ .. bbox maybe */
-   EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, width); // can increase up to 16384
-   EMIT32(cmdbuf, height);
-
-   EMIT32(cmdbuf, 1);
-   EMIT32(cmdbuf, 8);
-   EMIT32(cmdbuf, 8);
-   EMIT32(cmdbuf, 0);
-
-   EMIT_ZERO_WORDS(cmdbuf, 12);
-
-   EMIT32(cmdbuf, 0); // 0x620
-   EMIT32(cmdbuf, 8);
-   EMIT32(cmdbuf, 0x20);
-   EMIT32(cmdbuf, 0x20);
-   EMIT32(cmdbuf, 0x1);
-   EMIT32(cmdbuf, 0);
-   EMIT64(cmdbuf, 0);
-
-   EMIT_ZERO_WORDS(cmdbuf, 58);
-
-   unsigned offset_unk = (cmdbuf->offset * 4);
-   EMIT_ZERO_WORDS(cmdbuf, 12);
-
-   unsigned offset_attachments = (cmdbuf->offset * 4);
+   unsigned offset_unk = (458 * 4);
+   unsigned offset_attachments = (470 * 4);
    unsigned nr_attachments = 1;
-   EMIT32(cmdbuf, 0); // 0x758
-   EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, 0);
-   EMIT32(cmdbuf, nr_attachments);
+
+   cmdbuf->map[473] = nr_attachments;
 
    /* A single attachment follows, depth/stencil have their own attachments */
-   agx_pack((cmdbuf->map + cmdbuf->offset), IOGPU_ATTACHMENT, cfg) {
+   agx_pack((cmdbuf->map + (offset_attachments / 4) + 4), IOGPU_ATTACHMENT, cfg) {
       cfg.address = rt0;
       cfg.type = AGX_IOGPU_ATTACHMENT_TYPE_COLOUR;
       cfg.unk_1 = 0x80000000;
@@ -242,9 +163,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.percent = 100;
    }
 
-   cmdbuf->offset += (AGX_IOGPU_ATTACHMENT_LENGTH / 4);
-
-   unsigned total_size = (cmdbuf->offset * 4);
+   unsigned total_size = offset_attachments + (AGX_IOGPU_ATTACHMENT_LENGTH * nr_attachments) + 16;
 
    agx_pack(cmdbuf->map, IOGPU_HEADER, cfg) {
       cfg.total_size = total_size;
