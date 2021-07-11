@@ -211,4 +211,7 @@ struct agx_map_entry {
 	uint32_t indices[6];
 } __attribute__((packed));
 
+uint64_t
+agx_get_global_id(struct agx_device *dev);
+
 #endif

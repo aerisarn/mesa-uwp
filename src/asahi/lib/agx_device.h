@@ -46,6 +46,7 @@ struct agx_device {
    /* XXX What to bind to? I don't understand the IOGPU UABI */
    struct agx_command_queue queue;
    struct agx_bo cmdbuf, memmap;
+   uint64_t next_global_id, last_global_id;
 
    /* Device handle */
 #if __APPLE__
@@ -89,7 +90,7 @@ void
 agx_shmem_free(struct agx_device *dev, unsigned handle);
 
 uint64_t
-agx_cmdbuf_global_ids(struct agx_device *dev);
+agx_get_global_id(struct agx_device *dev);
 
 struct agx_command_queue
 agx_create_command_queue(struct agx_device *dev);

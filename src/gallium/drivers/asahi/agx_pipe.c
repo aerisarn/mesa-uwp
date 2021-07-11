@@ -510,8 +510,8 @@ agx_flush(struct pipe_context *pctx,
    /* Size calculation should've been exact */
    assert(handle_i == handle_count);
 
-   unsigned cmdbuf_id = 0xDEADBEEF;
-   unsigned encoder_id = 0xCAFECAFE;
+   unsigned cmdbuf_id = agx_get_global_id(dev);
+   unsigned encoder_id = agx_get_global_id(dev);
 
    unsigned cmdbuf_size = demo_cmdbuf(dev->cmdbuf.ptr.cpu,
                dev->cmdbuf.size,
