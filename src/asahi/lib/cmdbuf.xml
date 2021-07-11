@@ -130,8 +130,8 @@
   </enum>
 
   <struct name="Varying header" size="4">
-    <field name="Slots 1" size="8" start="0:0" type="uint"/>
-    <field name="Slots 2" size="8" start="0:8" type="uint"/>
+    <field name="Triangle slots" size="8" start="0:0" type="uint"/>
+    <field name="Point slots" size="8" start="0:8" type="uint"/>
   </struct>
 
   <enum name="Varying Type">
@@ -140,13 +140,14 @@
     <value name="Fragcoord W" value="3"/>
     <value name="Smooth" value="7"/>
     <value name="Fragcoord Z" value="11"/>
+    <value name="Point coordinates" value="19"/>
   </enum>
 
   <struct name="Varying" size="4">
     <field name="Components" size="2" start="0" type="uint" modifier="minus(1)"/>
     <field name="Type" size="6" start="2" type="Varying Type" default="Smooth"/>
-    <field name="Slot 1" size="8" start="8" type="uint"/>
-    <field name="Slot 2" size="8" start="16" type="uint"/>
+    <field name="Triangle slot" size="8" start="8" type="uint"/>
+    <field name="Point slot" size="8" start="16" type="uint"/>
   </struct>
 
   <struct name="Format" size="2">

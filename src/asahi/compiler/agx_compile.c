@@ -1212,7 +1212,7 @@ agx_remap_varyings_fs(nir_shader *nir, struct agx_varyings *varyings,
    agx_pack(packed, VARYING, cfg) {
       cfg.type = AGX_VARYING_TYPE_FRAGCOORD_W;
       cfg.components = 1;
-      cfg.slot_1 = cfg.slot_2 = base;
+      cfg.triangle_slot = cfg.point_slot = base;
    }
 
    base++;
@@ -1221,7 +1221,7 @@ agx_remap_varyings_fs(nir_shader *nir, struct agx_varyings *varyings,
    agx_pack(packed, VARYING, cfg) {
       cfg.type = AGX_VARYING_TYPE_FRAGCOORD_Z;
       cfg.components = 1;
-      cfg.slot_1 = cfg.slot_2 = base;
+      cfg.triangle_slot = cfg.point_slot = base;
    }
 
    base++;
@@ -1258,7 +1258,7 @@ agx_remap_varyings_fs(nir_shader *nir, struct agx_varyings *varyings,
               AGX_VARYING_TYPE_FLAT_LAST :
               AGX_VARYING_TYPE_SMOOTH;
            cfg.components = channels;
-           cfg.slot_1 = cfg.slot_2 = base;
+           cfg.triangle_slot = cfg.point_slot = base;
         }
 
         base += channels;

@@ -895,7 +895,7 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    uint8_t *packed_varyings = alloca(packed_varying_sz);
 
    agx_pack(packed_varyings, VARYING_HEADER, cfg) {
-      cfg.slots_1 = cfg.slots_2 = varyings->nr_slots;
+      cfg.triangle_slots = cfg.point_slots = varyings->nr_slots;
    }
 
    memcpy(packed_varyings + AGX_VARYING_HEADER_LENGTH, varyings->packed,
