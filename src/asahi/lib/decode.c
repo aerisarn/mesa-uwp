@@ -377,6 +377,14 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
       if (cmd.fs_varyings) {
          uint8_t *map = agxdecode_fetch_gpu_mem(cmd.fs_varyings, 128);
          hexdump(agxdecode_dump_stream, map, 128, false);
+
+         DUMP_CL(VARYING_HEADER, map, "Varying header:");
+         map += AGX_VARYING_HEADER_LENGTH;
+
+         for (unsigned i = 0; i < cmd.input_count; ++i) {
+            DUMP_CL(VARYING, map, "Varying:");
+            map += AGX_VARYING_LENGTH;
+         }
       }
 
       DUMP_UNPACKED(BIND_PIPELINE, cmd, "Bind fragment pipeline\n");
