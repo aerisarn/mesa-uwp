@@ -1354,20 +1354,21 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool)
 }
 
 static uint64_t
-demo_unk11(struct agx_pool *pool, bool prim_lines, bool reads_tib)
+demo_unk11(struct agx_pool *pool, bool prim_lines, bool prim_points, bool reads_tib)
 {
 #define UNK11_FILL_MODE_LINES_1 (1 << 26)
 
 #define UNK11_FILL_MODE_LINES_2 (0x5004 << 16)
 #define UNK11_LINES (0x10000000)
+#define UNK11_POINTS (0x40000000)
 
 #define UNK11_READS_TIB (0x20000000)
 
    uint32_t unk[] = {
       0x200004a,
-      0x200 | (prim_lines ? UNK11_FILL_MODE_LINES_1 : 0) | (reads_tib ? UNK11_READS_TIB : 0),
-      0x7e00000 | (prim_lines ? UNK11_LINES : 0),
-      0x7e00000 | (prim_lines ? UNK11_LINES : 0),
+      0x200 | ((prim_lines || prim_points) ? UNK11_FILL_MODE_LINES_1 : 0) | (reads_tib ? UNK11_READS_TIB : 0),
+      0x7e00000 | (prim_lines ? UNK11_LINES : 0) | (prim_points ? UNK11_POINTS : 0),
+      0x7e00000 | (prim_lines ? UNK11_LINES : 0) | (prim_points ? UNK11_POINTS : 0),
 
       0x1ffff
    };
@@ -1413,7 +1414,7 @@ agx_push_record(uint8_t **out, unsigned size_words, uint64_t ptr)
 static uint8_t *
 agx_encode_state(struct agx_context *ctx, uint8_t *out,
                  uint32_t pipeline_vertex, uint32_t pipeline_fragment, uint32_t varyings,
-                 bool is_lines)
+                 bool is_lines, bool is_points)
 {
    agx_pack(out, BIND_PIPELINE, cfg) {
       cfg.tag = AGX_BIND_PIPELINE_VERTEX;
@@ -1439,7 +1440,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    agx_push_record(&out, 5, demo_launch_fragment(ctx, pool, pipeline_fragment, varyings, ctx->fs->info.varyings.nr_descs));
    agx_push_record(&out, 4, demo_linkage(ctx->vs, pool));
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool));
-   agx_push_record(&out, 5, demo_unk11(pool, is_lines, reads_tib));
+   agx_push_record(&out, 5, demo_unk11(pool, is_lines, is_points, reads_tib));
 
    if (ctx->dirty & (AGX_DIRTY_VIEWPORT | AGX_DIRTY_SCISSOR)) {
       struct agx_viewport_scissor vps = agx_upload_viewport_scissor(pool,
@@ -1542,7 +1543,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    uint8_t *out = agx_encode_state(ctx, batch->encoder_current,
                                    agx_build_pipeline(ctx, ctx->vs, PIPE_SHADER_VERTEX),
                                    agx_build_pipeline(ctx, ctx->fs, PIPE_SHADER_FRAGMENT),
-                                   ctx->fs->varyings, is_lines);
+                                   ctx->fs->varyings, is_lines, info->mode == PIPE_PRIM_POINTS);
 
    enum agx_primitive prim = agx_primitive_for_pipe(info->mode);
    unsigned idx_size = info->index_size;
