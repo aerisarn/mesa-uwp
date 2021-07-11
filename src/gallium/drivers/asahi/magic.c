@@ -28,17 +28,6 @@
 /* The structures managed in this file appear to be software defined (either in
  * the macOS kernel driver or in the AGX firmware) */
 
-struct cmdbuf {
-   uint32_t *map;
-};
-
-
-static void
-EMIT_ZERO_WORDS(struct cmdbuf *cmdbuf, size_t words)
-{
-   memset(cmdbuf->map, 0, words * 4);
-}
-
 /* Odd pattern */
 static uint64_t
 demo_unk6(struct agx_pool *pool)
@@ -74,87 +63,82 @@ demo_cmdbuf(uint64_t *buf, size_t size,
             uint64_t rt0,
             bool clear_pipeline_textures)
 {
-   struct cmdbuf _cmdbuf = {
-      .map = (uint32_t *) buf,
-   };
+   uint32_t *map = (uint32_t *) buf;
+   memset(map, 0, 474 * 4);
 
-   struct cmdbuf *cmdbuf = &_cmdbuf;
+   map[54] = 0x6b0003;
+   map[55] = 0x3a0012;
+   map[56] = 1;
 
-   EMIT_ZERO_WORDS(cmdbuf, 474);
-
-   cmdbuf->map[54] = 0x6b0003;
-   cmdbuf->map[55] = 0x3a0012;
-   cmdbuf->map[56] = 1;
-
-   cmdbuf->map[106] = 1;
-   cmdbuf->map[108] = 0x1c;
-   cmdbuf->map[112] = 0xffffffff;
-   cmdbuf->map[113] = 0xffffffff;
-   cmdbuf->map[114] = 0xffffffff;
+   map[106] = 1;
+   map[108] = 0x1c;
+   map[112] = 0xffffffff;
+   map[113] = 0xffffffff;
+   map[114] = 0xffffffff;
 
    uint64_t unk_buffer = demo_zero(pool, 0x1000);
    uint64_t unk_buffer_2 = demo_zero(pool, 0x8000);
 
    // This is a pipeline bind
-   cmdbuf->map[156] = 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0);
-   cmdbuf->map[158] = pipeline_clear | 0x4;
-   cmdbuf->map[163] = 0x12;
-   cmdbuf->map[164] = pipeline_store | 0x4;
-   cmdbuf->map[166] = scissor_ptr & 0xFFFFFFFF;
-   cmdbuf->map[167] = scissor_ptr >> 32;
-   cmdbuf->map[168] = unk_buffer & 0xFFFFFFFF;
-   cmdbuf->map[169] = unk_buffer >> 32;
+   map[156] = 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0);
+   map[158] = pipeline_clear | 0x4;
+   map[163] = 0x12;
+   map[164] = pipeline_store | 0x4;
+   map[166] = scissor_ptr & 0xFFFFFFFF;
+   map[167] = scissor_ptr >> 32;
+   map[168] = unk_buffer & 0xFFFFFFFF;
+   map[169] = unk_buffer >> 32;
 
-   cmdbuf->map[220] = 4;
-   cmdbuf->map[222] = 0xc000;
-   cmdbuf->map[224] = width;
-   cmdbuf->map[225] = height;
-   cmdbuf->map[226] = unk_buffer_2 & 0xFFFFFFFF;
-   cmdbuf->map[227] = unk_buffer_2 >> 32;
+   map[220] = 4;
+   map[222] = 0xc000;
+   map[224] = width;
+   map[225] = height;
+   map[226] = unk_buffer_2 & 0xFFFFFFFF;
+   map[227] = unk_buffer_2 >> 32;
 
    float depth_clear = 1.0;
    uint8_t stencil_clear = 0;
 
-   cmdbuf->map[278] = fui(depth_clear);
-   cmdbuf->map[279] = (0x3 << 8) | stencil_clear;
-   cmdbuf->map[282] = 0x1000000;
-   cmdbuf->map[284] = 0xffffffff;
-   cmdbuf->map[285] = 0xffffffff;
-   cmdbuf->map[286] = 0xffffffff;
+   map[278] = fui(depth_clear);
+   map[279] = (0x3 << 8) | stencil_clear;
+   map[282] = 0x1000000;
+   map[284] = 0xffffffff;
+   map[285] = 0xffffffff;
+   map[286] = 0xffffffff;
 
-   cmdbuf->map[298] = 0xffff8212;
-   cmdbuf->map[300] = pipeline_null | 0x4;
-   cmdbuf->map[305] = 0x12;
-   cmdbuf->map[306] = pipeline_store | 0x4;
-   cmdbuf->map[352] = 1;
-   cmdbuf->map[360] = 0x1c;
-   cmdbuf->map[362] = encoder_id;
-   cmdbuf->map[365] = 0xffffffff;
-   cmdbuf->map[366] = 1;
+   map[298] = 0xffff8212;
+   map[300] = pipeline_null | 0x4;
+   map[305] = 0x12;
+   map[306] = pipeline_store | 0x4;
+   map[352] = 1;
+   map[360] = 0x1c;
+   map[362] = encoder_id;
+   map[365] = 0xffffffff;
+   map[366] = 1;
 
    uint64_t unk6 = demo_unk6(pool);
-   cmdbuf->map[370] = unk6 & 0xFFFFFFFF;
-   cmdbuf->map[371] = unk6 >> 32;
+   map[370] = unk6 & 0xFFFFFFFF;
+   map[371] = unk6 >> 32;
 
-   cmdbuf->map[374] = width;
-   cmdbuf->map[375] = height;
-   cmdbuf->map[376] = 1;
-   cmdbuf->map[377] = 8;
-   cmdbuf->map[378] = 8;
+   map[374] = width;
+   map[375] = height;
+   map[376] = 1;
+   map[377] = 8;
+   map[378] = 8;
 
-   cmdbuf->map[393] = 8;
-   cmdbuf->map[394] = 32;
-   cmdbuf->map[395] = 32;
-   cmdbuf->map[396] = 1;
+   map[393] = 8;
+   map[394] = 32;
+   map[395] = 32;
+   map[396] = 1;
 
    unsigned offset_unk = (458 * 4);
    unsigned offset_attachments = (470 * 4);
    unsigned nr_attachments = 1;
 
-   cmdbuf->map[473] = nr_attachments;
+   map[473] = nr_attachments;
 
    /* A single attachment follows, depth/stencil have their own attachments */
-   agx_pack((cmdbuf->map + (offset_attachments / 4) + 4), IOGPU_ATTACHMENT, cfg) {
+   agx_pack((map + (offset_attachments / 4) + 4), IOGPU_ATTACHMENT, cfg) {
       cfg.address = rt0;
       cfg.type = AGX_IOGPU_ATTACHMENT_TYPE_COLOUR;
       cfg.unk_1 = 0x80000000;
@@ -165,7 +149,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 
    unsigned total_size = offset_attachments + (AGX_IOGPU_ATTACHMENT_LENGTH * nr_attachments) + 16;
 
-   agx_pack(cmdbuf->map, IOGPU_HEADER, cfg) {
+   agx_pack(map, IOGPU_HEADER, cfg) {
       cfg.total_size = total_size;
       cfg.attachment_offset_1 = offset_attachments;
       cfg.attachment_offset_2 = offset_attachments;
