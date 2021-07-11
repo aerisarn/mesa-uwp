@@ -1254,9 +1254,12 @@ agx_remap_varyings_fs(nir_shader *nir, struct agx_varyings *varyings,
 
      for (int c = 0; c < sz; ++c) {
         agx_pack(packed, VARYING, cfg) {
-           cfg.type = (var->data.interpolation == INTERP_MODE_FLAT) ?
-              AGX_VARYING_TYPE_FLAT_LAST :
-              AGX_VARYING_TYPE_SMOOTH;
+           cfg.type = (var->data.location == VARYING_SLOT_PNTC) ?
+              AGX_VARYING_TYPE_POINT_COORDINATES :
+              (var->data.interpolation == INTERP_MODE_FLAT) ?
+                 AGX_VARYING_TYPE_FLAT_LAST :
+                 AGX_VARYING_TYPE_SMOOTH;
+
            cfg.components = channels;
            cfg.triangle_slot = cfg.point_slot = base;
         }
