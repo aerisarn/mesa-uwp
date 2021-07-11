@@ -459,6 +459,20 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    uint64_t *encoder = ((uint64_t *) cmdbuf->ptr.cpu) + 7;
    agxdecode_stateful(*encoder, "Encoder", agxdecode_cmd, verbose);
 
+   uint64_t *clear_pipeline = ((uint64_t *) cmdbuf->ptr.cpu) + 79;
+   if (*clear_pipeline) {
+      assert(((*clear_pipeline) & 0xF) == 0x4);
+      agxdecode_stateful((*clear_pipeline) & ~0xF, "Clear pipeline",
+            agxdecode_pipeline, verbose);
+   }
+
+   uint64_t *store_pipeline = ((uint64_t *) cmdbuf->ptr.cpu) + 82;
+   if (*store_pipeline) {
+      assert(((*store_pipeline) & 0xF) == 0x4);
+      agxdecode_stateful((*store_pipeline) & ~0xF, "Store pipeline",
+            agxdecode_pipeline, verbose);
+   }
+
    agxdecode_map_read_write();
 }
 
