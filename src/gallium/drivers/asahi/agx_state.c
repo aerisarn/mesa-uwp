@@ -1321,7 +1321,7 @@ demo_linkage(struct agx_compiled_shader *vs, struct agx_pool *pool)
 }
 
 static uint64_t
-demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool)
+demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool, bool is_points)
 {
    struct agx_rasterizer *rast = ctx->rast;
    struct agx_rasterizer_packed out;
@@ -1335,6 +1335,8 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool)
 
       cfg.front.line_width = cfg.back.line_width = rast->line_width;
       cfg.front.polygon_mode = cfg.back.polygon_mode = AGX_POLYGON_MODE_FILL;
+
+      cfg.unk_fill_lines = is_points; /* XXX: what is this? */
 
       /* Always enable scissoring so we may scissor to the viewport (TODO:
        * optimize this out if the viewport is the default and the app does not
@@ -1439,7 +1441,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    agx_push_record(&out, 5, demo_interpolation(ctx->fs, pool));
    agx_push_record(&out, 5, demo_launch_fragment(ctx, pool, pipeline_fragment, varyings, ctx->fs->info.varyings.nr_descs));
    agx_push_record(&out, 4, demo_linkage(ctx->vs, pool));
-   agx_push_record(&out, 7, demo_rasterizer(ctx, pool));
+   agx_push_record(&out, 7, demo_rasterizer(ctx, pool, is_points));
    agx_push_record(&out, 5, demo_unk11(pool, is_lines, is_points, reads_tib));
 
    if (ctx->dirty & (AGX_DIRTY_VIEWPORT | AGX_DIRTY_SCISSOR)) {
