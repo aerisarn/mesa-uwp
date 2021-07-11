@@ -34,7 +34,7 @@
 
 #include "pipe/p_state.h"
 #include "pipe/p_defines.h"
-
+#include "util/u_cpu_detect.h"
 
 /*
  * TGSI translation limits.
@@ -85,6 +85,11 @@
  */
 #define LP_MAX_TGSI_LOOP_ITERATIONS 65535
 
+static inline bool
+lp_has_fp16(void)
+{
+   return util_get_cpu_caps()->has_f16c;
+}
 
 /**
  * Some of these limits are actually infinite (i.e., only limited by available

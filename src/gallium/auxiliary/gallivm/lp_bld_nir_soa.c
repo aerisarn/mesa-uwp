@@ -2356,6 +2356,12 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
       lp_build_context_init(&bld.bld_base.dbl_bld, gallivm, dbl_type);
    }
    {
+      struct lp_type half_type;
+      half_type = type;
+      half_type.width /= 2;
+      lp_build_context_init(&bld.bld_base.half_bld, gallivm, half_type);
+   }
+   {
       struct lp_type uint64_type;
       uint64_type = lp_uint_type(type);
       uint64_type.width *= 2;

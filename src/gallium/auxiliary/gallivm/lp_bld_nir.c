@@ -48,7 +48,7 @@ static LLVMValueRef cast_type(struct lp_build_nir_context *bld_base, LLVMValueRe
    case nir_type_float:
       switch (bit_size) {
       case 16:
-         return LLVMBuildBitCast(builder, val, LLVMVectorType(LLVMHalfTypeInContext(bld_base->base.gallivm->context), bld_base->base.type.length), "");
+         return LLVMBuildBitCast(builder, val, bld_base->half_bld.vec_type, "");
       case 32:
          return LLVMBuildBitCast(builder, val, bld_base->base.vec_type, "");
       case 64:
@@ -241,6 +241,8 @@ static LLVMValueRef fcmp32(struct lp_build_nir_context *bld_base,
       result = lp_build_cmp(flt_bld, compare, src[0], src[1]);
    if (src_bit_size == 64)
       result = LLVMBuildTrunc(builder, result, bld_base->int_bld.vec_type, "");
+   else if (src_bit_size == 16)
+      result = LLVMBuildSExt(builder, result, bld_base->int_bld.vec_type, "");
    return result;
 }
 
@@ -307,6 +309,9 @@ static LLVMValueRef emit_b2f(struct lp_build_nir_context *bld_base,
                                       "");
    result = LLVMBuildBitCast(builder, result, bld_base->base.vec_type, "");
    switch (bitsize) {
+   case 16:
+      result = LLVMBuildFPTrunc(builder, result, bld_base->half_bld.vec_type, "");
+      break;
    case 32:
       break;
    case 64:
@@ -545,7 +550,7 @@ do_quantize_to_f16(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef result, cond, cond2, temp;
 
-   result = LLVMBuildFPTrunc(builder, src, LLVMVectorType(LLVMHalfTypeInContext(gallivm->context), bld_base->base.type.length), "");
+   result = LLVMBuildFPTrunc(builder, src, bld_base->half_bld.vec_type, "");
    result = LLVMBuildFPExt(builder, result, bld_base->base.vec_type, "");
 
    temp = lp_build_abs(get_flt_bld(bld_base, 32), result);
@@ -568,6 +573,9 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
    LLVMValueRef result;
 
    switch (instr->op) {
+   case nir_op_b2f16:
+      result = emit_b2f(bld_base, src[0], 16);
+      break;
    case nir_op_b2f32:
       result = emit_b2f(bld_base, src[0], 32);
       break;
@@ -610,7 +618,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
          src[0] = LLVMBuildFPTrunc(builder, src[0],
                                    bld_base->base.vec_type, "");
       result = LLVMBuildFPTrunc(builder, src[0],
-                                LLVMVectorType(LLVMHalfTypeInContext(gallivm->context), bld_base->base.type.length), "");
+                                bld_base->half_bld.vec_type, "");
       break;
    case nir_op_f2f32:
       if (src_bit_size[0] < 32)
@@ -810,6 +818,10 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
    case nir_op_i2b32:
       result = int_to_bool32(bld_base, src_bit_size[0], false, src[0]);
       break;
+   case nir_op_i2f16:
+      result = LLVMBuildSIToFP(builder, src[0],
+                               bld_base->half_bld.vec_type, "");
+      break;
    case nir_op_i2f32:
       result = lp_build_int_to_float(&bld_base->base, src[0]);
       break;
@@ -950,6 +962,10 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = LLVMBuildBitCast(builder, tmp, bld_base->uint64_bld.vec_type, "");
       break;
    }
+   case nir_op_u2f16:
+      result = LLVMBuildUIToFP(builder, src[0],
+                               bld_base->half_bld.vec_type, "");
+      break;
    case nir_op_u2f32:
       result = LLVMBuildUIToFP(builder, src[0], bld_base->base.vec_type, "");
       break;
