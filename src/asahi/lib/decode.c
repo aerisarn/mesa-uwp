@@ -455,6 +455,18 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    /* Before decoding anything, validate the map. Set bo->mapped fields */
    agxdecode_validate_map(map->ptr.cpu);
 
+   /* Print the IOGPU stuff */
+   agx_unpack(agxdecode_dump_stream, cmdbuf->ptr.cpu, IOGPU_HEADER, cmd);
+   DUMP_UNPACKED(IOGPU_HEADER, cmd, "IOGPU Header\n");
+   assert(cmd.attachment_offset_1 == cmd.attachment_offset_2);
+
+   uint32_t *attachments = (uint32_t *) ((uint8_t *) cmdbuf->ptr.cpu + cmd.attachment_offset_1);
+   unsigned attachment_count = attachments[3];
+   for (unsigned i = 0; i < attachment_count; ++i) {
+      uint32_t *ptr = attachments + 4 + (i * AGX_IOGPU_ATTACHMENT_LENGTH / 4);
+      DUMP_CL(IOGPU_ATTACHMENT, ptr, "Attachment");
+   }
+
    /* TODO: What else is in here? */
    uint64_t *encoder = ((uint64_t *) cmdbuf->ptr.cpu) + 7;
    agxdecode_stateful(*encoder, "Encoder", agxdecode_cmd, verbose);
