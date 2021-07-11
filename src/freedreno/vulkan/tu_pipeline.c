@@ -980,8 +980,8 @@ tu6_emit_vpc(struct tu_cs *cs,
    assert(linkage.cnt <= 32);
    const uint32_t sp_out_count = DIV_ROUND_UP(linkage.cnt, 2);
    const uint32_t sp_vpc_dst_count = DIV_ROUND_UP(linkage.cnt, 4);
-   uint32_t sp_out[16];
-   uint32_t sp_vpc_dst[8];
+   uint32_t sp_out[16] = {0};
+   uint32_t sp_vpc_dst[8] = {0};
    for (uint32_t i = 0; i < linkage.cnt; i++) {
       ((uint16_t *) sp_out)[i] =
          A6XX_SP_VS_OUT_REG_A_REGID(linkage.var[i].regid) |
