@@ -510,10 +510,14 @@ agx_flush(struct pipe_context *pctx,
    /* Size calculation should've been exact */
    assert(handle_i == handle_count);
 
+   unsigned cmdbuf_id = 0xDEADBEEF;
+   unsigned encoder_id = 0xCAFECAFE;
+
    unsigned cmdbuf_size = demo_cmdbuf(dev->cmdbuf.ptr.cpu,
                dev->cmdbuf.size,
                &ctx->batch->pool,
                ctx->batch->encoder->ptr.gpu,
+               encoder_id,
                ctx->batch->scissor.bo->ptr.gpu,
                ctx->batch->width,
                ctx->batch->height,
@@ -525,7 +529,7 @@ agx_flush(struct pipe_context *pctx,
 
    /* Generate the mapping table from the BO list */
    demo_mem_map(dev->memmap.ptr.cpu, dev->memmap.size, handles, handle_count,
-                0xDEADBEEF, 0xCAFECAFE, cmdbuf_size);
+                cmdbuf_id, encoder_id, cmdbuf_size);
 
    free(handles);
 

@@ -79,6 +79,7 @@ unsigned
 demo_cmdbuf(uint64_t *buf, size_t size,
             struct agx_pool *pool,
             uint64_t encoder_ptr,
+            uint64_t encoder_id,
             uint64_t scissor_ptr,
             unsigned width, unsigned height,
             uint32_t pipeline_null,
@@ -186,7 +187,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    /* Compare compute case ,which has a bit of reordering, but we can swap */
    EMIT32(cmdbuf, 0x1c); // 0x5a0
    EMIT32(cmdbuf, 0);
-   EMIT64(cmdbuf, 0xCAFECAFE); // encoder ID XXX: don't fix
+   EMIT64(cmdbuf, encoder_id);
    EMIT32(cmdbuf, 0);
    EMIT32(cmdbuf, 0xffffffff);
 
