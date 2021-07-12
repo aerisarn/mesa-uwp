@@ -2226,7 +2226,11 @@ crocus_bind_rasterizer_state(struct pipe_context *ctx, void *state)
 static bool
 wrap_mode_needs_border_color(unsigned wrap_mode)
 {
+#if GFX_VER == 8
+   return wrap_mode == TCM_CLAMP_BORDER || wrap_mode == TCM_HALF_BORDER;
+#else
    return wrap_mode == TCM_CLAMP_BORDER;
+#endif
 }
 
 /**
