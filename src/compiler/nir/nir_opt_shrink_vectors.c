@@ -79,28 +79,58 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
    if (def->num_components == 1)
       return false;
 
-   if (nir_op_infos[instr->op].output_size == 0) {
-      /* don't remove any channels if used by an intrinsic */
-      nir_foreach_use_safe(use_src, def) {
-         if (use_src->parent_instr->type == nir_instr_type_intrinsic)
+   bool is_vec = false;
+   switch (instr->op) {
+      /* don't use nir_op_is_vec() as not all vector sizes are supported. */
+      case nir_op_vec4:
+      case nir_op_vec3:
+      case nir_op_vec2:
+         is_vec = true;
+         break;
+      default:
+         if (nir_op_infos[instr->op].output_size != 0)
             return false;
-      }
+         break;
+   }
 
-      unsigned mask = nir_ssa_def_components_read(def);
-      unsigned last_bit = util_last_bit(mask);
-      unsigned num_components = util_bitcount(mask);
-      if (mask == 0 || num_components == def->num_components)
+   /* don't remove any channels if used by an intrinsic */
+   nir_foreach_use(use_src, def) {
+      if (use_src->parent_instr->type == nir_instr_type_intrinsic)
          return false;
+   }
 
-      const bool is_bitfield_mask = last_bit == num_components;
+   unsigned mask = nir_ssa_def_components_read(def);
+   unsigned last_bit = util_last_bit(mask);
+   unsigned num_components = util_bitcount(mask);
 
-      if (is_bitfield_mask) {
-         /* just reduce the number of components and return */
-         def->num_components = num_components;
-         instr->dest.write_mask = mask;
-         return true;
+   /* return, if there is nothing to do */
+   if (mask == 0 || num_components == def->num_components)
+      return false;
+
+   const bool is_bitfield_mask = last_bit == num_components;
+
+   if (is_vec) {
+      /* replace vecN with smaller version */
+      nir_ssa_def *srcs[NIR_MAX_VEC_COMPONENTS] = { 0 };
+      unsigned index = 0;
+      for (int i = 0; i < last_bit; i++) {
+         if ((mask >> i) & 0x1)
+            srcs[index++] = nir_ssa_for_alu_src(b, instr, i);
       }
+      assert(index == num_components);
+      nir_ssa_def *new_vec = nir_vec(b, srcs, num_components);
+      nir_ssa_def_rewrite_uses(def, new_vec);
+      def = new_vec;
+   }
 
+   if (is_bitfield_mask) {
+      /* just reduce the number of components and return */
+      def->num_components = num_components;
+      instr->dest.write_mask = mask;
+      return true;
+   }
+
+   if (!is_vec) {
       /* update sources */
       for (int i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
          unsigned index = 0;
@@ -111,65 +141,29 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
          assert(index == num_components);
       }
 
-      /* compute new dest swizzles */
-      uint8_t reswizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
-      unsigned index = 0;
-      for (int i = 0; i < def->num_components; i++) {
-         if ((mask >> i) & 0x1)
-            reswizzle[i] = index++;
-      }
-      assert(index == num_components);
-
       /* update dest */
       def->num_components = num_components;
       instr->dest.write_mask = BITFIELD_MASK(num_components);
-
-      /* update uses */
-      nir_foreach_use(use_src, def) {
-         assert(use_src->parent_instr->type == nir_instr_type_alu);
-         nir_alu_src *alu_src = (nir_alu_src*)use_src;
-         for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
-            alu_src->swizzle[i] = reswizzle[alu_src->swizzle[i]];
-      }
-
-      return true;
-   } else {
-
-      switch (instr->op) {
-      case nir_op_vec4:
-      case nir_op_vec3:
-      case nir_op_vec2: {
-         /* don't remove any channels if used by an intrinsic */
-         nir_foreach_use(use_src, def) {
-            if (use_src->parent_instr->type == nir_instr_type_intrinsic)
-               return false;
-         }
-
-         unsigned mask = nir_ssa_def_components_read(def);
-
-         /* If nothing was read, leave it up to DCE. */
-         if (mask == 0)
-            return false;
-
-         int last_bit = util_last_bit(mask);
-         if (last_bit < def->num_components) {
-            nir_ssa_def *srcs[NIR_MAX_VEC_COMPONENTS] = { 0 };
-            for (int i = 0; i < last_bit; i++)
-               srcs[i] = nir_ssa_for_alu_src(b, instr, i);
-
-            nir_ssa_def *new_vec = nir_vec(b, srcs, last_bit);
-            nir_ssa_def_rewrite_uses(def, new_vec);
-            return true;
-         }
-         break;
-      }
-
-      default:
-         break;
-      }
    }
 
-   return false;
+   /* compute new dest swizzles */
+   uint8_t reswizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
+   unsigned index = 0;
+   for (int i = 0; i < last_bit; i++) {
+      if ((mask >> i) & 0x1)
+         reswizzle[i] = index++;
+   }
+   assert(index == num_components);
+
+   /* update uses */
+   nir_foreach_use(use_src, def) {
+      assert(use_src->parent_instr->type == nir_instr_type_alu);
+      nir_alu_src *alu_src = (nir_alu_src*)use_src;
+      for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
+         alu_src->swizzle[i] = reswizzle[alu_src->swizzle[i]];
+   }
+
+   return true;
 }
 
 static bool
