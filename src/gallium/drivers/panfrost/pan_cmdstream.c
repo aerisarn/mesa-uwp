@@ -334,28 +334,24 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_sha
 }
 
 /* Construct a partial RSD corresponding to no executed fragment shader, and
- * merge with the existing partial RSD. This depends only on the architecture,
- * so packing separately allows the packs to be constant folded away. */
+ * merge with the existing partial RSD. */
 
 static void
-pan_merge_empty_fs(struct mali_renderer_state_packed *rsd, bool is_bifrost)
+pan_merge_empty_fs(struct mali_renderer_state_packed *rsd)
 {
         struct mali_renderer_state_packed empty_rsd;
 
-        if (is_bifrost) {
-                pan_pack(&empty_rsd, RENDERER_STATE, cfg) {
-                        cfg.properties.bifrost.shader_modifies_coverage = true;
-                        cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
-                        cfg.properties.bifrost.allow_forward_pixel_to_be_killed = true;
-                        cfg.properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
-                }
-        } else {
-                pan_pack(&empty_rsd, RENDERER_STATE, cfg) {
-                        cfg.shader.shader = 0x1;
-                        cfg.properties.midgard.work_register_count = 1;
-                        cfg.properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
-                        cfg.properties.midgard.force_early_z = true;
-                }
+        pan_pack(&empty_rsd, RENDERER_STATE, cfg) {
+#if PAN_ARCH >= 6
+                cfg.properties.bifrost.shader_modifies_coverage = true;
+                cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
+                cfg.properties.bifrost.allow_forward_pixel_to_be_killed = true;
+                cfg.properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
+#else
+                cfg.shader.shader = 0x1;
+                cfg.properties.midgard.work_register_count = 1;
+                cfg.properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+                cfg.properties.midgard.force_early_z = true;
         }
 
         pan_merge((*rsd), empty_rsd, RENDERER_STATE);
@@ -511,7 +507,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         if (panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer, zsa))
                 pan_merge(rsd, fs->partial_rsd, RENDERER_STATE);
         else
-                pan_merge_empty_fs(&rsd, pan_is_bifrost(dev));
+                pan_merge_empty_fs(&rsd);
 
         /* Word 8, 9 Misc state */
         rsd.opaque[8] |= zsa->rsd_depth.opaque[0]
