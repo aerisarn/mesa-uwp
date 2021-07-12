@@ -156,6 +156,6 @@ panfrost_translate_texture_dimension(enum pipe_texture_target t) {
 void
 pan_resource_modifier_convert(struct panfrost_context *ctx,
                               struct panfrost_resource *rsrc,
-                              uint64_t modifier);
+                              uint64_t modifier, const char *reason);
 
 #endif /* PAN_RESOURCE_H */
