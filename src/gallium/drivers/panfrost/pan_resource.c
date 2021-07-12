@@ -844,7 +844,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
 
                 if ((usage & PIPE_MAP_READ) && (valid || rsrc->track.writer)) {
                         pan_blit_to_staging(pctx, transfer);
-                        panfrost_flush_writer(ctx, staging);
+                        panfrost_flush_writer(ctx, staging, "AFBC read staging blit");
                         panfrost_bo_wait(staging->image.data.bo, INT64_MAX, false);
                 }
 
@@ -873,7 +873,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                  * to flush and split the frame in two.
                  */
 
-                panfrost_flush_writer(ctx, rsrc);
+                panfrost_flush_writer(ctx, rsrc, "Shadow resource creation");
                 panfrost_bo_wait(bo, INT64_MAX, false);
 
                 create_new_bo = true;
@@ -916,7 +916,8 @@ panfrost_ptr_map(struct pipe_context *pctx,
                                 /* Allocation failed or was impossible, let's
                                  * fall back on a flush+wait.
                                  */
-                                panfrost_flush_batches_accessing_rsrc(ctx, rsrc);
+                                panfrost_flush_batches_accessing_rsrc(ctx, rsrc,
+                                                "Resource access with high memory pressure");
                                 panfrost_bo_wait(bo, INT64_MAX, true);
                         }
                 }
@@ -926,10 +927,10 @@ panfrost_ptr_map(struct pipe_context *pctx,
                 /* No flush for writes to uninitialized */
         } else if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
                 if (usage & PIPE_MAP_WRITE) {
-                        panfrost_flush_batches_accessing_rsrc(ctx, rsrc);
+                        panfrost_flush_batches_accessing_rsrc(ctx, rsrc, "Synchronized write");
                         panfrost_bo_wait(bo, INT64_MAX, true);
                 } else if (usage & PIPE_MAP_READ) {
-                        panfrost_flush_writer(ctx, rsrc);
+                        panfrost_flush_writer(ctx, rsrc, "Synchronized read");
                         panfrost_bo_wait(bo, INT64_MAX, false);
                 }
         }
@@ -1099,7 +1100,9 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                                 panfrost_bo_reference(prsrc->image.data.bo);
                         } else {
                                 pan_blit_from_staging(pctx, trans);
-                                panfrost_flush_batches_accessing_rsrc(pan_context(pctx), pan_resource(trans->staging.rsrc));
+                                panfrost_flush_batches_accessing_rsrc(pan_context(pctx),
+                                                pan_resource(trans->staging.rsrc),
+                                                "AFBC write staging blit");
                         }
                 }
 

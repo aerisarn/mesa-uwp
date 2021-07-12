@@ -170,15 +170,17 @@ panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
                          const char *label);
 
 void
-panfrost_flush_all_batches(struct panfrost_context *ctx);
+panfrost_flush_all_batches(struct panfrost_context *ctx, const char *reason);
 
 void
 panfrost_flush_batches_accessing_rsrc(struct panfrost_context *ctx,
-                                      struct panfrost_resource *rsrc);
+                                      struct panfrost_resource *rsrc,
+                                      const char *reason);
 
 void
 panfrost_flush_writer(struct panfrost_context *ctx,
-                      struct panfrost_resource *rsrc);
+                      struct panfrost_resource *rsrc,
+                      const char *reason);
 
 void
 panfrost_batch_adjust_stack_size(struct panfrost_batch *batch);

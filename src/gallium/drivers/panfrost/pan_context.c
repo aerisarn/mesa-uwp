@@ -99,7 +99,7 @@ panfrost_flush(
 
 
         /* Submit all pending jobs */
-        panfrost_flush_all_batches(ctx);
+        panfrost_flush_all_batches(ctx, NULL);
 
         if (fence) {
                 struct pipe_fence_handle *f = panfrost_fence_create(ctx);
@@ -115,14 +115,14 @@ static void
 panfrost_texture_barrier(struct pipe_context *pipe, unsigned flags)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        panfrost_flush_all_batches(ctx);
+        panfrost_flush_all_batches(ctx, "Texture barrier");
 }
 
 static void
 panfrost_set_frontend_noop(struct pipe_context *pipe, bool enable)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        panfrost_flush_all_batches(ctx);
+        panfrost_flush_all_batches(ctx, "Frontend no-op change");
         ctx->is_noop = enable;
 }
 
@@ -916,7 +916,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-                panfrost_flush_writer(ctx, rsrc);
+                panfrost_flush_writer(ctx, rsrc, "Occlusion query");
                 panfrost_bo_wait(rsrc->image.data.bo, INT64_MAX, false);
 
                 /* Read back the query results */
@@ -939,7 +939,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
 
         case PIPE_QUERY_PRIMITIVES_GENERATED:
         case PIPE_QUERY_PRIMITIVES_EMITTED:
-                panfrost_flush_all_batches(ctx);
+                panfrost_flush_all_batches(ctx, "Primitive count query");
                 vresult->u64 = query->end - query->start;
                 break;
 

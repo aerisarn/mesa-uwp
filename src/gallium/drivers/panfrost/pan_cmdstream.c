@@ -1182,7 +1182,7 @@ panfrost_map_constant_buffer_cpu(struct panfrost_context *ctx,
 
         if (rsrc) {
                 panfrost_bo_mmap(rsrc->image.data.bo);
-                panfrost_flush_writer(ctx, rsrc);
+                panfrost_flush_writer(ctx, rsrc, "CPU constant buffer mapping");
                 panfrost_bo_wait(rsrc->image.data.bo, INT64_MAX, false);
 
                 return rsrc->image.data.bo->ptr.cpu + cb->buffer_offset;
@@ -3151,7 +3151,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         /* XXX - shouldn't be necessary with working memory barriers. Affected
          * test: KHR-GLES31.core.compute_shader.pipeline-post-xfb */
-        panfrost_flush_all_batches(ctx);
+        panfrost_flush_all_batches(ctx, "Launch grid pre-barrier");
 
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
@@ -3259,7 +3259,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         panfrost_add_job(&batch->pool.base, &batch->scoreboard,
                          MALI_JOB_TYPE_COMPUTE, true, false,
                          indirect_dep, 0, &t, false);
-        panfrost_flush_all_batches(ctx);
+        panfrost_flush_all_batches(ctx, "Launch grid post-barrier");
 }
 
 static void *
