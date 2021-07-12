@@ -124,85 +124,15 @@ pan_pipe_to_mipmode(enum pipe_tex_mipfilter f)
         switch (f) {
         case PIPE_TEX_MIPFILTER_NEAREST: return MALI_MIPMAP_MODE_NEAREST;
         case PIPE_TEX_MIPFILTER_LINEAR: return MALI_MIPMAP_MODE_TRILINEAR;
+#if PAN_ARCH >= 6
         case PIPE_TEX_MIPFILTER_NONE: return MALI_MIPMAP_MODE_NONE;
+#else
+        case PIPE_TEX_MIPFILTER_NONE: return MALI_MIPMAP_MODE_NEAREST;
+#endif
         default: unreachable("Invalid");
         }
 }
 
-static void
-panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
-                           struct mali_midgard_sampler_packed *hw)
-{
-        bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
-
-        pan_pack(hw, MIDGARD_SAMPLER, cfg) {
-                cfg.magnify_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
-                cfg.minify_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
-                cfg.mipmap_mode = (cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR) ?
-                        MALI_MIPMAP_MODE_TRILINEAR : MALI_MIPMAP_MODE_NEAREST;
-                cfg.normalized_coordinates = cso->normalized_coords;
-
-                cfg.lod_bias = FIXED_16(cso->lod_bias, true);
-
-                cfg.minimum_lod = FIXED_16(cso->min_lod, false);
-
-                /* If necessary, we disable mipmapping in the sampler descriptor by
-                 * clamping the LOD as tight as possible (from 0 to epsilon,
-                 * essentially -- remember these are fixed point numbers, so
-                 * epsilon=1/256) */
-
-                cfg.maximum_lod = (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE) ?
-                        cfg.minimum_lod + 1 :
-                        FIXED_16(cso->max_lod, false);
-
-                cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s, using_nearest);
-                cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t, using_nearest);
-                cfg.wrap_mode_r = translate_tex_wrap(cso->wrap_r, using_nearest);
-
-                cfg.compare_function = panfrost_sampler_compare_func(cso);
-                cfg.seamless_cube_map = cso->seamless_cube_map;
-
-                cfg.border_color_r = cso->border_color.ui[0];
-                cfg.border_color_g = cso->border_color.ui[1];
-                cfg.border_color_b = cso->border_color.ui[2];
-                cfg.border_color_a = cso->border_color.ui[3];
-        }
-}
-
-static void
-panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
-                                   struct mali_bifrost_sampler_packed *hw)
-{
-        bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
-
-        pan_pack(hw, BIFROST_SAMPLER, cfg) {
-                cfg.magnify_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
-                cfg.minify_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
-                cfg.mipmap_mode = pan_pipe_to_mipmode(cso->min_mip_filter);
-                cfg.normalized_coordinates = cso->normalized_coords;
-
-                cfg.lod_bias = FIXED_16(cso->lod_bias, true);
-                cfg.minimum_lod = FIXED_16(cso->min_lod, false);
-                cfg.maximum_lod = FIXED_16(cso->max_lod, false);
-
-                if (cso->max_anisotropy > 1) {
-                        cfg.maximum_anisotropy = cso->max_anisotropy;
-                        cfg.lod_algorithm = MALI_LOD_ALGORITHM_ANISOTROPIC;
-                }
-
-                cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s, using_nearest);
-                cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t, using_nearest);
-                cfg.wrap_mode_r = translate_tex_wrap(cso->wrap_r, using_nearest);
-
-                cfg.compare_function = panfrost_sampler_compare_func(cso);
-                cfg.seamless_cube_map = cso->seamless_cube_map;
-
-                cfg.border_color_r = cso->border_color.ui[0];
-                cfg.border_color_g = cso->border_color.ui[1];
-                cfg.border_color_b = cso->border_color.ui[2];
-                cfg.border_color_a = cso->border_color.ui[3];
-        }
-}
 
 static void *
 panfrost_create_sampler_state(
@@ -214,10 +144,46 @@ panfrost_create_sampler_state(
 
         so->base = *cso;
 
-        if (pan_is_bifrost(device))
-                panfrost_sampler_desc_init_bifrost(cso, (struct mali_bifrost_sampler_packed *) &so->hw);
-        else
-                panfrost_sampler_desc_init(cso, &so->hw);
+        bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
+
+#if PAN_ARCH <= 5
+        pan_pack(&so->hw, MIDGARD_SAMPLER, cfg) {
+#else
+        pan_pack(&so->hw, BIFROST_SAMPLER, cfg) {
+#endif
+                cfg.magnify_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
+                cfg.minify_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
+
+                cfg.normalized_coordinates = cso->normalized_coords;
+                cfg.lod_bias = FIXED_16(cso->lod_bias, true);
+                cfg.minimum_lod = FIXED_16(cso->min_lod, false);
+                cfg.maximum_lod = FIXED_16(cso->max_lod, false);
+
+                cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s, using_nearest);
+                cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t, using_nearest);
+                cfg.wrap_mode_r = translate_tex_wrap(cso->wrap_r, using_nearest);
+
+                cfg.mipmap_mode = pan_pipe_to_mipmode(cso->min_mip_filter);
+                cfg.compare_function = panfrost_sampler_compare_func(cso);
+                cfg.seamless_cube_map = cso->seamless_cube_map;
+
+                cfg.border_color_r = cso->border_color.ui[0];
+                cfg.border_color_g = cso->border_color.ui[1];
+                cfg.border_color_b = cso->border_color.ui[2];
+                cfg.border_color_a = cso->border_color.ui[3];
+
+#if PAN_ARCH >= 6
+                if (cso->max_anisotropy > 1) {
+                        cfg.maximum_anisotropy = cso->max_anisotropy;
+                        cfg.lod_algorithm = MALI_LOD_ALGORITHM_ANISOTROPIC;
+                }
+#else
+                /* Emulate disabled mipmapping by clamping the LOD as tight as
+                 * possible (from 0 to epsilon = 1/256) */
+                if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE)
+                        cfg.maximum_lod = cfg.minimum_lod + 1;
+#endif
+        }
 
         return so;
 }
