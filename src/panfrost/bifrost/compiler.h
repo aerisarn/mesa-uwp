@@ -730,9 +730,9 @@ bi_node_to_index(unsigned node, unsigned node_count)
                 bi_foreach_instr_in_block_rev_safe((bi_block *) v_block, v)
 
 #define bi_foreach_instr_in_tuple(tuple, v) \
-        for (bi_instr *v = tuple->fma ?: tuple->add; \
+        for (bi_instr *v = (tuple)->fma ?: (tuple)->add; \
                         v != NULL; \
-                        v = (v == tuple->add) ? NULL : tuple->add)
+                        v = (v == (tuple)->add) ? NULL : (tuple)->add)
 
 /* Based on set_foreach, expanded with automatic type casts */
 
