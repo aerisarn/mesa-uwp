@@ -104,8 +104,10 @@ pan_device(struct pipe_screen *p)
 struct pipe_fence_handle *
 panfrost_fence_create(struct panfrost_context *ctx);
 
-void
-panfrost_cmdstream_screen_init(struct panfrost_screen *screen);
+void panfrost_cmdstream_screen_init_v4(struct panfrost_screen *screen);
+void panfrost_cmdstream_screen_init_v5(struct panfrost_screen *screen);
+void panfrost_cmdstream_screen_init_v6(struct panfrost_screen *screen);
+void panfrost_cmdstream_screen_init_v7(struct panfrost_screen *screen);
 
 #define perf_debug(dev, ...) \
         do { \

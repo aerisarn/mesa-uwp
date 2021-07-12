@@ -893,7 +893,16 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                            4096, "Blitter shaders", false, true);
         panfrost_pool_init(&screen->blitter.desc_pool, NULL, dev, 0, 65536,
                            "Blitter RSDs", false, true);
-        panfrost_cmdstream_screen_init(screen);
+        if (dev->arch == 4)
+                panfrost_cmdstream_screen_init_v4(screen);
+        else if (dev->arch == 5)
+                panfrost_cmdstream_screen_init_v5(screen);
+        else if (dev->arch == 6)
+                panfrost_cmdstream_screen_init_v6(screen);
+        else if (dev->arch == 7)
+                panfrost_cmdstream_screen_init_v7(screen);
+        else
+                unreachable("Unhandled architecture major");
 
         return &screen->base;
 }

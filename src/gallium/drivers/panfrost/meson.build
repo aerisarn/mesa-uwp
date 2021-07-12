@@ -30,7 +30,6 @@ files_panfrost = files(
   'pan_blit.c',
   'pan_job.c',
   'pan_assemble.c',
-  'pan_cmdstream.c',
   'pan_compute.c',
   'pan_mempool.c',
   'pan_mempool.h',
@@ -51,6 +50,20 @@ compile_args_panfrost = [
   '-Wno-pointer-arith'
 ]
 
+panfrost_versions = ['4', '5', '6', '7']
+libpanfrost_versions = []
+
+foreach ver : panfrost_versions
+  libpanfrost_versions += static_library(
+    'panfrost-v' + ver,
+    ['pan_cmdstream.c', midgard_pack],
+    include_directories : panfrost_includes,
+    c_args : ['-DPAN_ARCH=' + ver],
+    gnu_symbol_visibility : 'hidden',
+    dependencies : [idep_midgard_pack, idep_nir, dep_libdrm],
+)
+endforeach
+
 libpanfrost = static_library(
   'panfrost',
   files_panfrost,
@@ -64,6 +77,7 @@ libpanfrost = static_library(
   include_directories : panfrost_includes,
   c_args : [c_msvc_compat_args, compile_args_panfrost],
   gnu_symbol_visibility : 'hidden',
+  link_with: [libpanfrost_versions],
 )
 
 driver_panfrost = declare_dependency(
