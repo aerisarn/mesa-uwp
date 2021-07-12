@@ -182,7 +182,8 @@ panfrost_get_batch(struct panfrost_context *ctx,
 
 struct panfrost_batch *
 panfrost_get_fresh_batch(struct panfrost_context *ctx,
-                         const struct pipe_framebuffer_state *key)
+                         const struct pipe_framebuffer_state *key,
+                         const char *reason)
 {
         struct panfrost_batch *batch = panfrost_get_batch(ctx, key);
 
@@ -200,6 +201,7 @@ panfrost_get_fresh_batch(struct panfrost_context *ctx,
         /* Otherwise, we need to flush the existing one and instantiate a new
          * one.
          */
+        perf_debug_ctx(ctx, "Flushing a batch due to: %s", reason);
         panfrost_batch_submit(batch, 0, 0);
         batch = panfrost_get_batch(ctx, key);
         return batch;

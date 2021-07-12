@@ -138,7 +138,8 @@ struct panfrost_batch {
 
 struct panfrost_batch *
 panfrost_get_fresh_batch(struct panfrost_context *ctx,
-                         const struct pipe_framebuffer_state *key);
+                         const struct pipe_framebuffer_state *key,
+                         const char *reason);
 
 struct panfrost_batch *
 panfrost_get_batch_for_fbo(struct panfrost_context *ctx);
