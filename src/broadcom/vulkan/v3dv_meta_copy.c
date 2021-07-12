@@ -170,13 +170,21 @@ create_texel_buffer_copy_pipeline_layout(struct v3dv_device *device,
    }
 
    assert(*p_layout == 0);
+   /* FIXME: this is abusing a bit the API, since not all of our copy
+    * pipelines have a geometry shader. We could create 2 different pipeline
+    * layouts, but this works for us for now.
+    */
+   VkPushConstantRange ranges[2] = {
+      { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 24 },
+      { VK_SHADER_STAGE_GEOMETRY_BIT, 24, 4 },
+   };
+
    VkPipelineLayoutCreateInfo p_layout_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .setLayoutCount = 1,
       .pSetLayouts = ds_layout,
-      .pushConstantRangeCount = 1,
-      .pPushConstantRanges =
-         &(VkPushConstantRange) { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 24 },
+      .pushConstantRangeCount = 2,
+      .pPushConstantRanges = ranges,
    };
 
    result =
@@ -1689,6 +1697,7 @@ static void
 get_texel_buffer_copy_pipeline_cache_key(VkFormat format,
                                          VkColorComponentFlags cmask,
                                          VkComponentMapping *cswizzle,
+                                         bool is_layered,
                                          uint8_t *key)
 {
    memset(key, 0, V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE);
@@ -1699,6 +1708,12 @@ get_texel_buffer_copy_pipeline_cache_key(VkFormat format,
    p++;
 
    *p = cmask;
+   p++;
+
+   /* Note that that we are using a single byte for this, so we could pack
+    * more data into this 32-bit slot in the future.
+    */
+   *p = is_layered ? 1 : 0;
    p++;
 
    memcpy(p, cswizzle, sizeof(VkComponentMapping));
@@ -1720,6 +1735,7 @@ static bool
 create_pipeline(struct v3dv_device *device,
                 struct v3dv_render_pass *pass,
                 struct nir_shader *vs_nir,
+                struct nir_shader *gs_nir,
                 struct nir_shader *fs_nir,
                 const VkPipelineVertexInputStateCreateInfo *vi_state,
                 const VkPipelineDepthStencilStateCreateInfo *ds_state,
@@ -1743,6 +1759,70 @@ get_texel_buffer_copy_vs()
    nir_store_var(&b, vs_out_pos, pos, 0xf);
 
    return b.shader;
+}
+
+static nir_shader *
+get_texel_buffer_copy_gs()
+{
+   /* FIXME: this creates a geometry shader that takes the index of a single
+    * layer to clear from push constants, so we need to emit a draw call for
+    * each layer that we want to clear. We could actually do better and have it
+    * take a range of layers however, if we were to do this, we would need to
+    * be careful not to exceed the maximum number of output vertices allowed in
+    * a geometry shader.
+    */
+   const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY, options,
+                                                  "meta texel buffer copy gs");
+   nir_shader *nir = b.shader;
+   nir->info.inputs_read = 1ull << VARYING_SLOT_POS;
+   nir->info.outputs_written = (1ull << VARYING_SLOT_POS) |
+                               (1ull << VARYING_SLOT_LAYER);
+   nir->info.gs.input_primitive = GL_TRIANGLES;
+   nir->info.gs.output_primitive = GL_TRIANGLE_STRIP;
+   nir->info.gs.vertices_in = 3;
+   nir->info.gs.vertices_out = 3;
+   nir->info.gs.invocations = 1;
+   nir->info.gs.active_stream_mask = 0x1;
+
+   /* in vec4 gl_Position[3] */
+   nir_variable *gs_in_pos =
+      nir_variable_create(b.shader, nir_var_shader_in,
+                          glsl_array_type(glsl_vec4_type(), 3, 0),
+                          "in_gl_Position");
+   gs_in_pos->data.location = VARYING_SLOT_POS;
+
+   /* out vec4 gl_Position */
+   nir_variable *gs_out_pos =
+      nir_variable_create(b.shader, nir_var_shader_out, glsl_vec4_type(),
+                          "out_gl_Position");
+   gs_out_pos->data.location = VARYING_SLOT_POS;
+
+   /* out float gl_Layer */
+   nir_variable *gs_out_layer =
+      nir_variable_create(b.shader, nir_var_shader_out, glsl_float_type(),
+                          "out_gl_Layer");
+   gs_out_layer->data.location = VARYING_SLOT_LAYER;
+
+   /* Emit output triangle */
+   for (uint32_t i = 0; i < 3; i++) {
+      /* gl_Position from shader input */
+      nir_deref_instr *in_pos_i =
+         nir_build_deref_array_imm(&b, nir_build_deref_var(&b, gs_in_pos), i);
+      nir_copy_deref(&b, nir_build_deref_var(&b, gs_out_pos), in_pos_i);
+
+      /* gl_Layer from push constants */
+      nir_ssa_def *layer =
+         nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0),
+                                .base = 24, .range = 4);
+      nir_store_var(&b, gs_out_layer, layer, 0x1);
+
+      nir_emit_vertex(&b, 0);
+   }
+
+   nir_end_primitive(&b, 0);
+
+   return nir;
 }
 
 static nir_ssa_def *
@@ -1874,6 +1954,7 @@ create_texel_buffer_copy_pipeline(struct v3dv_device *device,
                                   VkFormat format,
                                   VkColorComponentFlags cmask,
                                   VkComponentMapping *cswizzle,
+                                  bool is_layered,
                                   VkRenderPass _pass,
                                   VkPipelineLayout pipeline_layout,
                                   VkPipeline *pipeline)
@@ -1884,6 +1965,7 @@ create_texel_buffer_copy_pipeline(struct v3dv_device *device,
 
    nir_shader *vs_nir = get_texel_buffer_copy_vs();
    nir_shader *fs_nir = get_texel_buffer_copy_fs(device, format, cswizzle);
+   nir_shader *gs_nir = is_layered ? get_texel_buffer_copy_gs() : NULL;
 
    const VkPipelineVertexInputStateCreateInfo vi_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -1919,7 +2001,7 @@ create_texel_buffer_copy_pipeline(struct v3dv_device *device,
 
    return create_pipeline(device,
                           pass,
-                          vs_nir, fs_nir,
+                          vs_nir, gs_nir, fs_nir,
                           &vi_state,
                           &ds_state,
                           &cb_state,
@@ -1935,12 +2017,14 @@ get_copy_texel_buffer_pipeline(
    VkColorComponentFlags cmask,
    VkComponentMapping *cswizzle,
    VkImageType image_type,
+   bool is_layered,
    struct v3dv_meta_texel_buffer_copy_pipeline **pipeline)
 {
    bool ok = true;
 
    uint8_t key[V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE];
-   get_texel_buffer_copy_pipeline_cache_key(format, cmask, cswizzle, key);
+   get_texel_buffer_copy_pipeline_cache_key(format, cmask, cswizzle, is_layered,
+                                            key);
 
    mtx_lock(&device->meta.mtx);
    struct hash_entry *entry =
@@ -1966,7 +2050,8 @@ get_copy_texel_buffer_pipeline(
       goto fail;
 
    ok =
-      create_texel_buffer_copy_pipeline(device, format, cmask, cswizzle,
+      create_texel_buffer_copy_pipeline(device,
+                                        format, cmask, cswizzle, is_layered,
                                         (*pipeline)->pass,
                                         device->meta.texel_buffer_copy.p_layout,
                                         &(*pipeline)->pipeline);
@@ -2058,11 +2143,28 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
     */
    handled = true;
 
+
+   /* Compute the number of layers to copy.
+    *
+    * If we are batching (region_count > 1) all our regions have the same
+    * image subresource so we can take this from the first region.
+    */
+   const VkImageSubresourceLayers *resource = &regions[0].imageSubresource;
+   uint32_t num_layers;
+   if (image->type != VK_IMAGE_TYPE_3D) {
+      num_layers = resource->layerCount;
+   } else {
+      assert(region_count == 1);
+      num_layers = regions[0].imageExtent.depth;
+   }
+   assert(num_layers > 0);
+
    /* Get the texel buffer copy pipeline */
    struct v3dv_meta_texel_buffer_copy_pipeline *pipeline = NULL;
    bool ok = get_copy_texel_buffer_pipeline(cmd_buffer->device,
                                             dst_format, cmask, cswizzle,
-                                            image->type, &pipeline);
+                                            image->type, num_layers > 1,
+                                            &pipeline);
    if (!ok)
       return handled;
    assert(pipeline && pipeline->pipeline && pipeline->pass);
@@ -2132,78 +2234,58 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
                               0, 1, &set,
                               0, NULL);
 
-   /* Compute the number of layers to copy.
+   /* Setup framebuffer.
     *
-    * If we are batching (region_count > 1) all our regions have the same
-    * image subresource so we can take this from the first region.
+    * For 3D images, this creates a layered framebuffer with a number of
+    * layers matching the depth extent of the 3D image.
     */
-   const VkImageSubresourceLayers *resource = &regions[0].imageSubresource;
-   uint32_t num_layers;
-   if (image->type != VK_IMAGE_TYPE_3D) {
-      num_layers = resource->layerCount;
-   } else {
-      assert(region_count == 1);
-      num_layers = regions[0].imageExtent.depth;
-   }
-   assert(num_layers > 0);
+   uint32_t fb_width = u_minify(image->extent.width, resource->mipLevel);
+   uint32_t fb_height = u_minify(image->extent.height, resource->mipLevel);
+   VkImageViewCreateInfo image_view_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = v3dv_image_to_handle(image),
+      .viewType = v3dv_image_type_to_view_type(image->type),
+      .format = dst_format,
+      .subresourceRange = {
+         .aspectMask = aspect,
+         .baseMipLevel = resource->mipLevel,
+         .levelCount = 1,
+         .baseArrayLayer = resource->baseArrayLayer,
+         .layerCount = num_layers,
+      },
+   };
+   VkImageView image_view;
+   result = v3dv_CreateImageView(_device, &image_view_info,
+                                 &cmd_buffer->device->vk.alloc, &image_view);
+   if (result != VK_SUCCESS)
+      goto fail;
 
-   /* Sanity check: we can only batch multiple regions together if they have
-    * the same framebuffer (so the same layer).
-    */
-   assert(num_layers == 1 || region_count == 1);
+   v3dv_cmd_buffer_add_private_obj(
+      cmd_buffer, (uintptr_t)image_view,
+      (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
+
+   VkFramebufferCreateInfo fb_info = {
+      .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+      .renderPass = pipeline->pass,
+      .attachmentCount = 1,
+      .pAttachments = &image_view,
+      .width = fb_width,
+      .height = fb_height,
+      .layers = num_layers,
+   };
+
+   VkFramebuffer fb;
+   result = v3dv_CreateFramebuffer(_device, &fb_info,
+                                   &cmd_buffer->device->vk.alloc, &fb);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+    v3dv_cmd_buffer_add_private_obj(
+       cmd_buffer, (uintptr_t)fb,
+       (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyFramebuffer);
 
    /* For each layer */
    for (uint32_t l = 0; l < num_layers; l++) {
-      /* Setup framebuffer for this layer.
-       *
-       * FIXME: once we support geometry shaders, we should be able to have
-       *        one layered framebuffer and emit just one draw call for
-       *        all layers using layered rendering. At that point, we should
-       *        also be able to batch multi-layered regions as well.
-       */
-      VkImageViewCreateInfo image_view_info = {
-         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-         .image = v3dv_image_to_handle(image),
-         .viewType = v3dv_image_type_to_view_type(image->type),
-         .format = dst_format,
-         .subresourceRange = {
-            .aspectMask = aspect,
-            .baseMipLevel = resource->mipLevel,
-            .levelCount = 1,
-            .baseArrayLayer = resource->baseArrayLayer + l,
-            .layerCount = 1
-         },
-      };
-      VkImageView image_view;
-      result = v3dv_CreateImageView(_device, &image_view_info,
-                                    &cmd_buffer->device->vk.alloc, &image_view);
-      if (result != VK_SUCCESS)
-         goto fail;
-
-      v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (uintptr_t)image_view,
-         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
-
-      VkFramebufferCreateInfo fb_info = {
-         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-         .renderPass = pipeline->pass,
-         .attachmentCount = 1,
-         .pAttachments = &image_view,
-         .width = u_minify(image->extent.width, resource->mipLevel),
-         .height = u_minify(image->extent.height, resource->mipLevel),
-         .layers = 1,
-      };
-
-      VkFramebuffer fb;
-      result = v3dv_CreateFramebuffer(_device, &fb_info,
-                                      &cmd_buffer->device->vk.alloc, &fb);
-      if (result != VK_SUCCESS)
-         goto fail;
-
-       v3dv_cmd_buffer_add_private_obj(
-          cmd_buffer, (uintptr_t)fb,
-          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyFramebuffer);
-
        /* Start render pass for this layer.
         *
         * If the we only have one region to copy, then we might be able to
@@ -2230,8 +2312,8 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
       } else {
          render_area.offset.x = 0;
          render_area.offset.y = 0;
-         render_area.extent.width = fb_info.width;
-         render_area.extent.height = fb_info.height;
+         render_area.extent.width = fb_width;
+         render_area.extent.height = fb_height;
       }
 
       VkRenderPassBeginInfo rp_info = {
@@ -2247,6 +2329,17 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
       struct v3dv_job *job = cmd_buffer->state.job;
       if (!job)
          goto fail;
+
+      /* If we are using a layered copy we need to specify the layer for the
+       * Geometry Shader.
+       */
+      if (num_layers > 1) {
+         uint32_t layer = resource->baseArrayLayer + l;
+         v3dv_CmdPushConstants(_cmd_buffer,
+                               cmd_buffer->device->meta.texel_buffer_copy.p_layout,
+                               VK_SHADER_STAGE_GEOMETRY_BIT,
+                               24, 4, &layer);
+      }
 
       /* For each region */
       dirty_dynamic_state = V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
@@ -3390,6 +3483,7 @@ static bool
 create_pipeline(struct v3dv_device *device,
                 struct v3dv_render_pass *pass,
                 struct nir_shader *vs_nir,
+                struct nir_shader *gs_nir,
                 struct nir_shader *fs_nir,
                 const VkPipelineVertexInputStateCreateInfo *vi_state,
                 const VkPipelineDepthStencilStateCreateInfo *ds_state,
@@ -3399,12 +3493,15 @@ create_pipeline(struct v3dv_device *device,
                 VkPipeline *pipeline)
 {
    struct vk_shader_module vs_m;
+   struct vk_shader_module gs_m;
    struct vk_shader_module fs_m;
+
+   uint32_t num_stages = gs_nir ? 3 : 2;
 
    v3dv_shader_module_internal_init(device, &vs_m, vs_nir);
    v3dv_shader_module_internal_init(device, &fs_m, fs_nir);
 
-   VkPipelineShaderStageCreateInfo stages[2] = {
+   VkPipelineShaderStageCreateInfo stages[3] = {
       {
          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
          .stage = VK_SHADER_STAGE_VERTEX_BIT,
@@ -3417,12 +3514,23 @@ create_pipeline(struct v3dv_device *device,
          .module = vk_shader_module_to_handle(&fs_m),
          .pName = "main",
       },
+      {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+         .stage = VK_SHADER_STAGE_GEOMETRY_BIT,
+         .module = VK_NULL_HANDLE,
+         .pName = "main",
+      },
    };
+
+   if (gs_nir) {
+      v3dv_shader_module_internal_init(device, &gs_m, gs_nir);
+      stages[2].module = vk_shader_module_to_handle(&gs_m);
+   }
 
    VkGraphicsPipelineCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 
-      .stageCount = 2,
+      .stageCount = num_stages,
       .pStages = stages,
 
       .pVertexInputState = vi_state,
@@ -3574,7 +3682,7 @@ create_blit_pipeline(struct v3dv_device *device,
 
    return create_pipeline(device,
                           pass,
-                          vs_nir, fs_nir,
+                          vs_nir, NULL, fs_nir,
                           &vi_state,
                           &ds_state,
                           &cb_state,
