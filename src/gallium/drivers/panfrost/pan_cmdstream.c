@@ -3699,24 +3699,8 @@ preload(struct panfrost_batch *batch, struct pan_fb_info *fb)
                        pan_is_bifrost(dev) ? batch->tiler_ctx.bifrost : 0);
 }
 
-void
-panfrost_cmdstream_screen_init(struct panfrost_screen *screen)
-{
-        struct panfrost_device *dev = &screen->dev;
-
-        screen->vtbl.prepare_rsd = prepare_rsd;
-        screen->vtbl.emit_tls    = emit_tls;
-        screen->vtbl.emit_fbd    = emit_fbd;
-        screen->vtbl.emit_fragment_job = emit_fragment_job;
-        screen->vtbl.screen_destroy = screen_destroy;
-        screen->vtbl.preload     = preload;
-
-        pan_blitter_init(dev, &screen->blitter.bin_pool.base,
-                         &screen->blitter.desc_pool.base);
-}
-
-void
-panfrost_cmdstream_context_init(struct pipe_context *pipe)
+static void
+context_init(struct pipe_context *pipe)
 {
         pipe->draw_vbo           = panfrost_draw_vbo;
         pipe->launch_grid        = panfrost_launch_grid;
@@ -3730,3 +3714,22 @@ panfrost_cmdstream_context_init(struct pipe_context *pipe)
 
         pipe->get_sample_position = panfrost_get_sample_position;
 }
+
+void
+panfrost_cmdstream_screen_init(struct panfrost_screen *screen)
+{
+        struct panfrost_device *dev = &screen->dev;
+
+        screen->vtbl.prepare_rsd = prepare_rsd;
+        screen->vtbl.emit_tls    = emit_tls;
+        screen->vtbl.emit_fbd    = emit_fbd;
+        screen->vtbl.emit_fragment_job = emit_fragment_job;
+        screen->vtbl.screen_destroy = screen_destroy;
+        screen->vtbl.preload     = preload;
+        screen->vtbl.context_init = context_init;
+
+        pan_blitter_init(dev, &screen->blitter.bin_pool.base,
+                         &screen->blitter.desc_pool.base);
+}
+
+

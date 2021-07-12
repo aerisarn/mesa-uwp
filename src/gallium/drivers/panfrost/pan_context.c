@@ -1100,7 +1100,8 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         gallium->set_blend_color = panfrost_set_blend_color;
 
-        panfrost_cmdstream_context_init(gallium);
+        pan_screen(screen)->vtbl.context_init(gallium);
+
         panfrost_resource_context_init(gallium);
         panfrost_compute_context_init(gallium);
 

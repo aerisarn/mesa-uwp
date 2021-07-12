@@ -70,6 +70,9 @@ struct panfrost_vtable {
 
         /* Preload framebuffer */
         void (*preload)(struct panfrost_batch *, struct pan_fb_info *);
+
+        /* Initialize a Gallium context */
+        void (*context_init)(struct pipe_context *pipe);
 };
 
 struct panfrost_screen {
