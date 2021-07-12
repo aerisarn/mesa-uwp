@@ -29,7 +29,6 @@
 #include "drm-uapi/panfrost_drm.h"
 
 #include "pan_bo.h"
-#include "pan_blitter.h"
 #include "pan_context.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
@@ -664,16 +663,6 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
         }
 }
 
-static void
-panfrost_batch_draw_wallpaper(struct panfrost_batch *batch,
-                              struct pan_fb_info *fb)
-{
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-
-        pan_preload_fb(&batch->pool.base, &batch->scoreboard, fb, batch->tls.gpu,
-                       pan_is_bifrost(dev) ? batch->tiler_ctx.bifrost : 0);
-}
-
 static int
 panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                             mali_ptr first_job_desc,
@@ -864,8 +853,7 @@ panfrost_batch_submit(struct panfrost_batch *batch,
 
         panfrost_batch_to_fb_info(batch, &fb, rts, &zs, &s, false);
 
-        panfrost_batch_draw_wallpaper(batch, &fb);
-
+        screen->vtbl.preload(batch, &fb);
 
         if (!pan_is_bifrost(dev)) {
                 mali_ptr polygon_list = panfrost_batch_get_polygon_list(batch);

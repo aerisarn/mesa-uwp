@@ -66,6 +66,9 @@ struct panfrost_vtable {
 
         /* General destructor */
         void (*screen_destroy)(struct pipe_screen *);
+
+        /* Preload framebuffer */
+        void (*preload)(struct panfrost_batch *, struct pan_fb_info *);
 };
 
 struct panfrost_screen {

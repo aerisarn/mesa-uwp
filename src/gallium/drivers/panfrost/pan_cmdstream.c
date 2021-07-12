@@ -3690,6 +3690,15 @@ screen_destroy(struct pipe_screen *pscreen)
         pan_blitter_cleanup(dev);
 }
 
+static void
+preload(struct panfrost_batch *batch, struct pan_fb_info *fb)
+{
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+
+        pan_preload_fb(&batch->pool.base, &batch->scoreboard, fb, batch->tls.gpu,
+                       pan_is_bifrost(dev) ? batch->tiler_ctx.bifrost : 0);
+}
+
 void
 panfrost_cmdstream_screen_init(struct panfrost_screen *screen)
 {
@@ -3700,6 +3709,7 @@ panfrost_cmdstream_screen_init(struct panfrost_screen *screen)
         screen->vtbl.emit_fbd    = emit_fbd;
         screen->vtbl.emit_fragment_job = emit_fragment_job;
         screen->vtbl.screen_destroy = screen_destroy;
+        screen->vtbl.preload     = preload;
 
         pan_blitter_init(dev, &screen->blitter.bin_pool.base,
                          &screen->blitter.desc_pool.base);
