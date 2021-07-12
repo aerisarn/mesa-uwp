@@ -1304,10 +1304,6 @@ nir_visitor::visit(ir_call *ir)
       case nir_intrinsic_image_deref_size:
       case nir_intrinsic_image_deref_atomic_inc_wrap:
       case nir_intrinsic_image_deref_atomic_dec_wrap: {
-         nir_ssa_undef_instr *instr_undef =
-            nir_ssa_undef_instr_create(shader, 1, 32);
-         nir_builder_instr_insert(&b, &instr_undef->instr);
-
          /* Set the image variable dereference. */
          exec_node *param = ir->actual_parameters.get_head();
          ir_dereference *image = (ir_dereference *)param;
@@ -1360,7 +1356,7 @@ nir_visitor::visit(ir_call *ir)
             if (i < type->coordinate_components())
                srcs[i] = nir_channel(&b, src_addr, i);
             else
-               srcs[i] = &instr_undef->def;
+               srcs[i] = nir_ssa_undef(&b, 1, 32);
          }
 
          instr->src[1] = nir_src_for_ssa(nir_vec(&b, srcs, 4));
@@ -1374,7 +1370,7 @@ nir_visitor::visit(ir_call *ir)
                nir_src_for_ssa(evaluate_rvalue((ir_dereference *)param));
             param = param->get_next();
          } else {
-            instr->src[2] = nir_src_for_ssa(&instr_undef->def);
+            instr->src[2] = nir_src_for_ssa(nir_ssa_undef(&b, 1, 32));
          }
 
          /* Set the intrinsic parameters. */
