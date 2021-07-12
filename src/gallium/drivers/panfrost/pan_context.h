@@ -401,6 +401,12 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
 void
 panfrost_analyze_sysvals(struct panfrost_shader_state *ss);
 
+mali_ptr
+panfrost_get_index_buffer_bounded(struct panfrost_batch *batch,
+                                  const struct pipe_draw_info *info,
+                                  const struct pipe_draw_start_count_bias *draw,
+                                  unsigned *min_index, unsigned *max_index);
+
 /* Instancing */
 
 mali_ptr
