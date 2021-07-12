@@ -52,9 +52,16 @@ static const char *
 type_name(type_t type)
 {
    static const char *type_names[] = {
-      [TYPE_F16] = "f16", [TYPE_F32] = "f32", [TYPE_U16] = "u16",
-      [TYPE_U32] = "u32", [TYPE_S16] = "s16", [TYPE_S32] = "s32",
-      [TYPE_U8] = "u8",   [TYPE_S8] = "s8",
+      /* clang-format off */
+      [TYPE_F16] = "f16",
+      [TYPE_F32] = "f32",
+      [TYPE_U16] = "u16",
+      [TYPE_U32] = "u32",
+      [TYPE_S16] = "s16",
+      [TYPE_S32] = "s32",
+      [TYPE_U8]  = "u8", 
+      [TYPE_S8]  = "s8",
+      /* clang-format on */
    };
    return type_names[type];
 }
@@ -138,9 +145,15 @@ print_instr_name(struct log_stream *stream, struct ir3_instruction *instr,
       }
    } else if (instr->opc == OPC_B) {
       const char *name[8] = {
-         [BRANCH_PLAIN] = "br",   [BRANCH_OR] = "brao",  [BRANCH_AND] = "braa",
-         [BRANCH_CONST] = "brac", [BRANCH_ANY] = "bany", [BRANCH_ALL] = "ball",
-         [BRANCH_X] = "brax",
+         /* clang-format off */
+         [BRANCH_PLAIN] = "br",
+         [BRANCH_OR]    = "brao",
+         [BRANCH_AND]   = "braa",
+         [BRANCH_CONST] = "brac",
+         [BRANCH_ANY]   = "bany",
+         [BRANCH_ALL]   = "ball",
+         [BRANCH_X]     = "brax",
+         /* clang-format on */
       };
       mesa_log_stream_printf(stream, "%s", name[instr->cat0.brtype]);
    } else {
@@ -358,10 +371,15 @@ print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
             int nsrc;
             bool idx;
          } brinfo[7] = {
-            [BRANCH_PLAIN] = {"r", 1, false}, [BRANCH_OR] = {"rao", 2, false},
-            [BRANCH_AND] = {"raa", 2, false}, [BRANCH_CONST] = {"rac", 0, true},
-            [BRANCH_ANY] = {"any", 1, false}, [BRANCH_ALL] = {"all", 1, false},
-            [BRANCH_X] = {"rax", 0, false},
+            /* clang-format off */
+            [BRANCH_PLAIN] = {"r",   1, false},
+            [BRANCH_OR]    = {"rao", 2, false},
+            [BRANCH_AND]   = {"raa", 2, false},
+            [BRANCH_CONST] = {"rac", 0, true},
+            [BRANCH_ANY]   = {"any", 1, false},
+            [BRANCH_ALL]   = {"all", 1, false},
+            [BRANCH_X]     = {"rax", 0, false},
+            /* clang-format on */
          };
 
          mesa_log_stream_printf(stream, "%s",
