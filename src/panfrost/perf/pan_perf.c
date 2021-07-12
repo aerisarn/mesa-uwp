@@ -53,7 +53,7 @@ get_perf_config(unsigned int gpu_id)
    switch (gpu_id) {
    case 0x720:
       return &panfrost_perf_config_t72x;
-   case 0x760:
+   case 0x750:
       return &panfrost_perf_config_t76x;
    case 0x820:
       return &panfrost_perf_config_t82x;
