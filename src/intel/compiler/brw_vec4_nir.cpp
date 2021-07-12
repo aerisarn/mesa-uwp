@@ -2078,7 +2078,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       }
 
       case nir_tex_src_projector:
-         unreachable("Should be lowered by do_lower_texture_projection");
+         unreachable("Should be lowered by nir_lower_tex");
 
       case nir_tex_src_bias:
          unreachable("LOD bias is not valid for vertex shaders.\n");
