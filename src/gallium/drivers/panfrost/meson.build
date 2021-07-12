@@ -20,6 +20,7 @@
 # SOFTWARE.
 
 files_panfrost = files(
+  'pan_helpers.c',
   'pan_public.h',
   'pan_screen.c',
   'pan_screen.h',
