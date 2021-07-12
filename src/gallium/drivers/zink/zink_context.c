@@ -507,6 +507,7 @@ update_descriptor_state_sampler(struct zink_context *ctx, enum pipe_shader_type 
          ctx->di.textures[shader][slot].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
          ctx->di.tbos[shader][slot] = null_bufferview->buffer_view;
       }
+      memset(&ctx->di.sampler_surfaces[shader][slot], 0, sizeof(ctx->di.sampler_surfaces[shader][slot]));
    }
 }
 
@@ -542,6 +543,7 @@ update_descriptor_state_image(struct zink_context *ctx, enum pipe_shader_type sh
          ctx->di.images[shader][slot].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
          ctx->di.texel_images[shader][slot] = null_bufferview->buffer_view;
       }
+      memset(&ctx->di.image_surfaces[shader][slot], 0, sizeof(ctx->di.image_surfaces[shader][slot]));
    }
 }
 
