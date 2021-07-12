@@ -28,7 +28,7 @@
  * bits on the wire (as well as fixup branches) */
 
 static uint64_t
-bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool tdd)
+bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2)
 {
         /* next_dependencies are the union of the dependencies of successors'
          * dependencies */
@@ -43,7 +43,7 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool tdd
                 .flow_control =
                         (next_1 == NULL && next_2 == NULL) ?
                         BIFROST_FLOW_END :  clause->flow_control,
-                .terminate_discarded_threads = tdd,
+                .terminate_discarded_threads = clause->td,
                 .next_clause_prefetch = clause->next_clause_prefetch && next_1,
                 .staging_barrier = staging_barrier,
                 .staging_register = clause->staging_register,
@@ -625,8 +625,7 @@ bi_pack_format(struct util_dynarray *emission,
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 bi_clause *next_1, bi_clause *next_2,
-                struct util_dynarray *emission, gl_shader_stage stage,
-                bool tdd)
+                struct util_dynarray *emission, gl_shader_stage stage)
 {
         struct bi_packed_tuple ins[8] = { 0 };
 
@@ -644,7 +643,7 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
         unsigned constant_quads =
                 DIV_ROUND_UP(clause->constant_count - (ec0_packed ? 1 : 0), 2);
 
-        uint64_t header = bi_pack_header(clause, next_1, next_2, tdd);
+        uint64_t header = bi_pack_header(clause, next_1, next_2);
         uint64_t ec0 = (clause->constants[0] >> 4);
         unsigned m0 = (clause->pcrel_idx == 0) ? 4 : 0;
 
@@ -739,17 +738,7 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
 
                         previous_size = emission->size;
 
-                        /* Terminate discarded threads after the clause if any
-                         * instruction needs threads terminated. Note that this
-                         * may be set for CLPER.i32 which is not
-                         * message-passing, so we need to check all
-                         * instructions */
-                        bool tdd = false;
-
-                        bi_foreach_instr_in_clause(block, clause, I)
-                                tdd |= I->tdd;
-
-                        bi_pack_clause(ctx, clause, next, next_2, emission, ctx->stage, tdd);
+                        bi_pack_clause(ctx, clause, next, next_2, emission, ctx->stage);
 
                         if (!is_last)
                                 bi_collect_blend_ret_addr(ctx, emission, clause);

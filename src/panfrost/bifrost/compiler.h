@@ -316,9 +316,6 @@ typedef struct {
          * useless double fills */
         bool no_spill;
 
-        /* Should we terminate discarded threads after executing this instruction? */
-        bool tdd;
-
         /* Override table, inducing a DTSEL_IMM pair if nonzero */
         enum bi_table table;
 
@@ -520,6 +517,9 @@ typedef struct {
         /* Unique in a clause */
         enum bifrost_message_type message_type;
         bi_instr *message;
+
+        /* Discard helper threads */
+        bool td;
 } bi_clause;
 
 typedef struct bi_block {

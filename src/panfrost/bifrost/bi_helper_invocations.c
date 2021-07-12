@@ -119,10 +119,6 @@ bi_block_uses_helpers(bi_block *block)
 static bool
 bi_block_terminates_helpers(bi_block *block)
 {
-        /* Can't terminate if there are no helpers */
-        if (!(block->pass_flags & 1))
-                return false;
-
         /* Can't terminate if a successor needs helpers */
         pan_foreach_successor((&block->base), succ) {
                 if (((bi_block *) succ)->pass_flags & 1)
@@ -187,19 +183,19 @@ bi_analyze_helper_terminate(bi_context *ctx)
         _mesa_set_destroy(visited, NULL);
         _mesa_set_destroy(worklist, NULL);
 
-        /* Finally, set helper_terminate on the last derivative-calculating
-         * instruction in a block that terminates helpers */
+        /* Finally, mark clauses requiring helpers */
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
 
-                if (!bi_block_terminates_helpers(block))
-                        continue;
+                /* At the end, there are helpers iff we don't terminate */
+                bool helpers = !bi_block_terminates_helpers(block);
 
-                bi_foreach_instr_in_block_rev(block, I) {
-                        if (bi_instr_uses_helpers(I)) {
-                                I->tdd = true;
-                                break;
+                bi_foreach_clause_in_block_rev(block, clause) {
+                        bi_foreach_instr_in_clause_rev(block, clause, I) {
+                                helpers |= bi_instr_uses_helpers(I);
                         }
+
+                        clause->td = !helpers;
                 }
         }
 }

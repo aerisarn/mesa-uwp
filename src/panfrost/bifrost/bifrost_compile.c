@@ -3585,8 +3585,9 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 bi_print_shader(ctx, stdout);
         bi_lower_fau(ctx);
 
-        /* Analyze as late as possible before RA/scheduling */
-        bi_analyze_helper_terminate(ctx);
+        /* Analyze before register allocation to avoid false dependencies. The
+         * skip bit is a function of only the data flow graph and is invariant
+         * under valid scheduling. */
         bi_analyze_helper_requirements(ctx);
 
         bi_register_allocate(ctx);
@@ -3595,6 +3596,10 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 bi_print_shader(ctx, stdout);
         bi_schedule(ctx);
         bi_assign_scoreboard(ctx);
+
+        /* Analyze after scheduling since we depend on instruction order. */
+        bi_analyze_helper_terminate(ctx);
+
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
 
