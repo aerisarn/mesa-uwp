@@ -140,8 +140,6 @@ panfrost_create_sampler_state(
         const struct pipe_sampler_state *cso)
 {
         struct panfrost_sampler_state *so = CALLOC_STRUCT(panfrost_sampler_state);
-        struct panfrost_device *device = pan_device(pctx->screen);
-
         so->base = *cso;
 
         bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
@@ -216,23 +214,39 @@ panfrost_fs_required(
         return (fs->info.fs.writes_depth || fs->info.fs.writes_stencil);
 }
 
+UNUSED static uint16_t
+pack_blend_constant(enum pipe_format format, float cons)
+{
+        const struct util_format_description *format_desc =
+                util_format_description(format);
+
+        unsigned chan_size = 0;
+
+        for (unsigned i = 0; i < format_desc->nr_channels; i++)
+                chan_size = MAX2(format_desc->channel[0].size, chan_size);
+
+        uint16_t unorm = (cons * ((1 << chan_size) - 1));
+        return unorm << (16 - chan_size);
+}
+
 static void
-panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
-                            mali_ptr *blend_shaders, void *rts)
+panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_shaders)
 {
         unsigned rt_count = batch->key.nr_cbufs;
         struct panfrost_context *ctx = batch->ctx;
         const struct panfrost_blend_state *so = ctx->blend;
-        const struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
         /* Always have at least one render target for depth-only passes */
         for (unsigned i = 0; i < MAX2(rt_count, 1); ++i) {
+                struct mali_blend_packed *packed = rts + (i * MALI_BLEND_LENGTH);
+
                 /* Disable blending for unbacked render targets */
                 if (rt_count == 0 || !batch->key.cbufs[i] || so->info[i].no_colour) {
                         pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
                                 cfg.enable = false;
+#if PAN_ARCH >= 6
                                 cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OFF;
+#endif
                         }
 
                         continue;
@@ -240,38 +254,37 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
 
                 struct pan_blend_info info = so->info[i];
                 enum pipe_format format = batch->key.cbufs[i]->format;
-                const struct util_format_description *format_desc;
-                unsigned chan_size = 0;
-
-                format_desc = util_format_description(format);
-
-                for (unsigned i = 0; i < format_desc->nr_channels; i++)
-                        chan_size = MAX2(format_desc->channel[0].size, chan_size);
-
-                /* Fixed point constant */
-                float constant_f = pan_blend_get_constant(
-                                info.constant_mask,
-                                ctx->blend_color.color);
-
-                u16 constant = constant_f * ((1 << chan_size) - 1);
-                constant <<= 16 - chan_size;
-
-                struct mali_blend_packed *packed = rts + (i * MALI_BLEND_LENGTH);
+                float cons = pan_blend_get_constant(info.constant_mask,
+                                                    ctx->blend_color.color);
 
                 /* Word 0: Flags and constant */
                 pan_pack(packed, BLEND, cfg) {
-                        cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
+                        cfg.srgb = util_format_is_srgb(format);
                         cfg.load_destination = info.load_dest;
                         cfg.round_to_fb_precision = !ctx->blend->base.dither;
                         cfg.alpha_to_one = ctx->blend->base.alpha_to_one;
-                        cfg.bifrost.constant = constant;
+#if PAN_ARCH >= 6
+                        cfg.bifrost.constant = pack_blend_constant(format, cons);
+#else
+                        cfg.midgard.blend_shader = (blend_shaders[i] != 0);
+
+                        if (blend_shaders[i])
+                                cfg.midgard.shader_pc = blend_shaders[i];
+                        else
+                                cfg.midgard.constant = cons;
+#endif
                 }
 
                 if (!blend_shaders[i]) {
                         /* Word 1: Blend Equation */
                         STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
-                        packed->opaque[1] = so->equation[i];
+                        packed->opaque[PAN_ARCH >= 6 ? 1 : 2] = so->equation[i];
                 }
+
+#if PAN_ARCH >= 6
+                const struct panfrost_device *dev = pan_device(ctx->base.screen);
+                struct panfrost_shader_state *fs =
+                        panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
                 /* Words 2 and 3: Internal blend */
                 if (blend_shaders[i]) {
@@ -309,65 +322,8 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 cfg.fixed_function.rt = i;
                         }
                 }
+#endif
         }
-}
-
-static void
-panfrost_emit_midgard_blend(struct panfrost_batch *batch,
-                            mali_ptr *blend_shaders, void *rts)
-{
-        unsigned rt_count = batch->key.nr_cbufs;
-        struct panfrost_context *ctx = batch->ctx;
-        const struct panfrost_blend_state *so = ctx->blend;
-
-        /* Always have at least one render target for depth-only passes */
-        for (unsigned i = 0; i < MAX2(rt_count, 1); ++i) {
-                struct mali_blend_packed *packed = rts + (i * MALI_BLEND_LENGTH);
-
-                /* Disable blending for unbacked render targets */
-                if (rt_count == 0 || !batch->key.cbufs[i] || so->info[i].no_colour) {
-                        pan_pack(packed, BLEND, cfg) {
-                                cfg.enable = false;
-                        }
-
-                        continue;
-                }
-
-                pan_pack(packed, BLEND, cfg) {
-                        struct pan_blend_info info = so->info[i];
-
-                        cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
-                        cfg.load_destination = info.load_dest;
-                        cfg.round_to_fb_precision = !ctx->blend->base.dither;
-                        cfg.alpha_to_one = ctx->blend->base.alpha_to_one;
-                        cfg.midgard.blend_shader = (blend_shaders[i] != 0);
-                        if (blend_shaders[i]) {
-                                cfg.midgard.shader_pc = blend_shaders[i];
-                        } else {
-                                cfg.midgard.constant = pan_blend_get_constant(
-                                                info.constant_mask,
-                                                ctx->blend_color.color);
-                        }
-                }
-
-                if (!blend_shaders[i]) {
-                        /* Word 2: Blend Equation */
-                        STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
-                        packed->opaque[2] = so->equation[i];
-                }
-        }
-}
-
-static void
-panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_shaders)
-{
-        const struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-        struct panfrost_blend_state *so = batch->ctx->blend;
-
-        if (pan_is_bifrost(dev))
-                panfrost_emit_bifrost_blend(batch, blend_shaders, rts);
-        else
-                panfrost_emit_midgard_blend(batch, blend_shaders, rts);
 
         for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
                 if (!so->info[i].no_colour && batch->key.cbufs[i]) {
