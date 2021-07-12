@@ -1,0 +1,4 @@
+dEQP-VK.glsl.builtin.precision.pow.highp.vec2,Fail
+dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2d_fixed_fragment,Fail
+dEQP-VK.draw.multi_draw.mosaic.indexed_packed.max_draws.standard_stride.10_instances.offset_6,Crash
+dEQP-VK.draw.multi_draw.overlapping.indexed_packed.one_draw.standard_stride.no_instances.offset_6,Crash
