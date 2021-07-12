@@ -139,6 +139,12 @@ instr_can_cse(const bi_instr *I)
                         return false;
         }
 
+        /* Similar refuse to CSE non-SSA sources */
+        bi_foreach_src(I, s) {
+                if (I->src[s].reg || I->src[s].type == BI_INDEX_REGISTER)
+                        return false;
+        }
+
         return true;
 }
 
