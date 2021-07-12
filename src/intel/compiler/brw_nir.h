@@ -27,6 +27,7 @@
 #include "brw_reg.h"
 #include "compiler/nir/nir.h"
 #include "brw_compiler.h"
+#include "nir_builder.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -191,6 +192,10 @@ nir_shader *brw_nir_create_passthrough_tcs(void *mem_ctx,
 
 bool brw_nir_move_interpolation_to_top(nir_shader *nir);
 bool brw_nir_demote_sample_qualifiers(nir_shader *nir);
+nir_ssa_def *brw_nir_load_global_const(nir_builder *b,
+                                       nir_intrinsic_instr *load_uniform,
+                                       nir_ssa_def *base_addr,
+                                       unsigned off);
 
 #ifdef __cplusplus
 }

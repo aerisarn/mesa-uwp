@@ -1535,3 +1535,49 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
 
    return nir;
 }
+
+nir_ssa_def *
+brw_nir_load_global_const(nir_builder *b, nir_intrinsic_instr *load_uniform,
+      nir_ssa_def *base_addr, unsigned off)
+{
+   assert(load_uniform->intrinsic == nir_intrinsic_load_uniform);
+   assert(load_uniform->dest.is_ssa);
+   assert(load_uniform->src[0].is_ssa);
+
+   unsigned bit_size = load_uniform->dest.ssa.bit_size;
+   assert(bit_size >= 8 && bit_size % 8 == 0);
+   unsigned byte_size = bit_size / 8;
+   nir_ssa_def *sysval;
+
+   if (nir_src_is_const(load_uniform->src[0])) {
+      uint64_t offset = off +
+                        nir_intrinsic_base(load_uniform) +
+                        nir_src_as_uint(load_uniform->src[0]);
+
+      /* Things should be component-aligned. */
+      assert(offset % byte_size == 0);
+
+      unsigned suboffset = offset % 64;
+      uint64_t aligned_offset = offset - suboffset;
+
+      /* Load two just in case we go over a 64B boundary */
+      nir_ssa_def *data[2];
+      for (unsigned i = 0; i < 2; i++) {
+         nir_ssa_def *addr = nir_iadd_imm(b, base_addr, aligned_offset + i * 64);
+         data[i] = nir_load_global_const_block_intel(b, 16, addr,
+                                                     nir_imm_true(b));
+      }
+
+      sysval = nir_extract_bits(b, data, 2, suboffset * 8,
+                                load_uniform->num_components, bit_size);
+   } else {
+      nir_ssa_def *offset32 =
+         nir_iadd_imm(b, load_uniform->src[0].ssa,
+                         off + nir_intrinsic_base(load_uniform));
+      nir_ssa_def *addr = nir_iadd(b, base_addr, nir_u2u64(b, offset32));
+      sysval = nir_load_global_constant(b, addr, byte_size,
+                                        load_uniform->num_components, bit_size);
+   }
+
+   return sysval;
+}
