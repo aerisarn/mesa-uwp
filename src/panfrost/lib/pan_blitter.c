@@ -901,8 +901,8 @@ pan_blitter_emit_bifrost_sampler(struct pan_pool *pool,
         pan_pack(sampler.cpu, BIFROST_SAMPLER, cfg) {
                 cfg.seamless_cube_map = false;
                 cfg.normalized_coordinates = false;
-                cfg.point_sample_minify = nearest_filter;
-                cfg.point_sample_magnify = nearest_filter;
+                cfg.minify_nearest = nearest_filter;
+                cfg.magnify_nearest = nearest_filter;
         }
 
         return sampler.gpu;

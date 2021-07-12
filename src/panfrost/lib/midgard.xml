@@ -768,8 +768,8 @@
     <field name="Clamp integer coordinates" size="1" start="0:24" type="bool"/>
     <field name="Normalized Coordinates" size="1" start="0:25" type="bool" default="true"/>
     <field name="Clamp integer array indices" size="1" start="0:26" type="bool" default="true"/>
-    <field name="Point sample minify" size="1" start="0:27" type="bool" default="false"/>
-    <field name="Point sample magnify" size="1" start="0:28" type="bool" default="false"/>
+    <field name="Minify nearest" size="1" start="0:27" type="bool" default="false"/>
+    <field name="Magnify nearest" size="1" start="0:28" type="bool" default="false"/>
     <!--- Set for 0.5, clear for 0.0 -->
     <field name="Magnify cutoff" size="1" start="0:29" type="bool" default="false"/>
     <field name="Mipmap Mode" size="2" start="0:30" type="Mipmap Mode" default="Nearest"/>

@@ -176,8 +176,8 @@ panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
         bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
 
         pan_pack(hw, BIFROST_SAMPLER, cfg) {
-                cfg.point_sample_magnify = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
-                cfg.point_sample_minify = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
+                cfg.magnify_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
+                cfg.minify_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
                 cfg.mipmap_mode = pan_pipe_to_mipmode(cso->min_mip_filter);
                 cfg.normalized_coordinates = cso->normalized_coords;
 
