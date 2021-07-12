@@ -34,6 +34,7 @@ STABLE_EPHEMERAL=" \
       libwaffle-dev \
       libwayland-dev \
       libx11-xcb-dev \
+      libxcb-dri2-0-dev \
       libxext-dev \
       libxkbcommon-dev \
       libxrender-dev \
@@ -96,7 +97,7 @@ mkdir -p /lava-files/
 
 ############### Build piglit
 
-PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON" . .gitlab-ci/container/build-piglit.sh
+PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON -DPIGLIT_BUILD_DMA_BUF_TESTS=ON" . .gitlab-ci/container/build-piglit.sh
 
 ############### Build Crosvm
 
