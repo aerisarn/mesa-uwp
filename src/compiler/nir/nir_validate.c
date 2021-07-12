@@ -559,8 +559,12 @@ vectorized_intrinsic(nir_intrinsic_instr *intr)
 static enum pipe_format
 image_intrin_format(nir_intrinsic_instr *instr)
 {
-   if (nir_intrinsic_has_format(instr))
+   if (nir_intrinsic_format(instr) != PIPE_FORMAT_NONE)
       return nir_intrinsic_format(instr);
+
+   /* If this not a deref intrinsic, PIPE_FORMAT_NONE is the best we can do */
+   if (nir_intrinsic_infos[instr->intrinsic].src_components[0] != -1)
+      return PIPE_FORMAT_NONE;
 
    nir_variable *var = nir_intrinsic_get_var(instr, 0);
    if (var == NULL)
