@@ -176,7 +176,7 @@ create_texel_buffer_copy_pipeline_layout(struct v3dv_device *device,
       .pSetLayouts = ds_layout,
       .pushConstantRangeCount = 1,
       .pPushConstantRanges =
-         &(VkPushConstantRange) { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 20 },
+         &(VkPushConstantRange) { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 24 },
    };
 
    result =
