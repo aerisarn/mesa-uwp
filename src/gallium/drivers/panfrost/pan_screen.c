@@ -43,7 +43,6 @@
 #include "drm-uapi/drm_fourcc.h"
 #include "drm-uapi/panfrost_drm.h"
 
-#include "pan_blitter.h"
 #include "pan_bo.h"
 #include "pan_shader.h"
 #include "pan_screen.h"
@@ -696,10 +695,11 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
         pan_indirect_dispatch_cleanup(dev);
         panfrost_cleanup_indirect_draw_shaders(dev);
         panfrost_pool_cleanup(&screen->indirect_draw.bin_pool);
-        pan_blitter_cleanup(dev);
         panfrost_pool_cleanup(&screen->blitter.bin_pool);
         panfrost_pool_cleanup(&screen->blitter.desc_pool);
         pan_blend_shaders_cleanup(dev);
+
+        screen->vtbl.screen_destroy(pscreen);
 
         if (dev->ro)
                 dev->ro->destroy(dev->ro);
@@ -892,9 +892,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                            4096, "Blitter shaders", false, true);
         panfrost_pool_init(&screen->blitter.desc_pool, NULL, dev, 0, 65536,
                            "Blitter RSDs", false, true);
-        pan_blitter_init(dev, &screen->blitter.bin_pool.base,
-                         &screen->blitter.desc_pool.base);
-
         panfrost_cmdstream_screen_init(screen);
 
         return &screen->base;

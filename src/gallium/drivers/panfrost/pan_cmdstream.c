@@ -45,6 +45,7 @@
 #include "pan_util.h"
 #include "pan_indirect_draw.h"
 #include "pan_indirect_dispatch.h"
+#include "pan_blitter.h"
 
 #include "midgard_pack.h"
 
@@ -3682,13 +3683,26 @@ panfrost_get_sample_position(struct pipe_context *context,
                         out_value);
 }
 
+static void
+screen_destroy(struct pipe_screen *pscreen)
+{
+        struct panfrost_device *dev = pan_device(pscreen);
+        pan_blitter_cleanup(dev);
+}
+
 void
 panfrost_cmdstream_screen_init(struct panfrost_screen *screen)
 {
+        struct panfrost_device *dev = &screen->dev;
+
         screen->vtbl.prepare_rsd = prepare_rsd;
         screen->vtbl.emit_tls    = emit_tls;
         screen->vtbl.emit_fbd    = emit_fbd;
         screen->vtbl.emit_fragment_job = emit_fragment_job;
+        screen->vtbl.screen_destroy = screen_destroy;
+
+        pan_blitter_init(dev, &screen->blitter.bin_pool.base,
+                         &screen->blitter.desc_pool.base);
 }
 
 void
