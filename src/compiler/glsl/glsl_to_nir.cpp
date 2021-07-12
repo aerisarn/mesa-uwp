@@ -1314,6 +1314,9 @@ nir_visitor::visit(ir_call *ir)
 
          instr->src[0] = nir_src_for_ssa(&deref->dest.ssa);
          param = param->get_next();
+         nir_intrinsic_set_image_dim(instr,
+            (glsl_sampler_dim)type->sampler_dimensionality);
+         nir_intrinsic_set_image_array(instr, type->sampler_array);
 
          /* Set the intrinsic destination. */
          if (ir->return_deref) {

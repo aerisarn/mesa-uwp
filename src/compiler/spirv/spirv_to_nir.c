@@ -3341,6 +3341,9 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    nir_intrinsic_instr *intrin = nir_intrinsic_instr_create(b->shader, op);
 
    intrin->src[0] = nir_src_for_ssa(&image.image->dest.ssa);
+   nir_intrinsic_set_image_dim(intrin, glsl_get_sampler_dim(image.image->type));
+   nir_intrinsic_set_image_array(intrin,
+      glsl_sampler_type_is_array(image.image->type));
 
    switch (opcode) {
    case SpvOpImageQuerySamples:
