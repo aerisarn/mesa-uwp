@@ -925,7 +925,10 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
 
    switch (bind_point) {
    case VK_PIPELINE_BIND_POINT_GRAPHICS:
-      stages &= VK_SHADER_STAGE_ALL_GRAPHICS;
+      stages &= VK_SHADER_STAGE_ALL_GRAPHICS |
+                (cmd_buffer->device->vk.enabled_extensions.NV_mesh_shader ?
+                      (VK_SHADER_STAGE_TASK_BIT_NV |
+                       VK_SHADER_STAGE_MESH_BIT_NV) : 0);
       pipe_state = &cmd_buffer->state.gfx.base;
       break;
 
@@ -957,11 +960,20 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
          anv_descriptor_set_is_push(set)) {
       pipe_state->descriptors[set_index] = set;
 
-      /* Ray-tracing shaders are entirely bindless and so they don't have
-       * access to HW binding tables.  This means that we have to upload the
-       * descriptor set as an 64-bit address in the push constants.
+      /* Those stages don't have access to HW binding tables.
+       * This means that we have to upload the descriptor set
+       * as an 64-bit address in the push constants.
        */
-      if (bind_point == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR) {
+      bool update_desc_sets = stages & (VK_SHADER_STAGE_TASK_BIT_NV |
+                                        VK_SHADER_STAGE_MESH_BIT_NV |
+                                        VK_SHADER_STAGE_RAYGEN_BIT_KHR |
+                                        VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
+                                        VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
+                                        VK_SHADER_STAGE_MISS_BIT_KHR |
+                                        VK_SHADER_STAGE_INTERSECTION_BIT_KHR |
+                                        VK_SHADER_STAGE_CALLABLE_BIT_KHR);
+
+      if (update_desc_sets) {
          struct anv_push_constants *push = &pipe_state->push_constants;
 
          struct anv_address addr = anv_descriptor_set_address(set);
@@ -1239,7 +1251,9 @@ void anv_CmdPushConstants(
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   if (stageFlags & VK_SHADER_STAGE_ALL_GRAPHICS) {
+   if (stageFlags & (VK_SHADER_STAGE_ALL_GRAPHICS |
+                     VK_SHADER_STAGE_TASK_BIT_NV |
+                     VK_SHADER_STAGE_MESH_BIT_NV)) {
       struct anv_cmd_pipeline_state *pipe_state =
          &cmd_buffer->state.gfx.base;
 

@@ -137,6 +137,12 @@ brw_shader_stage_is_bindless(gl_shader_stage stage)
           stage <= MESA_SHADER_CALLABLE;
 }
 
+static inline bool
+brw_shader_stage_requires_bindless_resources(gl_shader_stage stage)
+{
+   return brw_shader_stage_is_bindless(stage) || gl_shader_stage_is_mesh(stage);
+}
+
 /**
  * Program key structures.
  *

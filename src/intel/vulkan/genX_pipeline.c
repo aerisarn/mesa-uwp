@@ -2633,9 +2633,13 @@ emit_task_state(struct anv_graphics_pipeline *pipeline)
       task.NumberofBarriers                  = task_prog_data->base.uses_barrier;
       task.SharedLocalMemorySize             =
          encode_slm_size(GFX_VER, task_prog_data->base.base.total_shared);
-   }
 
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TASK_SHADER_DATA), zero);
+      /*
+       * 3DSTATE_TASK_SHADER_DATA.InlineData[0:1] will be used for an address
+       * of a buffer with push constants and descriptor set table.
+       */
+      task.EmitInlineParameter = true;
+   }
 
    /* Recommended values from "Task and Mesh Distribution Programming". */
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TASK_REDISTRIB), redistrib) {
@@ -2700,9 +2704,13 @@ emit_mesh_state(struct anv_graphics_pipeline *pipeline)
       mesh.NumberofBarriers                  = mesh_prog_data->base.uses_barrier;
       mesh.SharedLocalMemorySize             =
          encode_slm_size(GFX_VER, mesh_prog_data->base.base.total_shared);
-   }
 
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_MESH_SHADER_DATA), zero);
+      /*
+       * 3DSTATE_MESH_SHADER_DATA.InlineData[0:1] will be used for an address
+       * of a buffer with push constants and descriptor set table.
+       */
+      mesh.EmitInlineParameter = true;
+   }
 
    /* Recommended values from "Task and Mesh Distribution Programming". */
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_MESH_DISTRIB), distrib) {

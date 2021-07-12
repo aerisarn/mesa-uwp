@@ -3531,6 +3531,56 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.push_constants_dirty &= ~flushed;
 }
 
+#if GFX_VERx10 >= 125
+static void
+cmd_buffer_flush_mesh_inline_data(struct anv_cmd_buffer *cmd_buffer,
+                                  VkShaderStageFlags dirty_stages)
+{
+   struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
+   const struct anv_graphics_pipeline *pipeline = gfx_state->pipeline;
+
+   if (dirty_stages & VK_SHADER_STAGE_TASK_BIT_NV &&
+       anv_pipeline_has_stage(pipeline, MESA_SHADER_TASK)) {
+
+      const struct anv_shader_bin *shader = pipeline->shaders[MESA_SHADER_TASK];
+      const struct anv_pipeline_bind_map *bind_map = &shader->bind_map;
+
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_TASK_SHADER_DATA), data) {
+         const struct anv_push_range *range = &bind_map->push_ranges[0];
+         if (range->length > 0) {
+            struct anv_address buffer =
+               get_push_range_address(cmd_buffer, shader, range);
+
+            uint64_t addr = anv_address_physical(buffer);
+            data.InlineData[0] = addr & 0xffffffff;
+            data.InlineData[1] = addr >> 32;
+         }
+      }
+   }
+
+   if (dirty_stages & VK_SHADER_STAGE_MESH_BIT_NV &&
+       anv_pipeline_has_stage(pipeline, MESA_SHADER_MESH)) {
+
+      const struct anv_shader_bin *shader = pipeline->shaders[MESA_SHADER_MESH];
+      const struct anv_pipeline_bind_map *bind_map = &shader->bind_map;
+
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_MESH_SHADER_DATA), data) {
+         const struct anv_push_range *range = &bind_map->push_ranges[0];
+         if (range->length > 0) {
+            struct anv_address buffer =
+               get_push_range_address(cmd_buffer, shader, range);
+
+            uint64_t addr = anv_address_physical(buffer);
+            data.InlineData[0] = addr & 0xffffffff;
+            data.InlineData[1] = addr >> 32;
+         }
+      }
+   }
+
+   cmd_buffer->state.push_constants_dirty &= ~dirty_stages;
+}
+#endif
+
 static void
 cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -3840,6 +3890,11 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       dirty |= cmd_buffer->state.push_constants_dirty;
       cmd_buffer_flush_push_constants(cmd_buffer,
                                       dirty & VK_SHADER_STAGE_ALL_GRAPHICS);
+#if GFX_VERx10 >= 125
+      cmd_buffer_flush_mesh_inline_data(
+         cmd_buffer, dirty & (VK_SHADER_STAGE_TASK_BIT_NV |
+                              VK_SHADER_STAGE_MESH_BIT_NV));
+#endif
    }
 
    if (dirty & VK_SHADER_STAGE_ALL_GRAPHICS) {
