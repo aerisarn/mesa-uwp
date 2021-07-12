@@ -1387,6 +1387,102 @@ panfrost_get_tex_desc(struct panfrost_batch *batch,
 }
 
 static void
+panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
+                                struct pipe_context *pctx,
+                                struct pipe_resource *texture)
+{
+        struct panfrost_device *device = pan_device(pctx->screen);
+        struct panfrost_context *ctx = pan_context(pctx);
+        struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
+        enum pipe_format format = so->base.format;
+        assert(prsrc->image.data.bo);
+
+        /* Format to access the stencil portion of a Z32_S8 texture */
+        if (format == PIPE_FORMAT_X32_S8X24_UINT) {
+                assert(prsrc->separate_stencil);
+                texture = &prsrc->separate_stencil->base;
+                prsrc = (struct panfrost_resource *)texture;
+                format = texture->format;
+        }
+
+        const struct util_format_description *desc = util_format_description(format);
+
+        bool fake_rgtc = !panfrost_supports_compressed_format(device, MALI_BC4_UNORM);
+
+        if (desc->layout == UTIL_FORMAT_LAYOUT_RGTC && fake_rgtc) {
+                if (desc->is_snorm)
+                        format = PIPE_FORMAT_R8G8B8A8_SNORM;
+                else
+                        format = PIPE_FORMAT_R8G8B8A8_UNORM;
+                desc = util_format_description(format);
+        }
+
+        so->texture_bo = prsrc->image.data.bo->ptr.gpu;
+        so->modifier = prsrc->image.layout.modifier;
+
+        /* MSAA only supported for 2D textures */
+
+        assert(texture->nr_samples <= 1 ||
+               so->base.target == PIPE_TEXTURE_2D ||
+               so->base.target == PIPE_TEXTURE_2D_ARRAY);
+
+        enum mali_texture_dimension type =
+                panfrost_translate_texture_dimension(so->base.target);
+
+        bool is_buffer = (so->base.target == PIPE_BUFFER);
+
+        unsigned first_level = is_buffer ? 0 : so->base.u.tex.first_level;
+        unsigned last_level = is_buffer ? 0 : so->base.u.tex.last_level;
+        unsigned first_layer = is_buffer ? 0 : so->base.u.tex.first_layer;
+        unsigned last_layer = is_buffer ? 0 : so->base.u.tex.last_layer;
+        unsigned buf_offset = is_buffer ? so->base.u.buf.offset : 0;
+        unsigned buf_size = (is_buffer ? so->base.u.buf.size : 0) /
+                            util_format_get_blocksize(format);
+
+        if (so->base.target == PIPE_TEXTURE_3D) {
+                first_layer /= prsrc->image.layout.depth;
+                last_layer /= prsrc->image.layout.depth;
+                assert(!first_layer && !last_layer);
+        }
+
+        struct pan_image_view iview = {
+                .format = format,
+                .dim = type,
+                .first_level = first_level,
+                .last_level = last_level,
+                .first_layer = first_layer,
+                .last_layer = last_layer,
+                .swizzle = {
+                        so->base.swizzle_r,
+                        so->base.swizzle_g,
+                        so->base.swizzle_b,
+                        so->base.swizzle_a,
+                },
+                .image = &prsrc->image,
+
+                .buf.offset = buf_offset,
+                .buf.size = buf_size,
+        };
+
+        unsigned size =
+                (pan_is_bifrost(device) ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
+                panfrost_estimate_texture_payload_size(device, &iview);
+
+        struct panfrost_ptr payload = pan_pool_alloc_aligned(&ctx->descs.base, size, 64);
+        so->state = panfrost_pool_take_ref(&ctx->descs, payload.gpu);
+
+        void *tex = pan_is_bifrost(device) ?
+                    &so->bifrost_descriptor : payload.cpu;
+
+        if (!pan_is_bifrost(device)) {
+                payload.cpu += MALI_MIDGARD_TEXTURE_LENGTH;
+                payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
+        }
+
+        panfrost_new_texture(device, &iview, tex, &payload);
+}
+
+static void
 panfrost_update_sampler_view(struct panfrost_sampler_view *view,
                              struct pipe_context *pctx)
 {
@@ -3435,102 +3531,6 @@ panfrost_create_depth_stencil_state(struct pipe_context *pipe,
         assert(!zsa->depth_bounds_test);
 
         return so;
-}
-
-void
-panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
-                                struct pipe_context *pctx,
-                                struct pipe_resource *texture)
-{
-        struct panfrost_device *device = pan_device(pctx->screen);
-        struct panfrost_context *ctx = pan_context(pctx);
-        struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
-        enum pipe_format format = so->base.format;
-        assert(prsrc->image.data.bo);
-
-        /* Format to access the stencil portion of a Z32_S8 texture */
-        if (format == PIPE_FORMAT_X32_S8X24_UINT) {
-                assert(prsrc->separate_stencil);
-                texture = &prsrc->separate_stencil->base;
-                prsrc = (struct panfrost_resource *)texture;
-                format = texture->format;
-        }
-
-        const struct util_format_description *desc = util_format_description(format);
-
-        bool fake_rgtc = !panfrost_supports_compressed_format(device, MALI_BC4_UNORM);
-
-        if (desc->layout == UTIL_FORMAT_LAYOUT_RGTC && fake_rgtc) {
-                if (desc->is_snorm)
-                        format = PIPE_FORMAT_R8G8B8A8_SNORM;
-                else
-                        format = PIPE_FORMAT_R8G8B8A8_UNORM;
-                desc = util_format_description(format);
-        }
-
-        so->texture_bo = prsrc->image.data.bo->ptr.gpu;
-        so->modifier = prsrc->image.layout.modifier;
-
-        /* MSAA only supported for 2D textures */
-
-        assert(texture->nr_samples <= 1 ||
-               so->base.target == PIPE_TEXTURE_2D ||
-               so->base.target == PIPE_TEXTURE_2D_ARRAY);
-
-        enum mali_texture_dimension type =
-                panfrost_translate_texture_dimension(so->base.target);
-
-        bool is_buffer = (so->base.target == PIPE_BUFFER);
-
-        unsigned first_level = is_buffer ? 0 : so->base.u.tex.first_level;
-        unsigned last_level = is_buffer ? 0 : so->base.u.tex.last_level;
-        unsigned first_layer = is_buffer ? 0 : so->base.u.tex.first_layer;
-        unsigned last_layer = is_buffer ? 0 : so->base.u.tex.last_layer;
-        unsigned buf_offset = is_buffer ? so->base.u.buf.offset : 0;
-        unsigned buf_size = (is_buffer ? so->base.u.buf.size : 0) /
-                            util_format_get_blocksize(format);
-
-        if (so->base.target == PIPE_TEXTURE_3D) {
-                first_layer /= prsrc->image.layout.depth;
-                last_layer /= prsrc->image.layout.depth;
-                assert(!first_layer && !last_layer);
-        }
-
-        struct pan_image_view iview = {
-                .format = format,
-                .dim = type,
-                .first_level = first_level,
-                .last_level = last_level,
-                .first_layer = first_layer,
-                .last_layer = last_layer,
-                .swizzle = {
-                        so->base.swizzle_r,
-                        so->base.swizzle_g,
-                        so->base.swizzle_b,
-                        so->base.swizzle_a,
-                },
-                .image = &prsrc->image,
-
-                .buf.offset = buf_offset,
-                .buf.size = buf_size,
-        };
-
-        unsigned size =
-                (pan_is_bifrost(device) ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
-                panfrost_estimate_texture_payload_size(device, &iview);
-
-        struct panfrost_ptr payload = pan_pool_alloc_aligned(&ctx->descs.base, size, 64);
-        so->state = panfrost_pool_take_ref(&ctx->descs, payload.gpu);
-
-        void *tex = pan_is_bifrost(device) ?
-                    &so->bifrost_descriptor : payload.cpu;
-
-        if (!pan_is_bifrost(device)) {
-                payload.cpu += MALI_MIDGARD_TEXTURE_LENGTH;
-                payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
-        }
-
-        panfrost_new_texture(device, &iview, tex, &payload);
 }
 
 static struct pipe_sampler_view *

@@ -401,11 +401,6 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
 void
 panfrost_analyze_sysvals(struct panfrost_shader_state *ss);
 
-void
-panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
-                                struct pipe_context *pctx,
-                                struct pipe_resource *texture);
-
 /* Instancing */
 
 mali_ptr
