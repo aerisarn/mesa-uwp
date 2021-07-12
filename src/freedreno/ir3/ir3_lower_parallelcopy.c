@@ -72,12 +72,9 @@ static void
 do_xor(struct ir3_instruction *instr, unsigned dst_num, unsigned src1_num, unsigned src2_num, unsigned flags)
 {
 	struct ir3_instruction *xor = ir3_instr_create(instr->block, OPC_XOR_B, 1, 2);
-	struct ir3_register *dst = ir3_dst_create(xor, dst_num, flags);
-	dst->wrmask = 1;
-	struct ir3_register *src1 = ir3_src_create(xor, src1_num, flags);
-	src1->wrmask = 1;
-	struct ir3_register *src2 = ir3_src_create(xor, src2_num, flags);
-	src2->wrmask = 1;
+	ir3_dst_create(xor, dst_num, flags);
+	ir3_src_create(xor, src1_num, flags);
+	ir3_src_create(xor, src2_num, flags);
 
 	ir3_instr_move_before(xor, instr);
 }
@@ -160,10 +157,10 @@ do_swap(struct ir3_compiler *compiler, struct ir3_instruction *instr,
 		 */
 		unsigned opc = (entry->flags & IR3_REG_SHARED) ? OPC_SWZ_SHARED_MACRO : OPC_SWZ;
 		struct ir3_instruction *swz = ir3_instr_create(instr->block, opc, 2, 2);
-		ir3_dst_create(swz, dst_num, entry->flags)->wrmask = 1;
-		ir3_dst_create(swz, src_num, entry->flags)->wrmask = 1;
-		ir3_src_create(swz, src_num, entry->flags)->wrmask = 1;
-		ir3_src_create(swz, dst_num, entry->flags)->wrmask = 1;
+		ir3_dst_create(swz, dst_num, entry->flags);
+		ir3_dst_create(swz, src_num, entry->flags);
+		ir3_src_create(swz, src_num, entry->flags);
+		ir3_src_create(swz, dst_num, entry->flags);
 		swz->cat1.dst_type = (entry->flags & IR3_REG_HALF) ? TYPE_U16 : TYPE_U32;
 		swz->cat1.src_type = (entry->flags & IR3_REG_HALF) ? TYPE_U16 : TYPE_U32;
 		swz->repeat = 1;
@@ -209,16 +206,16 @@ do_copy(struct ir3_compiler *compiler, struct ir3_instruction *instr,
 			if (entry->src.reg % 2 == 0) {
 				/* cov.u32u16 dst, src */
 				struct ir3_instruction *cov = ir3_instr_create(instr->block, OPC_MOV, 1, 1);
-				ir3_dst_create(cov, dst_num, entry->flags)->wrmask = 1;
-				ir3_src_create(cov, src_num, entry->flags & ~IR3_REG_HALF)->wrmask = 1;
+				ir3_dst_create(cov, dst_num, entry->flags);
+				ir3_src_create(cov, src_num, entry->flags & ~IR3_REG_HALF);
 				cov->cat1.dst_type = TYPE_U16;
 				cov->cat1.src_type = TYPE_U32;
 				ir3_instr_move_before(cov, instr);
 			} else {
 				/* shr.b dst, src, h(16) */
 				struct ir3_instruction *shr = ir3_instr_create(instr->block, OPC_SHR_B, 1, 2);
-				ir3_dst_create(shr, dst_num, entry->flags)->wrmask = 1;
-				ir3_src_create(shr, src_num, entry->flags & ~IR3_REG_HALF)->wrmask = 1;
+				ir3_dst_create(shr, dst_num, entry->flags);
+				ir3_src_create(shr, src_num, entry->flags & ~IR3_REG_HALF);
 				ir3_src_create(shr, 0, entry->flags | IR3_REG_IMMED)->uim_val = 16;
 				ir3_instr_move_before(shr, instr);
 			}
@@ -232,8 +229,8 @@ do_copy(struct ir3_compiler *compiler, struct ir3_instruction *instr,
 	/* Similar to the swap case, we have to use a macro for shared regs. */
 	unsigned opc = (entry->flags & IR3_REG_SHARED) ? OPC_READ_FIRST_MACRO : OPC_MOV;
 	struct ir3_instruction *mov = ir3_instr_create(instr->block, opc, 1, 1);
-	ir3_dst_create(mov, dst_num, entry->flags)->wrmask = 1;
-	ir3_src_create(mov, src_num, entry->flags | entry->src.flags)->wrmask = 1;
+	ir3_dst_create(mov, dst_num, entry->flags);
+	ir3_src_create(mov, src_num, entry->flags | entry->src.flags);
 	mov->cat1.dst_type = (entry->flags & IR3_REG_HALF) ? TYPE_U16 : TYPE_U32;
 	mov->cat1.src_type = (entry->flags & IR3_REG_HALF) ? TYPE_U16 : TYPE_U32;
 	if (entry->src.flags & IR3_REG_IMMED)
