@@ -150,6 +150,7 @@ crocus_populate_sampler_prog_key_data(struct crocus_context *ice,
                                       bool uses_texture_gather,
                                       struct brw_sampler_prog_key_data *key)
 {
+   struct crocus_screen *screen = (struct crocus_screen *)ice->ctx.screen;
    uint32_t mask = ish->nir->info.textures_used[0];
 
    while (mask) {
@@ -166,6 +167,8 @@ crocus_populate_sampler_prog_key_data(struct crocus_context *ice,
       if (devinfo->verx10 < 75) {
          key->swizzles[s] = crocus_get_texture_swizzle(ice, texture);
       }
+
+      screen->vtbl.fill_clamp_mask(ice->state.shaders[stage].samplers[s], s, key->gl_clamp_mask);
 
       /* gather4 for RG32* is broken in multiple ways on Gen7. */
       if (devinfo->ver == 7 && uses_texture_gather) {

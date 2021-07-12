@@ -136,6 +136,9 @@ struct crocus_vtable {
                            struct brw_wm_prog_key *key);
    void (*populate_cs_key)(const struct crocus_context *ice,
                            struct brw_cs_prog_key *key);
+   void (*fill_clamp_mask)(const struct crocus_sampler_state *state,
+                           int s,
+                           uint32_t *clamp_mask);
    void (*lost_genx_state)(struct crocus_context *ice, struct crocus_batch *batch);
 
    void (*finish_batch)(struct crocus_batch *batch); /* haswell only */

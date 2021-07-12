@@ -210,14 +210,13 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CS_DERIVED_SYSTEM_VALUES_SUPPORTED:
    case PIPE_CAP_FENCE_SIGNAL:
    case PIPE_CAP_DEMOTE_TO_HELPER_INVOCATION:
+   case PIPE_CAP_GL_CLAMP:
       return true;
    case PIPE_CAP_INT64:
    case PIPE_CAP_INT64_DIVMOD:
    case PIPE_CAP_TGSI_BALLOT:
    case PIPE_CAP_PACKED_UNIFORMS:
       return devinfo->ver == 8;
-   case PIPE_CAP_GL_CLAMP:
-      return false;
    case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
       return devinfo->ver <= 5;
    case PIPE_CAP_TEXTURE_QUERY_LOD:
