@@ -30,6 +30,37 @@
 
 using namespace brw;
 
+static bool
+brw_nir_lower_load_uniforms_filter(const nir_instr *instr,
+                                   UNUSED const void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   return intrin->intrinsic == nir_intrinsic_load_uniform;
+}
+
+static nir_ssa_def *
+brw_nir_lower_load_uniforms_impl(nir_builder *b, nir_instr *instr,
+                                 UNUSED void *data)
+{
+   assert(instr->type == nir_instr_type_intrinsic);
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   assert(intrin->intrinsic == nir_intrinsic_load_uniform);
+
+   return brw_nir_load_global_const(b,
+                                    intrin,
+                                    nir_load_mesh_global_arg_addr_intel(b),
+                                    0);
+}
+
+static void
+brw_nir_lower_load_uniforms(nir_shader *nir)
+{
+   nir_shader_lower_instructions(nir, brw_nir_lower_load_uniforms_filter,
+                                 brw_nir_lower_load_uniforms_impl, NULL);
+}
+
 static inline int
 type_size_scalar_dwords(const struct glsl_type *type, bool bindless)
 {
@@ -150,6 +181,7 @@ brw_compile_task(const struct brw_compiler *compiler,
       brw_nir_apply_key(shader, compiler, &key->base, dispatch_width, true /* is_scalar */);
 
       NIR_PASS_V(shader, brw_nir_lower_tue_outputs, &prog_data->map);
+      NIR_PASS_V(shader, brw_nir_lower_load_uniforms);
       NIR_PASS_V(shader, brw_nir_lower_simd, dispatch_width);
 
       brw_postprocess_nir(shader, compiler, true /* is_scalar */, debug_enabled,
@@ -522,6 +554,11 @@ brw_compile_mesh(const struct brw_compiler *compiler,
       NIR_PASS_V(shader, brw_nir_lower_tue_inputs, params->tue_map);
       NIR_PASS_V(shader, brw_nir_lower_mue_outputs, &prog_data->map);
       NIR_PASS_V(shader, brw_nir_adjust_offset_for_arrayed_indices, &prog_data->map);
+
+      /* Load uniforms can do a better job for constants, so fold before it. */
+      NIR_PASS_V(shader, nir_opt_constant_folding);
+      NIR_PASS_V(shader, brw_nir_lower_load_uniforms);
+
       NIR_PASS_V(shader, brw_nir_lower_simd, dispatch_width);
 
       brw_postprocess_nir(shader, compiler, true /* is_scalar */, debug_enabled,
@@ -937,6 +974,12 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
       dest = get_nir_dest(instr->dest);
 
    switch (instr->intrinsic) {
+   case nir_intrinsic_load_mesh_global_arg_addr_intel:
+      assert(payload.num_regs == 3 || payload.num_regs == 4);
+      /* Passed in the Inline Parameter, the last element of the payload. */
+      bld.MOV(dest, retype(brw_vec1_grf(payload.num_regs - 1, 0), dest.type));
+      break;
+
    case nir_intrinsic_load_local_invocation_index:
    case nir_intrinsic_load_local_invocation_id:
       /* Local_ID.X is given by the HW in the shader payload. */

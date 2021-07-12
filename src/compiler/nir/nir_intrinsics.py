@@ -1320,6 +1320,9 @@ store("ssbo_block_intel", [-1, 1], [WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET]
 # src[] = { value, offset }.
 store("shared_block_intel", [1], [BASE, WRITE_MASK, ALIGN_MUL, ALIGN_OFFSET])
 
+# Intrinsics for Intel mesh shading
+system_value("mesh_global_arg_addr_intel", 1, bit_sizes=[64])
+
 # Intrinsics for Intel bindless thread dispatch
 system_value("btd_dss_id_intel", 1)
 system_value("btd_stack_id_intel", 1)
