@@ -264,6 +264,7 @@ create_txf_from_tex(nir_builder *b, nir_tex_instr *tex)
 
    txf = nir_tex_instr_create(b->shader, num_srcs);
    txf->op = nir_texop_txf;
+   txf->coord_components = tex->coord_components;
    txf->sampler_dim = tex->sampler_dim;
    txf->is_array = tex->is_array;
    txf->is_shadow = tex->is_shadow;
