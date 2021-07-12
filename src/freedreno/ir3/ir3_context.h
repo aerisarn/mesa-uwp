@@ -197,6 +197,11 @@ void ir3_handle_nonuniform(struct ir3_instruction *instr, nir_intrinsic_instr *i
 void emit_intrinsic_image_size_tex(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		struct ir3_instruction **dst);
 
+#define ir3_collect(ctx, ...) ({ \
+	struct ir3_instruction *__arr[] = { __VA_ARGS__ }; \
+	ir3_create_collect(ctx, __arr, ARRAY_SIZE(__arr)); \
+})
+
 NORETURN void ir3_context_error(struct ir3_context *ctx, const char *format, ...);
 
 #define compile_assert(ctx, cond) do { \

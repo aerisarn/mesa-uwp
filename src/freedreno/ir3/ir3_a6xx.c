@@ -136,14 +136,10 @@ emit_intrinsic_atomic_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	if (intr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap_ir3) {
 		src0 = ir3_get_src(ctx, &intr->src[4])[0];
 		struct ir3_instruction *compare = ir3_get_src(ctx, &intr->src[3])[0];
-		src1 = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-			dummy, compare, data
-		}, 3);
+		src1 = ir3_collect(ctx, dummy, compare, data);
 	} else {
 		src0 = ir3_get_src(ctx, &intr->src[3])[0];
-		src1 = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-			dummy, data
-		}, 2);
+		src1 = ir3_collect(ctx, dummy, data);
 	}
 
 	switch (intr->intrinsic) {
@@ -284,13 +280,9 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	if (intr->intrinsic == nir_intrinsic_image_atomic_comp_swap ||
 		intr->intrinsic == nir_intrinsic_bindless_image_atomic_comp_swap) {
 		struct ir3_instruction *compare = ir3_get_src(ctx, &intr->src[4])[0];
-		src1 = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-			dummy, compare, value
-		}, 3);
+		src1 = ir3_collect(ctx, dummy, compare, value);
 	} else {
-		src1 = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-			dummy, value
-		}, 2);
+		src1 = ir3_collect(ctx, dummy, value);
 	}
 
 	switch (intr->intrinsic) {
@@ -379,10 +371,9 @@ emit_intrinsic_load_global_ir3(struct ir3_context *ctx, nir_intrinsic_instr *int
 	unsigned dest_components = nir_intrinsic_dest_components(intr);
 	struct ir3_instruction *addr, *offset;
 
-	addr = ir3_create_collect(ctx, (struct ir3_instruction*[]){
+	addr = ir3_collect(ctx,
 			ir3_get_src(ctx, &intr->src[0])[0],
-			ir3_get_src(ctx, &intr->src[0])[1]
-	}, 2);
+			ir3_get_src(ctx, &intr->src[0])[1]);
 
 	offset = ir3_get_src(ctx, &intr->src[1])[0];
 
@@ -407,10 +398,9 @@ emit_intrinsic_store_global_ir3(struct ir3_context *ctx, nir_intrinsic_instr *in
 	struct ir3_instruction *value, *addr, *offset;
 	unsigned ncomp = nir_intrinsic_src_components(intr, 0);
 
-	addr = ir3_create_collect(ctx, (struct ir3_instruction*[]){
+	addr = ir3_collect(ctx,
 			ir3_get_src(ctx, &intr->src[1])[0],
-			ir3_get_src(ctx, &intr->src[1])[1]
-	}, 2);
+			ir3_get_src(ctx, &intr->src[1])[1]);
 
 	offset = ir3_get_src(ctx, &intr->src[2])[0];
 

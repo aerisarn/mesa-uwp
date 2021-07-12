@@ -838,7 +838,7 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		carry->cat2.condition = IR3_COND_LT;
 		base_hi = ir3_ADD_S(b, base_hi, 0, carry, 0);
 
-		addr = ir3_create_collect(ctx, (struct ir3_instruction*[]){ addr, base_hi }, 2);
+		addr = ir3_collect(ctx, addr, base_hi);
 	}
 
 	for (int i = 0; i < intr->num_components; i++) {
@@ -1058,10 +1058,7 @@ emit_intrinsic_atomic_shared(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		break;
 	case nir_intrinsic_shared_atomic_comp_swap:
 		/* for cmpxchg, src1 is [ui]vec2(data, compare): */
-		src1 = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-			ir3_get_src(ctx, &intr->src[2])[0],
-			src1,
-		}, 2);
+		src1 = ir3_collect(ctx, ir3_get_src(ctx, &intr->src[2])[0], src1);
 		atomic = ir3_ATOMIC_CMPXCHG(b, src0, 0, src1, 0);
 		break;
 	default:
@@ -1185,10 +1182,7 @@ get_image_samp_tex_src(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 			texture = ir3_get_src(ctx, &intr->src[0])[0];
 			sampler = create_immed(b, 0);
-			info.samp_tex = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-				texture,
-				sampler,
-			}, 2);
+			info.samp_tex = ir3_collect(ctx, texture, sampler);
 		}
 	} else {
 		info.flags |= IR3_INSTR_S2EN;
@@ -1199,10 +1193,7 @@ get_image_samp_tex_src(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		texture = create_immed_typed(ctx->block, tex_idx, TYPE_U16);
 		sampler = create_immed_typed(ctx->block, tex_idx, TYPE_U16);
 
-		info.samp_tex = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-			sampler,
-			texture,
-		}, 2);
+		info.samp_tex = ir3_collect(ctx, sampler, texture);
 	}
 	
 	return info;
@@ -2346,10 +2337,7 @@ get_tex_samp_tex_src(struct ir3_context *ctx, nir_tex_instr *tex)
 			} else {
 				sampler = create_immed(b, 0);
 			}
-			info.samp_tex = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-				texture,
-				sampler,
-			}, 2);
+			info.samp_tex = ir3_collect(ctx, texture, sampler);
 		}
 	} else {
 		info.flags |= IR3_INSTR_S2EN;
@@ -2377,10 +2365,7 @@ get_tex_samp_tex_src(struct ir3_context *ctx, nir_tex_instr *tex)
 			info.samp_idx = tex->texture_index;
 		}
 
-		info.samp_tex = ir3_create_collect(ctx, (struct ir3_instruction*[]){
-			sampler,
-			texture,
-		}, 2);
+		info.samp_tex = ir3_collect(ctx, sampler, texture);
 	}
 	
 	return info;
@@ -2621,10 +2606,9 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 		compile_assert(ctx, ctx->so->type == MESA_SHADER_FRAGMENT);
 
 		ctx->so->fb_read = true;
-		info.samp_tex = ir3_create_collect(ctx, (struct ir3_instruction*[]){
+		info.samp_tex = ir3_collect(ctx,
 			create_immed_typed(ctx->block, ctx->so->num_samp, TYPE_U16),
-			create_immed_typed(ctx->block, ctx->so->num_samp, TYPE_U16),
-		}, 2);
+			create_immed_typed(ctx->block, ctx->so->num_samp, TYPE_U16));
 		info.flags = IR3_INSTR_S2EN;
 
 		ctx->so->num_samp++;
@@ -3960,8 +3944,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 			unsigned n = so->outputs_count++;
 			so->outputs[n].slot = VARYING_SLOT_PRIMITIVE_ID;
 
-			struct ir3_instruction *out =
-				ir3_create_collect(ctx, &ctx->primitive_id, 1);
+			struct ir3_instruction *out = ir3_collect(ctx, ctx->primitive_id);
 			outputs[outputs_count] = out;
 			outidxs[outputs_count] = n;
 			regids[outputs_count] = regid(0, 1);
@@ -3971,8 +3954,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		if (ctx->gs_header) {
 			unsigned n = so->outputs_count++;
 			so->outputs[n].slot = VARYING_SLOT_GS_HEADER_IR3;
-			struct ir3_instruction *out =
-				ir3_create_collect(ctx, &ctx->gs_header, 1);
+			struct ir3_instruction *out = ir3_collect(ctx, ctx->gs_header);
 			outputs[outputs_count] = out;
 			outidxs[outputs_count] = n;
 			regids[outputs_count] = regid(0, 0);
@@ -3982,8 +3964,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		if (ctx->tcs_header) {
 			unsigned n = so->outputs_count++;
 			so->outputs[n].slot = VARYING_SLOT_TCS_HEADER_IR3;
-			struct ir3_instruction *out =
-				ir3_create_collect(ctx, &ctx->tcs_header, 1);
+			struct ir3_instruction *out = ir3_collect(ctx, ctx->tcs_header);
 			outputs[outputs_count] = out;
 			outidxs[outputs_count] = n;
 			regids[outputs_count] = regid(0, 0);
