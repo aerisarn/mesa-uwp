@@ -956,6 +956,8 @@ panfrost_render_condition_check(struct panfrost_context *ctx)
 	if (!ctx->cond_query)
 		return true;
 
+        perf_debug_ctx(ctx, "Implementing conditional rendering on the CPU");
+
 	union pipe_query_result res = { 0 };
 	bool wait =
 		ctx->cond_mode != PIPE_RENDER_COND_NO_WAIT &&
