@@ -118,6 +118,9 @@
       - src/gallium/frontends/lavapipe/**/*
       - src/gallium/winsys/sw/**/*
       when: on_success
+    - changes:
+        *vulkan_file_list
+      when: on_success
     - when: never
 
 .llvmpipe-cl-rules:
