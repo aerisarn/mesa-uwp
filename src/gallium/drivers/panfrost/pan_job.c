@@ -231,7 +231,7 @@ panfrost_get_batch_for_fbo(struct panfrost_context *ctx)
 }
 
 struct panfrost_batch *
-panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx)
+panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx, const char *reason)
 {
         struct panfrost_batch *batch;
 
@@ -250,6 +250,7 @@ panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx)
         /* Otherwise, we need to freeze the existing one and instantiate a new
          * one.
          */
+        perf_debug_ctx(ctx, "Flushing the current FBO due to: %s", reason);
         panfrost_batch_submit(batch, 0, 0);
         batch = panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
         ctx->batch = batch;

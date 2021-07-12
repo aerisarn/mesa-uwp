@@ -144,7 +144,7 @@ struct panfrost_batch *
 panfrost_get_batch_for_fbo(struct panfrost_context *ctx);
 
 struct panfrost_batch *
-panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx);
+panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx, const char *reason);
 
 void
 panfrost_batch_add_bo(struct panfrost_batch *batch,
