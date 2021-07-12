@@ -28,7 +28,7 @@
 #ifndef PAN_UTIL_H
 #define PAN_UTIL_H
 
-/* 0x0001 unused */
+#define PAN_DBG_PERF            0x0001
 #define PAN_DBG_TRACE           0x0002
 #define PAN_DBG_DEQP            0x0004
 #define PAN_DBG_DIRTY           0x0008

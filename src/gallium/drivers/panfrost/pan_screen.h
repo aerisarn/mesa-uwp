@@ -36,6 +36,7 @@
 #include "util/u_dynarray.h"
 #include "util/bitset.h"
 #include "util/set.h"
+#include "util/log.h"
 
 #include "pan_device.h"
 #include "pan_mempool.h"
@@ -102,5 +103,14 @@ panfrost_fence_create(struct panfrost_context *ctx);
 
 void
 panfrost_cmdstream_screen_init(struct panfrost_screen *screen);
+
+#define perf_debug(dev, ...) \
+        do { \
+                if (unlikely((dev)->debug & PAN_DBG_PERF)) \
+                        mesa_logw(__VA_ARGS__); \
+        } while(0)
+
+#define perf_debug_ctx(ctx, ...) \
+        perf_debug(pan_device((ctx)->base.screen), __VA_ARGS__);
 
 #endif /* PAN_SCREEN_H */

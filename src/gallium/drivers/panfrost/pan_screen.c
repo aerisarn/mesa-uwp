@@ -57,6 +57,7 @@
 #include "panfrost-quirks.h"
 
 static const struct debug_named_value panfrost_debug_options[] = {
+        {"perf",      PAN_DBG_PERF,     "Enable performance warnings"},
         {"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
         {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"},
         {"dirty",     PAN_DBG_DIRTY,    "Always re-emit all state"},
