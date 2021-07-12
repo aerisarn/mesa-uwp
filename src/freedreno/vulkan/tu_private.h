@@ -498,6 +498,7 @@ enum tu_dynamic_state
 
 enum tu_draw_state_group_id
 {
+   TU_DRAW_STATE_PROGRAM_CONFIG,
    TU_DRAW_STATE_PROGRAM,
    TU_DRAW_STATE_PROGRAM_BINNING,
    TU_DRAW_STATE_TESS,
@@ -1159,6 +1160,7 @@ struct tu_pipeline
 
    struct
    {
+      struct tu_draw_state config_state;
       struct tu_draw_state state;
       struct tu_draw_state binning_state;
 
@@ -1235,9 +1237,14 @@ struct tu_pvtmem_config {
 void
 tu6_emit_xs_config(struct tu_cs *cs,
                    gl_shader_stage stage,
-                   const struct ir3_shader_variant *xs,
-                   const struct tu_pvtmem_config *pvtmem,
-                   uint64_t binary_iova);
+                   const struct ir3_shader_variant *xs);
+
+void
+tu6_emit_xs(struct tu_cs *cs,
+            gl_shader_stage stage,
+            const struct ir3_shader_variant *xs,
+            const struct tu_pvtmem_config *pvtmem,
+            uint64_t binary_iova);
 
 void
 tu6_emit_vpc(struct tu_cs *cs,
