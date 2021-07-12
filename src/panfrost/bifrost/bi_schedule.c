@@ -1565,6 +1565,21 @@ bi_schedule_block(bi_context *ctx, bi_block *block)
                         last_clause->flow_control = BIFROST_FLOW_NBTB_UNCONDITIONAL;
         }
 
+        /* Reorder instructions to match the new schedule. First remove
+         * existing instructions and then recreate the list */
+
+        bi_foreach_instr_in_block_safe(block, ins) {
+                list_del(&ins->link);
+        }
+
+        bi_foreach_clause_in_block(block, clause) {
+                for (unsigned i = 0; i < clause->tuple_count; ++i)  {
+                        bi_foreach_instr_in_tuple(&clause->tuples[i], ins) {
+                                list_addtail(&ins->link, &block->base.instructions);
+                        }
+                }
+        }
+
         block->scheduled = true;
 
 #ifndef NDEBUG
