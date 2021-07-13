@@ -10,9 +10,14 @@ GL ES 3.1 on GT21x hardware.
 VK_EXT_acquire_drm_display on RADV.
 VK_EXT_vertex_input_dynamic_state on lavapipe
 wideLines on lavapipe
+VK_EXT_line_rasterization on lavapipe
 VK_EXT_multi_draw on ANV, lavapipe, and RADV
 VK_KHR_separate_depth_stencil_layouts on lavapipe
 VK_EXT_separate_stencil_usage on lavapipe
 VK_EXT_extended_dynamic_state2 on lavapipe
 Panfrost supports OpenGL ES 3.1
 New Asahi driver for the Apple M1
+GL_ARB_sample_locations on zink
+GL_ARB_sparse_buffer on zink
+GL_ARB_shader_group_vote on zink
+DRM format modifiers on zink
