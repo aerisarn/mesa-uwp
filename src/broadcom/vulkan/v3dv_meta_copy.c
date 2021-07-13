@@ -2147,7 +2147,8 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
    /* Compute the number of layers to copy.
     *
     * If we are batching (region_count > 1) all our regions have the same
-    * image subresource so we can take this from the first region.
+    * image subresource so we can take this from the first region. For 3D
+    * images we require the same depth extent.
     */
    const VkImageSubresourceLayers *resource = &regions[0].imageSubresource;
    uint32_t num_layers;
@@ -2858,18 +2859,26 @@ v3dv_CmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer,
 
       /* Otherwise, we are copying subrects, so we fallback to copying
        * via shader and texel buffers and we try to batch the regions
-       * if possible. We can only batch copies if they target the same
-       * image subresource (so they have the same framebuffer spec).
+       * if possible. We can only batch copies if they have the same
+       * framebuffer spec, which is mostly determined by the image
+       * subresource of the region.
        */
       const VkImageSubresourceLayers *rsc = &info->pRegions[r].imageSubresource;
-      if (image->type != VK_IMAGE_TYPE_3D) {
-         for (uint32_t s = r + 1; s < info->regionCount; s++) {
-            const VkImageSubresourceLayers *rsc_s =
-               &info->pRegions[s].imageSubresource;
-            if (memcmp(rsc, rsc_s, sizeof(VkImageSubresourceLayers)) != 0)
+      for (uint32_t s = r + 1; s < info->regionCount; s++) {
+         const VkImageSubresourceLayers *rsc_s =
+            &info->pRegions[s].imageSubresource;
+
+         if (memcmp(rsc, rsc_s, sizeof(VkImageSubresourceLayers)) != 0)
+            break;
+
+         /* For 3D images we also need to check the depth extent */
+         if (image->type == VK_IMAGE_TYPE_3D &&
+             info->pRegions[s].imageExtent.depth !=
+             info->pRegions[r].imageExtent.depth) {
                break;
-            batch_size++;
          }
+
+         batch_size++;
       }
 
       if (copy_buffer_to_image_shader(cmd_buffer, image, buffer,
