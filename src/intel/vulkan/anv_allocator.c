@@ -331,7 +331,7 @@ anv_free_list_push(union anv_free_list *list,
    for (uint32_t i = 1; i < count; i++, last++)
       table->map[last].next = last + 1;
 
-   old = *list;
+   old.u64 = list->u64;
    do {
       current = old;
       table->map[last].next = current.offset;
