@@ -474,7 +474,7 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
                state->hw_state.line_mode =
                   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
          } else if (rs_state->line_smooth) {
-            if (line_feats->stippledRectangularLines)
+            if (line_feats->stippledSmoothLines)
                state->hw_state.line_mode =
                   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
          } else if (line_feats->stippledBresenhamLines)
@@ -493,7 +493,7 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
                state->hw_state.line_mode =
                   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
          } else if (rs_state->line_smooth) {
-            if (line_feats->rectangularLines)
+            if (line_feats->smoothLines)
                state->hw_state.line_mode =
                   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
          } else if (line_feats->bresenhamLines)
