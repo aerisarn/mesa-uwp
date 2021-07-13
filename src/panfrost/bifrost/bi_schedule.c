@@ -1882,6 +1882,45 @@ bi_lower_fau(bi_context *ctx)
         }
 }
 
+/* On v6, ATEST cannot be the first clause of a shader, add a NOP if needed */
+
+static void
+bi_add_nop_for_atest(bi_context *ctx)
+{
+        /* Only needed on v6 */
+        if (ctx->arch >= 7)
+                return;
+
+        if (list_is_empty(&ctx->blocks))
+                return;
+
+        /* Fetch the first clause of the shader */
+        pan_block *block = list_first_entry(&ctx->blocks, pan_block, link);
+        bi_clause *clause = bi_next_clause(ctx, block, NULL);
+
+        if (!clause || clause->message_type != BIFROST_MESSAGE_ATEST)
+                return;
+
+        /* Add a NOP so we can wait for the dependencies required for ATEST to
+         * execute */
+
+        bi_instr *I = rzalloc(ctx, bi_instr);
+        I->op = BI_OPCODE_NOP_I32;
+        I->dest[0] = bi_null();
+
+        bi_clause *new_clause = ralloc(ctx, bi_clause);
+        *new_clause = (bi_clause) {
+                .flow_control = BIFROST_FLOW_NBTB,
+                .next_clause_prefetch = true,
+                .block = clause->block,
+
+                .tuple_count = 1,
+                .tuples[0] = { .fma = I, },
+        };
+
+        list_add(&new_clause->link, &clause->block->clauses);
+}
+
 void
 bi_schedule(bi_context *ctx)
 {
@@ -1894,6 +1933,7 @@ bi_schedule(bi_context *ctx)
         }
 
         bi_opt_dce_post_ra(ctx);
+        bi_add_nop_for_atest(ctx);
 }
 
 #ifndef NDEBUG
