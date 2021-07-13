@@ -71,6 +71,7 @@
 #define RENCODE_DIRECT_OUTPUT_NALU_TYPE_PPS                                         0x00000003
 #define RENCODE_DIRECT_OUTPUT_NALU_TYPE_PREFIX                                      0x00000004
 #define RENCODE_DIRECT_OUTPUT_NALU_TYPE_END_OF_SEQUENCE                             0x00000005
+#define RENCODE_DIRECT_OUTPUT_NALU_TYPE_SEI                                         0x00000006
 
 #define RENCODE_SLICE_HEADER_TEMPLATE_MAX_TEMPLATE_SIZE_IN_DWORDS                   16
 #define RENCODE_SLICE_HEADER_TEMPLATE_MAX_NUM_INSTRUCTIONS                          16
@@ -438,6 +439,9 @@ struct radeon_enc_pic {
    unsigned bit_depth_chroma_minus8;
    unsigned nal_unit_type;
    unsigned max_num_merge_cand;
+   unsigned temporal_id;
+   unsigned num_temporal_layers;
+   unsigned temporal_layer_pattern_index;
 
    bool not_referenced;
    bool is_idr;
@@ -490,6 +494,8 @@ struct radeon_encoder {
    void (*nalu_pps)(struct radeon_encoder *enc);
    void (*nalu_vps)(struct radeon_encoder *enc);
    void (*nalu_aud)(struct radeon_encoder *enc);
+   void (*nalu_sei)(struct radeon_encoder *enc);
+   void (*nalu_prefix)(struct radeon_encoder *enc);
    void (*slice_header)(struct radeon_encoder *enc);
    void (*ctx)(struct radeon_encoder *enc);
    void (*bitstream)(struct radeon_encoder *enc);
@@ -537,6 +543,7 @@ struct radeon_encoder {
    unsigned num_zeros;
    unsigned byte_index;
    unsigned bits_output;
+   unsigned bits_size;
    uint32_t total_task_size;
    uint32_t *p_task_size;
 

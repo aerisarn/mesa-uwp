@@ -61,6 +61,8 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
          enc->enc_pic.crop_top = 0;
          enc->enc_pic.crop_bottom = (align(enc->base.height, 16) - enc->base.height) / 2;
       }
+      enc->enc_pic.num_temporal_layers = pic->num_temporal_layers;
+      enc->enc_pic.temporal_id = 0;
       enc->enc_pic.rc_layer_init.target_bit_rate = pic->rate_ctrl.target_bitrate;
       enc->enc_pic.rc_layer_init.peak_bit_rate = pic->rate_ctrl.peak_bitrate;
       enc->enc_pic.rc_layer_init.frame_rate_num = pic->rate_ctrl.frame_rate_num;
@@ -95,6 +97,7 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
       default:
          enc->enc_pic.rc_session_init.rate_control_method = RENCODE_RATE_CONTROL_METHOD_NONE;
       }
+      enc->enc_pic.num_temporal_layers = pic->num_temporal_layers;
    } else if (u_reduce_video_profile(picture->profile) == PIPE_VIDEO_FORMAT_HEVC) {
       struct pipe_h265_enc_picture_desc *pic = (struct pipe_h265_enc_picture_desc *)picture;
       enc->enc_pic.picture_type = pic->picture_type;
@@ -520,6 +523,7 @@ void radeon_enc_code_fixed_bits(struct radeon_encoder *enc, unsigned int value,
                                 unsigned int num_bits)
 {
    unsigned int bits_to_pack = 0;
+   enc->bits_size += num_bits;
 
    while (num_bits > 0) {
       unsigned int value_to_pack = value & (0xffffffff >> (32 - num_bits));
@@ -552,6 +556,7 @@ void radeon_enc_reset(struct radeon_encoder *enc)
    enc->bits_output = 0;
    enc->num_zeros = 0;
    enc->byte_index = 0;
+   enc->bits_size = 0;
 }
 
 void radeon_enc_byte_align(struct radeon_encoder *enc)
