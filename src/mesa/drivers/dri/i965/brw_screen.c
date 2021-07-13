@@ -2618,7 +2618,6 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
 
    /* GENs prior to 8 do not support EU/Subslice info */
    screen->subslice_total = intel_device_info_subslice_total(devinfo);
-   screen->eu_total = intel_device_info_eu_total(devinfo);
 
    /* Gfx7-7.5 kernel requirements / command parser saga:
     *

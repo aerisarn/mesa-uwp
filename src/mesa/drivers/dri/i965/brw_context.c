@@ -89,19 +89,6 @@
 
 const char *const brw_vendor_string = "Intel Open Source Technology Center";
 
-static const char *
-get_bsw_model(const struct brw_screen *screen)
-{
-   switch (screen->eu_total) {
-   case 16:
-      return "405";
-   case 12:
-      return "400";
-   default:
-      return "   ";
-   }
-}
-
 const char *
 brw_get_renderer_string(const struct brw_screen *screen)
 {
@@ -112,13 +99,6 @@ brw_get_renderer_string(const struct brw_screen *screen)
       name = "Intel Unknown";
 
    snprintf(buf, sizeof(buf), "Mesa DRI %s", name);
-
-   /* Braswell branding is funny, so we have to fix it up here */
-   if (screen->deviceID == 0x22B1) {
-      char *needle = strstr(buf, "XXX");
-      if (needle)
-         memcpy(needle, get_bsw_model(screen), 3);
-   }
 
    return buf;
 }

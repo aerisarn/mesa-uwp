@@ -1433,6 +1433,24 @@ fixup_chv_device_info(struct intel_device_info *devinfo)
    assert(max_cs_threads >= devinfo->max_cs_threads);
    if (max_cs_threads > devinfo->max_cs_threads)
       devinfo->max_cs_threads = max_cs_threads;
+
+   /* Braswell is even more annoying.  Its marketing name isn't determinable
+    * from the PCI ID and is also dependent on fusing.
+    */
+   if (devinfo->chipset_id != 0x22B1)
+      return;
+
+   char *bsw_model;
+   switch (eu_total) {
+   case 16: bsw_model = "405"; break;
+   case 12: bsw_model = "400"; break;
+   default: bsw_model = "   "; break;
+   }
+
+   char *needle = strstr(devinfo->name, "XXX");
+   assert(needle);
+   if (needle)
+      memcpy(needle, bsw_model, 3);
 }
 
 bool
