@@ -174,6 +174,10 @@ create_texel_buffer_copy_pipeline_layout(struct v3dv_device *device,
     * pipelines have a geometry shader. We could create 2 different pipeline
     * layouts, but this works for us for now.
     */
+#define TEXEL_BUFFER_COPY_FS_BOX_PC_OFFSET      0
+#define TEXEL_BUFFER_COPY_FS_STRIDE_PC_OFFSET  16
+#define TEXEL_BUFFER_COPY_FS_OFFSET_PC_OFFSET  20
+#define TEXEL_BUFFER_COPY_GS_LAYER_PC_OFFSET   24
    VkPushConstantRange ranges[2] = {
       { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 24 },
       { VK_SHADER_STAGE_GEOMETRY_BIT, 24, 4 },
@@ -1814,7 +1818,8 @@ get_texel_buffer_copy_gs()
       /* gl_Layer from push constants */
       nir_ssa_def *layer =
          nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0),
-                                .base = 24, .range = 4);
+                                .base = TEXEL_BUFFER_COPY_GS_LAYER_PC_OFFSET,
+                                .range = 4);
       nir_store_var(&b, gs_out_layer, layer, 0x1);
 
       nir_emit_vertex(&b, 0);
@@ -1890,15 +1895,21 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format,
     * texel buffer.
     */
    nir_ssa_def *box =
-      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 0, .range = 16);
+      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0),
+                             .base = TEXEL_BUFFER_COPY_FS_BOX_PC_OFFSET,
+                             .range = 16);
 
    /* Load the buffer stride (this comes in texel units) */
    nir_ssa_def *stride =
-      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 16, .range = 4);
+      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0),
+                             .base = TEXEL_BUFFER_COPY_FS_STRIDE_PC_OFFSET,
+                             .range = 4);
 
    /* Load the buffer offset (this comes in texel units) */
    nir_ssa_def *offset =
-      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 20, .range = 4);
+      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0),
+                             .base = TEXEL_BUFFER_COPY_FS_OFFSET_PC_OFFSET,
+                             .range = 4);
 
    nir_ssa_def *coord = nir_f2i32(&b, load_frag_coord(&b));
 
