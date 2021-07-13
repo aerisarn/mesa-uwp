@@ -417,7 +417,8 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev,
                                         nir_type_float32, /* unused */
                                         i);
 
-                ASSERTED unsigned full_threads = (dev->arch < 7) ? 4 : 32;
+                ASSERTED unsigned full_threads =
+                        (dev->arch >= 7) ? 32 : ((dev->arch == 6) ? 64 : 4);
                 assert(b->work_reg_count <= full_threads);
                 struct panfrost_ptr bin =
                         pan_pool_alloc_aligned(dev->blitter.shaders.pool,
