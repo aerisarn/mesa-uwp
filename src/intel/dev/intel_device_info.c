@@ -1410,6 +1410,29 @@ has_get_tiling(int fd)
    return ret == 0;
 }
 
+static void
+fixup_chv_device_info(struct intel_device_info *devinfo)
+{
+   assert(devinfo->is_cherryview);
+
+   /* Cherryview is annoying.  The number of EUs is depending on fusing and
+    * isn't determinable from the PCI ID alone.  We default to the minimum
+    * available for that PCI ID and then compute the real value from the
+    * subslice information we get from the kernel.
+    */
+   const uint32_t subslice_total = intel_device_info_eu_total(devinfo);
+   const uint32_t eu_total = intel_device_info_eu_total(devinfo);
+
+   /* Logical CS threads = EUs per subslice * num threads per EU */
+   uint32_t max_cs_threads =
+      eu_total / subslice_total * devinfo->num_thread_per_eu;
+
+   /* Fuse configurations may give more threads than expected, never less. */
+   assert(max_cs_threads >= devinfo->max_cs_threads);
+   if (max_cs_threads > devinfo->max_cs_threads)
+      devinfo->max_cs_threads = max_cs_threads;
+}
+
 bool
 intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 {
@@ -1481,6 +1504,9 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
        */
       getparam_topology(devinfo, fd);
    }
+
+   if (devinfo->is_cherryview)
+      fixup_chv_device_info(devinfo);
 
    intel_get_aperture_size(fd, &devinfo->aperture_bytes);
    devinfo->has_tiling_uapi = has_get_tiling(fd);

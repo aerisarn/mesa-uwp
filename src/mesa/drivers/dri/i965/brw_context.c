@@ -856,19 +856,7 @@ static void
 brw_initialize_cs_context_constants(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->ctx;
-   const struct brw_screen *screen = brw->screen;
    struct intel_device_info *devinfo = &brw->screen->devinfo;
-
-   /* FINISHME: Do this for all platforms that the kernel supports */
-   if (devinfo->is_cherryview &&
-       screen->subslice_total > 0 && screen->eu_total > 0) {
-      /* Logical CS threads = EUs per subslice * 7 threads per EU */
-      uint32_t max_cs_threads = screen->eu_total / screen->subslice_total * 7;
-
-      /* Fuse configurations may give more threads than expected, never less. */
-      if (max_cs_threads > devinfo->max_cs_threads)
-         devinfo->max_cs_threads = max_cs_threads;
-   }
 
    /* Maximum number of scalar compute shader invocations that can be run in
     * parallel in the same subslice assuming SIMD32 dispatch.

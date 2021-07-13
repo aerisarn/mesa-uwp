@@ -911,17 +911,6 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    /* GENs prior to 8 do not support EU/Subslice info */
    device->subslice_total = intel_device_info_subslice_total(&device->info);
-   device->eu_total = intel_device_info_eu_total(&device->info);
-
-   if (device->info.is_cherryview) {
-      /* Logical CS threads = EUs per subslice * num threads per EU */
-      uint32_t max_cs_threads =
-         device->eu_total / device->subslice_total * device->info.num_thread_per_eu;
-
-      /* Fuse configurations may give more threads than expected, never less. */
-      if (max_cs_threads > device->info.max_cs_threads)
-         device->info.max_cs_threads = max_cs_threads;
-   }
 
    device->compiler = brw_compiler_create(NULL, &device->info);
    if (device->compiler == NULL) {

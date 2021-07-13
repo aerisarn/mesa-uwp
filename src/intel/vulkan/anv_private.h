@@ -961,7 +961,6 @@ struct anv_physical_device {
 
     bool                                        always_flush_cache;
 
-    uint32_t                                    eu_total;
     uint32_t                                    subslice_total;
 
     struct {
