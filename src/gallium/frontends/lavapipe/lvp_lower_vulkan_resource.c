@@ -144,6 +144,9 @@ lower_vri_instr_tex_deref(nir_tex_instr *tex,
    else
       tex->texture_index = value;
 
+   if (deref_src_type == nir_tex_src_sampler_deref)
+      return 0;
+
    if (deref_instr->deref_type == nir_deref_type_array) {
       assert(glsl_type_is_array(var->type));
       assert(value >= 0);
