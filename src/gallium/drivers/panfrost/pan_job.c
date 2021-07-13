@@ -484,34 +484,6 @@ panfrost_batch_get_shared_memory(struct panfrost_batch *batch,
         return batch->shared_memory;
 }
 
-mali_ptr
-panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_count)
-{
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-        assert(pan_is_bifrost(dev));
-
-        if (!vertex_count)
-                return 0;
-
-        if (batch->tiler_ctx.bifrost)
-                return batch->tiler_ctx.bifrost;
-
-        struct panfrost_ptr t =
-                pan_pool_alloc_desc(&batch->pool.base, BIFROST_TILER_HEAP);
-
-        pan_emit_bifrost_tiler_heap(dev, t.cpu);
-
-        mali_ptr heap = t.gpu;
-
-        t = pan_pool_alloc_desc(&batch->pool.base, BIFROST_TILER);
-        pan_emit_bifrost_tiler(dev, batch->key.width, batch->key.height,
-                               util_framebuffer_get_num_samples(&batch->key),
-                               heap, t.cpu);
-
-        batch->tiler_ctx.bifrost = t.gpu;
-        return batch->tiler_ctx.bifrost;
-}
-
 static void
 panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
                           struct pan_fb_info *fb,

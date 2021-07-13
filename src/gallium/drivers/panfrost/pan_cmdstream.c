@@ -2599,6 +2599,35 @@ panfrost_update_state_fs(struct panfrost_batch *batch)
 }
 
 #if PAN_ARCH >= 6
+static mali_ptr
+panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_count)
+{
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+
+        if (!vertex_count)
+                return 0;
+
+        if (batch->tiler_ctx.bifrost)
+                return batch->tiler_ctx.bifrost;
+
+        struct panfrost_ptr t =
+                pan_pool_alloc_desc(&batch->pool.base, BIFROST_TILER_HEAP);
+
+        pan_emit_bifrost_tiler_heap(dev, t.cpu);
+
+        mali_ptr heap = t.gpu;
+
+        t = pan_pool_alloc_desc(&batch->pool.base, BIFROST_TILER);
+        pan_emit_bifrost_tiler(dev, batch->key.width, batch->key.height,
+                               util_framebuffer_get_num_samples(&batch->key),
+                               heap, t.cpu);
+
+        batch->tiler_ctx.bifrost = t.gpu;
+        return batch->tiler_ctx.bifrost;
+}
+#endif
+
+#if PAN_ARCH >= 6
 #define TILER_JOB BIFROST_TILER_JOB
 #else
 #define TILER_JOB MIDGARD_TILER_JOB
