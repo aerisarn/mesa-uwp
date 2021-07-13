@@ -303,6 +303,8 @@ struct nine_context {
 
     uint8_t bound_samplers_mask_vs;
     uint8_t enabled_samplers_mask_vs;
+    uint8_t enabled_sampler_count_vs;
+    uint8_t enabled_sampler_count_ps;
     uint16_t bound_samplers_mask_ps;
     uint16_t enabled_samplers_mask_ps;
 
