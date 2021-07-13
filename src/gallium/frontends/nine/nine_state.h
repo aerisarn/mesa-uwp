@@ -302,7 +302,9 @@ struct nine_context {
     uint32_t samplers_fetch4;
 
     uint8_t bound_samplers_mask_vs;
+    uint8_t enabled_samplers_mask_vs;
     uint16_t bound_samplers_mask_ps;
+    uint16_t enabled_samplers_mask_ps;
 
     int dummy_vbo_bound_at; /* -1 = not bound , >= 0 = bound index */
     boolean vbo_bound_done;
