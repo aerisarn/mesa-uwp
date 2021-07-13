@@ -469,14 +469,14 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
       state->hw_state.line_stipple_pattern = rs_state->line_stipple_pattern;
 
       if (screen->info.have_EXT_line_rasterization) {
-         if (rs_state->multisample) {
-            if (line_feats->stippledRectangularLines)
+         if (rs_state->line_rectangular) {
+            if (rs_state->line_smooth) {
+               if (line_feats->stippledSmoothLines)
+                  state->hw_state.line_mode =
+                     VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+            } else if (line_feats->stippledRectangularLines)
                state->hw_state.line_mode =
                   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
-         } else if (rs_state->line_smooth) {
-            if (line_feats->stippledSmoothLines)
-               state->hw_state.line_mode =
-                  VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
          } else if (line_feats->stippledBresenhamLines)
             state->hw_state.line_mode =
                VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
@@ -488,14 +488,14 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
       }
    } else {
       if (screen->info.have_EXT_line_rasterization) {
-         if (rs_state->multisample) {
-            if (line_feats->rectangularLines)
+         if (rs_state->line_rectangular) {
+            if (rs_state->line_smooth) {
+               if (line_feats->smoothLines)
+                  state->hw_state.line_mode =
+                     VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+            } else if (line_feats->rectangularLines)
                state->hw_state.line_mode =
                   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
-         } else if (rs_state->line_smooth) {
-            if (line_feats->smoothLines)
-               state->hw_state.line_mode =
-                  VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
          } else if (line_feats->bresenhamLines)
             state->hw_state.line_mode =
                VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
