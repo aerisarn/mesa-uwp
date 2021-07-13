@@ -626,6 +626,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->imagelessFramebuffer = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR: {
+         VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR *features =
+            (VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR *)ext;
+         features->separateDepthStencilLayouts = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
          VkPhysicalDeviceCustomBorderColorFeaturesEXT *features =
             (VkPhysicalDeviceCustomBorderColorFeaturesEXT *)ext;
