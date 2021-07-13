@@ -391,7 +391,7 @@ struct pipe_h264_enc_picture_desc
 {
    struct pipe_picture_desc base;
 
-   struct pipe_h264_enc_rate_control rate_ctrl;
+   struct pipe_h264_enc_rate_control rate_ctrl[4];
 
    struct pipe_h264_enc_motion_estimation motion_est;
    struct pipe_h264_enc_pic_control pic_ctrl;
