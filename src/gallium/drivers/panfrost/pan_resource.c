@@ -1036,7 +1036,8 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
 }
 
 static bool
-panfrost_should_linear_convert(struct panfrost_resource *prsrc,
+panfrost_should_linear_convert(struct panfrost_device *dev,
+                               struct panfrost_resource *prsrc,
                                struct pipe_transfer *transfer)
 {
         if (prsrc->modifier_constant)
@@ -1064,7 +1065,12 @@ panfrost_should_linear_convert(struct panfrost_resource *prsrc,
         if (entire_overwrite)
                 ++prsrc->modifier_updates;
 
-        return prsrc->modifier_updates >= LAYOUT_CONVERT_THRESHOLD;
+        if (prsrc->modifier_updates >= LAYOUT_CONVERT_THRESHOLD) {
+                perf_debug(dev, "Transitioning to linear due to streaming usage");
+                return true;
+        } else {
+                return false;
+        }
 }
 
 static void
@@ -1087,7 +1093,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
 
         if (trans->staging.rsrc) {
                 if (transfer->usage & PIPE_MAP_WRITE) {
-                        if (panfrost_should_linear_convert(prsrc, transfer)) {
+                        if (panfrost_should_linear_convert(dev, prsrc, transfer)) {
 
                                 panfrost_bo_unreference(prsrc->image.data.bo);
                                 if (prsrc->image.crc.bo)
@@ -1119,7 +1125,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                         if (prsrc->image.layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                                 assert(transfer->box.depth == 1);
 
-                                if (panfrost_should_linear_convert(prsrc, transfer)) {
+                                if (panfrost_should_linear_convert(dev, prsrc, transfer)) {
                                         panfrost_resource_setup(dev, prsrc, DRM_FORMAT_MOD_LINEAR,
                                                                 prsrc->image.layout.format);
                                         if (prsrc->image.layout.data_size > bo->size) {
