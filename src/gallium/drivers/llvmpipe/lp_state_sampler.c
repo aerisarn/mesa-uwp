@@ -422,10 +422,11 @@ llvmpipe_cleanup_stage_sampling(struct llvmpipe_context *ctx,
 
    for (i = 0; i < num; i++) {
       struct pipe_sampler_view *view = views[i];
-      assert(view);
-      struct pipe_resource *tex = view->texture;
-      if (tex)
-         llvmpipe_resource_unmap(tex, 0, 0);
+      if (view) {
+         struct pipe_resource *tex = view->texture;
+         if (tex)
+            llvmpipe_resource_unmap(tex, 0, 0);
+      }
    }
 }
 
