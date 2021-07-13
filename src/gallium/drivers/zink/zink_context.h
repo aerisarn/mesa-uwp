@@ -336,7 +336,37 @@ bool
 zink_resource_needs_barrier(struct zink_resource *res, VkImageLayout layout, VkAccessFlags flags, VkPipelineStageFlags pipeline);
 void
 zink_resource_barrier(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *res, VkImageLayout layout, VkAccessFlags flags, VkPipelineStageFlags pipeline);
+void
+zink_update_descriptor_refs(struct zink_context *ctx, bool compute);
+void
+zink_init_vk_sample_locations(struct zink_context *ctx, VkSampleLocationsInfoEXT *loc);
 
+static inline VkPipelineStageFlags
+zink_pipeline_flags_from_pipe_stage(enum pipe_shader_type pstage)
+{
+   switch (pstage) {
+   case PIPE_SHADER_VERTEX:
+      return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+   case PIPE_SHADER_FRAGMENT:
+      return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+   case PIPE_SHADER_GEOMETRY:
+      return VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+   case PIPE_SHADER_TESS_CTRL:
+      return VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
+   case PIPE_SHADER_TESS_EVAL:
+      return VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+   case PIPE_SHADER_COMPUTE:
+      return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+   default:
+      unreachable("unknown shader stage");
+   }
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+#ifndef __cplusplus
  void
  zink_begin_render_pass(struct zink_context *ctx,
                         struct zink_batch *batch);
@@ -416,34 +446,7 @@ zink_buffer_view_reference(struct zink_screen *screen,
       zink_destroy_buffer_view(screen, old_dst);
    if (dst) *dst = src;
 }
-
-void
-zink_update_descriptor_refs(struct zink_context *ctx, bool compute);
-
-void
-zink_init_vk_sample_locations(struct zink_context *ctx, VkSampleLocationsInfoEXT *loc);
-
-
-static inline VkPipelineStageFlags
-zink_pipeline_flags_from_pipe_stage(enum pipe_shader_type pstage)
-{
-   switch (pstage) {
-   case PIPE_SHADER_VERTEX:
-      return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-   case PIPE_SHADER_FRAGMENT:
-      return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-   case PIPE_SHADER_GEOMETRY:
-      return VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
-   case PIPE_SHADER_TESS_CTRL:
-      return VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
-   case PIPE_SHADER_TESS_EVAL:
-      return VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
-   case PIPE_SHADER_COMPUTE:
-      return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-   default:
-      unreachable("unknown shader stage");
-   }
-}
+#endif
 
 #ifdef __cplusplus
 }
