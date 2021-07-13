@@ -98,7 +98,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       ctx.constaddrs[instr->operands[1].constantValue()].add_literal = out.size() + 1;
 
       instr->opcode = aco_opcode::s_add_u32;
-      instr->operands[1] = Operand(0u);
+      instr->operands[1] = Operand::zero();
       instr->operands[1].setFixed(PhysReg(255));
    }
 
@@ -904,20 +904,20 @@ emit_long_jump(asm_context& ctx, SOPP_instruction* branch, bool backwards,
    instr.reset(bld.sop1(aco_opcode::s_getpc_b64, branch->definitions[0]).instr);
    emit_instruction(ctx, out, instr.get());
 
-   instr.reset(bld.sop2(aco_opcode::s_addc_u32, def_tmp_lo, op_tmp_lo, Operand(0u)).instr);
+   instr.reset(bld.sop2(aco_opcode::s_addc_u32, def_tmp_lo, op_tmp_lo, Operand::zero()).instr);
    instr->operands[1].setFixed(PhysReg{255}); /* this operand has to be a literal */
    emit_instruction(ctx, out, instr.get());
    branch->pass_flags = out.size();
 
-   instr.reset(
-      bld.sop2(aco_opcode::s_addc_u32, def_tmp_hi, op_tmp_hi, Operand(backwards ? UINT32_MAX : 0u))
-         .instr);
+   instr.reset(bld.sop2(aco_opcode::s_addc_u32, def_tmp_hi, op_tmp_hi,
+                        Operand::c32(backwards ? UINT32_MAX : 0u))
+                  .instr);
    emit_instruction(ctx, out, instr.get());
 
    /* restore SCC and clear the LSB of the new PC */
-   instr.reset(bld.sopc(aco_opcode::s_bitcmp1_b32, def_tmp_lo, op_tmp_lo, Operand(0u)).instr);
+   instr.reset(bld.sopc(aco_opcode::s_bitcmp1_b32, def_tmp_lo, op_tmp_lo, Operand::zero()).instr);
    emit_instruction(ctx, out, instr.get());
-   instr.reset(bld.sop1(aco_opcode::s_bitset0_b32, def_tmp_lo, Operand(0u)).instr);
+   instr.reset(bld.sop1(aco_opcode::s_bitset0_b32, def_tmp_lo, Operand::zero()).instr);
    emit_instruction(ctx, out, instr.get());
 
    /* create the s_setpc_b64 to jump */

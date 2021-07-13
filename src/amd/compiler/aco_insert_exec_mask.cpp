@@ -418,7 +418,7 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
 
       /* exec seems to need to be manually initialized with combined shaders */
       if (ctx.program->stage.num_sw_stages() > 1 || ctx.program->stage.hw == HWStage::NGG) {
-         start_exec = Operand(-1u, bld.lm == s2);
+         start_exec = Operand::c32_or_c64(-1u, bld.lm == s2);
          bld.copy(Definition(exec, bld.lm), start_exec);
       }
 
@@ -754,7 +754,7 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
          if (state == Exact) {
             instr.reset(create_instruction<SOP1_instruction>(bld.w64or32(Builder::s_mov),
                                                              Format::SOP1, 1, 1));
-            instr->operands[0] = Operand(0u);
+            instr->operands[0] = Operand::zero();
             instr->definitions[0] = dst;
          } else {
             std::pair<Operand, uint8_t>& exact_mask = ctx.info[block->index].exec[0];
@@ -780,7 +780,7 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
             exit_cond = bld.tmp(s1);
             cond =
                bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.scc(Definition(exit_cond)),
-                        Definition(exec, bld.lm), Operand(0u), Operand(exec, bld.lm));
+                        Definition(exec, bld.lm), Operand::zero(), Operand(exec, bld.lm));
 
             num = ctx.info[block->index].exec.size() - 2;
             if (!(ctx.info[block->index].exec.back().second & mask_type_exact)) {
@@ -924,7 +924,7 @@ add_branch_code(exec_ctx& ctx, Block* block)
       }
 
       Temp cond = bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.def(s1, scc),
-                           Definition(exec, bld.lm), Operand(0u), Operand(exec, bld.lm));
+                           Definition(exec, bld.lm), Operand::zero(), Operand(exec, bld.lm));
 
       for (int i = num - 1; i >= 0; i--) {
          Instruction* andn2 = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc),
@@ -1047,7 +1047,7 @@ add_branch_code(exec_ctx& ctx, Block* block)
       unsigned succ_idx = ctx.program->blocks[block->linear_succs[1]].linear_succs[0];
       Block& succ = ctx.program->blocks[succ_idx];
       if (!(succ.kind & block_kind_invert || succ.kind & block_kind_merge)) {
-         bld.copy(Definition(exec, bld.lm), Operand(0u, bld.lm == s2));
+         bld.copy(Definition(exec, bld.lm), Operand::zero(bld.lm.bytes()));
       }
 
       bld.branch(aco_opcode::p_cbranch_nz, bld.hint_vcc(bld.def(s2)), bld.scc(cond),
@@ -1076,7 +1076,7 @@ add_branch_code(exec_ctx& ctx, Block* block)
       unsigned succ_idx = ctx.program->blocks[block->linear_succs[1]].linear_succs[0];
       Block& succ = ctx.program->blocks[succ_idx];
       if (!(succ.kind & block_kind_invert || succ.kind & block_kind_merge)) {
-         bld.copy(Definition(exec, bld.lm), Operand(0u, bld.lm == s2));
+         bld.copy(Definition(exec, bld.lm), Operand::zero(bld.lm.bytes()));
       }
 
       bld.branch(aco_opcode::p_cbranch_nz, bld.hint_vcc(bld.def(s2)), bld.scc(cond),

@@ -141,7 +141,7 @@ build_merge_code(Program* program, Block* block, Definition dst, Operand prev, O
       if (!cur_is_constant)
          bld.sop2(Builder::s_orn2, dst, bld.def(s1, scc), cur, Operand(exec, bld.lm));
       else if (cur.constantValue())
-         bld.copy(dst, Operand(UINT32_MAX, bld.lm == s2));
+         bld.copy(dst, Operand::c32_or_c64(UINT32_MAX, bld.lm == s2));
       else
          bld.sop1(Builder::s_not, dst, bld.def(s1, scc), Operand(exec, bld.lm));
    } else {
@@ -150,7 +150,7 @@ build_merge_code(Program* program, Block* block, Definition dst, Operand prev, O
       else if (cur.constantValue())
          bld.copy(dst, Operand(exec, bld.lm));
       else
-         bld.copy(dst, Operand(0u, bld.lm == s2));
+         bld.copy(dst, Operand::zero(bld.lm.bytes()));
    }
 }
 
@@ -294,9 +294,9 @@ lower_subdword_phis(Program* program, Block* block, aco_ptr<Instruction>& phi)
       Temp tmp = bld.tmp(RegClass(RegType::vgpr, phi_src.size()));
       insert_before_logical_end(pred, bld.copy(Definition(tmp), phi_src).get_ptr());
       Temp new_phi_src = bld.tmp(phi->definitions[0].regClass());
-      insert_before_logical_end(
-         pred, bld.pseudo(aco_opcode::p_extract_vector, Definition(new_phi_src), tmp, Operand(0u))
-                  .get_ptr());
+      insert_before_logical_end(pred, bld.pseudo(aco_opcode::p_extract_vector,
+                                                 Definition(new_phi_src), tmp, Operand::zero())
+                                         .get_ptr());
 
       phi->operands[i].setTemp(new_phi_src);
    }

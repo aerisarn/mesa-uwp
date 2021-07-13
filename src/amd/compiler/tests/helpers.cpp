@@ -238,34 +238,35 @@ void finish_assembler_test()
 void writeout(unsigned i, Temp tmp)
 {
    if (tmp.id())
-      bld.pseudo(aco_opcode::p_unit_test, Operand(i), tmp);
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(i), tmp);
    else
-      bld.pseudo(aco_opcode::p_unit_test, Operand(i));
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(i));
 }
 
 void writeout(unsigned i, aco::Builder::Result res)
 {
-   bld.pseudo(aco_opcode::p_unit_test, Operand(i), res);
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(i), res);
 }
 
 void writeout(unsigned i, Operand op)
 {
-   bld.pseudo(aco_opcode::p_unit_test, Operand(i), op);
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(i), op);
 }
 
 void writeout(unsigned i, Operand op0, Operand op1)
 {
-   bld.pseudo(aco_opcode::p_unit_test, Operand(i), op0, op1);
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(i), op0, op1);
 }
 
 Temp fneg(Temp src)
 {
-   return bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0xbf800000u), src);
+   return bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand::c32(0xbf800000u), src);
 }
 
 Temp fabs(Temp src)
 {
-   Builder::Result res = bld.vop2_e64(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x3f800000u), src);
+   Builder::Result res =
+      bld.vop2_e64(aco_opcode::v_mul_f32, bld.def(v1), Operand::c32(0x3f800000u), src);
    res.instr->vop3().abs[1] = true;
    return res;
 }

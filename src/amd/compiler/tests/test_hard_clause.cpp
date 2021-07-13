@@ -30,25 +30,27 @@ static void create_mubuf(Temp desc=Temp(0, s8), unsigned vtx_binding=0)
 {
    Operand desc_op(desc);
    desc_op.setFixed(PhysReg(0));
-   bld.mubuf(aco_opcode::buffer_load_dword, Definition(PhysReg(256), v1),
-             desc_op, Operand(PhysReg(256), v1),
-             Operand(0u), 0, false).instr->mubuf().vtx_binding = vtx_binding;
+   bld.mubuf(aco_opcode::buffer_load_dword, Definition(PhysReg(256), v1), desc_op,
+             Operand(PhysReg(256), v1), Operand::zero(), 0, false)
+      .instr->mubuf()
+      .vtx_binding = vtx_binding;
 }
 
 static void create_mubuf_store()
 {
-   bld.mubuf(aco_opcode::buffer_store_dword, Operand(PhysReg(0), s4),
-             Operand(PhysReg(256), v1), Operand(PhysReg(256), v1), Operand(0u), 0, false);
+   bld.mubuf(aco_opcode::buffer_store_dword, Operand(PhysReg(0), s4), Operand(PhysReg(256), v1),
+             Operand(PhysReg(256), v1), Operand::zero(), 0, false);
 }
 
 static void create_mtbuf(Temp desc=Temp(0, s8), unsigned vtx_binding=0)
 {
    Operand desc_op(desc);
    desc_op.setFixed(PhysReg(0));
-   bld.mtbuf(aco_opcode::tbuffer_load_format_x, Definition(PhysReg(256), v1),
-             desc_op, Operand(PhysReg(256), v1), Operand(0u),
-             V_008F0C_BUF_DATA_FORMAT_32, V_008F0C_BUF_NUM_FORMAT_FLOAT, 0, false)
-      .instr->mtbuf().vtx_binding = vtx_binding;
+   bld.mtbuf(aco_opcode::tbuffer_load_format_x, Definition(PhysReg(256), v1), desc_op,
+             Operand(PhysReg(256), v1), Operand::zero(), V_008F0C_BUF_DATA_FORMAT_32,
+             V_008F0C_BUF_NUM_FORMAT_FLOAT, 0, false)
+      .instr->mtbuf()
+      .vtx_binding = vtx_binding;
 }
 
 static void create_flat()
@@ -82,16 +84,15 @@ static void create_mimg(bool nsa, Temp desc=Temp(0, s8))
 
 static void create_smem()
 {
-   bld.smem(aco_opcode::s_load_dword, Definition(PhysReg(0), s1),
-            Operand(PhysReg(0), s2), Operand(0u));
+   bld.smem(aco_opcode::s_load_dword, Definition(PhysReg(0), s1), Operand(PhysReg(0), s2),
+            Operand::zero());
 }
 
 static void create_smem_buffer(Temp desc=Temp(0, s4))
 {
    Operand desc_op(desc);
    desc_op.setFixed(PhysReg(0));
-   bld.smem(aco_opcode::s_buffer_load_dword, Definition(PhysReg(0), s1),
-            desc_op, Operand(0u));
+   bld.smem(aco_opcode::s_buffer_load_dword, Definition(PhysReg(0), s1), desc_op, Operand::zero());
 }
 
 BEGIN_TEST(form_hard_clauses.type_restrictions)
@@ -102,7 +103,7 @@ BEGIN_TEST(form_hard_clauses.type_restrictions)
    //! s_clause imm:1
    //; search_re('image_sample')
    //; search_re('image_sample')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(0u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::zero());
    create_mimg(false);
    create_mimg(false);
 
@@ -110,7 +111,7 @@ BEGIN_TEST(form_hard_clauses.type_restrictions)
    //! s_clause imm:1
    //; search_re('buffer_load_dword')
    //; search_re('buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(1u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1u));
    create_mubuf();
    create_mubuf();
 
@@ -118,7 +119,7 @@ BEGIN_TEST(form_hard_clauses.type_restrictions)
    //! s_clause imm:1
    //; search_re('global_load_dword')
    //; search_re('global_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(2u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
    create_global();
    create_global();
 
@@ -126,7 +127,7 @@ BEGIN_TEST(form_hard_clauses.type_restrictions)
    //! s_clause imm:1
    //; search_re('flat_load_dword')
    //; search_re('flat_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(3u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3u));
    create_flat();
    create_flat();
 
@@ -134,28 +135,28 @@ BEGIN_TEST(form_hard_clauses.type_restrictions)
    //! s_clause imm:1
    //; search_re('s_load_dword')
    //; search_re('s_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(4u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4u));
    create_smem();
    create_smem();
 
    //>> p_unit_test 5
    //; search_re('buffer_load_dword')
    //; search_re('flat_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(5u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(5u));
    create_mubuf();
    create_flat();
 
    //>> p_unit_test 6
    //; search_re('buffer_load_dword')
    //; search_re('s_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(6u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(6u));
    create_mubuf();
    create_smem();
 
    //>> p_unit_test 7
    //; search_re('flat_load_dword')
    //; search_re('s_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(7u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(7u));
    create_flat();
    create_smem();
 
@@ -168,14 +169,14 @@ BEGIN_TEST(form_hard_clauses.size)
 
    //>> p_unit_test 0
    //; search_re('s_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(0u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::zero());
    create_smem();
 
    //>> p_unit_test 1
    //! s_clause imm:63
    //; for i in range(64):
    //;    search_re('s_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(1u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1u));
    for (unsigned i = 0; i < 64; i++)
       create_smem();
 
@@ -183,7 +184,7 @@ BEGIN_TEST(form_hard_clauses.size)
    //! s_clause imm:63
    //; for i in range(65):
    //;    search_re('s_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(2u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
    for (unsigned i = 0; i < 65; i++)
       create_smem();
 
@@ -194,7 +195,7 @@ BEGIN_TEST(form_hard_clauses.size)
    //! s_clause imm:1
    //; search_re('s_load_dword')
    //; search_re('s_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(3u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3u));
    for (unsigned i = 0; i < 66; i++)
       create_smem();
 
@@ -210,7 +211,7 @@ BEGIN_TEST(form_hard_clauses.nsa)
       //! s_clause imm:1
       //; search_re('image_sample .* %0:v\[0\], %0:v\[1\]')
       //; search_re('image_sample .* %0:v\[0\], %0:v\[1\]')
-      bld.pseudo(aco_opcode::p_unit_test, Operand(0u));
+      bld.pseudo(aco_opcode::p_unit_test, Operand::zero());
       create_mimg(false);
       create_mimg(false);
 
@@ -218,7 +219,7 @@ BEGIN_TEST(form_hard_clauses.nsa)
       //~gfx10_3! s_clause imm:1
       //; search_re('image_sample .* %0:v\[0\], %0:v\[1\]')
       //; search_re('image_sample .* %0:v\[0\], %0:v\[2\]')
-      bld.pseudo(aco_opcode::p_unit_test, Operand(1u));
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1u));
       create_mimg(false);
       create_mimg(true);
 
@@ -226,7 +227,7 @@ BEGIN_TEST(form_hard_clauses.nsa)
       //~gfx10_3! s_clause imm:1
       //; search_re('image_sample .* %0:v\[0\], %0:v\[2\]')
       //; search_re('image_sample .* %0:v\[0\], %0:v\[2\]')
-      bld.pseudo(aco_opcode::p_unit_test, Operand(2u));
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
       create_mimg(true);
       create_mimg(true);
 
@@ -248,14 +249,14 @@ BEGIN_TEST(form_hard_clauses.heuristic)
    //! s_clause imm:1
    //; search_re('image_sample')
    //; search_re('image_sample')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(0u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::zero());
    create_mimg(false, img_desc0);
    create_mimg(false, img_desc0);
 
    //>> p_unit_test 1
    //; search_re('image_sample')
    //; search_re('image_sample')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(1u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1u));
    create_mimg(false, img_desc0);
    create_mimg(false, img_desc1);
 
@@ -263,14 +264,14 @@ BEGIN_TEST(form_hard_clauses.heuristic)
    //! s_clause imm:1
    //; search_re('buffer_load_dword')
    //; search_re('buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(2u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
    create_mubuf(buf_desc0);
    create_mubuf(buf_desc0);
 
    //>> p_unit_test 3
    //; search_re('buffer_load_dword')
    //; search_re('buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(3u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3u));
    create_mubuf(buf_desc0);
    create_mubuf(buf_desc1);
 
@@ -278,21 +279,21 @@ BEGIN_TEST(form_hard_clauses.heuristic)
    //! s_clause imm:1
    //; search_re('s_buffer_load_dword')
    //; search_re('s_buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(4u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4u));
    create_smem_buffer(buf_desc0);
    create_smem_buffer(buf_desc0);
 
    //>> p_unit_test 5
    //; search_re('s_buffer_load_dword')
    //; search_re('s_buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(5u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(5u));
    create_smem_buffer(buf_desc0);
    create_smem_buffer(buf_desc1);
 
    //>> p_unit_test 6
    //; search_re('s_buffer_load_dword')
    //; search_re('s_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(6u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(6u));
    create_smem_buffer(buf_desc0);
    create_smem();
 
@@ -302,7 +303,7 @@ BEGIN_TEST(form_hard_clauses.heuristic)
    //>> p_unit_test 7
    //; search_re('buffer_load_dword')
    //; search_re('tbuffer_load_format_x')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(7u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(7u));
    create_mubuf(buf_desc0);
    create_mtbuf(buf_desc0);
 
@@ -310,7 +311,7 @@ BEGIN_TEST(form_hard_clauses.heuristic)
    //! s_clause imm:1
    //; search_re('buffer_load_dword')
    //; search_re('tbuffer_load_format_x')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(8u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(8u));
    create_mubuf(buf_desc0, 1);
    create_mtbuf(buf_desc0, 1);
 
@@ -318,7 +319,7 @@ BEGIN_TEST(form_hard_clauses.heuristic)
    //! s_clause imm:1
    //; search_re('buffer_load_dword')
    //; search_re('tbuffer_load_format_x')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(9u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(9u));
    create_mubuf(buf_desc0, 1);
    create_mtbuf(buf_desc1, 1);
 
@@ -332,7 +333,7 @@ BEGIN_TEST(form_hard_clauses.stores)
    //>> p_unit_test 0
    //; search_re('buffer_store_dword')
    //; search_re('buffer_store_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(0u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::zero());
    create_mubuf_store();
    create_mubuf_store();
 
@@ -341,7 +342,7 @@ BEGIN_TEST(form_hard_clauses.stores)
    //; search_re('buffer_load_dword')
    //; search_re('buffer_load_dword')
    //; search_re('buffer_store_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(1u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1u));
    create_mubuf();
    create_mubuf();
    create_mubuf_store();
@@ -351,7 +352,7 @@ BEGIN_TEST(form_hard_clauses.stores)
    //! s_clause imm:1
    //; search_re('buffer_load_dword')
    //; search_re('buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(2u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
    create_mubuf_store();
    create_mubuf();
    create_mubuf();
@@ -361,7 +362,7 @@ BEGIN_TEST(form_hard_clauses.stores)
    //; search_re('buffer_load_dword')
    //; search_re('buffer_store_dword')
    //; search_re('buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(3u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3u));
    create_mubuf();
    create_mubuf_store();
    create_mubuf();
@@ -373,7 +374,7 @@ BEGIN_TEST(form_hard_clauses.stores)
    //; for i in range(63):
    //;    search_re('buffer_load_dword')
    //; search_re('buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(4u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4u));
    create_mubuf_store();
    for (unsigned i = 0; i < 64; i++)
       create_mubuf();
@@ -383,7 +384,7 @@ BEGIN_TEST(form_hard_clauses.stores)
    //; for i in range(64):
    //;    search_re('buffer_load_dword')
    //; search_re('buffer_store_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand(5u));
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(5u));
    for (unsigned i = 0; i < 64; i++)
       create_mubuf();
    create_mubuf_store();

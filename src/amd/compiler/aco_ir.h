@@ -665,19 +665,19 @@ public:
    {
       if (val == 0x3e22f983 && bytes == 4 && chip >= GFX8) {
          /* 1/2 PI can be an inline constant on GFX8+ */
-         Operand op((uint32_t)val);
+         Operand op = Operand::c32(val);
          op.setFixed(PhysReg{248});
          return op;
       }
 
       if (bytes == 8)
-         return Operand(val);
+         return Operand::c64(val);
       else if (bytes == 4)
-         return Operand((uint32_t)val);
+         return Operand::c32(val);
       else if (bytes == 2)
-         return Operand((uint16_t)val);
+         return Operand::c16(val);
       assert(bytes == 1);
-      return Operand((uint8_t)val);
+      return Operand::c8(val);
    }
 
    static bool is_constant_representable(uint64_t val, unsigned bytes, bool zext = false,

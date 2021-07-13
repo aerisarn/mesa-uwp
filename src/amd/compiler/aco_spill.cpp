@@ -325,7 +325,7 @@ do_reload(spill_ctx& ctx, Temp tmp, Temp new_name, uint32_t spill_id)
    } else {
       aco_ptr<Pseudo_instruction> reload{
          create_instruction<Pseudo_instruction>(aco_opcode::p_reload, Format::PSEUDO, 1, 1)};
-      reload->operands[0] = Operand(spill_id);
+      reload->operands[0] = Operand::c32(spill_id);
       reload->definitions[0] = Definition(new_name);
       ctx.is_reloaded[spill_id] = true;
       return reload;
@@ -863,7 +863,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          aco_ptr<Pseudo_instruction> spill{
             create_instruction<Pseudo_instruction>(aco_opcode::p_spill, Format::PSEUDO, 2, 0)};
          spill->operands[0] = spill_op;
-         spill->operands[1] = Operand(spill_id);
+         spill->operands[1] = Operand::c32(spill_id);
          Block& pred = ctx.program->blocks[pred_idx];
          unsigned idx = pred.instructions.size();
          do {
@@ -920,7 +920,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          aco_ptr<Pseudo_instruction> spill{
             create_instruction<Pseudo_instruction>(aco_opcode::p_spill, Format::PSEUDO, 2, 0)};
          spill->operands[0] = Operand(var);
-         spill->operands[1] = Operand(pair.second);
+         spill->operands[1] = Operand::c32(pair.second);
          Block& pred = ctx.program->blocks[pred_idx];
          unsigned idx = pred.instructions.size();
          do {
@@ -1204,7 +1204,7 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
             aco_ptr<Pseudo_instruction> spill{
                create_instruction<Pseudo_instruction>(aco_opcode::p_spill, Format::PSEUDO, 2, 0)};
             spill->operands[0] = Operand(to_spill);
-            spill->operands[1] = Operand(spill_id);
+            spill->operands[1] = Operand::c32(spill_id);
             instructions.emplace_back(std::move(spill));
          }
       }
@@ -1353,11 +1353,11 @@ load_scratch_resource(spill_ctx& ctx, Temp& scratch_offset,
    Temp private_segment_buffer = ctx.program->private_segment_buffer;
    if (ctx.program->stage != compute_cs)
       private_segment_buffer =
-         bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), private_segment_buffer, Operand(0u));
+         bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), private_segment_buffer, Operand::zero());
 
    if (offset)
       scratch_offset = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc),
-                                scratch_offset, Operand(offset));
+                                scratch_offset, Operand::c32(offset));
 
    uint32_t rsrc_conf =
       S_008F0C_ADD_TID_ENABLE(1) | S_008F0C_INDEX_STRIDE(ctx.program->wave_size == 64 ? 3 : 2);
@@ -1374,8 +1374,8 @@ load_scratch_resource(spill_ctx& ctx, Temp& scratch_offset,
    if (ctx.program->chip_class <= GFX8)
       rsrc_conf |= S_008F0C_ELEMENT_SIZE(1);
 
-   return bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), private_segment_buffer, Operand(-1u),
-                     Operand(rsrc_conf));
+   return bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), private_segment_buffer,
+                     Operand::c32(-1u), Operand::c32(rsrc_conf));
 }
 
 void
@@ -1666,7 +1666,7 @@ assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr)
                Pseudo_instruction* spill =
                   create_instruction<Pseudo_instruction>(aco_opcode::p_spill, Format::PSEUDO, 3, 0);
                spill->operands[0] = Operand(vgpr_spill_temps[spill_slot / ctx.wave_size]);
-               spill->operands[1] = Operand(spill_slot % ctx.wave_size);
+               spill->operands[1] = Operand::c32(spill_slot % ctx.wave_size);
                spill->operands[2] = (*it)->operands[0];
                instructions.emplace_back(aco_ptr<Instruction>(spill));
             }
@@ -1750,7 +1750,7 @@ assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr)
                Pseudo_instruction* reload = create_instruction<Pseudo_instruction>(
                   aco_opcode::p_reload, Format::PSEUDO, 2, 1);
                reload->operands[0] = Operand(vgpr_spill_temps[spill_slot / ctx.wave_size]);
-               reload->operands[1] = Operand(spill_slot % ctx.wave_size);
+               reload->operands[1] = Operand::c32(spill_slot % ctx.wave_size);
                reload->definitions[0] = (*it)->definitions[0];
                instructions.emplace_back(aco_ptr<Instruction>(reload));
             }
