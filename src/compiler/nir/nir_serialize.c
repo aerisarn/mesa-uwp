@@ -2102,6 +2102,8 @@ nir_deserialize(void *mem_ctx,
 
    free(ctx.idx_table);
 
+   nir_validate_shader(ctx.nir, "after deserialize");
+
    return ctx.nir;
 }
 
