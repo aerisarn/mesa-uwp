@@ -143,7 +143,7 @@ struct crocus_bufmgr {
 
    int fd;
 
-   mtx_t lock;
+   simple_mtx_t lock;
 
    /** Array of lists of cached gem objects of power-of-two sizes */
    struct bo_cache_bucket cache_bucket[14 * 4];
@@ -165,7 +165,7 @@ struct crocus_bufmgr {
    bool bo_reuse:1;
 };
 
-static mtx_t global_bufmgr_list_mutex = _MTX_INITIALIZER_NP;
+static simple_mtx_t global_bufmgr_list_mutex = _SIMPLE_MTX_INITIALIZER_NP;
 static struct list_head global_bufmgr_list = {
    .next = &global_bufmgr_list,
    .prev = &global_bufmgr_list,
@@ -405,14 +405,14 @@ bo_alloc_internal(struct crocus_bufmgr *bufmgr,
    uint64_t bo_size =
       bucket ? bucket->size : MAX2(ALIGN(size, page_size), page_size);
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
 
    /* Get a buffer out of the cache if available.  First, we try to find
     * one with a matching memory zone so we can avoid reallocating VMA.
     */
    bo = alloc_bo_from_cache(bufmgr, bucket, alignment, flags);
 
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
 
    if (!bo) {
       bo = alloc_fresh_bo(bufmgr, bo_size);
@@ -535,7 +535,7 @@ crocus_bo_gem_create_from_name(struct crocus_bufmgr *bufmgr,
     * alternating names for the front/back buffer a linear search
     * provides a sufficiently fast match.
     */
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
    bo = find_and_ref_external_bo(bufmgr->name_table, handle);
    if (bo)
       goto out;
@@ -586,12 +586,12 @@ crocus_bo_gem_create_from_name(struct crocus_bufmgr *bufmgr,
    DBG("bo_create_from_handle: %d (%s)\n", handle, bo->name);
 
 out:
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
    return bo;
 
 err_unref:
    bo_free(bo);
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
    return NULL;
 }
 
@@ -717,14 +717,14 @@ __crocus_bo_unreference(struct crocus_bo *bo)
 
    clock_gettime(CLOCK_MONOTONIC, &time);
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
 
    if (p_atomic_dec_zero(&bo->refcount)) {
       bo_unreference_final(bo, time.tv_sec);
       cleanup_bo_cache(bufmgr, time.tv_sec);
    }
 
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
 }
 
 static void
@@ -1128,7 +1128,7 @@ crocus_bo_wait(struct crocus_bo *bo, int64_t timeout_ns)
 static void
 crocus_bufmgr_destroy(struct crocus_bufmgr *bufmgr)
 {
-   mtx_destroy(&bufmgr->lock);
+   simple_mtx_destroy(&bufmgr->lock);
 
    /* Free any cached buffer objects we were going to reuse */
    for (int i = 0; i < bufmgr->num_buckets; i++) {
@@ -1204,12 +1204,12 @@ crocus_bo_import_dmabuf(struct crocus_bufmgr *bufmgr, int prime_fd,
    uint32_t handle;
    struct crocus_bo *bo;
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
    int ret = drmPrimeFDToHandle(bufmgr->fd, prime_fd, &handle);
    if (ret) {
       DBG("import_dmabuf: failed to obtain handle from fd: %s\n",
           strerror(errno));
-      mtx_unlock(&bufmgr->lock);
+      simple_mtx_unlock(&bufmgr->lock);
       return NULL;
    }
 
@@ -1260,12 +1260,12 @@ crocus_bo_import_dmabuf(struct crocus_bufmgr *bufmgr, int prime_fd,
    }
 
 out:
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
    return bo;
 
 err:
    bo_free(bo);
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
    return NULL;
 }
 
@@ -1276,12 +1276,12 @@ crocus_bo_import_dmabuf_no_mods(struct crocus_bufmgr *bufmgr,
    uint32_t handle;
    struct crocus_bo *bo;
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
    int ret = drmPrimeFDToHandle(bufmgr->fd, prime_fd, &handle);
    if (ret) {
       DBG("import_dmabuf: failed to obtain handle from fd: %s\n",
           strerror(errno));
-      mtx_unlock(&bufmgr->lock);
+      simple_mtx_unlock(&bufmgr->lock);
       return NULL;
    }
 
@@ -1318,7 +1318,7 @@ crocus_bo_import_dmabuf_no_mods(struct crocus_bufmgr *bufmgr,
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
 
 out:
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
    return bo;
 }
 
@@ -1342,9 +1342,9 @@ crocus_bo_make_external(struct crocus_bo *bo)
       return;
    }
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
    crocus_bo_make_external_locked(bo);
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
 }
 
 int
@@ -1380,13 +1380,13 @@ crocus_bo_flink(struct crocus_bo *bo, uint32_t *name)
       if (intel_ioctl(bufmgr->fd, DRM_IOCTL_GEM_FLINK, &flink))
          return -errno;
 
-      mtx_lock(&bufmgr->lock);
+      simple_mtx_lock(&bufmgr->lock);
       if (!bo->global_name) {
          crocus_bo_make_external_locked(bo);
          bo->global_name = flink.name;
          _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
       }
-      mtx_unlock(&bufmgr->lock);
+      simple_mtx_unlock(&bufmgr->lock);
    }
 
    *name = bo->global_name;
@@ -1424,11 +1424,11 @@ crocus_bo_export_gem_handle_for_device(struct crocus_bo *bo, int drm_fd,
       return err;
    }
 
-   mtx_lock(&bufmgr->lock);
+   simple_mtx_lock(&bufmgr->lock);
    err = drmPrimeFDToHandle(drm_fd, dmabuf_fd, &export->gem_handle);
    close(dmabuf_fd);
    if (err) {
-      mtx_unlock(&bufmgr->lock);
+      simple_mtx_unlock(&bufmgr->lock);
       free(export);
       return err;
    }
@@ -1449,7 +1449,7 @@ crocus_bo_export_gem_handle_for_device(struct crocus_bo *bo, int drm_fd,
    if (!found)
       list_addtail(&export->link, &bo->exports);
 
-   mtx_unlock(&bufmgr->lock);
+   simple_mtx_unlock(&bufmgr->lock);
 
    *out_handle = export->gem_handle;
 
@@ -1637,10 +1637,7 @@ crocus_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 
    p_atomic_set(&bufmgr->refcount, 1);
 
-   if (mtx_init(&bufmgr->lock, mtx_plain) != 0) {
-      free(bufmgr);
-      return NULL;
-   }
+   simple_mtx_init(&bufmgr->lock, mtx_plain);
 
    list_inithead(&bufmgr->zombie_list);
 
@@ -1669,12 +1666,12 @@ crocus_bufmgr_ref(struct crocus_bufmgr *bufmgr)
 void
 crocus_bufmgr_unref(struct crocus_bufmgr *bufmgr)
 {
-   mtx_lock(&global_bufmgr_list_mutex);
+   simple_mtx_lock(&global_bufmgr_list_mutex);
    if (p_atomic_dec_zero(&bufmgr->refcount)) {
       list_del(&bufmgr->link);
       crocus_bufmgr_destroy(bufmgr);
    }
-   mtx_unlock(&global_bufmgr_list_mutex);
+   simple_mtx_unlock(&global_bufmgr_list_mutex);
 }
 
 /**
@@ -1692,7 +1689,7 @@ crocus_bufmgr_get_for_fd(struct intel_device_info *devinfo, int fd, bool bo_reus
 
    struct crocus_bufmgr *bufmgr = NULL;
 
-   mtx_lock(&global_bufmgr_list_mutex);
+   simple_mtx_lock(&global_bufmgr_list_mutex);
    list_for_each_entry(struct crocus_bufmgr, iter_bufmgr, &global_bufmgr_list, link) {
       struct stat iter_st;
       if (fstat(iter_bufmgr->fd, &iter_st))
@@ -1710,7 +1707,7 @@ crocus_bufmgr_get_for_fd(struct intel_device_info *devinfo, int fd, bool bo_reus
       list_addtail(&bufmgr->link, &global_bufmgr_list);
 
  unlock:
-   mtx_unlock(&global_bufmgr_list_mutex);
+   simple_mtx_unlock(&global_bufmgr_list_mutex);
 
    return bufmgr;
 }
