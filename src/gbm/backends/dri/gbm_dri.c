@@ -1196,7 +1196,7 @@ gbm_dri_bo_create(struct gbm_device *gbm,
    if (modifiers && (dri->image->base.version < 14 ||
        !dri->image->createImageWithModifiers)) {
       errno = ENOSYS;
-      return NULL;
+      goto failed;
    }
 
    bo->image = loader_dri_create_image(dri->screen, dri->image, width, height,
