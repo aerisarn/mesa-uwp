@@ -51,6 +51,10 @@
 
 #ifdef ZINK_USE_DMABUF
 #include "drm-uapi/drm_fourcc.h"
+#else
+/* these won't actually be used */
+#define DRM_FORMAT_MOD_INVALID 0
+#define DRM_FORMAT_MOD_LINEAR 0
 #endif
 
 static void
@@ -243,10 +247,8 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
 {
    VkImageFormatProperties image_props;
    VkResult ret;
-#ifdef ZINK_USE_DMABUF
    assert(modifier == DRM_FORMAT_MOD_INVALID ||
           (screen->vk.GetPhysicalDeviceImageFormatProperties2 && screen->info.have_EXT_image_drm_format_modifier));
-#endif
    if (screen->vk.GetPhysicalDeviceImageFormatProperties2) {
       VkImageFormatProperties2 props2 = {0};
       props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
@@ -258,7 +260,6 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
       info.usage = ici->usage;
       info.flags = ici->flags;
 
-#ifdef ZINK_USE_DMABUF
       VkPhysicalDeviceImageDrmFormatModifierInfoEXT mod_info;
       if (modifier != DRM_FORMAT_MOD_INVALID) {
          mod_info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT;
@@ -268,7 +269,6 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
          mod_info.queueFamilyIndexCount = 0;
          info.pNext = &mod_info;
       }
-#endif
       ret = screen->vk.GetPhysicalDeviceImageFormatProperties2(screen->pdev, &info, &props2);
       image_props = props2.imageFormatProperties;
    } else
@@ -339,7 +339,6 @@ static VkImageUsageFlags
 get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe_resource *templ, unsigned bind, unsigned modifiers_count, const uint64_t *modifiers, uint64_t *mod)
 {
    VkImageTiling tiling = ici->tiling;
-#ifdef ZINK_USE_DMABUF
    *mod = DRM_FORMAT_MOD_INVALID;
    if (modifiers_count) {
       bool have_linear = false;
@@ -373,7 +372,6 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
          }
       }
    } else
-#endif
    {
       VkFormatProperties props = screen->format_props[templ->format];
       VkFormatFeatureFlags feats = tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
@@ -384,9 +382,7 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
             return usage;
       }
    }
-#ifdef ZINK_USE_DMABUF
    *mod = DRM_FORMAT_MOD_INVALID;
-#endif
    return 0;
 }
 
@@ -467,11 +463,7 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
 
    bool first = true;
    bool tried[2] = {0};
-#ifdef ZINK_USE_DMABUF
    uint64_t mod = DRM_FORMAT_MOD_INVALID;
-#else
-   uint64_t mod = 0;
-#endif
    while (!ici->usage) {
       if (!first) {
          switch (ici->tiling) {
@@ -485,11 +477,7 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
          case VK_IMAGE_TILING_LINEAR:
             if (bind & PIPE_BIND_LINEAR) {
                *success = false;
-#ifdef ZINK_USE_DMABUF
                return DRM_FORMAT_MOD_INVALID;
-#else
-               return 0;
-#endif
             }
             ici->tiling = VK_IMAGE_TILING_OPTIMAL;
             break;
@@ -498,11 +486,7 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
          }
          if (tried[ici->tiling]) {
             *success = false;
-#ifdef ZINK_USE_DMABUF
                return DRM_FORMAT_MOD_INVALID;
-#else
-               return 0;
-#endif
          }
       }
       ici->usage = get_image_usage(screen, ici, templ, bind, modifiers_count, modifiers, &mod);
@@ -551,21 +535,15 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       obj->is_buffer = true;
       obj->transfer_dst = true;
    } else {
-#ifdef ZINK_USE_DMABUF
       bool winsys_modifier = shared && whandle && whandle->modifier != DRM_FORMAT_MOD_INVALID;
-#else
-      bool winsys_modifier = false;
-#endif
       const uint64_t *ici_modifiers = winsys_modifier ? &whandle->modifier : modifiers;
       unsigned ici_modifier_count = winsys_modifier ? 1 : modifiers_count;
       bool success = false;
       VkImageCreateInfo ici = {0};
       uint64_t mod = create_ici(screen, &ici, templ, templ->bind, ici_modifier_count, ici_modifiers, &success);
       VkExternalMemoryImageCreateInfo emici = {0};
-#ifdef ZINK_USE_DMABUF
       VkImageDrmFormatModifierExplicitCreateInfoEXT idfmeci = {0};
       VkImageDrmFormatModifierListCreateInfoEXT idfmlci;
-#endif
       if (!success)
          goto fail1;
 
@@ -574,7 +552,6 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          emici.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
          ici.pNext = &emici;
 
-#ifdef ZINK_USE_DMABUF
          assert(ici.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT || mod != DRM_FORMAT_MOD_INVALID);
          if (winsys_modifier && ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
             assert(mod == whandle->modifier);
@@ -604,9 +581,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             idfmlci.drmFormatModifierCount = 1;
             idfmlci.pDrmFormatModifiers = &mod;
             ici.pNext = &idfmlci;
-         } else
-#endif
-         if (ici.tiling == VK_IMAGE_TILING_OPTIMAL) {
+         } else if (ici.tiling == VK_IMAGE_TILING_OPTIMAL) {
             // TODO: remove for wsi
             ici.pNext = NULL;
             scanout = false;
@@ -892,7 +867,6 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
    }
 
    case PIPE_RESOURCE_PARAM_MODIFIER: {
-#ifdef ZINK_USE_DMABUF
       *value = DRM_FORMAT_MOD_INVALID;
       if (!screen->info.have_EXT_image_drm_format_modifier)
          return false;
@@ -902,9 +876,6 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
       if (screen->vk.GetImageDrmFormatModifierPropertiesEXT(screen->dev, obj->image, &prop) == VK_SUCCESS)
          *value = prop.drmFormatModifier;
       break;
-#else
-      return false;
-#endif
    }
 
    case PIPE_RESOURCE_PARAM_LAYER_STRIDE: {
