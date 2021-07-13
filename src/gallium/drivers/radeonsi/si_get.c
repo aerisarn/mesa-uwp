@@ -555,6 +555,12 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
          return true;
       case PIPE_VIDEO_CAP_STACKED_FRAMES:
          return (sscreen->info.family < CHIP_TONGA) ? 1 : 2;
+      case PIPE_VIDEO_CAP_MAX_TEMPORAL_LAYERS:
+         if (codec == PIPE_VIDEO_FORMAT_MPEG4_AVC &&
+             sscreen->info.family >= CHIP_RAVEN)
+            return 4;
+         else
+            return 0;
       default:
          return 0;
       }
