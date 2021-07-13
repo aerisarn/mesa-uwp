@@ -10099,7 +10099,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
                                       prog_data->local_size[2];
 
       /* Limit max_threads to 64 for the GPGPU_WALKER command */
-      const uint32_t max_threads = MIN2(64, compiler->devinfo->max_cs_threads);
+      const uint32_t max_threads = compiler->devinfo->max_cs_workgroup_threads;
       min_dispatch_width = util_next_power_of_two(
          MAX2(8, DIV_ROUND_UP(local_workgroup_size, max_threads)));
       assert(min_dispatch_width <= 32);
@@ -10316,8 +10316,7 @@ brw_cs_simd_size_for_group_size(const struct intel_device_info *devinfo,
    if ((INTEL_DEBUG & DEBUG_DO32) && (mask & simd32))
       return 32;
 
-   /* Limit max_threads to 64 for the GPGPU_WALKER command */
-   const uint32_t max_threads = MIN2(64, devinfo->max_cs_threads);
+   const uint32_t max_threads = devinfo->max_cs_workgroup_threads;
 
    if ((mask & simd8) && group_size <= 8 * max_threads) {
       /* Prefer SIMD16 if can do without spilling.  Matches logic in

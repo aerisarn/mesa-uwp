@@ -1228,6 +1228,21 @@ getparam(int fd, uint32_t param, int *value)
    return true;
 }
 
+static void
+update_cs_workgroup_threads(struct intel_device_info *devinfo)
+{
+   /* GPGPU_WALKER::ThreadWidthCounterMaximum is U6-1 so the most threads we
+    * can program is 64 without going up to a rectangular group. This only
+    * impacts Haswell and TGL which have higher thread counts.
+    *
+    * INTERFACE_DESCRIPTOR_DATA::NumberofThreadsinGPGPUThreadGroup on Xe-HP+
+    * is 10 bits so we have no such restrictions.
+    */
+   devinfo->max_cs_workgroup_threads =
+      devinfo->verx10 >= 125 ? devinfo->max_cs_threads :
+                               MIN2(devinfo->max_cs_threads, 64);
+}
+
 bool
 intel_get_device_info_from_pci_id(int pci_id,
                                   struct intel_device_info *devinfo)
@@ -1301,6 +1316,8 @@ intel_get_device_info_from_pci_id(int pci_id,
 
    if (devinfo->verx10 == 0)
       devinfo->verx10 = devinfo->ver * 10;
+
+   update_cs_workgroup_threads(devinfo);
 
    devinfo->chipset_id = pci_id;
    return true;
@@ -1433,6 +1450,8 @@ fixup_chv_device_info(struct intel_device_info *devinfo)
    assert(max_cs_threads >= devinfo->max_cs_threads);
    if (max_cs_threads > devinfo->max_cs_threads)
       devinfo->max_cs_threads = max_cs_threads;
+
+   update_cs_workgroup_threads(devinfo);
 
    /* Braswell is even more annoying.  Its marketing name isn't determinable
     * from the PCI ID and is also dependent on fusing.

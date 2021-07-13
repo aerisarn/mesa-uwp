@@ -214,6 +214,17 @@ struct intel_device_info
     */
    unsigned max_cs_threads;
 
+   /**
+    * Maximum number of threads per workgroup supported by the GPGPU_WALKER or
+    * COMPUTE_WALKER command.
+    *
+    * This may be smaller than max_cs_threads as it takes into account added
+    * restrictions on the GPGPU/COMPUTE_WALKER commands.  While max_cs_threads
+    * expresses the total parallelism of the GPU, this expresses the maximum
+    * number of threads we can dispatch in a single workgroup.
+    */
+   unsigned max_cs_workgroup_threads;
+
    struct {
       /**
        * Fixed size of the URB.

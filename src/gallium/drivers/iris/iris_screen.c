@@ -516,9 +516,7 @@ iris_get_compute_param(struct pipe_screen *pscreen,
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    const struct intel_device_info *devinfo = &screen->devinfo;
 
-   /* Limit max_threads to 64 for the GPGPU_WALKER command. */
-   const unsigned max_threads = MIN2(64, devinfo->max_cs_threads);
-   const uint32_t max_invocations = 32 * max_threads;
+   const uint32_t max_invocations = 32 * devinfo->max_cs_workgroup_threads;
 
 #define RET(x) do {                  \
    if (ret)                          \

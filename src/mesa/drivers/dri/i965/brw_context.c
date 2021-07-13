@@ -840,14 +840,8 @@ brw_initialize_cs_context_constants(struct brw_context *brw)
 
    /* Maximum number of scalar compute shader invocations that can be run in
     * parallel in the same subslice assuming SIMD32 dispatch.
-    *
-    * We don't advertise more than 64 threads, because we are limited to 64 by
-    * our usage of thread_width_max in the gpgpu walker command. This only
-    * currently impacts Haswell, which otherwise might be able to advertise 70
-    * threads. With SIMD32 and 64 threads, Haswell still provides twice the
-    * required the number of invocation needed for ARB_compute_shader.
     */
-   const unsigned max_threads = MIN2(64, devinfo->max_cs_threads);
+   const unsigned max_threads = devinfo->max_cs_workgroup_threads;
    const uint32_t max_invocations = 32 * max_threads;
    ctx->Const.MaxComputeWorkGroupSize[0] = max_invocations;
    ctx->Const.MaxComputeWorkGroupSize[1] = max_invocations;
