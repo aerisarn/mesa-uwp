@@ -6,6 +6,7 @@
 #include "zink_screen.h"
 #include "zink_state.h"
 #include "zink_surface.h"
+#include "zink_inlines.h"
 
 #include "tgsi/tgsi_from_mesa.h"
 #include "util/hash_table.h"
@@ -395,7 +396,7 @@ update_barriers(struct zink_context *ctx, bool is_compute)
    }
 }
 
-template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE>
+template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE, bool BATCH_CHANGED>
 void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo,
@@ -442,6 +443,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (zink_program_has_descriptors(&ctx->curr_program->base)) {
       if (screen->descriptors_update(ctx, false)) {
          /* descriptors have flushed the batch */
+         zink_select_draw_vbo(ctx);
          pctx->draw_vbo(pctx, dinfo, drawid_offset, dindirect, draws, num_draws);
          return;
       }
@@ -498,7 +500,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkPipeline pipeline = zink_get_gfx_pipeline(ctx, ctx->curr_program,
                                                &ctx->gfx_pipeline_state,
                                                dinfo->mode);
-   bool pipeline_changed = prev_pipeline != pipeline || ctx->pipeline_changed[0];
+   bool pipeline_changed = prev_pipeline != pipeline || BATCH_CHANGED;
    if (pipeline_changed)
       vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -675,7 +677,10 @@ zink_draw_vbo(struct pipe_context *pctx,
       screen->vk.CmdBeginTransformFeedbackEXT(batch->state->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
 
-   ctx->pipeline_changed[0] = false;
+   if (BATCH_CHANGED) {
+      ctx->pipeline_changed[0] = false;
+      zink_select_draw_vbo(ctx);
+   }
 
    unsigned draw_id = drawid_offset;
    bool needs_drawid = ctx->drawid_broken;
@@ -745,7 +750,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    zink_maybe_flush_or_stall(ctx);
 }
 
-void
+template <bool BATCH_CHANGED>
+static void
 zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 {
    struct zink_context *ctx = zink_context(pctx);
@@ -759,6 +765,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    if (zink_program_has_descriptors(&ctx->curr_compute->base)) {
       if (screen->descriptors_update(ctx, true)) {
          /* descriptors have flushed the batch */
+         zink_select_launch_grid(ctx);
          pctx->launch_grid(pctx, info);
          return;
       }
@@ -772,9 +779,12 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    if (ctx->descriptor_refs_dirty[1])
       zink_update_descriptor_refs(ctx, true);
 
-   if (prev_pipeline != pipeline || ctx->pipeline_changed[1])
+   if (prev_pipeline != pipeline || BATCH_CHANGED)
       vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-   ctx->pipeline_changed[1] = false;
+   if (BATCH_CHANGED) {
+      ctx->pipeline_changed[1] = false;
+      zink_select_launch_grid(ctx);
+   }
 
    if (BITSET_TEST(ctx->compute_stage->nir->info.system_values_read, SYSTEM_VALUE_WORK_DIM))
       vkCmdPushConstants(batch->state->cmdbuf, ctx->curr_compute->base.layout, VK_SHADER_STAGE_COMPUTE_BIT,
@@ -792,11 +802,19 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    zink_maybe_flush_or_stall(ctx);
 }
 
+template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE, bool BATCH_CHANGED>
+static void
+init_batch_changed_functions(struct zink_context *ctx)
+{
+   ctx->draw_vbo[HAS_MULTIDRAW][HAS_DYNAMIC_STATE][BATCH_CHANGED] = zink_draw_vbo<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, BATCH_CHANGED>;
+}
+
 template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state HAS_DYNAMIC_STATE>
 static void
 init_dynamic_state_functions(struct zink_context *ctx)
 {
-   ctx->draw_vbo[HAS_MULTIDRAW][HAS_DYNAMIC_STATE] = zink_draw_vbo<HAS_MULTIDRAW, HAS_DYNAMIC_STATE>;
+   init_batch_changed_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, false>(ctx);
+   init_batch_changed_functions<HAS_MULTIDRAW, HAS_DYNAMIC_STATE, true>(ctx);
 }
 
 template <zink_multidraw HAS_MULTIDRAW>
@@ -814,6 +832,20 @@ init_all_draw_functions(struct zink_context *ctx)
    init_multidraw_functions<ZINK_MULTIDRAW>(ctx);
 }
 
+template <bool BATCH_CHANGED>
+static void
+init_grid_batch_changed_functions(struct zink_context *ctx)
+{
+   ctx->launch_grid[BATCH_CHANGED] = zink_launch_grid<BATCH_CHANGED>;
+}
+
+static void
+init_all_grid_functions(struct zink_context *ctx)
+{
+   init_grid_batch_changed_functions<false>(ctx);
+   init_grid_batch_changed_functions<true>(ctx);
+}
+
 static void
 zink_invalid_draw_vbo(struct pipe_context *pipe,
                       const struct pipe_draw_info *dinfo,
@@ -825,6 +857,12 @@ zink_invalid_draw_vbo(struct pipe_context *pipe,
    unreachable("vertex shader not bound");
 }
 
+static void
+zink_invalid_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
+{
+   unreachable("compute shader not bound");
+}
+
 extern "C"
 void
 zink_init_draw_functions(struct zink_context *ctx)
@@ -834,4 +872,14 @@ zink_init_draw_functions(struct zink_context *ctx)
     * initialization of callbacks in upper layers (such as u_threaded_context).
     */
    ctx->base.draw_vbo = zink_invalid_draw_vbo;
+}
+
+void
+zink_init_grid_functions(struct zink_context *ctx)
+{
+   init_all_grid_functions(ctx);
+   /* Bind a fake launch_grid, so that draw_vbo isn't NULL, which would skip
+    * initialization of callbacks in upper layers (such as u_threaded_context).
+    */
+   ctx->base.launch_grid = zink_invalid_launch_grid;
 }

@@ -1878,13 +1878,8 @@ flush_batch(struct zink_context *ctx, bool sync)
          ctx->dirty_so_targets = true;
       ctx->descriptor_refs_dirty[0] = ctx->descriptor_refs_dirty[1] = true;
       ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
-      ctx->sample_locations_changed |= ctx->gfx_pipeline_state.sample_locations_enabled;
-      ctx->vertex_buffers_dirty = true;
-      ctx->vp_state_changed = true;
-      ctx->scissor_changed = true;
-      ctx->rast_state_changed = true;
-      ctx->stencil_ref_changed = true;
-      ctx->dsa_state_changed = true;
+      zink_select_draw_vbo(ctx);
+      zink_select_launch_grid(ctx);
    }
 }
 
@@ -3418,11 +3413,13 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->have_timelines = screen->info.have_KHR_timeline_semaphore;
    ctx->dynamic_state = screen->info.have_EXT_extended_dynamic_state;
 
+   ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
    ctx->gfx_pipeline_state.dirty = true;
    ctx->compute_pipeline_state.dirty = true;
    ctx->fb_changed = ctx->rp_changed = true;
 
    zink_init_draw_functions(ctx);
+   zink_init_grid_functions(ctx);
 
    ctx->base.screen = pscreen;
    ctx->base.priv = priv;
@@ -3467,7 +3464,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.clear_render_target = zink_clear_render_target;
    ctx->base.clear_depth_stencil = zink_clear_depth_stencil;
 
-   ctx->base.launch_grid = zink_launch_grid;
    ctx->base.fence_server_sync = zink_fence_server_sync;
    ctx->base.flush = zink_flush;
    ctx->base.memory_barrier = zink_memory_barrier;
@@ -3571,6 +3567,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    p_atomic_inc(&screen->base.num_contexts);
 
    zink_select_draw_vbo(ctx);
+   zink_select_launch_grid(ctx);
 
    if (!(flags & PIPE_CONTEXT_PREFER_THREADED) || flags & PIPE_CONTEXT_COMPUTE_ONLY) {
       return &ctx->base;

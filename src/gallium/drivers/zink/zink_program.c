@@ -26,6 +26,7 @@
 #include "zink_compiler.h"
 #include "zink_context.h"
 #include "zink_descriptors.h"
+#include "zink_helpers.h"
 #include "zink_render_pass.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
@@ -862,14 +863,15 @@ zink_get_compute_pipeline(struct zink_screen *screen,
    return state->pipeline;
 }
 
-
 static inline void
 bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
            struct zink_shader *shader)
 {
-   if (stage == PIPE_SHADER_COMPUTE)
+   if (stage == PIPE_SHADER_COMPUTE) {
       ctx->compute_stage = shader;
-   else
+      if (shader)
+         zink_select_launch_grid(ctx);
+   } else
       ctx->gfx_stages[stage] = shader;
    ctx->dirty_shader_stages |= 1 << stage;
    if (shader && shader->nir->info.num_inlinable_uniforms)
