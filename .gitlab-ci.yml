@@ -793,7 +793,7 @@ debian-release:
       -D gallium-nine=false
       -D gallium-opencl=disabled
       -D llvm=false
-    GALLIUM_DRIVERS: "iris,nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,crocus"
+    GALLIUM_DRIVERS: "i915,iris,nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,crocus"
     BUILDTYPE: "release"
     EXTRA_OPTION: >
       -D osmesa=true
