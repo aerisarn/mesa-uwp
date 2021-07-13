@@ -3532,6 +3532,28 @@ tc_clear(struct pipe_context *_pipe, unsigned buffers, const struct pipe_scissor
    p->stencil = stencil;
 }
 
+struct tc_clear_render_target {
+   struct tc_call_base base;
+   bool render_condition_enabled;
+   unsigned dstx;
+   unsigned dsty;
+   unsigned width;
+   unsigned height;
+   union pipe_color_union color;
+   struct pipe_surface *dst;
+};
+
+static uint16_t
+tc_call_clear_render_target(struct pipe_context *pipe, void *call, uint64_t *last)
+{
+   struct tc_clear_render_target *p = to_call(call, tc_clear_render_target);
+
+   pipe->clear_render_target(pipe, p->dst, &p->color, p->dstx, p->dsty, p->width, p->height,
+                             p->render_condition_enabled);
+   tc_drop_surface_reference(p->dst);
+   return call_size(tc_clear_render_target);
+}
+
 static void
 tc_clear_render_target(struct pipe_context *_pipe,
                        struct pipe_surface *dst,
@@ -3541,11 +3563,42 @@ tc_clear_render_target(struct pipe_context *_pipe,
                        bool render_condition_enabled)
 {
    struct threaded_context *tc = threaded_context(_pipe);
-   struct pipe_context *pipe = tc->pipe;
+   struct tc_clear_render_target *p = tc_add_call(tc, TC_CALL_clear_render_target, tc_clear_render_target);
+   p->dst = NULL;
+   pipe_surface_reference(&p->dst, dst);
+   p->color = *color;
+   p->dstx = dstx;
+   p->dsty = dsty;
+   p->width = width;
+   p->height = height;
+   p->render_condition_enabled = render_condition_enabled;
+}
 
-   tc_sync(tc);
-   pipe->clear_render_target(pipe, dst, color, dstx, dsty, width, height,
-                             render_condition_enabled);
+
+struct tc_clear_depth_stencil {
+   struct tc_call_base base;
+   bool render_condition_enabled;
+   float depth;
+   unsigned clear_flags;
+   unsigned stencil;
+   unsigned dstx;
+   unsigned dsty;
+   unsigned width;
+   unsigned height;
+   struct pipe_surface *dst;
+};
+
+
+static uint16_t
+tc_call_clear_depth_stencil(struct pipe_context *pipe, void *call, uint64_t *last)
+{
+   struct tc_clear_depth_stencil *p = to_call(call, tc_clear_depth_stencil);
+
+   pipe->clear_depth_stencil(pipe, p->dst, p->clear_flags, p->depth, p->stencil,
+                             p->dstx, p->dsty, p->width, p->height,
+                             p->render_condition_enabled);
+   tc_drop_surface_reference(p->dst);
+   return call_size(tc_clear_depth_stencil);
 }
 
 static void
@@ -3556,12 +3609,17 @@ tc_clear_depth_stencil(struct pipe_context *_pipe,
                        bool render_condition_enabled)
 {
    struct threaded_context *tc = threaded_context(_pipe);
-   struct pipe_context *pipe = tc->pipe;
-
-   tc_sync(tc);
-   pipe->clear_depth_stencil(pipe, dst, clear_flags, depth, stencil,
-                             dstx, dsty, width, height,
-                             render_condition_enabled);
+   struct tc_clear_depth_stencil *p = tc_add_call(tc, TC_CALL_clear_depth_stencil, tc_clear_depth_stencil);
+   p->dst = NULL;
+   pipe_surface_reference(&p->dst, dst);
+   p->clear_flags = clear_flags;
+   p->depth = depth;
+   p->stencil = stencil;
+   p->dstx = dstx;
+   p->dsty = dsty;
+   p->width = width;
+   p->height = height;
+   p->render_condition_enabled = render_condition_enabled;
 }
 
 struct tc_clear_buffer {
