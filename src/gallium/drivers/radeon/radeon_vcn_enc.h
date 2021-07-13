@@ -126,6 +126,8 @@
 #define RENCODE_FEEDBACK_BUFFER_MODE_LINEAR                                         0
 #define RENCODE_FEEDBACK_BUFFER_MODE_CIRCULAR                                       1
 
+#define RENCODE_MAX_NUM_TEMPORAL_LAYERS                                             4
+
 #define RADEON_ENC_CS(value) (enc->cs.current.buf[enc->cs.current.cdw++] = (value))
 #define RADEON_ENC_BEGIN(cmd)                                                                      \
    {                                                                                               \
@@ -460,7 +462,7 @@ struct radeon_enc_pic {
    rvcn_enc_h264_spec_misc_t spec_misc;
    rvcn_enc_hevc_spec_misc_t hevc_spec_misc;
    rvcn_enc_rate_ctl_session_init_t rc_session_init;
-   rvcn_enc_rate_ctl_layer_init_t rc_layer_init;
+   rvcn_enc_rate_ctl_layer_init_t rc_layer_init[RENCODE_MAX_NUM_TEMPORAL_LAYERS];
    rvcn_enc_h264_encode_params_t h264_enc_params;
    rvcn_enc_h264_deblocking_filter_t h264_deblock;
    rvcn_enc_hevc_deblocking_filter_t hevc_deblock;

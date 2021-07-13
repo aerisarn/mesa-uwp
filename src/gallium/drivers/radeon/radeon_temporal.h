@@ -29,8 +29,8 @@
 #define _RADEON_TEMPORAL_H
 
 #include "radeon_video.h"
+#include "radeon_vcn_enc.h"
 
-#define RENCODE_MAX_NUM_TEMPORAL_LAYERS                                             4
 #define RENCODE_MAX_TEMPORAL_LAYER_PATTERN_SIZE                                     9
 
 typedef struct rvcn_temporal_layer_pattern_entry_s

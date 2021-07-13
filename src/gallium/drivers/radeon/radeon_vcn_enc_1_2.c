@@ -225,15 +225,16 @@ static void radeon_enc_rc_session_init(struct radeon_encoder *enc)
 
 static void radeon_enc_rc_layer_init(struct radeon_encoder *enc)
 {
+   unsigned int i = enc->enc_pic.temporal_id;
    RADEON_ENC_BEGIN(enc->cmd.rc_layer_init);
-   RADEON_ENC_CS(enc->enc_pic.rc_layer_init.target_bit_rate);
-   RADEON_ENC_CS(enc->enc_pic.rc_layer_init.peak_bit_rate);
-   RADEON_ENC_CS(enc->enc_pic.rc_layer_init.frame_rate_num);
-   RADEON_ENC_CS(enc->enc_pic.rc_layer_init.frame_rate_den);
-   RADEON_ENC_CS(enc->enc_pic.rc_layer_init.vbv_buffer_size);
-   RADEON_ENC_CS(enc->enc_pic.rc_layer_init.avg_target_bits_per_picture);
-   RADEON_ENC_CS(enc->enc_pic.rc_layer_init.peak_bits_per_picture_integer);
-   RADEON_ENC_CS(enc->enc_pic.rc_layer_init.peak_bits_per_picture_fractional);
+   RADEON_ENC_CS(enc->enc_pic.rc_layer_init[i].target_bit_rate);
+   RADEON_ENC_CS(enc->enc_pic.rc_layer_init[i].peak_bit_rate);
+   RADEON_ENC_CS(enc->enc_pic.rc_layer_init[i].frame_rate_num);
+   RADEON_ENC_CS(enc->enc_pic.rc_layer_init[i].frame_rate_den);
+   RADEON_ENC_CS(enc->enc_pic.rc_layer_init[i].vbv_buffer_size);
+   RADEON_ENC_CS(enc->enc_pic.rc_layer_init[i].avg_target_bits_per_picture);
+   RADEON_ENC_CS(enc->enc_pic.rc_layer_init[i].peak_bits_per_picture_integer);
+   RADEON_ENC_CS(enc->enc_pic.rc_layer_init[i].peak_bits_per_picture_fractional);
    RADEON_ENC_END();
 }
 
@@ -1279,6 +1280,8 @@ static void radeon_enc_op_speed(struct radeon_encoder *enc)
 
 static void begin(struct radeon_encoder *enc)
 {
+   unsigned i;
+
    enc->session_info(enc);
    enc->total_task_size = 0;
    enc->task_info(enc, enc->need_feedback);
@@ -1292,10 +1295,16 @@ static void begin(struct radeon_encoder *enc)
    enc->layer_control(enc);
    enc->rc_session_init(enc);
    enc->quality_params(enc);
-   enc->layer_select(enc);
-   enc->rc_layer_init(enc);
-   enc->layer_select(enc);
-   enc->rc_per_pic(enc);
+
+   i = 0;
+   do {
+      enc->enc_pic.temporal_id = i;
+      enc->layer_select(enc);
+      enc->rc_layer_init(enc);
+      enc->layer_select(enc);
+      enc->rc_per_pic(enc);
+   } while (++i < enc->enc_pic.num_temporal_layers);
+
    enc->op_init_rc(enc);
    enc->op_init_rc_vbv(enc);
    *enc->p_task_size = (enc->total_task_size);
