@@ -329,7 +329,7 @@ debian-android:
     - debian/arm_build
   variables:
     VULKAN_DRIVERS: freedreno,broadcom
-    GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,swrast,tegra,v3d,vc4"
+    GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,swrast,tegra,v3d,vc4,zink"
     BUILDTYPE: "debugoptimized"
   tags:
     - aarch64
