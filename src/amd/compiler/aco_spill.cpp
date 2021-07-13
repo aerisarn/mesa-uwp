@@ -223,11 +223,13 @@ next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>& work
          unsigned pred_idx =
             instr->opcode == aco_opcode::p_phi ? block->logical_preds[i] : block->linear_preds[i];
          if (instr->operands[i].isTemp()) {
-            if (ctx.next_use_distances_end[pred_idx].find(instr->operands[i].getTemp()) ==
-                   ctx.next_use_distances_end[pred_idx].end() ||
-                ctx.next_use_distances_end[pred_idx][instr->operands[i].getTemp()] != distance)
+            auto insert_result = ctx.next_use_distances_end[pred_idx].insert(
+               std::make_pair(instr->operands[i].getTemp(), distance));
+            const bool inserted = insert_result.second;
+            std::pair<uint32_t, uint32_t>& entry_distance = insert_result.first->second;
+            if (inserted || entry_distance != distance)
                worklist.insert(pred_idx);
-            ctx.next_use_distances_end[pred_idx][instr->operands[i].getTemp()] = distance;
+            entry_distance = distance;
          }
       }
       idx--;
@@ -242,16 +244,19 @@ next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>& work
       for (unsigned pred_idx : preds) {
          if (ctx.program->blocks[pred_idx].loop_nest_depth > block->loop_nest_depth)
             distance += 0xFFFF;
-         if (ctx.next_use_distances_end[pred_idx].find(temp) !=
-             ctx.next_use_distances_end[pred_idx].end()) {
-            dom = get_dominator(dom, ctx.next_use_distances_end[pred_idx][temp].first, ctx.program,
-                                temp.is_linear());
-            distance = std::min(ctx.next_use_distances_end[pred_idx][temp].second, distance);
+         auto insert_result = ctx.next_use_distances_end[pred_idx].insert(
+            std::make_pair(temp, std::pair<uint32_t, uint32_t>{}));
+         const bool inserted = insert_result.second;
+         std::pair<uint32_t, uint32_t>& entry_distance = insert_result.first->second;
+
+         if (!inserted) {
+            dom = get_dominator(dom, entry_distance.first, ctx.program, temp.is_linear());
+            distance = std::min(entry_distance.second, distance);
          }
-         if (ctx.next_use_distances_end[pred_idx][temp] !=
-             std::pair<uint32_t, uint32_t>{dom, distance})
+         if (entry_distance != std::pair<uint32_t, uint32_t>{dom, distance}) {
             worklist.insert(pred_idx);
-         ctx.next_use_distances_end[pred_idx][temp] = {dom, distance};
+            entry_distance = {dom, distance};
+         }
       }
    }
 }
@@ -531,8 +536,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
             if (pair.first.type() == type &&
                 (pair.second.first >= loop_end ||
                  (ctx.remat.count(pair.first) && type == RegType::sgpr)) &&
-                pair.second.second > distance &&
-                ctx.spills_entry[block_idx].find(pair.first) == ctx.spills_entry[block_idx].end()) {
+                pair.second.second > distance && !ctx.spills_entry[block_idx].count(pair.first)) {
                to_spill = pair.first;
                distance = pair.second.second;
             }
@@ -547,8 +551,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
          }
 
          uint32_t spill_id;
-         if (ctx.spills_exit[block_idx - 1].find(to_spill) ==
-             ctx.spills_exit[block_idx - 1].end()) {
+         if (!ctx.spills_exit[block_idx - 1].count(to_spill)) {
             spill_id = ctx.allocate_spill_id(to_spill.regClass());
          } else {
             spill_id = ctx.spills_exit[block_idx - 1][to_spill];
@@ -573,7 +576,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
 
          for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair : next_use_distances) {
             if (pair.first.type() == type && pair.second.second > distance &&
-                ctx.spills_entry[block_idx].find(pair.first) == ctx.spills_entry[block_idx].end()) {
+                !ctx.spills_entry[block_idx].count(pair.first)) {
                to_spill = pair.first;
                distance = pair.second.second;
             }
@@ -592,9 +595,12 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
       /* keep variables spilled if they are alive and not used in the current block */
       unsigned pred_idx = block->linear_preds[0];
       for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
-         if (pair.first.type() == RegType::sgpr &&
-             next_use_distances.find(pair.first) != next_use_distances.end() &&
-             next_use_distances[pair.first].first != block_idx) {
+         if (pair.first.type() != RegType::sgpr) {
+            continue;
+         }
+         auto next_use_distance_it = next_use_distances.find(pair.first);
+         if (next_use_distance_it != next_use_distances.end() &&
+             next_use_distance_it->second.first != block_idx) {
             ctx.spills_entry[block_idx].insert(pair);
             spilled_registers.sgpr += pair.first.size();
          }
@@ -602,9 +608,12 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
       if (block->logical_preds.size() == 1) {
          pred_idx = block->logical_preds[0];
          for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
-            if (pair.first.type() == RegType::vgpr &&
-                next_use_distances.find(pair.first) != next_use_distances.end() &&
-                next_use_distances[pair.first].first != block_idx) {
+            if (pair.first.type() != RegType::vgpr) {
+               continue;
+            }
+            auto next_use_distance_it = next_use_distances.find(pair.first);
+            if (next_use_distance_it != next_use_distances.end() &&
+                next_use_distance_it->second.first != block_idx) {
                ctx.spills_entry[block_idx].insert(pair);
                spilled_registers.vgpr += pair.first.size();
             }
@@ -616,8 +625,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
       if (block->register_demand.sgpr - spilled_registers.sgpr > ctx.target_pressure.sgpr) {
          pred_idx = block->linear_preds[0];
          for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
-            if (pair.first.type() == RegType::sgpr &&
-                next_use_distances.find(pair.first) != next_use_distances.end() &&
+            if (pair.first.type() == RegType::sgpr && next_use_distances.count(pair.first) &&
                 ctx.spills_entry[block_idx].insert(pair).second) {
                spilled_registers.sgpr += pair.first.size();
             }
@@ -627,8 +635,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
           block->logical_preds.size() == 1) {
          pred_idx = block->logical_preds[0];
          for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
-            if (pair.first.type() == RegType::vgpr &&
-                next_use_distances.find(pair.first) != next_use_distances.end() &&
+            if (pair.first.type() == RegType::vgpr && next_use_distances.count(pair.first) &&
                 ctx.spills_entry[block_idx].insert(pair).second) {
                spilled_registers.vgpr += pair.first.size();
             }
@@ -656,12 +663,11 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
       uint32_t spill_id = 0;
       for (unsigned pred_idx : preds) {
          /* variable is not even live at the predecessor: probably from a phi */
-         if (ctx.next_use_distances_end[pred_idx].find(pair.first) ==
-             ctx.next_use_distances_end[pred_idx].end()) {
+         if (!ctx.next_use_distances_end[pred_idx].count(pair.first)) {
             spill = false;
             break;
          }
-         if (ctx.spills_exit[pred_idx].find(pair.first) == ctx.spills_exit[pred_idx].end()) {
+         if (!ctx.spills_exit[pred_idx].count(pair.first)) {
             if (!remat)
                spill = false;
          } else {
@@ -698,8 +704,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
             continue;
          }
 
-         if (ctx.spills_exit[preds[i]].find(phi->operands[i].getTemp()) ==
-             ctx.spills_exit[preds[i]].end())
+         if (!ctx.spills_exit[preds[i]].count(phi->operands[i].getTemp()))
             spill = false;
          else
             partial_spills.insert(phi->definitions[0].getTemp());
@@ -724,7 +729,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
       RegType type = reg_pressure.vgpr > ctx.target_pressure.vgpr ? RegType::vgpr : RegType::sgpr;
 
       while (it != partial_spills.end()) {
-         assert(ctx.spills_entry[block_idx].find(*it) == ctx.spills_entry[block_idx].end());
+         assert(!ctx.spills_entry[block_idx].count(*it));
 
          if (it->type() == type && next_use_distances[*it].second > distance) {
             distance = next_use_distances[*it].second;
@@ -767,11 +772,12 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          if (!live.first.is_linear())
             continue;
          /* still spilled */
-         if (ctx.spills_entry[block_idx].find(live.first) != ctx.spills_entry[block_idx].end())
+         if (ctx.spills_entry[block_idx].count(live.first))
             continue;
 
          /* in register at end of predecessor */
-         if (ctx.spills_exit[pred_idx].find(live.first) == ctx.spills_exit[pred_idx].end()) {
+         auto spills_exit_it = ctx.spills_exit[pred_idx].find(live.first);
+         if (spills_exit_it == ctx.spills_exit[pred_idx].end()) {
             std::map<Temp, Temp>::iterator it = ctx.renames[pred_idx].find(live.first);
             if (it != ctx.renames[pred_idx].end())
                ctx.renames[block_idx].insert(*it);
@@ -780,8 +786,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
 
          /* variable is spilled at predecessor and live at current block: create reload instruction */
          Temp new_name = ctx.program->allocateTmp(live.first.regClass());
-         aco_ptr<Instruction> reload =
-            do_reload(ctx, live.first, new_name, ctx.spills_exit[pred_idx][live.first]);
+         aco_ptr<Instruction> reload = do_reload(ctx, live.first, new_name, spills_exit_it->second);
          instructions.emplace_back(std::move(reload));
          reg_demand.push_back(demand_before);
          ctx.renames[block_idx][live.first] = new_name;
@@ -801,11 +806,12 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
             if (live.first.is_linear())
                continue;
             /* still spilled */
-            if (ctx.spills_entry[block_idx].find(live.first) != ctx.spills_entry[block_idx].end())
+            if (ctx.spills_entry[block_idx].count(live.first))
                continue;
 
             /* in register at end of predecessor */
-            if (ctx.spills_exit[pred_idx].find(live.first) == ctx.spills_exit[pred_idx].end()) {
+            auto spills_exit_it = ctx.spills_exit[pred_idx].find(live.first);
+            if (spills_exit_it == ctx.spills_exit[pred_idx].end()) {
                std::map<Temp, Temp>::iterator it = ctx.renames[pred_idx].find(live.first);
                if (it != ctx.renames[pred_idx].end())
                   ctx.renames[block_idx].insert(*it);
@@ -816,7 +822,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
              * create reload instruction */
             Temp new_name = ctx.program->allocateTmp(live.first.regClass());
             aco_ptr<Instruction> reload =
-               do_reload(ctx, live.first, new_name, ctx.spills_exit[pred_idx][live.first]);
+               do_reload(ctx, live.first, new_name, spills_exit_it->second);
             instructions.emplace_back(std::move(reload));
             reg_demand.emplace_back(reg_demand.back());
             ctx.renames[block_idx][live.first] = new_name;
@@ -850,8 +856,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
 
       /* if the phi is not spilled, add to instructions */
       if (!phi->definitions[0].isTemp() ||
-          ctx.spills_entry[block_idx].find(phi->definitions[0].getTemp()) ==
-             ctx.spills_entry[block_idx].end()) {
+          !ctx.spills_entry[block_idx].count(phi->definitions[0].getTemp())) {
          instructions.emplace_back(std::move(phi));
          continue;
       }
@@ -935,8 +940,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          }
 
          /* variable is dead at predecessor, it must be from a phi: this works because of CSSA form */
-         if (ctx.next_use_distances_end[pred_idx].find(pair.first) ==
-             ctx.next_use_distances_end[pred_idx].end())
+         if (!ctx.next_use_distances_end[pred_idx].count(pair.first))
             continue;
 
          /* add interferences between spilled variable and predecessors exit spills */
@@ -976,8 +980,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
    for (aco_ptr<Instruction>& phi : instructions) {
       assert(phi->opcode == aco_opcode::p_phi || phi->opcode == aco_opcode::p_linear_phi);
       assert(!phi->definitions[0].isTemp() ||
-             ctx.spills_entry[block_idx].find(phi->definitions[0].getTemp()) ==
-                ctx.spills_entry[block_idx].end());
+             !ctx.spills_entry[block_idx].count(phi->definitions[0].getTemp()));
 
       std::vector<unsigned>& preds =
          phi->opcode == aco_opcode::p_phi ? block->logical_preds : block->linear_preds;
@@ -987,15 +990,18 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          unsigned pred_idx = preds[i];
 
          /* if the operand was reloaded, rename */
-         if (ctx.spills_exit[pred_idx].find(phi->operands[i].getTemp()) ==
-             ctx.spills_exit[pred_idx].end()) {
+         if (!ctx.spills_exit[pred_idx].count(phi->operands[i].getTemp())) {
             std::map<Temp, Temp>::iterator it =
                ctx.renames[pred_idx].find(phi->operands[i].getTemp());
-            if (it != ctx.renames[pred_idx].end())
+            if (it != ctx.renames[pred_idx].end()) {
                phi->operands[i].setTemp(it->second);
             /* prevent the definining instruction from being DCE'd if it could be rematerialized */
-            else if (ctx.remat.count(phi->operands[i].getTemp()))
-               ctx.remat_used[ctx.remat[phi->operands[i].getTemp()].instr] = true;
+            } else {
+               auto remat_it = ctx.remat.find(phi->operands[i].getTemp());
+               if (remat_it != ctx.remat.end()) {
+                  ctx.remat_used[remat_it->second.instr] = true;
+               }
+            }
             continue;
          }
 
@@ -1034,7 +1040,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
    for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair :
         ctx.next_use_distances_start[block_idx]) {
       /* skip spilled variables */
-      if (ctx.spills_entry[block_idx].find(pair.first) != ctx.spills_entry[block_idx].end())
+      if (ctx.spills_entry[block_idx].count(pair.first))
          continue;
       std::vector<unsigned> preds =
          pair.first.is_linear() ? block->linear_preds : block->logical_preds;
@@ -1042,15 +1048,14 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
       /* variable is dead at predecessor, it must be from a phi */
       bool is_dead = false;
       for (unsigned pred_idx : preds) {
-         if (ctx.next_use_distances_end[pred_idx].find(pair.first) ==
-             ctx.next_use_distances_end[pred_idx].end())
+         if (!ctx.next_use_distances_end[pred_idx].count(pair.first))
             is_dead = true;
       }
       if (is_dead)
          continue;
       for (unsigned pred_idx : preds) {
          /* the variable is not spilled at the predecessor */
-         if (ctx.spills_exit[pred_idx].find(pair.first) == ctx.spills_exit[pred_idx].end())
+         if (!ctx.spills_exit[pred_idx].count(pair.first))
             continue;
 
          /* variable is spilled at predecessor and has to be reloaded */
@@ -1076,7 +1081,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
       Temp rename = Temp();
       bool is_same = true;
       for (unsigned pred_idx : preds) {
-         if (ctx.renames[pred_idx].find(pair.first) == ctx.renames[pred_idx].end()) {
+         if (!ctx.renames[pred_idx].count(pair.first)) {
             if (rename == Temp())
                rename = pair.first;
             else
@@ -1100,7 +1105,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          rename = ctx.program->allocateTmp(pair.first.regClass());
          for (unsigned i = 0; i < phi->operands.size(); i++) {
             Temp tmp;
-            if (ctx.renames[preds[i]].find(pair.first) != ctx.renames[preds[i]].end()) {
+            if (ctx.renames[preds[i]].count(pair.first)) {
                tmp = ctx.renames[preds[i]][pair.first];
             } else if (preds[i] >= block_idx) {
                tmp = rename;
@@ -1174,13 +1179,18 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block, RegisterDemand s
       for (Operand& op : instr->operands) {
          if (!op.isTemp())
             continue;
-         if (current_spills.find(op.getTemp()) == current_spills.end()) {
+         if (!current_spills.count(op.getTemp())) {
             /* the Operand is in register: check if it was renamed */
-            if (ctx.renames[block_idx].find(op.getTemp()) != ctx.renames[block_idx].end())
-               op.setTemp(ctx.renames[block_idx][op.getTemp()]);
-            /* prevent it's definining instruction from being DCE'd if it could be rematerialized */
-            else if (ctx.remat.count(op.getTemp()))
-               ctx.remat_used[ctx.remat[op.getTemp()].instr] = true;
+            auto rename_it = ctx.renames[block_idx].find(op.getTemp());
+            if (rename_it != ctx.renames[block_idx].end()) {
+               op.setTemp(rename_it->second);
+            } else {
+               /* prevent its definining instruction from being DCE'd if it could be rematerialized */
+               auto remat_it = ctx.remat.find(op.getTemp());
+               if (remat_it != ctx.remat.end()) {
+                  ctx.remat_used[remat_it->second.instr] = true;
+               }
+            }
             continue;
          }
          /* the Operand is spilled: add it to reloads */
@@ -1215,7 +1225,7 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block, RegisterDemand s
                bool can_rematerialize = ctx.remat.count(pair.first);
                if (((pair.second > distance && can_rematerialize == do_rematerialize) ||
                     (can_rematerialize && !do_rematerialize && pair.second > idx)) &&
-                   current_spills.find(pair.first) == current_spills.end()) {
+                   !current_spills.count(pair.first)) {
                   to_spill = pair.first;
                   distance = pair.second;
                   do_rematerialize = can_rematerialize;
@@ -1235,7 +1245,7 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block, RegisterDemand s
             spilled_registers += to_spill;
 
             /* rename if necessary */
-            if (ctx.renames[block_idx].find(to_spill) != ctx.renames[block_idx].end()) {
+            if (ctx.renames[block_idx].count(to_spill)) {
                to_spill = ctx.renames[block_idx][to_spill];
             }
 
@@ -1289,7 +1299,7 @@ spill_block(spill_ctx& ctx, unsigned block_idx)
                   !ctx.renames[block_idx].empty() || ctx.remat_used.size();
 
    for (auto it = current_spills.begin(); !process && it != current_spills.end(); ++it) {
-      if (ctx.next_use_distances_start[block_idx][it->first].first == block_idx)
+      if (ctx.next_use_distances_start[block_idx].at(it->first).first == block_idx)
          process = true;
    }
 
