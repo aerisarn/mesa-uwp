@@ -3629,6 +3629,26 @@ radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline,
    return VK_SUCCESS;
 }
 
+static bool
+radv_consider_force_vrs(const struct radv_pipeline *pipeline, nir_shader **nir)
+{
+   struct radv_device *device = pipeline->device;
+
+   if (device->force_vrs == RADV_FORCE_VRS_NONE)
+      return false;
+
+   /* Only VS and GS are supported for now. */
+   if (pipeline->graphics.last_vgt_api_stage != MESA_SHADER_VERTEX &&
+       pipeline->graphics.last_vgt_api_stage != MESA_SHADER_GEOMETRY)
+      return false;
+
+   nir_shader *last_vgt_shader = nir[pipeline->graphics.last_vgt_api_stage];
+   if (last_vgt_shader->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE))
+      return false;
+
+   return true;
+}
+
 VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                     struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -3727,6 +3747,14 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                                           pipeline_layout, pipeline_key);
 
       radv_stop_feedback(stage_feedbacks[i], false);
+   }
+
+   /* Force per-vertex VRS. */
+   if (radv_consider_force_vrs(pipeline, nir)) {
+      assert(pipeline->graphics.last_vgt_api_stage == MESA_SHADER_VERTEX ||
+             pipeline->graphics.last_vgt_api_stage == MESA_SHADER_GEOMETRY);
+      nir_shader *last_vgt_shader = nir[pipeline->graphics.last_vgt_api_stage];
+      NIR_PASS_V(last_vgt_shader, radv_force_primitive_shading_rate, device);
    }
 
    bool optimize_conservatively = pipeline_key->optimisations_disabled;
@@ -4738,10 +4766,8 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf 
    cull_dist_mask = outinfo->cull_dist_mask;
    total_mask = clip_dist_mask | cull_dist_mask;
 
-   bool writes_primitive_shading_rate =
-      outinfo->writes_primitive_shading_rate || pipeline->device->force_vrs != RADV_FORCE_VRS_NONE;
    bool misc_vec_ena = outinfo->writes_pointsize || outinfo->writes_layer ||
-                       outinfo->writes_viewport_index || writes_primitive_shading_rate;
+                       outinfo->writes_viewport_index || outinfo->writes_primitive_shading_rate;
    unsigned spi_vs_out_config, nparams;
 
    /* VS is required to export at least one param. */
@@ -4768,7 +4794,7 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf 
                           S_02881C_USE_VTX_POINT_SIZE(outinfo->writes_pointsize) |
                              S_02881C_USE_VTX_RENDER_TARGET_INDX(outinfo->writes_layer) |
                              S_02881C_USE_VTX_VIEWPORT_INDX(outinfo->writes_viewport_index) |
-                             S_02881C_USE_VTX_VRS_RATE(writes_primitive_shading_rate) |
+                             S_02881C_USE_VTX_VRS_RATE(outinfo->writes_primitive_shading_rate) |
                              S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |
                              S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
                              S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
@@ -4857,13 +4883,8 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
    cull_dist_mask = outinfo->cull_dist_mask;
    total_mask = clip_dist_mask | cull_dist_mask;
 
-   /* Primitive shading rate is written as a per-primitive output in mesh shaders. */
-   bool force_vrs_per_vertex =
-      pipeline->device->force_vrs != RADV_FORCE_VRS_NONE && es_type != MESA_SHADER_MESH;
-   bool writes_primitive_shading_rate =
-      outinfo->writes_primitive_shading_rate || force_vrs_per_vertex;
    bool misc_vec_ena = outinfo->writes_pointsize || outinfo->writes_layer ||
-                       outinfo->writes_viewport_index || writes_primitive_shading_rate;
+                       outinfo->writes_viewport_index || outinfo->writes_primitive_shading_rate;
    bool es_enable_prim_id = outinfo->export_prim_id || (es && es->info.uses_prim_id);
    bool break_wave_at_eoi = false;
    unsigned ge_cntl;
@@ -4906,7 +4927,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
                           S_02881C_USE_VTX_POINT_SIZE(outinfo->writes_pointsize) |
                              S_02881C_USE_VTX_RENDER_TARGET_INDX(outinfo->writes_layer) |
                              S_02881C_USE_VTX_VIEWPORT_INDX(outinfo->writes_viewport_index) |
-                             S_02881C_USE_VTX_VRS_RATE(writes_primitive_shading_rate) |
+                             S_02881C_USE_VTX_VRS_RATE(outinfo->writes_primitive_shading_rate) |
                              S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |
                              S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
                              S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |

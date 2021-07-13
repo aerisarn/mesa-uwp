@@ -127,7 +127,6 @@ struct radv_nir_compiler_options {
    enum chip_class chip_class;
    const struct radeon_info *info;
    uint32_t address32_hi;
-   uint8_t force_vrs_rates;
 
    struct {
       void (*func)(void *private_data, enum radv_compiler_debug_level level, const char *message);
@@ -662,5 +661,7 @@ bool radv_consider_culling(struct radv_device *device, struct nir_shader *nir,
                            const struct radv_shader_info *info);
 
 void radv_get_nir_options(struct radv_physical_device *device);
+
+bool radv_force_primitive_shading_rate(nir_shader *nir, struct radv_device *device);
 
 #endif
