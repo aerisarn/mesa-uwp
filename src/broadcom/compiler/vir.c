@@ -800,6 +800,7 @@ v3d_fs_set_prog_data(struct v3d_compile *c,
         prog_data->lock_scoreboard_on_first_thrsw =
                 c->lock_scoreboard_on_first_thrsw;
         prog_data->force_per_sample_msaa = c->force_per_sample_msaa;
+        prog_data->uses_pid = c->fs_uses_primitive_id;
 }
 
 static void

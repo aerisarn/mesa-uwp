@@ -1156,6 +1156,7 @@ static void
 pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
                              const struct v3dv_pipeline_stage *p_stage,
+                             bool has_geometry_shader,
                              uint32_t ucp_enables)
 {
    assert(p_stage->stage == BROADCOM_SHADER_FRAGMENT);
@@ -1172,6 +1173,7 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
    key->is_points = (topology == PIPE_PRIM_POINTS);
    key->is_lines = (topology >= PIPE_PRIM_LINES &&
                     topology <= PIPE_PRIM_LINE_STRIP);
+   key->has_gs = has_geometry_shader;
 
    const VkPipelineColorBlendStateCreateInfo *cb_info =
       pCreateInfo->pColorBlendState;
@@ -1969,6 +1971,7 @@ pipeline_compile_fragment_shader(struct v3dv_pipeline *pipeline,
    struct v3d_fs_key key;
 
    pipeline_populate_v3d_fs_key(&key, pCreateInfo, p_stage,
+                                pipeline->gs != NULL,
                                 get_ucp_enable_mask(pipeline->vs));
 
    VkResult vk_result;

@@ -1869,7 +1869,9 @@ v3dX(cmd_buffer_emit_gl_shader_state)(struct v3dv_cmd_buffer *cmd_buffer)
          v3dv_cl_address(default_attribute_values, 0);
 
       shader.any_shader_reads_hardware_written_primitive_id =
-         pipeline->has_gs ? prog_data_gs->uses_pid : false;
+         (pipeline->has_gs && prog_data_gs->uses_pid) || prog_data_fs->uses_pid;
+      shader.insert_primitive_id_as_first_varying_to_fragment_shader =
+         !pipeline->has_gs && prog_data_fs->uses_pid;
    }
 
    /* Upload vertex element attributes (SHADER_STATE_ATTRIBUTE_RECORD) */

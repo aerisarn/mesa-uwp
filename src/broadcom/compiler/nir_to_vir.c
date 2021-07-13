@@ -2101,6 +2101,14 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
 
                 if (var->data.location == VARYING_SLOT_POS) {
                         emit_fragcoord_input(c, loc);
+                } else if (var->data.location == VARYING_SLOT_PRIMITIVE_ID &&
+                           !c->fs_key->has_gs) {
+                        /* If the fragment shader reads gl_PrimitiveID and we
+                         * don't have a geometry shader in the pipeline to write
+                         * it then we program the hardware to inject it as
+                         * an implicit varying. Take it from there.
+                         */
+                        c->inputs[loc * 4] = c->primitive_id;
                 } else if (util_varying_is_point_coord(var->data.location,
                                                        c->fs_key->point_sprite_mask)) {
                         c->inputs[loc * 4 + 0] = c->point_x;
@@ -3143,6 +3151,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                  * VPM output header. According to docs, we should read this
                  * using ldvpm(v,d)_in (See Table 71).
                  */
+                assert(c->s->info.stage == MESA_SHADER_GEOMETRY);
                 ntq_store_dest(c, &instr->dest, 0,
                                vir_LDVPMV_IN(c, vir_uniform_ui(c, 0)));
                 break;
@@ -3764,9 +3773,15 @@ nir_to_vir(struct v3d_compile *c)
                 c->payload_w_centroid = vir_MOV(c, vir_reg(QFILE_REG, 1));
                 c->payload_z = vir_MOV(c, vir_reg(QFILE_REG, 2));
 
-                /* V3D 4.x can disable implicit point coordinate varyings if
-                 * they are not used.
-                 */
+                /* V3D 4.x can disable implicit varyings if they are not used */
+                c->fs_uses_primitive_id =
+                        nir_find_variable_with_location(c->s, nir_var_shader_in,
+                                                        VARYING_SLOT_PRIMITIVE_ID);
+                if (c->fs_uses_primitive_id && !c->fs_key->has_gs) {
+                       c->primitive_id =
+                               emit_fragment_varying(c, NULL, -1, 0, 0);
+                }
+
                 if (c->fs_key->is_points &&
                     (c->devinfo->ver < 40 || program_reads_point_coord(c))) {
                         c->point_x = emit_fragment_varying(c, NULL, -1, 0, 0);
