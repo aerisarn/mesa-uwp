@@ -73,6 +73,9 @@ struct panfrost_vtable {
 
         /* Initialize a Gallium context */
         void (*context_init)(struct pipe_context *pipe);
+
+        /* Device-dependent initialization of a panfrost_batch */
+        void (*init_batch)(struct panfrost_batch *batch);
 };
 
 struct panfrost_screen {

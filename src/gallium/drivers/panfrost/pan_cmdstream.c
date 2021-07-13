@@ -3487,6 +3487,30 @@ preload(struct panfrost_batch *batch, struct pan_fb_info *fb)
 }
 
 static void
+init_batch(struct panfrost_batch *batch)
+{
+        /* Reserve the framebuffer and local storage descriptors */
+        batch->framebuffer =
+#if PAN_ARCH == 4
+                pan_pool_alloc_desc(&batch->pool.base, SINGLE_TARGET_FRAMEBUFFER);
+#else
+                pan_pool_alloc_desc_aggregate(&batch->pool.base,
+                                              PAN_DESC(MULTI_TARGET_FRAMEBUFFER),
+                                              PAN_DESC(ZS_CRC_EXTENSION),
+                                              PAN_DESC_ARRAY(MAX2(batch->key.nr_cbufs, 1), RENDER_TARGET));
+
+                batch->framebuffer.gpu |= MALI_FBD_TAG_IS_MFBD;
+#endif
+
+#if PAN_ARCH >= 6
+        batch->tls = pan_pool_alloc_desc(&batch->pool.base, LOCAL_STORAGE);
+#else
+        /* On Midgard, the TLS is embedded in the FB descriptor */
+        batch->tls = batch->framebuffer;
+#endif
+}
+
+static void
 context_init(struct pipe_context *pipe)
 {
         pipe->draw_vbo           = panfrost_draw_vbo;
@@ -3514,6 +3538,7 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
         screen->vtbl.screen_destroy = screen_destroy;
         screen->vtbl.preload     = preload;
         screen->vtbl.context_init = context_init;
+        screen->vtbl.init_batch = init_batch;
 
         pan_blitter_init(dev, &screen->blitter.bin_pool.base,
                          &screen->blitter.desc_pool.base);
