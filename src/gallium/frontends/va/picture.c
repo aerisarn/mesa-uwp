@@ -399,6 +399,26 @@ handleVAEncMiscParameterTypeFrameRate(vlVaContext *context, VAEncMiscParameterBu
 }
 
 static VAStatus
+handleVAEncMiscParameterTypeTemporalLayer(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAStatus status = VA_STATUS_SUCCESS;
+
+   switch (u_reduce_video_profile(context->templat.profile)) {
+   case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+      status = vlVaHandleVAEncMiscParameterTypeTemporalLayerH264(context, misc);
+      break;
+
+   case PIPE_VIDEO_FORMAT_HEVC:
+      break;
+
+   default:
+      break;
+   }
+
+   return status;
+}
+
+static VAStatus
 handleVAEncSequenceParameterBufferType(vlVaDriver *drv, vlVaContext *context, vlVaBuffer *buf)
 {
    VAStatus status = VA_STATUS_SUCCESS;
@@ -433,6 +453,10 @@ handleVAEncMiscParameterBufferType(vlVaContext *context, vlVaBuffer *buf)
 
    case VAEncMiscParameterTypeFrameRate:
       vaStatus = handleVAEncMiscParameterTypeFrameRate(context, misc);
+      break;
+
+   case VAEncMiscParameterTypeTemporalLayerStructure:
+      vaStatus = handleVAEncMiscParameterTypeTemporalLayer(context, misc);
       break;
 
    default:

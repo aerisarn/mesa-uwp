@@ -170,6 +170,16 @@ vlVaHandleVAEncMiscParameterTypeFrameRateH264(vlVaContext *context, VAEncMiscPar
    return VA_STATUS_SUCCESS;
 }
 
+VAStatus
+vlVaHandleVAEncMiscParameterTypeTemporalLayerH264(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAEncMiscParameterTemporalLayerStructure *tl = (VAEncMiscParameterTemporalLayerStructure *)misc->data;
+
+   context->desc.h264enc.num_temporal_layers = tl->number_of_layers;
+
+   return VA_STATUS_SUCCESS;
+}
+
 void getEncParamPresetH264(vlVaContext *context)
 {
    //motion estimation preset
