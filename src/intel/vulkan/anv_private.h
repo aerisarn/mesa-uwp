@@ -893,7 +893,6 @@ struct anv_physical_device {
     struct anv_instance *                       instance;
     bool                                        no_hw;
     char                                        path[20];
-    const char *                                name;
     struct {
        uint16_t                                 domain;
        uint8_t                                  bus;

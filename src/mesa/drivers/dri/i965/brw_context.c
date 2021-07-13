@@ -106,7 +106,7 @@ const char *
 brw_get_renderer_string(const struct brw_screen *screen)
 {
    static char buf[128];
-   const char *name = intel_get_device_name(screen->deviceID);
+   const char *name = screen->devinfo.name;
 
    if (!name)
       name = "Intel Unknown";

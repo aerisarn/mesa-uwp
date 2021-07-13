@@ -741,8 +741,6 @@ anv_physical_device_try_create(struct anv_instance *instance,
       goto fail_fd;
    }
 
-   const char *device_name = intel_get_device_name(devinfo.chipset_id);
-
    if (devinfo.is_haswell) {
       mesa_logw("Haswell Vulkan support is incomplete");
    } else if (devinfo.ver == 7 && !devinfo.is_baytrail) {
@@ -753,7 +751,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
       /* Gfx8-12 fully supported */
    } else {
       result = vk_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
-                          "Vulkan not yet supported on %s", device_name);
+                          "Vulkan not yet supported on %s", devinfo.name);
       goto fail_fd;
    }
 
@@ -782,7 +780,6 @@ anv_physical_device_try_create(struct anv_instance *instance,
    snprintf(device->path, ARRAY_SIZE(device->path), "%s", path);
 
    device->info = devinfo;
-   device->name = device_name;
 
    device->no_hw = device->info.no_hw;
    if (getenv("INTEL_NO_HW") != NULL)
@@ -2042,7 +2039,7 @@ void anv_GetPhysicalDeviceProperties(
    };
 
    snprintf(pProperties->deviceName, sizeof(pProperties->deviceName),
-            "%s", pdevice->name);
+            "%s", pdevice->info.name);
    memcpy(pProperties->pipelineCacheUUID,
           pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
 }

@@ -36,6 +36,7 @@ extern "C" {
 
 struct drm_i915_query_topology_info;
 
+#define INTEL_DEVICE_MAX_NAME_SIZE        64
 #define INTEL_DEVICE_MAX_SLICES           (6)  /* Maximum on gfx10 */
 #define INTEL_DEVICE_MAX_SUBSLICES        (8)  /* Maximum on gfx11 */
 #define INTEL_DEVICE_MAX_EUS_PER_SUBSLICE (16) /* Maximum on gfx12 */
@@ -279,6 +280,11 @@ struct intel_device_info
    uint32_t chipset_id;
 
    /**
+    * holds the name of the device
+    */
+   char name[INTEL_DEVICE_MAX_NAME_SIZE];
+
+   /**
     * no_hw is true when the chipset_id pci device id has been overridden
     */
    bool no_hw;
@@ -345,7 +351,6 @@ intel_device_info_num_dual_subslices(UNUSED
 }
 
 int intel_device_name_to_pci_device_id(const char *name);
-const char *intel_get_device_name(int devid);
 
 static inline uint64_t
 intel_device_info_timebase_scale(const struct intel_device_info *devinfo,

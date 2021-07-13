@@ -144,13 +144,10 @@ static const char *
 iris_get_name(struct pipe_screen *pscreen)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    static char buf[128];
-   const char *name = intel_get_device_name(screen->pci_id);
 
-   if (!name)
-      name = "Intel Unknown";
-
-   snprintf(buf, sizeof(buf), "Mesa %s", name);
+   snprintf(buf, sizeof(buf), "Mesa %s", devinfo->name);
    return buf;
 }
 

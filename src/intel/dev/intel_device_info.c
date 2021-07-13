@@ -1249,6 +1249,21 @@ intel_get_device_info_from_pci_id(int pci_id,
       return false;
    }
 
+   switch (pci_id) {
+#undef CHIPSET
+#define CHIPSET(_id, _family, _fam_str, _name) \
+   case _id: \
+      /* sizeof(str_literal) includes the null */ \
+      STATIC_ASSERT(sizeof(_name) + sizeof(_fam_str) + 2 <= \
+                    sizeof(devinfo->name)); \
+      strncpy(devinfo->name, _name " (" _fam_str ")", sizeof(devinfo->name)); \
+      break;
+#include "pci_ids/i965_pci_ids.h"
+#include "pci_ids/iris_pci_ids.h"
+   default:
+      strncpy(devinfo->name, "Intel Unknown", sizeof(devinfo->name));
+   }
+
    fill_masks(devinfo);
 
    /* From the Skylake PRM, 3DSTATE_PS::Scratch Space Base Pointer:
@@ -1289,19 +1304,6 @@ intel_get_device_info_from_pci_id(int pci_id,
 
    devinfo->chipset_id = pci_id;
    return true;
-}
-
-const char *
-intel_get_device_name(int devid)
-{
-   switch (devid) {
-#undef CHIPSET
-#define CHIPSET(id, family, fam_str, name) case id: return name " (" fam_str ")"; break;
-#include "pci_ids/i965_pci_ids.h"
-#include "pci_ids/iris_pci_ids.h"
-   default:
-      return NULL;
-   }
 }
 
 /**
