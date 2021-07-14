@@ -164,11 +164,32 @@ struct decode_state {
 static void
 print(struct decode_state *state, const char *fmt, ...)
 {
+	char *buffer;
 	va_list args;
+	int ret;
 
 	va_start(args, fmt);
-	state->line_column += vfprintf(state->out, fmt, args);
+	ret = vasprintf(&buffer, fmt, args);
 	va_end(args);
+
+	if (ret != -1) {
+		const size_t len = strlen(buffer);
+
+		for (size_t i = 0; i < len; i++) {
+			const char c = buffer[i];
+
+			fputc(c, state->out);
+			state->line_column++;
+
+			if (c == '\n') {
+				state->line_column = 0;
+			}
+      }
+
+		free(buffer);
+
+		return;
+	}
 }
 
 static void display(struct decode_scope *scope);
@@ -338,7 +359,7 @@ find_bitset(struct decode_state *state, const struct isa_bitset **bitsets,
 
 static const struct isa_field *
 find_field(struct decode_scope *scope, const struct isa_bitset *bitset,
-		const char *name)
+		const char *name, size_t name_len)
 {
 	for (unsigned i = 0; i < bitset->num_cases; i++) {
 		const struct isa_case *c = bitset->cases[i];
@@ -359,14 +380,15 @@ find_field(struct decode_scope *scope, const struct isa_bitset *bitset,
 		}
 
 		for (unsigned i = 0; i < c->num_fields; i++) {
-			if (!strcmp(name, c->fields[i].name)) {
+			if (!strncmp(name, c->fields[i].name, name_len) &&
+			   (c->fields[i].name[name_len] == '\0')) {
 				return &c->fields[i];
 			}
 		}
 	}
 
 	if (bitset->parent) {
-		const struct isa_field *f = find_field(scope, bitset->parent, name);
+		const struct isa_field *f = find_field(scope, bitset->parent, name, name_len);
 		if (f) {
 			return f;
 		}
@@ -470,7 +492,7 @@ display_enum_field(struct decode_scope *scope, const struct isa_field *field, bi
 }
 
 static const struct isa_field *
-resolve_field(struct decode_scope *scope, const char *field_name, bitmask_t *valp)
+resolve_field(struct decode_scope *scope, const char *field_name, size_t field_name_len, bitmask_t *valp)
 {
 	if (!scope) {
 		/* We've reached the bottom of the stack! */
@@ -478,13 +500,14 @@ resolve_field(struct decode_scope *scope, const char *field_name, bitmask_t *val
 	}
 
 	const struct isa_field *field =
-			find_field(scope, scope->bitset, field_name);
+			find_field(scope, scope->bitset, field_name, field_name_len);
 
 	if (!field && scope->params) {
 		for (unsigned i = 0; i < scope->params->num_params; i++) {
-			if (!strcmp(field_name, scope->params->params[i].as)) {
+			if (!strncmp(field_name, scope->params->params[i].as, field_name_len) &&
+			   (scope->params->params[i].as[field_name_len] == '\0')) {
 				const char *param_name = scope->params->params[i].name;
-				return resolve_field(scope->parent, param_name, valp);
+				return resolve_field(scope->parent, param_name, strlen(param_name), valp);
 			}
 		}
 	}
@@ -510,7 +533,7 @@ uint64_t
 isa_decode_field(struct decode_scope *scope, const char *field_name)
 {
 	bitmask_t val;
-	const struct isa_field *field = resolve_field(scope, field_name, &val);
+	const struct isa_field *field = resolve_field(scope, field_name, strlen(field_name), &val);
 	if (!field) {
 		decode_error(scope->state, "no field '%s'", field_name);
 		return 0;
@@ -523,14 +546,30 @@ static void
 display_field(struct decode_scope *scope, const char *field_name)
 {
 	const struct isa_decode_options *options = scope->state->options;
+	struct decode_state *state = scope->state;
+	size_t field_name_len = strlen(field_name);
+	int num_align = 0;
+
+	/* alignment handling */
+	const char *align = strstr(field_name, ":align=");
+
+	if (align) {
+		const char *value = strstr(align, "=") + 1;
+
+		field_name_len = align - field_name;
+		num_align = atoi(value);
+	}
 
 	/* Special case 'NAME' maps to instruction/bitset name: */
-	if (!strcmp("NAME", field_name)) {
+	if (!strncmp("NAME", field_name, field_name_len)) {
 		if (options->field_cb) {
 			options->field_cb(options->cbdata, field_name, &(struct isa_decode_value){
 				.str = scope->bitset->name,
 			});
 		}
+
+		while (scope->state->line_column < num_align)
+			print(state, " ");
 
 		print(scope->state, "%s", scope->bitset->name);
 
@@ -538,9 +577,9 @@ display_field(struct decode_scope *scope, const char *field_name)
 	}
 
 	bitmask_t v;
-	const struct isa_field *field = resolve_field(scope, field_name, &v);
+	const struct isa_field *field = resolve_field(scope, field_name, field_name_len, &v);
 	if (!field) {
-		decode_error(scope->state, "no field '%s'", field_name);
+		decode_error(scope->state, "no field '%.*s'", (int)field_name_len, field_name);
 		return;
 	}
 
@@ -553,6 +592,9 @@ display_field(struct decode_scope *scope, const char *field_name)
 	}
 
 	unsigned width = 1 + field->high - field->low;
+
+	while (scope->state->line_column < num_align)
+		print(state, " ");
 
 	switch (field->type) {
 	/* Basic types: */
