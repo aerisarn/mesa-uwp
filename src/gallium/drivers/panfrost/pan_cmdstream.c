@@ -3596,7 +3596,7 @@ panfrost_create_blend_state(struct pipe_context *pipe,
         for (unsigned c = 0; c < so->pan.rt_count; ++c) {
                 unsigned g = blend->independent_blend_enable ? c : 0;
                 const struct pipe_rt_blend_state pipe = blend->rt[g];
-                struct pan_blend_equation equation;
+                struct pan_blend_equation equation = {0};
 
                 equation.color_mask = pipe.colormask;
                 equation.blend_enable = pipe.blend_enable;
