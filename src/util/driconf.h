@@ -513,4 +513,8 @@
    DRI_CONF_OPT_B(radv_disable_dcc, def, \
                   "Disable DCC for color images")
 
+#define DRI_CONF_RADV_REPORT_APU_AS_DGPU(def) \
+   DRI_CONF_OPT_B(radv_report_apu_as_dgpu, def, \
+                  "Report APUs as discrete GPUs instead of integrated GPUs")
+
 #endif

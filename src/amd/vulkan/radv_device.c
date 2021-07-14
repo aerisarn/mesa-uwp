@@ -863,6 +863,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_INVARIANT_GEOM(false)
       DRI_CONF_RADV_DISABLE_TC_COMPAT_HTILE_GENERAL(false)
       DRI_CONF_RADV_DISABLE_DCC(false)
+      DRI_CONF_RADV_REPORT_APU_AS_DGPU(false)
    DRI_CONF_SECTION_END
 };
 // clang-format on
@@ -902,6 +903,9 @@ radv_init_dri_options(struct radv_instance *instance)
 
    if (driQueryOptionb(&instance->dri_options, "radv_disable_dcc"))
       instance->debug_flags |= RADV_DEBUG_NO_DCC;
+
+   instance->report_apu_as_dgpu =
+      driQueryOptionb(&instance->dri_options, "radv_report_apu_as_dgpu");
 }
 
 VkResult
@@ -1826,13 +1830,20 @@ radv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .nonCoherentAtomSize = 64,
    };
 
+   VkPhysicalDeviceType device_type;
+
+   if (pdevice->rad_info.has_dedicated_vram || pdevice->instance->report_apu_as_dgpu) {
+      device_type = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+   } else {
+      device_type = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+   }
+
    *pProperties = (VkPhysicalDeviceProperties){
       .apiVersion = RADV_API_VERSION,
       .driverVersion = vk_get_driver_version(),
       .vendorID = ATI_VENDOR_ID,
       .deviceID = pdevice->rad_info.pci_id,
-      .deviceType = pdevice->rad_info.has_dedicated_vram ? VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-                                                         : VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
+      .deviceType = device_type,
       .limits = limits,
       .sparseProperties =
          {
