@@ -2126,6 +2126,21 @@ typedef enum {
    /** Plane index for multi-plane YCbCr textures */
    nir_tex_src_plane,
 
+   /**
+    * Backend-specific vec4 tex src argument.
+    *
+    * Can be used to have NIR optimization (copy propagation, lower_vec_to_movs)
+    * apply to the packing of the tex srcs.  This lowering must only happen
+    * after nir_lower_tex().
+    *
+    * The nir_tex_instr_src_type() of this argument is float, so no lowering
+    * will happen if nir_lower_int_to_float is used.
+    */
+   nir_tex_src_backend1,
+
+   /** Second backend-specific vec4 tex src argument, see nir_tex_src_backend1. */
+   nir_tex_src_backend2,
+
    nir_num_tex_src_types
 } nir_tex_src_type;
 
@@ -2438,6 +2453,8 @@ nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
    case nir_tex_src_min_lod:
    case nir_tex_src_ddx:
    case nir_tex_src_ddy:
+   case nir_tex_src_backend1:
+   case nir_tex_src_backend2:
       return nir_type_float;
 
    case nir_tex_src_offset:
@@ -2495,6 +2512,10 @@ nir_tex_instr_src_size(const nir_tex_instr *instr, unsigned src)
       else
          return instr->coord_components;
    }
+
+   if (instr->src[src].src_type == nir_tex_src_backend1 ||
+       instr->src[src].src_type == nir_tex_src_backend2)
+      return nir_src_num_components(instr->src[src].src);
 
    return 1;
 }

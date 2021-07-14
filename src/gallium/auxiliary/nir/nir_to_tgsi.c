@@ -1864,8 +1864,6 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
 struct ntt_tex_operand_state {
    struct ureg_src srcs[4];
    unsigned i;
-   unsigned chan;
-   bool is_temp[4];
 };
 
 static void
@@ -1878,44 +1876,7 @@ ntt_push_tex_arg(struct ntt_compile *c,
    if (tex_src < 0)
       return;
 
-   struct ureg_src src = ntt_get_src(c, instr->src[tex_src].src);
-   int num_components = nir_tex_instr_src_size(instr, tex_src);
-
-   /* Find which src in the tex args we'll fit in. */
-   if (s->chan + num_components > 4) {
-      s->chan = 0;
-      s->i++;
-   }
-
-   /* Would need to fix up swizzling up to the writemask channel here. */
-   assert(num_components == 1 || s->chan == 0);
-   if (num_components == 1)
-      src = ureg_scalar(src, 0);
-
-   if (ureg_src_is_undef(s->srcs[s->i])) {
-      /* First emit of a tex operand's components, no need for a mov. */
-      s->srcs[s->i] = src;
-   } else {
-      /* Otherwise, we need to have a temporary for all the components that go
-       * in this operand.
-       */
-      if (!s->is_temp[s->i]) {
-         struct ureg_src prev_src = s->srcs[s->i];
-         s->srcs[s->i] = ureg_src(ureg_DECL_temporary(c->ureg));
-         s->is_temp[s->i] = true;
-
-         ureg_MOV(c->ureg,
-                  ureg_writemask(ureg_dst(s->srcs[s->i]),
-                                 BITFIELD_MASK(s->chan)), prev_src);
-      }
-
-      ureg_MOV(c->ureg,
-               ureg_writemask(ureg_dst(s->srcs[s->i]),
-                              BITFIELD_RANGE(s->chan, num_components)),
-               src);
-   }
-
-   s->chan += num_components;
+   s->srcs[s->i++] = ntt_get_src(c, instr->src[tex_src].src);
 }
 
 static void
@@ -1978,20 +1939,11 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
    }
 
    struct ntt_tex_operand_state s = { .i = 0 };
-   ntt_push_tex_arg(c, instr, nir_tex_src_coord, &s);
-   /* We always have at least two slots for the coordinate, even on 1D. */
-   s.chan = MAX2(s.chan, 2);
+   ntt_push_tex_arg(c, instr, nir_tex_src_backend1, &s);
+   ntt_push_tex_arg(c, instr, nir_tex_src_backend2, &s);
 
-   ntt_push_tex_arg(c, instr, nir_tex_src_comparator, &s);
-   s.chan = MAX2(s.chan, 3);
-
-   ntt_push_tex_arg(c, instr, nir_tex_src_bias, &s);
-   if (tex_opcode != TGSI_OPCODE_TXF_LZ)
-      ntt_push_tex_arg(c, instr, nir_tex_src_lod, &s);
-
-   /* End of packed src setup, everything that follows gets its own operand. */
-   if (s.chan)
-      s.i++;
+   /* non-coord arg for TXQ */
+   ntt_push_tex_arg(c, instr, nir_tex_src_lod, &s);
 
    switch (instr->sampler_dim) {
    case GLSL_SAMPLER_DIM_1D:
@@ -2142,11 +2094,6 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
    if (instr->op == nir_texop_query_levels) {
       ureg_MOV(c->ureg, dst, ureg_scalar(ureg_src(tex_dst), 3));
       ureg_release_temporary(c->ureg, tex_dst);
-   }
-
-   for (int i = 0; i < s.i; i++) {
-      if (s.is_temp[i])
-         ureg_release_temporary(c->ureg, ureg_dst(s.srcs[i]));
    }
 }
 
@@ -2702,6 +2649,94 @@ nir_to_tgsi_lower_64bit_to_vec2(nir_shader *s)
                                        NULL);
 }
 
+struct ntt_lower_tex_state {
+   nir_ssa_def *channels[8];
+   unsigned i;
+};
+
+static void
+nir_to_tgsi_lower_tex_instr_arg(nir_builder *b,
+                                nir_tex_instr *instr,
+                                nir_tex_src_type tex_src_type,
+                                struct ntt_lower_tex_state *s)
+{
+   int tex_src = nir_tex_instr_src_index(instr, tex_src_type);
+   if (tex_src < 0)
+      return;
+
+   assert(instr->src[tex_src].src.is_ssa);
+
+   nir_ssa_def *def = instr->src[tex_src].src.ssa;
+   for (int i = 0; i < def->num_components; i++) {
+      s->channels[s->i++] = nir_channel(b, def, i);
+   }
+
+   nir_tex_instr_remove_src(instr, tex_src);
+}
+
+/**
+ * Merges together a vec4 of tex coordinate/compare/bias/lod into a backend tex
+ * src.  This lets NIR handle the coalescing of the vec4 rather than trying to
+ * manage it on our own, and may lead to more vectorization.
+ */
+static bool
+nir_to_tgsi_lower_tex_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_tex)
+      return false;
+
+   nir_tex_instr *tex = nir_instr_as_tex(instr);
+
+   if (nir_tex_instr_src_index(tex, nir_tex_src_coord) < 0)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+
+   struct ntt_lower_tex_state s = {0};
+
+   nir_to_tgsi_lower_tex_instr_arg(b, tex, nir_tex_src_coord, &s);
+   /* We always have at least two slots for the coordinate, even on 1D. */
+   s.i = MAX2(s.i, 2);
+
+   nir_to_tgsi_lower_tex_instr_arg(b, tex, nir_tex_src_comparator, &s);
+   s.i = MAX2(s.i, 3);
+
+   nir_to_tgsi_lower_tex_instr_arg(b, tex, nir_tex_src_bias, &s);
+
+   /* XXX: LZ */
+   nir_to_tgsi_lower_tex_instr_arg(b, tex, nir_tex_src_lod, &s);
+
+   /* No need to pack undefs in unused channels of the tex instr */
+   while (!s.channels[s.i - 1])
+      s.i--;
+
+   /* Instead of putting undefs in the unused slots of the vecs, just put in
+    * another used channel.  Otherwise, we'll get unnecessary moves into
+    * registers.
+    */
+   assert(s.channels[0] != NULL);
+   for (int i = 1; i < s.i; i++) {
+      if (!s.channels[i])
+         s.channels[i] = s.channels[0];
+   }
+
+   nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(nir_vec(b, s.channels, MIN2(s.i, 4))));
+   if (s.i > 4)
+      nir_tex_instr_add_src(tex, nir_tex_src_backend2, nir_src_for_ssa(nir_vec(b, &s.channels[4], s.i - 4)));
+
+   return true;
+}
+
+static bool
+nir_to_tgsi_lower_tex(nir_shader *s)
+{
+   return nir_shader_instructions_pass(s,
+                                       nir_to_tgsi_lower_tex_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                       NULL);
+}
+
 static void
 ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s)
 {
@@ -2772,6 +2807,7 @@ nir_to_tgsi(struct nir_shader *s,
       .lower_txp = ~0,
    };
    NIR_PASS_V(s, nir_lower_tex, &lower_tex_options);
+   NIR_PASS_V(s, nir_to_tgsi_lower_tex);
 
    if (!original_options->lower_uniforms_to_ubo) {
       NIR_PASS_V(s, nir_lower_uniforms_to_ubo,

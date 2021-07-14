@@ -1123,6 +1123,12 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
       fprintf(fp, " ");
 
       switch(instr->src[i].src_type) {
+      case nir_tex_src_backend1:
+         fprintf(fp, "(backend1)");
+         break;
+      case nir_tex_src_backend2:
+         fprintf(fp, "(backend2)");
+         break;
       case nir_tex_src_coord:
          fprintf(fp, "(coord)");
          break;
