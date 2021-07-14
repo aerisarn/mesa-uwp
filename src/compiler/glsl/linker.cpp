@@ -321,6 +321,39 @@ public:
    }
 };
 
+class array_length_to_const_visitor : public ir_rvalue_visitor {
+public:
+   array_length_to_const_visitor()
+   {
+      this->progress = false;
+   }
+
+   virtual ~array_length_to_const_visitor()
+   {
+      /* empty */
+   }
+
+   bool progress;
+
+   virtual void handle_rvalue(ir_rvalue **rvalue)
+   {
+      if (*rvalue == NULL || (*rvalue)->ir_type != ir_type_expression)
+         return;
+
+      ir_expression *expr = (*rvalue)->as_expression();
+      if (expr) {
+         if (expr->operation == ir_unop_implicitly_sized_array_length) {
+            assert(!expr->operands[0]->type->is_unsized_array());
+            ir_constant *constant = new(expr)
+               ir_constant(expr->operands[0]->type->array_size());
+            if (constant) {
+               *rvalue = constant;
+            }
+         }
+      }
+   }
+};
+
 /**
  * Visitor that determines the highest stream id to which a (geometry) shader
  * emits vertices. It also checks whether End{Stream}Primitive is ever called.
@@ -2539,6 +2572,12 @@ link_intrastage_shaders(void *mem_ctx,
    array_sizing_visitor v;
    v.run(linked->ir);
    v.fixup_unnamed_interface_types();
+
+   /* Now that we know the sizes of all the arrays, we can replace .length()
+    * calls with a constant expression.
+    */
+   array_length_to_const_visitor len_v;
+   len_v.run(linked->ir);
 
    /* Link up uniform blocks defined within this stage. */
    link_uniform_blocks(mem_ctx, ctx, prog, linked, &ubo_blocks,
