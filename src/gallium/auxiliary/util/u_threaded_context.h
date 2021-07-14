@@ -505,6 +505,9 @@ threaded_context_create(struct pipe_context *pipe,
                         struct threaded_context **out);
 
 void
+threaded_context_init_bytes_mapped_limit(struct threaded_context *tc, unsigned divisor);
+
+void
 threaded_context_flush(struct pipe_context *_pipe,
                        struct tc_unflushed_batch_token *token,
                        bool prefer_async);

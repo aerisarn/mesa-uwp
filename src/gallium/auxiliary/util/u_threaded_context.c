@@ -4207,3 +4207,14 @@ fail:
    tc_destroy(&tc->base);
    return NULL;
 }
+
+void
+threaded_context_init_bytes_mapped_limit(struct threaded_context *tc, unsigned divisor)
+{
+   uint64_t total_ram;
+   if (os_get_total_physical_memory(&total_ram)) {
+      tc->bytes_mapped_limit = total_ram / divisor;
+      if (sizeof(void*) == 4)
+         tc->bytes_mapped_limit = MIN2(tc->bytes_mapped_limit, 512*1024*1024UL);
+   }
+}
