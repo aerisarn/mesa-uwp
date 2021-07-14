@@ -5796,8 +5796,9 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
    assert(!nggc_supported || nggc_sgpr_idx != -1);
 
    /* Get viewport transform. */
-   float vp_scale[3], vp_translate[3];
-   radv_get_viewport_xform(&cmd_buffer->state.dynamic.viewport.viewports[0], vp_scale, vp_translate);
+   float vp_scale[2], vp_translate[2];
+   memcpy(vp_scale, cmd_buffer->state.dynamic.viewport.xform[0].scale, 2 * sizeof(float));
+   memcpy(vp_translate, cmd_buffer->state.dynamic.viewport.xform[0].translate, 2 * sizeof(float));
    bool vp_y_inverted = (-vp_scale[1] + vp_translate[1]) > (vp_scale[1] + vp_translate[1]);
 
    /* Get current culling settings. */
