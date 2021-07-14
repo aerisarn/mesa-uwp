@@ -1043,12 +1043,13 @@ iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo)
       .handle = bo->gem_handle,
    };
 
-   if (bo->mmap_mode == IRIS_MMAP_WB)
-      mmap_arg.flags = I915_MMAP_OFFSET_WB;
-   else if (bo->mmap_mode == IRIS_MMAP_WC)
-      mmap_arg.flags = I915_MMAP_OFFSET_WC;
-   else
-      mmap_arg.flags = I915_MMAP_OFFSET_UC;
+   static const uint32_t mmap_offset_for_mode[] = {
+      [IRIS_MMAP_UC]    = I915_MMAP_OFFSET_UC,
+      [IRIS_MMAP_WC]    = I915_MMAP_OFFSET_WC,
+      [IRIS_MMAP_WB]    = I915_MMAP_OFFSET_WB,
+   };
+   assert(bo->mmap_mode < ARRAY_SIZE(mmap_offset_for_mode));
+   mmap_arg.flags = mmap_offset_for_mode[bo->mmap_mode];
 
    /* Get the fake offset back */
    int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP_OFFSET, &mmap_arg);
