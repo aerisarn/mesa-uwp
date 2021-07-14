@@ -1730,8 +1730,10 @@ bool is_dead(const std::vector<uint16_t>& uses, Instruction* instr);
 
 bool can_use_opsel(chip_class chip, aco_opcode op, int idx, bool high);
 bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr, bool pre_ra);
+bool can_use_DPP(const aco_ptr<Instruction>& instr, bool pre_ra);
 /* updates "instr" and returns the old instruction (or NULL if no update was needed) */
 aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& instr);
+aco_ptr<Instruction> convert_to_DPP(aco_ptr<Instruction>& instr);
 bool needs_exec_mask(const Instruction* instr);
 
 uint32_t get_reduction_identity(ReduceOp op, unsigned idx);

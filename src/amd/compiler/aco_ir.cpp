@@ -24,6 +24,8 @@
 
 #include "aco_ir.h"
 
+#include "aco_builder.h"
+
 #include "util/debug.h"
 
 #include "c11/threads.h"
@@ -296,6 +298,78 @@ convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& instr)
       instr->definitions[0].setFixed(vcc);
    if (instr->definitions.size() >= 2)
       instr->definitions[1].setFixed(vcc);
+   if (instr->operands.size() >= 3)
+      instr->operands[2].setFixed(vcc);
+
+   return tmp;
+}
+
+bool
+can_use_DPP(const aco_ptr<Instruction>& instr, bool pre_ra)
+{
+   assert(instr->isVALU() && !instr->operands.empty());
+
+   if (instr->isDPP())
+      return true;
+
+   if (instr->operands.size() && instr->operands[0].isLiteral())
+      return false;
+
+   if (instr->isSDWA())
+      return false;
+
+   if (!pre_ra && (instr->isVOPC() || instr->definitions.size() > 1) &&
+       instr->definitions.back().physReg() != vcc)
+      return false;
+
+   if (!pre_ra && instr->operands.size() >= 3 && instr->operands[2].physReg() != vcc)
+      return false;
+
+   if (instr->isVOP3()) {
+      const VOP3_instruction* vop3 = &instr->vop3();
+      if (vop3->clamp || vop3->omod || vop3->opsel)
+         return false;
+      if (instr->format == Format::VOP3)
+         return false;
+   }
+
+   /* there are more cases but those all take 64-bit inputs */
+   return instr->opcode != aco_opcode::v_madmk_f32 && instr->opcode != aco_opcode::v_madak_f32 &&
+          instr->opcode != aco_opcode::v_madmk_f16 && instr->opcode != aco_opcode::v_madak_f16 &&
+          instr->opcode != aco_opcode::v_readfirstlane_b32 &&
+          instr->opcode != aco_opcode::v_cvt_f64_i32 &&
+          instr->opcode != aco_opcode::v_cvt_f64_f32 && instr->opcode != aco_opcode::v_cvt_f64_u32;
+}
+
+aco_ptr<Instruction>
+convert_to_DPP(aco_ptr<Instruction>& instr)
+{
+   if (instr->isDPP())
+      return NULL;
+
+   aco_ptr<Instruction> tmp = std::move(instr);
+   Format format =
+      (Format)(((uint32_t)tmp->format & ~(uint32_t)Format::VOP3) | (uint32_t)Format::DPP);
+   instr.reset(create_instruction<DPP_instruction>(tmp->opcode, format, tmp->operands.size(),
+                                                   tmp->definitions.size()));
+   std::copy(tmp->operands.cbegin(), tmp->operands.cend(), instr->operands.begin());
+   for (unsigned i = 0; i < instr->definitions.size(); i++)
+      instr->definitions[i] = tmp->definitions[i];
+
+   DPP_instruction* dpp = &instr->dpp();
+   dpp->dpp_ctrl = dpp_quad_perm(0, 1, 2, 3);
+   dpp->row_mask = 0xf;
+   dpp->bank_mask = 0xf;
+
+   if (tmp->isVOP3()) {
+      const VOP3_instruction* vop3 = &tmp->vop3();
+      memcpy(dpp->neg, vop3->neg, sizeof(dpp->neg));
+      memcpy(dpp->abs, vop3->abs, sizeof(dpp->abs));
+   }
+
+   if (instr->isVOPC() || instr->definitions.size() > 1)
+      instr->definitions.back().setFixed(vcc);
+
    if (instr->operands.size() >= 3)
       instr->operands[2].setFixed(vcc);
 
