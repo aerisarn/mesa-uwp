@@ -464,74 +464,6 @@ struct opt_ctx {
    std::vector<uint16_t> uses;
 };
 
-struct CmpInfo {
-   aco_opcode ordered;
-   aco_opcode unordered;
-   aco_opcode ordered_swapped;
-   aco_opcode unordered_swapped;
-   aco_opcode inverse;
-   aco_opcode f32;
-   unsigned size;
-};
-
-ALWAYS_INLINE bool get_cmp_info(aco_opcode op, CmpInfo* info);
-
-bool
-can_swap_operands(aco_ptr<Instruction>& instr)
-{
-   if (instr->operands[0].isConstant() ||
-       (instr->operands[0].isTemp() && instr->operands[0].getTemp().type() == RegType::sgpr))
-      return false;
-
-   switch (instr->opcode) {
-   case aco_opcode::v_add_u32:
-   case aco_opcode::v_add_co_u32:
-   case aco_opcode::v_add_co_u32_e64:
-   case aco_opcode::v_add_i32:
-   case aco_opcode::v_add_f16:
-   case aco_opcode::v_add_f32:
-   case aco_opcode::v_mul_f16:
-   case aco_opcode::v_mul_f32:
-   case aco_opcode::v_or_b32:
-   case aco_opcode::v_and_b32:
-   case aco_opcode::v_xor_b32:
-   case aco_opcode::v_max_f16:
-   case aco_opcode::v_max_f32:
-   case aco_opcode::v_min_f16:
-   case aco_opcode::v_min_f32:
-   case aco_opcode::v_max_i32:
-   case aco_opcode::v_min_i32:
-   case aco_opcode::v_max_u32:
-   case aco_opcode::v_min_u32:
-   case aco_opcode::v_max_i16:
-   case aco_opcode::v_min_i16:
-   case aco_opcode::v_max_u16:
-   case aco_opcode::v_min_u16:
-   case aco_opcode::v_max_i16_e64:
-   case aco_opcode::v_min_i16_e64:
-   case aco_opcode::v_max_u16_e64:
-   case aco_opcode::v_min_u16_e64: return true;
-   case aco_opcode::v_sub_f16: instr->opcode = aco_opcode::v_subrev_f16; return true;
-   case aco_opcode::v_sub_f32: instr->opcode = aco_opcode::v_subrev_f32; return true;
-   case aco_opcode::v_sub_co_u32: instr->opcode = aco_opcode::v_subrev_co_u32; return true;
-   case aco_opcode::v_sub_u16: instr->opcode = aco_opcode::v_subrev_u16; return true;
-   case aco_opcode::v_sub_u32: instr->opcode = aco_opcode::v_subrev_u32; return true;
-   default: {
-      CmpInfo info;
-      get_cmp_info(instr->opcode, &info);
-      if (info.ordered == instr->opcode) {
-         instr->opcode = info.ordered_swapped;
-         return true;
-      }
-      if (info.unordered == instr->opcode) {
-         instr->opcode = info.unordered_swapped;
-         return true;
-      }
-      return false;
-   }
-   }
-}
-
 bool
 can_use_VOP3(opt_ctx& ctx, const aco_ptr<Instruction>& instr)
 {
@@ -1125,7 +1057,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                 instr->opcode == aco_opcode::v_writelane_b32) {
                instr->operands[i] = op;
                continue;
-            } else if (!instr->isVOP3() && can_swap_operands(instr)) {
+            } else if (!instr->isVOP3() && can_swap_operands(instr, &instr->opcode)) {
                instr->operands[i] = instr->operands[0];
                instr->operands[0] = op;
                continue;
@@ -1746,102 +1678,6 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
     * neg/abs instructions because we'll likely combine it into another valu. */
    if (!(ctx.info[instr->definitions[0].tempId()].label & (label_neg | label_abs)))
       check_sdwa_extract(ctx, instr);
-}
-
-ALWAYS_INLINE bool
-get_cmp_info(aco_opcode op, CmpInfo* info)
-{
-   info->ordered = aco_opcode::num_opcodes;
-   info->unordered = aco_opcode::num_opcodes;
-   info->ordered_swapped = aco_opcode::num_opcodes;
-   info->unordered_swapped = aco_opcode::num_opcodes;
-   switch (op) {
-      // clang-format off
-#define CMP2(ord, unord, ord_swap, unord_swap, sz)                                                 \
-   case aco_opcode::v_cmp_##ord##_f##sz:                                                           \
-   case aco_opcode::v_cmp_n##unord##_f##sz:                                                        \
-      info->ordered = aco_opcode::v_cmp_##ord##_f##sz;                                             \
-      info->unordered = aco_opcode::v_cmp_n##unord##_f##sz;                                        \
-      info->ordered_swapped = aco_opcode::v_cmp_##ord_swap##_f##sz;                                \
-      info->unordered_swapped = aco_opcode::v_cmp_n##unord_swap##_f##sz;                           \
-      info->inverse = op == aco_opcode::v_cmp_n##unord##_f##sz ? aco_opcode::v_cmp_##unord##_f##sz \
-                                                               : aco_opcode::v_cmp_n##ord##_f##sz; \
-      info->f32 = op == aco_opcode::v_cmp_##ord##_f##sz ? aco_opcode::v_cmp_##ord##_f32            \
-                                                        : aco_opcode::v_cmp_n##unord##_f32;        \
-      info->size = sz;                                                                             \
-      return true;
-#define CMP(ord, unord, ord_swap, unord_swap)                                                      \
-   CMP2(ord, unord, ord_swap, unord_swap, 16)                                                      \
-   CMP2(ord, unord, ord_swap, unord_swap, 32)                                                      \
-   CMP2(ord, unord, ord_swap, unord_swap, 64)
-      CMP(lt, /*n*/ge, gt, /*n*/le)
-      CMP(eq, /*n*/lg, eq, /*n*/lg)
-      CMP(le, /*n*/gt, ge, /*n*/lt)
-      CMP(gt, /*n*/le, lt, /*n*/le)
-      CMP(lg, /*n*/eq, lg, /*n*/eq)
-      CMP(ge, /*n*/lt, le, /*n*/gt)
-#undef CMP
-#undef CMP2
-#define ORD_TEST(sz)                                                                               \
-   case aco_opcode::v_cmp_u_f##sz:                                                                 \
-      info->f32 = aco_opcode::v_cmp_u_f32;                                                         \
-      info->inverse = aco_opcode::v_cmp_o_f##sz;                                                   \
-      info->size = sz;                                                                             \
-      return true;                                                                                 \
-   case aco_opcode::v_cmp_o_f##sz:                                                                 \
-      info->f32 = aco_opcode::v_cmp_o_f32;                                                         \
-      info->inverse = aco_opcode::v_cmp_u_f##sz;                                                   \
-      info->size = sz;                                                                             \
-      return true;
-      ORD_TEST(16)
-      ORD_TEST(32)
-      ORD_TEST(64)
-#undef ORD_TEST
-      // clang-format on
-   default: return false;
-   }
-}
-
-aco_opcode
-get_ordered(aco_opcode op)
-{
-   CmpInfo info;
-   return get_cmp_info(op, &info) ? info.ordered : aco_opcode::num_opcodes;
-}
-
-aco_opcode
-get_unordered(aco_opcode op)
-{
-   CmpInfo info;
-   return get_cmp_info(op, &info) ? info.unordered : aco_opcode::num_opcodes;
-}
-
-aco_opcode
-get_inverse(aco_opcode op)
-{
-   CmpInfo info;
-   return get_cmp_info(op, &info) ? info.inverse : aco_opcode::num_opcodes;
-}
-
-aco_opcode
-get_f32_cmp(aco_opcode op)
-{
-   CmpInfo info;
-   return get_cmp_info(op, &info) ? info.f32 : aco_opcode::num_opcodes;
-}
-
-unsigned
-get_cmp_bitsize(aco_opcode op)
-{
-   CmpInfo info;
-   return get_cmp_info(op, &info) ? info.size : 0;
-}
-
-bool
-is_cmp(aco_opcode op)
-{
-   CmpInfo info;
-   return get_cmp_info(op, &info) && info.ordered != aco_opcode::num_opcodes;
 }
 
 unsigned
@@ -2884,7 +2720,7 @@ apply_sgprs(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          else if (info.is_extract())
             continue;
          instr->operands[sgpr_idx] = Operand(sgpr);
-      } else if (can_swap_operands(instr)) {
+      } else if (can_swap_operands(instr, &instr->opcode)) {
          instr->operands[sgpr_idx] = instr->operands[0];
          instr->operands[0] = Operand(sgpr);
          /* swap bits using a 4-entry LUT */

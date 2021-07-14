@@ -1736,6 +1736,15 @@ aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& inst
 aco_ptr<Instruction> convert_to_DPP(aco_ptr<Instruction>& instr);
 bool needs_exec_mask(const Instruction* instr);
 
+aco_opcode get_ordered(aco_opcode op);
+aco_opcode get_unordered(aco_opcode op);
+aco_opcode get_inverse(aco_opcode op);
+aco_opcode get_f32_cmp(aco_opcode op);
+unsigned get_cmp_bitsize(aco_opcode op);
+bool is_cmp(aco_opcode op);
+
+bool can_swap_operands(aco_ptr<Instruction>& instr, aco_opcode* new_op);
+
 uint32_t get_reduction_identity(ReduceOp op, unsigned idx);
 
 unsigned get_mimg_nsa_dwords(const Instruction* instr);
