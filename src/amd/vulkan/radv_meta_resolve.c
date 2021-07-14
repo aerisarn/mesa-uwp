@@ -57,6 +57,7 @@ create_pass(struct radv_device *device, VkFormat vk_format, VkRenderPass *pass)
 
    for (i = 0; i < 2; i++) {
       attachments[i].sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+      attachments[i].pNext = NULL;
       attachments[i].format = vk_format;
       attachments[i].samples = 1;
       attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;

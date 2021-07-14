@@ -42,6 +42,7 @@ create_pass(struct radv_device *device, uint32_t samples, VkRenderPass *pass)
    VkAttachmentDescription2 attachment;
 
    attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+   attachment.pNext = NULL;
    attachment.flags = 0;
    attachment.format = VK_FORMAT_D32_SFLOAT_S8_UINT;
    attachment.samples = samples;
