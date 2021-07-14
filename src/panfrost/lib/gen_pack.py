@@ -613,7 +613,7 @@ class Group(object):
                 elif field.modifier[0] == "shr":
                     suffix = " << {}".format(field.modifier[1])
                 if field.modifier[0] == "log2":
-                    prefix = "1 << "
+                    prefix = "1U << "
 
             decoded = '{}{}({}){}'.format(prefix, convert, ', '.join(args), suffix)
 
