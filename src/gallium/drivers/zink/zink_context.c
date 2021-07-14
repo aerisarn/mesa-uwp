@@ -3576,7 +3576,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                                                      zink_context_is_resource_busy, true, &ctx->tc);
 
    if (tc && (struct zink_context*)tc != ctx) {
-      tc->bytes_mapped_limit = screen->total_mem / 4;
+      threaded_context_init_bytes_mapped_limit(tc, 4);
       ctx->base.set_context_param = zink_set_context_param;
    }
 
