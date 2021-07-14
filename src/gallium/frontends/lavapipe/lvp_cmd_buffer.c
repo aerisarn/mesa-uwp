@@ -522,7 +522,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdDrawMultiEXT(
    else {
       unsigned i = 0;
       vk_foreach_multi_draw(draw, i, pVertexInfo, drawCount, stride)
-         memcpy(cmd->u.draw.draws, draw, sizeof(struct pipe_draw_start_count_bias));
+         memcpy(&cmd->u.draw.draws[i], draw, sizeof(struct VkMultiDrawInfoEXT));
    }
 
    cmd_buf_queue(cmd_buffer, cmd);
@@ -808,7 +808,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdDrawMultiIndexedEXT(
    else {
       unsigned i = 0;
       vk_foreach_multi_draw_indexed(draw, i, pIndexInfo, drawCount, stride)
-         memcpy(cmd->u.draw_indexed.draws, draw, sizeof(struct pipe_draw_start_count_bias));
+         memcpy(&cmd->u.draw_indexed.draws[i], draw, sizeof(struct pipe_draw_start_count_bias));
    }
    /* only the first member is read if vertex_offset_changes is true */
    if (pVertexOffset)
