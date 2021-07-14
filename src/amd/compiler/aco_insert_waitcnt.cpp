@@ -242,11 +242,9 @@ struct wait_ctx {
    }
 };
 
-wait_imm
-check_instr(Instruction* instr, wait_ctx& ctx)
+void
+check_instr(wait_ctx& ctx, wait_imm& wait, Instruction* instr)
 {
-   wait_imm wait;
-
    for (const Operand op : instr->operands) {
       if (op.isConstant() || op.isUndefined())
          continue;
@@ -287,28 +285,25 @@ check_instr(Instruction* instr, wait_ctx& ctx)
          wait.combine(it->second.imm);
       }
    }
-
-   return wait;
 }
 
-wait_imm
-parse_wait_instr(wait_ctx& ctx, Instruction* instr)
+bool
+parse_wait_instr(wait_ctx& ctx, wait_imm& imm, Instruction* instr)
 {
    if (instr->opcode == aco_opcode::s_waitcnt_vscnt &&
        instr->definitions[0].physReg() == sgpr_null) {
-      wait_imm imm;
       imm.vs = std::min<uint8_t>(imm.vs, instr->sopk().imm);
-      return imm;
+      return true;
    } else if (instr->opcode == aco_opcode::s_waitcnt) {
-      return wait_imm(ctx.chip_class, instr->sopp().imm);
+      imm.combine(wait_imm(ctx.chip_class, instr->sopp().imm));
+      return true;
    }
-   return wait_imm();
+   return false;
 }
 
-wait_imm
-perform_barrier(wait_ctx& ctx, memory_sync_info sync, unsigned semantics)
+void
+perform_barrier(wait_ctx& ctx, wait_imm& imm, memory_sync_info sync, unsigned semantics)
 {
-   wait_imm imm;
    sync_scope subgroup_scope =
       ctx.program->workgroup_size <= ctx.program->wave_size ? scope_workgroup : scope_subgroup;
    if ((sync.semantics & semantics) && sync.scope > subgroup_scope) {
@@ -332,8 +327,6 @@ perform_barrier(wait_ctx& ctx, memory_sync_info sync, unsigned semantics)
             imm.combine(ctx.barrier_imm[idx]);
       }
    }
-
-   return imm;
 }
 
 void
@@ -352,22 +345,18 @@ force_waitcnt(wait_ctx& ctx, wait_imm& imm)
    }
 }
 
-wait_imm
-kill(Instruction* instr, wait_ctx& ctx, memory_sync_info sync_info)
+void
+kill(wait_imm& imm, Instruction* instr, wait_ctx& ctx, memory_sync_info sync_info)
 {
-   wait_imm imm;
-
    if (debug_flags & DEBUG_FORCE_WAITCNT) {
       /* Force emitting waitcnt states right after the instruction if there is
        * something to wait for.
        */
-      force_waitcnt(ctx, imm);
+      return force_waitcnt(ctx, imm);
    }
 
    if (ctx.exp_cnt || ctx.vm_cnt || ctx.lgkm_cnt)
-      imm.combine(check_instr(instr, ctx));
-
-   imm.combine(parse_wait_instr(ctx, instr));
+      check_instr(ctx, imm, instr);
 
    /* It's required to wait for scalar stores before "writing back" data.
     * It shouldn't cost anything anyways since we're about to do s_endpgm.
@@ -406,9 +395,9 @@ kill(Instruction* instr, wait_ctx& ctx, memory_sync_info sync_info)
    }
 
    if (instr->opcode == aco_opcode::p_barrier)
-      imm.combine(perform_barrier(ctx, instr->barrier().sync, semantic_acqrel));
+      perform_barrier(ctx, imm, instr->barrier().sync, semantic_acqrel);
    else
-      imm.combine(perform_barrier(ctx, sync_info, semantic_release));
+      perform_barrier(ctx, imm, sync_info, semantic_release);
 
    if (!imm.empty()) {
       if (ctx.pending_flat_vm && imm.vm != wait_imm::unset_counter)
@@ -470,8 +459,6 @@ kill(Instruction* instr, wait_ctx& ctx, memory_sync_info sync_info)
       ctx.pending_flat_lgkm = false;
       ctx.pending_s_buffer_store = false;
    }
-
-   return imm;
 }
 
 void
@@ -719,7 +706,7 @@ gen(Instruction* instr, wait_ctx& ctx)
 }
 
 void
-emit_waitcnt(wait_ctx& ctx, std::vector<aco_ptr<Instruction>>& instructions, wait_imm imm)
+emit_waitcnt(wait_ctx& ctx, std::vector<aco_ptr<Instruction>>& instructions, wait_imm& imm)
 {
    if (imm.vs != wait_imm::unset_counter) {
       assert(ctx.chip_class >= GFX10);
@@ -737,6 +724,7 @@ emit_waitcnt(wait_ctx& ctx, std::vector<aco_ptr<Instruction>>& instructions, wai
       waitcnt->block = -1;
       instructions.emplace_back(waitcnt);
    }
+   imm = wait_imm();
 }
 
 void
@@ -747,21 +735,19 @@ handle_block(Program* program, Block& block, wait_ctx& ctx)
    wait_imm queued_imm;
 
    for (aco_ptr<Instruction>& instr : block.instructions) {
-      bool is_wait = !parse_wait_instr(ctx, instr.get()).empty();
+      bool is_wait = parse_wait_instr(ctx, queued_imm, instr.get());
 
       memory_sync_info sync_info = get_sync_info(instr.get());
-      queued_imm.combine(kill(instr.get(), ctx, sync_info));
+      kill(queued_imm, instr.get(), ctx, sync_info);
 
       gen(instr.get(), ctx);
 
       if (instr->format != Format::PSEUDO_BARRIER && !is_wait) {
-         if (!queued_imm.empty()) {
+         if (!queued_imm.empty())
             emit_waitcnt(ctx, new_instructions, queued_imm);
-            queued_imm = wait_imm();
-         }
-         new_instructions.emplace_back(std::move(instr));
 
-         queued_imm.combine(perform_barrier(ctx, sync_info, semantic_acquire));
+         new_instructions.emplace_back(std::move(instr));
+         perform_barrier(ctx, queued_imm, sync_info, semantic_acquire);
       }
    }
 
