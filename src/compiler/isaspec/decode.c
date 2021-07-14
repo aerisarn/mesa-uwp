@@ -128,6 +128,11 @@ struct decode_state {
 	unsigned num_instr;
 
 	/**
+	 * Column number of current line
+	 */
+	unsigned line_column;
+
+	/**
 	 * Bitset of instructions that are branch targets (if options->branch_labels
 	 * is enabled)
 	 */
@@ -162,7 +167,7 @@ print(struct decode_state *state, const char *fmt, ...)
 	va_list args;
 
 	va_start(args, fmt);
-	vfprintf(state->out, fmt, args);
+	state->line_column += vfprintf(state->out, fmt, args);
 	va_end(args);
 }
 
@@ -644,6 +649,7 @@ display(struct decode_scope *scope)
 			p = e;
 		} else {
 			fputc(*p, scope->state->out);
+			scope->state->line_column++;
 		}
 		p++;
 	}
@@ -661,6 +667,7 @@ decode(struct decode_state *state, void *bin, int sz)
 		bitmask_t instr = { 0 };
 
 		next_instruction(&instr, &instrs[state->n * BITMASK_WORDS]);
+      state->line_column = 0;
 
 		if (state->options->max_errors && (errors > state->options->max_errors)) {
 			break;
