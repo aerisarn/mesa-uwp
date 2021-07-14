@@ -2369,7 +2369,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
 
    assert(pCreateInfo->pRasterizationState);
 
-   pipeline->dynamic_states = 0;
    if (pCreateInfo->pDynamicState) {
       /* Remove all of the states that are marked as dynamic */
       uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
@@ -2397,11 +2396,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
       pCreateInfo->pMultisampleState &&
       pCreateInfo->pMultisampleState->sampleShadingEnable;
 
-   /* When we free the pipeline, we detect stages based on the NULL status
-    * of various prog_data pointers.  Make them NULL by default.
-    */
-   memset(pipeline->shaders, 0, sizeof(pipeline->shaders));
-
    result = anv_pipeline_compile_graphics(pipeline, cache, pCreateInfo);
    if (result != VK_SUCCESS) {
       anv_pipeline_finish(&pipeline->base, device, alloc);
@@ -2417,7 +2411,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
 
    const uint64_t inputs_read = get_vs_prog_data(pipeline)->inputs_read;
 
-   pipeline->vb_used = 0;
    for (uint32_t i = 0; i < vi_info->vertexAttributeDescriptionCount; i++) {
       const VkVertexInputAttributeDescription *desc =
          &vi_info->pVertexAttributeDescriptions[i];
@@ -3081,10 +3074,6 @@ anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
                               const VkAllocationCallbacks *alloc)
 {
    VkResult result;
-
-   /* Zero things out so our clean-up works */
-   memset(pipeline->groups, 0,
-          pipeline->group_count * sizeof(*pipeline->groups));
 
    util_dynarray_init(&pipeline->shaders, pipeline->base.mem_ctx);
 
