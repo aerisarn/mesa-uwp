@@ -415,6 +415,7 @@ struct pipe_sampler_state
    unsigned seamless_cube_map:1;
    unsigned border_color_is_integer:1;
    unsigned reduction_mode:2;    /**< PIPE_TEX_REDUCTION_x */
+   unsigned pad:5;               /**< take bits from this for new members */
    float lod_bias;               /**< LOD/lambda bias */
    float min_lod, max_lod;       /**< LOD clamp range, after bias */
    union pipe_color_union border_color;
