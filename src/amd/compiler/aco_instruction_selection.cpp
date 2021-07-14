@@ -855,8 +855,8 @@ emit_vop2_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Te
    Operand op1(src1);
 
    for (int i = 0; i < 2; i++) {
-      uint32_t src_ub = get_alu_src_ub(ctx, instr, swap_srcs ? !i : i);
       if (uses_ub & (1 << i)) {
+         uint32_t src_ub = get_alu_src_ub(ctx, instr, swap_srcs ? !i : i);
          if (src_ub <= 0xffff)
             bld.set16bit(i ? op1 : op0);
          else if (src_ub <= 0xffffff)
