@@ -42,6 +42,7 @@ computerator = executable(
     libfreedreno_drm,
     libfreedreno_ir3,
     libfreedreno_perfcntrs,
+    libfreedreno_common,
   ],
   dependencies : [
     dep_libdrm,

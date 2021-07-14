@@ -333,6 +333,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_A_IN
 %token <tok> T_A_OUT
 %token <tok> T_A_TEX
+%token <tok> T_A_PVTMEM
 /* todo, re-add @sampler/@uniform/@varying if needed someday */
 
 /* src register flags */
@@ -655,6 +656,7 @@ header:            localsize_header
 |                  in_header
 |                  out_header
 |                  tex_header
+|                  pvtmem_header
 
 const_val:         T_FLOAT   { $$ = fui($1); }
 |                  T_INT     { $$ = $1;      }
@@ -709,6 +711,8 @@ numwg_header:      T_A_NUMWG '(' T_CONSTANT ')' {
 }
 
 branchstack_header: T_A_BRANCHSTACK const_val { variant->branchstack = $2; }
+
+pvtmem_header: T_A_PVTMEM const_val { variant->pvtmem_size = $2; }
 
 /* Stubs for now */
 in_header:         T_A_IN '(' T_REGISTER ')' T_IDENTIFIER '(' T_IDENTIFIER '=' integer ')' { }
