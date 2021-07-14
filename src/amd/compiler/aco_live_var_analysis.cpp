@@ -84,7 +84,7 @@ get_demand_before(RegisterDemand demand, aco_ptr<Instruction>& instr,
 namespace {
 void
 process_live_temps_per_block(Program* program, live& lives, Block* block,
-                             std::set<unsigned>& worklist, std::vector<uint16_t>& phi_sgpr_ops)
+                             unsigned& worklist, std::vector<uint16_t>& phi_sgpr_ops)
 {
    std::vector<RegisterDemand>& register_demand = lives.register_demand[block->index];
    RegisterDemand new_demand;
@@ -209,7 +209,7 @@ process_live_temps_per_block(Program* program, live& lives, Block* block,
       for (unsigned pred_idx : preds) {
          auto it = lives.live_out[pred_idx].insert(t);
          if (it.second)
-            worklist.insert(pred_idx);
+            worklist = std::max(worklist, pred_idx + 1);
       }
    }
 
@@ -230,7 +230,7 @@ process_live_temps_per_block(Program* program, live& lives, Block* block,
          /* check if we changed an already processed block */
          const bool inserted = lives.live_out[preds[i]].insert(operand.tempId()).second;
          if (inserted) {
-            worklist.insert(preds[i]);
+            worklist = std::max(worklist, preds[i] + 1);
             if (insn->opcode == aco_opcode::p_phi && operand.getTemp().type() == RegType::sgpr)
                phi_sgpr_ops[preds[i]] += operand.size();
          }
@@ -385,7 +385,7 @@ live_var_analysis(Program* program)
    live result;
    result.live_out.resize(program->blocks.size());
    result.register_demand.resize(program->blocks.size());
-   std::set<unsigned> worklist;
+   unsigned worklist = program->blocks.size();
    std::vector<uint16_t> phi_sgpr_ops(program->blocks.size());
    RegisterDemand new_demand;
 
@@ -393,12 +393,8 @@ live_var_analysis(Program* program)
 
    /* this implementation assumes that the block idx corresponds to the block's position in
     * program->blocks vector */
-   for (Block& block : program->blocks)
-      worklist.insert(block.index);
-   while (!worklist.empty()) {
-      std::set<unsigned>::reverse_iterator b_it = worklist.rbegin();
-      unsigned block_idx = *b_it;
-      worklist.erase(block_idx);
+   while (worklist) {
+      unsigned block_idx = --worklist;
       process_live_temps_per_block(program, result, &program->blocks[block_idx], worklist,
                                    phi_sgpr_ops);
       new_demand.update(program->blocks[block_idx].register_demand);
