@@ -207,6 +207,7 @@ struct iris_bufmgr {
    struct iris_memregion vram, sys;
 
    bool has_llc:1;
+   bool has_local_mem:1;
    bool has_mmap_offset:1;
    bool has_tiling_uapi:1;
    bool bo_reuse:1;
@@ -1046,14 +1047,34 @@ iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo)
       .handle = bo->gem_handle,
    };
 
-   static const uint32_t mmap_offset_for_mode[] = {
-      [IRIS_MMAP_UC]    = I915_MMAP_OFFSET_UC,
-      [IRIS_MMAP_WC]    = I915_MMAP_OFFSET_WC,
-      [IRIS_MMAP_WB]    = I915_MMAP_OFFSET_WB,
-   };
-   assert(bo->mmap_mode != IRIS_MMAP_NONE);
-   assert(bo->mmap_mode < ARRAY_SIZE(mmap_offset_for_mode));
-   mmap_arg.flags = mmap_offset_for_mode[bo->mmap_mode];
+   if (bufmgr->has_local_mem) {
+      /* On discrete memory platforms, we cannot control the mmap caching mode
+       * at mmap time.  Instead, it's fixed when the object is created (this
+       * is a limitation of TTM).
+       *
+       * On DG1, our only currently enabled discrete platform, there is no
+       * control over what mode we get.  For SMEM, we always get WB because
+       * it's fast (probably what we want) and when the device views SMEM
+       * across PCIe, it's always snooped.  The only caching mode allowed by
+       * DG1 hardware for LMEM is WC.
+       */
+      if (bo->local)
+         assert(bo->mmap_mode == IRIS_MMAP_WC);
+      else
+         assert(bo->mmap_mode == IRIS_MMAP_WB);
+
+      mmap_arg.flags = I915_MMAP_OFFSET_FIXED;
+   } else {
+      /* Only integrated platforms get to select a mmap caching mode here */
+      static const uint32_t mmap_offset_for_mode[] = {
+         [IRIS_MMAP_UC]    = I915_MMAP_OFFSET_UC,
+         [IRIS_MMAP_WC]    = I915_MMAP_OFFSET_WC,
+         [IRIS_MMAP_WB]    = I915_MMAP_OFFSET_WB,
+      };
+      assert(bo->mmap_mode != IRIS_MMAP_NONE);
+      assert(bo->mmap_mode < ARRAY_SIZE(mmap_offset_for_mode));
+      mmap_arg.flags = mmap_offset_for_mode[bo->mmap_mode];
+   }
 
    /* Get the fake offset back */
    int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP_OFFSET, &mmap_arg);
@@ -1749,6 +1770,7 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    list_inithead(&bufmgr->zombie_list);
 
    bufmgr->has_llc = devinfo->has_llc;
+   bufmgr->has_local_mem = devinfo->has_local_mem;
    bufmgr->has_tiling_uapi = devinfo->has_tiling_uapi;
    bufmgr->bo_reuse = bo_reuse;
    bufmgr->has_mmap_offset = gem_param(fd, I915_PARAM_MMAP_GTT_VERSION) >= 4;
