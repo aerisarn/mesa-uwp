@@ -1161,22 +1161,26 @@ static void fill_sampler_buffer_view_stage(struct rendering_state *state,
    sv_idx += array_idx;
    sv_idx += dyn_info->stage[stage].sampler_view_count;
    struct lvp_buffer_view *bv = descriptor->buffer_view;
-   struct pipe_sampler_view templ;
-   memset(&templ, 0, sizeof(templ));
-   templ.target = PIPE_BUFFER;
-   templ.swizzle_r = PIPE_SWIZZLE_X;
-   templ.swizzle_g = PIPE_SWIZZLE_Y;
-   templ.swizzle_b = PIPE_SWIZZLE_Z;
-   templ.swizzle_a = PIPE_SWIZZLE_W;
-   templ.format = bv->pformat;
-   templ.u.buf.offset = bv->offset + bv->buffer->offset;
-   templ.u.buf.size = bv->range == VK_WHOLE_SIZE ? (bv->buffer->size - bv->offset) : bv->range;
-   templ.texture = bv->buffer->bo;
-   templ.context = state->pctx;
 
    if (state->sv[p_stage][sv_idx])
       pipe_sampler_view_reference(&state->sv[p_stage][sv_idx], NULL);
-   state->sv[p_stage][sv_idx] = state->pctx->create_sampler_view(state->pctx, bv->buffer->bo, &templ);
+
+   if (bv) {
+      struct pipe_sampler_view templ;
+      memset(&templ, 0, sizeof(templ));
+      templ.target = PIPE_BUFFER;
+      templ.swizzle_r = PIPE_SWIZZLE_X;
+      templ.swizzle_g = PIPE_SWIZZLE_Y;
+      templ.swizzle_b = PIPE_SWIZZLE_Z;
+      templ.swizzle_a = PIPE_SWIZZLE_W;
+      templ.format = bv->pformat;
+      templ.u.buf.offset = bv->offset + bv->buffer->offset;
+      templ.u.buf.size = bv->range == VK_WHOLE_SIZE ? (bv->buffer->size - bv->offset) : bv->range;
+      templ.texture = bv->buffer->bo;
+      templ.context = state->pctx;
+      state->sv[p_stage][sv_idx] = state->pctx->create_sampler_view(state->pctx, bv->buffer->bo, &templ);
+   }
+
    if (state->num_sampler_views[p_stage] <= sv_idx)
       state->num_sampler_views[p_stage] = sv_idx + 1;
    state->sv_dirty[p_stage] = true;
