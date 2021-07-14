@@ -300,7 +300,7 @@ find_bitset(struct decode_state *state, const struct isa_bitset **bitsets,
 	}
 
 	if (match && (match->dontcare & val)) {
-		decode_error(state, "dontcare bits in %s: %"PRIx64,
+		decode_error(state, "dontcare bits in %s: %016"PRIx64,
 				match->name, (match->dontcare & val));
 	}
 
@@ -374,7 +374,7 @@ find_display(struct decode_scope *scope, const struct isa_bitset *bitset)
 				uint64_t val = extract_field(scope, f);
 				if (val != f->val) {
 					decode_error(scope->state, "WARNING: unexpected "
-							"bits[%u:%u] in %s: 0x%"PRIx64" vs 0x%"PRIx64,
+							"bits[%u:%u] in %s: %016"PRIx64" vs %016"PRIx64,
 							f->low, f->high, bitset->name,
 							val, f->val);
 				}
@@ -403,7 +403,7 @@ display_bitset_field(struct decode_scope *scope, const struct isa_field *field, 
 {
 	const struct isa_bitset *b = find_bitset(scope->state, field->bitsets, val);
 	if (!b) {
-		decode_error(scope->state, "no match: FIELD: '%s.%s': 0x%"PRIx64,
+		decode_error(scope->state, "no match: FIELD: '%s.%s': %016"PRIx64,
 				scope->bitset->name, field->name, val);
 		return;
 	}
