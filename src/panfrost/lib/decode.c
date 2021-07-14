@@ -451,6 +451,9 @@ bits(u32 word, u32 lo, u32 hi)
         if (hi - lo >= 32)
                 return word; // avoid undefined behavior with the shift
 
+        if (lo >= 32)
+                return 0;
+
         return (word >> lo) & ((1 << (hi - lo)) - 1);
 }
 
