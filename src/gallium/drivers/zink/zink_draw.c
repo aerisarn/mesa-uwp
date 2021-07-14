@@ -422,7 +422,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (!dindirect || !dindirect->buffer)
       ctx->drawid_broken = BITSET_TEST(ctx->gfx_stages[PIPE_SHADER_VERTEX]->nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID) &&
                            (drawid_offset != 0 ||
-                           ((!ctx->tc || !screen->info.have_EXT_multi_draw) && num_draws > 1));
+                           (!screen->info.have_EXT_multi_draw && num_draws > 1) ||
+                           (screen->info.have_EXT_multi_draw && num_draws > 1 && !dinfo->increment_draw_id));
    if (drawid_broken != ctx->drawid_broken)
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
    ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
