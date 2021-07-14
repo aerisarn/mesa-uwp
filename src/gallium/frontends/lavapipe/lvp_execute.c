@@ -1642,6 +1642,7 @@ static void handle_draw(struct lvp_cmd_buffer_entry *cmd,
    state->info.start_instance = cmd->u.draw.first_instance;
    state->info.instance_count = cmd->u.draw.instance_count;
    state->info.view_mask = subpass->view_mask;
+   state->info.increment_draw_id = true;
 
    state->pctx->draw_vbo(state->pctx, &state->info, 0, NULL, cmd->u.draw.draws, cmd->u.draw.draw_count);
 }
@@ -2207,6 +2208,7 @@ static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
    state->info.start_instance = cmd->u.draw_indexed.first_instance;
    state->info.instance_count = cmd->u.draw_indexed.instance_count;
    state->info.view_mask = subpass->view_mask;
+   state->info.increment_draw_id = true;
 
    if (state->info.primitive_restart)
       state->info.restart_index = util_prim_restart_index_from_size(state->info.index_size);
