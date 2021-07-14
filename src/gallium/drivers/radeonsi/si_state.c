@@ -2257,7 +2257,7 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
       /* Chips with 1 RB don't increment occlusion queries at 16x MSAA sample rate,
        * so don't expose 16 samples there.
        */
-      const unsigned max_eqaa_samples = sscreen->info.max_render_backends == 1 ? 8 : 16;
+      const unsigned max_eqaa_samples = util_bitcount(sscreen->info.enabled_rb_mask) <= 1 ? 8 : 16;
       const unsigned max_samples = 8;
 
       /* MSAA support without framebuffer attachments. */
