@@ -78,7 +78,7 @@ struct spill_ctx {
    std::vector<std::pair<RegClass, std::unordered_set<uint32_t>>> interferences;
    std::vector<std::vector<uint32_t>> affinities;
    std::vector<bool> is_reloaded;
-   std::map<Temp, remat_info> remat;
+   std::unordered_map<Temp, remat_info> remat;
    std::set<Instruction*> unused_remats;
    unsigned wave_size;
 
@@ -309,7 +309,7 @@ should_rematerialize(aco_ptr<Instruction>& instr)
 aco_ptr<Instruction>
 do_reload(spill_ctx& ctx, Temp tmp, Temp new_name, uint32_t spill_id)
 {
-   std::map<Temp, remat_info>::iterator remat = ctx.remat.find(tmp);
+   std::unordered_map<Temp, remat_info>::iterator remat = ctx.remat.find(tmp);
    if (remat != ctx.remat.end()) {
       Instruction* instr = remat->second.instr;
       assert((instr->isVOP1() || instr->isSOP1() || instr->isPseudo() || instr->isSOPK()) &&
