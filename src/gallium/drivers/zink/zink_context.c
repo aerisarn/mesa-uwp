@@ -2754,9 +2754,11 @@ zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
    if (flags & PIPE_BARRIER_FRAMEBUFFER)
       zink_texture_barrier(pctx, 0);
    if (flags & PIPE_BARRIER_STREAMOUT_BUFFER)
-      mem_barrier(batch, all_flags,
-                  VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
-                  VK_ACCESS_SHADER_WRITE_BIT,
+      mem_barrier(batch, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+                         VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT,
+                  VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+                  VK_ACCESS_SHADER_READ_BIT,
                   VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT |
                   VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT);
 }
