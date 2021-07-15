@@ -5664,17 +5664,15 @@ enum {
 
 ALWAYS_INLINE static bool
 radv_skip_ngg_culling(bool has_tess, const unsigned vtx_cnt,
-                      bool indirect, unsigned num_viewports)
+                      bool indirect)
 {
    /* If we have to draw only a few vertices, we get better latency if
     * we disable NGG culling.
     *
     * When tessellation is used, what matters is the number of tessellated
     * vertices, so let's always assume it's not a small draw.
-    *
-    * TODO: Figure out how to do culling with multiple viewports efficiently.
     */
-   return !has_tess && !indirect && vtx_cnt < 512 && num_viewports == 1;
+   return !has_tess && !indirect && vtx_cnt < 512;
 }
 
 ALWAYS_INLINE static uint32_t
@@ -5757,9 +5755,7 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
     * For small draw calls, we disable culling by setting the SGPR to 0.
     */
    const bool skip =
-      radv_skip_ngg_culling(
-         stage == MESA_SHADER_TESS_EVAL, draw_info->count, draw_info->indirect,
-         cmd_buffer->state.dynamic.viewport.count);
+      radv_skip_ngg_culling(stage == MESA_SHADER_TESS_EVAL, draw_info->count, draw_info->indirect);
 
    /* See if anything changed. */
    if (!dirty && skip == cmd_buffer->state.last_nggc_skip)
