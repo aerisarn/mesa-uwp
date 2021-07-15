@@ -26,7 +26,6 @@ include:
   - local: '.gitlab-ci/lava/lava-gitlab-ci.yml'
   - local: '.gitlab-ci/test-source-dep.yml'
   - local: 'src/amd/ci/gitlab-ci.yml'
-  - local: 'src/broadcom/ci/gitlab-ci.yml'
   - local: 'src/freedreno/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/i915/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/iris/ci/gitlab-ci.yml'
