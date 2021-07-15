@@ -79,7 +79,7 @@ struct spill_ctx {
    std::vector<std::vector<uint32_t>> affinities;
    std::vector<bool> is_reloaded;
    std::map<Temp, remat_info> remat;
-   std::map<Instruction*, bool> remat_used;
+   std::set<Instruction*> unused_remats;
    unsigned wave_size;
 
    spill_ctx(const RegisterDemand target_pressure_, Program* program_,
@@ -339,7 +339,7 @@ do_reload(spill_ctx& ctx, Temp tmp, Temp new_name, uint32_t spill_id)
          if (instr->operands[i].isTemp()) {
             assert(false && "unsupported");
             if (ctx.remat.count(instr->operands[i].getTemp()))
-               ctx.remat_used[ctx.remat[instr->operands[i].getTemp()].instr] = true;
+               ctx.unused_remats.erase(ctx.remat[instr->operands[i].getTemp()].instr);
          }
       }
       res->definitions[0] = Definition(new_name);
@@ -368,7 +368,7 @@ get_rematerialize_info(spill_ctx& ctx)
             for (const Definition& def : instr->definitions) {
                if (def.isTemp()) {
                   ctx.remat[def.getTemp()] = remat_info{instr.get()};
-                  ctx.remat_used[instr.get()] = false;
+                  ctx.unused_remats.insert(instr.get());
                }
             }
          }
@@ -879,7 +879,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
             std::map<Temp, Temp>::iterator rename_it = ctx.renames[pred_idx].find(var);
             /* prevent the definining instruction from being DCE'd if it could be rematerialized */
             if (rename_it == ctx.renames[preds[i]].end() && ctx.remat.count(var))
-               ctx.remat_used[ctx.remat[var].instr] = true;
+               ctx.unused_remats.erase(ctx.remat[var].instr);
 
             /* check if variable is already spilled at predecessor */
             std::map<Temp, uint32_t>::iterator spilled = ctx.spills_exit[pred_idx].find(var);
@@ -999,7 +999,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
             } else {
                auto remat_it = ctx.remat.find(phi->operands[i].getTemp());
                if (remat_it != ctx.remat.end()) {
-                  ctx.remat_used[remat_it->second.instr] = true;
+                  ctx.unused_remats.erase(remat_it->second.instr);
                }
             }
             continue;
@@ -1113,7 +1113,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
                tmp = pair.first;
                /* prevent the definining instruction from being DCE'd if it could be rematerialized */
                if (ctx.remat.count(tmp))
-                  ctx.remat_used[ctx.remat[tmp].instr] = true;
+                  ctx.unused_remats.erase(ctx.remat[tmp].instr);
             }
             phi->operands[i] = Operand(tmp);
          }
@@ -1188,7 +1188,7 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block, RegisterDemand s
                /* prevent its definining instruction from being DCE'd if it could be rematerialized */
                auto remat_it = ctx.remat.find(op.getTemp());
                if (remat_it != ctx.remat.end()) {
-                  ctx.remat_used[remat_it->second.instr] = true;
+                  ctx.unused_remats.erase(remat_it->second.instr);
                }
             }
             continue;
@@ -1296,7 +1296,7 @@ spill_block(spill_ctx& ctx, unsigned block_idx)
 
    /* check conditions to process this block */
    bool process = (block->register_demand - spilled_registers).exceeds(ctx.target_pressure) ||
-                  !ctx.renames[block_idx].empty() || ctx.remat_used.size();
+                  !ctx.renames[block_idx].empty() || ctx.unused_remats.size();
 
    for (auto it = current_spills.begin(); !process && it != current_spills.end(); ++it) {
       if (ctx.next_use_distances_start[block_idx].at(it->first).first == block_idx)
@@ -1803,7 +1803,7 @@ assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr)
                reload->definitions[0] = (*it)->definitions[0];
                instructions.emplace_back(aco_ptr<Instruction>(reload));
             }
-         } else if (!ctx.remat_used.count(it->get()) || ctx.remat_used[it->get()]) {
+         } else if (!ctx.unused_remats.count(it->get())) {
             instructions.emplace_back(std::move(*it));
          }
       }
