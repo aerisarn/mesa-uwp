@@ -1208,8 +1208,6 @@ intrinsic("alloc_vertices_and_primitives_amd", src_comp=[1, 1], indices=[])
 intrinsic("overwrite_vs_arguments_amd", src_comp=[1, 1], indices=[])
 # Overwrites TES input registers, for use with vertex compaction after culling. src = {tes_u, tes_v, rel_patch_id, patch_id}.
 intrinsic("overwrite_tes_arguments_amd", src_comp=[1, 1, 1, 1], indices=[])
-# Overwrites the input vertex and primitive count in the current subgroup after culling. src = {num_vertices, num_primitives}.
-intrinsic("overwrite_subgroup_num_vertices_and_primitives_amd", src_comp=[1, 1], indices=[])
 
 # src = [index] BINDING = which table BASE = offset within handle
 intrinsic("load_sbt_amd", src_comp=[-1], dest_comp=0, indices=[BINDING, BASE],

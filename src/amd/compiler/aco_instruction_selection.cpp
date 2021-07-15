@@ -9070,17 +9070,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       ctx->arg_temps[ctx->args->ac.tes_patch_id.arg_index] = get_ssa_temp(ctx, instr->src[3].ssa);
       break;
    }
-   case nir_intrinsic_overwrite_subgroup_num_vertices_and_primitives_amd: {
-      Temp old_merged_wave_info = get_arg(ctx, ctx->args->ac.merged_wave_info);
-      Temp num_vertices = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
-      Temp num_primitives = bld.as_uniform(get_ssa_temp(ctx, instr->src[1].ssa));
-      Temp tmp = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), num_primitives,
-                          Operand::c32(8u));
-      tmp = bld.sop2(aco_opcode::s_or_b32, bld.def(s1), bld.def(s1, scc), tmp, num_vertices);
-      ctx->arg_temps[ctx->args->ac.merged_wave_info.arg_index] =
-         bld.sop2(aco_opcode::s_pack_lh_b32_b16, bld.def(s1), tmp, old_merged_wave_info);
-      break;
-   }
    default:
       isel_err(&instr->instr, "Unimplemented intrinsic instr");
       abort();
