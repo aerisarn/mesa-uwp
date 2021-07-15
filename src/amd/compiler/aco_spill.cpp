@@ -168,7 +168,7 @@ get_dominator(int idx_a, int idx_b, Program* program, bool is_linear)
 }
 
 void
-next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>& worklist)
+next_uses_per_block(spill_ctx& ctx, unsigned block_idx, uint32_t& worklist)
 {
    Block* block = &ctx.program->blocks[block_idx];
    std::unordered_map<Temp, std::pair<uint32_t, uint32_t>> next_uses =
@@ -228,7 +228,7 @@ next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>& work
             const bool inserted = insert_result.second;
             std::pair<uint32_t, uint32_t>& entry_distance = insert_result.first->second;
             if (inserted || entry_distance != distance)
-               worklist.insert(pred_idx);
+               worklist = std::max(worklist, pred_idx + 1);
             entry_distance = distance;
          }
       }
@@ -254,7 +254,7 @@ next_uses_per_block(spill_ctx& ctx, unsigned block_idx, std::set<uint32_t>& work
             distance = std::min(entry_distance.second, distance);
          }
          if (entry_distance != std::pair<uint32_t, uint32_t>{dom, distance}) {
-            worklist.insert(pred_idx);
+            worklist = std::max(worklist, pred_idx + 1);
             entry_distance = {dom, distance};
          }
       }
@@ -266,14 +266,10 @@ compute_global_next_uses(spill_ctx& ctx)
 {
    ctx.next_use_distances_start.resize(ctx.program->blocks.size());
    ctx.next_use_distances_end.resize(ctx.program->blocks.size());
-   std::set<uint32_t> worklist;
-   for (Block& block : ctx.program->blocks)
-      worklist.insert(block.index);
 
-   while (!worklist.empty()) {
-      std::set<unsigned>::reverse_iterator b_it = worklist.rbegin();
-      unsigned block_idx = *b_it;
-      worklist.erase(block_idx);
+   uint32_t worklist = ctx.program->blocks.size();
+   while (worklist) {
+      unsigned block_idx = --worklist;
       next_uses_per_block(ctx, block_idx, worklist);
    }
 }
