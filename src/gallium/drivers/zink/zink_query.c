@@ -49,7 +49,10 @@ struct zink_query {
    struct zink_batch_usage *batch_id; //batch that the query was started in
 
    struct list_head buffers;
-   struct zink_query_buffer *curr_qbo;
+   union {
+      struct zink_query_buffer *curr_qbo;
+      struct pipe_fence_handle *fence; //PIPE_QUERY_GPU_FINISHED
+   };
 
    struct zink_resource *predicate;
    bool predicate_dirty;
@@ -280,6 +283,8 @@ zink_create_query(struct pipe_context *pctx,
 
    query->index = index;
    query->type = query_type;
+   if (query->type == PIPE_QUERY_GPU_FINISHED)
+      return (struct pipe_query *)query;
    query->vkqtype = convert_query_type(query_type, &query->precise);
    if (query->vkqtype == -1)
       return NULL;
@@ -759,6 +764,11 @@ zink_end_query(struct pipe_context *pctx,
    struct zink_query *query = (struct zink_query *)q;
    struct zink_batch *batch = &ctx->batch;
 
+   if (query->type == PIPE_QUERY_GPU_FINISHED) {
+      pctx->flush(pctx, &query->fence, PIPE_FLUSH_DEFERRED);
+      return true;
+   }
+
    /* FIXME: this can be called from a thread, but it needs to write to the cmdbuf */
    threaded_context_unwrap_sync(pctx);
 
@@ -778,6 +788,14 @@ zink_get_query_result(struct pipe_context *pctx,
 {
    struct zink_query *query = (void*)q;
    struct zink_context *ctx = zink_context(pctx);
+
+   if (query->type == PIPE_QUERY_GPU_FINISHED) {
+      struct pipe_screen *screen = pctx->screen;
+
+      result->b = screen->fence_finish(screen, query->base.flushed ? NULL : pctx,
+                                        query->fence, wait ? PIPE_TIMEOUT_INFINITE : 0);
+      return result->b;
+   }
 
    if (query->needs_update)
       update_qbo(ctx, query);
