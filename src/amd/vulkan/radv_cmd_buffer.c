@@ -5845,17 +5845,9 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
     * but not when it stays on and just some settings change.
     */
    if (!!cmd_buffer->state.last_nggc_settings != !!nggc_settings) {
-      const struct radv_physical_device *physical_device = cmd_buffer->device->physical_device;
       uint32_t rsrc2 = v->config.rsrc2;
-      uint32_t oversub_pc_lines = physical_device->rad_info.pc_lines / 4;
 
-      if (nggc_settings) {
-         /* Tweak the parameter cache oversubscription.
-          * This allows the HW to launch more NGG workgroups than the pre-allocated parameter
-          * cache would normally allow, yielding better perf when culling is on.
-          */
-         oversub_pc_lines = physical_device->rad_info.pc_lines * 3 / 4;
-      } else {
+      if (!nggc_settings) {
          /* Allocate less LDS when culling is disabled. (But GS always needs it.) */
          if (stage != MESA_SHADER_GEOMETRY)
             rsrc2 = (rsrc2 & C_00B22C_LDS_SIZE) | S_00B22C_LDS_SIZE(v->info.num_lds_blocks_when_not_culling);
@@ -5865,11 +5857,6 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
       if (!(cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE)) {
          radeon_set_sh_reg(cmd_buffer->cs, R_00B22C_SPI_SHADER_PGM_RSRC2_GS, rsrc2);
       }
-
-      /* Update parameter cache oversubscription setting. */
-      radeon_set_uconfig_reg(cmd_buffer->cs, R_030980_GE_PC_ALLOC,
-                                             S_030980_OVERSUB_EN(physical_device->rad_info.use_late_alloc) |
-                                             S_030980_NUM_PC_LINES(oversub_pc_lines - 1));
    }
 
    cmd_buffer->state.last_nggc_settings = nggc_settings;
