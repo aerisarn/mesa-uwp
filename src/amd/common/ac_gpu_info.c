@@ -1063,18 +1063,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       info->num_physical_sgprs_per_simd = 128 * info->max_wave64_per_simd;
       info->min_sgpr_alloc = 128;
       info->sgpr_alloc_granularity = 128;
-      info->use_late_alloc = info->min_good_cu_per_sa > 2;
    } else if (info->chip_class >= GFX8) {
       info->num_physical_sgprs_per_simd = 800;
       info->min_sgpr_alloc = 16;
       info->sgpr_alloc_granularity = 16;
-      info->use_late_alloc = true;
    } else {
       info->num_physical_sgprs_per_simd = 512;
       info->min_sgpr_alloc = 8;
       info->sgpr_alloc_granularity = 8;
-      /* Potential hang on Kabini: */
-      info->use_late_alloc = info->family != CHIP_KABINI;
    }
 
    info->has_3d_cube_border_color_mipmap = info->has_graphics || info->family == CHIP_ARCTURUS;
@@ -1266,7 +1262,6 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    min_wave64_vgpr_alloc = %i\n", info->min_wave64_vgpr_alloc);
    fprintf(f, "    max_vgpr_alloc = %i\n", info->max_vgpr_alloc);
    fprintf(f, "    wave64_vgpr_alloc_granularity = %i\n", info->wave64_vgpr_alloc_granularity);
-   fprintf(f, "    use_late_alloc = %i\n", info->use_late_alloc);
 
    fprintf(f, "Render backend info:\n");
    fprintf(f, "    pa_sc_tile_steering_override = 0x%x\n", info->pa_sc_tile_steering_override);
