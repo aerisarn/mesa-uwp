@@ -2731,10 +2731,6 @@ zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
    if (flags & (PIPE_BARRIER_TEXTURE | PIPE_BARRIER_SHADER_BUFFER | PIPE_BARRIER_IMAGE))
       mem_barrier(batch, all_flags, all_flags, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
 
-   if (flags & PIPE_BARRIER_QUERY_BUFFER)
-      mem_barrier(batch, all_flags, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                  VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT);
-
    if (flags & PIPE_BARRIER_VERTEX_BUFFER)
       mem_barrier(batch, all_flags, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
                   VK_ACCESS_SHADER_WRITE_BIT,
