@@ -544,8 +544,6 @@ remove_extra_pos_outputs(nir_shader *shader, lower_ngg_nogs_state *nogs_state)
 static void
 compact_vertices_after_culling(nir_builder *b,
                                lower_ngg_nogs_state *nogs_state,
-                               nir_variable *vertices_in_wave_var,
-                               nir_variable *primitives_in_wave_var,
                                nir_variable **repacked_arg_vars,
                                nir_variable **gs_vtxaddr_vars,
                                nir_ssa_def *invocation_index,
@@ -599,14 +597,6 @@ compact_vertices_after_culling(nir_builder *b,
       nir_build_alloc_vertices_and_primitives_amd(b, num_live_vertices_in_workgroup, num_exported_prims);
    }
    nir_pop_if(b, if_wave_0);
-
-   /* Calculate the number of vertices and primitives left in the current wave */
-   nir_ssa_def *has_vtx_after_culling = nir_ilt(b, invocation_index, num_live_vertices_in_workgroup);
-   nir_ssa_def *has_prm_after_culling = nir_ilt(b, invocation_index, num_exported_prims);
-   nir_ssa_def *vtx_cnt = nir_bit_count(b, nir_build_ballot(b, 1, nogs_state->wave_size, has_vtx_after_culling));
-   nir_ssa_def *prm_cnt = nir_bit_count(b, nir_build_ballot(b, 1, nogs_state->wave_size, has_prm_after_culling));
-   nir_store_var(b, vertices_in_wave_var, vtx_cnt, 0x1u);
-   nir_store_var(b, primitives_in_wave_var, prm_cnt, 0x1u);
 
    /* TODO: Consider adding a shortcut exit.
     * Waves that have no vertices and primitives left can s_endpgm right here.
@@ -856,8 +846,7 @@ apply_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
          /* When we found any of these intrinsics, it means
           * we reached the top part and we must stop.
           */
-         if (intrin->intrinsic == nir_intrinsic_overwrite_subgroup_num_vertices_and_primitives_amd ||
-             intrin->intrinsic == nir_intrinsic_alloc_vertices_and_primitives_amd ||
+         if (intrin->intrinsic == nir_intrinsic_alloc_vertices_and_primitives_amd ||
              intrin->intrinsic == nir_intrinsic_export_primitive_amd)
             goto done;
 
@@ -908,8 +897,6 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    nir_variable *prim_exp_arg_var = nogs_state->prim_exp_arg_var;
    nir_variable *gs_accepted_var = nogs_state->gs_accepted_var;
    nir_variable *es_accepted_var = nogs_state->es_accepted_var;
-   nir_variable *vertices_in_wave_var = nir_local_variable_create(impl, glsl_uint_type(), "vertices_in_wave");
-   nir_variable *primitives_in_wave_var = nir_local_variable_create(impl, glsl_uint_type(), "primitives_in_wave");
    nir_variable *gs_vtxaddr_vars[3] = {
       nir_local_variable_create(impl, glsl_uint_type(), "gs_vtx0_addr"),
       nir_local_variable_create(impl, glsl_uint_type(), "gs_vtx1_addr"),
@@ -1060,7 +1047,6 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
 
       /* Vertex compaction. */
       compact_vertices_after_culling(b, nogs_state,
-                                     vertices_in_wave_var, primitives_in_wave_var,
                                      repacked_arg_vars, gs_vtxaddr_vars,
                                      invocation_index, es_vertex_lds_addr,
                                      ngg_scratch_lds_base_addr, pervertex_lds_bytes, max_exported_args);
@@ -1076,11 +1062,6 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       }
       nir_pop_if(b, if_wave_0);
       nir_store_var(b, prim_exp_arg_var, emit_ngg_nogs_prim_exp_arg(b, nogs_state), 0x1u);
-
-      nir_ssa_def *vtx_cnt = nir_bit_count(b, nir_build_ballot(b, 1, nogs_state->wave_size, nir_build_has_input_vertex_amd(b)));
-      nir_ssa_def *prm_cnt = nir_bit_count(b, nir_build_ballot(b, 1, nogs_state->wave_size, nir_build_has_input_primitive_amd(b)));
-      nir_store_var(b, vertices_in_wave_var, vtx_cnt, 0x1u);
-      nir_store_var(b, primitives_in_wave_var, prm_cnt, 0x1u);
    }
    nir_pop_if(b, if_cull_en);
 
@@ -1110,10 +1091,6 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
          nir_load_var(b, repacked_arg_vars[2]), nir_load_var(b, repacked_arg_vars[3]));
    else
       unreachable("Should be VS or TES.");
-
-   nir_ssa_def *vertices_in_wave = nir_load_var(b, vertices_in_wave_var);
-   nir_ssa_def *primitives_in_wave = nir_load_var(b, primitives_in_wave_var);
-   nir_build_overwrite_subgroup_num_vertices_and_primitives_amd(b, vertices_in_wave, primitives_in_wave);
 }
 
 static bool
