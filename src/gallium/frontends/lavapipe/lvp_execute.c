@@ -2209,7 +2209,7 @@ static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
    state->info.start_instance = cmd->u.draw_indexed.first_instance;
    state->info.instance_count = cmd->u.draw_indexed.instance_count;
    state->info.view_mask = subpass->view_mask;
-   if (cmd->u.draw.draw_count > 1)
+   if (cmd->u.draw_indexed.draw_count > 1)
       state->info.increment_draw_id = true;
 
    if (state->info.primitive_restart)
