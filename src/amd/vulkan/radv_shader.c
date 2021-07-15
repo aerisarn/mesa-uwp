@@ -915,6 +915,10 @@ radv_consider_culling(struct radv_device *device, struct nir_shader *nir,
    if (!!nir->info.name)
       return false;
 
+   /* We don't support culling with multiple viewports yet. */
+   if (nir->info.outputs_written & (VARYING_BIT_VIEWPORT | VARYING_BIT_VIEWPORT_MASK))
+      return false;
+
    /* TODO: enable by default on GFX10.3 when we're confident about performance. */
    bool culling_enabled = device->instance->perftest_flags & RADV_PERFTEST_NGGC;
 
