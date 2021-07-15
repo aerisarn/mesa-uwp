@@ -318,7 +318,11 @@ emit_ngg_nogs_prim_exp_arg(nir_builder *b, lower_ngg_nogs_state *st)
 static void
 emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def *arg)
 {
-   nir_if *if_gs_thread = nir_push_if(b, nir_build_has_input_primitive_amd(b));
+   nir_ssa_def *gs_thread = st->gs_accepted_var
+                            ? nir_load_var(b, st->gs_accepted_var)
+                            : nir_build_has_input_primitive_amd(b);
+
+   nir_if *if_gs_thread = nir_push_if(b, gs_thread);
    {
       if (!arg)
          arg = emit_ngg_nogs_prim_exp_arg(b, st);
@@ -584,7 +588,8 @@ compact_vertices_after_culling(nir_builder *b,
 
    /* If all vertices are culled, set primitive count to 0 as well. */
    nir_ssa_def *num_exported_prims = nir_build_load_workgroup_num_input_primitives_amd(b);
-   num_exported_prims = nir_bcsel(b, nir_ieq_imm(b, num_live_vertices_in_workgroup, 0u), nir_imm_int(b, 0u), num_exported_prims);
+   nir_ssa_def *fully_culled = nir_ieq_imm(b, num_live_vertices_in_workgroup, 0u);
+   num_exported_prims = nir_bcsel(b, fully_culled, nir_imm_int(b, 0u), num_exported_prims);
 
    nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_build_load_subgroup_id(b), nir_imm_int(b, 0)));
    {
@@ -642,6 +647,7 @@ compact_vertices_after_culling(nir_builder *b,
    nir_pop_if(b, if_gs_accepted);
 
    nir_store_var(b, es_accepted_var, es_survived, 0x1u);
+   nir_store_var(b, gs_accepted_var, nir_bcsel(b, fully_culled, nir_imm_false(b), nir_build_has_input_primitive_amd(b)), 0x1u);
 }
 
 static void
@@ -958,6 +964,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    nir_pop_if(b, if_es_thread);
 
    nir_store_var(b, es_accepted_var, es_thread, 0x1u);
+   nir_store_var(b, gs_accepted_var, nir_build_has_input_primitive_amd(b), 0x1u);
 
    /* Remove all non-position outputs, and put the position output into the variable. */
    nir_metadata_preserve(impl, nir_metadata_none);
