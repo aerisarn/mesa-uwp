@@ -239,7 +239,8 @@ v3dX(meta_emit_clear_image_rcl)(struct v3dv_job *job,
                                 struct v3dv_meta_framebuffer *framebuffer,
                                 const union v3dv_clear_value *clear_value,
                                 VkImageAspectFlags aspects,
-                                uint32_t layer,
+                                uint32_t min_layer,
+                                uint32_t max_layer,
                                 uint32_t level);
 
 void

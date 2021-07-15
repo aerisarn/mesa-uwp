@@ -114,38 +114,37 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    for (uint32_t level = min_level; level < max_level; level++) {
       if (image->type == VK_IMAGE_TYPE_3D)
          max_layer = u_minify(image->extent.depth, level);
-      for (uint32_t layer = min_layer; layer < max_layer; layer++) {
-         uint32_t width = u_minify(image->extent.width, level);
-         uint32_t height = u_minify(image->extent.height, level);
 
-         struct v3dv_job *job =
-            v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
+      uint32_t width = u_minify(image->extent.width, level);
+      uint32_t height = u_minify(image->extent.height, level);
 
-         if (!job)
-            return true;
+      struct v3dv_job *job =
+         v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
 
-         /* We start a a new job for each layer so the frame "depth" is 1 */
-         v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp,
-                              image->samples > VK_SAMPLE_COUNT_1_BIT);
+      if (!job)
+         return true;
 
-         struct v3dv_meta_framebuffer framebuffer;
-         v3dv_X(job->device, meta_framebuffer_init)(&framebuffer, fb_format,
-                                                    internal_type,
-                                                    &job->frame_tiling);
+      v3dv_job_start_frame(job, width, height, max_layer,
+                           1, internal_bpp,
+                           image->samples > VK_SAMPLE_COUNT_1_BIT);
 
-         v3dv_X(job->device, job_emit_binning_flush)(job);
+      struct v3dv_meta_framebuffer framebuffer;
+      v3dv_X(job->device, meta_framebuffer_init)(&framebuffer, fb_format,
+                                                 internal_type,
+                                                 &job->frame_tiling);
 
-         /* If this triggers it is an application bug: the spec requires
-          * that any aspects to clear are present in the image.
-          */
-         assert(range->aspectMask & image->aspects);
+      v3dv_X(job->device, job_emit_binning_flush)(job);
 
-         v3dv_X(job->device, meta_emit_clear_image_rcl)
-            (job, image, &framebuffer, &hw_clear_value,
-             range->aspectMask, layer, level);
+      /* If this triggers it is an application bug: the spec requires
+       * that any aspects to clear are present in the image.
+       */
+      assert(range->aspectMask & image->aspects);
 
-         v3dv_cmd_buffer_finish_job(cmd_buffer);
-      }
+      v3dv_X(job->device, meta_emit_clear_image_rcl)
+         (job, image, &framebuffer, &hw_clear_value,
+          range->aspectMask, min_layer, max_layer, level);
+
+      v3dv_cmd_buffer_finish_job(cmd_buffer);
    }
 
    return true;

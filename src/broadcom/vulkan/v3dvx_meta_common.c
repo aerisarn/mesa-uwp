@@ -129,7 +129,7 @@ emit_rcl_prologue(struct v3dv_job *job,
 
 static void
 emit_frame_setup(struct v3dv_job *job,
-                 uint32_t layer,
+                 uint32_t min_layer,
                  const union v3dv_clear_value *clear_value)
 {
    v3dv_return_if_oom(NULL, job);
@@ -139,7 +139,7 @@ emit_frame_setup(struct v3dv_job *job,
    struct v3dv_cl *rcl = &job->rcl;
 
    const uint32_t tile_alloc_offset =
-      64 * layer * tiling->draw_tiles_x * tiling->draw_tiles_y;
+      64 * min_layer * tiling->draw_tiles_x * tiling->draw_tiles_y;
    cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
       list.address = v3dv_cl_address(job->tile_alloc, tile_alloc_offset);
    }
@@ -893,12 +893,12 @@ v3dX(meta_emit_tfu_job)(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-emit_clear_image_per_tile_list(struct v3dv_job *job,
-                               struct v3dv_meta_framebuffer *framebuffer,
-                               struct v3dv_image *image,
-                               VkImageAspectFlags aspects,
-                               uint32_t layer,
-                               uint32_t level)
+emit_clear_image_layer_per_tile_list(struct v3dv_job *job,
+                                     struct v3dv_meta_framebuffer *framebuffer,
+                                     struct v3dv_image *image,
+                                     VkImageAspectFlags aspects,
+                                     uint32_t layer,
+                                     uint32_t level)
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
@@ -926,15 +926,19 @@ emit_clear_image_per_tile_list(struct v3dv_job *job,
 }
 
 static void
-emit_clear_image(struct v3dv_job *job,
+emit_clear_image_layers(struct v3dv_job *job,
                  struct v3dv_image *image,
                  struct v3dv_meta_framebuffer *framebuffer,
                  VkImageAspectFlags aspects,
-                 uint32_t layer,
+                 uint32_t min_layer,
+                 uint32_t max_layer,
                  uint32_t level)
 {
-   emit_clear_image_per_tile_list(job, framebuffer, image, aspects, layer, level);
-   emit_supertile_coordinates(job, framebuffer);
+   for (uint32_t layer = min_layer; layer < max_layer; layer++) {
+      emit_clear_image_layer_per_tile_list(job, framebuffer, image, aspects,
+                                           layer, level);
+      emit_supertile_coordinates(job, framebuffer);
+   }
 }
 
 void
@@ -943,7 +947,8 @@ v3dX(meta_emit_clear_image_rcl)(struct v3dv_job *job,
                                 struct v3dv_meta_framebuffer *framebuffer,
                                 const union v3dv_clear_value *clear_value,
                                 VkImageAspectFlags aspects,
-                                uint32_t layer,
+                                uint32_t min_layer,
+                                uint32_t max_layer,
                                 uint32_t level)
 {
    const struct rcl_clear_info clear_info = {
@@ -956,8 +961,9 @@ v3dX(meta_emit_clear_image_rcl)(struct v3dv_job *job,
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, &clear_info);
    v3dv_return_if_oom(NULL, job);
 
-   emit_frame_setup(job, 0, clear_value);
-   emit_clear_image(job, image, framebuffer, aspects, layer, level);
+   emit_frame_setup(job, min_layer, clear_value);
+   emit_clear_image_layers(job, image, framebuffer, aspects,
+                           min_layer, max_layer, level);
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
