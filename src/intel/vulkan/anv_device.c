@@ -1519,7 +1519,9 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR: {
          VkPhysicalDeviceFragmentShadingRateFeaturesKHR *features =
             (VkPhysicalDeviceFragmentShadingRateFeaturesKHR *)ext;
+         features->attachmentFragmentShadingRate = false;
          features->pipelineFragmentShadingRate = true;
+         features->primitiveFragmentShadingRate = false;
          break;
       }
 
@@ -2321,12 +2323,12 @@ void anv_GetPhysicalDeviceProperties2(
          props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
          props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 0;
 
-         props->primitiveFragmentShadingRateWithMultipleViewports = pdevice->info.ver >= 12;
+         props->primitiveFragmentShadingRateWithMultipleViewports = false;
          props->layeredShadingRateAttachments = false;
-         props->fragmentShadingRateNonTrivialCombinerOps = true;
+         props->fragmentShadingRateNonTrivialCombinerOps = false;
          props->maxFragmentSize = (VkExtent2D) { 4, 4 };
          props->maxFragmentSizeAspectRatio = 4;
-         props->maxFragmentShadingRateCoverageSamples = 4 * 4;
+         props->maxFragmentShadingRateCoverageSamples = 4 * 4 * 16;
          props->maxFragmentShadingRateRasterizationSamples = VK_SAMPLE_COUNT_16_BIT;
          props->fragmentShadingRateWithShaderDepthStencilWrites = false;
          props->fragmentShadingRateWithSampleMask = true;
@@ -4930,7 +4932,11 @@ VkResult anv_GetPhysicalDeviceFragmentShadingRatesKHR(
 
    for (uint32_t x = 4; x >= 1; x /= 2) {
        for (uint32_t y = 4; y >= 1; y /= 2) {
-         append_rate(sample_counts, x, y);
+          /* For size {1, 1}, the sample count must be ~0 */
+          if (x == 1 && y == 1)
+             append_rate(~0, x, y);
+          else
+             append_rate(sample_counts, x, y);
       }
    }
 
