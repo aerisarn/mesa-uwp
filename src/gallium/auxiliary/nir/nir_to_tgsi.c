@@ -1895,7 +1895,11 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
 
    switch (instr->op) {
    case nir_texop_tex:
-      tex_opcode = TGSI_OPCODE_TEX;
+      if (nir_tex_instr_src_size(instr, nir_tex_instr_src_index(instr, nir_tex_src_backend1)) >
+         instr->coord_components + instr->is_shadow)
+         tex_opcode = TGSI_OPCODE_TXP;
+      else
+         tex_opcode = TGSI_OPCODE_TEX;
       break;
    case nir_texop_txf:
    case nir_texop_txf_ms:
@@ -2705,6 +2709,7 @@ nir_to_tgsi_lower_tex_instr(nir_builder *b, nir_instr *instr, void *data)
 
    /* XXX: LZ */
    nir_to_tgsi_lower_tex_instr_arg(b, tex, nir_tex_src_lod, &s);
+   nir_to_tgsi_lower_tex_instr_arg(b, tex, nir_tex_src_projector, &s);
 
    /* No need to pack undefs in unused channels of the tex instr */
    while (!s.channels[s.i - 1])
@@ -2775,6 +2780,45 @@ ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s)
    }
 }
 
+/* Lowers texture projectors if we can't do them as TGSI_OPCODE_TXP. */
+static void
+nir_to_tgsi_lower_txp(nir_shader *s)
+{
+   nir_lower_tex_options lower_tex_options = {
+       .lower_txp = 0,
+   };
+
+   nir_foreach_block(block, nir_shader_get_entrypoint(s)) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_tex)
+            continue;
+         nir_tex_instr *tex = nir_instr_as_tex(instr);
+
+         if (nir_tex_instr_src_index(tex, nir_tex_src_projector) < 0)
+            continue;
+
+         bool has_compare = nir_tex_instr_src_index(tex, nir_tex_src_comparator) >= 0;
+         bool has_lod = nir_tex_instr_src_index(tex, nir_tex_src_lod) >= 0 || s->info.stage != MESA_SHADER_FRAGMENT;
+         bool has_offset = nir_tex_instr_src_index(tex, nir_tex_src_offset) >= 0;
+
+         /* We can do TXP for any tex (not txg) where we can fit all the
+          * coordinates and comparator and projector in one vec4 without any
+          * other modifiers to add on.
+          *
+          * nir_lower_tex() only handles the lowering on a sampler-dim basis, so
+          * if we get any funny projectors then we just blow them all away.
+          */
+         if (tex->op != nir_texop_tex || has_lod || has_offset || (tex->coord_components >= 3 && has_compare))
+            lower_tex_options.lower_txp |= 1 << tex->sampler_dim;
+      }
+   }
+
+   /* nir_lower_tex must be run even if no options are set, because we need the
+    * LOD to be set for query_levels and for non-fragment shaders.
+    */
+   NIR_PASS_V(s, nir_lower_tex, &lower_tex_options);
+}
+
 /**
  * Translates the NIR shader to TGSI.
  *
@@ -2801,12 +2845,7 @@ nir_to_tgsi(struct nir_shader *s,
               type_size, (nir_lower_io_options)0);
    NIR_PASS_V(s, nir_lower_regs_to_ssa);
 
-   const nir_lower_tex_options lower_tex_options = {
-      /* XXX: We could skip lowering of TXP for TEX with <=3 coord_compoennts.
-       */
-      .lower_txp = ~0,
-   };
-   NIR_PASS_V(s, nir_lower_tex, &lower_tex_options);
+   nir_to_tgsi_lower_txp(s);
    NIR_PASS_V(s, nir_to_tgsi_lower_tex);
 
    if (!original_options->lower_uniforms_to_ubo) {

@@ -279,7 +279,8 @@ spec@arb_texture_rectangle@glsl-fs-shadow2drectproj,Fail
 spec@arb_texture_rectangle@tex-miplevel-selection gl2:texture() 2drectshadow,Fail
 spec@arb_texture_rectangle@tex-miplevel-selection gl2:textureproj 2drectshadow,Fail
 
-# Too many texture phases, would be avoided if nir_to_tgsi did TXP or if we scheduled.
+# Too many texture phases and regs, because nir_to_tgsi emits MOV TEMP[n],
+# IN[x].xyxw setting up the TXP coords.
 spec@arb_texture_rectangle@texrect-many,Fail
 
 spec@arb_texture_rectangle@texwrap rect bordercolor,Fail
