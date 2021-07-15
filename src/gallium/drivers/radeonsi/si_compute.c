@@ -857,6 +857,8 @@ static bool si_check_needs_implicit_sync(struct si_context *sctx)
     *
     *    buffer object and texture stores performed by shaders are not
     *    automatically synchronized
+    *
+    * TODO: Bindless textures are not handled, and thus are not synchronized.
     */
    struct si_shader_info *info = &sctx->cs_shader_state.program->sel.info;
    struct si_samplers *samplers = &sctx->samplers[PIPE_SHADER_COMPUTE];
