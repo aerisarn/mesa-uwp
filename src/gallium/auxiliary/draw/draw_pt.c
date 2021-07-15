@@ -455,6 +455,7 @@ resolve_draw_info(const struct pipe_draw_info *raw_info,
  */
 static void
 draw_instances(struct draw_context *draw,
+               unsigned drawid_offset,
                const struct pipe_draw_info *info,
                const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws)
@@ -473,6 +474,7 @@ draw_instances(struct draw_context *draw,
          draw->instance_id = 0xffffffff;
       }
 
+      draw->pt.user.drawid = drawid_offset;
       draw_new_instance(draw);
 
       if (info->primitive_restart) {
@@ -601,10 +603,10 @@ draw_vbo(struct draw_context *draw,
    if (use_info->view_mask) {
       u_foreach_bit(i, use_info->view_mask) {
          draw->pt.user.viewid = i;
-         draw_instances(draw, use_info, use_draws, num_draws);
+         draw_instances(draw, drawid_offset, use_info, use_draws, num_draws);
       }
    } else
-      draw_instances(draw, use_info, use_draws, num_draws);
+      draw_instances(draw, drawid_offset, use_info, use_draws, num_draws);
 
    /* If requested emit the pipeline statistics for this run */
    if (draw->collect_statistics) {
