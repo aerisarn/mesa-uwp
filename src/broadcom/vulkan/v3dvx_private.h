@@ -170,13 +170,7 @@ void
 v3dX(pack_texture_shader_state_from_buffer_view)(struct v3dv_device *device,
                                                  struct v3dv_buffer_view *buffer_view);
 
-/* Used at v3dv_meta_clear */
-void
-v3dX(cmd_buffer_emit_tlb_clear)(struct v3dv_cmd_buffer *cmd_buffer,
-                                uint32_t attachment_count,
-                                const VkClearAttachment *attachments,
-                                uint32_t base_layer,
-                                uint32_t layer_count);
+/* Used at v3dv_meta_copy */
 
 uint32_t
 v3dX(zs_buffer_from_aspect_bits)(VkImageAspectFlags aspects);
@@ -184,8 +178,6 @@ v3dX(zs_buffer_from_aspect_bits)(VkImageAspectFlags aspects);
 uint8_t
 v3dX(get_internal_depth_type)(VkFormat format);
 
-
-/* Used at v3dv_meta_copy */
 struct framebuffer_data;
 
 void
