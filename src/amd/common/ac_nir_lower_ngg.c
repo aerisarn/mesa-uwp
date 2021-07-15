@@ -610,7 +610,8 @@ compact_vertices_after_culling(nir_builder *b,
    nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
                          .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
-   nir_if *if_packed_es_thread = nir_push_if(b, nir_ilt(b, invocation_index, num_live_vertices_in_workgroup));
+   nir_ssa_def *es_survived = nir_ilt(b, invocation_index, num_live_vertices_in_workgroup);
+   nir_if *if_packed_es_thread = nir_push_if(b, es_survived);
    {
       /* Read position from the current ES thread's LDS space (written by the exported vertex's ES thread) */
       nir_ssa_def *exported_pos = nir_build_load_shared(b, 4, 32, es_vertex_lds_addr, .base = lds_es_pos_x, .align_mul = 4u);
@@ -639,6 +640,8 @@ compact_vertices_after_culling(nir_builder *b,
       nir_store_var(b, prim_exp_arg_var, prim_exp_arg, 0x1u);
    }
    nir_pop_if(b, if_gs_accepted);
+
+   nir_store_var(b, es_accepted_var, es_survived, 0x1u);
 }
 
 static void
@@ -922,7 +925,8 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
 
    b->cursor = nir_before_cf_list(&impl->body);
 
-   nir_if *if_es_thread = nir_push_if(b, nir_build_has_input_vertex_amd(b));
+   nir_ssa_def *es_thread = nir_build_has_input_vertex_amd(b);
+   nir_if *if_es_thread = nir_push_if(b, es_thread);
    {
       /* Initialize the position output variable to zeroes, in case not all VS/TES invocations store the output.
        * The spec doesn't require it, but we use (0, 0, 0, 1) because some games rely on that.
@@ -952,6 +956,8 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       }
    }
    nir_pop_if(b, if_es_thread);
+
+   nir_store_var(b, es_accepted_var, es_thread, 0x1u);
 
    /* Remove all non-position outputs, and put the position output into the variable. */
    nir_metadata_preserve(impl, nir_metadata_none);
@@ -1210,8 +1216,9 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    }
 
    nir_intrinsic_instr *export_vertex_instr;
+   nir_ssa_def *es_thread = can_cull ? nir_load_var(b, es_accepted_var) : nir_build_has_input_vertex_amd(b);
 
-   nir_if *if_es_thread = nir_push_if(b, nir_build_has_input_vertex_amd(b));
+   nir_if *if_es_thread = nir_push_if(b, es_thread);
    {
       /* Run the actual shader */
       nir_cf_reinsert(&extracted, b->cursor);
@@ -1230,7 +1237,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    if (!state.early_prim_export) {
       emit_ngg_nogs_prim_export(b, &state, nir_load_var(b, prim_exp_arg_var));
       if (state.export_prim_id && shader->info.stage == MESA_SHADER_VERTEX) {
-         if_es_thread = nir_push_if(b, nir_build_has_input_vertex_amd(b));
+         if_es_thread = nir_push_if(b, can_cull ? es_thread : nir_build_has_input_vertex_amd(b));
          emit_store_ngg_nogs_es_primitive_id(b);
          nir_pop_if(b, if_es_thread);
       }
