@@ -4935,6 +4935,16 @@ typedef struct nir_lower_tex_options {
 bool nir_lower_tex(nir_shader *shader,
                    const nir_lower_tex_options *options);
 
+typedef struct nir_lower_image_options {
+   /**
+    * If true, lower cube size operations.
+    */
+   bool lower_cube_size;
+} nir_lower_image_options;
+
+bool nir_lower_image(nir_shader *nir,
+                     const nir_lower_image_options *options);
+
 bool nir_lower_readonly_images_to_tex(nir_shader *shader, bool per_variable);
 
 enum nir_lower_non_uniform_access_type {
