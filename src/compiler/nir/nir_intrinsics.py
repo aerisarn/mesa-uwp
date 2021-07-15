@@ -1196,8 +1196,8 @@ intrinsic("load_cull_small_primitives_enabled_amd", dest_comp=1, bit_sizes=[1], 
 intrinsic("load_cull_any_enabled_amd", dest_comp=1, bit_sizes=[1], flags=[CAN_ELIMINATE])
 # Small primitive culling precision
 intrinsic("load_cull_small_prim_precision_amd", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE, CAN_REORDER])
-# Initial edge flag in a Vertex Shader. src = {vertex index}.
-intrinsic("load_initial_edgeflag_amd", src_comp=[1], dest_comp=1, indices=[])
+# Initial edge flags in a Vertex Shader, packed into the format the HW needs for primitive export.
+intrinsic("load_initial_edgeflags_amd", src_comp=[], dest_comp=1, bit_sizes=[32], indices=[])
 # Exports the current invocation's vertex. This is a placeholder where all vertex attribute export instructions should be emitted.
 intrinsic("export_vertex_amd", src_comp=[], indices=[])
 # Exports the current invocation's primitive. src[] = {packed_primitive_data}.

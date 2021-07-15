@@ -267,18 +267,13 @@ static nir_ssa_def *
 emit_pack_ngg_prim_exp_arg(nir_builder *b, unsigned num_vertices_per_primitives,
                            nir_ssa_def *vertex_indices[3], nir_ssa_def *is_null_prim)
 {
-   nir_ssa_def *arg = vertex_indices[0];
+   nir_ssa_def *arg = b->shader->info.stage == MESA_SHADER_VERTEX
+                      ? nir_build_load_initial_edgeflags_amd(b)
+                      : nir_imm_int(b, 0);
 
    for (unsigned i = 0; i < num_vertices_per_primitives; ++i) {
       assert(vertex_indices[i]);
-
-      if (i)
-         arg = nir_ior(b, arg, nir_ishl(b, vertex_indices[i], nir_imm_int(b, 10u * i)));
-
-      if (b->shader->info.stage == MESA_SHADER_VERTEX) {
-         nir_ssa_def *edgeflag = nir_build_load_initial_edgeflag_amd(b, 32, nir_imm_int(b, i));
-         arg = nir_ior(b, arg, nir_ishl(b, edgeflag, nir_imm_int(b, 10u * i + 9u)));
-      }
+      arg = nir_ior(b, arg, nir_ishl(b, vertex_indices[i], nir_imm_int(b, 10u * i)));
    }
 
    if (is_null_prim) {

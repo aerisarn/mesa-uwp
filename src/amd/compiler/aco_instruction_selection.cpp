@@ -8938,14 +8938,16 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
                Operand::c32(pos | (9u << 16u)));
       break;
    }
-   case nir_intrinsic_load_initial_edgeflag_amd: {
+   case nir_intrinsic_load_initial_edgeflags_amd: {
       assert(ctx->stage.hw == HWStage::NGG);
-      assert(nir_src_is_const(instr->src[0]));
-      unsigned i = nir_src_as_uint(instr->src[0]);
 
       Temp gs_invocation_id = get_arg(ctx, ctx->args->ac.gs_invocation_id);
-      bld.vop3(aco_opcode::v_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               gs_invocation_id, Operand::c32(8u + i), Operand::c32(1u));
+      /* Get initial edgeflags for each vertex at bits 8, 9, 10 of gs_invocation_id. */
+      Temp flags = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(0x700u), gs_invocation_id);
+      /* Move the bits to their desired position: 8->9, 9->19, 10->29. */
+      flags = bld.vop2(aco_opcode::v_mul_u32_u24, bld.def(v1), Operand::c32(0x80402u), flags);
+      /* Remove garbage bits that are a byproduct of the multiplication. */
+      bld.vop2(aco_opcode::v_and_b32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), Operand::c32(0x20080200), flags);
       break;
    }
    case nir_intrinsic_load_packed_passthrough_primitive_amd: {
