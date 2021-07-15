@@ -856,12 +856,12 @@ struct wsi_wl_image {
    struct wsi_image                             base;
    struct wl_buffer *                           buffer;
    bool                                         busy;
-   void *data_ptr;
-   uint32_t data_size;
+   void *                                       data_ptr;
+   uint32_t                                     data_size;
 };
 
 struct wsi_wl_swapchain {
-   struct wsi_swapchain                        base;
+   struct wsi_swapchain                         base;
 
    struct wsi_wl_display                        *display;
 
