@@ -136,7 +136,6 @@ optimizations = [
    (('iabs', ('iabs', a)), ('iabs', a)),
    (('iabs', ('ineg', a)), ('iabs', a)),
    (('f2b', ('fneg', a)), ('f2b', a)),
-   (('i2b', ('ineg', a)), ('i2b', a)),
    (('~fadd', a, 0.0), a),
    # a+0.0 is 'a' unless 'a' is denormal or -0.0. If it's only used by a
    # floating point instruction, they should flush any input denormals and we
