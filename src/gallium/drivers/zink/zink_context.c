@@ -1599,7 +1599,7 @@ setup_framebuffer(struct zink_context *ctx)
    struct zink_render_pass *rp = ctx->gfx_pipeline_state.render_pass;
 
    if (ctx->gfx_pipeline_state.sample_locations_enabled && ctx->sample_locations_changed) {
-      unsigned samples = ctx->gfx_pipeline_state.rast_samples;
+      unsigned samples = ctx->gfx_pipeline_state.rast_samples + 1;
       unsigned idx = util_logbase2_ceil(MAX2(samples, 1));
       VkExtent2D grid_size = screen->maxSampleLocationGridSize[idx];
  
@@ -1718,11 +1718,11 @@ void
 zink_init_vk_sample_locations(struct zink_context *ctx, VkSampleLocationsInfoEXT *loc)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned idx = util_logbase2_ceil(MAX2(ctx->gfx_pipeline_state.rast_samples, 1));
+   unsigned idx = util_logbase2_ceil(MAX2(ctx->gfx_pipeline_state.rast_samples + 1, 1));
    loc->sType = VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT;
    loc->pNext = NULL;
    loc->sampleLocationsPerPixel = 1 << idx;
-   loc->sampleLocationsCount = ctx->gfx_pipeline_state.rast_samples;
+   loc->sampleLocationsCount = ctx->gfx_pipeline_state.rast_samples + 1;
    loc->sampleLocationGridSize = screen->maxSampleLocationGridSize[idx];
    loc->pSampleLocations = ctx->vk_sample_locations;
 }
@@ -2018,9 +2018,9 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    ctx->fb_changed |= ctx->framebuffer != fb;
    ctx->framebuffer = fb;
 
-   uint8_t rast_samples = util_framebuffer_get_num_samples(state);
+   uint8_t rast_samples = util_framebuffer_get_num_samples(state) - 1;
    /* in vulkan, gl_SampleMask needs to be explicitly ignored for sampleCount == 1 */
-   if ((ctx->gfx_pipeline_state.rast_samples > 1) != (rast_samples > 1))
+   if ((ctx->gfx_pipeline_state.rast_samples > 0) != (rast_samples > 0))
       ctx->dirty_shader_stages |= 1 << PIPE_SHADER_FRAGMENT;
    if (ctx->gfx_pipeline_state.rast_samples != rast_samples) {
       ctx->sample_locations_changed |= ctx->gfx_pipeline_state.sample_locations_enabled;

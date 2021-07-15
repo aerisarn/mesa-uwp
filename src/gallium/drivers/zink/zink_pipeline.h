@@ -46,7 +46,7 @@ struct zink_gfx_pipeline_state {
    struct zink_rasterizer_hw_state *rast_state;
 
    VkSampleMask sample_mask;
-   uint8_t rast_samples;
+   uint8_t rast_samples:7;
    uint8_t vertices_per_patch;
 
    /* Pre-hashed value for table lookup, invalid when zero.
