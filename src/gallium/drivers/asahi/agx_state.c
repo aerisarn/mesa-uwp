@@ -828,10 +828,11 @@ agx_create_shader_state(struct pipe_context *pctx,
                         const struct pipe_shader_state *cso)
 {
    struct agx_uncompiled_shader *so = CALLOC_STRUCT(agx_uncompiled_shader);
-   so->base = *cso;
 
    if (!so)
       return NULL;
+
+   so->base = *cso;
 
    if (cso->type == PIPE_SHADER_IR_NIR) {
       so->nir = cso->ir.nir;
