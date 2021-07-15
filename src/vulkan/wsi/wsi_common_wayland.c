@@ -1218,8 +1218,10 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    /* Mark a bunch of stuff as NULL.  This way we can just call
     * destroy_swapchain for cleanup.
     */
-   for (uint32_t i = 0; i < num_images; i++)
+   for (uint32_t i = 0; i < num_images; i++) {
       chain->images[i].buffer = NULL;
+      chain->images[i].data_ptr = NULL;
+   }
    chain->surface = NULL;
    chain->frame = NULL;
 
