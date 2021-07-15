@@ -4604,15 +4604,13 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
    unsigned target = params->target;
    unsigned dims = texture_dims(target);
    /** regular scalar int type */
-   struct lp_type int_type, int_coord_type;
-   struct lp_build_context int_bld, int_coord_bld;
+   struct lp_type int_coord_type;
+   struct lp_build_context int_coord_bld;
    const struct util_format_description *format_desc = util_format_description(static_texture_state->format);
    LLVMValueRef x = params->coords[0], y = params->coords[1], z = params->coords[2];
    LLVMValueRef ms_index = params->ms_index;
    LLVMValueRef row_stride_vec = NULL, img_stride_vec = NULL;
-   int_type = lp_type_int(32);
-   int_coord_type = lp_int_type(params->type);
-   lp_build_context_init(&int_bld, gallivm, int_type);
+   int_coord_type = lp_uint_type(params->type);
    lp_build_context_init(&int_coord_bld, gallivm, int_coord_type);
 
    if (static_texture_state->format == PIPE_FORMAT_NONE) {
