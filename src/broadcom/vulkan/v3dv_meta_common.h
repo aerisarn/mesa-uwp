@@ -20,8 +20,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-#ifndef V3DV_META_COPY_H
-#define V3DV_META_COPY_H
+#ifndef V3DV_META_COMMON_H
+#define V3DV_META_COMMON_H
 
 /* Disable level 0 write, just write following mipmaps */
 #define V3D_TFU_IOA_DIMTW (1 << 0)
@@ -48,15 +48,14 @@
 #define V3D_TFU_ICFG_FORMAT_UIF_XOR 15
 
 /**
- * Copy operations implemented in this file don't operate on a framebuffer
- * object provided by the user, however, since most use the TLB for this,
- * we still need to have some representation of the framebuffer. For the most
- * part, the job's frame tiling information is enough for this, however we
- * still need additional information such us the internal type of our single
- * render target, so we use this auxiliary struct to pass that information
- * around.
+ * Copy/Clear operations implemented in v3dv_meta_*.c that use the TLB hardware
+ * need to figure out TLB programming from the target image data instead of an
+ * actual Vulkan framebuffer object. For the most part, the job's frame tiling
+ * information is enough for this, however we still need additional information
+ * such us the internal type of our single render target, so we use this
+ * auxiliary struct to pass that information around.
  */
-struct framebuffer_data {
+struct v3dv_meta_framebuffer {
    /* The internal type of the single render target */
    uint32_t internal_type;
 
