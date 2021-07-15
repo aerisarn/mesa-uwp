@@ -34,7 +34,6 @@ struct rcl_clear_info {
    const union v3dv_clear_value *clear_value;
    struct v3dv_image *image;
    VkImageAspectFlags aspects;
-   uint32_t layer;
    uint32_t level;
 };
 
@@ -951,7 +950,6 @@ v3dX(meta_emit_clear_image_rcl)(struct v3dv_job *job,
       .clear_value = clear_value,
       .image = image,
       .aspects = aspects,
-      .layer = layer,
       .level = level,
    };
 
@@ -1020,7 +1018,6 @@ v3dX(meta_emit_fill_buffer_rcl)(struct v3dv_job *job,
       .clear_value = &clear_value,
       .image = NULL,
       .aspects = VK_IMAGE_ASPECT_COLOR_BIT,
-      .layer = 0,
       .level = 0,
    };
 
