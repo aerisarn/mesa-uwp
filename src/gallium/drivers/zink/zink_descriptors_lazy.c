@@ -34,6 +34,8 @@
 #include "zink_resource.h"
 #include "zink_screen.h"
 
+#define MAX_LAZY_DESCRIPTORS (ZINK_DEFAULT_MAX_DESCS / 10)
+
 struct zink_descriptor_data_lazy {
    struct zink_descriptor_data base;
    VkDescriptorUpdateTemplateEntry push_entries[PIPE_SHADER_TYPES]; //gfx+fbfetch
@@ -44,7 +46,7 @@ struct zink_descriptor_data_lazy {
 
 struct zink_descriptor_pool {
    VkDescriptorPool pool;
-   VkDescriptorSet sets[ZINK_DEFAULT_MAX_DESCS];
+   VkDescriptorSet sets[MAX_LAZY_DESCRIPTORS];
    unsigned set_idx;
    unsigned sets_alloc;
 };
@@ -227,7 +229,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
          pg->num_dsl++;
       }
       for (unsigned i = 0; i < ARRAY_SIZE(pg->dd->sizes); i++)
-         pg->dd->sizes[i].descriptorCount *= ZINK_DEFAULT_MAX_DESCS;
+         pg->dd->sizes[i].descriptorCount *= screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ? MAX_LAZY_DESCRIPTORS : ZINK_DEFAULT_MAX_DESCS;
    }
 
    pg->layout = zink_pipeline_layout_create(screen, pg);
@@ -303,7 +305,7 @@ create_pool(struct zink_screen *screen, unsigned num_type_sizes, VkDescriptorPoo
    dpci.pPoolSizes = sizes;
    dpci.poolSizeCount = num_type_sizes;
    dpci.flags = flags;
-   dpci.maxSets = ZINK_DEFAULT_MAX_DESCS;
+   dpci.maxSets = MAX_LAZY_DESCRIPTORS;
    if (vkCreateDescriptorPool(screen->dev, &dpci, 0, &pool) != VK_SUCCESS) {
       debug_printf("vkCreateDescriptorPool failed\n");
       return VK_NULL_HANDLE;
@@ -321,12 +323,11 @@ check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, st
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    /* allocate up to $current * 10, e.g., 10 -> 100 or 100 -> 1000 */
    if (pool->set_idx == pool->sets_alloc) {
-      unsigned sets_to_alloc = MIN2(MAX2(pool->sets_alloc * 10, 10), ZINK_DEFAULT_MAX_DESCS) - pool->sets_alloc;
+      unsigned sets_to_alloc = MIN2(MIN2(MAX2(pool->sets_alloc * 10, 10), MAX_LAZY_DESCRIPTORS) - pool->sets_alloc, 100);
       if (!sets_to_alloc) {
          /* overflowed pool: queue for deletion on next reset */
          util_dynarray_append(&bdd->overflowed_pools, struct zink_descriptor_pool*, pool);
          _mesa_hash_table_remove(&bdd->pools[type], he);
-         ctx->oom_flush = true;
          return get_descriptor_pool_lazy(ctx, pg, type, bdd, is_compute);
       }
       if (!zink_descriptor_util_alloc_sets(screen, pg->dsl[type + 1],
@@ -344,11 +345,11 @@ create_push_pool(struct zink_screen *screen, struct zink_batch_descriptor_data_l
    VkDescriptorPoolSize sizes[2];
    sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
    if (is_compute)
-      sizes[0].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
+      sizes[0].descriptorCount = MAX_LAZY_DESCRIPTORS;
    else {
-      sizes[0].descriptorCount = ZINK_SHADER_COUNT * ZINK_DEFAULT_MAX_DESCS;
+      sizes[0].descriptorCount = ZINK_SHADER_COUNT * MAX_LAZY_DESCRIPTORS;
       sizes[1].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-      sizes[1].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
+      sizes[1].descriptorCount = MAX_LAZY_DESCRIPTORS;
    }
    pool->pool = create_pool(screen, !is_compute && has_fbfetch ? 2 : 1, sizes, 0);
    return pool;
@@ -360,12 +361,11 @@ check_push_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *poo
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    /* allocate up to $current * 10, e.g., 10 -> 100 or 100 -> 1000 */
    if (pool->set_idx == pool->sets_alloc || unlikely(ctx->dd->has_fbfetch != bdd->has_fbfetch)) {
-      unsigned sets_to_alloc = MIN2(MAX2(pool->sets_alloc * 10, 10), ZINK_DEFAULT_MAX_DESCS) - pool->sets_alloc;
+      unsigned sets_to_alloc = MIN2(MIN2(MAX2(pool->sets_alloc * 10, 10), MAX_LAZY_DESCRIPTORS) - pool->sets_alloc, 100);
       if (!sets_to_alloc || unlikely(ctx->dd->has_fbfetch != bdd->has_fbfetch)) {
          /* overflowed pool: queue for deletion on next reset */
          util_dynarray_append(&bdd->overflowed_pools, struct zink_descriptor_pool*, pool);
          bdd->push_pool[is_compute] = create_push_pool(screen, bdd, is_compute, ctx->dd->has_fbfetch);
-         ctx->oom_flush = true;
          return check_push_pool_alloc(ctx, bdd->push_pool[is_compute], bdd, is_compute);
       }
       if (!zink_descriptor_util_alloc_sets(screen, ctx->dd->push_dsl[is_compute]->layout,
