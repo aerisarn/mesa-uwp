@@ -68,7 +68,7 @@ struct spill_ctx {
    std::vector<std::vector<RegisterDemand>> register_demand;
    std::vector<std::map<Temp, Temp>> renames;
    std::vector<std::map<Temp, uint32_t>> spills_entry;
-   std::vector<std::map<Temp, uint32_t>> spills_exit;
+   std::vector<std::unordered_map<Temp, uint32_t>> spills_exit;
 
    std::vector<bool> processed;
    std::stack<Block*, std::vector<Block*>> loop_header;
@@ -884,7 +884,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
                ctx.unused_remats.erase(ctx.remat[var].instr);
 
             /* check if variable is already spilled at predecessor */
-            std::map<Temp, uint32_t>::iterator spilled = ctx.spills_exit[pred_idx].find(var);
+            auto spilled = ctx.spills_exit[pred_idx].find(var);
             if (spilled != ctx.spills_exit[pred_idx].end()) {
                if (spilled->second != def_spill_id)
                   ctx.add_affinity(def_spill_id, spilled->second);
@@ -934,7 +934,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
 
       for (unsigned pred_idx : preds) {
          /* variable is already spilled at predecessor */
-         std::map<Temp, uint32_t>::iterator spilled = ctx.spills_exit[pred_idx].find(pair.first);
+         auto spilled = ctx.spills_exit[pred_idx].find(pair.first);
          if (spilled != ctx.spills_exit[pred_idx].end()) {
             if (spilled->second != pair.second)
                ctx.add_affinity(pair.second, spilled->second);
@@ -1306,7 +1306,7 @@ spill_block(spill_ctx& ctx, unsigned block_idx)
    }
 
    assert(ctx.spills_exit[block_idx].empty());
-   ctx.spills_exit[block_idx] = current_spills;
+   ctx.spills_exit[block_idx] = std::unordered_map<Temp, uint32_t>(current_spills.begin(), current_spills.end());
    if (process) {
       process_block(ctx, block_idx, block, spilled_registers);
    }
