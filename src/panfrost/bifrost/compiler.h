@@ -734,6 +734,14 @@ bi_node_to_index(unsigned node, unsigned node_count)
                         v != NULL; \
                         v = (v == (tuple)->add) ? NULL : (tuple)->add)
 
+#define bi_foreach_successor(blk, v) \
+        bi_block *v; \
+        bi_block **_v; \
+        for (_v = &blk->successors[0], \
+                v = *_v; \
+                v != NULL && _v < &blk->successors[2]; \
+                _v++, v = *_v) \
+
 /* Based on set_foreach, expanded with automatic type casts */
 
 #define bi_foreach_predecessor(blk, v) \
