@@ -271,6 +271,11 @@ typedef struct shader_info {
     */
    bool workgroup_size_variable:1;
 
+   /**
+     * Is this an ARB assembly-style program.
+     */
+   bool is_arb_asm;
+
    union {
       struct {
          /* Which inputs are doubles */

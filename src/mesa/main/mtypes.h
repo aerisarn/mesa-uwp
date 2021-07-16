@@ -2138,8 +2138,6 @@ struct gl_program
    void *driver_cache_blob;
    size_t driver_cache_blob_size;
 
-   bool is_arb_asm; /** Is this an ARB assembly-style program */
-
    /** Is this program written to on disk shader cache */
    bool program_written_to_cache;
 
