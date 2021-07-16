@@ -264,9 +264,8 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l, bool full_regs)
         bi_compute_liveness(ctx);
         bi_postra_liveness(ctx);
 
-        bi_foreach_block_rev(ctx, _blk) {
-                bi_block *blk = (bi_block *) _blk;
-                uint16_t *live = mem_dup(_blk->live_out, node_count * sizeof(uint16_t));
+        bi_foreach_block_rev(ctx, blk) {
+                uint16_t *live = mem_dup(blk->live_out, node_count * sizeof(uint16_t));
 
                 bi_mark_interference(blk, l, live, blk->reg_live_out,
                                 node_count, ctx->inputs->is_blend, !full_regs);

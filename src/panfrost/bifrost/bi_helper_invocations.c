@@ -120,8 +120,8 @@ static bool
 bi_block_terminates_helpers(bi_block *block)
 {
         /* Can't terminate if a successor needs helpers */
-        bi_foreach_successor((block), succ) {
-                if (((bi_block *) succ)->pass_flags & 1)
+        bi_foreach_successor(block, succ) {
+                if (succ->pass_flags & 1)
                         return false;
         }
 
@@ -148,12 +148,11 @@ bi_analyze_helper_terminate(bi_context *ctx)
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
-        bi_foreach_block(ctx, _block) {
-                bi_block *block = (bi_block *) _block;
+        bi_foreach_block(ctx, block) {
                 block->pass_flags = bi_block_uses_helpers(block) ? 1 : 0;
 
                 if (block->pass_flags & 1)
-                        _mesa_set_add(worklist, _block);
+                        _mesa_set_add(worklist, block);
         }
 
         /* Next, propagate back. Since there are a finite number of blocks, the
@@ -172,7 +171,7 @@ bi_analyze_helper_terminate(bi_context *ctx)
                 /* Its predecessors also require helpers */
                 bi_foreach_predecessor(blk, pred) {
                         if (!_mesa_set_search(visited, pred)) {
-                                ((bi_block *) pred)->pass_flags |= 1;
+                                pred->pass_flags |= 1;
                                 _mesa_set_add(worklist, pred);
                         }
                 }
@@ -184,9 +183,7 @@ bi_analyze_helper_terminate(bi_context *ctx)
         _mesa_set_destroy(worklist, NULL);
 
         /* Finally, mark clauses requiring helpers */
-        bi_foreach_block(ctx, _block) {
-                bi_block *block = (bi_block *) _block;
-
+        bi_foreach_block(ctx, block) {
                 /* At the end, there are helpers iff we don't terminate */
                 bool helpers = !bi_block_terminates_helpers(block);
 
@@ -261,7 +258,7 @@ bi_analyze_helper_requirements(bi_context *ctx)
                 bi_block *blk = (struct bi_block *) cur->key;
                 _mesa_set_remove(work_list, cur);
 
-                bool progress = bi_helper_block_update(deps, (bi_block *) blk);
+                bool progress = bi_helper_block_update(deps, blk);
 
                 if (progress || !_mesa_set_search(visited, blk)) {
                         bi_foreach_predecessor(blk, pred)

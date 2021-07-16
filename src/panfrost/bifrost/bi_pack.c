@@ -714,9 +714,7 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
 {
         unsigned previous_size = emission->size;
 
-        bi_foreach_block(ctx, _block) {
-                bi_block *block = (bi_block *) _block;
-
+        bi_foreach_block(ctx, block) {
                 bi_assign_branch_offset(ctx, block);
 
                 bi_foreach_clause_in_block(block, clause) {
@@ -732,7 +730,7 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
                                 next = bi_next_clause(ctx, block->successors[0], NULL);
                                 next_2 = bi_next_clause(ctx, block->successors[1], NULL);
                         } else {
-                                next = bi_next_clause(ctx, _block, clause);
+                                next = bi_next_clause(ctx, block, clause);
                         }
 
 

@@ -163,5 +163,5 @@ void
 bi_print_shader(bi_context *ctx, FILE *fp)
 {
         bi_foreach_block(ctx, block)
-                bi_print_block((bi_block *) block, fp);
+                bi_print_block(block, fp);
 }

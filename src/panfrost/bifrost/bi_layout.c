@@ -124,9 +124,7 @@ bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target)
 
                 /* We then need to jump through every clause of every following
                  * block until the target */
-                bi_foreach_block_from(ctx, start->block, _blk) {
-                        bi_block *blk = (bi_block *) _blk;
-
+                bi_foreach_block_from(ctx, start->block, blk) {
                         /* Don't double-count the first block */
                         if (blk == start->block)
                                 continue;
@@ -153,9 +151,7 @@ bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target)
                 /* And jump back every clause of preceding blocks up through
                  * and including the target to get to the beginning of the
                  * target */
-                bi_foreach_block_from_rev(ctx, start->block, _blk) {
-                        bi_block *blk = (bi_block *) _blk;
-
+                bi_foreach_block_from_rev(ctx, start->block, blk) {
                         if (blk == start->block)
                                 continue;
 

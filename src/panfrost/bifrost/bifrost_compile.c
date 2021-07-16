@@ -74,13 +74,13 @@ bi_block_add_successor(bi_block *block, bi_block *successor)
 
         for (unsigned i = 0; i < ARRAY_SIZE(block->successors); ++i) {
                 if (block->successors[i]) {
-                       if (block->successors[i] == (bi_block *) successor)
+                       if (block->successors[i] == successor)
                                return;
                        else
                                continue;
                 }
 
-                block->successors[i] = (void *) successor;
+                block->successors[i] = successor;
                 _mesa_set_add(successor->predecessors, block);
                 return;
         }
@@ -3042,9 +3042,7 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
          * cycle counts are surely more complicated.
          */
 
-        bi_foreach_block(ctx, _block) {
-                bi_block *block = (bi_block *) _block;
-
+        bi_foreach_block(ctx, block) {
                 bi_foreach_clause_in_block(block, clause) {
                         stats.nr_clauses++;
                         stats.nr_tuples += clause->tuple_count;
@@ -3567,9 +3565,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
 
         unsigned block_source_count = 0;
 
-        bi_foreach_block(ctx, _block) {
-                bi_block *block = (bi_block *) _block;
-
+        bi_foreach_block(ctx, block) {
                 /* Name blocks now that we're done emitting so the order is
                  * consistent */
                 block->name = block_source_count++;
@@ -3584,7 +3580,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
 
         if (need_dummy_atest) {
                 bi_block *end = list_last_entry(&ctx->blocks, bi_block, link);
-                bi_builder b = bi_init_builder(ctx, bi_after_block((bi_block *) end));
+                bi_builder b = bi_init_builder(ctx, bi_after_block(end));
                 bi_emit_atest(&b, bi_zero());
         }
 
@@ -3602,8 +3598,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
         bi_opt_cse(ctx);
         bi_opt_dead_code_eliminate(ctx);
 
-        bi_foreach_block(ctx, _block) {
-                bi_block *block = (bi_block *) _block;
+        bi_foreach_block(ctx, block) {
                 bi_lower_branch(block);
         }
 

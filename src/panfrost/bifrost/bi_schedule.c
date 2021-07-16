@@ -1928,8 +1928,7 @@ bi_schedule(bi_context *ctx)
         bi_postra_liveness(ctx);
 
         bi_foreach_block(ctx, block) {
-                bi_block *bblock = (bi_block *) block;
-                bi_schedule_block(ctx, bblock);
+                bi_schedule_block(ctx, block);
         }
 
         bi_opt_dce_post_ra(ctx);
