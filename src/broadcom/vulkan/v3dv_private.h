@@ -1029,6 +1029,7 @@ void v3dv_job_start_frame(struct v3dv_job *job,
                           uint32_t width,
                           uint32_t height,
                           uint32_t layers,
+                          bool allocate_tile_state_for_all_layers,
                           uint32_t render_target_count,
                           uint8_t max_internal_bpp,
                           bool msaa);

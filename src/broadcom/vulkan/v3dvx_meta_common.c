@@ -1264,7 +1264,7 @@ v3dX(meta_copy_buffer)(struct v3dv_cmd_buffer *cmd_buffer,
       uint32_t width, height;
       framebuffer_size_for_pixel_count(num_items, &width, &height);
 
-      v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp, false);
+      v3dv_job_start_frame(job, width, height, 1, true, 1, internal_bpp, false);
 
       struct v3dv_meta_framebuffer framebuffer;
       v3dX(meta_framebuffer_init)(&framebuffer, vk_format, internal_type,
@@ -1310,7 +1310,7 @@ v3dX(meta_fill_buffer)(struct v3dv_cmd_buffer *cmd_buffer,
       uint32_t width, height;
       framebuffer_size_for_pixel_count(num_items, &width, &height);
 
-      v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp, false);
+      v3dv_job_start_frame(job, width, height, 1, true, 1, internal_bpp, false);
 
       struct v3dv_meta_framebuffer framebuffer;
       v3dX(meta_framebuffer_init)(&framebuffer, VK_FORMAT_R8G8B8A8_UINT,

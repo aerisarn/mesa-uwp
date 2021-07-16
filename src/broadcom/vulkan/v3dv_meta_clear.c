@@ -124,7 +124,7 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       if (!job)
          return true;
 
-      v3dv_job_start_frame(job, width, height, max_layer,
+      v3dv_job_start_frame(job, width, height, max_layer, true,
                            1, internal_bpp,
                            image->samples > VK_SAMPLE_COUNT_1_BIT);
 

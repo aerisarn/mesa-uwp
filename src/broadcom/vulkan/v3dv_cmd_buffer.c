@@ -513,6 +513,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
                      uint32_t width,
                      uint32_t height,
                      uint32_t layers,
+                     bool allocate_tile_state_for_all_layers,
                      uint32_t render_target_count,
                      uint8_t max_internal_bpp,
                      bool msaa)
@@ -527,6 +528,16 @@ v3dv_job_start_frame(struct v3dv_job *job,
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
    v3dv_return_if_oom(NULL, job);
+
+   /* We only need to allocate tile state for all layers if the binner
+    * writes primitives to layers other than the first. This can only be
+    * done using layered rendering (writing gl_Layer from a geometry shader),
+    * so for other cases of multilayered framebuffers (typically with
+    * meta copy/clear operations) that won't use layered rendering, we only
+    * need one layer worth of of tile state for the binner.
+    */
+   if (!allocate_tile_state_for_all_layers)
+      layers = 1;
 
    /* The PTB will request the tile alloc initial size per tile at start
     * of tile binning.
@@ -1490,6 +1501,7 @@ cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
                            framebuffer->width,
                            framebuffer->height,
                            framebuffer->layers,
+                           true,
                            subpass->color_count,
                            internal_bpp,
                            msaa);
@@ -2405,6 +2417,7 @@ cmd_buffer_restart_job_for_msaa_if_needed(struct v3dv_cmd_buffer *cmd_buffer)
                         old_job->frame_tiling.width,
                         old_job->frame_tiling.height,
                         old_job->frame_tiling.layers,
+                        true,
                         old_job->frame_tiling.render_target_count,
                         old_job->frame_tiling.internal_bpp,
                         true /* msaa */);
