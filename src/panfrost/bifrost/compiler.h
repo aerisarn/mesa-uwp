@@ -523,7 +523,25 @@ typedef struct {
 } bi_clause;
 
 typedef struct bi_block {
-        pan_block base; /* must be first */
+        /* Link to next block. Must be first for mir_get_block */
+        struct list_head link;
+
+        /* List of instructions emitted for the current block */
+        struct list_head instructions;
+
+        /* Index of the block in source order */
+        unsigned name;
+
+        /* Control flow graph */
+        struct bi_block *successors[2];
+        struct set *predecessors;
+        bool unconditional_jumps;
+
+        /* In liveness analysis, these are live masks (per-component) for
+         * indices for the block. Scalar compilers have the luxury of using
+         * simple bit fields, but for us, liveness is a vector idea. */
+        uint16_t *live_in;
+        uint16_t *live_out;
 
         /* If true, uses clauses; if false, uses instructions */
         bool scheduled;
@@ -669,34 +687,34 @@ bi_node_to_index(unsigned node, unsigned node_count)
 /* Iterators for Bifrost IR */
 
 #define bi_foreach_block(ctx, v) \
-        list_for_each_entry(pan_block, v, &ctx->blocks, link)
+        list_for_each_entry(bi_block, v, &ctx->blocks, link)
 
 #define bi_foreach_block_rev(ctx, v) \
-        list_for_each_entry_rev(pan_block, v, &ctx->blocks, link)
+        list_for_each_entry_rev(bi_block, v, &ctx->blocks, link)
 
 #define bi_foreach_block_from(ctx, from, v) \
-        list_for_each_entry_from(pan_block, v, from, &ctx->blocks, link)
+        list_for_each_entry_from(bi_block, v, from, &ctx->blocks, link)
 
 #define bi_foreach_block_from_rev(ctx, from, v) \
-        list_for_each_entry_from_rev(pan_block, v, from, &ctx->blocks, link)
+        list_for_each_entry_from_rev(bi_block, v, from, &ctx->blocks, link)
 
 #define bi_foreach_instr_in_block(block, v) \
-        list_for_each_entry(bi_instr, v, &(block)->base.instructions, link)
+        list_for_each_entry(bi_instr, v, &(block)->instructions, link)
 
 #define bi_foreach_instr_in_block_rev(block, v) \
-        list_for_each_entry_rev(bi_instr, v, &(block)->base.instructions, link)
+        list_for_each_entry_rev(bi_instr, v, &(block)->instructions, link)
 
 #define bi_foreach_instr_in_block_safe(block, v) \
-        list_for_each_entry_safe(bi_instr, v, &(block)->base.instructions, link)
+        list_for_each_entry_safe(bi_instr, v, &(block)->instructions, link)
 
 #define bi_foreach_instr_in_block_safe_rev(block, v) \
-        list_for_each_entry_safe_rev(bi_instr, v, &(block)->base.instructions, link)
+        list_for_each_entry_safe_rev(bi_instr, v, &(block)->instructions, link)
 
 #define bi_foreach_instr_in_block_from(block, v, from) \
-        list_for_each_entry_from(bi_instr, v, from, &(block)->base.instructions, link)
+        list_for_each_entry_from(bi_instr, v, from, &(block)->instructions, link)
 
 #define bi_foreach_instr_in_block_from_rev(block, v, from) \
-        list_for_each_entry_from_rev(bi_instr, v, from, &(block)->base.instructions, link)
+        list_for_each_entry_from_rev(bi_instr, v, from, &(block)->instructions, link)
 
 #define bi_foreach_clause_in_block(block, v) \
         list_for_each_entry(bi_clause, v, &(block)->clauses, link)
@@ -715,19 +733,19 @@ bi_node_to_index(unsigned node, unsigned node_count)
 
 #define bi_foreach_instr_global(ctx, v) \
         bi_foreach_block(ctx, v_block) \
-                bi_foreach_instr_in_block((bi_block *) v_block, v)
+                bi_foreach_instr_in_block(v_block, v)
 
 #define bi_foreach_instr_global_rev(ctx, v) \
         bi_foreach_block_rev(ctx, v_block) \
-                bi_foreach_instr_in_block_rev((bi_block *) v_block, v)
+                bi_foreach_instr_in_block_rev(v_block, v)
 
 #define bi_foreach_instr_global_safe(ctx, v) \
         bi_foreach_block(ctx, v_block) \
-                bi_foreach_instr_in_block_safe((bi_block *) v_block, v)
+                bi_foreach_instr_in_block_safe(v_block, v)
 
 #define bi_foreach_instr_global_rev_safe(ctx, v) \
         bi_foreach_block_rev(ctx, v_block) \
-                bi_foreach_instr_in_block_rev_safe((bi_block *) v_block, v)
+                bi_foreach_instr_in_block_rev_safe(v_block, v)
 
 #define bi_foreach_instr_in_tuple(tuple, v) \
         for (bi_instr *v = (tuple)->fma ?: (tuple)->add; \
@@ -747,10 +765,10 @@ bi_node_to_index(unsigned node, unsigned node_count)
 #define bi_foreach_predecessor(blk, v) \
         struct set_entry *_entry_##v; \
         bi_block *v; \
-        for (_entry_##v = _mesa_set_next_entry(blk->base.predecessors, NULL), \
+        for (_entry_##v = _mesa_set_next_entry(blk->predecessors, NULL), \
                 v = (bi_block *) (_entry_##v ? _entry_##v->key : NULL);  \
                 _entry_##v != NULL; \
-                _entry_##v = _mesa_set_next_entry(blk->base.predecessors, _entry_##v), \
+                _entry_##v = _mesa_set_next_entry(blk->predecessors, _entry_##v), \
                 v = (bi_block *) (_entry_##v ? _entry_##v->key : NULL))
 
 #define bi_foreach_src(ins, v) \
@@ -775,10 +793,10 @@ bi_next_op(bi_instr *ins)
         return list_first_entry(&(ins->link), bi_instr, link);
 }
 
-static inline pan_block *
-pan_next_block(pan_block *block)
+static inline bi_block *
+bi_next_block(bi_block *block)
 {
-        return list_first_entry(&(block->link), pan_block, link);
+        return list_first_entry(&(block->link), bi_block, link);
 }
 
 /* BIR manipulation */
@@ -788,7 +806,7 @@ unsigned bi_count_read_registers(bi_instr *ins, unsigned src);
 unsigned bi_count_write_registers(bi_instr *ins, unsigned dest);
 bool bi_is_regfmt_16(enum bi_register_format fmt);
 unsigned bi_writemask(bi_instr *ins, unsigned dest);
-bi_clause * bi_next_clause(bi_context *ctx, pan_block *block, bi_clause *clause);
+bi_clause * bi_next_clause(bi_context *ctx, bi_block *block, bi_clause *clause);
 bool bi_side_effects(enum bi_opcode op);
 
 void bi_print_instr(bi_instr *I, FILE *fp);
@@ -844,9 +862,9 @@ static inline bool
 bi_is_terminal_block(bi_block *block)
 {
         return (block == NULL) ||
-                (list_is_empty(&block->base.instructions) &&
-                 bi_is_terminal_block((bi_block *) block->base.successors[0]) &&
-                 bi_is_terminal_block((bi_block *) block->base.successors[1]));
+                (list_is_empty(&block->instructions) &&
+                 bi_is_terminal_block(block->successors[0]) &&
+                 bi_is_terminal_block(block->successors[1]));
 }
 
 /* Code emit */
@@ -960,13 +978,13 @@ bi_last_instr_in_clause(bi_clause *clause)
 
 #define bi_foreach_instr_in_clause(block, clause, pos) \
    for (bi_instr *pos = LIST_ENTRY(bi_instr, bi_first_instr_in_clause(clause), link); \
-	(&pos->link != &(block)->base.instructions) \
+	(&pos->link != &(block)->instructions) \
                 && (pos != bi_next_op(bi_last_instr_in_clause(clause))); \
 	pos = LIST_ENTRY(bi_instr, pos->link.next, link))
 
 #define bi_foreach_instr_in_clause_rev(block, clause, pos) \
    for (bi_instr *pos = LIST_ENTRY(bi_instr, bi_last_instr_in_clause(clause), link); \
-	(&pos->link != &(block)->base.instructions) \
+	(&pos->link != &(block)->instructions) \
 	        && pos != bi_prev_op(bi_first_instr_in_clause(clause)); \
 	pos = LIST_ENTRY(bi_instr, pos->link.prev, link))
 
@@ -1016,7 +1034,7 @@ bi_builder_insert(bi_cursor *cursor, bi_instr *I)
         return;
 
     case bi_cursor_after_block:
-        list_addtail(&I->link, &cursor->block->base.instructions);
+        list_addtail(&I->link, &cursor->block->instructions);
         cursor->option = bi_cursor_after_instr;
         cursor->instr = I;
         return;

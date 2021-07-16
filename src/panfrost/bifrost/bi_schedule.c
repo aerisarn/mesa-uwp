@@ -395,10 +395,10 @@ bi_lower_dtsel(bi_context *ctx,
 static bi_instr **
 bi_flatten_block(bi_block *block, unsigned *len)
 {
-        if (list_is_empty(&block->base.instructions))
+        if (list_is_empty(&block->instructions))
                 return NULL;
 
-        *len = list_length(&block->base.instructions);
+        *len = list_length(&block->instructions);
         bi_instr **instructions = malloc(sizeof(bi_instr *) * (*len));
 
         unsigned i = 0;
@@ -476,16 +476,16 @@ static bool
 bi_back_to_back(bi_block *block)
 {
         /* Last block of a program */
-        if (!block->base.successors[0]) {
-                assert(!block->base.successors[1]);
+        if (!block->successors[0]) {
+                assert(!block->successors[1]);
                 return false;
         }
 
         /* Multiple successors? We're branching */
-        if (block->base.successors[1])
+        if (block->successors[1])
                 return false;
 
-        struct pan_block *succ = block->base.successors[0];
+        struct bi_block *succ = block->successors[0];
         assert(succ->predecessors);
         unsigned count = succ->predecessors->entries;
 
@@ -1790,7 +1790,7 @@ bi_schedule_block(bi_context *ctx, bi_block *block)
         bi_foreach_clause_in_block(block, clause) {
                 for (unsigned i = 0; i < clause->tuple_count; ++i)  {
                         bi_foreach_instr_in_tuple(&clause->tuples[i], ins) {
-                                list_addtail(&ins->link, &block->base.instructions);
+                                list_addtail(&ins->link, &block->instructions);
                         }
                 }
         }
@@ -1895,7 +1895,7 @@ bi_add_nop_for_atest(bi_context *ctx)
                 return;
 
         /* Fetch the first clause of the shader */
-        pan_block *block = list_first_entry(&ctx->blocks, pan_block, link);
+        bi_block *block = list_first_entry(&ctx->blocks, bi_block, link);
         bi_clause *clause = bi_next_clause(ctx, block, NULL);
 
         if (!clause || clause->message_type != BIFROST_MESSAGE_ATEST)
@@ -1946,12 +1946,12 @@ bit_builder(void *memctx)
 
         bi_block *blk = rzalloc(ctx, bi_block);
 
-        blk->base.predecessors = _mesa_set_create(blk,
+        blk->predecessors = _mesa_set_create(blk,
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
-        list_addtail(&blk->base.link, &ctx->blocks);
-        list_inithead(&blk->base.instructions);
+        list_addtail(&blk->link, &ctx->blocks);
+        list_inithead(&blk->instructions);
 
         bi_builder *b = rzalloc(memctx, bi_builder);
         b->shader = ctx;

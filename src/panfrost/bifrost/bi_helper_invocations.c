@@ -120,7 +120,7 @@ static bool
 bi_block_terminates_helpers(bi_block *block)
 {
         /* Can't terminate if a successor needs helpers */
-        pan_foreach_successor((&block->base), succ) {
+        bi_foreach_successor((block), succ) {
                 if (((bi_block *) succ)->pass_flags & 1)
                         return false;
         }
@@ -166,11 +166,11 @@ bi_analyze_helper_terminate(bi_context *ctx)
 
         while((cur = _mesa_set_next_entry(worklist, NULL)) != NULL) {
                 /* Pop off a block requiring helpers */
-                pan_block *blk = (struct pan_block *) cur->key;
+                bi_block *blk = (struct bi_block *) cur->key;
                 _mesa_set_remove(worklist, cur);
 
                 /* Its predecessors also require helpers */
-                pan_foreach_predecessor(blk, pred) {
+                bi_foreach_predecessor(blk, pred) {
                         if (!_mesa_set_search(visited, pred)) {
                                 ((bi_block *) pred)->pass_flags |= 1;
                                 _mesa_set_add(worklist, pred);
@@ -258,13 +258,13 @@ bi_analyze_helper_requirements(bi_context *ctx)
         struct set_entry *cur = _mesa_set_add(work_list, pan_exit_block(&ctx->blocks));
 
         do {
-                pan_block *blk = (struct pan_block *) cur->key;
+                bi_block *blk = (struct bi_block *) cur->key;
                 _mesa_set_remove(work_list, cur);
 
                 bool progress = bi_helper_block_update(deps, (bi_block *) blk);
 
                 if (progress || !_mesa_set_search(visited, blk)) {
-                        pan_foreach_predecessor(blk, pred)
+                        bi_foreach_predecessor(blk, pred)
                                 _mesa_set_add(work_list, pred);
                 }
 

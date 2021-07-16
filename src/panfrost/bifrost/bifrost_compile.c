@@ -69,19 +69,19 @@ bi_block_add_successor(bi_block *block, bi_block *successor)
         assert(block != NULL && successor != NULL);
 
         /* Cull impossible edges */
-        if (block->base.unconditional_jumps)
+        if (block->unconditional_jumps)
                 return;
 
-        for (unsigned i = 0; i < ARRAY_SIZE(block->base.successors); ++i) {
-                if (block->base.successors[i]) {
-                       if (block->base.successors[i] == (pan_block *) successor)
+        for (unsigned i = 0; i < ARRAY_SIZE(block->successors); ++i) {
+                if (block->successors[i]) {
+                       if (block->successors[i] == (bi_block *) successor)
                                return;
                        else
                                continue;
                 }
 
-                block->base.successors[i] = (void *) successor;
-                _mesa_set_add(successor->base.predecessors, block);
+                block->successors[i] = (void *) successor;
+                _mesa_set_add(successor->predecessors, block);
                 return;
         }
 
@@ -105,7 +105,7 @@ bi_emit_jump(bi_builder *b, nir_jump_instr *instr)
         }
 
         bi_block_add_successor(b->shader->current_block, branch->branch_target);
-        b->shader->current_block->base.unconditional_jumps = true;
+        b->shader->current_block->unconditional_jumps = true;
 }
 
 static bi_index
@@ -2827,7 +2827,7 @@ create_empty_block(bi_context *ctx)
 {
         bi_block *blk = rzalloc(ctx, bi_block);
 
-        blk->base.predecessors = _mesa_set_create(blk,
+        blk->predecessors = _mesa_set_create(blk,
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
@@ -2844,8 +2844,8 @@ emit_block(bi_context *ctx, nir_block *block)
                 ctx->current_block = create_empty_block(ctx);
         }
 
-        list_addtail(&ctx->current_block->base.link, &ctx->blocks);
-        list_inithead(&ctx->current_block->base.instructions);
+        list_addtail(&ctx->current_block->link, &ctx->blocks);
+        list_inithead(&ctx->current_block->instructions);
 
         bi_builder _b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
 
@@ -3572,7 +3572,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
 
                 /* Name blocks now that we're done emitting so the order is
                  * consistent */
-                block->base.name = block_source_count++;
+                block->name = block_source_count++;
         }
 
         /* If the shader doesn't write any colour or depth outputs, it may
@@ -3583,7 +3583,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 !bi_skip_atest(ctx, false);
 
         if (need_dummy_atest) {
-                pan_block *end = list_last_entry(&ctx->blocks, pan_block, link);
+                bi_block *end = list_last_entry(&ctx->blocks, bi_block, link);
                 bi_builder b = bi_init_builder(ctx, bi_after_block((bi_block *) end));
                 bi_emit_atest(&b, bi_zero());
         }
@@ -3633,7 +3633,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
 
         /* If we need to wait for ATEST or BLEND in the first clause, pass the
          * corresponding bits through to the renderer state descriptor */
-        pan_block *first_block = list_first_entry(&ctx->blocks, pan_block, link);
+        bi_block *first_block = list_first_entry(&ctx->blocks, bi_block, link);
         bi_clause *first_clause = bi_next_clause(ctx, first_block, NULL);
 
         unsigned first_deps = first_clause ? first_clause->dependencies : 0;

@@ -729,8 +729,8 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
                         bi_clause *next = NULL, *next_2 = NULL;
 
                         if (is_last) {
-                                next = bi_next_clause(ctx, block->base.successors[0], NULL);
-                                next_2 = bi_next_clause(ctx, block->base.successors[1], NULL);
+                                next = bi_next_clause(ctx, block->successors[0], NULL);
+                                next_2 = bi_next_clause(ctx, block->successors[1], NULL);
                         } else {
                                 next = bi_next_clause(ctx, _block, clause);
                         }

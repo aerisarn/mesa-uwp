@@ -39,7 +39,7 @@ bi_opt_dead_code_eliminate(bi_context *ctx)
                 bi_block *block = (bi_block *) _block;
                 uint16_t *live = rzalloc_array(_block, uint16_t, temp_count);
 
-                pan_foreach_successor(_block, succ) {
+                bi_foreach_successor(_block, succ) {
                         for (unsigned i = 0; i < temp_count; ++i)
                                 live[i] |= succ->live_in[i];
                 }
@@ -62,8 +62,8 @@ bi_opt_dead_code_eliminate(bi_context *ctx)
                                 bi_liveness_ins_update(live, ins, temp_count);
                 }
 
-                ralloc_free(block->base.live_in);
-                block->base.live_in = live;
+                ralloc_free(block->live_in);
+                block->live_in = live;
         }
 }
 
@@ -94,7 +94,7 @@ bi_postra_liveness_ins(uint64_t live, bi_instr *ins)
 static bool
 bi_postra_liveness_block(bi_block *blk)
 {
-        pan_foreach_successor((&blk->base), _succ) {
+        bi_foreach_successor((blk), _succ) {
                 bi_block *succ = (bi_block *) _succ;
                 blk->reg_live_out |= succ->reg_live_in;
         }
@@ -144,7 +144,7 @@ bi_postra_liveness(bi_context *ctx)
                 /* If we made progress, we need to process the predecessors */
 
                 if (progress || !_mesa_set_search(visited, blk)) {
-                        pan_foreach_predecessor((&blk->base), pred)
+                        bi_foreach_predecessor((blk), pred)
                                 _mesa_set_add(work_list, pred);
                 }
 

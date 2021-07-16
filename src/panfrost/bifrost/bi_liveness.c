@@ -55,12 +55,12 @@ bi_liveness_ins_update(uint16_t *live, bi_instr *ins, unsigned max)
 }
 
 static bool
-liveness_block_update(pan_block *blk, unsigned temp_count)
+liveness_block_update(bi_block *blk, unsigned temp_count)
 {
         bool progress = false;
 
         /* live_out[s] = sum { p in succ[s] } ( live_in[p] ) */
-        pan_foreach_successor(blk, succ) {
+        bi_foreach_successor(blk, succ) {
                 for (unsigned i = 0; i < temp_count; ++i)
                         blk->live_out[i] |= succ->live_in[i];
         }
@@ -68,7 +68,7 @@ liveness_block_update(pan_block *blk, unsigned temp_count)
         uint16_t *live = ralloc_array(blk, uint16_t, temp_count);
         memcpy(live, blk->live_out, temp_count * sizeof(uint16_t));
 
-        pan_foreach_instr_in_block_rev(blk, ins)
+        bi_foreach_instr_in_block_rev(blk, ins)
                 bi_liveness_ins_update(live, (bi_instr *) ins, temp_count);
 
         /* To figure out progress, diff live_in */
@@ -91,7 +91,7 @@ liveness_block_update(pan_block *blk, unsigned temp_count)
 static void
 free_liveness(struct list_head *blocks)
 {
-        list_for_each_entry(pan_block, block, blocks, link) {
+        list_for_each_entry(bi_block, block, blocks, link) {
                 if (block->live_in)
                         ralloc_free(block->live_in);
 
@@ -111,7 +111,7 @@ bi_compute_liveness(bi_context *ctx)
 
         unsigned temp_count = bi_max_temp(ctx);
 
-        /* Set of pan_block */
+        /* Set of bi_block */
         struct set *work_list = _mesa_set_create(NULL,
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
@@ -124,7 +124,7 @@ bi_compute_liveness(bi_context *ctx)
 
         free_liveness(&ctx->blocks);
 
-        list_for_each_entry(pan_block, block, &ctx->blocks, link) {
+        list_for_each_entry(bi_block, block, &ctx->blocks, link) {
                 block->live_in = rzalloc_array(block, uint16_t, temp_count);
                 block->live_out = rzalloc_array(block, uint16_t, temp_count);
         }
@@ -138,7 +138,7 @@ bi_compute_liveness(bi_context *ctx)
 
         do {
                 /* Pop off a block */
-                pan_block *blk = (struct pan_block *) cur->key;
+                bi_block *blk = (struct bi_block *) cur->key;
                 _mesa_set_remove(work_list, cur);
 
                 /* Update its liveness information */
@@ -147,7 +147,7 @@ bi_compute_liveness(bi_context *ctx)
                 /* If we made progress, we need to process the predecessors */
 
                 if (progress || !_mesa_set_search(visited, blk)) {
-                        pan_foreach_predecessor(blk, pred)
+                        bi_foreach_predecessor(blk, pred)
                                 _mesa_set_add(work_list, pred);
                 }
 
