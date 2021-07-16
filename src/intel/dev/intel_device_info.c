@@ -1447,7 +1447,6 @@ fixup_chv_device_info(struct intel_device_info *devinfo)
       eu_total / subslice_total * devinfo->num_thread_per_eu;
 
    /* Fuse configurations may give more threads than expected, never less. */
-   assert(max_cs_threads >= devinfo->max_cs_threads);
    if (max_cs_threads > devinfo->max_cs_threads)
       devinfo->max_cs_threads = max_cs_threads;
 
