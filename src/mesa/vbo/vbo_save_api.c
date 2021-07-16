@@ -146,13 +146,15 @@ alloc_vertex_store(struct gl_context *ctx, int vertex_count)
     */
    vertex_store->bufferobj = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID);
    if (vertex_store->bufferobj) {
+      vertex_store->buffer_in_ram_size = size * sizeof(GLfloat);
+      vertex_store->buffer_in_ram = malloc(vertex_store->buffer_in_ram_size);
+      save->out_of_memory = vertex_store->buffer_in_ram == NULL;
       save->out_of_memory =
          !ctx->Driver.BufferData(ctx,
                                  GL_ARRAY_BUFFER_ARB,
                                  size * sizeof(GLfloat),
                                  NULL, GL_STATIC_DRAW_ARB,
-                                 GL_MAP_WRITE_BIT |
-                                 GL_DYNAMIC_STORAGE_BIT,
+                                 GL_MAP_WRITE_BIT,
                                  vertex_store->bufferobj);
    }
    else {
@@ -164,7 +166,6 @@ alloc_vertex_store(struct gl_context *ctx, int vertex_count)
       _mesa_install_save_vtxfmt(ctx, &save->vtxfmt_noop);
    }
 
-   vertex_store->buffer_map = NULL;
    vertex_store->used = 0;
 
    return vertex_store;
@@ -175,72 +176,13 @@ static void
 free_vertex_store(struct gl_context *ctx,
                   struct vbo_save_vertex_store *vertex_store)
 {
-   assert(!vertex_store->buffer_map);
+   free(vertex_store->buffer_in_ram);
 
    if (vertex_store->bufferobj) {
       _mesa_reference_buffer_object(ctx, &vertex_store->bufferobj, NULL);
    }
 
    free(vertex_store);
-}
-
-
-fi_type *
-vbo_save_map_vertex_store(struct gl_context *ctx,
-                          struct vbo_save_vertex_store *vertex_store)
-{
-   const GLbitfield access = (GL_MAP_WRITE_BIT |
-                              GL_MAP_INVALIDATE_RANGE_BIT |
-                              GL_MAP_UNSYNCHRONIZED_BIT |
-                              GL_MAP_FLUSH_EXPLICIT_BIT |
-                              MESA_MAP_ONCE);
-
-   assert(vertex_store->bufferobj);
-   assert(!vertex_store->buffer_map);  /* the buffer should not be mapped */
-
-   if (vertex_store->bufferobj->Size > 0) {
-      /* Map the remaining free space in the VBO */
-      GLintptr offset = vertex_store->used * sizeof(GLfloat);
-      GLsizeiptr size = vertex_store->bufferobj->Size - offset;
-      fi_type *range = (fi_type *)
-         ctx->Driver.MapBufferRange(ctx, offset, size, access,
-                                    vertex_store->bufferobj,
-                                    MAP_INTERNAL);
-      if (range) {
-         /* compute address of start of whole buffer (needed elsewhere) */
-         vertex_store->buffer_map = range - vertex_store->used;
-         assert(vertex_store->buffer_map);
-         return range;
-      }
-      else {
-         vertex_store->buffer_map = NULL;
-         return NULL;
-      }
-   }
-   else {
-      /* probably ran out of memory for buffers */
-      return NULL;
-   }
-}
-
-
-void
-vbo_save_unmap_vertex_store(struct gl_context *ctx,
-                            struct vbo_save_vertex_store *vertex_store)
-{
-   if (vertex_store->bufferobj->Size > 0) {
-      GLintptr offset = 0;
-      GLsizeiptr length = vertex_store->used * sizeof(GLfloat)
-         - vertex_store->bufferobj->Mappings[MAP_INTERNAL].Offset;
-
-      /* Explicitly flush the region we wrote to */
-      ctx->Driver.FlushMappedBufferRange(ctx, offset, length,
-                                         vertex_store->bufferobj,
-                                         MAP_INTERNAL);
-
-      ctx->Driver.UnmapBuffer(ctx, vertex_store->bufferobj, MAP_INTERNAL);
-   }
-   vertex_store->buffer_map = NULL;
 }
 
 
@@ -263,7 +205,7 @@ reset_counters(struct gl_context *ctx)
    struct vbo_save_context *save = &vbo_context(ctx)->save;
 
    save->prims = save->prim_store->prims + save->prim_store->used;
-   save->buffer_map = save->vertex_store->buffer_map + save->vertex_store->used;
+   save->buffer_map = save->vertex_store->buffer_in_ram + save->vertex_store->used;
 
    assert(save->buffer_map == save->buffer_ptr);
 
@@ -482,10 +424,6 @@ realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
    if (vertex_count >= 0) {
-      /* Unmap old store:
-       */
-      vbo_save_unmap_vertex_store(ctx, save->vertex_store);
-
       /* Release old reference:
        */
       free_vertex_store(ctx, save->vertex_store);
@@ -497,7 +435,7 @@ realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
       /* Allocate and map new store:
        */
       save->vertex_store = alloc_vertex_store(ctx, vertex_count);
-      save->buffer_ptr = vbo_save_map_vertex_store(ctx, save->vertex_store);
+      save->buffer_ptr = save->vertex_store->buffer_in_ram + save->vertex_store->used;
       save->out_of_memory = save->buffer_ptr == NULL;
    }
 
@@ -545,7 +483,8 @@ compile_vertex_list(struct gl_context *ctx)
    }
    const GLsizei stride = save->vertex_size*sizeof(GLfloat);
    GLintptr buffer_offset =
-       (save->buffer_map - save->vertex_store->buffer_map) * sizeof(GLfloat);
+       (save->buffer_map - save->vertex_store->buffer_in_ram) * sizeof(GLfloat);
+   const GLintptr original_buffer_offset = buffer_offset;
    assert(old_offset <= buffer_offset);
    const GLintptr offset_diff = buffer_offset - old_offset;
    GLuint start_offset = 0;
@@ -798,6 +737,12 @@ compile_vertex_list(struct gl_context *ctx)
       node->cold->prim_count = 0;
    }
 
+   ctx->Driver.BufferSubData(ctx,
+                             original_buffer_offset,
+                             idx * save->vertex_size * sizeof(fi_type),
+                             &save->vertex_store->buffer_in_ram[original_buffer_offset / sizeof(float)],
+                             save->vertex_store->bufferobj);
+
    /* Prepare for DrawGallium */
    memset(&node->merged.info, 0, sizeof(struct pipe_draw_info));
    /* The other info fields will be updated in vbo_save_playback_vertex_list */
@@ -846,7 +791,7 @@ end:
       _glapi_set_dispatch(ctx->Exec);
 
       /* Note that the range of referenced vertices must be mapped already */
-      _vbo_loopback_vertex_list(ctx, node);
+      _vbo_loopback_vertex_list(ctx, node, save->vertex_store->buffer_in_ram);
 
       _glapi_set_dispatch(dispatch);
    }
@@ -860,7 +805,7 @@ end:
    }
    else {
       /* update buffer_ptr for next vertex */
-      save->buffer_ptr = save->vertex_store->buffer_map
+      save->buffer_ptr = save->vertex_store->buffer_in_ram
          + save->vertex_store->used;
    }
 
@@ -1882,7 +1827,7 @@ vbo_save_NewList(struct gl_context *ctx, GLuint list, GLenum mode)
    if (!save->vertex_store)
       save->vertex_store = alloc_vertex_store(ctx, 0);
 
-   save->buffer_ptr = vbo_save_map_vertex_store(ctx, save->vertex_store);
+   save->buffer_ptr = save->vertex_store->buffer_in_ram + save->vertex_store->used;
 
    reset_vertex(ctx);
    reset_counters(ctx);
@@ -1920,8 +1865,6 @@ vbo_save_EndList(struct gl_context *ctx)
        */
       _mesa_install_save_vtxfmt(ctx, &ctx->ListState.ListVtxfmt);
    }
-
-   vbo_save_unmap_vertex_store(ctx, save->vertex_store);
 
    assert(save->vertex_size == 0);
 }

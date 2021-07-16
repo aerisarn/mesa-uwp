@@ -150,7 +150,8 @@ _vbo_save_get_vertex_count(const struct vbo_save_vertex_list *node)
 
 struct vbo_save_vertex_store {
    struct gl_buffer_object *bufferobj;
-   fi_type *buffer_map;
+   fi_type *buffer_in_ram;
+   GLuint buffer_in_ram_size;
    GLuint used;           /**< Number of 4-byte words used in buffer */
 };
 
@@ -170,7 +171,8 @@ void vbo_save_destroy(struct gl_context *ctx);
 /* save_loopback.c:
  */
 void _vbo_loopback_vertex_list(struct gl_context *ctx,
-                               const struct vbo_save_vertex_list* node);
+                               const struct vbo_save_vertex_list* node,
+                               fi_type *buffer);
 
 /* Callbacks:
  */
@@ -182,13 +184,5 @@ vbo_save_playback_vertex_list_loopback(struct gl_context *ctx, void *data);
 
 void
 vbo_save_api_init(struct vbo_save_context *save);
-
-fi_type *
-vbo_save_map_vertex_store(struct gl_context *ctx,
-                          struct vbo_save_vertex_store *vertex_store);
-
-void
-vbo_save_unmap_vertex_store(struct gl_context *ctx,
-                            struct vbo_save_vertex_store *vertex_store);
 
 #endif /* VBO_SAVE_H */
