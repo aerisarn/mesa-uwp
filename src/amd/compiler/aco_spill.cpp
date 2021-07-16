@@ -485,7 +485,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
       return {0, 0};
 
    /* next use distances at the beginning of the current block */
-   auto& next_use_distances = ctx.next_use_distances_start[block_idx];
+   const auto& next_use_distances = ctx.next_use_distances_start[block_idx];
 
    /* loop header block */
    if (block->loop_nest_depth > ctx.program->blocks[block_idx - 1].loop_nest_depth) {
@@ -532,7 +532,8 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
 
          unsigned distance = 0;
          Temp to_spill;
-         for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair : next_use_distances) {
+         for (const std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair :
+              next_use_distances) {
             if (pair.first.type() == type &&
                 (pair.second.first >= loop_end ||
                  (ctx.remat.count(pair.first) && type == RegType::sgpr)) &&
@@ -574,7 +575,8 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
          Temp to_spill;
          type = reg_pressure.vgpr > ctx.target_pressure.vgpr ? RegType::vgpr : RegType::sgpr;
 
-         for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair : next_use_distances) {
+         for (const std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair :
+              next_use_distances) {
             if (pair.first.type() == type && pair.second.second > distance &&
                 !ctx.spills_entry[block_idx].count(pair.first)) {
                to_spill = pair.first;
@@ -649,7 +651,7 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
    std::set<Temp> partial_spills;
 
    /* keep variables spilled on all incoming paths */
-   for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair : next_use_distances) {
+   for (const std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair : next_use_distances) {
       std::vector<unsigned>& preds =
          pair.first.is_linear() ? block->linear_preds : block->logical_preds;
       /* If it can be rematerialized, keep the variable spilled if all predecessors do not reload
@@ -731,8 +733,8 @@ init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_idx)
       while (it != partial_spills.end()) {
          assert(!ctx.spills_entry[block_idx].count(*it));
 
-         if (it->type() == type && next_use_distances[*it].second > distance) {
-            distance = next_use_distances[*it].second;
+         if (it->type() == type && next_use_distances.at(*it).second > distance) {
+            distance = next_use_distances.at(*it).second;
             to_spill = *it;
          }
          ++it;
