@@ -155,8 +155,16 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
       case nir_intrinsic_load_first_vertex:
       case nir_intrinsic_load_instance_id:
       case nir_intrinsic_load_base_instance:
-      case nir_intrinsic_load_draw_id:
          unreachable("should be lowered by brw_nir_lower_vs_inputs().");
+         break;
+
+      case nir_intrinsic_load_draw_id:
+         /* For Task/Mesh, draw_id will be handled later in
+          * nir_emit_mesh_task_intrinsic().
+          */
+         if (!brw_shader_stage_is_mesh(v->stage))
+            unreachable("should be lowered by brw_nir_lower_vs_inputs().");
+         break;
 
       case nir_intrinsic_load_invocation_id:
          if (v->stage == MESA_SHADER_TESS_CTRL)

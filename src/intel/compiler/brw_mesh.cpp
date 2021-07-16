@@ -162,6 +162,9 @@ brw_compile_task(const struct brw_compiler *compiler,
    prog_data->base.local_size[1] = nir->info.workgroup_size[1];
    prog_data->base.local_size[2] = nir->info.workgroup_size[2];
 
+   prog_data->uses_drawid =
+      BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
+
    brw_compute_tue_map(nir, &prog_data->map);
 
    const unsigned required_dispatch_width =
@@ -532,6 +535,9 @@ brw_compile_mesh(const struct brw_compiler *compiler,
 
    /* TODO(mesh): Use other index formats (that are more compact) for optimization. */
    prog_data->index_format = BRW_INDEX_FORMAT_U32;
+
+   prog_data->uses_drawid =
+      BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
 
    brw_compute_mue_map(nir, &prog_data->map);
 
@@ -978,6 +984,11 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
       assert(payload.num_regs == 3 || payload.num_regs == 4);
       /* Passed in the Inline Parameter, the last element of the payload. */
       bld.MOV(dest, retype(brw_vec1_grf(payload.num_regs - 1, 0), dest.type));
+      break;
+
+   case nir_intrinsic_load_draw_id:
+      /* DrawID comes from Extended Parameter 0 (XP0). */
+      bld.MOV(dest, brw_vec1_grf(0, 3));
       break;
 
    case nir_intrinsic_load_local_invocation_index:

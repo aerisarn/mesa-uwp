@@ -147,6 +147,12 @@ brw_shader_stage_is_bindless(gl_shader_stage stage)
           stage <= MESA_SHADER_CALLABLE;
 }
 
+static inline bool
+brw_shader_stage_is_mesh(gl_shader_stage stage)
+{
+   return stage == MESA_SHADER_TASK || stage == MESA_SHADER_MESH;
+}
+
 /**
  * Program key structures.
  *
@@ -1459,6 +1465,7 @@ struct brw_mue_map {
 struct brw_task_prog_data {
    struct brw_cs_prog_data base;
    struct brw_tue_map map;
+   bool uses_drawid;
 };
 
 enum brw_mesh_index_format {
@@ -1472,6 +1479,8 @@ struct brw_mesh_prog_data {
    uint16_t primitive_type;
 
    enum brw_mesh_index_format index_format;
+
+   bool uses_drawid;
 };
 
 /* brw_any_prog_data is prog_data for any stage that maps to an API stage */
