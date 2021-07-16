@@ -67,7 +67,7 @@ struct spill_ctx {
    Program* program;
    std::vector<std::vector<RegisterDemand>> register_demand;
    std::vector<std::map<Temp, Temp>> renames;
-   std::vector<std::map<Temp, uint32_t>> spills_entry;
+   std::vector<std::unordered_map<Temp, uint32_t>> spills_entry;
    std::vector<std::unordered_map<Temp, uint32_t>> spills_exit;
 
    std::vector<bool> processed;
@@ -1294,7 +1294,7 @@ spill_block(spill_ctx& ctx, unsigned block_idx)
       add_coupling_code(ctx, block, block_idx);
    }
 
-   const std::map<Temp, uint32_t>& current_spills = ctx.spills_entry[block_idx];
+   const auto& current_spills = ctx.spills_entry[block_idx];
 
    /* check conditions to process this block */
    bool process = (block->register_demand - spilled_registers).exceeds(ctx.target_pressure) ||
@@ -1306,7 +1306,7 @@ spill_block(spill_ctx& ctx, unsigned block_idx)
    }
 
    assert(ctx.spills_exit[block_idx].empty());
-   ctx.spills_exit[block_idx] = std::unordered_map<Temp, uint32_t>(current_spills.begin(), current_spills.end());
+   ctx.spills_exit[block_idx] = current_spills;
    if (process) {
       process_block(ctx, block_idx, block, spilled_registers);
    }
