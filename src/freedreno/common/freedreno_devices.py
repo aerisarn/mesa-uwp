@@ -109,7 +109,7 @@ class A6xxGPUInfo(GPUInfo):
 
         # 96 tile alignment seems correlated to 3 CCU
         if num_ccu == 3:
-            self.tile_align_h = 96
+            self.tile_align_w = 96
 
         self.a6xx = Struct()
         self.a6xx.magic = Struct()
