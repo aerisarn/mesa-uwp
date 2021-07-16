@@ -445,12 +445,12 @@ ntt_setup_uniforms(struct ntt_compile *c)
       ureg_DECL_constant2D(c->ureg, 0, 0, var->data.driver_location);
    }
 
-   nir_foreach_variable_with_modes(var, c->s, nir_var_mem_ssbo) {
+   for (int i = 0; i < c->s->info.num_ssbos; i++) {
       /* XXX: nv50 uses the atomic flag to set caching for (lowered) atomic
        * counters
        */
       bool atomic = false;
-      ureg_DECL_buffer(c->ureg, var->data.binding, atomic);
+      ureg_DECL_buffer(c->ureg, i, atomic);
    }
 
    for (int i = 0; i < PIPE_MAX_SAMPLERS; i++) {
