@@ -90,14 +90,15 @@ typedef void (*u_trace_delete_ts_buffer)(struct u_trace_context *utctx,
       void *timestamps);
 
 /**
- * Driver provided callback to emit commands to capture a 64b timestamp
- * into the specified timestamps buffer, at the specified index.
+ * Driver provided callback to emit commands into the soecified command
+ * stream to capture a 64b timestamp into the specified timestamps buffer,
+ * at the specified index.
  *
  * The hw counter that the driver records should be something that runs at
  * a fixed rate, even as the GPU freq changes.  The same source used for
  * GL_TIMESTAMP queries should be appropriate.
  */
-typedef void (*u_trace_record_ts)(struct u_trace *ut,
+typedef void (*u_trace_record_ts)(struct u_trace *ut, void *cs,
       void *timestamps, unsigned idx);
 
 /**

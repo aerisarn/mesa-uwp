@@ -938,7 +938,7 @@ handle_rgba_blit(struct fd_context *ctx,
 
    DBG_BLIT(info, batch);
 
-   trace_start_blit(&batch->trace, info->src.resource->target,
+   trace_start_blit(&batch->trace, batch->draw, info->src.resource->target,
                     info->dst.resource->target);
 
    if ((info->src.resource->target == PIPE_BUFFER) &&
@@ -953,7 +953,7 @@ handle_rgba_blit(struct fd_context *ctx,
       emit_blit_texture(ctx, batch->draw, info);
    }
 
-   trace_end_blit(&batch->trace);
+   trace_end_blit(&batch->trace, batch->draw);
 
    fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_COLOR_TS, true);
    fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_DEPTH_TS, true);

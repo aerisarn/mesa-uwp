@@ -989,12 +989,12 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_regs(cs,
                    A6XX_SP_TP_WINDOW_OFFSET(.x = 0, .y = 0));
 
-   trace_start_binning_ib(&cmd->trace);
+   trace_start_binning_ib(&cmd->trace, cs);
 
    /* emit IB to binning drawcmds: */
    tu_cs_emit_call(cs, &cmd->draw_cs);
 
-   trace_end_binning_ib(&cmd->trace);
+   trace_end_binning_ib(&cmd->trace, cs);
 
    /* switching from binning pass to GMEM pass will cause a switch from
     * PROGRAM_BINNING to PROGRAM, which invalidates const state (XS_CONST states)
@@ -1343,9 +1343,9 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd)
             for (uint32_t tx = tx1; tx < tx2; tx++, slot++) {
                tu6_emit_tile_select(cmd, &cmd->cs, tx, ty, pipe, slot);
 
-               trace_start_draw_ib_gmem(&cmd->trace);
+               trace_start_draw_ib_gmem(&cmd->trace, &cmd->cs);
                tu6_render_tile(cmd, &cmd->cs);
-               trace_end_draw_ib_gmem(&cmd->trace);
+               trace_end_draw_ib_gmem(&cmd->trace, &cmd->cs);
             }
          }
       }
@@ -1353,7 +1353,7 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd)
 
    tu6_tile_render_end(cmd, &cmd->cs);
 
-   trace_end_render_pass(&cmd->trace, fb);
+   trace_end_render_pass(&cmd->trace, &cmd->cs, fb);
 }
 
 static void
@@ -1361,15 +1361,15 @@ tu_cmd_render_sysmem(struct tu_cmd_buffer *cmd)
 {
    tu6_sysmem_render_begin(cmd, &cmd->cs);
 
-   trace_start_draw_ib_sysmem(&cmd->trace);
+   trace_start_draw_ib_sysmem(&cmd->trace, &cmd->cs);
 
    tu_cs_emit_call(&cmd->cs, &cmd->draw_cs);
 
-   trace_end_draw_ib_sysmem(&cmd->trace);
+   trace_end_draw_ib_sysmem(&cmd->trace, &cmd->cs);
 
    tu6_sysmem_render_end(cmd, &cmd->cs);
 
-   trace_end_render_pass(&cmd->trace, cmd->state.framebuffer);
+   trace_end_render_pass(&cmd->trace, &cmd->cs, cmd->state.framebuffer);
 }
 
 static VkResult
@@ -3093,7 +3093,7 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    cmd->state.framebuffer = fb;
    cmd->state.render_area = pRenderPassBegin->renderArea;
 
-   trace_start_render_pass(&cmd->trace);
+   trace_start_render_pass(&cmd->trace, &cmd->cs);
 
    /* Note: because this is external, any flushes will happen before draw_cs
     * gets called. However deferred flushes could have to happen later as part
@@ -4494,7 +4494,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
                    A6XX_HLSQ_CS_KERNEL_GROUP_Y(1),
                    A6XX_HLSQ_CS_KERNEL_GROUP_Z(1));
 
-   trace_start_compute(&cmd->trace);
+   trace_start_compute(&cmd->trace, cs);
 
    if (info->indirect) {
       uint64_t iova = tu_buffer_iova(info->indirect) + info->indirect_offset;
@@ -4514,7 +4514,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
       tu_cs_emit(cs, CP_EXEC_CS_3_NGROUPS_Z(info->blocks[2]));
    }
 
-   trace_end_compute(&cmd->trace,
+   trace_end_compute(&cmd->trace, cs,
                      info->indirect != NULL,
                      local_size[0], local_size[1], local_size[2],
                      info->blocks[0], info->blocks[1], info->blocks[2]);

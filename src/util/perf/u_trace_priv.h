@@ -55,6 +55,6 @@ struct u_tracepoint {
  * Append a tracepoint, returning pointer that can be filled with trace
  * payload.
  */
-void * u_trace_append(struct u_trace *ut, const struct u_tracepoint *tp);
+void * u_trace_append(struct u_trace *ut, void *cs, const struct u_tracepoint *tp);
 
 #endif  /* _U_TRACE_PRIV_H */

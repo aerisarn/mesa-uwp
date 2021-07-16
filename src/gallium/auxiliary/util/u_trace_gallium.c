@@ -74,20 +74,20 @@ u_trace_pipe_context_init(struct u_trace_context *utctx,
 }
 
 inline void
-trace_framebuffer_state(struct u_trace *ut, const struct pipe_framebuffer_state *pfb)
+trace_framebuffer_state(struct u_trace *ut, void *cs, const struct pipe_framebuffer_state *pfb)
 {
    if (likely(!ut->enabled))
       return;
 
-   trace_framebuffer(ut, pfb);
+   trace_framebuffer(ut, cs, pfb);
 
    for (unsigned i = 0; i < pfb->nr_cbufs; i++) {
       if (pfb->cbufs[i]) {
-         trace_surface(ut, pfb->cbufs[i]);
+         trace_surface(ut, cs, pfb->cbufs[i]);
       }
    }
    if (pfb->zsbuf) {
-      trace_surface(ut, pfb->zsbuf);
+      trace_surface(ut, cs, pfb->zsbuf);
    }
 }
 

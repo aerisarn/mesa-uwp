@@ -198,12 +198,12 @@ struct trace_${trace_name} {
 void ${trace.tp_perfetto}(${ctx_param}, uint64_t ts_ns, const void *flush_data, const struct trace_${trace_name} *payload);
 #endif
 %    endif
-void __trace_${trace_name}(struct u_trace *ut
+void __trace_${trace_name}(struct u_trace *ut, void *cs
 %    for arg in trace.args:
      , ${arg.type} ${arg.var}
 %    endfor
 );
-static inline void trace_${trace_name}(struct u_trace *ut
+static inline void trace_${trace_name}(struct u_trace *ut, void *cs
 %    for arg in trace.args:
      , ${arg.type} ${arg.var}
 %    endfor
@@ -214,7 +214,7 @@ static inline void trace_${trace_name}(struct u_trace *ut
    if (!unlikely(ut->enabled))
 %    endif
       return;
-   __trace_${trace_name}(ut
+   __trace_${trace_name}(ut, cs
 %    for arg in trace.args:
         , ${arg.var}
 %    endfor
@@ -303,13 +303,13 @@ static const struct u_tracepoint __tp_${trace_name} = {
 #endif
 %    endif
 };
-void __trace_${trace_name}(struct u_trace *ut
+void __trace_${trace_name}(struct u_trace *ut, void *cs
 %    for arg in trace.args:
      , ${arg.type} ${arg.var}
 %    endfor
 ) {
    struct trace_${trace_name} *__entry =
-      (struct trace_${trace_name} *)u_trace_append(ut, &__tp_${trace_name});
+      (struct trace_${trace_name} *)u_trace_append(ut, cs, &__tp_${trace_name});
    (void)__entry;
 %    for arg in trace.tp_struct:
         __entry->${arg.name} = ${arg.var};

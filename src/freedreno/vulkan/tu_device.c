@@ -1278,18 +1278,17 @@ tu_trace_destroy_ts_buffer(struct u_trace_context *utctx, void *timestamps)
 }
 
 static void
-tu_trace_record_ts(struct u_trace *ut, void *timestamps,
+tu_trace_record_ts(struct u_trace *ut, void *cs, void *timestamps,
                    unsigned idx)
 {
-   struct tu_cmd_buffer *cmd = container_of(ut, struct tu_cmd_buffer, trace);
    struct tu_bo *bo = timestamps;
-   struct tu_cs *cs = &cmd->cs;
+   struct tu_cs *ts_cs = cs;
 
    unsigned ts_offset = idx * sizeof(uint64_t);
-   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 4);
-   tu_cs_emit(cs, CP_EVENT_WRITE_0_EVENT(RB_DONE_TS) | CP_EVENT_WRITE_0_TIMESTAMP);
-   tu_cs_emit_qw(cs, bo->iova + ts_offset);
-   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit_pkt7(ts_cs, CP_EVENT_WRITE, 4);
+   tu_cs_emit(ts_cs, CP_EVENT_WRITE_0_EVENT(RB_DONE_TS) | CP_EVENT_WRITE_0_TIMESTAMP);
+   tu_cs_emit_qw(ts_cs, bo->iova + ts_offset);
+   tu_cs_emit(ts_cs, 0x00000000);
 }
 
 static uint64_t

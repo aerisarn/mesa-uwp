@@ -471,7 +471,7 @@ u_trace_disable_event_range(struct u_trace_iterator begin_it,
  * functions.
  */
 void *
-u_trace_append(struct u_trace *ut, const struct u_tracepoint *tp)
+u_trace_append(struct u_trace *ut, void *cs, const struct u_tracepoint *tp)
 {
    struct u_trace_chunk *chunk = get_chunk(ut);
 
@@ -491,7 +491,7 @@ u_trace_append(struct u_trace *ut, const struct u_tracepoint *tp)
    chunk->payload_buf += tp->payload_sz;
 
    /* record a timestamp for the trace: */
-   ut->utctx->record_timestamp(ut, chunk->timestamps, chunk->num_traces);
+   ut->utctx->record_timestamp(ut, cs, chunk->timestamps, chunk->num_traces);
 
    chunk->traces[chunk->num_traces] = (struct u_trace_event) {
          .tp = tp,
