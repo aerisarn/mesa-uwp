@@ -545,7 +545,6 @@ emit_copy_layer_to_buffer(struct v3dv_job *job,
                           uint32_t layer,
                           const VkBufferImageCopy2KHR *region)
 {
-   emit_frame_setup(job, layer, NULL);
    emit_copy_layer_to_buffer_per_tile_list(job, framebuffer, buffer,
                                            image, layer, region);
    emit_supertile_coordinates(job, framebuffer);
@@ -561,6 +560,7 @@ v3dX(meta_emit_copy_image_to_buffer_rcl)(struct v3dv_job *job,
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
 
+   emit_frame_setup(job, 0, NULL);
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)
       emit_copy_layer_to_buffer(job, buffer, image, framebuffer, layer, region);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -632,7 +632,6 @@ emit_resolve_image_layer(struct v3dv_job *job,
                          uint32_t layer,
                          const VkImageResolve2KHR *region)
 {
-   emit_frame_setup(job, layer, NULL);
    emit_resolve_image_layer_per_tile_list(job, framebuffer,
                                           dst, src, layer, region);
    emit_supertile_coordinates(job, framebuffer);
@@ -648,6 +647,7 @@ v3dX(meta_emit_resolve_image_rcl)(struct v3dv_job *job,
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
 
+   emit_frame_setup(job, 0, NULL);
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)
       emit_resolve_image_layer(job, dst, src, framebuffer, layer, region);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -793,7 +793,6 @@ emit_copy_image_layer(struct v3dv_job *job,
                       uint32_t layer,
                       const VkImageCopy2KHR *region)
 {
-   emit_frame_setup(job, layer, NULL);
    emit_copy_image_layer_per_tile_list(job, framebuffer, dst, src, layer, region);
    emit_supertile_coordinates(job, framebuffer);
 }
@@ -808,6 +807,7 @@ v3dX(meta_emit_copy_image_rcl)(struct v3dv_job *job,
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
 
+   emit_frame_setup(job, 0, NULL);
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)
       emit_copy_image_layer(job, dst, src, framebuffer, layer, region);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -961,7 +961,7 @@ v3dX(meta_emit_clear_image_rcl)(struct v3dv_job *job,
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, &clear_info);
    v3dv_return_if_oom(NULL, job);
 
-   emit_frame_setup(job, min_layer, clear_value);
+   emit_frame_setup(job, 0, clear_value);
    emit_clear_image_layers(job, image, framebuffer, aspects,
                            min_layer, max_layer, level);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -1153,7 +1153,6 @@ emit_copy_buffer_to_layer(struct v3dv_job *job,
                           uint32_t layer,
                           const VkBufferImageCopy2KHR *region)
 {
-   emit_frame_setup(job, layer, NULL);
    emit_copy_buffer_to_layer_per_tile_list(job, framebuffer, image, buffer,
                                            layer, region);
    emit_supertile_coordinates(job, framebuffer);
@@ -1169,6 +1168,7 @@ v3dX(meta_emit_copy_buffer_to_image_rcl)(struct v3dv_job *job,
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
 
+   emit_frame_setup(job, 0, NULL);
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)
       emit_copy_buffer_to_layer(job, image, buffer, framebuffer, layer, region);
    cl_emit(rcl, END_OF_RENDERING, end);
