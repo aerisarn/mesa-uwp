@@ -537,11 +537,9 @@ typedef struct bi_block {
         struct set *predecessors;
         bool unconditional_jumps;
 
-        /* In liveness analysis, these are live masks (per-component) for
-         * indices for the block. Scalar compilers have the luxury of using
-         * simple bit fields, but for us, liveness is a vector idea. */
-        uint16_t *live_in;
-        uint16_t *live_out;
+        /* Per 32-bit word live masks for the block indexed by node */
+        uint8_t *live_in;
+        uint8_t *live_out;
 
         /* If true, uses clauses; if false, uses instructions */
         bool scheduled;
@@ -842,7 +840,7 @@ int bi_test_packing_formats(void);
 /* Liveness */
 
 void bi_compute_liveness(bi_context *ctx);
-void bi_liveness_ins_update(uint16_t *live, bi_instr *ins, unsigned max);
+void bi_liveness_ins_update(uint8_t *live, bi_instr *ins, unsigned max);
 void bi_invalidate_liveness(bi_context *ctx);
 
 void bi_postra_liveness(bi_context *ctx);

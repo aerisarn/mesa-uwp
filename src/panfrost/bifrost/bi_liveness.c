@@ -32,7 +32,7 @@
  * returns whether progress was made. */
 
 void
-bi_liveness_ins_update(uint16_t *live, bi_instr *ins, unsigned max)
+bi_liveness_ins_update(uint8_t *live, bi_instr *ins, unsigned max)
 {
         /* live_in[s] = GEN[s] + (live_out[s] - KILL[s]) */
 
@@ -46,7 +46,7 @@ bi_liveness_ins_update(uint16_t *live, bi_instr *ins, unsigned max)
         bi_foreach_src(ins, src) {
                 unsigned count = bi_count_read_registers(ins, src);
                 unsigned rmask = BITFIELD_MASK(count);
-                uint16_t mask = (rmask << ins->src[src].offset);
+                uint8_t mask = (rmask << ins->src[src].offset);
 
                 unsigned node = bi_get_node(ins->src[src]);
                 if (node < max)
@@ -65,8 +65,8 @@ liveness_block_update(bi_block *blk, unsigned temp_count)
                         blk->live_out[i] |= succ->live_in[i];
         }
 
-        uint16_t *live = ralloc_array(blk, uint16_t, temp_count);
-        memcpy(live, blk->live_out, temp_count * sizeof(uint16_t));
+        uint8_t *live = ralloc_array(blk, uint8_t, temp_count);
+        memcpy(live, blk->live_out, temp_count);
 
         bi_foreach_instr_in_block_rev(blk, ins)
                 bi_liveness_ins_update(live, (bi_instr *) ins, temp_count);
@@ -112,8 +112,8 @@ bi_compute_liveness(bi_context *ctx)
                 if (block->live_out)
                         ralloc_free(block->live_out);
 
-                block->live_in = rzalloc_array(block, uint16_t, temp_count);
-                block->live_out = rzalloc_array(block, uint16_t, temp_count);
+                block->live_in = rzalloc_array(block, uint8_t, temp_count);
+                block->live_out = rzalloc_array(block, uint8_t, temp_count);
         }
 
         /* Initialize the work list with the exit block */

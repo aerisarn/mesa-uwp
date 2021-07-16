@@ -36,7 +36,7 @@ bi_opt_dead_code_eliminate(bi_context *ctx)
         bi_compute_liveness(ctx);
 
         bi_foreach_block_rev(ctx, block) {
-                uint16_t *live = rzalloc_array(block, uint16_t, temp_count);
+                uint8_t *live = rzalloc_array(block, uint8_t, temp_count);
 
                 bi_foreach_successor(block, succ) {
                         for (unsigned i = 0; i < temp_count; ++i)

@@ -207,7 +207,7 @@ bi_make_affinity(uint64_t clobber, unsigned count, bool split_file)
 }
 
 static void
-bi_mark_interference(bi_block *block, struct lcra_state *l, uint16_t *live, uint64_t preload_live, unsigned node_count, bool is_blend, bool split_file)
+bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint64_t preload_live, unsigned node_count, bool is_blend, bool split_file)
 {
         bi_foreach_instr_in_block_rev(block, ins) {
                 /* Mark all registers live after the instruction as
@@ -265,7 +265,7 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l, bool full_regs)
         bi_postra_liveness(ctx);
 
         bi_foreach_block_rev(ctx, blk) {
-                uint16_t *live = mem_dup(blk->live_out, node_count * sizeof(uint16_t));
+                uint8_t *live = mem_dup(blk->live_out, node_count);
 
                 bi_mark_interference(blk, l, live, blk->reg_live_out,
                                 node_count, ctx->inputs->is_blend, !full_regs);
