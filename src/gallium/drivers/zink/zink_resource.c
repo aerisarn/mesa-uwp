@@ -950,13 +950,13 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
                          struct winsys_handle *whandle,
                          unsigned usage)
 {
-   struct zink_resource *res = zink_resource(tex);
-   struct zink_screen *screen = zink_screen(pscreen);
-   //TODO: remove for wsi
-   struct zink_resource_object *obj = res->scanout_obj ? res->scanout_obj : res->obj;
-
    if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
 #ifdef ZINK_USE_DMABUF
+      struct zink_resource *res = zink_resource(tex);
+      struct zink_screen *screen = zink_screen(pscreen);
+      //TODO: remove for wsi
+      struct zink_resource_object *obj = res->scanout_obj ? res->scanout_obj : res->obj;
+
       VkMemoryGetFdInfoKHR fd_info = {0};
       int fd;
       fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
