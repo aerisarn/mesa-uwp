@@ -430,6 +430,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    unsigned work_count = ctx->batch.work_count;
    enum pipe_prim_type mode = (enum pipe_prim_type)dinfo->mode;
 
+   zink_flush_memory_barrier(ctx, false);
    update_barriers(ctx, false);
 
    if (unlikely(ctx->buffer_rebind_counter < screen->buffer_rebind_counter)) {
@@ -756,6 +757,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       screen->vk.CmdEndTransformFeedbackEXT(batch->state->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
    batch->has_work = true;
+   batch->last_was_compute = false;
    ctx->batch.work_count = work_count;
    /* flush if there's >100k draws */
    if (unlikely(work_count >= 30000) || ctx->oom_flush)
@@ -771,6 +773,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    struct zink_batch *batch = &ctx->batch;
 
    update_barriers(ctx, true);
+   zink_flush_memory_barrier(ctx, true);
 
    if (zink_program_has_descriptors(&ctx->curr_compute->base))
       screen->descriptors_update(ctx, true);
@@ -804,6 +807,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    } else
       vkCmdDispatch(batch->state->cmdbuf, info->grid[0], info->grid[1], info->grid[2]);
    batch->has_work = true;
+   batch->last_was_compute = true;
    /* flush if there's >100k computes */
    if (unlikely(ctx->batch.work_count >= 30000) || ctx->oom_flush)
       pctx->flush(pctx, NULL, 0);

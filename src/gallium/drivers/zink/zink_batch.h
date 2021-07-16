@@ -109,6 +109,7 @@ struct zink_batch {
    unsigned work_count;
 
    bool has_work;
+   bool last_was_compute;
    bool in_rp; //renderpass is currently active
 };
 
