@@ -1306,6 +1306,15 @@ tu6_render_tile(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_call(cs, &cmd->tile_store_cs);
 
+   if (!u_trace_iterator_equal(cmd->trace_renderpass_start, cmd->trace_renderpass_end)) {
+      tu_cs_emit_wfi(cs);
+      tu_cs_emit_pkt7(&cmd->cs, CP_WAIT_FOR_ME, 0);
+      u_trace_clone_append(cmd->trace_renderpass_start,
+                           cmd->trace_renderpass_end,
+                           &cmd->trace,
+                           cs, tu_copy_timestamp_buffer);
+   }
+
    tu_cs_sanity_check(cs);
 }
 
@@ -1354,6 +1363,10 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd)
    tu6_tile_render_end(cmd, &cmd->cs);
 
    trace_end_render_pass(&cmd->trace, &cmd->cs, fb);
+
+   if (!u_trace_iterator_equal(cmd->trace_renderpass_start, cmd->trace_renderpass_end))
+      u_trace_disable_event_range(cmd->trace_renderpass_start,
+                                  cmd->trace_renderpass_end);
 }
 
 static void
@@ -3133,6 +3146,8 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
       cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
    }
 
+   cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
+
    tu_emit_renderpass_begin(cmd, pRenderPassBegin);
 
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
@@ -4579,6 +4594,8 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    tu_cs_end(&cmd_buffer->draw_cs);
    tu_cs_end(&cmd_buffer->tile_store_cs);
    tu_cs_end(&cmd_buffer->draw_epilogue_cs);
+
+   cmd_buffer->trace_renderpass_end = u_trace_end_iterator(&cmd_buffer->trace);
 
    if (use_sysmem_rendering(cmd_buffer))
       tu_cmd_render_sysmem(cmd_buffer);

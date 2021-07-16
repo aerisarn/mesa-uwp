@@ -1060,6 +1060,8 @@ struct tu_cmd_buffer
    struct list_head pool_link;
 
    struct u_trace trace;
+   struct u_trace_iterator trace_renderpass_start;
+   struct u_trace_iterator trace_renderpass_end;
 
    VkCommandBufferUsageFlags usage_flags;
    VkCommandBufferLevel level;

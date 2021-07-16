@@ -40,8 +40,11 @@ enum tu_stage_id {
    BYPASS_STAGE_ID,
    BLIT_STAGE_ID,
    COMPUTE_STAGE_ID,
-   CLEAR_RESTORE_STAGE_ID,
-   RESOLVE_STAGE_ID,
+   CLEAR_SYSMEM_STAGE_ID,
+   CLEAR_GMEM_STAGE_ID,
+   GMEM_LOAD_STAGE_ID,
+   GMEM_STORE_STAGE_ID,
+   SYSMEM_RESOLVE_STAGE_ID,
    // TODO add the rest
 
    NUM_STAGES
@@ -57,8 +60,11 @@ static const struct {
    [BYPASS_STAGE_ID]  = {"Render", "Rendering to system memory"},
    [BLIT_STAGE_ID]    = {"Blit", "Performing a Blit operation"},
    [COMPUTE_STAGE_ID] = {"Compute", "Compute job"},
-   [CLEAR_RESTORE_STAGE_ID] = {"Clear/Restore", "Clear (sysmem) or per-tile clear or restore (GMEM)"},
-   [RESOLVE_STAGE_ID] = {"Resolve", "Per tile resolve (GMEM to system memory"},
+   [CLEAR_SYSMEM_STAGE_ID] = {"Clear Sysmem", ""},
+   [CLEAR_GMEM_STAGE_ID] = {"Clear GMEM", "Per-tile (GMEM) clear"},
+   [GMEM_LOAD_STAGE_ID] = {"GMEM Load", "Per tile system memory to GMEM load"},
+   [GMEM_STORE_STAGE_ID] = {"GMEM Store", "Per tile GMEM to system memory store"},
+   [SYSMEM_RESOLVE_STAGE_ID] = {"SysMem Resolve", "System memory MSAA resolve"},
    // TODO add the rest
 };
 
