@@ -88,21 +88,6 @@ liveness_block_update(bi_block *blk, unsigned temp_count)
  * adding the predecessors of the block to the work list if we made progress.
  */
 
-static void
-free_liveness(struct list_head *blocks)
-{
-        list_for_each_entry(bi_block, block, blocks, link) {
-                if (block->live_in)
-                        ralloc_free(block->live_in);
-
-                if (block->live_out)
-                        ralloc_free(block->live_out);
-
-                block->live_in = NULL;
-                block->live_out = NULL;
-        }
-}
-
 void
 bi_compute_liveness(bi_context *ctx)
 {
@@ -120,11 +105,13 @@ bi_compute_liveness(bi_context *ctx)
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
-        /* Free any previous liveness, and allocate */
-
-        free_liveness(&ctx->blocks);
-
         list_for_each_entry(bi_block, block, &ctx->blocks, link) {
+                if (block->live_in)
+                        ralloc_free(block->live_in);
+
+                if (block->live_out)
+                        ralloc_free(block->live_out);
+
                 block->live_in = rzalloc_array(block, uint16_t, temp_count);
                 block->live_out = rzalloc_array(block, uint16_t, temp_count);
         }
@@ -165,8 +152,5 @@ bi_compute_liveness(bi_context *ctx)
 void
 bi_invalidate_liveness(bi_context *ctx)
 {
-        if (ctx->has_liveness)
-                free_liveness(&ctx->blocks);
-
         ctx->has_liveness = false;
 }
