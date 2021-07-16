@@ -19,6 +19,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+subdir('valhall')
+
 libpanfrost_bifrost_files = files(
   'bi_helper_invocations.c',
   'bi_layout.c',
