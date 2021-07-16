@@ -630,56 +630,58 @@ cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
       list.address = v3dv_cl_address(job->tile_alloc, tile_alloc_offset);
    }
 
-   cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
-      config.number_of_bin_tile_lists = 1;
-      config.total_frame_width_in_tiles = tiling->draw_tiles_x;
-      config.total_frame_height_in_tiles = tiling->draw_tiles_y;
+   if (layer == 0) {
+      cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
+         config.number_of_bin_tile_lists = 1;
+         config.total_frame_width_in_tiles = tiling->draw_tiles_x;
+         config.total_frame_height_in_tiles = tiling->draw_tiles_y;
 
-      config.supertile_width_in_tiles = tiling->supertile_width;
-      config.supertile_height_in_tiles = tiling->supertile_height;
+         config.supertile_width_in_tiles = tiling->supertile_width;
+         config.supertile_height_in_tiles = tiling->supertile_height;
 
-      config.total_frame_width_in_supertiles =
-         tiling->frame_width_in_supertiles;
-      config.total_frame_height_in_supertiles =
-         tiling->frame_height_in_supertiles;
-   }
-
-   /* Start by clearing the tile buffer. */
-   cl_emit(rcl, TILE_COORDINATES, coords) {
-      coords.tile_column_number = 0;
-      coords.tile_row_number = 0;
-   }
-
-   /* Emit an initial clear of the tile buffers. This is necessary
-    * for any buffers that should be cleared (since clearing
-    * normally happens at the *end* of the generic tile list), but
-    * it's also nice to clear everything so the first tile doesn't
-    * inherit any contents from some previous frame.
-    *
-    * Also, implement the GFXH-1742 workaround. There's a race in
-    * the HW between the RCL updating the TLB's internal type/size
-    * and the spawning of the QPU instances using the TLB's current
-    * internal type/size. To make sure the QPUs get the right
-    * state, we need 1 dummy store in between internal type/size
-    * changes on V3D 3.x, and 2 dummy stores on 4.x.
-    */
-   for (int i = 0; i < 2; i++) {
-      if (i > 0)
-         cl_emit(rcl, TILE_COORDINATES, coords);
-      cl_emit(rcl, END_OF_LOADS, end);
-      cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
-         store.buffer_to_store = NONE;
+         config.total_frame_width_in_supertiles =
+            tiling->frame_width_in_supertiles;
+         config.total_frame_height_in_supertiles =
+            tiling->frame_height_in_supertiles;
       }
-      if (i == 0 && cmd_buffer->state.tile_aligned_render_area) {
-         cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
-            clear.clear_z_stencil_buffer = !job->early_zs_clear;
-            clear.clear_all_render_targets = true;
+
+      /* Start by clearing the tile buffer. */
+      cl_emit(rcl, TILE_COORDINATES, coords) {
+         coords.tile_column_number = 0;
+         coords.tile_row_number = 0;
+      }
+
+      /* Emit an initial clear of the tile buffers. This is necessary
+       * for any buffers that should be cleared (since clearing
+       * normally happens at the *end* of the generic tile list), but
+       * it's also nice to clear everything so the first tile doesn't
+       * inherit any contents from some previous frame.
+       *
+       * Also, implement the GFXH-1742 workaround. There's a race in
+       * the HW between the RCL updating the TLB's internal type/size
+       * and the spawning of the QPU instances using the TLB's current
+       * internal type/size. To make sure the QPUs get the right
+       * state, we need 1 dummy store in between internal type/size
+       * changes on V3D 3.x, and 2 dummy stores on 4.x.
+       */
+      for (int i = 0; i < 2; i++) {
+         if (i > 0)
+            cl_emit(rcl, TILE_COORDINATES, coords);
+         cl_emit(rcl, END_OF_LOADS, end);
+         cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
+            store.buffer_to_store = NONE;
          }
+         if (i == 0 && cmd_buffer->state.tile_aligned_render_area) {
+            cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
+               clear.clear_z_stencil_buffer = !job->early_zs_clear;
+               clear.clear_all_render_targets = true;
+            }
+         }
+         cl_emit(rcl, END_OF_TILE_MARKER, end);
       }
-      cl_emit(rcl, END_OF_TILE_MARKER, end);
-   }
 
-   cl_emit(rcl, FLUSH_VCD_CACHE, flush);
+      cl_emit(rcl, FLUSH_VCD_CACHE, flush);
+   }
 
    cmd_buffer_render_pass_emit_per_tile_rcl(cmd_buffer, layer);
 
