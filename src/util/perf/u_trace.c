@@ -262,6 +262,9 @@ process_chunk(void *job, void *gdata, int thread_index)
    for (unsigned idx = 0; idx < chunk->num_traces; idx++) {
       const struct u_trace_event *evt = &chunk->traces[idx];
 
+      if (!evt->tp)
+         continue;
+
       uint64_t ns = utctx->read_timestamp(utctx, chunk->timestamps, idx, chunk->flush_data);
       int32_t delta;
 
@@ -362,6 +365,104 @@ u_trace_fini(struct u_trace *ut)
     * have been flushed to the trace-context.
     */
    free_chunks(&ut->trace_chunks);
+}
+
+bool
+u_trace_has_points(struct u_trace *ut)
+{
+   return !list_is_empty(&ut->trace_chunks);
+}
+
+struct u_trace_iterator
+u_trace_begin_iterator(struct u_trace *ut)
+{
+   if (!ut->enabled)
+      return (struct u_trace_iterator) {NULL, NULL, 0};
+
+   struct u_trace_chunk *first_chunk =
+      list_first_entry(&ut->trace_chunks, struct u_trace_chunk, node);
+
+   return (struct u_trace_iterator) { ut, first_chunk, 0};
+}
+
+struct u_trace_iterator
+u_trace_end_iterator(struct u_trace *ut)
+{
+   if (!ut->enabled)
+      return (struct u_trace_iterator) {NULL, NULL, 0};
+
+   struct u_trace_chunk *last_chunk =
+      list_last_entry(&ut->trace_chunks, struct u_trace_chunk, node);
+
+   return (struct u_trace_iterator) { ut, last_chunk, last_chunk->num_traces};
+}
+
+bool
+u_trace_iterator_equal(struct u_trace_iterator a,
+                       struct u_trace_iterator b)
+{
+   return a.ut == b.ut &&
+          a.chunk == b.chunk &&
+          a.event_idx == b.event_idx;
+}
+
+void
+u_trace_clone_append(struct u_trace_iterator begin_it,
+                     struct u_trace_iterator end_it,
+                     struct u_trace *into,
+                     void *cmdstream,
+                     u_trace_copy_ts_buffer copy_ts_buffer)
+{
+   struct u_trace_chunk *from_chunk = begin_it.chunk;
+   uint32_t from_idx = begin_it.event_idx;
+
+   while (from_chunk != end_it.chunk || from_idx != end_it.event_idx) {
+      struct u_trace_chunk *to_chunk = get_chunk(into);
+
+      unsigned to_copy = MIN2(TRACES_PER_CHUNK - to_chunk->num_traces,
+                              from_chunk->num_traces - from_idx);
+      if (from_chunk == end_it.chunk)
+         to_copy = MIN2(to_copy, end_it.event_idx - from_idx);
+
+      copy_ts_buffer(begin_it.ut->utctx, cmdstream,
+                     from_chunk->timestamps, from_idx,
+                     to_chunk->timestamps, to_chunk->num_traces,
+                     to_copy);
+
+      memcpy(&to_chunk->traces[to_chunk->num_traces],
+             &from_chunk->traces[from_idx],
+             to_copy * sizeof(struct u_trace_event));
+
+      to_chunk->num_traces += to_copy;
+      from_idx += to_copy;
+
+      assert(from_idx <= from_chunk->num_traces);
+      if (from_idx == from_chunk->num_traces) {
+         if (from_chunk == end_it.chunk)
+            break;
+
+         from_idx = 0;
+         from_chunk = LIST_ENTRY(struct u_trace_chunk, from_chunk->node.next, node);
+      }
+   }
+}
+
+void
+u_trace_disable_event_range(struct u_trace_iterator begin_it,
+                            struct u_trace_iterator end_it)
+{
+   struct u_trace_chunk *current_chunk = begin_it.chunk;
+   uint32_t start_idx = begin_it.event_idx;
+
+   while(current_chunk != end_it.chunk) {
+      memset(&current_chunk->traces[start_idx], 0,
+             (current_chunk->num_traces - start_idx) * sizeof(struct u_trace_event));
+      start_idx = 0;
+      current_chunk = LIST_ENTRY(struct u_trace_chunk, current_chunk->node.next, node);
+   }
+
+   memset(&current_chunk->traces[start_idx], 0,
+          (end_it.event_idx - start_idx) * sizeof(struct u_trace_event));
 }
 
 /**

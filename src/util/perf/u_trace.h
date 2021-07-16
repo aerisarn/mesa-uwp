@@ -204,6 +204,54 @@ void u_trace_context_process(struct u_trace_context *utctx, bool eof);
 void u_trace_init(struct u_trace *ut, struct u_trace_context *utctx);
 void u_trace_fini(struct u_trace *ut);
 
+bool u_trace_has_points(struct u_trace *ut);
+
+struct u_trace_iterator
+{
+   struct u_trace *ut;
+   struct u_trace_chunk *chunk;
+   uint32_t event_idx;
+};
+
+struct u_trace_iterator
+u_trace_begin_iterator(struct u_trace *ut);
+
+struct u_trace_iterator
+u_trace_end_iterator(struct u_trace *ut);
+
+bool
+u_trace_iterator_equal(struct u_trace_iterator a,
+                       struct u_trace_iterator b);
+
+typedef void (*u_trace_copy_ts_buffer)(struct u_trace_context *utctx,
+      void *cmdstream,
+      void *ts_from, uint32_t from_offset,
+      void *ts_to, uint32_t to_offset,
+      uint32_t count);
+
+/**
+ * Clones tracepoints range into target u_trace.
+ * Provides callback for driver to copy timestamps on GPU from
+ * one buffer to another.
+ *
+ * The payload is shared and remains owned by the original u_trace
+ * if tracepoints are being copied between different u_trace!
+ *
+ * It allows:
+ * - Tracing re-usable command buffer in Vulkan, by copying tracepoints
+ *   each time it is submitted.
+ * - Per-tile tracing for tiling GPUs, by copying a range of tracepoints
+ *   corresponding to a tile.
+ */
+void u_trace_clone_append(struct u_trace_iterator begin_it,
+                          struct u_trace_iterator end_it,
+                          struct u_trace *into,
+                          void *cmdstream,
+                          u_trace_copy_ts_buffer copy_ts_buffer);
+
+void u_trace_disable_event_range(struct u_trace_iterator begin_it,
+                                 struct u_trace_iterator end_it);
+
 /**
  * Flush traces to the parent trace-context.  At this point, the expectation
  * is that all the tracepoints are "executed" by the GPU following any previously
