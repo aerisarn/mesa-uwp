@@ -1017,6 +1017,9 @@ iris_bo_gem_mmap_legacy(struct pipe_debug_callback *dbg, struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
+   assert(bufmgr->vram.size == 0);
+   assert(bo->mmap_mode == IRIS_MMAP_WB || bo->mmap_mode == IRIS_MMAP_WC);
+
    struct drm_i915_gem_mmap mmap_arg = {
       .handle = bo->gem_handle,
       .size = bo->size,
