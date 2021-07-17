@@ -296,9 +296,6 @@ typedef struct {
         /* Must be first */
         struct list_head link;
 
-        /* Link for the use chain */
-        struct list_head use;
-
         enum bi_opcode op;
 
         /* Data flow */
