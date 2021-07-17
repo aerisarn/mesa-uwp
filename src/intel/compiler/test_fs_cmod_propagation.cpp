@@ -2187,8 +2187,8 @@ cmod_propagation_test::test_saturate_prop(enum brw_conditional_mod before,
 
 TEST_F(cmod_propagation_test, float_saturate_nz_cmp)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  (sat(x) != 0) == (x > 0).
+   /* With the saturate modifier, the comparison happens after clamping to
+    * [0, 1].
     *
     * = Before =
     *
@@ -2196,9 +2196,9 @@ TEST_F(cmod_propagation_test, float_saturate_nz_cmp)
     * 1: cmp.nz.f0(8)  null  dest  0.0f
     *
     * = After =
-    * 0: add.sat.g.f0(8)  dest  src0  src1
+    * 0: add.sat.nz.f0(8)  dest  src0  src1
     */
-   test_saturate_prop(BRW_CONDITIONAL_NZ, BRW_CONDITIONAL_G,
+   test_saturate_prop(BRW_CONDITIONAL_NZ, BRW_CONDITIONAL_NZ,
                       BRW_OPCODE_CMP,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
                       true);
@@ -2206,8 +2206,8 @@ TEST_F(cmod_propagation_test, float_saturate_nz_cmp)
 
 TEST_F(cmod_propagation_test, float_saturate_nz_mov)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  (sat(x) != 0) == (x > 0).
+   /* With the saturate modifier, the comparison happens after clamping to
+    * [0, 1].
     *
     * = Before =
     *
@@ -2215,9 +2215,9 @@ TEST_F(cmod_propagation_test, float_saturate_nz_mov)
     * 1: mov.nz.f0(8)  null  dest
     *
     * = After =
-    * 0: add.sat.g.f0(8)  dest  src0  src1
+    * 0: add.sat.nz.f0(8)  dest  src0  src1
     */
-   test_saturate_prop(BRW_CONDITIONAL_NZ, BRW_CONDITIONAL_G,
+   test_saturate_prop(BRW_CONDITIONAL_NZ, BRW_CONDITIONAL_NZ,
                       BRW_OPCODE_MOV,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
                       true);
@@ -2225,8 +2225,8 @@ TEST_F(cmod_propagation_test, float_saturate_nz_mov)
 
 TEST_F(cmod_propagation_test, float_saturate_z_cmp)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  (sat(x) == 0) == (x <= 0).
+   /* With the saturate modifier, the comparison happens after clamping to
+    * [0, 1].
     *
     * = Before =
     *
@@ -2234,9 +2234,9 @@ TEST_F(cmod_propagation_test, float_saturate_z_cmp)
     * 1: cmp.z.f0(8)   null  dest  0.0f
     *
     * = After =
-    * 0: add.sat.le.f0(8)  dest  src0  src1
+    * 0: add.sat.z.f0(8)  dest  src0  src1
     */
-   test_saturate_prop(BRW_CONDITIONAL_Z, BRW_CONDITIONAL_LE,
+   test_saturate_prop(BRW_CONDITIONAL_Z, BRW_CONDITIONAL_Z,
                       BRW_OPCODE_CMP,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
                       true);
@@ -2244,8 +2244,8 @@ TEST_F(cmod_propagation_test, float_saturate_z_cmp)
 
 TEST_F(cmod_propagation_test, float_saturate_z_mov)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  (sat(x) == 0) == (x <= 0).
+   /* With the saturate modifier, the comparison happens after clamping to
+    * [0, 1].
     *
     * = Before =
     *
@@ -2253,9 +2253,9 @@ TEST_F(cmod_propagation_test, float_saturate_z_mov)
     * 1: mov.z.f0(8)   null  dest
     *
     * = After =
-    * 0: add.sat.le.f0(8)  dest  src0  src1
+    * 0: add.sat.z.f0(8) dest  src0  src1
     */
-   test_saturate_prop(BRW_CONDITIONAL_Z, BRW_CONDITIONAL_LE,
+   test_saturate_prop(BRW_CONDITIONAL_Z, BRW_CONDITIONAL_Z,
                       BRW_OPCODE_MOV,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
                       true);
@@ -2263,8 +2263,8 @@ TEST_F(cmod_propagation_test, float_saturate_z_mov)
 
 TEST_F(cmod_propagation_test, float_saturate_g_cmp)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  (sat(x) > 0) == (x > 0).
+   /* With the saturate modifier, the comparison happens after clamping to
+    * [0, 1].
     *
     * = Before =
     *
@@ -2282,8 +2282,8 @@ TEST_F(cmod_propagation_test, float_saturate_g_cmp)
 
 TEST_F(cmod_propagation_test, float_saturate_g_mov)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  (sat(x) > 0) == (x > 0).
+   /* With the saturate modifier, the comparison happens after clamping to
+    * [0, 1].
     *
     * = Before =
     *
@@ -2301,8 +2301,8 @@ TEST_F(cmod_propagation_test, float_saturate_g_mov)
 
 TEST_F(cmod_propagation_test, float_saturate_le_cmp)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  (sat(x) <= 0) == (x <= 0).
+   /* With the saturate modifier, the comparison happens after clamping to
+    * [0, 1].
     *
     * = Before =
     *
@@ -2320,7 +2320,7 @@ TEST_F(cmod_propagation_test, float_saturate_le_cmp)
 
 TEST_F(cmod_propagation_test, float_saturate_le_mov)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
+   /* With the saturate modifier, the comparison happens after clamping to
     * [0, 1].  (sat(x) <= 0) == (x <= 0).
     *
     * = Before =
@@ -2339,8 +2339,8 @@ TEST_F(cmod_propagation_test, float_saturate_le_mov)
 
 TEST_F(cmod_propagation_test, float_saturate_l_cmp)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  There is no before / after equivalence for (sat(x) < 0).
+   /* With the saturate modifier, the comparison happens after clamping to
+    * [0, 1].
     *
     * = Before =
     *
@@ -2348,39 +2348,37 @@ TEST_F(cmod_propagation_test, float_saturate_l_cmp)
     * 1: cmp.l.f0(8)  null  dest  0.0f
     *
     * = After =
-    * No change
+    * 0: add.sat.l.f0(8)  dest  src0  src1
     */
    test_saturate_prop(BRW_CONDITIONAL_L, BRW_CONDITIONAL_L,
                       BRW_OPCODE_CMP,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
-                      false);
+                      true);
 }
 
-#if 0
 TEST_F(cmod_propagation_test, float_saturate_l_mov)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  There is no before / after equivalence for (sat(x) < 0).
+   /* With the saturate modifier, the comparison happens after clamping to
+    * [0, 1].
     *
     * = Before =
     *
     * 0: add.sat(8)    dest  src0  src1
-    * 1: mov.l.f0(8)  null  dest  0.0f
+    * 1: mov.l.f0(8)   null  dest
     *
     * = After =
-    * No change
+    * 0: add.sat.l.f0(8)    dest  src0  src1
     */
    test_saturate_prop(BRW_CONDITIONAL_L, BRW_CONDITIONAL_L,
                       BRW_OPCODE_MOV,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
-                      false);
+                      true);
 }
-#endif
 
 TEST_F(cmod_propagation_test, float_saturate_ge_cmp)
 {
-   /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  There is no before / after equivalence for (sat(x) >= 0).
+   /* With the saturate modifier, the comparison happens after clamping to
+    * [0, 1].
     *
     * = Before =
     *
@@ -2388,31 +2386,31 @@ TEST_F(cmod_propagation_test, float_saturate_ge_cmp)
     * 1: cmp.ge.f0(8)  null  dest  0.0f
     *
     * = After =
-    * No change
+    * 0: add.sat.ge.f0(8)  dest  src0  src1
     */
    test_saturate_prop(BRW_CONDITIONAL_GE, BRW_CONDITIONAL_GE,
                       BRW_OPCODE_CMP,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
-                      false);
+                      true);
 }
 
 TEST_F(cmod_propagation_test, float_saturate_ge_mov)
 {
    /* With the saturate modifier, the comparison happens before clamping to
-    * [0, 1].  There is no before / after equivalence for (sat(x) >= 0).
+    * [0, 1].
     *
     * = Before =
     *
     * 0: add.sat(8)    dest  src0  src1
-    * 1: mov.ge.f0(8)  null  dest  0.0f
+    * 1: mov.ge.f0(8)  null  dest
     *
     * = After =
-    * No change
+    * 0: add.sat.ge.f0(8)    dest  src0  src1
     */
    test_saturate_prop(BRW_CONDITIONAL_GE, BRW_CONDITIONAL_GE,
                       BRW_OPCODE_MOV,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
-                      false);
+                      true);
 }
 
 TEST_F(cmod_propagation_test, int_saturate_nz_cmp)

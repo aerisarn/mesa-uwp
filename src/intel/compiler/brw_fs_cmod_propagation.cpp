@@ -499,30 +499,26 @@ opt_cmod_propagation_local(const intel_device_info *devinfo, bblock_t *block)
                inst->src[0].negate ? brw_swap_cmod(inst->conditional_mod)
                                    : inst->conditional_mod;
 
-            /* From the Sky Lake PRM Vol. 7 "Assigning Conditional Mods":
+            /* From the Kaby Lake PRM Vol. 7 "Assigning Conditional Flags":
              *
              *    * Note that the [post condition signal] bits generated at
              *      the output of a compute are before the .sat.
              *
-             * This limits the cases where we can propagate the conditional
-             * modifier.  If scan_inst has a saturate modifier, then we can
-             * only propagate from inst if inst is 'scan_inst <= 0',
-             * 'scan_inst == 0', 'scan_inst != 0', or 'scan_inst > 0'.  If
-             * inst is 'scan_inst == 0', the conditional modifier must be
-             * replace with LE.  Likewise, if inst is 'scan_inst != 0', the
-             * conditional modifier must be replace with G.
+             * Paragraph about post_zero does not mention saturation, but
+             * testing it on actual GPUs shows that conditional modifiers are
+             * applied after saturation.
              *
-             * The only other cases are 'scan_inst < 0' (which is a
-             * contradiction) and 'scan_inst >= 0' (which is a tautology).
+             *    * post_zero bit: This bit reflects whether the final
+             *      result is zero after all the clamping, normalizing,
+             *      or format conversion logic.
+             *
+             * Conditional modifiers can be applied to floating point
+             * calculations without restriction.  Some cases (e.g., .L) are
+             * nonsensical, but those should have been eliminated by the NIR
+             * optimizer.
              */
             if (scan_inst->saturate) {
                if (scan_inst->dst.type != BRW_REGISTER_TYPE_F)
-                  break;
-
-               if (cond != BRW_CONDITIONAL_Z &&
-                   cond != BRW_CONDITIONAL_NZ &&
-                   cond != BRW_CONDITIONAL_LE &&
-                   cond != BRW_CONDITIONAL_G)
                   break;
 
                assert(inst->opcode == BRW_OPCODE_MOV ||
@@ -532,11 +528,6 @@ opt_cmod_propagation_local(const intel_device_info *devinfo, bblock_t *block)
                 * against possible future changes in this code.
                 */
                assert(inst->opcode != BRW_OPCODE_CMP || inst->src[1].is_zero());
-
-               if (cond == BRW_CONDITIONAL_Z)
-                  cond = BRW_CONDITIONAL_LE;
-               else if (cond == BRW_CONDITIONAL_NZ)
-                  cond = BRW_CONDITIONAL_G;
             }
 
             /* Otherwise, try propagating the conditional. */
