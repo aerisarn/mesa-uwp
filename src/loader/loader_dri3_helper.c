@@ -1448,7 +1448,8 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
                                          dri3_linear_format_for_format(draw, format),
                                          __DRI_IMAGE_USE_SHARE |
                                          __DRI_IMAGE_USE_LINEAR |
-                                         __DRI_IMAGE_USE_BACKBUFFER,
+                                         __DRI_IMAGE_USE_BACKBUFFER |
+                                         __DRI_IMAGE_USE_SCANOUT,
                                          buffer);
          pixmap_buffer = linear_buffer_display_gpu;
       }
@@ -1460,7 +1461,8 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
                                          dri3_linear_format_for_format(draw, format),
                                          __DRI_IMAGE_USE_SHARE |
                                          __DRI_IMAGE_USE_LINEAR |
-                                         __DRI_IMAGE_USE_BACKBUFFER,
+                                         __DRI_IMAGE_USE_BACKBUFFER |
+                                         __DRI_IMAGE_USE_SCANOUT,
                                          buffer);
 
          pixmap_buffer = buffer->linear_buffer;
