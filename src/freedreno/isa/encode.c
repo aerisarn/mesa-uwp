@@ -298,7 +298,7 @@ __cat3_src_case(struct encode_state *s, struct ir3_register *reg)
 void *
 isa_assemble(struct ir3_shader_variant *v)
 {
-	uint64_t *ptr, *instrs;
+	BITSET_WORD *ptr, *instrs;
 	const struct ir3_info *info = &v->info;
 	struct ir3 *shader = v->ir;
 
@@ -311,7 +311,9 @@ isa_assemble(struct ir3_shader_variant *v)
 				.instr = instr,
 			};
 
-			*(instrs++) = encode__instruction(&s, NULL, instr);
+			const bitmask_t encoded = encode__instruction(&s, NULL, instr);
+			store_instruction(instrs, encoded);
+			instrs += BITMASK_WORDS;
 		}
 	}
 
