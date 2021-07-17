@@ -512,23 +512,9 @@ opt_cmod_propagation_local(const intel_device_info *devinfo, bblock_t *block)
              *      result is zero after all the clamping, normalizing,
              *      or format conversion logic.
              *
-             * Conditional modifiers can be applied to floating point
-             * calculations without restriction.  Some cases (e.g., .L) are
-             * nonsensical, but those should have been eliminated by the NIR
-             * optimizer.
+             * For this reason, no additional restrictions are necessary on
+             * instructions with saturate.
              */
-            if (scan_inst->saturate) {
-               if (scan_inst->dst.type != BRW_REGISTER_TYPE_F)
-                  break;
-
-               assert(inst->opcode == BRW_OPCODE_MOV ||
-                      inst->opcode == BRW_OPCODE_CMP);
-
-               /* inst->src[1].is_zero() was tested before, but be safe
-                * against possible future changes in this code.
-                */
-               assert(inst->opcode != BRW_OPCODE_CMP || inst->src[1].is_zero());
-            }
 
             /* Otherwise, try propagating the conditional. */
             if (scan_inst->can_do_cmod() &&
