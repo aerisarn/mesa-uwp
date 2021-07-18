@@ -235,11 +235,9 @@ GL 4.6, GLSL 4.60 -- all DONE: radeonsi, zink
   GL_ARB_shader_draw_parameters                         DONE (i965, llvmpipe, nvc0)
   GL_ARB_shader_group_vote                              DONE (i965, nvc0, llvmpipe)
   GL_ARB_spirv_extensions                               DONE (i965/gen7+, llvmpipe)
-  GL_ARB_texture_filter_anisotropic                     DONE (etnaviv/HALTI0, freedreno, i965, nv50, nvc0, r600, softpipe (*), llvmpipe (*), d3d12, virgl)
+  GL_ARB_texture_filter_anisotropic                     DONE (etnaviv/HALTI0, freedreno, i965, nv50, nvc0, r600, softpipe, llvmpipe, d3d12, virgl)
   GL_ARB_transform_feedback_overflow_query              DONE (i965/gen6+, nvc0, llvmpipe, softpipe, virgl)
   GL_KHR_no_error                                       DONE (all drivers)
-
-(*) softpipe and llvmpipe advertise 16x anisotropy but simply ignore the setting
 
 These are the extensions cherry-picked to make GLES 3.1
 GLES3.1, GLSL ES 3.1 -- all DONE: i965/hsw+, nvc0, r600, radeonsi, virgl, v3d, softpipe, llvmpipe, zink, panfrost
