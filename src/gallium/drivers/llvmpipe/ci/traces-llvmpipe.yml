@@ -17,7 +17,7 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: b244fb65c77f5cca2c49bb256874e132
+        checksum: ae565e00821619d8a0462312ca0fecac
   - path: pathfinder/demo.trace
     expectations:
       - device: gl-vmware-llvmpipe
@@ -33,7 +33,7 @@ traces:
   - path: gputest/furmark.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 248ee9534a1f333b479e599646f56f63
+        checksum: 901e1b360463aa9dfe62fdda0eb8008c
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-vmware-llvmpipe
@@ -45,7 +45,7 @@ traces:
   - path: humus/Portals.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 80e88e6be47138c18370d84c6426544f
+        checksum: e46ba031e63d55209469f20019657baa
   - path: bgfx/01-cubes.rdc
     expectations:
       - device: gl-vmware-llvmpipe
