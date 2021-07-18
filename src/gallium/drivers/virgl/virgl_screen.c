@@ -82,7 +82,7 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_VERTEX_SHADER_SATURATE:
       return 1;
    case PIPE_CAP_ANISOTROPIC_FILTER:
-      return 0;
+      return vscreen->caps.caps.v2.max_anisotropy > 1.0;
    case PIPE_CAP_POINT_SPRITE:
       return 1;
    case PIPE_CAP_MAX_RENDER_TARGETS:
@@ -460,7 +460,7 @@ virgl_get_paramf(struct pipe_screen *screen, enum pipe_capf param)
    case PIPE_CAPF_MAX_POINT_WIDTH_AA:
       return vscreen->caps.caps.v2.max_smooth_point_size;
    case PIPE_CAPF_MAX_TEXTURE_ANISOTROPY:
-      return 16.0;
+      return vscreen->caps.caps.v2.max_anisotropy;
    case PIPE_CAPF_MAX_TEXTURE_LOD_BIAS:
       return vscreen->caps.caps.v2.max_texture_lod_bias;
    case PIPE_CAPF_MIN_CONSERVATIVE_RASTER_DILATE:
