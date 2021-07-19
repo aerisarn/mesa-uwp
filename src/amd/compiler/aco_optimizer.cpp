@@ -194,7 +194,8 @@ struct ssa_info {
       add_label(label_literal);
       val = constant;
 
-      if (chip >= GFX8 && !op16.isLiteral())
+      /* check that no upper bits are lost in case of packed 16bit constants */
+      if (chip >= GFX8 && !op16.isLiteral() && op16.constantValue64() == constant)
          add_label(label_constant_16bit);
 
       if (!op32.isLiteral())
