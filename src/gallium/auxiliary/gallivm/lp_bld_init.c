@@ -595,10 +595,10 @@ gallivm_compile_module(struct gallivm_state *gallivm)
       LLVMWriteBitcodeToFile(gallivm->module, filename);
       debug_printf("%s written\n", filename);
       debug_printf("Invoke as \"opt %s %s | llc -O%d %s%s\"\n",
-                   gallivm_debug & GALLIVM_PERF_NO_OPT ? "-mem2reg" :
+                   gallivm_perf & GALLIVM_PERF_NO_OPT ? "-mem2reg" :
                    "-sroa -early-cse -simplifycfg -reassociate "
                    "-mem2reg -constprop -instcombine -gvn",
-                   filename, gallivm_debug & GALLIVM_PERF_NO_OPT ? 0 : 2,
+                   filename, gallivm_perf & GALLIVM_PERF_NO_OPT ? 0 : 2,
                    "[-mcpu=<-mcpu option>] ",
                    "[-mattr=<-mattr option(s)>]");
    }
