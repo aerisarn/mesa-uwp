@@ -21,6 +21,7 @@
  * SOFTWARE.
  */
 
+#include <string.h>
 #include "disassemble.h"
 #include "compiler.h"
 
@@ -32,15 +33,44 @@
 #include "util/u_dynarray.h"
 #include "bifrost_compile.h"
 
+static gl_shader_stage
+filename_to_stage(const char *stage)
+{
+        const char *ext = strrchr(stage, '.');
+
+        if (ext == NULL) {
+                fprintf(stderr, "No extension found in %s\n", stage);
+                exit(1);
+        }
+
+        if (!strcmp(ext, ".cs") || !strcmp(ext, ".comp"))
+                return MESA_SHADER_COMPUTE;
+        else if (!strcmp(ext, ".vs") || !strcmp(ext, ".vert"))
+                return MESA_SHADER_VERTEX;
+        else if (!strcmp(ext, ".fs") || !strcmp(ext, ".frag"))
+                return MESA_SHADER_FRAGMENT;
+        else {
+                fprintf(stderr, "Invalid extension %s\n", ext);
+                exit(1);
+        }
+
+        unreachable("Should've returned or bailed");
+}
+
 static void
-compile_shader(char **argv)
+compile_shader(int stages, char **files)
 {
         struct gl_shader_program *prog;
-        nir_shader *nir[2];
-        unsigned shader_types[2] = {
-                MESA_SHADER_VERTEX,
-                MESA_SHADER_FRAGMENT,
-        };
+        nir_shader *nir[MESA_SHADER_COMPUTE + 1];
+        unsigned shader_types[MESA_SHADER_COMPUTE + 1];
+
+        if (stages > MESA_SHADER_COMPUTE) {
+                fprintf(stderr, "Too many stages");
+                exit(1);
+        }
+
+        for (unsigned i = 0; i < stages; ++i)
+                shader_types[i] = filename_to_stage(files[i]);
 
         struct standalone_options options = {
                 .glsl_version = 300, /* ES - needed for precision */
@@ -50,14 +80,18 @@ compile_shader(char **argv)
 
         static struct gl_context local_ctx;
 
-        prog = standalone_compile_shader(&options, 2, argv, &local_ctx);
-        prog->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program->info.stage = MESA_SHADER_FRAGMENT;
+        prog = standalone_compile_shader(&options, stages, files, &local_ctx);
+
+        for (unsigned i = 0; i < stages; ++i) {
+                gl_shader_stage stage = shader_types[i];
+                prog->_LinkedShaders[stage]->Program->info.stage = stage;
+        }
 
         struct util_dynarray binary;
 
         util_dynarray_init(&binary, NULL);
 
-        for (unsigned i = 0; i < 2; ++i) {
+        for (unsigned i = 0; i < stages; ++i) {
                 nir[i] = glsl_to_nir(&local_ctx, prog, shader_types[i], &bifrost_nir_options);
                 NIR_PASS_V(nir[i], nir_lower_global_vars_to_local);
                 NIR_PASS_V(nir[i], nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir[i]), true, i == 0);
@@ -144,7 +178,7 @@ main(int argc, char **argv)
         }
 
         if (strcmp(argv[1], "compile") == 0)
-                compile_shader(&argv[2]);
+                compile_shader(argc - 2, &argv[2]);
         else if (strcmp(argv[1], "disasm") == 0)
                 disassemble(argv[2], false);
         else if (strcmp(argv[1], "disasm-verbose") == 0)
