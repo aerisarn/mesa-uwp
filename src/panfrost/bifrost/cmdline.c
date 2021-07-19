@@ -33,7 +33,7 @@
 #include "bifrost_compile.h"
 
 static void
-compile_shader(char **argv, bool vertex_only)
+compile_shader(char **argv)
 {
         struct gl_shader_program *prog;
         nir_shader *nir[2];
@@ -77,9 +77,6 @@ compile_shader(char **argv, bool vertex_only)
 
                 util_dynarray_clear(&binary);
                 bifrost_compile_shader_nir(nir[i], &inputs, &binary, &info);
-
-                if (vertex_only)
-                        break;
         }
 
         util_dynarray_fini(&binary);
@@ -147,7 +144,7 @@ main(int argc, char **argv)
         }
 
         if (strcmp(argv[1], "compile") == 0)
-                compile_shader(&argv[2], false);
+                compile_shader(&argv[2]);
         else if (strcmp(argv[1], "disasm") == 0)
                 disassemble(argv[2], false);
         else if (strcmp(argv[1], "disasm-verbose") == 0)
