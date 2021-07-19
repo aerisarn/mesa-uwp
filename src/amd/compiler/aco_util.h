@@ -29,6 +29,7 @@
 #include "util/bitscan.h"
 
 #include <cassert>
+#include <cstddef>
 #include <iterator>
 #include <vector>
 
@@ -51,7 +52,7 @@ public:
    using reverse_iterator = std::reverse_iterator<iterator>;
    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
    using size_type = uint16_t;
-   using difference_type = ptrdiff_t;
+   using difference_type = std::ptrdiff_t;
 
    /*! \brief                  Compiler generated default constructor
     */
