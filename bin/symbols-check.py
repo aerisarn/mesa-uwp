@@ -21,6 +21,9 @@ PLATFORM_SYMBOLS = [
     '_end',
     '_fini',
     '_init',
+    '_fbss',
+    '_fdata',
+    '_ftext',
 ]
 
 def get_symbols_nm(nm, lib):
