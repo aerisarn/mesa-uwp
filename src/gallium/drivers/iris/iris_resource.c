@@ -635,6 +635,9 @@ iris_resource_configure_main(const struct iris_screen *screen,
 
    isl_surf_usage_flags_t usage = 0;
 
+   if (res->mod_info && res->mod_info->aux_usage == ISL_AUX_USAGE_NONE)
+      usage |= ISL_SURF_USAGE_DISABLE_AUX_BIT;
+
    if (templ->usage == PIPE_USAGE_STAGING)
       usage |= ISL_SURF_USAGE_STAGING_BIT;
 
@@ -730,24 +733,13 @@ iris_resource_configure_aux(struct iris_screen *screen,
 {
    const struct intel_device_info *devinfo = &screen->devinfo;
 
-   /* Try to create the auxiliary surfaces allowed by the modifier or by
-    * the user if no modifier is specified.
-    */
-   assert(!res->mod_info ||
-          res->mod_info->aux_usage == ISL_AUX_USAGE_NONE ||
-          res->mod_info->aux_usage == ISL_AUX_USAGE_CCS_E ||
-          res->mod_info->aux_usage == ISL_AUX_USAGE_GFX12_CCS_E ||
-          res->mod_info->aux_usage == ISL_AUX_USAGE_MC);
-
    const bool has_mcs =
       isl_surf_get_mcs_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
 
    const bool has_hiz = !INTEL_DEBUG(DEBUG_NO_HIZ) &&
       isl_surf_get_hiz_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
 
-   const bool has_ccs =
-      ((!res->mod_info && !INTEL_DEBUG(DEBUG_NO_RBC)) ||
-       (res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE)) &&
+   const bool has_ccs = !INTEL_DEBUG(DEBUG_NO_RBC) &&
       iris_get_ccs_surf(&screen->isl_dev, &res->surf, &res->aux.surf,
                         &res->aux.extra_aux.surf, 0);
 
