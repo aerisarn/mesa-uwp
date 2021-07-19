@@ -510,7 +510,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_zero_initialize_workgroup_memory               DONE (anv, radv)
   VK_EXT_4444_formats                                   DONE (anv, radv, tu)
   VK_EXT_calibrated_timestamps                          DONE (anv, lvp, radv)
-  VK_EXT_color_write_enable                             DONE (anv)
+  VK_EXT_color_write_enable                             DONE (anv, lvp)
   VK_EXT_conditional_rendering                          DONE (anv, lvp, radv, tu)
   VK_EXT_conservative_rasterization                     DONE (anv/gen9+, radv)
   VK_EXT_custom_border_color                            DONE (anv, lvp, radv, tu)
