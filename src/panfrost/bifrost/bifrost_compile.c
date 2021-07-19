@@ -3472,6 +3472,31 @@ bi_lower_branch(bi_block *block)
         }
 }
 
+static void
+bi_pack_clauses(bi_context *ctx, struct util_dynarray *binary)
+{
+        unsigned final_clause = bi_pack(ctx, binary);
+
+        /* If we need to wait for ATEST or BLEND in the first clause, pass the
+         * corresponding bits through to the renderer state descriptor */
+        bi_block *first_block = list_first_entry(&ctx->blocks, bi_block, link);
+        bi_clause *first_clause = bi_next_clause(ctx, first_block, NULL);
+
+        unsigned first_deps = first_clause ? first_clause->dependencies : 0;
+        ctx->info->bifrost.wait_6 = (first_deps & (1 << 6));
+        ctx->info->bifrost.wait_7 = (first_deps & (1 << 7));
+
+        /* Pad the shader with enough zero bytes to trick the prefetcher,
+         * unless we're compiling an empty shader (in which case we don't pad
+         * so the size remains 0) */
+        unsigned prefetch_size = BIFROST_SHADER_PREFETCH - final_clause;
+
+        if (binary->size) {
+                memset(util_dynarray_grow(binary, uint8_t, prefetch_size),
+                       0, prefetch_size);
+        }
+}
+
 void
 bifrost_compile_shader_nir(nir_shader *nir,
                            const struct panfrost_compile_inputs *inputs,
@@ -3614,8 +3639,11 @@ bifrost_compile_shader_nir(nir_shader *nir,
         bi_opt_post_ra(ctx);
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
-        bi_schedule(ctx);
-        bi_assign_scoreboard(ctx);
+
+        if (ctx->arch <= 8) {
+                bi_schedule(ctx);
+                bi_assign_scoreboard(ctx);
+        }
 
         /* Analyze after scheduling since we depend on instruction order. */
         bi_analyze_helper_terminate(ctx);
@@ -3623,16 +3651,11 @@ bifrost_compile_shader_nir(nir_shader *nir,
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
 
-        unsigned final_clause = bi_pack(ctx, binary);
-
-        /* If we need to wait for ATEST or BLEND in the first clause, pass the
-         * corresponding bits through to the renderer state descriptor */
-        bi_block *first_block = list_first_entry(&ctx->blocks, bi_block, link);
-        bi_clause *first_clause = bi_next_clause(ctx, first_block, NULL);
-
-        unsigned first_deps = first_clause ? first_clause->dependencies : 0;
-        info->bifrost.wait_6 = (first_deps & (1 << 6));
-        info->bifrost.wait_7 = (first_deps & (1 << 7));
+        if (ctx->arch <= 8) {
+                bi_pack_clauses(ctx, binary);
+        } else {
+                /* TODO: pack flat */
+        }
 
         info->ubo_mask = ctx->ubo_mask & BITSET_MASK(ctx->nir->info.num_ubos);
 
@@ -3640,16 +3663,6 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 disassemble_bifrost(stdout, binary->data, binary->size,
                                     bifrost_debug & BIFROST_DBG_VERBOSE);
                 fflush(stdout);
-        }
-
-        /* Pad the shader with enough zero bytes to trick the prefetcher,
-         * unless we're compiling an empty shader (in which case we don't pad
-         * so the size remains 0) */
-        unsigned prefetch_size = BIFROST_SHADER_PREFETCH - final_clause;
-
-        if (binary->size) {
-                memset(util_dynarray_grow(binary, uint8_t, prefetch_size),
-                       0, prefetch_size);
         }
 
         if ((bifrost_debug & BIFROST_DBG_SHADERDB || inputs->shaderdb) &&
