@@ -3012,6 +3012,17 @@ LLVMValueRef
 lp_build_sin(struct lp_build_context *bld,
              LLVMValueRef a)
 {
+   const struct lp_type type = bld->type;
+
+   if (type.width == 16) {
+      LLVMBuilderRef builder = bld->gallivm->builder;
+      LLVMTypeRef vec_type = lp_build_vec_type(bld->gallivm, type);
+      char intrinsic[32];
+      lp_format_intrinsic(intrinsic, sizeof intrinsic, "llvm.sin", vec_type);
+      LLVMValueRef args[] = { a };
+      return lp_build_intrinsic(builder, intrinsic, vec_type, args, 1, 0);
+   }
+
    return lp_build_sin_or_cos(bld, a, FALSE);
 }
 
@@ -3023,6 +3034,17 @@ LLVMValueRef
 lp_build_cos(struct lp_build_context *bld,
              LLVMValueRef a)
 {
+   const struct lp_type type = bld->type;
+
+   if (type.width == 16) {
+      LLVMBuilderRef builder = bld->gallivm->builder;
+      LLVMTypeRef vec_type = lp_build_vec_type(bld->gallivm, type);
+      char intrinsic[32];
+      lp_format_intrinsic(intrinsic, sizeof intrinsic, "llvm.cos", vec_type);
+      LLVMValueRef args[] = { a };
+      return lp_build_intrinsic(builder, intrinsic, vec_type, args, 1, 0);
+   }
+
    return lp_build_sin_or_cos(bld, a, TRUE);
 }
 

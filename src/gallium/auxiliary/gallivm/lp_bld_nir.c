@@ -684,7 +684,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = lp_build_ceil(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
       break;
    case nir_op_fcos:
-      result = lp_build_cos(&bld_base->base, src[0]);
+      result = lp_build_cos(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
       break;
    case nir_op_fddx:
    case nir_op_fddx_coarse:
@@ -810,7 +810,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = lp_build_sgn(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
       break;
    case nir_op_fsin:
-      result = lp_build_sin(&bld_base->base, src[0]);
+      result = lp_build_sin(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
       break;
    case nir_op_fsqrt:
       result = lp_build_sqrt(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
