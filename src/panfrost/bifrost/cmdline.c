@@ -107,7 +107,7 @@ compile_shader(int stages, char **files)
                 struct panfrost_compile_inputs inputs = {
                         .gpu_id = 0x7212, /* Mali G52 */
                 };
-                struct pan_shader_info info;
+                struct pan_shader_info info = { 0 };
 
                 util_dynarray_clear(&binary);
                 bifrost_compile_shader_nir(nir[i], &inputs, &binary, &info);
