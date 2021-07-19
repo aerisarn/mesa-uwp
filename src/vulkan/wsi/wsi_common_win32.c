@@ -387,13 +387,11 @@ wsi_create_win32_image(const struct wsi_swapchain *chain,
 
 static VkResult
 wsi_win32_image_init(VkDevice device_h,
-                       struct wsi_swapchain *drv_chain,
-                       const VkSwapchainCreateInfoKHR *create_info,
-                       const VkAllocationCallbacks *allocator,
-                       struct wsi_win32_image *image)
+                     struct wsi_win32_swapchain *chain,
+                     const VkSwapchainCreateInfoKHR *create_info,
+                     const VkAllocationCallbacks *allocator,
+                     struct wsi_win32_image *image)
 {
-   struct wsi_win32_swapchain *chain = (struct wsi_win32_swapchain *) drv_chain;
-
    VkResult result = wsi_create_image(&chain->base, &chain->base.image_info,
                                       &image->base);
    if (result != VK_SUCCESS)
@@ -430,13 +428,10 @@ wsi_win32_image_init(VkDevice device_h,
 }
 
 static void
-wsi_win32_image_finish(struct wsi_swapchain *drv_chain,
-                         const VkAllocationCallbacks *allocator,
-                         struct wsi_win32_image *image)
+wsi_win32_image_finish(struct wsi_win32_swapchain *chain,
+                       const VkAllocationCallbacks *allocator,
+                       struct wsi_win32_image *image)
 {
-   struct wsi_win32_swapchain *chain =
-      (struct wsi_win32_swapchain *) drv_chain;
-
    DeleteDC(image->dc);
    if(image->bmp)
       DeleteObject(image->bmp);
@@ -451,7 +446,7 @@ wsi_win32_swapchain_destroy(struct wsi_swapchain *drv_chain,
       (struct wsi_win32_swapchain *) drv_chain;
 
    for (uint32_t i = 0; i < chain->base.image_count; i++)
-      wsi_win32_image_finish(drv_chain, allocator, &chain->images[i]);
+      wsi_win32_image_finish(chain, allocator, &chain->images[i]);
 
    DeleteDC(chain->chain_dc);
 
@@ -575,14 +570,14 @@ wsi_win32_surface_create_swapchain(
    }
 
    for (uint32_t image = 0; image < chain->base.image_count; image++) {
-      result = wsi_win32_image_init(device, &chain->base,
-                                      create_info, allocator,
-                                      &chain->images[image]);
+      result = wsi_win32_image_init(device, chain,
+                                    create_info, allocator,
+                                    &chain->images[image]);
       if (result != VK_SUCCESS) {
          while (image > 0) {
             --image;
-            wsi_win32_image_finish(&chain->base, allocator,
-                                     &chain->images[image]);
+            wsi_win32_image_finish(chain, allocator,
+                                   &chain->images[image]);
          }
          wsi_destroy_image_info(&chain->base, &chain->base.image_info);
          vk_free(allocator, chain);
