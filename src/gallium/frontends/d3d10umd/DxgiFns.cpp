@@ -26,13 +26,13 @@
  **************************************************************************/
 
 /*
- * Dxgi.cpp --
+ * DxgiFns.cpp --
  *    DXGI related functions.
  */
 
 #include <stdio.h>
 
-#include "Dxgi.h"
+#include "DxgiFns.h"
 #include "Format.h"
 #include "State.h"
 
@@ -97,11 +97,11 @@ _Present(DXGI_DDI_ARG_PRESENT *pPresentData)
 
    void *map;
    struct pipe_transfer *transfer;
-   map = pipe_transfer_map(pipe,
-                           pSrcResource->resource,
-                           0, 0, PIPE_MAP_READ,
-                           0, 0, w, h,
-                           &transfer);
+   map = pipe_texture_map(pipe,
+                          pSrcResource->resource,
+                          0, 0, PIPE_MAP_READ,
+                          0, 0, w, h,
+                          &transfer);
    if (map) {
 
       BITMAPINFO bmi;
@@ -172,7 +172,7 @@ _Present(DXGI_DDI_ARG_PRESENT *pPresentData)
       DeleteDC(hdcMem);
       DeleteObject(hBmp);
 
-      pipe_transfer_unmap(pipe, transfer);
+      pipe_texture_unmap(pipe, transfer);
    }
 
    ReleaseDC(hWnd, hDC);

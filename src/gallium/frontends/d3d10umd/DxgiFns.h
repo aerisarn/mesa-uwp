@@ -26,8 +26,8 @@
  **************************************************************************/
 
 /*
- * Dxgi.h --
- *    Functions that manipulate GPU resources.
+ * DxgiFns.h --
+ *    DXGI related functions
  */
 
 #ifndef WRAP_DXGI_H

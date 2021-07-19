@@ -32,7 +32,7 @@
 
 
 #include "Draw.h"
-#include "Dxgi.h"
+#include "DxgiFns.h"
 #include "InputAssembly.h"
 #include "OutputMerger.h"
 #include "Query.h"
