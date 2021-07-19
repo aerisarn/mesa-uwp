@@ -46,7 +46,7 @@
 #endif
 #include <llvm-c/BitWriter.h>
 #if GALLIVM_HAVE_CORO
-#if LLVM_VERSION_MAJOR <= 8 && (defined(PIPE_ARCH_AARCH64) || defined (PIPE_ARCH_ARM) || defined(PIPE_ARCH_S390))
+#if LLVM_VERSION_MAJOR <= 8 && (defined(PIPE_ARCH_AARCH64) || defined (PIPE_ARCH_ARM) || defined(PIPE_ARCH_S390) || defined(PIPE_ARCH_MIPS64))
 #include <llvm-c/Transforms/IPO.h>
 #endif
 #include <llvm-c/Transforms/Coroutines.h>
@@ -137,7 +137,7 @@ create_pass_manager(struct gallivm_state *gallivm)
    }
 
 #if GALLIVM_HAVE_CORO
-#if LLVM_VERSION_MAJOR <= 8 && (defined(PIPE_ARCH_AARCH64) || defined (PIPE_ARCH_ARM) || defined(PIPE_ARCH_S390))
+#if LLVM_VERSION_MAJOR <= 8 && (defined(PIPE_ARCH_AARCH64) || defined (PIPE_ARCH_ARM) || defined(PIPE_ARCH_S390) || defined(PIPE_ARCH_MIPS64))
    LLVMAddArgumentPromotionPass(gallivm->cgpassmgr);
    LLVMAddFunctionAttrsPass(gallivm->cgpassmgr);
 #endif
