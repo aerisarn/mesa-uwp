@@ -3833,7 +3833,10 @@ llvmpipe_create_fs_state(struct pipe_context *pipe,
    }
 
    /* This will put a derived copy of the tokens into shader->base.tokens */
-   llvmpipe_fs_analyse(shader, templ->tokens);
+   if (templ->type == PIPE_SHADER_IR_TGSI)
+     llvmpipe_fs_analyse(shader, templ->tokens);
+   else
+     shader->kind = LP_FS_KIND_GENERAL;
 
    return shader;
 }
