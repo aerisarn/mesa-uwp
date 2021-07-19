@@ -580,6 +580,10 @@ read_data_file(FILE *file)
          if (matched == 1)
             print_register(spec, "ROW_INSTDONE", reg);
 
+         matched = sscanf(line, "  GEOM_SVGUNIT_INSTDONE[%*d][%*d]: 0x%08x\n", &reg);
+         if (matched == 1)
+            print_register(spec, "INSTDONE_GEOM", reg);
+
          matched = sscanf(line, "  INSTDONE1: 0x%08x\n", &reg);
          if (matched == 1)
             print_register(spec, "INSTDONE_1", reg);
