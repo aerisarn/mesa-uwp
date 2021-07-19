@@ -2,9 +2,6 @@
 dEQP-VK.draw.inverted_depth_ranges.nodepthclamp_deltazero
 dEQP-VK.rasterization.depth_bias.d32_sfloat
 
-# This test causes GPU hangs (vk-gl-cts 1.2.6.2)
-dEQP-VK.graphicsfuzz.stable-binarysearch-tree-nested-if-and-conditional
-
 # Timeout tests (> 1 minute to run)
 dEQP-VK.api.object_management.max_concurrent.query_pool
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite
