@@ -2329,7 +2329,9 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
       ps.SampleMask                 = 0xff;
 #endif
 
-#if GFX_VER >= 9
+#if GFX_VERx10 >= 125
+      ps.MaximumNumberofThreadsPerPSD  = 96 - 1;
+#elif GFX_VER >= 9
       ps.MaximumNumberofThreadsPerPSD  = 64 - 1;
 #elif GFX_VER >= 8
       ps.MaximumNumberofThreadsPerPSD  = 64 - 2;
