@@ -2066,6 +2066,17 @@ combine_inverse_comparison(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       new_sdwa->clamp = cmp_sdwa.clamp;
       new_sdwa->omod = cmp_sdwa.omod;
       new_instr = new_sdwa;
+   } else if (cmp->isDPP()) {
+      DPP_instruction* new_dpp = create_instruction<DPP_instruction>(
+         new_opcode, (Format)((uint16_t)Format::DPP | (uint16_t)Format::VOPC), 2, 1);
+      DPP_instruction& cmp_dpp = cmp->dpp();
+      memcpy(new_dpp->abs, cmp_dpp.abs, sizeof(new_dpp->abs));
+      memcpy(new_dpp->neg, cmp_dpp.neg, sizeof(new_dpp->neg));
+      new_dpp->dpp_ctrl = cmp_dpp.dpp_ctrl;
+      new_dpp->row_mask = cmp_dpp.row_mask;
+      new_dpp->bank_mask = cmp_dpp.bank_mask;
+      new_dpp->bound_ctrl = cmp_dpp.bound_ctrl;
+      new_instr = new_dpp;
    } else {
       new_instr = create_instruction<VOPC_instruction>(new_opcode, Format::VOPC, 2, 1);
       instr->definitions[0].setHint(vcc);
@@ -2104,6 +2115,8 @@ match_op3_for_vop3(opt_ctx& ctx, aco_opcode op1, aco_opcode op2, Instruction* op
    VOP3_instruction* op2_vop3 = op2_instr->isVOP3() ? &op2_instr->vop3() : NULL;
 
    if (op1_instr->isSDWA() || op2_instr->isSDWA())
+      return false;
+   if (op1_instr->isDPP() || op2_instr->isDPP())
       return false;
 
    /* don't support inbetween clamp/omod */
@@ -2216,7 +2229,7 @@ combine_add_or_then_and_lshl(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (combine_three_valu_op(ctx, instr, aco_opcode::v_lshlrev_b32, new_op_lshl, "210", 1 | 2))
       return true;
 
-   if (instr->isSDWA())
+   if (instr->isSDWA() || instr->isDPP())
       return false;
 
    /* v_or_b32(p_extract(a, 0, 8/16, 0), b) -> v_and_or_b32(a, 0xff/0xffff, b)
@@ -2476,6 +2489,7 @@ combine_add_bcnt(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    for (unsigned i = 0; i < 2; i++) {
       Instruction* op_instr = follow_operand(ctx, instr->operands[i]);
       if (op_instr && op_instr->opcode == aco_opcode::v_bcnt_u32_b32 &&
+          !op_instr->usesModifiers() &&
           op_instr->operands[0].isTemp() &&
           op_instr->operands[0].getTemp().type() == RegType::vgpr &&
           op_instr->operands[1].constantEquals(0)) {
@@ -3145,7 +3159,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       instr->definitions[0].setHint(vcc);
    }
 
-   if (instr->isSDWA())
+   if (instr->isSDWA() || instr->isDPP())
       return;
 
    /* TODO: There are still some peephole optimizations that could be done:
@@ -3172,7 +3186,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          return;
       if (mul_instr->isVOP3() && mul_instr->vop3().clamp)
          return;
-      if (mul_instr->isSDWA())
+      if (mul_instr->isSDWA() || mul_instr->isDPP())
          return;
 
       /* convert to mul(neg(a), b) */
@@ -3231,7 +3245,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             continue;
 
          Operand op[3] = {info.instr->operands[0], info.instr->operands[1], instr->operands[1 - i]};
-         if (info.instr->isSDWA() || !check_vop3_operands(ctx, 3, op) ||
+         if (info.instr->isSDWA() || info.instr->isDPP() || !check_vop3_operands(ctx, 3, op) ||
              ctx.uses[instr->operands[i].tempId()] >= uses)
             continue;
 
