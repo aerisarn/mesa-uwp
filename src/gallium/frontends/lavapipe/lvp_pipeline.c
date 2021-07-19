@@ -828,6 +828,18 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
    } else
       pipeline->line_rectangular = true;
 
+   if (!dynamic_state_contains(pipeline->graphics_create_info.pDynamicState, VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT)) {
+      const VkPipelineColorWriteCreateInfoEXT *cw_state =
+         vk_find_struct_const(pCreateInfo->pColorBlendState, PIPELINE_COLOR_WRITE_CREATE_INFO_EXT);
+      if (cw_state) {
+         for (unsigned i = 0; i < cw_state->attachmentCount; i++)
+            if (!cw_state->pColorWriteEnables[i]) {
+               VkPipelineColorBlendAttachmentState *att = (void*)&pipeline->graphics_create_info.pColorBlendState->pAttachments[i];
+               att->colorWriteMask = 0;
+            }
+      }
+   }
+
 
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       VK_FROM_HANDLE(vk_shader_module, module,

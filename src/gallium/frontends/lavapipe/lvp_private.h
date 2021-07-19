@@ -690,6 +690,7 @@ enum lvp_cmds {
    LVP_CMD_SET_PATCH_CONTROL_POINTS,
    LVP_CMD_SET_PRIMITIVE_RESTART_ENABLE,
    LVP_CMD_SET_RASTERIZER_DISCARD_ENABLE,
+   LVP_CMD_SET_COLOR_WRITE_ENABLE,
 };
 
 struct lvp_cmd_bind_pipeline {
@@ -1096,6 +1097,10 @@ struct lvp_cmd_set_rasterizer_discard_enable {
    bool enable;
 };
 
+struct lvp_cmd_set_color_write_enable {
+   uint8_t disable_mask; //PIPE_MAX_COLOR_BUFS is max attachment count
+};
+
 struct lvp_cmd_buffer_entry {
    struct list_head cmd_link;
    uint32_t cmd_type;
@@ -1159,6 +1164,7 @@ struct lvp_cmd_buffer_entry {
       struct lvp_cmd_set_patch_control_points set_patch_control_points;
       struct lvp_cmd_set_primitive_restart_enable set_primitive_restart_enable;
       struct lvp_cmd_set_rasterizer_discard_enable set_rasterizer_discard_enable;
+      struct lvp_cmd_set_color_write_enable set_color_write_enable;
    } u;
 };
 

@@ -125,6 +125,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_uniform_buffer_standard_layout    = true,
    .KHR_variable_pointers                 = true,
    .EXT_calibrated_timestamps             = true,
+   .EXT_color_write_enable                = true,
    .EXT_conditional_rendering             = true,
    .EXT_extended_dynamic_state            = true,
    .EXT_extended_dynamic_state2           = true,
@@ -637,6 +638,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
             (VkPhysicalDeviceCustomBorderColorFeaturesEXT *)ext;
          features->customBorderColors = true;
          features->customBorderColorWithoutFormat = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT: {
+         VkPhysicalDeviceColorWriteEnableFeaturesEXT *features =
+            (VkPhysicalDeviceColorWriteEnableFeaturesEXT *)ext;
+         features->colorWriteEnable = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {

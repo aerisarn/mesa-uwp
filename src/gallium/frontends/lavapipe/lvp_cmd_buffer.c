@@ -2258,3 +2258,26 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdSetRasterizerDiscardEnableEXT(
    cmd->u.set_rasterizer_discard_enable.enable = rasterizerDiscardEnable == VK_TRUE;
    cmd_buf_queue(cmd_buffer, cmd);
 }
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetColorWriteEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    attachmentCount,
+    const VkBool32*                             pColorWriteEnables)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_COLOR_WRITE_ENABLE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_color_write_enable.disable_mask = 0;
+   for (unsigned i = 0; i < attachmentCount; i++) {
+      /* this is inverted because cmdbufs are zero-initialized, meaning only 'true'
+       * can be detected with a bool, and the default is to enable color writes
+       */
+      if (pColorWriteEnables[i] != VK_TRUE)
+         cmd->u.set_color_write_enable.disable_mask |= BITFIELD_BIT(i);
+   }
+   cmd_buf_queue(cmd_buffer, cmd);
+}

@@ -126,7 +126,9 @@ struct rendering_state {
    bool disable_multisample;
    enum gs_output gs_output_lines : 2;
 
-   uint32_t pad:22;
+   uint32_t color_write_disables:8;
+   bool has_color_write_disables:1;
+   uint32_t pad:13;
 
    void *ss_cso[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    void *velems_cso;
@@ -220,7 +222,22 @@ static void emit_state(struct rendering_state *state)
 {
    int sh;
    if (state->blend_dirty) {
+      uint32_t mask = 0;
+      /* zero out the colormask values for disabled attachments */
+      if (state->has_color_write_disables && state->color_write_disables) {
+         u_foreach_bit(att, state->color_write_disables) {
+            mask |= state->blend_state.rt[att].colormask << (att * 4);
+            state->blend_state.rt[att].colormask = 0;
+         }
+      }
       cso_set_blend(state->cso, &state->blend_state);
+      /* reset colormasks using saved bitmask */
+      if (state->has_color_write_disables && state->color_write_disables) {
+         const uint32_t att_mask = BITFIELD_MASK(4);
+         u_foreach_bit(att, state->color_write_disables) {
+            state->blend_state.rt[att].colormask = (mask >> (att * 4)) & att_mask;
+         }
+      }
       state->blend_dirty = false;
    }
 
@@ -402,6 +419,8 @@ get_viewport_xform(const VkViewport *viewport,
     VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT
     VK_DYNAMIC_STATE_LOGIC_OP_EXT
     VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT
+
+    VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT
 */
 static int conv_dynamic_state_idx(VkDynamicState dyn_state)
 {
@@ -420,6 +439,10 @@ static int conv_dynamic_state_idx(VkDynamicState dyn_state)
       return dyn_state - VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT +
              VK_DYNAMIC_STATE_STENCIL_OP_EXT - VK_DYNAMIC_STATE_CULL_MODE_EXT +
              VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2 + 1 + 1;
+   if (dyn_state == VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT)
+      return VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT - VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT +
+             VK_DYNAMIC_STATE_STENCIL_OP_EXT - VK_DYNAMIC_STATE_CULL_MODE_EXT +
+             VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2 + 1 + 1 + 1;
    assert(0);
    return -1;
 }
@@ -443,6 +466,7 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
          dynamic_states[idx] = true;
       }
    }
+   state->has_color_write_disables = dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT)];
 
    bool has_stage[PIPE_SHADER_TYPES] = { false };
 
@@ -3067,6 +3091,13 @@ static void handle_set_rasterizer_discard_enable(struct lvp_cmd_buffer_entry *cm
    state->rs_state.rasterizer_discard = cmd->u.set_rasterizer_discard_enable.enable;
 }
 
+static void handle_set_color_write_enable(struct lvp_cmd_buffer_entry *cmd,
+                                          struct rendering_state *state)
+{
+   state->blend_dirty |= state->color_write_disables != cmd->u.set_color_write_enable.disable_mask;
+   state->color_write_disables = cmd->u.set_color_write_enable.disable_mask;
+}
+
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
                                    struct rendering_state *state)
 {
@@ -3296,6 +3327,9 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          break;
       case LVP_CMD_SET_RASTERIZER_DISCARD_ENABLE:
          handle_set_rasterizer_discard_enable(cmd, state);
+         break;
+      case LVP_CMD_SET_COLOR_WRITE_ENABLE:
+         handle_set_color_write_enable(cmd, state);
          break;
       }
       first = false;
