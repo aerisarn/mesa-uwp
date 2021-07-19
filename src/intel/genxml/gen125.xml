@@ -7283,6 +7283,23 @@
     <field name="DAPRBE2 Done" start="13" end="13" type="bool"/>
   </register>
 
+  <register name="INSTDONE_GEOM" length="1" num="0x666c">
+    <field name="VFL Done" start="1" end="1" type="bool"/>
+    <field name="VS Done" start="2" end="2" type="bool"/>
+    <field name="HS Done" start="3" end="3" type="bool"/>
+    <field name="TE Done" start="4" end="4" type="bool"/>
+    <field name="DS Done" start="5" end="5" type="bool"/>
+    <field name="GS Done" start="6" end="6" type="bool"/>
+    <field name="SOL Done" start="7" end="7" type="bool"/>
+    <field name="CL Done" start="8" end="8" type="bool"/>
+    <field name="SF Done" start="9" end="9" type="bool"/>
+    <field name="TDG1 Done" start="11" end="11" type="bool"/>
+    <field name="URBM Done" start="13" end="13" type="bool"/>
+    <field name="SVG Done" start="14" end="14" type="bool"/>
+    <field name="TSG0 Done" start="17" end="17" type="bool"/>
+    <field name="SDE Done" start="22" end="22" type="bool"/>
+  </register>
+
   <register name="SLICE_COMMON_ECO_CHICKEN1" length="1" num="0x731c">
     <field name="State Cache Redirect To CS Section Enable" start="11" end="11" type="bool"/>
     <field name="State Cache Redirect To CS Section Enable Mask" start="27" end="27" type="bool"/>
