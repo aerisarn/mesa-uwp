@@ -43,7 +43,8 @@
 #define MAX_OFFSET (UINT16_MAX * 4)
 
 static bool
-src_only_uses_uniforms(const nir_src *src, struct set **uni_offsets)
+src_only_uses_uniforms(const nir_src *src, uint32_t *uni_offsets,
+                       unsigned *num_offsets)
 {
    if (!src->is_ssa)
       return false;
@@ -56,7 +57,8 @@ src_only_uses_uniforms(const nir_src *src, struct set **uni_offsets)
       /* TODO: Swizzles are ignored, so vectors can prevent inlining. */
       nir_alu_instr *alu = nir_instr_as_alu(instr);
       for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-         if (!src_only_uses_uniforms(&alu->src[i].src, uni_offsets))
+         if (!src_only_uses_uniforms(&alu->src[i].src, uni_offsets,
+                                     num_offsets))
              return false;
       }
       return true;
@@ -76,13 +78,21 @@ src_only_uses_uniforms(const nir_src *src, struct set **uni_offsets)
           /* UBO loads should be scalarized. */
           intr->dest.ssa.num_components == 1 &&
           intr->dest.ssa.bit_size == 32) {
-         /* Record the uniform offset. */
-         if (!*uni_offsets)
-            *uni_offsets = _mesa_set_create_u32_keys(NULL);
+         uint32_t offset = nir_src_as_uint(intr->src[1]);
+         assert(offset < MAX_OFFSET);
 
-         /* Add 1 because the set doesn't allow NULL keys. */
-         _mesa_set_add(*uni_offsets,
-                       (void*)(uintptr_t)(nir_src_as_uint(intr->src[1]) + 1));
+         /* Already recorded by other one */
+         for (int i = 0; i < *num_offsets; i++) {
+            if (uni_offsets[i] == offset)
+               return true;
+         }
+
+         /* Exceed uniform number limit */
+         if (*num_offsets == MAX_INLINABLE_UNIFORMS)
+            return false;
+
+         /* Record the uniform offset. */
+         uni_offsets[(*num_offsets)++] = offset;
          return true;
       }
       return false;
@@ -97,10 +107,41 @@ src_only_uses_uniforms(const nir_src *src, struct set **uni_offsets)
    }
 }
 
+static void
+add_inlinable_uniforms(const nir_src *cond, uint32_t *uni_offsets,
+                       unsigned *num_offsets)
+{
+   unsigned new_num = *num_offsets;
+
+   /* Only update uniform number when all uniforms in the expression
+    * can be inlined. Partially inline uniforms can't lower if/loop.
+    *
+    * For example, uniform can be inlined for a shader is limited to 4,
+    * and we have already added 3 uniforms, then want to deal with
+    *
+    *     if (uniform0 + uniform1 == 10)
+    *
+    * only uniform0 can be inlined due to we exceed the 4 limit. But
+    * unless both uniform0 and uniform1 are inlined, can we eliminate
+    * the if statement.
+    *
+    * This is even possible when we deal with loop if the induction
+    * variable init and update also contains uniform like
+    *
+    *    for (i = uniform0; i < uniform1; i+= uniform2)
+    *
+    * unless uniform0, uniform1 and uniform2 can be inlined at once,
+    * can the loop be unrolled.
+    */
+   if (src_only_uses_uniforms(cond, uni_offsets, &new_num))
+      *num_offsets = new_num;
+}
+
 void
 nir_find_inlinable_uniforms(nir_shader *shader)
 {
-   struct set *uni_offsets = NULL;
+   uint32_t uni_offsets[MAX_INLINABLE_UNIFORMS];
+   unsigned num_offsets = 0;
 
    nir_foreach_function(function, shader) {
       if (function->impl) {
@@ -108,20 +149,7 @@ nir_find_inlinable_uniforms(nir_shader *shader)
             switch (node->type) {
             case nir_cf_node_if: {
                const nir_src *cond = &nir_cf_node_as_if(node)->condition;
-               struct set *found_offsets = NULL;
-
-               if (src_only_uses_uniforms(cond, &found_offsets) &&
-                   found_offsets) {
-                  /* All uniforms are lowerable. Save uniform offsets. */
-                  set_foreach(found_offsets, entry) {
-                     if (!uni_offsets)
-                        uni_offsets = _mesa_set_create_u32_keys(NULL);
-
-                     _mesa_set_add(uni_offsets, entry->key);
-                  }
-               }
-               if (found_offsets)
-                  _mesa_set_destroy(found_offsets, NULL);
+               add_inlinable_uniforms(cond, uni_offsets, &num_offsets);
                break;
             }
 
@@ -136,20 +164,9 @@ nir_find_inlinable_uniforms(nir_shader *shader)
       }
    }
 
-   if (uni_offsets) {
-      unsigned num = 0;
-
-      set_foreach(uni_offsets, entry) {
-         /* Subtract 1 because all keys are + 1. */
-         uint32_t offset = (uintptr_t)entry->key - 1;
-         assert(offset < MAX_OFFSET);
-
-         if (num < MAX_INLINABLE_UNIFORMS)
-            shader->info.inlinable_uniform_dw_offsets[num++] = offset / 4;
-      }
-      shader->info.num_inlinable_uniforms = num;
-      _mesa_set_destroy(uni_offsets, NULL);
-   }
+   for (int i = 0; i < num_offsets; i++)
+      shader->info.inlinable_uniform_dw_offsets[i] = uni_offsets[i] / 4;
+   shader->info.num_inlinable_uniforms = num_offsets;
 }
 
 void
