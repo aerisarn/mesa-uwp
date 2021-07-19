@@ -382,8 +382,16 @@ intel_perf_open(struct intel_perf_context *perf_ctx,
    properties[p++] = DRM_I915_PERF_PROP_OA_EXPONENT;
    properties[p++] = period_exponent;
 
-   /* SSEU configuration */
-   if (intel_perf_has_global_sseu(perf_ctx->perf)) {
+   /* If global SSEU is available, pin it to the default. This will ensure on
+    * Gfx11 for instance we use the full EU array. Initially when perf was
+    * enabled we would use only half on Gfx11 because of functional
+    * requirements.
+    *
+    * Temporary disable this option on Gfx12.5+, kernel doesn't appear to
+    * support it.
+    */
+   if (intel_perf_has_global_sseu(perf_ctx->perf) &&
+       perf_ctx->devinfo->verx10 < 125) {
       properties[p++] = DRM_I915_PERF_PROP_GLOBAL_SSEU;
       properties[p++] = to_user_pointer(&perf_ctx->perf->sseu);
    }

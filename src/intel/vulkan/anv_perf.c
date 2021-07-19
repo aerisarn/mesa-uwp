@@ -144,8 +144,12 @@ anv_device_perf_open(struct anv_device *device, uint64_t metric_id)
     * Gfx11 for instance we use the full EU array. Initially when perf was
     * enabled we would use only half on Gfx11 because of functional
     * requirements.
+    *
+    * Temporary disable this option on Gfx12.5+, kernel doesn't appear to
+    * support it.
     */
-   if (intel_perf_has_global_sseu(device->physical->perf)) {
+   if (intel_perf_has_global_sseu(device->physical->perf) &&
+       device->info.verx10 < 125) {
       properties[p++] = DRM_I915_PERF_PROP_GLOBAL_SSEU;
       properties[p++] = (uintptr_t) &device->physical->perf->sseu;
    }
