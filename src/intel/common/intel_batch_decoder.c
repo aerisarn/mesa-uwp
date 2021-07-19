@@ -1289,8 +1289,9 @@ intel_print_batch(struct intel_batch_decode_ctx *ctx,
          reset_color = "";
       }
 
-      fprintf(ctx->fp, "%s0x%08"PRIx64":  0x%08x:  %-80s%s\n",
-              color, offset, p[0], inst_name, reset_color);
+      fprintf(ctx->fp, "%s0x%08"PRIx64"%s:  0x%08x:  %-80s%s\n", color, offset,
+              ctx->acthd && offset == ctx->acthd ? " (ACTHD)" : "", p[0],
+              inst_name, reset_color);
 
       if (ctx->flags & INTEL_BATCH_DECODE_FULL) {
          ctx_print_group(ctx, inst, offset, p);

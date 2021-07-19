@@ -418,6 +418,7 @@ read_data_file(FILE *file)
    bool ring_wraps = false;
    char *ring_name = NULL;
    struct intel_device_info devinfo;
+   uint64_t acthd = 0;
 
    while (getline(&line, &line_size, file) > 0) {
       char *new_ring_name = NULL;
@@ -537,6 +538,10 @@ read_data_file(FILE *file)
                                                    ARRAY_SIZE(acthd_registers),
                                                    ring_name), reg);
          }
+
+         matched = sscanf(line, "  ACTHD: 0x%08x %08x\n", &reg, &reg2);
+         if (matched == 2)
+            acthd = ((uint64_t)reg << 32) | reg2;
 
          matched = sscanf(line, "  PGTBL_ER: 0x%08x\n", &reg);
          if (matched == 1 && reg)
@@ -659,6 +664,7 @@ read_data_file(FILE *file)
    struct intel_batch_decode_ctx batch_ctx;
    intel_batch_decode_ctx_init(&batch_ctx, &devinfo, stdout, batch_flags,
                                xml_path, get_intel_batch_bo, NULL, NULL);
+   batch_ctx.acthd = acthd;
 
 
    for (int s = 0; s < num_sections; s++) {
