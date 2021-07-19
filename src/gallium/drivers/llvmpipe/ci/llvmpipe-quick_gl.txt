@@ -152,6 +152,7 @@ spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on bottom ed
 spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on left edge: fail
 spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on right edge: fail
 spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on top edge: fail
+spec/!opengl 1.1/quad-invariance: warn
 spec/!opengl 1.1/read-front: fail
 spec/!opengl 1.1/read-front clear-front-first: fail
 spec/!opengl 1.1/read-front clear-front-first samples=16: skip

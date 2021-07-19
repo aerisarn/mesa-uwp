@@ -1383,7 +1383,6 @@ try_update_scene_state( struct lp_setup_context *setup )
 
    if (setup->dirty & LP_SETUP_NEW_SCISSOR) {
       unsigned i;
-      setup->scissor_or_vp_clip = setup->scissor_test;
 
       for (i = 0; i < PIPE_MAX_VIEWPORTS; ++i) {
          setup->draw_regions[i] = setup->framebuffer;
@@ -1397,7 +1396,6 @@ try_update_scene_state( struct lp_setup_context *setup )
          boolean need_vp_scissoring = !!memcmp(&setup->vpwh, &setup->framebuffer,
                                                sizeof(setup->framebuffer));
          assert(setup->viewport_index_slot < 0);
-         setup->scissor_or_vp_clip |= need_vp_scissoring;
          if (need_vp_scissoring) {
             u_rect_possible_intersection(&setup->vpwh,
                                          &setup->draw_regions[0]);

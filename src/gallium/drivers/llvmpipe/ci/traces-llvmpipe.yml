@@ -45,7 +45,7 @@ traces:
   - path: humus/Portals.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: e46ba031e63d55209469f20019657baa
+        checksum: c4a0f928e0cedf91726728e7fd5d9759
   - path: bgfx/01-cubes.rdc
     expectations:
       - device: gl-vmware-llvmpipe
