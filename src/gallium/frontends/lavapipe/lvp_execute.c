@@ -125,6 +125,9 @@ struct rendering_state {
    bool sb_dirty[PIPE_SHADER_TYPES];
    bool disable_multisample;
    enum gs_output gs_output_lines : 2;
+
+   uint32_t pad:22;
+
    void *ss_cso[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    void *velems_cso;
 
