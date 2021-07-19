@@ -6528,17 +6528,10 @@ radv_rt_bind_tables(struct radv_cmd_buffer *cmd_buffer,
 
    desc_ptr = ptr;
    for (unsigned i = 0; i < 4; ++i, desc_ptr += 4) {
-      uint32_t rsrc_word3 =
-         S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-         S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-         S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_UINT) |
-         S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_STRUCTURED) | S_008F0C_RESOURCE_LEVEL(1);
-
       desc_ptr[0] = tables[i].deviceAddress;
-      desc_ptr[1] = S_008F04_BASE_ADDRESS_HI(tables[i].deviceAddress >> 32) |
-                    S_008F04_STRIDE(tables[i].stride);
-      desc_ptr[2] = 0xffffffffu;
-      desc_ptr[3] = rsrc_word3;
+      desc_ptr[1] = tables[i].deviceAddress >> 32;
+      desc_ptr[2] = tables[i].stride;
+      desc_ptr[3] = 0;
    }
 
    uint64_t va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + offset;

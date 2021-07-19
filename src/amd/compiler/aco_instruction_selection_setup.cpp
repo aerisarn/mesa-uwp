@@ -778,7 +778,6 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_initial_edgeflags_amd:
                case nir_intrinsic_load_packed_passthrough_primitive_amd:
                case nir_intrinsic_gds_atomic_add_amd:
-               case nir_intrinsic_load_sbt_amd:
                case nir_intrinsic_bvh64_intersect_ray_amd:
                case nir_intrinsic_load_cull_small_prim_precision_amd: type = RegType::vgpr; break;
                case nir_intrinsic_load_shared:
@@ -801,6 +800,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_inclusive_scan:
                case nir_intrinsic_exclusive_scan:
                case nir_intrinsic_reduce:
+               case nir_intrinsic_load_sbt_amd:
                case nir_intrinsic_load_ubo:
                case nir_intrinsic_load_ssbo:
                case nir_intrinsic_load_global:

@@ -5475,23 +5475,12 @@ void
 visit_load_sbt_amd(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   Temp index = get_ssa_temp(ctx, instr->src[0].ssa);
    unsigned binding = nir_intrinsic_binding(instr);
-   unsigned base = nir_intrinsic_base(instr);
-
-   index = as_vgpr(ctx, index);
 
    Builder bld(ctx->program, ctx->block);
    Temp desc_base = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ac.sbt_descriptors));
    Operand desc_off = bld.copy(bld.def(s1), Operand::c32(binding * 16u));
-   Temp rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), desc_base, desc_off);
-
-   /* If we want more we need to implement */
-   assert(instr->dest.ssa.bit_size == 32);
-   assert(instr->num_components == 1);
-
-   bld.mubuf(aco_opcode::buffer_load_dword, Definition(dst), rsrc, index, Operand::zero(), base,
-             false, false, true);
+   bld.smem(aco_opcode::s_load_dwordx4, Definition(dst), desc_base, desc_off);
 }
 
 void
