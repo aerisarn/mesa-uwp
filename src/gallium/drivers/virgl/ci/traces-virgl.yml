@@ -238,7 +238,7 @@ traces:
   - path: supertuxkart/supertuxkart-mansion-egl-gles.trace
     expectations:
       - device: gl-virgl
-        checksum: cb918cbe6e2ff6cacdfc09a89e77c8a8
+        checksum: 74e9081b18e48c31f1755fadcb6fc068
 # Sometimes crashes
 #  - path: xonotic/xonotic-keybench-high.trace
 #    expectations:

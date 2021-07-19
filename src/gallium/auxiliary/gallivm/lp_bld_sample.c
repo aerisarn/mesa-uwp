@@ -1826,7 +1826,7 @@ lp_build_cube_lookup(struct lp_build_sample_context *bld,
    maxasat = lp_build_max(coord_bld, as, at);
    ar_ge_as_at = lp_build_cmp(coord_bld, PIPE_FUNC_GEQUAL, ar, maxasat);
 
-   if (need_derivs && (derivs_in || (bld->no_quad_lod && bld->no_rho_approx))) {
+   if (need_derivs) {
       /*
        * XXX: This is really really complex.
        * It is a bit overkill to use this for implicit derivatives as well,
@@ -1983,70 +1983,7 @@ lp_build_cube_lookup(struct lp_build_sample_context *bld,
       return;
    }
 
-   else if (need_derivs) {
-      LLVMValueRef ddx_ddy[2], tmp[3], rho_vec;
-      static const unsigned char swizzle0[] = { /* no-op swizzle */
-         0, LP_BLD_SWIZZLE_DONTCARE,
-         LP_BLD_SWIZZLE_DONTCARE, LP_BLD_SWIZZLE_DONTCARE
-      };
-      static const unsigned char swizzle1[] = {
-         1, LP_BLD_SWIZZLE_DONTCARE,
-         LP_BLD_SWIZZLE_DONTCARE, LP_BLD_SWIZZLE_DONTCARE
-      };
-      static const unsigned char swizzle01[] = { /* no-op swizzle */
-         0, 1,
-         LP_BLD_SWIZZLE_DONTCARE, LP_BLD_SWIZZLE_DONTCARE
-      };
-      static const unsigned char swizzle23[] = {
-         2, 3,
-         LP_BLD_SWIZZLE_DONTCARE, LP_BLD_SWIZZLE_DONTCARE
-      };
-      static const unsigned char swizzle02[] = {
-         0, 2,
-         LP_BLD_SWIZZLE_DONTCARE, LP_BLD_SWIZZLE_DONTCARE
-      };
-
-      /*
-       * scale the s/t/r coords pre-select/mirror so we can calculate
-       * "reasonable" derivs.
-       */
-      ma = lp_build_select3(coord_bld, as_ge_at, ar_ge_as_at, s, t, r);
-      imahalfpos = lp_build_cube_imapos(coord_bld, ma);
-      s = lp_build_mul(coord_bld, s, imahalfpos);
-      t = lp_build_mul(coord_bld, t, imahalfpos);
-      r = lp_build_mul(coord_bld, r, imahalfpos);
-
-      /*
-       * This isn't quite the same as the "ordinary" (3d deriv) path since we
-       * know the texture is square which simplifies things (we can omit the
-       * size mul which happens very early completely here and do it at the
-       * very end).
-       * Also always do calculations according to GALLIVM_DEBUG_NO_RHO_APPROX
-       * since the error can get quite big otherwise at edges.
-       * (With no_rho_approx max error is sqrt(2) at edges, same as it is
-       * without no_rho_approx for 2d textures, otherwise it would be factor 2.)
-       */
-      ddx_ddy[0] = lp_build_packed_ddx_ddy_twocoord(coord_bld, s, t);
-      ddx_ddy[1] = lp_build_packed_ddx_ddy_onecoord(coord_bld, r);
-
-      ddx_ddy[0] = lp_build_mul(coord_bld, ddx_ddy[0], ddx_ddy[0]);
-      ddx_ddy[1] = lp_build_mul(coord_bld, ddx_ddy[1], ddx_ddy[1]);
-
-      tmp[0] = lp_build_swizzle_aos(coord_bld, ddx_ddy[0], swizzle01);
-      tmp[1] = lp_build_swizzle_aos(coord_bld, ddx_ddy[0], swizzle23);
-      tmp[2] = lp_build_swizzle_aos(coord_bld, ddx_ddy[1], swizzle02);
-
-      rho_vec = lp_build_add(coord_bld, tmp[0], tmp[1]);
-      rho_vec = lp_build_add(coord_bld, rho_vec, tmp[2]);
-
-      tmp[0] = lp_build_swizzle_aos(coord_bld, rho_vec, swizzle0);
-      tmp[1] = lp_build_swizzle_aos(coord_bld, rho_vec, swizzle1);
-      *rho = lp_build_max(coord_bld, tmp[0], tmp[1]);
-   }
-
-   if (!need_derivs) {
-      ma = lp_build_select3(coord_bld, as_ge_at, ar_ge_as_at, s, t, r);
-   }
+   ma = lp_build_select3(coord_bld, as_ge_at, ar_ge_as_at, s, t, r);
    mai = LLVMBuildBitCast(builder, ma, cint_vec_type, "");
    signmabit = LLVMBuildAnd(builder, mai, signmask, "");
 
