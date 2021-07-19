@@ -48,10 +48,17 @@ bifrost_get_quirks(unsigned product_id)
         case 0x62:
                 return BIFROST_NO_PRELOAD;
         case 0x70:
+        case 0x71:
         case 0x72:
+        case 0x73:
         case 0x74:
                 return 0;
+        case 0x90:
+        case 0x91:
         case 0x92:
+        case 0x93:
+        case 0x94:
+        case 0x95:
                 return BIFROST_NO_PRELOAD;
         default:
                 unreachable("Unknown Bifrost/Valhall GPU ID");

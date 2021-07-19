@@ -24,6 +24,7 @@
  * SOFTWARE.
  */
 
+#include <getopt.h>
 #include <string.h>
 #include "disassemble.h"
 #include "compiler.h"
@@ -35,6 +36,9 @@
 #include "compiler/nir_types.h"
 #include "util/u_dynarray.h"
 #include "bifrost_compile.h"
+
+unsigned gpu_id = 0x7212;
+int verbose = 0;
 
 static gl_shader_stage
 filename_to_stage(const char *stage)
@@ -187,7 +191,7 @@ compile_shader(int stages, char **files)
                 NIR_PASS_V(nir[i], nir_opt_constant_folding);
 
                 struct panfrost_compile_inputs inputs = {
-                        .gpu_id = 0x7212, /* Mali G52 */
+                        .gpu_id = gpu_id,
                 };
                 struct pan_shader_info info = { 0 };
 
@@ -211,7 +215,7 @@ compile_shader(int stages, char **files)
   (uint32_t)(ch2) << 16  | (uint32_t)(ch3) << 24)
 
 static void
-disassemble(const char *filename, bool verbose)
+disassemble(const char *filename)
 {
         FILE *fp = fopen(filename, "rb");
         assert(fp);
@@ -225,6 +229,7 @@ disassemble(const char *filename, bool verbose)
         if (res != filesize) {
                 printf("Couldn't read full file\n");
         }
+
         fclose(fp);
 
         if (filesize && code[0] == BI_FOURCC('M', 'B', 'S', '2')) {
@@ -247,19 +252,85 @@ disassemble(const char *filename, bool verbose)
 int
 main(int argc, char **argv)
 {
+        char c;
+
         if (argc < 2) {
                 printf("Pass a command\n");
                 exit(1);
         }
 
-        if (strcmp(argv[1], "compile") == 0)
-                compile_shader(argc - 2, &argv[2]);
-        else if (strcmp(argv[1], "disasm") == 0)
-                disassemble(argv[2], false);
-        else if (strcmp(argv[1], "disasm-verbose") == 0)
-                disassemble(argv[2], true);
-        else
-                unreachable("Unknown command. Valid: compile/disasm");
+        static struct option longopts[] = {
+                { "id", optional_argument, NULL, 'i' },
+                { "gpu", optional_argument, NULL, 'g' },
+                { "verbose", no_argument, &verbose, 'v' },
+                { NULL, 0, NULL, 0 }
+        };
+
+        static struct {
+                const char *name;
+                unsigned major, minor;
+        } gpus[] = {
+                { "G71",   6, 0 },
+                { "G72",   6, 2 },
+                { "G51",   7, 0 },
+                { "G76",   7, 1 },
+                { "G52",   7, 2 },
+                { "G31",   7, 3 },
+                { "G77",   9, 0 },
+                { "G57",   9, 1 },
+                { "G78",   9, 2 },
+                { "G57",   9, 3 },
+                { "G68",   9, 4 },
+                { "G78AE", 9, 5 },
+        };
+
+        while ((c = getopt_long(argc, argv, "v:", longopts, NULL)) != -1) {
+
+                switch (c) {
+                case 'i':
+                        gpu_id = atoi(optarg);
+
+                        if (!gpu_id) {
+                                fprintf(stderr, "Expected GPU ID, got %s\n", optarg);
+                                return 1;
+                        }
+
+                        break;
+                case 'g':
+                        gpu_id = 0;
+
+                        /* Compatibility with the Arm compiler */
+                        if (strncmp(optarg, "Mali-", 5) == 0) optarg += 5;
+
+                        for (unsigned i = 0; i < ARRAY_SIZE(gpus); ++i) {
+                                if (strcmp(gpus[i].name, optarg)) continue;
+
+                                unsigned major = gpus[i].major;
+                                unsigned minor = gpus[i].minor;
+
+                                gpu_id = (major << 12) | (minor << 8);
+                                break;
+                        }
+
+                        if (!gpu_id) {
+                                fprintf(stderr, "Unknown GPU %s\n", optarg);
+                                return 1;
+                        }
+
+                        break;
+                default:
+                        break;
+                }
+        }
+
+        if (strcmp(argv[optind], "compile") == 0)
+                compile_shader(argc - optind - 1, &argv[optind + 1]);
+        else if (strcmp(argv[optind], "disasm") == 0)
+                disassemble(argv[optind + 1]);
+        else {
+                fprintf(stderr, "Unknown command. Valid: compile/disasm\n");
+                return 1;
+        }
 
         return 0;
 }
