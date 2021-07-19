@@ -360,7 +360,11 @@ void
 update_local_next_uses(spill_ctx& ctx, Block* block,
                 std::vector<std::map<Temp, uint32_t>>& local_next_uses)
 {
-   local_next_uses.resize(block->instructions.size());
+   if (local_next_uses.size() < block->instructions.size()) {
+      /* Allocate more next-use-maps. Note that by never reducing the vector size, we enable
+       * future calls to this function to re-use already allocated map memory. */
+      local_next_uses.resize(block->instructions.size());
+   }
 
    local_next_uses[block->instructions.size() - 1].clear();
    for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair :
