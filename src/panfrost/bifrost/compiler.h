@@ -1090,6 +1090,7 @@ bi_is_terminal_block(bi_block *block)
 
 /* Returns the size of the final clause */
 unsigned bi_pack(bi_context *ctx, struct util_dynarray *emission);
+void bi_pack_valhall(bi_context *ctx, struct util_dynarray *emission);
 
 struct bi_packed_tuple {
         uint64_t lo;

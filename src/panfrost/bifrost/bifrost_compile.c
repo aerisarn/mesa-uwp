@@ -4175,7 +4175,7 @@ bi_compile_variant_nir(nir_shader *nir,
         if (ctx->arch <= 8) {
                 bi_pack_clauses(ctx, binary, offset);
         } else {
-                /* TODO: pack flat */
+                bi_pack_valhall(ctx, binary);
         }
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal) {
