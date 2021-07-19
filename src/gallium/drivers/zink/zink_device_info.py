@@ -176,6 +176,8 @@ EXTENSIONS = [
         alias="line_rast",
         properties=True,
         features=True),
+    Extension("VK_KHR_dedicated_allocation",
+        alias="dedicated"),
 ]
 
 # constructor: Versions(device_version(major, minor, patch), struct_version(major, minor))
