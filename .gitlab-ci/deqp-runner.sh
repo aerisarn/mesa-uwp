@@ -197,7 +197,7 @@ if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
     fi
 
     GALLIUM_DRIVER=llvmpipe \
-    GALLIVM_PERF="nopt,no_filter_hacks" \
+    GALLIVM_PERF="nopt" \
     virgl_test_server $VTEST_ARGS >$RESULTS/vtest-log.txt 2>&1 &
 
     sleep 1

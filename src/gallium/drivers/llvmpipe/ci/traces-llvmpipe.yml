@@ -17,7 +17,7 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: ea522d045da5d416e7291479e3616aea
+        checksum: b44ebac7708c6e677b145754f1efcbb7
   - path: pathfinder/demo.trace
     expectations:
       - device: gl-vmware-llvmpipe
@@ -37,7 +37,7 @@ traces:
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 919c9f302b35982ccd9a210e8d3d8c83
+        checksum: f73a68e9814405910c4628a2824f1eae
   - path: gputest/triangle.trace
     expectations:
       - device: gl-vmware-llvmpipe
@@ -69,7 +69,7 @@ traces:
   - path: bgfx/06-bump.rdc
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 58e188b7156f8438ce895f0bba269c21
+        checksum: 75a8ac1b7bbcba03a93159243ade2c83
   - path: bgfx/07-callback.rdc
     expectations:
       - device: gl-vmware-llvmpipe
@@ -89,15 +89,15 @@ traces:
   - path: bgfx/12-lod.rdc
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 2806a6d3c178c2c35447dbe87edddff3
+        checksum: 5e95c12eecb4a422c8b529e2bac592fd
   - path: bgfx/13-stencil.rdc
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: f6386365acdd2c88ea302c8cb686705e
+        checksum: 81266a254b1558ac90e89a6b02077ae1
   - path: bgfx/14-shadowvolumes.rdc
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 46b4daab08d030f919120136b67f711b
+        checksum: 66f789a7c813945e43e59c187fba1d19
   - path: bgfx/15-shadowmaps-simple.rdc
     expectations:
       - device: gl-vmware-llvmpipe
@@ -145,7 +145,7 @@ traces:
   - path: bgfx/33-pom.rdc
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: cefa7c60c8907bba62a68e374e2accf3
+        checksum: f68403ec95113c4720e1a66e4cf956c8
   - path: bgfx/34-mvs.rdc
     expectations:
       - device: gl-vmware-llvmpipe
@@ -169,7 +169,7 @@ traces:
   - path: bgfx/39-assao.rdc
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: dc6f9c6995168a955d0f628213137b13
+        checksum: 74b3570d73241fa0798afb0869e5b121
   - path: bgfx/40-svt.rdc
     expectations:
       - device: gl-vmware-llvmpipe

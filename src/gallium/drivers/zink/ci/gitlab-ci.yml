@@ -6,7 +6,7 @@
     LIBGL_ALWAYS_SOFTWARE: "1"
     GPU_VERSION: zink-lvp
     # Fix non-conformant llvmpipe filter defaults
-    GALLIVM_PERF: "no_filter_hacks"
+    GALLIVM_PERF: "no_quad_lod"
     LP_NUM_THREADS: 0
 
 .zink-lvp-deqp-test:
