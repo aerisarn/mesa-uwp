@@ -55,10 +55,12 @@ struct spill_ctx {
    std::vector<std::map<Temp, Temp>> renames;
    std::vector<std::map<Temp, uint32_t>> spills_entry;
    std::vector<std::map<Temp, uint32_t>> spills_exit;
+
    std::vector<bool> processed;
    std::stack<Block*, std::vector<Block*>> loop_header;
    std::vector<std::map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_start;
    std::vector<std::map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_end;
+   std::vector<std::map<Temp, uint32_t>> local_next_use_distance; /* Working buffer */
    std::vector<std::pair<RegClass, std::unordered_set<uint32_t>>> interferences;
    std::vector<std::vector<uint32_t>> affinities;
    std::vector<bool> is_reloaded;
@@ -354,11 +356,13 @@ get_rematerialize_info(spill_ctx& ctx)
    }
 }
 
-std::vector<std::map<Temp, uint32_t>>
-local_next_uses(spill_ctx& ctx, Block* block)
+void
+update_local_next_uses(spill_ctx& ctx, Block* block,
+                std::vector<std::map<Temp, uint32_t>>& local_next_uses)
 {
-   std::vector<std::map<Temp, uint32_t>> local_next_uses(block->instructions.size());
+   local_next_uses.resize(block->instructions.size());
 
+   local_next_uses[block->instructions.size() - 1].clear();
    for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair :
         ctx.next_use_distances_end[block->index]) {
       local_next_uses[block->instructions.size() - 1].insert(
@@ -391,7 +395,6 @@ local_next_uses(spill_ctx& ctx, Block* block)
          }
       }
    }
-   return local_next_uses;
 }
 
 RegisterDemand
@@ -1117,7 +1120,6 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
 {
    assert(!ctx.processed[block_idx]);
 
-   std::vector<std::map<Temp, uint32_t>> local_next_use_distance;
    std::vector<aco_ptr<Instruction>> instructions;
    unsigned idx = 0;
 
@@ -1127,8 +1129,11 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
       instructions.emplace_back(std::move(block->instructions[idx++]));
    }
 
-   if (block->register_demand.exceeds(ctx.target_pressure))
-      local_next_use_distance = local_next_uses(ctx, block);
+   if (block->register_demand.exceeds(ctx.target_pressure)) {
+      update_local_next_uses(ctx, block, ctx.local_next_use_distance);
+   } else {
+      /* We won't use local_next_use_distance, so no initialization needed */
+   }
 
    while (idx < block->instructions.size()) {
       aco_ptr<Instruction>& instr = block->instructions[idx];
@@ -1163,7 +1168,7 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
          RegisterDemand new_demand = ctx.register_demand[block_idx][idx];
          new_demand.update(get_demand_before(ctx, block_idx, idx));
 
-         assert(!local_next_use_distance.empty());
+         assert(!ctx.local_next_use_distance.empty());
 
          /* if reg pressure is too high, spill variable with furthest next use */
          while ((new_demand - spilled_registers).exceeds(ctx.target_pressure)) {
@@ -1174,7 +1179,7 @@ process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
             if (new_demand.vgpr - spilled_registers.vgpr > ctx.target_pressure.vgpr)
                type = RegType::vgpr;
 
-            for (std::pair<Temp, uint32_t> pair : local_next_use_distance[idx]) {
+            for (std::pair<Temp, uint32_t> pair : ctx.local_next_use_distance[idx]) {
                if (pair.first.type() != type)
                   continue;
                bool can_rematerialize = ctx.remat.count(pair.first);
