@@ -71,6 +71,7 @@ EXTENSIONS = [
        properties=True,
        conditions=["$feats.provokingVertexLast"]),
     Extension("VK_EXT_shader_viewport_index_layer"),
+    Extension("VK_KHR_get_memory_requirements2"),
     Extension("VK_EXT_post_depth_coverage"),
     Extension("VK_KHR_driver_properties",
         alias="driver",

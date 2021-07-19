@@ -509,6 +509,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    VkMemoryRequirements reqs = {0};
    VkMemoryPropertyFlags flags;
+   bool need_dedicated = false;
    /* TODO: remove linear for wsi */
    bool scanout = (templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR)) == (PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR);
    bool shared = (templ->bind & (PIPE_BIND_SHARED | PIPE_BIND_LINEAR)) == (PIPE_BIND_SHARED | PIPE_BIND_LINEAR);
@@ -615,7 +616,23 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          goto fail1;
       }
 
-      vkGetImageMemoryRequirements(screen->dev, obj->image, &reqs);
+      if (screen->vk.GetImageMemoryRequirements2) {
+         VkMemoryRequirements2 req2;
+         req2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+         VkImageMemoryRequirementsInfo2 info2;
+         info2.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
+         info2.pNext = NULL;
+         info2.image = obj->image;
+         VkMemoryDedicatedRequirements ded;
+         ded.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
+         ded.pNext = NULL;
+         req2.pNext = &ded;
+         screen->vk.GetImageMemoryRequirements2(screen->dev, &info2, &req2);
+         memcpy(&reqs, &req2.memoryRequirements, sizeof(VkMemoryRequirements));
+         need_dedicated = ded.prefersDedicatedAllocation || ded.requiresDedicatedAllocation;
+      } else {
+         vkGetImageMemoryRequirements(screen->dev, obj->image, &reqs);
+      }
       if (templ->usage == PIPE_USAGE_STAGING && ici.tiling == VK_IMAGE_TILING_LINEAR)
         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
       else
