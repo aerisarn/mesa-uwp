@@ -421,6 +421,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    bool reads_drawid = ctx->shader_reads_drawid;
    bool reads_basevertex = ctx->shader_reads_basevertex;
    unsigned draw_count = ctx->batch.state->draw_count;
+   enum pipe_prim_type mode = dinfo->mode;
 
    update_barriers(ctx, false);
 
@@ -436,11 +437,11 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
    ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
    if (ctx->rast_state->base.point_quad_rasterization &&
-       ctx->gfx_prim_mode != dinfo->mode) {
-      if (ctx->gfx_prim_mode == PIPE_PRIM_POINTS || dinfo->mode == PIPE_PRIM_POINTS)
+       ctx->gfx_prim_mode != mode) {
+      if (ctx->gfx_prim_mode == PIPE_PRIM_POINTS || mode == PIPE_PRIM_POINTS)
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);
    }
-   ctx->gfx_prim_mode = dinfo->mode;
+   ctx->gfx_prim_mode = mode;
    update_gfx_program(ctx);
 
    if (zink_program_has_descriptors(&ctx->curr_program->base)) {
@@ -502,7 +503,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkPipeline prev_pipeline = ctx->gfx_pipeline_state.pipeline;
    VkPipeline pipeline = zink_get_gfx_pipeline(ctx, ctx->curr_program,
                                                &ctx->gfx_pipeline_state,
-                                               dinfo->mode);
+                                               mode);
    bool pipeline_changed = prev_pipeline != pipeline;
    if (BATCH_CHANGED || pipeline_changed)
       vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -602,7 +603,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       screen->vk.CmdSetFrontFaceEXT(batch->state->cmdbuf, ctx->gfx_pipeline_state.front_face);
 
    if (BATCH_CHANGED || ctx->rast_state_changed || mode_changed) {
-      enum pipe_prim_type reduced_prim = u_reduced_prim(dinfo->mode);
+      enum pipe_prim_type reduced_prim = u_reduced_prim(mode);
 
       bool depth_bias = false;
       switch (reduced_prim) {
