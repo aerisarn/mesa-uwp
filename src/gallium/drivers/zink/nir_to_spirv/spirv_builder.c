@@ -1427,7 +1427,7 @@ spirv_builder_const_int(struct spirv_builder *b, int width, int64_t val)
 SpvId
 spirv_builder_const_uint(struct spirv_builder *b, int width, uint64_t val)
 {
-   assert(width >= 16);
+   assert(width >= 8);
    SpvId type = spirv_builder_type_uint(b, width);
    if (width <= 32)
       return emit_constant_32(b, type, val);
