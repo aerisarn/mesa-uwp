@@ -1800,6 +1800,12 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = emit_select(ctx, dest_type, src[0], src[1], src[2]);
       break;
 
+   case nir_op_pack_half_2x16_split: {
+      SpvId fvec = spirv_builder_emit_composite_construct(&ctx->builder, get_fvec_type(ctx, 32, 2),
+                                                          src, 2);
+      result = emit_builtin_unop(ctx, GLSLstd450PackHalf2x16, dest_type, fvec);
+      break;
+   }
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4: {
