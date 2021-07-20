@@ -4371,12 +4371,15 @@ void genX(CmdDrawIndexedIndirect)(
 static struct mi_value
 prepare_for_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
                                  struct mi_builder *b,
-                                 struct anv_address count_address,
-                                 const bool conditional_render_enabled)
+                                 struct anv_buffer *count_buffer,
+                                 uint64_t countBufferOffset)
 {
+   struct anv_address count_address =
+         anv_address_add(count_buffer->address, countBufferOffset);
+
    struct mi_value ret = mi_imm(0);
 
-   if (conditional_render_enabled) {
+   if (cmd_buffer->state.conditional_render_enabled) {
 #if GFX_VERx10 >= 75
       ret = mi_new_gpr(b);
       mi_store(b, mi_value_ref(b, ret), mi_mem32(count_address));
@@ -4452,6 +4455,24 @@ emit_draw_count_predicate_with_conditional_render(
 }
 #endif
 
+static void
+emit_draw_count_predicate_cond(struct anv_cmd_buffer *cmd_buffer,
+                               struct mi_builder *b,
+                               uint32_t draw_index,
+                               struct mi_value max)
+{
+#if GFX_VERx10 >= 75
+   if (cmd_buffer->state.conditional_render_enabled) {
+      emit_draw_count_predicate_with_conditional_render(
+            cmd_buffer, b, draw_index, mi_value_ref(b, max));
+   } else {
+      emit_draw_count_predicate(cmd_buffer, b, draw_index);
+   }
+#else
+   emit_draw_count_predicate(cmd_buffer, b, draw_index);
+#endif
+}
+
 void genX(CmdDrawIndirectCount)(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    _buffer,
@@ -4475,25 +4496,14 @@ void genX(CmdDrawIndirectCount)(
 
    struct mi_builder b;
    mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
-   struct anv_address count_address =
-      anv_address_add(count_buffer->address, countBufferOffset);
    struct mi_value max =
-      prepare_for_draw_count_predicate(cmd_buffer, &b, count_address,
-                                       cmd_state->conditional_render_enabled);
+      prepare_for_draw_count_predicate(cmd_buffer, &b,
+                                       count_buffer, countBufferOffset);
 
    for (uint32_t i = 0; i < maxDrawCount; i++) {
       struct anv_address draw = anv_address_add(buffer->address, offset);
 
-#if GFX_VERx10 >= 75
-      if (cmd_state->conditional_render_enabled) {
-         emit_draw_count_predicate_with_conditional_render(
-            cmd_buffer, &b, i, mi_value_ref(&b, max));
-      } else {
-         emit_draw_count_predicate(cmd_buffer, &b, i);
-      }
-#else
-      emit_draw_count_predicate(cmd_buffer, &b, i);
-#endif
+      emit_draw_count_predicate_cond(cmd_buffer, &b, i, max);
 
       if (vs_prog_data->uses_firstvertex ||
           vs_prog_data->uses_baseinstance)
@@ -4546,25 +4556,14 @@ void genX(CmdDrawIndexedIndirectCount)(
 
    struct mi_builder b;
    mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
-   struct anv_address count_address =
-      anv_address_add(count_buffer->address, countBufferOffset);
    struct mi_value max =
-      prepare_for_draw_count_predicate(cmd_buffer, &b, count_address,
-                                       cmd_state->conditional_render_enabled);
+      prepare_for_draw_count_predicate(cmd_buffer, &b,
+                                       count_buffer, countBufferOffset);
 
    for (uint32_t i = 0; i < maxDrawCount; i++) {
       struct anv_address draw = anv_address_add(buffer->address, offset);
 
-#if GFX_VERx10 >= 75
-      if (cmd_state->conditional_render_enabled) {
-         emit_draw_count_predicate_with_conditional_render(
-            cmd_buffer, &b, i, mi_value_ref(&b, max));
-      } else {
-         emit_draw_count_predicate(cmd_buffer, &b, i);
-      }
-#else
-      emit_draw_count_predicate(cmd_buffer, &b, i);
-#endif
+      emit_draw_count_predicate_cond(cmd_buffer, &b, i, max);
 
       /* TODO: We need to stomp base vertex to 0 somehow */
       if (vs_prog_data->uses_firstvertex ||
