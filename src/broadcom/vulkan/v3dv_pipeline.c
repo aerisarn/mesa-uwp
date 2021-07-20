@@ -2310,7 +2310,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
    if (pipeline->gs) {
       pipeline_lower_nir(pipeline, pipeline->gs, pipeline->layout);
-      lower_gs_io(pipeline->vs->nir);
+      lower_gs_io(pipeline->gs->nir);
    }
 
    pipeline_lower_nir(pipeline, pipeline->vs, pipeline->layout);
