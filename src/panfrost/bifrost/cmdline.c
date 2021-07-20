@@ -193,6 +193,14 @@ compile_shader(int stages, char **files)
 
                 util_dynarray_clear(&binary);
                 bifrost_compile_shader_nir(nir[i], &inputs, &binary, &info);
+
+                char *fn = NULL;
+                asprintf(&fn, "shader_%u.bin", i);
+                assert(fn != NULL);
+                FILE *fp = fopen(fn, "wb");
+                fwrite(binary.data, 1, binary.size, fp);
+                fclose(fp);
+                free(fn);
         }
 
         util_dynarray_fini(&binary);
