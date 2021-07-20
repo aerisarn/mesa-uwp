@@ -311,6 +311,16 @@ dri2_wl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
    int visual_idx;
    const __DRIconfig *config;
 
+   if (!window) {
+      _eglError(EGL_BAD_NATIVE_WINDOW, "dri2_create_surface");
+      return NULL;
+   }
+
+   if (window->driver_private) {
+      _eglError(EGL_BAD_ALLOC, "dri2_create_surface");
+      return NULL;
+   }
+
    dri2_surf = calloc(1, sizeof *dri2_surf);
    if (!dri2_surf) {
       _eglError(EGL_BAD_ALLOC, "dri2_create_surface");
