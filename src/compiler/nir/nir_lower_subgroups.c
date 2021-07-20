@@ -81,15 +81,26 @@ uint_to_ballot_type(nir_builder *b, nir_ssa_def *value,
    assert(util_is_power_of_two_nonzero(num_components));
    assert(util_is_power_of_two_nonzero(value->num_components));
 
-   /* The ballot type must always have enough bits */
    unsigned total_bits = bit_size * num_components;
-   assert(total_bits >= value->bit_size * value->num_components);
 
    /* If the source doesn't have enough bits, zero-pad */
    if (total_bits > value->bit_size * value->num_components)
       value = nir_pad_vector_imm_int(b, value, 0, total_bits / value->bit_size);
 
-   return nir_bitcast_vector(b, value, bit_size);
+   value = nir_bitcast_vector(b, value, bit_size);
+
+   /* If the source has too many components, truncate.  This can happen if,
+    * for instance, we're implementing GL_ARB_shader_ballot or
+    * VK_EXT_shader_subgroup_ballot which have 64-bit ballot values on an
+    * architecture with a native 128-bit uvec4 ballot.  This comes up in Zink
+    * for OpenGL on Vulkan.  It's the job of the driver calling this lowering
+    * pass to ensure that it's restricted subgroup sizes sufficiently that we
+    * have enough ballot bits.
+    */
+   if (value->num_components > num_components)
+      value = nir_channels(b, value, BITFIELD_MASK(num_components));
+
+   return value;
 }
 
 static nir_ssa_def *
