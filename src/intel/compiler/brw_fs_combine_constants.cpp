@@ -376,6 +376,8 @@ static bool
 can_promote_src_as_imm(const struct intel_device_info *devinfo, fs_inst *inst,
                        unsigned src_idx)
 {
+   bool can_promote = false;
+
    /* Experiment shows that we can only support src0 as immediate */
    if (src_idx != 0)
       return false;
@@ -386,31 +388,36 @@ can_promote_src_as_imm(const struct intel_device_info *devinfo, fs_inst *inst,
    /* TODO - Fix the codepath below to use a bfloat16 immediate on XeHP,
     *        since HF/F mixed mode has been removed from the hardware.
     */
-   switch(inst->src[src_idx].type) {
+   switch (inst->src[src_idx].type) {
    case BRW_REGISTER_TYPE_F: {
       uint16_t hf;
       if (representable_as_hf(inst->src[src_idx].f, &hf)) {
          inst->src[src_idx] = retype(brw_imm_uw(hf), BRW_REGISTER_TYPE_HF);
-         return true;
+         can_promote = true;
       }
+      break;
    }
    case BRW_REGISTER_TYPE_W: {
       int16_t w;
       if (representable_as_w(inst->src[src_idx].d, &w)) {
          inst->src[src_idx] = brw_imm_w(w);
-         return true;
+         can_promote = true;
       }
+      break;
    }
    case BRW_REGISTER_TYPE_UW: {
       uint16_t uw;
       if (representable_as_uw(inst->src[src_idx].ud, &uw)) {
          inst->src[src_idx] = brw_imm_uw(uw);
-         return true;
+         can_promote = true;
       }
+      break;
    }
    default:
-      return false;
+      break;
    }
+
+   return can_promote;
 }
 
 bool
