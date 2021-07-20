@@ -2837,6 +2837,14 @@
       <value name="ODD_FRACTIONAL" value="1"/>
       <value name="EVEN_FRACTIONAL" value="2"/>
     </field>
+    <field name="Tessellation Distribution Mode" start="46" end="47" type="uint">
+      <value name="TEDMODE_OFF" value="0"/>
+      <value name="TEDMODE_RR_STRICT" value="1"/>
+      <value name="TEDMODE_RR_FREE" value="2"/>
+    </field>
+    <field name="Tessellation Distribution Level" start="49" end="50" type="uint">
+      <value name="TEDLEVEL_PATCH" value="0"/>
+    </field>
     <field name="Maximum Tessellation Factor Odd" start="64" end="95" type="float"/>
     <field name="Maximum Tessellation Factor Not Odd" start="96" end="127" type="float"/>
   </instruction>
@@ -2923,11 +2931,38 @@
     <field name="Component Packing Enable" start="9" end="9" type="bool"/>
     <field name="Sequential Draw Cut Index Enable" start="10" end="10" type="bool"/>
     <field name="VertexID Offset Enable" start="11" end="11" type="bool"/>
+    <field name="Geometry Distribution Enable" start="12" end="12" type="bool"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="12"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
     <field name="Cut Index" start="32" end="63" type="uint"/>
+  </instruction>
+
+  <instruction name="3DSTATE_VFG" bias="2" length="4">
+    <field name="DWord Length" start="0" end="7" type="uint" default="2"/>
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="87"/>
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
+    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <field name="Distribution Granularity" start="32" end="33" type="uint">
+      <value name="Batch Level Granularity" value="0"/>
+      <value name="Instance Level Granularity" value="1"/>
+      <value name="Draw Level Granularity" value="2"/>
+    </field>
+    <field name="Granularity Threshold Disable" start="34" end="34" type="bool"/>
+    <field name="List Cut Index Enable" start="35" end="35" type="bool"/>
+    <field name="Distribution Mode" start="36" end="36" type="uint">
+      <value name="RR_STRICT" value="0"/>
+      <value name="RR_FREE" value="1"/>
+    </field>
+    <field name="List 1 Batch Size Scale" start="64" end="66" type="uint"/>
+    <field name="List 2 Batch Size Scale" start="72" end="74" type="uint"/>
+    <field name="List 3 Batch Size Scale" start="80" end="82" type="uint"/>
+    <field name="List N Batch Size Scale" start="88" end="90" type="uint"/>
+    <field name="Strip Batch Size Scale" start="96" end="98" type="uint"/>
+    <field name="Patch Batch Size Scale" start="104" end="106" type="uint"/>
+    <field name="Patch Batch Size Multiplier" start="112" end="116" type="uint"/>
   </instruction>
 
   <instruction name="3DSTATE_VF_COMPONENT_PACKING" bias="2" length="5" engine="render">
