@@ -247,9 +247,11 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
                                        node->merged.start_counts,
                                        node->merged.mode,
                                        node->merged.num_draws);
-   } else if (node->merged.num_draws) {
-      /* If node->merged.mode is NULL then num_draws is 0 or 1 */
+   } else if (node->merged.num_draws == 1) {
       ctx->Driver.DrawGallium(ctx, info, 0, &node->merged.start_count, 1);
+   } else if (node->merged.num_draws) {
+      ctx->Driver.DrawGallium(ctx, info, 0, node->merged.start_counts,
+                              node->merged.num_draws);
    }
    info->index.gl_bo = gl_bo;
 
