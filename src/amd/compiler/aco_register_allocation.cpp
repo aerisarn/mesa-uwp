@@ -1454,6 +1454,10 @@ get_reg_vector(ra_ctx& ctx, RegisterFile& reg_file, Temp temp, aco_ptr<Instructi
             reg.reg_b += (our_offset - their_offset);
             if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, reg))
                return {reg, true};
+
+            /* return if MIMG vaddr components don't remain vector-aligned */
+            if (vec->format == Format::MIMG)
+               return {{}, false};
          }
          their_offset += op.bytes();
       }
