@@ -28,6 +28,7 @@
 
 #include "common/sid.h"
 
+#include <algorithm>
 #include <map>
 #include <set>
 #include <stack>
@@ -60,7 +61,7 @@ struct spill_ctx {
    std::stack<Block*, std::vector<Block*>> loop_header;
    std::vector<std::map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_start;
    std::vector<std::map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_end;
-   std::vector<std::map<Temp, uint32_t>> local_next_use_distance; /* Working buffer */
+   std::vector<std::vector<std::pair<Temp, uint32_t>>> local_next_use_distance; /* Working buffer */
    std::vector<std::pair<RegClass, std::unordered_set<uint32_t>>> interferences;
    std::vector<std::vector<uint32_t>> affinities;
    std::vector<bool> is_reloaded;
@@ -358,7 +359,7 @@ get_rematerialize_info(spill_ctx& ctx)
 
 void
 update_local_next_uses(spill_ctx& ctx, Block* block,
-                std::vector<std::map<Temp, uint32_t>>& local_next_uses)
+                std::vector<std::vector<std::pair<Temp, uint32_t>>>& local_next_uses)
 {
    if (local_next_uses.size() < block->instructions.size()) {
       /* Allocate more next-use-maps. Note that by never reducing the vector size, we enable
@@ -369,8 +370,8 @@ update_local_next_uses(spill_ctx& ctx, Block* block,
    local_next_uses[block->instructions.size() - 1].clear();
    for (std::pair<const Temp, std::pair<uint32_t, uint32_t>>& pair :
         ctx.next_use_distances_end[block->index]) {
-      local_next_uses[block->instructions.size() - 1].insert(
-         {pair.first, pair.second.second + block->instructions.size()});
+      local_next_uses[block->instructions.size() - 1].push_back(std::make_pair<Temp, uint32_t>(
+         (Temp)pair.first, pair.second.second + block->instructions.size()));
    }
 
    for (int idx = block->instructions.size() - 1; idx >= 0; idx--) {
@@ -390,12 +391,22 @@ update_local_next_uses(spill_ctx& ctx, Block* block,
          if (op.regClass().type() == RegType::vgpr && op.regClass().is_linear())
             continue;
          if (op.isTemp()) {
-            local_next_uses[idx][op.getTemp()] = idx;
+            auto it = std::find_if(local_next_uses[idx].begin(), local_next_uses[idx].end(),
+                                   [op](auto& pair) { return pair.first == op.getTemp(); });
+            if (it == local_next_uses[idx].end()) {
+               local_next_uses[idx].push_back(std::make_pair<Temp, uint32_t>(op.getTemp(), idx));
+            } else {
+               it->second = idx;
+            }
          }
       }
       for (const Definition& def : instr->definitions) {
          if (def.isTemp()) {
-            local_next_uses[idx].erase(def.getTemp());
+            auto it = std::find_if(local_next_uses[idx].begin(), local_next_uses[idx].end(),
+                                   [def](auto& pair) { return pair.first == def.getTemp(); });
+            if (it != local_next_uses[idx].end()) {
+               local_next_uses[idx].erase(it);
+            }
          }
       }
    }
