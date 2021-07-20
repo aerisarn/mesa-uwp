@@ -136,8 +136,8 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
    uint8_t *max_bpp,
    bool *msaa)
 {
-   STATIC_ASSERT(RENDER_TARGET_MAXIMUM_32BPP == 0);
-   *max_bpp = RENDER_TARGET_MAXIMUM_32BPP;
+   STATIC_ASSERT(V3D_INTERNAL_BPP_32 == 0);
+   *max_bpp = V3D_INTERNAL_BPP_32;
    *msaa = false;
 
    if (subpass) {
