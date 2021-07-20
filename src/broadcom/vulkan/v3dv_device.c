@@ -129,6 +129,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_maintenance1                    = true,
       .KHR_maintenance2                    = true,
       .KHR_maintenance3                    = true,
+      .KHR_multiview                       = true,
       .KHR_shader_non_semantic_info        = true,
       .KHR_sampler_mirror_clamp_to_edge    = true,
       .KHR_storage_buffer_storage_class    = true,
@@ -1057,7 +1058,7 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .uniformAndStorageBuffer16BitAccess = false,
       .storagePushConstant16 = false,
       .storageInputOutput16 = false,
-      .multiview = false,
+      .multiview = true,
       .multiviewGeometryShader = false,
       .multiviewTessellationShader = false,
       .variablePointersStorageBuffer = true,
@@ -1435,10 +1436,8 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
          VkPhysicalDeviceMultiviewProperties *props =
             (VkPhysicalDeviceMultiviewProperties *)ext;
-         props->maxMultiviewViewCount = 1;
-         /* This assumes that the multiview implementation uses instancing */
-         props->maxMultiviewInstanceIndex =
-            (UINT32_MAX / props->maxMultiviewViewCount) - 1;
+         props->maxMultiviewViewCount = MAX_MULTIVIEW_VIEW_COUNT;
+         props->maxMultiviewInstanceIndex = UINT32_MAX - 1;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
