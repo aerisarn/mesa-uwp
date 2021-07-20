@@ -130,10 +130,8 @@ gl_target_to_pipe(GLenum target)
 }
 
 static enum pipe_format
-get_src_format(struct pipe_screen *screen, struct st_texture_object *stObj)
+get_src_format(struct pipe_screen *screen, enum pipe_format src_format, struct pipe_resource *src)
 {
-   struct pipe_resource *src = stObj->pt;
-   enum pipe_format src_format;
    /* Convert the source format to what is expected by GetTexImage
     * and see if it's supported.
     *
@@ -142,10 +140,7 @@ get_src_format(struct pipe_screen *screen, struct st_texture_object *stObj)
     * - Luminance alpha must be returned as (L,0,0,A).
     * - Intensity must be returned as (I,0,0,1)
     */
-   if (stObj->surface_based)
-      src_format = util_format_linear(stObj->surface_format);
-   else
-      src_format = util_format_linear(src->format);
+   src_format = util_format_linear(src_format);
    src_format = util_format_luminance_to_red(src_format);
    src_format = util_format_intensity_to_red(src_format);
 
@@ -2343,7 +2338,7 @@ st_GetTexSubImage(struct gl_context * ctx,
       goto fallback;
    }
 
-   src_format = get_src_format(screen, stObj);
+   src_format = get_src_format(screen, stObj->surface_based ? stObj->surface_format : src->format, src);
    if (src_format == PIPE_FORMAT_NONE)
       goto fallback;
 
