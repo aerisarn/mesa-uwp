@@ -2054,7 +2054,8 @@ send_descriptor_restrictions(const struct intel_device_info *devinfo,
    case GFX12_SFID_UGM:
       ERROR_IF(!devinfo->has_lsc, "Platform does not support LSC");
 
-      ERROR_IF(lsc_msg_desc_transpose(devinfo, desc) &&
+      ERROR_IF(lsc_opcode_has_transpose(lsc_msg_desc_opcode(devinfo, desc)) &&
+               lsc_msg_desc_transpose(devinfo, desc) &&
                brw_inst_exec_size(devinfo, inst) != BRW_EXECUTE_1,
                "Transposed vectors are restricted to Exec_Mask = 1.");
       break;

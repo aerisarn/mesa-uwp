@@ -1168,6 +1168,12 @@ lsc_opcode_has_cmask(enum lsc_opcode opcode)
    return opcode == LSC_OP_LOAD_CMASK || opcode == LSC_OP_STORE_CMASK;
 }
 
+static inline bool
+lsc_opcode_has_transpose(enum lsc_opcode opcode)
+{
+   return opcode == LSC_OP_LOAD || opcode == LSC_OP_STORE;
+}
+
 static inline uint32_t
 lsc_data_size_bytes(enum lsc_data_size data_size)
 {
@@ -1251,6 +1257,8 @@ lsc_msg_desc(UNUSED const struct intel_device_info *devinfo,
    unsigned src0_length =
       DIV_ROUND_UP(lsc_addr_size_bytes(addr_sz) * num_coordinates * simd_size,
                    REG_SIZE);
+
+   assert(!transpose || lsc_opcode_has_transpose(opcode));
 
    unsigned msg_desc =
       SET_BITS(opcode, 5, 0) |
