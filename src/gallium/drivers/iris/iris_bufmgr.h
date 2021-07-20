@@ -186,6 +186,9 @@ struct iris_bo {
     */
    unsigned global_name;
 
+   /** The mmap coherency mode selected at BO allocation time */
+   enum iris_mmap_mode mmap_mode;
+
    time_t free_time;
 
    /** Mapped address for the buffer, saved across map/unmap cycles */
@@ -233,9 +236,6 @@ struct iris_bo {
     * Boolean of whether this buffer points into user memory
     */
    bool userptr;
-
-   /** The mmap coherency mode selected at BO allocation time */
-   enum iris_mmap_mode mmap_mode;
 
    /**
     * Boolean of whether this was allocated from local memory
