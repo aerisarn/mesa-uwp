@@ -942,23 +942,52 @@ LLVMValueRef ac_build_fs_interp(struct ac_llvm_context *ctx, LLVMValueRef llvm_c
                                 LLVMValueRef j)
 {
    LLVMValueRef args[5];
-   LLVMValueRef p1;
 
-   args[0] = i;
-   args[1] = llvm_chan;
-   args[2] = attr_number;
-   args[3] = params;
+   if (ctx->chip_class >= GFX11) {
+      LLVMValueRef p;
+      LLVMValueRef p10;
 
-   p1 = ac_build_intrinsic(ctx, "llvm.amdgcn.interp.p1", ctx->f32, args, 4, AC_FUNC_ATTR_READNONE);
+      args[0] = llvm_chan;
+      args[1] = attr_number;
+      args[2] = params;
 
-   args[0] = p1;
-   args[1] = j;
-   args[2] = llvm_chan;
-   args[3] = attr_number;
-   args[4] = params;
+      p = ac_build_intrinsic(ctx, "llvm.amdgcn.lds.param.load",
+                             ctx->f32, args, 3, AC_FUNC_ATTR_READNONE);
 
-   return ac_build_intrinsic(ctx, "llvm.amdgcn.interp.p2", ctx->f32, args, 5,
-                             AC_FUNC_ATTR_READNONE);
+      args[0] = p;
+      args[1] = i;
+      args[2] = p;
+
+      p10 = ac_build_intrinsic(ctx, "llvm.amdgcn.interp.inreg.p10",
+                               ctx->f32, args, 3, AC_FUNC_ATTR_READNONE);
+
+      args[0] = p;
+      args[1] = j;
+      args[2] = p10;
+
+      return ac_build_intrinsic(ctx, "llvm.amdgcn.interp.inreg.p2",
+                                ctx->f32, args, 3, AC_FUNC_ATTR_READNONE);
+
+   } else {
+      LLVMValueRef p1;
+
+      args[0] = i;
+      args[1] = llvm_chan;
+      args[2] = attr_number;
+      args[3] = params;
+
+      p1 = ac_build_intrinsic(ctx, "llvm.amdgcn.interp.p1",
+                              ctx->f32, args, 4, AC_FUNC_ATTR_READNONE);
+
+      args[0] = p1;
+      args[1] = j;
+      args[2] = llvm_chan;
+      args[3] = attr_number;
+      args[4] = params;
+
+      return ac_build_intrinsic(ctx, "llvm.amdgcn.interp.p2",
+                                ctx->f32, args, 5, AC_FUNC_ATTR_READNONE);
+   }
 }
 
 LLVMValueRef ac_build_fs_interp_f16(struct ac_llvm_context *ctx, LLVMValueRef llvm_chan,
@@ -994,13 +1023,26 @@ LLVMValueRef ac_build_fs_interp_mov(struct ac_llvm_context *ctx, LLVMValueRef pa
 {
    LLVMValueRef args[4];
 
-   args[0] = parameter;
-   args[1] = llvm_chan;
-   args[2] = attr_number;
-   args[3] = params;
+   if (ctx->chip_class >= GFX11) {
+      LLVMValueRef p;
 
-   return ac_build_intrinsic(ctx, "llvm.amdgcn.interp.mov", ctx->f32, args, 4,
-                             AC_FUNC_ATTR_READNONE);
+      args[0] = llvm_chan;
+      args[1] = attr_number;
+      args[2] = params;
+
+      p = ac_build_intrinsic(ctx, "llvm.amdgcn.lds.param.load",
+                             ctx->f32, args, 3, AC_FUNC_ATTR_READNONE);
+      p = ac_build_quad_swizzle(ctx, p, 0, 0, 0 ,0);
+      return ac_build_intrinsic(ctx, "llvm.amdgcn.wqm.f32", ctx->f32, &p, 1, AC_FUNC_ATTR_READNONE);
+   } else {
+      args[0] = parameter;
+      args[1] = llvm_chan;
+      args[2] = attr_number;
+      args[3] = params;
+
+      return ac_build_intrinsic(ctx, "llvm.amdgcn.interp.mov", ctx->f32, args, 4,
+                                AC_FUNC_ATTR_READNONE);
+   }
 }
 
 LLVMValueRef ac_build_gep_ptr(struct ac_llvm_context *ctx, LLVMValueRef base_ptr,
