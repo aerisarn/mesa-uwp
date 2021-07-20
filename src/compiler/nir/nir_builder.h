@@ -409,6 +409,18 @@ nir_imm_ivec2(nir_builder *build, int x, int y)
 }
 
 static inline nir_ssa_def *
+nir_imm_ivec3(nir_builder *build, int x, int y, int z)
+{
+   nir_const_value v[3] = {
+      nir_const_value_for_int(x, 32),
+      nir_const_value_for_int(y, 32),
+      nir_const_value_for_int(z, 32),
+   };
+
+   return nir_build_imm(build, 3, 32, v);
+}
+
+static inline nir_ssa_def *
 nir_imm_ivec4(nir_builder *build, int x, int y, int z, int w)
 {
    nir_const_value v[4] = {
