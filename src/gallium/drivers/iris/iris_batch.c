@@ -129,7 +129,7 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
    for (int i = 0; i < batch->exec_count; i++) {
       struct iris_bo *bo = batch->exec_bos[i];
       /* The decoder zeroes out the top 16 bits, so we need to as well */
-      uint64_t bo_address = bo->gtt_offset & (~0ull >> 16);
+      uint64_t bo_address = bo->address & (~0ull >> 16);
 
       if (address >= bo_address && address < bo_address + bo->size) {
          return (struct intel_batch_decode_bo) {
@@ -163,7 +163,7 @@ decode_batch(struct iris_batch *batch)
 {
    void *map = iris_bo_map(batch->dbg, batch->exec_bos[0], MAP_READ);
    intel_print_batch(&batch->decoder, map, batch->primary_batch_size,
-                     batch->exec_bos[0]->gtt_offset, false);
+                     batch->exec_bos[0]->address, false);
 }
 
 void
@@ -341,7 +341,7 @@ iris_use_pinned_bo(struct iris_batch *batch,
    batch->validation_list[batch->exec_count] =
       (struct drm_i915_gem_exec_object2) {
          .handle = bo->gem_handle,
-         .offset = bo->gtt_offset,
+         .offset = bo->address,
          .flags = bo->kflags | (writable ? EXEC_OBJECT_WRITE : 0),
       };
 
@@ -497,7 +497,7 @@ iris_chain_to_new_batch(struct iris_batch *batch)
 
    /* Emit MI_BATCH_BUFFER_START to chain to another batch. */
    *cmd = (0x31 << 23) | (1 << 8) | (3 - 2);
-   *addr = batch->bo->gtt_offset;
+   *addr = batch->bo->address;
 }
 
 static void
@@ -517,7 +517,7 @@ add_aux_map_bos_to_batch(struct iris_batch *batch)
       batch->validation_list[batch->exec_count] =
          (struct drm_i915_gem_exec_object2) {
             .handle = bo->gem_handle,
-            .offset = bo->gtt_offset,
+            .offset = bo->address,
             .flags = bo->kflags,
          };
       batch->aperture_space += bo->size;
@@ -637,7 +637,7 @@ submit_batch(struct iris_batch *batch)
    /* The requirement for using I915_EXEC_NO_RELOC are:
     *
     *   The addresses written in the objects must match the corresponding
-    *   reloc.gtt_offset which in turn must match the corresponding
+    *   reloc.address which in turn must match the corresponding
     *   execobject.offset.
     *
     *   Any render targets written to in the batch must be flagged with

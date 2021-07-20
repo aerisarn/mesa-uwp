@@ -349,7 +349,7 @@ iris_update_grid_size_resource(struct iris_context *ice,
    state_ref->offset +=
       iris_bo_offset_from_base_address(iris_resource_bo(state_ref->res));
    isl_buffer_fill_state(&screen->isl_dev, surf_map,
-                         .address = grid_ref->offset + grid_bo->gtt_offset,
+                         .address = grid_ref->offset + grid_bo->address,
                          .size_B = sizeof(grid->grid),
                          .format = ISL_FORMAT_RAW,
                          .stride_B = 1,

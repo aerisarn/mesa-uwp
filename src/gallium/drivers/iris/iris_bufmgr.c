@@ -449,7 +449,7 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
          continue;
 
       /* Try a little harder to find one that's already in the right memzone */
-      if (match_zone && memzone != iris_memzone_for_address(cur->gtt_offset))
+      if (match_zone && memzone != iris_memzone_for_address(cur->address))
          continue;
 
       /* If the last BO in the cache is busy, there are no idle BOs.  Bail,
@@ -483,7 +483,7 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
        * removed from the aux-map.
        */
       if (bo->bufmgr->aux_map_ctx)
-         intel_aux_map_unmap_range(bo->bufmgr->aux_map_ctx, bo->gtt_offset,
+         intel_aux_map_unmap_range(bo->bufmgr->aux_map_ctx, bo->address,
                                    bo->size);
       bo->aux_map_address = 0;
    }
@@ -491,10 +491,10 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
    /* If the cached BO isn't in the right memory zone, or the alignment
     * isn't sufficient, free the old memory and assign it a new address.
     */
-   if (memzone != iris_memzone_for_address(bo->gtt_offset) ||
-       bo->gtt_offset % alignment != 0) {
-      vma_free(bufmgr, bo->gtt_offset, bo->size);
-      bo->gtt_offset = 0ull;
+   if (memzone != iris_memzone_for_address(bo->address) ||
+       bo->address % alignment != 0) {
+      vma_free(bufmgr, bo->address, bo->size);
+      bo->address = 0ull;
    }
 
    /* Zero the contents if necessary.  If this fails, fall back to
@@ -639,12 +639,12 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
          return NULL;
    }
 
-   if (bo->gtt_offset == 0ull) {
+   if (bo->address == 0ull) {
       simple_mtx_lock(&bufmgr->lock);
-      bo->gtt_offset = vma_alloc(bufmgr, memzone, bo->size, alignment);
+      bo->address = vma_alloc(bufmgr, memzone, bo->size, alignment);
       simple_mtx_unlock(&bufmgr->lock);
 
-      if (bo->gtt_offset == 0ull)
+      if (bo->address == 0ull)
          goto err_free;
    }
 
@@ -725,10 +725,10 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
    simple_mtx_lock(&bufmgr->lock);
-   bo->gtt_offset = vma_alloc(bufmgr, memzone, size, 1);
+   bo->address = vma_alloc(bufmgr, memzone, size, 1);
    simple_mtx_unlock(&bufmgr->lock);
 
-   if (bo->gtt_offset == 0ull)
+   if (bo->address == 0ull)
       goto err_close;
 
    p_atomic_set(&bo->refcount, 1);
@@ -801,7 +801,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    bo->imported = true;
    bo->mmap_mode = IRIS_MMAP_WC;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
-   bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
+   bo->address = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
    _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
@@ -849,12 +849,12 @@ bo_close(struct iris_bo *bo)
    }
 
    if (bo->aux_map_address && bo->bufmgr->aux_map_ctx) {
-      intel_aux_map_unmap_range(bo->bufmgr->aux_map_ctx, bo->gtt_offset,
+      intel_aux_map_unmap_range(bo->bufmgr->aux_map_ctx, bo->address,
                                 bo->size);
    }
 
    /* Return the VMA for reuse */
-   vma_free(bo->bufmgr, bo->gtt_offset, bo->size);
+   vma_free(bo->bufmgr, bo->address, bo->size);
 
    free(bo);
 }
@@ -1313,7 +1313,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
     * in case. We always align to 64KB even on platforms where we don't need
     * to, because it's a fairly reasonable thing to do anyway.
     */
-   bo->gtt_offset =
+   bo->address =
       vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 64 * 1024);
 
    bo->gem_handle = handle;
@@ -1644,7 +1644,7 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
                     IRIS_MEMZONE_OTHER, 0);
 
    buf->driver_bo = bo;
-   buf->gpu = bo->gtt_offset;
+   buf->gpu = bo->address;
    buf->gpu_end = buf->gpu + bo->size;
    buf->map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
    return buf;

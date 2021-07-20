@@ -153,7 +153,7 @@ struct iris_bo {
     * Although each hardware context has its own VMA, we assign BO's to the
     * same address in all contexts, for simplicity.
     */
-   uint64_t gtt_offset;
+   uint64_t address;
 
    /**
     * If non-zero, then this bo has an aux-map translation to this address.
@@ -425,8 +425,8 @@ iris_bo_offset_from_base_address(struct iris_bo *bo)
    /* This only works for buffers in the memory zones corresponding to a
     * base address - the top, unbounded memory zone doesn't have a base.
     */
-   assert(bo->gtt_offset < IRIS_MEMZONE_OTHER_START);
-   return bo->gtt_offset;
+   assert(bo->address < IRIS_MEMZONE_OTHER_START);
+   return bo->address;
 }
 
 /**

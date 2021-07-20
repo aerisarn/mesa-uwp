@@ -165,7 +165,7 @@ iris_upload_shader(struct iris_screen *screen,
    memcpy(shader->map, assembly, shader->prog_data->program_size);
 
    struct iris_resource *res = (void *) shader->assembly.res;
-   uint64_t shader_data_addr = res->bo->gtt_offset +
+   uint64_t shader_data_addr = res->bo->address +
                                shader->assembly.offset +
                                shader->prog_data->const_data_offset;
 

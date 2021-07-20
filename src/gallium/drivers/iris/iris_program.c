@@ -209,7 +209,7 @@ iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
    const bool dataport = ssbo || !screen->compiler->indirect_ubos_use_sampler;
 
    isl_buffer_fill_state(&screen->isl_dev, map,
-                         .address = res->bo->gtt_offset + res->offset +
+                         .address = res->bo->address + res->offset +
                                     buf->buffer_offset,
                          .size_B = buf->buffer_size - res->offset,
                          .format = dataport ? ISL_FORMAT_RAW
@@ -2407,7 +2407,7 @@ iris_get_scratch_surf(struct iris_context *ice,
                             screen->isl_dev.ss.size, 64);
 
    isl_buffer_fill_state(&screen->isl_dev, map,
-                         .address = scratch_bo->gtt_offset,
+                         .address = scratch_bo->address,
                          .size_B = scratch_bo->size,
                          .format = ISL_FORMAT_RAW,
                          .swizzle = ISL_SWIZZLE_IDENTITY,

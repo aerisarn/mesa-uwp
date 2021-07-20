@@ -204,7 +204,7 @@ struct iris_surface_state {
    unsigned num_states;
 
    /**
-    * Address of the resource (res->bo->gtt_offset).  Note that "Surface
+    * Address of the resource (res->bo->address).  Note that "Surface
     * Base Address" may be offset from this value.
     */
    uint64_t bo_address;
