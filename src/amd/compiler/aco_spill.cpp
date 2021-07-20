@@ -25,6 +25,7 @@
 
 #include "aco_builder.h"
 #include "aco_ir.h"
+#include "aco_util.h"
 
 #include "common/sid.h"
 
@@ -65,6 +66,8 @@ struct remat_info {
 struct spill_ctx {
    RegisterDemand target_pressure;
    Program* program;
+   aco::monotonic_buffer_resource memory;
+
    std::vector<std::vector<RegisterDemand>> register_demand;
    std::vector<std::map<Temp, Temp>> renames;
    std::vector<std::unordered_map<Temp, uint32_t>> spills_entry;
@@ -72,8 +75,10 @@ struct spill_ctx {
 
    std::vector<bool> processed;
    std::stack<Block*, std::vector<Block*>> loop_header;
-   std::vector<std::unordered_map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_start;
-   std::vector<std::unordered_map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_end;
+
+   using next_use_distance_startend_type = aco::unordered_map<Temp, std::pair<uint32_t, uint32_t>>;
+   std::vector<next_use_distance_startend_type> next_use_distances_start;
+   std::vector<next_use_distance_startend_type> next_use_distances_end;
    std::vector<std::vector<std::pair<Temp, uint32_t>>> local_next_use_distance; /* Working buffer */
    std::vector<std::pair<RegClass, std::unordered_set<uint32_t>>> interferences;
    std::vector<std::vector<uint32_t>> affinities;
@@ -88,11 +93,13 @@ struct spill_ctx {
 
    spill_ctx(const RegisterDemand target_pressure_, Program* program_,
              std::vector<std::vector<RegisterDemand>> register_demand_)
-       : target_pressure(target_pressure_), program(program_),
+       : target_pressure(target_pressure_), program(program_), memory(),
          register_demand(std::move(register_demand_)), renames(program->blocks.size()),
          spills_entry(program->blocks.size()), spills_exit(program->blocks.size()),
-         processed(program->blocks.size(), false), wave_size(program->wave_size),
-         sgpr_spill_slots(0), vgpr_spill_slots(0)
+         processed(program->blocks.size(), false),
+         next_use_distances_start(program->blocks.size(), next_use_distance_startend_type(memory)),
+         next_use_distances_end(program->blocks.size(), next_use_distance_startend_type(memory)),
+         wave_size(program->wave_size), sgpr_spill_slots(0), vgpr_spill_slots(0)
    {}
 
    void add_affinity(uint32_t first, uint32_t second)
@@ -273,9 +280,6 @@ next_uses_per_block(spill_ctx& ctx, unsigned block_idx, uint32_t& worklist)
 void
 compute_global_next_uses(spill_ctx& ctx)
 {
-   ctx.next_use_distances_start.resize(ctx.program->blocks.size());
-   ctx.next_use_distances_end.resize(ctx.program->blocks.size());
-
    uint32_t worklist = ctx.program->blocks.size();
    while (worklist) {
       unsigned block_idx = --worklist;
