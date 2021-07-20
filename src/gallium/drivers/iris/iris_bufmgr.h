@@ -193,28 +193,8 @@ struct iris_bo {
    int refcount;
    const char *name;
 
-   uint64_t kflags;
-
-   /**
-    * Kernel-assigned global name for this object
-    *
-    * List contains both flink named and prime fd'd objects
-    */
-   unsigned global_name;
-
-   /** The mmap coherency mode selected at BO allocation time */
-   enum iris_mmap_mode mmap_mode;
-
-   time_t free_time;
-
-   /** Mapped address for the buffer, saved across map/unmap cycles */
-   void *map;
-
    /** BO cache list */
    struct list_head head;
-
-   /** List of GEM handle exports of this buffer (bo_export) */
-   struct list_head exports;
 
    /**
     * Synchronization sequence number of most recent access of this BO from
@@ -241,26 +221,46 @@ struct iris_bo {
     */
    bool idle;
 
-   /**
-    * Boolean of whether this buffer can be re-used
-    */
-   bool reusable;
+   union {
+      struct {
+         uint64_t kflags;
 
-   /** Was this buffer imported from an external client? */
-   bool imported;
+         time_t free_time;
 
-   /** Has this buffer been exported to external clients? */
-   bool exported;
+         /** Mapped address for the buffer, saved across map/unmap cycles */
+         void *map;
 
-   /**
-    * Boolean of whether this buffer points into user memory
-    */
-   bool userptr;
+         /** List of GEM handle exports of this buffer (bo_export) */
+         struct list_head exports;
 
-   /**
-    * Boolean of whether this was allocated from local memory
-    */
-   bool local;
+         /**
+          * Kernel-assigned global name for this object
+          *
+          * List contains both flink named and prime fd'd objects
+          */
+         unsigned global_name;
+
+         /** The mmap coherency mode selected at BO allocation time */
+         enum iris_mmap_mode mmap_mode;
+
+         /** Was this buffer imported from an external client? */
+         bool imported;
+
+         /** Has this buffer been exported to external clients? */
+         bool exported;
+
+         /** Boolean of whether this buffer can be re-used */
+         bool reusable;
+
+         /** Boolean of whether this buffer points into user memory */
+         bool userptr;
+
+         /** Boolean of whether this was allocated from local memory */
+         bool local;
+      } real;
+      struct {
+      } slab;
+   };
 };
 
 #define BO_ALLOC_ZEROED     (1<<0)
@@ -356,25 +356,25 @@ int iris_bo_flink(struct iris_bo *bo, uint32_t *name);
 static inline bool
 iris_bo_is_external(const struct iris_bo *bo)
 {
-   return bo->exported || bo->imported;
+   return bo->real.exported || bo->real.imported;
 }
 
 static inline bool
 iris_bo_is_imported(const struct iris_bo *bo)
 {
-   return bo->imported;
+   return bo->real.imported;
 }
 
 static inline bool
 iris_bo_is_exported(const struct iris_bo *bo)
 {
-   return bo->exported;
+   return bo->real.exported;
 }
 
 static inline enum iris_mmap_mode
 iris_bo_mmap_mode(const struct iris_bo *bo)
 {
-   return bo->mmap_mode;
+   return bo->real.mmap_mode;
 }
 
 /**

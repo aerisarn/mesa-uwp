@@ -294,7 +294,7 @@ iris_use_pinned_bo(struct iris_batch *batch,
                    struct iris_bo *bo,
                    bool writable, enum iris_domain access)
 {
-   assert(bo->kflags & EXEC_OBJECT_PINNED);
+   assert(bo->real.kflags & EXEC_OBJECT_PINNED);
    assert(bo != batch->bo);
 
    /* Never mark the workaround BO with EXEC_OBJECT_WRITE.  We don't care
@@ -362,7 +362,7 @@ create_batch(struct iris_batch *batch)
    batch->bo = iris_bo_alloc(bufmgr, "command buffer",
                              BATCH_SZ + BATCH_RESERVED, 1,
                              IRIS_MEMZONE_OTHER, 0);
-   batch->bo->kflags |= EXEC_OBJECT_CAPTURE;
+   batch->bo->real.kflags |= EXEC_OBJECT_CAPTURE;
    batch->map = iris_bo_map(NULL, batch->bo, MAP_READ | MAP_WRITE);
    batch->map_next = batch->map;
 
@@ -761,7 +761,7 @@ submit_batch(struct iris_batch *batch)
       validation_list[i] = (struct drm_i915_gem_exec_object2) {
          .handle = bo->gem_handle,
          .offset = bo->address,
-         .flags  = bo->kflags | extra_flags,
+         .flags  = bo->real.kflags | extra_flags,
       };
    }
 

@@ -235,7 +235,7 @@ find_and_ref_external_bo(struct hash_table *ht, unsigned int key)
 
    if (bo) {
       assert(iris_bo_is_external(bo));
-      assert(!bo->reusable);
+      assert(!bo->real.reusable);
 
       /* Being non-reusable, the BO cannot be in the cache lists, but it
        * may be in the zombie list if it had reached zero references, but
@@ -497,7 +497,7 @@ bo_calloc(void)
    if (!bo)
       return NULL;
 
-   list_inithead(&bo->exports);
+   list_inithead(&bo->real.exports);
 
    bo->hash = _mesa_hash_pointer(bo);
 
@@ -507,9 +507,9 @@ bo_calloc(void)
 static void
 bo_unmap(struct iris_bo *bo)
 {
-   VG_NOACCESS(bo->map, bo->size);
-   os_munmap(bo->map, bo->size);
-   bo->map = NULL;
+   VG_NOACCESS(bo->real.map, bo->size);
+   os_munmap(bo->real.map, bo->size);
+   bo->real.map = NULL;
 }
 
 static struct iris_bo *
@@ -530,7 +530,7 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
       /* Find one that's got the right mapping type.  We used to swap maps
        * around but the kernel doesn't allow this on discrete GPUs.
        */
-      if (mmap_mode != cur->mmap_mode)
+      if (mmap_mode != cur->real.mmap_mode)
          continue;
 
       /* Try a little harder to find one that's already in the right memzone */
@@ -658,7 +658,7 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, bool local)
    bo->bufmgr = bufmgr;
    bo->size = bo_size;
    bo->idle = true;
-   bo->local = local;
+   bo->real.local = local;
 
    if (bufmgr->vram.size == 0) {
       /* Calling set_domain() will allocate pages for the BO outside of the
@@ -737,18 +737,18 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
 
    bo->name = name;
    p_atomic_set(&bo->refcount, 1);
-   bo->reusable = bucket && bufmgr->bo_reuse;
+   bo->real.reusable = bucket && bufmgr->bo_reuse;
    bo->index = -1;
-   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+   bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
    /* By default, capture all driver-internal buffers like shader kernels,
     * surface states, dynamic states, border colors, and so on.
     */
    if (memzone < IRIS_MEMZONE_OTHER)
-      bo->kflags |= EXEC_OBJECT_CAPTURE;
+      bo->real.kflags |= EXEC_OBJECT_CAPTURE;
 
-   assert(bo->map == NULL || bo->mmap_mode == mmap_mode);
-   bo->mmap_mode = mmap_mode;
+   assert(bo->real.map == NULL || bo->real.mmap_mode == mmap_mode);
+   bo->real.mmap_mode = mmap_mode;
 
    /* On integrated GPUs, enable snooping to ensure coherency if needed.
     * For discrete, we instead use SMEM and avoid WB maps for coherency.
@@ -762,11 +762,11 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
       if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_CACHING, &arg) != 0)
          goto err_free;
 
-      bo->reusable = false;
+      bo->real.reusable = false;
    }
 
    DBG("bo_create: buf %d (%s) (%s memzone) (%s) %llub\n", bo->gem_handle,
-       bo->name, memzone_name(memzone), bo->local ? "local" : "system",
+       bo->name, memzone_name(memzone), bo->real.local ? "local" : "system",
        (unsigned long long) size);
 
    return bo;
@@ -809,10 +809,10 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
 
    bo->name = name;
    bo->size = size;
-   bo->map = ptr;
+   bo->real.map = ptr;
 
    bo->bufmgr = bufmgr;
-   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+   bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
    simple_mtx_lock(&bufmgr->lock);
    bo->address = vma_alloc(bufmgr, memzone, size, 1);
@@ -822,10 +822,10 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
       goto err_close;
 
    p_atomic_set(&bo->refcount, 1);
-   bo->userptr = true;
+   bo->real.userptr = true;
    bo->index = -1;
    bo->idle = true;
-   bo->mmap_mode = IRIS_MMAP_WB;
+   bo->real.mmap_mode = IRIS_MMAP_WB;
 
    return bo;
 
@@ -886,15 +886,15 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    bo->bufmgr = bufmgr;
    bo->gem_handle = open_arg.handle;
    bo->name = name;
-   bo->global_name = handle;
-   bo->reusable = false;
-   bo->imported = true;
-   bo->mmap_mode = IRIS_MMAP_NONE;
-   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+   bo->real.global_name = handle;
+   bo->real.reusable = false;
+   bo->real.imported = true;
+   bo->real.mmap_mode = IRIS_MMAP_NONE;
+   bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->address = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
-   _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
+   _mesa_hash_table_insert(bufmgr->name_table, &bo->real.global_name, bo);
 
    DBG("bo_create_from_handle: %d (%s)\n", handle, bo->name);
 
@@ -911,15 +911,16 @@ bo_close(struct iris_bo *bo)
    if (iris_bo_is_external(bo)) {
       struct hash_entry *entry;
 
-      if (bo->global_name) {
-         entry = _mesa_hash_table_search(bufmgr->name_table, &bo->global_name);
+      if (bo->real.global_name) {
+         entry = _mesa_hash_table_search(bufmgr->name_table,
+                                         &bo->real.global_name);
          _mesa_hash_table_remove(bufmgr->name_table, entry);
       }
 
       entry = _mesa_hash_table_search(bufmgr->handle_table, &bo->gem_handle);
       _mesa_hash_table_remove(bufmgr->handle_table, entry);
 
-      list_for_each_entry_safe(struct bo_export, export, &bo->exports, link) {
+      list_for_each_entry_safe(struct bo_export, export, &bo->real.exports, link) {
          struct drm_gem_close close = { .handle = export->gem_handle };
          intel_ioctl(export->drm_fd, DRM_IOCTL_GEM_CLOSE, &close);
 
@@ -927,7 +928,7 @@ bo_close(struct iris_bo *bo)
          free(export);
       }
    } else {
-      assert(list_is_empty(&bo->exports));
+      assert(list_is_empty(&bo->real.exports));
    }
 
    /* Close this object */
@@ -962,7 +963,7 @@ bo_free(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (!bo->userptr && bo->map)
+   if (!bo->real.userptr && bo->real.map)
       bo_unmap(bo);
 
    if (bo->idle) {
@@ -988,7 +989,7 @@ cleanup_bo_cache(struct iris_bufmgr *bufmgr, time_t time)
       struct bo_cache_bucket *bucket = &bufmgr->cache_bucket[i];
 
       list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
-         if (time - bo->free_time <= 1)
+         if (time - bo->real.free_time <= 1)
             break;
 
          list_del(&bo->head);
@@ -1001,7 +1002,7 @@ cleanup_bo_cache(struct iris_bufmgr *bufmgr, time_t time)
       struct bo_cache_bucket *bucket = &bufmgr->local_cache_bucket[i];
 
       list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
-         if (time - bo->free_time <= 1)
+         if (time - bo->real.free_time <= 1)
             break;
 
          list_del(&bo->head);
@@ -1033,11 +1034,11 @@ bo_unreference_final(struct iris_bo *bo, time_t time)
    DBG("bo_unreference final: %d (%s)\n", bo->gem_handle, bo->name);
 
    bucket = NULL;
-   if (bo->reusable)
-      bucket = bucket_for_size(bufmgr, bo->size, bo->local);
+   if (bo->real.reusable)
+      bucket = bucket_for_size(bufmgr, bo->size, bo->real.local);
    /* Put the buffer into our internal cache for reuse if we can. */
    if (bucket && iris_bo_madvise(bo, I915_MADV_DONTNEED)) {
-      bo->free_time = time;
+      bo->real.free_time = time;
       bo->name = NULL;
 
       list_addtail(&bo->head, &bucket->head);
@@ -1114,12 +1115,13 @@ iris_bo_gem_mmap_legacy(struct pipe_debug_callback *dbg, struct iris_bo *bo)
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
    assert(bufmgr->vram.size == 0);
-   assert(bo->mmap_mode == IRIS_MMAP_WB || bo->mmap_mode == IRIS_MMAP_WC);
+   assert(bo->real.mmap_mode == IRIS_MMAP_WB ||
+          bo->real.mmap_mode == IRIS_MMAP_WC);
 
    struct drm_i915_gem_mmap mmap_arg = {
       .handle = bo->gem_handle,
       .size = bo->size,
-      .flags = bo->mmap_mode == IRIS_MMAP_WC ? I915_MMAP_WC : 0,
+      .flags = bo->real.mmap_mode == IRIS_MMAP_WC ? I915_MMAP_WC : 0,
    };
 
    int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
@@ -1153,10 +1155,10 @@ iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo)
        * across PCIe, it's always snooped.  The only caching mode allowed by
        * DG1 hardware for LMEM is WC.
        */
-      if (bo->local)
-         assert(bo->mmap_mode == IRIS_MMAP_WC);
+      if (bo->real.local)
+         assert(bo->real.mmap_mode == IRIS_MMAP_WC);
       else
-         assert(bo->mmap_mode == IRIS_MMAP_WB);
+         assert(bo->real.mmap_mode == IRIS_MMAP_WB);
 
       mmap_arg.flags = I915_MMAP_OFFSET_FIXED;
    } else {
@@ -1166,9 +1168,9 @@ iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo)
          [IRIS_MMAP_WC]    = I915_MMAP_OFFSET_WC,
          [IRIS_MMAP_WB]    = I915_MMAP_OFFSET_WB,
       };
-      assert(bo->mmap_mode != IRIS_MMAP_NONE);
-      assert(bo->mmap_mode < ARRAY_SIZE(mmap_offset_for_mode));
-      mmap_arg.flags = mmap_offset_for_mode[bo->mmap_mode];
+      assert(bo->real.mmap_mode != IRIS_MMAP_NONE);
+      assert(bo->real.mmap_mode < ARRAY_SIZE(mmap_offset_for_mode));
+      mmap_arg.flags = mmap_offset_for_mode[bo->real.mmap_mode];
    }
 
    /* Get the fake offset back */
@@ -1197,11 +1199,11 @@ iris_bo_map(struct pipe_debug_callback *dbg,
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   assert(bo->mmap_mode != IRIS_MMAP_NONE);
-   if (bo->mmap_mode == IRIS_MMAP_NONE)
+   assert(bo->real.mmap_mode != IRIS_MMAP_NONE);
+   if (bo->real.mmap_mode == IRIS_MMAP_NONE)
       return NULL;
 
-   if (!bo->map) {
+   if (!bo->real.map) {
       DBG("iris_bo_map: %d (%s)\n", bo->gem_handle, bo->name);
       void *map = bufmgr->has_mmap_offset ? iris_bo_gem_mmap_offset(dbg, bo)
                                           : iris_bo_gem_mmap_legacy(dbg, bo);
@@ -1211,21 +1213,22 @@ iris_bo_map(struct pipe_debug_callback *dbg,
 
       VG_DEFINED(map, bo->size);
 
-      if (p_atomic_cmpxchg(&bo->map, NULL, map)) {
+      if (p_atomic_cmpxchg(&bo->real.map, NULL, map)) {
          VG_NOACCESS(map, bo->size);
          os_munmap(map, bo->size);
       }
    }
-   assert(bo->map);
+   assert(bo->real.map);
 
-   DBG("iris_bo_map: %d (%s) -> %p\n", bo->gem_handle, bo->name, bo->map);
+   DBG("iris_bo_map: %d (%s) -> %p\n",
+       bo->gem_handle, bo->name, bo->real.map);
    print_flags(flags);
 
    if (!(flags & MAP_ASYNC)) {
       bo_wait_with_stall_warning(dbg, bo, "memory mapping");
    }
 
-   return bo->map;
+   return bo->real.map;
 }
 
 /** Waits for all GPU rendering with the object to have completed. */
@@ -1438,10 +1441,10 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
 
    bo->bufmgr = bufmgr;
    bo->name = "prime";
-   bo->reusable = false;
-   bo->imported = true;
-   bo->mmap_mode = IRIS_MMAP_NONE;
-   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+   bo->real.reusable = false;
+   bo->real.imported = true;
+   bo->real.mmap_mode = IRIS_MMAP_NONE;
+   bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
    /* From the Bspec, Memory Compression - Gfx12:
     *
@@ -1470,13 +1473,13 @@ iris_bo_mark_exported_locked(struct iris_bo *bo)
    if (!iris_bo_is_external(bo))
       _mesa_hash_table_insert(bo->bufmgr->handle_table, &bo->gem_handle, bo);
 
-   if (!bo->exported) {
+   if (!bo->real.exported) {
       /* If a BO is going to be used externally, it could be sent to the
        * display HW. So make sure our CPU mappings don't assume cache
        * coherency since display is outside that cache.
        */
-      bo->exported = true;
-      bo->reusable = false;
+      bo->real.exported = true;
+      bo->real.reusable = false;
    }
 }
 
@@ -1485,8 +1488,8 @@ iris_bo_mark_exported(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (bo->exported) {
-      assert(!bo->reusable);
+   if (bo->real.exported) {
+      assert(!bo->real.reusable);
       return;
    }
 
@@ -1522,22 +1525,22 @@ iris_bo_flink(struct iris_bo *bo, uint32_t *name)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (!bo->global_name) {
+   if (!bo->real.global_name) {
       struct drm_gem_flink flink = { .handle = bo->gem_handle };
 
       if (intel_ioctl(bufmgr->fd, DRM_IOCTL_GEM_FLINK, &flink))
          return -errno;
 
       simple_mtx_lock(&bufmgr->lock);
-      if (!bo->global_name) {
+      if (!bo->real.global_name) {
          iris_bo_mark_exported_locked(bo);
-         bo->global_name = flink.name;
-         _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
+         bo->real.global_name = flink.name;
+         _mesa_hash_table_insert(bufmgr->name_table, &bo->real.global_name, bo);
       }
       simple_mtx_unlock(&bufmgr->lock);
    }
 
-   *name = bo->global_name;
+   *name = bo->real.global_name;
    return 0;
 }
 
@@ -1582,7 +1585,7 @@ iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
    }
 
    bool found = false;
-   list_for_each_entry(struct bo_export, iter, &bo->exports, link) {
+   list_for_each_entry(struct bo_export, iter, &bo->real.exports, link) {
       if (iter->drm_fd != drm_fd)
          continue;
       /* Here we assume that for a given DRM fd, we'll always get back the
@@ -1595,7 +1598,7 @@ iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
       break;
    }
    if (!found)
-      list_addtail(&export->link, &bo->exports);
+      list_addtail(&export->link, &bo->real.exports);
 
    simple_mtx_unlock(&bufmgr->lock);
 
@@ -1793,9 +1796,9 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
    bo->name = "aux-map";
    p_atomic_set(&bo->refcount, 1);
    bo->index = -1;
-   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED |
-                EXEC_OBJECT_CAPTURE;
-   bo->mmap_mode = local ? IRIS_MMAP_WC : IRIS_MMAP_WB;
+   bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED |
+                     EXEC_OBJECT_CAPTURE;
+   bo->real.mmap_mode = local ? IRIS_MMAP_WC : IRIS_MMAP_WB;
 
    buf->driver_bo = bo;
    buf->gpu = bo->address;

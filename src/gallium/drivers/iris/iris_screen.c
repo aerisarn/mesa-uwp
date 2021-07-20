@@ -736,7 +736,8 @@ iris_init_identifier_bo(struct iris_screen *screen)
    if (!bo_map)
       return false;
 
-   screen->workaround_bo->kflags |= EXEC_OBJECT_CAPTURE | EXEC_OBJECT_ASYNC;
+   screen->workaround_bo->real.kflags |=
+      EXEC_OBJECT_CAPTURE | EXEC_OBJECT_ASYNC;
    screen->workaround_address = (struct iris_address) {
       .bo = screen->workaround_bo,
       .offset = ALIGN(
