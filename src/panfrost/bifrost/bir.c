@@ -27,7 +27,7 @@
 #include "compiler.h"
 
 bool
-bi_has_arg(bi_instr *ins, bi_index arg)
+bi_has_arg(const bi_instr *ins, bi_index arg)
 {
         if (!ins)
                 return false;
@@ -63,7 +63,7 @@ bi_is_regfmt_16(enum bi_register_format fmt)
 }
 
 static unsigned
-bi_count_staging_registers(bi_instr *ins)
+bi_count_staging_registers(const bi_instr *ins)
 {
         enum bi_sr_count count = bi_opcode_props[ins->op].sr_count;
         unsigned vecsize = ins->vecsize + 1; /* XXX: off-by-one */
@@ -84,7 +84,7 @@ bi_count_staging_registers(bi_instr *ins)
 }
 
 unsigned
-bi_count_read_registers(bi_instr *ins, unsigned s)
+bi_count_read_registers(const bi_instr *ins, unsigned s)
 {
         if (s == 0 && bi_opcode_props[ins->op].sr_read)
                 return bi_count_staging_registers(ins);
@@ -93,7 +93,7 @@ bi_count_read_registers(bi_instr *ins, unsigned s)
 }
 
 unsigned
-bi_count_write_registers(bi_instr *ins, unsigned d)
+bi_count_write_registers(const bi_instr *ins, unsigned d)
 {
         if (d == 0 && bi_opcode_props[ins->op].sr_write) {
                 /* TODO: this special case is even more special, TEXC has a
@@ -108,7 +108,7 @@ bi_count_write_registers(bi_instr *ins, unsigned d)
 }
 
 unsigned
-bi_writemask(bi_instr *ins, unsigned d)
+bi_writemask(const bi_instr *ins, unsigned d)
 {
         unsigned mask = BITFIELD_MASK(bi_count_write_registers(ins, d));
         unsigned shift = ins->dest[d].offset;

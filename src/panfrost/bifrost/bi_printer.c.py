@@ -154,7 +154,7 @@ bi_${mod}_as_str(enum bi_${mod} ${mod})
 </%def>
 
 void
-bi_print_instr(bi_instr *I, FILE *fp)
+bi_print_instr(const bi_instr *I, FILE *fp)
 {
     bi_foreach_dest(I, d) {
         if (bi_is_null(I->dest[d])) break;
