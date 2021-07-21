@@ -186,7 +186,6 @@ bi_optimizer_clamp(bi_instr *I, bi_instr *use)
         if (bi_opcode_props[use->op].size != bi_opcode_props[I->op].size) return false;
         if (!bi_is_fclamp(use)) return false;
         if (!bi_takes_clamp(I)) return false;
-        if (use->src[0].neg || use->src[0].abs) return false;
 
         I->clamp = bi_compose_clamp(I->clamp, use->clamp);
         I->dest[0] = use->dest[0];
