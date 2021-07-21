@@ -31,6 +31,7 @@
 #include "compiler/shader_enums.h"
 #include "intel/common/intel_gem.h"
 #include "util/bitscan.h"
+#include "util/debug.h"
 #include "util/log.h"
 #include "util/macros.h"
 
@@ -1495,7 +1496,7 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
          return false;
       if (!intel_get_device_info_from_pci_id(devid, devinfo))
          return false;
-      devinfo->no_hw = false;
+      devinfo->no_hw = env_var_as_boolean("INTEL_NO_HW", false);
    }
 
    if (devinfo->ver == 10) {

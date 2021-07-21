@@ -1889,8 +1889,6 @@ brw_init_bufmgr(struct brw_screen *screen)
 {
    __DRIscreen *dri_screen = screen->driScrnPriv;
 
-   screen->no_hw = env_var_as_boolean("INTEL_NO_HW", false);
-
    bool bo_reuse = false;
    int bo_reuse_mode = driQueryOptioni(&screen->optionCache, "bo_reuse");
    switch (bo_reuse_mode) {
@@ -2003,7 +2001,7 @@ static bool
 brw_detect_pipelined_register(struct brw_screen *screen,
                                 int reg, uint32_t expected_value, bool reset)
 {
-   if (screen->no_hw)
+   if (screen->devinfo.no_hw)
       return false;
 
    struct brw_bo *results, *bo;
@@ -2553,7 +2551,6 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
 
    const struct intel_device_info *devinfo = &screen->devinfo;
    screen->deviceID = devinfo->chipset_id;
-   screen->no_hw = devinfo->no_hw;
 
    if (devinfo->ver >= 12) {
       fprintf(stderr, "gfx12 and newer are not supported on i965\n");

@@ -667,7 +667,7 @@ submit_batch(struct iris_batch *batch)
    }
 
    int ret = 0;
-   if (!batch->screen->no_hw &&
+   if (!batch->screen->devinfo.no_hw &&
        intel_ioctl(batch->screen->fd, DRM_IOCTL_I915_GEM_EXECBUFFER2, &execbuf))
       ret = -errno;
 

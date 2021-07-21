@@ -389,7 +389,7 @@ anv_queue_task(void *_queue)
           * fail because the dma-fence it depends on hasn't materialized yet.
           */
          if (!queue->lost && submit->wait_timeline_count > 0) {
-            int ret = queue->device->no_hw ? 0 :
+            int ret = queue->device->info.no_hw ? 0 :
                anv_gem_syncobj_timeline_wait(
                   queue->device, submit->wait_timeline_syncobjs,
                   submit->wait_timeline_values, submit->wait_timeline_count,
@@ -734,7 +734,7 @@ VkResult
 anv_queue_submit_simple_batch(struct anv_queue *queue,
                               struct anv_batch *batch)
 {
-   if (queue->device->no_hw)
+   if (queue->device->info.no_hw)
       return VK_SUCCESS;
 
    struct anv_device *device = queue->device;
@@ -1223,7 +1223,7 @@ VkResult anv_QueueSubmit(
    ANV_FROM_HANDLE(anv_fence, fence, _fence);
    struct anv_device *device = queue->device;
 
-   if (device->no_hw)
+   if (device->info.no_hw)
       return VK_SUCCESS;
 
    /* Query for device status prior to submitting.  Technically, we don't need
@@ -1846,7 +1846,7 @@ VkResult anv_WaitForFences(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
 
-   if (device->no_hw)
+   if (device->info.no_hw)
       return VK_SUCCESS;
 
    if (anv_device_is_lost(device))

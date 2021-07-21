@@ -804,7 +804,6 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    if (!intel_get_device_info_from_fd(fd, &screen->devinfo))
       return NULL;
    screen->pci_id = screen->devinfo.chipset_id;
-   screen->no_hw = screen->devinfo.no_hw;
 
    p_atomic_set(&screen->refcount, 1);
 
@@ -830,8 +829,6 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    screen->fd = iris_bufmgr_get_fd(screen->bufmgr);
    screen->winsys_fd = fd;
-
-   screen->no_hw = env_var_as_boolean("INTEL_NO_HW", false);
 
    screen->workaround_bo =
       iris_bo_alloc(screen->bufmgr, "workaround", 4096, 1,

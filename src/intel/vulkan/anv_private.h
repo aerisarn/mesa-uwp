@@ -893,7 +893,6 @@ struct anv_physical_device {
     struct list_head                            link;
 
     struct anv_instance *                       instance;
-    bool                                        no_hw;
     char                                        path[20];
     struct {
        uint16_t                                 domain;
@@ -1190,7 +1189,6 @@ struct anv_device {
     struct vk_device                            vk;
 
     struct anv_physical_device *                physical;
-    bool                                        no_hw;
     struct intel_device_info                      info;
     struct isl_device                           isl_dev;
     int                                         context_id;

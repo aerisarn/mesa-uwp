@@ -791,7 +791,7 @@ submit_batch(struct brw_context *brw, int in_fence_fd, int *out_fence_fd)
    brw_bo_unmap(batch->batch.bo);
    brw_bo_unmap(batch->state.bo);
 
-   if (!brw->screen->no_hw) {
+   if (!brw->screen->devinfo.no_hw) {
       /* The requirement for using I915_EXEC_NO_RELOC are:
        *
        *   The addresses written in the objects must match the corresponding

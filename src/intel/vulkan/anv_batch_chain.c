@@ -2040,13 +2040,13 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
          .rsvd1 = device->context_id,
       };
 
-      int ret = queue->device->no_hw ? 0 :
+      int ret = queue->device->info.no_hw ? 0 :
          anv_gem_execbuffer(queue->device, &query_pass_execbuf);
       if (ret)
          result = anv_queue_set_lost(queue, "execbuf2 failed: %m");
    }
 
-   int ret = queue->device->no_hw ? 0 :
+   int ret = queue->device->info.no_hw ? 0 :
       anv_gem_execbuffer(queue->device, &execbuf.execbuf);
    if (ret)
       result = anv_queue_set_lost(queue, "execbuf2 failed: %m");
