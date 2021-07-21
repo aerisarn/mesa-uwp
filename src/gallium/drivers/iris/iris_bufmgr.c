@@ -587,10 +587,7 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, bool local)
       .write_domain = 0,
    };
 
-   if (intel_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd) != 0) {
-      bo_free(bo);
-      return NULL;
-   }
+   intel_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd);
 
    return bo;
 }
