@@ -401,6 +401,7 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
+   assert(job->cmd_buffer == cmd_buffer);
 
    struct texture_bo_list tex_bos = { 0 };
    struct state_bo_list state_bos = { 0 };
@@ -510,11 +511,10 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
          uint32_t num_layers;
          if (job->frame_tiling.layers != 0) {
             num_layers = job->frame_tiling.layers;
-         } else if (job->cmd_buffer &&
-                  job->cmd_buffer->state.framebuffer) {
-            num_layers = job->cmd_buffer->state.framebuffer->layers;
+         } else if (cmd_buffer->state.framebuffer) {
+            num_layers = cmd_buffer->state.framebuffer->layers;
          } else {
-            assert(job->cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+            assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
             num_layers = 2048;
 #if DEBUG
             fprintf(stderr, "Skipping gl_LayerID shader sanity check for "
