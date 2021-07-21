@@ -577,17 +577,19 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, bool local)
    bo->idle = true;
    bo->local = local;
 
-   /* Calling set_domain() will allocate pages for the BO outside of the
-    * struct mutex lock in the kernel, which is more efficient than waiting
-    * to create them during the first execbuf that uses the BO.
-    */
-   struct drm_i915_gem_set_domain sd = {
-      .handle = bo->gem_handle,
-      .read_domains = I915_GEM_DOMAIN_CPU,
-      .write_domain = 0,
-   };
+   if (bufmgr->vram.size == 0) {
+      /* Calling set_domain() will allocate pages for the BO outside of the
+       * struct mutex lock in the kernel, which is more efficient than waiting
+       * to create them during the first execbuf that uses the BO.
+       */
+      struct drm_i915_gem_set_domain sd = {
+         .handle = bo->gem_handle,
+         .read_domains = I915_GEM_DOMAIN_CPU,
+         .write_domain = 0,
+      };
 
-   intel_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd);
+      intel_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd);
+   }
 
    return bo;
 }
