@@ -3279,6 +3279,7 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
 
         /* Prepass to simplify instruction selection */
         NIR_PASS(progress, nir, bifrost_nir_lower_algebraic_late);
+        NIR_PASS(progress, nir, nir_opt_dce);
 
         /* Backend scheduler is purely local, so do some global optimizations
          * to reduce register pressure. */
