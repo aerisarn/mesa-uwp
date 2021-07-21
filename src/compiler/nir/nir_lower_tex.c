@@ -1155,6 +1155,25 @@ nir_lower_txs_lod(nir_builder *b, nir_tex_instr *tex)
    return true;
 }
 
+static void
+nir_lower_txs_cube_array(nir_builder *b, nir_tex_instr *tex)
+{
+   assert(tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE && tex->is_array);
+   tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+
+   b->cursor = nir_after_instr(&tex->instr);
+
+   assert(tex->dest.is_ssa);
+   assert(tex->dest.ssa.num_components == 3);
+   nir_ssa_def *size = &tex->dest.ssa;
+   size = nir_vec3(b, nir_channel(b, size, 0),
+                      nir_channel(b, size, 1),
+                      nir_idiv(b, nir_channel(b, size, 2),
+                                  nir_imm_int(b, 6)));
+
+   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, size, size->parent_instr);
+}
+
 static bool
 nir_lower_tex_block(nir_block *block, nir_builder *b,
                     const nir_lower_tex_options *options,
@@ -1343,6 +1362,13 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
 
       if (options->lower_txs_lod && tex->op == nir_texop_txs) {
          progress |= nir_lower_txs_lod(b, tex);
+         continue;
+      }
+
+      if (options->lower_txs_cube_array && tex->op == nir_texop_txs &&
+          tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE && tex->is_array) {
+         nir_lower_txs_cube_array(b, tex);
+         progress = true;
          continue;
       }
 

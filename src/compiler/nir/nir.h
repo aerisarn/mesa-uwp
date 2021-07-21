@@ -4914,6 +4914,12 @@ typedef struct nir_lower_tex_options {
    bool lower_txs_lod;
 
    /**
+    * If true, lower nir_texop_txs for cube arrays to a nir_texop_txs with a
+    * 2D array type followed by a nir_idiv by 6.
+    */
+   bool lower_txs_cube_array;
+
+   /**
     * If true, apply a .bagr swizzle on tg4 results to handle Broadcom's
     * mixed-up tg4 locations.
     */
