@@ -979,10 +979,8 @@ check_drm_format_mod(const struct anv_device *device,
 
    for (int i = 0; i < image->n_planes; ++i) {
       const struct anv_image_plane *plane = &image->planes[i];
-      ASSERTED const struct anv_format_plane *plane_format =
-         &image->format->planes[i];
       ASSERTED const struct isl_format_layout *isl_layout =
-         isl_format_get_layout(plane_format->isl_format);
+         isl_format_get_layout(plane->primary_surface.isl.format);
 
       /* Enforced by us, not the Vulkan spec. */
       assert(isl_layout->txc == ISL_TXC_NONE);
