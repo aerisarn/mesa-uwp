@@ -7322,6 +7322,7 @@ get_lowered_simd_width(const struct intel_device_info *devinfo,
    case BRW_OPCODE_SAD2:
    case BRW_OPCODE_MAD:
    case BRW_OPCODE_LRP:
+   case BRW_OPCODE_ADD3:
    case FS_OPCODE_PACK:
    case SHADER_OPCODE_SEL_EXEC:
    case SHADER_OPCODE_CLUSTER_BROADCAST:
