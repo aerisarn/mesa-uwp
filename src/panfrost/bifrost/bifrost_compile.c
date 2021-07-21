@@ -2510,9 +2510,10 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                 computed_lod = true;
                 break;
         case BIFROST_TEX_OP_FETCH:
-                desc.lod_or_fetch = instr->op == nir_texop_tg4 ?
+                desc.lod_or_fetch = (enum bifrost_lod_mode)
+                   (instr->op == nir_texop_tg4 ?
                         BIFROST_TEXTURE_FETCH_GATHER4_R + instr->component :
-                        BIFROST_TEXTURE_FETCH_TEXEL;
+                        BIFROST_TEXTURE_FETCH_TEXEL);
                 break;
         default:
                 unreachable("texture op unsupported");
