@@ -1937,27 +1937,7 @@ bi_schedule(bi_context *ctx)
 
 #ifndef NDEBUG
 
-static bi_builder *
-bit_builder(void *memctx)
-{
-        bi_context *ctx = rzalloc(memctx, bi_context);
-        list_inithead(&ctx->blocks);
-
-        bi_block *blk = rzalloc(ctx, bi_block);
-
-        blk->predecessors = _mesa_set_create(blk,
-                        _mesa_hash_pointer,
-                        _mesa_key_pointer_equal);
-
-        list_addtail(&blk->link, &ctx->blocks);
-        list_inithead(&blk->instructions);
-
-        bi_builder *b = rzalloc(memctx, bi_builder);
-        b->shader = ctx;
-        b->cursor = bi_after_block(blk);
-        return b;
-}
-
+#include "bi_test.h"
 #define TMP() bi_temp(b->shader)
 
 static void
