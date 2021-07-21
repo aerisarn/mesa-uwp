@@ -1313,7 +1313,6 @@ anv_image_create(VkDevice _device,
    image->extent = anv_sanitize_image_extent(pCreateInfo->imageType,
                                              pCreateInfo->extent);
    image->vk_format = pCreateInfo->format;
-   image->format = anv_get_format(pCreateInfo->format);
    image->aspects = vk_format_aspects(image->vk_format);
    image->levels = pCreateInfo->mipLevels;
    image->array_size = pCreateInfo->arrayLayers;
@@ -1356,14 +1355,14 @@ anv_image_create(VkDevice _device,
       return VK_SUCCESS;
    }
 
-   image->n_planes = image->format->n_planes;
+   image->n_planes = anv_get_format_planes(image->vk_format);
 
    /* The Vulkan 1.2.165 glossary says:
     *
     *    A disjoint image consists of multiple disjoint planes, and is created
     *    with the VK_IMAGE_CREATE_DISJOINT_BIT bit set.
     */
-   image->disjoint = image->format->n_planes > 1 &&
+   image->disjoint = image->n_planes > 1 &&
                      (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT);
 
    const isl_tiling_flags_t isl_tiling_flags =
@@ -1594,9 +1593,8 @@ resolve_ahw_image(struct anv_device *device,
     * isl_surface for it.
     */
    image->vk_format = vk_format;
-   image->format = anv_get_format(vk_format);
    image->aspects = vk_format_aspects(image->vk_format);
-   image->n_planes = image->format->n_planes;
+   image->n_planes = anv_get_format_planes(image->vk_format);
 
    uint32_t stride = desc.stride *
                      (isl_format_get_layout(isl_fmt)->bpb / 8);
