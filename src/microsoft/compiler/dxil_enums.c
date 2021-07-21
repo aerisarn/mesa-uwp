@@ -88,6 +88,7 @@ enum dxil_resource_kind dxil_get_resource_kind(const struct glsl_type *type)
             return is_array ? DXIL_RESOURCE_KIND_TEXTURE1D_ARRAY
                             : DXIL_RESOURCE_KIND_TEXTURE1D;
          case GLSL_SAMPLER_DIM_2D:
+         case GLSL_SAMPLER_DIM_EXTERNAL:
             return is_array ? DXIL_RESOURCE_KIND_TEXTURE2D_ARRAY
                             : DXIL_RESOURCE_KIND_TEXTURE2D;
          case GLSL_SAMPLER_DIM_3D:
