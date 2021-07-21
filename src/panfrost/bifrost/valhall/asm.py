@@ -32,6 +32,51 @@ class ParseError(Exception):
     def __init__(self, error):
         self.error = error
 
+class FAUState:
+    def __init__(self, mode):
+        self.mode = mode
+        self.uniform_slot = None
+        self.special = None
+        self.buffer = set()
+
+    def push(self, s):
+        self.buffer.add(s)
+        die_if(len(self.buffer) > 2, "Overflowed FAU buffer")
+
+    def push_special(self, s):
+        die_if(self.special is not None and self.special != s,
+                'Multiple special immediates')
+        self.special = s
+        self.push(s)
+
+    def descriptor(self, s):
+        die_if(self.mode != 'none', f'Expected no modifier with {s}')
+        self.push_special(s)
+
+    def uniform(self, v):
+        slot = v >> 1
+
+        die_if(self.mode != 'none',
+                'Expected uniform with default immediate mode')
+        die_if(self.uniform_slot is not None and self.uniform_slot != slot,
+                'Overflowed uniform slots')
+        self.uniform_slot = slot
+        self.push(f'uniform{v}')
+
+    def id(self, s):
+        die_if(self.mode != 'id',
+                'Expected .id modifier with thread storage pointer')
+
+        self.push_special(f'id{s}')
+
+    def ts(self, s):
+        die_if(self.mode != 'ts',
+                'Expected .ts modifier with thread pointer')
+        self.push_special(f'ts{s}')
+
+    def constant(self, cons):
+        self.push(cons)
+
 # When running standalone, exit with the error since we're dealing with a
 # human. Otherwise raise a Python exception so the test harness can handle it.
 def die(s):
@@ -57,12 +102,12 @@ def parse_int(s, minimum, maximum):
 
     return number
 
-def encode_source(op, immediate_mode = 'none'):
+def encode_source(op, fau):
     if op == 'atest_datum':
-        die_if(immediate_mode != 'none', 'Expected no modifier with atest datum')
+        fau.descriptor(op)
         return 0x2A | 0xC0
     elif op.startswith('blend_descriptor_'):
-        die_if(immediate_mode != 'none', 'Expected no modifier with blend descriptor')
+        fau.descriptor(op)
         fin = op[len('blend_descriptor_'):]
         die_if(len(fin) != 3, 'Bad syntax')
         die_if(fin[1] != '_', 'Bad syntax')
@@ -77,19 +122,17 @@ def encode_source(op, immediate_mode = 'none'):
     elif op[0] == 'r':
         return parse_int(op[1:], 0, 63)
     elif op[0] == 'u':
-        return parse_int(op[1:], 0, 63) | 0x80
+        val = parse_int(op[1:], 0, 63)
+        fau.uniform(val)
+        return val | 0x80
     elif op[0] == 'i':
         return int(op[3:]) | 0xC0
     elif op in enums['thread_storage_pointers'].bare_values:
-        die_if(immediate_mode != 'ts',
-                f'Expected .ts with thread pointer, got {immediate_mode}')
-
+        fau.ts(op)
         idx = 32 + enums['thread_storage_pointers'].bare_values.index(op)
         return idx | 0xC0
     elif op in enums['thread_identification'].bare_values:
-        die_if(immediate_mode != 'id',
-                'Expected .id modifier with thread storage pointer')
-
+        fau.id(op)
         idx = 32 + enums['thread_identification'].bare_values.index(op)
         return idx | 0xC0
     elif op.startswith('0x'):
@@ -99,6 +142,7 @@ def encode_source(op, immediate_mode = 'none'):
             die('Expected value')
 
         die_if(val not in immediates, 'Unexpected immediate value')
+        fau.constant(val)
         return immediates.index(val) | 0xC0
     else:
         die('Invalid operand')
@@ -194,9 +238,11 @@ def parse_asm(line):
         # Set a placeholder writemask to prevent encoding faults
         encoded |= (0xC0 << 40)
 
+    fau = FAUState(immediate_mode)
+
     for i, (op, src) in enumerate(zip(operands, ins.srcs)):
         parts = op.split('.')
-        encoded |= encode_source(parts[0], immediate_mode) << (i * 8)
+        encoded |= encode_source(parts[0], fau) << (i * 8)
 
         # Has a swizzle been applied yet?
         swizzled = False
