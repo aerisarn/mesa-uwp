@@ -69,9 +69,9 @@ struct spill_ctx {
    aco::monotonic_buffer_resource memory;
 
    std::vector<std::vector<RegisterDemand>> register_demand;
-   std::vector<std::map<Temp, Temp>> renames;
-   std::vector<std::unordered_map<Temp, uint32_t>> spills_entry;
-   std::vector<std::unordered_map<Temp, uint32_t>> spills_exit;
+   std::vector<aco::map<Temp, Temp>> renames;
+   std::vector<aco::unordered_map<Temp, uint32_t>> spills_entry;
+   std::vector<aco::unordered_map<Temp, uint32_t>> spills_exit;
 
    std::vector<bool> processed;
    std::stack<Block*, std::vector<Block*>> loop_header;
@@ -83,7 +83,7 @@ struct spill_ctx {
    std::vector<std::pair<RegClass, std::unordered_set<uint32_t>>> interferences;
    std::vector<std::vector<uint32_t>> affinities;
    std::vector<bool> is_reloaded;
-   std::unordered_map<Temp, remat_info> remat;
+   aco::unordered_map<Temp, remat_info> remat;
    std::set<Instruction*> unused_remats;
    unsigned wave_size;
 
@@ -94,12 +94,13 @@ struct spill_ctx {
    spill_ctx(const RegisterDemand target_pressure_, Program* program_,
              std::vector<std::vector<RegisterDemand>> register_demand_)
        : target_pressure(target_pressure_), program(program_), memory(),
-         register_demand(std::move(register_demand_)), renames(program->blocks.size()),
-         spills_entry(program->blocks.size()), spills_exit(program->blocks.size()),
+         register_demand(std::move(register_demand_)), renames(program->blocks.size(), aco::map<Temp, Temp>(memory)),
+         spills_entry(program->blocks.size(), aco::unordered_map<Temp, uint32_t>(memory)),
+         spills_exit(program->blocks.size(), aco::unordered_map<Temp, uint32_t>(memory)),
          processed(program->blocks.size(), false),
          next_use_distances_start(program->blocks.size(), next_use_distance_startend_type(memory)),
          next_use_distances_end(program->blocks.size(), next_use_distance_startend_type(memory)),
-         wave_size(program->wave_size), sgpr_spill_slots(0), vgpr_spill_slots(0)
+         remat(memory), wave_size(program->wave_size), sgpr_spill_slots(0), vgpr_spill_slots(0)
    {}
 
    void add_affinity(uint32_t first, uint32_t second)
@@ -1329,7 +1330,7 @@ spill_block(spill_ctx& ctx, unsigned block_idx)
    Block* loop_header = ctx.loop_header.top();
 
    /* preserve original renames at end of loop header block */
-   std::map<Temp, Temp> renames = std::move(ctx.renames[loop_header->index]);
+   aco::map<Temp, Temp> renames = std::move(ctx.renames[loop_header->index]);
 
    /* add coupling code to all loop header predecessors */
    add_coupling_code(ctx, loop_header, loop_header->index);
@@ -1676,7 +1677,7 @@ assign_spill_slots_helper(spill_ctx& ctx, RegType type, std::vector<bool>& is_as
 void
 end_unused_spill_vgprs(spill_ctx& ctx, Block& block, std::vector<Temp>& vgpr_spill_temps,
                        const std::vector<uint32_t>& slots,
-                       const std::unordered_map<Temp, uint32_t>& spills)
+                       const aco::unordered_map<Temp, uint32_t>& spills)
 {
    std::vector<bool> is_used(vgpr_spill_temps.size());
    for (std::pair<Temp, uint32_t> pair : spills) {
