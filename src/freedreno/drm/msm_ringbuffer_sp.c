@@ -828,6 +828,13 @@ msm_ringbuffer_sp_new_object(struct fd_pipe *pipe, uint32_t size)
    struct msm_pipe *msm_pipe = to_msm_pipe(pipe);
    struct msm_ringbuffer_sp *msm_ring = malloc(sizeof(*msm_ring));
 
+   /* Lock access to the msm_pipe->suballoc_* since ringbuffer object allocation
+    * can happen both on the frontend (most CSOs) and the driver thread (a6xx
+    * cached tex state, for example)
+    */
+   static simple_mtx_t suballoc_lock = _SIMPLE_MTX_INITIALIZER_NP;
+   simple_mtx_lock(&suballoc_lock);
+
    /* Maximum known alignment requirement is a6xx's TEX_CONST at 16 dwords */
    msm_ring->offset = align(msm_pipe->suballoc_offset, 64);
    if (!msm_pipe->suballoc_bo ||
@@ -844,6 +851,8 @@ msm_ringbuffer_sp_new_object(struct fd_pipe *pipe, uint32_t size)
    msm_ring->base.refcnt = 1;
 
    msm_pipe->suballoc_offset = msm_ring->offset + size;
+
+   simple_mtx_unlock(&suballoc_lock);
 
    return msm_ringbuffer_sp_init(msm_ring, size, _FD_RINGBUFFER_OBJECT);
 }
