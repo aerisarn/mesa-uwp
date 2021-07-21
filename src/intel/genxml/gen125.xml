@@ -1201,10 +1201,12 @@
     <field name="Component Override W" start="15" end="15" type="bool"/>
   </struct>
 
-  <struct name="SLICE_HASH_TABLE" length="32">
-    <group count="16" start="0" size="64">
-      <group count="16" start="0" size="4">
-        <field name="Entry" start="0" end="3" type="uint"/>
+  <struct name="SLICE_HASH_TABLE" length="224">
+    <group count="7" start="0" size="1024">
+      <group count="16" start="0" size="64">
+        <group count="16" start="0" size="4">
+          <field name="Entry" start="0" end="3" type="uint"/>
+        </group>
       </group>
     </group>
   </struct>
