@@ -4135,6 +4135,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
    ir3_debug_print(ir, "AFTER: nir->ir3");
    ir3_validate(ir);
 
+   IR3_PASS(ir, ir3_remove_unreachable);
+
    IR3_PASS(ir, ir3_array_to_ssa);
 
    do {

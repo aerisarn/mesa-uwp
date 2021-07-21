@@ -615,6 +615,8 @@ void ir3_block_add_physical_predecessor(struct ir3_block *block,
                                         struct ir3_block *pred);
 void ir3_block_remove_predecessor(struct ir3_block *block,
                                   struct ir3_block *pred);
+void ir3_block_remove_physical_predecessor(struct ir3_block *block,
+                                           struct ir3_block *pred);
 unsigned ir3_block_get_pred_index(struct ir3_block *block,
                                   struct ir3_block *pred);
 
@@ -1592,6 +1594,9 @@ unsigned ir3_delay_calc_postra(struct ir3_block *block,
 unsigned ir3_delay_calc_exact(struct ir3_block *block,
                               struct ir3_instruction *instr, bool mergedregs);
 void ir3_remove_nops(struct ir3 *ir);
+
+/* unreachable block elimination: */
+bool ir3_remove_unreachable(struct ir3 *ir);
 
 /* dead code elimination: */
 struct ir3_shader_variant;

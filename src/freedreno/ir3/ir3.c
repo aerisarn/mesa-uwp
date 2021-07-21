@@ -393,6 +393,22 @@ ir3_block_remove_predecessor(struct ir3_block *block, struct ir3_block *pred)
    }
 }
 
+void
+ir3_block_remove_physical_predecessor(struct ir3_block *block, struct ir3_block *pred)
+{
+   for (unsigned i = 0; i < block->physical_predecessors_count; i++) {
+      if (block->physical_predecessors[i] == pred) {
+         if (i < block->predecessors_count - 1) {
+            block->physical_predecessors[i] =
+               block->physical_predecessors[block->predecessors_count - 1];
+         }
+
+         block->physical_predecessors_count--;
+         return;
+      }
+   }
+}
+
 unsigned
 ir3_block_get_pred_index(struct ir3_block *block, struct ir3_block *pred)
 {
