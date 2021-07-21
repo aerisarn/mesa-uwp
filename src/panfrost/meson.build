@@ -31,8 +31,11 @@ subdir('shared')
 subdir('util')
 subdir('midgard')
 subdir('bifrost')
-subdir('lib')
-subdir('perf')
+
+if with_gallium_panfrost or with_panfrost_vk
+   subdir('lib')
+   subdir('perf')
+endif
 
 files_bifrost = files(
   'bifrost/cmdline.c',
