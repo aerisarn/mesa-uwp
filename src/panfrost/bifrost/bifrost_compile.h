@@ -78,7 +78,6 @@ static const nir_shader_compiler_options bifrost_nir_options = {
         .lower_mul_high = true,
         .lower_uadd_carry = true,
 
-        .lower_bitfield_extract_to_shifts = true,
         .has_fsub = true,
         .has_isub = true,
         .vectorize_io = true,
