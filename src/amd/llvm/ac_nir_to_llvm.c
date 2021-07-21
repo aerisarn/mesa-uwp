@@ -2768,16 +2768,8 @@ static LLVMValueRef visit_image_size(struct ac_nir_context *ctx, const nir_intri
 
       res = ac_build_image_opcode(&ctx->ac, &args);
 
-      LLVMValueRef two = LLVMConstInt(ctx->ac.i32, 2, false);
-
-      if (dim == GLSL_SAMPLER_DIM_CUBE && is_array) {
-         LLVMValueRef six = LLVMConstInt(ctx->ac.i32, 6, false);
-         LLVMValueRef z = LLVMBuildExtractElement(ctx->ac.builder, res, two, "");
-         z = LLVMBuildSDiv(ctx->ac.builder, z, six, "");
-         res = LLVMBuildInsertElement(ctx->ac.builder, res, z, two, "");
-      }
-
       if (ctx->ac.chip_class == GFX9 && dim == GLSL_SAMPLER_DIM_1D && is_array) {
+         LLVMValueRef two = LLVMConstInt(ctx->ac.i32, 2, false);
          LLVMValueRef layers = LLVMBuildExtractElement(ctx->ac.builder, res, two, "");
          res = LLVMBuildInsertElement(ctx->ac.builder, res, layers, ctx->ac.i32_1, "");
       }
@@ -4616,14 +4608,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    else if (instr->is_shadow && instr->is_new_style_shadow && instr->op != nir_texop_txs &&
             instr->op != nir_texop_lod && instr->op != nir_texop_tg4)
       result = LLVMBuildExtractElement(ctx->ac.builder, result, ctx->ac.i32_0, "");
-   else if (instr->op == nir_texop_txs && instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE &&
-            instr->is_array) {
-      LLVMValueRef two = LLVMConstInt(ctx->ac.i32, 2, false);
-      LLVMValueRef six = LLVMConstInt(ctx->ac.i32, 6, false);
-      LLVMValueRef z = LLVMBuildExtractElement(ctx->ac.builder, result, two, "");
-      z = LLVMBuildSDiv(ctx->ac.builder, z, six, "");
-      result = LLVMBuildInsertElement(ctx->ac.builder, result, z, two, "");
-   } else if (ctx->ac.chip_class == GFX9 && instr->op == nir_texop_txs &&
+   else if (ctx->ac.chip_class == GFX9 && instr->op == nir_texop_txs &&
               instr->sampler_dim == GLSL_SAMPLER_DIM_1D && instr->is_array) {
       LLVMValueRef two = LLVMConstInt(ctx->ac.i32, 2, false);
       LLVMValueRef layers = LLVMBuildExtractElement(ctx->ac.builder, result, two, "");

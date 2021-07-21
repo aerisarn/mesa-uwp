@@ -673,9 +673,16 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
    static const nir_lower_tex_options tex_options = {
       .lower_txp = ~0,
       .lower_tg4_offsets = true,
+      .lower_txs_cube_array = true,
    };
 
    nir_lower_tex(nir, &tex_options);
+
+   static const nir_lower_image_options image_options = {
+      .lower_cube_size = true,
+   };
+
+   nir_lower_image(nir, &image_options);
 
    nir_lower_vars_to_ssa(nir);
 

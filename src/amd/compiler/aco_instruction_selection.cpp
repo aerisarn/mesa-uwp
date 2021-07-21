@@ -6485,24 +6485,9 @@ visit_image_size(isel_context* ctx, nir_intrinsic_instr* instr)
    mimg->dmask = (1 << instr->dest.ssa.num_components) - 1;
    mimg->da = glsl_sampler_type_is_array(type);
 
-   if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_CUBE && glsl_sampler_type_is_array(type)) {
-
-      assert(instr->dest.ssa.num_components == 3);
-      Temp tmp = ctx->program->allocateTmp(v3);
-      mimg->definitions[0] = Definition(tmp);
-      emit_split_vector(ctx, tmp, 3);
-
-      /* divide 3rd value by 6 by multiplying with magic number */
-      Temp c = bld.copy(bld.def(s1), Operand::c32(0x2AAAAAAB));
-      Temp by_6 =
-         bld.vop3(aco_opcode::v_mul_hi_i32, bld.def(v1), emit_extract_vector(ctx, tmp, 2, v1), c);
-
-      bld.pseudo(aco_opcode::p_create_vector, Definition(dst), emit_extract_vector(ctx, tmp, 0, v1),
-                 emit_extract_vector(ctx, tmp, 1, v1), by_6);
-
-   } else if (ctx->options->chip_class == GFX9 &&
-              glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_1D &&
-              glsl_sampler_type_is_array(type)) {
+   if (ctx->options->chip_class == GFX9 &&
+       glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_1D &&
+       glsl_sampler_type_is_array(type)) {
       assert(instr->dest.ssa.num_components == 2);
       dmask = 0x5;
    }
@@ -9494,11 +9479,6 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       if (!has_lod)
          lod = bld.copy(bld.def(v1), Operand::zero());
 
-      bool div_by_6 = instr->op == nir_texop_txs && instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE &&
-                      instr->is_array && (dmask & (1 << 2));
-      if (tmp_dst.id() == dst.id() && div_by_6)
-         tmp_dst = bld.tmp(tmp_dst.regClass());
-
       MIMG_instruction* tex = emit_mimg(bld, aco_opcode::image_get_resinfo, Definition(tmp_dst),
                                         resource, Operand(s4), std::vector<Temp>{lod});
       if (ctx->options->chip_class == GFX9 && instr->op == nir_texop_txs &&
@@ -9511,19 +9491,6 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       }
       tex->da = da;
       tex->dim = dim;
-
-      if (div_by_6) {
-         /* divide 3rd value by 6 by multiplying with magic number */
-         emit_split_vector(ctx, tmp_dst, tmp_dst.size());
-         Temp c = bld.copy(bld.def(s1), Operand::c32(0x2AAAAAAB));
-         Temp by_6 = bld.vop3(aco_opcode::v_mul_hi_i32, bld.def(v1),
-                              emit_extract_vector(ctx, tmp_dst, 2, v1), c);
-         assert(instr->dest.ssa.num_components == 3);
-         Temp tmp = dst.type() == RegType::vgpr ? dst : bld.tmp(v3);
-         tmp_dst = bld.pseudo(aco_opcode::p_create_vector, Definition(tmp),
-                              emit_extract_vector(ctx, tmp_dst, 0, v1),
-                              emit_extract_vector(ctx, tmp_dst, 1, v1), by_6);
-      }
 
       expand_vector(ctx, tmp_dst, dst, instr->dest.ssa.num_components, dmask);
       return;

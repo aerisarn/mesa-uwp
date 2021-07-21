@@ -815,8 +815,14 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
 
    static const struct nir_lower_tex_options lower_tex_options = {
       .lower_txp = ~0u,
+      .lower_txs_cube_array = true,
    };
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
+
+   static const struct nir_lower_image_options lower_image_options = {
+      .lower_cube_size = true,
+   };
+   NIR_PASS_V(nir, nir_lower_image, &lower_image_options);
 
    const nir_lower_subgroups_options subgroups_options = {
       .subgroup_size = 64,
