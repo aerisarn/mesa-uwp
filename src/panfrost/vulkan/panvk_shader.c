@@ -34,6 +34,8 @@
 #include "panfrost-quirks.h"
 #include "pan_shader.h"
 
+#include "vk_util.h"
+
 static nir_shader *
 panvk_spirv_to_nir(const void *code,
                    size_t codesize,
@@ -50,41 +52,9 @@ panvk_spirv_to_nir(const void *code,
    };
 
    /* convert VkSpecializationInfo */
-   struct nir_spirv_specialization *spec = NULL;
    uint32_t num_spec = 0;
-   if (spec_info && spec_info->mapEntryCount) {
-      spec = malloc(sizeof(*spec) * spec_info->mapEntryCount);
-      if (!spec)
-         return NULL;
-
-      for (uint32_t i = 0; i < spec_info->mapEntryCount; i++) {
-         const VkSpecializationMapEntry *entry = &spec_info->pMapEntries[i];
-         const void *data = spec_info->pData + entry->offset;
-         assert(data + entry->size <= spec_info->pData + spec_info->dataSize);
-         spec[i].id = entry->constantID;
-         switch (entry->size) {
-         case 8:
-            spec[i].value.u64 = *(const uint64_t *)data;
-            break;
-         case 4:
-            spec[i].value.u32 = *(const uint32_t *)data;
-            break;
-         case 2:
-            spec[i].value.u16 = *(const uint16_t *)data;
-            break;
-         case 1:
-            spec[i].value.u8 = *(const uint8_t *)data;
-            break;
-         default:
-            assert(!"Invalid spec constant size");
-            break;
-         }
-
-         spec[i].defined_on_module = false;
-      }
-
-      num_spec = spec_info->mapEntryCount;
-   }
+   struct nir_spirv_specialization *spec =
+      vk_spec_info_to_nir_spirv(spec_info, &num_spec);
 
    nir_shader *nir = spirv_to_nir(code, codesize / sizeof(uint32_t), spec,
                                   num_spec, stage, entry_point_name,

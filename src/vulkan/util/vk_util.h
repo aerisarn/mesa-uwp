@@ -272,6 +272,12 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
         (_i)++, (_draw) = (const VkMultiDrawInfoEXT*)((const uint8_t*)(_draw) + (_stride)))
 
 
+struct nir_spirv_specialization;
+
+struct nir_spirv_specialization*
+vk_spec_info_to_nir_spirv(const VkSpecializationInfo *spec_info,
+                          uint32_t *out_num_spec_entries);
+
 #ifdef __cplusplus
 }
 #endif

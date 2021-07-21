@@ -426,48 +426,6 @@ preprocess_nir(nir_shader *nir)
    nir_optimize(nir, false);
 }
 
-/* FIXME: This is basically the same code at anv, tu and radv. Move to common
- * place?
- */
-static struct nir_spirv_specialization*
-vk_spec_info_to_nir_spirv(const VkSpecializationInfo *spec_info,
-                          uint32_t *out_num_spec_entries)
-{
-   if (spec_info == NULL || spec_info->mapEntryCount == 0)
-      return NULL;
-
-   uint32_t num_spec_entries = spec_info->mapEntryCount;
-   struct nir_spirv_specialization *spec_entries = calloc(num_spec_entries, sizeof(*spec_entries));
-
-   for (uint32_t i = 0; i < num_spec_entries; i++) {
-      VkSpecializationMapEntry entry = spec_info->pMapEntries[i];
-      const void *data = spec_info->pData + entry.offset;
-      assert(data + entry.size <= spec_info->pData + spec_info->dataSize);
-
-      spec_entries[i].id = spec_info->pMapEntries[i].constantID;
-      switch (entry.size) {
-      case 8:
-         spec_entries[i].value.u64 = *(const uint64_t *)data;
-         break;
-      case 4:
-         spec_entries[i].value.u32 = *(const uint32_t *)data;
-         break;
-      case 2:
-         spec_entries[i].value.u16 = *(const uint16_t *)data;
-         break;
-      case 1:
-         spec_entries[i].value.u8 = *(const uint8_t *)data;
-         break;
-      default:
-         assert(!"Invalid spec constant size");
-         break;
-      }
-   }
-
-   *out_num_spec_entries = num_spec_entries;
-   return spec_entries;
-}
-
 static nir_shader *
 shader_module_compile_to_nir(struct v3dv_device *device,
                              struct v3dv_pipeline_stage *stage)

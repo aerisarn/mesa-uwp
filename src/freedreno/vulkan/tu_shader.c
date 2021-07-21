@@ -95,40 +95,9 @@ tu_spirv_to_nir(struct tu_device *dev,
 
    /* convert VkSpecializationInfo */
    const VkSpecializationInfo *spec_info = stage_info->pSpecializationInfo;
-   struct nir_spirv_specialization *spec = NULL;
    uint32_t num_spec = 0;
-   if (spec_info && spec_info->mapEntryCount) {
-      spec = calloc(spec_info->mapEntryCount, sizeof(*spec));
-      if (!spec)
-         return NULL;
-
-      for (uint32_t i = 0; i < spec_info->mapEntryCount; i++) {
-         const VkSpecializationMapEntry *entry = &spec_info->pMapEntries[i];
-         const void *data = spec_info->pData + entry->offset;
-         assert(data + entry->size <= spec_info->pData + spec_info->dataSize);
-         spec[i].id = entry->constantID;
-         switch (entry->size) {
-         case 8:
-            spec[i].value.u64 = *(const uint64_t *)data;
-            break;
-         case 4:
-            spec[i].value.u32 = *(const uint32_t *)data;
-            break;
-         case 2:
-            spec[i].value.u16 = *(const uint16_t *)data;
-            break;
-         case 1:
-            spec[i].value.u8 = *(const uint8_t *)data;
-            break;
-         default:
-            assert(!"Invalid spec constant size");
-            break;
-         }
-         spec[i].defined_on_module = false;
-      }
-
-      num_spec = spec_info->mapEntryCount;
-   }
+   struct nir_spirv_specialization *spec =
+      vk_spec_info_to_nir_spirv(spec_info, &num_spec);
 
    struct vk_shader_module *module =
       vk_shader_module_from_handle(stage_info->module);
