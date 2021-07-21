@@ -95,6 +95,10 @@ def intBitsToFloat(i):
 optimizations = [
 
    (('imul', a, '#b(is_pos_power_of_two)'), ('ishl', a, ('find_lsb', b)), '!options->lower_bitops'),
+   (('imul', 'a@8', 0x80), ('ishl', a, 7), '!options->lower_bitops'),
+   (('imul', 'a@16', 0x8000), ('ishl', a, 15), '!options->lower_bitops'),
+   (('imul', 'a@32', 0x80000000), ('ishl', a, 31), '!options->lower_bitops'),
+   (('imul', 'a@64', 0x8000000000000000), ('ishl', a, 63), '!options->lower_bitops'),
    (('imul', a, '#b(is_neg_power_of_two)'), ('ineg', ('ishl', a, ('find_lsb', ('iabs', b)))), '!options->lower_bitops'),
    (('ishl', a, '#b'), ('imul', a, ('ishl', 1, b)), 'options->lower_bitops'),
 
