@@ -3452,6 +3452,8 @@ egl_image_target_texture(struct gl_context *ctx,
    if (tex_storage)
       _mesa_set_texture_view_state(ctx, texObj, target, 1);
 
+   _mesa_update_fbo_texture(ctx, texObj, 0, 0);
+
    _mesa_unlock_texture(ctx, texObj);
 }
 
