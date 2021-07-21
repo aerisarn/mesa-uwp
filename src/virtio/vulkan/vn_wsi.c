@@ -10,6 +10,8 @@
 
 #include "vn_wsi.h"
 
+#include "vk_enum_to_str.h"
+
 #include "vn_device.h"
 #include "vn_image.h"
 #include "vn_queue.h"
@@ -54,6 +56,9 @@
  * correctness, but it is still not ideal.  venus requires explicit fencing
  * (and renderer-side synchronization) to work well.
  */
+
+/* cast a WSI object to a pointer for logging */
+#define VN_WSI_PTR(obj) ((const void *)(uintptr_t)(obj))
 
 static PFN_vkVoidFunction
 vn_wsi_proc_addr(VkPhysicalDevice physicalDevice, const char *pName)
@@ -288,6 +293,16 @@ vn_CreateSwapchainKHR(VkDevice device,
    VkResult result =
       wsi_common_create_swapchain(&dev->physical_device->wsi_device, device,
                                   pCreateInfo, alloc, pSwapchain);
+   if (VN_DEBUG(WSI) && result == VK_SUCCESS) {
+      vn_log(dev->instance,
+             "swapchain %p: created with surface %p, min count %d, size "
+             "%dx%d, mode %s, old %p",
+             VN_WSI_PTR(*pSwapchain), VN_WSI_PTR(pCreateInfo->surface),
+             pCreateInfo->minImageCount, pCreateInfo->imageExtent.width,
+             pCreateInfo->imageExtent.height,
+             vk_PresentModeKHR_to_str(pCreateInfo->presentMode),
+             VN_WSI_PTR(pCreateInfo->oldSwapchain));
+   }
 
    return vn_result(dev->instance, result);
 }
@@ -302,6 +317,8 @@ vn_DestroySwapchainKHR(VkDevice device,
       pAllocator ? pAllocator : &dev->base.base.alloc;
 
    wsi_common_destroy_swapchain(device, swapchain, alloc);
+   if (VN_DEBUG(WSI))
+      vn_log(dev->instance, "swapchain %p: destroyed", VN_WSI_PTR(swapchain));
 }
 
 VkResult
@@ -347,6 +364,16 @@ vn_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
       wsi_common_queue_present(&queue->device->physical_device->wsi_device,
                                vn_device_to_handle(queue->device), _queue,
                                queue->family, pPresentInfo);
+   if (VN_DEBUG(WSI) && result != VK_SUCCESS) {
+      for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
+         const VkResult r =
+            pPresentInfo->pResults ? pPresentInfo->pResults[i] : result;
+         vn_log(queue->device->instance,
+                "swapchain %p: presented image %d: %s",
+                VN_WSI_PTR(pPresentInfo->pSwapchains[i]),
+                pPresentInfo->pImageIndices[i], vk_Result_to_str(r));
+      }
+   }
 
    return vn_result(queue->device->instance, result);
 }
@@ -360,6 +387,12 @@ vn_AcquireNextImage2KHR(VkDevice device,
 
    VkResult result = wsi_common_acquire_next_image2(
       &dev->physical_device->wsi_device, device, pAcquireInfo, pImageIndex);
+   if (VN_DEBUG(WSI) && result != VK_SUCCESS) {
+      const int idx = result >= VK_SUCCESS ? *pImageIndex : -1;
+      vn_log(dev->instance, "swapchain %p: acquired image %d: %s",
+             VN_WSI_PTR(pAcquireInfo->swapchain), idx,
+             vk_Result_to_str(result));
+   }
 
    /* XXX this relies on implicit sync */
    if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
