@@ -86,7 +86,7 @@ endif
 if with_gallium_freedreno or with_freedreno_vk
   subdir('freedreno')
 endif
-if with_gallium_panfrost or with_gallium_lima or with_panfrost_vk
+if with_gallium_panfrost or with_gallium_lima or with_panfrost_vk or with_tools.contains('panfrost')
   subdir('panfrost')
 endif
 if with_gallium_virgl or with_virtio_vk
