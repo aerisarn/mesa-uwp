@@ -265,9 +265,7 @@ v3dv_pipeline_get_nir_options(void)
 })
 
 static void
-nir_optimize(nir_shader *nir,
-             struct v3dv_pipeline_stage *stage,
-             bool allow_copies)
+nir_optimize(nir_shader *nir, bool allow_copies)
 {
    bool progress;
 
@@ -328,8 +326,7 @@ nir_optimize(nir_shader *nir,
 }
 
 static void
-preprocess_nir(nir_shader *nir,
-               struct v3dv_pipeline_stage *stage)
+preprocess_nir(nir_shader *nir)
 {
    /* Make sure we lower variable initializers on output variables so that
     * nir_remove_dead_variables below sees the corresponding stores
@@ -384,7 +381,7 @@ preprocess_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_split_struct_vars, nir_var_function_temp);
 
-   nir_optimize(nir, stage, true);
+   nir_optimize(nir, true);
 
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
 
@@ -403,7 +400,7 @@ preprocess_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_frexp);
 
    /* Get rid of split copies */
-   nir_optimize(nir, stage, false);
+   nir_optimize(nir, false);
 }
 
 /* FIXME: This is basically the same code at anv, tu and radv. Move to common
@@ -517,7 +514,7 @@ shader_module_compile_to_nir(struct v3dv_device *device,
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
 
-   preprocess_nir(nir, stage);
+   preprocess_nir(nir);
 
    return nir;
 }
