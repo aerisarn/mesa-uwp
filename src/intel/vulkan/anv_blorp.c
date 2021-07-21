@@ -1889,10 +1889,6 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
           anv_image_aux_layers(image, aspect, level));
 
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
-   uint32_t width_div = image->format->planes[plane].denominator_scales[0];
-   uint32_t height_div = image->format->planes[plane].denominator_scales[1];
-   uint32_t level_width = anv_minify(image->extent.width, level) / width_div;
-   uint32_t level_height = anv_minify(image->extent.height, level) / height_div;
 
    struct blorp_batch batch;
    blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer,
@@ -1904,6 +1900,9 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
                                 0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
                                 image->planes[plane].aux_usage,
                                 &surf);
+
+   uint32_t level_width = anv_minify(surf.surf->logical_level0_px.w, level);
+   uint32_t level_height = anv_minify(surf.surf->logical_level0_px.h, level);
 
    /* Blorp will store the clear color for us if we provide the clear color
     * address and we are doing a fast clear. So we save the clear value into
