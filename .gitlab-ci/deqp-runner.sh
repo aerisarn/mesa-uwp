@@ -47,47 +47,51 @@ HANG_DETECTION_CMD=""
 
 # Generate test case list file.
 if [ "$DEQP_VER" = "vk" ]; then
-   cp /deqp/mustpass/vk-$DEQP_VARIANT.txt /tmp/case-list.txt
+   MUSTPASS=/deqp/mustpass/vk-$DEQP_VARIANT.txt
    DEQP=/deqp/external/vulkancts/modules/vulkan/deqp-vk
    HANG_DETECTION_CMD="/parallel-deqp-runner/build/bin/hang-detection"
 elif [ "$DEQP_VER" = "gles2" -o "$DEQP_VER" = "gles3" -o "$DEQP_VER" = "gles31" -o "$DEQP_VER" = "egl" ]; then
-   cp /deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt /tmp/case-list.txt
+   MUSTPASS=/deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt
    DEQP=/deqp/modules/$DEQP_VER/deqp-$DEQP_VER
    SUITE=dEQP
 elif [ "$DEQP_VER" = "gles2-khr" -o "$DEQP_VER" = "gles3-khr" -o "$DEQP_VER" = "gles31-khr" -o "$DEQP_VER" = "gles32-khr" ]; then
-   cp /deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt /tmp/case-list.txt
+   MUSTPASS=/deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt
    DEQP=/deqp/external/openglcts/modules/glcts
    SUITE=dEQP
 else
-   cp /deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt /tmp/case-list.txt
+   MUSTPASS=/deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt
    DEQP=/deqp/external/openglcts/modules/glcts
    SUITE=KHR
 fi
 
-# If the caselist is too long to run in a reasonable amount of time, let the job
-# specify what fraction (1/n) of the caselist we should run.  Note: N~M is a gnu
-# sed extension to match every nth line (first line is #1).
-if [ -n "$DEQP_FRACTION" ]; then
-   sed -ni 1~$DEQP_FRACTION"p" /tmp/case-list.txt
-fi
+if [ -z "$DEQP_SUITE" ]; then
+    cp $MUSTPASS /tmp/case-list.txt
 
-# If the job is parallel at the gitab job level, take the corresponding fraction
-# of the caselist.
-if [ -n "$CI_NODE_INDEX" ]; then
-   sed -ni $CI_NODE_INDEX~$CI_NODE_TOTAL"p" /tmp/case-list.txt
-fi
+    # If the caselist is too long to run in a reasonable amount of time, let the job
+    # specify what fraction (1/n) of the caselist we should run.  Note: N~M is a gnu
+    # sed extension to match every nth line (first line is #1).
+    if [ -n "$DEQP_FRACTION" ]; then
+       sed -ni 1~$DEQP_FRACTION"p" /tmp/case-list.txt
+    fi
 
-if [ -n "$DEQP_CASELIST_FILTER" ]; then
-    sed -ni "/$DEQP_CASELIST_FILTER/p" /tmp/case-list.txt
-fi
+    # If the job is parallel at the gitab job level, take the corresponding fraction
+    # of the caselist.
+    if [ -n "$CI_NODE_INDEX" ]; then
+       sed -ni $CI_NODE_INDEX~$CI_NODE_TOTAL"p" /tmp/case-list.txt
+    fi
 
-if [ -n "$DEQP_CASELIST_INV_FILTER" ]; then
-    sed -ni "/$DEQP_CASELIST_INV_FILTER/!p" /tmp/case-list.txt
-fi
+    if [ -n "$DEQP_CASELIST_FILTER" ]; then
+        sed -ni "/$DEQP_CASELIST_FILTER/p" /tmp/case-list.txt
+    fi
 
-if [ ! -s /tmp/case-list.txt ]; then
-    echo "Caselist generation failed"
-    exit 1
+    if [ -n "$DEQP_CASELIST_INV_FILTER" ]; then
+        sed -ni "/$DEQP_CASELIST_INV_FILTER/!p" /tmp/case-list.txt
+    fi
+
+    if [ ! -s /tmp/case-list.txt ]; then
+        echo "Caselist generation failed"
+        exit 1
+    fi
 fi
 
 if [ -e "$INSTALL/deqp-$GPU_VERSION-fails.txt" ]; then
@@ -115,25 +119,6 @@ fi
 if [ -n "$DEQP_NO_SAVE_RESULTS" ]; then
    SUMMARY_LIMIT="--summary-limit 0"
 fi
-
-run_cts() {
-    deqp=$1
-    caselist=$2
-    output=$3
-    deqp-runner \
-        run \
-        --deqp $deqp \
-        --output $RESULTS \
-        --caselist $caselist \
-        --skips $INSTALL/deqp-all-skips.txt $DEQP_SKIPS \
-        --flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt \
-        --testlog-to-xml  /deqp/executor/testlog-to-xml \
-        $JOB \
-        $SUMMARY_LIMIT \
-	$DEQP_RUNNER_OPTIONS \
-        -- \
-        $DEQP_OPTIONS
-}
 
 parse_renderer() {
     RENDERER=`grep -A1 TestCaseResult.\*info.renderer $RESULTS/deqp-info.qpa | grep '<Text' | sed 's|.*<Text>||g' | sed 's|</Text>||g'`
@@ -214,7 +199,35 @@ FAILURES_CSV=$RESULTS/failures.csv
 
 export LD_PRELOAD=$TEST_LD_PRELOAD
 
-run_cts $DEQP /tmp/case-list.txt $RESULTS_CSV
+if [ -z "$DEQP_SUITE" ]; then
+    deqp-runner \
+        run \
+        --deqp $DEQP \
+        --output $RESULTS \
+        --caselist /tmp/case-list.txt \
+        --skips $INSTALL/deqp-all-skips.txt $DEQP_SKIPS \
+        --flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt \
+        --testlog-to-xml /deqp/executor/testlog-to-xml \
+        $JOB \
+        $SUMMARY_LIMIT \
+	$DEQP_RUNNER_OPTIONS \
+        -- \
+        $DEQP_OPTIONS
+else
+    deqp-runner \
+        suite \
+        --suite $INSTALL/deqp-$DEQP_SUITE.toml \
+        --output $RESULTS \
+        --skips $INSTALL/deqp-all-skips.txt $DEQP_SKIPS \
+        --flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt \
+        --testlog-to-xml /deqp/executor/testlog-to-xml \
+        --fraction-start $CI_NODE_INDEX \
+        --fraction $CI_NODE_TOTAL \
+        $JOB \
+        $SUMMARY_LIMIT \
+	$DEQP_RUNNER_OPTIONS
+fi
+
 DEQP_EXITCODE=$?
 
 export LD_PRELOAD=
