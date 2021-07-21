@@ -612,7 +612,6 @@ enum bir_fau {
         /* blend descs 1 - 7 */
         BIR_FAU_TYPE_MASK = 15,
         BIR_FAU_UNIFORM = (1 << 7),
-        BIR_FAU_HI = (1 << 8),
 };
 
 static inline bi_index
