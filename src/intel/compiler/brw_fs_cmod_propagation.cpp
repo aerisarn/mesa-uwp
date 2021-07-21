@@ -488,9 +488,8 @@ opt_cmod_propagation_local(const intel_device_info *devinfo, bblock_t *block)
                    cond != BRW_CONDITIONAL_G)
                   break;
 
-               if (inst->opcode != BRW_OPCODE_MOV &&
-                   inst->opcode != BRW_OPCODE_CMP)
-                  break;
+               assert(inst->opcode == BRW_OPCODE_MOV ||
+                      inst->opcode == BRW_OPCODE_CMP);
 
                /* inst->src[1].is_zero() was tested before, but be safe
                 * against possible future changes in this code.
