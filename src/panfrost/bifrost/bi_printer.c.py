@@ -109,7 +109,7 @@ bi_print_index(FILE *fp, bi_index index)
 % for mod in sorted(modifiers):
 % if len(modifiers[mod]) > 2: # otherwise just boolean
 
-static inline const char *
+UNUSED static inline const char *
 bi_${mod}_as_str(enum bi_${mod} ${mod})
 {
     switch (${mod}) {
