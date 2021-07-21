@@ -83,6 +83,10 @@ typedef struct {
         bool abs : 1;
         bool neg : 1;
 
+        /* The last use of a value, should be purged from the register cache.
+         * Set by liveness analysis. */
+        bool discard : 1;
+
         /* For a source, the swizzle. For a destination, acts a bit like a
          * write mask. Identity for the full 32-bit, H00 for only caring about
          * the lower half, other values unused. */
@@ -204,6 +208,13 @@ static inline bi_index
 bi_neg(bi_index idx)
 {
         idx.neg ^= true;
+        return idx;
+}
+
+static inline bi_index
+bi_discard(bi_index idx)
+{
+        idx.discard = true;
         return idx;
 }
 

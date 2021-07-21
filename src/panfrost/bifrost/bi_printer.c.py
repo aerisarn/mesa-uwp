@@ -75,6 +75,9 @@ bir_passthrough_name(unsigned idx)
 static void
 bi_print_index(FILE *fp, bi_index index)
 {
+    if (index.discard)
+        fputs("`", fp);
+
     if (bi_is_null(index))
         fprintf(fp, "_");
     else if (index.type == BI_INDEX_CONSTANT)
