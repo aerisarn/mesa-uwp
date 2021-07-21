@@ -236,8 +236,8 @@ i945/i965 driver environment variables (non-Gallium)
 ----------------------------------------------------
 
 :envvar:`INTEL_NO_HW`
-   if set to 1, prevents batches from being submitted to the hardware.
-   This is useful for debugging hangs, etc.
+   if set to 1, true or yes, prevents batches from being submitted to the
+   hardware. This is useful for debugging hangs, etc.
 :envvar:`INTEL_DEBUG`
    a comma-separated list of named flags, which do various things:
 

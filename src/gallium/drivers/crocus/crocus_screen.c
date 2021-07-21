@@ -762,8 +762,7 @@ crocus_screen_create(int fd, const struct pipe_screen_config *config)
 
    screen->aperture_bytes = get_aperture_size(fd);
 
-   if (getenv("INTEL_NO_HW") != NULL)
-      screen->no_hw = true;
+   screen->no_hw = env_var_as_boolean("INTEL_NO_HW", false);
 
    driParseConfigFiles(config->options, config->options_info, 0, "crocus",
                        NULL, NULL, NULL, 0, NULL, 0);

@@ -831,8 +831,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    screen->fd = iris_bufmgr_get_fd(screen->bufmgr);
    screen->winsys_fd = fd;
 
-   if (getenv("INTEL_NO_HW") != NULL)
-      screen->no_hw = true;
+   screen->no_hw = env_var_as_boolean("INTEL_NO_HW", false);
 
    screen->workaround_bo =
       iris_bo_alloc(screen->bufmgr, "workaround", 4096, 1,

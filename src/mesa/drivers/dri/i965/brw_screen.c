@@ -1889,8 +1889,7 @@ brw_init_bufmgr(struct brw_screen *screen)
 {
    __DRIscreen *dri_screen = screen->driScrnPriv;
 
-   if (getenv("INTEL_NO_HW") != NULL)
-      screen->no_hw = true;
+   screen->no_hw = env_var_as_boolean("INTEL_NO_HW", false);
 
    bool bo_reuse = false;
    int bo_reuse_mode = driQueryOptioni(&screen->optionCache, "bo_reuse");
