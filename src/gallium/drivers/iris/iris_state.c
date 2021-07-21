@@ -834,21 +834,20 @@ calculate_pixel_hashing_table(unsigned n, unsigned m,
    }
 }
 
-#if GFX_VER == 11
 static void
-gfx11_upload_pixel_hashing_tables(struct iris_batch *batch)
+upload_pixel_hashing_tables(struct iris_batch *batch)
 {
-   const struct intel_device_info *devinfo = &batch->screen->devinfo;
+   UNUSED const struct intel_device_info *devinfo = &batch->screen->devinfo;
+   UNUSED struct iris_context *ice = batch->ice;
+   assert(&ice->batches[IRIS_BATCH_RENDER] == batch);
 
+#if GFX_VER == 11
    /* Gfx11 hardware has two pixel pipes at most. */
    for (unsigned i = 2; i < ARRAY_SIZE(devinfo->ppipe_subslices); i++)
       assert(devinfo->ppipe_subslices[i] == 0);
 
    if (devinfo->ppipe_subslices[0] == devinfo->ppipe_subslices[1])
       return;
-
-   struct iris_context *ice = batch->ice;
-   assert(&ice->batches[IRIS_BATCH_RENDER] == batch);
 
    unsigned size = GENX(SLICE_HASH_TABLE_length) * 4;
    uint32_t hash_address;
@@ -872,12 +871,8 @@ gfx11_upload_pixel_hashing_tables(struct iris_batch *batch)
    iris_emit_cmd(batch, GENX(3DSTATE_3D_MODE), mode) {
       mode.SliceHashingTableEnable = true;
    }
-}
+
 #elif GFX_VERx10 == 120
-static void
-gfx12_upload_pixel_hashing_tables(struct iris_batch *batch)
-{
-   const struct intel_device_info *devinfo = &batch->screen->devinfo;
    /* For each n calculate ppipes_of[n], equal to the number of pixel pipes
     * present with n active dual subslices.
     */
@@ -921,8 +916,8 @@ gfx12_upload_pixel_hashing_tables(struct iris_batch *batch)
       p.SubsliceHashingTableEnable = true;
       p.SubsliceHashingTableEnableMask = true;
    }
-}
 #endif
+}
 
 static void
 iris_alloc_push_constants(struct iris_batch *batch)
@@ -1058,13 +1053,9 @@ iris_init_render_context(struct iris_batch *batch)
          reg.DisableRepackingforCompressionMask = true;
       }
    }
-
-   gfx11_upload_pixel_hashing_tables(batch);
 #endif
 
-#if GFX_VERx10 == 120
-   gfx12_upload_pixel_hashing_tables(batch);
-#endif
+   upload_pixel_hashing_tables(batch);
 
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
     * changing it dynamically.  We set it to the maximum size here, and
