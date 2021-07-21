@@ -591,7 +591,7 @@ drisw_create_context_attribs(struct glx_screen *base,
        *    GLX_CONTEXT_OPENGL_NO_ERROR_ARB for the context being created.
        */
       if (!!shareList->noError != !!dca.no_error) {
-         *error = __DRI_CTX_ERROR_BAD_FLAG;
+         *error = BadMatch;
          return NULL;
       }
 
@@ -643,6 +643,8 @@ drisw_create_context_attribs(struct glx_screen *base,
                                         ctx_attribs,
                                         error,
                                         pcp);
+   *error = dri_context_error_to_glx_error(*error);
+
    if (pcp->driContext == NULL) {
       free(pcp);
       return NULL;
