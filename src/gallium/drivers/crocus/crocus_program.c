@@ -1988,6 +1988,8 @@ update_last_vue_map(struct crocus_context *ice,
 
    if (changed_slots || (old_map && old_map->separate != vue_map->separate)) {
       ice->state.dirty |= CROCUS_DIRTY_GEN7_SBE;
+      if (devinfo->ver < 6)
+         ice->state.dirty |= CROCUS_DIRTY_GEN4_FF_GS_PROG;
       ice->state.stage_dirty |= CROCUS_STAGE_DIRTY_UNCOMPILED_FS;
    }
 
