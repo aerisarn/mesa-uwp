@@ -120,7 +120,6 @@ EXTENSIONS = [
        alias="shader_clock",
        features=True,
        conditions=["$feats.shaderSubgroupClock"]),
-    Extension("VK_EXT_shader_subgroup_ballot"),
     Extension("VK_EXT_sampler_filter_minmax",
         alias="reduction",
 	properties=True),
