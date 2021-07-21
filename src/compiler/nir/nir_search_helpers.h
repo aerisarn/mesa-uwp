@@ -73,12 +73,15 @@ is_neg_power_of_two(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
    if (!nir_src_is_const(instr->src[src].src))
       return false;
 
+   int64_t int_min = u_intN_min(instr->src[src].src.ssa->bit_size);
+
    for (unsigned i = 0; i < num_components; i++) {
       nir_alu_type type = nir_op_infos[instr->op].input_types[src];
       switch (nir_alu_type_get_base_type(type)) {
       case nir_type_int: {
          int64_t val = nir_src_comp_as_int(instr->src[src].src, swizzle[i]);
-         if (val >= 0 || !util_is_power_of_two_or_zero64(-val))
+         /* "int_min" is a power-of-two, but negation can cause overflow. */
+         if (val == int_min || val >= 0 || !util_is_power_of_two_or_zero64(-val))
             return false;
          break;
       }
