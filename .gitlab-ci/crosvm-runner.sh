@@ -8,6 +8,8 @@ export LD_LIBRARY_PATH=$CI_PROJECT_DIR/install/lib/
 export EGL_PLATFORM=surfaceless
 
 export -p > /crosvm-env.sh
+export GALLIUM_DRIVER="$CROSVM_GALLIUM_DRIVER"
+export LIBGL_ALWAYS_SOFTWARE="true"
 
 CROSVM_KERNEL_ARGS="root=my_root rw rootfstype=virtiofs loglevel=3 init=$CI_PROJECT_DIR/install/crosvm-init.sh ip=192.168.30.2::192.168.30.1:255.255.255.0:crosvm:eth0"
 
