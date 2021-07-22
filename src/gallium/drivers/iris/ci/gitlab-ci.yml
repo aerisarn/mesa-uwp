@@ -51,13 +51,13 @@
   tags:
     - mesa-ci-x86-64-lava-hp-x360-14-G1-sona
 
-.iris-apl-gles2:
+iris-apl-gles2:
   extends:
     - .iris-apl-test
   variables:
     DEQP_VER: gles2
 
-.iris-apl-gles3:
+iris-apl-gles3:
   extends:
     - .iris-apl-test
   variables:
@@ -65,7 +65,7 @@
     DEQP_EXPECTED_RENDERER: APL
     DEQP_FRACTION: 4
 
-.iris-apl-gles31:
+iris-apl-gles31:
   extends:
     - .iris-apl-test
   variables:
@@ -81,7 +81,7 @@ iris-apl-gl:
   variables:
     DEQP_VER: gl46
 
-.iris-apl-egl:
+iris-apl-egl:
   extends:
     - .iris-apl-test
   variables:
@@ -89,13 +89,13 @@ iris-apl-gl:
     HWCI_START_XORG: 1
     DEQP_VER: egl
 
-.iris-glk-gles2:
+iris-glk-gles2:
   extends:
     - .iris-glk-test
   variables:
     DEQP_VER: gles2
 
-.iris-glk-gles3:
+iris-glk-gles3:
   extends:
     - .iris-glk-test
   variables:
@@ -103,7 +103,7 @@ iris-apl-gl:
     DEQP_EXPECTED_RENDERER: GLK
     DEQP_FRACTION: 8
 
-.iris-glk-gles31:
+iris-glk-gles31:
   extends:
     - .iris-glk-test
   variables:
@@ -120,7 +120,7 @@ iris-glk-gl:
   variables:
     DEQP_VER: gl46
 
-.iris-glk-egl:
+iris-glk-egl:
   extends:
     - .iris-glk-test
   variables:
@@ -190,14 +190,14 @@ iris-glk-gl:
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-iris.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: --keep-image
 
-.iris-apl-traces:
+iris-apl-traces:
   variables:
     GPU_VERSION: intel-apl
   extends:
     - .iris-apl-test
     - .iris-traces
 
-.iris-glk-traces:
+iris-glk-traces:
   variables:
     GPU_VERSION: intel-glk
   extends:
@@ -211,7 +211,7 @@ iris-glk-gl:
     - .iris-amly-test
     - .iris-traces
 
-.iris-kbl-traces:
+iris-kbl-traces:
   variables:
     GPU_VERSION: intel-kbl
   extends:
