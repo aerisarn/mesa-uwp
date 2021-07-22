@@ -4123,6 +4123,10 @@ bi_compile_variant_nir(nir_shader *nir,
                 bi_lower_opt_instruction(I);
         }
 
+        if (ctx->arch >= 9) {
+                va_optimize(ctx);
+        }
+
         bi_foreach_block(ctx, block) {
                 bi_lower_branch(ctx, block);
         }

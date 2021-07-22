@@ -1038,6 +1038,7 @@ void bi_lower_swizzle(bi_context *ctx);
 void bi_lower_fau(bi_context *ctx);
 void bi_assign_scoreboard(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
+void va_optimize(bi_context *ctx);
 
 void bi_lower_opt_instruction(bi_instr *I);
 

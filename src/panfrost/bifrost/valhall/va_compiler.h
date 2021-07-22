@@ -34,6 +34,7 @@
 extern "C" {
 #endif
 
+void va_fuse_add_imm(bi_instr *I);
 uint64_t va_pack_instr(const bi_instr *I, unsigned flow);
 
 static inline unsigned
