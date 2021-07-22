@@ -801,6 +801,14 @@ typedef enum
    /*@}*/
 
    /**
+    * \name Task/Mesh shader system values
+    */
+   /*@{*/
+   SYSTEM_VALUE_MESH_VIEW_COUNT,
+   SYSTEM_VALUE_MESH_VIEW_INDICES,
+   /*@}*/
+
+   /**
     * IR3 specific geometry shader and tesselation control shader system
     * values that packs invocation id, thread id and vertex id.  Having this
     * as a nir level system value lets us do the unpacking in nir.
