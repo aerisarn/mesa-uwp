@@ -77,6 +77,9 @@ void vk_image_set_format(struct vk_image *image, VkFormat format);
 VkImageUsageFlags vk_image_usage(const struct vk_image *image,
                                  VkImageAspectFlags aspect_mask);
 
+VkImageAspectFlags vk_image_expand_aspect_mask(const struct vk_image *image,
+                                               VkImageAspectFlags aspect_mask);
+
 static inline VkExtent3D
 vk_image_mip_level_extent(const struct vk_image *image,
                           uint32_t mip_level)

@@ -2459,7 +2459,7 @@ void genX(CmdPipelineBarrier)(
 
       if (range->aspectMask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
          VkImageAspectFlags color_aspects =
-            anv_image_expand_aspects(image, range->aspectMask);
+            vk_image_expand_aspect_mask(&image->vk, range->aspectMask);
          anv_foreach_image_aspect_bit(aspect_bit, image, color_aspects) {
             transition_color_buffer(cmd_buffer, image, 1UL << aspect_bit,
                                     range->baseMipLevel,

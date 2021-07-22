@@ -3826,7 +3826,7 @@ anv_aspect_to_plane(VkImageAspectFlags all_aspects,
 }
 
 #define anv_foreach_image_aspect_bit(b, image, aspects) \
-   u_foreach_bit(b, anv_image_expand_aspects(image, aspects))
+   u_foreach_bit(b, vk_image_expand_aspect_mask(&(image)->vk, aspects))
 
 const struct anv_format *
 anv_get_format(VkFormat format);
@@ -4344,20 +4344,6 @@ anv_get_levelCount(const struct anv_image *image,
 {
    return range->levelCount == VK_REMAINING_MIP_LEVELS ?
           image->vk.mip_levels - range->baseMipLevel : range->levelCount;
-}
-
-static inline VkImageAspectFlags
-anv_image_expand_aspects(const struct anv_image *image,
-                         VkImageAspectFlags aspects)
-{
-   /* If the underlying image has color plane aspects and
-    * VK_IMAGE_ASPECT_COLOR_BIT has been requested, then return the aspects of
-    * the underlying image. */
-   if ((image->vk.aspects & VK_IMAGE_ASPECT_PLANES_BITS_ANV) != 0 &&
-       aspects == VK_IMAGE_ASPECT_COLOR_BIT)
-      return image->vk.aspects;
-
-   return aspects;
 }
 
 static inline bool

@@ -2697,7 +2697,7 @@ anv_CreateImageView(VkDevice _device,
     * VK_IMAGE_ASPECT_PLANE_2_BIT for an image of format
     * VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM.
     */
-   iview->aspects = anv_image_expand_aspects(image, range->aspectMask);
+   iview->aspects = vk_image_expand_aspect_mask(&image->vk, range->aspectMask);
    iview->n_planes = anv_image_aspect_get_planes(iview->aspects);
    iview->vk_format = pCreateInfo->format;
 
