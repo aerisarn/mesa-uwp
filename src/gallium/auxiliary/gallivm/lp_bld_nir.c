@@ -224,6 +224,8 @@ static LLVMValueRef flt_to_bool32(struct lp_build_nir_context *bld_base,
    LLVMValueRef result = lp_build_cmp(flt_bld, PIPE_FUNC_NOTEQUAL, val, flt_bld->zero);
    if (src_bit_size == 64)
       result = LLVMBuildTrunc(builder, result, bld_base->int_bld.vec_type, "");
+   if (src_bit_size == 16)
+      result = LLVMBuildSExt(builder, result, bld_base->int_bld.vec_type, "");
    return result;
 }
 
