@@ -27,6 +27,7 @@
 #include "lp_bld_arit.h"
 #include "lp_bld_bitarit.h"
 #include "lp_bld_const.h"
+#include "lp_bld_conv.h"
 #include "lp_bld_gather.h"
 #include "lp_bld_logic.h"
 #include "lp_bld_quad.h"
@@ -2170,8 +2171,12 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
 
    if (nir_dest_bit_size(instr->dest) != 32) {
       assert(nir_dest_bit_size(instr->dest) == 16);
-      LLVMTypeRef vec_type;
+      LLVMTypeRef vec_type = NULL;
+      bool is_float = false;
       switch (nir_alu_type_get_base_type(instr->dest_type)) {
+      case nir_type_float:
+         is_float = true;
+	 break;
       case nir_type_int:
          vec_type = bld_base->int16_bld.vec_type;
          break;
@@ -2182,12 +2187,17 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
          unreachable("unexpected alu type");
       }
       for (int i = 0; i < nir_dest_num_components(instr->dest); ++i) {
-         texel[i] = LLVMBuildBitCast(builder, texel[i], bld_base->int_bld.vec_type, "");
-         texel[i] = LLVMBuildTrunc(builder, texel[i], vec_type, "");
+         if (is_float) {
+            texel[i] = lp_build_float_to_half(gallivm, texel[i]);
+         } else {
+            texel[i] = LLVMBuildBitCast(builder, texel[i], bld_base->int_bld.vec_type, "");
+            texel[i] = LLVMBuildTrunc(builder, texel[i], vec_type, "");
+         }
       }
    }
 
    assign_dest(bld_base, &instr->dest, texel);
+
 }
 
 static void visit_ssa_undef(struct lp_build_nir_context *bld_base,
