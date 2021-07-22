@@ -8260,4 +8260,34 @@
     <immediate name="index" size="32"/>
   </ins>
 
+  <ins name="+FRSCALE.f32" pseudo="true">
+    <src start="0"/>
+    <src start="3"/>
+    <mod name="clamp" size="2">
+      <opt>none</opt>
+      <opt>clamp_0_inf</opt>
+      <opt>clamp_m1_1</opt>
+      <opt>clamp_0_1</opt>
+    </mod>
+    <mod name="neg0" size="1" opt="neg"/>
+    <mod name="neg1" size="1" opt="neg"/>
+    <mod name="abs0" start="15" size="1" opt="abs"/>
+    <mod name="abs1" start="15" size="1" opt="abs"/>
+  </ins>
+
+  <ins name="+FRSCALE.v2f16" pseudo="true">
+    <src start="0"/>
+    <src start="3"/>
+    <mod name="clamp" size="2">
+      <opt>none</opt>
+      <opt>clamp_0_inf</opt>
+      <opt>clamp_m1_1</opt>
+      <opt>clamp_0_1</opt>
+    </mod>
+    <mod name="neg0" size="1" opt="neg"/>
+    <mod name="neg1" size="1" opt="neg"/>
+    <mod name="abs0" start="15" size="1" opt="abs"/>
+    <mod name="abs1" start="15" size="1" opt="abs"/>
+  </ins>
+
 </bifrost>
