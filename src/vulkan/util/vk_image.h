@@ -92,6 +92,21 @@ vk_image_mip_level_extent(const struct vk_image *image,
    return extent;
 }
 
+/* This is defined as a macro so that it works for both
+ * VkImageSubresourceRange and VkImageSubresourceLayers
+ */
+#define vk_image_subresource_layer_count(_image, _range) \
+   ((_range)->layerCount == VK_REMAINING_ARRAY_LAYERS ? \
+    (_image)->array_layers - (_range)->baseArrayLayer : (_range)->layerCount)
+
+static inline uint32_t
+vk_image_subresource_level_count(const struct vk_image *image,
+                                 const VkImageSubresourceRange *range)
+{
+   return range->levelCount == VK_REMAINING_MIP_LEVELS ?
+          image->mip_levels - range->baseMipLevel : range->levelCount;
+}
+
 #ifdef __cplusplus
 }
 #endif

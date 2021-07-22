@@ -4331,21 +4331,6 @@ anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
                               const VkImageAspectFlagBits aspect,
                               const VkImageLayout layout);
 
-/* This is defined as a macro so that it works for both
- * VkImageSubresourceRange and VkImageSubresourceLayers
- */
-#define anv_get_layerCount(_image, _range) \
-   ((_range)->layerCount == VK_REMAINING_ARRAY_LAYERS ? \
-    (_image)->vk.array_layers - (_range)->baseArrayLayer : (_range)->layerCount)
-
-static inline uint32_t
-anv_get_levelCount(const struct anv_image *image,
-                   const VkImageSubresourceRange *range)
-{
-   return range->levelCount == VK_REMAINING_MIP_LEVELS ?
-          image->vk.mip_levels - range->baseMipLevel : range->levelCount;
-}
-
 static inline bool
 anv_image_aspects_compatible(VkImageAspectFlags aspects1,
                              VkImageAspectFlags aspects2)

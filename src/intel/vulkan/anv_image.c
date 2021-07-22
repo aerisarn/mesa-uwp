@@ -2675,16 +2675,17 @@ anv_CreateImageView(VkDevice _device,
                         VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
                         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
 
+   uint32_t layer_count = vk_image_subresource_layer_count(&image->vk, range);
    switch (image->vk.image_type) {
    default:
       unreachable("bad VkImageType");
    case VK_IMAGE_TYPE_1D:
    case VK_IMAGE_TYPE_2D:
-      assert(range->baseArrayLayer + anv_get_layerCount(image, range) - 1 <=
-             image->vk.array_layers);
+      assert(range->baseArrayLayer + layer_count - 1
+             <= image->vk.array_layers);
       break;
    case VK_IMAGE_TYPE_3D:
-      assert(range->baseArrayLayer + anv_get_layerCount(image, range) - 1
+      assert(range->baseArrayLayer + layer_count - 1
              <= anv_minify(image->vk.extent.depth, range->baseMipLevel));
       break;
    }
@@ -2760,9 +2761,9 @@ anv_CreateImageView(VkDevice _device,
       iview->planes[vplane].isl = (struct isl_view) {
          .format = format.isl_format,
          .base_level = range->baseMipLevel,
-         .levels = anv_get_levelCount(image, range),
+         .levels = vk_image_subresource_level_count(&image->vk, range),
          .base_array_layer = range->baseArrayLayer,
-         .array_len = anv_get_layerCount(image, range),
+         .array_len = layer_count,
          .swizzle = {
             .r = remap_swizzle(pCreateInfo->components.r,
                                VK_COMPONENT_SWIZZLE_R, format.swizzle),

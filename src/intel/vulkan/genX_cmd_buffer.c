@@ -2436,8 +2436,10 @@ void genX(CmdPipelineBarrier)(
          layer_count = anv_minify(image->vk.extent.depth, range->baseMipLevel);
       } else {
          base_layer = range->baseArrayLayer;
-         layer_count = anv_get_layerCount(image, range);
+         layer_count = vk_image_subresource_layer_count(&image->vk, range);
       }
+      const uint32_t level_count =
+         vk_image_subresource_level_count(&image->vk, range);
 
       if (range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
          transition_depth_buffer(cmd_buffer, image,
@@ -2449,8 +2451,7 @@ void genX(CmdPipelineBarrier)(
 
       if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) {
          transition_stencil_buffer(cmd_buffer, image,
-                                   range->baseMipLevel,
-                                   anv_get_levelCount(image, range),
+                                   range->baseMipLevel, level_count,
                                    base_layer, layer_count,
                                    pImageMemoryBarriers[i].oldLayout,
                                    pImageMemoryBarriers[i].newLayout,
@@ -2462,8 +2463,7 @@ void genX(CmdPipelineBarrier)(
             vk_image_expand_aspect_mask(&image->vk, range->aspectMask);
          anv_foreach_image_aspect_bit(aspect_bit, image, color_aspects) {
             transition_color_buffer(cmd_buffer, image, 1UL << aspect_bit,
-                                    range->baseMipLevel,
-                                    anv_get_levelCount(image, range),
+                                    range->baseMipLevel, level_count,
                                     base_layer, layer_count,
                                     pImageMemoryBarriers[i].oldLayout,
                                     pImageMemoryBarriers[i].newLayout,
