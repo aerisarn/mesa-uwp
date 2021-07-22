@@ -217,3 +217,184 @@ vk_image_expand_aspect_mask(const struct vk_image *image,
       return aspect_mask;
    }
 }
+
+static VkComponentSwizzle
+remap_swizzle(VkComponentSwizzle swizzle, VkComponentSwizzle component)
+{
+   return swizzle == VK_COMPONENT_SWIZZLE_IDENTITY ? component : swizzle;
+}
+
+void
+vk_image_view_init(struct vk_device *device,
+                   struct vk_image_view *image_view,
+                   const VkImageViewCreateInfo *pCreateInfo)
+{
+   vk_object_base_init(device, &image_view->base, VK_OBJECT_TYPE_IMAGE_VIEW);
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
+   VK_FROM_HANDLE(vk_image, image, pCreateInfo->image);
+
+   image_view->create_flags = pCreateInfo->flags;
+   image_view->image = image;
+   image_view->view_type = pCreateInfo->viewType;
+
+   switch (image_view->view_type) {
+   case VK_IMAGE_VIEW_TYPE_1D:
+   case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
+      assert(image->image_type == VK_IMAGE_TYPE_1D);
+      break;
+   case VK_IMAGE_VIEW_TYPE_2D:
+   case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+      if (image->create_flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT)
+         assert(image->image_type == VK_IMAGE_TYPE_3D);
+      else
+         assert(image->image_type == VK_IMAGE_TYPE_2D);
+      break;
+   case VK_IMAGE_VIEW_TYPE_3D:
+      assert(image->image_type == VK_IMAGE_TYPE_3D);
+      break;
+   case VK_IMAGE_VIEW_TYPE_CUBE:
+   case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
+      assert(image->image_type == VK_IMAGE_TYPE_2D);
+      assert(image->create_flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+      break;
+   default:
+      unreachable("Invalid image view type");
+   }
+
+   const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
+
+   image_view->aspects = vk_image_expand_aspect_mask(image, range->aspectMask);
+
+   /* From the Vulkan 1.2.184 spec:
+    *
+    *    "If the image has a multi-planar format and
+    *    subresourceRange.aspectMask is VK_IMAGE_ASPECT_COLOR_BIT, and image
+    *    has been created with a usage value not containing any of the
+    *    VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR,
+    *    VK_IMAGE_USAGE_VIDEO_DECODE_SRC_BIT_KHR,
+    *    VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR,
+    *    VK_IMAGE_USAGE_VIDEO_ENCODE_DST_BIT_KHR,
+    *    VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR, and
+    *    VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR flags, then the format must
+    *    be identical to the image format, and the sampler to be used with the
+    *    image view must enable sampler Y′CBCR conversion."
+    *
+    * Since no one implements video yet, we can ignore the bits about video
+    * create flags and assume YCbCr formats match.
+    */
+   if ((image->aspects & VK_IMAGE_ASPECT_PLANE_1_BIT) &&
+       (range->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT))
+      assert(pCreateInfo->format == image->format);
+
+   /* From the Vulkan 1.2.184 spec:
+    *
+    *    "Each depth/stencil format is only compatible with itself."
+    */
+   if (image_view->aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                              VK_IMAGE_ASPECT_STENCIL_BIT))
+      assert(pCreateInfo->format == image->format);
+
+   if (!(image->create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
+      assert(pCreateInfo->format == image->format);
+
+   /* Restrict the format to only the planes chosen.
+    *
+    * For combined depth and stencil images, this means the depth-only or
+    * stencil-only format if only one aspect is chosen and the full combined
+    * format if both aspects are chosen.
+    *
+    * For single-plane color images, we just take the format as-is.  For
+    * multi-plane views of multi-plane images, this means we want the full
+    * multi-plane format.  For single-plane views of multi-plane images, we
+    * want a format compatible with the one plane.  Fortunately, this is
+    * already what the client gives us.  The Vulkan 1.2.184 spec says:
+    *
+    *    "If image was created with the VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT and
+    *    the image has a multi-planar format, and if
+    *    subresourceRange.aspectMask is VK_IMAGE_ASPECT_PLANE_0_BIT,
+    *    VK_IMAGE_ASPECT_PLANE_1_BIT, or VK_IMAGE_ASPECT_PLANE_2_BIT, format
+    *    must be compatible with the corresponding plane of the image, and the
+    *    sampler to be used with the image view must not enable sampler Y′CBCR
+    *    conversion."
+    */
+   if (image_view->aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
+      image_view->format = vk_format_stencil_only(pCreateInfo->format);
+   } else if (image_view->aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
+      image_view->format = vk_format_depth_only(pCreateInfo->format);
+   } else {
+      image_view->format = pCreateInfo->format;
+   }
+
+   image_view->swizzle = (VkComponentMapping) {
+      .r = remap_swizzle(pCreateInfo->components.r, VK_COMPONENT_SWIZZLE_R),
+      .g = remap_swizzle(pCreateInfo->components.g, VK_COMPONENT_SWIZZLE_G),
+      .b = remap_swizzle(pCreateInfo->components.b, VK_COMPONENT_SWIZZLE_B),
+      .a = remap_swizzle(pCreateInfo->components.a, VK_COMPONENT_SWIZZLE_A),
+   };
+
+   assert(range->layerCount > 0);
+   assert(range->baseMipLevel < image->mip_levels);
+
+   image_view->base_mip_level = range->baseMipLevel;
+   image_view->level_count = vk_image_subresource_level_count(image, range);
+   image_view->base_array_layer = range->baseArrayLayer;
+   image_view->layer_count = vk_image_subresource_layer_count(image, range);
+
+   image_view->extent =
+      vk_image_mip_level_extent(image, image_view->base_mip_level);
+
+   assert(image_view->base_mip_level + image_view->level_count
+          <= image->mip_levels);
+   switch (image->image_type) {
+   default:
+      unreachable("bad VkImageType");
+   case VK_IMAGE_TYPE_1D:
+   case VK_IMAGE_TYPE_2D:
+      assert(image_view->base_array_layer + image_view->layer_count
+             <= image->array_layers);
+      break;
+   case VK_IMAGE_TYPE_3D:
+      assert(image_view->base_array_layer + image_view->layer_count
+             <= image_view->extent.depth);
+      break;
+   }
+
+   const VkImageUsageFlags image_usage =
+      vk_image_usage(image, image_view->aspects);
+   const VkImageViewUsageCreateInfo *usage_info =
+      vk_find_struct_const(pCreateInfo, IMAGE_VIEW_USAGE_CREATE_INFO);
+   image_view->usage = usage_info ? usage_info->usage : image_usage;
+   assert(!(image_view->usage & ~image_usage));
+}
+
+void
+vk_image_view_finish(struct vk_image_view *image_view)
+{
+   vk_object_base_finish(&image_view->base);
+}
+
+void *
+vk_image_view_create(struct vk_device *device,
+                     const VkImageViewCreateInfo *pCreateInfo,
+                     const VkAllocationCallbacks *alloc,
+                     size_t size)
+{
+   struct vk_image_view *image_view =
+      vk_zalloc2(&device->alloc, alloc, size, 8,
+                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (image_view == NULL)
+      return NULL;
+
+   vk_image_view_init(device, image_view, pCreateInfo);
+
+   return image_view;
+}
+
+void
+vk_image_view_destroy(struct vk_device *device,
+                      const VkAllocationCallbacks *alloc,
+                      struct vk_image_view *image_view)
+{
+   vk_object_free(device, alloc, image_view);
+}

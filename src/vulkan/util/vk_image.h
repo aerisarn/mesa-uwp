@@ -58,6 +58,8 @@ struct vk_image {
    uint64_t android_external_format;
 #endif
 };
+VK_DEFINE_NONDISP_HANDLE_CASTS(vk_image, base, VkImage,
+                               VK_OBJECT_TYPE_IMAGE);
 
 void vk_image_init(struct vk_device *device,
                    struct vk_image *image,
@@ -106,6 +108,100 @@ vk_image_subresource_level_count(const struct vk_image *image,
    return range->levelCount == VK_REMAINING_MIP_LEVELS ?
           image->mip_levels - range->baseMipLevel : range->levelCount;
 }
+
+struct vk_image_view {
+   struct vk_object_base base;
+
+   VkImageViewCreateFlags create_flags;
+   struct vk_image *image;
+   VkImageViewType view_type;
+
+   /** Image view format, relative to the selected aspects
+    *
+    * For a depth/stencil image:
+    *
+    *  - If vk_image_view::aspects contains both depth and stencil, this will
+    *    be the full depth/stencil format of the image.
+    *
+    *  - If only one aspect is selected, this will be the depth-only or
+    *    stencil-only format, as per the selected aspect.
+    *
+    * For color images, we have three cases:
+    *
+    *  1. It's a single-plane image in which case this is the unmodified
+    *     format provided to VkImageViewCreateInfo::format.
+    *
+    *  2. It's a YCbCr view of a multi-plane image in which case the
+    *     client will have asked for VK_IMAGE_ASPECT_COLOR_BIT and the
+    *     format provided will be the full planar format.  In this case,
+    *     the format will be the full format containing all the planes.
+    *
+    *  3. It's a single-plane view of a multi-plane image in which case
+    *     the client will have asked for VK_IMAGE_ASPECT_PLANE_N_BIT and
+    *     will have provided a format compatible with that specific
+    *     plane of the multi-planar format.  In this case, the format will be
+    *     the plane-compatible format requested by the client.
+    */
+   VkFormat format;
+
+   /* Component mapping, aka swizzle
+    *
+    * Unlike the swizzle provided via VkImageViewCreateInfo::components, this
+    * will never contain VK_COMPONENT_SWIZZLE_IDENTITY.  It will be resolved
+    * to VK_COMPONENT_SWIZZLE_R/G/B/A, as appropriate.
+    */
+   VkComponentMapping swizzle;
+
+   /** Aspects from the image represented by this view
+    *
+    * For depth/stencil images, this is the aspectMask provided by
+    * VkImageViewCreateinfo::subresourceRange::aspectMask.
+    *
+    * For color images, we have three cases:
+    *
+    *  1. It's a single-plane image in which case this only aspect is
+    *     VK_IMAGE_ASPECT_COLOR_BIT.
+    *
+    *  2. It's a YCbCr view of a multi-plane image in which case the
+    *     client will have asked for VK_IMAGE_ASPECT_COLOR_BIT and the
+    *     format provided will be the full planar format.  In this case,
+    *     aspects will be the full set of plane aspects in the image.
+    *
+    *  3. It's a single-plane view of a multi-plane image in which case
+    *     the client will have asked for VK_IMAGE_ASPECT_PLANE_N_BIT and
+    *     will have provided a format compatible with that specific
+    *     plane of the multi-planar format.  In this case, aspects will be
+    *     VK_IMAGE_ASPECT_PLANE_N_BIT where N is the selected plane.
+    *
+    * This seems almost backwards from the API but ensures that
+    * vk_image_view::aspects is always a subset of vk_image::aspects.
+    */
+   VkImageAspectFlags aspects;
+
+   uint32_t base_mip_level;
+   uint32_t level_count;
+   uint32_t base_array_layer;
+   uint32_t layer_count;
+
+   /* Image extent at LOD 0 */
+   VkExtent3D extent;
+
+   /* VK_KHR_maintenance2 */
+   VkImageUsageFlags usage;
+};
+
+void vk_image_view_init(struct vk_device *device,
+                        struct vk_image_view *image_view,
+                        const VkImageViewCreateInfo *pCreateInfo);
+void vk_image_view_finish(struct vk_image_view *image_view);
+
+void *vk_image_view_create(struct vk_device *device,
+                           const VkImageViewCreateInfo *pCreateInfo,
+                           const VkAllocationCallbacks *alloc,
+                           size_t size);
+void vk_image_view_destroy(struct vk_device *device,
+                           const VkAllocationCallbacks *alloc,
+                           struct vk_image_view *image_view);
 
 #ifdef __cplusplus
 }
