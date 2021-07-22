@@ -3983,8 +3983,16 @@ struct anv_image {
     */
    bool disjoint;
 
-   /* Image was created with external format. */
-   bool external_format;
+   /**
+    * Image was imported from an struct AHardwareBuffer.  We have to delay
+    * final image creation until bind time.
+    */
+   bool from_ahb;
+
+   /**
+    * True if an external format was specified
+    */
+   bool has_android_external_format;
 
    /**
     * Image was imported from gralloc with VkNativeBufferANDROID. The gralloc bo
@@ -4434,8 +4442,6 @@ struct anv_image_create_info {
 
    /** These flags will be added to any derived from VkImageCreateInfo. */
    isl_surf_usage_flags_t isl_extra_usage_flags;
-
-   bool external_format;
 };
 
 VkResult anv_image_create(VkDevice _device,
