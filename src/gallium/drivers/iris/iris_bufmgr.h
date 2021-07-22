@@ -410,8 +410,6 @@ uint32_t iris_bo_export_gem_handle(struct iris_bo *bo);
 
 int iris_reg_read(struct iris_bufmgr *bufmgr, uint32_t offset, uint64_t *out);
 
-int drm_ioctl(int fd, unsigned long request, void *arg);
-
 /**
  * Returns the BO's address relative to the appropriate base address.
  *
