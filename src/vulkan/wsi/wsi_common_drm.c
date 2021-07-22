@@ -454,22 +454,15 @@ align_u32(uint32_t v, uint32_t a)
 
 #define WSI_PRIME_LINEAR_STRIDE_ALIGN 256
 
-VkResult
-wsi_create_prime_image(const struct wsi_swapchain *chain,
-                       const VkSwapchainCreateInfoKHR *pCreateInfo,
-                       bool use_modifier,
-                       struct wsi_image *image)
+static VkResult
+wsi_create_prime_image_mem(const struct wsi_swapchain *chain,
+                           const struct wsi_image_info *info,
+                           struct wsi_image *image)
 {
    const struct wsi_device *wsi = chain->wsi;
    VkResult result;
 
-   memset(image, 0, sizeof(*image));
-
-   const uint32_t cpp = vk_format_size(pCreateInfo->imageFormat);
-   const uint32_t linear_stride = align_u32(pCreateInfo->imageExtent.width * cpp,
-                                            WSI_PRIME_LINEAR_STRIDE_ALIGN);
-
-   uint32_t linear_size = linear_stride * pCreateInfo->imageExtent.height;
+   uint32_t linear_size = info->linear_stride * info->create.extent.height;
    linear_size = align_u32(linear_size, 4096);
 
    const VkExternalMemoryBufferCreateInfo prime_buffer_external_info = {
@@ -487,7 +480,7 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
    result = wsi->CreateBuffer(chain->device, &prime_buffer_info,
                               &chain->alloc, &image->prime.buffer);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
    VkMemoryRequirements reqs;
    wsi->GetBufferMemoryRequirements(chain->device, image->prime.buffer, &reqs);
@@ -518,46 +511,12 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
    result = wsi->AllocateMemory(chain->device, &prime_memory_info,
                                 &chain->alloc, &image->prime.memory);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
    result = wsi->BindBufferMemory(chain->device, image->prime.buffer,
                                   image->prime.memory, 0);
    if (result != VK_SUCCESS)
-      goto fail;
-
-   const struct wsi_image_create_info image_wsi_info = {
-      .sType = VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
-      .prime_blit_src = true,
-   };
-   VkImageCreateInfo image_info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .pNext = &image_wsi_info,
-      .flags = 0,
-      .imageType = VK_IMAGE_TYPE_2D,
-      .format = pCreateInfo->imageFormat,
-      .extent = {
-         .width = pCreateInfo->imageExtent.width,
-         .height = pCreateInfo->imageExtent.height,
-         .depth = 1,
-      },
-      .mipLevels = 1,
-      .arrayLayers = 1,
-      .samples = VK_SAMPLE_COUNT_1_BIT,
-      .tiling = VK_IMAGE_TILING_OPTIMAL,
-      .usage = pCreateInfo->imageUsage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-      .sharingMode = pCreateInfo->imageSharingMode,
-      .queueFamilyIndexCount = pCreateInfo->queueFamilyIndexCount,
-      .pQueueFamilyIndices = pCreateInfo->pQueueFamilyIndices,
-      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-   };
-   if (pCreateInfo->flags & VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR) {
-      image_info.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT |
-                          VK_IMAGE_CREATE_EXTENDED_USAGE_BIT_KHR;
-   }
-   result = wsi->CreateImage(chain->device, &image_info,
-                             &chain->alloc, &image->image);
-   if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
    wsi->GetImageMemoryRequirements(chain->device, image->image, &reqs);
 
@@ -576,21 +535,44 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
    result = wsi->AllocateMemory(chain->device, &memory_info,
                                 &chain->alloc, &image->memory);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
-   result = wsi->BindImageMemory(chain->device, image->image,
-                                 image->memory, 0);
+   const VkMemoryGetFdInfoKHR linear_memory_get_fd_info = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR,
+      .pNext = NULL,
+      .memory = image->prime.memory,
+      .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+   };
+   int fd;
+   result = wsi->GetMemoryFdKHR(chain->device, &linear_memory_get_fd_info, &fd);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
+
+   image->drm_modifier = info->prime_use_linear_modifier ?
+                         DRM_FORMAT_MOD_LINEAR : DRM_FORMAT_MOD_INVALID;
+   image->num_planes = 1;
+   image->sizes[0] = linear_size;
+   image->row_pitches[0] = info->linear_stride;
+   image->offsets[0] = 0;
+   image->fds[0] = fd;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+wsi_finish_create_prime_image(const struct wsi_swapchain *chain,
+                              const struct wsi_image_info *info,
+                              struct wsi_image *image)
+{
+   const struct wsi_device *wsi = chain->wsi;
+   VkResult result;
 
    image->prime.blit_cmd_buffers =
       vk_zalloc(&chain->alloc,
                 sizeof(VkCommandBuffer) * wsi->queue_family_count, 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (!image->prime.blit_cmd_buffers) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto fail;
-   }
+   if (!image->prime.blit_cmd_buffers)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    int cmd_buffer_count = chain->prime_blit_queue != VK_NULL_HANDLE ? 1 : wsi->queue_family_count;
    for (uint32_t i = 0; i < cmd_buffer_count; i++) {
@@ -604,7 +586,7 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
       result = wsi->AllocateCommandBuffers(chain->device, &cmd_buffer_info,
                                            &image->prime.blit_cmd_buffers[i]);
       if (result != VK_SUCCESS)
-         goto fail;
+         return result;
 
       const VkCommandBufferBeginInfo begin_info = {
          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -613,7 +595,8 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
 
       struct VkBufferImageCopy buffer_image_copy = {
          .bufferOffset = 0,
-         .bufferRowLength = linear_stride / cpp,
+         .bufferRowLength = info->linear_stride /
+                            vk_format_size(info->create.format),
          .bufferImageHeight = 0,
          .imageSubresource = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -622,11 +605,7 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
             .layerCount = 1,
          },
          .imageOffset = { .x = 0, .y = 0, .z = 0 },
-         .imageExtent = {
-            .width = pCreateInfo->imageExtent.width,
-            .height = pCreateInfo->imageExtent.height,
-            .depth = 1,
-         },
+         .imageExtent = info->create.extent,
       };
       wsi->CmdCopyImageToBuffer(image->prime.blit_cmd_buffers[i],
                                 image->image,
@@ -636,32 +615,55 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
 
       result = wsi->EndCommandBuffer(image->prime.blit_cmd_buffers[i]);
       if (result != VK_SUCCESS)
-         goto fail;
+         return result;
    }
 
-   const VkMemoryGetFdInfoKHR linear_memory_get_fd_info = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR,
-      .pNext = NULL,
-      .memory = image->prime.memory,
-      .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
-   };
-   int fd;
-   result = wsi->GetMemoryFdKHR(chain->device, &linear_memory_get_fd_info, &fd);
-   if (result != VK_SUCCESS)
-      goto fail;
+   return VK_SUCCESS;
+}
 
-   image->drm_modifier = use_modifier ? DRM_FORMAT_MOD_LINEAR : DRM_FORMAT_MOD_INVALID;
-   image->num_planes = 1;
-   image->sizes[0] = linear_size;
-   image->row_pitches[0] = linear_stride;
-   image->offsets[0] = 0;
-   image->fds[0] = fd;
+VkResult
+wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
+                          const VkSwapchainCreateInfoKHR *pCreateInfo,
+                          bool use_modifier,
+                          struct wsi_image_info *info)
+{
+   VkResult result = wsi_configure_image(chain, pCreateInfo,
+                                         0 /* handle_types */, info);
+   if (result != VK_SUCCESS)
+      return result;
+
+   info->create.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+   info->wsi.prime_blit_src = true,
+   info->prime_use_linear_modifier = use_modifier;
+
+   const uint32_t cpp = vk_format_size(info->create.format);
+   info->linear_stride = align_u32(info->create.extent.width * cpp,
+                                   WSI_PRIME_LINEAR_STRIDE_ALIGN);
+
+   info->create_mem = wsi_create_prime_image_mem;
+   info->finish_create = wsi_finish_create_prime_image;
 
    return VK_SUCCESS;
+}
 
-fail:
-   wsi_destroy_image(chain, image);
+VkResult
+wsi_create_prime_image(const struct wsi_swapchain *chain,
+                       const VkSwapchainCreateInfoKHR *pCreateInfo,
+                       bool use_modifier,
+                       struct wsi_image *image)
+{
+   struct wsi_image_info info;
+   VkResult result = wsi_configure_prime_image(chain, pCreateInfo,
+                                               use_modifier, &info);
+   if (result != VK_SUCCESS)
+      return result;
 
-   return result;
+   result = wsi_create_image(chain, &info, image);
+   if (result != VK_SUCCESS) {
+      wsi_destroy_image_info(chain, &info);
+      return result;
+   }
+
+   return VK_SUCCESS;
 }
 
