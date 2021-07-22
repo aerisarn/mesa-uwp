@@ -611,7 +611,16 @@ enum bir_fau {
         BIR_FAU_BLEND_0 = 8,
         /* blend descs 1 - 7 */
         BIR_FAU_TYPE_MASK = 15,
+
+        /* Valhall only */
+        BIR_FAU_TLS_PTR = 16,
+        BIR_FAU_WLS_PTR = 17,
+        BIR_FAU_PROGRAM_COUNTER = 18,
+
         BIR_FAU_UNIFORM = (1 << 7),
+        /* Look up table on Valhall */
+        BIR_FAU_IMMEDIATE = (1 << 8),
+
 };
 
 static inline bi_index
