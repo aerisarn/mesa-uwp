@@ -203,6 +203,11 @@ void vk_image_view_destroy(struct vk_device *device,
                            const VkAllocationCallbacks *alloc,
                            struct vk_image_view *image_view);
 
+bool vk_image_layout_is_read_only(VkImageLayout layout,
+                                  VkImageAspectFlagBits aspect);
+VkImageUsageFlags vk_image_layout_to_usage_flags(VkImageLayout layout,
+                                                 VkImageAspectFlagBits aspect);
+
 #ifdef __cplusplus
 }
 #endif
