@@ -327,6 +327,9 @@ panvk_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
 
+   if (cmdbuf->state.batch)
+      panvk_cmd_close_batch(cmdbuf);
+
    cmdbuf->status = PANVK_CMD_BUFFER_STATUS_EXECUTABLE;
 
    return cmdbuf->record_result;
