@@ -6,7 +6,6 @@
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
     DEQP_PARALLEL: 6 # should be replaced by per-machine definitions
-    DEQP_NO_SAVE_RESULTS: 1 # but why not ... ?
     DEQP_VER: gles2
     # proxy used to cache data locally
     FDO_HTTP_CACHE_URI: "http://caching-proxy/cache/?uri="

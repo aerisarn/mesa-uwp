@@ -115,11 +115,6 @@ else
    JOB="--jobs 4"
 fi
 
-# If this CI lab lacks artifacts support, print the whole list of failures/flakes.
-if [ -n "$DEQP_NO_SAVE_RESULTS" ]; then
-   SUMMARY_LIMIT="--summary-limit 0"
-fi
-
 parse_renderer() {
     RENDERER=`grep -A1 TestCaseResult.\*info.renderer $RESULTS/deqp-info.qpa | grep '<Text' | sed 's|.*<Text>||g' | sed 's|</Text>||g'`
     VERSION=`grep -A1 TestCaseResult.\*info.version $RESULTS/deqp-info.qpa | grep '<Text' | sed 's|.*<Text>||g' | sed 's|</Text>||g'`
