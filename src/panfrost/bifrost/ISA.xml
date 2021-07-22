@@ -8235,4 +8235,29 @@
     <mod name="neg2" size="1" opt="neg"/>
   </ins>
 
+  <ins name="+IADD_IMM.i32" pseudo="true">
+    <src start="0"/>
+    <immediate name="index" size="32"/>
+  </ins>
+
+  <ins name="+IADD_IMM.v2i16" pseudo="true">
+    <src start="0"/>
+    <immediate name="index" size="32"/>
+  </ins>
+
+  <ins name="+IADD_IMM.v4i8" pseudo="true">
+    <src start="0"/>
+    <immediate name="index" size="32"/>
+  </ins>
+
+  <ins name="+FADD_IMM.f32" pseudo="true">
+    <src start="0"/>
+    <immediate name="index" size="32"/>
+  </ins>
+
+  <ins name="+FADD_IMM.v2f16" pseudo="true">
+    <src start="0"/>
+    <immediate name="index" size="32"/>
+  </ins>
+
 </bifrost>
