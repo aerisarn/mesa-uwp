@@ -304,15 +304,15 @@ copy_image(struct anv_cmd_buffer *cmd_buffer,
            const VkImageCopy2KHR *region)
 {
    VkOffset3D srcOffset =
-      anv_sanitize_image_offset(src_image->type, region->srcOffset);
+      anv_sanitize_image_offset(src_image->vk.image_type, region->srcOffset);
    VkOffset3D dstOffset =
-      anv_sanitize_image_offset(dst_image->type, region->dstOffset);
+      anv_sanitize_image_offset(dst_image->vk.image_type, region->dstOffset);
    VkExtent3D extent =
-      anv_sanitize_image_extent(src_image->type, region->extent);
+      anv_sanitize_image_extent(src_image->vk.image_type, region->extent);
 
    const uint32_t dst_level = region->dstSubresource.mipLevel;
    unsigned dst_base_layer, layer_count;
-   if (dst_image->type == VK_IMAGE_TYPE_3D) {
+   if (dst_image->vk.image_type == VK_IMAGE_TYPE_3D) {
       dst_base_layer = region->dstOffset.z;
       layer_count = region->extent.depth;
    } else {
@@ -323,7 +323,7 @@ copy_image(struct anv_cmd_buffer *cmd_buffer,
 
    const uint32_t src_level = region->srcSubresource.mipLevel;
    unsigned src_base_layer;
-   if (src_image->type == VK_IMAGE_TYPE_3D) {
+   if (src_image->vk.image_type == VK_IMAGE_TYPE_3D) {
       src_base_layer = region->srcOffset.z;
    } else {
       src_base_layer = region->srcSubresource.baseArrayLayer;
@@ -487,19 +487,18 @@ copy_buffer_to_image(struct anv_cmd_buffer *cmd_buffer,
                                 image_layout, ISL_AUX_USAGE_NONE,
                                 &image.surf);
    image.offset =
-      anv_sanitize_image_offset(anv_image->type, region->imageOffset);
+      anv_sanitize_image_offset(anv_image->vk.image_type, region->imageOffset);
    image.level = region->imageSubresource.mipLevel;
 
    VkExtent3D extent =
-      anv_sanitize_image_extent(anv_image->type, region->imageExtent);
-   if (anv_image->type != VK_IMAGE_TYPE_3D) {
+      anv_sanitize_image_extent(anv_image->vk.image_type, region->imageExtent);
+   if (anv_image->vk.image_type != VK_IMAGE_TYPE_3D) {
       image.offset.z = region->imageSubresource.baseArrayLayer;
-      extent.depth =
-         anv_get_layerCount(anv_image, &region->imageSubresource);
+      extent.depth = anv_get_layerCount(anv_image, &region->imageSubresource);
    }
 
    const enum isl_format linear_format =
-      anv_get_isl_format(&cmd_buffer->device->info, anv_image->vk_format,
+      anv_get_isl_format(&cmd_buffer->device->info, anv_image->vk.format,
                          aspect, VK_IMAGE_TILING_LINEAR);
    const struct isl_format_layout *linear_fmtl =
       isl_format_get_layout(linear_format);
@@ -689,14 +688,14 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
                                    dst_image_layout, ISL_AUX_USAGE_NONE, &dst);
 
       struct anv_format_plane src_format =
-         anv_get_format_aspect(&cmd_buffer->device->info, src_image->vk_format,
-                               1U << aspect_bit, src_image->tiling);
+         anv_get_format_aspect(&cmd_buffer->device->info, src_image->vk.format,
+                               1U << aspect_bit, src_image->vk.tiling);
       struct anv_format_plane dst_format =
-         anv_get_format_aspect(&cmd_buffer->device->info, dst_image->vk_format,
-                               1U << aspect_bit, dst_image->tiling);
+         anv_get_format_aspect(&cmd_buffer->device->info, dst_image->vk.format,
+                               1U << aspect_bit, dst_image->vk.tiling);
 
       unsigned dst_start, dst_end;
-      if (dst_image->type == VK_IMAGE_TYPE_3D) {
+      if (dst_image->vk.image_type == VK_IMAGE_TYPE_3D) {
          assert(dst_res->baseArrayLayer == 0);
          dst_start = region->dstOffsets[0].z;
          dst_end = region->dstOffsets[1].z;
@@ -706,7 +705,7 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
       }
 
       unsigned src_start, src_end;
-      if (src_image->type == VK_IMAGE_TYPE_3D) {
+      if (src_image->vk.image_type == VK_IMAGE_TYPE_3D) {
          assert(src_res->baseArrayLayer == 0);
          src_start = region->srcOffsets[0].z;
          src_end = region->srcOffsets[1].z;
@@ -722,7 +721,7 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
       /* There is no interpolation to the pixel center during rendering, so
        * add the 0.5 offset ourselves here. */
       float depth_center_offset = 0;
-      if (src_image->type == VK_IMAGE_TYPE_3D)
+      if (src_image->vk.image_type == VK_IMAGE_TYPE_3D)
          depth_center_offset = 0.5 / num_layers * (src_end - src_start);
 
       if (flip_z) {
@@ -1031,20 +1030,20 @@ void anv_CmdClearColorImage(
                                    imageLayout, ISL_AUX_USAGE_NONE, &surf);
 
       struct anv_format_plane src_format =
-         anv_get_format_aspect(&cmd_buffer->device->info, image->vk_format,
-                               VK_IMAGE_ASPECT_COLOR_BIT, image->tiling);
+         anv_get_format_aspect(&cmd_buffer->device->info, image->vk.format,
+                               VK_IMAGE_ASPECT_COLOR_BIT, image->vk.tiling);
 
       unsigned base_layer = pRanges[r].baseArrayLayer;
       unsigned layer_count = anv_get_layerCount(image, &pRanges[r]);
 
       for (unsigned i = 0; i < anv_get_levelCount(image, &pRanges[r]); i++) {
          const unsigned level = pRanges[r].baseMipLevel + i;
-         const unsigned level_width = anv_minify(image->extent.width, level);
-         const unsigned level_height = anv_minify(image->extent.height, level);
+         const unsigned level_width = anv_minify(image->vk.extent.width, level);
+         const unsigned level_height = anv_minify(image->vk.extent.height, level);
 
-         if (image->type == VK_IMAGE_TYPE_3D) {
+         if (image->vk.image_type == VK_IMAGE_TYPE_3D) {
             base_layer = 0;
-            layer_count = anv_minify(image->extent.depth, level);
+            layer_count = anv_minify(image->vk.extent.depth, level);
          }
 
          anv_cmd_buffer_mark_image_written(cmd_buffer, image,
@@ -1078,7 +1077,7 @@ void anv_CmdClearDepthStencilImage(
    blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer, 0);
 
    struct blorp_surf depth, stencil, stencil_shadow;
-   if (image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+   if (image->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
       get_blorp_surf_for_anv_image(cmd_buffer->device,
                                    image, VK_IMAGE_ASPECT_DEPTH_BIT,
                                    VK_IMAGE_USAGE_TRANSFER_DST_BIT,
@@ -1088,7 +1087,7 @@ void anv_CmdClearDepthStencilImage(
    }
 
    bool has_stencil_shadow = false;
-   if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+   if (image->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
       get_blorp_surf_for_anv_image(cmd_buffer->device,
                                    image, VK_IMAGE_ASPECT_STENCIL_BIT,
                                    VK_IMAGE_USAGE_TRANSFER_DST_BIT,
@@ -1114,11 +1113,11 @@ void anv_CmdClearDepthStencilImage(
 
       for (unsigned i = 0; i < anv_get_levelCount(image, &pRanges[r]); i++) {
          const unsigned level = pRanges[r].baseMipLevel + i;
-         const unsigned level_width = anv_minify(image->extent.width, level);
-         const unsigned level_height = anv_minify(image->extent.height, level);
+         const unsigned level_width = anv_minify(image->vk.extent.width, level);
+         const unsigned level_height = anv_minify(image->vk.extent.height, level);
 
-         if (image->type == VK_IMAGE_TYPE_3D)
-            layer_count = anv_minify(image->extent.depth, level);
+         if (image->vk.image_type == VK_IMAGE_TYPE_3D)
+            layer_count = anv_minify(image->vk.extent.depth, level);
 
          blorp_clear_depth_stencil(&batch, &depth, &stencil,
                                    level, base_layer, layer_count,
@@ -1385,10 +1384,10 @@ anv_image_msaa_resolve(struct anv_cmd_buffer *cmd_buffer,
    struct blorp_batch batch;
    blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer, 0);
 
-   assert(src_image->type == VK_IMAGE_TYPE_2D);
-   assert(src_image->samples > 1);
-   assert(dst_image->type == VK_IMAGE_TYPE_2D);
-   assert(dst_image->samples == 1);
+   assert(src_image->vk.image_type == VK_IMAGE_TYPE_2D);
+   assert(src_image->vk.samples > 1);
+   assert(dst_image->vk.image_type == VK_IMAGE_TYPE_2D);
+   assert(dst_image->vk.samples == 1);
    assert(src_image->n_planes == dst_image->n_planes);
 
    struct blorp_surf src_surf, dst_surf;
@@ -1533,13 +1532,9 @@ anv_image_copy_to_shadow(struct anv_cmd_buffer *cmd_buffer,
    for (uint32_t l = 0; l < level_count; l++) {
       const uint32_t level = base_level + l;
 
-      const VkExtent3D extent = {
-         .width = anv_minify(image->extent.width, level),
-         .height = anv_minify(image->extent.height, level),
-         .depth = anv_minify(image->extent.depth, level),
-      };
+      const VkExtent3D extent = vk_image_mip_level_extent(&image->vk, level);
 
-      if (image->type == VK_IMAGE_TYPE_3D)
+      if (image->vk.image_type == VK_IMAGE_TYPE_3D)
          layer_count = extent.depth;
 
       for (uint32_t a = 0; a < layer_count; a++) {
@@ -1568,7 +1563,7 @@ anv_image_clear_color(struct anv_cmd_buffer *cmd_buffer,
                       uint32_t level, uint32_t base_layer, uint32_t layer_count,
                       VkRect2D area, union isl_color_value clear_color)
 {
-   assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
+   assert(image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT);
 
    /* We don't support planar images with multisampling yet */
    assert(image->n_planes == 1);
@@ -1604,8 +1599,8 @@ anv_image_clear_depth_stencil(struct anv_cmd_buffer *cmd_buffer,
                               VkRect2D area,
                               float depth_value, uint8_t stencil_value)
 {
-   assert(image->aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
-                            VK_IMAGE_ASPECT_STENCIL_BIT));
+   assert(image->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                               VK_IMAGE_ASPECT_STENCIL_BIT));
 
    struct blorp_batch batch;
    blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer, 0);
@@ -1711,8 +1706,8 @@ anv_image_hiz_clear(struct anv_cmd_buffer *cmd_buffer,
                     uint32_t base_layer, uint32_t layer_count,
                     VkRect2D area, uint8_t stencil_value)
 {
-   assert(image->aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
-                            VK_IMAGE_ASPECT_STENCIL_BIT));
+   assert(image->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                               VK_IMAGE_ASPECT_STENCIL_BIT));
 
    struct blorp_batch batch;
    blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer, 0);
@@ -1802,8 +1797,8 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
                  enum isl_aux_op mcs_op, union isl_color_value *clear_value,
                  bool predicate)
 {
-   assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-   assert(image->samples > 1);
+   assert(image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT);
+   assert(image->vk.samples > 1);
    assert(base_layer + layer_count <= anv_image_aux_layers(image, aspect, 0));
 
    /* Multisampling with multi-planar formats is not supported */
@@ -1851,7 +1846,7 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
    case ISL_AUX_OP_FAST_CLEAR:
       blorp_fast_clear(&batch, &surf, format, swizzle,
                        0, base_layer, layer_count,
-                       0, 0, image->extent.width, image->extent.height);
+                       0, 0, image->vk.extent.width, image->vk.extent.height);
       break;
    case ISL_AUX_OP_PARTIAL_RESOLVE:
       blorp_mcs_partial_resolve(&batch, &surf, format,
@@ -1880,8 +1875,8 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
                  enum isl_aux_op ccs_op, union isl_color_value *clear_value,
                  bool predicate)
 {
-   assert(image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
-   assert(image->samples == 1);
+   assert(image->vk.aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
+   assert(image->vk.samples == 1);
    assert(level < anv_image_aux_levels(image, aspect));
    /* Multi-LOD YcBcR is not allowed */
    assert(image->n_planes == 1 || level == 0);

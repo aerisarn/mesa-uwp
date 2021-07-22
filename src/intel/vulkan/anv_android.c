@@ -405,11 +405,11 @@ anv_create_ahw_memory(VkDevice device_h,
    /* If caller passed dedicated information. */
    if (dedicated_info && dedicated_info->image) {
       ANV_FROM_HANDLE(anv_image, image, dedicated_info->image);
-      w = image->extent.width;
-      h = image->extent.height;
-      layers = image->array_size;
-      format = android_format_from_vk(image->vk_format);
-      usage = anv_ahw_usage_from_vk_usage(image->create_flags, image->usage);
+      w = image->vk.extent.width;
+      h = image->vk.extent.height;
+      layers = image->vk.array_layers;
+      format = android_format_from_vk(image->vk.format);
+      usage = anv_ahw_usage_from_vk_usage(image->vk.create_flags, image->vk.usage);
    } else if (dedicated_info && dedicated_info->buffer) {
       ANV_FROM_HANDLE(anv_buffer, buffer, dedicated_info->buffer);
       w = buffer->size;
