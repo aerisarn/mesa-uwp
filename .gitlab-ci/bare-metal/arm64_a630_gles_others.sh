@@ -58,24 +58,22 @@ if ! env \
     EXIT=1
 fi
 
-# gles3-multisample mustpass -- disabled pending https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/1859
-# if ! env \
-#   DEQP_RESULTS_DIR=results/gles3-multisample \
-#   DEQP_VER=gles3 \
-#   DEQP_CONFIG="rgba8888d24s8ms4" \
-#   DEQP_VARIANT="multisample" \
-#   /install/deqp-runner.sh; then
-#     EXIT=1
-# fi
+if ! env \
+  DEQP_RESULTS_DIR=results/gles3-multisample \
+  DEQP_VER=gles3 \
+  DEQP_CONFIG="rgba8888d24s8ms4" \
+  DEQP_VARIANT="multisample" \
+  /install/deqp-runner.sh; then
+    EXIT=1
+fi
 
-# gles31-multisample mustpass -- disabled pending https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/1859
-# if ! env \
-#   DEQP_RESULTS_DIR=results/gles31-multisample \
-#   DEQP_VER=gles31 \
-#   DEQP_CONFIG="rgba8888d24s8ms4" \
-#   DEQP_VARIANT="multisample" \
-#   /install/deqp-runner.sh; then
-#     EXIT=1
-# fi
+if ! env \
+  DEQP_RESULTS_DIR=results/gles31-multisample \
+  DEQP_VER=gles31 \
+  DEQP_CONFIG="rgba8888d24s8ms4" \
+  DEQP_VARIANT="multisample" \
+  /install/deqp-runner.sh; then
+    EXIT=1
+fi
 
 exit $EXIT
