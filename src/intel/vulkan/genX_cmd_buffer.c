@@ -384,8 +384,8 @@ anv_can_fast_clear_color_view(struct anv_device * device,
     */
    if (render_area.offset.x != 0 ||
        render_area.offset.y != 0 ||
-       render_area.extent.width != iview->extent.width ||
-       render_area.extent.height != iview->extent.height)
+       render_area.extent.width != iview->vk.extent.width ||
+       render_area.extent.height != iview->vk.extent.height)
       return false;
 
    /* On Broadwell and earlier, we can only handle 0/1 clear colors */
@@ -401,7 +401,7 @@ anv_can_fast_clear_color_view(struct anv_device * device,
    if (isl_color_value_requires_conversion(clear_color,
                                            &iview->image->planes[0].primary_surface.isl,
                                            &iview->planes[0].isl)) {
-      anv_perf_warn(device, &iview->base,
+      anv_perf_warn(device, &iview->vk.base,
                     "Cannot fast-clear to colors which would require "
                     "format conversion on resolve");
       return false;
@@ -1607,7 +1607,7 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
             att_state->clear_value = begin->pClearValues[i];
 
          struct anv_image_view *iview = state->attachments[i].image_view;
-         anv_assert(iview->vk_format == pass_att->format);
+         anv_assert(iview->vk.format == pass_att->format);
 
          const uint32_t num_layers = iview->planes[0].isl.array_len;
          att_state->pending_clear_views = (1 << num_layers) - 1;
@@ -2723,7 +2723,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             assert(shader->stage == MESA_SHADER_FRAGMENT);
             assert(desc->image_view != NULL);
-            if ((desc->image_view->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0) {
+            if ((desc->image_view->vk.aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0) {
                /* For depth and stencil input attachments, we treat it like any
                 * old texture that a user may have bound.
                 */
@@ -2762,7 +2762,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                             "corresponding SPIR-V format enum.");
                   vk_debug_report(&cmd_buffer->device->physical->instance->vk,
                                   VK_DEBUG_REPORT_ERROR_BIT_EXT,
-                                  &desc->image_view->base,
+                                  &desc->image_view->vk.base,
                                   __LINE__, 0, "anv",
                                   "Bound a image to a descriptor where the "
                                   "descriptor does not have NonReadable "
@@ -6342,7 +6342,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
           * with depth.
           */
          const struct isl_view *ds_view = &iview->planes[0].isl;
-         if (iview->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         if (iview->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
             genX(cmd_buffer_mark_image_written)(cmd_buffer, iview->image,
                                                 VK_IMAGE_ASPECT_DEPTH_BIT,
                                                 att_state->aux_usage,
@@ -6350,7 +6350,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
                                                 ds_view->base_array_layer,
                                                 fb->layers);
          }
-         if (iview->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+         if (iview->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
             /* Even though stencil may be plane 1, it always shares a
              * base_level with depth.
              */
@@ -6405,8 +6405,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          enum isl_aux_usage dst_aux_usage =
             cmd_buffer->state.attachments[dst_att].aux_usage;
 
-         assert(src_iview->aspects == VK_IMAGE_ASPECT_COLOR_BIT &&
-                dst_iview->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
+         assert(src_iview->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT &&
+                dst_iview->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT);
 
          anv_image_msaa_resolve(cmd_buffer,
                                 src_iview->image, src_aux_usage,
@@ -6492,8 +6492,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
           */
          if (dst_iview->image->vk.image_type != VK_IMAGE_TYPE_3D &&
              render_area.offset.x == 0 && render_area.offset.y == 0 &&
-             render_area.extent.width == dst_iview->extent.width &&
-             render_area.extent.height == dst_iview->extent.height)
+             render_area.extent.width == dst_iview->vk.extent.width &&
+             render_area.extent.height == dst_iview->vk.extent.height)
             dst_initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
          transition_depth_buffer(cmd_buffer, dst_iview->image,

@@ -1332,8 +1332,8 @@ anv_cmd_buffer_get_depth_stencil_view(const struct anv_cmd_buffer *cmd_buffer)
    const struct anv_image_view *iview =
       cmd_buffer->state.attachments[subpass->depth_stencil_attachment->attachment].image_view;
 
-   assert(iview->aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
-                            VK_IMAGE_ASPECT_STENCIL_BIT));
+   assert(iview->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                               VK_IMAGE_ASPECT_STENCIL_BIT));
 
    return iview;
 }

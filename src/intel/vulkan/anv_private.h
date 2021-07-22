@@ -4348,13 +4348,9 @@ anv_image_aspects_compatible(VkImageAspectFlags aspects1,
 }
 
 struct anv_image_view {
-   struct vk_object_base base;
+   struct vk_image_view vk;
 
    const struct anv_image *image; /**< VkImageViewCreateInfo::image */
-
-   VkImageAspectFlags aspects;
-   VkFormat vk_format;
-   VkExtent3D extent; /**< Extent of VkImageViewCreateInfo::baseMipLevel. */
 
    unsigned n_planes;
    struct {
@@ -4782,7 +4778,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_framebuffer, base, VkFramebuffer,
                                VK_OBJECT_TYPE_FRAMEBUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(anv_image_view, base, VkImageView,
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_image_view, vk.base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline_cache, base, VkPipelineCache,
                                VK_OBJECT_TYPE_PIPELINE_CACHE)
