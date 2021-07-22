@@ -22,7 +22,7 @@ cuts taken to get things up and running (which are mostly not inherent to
 the xml schema, and should not be too difficult to remove from the py and
 decode/disasm utility):
 
-* Maximum "bitset" size is 64b
+* Maximum "field" size is 64b
 * Fixed instruction size
 
 Often times, especially when new functionality is added in later gens
