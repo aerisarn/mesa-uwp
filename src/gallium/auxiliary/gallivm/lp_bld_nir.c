@@ -789,7 +789,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = lp_build_negate(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
       break;
    case nir_op_fpow:
-      result = lp_build_pow(&bld_base->base, src[0], src[1]);
+      result = lp_build_pow(get_flt_bld(bld_base, src_bit_size[0]), src[0], src[1]);
       break;
    case nir_op_fquantize2f16:
       result = do_quantize_to_f16(bld_base, src[0]);
