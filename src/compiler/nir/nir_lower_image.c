@@ -70,14 +70,20 @@ lower_image_instr(nir_builder *b, nir_instr *instr, void *state)
    const nir_lower_image_options *options = state;
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
-   if (options->lower_cube_size &&
-       intrin->intrinsic == nir_intrinsic_image_deref_size &&
-       nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_CUBE) {
-      lower_cube_size(b, intrin);
-      return true;
-   }
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_image_size:
+   case nir_intrinsic_image_deref_size:
+   case nir_intrinsic_bindless_image_size:
+      if (options->lower_cube_size &&
+          nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_CUBE) {
+         lower_cube_size(b, intrin);
+         return true;
+      }
+      return false;
 
-   return false;
+   default:
+      return false;
+   }
 }
 
 bool
