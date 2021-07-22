@@ -274,10 +274,7 @@ lower_alu_instr_scalar(nir_builder *b, nir_instr *instr, void *_data)
    unsigned num_components = alu->dest.dest.ssa.num_components;
    nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS] = { NULL };
 
-   for (chan = 0; chan < NIR_MAX_VEC_COMPONENTS; chan++) {
-      if (!(alu->dest.write_mask & (1 << chan)))
-         continue;
-
+   for (chan = 0; chan < num_components; chan++) {
       nir_alu_instr *lower = nir_alu_instr_create(b->shader, alu->op);
       for (i = 0; i < num_src; i++) {
          /* We only handle same-size-as-dest (input_sizes[] == 0) or scalar
@@ -289,7 +286,8 @@ lower_alu_instr_scalar(nir_builder *b, nir_instr *instr, void *_data)
 
          nir_alu_src_copy(&lower->src[i], &alu->src[i], lower);
          for (int j = 0; j < NIR_MAX_VEC_COMPONENTS; j++)
-            lower->src[i].swizzle[j] = alu->src[i].swizzle[src_chan];
+            lower->src[i].swizzle[j] = alu->dest.write_mask & (1 << chan) ?
+                                       alu->src[i].swizzle[src_chan] : 0;
       }
 
       nir_alu_ssa_dest_init(lower, 1, alu->dest.dest.ssa.bit_size);
