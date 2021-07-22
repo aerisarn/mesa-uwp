@@ -305,14 +305,10 @@ select_memory_type(const struct wsi_device *wsi,
    unreachable("No memory type found");
 }
 
-VkResult
-wsi_create_native_image(const struct wsi_swapchain *chain,
-                        const VkSwapchainCreateInfoKHR *pCreateInfo,
-                        uint32_t num_modifier_lists,
-                        const uint32_t *num_modifiers,
-                        const uint64_t *const *modifiers,
-                        uint8_t *(alloc_shm)(struct wsi_image *image, unsigned size),
-                        struct wsi_image *image)
+static VkResult
+wsi_create_win32_image(const struct wsi_swapchain *chain,
+                       const VkSwapchainCreateInfoKHR *pCreateInfo,
+                       struct wsi_image *image)
 {
    const struct wsi_device *wsi = chain->wsi;
    VkResult result;
@@ -378,19 +374,8 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
    VkMemoryRequirements reqs;
    wsi->GetImageMemoryRequirements(chain->device, image->image, &reqs);
 
-   const struct wsi_memory_allocate_info memory_wsi_info = {
-      .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA,
-      .pNext = NULL,
-      .implicit_sync = true,
-   };
-   const VkExportMemoryAllocateInfo memory_export_info = {
-      .sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO,
-      .pNext = &memory_wsi_info,
-      .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
-   };
    const VkMemoryDedicatedAllocateInfo memory_dedicated_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
-      .pNext = &memory_export_info,
       .image = image->image,
       .buffer = VK_NULL_HANDLE,
    };
@@ -442,9 +427,8 @@ wsi_win32_image_init(VkDevice device_h,
 {
    struct wsi_win32_swapchain *chain = (struct wsi_win32_swapchain *) drv_chain;
 
-   VkResult result = wsi_create_native_image(&chain->base, create_info,
-                                             0, NULL, NULL, NULL,
-                                             &image->base);
+   VkResult result = wsi_create_win32_image(&chain->base, create_info,
+                                            &image->base);
    if (result != VK_SUCCESS)
       return result;
 
