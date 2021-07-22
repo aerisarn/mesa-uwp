@@ -182,18 +182,38 @@ vk_image_usage(const struct vk_image *image,
    }
 }
 
+#define VK_IMAGE_ASPECT_ANY_COLOR_MASK_MESA ( \
+   VK_IMAGE_ASPECT_COLOR_BIT | \
+   VK_IMAGE_ASPECT_PLANE_0_BIT | \
+   VK_IMAGE_ASPECT_PLANE_1_BIT | \
+   VK_IMAGE_ASPECT_PLANE_2_BIT)
+
+/** Expands the given aspect mask relative to the image
+ *
+ * If the image has color plane aspects VK_IMAGE_ASPECT_COLOR_BIT has been
+ * requested, this returns the aspects of the underlying image.
+ *
+ * For example,
+ *
+ *    VK_IMAGE_ASPECT_COLOR_BIT
+ *
+ * will be converted to
+ *
+ *    VK_IMAGE_ASPECT_PLANE_0_BIT |
+ *    VK_IMAGE_ASPECT_PLANE_1_BIT |
+ *    VK_IMAGE_ASPECT_PLANE_2_BIT
+ *
+ * for an image of format VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM.
+ */
 VkImageAspectFlags
 vk_image_expand_aspect_mask(const struct vk_image *image,
                             VkImageAspectFlags aspect_mask)
 {
-   /* If the underlying image has color plane aspects and
-    * VK_IMAGE_ASPECT_COLOR_BIT has been requested, then return the aspects of
-    * the underlying image. */
-   if (!(image->aspects & (VK_IMAGE_ASPECT_PLANE_0_BIT |
-                           VK_IMAGE_ASPECT_PLANE_1_BIT |
-                           VK_IMAGE_ASPECT_PLANE_2_BIT)) &&
-       aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT)
+   if (aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT) {
+      assert(image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_MASK_MESA);
       return image->aspects;
-
-   return aspect_mask;
+   } else {
+      assert(aspect_mask && !(aspect_mask & ~image->aspects));
+      return aspect_mask;
+   }
 }
