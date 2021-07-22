@@ -300,7 +300,8 @@ emit_mask_scatter(struct lp_build_nir_soa_context *bld,
       if (scalar_pred) {
          LLVMValueRef real_val, dst_val;
          dst_val = LLVMBuildLoad(builder, scalar_ptr, "");
-         real_val = lp_build_select(&bld->uint_elem_bld, scalar_pred, val, dst_val);
+         scalar_pred = LLVMBuildTrunc(builder, scalar_pred, LLVMInt1TypeInContext(gallivm->context), "");
+         real_val = LLVMBuildSelect(builder, scalar_pred, val, dst_val, "");
          LLVMBuildStore(builder, real_val, scalar_ptr);
       }
       else {
