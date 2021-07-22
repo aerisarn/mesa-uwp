@@ -556,7 +556,7 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
       .sType = VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
       .prime_blit_src = true,
    };
-   const VkImageCreateInfo image_info = {
+   VkImageCreateInfo image_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
       .pNext = &image_wsi_info,
       .flags = 0,
@@ -577,6 +577,10 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
       .pQueueFamilyIndices = pCreateInfo->pQueueFamilyIndices,
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
    };
+   if (pCreateInfo->flags & VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR) {
+      image_info.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT |
+                          VK_IMAGE_CREATE_EXTENDED_USAGE_BIT_KHR;
+   }
    result = wsi->CreateImage(chain->device, &image_info,
                              &chain->alloc, &image->image);
    if (result != VK_SUCCESS)
