@@ -553,10 +553,6 @@ pan_emit_tls(const struct panfrost_device *dev,
                         unsigned shift =
                                 panfrost_get_stack_shift(info->tls.size);
 
-                        /* TODO: Why do we need to make the stack bigger than other platforms? */
-	                if (dev->quirks & MIDGARD_SFBD)
-                                shift = MAX2(shift, 512);
-
                         cfg.tls_size = shift;
                         cfg.tls_base_pointer = info->tls.ptr;
                 }
