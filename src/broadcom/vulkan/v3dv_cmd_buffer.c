@@ -1504,10 +1504,26 @@ cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_X(job->device, framebuffer_compute_internal_bpp_msaa)
          (framebuffer, subpass, &internal_bpp, &msaa);
 
+      /* From the Vulkan spec:
+       *
+       *    "If the render pass uses multiview, then layers must be one and
+       *     each attachment requires a number of layers that is greater than
+       *     the maximum bit index set in the view mask in the subpasses in
+       *     which it is used."
+       *
+       * So when multiview is enabled, we take the number of layers from the
+       * last bit set in the view mask.
+       */
+      uint32_t layers = framebuffer->layers;
+      if (subpass->view_mask != 0) {
+         assert(framebuffer->layers == 1);
+         layers = util_last_bit(subpass->view_mask);
+      }
+
       v3dv_job_start_frame(job,
                            framebuffer->width,
                            framebuffer->height,
-                           framebuffer->layers,
+                           layers,
                            true,
                            subpass->color_count,
                            internal_bpp,

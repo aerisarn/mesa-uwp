@@ -506,10 +506,23 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
        * is only for sanityzing the shader and it only affects the specific case
        * of secondary command buffers without framebuffer info available it
        * might not be worth the trouble.
+       *
+       * With multiview the number of layers is dictated by the view mask
+       * and not by the framebuffer layers. We do set the job's frame tiling
+       * information correctly from the view mask in that case, however,
+       * secondary command buffers may not have valid frame tiling data,
+       * so when multiview is enabled, we always set the number of layers
+       * from the subpass view mask.
        */
       case QUNIFORM_FB_LAYERS: {
+         const struct v3dv_cmd_buffer_state *state = &job->cmd_buffer->state;
+         const uint32_t view_mask =
+            state->pass->subpasses[state->subpass_idx].view_mask;
+
          uint32_t num_layers;
-         if (job->frame_tiling.layers != 0) {
+         if (view_mask != 0) {
+            num_layers = util_last_bit(view_mask);
+         } else if (job->frame_tiling.layers != 0) {
             num_layers = job->frame_tiling.layers;
          } else if (cmd_buffer->state.framebuffer) {
             num_layers = cmd_buffer->state.framebuffer->layers;

@@ -764,7 +764,8 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
 
    const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
 
-   const uint32_t fb_layers = framebuffer->layers;
+   const uint32_t fb_layers = job->frame_tiling.layers;
+
    v3dv_cl_ensure_space_with_branch(&job->rcl, 200 +
                                     MAX2(fb_layers, 1) * 256 *
                                     cl_packet_length(SUPERTILE_COORDINATES));
@@ -948,8 +949,10 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
          TILE_ALLOCATION_BLOCK_SIZE_64B;
    }
 
-   for (int layer = 0; layer < MAX2(1, fb_layers); layer++)
-      cmd_buffer_emit_render_pass_layer_rcl(cmd_buffer, layer);
+   /* FIXME: skip layers not in the view mask */
+   for (int layer = 0; layer < MAX2(1, fb_layers); layer++) {
+         cmd_buffer_emit_render_pass_layer_rcl(cmd_buffer, layer);
+   }
 
    cl_emit(rcl, END_OF_RENDERING, end);
 }
