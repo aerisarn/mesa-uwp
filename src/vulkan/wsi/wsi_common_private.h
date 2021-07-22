@@ -26,6 +26,24 @@
 #include "wsi_common.h"
 #include "vulkan/runtime/vk_object.h"
 
+struct wsi_image;
+
+struct wsi_image_info {
+   VkImageCreateInfo create;
+   struct wsi_image_create_info wsi;
+   VkExternalMemoryImageCreateInfo ext_mem;
+   VkImageFormatListCreateInfoKHR format_list;
+   VkImageDrmFormatModifierListCreateInfoEXT drm_mod_list;
+
+   /* Not really part of VkImageCreateInfo but needed to figure out the
+    * number of planes we need to bind.
+    */
+   uint32_t modifier_prop_count;
+   struct VkDrmFormatModifierPropertiesEXT *modifier_props;
+
+   uint8_t *(*alloc_shm)(struct wsi_image *image, unsigned size);
+};
+
 struct wsi_image {
    VkImage image;
    VkDeviceMemory memory;
@@ -98,6 +116,15 @@ wsi_swapchain_get_present_mode(struct wsi_device *wsi,
 void wsi_swapchain_finish(struct wsi_swapchain *chain);
 
 VkResult
+wsi_configure_native_image(const struct wsi_swapchain *chain,
+                           const VkSwapchainCreateInfoKHR *pCreateInfo,
+                           uint32_t num_modifier_lists,
+                           const uint32_t *num_modifiers,
+                           const uint64_t *const *modifiers,
+                           uint8_t *(alloc_shm)(struct wsi_image *image,
+                                                unsigned size),
+                           struct wsi_image_info *info);
+VkResult
 wsi_create_native_image(const struct wsi_swapchain *chain,
                         const VkSwapchainCreateInfoKHR *pCreateInfo,
                         uint32_t num_modifier_lists,
@@ -112,6 +139,14 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
                        bool use_modifier,
                        struct wsi_image *image);
 
+VkResult
+wsi_configure_image(const struct wsi_swapchain *chain,
+                    const VkSwapchainCreateInfoKHR *pCreateInfo,
+                    VkExternalMemoryHandleTypeFlags handle_types,
+                    struct wsi_image_info *info);
+void
+wsi_destroy_image_info(const struct wsi_swapchain *chain,
+                       struct wsi_image_info *info);
 void
 wsi_destroy_image(const struct wsi_swapchain *chain,
                   struct wsi_image *image);

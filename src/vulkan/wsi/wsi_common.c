@@ -353,6 +353,109 @@ wsi_swapchain_finish(struct wsi_swapchain *chain)
    vk_object_base_finish(&chain->base);
 }
 
+VkResult
+wsi_configure_image(const struct wsi_swapchain *chain,
+                    const VkSwapchainCreateInfoKHR *pCreateInfo,
+                    VkExternalMemoryHandleTypeFlags handle_types,
+                    struct wsi_image_info *info)
+{
+   memset(info, 0, sizeof(*info));
+
+   uint32_t *queue_family_indices =
+      vk_alloc(&chain->alloc,
+               sizeof(*queue_family_indices) *
+               pCreateInfo->queueFamilyIndexCount,
+               8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!queue_family_indices)
+      goto err_oom;
+   for (uint32_t i = 0; i < pCreateInfo->queueFamilyIndexCount; i++)
+      queue_family_indices[i] = pCreateInfo->pQueueFamilyIndices[i];
+
+   info->create = (VkImageCreateInfo) {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .flags = 0,
+      .imageType = VK_IMAGE_TYPE_2D,
+      .format = pCreateInfo->imageFormat,
+      .extent = {
+         .width = pCreateInfo->imageExtent.width,
+         .height = pCreateInfo->imageExtent.height,
+         .depth = 1,
+      },
+      .mipLevels = 1,
+      .arrayLayers = 1,
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .tiling = VK_IMAGE_TILING_OPTIMAL,
+      .usage = pCreateInfo->imageUsage,
+      .sharingMode = pCreateInfo->imageSharingMode,
+      .queueFamilyIndexCount = pCreateInfo->queueFamilyIndexCount,
+      .pQueueFamilyIndices = queue_family_indices,
+      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+   };
+
+   if (handle_types != 0) {
+      info->ext_mem = (VkExternalMemoryImageCreateInfo) {
+         .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+         .handleTypes = handle_types,
+      };
+      __vk_append_struct(&info->create, &info->ext_mem);
+   }
+
+   info->wsi = (struct wsi_image_create_info) {
+      .sType = VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
+      .scanout = true,
+   };
+   __vk_append_struct(&info->create, &info->wsi);
+
+   if (pCreateInfo->flags & VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR) {
+      info->create.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT |
+                            VK_IMAGE_CREATE_EXTENDED_USAGE_BIT_KHR;
+
+      const VkImageFormatListCreateInfoKHR *format_list_in =
+         vk_find_struct_const(pCreateInfo->pNext,
+                              IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
+
+      assume(format_list_in && format_list_in->viewFormatCount > 0);
+
+      const uint32_t view_format_count = format_list_in->viewFormatCount;
+      VkFormat *view_formats =
+         vk_alloc(&chain->alloc, sizeof(VkFormat) * view_format_count,
+                  8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (!view_formats)
+         goto err_oom;
+
+      ASSERTED bool format_found = false;
+      for (uint32_t i = 0; i < format_list_in->viewFormatCount; i++) {
+         if (pCreateInfo->imageFormat == format_list_in->pViewFormats[i])
+            format_found = true;
+         view_formats[i] = format_list_in->pViewFormats[i];
+      }
+      assert(format_found);
+
+      info->format_list = (VkImageFormatListCreateInfoKHR) {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR,
+         .viewFormatCount = view_format_count,
+         .pViewFormats = view_formats,
+      };
+      __vk_append_struct(&info->create, &info->format_list);
+   }
+
+   return VK_SUCCESS;
+
+err_oom:
+   wsi_destroy_image_info(chain, info);
+   return VK_ERROR_OUT_OF_HOST_MEMORY;
+}
+
+void
+wsi_destroy_image_info(const struct wsi_swapchain *chain,
+                       struct wsi_image_info *info)
+{
+   vk_free(&chain->alloc, (void *)info->create.pQueueFamilyIndices);
+   vk_free(&chain->alloc, (void *)info->format_list.pViewFormats);
+   vk_free(&chain->alloc, (void *)info->drm_mod_list.pDrmFormatModifiers);
+   vk_free(&chain->alloc, info->modifier_props);
+}
+
 void
 wsi_destroy_image(const struct wsi_swapchain *chain,
                   struct wsi_image *image)
