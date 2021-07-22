@@ -53,6 +53,19 @@ struct vk_image {
    /* VK_KHR_external_memory */
    VkExternalMemoryHandleTypeFlags external_handle_types;
 
+#ifndef _WIN32
+   /* VK_EXT_drm_format_modifier
+    *
+    * Initialized by vk_image_create/init() to DRM_FORMAT_MOD_INVALID.  It's
+    * the job of the driver to parse the VK_EXT_drm_format_modifier extension
+    * structs and choose the actual modifier.
+    *
+    * Must be DRM_FORMAT_MOD_INVALID unless tiling is
+    * VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT.
+    */
+   uint64_t drm_format_mod;
+#endif
+
 #ifdef ANDROID
    /* VK_ANDROID_external_memory_android_hardware_buffer */
    uint64_t android_external_format;

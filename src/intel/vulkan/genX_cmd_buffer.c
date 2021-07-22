@@ -1184,7 +1184,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
           final_layout != VK_IMAGE_LAYOUT_PREINITIALIZED);
    const struct isl_drm_modifier_info *isl_mod_info =
       image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT
-      ? isl_drm_modifier_get_info(image->drm_format_mod)
+      ? isl_drm_modifier_get_info(image->vk.drm_format_mod)
       : NULL;
 
    const bool src_queue_external =

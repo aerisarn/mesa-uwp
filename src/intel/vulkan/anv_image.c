@@ -71,7 +71,7 @@ image_aspect_to_binding(struct anv_image *image, VkImageAspectFlags aspect)
       /* We don't advertise DISJOINT for modifiers with aux, and therefore we
        * don't handle queries of the modifier's "aux plane" here.
        */
-      assert(!isl_drm_modifier_has_aux(image->drm_format_mod));
+      assert(!isl_drm_modifier_has_aux(image->vk.drm_format_mod));
 
       plane = aspect - VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT;
    } else {
@@ -482,7 +482,7 @@ add_aux_state_tracking_buffer(struct anv_device *device,
    enum anv_image_memory_binding binding =
       ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane;
 
-   if (image->drm_format_mod != DRM_FORMAT_MOD_INVALID)
+   if (image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID)
        binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
 
    /* We believe that 256B alignment may be sufficient, but we choose 4K due to
@@ -687,8 +687,8 @@ add_aux_surface_if_supported(struct anv_device *device,
          enum anv_image_memory_binding binding =
             ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane;
 
-         if (image->drm_format_mod != DRM_FORMAT_MOD_INVALID &&
-             !isl_drm_modifier_has_aux(image->drm_format_mod))
+         if (image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID &&
+             !isl_drm_modifier_has_aux(image->vk.drm_format_mod))
             binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
 
          result = add_surface(device, image, &image->planes[plane].aux_surface,
@@ -897,8 +897,8 @@ check_memory_bindings(const struct anv_device *device,
       if (anv_surface_is_valid(&plane->aux_surface)) {
          enum anv_image_memory_binding binding = primary_binding;
 
-         if (image->drm_format_mod != DRM_FORMAT_MOD_INVALID &&
-             !isl_drm_modifier_has_aux(image->drm_format_mod))
+         if (image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID &&
+             !isl_drm_modifier_has_aux(image->vk.drm_format_mod))
             binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
 
          /* Display hardware requires that the aux surface start at
@@ -915,7 +915,7 @@ check_memory_bindings(const struct anv_device *device,
       if (plane->fast_clear_memory_range.size > 0) {
          enum anv_image_memory_binding binding = primary_binding;
 
-         if (image->drm_format_mod != DRM_FORMAT_MOD_INVALID)
+         if (image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID)
             binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
 
          /* We believe that 256B alignment may be sufficient, but we choose 4K
@@ -957,14 +957,14 @@ check_drm_format_mod(const struct anv_device *device,
                      const struct anv_image *image)
 {
    /* Image must have a modifier if and only if it has modifier tiling. */
-   assert((image->drm_format_mod != DRM_FORMAT_MOD_INVALID) ==
+   assert((image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID) ==
           (image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT));
 
-   if (image->drm_format_mod == DRM_FORMAT_MOD_INVALID)
+   if (image->vk.drm_format_mod == DRM_FORMAT_MOD_INVALID)
       return VK_SUCCESS;
 
    const struct isl_drm_modifier_info *isl_mod_info =
-      isl_drm_modifier_get_info(image->drm_format_mod);
+      isl_drm_modifier_get_info(image->vk.drm_format_mod);
 
    /* Driver must support the modifier. */
    assert(isl_drm_modifier_get_score(&device->info, isl_mod_info->modifier));
@@ -1291,11 +1291,11 @@ anv_image_create(VkDevice _device,
       }
 
       assert(isl_mod_info);
+      assert(image->vk.drm_format_mod == DRM_FORMAT_MOD_INVALID);
+      image->vk.drm_format_mod = isl_mod_info->modifier;
    }
 
    image->needs_set_tiling = wsi_info && wsi_info->scanout;
-   image->drm_format_mod = isl_mod_info ? isl_mod_info->modifier :
-                                          DRM_FORMAT_MOD_INVALID;
 
    for (int i = 0; i < ANV_IMAGE_MEMORY_BINDING_END; ++i) {
       image->bindings[i] = (struct anv_image_binding) {
@@ -1406,10 +1406,10 @@ anv_image_from_swapchain(VkDevice device,
    VkImageDrmFormatModifierListCreateInfoEXT local_modifier_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT,
       .drmFormatModifierCount = 1,
-      .pDrmFormatModifiers = &swapchain_image->drm_format_mod,
+      .pDrmFormatModifiers = &swapchain_image->vk.drm_format_mod,
    };
 
-   if (swapchain_image->drm_format_mod != DRM_FORMAT_MOD_INVALID)
+   if (swapchain_image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID)
       __vk_append_struct(&local_create_info, &local_modifier_info);
 
    assert(swapchain_image->vk.image_type == local_create_info.imageType);
@@ -1846,7 +1846,7 @@ void anv_GetImageSubresourceLayout(
          unreachable("bad VkImageAspectFlags");
       }
 
-      if (mem_plane == 1 && isl_drm_modifier_has_aux(image->drm_format_mod)) {
+      if (mem_plane == 1 && isl_drm_modifier_has_aux(image->vk.drm_format_mod)) {
          assert(image->n_planes == 1);
          /* If the memory binding differs between primary and aux, then the
           * returned offset will be incorrect.
@@ -1885,21 +1885,6 @@ void anv_GetImageSubresourceLayout(
    } else {
       layout->size = surface->memory_range.size;
    }
-}
-
-VkResult anv_GetImageDrmFormatModifierPropertiesEXT(
-    VkDevice                                    device,
-    VkImage                                     _image,
-    VkImageDrmFormatModifierPropertiesEXT*      pProperties)
-{
-   ANV_FROM_HANDLE(anv_image, image, _image);
-
-   assert(pProperties->sType ==
-          VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT);
-
-   pProperties->drmFormatModifier = image->drm_format_mod;
-
-   return VK_SUCCESS;
 }
 
 /**
@@ -1962,7 +1947,7 @@ anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
       assert(image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT);
 
       enum isl_aux_state aux_state =
-         isl_drm_modifier_get_default_aux_state(image->drm_format_mod);
+         isl_drm_modifier_get_default_aux_state(image->vk.drm_format_mod);
 
       switch (aux_state) {
       default:

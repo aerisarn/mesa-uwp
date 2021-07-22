@@ -25,7 +25,12 @@
 
 #include <vulkan/vulkan_android.h>
 
+#ifndef _WIN32
+#include <drm-uapi/drm_fourcc.h>
+#endif
+
 #include "vk_alloc.h"
+#include "vk_common_entrypoints.h"
 #include "vk_device.h"
 #include "vk_format.h"
 #include "vk_util.h"
@@ -95,6 +100,10 @@ vk_image_init(struct vk_device *device,
    else
       image->external_handle_types = 0;
 
+#ifndef _WIN32
+   image->drm_format_mod = ((1ULL << 56) - 1) /* DRM_FORMAT_MOD_INVALID */;
+#endif
+
 #ifdef ANDROID
    const VkExternalFormatANDROID *ext_format =
       vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_FORMAT_ANDROID);
@@ -139,6 +148,24 @@ vk_image_destroy(struct vk_device *device,
 {
    vk_object_free(device, alloc, image);
 }
+
+#ifndef _WIN32
+VKAPI_ATTR VkResult VKAPI_CALL
+vk_common_GetImageDrmFormatModifierPropertiesEXT(UNUSED VkDevice device,
+                                                 VkImage _image,
+                                                 VkImageDrmFormatModifierPropertiesEXT *pProperties)
+{
+   VK_FROM_HANDLE(vk_image, image, _image);
+
+   assert(pProperties->sType ==
+          VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT);
+
+   assert(image->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
+   pProperties->drmFormatModifier = image->drm_format_mod;
+
+   return VK_SUCCESS;
+}
+#endif
 
 void
 vk_image_set_format(struct vk_image *image, VkFormat format)

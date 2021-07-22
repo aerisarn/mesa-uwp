@@ -3962,12 +3962,6 @@ struct anv_image {
    bool needs_set_tiling;
 
    /**
-    * Must be DRM_FORMAT_MOD_INVALID unless tiling is
-    * VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT.
-    */
-   uint64_t drm_format_mod;
-
-   /**
     * Image has multi-planar format and was created with
     * VK_IMAGE_CREATE_DISJOINT_BIT.
     */
