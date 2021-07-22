@@ -4076,7 +4076,7 @@ VkResult anv_AllocateMemory(
       /* Some legacy (non-modifiers) consumers need the tiling to be set on
        * the BO.  In this case, we have a dedicated allocation.
        */
-      if (image->needs_set_tiling) {
+      if (image->vk.wsi_legacy_scanout) {
          const uint32_t i915_tiling =
             isl_tiling_to_i915_tiling(image->planes[0].primary_surface.isl.tiling);
          int ret = anv_gem_set_tiling(device, mem->bo->gem_handle,

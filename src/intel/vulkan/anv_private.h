@@ -3952,15 +3952,6 @@ struct anv_image {
 
    uint32_t n_planes;
 
-   /** True if this is needs to be bound to an appropriately tiled BO.
-    *
-    * When not using modifiers, consumers such as X11, Wayland, and KMS need
-    * the tiling passed via I915_GEM_SET_TILING.  When exporting these buffers
-    * we require a dedicated allocation so that we can know to allocate a
-    * tiled buffer.
-    */
-   bool needs_set_tiling;
-
    /**
     * Image has multi-planar format and was created with
     * VK_IMAGE_CREATE_DISJOINT_BIT.

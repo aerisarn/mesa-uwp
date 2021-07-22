@@ -1272,9 +1272,6 @@ anv_image_create(VkDevice _device,
    image->vk.stencil_usage =
       anv_image_create_usage(pCreateInfo, image->vk.stencil_usage);
 
-   const struct wsi_image_create_info *wsi_info =
-      vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
-
    if (pCreateInfo->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
       mod_explicit_info =
          vk_find_struct_const(pCreateInfo->pNext,
@@ -1294,8 +1291,6 @@ anv_image_create(VkDevice _device,
       assert(image->vk.drm_format_mod == DRM_FORMAT_MOD_INVALID);
       image->vk.drm_format_mod = isl_mod_info->modifier;
    }
-
-   image->needs_set_tiling = wsi_info && wsi_info->scanout;
 
    for (int i = 0; i < ANV_IMAGE_MEMORY_BINDING_END; ++i) {
       image->bindings[i] = (struct anv_image_binding) {
@@ -1323,7 +1318,7 @@ anv_image_create(VkDevice _device,
 
    const isl_tiling_flags_t isl_tiling_flags =
       choose_isl_tiling_flags(&device->info, create_info, isl_mod_info,
-                              image->needs_set_tiling);
+                              image->vk.wsi_legacy_scanout);
 
    const VkImageFormatListCreateInfoKHR *fmt_list =
       vk_find_struct_const(pCreateInfo->pNext,
@@ -1612,7 +1607,7 @@ void anv_GetImageMemoryRequirements2(
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
          VkMemoryDedicatedRequirements *requirements = (void *)ext;
-         if (image->needs_set_tiling || image->from_ahb) {
+         if (image->vk.wsi_legacy_scanout || image->from_ahb) {
             /* If we need to set the tiling for external consumers, we need a
              * dedicated allocation.
              *
