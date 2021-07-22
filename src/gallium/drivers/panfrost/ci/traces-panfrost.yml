@@ -45,7 +45,7 @@ traces:
   - path: gputest/furmark.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 2bde9efdddd92c28d29f744e36a226e9
+        checksum: 6540f71b1c051ba82af2a25b93065f34
   - path: gputest/triangle.trace
     expectations:
       - device: gl-panfrost-t860
@@ -55,7 +55,7 @@ traces:
   - path: humus/Portals.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: f83da726bff354684a576effa74ef681
+        checksum: ad04db74ea70b7772719080f8a4c499b
       - device: gl-panfrost-t760
         # Wrong rendering, many elements are missing
         checksum: 67db7302b28cb8e3e217cc79b672af79
@@ -213,7 +213,7 @@ traces:
   - path: humus/AmbientAperture.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 20492edd94ea94ba73013a4ee14285b7
+        checksum: e4c0b930ef99f14305e1ade7f1779c09
   - path: humus/CelShading.trace
     expectations:
       - device: gl-panfrost-t860
