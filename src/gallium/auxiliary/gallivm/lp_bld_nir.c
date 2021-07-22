@@ -704,7 +704,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = fcmp32(bld_base, PIPE_FUNC_EQUAL, src_bit_size[0], src);
       break;
    case nir_op_fexp2:
-      result = lp_build_exp2(&bld_base->base, src[0]);
+      result = lp_build_exp2(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
       break;
    case nir_op_ffloor:
       result = lp_build_floor(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
@@ -734,7 +734,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = lp_build_isfinite(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
       break;
    case nir_op_flog2:
-      result = lp_build_log2_safe(&bld_base->base, src[0]);
+      result = lp_build_log2_safe(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
       break;
    case nir_op_flt:
    case nir_op_flt32:
