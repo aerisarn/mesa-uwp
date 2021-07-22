@@ -58,4 +58,14 @@ bit_builder(void *memctx)
         return b;
 }
 
+/* Helper to compare for logical equality of instructions. Need to skip over
+ * the link, guaranteed to be first. After that we can compare raw data. */
+static inline bool
+bit_instr_equal(bi_instr *A, bi_instr *B)
+{
+   return memcmp((uint8_t *) A    + sizeof(struct list_head),
+                 (uint8_t *) B    + sizeof(struct list_head),
+                 sizeof(bi_instr) - sizeof(struct list_head)) == 0;
+}
+
 #endif
