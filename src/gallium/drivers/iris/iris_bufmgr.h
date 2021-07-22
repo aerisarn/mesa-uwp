@@ -123,6 +123,7 @@ iris_domain_is_read_only(enum iris_domain access)
 }
 
 enum iris_mmap_mode {
+   IRIS_MMAP_NONE, /**< Cannot be mapped */
    IRIS_MMAP_UC, /**< Fully uncached memory map */
    IRIS_MMAP_WC, /**< Write-combining map with no caching of reads */
    IRIS_MMAP_WB, /**< Write-back mapping with CPU caches enabled */

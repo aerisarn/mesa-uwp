@@ -801,7 +801,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    bo->global_name = handle;
    bo->reusable = false;
    bo->imported = true;
-   bo->mmap_mode = IRIS_MMAP_WC;
+   bo->mmap_mode = IRIS_MMAP_NONE;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->address = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
@@ -1051,6 +1051,7 @@ iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo)
       [IRIS_MMAP_WC]    = I915_MMAP_OFFSET_WC,
       [IRIS_MMAP_WB]    = I915_MMAP_OFFSET_WB,
    };
+   assert(bo->mmap_mode != IRIS_MMAP_NONE);
    assert(bo->mmap_mode < ARRAY_SIZE(mmap_offset_for_mode));
    mmap_arg.flags = mmap_offset_for_mode[bo->mmap_mode];
 
@@ -1079,6 +1080,10 @@ iris_bo_map(struct pipe_debug_callback *dbg,
             struct iris_bo *bo, unsigned flags)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
+
+   assert(bo->mmap_mode != IRIS_MMAP_NONE);
+   if (bo->mmap_mode == IRIS_MMAP_NONE)
+      return NULL;
 
    if (!bo->map) {
       DBG("iris_bo_map: %d (%s)\n", bo->gem_handle, bo->name);
@@ -1306,7 +1311,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
    bo->name = "prime";
    bo->reusable = false;
    bo->imported = true;
-   bo->mmap_mode = IRIS_MMAP_WC;
+   bo->mmap_mode = IRIS_MMAP_NONE;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
    /* From the Bspec, Memory Compression - Gfx12:
