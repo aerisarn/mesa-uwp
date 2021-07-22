@@ -398,6 +398,13 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_subpass *prev_subpass = &state->pass->subpasses[state->subpass_idx];
    struct v3dv_subpass *subpass = &state->pass->subpasses[subpass_idx];
 
+   /* Don't merge if the subpasses have different view masks, since in that
+    * case the framebuffer setup is different and we need to emit different
+    * RCLs.
+    */
+   if (subpass->view_mask != prev_subpass->view_mask)
+      return false;
+
    /* Because the list of subpass attachments can include VK_ATTACHMENT_UNUSED,
     * we need to check that for each subpass all its used attachments are
     * used by the other subpass.
