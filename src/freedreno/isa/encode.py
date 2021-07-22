@@ -358,6 +358,14 @@ uint64_t_to_bitmask(uint64_t val)
     return mask;
 }
 
+static inline void
+store_instruction(BITSET_WORD *dst, bitmask_t instr)
+{
+%   for i in range(0, int(isa.bitsize / 32)):
+    *(dst + ${i}) = instr.bitset[${i}];
+%   endfor
+}
+
 /**
  * Opaque type from the PoV of generated code, but allows state to be passed
  * thru to the hand written helpers used by the generated code.
