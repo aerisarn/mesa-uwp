@@ -2052,7 +2052,7 @@ iris_transfer_map(struct pipe_context *ctx,
     * other devices that I915_GEM_MMAP cannot work with.
     */
    if ((usage & PIPE_MAP_DIRECTLY) &&
-       (surf->tiling != ISL_TILING_LINEAR || res->bo->imported))
+       (surf->tiling != ISL_TILING_LINEAR || iris_bo_is_imported(res->bo)))
       return NULL;
 
    bool map_would_stall = false;
@@ -2095,7 +2095,7 @@ iris_transfer_map(struct pipe_context *ctx,
    if (usage & PIPE_MAP_WRITE)
       util_range_add(&res->base.b, &res->valid_buffer_range, box->x, box->x + box->width);
 
-   if (res->bo->mmap_mode != IRIS_MMAP_NONE) {
+   if (iris_bo_mmap_mode(res->bo) != IRIS_MMAP_NONE) {
       /* GPU copies are not useful for buffer reads.  Instead of stalling to
        * read from the original buffer, we'd simply copy it to a temporary...
        * then stall (a bit longer) to read from that buffer.
@@ -2119,7 +2119,8 @@ iris_transfer_map(struct pipe_context *ctx,
        */
       if (!map_would_stall &&
           !isl_aux_usage_has_compression(res->aux.usage) &&
-          !((usage & PIPE_MAP_READ) && res->bo->mmap_mode != IRIS_MMAP_WB)) {
+          !((usage & PIPE_MAP_READ) &&
+            iris_bo_mmap_mode(res->bo) != IRIS_MMAP_WB)) {
          usage |= PIPE_MAP_DIRECTLY;
       }
    }
@@ -2273,7 +2274,7 @@ iris_texture_subdata(struct pipe_context *ctx,
        surf->tiling == ISL_TILING_4 ||
        isl_aux_usage_has_compression(res->aux.usage) ||
        resource_is_busy(ice, res) ||
-       res->bo->mmap_mode == IRIS_MMAP_NONE) {
+       iris_bo_mmap_mode(res->bo) == IRIS_MMAP_NONE) {
       return u_default_texture_subdata(ctx, resource, level, usage, box,
                                        data, stride, layer_stride);
    }

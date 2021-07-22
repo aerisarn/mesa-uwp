@@ -359,6 +359,24 @@ iris_bo_is_external(const struct iris_bo *bo)
    return bo->exported || bo->imported;
 }
 
+static inline bool
+iris_bo_is_imported(const struct iris_bo *bo)
+{
+   return bo->imported;
+}
+
+static inline bool
+iris_bo_is_exported(const struct iris_bo *bo)
+{
+   return bo->exported;
+}
+
+static inline enum iris_mmap_mode
+iris_bo_mmap_mode(const struct iris_bo *bo)
+{
+   return bo->mmap_mode;
+}
+
 /**
  * Mark a buffer as being shared with other external clients.
  */
