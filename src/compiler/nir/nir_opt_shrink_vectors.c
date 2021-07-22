@@ -49,6 +49,12 @@ shrink_dest_to_read_mask(nir_ssa_def *def)
    if (def->num_components == 1)
       return false;
 
+   /* don't remove any channels if used by an intrinsic */
+   nir_foreach_use(use_src, def) {
+      if (use_src->parent_instr->type == nir_instr_type_intrinsic)
+         return false;
+   }
+
    unsigned mask = nir_ssa_def_components_read(def);
    int last_bit = util_last_bit(mask);
 
@@ -82,6 +88,12 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
       case nir_op_vec4:
       case nir_op_vec3:
       case nir_op_vec2: {
+         /* don't remove any channels if used by an intrinsic */
+         nir_foreach_use(use_src, def) {
+            if (use_src->parent_instr->type == nir_instr_type_intrinsic)
+               return false;
+         }
+
          unsigned mask = nir_ssa_def_components_read(def);
 
          /* If nothing was read, leave it up to DCE. */
