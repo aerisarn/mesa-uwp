@@ -1810,7 +1810,6 @@ isl_surf_init_s(const struct isl_device *dev,
                                               tile_info.logical_extent_el.h);
          array_slices = isl_align_div(phys_total_el.a,
                                       tile_info.logical_extent_el.a);
-         assert(array_pitch_el_rows % tile_info.logical_extent_el.h == 0);
       } else {
          assert(phys_total_el.d == 1 && phys_total_el.a == 1);
          array_pitch_tl_rows = 0;
