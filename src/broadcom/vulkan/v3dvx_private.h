@@ -125,13 +125,6 @@ v3dX(get_hw_clear_color)(const VkClearColorValue *color,
                          uint32_t internal_size,
                          uint32_t *hw_color);
 
-void
-v3dX(cmd_buffer_render_pass_setup_render_target)(struct v3dv_cmd_buffer *cmd_buffer,
-                                                 int rt,
-                                                 uint32_t *rt_bpp,
-                                                 uint32_t *rt_type,
-                                                 uint32_t *rt_clamp);
-
 /* Used at v3dv_device */
 
 void
@@ -325,3 +318,7 @@ uint32_t v3dX(max_descriptor_bo_size)(void);
 uint32_t v3dX(combined_image_sampler_texture_state_offset)(uint8_t plane);
 
 uint32_t v3dX(combined_image_sampler_sampler_state_offset)(uint8_t plane);
+
+uint32_t
+v3dX(clamp_for_format_and_type)(uint32_t rt_type,
+                                VkFormat vk_format);

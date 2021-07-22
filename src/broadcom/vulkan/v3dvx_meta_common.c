@@ -26,6 +26,7 @@
 
 #include "broadcom/common/v3d_macros.h"
 #include "broadcom/common/v3d_tfu.h"
+#include "broadcom/common/v3d_util.h"
 #include "broadcom/cle/v3dx_pack.h"
 #include "broadcom/compiler/v3d_compiler.h"
 
@@ -150,7 +151,16 @@ emit_rcl_prologue(struct v3dv_job *job,
    }
 #endif
 #if V3D_VERSION >= 71
-   unreachable("Hardware generation 71 not supported yet.");
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART1, rt) {
+      rt.internal_bpp = tiling->internal_bpp;
+      rt.internal_type_and_clamping = v3dX(clamp_for_format_and_type)(fb->internal_type,
+                                                                      fb->vk_format);
+      rt.stride =
+         v3d_compute_rt_row_row_stride_128_bits(tiling->tile_width,
+                                                v3d_internal_bpp_words(rt.internal_bpp));
+      rt.base_address = 0;
+      rt.render_target_number = 0;
+   }
 #endif
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
