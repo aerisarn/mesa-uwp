@@ -1788,6 +1788,187 @@ try_pbo_upload(struct gl_context *ctx, GLuint dims,
    return success;
 }
 
+static bool
+try_pbo_download(struct st_context *st,
+                   struct gl_texture_image *texImage,
+                   enum pipe_format src_format, enum pipe_format dst_format,
+                   GLint xoffset, GLint yoffset, GLint zoffset,
+                   GLint width, GLint height, GLint depth,
+                   const struct gl_pixelstore_attrib *pack, void *pixels)
+{
+   struct st_texture_image *stImage = st_texture_image(texImage);
+   struct pipe_context *pipe = st->pipe;
+   struct pipe_screen *screen = pipe->screen;
+   struct pipe_resource *texture = stImage->pt;
+   struct cso_context *cso = st->cso_context;
+   const struct util_format_description *desc;
+   struct st_pbo_addresses addr;
+   struct pipe_framebuffer_state fb;
+   enum pipe_texture_target pipe_target;
+   GLenum gl_target = texImage->TexObject->Target;
+   GLuint dims;
+   bool success = false;
+
+   if (texture->nr_samples > 1)
+      return false;
+
+   /* GetTexImage only returns a single face for cubemaps. */
+   if (gl_target == GL_TEXTURE_CUBE_MAP) {
+      gl_target = GL_TEXTURE_2D;
+   }
+   if (gl_target == GL_TEXTURE_CUBE_MAP_ARRAY) {
+      gl_target = GL_TEXTURE_2D_ARRAY;
+   }
+   pipe_target = gl_target_to_pipe(gl_target);
+   dims = _mesa_get_texture_dimensions(gl_target);
+
+   /* From now on, we need the gallium representation of dimensions. */
+   if (gl_target == GL_TEXTURE_1D_ARRAY) {
+      depth = height;
+      height = 1;
+      zoffset = yoffset;
+      yoffset = 0;
+   }
+
+   if (depth != 1 && !st->pbo.layers)
+      return false;
+
+   if (!screen->is_format_supported(screen, dst_format, PIPE_BUFFER, 0, 0,
+                                    PIPE_BIND_SHADER_IMAGE) ||
+       util_format_is_compressed(src_format) ||
+       util_format_is_compressed(dst_format))
+      return false;
+
+   desc = util_format_description(dst_format);
+
+   /* Compute PBO addresses */
+   addr.bytes_per_pixel = desc->block.bits / 8;
+   addr.xoffset = xoffset;
+   addr.yoffset = yoffset;
+   addr.width = width;
+   addr.height = height;
+   addr.depth = depth;
+   if (!st_pbo_addresses_pixelstore(st, gl_target, dims == 3, pack, pixels, &addr))
+      return false;
+
+   cso_save_state(cso, (CSO_BIT_VERTEX_ELEMENTS |
+                        CSO_BIT_FRAMEBUFFER |
+                        CSO_BIT_VIEWPORT |
+                        CSO_BIT_BLEND |
+                        CSO_BIT_DEPTH_STENCIL_ALPHA |
+                        CSO_BIT_RASTERIZER |
+                        CSO_BIT_STREAM_OUTPUTS |
+                        (st->active_queries ? CSO_BIT_PAUSE_QUERIES : 0) |
+                        CSO_BIT_SAMPLE_MASK |
+                        CSO_BIT_MIN_SAMPLES |
+                        CSO_BIT_RENDER_CONDITION |
+                        CSO_BITS_ALL_SHADERS));
+
+   cso_set_sample_mask(cso, ~0);
+   cso_set_min_samples(cso, 1);
+   cso_set_render_condition(cso, NULL, FALSE, 0);
+
+   /* Set up the sampler_view */
+   {
+      struct pipe_sampler_view templ;
+      struct pipe_sampler_view *sampler_view;
+      struct pipe_sampler_state sampler = {0};
+      const struct pipe_sampler_state *samplers[1] = {&sampler};
+      unsigned level = texImage->TexObject->Attrib.MinLevel + texImage->Level;
+      unsigned max_layer = util_max_layer(texture, level);
+
+      u_sampler_view_default_template(&templ, texture, src_format);
+
+      templ.target = pipe_target;
+      templ.u.tex.first_level = level;
+      templ.u.tex.last_level = templ.u.tex.first_level;
+
+      zoffset += texImage->Face + texImage->TexObject->Attrib.MinLayer;
+      templ.u.tex.first_layer = MIN2(zoffset, max_layer);
+      templ.u.tex.last_layer = MIN2(zoffset + depth - 1, max_layer);
+
+      sampler_view = pipe->create_sampler_view(pipe, texture, &templ);
+      if (sampler_view == NULL)
+         goto fail;
+
+      pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, 0, &sampler_view);
+
+      pipe_sampler_view_reference(&sampler_view, NULL);
+
+      cso_set_samplers(cso, PIPE_SHADER_FRAGMENT, 1, samplers);
+   }
+
+   /* Set up destination image */
+   {
+      struct pipe_image_view image;
+
+      memset(&image, 0, sizeof(image));
+      image.resource = addr.buffer;
+      image.format = dst_format;
+      image.access = PIPE_IMAGE_ACCESS_WRITE;
+      image.shader_access = PIPE_IMAGE_ACCESS_WRITE;
+      image.u.buf.offset = addr.first_element * addr.bytes_per_pixel;
+      image.u.buf.size = (addr.last_element - addr.first_element + 1) *
+                         addr.bytes_per_pixel;
+
+      pipe->set_shader_images(pipe, PIPE_SHADER_FRAGMENT, 0, 1, 0, &image);
+   }
+
+   /* Set up no-attachment framebuffer */
+   memset(&fb, 0, sizeof(fb));
+   fb.width = texture->width0;
+   fb.height = texture->height0;
+   fb.layers = 1;
+   fb.samples = 1;
+   cso_set_framebuffer(cso, &fb);
+
+   /* Any blend state would do. Set this just to prevent drivers having
+    * blend == NULL.
+    */
+   cso_set_blend(cso, &st->pbo.upload_blend);
+
+   cso_set_viewport_dims(cso, fb.width, fb.height, FALSE);
+
+   {
+      struct pipe_depth_stencil_alpha_state dsa;
+      memset(&dsa, 0, sizeof(dsa));
+      cso_set_depth_stencil_alpha(cso, &dsa);
+   }
+
+   /* Set up the fragment shader */
+   {
+      void *fs = st_pbo_get_download_fs(st, pipe_target, src_format, dst_format, addr.depth != 1);
+      if (!fs)
+         goto fail;
+
+      cso_set_fragment_shader_handle(cso, fs);
+   }
+
+   success = st_pbo_draw(st, &addr, fb.width, fb.height);
+
+   /* Buffer written via shader images needs explicit synchronization. */
+   pipe->memory_barrier(pipe, PIPE_BARRIER_IMAGE | PIPE_BARRIER_TEXTURE | PIPE_BARRIER_FRAMEBUFFER);
+
+fail:
+   cso_restore_state(cso);
+
+   /* Unbind all because st/mesa won't do it if the current shader doesn't
+    * use them.
+    */
+   pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 0,
+                           st->state.num_sampler_views[PIPE_SHADER_FRAGMENT],
+                           NULL);
+   st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
+   pipe->set_shader_images(pipe, PIPE_SHADER_FRAGMENT, 0, 0, 1, NULL);
+
+   st->dirty |= ST_NEW_FS_CONSTANTS |
+                ST_NEW_FS_IMAGES |
+                ST_NEW_FS_SAMPLER_VIEWS |
+                ST_NEW_VERTEX_ARRAYS;
+
+   return success;
+}
+
 
 static void
 st_TexSubImage(struct gl_context *ctx, GLuint dims,
@@ -2331,13 +2512,6 @@ st_GetTexSubImage(struct gl_context * ctx,
       goto fallback;
    }
 
-   /* See if the texture format already matches the format and type,
-    * in which case the memcpy-based fast path will be used. */
-   if (_mesa_format_matches_format_and_type(texImage->TexFormat, format,
-                                            type, ctx->Pack.SwapBytes, NULL)) {
-      goto fallback;
-   }
-
    src_format = get_src_format(screen, stObj->surface_based ? stObj->surface_format : src->format, src);
    if (src_format == PIPE_FORMAT_NONE)
       goto fallback;
@@ -2350,6 +2524,21 @@ st_GetTexSubImage(struct gl_context * ctx,
    dst_format = get_dst_format(ctx, pipe_target, src_format, util_format_is_compressed(src->format),
                                format, type, bind);
    if (dst_format == PIPE_FORMAT_NONE)
+      goto fallback;
+
+   if (st->pbo.download_enabled && ctx->Pack.BufferObj) {
+      if (try_pbo_download(st, texImage,
+                           src_format, dst_format,
+                           xoffset, yoffset, zoffset,
+                           width, height, depth,
+                           &ctx->Pack, pixels))
+         return;
+   }
+
+   /* See if the texture format already matches the format and type,
+    * in which case the memcpy-based fast path will be used. */
+   if (_mesa_format_matches_format_and_type(texImage->TexFormat, format,
+                                            type, ctx->Pack.SwapBytes, NULL))
       goto fallback;
 
    dst = create_dst_texture(ctx, dst_format, pipe_target, width, height, depth, gl_target, bind);
