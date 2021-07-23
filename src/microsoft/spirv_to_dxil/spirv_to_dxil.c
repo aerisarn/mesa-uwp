@@ -125,6 +125,11 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
          NIR_PASS(progress, nir, nir_opt_undef);
          NIR_PASS(progress, nir, nir_opt_constant_folding);
          NIR_PASS(progress, nir, nir_opt_cse);
+         if (nir_opt_trivial_continues(nir)) {
+            progress = true;
+            NIR_PASS(progress, nir, nir_copy_prop);
+            NIR_PASS(progress, nir, nir_opt_dce);
+         }
          NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
          NIR_PASS(progress, nir, nir_opt_algebraic);
       } while (progress);
