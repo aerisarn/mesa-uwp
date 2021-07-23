@@ -965,6 +965,12 @@ static physreg_t
 find_best_gap(struct ra_file *file, unsigned file_size, unsigned size,
               unsigned align, bool is_source)
 {
+   /* This can happen if we create a very large merge set. Just bail out in that
+    * case.
+    */
+   if (size > file_size)
+      return (physreg_t) ~0;
+
    BITSET_WORD *available =
       is_source ? file->available_to_evict : file->available;
 
