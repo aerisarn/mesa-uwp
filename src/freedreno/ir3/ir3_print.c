@@ -250,7 +250,7 @@ print_reg_name(struct log_stream *stream, struct ir3_instruction *instr,
     * although it's more convenient for RA if it's a pointer.
     */
    if (reg->tied)
-      printf("(tied)");
+      mesa_log_stream_printf(stream, "(tied)");
 
    if (reg->flags & IR3_REG_SHARED)
       mesa_log_stream_printf(stream, "s");
