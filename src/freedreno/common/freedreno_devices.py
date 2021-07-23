@@ -269,6 +269,16 @@ add_gpus([
     ))
 
 add_gpus([
+        GPUId(680),
+    ], A6xxGPUInfo(
+        a6xx_gen2,
+        num_sp_cores = 4,
+        num_ccu = 4,
+        RB_UNKNOWN_8E04_blit = 0x04100000,
+        PC_POWER_CNTL = 3,
+    ))
+
+add_gpus([
         GPUId(650),
     ], A6xxGPUInfo(
         a6xx_gen3,
