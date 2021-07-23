@@ -325,6 +325,11 @@ enum quniform_contents {
          * out-of-bounds accesses into the tile state during binning.
          */
         QUNIFORM_FB_LAYERS,
+
+        /**
+         * Current value of gl_ViewIndex for Multiview rendering.
+         */
+        QUNIFORM_VIEW_INDEX,
 };
 
 static inline uint32_t v3d_unit_data_create(uint32_t unit, uint32_t value)
