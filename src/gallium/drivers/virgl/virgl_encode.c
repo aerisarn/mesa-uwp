@@ -1536,7 +1536,9 @@ void virgl_encode_get_memory_info(struct virgl_context *ctx, struct virgl_resour
 void virgl_encode_emit_string_marker(struct virgl_context *ctx,
                                      const char *message, int len)
 {
-    if (!len)
+   /* len is guaranteed to be non-negative but be defensive */
+   assert(len >= 0);
+   if (len <= 0)
       return;
 
    if (len > 4 * 0xffff) {
