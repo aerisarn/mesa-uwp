@@ -3061,6 +3061,27 @@ v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
 
       info->pool = pool;
       info->query = query;
+
+      /* From the Vulkan spec:
+       *
+       *   "If queries are used while executing a render pass instance that has
+       *    multiview enabled, the query uses N consecutive query indices in
+       *    the query pool (starting at query) where N is the number of bits set
+       *    in the view mask in the subpass the query is used in. How the
+       *    numerical results of the query are distributed among the queries is
+       *    implementation-dependent."
+       *
+       * In our case, only the first query is used but this means we still need
+       * to flag the other queries as available so we don't emit errors when
+       * the applications attempt to retrive values from them.
+       */
+      struct v3dv_render_pass *pass = cmd_buffer->state.pass;
+      if (!pass->multiview_enabled) {
+         info->count = 1;
+      } else {
+         struct v3dv_subpass *subpass = &pass->subpasses[state->subpass_idx];
+         info->count = util_bitcount(subpass->view_mask);
+      }
    } else {
       /* Otherwise, schedule the CPU job immediately */
       struct v3dv_job *job =
@@ -3071,6 +3092,10 @@ v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
 
       job->cpu.query_end.pool = pool;
       job->cpu.query_end.query = query;
+
+      /* Multiview queries cannot cross subpass boundaries */
+      job->cpu.query_end.count = 1;
+
       list_addtail(&job->list_link, &cmd_buffer->jobs);
    }
 
@@ -3249,7 +3274,8 @@ v3dv_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
    /* If this is called inside a render pass we need to finish the current
     * job here...
     */
-   if (cmd_buffer->state.pass)
+   struct v3dv_render_pass *pass = cmd_buffer->state.pass;
+   if (pass)
       v3dv_cmd_buffer_finish_job(cmd_buffer);
 
    struct v3dv_job *job =
@@ -3260,6 +3286,14 @@ v3dv_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
 
    job->cpu.query_timestamp.pool = query_pool;
    job->cpu.query_timestamp.query = query;
+
+   if (!pass || !pass->multiview_enabled) {
+      job->cpu.query_timestamp.count = 1;
+   } else {
+      struct v3dv_subpass *subpass =
+         &pass->subpasses[cmd_buffer->state.subpass_idx];
+      job->cpu.query_timestamp.count = util_bitcount(subpass->view_mask);
+   }
 
    list_addtail(&job->list_link, &cmd_buffer->jobs);
    cmd_buffer->state.job = NULL;

@@ -198,9 +198,11 @@ static VkResult
 handle_end_query_cpu_job(struct v3dv_job *job)
 {
    struct v3dv_end_query_cpu_job_info *info = &job->cpu.query_end;
-   assert(info->query < info->pool->query_count);
-   struct v3dv_query *query = &info->pool->queries[info->query];
-   query->maybe_available = true;
+   for (uint32_t i = 0; i < info->count; i++) {
+      assert(info->query + i < info->pool->query_count);
+      struct v3dv_query *query = &info->pool->queries[info->query + i];
+      query->maybe_available = true;
+   }
 
    return VK_SUCCESS;
 }
@@ -452,10 +454,14 @@ handle_timestamp_query_cpu_job(struct v3dv_job *job)
    /* Compute timestamp */
    struct timespec t;
    clock_gettime(CLOCK_MONOTONIC, &t);
-   assert(info->query < info->pool->query_count);
-   struct v3dv_query *query = &info->pool->queries[info->query];
-   query->maybe_available = true;
-   query->value = t.tv_sec * 1000000000ull + t.tv_nsec;
+
+   for (uint32_t i = 0; i < info->count; i++) {
+      assert(info->query + i < info->pool->query_count);
+      struct v3dv_query *query = &info->pool->queries[info->query + i];
+      query->maybe_available = true;
+      if (i == 0)
+         query->value = t.tv_sec * 1000000000ull + t.tv_nsec;
+   }
 
    return VK_SUCCESS;
 }

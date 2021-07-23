@@ -896,6 +896,9 @@ struct v3dv_reset_query_cpu_job_info {
 struct v3dv_end_query_cpu_job_info {
    struct v3dv_query_pool *pool;
    uint32_t query;
+
+   /* This is one unless multiview is used */
+   uint32_t count;
 };
 
 struct v3dv_copy_query_results_cpu_job_info {
@@ -947,6 +950,9 @@ struct v3dv_csd_indirect_cpu_job_info {
 struct v3dv_timestamp_query_cpu_job_info {
    struct v3dv_query_pool *pool;
    uint32_t query;
+
+   /* This is one unless multiview is used */
+   uint32_t count;
 };
 
 struct v3dv_job {
