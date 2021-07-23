@@ -1785,6 +1785,18 @@ surf_fake_rgb_with_red(const struct isl_device *isl_dev,
           isl_format_get_layout(info->view.format)->channels.r.bits);
 
    info->surf.format = info->view.format = red_format;
+
+   if (isl_dev->info->verx10 >= 125) {
+      /* The horizontal alignment is in units of texels for NPOT formats, and
+       * bytes for other formats. Since the only allowed alignment units are
+       * powers of two, there's no way to convert the alignment.
+       *
+       * Thankfully, the value doesn't matter since we're only a single slice.
+       * Pick one allowed by isl_gfx125_choose_image_alignment_el.
+       */
+      info->surf.image_alignment_el.w =
+         128 / (isl_format_get_layout(red_format)->bpb / 8);
+   }
 }
 
 enum blit_shrink_status {
