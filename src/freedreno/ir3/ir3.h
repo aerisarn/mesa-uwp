@@ -57,6 +57,8 @@ struct ir3_info {
    uint16_t nops_count;   /* # of nop instructions, including nopN */
    uint16_t mov_count;
    uint16_t cov_count;
+   uint16_t stp_count;
+   uint16_t ldp_count;
    /* NOTE: max_reg, etc, does not include registers not touched
     * by the shader (ie. vertex fetched via VFD_DECODE but not
     * touched by shader)

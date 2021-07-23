@@ -3489,6 +3489,24 @@ tu_GetPipelineExecutableStatisticsKHR(
       }
    }
 
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "STP Count");
+      WRITE_STR(stat->description,
+                "Number of STore Private instructions in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.stp_count;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "LDP Count");
+      WRITE_STR(stat->description,
+                "Number of LoaD Private instructions in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.ldp_count;
+   }
+
    return vk_outarray_status(&out);
 }
 

@@ -266,6 +266,11 @@ ir3_collect_info(struct ir3_shader_variant *v)
             if (components * type_size(instr->cat6.type) > 32) {
                info->multi_dword_ldp_stp = true;
             }
+
+            if (instr->opc == OPC_STP)
+               info->stp_count += components;
+            else
+               info->ldp_count += components;
          }
 
          if ((instr->opc == OPC_BARY_F) && (instr->dsts[0]->flags & IR3_REG_EI))
