@@ -132,7 +132,7 @@ vn_cmd_fix_image_memory_barrier(const struct vn_command_buffer *cmd,
       return;
 
    /* prime blit src or no layout transition */
-   if (img->prime_blit_buffer != VK_NULL_HANDLE ||
+   if (img->is_prime_blit_src ||
        out_barrier->oldLayout == out_barrier->newLayout) {
       if (out_barrier->oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
          out_barrier->oldLayout = VN_PRESENT_SRC_INTERNAL_LAYOUT;
@@ -1228,8 +1228,9 @@ vn_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
        VN_PRESENT_SRC_INTERNAL_LAYOUT != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
       srcImageLayout = VN_PRESENT_SRC_INTERNAL_LAYOUT;
 
+      /* sanity check */
       const struct vn_image *img = vn_image_from_handle(srcImage);
-      prime_blit = img->is_wsi && img->prime_blit_buffer == dstBuffer;
+      prime_blit = img->is_wsi && img->is_prime_blit_src;
       assert(prime_blit);
    }
 

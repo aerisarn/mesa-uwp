@@ -122,7 +122,7 @@ vn_wsi_create_image(struct vn_device *dev,
       return result;
 
    img->is_wsi = true;
-   img->prime_blit_buffer = wsi_info->prime_blit_buffer;
+   img->is_prime_blit_src = wsi_info->prime_blit_src;
 
    *out_img = img;
    return VK_SUCCESS;

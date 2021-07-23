@@ -502,7 +502,7 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
 
    const struct wsi_image_create_info image_wsi_info = {
       .sType = VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
-      .prime_blit_buffer = image->prime.buffer,
+      .prime_blit_src = true,
    };
    const VkImageCreateInfo image_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,

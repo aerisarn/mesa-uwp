@@ -47,10 +47,8 @@ struct wsi_image_create_info {
     const void *pNext;
     bool scanout;
 
-    /* If set, the buffer is the prime blit destination and the image is the
-     * source.
-     */
-    VkBuffer prime_blit_buffer;
+    /* if true, the image is a prime blit source */
+    bool prime_blit_src;
 };
 
 struct wsi_memory_allocate_info {
