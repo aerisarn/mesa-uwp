@@ -530,6 +530,7 @@ create_fs(struct st_context *st, bool download,
    tex->sampler_dim = glsl_get_sampler_dim(tex_var->type);
    tex->coord_components =
       glsl_get_sampler_coordinate_components(tex_var->type);
+   tex->is_array = target >= PIPE_TEXTURE_1D_ARRAY;
 
    tex->dest_type = nir_get_nir_type_for_glsl_base_type(glsl_get_sampler_result_type(tex_var->type));
    tex->src[0].src_type = nir_tex_src_texture_deref;
