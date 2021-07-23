@@ -150,6 +150,10 @@ isl_drm_modifier_get_score(const struct intel_device_info *devinfo,
    case I915_FORMAT_MOD_X_TILED:
       return 2;
    case I915_FORMAT_MOD_Y_TILED:
+      /* Gfx12.5 doesn't have Y-tiling. */
+      if (devinfo->verx10 >= 125)
+         return 0;
+
       return 3;
    case I915_FORMAT_MOD_Y_TILED_CCS:
       /* Gfx12's CCS layout differs from Gfx9-11. */
