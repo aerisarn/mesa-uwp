@@ -484,6 +484,11 @@ create_fs(struct st_context *st, bool download,
    if (download) {
       texcoord = nir_f2i32(&b, nir_channels(&b, coord, TGSI_WRITEMASK_XY));
 
+      if (target == PIPE_TEXTURE_1D) {
+         unsigned sw = 0;
+         texcoord = nir_swizzle(&b, texcoord, &sw, 1);
+      }
+
       if (layer) {
          nir_ssa_def *src_layer = layer;
 
