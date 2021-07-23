@@ -2099,7 +2099,7 @@ compressed_texture_error_check(struct gl_context *ctx, GLint dimensions,
    /* No compressed formats support borders at this time */
    if (border != 0) {
       reason = "border != 0";
-      error = GL_INVALID_VALUE;
+      error = _mesa_is_desktop_gl(ctx) ? GL_INVALID_OPERATION : GL_INVALID_VALUE;
       goto error;
    }
 
