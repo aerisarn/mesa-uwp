@@ -1999,8 +1999,8 @@ panvk_init_bifrost_sampler(struct panvk_sampler *sampler,
       vk_find_struct_const(pCreateInfo->pNext, SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT);
 
    pan_pack(&sampler->desc, BIFROST_SAMPLER, cfg) {
-      cfg.magnify_nearest = pCreateInfo->magFilter == VK_FILTER_LINEAR;
-      cfg.minify_nearest = pCreateInfo->minFilter == VK_FILTER_LINEAR;
+      cfg.magnify_nearest = pCreateInfo->magFilter == VK_FILTER_NEAREST;
+      cfg.minify_nearest = pCreateInfo->minFilter == VK_FILTER_NEAREST;
       cfg.mipmap_mode = panvk_translate_sampler_mipmap_mode(pCreateInfo->mipmapMode);
       cfg.normalized_coordinates = !pCreateInfo->unnormalizedCoordinates;
 
