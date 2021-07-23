@@ -175,6 +175,17 @@ void
 ir3_reg_interval_insert(struct ir3_reg_ctx *ctx,
                         struct ir3_reg_interval *interval)
 {
+   rb_tree_init(&interval->children);
+   interval->parent = NULL;
+   interval_insert(ctx, &ctx->intervals, interval);
+}
+
+/* Call after ir3_reg_interval_remove_temp() to reinsert the interval */
+static void
+ir3_reg_interval_reinsert(struct ir3_reg_ctx *ctx,
+                          struct ir3_reg_interval *interval)
+{
+   interval->parent = NULL;
    interval_insert(ctx, &ctx->intervals, interval);
 }
 
@@ -669,7 +680,7 @@ ra_push_interval(struct ra_ctx *ctx, struct ra_file *file,
    interval->physreg_start = dst;
    interval->physreg_end = dst + removed->size;
 
-   ir3_reg_interval_insert(&file->reg_ctx, &interval->interval);
+   ir3_reg_interval_reinsert(&file->reg_ctx, &interval->interval);
 }
 
 /* Pick up the interval and place it at "dst". */
