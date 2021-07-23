@@ -603,7 +603,7 @@ bi_remove_instruction(bi_instr *ins)
 enum bir_fau {
         BIR_FAU_ZERO = 0,
         BIR_FAU_LANE_ID = 1,
-        BIR_FAU_WRAP_ID = 2,
+        BIR_FAU_WARP_ID = 2,
         BIR_FAU_CORE_ID = 3,
         BIR_FAU_FB_EXTENT = 4,
         BIR_FAU_ATEST_PARAM = 5,
