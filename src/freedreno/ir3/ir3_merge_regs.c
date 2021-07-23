@@ -429,7 +429,8 @@ create_parallel_copy(struct ir3_block *block)
       for (j = 0; j < phi_count; j++) {
          struct ir3_register *reg = __ssa_dst(pcopy);
          reg->flags |= src[j]->flags & (IR3_REG_HALF | IR3_REG_ARRAY);
-         reg->size = reg_elems(src[j]);
+         reg->size = src[j]->size;
+         reg->wrmask = src[j]->wrmask;
       }
 
       for (j = 0; j < phi_count; j++) {
