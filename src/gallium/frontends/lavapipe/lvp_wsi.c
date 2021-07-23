@@ -240,7 +240,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AcquireNextImage2KHR(
    LVP_FROM_HANDLE(lvp_fence, fence, pAcquireInfo->fence);
 
    if (fence && (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)) {
-      fence->signaled = true;
+      util_queue_add_job(&device->queue.queue, fence, &fence->fence, queue_thread_noop, NULL, 0);
    }
    return result;
 }

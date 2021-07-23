@@ -31,6 +31,8 @@
 
 #include "util/macros.h"
 #include "util/list.h"
+#include "util/simple_mtx.h"
+#include "util/u_queue.h"
 
 #include "compiler/shader_enums.h"
 #include "pipe/p_screen.h"
@@ -166,10 +168,10 @@ struct lvp_queue {
    struct pipe_context *ctx;
    struct cso_context *cso;
    bool shutdown;
-   thrd_t exec_thread;
-   mtx_t m;
-   cnd_t new_work;
-   struct list_head workqueue;
+   uint64_t timeline;
+   struct util_queue queue;
+   simple_mtx_t last_lock;
+   struct pipe_fence_handle *last_fence;
    volatile int count;
 };
 
@@ -193,8 +195,6 @@ struct lvp_device {
    struct lvp_instance *                       instance;
    struct lvp_physical_device *physical_device;
    struct pipe_screen *pscreen;
-
-   mtx_t fence_lock;
 };
 
 void lvp_device_get_cache_uuid(void *uuid);
@@ -497,8 +497,10 @@ struct lvp_event {
 
 struct lvp_fence {
    struct vk_object_base base;
-   bool signaled;
+   uint64_t timeline;
+   struct util_queue_fence fence;
    struct pipe_fence_handle *handle;
+   bool signalled;
 };
 
 struct lvp_semaphore {
@@ -1209,6 +1211,8 @@ lvp_vk_format_to_pipe_format(VkFormat format)
    return vk_format_to_pipe_format(format);
 }
 
+void
+queue_thread_noop(void *data, void *gdata, int thread_index);
 #ifdef __cplusplus
 }
 #endif
