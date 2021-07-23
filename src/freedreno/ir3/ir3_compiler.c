@@ -44,6 +44,7 @@ static const struct debug_named_value shader_debug_options[] = {
    {"nouboopt",   IR3_DBG_NOUBOOPT,   "Disable lowering UBO to uniform"},
    {"nofp16",     IR3_DBG_NOFP16,     "Don't lower mediump to fp16"},
    {"nocache",    IR3_DBG_NOCACHE,    "Disable shader cache"},
+   {"spillall",   IR3_DBG_SPILLALL,   "Spill as much as possible to test the spiller"},
 #ifdef DEBUG
    /* DEBUG-only options: */
    {"schedmsgs",  IR3_DBG_SCHEDMSGS,  "Enable scheduler debug messages"},

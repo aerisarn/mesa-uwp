@@ -1990,6 +1990,152 @@ calc_target_full_pressure(struct ir3_shader_variant *v, unsigned pressure)
    return (target - 1) * 2 * 4;
 }
 
+static void
+add_pressure(struct ir3_pressure *pressure, struct ir3_register *reg,
+             bool merged_regs)
+{
+   unsigned size = reg_size(reg);
+   if (reg->flags & IR3_REG_HALF)
+      pressure->half += size;
+   if (!(reg->flags & IR3_REG_HALF) || merged_regs)
+      pressure->full += size;
+}
+
+static void
+dummy_interval_add(struct ir3_reg_ctx *ctx, struct ir3_reg_interval *interval)
+{
+}
+
+static void
+dummy_interval_delete(struct ir3_reg_ctx *ctx, struct ir3_reg_interval *interval)
+{
+}
+
+static void
+dummy_interval_readd(struct ir3_reg_ctx *ctx, struct ir3_reg_interval *parent,
+                     struct ir3_reg_interval *child)
+{
+}
+
+/* Calculate the minimum possible limit on register pressure so that spilling
+ * still succeeds. Used to implement IR3_SHADER_DEBUG=spillall.
+ */
+
+static void
+calc_min_limit_pressure(struct ir3_shader_variant *v,
+                        struct ir3_liveness *live,
+                        struct ir3_pressure *limit)
+{
+   struct ir3_block *start = ir3_start_block(v->ir);
+   struct ir3_reg_ctx *ctx = ralloc(NULL, struct ir3_reg_ctx);
+   struct ir3_reg_interval *intervals =
+      rzalloc_array(ctx, struct ir3_reg_interval, live->definitions_count);
+
+   ctx->interval_add = dummy_interval_add;
+   ctx->interval_delete = dummy_interval_delete;
+   ctx->interval_readd = dummy_interval_readd;
+
+   limit->full = limit->half = 0;
+
+   struct ir3_pressure cur_pressure = {0};
+   foreach_instr (input, &start->instr_list) {
+      if (input->opc != OPC_META_INPUT &&
+          input->opc != OPC_META_TEX_PREFETCH)
+         break;
+
+      add_pressure(&cur_pressure, input->dsts[0], v->mergedregs);
+   }
+
+   limit->full = MAX2(limit->full, cur_pressure.full);
+   limit->half = MAX2(limit->half, cur_pressure.half);
+
+   foreach_instr (input, &start->instr_list) {
+      if (input->opc != OPC_META_INPUT &&
+          input->opc != OPC_META_TEX_PREFETCH)
+         break;
+
+      /* pre-colored inputs may have holes, which increases the pressure. */
+      struct ir3_register *dst = input->dsts[0];
+      if (dst->num != INVALID_REG) {
+         unsigned physreg = ra_reg_get_physreg(dst) + reg_size(dst);
+         if (dst->flags & IR3_REG_HALF)
+            limit->half = MAX2(limit->half, physreg);
+         if (!(dst->flags & IR3_REG_HALF) || v->mergedregs)
+            limit->full = MAX2(limit->full, physreg);
+      }
+   }
+
+   foreach_block (block, &v->ir->block_list) {
+      rb_tree_init(&ctx->intervals);
+
+      unsigned name;
+      BITSET_FOREACH_SET (name, live->live_in[block->index],
+                          live->definitions_count) {
+         struct ir3_register *reg = live->definitions[name];
+         ir3_reg_interval_init(&intervals[reg->name], reg);
+         ir3_reg_interval_insert(ctx, &intervals[reg->name]);
+      }
+
+      foreach_instr (instr, &block->instr_list) {
+         ra_foreach_dst (dst, instr) {
+            ir3_reg_interval_init(&intervals[dst->name], dst);
+         }
+         /* phis and parallel copies can be deleted via spilling */
+
+         if (instr->opc == OPC_META_PHI) {
+            ir3_reg_interval_insert(ctx, &intervals[instr->dsts[0]->name]);
+            continue;
+         }
+
+         if (instr->opc == OPC_META_PARALLEL_COPY)
+            continue;
+
+         cur_pressure = (struct ir3_pressure) {0};
+
+         ra_foreach_dst (dst, instr) {
+            if (dst->tied && !(dst->tied->flags & IR3_REG_KILL))
+               add_pressure(&cur_pressure, dst, v->mergedregs);
+         }
+
+         ra_foreach_src_rev (src, instr) {
+            /* We currently don't support spilling the parent of a source when
+             * making space for sources, so we have to keep track of the
+             * intervals and figure out the root of the tree to figure out how
+             * much space we need.
+             *
+             * TODO: We should probably support this in the spiller.
+             */
+            struct ir3_reg_interval *interval = &intervals[src->def->name];
+            while (interval->parent)
+               interval = interval->parent;
+            add_pressure(&cur_pressure, interval->reg, v->mergedregs);
+
+            if (src->flags & IR3_REG_FIRST_KILL)
+               ir3_reg_interval_remove(ctx, &intervals[src->def->name]);
+         }
+
+         limit->full = MAX2(limit->full, cur_pressure.full);
+         limit->half = MAX2(limit->half, cur_pressure.half);
+
+         cur_pressure = (struct ir3_pressure) {0};
+
+         ra_foreach_dst (dst, instr) {
+            ir3_reg_interval_init(&intervals[dst->name], dst);
+            ir3_reg_interval_insert(ctx, &intervals[dst->name]);
+            add_pressure(&cur_pressure, dst, v->mergedregs);
+         }
+
+         limit->full = MAX2(limit->full, cur_pressure.full);
+         limit->half = MAX2(limit->half, cur_pressure.half);
+      }
+   }
+
+   /* Account for the base register, which needs to be available everywhere. */
+   limit->full += 2;
+
+   ralloc_free(ctx);
+}
+
 int
 ir3_ra(struct ir3_shader_variant *v)
 {
@@ -2010,15 +2156,35 @@ ir3_ra(struct ir3_shader_variant *v)
    d("\thalf: %u", max_pressure.half);
    d("\tshared: %u", max_pressure.shared);
 
-   if (v->mergedregs) {
-      max_pressure.full += max_pressure.half;
-      max_pressure.half = 0;
+   /* TODO: calculate half/full limit correctly for CS with barrier */
+   struct ir3_pressure limit_pressure;
+   limit_pressure.full = RA_FULL_SIZE;
+   limit_pressure.half = RA_HALF_SIZE;
+   limit_pressure.shared = RA_SHARED_SIZE;
+
+   /* If requested, lower the limit so that spilling happens more often. */
+   if (ir3_shader_debug & IR3_DBG_SPILLALL)
+      calc_min_limit_pressure(v, live, &limit_pressure);
+
+   if (max_pressure.shared > limit_pressure.shared) {
+      /* TODO shared reg -> normal reg spilling */
+      d("shared max pressure exceeded!");
+      return 1;
    }
 
-   if (max_pressure.full > RA_FULL_SIZE || max_pressure.half > RA_HALF_SIZE ||
-       max_pressure.shared > RA_SHARED_SIZE) {
-      d("max pressure exceeded!");
-      return 1;
+   bool spilled = false;
+   if (max_pressure.full > limit_pressure.full ||
+       max_pressure.half > limit_pressure.half) {
+      if (!v->shader->compiler->has_pvtmem) {
+         d("max pressure exceeded!");
+         return 1;
+      }
+      d("max pressure exceeded, spilling!");
+      IR3_PASS(v->ir, ir3_spill, v, &live, &limit_pressure);
+      ir3_calc_pressure(v, live, &max_pressure);
+      assert(max_pressure.full <= limit_pressure.full &&
+             max_pressure.half <= limit_pressure.half);
+      spilled = true;
    }
 
    struct ra_ctx *ctx = rzalloc(NULL, struct ra_ctx);
@@ -2054,25 +2220,30 @@ ir3_ra(struct ir3_shader_variant *v)
          for (unsigned i = 0; i < instr->dsts_count; i++) {
             instr->dsts[i]->flags &= ~IR3_REG_SSA;
 
-            /* Parallel copies of array registers copy the whole register,
-             * and we need some way to let the parallel copy code know
-             * that this was an array whose size is determined by
-             * reg->size. So keep the array flag on those.
+            /* Parallel copies of array registers copy the whole register, and
+             * we need some way to let the parallel copy code know that this was
+             * an array whose size is determined by reg->size. So keep the array
+             * flag on those. spill/reload also need to work on the entire
+             * array.
              */
-            if (!is_meta(instr))
+            if (!is_meta(instr) && instr->opc != OPC_RELOAD_MACRO)
                instr->dsts[i]->flags &= ~IR3_REG_ARRAY;
          }
 
          for (unsigned i = 0; i < instr->srcs_count; i++) {
             instr->srcs[i]->flags &= ~IR3_REG_SSA;
 
-            if (!is_meta(instr))
+            if (!is_meta(instr) && instr->opc != OPC_SPILL_MACRO)
                instr->srcs[i]->flags &= ~IR3_REG_ARRAY;
          }
       }
    }
 
    ir3_debug_print(v->ir, "AFTER: register allocation");
+
+   if (spilled) {
+      IR3_PASS(v->ir, ir3_lower_spill);
+   }
 
    ir3_lower_copies(v);
 

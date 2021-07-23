@@ -345,7 +345,6 @@ spec@glsl-1.50@execution@compatibility@vs-gs-ff-frag,Crash
 spec@glsl-1.50@execution@compatibility@vs-gs-texcoord-array-2,Crash
 spec@glsl-1.50@execution@compatibility@vs-gs-texcoord-array,Crash
 spec@glsl-1.50@execution@geometry@end-primitive 0,Fail
-spec@glsl-1.50@execution@geometry@max-input-components,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_line_loop ffs,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_line_loop other,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_lines_adjacency ffs,Fail
@@ -385,11 +384,7 @@ spec@glsl-1.50@execution@geometry@tri-strip-ordering-with-prim-restart gl_triang
 spec@glsl-1.50@execution@geometry@tri-strip-ordering-with-prim-restart gl_triangle_strip other,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
-spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec2-index-rd,Fail
-spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec3-index-rd,Fail
-spec@glsl-1.50@execution@variable-indexing@gs-output-array-vec3-index-wr,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-output-array-vec4-index-wr,Crash
-spec@glsl-1.50@execution@variable-indexing@vs-output-array-vec4-index-wr-before-gs,Fail
 spec@glsl-1.50@gs-max-output-components,Fail
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 spec@khr_texture_compression_astc@array-gl@12x12 Block Dim,Fail

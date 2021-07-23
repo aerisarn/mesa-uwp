@@ -89,6 +89,7 @@ struct ir3_merge_set {
    uint16_t alignment;
 
    unsigned interval_start;
+   unsigned spill_slot;
 
    unsigned regs_count;
    struct ir3_register **regs;
@@ -201,6 +202,8 @@ struct ir3_register {
     * they must have "tied" pointing to each other.
     */
    struct ir3_register *tied;
+
+   unsigned spill_slot, next_use;
 
    unsigned merge_set_offset;
    struct ir3_merge_set *merge_set;
@@ -709,6 +712,17 @@ ir3_instr_move_after(struct ir3_instruction *instr,
 {
    list_delinit(&instr->node);
    list_add(&instr->node, &before->node);
+}
+
+/**
+ * Move 'instr' to the beginning of the block:
+ */
+static inline void
+ir3_instr_move_before_block(struct ir3_instruction *instr,
+                            struct ir3_block *block)
+{
+   list_delinit(&instr->node);
+   list_add(&instr->node, &block->instr_list);
 }
 
 void ir3_find_ssa_uses(struct ir3 *ir, void *mem_ctx, bool falsedeps);

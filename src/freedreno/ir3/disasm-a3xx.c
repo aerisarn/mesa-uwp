@@ -348,6 +348,9 @@ static const struct opc_info {
    OPC(6, OPC_GETSPID,      getspid),
    OPC(6, OPC_GETWID,       getwid),
 
+   OPC(6, OPC_SPILL_MACRO,  spill.macro),
+   OPC(6, OPC_RELOAD_MACRO, reload.macro),
+
    OPC(7, OPC_BAR,          bar),
    OPC(7, OPC_FENCE,        fence),
 /* clang-format on */

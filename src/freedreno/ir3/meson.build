@@ -88,6 +88,7 @@ libfreedreno_ir3_files = files(
   'ir3_legalize.c',
   'ir3_liveness.c',
   'ir3_lower_parallelcopy.c',
+  'ir3_lower_spill.c',
   'ir3_lower_subgroups.c',
   'ir3_merge_regs.c',
   'ir3_nir.c',

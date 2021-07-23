@@ -198,6 +198,7 @@ get_merge_set(struct ir3_register *def)
    struct ir3_merge_set *set = ralloc(def, struct ir3_merge_set);
    set->preferred_reg = ~0;
    set->interval_start = ~0;
+   set->spill_slot = ~0;
    set->size = reg_size(def);
    set->alignment = (def->flags & IR3_REG_HALF) ? 1 : 2;
    set->regs_count = 1;
@@ -339,6 +340,19 @@ try_merge_defs(struct ir3_liveness *live, struct ir3_register *a,
       merge_merge_sets(a_set, b_set, b_set_offset);
 }
 
+void
+ir3_force_merge(struct ir3_register *a, struct ir3_register *b, int b_offset)
+{
+   struct ir3_merge_set *a_set = get_merge_set(a);
+   struct ir3_merge_set *b_set = get_merge_set(b);
+
+   if (a_set == b_set)
+      return;
+
+   int b_set_offset = a->merge_set_offset + b_offset - b->merge_set_offset;
+   merge_merge_sets(a_set, b_set, b_set_offset);
+}
+
 static void
 coalesce_phi(struct ir3_liveness *live, struct ir3_instruction *phi)
 {
@@ -462,7 +476,7 @@ ir3_create_parallel_copies(struct ir3 *ir)
 }
 
 static void
-index_merge_sets(struct ir3 *ir)
+index_merge_sets(struct ir3_liveness *live, struct ir3 *ir)
 {
    unsigned offset = 0;
    foreach_block (block, &ir->block_list) {
@@ -489,6 +503,8 @@ index_merge_sets(struct ir3 *ir)
          }
       }
    }
+
+   live->interval_offset = offset;
 }
 
 #define RESET      "\x1b[0m"
@@ -559,7 +575,7 @@ ir3_merge_regs(struct ir3_liveness *live, struct ir3 *ir)
       }
    }
 
-   index_merge_sets(ir);
+   index_merge_sets(live, ir);
 
    if (ir3_shader_debug & IR3_DBG_RAMSGS)
       dump_merge_sets(ir);

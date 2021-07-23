@@ -137,6 +137,7 @@ ra_reg_is_dst(const struct ir3_register *reg)
 
 struct ir3_liveness {
    unsigned block_count;
+   unsigned interval_offset;
    DECLARE_ARRAY(struct ir3_register *, definitions);
    DECLARE_ARRAY(BITSET_WORD *, live_out);
    DECLARE_ARRAY(BITSET_WORD *, live_in);
@@ -151,12 +152,21 @@ void ir3_create_parallel_copies(struct ir3 *ir);
 
 void ir3_merge_regs(struct ir3_liveness *live, struct ir3 *ir);
 
+void ir3_force_merge(struct ir3_register *a, struct ir3_register *b,
+                     int b_offset);
+
 struct ir3_pressure {
    unsigned full, half, shared;
 };
 
 void ir3_calc_pressure(struct ir3_shader_variant *v, struct ir3_liveness *live,
                        struct ir3_pressure *max_pressure);
+
+bool ir3_spill(struct ir3 *ir, struct ir3_shader_variant *v,
+               struct ir3_liveness **live,
+               const struct ir3_pressure *limit_pressure);
+
+bool ir3_lower_spill(struct ir3 *ir);
 
 void ir3_ra_validate(struct ir3_shader_variant *v, unsigned full_size,
                      unsigned half_size, unsigned block_count);
