@@ -1920,12 +1920,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroySemaphore(
    const VkAllocationCallbacks*                pAllocator)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
-   LVP_FROM_HANDLE(lvp_semaphore, semaphore, _semaphore);
+   LVP_FROM_HANDLE(lvp_semaphore, sema, _semaphore);
 
    if (!_semaphore)
       return;
-   vk_object_base_finish(&semaphore->base);
-   vk_free2(&device->vk.alloc, pAllocator, semaphore);
+   vk_object_base_finish(&sema->base);
+   vk_free2(&device->vk.alloc, pAllocator, sema);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateEvent(
