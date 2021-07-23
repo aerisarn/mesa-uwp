@@ -262,9 +262,8 @@ ir3_collect_info(struct ir3_shader_variant *v)
          }
 
          if ((instr->opc == OPC_STP || instr->opc == OPC_LDP)) {
-            struct ir3_register *base =
-               (instr->opc == OPC_STP) ? instr->srcs[2] : instr->srcs[1];
-            if (base->iim_val * type_size(instr->cat6.type) > 32) {
+            unsigned components = instr->srcs[2]->uim_val;
+            if (components * type_size(instr->cat6.type) > 32) {
                info->multi_dword_ldp_stp = true;
             }
          }
