@@ -31,6 +31,7 @@
 
 #include "util/macros.h"
 #include "util/list.h"
+#include "util/u_dynarray.h"
 #include "util/simple_mtx.h"
 #include "util/u_queue.h"
 
@@ -171,15 +172,28 @@ struct lvp_queue {
    uint64_t timeline;
    struct util_queue queue;
    simple_mtx_t last_lock;
+   uint64_t last_finished;
+   uint64_t last_fence_timeline;
    struct pipe_fence_handle *last_fence;
    volatile int count;
+};
+
+struct lvp_semaphore_wait {
+   struct lvp_semaphore *sema;
+   uint64_t wait;
 };
 
 struct lvp_queue_work {
    struct list_head list;
    uint32_t cmd_buffer_count;
-   struct lvp_cmd_buffer **cmd_buffers;
+   uint32_t timeline_count;
+   uint32_t wait_count;
+   uint64_t timeline;
    struct lvp_fence *fence;
+   struct lvp_cmd_buffer **cmd_buffers;
+   struct lvp_semaphore_timeline **timelines;
+   VkSemaphore *waits;
+   uint64_t *wait_vals;
 };
 
 struct lvp_pipeline_cache {
@@ -503,9 +517,24 @@ struct lvp_fence {
    bool signalled;
 };
 
+struct lvp_semaphore_timeline {
+   struct lvp_semaphore_timeline *next;
+   uint64_t signal; //api
+   uint64_t timeline; //queue
+   struct pipe_fence_handle *fence;
+};
+
 struct lvp_semaphore {
    struct vk_object_base base;
-   bool dummy;
+   bool is_timeline;
+   uint64_t current;
+   simple_mtx_t lock;
+   mtx_t submit_lock;
+   cnd_t submit;
+   void *mem;
+   struct util_dynarray links;
+   struct lvp_semaphore_timeline *timeline;
+   struct lvp_semaphore_timeline *latest;
 };
 
 struct lvp_buffer {

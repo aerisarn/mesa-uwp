@@ -122,6 +122,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
 #ifdef LVP_USE_WSI_PLATFORM
    .KHR_swapchain                         = true,
 #endif
+   .KHR_timeline_semaphore                = true,
    .KHR_uniform_buffer_standard_layout    = true,
    .KHR_variable_pointers                 = true,
    .EXT_calibrated_timestamps             = true,
@@ -567,6 +568,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->inheritedConditionalRendering = false;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
+         VkPhysicalDeviceTimelineSemaphoreFeatures *features =
+            (VkPhysicalDeviceTimelineSemaphoreFeatures*)ext;
+         features->timelineSemaphore = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
          VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *features =
             (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*)ext;
@@ -939,6 +946,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          CORE_PROPERTY(1, 1, maxMultiviewInstanceIndex);
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
+         VkPhysicalDeviceTimelineSemaphoreProperties *properties =
+            (VkPhysicalDeviceTimelineSemaphoreProperties *)ext;
+         properties->maxTimelineSemaphoreValueDifference = UINT64_MAX;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
          VkPhysicalDeviceIDProperties *properties =
             (VkPhysicalDeviceIDProperties *)ext;
@@ -1122,11 +1135,172 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
 }
 
 static void
-set_last_fence(struct lvp_device *device, struct pipe_fence_handle *handle)
+set_last_fence(struct lvp_device *device, struct pipe_fence_handle *handle, uint64_t timeline)
 {
    simple_mtx_lock(&device->queue.last_lock);
+   device->queue.last_fence_timeline = timeline;
    device->pscreen->fence_reference(device->pscreen, &device->queue.last_fence, handle);
    simple_mtx_unlock(&device->queue.last_lock);
+}
+
+static void
+thread_flush(struct lvp_device *device, struct lvp_fence *fence, uint64_t timeline,
+             unsigned num_timelines, struct lvp_semaphore_timeline **timelines)
+{
+   struct pipe_fence_handle *handle = NULL;
+   device->queue.ctx->flush(device->queue.ctx, &handle, 0);
+   if (fence)
+      fence->handle = handle;
+   set_last_fence(device, handle, timeline);
+   /* this is the array of signaling timeline semaphore links */
+   for (unsigned i = 0; i < num_timelines; i++)
+      timelines[i]->fence = handle;
+}
+
+/* get a new timeline link for creating a new signal event
+ * sema->lock MUST be locked before calling
+ */
+static struct lvp_semaphore_timeline *
+get_semaphore_link(struct lvp_semaphore *sema)
+{
+   if (!util_dynarray_num_elements(&sema->links, struct lvp_semaphore_timeline*)) {
+#define NUM_LINKS 50
+      /* bucket allocate using the ralloc ctx because I like buckets */
+      struct lvp_semaphore_timeline *link = ralloc_array(sema->mem, struct lvp_semaphore_timeline, NUM_LINKS);
+      for (unsigned i = 0; i < NUM_LINKS; i++) {
+         link[i].next = NULL;
+         link[i].fence = NULL;
+         util_dynarray_append(&sema->links, struct lvp_semaphore_timeline*, &link[i]);
+      }
+   }
+   struct lvp_semaphore_timeline *tl = util_dynarray_pop(&sema->links, struct lvp_semaphore_timeline*);
+   if (sema->timeline)
+      sema->latest->next = tl;
+   else
+      sema->timeline = tl;
+   sema->latest = tl;
+   return tl;
+}
+
+/* prune any timeline links which are older than the current device timeline id
+ * sema->lock MUST be locked before calling
+ */
+static void
+prune_semaphore_links(struct lvp_semaphore *sema, uint64_t timeline)
+{
+   if (!timeline)
+      /* zero isn't a valid id to prune with */
+      return;
+   struct lvp_semaphore_timeline *tl = sema->timeline;
+   /* walk the timeline links and pop all the ones that are old */
+   while (tl && ((tl->timeline <= timeline) || (tl->signal <= sema->current))) {
+      struct lvp_semaphore_timeline *cur = tl;
+      /* only update current timeline id if the update is monotonic */
+      if (sema->current < tl->signal)
+         sema->current = tl->signal;
+      util_dynarray_append(&sema->links, struct lvp_semaphore_timeline*, tl);
+      tl = tl->next;
+      cur->next = NULL;
+      cur->fence = NULL;
+   }
+   /* this is now the current timeline link */
+   sema->timeline = tl;
+}
+
+/* find a timeline id that can be waited on to satisfy the signal condition
+ * sema->lock MUST be locked before calling
+ */
+static struct lvp_semaphore_timeline *
+find_semaphore_timeline(struct lvp_semaphore *sema, uint64_t signal)
+{
+   for (struct lvp_semaphore_timeline *tl = sema->timeline; tl; tl = tl->next) {
+      if (tl->signal >= signal)
+         return tl;
+   }
+   /* never submitted or is completed */
+   return NULL;
+}
+
+struct timeline_wait {
+   bool done;
+   struct lvp_semaphore_timeline *tl;
+};
+
+static VkResult wait_semaphores(struct lvp_device *device,
+    const VkSemaphoreWaitInfo*                  pWaitInfo,
+    uint64_t                                    timeout)
+{
+   /* build array of timeline links to poll */
+   VkResult ret = VK_TIMEOUT;
+   bool any = (pWaitInfo->flags & VK_SEMAPHORE_WAIT_ANY_BIT) == VK_SEMAPHORE_WAIT_ANY_BIT;
+   unsigned num_remaining = any ? 1 : pWaitInfo->semaphoreCount;
+   /* just allocate an array for simplicity */
+   struct timeline_wait *tl_array = calloc(pWaitInfo->semaphoreCount, sizeof(struct timeline_wait));
+
+   int64_t abs_timeout = os_time_get_absolute_timeout(timeout);
+   /* UINT64_MAX will always overflow, so special case it
+    * otherwise, calculate ((timeout / num_semaphores) / 10) to allow waiting 10 times on every semaphore
+    */
+   uint64_t wait_interval = timeout == UINT64_MAX ? 5000 : timeout / pWaitInfo->semaphoreCount / 10;
+   while (num_remaining) {
+      for (unsigned i = 0; num_remaining && i < pWaitInfo->semaphoreCount; i++) {
+         if (tl_array[i].done) //completed
+            continue;
+         if (timeout && timeout != UINT64_MAX) {
+            /* update remaining timeout on every loop */
+            int64_t time_ns = os_time_get_nano();
+            if (abs_timeout <= time_ns)
+               goto end;
+            timeout = abs_timeout > time_ns ? abs_timeout - time_ns : 0;
+         }
+         const uint64_t waitval = pWaitInfo->pValues[i];
+         LVP_FROM_HANDLE(lvp_semaphore, sema, pWaitInfo->pSemaphores[i]);
+         if (sema->current >= waitval) {
+            tl_array[i].done = true;
+            num_remaining--;
+            continue;
+         }
+         if (!tl_array[i].tl) {
+            /* no timeline link was available yet: try to find one */
+            simple_mtx_lock(&sema->lock);
+            /* always prune first to update current timeline id */
+            prune_semaphore_links(sema, device->queue.last_finished);
+            tl_array[i].tl = find_semaphore_timeline(sema, waitval);
+            if (timeout && !tl_array[i].tl) {
+               /* still no timeline link available:
+                * try waiting on the conditional for a broadcast instead of melting the cpu
+                */
+               mtx_lock(&sema->submit_lock);
+               struct timespec t;
+               t.tv_nsec = wait_interval % 1000000000u;
+               t.tv_sec = (wait_interval - t.tv_nsec) / 1000000000u;
+               cnd_timedwait(&sema->submit, &sema->submit_lock, &t);
+               mtx_unlock(&sema->submit_lock);
+               tl_array[i].tl = find_semaphore_timeline(sema, waitval);
+            }
+            simple_mtx_unlock(&sema->lock);
+         }
+         /* mark semaphore as done if:
+          * - timeline id comparison passes
+          * - fence for timeline id exists and completes
+          */
+         if (sema->current >= waitval ||
+             (tl_array[i].tl &&
+              tl_array[i].tl->fence &&
+              device->pscreen->fence_finish(device->pscreen, NULL, tl_array[i].tl->fence, wait_interval))) {
+            tl_array[i].done = true;
+            num_remaining--;
+         }
+      }
+      if (!timeout)
+         break;
+   }
+   if (!num_remaining)
+      ret = VK_SUCCESS;
+
+end:
+   free(tl_array);
+   return ret;
 }
 
 void
@@ -1134,10 +1308,7 @@ queue_thread_noop(void *data, void *gdata, int thread_index)
 {
    struct lvp_device *device = gdata;
    struct lvp_fence *fence = data;
-   struct pipe_fence_handle *handle = NULL;
-   device->queue.ctx->flush(device->queue.ctx, &handle, 0);
-   fence->handle = handle;
-   set_last_fence(device, handle);
+   thread_flush(device, fence, fence->timeline, 0, NULL);
 }
 
 static void
@@ -1147,16 +1318,23 @@ queue_thread(void *data, void *gdata, int thread_index)
    struct lvp_device *device = gdata;
    struct lvp_queue *queue = &device->queue;
 
+   if (task->wait_count) {
+      /* identical to WaitSemaphores */
+      VkSemaphoreWaitInfo wait;
+      wait.flags = 0; //wait on all semaphores
+      wait.semaphoreCount = task->wait_count;
+      wait.pSemaphores = task->waits;
+      wait.pValues = task->wait_vals;
+      //wait
+      wait_semaphores(device, &wait, UINT64_MAX);
+   }
+
    //execute
    for (unsigned i = 0; i < task->cmd_buffer_count; i++) {
       lvp_execute_cmds(queue->device, queue, task->cmd_buffers[i]);
    }
 
-   struct pipe_fence_handle *handle = NULL;
-   queue->ctx->flush(queue->ctx, &handle, 0);
-   if (task->fence)
-      task->fence->handle = handle;
-   set_last_fence(device, handle);
+   thread_flush(device, task->fence, task->timeline, task->timeline_count, task->timelines);
    free(task);
 }
 
@@ -1339,7 +1517,6 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceQueue(
    lvp_GetDeviceQueue2(_device, &info, pQueue);
 }
 
-
 VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
    VkQueue                                     _queue,
    uint32_t                                    submitCount,
@@ -1349,36 +1526,91 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
    LVP_FROM_HANDLE(lvp_queue, queue, _queue);
    LVP_FROM_HANDLE(lvp_fence, fence, _fence);
 
-   if (fence)
-      fence->timeline = p_atomic_inc_return(&queue->timeline);
-
-   if (submitCount == 0)
-      goto just_signal_fence;
-
-   /* - calculate cmdbuf count
-    * - create task for enqueuing cmdbufs
-    * - enqueue job
-    */
-   uint32_t cmdbuf_count = 0;
-   for (uint32_t i = 0; i < submitCount; i++)
-      cmdbuf_count += pSubmits[i].commandBufferCount;
-
-   struct lvp_queue_work *task = malloc(sizeof(struct lvp_queue_work) + cmdbuf_count * sizeof(struct lvp_cmd_buffer *));
-   task->cmd_buffer_count = cmdbuf_count;
-   task->fence = fence;
-   task->cmd_buffers = (struct lvp_cmd_buffer **)(task + 1);
-   unsigned c = 0;
+   /* each submit is a separate job to simplify/streamline semaphore waits */
    for (uint32_t i = 0; i < submitCount; i++) {
+      uint64_t timeline = ++queue->timeline;
+      struct lvp_queue_work *task = malloc(sizeof(struct lvp_queue_work) +
+                                           pSubmits[i].commandBufferCount * sizeof(struct lvp_cmd_buffer *) +
+                                           pSubmits[i].signalSemaphoreCount * sizeof(struct lvp_semaphore_timeline*) +
+                                           pSubmits[i].waitSemaphoreCount * (sizeof(VkSemaphore) + sizeof(uint64_t)));
+      task->cmd_buffer_count = pSubmits[i].commandBufferCount;
+      task->timeline_count = pSubmits[i].signalSemaphoreCount;
+      task->wait_count = pSubmits[i].waitSemaphoreCount;
+      task->fence = fence;
+      task->timeline = timeline;
+      task->cmd_buffers = (struct lvp_cmd_buffer **)(task + 1);
+      task->timelines = (struct lvp_semaphore_timeline**)((uint8_t*)task->cmd_buffers + pSubmits[i].commandBufferCount * sizeof(struct lvp_cmd_buffer *));
+      task->waits = (VkSemaphore*)((uint8_t*)task->timelines + pSubmits[i].signalSemaphoreCount * sizeof(struct lvp_semaphore_timeline *));
+      task->wait_vals = (uint64_t*)((uint8_t*)task->waits + pSubmits[i].waitSemaphoreCount * sizeof(VkSemaphore));
+
+      unsigned c = 0;
       for (uint32_t j = 0; j < pSubmits[i].commandBufferCount; j++) {
          task->cmd_buffers[c++] = lvp_cmd_buffer_from_handle(pSubmits[i].pCommandBuffers[j]);
       }
+      const VkTimelineSemaphoreSubmitInfo *info = vk_find_struct_const(pSubmits[i].pNext, TIMELINE_SEMAPHORE_SUBMIT_INFO);
+      unsigned s = 0;
+      for (unsigned j = 0; j < pSubmits[i].signalSemaphoreCount; j++) {
+         LVP_FROM_HANDLE(lvp_semaphore, sema, pSubmits[i].pSignalSemaphores[j]);
+         if (!sema->is_timeline) {
+            /* non-timeline semaphores never matter to lavapipe */
+            task->timeline_count--;
+            continue;
+         }
+         simple_mtx_lock(&sema->lock);
+         /* always prune first to make links available and update timeline id */
+         prune_semaphore_links(sema, queue->last_finished);
+         if (sema->current < info->pSignalSemaphoreValues[j]) {
+            /* only signal semaphores if the new id is >= the current one */
+            struct lvp_semaphore_timeline *tl = get_semaphore_link(sema);
+            tl->signal = info->pSignalSemaphoreValues[j];
+            tl->timeline = timeline;
+            task->timelines[s] = tl;
+            s++;
+         } else
+            task->timeline_count--;
+         simple_mtx_unlock(&sema->lock);
+      }
+      unsigned w = 0;
+      for (unsigned j = 0; j < pSubmits[i].waitSemaphoreCount; j++) {
+         LVP_FROM_HANDLE(lvp_semaphore, sema, pSubmits[i].pWaitSemaphores[j]);
+         if (!sema->is_timeline) {
+            /* non-timeline semaphores never matter to lavapipe */
+            task->wait_count--;
+            continue;
+         }
+         simple_mtx_lock(&sema->lock);
+         /* always prune first to update timeline id */
+         prune_semaphore_links(sema, queue->last_finished);
+         if (info->pWaitSemaphoreValues[j] &&
+             pSubmits[i].pWaitDstStageMask && pSubmits[i].pWaitDstStageMask[j] &&
+             sema->current < info->pWaitSemaphoreValues[j]) {
+            /* only wait on semaphores if the new id is > the current one and a wait mask is set
+             * 
+             * technically the mask could be used to check whether there's gfx/compute ops on a cmdbuf and no-op,
+             * but probably that's not worth the complexity
+             */
+            task->waits[w] = pSubmits[i].pWaitSemaphores[j];
+            task->wait_vals[w] = info->pWaitSemaphoreValues[j];
+            w++;
+         } else
+            task->wait_count--;
+         simple_mtx_unlock(&sema->lock);
+      }
+      if (fence && i == submitCount - 1) {
+         /* u_queue fences should only be signaled for the last submit, as this is the one that
+          * the vk fence represents
+          */
+         fence->timeline = timeline;
+         util_queue_add_job(&queue->queue, task, &fence->fence, queue_thread, NULL, 0);
+      } else
+         util_queue_add_job(&queue->queue, task, NULL, queue_thread, NULL, 0);
+   }
+   if (!submitCount && fence) {
+      /* special case where a fence is created to use as a synchronization point */
+      fence->timeline = p_atomic_inc_return(&queue->timeline);
+      util_queue_add_job(&queue->queue, fence, &fence->fence, queue_thread_noop, NULL, 0);
    }
 
-   util_queue_add_job(&queue->queue, task, fence ? &fence->fence : NULL, queue_thread, NULL, 0);
-   return VK_SUCCESS;
- just_signal_fence:
-   if (fence)
-      util_queue_add_job(&queue->queue, fence, &fence->fence, queue_thread_noop, NULL, 0);
    return VK_SUCCESS;
 }
 
@@ -1389,8 +1621,12 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueWaitIdle(
 
    util_queue_finish(&queue->queue);
    simple_mtx_lock(&queue->last_lock);
-   if (queue->last_fence)
+   uint64_t timeline = queue->last_fence_timeline;
+   if (queue->last_fence) {
       queue->device->pscreen->fence_finish(queue->device->pscreen, NULL, queue->last_fence, PIPE_TIMEOUT_INFINITE);
+      queue->device->pscreen->fence_reference(queue->device->pscreen, &queue->device->queue.last_fence, NULL);
+      queue->last_finished = timeline;
+   }
    simple_mtx_unlock(&queue->last_lock);
    return VK_SUCCESS;
 }
@@ -1402,8 +1638,12 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_DeviceWaitIdle(
 
    util_queue_finish(&device->queue.queue);
    simple_mtx_lock(&device->queue.last_lock);
-   if (device->queue.last_fence)
+   uint64_t timeline = device->queue.last_fence_timeline;
+   if (device->queue.last_fence) {
       device->pscreen->fence_finish(device->pscreen, NULL, device->queue.last_fence, PIPE_TIMEOUT_INFINITE);
+      device->pscreen->fence_reference(device->pscreen, &device->queue.last_fence, NULL);
+      device->queue.last_finished = timeline;
+   }
    simple_mtx_unlock(&device->queue.last_lock);
    return VK_SUCCESS;
 }
@@ -1781,6 +2021,12 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_GetFenceStatus(
       return VK_NOT_READY;
 
    fence->signalled = true;
+   simple_mtx_lock(&device->queue.last_lock);
+   if (fence->handle == device->queue.last_fence) {
+      device->pscreen->fence_reference(device->pscreen, &device->queue.last_fence, NULL);
+      device->queue.last_finished = fence->timeline;
+   }
+   simple_mtx_unlock(&device->queue.last_lock);
    return VK_SUCCESS;
 }
 
@@ -1889,6 +2135,12 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_WaitForFences(
    if (!fence->handle ||
        !device->pscreen->fence_finish(device->pscreen, NULL, fence->handle, timeout))
       return VK_TIMEOUT;
+   simple_mtx_lock(&device->queue.last_lock);
+   if (fence->handle == device->queue.last_fence) {
+      device->pscreen->fence_reference(device->pscreen, &device->queue.last_fence, NULL);
+      device->queue.last_finished = fence->timeline;
+   }
+   simple_mtx_unlock(&device->queue.last_lock);
    fence->signalled = true;
    return VK_SUCCESS;
 }
@@ -1909,6 +2161,20 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSemaphore(
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    vk_object_base_init(&device->vk, &sema->base,
                        VK_OBJECT_TYPE_SEMAPHORE);
+
+   const VkSemaphoreTypeCreateInfo *info = vk_find_struct_const(pCreateInfo->pNext, SEMAPHORE_TYPE_CREATE_INFO);
+   sema->is_timeline = info && info->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE;
+   if (sema->is_timeline) {
+      sema->is_timeline = true;
+      sema->timeline = NULL;
+      sema->current = info->initialValue;
+      sema->mem = ralloc_context(NULL);
+      util_dynarray_init(&sema->links, sema->mem);
+      simple_mtx_init(&sema->lock, mtx_plain);
+      mtx_init(&sema->submit_lock, mtx_plain);
+      cnd_init(&sema->submit);
+   }
+
    *pSemaphore = lvp_semaphore_to_handle(sema);
 
    return VK_SUCCESS;
@@ -1924,8 +2190,55 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroySemaphore(
 
    if (!_semaphore)
       return;
+   if (sema->is_timeline) {
+      ralloc_free(sema->mem);
+      simple_mtx_destroy(&sema->lock);
+      mtx_destroy(&sema->submit_lock);
+      cnd_destroy(&sema->submit);
+   }
    vk_object_base_finish(&sema->base);
    vk_free2(&device->vk.alloc, pAllocator, sema);
+}
+
+VKAPI_ATTR VkResult lvp_WaitSemaphores(
+    VkDevice                                    _device,
+    const VkSemaphoreWaitInfo*                  pWaitInfo,
+    uint64_t                                    timeout)
+{
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   /* same mechanism as used by queue submit */
+   return wait_semaphores(device, pWaitInfo, timeout);
+}
+
+VKAPI_ATTR VkResult lvp_GetSemaphoreCounterValue(
+    VkDevice                                    _device,
+    VkSemaphore                                 _semaphore,
+    uint64_t*                                   pValue)
+{
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_semaphore, sema, _semaphore);
+   simple_mtx_lock(&sema->lock);
+   prune_semaphore_links(sema, device->queue.last_finished);
+   *pValue = sema->current;
+   simple_mtx_unlock(&sema->lock);
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult lvp_SignalSemaphore(
+    VkDevice                                    _device,
+    const VkSemaphoreSignalInfo*                pSignalInfo)
+{
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_semaphore, sema, pSignalInfo->semaphore);
+
+   /* try to remain monotonic */
+   if (sema->current < pSignalInfo->value)
+      sema->current = pSignalInfo->value;
+   cnd_broadcast(&sema->submit);
+   simple_mtx_lock(&sema->lock);
+   prune_semaphore_links(sema, device->queue.last_finished);
+   simple_mtx_unlock(&sema->lock);
+   return VK_SUCCESS;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateEvent(
