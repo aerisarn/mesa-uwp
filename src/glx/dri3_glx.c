@@ -219,8 +219,10 @@ dri3_create_context_attribs(struct glx_screen *base,
       goto error_exit;
 
    /* Check the renderType value */
-   if (!validate_renderType_against_config(config_base, dca.render_type))
-       goto error_exit;
+   if (!validate_renderType_against_config(config_base, dca.render_type)) {
+      *error = BadValue;
+      goto error_exit;
+   }
 
    if (shareList) {
       /* We can't share with an indirect context */

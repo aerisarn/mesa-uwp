@@ -576,7 +576,8 @@ drisw_create_context_attribs(struct glx_screen *base,
 
    /* Check the renderType value */
    if (!validate_renderType_against_config(config_base, dca.render_type)) {
-       return NULL;
+      *error = BadValue;
+      return NULL;
    }
 
    if (shareList) {
