@@ -44,8 +44,8 @@ bi_lower_swizzle_16(bi_context *ctx, bi_instr *ins, unsigned src)
         /* Despite ostensibly being 32-bit instructions, CLPER does not
          * inherently interpret the data, so it can be used for v2f16
          * derivatives, which might require swizzle lowering */
+        case BI_OPCODE_CLPER_I32:
         case BI_OPCODE_CLPER_V6_I32:
-        case BI_OPCODE_CLPER_V7_I32:
             break;
 
         case BI_OPCODE_IADD_V2S16:

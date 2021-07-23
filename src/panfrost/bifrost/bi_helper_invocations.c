@@ -94,8 +94,8 @@ bi_instr_uses_helpers(bi_instr *I)
         case BI_OPCODE_VAR_TEX_F16:
         case BI_OPCODE_VAR_TEX_F32:
                 return !I->lod_mode; /* set for zero, clear for computed */
+        case BI_OPCODE_CLPER_I32:
         case BI_OPCODE_CLPER_V6_I32:
-        case BI_OPCODE_CLPER_V7_I32:
                 /* Fragment shaders require helpers to implement derivatives.
                  * Other shader stages don't have helpers at all */
                 return true;

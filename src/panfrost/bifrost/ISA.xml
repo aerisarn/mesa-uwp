@@ -3694,7 +3694,7 @@
     <src start="3"/>
   </ins>
 
-  <ins name="+CLPER_V7.i32" mask="0xfc000" exact="0x7c000">
+  <ins name="+CLPER.i32" mask="0xfc000" exact="0x7c000">
     <src start="0" mask="0x7"/>
     <src start="3"/>
     <mod name="lane_op" start="6" size="2">

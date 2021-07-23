@@ -1971,11 +1971,11 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                         left = bi_clper_v6_i32(b, s0, lane1);
                         right = bi_clper_v6_i32(b, s0, lane2);
                 } else {
-                        left = bi_clper_v7_i32(b, s0, lane1,
+                        left = bi_clper_i32(b, s0, lane1,
                                         BI_INACTIVE_RESULT_ZERO, BI_LANE_OP_NONE,
                                         BI_SUBGROUP_SUBGROUP4);
 
-                        right = bi_clper_v7_i32(b, s0, lane2,
+                        right = bi_clper_i32(b, s0, lane2,
                                         BI_INACTIVE_RESULT_ZERO, BI_LANE_OP_NONE,
                                         BI_SUBGROUP_SUBGROUP4);
                 }
