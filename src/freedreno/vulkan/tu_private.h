@@ -971,6 +971,7 @@ struct tu_cmd_state
    bool has_tess;
    bool has_subpass_predication;
    bool predication_active;
+   bool disable_gmem;
 
    struct tu_lrz_state lrz;
 

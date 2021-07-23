@@ -86,15 +86,18 @@ tu_render_pass_add_subpass_dep(struct tu_render_pass *pass,
    uint32_t src = dep->srcSubpass;
    uint32_t dst = dep->dstSubpass;
 
-   if (dep_invalid_for_gmem(dep))
-      pass->gmem_pixels = 0;
-
    /* Ignore subpass self-dependencies as they allow the app to call
     * vkCmdPipelineBarrier() inside the render pass and the driver should only
     * do the barrier when called, not when starting the render pass.
+    *
+    * We cannot decide whether to allow gmem rendering before a barrier
+    * is actually emitted, so we delay the decision until then.
     */
    if (src == dst)
       return;
+
+   if (dep_invalid_for_gmem(dep))
+      pass->gmem_pixels = 0;
 
    struct tu_subpass_barrier *src_barrier;
    if (src == VK_SUBPASS_EXTERNAL) {

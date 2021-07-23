@@ -540,6 +540,9 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd)
    if (cmd->state.has_tess)
       return true;
 
+   if (cmd->state.disable_gmem)
+      return true;
+
    return false;
 }
 
@@ -4391,6 +4394,7 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    cmd_buffer->state.framebuffer = NULL;
    cmd_buffer->state.has_tess = false;
    cmd_buffer->state.has_subpass_predication = false;
+   cmd_buffer->state.disable_gmem = false;
 
    /* LRZ is not valid next time we use it */
    cmd_buffer->state.lrz.valid = false;
@@ -4402,6 +4406,7 @@ struct tu_barrier_info
    uint32_t eventCount;
    const VkEvent *pEvents;
    VkPipelineStageFlags srcStageMask;
+   VkPipelineStageFlags dstStageMask;
 };
 
 static void
@@ -4417,6 +4422,39 @@ tu_barrier(struct tu_cmd_buffer *cmd,
    struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;
    VkAccessFlags srcAccessMask = 0;
    VkAccessFlags dstAccessMask = 0;
+
+   if (cmd->state.pass) {
+      const VkPipelineStageFlags framebuffer_space_stages =
+         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+         VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+      /* We cannot have non-by-region "fb-space to fb-space" barriers.
+       *
+       * From the Vulkan 1.2.185 spec, section 7.6.1 "Subpass Self-dependency":
+       *
+       *    If the source and destination stage masks both include
+       *    framebuffer-space stages, then dependencyFlags must include
+       *    VK_DEPENDENCY_BY_REGION_BIT.
+       *    [...]
+       *    Each of the synchronization scopes and access scopes of a
+       *    vkCmdPipelineBarrier2KHR or vkCmdPipelineBarrier command inside
+       *    a render pass instance must be a subset of the scopes of one of
+       *    the self-dependencies for the current subpass.
+       *
+       *    If the self-dependency has VK_DEPENDENCY_BY_REGION_BIT or
+       *    VK_DEPENDENCY_VIEW_LOCAL_BIT set, then so must the pipeline barrier.
+       *
+       * By-region barriers are ok for gmem. All other barriers would involve
+       * vtx stages which are NOT ok for gmem rendering.
+       * See dep_invalid_for_gmem().
+       */
+      if ((info->srcStageMask & ~framebuffer_space_stages) ||
+          (info->dstStageMask & ~framebuffer_space_stages)) {
+         cmd->state.disable_gmem = true;
+      }
+   }
 
    for (uint32_t i = 0; i < memoryBarrierCount; i++) {
       srcAccessMask |= pMemoryBarriers[i].srcAccessMask;
@@ -4490,6 +4528,7 @@ tu_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
    info.eventCount = 0;
    info.pEvents = NULL;
    info.srcStageMask = srcStageMask;
+   info.dstStageMask = dstStageMask;
 
    tu_barrier(cmd_buffer, memoryBarrierCount, pMemoryBarriers,
               bufferMemoryBarrierCount, pBufferMemoryBarriers,
@@ -4567,7 +4606,8 @@ tu_CmdWaitEvents(VkCommandBuffer commandBuffer,
 
    info.eventCount = eventCount;
    info.pEvents = pEvents;
-   info.srcStageMask = 0;
+   info.srcStageMask = srcStageMask;
+   info.dstStageMask = dstStageMask;
 
    tu_barrier(cmd, memoryBarrierCount, pMemoryBarriers,
               bufferMemoryBarrierCount, pBufferMemoryBarriers,
