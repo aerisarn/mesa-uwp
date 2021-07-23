@@ -309,10 +309,7 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
         nir_lower_tex_options lower_tex_options = {
                 .lower_txs_lod = true,
                 .lower_txp = ~0,
-                .lower_tex_without_implicit_lod =
-                        (quirks & MIDGARD_EXPLICIT_LOD),
                 .lower_tg4_broadcom_swizzle = true,
-
                 /* TODO: we have native gradient.. */
                 .lower_txd = true,
         };
