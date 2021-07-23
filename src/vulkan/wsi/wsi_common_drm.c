@@ -419,32 +419,6 @@ wsi_create_native_image_mem(const struct wsi_swapchain *chain,
    return VK_SUCCESS;
 }
 
-VkResult
-wsi_create_native_image(const struct wsi_swapchain *chain,
-                        const VkSwapchainCreateInfoKHR *pCreateInfo,
-                        uint32_t num_modifier_lists,
-                        const uint32_t *num_modifiers,
-                        const uint64_t *const *modifiers,
-                        uint8_t *(alloc_shm)(struct wsi_image *image, unsigned size),
-                        struct wsi_image *image)
-{
-   VkResult result;
-
-   struct wsi_image_info info;
-   result = wsi_configure_native_image(chain, pCreateInfo,
-                                       num_modifier_lists,
-                                       num_modifiers, modifiers,
-                                       alloc_shm, &info);
-   if (result != VK_SUCCESS)
-      return result;
-
-   result = wsi_create_image(chain, &info, image);
-
-   wsi_destroy_image_info(chain, &info);
-
-   return result;
-}
-
 static inline uint32_t
 align_u32(uint32_t v, uint32_t a)
 {
@@ -645,25 +619,3 @@ wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
 
    return VK_SUCCESS;
 }
-
-VkResult
-wsi_create_prime_image(const struct wsi_swapchain *chain,
-                       const VkSwapchainCreateInfoKHR *pCreateInfo,
-                       bool use_modifier,
-                       struct wsi_image *image)
-{
-   struct wsi_image_info info;
-   VkResult result = wsi_configure_prime_image(chain, pCreateInfo,
-                                               use_modifier, &info);
-   if (result != VK_SUCCESS)
-      return result;
-
-   result = wsi_create_image(chain, &info, image);
-   if (result != VK_SUCCESS) {
-      wsi_destroy_image_info(chain, &info);
-      return result;
-   }
-
-   return VK_SUCCESS;
-}
-
