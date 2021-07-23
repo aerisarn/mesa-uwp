@@ -47,6 +47,12 @@ pass_find_subpass_range_for_attachments(struct v3dv_device *device,
    for (uint32_t i = 0; i < pass->attachment_count; i++) {
       pass->attachments[i].first_subpass = pass->subpass_count - 1;
       pass->attachments[i].last_subpass = 0;
+      if (pass->multiview_enabled) {
+         for (uint32_t j = 0; j < MAX_MULTIVIEW_VIEW_COUNT; j++) {
+            pass->attachments[i].views[j].first_subpass = pass->subpass_count - 1;
+            pass->attachments[i].views[j].last_subpass = 0;
+         }
+      }
    }
 
    for (uint32_t i = 0; i < pass->subpass_count; i++) {
@@ -57,14 +63,26 @@ pass_find_subpass_range_for_attachments(struct v3dv_device *device,
          if (attachment_idx == VK_ATTACHMENT_UNUSED)
             continue;
 
-         if (i < pass->attachments[attachment_idx].first_subpass)
-            pass->attachments[attachment_idx].first_subpass = i;
-         if (i > pass->attachments[attachment_idx].last_subpass)
-            pass->attachments[attachment_idx].last_subpass = i;
+         struct v3dv_render_pass_attachment *att =
+            &pass->attachments[attachment_idx];
+
+         if (i < att->first_subpass)
+            att->first_subpass = i;
+         if (i > att->last_subpass)
+            att->last_subpass = i;
+
+         uint32_t view_mask = subpass->view_mask;
+         while (view_mask) {
+            uint32_t view_index = u_bit_scan(&view_mask);
+            if (i < att->views[view_index].first_subpass)
+               att->views[view_index].first_subpass = i;
+            if (i > att->views[view_index].last_subpass)
+               att->views[view_index].last_subpass = i;
+         }
 
          if (subpass->resolve_attachments &&
              subpass->resolve_attachments[j].attachment != VK_ATTACHMENT_UNUSED) {
-            set_use_tlb_resolve(device, &pass->attachments[attachment_idx]);
+            set_use_tlb_resolve(device, att);
          }
       }
 

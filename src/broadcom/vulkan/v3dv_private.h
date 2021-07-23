@@ -658,8 +658,20 @@ struct v3dv_subpass {
 
 struct v3dv_render_pass_attachment {
    VkAttachmentDescription desc;
+
    uint32_t first_subpass;
    uint32_t last_subpass;
+
+   /* When multiview is enabled, we no longer care about when a particular
+    * attachment is first or last used in a render pass, since not all views
+    * in the attachment will meet that criteria. Instead, we need to track
+    * each individual view (layer) in each attachment and emit our stores,
+    * loads and clears accordingly.
+    */
+   struct {
+      uint32_t first_subpass;
+      uint32_t last_subpass;
+   } views[MAX_MULTIVIEW_VIEW_COUNT];
 
    /* If this is a multismapled attachment that is going to be resolved,
     * whether we can use the TLB resolve on store.

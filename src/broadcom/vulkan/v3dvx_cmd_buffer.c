@@ -137,7 +137,7 @@ cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
 static bool
 check_needs_load(const struct v3dv_cmd_buffer_state *state,
                  VkImageAspectFlags aspect,
-                 uint32_t att_first_subpass_idx,
+                 uint32_t first_subpass_idx,
                  VkAttachmentLoadOp load_op)
 {
    /* We call this with image->aspects & aspect, so 0 means the aspect we are
@@ -146,10 +146,10 @@ check_needs_load(const struct v3dv_cmd_buffer_state *state,
    if (!aspect)
       return false;
 
-   /* Attachment load operations apply on the first subpass that uses the
-    * attachment, otherwise we always need to load.
+   /* Attachment (or view) load operations apply on the first subpass that
+    * uses the attachment (or view), otherwise we always need to load.
     */
-   if (state->job->first_subpass > att_first_subpass_idx)
+   if (state->job->first_subpass > first_subpass_idx)
       return true;
 
    /* If the job is continuing a subpass started in another job, we always
@@ -188,6 +188,8 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
    const struct v3dv_render_pass *pass = state->pass;
    const struct v3dv_subpass *subpass = &pass->subpasses[state->subpass_idx];
 
+  assert(!pass->multiview_enabled || layer < MAX_MULTIVIEW_VIEW_COUNT);
+
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       uint32_t attachment_idx = subpass->color_attachments[i].attachment;
 
@@ -215,9 +217,13 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
        * load the tiles so we can preserve the pixels that are outside the
        * render area for any such tiles.
        */
+      uint32_t first_subpass = !pass->multiview_enabled ?
+         attachment->first_subpass :
+         attachment->views[layer].first_subpass;
+
       bool needs_load = check_needs_load(state,
                                          VK_IMAGE_ASPECT_COLOR_BIT,
-                                         attachment->first_subpass,
+                                         first_subpass,
                                          attachment->desc.loadOp);
       if (needs_load) {
          struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
@@ -234,16 +240,20 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
       const VkImageAspectFlags ds_aspects =
          vk_format_aspects(ds_attachment->desc.format);
 
+      uint32_t ds_first_subpass = !pass->multiview_enabled ?
+         ds_attachment->first_subpass :
+         ds_attachment->views[layer].first_subpass;
+
       const bool needs_depth_load =
          check_needs_load(state,
                           ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
-                          ds_attachment->first_subpass,
+                          ds_first_subpass,
                           ds_attachment->desc.loadOp);
 
       const bool needs_stencil_load =
          check_needs_load(state,
                           ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
-                          ds_attachment->first_subpass,
+                          ds_first_subpass,
                           ds_attachment->desc.stencilLoadOp);
 
       if (needs_depth_load || needs_stencil_load) {
@@ -315,7 +325,7 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
 static bool
 check_needs_clear(const struct v3dv_cmd_buffer_state *state,
                   VkImageAspectFlags aspect,
-                  uint32_t att_first_subpass_idx,
+                  uint32_t first_subpass_idx,
                   VkAttachmentLoadOp load_op,
                   bool do_clear_with_draw)
 {
@@ -344,9 +354,10 @@ check_needs_clear(const struct v3dv_cmd_buffer_state *state,
       return false;
 
    /* If this job is running in a subpass other than the first subpass in
-    * which this attachment is used then attachment load operations don't apply.
+    * which this attachment (or view) is used then attachment load operations
+    * don't apply.
     */
-   if (state->job->first_subpass != att_first_subpass_idx)
+   if (state->job->first_subpass != first_subpass_idx)
       return false;
 
    /* The attachment load operation must be CLEAR */
@@ -356,7 +367,7 @@ check_needs_clear(const struct v3dv_cmd_buffer_state *state,
 static bool
 check_needs_store(const struct v3dv_cmd_buffer_state *state,
                   VkImageAspectFlags aspect,
-                  uint32_t att_last_subpass_idx,
+                  uint32_t last_subpass_idx,
                   VkAttachmentStoreOp store_op)
 {
    /* We call this with image->aspects & aspect, so 0 means the aspect we are
@@ -365,10 +376,11 @@ check_needs_store(const struct v3dv_cmd_buffer_state *state,
    if (!aspect)
       return false;
 
-   /* Attachment store operations only apply on the last subpass where the
-    * attachment is used, in other subpasses we always need to store.
+   /* Attachment (or view) store operations only apply on the last subpass
+    * where the attachment (or view)  is used, in other subpasses we always
+    * need to store.
     */
-   if (state->subpass_idx < att_last_subpass_idx)
+   if (state->subpass_idx < last_subpass_idx)
       return true;
 
    /* Attachment store operations only apply on the last job we emit on the the
@@ -388,12 +400,15 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
                                    uint32_t layer)
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   struct v3dv_render_pass *pass = state->pass;
    const struct v3dv_subpass *subpass =
-      &state->pass->subpasses[state->subpass_idx];
+      &pass->subpasses[state->subpass_idx];
 
    bool has_stores = false;
    bool use_global_zs_clear = false;
    bool use_global_rt_clear = false;
+
+   assert(!pass->multiview_enabled || layer < MAX_MULTIVIEW_VIEW_COUNT);
 
    /* FIXME: separate stencil */
    uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
@@ -419,31 +434,39 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
          vk_format_aspects(ds_attachment->desc.format);
 
       /* Only clear once on the first subpass that uses the attachment */
+      uint32_t ds_first_subpass = !state->pass->multiview_enabled ?
+         ds_attachment->first_subpass :
+         ds_attachment->views[layer].first_subpass;
+
       bool needs_depth_clear =
          check_needs_clear(state,
                            aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
-                           ds_attachment->first_subpass,
+                           ds_first_subpass,
                            ds_attachment->desc.loadOp,
                            subpass->do_depth_clear_with_draw);
 
       bool needs_stencil_clear =
          check_needs_clear(state,
                            aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
-                           ds_attachment->first_subpass,
+                           ds_first_subpass,
                            ds_attachment->desc.stencilLoadOp,
                            subpass->do_stencil_clear_with_draw);
 
       /* Skip the last store if it is not required */
+      uint32_t ds_last_subpass = !pass->multiview_enabled ?
+         ds_attachment->last_subpass :
+         ds_attachment->views[layer].last_subpass;
+
       bool needs_depth_store =
          check_needs_store(state,
                            aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
-                           ds_attachment->last_subpass,
+                           ds_last_subpass,
                            ds_attachment->desc.storeOp);
 
       bool needs_stencil_store =
          check_needs_store(state,
                            aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
-                           ds_attachment->last_subpass,
+                           ds_last_subpass,
                            ds_attachment->desc.stencilStoreOp);
 
       /* GFXH-1689: The per-buffer store command's clear buffer bit is broken
@@ -494,18 +517,26 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       assert(state->subpass_idx <= attachment->last_subpass);
 
       /* Only clear once on the first subpass that uses the attachment */
+      uint32_t first_subpass = !pass->multiview_enabled ?
+         attachment->first_subpass :
+         attachment->views[layer].first_subpass;
+
       bool needs_clear =
          check_needs_clear(state,
                            VK_IMAGE_ASPECT_COLOR_BIT,
-                           attachment->first_subpass,
+                           first_subpass,
                            attachment->desc.loadOp,
                            false);
 
       /* Skip the last store if it is not required  */
+      uint32_t last_subpass = !pass->multiview_enabled ?
+         attachment->last_subpass :
+         attachment->views[layer].last_subpass;
+
       bool needs_store =
          check_needs_store(state,
                            VK_IMAGE_ASPECT_COLOR_BIT,
-                           attachment->last_subpass,
+                           last_subpass,
                            attachment->desc.storeOp);
 
       /* If we need to resolve this attachment emit that store first. Notice
