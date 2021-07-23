@@ -456,6 +456,39 @@ wsi_destroy_image_info(const struct wsi_swapchain *chain,
    vk_free(&chain->alloc, info->modifier_props);
 }
 
+VkResult
+wsi_create_image(const struct wsi_swapchain *chain,
+                 const struct wsi_image_info *info,
+                 struct wsi_image *image)
+{
+   const struct wsi_device *wsi = chain->wsi;
+   VkResult result;
+
+   memset(image, 0, sizeof(*image));
+   for (int i = 0; i < ARRAY_SIZE(image->fds); i++)
+      image->fds[i] = -1;
+
+   result = wsi->CreateImage(chain->device, &info->create,
+                             &chain->alloc, &image->image);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   result = info->create_mem(chain, info, image);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   result = wsi->BindImageMemory(chain->device, image->image,
+                                 image->memory, 0);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   return VK_SUCCESS;
+
+fail:
+   wsi_destroy_image(chain, image);
+   return result;
+}
+
 void
 wsi_destroy_image(const struct wsi_swapchain *chain,
                   struct wsi_image *image)
