@@ -1149,13 +1149,8 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
    struct wsi_wl_display *display = chain->display;
    VkResult result;
 
-   memset(image, 0, sizeof(*image));
-
-   result = wsi_create_native_image(&chain->base, pCreateInfo,
-                                    chain->num_drm_modifiers > 0 ? 1 : 0,
-                                    &chain->num_drm_modifiers,
-                                    &chain->drm_modifiers, NULL, &image->base);
-
+   result = wsi_create_image(&chain->base, &chain->base.image_info,
+                             &image->base);
    if (result != VK_SUCCESS)
       return result;
 
@@ -1238,6 +1233,7 @@ wsi_wl_swapchain_destroy(struct wsi_swapchain *wsi_chain,
             munmap(chain->images[i].data_ptr, chain->images[i].data_size);
       }
    }
+   wsi_destroy_image_info(&chain->base, &chain->base.image_info);
 
    if (chain->frame)
       wl_callback_destroy(chain->frame);
@@ -1337,6 +1333,15 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    }
 
    chain->fifo_ready = true;
+
+   result = wsi_configure_native_image(&chain->base, pCreateInfo,
+                                       chain->num_drm_modifiers > 0 ? 1 : 0,
+                                       &chain->num_drm_modifiers,
+                                       &chain->drm_modifiers,
+                                       NULL /* alloc_shm */,
+                                       &chain->base.image_info);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    for (uint32_t i = 0; i < chain->base.image_count; i++) {
       result = wsi_wl_image_init(chain, &chain->images[i],
