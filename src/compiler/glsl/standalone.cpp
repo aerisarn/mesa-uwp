@@ -432,7 +432,7 @@ standalone_compile_shader(const struct standalone_options *_options,
    }
 
    if (options->lower_precision) {
-      for (unsigned i = MESA_SHADER_VERTEX; i <= MESA_SHADER_FRAGMENT; i++) {
+      for (unsigned i = MESA_SHADER_VERTEX; i <= MESA_SHADER_COMPUTE; i++) {
          struct gl_shader_compiler_options *options =
             &ctx->Const.ShaderCompilerOptions[i];
          options->LowerPrecisionFloat16 = true;
