@@ -911,9 +911,6 @@ panvk_CmdNextSubpass(VkCommandBuffer cmd, VkSubpassContents contents)
 static void
 panvk_cmd_alloc_fb_desc(struct panvk_cmd_buffer *cmdbuf)
 {
-   if (!cmdbuf->state.pipeline->fs.required)
-      return;
-
    struct panvk_batch *batch = cmdbuf->state.batch;
 
    if (batch->fb.desc.gpu)
@@ -1352,7 +1349,9 @@ panvk_CmdDraw(VkCommandBuffer commandBuffer,
       batch = cmdbuf->state.batch;
    }
 
-   panvk_cmd_alloc_fb_desc(cmdbuf);
+   if (cmdbuf->state.pipeline->fs.required)
+      panvk_cmd_alloc_fb_desc(cmdbuf);
+
    panvk_cmd_alloc_tls_desc(cmdbuf);
    panvk_cmd_prepare_ubos(cmdbuf);
    panvk_cmd_prepare_textures(cmdbuf);
