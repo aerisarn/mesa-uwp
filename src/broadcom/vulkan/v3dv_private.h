@@ -807,6 +807,7 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_OCCLUSION_QUERY           = 1 << 13,
    V3DV_CMD_DIRTY_DEPTH_BIAS                = 1 << 14,
    V3DV_CMD_DIRTY_LINE_WIDTH                = 1 << 15,
+   V3DV_CMD_DIRTY_VIEW_INDEX                = 1 << 16,
 };
 
 struct v3dv_dynamic_state {
@@ -1147,6 +1148,9 @@ struct v3dv_cmd_buffer_state {
       struct v3dv_cl_reloc gs;
       struct v3dv_cl_reloc fs;
    } uniforms;
+
+   /* Current view index for multiview rendering */
+   uint32_t view_index;
 
    /* Used to flag OOM conditions during command buffer recording */
    bool oom;

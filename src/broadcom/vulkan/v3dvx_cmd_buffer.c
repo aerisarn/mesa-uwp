@@ -2096,8 +2096,6 @@ v3dX(cmd_buffer_emit_draw_indexed)(struct v3dv_cmd_buffer *cmd_buffer,
                                    int32_t vertexOffset,
                                    uint32_t firstInstance)
 {
-   v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
-
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
@@ -2152,8 +2150,6 @@ v3dX(cmd_buffer_emit_draw_indirect)(struct v3dv_cmd_buffer *cmd_buffer,
                                     uint32_t drawCount,
                                     uint32_t stride)
 {
-   v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
-
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
@@ -2180,8 +2176,6 @@ v3dX(cmd_buffer_emit_indexed_indirect)(struct v3dv_cmd_buffer *cmd_buffer,
                                        uint32_t drawCount,
                                        uint32_t stride)
 {
-   v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
-
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 

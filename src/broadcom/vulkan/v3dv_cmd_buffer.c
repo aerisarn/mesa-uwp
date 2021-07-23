@@ -2096,6 +2096,7 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
    const bool has_new_viewport = dirty_uniform_state & V3DV_CMD_DIRTY_VIEWPORT;
    const bool has_new_push_constants = dirty_uniform_state & V3DV_CMD_DIRTY_PUSH_CONSTANTS;
    const bool has_new_descriptors = dirty_uniform_state & V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
+   const bool has_new_view_index = dirty_uniform_state & V3DV_CMD_DIRTY_VIEW_INDEX;
 
    /* VK_SHADER_STAGE_FRAGMENT_BIT */
    const bool has_new_descriptors_fs =
@@ -2107,8 +2108,10 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
       (cmd_buffer->state.dirty_push_constants_stages & VK_SHADER_STAGE_FRAGMENT_BIT);
 
    const bool needs_fs_update = has_new_pipeline ||
+                                has_new_view_index ||
                                 has_new_push_constants_fs ||
-                                has_new_descriptors_fs;
+                                has_new_descriptors_fs ||
+                                has_new_view_index;
 
    if (needs_fs_update) {
       struct v3dv_shader_variant *fs_variant =
@@ -2131,6 +2134,7 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
           VK_SHADER_STAGE_GEOMETRY_BIT);
 
       const bool needs_gs_update = has_new_viewport ||
+                                   has_new_view_index ||
                                    has_new_pipeline ||
                                    has_new_push_constants_gs ||
                                    has_new_descriptors_gs;
@@ -2160,6 +2164,7 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
       (cmd_buffer->state.dirty_push_constants_stages & VK_SHADER_STAGE_VERTEX_BIT);
 
    const bool needs_vs_update = has_new_viewport ||
+                                has_new_view_index ||
                                 has_new_pipeline ||
                                 has_new_push_constants_vs ||
                                 has_new_descriptors_vs;
@@ -2177,6 +2182,8 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
       cmd_buffer->state.uniforms.vs_bin =
          v3dv_write_uniforms(cmd_buffer, pipeline, vs_bin_variant);
    }
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_VIEW_INDEX;
 }
 
 /* This stores command buffer state that we might be about to stomp for
@@ -2462,7 +2469,8 @@ v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
       *dirty & (V3DV_CMD_DIRTY_PIPELINE |
                 V3DV_CMD_DIRTY_PUSH_CONSTANTS |
                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
-                V3DV_CMD_DIRTY_VIEWPORT);
+                V3DV_CMD_DIRTY_VIEWPORT |
+                V3DV_CMD_DIRTY_VIEW_INDEX);
 
    if (dirty_uniform_state)
       update_gfx_uniform_state(cmd_buffer, dirty_uniform_state);
@@ -2513,12 +2521,32 @@ v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PIPELINE;
 }
 
+static inline void
+cmd_buffer_set_view_index(struct v3dv_cmd_buffer *cmd_buffer,
+                          uint32_t view_index)
+{
+   cmd_buffer->state.view_index = view_index;
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_VIEW_INDEX;
+}
+
 static void
 cmd_buffer_draw(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_draw_info *info)
 {
-   v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
-   v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw)(cmd_buffer, info);
+
+   struct v3dv_render_pass *pass = cmd_buffer->state.pass;
+   if (likely(!pass->multiview_enabled)) {
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
+      v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw)(cmd_buffer, info);
+      return;
+   }
+
+   uint32_t view_mask = pass->subpasses[cmd_buffer->state.subpass_idx].view_mask;
+   while (view_mask) {
+      cmd_buffer_set_view_index(cmd_buffer, u_bit_scan(&view_mask));
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
+      v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw)(cmd_buffer, info);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2554,9 +2582,23 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
 
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indexed)
-      (cmd_buffer, indexCount, instanceCount,
-       firstIndex, vertexOffset, firstInstance);
+   struct v3dv_render_pass *pass = cmd_buffer->state.pass;
+   if (likely(!pass->multiview_enabled)) {
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
+      v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indexed)
+         (cmd_buffer, indexCount, instanceCount,
+          firstIndex, vertexOffset, firstInstance);
+      return;
+   }
+
+   uint32_t view_mask = pass->subpasses[cmd_buffer->state.subpass_idx].view_mask;
+   while (view_mask) {
+      cmd_buffer_set_view_index(cmd_buffer, u_bit_scan(&view_mask));
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
+      v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indexed)
+         (cmd_buffer, indexCount, instanceCount,
+          firstIndex, vertexOffset, firstInstance);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2573,8 +2615,21 @@ v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
 
-   v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indirect)
-      (cmd_buffer, buffer, offset, drawCount, stride);
+   struct v3dv_render_pass *pass = cmd_buffer->state.pass;
+   if (likely(!pass->multiview_enabled)) {
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
+      v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indirect)
+         (cmd_buffer, buffer, offset, drawCount, stride);
+      return;
+   }
+
+   uint32_t view_mask = pass->subpasses[cmd_buffer->state.subpass_idx].view_mask;
+   while (view_mask) {
+      cmd_buffer_set_view_index(cmd_buffer, u_bit_scan(&view_mask));
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
+      v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indirect)
+         (cmd_buffer, buffer, offset, drawCount, stride);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2591,8 +2646,21 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
 
-   v3dv_X(cmd_buffer->device, cmd_buffer_emit_indexed_indirect)
-      (cmd_buffer, buffer, offset, drawCount, stride);
+   struct v3dv_render_pass *pass = cmd_buffer->state.pass;
+   if (likely(!pass->multiview_enabled)) {
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
+      v3dv_X(cmd_buffer->device, cmd_buffer_emit_indexed_indirect)
+         (cmd_buffer, buffer, offset, drawCount, stride);
+      return;
+   }
+
+   uint32_t view_mask = pass->subpasses[cmd_buffer->state.subpass_idx].view_mask;
+   while (view_mask) {
+      cmd_buffer_set_view_index(cmd_buffer, u_bit_scan(&view_mask));
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer);
+      v3dv_X(cmd_buffer->device, cmd_buffer_emit_indexed_indirect)
+         (cmd_buffer, buffer, offset, drawCount, stride);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL

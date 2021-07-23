@@ -525,6 +525,10 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
          break;
       }
 
+      case QUNIFORM_VIEW_INDEX:
+         cl_aligned_u32(&uniforms, job->cmd_buffer->state.view_index);
+         break;
+
       case QUNIFORM_NUM_WORK_GROUPS:
          assert(job->type == V3DV_JOB_TYPE_GPU_CSD);
          assert(job->csd.wg_count[data] > 0);
