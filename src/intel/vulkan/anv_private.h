@@ -928,6 +928,7 @@ struct anv_physical_device {
     bool                                        has_thread_submit;
     bool                                        has_mem_available;
     bool                                        has_mmap_offset;
+    bool                                        has_userptr_probe;
     uint64_t                                    gtt_size;
 
     bool                                        use_softpin;
