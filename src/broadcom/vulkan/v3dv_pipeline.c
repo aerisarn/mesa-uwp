@@ -328,6 +328,27 @@ nir_optimize(nir_shader *nir, bool allow_copies)
 static void
 preprocess_nir(nir_shader *nir)
 {
+   /* We have to lower away local variable initializers right before we
+    * inline functions.  That way they get properly initialized at the top
+    * of the function and not at the top of its caller.
+    */
+   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
+   NIR_PASS_V(nir, nir_lower_returns);
+   NIR_PASS_V(nir, nir_inline_functions);
+   NIR_PASS_V(nir, nir_opt_deref);
+
+   /* Pick off the single entrypoint that we want */
+   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
+      if (func->is_entrypoint)
+         func->name = ralloc_strdup(func, "main");
+      else
+         exec_node_remove(&func->node);
+   }
+   assert(exec_list_length(&nir->functions) == 1);
+
+   /* Vulkan uses the separate-shader linking model */
+   nir->info.separate_shader = true;
+
    /* Make sure we lower variable initializers on output variables so that
     * nir_remove_dead_variables below sees the corresponding stores
     */
@@ -492,27 +513,6 @@ shader_module_compile_to_nir(struct v3dv_device *device,
       nir_print_shader(nir, stderr);
       fprintf(stderr, "\n");
    }
-
-   /* We have to lower away local variable initializers right before we
-    * inline functions.  That way they get properly initialized at the top
-    * of the function and not at the top of its caller.
-    */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
-   NIR_PASS_V(nir, nir_lower_returns);
-   NIR_PASS_V(nir, nir_inline_functions);
-   NIR_PASS_V(nir, nir_opt_deref);
-
-   /* Pick off the single entrypoint that we want */
-   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-      if (func->is_entrypoint)
-         func->name = ralloc_strdup(func, "main");
-      else
-         exec_node_remove(&func->node);
-   }
-   assert(exec_list_length(&nir->functions) == 1);
-
-   /* Vulkan uses the separate-shader linking model */
-   nir->info.separate_shader = true;
 
    preprocess_nir(nir);
 
