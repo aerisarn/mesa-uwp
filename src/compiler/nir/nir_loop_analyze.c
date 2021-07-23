@@ -151,6 +151,14 @@ instr_cost(nir_instr *instr, const nir_shader_compiler_options *options)
 
    nir_alu_instr *alu = nir_instr_as_alu(instr);
    const nir_op_info *info = &nir_op_infos[alu->op];
+   unsigned cost = 1;
+
+   if (alu->op == nir_op_flrp) {
+      if ((options->lower_flrp16 && nir_dest_bit_size(alu->dest.dest) == 16) ||
+          (options->lower_flrp32 && nir_dest_bit_size(alu->dest.dest) == 32) ||
+          (options->lower_flrp64 && nir_dest_bit_size(alu->dest.dest) == 64))
+         cost *= 3;
+   }
 
    /* Assume everything 16 or 32-bit is cheap.
     *
@@ -159,7 +167,7 @@ instr_cost(nir_instr *instr, const nir_shader_compiler_options *options)
     */
    if (nir_dest_bit_size(alu->dest.dest) < 64 &&
        nir_src_bit_size(alu->src[0].src) < 64)
-      return 1;
+      return cost;
 
    bool is_fp64 = nir_dest_bit_size(alu->dest.dest) == 64 &&
       nir_alu_type_get_base_type(info->output_type) == nir_type_float;
@@ -171,7 +179,6 @@ instr_cost(nir_instr *instr, const nir_shader_compiler_options *options)
 
    if (is_fp64) {
       /* If it's something lowered normally, it's expensive. */
-      unsigned cost = 1;
       if (options->lower_doubles_options &
           nir_lower_doubles_op_to_options_mask(alu->op))
          cost *= 20;
@@ -188,13 +195,13 @@ instr_cost(nir_instr *instr, const nir_shader_compiler_options *options)
          if (alu->op == nir_op_idiv || alu->op == nir_op_udiv ||
              alu->op == nir_op_imod || alu->op == nir_op_umod ||
              alu->op == nir_op_irem)
-            return 100;
+            return cost * 100;
 
          /* Other int64 lowering isn't usually all that expensive */
-         return 5;
+         return cost * 5;
       }
 
-      return 1;
+      return cost;
    }
 }
 
