@@ -236,6 +236,20 @@ bi_replace_index(bi_index old, bi_index replacement)
         return replacement;
 }
 
+/* Remove any modifiers. This has the property:
+ *
+ *     replace_index(x, strip_index(x)) = x
+ *
+ * This ensures it is suitable to use when lowering sources to moves */
+
+static inline bi_index
+bi_strip_index(bi_index index)
+{
+        index.abs = index.neg = false;
+        index.swizzle = BI_SWIZZLE_H01;
+        return index;
+}
+
 /* For bitwise instructions */
 #define bi_not(x) bi_neg(x)
 
