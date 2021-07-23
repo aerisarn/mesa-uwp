@@ -835,6 +835,16 @@ memory_range_is_aligned(struct anv_image_memory_range memory_range)
 {
    return anv_is_aligned(memory_range.offset, memory_range.alignment);
 }
+
+static bool MUST_CHECK
+memory_ranges_equal(struct anv_image_memory_range a,
+                    struct anv_image_memory_range b)
+{
+   return a.binding == b.binding &&
+          a.offset == b.offset &&
+          a.size == b.size &&
+          a.alignment == b.alignment;
+}
 #endif
 
 struct check_memory_range_params {
@@ -1821,8 +1831,11 @@ VkResult anv_BindImageMemory2(
             assert(image->vk.aspects == swapchain_image->vk.aspects);
             assert(mem == NULL);
 
-            for (int j = 0; j < ARRAY_SIZE(image->bindings); ++j)
+            for (int j = 0; j < ARRAY_SIZE(image->bindings); ++j) {
+               assert(memory_ranges_equal(image->bindings[j].memory_range,
+                                          swapchain_image->bindings[j].memory_range));
                image->bindings[j].address = swapchain_image->bindings[j].address;
+            }
 
             /* We must bump the private binding's bo's refcount because, unlike the other
              * bindings, its lifetime is not application-managed.
