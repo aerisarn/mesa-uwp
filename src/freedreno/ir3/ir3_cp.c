@@ -536,11 +536,12 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
          /* TODO non-indirect access we could figure out which register
           * we actually want and allow cp..
           */
-         if (reg->flags & IR3_REG_ARRAY)
+         if ((reg->flags & IR3_REG_ARRAY) && src->opc != OPC_META_PHI)
             continue;
 
          /* Don't CP absneg into meta instructions, that won't end well: */
-         if (is_meta(instr) && (src->opc != OPC_MOV))
+         if (is_meta(instr) &&
+             (src->opc == OPC_ABSNEG_F || src->opc == OPC_ABSNEG_S))
             continue;
 
          /* Don't CP mova and mova1 into their users */

@@ -801,6 +801,8 @@ is_same_type_mov(struct ir3_instruction *instr)
       if (!is_same_type_reg(instr->dsts[0], instr->srcs[0]))
          return false;
       break;
+   case OPC_META_PHI:
+      return instr->srcs_count == 1;
    default:
       return false;
    }
