@@ -106,14 +106,14 @@ ra_reg_is_dst(const struct ir3_register *reg)
 /* Iterators for sources and destinations which:
  * - Don't include fake sources (irrelevant for RA)
  * - Don't include non-SSA sources (immediates and constants, also irrelevant)
- * - Consider array destinations as both a source and a destination
  */
 
+#define ra_foreach_src_n(__srcreg, __n, __instr)                               \
+   foreach_src_n(__srcreg, __n, __instr)                                       \
+      if (ra_reg_is_src(__srcreg))
+
 #define ra_foreach_src(__srcreg, __instr)                                      \
-   for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
-      for (unsigned __cnt = (__instr)->srcs_count, __i = 0; __i < __cnt;       \
-           __i++)                                                              \
-         if (ra_reg_is_src((__srcreg = (__instr)->srcs[__i])))
+   ra_foreach_src_n(__srcreg, __i, __instr)
 
 #define ra_foreach_src_rev(__srcreg, __instr)                                  \
    for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
@@ -121,11 +121,12 @@ ra_reg_is_dst(const struct ir3_register *reg)
            __i--)                                                              \
          if (ra_reg_is_src((__srcreg = (__instr)->srcs[__i])))
 
+#define ra_foreach_dst_n(__dstreg, __n, __instr)                               \
+   foreach_dst_n(__dstreg, __n, instr)                                         \
+      if (ra_reg_is_dst(__dstreg))
+
 #define ra_foreach_dst(__dstreg, __instr)                                      \
-   for (struct ir3_register *__dstreg = (void *)~0; __dstreg; __dstreg = NULL) \
-      for (unsigned __cnt = (__instr)->dsts_count, __i = 0; __i < __cnt;       \
-           __i++)                                                              \
-         if (ra_reg_is_dst((__dstreg = (__instr)->dsts[__i])))
+   ra_foreach_dst_n(__dstreg, __i, __instr)
 
 #define RA_HALF_SIZE     (4 * 48)
 #define RA_FULL_SIZE     (4 * 48 * 2)
