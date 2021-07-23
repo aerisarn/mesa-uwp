@@ -360,3 +360,13 @@ for child in root:
         build_instr(child)
 
 instruction_dict = { ins.name: ins for ins in instructions }
+
+# Validate there are no duplicated instructions
+if len(instruction_dict) != len(instructions):
+    import collections
+    counts = collections.Counter([i.name for i in instructions])
+    for c in counts:
+        if counts[c] != 1:
+            print(f'{c} appeared {counts[c]} times.')
+
+assert(len(instruction_dict) == len(instructions))
