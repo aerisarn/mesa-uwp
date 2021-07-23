@@ -68,4 +68,20 @@ bit_instr_equal(bi_instr *A, bi_instr *B)
                  sizeof(bi_instr) - sizeof(struct list_head)) == 0;
 }
 
+#define INSTRUCTION_CASE(instr, expected, CB) do { \
+   bi_instr *left = instr; \
+   bi_instr *right = expected; \
+   CB(b, left); \
+   if (bit_instr_equal(left, right)) { \
+      nr_pass++; \
+   } else { \
+      fprintf(stderr, "Incorrect optimization\n"); \
+      bi_print_instr(instr, stderr); \
+      bi_print_instr(left, stderr); \
+      bi_print_instr(right, stderr); \
+      fprintf(stderr, "\n"); \
+      nr_fail++; \
+   } \
+} while(0)
+
 #endif
