@@ -86,6 +86,8 @@ struct wsi_swapchain {
    VkFence* fences;
    VkSemaphore* prime_blit_semaphores;
    VkPresentModeKHR present_mode;
+
+   struct wsi_image_info image_info;
    uint32_t image_count;
 
    bool use_prime_blit;
