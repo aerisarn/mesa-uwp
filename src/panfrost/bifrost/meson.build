@@ -165,6 +165,7 @@ if with_tests
 	'test/test-scheduler-predicates.cpp',
         'valhall/test/test-add-imm.cpp',
         'valhall/test/test-validate-fau.cpp',
+        'valhall/test/test-lower-isel.cpp',
       ),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',
