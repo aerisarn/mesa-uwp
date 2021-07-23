@@ -1062,3 +1062,71 @@ wsi_GetDeviceGroupSurfacePresentModesKHR(VkDevice device,
 
    return VK_SUCCESS;
 }
+
+VkResult
+wsi_common_create_swapchain_image(const struct wsi_device *wsi,
+                                  const VkImageCreateInfo *pCreateInfo,
+                                  VkSwapchainKHR _swapchain,
+                                  VkImage *pImage)
+{
+   VK_FROM_HANDLE(wsi_swapchain, chain, _swapchain);
+
+#ifndef NDEBUG
+   const VkImageCreateInfo *swcInfo = &chain->image_info.create;
+   assert(pCreateInfo->flags == 0);
+   assert(pCreateInfo->imageType == swcInfo->imageType);
+   assert(pCreateInfo->format == swcInfo->format);
+   assert(pCreateInfo->extent.width == swcInfo->extent.width);
+   assert(pCreateInfo->extent.height == swcInfo->extent.height);
+   assert(pCreateInfo->extent.depth == swcInfo->extent.depth);
+   assert(pCreateInfo->mipLevels == swcInfo->mipLevels);
+   assert(pCreateInfo->arrayLayers == swcInfo->arrayLayers);
+   assert(pCreateInfo->samples == swcInfo->samples);
+   assert(pCreateInfo->tiling == VK_IMAGE_TILING_OPTIMAL);
+   assert(!(pCreateInfo->usage & ~swcInfo->usage));
+
+   vk_foreach_struct(ext, pCreateInfo->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: {
+         const VkImageFormatListCreateInfo *iflci =
+            (const VkImageFormatListCreateInfo *)ext;
+         const VkImageFormatListCreateInfo *swc_iflci =
+            &chain->image_info.format_list;
+
+         for (uint32_t i = 0; i < iflci->viewFormatCount; i++) {
+            bool found = false;
+            for (uint32_t j = 0; j < swc_iflci->viewFormatCount; j++) {
+               if (iflci->pViewFormats[i] == swc_iflci->pViewFormats[j]) {
+                  found = true;
+                  break;
+               }
+            }
+            assert(found);
+         }
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHR:
+         break;
+
+      default:
+         assert(!"Unsupported image create extension");
+      }
+   }
+#endif
+
+   return wsi->CreateImage(chain->device, &chain->image_info.create,
+                           &chain->alloc, pImage);
+}
+
+VkResult
+wsi_common_bind_swapchain_image(const struct wsi_device *wsi,
+                                VkImage vk_image,
+                                VkSwapchainKHR _swapchain,
+                                uint32_t image_idx)
+{
+   VK_FROM_HANDLE(wsi_swapchain, chain, _swapchain);
+   struct wsi_image *image = chain->get_wsi_image(chain, image_idx);
+
+   return wsi->BindImageMemory(chain->device, vk_image, image->memory, 0);
+}
